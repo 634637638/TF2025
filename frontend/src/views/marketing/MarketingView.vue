@@ -1058,10 +1058,6 @@ onMounted(async () => {
   min-height: 108px;
 }
 
-.empty-state {
-  padding: 24px 0 12px;
-}
-
 @media (max-width: 1100px) {
   .top-grid {
     grid-template-columns: 1fr;
@@ -1072,7 +1068,7 @@ onMounted(async () => {
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .page-body {
     width: 100%;
     max-width: 100%;

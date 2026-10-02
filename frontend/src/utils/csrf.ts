@@ -136,6 +136,7 @@ function loadTokenFromStorage(): CSRFToken | null {
   try {
     // 新版 CSRF 统一使用 sessionStorage，避免浏览器重开后复用旧 token。
     const stored = storage.get<StoredCSRFToken | CSRFToken>(CSRF_CONFIG.TOKEN_KEY, 'session')
+    storage.remove(CSRF_CONFIG.TOKEN_KEY, 'local')
     if (stored) {
       const value = 'token' in stored ? stored.token : stored.value
       const expires = 'expiresAt' in stored ? stored.expiresAt : stored.expires
@@ -170,6 +171,7 @@ function saveTokenToStorage(token: CSRFToken): void {
       token: token.value,
       expiresAt: token.expires
     }, 'session')
+    storage.remove(CSRF_CONFIG.TOKEN_KEY, 'local')
   } catch (error) {
     logger.warn('保存CSRF Token失败:', error)
   }

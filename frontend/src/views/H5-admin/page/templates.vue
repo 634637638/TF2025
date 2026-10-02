@@ -118,6 +118,7 @@
                       :src="getImageUrl(row.main_image)"
                       class="product-cover"
                       muted
+                      autoplay
                       playsinline
                       preload="metadata"
                     />
@@ -234,6 +235,7 @@
                     :src="getImageUrl(row.main_image)"
                     class="product-cover"
                     muted
+                    autoplay
                     playsinline
                     preload="metadata"
                   />
@@ -566,9 +568,10 @@
                             >
                               <el-input-number
                                 :model-value="currentChild.price_markup"
-                                :min="0"
-                                :precision="2"
-                                :step="100"
+                              :min="0"
+                              :precision="2"
+                              :step="100"
+                              :controls="false"
                                 class="markup-input"
                                 @update:model-value="handleFixedMarkupChange(currentChild, $event)"
                               >
@@ -638,7 +641,7 @@
                       :show-file-list="false"
                       multiple
                       :disabled="!currentChild.id"
-                      accept="image/*,video/mp4,video/webm,video/ogg,video/quicktime,.mov"
+                      :accept="MEDIA_UPLOAD_ACCEPT"
                       :http-request="handleImageUpload"
                       :before-upload="beforeImageUpload"
                     >
@@ -782,10 +785,11 @@
 </template>
 
 <script setup lang="ts">
+import { confirmAction } from '@/utils/message-box'
 import { computed, onMounted, onUnmounted, onActivated, ref, inject, watch } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
 import { Refresh, Plus } from '@element-plus/icons-vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import draggable from 'vuedraggable'
 import { PermissionGate } from '@/components/base/index'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
@@ -812,6 +816,7 @@ import {
 } from '@/api/shop'
 import { baseDataApi, type Brand, type Model, type Color, type Memory } from '@/api/base-data'
 import { logger } from '@/utils/logger'
+import { MEDIA_UPLOAD_ACCEPT, prepareMediaFile, validateMediaFile } from '@/utils/upload-media'
 import type { HeaderAction } from '@/types'
 interface EditableChildTemplate extends Omit<NewTemplate, 'memory_ids' | 'images'> {
   localKey: string
@@ -1310,7 +1315,7 @@ const handleRemoveChild = async (child: EditableChildTemplate) => {
     : `确认移除未保存的颜色「${child.color_name}」？`
 
   try {
-    await ElMessageBox.confirm(message, '删除颜色', {
+    await confirmAction(message, '删除颜色', {
       type: 'warning',
       confirmButtonText: '删除',
       cancelButtonText: '取消'
@@ -1347,7 +1352,7 @@ const handleDeleteGroup = async (group: TemplateGroup) => {
   }
 
   try {
-    await ElMessageBox.confirm(
+    await confirmAction(
       `确认删除母模板「${group.display_name}」？将一并删除 ${group.templates.length} 个颜色子模板。`,
       '删除母模板',
       {
@@ -1556,28 +1561,28 @@ const handleSaveGroup = async () => {
   }
 }
 
-const beforeImageUpload = (file: File) => {
+const beforeImageUpload = async (file: File) => {
   if (!ensureTemplatePermission('edit')) {
     return false
   }
 
-  const isImage = file.type.startsWith('image/')
-  const isVideo = file.type.startsWith('video/')
-
-  if (!isImage && !isVideo) {
-    ElMessage.error('只能上传图片或视频文件')
+  const validationMessage = validateMediaFile(file, {
+    maxImageSizeMb: 10,
+    maxVideoSizeMb: 50,
+    maxPdfSizeMb: 10
+  })
+  if (validationMessage) {
+    ElMessage.error(validationMessage)
     return false
   }
 
-  const sizeLimit = isVideo ? 50 : 10
-  const isValidSize = file.size / 1024 / 1024 < sizeLimit
-
-  if (!isValidSize) {
-    ElMessage.error(`${isVideo ? '视频' : '图片'}大小不能超过 ${sizeLimit}MB`)
+  try {
+    return await prepareMediaFile(file, { maxImageSizeMb: 10, maxVideoSizeMb: 50, maxPdfSizeMb: 10 })
+  } catch (error) {
+    logger.error('文件处理失败:', error)
+    ElMessage.error(error instanceof Error ? error.message : '文件处理失败')
     return false
   }
-
-  return true
 }
 
 const syncChildImageState = (child: EditableChildTemplate, images: TemplateImage[]) => {
@@ -1603,7 +1608,12 @@ const handleImageUpload = async (options: any) => {
 
   mediaUploadingCount.value += 1
   try {
-    const response = await uploadTemplateImage(child.id, options.file as File)
+    const uploadFile = await prepareMediaFile(options.file as File, {
+      maxImageSizeMb: 10,
+      maxVideoSizeMb: 50,
+      maxPdfSizeMb: 10
+    })
+    const response = await uploadTemplateImage(child.id, uploadFile)
     const image = unwrapResponseData<TemplateImage | null>(response, null)
     if (!image) {
       throw new Error('上传成功但未返回媒体数据')
@@ -1638,7 +1648,7 @@ const handleDeleteImage = async (child: EditableChildTemplate, image: TemplateIm
   }
 
   try {
-    await ElMessageBox.confirm('确认删除这个媒体文件？', '删除媒体', {
+    await confirmAction('确认删除这个媒体文件？', '删除媒体', {
       type: 'warning',
       confirmButtonText: '删除',
       cancelButtonText: '取消'
@@ -2355,7 +2365,7 @@ onUnmounted(() => {
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .template-management-page {
     width: 100%;
     padding: 0;

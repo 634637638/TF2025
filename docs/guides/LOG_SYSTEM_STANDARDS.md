@@ -349,7 +349,7 @@ log.error('message', error);
 
 - [代码审查标准](../guides/CODE_REVIEW_STANDARDS.md) - 日志检查项
 - [Winston 官方文档](https://github.com/winstonjs/winston)
-- [CLAUDE.md](../../CLAUDE.md) - 开发规范
+- [项目开发指引](../CLAUDE.md) - 开发规范
 
 ---
 

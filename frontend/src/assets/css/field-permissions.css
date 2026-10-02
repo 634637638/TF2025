@@ -197,19 +197,3 @@
     font-size: 9px;
   }
 }
-
-/* 打印时的处理 */
-@media print {
-  /* 打印时隐藏所有权限相关样式 */
-  .field-permission-indicator,
-  .permission-hint,
-  .batch-permission-warning {
-    display: none !important;
-  }
-
-  /* 保持只读字段在打印时的可见性 */
-  .field-readonly,
-  .form-field-readonly::after {
-    background-color: transparent !important;
-  }
-}

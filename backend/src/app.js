@@ -1,4 +1,5 @@
 const express = require('express')
+const path = require('path')
 const config = require('./config')
 const { connectToDatabase, getDatabase, isConnected } = require('./config/database')
 const errorHandler = require('./middleware/error-handler')
@@ -187,7 +188,16 @@ async function initializeApp() {
     // 添加 URL 解码中间件和 CORS 头，处理中文文件名和跨域访问
     app.use('/uploads', uploadStaticMiddleware)
 
-    app.use('/uploads', express.static(uploadsPath))
+    app.use('/uploads', express.static(uploadsPath, {
+      // 媒体资源用于页面内联预览，明确覆盖可能导致下载管理器误判的响应头。
+      setHeaders: (res, filePath) => {
+        const extension = path.extname(filePath).toLowerCase()
+        if (['.mp4', '.webm', '.ogg', '.ogv', '.mov', '.m4v'].includes(extension)) {
+          res.setHeader('Content-Disposition', 'inline')
+          res.setHeader('Accept-Ranges', 'bytes')
+        }
+      }
+    }))
     log.success('静态文件服务配置完成:', uploadsPath)
 
     // 将数据库连接池添加到 app 实例

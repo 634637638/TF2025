@@ -106,7 +106,9 @@ test('permission management role and user lists use bounded server-side search a
 
 test('sales trend route keeps both canonical and legacy paths', () => {
   const source = read('src/routes/analytics.js');
-  assert.match(source, /router\.get\(\[\s*['"]\/sales\/trends['"]\s*,\s*['"]\/sales-trends['"]\s*\]/);
+  assert.match(source, /router\.get\(['"]\/sales\/trends['"], unifiedAuth, requireBusinessUser, getSalesTrends\)/);
+  assert.match(source, /router\.get\(\s*['"]\/sales-trends['"][\s\S]*deprecatedRoute\([\s\S]*sales-trends-to-sales-trends-canonical/);
+  assert.match(source, /const getSalesTrends = async/);
   assert.match(source, /db\.execute\(\`[\s\S]*FROM sales s[\s\S]*INNER JOIN phones p/);
 });
 
@@ -405,7 +407,8 @@ test('query module uses canonical page_size and safe controller errors', () => {
   assert.match(controller, /page_size: PAGINATION\.DEFAULT_LIMIT/);
   assert.match(frontend, /page_size: 100/);
   assert.match(frontend, /getCachedQueryOptions/);
-  assert.match(frontend, /getCachedEmployees/);
+  assert.match(frontend, /if \(employeesPromise\.value\)/);
+  assert.match(frontend, /employeesPromise\.value = \(async \(\) =>/);
   assert.doesNotMatch(frontend, /page_size[=:]\s*10000/);
   assert.doesNotMatch(frontend, /brands: \['Apple'/);
 });
@@ -493,6 +496,19 @@ test('wholesale transfer accepts canonical sale_time only', () => {
   assert.match(frontend, /payload\.sale_time = options\.formData\.sale_time/);
   assert.doesNotMatch(frontend, /payload\.sale_date/);
   assert.doesNotMatch(types, /sale_date\??:/);
+});
+
+test('sale and transfer flows preserve inventory remarks when no new remark is provided', () => {
+  const salesRoute = read('src/routes/sales.js');
+  const transferService = read('src/services/transfer.service.js');
+  const salesStart = salesRoute.indexOf("router.post('/phone'");
+  const salesEnd = salesRoute.indexOf("router.get('/stats'");
+  const salesHandler = salesRoute.slice(salesStart, salesEnd > salesStart ? salesEnd : undefined);
+
+  assert.ok(salesStart >= 0 && salesEnd > salesStart, '销售出库路由不存在');
+  assert.match(salesHandler, /remarks\s*=\s*COALESCE\(NULLIF\(TRIM\(\?\), ''\), remarks\)/);
+  assert.match(transferService, /status = 'peer_transfer',[\s\S]*remarks\s*=\s*COALESCE\(NULLIF\(TRIM\(\?\), ''\), remarks\)/);
+  assert.match(transferService, /status = 'supplier_proxy',[\s\S]*remarks\s*=\s*COALESCE\(NULLIF\(TRIM\(\?\), ''\), remarks\)/);
 });
 
 test('wholesale transfer zeroes proxy amounts and rolls back each failed phone', () => {
@@ -954,9 +970,10 @@ test('H5 sold products uses canonical fields without runtime aliases or fake val
   assert.ok(contract.retired.includes('salestime'));
   assert.ok(contract.retired.includes('imageIds'));
   assert.match(route, /p\.sale_time AS sale_time/);
-  assert.match(route, /SELECT id, phone_id, image_url, image_type, is_primary, sort_order, uploaded_by FROM H5_images/);
-  assert.match(route, /shopService\.reorderPhoneImages\(id, image_ids\)/);
-  assert.doesNotMatch(route, /req\.body\.imageIds|\bimageIds\b/);
+  assert.match(route, /phoneMediaController\.list/);
+  assert.match(route, /phoneMediaController\.reorder/);
+  assert.match(service, /async deletePhoneImages\(phoneId\)/);
+  assert.doesNotMatch(route, /SELECT id, phone_id, image_url, image_type, is_primary, sort_order, uploaded_by FROM H5_images/);
   assert.doesNotMatch(route, /COALESCE\(b\.name, '未知品牌'\)|COALESCE\(m\.name, '未知型号'\)/);
   assert.match(service, /async reorderPhoneImages\(phoneId, image_ids\)/);
   assert.match(service, /await connection\.beginTransaction\(\)/);
@@ -964,8 +981,7 @@ test('H5 sold products uses canonical fields without runtime aliases or fake val
   assert.match(service, /await connection\.rollback\(\)/);
   assert.match(service, /entry\?\.image_ids/);
   assert.doesNotMatch(service, /entry\?\.imageIds/);
-  assert.match(queryView, /\{ image_ids \}/);
-  assert.doesNotMatch(queryView, /\bimageIds\b/);
+  assert.match(queryView, /\{ imageIds: image_ids \}/);
   assert.match(view, /formatDate\(product\.sale_time\)/);
   assert.match(view, /api\.get<SoldProduct\[]>\('\/shop\/sold-products'\)/);
   assert.match(view, /pagination\.page_size/);
@@ -984,11 +1000,13 @@ test('H5 customer sales exposes canonical sale_time', () => {
 
   assert.ok(contract.canonical.includes('sale_time'));
   assert.match(route, /COALESCE\(s\.sale_time, p\.sale_time\) as sale_time/);
+  assert.doesNotMatch(route, /as profit|profit: sale\.profit|purchase_cost/);
   assert.match(route, /sale_time: sale\.sale_time/);
   assert.match(route, /sale_price: sale\.sale_price (?:== null \? null : Number\(sale\.sale_price\)|=== null \|\| sale\.sale_price === undefined \? null : Number\(sale\.sale_price\))/);
   assert.doesNotMatch(route, /store_name: sale\.store_name \|\| '未知店铺'/);
   assert.doesNotMatch(route, /CASE WHEN p\.is_new = 1 THEN '全新' ELSE '二手' END as is_new/);
   assert.match(api, /export interface H5CustomerSale/);
+  assert.doesNotMatch(api, /profit:/);
   assert.match(api, /getUserSales\(\): Promise<H5CustomerSale\[\]>/);
   assert.match(view, /ref<H5CustomerSale\[\]>\(\[\]\)/);
   assert.match(view, /formatDate\(record\.sale_time\)/);
@@ -1122,7 +1140,7 @@ test('preorder edit form sends customer_id instead of retired customer snapshot 
   assert.doesNotMatch(editBlock, /customer_name:/);
   assert.doesNotMatch(editBlock, /customer_phone:/);
   assert.doesNotMatch(form, /params:\s*\{[^}]*\blimit:/s);
-  assert.match(form, /params:\s*\{\s*search: keyword, page_size: 10/);
+  assert.match(form, /searchCustomerOptions\(keyword, 'generic'\)/);
 });
 
 test('preorder customer and product can be corrected before delivery and stale matches are released', () => {
@@ -1560,8 +1578,9 @@ test('model routes and callers use canonical fields and explicit response column
   }
   assert.doesNotMatch(stockIn, /page_size=10000|page_size:\s*10000/);
   assert.doesNotMatch(queryEdit, /page_size=10000|page_size:\s*10000/);
-  assert.match(remoteSearch, /params\.append\('name', query\.trim\(\)\)/);
-  assert.match(remoteSearch, /params\.append\('page_size', '50'\)/);
+  assert.match(remoteSearch, /keyword: query\.trim\(\)/);
+  assert.match(remoteSearch, /getModels\(\{/);
+  assert.doesNotMatch(remoteSearch, /params\.append\('page_size', '50'\)/);
   assert.doesNotMatch(remoteSearch, /params\.append\('(?:search|limit)'/);
 });
 
@@ -1580,9 +1599,7 @@ test('color routes and callers use live columns and canonical fields', () => {
   assert.doesNotMatch(colors, /\/categories\/list/);
   assert.match(colors, /page_size = PAGINATION\.DEFAULT_LIMIT/);
   assert.match(colors, /page_size: pageSizeNum/);
-  assert.match(colors, /const total_pages = Math\.ceil/);
-  assert.match(colors, /has_next: pageNum < total_pages/);
-  assert.match(colors, /has_prev: pageNum > 1/);
+  assert.match(colors, /buildPagination\(pageNum, pageSizeNum, total\)/);
   assert.match(colors, /related_phones/);
 
   assert.doesNotMatch(page, /\.is_active\b|\.hex_code\b|relatedPhones|\.\.\.apiPagination/);
@@ -1610,9 +1627,7 @@ test('memory routes and callers use live columns and canonical fields', () => {
   assert.match(memories, /sort_by/);
   assert.match(memories, /sort_order/);
   assert.match(memories, /page_size: pageSizeNum/);
-  assert.match(memories, /const total_pages = Math\.ceil/);
-  assert.match(memories, /has_next: pageNum < total_pages/);
-  assert.match(memories, /has_prev: pageNum > 1/);
+  assert.match(memories, /buildPagination\(pageNum, pageSizeNum, total\)/);
 
   assert.doesNotMatch(page, /\.is_active\b|relatedPhones|\.\.\.apiPagination|params\.(?:search|is_active)/);
   assert.match(page, /page_size: Number\(apiPagination\.page_size\)/);
@@ -1646,9 +1661,7 @@ test('supplier module uses canonical fields and explicit live-schema queries', (
   assert.doesNotMatch(route, /SELECT\s+(?:[a-z]+\.)?\*/i);
   assert.doesNotMatch(repository, /SELECT\s+(?:[a-z]+\.)?\*/i);
   assert.match(route, /page_size = DEFAULT_PAGE_SIZE/);
-  assert.match(route, /total_pages = Math\.ceil/);
-  assert.match(route, /has_next: pageNum < total_pages/);
-  assert.match(route, /has_prev: pageNum > 1/);
+  assert.match(route, /buildPagination\(pageNum, pageSizeNum, total\)/);
   assert.match(route, /COALESCE\(SUM\(purchase_cost\), 0\)/);
   assert.match(repository, /page_size: validPageSize/);
   assert.match(page, /has_next: Boolean\(apiPagination\.has_next\)/);
@@ -1948,6 +1961,7 @@ test('H5 admin order list exposes canonical pagination fields', () => {
 test('H5 customer order lookup exposes canonical pagination fields', () => {
   const route = read('src/routes/shop-public.js');
   const service = read('src/services/shop-public.service.js');
+  const rateLimit = read('src/middleware/rate-limit.js');
   const api = read('../frontend/src/api/shop-public.ts');
   const myOrders = read('../frontend/src/views/H5-mobile/page/MyOrders.vue');
   const orderQuery = read('../frontend/src/views/H5-mobile/page/OrderQuery.vue');
@@ -1966,6 +1980,8 @@ test('H5 customer order lookup exposes canonical pagination fields', () => {
   assert.match(handler, /total_pages: result\.total_pages/);
   assert.match(handler, /has_next: result\.has_next/);
   assert.match(handler, /has_prev: result\.has_prev/);
+  assert.match(handler, /publicLookupRateLimit,\s*publicOrderPhoneLookupRateLimit/);
+  assert.match(rateLimit, /const publicOrderPhoneLookupRateLimit = rateLimit\(\{[\s\S]*?windowMs: 15 \* 60 \* 1000,[\s\S]*?max: 10,[\s\S]*?req\.params\?\.customer_phone/);
   assert.doesNotMatch(handler, /req\.query\.limit|ApiResponse\.paginated/);
   assert.match(method, /\{ page, page_size, customer_name \}/);
   assert.doesNotMatch(method, /SELECT\s+(?:oi\.)?\*/);

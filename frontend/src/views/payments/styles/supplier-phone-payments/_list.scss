@@ -1,0 +1,293 @@
+.supplier-phone-payments-view {
+  .stat-main-line {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+
+  .table-section {
+    .title-main {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+
+      .title-text {
+        white-space: nowrap;
+      }
+    }
+
+    .selected-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      margin-bottom: 16px;
+      background: linear-gradient(135deg, var(--tf-color-amber-surface) 0%, var(--color-bg-white) 45%, var(--tf-color-surface-blue) 100%);
+      border: 1px solid var(--tf-color-border-surface);
+      border-radius: 16px;
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+
+      .selected-summary {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        flex-shrink: 0;
+        padding: 7px 10px;
+        background: rgba(255, 255, 255, 0.92);
+        border: 1px solid rgba(64, 158, 255, 0.12);
+        border-radius: 999px;
+      }
+
+      .selected-count {
+        font-size: 14px;
+        color: var(--tf-color-neutral-700);
+        font-weight: 700;
+      }
+
+      .selected-amount {
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--color-warning);
+        font-family: 'Monaco', 'Consolas', monospace;
+      }
+
+      .selected-action-btn {
+        flex-shrink: 0;
+        min-width: 92px;
+        height: 36px;
+        padding: 0 14px;
+        white-space: nowrap;
+        border-radius: 10px;
+        font-size: 13px;
+        font-weight: 600;
+
+        :deep(span) {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+        }
+
+        i {
+          font-size: 12px;
+        }
+      }
+
+      .selected-action-btn-danger {
+        background: var(--tf-button-danger-soft-bg);
+        border-color: var(--tf-button-danger-soft-border);
+        color: var(--tf-button-danger-soft-color);
+        box-shadow: none;
+
+        &:hover,
+        &:focus {
+          background: var(--tf-button-danger-soft-hover-bg);
+          border-color: var(--tf-button-danger-soft-hover-border);
+          color: var(--tf-button-danger-soft-hover-color);
+        }
+      }
+
+      .selected-action-btn-primary {
+        background: var(--tf-button-primary-soft-bg);
+        border-color: var(--tf-button-primary-soft-border);
+        color: var(--tf-button-primary-soft-color);
+        box-shadow: none;
+
+        &:hover,
+        &:focus {
+          background: var(--tf-button-primary-soft-hover-bg);
+          border-color: var(--tf-button-primary-soft-hover-border);
+          color: var(--tf-button-primary-soft-hover-color);
+        }
+      }
+    }
+  }
+
+  // 状态徽章样式
+  .status-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+
+    &.status-unpaid {
+      background: var(--tf-status-danger-bg);
+      color: var(--tf-status-danger-color);
+      border: 1px solid var(--tf-status-danger-border);
+    }
+
+    &.status-paid {
+      background: var(--tf-status-success-bg);
+      color: var(--tf-status-success-color);
+      border: 1px solid var(--tf-status-success-border);
+    }
+
+    &.status-in_stock {
+      background: var(--tf-status-success-bg);
+      color: var(--tf-status-success-color);
+      border: 1px solid var(--tf-status-success-border);
+    }
+
+    &.status-sold {
+      background: var(--tf-status-neutral-bg);
+      color: var(--tf-status-neutral-color);
+      border: 1px solid var(--tf-status-neutral-border);
+    }
+  }
+
+  // 时间徽章样式 - 小巧精致版
+  .time-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 500;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    white-space: nowrap;
+
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+      transition: left 0.4s ease;
+    }
+
+    i {
+      font-size: 10px;
+    }
+
+    &.payment-time-badge {
+      animation: fadeIn 0.2s ease;
+    }
+
+    &:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+
+      &::before {
+        left: 100%;
+      }
+    }
+  }
+
+  // 文本辅助类
+  .text-muted {
+    color: var(--color-info);
+  }
+
+  .text-center {
+    text-align: center;
+  }
+
+  // 分页样式
+  .pagination-wrapper {
+    padding: 16px;
+    background: var(--color-bg-white);
+    border-radius: 8px;
+    margin-top: 16px;
+  }
+
+  // 批次详情对话框样式
+  .payment-details {
+    .details-info {
+      background: linear-gradient(135deg, var(--tf-color-surface) 0%, var(--tf-color-border-cool-alt) 100%);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 24px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+      border: 1px solid var(--tf-color-border-element);
+
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px 24px;
+
+      .info-row {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        padding: 12px;
+        background: white;
+        border-radius: 8px;
+        border: 1px solid var(--color-border-light);
+        transition: all 0.3s ease;
+
+        &:hover {
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+          transform: translateY(-2px);
+        }
+
+        label {
+          font-size: 13px;
+          color: var(--color-info);
+          font-weight: 500;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          margin-bottom: 4px;
+        }
+
+        span {
+          font-size: 18px;
+          color: var(--color-text-primary);
+          font-weight: 600;
+
+          &.amount {
+            color: var(--color-warning);
+            font-family: 'Monaco', 'Consolas', monospace;
+
+            &.profit-positive {
+              color: var(--color-success);
+            }
+
+            &.profit-negative {
+              color: var(--color-danger);
+            }
+          }
+
+          &.highlight {
+            color: var(--color-primary);
+            font-size: 20px;
+          }
+
+          &.profit-value {
+            font-size: 20px;
+            font-weight: 700;
+
+            &.profit-positive {
+              color: var(--color-success);
+            }
+
+            &.profit-negative {
+              color: var(--color-danger);
+            }
+          }
+        }
+
+        // 表单控件样式
+        :deep(.el-select),
+        :deep(.el-date-picker),
+        :deep(.el-input) {
+          width: 100%;
+        }
+
+        :deep(.el-input__wrapper) {
+          background: var(--tf-color-surface-muted);
+          border: 1px solid var(--tf-color-border-element);
+        }
+      }
+    }
+
+  }
+}

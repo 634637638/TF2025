@@ -8,6 +8,7 @@
 import { DEFAULT_CACHE_TTL, useCachedRequest } from '@/composables/usePageCache'
 import { unifiedApi } from '@/utils/unified-api'
 import type { ApiResponse } from '@/utils/unified-api'
+import { useAuthStore } from '@/stores/auth'
 
 export interface ReferenceRecord {
   id?: number | string
@@ -34,6 +35,40 @@ export interface QueryOptionsPayload {
 
 export interface EmployeeOptionsPayload {
   employees: ReferenceRecord[]
+  total?: number
+  pagination?: ReferencePagination
+}
+
+export interface ReferencePagination {
+  page: number
+  page_size: number
+  total: number
+  total_pages: number
+  has_next: boolean
+  has_prev: boolean
+}
+
+export interface ReferenceSearchParams {
+  keyword?: string
+  name?: string
+  size?: string
+  brand_id?: number | string
+  page?: number
+  page_size?: number
+  status?: string | number
+  store_id?: number | string
+  strict_scope?: boolean
+}
+
+export interface ModelOptionsParams {
+  brandId?: number | string
+  keyword?: string
+  status?: string | number
+  includeId?: number | string | null
+  activeOnly?: boolean
+  all?: boolean
+  page?: number
+  pageSize?: number
 }
 
 export interface PhoneOptionsPayload {
@@ -55,37 +90,82 @@ const cachedGet = <T>(
   DEFAULT_CACHE_TTL.STATIC
 )
 
-export const getCachedQueryOptions = () => cachedGet<QueryOptionsPayload>('/query/options', '/query/options')
+const currentUserCacheScope = () => {
+  try {
+    const user = useAuthStore().user as { id?: number | string } | null
+    return user?.id ? String(user.id) : 'anonymous'
+  } catch {
+    return 'anonymous'
+  }
+}
 
-export const getCachedEmployees = () => cachedGet<EmployeeOptionsPayload>('/users/employees', '/users/employees')
+export const getCachedQueryOptions = () => {
+  const scope = currentUserCacheScope()
+  return cachedGet<QueryOptionsPayload>(`/query/options:user:${scope}`, '/query/options')
+}
 
-export const getCachedOperators = () => cachedGet<ReferenceRecord[]>('/users/operators', '/users/operators')
+/** 敏感人员选项按关键词远程查询，不作为全量公共选项缓存。 */
+export const searchEmployees = (params: ReferenceSearchParams = {}) =>
+  unifiedApi.get<EmployeeOptionsPayload>('/users/employees', { params })
+
+export const searchOperators = (params: ReferenceSearchParams = {}) =>
+  unifiedApi.get<ReferenceRecord[]>('/users/operators', { params })
+
+export const searchBrands = (params: ReferenceSearchParams = {}) =>
+  unifiedApi.get<ReferenceRecord[]>('/brands', { params })
+
+/** 型号唯一公共入口。参考选项默认完整返回，避免落入管理列表分页而漏项。 */
+export const getModels = (options: ModelOptionsParams = {}) => {
+  const params = new URLSearchParams()
+  const all = options.all ?? (options.page === undefined && options.pageSize === undefined)
+  if (all) params.set('all', 'true')
+  if (options.activeOnly) params.set('active_only', 'true')
+  if (options.brandId !== undefined && String(options.brandId).trim()) {
+    params.set('brand_id', String(options.brandId).trim())
+  }
+  if (options.keyword?.trim()) params.set('name', options.keyword.trim())
+  if (options.status !== undefined && String(options.status).trim()) {
+    params.set('status', String(options.status).trim())
+  }
+  if (options.includeId !== undefined && options.includeId !== null && String(options.includeId).trim()) {
+    params.set('include_id', String(options.includeId).trim())
+  }
+  if (!all && options.page !== undefined) params.set('page', String(options.page))
+  if (!all && options.pageSize !== undefined) params.set('page_size', String(options.pageSize))
+
+  const query = params.toString()
+  const url = `/models${query ? `?${query}` : ''}`
+  return cachedGet<ReferenceRecord[]>(url, url)
+}
+
+export const searchColors = (params: ReferenceSearchParams = {}) =>
+  unifiedApi.get<ReferenceRecord[]>('/colors', { params })
+
+export const searchMemories = (params: ReferenceSearchParams = {}) =>
+  unifiedApi.get<ReferenceRecord[]>('/memories', { params })
 
 export const getCachedPhoneOptions = () => cachedGet<PhoneOptionsPayload>('/options/phone-options', '/options/phone-options')
 
-export const getCachedModelsByBrand = (
-  brandId: number | string,
-  keyword = '',
-  includeId?: number | string | null
-) => {
-  const params = new URLSearchParams({
-    brand_id: String(brandId),
-    page_size: '50'
-  })
-  if (keyword.trim()) params.set('name', keyword.trim())
-  if (includeId !== undefined && includeId !== null && String(includeId)) {
-    params.set('include_id', String(includeId))
-  }
-  const query = params.toString()
-  return cachedGet<ReferenceRecord[]>(`/query/models:${query}`, `/query/models?${query}`)
+export const getCachedSuppliers = () => cachedGet<ReferenceRecord[]>('/suppliers?all=true', '/suppliers?all=true')
+
+export const getCachedStores = (strictScope = false) => {
+  const scope = currentUserCacheScope()
+  const suffix = strictScope ? ':strict' : ':all-scope'
+  return cachedGet<ReferenceRecord[]>(`/stores?all=true:user:${scope}${suffix}`, strictScope ? '/stores?all=true&strict_scope=true' : '/stores?all=true')
 }
 
-export const getCachedSuppliers = () => cachedGet<ReferenceRecord[]>('/suppliers?page=1&page_size=500', '/suppliers?page=1&page_size=500')
+export const getCachedBrands = () => cachedGet<ReferenceRecord[]>('/brands?status=1&all=true', '/brands?status=1&all=true')
 
-export const getCachedStores = () => cachedGet<ReferenceRecord[]>('/stores?all=true', '/stores?all=true')
+export const getCachedColors = () => cachedGet<ReferenceRecord[]>('/colors?all=true', '/colors?all=true')
 
-export const getCachedBrands = () => cachedGet<ReferenceRecord[]>('/brands?status=1&page_size=100', '/brands?status=1&page_size=100')
+export const getCachedMemories = () => cachedGet<ReferenceRecord[]>('/memories?all=true', '/memories?all=true')
 
-export const getCachedColors = () => cachedGet<ReferenceRecord[]>('/colors?page_size=100', '/colors?page_size=100')
+// 模板页面复用统一基础数据接口；shop/base-data 保留为后端迁移期兼容路由。
+export const getTemplateBrands = () => cachedGet<ReferenceRecord[]>(
+  '/brands?all=true',
+  '/brands?all=true'
+)
 
-export const getCachedMemories = () => cachedGet<ReferenceRecord[]>('/memories?page_size=100', '/memories?page_size=100')
+export const getTemplateColors = getCachedColors
+
+export const getTemplateMemories = getCachedMemories

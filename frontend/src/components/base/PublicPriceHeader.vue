@@ -70,7 +70,7 @@ defineProps<Props>()
     max-width: 600px;
     margin: 0 auto 20px;
 
-    @media (max-width: 768px) {
+    @media (max-width: 767px) {
       max-width: 100%;
       padding: 0 15px;
       margin-bottom: 15px;
@@ -201,7 +201,7 @@ defineProps<Props>()
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .header-section {
     padding: 44px 16px 28px;
 
@@ -227,7 +227,7 @@ defineProps<Props>()
   }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 479px) {
   .header-section {
     padding: 32px 12px 22px;
 

@@ -769,7 +769,7 @@ onUnmounted(() => {
 }
 
 /* 手机端横屏优化 */
-@media (max-width: 768px) and (orientation: landscape) {
+@media (max-width: 767px) and (orientation: landscape) {
   .mobile-grid {
     grid-template-columns: repeat(6, 1fr); /* 横屏6列 */
   }
@@ -972,7 +972,7 @@ onUnmounted(() => {
 }
 
 /* 桌面端响应式优化 */
-@media (max-width: 1023px) {
+@media (max-width: 1024px) {
   .modern-sidebar {
     width: 240px;
   }
@@ -991,7 +991,7 @@ onUnmounted(() => {
 }
 
 /* 小屏幕设备优化 */
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .modern-sidebar:not(.mobile) {
     width: 100%;
     max-width: 280px;
@@ -1008,7 +1008,7 @@ onUnmounted(() => {
 }
 
 /* 超小屏幕设备优化 */
-@media (max-width: 480px) {
+@media (max-width: 479px) {
   .modern-sidebar.mobile {
     width: 100%;
     max-width: 320px;

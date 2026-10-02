@@ -48,6 +48,7 @@
           @reset="resetFilters"
           @debounced-search="debounceLoadAvailablePhones"
           @brand-change="handleBrandChange"
+          @operator-search="searchOperatorsRemote"
         />
 
         <!-- 数据表格区域 -->
@@ -69,45 +70,15 @@
             :can-proxy-transfer-permission="canProxyTransferPermission"
             :can-wholesale="canWholesale"
             :can-proxy="canProxy"
+            :batch-mode="batchMode"
+            :can-sell="canSell"
             @wholesale="handleWholesale"
             @proxy="handleProxyTransfer"
             @save-summary="saveInventorySummaryAsImage"
             @set-view-mode="viewMode = $event"
             @open-wholesale="openWholesaleModal"
-          />
-
-          <SalesBatchForm
-            v-if="batchMode && selectedPhones.length > 0"
-            ref="batchCustomerNameInputRef"
-            v-model:show-customer-search="showBatchCustomerSearch"
-            :form="batchSaleForm"
-            :selected-count="selectedPhones.length"
-            :selected-customer="selectedBatchCustomer"
-            :customer-search-results="batchCustomerSearchResults"
-            :customer-searching="batchCustomerSearching"
-            :customer-creating="batchCustomerCreating"
-            :customer-name-editing="batchCustomerNameEditing"
-            :stores="stores"
-            :operators="operators"
-            :submitting="submitting"
-            :can-view-field="canViewSaleField"
-            :can-view-price="canViewPrice"
-            :is-current-user="isCurrentUser"
-            :total-cost="getTotalCost()"
-            :total-profit="getTotalProfit"
+            @batch-sale="showBatchSaleModal = true"
             @clear-selection="clearBatchSelection"
-            @enable-name-edit="enableBatchCustomerNameEdit"
-            @name-touch-end="handleBatchCustomerNameTouchEnd"
-            @name-input="handleBatchCustomerNameInput"
-            @disable-name-edit="disableBatchCustomerNameEdit"
-            @save-name="saveBatchCustomerNameEdit"
-            @clear-customer="clearSelectedBatchCustomer"
-            @phone-input="handleBatchCustomerPhoneInput"
-            @phone-blur="handleBatchCustomerBlur"
-            @select-customer="selectBatchCustomer"
-            @create-customer="createNewBatchCustomer"
-            @apple-id-input="handleBatchCustomerAppleIdInput"
-            @submit="debouncedSubmitBatchSale"
           />
 
           <SalesGridView
@@ -240,12 +211,13 @@
             @calculate-profit="calculateProfit"
             @payment-method-change="handlePaymentMethodChange"
             @payment-channel-change="handlePaymentChannelChange"
+            @operator-search="searchOperatorsRemote"
             @submit="debouncedSubmitSale"
           />
         </div>
       </div>
       <template #footer>
-        <div class="sale-dialog-footer">
+        <div class="tf-dialog-actions sale-dialog-footer">
           <el-button
             type="info"
             plain
@@ -255,16 +227,94 @@
           </el-button>
           <el-button
             type="success"
+            :loading="submitting"
             :disabled="submitting"
-            :class="{ 'btn-loading': submitting }"
             @click="handleSale"
             @keydown.enter.prevent
           >
-            <InlineLoading
-              v-if="submitting"
-              size="small"
-            />
             {{ submitting ? '处理中...' : '确认出库' }}
+          </el-button>
+        </div>
+      </template>
+    </MobileDialog>
+
+    <!-- 批量销售弹窗 -->
+    <MobileDialog
+      v-model="showBatchSaleModal"
+      :title="`批量销售出库 (${selectedPhones.length}台)`"
+      width="1000px"
+      dialog-class="sales-batch-sale-dialog tf-dialog-body-flush"
+      :show-default-footer="false"
+      :close-on-click-modal="false"
+    >
+      <SalesBatchForm
+        ref="batchCustomerNameInputRef"
+        v-model:show-customer-search="showBatchCustomerSearch"
+        :form="batchSaleForm"
+        :selected-count="selectedPhones.length"
+        :batch-items="batchSaleItems"
+        :selected-customer="selectedBatchCustomer"
+        :customer-search-results="batchCustomerSearchResults"
+        :customer-searching="batchCustomerSearching"
+        :customer-creating="batchCustomerCreating"
+        :customer-name-editing="batchCustomerNameEditing"
+        :stores="stores"
+        :operators="operators"
+        :submitting="submitting"
+        :can-view-field="canViewSaleField"
+        :can-view-price="canViewPrice"
+        :is-current-user="isCurrentUser"
+        :total-cost="getTotalCost()"
+        :total-profit="getTotalProfit"
+        @clear-selection="clearBatchSelection"
+        @continue-selection="showBatchSaleModal = false"
+        @enable-name-edit="enableBatchCustomerNameEdit"
+        @name-touch-end="handleBatchCustomerNameTouchEnd"
+        @name-input="handleBatchCustomerNameInput"
+        @disable-name-edit="disableBatchCustomerNameEdit"
+        @save-name="saveBatchCustomerNameEdit"
+        @clear-customer="clearSelectedBatchCustomer"
+        @phone-input="handleBatchCustomerPhoneInput"
+        @phone-blur="handleBatchCustomerBlur"
+        @select-customer="selectBatchCustomer"
+        @create-customer="createNewBatchCustomer"
+        @apple-id-input="handleBatchCustomerAppleIdInput"
+        @operator-search="searchOperatorsRemote"
+        @apply-unified-sale-price="value => batchSaleItems.forEach(item => { item.sale_price = value })"
+        @update-batch-item="({ phoneId, field, value }) => {
+          const item = batchSaleItems.find(entry => entry.phone_id === phoneId)
+          if (item) item[field] = value
+        }"
+        @submit="debouncedSubmitBatchSale"
+      />
+      <template #footer>
+        <div class="tf-dialog-actions batch-sale-dialog-footer">
+          <el-button
+            type="success"
+            :loading="submitting"
+            :disabled="submitting"
+            @click="debouncedSubmitBatchSale"
+            @keydown.enter.prevent
+          >
+            <i class="fas fa-shopping-cart" />
+            <span>确认销售</span>
+          </el-button>
+          <el-button
+            type="info"
+            plain
+            :disabled="submitting"
+            @click="showBatchSaleModal = false"
+          >
+            <i class="fas fa-plus" />
+            新增设备
+          </el-button>
+          <el-button
+            type="info"
+            plain
+            :disabled="submitting"
+            @click="clearBatchSelection"
+          >
+            取消
           </el-button>
         </div>
       </template>
@@ -316,6 +366,7 @@
 </template>
 
 <script setup lang="ts">
+import { confirmAction } from '@/utils/message-box'
 import { ref, reactive, computed, onMounted, onUnmounted, nextTick, watch, defineAsyncComponent } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { usePermissionPreload } from '@/composables/usePermissionPreload'
@@ -323,7 +374,6 @@ import { useMobile, useMobileForm } from '@/composables/mobile'
 import { usePagination } from '@/composables/index'
 import { unifiedApi as api } from '@/utils/unified-api'
 import { extractResponseData } from '@/utils/api-response'
-import InlineLoading from '@/components/InlineLoading.vue'
 import Pagination from '../../components/Pagination.vue'
 import { useNotification } from '@/composables/useNotification'
 import { useImportExport } from '@/composables/useImportExport'
@@ -344,7 +394,6 @@ import SalesEditPhoneDialog from './page/SalesEditPhoneDialog.vue'
 import SalesDeviceInfoPanel from './page/SalesDeviceInfoPanel.vue'
 import SalesCheckoutForm from './page/SalesCheckoutForm.vue'
 import SalesBatchForm from './page/SalesBatchForm.vue'
-import { ElMessageBox } from 'element-plus'
 import { PermissionGate } from '@/components/base'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import { logger } from '@/utils/logger'
@@ -377,6 +426,7 @@ const WholesaleModal = defineAsyncComponent(() => import('@/components/Wholesale
 import type { Phone } from '@/types'
 import type {
   BatchSaleFormData,
+  BatchSaleItem,
   SalesCheckoutFormData,
   SalesEditForm
 } from './types'
@@ -501,6 +551,7 @@ const handleGlobalKeydown = (event) => {
 const viewMode = ref<'grid' | 'table' | 'summary'>('table') // 默认列表模式
 
 const showSaleModal = ref(false)
+const showBatchSaleModal = ref(false)
 const selectedPhone = ref<Phone | null>(null)
 
 // 编辑弹窗相关
@@ -673,6 +724,33 @@ const batchSaleForm = reactive<BatchSaleFormData>({
   remarks: ''
 })
 
+// 批量销售的客户、支付信息是公共字段，价格按设备独立维护。
+const batchSaleItems = ref<BatchSaleItem[]>([])
+
+const syncBatchSaleItems = () => {
+  const existingItems = new Map(batchSaleItems.value.map(item => [item.phone_id, item]))
+  batchSaleItems.value = selectedPhones.value.map(phone => {
+    const existing = existingItems.get(phone.id)
+    if (existing) return existing
+
+    const purchaseCost = phone.purchase_cost ?? ''
+    return {
+      phone_id: phone.id,
+      imei: phone.imei || phone.serial_number || '',
+      brand: phone.brand || phone.phoneBrand?.name || '',
+      model: phone.model || phone.phoneModel?.name || '',
+      color: phone.color || phone.phoneColor?.name || '',
+      memory: phone.memory || phone.phoneMemory?.storage || '',
+      purchase_cost: purchaseCost === '' || purchaseCost === null || purchaseCost === undefined
+        ? ''
+        : String(purchaseCost),
+      sale_price: batchSaleForm.sale_price ? String(batchSaleForm.sale_price) : ''
+    }
+  })
+}
+
+watch(selectedPhones, syncBatchSaleItems, { deep: true, immediate: true })
+
 // 数据列表
 const availablePhones = ref<Phone[]>([])
 const {
@@ -686,6 +764,7 @@ const {
   editBrandModels,
   loadStores,
   loadOperators,
+  searchOperatorsRemote,
   loadBrands,
   loadModels,
   loadColors,
@@ -849,6 +928,7 @@ const {
 } = useSalesCheckout({
   saleForm,
   batchSaleForm,
+  batchSaleItems,
   selectedPhone,
   selectedPhones,
   availablePhones,
@@ -902,9 +982,8 @@ const loadFiltersFromStorage = () => {
 
     if (data) {
       // 只加载7天内的数据
-      const savedAt = new Date(data.saved_at)
-      const now = TimeUtil.now().toDate()
-      const daysDiff = (now.getTime() - savedAt.getTime()) / (1000 * 60 * 60 * 24)
+      const savedAt = TimeUtil.parse(String(data.saved_at))
+      const daysDiff = savedAt?.isValid() ? TimeUtil.diff(TimeUtil.now(), savedAt, 'day') : Number.POSITIVE_INFINITY
 
       if (daysDiff <= 7) {
         filters.brand = canViewSaleField('brand') ? (data.brand || '') : ''
@@ -1664,16 +1743,20 @@ const handlePaymentMethodChange = () => {
       showError('销售金额超过6000元，无法使用国补刷卡，请重新选择支付方式')
       saleForm.payment_method = ''
       saleForm.payment_channel = ''
-      saleForm.remarks = ''
+      if (saleForm.remarks.startsWith('刷卡实际支付')) {
+        saleForm.remarks = ''
+      }
       return
     }
     saleForm.payment_channel = 'subsidy_card'
     // 立即计算备注
     calculateSubsidyRemarks()
   } else {
-    // 清空支付渠道和备注
+    // 切换到普通支付方式时，只清理系统自动生成的国补备注，保留入库备注或用户手写备注。
     saleForm.payment_channel = ''
-    saleForm.remarks = ''
+    if (saleForm.remarks.startsWith('刷卡实际支付')) {
+      saleForm.remarks = ''
+    }
   }
 }
 
@@ -1725,6 +1808,16 @@ watch(viewMode, async (newMode) => {
     await loadInventorySummary()
   }
 })
+
+// 清空批量选择后关闭批量销售弹窗，避免弹窗停留在无设备状态。
+watch(
+  () => selectedPhones.value.length,
+  count => {
+    if (count === 0) {
+      showBatchSaleModal.value = false
+    }
+  }
+)
 
 // 监听筛选条件变化，在库存表模式下重新加载数据（使用防抖优化）
 watch(
@@ -1787,7 +1880,7 @@ const deletePhone = async (phone: any) => {
   }
 
   try {
-    await ElMessageBox.confirm(
+    await confirmAction(
       `确定要删除这台手机吗？\n\n品牌型号：${phone.brand} ${phone.model}\nIMEI：${phone.imei || '无'}\n\n此操作不可恢复！`,
       '删除确认',
       {

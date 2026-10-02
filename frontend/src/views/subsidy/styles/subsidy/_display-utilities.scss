@@ -1,0 +1,119 @@
+// 新增样式：可点击文本和二维码提示
+.clickable-text {
+  cursor: pointer;
+  color: var(--tf-color-indigo-brand);
+  text-decoration: none;
+  transition: all 0.2s;
+  padding: 2px 4px;
+  border-radius: 4px;
+  display: inline-block;
+
+  &:hover {
+    background: var(--tf-color-indigo-100);
+    color: var(--tf-color-indigo-legacy);
+  }
+
+  &:active {
+    background: var(--tf-color-indigo-200);
+  }
+
+  // 客户信息切换样式
+  &.customer-info-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    font-weight: 500;
+
+    // 有实际办理人但显示原始购买者信息时的样式（默认状态）
+    &.has-handler-but-showing-purchaser {
+      background: linear-gradient(135deg, var(--tf-color-blue-tailwind-100), var(--tf-color-blue-tailwind-200));
+      color: var(--tf-color-blue-tailwind-800);
+      font-weight: 500;
+      border: 1px solid var(--tf-color-blue-500);
+      box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+
+      &:hover {
+        background: linear-gradient(135deg, var(--tf-color-blue-tailwind-200), var(--tf-color-blue-tailwind-300));
+      }
+    }
+
+    // 显示办理人信息时的样式（切换后状态）
+    &.showing-handler {
+      background: linear-gradient(135deg, var(--tf-color-amber-100), var(--tf-color-amber-200));
+      color: var(--tf-color-amber-800);
+      font-weight: 600;
+      border: 1px solid var(--tf-color-amber-400);
+      box-shadow: 0 2px 4px rgba(251, 191, 36, 0.2);
+
+      &:hover {
+        background: linear-gradient(135deg, var(--tf-color-amber-200), var(--tf-color-amber-300));
+      }
+    }
+  }
+}
+
+// 客户姓名容器
+.customer-name-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  .handler-badge {
+    display: inline-block;
+    font-size: 12px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 500;
+    white-space: nowrap;
+    background-color: var(--tf-color-blue-500);
+    color: white;
+
+    &.showing-handler {
+      background-color: var(--tf-color-amber-500);
+      color: white;
+    }
+  }
+}
+
+.remarks-display {
+  color: var(--tf-color-muted);
+  font-size: 12px;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: inline-block;
+}
+
+.remarks-tag {
+  display: inline-block;
+  padding: 2px 10px;
+  background-color: var(--warning-color);
+  color: var(--color-bg-white);
+  font-size: 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  user-select: none;
+}
+
+.remarks-tag:hover {
+  background-color: var(--tf-color-yellow-bootstrap);
+  transform: scale(1.05);
+}
+
+.remarks-icon {
+  color: var(--warning-color);
+  cursor: pointer;
+  font-size: 16px;
+  transition: all 0.2s;
+  padding: 4px;
+  border-radius: 4px;
+}
+
+.remarks-icon:hover {
+  color: var(--tf-color-yellow-bootstrap);
+  background-color: rgba(255, 193, 7, 0.1);
+  transform: scale(1.1);
+}

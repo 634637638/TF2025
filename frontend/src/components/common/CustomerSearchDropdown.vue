@@ -292,7 +292,7 @@ const vipLabel = (level: string) => ({
   background: var(--tf-button-success-soft-hover-bg);
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .customer-search-dropdown {
     max-height: min(300px, 45vh);
   }

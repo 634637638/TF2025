@@ -59,19 +59,12 @@
               </el-button>
               <el-button
                 type="info"
+                :loading="refreshing"
                 :disabled="refreshing"
                 @click="handleRefresh"
               >
-                <InlineLoading
-                  v-if="refreshing"
-                  text="刷新中..."
-                  size="small"
-                  variant="inherit"
-                />
-                <template v-else>
-                  <i class="fas fa-sync-alt" />
-                  <span>刷新</span>
-                </template>
+                <i class="fas fa-sync-alt" />
+                <span>{{ refreshing ? '刷新中...' : '刷新' }}</span>
               </el-button>
             </template>
           </PageHeader>
@@ -308,7 +301,11 @@
                 v-model="filters.sale_operator_id"
                 placeholder="销售员"
                 filterable
+                remote
+                reserve-keyword
+                :remote-method="searchSalesUsersRemote"
                 clearable
+                @focus="searchSalesUsersRemote('')"
                 @change="triggerLoadQueryData"
               >
                 <el-option
@@ -329,8 +326,8 @@
                 :model-value="queryDateRange"
                 start-placeholder="开始日期"
                 end-placeholder="结束日期"
-                format="YYYY-MM-DD"
-                value-format="YYYY-MM-DD"
+                :format="TIME_FORMATS.DATE"
+                :value-format="TIME_FORMATS.DATE"
                 clearable
                 @update:model-value="updateQueryDateRange"
                 @change="triggerLoadQueryData"
@@ -385,14 +382,14 @@
 
                     <span
                       v-else-if="column.key === 'basic_info.is_new'"
-                      :class="{ 'clickable-cell': Number(row.基本信息?.is_new) === 0 }"
-                      @dblclick.stop="handleConditionDoubleClick(row)"
+                      class="clickable-cell"
+                      @dblclick.stop="handleMediaDoubleClick(row)"
                     >
                       <span :class="['condition-badge', Number(row.基本信息?.is_new) === 1 ? 'new' : 'used']">
                         {{ getCellValue(row, column) }}
                       </span>
                       <i
-                        v-if="Number(row.基本信息?.is_new) === 0 && row.基本信息?.has_images"
+                        v-if="row.基本信息?.has_images"
                         class="fas fa-images image-hint"
                       />
                     </span>
@@ -475,13 +472,11 @@
                     mode="block"
                     text="加载中..."
                   />
-                  <div
+                  <DataEmptyState
                     v-else
-                    class="empty-cell"
-                  >
-                    <i class="fas fa-inbox" />
-                    <span>暂无数据</span>
-                  </div>
+                    size="compact"
+                    description="暂无数据"
+                  />
                 </template>
               </el-table>
             </div>
@@ -558,13 +553,12 @@
     />
 
     <!-- 媒体管理模态框 -->
-    <el-dialog
+    <MobileDialog
       v-model="showImageModal"
       title="素材管理"
       width="90%"
       :close-on-click-modal="true"
-      :z-index="2000"
-      class="image-manage-dialog"
+      dialog-class="image-manage-dialog"
       @closed="showImageViewer = false"
     >
       <div class="image-preview-modal">
@@ -666,11 +660,11 @@
       </div>
 
       <template #footer>
-        <div class="image-modal-footer">
+        <div class="tf-dialog-actions image-modal-footer">
           <input
             ref="imageUploadInput"
             type="file"
-            accept="image/*"
+            :accept="MEDIA_UPLOAD_ACCEPT"
             multiple
             style="display: none"
             @change="handleUploadImage"
@@ -695,11 +689,11 @@
             @click="($refs.imageUploadInput as HTMLInputElement).click()"
           >
             <i class="fas fa-upload" />
-            上传图片
+            上传图片/视频
           </el-button>
         </div>
       </template>
-    </el-dialog>
+    </MobileDialog>
 
     <MediaPreviewViewer
       v-model="showImageViewer"
@@ -710,9 +704,10 @@
 </template>
 
 <script setup lang="ts">
+import { confirmAction, alertAction } from '@/utils/message-box'
 import { ref, reactive, computed, onMounted, onUnmounted, watch, nextTick, defineAsyncComponent } from 'vue'
-import { useRouter, onBeforeRouteLeave } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import { useNotification } from '@/composables/useNotification'
 import { useImportExport } from '@/composables/useImportExport'
@@ -724,13 +719,12 @@ import unifiedApi from '@/utils/unified-api'
 import { extractResponseData } from '@/utils/api-response'
 import { formatImageUrl } from '@/utils/format'
 import { getOptionLabel, sortOptionsByOrder } from '@/utils/option-sort'
-import { getCachedEmployees, getCachedModelsByBrand, getCachedQueryOptions } from '@/services/reference-options'
+import { searchEmployees, getModels, getCachedQueryOptions } from '@/services/reference-options'
 import {
   getAdaptiveActionColumnWidth,
   getIdentifierColumnMinWidth,
   getTextColumnMinWidth
 } from '@/utils/table-layout'
-import { createTempFileTracker, type TempFileTracker } from '@/utils/temp-file-cleaner'
 import { canAccessRoutePath } from '@/constants/routePermissions'
 import draggable from 'vuedraggable'
 import Pagination from '../../components/Pagination.vue'
@@ -748,6 +742,7 @@ import { PHONE_STATUS_OPTIONS, getPhoneStatusClass, getPhoneStatusLabel, getEffe
 import { normalizeAppleId, normalizePersonName, normalizePhoneDigits } from '@/utils/security'
 import { logger } from '@/utils/logger'
 import { isVideoMedia, type MediaPreviewItem } from '@/utils/media'
+import { MEDIA_UPLOAD_ACCEPT, prepareMediaFile, validateMediaFile } from '@/utils/upload-media'
 import { useMobile } from '@/composables/mobile'
 
 // 定义消息提示函数
@@ -823,9 +818,6 @@ const previewMediaItems = computed<MediaPreviewItem[]>(() => productImages.value
   label: isVideoMedia(media) ? '商品视频' : '商品图片'
 })))
 const { loading: uploadingImage } = useLoadingState()
-
-// 临时文件跟踪器
-let tempFileTracker: TempFileTracker | null = null
 
 // 退库功能相关状态
 const showReturnModal = ref(false)
@@ -1585,7 +1577,11 @@ const loadSalesUsers = async () => {
 
   try {
     employeesPromise.value = (async () => {
-      const usersRes = await getCachedEmployees()
+      const usersRes = await searchEmployees({
+        page: 1,
+        page_size: 20,
+        strict_scope: true
+      })
       return usersRes.success && usersRes.data?.employees ? sortOptionsByOrder(usersRes.data.employees) : []
     })()
 
@@ -1594,6 +1590,32 @@ const loadSalesUsers = async () => {
     options.value.users = []
   } finally {
     employeesPromise.value = null
+  }
+}
+
+const searchSalesUsersRemote = async (keyword = '') => {
+  const selectedUser = options.value.users.find(user => Number(user.id) === Number(filters.sale_operator_id))
+  try {
+    const usersRes = await searchEmployees({
+      keyword: keyword.trim() || undefined,
+      page: 1,
+      page_size: 20,
+      strict_scope: true
+    })
+
+    const users = usersRes.success && usersRes.data?.employees
+      ? sortOptionsByOrder(usersRes.data.employees.map(item => ({
+        id: Number(item.id || 0),
+        name: String(item.name || item.username || ''),
+        status: Number(item.status)
+      })))
+      : []
+    options.value.users = selectedUser && !users.some(user => Number(user.id) === Number(selectedUser.id))
+      ? sortOptionsByOrder([...users, selectedUser])
+      : users
+  } catch (error) {
+    logger.error('远程加载综合查询销售员失败:', error)
+    options.value.users = []
   }
 }
 
@@ -1606,7 +1628,11 @@ const loadEditModalOptions = async () => {
     // 并行调用 API，使用规范 page_size 获取基础选项。
     const [optionsRes, usersRes] = await Promise.all([
       getCachedQueryOptions(),
-      getCachedEmployees()
+      searchEmployees({
+        page: 1,
+        page_size: 20,
+        strict_scope: true
+      })
     ])
     const baseOptions = optionsRes.success && optionsRes.data
       ? optionsRes.data as import('@/services/reference-options').QueryOptionsPayload
@@ -1756,7 +1782,7 @@ const handleFilterBrandChange = async () => {
       options.value.models = []
     } else {
       try {
-        const response = await getCachedModelsByBrand(brandId)
+        const response = await getModels({ brandId, activeOnly: true })
         if (sequence === queryModelSearchSequence) {
           options.value.models = sortOptionsByOrder(
             (Array.isArray(response.data) ? response.data : []).map((model: any) => ({
@@ -1840,20 +1866,10 @@ const getImageUrl = (url: string) => {
   return formatImageUrl(url)
 }
 
-// 上传图片
+// 上传图片或视频
 
-// 关闭图片管理模态框（取消时清理临时文件）
+// 关闭图片管理模态框；手机媒体上传成功后已立即保存。
 const handleCloseImageModal = async () => {
-  // 取消时清理所有新上传的临时文件
-  if (tempFileTracker) {
-    try {
-      await tempFileTracker.cleanup()
-    } catch (error) {
-      logger.error('清理临时文件失败:', error)
-    }
-    tempFileTracker = null
-  }
-
   showImageModal.value = false
 }
 
@@ -1871,35 +1887,31 @@ const handleUploadImage = async (event: Event) => {
     uploadingImage.value = true
 
     for (const file of Array.from(files)) {
-      // 验证文件类型
-      if (!file.type.startsWith('image/')) {
-        ElMessage.warning(`${file.name} 不是图片文件`)
+      const validationMessage = validateMediaFile(file)
+      if (validationMessage) {
+        ElMessage.warning(`${file.name}：${validationMessage}`)
         continue
       }
 
-      // 验证文件大小（最大5MB）
-      if (file.size > 5 * 1024 * 1024) {
-        ElMessage.warning(`${file.name} 文件过大，最大支持5MB`)
-        continue
-      }
+      const uploadFile = await prepareMediaFile(file)
 
       const formData = new FormData()
-      formData.append('image', file)
-      formData.append('phone_id', selectedPhoneId.value.toString())
+      const isVideo = uploadFile.type.startsWith('video/')
+      const uploadField = isVideo ? 'video' : 'image'
+      formData.append(uploadField, uploadFile)
 
-      await unifiedApi.post('/shop/upload-phone-image', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
-      })
+      await unifiedApi.upload(
+        `/phones/${selectedPhoneId.value}/upload-${isVideo ? 'video' : 'image'}`,
+        formData
+      )
 
       // 上传接口已立即写入图片记录，不作为未保存的临时文件清理。
     }
 
-    ElMessage.success('图片上传成功')
+    ElMessage.success('图片/视频上传成功，已保存')
 
     // 重新加载图片列表
-    const response = await unifiedApi.get(`/shop/products/${selectedPhoneId.value}/images`)
+    const response = await unifiedApi.get(`/phones/${selectedPhoneId.value}/images`)
     productImages.value = response.data || []
 
     // 刷新查询数据以更新图标显示
@@ -1917,7 +1929,7 @@ const handleUploadImage = async (event: Event) => {
 // 删除单张图片
 const deleteSingleImage = async (image: any) => {
   try {
-    await ElMessageBox.confirm(
+    await confirmAction(
       '确定要删除这张图片吗？',
       '删除确认',
       {
@@ -1927,12 +1939,12 @@ const deleteSingleImage = async (image: any) => {
       }
     )
 
-    await unifiedApi.delete(`/shop/images/${image.id}`)
+    await unifiedApi.delete(`/phones/${selectedPhoneId.value}/images/${image.id}`)
     ElMessage.success('删除成功')
 
     // 重新加载图片列表
     if (selectedPhoneId.value) {
-      const response = await unifiedApi.get(`/shop/products/${selectedPhoneId.value}/images`)
+      const response = await unifiedApi.get(`/phones/${selectedPhoneId.value}/images`)
       productImages.value = response.data || []
 
       // 刷新查询数据以更新图标显示
@@ -1951,11 +1963,11 @@ const setPrimaryImage = async (image: any) => {
   if (!selectedPhoneId.value) return
 
   try {
-    await unifiedApi.put(`/shop/images/${image.id}/primary`)
+    await unifiedApi.put(`/phones/${selectedPhoneId.value}/images/${image.id}/primary`)
     ElMessage.success('设置主图成功')
 
     // 重新加载图片列表
-    const response = await unifiedApi.get(`/shop/products/${selectedPhoneId.value}/images`)
+    const response = await unifiedApi.get(`/phones/${selectedPhoneId.value}/images`)
     productImages.value = response.data || []
   } catch (error) {
     logger.error('设置主图失败:', error)
@@ -1969,12 +1981,12 @@ const handleImageDragEnd = async () => {
 
   try {
     const image_ids = productImages.value.map(img => img.id)
-    await unifiedApi.put(`/shop/products/${selectedPhoneId.value}/images/reorder`, { image_ids })
+    await unifiedApi.put(`/phones/${selectedPhoneId.value}/images/reorder`, { imageIds: image_ids })
   } catch (error) {
     logger.error('保存图片排序失败:', error)
     ElMessage.error('保存排序失败')
     // 重新加载以恢复正确顺序
-    const response = await unifiedApi.get(`/shop/products/${selectedPhoneId.value}/images`)
+    const response = await unifiedApi.get(`/phones/${selectedPhoneId.value}/images`)
     productImages.value = response.data || []
   }
 }
@@ -1984,7 +1996,7 @@ const deleteAllImages = async () => {
   if (!selectedPhoneId.value) return
 
   try {
-    await ElMessageBox.confirm(
+    await confirmAction(
       `确定要删除 ${selectedPhoneInfo.value?.brand} ${selectedPhoneInfo.value?.model} 的所有图片吗？此操作不可撤销。`,
       '删除确认',
       {
@@ -2089,7 +2101,7 @@ const handleRemarkDoubleClick = (event: MouseEvent, item: QueryItem) => {
     return
   }
 
-  void ElMessageBox.alert(remarks, '备注详情', {
+  void alertAction(remarks, '备注详情', {
     confirmButtonText: '关闭',
     closeOnClickModal: true,
     customClass: 'message-box-unified query-remark-message-box'
@@ -2204,15 +2216,9 @@ const handleRowDoubleClick = (item: QueryItem) => {
   }
 }
 
-// 双击机况管理图片（二手机）
-const handleConditionDoubleClick = async (item: QueryItem) => {
+// 双击全新机或二手机的机况单元格，打开图片/视频管理
+const handleMediaDoubleClick = async (item: QueryItem) => {
   const basicInfo = item.基本信息 || {} as QueryItem['基本信息']
-
-  // 只有二手机才能管理图片
-  if (Number(basicInfo.is_new) !== 0) {
-    ElMessage.info('全新机不支持图片管理')
-    return
-  }
 
   const phoneId = basicInfo.phone_id
   if (!phoneId) {
@@ -2232,10 +2238,7 @@ const handleConditionDoubleClick = async (item: QueryItem) => {
       imei: basicInfo.imei || ''
     }
 
-    // 初始化临时文件跟踪器
-    tempFileTracker = createTempFileTracker()
-
-    const response = await unifiedApi.get(`/shop/products/${phoneId}/images`)
+    const response = await unifiedApi.get(`/phones/${phoneId}/images`)
     productImages.value = response.data || []
   } catch (error) {
     logger.error('加载图片失败:', error)
@@ -2388,7 +2391,7 @@ const deleteItem = async (item: QueryItem) => {
   }
 
   try {
-    await ElMessageBox.confirm(
+    await confirmAction(
       `确定要删除设备 "${item.基本信息?.brand} ${item.基本信息?.model}" (IMEI: ${item.基本信息?.imei}) 吗？`,
       '删除确认',
       {
@@ -2715,15 +2718,6 @@ watch(
     void refreshQueryAnimations()
   }
 )
-
-// 路由守卫：页面离开时清理临时文件
-onBeforeRouteLeave(async () => {
-  if (tempFileTracker) {
-    await tempFileTracker.cleanup()
-    tempFileTracker = null
-  }
-  return true
-})
 
 // 清理监听器
 onUnmounted(() => {
@@ -3373,38 +3367,13 @@ textarea.form-control {
 }
 
 /* 平板适配 */
-@media (min-width: 768px) and (max-width: 1023px) {
+@media (min-width: 768px) and (max-width: 1024px) {
   .device-info-table .label-cell,
   .device-info-table .value-cell {
     padding: 10px 12px;
     font-size: 13px;
   }
 }
-
-
-.modal-footer {
-  padding: 20px 24px;
-  border-top: 1px solid var(--tf-color-slate-200);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: var(--tf-color-slate-50);
-  border-radius: 0 0 12px 12px;
-}
-
-.modal-footer .warning-text {
-  color: var(--tf-color-gray-chakra-500);
-  font-size: 13px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.modal-footer .warning-text i {
-  color: var(--tf-color-amber-500);
-}
-
-
 .modal-body {
   flex: 1;
   overflow-y: auto;
@@ -3477,7 +3446,7 @@ textarea.form-control {
 }
 
 /* 手机端优化 (≤768px) */
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .query-view.admin-page .stats-cards .stat-card[data-stat-key='in_stock_count'] {
     display: none !important;
   }
@@ -3518,7 +3487,7 @@ textarea.form-control {
 }
 
 /* 小屏手机优化 (≤480px) */
-@media (max-width: 480px) {
+@media (max-width: 479px) {
   .query-view {
     overflow-x: hidden;
     width: 100%;
@@ -3595,7 +3564,7 @@ textarea.form-control {
 }
 
 /* 移动端整行可点击 */
-@media (max-width: 1023px) {
+@media (max-width: 1024px) {
   .data-row {
     cursor: pointer;
   }
@@ -3637,7 +3606,7 @@ textarea.form-control {
 
 <style>
 /* 全局样式：禁止手机端页面左右滚动 */
-@media (max-width: 480px) {
+@media (max-width: 479px) {
   * {
     -webkit-overflow-scrolling: touch !important;
   }
@@ -3931,16 +3900,9 @@ textarea.form-control {
     }
   }
 
-  /* 模态框底部按钮 */
-  .image-modal-footer {
-    display: flex;
-    gap: 12px;
-    justify-content: flex-end;
-    align-items: center;
-  }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .image-preview-modal {
     .images-grid {
       grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));

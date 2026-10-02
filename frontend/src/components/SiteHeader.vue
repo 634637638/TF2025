@@ -99,7 +99,7 @@ onUnmounted(() => {
 }
 
 /* 响应式设计 */
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .site-header {
     gap: 8px;
   }

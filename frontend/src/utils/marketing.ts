@@ -1,4 +1,4 @@
-import { TimeUtil } from '@/utils/time'
+import { BEIJING_TIMEZONE, TimeUtil } from '@/utils/time'
 
 export type MarketingMode = 'opening' | 'sales'
 export type MarketingCondition = 'new' | 'used' | 'mixed'
@@ -157,7 +157,7 @@ export const DEFAULT_MARKETING_LEXICON: MarketingLexicon = {
   contextLexicon: { holiday: [], solarTerm: [], weather: [], timeSegment: {}, color: {}, subsidy: {} },
   eventLexicon: { solarTerms: {}, traditionalHolidays: {}, historicalDays: {} },
   subsidyEnabled: false,
-  updatedAt: new Date().toISOString()
+  updatedAt: TimeUtil.toISOString()
 }
 
 const TIME_SEGMENTS = [
@@ -318,21 +318,22 @@ const capitalizeFirst = (text: string) => text ? text.charAt(0).toUpperCase() + 
 const getDayName = (date: Date) => TimeUtil.getDayName(date)
 
 const detectTimeSegment = (date: Date): string => {
-  const hour = date.getHours()
+  const hour = TimeUtil.toBeijing(date).hour()
   return TIME_SEGMENTS.find(segment => hour >= segment.start && hour < segment.end)?.label || '日常'
 }
 
 const detectSeason = (date: Date): string => {
-  const month = date.getMonth() + 1
+  const month = TimeUtil.toBeijing(date).month() + 1
   return SEASON_BY_MONTH.find(item => item.months.includes(month))?.label || '四季'
 }
 
 const getChineseLunarLabel = (date: Date): string => {
   try {
     return new Intl.DateTimeFormat('zh-u-ca-chinese', {
+      timeZone: BEIJING_TIMEZONE,
       month: 'long',
       day: 'numeric'
-    }).format(date)
+    }).format(TimeUtil.toBeijing(date).toDate())
   } catch {
     return ''
   }
@@ -343,8 +344,9 @@ const detectHoliday = (date: Date): {
   leadLabel?: string
   category?: 'traditional' | 'historical'
 } => {
-  const month = date.getMonth() + 1
-  const day = date.getDate()
+  const beijingDate = TimeUtil.toBeijing(date)
+  const month = beijingDate.month() + 1
+  const day = beijingDate.date()
 
   const fixedHoliday = FIXED_HOLIDAYS.find(item => item.month === month && item.day === day)
   if (fixedHoliday) {
@@ -366,10 +368,9 @@ const detectHoliday = (date: Date): {
 
   const daysAhead = [1, 2, 3, 4, 5, 6, 7]
   for (const offset of daysAhead) {
-    const future = new Date(date.getTime())
-    future.setDate(future.getDate() + offset)
-    const futureMonth = future.getMonth() + 1
-    const futureDay = future.getDate()
+    const future = TimeUtil.add(beijingDate, offset, 'day')
+    const futureMonth = future.month() + 1
+    const futureDay = future.date()
     const match = FIXED_HOLIDAYS.find(item => item.month === futureMonth && item.day === futureDay)
     if (match) {
       return {
@@ -384,8 +385,9 @@ const detectHoliday = (date: Date): {
 }
 
 const detectSolarTerm = (date: Date): string => {
-  const month = date.getMonth() + 1
-  const day = date.getDate()
+  const beijingDate = TimeUtil.toBeijing(date)
+  const month = beijingDate.month() + 1
+  const day = beijingDate.date()
   const matched = SOLAR_TERMS.find(item => item.month === month && Math.abs(item.day - day) <= 1)
   if (!matched) return ''
 

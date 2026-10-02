@@ -25,8 +25,7 @@
     @cancel="handleCancel"
   >
     <template #footer>
-      <div class="quick-sale-footer">
-        <div class="footer-actions">
+      <div class="tf-dialog-actions quick-sale-footer">
           <el-button
             type="default"
             :disabled="submitting"
@@ -45,7 +44,6 @@
               确认出库
             </template>
           </el-button>
-        </div>
       </div>
     </template>
 
@@ -387,8 +385,8 @@
               v-model="formData.inventory_time"
               type="date"
               placeholder="请选择入库日期"
-              format="YYYY-MM-DD"
-              value-format="YYYY-MM-DD"
+              :format="TIME_FORMATS.DATE"
+              :value-format="TIME_FORMATS.DATE"
               style="width: 140px"
             />
           </el-form-item>
@@ -401,8 +399,8 @@
               v-model="formData.sale_time"
               type="date"
               placeholder="请选择销售日期"
-              format="YYYY-MM-DD"
-              value-format="YYYY-MM-DD"
+              :format="TIME_FORMATS.DATE"
+              :value-format="TIME_FORMATS.DATE"
               style="width: 140px"
             />
           </el-form-item>
@@ -491,12 +489,14 @@
 </template>
 
 <script setup lang="ts">
+import { TIME_FORMATS } from '@/utils/time'
 import { ref, reactive, computed, watch, nextTick } from 'vue'
 import type { FormInstance, FormRules } from 'element-plus'
 import { ValidationRules } from '@/composables'
 import { useNotification } from '@/composables/useNotification'
 import unifiedApi from '@/utils/unified-api'
-import { extractResponseData } from '@/utils/api-response'
+import { searchCustomerOptions } from '@/services/customer-options'
+import { getModels } from '@/services/reference-options'
 import { useAuthStore } from '@/stores/auth'
 import MobileDialog from '@/components/MobileDialog.vue'
 import CustomerNameLockInput from '@/components/common/CustomerNameLockInput.vue'
@@ -673,7 +673,9 @@ const resetSubsidyPaymentSelection = (message?: string) => {
 
   formData.payment_method = ''
   formData.payment_channel = ''
-  formData.remarks = ''
+  if (formData.remarks.startsWith('刷卡实际支付')) {
+    formData.remarks = ''
+  }
 }
 
 // ==================== 计算属性 ====================
@@ -786,8 +788,7 @@ const handleBrandChange = async () => {
   if (!formData.brand_id) return
 
   try {
-    const apiUrl = `/brands/${formData.brand_id}/models`
-    const response = await unifiedApi.get(apiUrl)
+    const response = await getModels({ brandId: formData.brand_id })
 
     if (response.success) {
       filteredModels.value = buildQuickSaleBrandModels(response.data as BrandModelOption[] | null | undefined)
@@ -888,11 +889,15 @@ const handlePaymentMethodChange = () => {
       return
     }
     formData.payment_channel = 'subsidy_card'
-    formData.remarks = subsidyResult.remarks
+    if (!formData.remarks.trim() || formData.remarks.startsWith('刷卡实际支付')) {
+      formData.remarks = subsidyResult.remarks
+    }
   } else {
-    // 清空支付渠道和备注
+    // 切换到普通支付方式时，只清理系统自动生成的国补备注。
     formData.payment_channel = ''
-    formData.remarks = ''
+    if (formData.remarks.startsWith('刷卡实际支付')) {
+      formData.remarks = ''
+    }
   }
 }
 
@@ -912,11 +917,15 @@ const calculateSubsidyRemarks = () => {
       resetSubsidyPaymentSelection(subsidyResult.message)
       return
     }
-    formData.remarks = ''
+    if (formData.remarks.startsWith('刷卡实际支付')) {
+      formData.remarks = ''
+    }
     return
   }
 
-  formData.remarks = subsidyResult.remarks
+  if (!formData.remarks.trim() || formData.remarks.startsWith('刷卡实际支付')) {
+    formData.remarks = subsidyResult.remarks
+  }
 }
 
 // 格式化客户姓名 - 只允许中文、英文、空格，去除特殊字符
@@ -1151,19 +1160,12 @@ const searchCustomers = async (query: string) => {
   customerLookupLoading.value = true
 
   try {
-    // 始终使用模糊搜索接口（支持手机号和姓名的部分匹配）
-    const response = await unifiedApi.get(`/sales/customers?search=${encodeURIComponent(query)}`)
-
     if (!isActiveCustomerSearch(query, requestId)) {
       return
     }
 
-    if (response.success) {
-      customerOptions.value = extractResponseData<Array<Partial<CustomerOption> & Record<string, unknown>>>(response)
-        .map((item) => normalizeCustomerOption(item))
-    } else {
-      customerOptions.value = []
-    }
+    customerOptions.value = (await searchCustomerOptions(query, 'sales'))
+      .map((item) => normalizeCustomerOption(item))
   } catch (err) {
     logger.error('搜索客户失败:', err)
     if (isActiveCustomerSearch(query, requestId)) {
@@ -1677,7 +1679,7 @@ watch(
   -webkit-overflow-scrolling: touch;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .customer-form-row {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -1943,15 +1945,6 @@ watch(
   line-height: 1.4;
 }
 
-// 底部自定义
-.quick-sale-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  width: 100%;
-
-}
-
 // 移动端适配
 @media (max-width: 767px) {
   .quick-sale-form {
@@ -1996,13 +1989,6 @@ watch(
     font-size: 14px;
     margin-bottom: 12px;
     padding-bottom: 6px;
-  }
-
-  .quick-sale-footer {
-    flex-direction: row;
-    width: 100%;
-    gap: 6px;
-
   }
 
 }

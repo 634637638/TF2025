@@ -2,7 +2,7 @@
 
 > **文档说明**：TF2025 项目中模态框组件的详细使用示例
 >
-> **最后更新**：2025-12-20
+> **最后更新**：2026-10-01
 > **版本**：v2.0.0
 > **维护者**：TF2025 开发团队
 
@@ -14,7 +14,7 @@
 - [详情弹窗](#详情弹窗)
 - [多步骤弹窗](#多步骤弹窗)
 - [全屏弹窗](#全屏弹窗)
-- [自定义弹窗](#自定义弹窗)
+- [复杂内容弹窗](#自定义弹窗)
 
 ---
 
@@ -31,7 +31,7 @@
     v-model="showInfo"
     title="系统信息"
     width="500px"
-    :show-footer="false"
+    :show-default-footer="false"
   >
     <div class="info-content">
       <el-descriptions :column="2" border>
@@ -45,7 +45,7 @@
           生产环境
         </el-descriptions-item>
         <el-descriptions-item label="数据库版本">
-          MySQL 8.0
+          MySQL（示例环境）
         </el-descriptions-item>
       </el-descriptions>
     </div>
@@ -82,7 +82,7 @@ const showInfo = ref(false)
     v-model="successVisible"
     title="操作成功"
     width="400px"
-    :show-footer="false"
+    :show-default-footer="false"
   >
     <div class="icon-content success">
       <el-icon class="success-icon"><CircleCheckFilled /></el-icon>
@@ -95,7 +95,7 @@ const showInfo = ref(false)
     v-model="warningVisible"
     title="警告"
     width="400px"
-    :show-footer="false"
+    :show-default-footer="false"
   >
     <div class="icon-content warning">
       <el-icon class="warning-icon"><WarningFilled /></el-icon>
@@ -108,7 +108,7 @@ const showInfo = ref(false)
     v-model="errorVisible"
     title="错误"
     width="400px"
-    :show-footer="false"
+    :show-default-footer="false"
   >
     <div class="icon-content error">
       <el-icon class="error-icon"><CircleCloseFilled /></el-icon>
@@ -364,7 +364,7 @@ const handleSubmit = async () => {
 
     <!-- 自定义底部按钮 -->
     <template #footer>
-      <div class="dialog-footer">
+      <div class="tf-dialog-actions">
         <el-button @click="handleCancel">取消</el-button>
         <el-button
           v-if="currentStep > 0"
@@ -394,15 +394,16 @@ const handleSubmit = async () => {
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { ElMessageBox } from 'element-plus'
 import MobileDialog from '@/components/MobileDialog.vue'
 import MobileForm from '@/components/MobileForm.vue'
+import { useNotification } from '@/composables/useNotification'
 import ProductSelector from './ProductSelector.vue'
 import OrderSummary from './OrderSummary.vue'
 
 const dialogVisible = ref(false)
 const currentStep = ref(0)
 const submitting = ref(false)
+const { confirm } = useNotification()
 
 // 订单数据
 const orderData = ref({
@@ -458,7 +459,7 @@ const openDialog = () => {
 const handleBeforeClose = async () => {
   if (hasUnsavedChanges.value) {
     try {
-      await ElMessageBox.confirm(
+      await confirm(
         '您有未保存的更改，确定要关闭吗？',
         '提示',
         {
@@ -539,19 +540,7 @@ const validateCustomer = async () => {
   padding: var(--spacing-lg) 0;
 }
 
-.dialog-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--spacing-sm);
-
-  @include mobile-only {
-    flex-direction: column-reverse;
-
-    .el-button {
-      width: 100%;
-    }
-  }
-}
+// footer 使用全局 .tf-dialog-actions，不在页面重复定义按钮尺寸和排列。
 </style>
 ```
 
@@ -915,7 +904,7 @@ const handleCustomConfirm = async () => {
     v-model="detailVisible"
     :title="detailTitle"
     width="800px"
-    :show-footer="false"
+    :show-default-footer="false"
   >
     <div class="detail-content">
       <!-- 头部信息 -->
@@ -1097,7 +1086,7 @@ const getStatusText = (status) => {
     width="90%"
     max-width="1200px"
     :fullscreen="isMobile"
-    :show-footer="false"
+    :show-default-footer="false"
     class="image-preview-dialog"
   >
     <div class="preview-container">
@@ -1145,7 +1134,7 @@ const getStatusText = (status) => {
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { useResponsive } from '@/composables/useResponsive'
+import { useResponsive } from '@/composables/responsive'
 import MobileDialog from '@/components/MobileDialog.vue'
 
 const { isMobile } = useResponsive()
@@ -1328,7 +1317,7 @@ const switchImage = (index) => {
     v-model="wizardVisible"
     :title="wizardTitle"
     width="700px"
-    :show-footer="false"
+    :show-default-footer="false"
     :close-on-click-modal="false"
     :close-on-press-escape="false"
   >
@@ -1526,7 +1515,7 @@ const handleFinish = async () => {
     title="编辑详情"
     :fullscreen="true"
     :show-close="true"
-    class="fullscreen-dialog"
+    dialog-class="fullscreen-dialog"
   >
     <div class="fullscreen-content">
       <!-- 固定头部 -->
@@ -1695,33 +1684,6 @@ const handleClear = () => {
 </script>
 
 <style lang="scss" scoped>
-.fullscreen-dialog {
-  :deep(.el-dialog) {
-    margin: 0;
-    height: 100vh;
-    max-height: 100vh;
-    display: flex;
-    flex-direction: column;
-  }
-
-  :deep(.el-dialog__header) {
-    padding: 0;
-    border-bottom: none;
-  }
-
-  :deep(.el-dialog__body) {
-    flex: 1;
-    padding: 0;
-    overflow: hidden;
-  }
-
-  :deep(.el-dialog__headerbtn) {
-    top: var(--spacing-md);
-    right: var(--spacing-md);
-    z-index: 100;
-  }
-}
-
 .fullscreen-content {
   height: 100%;
   display: flex;
@@ -1829,7 +1791,7 @@ const handleClear = () => {
     v-model="chartVisible"
     title="数据统计"
     width="900px"
-    :show-footer="false"
+    :show-default-footer="false"
   >
     <div class="chart-container">
       <!-- 统计卡片 -->
@@ -2179,6 +2141,6 @@ onUnmounted(() => {
 
 ---
 
-**更新日期**：2025-12-20
+**更新日期**：2026-10-01
 **版本**：v2.0.0
 **维护者**：TF2025 前端开发团队

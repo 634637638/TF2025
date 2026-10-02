@@ -1,0 +1,135 @@
+/* ==================== Element Plus 组件统一样式 ==================== */
+
+/* 输入框样式 - 完全无边框简洁设计 */
+.el-input-form-control {
+  width: 100%;
+}
+
+.el-input-form-control :deep(.el-input__wrapper) {
+  width: 100%;
+  padding: 10px 12px;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  transition: all 0.3s ease;
+  border-radius: 0;
+}
+
+.el-input-form-control :deep(.el-input__wrapper:hover),
+.el-input-form-control :deep(.el-input__wrapper.is-focus) {
+  box-shadow: none !important;
+}
+
+.el-input-form-control :deep(.el-input__inner) {
+  font-size: 14px;
+  color: var(--tf-color-gray-bootstrap-700);
+  height: auto;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* Readonly 输入框样式 - 确保与其他输入框高度一致 */
+.el-input-form-control :deep(.el-input.is-disabled .el-input__wrapper),
+.el-input-form-control :deep(.el-input__wrapper.isreadonly),
+.el-input-form-control :deep(.el-input__wrapper[readonly]) {
+  background: transparent !important;
+  cursor: not-allowed;
+  padding: 10px 12px;
+  min-height: 40px;
+  box-shadow: none !important;
+  border: none !important;
+}
+
+.el-input-form-control :deep(.el-input.is-disabled .el-input__inner),
+.el-input-form-control :deep(.el-input__inner[readonly]) {
+  color: var(--tf-color-gray-bootstrap-700);
+  font-weight: 500;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.el-input-form-control :deep(.el-input__wrapper:hover) {
+  background: rgba(59, 130, 246, 0.02) !important;
+  box-shadow: none !important;
+}
+
+.el-input-form-control :deep(.el-input__wrapper.is-focus) {
+  background: rgba(59, 130, 246, 0.05) !important;
+  box-shadow: none !important;
+}
+
+/* 选择器样式 - 完全无边框简洁设计 */
+.el-select-form-control {
+  width: 100%;
+}
+
+.el-select-form-control :deep(.el-input__wrapper) {
+  width: 100%;
+  padding: 10px 12px;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  transition: all 0.3s ease;
+  border-radius: 0;
+}
+
+.el-select-form-control :deep(.el-input__wrapper:hover),
+.el-select-form-control :deep(.el-input__wrapper.is-focus) {
+  box-shadow: none !important;
+}
+
+.el-select-form-control :deep(.el-input__inner) {
+  font-size: 14px;
+  color: var(--tf-color-gray-bootstrap-700);
+  height: auto;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.el-select-form-control :deep(.el-input__wrapper:hover) {
+  background: rgba(59, 130, 246, 0.02) !important;
+  box-shadow: none !important;
+}
+
+.el-select-form-control :deep(.el-input__wrapper.is-focus) {
+  background: rgba(59, 130, 246, 0.05) !important;
+  box-shadow: none !important;
+}
+
+/* 日期选择器样式 - 完全无边框简洁设计 */
+.el-date-form-control {
+  width: 100%;
+}
+
+.el-date-form-control :deep(.el-input__wrapper) {
+  width: 100%;
+  padding: 10px 12px;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  transition: all 0.3s ease;
+  border-radius: 0;
+}
+
+.el-date-form-control :deep(.el-input__wrapper:hover),
+.el-date-form-control :deep(.el-input__wrapper.is-focus) {
+  box-shadow: none !important;
+}
+
+.el-date-form-control :deep(.el-input__inner) {
+  font-size: 14px;
+  color: var(--tf-color-gray-bootstrap-700);
+  height: auto;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.el-date-form-control :deep(.el-input__wrapper:hover) {
+  background: rgba(59, 130, 246, 0.02) !important;
+  box-shadow: none !important;
+}
+
+.el-date-form-control :deep(.el-input__wrapper.is-focus) {
+  background: rgba(59, 130, 246, 0.05) !important;
+  box-shadow: none !important;
+}

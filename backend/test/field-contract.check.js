@@ -366,10 +366,13 @@ test('H5 customer sales retire legacy time fields after read-only verification',
 
   assert.deepEqual(contract.legacy, []);
   assert.deepEqual(contract.retired, ['sale_date', 'salestime']);
+  assert.deepEqual(contract.retiredResponseFields, ['profit']);
+  assert.ok(!contract.canonical.includes('profit'));
+  assert.ok(!contract.responseFields.includes('profit'));
   for (const field of [
     'id', 'invoice_number', 'sale_time', 'sale_price', 'payment_method',
     'store_name', 'operator_name', 'imei', 'serial_number', 'product_name',
-    'brand_name', 'model_name', 'color_name', 'profit', 'is_new'
+    'brand_name', 'model_name', 'color_name', 'is_new'
   ]) {
     assert.ok(contract.canonical.includes(field), `h5-customer-sales 缺少 ${field} 规范字段`);
     assert.ok(contract.responseFields.includes(field), `h5-customer-sales 缺少 ${field} 响应字段`);

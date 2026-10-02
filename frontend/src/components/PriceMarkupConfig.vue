@@ -81,7 +81,7 @@
                   :min="1000"
                   :max="20000"
                   :step="1000"
-                  controls-position="right"
+                  :controls="false"
                   class="price-input"
                 />
                 <span class="price-unit">元</span>
@@ -104,7 +104,7 @@
                     :min="0"
                     :max="1000"
                     :step="50"
-                    controls-position="right"
+                    :controls="false"
                     class="price-input"
                   />
                   <span class="price-unit">元</span>
@@ -126,7 +126,7 @@
                     :min="0"
                     :max="1000"
                     :step="50"
-                    controls-position="right"
+                    :controls="false"
                     class="price-input"
                   />
                   <span class="price-unit">元</span>
@@ -149,7 +149,7 @@
                     :max="50"
                     :step="1"
                     :precision="1"
-                    controls-position="right"
+                    :controls="false"
                     class="price-input"
                   />
                   <span class="price-unit">%</span>
@@ -172,7 +172,7 @@
                     :max="30"
                     :step="1"
                     :precision="1"
-                    controls-position="right"
+                    :controls="false"
                     class="price-input"
                   />
                   <span class="price-unit">%</span>
@@ -210,7 +210,7 @@
                   :min="-1000"
                   :max="1000"
                   :step="50"
-                  controls-position="right"
+                  :controls="false"
                   class="price-input"
                 />
                 <span class="price-unit">元</span>
@@ -686,7 +686,7 @@ const handleClose = () => {
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .overview-panel {
     grid-template-columns: 1fr;
     gap: 10px;

@@ -1674,7 +1674,7 @@ onBeforeUnmount(() => {
     }
   }
 
-  @media (max-width: 768px) {
+  @media (max-width: 767px) {
     .attendance-summary-grid {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
@@ -1745,7 +1745,7 @@ onBeforeUnmount(() => {
     }
   }
 
-  @media (max-width: 480px) {
+  @media (max-width: 479px) {
     .overview-grid {
       grid-template-columns: 1fr;
     }

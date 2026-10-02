@@ -52,7 +52,6 @@ export interface H5CustomerSale {
   brand_name: string | null
   model_name: string | null
   color_name: string | null
-  profit: number | null
   is_new: number | null
 }
 
@@ -149,6 +148,7 @@ export const tokenManager = {
 
   // 移除token
   removeToken() {
+    storage.remove(H5_STORAGE_KEYS.AUTH_TOKEN, 'session')
     storage.remove(H5_STORAGE_KEYS.AUTH_TOKEN, 'local')
   },
 
@@ -164,22 +164,24 @@ export const tokenManager = {
 export const userManager = {
   // 保存用户信息
   setUser(user: AuthUser) {
-    storage.set(H5_STORAGE_KEYS.AUTH_USER, user, 'local')
+    storage.set(H5_STORAGE_KEYS.AUTH_USER, user, 'session')
   },
 
   // 获取用户信息
   getUser(): AuthUser | null {
-    return storage.get<AuthUser>(H5_STORAGE_KEYS.AUTH_USER, 'local')
+    const sessionUser = storage.get<AuthUser>(H5_STORAGE_KEYS.AUTH_USER, 'session')
+    storage.remove(H5_STORAGE_KEYS.AUTH_USER, 'local')
+    return sessionUser
   },
 
   // 移除用户信息
   removeUser() {
+    storage.remove(H5_STORAGE_KEYS.AUTH_USER, 'session')
     storage.remove(H5_STORAGE_KEYS.AUTH_USER, 'local')
   },
 
   // 清除所有认证信息
   clearAuth() {
-    tokenManager.removeToken()
-    this.removeUser()
+    storage.clearH5Auth()
   }
 }

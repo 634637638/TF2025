@@ -60,7 +60,7 @@ const getIconClass = (type: string) => {
   position: fixed;
   top: 20px;
   right: 20px;
-  z-index: 9999;
+  z-index: var(--tf-z-toast);
   pointer-events: none;
   max-width: 400px;
   width: 100%;
@@ -155,7 +155,7 @@ const getIconClass = (type: string) => {
   justify-content: center;
   flex-shrink: 0;
   font-size: 12px;
-  transition: all 0.2s;
+  transition: all var(--tf-motion-standard) var(--tf-motion-ease-standard);
 }
 
 .notification-close:hover {
@@ -191,15 +191,15 @@ const getIconClass = (type: string) => {
 
 /* 动画效果 */
 .notification-enter-active {
-  animation: slideIn 0.3s ease-out;
+  animation: slideIn var(--tf-motion-slow) var(--tf-motion-ease-standard);
 }
 
 .notification-leave-active {
-  animation: slideOut 0.3s ease-in;
+  animation: slideOut var(--tf-motion-slow) var(--tf-motion-ease-standard);
 }
 
 .notification-move {
-  transition: transform 0.3s ease;
+  transition: transform var(--tf-motion-slow) var(--tf-motion-ease-standard);
 }
 
 @keyframes slideIn {
@@ -234,7 +234,7 @@ const getIconClass = (type: string) => {
 }
 
 /* 响应式设计 */
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .notification-container {
     top: 10px;
     right: 10px;

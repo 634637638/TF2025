@@ -1,172 +1,20 @@
-# 权限提示系统测试页面
+# 权限提示手工验证
 
-## 测试指令
+本文用于验证 `v-permission-tip` 的界面反馈，不替代后端 API 授权测试。权限显示数据来自登录态及权限服务；不要通过手工编辑 `localStorage` 来模拟授权或判断服务端安全性。
 
-### v-permission-tip 指令测试
+## 验证步骤
 
-```vue
-<template>
-  <div class="permission-test">
-    <h3>权限提示指令测试</h3>
+1. 使用测试管理员账号确认目标模块的某项操作权限已授予。
+2. 登录后打开对应页面，确认 `v-permission-tip` 控件可操作。
+3. 使用不具备该操作权限的测试账号登录，确认控件显示受限状态，点击后出现友好提示。
+4. 在权限管理中变更测试账号权限，按应用实际权限刷新流程重新加载页面，确认界面状态随权限更新。
+5. 使用不具备权限的账号直接调用对应写 API，确认服务端拒绝请求；这是授权是否有效的关键检查，不能以按钮禁用代替。
+6. 在 Network 中确认接口响应没有泄露不应访问的数据。测试仅使用非生产账号和数据。
 
-    <!-- 简单用法 -->
-    <el-button
-      v-permission-tip="'stores_storesview:view'"
-      type="primary"
-    >
-      查看店铺（简单用法）
-    </el-button>
+## 实现入口
 
-    <!-- 完整用法 -->
-    <el-button
-      v-permission-tip="{
-        permission: 'stores_storesview:create',
-        moduleName: '店铺管理',
-        action: 'create'
-      }"
-      type="success"
-    >
-      新增店铺（完整用法）
-    </el-button>
+- 指令：`frontend/src/directives/permissionTip.ts`
+- 提示服务：`frontend/src/utils/permissionToastSimple.ts`
+- 服务端授权规范与检查命令：[权限文档索引](../permissions/INDEX.md)
 
-    <!-- 编辑权限 -->
-    <el-button
-      v-permission-tip="{
-        permission: 'stores_storesview:edit',
-        moduleName: '店铺管理',
-        action: 'edit'
-      }"
-      type="warning"
-    >
-      编辑店铺
-    </el-button>
-
-    <!-- 删除权限 -->
-    <el-button
-      v-permission-tip="{
-        permission: 'stores_storesview:delete',
-        moduleName: '店铺管理',
-        action: 'delete'
-      }"
-      type="danger"
-    >
-      删除店铺
-    </el-button>
-  </div>
-</template>
-
-<script setup lang="ts">
-// 无需导入，指令已在 main.ts 中全局注册
-</script>
-```
-
-### Composable 函数测试
-
-```vue
-<template>
-  <div class="permission-composable-test">
-    <h3>Composable 函数测试</h3>
-
-    <el-button @click="testViewPermission">
-      测试查看权限
-    </el-button>
-
-    <el-button @click="testEditPermission">
-      测试编辑权限
-    </el-button>
-
-    <el-button @click="testDeletePermission">
-      测试删除权限
-    </el-button>
-  </div>
-</template>
-
-<script setup lang="ts">
-import { usePermissionToast } from '@/utils/permissionToastSimple'
-
-const { showViewDenied, showEditDenied, showDeleteDenied } = usePermissionToast()
-
-const testViewPermission = () => {
-  showViewDenied('测试模块', 'test_module:view')
-}
-
-const testEditPermission = () => {
-  showEditDenied('测试模块', 'test_module:edit')
-}
-
-const testDeletePermission = () => {
-  showDeleteDenied('测试模块', 'test_module:delete')
-}
-</script>
-```
-
-## 权限检查逻辑
-
-权限检查通过以下逻辑：
-
-1. **从 localStorage 获取用户权限**
-   ```javascript
-   const userPermissions = JSON.parse(localStorage.getItem('user_permissions') || '[]')
-   ```
-
-2. **检查通配符权限**
-   - `*` - 所有权限
-   - `all:*` - 所有权限
-
-3. **检查直接权限匹配**
-   - 完全匹配权限字符串
-
-## 样式效果
-
-### 禁用状态样式
-
-```scss
-.permission-restricted {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-```
-
-### 消息提示样式
-
-```scss
-.permission-notification {
-  border-left: 4px solid #f56c6c;
-}
-```
-
-## 快速开始
-
-1. **在 main.ts 中已全局注册指令**
-   ```typescript
-   import { setupPermissionTipDirective } from '@/directives/permissionTip'
-   setupPermissionTipDirective(app)
-   ```
-
-2. **在任何组件中使用**
-   ```vue
-   <el-button v-permission-tip="'stores_storesview:edit'">
-     编辑
-   </el-button>
-   ```
-
-3. **查看效果**
-   - 有权限：按钮正常显示和点击
-   - 无权限：按钮变灰，鼠标悬停显示禁用状态，点击显示友好提示
-
-## 调试
-
-如果权限提示不工作，检查：
-
-1. **localStorage 中是否有用户权限**
-   ```javascript
-   console.log(JSON.parse(localStorage.getItem('user_permissions')))
-   ```
-
-2. **权限字符串格式是否正确**
-   - 数据库格式：`stores_storesview:edit`
-   - 使用下划线而不是连字符
-
-3. **浏览器控制台是否有错误**
-   - 检查是否有 JavaScript 错误
-   - 检查指令是否正确注册
+指令只提供前端交互反馈。浏览器存储可被用户修改，任何 API 都必须在后端独立完成身份认证和权限校验。

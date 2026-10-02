@@ -33,19 +33,12 @@
             />
             <el-button
               type="info"
+              :loading="refreshing"
               :disabled="refreshing"
               @click="handleRefresh"
             >
-              <InlineLoading
-                v-if="refreshing"
-                text="刷新中..."
-                size="small"
-                variant="inherit"
-              />
-              <template v-else>
-                <i class="fas fa-sync-alt" />
-                <span>刷新</span>
-              </template>
+              <i class="fas fa-sync-alt" />
+              <span>{{ refreshing ? '刷新中...' : '刷新' }}</span>
             </el-button>
           </template>
         </PageHeader>
@@ -230,15 +223,15 @@
                 align="center"
               >
                 <template #default="{ row, $index }">
-                  <input
-                    v-model.number="row.sort_order"
-                    type="number"
-                    class="sort-order-input"
+                  <el-input-number
+                    v-model="row.sort_order"
+                    class="sort-order-control"
                     :disabled="!canEdit"
-                    min="0"
-                    max="9999"
+                    :min="0"
+                    :max="9999"
+                    :controls="false"
                     @change="handleSortOrderChange($index, row.sort_order || 0)"
-                  >
+                  />
                 </template>
               </el-table-column>
               <el-table-column
@@ -686,7 +679,6 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted, onUnmounted, computed } from 'vue'
-import { ElMessageBox } from 'element-plus'
 import unifiedApi from '@/utils/unified-api'
 import { extractResponseData } from '@/utils/api-response'
 import Toast from '../../components/Toast.vue'
@@ -721,7 +713,7 @@ interface SearchForm {
 }
 
 // 使用统一的 composable
-const { success: showSuccess, error: showError, warning: _showWarning, info: _showInfo, handleApiError } = useNotification()
+const { success: showSuccess, error: showError, warning: _showWarning, info: _showInfo, handleApiError, confirm } = useNotification()
 const { canView, canCreate, canEdit, canDelete, canExport, handleNoPermission } = usePagePermissions('stores')
 const { showViewDenied: _showViewDenied, showEditDenied, showDeleteDenied, showCreateDenied } = usePermissionToast()
 const { refreshing, refresh } = useRefreshData()
@@ -1134,16 +1126,15 @@ const deleteStore = async (store: Store) => {
   }
 
   try {
-    await ElMessageBox.confirm(
+    if (!await confirm(
       `确定要删除门店"${store.name}"吗？删除后不可恢复！`,
       '删除确认',
       {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
-        type: 'warning',
-        customClass: 'message-box-unified'
+        type: 'warning'
       }
-    )
+    )) return
   } catch {
     return
   }
@@ -1524,7 +1515,7 @@ onUnmounted(() => {
   overflow: hidden; /* 防止内容溢出 */
 
   /* 移动端去除左右内边距，让内容占据全屏宽度 */
-  @media (max-width: 768px) {
+  @media (max-width: 767px) {
     padding: 16px 0;
     margin: 0 0 0 0; /* 移除所有间距 */
   }
@@ -1623,35 +1614,6 @@ onUnmounted(() => {
 .drag-handle.disabled:hover {
   color: var(--tf-color-neutral-400);
   background: transparent;
-}
-
-/* 排序输入框 */
-.sort-order-input {
-  width: 50px;
-  height: 28px;
-  padding: 0 6px;
-  border: 1px solid var(--tf-color-neutral-300);
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 600;
-  text-align: center;
-  outline: none;
-  transition: all 0.2s;
-}
-
-.sort-order-input:focus:not(:disabled) {
-  border-color: var(--tf-color-blue-500);
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
-}
-
-.sort-order-input:hover:not(:disabled) {
-  border-color: var(--tf-color-neutral-400);
-}
-
-.sort-order-input:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  background-color: var(--tf-color-neutral-100);
 }
 
 .store-info {
@@ -1889,7 +1851,7 @@ onUnmounted(() => {
 }
 
 /* ===== 移动端响应式适配 ===== */
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .stores-view {
     padding: 16px;
   }
@@ -1916,7 +1878,7 @@ onUnmounted(() => {
   }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 479px) {
   .stores-view {
     padding: 12px;
   }

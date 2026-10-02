@@ -114,9 +114,9 @@
 
 ## 🎯 下一步
 
-- 查看完整文档：[REMOTE_DATABASE_SYNC_GUIDE.md](REMOTE_DATABASE_SYNC_GUIDE.md)
-- 查看自动化脚本：[AUTO_SYNC_GUIDE.md](AUTO_SYNC_GUIDE.md)
-- 测试连接：运行 `node backend/test-database-sync.js`
+- 查看详细流程：[跨数据库同步指南](DATABASE_SYNC_GUIDE.md)
+- 该功能需要登录并具有 `data-check:edit` 权限。
+- 仓库没有旧文档提到的 `backend/test-database-sync.js` 测试脚本。
 
 ## 💡 提示
 

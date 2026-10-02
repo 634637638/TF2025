@@ -20,54 +20,7 @@
 ## 响应式断点
 
 ```css
-/* 断点定义 - 范围式适配所有移动设备 */
-:root {
-  /* 最小断点 - 小屏手机 (375px及以上所有手机) */
-  --breakpoint-min: 375px;
-
-  /* 小屏手机范围 */
-  --breakpoint-xs: 414px;   /* 375px - 479px 小屏手机 */
-
-  /* 中屏手机范围 */
-  --breakpoint-sm: 480px;   /* 480px - 767px 中大屏手机 */
-
-  /* 大屏设备范围 */
-  --breakpoint-md: 768px;   /* 768px+ 平板/桌面 */
-
-  /* 桌面设备 */
-  --breakpoint-lg: 1024px;  /* 1024px+ 桌面起点 */
-  --breakpoint-xl: 1200px;  /* 1200px+ 宽屏桌面 */
-  --breakpoint-2xl: 1440px; /* 1440px+ 大桌面 */
-}
-
-/* 媒体查询 - 统一移动端布局 */
-@media (max-width: 767px) {
-  /* 适配所有手机（不含iPad） 375-767px - 统一布局 */
-
-  /* 统一单列布局 */
-  .grid-2, .grid-3, .grid-4 {
-    grid-template-columns: 1fr !important;
-  }
-
-  /* 统一触摸优化 */
-  .btn, .el-button {
-    min-height: 44px !important;
-    min-width: 44px !important;
-  }
-
-  /* 统一字体大小 - 防止iOS缩放 */
-  input, select, textarea {
-    font-size: 16px !important;
-  }
-}
-
-/* iPad 单独适配 */
-@media (min-width: 768px) and (max-width: 1023px) {
-  /* iPad 特殊布局 */
-  .grid-2, .grid-3 {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
+移动端布局断点由 `frontend/src/config/breakpoints.ts` 定义：小屏手机最大宽度 `479px`、手机最大宽度 `767px`、平板从 `768px` 起。后台桌面壳的导航切换由同一配置中的 `DESKTOP_MIN` 和导航判断函数维护，详见[移动端开发规范](mobile-development-standards.md)。不要在专题页面复制断点变量或通用按钮规则。
 ```
 
 ### 支持的设备尺寸
@@ -82,7 +35,7 @@
 - **Android 中屏 (375-480px)**: 主流 Android 设备
 - **Android 大屏 (480px+)**: 大屏 Android 设备
 
-**重要说明**: 系统采用范围式适配策略，确保从最小宽度 375px 开始的所有移动终端都能获得良好体验。桌面固定侧栏与基础后台布局统一按视口宽度从 1024px 开始；1200px 仅作为更宽屏幕的增强阈值，不参与左侧菜单的显隐判断。左侧菜单的桌面/移动切换不得再依赖 UA、触摸能力或设备类型。
+**重要说明**: 系统采用范围式适配策略，确保从最小宽度 375px 开始的所有移动终端都能获得良好体验。桌面固定侧栏与基础后台布局统一按视口宽度从 1025px 开始；1200px 仅作为更宽屏幕的增强阈值，不参与左侧菜单的显隐判断。左侧菜单的桌面/移动切换不得再依赖 UA、触摸能力或设备类型。
 
 ## 布局规范
 
@@ -128,7 +81,7 @@
 }
 ```
 
-#### 平板及以上 (≥ 480px)
+#### 平板及以上 (≥ 768px)
 ```scss
 .grid-container {
   &.two-cols {
@@ -167,7 +120,7 @@
   }
 
   /* iPad 特殊布局 */
-  @media (min-width: 768px) and (max-width: 1023px) {
+  @media (min-width: 768px) and (max-width: 1024px) {
     &.two-cols-tablet {
       grid-template-columns: 1fr 1fr;
       gap: 16px;
@@ -180,7 +133,7 @@
   }
 
   /* 桌面端多列布局 */
-  @media (min-width: 1024px) {
+  @media (min-width: 1025px) {
     &.two-cols-desktop {
       grid-template-columns: 1fr 1fr;
     }
@@ -209,25 +162,7 @@
 
 ### 1. 按钮
 
-#### 最小触摸尺寸
-- **高度**: 44px (iOS 推荐)
-- **宽度**: 44px (正方形按钮) 或最小 88px (文字按钮)
-- **间距**: 12px (按钮之间)
-
-```scss
-.btn {
-  min-height: 44px;
-  min-width: 44px;
-  padding: 0 16px;
-  font-size: 14px;
-
-  /* 小按钮例外 */
-  &.btn-small {
-    min-height: 36px;
-    font-size: 12px;
-  }
-}
-```
+按钮语义、颜色、尺寸、触摸目标和移动端适配统一遵循[全局按钮规范](../frontend/button-standards.md)。专题页面不得重新定义 `.btn`、`.btn-small` 或覆盖 Element Plus 按钮的公共尺寸。
 
 ### 2. 导航栏
 
@@ -463,11 +398,11 @@ if ('IntersectionObserver' in window) {
 ## 统一移动端布局策略
 
 ### 设计原则
-从 2025-12-20 开始，项目采用统一的移动端布局策略：
+当前项目采用统一的移动端布局策略：
 
 1. **统一移动端体验**：所有手机设备（375px-767px）使用相同布局
 2. **iPad独立适配**：768px-1023px 可有特殊布局
-3. **桌面端渐进增强**：1024px+ 提供更丰富的功能
+3. **桌面端渐进增强**：1025px+ 提供更丰富的功能
 
 ### 断点分配
 ```scss
@@ -475,14 +410,14 @@ if ('IntersectionObserver' in window) {
 @media (max-width: 767px) { /* iPhone SE 到 iPhone 15 Plus */ }
 
 // iPad 单独适配
-@media (min-width: 768px) and (max-width: 1023px) { /* iPad Mini 到 iPad Pro */ }
+@media (min-width: 768px) and (max-width: 1024px) { /* iPad Mini 到 iPad Pro */ }
 
 // 桌面端
-@media (min-width: 1024px) { /* MacBook 及以上 */ }
+@media (min-width: 1025px) { /* MacBook 及以上 */ }
 ```
 
 ### 实现要点
-1. **避免分级断点**：不再使用 479px、480px 等细分断点
+1. **减少分级断点**：公共布局只使用 375、479、767、768、1024、1025、1200、1440；组件确需内容尺寸阈值时必须登记并由响应式审计守护
 2. **统一组件尺寸**：所有手机使用相同的触摸目标、字体大小
 3. **简化开发**：减少针对特定屏幕的样式调整
 

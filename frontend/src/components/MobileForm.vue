@@ -115,8 +115,8 @@
           :placeholder="field.placeholder || `请选择${field.label}`"
           :disabled="field.disabled"
           :clearable="field.clearable !== false"
-          :format="field.format || 'YYYY-MM-DD HH:mm:ss'"
-          :value-format="field.valueFormat || 'YYYY-MM-DD HH:mm:ss'"
+          :format="field.format || TIME_FORMATS.DATETIME"
+          :value-format="field.valueFormat || TIME_FORMATS.DATETIME"
           style="width: 100%"
           @update:model-value="setFieldValue(field, $event)"
         />
@@ -232,9 +232,9 @@
           :disabled="field.disabled"
           :list-type="field.listType || 'text'"
           :auto-upload="field.autoUpload !== false"
-          @success="(...args) => handleUploadSuccess(field, ...args)"
-          @error="(...args) => handleUploadError(field, ...args)"
-          @change="(...args) => handleUploadChange(field, ...args)"
+          @success="(response, uploadFile, uploadFiles) => handleUploadSuccess(field, response, uploadFile, uploadFiles)"
+          @error="(error, uploadFile, uploadFiles) => handleUploadError(field, error, uploadFile, uploadFiles)"
+          @change="(uploadFile, uploadFiles) => handleUploadChange(field, uploadFile, uploadFiles)"
         >
           <el-button
             v-if="field.listType !== 'picture-card'"
@@ -301,6 +301,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useMobile } from '@/composables/mobile'
+import { TIME_FORMATS } from '@/utils/time'
 import type { FormInstance, FormRules, UploadFile, UploadFiles } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import type { CancelEmits } from '@/types/component'
@@ -893,7 +894,7 @@ $mobile-form-breakpoints: (
 }
 
 /* 移动端优化 */
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .mobile-form {
     .form-field-wrapper {
       margin-bottom: 0;

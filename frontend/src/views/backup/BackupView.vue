@@ -207,6 +207,7 @@
       v-model="cleanupDialogVisible"
       title="清理旧备份"
       width="400px"
+      class="backup-cleanup-dialog"
       :close-on-click-modal="false"
     >
       <el-form label-width="100px">
@@ -239,8 +240,8 @@
 </template>
 
 <script setup lang="ts">
+import { confirmAction } from '@/utils/message-box'
 import { computed, ref, onMounted, watch } from 'vue'
-import { ElMessageBox } from 'element-plus'
 import { unifiedApi } from '@/utils/unified-api'
 import { useNotification } from '@/composables/useNotification'
 import { usePagePermissions } from '@/composables/usePagePermissions'
@@ -328,7 +329,7 @@ const createBackup = async () => {
   }
 
   try {
-    await ElMessageBox.confirm(
+    await confirmAction(
       '确定要创建备份吗？备份过程可能需要几分钟时间。',
       '创建备份',
       {
@@ -391,7 +392,7 @@ const downloadBackup = async (filename: string) => {
 // 确认删除
 const confirmDelete = async (filename: string) => {
   try {
-    await ElMessageBox.confirm(
+    await confirmAction(
       `确定要删除备份 "${filename}" 吗？此操作不可恢复。`,
       '删除备份',
       {
@@ -609,27 +610,6 @@ watch(canView, async (value) => {
   justify-content: center;
 }
 
-/* 空状态 */
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 60px 20px;
-  color: var(--text-muted, var(--text-muted));
-}
-
-.empty-state i {
-  font-size: 64px;
-  margin-bottom: 16px;
-  color: var(--tf-color-border-blue-light);
-}
-
-.empty-state p {
-  font-size: 16px;
-  margin-bottom: 20px;
-}
-
 /* 表单提示 */
 .form-tip {
   margin-left: 12px;
@@ -638,7 +618,7 @@ watch(canView, async (value) => {
 }
 
 /* 响应式 */
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .backup-management {
     padding: 16px;
   }

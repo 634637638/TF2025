@@ -65,6 +65,21 @@
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
+.permissions-dialog .permission-standard-input {
+  width: 100%;
+}
+
+.permissions-dialog .permission-standard-input .el-input__wrapper {
+  min-height: 42px;
+  padding-inline: 14px;
+  border-radius: var(--tf-radius-control);
+}
+
+.permissions-dialog .permission-standard-input .el-input__inner[readonly] {
+  color: var(--tf-color-neutral-500);
+  cursor: not-allowed;
+}
+
 .modal-body .form-control[readonly] {
   color: var(--tf-color-slate-500);
   background: var(--tf-color-slate-50);
@@ -644,25 +659,6 @@
   padding: 60px 20px;
 }
 
-.empty-state {
-  color: var(--tf-color-gray-cool-500);
-}
-
-.empty-state i {
-  font-size: 48px;
-  margin-bottom: 16px;
-  display: block;
-}
-
-.empty-state h3 {
-  margin: 0 0 8px 0;
-  color: var(--tf-color-heading);
-}
-
-.empty-state p {
-  margin: 0;
-}
-
 /* 用户角色表单 */
 .permissions-view .user-info {
   display: flex;
@@ -803,19 +799,6 @@
   border-color: var(--tf-status-danger-border);
 }
 
-/* 空状态 */
-.empty-row {
-  text-align: center;
-  padding: 40px;
-  color: var(--tf-color-gray-cool-500);
-}
-
-.empty-row i {
-  font-size: 24px;
-  margin-bottom: 8px;
-  display: block;
-}
-
 .text-center {
   text-align: center;
 }
@@ -832,16 +815,19 @@
 }
 
 .search-input {
-  padding-left: 40px !important;
-  padding-right: 40px !important;
-  border-radius: 8px !important;
-  border: 2px solid var(--tf-color-border-muted) !important;
-  transition: border-color 0.3s ease !important;
+  width: 100%;
 }
 
-.search-input:focus {
-  border-color: var(--color-primary) !important;
-  box-shadow: 0 0 0 0.2rem rgba(64, 158, 255, 0.25) !important;
+.search-input .el-input__wrapper {
+  padding-left: 40px;
+  padding-right: 40px;
+  border-radius: 8px;
+  box-shadow: 0 0 0 2px var(--tf-color-border-muted) inset;
+  transition: box-shadow 0.3s ease;
+}
+
+.search-input .el-input__wrapper.is-focus {
+  box-shadow: 0 0 0 2px var(--color-primary) inset, 0 0 0 0.2rem rgba(64, 158, 255, 0.18);
 }
 
 .search-icon {
@@ -2154,7 +2140,7 @@
 
 
 /* 角色字段权限响应式设计 */
-@media (max-width: 1023px) {
+@media (max-width: 1024px) {
   .el-dialog.role-field-permission-dialog,
   .mobile-dialog-sheet-panel.role-field-permission-dialog {
     width: 95vw;
@@ -3004,7 +2990,7 @@
   color: var(--tf-color-blue-600);
 }
 
-.permissions-view .assignment-empty-state,
+
 .permissions-view .assignment-empty-selection {
   display: flex;
   flex-direction: column;
@@ -3017,17 +3003,6 @@
   border: 1px dashed rgba(148, 163, 184, 0.28);
   border-radius: 18px;
   background: rgba(248, 250, 252, 0.72);
-}
-
-.permissions-view .assignment-empty-state h4 {
-  margin: 0;
-  color: var(--tf-color-slate-900);
-  font-size: 17px;
-}
-
-.permissions-view .assignment-empty-state p {
-  margin: 0;
-  font-size: 13px;
 }
 
 .permissions-view .assignment-empty-icon {
@@ -3122,7 +3097,7 @@
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .permissions-view .user-role-modal .el-dialog {
     width: 100vw;
     max-width: 100vw;
@@ -3171,7 +3146,7 @@
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .permissions-view .permissions-content {
     padding: 0;
     border-radius: 0;
@@ -3410,7 +3385,7 @@
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .user-role-modal.el-dialog {
     width: 100vw;
     max-width: 100vw;
@@ -4113,7 +4088,7 @@
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .user-role-modal.el-dialog,
   .user-role-modal.mobile-dialog-sheet-panel {
     width: 100vw;

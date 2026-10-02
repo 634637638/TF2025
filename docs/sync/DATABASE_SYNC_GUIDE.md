@@ -137,6 +137,8 @@
 
 ## API接口说明
 
+同步接口位于 `backend/src/routes/database-sync.js`，路由统一要求登录认证和 `data-check:edit` 权限。实际接口如下：
+
 ### 连接管理
 ```javascript
 // 创建连接
@@ -163,6 +165,9 @@ GET /api/database-sync/connections/:connectionId/tables
 
 // 获取表结构
 GET /api/database-sync/connections/:connectionId/tables/:tableName/structure
+
+// 获取源表数据
+GET /api/database-sync/connections/:connectionId/tables/:tableName/data
 
 // 获取本地数据库表列表
 GET /api/database-sync/local/tables
@@ -213,7 +218,17 @@ POST /api/database-sync/sync
 
 // 获取同步进度
 GET /api/database-sync/sync/:syncId/progress
+
+// 一键智能同步
+POST /api/database-sync/smart-sync
+
+// 本地到云端流程
+POST /api/database-sync/local-to-cloud/precheck
+POST /api/database-sync/local-to-cloud/execute
+POST /api/database-sync/local-to-cloud/sync
 ```
+
+路由挂载前缀及参数如有改动，以 `backend/src/routes/database-sync.js` 和前端 `DatabaseSyncTab.vue` 为准。不要把外部数据库密码写入文档、命令历史或截图。
 
 ## 故障排除
 

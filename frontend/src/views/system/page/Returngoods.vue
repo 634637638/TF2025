@@ -77,8 +77,8 @@
           v-model="returnDateRange"
           start-placeholder="开始日期"
           end-placeholder="结束日期"
-          format="YYYY-MM-DD"
-          value-format="YYYY-MM-DD"
+          :format="TIME_FORMATS.DATE"
+          :value-format="TIME_FORMATS.DATE"
           clearable
           @change="handleSearch"
         />
@@ -425,7 +425,11 @@
               v-model="editForm.original_sale_operator_id"
               placeholder="请选择销售员"
               filterable
+              remote
+              reserve-keyword
+              :remote-method="searchOperatorOptions"
               clearable
+              @focus="searchOperatorOptions('')"
               @change="handleOperatorChange"
             >
               <el-option
@@ -444,8 +448,8 @@
             <el-date-picker
               v-model="editForm.reversal_date"
               type="datetime"
-              value-format="YYYY-MM-DD HH:mm:ss"
-              format="YYYY-MM-DD HH:mm"
+              :value-format="TIME_FORMATS.DATETIME"
+              :format="TIME_FORMATS.DATETIME_MINUTE"
               placeholder="请选择退库时间"
               clearable
               style="width: 100%;"
@@ -467,7 +471,7 @@
         </div>
       </div>
       <template #footer>
-        <div class="edit-dialog-footer">
+        <div class="tf-dialog-actions edit-dialog-footer">
           <el-button @click="editDialogVisible = false">
             取消
           </el-button>
@@ -485,8 +489,11 @@
 </template>
 
 <script setup lang="ts">
+import { TIME_FORMATS } from '@/utils/time'
+import { confirmAction } from '@/utils/message-box'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { unifiedApi } from '@/utils/unified-api'
+import { searchOperators } from '@/services/reference-options'
 import { useNotification } from '@/composables/useNotification'
 import { useMobile } from '@/composables/mobile'
 import { usePagePermissions } from '@/composables/usePagePermissions'
@@ -499,7 +506,6 @@ import SectionLoading from '@/components/SectionLoading.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import Pagination from '@/components/Pagination.vue'
 import DateRangePicker from '@/components/DateRangePicker.vue'
-import { ElMessageBox } from 'element-plus'
 import { PHONE_STATUS_OPTIONS, getPhoneStatusLabel, normalizePhoneStatus } from '@/constants/phoneStatuses'
 import { formatDateTime as formatGlobalDateTime } from '@/utils/format'
 
@@ -639,7 +645,7 @@ const loadRecords = async () => {
 
 const loadOperators = async () => {
   try {
-    const response = await unifiedApi.get('/users/operators')
+    const response = await searchOperators({ page: 1, page_size: 20 })
     if (response?.success && Array.isArray(response.data)) {
       operatorOptions.value = response.data.map((item: any) => ({
         id: Number(item.id),
@@ -651,12 +657,36 @@ const loadOperators = async () => {
   }
 }
 
+const searchOperatorOptions = async (keyword = '') => {
+  try {
+    const response = await searchOperators({
+      keyword: keyword.trim() || undefined,
+      page: 1,
+      page_size: 20
+    })
+    if (response?.success && Array.isArray(response.data)) {
+      operatorOptions.value = response.data.map((item: any) => ({
+        id: Number(item.id),
+        name: item.name || item.username || `用户${item.id}`
+      }))
+    }
+  } catch (error) {
+    operatorOptions.value = []
+  }
+}
+
 const openEditDialog = (record: ReturnGoodsRecord) => {
   editForm.id = record.id
   editForm.original_sale_id_display = record.original_sale_id ? String(record.original_sale_id) : '-'
   editForm.original_sale_type = normalizePhoneStatus(record.original_sale_type)
   editForm.original_sale_operator_id = record.original_sale_operator_id || null
   editForm.original_sale_operator_name = record.original_sale_operator_name || ''
+  if (record.original_sale_operator_id && !operatorOptions.value.some(item => item.id === record.original_sale_operator_id)) {
+    operatorOptions.value.push({
+      id: record.original_sale_operator_id,
+      name: record.original_sale_operator_name || `用户${record.original_sale_operator_id}`
+    })
+  }
   editForm.reversal_date = record.reversal_date || ''
   editForm.remarks = record.remarks || ''
   editDialogVisible.value = true
@@ -707,7 +737,7 @@ const handleDelete = async (record: ReturnGoodsRecord) => {
     return
   }
   try {
-    await ElMessageBox.confirm(
+    await confirmAction(
       `确定删除退库记录 #${record.id} 吗？`,
       '删除确认',
       {
@@ -996,23 +1026,7 @@ onMounted(() => {
   grid-column: 1 / -1;
 }
 
-.edit-dialog-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-}
-
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 36px 16px;
-  color: var(--tf-color-slate-400);
-}
-
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .returngoods-overview {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 8px;

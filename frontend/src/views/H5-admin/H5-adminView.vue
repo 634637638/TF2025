@@ -235,7 +235,7 @@ onMounted(() => {
 }
 
 // 响应式
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .h5-admin-layout {
     padding-inline: var(--admin-page-gap-x);
     padding-top: 10px;

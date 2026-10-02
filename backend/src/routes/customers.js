@@ -10,6 +10,7 @@ const {
   getCustomerPointsConfig,
   saveCustomerPointsConfig
 } = require('../services/customer-points.service')
+const { searchCustomers: searchCustomerOptions } = require('../services/customer-search.service')
 
 const LEGACY_PERMISSION_CANONICAL_MAP = {
   'customers_customersview:create': 'customers:create',
@@ -109,14 +110,14 @@ router.get('/search', unifiedAuth, requirePermission('customers:view'), async (r
       return ApiResponse.success(res, [])
     }
 
-    // 使用数据库搜索
-    const searchOptions = {
-      search: keyword.trim(),
-      page_size: 10
-    }
-
-    const result = await customerRepo.searchCustomers(searchOptions)
-    ApiResponse.success(res, result.records)
+    const result = await searchCustomerOptions({
+      keyword,
+      page: req.query.page,
+      page_size: req.query.page_size,
+      fields: ['id', 'name', 'phone', 'email', 'apple_id', 'member_number', 'vip_level', 'created_at'],
+      search_fields: ['name', 'phone', 'email', 'member_number']
+    })
+    ApiResponse.success(res, result.records, '搜索客户成功', 200, { pagination: result.pagination })
   } catch (error) {
     log.error('搜索客户失败:', error)
     ApiResponse.serverError(res, '搜索客户失败', error)

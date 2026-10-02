@@ -219,7 +219,7 @@
 
 <script setup lang="ts">
 import { ref, computed, reactive, onMounted, onUnmounted, watch } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import type { FormInstance, UploadProps } from 'element-plus'
 import { unifiedApi } from '@/utils/unified-api'
 import { useAuthStore } from '@/stores/auth'
@@ -229,6 +229,7 @@ import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import { storage } from '@/services/storage'
 import { logger } from '@/utils/logger'
 import { deleteTempFiles } from '@/utils/temp-file-cleaner'
+import { useNotification } from '@/composables/useNotification'
 
 // 接口定义
 interface ScreenLockSettings {
@@ -294,6 +295,7 @@ const uploadedTempFiles = ref<string[]>([])
 
 // 认证信息
 const authStore = useAuthStore()
+const { confirm } = useNotification()
 
 // 计算属性
 const uploadUrl = computed(() => '/api/screen-lock/upload/screen-lock')
@@ -395,9 +397,9 @@ const saveSettings = async () => {
 
 const resetForm = async () => {
   try {
-    await ElMessageBox.confirm('确定要重置所有设置吗？', '确认重置', {
+    if (!await confirm('确定要重置所有设置吗？', '确认重置', {
       type: 'warning'
-    })
+    })) return
 
     await cleanupTempFiles()
     Object.assign(screenLockForm, {
@@ -729,7 +731,7 @@ onUnmounted(() => {
 }
 
 // 响应式设计
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .screen-lock-settings {
     .card-header,
     .card-content,

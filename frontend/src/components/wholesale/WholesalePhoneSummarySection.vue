@@ -129,15 +129,15 @@ defineProps<Props>()
 
 <style lang="scss" scoped>
 .form-section {
-  margin-bottom: 24px;
-  padding-bottom: 24px;
+  margin-bottom: var(--tf-space-6);
+  padding-bottom: var(--tf-space-6);
   border-bottom: 1px solid var(--tf-color-surface-ant);
 }
 
 .phones-display {
-  margin: 16px 0;
+  margin: var(--tf-space-4) 0;
   border: 1px solid var(--tf-color-border-element);
-  border-radius: 8px;
+  border-radius: var(--tf-radius-card);
   overflow: hidden;
 }
 
@@ -156,7 +156,7 @@ defineProps<Props>()
 }
 
 .phone-item {
-  padding: 12px 16px;
+  padding: var(--tf-space-3) var(--tf-space-4);
   border-bottom: 1px solid var(--tf-color-surface-ant);
 }
 
@@ -186,8 +186,8 @@ defineProps<Props>()
   height: 24px;
   background: var(--tf-color-indigo-brand);
   color: white;
-  border-radius: 50%;
-  font-size: 12px;
+  border-radius: var(--tf-radius-full);
+  font-size: var(--tf-font-caption);
   font-weight: 600;
   flex-shrink: 0;
 }
@@ -201,7 +201,7 @@ defineProps<Props>()
 .phone-prices {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--tf-space-3);
 }
 
 .price-item {
@@ -211,7 +211,7 @@ defineProps<Props>()
 }
 
 .price-label {
-  font-size: 12px;
+  font-size: var(--tf-font-caption);
   color: var(--color-info);
   white-space: nowrap;
 }
@@ -240,9 +240,9 @@ defineProps<Props>()
 
 .phone-extra {
   display: flex;
-  gap: 16px;
+  gap: var(--tf-space-4);
   padding-left: 34px;
-  font-size: 12px;
+  font-size: var(--tf-font-caption);
   color: var(--color-info);
   flex-wrap: wrap;
 }
@@ -252,27 +252,27 @@ defineProps<Props>()
 }
 
 .price-summary {
-  margin-top: 16px;
-  padding: 16px;
+  margin-top: var(--tf-space-4);
+  padding: var(--tf-space-4);
   background: var(--tf-color-surface);
-  border-radius: 8px;
+  border-radius: var(--tf-radius-card);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 16px;
+  gap: var(--tf-space-4);
 }
 
 .summary-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 14px;
+  font-size: var(--tf-font-body);
   flex: 1;
 }
 
 .summary-item.profit {
-  margin-top: 8px;
-  padding-top: 8px;
+  margin-top: var(--tf-space-2);
+  padding-top: var(--tf-space-2);
   border-top: 1px dashed var(--color-border);
   font-weight: 600;
   color: var(--color-success);
@@ -285,8 +285,8 @@ defineProps<Props>()
 
 @media (max-width: 767px) {
   .form-section {
-    margin-bottom: 20px;
-    padding-bottom: 20px;
+    margin-bottom: var(--tf-space-5);
+    padding-bottom: var(--tf-space-5);
   }
 
   .phone-main {
@@ -320,7 +320,7 @@ defineProps<Props>()
   .phone-prices-two-col {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
+    gap: var(--tf-space-2);
   }
 
   .phone-prices-two-col .price-item {
@@ -328,12 +328,12 @@ defineProps<Props>()
     flex-direction: column;
     align-items: stretch;
     justify-content: flex-start;
-    gap: 4px;
+    gap: var(--tf-space-1);
     min-width: 0;
   }
 
   .phone-prices-two-col .price-label {
-    font-size: 12px;
+    font-size: var(--tf-font-caption);
     line-height: 1.2;
   }
 

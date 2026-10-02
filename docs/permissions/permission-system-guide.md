@@ -260,11 +260,21 @@ authStore.hasRole(['store_manager', 'finance_auditor'])
 
 ```vue
 <template>
-  <el-button v-permission="'sales_salesview:create'">新建销售</el-button>
-  <el-button v-permission="'sales_salesview:export'">导出</el-button>
-  <el-empty v-permission-not="'sales_salesview:view'" description="无页面权限" />
+  <PermissionGate :can-view="canView" module-name="销售管理">
+    <el-button v-if="canCreate">新建销售</el-button>
+    <el-button v-if="canExport">导出</el-button>
+  </PermissionGate>
 </template>
+
+<script setup lang="ts">
+import { PermissionGate } from '@/components/base'
+import { usePagePermissions } from '@/composables/usePagePermissions'
+
+const { canView, canCreate, canExport } = usePagePermissions('sales')
+</script>
 ```
+
+`v-permission` 仍可用于部分按钮显示，但不能替代页面级 `PermissionGate`，更不能替代后端接口的认证和授权。空状态使用 [DataEmptyState](../frontend/empty-state-standard.md)，不要直接新增 `el-empty`。
 
 ### 菜单渲染
 
@@ -427,32 +437,12 @@ router.get(
 
 ### 推荐接入方式
 
-前端优先使用现有能力：
+前端使用唯一字段权限组合式函数：
 
 - `frontend/src/composables/useFieldPermissions.ts`
-- `frontend/src/services/fieldPermissionService.ts`
-- `v-field-permission`
+- [字段权限使用指南](../frontend/field-permission-guide.md)
 
-示例：
-
-```vue
-<el-form-item
-  v-field-permission="{
-    module: 'sales_salesview',
-    field: 'price_info.purchase_price',
-    action: 'view'
-  }"
-  label="采购价"
->
-  <span>{{ row.purchase_price }}</span>
-</el-form-item>
-```
-
-说明：
-
-- `module` 应与模块真实 `module_key` 对齐。
-- 字段标识应与后端字段配置保持一致。
-- 字段可见、可编辑、可导出等规则，应统一来源于数据库配置结果。
+不要把字段权限数据当作秘密；浏览器端结果只用于界面控制。后端必须针对响应数据和写入请求执行字段级校验。
 
 ## 模块扫描与注册规则
 

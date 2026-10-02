@@ -3,17 +3,11 @@ import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from './router'
 // Element Plus 按需导入由 unplugin 自动处理
-import 'dayjs/locale/zh-cn'
-// 导入中文语言包和日期格式化
 import './styles.scss'
 import './styles/responsive.scss'
 import './styles/permission-toast.scss'
 import './styles/components/_dialog.scss'
 import './styles/components/_dialog-actions.scss'
-
-// 配置 dayjs 中文（如果项目使用 dayjs）
-import dayjs from 'dayjs'
-dayjs.locale('zh-cn')
 
 // 导入安全工具
 import { vSanitize, vEscapeHtml, initCSPReporting } from '@/utils/security'
@@ -60,11 +54,15 @@ import {
   applyDeviceRootClass,
   normalizeSafariPhoneViewportMeta
 } from '@/utils/device-detection'
+import { cleanupLegacySensitiveStorage } from '@/constants/storage'
 
 // 导入 Token 过期检测
 import { startTokenExpiryCheck } from '@/utils/token-expiry-check'
 
 // 移除开发环境模拟认证，使用真实登录
+
+// 启动即清理旧版本写入 localStorage 的认证和个人敏感数据。
+cleanupLegacySensitiveStorage()
 
 const app = createApp(App)
 
@@ -137,16 +135,6 @@ const initializeApp = async () => {
       logger.warn('站点设置初始化失败，使用公共默认配置', error)
     })
 
-    // 初始化 Composable 工具集。该入口会导出较多工具，延后加载避免撑大首屏包。
-    setTimeout(async () => {
-      try {
-        const { ComposableToolkit } = await import('@/composables')
-        ComposableToolkit.init()
-      } catch (error) {
-        // Composable工具集初始化失败，静默处理
-      }
-    }, 150)
-
     // CSRF 初始化延后
     setTimeout(async () => {
       try {
@@ -176,47 +164,60 @@ const initializeApp = async () => {
       // Token 过期检测启动失败，静默处理
     }
 
-    // 性能监控延后初始化
-    setTimeout(async () => {
-      try {
-        const { performanceMonitor } = await import('@/utils/performanceMonitor')
-        if (window.__TF2025__) {
-          window.__TF2025__.performance = performanceMonitor
+    // Initialize business-only tooling after route resolution, not on the login screen.
+    let businessRuntimeInitialized = false
+    const initializeBusinessRuntime = (path: string) => {
+      if (businessRuntimeInitialized || path === '/login' || path.startsWith('/m/login')) {
+        return
+      }
+      businessRuntimeInitialized = true
+
+      void ensureIconAssets()
+
+      setTimeout(async () => {
+        try {
+          const { ComposableToolkit } = await import('@/composables')
+          ComposableToolkit.init()
+        } catch (error) {
+          // Composable工具集初始化失败，静默处理
         }
-        performanceMonitor.startMonitoring()
-      } catch (error) {
-        // 性能监控启动失败，静默处理
-      }
-    }, 300)
+      }, 150)
 
-    // 注册全局组件
-    setTimeout(async () => {
-      try {
-        const { registerGlobalComponents } = await import('@/components/index')
-        await registerGlobalComponents(app)
-      } catch (error) {
-        // 全局组件注册失败，静默处理
-      }
-    }, 350)
+      setTimeout(async () => {
+        try {
+          const { performanceMonitor } = await import('@/utils/performanceMonitor')
+          if (window.__TF2025__) {
+            window.__TF2025__.performance = performanceMonitor
+          }
+          performanceMonitor.startMonitoring()
+        } catch (error) {
+          // 性能监控启动失败，静默处理
+        }
+      }, 300)
 
-    // 滚动动画延后初始化
-    setTimeout(async () => {
-      try {
-        const { initScrollAnimations } = await import('@/utils/scrollAnimation')
-        initScrollAnimations()
-      } catch (error) {
-        // 滚动动画初始化失败，静默处理
-      }
-    }, 400)
+      setTimeout(async () => {
+        try {
+          const { registerGlobalComponents } = await import('@/components/index')
+          await registerGlobalComponents(app)
+        } catch (error) {
+          // 全局组件注册失败，静默处理
+        }
+      }, 350)
 
-    // 图标 CDN 只在离开登录页后加载，避免登录首屏产生无关外部请求。
-    const loadRouteIconAssets = (path: string) => {
-      if (path !== '/login' && !path.startsWith('/m/login')) {
-        void ensureIconAssets()
-      }
+      setTimeout(async () => {
+        try {
+          const { initScrollAnimations } = await import('@/utils/scrollAnimation')
+          initScrollAnimations()
+        } catch (error) {
+          // 滚动动画初始化失败，静默处理
+        }
+      }, 400)
     }
-    loadRouteIconAssets(router.currentRoute.value.path)
-    router.afterEach((to) => loadRouteIconAssets(to.path))
+
+    void router.isReady().then(() => {
+      initializeBusinessRuntime(router.currentRoute.value.path)
+      router.afterEach((to) => initializeBusinessRuntime(to.path))
+    })
 
     // 添加到全局状态
     if (window.__TF2025__) {

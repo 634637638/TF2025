@@ -111,12 +111,13 @@
 
 <script setup lang="ts">
 import { ref, computed, onBeforeUnmount, watch, type CSSProperties } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { scanOptimizer, type DeviceInfo } from '@/utils/scanOptimizer'
 import { parseDeviceScanResult } from '@/utils/device-scan-result'
 import zxingReaderWasmUrl from 'zxing-wasm/reader/zxing_reader.wasm?url'
 import { prepareZXingModule, readBarcodes } from 'zxing-wasm/reader'
 import type { CancelEmits, UpdateVisibleEmits, VisibleProps } from '@/types/component'
+import { useNotification } from '@/composables/useNotification'
 
 interface ScannerPhone {
   brand?: string
@@ -200,6 +201,7 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const emit = defineEmits<Emits>()
+const { confirm } = useNotification()
 
 // 响应式数据
 const videoRef = ref<HTMLVideoElement>()
@@ -449,7 +451,7 @@ const startScanning = async () => {
     stopScanning()
     const errorMessage = formatCameraError(error)
 
-    void ElMessageBox.confirm(
+    const confirmed = await confirm(
       `摄像头启动失败：${errorMessage}`,
       '扫码失败',
       {
@@ -457,7 +459,8 @@ const startScanning = async () => {
         cancelButtonText: '关闭',
         type: 'warning'
       }
-    ).then(openManualInput).catch(handleCancel)
+    )
+    if (confirmed) openManualInput()
   }
 }
 

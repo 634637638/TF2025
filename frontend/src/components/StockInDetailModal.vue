@@ -245,11 +245,11 @@
       description="暂无数据"
     />
 
-    <template #footer>
-      <div
-        class="dialog-footer"
-        :class="{ 'mobile': isMobile }"
-      >
+    <template
+      v-if="!isMobile"
+      #footer
+    >
+      <div class="tf-dialog-actions dialog-footer">
         <el-button
           :icon="Printer"
           :size="isMobile ? 'default' : 'large'"
@@ -364,7 +364,7 @@ const loadOperationHistory = (record: StockInRecord) => {
   }
 
   operationHistory.value = history.sort((a, b) =>
-    new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+    (TimeUtil.parse(String(b.timestamp))?.valueOf() || 0) - (TimeUtil.parse(String(a.timestamp))?.valueOf() || 0)
   )
 }
 
@@ -421,7 +421,7 @@ const handleExport = async () => {
   try {
     const exportData = {
       ...props.record,
-      export_time: TimeUtil.now().toISOString()
+      export_time: TimeUtil.toISOString()
     }
 
     await exportTextFile({
@@ -739,7 +739,7 @@ const generatePrintContent = (record: StockInRecord) => {
         ` : ''}
 
         <div class="print-footer">
-          <p>打印时间: ${printText(formatDateTime(TimeUtil.now().toISOString()))}</p>
+          <p>打印时间: ${printText(TimeUtil.nowFormatted(TIME_FORMATS.DATETIME))}</p>
           <p>此单据由系统自动生成，无需签字</p>
         </div>
       </body>
@@ -869,25 +869,8 @@ const generatePrintContent = (record: StockInRecord) => {
   color: var(--el-text-color-secondary);
 }
 
-.dialog-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-}
-
-.dialog-footer.mobile {
-  justify-content: stretch;
-}
-
-.empty-content {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 300px;
-}
-
 /* 响应式调整 */
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .detail-section {
     padding: 16px;
     margin-bottom: 16px;
@@ -942,8 +925,5 @@ const generatePrintContent = (record: StockInRecord) => {
     overflow: visible;
   }
 
-  .dialog-footer {
-    display: none;
-  }
 }
 </style>

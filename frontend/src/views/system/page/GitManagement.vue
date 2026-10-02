@@ -11,56 +11,35 @@
         <PageHeader title="Git 仓库管理">
           <template #actions>
             <div class="action-buttons">
-              <button
+              <el-button
                 v-if="canCreate"
-                class="btn btn-success"
+                type="success"
+                :loading="backingUpArchive"
                 :disabled="loading || backingUpArchive"
                 @click="handleCreateArchiveBackup"
               >
-                <InlineLoading
-                  v-if="backingUpArchive"
-                  text="备份中..."
-                  size="small"
-                  variant="inherit"
-                />
-                <template v-else>
-                  <i class="fas fa-file-archive" />
-                  <span>压缩包备份</span>
-                </template>
-              </button>
-              <button
+                <i class="fas fa-file-archive" />
+                {{ backingUpArchive ? '备份中...' : '压缩包备份' }}
+              </el-button>
+              <el-button
                 v-if="shouldShowRestoreMain && canEdit"
-                class="btn btn-primary"
+                type="primary"
+                :loading="restoringMain"
                 :disabled="loading || restoringMain"
                 @click="handleRestoreMain"
               >
-                <InlineLoading
-                  v-if="restoringMain"
-                  text="恢复中..."
-                  size="small"
-                  variant="inherit"
-                />
-                <template v-else>
-                  <i class="fas fa-house" />
-                  <span>恢复到 main</span>
-                </template>
-              </button>
-              <button
-                class="btn btn-outline-secondary"
+                <i class="fas fa-house" />
+                {{ restoringMain ? '恢复中...' : '恢复到 main' }}
+              </el-button>
+              <el-button
+                type="default"
+                :loading="loading"
                 :disabled="loading"
                 @click="fetchGitStatus"
               >
-                <InlineLoading
-                  v-if="loading"
-                  text="刷新中..."
-                  size="small"
-                  variant="inherit"
-                />
-                <template v-else>
-                  <i class="fas fa-sync-alt" />
-                  <span>刷新状态</span>
-                </template>
-              </button>
+                <i class="fas fa-sync-alt" />
+                {{ loading ? '刷新中...' : '刷新状态' }}
+              </el-button>
             </div>
           </template>
         </PageHeader>
@@ -210,21 +189,18 @@
                     <i class="fas fa-history" />
                     提交历史
                   </h3>
-                  <button
+                  <el-button
                     class="btn-icon"
+                    type="default"
+                    :loading="loadingHistory"
                     :disabled="loadingHistory"
                     @click="fetchCommitHistory"
                   >
-                    <InlineLoading
-                      v-if="loadingHistory"
-                      size="small"
-                      variant="inherit"
-                    />
                     <i
-                      v-else
+                      v-if="!loadingHistory"
                       class="fas fa-sync-alt"
                     />
-                  </button>
+                  </el-button>
                 </div>
                 <div class="card-body">
                   <div
@@ -387,22 +363,16 @@
                         <span>自动推送到远程仓库</span>
                       </label>
                     </div>
-                    <button
-                      type="submit"
-                      class="btn btn-primary btn-block"
+                    <el-button
+                      native-type="submit"
+                      type="primary"
+                      class="btn-block"
+                      :loading="committing"
                       :disabled="!canEdit || committing || shouldShowRestoreMain || (!gitStatus?.hasChanges && !canPushExistingCommits)"
                     >
-                      <InlineLoading
-                        v-if="committing"
-                        :text="commitButtonText"
-                        size="small"
-                        variant="inherit"
-                      />
-                      <template v-else>
-                        <i class="fas fa-upload" />
-                        <span>{{ commitButtonText }}</span>
-                      </template>
-                    </button>
+                      <i class="fas fa-upload" />
+                      {{ commitButtonText }}
+                    </el-button>
                   </form>
                 </div>
               </div>
@@ -416,54 +386,36 @@
                 </div>
                 <div class="card-body">
                   <div class="action-buttons">
-                    <button
-                      class="btn btn-success btn-block"
+                    <el-button
+                      type="success"
+                      class="btn-block"
+                      :loading="pulling"
                       :disabled="!canEdit || pulling || shouldShowRestoreMain"
                       @click="handlePull"
                     >
-                      <InlineLoading
-                        v-if="pulling"
-                        text="拉取中..."
-                        size="small"
-                        variant="inherit"
-                      />
-                      <template v-else>
-                        <i class="fas fa-download" />
-                        <span>拉取远程更新</span>
-                      </template>
-                    </button>
-                    <button
-                      class="btn btn-warning btn-block"
+                      <i class="fas fa-download" />
+                      {{ pulling ? '拉取中...' : '拉取远程更新' }}
+                    </el-button>
+                    <el-button
+                      type="warning"
+                      class="btn-block"
+                      :loading="pushing"
                       :disabled="!canEdit || pushing || shouldShowRestoreMain"
                       @click="handlePush"
                     >
-                      <InlineLoading
-                        v-if="pushing"
-                        text="推送中..."
-                        size="small"
-                        variant="inherit"
-                      />
-                      <template v-else>
-                        <i class="fas fa-cloud-upload-alt" />
-                        <span>推送到远程</span>
-                      </template>
-                    </button>
-                    <button
-                      class="btn btn-danger btn-block"
+                      <i class="fas fa-cloud-upload-alt" />
+                      {{ pushing ? '推送中...' : '推送到远程' }}
+                    </el-button>
+                    <el-button
+                      type="danger"
+                      class="btn-block"
+                      :loading="discarding"
                       :disabled="!canEdit || discarding || !gitStatus?.hasChanges"
                       @click="handleDiscard"
                     >
-                      <InlineLoading
-                        v-if="discarding"
-                        text="丢弃中..."
-                        size="small"
-                        variant="inherit"
-                      />
-                      <template v-else>
-                        <i class="fas fa-trash-alt" />
-                        <span>丢弃更改</span>
-                      </template>
-                    </button>
+                      <i class="fas fa-trash-alt" />
+                      {{ discarding ? '丢弃中...' : '丢弃更改' }}
+                    </el-button>
                   </div>
                 </div>
               </div>
@@ -509,8 +461,9 @@
 </template>
 
 <script setup>
+import { confirmAction, alertAction } from '@/utils/message-box'
 import { ref, reactive, computed, onMounted, watch } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { unifiedApi } from '@/utils/unified-api'
 import { PageHeader, PermissionGate } from '@/components/base'
 import InlineLoading from '@/components/InlineLoading.vue'
@@ -925,7 +878,7 @@ const handleDiscard = async () => {
   }
 
   try {
-    await ElMessageBox.confirm(
+    await confirmAction(
       '此操作将丢弃所有未提交的更改，包括添加、修改和删除的文件，是否继续？',
       '警告',
       {
@@ -967,7 +920,7 @@ const handleCheckoutCommit = async (commitHash, mode) => {
       ? '重置操作将永久丢弃所有未提交的更改，此操作不可逆！是否继续？'
       : '将创建临时分支查看此版本，您可以随时切换回来。是否继续？'
 
-    await ElMessageBox.confirm(
+    await confirmAction(
       `${warningText}\n\n版本: ${commitHash.substring(0, 8)}`,
       mode === 'reset' ? '危险操作警告' : '确认切换',
       {
@@ -1006,7 +959,7 @@ const handleDeleteCommit = async (commitHash, commitMessage) => {
   }
 
   try {
-    await ElMessageBox.confirm(
+    await confirmAction(
       `确定要从历史列表隐藏这条记录吗？\n\n版本: ${commitHash.substring(0, 8)}\n${getCommitTitle(commitMessage)}\n\n此操作不会删除当前实际文件，也不会修改工作区代码。`,
       '隐藏历史记录',
       {
@@ -1043,7 +996,7 @@ const handleCreateArchiveBackup = async () => {
   }
 
   try {
-    await ElMessageBox.confirm(
+    await confirmAction(
       '系统会把当前项目的核心文件打成一个本地压缩包，保存在项目根目录下的“本地备份”文件夹内。默认包含前端、后端和必要根文件，不会把非必要文件一起打包。是否继续？',
       '创建本地压缩包备份',
       {
@@ -1059,7 +1012,7 @@ const handleCreateArchiveBackup = async () => {
 
     if (response.success) {
       const backup = response.data?.backup
-      ElMessageBox.alert(
+      alertAction(
         [
           response.data?.message || '本地压缩包备份创建成功',
           backup?.fileName ? `文件名：${backup.fileName}` : '',
@@ -1098,7 +1051,7 @@ const handleRestoreMain = async () => {
   }
 
   try {
-    await ElMessageBox.confirm(
+    await confirmAction(
       '系统会先保留你当前这份代码，再尝试恢复到 main。若可以自动合并，就会把当前分支的最新代码带回主线，不会直接被旧的 main 覆盖。是否继续？',
       '恢复到 main',
       {
@@ -1403,18 +1356,6 @@ watch(canView, async (value) => {
   user-select: none;
 }
 
-.empty-state {
-  text-align: center;
-  padding: 40px 20px;
-  color: var(--color-info);
-}
-
-.empty-state i {
-  font-size: 48px;
-  margin-bottom: 12px;
-  opacity: 0.5;
-}
-
 .btn-block {
   width: 100%;
 }
@@ -1429,7 +1370,7 @@ watch(canView, async (value) => {
   cursor: pointer;
 }
 
-@media (max-width: 1023px) {
+@media (max-width: 1024px) {
   .main-grid {
     grid-template-columns: 1fr;
   }

@@ -14,6 +14,7 @@ const dataMaskingService = require('../services/dataMaskingService')
 const { generateMemberNumber } = require('../utils/member-number')
 const { getUploadSubdir, getUploadUrl, getRelativeUploadPathFromUrl, getUploadPathFromUrl } = require('../utils/upload-paths')
 const { validateUploadedFileSignature, removeUploadedFiles } = require('../utils/upload-file-validation')
+const { searchCustomers: searchCustomerOptions } = require('../services/customer-search.service')
 
 const REPAIR_FIELD_MODULE_KEY = 'repairs_repairsview'
 const hasRepairAction = (req, action) => {
@@ -349,11 +350,11 @@ router.get('/options', unifiedAuth, requirePermission('repairs:view'), async (re
   try {
     const db = await getDb()
     const [brands, models, colors, memories, technicians] = await Promise.all([
-      db.execute('SELECT id, name FROM brands WHERE status = 1 OR status IS NULL ORDER BY sort_order, id LIMIT 200'),
-      db.execute('SELECT id, name, brand_id FROM models WHERE status = 1 OR status IS NULL ORDER BY sort_order, id LIMIT 500'),
-      db.execute('SELECT id, name FROM colors WHERE status = 1 OR status IS NULL ORDER BY sort_order, id LIMIT 200'),
-      db.execute('SELECT id, size FROM memories WHERE status = 1 OR status IS NULL ORDER BY sort_order, id LIMIT 200'),
-      db.execute('SELECT id, name, username FROM users WHERE status = 1 ORDER BY name, id LIMIT 200')
+      db.execute('SELECT id, name FROM brands WHERE status = 1 OR status IS NULL ORDER BY sort_order, id'),
+      db.execute('SELECT id, name, brand_id FROM models WHERE status = 1 OR status IS NULL ORDER BY sort_order, id'),
+      db.execute('SELECT id, name FROM colors WHERE status = 1 OR status IS NULL ORDER BY sort_order, id'),
+      db.execute('SELECT id, size FROM memories WHERE status = 1 OR status IS NULL ORDER BY sort_order, id'),
+      db.execute('SELECT id, name, username FROM users WHERE status = 1 ORDER BY name, id')
     ])
     const hiddenFields = await getRepairHiddenFields(req)
     return ApiResponse.success(res, {
@@ -381,12 +382,14 @@ router.get('/customers/search', unifiedAuth, requireAnyPermission(['repairs:view
       ['customer_info.customer_phone', 'phone']
     ].filter(([field]) => !hiddenFields.has(field))
     if (!columns.length) return res.status(403).json({ success: false, message: '没有可用的客户检索字段', code: 'FIELD_PERMISSION_DENIED' })
-    const db = await getDb()
-    const pattern = `%${keyword}%`
-    const [rows] = await db.execute(
-      `SELECT id, name, phone FROM customers WHERE status = 1 AND (${columns.map(([, column]) => `${column} LIKE ?`).join(' OR ')}) ORDER BY id DESC LIMIT 20`,
-      columns.map(() => pattern)
-    )
+    const result = await searchCustomerOptions({
+      keyword,
+      page: req.query.page,
+      page_size: req.query.page_size,
+      fields: ['id', 'name', 'phone'],
+      search_fields: columns.map(([, column]) => column)
+    })
+    const rows = result.records
     return ApiResponse.success(res, rows.map(row => ({
       id: row.id,
       name: hiddenFields.has('customer_info.customer_name') ? null : row.name,
@@ -595,7 +598,7 @@ router.post('/', unifiedAuth, requirePermission('repairs:create'), rejectHiddenR
       const [brandRows] = await db.execute('SELECT id FROM brands WHERE id = ?', [brandId])
       if (!brandRows.length) return ApiResponse.badRequest(res, '品牌不存在')
     }
-    for (const [field, value, table, label] of [
+    for (const [_field, value, table, label] of [
       ['color_id', colorId, 'colors', '颜色'],
       ['memory_id', memoryId, 'memories', '内存']
     ]) {

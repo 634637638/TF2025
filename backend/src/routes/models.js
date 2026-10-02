@@ -1,12 +1,18 @@
 const express = require('express')
 const router = express.Router()
-const { unifiedAuth, requirePermission } = require('../middleware/unified-auth')
+const { unifiedAuth, requirePermission, requireAnyPermission } = require('../middleware/unified-auth')
 const ApiResponse = require('../utils/response')
 const { getDatabase, isConnected } = require('../config/database')
 const { cacheMiddleware, clearCache } = require('../middleware/cache')
 const { CACHE_TTL, PAGINATION } = require('../config/constants')
 const log = require('../utils/log')
 const { parseStatusFilter } = require('../utils/status')
+const {
+  normalizeReferencePagination,
+  buildReferenceOrder,
+  buildPagination,
+  listModelsByBrand
+} = require('../services/reference-options.service')
 
 const MODEL_COLUMNS = 'm.id, m.brand_id, m.name, m.status, m.sort_order, m.created_at, m.updated_at'
 const MODEL_COLUMNS_WITH_BRAND = `${MODEL_COLUMNS}, b.name AS brand_name`
@@ -31,7 +37,7 @@ const clearModelsRouteCache = () => {
 }
 
 // 获取型号列表
-router.get('/', unifiedAuth, requirePermission('models:view'), cacheMiddleware({ ttl: CACHE_TTL.SHORT }), async (req, res) => {
+router.get('/', unifiedAuth, requireAnyPermission(['models:view', 'brands:view', 'inventory:view', 'query:view', 'h5-templates:view', 'h5-admin:view']), cacheMiddleware({ ttl: CACHE_TTL.SHORT }), async (req, res) => {
   try {
     if (!isConnected()) {
       return ApiResponse.error(res, '数据库未连接', 500)
@@ -45,12 +51,29 @@ router.get('/', unifiedAuth, requirePermission('models:view'), cacheMiddleware({
       name,
       status,
       sort_by,
-      sort_order
+      sort_order,
+      all = false,
+      active_only = false,
+      include_id
     } = req.query
 
-    const pageSizeNum = Math.min(PAGINATION.MAX_LIMIT, Math.max(1, parseInt(page_size) || PAGINATION.DEFAULT_LIMIT))
-    const pageNum = parseInt(page) || PAGINATION.DEFAULT_PAGE
-    const offset = (pageNum - 1) * pageSizeNum
+    if ((all === 'true' || all === true) && (active_only === 'true' || active_only === true)) {
+      const models = await listModelsByBrand({
+        brand_id,
+        name,
+        include_id,
+        activeOnly: true
+      })
+      return ApiResponse.success(res, models.map(formatModel))
+    }
+
+    const { page: pageNum, page_size: pageSizeNum, offset } = normalizeReferencePagination({
+      page,
+      page_size,
+      defaultPage: PAGINATION.DEFAULT_PAGE,
+      defaultPageSize: PAGINATION.DEFAULT_LIMIT,
+      maxPageSize: PAGINATION.MAX_LIMIT
+    })
 
     // 使用JOIN查询，直接关联品牌表
     let baseQuery = `
@@ -69,8 +92,13 @@ router.get('/', unifiedAuth, requirePermission('models:view'), cacheMiddleware({
     const queryParams = []
 
     if (brand_id) {
+      let modelBrandId = brand_id
+      if (!/^\d+$/.test(String(brand_id))) {
+        const [brands] = await pool.execute('SELECT id FROM brands WHERE name = ? LIMIT 1', [String(brand_id)])
+        modelBrandId = brands[0]?.id || 0
+      }
       conditions.push('m.brand_id = ?')
-      queryParams.push(brand_id)
+      queryParams.push(modelBrandId)
     }
 
     // 状态筛选
@@ -93,16 +121,17 @@ router.get('/', unifiedAuth, requirePermission('models:view'), cacheMiddleware({
     }
 
     // 排序（使用表别名 m. 避免歧义）
-    const validSortColumns = ['id', 'name', 'sort_order', 'created_at', 'updated_at', 'brand_id']
-    const sortColumn = validSortColumns.includes(sort_by) ? sort_by : 'sort_order'
-    const sortDirection = String(sort_order).toLowerCase() === 'desc' ? 'DESC' : 'ASC'
-    const fallbackOrder = sortColumn === 'sort_order'
-      ? ', m.name ASC, m.id ASC'
-      : ', m.sort_order ASC, m.name ASC, m.id ASC'
-    baseQuery += ` ORDER BY m.${sortColumn} ${sortDirection}${fallbackOrder}`
+    const order = buildReferenceOrder({
+      sort_by,
+      sort_order,
+      allowed: ['id', 'name', 'sort_order', 'created_at', 'updated_at', 'brand_id'],
+      fallback: ['sort_order', 'name', 'id']
+    }).replace(/(^|, )([a-z_]+)/g, '$1m.$2')
+    baseQuery += ` ORDER BY ${order}`
 
-    // 分页
-    const finalQuery = `${baseQuery} LIMIT ${pageSizeNum} OFFSET ${offset}`
+    const returnAll = all === 'true' || all === true
+    // 参考选项请求使用 all=true，返回完整集合；管理列表仍按分页返回。
+    const finalQuery = returnAll ? baseQuery : `${baseQuery} LIMIT ${pageSizeNum} OFFSET ${offset}`
 
     // 执行查询
     const [[models], [countResult]] = await Promise.all([
@@ -110,18 +139,12 @@ router.get('/', unifiedAuth, requirePermission('models:view'), cacheMiddleware({
       pool.execute(baseCountQuery, queryParams)
     ])
     const total = Number(countResult[0].total) || 0
-    const total_pages = Math.ceil(total / pageSizeNum)
-
+    if (returnAll) {
+      return ApiResponse.success(res, models.map(formatModel))
+    }
     ApiResponse.success(res, {
       models: models.map(formatModel),
-      pagination: {
-        page: pageNum,
-        page_size: pageSizeNum,
-        total,
-        total_pages,
-        has_next: pageNum < total_pages,
-        has_prev: pageNum > 1
-      }
+      pagination: buildPagination(pageNum, pageSizeNum, total)
     })
   } catch (error) {
     log.error('获取型号列表失败:', error)

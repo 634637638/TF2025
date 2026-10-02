@@ -720,7 +720,7 @@ const moduleActionLabel = (action: string) => ({
   color: var(--tf-color-slate-custom);
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .log-description-cell {
     align-items: flex-start;
   }

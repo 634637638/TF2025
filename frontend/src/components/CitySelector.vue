@@ -14,24 +14,21 @@
           class="required"
         >*</span>
       </label>
-      <select
+      <el-select
         v-model="selectedProvince"
         class="form-control"
+        placeholder="请选择省份"
         :class="{ 'is-invalid': error && !selectedProvince }"
         :disabled="disabled"
         @change="handleProvinceChange"
       >
-        <option value="">
-          请选择省份
-        </option>
-        <option
+        <el-option
           v-for="province in provinces"
           :key="province.code"
+          :label="province.name"
           :value="province.code"
-        >
-          {{ province.name }}
-        </option>
-      </select>
+        />
+      </el-select>
       <div
         v-if="error && !selectedProvince"
         class="invalid-feedback"
@@ -47,24 +44,21 @@
           class="required"
         >*</span>
       </label>
-      <select
+      <el-select
         v-model="selectedCity"
         class="form-control"
+        placeholder="请选择城市"
         :class="{ 'is-invalid': error && !selectedCity }"
         :disabled="disabled || (!selectedProvince && !hideProvince)"
         @change="handleCityChange"
       >
-        <option value="">
-          请选择城市
-        </option>
-        <option
+        <el-option
           v-for="city in cities"
           :key="city.code"
+          :label="city.name"
           :value="city.name"
-        >
-          {{ city.name }}
-        </option>
-      </select>
+        />
+      </el-select>
       <div
         v-if="error && !selectedCity"
         class="invalid-feedback"
@@ -852,15 +846,36 @@ defineExpose({
       }
     }
 
-    select.form-control {
-      background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
-      background-position: right 12px center;
-      background-repeat: no-repeat;
-      background-size: 16px;
-      appearance: none;
-      -webkit-appearance: none;
-      -moz-appearance: none;
-      padding-right: 40px;
+    .form-control {
+      :deep(.el-select__wrapper) {
+        min-height: 44px;
+        padding: 12px 16px;
+        border: 2px solid var(--tf-color-neutral-200);
+        border-radius: 8px;
+        background: white;
+        box-shadow: none;
+        font-size: 14px;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+      }
+
+      :deep(.el-select__wrapper.is-focused) {
+        border-color: var(--tf-color-blue-500);
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+      }
+
+      &.is-invalid :deep(.el-select__wrapper) {
+        border-color: var(--tf-color-red-500);
+      }
+
+      &.is-disabled :deep(.el-select__wrapper) {
+        background: var(--tf-color-neutral-50);
+        color: var(--tf-color-neutral-500);
+        cursor: not-allowed;
+      }
+
+      :deep(.el-select__placeholder) {
+        color: var(--tf-color-neutral-400);
+      }
     }
 
     .invalid-feedback {
@@ -872,7 +887,7 @@ defineExpose({
 }
 
 // 移动端适配
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .city-selector {
     flex-direction: column;
     gap: 12px;

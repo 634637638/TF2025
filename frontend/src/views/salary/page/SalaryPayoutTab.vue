@@ -54,7 +54,7 @@
           :model-value="month"
           type="month"
           placeholder="选择月份"
-          value-format="YYYY-MM"
+          :value-format="TIME_FORMATS.YEAR_MONTH"
           @update:model-value="emit('update:month', $event)"
           @change="emit('monthChange')"
         />
@@ -347,7 +347,7 @@
                 v-if="row.payoutRecord"
                 class="payout-salary-amount text-success"
               >
-                ¥{{ Number(row.payoutRecord.net_salary || 0).toFixed(2) }}
+                ¥{{ formatAmount(row.payoutRecord.net_salary) }}
               </span>
               <span
                 v-else
@@ -501,6 +501,7 @@
 </template>
 
 <script setup lang="ts">
+import { TIME_FORMATS } from '@/utils/time'
 import { computed, ref } from 'vue'
 import { shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import Pagination from '@/components/Pagination.vue'
@@ -511,6 +512,7 @@ import type {
   SalaryEmployeeSalesStats
 } from '../salary-employee-data'
 import type { SalaryPayoutRow } from '../useSalaryPayoutTable'
+import { formatAmount } from '@/utils/format'
 
 type PayoutStatus = 'paid' | 'unpaid'
 
@@ -652,7 +654,7 @@ defineExpose({ resetInteraction })
   font-weight: 600;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .table-section > .section-header {
     display: none;
   }

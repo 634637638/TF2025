@@ -115,7 +115,7 @@
           <div class="order-footer">
             <div class="order-total">
               <span class="label">订单金额：</span>
-              <span class="amount">¥{{ parseFloat(order.total_amount).toFixed(2) }}</span>
+              <span class="amount">¥{{ formatAmount(order.total_amount) }}</span>
             </div>
             <i class="fas fa-chevron-right arrow-icon" />
           </div>
@@ -178,7 +178,7 @@ import { useLoadingState } from '@/composables'
 import { logger } from '@/utils/logger'
 import { storage } from '@/services/storage'
 import { H5_STORAGE_KEYS } from '@/constants/storage'
-import { formatDateTime as formatGlobalDateTime } from '@/utils/format'
+import { formatAmount, formatDateTime as formatGlobalDateTime } from '@/utils/format'
 const router = useRouter()
 
 const customer_phone = ref('')
@@ -497,14 +497,6 @@ const goHome = () => {
     width: 100%;
     max-width: 200px;
   }
-}
-
-// 空状态
-.empty-state {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: calc(100vh - 150px);
 }
 
 // 默认提示

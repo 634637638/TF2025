@@ -612,7 +612,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, nextTick } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import type { TagProps } from 'element-plus'
 import {
   WarningFilled,
@@ -627,10 +627,11 @@ import {
 } from '@element-plus/icons-vue'
 import { useErrorLogger, ErrorLevel, ErrorType } from '@/utils/error-logger'
 import type { ErrorLogEntry } from '@/utils/error-logger'
-import { TimeUtil } from '@/utils/time'
+import { TIME_FORMATS, TimeUtil } from '@/utils/time'
 import Pagination from '@/components/Pagination.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import { useImportExport } from '@/composables/useImportExport'
+import { useNotification } from '@/composables/useNotification'
 
 // 错误日志
 const {
@@ -641,6 +642,7 @@ const {
   exportLogs: exportErrorLogs,
   clearLogs: clearErrorLogs
 } = useErrorLogger()
+const { confirm } = useNotification()
 const { exportTextFile, buildDateFilename } = useImportExport()
 
 // 响应式数据
@@ -678,7 +680,7 @@ const paginatedLogs = computed(() => {
 
 // 方法
 const formatTime = (timestamp: number) => {
-  return TimeUtil.format(timestamp, 'YYYY-MM-DD HH:mm:ss')
+  return TimeUtil.format(timestamp, TIME_FORMATS.DATETIME)
 }
 
 const getPercentage = (value: number, total: number) => {
@@ -804,9 +806,9 @@ const resolveError = async (errorId: string) => {
 
 const deleteError = async (_errorId: string) => {
   try {
-    await ElMessageBox.confirm('确定要删除这条错误记录吗？', '确认删除', {
+    if (!await confirm('确定要删除这条错误记录吗？', '确认删除', {
       type: 'warning'
-    })
+    })) return
     // TODO: 实现删除功能
     ElMessage.success('删除成功')
   } catch (error) {
@@ -830,11 +832,10 @@ const exportLogs = async () => {
 
 const clearLogs = async () => {
   try {
-    await ElMessageBox.confirm('确定要清空所有错误日志吗？此操作不可恢复！', '确认清空', {
+    if (!await confirm('确定要清空所有错误日志吗？此操作不可恢复！', '确认清空', {
       type: 'warning',
-      confirmButtonText: '确定清空',
-      confirmButtonClass: 'el-button--danger'
-    })
+      confirmButtonText: '确定清空'
+    })) return
     clearErrorLogs()
     ElMessage.success('清空成功')
   } catch (error) {

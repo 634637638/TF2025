@@ -31,6 +31,8 @@ PC 端公共表头使用 `38px` 高度和 `6px` 上下内边距，由 `admin-lay
 
 `admin-layout.css` 已由 `frontend/src/main.ts` 全局加载，页面不需要再次导入。
 
+`RentalsView.vue` 中由 `printContract()` 生成的原生 `<table>` 仅属于打印合同 HTML 模板，不是页面主数据表，不适用本规范的 `el-table` 要求。新增页面列表不得复制这种打印模板；页面可见的主数据表仍必须使用统一 `data-table` / `admin-data-table`。
+
 ## 3. 标准页面结构
 
 页面根节点、内容区、统计卡片和表格卡片使用以下 class：
@@ -362,7 +364,7 @@ const clearSelection = () => {
 | 操作按钮语义色与禁用色 | `--admin-action-view-*`、`--admin-action-edit-*`、`--admin-action-delete-*`、`--admin-action-pin-*`、`--admin-action-success-*`、`--admin-action-neutral-*`、`--admin-action-manage-*`、`--admin-action-finance-*`、`--admin-action-transfer-*`、`--admin-action-export-*`、`--admin-action-warning-*`、`--admin-action-disabled-*` |
 | 表格状态徽章内边距与圆角 | `--admin-data-table-badge-*` |
 
-桌面端变量定义在默认 `:root`，手机端统一覆盖放在 `@media (max-width: 768px)` 内。不要为 `320px`、`360px`、`375px`、`390px` 或 `430px` 分别创建表格字号。
+桌面端变量定义在默认 `:root`，手机端统一覆盖放在 `@media (max-width: 767px)` 内。不要为 `320px`、`360px`、`375px`、`390px` 或 `430px` 分别创建表格字号。
 
 ## 6. 手机端规则
 

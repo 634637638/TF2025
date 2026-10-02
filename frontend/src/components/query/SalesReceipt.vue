@@ -719,7 +719,7 @@ const handleSearchClear = () => {
   width: 100%;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .receipt-header {
     padding: 16px 20px;
   }
@@ -768,7 +768,7 @@ const handleSearchClear = () => {
 
 }
 
-@media (max-width: 480px) {
+@media (max-width: 479px) {
   .add-item-section {
     padding: 14px 16px;
   }
@@ -799,21 +799,18 @@ const handleSearchClear = () => {
 <style lang="scss">
 .sales-receipt-dialog {
   --dialog-max-width: 720px;
+  --tf-dialog-surface: var(--color-bg-white);
+  --tf-dialog-footer-bg: var(--color-bg-white);
+  --tf-dialog-body-padding-inline: 0px;
+  --tf-dialog-body-padding-block: 0px;
+  --tf-dialog-footer-padding-inline: var(--tf-space-5);
+  --tf-dialog-footer-padding-block-start: var(--tf-space-4);
+  --tf-dialog-footer-padding-block-end: var(--tf-space-5);
 }
 
-.sales-receipt-dialog .el-dialog__body {
-  padding: 0 !important;
-  background: var(--color-bg-white) !important;
-}
-
-.sales-receipt-dialog .el-dialog__footer {
-  padding: 16px 20px 20px !important;
-  background: var(--color-bg-white) !important;
-}
-
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .sales-receipt-dialog {
-    --dialog-side-gap: 12px;
+    --dialog-side-gap: var(--tf-space-3);
   }
 }
 </style>

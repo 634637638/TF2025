@@ -6,6 +6,7 @@ import {
   getCachedBrands,
   getCachedColors,
   getCachedMemories,
+  getModels,
   getCachedStores,
   getCachedSuppliers
 } from '@/services/reference-options'
@@ -458,7 +459,8 @@ export const loadStockInDropdownData = async (): Promise<StockInDropdownData> =>
     ? sortBySortOrder((suppliersRes.data || []).map(item => ({
       id: Number(item.id || 0),
       name: String(item.name || ''),
-      status: Number(item.status || 0)
+      status: Number(item.status || 0),
+      sort_order: Number(item.sort_order || 0)
     })) as Supplier[])
     : []
 
@@ -468,7 +470,8 @@ export const loadStockInDropdownData = async (): Promise<StockInDropdownData> =>
       id: Number(item.id || 0),
       name: String(item.name || ''),
       code: String(item.code || item.name || ''),
-      status: Number(item.status || 1)
+      status: Number(item.status || 1),
+      sort_order: Number(item.sort_order || 0)
     })) as unknown as Store[])
     : []
 
@@ -507,7 +510,7 @@ export const loadStockInDropdownData = async (): Promise<StockInDropdownData> =>
 }
 
 export const loadBrandModels = async (brandId: number): Promise<Model[]> => {
-  const response = await unifiedApi.get(`/brands/${brandId}/models`)
+  const response = await getModels({ brandId })
   if (!response.success || !response.data) {
     return []
   }

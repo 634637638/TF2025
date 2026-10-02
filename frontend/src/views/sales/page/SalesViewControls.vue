@@ -1,112 +1,120 @@
 <template>
-  <div class="view-controls">
+  <div class="sales-mode-tabs">
     <div
       v-if="canWholesalePermission || canProxyTransferPermission"
-      class="wholesale-actions"
+      class="sales-mode-tab-group operation-tabs"
     >
       <el-button
         v-if="canWholesalePermission"
         :type="operationMode === 'wholesale' ? 'success' : 'default'"
-        :class="{ active: operationMode === 'wholesale' }"
+        :class="['sales-mode-tab', { active: operationMode === 'wholesale' }]"
         size="small"
-        :disabled="!canWholesalePermission"
         @click="emit('wholesale')"
       >
         <i class="fas fa-boxes" />
         <span>调货</span>
-        <span
-          v-if="selectedCount > 0"
-          class="badge"
-        >({{ selectedCount }})</span>
+        <span v-if="selectedCount > 0" class="badge">({{ selectedCount }})</span>
       </el-button>
       <el-button
         v-if="canProxyTransferPermission"
         :type="operationMode === 'proxy' ? 'warning' : 'default'"
-        :class="{ active: operationMode === 'proxy' }"
+        :class="['sales-mode-tab', { active: operationMode === 'proxy' }]"
         size="small"
-        :disabled="!canProxyTransferPermission"
         @click="emit('proxy')"
       >
         <i class="fas fa-exchange-alt" />
         <span>划拨</span>
-        <span
-          v-if="selectedCount > 0"
-          class="badge"
-        >({{ selectedCount }})</span>
+        <span v-if="selectedCount > 0" class="badge">({{ selectedCount }})</span>
       </el-button>
-      <el-divider
-        v-if="canWholesalePermission || canProxyTransferPermission"
-        direction="vertical"
-      />
     </div>
 
-    <div class="view-toggle-group">
-      <div class="view-toggle">
-        <el-button
-          v-if="viewMode === 'summary'"
-          class="summary-action-button"
-          type="primary"
-          size="small"
-          title="保存为图片"
-          :loading="savingInventorySummary"
-          :disabled="inventorySummaryLoading || summaryCount === 0"
-          @click="emit('save-summary')"
-        >
-          <i class="fas fa-camera" />
-          <span class="view-toggle-text">保存图片</span>
-        </el-button>
-        <el-button
-          :type="viewMode === 'summary' ? 'primary' : 'default'"
-          title="对存表"
-          @click="emit('set-view-mode', 'summary')"
-        >
-          <i class="fas fa-table" />
-          <span class="view-toggle-text">对库</span>
-        </el-button>
-        <el-button
-          :type="viewMode === 'grid' ? 'primary' : 'default'"
-          title="图文模式"
-          @click="emit('set-view-mode', 'grid')"
-        >
-          <i class="fas fa-th" />
-          <span class="view-toggle-text">图文</span>
-        </el-button>
-        <el-button
-          :type="viewMode === 'table' ? 'primary' : 'default'"
-          title="表格模式"
-          @click="emit('set-view-mode', 'table')"
-        >
-          <i class="fas fa-list" />
-          <span class="view-toggle-text">表格</span>
-        </el-button>
-      </div>
+    <div class="sales-mode-tab-group view-tabs">
+      <el-button
+        :type="viewMode === 'summary' ? 'primary' : 'default'"
+        class="sales-mode-tab"
+        title="对库"
+        @click="emit('set-view-mode', 'summary')"
+      >
+        <i class="fas fa-table" />
+        <span>对库</span>
+      </el-button>
+      <el-button
+        :type="viewMode === 'grid' ? 'primary' : 'default'"
+        class="sales-mode-tab"
+        title="图文模式"
+        @click="emit('set-view-mode', 'grid')"
+      >
+        <i class="fas fa-th" />
+        <span>图文</span>
+      </el-button>
+      <el-button
+        :type="viewMode === 'table' ? 'primary' : 'default'"
+        class="sales-mode-tab"
+        title="表格模式"
+        @click="emit('set-view-mode', 'table')"
+      >
+        <i class="fas fa-list" />
+        <span>表格</span>
+      </el-button>
+      <el-button
+        v-if="viewMode === 'summary'"
+        class="sales-mode-tab"
+        type="primary"
+        title="保存为图片"
+        :loading="savingInventorySummary"
+        :disabled="inventorySummaryLoading || summaryCount === 0"
+        @click="emit('save-summary')"
+      >
+        <i class="fas fa-camera" />
+        <span>保存图片</span>
+      </el-button>
     </div>
-  </div>
 
-  <div
-    v-if="operationMode && canOperationAvailable(operationMode)"
-    class="operation-tip"
-  >
     <div
-      class="operation-bar"
-      :class="operationMode === 'wholesale' ? 'wholesale-mode' : 'proxy-mode'"
+      v-if="batchMode && selectedCount > 0"
+      class="sales-mode-tab-group batch-tabs"
     >
-      <div class="operation-info">
-        <i
-          class="fas"
-          :class="operationMode === 'wholesale' ? 'fa-boxes' : 'fa-exchange-alt'"
-        />
-        <span v-if="selectedCount === 0">请勾选需要{{ operationMode === 'wholesale' ? '调货' : '划拨' }}的手机</span>
-        <span v-else>{{ operationMode === 'wholesale' ? '调货' : '划拨' }}数量 {{ selectedCount }} 台</span>
-      </div>
+      <span class="selection-count"><i class="fas fa-check-square" /> 已选 {{ selectedCount }} 台</span>
+      <el-button
+        type="primary"
+        class="sales-mode-tab"
+        :disabled="!canSell"
+        @click="emit('batch-sale')"
+      >
+        <i class="fas fa-edit" />
+        <span>批量销售</span>
+      </el-button>
+      <el-button
+        type="info"
+        plain
+        class="sales-mode-tab"
+        @click="emit('clear-selection')"
+      >
+        <i class="fas fa-times" />
+        <span>清空</span>
+      </el-button>
+    </div>
+
+    <div
+      v-if="operationMode && canOperationAvailable(operationMode)"
+      class="operation-inline"
+    >
+      <span
+        class="operation-info"
+        :class="operationMode === 'wholesale' ? 'wholesale-mode' : 'proxy-mode'"
+      >
+        <i class="fas" :class="operationMode === 'wholesale' ? 'fa-boxes' : 'fa-exchange-alt'" />
+        <span v-if="selectedCount === 0">请勾选需要{{ operationMode === 'wholesale' ? '调货' : '划拨' }}的设备</span>
+        <span v-else>{{ operationMode === 'wholesale' ? '调货' : '划拨' }} {{ selectedCount }} 台</span>
+      </span>
       <el-button
         v-if="selectedCount > 0"
         :type="operationMode === 'wholesale' ? 'success' : 'warning'"
         :disabled="operationMode === 'wholesale' ? !canWholesale : !canProxy"
-        size="default"
+        size="small"
         @click="emit('open-wholesale')"
       >
-        确认{{ operationMode === 'wholesale' ? '调货' : '划拨' }}
+        确认
       </el-button>
     </div>
   </div>
@@ -127,6 +135,8 @@ const props = defineProps<{
   canProxyTransferPermission: boolean
   canWholesale: boolean
   canProxy: boolean
+  batchMode: boolean
+  canSell: boolean
 }>()
 
 const emit = defineEmits<{
@@ -135,6 +145,8 @@ const emit = defineEmits<{
   'save-summary': []
   'set-view-mode': [mode: ViewMode]
   'open-wholesale': []
+  'batch-sale': []
+  'clear-selection': []
 }>()
 
 const canOperationAvailable = (mode: Exclude<OperationMode, null>) => {
@@ -143,211 +155,149 @@ const canOperationAvailable = (mode: Exclude<OperationMode, null>) => {
 </script>
 
 <style scoped lang="scss">
-.view-controls {
-  margin-bottom: 20px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
-}
-
-.view-toggle-group {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  margin-left: auto;
-}
-
-.wholesale-actions {
+.sales-mode-tabs {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 12px;
+  min-height: 40px;
+  margin-bottom: 12px;
+  padding: 5px 8px;
+  overflow-x: auto;
   background: var(--tf-button-neutral-hover-bg);
-  border-radius: var(--admin-panel-radius);
   border: 1px solid var(--tf-button-neutral-border);
+  border-radius: var(--admin-panel-radius);
+  scrollbar-width: thin;
 }
 
-.wholesale-actions :deep(.el-button) {
+.sales-mode-tab-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+.operation-tabs,
+.view-tabs {
+  padding-right: 8px;
+  border-right: 1px solid var(--tf-button-neutral-border);
+}
+
+.batch-tabs {
+  margin-left: auto;
+}
+
+.sales-mode-tab {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-weight: 500;
   height: 32px;
-  padding: 0 12px;
-  position: relative;
-  transition: all 0.3s ease;
+  min-height: 32px;
+  margin: 0;
+  padding: 0 11px;
+  white-space: nowrap;
+  font-weight: 500;
 }
 
-.wholesale-actions :deep(.el-button.active) {
+.sales-mode-tab.active {
   transform: translateY(-1px);
   box-shadow: var(--tf-button-shadow-hover);
 }
 
-.wholesale-actions :deep(.el-button i) {
+.sales-mode-tab i {
   font-size: 14px;
 }
 
-.wholesale-actions :deep(.el-button span) {
-  font-size: 13px;
-}
-
-.wholesale-actions :deep(.badge) {
-  margin-left: 4px;
+.sales-mode-tab .badge {
+  margin-left: 2px;
   font-size: 11px;
   opacity: 0.85;
-}
-
-.wholesale-actions :deep(.el-button:disabled) {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.wholesale-actions :deep(.el-button:disabled .badge) {
-  display: none;
-}
-
-.view-toggle {
-  display: flex;
-  gap: 4px;
-}
-
-.view-toggle :deep(.el-button) {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
 }
 
 .summary-action-button {
   min-width: 74px;
   justify-content: center;
-  padding: 0 12px;
 }
 
-.view-toggle-text {
+.selection-count,
+.operation-info {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
   font-size: 13px;
 }
 
-.operation-tip {
-  margin: 16px 0;
-  animation: slideDown 0.3s ease;
+.selection-count {
+  color: var(--tf-text-secondary);
 }
 
-.operation-bar {
+.operation-inline {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 12px 20px;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
-}
-
-.operation-bar.wholesale-mode {
-  background: var(--tf-button-success-soft-bg);
-  border: 1px solid var(--tf-button-success-soft-border);
-  color: var(--tf-button-success-soft-color);
-}
-
-.operation-bar.proxy-mode {
-  background: var(--tf-button-warning-soft-bg);
-  border: 1px solid var(--tf-button-warning-soft-border);
-  color: var(--tf-button-warning-soft-color);
+  gap: 6px;
+  flex: 0 0 auto;
 }
 
 .operation-info {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+  padding: 0 4px;
+  font-weight: 500;
 }
 
-.operation-info i {
-  font-size: 18px;
+.operation-info.wholesale-mode {
+  color: var(--tf-button-success-soft-color);
 }
 
-@keyframes slideDown {
-  from { opacity: 0; transform: translateY(-10px); }
-  to { opacity: 1; transform: translateY(0); }
+.operation-info.proxy-mode {
+  color: var(--tf-button-warning-soft-color);
 }
 
-@media (max-width: 768px) {
-  .view-controls {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 6px;
+@media (max-width: 767px) {
+  .sales-mode-tabs {
+    gap: 5px;
+    margin-bottom: 8px;
+    padding: 4px 6px;
   }
 
-  .wholesale-actions {
-    display: flex;
-    gap: 4px;
-    padding: 6px;
-    flex-wrap: nowrap;
+  .sales-mode-tab {
+    height: 30px;
+    min-height: 30px;
+    padding: 0 7px;
+    font-size: 11px;
   }
 
-  .wholesale-actions :deep(.el-divider) {
+  .sales-mode-tab i {
+    font-size: 11px;
+  }
+
+  .sales-mode-tab .badge {
     display: none;
   }
 
-  .wholesale-actions :deep(.el-button) {
-    flex: 1;
-    min-width: 0;
-    margin: 0;
-    justify-content: center;
-    padding: 0 6px;
-    height: 30px;
-    min-height: 30px;
-    font-size: 11px;
-  }
-
-  .wholesale-actions :deep(.el-button i),
-  .wholesale-actions :deep(.el-button span) {
-    font-size: 11px;
-  }
-
-  .view-toggle-group {
-    width: 100%;
+  .batch-tabs {
     margin-left: 0;
-  }
-
-  .view-toggle {
-    flex: 1;
-    min-width: 0;
-    gap: 4px;
-    flex-wrap: nowrap;
-  }
-
-  .view-toggle :deep(.el-button) {
-    flex: 1;
-    min-width: 0;
-    margin: 0;
-    justify-content: center;
-    padding: 0 6px;
-    height: 30px;
-    min-height: 30px;
-  }
-
-  .view-toggle-text {
-    font-size: 11px;
   }
 }
 
-@media (max-width: 480px) {
-  .view-controls { gap: 4px; }
-  .wholesale-actions { gap: 3px; }
-  .wholesale-actions :deep(.el-button) {
+@media (max-width: 479px) {
+  .sales-mode-tabs {
+    gap: 4px;
+    padding: 4px;
+  }
+
+  .sales-mode-tab {
     height: 28px;
     min-height: 28px;
-    padding: 0 4px;
+    padding: 0 5px;
     font-size: 10px;
   }
-  .wholesale-actions :deep(.el-button i),
-  .wholesale-actions :deep(.el-button span) { font-size: 10px; }
-  .view-toggle { gap: 3px; }
-  .view-toggle :deep(.el-button) {
-    height: 28px;
-    min-height: 28px;
-    padding: 0 4px;
+
+  .sales-mode-tab i {
+    font-size: 10px;
   }
-  .view-toggle :deep(.el-button i) { font-size: 10px; }
+
+  .selection-count,
+  .operation-info {
+    font-size: 11px;
+  }
 }
 </style>

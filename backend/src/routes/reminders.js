@@ -5,6 +5,7 @@ const ApiResponse = require('../utils/response')
 const reminderService = require('../services/reminder.service')
 const log = require('../utils/log')
 const dataMaskingService = require('../services/dataMaskingService')
+const auditUnpaginatedPersonnelSearch = require('../middleware/unpaginated-personnel-search')
 
 const REMINDER_FIELD_MODULE_KEY = 'reminders_reminderview'
 const REMINDER_WRITE_FIELD_IDS = {
@@ -135,8 +136,11 @@ router.delete('/types/:id', requirePermission('reminders:manage'), async (req, r
   catch (error) { return handleError(res, error, '事项类型删除失败') }
 })
 
-router.get('/users', requireAnyPermission(['reminders:create', 'reminders:manage']), requireVisibleReminderField('target_info.target_users'), async (req, res) => {
-  try { return ApiResponse.success(res, await reminderService.getUsers(), '获取提醒人员成功') }
+router.get('/users', requireAnyPermission(['reminders:create', 'reminders:manage']), requireVisibleReminderField('target_info.target_users'), auditUnpaginatedPersonnelSearch('reminders-users'), async (req, res) => {
+  try {
+    const result = await reminderService.getUsers(req.query)
+    return ApiResponse.success(res, result.users, '获取提醒人员成功', 200, result.pagination ? { pagination: result.pagination } : {})
+  }
   catch (error) { return handleError(res, error, '获取提醒人员失败') }
 })
 

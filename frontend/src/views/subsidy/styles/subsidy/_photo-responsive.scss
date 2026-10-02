@@ -1,0 +1,205 @@
+// 手机端适配
+@media (max-width: 767px) {
+  .subsidy-photo-row {
+    .info-label {
+      width: auto;
+      margin-bottom: 8px;
+    }
+
+    .info-value {
+      width: 100%;
+      flex-direction: row;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+
+      .el-input-number {
+        width: 140px !important;
+        flex-shrink: 0;
+      }
+
+      .price-diff-hint {
+        display: none; // 手机端隐藏差价提示，节省空间
+      }
+
+      .subsidy-photo-upload {
+        flex-shrink: 0;
+      }
+
+      // 图片预览单独一行
+      .uploaded-photos-preview {
+        width: 100%;
+        margin-top: 8px;
+        display: flex;
+        flex-direction: row;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        gap: 8px;
+        padding-bottom: 8px;
+
+        .photo-thumbnail {
+          flex-shrink: 0;
+          width: 70px;
+          height: 70px;
+        }
+      }
+    }
+  }
+
+  .uploaded-photos-preview {
+    justify-content: flex-start;
+  }
+
+  .photo-preview-dialog {
+    .el-dialog {
+      width: 95% !important;
+      margin: 20px auto !important;
+    }
+
+    .photo-grid-area {
+      .photo-toolbar {
+        flex-direction: column;
+        gap: 12px;
+        align-items: stretch;
+
+        .toolbar-left,
+        .toolbar-right {
+          justify-content: center;
+        }
+
+        .toolbar-right {
+          .el-button {
+            flex: 1;
+          }
+        }
+      }
+
+      .photo-grid {
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 12px;
+
+        .photo-grid-item {
+          border-radius: 8px;
+
+          .photo-checkbox {
+            top: 6px;
+            left: 6px;
+            padding: 2px;
+          }
+
+          .photo-actions {
+            bottom: 8px;
+            gap: 6px;
+
+            .action-btn {
+              width: 36px;
+              height: 36px;
+
+              i {
+                font-size: 14px;
+              }
+            }
+          }
+
+          .selected-overlay i {
+            font-size: 36px;
+          }
+        }
+      }
+    }
+
+  }
+
+  .photo-viewer-dialog {
+    .el-dialog {
+      width: 100% !important;
+      margin: 0 !important;
+    }
+
+    .photo-viewer-main {
+      min-height: 300px !important;
+
+      .photo-nav-btn {
+        width: 36px;
+        height: 36px;
+
+        &.prev {
+          left: 10px;
+        }
+
+        &.next {
+          right: 10px;
+        }
+      }
+
+      .photo-viewer-image {
+        max-width: calc(100% - 80px);
+
+        img {
+          max-height: 50vh;
+        }
+      }
+    }
+  }
+}
+
+.qrcode-tooltip {
+  position: fixed;
+  background: white;
+  border: 1px solid var(--tf-color-border-subtle);
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 9999;
+  min-width: 220px;
+  animation: fadeIn 0.2s ease-in-out;
+  pointer-events: auto;
+
+  .qrcode-title {
+    font-weight: 600;
+    color: var(--tf-color-gray-bootstrap-700);
+    margin-bottom: 8px;
+    font-size: 14px;
+  }
+
+  .qrcode-value {
+    font-size: 12px;
+    color: var(--tf-color-muted);
+    margin-bottom: 12px;
+    word-break: break-all;
+    padding: 8px;
+    background: var(--tf-color-surface-muted);
+    border-radius: 4px;
+  }
+
+  canvas {
+    display: block;
+    margin: 0 auto;
+    border: 1px solid var(--tf-color-border-subtle);
+    border-radius: 4px;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    max-height: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    max-height: 500px;
+    transform: translateY(0);
+  }
+}

@@ -23,19 +23,12 @@
       </el-button>
       <el-button
         type="info"
+        :loading="refreshing"
         :disabled="refreshing"
         @click="emit('refresh')"
       >
-        <InlineLoading
-          v-if="refreshing"
-          text="刷新中..."
-          size="small"
-          variant="inherit"
-        />
-        <template v-else>
-          <i class="fas fa-sync-alt" />
-          <span>刷新</span>
-        </template>
+        <i class="fas fa-sync-alt" />
+        <span>{{ refreshing ? '刷新中...' : '刷新' }}</span>
       </el-button>
     </template>
   </PageHeader>

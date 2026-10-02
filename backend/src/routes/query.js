@@ -4,6 +4,8 @@ const QueryController = require('../controllers/query.controller')
 const { unifiedAuth, requirePermission, _requireAnyPermission } = require('../middleware/unified-auth')
 const { cacheMiddleware } = require('../middleware/cache')
 const { CACHE_TTL } = require('../config/constants')
+const compatibilityRoute = require('../middleware/compatibility-route')
+const deprecatedRoute = require('../middleware/deprecated-route')
 
 // 实例化控制器
 const queryController = new QueryController()
@@ -59,7 +61,22 @@ router.delete('/returngoods/:id', requirePermission('return-goods:delete'), quer
  * @access Private
  */
 router.get('/options', requirePermission('query:view', 'business'), cacheMiddleware({ ttl: CACHE_TTL.NEAR_REALTIME }), queryController.getQueryOptions.bind(queryController))
-router.get('/models', requirePermission('query:view', 'business'), cacheMiddleware({ ttl: CACHE_TTL.SHORT }), queryController.getQueryModels.bind(queryController))
+router.get('/models',
+  compatibilityRoute({ compatibilityId: 'query-models', replacement: '/api/models?all=true&active_only=true', reason: '综合查询型号选项已迁移到规范资源接口' }),
+  deprecatedRoute({
+    replacement: req => {
+      const params = new URLSearchParams({ all: 'true', active_only: 'true' })
+      for (const key of ['brand_id', 'name', 'include_id']) {
+        if (req.query[key] !== undefined) params.set(key, String(req.query[key]))
+      }
+      return `/api/models?${params.toString()}`
+    },
+    migrationId: 'query-models-to-models'
+  }),
+  requirePermission('query:view', 'business'),
+  cacheMiddleware({ ttl: CACHE_TTL.SHORT }),
+  queryController.getQueryModels.bind(queryController)
+)
 
 /**
  * @route POST /api/query/batch

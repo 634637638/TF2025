@@ -6,6 +6,7 @@
 import { reactive, watch } from 'vue'
 import { isValidAppleAccount, isValidEmail, isValidIdCard, isValidMobilePhone } from '@/utils/security'
 import { logger } from '@/utils/logger'
+import { TimeUtil } from '@/utils/time'
 
 /**
  * 表单字段验证规则
@@ -700,8 +701,10 @@ export const ValidationRules = {
    */
   date: (message = '请选择有效的日期'): ValidationRule => createValidationRule((value) => {
     if (!value) return true
-    const date = new Date(value as string | number | Date)
-    return !isNaN(date.getTime())
+    const date = value instanceof Date || typeof value === 'number'
+      ? TimeUtil.toBeijing(value)
+      : TimeUtil.parse(String(value))
+    return Boolean(date?.isValid())
   }, message),
 
   /**
@@ -713,6 +716,12 @@ export const ValidationRules = {
     if (!value) return true
     const startDate = formValues?.[startDateField]
     if (!startDate) return true
-    return new Date(value as string | number | Date) >= new Date(startDate as string | number | Date)
+    const end = value instanceof Date || typeof value === 'number'
+      ? TimeUtil.toBeijing(value)
+      : TimeUtil.parse(String(value))
+    const start = startDate instanceof Date || typeof startDate === 'number'
+      ? TimeUtil.toBeijing(startDate)
+      : TimeUtil.parse(String(startDate))
+    return Boolean(end?.isValid() && start?.isValid() && end.valueOf() >= start.valueOf())
   }, message)
 }

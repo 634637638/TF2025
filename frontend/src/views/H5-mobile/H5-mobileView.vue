@@ -298,7 +298,7 @@ const handleShare = () => {
   } else {
     // 复制链接
     navigator.clipboard.writeText(window.location.href)
-    alert('链接已复制到剪贴板')
+    ElMessage.success('链接已复制到剪贴板')
   }
 }
 

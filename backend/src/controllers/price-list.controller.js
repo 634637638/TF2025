@@ -627,8 +627,10 @@ class PriceListController {
       initDb()
       const db = getDatabase()
       
-      await db.query('DELETE FROM price_sync_log')
-      return ApiResponse.success(res, null, '清空成功')
+      // 同步日志仅作为可清理的运行记录保存，没有外键引用。
+      // 使用 TRUNCATE 在清空记录的同时回收 InnoDB 表空间，并重置自增 ID。
+      await db.query('TRUNCATE TABLE price_sync_log')
+      return ApiResponse.success(res, null, '清空成功，空间已回收')
     } catch (error) {
       log.error('清空同步日志失败:', error)
       return ApiResponse.error(res, '清空失败', 500)

@@ -16,14 +16,13 @@
         class="form-group"
       >
         <label>模板名称 <span class="required">*</span></label>
-        <input
+        <el-input
           v-model="name"
-          type="text"
-          class="form-control"
+          class="salary-template-name-input"
           placeholder="请输入模板名称"
           :disabled="!canEditField(moduleKey, 'template_name')"
           required
-        >
+        />
       </div>
 
       <div

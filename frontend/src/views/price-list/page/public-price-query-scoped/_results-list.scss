@@ -1,0 +1,217 @@
+// 结果列表中的联系电话卡片
+.results-list {
+  .contact-card {
+    margin-top: 24px;
+    background: linear-gradient(135deg, var(--tf-color-border-cool-soft) 0%, var(--tf-color-border-cool-muted) 100%);
+    border: 1px solid var(--tf-color-border-cool-strong);
+    border-radius: 10px;
+    padding: 14px 16px 16px;
+    box-shadow: none;
+    backdrop-filter: none;
+
+    @media (max-width: 767px) {
+      margin-top: 0;
+      padding: 12px 6px;
+      border-radius: 0;
+    }
+
+    @media (max-width: 479px) {
+      padding: 10px 4px;
+    }
+
+    @media (max-width: 380px) {
+      padding: 8px 3px;
+    }
+
+    .contact-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+
+      @media (max-width: 479px) {
+        margin-bottom: 12px;
+        gap: 8px;
+      }
+
+      @media (max-width: 380px) {
+        margin-bottom: 10px;
+        gap: 6px;
+      }
+
+      .contact-icon {
+        font-size: 22px;
+
+        @media (max-width: 767px) {
+          font-size: 18px;
+        }
+
+        @media (max-width: 479px) {
+          font-size: 16px;
+        }
+
+        @media (max-width: 380px) {
+          font-size: 14px;
+        }
+      }
+
+      .contact-title {
+        font-size: 16px;
+        font-weight: bold;
+        color: var(--tf-color-slate-700);
+
+        @media (max-width: 767px) {
+          font-size: 14px;
+        }
+
+        @media (max-width: 479px) {
+          font-size: 13px;
+        }
+
+        @media (max-width: 380px) {
+          font-size: 12px;
+        }
+      }
+    }
+
+    .contact-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+
+      @media (max-width: 767px) {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 6px;
+      }
+
+      @media (max-width: 479px) {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 3px;
+      }
+
+      @media (max-width: 380px) {
+        gap: 2px;
+      }
+
+      .contact-link {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        min-width: 0;
+        min-height: 78px;
+        padding: 12px 16px;
+        background: var(--tf-color-success-surface-soft);
+        border: 1px solid var(--tf-color-success-border-soft);
+        border-radius: 16px;
+        text-decoration: none;
+        transition: all 0.3s ease;
+        text-align: center;
+
+        @media (max-width: 767px) {
+          min-height: 56px;
+          padding: 7px 6px;
+          border-radius: 8px;
+
+          &:hover {
+          background: transparent;
+            transform: none;
+          }
+
+          &:active {
+            transform: none;
+          }
+        }
+
+        @media (max-width: 479px) {
+          min-height: 50px;
+          padding: 5px 5px;
+          border-radius: 8px;
+        }
+
+        @media (max-width: 380px) {
+          min-height: 46px;
+          padding: 4px 4px;
+          border-radius: 8px;
+        }
+
+        &:hover {
+          background: rgba(59, 130, 246, 0.08);
+          transform: translateY(-2px);
+        }
+
+        &:active {
+          transform: scale(0.98);
+        }
+
+        .contact-name {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          flex: 0 1 auto;
+          min-width: 0;
+          font-size: clamp(10px, 2.6vw, 13px);
+          line-height: 1.2;
+          color: var(--tf-color-slate-700);
+          margin-bottom: 0;
+          font-weight: 650;
+          max-width: 44%;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          padding: 3px 7px;
+          border-radius: 7px;
+          background: var(--tf-color-violet-surface-soft);
+          border: 1px solid var(--tf-color-violet-border-soft);
+
+          @media (max-width: 767px) {
+            max-width: 42%;
+          }
+
+          @media (max-width: 479px) {
+            padding: 2px 5px;
+          }
+
+          @media (max-width: 380px) {
+            max-width: 40%;
+          }
+        }
+
+        .contact-number {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          flex: 1 1 auto;
+          min-width: 0;
+          justify-content: flex-end;
+          font-size: clamp(10px, 2.8vw, 13px);
+          line-height: 1.2;
+          font-weight: 700;
+          color: var(--tf-color-neutral-800);
+          letter-spacing: 0.2px;
+          font-variant-numeric: tabular-nums;
+          max-width: 100%;
+          overflow: visible;
+          text-overflow: clip;
+          white-space: nowrap;
+          padding: 3px 7px;
+          border-radius: 7px;
+          background: var(--tf-color-teal-surface-soft);
+          border: 1px solid var(--tf-color-teal-border-soft);
+
+          @media (max-width: 767px) {
+            padding: 2px 5px;
+          }
+
+          @media (max-width: 479px) {
+            gap: 2px;
+          }
+
+          @media (max-width: 380px) {
+            padding: 2px 4px;
+          }
+        }
+      }
+    }
+  }
+}

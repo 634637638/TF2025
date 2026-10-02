@@ -147,39 +147,39 @@
           data-field="status"
         >
           <el-select
-              v-model="filters.status"
-              placeholder="全部状态"
-              clearable
-              @change="handleFilterChange"
+            v-model="filters.status"
+            placeholder="全部状态"
+            clearable
+            @change="handleFilterChange"
           >
-              <el-option
-                label="全部"
-                value=""
-              />
-              <el-option
-                label="待支付"
-                value="pending"
-              />
-              <el-option
-                label="待审核"
-                value="paid"
-              />
-              <el-option
-                label="待发货"
-                value="confirmed"
-              />
-              <el-option
-                label="已发货"
-                value="shipped"
-              />
-              <el-option
-                label="已完成"
-                value="completed"
-              />
-              <el-option
-                label="已取消"
-                value="cancelled"
-              />
+            <el-option
+              label="全部"
+              value=""
+            />
+            <el-option
+              label="待支付"
+              value="pending"
+            />
+            <el-option
+              label="待审核"
+              value="paid"
+            />
+            <el-option
+              label="待发货"
+              value="confirmed"
+            />
+            <el-option
+              label="已发货"
+              value="shipped"
+            />
+            <el-option
+              label="已完成"
+              value="completed"
+            />
+            <el-option
+              label="已取消"
+              value="cancelled"
+            />
           </el-select>
         </div>
         <div
@@ -188,10 +188,10 @@
           data-field="customer_name"
         >
           <el-input
-              v-model="filters.customer_name"
-              placeholder="输入客户姓名"
-              clearable
-              @keyup.enter="handleFilterChange"
+            v-model="filters.customer_name"
+            placeholder="输入客户姓名"
+            clearable
+            @keyup.enter="handleFilterChange"
           />
         </div>
         <div
@@ -200,10 +200,10 @@
           data-field="customer_phone"
         >
           <el-input
-              v-model="filters.customer_phone"
-              placeholder="输入电话"
-              clearable
-              @keyup.enter="handleFilterChange"
+            v-model="filters.customer_phone"
+            placeholder="输入电话"
+            clearable
+            @keyup.enter="handleFilterChange"
           />
         </div>
         <div
@@ -212,13 +212,13 @@
           data-field="date_range"
         >
           <DateRangePicker
-              v-model="dateRange"
-              start-placeholder="开始日期"
-              end-placeholder="结束日期"
-              format="YYYY-MM-DD"
-              value-format="YYYY-MM-DD"
-              clearable
-              @change="handleFilterChange"
+            v-model="dateRange"
+            start-placeholder="开始日期"
+            end-placeholder="结束日期"
+            :format="TIME_FORMATS.DATE"
+            :value-format="TIME_FORMATS.DATE"
+            clearable
+            @change="handleFilterChange"
           />
         </div>
       </UnifiedSearchPanel>
@@ -272,7 +272,7 @@
             align="right"
           >
             <template #default="{ row }">
-              <span class="amount">¥{{ parseFloat(row.total_amount).toFixed(2) }}</span>
+              <span class="amount">¥{{ formatAmount(row.total_amount) }}</span>
             </template>
           </el-table-column>
           <el-table-column
@@ -459,7 +459,7 @@
               </div>
               <div class="mobile-order-card__item">
                 <span>金额</span>
-                <strong class="amount">¥{{ Number(row.total_amount).toFixed(2) }}</strong>
+                <strong class="amount">¥{{ formatAmount(row.total_amount) }}</strong>
               </div>
               <div class="mobile-order-card__item">
                 <span>下单</span>
@@ -698,10 +698,10 @@
                   x{{ item.quantity }}
                 </div>
                 <div class="item-price">
-                  ¥{{ Number(item.sale_price).toFixed(2) }}
+                  ¥{{ formatAmount(item.sale_price) }}
                 </div>
                 <div class="item-subtotal">
-                  ¥{{ Number(item.subtotal).toFixed(2) }}
+                  ¥{{ formatAmount(item.subtotal) }}
                 </div>
               </div>
             </div>
@@ -715,11 +715,11 @@
             <div class="price-summary">
               <div class="price-row">
                 <span>商品总额</span>
-                <span>¥{{ Number(currentOrder.total_amount).toFixed(2) }}</span>
+                <span>¥{{ formatAmount(currentOrder.total_amount) }}</span>
               </div>
               <div class="price-row total">
                 <span>应付金额</span>
-                <span class="total-amount">¥{{ Number(currentOrder.total_amount).toFixed(2) }}</span>
+                <span class="total-amount">¥{{ formatAmount(currentOrder.total_amount) }}</span>
               </div>
             </div>
           </div>
@@ -838,7 +838,7 @@
         </div>
 
         <template #footer>
-          <div class="dialog-footer">
+          <div class="tf-dialog-actions dialog-footer">
             <!-- 待支付状态：无操作 -->
             <template v-if="currentOrder.status === 'pending'">
               <el-button
@@ -1054,8 +1054,10 @@
 </template>
 
 <script setup lang="ts">
+import { TIME_FORMATS } from '@/utils/time'
+import { confirmAction } from '@/utils/message-box'
 import { computed, ref, reactive, onMounted, onUnmounted, onActivated, inject, watch } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { Refresh } from '@element-plus/icons-vue'
 import { PermissionGate } from '@/components/base'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
@@ -1069,7 +1071,8 @@ import { api } from '@/utils/unified-api'
 import logger from '@/utils/logger'
 import { getAdaptiveActionColumnWidth } from '@/utils/table-layout'
 import type { HeaderAction } from '@/types'
-import { formatDateTime as formatGlobalDateTime } from '@/utils/format'
+import { formatAmount, formatDateTime as formatGlobalDateTime } from '@/utils/format'
+import { useNotification } from '@/composables/useNotification'
 
 // 注入父组件提供的注册方法
 const registerHeaderActions = inject<(_actions: HeaderAction[]) => void>('registerHeaderActions')
@@ -1442,7 +1445,7 @@ const confirmOrder = async (order: any) => {
   }
 
   try {
-    await ElMessageBox.confirm('确认通过该订单的支付审核？通过后将锁定库存。', '确认审核', {
+    await confirmAction('确认通过该订单的支付审核？通过后将锁定库存。', '确认审核', {
       type: 'warning'
     })
 
@@ -1474,12 +1477,16 @@ const rejectOrder = async (order: any) => {
   }
 
   try {
-    const { value } = await ElMessageBox.prompt('请输入拒绝原因', '拒绝订单', {
+    const { prompt } = useNotification()
+    const result = await prompt('请输入拒绝原因', '拒绝订单', {
       confirmButtonText: '确认',
       cancelButtonText: '取消',
       inputPattern: /.+/,
       inputErrorMessage: '请输入拒绝原因'
     })
+
+    if (!result) return
+    const { value } = result
 
     if (!value) return
 
@@ -1980,7 +1987,7 @@ onUnmounted(() => {
 }
 
 // 响应式设计
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .sales-management-page {
     width: 100%;
     padding: 0;

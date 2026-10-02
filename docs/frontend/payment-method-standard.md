@@ -49,7 +49,9 @@
 
 ## 兼容规则
 
-组件保留现有接口值：`cash`、`mobile`、`bank_card`、`subsidy_card`、`transfer`、`bank_transfer`、`wechat`、`alipay`、`card_consumption`、`other`。其中 `transfer` 和 `bank_transfer` 都统一显示为“银行转账”，不能直接改成新的值，否则会影响已有接口和历史记录。
+销售类顶层支付方式只有四种：`cash`（现金支付）、`mobile`（移动支付）、`bank_card`（银行卡）、`subsidy_card`（国补刷卡）。银行卡的具体支付渠道统一使用 `PaymentChannelSelect`，包含“刷卡消费”和“银行转账”；“银行转账”不能作为销售类顶层支付方式单独出现。
+
+`transfer`、`bank_transfer`、`wechat`、`alipay`、`card_consumption`、`other` 仅用于历史数据兼容、支付渠道或结算/退款等独立业务域。它们不得加入销售或批量销售的 `PaymentMethodSelect` 顶层选项。
 
 支付方式停用或新增功能暂不在本方案内。需要管理员可配置时，应将 `paymentMethods.ts` 的数据源替换为接口，业务组件的调用方式保持不变。
 

@@ -14,10 +14,13 @@ const ApiResponse = require('../utils/response')
 const ShopService = require('../services/shop.service')
 const log = require('../utils/log')
 const { getUploadsRoot, getUploadSubdir } = require('../utils/upload-paths')
-const { archivePhoneMediaUpload } = require('../utils/phone-media-storage')
 const { archiveShopAssetUpload } = require('../utils/shop-media-storage')
 const { ensureShopTemplateMediaSchema } = require('../utils/shop-template-media-schema')
 const { validateUploadedFileSignature, removeUploadedFiles } = require('../utils/upload-file-validation')
+const { listTemplateReferenceOptions } = require('../services/reference-options.service')
+const compatibilityRoute = require('../middleware/compatibility-route')
+const deprecatedRoute = require('../middleware/deprecated-route')
+const phoneMediaController = require('../controllers/phone-media.controller')
 
 const shopService = new ShopService()
 
@@ -38,6 +41,10 @@ const H5_TEMPLATE_CREATE_PERMISSIONS = [
   'h5-admin:create',
   'inventory:create',
   'inventory:edit'
+]
+const PHONE_MEDIA_UPLOAD_PERMISSIONS = [
+  ...H5_TEMPLATE_CREATE_PERMISSIONS,
+  'query:edit'
 ]
 const H5_TEMPLATE_EDIT_PERMISSIONS = [
   'h5-templates:edit',
@@ -186,11 +193,11 @@ const phoneImageStorage = multer.diskStorage({
   }
 })
 
-const phoneImageUpload = multer({
+const phoneMediaUpload = multer({
   storage: phoneImageStorage,
-  fileFilter: imageFileFilter,
+  fileFilter: templateMediaFileFilter,
   limits: {
-    fileSize: 5 * 1024 * 1024
+    fileSize: 500 * 1024 * 1024
   }
 })
 
@@ -530,17 +537,9 @@ router.put('/banners/reorder',
  */
 router.get('/phones/:id/images',
   unifiedAuth,
+  deprecatedRoute({ replacement: '/api/phones/:id/images', migrationId: 'shop-phone-images-to-phones' }),
   requirePermission('inventory:view'),
-  async (req, res) => {
-    try {
-      const { id } = req.params
-      const images = await shopService.getPhoneImages(id)
-      ApiResponse.success(res, images, '获取图片成功')
-    } catch (error) {
-      log.error('获取商品图片失败:', error)
-      ApiResponse.error(res, error.message || '获取图片失败', 500)
-    }
-  }
+  phoneMediaController.list
 )
 
 /**
@@ -550,17 +549,9 @@ router.get('/phones/:id/images',
  */
 router.put('/images/:id/primary',
   unifiedAuth,
+  deprecatedRoute({ replacement: '/api/phones/:phoneId/images/:imageId/primary', migrationId: 'shop-phone-image-primary-to-phones' }),
   requirePermission('inventory:edit'),
-  async (req, res) => {
-    try {
-      const { id } = req.params
-      await shopService.setPrimaryImage(id)
-      ApiResponse.success(res, null, '设置主图成功')
-    } catch (error) {
-      log.error('设置主图失败:', error)
-      ApiResponse.error(res, error.message || '设置主图失败', 500)
-    }
-  }
+  phoneMediaController.setPrimary
 )
 
 /**
@@ -570,17 +561,9 @@ router.put('/images/:id/primary',
  */
 router.delete('/images/:id',
   unifiedAuth,
+  deprecatedRoute({ replacement: '/api/phones/:phoneId/images/:imageId', migrationId: 'shop-phone-image-delete-to-phones' }),
   requireAnyPermission(H5_SOLD_PRODUCTS_DELETE_PERMISSIONS),
-  async (req, res) => {
-    try {
-      const { id } = req.params
-      await shopService.deleteImage(id)
-      ApiResponse.success(res, null, '删除图片成功')
-    } catch (error) {
-      log.error('删除图片失败:', error)
-      ApiResponse.error(res, error.message || '删除图片失败', 500)
-    }
-  }
+  phoneMediaController.remove
 )
 
 // ============================================================================
@@ -993,18 +976,16 @@ router.put('/templates/:id/images/reorder',
  */
 router.get('/base-data/brands',
   unifiedAuth,
-  requirePermission('inventory:view'),
+  compatibilityRoute({ compatibilityId: 'shop-base-data-brands', replacement: '/api/brands?all=true', reason: '迁移期基础数据兼容入口' }),
+  deprecatedRoute({ replacement: '/api/brands?all=true', migrationId: 'shop-base-data-brands-to-brands' }),
+  requireAnyPermission(['inventory:view', 'h5-templates:view', 'h5-admin:view']),
   async (req, res) => {
     try {
-      const db = require('../config/database')
-      const pool = db.getDatabase()
-      const [brands] = await pool.query(
-        'SELECT id, name, sort_order FROM brands ORDER BY sort_order ASC, name ASC'
-      )
+      const brands = await listTemplateReferenceOptions('brands')
       ApiResponse.success(res, brands, '获取品牌列表成功')
     } catch (error) {
       log.error('获取品牌失败:', error)
-      ApiResponse.error(res, error.message || '获取品牌失败', 500)
+      ApiResponse.error(res, error.message || '获取品牌失败', error.statusCode || 500)
     }
   }
 )
@@ -1014,28 +995,16 @@ router.get('/base-data/brands',
  */
 router.get('/base-data/models',
   unifiedAuth,
-  requirePermission('inventory:view'),
+  compatibilityRoute({ compatibilityId: 'shop-base-data-models', replacement: '/api/models?all=true', reason: '迁移期基础数据兼容入口' }),
+  deprecatedRoute({ replacement: '/api/models?all=true', migrationId: 'shop-base-data-models-to-models' }),
+  requireAnyPermission(['inventory:view', 'h5-templates:view', 'h5-admin:view']),
   async (req, res) => {
     try {
-      const db = require('../config/database')
-      const pool = db.getDatabase()
-      const { brand_id } = req.query
-
-      let query = 'SELECT id, name, brand_id, sort_order FROM models'
-      const params = []
-
-      if (brand_id) {
-        query += ' WHERE brand_id = ?'
-        params.push(brand_id)
-      }
-
-      query += ' ORDER BY sort_order ASC, name ASC'
-
-      const [models] = await pool.query(query, params)
+      const models = await listTemplateReferenceOptions('models', { brand_id: req.query.brand_id })
       ApiResponse.success(res, models, '获取型号列表成功')
     } catch (error) {
       log.error('获取型号失败:', error)
-      ApiResponse.error(res, error.message || '获取型号失败', 500)
+      ApiResponse.error(res, error.message || '获取型号失败', error.statusCode || 500)
     }
   }
 )
@@ -1045,18 +1014,16 @@ router.get('/base-data/models',
  */
 router.get('/base-data/colors',
   unifiedAuth,
-  requirePermission('inventory:view'),
+  compatibilityRoute({ compatibilityId: 'shop-base-data-colors', replacement: '/api/colors?all=true', reason: '迁移期基础数据兼容入口' }),
+  deprecatedRoute({ replacement: '/api/colors?all=true', migrationId: 'shop-base-data-colors-to-colors' }),
+  requireAnyPermission(['inventory:view', 'h5-templates:view', 'h5-admin:view']),
   async (req, res) => {
     try {
-      const db = require('../config/database')
-      const pool = db.getDatabase()
-      const [colors] = await pool.query(
-        'SELECT id, name, sort_order FROM colors ORDER BY sort_order ASC, name ASC'
-      )
+      const colors = await listTemplateReferenceOptions('colors')
       ApiResponse.success(res, colors, '获取颜色列表成功')
     } catch (error) {
       log.error('获取颜色失败:', error)
-      ApiResponse.error(res, error.message || '获取颜色失败', 500)
+      ApiResponse.error(res, error.message || '获取颜色失败', error.statusCode || 500)
     }
   }
 )
@@ -1064,20 +1031,17 @@ router.get('/base-data/colors',
 /**
  * 获取所有内存
  */
-router.get('/base-data/memories', unifiedAuth, requirePermission('inventory:view'),
+router.get('/base-data/memories', unifiedAuth,
+  compatibilityRoute({ compatibilityId: 'shop-base-data-memories', replacement: '/api/memories?all=true', reason: '迁移期基础数据兼容入口' }),
+  deprecatedRoute({ replacement: '/api/memories?all=true', migrationId: 'shop-base-data-memories-to-memories' }),
+  requireAnyPermission(['inventory:view', 'h5-templates:view', 'h5-admin:view']),
   async (req, res) => {
     try {
-      const db = require('../config/database')
-      const pool = db.getDatabase()
-
-      const [memories] = await pool.query(
-        'SELECT id, size, sort_order FROM memories ORDER BY sort_order ASC, size ASC'
-      )
-
+      const memories = await listTemplateReferenceOptions('memories')
       ApiResponse.success(res, memories, '获取内存列表成功')
     } catch (error) {
       log.error('获取内存失败:', error)
-      ApiResponse.error(res, error.message || '获取内存失败', 500)
+      ApiResponse.error(res, error.message || '获取内存失败', error.statusCode || 500)
     }
   }
 )
@@ -1088,8 +1052,9 @@ router.get('/base-data/memories', unifiedAuth, requirePermission('inventory:view
  */
 router.post('/upload-phone-image',
   unifiedAuth,
-  requireAnyPermission(H5_TEMPLATE_CREATE_PERMISSIONS),
-  (req, res, next) => phoneImageUpload.single('image')(req, res, next),
+  deprecatedRoute({ replacement: '/api/phones/:id/upload-image', migrationId: 'shop-phone-media-upload-to-phones' }),
+  requireAnyPermission(PHONE_MEDIA_UPLOAD_PERMISSIONS),
+  (req, res, next) => phoneMediaUpload.single('image')(req, res, next),
   handleMulterError,
   async (req, res) => {
     try {
@@ -1097,9 +1062,17 @@ router.post('/upload-phone-image',
         return ApiResponse.error(res, '没有上传文件', 400)
       }
 
-      if (!(await validateUploadedFileSignature(req.file, ['image']))) {
+      const mediaType = req.file.mimetype.startsWith('video/') || /\.(mp4|webm|ogg|mov)$/i.test(req.file.originalname || '')
+        ? 'video'
+        : 'image'
+      const maxSize = mediaType === 'video' ? 500 * 1024 * 1024 : 30 * 1024 * 1024
+      if (req.file.size > maxSize) {
         await removeUploadedFiles([req.file])
-        return ApiResponse.error(res, '文件内容与图片格式不匹配', 400)
+        return ApiResponse.error(res, `${mediaType === 'video' ? '视频' : '图片'}文件大小不能超过${mediaType === 'video' ? '500MB' : '30MB'}`, 400)
+      }
+      if (!(await validateUploadedFileSignature(req.file, ['image', 'video']))) {
+        await removeUploadedFiles([req.file])
+        return ApiResponse.error(res, '文件内容与图片或视频格式不匹配', 400)
       }
 
       const { phone_id } = req.body
@@ -1109,21 +1082,17 @@ router.post('/upload-phone-image',
       }
 
       const uploadedBy = req.user ? req.user.id : 0
-      const fileUrl = await archivePhoneMediaUpload({
+      const media = await phoneMediaController.saveUploadedMedia({
         phoneId: phone_id,
         file: req.file,
-        mediaRoot: 'phones',
-        database: require('../config/database').getDatabase()
+        mediaType,
+        uploadedBy
       })
 
-      // 使用 ShopService 添加单张图片
-      const imageId = await shopService.addPhoneImage(phone_id, fileUrl, 'inventory', uploadedBy)
-
       ApiResponse.success(res, {
-        id: imageId,
-        url: fileUrl,
+        ...media,
         filename: req.file.filename
-      }, '图片上传成功')
+      }, mediaType === 'video' ? '视频上传成功' : '图片上传成功')
     } catch (error) {
       await removeUploadedFiles(req.file ? [req.file] : []).catch(() => {})
       log.error('上传图片失败:', error)
@@ -1204,24 +1173,9 @@ router.get('/sold-products',
  */
 router.get('/products/:id/images',
   unifiedAuth,
+  deprecatedRoute({ replacement: '/api/phones/:id/images', migrationId: 'shop-product-images-to-phones' }),
   requireAnyPermission(H5_SOLD_PRODUCTS_VIEW_PERMISSIONS),
-  async (req, res) => {
-    try {
-      const { id } = req.params
-      const db = require('../config/database')
-      const pool = db.getDatabase()
-
-      const [images] = await pool.query(
-        'SELECT id, phone_id, image_url, image_type, is_primary, sort_order, uploaded_by FROM H5_images WHERE phone_id = ? ORDER BY is_primary DESC, sort_order ASC',
-        [id]
-      )
-
-      ApiResponse.success(res, images, '获取图片列表成功')
-    } catch (error) {
-      log.error('获取图片列表失败:', error)
-      ApiResponse.error(res, error.message || '获取图片列表失败', 500)
-    }
-  }
+  phoneMediaController.list
 )
 
 /**
@@ -1230,24 +1184,9 @@ router.get('/products/:id/images',
  */
 router.put('/products/:id/images/reorder',
   unifiedAuth,
+  deprecatedRoute({ replacement: '/api/phones/:id/images/reorder', migrationId: 'shop-product-images-reorder-to-phones' }),
   requireAnyPermission(H5_TEMPLATE_EDIT_PERMISSIONS),
-  async (req, res) => {
-    try {
-      const { id } = req.params
-      const { image_ids } = req.body
-
-      if (!Array.isArray(image_ids) || image_ids.length === 0) {
-        return ApiResponse.error(res, '图片ID列表不能为空', 400)
-      }
-
-      await shopService.reorderPhoneImages(id, image_ids)
-
-      ApiResponse.success(res, null, '排序保存成功')
-    } catch (error) {
-      log.error('保存图片排序失败:', error)
-      ApiResponse.error(res, error.message || '保存排序失败', 500)
-    }
-  }
+  phoneMediaController.reorder
 )
 
 /**
@@ -1259,46 +1198,7 @@ router.delete('/products/:id/images',
   requireAnyPermission(H5_SOLD_PRODUCTS_DELETE_PERMISSIONS),
   async (req, res) => {
     try {
-      const { id } = req.params
-      const db = require('../config/database')
-      const pool = db.getDatabase()
-
-      // 获取所有图片URL
-      const [images] = await pool.query(
-        'SELECT image_url FROM H5_images WHERE phone_id = ?',
-        [id]
-      )
-
-      // 删除物理文件
-      for (const image of images) {
-        if (image.image_url) {
-          try {
-            // 确定上传目录路径
-            const uploadDir = getUploadsRoot()
-
-            // 图片 URL 格式：/uploads/phones/phone-xxx.jpg
-            const relativePath = image.image_url.startsWith('/uploads/')
-              ? image.image_url.substring('/uploads/'.length)
-              : (image.image_url.startsWith('/') ? image.image_url.substring(1) : image.image_url)
-
-            const filePath = path.join(uploadDir, relativePath)
-
-            // 安全检查
-            const normalizedFilePath = path.normalize(filePath)
-            const normalizedUploadDir = path.normalize(uploadDir)
-
-            if (normalizedFilePath.startsWith(normalizedUploadDir)) {
-              await fs.unlink(filePath)
-              log.debug('✅ 已删除图片文件:', filePath)
-            }
-          } catch (error) {
-            log.warn('⚠️ 删除图片文件失败:', error.message)
-          }
-        }
-      }
-
-      // 删除数据库记录
-      await pool.query('DELETE FROM H5_images WHERE phone_id = ?', [id])
+      await shopService.deletePhoneImages(req.params.id)
 
       ApiResponse.success(res, null, '删除图片成功')
     } catch (error) {

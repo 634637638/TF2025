@@ -884,7 +884,7 @@ const totalModuleCount = computed(() =>
   font-size: 13px;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .permission-role-summary,
   .permission-page-footer {
     flex-direction: column;

@@ -46,17 +46,25 @@
 
       <div class="table-responsive matchable-table-wrap">
         <el-table
-          v-loading="loading"
+          class="data-table base-data-table matchable-table"
+          v-loading="loading && phones.length > 0"
           :data="phones"
           border
           stripe
           highlight-current-row
           row-key="id"
-          class="data-table base-data-table matchable-table"
           @row-click="selectPhone"
         >
           <template #empty>
-            <DataEmptyState :description="loading ? '正在查找匹配库存...' : '暂无完全匹配的在库设备'" />
+            <TableLoadingRow
+              v-if="loading"
+              mode="block"
+              text="正在查找匹配库存..."
+            />
+            <DataEmptyState
+              v-else
+              description="暂无完全匹配的在库设备"
+            />
           </template>
           <el-table-column
             label="选择"
@@ -201,7 +209,7 @@ const showPreorderSummary = computed(() => (
 
 const formatPrice = (value: number | string) => {
   const number = Number(value)
-  return Number.isFinite(number) ? number.toFixed(2) : '0.00'
+  return Number.isFinite(number) ? number.toFixed(2).replace(/\.?(?:0)+$/, '') || '0' : '0'
 }
 
 const selectPhone = (phone: MatchablePhone) => {
@@ -295,7 +303,7 @@ watch(
   gap: 8px;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .match-preorder-modal {
     gap: 12px;
   }

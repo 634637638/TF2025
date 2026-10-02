@@ -6,6 +6,7 @@
 const express = require('express')
 const router = express.Router()
 const { unifiedAuth, requirePermission, requireAnyPermission } = require('../middleware/unified-auth')
+const { listTemplateReferenceOptions } = require('../services/reference-options.service')
 const ApiResponse = require('../utils/response')
 const log = require('../utils/log')
 const { ensurePreorderSchema } = require('../utils/preorder-schema')
@@ -416,23 +417,16 @@ router.get('/options', unifiedAuth, requireAnyPermission(['preorders:view', 'pre
     const pool = require('../config/database').getDatabase()
     connection = await pool.getConnection()
 
-    const [[stores], [brands], [models], [colors], [memories]] = await Promise.all([
+    const [storesResult, brands, models, colors, memories] = await Promise.all([
       connection.query(
         'SELECT id, name, sort_order FROM stores WHERE status = 1 ORDER BY sort_order ASC, name ASC, id ASC'
       ),
-      connection.query(
-        'SELECT id, name, sort_order FROM brands ORDER BY sort_order ASC, name ASC, id ASC'
-      ),
-      connection.query(
-        'SELECT id, name, brand_id, sort_order FROM models ORDER BY brand_id ASC, sort_order ASC, name ASC, id ASC'
-      ),
-      connection.query(
-        'SELECT id, name, sort_order FROM colors ORDER BY sort_order ASC, name ASC, id ASC'
-      ),
-      connection.query(
-        'SELECT id, size, sort_order FROM memories ORDER BY sort_order ASC, size ASC, id ASC'
-      )
+      listTemplateReferenceOptions('brands'),
+      listTemplateReferenceOptions('models'),
+      listTemplateReferenceOptions('colors'),
+      listTemplateReferenceOptions('memories')
     ])
+    const stores = storesResult[0]
 
     return ApiResponse.success(res, { stores, brands, models, colors, memories })
   } catch (error) {
@@ -602,10 +596,9 @@ router.get('/:id/matchable-phones', unifiedAuth, requirePermission('preorders:ma
          AND p.brand_id = ?
          AND p.model_id = ?
          AND p.color_id = ?
-         AND p.memory_id = ?
-         AND p.is_new = ?
-       ORDER BY p.inventory_time ASC, p.id ASC
-       LIMIT 100`,
+       AND p.memory_id = ?
+       AND p.is_new = ?
+       ORDER BY p.inventory_time ASC, p.id ASC`,
       [
         preorder.matched_phone_id || 0,
         preorder.matched_phone_id || 0,

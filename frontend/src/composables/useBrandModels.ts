@@ -4,10 +4,15 @@
  */
 
 import { ref, reactive } from 'vue'
-import { unifiedApi } from '@/utils/unified-api'
 import { showElementError } from '@/utils/element-feedback'
 import { sortOptionsByOrder } from '@/utils/option-sort'
 import type { Brand, Model, Color, MemoryOption as Memory } from '@/types'
+import {
+  getCachedBrands,
+  getCachedColors,
+  getCachedMemories,
+  getModels
+} from '@/services/reference-options'
 
 // 全局状态 - 使用响应式数据
 const brands = ref<Brand[]>([])
@@ -24,15 +29,15 @@ export function useBrandModels() {
   // 加载品牌列表
   const loadBrands = async () => {
     try {
-      const response = await unifiedApi.get('/brands?status=1&page_size=100')
+      const response = await getCachedBrands()
 
       if (response.success) {
-        let brandsData = response.data
-        // 处理分页结构
-        if (brandsData && typeof brandsData === 'object' && brandsData.data) {
-          brandsData = brandsData.data
-        }
-        brands.value = (Array.isArray(brandsData) ? brandsData : [])
+        brands.value = (Array.isArray(response.data) ? response.data : []).map(item => ({
+          id: Number(item.id || 0),
+          name: String(item.name || ''),
+          status: Number(item.status || 1),
+          sort_order: Number(item.sort_order || 0)
+        }))
         brands.value = sortOptionsByOrder(brands.value)
         return brands.value
       } else {
@@ -55,7 +60,7 @@ export function useBrandModels() {
     brandModelsLoading[brandId] = true
 
     try {
-      const response = await unifiedApi.get(`/brands/${brandId}/models`)
+      const response = await getModels({ brandId })
 
       if (response.success) {
         const modelsData = Array.isArray(response.data) ? response.data : []
@@ -86,21 +91,14 @@ export function useBrandModels() {
   // 加载颜色列表
   const loadColors = async () => {
     try {
-      const response = await unifiedApi.get('/colors?page_size=100&sort_by=sort_order&sort_order=asc')
+      const response = await getCachedColors()
 
       if (response.success) {
-        let colorsData = response.data
-
-        // 处理不同的响应数据结构
-        if (colorsData && typeof colorsData === 'object') {
-          if (colorsData.colors) {
-            colorsData = colorsData.colors
-          } else if (colorsData.data) {
-            colorsData = colorsData.data
-          }
-        }
-
-        colors.value = (Array.isArray(colorsData) ? colorsData : [])
+        colors.value = (Array.isArray(response.data) ? response.data : []).map(item => ({
+          id: Number(item.id || 0),
+          name: String(item.name || ''),
+          sort_order: Number(item.sort_order || 0)
+        }))
         colors.value = sortOptionsByOrder(colors.value)
         return colors.value
       }
@@ -115,21 +113,15 @@ export function useBrandModels() {
   // 加载内存列表
   const loadMemories = async () => {
     try {
-      const response = await unifiedApi.get('/memories?page_size=100&sort_by=sort_order&sort_order=asc')
+      const response = await getCachedMemories()
 
       if (response.success) {
-        let memoriesData = response.data
-
-        // 处理不同的响应数据结构
-        if (memoriesData && typeof memoriesData === 'object') {
-          if (memoriesData.memories) {
-            memoriesData = memoriesData.memories
-          } else if (memoriesData.data) {
-            memoriesData = memoriesData.data
-          }
-        }
-
-        memories.value = (Array.isArray(memoriesData) ? memoriesData : [])
+        memories.value = (Array.isArray(response.data) ? response.data : []).map(item => ({
+          id: Number(item.id || 0),
+          name: item.name ? String(item.name) : undefined,
+          size: item.size ? String(item.size) : undefined,
+          capacity: item.capacity ? String(item.capacity) : undefined
+        }))
         memories.value = sortOptionsByOrder(memories.value, { labelKeys: ['size', 'capacity', 'name'] })
         return memories.value
       }

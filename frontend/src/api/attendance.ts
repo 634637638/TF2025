@@ -107,7 +107,7 @@ export const attendanceApi = {
    * 获取个人考勤记录
    */
   getMyAttendanceRecords: (filters: AttendanceFilters = {}) => {
-    return unifiedApi.get<AttendanceListResult>('/attendance/my', { params: filters })
+    return unifiedApi.get<AttendanceListResult>('/attendance', { params: filters })
   },
 
   /**

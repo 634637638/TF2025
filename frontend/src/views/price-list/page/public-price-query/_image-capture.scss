@@ -1,0 +1,210 @@
+// 图片水印样式 - 表格内斜向随机位置
+.image-watermark {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  mix-blend-mode: multiply;
+
+  .watermark-item {
+    position: absolute;
+    opacity: 0;
+    z-index: 2;
+    transform-origin: center;
+
+    .watermark-text {
+      display: inline-block;
+      opacity: 0.16;
+      font-size: clamp(10px, 3vw, 14px);
+      font-weight: 700;
+      color: rgba(220, 38, 38, 0.15);
+      max-width: 100%;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: clip;
+      overflow-wrap: normal;
+      word-break: keep-all;
+      line-height: 1.2;
+      text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.05);
+    }
+  }
+}
+
+// 生成图片时使用手机响应式样式
+.results-list.generating-image {
+  // 生成图使用固定安全宽度，避免 375px 等小屏设备裁掉最右侧价格。
+  width: 430px !important;
+  min-width: 430px !important;
+  max-width: 430px !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background: white !important;
+  position: relative !important;
+
+  > :not(.image-watermark) {
+    position: relative;
+    z-index: 1;
+  }
+
+  .results-header {
+    padding: 12px !important;
+    background: var(--tf-color-surface) !important;
+    flex-wrap: wrap !important;
+    border-bottom: none !important;
+    border-radius: 0 !important;
+    margin-bottom: 0 !important;
+    justify-content: space-between !important;
+    gap: 8px !important;
+
+    h2 {
+      font-size: 14px !important;
+    }
+
+    .count {
+      font-size: 11px !important;
+    }
+
+    .hot-badge {
+      font-size: 9px !important;
+      height: 16px !important;
+      line-height: 16px !important;
+      padding: 0 3px !important;
+    }
+  }
+
+  // 显示水印
+  .image-watermark {
+    .watermark-item {
+      opacity: 1 !important;
+    }
+  }
+
+  .download-section {
+    display: none !important;
+  }
+
+  .table-wrapper {
+    margin: 0 !important;
+    width: 100% !important;
+    overflow-x: visible !important;
+
+    :deep(.el-table) {
+      width: 430px !important;
+      min-width: 430px !important;
+      font-size: 12px !important;
+      border-radius: 0 !important;
+      border-left: 1px solid var(--el-table-border-color, var(--tf-color-gray-200-alt)) !important;
+      border-right: 1px solid var(--el-table-border-color, var(--tf-color-gray-200-alt)) !important;
+      display: block !important;
+      overflow: visible !important;
+
+      .el-table__inner-wrapper,
+      .el-table__header-wrapper,
+      .el-table__body-wrapper {
+        width: 100% !important;
+        overflow-x: visible !important;
+        overflow-y: visible !important;
+      }
+
+      .el-table__header th {
+        padding: 8px 4px !important;
+        font-size: 12px !important;
+        white-space: nowrap !important;
+        height: auto !important;
+      }
+
+      .el-table__body td {
+        padding: 8px 4px !important;
+        white-space: nowrap !important;
+        height: auto !important;
+      }
+
+      .el-table__cell {
+        padding: 8px 4px !important;
+      }
+
+      // header/body 都是独立 table，Safari 下不能把 body 当作 table-header-group。
+      .el-table__header,
+      .el-table__body {
+        width: 100% !important;
+        display: table !important;
+      }
+
+      .el-table__body tr {
+        display: table-row !important;
+      }
+
+      table {
+        width: 100% !important;
+        min-width: 100% !important;
+        display: table !important;
+        table-layout: fixed !important;
+      }
+
+      colgroup {
+        display: table-column-group !important;
+      }
+
+      col {
+        display: table-column !important;
+      }
+
+      // 品牌列
+      col:nth-child(1) {
+        width: 14% !important;
+      }
+
+      // 型号列
+      col:nth-child(2) {
+        width: 27% !important;
+      }
+
+      // 颜色列
+      col:nth-child(3) {
+        width: 14% !important;
+      }
+
+      // 内存列
+      col:nth-child(4) {
+        width: 16% !important;
+      }
+
+      // 价格列
+      col:nth-child(5) {
+        width: 29% !important;
+      }
+
+      // 确保表格内容不换行但完整显示
+      .el-table__body-wrapper {
+        overflow: visible !important;
+      }
+
+      // 确保所有单元格内容可见
+      .cell {
+        box-sizing: border-box !important;
+        overflow: visible !important;
+        text-overflow: clip !important;
+        white-space: nowrap !important;
+        word-break: keep-all !important;
+      }
+
+      .price {
+        display: inline-block !important;
+        min-width: max-content !important;
+        white-space: nowrap !important;
+      }
+    }
+  }
+
+  .contact-card {
+    margin-top: 0 !important;
+    padding: 4px 2px !important;
+    padding-bottom: 8px !important;
+    border-radius: 0 !important;
+    background: linear-gradient(135deg, var(--tf-color-border-cool-soft) 0%, var(--tf-color-border-cool-muted) 100%) !important;
+    border: 1px solid var(--tf-color-border-cool-strong) !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+  }
+}

@@ -48,10 +48,14 @@ const sectionSize = computed(() => props.size === 'small' ? 'compact' : props.si
 <style scoped>
 .table-loading-row__cell,
 .table-loading-row__block {
-  padding: 0 !important;
   text-align: center;
   vertical-align: middle;
   background: transparent;
+}
+
+td.table-loading-row__cell,
+.table-loading-row__block {
+  padding: 0;
 }
 
 .table-loading-row__block {

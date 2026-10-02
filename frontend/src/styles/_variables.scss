@@ -8,8 +8,8 @@
   --breakpoint-small-mobile-max: 479px;
   --breakpoint-mobile-max: 767px;
   --breakpoint-tablet-min: 768px;
-  --breakpoint-tablet-max: 1023px;
-  --breakpoint-desktop-min: 1024px;
+  --breakpoint-tablet-max: 1024px;
+  --breakpoint-desktop-min: 1025px;
   --breakpoint-wide-min: 1200px; // 宽屏/大桌面
   --breakpoint-ultra-wide-min: 1440px;
 
@@ -30,6 +30,45 @@
   --spacing-xl: 32px;
   --spacing-xxl: 48px;
   --spacing-xxxl: 64px;
+
+  /* Canonical design tokens. Component contracts should reference these names. */
+  --tf-space-1: 4px;
+  --tf-space-2: 8px;
+  --tf-space-3: 12px;
+  --tf-space-4: 16px;
+  --tf-space-5: 20px;
+  --tf-space-6: 24px;
+  --tf-space-7: 32px;
+  --tf-space-8: 48px;
+  --tf-radius-control: 6px;
+  --tf-radius-card: 8px;
+  --tf-radius-panel: 12px;
+  --tf-radius-dialog: 16px;
+  --tf-radius-full: 9999px;
+  --tf-shadow-card: var(--shadow-sm);
+  --tf-shadow-popover: var(--shadow-md);
+  --tf-shadow-dialog: var(--shadow-lg);
+  --tf-shadow-floating: var(--shadow-xl);
+  --tf-font-caption: var(--font-xs);
+  --tf-font-body: var(--font-sm);
+  --tf-font-body-lg: var(--font-base);
+  --tf-font-section: var(--font-lg);
+  --tf-font-title: var(--font-xxl);
+  --tf-z-sidebar: var(--z-dropdown);
+  --tf-z-dropdown: var(--z-popover);
+  --tf-z-drawer-overlay: 3100;
+  --tf-z-drawer: 3200;
+  --tf-z-dialog-sheet: 3000;
+  --tf-z-dialog: 4000;
+  --tf-z-loading: 9998;
+  --tf-z-toast: 9999;
+  --tf-z-message: 10000;
+  --tf-z-lock: 999999;
+  --tf-z-viewer: 12000;
+  --tf-z-message-box: 10000;
+  --tf-z-popper: 4005;
+  --tf-z-permission-tooltip: 9999;
+  --tf-drawer-max-width: 480px;
 }
 
 // ==================== 尺寸变量 ====================
@@ -510,9 +549,15 @@
 
 // ==================== 过渡动画 ====================
 :root {
-  --transition-fast: 0.15s ease;
-  --transition-normal: 0.3s ease;
-  --transition-slow: 0.5s ease;
+  --tf-motion-fast: 150ms;
+  --tf-motion-standard: 200ms;
+  --tf-motion-enter: 240ms;
+  --tf-motion-slow: 300ms;
+  --tf-motion-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --tf-motion-ease-emphasized: cubic-bezier(0.2, 0, 0, 1.2);
+  --transition-fast: var(--tf-motion-fast) var(--tf-motion-ease-standard);
+  --transition-normal: var(--tf-motion-slow) var(--tf-motion-ease-standard);
+  --transition-slow: 500ms var(--tf-motion-ease-standard);
 
   --transition-all-fast: all var(--transition-fast);
   --transition-all-normal: all var(--transition-normal);
@@ -566,8 +611,10 @@
 // ==================== 减少动画模式 ====================
 @media (prefers-reduced-motion: reduce) {
   :root {
-    --transition-fast: 0s;
-    --transition-normal: 0s;
-    --transition-slow: 0s;
+    --tf-motion-fast: 0ms;
+    --tf-motion-standard: 0ms;
+    --tf-motion-enter: 0ms;
+    --tf-motion-slow: 0ms;
+    --transition-slow: 0ms;
   }
 }

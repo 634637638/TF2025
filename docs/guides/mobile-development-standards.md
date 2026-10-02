@@ -30,19 +30,16 @@
 
 ### 1. 响应式断点
 
+断点唯一来源是 `frontend/src/config/breakpoints.ts`，样式变量镜像在 `frontend/src/styles/_variables.scss` 和 `frontend/src/styles/responsive.scss`。关键边界为小屏手机 `479px`、手机 `767px`、平板 `768px` 至 `1024px`、桌面导航 `1025px`、宽屏 `1200px`、超宽屏 `1440px`。新增断点前先更新公共配置及其消费者，不要在页面定义第二套断点。完整规则见[响应式断点统一规范](../frontend/responsive-breakpoint-standard.md)。
+
 ```typescript
-// src/composables/responsive.ts
-export const BREAKPOINTS = {
-  xs: 0,      // 超小屏手机 (< 576px)
-  sm: 576,    // 小屏手机 (≥ 576px)
-  md: 768,    // 平板竖屏 (≥ 768px)
-  lg: 1024,   // 桌面起点 (≥ 1024px)
-  xl: 1200,   // 宽屏桌面 (≥ 1200px)
-  xxl: 1440   // 大屏桌面 (≥ 1440px)
-}
+import { BREAKPOINTS, isDesktopNavigationViewport } from '@/config/breakpoints'
+
+const isDesktopShell = isDesktopNavigationViewport(window.innerWidth)
+const isPhoneWidth = window.innerWidth <= BREAKPOINTS.MOBILE_MAX
 ```
 
-> 约束：后台左侧固定菜单和桌面壳切换只看视口宽度，`1024px` 及以上必须按桌面端渲染，不允许再用设备检测结果覆盖这一规则。
+> 约束：后台左侧固定菜单和桌面壳切换只看视口宽度，`1025px` 及以上按桌面端渲染，`1024px` 及以下按抽屉式导航处理，不允许再用设备检测结果覆盖这一规则。
 
 ### 2. 使用响应式布局组件
 
@@ -153,7 +150,7 @@ if (isMobile.value) {
 - 统计区必须使用 `stats-cards` 和 `stat-card`。
 - 表格/列表容器必须使用 `admin-panel`，表格类列表再叠加 `admin-table-panel`。
 - 列表标题必须使用 `section-title`，记录数使用 `record-count`。
-- 手机端统计卡片、标题、搜索面板、列表面板间距不得在业务页面里按 `max-width: 480px` 或 `max-width: 375px` 二次改小。
+- 手机端统计卡片、标题、搜索面板、列表面板间距不得在业务页面里按 `max-width: 479px` 或 `max-width: 375px` 二次改小。
 
 ### 1. 页面结构
 
@@ -214,7 +211,7 @@ if (isMobile.value) {
   -webkit-overflow-scrolling: touch;
 
   // 移动端优化
-  @media (max-width: 768px) {
+  @media (max-width: 767px) {
     margin: 0 -16px;
     padding: 0 16px;
   }
@@ -549,8 +546,8 @@ if (import.meta.env.DEV || import.meta.env.VITE_APP_ENV === 'test') {
 
 ## 📚 相关文档
 
-- [响应式布局组件文档](../components/ResponsiveLayout.vue)
-- [移动端工具函数](../composables/responsive.ts)
+- 响应式布局组件：`frontend/src/components/ResponsiveLayout.vue`
+- 移动端工具函数：`frontend/src/composables/responsive.ts`
 - [Element Plus 移动端适配](https://element-plus.org/zh-CN/guide/mobile.html)
 - [Vue 3 响应式设计](https://vuejs.org/guide/scaling-up/responsive.html)
 
@@ -576,5 +573,5 @@ if (import.meta.env.DEV || import.meta.env.VITE_APP_ENV === 'test') {
 
 ---
 
-**最后更新**：2025-12-18
+**最后更新**：2026-10-01
 **维护团队**：TF2025前端开发团队

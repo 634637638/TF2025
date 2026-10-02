@@ -1,5 +1,5 @@
 import { extractResponseData } from '@/utils/api-response'
-import { unifiedApi as api } from '@/utils/unified-api'
+import { getModels, searchBrands, searchColors, searchMemories } from '@/services/reference-options'
 
 interface PhoneReferenceValues {
   brand_id: number | null
@@ -87,41 +87,25 @@ export const resolvePhoneReferenceIds = async (
   let memoryId = memoryUnchanged ? asPositiveId(values.memory_id) : null
 
   if (!brandId) {
-    const response = await api.get('/brands', {
-      params: { name: values.brand, status: 1, page_size: 50 },
-      useCache: false,
-      showError: false
-    })
+    const response = await searchBrands({ name: values.brand, status: 1 })
     brandId = findId(getRows(response), 'brand', values.brand)
   }
   if (!brandId) throw new Error('请选择有效的品牌')
 
   if (!modelId) {
-    const response = await api.get('/models', {
-      params: { brand_id: brandId, name: values.model, status: 1, page_size: 50 },
-      useCache: false,
-      showError: false
-    })
+    const response = await getModels({ brandId, keyword: values.model, status: 1 })
     modelId = findId(getRows(response), 'model', values.model)
   }
   if (!modelId) throw new Error('请选择有效的型号')
 
   if (!colorId) {
-    const response = await api.get('/colors', {
-      params: { name: values.color, status: 1, page_size: 50 },
-      useCache: false,
-      showError: false
-    })
+    const response = await searchColors({ name: values.color, status: 1 })
     colorId = findId(getRows(response), 'color', values.color)
   }
   if (!colorId) throw new Error('请选择有效的颜色')
 
   if (!memoryId) {
-    const response = await api.get('/memories', {
-      params: { size: values.memory, status: 1, page_size: 50 },
-      useCache: false,
-      showError: false
-    })
+    const response = await searchMemories({ size: values.memory, status: 1 })
     memoryId = findId(getRows(response), 'memory', values.memory)
   }
   if (!memoryId) throw new Error('请选择有效的内存')

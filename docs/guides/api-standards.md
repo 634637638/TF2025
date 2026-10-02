@@ -120,101 +120,14 @@ export const badService = {
 
 ---
 
-## 🎨 CSS 工具类规范
+## 🎨 CSS 与颜色规范
 
-### 目录结构
+本节只约定 API 文档中的样式边界，不再维护一套独立的按钮或颜色规范。全局颜色、按钮、弹窗、表格和语义 class 以[全局颜色令牌与语义色规范](../frontend/color-token-standard.md)、[全局按钮统一规范](../frontend/button-standards.md)和[后台卡片与表格统一规范](../frontend/admin-table-standards.md)为准。
 
-所有全局工具类统一存放在 `src/styles/utilities.scss`
-
-### 使用规范
-
-**✅ 优先使用工具类替换内联样式：**
-```vue
-<!-- ❌ 错误：内联样式 -->
-<div style="color: #f56c6c; font-weight: 600; margin-left: 8px;">文字</div>
-
-<!-- ✅ 正确：工具类 -->
-<div class="text-danger font-semibold ml-2">文字</div>
-```
-
-**✅ 动态样式使用 `:style` 绑定：**
-```vue
-<!-- 动态宽度（必须使用 :style） -->
-<div :style="{ width: progress + '%' }">进度</div>
-```
-
-### 常用工具类速查
-
-| 类别 | 工具类 | 说明 |
-|------|--------|------|
-| **宽度** | `.w-full` | 100% 宽度 |
-| | `.w-60` ~ `.w-200` | 固定像素宽度 |
-| | `.w-28` ~ `.w-60` | rem 单位宽度 |
-| **间距** | `.m-1` ~ `.m-4` / `.p-1` ~ `.p-4` | 4px-16px 外/内边距 |
-| | `.mt-1` ~ `.mt-4` | 上边距 |
-| | `.mb-1` ~ `.mb-4` | 下边距 |
-| | `.ml-1` ~ `.ml-4` | 左边距 |
-| | `.mr-1` ~ `.mr-4` | 右边距 |
-| **文字** | `.text-xs` `.text-sm` `.text-base` | 字体大小 |
-| | `.font-semibold` `.font-bold` | 字重 |
-| | `.text-danger` `.text-success` | 功能色 |
-| | `.text-secondary` `.text-regular` | 灰色系文字 |
-| **Flex** | `.flex` `.flex-1` | Flex 布局 |
-| | `.items-center` `.justify-center` | 对齐方式 |
-| | `.gap-1` ~ `.gap-6` | 间距 |
-| **定位** | `.relative` `.absolute` `.fixed` | 定位 |
-| **按钮** | `.btn-sm` `.btn-md` `.btn-lg` | 按钮尺寸 |
-| | `.btn-danger` | 危险按钮样式 |
-| **渐变** | `.bg-gradient-brand` | 渐变背景 |
-
-### 按钮样式
-
-```vue
-<!-- 小按钮 -->
-<el-button class="btn-sm">按钮</el-button>
-
-<!-- 危险按钮（红色） -->
-<el-button class="btn-sm btn-danger">删除</el-button>
-```
-
-### 颜色类
-
-```vue
-<!-- 文字颜色 -->
-<span class="text-danger">危险/红色</span>
-<span class="text-success">成功/绿色</span>
-<span class="text-warning">警告/橙色</span>
-<span class="text-blue">蓝色</span>
-<span class="text-secondary">次要文字</span>
-
-<!-- 背景色 -->
-<div class="bg-orange">橙色背景</div>
-<div class="bg-green">绿色背景</div>
-```
-
-### 新增工具类流程
-
-1. 在 `src/styles/utilities.scss` 中添加新样式
-2. 按类别分组（宽度、间距、文字、Flex 等）
-3. 添加中文注释说明
-4. 避免与现有样式重复
-
-### 禁止的做法
-
-```vue
-<!-- ❌ 禁止：复杂内联样式 -->
-<div style="display: flex; align-items: center; gap: 12px; padding: 16px; background: linear-gradient(...)">
-  内容
-</div>
-
-<!-- ✅ 正确：使用工具类 -->
-<div class="flex items-center gap-3 p-4 bg-gradient-brand">
-  内容
-</div>
-
-<!-- ❌ 禁止：创建新的全局样式文件 -->
-<!-- 应统一添加到 utilities.scss -->
-```
+- 新增按钮必须使用 `el-button` 语义类型或 `tf-button-*`、`table-action-*` 公共 class。
+- 新增颜色必须使用已登记的 `--tf-*`、`--admin-*` 语义令牌；禁止新增 `.text-danger`、`.bg-orange`、`.btn-danger` 等旧工具类方案。
+- 工具类只负责布局、间距和排版等非语义视觉；新增工具类前先检查 `frontend/src/styles/utilities.scss` 和现行前端规范，不能借工具类绕过颜色审计。
+- 动态尺寸可以使用 `:style`，动态颜色必须绑定已登记令牌或语义 class，不能拼接任意颜色字符串。
 
 ---
 

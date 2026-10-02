@@ -210,7 +210,8 @@
             >
               <el-input
                 v-model="editForm.sale_price"
-                type="number"
+                class="price-input"
+                inputmode="decimal"
                 min="0"
                 step="0.01"
                 placeholder="请输入销售价格"
@@ -231,8 +232,8 @@
                 v-model="editForm.sale_time"
                 type="date"
                 placeholder="选择销售日期"
-                format="YYYY-MM-DD"
-                value-format="YYYY-MM-DD"
+                :format="TIME_FORMATS.DATE"
+                :value-format="TIME_FORMATS.DATE"
                 class="form-input"
                 clearable
                 :disabled="!canEditField('sale_time')"
@@ -281,8 +282,8 @@
                 v-model="editForm.apply_time"
                 type="date"
                 placeholder="选择提交日期"
-                format="YYYY-MM-DD"
-                value-format="YYYY-MM-DD"
+                :format="TIME_FORMATS.DATE"
+                :value-format="TIME_FORMATS.DATE"
                 class="form-input"
                 clearable
               />
@@ -296,8 +297,8 @@
                 v-model="editForm.arrival_time"
                 type="date"
                 placeholder="选择到账日期"
-                format="YYYY-MM-DD"
-                value-format="YYYY-MM-DD"
+                :format="TIME_FORMATS.DATE"
+                :value-format="TIME_FORMATS.DATE"
                 class="form-input"
                 clearable
               />
@@ -453,7 +454,7 @@
               v-if="canViewField('sale_price') && !canEditField('sale_price')"
               label="销售价格"
             >
-              ¥{{ Number(editForm.sale_price || 0).toFixed(2) }}
+              ¥{{ formatAmount(editForm.sale_price) }}
             </el-descriptions-item>
           </el-descriptions>
         </div>
@@ -463,7 +464,7 @@
     <template #footer>
       <div
         v-if="modelValue"
-        class="apply-dialog-footer"
+        class="tf-dialog-actions apply-dialog-footer"
       >
         <el-button
           type="default"
@@ -504,6 +505,7 @@ import { normalizeIdCard, normalizePersonName, normalizePhoneDigits } from '@/ut
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import { logger } from '@/utils/logger'
 import { useBrandModels } from '@/composables/useBrandModels'
+import { formatAmount } from '@/utils/format'
 
 const props = defineProps<{
   modelValue: boolean
@@ -768,12 +770,6 @@ const submitEdit = async () => {
   width: 100%;
 }
 
-.apply-dialog-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-}
-
 .form-row {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -799,7 +795,7 @@ const submitEdit = async () => {
   color: var(--tf-color-muted);
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .edit-section + .edit-section {
     margin-top: 12px;
   }

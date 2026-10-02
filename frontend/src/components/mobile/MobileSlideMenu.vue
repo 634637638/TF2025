@@ -144,7 +144,6 @@
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { useMenuWidth } from '@/composables/useMenuWidth'
-import { storage } from '@/composables/core/useLocalStorage'
 import IconRenderer from '@/components/IconRenderer.vue'
 import InlineLoading from '@/components/InlineLoading.vue'
 import type { CloseEmits } from '@/types/component'
@@ -198,22 +197,6 @@ const route = useRoute()
 
 // 菜单宽度管理
 const { menuWidth, loadAllMenuWidths } = useMenuWidth()
-
-// Local Storage - 使用统一存储服务
-const getLocalStorageItem = (key: string, defaultValue: any[] = []) => {
-  return storage.get<any[]>(key, 'local', defaultValue)
-}
-
-const setLocalStorageItem = (key: string, value: any[]) => {
-  storage.set(key, value, 'local')
-}
-
-const recentlyUsedMenus = ref(getLocalStorageItem('recently-used-menus', []))
-
-const setRecentlyUsedMenus = (value: any[]) => {
-  recentlyUsedMenus.value = value
-  setLocalStorageItem('recently-used-menus', value)
-}
 
 // Refs
 const expandedMenus = ref(new Set<string>())
@@ -298,9 +281,6 @@ const handleMenuItemClick = (menu: MenuItem) => {
 }
 
 const navigateToMenu = (menu: MenuItem) => {
-  // 记录最近使用的菜单
-  addToRecentlyUsed(menu)
-
   // 导航到菜单
   emit('menu-click', menu)
 
@@ -316,27 +296,6 @@ const _handleQuickAction = (action: any) => {
 
 const isActiveMenu = (menu: MenuItem): boolean => {
   return route.path === menu.url || route.path === menu.path
-}
-
-
-const addToRecentlyUsed = (menu: MenuItem) => {
-  if (!menu.id) return
-  if (!recentlyUsedMenus.value || !Array.isArray(recentlyUsedMenus.value)) return
-  const recently = [...recentlyUsedMenus.value]
-  const index = recently.findIndex((item: MenuItem) => item.id === menu.id)
-
-  if (index > -1) {
-    recently.splice(index, 1)
-  }
-
-  recently.unshift(menu)
-
-  // 最多保留10个最近使用的菜单
-  if (recently.length > 10) {
-    recently.splice(10)
-  }
-
-  setRecentlyUsedMenus(recently)
 }
 
 
@@ -471,7 +430,7 @@ onUnmounted(() => {
   left: 0;
   right: 0;
   bottom: 0;
-  z-index: 3100;
+  z-index: var(--tf-z-drawer-overlay);
   pointer-events: none;
 }
 
@@ -790,27 +749,6 @@ onUnmounted(() => {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-
-
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 60px 20px;
-
-  .empty-icon {
-    font-size: 48px;
-    color: rgba(255, 255, 255, 0.5);
-    margin-bottom: 16px;
-  }
-
-  .empty-text {
-    color: rgba(255, 255, 255, 0.7);
-    font-size: 14px;
-  }
-}
-
 
 
 .sub-menu-enter-active,

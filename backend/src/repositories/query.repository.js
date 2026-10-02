@@ -6,14 +6,15 @@ const {
   getEffectivePhoneStatusSql,
   normalizePhoneStatus
 } = require('../utils/phone-status')
+const { normalizedModelSql } = require('../utils/search')
+const {
+  listActiveReferenceOptions,
+  listModelsByBrand
+} = require('../services/reference-options.service')
 const QUERY_STATS_DEFAULT_STATUSES = Object.freeze([
   ...COMPLETED_TRANSACTION_STATUSES,
   'in_stock'
 ])
-
-const normalizedModelSql = column => (
-  `LOWER(REPLACE(REPLACE(REPLACE(TRIM(${column}), ' ', ''), '　', ''), '-', ''))`
-)
 
 class QueryRepository extends BaseRepository {
   constructor() {
@@ -192,13 +193,31 @@ class QueryRepository extends BaseRepository {
     }
 
     if (search_term) {
+      // 综合查询的关键词需要覆盖页面展示的主要识别字段。
+      // 型号使用与下拉筛选相同的标准化规则，兼容 iPhone17、iPhone 17、iPhone-17 等写法。
       whereConditions.push(`(
         (CONVERT(p.imei USING utf8mb4) COLLATE utf8mb4_unicode_ci) LIKE ? OR
         (CONVERT(p.serial_number USING utf8mb4) COLLATE utf8mb4_unicode_ci) LIKE ? OR
+        (CONVERT(COALESCE(b.name, model_brand.name) USING utf8mb4) COLLATE utf8mb4_unicode_ci) LIKE ? OR
+        ${normalizedModelSql('m.name')} LIKE CONCAT('%', ${normalizedModelSql('?')}, '%') OR
+        (CONVERT(co.name USING utf8mb4) COLLATE utf8mb4_unicode_ci) LIKE ? OR
+        (CONVERT(mem.size USING utf8mb4) COLLATE utf8mb4_unicode_ci) LIKE ? OR
         (CONVERT(c.name USING utf8mb4) COLLATE utf8mb4_unicode_ci) LIKE ? OR
-        (CONVERT(c.phone USING utf8mb4) COLLATE utf8mb4_unicode_ci) LIKE ?
+        (CONVERT(c.phone USING utf8mb4) COLLATE utf8mb4_unicode_ci) LIKE ? OR
+        (CONVERT(c.apple_id USING utf8mb4) COLLATE utf8mb4_unicode_ci) LIKE ?
       )`)
-      whereParams.push(`%${search_term}%`, `%${search_term}%`, `%${search_term}%`, `%${search_term}%`)
+      const searchLike = `%${search_term}%`
+      whereParams.push(
+        searchLike,
+        searchLike,
+        searchLike,
+        search_term,
+        searchLike,
+        searchLike,
+        searchLike,
+        searchLike,
+        searchLike
+      )
     }
 
     const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : ''
@@ -352,20 +371,21 @@ class QueryRepository extends BaseRepository {
       const needsModelJoin = Boolean(
         brand ||
         model ||
+        search_term ||
         validSortField === 'brand' ||
         validSortField === 'model'
       )
       if (needsModelJoin) {
         filterJoins.push('LEFT JOIN models m ON p.model_id = m.id')
       }
-      if (brand || validSortField === 'brand') {
+      if (brand || search_term || validSortField === 'brand') {
         filterJoins.push('LEFT JOIN brands b ON p.brand_id = b.id')
         filterJoins.push('LEFT JOIN brands model_brand ON m.brand_id = model_brand.id')
       }
-      if (color) {
+      if (color || search_term) {
         filterJoins.push('LEFT JOIN colors co ON p.color_id = co.id')
       }
-      if (memory) {
+      if (memory || search_term) {
         filterJoins.push('LEFT JOIN memories mem ON p.memory_id = mem.id')
       }
       // 如果使用了店铺筛选或搜索词，需要包含 latest_sale 子查询
@@ -503,10 +523,16 @@ class QueryRepository extends BaseRepository {
       whereConditions.push(`(
         (CONVERT(p.imei USING utf8mb4) COLLATE utf8mb4_unicode_ci) LIKE ? OR
         (CONVERT(p.serial_number USING utf8mb4) COLLATE utf8mb4_unicode_ci) LIKE ? OR
+        (CONVERT(COALESCE(b.name, model_brand.name) USING utf8mb4) COLLATE utf8mb4_unicode_ci) LIKE ? OR
+        ${normalizedModelSql('m.name')} LIKE CONCAT('%', ${normalizedModelSql('?')}, '%') OR
+        (CONVERT(co.name USING utf8mb4) COLLATE utf8mb4_unicode_ci) LIKE ? OR
+        (CONVERT(mem.size USING utf8mb4) COLLATE utf8mb4_unicode_ci) LIKE ? OR
         (CONVERT(c.name USING utf8mb4) COLLATE utf8mb4_unicode_ci) LIKE ? OR
-        (CONVERT(c.phone USING utf8mb4) COLLATE utf8mb4_unicode_ci) LIKE ?
+        (CONVERT(c.phone USING utf8mb4) COLLATE utf8mb4_unicode_ci) LIKE ? OR
+        (CONVERT(c.apple_id USING utf8mb4) COLLATE utf8mb4_unicode_ci) LIKE ?
       )`)
-      whereParams.push(`%${search_term}%`, `%${search_term}%`, `%${search_term}%`, `%${search_term}%`)
+      const searchLike = `%${search_term}%`
+      whereParams.push(searchLike, searchLike, searchLike, search_term, searchLike, searchLike, searchLike, searchLike, searchLike)
     }
 
     const normalizedStatus = this.normalizeStatus(status)
@@ -1040,7 +1066,7 @@ class QueryRepository extends BaseRepository {
   /**
    * 获取查询选项数据
    */
-  async getQueryOptionsData() {
+  async getQueryOptionsData({ storeIds = [], allStores = false } = {}) {
     try {
       const db = this.getConnection()
 
@@ -1054,21 +1080,39 @@ class QueryRepository extends BaseRepository {
       ] = await Promise.all([
         // 供应商：优先显示启用状态，但如果没有则显示全部
         db.query('SELECT id, name, sort_order FROM suppliers WHERE (status = 1 OR status IS NULL) ORDER BY sort_order, id'),
-        // 店铺
-        db.query('SELECT id, name, sort_order FROM stores WHERE (status = 1 OR status IS NULL) ORDER BY sort_order, id'),
+        // 店铺：查询选项必须在服务端按当前用户数据范围过滤。
+        (() => {
+          const normalizedStoreIds = Array.isArray(storeIds)
+            ? storeIds.map(Number).filter(id => Number.isInteger(id) && id > 0)
+            : []
+          if (allStores) {
+            return db.query('SELECT id, name, sort_order FROM stores WHERE (status = 1 OR status IS NULL) ORDER BY sort_order, id')
+          }
+          if (normalizedStoreIds.length === 0) return Promise.resolve([[]])
+          return db.query(
+            `SELECT id, name, sort_order FROM stores
+             WHERE (status = 1 OR status IS NULL) AND id IN (${normalizedStoreIds.map(() => '?').join(',')})
+             ORDER BY sort_order, id`,
+            normalizedStoreIds
+          )
+        })(),
         // 品牌
-        db.query('SELECT id, name, sort_order FROM brands WHERE (status = 1 OR status IS NULL) ORDER BY sort_order, id'),
+        listActiveReferenceOptions('brands', { includeNullStatus: true }),
         // 颜色
-        db.query('SELECT id, name, sort_order FROM colors WHERE (status = 1 OR status IS NULL) ORDER BY sort_order, id'),
+        listActiveReferenceOptions('colors', { includeNullStatus: true }),
         // 内存
-        db.query('SELECT id, size as name, sort_order FROM memories WHERE (status = 1 OR status IS NULL) ORDER BY sort_order, id')
+        listActiveReferenceOptions('memories', { includeNullStatus: true })
       ])
 
       const suppliers = suppliersResult[0] || []
       const stores = storesResult[0] || []
-      const brands = brandsResult[0] || []
-      const colors = colorsResult[0] || []
-      const memories = memoriesResult[0] || []
+      const brands = brandsResult || []
+      const colors = colorsResult || []
+      const memories = (memoriesResult || []).map(memory => ({
+        id: memory.id,
+        name: memory.size,
+        sort_order: memory.sort_order
+      }))
 
       return {
         suppliers,
@@ -1085,43 +1129,10 @@ class QueryRepository extends BaseRepository {
     }
   }
 
-  async getQueryModels({ brand_id, name = '', include_id = null, page_size = 50 } = {}) {
-    const brandId = Number.parseInt(String(brand_id), 10)
-    if (!Number.isSafeInteger(brandId) || brandId <= 0) return []
-
-    const safePageSize = Math.min(Math.max(Number.parseInt(String(page_size), 10) || 50, 1), 50)
-    const keyword = String(name || '').trim()
-    const includeId = Number.parseInt(String(include_id || ''), 10)
-    const conditions = [
-      'm.brand_id = ?',
-      '(m.status = 1 OR m.status IS NULL)'
-    ]
-    const params = [brandId]
-
-    if (keyword) {
-      if (Number.isSafeInteger(includeId) && includeId > 0) {
-        conditions.push('(m.name LIKE ? OR m.id = ?)')
-        params.push(`%${keyword}%`, includeId)
-      } else {
-        conditions.push('m.name LIKE ?')
-        params.push(`%${keyword}%`)
-      }
-    }
-
-    const db = this.getConnection()
-    const orderSql = Number.isSafeInteger(includeId) && includeId > 0
-      ? `CASE WHEN m.id = ${includeId} THEN 0 ELSE 1 END, m.sort_order ASC, m.name ASC, m.id ASC`
-      : 'm.sort_order ASC, m.name ASC, m.id ASC'
-    const [rows] = await db.execute(`
-      SELECT m.id, m.name, m.brand_id, m.sort_order, b.name AS brand_name
-      FROM models m
-      LEFT JOIN brands b ON b.id = m.brand_id
-      WHERE ${conditions.join(' AND ')}
-      ORDER BY ${orderSql}
-      LIMIT ${safePageSize}
-    `, params)
-
-    return rows
+  // 型号下拉是品牌维度的参考数据，不使用列表分页；否则前端本地筛选
+  // 只能在截断后的结果中搜索，排在后面的合法型号会被错误隐藏。
+  async getQueryModels({ brand_id, name = '', include_id = null } = {}) {
+    return listModelsByBrand({ brand_id, name, include_id, activeOnly: true })
   }
 
   /**
@@ -1225,8 +1236,21 @@ class QueryRepository extends BaseRepository {
 
     // 搜索条件
     if (search_term) {
-      whereConditions.push('(c.name LIKE ? OR c.phone LIKE ? OR pr.preorder_number LIKE ? OR p.imei LIKE ?)')
-      whereParams.push(`%${search_term}%`, `%${search_term}%`, `%${search_term}%`, `%${search_term}%`)
+      whereConditions.push(`(
+        c.name LIKE ? OR
+        c.phone LIKE ? OR
+        c.apple_id LIKE ? OR
+        pr.preorder_number LIKE ? OR
+        p.imei LIKE ? OR
+        p.serial_number LIKE ? OR
+        b.name LIKE ? OR
+        ${normalizedModelSql('m.name')} LIKE CONCAT('%', ${normalizedModelSql('?')}, '%') OR
+        co.name LIKE ? OR
+        mem.size LIKE ? OR
+        pr.remarks LIKE ?
+      )`)
+      const searchLike = `%${search_term}%`
+      whereParams.push(searchLike, searchLike, searchLike, searchLike, searchLike, searchLike, searchLike, search_term, searchLike, searchLike, searchLike)
     }
 
     const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : ''

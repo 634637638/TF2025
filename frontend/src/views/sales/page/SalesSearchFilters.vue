@@ -183,7 +183,11 @@
         v-model="filters.operator_id"
         placeholder="入库员"
         filterable
+        remote
+        reserve-keyword
+        :remote-method="(query: string) => emit('operator-search', query)"
         clearable
+        @focus="emit('operator-search', '')"
         @change="emit('search')"
       >
         <el-option
@@ -204,8 +208,8 @@
         v-model="dateRange"
         start-placeholder="开始日期"
         end-placeholder="结束日期"
-        format="YYYY-MM-DD"
-        value-format="YYYY-MM-DD"
+        :format="TIME_FORMATS.DATE"
+        :value-format="TIME_FORMATS.DATE"
         clearable
         @change="emit('search')"
       />
@@ -214,6 +218,7 @@
 </template>
 
 <script setup lang="ts">
+import { TIME_FORMATS } from '@/utils/time'
 import { computed } from 'vue'
 import DateRangePicker from '@/components/DateRangePicker.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
@@ -246,6 +251,7 @@ const emit = defineEmits<{
   reset: []
   'debounced-search': []
   'brand-change': []
+  'operator-search': [value: string]
 }>()
 
 const filters = props.filters

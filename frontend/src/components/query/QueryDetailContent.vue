@@ -457,7 +457,7 @@ const getStatusBadgeClass = (status?: string) => {
   margin: 0;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .query-detail-content {
     gap: 8px;
   }

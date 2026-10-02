@@ -1,6 +1,7 @@
 <template>
   <MobileDialog
     :model-value="visible"
+    :title="`${mode === 'wholesale' ? '调货' : '划拨'}（已选 ${phoneCount} 台）`"
     width="720px"
     dialog-class="wholesale-form-dialog"
     :show-close="true"
@@ -9,17 +10,6 @@
     @update:model-value="emit('update:visible', $event)"
     @closed="resetForm"
   >
-    <template #header>
-      <div class="wholesale-modal-header">
-        <div class="header-left">
-          <div class="header-text">
-            <h3>{{ mode === 'wholesale' ? '调货' : '划拨' }}</h3>
-            <p>已选 {{ phoneCount }} 台</p>
-          </div>
-        </div>
-      </div>
-    </template>
-
     <div class="wholesale-modal-body">
       <el-form
         ref="formRef"
@@ -90,7 +80,7 @@
     </div>
 
     <template #footer>
-      <div class="wholesale-modal-footer">
+      <div class="tf-dialog-actions wholesale-modal-footer">
         <el-button
           type="default"
           @click="handleClose"
@@ -724,7 +714,9 @@ watch(() => props.visible, async (newVal) => {
   --dialog-vertical-gap: 8px;
   --dialog-max-width: calc(100vw - 8px);
   --mobile-dialog-body-padding: 6px 6px 8px;
-  --mobile-dialog-footer-padding: 0 6px 6px;
+  --mobile-dialog-footer-padding: var(--tf-dialog-mobile-footer-padding);
+  --tf-dialog-body-padding-inline: 0px;
+  --tf-dialog-body-padding-block: 0px;
 }
 
 .wholesale-form-dialog .el-dialog {
@@ -738,40 +730,9 @@ watch(() => props.visible, async (newVal) => {
   background: var(--color-bg-white) !important;
 }
 
-.wholesale-form-dialog .el-dialog__header {
-  padding: 0 !important;
-  margin-right: 0 !important;
-  border-bottom: 0 !important;
-}
-
-.wholesale-form-dialog .el-dialog__body {
-  padding: 0 !important;
-  background: var(--color-bg-white) !important;
-}
-
-.wholesale-form-dialog .el-dialog__footer {
-  padding: 0 !important;
-  background: var(--color-bg-white) !important;
-}
-
 .wholesale-form-dialog.mobile-dialog-sheet-panel {
   border-radius: 24px !important;
   box-shadow: 0 24px 60px rgba(15, 23, 42, 0.24) !important;
-}
-
-.wholesale-form-dialog .mobile-dialog-sheet-header {
-  min-height: calc(62px + env(safe-area-inset-top));
-  padding: calc(10px + env(safe-area-inset-top)) 14px 10px 14px !important;
-  background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%) !important;
-}
-
-.wholesale-form-dialog .mobile-dialog-sheet-header-content {
-  justify-content: flex-start;
-}
-
-.wholesale-form-dialog .mobile-dialog-sheet-body,
-.wholesale-form-dialog .mobile-dialog-sheet-footer {
-  background: var(--color-bg-white) !important;
 }
 
 @media (max-width: 767px) {
@@ -781,48 +742,10 @@ watch(() => props.visible, async (newVal) => {
     border-radius: 18px !important;
   }
 
-  .wholesale-form-dialog .mobile-dialog-sheet-header {
-    min-height: calc(56px + env(safe-area-inset-top));
-    padding: calc(8px + env(safe-area-inset-top)) 12px 8px 12px !important;
-  }
 }
 </style>
 
 <style lang="scss" scoped>
-.wholesale-modal-header {
-  width: 100%;
-  background: transparent;
-  padding: 0;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  color: white;
-  min-height: 0;
-
-  .header-left {
-    display: flex;
-    align-items: center;
-    min-width: 0;
-
-    .header-text {
-      h3 {
-        margin: 0;
-        font-size: 16px;
-        font-weight: 600;
-        line-height: 1.2;
-      }
-
-      p {
-        margin: 2px 0 0 0;
-        font-size: 12px;
-        line-height: 1.2;
-        opacity: 0.82;
-      }
-    }
-  }
-
-}
-
 .wholesale-modal-body {
   padding: 24px;
   overflow-y: auto;
@@ -855,46 +778,11 @@ watch(() => props.visible, async (newVal) => {
   font-size: 16px;
 }
 
-.wholesale-modal-footer {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 18px 24px 20px;
-  border-top: 1px solid rgba(124, 58, 237, 0.12);
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  background: var(--color-bg-white);
-  box-shadow: none;
-  backdrop-filter: none;
-}
-
 /* 移动端适配 */
 @media (max-width: 767px) {
-  .wholesale-modal-header {
-    padding: 0;
-    min-height: 0;
-
-    .header-left {
-      .header-text {
-        h3 {
-          font-size: 15px;
-        }
-
-        p {
-          font-size: 11px;
-        }
-      }
-    }
-
-  }
-
   .wholesale-modal-body {
     padding: 16px;
     max-height: calc(100vh - 120px);
-  }
-
-  .wholesale-modal-footer {
-    padding: 14px 16px calc(14px + env(safe-area-inset-bottom));
   }
 
   // 表单项全宽显示

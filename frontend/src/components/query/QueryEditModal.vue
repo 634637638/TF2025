@@ -11,7 +11,7 @@
     @closed="handleClosed"
   >
     <template #footer>
-      <div class="dialog-footer">
+      <div class="tf-dialog-actions dialog-footer">
         <el-button
           type="default"
           :disabled="submitting"
@@ -392,8 +392,8 @@
               v-model="formData.inventory_time"
               type="date"
               placeholder="请选择入库日期"
-              format="YYYY-MM-DD"
-              value-format="YYYY-MM-DD"
+              :format="TIME_FORMATS.DATE"
+              :value-format="TIME_FORMATS.DATE"
               popper-class="tf2025-form-popper"
             />
           </el-form-item>
@@ -406,8 +406,8 @@
               v-model="formData.sale_time"
               type="date"
               placeholder="请选择销售日期"
-              format="YYYY-MM-DD"
-              value-format="YYYY-MM-DD"
+              :format="TIME_FORMATS.DATE"
+              :value-format="TIME_FORMATS.DATE"
               popper-class="tf2025-form-popper"
             />
           </el-form-item>
@@ -431,9 +431,13 @@
               v-model="formData.sale_operator_id"
               placeholder="请选择销售员"
               filterable
+              remote
+              reserve-keyword
+              :remote-method="searchSaleOperatorsRemote"
               clearable
               teleported
               popper-class="tf2025-form-popper"
+              @focus="searchSaleOperatorsRemote('')"
             >
               <el-option
                 v-for="user in options.users"
@@ -523,18 +527,18 @@ import SectionLoading from '@/components/SectionLoading.vue'
 import { useMobile } from '@/composables/mobile'
 import unifiedApi from '@/utils/unified-api'
 import { toCanonicalPhoneUpdatePayload } from '@/utils/phone-update-payload'
-import { extractResponseData } from '@/utils/api-response'
+import { searchCustomerOptions } from '@/services/customer-options'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import { isValidMobilePhone, normalizeAppleId, normalizePersonName, normalizePhoneDigits, resolveAppleAccountEmail } from '@/utils/security'
 import { sortOptionsByOrder } from '@/utils/option-sort'
 import {
   getCachedBrands,
   getCachedColors,
-  getCachedEmployees,
   getCachedMemories,
-  getCachedModelsByBrand,
+  getModels,
   getCachedStores,
-  getCachedSuppliers
+  getCachedSuppliers,
+  searchEmployees
 } from '@/services/reference-options'
 import { PHONE_STATUS_OPTIONS } from '@/constants/phoneStatuses'
 import type { Customer } from '@/types/order'
@@ -797,11 +801,15 @@ const fetchEditOptions = async (): Promise<EditModalOptions> => {
           usersRes
         ] = await Promise.all([
           getCachedSuppliers(),
-          getCachedStores(),
+          getCachedStores(true),
           getCachedBrands(),
           getCachedColors(),
           getCachedMemories(),
-          getCachedEmployees()
+          searchEmployees({
+            page: 1,
+            page_size: 20,
+            strict_scope: true
+          })
         ])
 
         const brandsRaw = extractNestedList(brandsRes?.data, ['data'])
@@ -1096,6 +1104,35 @@ const initializing = ref(false)
 const submitting = ref(false)
 const options = reactive<EditModalOptions>(cloneOptions(EMPTY_OPTIONS))
 const formData = reactive<FormData>(defaultFormState())
+
+const searchSaleOperatorsRemote = async (keyword = '') => {
+  const selectedId = formData.sale_operator_id
+  const selectedUser = options.users.find(user => String(user.id) === String(selectedId))
+
+  try {
+    const usersRes = await searchEmployees({
+      keyword: keyword.trim() || undefined,
+      page: 1,
+      page_size: 20,
+      strict_scope: true
+    })
+    const users = usersRes.success && Array.isArray(usersRes.data?.employees)
+      ? usersRes.data.employees.map(item => ({
+        id: Number(item.id || 0),
+        name: String(item.name || item.username || ''),
+        status: Number(item.status)
+      }))
+      : []
+
+    options.users = sortOptionsByOrder(users)
+    if (selectedUser && !options.users.some(user => Number(user.id) === Number(selectedUser.id))) {
+      options.users = sortOptionsByOrder([...options.users, selectedUser])
+    }
+  } catch (error) {
+    showError(getErrorMessage(error, '加载销售员失败，请稍后重试'))
+  }
+}
+
 const originalEditValues = ref({
   customer_id: '',
   sale_operator_id: '',
@@ -1243,11 +1280,12 @@ const loadModelsForBrand = async (keyword = '', includeCurrent = true) => {
   const sequence = ++modelSearchSequence
   modelOptionsLoading.value = true
   try {
-    const response = await getCachedModelsByBrand(
-      formData.brand_id,
+    const response = await getModels({
+      brandId: formData.brand_id,
       keyword,
-      includeCurrent ? formData.model_id : null
-    )
+      activeOnly: true,
+      includeId: includeCurrent ? formData.model_id : null
+    })
     if (sequence !== modelSearchSequence) return
 
     const models = normalizeRemoteModels(
@@ -1651,16 +1689,10 @@ const searchCustomers = async (query: string) => {
   editShowCustomerSearchResults.value = true
 
   try {
-    const response = await unifiedApi.get(`/sales/customers?search=${encodeURIComponent(query)}`)
-    if (response.success) {
-      const records = extractResponseData<Array<Partial<CustomerOption>>>(response)
-      editCustomerOptions.value = records.map((item) => normalizeCustomerOption(item))
-      editShowCustomerSearchResults.value = editCustomerOptions.value.length > 0 || query.length >= 11
-      return
-    }
-
-    editCustomerOptions.value = []
-    editShowCustomerSearchResults.value = query.length >= 11
+    const records = await searchCustomerOptions(query, 'sales')
+    editCustomerOptions.value = records.map((item) => normalizeCustomerOption(item))
+    editShowCustomerSearchResults.value = editCustomerOptions.value.length > 0 || query.length >= 11
+    return
   } catch (error) {
     editCustomerOptions.value = []
     editShowCustomerSearchResults.value = query.length >= 11
@@ -1844,7 +1876,9 @@ const handlePaymentMethodChange = () => {
       showError('销售金额超过6000元，无法使用国补刷卡')
       formData.payment_method = ''
       formData.payment_channel = ''
-      formData.remarks = ''
+      if (formData.remarks.startsWith('刷卡实际支付')) {
+        formData.remarks = ''
+      }
       return
     }
     formData.payment_channel = 'subsidy_card'
@@ -2018,13 +2052,6 @@ onBeforeUnmount(() => {
   padding: 8px 0 4px;
 }
 
-.dialog-footer {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-  width: 100%;
-}
-
 .edit-form-content {
   padding: 0;
 }
@@ -2110,6 +2137,8 @@ onBeforeUnmount(() => {
   --dialog-max-width: calc(100vw - 4px);
   --mobile-dialog-body-padding: 6px 6px 8px;
   --mobile-dialog-footer-padding: 0 6px 6px;
+  --tf-dialog-surface: var(--color-bg-white);
+  --tf-dialog-footer-bg: var(--color-bg-white);
 }
 
 :global(.query-edit-dialog.mobile-dialog-sheet-overlay) {
@@ -2140,14 +2169,6 @@ onBeforeUnmount(() => {
   right: 16px;
   transform: none;
   background: rgba(255, 255, 255, 0.16);
-}
-
-:global(.query-edit-dialog .mobile-dialog-sheet-body) {
-  background: var(--color-bg-white);
-}
-
-:global(.query-edit-dialog .mobile-dialog-sheet-footer) {
-  background: var(--color-bg-white);
 }
 
 .input-hint {
@@ -2298,7 +2319,7 @@ onBeforeUnmount(() => {
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .customer-search-results {
     max-height: 240px;
   }
@@ -2432,9 +2453,6 @@ onBeforeUnmount(() => {
   }
 
   .dialog-footer {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 6px;
-
     :deep(.el-button [class*='fa-']) {
       margin-right: 4px;
     }
@@ -2461,7 +2479,7 @@ onBeforeUnmount(() => {
   }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 479px) {
   :global(.query-edit-dialog) {
     --dialog-side-gap: 4px;
     --dialog-vertical-gap: 12px;

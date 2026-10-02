@@ -19,7 +19,7 @@
               class="toolbar-upload"
               :show-file-list="false"
               :http-request="customUploadRequest"
-              accept="image/*,.heic,.heif,.pdf,application/pdf"
+              accept=".jpg,.jpeg,.png,.gif,.webp,.heic,.heif,.pdf,application/pdf"
               multiple
             >
               <el-button
@@ -226,15 +226,17 @@
 </template>
 
 <script setup lang="ts">
+import { confirmAction } from '@/utils/message-box'
 import { computed, defineAsyncComponent, nextTick, ref, watch } from 'vue'
 import InlineLoading from '@/components/InlineLoading.vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { storage } from '@/composables/core/useLocalStorage'
 import { deleteTempFiles } from '@/utils/temp-file-cleaner'
 import { useImportExport } from '@/composables/useImportExport'
 import { unifiedApi } from '@/utils/unified-api'
 import { logger } from '@/utils/logger'
 import { formatImageUrl } from '@/utils/format'
+import { convertPdfToImage, isPdfFile } from '@/utils/upload-media'
 
 const AsyncImage = defineAsyncComponent(() => import('@/components/Image.vue'))
 
@@ -440,33 +442,6 @@ const handleViewerImageLoad = () => {
   viewerLoading.value = false
 }
 
-const convertPDFToImage = async (pdfFile: File): Promise<File> => {
-  const pdfjsLib = await import('pdfjs-dist')
-  pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf/pdf.worker.min.js'
-
-  const arrayBuffer = await pdfFile.arrayBuffer()
-  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
-  const page = await pdf.getPage(1)
-  const viewport = page.getViewport({ scale: 3.0 })
-
-  const canvas = document.createElement('canvas')
-  const context = canvas.getContext('2d')!
-  canvas.width = viewport.width
-  canvas.height = viewport.height
-
-  await page.render({
-    canvasContext: context,
-    viewport,
-    canvas
-  }).promise
-
-  const blob = await new Promise<Blob>((resolve) => {
-    canvas.toBlob((nextBlob) => resolve(nextBlob!), 'image/jpeg', 1.0)
-  })
-
-  return new File([blob], pdfFile.name.replace('.pdf', '.jpg'), { type: 'image/jpeg' })
-}
-
 const customUploadRequest = async (options: any) => {
   if (!canUpload.value) {
     ElMessage.warning('您没有图片上传权限')
@@ -475,7 +450,7 @@ const customUploadRequest = async (options: any) => {
   }
 
   const { file, onSuccess, onError } = options
-  const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
+  const isPdf = isPdfFile(file)
   const isLt10M = file.size / 1024 / 1024 < 10
 
   if (!isLt10M) {
@@ -488,7 +463,7 @@ const customUploadRequest = async (options: any) => {
   if (isPdf) {
     try {
       ElMessage.info('正在将PDF转换为图片...')
-      uploadFile = await convertPDFToImage(file)
+      uploadFile = await convertPdfToImage(file)
       ElMessage.success('PDF转换成功，正在上传...')
     } catch (error) {
       ElMessage.error('PDF转换图片失败')
@@ -674,7 +649,7 @@ const applyPhotoDeletion = (indexes: number[], successMessage: string) => {
 const deleteSelectedPhotos = () => {
   if (selectedPhotos.value.length === 0) return
 
-  ElMessageBox.confirm(`确定要删除选中的 ${selectedPhotos.value.length} 张照片吗？`, '提示', {
+  confirmAction(`确定要删除选中的 ${selectedPhotos.value.length} 张照片吗？`, '提示', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
@@ -686,7 +661,7 @@ const deleteSelectedPhotos = () => {
 const deleteAllPhotos = () => {
   if (previewPhotos.value.length === 0) return
 
-  ElMessageBox.confirm(`确定要删除全部 ${previewPhotos.value.length} 张照片吗？`, '提示', {
+  confirmAction(`确定要删除全部 ${previewPhotos.value.length} 张照片吗？`, '提示', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
@@ -727,7 +702,7 @@ const removePhotoFromPreview = (index: number) => {
     return
   }
 
-  ElMessageBox.confirm('确定要删除这张照片吗？', '提示', {
+  confirmAction('确定要删除这张照片吗？', '提示', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
@@ -981,7 +956,6 @@ const savePhotoChanges = async () => {
   padding: 56px 20px;
 }
 
-.photo-preview-footer,
 .photo-viewer-actions {
   display: flex;
   justify-content: flex-end;
@@ -1085,7 +1059,7 @@ const savePhotoChanges = async () => {
   border-radius: 8px;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   :deep(.photo-preview-dialog .el-dialog) {
     width: calc(100vw - 16px) !important;
     max-width: calc(100vw - 16px);
@@ -1093,19 +1067,6 @@ const savePhotoChanges = async () => {
     margin: 12px auto !important;
     display: flex;
     flex-direction: column;
-  }
-
-  :deep(.photo-preview-dialog .el-dialog__body) {
-    flex: 1;
-    min-height: 0;
-    overflow-y: auto;
-    padding-bottom: 12px;
-  }
-
-  :deep(.photo-preview-dialog .el-dialog__footer) {
-    padding-top: 12px;
-    border-top: 1px solid var(--color-border-light);
-    background: var(--color-bg-white);
   }
 
   .photo-viewer-actions {
@@ -1161,12 +1122,6 @@ const savePhotoChanges = async () => {
   }
 
   .photo-preview-footer {
-    display: flex;
-    flex-wrap: nowrap;
-    align-items: center;
-    justify-content: stretch;
-    gap: 8px;
-
     :deep(.el-button > span) {
       display: inline-flex;
       align-items: center;

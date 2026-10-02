@@ -27,65 +27,36 @@ Element Plus 的 `el-dialog` 组件会创建多个嵌套的包装元素：
 
 ### 解决方案
 
-#### 当前方案：使用 MobileDialog 或统一 el-dialog
+#### 当前方案：使用 MobileDialog 或登记例外
 
-新功能统一使用 `MobileDialog`；必须使用原生 `el-dialog` 时复用全局样式：
+新功能统一使用 `MobileDialog`；必须使用原生 `el-dialog` 时，必须属于审计脚本登记的工作台例外，并复用全局入口。禁止新增 `modal-overlay`、`modal-content`、`BaseModal` 或重复的弹窗主题。
 
 ```vue
-<!-- 自定义模态框结构 -->
-<template>
-  <div v-if="visible" class="modal-overlay" @click.self="close">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3><i class="fas fa-edit"></i> 标题</h3>
-        <button class="btn-close" @click="close">×</button>
-      </div>
-      <div class="modal-body">
-        <!-- 内容 -->
-      </div>
-      <div class="modal-footer">
-        <!-- 底部按钮 -->
-      </div>
+<MobileDialog
+  v-model="visible"
+  title="编辑资料"
+  width="680px"
+  max-width="880px"
+  dialog-class="customer-edit-dialog"
+  @confirm="save"
+>
+  <el-form class="tf-dialog-form tf-dialog-form--stacked" :model="form">
+    <el-form-item label="名称">
+      <el-input v-model="form.name" />
+    </el-form-item>
+  </el-form>
+
+  <template #footer>
+    <div class="tf-dialog-actions">
+      <el-button @click="visible = false">取消</el-button>
+      <el-button type="primary" @click="save">保存</el-button>
     </div>
-  </div>
-</template>
-
-<style lang="scss">
-/* 注意：模态框样式不要使用 scoped */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  z-index: 2000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  backdrop-filter: blur(2px);
-}
-
-.modal-content {
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-  width: 90%;
-  max-width: 600px;
-  max-height: 90vh;
-  overflow: hidden;
-}
-
-.modal-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  padding: 16px 20px;
-  color: white;
-  border-radius: 12px 12px 0 0;
-}
-</style>
+  </template>
+</MobileDialog>
 ```
 
-#### 历史问题的统一修复方式
+宽度由 `width`/`maxWidth` 声明，自动根据桌面、平板、手机视口收缩。页面不得复制 `width: min(..., 100vw)`、`.el-dialog__body` padding 或 footer 按钮尺寸规则。
+
 如果必须使用 `el-dialog`，直接复用全局入口，不要在页面或其他全局文件中新增覆盖：
 
 - 外壳、响应式尺寸、标题、正文和安全区：`frontend/src/styles/components/_dialog.scss`
@@ -106,28 +77,39 @@ Element Plus 的 `el-dialog` 组件会创建多个嵌套的包装元素：
 Vue 的 scoped 样式通过添加唯一属性选择器来实现样式隔离。但模态框通过 `v-if` 条件渲染，且通常挂载到 body 根级别，不在组件的 DOM 树内，因此 scoped 样式无法匹配。
 
 ### 解决方案
-将模态框样式放在**非 scoped** 的 style 块中：
+
+业务页面不再自行创建模态框外壳，也不通过页面级样式覆盖弹窗公共结构。统一使用
+`MobileDialog`，并通过 `dialog-class` 只标记业务变体；弹窗外壳、宽度、遮罩、标题栏、正文滚动和
+footer 由全局实现维护。
 
 ```vue
-<style lang="scss" scoped>
-// 组件其他 scoped 样式
-.component-style {
-  color: red;
-}
-</style>
+<MobileDialog
+  v-model="visible"
+  title="编辑资料"
+  width="680px"
+  max-width="880px"
+  dialog-class="customer-edit-dialog"
+>
+  <!-- 这里仅维护业务内容布局；内容样式可以继续使用 scoped -->
+  <el-form class="customer-edit-form" :model="form">
+    <el-form-item label="名称">
+      <el-input v-model="form.name" />
+    </el-form-item>
+  </el-form>
 
-<style lang="scss">
-// 模态框样式 - 不使用 scoped
-.modal-overlay {
-  position: fixed;
-  // ...
-}
-
-.modal-content {
-  // ...
-}
-</style>
+  <template #footer>
+    <div class="tf-dialog-actions">
+      <el-button @click="visible = false">取消</el-button>
+      <el-button type="primary" @click="save">保存</el-button>
+    </div>
+  </template>
+</MobileDialog>
 ```
+
+如果确需调整弹窗内容布局，优先使用组件自身的 scoped class 或 `dialog-class` 对应的内容变体，
+不得新增 `.modal-overlay`、`.modal-content`、`BaseModal`，也不得复制 `.el-dialog__header`、
+`.el-dialog__body`、`.el-dialog__footer` 的公共规则。原生 `el-dialog` 仅限已登记的工作台例外，
+并且仍必须复用 `frontend/src/styles/components/_dialog.scss` 和 `_dialog-actions.scss`。
 
 ---
 
@@ -188,28 +170,36 @@ const setCurrentTime = (field: string) => {
 ### ✅ 推荐做法
 
 1. **优先使用统一弹窗组件**
-   - 使用项目中的 `MobileDialog` 组件
-   - 原生 `el-dialog` 必须复用 `_dialog.scss`
+   - 新增业务弹窗使用 `MobileDialog`
+   - 原生 `el-dialog` 必须属于已登记例外并复用全局样式
    - 复杂内容只定义业务布局，不复制弹窗外壳
 
-2. **模态框样式放在非 scoped 块**
-   - 使用 `<style lang="scss">` 而非 `<style lang="scss" scoped>`
-   - 或提取到全局样式文件
+2. **统一响应式宽度**
+   - 通过 `width` 声明业务期望宽度，通过 `maxWidth` 声明更严格的上限
+   - 桌面、平板、手机由全局规则自动收缩，不在页面复制 `min(..., 100vw)` 或
+     `calc(100vw - ...)`
 
 3. **统一视觉风格**
-   - 头部、遮罩、圆角、阴影和正文背景统一读取 `_dialog.scss` 令牌
-   - 不在业务页面复制具体颜色、圆角或间距
+   - 头部、遮罩、圆角、阴影、正文间距和关闭按钮统一读取 `_dialog.scss` 令牌
+   - footer 使用 `.tf-dialog-actions`，按钮尺寸和移动端等宽行为由全局维护
+   - 不在业务页面复制具体颜色、圆角、间距或按钮尺寸
 
-4. **全局配置**
+4. **业务样式边界**
+   - 页面样式只负责表单、表格、图片等内容布局
+   - 内容样式可以使用 scoped；需要穿透子组件时只针对明确的业务 class
+   - 不新增全局弹窗外壳或第二套弹窗主题
+
+5. **全局配置**
    - 在 `main.ts` 中配置 Element Plus 中文语言包
    - 由 `main.ts` 全局加载 `_dialog.scss` 和 `_dialog-actions.scss`
 
 ### ❌ 避免做法
 
-1. ❌ 在 scoped 样式中定义模态框样式
-2. ❌ 直接使用 el-dialog 而不做样式处理
-3. ❌ 忘记配置日期选择器的时区
-4. ❌ 使用内联样式覆盖（难维护）
+1. ❌ 自建 `.modal-overlay`、`.modal-content`、`BaseModal` 或重复弹窗主题
+2. ❌ 直接使用未登记的 `el-dialog` 或覆盖 `.el-dialog__header/body/footer`
+3. ❌ 在页面写 `width: min(..., 100vw)`、`calc(100vw - ...)` 或重复断点规则
+4. ❌ 忘记配置日期选择器的时区
+5. ❌ 使用内联样式覆盖全局弹窗结构（难维护）
 
 ---
 
@@ -219,7 +209,8 @@ const setCurrentTime = (field: string) => {
 - **统一模态框样式**: `/frontend/src/styles/components/_dialog.scss`
 - **统一底部按钮**: `/frontend/src/styles/components/_dialog-actions.scss`
 - **参考实现**: `/frontend/src/views/salary/SalaryView.vue`
-- **本次修复**: `/frontend/src/views/subsidy/SubsidyView.vue`
+- **响应式宽度规范**: [`dialog-standards.md`](dialog-standards.md)
+- **弹窗审计脚本**: `/frontend/scripts/check-dialog-adoption.mjs`
 
 ---
 
@@ -227,19 +218,21 @@ const setCurrentTime = (field: string) => {
 
 当开发新的模态框时，确保：
 
-- [ ] 使用 MobileDialog 或统一 el-dialog
-- [ ] 模态框样式在非 scoped style 块中
-- [ ] 头部使用渐变色背景
-- [ ] 遮罩层为半透明黑色
-- [ ] 关闭按钮有悬停效果
+- [ ] 使用 MobileDialog 或已登记的统一 el-dialog
+- [ ] 通过 `width`/`maxWidth` 声明业务宽度，没有页面级 viewport 计算
+- [ ] PC、平板、手机宽度均不溢出，正文超高时可滚动
+- [ ] 标题、遮罩、关闭按钮、正文和圆角使用公共 Token
+- [ ] footer 使用 `.tf-dialog-actions`，按钮没有页面级重复尺寸
 - [ ] 支持点击遮罩关闭
 - [ ] 支持 ESC 键关闭
 - [ ] 日期选择器配置了时区和语言
 - [ ] 关闭时重置表单状态
-- [ ] 移动端响应式适配
+- [ ] 移动端按钮保持一行并避开安全区
+- [ ] 没有页面级 `.el-dialog__header/body/footer` 或自建弹窗外壳
+- [ ] 运行 `npm run check:dialogs`、`npm run check:ui` 和 `npm run type-check`
 
 ---
 
-**最后更新**: 2025-01-05
+**最后更新**: 2026-10-01
 **问题发现**: 国补管理模块开发
-**解决方案**: 自定义模态框 + 全局样式修复
+**解决方案**: MobileDialog + 全局弹窗 Token + 响应式宽度审计

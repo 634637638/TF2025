@@ -791,7 +791,8 @@
               <el-form-item label="采集价">
                 <el-input
                   v-model="editForm.wholesale_price"
-                  type="number"
+                  class="price-input"
+                  inputmode="decimal"
                   placeholder="输入价格或留空删除"
                   clearable
                 >
@@ -804,7 +805,7 @@
             <el-col :span="12">
               <el-form-item label="销售价">
                 <el-input
-                  :model-value="editForm.retail_price !== null && editForm.retail_price !== undefined ? `¥${Number(editForm.retail_price).toFixed(2)}` : '未设置（保存后自动计算）'"
+                  :model-value="editForm.retail_price !== null && editForm.retail_price !== undefined ? `¥${formatAmount(editForm.retail_price)}` : '未设置（保存后自动计算）'"
                   type="text"
                   readonly
                   disabled
@@ -826,8 +827,8 @@
               v-model="editForm.last_sync_time"
               type="datetime"
               placeholder="选择同步时间"
-              format="YYYY-MM-DD HH:mm:ss"
-              value-format="YYYY-MM-DD HH:mm:ss"
+              :format="TIME_FORMATS.DATETIME"
+              :value-format="TIME_FORMATS.DATETIME"
               :clearable="true"
               class="w-full"
               @clear="() => editForm.last_sync_time = null"
@@ -1313,12 +1314,10 @@
             </template>
           </el-table-column>
         </el-table>
-        <div
+        <DataEmptyState
           v-if="priceHistory.length === 0"
-          class="empty-history"
-        >
-          <DataEmptyState description="暂无历史记录" />
-        </div>
+          description="暂无历史记录"
+        />
         <div
           v-if="selectedHistoryItems.length > 0"
           class="history-batch-actions"
@@ -1430,12 +1429,10 @@
                 </template>
               </el-table-column>
             </el-table>
-            <div
+            <DataEmptyState
               v-if="inventoryData.length === 0"
-              class="empty-inventory"
-            >
-              <DataEmptyState description="暂无库存数据" />
-            </div>
+              description="暂无库存数据"
+            />
           </template>
         </div>
       </MobileDialog>
@@ -1452,9 +1449,10 @@
 </template>
 
 <script setup lang="ts">
+import { confirmAction } from '@/utils/message-box'
 import { ref, reactive, onMounted, onUnmounted, watch, computed, defineAsyncComponent } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import {
   getStockPhones,
   getPriceList,
@@ -1494,6 +1492,8 @@ import { useLoadingState } from '@/composables'
 import { getAdaptiveActionColumnWidth, getTextColumnMinWidth } from '@/utils/table-layout'
 import { isCurrentMobileViewport } from '@/utils/device-detection'
 import { sortOptionsByOrder } from '@/utils/option-sort'
+import { formatAmount } from '@/utils/format'
+import { getCachedBrands, getCachedColors, getCachedMemories, getModels } from '@/services/reference-options'
 
 const PriceMarkupConfig = defineAsyncComponent(() => import('@/components/PriceMarkupConfig.vue'))
 
@@ -2277,7 +2277,7 @@ const handleDelete = async (row: any) => {
   }
 
   try {
-    await ElMessageBox.confirm('确定要删除这条价格记录吗？', '提示', {
+    await confirmAction('确定要删除这条价格记录吗？', '提示', {
       type: 'warning'
     })
     const res = await deletePriceItem(row.id)
@@ -2359,7 +2359,7 @@ const handleClearPrices = async () => {
 
   // 二次确认
   try {
-    await ElMessageBox.confirm(
+    await confirmAction(
       '确定要清零所有采集的价格吗？此操作将把批发价和零售价都设置为0。',
       '清零价格确认',
       {
@@ -2397,7 +2397,7 @@ const handleClearAllPriceHistory = async () => {
   }
 
   try {
-    await ElMessageBox.confirm(
+    await confirmAction(
       '确定要清理所有历史价格记录吗？此操作会删除全部商品的历史价格，且不可恢复。',
       '清理历史价格确认',
       {
@@ -2543,7 +2543,7 @@ const handleSetDefaultConfig = async (configId: number) => {
   }
 
   try {
-    await ElMessageBox.confirm('确定要将此配置设为默认采集源吗？', '确认', {
+    await confirmAction('确定要将此配置设为默认采集源吗？', '确认', {
       type: 'warning'
     })
 
@@ -2569,7 +2569,7 @@ const handleDeleteConfig = async (configId: number) => {
   }
 
   try {
-    await ElMessageBox.confirm('确定要删除此同步源吗？', '确认', {
+    await confirmAction('确定要删除此同步源吗？', '确认', {
       type: 'warning'
     })
 
@@ -2693,7 +2693,7 @@ const handleDeleteHistoryItem = async (row: any) => {
   }
 
   try {
-    await ElMessageBox.confirm('确定要删除这条历史记录吗？', '提示', {
+    await confirmAction('确定要删除这条历史记录吗？', '提示', {
       type: 'warning'
     })
 
@@ -2725,7 +2725,7 @@ const handleBatchDeleteHistory = async () => {
   }
 
   try {
-    await ElMessageBox.confirm(`确定要删除选中的 ${selectedHistoryItems.value.length} 条历史记录吗？`, '提示', {
+    await confirmAction(`确定要删除选中的 ${selectedHistoryItems.value.length} 条历史记录吗？`, '提示', {
       type: 'warning',
       customClass: 'message-box-unified'
     })
@@ -2756,7 +2756,7 @@ const handleClearHistory = async () => {
   }
 
   try {
-    await ElMessageBox.confirm('确定要清空所有历史记录吗？此操作不可恢复！', '警告', {
+    await confirmAction('确定要清空所有历史记录吗？此操作不可恢复！', '警告', {
       type: 'error',
       confirmButtonText: '确定清空',
       cancelButtonText: '取消'
@@ -2915,8 +2915,7 @@ const normalizeHistoryPrice = (price: unknown) => {
 }
 
 const formatPriceAmount = (amount: number) => {
-  const fixed = Math.abs(amount).toFixed(2)
-  return fixed.endsWith('.00') ? fixed.slice(0, -3) : fixed
+  return formatAmount(Math.abs(amount))
 }
 
 const getHistoryChangeItems = (row: any, index: number) => {
@@ -3048,10 +3047,10 @@ const loadFilterOptions = async () => {
   try {
     // 并行加载所有选项数据
     const [brandsRes, modelsRes, colorsRes, memoriesRes] = await Promise.all([
-      api.get('/brands?status=1&page_size=100'),
-      api.get('/models?page_size=100'),
-      api.get('/colors?page_size=100'),
-      api.get('/memories?page_size=100')
+      getCachedBrands(),
+      getModels(),
+      getCachedColors(),
+      getCachedMemories()
     ])
 
     // 处理品牌数据
@@ -3306,10 +3305,6 @@ onUnmounted(() => {
   }
 }
 
-.empty-history {
-  padding: 20px 0;
-}
-
 // 批发价格紫色渐变样式
 .wholesale-price-tag {
   display: inline-block;
@@ -3459,7 +3454,7 @@ onUnmounted(() => {
   overflow: hidden !important;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .table-card {
     .pagination-container {
       justify-content: center;
@@ -3551,9 +3546,5 @@ onUnmounted(() => {
     }
   }
 
-  .empty-inventory {
-    padding: 40px 0;
-    text-align: center;
-  }
 }
 </style>

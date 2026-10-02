@@ -78,22 +78,26 @@
             </div>
             <div class="topbar-buttons">
               <!-- 屏幕锁定按钮 -->
-              <button
+              <el-button
+                native-type="button"
+                type="info"
                 class="btn tf-button--topbar tf-button--manage btn-lock"
                 :title="isLocked ? '解锁屏幕' : '锁定屏幕'"
                 @click="toggleScreenLock"
               >
                 <i :class="isLocked ? 'fas fa-unlock' : 'fas fa-lock'" />
                 <span>{{ isLocked ? '解锁' : '锁定' }}</span>
-              </button>
-              <button
+              </el-button>
+              <el-button
+                native-type="button"
+                type="danger"
                 class="btn tf-button--topbar tf-button--danger logout-btn"
                 title="退出登录"
                 @click="handleLogout"
               >
                 <i class="fas fa-power-off" />
                 <span class="btn-text">退出登录</span>
-              </button>
+              </el-button>
             </div>
           </div>
         </header>
@@ -120,6 +124,7 @@
 </template>
 
 <script setup lang="ts">
+import { confirmAction } from '@/utils/message-box'
 import '@/styles/admin-layout.css'
 import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue'
 import ResponsiveMenu from '@/components/ResponsiveMenu.vue'
@@ -137,10 +142,10 @@ import { useSiteSettingsStore } from '@/stores/siteSettings'
 import { useMenuStore } from '@/stores/menu'
 import { useTabsStore } from '@/stores/tabs'
 import { storeToRefs } from 'pinia'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import type { MenuItem } from '@/types/menu'
 import { isDesktopNavigationViewport } from '@/config/breakpoints'
-import { TimeUtil } from '@/utils/time'
+import { TIME_FORMATS, TimeUtil } from '@/utils/time'
 import { storage } from '@/services/storage'
 import { canAccessRoutePath } from '@/constants/routePermissions'
 import { logger } from '@/utils/logger'
@@ -227,7 +232,7 @@ const userRoleText = computed(() => {
 let timeInterval = null
 const updateBeijingTime = () => {
   const now = TimeUtil.now()
-  beijingTime.value = now.format('HH:mm:ss')
+  beijingTime.value = TimeUtil.format(now, TIME_FORMATS.TIME)
 }
 
 
@@ -273,7 +278,7 @@ const handleMenuNavigation = async (menu) => {
 
 const handleLogout = async () => {
   try {
-    await ElMessageBox.confirm(
+    await confirmAction(
       '确定要退出登录吗？',
       '退出确认',
       {
@@ -804,7 +809,7 @@ onUnmounted(() => {
 }
 
 /* 响应式设计 */
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .admin-layout {
     position: relative;
   }
@@ -909,7 +914,7 @@ onUnmounted(() => {
 
 }
 
-@media (max-width: 480px) {
+@media (max-width: 479px) {
   .topbar {
     padding: 6px 8px;
     padding-left: 56px;
@@ -1077,7 +1082,7 @@ onUnmounted(() => {
   flex-shrink: 0;
 }
 
-@media (min-width: 768px) and (max-width: 1023px) {
+@media (min-width: 768px) and (max-width: 1024px) {
   .admin-container.compact-device .topbar {
     padding-left: 64px;
   }

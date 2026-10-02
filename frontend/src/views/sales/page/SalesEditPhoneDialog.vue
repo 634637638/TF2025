@@ -162,8 +162,8 @@
               v-model="editForm.inventory_time"
               type="date"
               placeholder="选择日期"
-              format="YYYY-MM-DD"
-              value-format="YYYY-MM-DD"
+              :format="TIME_FORMATS.DATE"
+              :value-format="TIME_FORMATS.DATE"
               teleported
               popper-class="tf2025-form-popper"
               style="width: 140px"
@@ -402,7 +402,7 @@
     </div>
 
     <template #footer>
-      <div class="dialog-footer">
+      <div class="tf-dialog-actions dialog-footer">
         <el-button
           type="default"
           @click="emit('cancel')"
@@ -422,6 +422,7 @@
 </template>
 
 <script setup lang="ts">
+import { TIME_FORMATS } from '@/utils/time'
 import { computed } from 'vue'
 import MobileDialog from '@/components/MobileDialog.vue'
 import type { PhoneBrand } from '@/types'

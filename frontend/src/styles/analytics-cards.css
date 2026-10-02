@@ -405,7 +405,7 @@
   overflow-wrap: anywhere;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .analytics-view .customer-analytics .overview-cards,
   .analytics-view .sales-analytics .overview-cards,
   .analytics-view .transfer-analytics .overview-cards,

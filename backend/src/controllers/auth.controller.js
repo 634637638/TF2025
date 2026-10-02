@@ -2,6 +2,7 @@ const log = require('../utils/log')
 const AuthService = require('../services/auth.service')
 const ApiResponse = require('../utils/response')
 const { hasGlobalAdminRole } = require('../services/accessControl.service')
+const { clearRefreshCookie, getCookie, setRefreshCookie } = require('../utils/http-cookie')
 
 /**
  * 认证控制器类
@@ -53,19 +54,13 @@ class AuthController {
 
       // 设置HTTP Only Cookie来存储刷新令牌（增强安全性）
       if (result.data.refreshToken) {
-        res.cookie('refreshToken', result.data.refreshToken, {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: 'strict',
-          maxAge: 7 * 24 * 60 * 60 * 1000 // 7天
-        })
+        setRefreshCookie(res, result.data.refreshToken)
       }
 
       // 返回访问令牌和用户信息
       const response = {
         user: result.data.user,
         accessToken: result.data.accessToken,
-        refreshToken: result.data.refreshToken, // 修复：同时返回refreshToken用于前端存储
         expiresIn: result.data.expiresIn
       }
 
@@ -106,7 +101,7 @@ class AuthController {
     try {
       // 从请求体或Cookie中获取刷新令牌
       const { refreshToken } = req.body
-      const tokenFromCookie = req.cookies.refreshToken
+      const tokenFromCookie = getCookie(req, 'refreshToken')
 
       const token = refreshToken || tokenFromCookie
 
@@ -122,12 +117,7 @@ class AuthController {
 
       // 设置新的刷新令牌到Cookie
       if (result.data.refreshToken) {
-        res.cookie('refreshToken', result.data.refreshToken, {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: 'strict',
-          maxAge: 7 * 24 * 60 * 60 * 1000 // 7天
-        })
+        setRefreshCookie(res, result.data.refreshToken)
       }
 
       const response = {
@@ -150,15 +140,11 @@ class AuthController {
   async logout(req, res) {
     try {
       const { refreshToken } = req.body
-      const tokenFromCookie = req.cookies.refreshToken
+      const tokenFromCookie = getCookie(req, 'refreshToken')
       const token = refreshToken || tokenFromCookie
 
       // 清除Cookie中的刷新令牌
-      res.clearCookie('refreshToken', {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict'
-      })
+      clearRefreshCookie(res)
 
       const result = await this.authService.logout(
         req.headers.authorization?.replace('Bearer ', ''),

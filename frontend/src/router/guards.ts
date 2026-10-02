@@ -8,7 +8,8 @@ import { canAccessRoutePath, getRoutePermissions } from '@/constants/routePermis
 import { clearPersistedAuthData, getBackendDisconnectInfo, setBackendDisconnectedState } from '@/utils/auth-session'
 import { TimeUtil } from '@/utils/time'
 import { storage } from '@/services/storage'
-import { AUTH_STORAGE_KEYS, CACHE_STORAGE_KEYS, ROUTER_STORAGE_KEYS } from '@/constants/storage'
+import { AUTH_STORAGE_KEYS, ROUTER_STORAGE_KEYS } from '@/constants/storage'
+import { trackPageVisit, type PageVisitData } from '@/services/telemetry'
 
 // 跳转冷却配置
 const REDIRECT_COOLDOWN_TIME = 3000 // 3秒内不重复跳转
@@ -20,14 +21,6 @@ let roleStatusCheckPromise: Promise<void> | null = null
 
 type AuthStore = ReturnType<typeof useAuthStore>
 type AppStore = ReturnType<typeof useAppStore>
-
-interface PageVisitData {
-  path: string
-  title?: string
-  from: string
-  timestamp: number
-  userAgent: string
-}
 
 function isLocalDevelopmentHost(): boolean {
   const hostname = window.location.hostname
@@ -294,8 +287,8 @@ export class RouteGuards {
                 status: 'active',
                 roles: ['dev_test'],
                 permissions: ['*'],
-                created_at: TimeUtil.now().toISOString(),
-                updated_at: TimeUtil.now().toISOString()
+                created_at: TimeUtil.toISOString(),
+                updated_at: TimeUtil.toISOString()
               }
               authStore.permissions = ['*']
               authStore.roles = ['dev_test']
@@ -693,35 +686,8 @@ export class RouteGuards {
       userAgent: navigator.userAgent
     }
 
-    // 发送到分析服务（如果配置了）
-    const analytics = window.__TF2025__?.analytics as {
-      trackPageVisit?: (data: PageVisitData) => void
-    } | undefined
-    if (analytics?.trackPageVisit) {
-      analytics.trackPageVisit(visitData)
-    }
+    trackPageVisit(visitData)
 
-    // 本地存储访问历史（可选）
-    this.saveVisitHistory(visitData)
-  }
-
-  /**
-   * 保存访问历史
-   */
-  private saveVisitHistory(visitData: PageVisitData): void {
-    try {
-      const history = storage.get<PageVisitData[]>(CACHE_STORAGE_KEYS.VISIT_HISTORY, 'local') || []
-      history.unshift(visitData)
-
-      // 保留最近50条记录
-      if (history.length > 50) {
-        history.splice(50)
-      }
-
-      storage.set(CACHE_STORAGE_KEYS.VISIT_HISTORY, history, 'local')
-    } catch (error) {
-      // 保存访问历史失败，忽略
-    }
   }
 
   /**

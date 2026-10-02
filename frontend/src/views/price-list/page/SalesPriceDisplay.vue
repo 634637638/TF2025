@@ -2,31 +2,13 @@
   <div class="public-price-query">
     <PublicPriceHeader :title="`${siteSettingsStore.settings.siteName || '销售报价'} · 最新销售报价`">
       <template #search>
-        <div class="custom-search-input">
-          <el-icon class="search-icon">
-            <Search />
-          </el-icon>
-          <input
-            v-model="searchKeyword"
-            type="text"
-            placeholder="搜索品牌或型号..."
-            class="search-input-field"
-            @keyup.enter="handleSearch"
-          >
-          <div
-            v-if="searchKeyword"
-            class="clear-btn"
-            @click="handleClear"
-          >
-            <el-icon><Close /></el-icon>
-          </div>
-          <button
-            class="search-btn-inner"
-            @click="handleSearch"
-          >
-            搜索
-          </button>
-        </div>
+        <PublicSearchBox
+          v-model="searchKeyword"
+          placeholder="搜索品牌或型号..."
+          :loading="loading"
+          @search="handleSearch"
+          @clear="handleClear"
+        />
       </template>
 
       <template #actions>
@@ -246,9 +228,10 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
-import { Search, Close, Download } from '@element-plus/icons-vue'
+import { Download } from '@element-plus/icons-vue'
 import { getAllSalesPrices, searchSalesPrices } from '@/api/price-list'
 import { PublicPriceHeader } from '@/components/base'
+import PublicSearchBox from '@/components/search/PublicSearchBox.vue'
 import InlineLoading from '@/components/InlineLoading.vue'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import { useLoadingState } from '@/composables'
@@ -434,8 +417,8 @@ const shareIOSImage = async () => {
 
 const saveImageToGallery = async (canvas: HTMLCanvasElement) => {
   const now = TimeUtil.now()
-  const dateStr = now.format('YYYYMMDD')
-  const timeStr = now.format('HHmm')
+  const dateStr = TimeUtil.format(now, 'DATE_COMPACT')
+  const timeStr = TimeUtil.format(now, 'TIME_COMPACT')
   const siteName = siteSettingsStore.settings.siteName || '销售报价'
   const fileName = `${siteName}销售报价_${dateStr}_${timeStr}.png`
 
@@ -776,7 +759,7 @@ const downloadAsImage = async () => {
     await saveImageToGallery(canvas)
   } catch (error) {
     logger.error('生成图片失败', error)
-    alert('生成图片失败，请重试')
+    ElMessage.error('生成图片失败，请重试')
   } finally {
     isGenerating.value = false
   }
@@ -855,224 +838,12 @@ onBeforeUnmount(() => {
     margin: 0 auto 20px;
 
     // 移动端适配
-    @media (max-width: 768px) {
+    @media (max-width: 767px) {
       max-width: 100%;
       padding: 0 15px;
       margin-bottom: 15px;
     }
 
-    // 自定义搜索框
-    .custom-search-input {
-      position: relative;
-      display: flex;
-      align-items: center;
-      height: 52px;
-      background: rgba(255, 255, 255, 0.95);
-      border-radius: 12px;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-      padding: 0 16px;
-      border: 2px solid rgba(255, 255, 255, 0.2);
-      transition: all 0.3s ease;
-
-      // 移动端高度调整
-      @media (max-width: 768px) {
-        height: 48px;
-        padding: 0 8px;
-        border-radius: 8px;
-      }
-
-      // 小屏幕手机适配 (iPhone 12/13/14 Pro 等)
-      @media (max-width: 420px) {
-        padding: 0 6px;
-      }
-
-      // iPhone 16 Pro / 15 Pro (393px) 适配
-      @media (max-width: 400px) and (min-width: 390px) {
-        padding: 0 5px;
-      }
-
-      // iPhone SE 375x677 适配
-      @media (max-width: 390px) {
-        padding: 0 4px;
-        height: 46px;
-      }
-
-      &:hover {
-        border-color: rgba(255, 255, 255, 0.4);
-        box-shadow: 0 6px 25px rgba(0, 0, 0, 0.15);
-      }
-
-      &:focus-within {
-        border-color: rgba(255, 255, 255, 0.6);
-        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
-      }
-
-      .search-icon {
-        color: var(--tf-color-indigo-brand);
-        font-size: 18px;
-        flex-shrink: 0;
-        margin-right: 8px;
-
-        @media (max-width: 768px) {
-          font-size: 16px;
-          margin-right: 6px;
-        }
-
-        // iPhone SE 适配
-        @media (max-width: 390px) {
-          font-size: 14px;
-          margin-right: 4px;
-        }
-      }
-
-      .search-input-field {
-        flex: 1;
-        border: none;
-        outline: none;
-        background: transparent;
-        font-size: 16px;
-        color: var(--text-primary);
-        padding: 0 8px;
-        // 预留清除按钮 + 间距的空间，防止输入文字后移位
-        min-width: 60px;
-
-        &::placeholder {
-          color: var(--text-muted);
-        }
-
-        // 移动端字体大小
-        @media (max-width: 768px) {
-          font-size: 14px;
-          padding: 0 4px;
-          min-width: 50px;
-        }
-
-        // iPhone 16 Pro / 15 Pro (393px) 适配
-        @media (max-width: 400px) and (min-width: 390px) {
-          font-size: 13px;
-          padding: 0 3px;
-          min-width: 45px;
-        }
-
-        // iPhone SE 适配
-        @media (max-width: 390px) {
-          font-size: 13px;
-          padding: 0 2px 0 4px;
-          min-width: 40px;
-        }
-      }
-
-      .clear-btn {
-        flex-shrink: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 24px;
-        height: 24px;
-        border-radius: 50%;
-        background: var(--tf-button-neutral-bg);
-        cursor: pointer;
-        transition: all 0.2s ease;
-        color: var(--tf-button-tool-color);
-        font-size: 14px;
-        margin-right: 8px;
-
-        @media (max-width: 768px) {
-          width: 20px;
-          height: 20px;
-          font-size: 12px;
-          margin-right: 6px;
-        }
-
-        // 小屏幕手机适配
-        @media (max-width: 420px) {
-          width: 18px;
-          height: 18px;
-          margin-right: 5px;
-          font-size: 11px;
-        }
-
-        // iPhone 16 Pro / 15 Pro (393px) 适配
-        @media (max-width: 400px) and (min-width: 390px) {
-          width: 18px;
-          height: 18px;
-          margin-right: 4px;
-          font-size: 11px;
-        }
-
-        // iPhone SE 375x677 适配
-        @media (max-width: 390px) {
-          width: 17px;
-          height: 17px;
-          margin-right: 4px;
-          font-size: 11px;
-        }
-
-        &:hover {
-          background: var(--tf-button-neutral-hover-bg);
-          color: var(--tf-button-neutral-hover-color);
-        }
-
-        &:active {
-          transform: scale(0.95);
-        }
-      }
-
-      .search-btn-inner {
-        flex-shrink: 0;
-        background: var(--tf-button-primary-bg);
-        color: var(--tf-button-on-color);
-        border: none;
-        border-radius: 6px;
-        padding: 8px 20px;
-        font-size: 16px;
-        font-weight: 600;
-        letter-spacing: 1px;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        box-shadow: none;
-        // 固定宽度，确保清除按钮位置准确
-        min-width: 68px;
-        text-align: center;
-
-        @media (max-width: 768px) {
-          font-size: 14px;
-          padding: 6px 12px;
-          border-radius: 4px;
-          min-width: 58px;
-        }
-
-        // 小屏幕手机适配
-        @media (max-width: 420px) {
-          padding: 6px 10px;
-          min-width: 54px;
-        }
-
-        // iPhone 16 Pro / 15 Pro (393px) 适配
-        @media (max-width: 400px) and (min-width: 390px) {
-          padding: 5px 9px;
-          font-size: 13px;
-          min-width: 52px;
-        }
-
-        // iPhone SE 375x677 适配
-        @media (max-width: 390px) {
-          padding: 5px 8px;
-          font-size: 13px;
-          min-width: 50px;
-        }
-
-        &:hover {
-          background: var(--tf-button-primary-hover-bg);
-          box-shadow: none;
-        }
-
-        &:active {
-          transform: scale(0.98);
-          background: var(--tf-button-primary-hover-bg);
-        }
-      }
-    }
   }
 
   .search-hint {
@@ -1081,7 +852,7 @@ onBeforeUnmount(() => {
     opacity: 0.85;
     font-size: 13px;
 
-    @media (max-width: 768px) {
+    @media (max-width: 767px) {
       font-size: 12px;
       padding: 0 15px;
       line-height: 1.6;
@@ -1112,7 +883,7 @@ onBeforeUnmount(() => {
   min-height: 400px;
 
   // 移动端去除边距
-  @media (max-width: 768px) {
+  @media (max-width: 767px) {
     padding: 4px 0 20px;
   }
 
@@ -1121,27 +892,19 @@ onBeforeUnmount(() => {
     margin: 0 auto;
 
     // 移动端全宽
-    @media (max-width: 768px) {
+    @media (max-width: 767px) {
       padding: 0;
       max-width: 100%;
     }
   }
 
-  .loading-container,
-  .empty-state,
-  .no-results {
+  .loading-container {
     text-align: center;
     padding: 60px 20px;
     color: white;
 
     .el-icon {
       font-size: 64px;
-      margin-bottom: 20px;
-    }
-
-    .empty-icon {
-      font-size: 64px;
-      display: block;
       margin-bottom: 20px;
     }
 
@@ -1158,7 +921,7 @@ onBeforeUnmount(() => {
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
 
     // 移动端去除内边距和圆角
-    @media (max-width: 768px) {
+    @media (max-width: 767px) {
       padding: 0;
       border-radius: 0;
       box-shadow: none;
@@ -1175,7 +938,7 @@ onBeforeUnmount(() => {
     flex-wrap: wrap;
 
     // 移动端头部样式
-    @media (max-width: 768px) {
+    @media (max-width: 767px) {
       margin: 0;
       padding: 12px;
       background: var(--tf-color-surface);
@@ -1184,7 +947,7 @@ onBeforeUnmount(() => {
     }
 
     // 小尺寸响应式
-    @media (max-width: 480px) {
+    @media (max-width: 479px) {
       gap: 6px;
       padding: 10px 8px;
     }
@@ -1199,11 +962,11 @@ onBeforeUnmount(() => {
       font-size: 20px;
       color: var(--text-primary);
 
-      @media (max-width: 768px) {
+      @media (max-width: 767px) {
         font-size: 16px;
       }
 
-      @media (max-width: 480px) {
+      @media (max-width: 479px) {
         font-size: 14px;
       }
 
@@ -1221,14 +984,14 @@ onBeforeUnmount(() => {
       border-radius: 4px;
       animation: pulse 2s infinite;
 
-      @media (max-width: 768px) {
+      @media (max-width: 767px) {
         font-size: 10px;
         height: 18px;
         line-height: 18px;
         padding: 0 4px;
       }
 
-      @media (max-width: 480px) {
+      @media (max-width: 479px) {
         font-size: 9px;
         height: 16px;
         line-height: 16px;
@@ -1247,11 +1010,11 @@ onBeforeUnmount(() => {
       color: var(--color-info);
       font-size: 14px;
 
-      @media (max-width: 768px) {
+      @media (max-width: 767px) {
         font-size: 12px;
       }
 
-      @media (max-width: 480px) {
+      @media (max-width: 479px) {
         font-size: 11px;
       }
 
@@ -1266,7 +1029,7 @@ onBeforeUnmount(() => {
     -webkit-overflow-scrolling: touch;
 
     // 移动端负边距让表格靠边
-    @media (max-width: 768px) {
+    @media (max-width: 767px) {
       margin: 0;
       width: 100%;
     }
@@ -1275,7 +1038,7 @@ onBeforeUnmount(() => {
       font-size: 13px;
 
       // 移动端去除表格边框圆角
-      @media (max-width: 768px) {
+      @media (max-width: 767px) {
         border-radius: 0;
         border-left: none;
         border-right: none;
@@ -1285,12 +1048,12 @@ onBeforeUnmount(() => {
         padding: 8px 5px;
         font-size: 13px;
 
-        @media (max-width: 768px) {
+        @media (max-width: 767px) {
           padding: 8px 4px;
           font-size: 12px;
         }
 
-        @media (max-width: 480px) {
+        @media (max-width: 479px) {
           padding: 6px 3px;
           font-size: 11px;
         }
@@ -1304,11 +1067,11 @@ onBeforeUnmount(() => {
       .el-table__body td {
         padding: 8px 5px;
 
-        @media (max-width: 768px) {
+        @media (max-width: 767px) {
           padding: 8px 4px;
         }
 
-        @media (max-width: 480px) {
+        @media (max-width: 479px) {
           padding: 6px 3px;
         }
 
@@ -1318,7 +1081,7 @@ onBeforeUnmount(() => {
       }
 
       // 移动端优化
-      @media (max-width: 768px) {
+      @media (max-width: 767px) {
         font-size: 12px;
 
         .el-table__body-wrapper {
@@ -1330,7 +1093,7 @@ onBeforeUnmount(() => {
         }
       }
 
-      @media (max-width: 480px) {
+      @media (max-width: 479px) {
         font-size: 11px;
 
         .el-table__cell {
@@ -1402,13 +1165,13 @@ onBeforeUnmount(() => {
     box-shadow: none;
     backdrop-filter: none;
 
-    @media (max-width: 768px) {
+    @media (max-width: 767px) {
       margin-top: 0;
       padding: 12px 6px;
       border-radius: 0;
     }
 
-    @media (max-width: 480px) {
+    @media (max-width: 479px) {
       padding: 10px 4px;
     }
 
@@ -1422,7 +1185,7 @@ onBeforeUnmount(() => {
       gap: 10px;
       margin-bottom: 16px;
 
-      @media (max-width: 480px) {
+      @media (max-width: 479px) {
         margin-bottom: 12px;
         gap: 8px;
       }
@@ -1435,11 +1198,11 @@ onBeforeUnmount(() => {
       .contact-icon {
         font-size: 22px;
 
-        @media (max-width: 768px) {
+        @media (max-width: 767px) {
           font-size: 18px;
         }
 
-        @media (max-width: 480px) {
+        @media (max-width: 479px) {
           font-size: 16px;
         }
 
@@ -1453,11 +1216,11 @@ onBeforeUnmount(() => {
         font-weight: bold;
         color: var(--tf-color-slate-700);
 
-        @media (max-width: 768px) {
+        @media (max-width: 767px) {
           font-size: 14px;
         }
 
-        @media (max-width: 480px) {
+        @media (max-width: 479px) {
           font-size: 13px;
         }
 
@@ -1472,12 +1235,12 @@ onBeforeUnmount(() => {
       grid-template-columns: repeat(2, 1fr);
       gap: 12px;
 
-      @media (max-width: 768px) {
+      @media (max-width: 767px) {
         grid-template-columns: repeat(2, 1fr);
         gap: 6px;
       }
 
-      @media (max-width: 480px) {
+      @media (max-width: 479px) {
         gap: 3px;
       }
 
@@ -1500,13 +1263,13 @@ onBeforeUnmount(() => {
         transition: all 0.3s ease;
         text-align: center;
 
-        @media (max-width: 768px) {
+        @media (max-width: 767px) {
           min-height: 56px;
           padding: 7px 6px;
           border-radius: 8px;
         }
 
-        @media (max-width: 480px) {
+        @media (max-width: 479px) {
           min-height: 50px;
           padding: 5px 5px;
           border-radius: 8px;
@@ -1547,11 +1310,11 @@ onBeforeUnmount(() => {
           background: var(--tf-color-violet-surface-soft);
           border: 1px solid var(--tf-color-violet-border-soft);
 
-          @media (max-width: 768px) {
+          @media (max-width: 767px) {
             max-width: 42%;
           }
 
-          @media (max-width: 480px) {
+          @media (max-width: 479px) {
             padding: 2px 5px;
           }
 
@@ -1582,11 +1345,11 @@ onBeforeUnmount(() => {
           background: var(--tf-color-teal-surface-soft);
           border: 1px solid var(--tf-color-teal-border-soft);
 
-          @media (max-width: 768px) {
+          @media (max-width: 767px) {
             padding: 2px 5px;
           }
 
-          @media (max-width: 480px) {
+          @media (max-width: 479px) {
             gap: 2px;
           }
 
@@ -1600,7 +1363,6 @@ onBeforeUnmount(() => {
 }
 
 </style>
-
 <style lang="scss">
 // 图片水印样式 - 表格内斜向随机位置
 .image-watermark {
@@ -1823,9 +1585,8 @@ onBeforeUnmount(() => {
 }
 
 .ios-image-dialog {
-  .el-dialog__body {
-    padding: 10px 20px 20px;
-  }
+  --tf-dialog-body-padding-inline: var(--tf-space-5);
+  --tf-dialog-body-padding-block: var(--tf-space-3) var(--tf-space-5);
 
   .ios-save-container {
     .image-wrapper {
@@ -1852,7 +1613,7 @@ onBeforeUnmount(() => {
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .ios-image-dialog {
     .el-dialog {
       width: 95% !important;

@@ -45,6 +45,7 @@ declare global {
         byCategory: (category: string) => any[]
       }
       componentManager?: any
+      analytics?: import('@/services/telemetry').TelemetryAdapter
       eventBus?: EventBus
       csrf?: {
         token: any
@@ -702,7 +703,6 @@ declare module '@vue/runtime-core' {
     LoadingSpinner: any
     ErrorBoundary: any
     NotificationContainer: any
-    ConfirmDialog: any
     SearchBox: any
     FilterPanel: any
     DataTable: any

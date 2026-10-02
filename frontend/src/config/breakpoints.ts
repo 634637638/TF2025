@@ -87,9 +87,8 @@ export const generateCSSVariables = () => {
 
 // 断点检测工具函数
 export const getBreakpoint = (width: number): BreakpointName => {
-  if (width < BREAKPOINTS.SMALL_MOBILE_MAX) return BreakpointName.SMALL_MOBILE
-  if (width < BREAKPOINTS.MOBILE_MAX) return BreakpointName.MOBILE
-  if (width < BREAKPOINTS.TABLET_MIN) return BreakpointName.MOBILE
+  if (width <= BREAKPOINTS.SMALL_MOBILE_MAX) return BreakpointName.SMALL_MOBILE
+  if (width <= BREAKPOINTS.MOBILE_MAX) return BreakpointName.MOBILE
   if (width < BREAKPOINTS.DESKTOP_MIN) return BreakpointName.TABLET
   if (width < BREAKPOINTS.WIDE_MIN) return BreakpointName.DESKTOP
   if (width < BREAKPOINTS.ULTRA_WIDE_MIN) return BreakpointName.WIDE

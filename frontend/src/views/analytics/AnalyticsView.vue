@@ -80,8 +80,8 @@
               v-model="filterDateRange"
               start-placeholder="开始日期"
               end-placeholder="结束日期"
-              format="YYYY-MM-DD"
-              value-format="YYYY-MM-DD"
+              :format="TIME_FORMATS.DATE"
+              :value-format="TIME_FORMATS.DATE"
               clearable
               @change="handleSearch"
             />
@@ -263,6 +263,7 @@ import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import { logger } from '@/utils/logger'
 import { sortOptionsByOrder } from '@/utils/option-sort'
 import { extractResponseData } from '@/utils/api-response'
+import { getCachedStores, getCachedSuppliers } from '@/services/reference-options'
 
 const SalesAnalytics = defineAsyncComponent(() => import('./page/SalesAnalytics.vue'))
 const InventoryAnalytics = defineAsyncComponent(() => import('./page/InventoryAnalytics.vue'))
@@ -582,8 +583,7 @@ const getSearchSummary = () => {
 // 加载店铺列表
 const loadStoreList = async () => {
   try {
-    const { unifiedApi } = await import('@/utils/unified-api')
-    const response = await unifiedApi.get('/stores', { params: { all: true } })
+    const response = await getCachedStores()
     if (response.success) {
       const stores = extractResponseData<any[]>(response)
       storeList.value = Array.isArray(stores) ? sortOptionsByOrder(stores) : []
@@ -599,8 +599,7 @@ const loadStoreList = async () => {
 // 加载供应商列表
 const loadSupplierList = async () => {
   try {
-    const { unifiedApi } = await import('@/utils/unified-api')
-    const response = await unifiedApi.get('/suppliers', { params: { page: 1, page_size: 500 } })
+    const response = await getCachedSuppliers()
     if (response.success) {
       const suppliers = extractResponseData<any[]>(response)
       supplierList.value = Array.isArray(suppliers) ? sortOptionsByOrder(suppliers) : []
@@ -654,7 +653,7 @@ const exportAnalyticsData = () => {
     // 准备导出数据
     const exportData = {
       activeTab: activeTab.value,
-      exportTime: TimeUtil.now().toISOString()
+      exportTime: TimeUtil.toISOString()
     }
 
     void exportTextFile({
@@ -689,21 +688,8 @@ onMounted(() => {
   min-height: 100vh;
 }
 
-.analytics-empty-state {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 240px;
-  padding: 24px;
-  background: white;
-  border-radius: 12px;
-  border: 1px solid var(--tf-color-border-cool);
-  color: var(--color-text-regular);
-  text-align: center;
-}
-
 // 响应式
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .analytics-view {
     padding-inline: var(--admin-page-gap-x);
     padding-top: 10px;

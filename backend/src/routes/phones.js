@@ -134,8 +134,18 @@ router.get('/', unifiedAuth, requirePermission('inventory:view'), async (req, re
         // 价格相关匹配 (纯数字，可能查询价格)
         else if (/^\d+$/.test(searchStr)) {
           const price = parseFloat(searchStr)
-          whereConditions.push('(p.sale_price = ? OR p.purchase_cost = ?)')
-          queryParams.push(price, price)
+          whereConditions.push(`(
+            p.imei LIKE ? OR
+            p.serial_number LIKE ? OR
+            b.name LIKE ? OR
+            m.name LIKE ? OR
+            co.name LIKE ? OR
+            mem.size LIKE ? OR
+            p.sale_price = ? OR
+            p.purchase_cost = ?
+          )`)
+          const searchTerm = `%${searchStr}%`
+          queryParams.push(searchTerm, searchTerm, searchTerm, searchTerm, searchTerm, searchTerm, price, price)
         }
         // 其他情况进行全字段模糊搜索
         else {
@@ -262,369 +272,6 @@ router.get('/', unifiedAuth, requirePermission('inventory:view'), async (req, re
   }
 })
 
-// 获取手机品牌列表
-router.get('/brands', unifiedAuth, requirePermission('brands:view'), cacheMiddleware({ ttl: 1000 }), async (req, res) => {
-  try {
-    const { sold_only } = req.query
-    log.debug('🏷️ 品牌API调用参数:', { sold_only })
-
-    const pool = require('../config/database').getDatabase()
-    const connection = await pool.getConnection()
-
-    try {
-      // 确保brands表包含所有phones表中使用的品牌
-      await syncBrandRecords(connection)
-
-      // 查询brands表数据
-      const query = 'SELECT DISTINCT name FROM brands WHERE name IS NOT NULL AND name != "" ORDER BY name'
-      log.debug('🔍 执行品牌查询SQL:', query)
-      const [brands] = await connection.execute(query)
-      log.debug('📊 查询结果数量:', brands.length)
-      log.debug('📊 查询结果数据:', brands)
-
-      connection.release()
-
-      const brandList = brands.map(item => item.name)
-      log.debug('📤 返回给前端的品牌列表:', brandList)
-      ApiResponse.success(res, brandList)
-    } catch (dbError) {
-      connection.release()
-      log.error('❌ 品牌数据库查询失败:', dbError)
-      throw dbError
-    }
-  } catch (error) {
-    log.error('❌ 获取品牌列表失败:', error)
-    ApiResponse.serverError(res, '获取品牌列表失败', error)
-  }
-})
-
-// 获取手机型号列表
-router.get('/models', unifiedAuth, requirePermission('models:view'), cacheMiddleware({ ttl: 1 }), async (req, res) => {
-  try {
-    const { sold_only, brand } = req.query
-    log.debug('🔍 型号API调用参数:', { sold_only, brand })
-    const pool = require('../config/database').getDatabase()
-    const connection = await pool.getConnection()
-
-    try {
-      // 确保models表包含所有phones表中使用的型号，并建立品牌关联
-      await syncModelRecords(connection, brand)
-
-      // 构建查询获取型号列表（包含 sort_order 用于排序）
-      let query = `
-        SELECT DISTINCT m.id, m.name, m.brand_id, m.sort_order
-        FROM models m
-        WHERE m.name IS NOT NULL AND m.name != ""
-      `
-      const queryParams = []
-
-      // 如果提供了品牌过滤参数，通过品牌ID关联查询
-      if (brand) {
-        query += `
-          AND m.brand_id = (SELECT id FROM brands WHERE name = ? LIMIT 1)
-        `
-        queryParams.push(brand)
-      }
-      query += ' ORDER BY m.sort_order, m.name'
-
-      log.debug('🔍 执行型号查询SQL:', query)
-      log.debug('🔍 查询参数:', queryParams)
-      const [models] = await connection.execute(query, queryParams)
-      log.debug('📊 型号查询结果数量:', models.length)
-      log.debug('📊 型号查询结果数据:', models)
-
-      connection.release()
-
-      // 返回完整的型号对象数组，让前端可以按 sort_order 排序
-      const modelList = models.map(item => ({
-        id: item.id,
-        name: item.name,
-        brand_id: item.brand_id,
-        sort_order: item.sort_order || 0
-      }))
-      log.debug('📤 返回给前端的型号列表:', modelList)
-      ApiResponse.success(res, modelList)
-    } catch (dbError) {
-      connection.release()
-      log.error('❌ 型号数据库查询失败:', dbError)
-      throw dbError
-    }
-  } catch (error) {
-    log.error('获取型号列表失败:', error)
-    ApiResponse.serverError(res, '获取型号列表失败', error)
-  }
-})
-
-// 获取手机颜色列表
-router.get('/colors', unifiedAuth, requirePermission('colors:view'), cacheMiddleware({ ttl: 1000 }), async (req, res) => {
-  try {
-    const { _sold_only } = req.query
-    const pool = require('../config/database').getDatabase()
-    const connection = await pool.getConnection()
-
-    try {
-      // 先检查colors表结构
-      try {
-        const [tableInfo] = await connection.execute('DESCRIBE colors')
-        log.debug('✅ colors表存在，字段信息:', tableInfo.map(f => f.Field))
-
-        const hasNameField = tableInfo.some(f => f.Field === 'name')
-        if (hasNameField) {
-          const query = 'SELECT DISTINCT name FROM colors WHERE name IS NOT NULL AND name != "" ORDER BY name'
-          log.debug('🔍 执行颜色查询SQL:', query)
-          const [colors] = await connection.execute(query)
-          log.debug('📊 颜色查询结果数量:', colors.length)
-          log.debug('📊 颜色查询结果数据:', colors)
-
-          connection.release()
-          const colorList = colors.map(item => item.name)
-          log.debug('📤 返回给前端的颜色列表:', colorList)
-          return ApiResponse.success(res, colorList)
-        } else {
-          log.debug('❌ colors表没有name字段')
-          throw new Error('colors表没有name字段')
-        }
-      } catch (err) {
-        log.debug('❌ colors表不存在或无法访问:', err.message)
-      }
-
-      throw new Error('颜色基础数据表不可用')
-    } catch (dbError) {
-      connection.release()
-      log.error('❌ 颜色数据库查询失败:', dbError)
-      throw dbError
-    }
-  } catch (error) {
-    log.error('获取颜色列表失败:', error)
-    ApiResponse.serverError(res, '获取颜色列表失败', error)
-  }
-})
-
-// 获取手机内存列表
-router.get('/memories', unifiedAuth, requirePermission('memories:view'), cacheMiddleware({ ttl: 1000 }), async (req, res) => {
-  try {
-    const { sold_only } = req.query
-    log.debug('🔍 内存API调用参数:', { sold_only })
-    const pool = require('../config/database').getDatabase()
-    const connection = await pool.getConnection()
-
-    try {
-      // 确保memories表包含所有phones表中使用的内存规格
-      await syncMemoryRecords(connection)
-
-      // 构建查询获取内存列表
-      let query = `
-        SELECT DISTINCT m.size
-        FROM memories m
-        WHERE m.size IS NOT NULL AND m.size != ""
-      `
-      const queryParams = []
-
-      // 如果提供了品牌或型号过滤参数，通过phones表关联查询
-      if (false) {
-        const joinConditions = []
-        if (false) {
-          joinConditions.push('b.name = ?')
-          /* 参数缺失 */
-        }
-        if (false) {
-          joinConditions.push('m.name = ?')
-          /* 参数缺失 */
-        }
-
-        query = `
-          SELECT DISTINCT m.size
-          FROM memories m
-          INNER JOIN phones p ON m.size = mem.size
-          WHERE m.size IS NOT NULL AND m.size != ""
-          AND p.IS NOT NULL AND p.!= ""
-          AND ${joinConditions.join(' AND ')}
-          ORDER BY m.size
-        `
-        log.debug('🔍 执行品牌/型号过滤的内存查询SQL:', query)
-        log.debug('🔍 查询参数:', queryParams)
-      } else {
-        query += ' ORDER BY m.size'
-        log.debug('🔍 执行基础内存查询SQL:', query)
-      }
-
-      const [memories] = await connection.execute(query, queryParams)
-      log.debug('📊 内存查询结果数量:', memories.length)
-      log.debug('📊 内存查询结果数据:', memories)
-
-      connection.release()
-
-      // 从size字段获取内存数据
-      const memoryList = memories.map(item => item.size)
-      log.debug('📤 返回给前端的内存列表:', memoryList)
-      ApiResponse.success(res, memoryList)
-    } catch (dbError) {
-      connection.release()
-      log.error('❌ 内存数据库查询失败:', dbError)
-      throw dbError
-    }
-  } catch (error) {
-    log.error('获取内存列表失败:', error)
-    ApiResponse.serverError(res, '获取内存列表失败', error)
-  }
-})
-
-// 同步内存记录：确保memories表包含phones表中所有使用的内存规格
-async function syncMemoryRecords(connection) {
-  try {
-    // 获取phones表中所有不重复的内存规格
-    const [phoneMemories] = await connection.execute(`
-      SELECT DISTINCT mem.size as memory
-      FROM phones p
-      LEFT JOIN memories mem ON p.memory_id = mem.id
-      WHERE mem.size IS NOT NULL AND mem.size != ""
-      AND mem.size NOT IN (SELECT DISTINCT size FROM memories WHERE size = mem.size)
-    `)
-
-    for (const phoneMemory of phoneMemories) {
-      const memorySpec = phoneMemory
-      log.debug(`🔧 为缺失的内存规格 "${memorySpec}" 创建memories表记录`)
-
-      // 插入新的内存记录到memories表
-      await connection.execute(
-        'INSERT INTO memories (size, created_at, updated_at) VALUES (?, NOW(), NOW())',
-        [memorySpec]
-      )
-    }
-
-    if (phoneMemories.length > 0) {
-      log.debug(`✅ 已为 ${phoneMemories.length} 个新内存规格创建memories表记录`)
-    }
-  } catch (error) {
-    log.warn('⚠️ 同步内存记录时出现警告:', error.message)
-    // 不抛出错误，允许继续执行后续逻辑
-  }
-}
-
-// 同步品牌记录：确保brands表包含phones表中所有使用的品牌规格
-async function syncBrandRecords(connection) {
-  try {
-    // 获取phones表中所有不重复的品牌规格
-    const [phoneBrands] = await connection.execute(`
-      SELECT DISTINCT b.name as brand
-      FROM phones p
-      LEFT JOIN brands b ON p.brand_id = b.id
-      WHERE b.name IS NOT NULL AND b.name != ""
-      AND b.name NOT IN (SELECT DISTINCT name FROM brands WHERE name = b.name)
-    `)
-
-    for (const phoneBrand of phoneBrands) {
-      const brandSpec = phoneBrand
-      log.debug(`🔧 为缺失的品牌规格 "${brandSpec}" 创建brands表记录`)
-
-      // 插入新的品牌记录到brands表
-      await connection.execute(
-        'INSERT INTO brands (name, created_at, updated_at) VALUES (?, NOW(), NOW())',
-        [brandSpec]
-      )
-    }
-
-    if (phoneBrands.length > 0) {
-      log.debug(`✅ 已为 ${phoneBrands.length} 个新品牌规格创建brands表记录`)
-    }
-  } catch (error) {
-    log.warn('⚠️ 同步品牌记录时出现警告:', error.message)
-    // 不抛出错误，允许继续执行后续逻辑
-  }
-}
-
-// 同步型号记录：确保models表包含phones表中所有使用的型号规格，并建立品牌关联
-async function syncModelRecords(connection, brandFilter = null) {
-  try {
-    let whereClause = 'WHERE m.name IS NOT NULL AND m.name != ""'
-    const params = []
-    const subQueryParams = []
-
-    // 添加品牌过滤条件
-    if (brandFilter) {
-      whereClause += ' AND b.name = ?'
-      params.push(brandFilter)
-      subQueryParams.push(brandFilter)
-    }
-
-    // 获取phones表中所有不重复的型号规格，并包含品牌信息
-    const [phoneModels] = await connection.execute(`
-      SELECT DISTINCT m.name as model, b.name as brand
-      FROM phones p
-      LEFT JOIN models m ON p.model_id = m.id
-      LEFT JOIN brands b ON p.brand_id = b.id
-      ${whereClause}
-      AND m.name IS NOT NULL
-      AND m.name NOT IN (
-        SELECT DISTINCT name FROM models
-        WHERE name = m.name
-        ${brandFilter ? 'AND brand_id = (SELECT id FROM brands WHERE name = ? LIMIT 1)' : ''}
-      )
-      ORDER BY m.name`, [...params, ...subQueryParams])
-
-    for (const phoneModel of phoneModels) {
-      const modelSpec = phoneModel.model
-      const brandSpec = phoneModel.brand
-
-      log.debug(`🔧 为缺失的型号规格 "${modelSpec}" (品牌: ${brandSpec}) 创建models表记录`)
-
-      // 先确保品牌存在
-      await syncBrandRecords(connection)
-
-      // 获取品牌ID
-      const [brandRecord] = await connection.execute(
-        'SELECT id FROM brands WHERE name = ? LIMIT 1',
-        [brandSpec]
-      )
-
-      let brandId = null
-      if (brandRecord.length > 0) {
-        brandId = brandRecord[0].id
-      } else {
-        // 如果品牌不存在，创建新品牌
-        const [insertBrandResult] = await connection.execute(
-          'INSERT INTO brands (name, created_at, updated_at) VALUES (?, NOW(), NOW())',
-          [brandSpec]
-        )
-        brandId = insertBrandResult.insertId
-        log.debug(`🔧 为新品牌 "${brandSpec}" 创建了记录，ID: ${brandId}`)
-      }
-
-      // 🔥 关键修复：检查型号是否已存在，避免重复创建
-      const [existingModel] = await connection.execute(
-        'SELECT id FROM models WHERE brand_id = ? AND name = ? LIMIT 1',
-        [brandId, modelSpec]
-      )
-
-      if (existingModel.length > 0) {
-        log.debug(`ℹ️ 型号 "${modelSpec}" 已存在 (ID: ${existingModel[0].id}), 跳过创建`)
-        continue
-      }
-
-      // 🔥 过滤掉过期的 iPhone 11 Pro 系列型号（11pro, 11promax 等）
-      const obsoleteModels = ['11pro', '11proamx', '11promax']
-      const normalizedModelSpec = modelSpec.toLowerCase().replace(/\s+/g, '')
-      if (obsoleteModels.some(om => normalizedModelSpec.includes(om))) {
-        log.debug(`⚠️ 跳过过期型号: ${modelSpec}`)
-        continue
-      }
-
-      // 插入新的型号记录到models表
-      await connection.execute(
-        'INSERT INTO models (brand_id, name, created_at, updated_at) VALUES (?, ?, NOW(), NOW())',
-        [brandId, modelSpec]
-      )
-    }
-
-    if (phoneModels.length > 0) {
-      log.debug(`✅ 已为 ${phoneModels.length} 个新型号规格创建models表记录`)
-    }
-  } catch (error) {
-    log.warn('⚠️ 同步型号记录时出现警告:', error.message)
-    // 不抛出错误，允许继续执行后续逻辑
-  }
-}
-
 // 获取已销售手机的时间信息（入库时间和出库时间）
 router.get('/sold-timeline', unifiedAuth, requirePermission('system:edit'), async (req, res) => {
   try {
@@ -662,16 +309,6 @@ router.get('/sold-timeline', unifiedAuth, requirePermission('system:edit'), asyn
       `
 
       const queryParams = []
-
-      if (false) {
-        query += ' AND b.name = ?'
-        /* 参数缺失 */
-      }
-
-      if (false) {
-        query += ' AND m.name = ?'
-        /* 参数缺失 */
-      }
 
       query += ' ORDER BY latest_sale.sale_time DESC'
 
@@ -875,9 +512,12 @@ router.get('/longest-inventory', requireInventoryQueryToken, async (req, res) =>
         p.imei,
         p.serial_number,
         st.name as store_name,
-        p.inventory_time as inventory_time
+        supp.name as supplier_name,
+        p.inventory_time as inventory_time,
+        DATE_FORMAT(p.inventory_time, '%Y-%m-%d') as inventory_date
       FROM phones p
         LEFT JOIN stores st ON p.store_id = st.id
+        LEFT JOIN suppliers supp ON p.supplier_id = supp.id
       WHERE ${whereClause}
       ORDER BY p.inventory_time ASC
     `
@@ -897,7 +537,7 @@ router.get('/longest-inventory', requireInventoryQueryToken, async (req, res) =>
       return {
         ...item,
         inventory_days: inventoryDays,
-        inventory_date: inventoryDate.toISOString().split('T')[0]
+        inventory_date: item.inventory_date
       }
     })
 
@@ -1283,7 +923,7 @@ router.put('/:id', unifiedAuth, requireAnyPermission(['phones:edit', 'sales-edit
       String(effectiveInventoryTime || '') !== String(currentPhone.inventory_time || '') ||
       nextIsNew !== Number(currentPhone.is_new)
     )
-    if (nextIsNew === 0 && mediaDirectoryFieldsChanged) {
+    if (mediaDirectoryFieldsChanged) {
       await syncPhoneMediaDirectory(id, {
         is_new: nextIsNew,
         serial_number: normalizedSerialNumber,
@@ -1839,9 +1479,35 @@ const fs = require('fs').promises
 const crypto = require('crypto')
 const ShopServiceClass = require('../services/shop.service')
 const { getUploadsRoot, getUploadSubdir, getUploadUrl, getRelativeUploadPathFromUrl } = require('../utils/upload-paths')
-const { buildPhoneMediaDirectoryName, archivePhoneMediaUpload } = require('../utils/phone-media-storage')
+const { buildPhoneMediaDirectoryName } = require('../utils/phone-media-storage')
 const { validateUploadedFileSignature, removeUploadedFiles } = require('../utils/upload-file-validation')
 const shopService = new ShopServiceClass()
+const phoneMediaController = require('../controllers/phone-media.controller')
+
+const PHONE_MEDIA_VIEW_PERMISSIONS = [
+  'inventory:view',
+  'query:view',
+  'h5-sold-products:view',
+  'h5-templates:view',
+  'h5-admin:view'
+]
+const PHONE_MEDIA_EDIT_PERMISSIONS = [
+  'inventory:edit',
+  'query:edit',
+  'h5-templates:edit',
+  'h5-admin:edit',
+  'h5-sold-products:delete',
+  'h5-templates:delete',
+  'h5-admin:delete',
+  'inventory:delete'
+]
+const PHONE_MEDIA_UPLOAD_PERMISSIONS = [
+  'inventory:edit',
+  'query:edit',
+  'h5-templates:create',
+  'h5-admin:create',
+  'inventory:create'
+]
 
 // 配置图片上传
 const storage = multer.diskStorage({
@@ -1874,26 +1540,15 @@ const upload = multer({
   storage,
   fileFilter,
   limits: {
-    fileSize: 5 * 1024 * 1024 // 5MB
+    fileSize: 30 * 1024 * 1024 // 30MB
   }
 })
 
-const movePhoneMediaToInventoryDirectory = async (phoneId, file, mediaType) => {
-  const mediaRoot = mediaType === 'video' ? 'videos' : 'phones'
-  return archivePhoneMediaUpload({
-    phoneId,
-    file,
-    mediaRoot,
-    database: require('../config/database').getDatabase()
-  })
-}
-
 const syncPhoneMediaDirectory = async (phoneId, nextPhone, connection) => {
-  if (Number(nextPhone.is_new) !== 0) return
-
   const folderName = buildPhoneMediaDirectoryName({
     serialNumber: nextPhone.serial_number,
-    inventoryTime: nextPhone.inventory_time
+    inventoryTime: nextPhone.inventory_time,
+    isNew: nextPhone.is_new
   })
   const uploadsRoot = path.resolve(getUploadsRoot())
   const [images] = await connection.query(
@@ -1975,7 +1630,7 @@ const syncPhoneMediaDirectory = async (phoneId, nextPhone, connection) => {
  */
 router.post('/:id/upload-image',
   unifiedAuth,
-  requirePermission('inventory:edit'),
+  requireAnyPermission(PHONE_MEDIA_UPLOAD_PERMISSIONS),
   upload.single('image'),
   async (req, res) => {
     try {
@@ -1991,15 +1646,16 @@ router.post('/:id/upload-image',
       const { id } = req.params
       const uploadedBy = req.user ? req.user.id : 0
 
-      // 二手机按序列号+入库时间归档，全新机保持原有目录
-      const fileUrl = await movePhoneMediaToInventoryDirectory(id, req.file, 'image')
-
-      // 使用 ShopService 添加单张图片（不删除旧图片）
-      const imageId = await shopService.addPhoneImage(id, fileUrl, 'inventory', uploadedBy)
+      // 所有手机按序列号+入库时间归档，全新机目录增加 NEW- 前缀
+      const media = await phoneMediaController.saveUploadedMedia({
+        phoneId: id,
+        file: req.file,
+        mediaType: 'inventory',
+        uploadedBy
+      })
 
       ApiResponse.success(res, {
-        id: imageId,
-        url: fileUrl,
+        ...media,
         filename: req.file.filename,
         originalname: req.file.originalname,
         size: req.file.size
@@ -2019,18 +1675,8 @@ router.post('/:id/upload-image',
  */
 router.get('/:id/images',
   unifiedAuth,
-  requirePermission('inventory:view'),
-  async (req, res) => {
-    try {
-      const { id } = req.params
-      const images = await shopService.getPhoneImages(id)
-
-      ApiResponse.success(res, images, '获取图片成功')
-    } catch (error) {
-      log.error('获取图片失败:', error)
-      ApiResponse.error(res, error.message || '获取失败', 500)
-    }
-  }
+  requireAnyPermission(PHONE_MEDIA_VIEW_PERMISSIONS),
+  phoneMediaController.list
 )
 
 /**
@@ -2040,18 +1686,8 @@ router.get('/:id/images',
  */
 router.put('/:id/images/:imageId/primary',
   unifiedAuth,
-  requirePermission('inventory:edit'),
-  async (req, res) => {
-    try {
-      const { _id, imageId } = req.params
-      await shopService.setPrimaryImage(imageId)
-
-      ApiResponse.success(res, null, '设置主图成功')
-    } catch (error) {
-      log.error('设置主图失败:', error)
-      ApiResponse.error(res, error.message || '设置失败', 500)
-    }
-  }
+  requireAnyPermission(PHONE_MEDIA_EDIT_PERMISSIONS),
+  phoneMediaController.setPrimary
 )
 
 /**
@@ -2062,24 +1698,8 @@ router.put('/:id/images/:imageId/primary',
  */
 router.put('/:id/images/reorder',
   unifiedAuth,
-  requirePermission('inventory:edit'),
-  async (req, res) => {
-    try {
-      const { id } = req.params
-      const { imageIds } = req.body
-
-      if (!Array.isArray(imageIds) || imageIds.length === 0) {
-        return ApiResponse.error(res, '图片ID列表不能为空', 400)
-      }
-
-      await shopService.reorderPhoneImages(id, imageIds)
-
-      ApiResponse.success(res, null, '图片排序更新成功')
-    } catch (error) {
-      log.error('图片排序失败:', error)
-      ApiResponse.error(res, error.message || '排序失败', 500)
-    }
-  }
+  requireAnyPermission(PHONE_MEDIA_EDIT_PERMISSIONS),
+  phoneMediaController.reorder
 )
 
 /**
@@ -2089,18 +1709,8 @@ router.put('/:id/images/reorder',
  */
 router.delete('/:id/images/:imageId',
   unifiedAuth,
-  requirePermission('inventory:edit'),
-  async (req, res) => {
-    try {
-      const { _id, imageId } = req.params
-      await shopService.deleteImage(imageId)
-
-      ApiResponse.success(res, null, '删除图片成功')
-    } catch (error) {
-      log.error('删除图片失败:', error)
-      ApiResponse.error(res, error.message || '删除失败', 500)
-    }
-  }
+  requireAnyPermission(PHONE_MEDIA_EDIT_PERMISSIONS),
+  phoneMediaController.remove
 )
 
 // ============================================================================
@@ -2253,7 +1863,7 @@ const videoUpload = multer({
   storage: videoStorage,
   fileFilter: videoFilter,
   limits: {
-    fileSize: 50 * 1024 * 1024 // 50MB
+    fileSize: 500 * 1024 * 1024 // 500MB
   }
 })
 
@@ -2264,7 +1874,7 @@ const videoUpload = multer({
  */
 router.post('/:id/upload-video',
   unifiedAuth,
-  requirePermission('inventory:edit'),
+  requireAnyPermission(PHONE_MEDIA_UPLOAD_PERMISSIONS),
   videoUpload.single('video'),
   async (req, res) => {
     try {
@@ -2280,15 +1890,16 @@ router.post('/:id/upload-video',
       const { id } = req.params
       const uploadedBy = req.user ? req.user.id : 0
 
-      // 二手机按序列号+入库时间归档，全新机保持原有目录
-      const videoUrl = await movePhoneMediaToInventoryDirectory(id, req.file, 'video')
-
-      // 使用 addPhoneImage 方法，指定类型为 video
-      const imageId = await shopService.addPhoneImage(id, videoUrl, 'video', uploadedBy)
+      // 所有手机按序列号+入库时间归档，全新机目录增加 NEW- 前缀
+      const media = await phoneMediaController.saveUploadedMedia({
+        phoneId: id,
+        file: req.file,
+        mediaType: 'video',
+        uploadedBy
+      })
 
       ApiResponse.success(res, {
-        id: imageId,
-        url: videoUrl,
+        ...media,
         filename: req.file.filename,
         originalname: req.file.originalname,
         size: req.file.size

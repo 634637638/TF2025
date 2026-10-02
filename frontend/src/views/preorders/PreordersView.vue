@@ -238,7 +238,7 @@
         >
           <DateRangePicker
             v-model="searchDateRange"
-            value-format="YYYY-MM-DD"
+            :value-format="TIME_FORMATS.DATE"
             start-placeholder="预定开始日期"
             end-placeholder="预定结束日期"
             clearable
@@ -1243,9 +1243,10 @@
 </template>
 
 <script setup lang="ts">
+import { TIME_FORMATS } from '@/utils/time'
+import { confirmAction } from '@/utils/message-box'
 import { ref, reactive, computed, onMounted, onBeforeUnmount, defineAsyncComponent } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessageBox } from 'element-plus'
 import { useNotification } from '@/composables/useNotification'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
@@ -1266,7 +1267,7 @@ import { formatDate as formatGlobalDate } from '@/utils/format'
 const PreorderFormModal = defineAsyncComponent(() => import('./page/PreorderFormModal.vue'))
 const MatchPreorderModal = defineAsyncComponent(() => import('./page/MatchPreorderModal.vue'))
 
-const { success, error, warning } = useNotification()
+const { success, error, warning, prompt } = useNotification()
 const {
   canView,
   canCreate,
@@ -1754,12 +1755,15 @@ const cancelPreorder = async (preorder: Preorder) => {
   }
 
   try {
-    const { value: reason } = await ElMessageBox.prompt('请输入取消原因', '取消预定单', {
+    const result = await prompt('请输入取消原因', '取消预定单', {
       confirmButtonText: '确定',
       cancelButtonText: '取消',
       inputPattern: /.+/,
       inputErrorMessage: '请输入取消原因'
     })
+
+    if (!result) return
+    const { value: reason } = result
 
     await preorderApi.cancelPreorder(preorder.id, reason)
     success('预定单已取消')
@@ -1819,12 +1823,15 @@ const cancelMatchedPreorder = async (preorder: Preorder) => {
   }
 
   try {
-    const { value: reason } = await ElMessageBox.prompt('请输入取消原因', '取消预定单', {
+    const result = await prompt('请输入取消原因', '取消预定单', {
       confirmButtonText: '确定',
       cancelButtonText: '取消',
       inputPattern: /.+/,
       inputErrorMessage: '请输入取消原因'
     })
+
+    if (!result) return
+    const { value: reason } = result
 
     await preorderApi.cancelPreorder(preorder.id, reason)
     success('预定单已取消')
@@ -1845,7 +1852,7 @@ const restorePreorder = async (preorder: Preorder) => {
   }
 
   try {
-    await ElMessageBox.confirm('确定要恢复此预定单吗？系统会按当前商品规格自动匹配库存；没有库存时将保持待匹配，后续入库后自动匹配。', '恢复预定单', {
+    await confirmAction('确定要恢复此预定单吗？系统会按当前商品规格自动匹配库存；没有库存时将保持待匹配，后续入库后自动匹配。', '恢复预定单', {
       confirmButtonText: '确定恢复',
       cancelButtonText: '取消',
       type: 'info'
@@ -1873,7 +1880,7 @@ const deletePreorder = async (preorder: Preorder) => {
   }
 
   try {
-    await ElMessageBox.confirm('确定要删除此预定单吗？删除后将无法恢复！', '删除预定单', {
+    await confirmAction('确定要删除此预定单吗？删除后将无法恢复！', '删除预定单', {
       confirmButtonText: '确定删除',
       cancelButtonText: '取消',
       type: 'warning',
@@ -1920,10 +1927,10 @@ const handlePreorderFormSuccess = () => {
 
 // 格式化数字
 const formatNumber = (num: number | string | null | undefined) => {
-  if (num === null || num === undefined) return '0.00'
+  if (num === null || num === undefined) return '0'
   const number = typeof num === 'string' ? parseFloat(num) : num
-  if (isNaN(number)) return '0.00'
-  return number.toFixed(2)
+  if (isNaN(number)) return '0'
+  return number.toFixed(2).replace(/\.?(?:0)+$/, '') || '0'
 }
 
 // 格式化日期时间（只显示年月日）
@@ -2078,7 +2085,7 @@ onMounted(async () => {
   }
 
   // 手机端响应式样式
-  @media (max-width: 768px) {
+  @media (max-width: 767px) {
     padding: 0;
 
     .preorders-tabs {
@@ -2096,7 +2103,7 @@ onMounted(async () => {
 
   }
 
-  @media (max-width: 480px) {
+  @media (max-width: 479px) {
     padding: 0;
 
   }

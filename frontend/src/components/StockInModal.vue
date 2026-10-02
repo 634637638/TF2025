@@ -175,7 +175,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed, watch, defineAsyncComponent } from 'vue'
 import { unifiedApi } from '@/utils/unified-api'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import type { FormInstance } from 'element-plus'
 import { ValidationRules } from '@/composables'
 import { useAuthStore } from '@/stores/auth'
@@ -212,6 +212,7 @@ import type { Brand, Model, Color, MemoryOption as Memory } from '@/types'
 import type { ModalProps, UpdateVisibleEmits, SuccessEmits, CancelEmits } from '@/types/component'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import { logger } from '@/utils/logger'
+import { useNotification } from '@/composables/useNotification'
 import type { StockInFormModel as StockInForm, StockInPhoneItem as PhoneItem } from './stock-in/types'
 
 // ==================== Props & Emits ====================
@@ -234,6 +235,7 @@ const emit = defineEmits<Emits>()
 
 const { isMobile } = useMobile()
 const authStore = useAuthStore()
+const { confirm, prompt } = useNotification()
 
 // ==================== 响应式数据 ====================
 
@@ -391,7 +393,7 @@ const confirmBatchAdd = () => {
 // 清空所有商品
 const clearAllPhones = async () => {
   try {
-    await ElMessageBox.confirm(
+    if (!await confirm(
       '确定要清空所有商品吗？此操作不可恢复。',
       '清空确认',
       {
@@ -399,7 +401,7 @@ const clearAllPhones = async () => {
         cancelButtonText: '取消',
         type: 'warning'
       }
-    )
+    )) return
     stockInForm.phones = []
     addPhone()
     ElMessage.info('已清空所有商品')
@@ -576,14 +578,14 @@ const handleScanSuccess = (result: string) => {
 }
 
 // 扫码手动输入
-const handleScanManual = () => {
+const handleScanManual = async () => {
   if (!currentScanningPhone.value) return
 
   const isIMEI = currentScanType.value === 'imei'
   const isNoIMEIMode = isIMEI && Boolean(currentScanningPhone.value.isNoIMEIMode)
   const promptConfig = buildStockInScanPromptConfig(currentScanType.value, isNoIMEIMode)
 
-  ElMessageBox.prompt(
+  const result = await prompt(
     promptConfig.message,
     promptConfig.title,
     {
@@ -594,13 +596,11 @@ const handleScanManual = () => {
       inputErrorMessage: promptConfig.inputErrorMessage,
       inputPlaceholder: promptConfig.inputPlaceholder
     }
-  ).then(({ value }) => {
-    if (value && currentScanningPhone.value) {
-      handleScanSuccess(value)
-    }
-  }).catch(() => {
-    // 用户取消了输入
-  })
+  )
+
+  if (result?.value && currentScanningPhone.value) {
+    handleScanSuccess(result.value)
+  }
 }
 
 // 扫码取消

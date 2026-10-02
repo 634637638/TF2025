@@ -12,7 +12,7 @@
     @cancel="handleCancel"
   >
     <template #footer>
-      <div class="return-dialog-footer">
+      <div class="tf-dialog-actions return-dialog-footer">
         <el-button
           :disabled="submitting"
           @click="handleCancel"
@@ -138,8 +138,8 @@
               v-model="formData.return_date"
               type="datetime"
               placeholder="请选择退库时间"
-              format="YYYY-MM-DD HH:mm"
-              value-format="YYYY-MM-DDTHH:mm"
+              :format="TIME_FORMATS.DATETIME_MINUTE"
+              :value-format="TIME_FORMATS.DATETIME_LOCAL"
               teleported
               popper-class="tf2025-form-popper"
               style="width: 180px"
@@ -250,6 +250,7 @@
 </template>
 
 <script setup lang="ts">
+import { TIME_FORMATS } from '@/utils/time'
 import { computed, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { FormInstance } from 'element-plus'
@@ -288,7 +289,7 @@ const createDefaultFormData = () => ({
   refund_amount: 0,
   refund_method: '',
   remarks: '',
-  return_date: TimeUtil.now().format('YYYY-MM-DDTHH:mm')
+  return_date: TimeUtil.nowFormatted('DATETIME_LOCAL')
 })
 
 const formData = reactive(createDefaultFormData())
@@ -366,6 +367,8 @@ watch(
   --dialog-max-width: calc(100vw - 4px);
   --mobile-dialog-body-padding: 8px 6px 8px;
   --mobile-dialog-footer-padding: 0 6px 6px;
+  --tf-dialog-surface: var(--color-bg-white);
+  --tf-dialog-footer-bg: var(--color-bg-white);
 }
 
 :global(.query-return-stock-dialog.mobile-dialog-sheet-overlay) {
@@ -396,11 +399,6 @@ watch(
   right: 16px;
   transform: none;
   background: rgba(255, 255, 255, 0.16);
-}
-
-:global(.query-return-stock-dialog .mobile-dialog-sheet-body),
-:global(.query-return-stock-dialog .mobile-dialog-sheet-footer) {
-  background: var(--color-bg-white);
 }
 
 .device-info-card {
@@ -546,12 +544,6 @@ watch(
   }
 }
 
-.return-dialog-footer {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-}
-
 @media (max-width: 767px) {
   :global(.query-return-stock-dialog) {
     --dialog-side-gap: 4px;
@@ -579,13 +571,9 @@ watch(
     min-width: 48px;
   }
 
-  .return-dialog-footer {
-    gap: 8px;
-  }
-
 }
 
-@media (max-width: 480px) {
+@media (max-width: 479px) {
   :global(.query-return-stock-dialog .mobile-dialog-sheet-header) {
     min-height: calc(62px + env(safe-area-inset-top));
     padding: calc(8px + env(safe-area-inset-top)) 50px 8px 14px;

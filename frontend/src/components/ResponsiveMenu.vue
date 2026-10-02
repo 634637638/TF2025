@@ -175,7 +175,7 @@ defineExpose({
   position: fixed;
   top: 8px;
   left: 8px;
-  z-index: 3200;
+  z-index: var(--tf-z-drawer);
   width: 40px;
   height: 40px;
   background: var(--primary-color, var(--tf-color-indigo-brand));
@@ -291,7 +291,7 @@ defineExpose({
 // 确保菜单按钮在其他元素之上
 .mobile-menu-button {
   position: fixed;
-  z-index: 3200;
+  z-index: var(--tf-z-drawer);
 }
 
 // 暗色模式

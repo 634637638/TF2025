@@ -21,75 +21,77 @@
             <template #primary>
               <div class="input-group">
                 <i class="fas fa-search input-icon" />
-                <input
+                <el-input
                   v-model="searchText"
-                  type="text"
+                  class="module-search-control"
                   placeholder="搜索模块名称或标识..."
-                  class="form-control"
                   @input="handleSearch"
-                >
-                <button
+                />
+                <el-button
                   v-if="searchText"
                   class="btn-clear"
+                  text
+                  aria-label="清除搜索"
                   @click="clearSearch"
                 >
                   <i class="fas fa-times" />
-                </button>
+                </el-button>
               </div>
             </template>
             <div class="form-group filter-item">
-              <select
+              <el-select
                 v-model="filterCategory"
                 class="form-control"
+                placeholder="全部分类"
                 @change="handleCategoryFilter"
               >
-                <option value="">
-                  全部分类
-                </option>
-                <option value="system">
-                  系统模块
-                </option>
-                <option value="business">
-                  业务模块
-                </option>
-                <option value="custom">
-                  自定义模块
-                </option>
-              </select>
+                <el-option
+                  label="系统模块"
+                  value="system"
+                />
+                <el-option
+                  label="业务模块"
+                  value="business"
+                />
+                <el-option
+                  label="自定义模块"
+                  value="custom"
+                />
+              </el-select>
             </div>
             <div class="form-group filter-item">
-              <select
+              <el-select
                 v-model="nameStatus"
                 class="form-control"
+                placeholder="全部名称状态"
                 @change="handleNameStatusFilter"
               >
-                <option value="">
-                  全部名称状态
-                </option>
-                <option value="custom">
-                  🔒 自定义名称
-                </option>
-                <option value="auto">
-                  🤖 自动生成
-                </option>
-              </select>
+                <el-option
+                  label="🔒 自定义名称"
+                  value="custom"
+                />
+                <el-option
+                  label="🤖 自动生成"
+                  value="auto"
+                />
+              </el-select>
             </div>
             <div class="form-group filter-item">
-              <select
+              <el-select
                 v-model="activeStatus"
                 class="form-control"
+                placeholder="全部启用状态"
                 @change="handleActiveStatusFilter"
               >
-                <option value="">
-                  全部启用状态
-                </option>
-                <option value="active">
-                  已启用
-                </option>
-                <option value="inactive">
-                  已禁用
-                </option>
-              </select>
+                <el-option
+                  label="已启用"
+                  value="active"
+                />
+                <el-option
+                  label="已禁用"
+                  value="inactive"
+                />
+              </el-select>
             </div>
           </UnifiedSearchPanel>
 
@@ -122,20 +124,24 @@
                   手动添加模块
                 </el-button>
                 <div class="view-toggles">
-                  <button
-                    :class="['btn', 'btn-sm', 'btn-outline', { active: viewMode === 'list' }]"
+                  <el-button
+                    :type="viewMode === 'list' ? 'primary' : 'default'"
+                    size="small"
+                    class="view-toggle-button"
                     @click="viewMode = 'list'"
                   >
                     <i class="fas fa-list" />
                     列表
-                  </button>
-                  <button
-                    :class="['btn', 'btn-sm', 'btn-outline', { active: viewMode === 'grid' }]"
+                  </el-button>
+                  <el-button
+                    :type="viewMode === 'grid' ? 'primary' : 'default'"
+                    size="small"
+                    class="view-toggle-button"
                     @click="viewMode = 'grid'"
                   >
                     <i class="fas fa-th" />
                     网格
-                  </button>
+                  </el-button>
                 </div>
               </div>
             </div>
@@ -473,25 +479,23 @@
             <form @submit.prevent="saveModuleName">
               <div class="form-group">
                 <label>模块标识</label>
-                <input
+                <el-input
                   v-model="editForm.key"
-                  type="text"
-                  class="form-control"
+                  class="module-standard-input"
                   readonly
-                >
+                />
               </div>
 
               <div class="form-group">
                 <label>
                   模块名称 <span class="required">*</span>
                 </label>
-                <input
+                <el-input
                   v-model="editForm.name"
-                  type="text"
-                  class="form-control"
+                  class="module-standard-input"
                   placeholder="请输入模块名称"
                   required
-                >
+                />
                 <div class="input-hint">
                   <span
                     v-if="editForm.is_custom === true"
@@ -714,13 +718,12 @@
                   <span class="required">*</span>
                   模块标识 (key)
                 </label>
-                <input
+                <el-input
                   v-model="newModule.key"
-                  type="text"
-                  class="form-control"
+                  class="module-standard-input"
                   placeholder="例如: subsidy_subsidyview"
                   :class="{ 'is-invalid': formErrors.key }"
-                >
+                />
                 <small class="form-text">
                   模块的唯一标识符，建议使用格式: category_modulename
                 </small>
@@ -737,13 +740,12 @@
                   <span class="required">*</span>
                   模块名称
                 </label>
-                <input
+                <el-input
                   v-model="newModule.name"
-                  type="text"
-                  class="form-control"
+                  class="module-standard-input"
                   placeholder="例如: 国补管理"
                   :class="{ 'is-invalid': formErrors.name }"
-                >
+                />
                 <small class="form-text">
                   模块的显示名称，将用于菜单显示
                 </small>
@@ -771,23 +773,24 @@
                     <span class="required">*</span>
                     分类
                   </label>
-                  <select
+                  <el-select
                     v-model="newModule.category"
                     class="form-control"
+                    placeholder="请选择分类"
                   >
-                    <option value="">
-                      请选择分类
-                    </option>
-                    <option value="system">
-                      系统模块
-                    </option>
-                    <option value="business">
-                      业务模块
-                    </option>
-                    <option value="custom">
-                      自定义模块
-                    </option>
-                  </select>
+                    <el-option
+                      label="系统模块"
+                      value="system"
+                    />
+                    <el-option
+                      label="业务模块"
+                      value="business"
+                    />
+                    <el-option
+                      label="自定义模块"
+                      value="custom"
+                    />
+                  </el-select>
                   <div
                     v-if="formErrors.category"
                     class="invalid-feedback"
@@ -798,35 +801,44 @@
 
                 <div class="form-group">
                   <label class="form-label">图标</label>
-                  <select
+                  <el-select
                     v-model="newModule.icon"
                     class="form-control"
+                    placeholder="请选择图标"
                   >
-                    <option value="fas fa-cube">
-                      fas fa-cube (默认)
-                    </option>
-                    <option value="fas fa-cog">
-                      fas fa-cog (设置)
-                    </option>
-                    <option value="fas fa-shopping-cart">
-                      fas fa-shopping-cart (购物)
-                    </option>
-                    <option value="fas fa-users">
-                      fas fa-users (用户)
-                    </option>
-                    <option value="fas fa-chart-bar">
-                      fas fa-chart-bar (图表)
-                    </option>
-                    <option value="fas fa-hand-holding-usd">
-                      fas fa-hand-holding-usd (补贴)
-                    </option>
-                    <option value="fas fa-wrench">
-                      fas fa-wrench (维修)
-                    </option>
-                    <option value="fas fa-box">
-                      fas fa-box (库存)
-                    </option>
-                  </select>
+                    <el-option
+                      label="fas fa-cube (默认)"
+                      value="fas fa-cube"
+                    />
+                    <el-option
+                      label="fas fa-cog (设置)"
+                      value="fas fa-cog"
+                    />
+                    <el-option
+                      label="fas fa-shopping-cart (购物)"
+                      value="fas fa-shopping-cart"
+                    />
+                    <el-option
+                      label="fas fa-users (用户)"
+                      value="fas fa-users"
+                    />
+                    <el-option
+                      label="fas fa-chart-bar (图表)"
+                      value="fas fa-chart-bar"
+                    />
+                    <el-option
+                      label="fas fa-hand-holding-usd (补贴)"
+                      value="fas fa-hand-holding-usd"
+                    />
+                    <el-option
+                      label="fas fa-wrench (维修)"
+                      value="fas fa-wrench"
+                    />
+                    <el-option
+                      label="fas fa-box (库存)"
+                      value="fas fa-box"
+                    />
+                  </el-select>
                 </div>
               </div>
 
@@ -880,8 +892,8 @@
 </template>
 
 <script>
+import { confirmAction } from '@/utils/message-box'
 import { ref, reactive, computed, onMounted, watch } from 'vue'
-import { ElMessageBox } from 'element-plus'
 import { useNotification } from '@/composables/useNotification'
 import { usePageState } from '@/composables/usePageState'
 import { usePagePermissions } from '@/composables/usePagePermissions'
@@ -1239,7 +1251,7 @@ export default {
           ? `确定要启用模块“${module.name}”吗？启用后可重新用于菜单关联和权限配置。`
           : `确定要禁用模块“${module.name}”吗？禁用后将不能用于菜单关联、权限配置和模块选择，已有业务页面代码不会被删除。`
 
-        await ElMessageBox.confirm(message, `${actionText}模块`, {
+        await confirmAction(message, `${actionText}模块`, {
           confirmButtonText: `确认${actionText}`,
           cancelButtonText: '取消',
           type: newStatus === 1 ? 'success' : 'warning',
@@ -1464,6 +1476,21 @@ export default {
   padding-right: 36px;
 }
 
+.input-group .module-search-control {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.input-group .module-search-control :deep(.el-input__wrapper) {
+  padding-left: 36px;
+  padding-right: 36px;
+}
+
+.module-search-control :deep(.el-input__inner),
+.module-standard-input :deep(.el-input__inner) {
+  min-width: 0;
+}
+
 .form-control:focus {
   outline: none;
   border-color: var(--tf-color-blue-legacy);
@@ -1532,44 +1559,6 @@ export default {
 .loading-container {
   text-align: center;
   padding: 40px;
-}
-
-.loading-spinner {
-  color: var(--tf-color-gray-legacy-500);
-  font-size: 48px;
-  margin-bottom: 16px;
-}
-
-.loading-spinner i {
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: spin(360deg); }
-}
-
-.empty-state {
-  text-align: center;
-  padding: 60px 20px;
-  color: var(--tf-color-gray-legacy-500);
-}
-
-.empty-icon {
-  font-size: 64px;
-  margin-bottom: 20px;
-}
-
-.empty-state h3 {
-  margin: 0 0 10px 0;
-  font-size: 18px;
-  color: var(--tf-color-gray-cool-500);
-}
-
-.empty-state p {
-  margin: 0 0 10px 0;
-  line-height: 1.5;
-  color: var(--tf-color-gray-legacy-500);
 }
 
 .btn-link {
@@ -2065,11 +2054,6 @@ export default {
   color: var(--danger-color);
 }
 
-/* 模块详情对话框 */
-.module-details-dialog .el-dialog__body {
-  padding: 0;
-}
-
 .module-details {
   padding: 24px;
 }
@@ -2112,7 +2096,7 @@ export default {
 }
 
 /* 响应式设计 */
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .section-title {
     flex-direction: column;
     align-items: flex-start;
@@ -2169,7 +2153,7 @@ export default {
 
 }
 
-@media (max-width: 480px) {
+@media (max-width: 479px) {
   .module-table {
     font-size: 12px;
   }
@@ -2302,16 +2286,6 @@ export default {
       }
     }
   }
-}
-
-.modal-footer {
-  background: transparent;
-  padding: 0;
-  border-top: 1px solid var(--tf-color-neutral-200);
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-
 }
 
 /* 详情对话框样式 */
@@ -2517,7 +2491,7 @@ export default {
 }
 
 /* 响应式设计 */
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .modal-body {
     max-height: calc(100vh - 180px);
   }
@@ -2537,6 +2511,25 @@ export default {
 /* 表单输入框样式 */
 .module-management-dialog .modal-body {
   background: var(--color-bg-white) !important;
+
+  .module-standard-input {
+    width: 100%;
+  }
+
+  .module-standard-input .el-input__wrapper {
+    min-height: 42px;
+    padding-inline: 14px;
+    border-radius: var(--tf-radius-control);
+  }
+
+  .module-standard-input.is-invalid .el-input__wrapper {
+    box-shadow: 0 0 0 1px var(--el-color-danger) inset;
+  }
+
+  .module-standard-input .el-input__inner[readonly] {
+    color: var(--tf-color-neutral-500);
+    cursor: not-allowed;
+  }
 
   .form-control {
     background: var(--color-bg-white) !important;
@@ -2619,7 +2612,7 @@ export default {
   background: rgba(36, 87, 245, 0.03);
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .module-management .modules-section {
     border-radius: 20px;
   }

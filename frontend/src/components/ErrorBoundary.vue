@@ -144,7 +144,7 @@ import {
   ArrowDown
 } from '@element-plus/icons-vue'
 import { ErrorType, useErrorBoundary } from '@/utils/error-boundary'
-import { formatBeijingTime } from '@/utils/time'
+import { TIME_FORMATS, TimeUtil } from '@/utils/time'
 import { logger } from '@/utils/logger'
 
 interface Props {
@@ -290,7 +290,7 @@ const errorDetails = computed(() => {
 // 方法
 const formatTime = (timestamp?: number) => {
   if (!timestamp) return '未知'
-  return formatBeijingTime(new Date(timestamp), 'YYYY-MM-DD HH:mm:ss')
+  return TimeUtil.format(timestamp, TIME_FORMATS.DATETIME)
 }
 
 const captureError = (capturedError: unknown, instance: unknown, info: string) => {

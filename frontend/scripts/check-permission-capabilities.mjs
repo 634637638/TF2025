@@ -83,7 +83,22 @@ if (/getModulePermissionTypes\s*\([^)]*extraTypes/.test(backendConfigSource)) {
   findings.push('getModulePermissionTypes 不得合并数据库历史动作，未知模块只能回退到 view')
 }
 
-const scannerModule = require(scannerPath)
+const backendEnvPath = resolve(projectRoot, 'backend/.env')
+const originalEnvFile = process.env.ENV_FILE
+let scannerModule
+try {
+  if (!originalEnvFile && existsSync(backendEnvPath)) {
+    process.env.ENV_FILE = backendEnvPath
+  }
+  scannerModule = require(scannerPath)
+} finally {
+  if (originalEnvFile === undefined) {
+    delete process.env.ENV_FILE
+  } else {
+    process.env.ENV_FILE = originalEnvFile
+  }
+}
+
 const scanner = new scannerModule()
 const scannedModules = await scanner.scanViewsDirectory()
 const syncableModules = scanner.mergeCapabilityModules(scannedModules)

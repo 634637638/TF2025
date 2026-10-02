@@ -19,12 +19,11 @@
             class="form-group"
           >
             <label>员工</label>
-            <input
-              :value="employeeName"
-              type="text"
-              class="form-control"
+            <el-input
+              :model-value="employeeName"
+              class="readonly-display-input"
               disabled
-            >
+            />
           </div>
           <div
             v-if="canViewField('salary_salaryrecordsview', 'base_salary')"
@@ -93,12 +92,11 @@
             class="form-group"
           >
             <label>应发工资</label>
-            <input
-              :value="`¥${netSalary}`"
-              type="text"
-              class="form-control net-salary-input"
+            <el-input
+              :model-value="`¥${netSalary}`"
+              class="readonly-display-input net-salary-input"
               readonly
-            >
+            />
           </div>
         </div>
       </div>
@@ -110,30 +108,36 @@
           class="form-group"
         >
           <label>结算状态</label>
-          <select
+          <el-select
             v-model="status"
             class="form-control"
+            placeholder="请选择结算状态"
             :disabled="!canEditField('salary_salaryrecordsview', 'salary_status')"
           >
-            <option value="approved">
-              未结算
-            </option>
-            <option value="paid">
-              已结算
-            </option>
-          </select>
+            <el-option
+              label="未结算"
+              value="approved"
+            />
+            <el-option
+              label="已结算"
+              value="paid"
+            />
+          </el-select>
         </div>
         <div
           v-if="canViewField('salary_salaryrecordsview', 'paid_at') && form.status === 'paid'"
           class="form-group"
         >
           <label>结算时间</label>
-          <input
+          <el-date-picker
             v-model="paidAt"
             type="date"
             class="form-control"
+            :format="TIME_FORMATS.DATE"
+            :value-format="TIME_FORMATS.DATE"
+            clearable
             :disabled="!canEditField('salary_salaryrecordsview', 'paid_at')"
-          >
+          />
         </div>
         <div
           v-if="canViewField('salary_salaryrecordsview', 'payment_method') && form.status === 'paid'"
@@ -180,6 +184,7 @@
 </template>
 
 <script setup lang="ts">
+import { TIME_FORMATS } from '@/utils/time'
 import { computed } from 'vue'
 import InlineLoading from '@/components/InlineLoading.vue'
 import MobileDialog from '@/components/MobileDialog.vue'
@@ -293,6 +298,11 @@ const paymentMethod = createFieldModel('payment_method')
 .net-salary-input {
   color: var(--color-primary);
   font-weight: 600;
+
+  :deep(.el-input__inner) {
+    color: inherit;
+    font-weight: inherit;
+  }
 }
 
 @media (max-width: 767px) {
@@ -315,7 +325,7 @@ const paymentMethod = createFieldModel('payment_method')
   }
 }
 
-@media (min-width: 768px) and (max-width: 1023px) {
+@media (min-width: 768px) and (max-width: 1024px) {
   .form-row {
     gap: 12px;
   }

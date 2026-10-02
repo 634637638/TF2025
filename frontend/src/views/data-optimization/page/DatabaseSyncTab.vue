@@ -742,8 +742,9 @@
 </template>
 
 <script setup lang="ts">
+import { confirmAction, alertAction } from '@/utils/message-box'
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { unifiedApi } from '@/utils/unified-api'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
@@ -966,7 +967,7 @@ const handleCloseConnection = async (connectionId: string) => {
   }
 
   try {
-    await ElMessageBox.confirm('确定要断开此连接吗？', '确认', {
+    await confirmAction('确定要断开此连接吗？', '确认', {
       type: 'warning'
     })
     const res = await unifiedApi.delete(`/database-sync/connections/${connectionId}`)
@@ -1285,7 +1286,7 @@ const handleSmartSync = async () => {
 
   smartSyncLoading.value = true
   try {
-    await ElMessageBox.confirm(
+    await confirmAction(
       '本地到云端智能同步将：\n\n' +
       '✅ 自动导入本地所有数据到云端\n' +
       '✅ 本地已售商品会更新云端状态为已售\n' +
@@ -1320,7 +1321,7 @@ const handleSmartSync = async () => {
         (summary.failed > 0 ? `失败: ${summary.failed} 条` : '') +
         (summary.relationsCreated > 0 ? `\n关联数据创建: ${summary.relationsCreated} 条` : '')
 
-      await ElMessageBox.alert(resultText, '同步结果', {
+      await alertAction(resultText, '同步结果', {
         type: 'success'
       })
 

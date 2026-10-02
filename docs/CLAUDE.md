@@ -9,7 +9,7 @@
 
 ## 项目概述
 
-TF2025 是一个基于 Vue 3 + Node.js 的手机销售管理综合系统，集成了销售、库存、客户、采购、维修、租赁等核心业务模块。系统采用前后端分离架构，使用云端 MySQL 数据库，实现了完整的 RBAC 权限管理体系。
+TF2025 是一个基于 Vue 3 + Node.js 的手机销售管理综合系统，集成了销售、库存、客户、采购、维修、租赁等核心业务模块。系统采用前后端分离架构，使用 MySQL 数据库并通过运行环境配置连接，实现了 RBAC 权限管理体系。数据库所在网络位置以部署环境为准，不在本文中假定为云端。
 
 ## 核心开发原则
 
@@ -42,8 +42,8 @@ TF2025 是一个基于 Vue 3 + Node.js 的手机销售管理综合系统，集�
 
 #### 3.1 前端技术栈
 - **框架**: Vue 3.x (Composition API)
-- **语言**: TypeScript 4.x
-- **构建**: Vite 4.x
+- **语言**: TypeScript 5.x
+- **构建**: Vite 7.x
 - **UI**: Element Plus 2.x
 - **状态**: Pinia 2.x
 - **路由**: Vue Router 4.x
@@ -54,10 +54,10 @@ TF2025 是一个基于 Vue 3 + Node.js 的手机销售管理综合系统，集�
 #### 3.2 后端技术栈
 - **运行时**: Node.js 18+
 - **框架**: Express.js
-- **数据库**: MySQL 8.0 (云端)
-- **缓存**: Redis 6.x
+- **数据库**: MySQL（通过 `mysql2` 连接）
+- **缓存**: Redis（按后端配置启用）
 - **认证**: JWT + bcrypt
-- **ORM**: Sequelize (如使用)
+- **数据访问**: 显式 SQL、仓储和服务层；项目未使用 Sequelize
 - **API**: RESTful API
 
 #### 3.3 代码规范
@@ -88,7 +88,7 @@ const API_BASE_URL = '/api/v1'
 **代码格式:**
 - 使用 2 空格缩进
 - 字符串优先使用单引号
-- 所有语句必须以分号结尾
+- 遵循仓库现有 JavaScript/TypeScript 风格，默认不添加分号；格式化和 lint 规则以当前配置为准
 - 对象和数组最后一项不加逗号
 - 函数括号前后加空格
 
@@ -715,22 +715,24 @@ const testFiles = [
 
 **所有项目文档必须存放在 `docs/` 目录下，禁止在项目根目录或其他位置创建文档。**
 
-#### 11.2 按模块命名规则
+#### 11.2 文档目录与命名规则
 
-| 模块 | 文档目录 | 示例 |
-|---|---|---|
-| 综合查询 | `docs/query/` | 查询功能相关 |
-| 销售管理 | `docs/business/sales/` | 销售相关 |
-| 库存管理 | `docs/business/inventory/` | 库存相关 |
-| 考勤管理 | `docs/business/leave/` | 考勤相关 |
-| 国补管理 | `docs/subsidy/` | 国补相关 |
-| 工资管理 | `docs/salary/` | 工资相关 |
-| H5商城 | `docs/frontend/` | H5商城相关 |
-| 前端组件 | `docs/components/` | 组件开发 |
-| 后端服务 | `docs/backend/` | 后端技术 |
-| 数据同步 | `docs/sync/` | 同步相关 |
-| 支付管理 | `docs/payments/` | 支付相关 |
-| 权限系统 | `docs/permissions/` | 权限相关 |
+文档目录职责和当前入口以[文档编写与维护规范](guides/DOCUMENTATION_STANDARDS.md)及[文档总索引](00-INDEX.md)为准。当前主要目录如下：
+
+| 主题 | 文档目录 |
+|---|---|
+| 前端强制规范 | `docs/frontend/` |
+| 跨模块开发指南 | `docs/guides/` |
+| 业务规则 | `docs/business/` |
+| 后端实现与数据库 | `docs/backend/`、`docs/database/` |
+| 权限系统 | `docs/permissions/` |
+| 部署 | `docs/deployment/` |
+| 数据同步 | `docs/sync/` |
+| 支付 | `docs/payments/` |
+| 开发进展与验证记录 | `docs/development/`、`docs/performance/` |
+| 组件专题与示例 | `docs/components/`、`docs/examples/` |
+
+强制前端规范只能写入 `docs/frontend/`；`docs/standards/`、`docs/components/` 和 `docs/guides/` 中的旧规范路径只保留迁移说明，不得新增重复正文。
 
 #### 11.3 文件命名规范
 - **业务文档**：大写下划线（如 `LEAVE_CALCULATION_RULES.md`）

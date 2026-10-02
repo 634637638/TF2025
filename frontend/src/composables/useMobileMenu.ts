@@ -10,6 +10,7 @@ import { useMenuStore } from '@/stores/menu'
 import { canAccessRoutePath } from '@/constants/routePermissions'
 import { showElementWarning } from '@/utils/element-feedback'
 import type { MenuItem } from '@/types/menu'
+import { useKeyboardShortcut } from '@/composables/useKeyboardShortcut'
 
 export interface MobileMenuConfig {
   // 菜单项配置
@@ -228,19 +229,8 @@ export function useMobileMenu(config: MobileMenuConfig) {
     }
   }
 
-  // 处理键盘事件
-  const handleKeyDown = (e: KeyboardEvent) => {
-    // ESC键关闭菜单
-    if (e.key === 'Escape' && isSlideMenuOpen.value) {
-      closeSlideMenu()
-    }
-
-    // Ctrl/Cmd + M 打开菜单（桌面端）
-    if ((e.ctrlKey || e.metaKey) && e.key === 'm' && !isMobile.value) {
-      e.preventDefault()
-      toggleSlideMenu()
-    }
-  }
+  useKeyboardShortcut({ key: 'Escape', enabled: isSlideMenuOpen }, closeSlideMenu)
+  useKeyboardShortcut({ key: 'm', ctrlOrMeta: true, enabled: () => !isMobile.value }, toggleSlideMenu)
 
   // 响应式处理
   const handleResize = () => {
@@ -303,7 +293,6 @@ export function useMobileMenu(config: MobileMenuConfig) {
     }
 
     window.addEventListener('resize', handleResize)
-    window.addEventListener('keydown', handleKeyDown)
 
     if (config.enableAutoHide) {
       window.addEventListener('scroll', handleScroll, { passive: true })
@@ -318,7 +307,6 @@ export function useMobileMenu(config: MobileMenuConfig) {
     document.removeEventListener('touchstart', handleGlobalTouchStart)
     document.removeEventListener('touchend', handleGlobalTouchEnd)
     window.removeEventListener('resize', handleResize)
-    window.removeEventListener('keydown', handleKeyDown)
     window.removeEventListener('scroll', handleScroll)
     window.removeEventListener('orientationchange', handleResize)
 

@@ -107,18 +107,24 @@ class ApiResponse {
       message = arg4 || '获取成功'
     }
 
+    const page = Number(pagination.page ?? pagination.current ?? 1) || 1
+    const pageSize = Number(pagination.page_size ?? pagination.limit ?? 10) || 10
+    const total = Number(pagination.total ?? 0) || 0
+    const totalPages = Number(
+      pagination.total_pages ?? pagination.totalPages ?? Math.ceil(total / pageSize)
+    ) || 0
+
     return res.status(200).json({
       success: true,
       message,
       data,
       pagination: {
-        page: pagination.page || 1,
-        limit: pagination.limit || 10,
-        total: pagination.total || 0,
-        totalPages: pagination.totalPages || Math.ceil((pagination.total || 0) / (pagination.limit || 10)),
-        hasNextPage: pagination.hasNextPage || false,
-        hasPrevPage: pagination.hasPrevPage || false,
-        ...pagination
+        page,
+        page_size: pageSize,
+        total,
+        total_pages: totalPages,
+        has_next: Boolean(pagination.has_next ?? pagination.hasNextPage ?? page < totalPages),
+        has_prev: Boolean(pagination.has_prev ?? pagination.hasPrevPage ?? page > 1)
       },
       timestamp: new Date().toISOString()
     })

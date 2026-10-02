@@ -169,7 +169,7 @@
             <div class="order-footer">
               <div class="order-total">
                 <span class="label">订单金额：</span>
-                <span class="amount">¥{{ parseFloat(order.total_amount).toFixed(2) }}</span>
+                <span class="amount">¥{{ formatAmount(order.total_amount) }}</span>
               </div>
               <i class="fas fa-chevron-right arrow-icon" />
             </div>
@@ -213,7 +213,7 @@ import { useForm, ValidationRules, useLoadingState } from '@/composables'
 import { getOrdersByPhone } from '@/api/shop-public'
 import { getUserOrders, userManager, tokenManager, type AuthUser } from '@/api/auth'
 import SectionLoading from '@/components/SectionLoading.vue'
-import { formatDateTime as formatGlobalDateTime, formatImageUrl } from '@/utils/format'
+import { formatAmount, formatDateTime as formatGlobalDateTime, formatImageUrl } from '@/utils/format'
 import { normalizePhoneDigits } from '@/utils/security'
 import { logger } from '@/utils/logger'
 import { storage } from '@/services/storage'
@@ -777,11 +777,4 @@ const goHome = () => {
   }
 }
 
-// 空状态
-.empty-state {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: calc(100vh - 100px);
-}
 </style>

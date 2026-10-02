@@ -1641,12 +1641,12 @@
         "brand_name",
         "model_name",
         "color_name",
-        "profit",
         "is_new"
       ],
-      "responseFields": ["id", "invoice_number", "sale_time", "sale_price", "payment_method", "store_name", "operator_name", "imei", "serial_number", "product_name", "brand_name", "model_name", "color_name", "profit", "is_new"],
+      "responseFields": ["id", "invoice_number", "sale_time", "sale_price", "payment_method", "store_name", "operator_name", "imei", "serial_number", "product_name", "brand_name", "model_name", "color_name", "is_new"],
       "legacy": [],
       "retired": ["sale_date", "salestime"],
+      "retiredResponseFields": ["profit"],
       "database_verification": "completed_read_only",
       "verified_at": "2026-08-27",
       "verification": {

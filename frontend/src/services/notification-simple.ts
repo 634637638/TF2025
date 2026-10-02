@@ -278,6 +278,8 @@ class SimpleNotificationService {
       inputType?: string
       inputPlaceholder?: string
       inputValue?: string
+      inputPattern?: RegExp
+      inputErrorMessage?: string
     } = {}
   ): Promise<{ value: string } | null> {
     // 添加 class 和动态样式来隐藏表格
@@ -292,6 +294,8 @@ class SimpleNotificationService {
       inputType: options.inputType || 'text',
       inputPlaceholder: options.inputPlaceholder,
       inputValue: options.inputValue,
+      inputPattern: options.inputPattern,
+      inputErrorMessage: options.inputErrorMessage,
       appendTo: document.body  // 确保渲染到 body 下
     })
       .then(({ value }) => {

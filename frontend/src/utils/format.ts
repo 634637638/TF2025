@@ -3,14 +3,14 @@
  * 提供各种数据格式化功能，包括日期、时间、货币、数字等
  * 适配北京时间
  */
-import { TimeUtil } from './time'
+import { TIME_FORMATS, TimeUtil } from './time'
 import { storage } from '@/services/storage'
 
 /**
  * 格式化货币
  * @param amount 金额
  * @param currency 货币符号，默认为'¥'
- * @param decimals 指定小数位数；不传时整数不显示小数，小数固定保留2位
+ * @param decimals 指定小数位数；不传时最多保留2位并移除无意义的尾随零
  * @returns 格式化后的货币字符串
  */
 export const formatCurrency = (
@@ -22,21 +22,21 @@ export const formatCurrency = (
 }
 
 /**
- * 格式化金额数值。金额不使用千分位，整数不显示小数，小数固定保留2位。
+ * 格式化金额数值。金额不使用千分位，最多保留2位并移除无意义的尾随零。
  */
 export const formatAmount = (amount: number | string | null | undefined, decimals?: number): string => {
   if (amount === null || amount === undefined || amount === '') {
-    return decimals === undefined || decimals === 0 ? '0' : (0).toFixed(decimals)
+    return '0'
   }
 
   const num = typeof amount === 'string' ? Number.parseFloat(amount) : amount
 
   if (!Number.isFinite(num)) {
-    return decimals === undefined || decimals === 0 ? '0' : (0).toFixed(decimals)
+    return '0'
   }
 
-  const fractionDigits = decimals ?? (Number.isInteger(num) ? 0 : 2)
-  return num.toFixed(fractionDigits)
+  const fractionDigits = decimals ?? 2
+  return num.toFixed(fractionDigits).replace(/\.?(?:0)+$/, '') || '0'
 }
 
 /**
@@ -79,7 +79,7 @@ export const formatPercentage = (value: number | string, decimals: number = 2): 
  */
 export const formatDateTime = (
   date: string | Date,
-  format: string = 'YYYY-MM-DD HH:mm:ss'
+  format: string = TIME_FORMATS.DATETIME
 ): string => {
   if (!date) {
     return '-'
@@ -95,7 +95,7 @@ export const formatDateTime = (
  * @returns 格式化后的日期字符串
  */
 export const formatDate = (date: string | Date): string => {
-  return formatDateTime(date, 'YYYY-MM-DD')
+  return formatDateTime(date, TIME_FORMATS.DATE)
 }
 
 /**
@@ -104,7 +104,7 @@ export const formatDate = (date: string | Date): string => {
  * @returns 格式化后的时间字符串
  */
 export const formatTime = (time: string | Date): string => {
-  return formatDateTime(time, 'HH:mm:ss')
+  return formatDateTime(time, TIME_FORMATS.TIME)
 }
 
 /**
@@ -137,7 +137,7 @@ export const formatRelativeTime = (date: string | Date): string => {
   } else if (diffInDays < 7) {
     return `${Math.floor(diffInDays)}天前`
   } else {
-    return TimeUtil.format(dateObj, 'YYYY-MM-DD')
+    return TimeUtil.format(dateObj, TIME_FORMATS.DATE)
   }
 }
 

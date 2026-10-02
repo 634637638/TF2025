@@ -781,7 +781,7 @@ const saveLexicon = async () => {
         traditionalHolidays: contextEntriesToLexicon(contextLexiconEntries.traditionalHolidays),
         historicalDays: contextEntriesToLexicon(contextLexiconEntries.historicalDays)
       },
-      updatedAt: new Date().toISOString()
+      updatedAt: TimeUtil.toISOString()
     })
     ElMessage.success('词库已保存到数据库')
     await refreshAllPreviews()
@@ -1224,7 +1224,7 @@ onMounted(async () => {
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .marketing-admin-content {
     padding: 16px 12px 20px;
   }

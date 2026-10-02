@@ -135,6 +135,23 @@ const publicLookupRateLimit = createPublicRateLimit({
   keyWithIdentity: true
 })
 
+const publicOrderPhoneLookupRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: '该手机号的订单查询过于频繁，请15分钟后再试',
+    code: 'PUBLIC_RATE_LIMIT_EXCEEDED'
+  },
+  keyGenerator: (req) => {
+    const ip = ipKeyGenerator(req.ip || req.socket.remoteAddress || 'unknown')
+    const phone = String(req.params?.customer_phone || '').replace(/\D/g, '')
+    return `${ip}:order-phone:${phone || 'invalid'}`
+  }
+})
+
 const publicMarketingRateLimit = createPublicRateLimit({
   windowMs: 60 * 1000,
   max: 20,
@@ -311,6 +328,7 @@ module.exports = {
   publicAuthRateLimit,
   publicOrderRateLimit,
   publicLookupRateLimit,
+  publicOrderPhoneLookupRateLimit,
   publicMarketingRateLimit,
   searchRateLimit,
   uploadRateLimit,

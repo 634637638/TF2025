@@ -1,6 +1,6 @@
 # ESLint Warning 清理进度
 
-更新时间：2026-08-27
+本报告的清理过程记录截至 2026-08-27。2026-10-01 已完成全站格式规则批量修复并人工处理剩余未使用变量；当前 ESLint 为 0 errors、0 warnings。
 
 ## 统计口径
 
@@ -20,9 +20,9 @@ npm run lint -- --format json
 | 自动修复格式和未使用 import | 已完成 |
 | TypeScript/Vue 规则配置校准 | 已完成；catch 参数和动态全局声明不再产生误报 |
 | 表单、分析 API 类型收敛 | 已完成本轮涉及文件 |
-| 当前结果 | 0 条 warning，0 条 error；ESLint 技术债务已完成 |
+| 最近复核（2026-10-01） | 0 条 error、0 条 warning；`lint:strict` 已通过 |
 
-当前剩余规则分布：无。
+2026-10-01 复核的 warning 分布：无。
 
 本轮（2026-08-27）完成：
 
@@ -39,7 +39,7 @@ npm run lint -- --format json
 - 请求去重始终返回 `AxiosResponse<T>`，不再出现部分路径只返回响应数据的契约分叉；离线队列只持久化可序列化请求信息，不再尝试保存 Promise 回调。
 - 认证持久化边界将权限和角色统一归一化为 `string[]`；权限持久化 watcher 已移到 store 返回前，修复原先不可达的问题。
 - Vue Router、Pinia、浏览器电池/网络/内存/视口及扫描器扩展 API 已补充最小明确接口，业务代码不再依赖显式 `any`。
-- 最终验证：`npm run lint:summary` 和 `npm run lint:strict` 均为 0 error、0 warning；类型检查、字段审计、106 项真实数据库后端测试及生产构建通过。
+- 历史验证：2026-08-27 曾记录 lint、类型、字段审计和构建通过；这些结果不代表 2026-09-30 的当前状态。当前 lint 结果以本页顶部复核为准。
 
 ## 处理规则
 
@@ -59,4 +59,4 @@ npm run lint:strict
 
 ## 后续维护
 
-ESLint 存量清理已结束。后续只做零 warning 守护；真实数据库回归、样式债务、大页面拆分和构建体积优化分别按对应进度文档继续执行。
+全站 ESLint warning 清理已完成，`npm run lint:summary` 和 `npm run lint:strict` 均通过。后续新增代码继续在提交前运行严格检查；真实数据库回归、样式债务、大页面拆分和构建体积优化分别按对应进度文档继续执行。

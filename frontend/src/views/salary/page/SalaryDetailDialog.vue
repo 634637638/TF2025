@@ -319,7 +319,7 @@ const emit = defineEmits<{
   }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 479px) {
   .detail-row.highlight .net-salary-large {
     font-size: 20px;
   }

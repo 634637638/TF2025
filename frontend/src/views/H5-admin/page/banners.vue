@@ -212,14 +212,9 @@
                 </div>
               </div>
               <el-upload
-                :action="uploadAction"
-                :headers="uploadHeaders"
-                :data="{ module: 'h5_banners' }"
                 :show-file-list="false"
-                :on-success="handleBannerUploadSuccess"
-                :on-error="handleUploadError"
+                :http-request="handleBannerUpload"
                 :before-upload="beforeUpload"
-                name="files"
                 :multiple="true"
                 :limit="10"
                 accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,application/pdf"
@@ -318,7 +313,7 @@
               start-placeholder="开始时间"
               end-placeholder="结束时间"
               picker-type="datetime"
-              value-format="YYYY-MM-DD HH:mm:ss"
+              :value-format="TIME_FORMATS.DATETIME"
             />
             <template #tip>
               <span class="tip-text">留空表示永久展示</span>
@@ -348,25 +343,27 @@
 </template>
 
 <script setup lang="ts">
+import { TIME_FORMATS } from '@/utils/time'
+import { confirmAction } from '@/utils/message-box'
 import { ref, computed, onMounted, onUnmounted, onActivated, inject, watch } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
-import { ElMessage, ElMessageBox, FormInstance } from 'element-plus'
+import { ElMessage, FormInstance } from 'element-plus'
 import { ValidationRules } from '@/composables'
 import { Refresh, Plus } from '@element-plus/icons-vue'
 import draggable from 'vuedraggable'
 import SectionLoading from '@/components/SectionLoading.vue'
 import { getAllBanners, createBanner, updateBanner, deleteBanner, reorderBanners } from '@/api/shop'
 import { PermissionGate } from '@/components/base/index'
-import { useAuthStore } from '@/stores/auth'
 import { formatImageUrl } from '@/utils/format'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { deleteTempFiles } from '@/utils/temp-file-cleaner'
 import type { ShopBanner } from '@/api/shop'
 import { logger } from '@/utils/logger'
+import { isPdfFile, prepareMediaFile, validateMediaFile } from '@/utils/upload-media'
+import { unifiedApi } from '@/utils/unified-api'
 import DateRangePicker from '@/components/DateRangePicker.vue'
 import type { HeaderAction } from '@/types'
-const authStore = useAuthStore()
 const bannerPermissions = usePagePermissions('h5-admin-banners')
 const { handleNoPermission } = bannerPermissions
 const canView = computed(() => bannerPermissions.canView.value)
@@ -383,12 +380,6 @@ const showActionColumn = computed(() => shouldShowActionColumn(
 // 注入父组件提供的注册方法
 const registerHeaderActions = inject<(_actions: HeaderAction[]) => void>('registerHeaderActions')
 const clearHeaderActions = inject<() => void>('clearHeaderActions')
-
-// 上传配置
-const uploadAction = computed(() => `${import.meta.env.VITE_API_BASE_URL || '/api'}/shop/upload/image`)
-const uploadHeaders = computed(() => ({
-  'Authorization': `Bearer ${authStore.token}`
-}))
 
 // 轮播图图片列表（支持多图）
 interface BannerImage {
@@ -474,6 +465,25 @@ const handleBannerUploadSuccess = (response: any, _file: any, _uploadFiles: any)
   }
 }
 
+const handleBannerUpload = async (options: any) => {
+  try {
+    const file = await prepareMediaFile(options.file as File, {
+      allowVideo: false,
+      maxImageSizeMb: 10,
+      maxPdfSizeMb: 10
+    })
+    const formData = new FormData()
+    formData.append('files', file)
+    formData.append('module', 'h5_banners')
+    const response = await unifiedApi.upload('/shop/upload/image', formData)
+    handleBannerUploadSuccess(response, options.file, [])
+    options.onSuccess?.(response)
+  } catch (error) {
+    handleUploadError(error, options.file, [])
+    options.onError?.(error instanceof Error ? error : new Error('上传失败'))
+  }
+}
+
 // 上传错误处理
 const handleUploadError = (error: any, file: any, _uploadFiles: any) => {
   logger.error('[上传失败] 错误信息:', error)
@@ -523,72 +533,28 @@ const beforeUpload = async (file: File) => {
     return false
   }
 
-  const isPDF = file.type === 'application/pdf'
-  const isImage = file.type.startsWith('image/')
-  const isLt10M = file.size / 1024 / 1024 < 10
-
-  if (!isImage && !isPDF) {
-    ElMessage.error('只能上传图片或PDF文件!')
-    return false
-  }
-  if (!isLt10M) {
-    ElMessage.error('文件大小不能超过 10MB!')
+  const validationMessage = validateMediaFile(file, {
+    allowVideo: false,
+    maxImageSizeMb: 10,
+    maxPdfSizeMb: 10
+  })
+  if (validationMessage) {
+    ElMessage.error(validationMessage)
     return false
   }
 
-  // 如果是PDF，转换为图片
-  if (isPDF) {
+  if (isPdfFile(file)) {
     try {
       ElMessage.info('正在转换PDF...')
-      const imageFile = await convertPDFToImage(file)
-      // 返回转换后的图片文件
-      return imageFile
+      return await prepareMediaFile(file, { allowVideo: false, maxImageSizeMb: 10, maxPdfSizeMb: 10 })
     } catch (error) {
       logger.error('PDF转换失败:', error)
-      ElMessage.error('PDF转换失败，请重试')
+      ElMessage.error(error instanceof Error ? error.message : 'PDF转换失败，请重试')
       return false
     }
   }
 
   return true
-}
-
-// PDF转图片函数
-const convertPDFToImage = async (pdfFile: File): Promise<File> => {
-  const pdfjsLib = await import('pdfjs-dist')
-
-  // 使用 public 中的本地 worker，避免重复打包 pdf.worker。
-  pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf/pdf.worker.min.js'
-
-  // 读取PDF文件
-  const arrayBuffer = await pdfFile.arrayBuffer()
-  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
-
-  // 获取第一页，使用更高的缩放比例
-  const page = await pdf.getPage(1)
-  const viewport = page.getViewport({ scale: 3.0 })
-
-  // 创建canvas
-  const canvas = document.createElement('canvas')
-  const context = canvas.getContext('2d')!
-  canvas.width = viewport.width
-  canvas.height = viewport.height
-
-  // 渲染PDF到canvas
-  await page.render({
-    canvas,
-    canvasContext: context,
-    viewport: viewport
-  }).promise
-
-  // 将canvas转换为Blob，使用最高质量
-  const blob = await new Promise<Blob>((resolve) => {
-    canvas.toBlob((blob) => resolve(blob!), 'image/jpeg', 1.0)
-  })
-
-  // 创建新的File对象
-  const fileName = pdfFile.name.replace('.pdf', '.jpg')
-  return new File([blob], fileName, { type: 'image/jpeg' })
 }
 
 const formRef = ref<FormInstance>()
@@ -807,7 +773,7 @@ const handleDelete = (banner: ShopBanner) => {
     return
   }
 
-  ElMessageBox.confirm(
+  confirmAction(
     `确定要删除轮播图"${banner.title}"吗？`,
     '提示',
     {
@@ -1231,13 +1197,11 @@ onUnmounted(() => {
   }
 }
 
-:deep(.banner-dialog .el-dialog__body) {
-  .el-form-item__tip {
-    margin-top: 4px;
-  }
+:deep(.banner-dialog .el-form-item__tip) {
+  margin-top: 4px;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .banner-management-page {
     width: 100%;
     padding: 0;

@@ -82,8 +82,8 @@
             type="date"
             class="sale-date-picker"
             popper-class="tf2025-form-popper"
-            value-format="YYYY-MM-DD"
-            format="YYYY-M-D"
+            :value-format="TIME_FORMATS.DATE"
+            :format="TIME_FORMATS.DATE_UNPADDED"
             placeholder="请选择销售时间"
             required
           />
@@ -98,7 +98,8 @@
           <label class="form-label">入库价格</label>
           <el-input
             v-model="saleForm.purchase_cost"
-            type="number"
+            class="price-input"
+            inputmode="decimal"
             placeholder="请输入入库价格"
             @input="emit('calculate-profit')"
           />
@@ -110,7 +111,8 @@
           <label class="form-label required">{{ batchMode ? '销售单价' : '销售价格' }}</label>
           <el-input
             v-model="saleForm.sale_price"
-            type="number"
+            class="price-input"
+            inputmode="decimal"
             placeholder="请输入销售价格"
             required
             @input="emit('calculate-profit')"
@@ -129,8 +131,13 @@
             placeholder="请选择门店"
             class="w-full"
             clearable
+            filterable
+            remote
+            reserve-keyword
+            :remote-method="(query: string) => emit('operator-search', query)"
             teleported
             popper-class="tf2025-form-popper"
+            @focus="emit('operator-search', '')"
           >
             <el-option
               v-for="store in stores"
@@ -181,7 +188,7 @@
           />
         </div>
         <div
-          v-if="canViewField('payment_method') && ['mobile', 'bank_card', 'subsidy_card'].includes(saleForm.payment_method)"
+          v-if="canViewField('payment_method') && hasPaymentChannelOptions(saleForm.payment_method)"
           class="form-group"
         >
           <label class="form-label">支付渠道</label>
@@ -199,7 +206,7 @@
       </div>
 
       <div
-        v-if="canViewField('transaction_no') && (saleForm.payment_method === 'mobile' || saleForm.payment_method === 'transfer')"
+        v-if="canViewField('transaction_no') && requiresTransactionNumber(saleForm.payment_method)"
         class="form-group"
       >
         <label class="form-label">交易流水号</label>
@@ -260,10 +267,12 @@
 </template>
 
 <script setup lang="ts">
+import { TIME_FORMATS } from '@/utils/time'
 import { computed, ref } from 'vue'
 import CustomerNameLockInput from '@/components/common/CustomerNameLockInput.vue'
 import CustomerSearchDropdown from '@/components/common/CustomerSearchDropdown.vue'
 import { PaymentChannelSelect, PaymentMethodSelect } from '@/components/payment'
+import { hasPaymentChannelOptions, requiresTransactionNumber } from '@/constants/paymentMethods'
 import { formatNumber } from '@/utils/format'
 import type { Operator, Phone, Store } from '@/types'
 import type { SalesCheckoutFormData, SalesCustomer } from '../types'
@@ -309,6 +318,7 @@ const emit = defineEmits<{
   'calculate-profit': []
   'payment-method-change': []
   'payment-channel-change': []
+  'operator-search': [value: string]
   submit: []
 }>()
 

@@ -272,7 +272,7 @@ import 'swiper/css/pagination'
 import { getPublicConfig, getStockDistribution } from '@/api/shop-public'
 import type { AggregatedProduct, StockDistribution, StoreStock } from '@/api/shop-public'
 import { useCart } from '@/composables'
-import { formatImageUrl } from '@/utils/format'
+import { formatAmount, formatImageUrl } from '@/utils/format'
 import { storage } from '@/services/storage'
 import { H5_STORAGE_KEYS } from '@/constants/storage'
 import { logger } from '@/utils/logger'
@@ -346,13 +346,13 @@ const canAddToCart = computed(() => {
 const displayMinPrice = computed(() => {
   if (!productData.value) return null
   const price = Number(productData.value.min_price)
-  return price && price > 0 ? price.toFixed(2) : null
+  return price && price > 0 ? formatAmount(price) : null
 })
 
 const displayMaxPrice = computed(() => {
   if (!productData.value) return null
   const price = Number(productData.value.max_price)
-  return price && price > 0 ? price.toFixed(2) : null
+  return price && price > 0 ? formatAmount(price) : null
 })
 
 const routeProductKey = computed(() => JSON.stringify({

@@ -11,6 +11,36 @@
 | `frontend/src/styles/components/_dialog-actions.scss` | 取消/确认按钮的排列、尺寸、间距和移动端等宽布局 |
 | `frontend/src/styles/components/_buttons.scss` | 按钮颜色、语义和普通按钮视觉 |
 
+`MobileDialog` 在手机和平板使用 sheet 布局，在桌面使用 Element Plus Dialog。宽度按断点收敛：手机（`<=767px`）使用接近满宽的弹窗；平板（`768-1024px`）宽度上限为视口的 `80%`，并继续受页面 `width`/`maxWidth` 参数约束；桌面（`>=1025px`）按页面声明宽度并受全局最大宽度约束。最终规则统一采用 `min(页面声明宽度, 可用视口宽度)`，与库存管理弹窗的自适应行为一致。不要在业务页面用 `!important` 再覆盖这些断点规则。
+
+### 宽度行为
+
+`width` 只声明业务弹窗的期望宽度，`maxWidth` 用于声明更严格的上限；两者都不是固定像素锁定。全局实现会根据当前视口自动取较小值：
+
+| 视口 | 统一行为 |
+| --- | --- |
+| 桌面 `>=1025px` | `min(width, 可用视口宽度)`，同时受 `maxWidth` 限制 |
+| 平板 `768-1024px` | 最大为视口 `80%`，同时受页面宽度上限限制 |
+| 手机 `<=767px` | 使用接近满宽的 sheet，并保留统一左右安全间距 |
+
+标准写法：
+
+```vue
+<MobileDialog
+  v-model="visible"
+  title="编辑设备"
+  width="900px"
+  max-width="960px"
+  dialog-class="device-edit-dialog"
+>
+  <!-- 内容区由业务组件负责，弹窗宽度由全局入口负责 -->
+</MobileDialog>
+```
+
+业务页面不得再写 `width: min(..., 100vw)`、`width: calc(100vw - ...)` 或按断点重复覆盖 `.el-dialog` / `.mobile-dialog-sheet-panel`。需要更宽的表格或媒体工作台时，只声明 `width`/`maxWidth` 或使用已登记的工作台例外；不要复制库存页面的局部宽度 CSS。
+
+`/query` 页面及 `QueryDetailDialog.vue` 中的所有业务弹窗必须使用 `MobileDialog`；媒体工作台也不再以直接 `el-dialog` 作为响应式例外。`check:dialogs` 会持续检查这两个入口。
+
 以上样式由 `frontend/src/main.ts` 全局加载。页面不得再维护第二套弹窗外壳样式。
 
 ## 组件选择
@@ -19,6 +49,8 @@
 - 需要 Element Plus 原生插槽或已有服务逻辑时可以使用 `el-dialog`，但必须复用全局样式。
 - 不新增自定义 `modal-overlay`、`modal-content`、`BaseModal` 或新的弹窗主题。
 - 图片预览、富文本、表格工作台等复杂内容可以使用业务 class，但只允许调整内容布局或宽度变体。
+
+当前直接 `el-dialog` 例外由 `frontend/scripts/check-dialog-adoption.mjs` 登记并审计。例外只覆盖全局提醒宿主、媒体/照片预览工作台、备份清理、待办、经验分享和国补照片管理；普通新增业务弹窗不得直接复制这些例外。
 
 ## 统一视觉令牌
 
@@ -80,8 +112,10 @@
 
 ## Footer 按钮
 
-- PC 端按钮靠右、按内容宽度排列。
-- 手机端按钮保持一行并等宽收缩，取消在左、确认在右。
+- 所有业务 footer 容器必须使用 `.tf-dialog-actions`（可与业务语义 class 并列）。
+- PC 端按钮靠右、按内容宽度排列；按钮使用统一最小宽度、统一高度和统一间距。
+- 手机端按钮保持一行并等宽收缩，取消在左、确认/保存/提交在右；按钮间距和底部安全区由全局令牌控制。
+- 三个及以上按钮仍使用同一行等宽布局，不在页面中改成独立 grid 或分别设置左右宽度。
 - 不在页面中给 footer 按钮重复设置高度、宽度、圆角或间距。
 - 取消使用中性语义，保存/确认使用 `primary`，删除使用 `danger`，完成使用 `success`。
 - 业务 footer 容器可以保留自己的 class，但应同时使用 `.tf-dialog-actions`。
@@ -102,3 +136,5 @@
 - [ ] 正文可滚动，footer 始终可操作
 - [ ] 页面没有重复的弹窗外壳样式
 - [ ] 运行 `npm run type-check`、`npm run check:ui` 和 `npm run build`
+- [ ] 运行 `npm run check:dialogs`，确认直接 `el-dialog` 属于已登记的工作台例外
+- [ ] 检查没有页面级 `width: calc(100vw - ...)` 或 `width: min(..., 100vw)` 覆盖全局宽度

@@ -8,6 +8,7 @@ import { ref, computed, watch } from 'vue'
 import { unifiedApi } from '@/utils/unified-api'
 import { buildLogoUrl } from '@/utils/logoUtils'
 import { logger } from '@/utils/logger'
+import { TimeUtil } from '@/utils/time'
 
 interface SiteSettings {
   logoUrl: string
@@ -153,7 +154,7 @@ export const useSiteSettingsStore = defineStore('siteSettings', () => {
   })
 
   // 方法
-  const loadSiteSettings = async (forceReload = false) => {
+  const loadSiteSettings = async (forceReload = false, includePrivateSettings = false) => {
     if (loadPromise) {
       return loadPromise
     }
@@ -172,7 +173,10 @@ export const useSiteSettingsStore = defineStore('siteSettings', () => {
       try {
         isLoading.value = true
 
-        const response = await unifiedApi.get('/system/site-settings', {
+        const endpoint = includePrivateSettings
+          ? '/system/site-settings/admin'
+          : '/system/site-settings'
+        const response = await unifiedApi.get(endpoint, {
           showLoading: false,
           showError: false,
           // 强制刷新用于公开报价页和设置页保存后的回读，不能命中旧的3秒GET缓存。
@@ -183,7 +187,7 @@ export const useSiteSettingsStore = defineStore('siteSettings', () => {
         if (response.success && response.data) {
         // 更新设置
           Object.assign(settings.value, response.data)
-          lastUpdated.value = new Date()
+          lastUpdated.value = TimeUtil.now().toDate()
 
           // 触发设置更新事件
           window.dispatchEvent(new CustomEvent('tf2025:site-settings-updated', {
@@ -220,7 +224,7 @@ export const useSiteSettingsStore = defineStore('siteSettings', () => {
       })
 
       if (response.success) {
-        lastUpdated.value = new Date()
+        lastUpdated.value = TimeUtil.now().toDate()
 
         // 让同时打开的公开报价页也能感知后台设置已更新。
         try {

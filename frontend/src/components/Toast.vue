@@ -52,7 +52,7 @@ const getIconClass = (type: string) => {
   position: fixed;
   top: 20px;
   right: 20px;
-  z-index: 9999;
+  z-index: var(--tf-z-toast);
   pointer-events: none;
 }
 

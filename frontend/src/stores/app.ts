@@ -5,7 +5,7 @@
 
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
-import { useTime } from '@/utils/time'
+import { TimeUtil } from '@/utils/time'
 import { applyDeviceRootClass, getViewportDimensions, isIOSDevice, isMobileViewport, isTabletViewport } from '@/utils/device-detection'
 import { storage } from '@/services/storage'
 import { PREFERENCE_STORAGE_KEYS } from '@/constants/storage'
@@ -162,7 +162,7 @@ export const useAppStore = defineStore('app', () => {
 
   const currentTheme = computed(() => {
     if (isAutoMode.value) {
-      const hour = useTime().getBeijingTime().getHours()
+      const hour = TimeUtil.now().hour()
       return hour >= 18 || hour < 6 ? 'dark' : 'light'
     }
     return theme.value
@@ -349,6 +349,10 @@ export const useAppStore = defineStore('app', () => {
   const saveUserPreference = <K extends keyof AppPreferences>(key: K, value: AppPreferences[K]): void => {
     try {
       userPreferences.value[key] = value
+      // 路径、收藏和搜索记录不持久化，避免未登录时暴露业务菜单与查询痕迹。
+      if (key === 'recentlyVisited' || key === 'favorites' || key === 'searchHistory') {
+        return
+      }
       storage.setPreferences(userPreferences.value)
     } catch (error) {
       // 保存用户偏好失败，忽略
@@ -359,7 +363,15 @@ export const useAppStore = defineStore('app', () => {
     try {
       const saved = storage.getPreferences<AppPreferences>()
       if (saved) {
-        userPreferences.value = saved
+        const {
+          recentlyVisited: _recentlyVisited,
+          favorites: _favorites,
+          searchHistory: _searchHistory,
+          ...safePreferences
+        } = saved
+        userPreferences.value = safePreferences
+        // 回写清理旧版本保存的路径、收藏和搜索记录。
+        storage.setPreferences(safePreferences)
         applyUserPreferences()
       }
     } catch (error) {
@@ -533,6 +545,7 @@ export const useAppStore = defineStore('app', () => {
   // =========== 样式应用方法 ===========
   const applyTheme = (): void => {
     const root = document.documentElement
+    root.dataset.theme = currentTheme.value
     root.classList.remove('theme-light', 'theme-dark')
     root.classList.add(`theme-${currentTheme.value}`)
 

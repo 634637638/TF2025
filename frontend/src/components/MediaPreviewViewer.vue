@@ -21,16 +21,17 @@
             </span>
           </div>
           <div class="media-preview-actions">
-            <button
+            <el-button
               v-if="deletable"
-              type="button"
+              native-type="button"
+              type="danger"
               class="media-preview-tool media-preview-delete"
               title="删除当前素材"
               aria-label="删除当前素材"
               @click.stop="emitDelete"
             >
               <i class="fas fa-trash" />
-            </button>
+            </el-button>
             <button
               type="button"
               class="media-preview-tool"
@@ -66,9 +67,12 @@
             class="media-preview-content"
             controls
             controlslist="nodownload"
+            :autoplay="autoPlayVideos"
+            muted
             playsinline
             preload="metadata"
             @error="loadFailed = true"
+            @loadeddata="handleVideoReady"
           >
             当前浏览器无法播放此视频。
           </video>
@@ -115,6 +119,7 @@ interface Props {
   items: MediaPreviewItem[]
   initialIndex?: number
   deletable?: boolean
+  autoPlayVideos?: boolean
 }
 
 interface Emits {
@@ -125,7 +130,8 @@ interface Emits {
 
 const props = withDefaults(defineProps<Props>(), {
   initialIndex: 0,
-  deletable: false
+  deletable: false,
+  autoPlayVideos: true
 })
 const emit = defineEmits<Emits>()
 
@@ -148,11 +154,28 @@ const pauseVideo = () => {
   videoElement.value?.pause()
 }
 
+const playCurrentVideo = async () => {
+  if (!props.autoPlayVideos || !currentIsVideo.value || !videoElement.value) return
+
+  // 静音自动播放符合浏览器策略，用户仍可通过原生控件开启声音。
+  videoElement.value.muted = true
+  try {
+    await videoElement.value.play()
+  } catch {
+    // 浏览器策略或媒体格式不支持时保留原生控件，不打断预览流程。
+  }
+}
+
+const handleVideoReady = () => {
+  void playCurrentVideo()
+}
+
 const selectIndex = async (index: number) => {
   pauseVideo()
   currentIndex.value = clampIndex(index)
   loadFailed.value = false
   await nextTick()
+  await playCurrentVideo()
 
   if (currentItem.value) {
     emit('change', currentItem.value, currentIndex.value)
@@ -240,7 +263,7 @@ onUnmounted(() => {
 .media-preview-overlay {
   position: fixed;
   inset: 0;
-  z-index: 10000;
+  z-index: var(--tf-z-viewer);
   display: grid;
   grid-template-columns: 64px minmax(0, 1fr) 64px;
   grid-template-rows: 64px minmax(0, 1fr) 32px;
@@ -366,7 +389,7 @@ video.media-preview-content {
   opacity: 0;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .media-preview-overlay {
     grid-template-columns: 48px minmax(0, 1fr) 48px;
     grid-template-rows: calc(58px + env(safe-area-inset-top)) minmax(0, 1fr) calc(20px + env(safe-area-inset-bottom));

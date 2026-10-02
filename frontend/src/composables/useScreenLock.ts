@@ -5,6 +5,7 @@ import { ref, watch } from 'vue'
 import { storage } from '@/services/storage'
 import { logger } from '@/utils/logger'
 import { unifiedApi } from '@/utils/unified-api'
+import { useKeyboardShortcut } from '@/composables/useKeyboardShortcut'
 
 let sharedLockSettingsPromise: Promise<void> | null = null
 
@@ -114,16 +115,9 @@ export const useScreenLock = () => {
     document.body.style.overflow = newValue ? 'hidden' : ''
   })
 
-  // 快捷键处理
-  const setupKeyboardShortcuts = () => {
-    document.addEventListener('keydown', (e) => {
-      // Alt + L 快速锁定
-      if (e.altKey && e.key === 'l') {
-        e.preventDefault()
-        lockScreen()
-      }
-    })
-  }
+  useKeyboardShortcut({ key: 'l', alt: true }, () => {
+    void lockScreen()
+  })
 
   return {
     isLocked,
@@ -133,6 +127,5 @@ export const useScreenLock = () => {
     verifyPassword,
     checkLockStatus,
     initializeLock,
-    setupKeyboardShortcuts
   }
 }

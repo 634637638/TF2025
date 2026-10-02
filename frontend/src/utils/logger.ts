@@ -11,16 +11,10 @@
  * @see docs/guides/LOG_SYSTEM_STANDARDS.md 日志系统规范文档
  */
 
-const LOGGER_TIMEZONE = 'Asia/Shanghai'
+import { TIME_FORMATS, TimeUtil } from '@/utils/time'
 
-function formatLogTimestamp(date: Date): string {
-  return new Intl.DateTimeFormat('zh-CN', {
-    timeZone: LOGGER_TIMEZONE,
-    hour12: false,
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit'
-  }).format(date)
+function formatLogTimestamp(): string {
+  return TimeUtil.nowFormatted(TIME_FORMATS.TIME)
 }
 
 interface LogConfig {
@@ -60,7 +54,7 @@ class Logger {
   }
 
   private formatMessage(level: string, message: string, data?: unknown): unknown[] {
-    const timestamp = formatLogTimestamp(new Date())
+    const timestamp = formatLogTimestamp()
     const prefix = `[${timestamp}] [${level.toUpperCase()}]`
 
     if (typeof data !== 'undefined') {
@@ -106,7 +100,7 @@ class Logger {
         body: JSON.stringify({
           message,
           error: error instanceof Error ? error.stack || error.message : error,
-          timestamp: new Date().toISOString(),
+          timestamp: TimeUtil.toISOString(),
           url: window.location.href,
           userAgent: navigator.userAgent
         })

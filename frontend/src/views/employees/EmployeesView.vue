@@ -27,19 +27,12 @@
           />
           <el-button
             type="info"
+            :loading="refreshing"
             :disabled="refreshing"
             @click="handleRefresh"
           >
-            <InlineLoading
-              v-if="refreshing"
-              text="刷新中..."
-              size="small"
-              variant="inherit"
-            />
-            <template v-else>
-              <el-icon><Refresh /></el-icon>
-              刷新
-            </template>
+            <el-icon><Refresh /></el-icon>
+            {{ refreshing ? '刷新中...' : '刷新' }}
           </el-button>
         </template>
       </PageHeader>
@@ -584,8 +577,8 @@
                 v-model="employeeForm.hire_date"
                 type="date"
                 placeholder="请选择入职时间"
-                format="YYYY-MM-DD"
-                value-format="YYYY-MM-DD"
+                :format="TIME_FORMATS.DATE"
+                :value-format="TIME_FORMATS.DATE"
                 style="width: 100%"
                 :disabled="!canEditField('hire_date')"
               />
@@ -973,9 +966,9 @@
 </template>
 
 <script setup lang="ts">
+import { confirmAction } from '@/utils/message-box'
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessageBox } from 'element-plus'
 import { unifiedApi } from '@/utils/unified-api'
 import { useNotification } from '@/composables/useNotification'
 import { useLoadingState } from '@/composables'
@@ -1526,7 +1519,7 @@ const resetToDefaultPassword = async () => {
   const generatedPassword = generateSecurePassword()
 
   try {
-    await ElMessageBox.confirm(
+    await confirmAction(
       `确定要将员工 "${selectedEmployee.value?.name}" 的密码重置为随机密码吗？\n\n新密码：${generatedPassword}`,
       '密码重置确认',
       {
@@ -1590,7 +1583,7 @@ const toggleStatus = async (employee: Employee) => {
   const currentStatus = employee.status === 1
   const action = currentStatus ? '设为离职' : '设为在职'
   try {
-    await ElMessageBox.confirm(
+    await confirmAction(
       `确定要${action}员工 "${employee.name}" 吗？`,
       '状态变更确认',
       {
@@ -1620,7 +1613,7 @@ const deleteEmployee = async (employee: Employee) => {
   }
 
   try {
-    await ElMessageBox.confirm(
+    await confirmAction(
       `确定要删除员工 "${employee.name}" 吗？\n\n⚠️ 此操作不可撤销，员工的所有数据将被永久删除！`,
       '删除确认',
       {
@@ -1828,7 +1821,7 @@ const deleteRole = async (role: Role) => {
   }
 
   try {
-    await ElMessageBox.confirm(
+    await confirmAction(
       `确定要删除角色 "${role.name}" 吗？`,
       '删除确认',
       {
@@ -2318,35 +2311,6 @@ onMounted(async () => {
 
 .time-info.hire-date i {
   color: var(--tf-color-purple-bootstrap);
-}
-
-/* 空状态样式 */
-.empty-row td {
-  padding: 60px 12px;
-  text-align: center;
-}
-
-.empty-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-  color: var(--tf-color-muted);
-}
-
-.empty-content i {
-  font-size: 48px;
-  opacity: 0.5;
-}
-
-.empty-text h4 {
-  margin: 0 0 8px 0;
-  color: var(--tf-color-gray-bootstrap-700);
-}
-
-.empty-text p {
-  margin: 0;
-  font-size: 14px;
 }
 
 /* 注意：不再使用的通用按钮样式已删除，改用 el-button */
@@ -3077,7 +3041,7 @@ onMounted(async () => {
   }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 479px) {
   .employees-form-dialog {
     --dialog-side-gap: 4px;
     --dialog-vertical-gap: 12px;

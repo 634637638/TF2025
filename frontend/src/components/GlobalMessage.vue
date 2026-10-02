@@ -85,7 +85,7 @@ export default defineComponent({
   position: fixed;
   top: 20px;
   right: 20px;
-  z-index: 10000;
+  z-index: var(--tf-z-message);
   max-width: 400px;
 }
 

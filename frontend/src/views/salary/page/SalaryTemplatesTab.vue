@@ -528,7 +528,7 @@ defineExpose({ resetInteraction })
   line-height: 18px;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .table-section > .section-header {
     display: none;
   }

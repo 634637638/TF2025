@@ -1211,7 +1211,7 @@ onUnmounted(() => {
 }
 
 // 响应式
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .app-main {
     margin-left: 0;
   }

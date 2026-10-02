@@ -4,6 +4,8 @@
  * 这些值必须与现有接口契约保持一致。销售场景的 payment_method
  * 与结算场景的 payment_method 语义不同，因此通过场景筛选选项，
  * 但所有显示名称和历史值解析都从这里统一维护。
+ * 销售类顶层支付方式固定为现金支付、移动支付、银行卡、国补刷卡；
+ * 银行卡下的刷卡消费和银行转账属于 payment_channel，不是 payment_method。
  */
 export type PaymentMethodValue =
   | 'cash'
@@ -30,9 +32,18 @@ export const SALE_PAYMENT_METHODS: readonly PaymentMethodOption[] = [
 ]
 
 export const BATCH_SALE_PAYMENT_METHODS: readonly PaymentMethodOption[] = [
-  ...SALE_PAYMENT_METHODS,
-  { label: '银行转账', value: 'transfer' }
+  ...SALE_PAYMENT_METHODS
 ]
+
+/** 销售表单中需要展示支付渠道的顶层支付方式。 */
+export const hasPaymentChannelOptions = (paymentMethod?: string): boolean => {
+  return ['mobile', 'bank_card', 'subsidy_card'].includes(String(paymentMethod || ''))
+}
+
+/** 销售表单中允许填写交易流水号的顶层支付方式。 */
+export const requiresTransactionNumber = (paymentMethod?: string): boolean => {
+  return ['mobile', 'bank_card'].includes(String(paymentMethod || ''))
+}
 
 export const RENTAL_PAYMENT_METHODS: readonly PaymentMethodOption[] = [
   ...BATCH_SALE_PAYMENT_METHODS,

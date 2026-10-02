@@ -78,6 +78,11 @@ export class DynamicPermissionService {
   // 防止频繁调用的最后调用时间
   private lastCallTime = 0
 
+  private getCurrentUserId(): string {
+    const user = useAuthStore().user as { id?: number | string; user_id?: number | string } | null
+    return String(user?.id ?? user?.user_id ?? '')
+  }
+
   constructor() {
     // 延迟初始化，避免在组件外部使用 Pinia
     this.initAuthWatcher()
@@ -89,11 +94,17 @@ export class DynamicPermissionService {
   private initAuthWatcher(): void {
     try {
       const authStore = useAuthStore()
-      this.authStoreUnsubscribe = watch(() => authStore.isAuthenticated, (newValue) => {
-        if (!newValue) {
-          this.clearCache()
+      this.authStoreUnsubscribe = watch(
+        () => [authStore.isAuthenticated, authStore.user?.id] as const,
+        ([isAuthenticated], previousValue) => {
+          if (!isAuthenticated || (previousValue && previousValue[1] !== authStore.user?.id)) {
+            this.clearCache()
+          }
         }
-      })
+      )
+      if (!authStore.isAuthenticated) {
+        this.clearCache()
+      }
     } catch (error) {
       // 如果 Pinia 还未初始化，等待后续手动调用
       logger.warn('认证状态监听初始化失败，将延迟初始化:', error)
@@ -181,6 +192,7 @@ export class DynamicPermissionService {
 
         // 更新本地存储
         storage.set(this.cacheKey, {
+          userId: this.getCurrentUserId(),
           data,
           lastUpdated: currentTime
         }, 'local')
@@ -372,14 +384,18 @@ export class DynamicPermissionService {
 
     // 尝试从localStorage读取
     try {
-      const cached = storage.get<{ data: UserPermissionData; lastUpdated: number }>(this.cacheKey, 'local')
-      if (cached && cached.data) {
+      const cached = storage.get<{ userId?: string | number; data: UserPermissionData; lastUpdated: number }>(this.cacheKey, 'local')
+      const currentUserId = this.getCurrentUserId()
+      if (cached && cached.data && String(cached.userId || '') === currentUserId && currentUserId) {
         permissionCache.value = {
           ...permissionCache.value,
           data: cached.data,
           lastUpdated: cached.lastUpdated
         }
         return permissionCache.value
+      }
+      if (cached) {
+        storage.remove(this.cacheKey, 'local')
       }
     } catch (error) {
       logger.warn('读取权限缓存失败:', error)

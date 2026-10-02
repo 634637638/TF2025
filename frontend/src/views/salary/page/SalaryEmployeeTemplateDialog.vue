@@ -16,35 +16,31 @@
         class="form-group"
       >
         <label>员工</label>
-        <input
-          :value="employee.name || employee.username"
-          type="text"
-          class="form-control"
+        <el-input
+          :model-value="employee.name || employee.username"
+          class="readonly-display-input"
           disabled
-        >
+        />
       </div>
       <div
         v-if="canViewField('salary_salaryrecordsview', 'salary_template_name')"
         class="form-group"
       >
         <label>选择模板</label>
-        <select
-          :value="selectedTemplateId ?? ''"
+        <el-select
+          :model-value="selectedTemplateId"
           class="form-control"
+          placeholder="请选择工资模板"
           :disabled="!canEditField('salary_salaryrecordsview', 'salary_template_name')"
           @change="updateSelectedTemplate"
         >
-          <option value="">
-            请选择工资模板
-          </option>
-          <option
+          <el-option
             v-for="template in templates"
             :key="template.id"
+            :label="`${template.name} (底薪: ¥${template.base_salary})`"
             :value="template.id"
-          >
-            {{ template.name }} (底薪: ¥{{ template.base_salary }})
-          </option>
-        </select>
+          />
+        </el-select>
       </div>
       <div
         v-if="selectedTemplateId"
@@ -145,9 +141,8 @@ const emit = defineEmits<{
   'update:selectedTemplateId': [value: number | undefined]
 }>()
 
-const updateSelectedTemplate = (event: Event) => {
-  const value = (event.target as HTMLSelectElement).value
-  emit('update:selectedTemplateId', value ? Number(value) : undefined)
+const updateSelectedTemplate = (value: number | undefined) => {
+  emit('update:selectedTemplateId', value)
 }
 </script>
 

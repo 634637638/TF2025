@@ -1,40 +1,71 @@
 # 前端文档索引
 
-## 📚 标准文档
+本目录收录前端强制规范、组件指南和有明确适用范围的前端专题记录。
 
-- [CRUD 标准](crud-standards.md) - 增删改查操作规范
-- [字段一致性规范](field-consistency-standards.md) - CRUD 字段统一与旧数据迁移规则
-- [字段统一迁移进度](../database/field-consistency-progress.md) - API 字段、数据库字段映射及模块完成状态
-- [安全与运行时审计规范](security-runtime-standards.md) - 后端安全、v-html、定时器和依赖漏洞检查
-- [全局按钮统一规范](button-standards.md) - 普通、表格、手机端和模态框按钮的唯一标准
-- [全局 TAB 统一规范](tab-standards.md) - 页面标签导航的唯一样式、手机布局和自动审计标准
-- [前端规范审计接入指南](standards-audit-guide.md) - 新增审计规则及接入一键启动、构建的标准流程
-- [对话框标准](dialog-standards.md) - 模态框开发规范
-- [Shared 经验分享规范](shared-standards.md) - 经验内容、附件和权限规则
-- [页面结构标准](page-structure-standards.md) - 页面布局规范
-- [分页标准](pagination-standards.md) - 分页组件规范
-- [搜索标准](search-standards.md) - 搜索功能规范
-- [通知标准](notification-standards.md) - 消息通知规范
-- [全局加载动画统一规范](global-loading-standard.md) - 页面切换、局部加载，以及“首屏加载 / 顶部静默刷新”规范
-- [全局空状态统一规范](empty-state-standard.md) - 无数据、筛选无结果、请求失败、无权限和等待操作的统一入口
-- [全站支付方式统一标准](payment-method-standard.md) - 支付方式配置、选择组件、渠道组件和历史值显示规范
-- [菜单图标管理规范](menu-icon-management-standard.md) - 菜单图标在线检索、本地缓存、统一渲染规范
-- [前端最新请求规范](latest-request-standard.md) - 搜索、筛选、分页请求取消与旧响应防覆盖规范
-- [前端数据实时刷新规范](data-freshness-standard.md) - 新增、编辑、删除后缓存失效和列表即时刷新规范
-- [统一页面结构](unified-page-structure.md) - 页面统一架构
-- [后台卡片与表格统一规范](admin-table-standards.md) - 后台卡片、内容驱动列宽、完整字段、表头内容同步横移、全选与批量选择的强制标准
-- [移动端开发标准](../guides/mobile-development-standards.md) - 移动端适配与表格公共样式规范
+## 权威规范
 
-## 📖 指南文档
+以下文件由 [`standards-manifest.json`](standards-manifest.json) 登记；该清单同时列出对应审计命令和公共实现来源。新增或修改强制规范时，按[规范审计接入指南](standards-audit-guide.md)执行。
 
-- [字段权限指南](field-permission-guide.md) - 字段级权限使用
-- [近期 UI 与数据修复记录](recent-ui-and-data-fixes-2026-06-01.md) - 基础资料、菜单点击、价格采集相关修复记录
-- [模态框开发指南](modal-development-guide.md) - 对话框开发
-- [移动端组件示例](mobile-component-examples.md) - 响应式组件
-- [通知指南](notification-guide.md) - 消息通知使用
-- [页面扫描与模块注册规范](../permissions/page-module-scan-guide.md) - 新增页面、`page/` 目录与模块扫描规则
+- [后台卡片与表格](admin-table-standards.md)
+- [后台统计卡片颜色](admin-stat-card-color-standard.md)
+- [按钮](button-standards.md)
+- [全局颜色令牌与语义色](color-token-standard.md)
+- [公共组件采用与例外](component-adoption-standard.md)
+- [CRUD 与数据刷新](crud-standards.md)
+- [视觉令牌](design-token-standard.md)
+- [客户搜索与姓名保护](customer-search-standard.md)
+- [数据实时刷新](data-freshness-standard.md)
+- [对话框](dialog-standards.md)
+- [空状态](empty-state-standard.md)
+- [全局加载](global-loading-standard.md)
+- [字段一致性](field-consistency-standards.md)
+- [表单控件](form-control-standards.md)
+- [最新请求处理](latest-request-standard.md)
+- [菜单图标管理](menu-icon-management-standard.md)
+- [型号搜索](model-search-standard.md)
+- [通知](notification-standards.md)
+- [页面结构](page-structure-standards.md)
+- [分页](pagination-standards.md)
+- [支付方式](payment-method-standard.md)
+- [页面权限能力](permission-capability-standards.md)
+- [提醒](reminder-standards.md)
+- [搜索与筛选](search-standards.md)
+- [安全与运行时审计](security-runtime-standards.md)
+- [Shared 经验分享](shared-standards.md)
+- [规范审计接入](standards-audit-guide.md)
+- [标签页](tab-standards.md)
+- [全局时间工具与日期格式](time-standards.md)
+- [全局动效](motion-standards.md)
+- [全局打印样式](print-standards.md)
+- [全局图标](icon-standards.md)
+- [基础控件与 Drawer](basic-component-standards.md)
+- [快捷键](keyboard-shortcut-standards.md)
+- [前端埋点](telemetry-standards.md)
+- [主题切换](theme-standards.md)
+- [全局交互反馈](interaction-standards.md)
+- [统一页面结构](unified-page-structure.md)
 
-## 🔧 其他
+## 专项指南与记录
 
-- [索引](INDEX.md) - 原始索引
-- [README](README.md) - 说明文档
+- [响应式与主题视觉回归清单](visual-regression-checklist.md)
+- [字段权限使用指南](field-permission-guide.md)
+- [模态框开发指南](modal-development-guide.md)
+- [通知使用指南](notification-guide.md)
+- [移动端组件示例](mobile-component-examples.md)
+- [手机状态编辑说明](phone-status-editing.md)
+- [近期 UI 与数据修复记录（2026-06-01）](recent-ui-and-data-fixes-2026-06-01.md)
+- [前端性能优化指南](PERFORMANCE_OPTIMIZATION.md)
+
+## 其他入口
+
+- [权限页面扫描与模块注册](../permissions/page-module-scan-guide.md)
+- [移动端开发标准](../guides/mobile-development-standards.md)
+- [开发指南索引](../guides/INDEX.md)
+- [文档编写规范](../guides/DOCUMENTATION_STANDARDS.md)
+
+旧入口与兼容路径：
+
+- [前端旧 README](README.md) - 保留历史说明并转向本索引。
+- [旧规范目录索引](../standards/INDEX.md) 和[旧规范 README](../standards/README.md) - 仅用于迁移历史链接，不存放规范正文。
+
+本索引及 `standards-manifest.json` 才是当前前端规范入口。

@@ -111,7 +111,7 @@ export const responseExtractors = {
     success: false,
     message: '',
     data: undefined,
-    pagination: { page: 1, limit: 10, total: 0, totalPages: 0 }
+    pagination: { page: 1, page_size: 10, total: 0, total_pages: 0, has_next: false, has_prev: false }
   }),
 
   // 提取统计/总数数据

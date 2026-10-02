@@ -29,7 +29,7 @@
    - `isValidFieldName(fieldName)` 防止字段名注入
 
 ### 修改文件
-- [base.repository.js](../backend/src/repositories/base.repository.js)
+- `backend/src/repositories/base.repository.js`
   - `findAll()` 方法
   - `findBy()` 方法
   - `paginate()` 方法
@@ -160,7 +160,7 @@ router.post('/upload', uploadSingle('file'), (req, res) => {
 
 #### 1. 密钥安全
 更新了环境变量配置：
-- 在 `.env.production` 中使用强随机密钥
+- 在服务器本地 `backend/.env.production` 中使用强随机密钥，该文件不得提交到 Git
 - 提供生成密钥的命令：`node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"`
 
 #### 2. 数据库持久化黑名单
@@ -177,7 +177,7 @@ router.post('/upload', uploadSingle('file'), (req, res) => {
 
 ### 配置示例
 ```bash
-# .env.production
+# backend/.env.production（仅服务器本地，勿提交）
 JWT_SECRET=your_secure_64_char_hex_key_here
 JWT_EXPIRES_IN=7d
 JWT_REFRESH_EXPIRES_IN=30d
@@ -326,7 +326,7 @@ const CSRF_CONFIG = {
 - `backend/src/repositories/base.repository.js` - SQL 安全增强
 - `backend/src/middleware/jwt-blacklist.js` - JWT 安全增强
 - `backend/src/routes/csrf.js` - CSRF 防护增强
-- `backend/.env.production` - 环境变量配置
+- `backend/.env.production` - 服务器本地私密环境配置，不纳入 Git
 - `backend/.env.example` - 环境变量示例
 - `frontend/package.json` - 添加 dompurify 依赖
 - `frontend/src/main.ts` - 注册安全指令

@@ -1,0 +1,28 @@
+.tf-drawer.el-drawer {
+  box-sizing: border-box;
+  max-width: min(100vw, var(--tf-drawer-max-width));
+  background-color: var(--el-bg-color);
+  color: var(--el-text-color-primary);
+}
+
+.tf-drawer .el-drawer__header {
+  margin-bottom: 0;
+  padding: var(--tf-space-4) var(--tf-space-5);
+  border-bottom: 1px solid var(--el-border-color-lighter);
+}
+
+.tf-drawer .el-drawer__body {
+  min-height: 0;
+  overflow: auto;
+}
+
+.tf-drawer .el-drawer__footer {
+  padding: var(--tf-space-4) var(--tf-space-5);
+  border-top: 1px solid var(--el-border-color-lighter);
+}
+
+@media (max-width: 767px) {
+  .tf-drawer.el-drawer {
+    max-width: 100vw;
+  }
+}

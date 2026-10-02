@@ -1,0 +1,17 @@
+.notice-dialog {
+  .el-dialog__body {
+    padding: 0;
+    max-height: 70vh;
+    overflow-y: auto;
+  }
+}
+
+@media (max-width: 767px) {
+  .notice-dialog.el-dialog {
+    width: 95% !important;
+  }
+
+  .notice-dialog .el-dialog__body {
+    max-height: 75vh;
+  }
+}

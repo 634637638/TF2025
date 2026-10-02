@@ -4,6 +4,7 @@ const crypto = require('crypto')
 const { getDatabase, isConnected } = require('../config/database')
 const { verifyToken } = require('../middleware/jwt-blacklist')
 const log = require('../utils/log')
+const deprecatedRoute = require('../middleware/deprecated-route')
 
 /**
  * 🔒 增强的 CSRF 配置
@@ -312,7 +313,7 @@ router.post('/verify', async (req, res) => {
 })
 
 // 保持向后兼容
-router.get('/csrf-token', (req, res) => {
+router.get('/csrf-token', deprecatedRoute({ replacement: '/api/csrf/token', migrationId: 'csrf-token-to-token' }), (req, res) => {
   req.url = '/token'
   return router.handle(req, res)
 })

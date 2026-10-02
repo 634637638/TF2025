@@ -1,0 +1,49 @@
+.print-only {
+  display: none;
+}
+
+@media print {
+  .no-print,
+  [data-print-hidden='true'],
+  .mobile-header,
+  .mobile-footer,
+  .fab-container,
+  .sidebar-mobile,
+  .field-permission-indicator,
+  .permission-hint,
+  .batch-permission-warning {
+    display: none;
+  }
+
+  .print-only {
+    display: revert;
+  }
+
+  body {
+    min-width: auto;
+  }
+
+  .main-content {
+    padding-left: 0;
+  }
+
+  .field-readonly,
+  .form-field-readonly::after {
+    background-color: transparent;
+  }
+
+  .print-break-before {
+    break-before: page;
+    page-break-before: always;
+  }
+
+  .print-break-after {
+    break-after: page;
+    page-break-after: always;
+  }
+
+  .print-avoid-break {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}

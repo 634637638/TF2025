@@ -90,7 +90,7 @@ const currentUser = computed(() => {
 }
 
 /* 响应式设计 */
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .user-meta {
     flex-direction: column;
     align-items: flex-start;

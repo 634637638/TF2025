@@ -224,15 +224,15 @@
                 align="center"
               >
                 <template #default="{ row, $index }">
-                  <input
-                    v-model.number="row.sort_order"
-                    type="number"
-                    class="sort-order-input"
+                  <el-input-number
+                    v-model="row.sort_order"
+                    class="sort-order-control"
                     :disabled="!canEdit"
-                    min="0"
-                    max="9999"
+                    :min="0"
+                    :max="9999"
+                    :controls="false"
                     @change="handleSortOrderChange($index, row.sort_order || 0)"
-                  >
+                  />
                 </template>
               </el-table-column>
               <el-table-column
@@ -675,7 +675,7 @@
                     配件数量
                   </div>
                   <div class="stat-amount">
-                    ¥{{ supplierDetail.stats.accessories_total_cost.toFixed(2) }}
+                    ¥{{ formatAmount(supplierDetail.stats.accessories_total_cost) }}
                   </div>
                 </div>
                 <div class="stat-item">
@@ -686,7 +686,7 @@
                     手机数量
                   </div>
                   <div class="stat-amount">
-                    ¥{{ supplierDetail.stats.phones_total_cost.toFixed(2) }}
+                    ¥{{ formatAmount(supplierDetail.stats.phones_total_cost) }}
                   </div>
                 </div>
                 <div class="stat-item">
@@ -697,7 +697,7 @@
                     商品总数
                   </div>
                   <div class="stat-amount">
-                    ¥{{ (supplierDetail.stats.accessories_total_cost + supplierDetail.stats.phones_total_cost).toFixed(2) }}
+                    ¥{{ formatAmount(supplierDetail.stats.accessories_total_cost + supplierDetail.stats.phones_total_cost) }}
                   </div>
                 </div>
               </div>
@@ -749,9 +749,9 @@
 </template>
 
 <script setup lang="ts">
+import { confirmAction } from '@/utils/message-box'
 import { ref, reactive, onMounted, onUnmounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessageBox } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
 import unifiedApi from '@/utils/unified-api'
 import { useNotification } from '@/composables/useNotification'
@@ -776,6 +776,7 @@ import { useLatestRequest } from '@/composables/useLatestRequest'
 import type { Supplier } from '@/types/system'
 import { logger } from '@/utils/logger'
 import { useElementTableSortable } from '@/composables/useElementTableSortable'
+import { formatAmount } from '@/utils/format'
 
 // 供应商详情扩展类型
 interface SupplierDetail extends Supplier {
@@ -1230,7 +1231,7 @@ const deleteSupplier = async (supplier: Supplier) => {
   }
 
   try {
-    await ElMessageBox.confirm(
+    await confirmAction(
       `确定要删除供应商"${supplier.name}"吗？此操作不可撤销。`,
       '删除确认',
       {
@@ -1466,7 +1467,7 @@ const _deleteSupplierWithPermission = async (supplier: Supplier) => {
   }
 
   try {
-    await ElMessageBox.confirm(
+    await confirmAction(
       `确定要删除供应商"${supplier.name}"吗？此操作不可恢复。`,
       '删除确认',
       {
@@ -1739,35 +1740,6 @@ onUnmounted(() => {
   }
 }
 
-/* 排序输入框 */
-.sort-order-input {
-  width: 50px;
-  height: 28px;
-  padding: 0 6px;
-  border: 1px solid var(--tf-color-neutral-300);
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 600;
-  text-align: center;
-  outline: none;
-  transition: all 0.2s;
-
-  &:focus:not(:disabled) {
-    border-color: var(--tf-color-blue-500);
-    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
-  }
-
-  &:hover:not(:disabled) {
-    border-color: var(--tf-color-neutral-400);
-  }
-
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    background-color: var(--tf-color-neutral-100);
-  }
-}
-
 /* 表格内容样式 */
 .sort-badge {
   background: var(--tf-color-neutral-100);
@@ -1889,35 +1861,6 @@ onUnmounted(() => {
   gap: 8px;
   justify-content: center;
 }
-/* 空状态样式 */
-.empty-row td {
-  padding: 60px 12px;
-  text-align: center;
-}
-
-.empty-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-  color: var(--tf-color-muted);
-}
-
-.empty-content i {
-  font-size: 48px;
-  opacity: 0.5;
-}
-
-.empty-text h4 {
-  margin: 0 0 8px 0;
-  color: var(--tf-color-gray-bootstrap-700);
-}
-
-.empty-text p {
-  margin: 0;
-  font-size: 14px;
-}
-
 /* 分页样式 */
 .pagination-section {
   display: flex;
@@ -1945,7 +1888,7 @@ onUnmounted(() => {
 }
 
 /* 响应式设计 */
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .suppliers-view {
     padding: 16px;
   }
@@ -2150,7 +2093,7 @@ onUnmounted(() => {
 }
 
 /* 响应式设计 */
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .suppliers-view {
     padding: 10px;
   }

@@ -2,7 +2,7 @@ module.exports = {
   apps: [{
     name: 'backend',
     script: './server.js',
-    cwd: '/www/wwwroot/api2025.com/backend',
+    cwd: __dirname,
     instances: 1,
     exec_mode: 'fork',
     autorestart: true,
@@ -10,10 +10,12 @@ module.exports = {
     max_memory_restart: '1G',
     env: {
       NODE_ENV: 'production',
+      PORT: 3000,
       ENV_FILE: '.env.production'
     },
     env_production: {
       NODE_ENV: 'production',
+      PORT: 3000,
       ENV_FILE: '.env.production'
     },
     error_file: './logs/error.log',

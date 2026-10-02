@@ -208,7 +208,7 @@
                   class="publish-to-h5-control publish-to-h5-picker-control flex-1"
                   type="date"
                   placeholder="选择保修日期"
-                  value-format="YYYY-MM-DD"
+                  :value-format="TIME_FORMATS.DATE"
                   :disabled="form.is_warranty_expired"
                   teleported
                   popper-class="tf2025-form-popper"
@@ -237,7 +237,7 @@
             :show-file-list="false"
             :before-upload="beforeMediaUpload"
             :http-request="handleMediaUpload"
-            accept="image/*,video/*"
+            :accept="MEDIA_UPLOAD_ACCEPT"
             :disabled="uploading"
             multiple
             :auto-upload="false"
@@ -444,6 +444,7 @@
 </template>
 
 <script setup lang="ts">
+import { TIME_FORMATS } from '@/utils/time'
 import { ref, computed, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { UploadFile, UploadFiles } from 'element-plus'
@@ -457,6 +458,7 @@ import { useMobile } from '@/composables/mobile'
 import draggable from 'vuedraggable'
 import { logger } from '@/utils/logger'
 import { isVideoMedia, type MediaPreviewItem } from '@/utils/media'
+import { MEDIA_UPLOAD_ACCEPT, isPdfFile, prepareMediaFile } from '@/utils/upload-media'
 import type { ModelValueProps, SuccessEmits, UpdateModelValueEmits } from '@/types'
 import {
   applyPublishConversionResults,
@@ -927,12 +929,23 @@ const handleFileChange = async (_file: UploadFile, fileList: UploadFiles) => {
     const processedFiles: PendingUploadFile[] = []
     const conversionPromises: Array<Promise<PendingUploadFile | null>> = []
 
-    // 先处理非 HEIC 文件（直接添加）
+    // 先处理非 HEIC/PDF 文件（直接添加）
     for (const f of validFiles) {
-      if (!f.raw || !isHeicFormat(f.raw)) {
+      if (!f.raw || (!isHeicFormat(f.raw) && !isPdfFile(f.raw))) {
         // 非 HEIC 文件，直接添加
         ensurePublishPendingFileUrl(f)
         processedFiles.push(f)
+      } else if (f.raw && isPdfFile(f.raw)) {
+        conversionPromises.push(
+          prepareMediaFile(f.raw)
+            .then(converted => buildConvertedPublishFile(f, converted))
+            .catch(error => {
+              logger.error(`[PDF 转换] 处理失败: ${f.name}`, error)
+              ElMessage.error(`${f.name} PDF转换失败`)
+              return null
+            })
+        )
+        processedFiles.push({ uid: f.uid, name: f.name, status: 'converting' })
       } else {
         // HEIC 文件，创建转换任务
         const heicIndex = conversionPromises.length
@@ -1012,8 +1025,9 @@ const removePendingFile = (index: number) => {
 }
 
 const uploadMediaFile = async (file: File) => {
+  const uploadFile = await prepareMediaFile(file)
   const formData = new FormData()
-  formData.append(getPublishUploadFieldName(file), file)
+  formData.append(getPublishUploadFieldName(uploadFile), uploadFile)
 
   return api.upload<UploadResult>(
     getPublishUploadEndpoint(props.phoneId, file),
@@ -1247,14 +1261,11 @@ defineExpose({
   --dialog-vertical-gap: 24px;
   --mobile-dialog-body-padding: 8px 4px 8px;
   --mobile-dialog-footer-padding: 0 4px 4px;
-}
-
-:global(.publish-to-h5-dialog .el-dialog__body) {
-  padding: 20px 24px !important;
-}
-
-:global(.publish-to-h5-dialog .el-dialog__footer) {
-  padding: 0 24px 24px !important;
+  --tf-dialog-body-padding-inline: var(--tf-space-6);
+  --tf-dialog-body-padding-block: var(--tf-space-5);
+  --tf-dialog-footer-padding-inline: var(--tf-space-6);
+  --tf-dialog-footer-padding-block-start: 0px;
+  --tf-dialog-footer-padding-block-end: var(--tf-space-6);
 }
 
 :global(.mobile-dialog-sheet-overlay.publish-to-h5-dialog) {
@@ -1274,14 +1285,6 @@ defineExpose({
   top: calc(10px + env(safe-area-inset-top)) !important;
   right: 14px !important;
   transform: none !important;
-}
-
-:global(.mobile-dialog-sheet-panel.publish-to-h5-dialog .mobile-dialog-sheet-body) {
-  padding: 8px 4px !important;
-}
-
-:global(.mobile-dialog-sheet-panel.publish-to-h5-dialog .mobile-dialog-sheet-footer) {
-  padding: 0 4px 4px !important;
 }
 
 .publish-to-h5-loading {
@@ -1467,13 +1470,13 @@ defineExpose({
   opacity: 1;
 }
 
-@media (max-width: 768px) {
-  :global(.publish-to-h5-dialog .el-dialog__body) {
-    padding: 8px 4px !important;
-  }
-
-  :global(.publish-to-h5-dialog .el-dialog__footer) {
-    padding: 0 4px 4px !important;
+@media (max-width: 767px) {
+  :global(.publish-to-h5-dialog) {
+    --tf-dialog-body-padding-inline: var(--tf-space-1);
+    --tf-dialog-body-padding-block: var(--tf-space-2);
+    --tf-dialog-footer-padding-inline: var(--tf-space-1);
+    --tf-dialog-footer-padding-block-start: 0px;
+    --tf-dialog-footer-padding-block-end: var(--tf-space-1);
   }
 
   .publish-to-h5-grid {
@@ -1555,7 +1558,7 @@ defineExpose({
   }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 479px) {
   :global(.mobile-dialog-sheet-panel.publish-to-h5-dialog .mobile-dialog-sheet-header) {
     min-height: calc(62px + env(safe-area-inset-top)) !important;
     padding: calc(8px + env(safe-area-inset-top)) 50px 8px 14px !important;

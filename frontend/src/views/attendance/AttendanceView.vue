@@ -22,19 +22,12 @@
             </el-button>
             <el-button
               type="info"
+              :loading="refreshing"
               :disabled="refreshing"
               @click="refreshData"
             >
-              <InlineLoading
-                v-if="refreshing"
-                text="刷新中..."
-                size="small"
-                variant="inherit"
-              />
-              <template v-else>
-                <i class="fas fa-sync-alt" />
-                <span>刷新</span>
-              </template>
+              <i class="fas fa-sync-alt" />
+              <span>{{ refreshing ? '刷新中...' : '刷新' }}</span>
             </el-button>
           </template>
         </PageHeader>
@@ -213,7 +206,11 @@
                     placeholder="员工"
                     clearable
                     filterable
+                    remote
+                    reserve-keyword
+                    :remote-method="searchAttendanceEmployeesRemote"
                     @change="loadData"
+                    @focus="searchAttendanceEmployeesRemote('')"
                   >
                     <el-option
                       v-for="emp in employees"
@@ -288,7 +285,7 @@
                     v-model="dateRange"
                     start-placeholder="开始日期"
                     end-placeholder="结束日期"
-                    value-format="YYYY-MM-DD"
+                    :value-format="TIME_FORMATS.DATE"
                     @change="handleDateRangeChange"
                   />
                 </div>
@@ -680,7 +677,7 @@
                     v-model="myDateRange"
                     start-placeholder="开始日期"
                     end-placeholder="结束日期"
-                    value-format="YYYY-MM-DD"
+                    :value-format="TIME_FORMATS.DATE"
                     @change="handleMyDateRangeChange"
                   />
                 </div>
@@ -977,8 +974,12 @@
                 v-model="formData.employee_id"
                 placeholder="请选择员工"
                 filterable
+                remote
+                reserve-keyword
+                :remote-method="searchAttendanceEmployeesRemote"
                 class="w-full"
                 :disabled="!!formData.id"
+                @focus="searchAttendanceEmployeesRemote('')"
               >
                 <el-option
                   v-for="emp in employees"
@@ -1054,7 +1055,7 @@
                     type="date"
                     placement="top-start"
                     placeholder="开始日期"
-                    value-format="YYYY-MM-DD"
+                    :value-format="TIME_FORMATS.DATE"
                     teleported
                     popper-class="tf2025-form-popper"
                     class="w-full"
@@ -1067,7 +1068,7 @@
                     type="date"
                     placement="top-start"
                     placeholder="结束日期"
-                    value-format="YYYY-MM-DD"
+                    :value-format="TIME_FORMATS.DATE"
                     teleported
                     popper-class="tf2025-form-popper"
                     class="w-full"
@@ -1147,7 +1148,7 @@
                     type="date"
                     placement="top-start"
                     placeholder="开始日期"
-                    value-format="YYYY-MM-DD"
+                    :value-format="TIME_FORMATS.DATE"
                     teleported
                     popper-class="tf2025-form-popper"
                     class="w-full"
@@ -1160,7 +1161,7 @@
                     type="date"
                     placement="top-start"
                     placeholder="结束日期"
-                    value-format="YYYY-MM-DD"
+                    :value-format="TIME_FORMATS.DATE"
                     teleported
                     popper-class="tf2025-form-popper"
                     class="w-full"
@@ -1220,7 +1221,7 @@
                   type="date"
                   placement="top-start"
                   placeholder="选择加班日期"
-                  value-format="YYYY-MM-DD"
+                  :value-format="TIME_FORMATS.DATE"
                   teleported
                   popper-class="tf2025-form-popper"
                   class="w-full"
@@ -1478,8 +1479,9 @@
 </template>
 
 <script setup lang="ts">
+import { confirmAction } from '@/utils/message-box'
 import { ref, reactive, computed, onMounted, watch } from 'vue'
-import { ElMessage, ElMessageBox, ElConfigProvider, type FormInstance, type FormRules } from 'element-plus'
+import { ElMessage, ElConfigProvider, type FormInstance, type FormRules } from 'element-plus'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import { attendanceApi } from '@/api/attendance'
 import type { AttendanceRecord } from '@/api/attendance'
@@ -1490,17 +1492,16 @@ import { fieldPermissions, shouldShowActionColumn } from '@/composables/useField
 import { useMobile } from '@/composables/mobile'
 import { useLoadingState } from '@/composables'
 import { unifiedApi } from '@/utils/unified-api'
-import { formatDate } from '@/utils/format'
+import { searchEmployees } from '@/services/reference-options'
 import { logger } from '@/utils/logger'
 import { sortOptionsByOrder } from '@/utils/option-sort'
 import { getActionColumnMinWidth, getAdaptiveActionColumnWidth, getTextColumnMinWidth } from '@/utils/table-layout'
 import Pagination from '@/components/Pagination.vue'
-import InlineLoading from '@/components/InlineLoading.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import DateRangePicker from '@/components/DateRangePicker.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import { PageHeader, PermissionGate } from '@/components/base'
-import { TimeUtil } from '@/utils/time'
+import { TIME_FORMATS, TimeUtil } from '@/utils/time'
 
 interface AttendanceTableRow extends Omit<
   AttendanceRecord,
@@ -2137,7 +2138,9 @@ const _updateStats = (data: AttendanceTableRow[]) => {
   const lastMonthData = data.filter((r) => {
     if (!r.record_date) return false
     const recordDate = TimeUtil.parse(r.record_date)
-    return recordDate.month() === last_month_index && recordDate.year() === last_month_year
+    return Boolean(recordDate?.isValid()
+      && recordDate.month() === last_month_index
+      && recordDate.year() === last_month_year)
   })
 
   lastMonthStats.value = {
@@ -2152,11 +2155,11 @@ const _updateStats = (data: AttendanceTableRow[]) => {
   // 计算本月统计
   const currentMonthData = data.filter((r) => {
     if (!r.record_date) return false
-    const recordDate = new Date(r.record_date)
-    if (isNaN(recordDate.getTime())) {
+    const recordDate = TimeUtil.parse(r.record_date)
+    if (!recordDate?.isValid()) {
       return false
     }
-    return recordDate.getMonth() === current_month_index && recordDate.getFullYear() === currentYear
+    return recordDate.month() === current_month_index && recordDate.year() === currentYear
   })
 
   // 优先使用后端按工资模板和累计规则算出的额度
@@ -2286,14 +2289,14 @@ const buildAttendanceSplitDateDetail = (
     return ''
   }
 
-  const start_date = new Date(range[0])
+  const start_date = TimeUtil.parse(range[0])
+  if (!start_date?.isValid()) return ''
   const dates: string[] = []
 
   for (let i = 0; i < requestedDays; i++) {
-    const d = new Date(start_date)
-    d.setDate(d.getDate() + i)
-    const dateStr = `${d.getMonth() + 1}月${d.getDate()}日`
-    dates.push(`${dateStr}:${i < monthlyLeaveDaysCount ? '休假' : '请假'}`)
+    const date = TimeUtil.add(start_date, i, 'day')
+    const dateLabel = TimeUtil.format(date, TIME_FORMATS.MONTH_DAY_DISPLAY)
+    dates.push(`${dateLabel}:${i < monthlyLeaveDaysCount ? '休假' : '请假'}`)
   }
 
   return `\n\n具体日期分配：\n${dates.join('\n')}`
@@ -2325,27 +2328,26 @@ const createSplitAttendanceRecords = async (
   range: [string, string] | null
 ) => {
   if (range && range.length === 2) {
-    const start_date = new Date(range[0])
+    const start_date = TimeUtil.parse(range[0])
+    if (!start_date?.isValid()) return
 
     for (let i = 0; i < monthlyLeaveDaysCount; i++) {
-      const d = new Date(start_date)
-      d.setDate(d.getDate() + i)
+      const date = TimeUtil.add(start_date, i, 'day')
       await attendanceApi.createAttendanceRecord({
         employee_id: submitData.employee_id,
         record_type: 'monthly_leave',
-        record_date: formatDate(d),
+        record_date: TimeUtil.format(date, TIME_FORMATS.DATE),
         monthly_leave_days: 1,
         status: 'pending'
       })
     }
 
     for (let i = monthlyLeaveDaysCount; i < requestedDays; i++) {
-      const d = new Date(start_date)
-      d.setDate(d.getDate() + i)
+      const date = TimeUtil.add(start_date, i, 'day')
       await attendanceApi.createAttendanceRecord({
         employee_id: submitData.employee_id,
         record_type: 'leave',
-        record_date: formatDate(d),
+        record_date: TimeUtil.format(date, TIME_FORMATS.DATE),
         leave_type: '事假',
         leave_days: 1,
         leave_reason: '休假申请（超过休假天数，自动转为请假）',
@@ -2508,7 +2510,7 @@ const handleSubmit = async () => {
           const monthlyLeaveDaysCount = availableDays
           const regularLeaveDaysCount = requestedDays - availableDays
 
-          await ElMessageBox.confirm(
+          await confirmAction(
             buildAttendanceSplitConfirmMessage(
               requestedDays,
               availableDays,
@@ -2622,10 +2624,11 @@ watch(
 
 const handleLeaveDateChange = (value: [string, string] | null) => {
   if (value && value.length === 2) {
-    const start_date = new Date(value[0])
-    const end_date = new Date(value[1])
-    const diffTime = Math.abs(end_date.getTime() - start_date.getTime())
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1
+    const startDate = TimeUtil.parse(value[0])
+    const endDate = TimeUtil.parse(value[1])
+    const diffDays = startDate?.isValid() && endDate?.isValid()
+      ? Math.abs(endDate.diff(startDate, 'day')) + 1
+      : 1
 
     if (formData.record_type === 'monthly_leave') {
       formData.monthly_leave_days = diffDays
@@ -2647,9 +2650,10 @@ const handleLeaveDateChange = (value: [string, string] | null) => {
 const buildAttendanceEndDate = (start_date: string, days: number) => {
   if (!start_date) return ''
   const safeDays = Math.max(Number(days) || 1, 1)
-  const date = new Date(start_date)
-  date.setDate(date.getDate() + safeDays - 1)
-  return formatDate(date)
+  const date = TimeUtil.parse(start_date)
+  return date?.isValid()
+    ? TimeUtil.format(date.add(safeDays - 1, 'day'), TIME_FORMATS.DATE)
+    : ''
 }
 
 const syncLeaveDateRange = () => {
@@ -2698,7 +2702,7 @@ const handleDelete = async (row: AttendanceTableRow) => {
   }
 
   try {
-    await ElMessageBox.confirm('确认删除该考勤记录？', '删除确认')
+    await confirmAction('确认删除该考勤记录？', '删除确认')
     await attendanceApi.deleteAttendanceRecord(row.id)
     ElMessage.success('删除成功')
     await loadData()
@@ -2717,7 +2721,7 @@ const handleCancel = async (row: AttendanceTableRow) => {
   }
 
   try {
-    await ElMessageBox.confirm('确定要撤销此申请吗？', '提示', { type: 'warning' })
+    await confirmAction('确定要撤销此申请吗？', '提示', { type: 'warning' })
     await attendanceApi.cancelAttendanceRequest(row.id)
     ElMessage.success('已撤销')
     loadMyData()
@@ -2901,12 +2905,43 @@ const loadEmployees = async () => {
 
   try {
     // 使用新的员工列表接口，根据权限返回不同的数据
-    const response = await unifiedApi.get('/users/employees')
+    const response = await searchEmployees({ page: 1, page_size: 20 })
     if (response.data) {
-      employees.value = sortOptionsByOrder(response.data.employees || [])
+      employees.value = sortOptionsByOrder((response.data.employees || []).map(item => ({
+        id: Number(item.id || 0),
+        name: String(item.name || item.username || ''),
+        username: item.username ? String(item.username) : undefined
+      })))
     }
   } catch (error) {
     logger.error('加载员工列表失败:', error)
+  }
+}
+
+const searchAttendanceEmployeesRemote = async (keyword = '') => {
+  const selectedIds = new Set([
+    filters.employee_id,
+    formData.employee_id
+  ].filter((id): id is number => typeof id === 'number'))
+  const selectedEmployees = employees.value.filter(employee => selectedIds.has(Number(employee.id)))
+
+  try {
+    const response = await searchEmployees({
+      keyword: keyword.trim() || undefined,
+      page: 1,
+      page_size: 20
+    })
+    const loadedEmployees = response.data?.employees || []
+    const nextEmployees = loadedEmployees.map(item => ({
+      id: Number(item.id || 0),
+      name: String(item.name || item.username || ''),
+      username: item.username ? String(item.username) : undefined
+    }))
+    employees.value = sortOptionsByOrder(
+      [...nextEmployees, ...selectedEmployees.filter(selected => !nextEmployees.some(item => item.id === selected.id))]
+    )
+  } catch (error) {
+    logger.error('远程加载员工失败:', error)
   }
 }
 
@@ -3104,36 +3139,6 @@ onMounted(async () => {
   color: var(--color-primary);
 }
 
-/* 空状态 */
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 80px 20px;
-  background: linear-gradient(135deg, var(--tf-color-surface-neutral) 0%, var(--tf-color-surface) 100%);
-  border-radius: 12px;
-  color: var(--color-info);
-  margin-top: 20px;
-}
-
-.empty-state i {
-  font-size: 72px;
-  margin-bottom: 20px;
-  opacity: 0.15;
-  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-success) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.empty-state p {
-  font-size: 16px;
-  margin: 0 0 24px 0;
-  color: var(--color-text-regular);
-  font-weight: 500;
-}
-
 /* 分页 */
 .pagination-wrapper {
   display: flex;
@@ -3225,7 +3230,7 @@ onMounted(async () => {
 }
 
 /* 响应式 */
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .page-container {
     padding: 12px;
   }
@@ -3363,7 +3368,7 @@ onMounted(async () => {
   }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 479px) {
   .page-container {
     padding: 10px;
   }
@@ -3442,7 +3447,7 @@ onMounted(async () => {
 
 }
 
-@media (max-width: 480px) {
+@media (max-width: 479px) {
   .attendance-form-dialog,
   .attendance-detail-dialog {
     --dialog-side-gap: 4px;

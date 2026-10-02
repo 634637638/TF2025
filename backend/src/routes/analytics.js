@@ -8,6 +8,7 @@ const { getBeijingTimeString } = require('../utils/time')
 const DashboardRepository = require('../repositories/dashboard.repository')
 const log = require('../utils/log')
 const os = require('os')
+const deprecatedRoute = require('../middleware/deprecated-route')
 
 const dashboardRepository = new DashboardRepository()
 
@@ -383,8 +384,7 @@ router.get('/sales', unifiedAuth, requireBusinessUser, async (req, res) => {
 })
 
 // 获取全新机/二手机销量趋势
-// /sales-trends 保留为旧版前端的兼容入口；两个路径共用同一套真实销售数据查询。
-router.get(['/sales/trends', '/sales-trends'], unifiedAuth, requireBusinessUser, async (req, res) => {
+const getSalesTrends = async (req, res) => {
   try {
     const period = String(req.query.period || 'monthly')
     const periodConfig = {
@@ -439,7 +439,17 @@ router.get(['/sales/trends', '/sales-trends'], unifiedAuth, requireBusinessUser,
     log.error('获取销量趋势失败:', error)
     return ApiResponse.serverError(res, '获取销量趋势失败', error)
   }
-})
+}
+
+router.get('/sales/trends', unifiedAuth, requireBusinessUser, getSalesTrends)
+// 旧版前端兼容入口：仅保留适配和迁移提示，不再单独维护查询逻辑。
+router.get(
+  '/sales-trends',
+  unifiedAuth,
+  deprecatedRoute({ replacement: '/api/analytics/sales/trends', migrationId: 'sales-trends-to-sales-trends-canonical' }),
+  requireBusinessUser,
+  getSalesTrends
+)
 
 // 获取库存分析数据（使用 phones 表代替 inventory 表）
 router.get('/inventory', unifiedAuth, requireBusinessUser, async (req, res) => {

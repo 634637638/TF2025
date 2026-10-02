@@ -41,19 +41,12 @@
               <el-button
                 type="info"
                 plain
+                :loading="refreshing"
                 :disabled="refreshing"
                 @click="refreshData"
               >
-                <InlineLoading
-                  v-if="refreshing"
-                  text="刷新中..."
-                  size="small"
-                  variant="inherit"
-                />
-                <template v-else>
-                  <i class="fas fa-sync-alt" />
-                  <span>刷新</span>
-                </template>
+                <i class="fas fa-sync-alt" />
+                <span>{{ refreshing ? '刷新中...' : '刷新' }}</span>
               </el-button>
             </div>
           </template>
@@ -645,7 +638,7 @@
                       :xs="24"
                       :sm="15"
                     >
-                      <el-form-item label="绑定模块（名称 / Key）">
+                      <el-form-item label="关联模块">
                         <el-select
                           v-model="formData.module_key"
                           placeholder="请选择或搜索模块"
@@ -680,8 +673,8 @@
                   <div class="editor-card-head">
                     <span class="editor-card-icon"><i class="fas fa-icons" /></span>
                     <div>
-                      <h6>图标与模块</h6>
-                      <p>选择本地/在线图标，并关联权限模块。</p>
+                      <h6>菜单图标</h6>
+                      <p>选择本地或在线图标。</p>
                     </div>
                   </div>
 
@@ -697,70 +690,13 @@
                     />
                   </el-form-item>
 
-                  <el-form-item label="关联模块">
-                    <div class="module-selector-section">
-                      <el-select
-                        v-model="formData.module_id"
-                        placeholder="请选择关联模块（可选）"
-                        filterable
-                        clearable
-                        class="module-select-input"
-                        popper-class="tf2025-form-popper module-select-dropdown"
-                        :teleported="false"
-                        :fit-input-width="true"
-                        @change="handleModuleChange"
-                      >
-                        <el-option
-                          :value="0"
-                          label="不关联模块"
-                        />
-                        <el-option-group
-                          v-for="group in groupedModuleOptions"
-                          :key="group.key"
-                          :label="group.label"
-                        >
-                          <el-option
-                            v-for="module in group.modules"
-                            :key="module.id"
-                            :label="`${module.name} (${module.key})`"
-                            :value="module.id"
-                          >
-                            <div
-                              class="module-option"
-                              :class="[`is-${module.relation}`]"
-                            >
-                              <div class="module-info">
-                                <div class="module-title-row">
-                                  <span class="module-name">{{ module.name }}</span>
-                                  <span
-                                    class="module-relation-badge"
-                                    :class="`is-${module.relation}`"
-                                  >
-                                    {{ getModuleRelationLabel(module.relation) }}
-                                  </span>
-                                </div>
-                                <span class="module-key">{{ module.key }}</span>
-                              </div>
-                            </div>
-                          </el-option>
-                        </el-option-group>
-                      </el-select>
-                      <small
-                        v-if="formData.module_id"
-                        class="text-muted"
-                      >
-                        <i class="fas fa-info-circle" />
-                        已选择模块，系统会自动关联 module_key
-                      </small>
-                    </div>
-                  </el-form-item>
                 </aside>
               </div>
             </el-form>
           </div>
 
           <template #footer>
-            <div class="modal-footer mobile-dialog-footer">
+            <div class="tf-dialog-actions modal-footer">
               <el-button
                 type="info"
                 native-type="button"
@@ -795,8 +731,8 @@
 </template>
 
 <script setup lang="ts">
+import { confirmAction } from '@/utils/message-box'
 import { ref, onMounted, computed, watch, defineAsyncComponent } from 'vue'
-import { ElMessageBox } from 'element-plus'
 import { unifiedApi } from '@/utils/unified-api'
 import { useNotification } from '@/composables/useNotification'
 import { useRefreshData } from '@/composables/useRefreshData'
@@ -887,122 +823,6 @@ const formData = ref({
 
 // 模块列表
 const modules = ref<any[]>([])
-
-const MODULE_GROUP_CONFIG = [
-  {
-    parentKey: 'system_systemview',
-    label: '系统设置',
-    childKeys: ['system_gitmanagement', 'data_optimization_dataoptimizationview'],
-    prefix: 'system_'
-  },
-  {
-    parentKey: 'permissions_permissionsview',
-    label: '权限管理',
-    childKeys: ['permissions_modulemanagementview'],
-    prefix: 'permissions_'
-  },
-  {
-    parentKey: 'salary_salaryview',
-    label: '工资管理',
-    childKeys: ['salary_mysalaryview', 'salary_salarytemplatesview', 'salary_salaryrecordsview'],
-    prefix: 'salary_'
-  },
-  {
-    parentKey: 'attendance_attendanceview',
-    label: '考勤管理',
-    childKeys: ['attendance_myattendanceview'],
-    prefix: 'attendance_'
-  },
-  {
-    parentKey: 'price_list_pricelistview',
-    label: '价目表',
-    childKeys: ['price_list_synclogview'],
-    prefix: 'price_list_'
-  },
-  {
-    parentKey: 'h5_admin_h5_adminview',
-    label: 'H5商城管理',
-    childKeys: [
-      'h5_admin_templatesview',
-      'h5_admin_configview',
-      'h5_admin_homesectionsview',
-      'h5_admin_bannersview',
-      'h5_admin_ordersview'
-    ],
-    prefix: 'h5_admin_'
-  }
-] as const
-
-const getModuleRelationLabel = (relation: 'parent' | 'child' | 'standalone') => {
-  if (relation === 'parent') return '母模块'
-  if (relation === 'child') return '子模块'
-  return '独立模块'
-}
-
-const groupedModuleOptions = computed(() => {
-  const moduleList: any[] = Array.isArray(modules.value)
-    ? modules.value
-    : Array.isArray((modules.value as any)?.records)
-      ? (modules.value as any).records
-      : []
-  const moduleMap = new Map<string, any>(moduleList.map((module) => [module.key, module]))
-  const consumed = new Set<string>()
-  const groups: Array<{
-    key: string
-    label: string
-    modules: Array<any & { relation: 'parent' | 'child' | 'standalone' }>
-  }> = []
-
-  MODULE_GROUP_CONFIG.forEach((config) => {
-    const parent = moduleMap.get(config.parentKey)
-    if (!parent) return
-
-    consumed.add(parent.key)
-    const childKeys = new Set(config.childKeys)
-    const groupedModules: Array<any & { relation: 'parent' | 'child' | 'standalone' }> = [
-      { ...parent, relation: 'parent' as const }
-    ]
-
-    config.childKeys.forEach((childKey) => {
-      const child = moduleMap.get(childKey)
-      if (!child) return
-      consumed.add(child.key)
-      groupedModules.push({ ...child, relation: 'child' as const })
-    })
-
-    moduleList.forEach((module: any) => {
-      if (
-        !consumed.has(module.key) &&
-        module.key?.startsWith(config.prefix) &&
-        module.key !== config.parentKey &&
-        !childKeys.has(module.key)
-      ) {
-        consumed.add(module.key)
-        groupedModules.push({ ...module, relation: 'child' as const })
-      }
-    })
-
-    groups.push({
-      key: config.parentKey,
-      label: config.label,
-      modules: groupedModules
-    })
-  })
-
-  const standaloneModules = moduleList
-    .filter((module: any) => !consumed.has(module.key))
-    .map((module: any) => ({ ...module, relation: 'standalone' as const }))
-
-  if (standaloneModules.length > 0) {
-    groups.push({
-      key: 'standalone',
-      label: '独立模块',
-      modules: standaloneModules
-    })
-  }
-
-  return groups
-})
 
 // 搜索表单
 const searchForm = ref({
@@ -1331,18 +1151,6 @@ const loadModules = async () => {
   } catch (err) {
     logger.error('加载模块失败:', err)
     modules.value = []
-  }
-}
-
-// 处理模块选择变化
-const handleModuleChange = (module_id) => {
-  if (module_id) {
-    const module = modules.value.find(m => m.id === module_id)
-    if (module) {
-      formData.value.module_key = module.key
-    }
-  } else {
-    formData.value.module_key = ''
   }
 }
 
@@ -1771,7 +1579,7 @@ const executeDelete = async (menu) => {
   const hasChildren = menu.children && menu.children.length > 0
 
   try {
-    await ElMessageBox.confirm(
+    await confirmAction(
       hasChildren
         ? `确定要删除菜单"${menuName}"吗？<br><br>⚠️ <strong>注意：此菜单包含子菜单，删除后将同时删除所有子菜单。</strong>`
         : `确定要删除菜单"${menuName}"吗？`,
@@ -1949,154 +1757,6 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-/* ===== 模块信息显示样式 ===== */
-.module-info {
-  background: var(--tf-color-surface-muted);
-  border: 1px solid var(--tf-color-border-subtle);
-  border-radius: 8px;
-  padding: 12px 16px;
-}
-
-.module-field {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 0;
-  border-bottom: 1px solid var(--tf-color-border-muted);
-}
-
-.module-field:last-child {
-  border-bottom: none;
-}
-
-.field-label {
-  font-weight: 600;
-  color: var(--tf-color-gray-bootstrap-700);
-  margin-right: 12px;
-}
-
-.field-value {
-  color: var(--tf-color-gray-bootstrap-900);
-  font-family: 'Courier New', monospace;
-  background: var(--color-bg-white);
-  padding: 4px 8px;
-  border-radius: 4px;
-  border: 1px solid var(--tf-color-gray-bootstrap-300);
-}
-
-.text-muted {
-  display: block;
-  margin-top: 8px;
-  color: var(--tf-color-muted) !important;
-  font-size: 13px;
-}
-
-/* ===== 模块选择器样式 ===== */
-.module-selector-section {
-  width: 100%;
-}
-
-.module-select-input {
-  width: 100%;
-}
-
-.module-option {
-  display: flex;
-  align-items: flex-start;
-  padding: 9px 0;
-  gap: 8px;
-  width: 100%;
-  min-width: 0;
-  overflow: visible;
-}
-
-.module-option.is-child {
-  padding-left: 12px;
-}
-
-.module-option.is-standalone {
-  padding-left: 0;
-}
-
-.module-info {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-  overflow: hidden;
-}
-
-.module-title-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  min-width: 0;
-  width: 100%;
-}
-
-.module-name {
-  flex: 1 1 auto;
-  min-width: 0;
-  font-weight: 500;
-  color: var(--color-text-primary);
-  line-height: 1.45;
-  white-space: normal;
-  overflow: visible;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-}
-
-.module-relation-badge {
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  min-height: 20px;
-  padding: 0 8px;
-  border-radius: 999px;
-  font-size: 11px;
-  font-weight: 700;
-  border: 1px solid transparent;
-}
-
-.module-relation-badge.is-parent {
-  background: var(--tf-color-violet-100);
-  color: var(--tf-color-violet-700);
-  border-color: var(--tf-color-purple-300);
-}
-
-.module-relation-badge.is-child {
-  background: var(--tf-color-cyan-50);
-  color: var(--tf-color-teal-700);
-  border-color: var(--tf-color-cyan-200);
-}
-
-.module-relation-badge.is-standalone {
-  background: var(--tf-color-blue-tailwind-50);
-  color: var(--tf-color-blue-700);
-  border-color: var(--tf-color-blue-tailwind-200);
-}
-
-.module-key {
-  font-size: 12px;
-  color: var(--color-info);
-  font-family: 'Courier New', monospace;
-  white-space: normal;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-}
-
-/* 模块选择器的选项内容较长，保留专用宽度和换行 */
-.module-selector-section {
-  :deep(.el-select-dropdown) {
-    max-width: 700px !important;
-  }
-
-  :deep(.el-select__popper) {
-    max-width: 700px !important;
-  }
-}
-
 /* ===== 页面布局样式 ===== */
 .menu-management {
   padding: 20px;
@@ -2658,38 +2318,6 @@ onMounted(async () => {
   max-width: 100%;
 }
 
-/* ===== 空状态样式 ===== */
-.empty-state {
-  padding: 80px 40px;
-  text-align: center;
-}
-
-.empty-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-}
-
-.empty-icon {
-  font-size: 64px;
-  color: var(--tf-color-slate-300);
-}
-
-.empty-title {
-  font-size: 20px;
-  font-weight: 600;
-  color: var(--tf-color-heading);
-  margin: 0;
-}
-
-.empty-description {
-  font-size: 16px;
-  color: var(--tf-color-muted);
-  margin: 0;
-  max-width: 400px;
-}
-
 /* ==================== 现代化菜单编辑弹窗 ==================== */
 .menu-editor-body {
   padding: 0;
@@ -2840,13 +2468,6 @@ onMounted(async () => {
   font-size: 12px;
 }
 
-/* 模态框底部 */
-.modal-footer {
-  padding: 14px 0 0;
-  border-top: 1px solid var(--tf-color-border-muted);
-  background: transparent;
-}
-
 /* Element Plus 统一表单控件 */
 .menu-form-row {
   margin-bottom: 2px;
@@ -2893,56 +2514,6 @@ onMounted(async () => {
 
 .menu-editor-form :deep(.el-input-number .el-input__wrapper) {
   width: 100%;
-}
-
-/* 模块选择器 */
-.module-selector-section {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.module-select-input {
-  width: 100%;
-}
-
-.module-select-dropdown {
-  max-width: 400px;
-}
-
-.module-option {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  padding: 9px 0;
-  width: 100%;
-  min-width: 0;
-}
-
-.module-info {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.module-name {
-  min-width: 0;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--color-text-primary);
-  line-height: 1.45;
-  white-space: normal;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-}
-
-.module-key {
-  font-size: 12px;
-  color: var(--color-info);
-  white-space: normal;
-  overflow-wrap: anywhere;
-  word-break: break-word;
 }
 
 /* 图标预览 */
@@ -3176,7 +2747,7 @@ onMounted(async () => {
 
 }
 
-@media (max-width: 480px) {
+@media (max-width: 479px) {
   .menu-widths-setting {
     padding: 16px;
     margin: 16px 0;
@@ -3292,46 +2863,4 @@ onMounted(async () => {
   }
 }
 
-</style>
-
-<!-- 全局样式：模块选择器下拉框（popper-class 需要全局样式） -->
-<style>
-.module-select-dropdown {
-  min-width: min(360px, 100%) !important;
-  max-width: min(520px, calc(100vw - 48px)) !important;
-}
-
-.module-select-dropdown .el-select-dropdown__list {
-  padding: 8px 0 !important;
-}
-
-.module-select-dropdown .el-select-group__wrap:not(:last-of-type) {
-  margin-bottom: 6px;
-}
-
-.module-select-dropdown .el-select-group__title {
-  padding: 8px 16px 6px !important;
-  color: var(--tf-color-violet-700) !important;
-  font-size: 12px !important;
-  font-weight: 700 !important;
-  line-height: 1.4 !important;
-}
-
-.module-select-dropdown .el-select-dropdown__item {
-  min-width: 0 !important;
-  padding: 12px 16px !important;
-  line-height: normal !important;
-  display: flex !important;
-  align-items: center !important;
-  overflow: hidden !important;
-}
-
-.module-select-dropdown .el-select-dropdown__item.hover {
-  background-color: var(--tf-color-surface) !important;
-}
-
-.module-select-dropdown .el-select-dropdown__item.selected {
-  background-color: var(--tf-color-primary-surface-element) !important;
-  color: var(--color-primary) !important;
-}
 </style>

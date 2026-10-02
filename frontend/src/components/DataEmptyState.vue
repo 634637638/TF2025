@@ -134,7 +134,7 @@ const resolvedImageSize = computed(() => {
   display: grid;
   justify-items: center;
   gap: 6px;
-  max-width: 480px;
+  max-width: 479px;
   margin-inline: auto;
 }
 
@@ -162,7 +162,7 @@ const resolvedImageSize = computed(() => {
   color: var(--danger-color);
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .data-empty-state {
     min-height: 144px;
     padding: 18px 12px;

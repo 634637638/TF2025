@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { relative, resolve } from 'node:path'
+import { collectRouteRegistrations, routePolicyKey } from './lib/route-security-analysis.mjs'
 
 const frontendRoot = resolve(import.meta.dirname, '..')
 const projectRoot = resolve(frontendRoot, '..')
@@ -19,7 +20,9 @@ if (!existsSync(configPath)) {
 }
 
 const config = JSON.parse(readFileSync(configPath, 'utf8'))
-const publicRouteFiles = new Set(config.unauthenticatedRouteFiles || [])
+const publicRoutes = config.publicRoutes || {}
+const manualAuthRoutes = config.manualAuthRoutes || {}
+const reviewedRouteKeys = new Set()
 const backendFiles = walk(backendRoot, '.js')
 
 for (const file of backendFiles) {
@@ -47,18 +50,54 @@ for (const file of backendFiles) {
 const routeFiles = walk(routesRoot, '.js')
 for (const file of routeFiles) {
   const source = readFileSync(file, 'utf8')
-  if (!/router\.(?:get|post|put|patch|delete)\s*\(/.test(source)) continue
+  const fileName = relative(routesRoot, file)
+  const registrations = collectRouteRegistrations(file, source)
 
-  const baseName = file.split('/').pop()
-  const hasAuthentication = /\b(?:unifiedAuth|requirePermission|requireAnyPermission|requireBusinessUser|customerAuth|authenticate|verifyToken)\b/.test(source)
-  if (!hasAuthentication && !publicRouteFiles.has(baseName)) {
-    findings.push(`backend/src/routes/${baseName}: 路由文件没有认证中间件且未登记为公开路由`)
+  for (const route of registrations) {
+    if (!route.path) {
+      findings.push(`${fileName}: ${route.method} 路由路径不是静态字符串，无法纳入逐路由审计`)
+      continue
+    }
+
+    const key = routePolicyKey(fileName, route.method, route.path)
+    const hasMiddlewareAuth = route.middlewareAuthenticated || route.globallyAuthenticated
+
+    if (hasMiddlewareAuth) {
+      if (Object.hasOwn(publicRoutes, key) || Object.hasOwn(manualAuthRoutes, key)) {
+        findings.push(`${key}: 已配置的例外与认证中间件重复，请清理审计配置`)
+      }
+      continue
+    }
+
+    if (Object.hasOwn(publicRoutes, key)) {
+      reviewedRouteKeys.add(key)
+      if (typeof publicRoutes[key] !== 'string' || !publicRoutes[key].trim()) {
+        findings.push(`${key}: 公开路由例外必须填写明确原因`)
+      }
+      continue
+    }
+
+    if (Object.hasOwn(manualAuthRoutes, key)) {
+      reviewedRouteKeys.add(key)
+      const requiredMarkers = manualAuthRoutes[key]
+      if (
+        !Array.isArray(requiredMarkers)
+        || requiredMarkers.length === 0
+        || requiredMarkers.some((marker) => typeof marker !== 'string' || !route.source.includes(marker))
+      ) {
+        findings.push(`${key}: 手动认证路由缺少配置要求的认证校验标记`)
+      }
+      continue
+    }
+
+    findings.push(`${key}: 未发现认证中间件，也没有逐路由的公开/手动认证审查记录`)
   }
 }
 
-for (const routeFile of publicRouteFiles) {
-  const path = resolve(routesRoot, routeFile)
-  if (!existsSync(path)) findings.push(`公开路由白名单文件不存在：backend/src/routes/${routeFile}`)
+for (const key of [...Object.keys(publicRoutes), ...Object.keys(manualAuthRoutes)]) {
+  if (!reviewedRouteKeys.has(key)) {
+    findings.push(`${key}: 审计例外未匹配任何现存路由，需更新配置`)
+  }
 }
 
 if (findings.length) {
@@ -67,4 +106,4 @@ if (findings.length) {
   process.exit(1)
 }
 
-console.log(`后端安全审计通过：已检查 ${backendFiles.length} 个源文件及 ${routeFiles.length} 个路由文件。`)
+console.log(`后端安全审计通过：已检查 ${backendFiles.length} 个源文件及全部路由声明。`)

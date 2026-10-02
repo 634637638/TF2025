@@ -34,6 +34,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { TIME_FORMATS, TimeUtil } from '@/utils/time'
 
 type DateRange = [string, string]
 type DateRangeValue = DateRange | [] | null | undefined
@@ -55,8 +56,8 @@ const props = withDefaults(defineProps<Props>(), {
   pickerType: 'date',
   startPlaceholder: '开始日期',
   endPlaceholder: '结束日期',
-  format: 'YYYY-MM-DD',
-  valueFormat: 'YYYY-MM-DD',
+  format: TIME_FORMATS.DATE,
+  valueFormat: TIME_FORMATS.DATE,
   clearable: true,
   disabled: false,
   size: 'default'
@@ -103,10 +104,7 @@ const handleDateChange = () => {
 
 const toDate = (value: string | undefined) => {
   if (!value) return null
-  const date = props.pickerType === 'month'
-    ? new Date(`${value}-01T00:00:00`)
-    : new Date(props.pickerType === 'datetime' ? value : `${value}T00:00:00`)
-  return Number.isNaN(date.getTime()) ? null : date
+  return TimeUtil.toDatePickerValue(value)
 }
 
 const disableStartDate = (date: Date) => {

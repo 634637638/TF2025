@@ -984,29 +984,6 @@ onUnmounted(() => {
     gap: 8px;
   }
 
-  .loading-state,
-  .empty-state {
-    padding: 60px 20px;
-    text-align: center;
-    color: var(--tf-color-muted);
-  }
-
-  .loading-spinner {
-    width: 48px;
-    height: 48px;
-    border: 4px solid var(--tf-color-border-muted);
-    border-top-color: var(--tf-color-indigo-brand);
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin: 0 auto 20px;
-  }
-
-  .empty-state i {
-    font-size: 4rem;
-    margin-bottom: 20px;
-    color: var(--tf-color-border-subtle);
-  }
-
   .table-price {
     display: inline-block;
     font-weight: 700;
@@ -1561,7 +1538,7 @@ onUnmounted(() => {
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .subsidy-list-section {
     .batch-actions-bar {
       flex-direction: column;
@@ -1574,12 +1551,6 @@ onUnmounted(() => {
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 8px;
     }
-  }
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
   }
 }
 

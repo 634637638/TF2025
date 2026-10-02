@@ -43,6 +43,18 @@ export interface BatchSaleFormData {
   remarks: string
 }
 
+/** 批量销售中每台设备的独立价格。公共客户和支付信息仍由 BatchSaleFormData 统一维护。 */
+export interface BatchSaleItem {
+  phone_id: number
+  imei: string
+  brand: string
+  model: string
+  color: string
+  memory: string
+  purchase_cost: string
+  sale_price: string
+}
+
 export interface SalesNamedOption {
   id?: number | string
   name?: string

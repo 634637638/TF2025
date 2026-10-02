@@ -2,6 +2,7 @@ const express = require('express')
 const router = express.Router()
 const AttendanceController = require('../controllers/attendance.controller')
 const { unifiedAuth, requirePermission, requireAnyPermission } = require('../middleware/unified-auth')
+const deprecatedRoute = require('../middleware/deprecated-route')
 
 // 考勤记录相关路由（需要认证）
 router.use(unifiedAuth)
@@ -17,6 +18,10 @@ router.get('/',
 // 获取个人考勤记录
 // 兼容旧端点，内部已复用统一主端点逻辑
 router.get('/my',
+  deprecatedRoute({
+    replacement: '/api/attendance',
+    migrationId: 'attendance-my-to-list'
+  }),
   requirePermission('attendance:view:own'),
   AttendanceController.getMyAttendanceRecords.bind(AttendanceController)
 )

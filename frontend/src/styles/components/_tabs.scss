@@ -1,11 +1,11 @@
 :root {
   --tf-tabs-height: 38px;
   --tf-tabs-padding: 6px;
-  --tf-tabs-gap: 4px;
-  --tf-tabs-radius: var(--admin-panel-radius, 12px);
-  --tf-tab-radius: 6px;
-  --tf-tab-padding-x: 16px;
-  --tf-tab-font-size: 14px;
+  --tf-tabs-gap: var(--tf-space-1);
+  --tf-tabs-radius: var(--admin-panel-radius, var(--tf-radius-panel));
+  --tf-tab-radius: var(--tf-radius-control);
+  --tf-tab-padding-x: var(--tf-space-4);
+  --tf-tab-font-size: var(--tf-font-body);
   --tf-tab-font-weight: 600;
   --tf-tabs-bg: #e9eff7;
   --tf-tabs-border: #cbd6e5;
@@ -264,11 +264,11 @@
   gap: 6px;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   :root {
     --tf-tabs-height: 34px;
     --tf-tabs-padding: 4px;
-    --tf-tabs-gap: 4px;
+    --tf-tabs-gap: var(--tf-space-1);
     --tf-tabs-radius: var(--mobile-card-radius, 12px);
     --tf-tab-radius: 6px;
     --tf-tab-padding-x: 11px;

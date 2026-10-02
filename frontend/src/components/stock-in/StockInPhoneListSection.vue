@@ -704,26 +704,6 @@ const handleImeiDoubleClick = (phone: StockInPhoneItem) => {
   line-height: 1.4;
 }
 
-.empty-state {
-  padding: 36px 20px;
-  text-align: center;
-}
-
-.empty-content {
-  color: var(--el-text-color-secondary);
-}
-
-.empty-content i {
-  margin-bottom: 12px;
-  color: var(--el-text-color-placeholder);
-  font-size: 38px;
-}
-
-.empty-content p {
-  margin: 0 0 16px;
-  font-size: 14px;
-}
-
 .batch-table-container {
   overflow: hidden;
   border-radius: 6px;
@@ -776,7 +756,7 @@ const handleImeiDoubleClick = (phone: StockInPhoneItem) => {
   }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 479px) {
   .phone-list-actions {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

@@ -1,0 +1,176 @@
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// ==================== 编辑打款对话框样式 ====================
+.edit-payment-dialog {
+  // IMEI 号码特殊样式
+  .imei-number {
+    font-family: 'Monaco', 'Consolas', monospace;
+    color: var(--color-primary);
+    letter-spacing: 0.6px;
+    font-size: 18px;
+    line-height: 1.3;
+    word-break: break-all;
+  }
+
+  // 表单优化
+  :deep(.el-form-item__label) {
+    font-weight: 600;
+    color: var(--color-text-regular);
+  }
+
+  :deep(.el-select),
+  :deep(.el-date-picker) {
+    width: 100%;
+  }
+
+  .details-info.payment-summary-cards-edit {
+    display: grid;
+    grid-template-columns: minmax(0, 1.45fr) repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+    padding: 14px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, var(--tf-color-surface) 0%, var(--tf-color-border-cool-alt) 100%);
+    border: 1px solid var(--tf-color-border-element);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+
+    .info-row {
+      min-width: 0;
+      min-height: 86px;
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      justify-content: center;
+      gap: 6px;
+      border-radius: 12px;
+      border: 1px solid var(--tf-color-border-form);
+      background: linear-gradient(180deg, var(--color-bg-white) 0%, var(--tf-color-surface-blue-alt) 100%);
+      box-shadow: 0 6px 14px rgba(15, 23, 42, 0.08);
+      position: relative;
+      overflow: hidden;
+
+      &::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        border-radius: 12px 12px 0 0;
+      }
+
+      label {
+        margin: 0;
+        font-size: 11px;
+        color: var(--tf-color-gray-ui-alt);
+        font-weight: 600;
+        letter-spacing: 0;
+        text-transform: none;
+      }
+
+      span {
+        display: block;
+        min-width: 0;
+        font-size: 15px;
+        line-height: 1.3;
+        color: var(--tf-color-slate-form);
+        font-weight: 700;
+        word-break: break-word;
+      }
+
+      .amount {
+        color: var(--tf-color-amber-600);
+        font-size: 20px;
+        font-weight: 800;
+        white-space: nowrap;
+      }
+    }
+
+    .summary-item-imei {
+      &::before {
+        background: linear-gradient(90deg, var(--tf-color-blue-500) 0%, var(--tf-color-blue-400) 100%);
+      }
+    }
+
+    .summary-item-model {
+      &::before {
+        background: linear-gradient(90deg, var(--tf-color-violet-500) 0%, var(--tf-color-violet-400) 100%);
+      }
+    }
+
+    .summary-item-cost {
+      &::before {
+        background: linear-gradient(90deg, var(--tf-color-amber-500) 0%, var(--tf-color-amber-400) 100%);
+      }
+    }
+  }
+}
+
+@media (max-width: 767px) {
+  .edit-payment-dialog {
+    .details-info.payment-summary-cards-edit {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      padding: 12px;
+      margin-bottom: 16px;
+
+      .info-row {
+        min-height: 82px;
+        padding: 12px;
+        gap: 6px;
+
+        label {
+          font-size: 11px;
+        }
+
+        span {
+          font-size: 15px;
+        }
+
+        .amount {
+          font-size: 18px;
+        }
+      }
+
+      .summary-item-imei {
+        grid-column: 1 / -1;
+      }
+
+      .imei-number {
+        font-size: 16px;
+      }
+    }
+  }
+}
+
+@media (max-width: 479px) {
+  .edit-payment-dialog {
+    .details-info.payment-summary-cards-edit {
+      grid-template-columns: 1fr;
+
+      .info-row {
+        min-height: 76px;
+        border-radius: 12px;
+      }
+
+      .summary-item-imei {
+        grid-column: auto;
+      }
+
+      .imei-number {
+        font-size: 15px;
+        letter-spacing: 0.3px;
+      }
+    }
+  }
+}

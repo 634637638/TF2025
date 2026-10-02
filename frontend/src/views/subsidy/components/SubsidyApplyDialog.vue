@@ -85,7 +85,7 @@
                     v-if="canViewField('sale_price')"
                     class="device-price"
                   >
-                    ¥{{ device.sale_price?.toFixed(2) }}
+                    ¥{{ formatAmount(device.sale_price) }}
                   </div>
                   <div class="device-status">
                     <span :class="['status-tag', device.can_apply_subsidy ? 'eligible' : 'not-eligible']">
@@ -97,19 +97,19 @@
             </div>
           </div>
 
-          <div
+          <DataEmptyState
             v-else-if="searchCompleted && deviceList.length === 0"
-            class="empty-devices"
+            state="filtered"
+            description="未找到匹配的设备"
+            size="compact"
           >
-            <i class="fas fa-search" />
-            <p>未找到匹配的设备</p>
             <el-button
               type="info"
               @click="resetDeviceSearch"
             >
               重新搜索
             </el-button>
-          </div>
+          </DataEmptyState>
         </div>
 
         <div
@@ -313,7 +313,7 @@
                   class="inline-item"
                 >
                   <span class="info-label">销售价格:</span>
-                  <span class="info-value">¥{{ phoneDetail.sale_price?.toFixed(2) }}</span>
+                  <span class="info-value">¥{{ formatAmount(phoneDetail.sale_price) }}</span>
                 </div>
                 <div
                   v-if="canViewField('store_name')"
@@ -376,7 +376,7 @@
                         :step="100"
                         :min="0"
                         :max="phoneDetail.sale_price"
-                        :controls="true"
+                        :controls="false"
                         placeholder="国补计算价格"
                         style="width: 150px"
                       />
@@ -386,7 +386,7 @@
                       class="subsidy-photo-upload"
                       :show-file-list="false"
                       :http-request="customUploadRequest"
-                      accept="image/*,.heic,.heif,.pdf,application/pdf"
+                      accept=".jpg,.jpeg,.png,.gif,.webp,.heic,.heif,.pdf,application/pdf"
                       multiple
                     >
                       <el-button
@@ -403,7 +403,7 @@
                     v-if="canViewField('subsidy_calc_price') && canViewField('sale_price') && applyForm.subsidy_calc_price && applyForm.subsidy_calc_price !== phoneDetail.sale_price"
                     class="price-diff-hint"
                   >
-                    (差价: ¥{{ (phoneDetail.sale_price - applyForm.subsidy_calc_price).toFixed(2) }})
+                    (差价: ¥{{ formatAmount(phoneDetail.sale_price - applyForm.subsidy_calc_price) }})
                   </div>
                   <div
                     v-if="(canViewField('subsidy_photos') || canUpload) && applyForm.subsidy_photos.length > 0"
@@ -476,7 +476,7 @@
     <template #footer>
       <div
         v-if="modelValue"
-        class="apply-dialog-footer"
+        class="tf-dialog-actions apply-dialog-footer"
       >
         <template v-if="applyStep === 1">
           <el-button
@@ -631,6 +631,8 @@ import { deleteTempFiles } from '@/utils/temp-file-cleaner'
 import { normalizeIdCard, normalizePersonName, normalizePhoneDigits } from '@/utils/security'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import { logger } from '@/utils/logger'
+import { formatAmount } from '@/utils/format'
+import { convertPdfToImage, isPdfFile } from '@/utils/upload-media'
 
 const AsyncImage = defineAsyncComponent(() => import('@/components/Image.vue'))
 
@@ -892,33 +894,6 @@ const loadPhoneDetail = async () => {
   }
 }
 
-const convertPDFToImage = async (pdfFile: File): Promise<File> => {
-  const pdfjsLib = await import('pdfjs-dist')
-  pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf/pdf.worker.min.js'
-
-  const arrayBuffer = await pdfFile.arrayBuffer()
-  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
-  const page = await pdf.getPage(1)
-  const viewport = page.getViewport({ scale: 3.0 })
-
-  const canvas = document.createElement('canvas')
-  const context = canvas.getContext('2d')!
-  canvas.width = viewport.width
-  canvas.height = viewport.height
-
-  await page.render({
-    canvasContext: context,
-    viewport,
-    canvas
-  }).promise
-
-  const blob = await new Promise<Blob>((resolve) => {
-    canvas.toBlob((nextBlob) => resolve(nextBlob!), 'image/jpeg', 1.0)
-  })
-
-  return new File([blob], pdfFile.name.replace('.pdf', '.jpg'), { type: 'image/jpeg' })
-}
-
 const customUploadRequest = async (options: any) => {
   if (!canUpload.value) {
     ElMessage.warning('您没有图片上传权限')
@@ -927,7 +902,7 @@ const customUploadRequest = async (options: any) => {
   }
 
   const { file, onSuccess, onError } = options
-  const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
+  const isPdf = isPdfFile(file)
   const isLt10M = file.size / 1024 / 1024 < 10
 
   if (!isLt10M) {
@@ -940,7 +915,7 @@ const customUploadRequest = async (options: any) => {
   if (isPdf) {
     try {
       ElMessage.info('正在将PDF转换为图片...')
-      uploadFile = await convertPDFToImage(file)
+      uploadFile = await convertPdfToImage(file)
       ElMessage.success('PDF转换成功，正在上传...')
     } catch (error) {
       ElMessage.error('PDF转换图片失败')
@@ -1107,12 +1082,6 @@ watch(
 <style scoped lang="scss">
 .modal-body {
   padding: 0;
-}
-
-.apply-dialog-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
 }
 
 .apply-form {
@@ -1609,7 +1578,7 @@ watch(
   z-index: 4001 !important;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .device-item,
   .handler-info-header,
   .info-row {

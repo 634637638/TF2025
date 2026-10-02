@@ -32,410 +32,410 @@
         shadow="never"
         class="config-card"
       >
-      <template #header>
-        <div class="card-toolbar">
-          <div>
-            <div class="card-toolbar__title">
-              型号母模板
-            </div>
-            <div class="card-toolbar__subtitle">
-              展开后查看并维护颜色 / 内存 / 库存类型子模板
+        <template #header>
+          <div class="card-toolbar">
+            <div>
+              <div class="card-toolbar__title">
+                型号母模板
+              </div>
+              <div class="card-toolbar__subtitle">
+                展开后查看并维护颜色 / 内存 / 库存类型子模板
+              </div>
             </div>
           </div>
-        </div>
-      </template>
-
-      <el-table
-        :data="loading ? [] : filteredGroupedConfigs"
-        stripe
-        border
-        row-key="groupKey"
-        class="data-table compact-fit-table main-table"
-        :table-layout="'auto'"
-        :fit="true"
-        style="width: 100%"
-      >
-        <template #empty>
-          <TableLoadingRow
-            v-if="loading"
-            mode="block"
-            text="加载中..."
-          />
-          <DataEmptyState
-            v-else
-            description="暂无库存预警模板"
-          />
         </template>
 
-        <el-table-column
-          v-if="canViewField('config.template_info') || canViewField('config.color') || canViewField('config.memory') || canViewField('config.condition') || canViewField('config.threshold') || canViewField('config.is_enabled')"
-          type="expand"
-          width="56"
+        <el-table
+          :data="loading ? [] : filteredGroupedConfigs"
+          stripe
+          border
+          row-key="groupKey"
+          class="data-table compact-fit-table main-table"
+          :table-layout="'auto'"
+          :fit="true"
+          style="width: 100%"
         >
-          <template #default="{ row }">
-            <div class="child-panel">
-              <div class="child-panel__header">
-                <div>
-                  <div class="child-panel__title">
-                    子模板组合
-                  </div>
-                  <div class="child-panel__subtitle">
-                    共 {{ row.children.length }} 条规则，可分别设置颜色、内存和预警台数
-                  </div>
-                </div>
-                <el-space wrap>
-                  <el-button
-                    v-if="canEditWarningConfig && canViewField('system_info.operations')"
-                    type="primary"
-                    size="small"
-                    plain
-                    @click="openEditDialog(row)"
-                  >
-                    批量编辑
-                  </el-button>
-                  <el-button
-                    v-if="canEditWarningConfig && canViewField('system_info.operations')"
-                    type="danger"
-                    size="small"
-                    plain
-                    @click="handleDeleteGroup(row)"
-                  >
-                    删除模板
-                  </el-button>
-                </el-space>
-              </div>
+          <template #empty>
+            <TableLoadingRow
+              v-if="loading"
+              mode="block"
+              text="加载中..."
+            />
+            <DataEmptyState
+              v-else
+              description="暂无库存预警模板"
+            />
+          </template>
 
-              <div class="child-panel__meta">
+          <el-table-column
+            v-if="canViewField('config.template_info') || canViewField('config.color') || canViewField('config.memory') || canViewField('config.condition') || canViewField('config.threshold') || canViewField('config.is_enabled')"
+            type="expand"
+            width="56"
+          >
+            <template #default="{ row }">
+              <div class="child-panel">
+                <div class="child-panel__header">
+                  <div>
+                    <div class="child-panel__title">
+                      子模板组合
+                    </div>
+                    <div class="child-panel__subtitle">
+                      共 {{ row.children.length }} 条规则，可分别设置颜色、内存和预警台数
+                    </div>
+                  </div>
+                  <el-space wrap>
+                    <el-button
+                      v-if="canEditWarningConfig && canViewField('system_info.operations')"
+                      type="primary"
+                      size="small"
+                      plain
+                      @click="openEditDialog(row)"
+                    >
+                      批量编辑
+                    </el-button>
+                    <el-button
+                      v-if="canEditWarningConfig && canViewField('system_info.operations')"
+                      type="danger"
+                      size="small"
+                      plain
+                      @click="handleDeleteGroup(row)"
+                    >
+                      删除模板
+                    </el-button>
+                  </el-space>
+                </div>
+
+                <div class="child-panel__meta">
+                  <el-tag
+                    v-if="canViewField('config.color')"
+                    size="small"
+                    type="primary"
+                  >
+                    颜色 {{ row.colorCount }}
+                  </el-tag>
+                  <el-tag
+                    v-if="canViewField('config.memory')"
+                    size="small"
+                    type="success"
+                  >
+                    内存 {{ row.memoryCount }}
+                  </el-tag>
+                  <el-tag
+                    v-if="canViewField('config.condition')"
+                    size="small"
+                    type="info"
+                  >
+                    {{ row.conditionSummary }}
+                  </el-tag>
+                  <el-tag
+                    v-if="canViewField('config.is_enabled')"
+                    size="small"
+                    :type="row.enabledCount === row.children.length ? 'success' : 'warning'"
+                  >
+                    启用 {{ row.enabledCount }}/{{ row.children.length }}
+                  </el-tag>
+                </div>
+
+                <div class="table-scroll-shell">
+                  <el-table
+                    :data="row.children"
+                    stripe
+                    border
+                    class="data-table compact-fit-table child-table"
+                    :table-layout="'auto'"
+                    :fit="true"
+                  >
+                    <el-table-column
+                      v-if="canViewField('config.template_info')"
+                      prop="config_name"
+                      label="子模板名称"
+                      min-width="220"
+                    >
+                      <template #default="{ row: child }">
+                        <span>{{ child.config_name || getDisplayName(child) }}</span>
+                      </template>
+                    </el-table-column>
+
+                    <el-table-column
+                      v-if="canViewField('config.color')"
+                      prop="color_name"
+                      label="颜色"
+                      min-width="140"
+                    >
+                      <template #default="{ row: child }">
+                        <el-tag
+                          v-if="child.color_name"
+                          size="small"
+                        >
+                          {{ child.color_name }}
+                        </el-tag>
+                        <span
+                          v-else
+                          class="text-muted"
+                        >全部颜色</span>
+                      </template>
+                    </el-table-column>
+
+                    <el-table-column
+                      v-if="canViewField('config.memory')"
+                      prop="memory_size"
+                      label="内存"
+                      min-width="140"
+                    >
+                      <template #default="{ row: child }">
+                        <el-tag
+                          v-if="child.memory_size"
+                          size="small"
+                          type="info"
+                        >
+                          {{ child.memory_size }}
+                        </el-tag>
+                        <span
+                          v-else
+                          class="text-muted"
+                        >全部内存</span>
+                      </template>
+                    </el-table-column>
+
+                    <el-table-column
+                      v-if="canViewField('config.condition')"
+                      prop="is_new"
+                      label="库存类型"
+                      min-width="120"
+                      align="center"
+                    >
+                      <template #default="{ row: child }">
+                        <el-tag
+                          :type="getConditionTagType(child.is_new)"
+                          size="small"
+                        >
+                          {{ getConditionLabel(child.is_new) }}
+                        </el-tag>
+                      </template>
+                    </el-table-column>
+
+                    <el-table-column
+                      v-if="canViewField('config.threshold')"
+                      prop="min_stock"
+                      label="预警阈值"
+                      min-width="120"
+                      align="center"
+                    >
+                      <template #default="{ row: child }">
+                        <el-tag
+                          :type="getThresholdTagType(child.min_stock)"
+                          size="large"
+                        >
+                          {{ child.min_stock }} 台
+                        </el-tag>
+                      </template>
+                    </el-table-column>
+
+                    <el-table-column
+                      v-if="canViewField('config.is_enabled')"
+                      prop="warning_enabled"
+                      label="状态"
+                      min-width="120"
+                      align="center"
+                    >
+                      <template #default="{ row: child }">
+                        <el-switch
+                          v-model="child.warning_enabled"
+                          :active-value="1"
+                          :inactive-value="0"
+                          :disabled="!canEditWarningConfig"
+                          :loading="child.toggling"
+                          @change="handleToggleWarning(child)"
+                        />
+                      </template>
+                    </el-table-column>
+
+                    <el-table-column
+                      v-if="canViewField('config.template_info')"
+                      prop="remarks"
+                      label="备注"
+                      min-width="180"
+                    />
+
+                    <el-table-column
+                      v-if="canEditWarningConfig && canViewField('system_info.operations')"
+                      label="操作"
+                      :width="$getActionColumnWidth(2)"
+                      align="center"
+                      class-name="actions-column"
+                    >
+                      <template #default="{ row: child }">
+                        <div
+                          v-if="canEditWarningConfig"
+                          class="table-actions"
+                        >
+                          <el-button
+                            type="primary"
+                            link
+                            size="small"
+                            @click.stop="openEditDialog(child)"
+                          >
+                            编辑
+                          </el-button>
+                          <el-button
+                            type="danger"
+                            link
+                            size="small"
+                            @click.stop="handleDelete(child)"
+                          >
+                            删除
+                          </el-button>
+                        </div>
+                      </template>
+                    </el-table-column>
+                  </el-table>
+                </div>
+              </div>
+            </template>
+          </el-table-column>
+
+          <el-table-column
+            v-if="canViewField('config.template_info')"
+            prop="config_name"
+            label="模板名称"
+            min-width="220"
+          >
+            <template #default="{ row }">
+              <div class="template-name">
+                <div class="template-name__title">
+                  {{ row.config_name || `${row.brand_name} ${row.model_name}` }}
+                </div>
+                <div class="template-name__sub">
+                  {{ row.variantSummary }}
+                </div>
+              </div>
+            </template>
+          </el-table-column>
+
+          <el-table-column
+            v-if="canViewField('config.template_info')"
+            prop="brand_name"
+            label="品牌"
+            min-width="100"
+          />
+
+          <el-table-column
+            v-if="canViewField('config.template_info')"
+            prop="model_name"
+            label="型号"
+            min-width="140"
+          />
+
+          <el-table-column
+            v-if="canViewField('config.color') || canViewField('config.memory')"
+            label="颜色 / 内存"
+            min-width="220"
+          >
+            <template #default="{ row }">
+              <div class="summary-tags">
                 <el-tag
                   v-if="canViewField('config.color')"
                   size="small"
-                  type="primary"
                 >
-                  颜色 {{ row.colorCount }}
+                  {{ row.colorSummary }}
                 </el-tag>
                 <el-tag
                   v-if="canViewField('config.memory')"
                   size="small"
-                  type="success"
-                >
-                  内存 {{ row.memoryCount }}
-                </el-tag>
-                <el-tag
-                  v-if="canViewField('config.condition')"
-                  size="small"
                   type="info"
                 >
-                  {{ row.conditionSummary }}
+                  {{ row.memorySummary }}
                 </el-tag>
-                <el-tag
-                  v-if="canViewField('config.is_enabled')"
+              </div>
+            </template>
+          </el-table-column>
+
+          <el-table-column
+            v-if="canViewField('config.condition')"
+            label="库存类型"
+            min-width="120"
+            align="center"
+          >
+            <template #default="{ row }">
+              <el-tag
+                size="small"
+                type="success"
+              >
+                {{ row.conditionSummary }}
+              </el-tag>
+            </template>
+          </el-table-column>
+
+          <el-table-column
+            v-if="canViewField('config.threshold')"
+            label="阈值范围"
+            min-width="120"
+            align="center"
+          >
+            <template #default="{ row }">
+              <el-tag
+                :type="row.thresholdTagType"
+                size="large"
+              >
+                {{ row.thresholdSummary }}
+              </el-tag>
+            </template>
+          </el-table-column>
+
+          <el-table-column
+            v-if="canViewField('config.is_enabled')"
+            label="状态"
+            min-width="110"
+            align="center"
+          >
+            <template #default="{ row }">
+              <div class="status-summary">
+                <span class="status-summary__value">{{ row.enabledCount }}/{{ row.children.length }}</span>
+                <span class="status-summary__label">已启用</span>
+              </div>
+            </template>
+          </el-table-column>
+
+          <el-table-column
+            v-if="canViewField('config.template_info')"
+            prop="remarks"
+            label="备注"
+            min-width="160"
+            class-name="complete-text-column wrapped-text-column"
+          />
+
+          <el-table-column
+            v-if="canEditWarningConfig && canViewField('system_info.operations')"
+            label="操作"
+            :width="$getActionColumnWidth(2)"
+            align="center"
+            class-name="actions-column"
+          >
+            <template #default="{ row }">
+              <div
+                v-if="canEditWarningConfig"
+                class="table-actions"
+              >
+                <el-button
+                  type="primary"
+                  link
                   size="small"
-                  :type="row.enabledCount === row.children.length ? 'success' : 'warning'"
+                  @click.stop="openEditDialog(row)"
                 >
-                  启用 {{ row.enabledCount }}/{{ row.children.length }}
-                </el-tag>
-              </div>
-
-              <div class="table-scroll-shell">
-                <el-table
-                  :data="row.children"
-                  stripe
-                  border
-                  class="data-table compact-fit-table child-table"
-                  :table-layout="'auto'"
-                  :fit="true"
+                  编辑
+                </el-button>
+                <el-button
+                  type="danger"
+                  link
+                  size="small"
+                  @click.stop="handleDeleteGroup(row)"
                 >
-                  <el-table-column
-                    v-if="canViewField('config.template_info')"
-                    prop="config_name"
-                    label="子模板名称"
-                    min-width="220"
-                  >
-                    <template #default="{ row: child }">
-                      <span>{{ child.config_name || getDisplayName(child) }}</span>
-                    </template>
-                  </el-table-column>
-
-                  <el-table-column
-                    v-if="canViewField('config.color')"
-                    prop="color_name"
-                    label="颜色"
-                    min-width="140"
-                  >
-                    <template #default="{ row: child }">
-                      <el-tag
-                        v-if="child.color_name"
-                        size="small"
-                      >
-                        {{ child.color_name }}
-                      </el-tag>
-                      <span
-                        v-else
-                        class="text-muted"
-                      >全部颜色</span>
-                    </template>
-                  </el-table-column>
-
-                  <el-table-column
-                    v-if="canViewField('config.memory')"
-                    prop="memory_size"
-                    label="内存"
-                    min-width="140"
-                  >
-                    <template #default="{ row: child }">
-                      <el-tag
-                        v-if="child.memory_size"
-                        size="small"
-                        type="info"
-                      >
-                        {{ child.memory_size }}
-                      </el-tag>
-                      <span
-                        v-else
-                        class="text-muted"
-                      >全部内存</span>
-                    </template>
-                  </el-table-column>
-
-                  <el-table-column
-                    v-if="canViewField('config.condition')"
-                    prop="is_new"
-                    label="库存类型"
-                    min-width="120"
-                    align="center"
-                  >
-                    <template #default="{ row: child }">
-                      <el-tag
-                        :type="getConditionTagType(child.is_new)"
-                        size="small"
-                      >
-                        {{ getConditionLabel(child.is_new) }}
-                      </el-tag>
-                    </template>
-                  </el-table-column>
-
-                  <el-table-column
-                    v-if="canViewField('config.threshold')"
-                    prop="min_stock"
-                    label="预警阈值"
-                    min-width="120"
-                    align="center"
-                  >
-                    <template #default="{ row: child }">
-                      <el-tag
-                        :type="getThresholdTagType(child.min_stock)"
-                        size="large"
-                      >
-                        {{ child.min_stock }} 台
-                      </el-tag>
-                    </template>
-                  </el-table-column>
-
-                  <el-table-column
-                    v-if="canViewField('config.is_enabled')"
-                    prop="warning_enabled"
-                    label="状态"
-                    min-width="120"
-                    align="center"
-                  >
-                    <template #default="{ row: child }">
-                      <el-switch
-                        v-model="child.warning_enabled"
-                        :active-value="1"
-                        :inactive-value="0"
-                        :disabled="!canEditWarningConfig"
-                        :loading="child.toggling"
-                        @change="handleToggleWarning(child)"
-                      />
-                    </template>
-                  </el-table-column>
-
-                  <el-table-column
-                    v-if="canViewField('config.template_info')"
-                    prop="remarks"
-                    label="备注"
-                    min-width="180"
-                  />
-
-                  <el-table-column
-                    v-if="canEditWarningConfig && canViewField('system_info.operations')"
-                    label="操作"
-                    :width="$getActionColumnWidth(2)"
-                    align="center"
-                    class-name="actions-column"
-                  >
-                    <template #default="{ row: child }">
-                      <div
-                        v-if="canEditWarningConfig"
-                        class="table-actions"
-                      >
-                        <el-button
-                          type="primary"
-                          link
-                          size="small"
-                          @click.stop="openEditDialog(child)"
-                        >
-                          编辑
-                        </el-button>
-                        <el-button
-                          type="danger"
-                          link
-                          size="small"
-                          @click.stop="handleDelete(child)"
-                        >
-                          删除
-                        </el-button>
-                      </div>
-                    </template>
-                  </el-table-column>
-                </el-table>
+                  删除
+                </el-button>
               </div>
-            </div>
-          </template>
-        </el-table-column>
-
-        <el-table-column
-          v-if="canViewField('config.template_info')"
-          prop="config_name"
-          label="模板名称"
-          min-width="220"
-        >
-          <template #default="{ row }">
-            <div class="template-name">
-              <div class="template-name__title">
-                {{ row.config_name || `${row.brand_name} ${row.model_name}` }}
-              </div>
-              <div class="template-name__sub">
-                {{ row.variantSummary }}
-              </div>
-            </div>
-          </template>
-        </el-table-column>
-
-        <el-table-column
-          v-if="canViewField('config.template_info')"
-          prop="brand_name"
-          label="品牌"
-          min-width="100"
-        />
-
-        <el-table-column
-          v-if="canViewField('config.template_info')"
-          prop="model_name"
-          label="型号"
-          min-width="140"
-        />
-
-        <el-table-column
-          v-if="canViewField('config.color') || canViewField('config.memory')"
-          label="颜色 / 内存"
-          min-width="220"
-        >
-          <template #default="{ row }">
-            <div class="summary-tags">
-              <el-tag
-                v-if="canViewField('config.color')"
-                size="small"
-              >
-                {{ row.colorSummary }}
-              </el-tag>
-              <el-tag
-                v-if="canViewField('config.memory')"
-                size="small"
-                type="info"
-              >
-                {{ row.memorySummary }}
-              </el-tag>
-            </div>
-          </template>
-        </el-table-column>
-
-        <el-table-column
-          v-if="canViewField('config.condition')"
-          label="库存类型"
-          min-width="120"
-          align="center"
-        >
-          <template #default="{ row }">
-            <el-tag
-              size="small"
-              type="success"
-            >
-              {{ row.conditionSummary }}
-            </el-tag>
-          </template>
-        </el-table-column>
-
-        <el-table-column
-          v-if="canViewField('config.threshold')"
-          label="阈值范围"
-          min-width="120"
-          align="center"
-        >
-          <template #default="{ row }">
-            <el-tag
-              :type="row.thresholdTagType"
-              size="large"
-            >
-              {{ row.thresholdSummary }}
-            </el-tag>
-          </template>
-        </el-table-column>
-
-        <el-table-column
-          v-if="canViewField('config.is_enabled')"
-          label="状态"
-          min-width="110"
-          align="center"
-        >
-          <template #default="{ row }">
-            <div class="status-summary">
-              <span class="status-summary__value">{{ row.enabledCount }}/{{ row.children.length }}</span>
-              <span class="status-summary__label">已启用</span>
-            </div>
-          </template>
-        </el-table-column>
-
-        <el-table-column
-          v-if="canViewField('config.template_info')"
-          prop="remarks"
-          label="备注"
-          min-width="160"
-          class-name="complete-text-column wrapped-text-column"
-        />
-
-        <el-table-column
-          v-if="canEditWarningConfig && canViewField('system_info.operations')"
-          label="操作"
-          :width="$getActionColumnWidth(2)"
-          align="center"
-          class-name="actions-column"
-        >
-          <template #default="{ row }">
-            <div
-              v-if="canEditWarningConfig"
-              class="table-actions"
-            >
-              <el-button
-                type="primary"
-                link
-                size="small"
-                @click.stop="openEditDialog(row)"
-              >
-                编辑
-              </el-button>
-              <el-button
-                type="danger"
-                link
-                size="small"
-                @click.stop="handleDeleteGroup(row)"
-              >
-                删除
-              </el-button>
-            </div>
-          </template>
-        </el-table-column>
-      </el-table>
+            </template>
+          </el-table-column>
+        </el-table>
       </el-card>
     </template>
 
@@ -767,8 +767,9 @@
 </template>
 
 <script setup lang="ts">
+import { confirmAction } from '@/utils/message-box'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { ElMessageBox, type FormInstance } from 'element-plus'
+import { type FormInstance } from 'element-plus'
 import { ValidationRules } from '@/composables'
 import { useNotification } from '@/composables/useNotification'
 import { usePagePermissions } from '@/composables/usePagePermissions'
@@ -1275,7 +1276,7 @@ const handleDelete = async (row: any) => {
   }
 
   try {
-    await ElMessageBox.confirm(
+    await confirmAction(
       `确定要删除子模板“${row.config_name || getDisplayName(row)}”吗？`,
       '删除确认',
       {
@@ -1304,7 +1305,7 @@ const handleDeleteGroup = async (group: any) => {
   }
 
   try {
-    await ElMessageBox.confirm(
+    await confirmAction(
       `确定要删除型号模板“${group.brand_name} ${group.model_name}”及其 ${group.children.length} 条子模板吗？`,
       '删除确认',
       {
@@ -1580,12 +1581,12 @@ defineExpose({
     color: var(--color-text-regular);
   }
 
-  :deep(.warning-dialog .el-dialog__body) {
-    padding: 22px 24px 16px;
-  }
-
-  :deep(.warning-dialog .el-dialog__footer) {
-    padding: 12px 24px 24px;
+  :deep(.warning-dialog) {
+    --tf-dialog-body-padding-inline: var(--tf-space-6);
+    --tf-dialog-body-padding-block: var(--tf-space-6) var(--tf-space-4);
+    --tf-dialog-footer-padding-inline: var(--tf-space-6);
+    --tf-dialog-footer-padding-block-start: var(--tf-space-3);
+    --tf-dialog-footer-padding-block-end: var(--tf-space-6);
   }
 
   :deep(.el-table .el-table__expanded-cell) {
@@ -1613,7 +1614,7 @@ defineExpose({
   }
 }
 
-@media (max-width: 1023px) {
+@media (max-width: 1024px) {
   .phone-warning-config {
     .dialog-grid {
       grid-template-columns: 1fr;
@@ -1621,7 +1622,7 @@ defineExpose({
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .phone-warning-config {
     padding: 12px;
     border-radius: 20px;

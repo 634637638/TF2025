@@ -65,30 +65,39 @@
       </div>
       
       <div class="menu-actions">
-        <button
+        <el-button
+          native-type="button"
+          type="success"
+          size="small"
           class="btn-action btn-add"
           title="添加子菜单"
           @click="addChild"
         >
           <i class="fas fa-plus" />
           <span>添加</span>
-        </button>
-        <button
+        </el-button>
+        <el-button
+          native-type="button"
+          type="primary"
+          size="small"
           class="btn-action btn-edit"
           title="编辑"
           @click="edit"
         >
           <i class="fas fa-edit" />
           <span>编辑</span>
-        </button>
-        <button
+        </el-button>
+        <el-button
+          native-type="button"
+          type="danger"
+          size="small"
           class="btn-action btn-delete"
           title="删除"
           @click="deleteMenu"
         >
           <i class="fas fa-trash" />
           <span>删除</span>
-        </button>
+        </el-button>
       </div>
     </div>
     

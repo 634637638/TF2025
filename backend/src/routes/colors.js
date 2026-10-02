@@ -1,13 +1,13 @@
 const express = require('express')
 const router = express.Router()
-const { unifiedAuth, requirePermission } = require('../middleware/unified-auth')
-const { devPermissionCheck } = require('../middleware/dev-permission')
+const { unifiedAuth, requirePermission, requireAnyPermission } = require('../middleware/unified-auth')
 const ApiResponse = require('../utils/response')
 const { getDatabase, isConnected } = require('../config/database')
 const { cacheMiddleware, clearCache } = require('../middleware/cache')
 const { CACHE_TTL, PAGINATION } = require('../config/constants')
 const log = require('../utils/log')
 const { parseStatusFilter } = require('../utils/status')
+const { normalizeReferencePagination, buildReferenceOrder, buildPagination } = require('../services/reference-options.service')
 
 const COLOR_COLUMNS = 'id, name, status, sort_order, created_at, updated_at'
 
@@ -30,7 +30,7 @@ const clearColorsRouteCache = () => {
 }
 
 // 获取颜色列表
-router.get('/', unifiedAuth, devPermissionCheck('colors:view'), cacheMiddleware({ ttl: CACHE_TTL.SHORT }), async (req, res) => {
+router.get('/', unifiedAuth, requireAnyPermission(['colors:view', 'inventory:view', 'h5-templates:view', 'h5-admin:view']), cacheMiddleware({ ttl: CACHE_TTL.SHORT }), async (req, res) => {
   try {
     log.debug('获取颜色列表请求，参数:', req.query)
 
@@ -45,12 +45,17 @@ router.get('/', unifiedAuth, devPermissionCheck('colors:view'), cacheMiddleware(
       name,
       status,
       sort_by,
-      sort_order
+      sort_order,
+      all = false
     } = req.query
 
-    const pageSizeNum = Math.min(PAGINATION.MAX_LIMIT, Math.max(1, parseInt(page_size) || PAGINATION.DEFAULT_LIMIT))
-    const pageNum = parseInt(page) || PAGINATION.DEFAULT_PAGE
-    const offset = (pageNum - 1) * pageSizeNum
+    const { page: pageNum, page_size: pageSizeNum, offset } = normalizeReferencePagination({
+      page,
+      page_size,
+      defaultPage: PAGINATION.DEFAULT_PAGE,
+      defaultPageSize: PAGINATION.DEFAULT_LIMIT,
+      maxPageSize: PAGINATION.MAX_LIMIT
+    })
 
     let baseQuery = `SELECT ${COLOR_COLUMNS} FROM colors`
     let baseCountQuery = 'SELECT COUNT(*) as total FROM colors'
@@ -78,16 +83,16 @@ router.get('/', unifiedAuth, devPermissionCheck('colors:view'), cacheMiddleware(
     }
 
     // 排序
-    const validSortColumns = ['id', 'name', 'created_at', 'updated_at', 'sort_order']
-    const sortColumn = validSortColumns.includes(sort_by) ? sort_by : 'sort_order'
-    const sortDirection = String(sort_order).toLowerCase() === 'desc' ? 'DESC' : 'ASC'
-    const fallbackOrder = sortColumn === 'sort_order'
-      ? ', name ASC, id ASC'
-      : ', sort_order ASC, name ASC, id ASC'
-    baseQuery += ` ORDER BY ${sortColumn} ${sortDirection}${fallbackOrder}`
+    baseQuery += ` ORDER BY ${buildReferenceOrder({
+      sort_by,
+      sort_order,
+      allowed: ['id', 'name', 'created_at', 'updated_at', 'sort_order'],
+      fallback: ['sort_order', 'name', 'id']
+    })}`
 
-    // 分页
-    const finalQuery = `${baseQuery} LIMIT ${pageSizeNum} OFFSET ${offset}`
+    const returnAll = all === 'true' || all === true
+    // 参考选项请求使用 all=true，返回完整集合；管理列表仍按分页返回。
+    const finalQuery = returnAll ? baseQuery : `${baseQuery} LIMIT ${pageSizeNum} OFFSET ${offset}`
 
     log.debug('执行SQL查询:', finalQuery)
     log.debug('查询参数:', queryParams)
@@ -98,20 +103,14 @@ router.get('/', unifiedAuth, devPermissionCheck('colors:view'), cacheMiddleware(
       pool.execute(baseCountQuery, queryParams)
     ])
     const total = Number(countResult[0].total) || 0
-    const total_pages = Math.ceil(total / pageSizeNum)
-
+    if (returnAll) {
+      return ApiResponse.success(res, colors.map(formatColor))
+    }
     log.debug(`查询结果: ${colors.length} 条记录，总数: ${total}`)
 
     ApiResponse.success(res, {
       colors: colors.map(formatColor),
-      pagination: {
-        page: pageNum,
-        page_size: pageSizeNum,
-        total,
-        total_pages,
-        has_next: pageNum < total_pages,
-        has_prev: pageNum > 1
-      }
+      pagination: buildPagination(pageNum, pageSizeNum, total)
     })
   } catch (error) {
     log.error('获取颜色列表失败:', error)

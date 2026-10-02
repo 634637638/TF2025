@@ -18,6 +18,7 @@ export interface WholesalePhone {
   supplier_name?: string
   store_name?: string
   inventory_time?: string
+  remarks?: string | null
 }
 
 export type EditableWholesalePhone = Omit<WholesalePhone, 'purchase_cost' | 'wholesale_price'> & {

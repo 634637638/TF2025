@@ -510,7 +510,8 @@ class ProductRepository extends BaseRepository {
         params.push(`%${keyword}%`)
       }
 
-      query += ' ORDER BY m.name LIMIT 50'
+      // 型号建议不能静默截断，否则关键词匹配到后续型号时会被误判为不存在。
+      query += ' ORDER BY m.name'
       const suggestions = await this.executeQuery(query, params)
       return suggestions
     } catch (error) {

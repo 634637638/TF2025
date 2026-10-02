@@ -484,7 +484,7 @@ onUnmounted(() => {
 }
 
 .mobile-dialog {
-  :deep(.el-dialog) {
+  :deep(.el-dialog.mobile-dialog) {
     max-width: min(var(--dialog-max-width, var(--dialog-base-max-width, 880px)), calc(100vw - var(--tf-dialog-side-gap, 32px))) !important;
     margin: auto !important;
   }
@@ -495,7 +495,7 @@ onUnmounted(() => {
   --mobile-dialog-effective-vertical-gap: var(--dialog-vertical-gap, 24px);
   position: fixed;
   inset: 0;
-  z-index: 3000;
+  z-index: var(--tf-z-dialog-sheet);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -675,7 +675,7 @@ onUnmounted(() => {
 }
 
 // 响应式对话框宽度调整
-@media (max-width: 480px) {
+@media (max-width: 479px) {
   .mobile-dialog-sheet-overlay {
     --mobile-dialog-effective-side-gap: var(--dialog-side-gap, var(--tf-dialog-mobile-side-gap, 4px));
     --mobile-dialog-effective-vertical-gap: var(--dialog-vertical-gap, 24px);
@@ -710,7 +710,7 @@ onUnmounted(() => {
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .mobile-dialog-sheet-overlay {
     --mobile-dialog-effective-side-gap: var(--dialog-side-gap, var(--tf-dialog-mobile-side-gap, 4px));
     padding: var(--mobile-dialog-effective-side-gap) !important;
@@ -778,12 +778,12 @@ onUnmounted(() => {
 
 .mobile-dialog-sheet-fade-enter-active,
 .mobile-dialog-sheet-fade-leave-active {
-  transition: opacity 0.24s ease;
+  transition: opacity var(--tf-motion-enter) var(--tf-motion-ease-standard);
 }
 
 .mobile-dialog-sheet-fade-enter-active .mobile-dialog-sheet-panel,
 .mobile-dialog-sheet-fade-leave-active .mobile-dialog-sheet-panel {
-  transition: transform 0.24s ease, opacity 0.24s ease;
+  transition: transform var(--tf-motion-enter) var(--tf-motion-ease-standard), opacity var(--tf-motion-enter) var(--tf-motion-ease-standard);
 }
 
 .mobile-dialog-sheet-fade-enter-from,

@@ -1,0 +1,401 @@
+// 详情对话框
+.detail-content {
+  .detail-section {
+    margin-bottom: 24px;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+
+    h4 {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--tf-color-gray-bootstrap-700);
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid var(--tf-color-border-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .detail-row {
+      display: flex;
+      padding: 10px 0;
+
+      .detail-label {
+        width: 120px;
+        color: var(--tf-color-muted);
+        font-size: 14px;
+        font-weight: 500;
+        flex-shrink: 0;
+      }
+
+      .detail-value {
+        flex: 1;
+        color: var(--tf-color-heading);
+        font-size: 14px;
+        font-weight: 500;
+
+        &.subsidy-highlight {
+          color: var(--tf-color-emerald-500);
+          font-weight: 700;
+          font-size: 1.25rem;
+        }
+
+        .status-badge {
+          display: inline-block;
+          padding: 6px 14px;
+          border-radius: 20px;
+          font-size: 12px;
+          font-weight: 600;
+
+          &.status-pending {
+            background: var(--tf-status-warning-bg);
+            color: var(--tf-status-warning-color);
+            border: 1px solid var(--tf-status-warning-border);
+          }
+
+          &.status-approved {
+            background: var(--tf-status-success-bg);
+            color: var(--tf-status-success-color);
+            border: 1px solid var(--tf-status-success-border);
+          }
+
+          &.status-rejected {
+            background: var(--tf-status-danger-bg);
+            color: var(--tf-status-danger-color);
+            border: 1px solid var(--tf-status-danger-border);
+          }
+
+          &.status-completed {
+            background: var(--tf-status-success-bg);
+            color: var(--tf-status-success-color);
+            border: 1px solid var(--tf-status-success-border);
+          }
+        }
+      }
+    }
+
+    .detail-remarks {
+      color: var(--tf-color-gray-bootstrap-700);
+      font-size: 14px;
+      line-height: 1.7;
+      margin: 0;
+      white-space: pre-wrap;
+      background: var(--tf-color-surface-muted);
+      padding: 14px;
+      border-radius: 8px;
+    }
+
+    &.highlight {
+      background: linear-gradient(135deg, var(--tf-color-emerald-100), var(--tf-color-emerald-200));
+      padding: 16px;
+      border-radius: 12px;
+      border: 1px solid var(--tf-color-emerald-300);
+    }
+
+    // 客户信息区块(支持点击切换)
+    &.customer-info-section {
+      cursor: default;
+      transition: all 0.3s ease;
+      position: relative;
+
+      // 有办理人信息时的样式(可以点击)
+      &.has-handler-info {
+        cursor: pointer;
+        user-select: none;
+
+        h4 {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 8px;
+
+          .toggle-hint {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--tf-color-muted);
+            background: var(--tf-color-surface-muted);
+            padding: 4px 10px;
+            border-radius: 12px;
+            border: 1px solid var(--tf-color-border-subtle);
+            transition: all 0.2s;
+          }
+        }
+
+        &:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+
+          .toggle-hint {
+            background: var(--tf-color-border-muted);
+            border-color: var(--tf-color-gray-bootstrap-500);
+          }
+        }
+      }
+
+      // 显示办理人信息时的样式(黄色背景)
+      &.showing-handler {
+        background: linear-gradient(135deg, var(--tf-color-amber-100), var(--tf-color-amber-200)) !important;
+        padding: 16px;
+        border-radius: 12px;
+        border: 2px solid var(--tf-color-amber-400);
+        box-shadow: 0 4px 12px rgba(251, 191, 36, 0.3);
+
+        h4 {
+          color: var(--tf-color-amber-800) !important;
+          border-bottom-color: var(--tf-color-amber-300) !important;
+
+          .toggle-hint {
+            background: var(--tf-color-orange-50);
+            border-color: var(--tf-color-amber-400);
+            color: var(--tf-color-amber-800);
+          }
+        }
+
+        .detail-label {
+          color: var(--tf-color-amber-900);
+          font-weight: 600;
+        }
+
+        .detail-value {
+          color: var(--tf-color-amber-800);
+          font-weight: 600;
+        }
+      }
+    }
+
+    // 实际办理人信息高亮样式(旧版保留,未使用)
+    &.handler-info-highlight {
+      background: linear-gradient(135deg, var(--tf-color-amber-100), var(--tf-color-amber-200));
+      padding: 16px;
+      border-radius: 12px;
+      border: 1px solid var(--tf-color-amber-400);
+
+      h4 {
+        color: var(--tf-color-amber-800);
+        border-bottom-color: var(--tf-color-amber-300);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+
+        i {
+          color: var(--tf-color-amber-500);
+        }
+      }
+
+      .detail-label {
+        color: var(--tf-color-amber-900);
+        font-weight: 600;
+      }
+
+      .detail-value {
+        color: var(--tf-color-amber-800);
+        font-weight: 600;
+      }
+    }
+  }
+}
+
+// 审批对话框
+.approve-content {
+  p {
+    font-size: 16px;
+    color: var(--tf-color-gray-bootstrap-700);
+    margin-bottom: 16px;
+  }
+
+  .approve-info {
+    padding: 16px;
+    background: var(--tf-color-surface-muted);
+    border-radius: 8px;
+    font-size: 15px;
+
+    strong {
+      color: var(--tf-color-emerald-500);
+      font-size: 1.5rem;
+    }
+  }
+}
+
+.edit-form {
+  padding: 0;
+
+  // 表单行布局 - 两列
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+
+    :deep(.el-form-item) {
+      margin-bottom: 20px;
+    }
+  }
+
+  :deep(.el-form-item) {
+    margin-bottom: 20px;
+  }
+
+  :deep(.el-form-item__label) {
+    font-weight: 600;
+    color: var(--color-text-primary);
+    font-size: 14px;
+  }
+
+  :deep(.el-input__wrapper) {
+    border-radius: 8px;
+    box-shadow: 0 0 0 1px var(--color-border) inset;
+    transition: all 0.2s;
+    padding: 8px 12px;
+
+    &:hover {
+      box-shadow: 0 0 0 1px var(--color-text-placeholder) inset;
+    }
+
+    &.is-focus {
+      box-shadow: 0 0 0 1px var(--tf-color-indigo-brand) inset;
+    }
+  }
+
+  :deep(.el-input__inner) {
+    font-size: 14px;
+  }
+
+  :deep(.el-textarea__inner) {
+    border-radius: 8px;
+    font-size: 14px;
+    padding: 10px 12px;
+    transition: all 0.2s;
+
+    &:focus {
+      border-color: var(--tf-color-indigo-brand);
+    }
+  }
+
+  :deep(.el-date-editor) {
+    width: 100%;
+
+    .el-input__wrapper {
+      width: 100%;
+    }
+  }
+
+  // 时间输入组样式
+  .time-input-group {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    width: 100%;
+
+    .el-date-editor {
+      flex: 1;
+    }
+
+    // 设为当前时间按钮
+    .btn-time-now {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 16px;
+      background: var(--tf-button-primary-bg);
+      color: var(--tf-button-on-color);
+      border: none;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+
+      &:hover {
+        transform: translateY(-1px);
+        box-shadow: var(--tf-button-primary-shadow);
+      }
+
+      &:active {
+        transform: translateY(0);
+      }
+
+      i {
+        font-size: 14px;
+      }
+    }
+
+    // 清除时间按钮
+    .btn-time-clear {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 16px;
+      background: var(--tf-button-danger-bg);
+      color: var(--tf-button-on-color);
+      border: none;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+
+      &:hover {
+        transform: translateY(-1px);
+        box-shadow: var(--tf-button-danger-shadow);
+      }
+
+      &:active {
+        transform: translateY(0);
+      }
+
+      i {
+        font-size: 14px;
+      }
+    }
+  }
+
+  // 只读字段区域
+  .readonly-fields {
+    margin-top: 20px;
+    padding: 16px;
+    background: var(--tf-color-surface-muted);
+    border-radius: 8px;
+    border: 1px solid var(--tf-color-border-subtle);
+
+    .readonly-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--tf-color-muted);
+      margin-bottom: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    :deep(.el-descriptions) {
+      .el-descriptions__body {
+        background: transparent;
+      }
+
+      .el-descriptions__table {
+        border: none;
+
+        .el-descriptions__cell {
+          border: none;
+          padding: 8px 0;
+        }
+
+        .el-descriptions__label {
+          font-weight: 500;
+          color: var(--tf-color-gray-bootstrap-700);
+        }
+
+        .el-descriptions__content {
+          color: var(--tf-color-gray-bootstrap-900);
+        }
+      }
+    }
+  }
+}
+
+.apply-dialog-footer {
+  gap: 10px;
+}

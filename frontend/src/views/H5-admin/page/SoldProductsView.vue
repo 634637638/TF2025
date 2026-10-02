@@ -270,7 +270,7 @@
         </div>
 
         <template #footer>
-          <div class="image-modal-footer">
+          <div class="tf-dialog-actions image-modal-footer">
             <el-button @click="showImageModal = false">
               关闭
             </el-button>
@@ -300,8 +300,9 @@
 </template>
 
 <script setup lang="ts">
+import { confirmAction } from '@/utils/message-box'
 import { ref, reactive, computed, onMounted, onUnmounted, onActivated, inject, watch } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { Refresh } from '@element-plus/icons-vue'
 import { unifiedApi as api } from '@/utils/unified-api'
 import { formatDate as formatGlobalDate, formatImageUrl } from '@/utils/format'
@@ -426,7 +427,7 @@ const viewImages = async (product: SoldProduct) => {
   loadingImages.value = true
 
   try {
-    const response = await api.get<SoldProductImage[]>(`/shop/products/${product.id}/images`)
+    const response = await api.get<SoldProductImage[]>(`/phones/${product.id}/images`)
     if (!Array.isArray(response.data)) {
       throw new Error('商品图片响应格式错误')
     }
@@ -446,7 +447,7 @@ const deleteProductImages = async (product: SoldProduct) => {
   }
 
   try {
-    await ElMessageBox.confirm(
+    await confirmAction(
       `确定要删除 ${product.brand} ${product.model} 的所有图片吗？此操作不可撤销。`,
       '删除确认',
       {
@@ -474,7 +475,7 @@ const deleteSingleImage = async (image: SoldProductImage) => {
   }
 
   try {
-    await ElMessageBox.confirm(
+    await confirmAction(
       '确定要删除这张图片吗？',
       '删除确认',
       {
@@ -484,7 +485,7 @@ const deleteSingleImage = async (image: SoldProductImage) => {
       }
     )
 
-    await api.delete(`/shop/images/${image.id}`)
+    await api.delete(`/phones/${image.phone_id}/images/${image.id}`)
     ElMessage.success('删除成功')
 
     // 重新加载图片列表
@@ -517,13 +518,13 @@ const deleteCurrentMedia = async (mediaItem: MediaPreviewItem) => {
   if (!image) return
 
   try {
-    await ElMessageBox.confirm(`确定要删除这个${isVideoMedia(image) ? '视频' : '图片'}吗？`, '删除确认', {
+    await confirmAction(`确定要删除这个${isVideoMedia(image) ? '视频' : '图片'}吗？`, '删除确认', {
       confirmButtonText: '确定',
       cancelButtonText: '取消',
       type: 'warning'
     })
 
-    await api.delete(`/shop/images/${image.id}`)
+    await api.delete(`/phones/${image.phone_id}/images/${image.id}`)
     ElMessage.success('删除成功')
 
     // 关闭预览
@@ -550,7 +551,7 @@ const deleteAllImages = async () => {
   if (!selectedProduct.value) return
 
   try {
-    await ElMessageBox.confirm(
+    await confirmAction(
       `确定要删除 ${selectedProduct.value.brand} ${selectedProduct.value.model} 的所有图片吗？此操作不可撤销。`,
       '删除确认',
       {
@@ -658,8 +659,7 @@ onUnmounted(() => {
   }
 }
 
-.loading-state,
-.empty-state {
+.loading-state {
   text-align: center;
   padding: 60px 20px;
   color: var(--text-muted);
@@ -898,7 +898,7 @@ onUnmounted(() => {
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .sold-products-view {
     padding: 16px;
   }

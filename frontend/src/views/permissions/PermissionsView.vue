@@ -87,19 +87,12 @@
 
             <el-button
               type="info"
+              :loading="refreshing"
               :disabled="refreshing"
               @click="handleRefresh"
             >
-              <InlineLoading
-                v-if="refreshing"
-                text="刷新中..."
-                size="small"
-                variant="inherit"
-              />
-              <template v-else>
-                <i class="fas fa-sync-alt" />
-                刷新
-              </template>
+              <i class="fas fa-sync-alt" />
+              {{ refreshing ? '刷新中...' : '刷新' }}
             </el-button>
           </template>
         </PageHeader>
@@ -371,10 +364,11 @@
 </template>
 
 <script setup lang="ts">
+import { confirmAction } from '@/utils/message-box'
 import { ref, reactive, computed, onMounted, watch, onActivated, nextTick, provide } from 'vue'
 import { User, Shop, Grid, Document, Avatar, Lock } from '@element-plus/icons-vue'
-import { ElMessageBox } from 'element-plus'
 import { unifiedApi } from '@/utils/unified-api'
+import { getCachedStores } from '@/services/reference-options'
 import { sortOptionsByOrder } from '@/utils/option-sort'
 import { useNotification } from '@/composables/useNotification'
 import { useLoadingState } from '@/composables'
@@ -1339,7 +1333,7 @@ const handleDeleteRole = async (role: Role) => {
   }
 
   try {
-    await ElMessageBox.confirm(
+    await confirmAction(
       `确定要删除角色"${role.name}"吗？此操作不可撤销。`,
       '删除确认',
       {
@@ -1873,7 +1867,7 @@ const saveUserRoles = async () => {
 
 const handleDeleteUser = async (user: PermissionUser) => {
   try {
-    await ElMessageBox.confirm(
+    await confirmAction(
       `确定要删除用户 "${user.username}" 吗？此操作不可撤销。`,
       '确认删除',
       {
@@ -2262,9 +2256,12 @@ const isFieldSensitive = (field: any) => {
 // 加载门店列表
 const loadStoreList = async () => {
   try {
-    const response = await unifiedApi.get('/stores', { params: { all: true } })
+    const response = await getCachedStores()
     if (response.success) {
-      storeList.value = sortOptionsByOrder(response.data || [])
+      storeList.value = sortOptionsByOrder((Array.isArray(response.data) ? response.data : []).map(item => ({
+        id: Number(item.id || 0),
+        name: String(item.name || '')
+      })))
     }
   } catch (err) {
     logger.error('加载门店列表失败:', err)
@@ -2376,7 +2373,7 @@ const saveStoreBinding = async () => {
 // 解绑所有门店
 const unbindStore = async (user: any) => {
   try {
-    await ElMessageBox.confirm(
+    await confirmAction(
       `确定要解绑用户 "${user.username}" 的所有门店吗？解绑后该用户将可以查看所有门店的数据。`,
       '解绑确认',
       {

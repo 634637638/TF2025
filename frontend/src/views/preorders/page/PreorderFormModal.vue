@@ -18,11 +18,11 @@
       <!-- 客户、销售店铺、预定人 -->
       <el-row :gutter="20">
         <el-col
+          v-if="canViewPreorderField('customer_phone')"
           :xs="12"
           :sm="12"
           :md="12"
           class="preorder-top-field"
-          v-if="canViewPreorderField('customer_phone')"
         >
           <el-form-item
             label="手机号"
@@ -53,11 +53,11 @@
         </el-col>
 
         <el-col
+          v-if="canViewPreorderField('customer_name')"
           :xs="12"
           :sm="12"
           :md="12"
           class="preorder-top-field"
-          v-if="canViewPreorderField('customer_name')"
         >
           <el-form-item
             label="姓名"
@@ -82,16 +82,15 @@
             />
           </el-form-item>
         </el-col>
-
       </el-row>
 
       <el-row :gutter="20">
         <el-col
+          v-if="canViewPreorderField('store_name')"
           :xs="12"
           :sm="12"
           :md="12"
           class="preorder-top-field"
-          v-if="canViewPreorderField('store_name')"
         >
           <el-form-item
             label="销售店铺"
@@ -114,11 +113,11 @@
           </el-form-item>
         </el-col>
         <el-col
+          v-if="canViewPreorderField('operator_name')"
           :xs="12"
           :sm="12"
           :md="12"
           class="preorder-top-field"
-          v-if="canViewPreorderField('operator_name')"
         >
           <el-form-item
             label="预定人"
@@ -129,7 +128,11 @@
               placeholder="请选择预定人"
               class="w-full"
               filterable
+              remote
+              reserve-keyword
+              :remote-method="searchOperatorOptions"
               clearable
+              @focus="searchOperatorOptions('')"
             >
               <el-option
                 v-for="operator in operators"
@@ -395,11 +398,15 @@ import {
   type PreorderFieldName
 } from '../preorder-field-permissions'
 import { unifiedApi } from '@/utils/unified-api'
+import { searchOperators } from '@/services/reference-options'
+import { searchCustomerOptions } from '@/services/customer-options'
 import { sortOptionsByOrder } from '@/utils/option-sort'
 import { useAuthStore } from '@/stores/auth'
 import CustomerNameLockInput from '@/components/common/CustomerNameLockInput.vue'
 import CustomerSearchDropdown from '@/components/common/CustomerSearchDropdown.vue'
 import { logger } from '@/utils/logger'
+import { TIME_FORMATS, TimeUtil } from '@/utils/time'
+import { formatAmount } from '@/utils/format'
 import type { ModalProps, SuccessEmits, UpdateVisibleEmits } from '@/types'
 
 interface Props extends ModalProps {
@@ -436,20 +443,6 @@ const customerNameLastTapAt = ref(0)
 const customerSearchTimeout = ref<number | null>(null)
 const latestSearchKeyword = ref('')
 const baseDataLoaded = ref(false)
-
-const extractCustomerList = (payload: any) => {
-  const candidates = [
-    payload?.customers,
-    payload?.records,
-    payload?.data?.customers,
-    payload?.data?.records,
-    payload?.data,
-    payload
-  ]
-
-  const matched = candidates.find(item => Array.isArray(item))
-  return Array.isArray(matched) ? matched : []
-}
 
 const extractCustomerId = (payload: any) => {
   return payload?.id ?? payload?.data?.id ?? payload?.customer?.id ?? null
@@ -585,25 +578,19 @@ const remainingAmount = computed(() => {
   if (!formData.deposit_amount || deposit === 0) return '请输入定金金额'
 
   const remaining = price - deposit
-  return Number.isInteger(remaining) ? remaining.toString() : remaining.toFixed(2)
+  return formatAmount(remaining)
 })
 
 // 预计到货日期不能早于今天。
 const disabledDate = (date: Date) => {
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  return date.getTime() < today.getTime()
+  return TimeUtil.formatDatePickerValue(date, TIME_FORMATS.DATE) < TimeUtil.nowFormatted(TIME_FORMATS.DATE)
 }
 
 const formatDateOnly = (value: unknown) => {
   if (!value) return null
   if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) return value
-  const date = new Date(value as string | number | Date)
-  if (Number.isNaN(date.getTime())) return null
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
+  if (value instanceof Date) return TimeUtil.formatDatePickerValue(value, TIME_FORMATS.DATE)
+  return TimeUtil.toDateInputValue(value as string | number)
 }
 
 // 加载基础数据
@@ -619,7 +606,7 @@ const loadBaseData = async () => {
     const modelsData = Array.isArray(options?.models) ? options.models : []
     const colorsData = Array.isArray(options?.colors) ? options.colors : []
     const memoriesData = Array.isArray(options?.memories) ? options.memories : []
-    const operatorResponse = await unifiedApi.get('/users/operators')
+    const operatorResponse = await searchOperators({ page: 1, page_size: 20 })
     const operatorData = Array.isArray(operatorResponse.data) ? operatorResponse.data : []
     const currentUser = authStore.user
     if (currentUser?.id && !operatorData.some((operator: any) => Number(operator.id) === Number(currentUser.id))) {
@@ -646,6 +633,22 @@ const loadBaseData = async () => {
     memories.value = []
     operators.value = []
     ElMessage.error('预订单选项加载失败，请刷新后重试')
+  }
+}
+
+const searchOperatorOptions = async (keyword = '') => {
+  try {
+    const response = await searchOperators({
+      keyword: keyword.trim() || undefined,
+      page: 1,
+      page_size: 20
+    })
+    if (response.success && Array.isArray(response.data)) {
+      operators.value = sortOptionsByOrder(response.data)
+    }
+  } catch (error) {
+    logger.error('远程加载预定人失败:', error)
+    operators.value = []
   }
 }
 
@@ -760,11 +763,7 @@ const searchCustomers = async (keyword: string) => {
   latestSearchKeyword.value = keyword
   customerSearching.value = true
   try {
-    const response = await unifiedApi.get('/customers', {
-      params: { search: keyword, page_size: 10, status: '' }
-    })
-
-    const records = extractCustomerList(response.data)
+    const records = await searchCustomerOptions(keyword, 'generic')
     if (latestSearchKeyword.value === keyword) {
       customerSearchResults.value = records
     }
@@ -975,10 +974,7 @@ const handleEditSubmit = async () => {
         throw new Error('请输入有效的手机号码')
       }
 
-      const searchRes = await unifiedApi.get('/customers', {
-        params: { search: normalizedCustomerPhone, page_size: 1 }
-      })
-      const customers = extractCustomerList(searchRes.data)
+      const customers = await searchCustomerOptions(normalizedCustomerPhone, 'generic')
       const existingCustomer = customers.find((c: any) => normalizeCustomerPhone(c.phone) === normalizedCustomerPhone)
 
       if (existingCustomer) {
@@ -1076,8 +1072,8 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped lang="scss">
-:deep(.preorder-form-dialog .el-dialog__body) {
-  padding-top: 20px;
+:deep(.preorder-form-dialog) {
+  --tf-dialog-body-padding-block: var(--tf-space-5);
 }
 
 .preorder-form {
@@ -1185,28 +1181,17 @@ onBeforeUnmount(() => {
 }
 
 // 手机端优化
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   :deep(.preorder-form-dialog) {
-    .el-dialog__header {
-      padding: 12px 16px;
-    }
-
-    .el-dialog__body {
-      padding: 12px 16px;
-      max-height: calc(100vh - 140px);
-      overflow-y: auto;
-    }
-
-    .el-dialog__footer {
-      padding: 10px 16px;
-      display: flex;
-      gap: 8px;
-
-      .el-button {
-        flex: 1;
-        margin: 0;
-      }
-    }
+    --tf-dialog-header-padding-y: var(--tf-space-3);
+    --tf-dialog-header-padding-x: var(--tf-space-4);
+    --tf-dialog-header-padding-right: var(--tf-space-8);
+    --tf-dialog-body-padding-inline: var(--tf-space-4);
+    --tf-dialog-body-padding-block: var(--tf-space-3);
+    --tf-dialog-footer-padding-inline: var(--tf-space-4);
+    --tf-dialog-footer-padding-block-start: var(--tf-space-3);
+    --tf-dialog-footer-padding-block-end: var(--tf-space-3);
+    --tf-dialog-footer-gap: var(--tf-space-2);
   }
 
   .preorder-form {

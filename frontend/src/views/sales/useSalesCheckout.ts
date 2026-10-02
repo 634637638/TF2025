@@ -2,9 +2,10 @@ import { computed, nextTick, ref, type Ref } from 'vue'
 import { isValidMobilePhone, normalizeAppleId, normalizePersonName } from '@/utils/security'
 import { unifiedApi as api } from '@/utils/unified-api'
 import { logger } from '@/utils/logger'
+import { formatAmount } from '@/utils/format'
 import { getEffectivePhoneStatus, isPhoneSellable } from '@/constants/phoneStatuses'
 import type { Operator, Phone } from '@/types'
-import type { BatchSaleFormData, SalesCheckoutFormData, SalesCustomer } from './types'
+import type { BatchSaleFormData, BatchSaleItem, SalesCheckoutFormData, SalesCustomer } from './types'
 
 export interface SalesPreorderInfo {
   preorder_id: string
@@ -23,6 +24,7 @@ interface AuthUserIdentity {
 interface UseSalesCheckoutOptions {
   saleForm: SalesCheckoutFormData
   batchSaleForm: BatchSaleFormData
+  batchSaleItems: Ref<BatchSaleItem[]>
   selectedPhone: Ref<Phone | null>
   selectedPhones: Ref<Phone[]>
   availablePhones: Ref<Phone[]>
@@ -48,6 +50,7 @@ interface UseSalesCheckoutOptions {
 export const useSalesCheckout = ({
   saleForm,
   batchSaleForm,
+  batchSaleItems,
   selectedPhone,
   selectedPhones,
   availablePhones,
@@ -78,7 +81,7 @@ export const useSalesCheckout = ({
       return null
     }
     const cost = parseFloat(String(saleForm.purchase_cost || selectedPhone.value.purchase_cost || 0))
-    return (parseFloat(saleForm.sale_price) - cost).toFixed(2)
+    return formatAmount(parseFloat(saleForm.sale_price) - cost)
   })
 
   const isCurrentUser = (operator: Operator) => {
@@ -87,15 +90,29 @@ export const useSalesCheckout = ({
     return operator.username === currentUser.username || operator.name === currentUser.name
   }
 
-  const getTotalCost = () => selectedPhones.value.reduce((sum, phone) => (
-    sum + parseFloat(String(phone.purchase_cost || 0))
-  ), 0)
+  const getTotalCost = () => {
+    if (batchSaleItems.value.length > 0) {
+      return batchSaleItems.value.reduce((sum, item) => (
+        sum + (parseFloat(item.purchase_cost) || 0)
+      ), 0)
+    }
+
+    return selectedPhones.value.reduce((sum, phone) => (
+      sum + parseFloat(String(phone.purchase_cost || 0))
+    ), 0)
+  }
 
   const getTotalProfit = computed(() => {
-    const price = batchSaleForm.sale_price || saleForm.sale_price
+    if (batchSaleItems.value.length > 0) {
+      const totalRevenue = batchSaleItems.value.reduce((sum, item) => (
+        sum + (parseFloat(item.sale_price) || 0)
+      ), 0)
+      return formatAmount(totalRevenue - getTotalCost())
+    }
+
+    const price = saleForm.sale_price
     if (!price) return 0
-    const totalRevenue = parseFloat(price) * selectedPhones.value.length
-    return (totalRevenue - getTotalCost()).toFixed(2)
+    return formatAmount(parseFloat(price) - getTotalCost())
   })
 
   const profitMargin = computed(() => {
@@ -284,6 +301,7 @@ export const useSalesCheckout = ({
 
   const clearBatchSelection = () => {
     selectedPhones.value = []
+    batchSaleItems.value = []
     selectAll.value = false
     resetBatchSaleForm()
   }
@@ -320,8 +338,25 @@ export const useSalesCheckout = ({
       showError('请输入有效的手机号码')
       return
     }
-    if (!batchSaleForm.sale_price || parseFloat(batchSaleForm.sale_price) <= 0) {
-      showError('销售单价必须大于0')
+    if (batchSaleItems.value.length !== selectedPhones.value.length || batchSaleItems.value.length === 0) {
+      showError('请选择至少一台设备')
+      return
+    }
+    const invalidPriceItem = batchSaleItems.value.find(item => {
+      const value = Number(item.sale_price)
+      return !Number.isFinite(value) || value <= 0
+    })
+    if (invalidPriceItem) {
+      showError('每台设备的销售价格必须大于0')
+      return
+    }
+    const invalidCostItem = batchSaleItems.value.find(item => {
+      if (item.purchase_cost === '') return false
+      const value = Number(item.purchase_cost)
+      return !Number.isFinite(value) || value < 0
+    })
+    if (invalidCostItem) {
+      showError('入库价格必须是大于等于0的有效数字')
       return
     }
     if (!batchSaleForm.store_id) {
@@ -342,10 +377,14 @@ export const useSalesCheckout = ({
       const operator = operators.value.find(item => String(item.id) === batchSaleForm.operator_id)
       const operatorName = operator?.name || operator?.username || ''
       const selectedCount = selectedPhones.value.length
+      const totalRevenue = batchSaleItems.value.reduce((sum, item) => (
+        sum + Number(item.sale_price)
+      ), 0)
       const response = await api.post('/sales/phone', {
-        phones: selectedPhones.value.map(phone => ({
-          phone_id: phone.id,
-          sale_price: parseFloat(batchSaleForm.sale_price)
+        phones: batchSaleItems.value.map(item => ({
+          phone_id: item.phone_id,
+          sale_price: Number(item.sale_price),
+          ...(item.purchase_cost !== '' ? { purchase_cost: Number(item.purchase_cost) } : {})
         })),
         customer_info: {
           name: normalizedCustomerName,
@@ -363,7 +402,7 @@ export const useSalesCheckout = ({
           payment_method: batchSaleForm.payment_method,
           payment_channel: batchSaleForm.payment_channel || null,
           transaction_no: batchSaleForm.transaction_no || null,
-          payment_amount: parseFloat(batchSaleForm.sale_price) * selectedCount,
+          payment_amount: totalRevenue,
           payment_status: 'success',
           payment_time: batchSaleForm.sale_time || getTodayDate()
         },

@@ -5,13 +5,16 @@
       <div class="user-info">
         <div>{{ user.name }}</div>
         <div>{{ userRoleText }}</div>
-        <button
+        <el-button
+          text
+          native-type="button"
           class="refresh-user-btn"
           title="刷新用户信息"
+          aria-label="刷新用户信息"
           @click="refreshUserInfo"
         >
           <el-icon><Refresh /></el-icon>
-        </button>
+        </el-button>
       </div>
     </div>
 
@@ -459,7 +462,7 @@ defineExpose({
 
 
 /* 响应式设计 */
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .sidebar-header {
     padding: 16px 12px;
   }

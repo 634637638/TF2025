@@ -297,7 +297,7 @@ console.log('debug');  // 禁止
 - ❌ "等其他时候再处理..."
 - ❌ "这个看起来没问题..."
 
-**相关文档**：[CLAUDE.md](../../CLAUDE.md) - 开发规范第 12.2.1 节
+**相关文档**：[项目开发指引](../CLAUDE.md) - 开发规范第 12.2.1 节
 
 ---
 
@@ -384,7 +384,7 @@ console.log('debug');  // 禁止
 - [API 标准](api-standards.md) - API 设计规范
 - [权限系统](../permissions/) - 权限配置指南
 - [组件标准](component-standards.md) - 组件开发规范
-- [CLAUDE.md](../../CLAUDE.md) - 开发规范
+- [项目开发指引](../CLAUDE.md) - 开发规范
 
 ---
 

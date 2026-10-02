@@ -176,7 +176,7 @@
     <template #footer>
       <div
         v-if="item"
-        class="detail-modal-footer"
+        class="tf-dialog-actions detail-modal-footer"
       >
         <el-button
           v-if="canSell"
@@ -463,15 +463,7 @@ const inventoryTimeText = computed(() => {
   word-break: break-word;
 }
 
-.detail-modal-footer {
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(0, 1fr);
-  gap: 10px;
-  padding-top: 2px;
-}
-
-@media (max-width: 1023px) {
+@media (max-width: 1024px) {
   .detail-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -505,12 +497,9 @@ const inventoryTimeText = computed(() => {
     box-shadow: inset 0 0 0 1px rgba(226, 232, 240, 0.72);
   }
 
-  .detail-modal-footer {
-    gap: 8px;
-  }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 479px) {
   .detail-intro-line {
     gap: 6px;
   }
@@ -547,9 +536,6 @@ const inventoryTimeText = computed(() => {
     border-radius: 10px;
   }
 
-  .detail-modal-footer {
-    gap: 6px;
-  }
 }
 </style>
 
@@ -559,27 +545,8 @@ const inventoryTimeText = computed(() => {
   --dialog-vertical-gap: 24px;
   --mobile-dialog-body-padding: 4px;
   --mobile-dialog-footer-padding: 0 6px 6px;
-}
-
-.mobile-dialog-sheet-panel.inventory-product-detail-dialog .mobile-dialog-sheet-body {
-  padding: 4px !important;
-  background: linear-gradient(180deg, var(--color-bg-white) 0%, var(--tf-color-violet-surface) 100%) !important;
-}
-
-.mobile-dialog-sheet-panel.inventory-product-detail-dialog .mobile-dialog-sheet-footer {
-  padding: 0 6px 6px !important;
-  background: linear-gradient(180deg, var(--color-bg-white) 0%, var(--tf-color-violet-surface) 100%) !important;
-}
-
-.inventory-product-detail-dialog .el-dialog__body {
-  padding: 24px !important;
-  background: linear-gradient(180deg, var(--color-bg-white) 0%, var(--tf-color-violet-surface) 100%) !important;
-}
-
-.inventory-product-detail-dialog .el-dialog__footer {
-  padding: 0 24px 24px !important;
-  background: linear-gradient(180deg, var(--color-bg-white) 0%, var(--tf-color-violet-surface) 100%) !important;
-  border-top: 0 !important;
+  --tf-dialog-surface: linear-gradient(180deg, var(--color-bg-white) 0%, var(--tf-color-violet-surface) 100%);
+  --tf-dialog-footer-bg: var(--tf-dialog-surface);
 }
 
 @media (max-width: 1400px) {
@@ -598,39 +565,19 @@ const inventoryTimeText = computed(() => {
     max-height: calc(100dvh - 24px) !important;
   }
 
-  .inventory-product-detail-dialog .el-dialog__body {
-    padding: 4px !important;
-  }
-
-  .inventory-product-detail-dialog .el-dialog__footer {
-    padding: 0 6px 6px !important;
-  }
 }
 
 @media (max-width: 767px) {
   .inventory-product-detail-dialog {
     --dialog-side-gap: 4px;
+    --mobile-dialog-body-padding: 2px;
+    --mobile-dialog-footer-padding: 0 4px 4px;
   }
 
   .mobile-dialog-sheet-overlay.inventory-product-detail-dialog {
     padding: 8px 4px !important;
   }
 
-  .inventory-product-detail-dialog .el-dialog__body {
-    padding: 2px !important;
-  }
-
-  .inventory-product-detail-dialog .el-dialog__footer {
-    padding: 0 4px 4px !important;
-  }
-
-  .mobile-dialog-sheet-panel.inventory-product-detail-dialog .mobile-dialog-sheet-body {
-    padding: 2px !important;
-  }
-
-  .mobile-dialog-sheet-panel.inventory-product-detail-dialog .mobile-dialog-sheet-footer {
-    padding: 0 4px 4px !important;
-  }
 }
 
 </style>

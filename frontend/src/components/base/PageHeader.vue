@@ -383,7 +383,7 @@ const actionsStyle = computed<CSSProperties>(() => ({
   box-shadow: 0 4px 20px rgba(102, 126, 234, 0.1);
   border: none;
 
-  @media (max-width: 768px) {
+  @media (max-width: 767px) {
     padding: 1rem;
     border-radius: 12px;
     margin-bottom: 1rem;
@@ -398,7 +398,7 @@ const actionsStyle = computed<CSSProperties>(() => ({
   flex-wrap: nowrap;
   gap: 12px;
 
-  @media (max-width: 768px) {
+  @media (max-width: 767px) {
     align-items: flex-start;
     gap: 10px;
   }
@@ -414,7 +414,7 @@ const actionsStyle = computed<CSSProperties>(() => ({
   min-width: 0;
   max-width: 50%;
 
-  @media (max-width: 768px) {
+  @media (max-width: 767px) {
     flex: 0 0 auto;
     max-width: max-content;
   }
@@ -458,7 +458,7 @@ const actionsStyle = computed<CSSProperties>(() => ({
     }
   }
 
-  @media (max-width: 768px) {
+  @media (max-width: 767px) {
     font-size: 24px;
 
     .page-title-icon {
@@ -488,7 +488,7 @@ const actionsStyle = computed<CSSProperties>(() => ({
   color: rgba(232, 226, 226, 0.8);
   line-height: 1.5;
 
-  @media (max-width: 768px) {
+  @media (max-width: 767px) {
     font-size: 14px;
   }
 }
@@ -503,7 +503,7 @@ const actionsStyle = computed<CSSProperties>(() => ({
   max-width: min(100%, 65%);
   margin-left: auto;
 
-  @media (max-width: 768px) {
+  @media (max-width: 767px) {
     flex: 1 1 0;
     min-width: 0;
     max-width: none;
@@ -516,7 +516,7 @@ const actionsStyle = computed<CSSProperties>(() => ({
 }
 
 // 移动端按钮文字简化
-@media (max-width: 480px) {
+@media (max-width: 479px) {
   .header-actions {
     gap: 0.12rem;
     flex-wrap: nowrap;
@@ -565,7 +565,7 @@ const actionsStyle = computed<CSSProperties>(() => ({
   margin-left: auto;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   :deep(.action-buttons) {
     justify-content: flex-end;
   }

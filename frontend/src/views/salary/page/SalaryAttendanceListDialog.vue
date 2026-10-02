@@ -241,26 +241,6 @@ const showDetailColumn = computed(() => [
   margin-bottom: 16px;
 }
 
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 60px 20px;
-  color: var(--color-info);
-
-  i {
-    margin-bottom: 16px;
-    font-size: 48px;
-    opacity: 0.5;
-  }
-
-  p {
-    margin: 0;
-    font-size: 14px;
-  }
-}
-
 @media (max-width: 767px) {
   .attendance-actions {
     flex-direction: column;

@@ -194,7 +194,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useNotification } from '@/composables/useNotification'
 import { unifiedApi } from '@/utils/unified-api'
-import { TimeUtil } from '@/utils/time'
+import { TIME_FORMATS, TimeUtil } from '@/utils/time'
 import { storage } from '@/services/storage'
 import { SESSION_STORAGE_KEYS } from '@/constants/storage'
 import { logger } from '@/utils/logger'
@@ -440,7 +440,7 @@ const formatTime = (dateStr: string) => {
     if (days <= 7) {
       return `${days}天前`
     } else {
-      return date.format('YYYY/M/D')
+      return date?.isValid() ? TimeUtil.format(date, TIME_FORMATS.DATE) : ''
     }
   }
 }
@@ -849,7 +849,7 @@ defineExpose({
   }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 479px) {
   .pending-approvals {
     .approvals-overview {
       grid-template-columns: 1fr;

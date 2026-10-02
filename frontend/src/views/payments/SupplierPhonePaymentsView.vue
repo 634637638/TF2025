@@ -22,19 +22,12 @@
             />
             <el-button
               type="info"
+              :loading="refreshing"
               :disabled="refreshing"
               @click="() => refreshData()"
             >
-              <InlineLoading
-                v-if="refreshing"
-                text="刷新中..."
-                size="small"
-                variant="inherit"
-              />
-              <template v-else>
-                <i class="fas fa-sync-alt" />
-                <span>刷新</span>
-              </template>
+              <i class="fas fa-sync-alt" />
+              <span>{{ refreshing ? '刷新中...' : '刷新' }}</span>
             </el-button>
           </template>
         </PageHeader>
@@ -272,8 +265,8 @@
               v-model="paymentDateRange"
               start-placeholder="开始日期"
               end-placeholder="结束日期"
-              format="YYYY-MM-DD"
-              value-format="YYYY-MM-DD"
+              :format="TIME_FORMATS.DATE"
+              :value-format="TIME_FORMATS.DATE"
               clearable
               @change="handleFilterChange"
             />
@@ -616,12 +609,11 @@
                   mode="block"
                   text="加载中..."
                 />
-                <div
+                <DataEmptyState
                   v-else
-                  class="text-center text-muted"
-                >
-                  <i class="fas fa-inbox" /> 暂无数据
-                </div>
+                  size="compact"
+                  description="暂无数据"
+                />
               </template>
             </el-table>
 
@@ -888,8 +880,8 @@
                   v-model="paymentForm.payment_time"
                   type="date"
                   placeholder="选择打款时间"
-                  format="YYYY-MM-DD"
-                  value-format="YYYY-MM-DD"
+                  :format="TIME_FORMATS.DATE"
+                  :value-format="TIME_FORMATS.DATE"
                   class="form-control el-date-form-control w-52"
                   :disabled="!canEditPaymentField('payment_time')"
                 />
@@ -925,7 +917,7 @@
           </div>
 
           <template #footer>
-            <div class="payment-dialog-footer">
+            <div class="tf-dialog-actions payment-dialog-footer">
               <el-button
                 type="default"
                 @click="showBatchPaymentDialog = false"
@@ -1199,8 +1191,8 @@
                   v-model="paymentForm.payment_time"
                   type="date"
                   placeholder="选择打款时间"
-                  format="YYYY-MM-DD"
-                  value-format="YYYY-MM-DD"
+                  :format="TIME_FORMATS.DATE"
+                  :value-format="TIME_FORMATS.DATE"
                   class="form-control el-date-form-control w-52"
                   :disabled="!canEditPaymentField('payment_time')"
                 />
@@ -1236,7 +1228,7 @@
           </div>
 
           <template #footer>
-            <div class="payment-dialog-footer">
+            <div class="tf-dialog-actions payment-dialog-footer">
               <el-button
                 type="default"
                 @click="showSinglePaymentDialog = false"
@@ -1525,7 +1517,7 @@
           </div>
 
           <template #footer>
-            <div class="payment-dialog-footer">
+            <div class="tf-dialog-actions payment-dialog-footer">
               <el-button
                 v-if="canDeletePayment && paymentDetails.phones?.length > 0"
                 type="danger"
@@ -1617,8 +1609,8 @@
                   v-model="editPaymentForm.payment_time"
                   type="date"
                   placeholder="选择打款时间"
-                  format="YYYY-MM-DD"
-                  value-format="YYYY-MM-DD"
+                  :format="TIME_FORMATS.DATE"
+                  :value-format="TIME_FORMATS.DATE"
                   class="form-control el-date-form-control"
                   :clearable="true"
                   :disabled="!canEditPaymentField('payment_time')"
@@ -1642,7 +1634,7 @@
           </div>
 
           <template #footer>
-            <div class="payment-dialog-footer">
+            <div class="tf-dialog-actions payment-dialog-footer">
               <el-button
                 type="default"
                 @click="showEditPaymentDialog = false"
@@ -1665,10 +1657,11 @@
 </template>
 
 <script setup lang="ts">
+import { confirmAction } from '@/utils/message-box'
 import { ref, reactive, onMounted, computed, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessageBox } from 'element-plus'
 import unifiedApi from '@/utils/unified-api'
+import { getCachedStores } from '@/services/reference-options'
 import logger from '@/utils/logger'
 import { getPhoneStatusLabel } from '@/constants/phoneStatuses'
 import { getPaymentMethodLabel } from '@/constants/paymentMethods'
@@ -2603,7 +2596,7 @@ const loadSummaryStatistics = async () => {
 const loadStores = async () => {
   try {
     // 传递 all=true 参数获取所有店铺（用于下拉选择）
-    const response = await unifiedApi.get('/stores?all=true') as SupplierPaymentApiResponse<StoreOption[]>
+    const response = await getCachedStores() as SupplierPaymentApiResponse<StoreOption[]>
     if (response.success) {
       stores.value = sortOptionsByOrder(Array.isArray(response.data) ? response.data : [])
     }
@@ -2631,8 +2624,8 @@ const loadPhones = async (showLoadingState = true) => {
         // 如果两个都是选中或都是未选中，按销售时间降序排列
         if (aSelected === bSelected) {
           // 销售时间最近的靠前（降序）
-          const timeA = new Date(a.sale_time || 0).getTime()
-          const timeB = new Date(b.sale_time || 0).getTime()
+          const timeA = TimeUtil.parse(String(a.sale_time || ''))?.valueOf() || 0
+          const timeB = TimeUtil.parse(String(b.sale_time || ''))?.valueOf() || 0
           return timeB - timeA // 降序，最新的在前
         }
 
@@ -2858,8 +2851,7 @@ const handleEditPayment = (phone: SupplierPaymentPhone) => {
   editPaymentForm.payment_method = phone.payment_method || 'bank_transfer'
   // 如果有打款时间则转换为正确格式，否则使用当前北京时间
   if (phone.payment_time) {
-    const date = new Date(phone.payment_time)
-    editPaymentForm.payment_time = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+    editPaymentForm.payment_time = TimeUtil.toDateInputValue(phone.payment_time) || getCurrentBeijingDate()
   } else {
     editPaymentForm.payment_time = getCurrentBeijingDate()
   }
@@ -2904,7 +2896,7 @@ const handleCancelPayment = async (phone: SupplierPaymentPhone) => {
   }
 
   try {
-    await ElMessageBox.confirm(
+    await confirmAction(
       `确定要取消该手机的打款记录吗？\n\nIMEI: ${phone.imei}\n此操作将清除打款时间和打款方式，恢复到未打款状态。`,
       '取消打款确认',
       {
@@ -2950,7 +2942,7 @@ const handleBatchCancelPayment = async () => {
       return
     }
 
-    await ElMessageBox.confirm(
+    await confirmAction(
       `确定要取消该批次所有手机的打款记录吗？\n\n共 ${phoneIds.length} 台手机\n此操作将清除所有手机的打款时间和打款方式，恢复到未打款状态。`,
       '批量取消打款确认',
       {
@@ -3313,1528 +3305,20 @@ onMounted(async () => {
 })
 </script>
 
-<style lang="scss" scoped>
-.supplier-phone-payments-view {
-  .stat-main-line {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 8px;
-    margin-bottom: 6px;
-  }
-
-  .table-section {
-    .title-main {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-
-      .title-text {
-        white-space: nowrap;
-      }
-    }
-
-    .selected-info {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 12px 14px;
-      margin-bottom: 16px;
-      background: linear-gradient(135deg, var(--tf-color-amber-surface) 0%, var(--color-bg-white) 45%, var(--tf-color-surface-blue) 100%);
-      border: 1px solid var(--tf-color-border-surface);
-      border-radius: 16px;
-      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
-
-      .selected-summary {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        flex-shrink: 0;
-        padding: 7px 10px;
-        background: rgba(255, 255, 255, 0.92);
-        border: 1px solid rgba(64, 158, 255, 0.12);
-        border-radius: 999px;
-      }
-
-      .selected-count {
-        font-size: 14px;
-        color: var(--tf-color-neutral-700);
-        font-weight: 700;
-      }
-
-      .selected-amount {
-        font-size: 14px;
-        font-weight: 700;
-        color: var(--color-warning);
-        font-family: 'Monaco', 'Consolas', monospace;
-      }
-
-      .selected-action-btn {
-        flex-shrink: 0;
-        min-width: 92px;
-        height: 36px;
-        padding: 0 14px;
-        white-space: nowrap;
-        border-radius: 10px;
-        font-size: 13px;
-        font-weight: 600;
-
-        :deep(span) {
-          display: inline-flex;
-          align-items: center;
-          gap: 4px;
-        }
-
-        i {
-          font-size: 12px;
-        }
-      }
-
-      .selected-action-btn-danger {
-        background: var(--tf-button-danger-soft-bg);
-        border-color: var(--tf-button-danger-soft-border);
-        color: var(--tf-button-danger-soft-color);
-        box-shadow: none;
-
-        &:hover,
-        &:focus {
-          background: var(--tf-button-danger-soft-hover-bg);
-          border-color: var(--tf-button-danger-soft-hover-border);
-          color: var(--tf-button-danger-soft-hover-color);
-        }
-      }
-
-      .selected-action-btn-primary {
-        background: var(--tf-button-primary-soft-bg);
-        border-color: var(--tf-button-primary-soft-border);
-        color: var(--tf-button-primary-soft-color);
-        box-shadow: none;
-
-        &:hover,
-        &:focus {
-          background: var(--tf-button-primary-soft-hover-bg);
-          border-color: var(--tf-button-primary-soft-hover-border);
-          color: var(--tf-button-primary-soft-hover-color);
-        }
-      }
-    }
-  }
-
-  // 状态徽章样式
-  .status-badge {
-    display: inline-block;
-    padding: 4px 12px;
-    border-radius: 4px;
-    font-size: 12px;
-    font-weight: 500;
-
-    &.status-unpaid {
-      background: var(--tf-status-danger-bg);
-      color: var(--tf-status-danger-color);
-      border: 1px solid var(--tf-status-danger-border);
-    }
-
-    &.status-paid {
-      background: var(--tf-status-success-bg);
-      color: var(--tf-status-success-color);
-      border: 1px solid var(--tf-status-success-border);
-    }
-
-    &.status-in_stock {
-      background: var(--tf-status-success-bg);
-      color: var(--tf-status-success-color);
-      border: 1px solid var(--tf-status-success-border);
-    }
-
-    &.status-sold {
-      background: var(--tf-status-neutral-bg);
-      color: var(--tf-status-neutral-color);
-      border: 1px solid var(--tf-status-neutral-border);
-    }
-  }
-
-  // 时间徽章样式 - 小巧精致版
-  .time-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 3px 8px;
-    border-radius: 4px;
-    font-size: 11px;
-    font-weight: 500;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
-    transition: all 0.2s ease;
-    border: 1px solid transparent;
-    cursor: pointer;
-    position: relative;
-    overflow: hidden;
-    white-space: nowrap;
-
-    &::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: -100%;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-      transition: left 0.4s ease;
-    }
-
-    i {
-      font-size: 10px;
-    }
-
-    &.payment-time-badge {
-      animation: fadeIn 0.2s ease;
-    }
-
-    &:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-
-      &::before {
-        left: 100%;
-      }
-    }
-  }
-
-  // 文本辅助类
-  .text-muted {
-    color: var(--color-info);
-  }
-
-  .text-center {
-    text-align: center;
-  }
-
-  // 分页样式
-  .pagination-wrapper {
-    padding: 16px;
-    background: var(--color-bg-white);
-    border-radius: 8px;
-    margin-top: 16px;
-  }
-
-  // 批次详情对话框样式
-  .payment-details {
-    .details-info {
-      background: linear-gradient(135deg, var(--tf-color-surface) 0%, var(--tf-color-border-cool-alt) 100%);
-      border-radius: 12px;
-      padding: 20px;
-      margin-bottom: 24px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-      border: 1px solid var(--tf-color-border-element);
-
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 16px 24px;
-
-      .info-row {
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-        padding: 12px;
-        background: white;
-        border-radius: 8px;
-        border: 1px solid var(--color-border-light);
-        transition: all 0.3s ease;
-
-        &:hover {
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-          transform: translateY(-2px);
-        }
-
-        label {
-          font-size: 13px;
-          color: var(--color-info);
-          font-weight: 500;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-          margin-bottom: 4px;
-        }
-
-        span {
-          font-size: 18px;
-          color: var(--color-text-primary);
-          font-weight: 600;
-
-          &.amount {
-            color: var(--color-warning);
-            font-family: 'Monaco', 'Consolas', monospace;
-
-            &.profit-positive {
-              color: var(--color-success);
-            }
-
-            &.profit-negative {
-              color: var(--color-danger);
-            }
-          }
-
-          &.highlight {
-            color: var(--color-primary);
-            font-size: 20px;
-          }
-
-          &.profit-value {
-            font-size: 20px;
-            font-weight: 700;
-
-            &.profit-positive {
-              color: var(--color-success);
-            }
-
-            &.profit-negative {
-              color: var(--color-danger);
-            }
-          }
-        }
-
-        // 表单控件样式
-        :deep(.el-select),
-        :deep(.el-date-picker),
-        :deep(.el-input) {
-          width: 100%;
-        }
-
-        :deep(.el-input__wrapper) {
-          background: var(--tf-color-surface-muted);
-          border: 1px solid var(--tf-color-border-element);
-        }
-      }
-    }
-
-  }
-}
-
-/* 打款批次详情摘要卡片 */
-.payment-details .payment-batch-summary-cards {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-  padding: 14px;
-}
-
-.payment-details .details-info.payment-summary-cards.payment-batch-summary-cards > .info-row:first-child {
-  grid-column: auto;
-}
-
-.payment-details .payment-batch-summary-cards > .batch-summary-supplier {
-  order: 1;
-}
-
-.payment-details .payment-batch-summary-cards > .batch-summary-time {
-  order: 2;
-}
-
-.payment-details .payment-batch-summary-cards > .batch-summary-method {
-  order: 3;
-}
-
-.payment-details .payment-batch-summary-cards > .batch-summary-operator {
-  order: 4;
-}
-
-.payment-details .payment-batch-summary-cards > .batch-summary-count {
-  order: 5;
-}
-
-.payment-details .payment-batch-summary-cards > .batch-summary-cost {
-  order: 6;
-}
-
-.payment-details .payment-batch-summary-cards > .batch-summary-sales {
-  order: 7;
-}
-
-.payment-details .payment-batch-summary-cards > .batch-summary-profit {
-  order: 8;
-}
-
-.payment-details .payment-batch-summary-cards > .batch-summary-remarks {
-  grid-column: 1 / -1;
-  order: 9;
-}
-
-/* 打款表单信息面板：批量和单个打款共用 */
-.payment-details .payment-form-cards {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(160px, 1fr));
-  align-items: stretch;
-  gap: 12px;
-  margin-top: 18px;
-  padding: 14px;
-  border: 1px solid var(--tf-color-slate-200);
-  border-radius: 12px;
-  background: var(--tf-color-slate-50);
-  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
-}
-
-.payment-details .payment-form-heading {
-  grid-column: 1 / -1;
-  order: 0;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-height: 36px;
-  padding: 0 2px 2px;
-}
-
-.payment-details .payment-form-heading-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  flex: 0 0 30px;
-  border-radius: 8px;
-  background: var(--tf-color-slate-900);
-  color: var(--color-bg-white);
-}
-
-.payment-details .payment-form-heading > span:last-child {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.payment-details .payment-form-heading strong {
-  color: var(--tf-color-slate-900);
-  font-size: 14px;
-  line-height: 1.2;
-}
-
-.payment-details .payment-form-heading small {
-  color: var(--tf-color-slate-500);
-  font-size: 11px;
-  line-height: 1.2;
-}
-
-.payment-details .payment-form-cards > .payment-method-row {
-  --payment-form-accent: var(--tf-color-blue-500);
-  order: 1;
-}
-
-.payment-details .payment-form-cards > .payment-time-row {
-  --payment-form-accent: var(--tf-color-amber-500);
-  order: 2;
-}
-
-.payment-details .payment-form-cards > .payment-operator-row {
-  --payment-form-accent: var(--tf-color-teal-tailwind-500);
-  order: 3;
-}
-
-.payment-details .payment-form-cards > .payment-remarks-row {
-  --payment-form-accent: var(--tf-color-slate-500);
-  grid-column: 1 / -1;
-  order: 4;
-}
-
-.payment-details .payment-form-cards > .info-row {
-  position: relative;
-  min-width: 0;
-  min-height: 88px;
-  padding: 14px 12px 12px;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  justify-content: center;
-  gap: 8px;
-  overflow: hidden;
-  border: 1px solid var(--tf-color-slate-200);
-  border-radius: 8px;
-  background: var(--color-bg-white);
-  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
-}
-
-.payment-details .payment-form-cards > .info-row::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  right: 0;
-  left: 0;
-  height: 3px;
-  background: var(--payment-form-accent, var(--tf-color-slate-400));
-}
-
-.payment-details .payment-form-cards > .payment-remarks-row {
-  min-height: 112px;
-}
-
-.payment-details .payment-form-cards > .info-row label {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 0;
-  color: var(--tf-color-slate-600);
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 1.2;
-  white-space: nowrap;
-}
-
-.payment-details .payment-form-cards > .info-row label i {
-  width: 16px;
-  color: var(--payment-form-accent, var(--tf-color-primary-500));
-  font-size: 12px;
-  text-align: center;
-}
-
-.payment-details .payment-form-cards > .info-row > :deep(.el-select),
-.payment-details .payment-form-cards > .info-row > :deep(.el-date-picker),
-.payment-details .payment-form-cards > .info-row > :deep(.el-input) {
-  width: 100%;
-  max-width: 100%;
-}
-
-.payment-details .payment-form-cards > .info-row :deep(.el-input__wrapper),
-.payment-details .payment-form-cards > .info-row :deep(.el-select__wrapper) {
-  min-height: 38px;
-  border-radius: 6px;
-  background: var(--tf-color-surface-muted);
-  box-shadow: inset 0 0 0 1px var(--tf-color-border-form);
-}
-
-.payment-details .payment-form-cards > .payment-remarks-row :deep(.el-textarea__inner) {
-  min-height: 58px;
-  padding: 9px 10px;
-  border-radius: 6px;
-  background: var(--tf-color-surface-muted);
-  box-shadow: inset 0 0 0 1px var(--tf-color-border-form);
-  resize: vertical;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-// ==================== 编辑打款对话框样式 ====================
-.edit-payment-dialog {
-  // IMEI 号码特殊样式
-  .imei-number {
-    font-family: 'Monaco', 'Consolas', monospace;
-    color: var(--color-primary);
-    letter-spacing: 0.6px;
-    font-size: 18px;
-    line-height: 1.3;
-    word-break: break-all;
-  }
-
-  // 表单优化
-  :deep(.el-form-item__label) {
-    font-weight: 600;
-    color: var(--color-text-regular);
-  }
-
-  :deep(.el-select),
-  :deep(.el-date-picker) {
-    width: 100%;
-  }
-
-  .details-info.payment-summary-cards-edit {
-    display: grid;
-    grid-template-columns: minmax(0, 1.45fr) repeat(2, minmax(0, 1fr));
-    gap: 12px;
-    margin-bottom: 20px;
-    padding: 14px;
-    border-radius: 14px;
-    background: linear-gradient(135deg, var(--tf-color-surface) 0%, var(--tf-color-border-cool-alt) 100%);
-    border: 1px solid var(--tf-color-border-element);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-
-    .info-row {
-      min-width: 0;
-      min-height: 86px;
-      padding: 12px 14px;
-      display: flex;
-      flex-direction: column;
-      align-items: flex-start;
-      justify-content: center;
-      gap: 6px;
-      border-radius: 12px;
-      border: 1px solid var(--tf-color-border-form);
-      background: linear-gradient(180deg, var(--color-bg-white) 0%, var(--tf-color-surface-blue-alt) 100%);
-      box-shadow: 0 6px 14px rgba(15, 23, 42, 0.08);
-      position: relative;
-      overflow: hidden;
-
-      &::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 3px;
-        border-radius: 12px 12px 0 0;
-      }
-
-      label {
-        margin: 0;
-        font-size: 11px;
-        color: var(--tf-color-gray-ui-alt);
-        font-weight: 600;
-        letter-spacing: 0;
-        text-transform: none;
-      }
-
-      span {
-        display: block;
-        min-width: 0;
-        font-size: 15px;
-        line-height: 1.3;
-        color: var(--tf-color-slate-form);
-        font-weight: 700;
-        word-break: break-word;
-      }
-
-      .amount {
-        color: var(--tf-color-amber-600);
-        font-size: 20px;
-        font-weight: 800;
-        white-space: nowrap;
-      }
-    }
-
-    .summary-item-imei {
-      &::before {
-        background: linear-gradient(90deg, var(--tf-color-blue-500) 0%, var(--tf-color-blue-400) 100%);
-      }
-    }
-
-    .summary-item-model {
-      &::before {
-        background: linear-gradient(90deg, var(--tf-color-violet-500) 0%, var(--tf-color-violet-400) 100%);
-      }
-    }
-
-    .summary-item-cost {
-      &::before {
-        background: linear-gradient(90deg, var(--tf-color-amber-500) 0%, var(--tf-color-amber-400) 100%);
-      }
-    }
-  }
-}
-
-@media (max-width: 768px) {
-  .edit-payment-dialog {
-    .details-info.payment-summary-cards-edit {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 10px;
-      padding: 12px;
-      margin-bottom: 16px;
-
-      .info-row {
-        min-height: 82px;
-        padding: 12px;
-        gap: 6px;
-
-        label {
-          font-size: 11px;
-        }
-
-        span {
-          font-size: 15px;
-        }
-
-        .amount {
-          font-size: 18px;
-        }
-      }
-
-      .summary-item-imei {
-        grid-column: 1 / -1;
-      }
-
-      .imei-number {
-        font-size: 16px;
-      }
-    }
-  }
-}
-
-@media (max-width: 480px) {
-  .edit-payment-dialog {
-    .details-info.payment-summary-cards-edit {
-      grid-template-columns: 1fr;
-
-      .info-row {
-        min-height: 76px;
-        border-radius: 12px;
-      }
-
-      .summary-item-imei {
-        grid-column: auto;
-      }
-
-      .imei-number {
-        font-size: 15px;
-        letter-spacing: 0.3px;
-      }
-    }
-  }
-}
-
-/* ==================== Element Plus 组件统一样式 ==================== */
-
-/* 输入框样式 - 完全无边框简洁设计 */
-.el-input-form-control {
-  width: 100%;
-}
-
-.el-input-form-control :deep(.el-input__wrapper) {
-  width: 100%;
-  padding: 10px 12px;
-  border: none !important;
-  background: transparent !important;
-  box-shadow: none !important;
-  transition: all 0.3s ease;
-  border-radius: 0;
-}
-
-.el-input-form-control :deep(.el-input__wrapper:hover),
-.el-input-form-control :deep(.el-input__wrapper.is-focus) {
-  box-shadow: none !important;
-}
-
-.el-input-form-control :deep(.el-input__inner) {
-  font-size: 14px;
-  color: var(--tf-color-gray-bootstrap-700);
-  height: auto;
-  border: none !important;
-  box-shadow: none !important;
-}
-
-/* Readonly 输入框样式 - 确保与其他输入框高度一致 */
-.el-input-form-control :deep(.el-input.is-disabled .el-input__wrapper),
-.el-input-form-control :deep(.el-input__wrapper.isreadonly),
-.el-input-form-control :deep(.el-input__wrapper[readonly]) {
-  background: transparent !important;
-  cursor: not-allowed;
-  padding: 10px 12px;
-  min-height: 40px;
-  box-shadow: none !important;
-  border: none !important;
-}
-
-.el-input-form-control :deep(.el-input.is-disabled .el-input__inner),
-.el-input-form-control :deep(.el-input__inner[readonly]) {
-  color: var(--tf-color-gray-bootstrap-700);
-  font-weight: 500;
-  border: none !important;
-  box-shadow: none !important;
-}
-
-.el-input-form-control :deep(.el-input__wrapper:hover) {
-  background: rgba(59, 130, 246, 0.02) !important;
-  box-shadow: none !important;
-}
-
-.el-input-form-control :deep(.el-input__wrapper.is-focus) {
-  background: rgba(59, 130, 246, 0.05) !important;
-  box-shadow: none !important;
-}
-
-/* 选择器样式 - 完全无边框简洁设计 */
-.el-select-form-control {
-  width: 100%;
-}
-
-.el-select-form-control :deep(.el-input__wrapper) {
-  width: 100%;
-  padding: 10px 12px;
-  border: none !important;
-  background: transparent !important;
-  box-shadow: none !important;
-  transition: all 0.3s ease;
-  border-radius: 0;
-}
-
-.el-select-form-control :deep(.el-input__wrapper:hover),
-.el-select-form-control :deep(.el-input__wrapper.is-focus) {
-  box-shadow: none !important;
-}
-
-.el-select-form-control :deep(.el-input__inner) {
-  font-size: 14px;
-  color: var(--tf-color-gray-bootstrap-700);
-  height: auto;
-  border: none !important;
-  box-shadow: none !important;
-}
-
-.el-select-form-control :deep(.el-input__wrapper:hover) {
-  background: rgba(59, 130, 246, 0.02) !important;
-  box-shadow: none !important;
-}
-
-.el-select-form-control :deep(.el-input__wrapper.is-focus) {
-  background: rgba(59, 130, 246, 0.05) !important;
-  box-shadow: none !important;
-}
-
-/* 日期选择器样式 - 完全无边框简洁设计 */
-.el-date-form-control {
-  width: 100%;
-}
-
-.el-date-form-control :deep(.el-input__wrapper) {
-  width: 100%;
-  padding: 10px 12px;
-  border: none !important;
-  background: transparent !important;
-  box-shadow: none !important;
-  transition: all 0.3s ease;
-  border-radius: 0;
-}
-
-.el-date-form-control :deep(.el-input__wrapper:hover),
-.el-date-form-control :deep(.el-input__wrapper.is-focus) {
-  box-shadow: none !important;
-}
-
-.el-date-form-control :deep(.el-input__inner) {
-  font-size: 14px;
-  color: var(--tf-color-gray-bootstrap-700);
-  height: auto;
-  border: none !important;
-  box-shadow: none !important;
-}
-
-.el-date-form-control :deep(.el-input__wrapper:hover) {
-  background: rgba(59, 130, 246, 0.02) !important;
-  box-shadow: none !important;
-}
-
-.el-date-form-control :deep(.el-input__wrapper.is-focus) {
-  background: rgba(59, 130, 246, 0.05) !important;
-  box-shadow: none !important;
-}
-
-.data-table tbody tr.mobile-action-expanded {
-  border-bottom-color: transparent;
-}
-
-/* IMEI 单元格样式 - 两种类名都支持 */
-.data-table .imei,
-.data-table .imei-cell {
-  font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Consolas', monospace;
-  font-weight: 600;
-  color: var(--tf-color-gray-bootstrap-700);
-  letter-spacing: 0.5px;
-}
-
-/* 序列号样式 */
-.data-table .serial-number {
-  font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Consolas', monospace;
-  font-weight: 600;
-  color: var(--tf-color-gray-bootstrap-700);
-  letter-spacing: 0.5px;
-}
-
-/* 序号徽章 */
-.data-table .index-badge {
-  background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
-  color: var(--color-bg-white);
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 600;
-}
-
-/* 时间单元格 */
-.data-table .time-cell {
-  color: var(--tf-color-heading);
-  font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
-  text-align: center;
-  font-weight: 500;
-}
-
-/* 打款时间徽章 */
-.data-table .payment-time-badge {
-  display: inline-block;
-  max-width: 100%;
-  padding: 4px 10px;
-  box-sizing: border-box;
-  background: linear-gradient(135deg, var(--color-danger) 0%, var(--tf-color-red-legacy) 100%);
-  color: white;
-  border-radius: 12px;
-  font-weight: 600;
-  line-height: 1.2;
-  white-space: nowrap;
-  box-shadow: 0 2px 4px rgba(245, 108, 108, 0.3);
-}
-
-/* 金额单元格 - 确保居中 */
-.data-table .price {
-  font-family: 'Monaco', 'Consolas', monospace;
-  font-weight: 600;
-  color: var(--color-warning);
-  text-align: center;
-}
-
-/* 利润单元格 - 确保居中 */
-.data-table .price-cell {
-  font-family: 'Monaco', 'Consolas', monospace;
-  font-weight: 600;
-  text-align: center;
-
-  &.profit-positive {
-    color: var(--color-success);
-  }
-
-  &.profit-negative {
-    color: var(--color-danger);
-  }
-}
-
-.data-table .mobile-action-row td {
-  padding: 10px 12px;
-  background: var(--tf-color-surface-blue);
-  border-top: none;
-}
-
-.data-table .mobile-row-actions {
-  display: flex;
-  justify-content: flex-start;
-}
-
-.data-table .mobile-action-btn {
-  min-width: 92px;
-}
-
-/* 复选框样式 */
-.data-table input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
-  cursor: pointer;
-  accent-color: var(--color-primary);
-}
-
-/* 移动端响应式 */
-@media (max-width: 768px) {
-  .payment-list-table-wrapper {
-    overflow-x: hidden !important;
-    overscroll-behavior-x: contain;
-  }
-
-  .supplier-payment-table .status-badge {
-    padding-right: 6px;
-    padding-left: 6px;
-  }
-
-  .supplier-phone-payments-view {
-    .table-section {
-      .section-title {
-        justify-content: space-between;
-        align-items: center;
-        gap: 10px;
-
-        .record-count {
-          margin-left: 0;
-        }
-      }
-
-      .selected-info {
-        overflow-x: auto;
-        overflow-y: hidden;
-        padding: 10px;
-        gap: 8px;
-        -webkit-overflow-scrolling: touch;
-        scrollbar-width: none;
-
-        &::-webkit-scrollbar {
-          display: none;
-        }
-
-        .selected-summary {
-          padding: 6px 9px;
-        }
-
-        .selected-count,
-        .selected-amount {
-          font-size: 12px;
-        }
-
-        .selected-action-btn {
-          min-width: 54px;
-          width: auto;
-          height: 28px !important;
-          min-height: 28px !important;
-          max-height: 28px;
-          padding: 0 6px;
-          font-size: 10px;
-          line-height: 1;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          align-self: center;
-          border-radius: 8px;
-          box-sizing: border-box;
-        }
-
-        .selected-action-btn i,
-        .selected-action-btn :deep(span) {
-          font-size: 10px;
-          line-height: 1;
-        }
-      }
-    }
-  }
-
-  @media (min-width: 481px) and (max-width: 768px) {
-    .supplier-phone-payments-view {
-      .table-section {
-        .selected-info {
-          .selected-action-btn {
-            min-width: 60px;
-            width: auto;
-            height: 30px !important;
-            min-height: 30px !important;
-            max-height: 30px;
-            padding: 0 7px;
-            font-size: 11px;
-            line-height: 1;
-            border-radius: 8px;
-            box-sizing: border-box;
-          }
-
-          .selected-action-btn i,
-          .selected-action-btn :deep(span) {
-            font-size: 11px;
-            line-height: 1;
-          }
-        }
-      }
-    }
-  }
-
-  .payment-details {
-    .batch-payment-summary {
-      display: none;
-    }
-
-    .details-info {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 10px;
-      padding: 12px;
-      margin-bottom: 16px;
-      border-radius: 14px;
-
-      .info-row {
-        min-height: 82px;
-        padding: 12px;
-        gap: 4px;
-        justify-content: center;
-        border-radius: 12px;
-        box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06);
-
-        label {
-          font-size: 11px;
-          letter-spacing: 0.2px;
-          margin-bottom: 2px;
-        }
-
-        span {
-          font-size: 16px;
-          line-height: 1.25;
-          word-break: break-word;
-        }
-
-        .highlight,
-        .profit-value {
-          font-size: 17px;
-        }
-
-        .amount {
-          font-size: 16px;
-        }
-      }
-    }
-
-    .details-info.payment-summary-cards {
-      background: linear-gradient(135deg, var(--tf-color-surface) 0%, var(--tf-color-border-cool-alt) 100%);
-      border: 1px solid var(--tf-color-border-element);
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-
-      .info-row {
-        min-height: 88px;
-        background: var(--color-bg-white);
-        border: 1px solid var(--color-border-light);
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-      }
-
-      .info-row:first-child {
-        grid-column: 1 / -1;
-        min-height: 76px;
-      }
-    }
-
-    .details-info.payment-batch-summary-cards {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 8px;
-      padding: 0;
-      background: transparent;
-      border: 0;
-      border-radius: 0;
-      box-shadow: none;
-
-      > .info-row:first-child {
-        grid-column: auto;
-        min-height: 78px;
-      }
-
-      .info-row {
-        --batch-summary-accent: #64748b;
-        --batch-summary-tint: #f8fafc;
-        min-width: 0;
-        min-height: 78px;
-        padding: 9px 10px 10px;
-        gap: 6px;
-        justify-content: center;
-        overflow: hidden;
-        background: var(--batch-summary-tint);
-        border: 1px solid var(--tf-color-slate-200);
-        border-top: 3px solid var(--batch-summary-accent);
-        border-radius: 8px;
-        box-shadow: 0 3px 10px rgba(15, 23, 42, 0.08);
-
-        label {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          margin: 0;
-          color: var(--tf-color-slate-500);
-          font-size: 11px;
-          font-weight: 600;
-          line-height: 1.2;
-          letter-spacing: 0;
-          text-transform: none;
-          white-space: nowrap;
-
-          i {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 22px;
-            height: 22px;
-            flex: 0 0 22px;
-            color: var(--batch-summary-accent);
-            font-size: 11px;
-            text-align: center;
-            background: var(--color-bg-white);
-            border: 1px solid rgba(148, 163, 184, 0.22);
-            border-radius: 6px;
-          }
-        }
-
-        span {
-          width: 100%;
-          color: var(--tf-color-neutral-800);
-          font-size: 14px;
-          font-weight: 700;
-          line-height: 1.25;
-          letter-spacing: 0;
-          overflow-wrap: anywhere;
-          word-break: normal;
-        }
-
-        .highlight,
-        .amount,
-        .profit-value {
-          font-size: 15px;
-          font-weight: 800;
-        }
-      }
-
-      @media (min-width: 481px) {
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-      }
-
-      .batch-summary-remarks {
-        grid-column: 1 / -1;
-        order: 9;
-      }
-
-      .batch-summary-supplier {
-        --batch-summary-accent: #d97706;
-        --batch-summary-tint: #fffbeb;
-      }
-
-      .batch-summary-time {
-        --batch-summary-accent: #2563eb;
-        --batch-summary-tint: #eff6ff;
-
-        span {
-          font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
-          font-size: 11px;
-          overflow-wrap: normal;
-          white-space: normal;
-        }
-      }
-
-      .batch-summary-method {
-        --batch-summary-accent: #7c3aed;
-        --batch-summary-tint: #f5f3ff;
-      }
-
-      .batch-summary-operator {
-        --batch-summary-accent: #0891b2;
-        --batch-summary-tint: #ecfeff;
-      }
-
-      .batch-summary-count {
-        --batch-summary-accent: #475569;
-        --batch-summary-tint: #f8fafc;
-      }
-
-      .batch-summary-cost {
-        --batch-summary-accent: #ca8a04;
-        --batch-summary-tint: #fefce8;
-      }
-
-      .batch-summary-sales {
-        --batch-summary-accent: #0284c7;
-        --batch-summary-tint: #f0f9ff;
-      }
-
-      .batch-summary-profit {
-        --batch-summary-accent: #16a34a;
-        --batch-summary-tint: #f0fdf4;
-
-        &.is-negative {
-          --batch-summary-accent: #dc2626;
-          --batch-summary-tint: #fef2f2;
-        }
-      }
-    }
-
-    .details-info.payment-summary-cards-four {
-      display: flex;
-      flex-wrap: nowrap;
-      align-items: stretch;
-      gap: 6px;
-      padding: 14px;
-      background: linear-gradient(135deg, var(--tf-color-surface) 0%, var(--tf-color-border-cool-alt) 100%);
-      border: 1px solid var(--tf-color-border-element);
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-
-      .info-row {
-        flex: 1 1 0;
-        width: calc((100% - 18px) / 4);
-        min-height: 72px;
-        min-width: 0;
-        padding: 8px 6px;
-        position: relative;
-        overflow: hidden;
-        display: flex;
-        flex-direction: column;
-        align-items: flex-start;
-        justify-content: center;
-        background: linear-gradient(180deg, var(--color-bg-white) 0%, var(--tf-color-surface-blue-alt) 100%);
-        border: 1px solid var(--tf-color-border-form);
-        border-radius: 12px;
-        box-shadow: 0 6px 14px rgba(15, 23, 42, 0.08);
-
-        &::before {
-          content: '';
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          height: 3px;
-          border-radius: 12px 12px 0 0;
-          background: linear-gradient(90deg, var(--tf-color-slate-400) 0%, var(--tf-color-slate-300) 100%);
-        }
-
-        label {
-          font-size: 10px;
-          margin-bottom: 0;
-          letter-spacing: 0;
-          color: var(--tf-color-gray-ui-alt);
-          font-weight: 600;
-          flex-shrink: 0;
-          white-space: nowrap;
-        }
-
-        span {
-          font-size: 13px;
-          line-height: 1.2;
-          word-break: break-word;
-          color: var(--tf-color-slate-form);
-          font-weight: 700;
-          text-align: left;
-        }
-
-        .highlight,
-        .profit-value,
-        .amount {
-          font-size: 13px;
-          font-weight: 800;
-        }
-      }
-
-      .info-row:first-child {
-        flex: 1 1 0;
-        width: calc((100% - 18px) / 4);
-        min-height: 72px;
-      }
-
-      .info-row:nth-child(1) {
-        background: linear-gradient(180deg, var(--tf-color-amber-surface) 0%, var(--color-bg-white) 100%);
-        border-color: var(--tf-color-warning-element-border);
-
-        &::before {
-          background: linear-gradient(90deg, var(--tf-color-amber-500) 0%, var(--tf-color-amber-400) 100%);
-        }
-      }
-
-      .info-row:nth-child(2) {
-        background: linear-gradient(180deg, var(--tf-color-indigo-surface-alt) 0%, var(--color-bg-white) 100%);
-        border-color: var(--tf-color-blue-tailwind-100);
-
-        &::before {
-          background: linear-gradient(90deg, var(--tf-color-blue-500) 0%, var(--tf-color-blue-400) 100%);
-        }
-      }
-
-      .info-row:nth-child(3) {
-        background: linear-gradient(180deg, var(--tf-color-orange-50) 0%, var(--color-bg-white) 100%);
-        border-color: var(--tf-color-orange-tailwind-200);
-
-        &::before {
-          background: linear-gradient(90deg, var(--tf-color-orange-tailwind-500) 0%, var(--color-warning) 100%);
-        }
-      }
-
-      .info-row:nth-child(4) {
-        background: linear-gradient(180deg, var(--tf-color-green-50) 0%, var(--color-bg-white) 100%);
-        border-color: var(--tf-color-green-200);
-
-        &::before {
-          background: linear-gradient(90deg, var(--tf-color-green-500) 0%, var(--tf-color-green-400) 100%);
-        }
-      }
-    }
-
-    .details-info.payment-form-cards {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 8px;
-      padding: 10px;
-      border-radius: 12px;
-
-      .info-row {
-        min-width: 0;
-        min-height: 78px;
-        padding: 12px 8px 9px;
-        display: flex;
-        flex-direction: column;
-        align-items: stretch;
-        justify-content: center;
-        gap: 6px;
-        border-radius: 8px;
-
-        label {
-          min-width: 0;
-          margin-bottom: 0;
-          padding-left: 0;
-          font-size: 11px;
-          line-height: 1.2;
-          letter-spacing: 0;
-          text-transform: none;
-          white-space: nowrap;
-        }
-
-        span {
-          font-size: 12px;
-          line-height: 1.3;
-        }
-
-        :deep(.el-select),
-        :deep(.el-date-picker),
-        :deep(.el-input) {
-          width: 100% !important;
-          max-width: 100%;
-        }
-
-        :deep(.el-input__wrapper),
-        :deep(.el-select__wrapper) {
-          min-height: 34px;
-          padding: 0 8px;
-          border-radius: 6px;
-          background: rgba(255, 255, 255, 0.96) !important;
-          box-shadow: inset 0 0 0 1px var(--tf-color-border-form-strong) !important;
-        }
-
-        :deep(.el-date-editor.el-input),
-        :deep(.el-date-editor.el-input__wrapper),
-        :deep(.el-select .el-select__wrapper) {
-          width: 100% !important;
-          max-width: 100%;
-        }
-
-        :deep(.el-date-editor .el-input__prefix) {
-          display: none;
-        }
-
-        :deep(.el-date-editor .el-input__prefix-inner) {
-          display: inline-flex;
-          align-items: center;
-        }
-
-        :deep(.el-input__inner),
-        :deep(.el-select__selected-item),
-        :deep(.el-date-editor .el-range-input),
-        :deep(.el-date-editor .el-input__inner) {
-          font-size: 12px;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-        }
-      }
-
-      .payment-form-heading {
-        grid-column: 1 / -1;
-      }
-
-      .payment-remarks-row {
-        grid-column: 1 / -1;
-        min-height: 92px;
-      }
-    }
-  }
-
-  .data-table .serial-number,
-  .data-table .imei,
-  .data-table .imei-cell {
-    letter-spacing: 0.3px;
-  }
-
-  .data-table .mobile-action-row td {
-    padding: 10px 8px;
-  }
-
-  .data-table .mobile-action-btn {
-    flex: 1 1 calc(50% - 6px);
-    min-width: 0;
-  }
-
-  .payment-details .details-info.payment-form-cards {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 8px;
-    margin-top: 14px;
-    padding: 10px;
-    border-radius: 12px;
-  }
-
-  .payment-details .payment-form-cards > .info-row,
-  .payment-details .payment-form-cards > .payment-remarks-row {
-    min-height: 78px;
-    padding: 12px 8px 9px;
-  }
-
-  .payment-details .payment-form-cards > .payment-remarks-row {
-    min-height: 92px;
-    padding: 12px 10px;
-  }
-
-  .payment-details .payment-form-cards > .info-row label {
-    font-size: 11px;
-  }
-
-  .payment-details .payment-form-cards > .info-row label i {
-    width: 13px;
-    font-size: 11px;
-  }
-
-  .payment-details .payment-form-cards > .info-row :deep(.el-input__wrapper),
-  .payment-details .payment-form-cards > .info-row :deep(.el-select__wrapper) {
-    min-height: 34px;
-    padding: 0 8px;
-  }
-
-  .payment-details .payment-form-cards > .info-row :deep(.el-date-editor .el-input__prefix) {
-    display: none;
-  }
-
-  .payment-details .payment-form-cards > .info-row :deep(.el-input__inner),
-  .payment-details .payment-form-cards > .info-row :deep(.el-select__selected-item),
-  .payment-details .payment-form-cards > .info-row :deep(.el-date-editor .el-input__inner) {
-    font-size: 12px;
-  }
-}
-</style>
+<style lang="scss" scoped src="./styles/supplier-phone-payments.scss"></style>
 
 <style lang="scss">
 .supplier-phone-payments-dialog {
-  .el-dialog__header,
-  &.mobile-dialog-sheet-panel .mobile-dialog-sheet-header {
-    position: relative;
-    background: var(--dialog-header-bg);
-    overflow: hidden;
-  }
-
-  .el-dialog__header {
-    margin-right: 0;
-    padding: 18px 56px 18px 22px;
-    border-bottom: 0;
-    border-radius: 0;
-  }
-
-  .el-dialog__title,
-  .mobile-dialog-sheet-title {
-    color: var(--color-bg-white);
-    font-weight: 700;
-    letter-spacing: 0.2px;
-  }
-
-  .el-dialog__headerbtn,
-  .mobile-dialog-sheet-close {
-    width: 38px;
-    height: 38px;
-    border-radius: 12px;
-    background: var(--tf-button-overlay-bg);
-    color: var(--tf-button-on-color);
-    transition: all 0.2s ease;
-  }
-
-  .el-dialog__headerbtn:hover,
-  .mobile-dialog-sheet-close:hover {
-    background: var(--tf-button-overlay-hover-bg);
-    transform: translateY(-1px);
-  }
-
-  .el-dialog__body {
-    padding: 22px 22px 18px;
-  }
-
-  .el-dialog__footer,
-  .mobile-dialog-sheet-footer {
-    padding: 14px 22px 20px;
-    border-top: 1px solid var(--tf-color-border-surface);
-    background: linear-gradient(180deg, var(--color-bg-white) 0%, var(--tf-color-surface-blue) 100%);
-  }
+  --tf-dialog-header-bg: var(--dialog-header-bg);
+  --tf-dialog-footer-bg: linear-gradient(180deg, var(--color-bg-white) 0%, var(--tf-color-surface-blue) 100%);
+  --tf-dialog-body-padding-inline: var(--tf-space-6);
+  --tf-dialog-body-padding-block: var(--tf-space-6);
+  --tf-dialog-footer-padding-inline: var(--tf-space-6);
+  --tf-dialog-footer-padding-block-start: var(--tf-space-3);
+  --tf-dialog-footer-padding-block-end: var(--tf-space-5);
 }
 
 .payment-dialog-footer {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 10px;
-  width: 100%;
-
   .el-button span {
     display: inline-flex;
     align-items: center;
@@ -4865,40 +3349,33 @@ onMounted(async () => {
   order: 9;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .supplier-phone-payments-detail-dialog .payment-details .details-info.payment-summary-cards.payment-batch-summary-cards {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .supplier-phone-payments-dialog {
-    .el-dialog__header,
-    &.mobile-dialog-sheet-panel .mobile-dialog-sheet-header {
-      padding-left: 16px;
-      padding-right: 52px;
-    }
-
-    .el-dialog__body {
-      padding: 16px 14px 12px;
-    }
-
-    .el-dialog__footer,
-    .mobile-dialog-sheet-footer {
-      padding: 12px 14px 16px;
-    }
+    --tf-dialog-header-padding-x: 16px;
+    --tf-dialog-header-padding-right: 52px;
+    --tf-dialog-body-padding-inline: var(--tf-space-4);
+    --tf-dialog-body-padding-block: 16px;
+    --tf-dialog-footer-padding-inline: var(--tf-space-4);
+    --tf-dialog-footer-padding-block-start: var(--tf-space-3);
+    --tf-dialog-footer-padding-block-end: var(--tf-space-4);
   }
 
   .payment-dialog-footer {
-    gap: 8px;
+    --tf-dialog-action-gap: var(--tf-space-2);
   }
 }
 
-@media (min-width: 481px) and (max-width: 768px) {
+@media (min-width: 481px) and (max-width: 767px) {
   .supplier-phone-payments-detail-dialog .payment-details .details-info.payment-summary-cards.payment-batch-summary-cards {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 479px) {
   .supplier-phone-payments-dialog {
     .el-dialog__title,
     .mobile-dialog-sheet-title {

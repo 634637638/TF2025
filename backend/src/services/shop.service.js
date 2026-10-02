@@ -600,6 +600,22 @@ class ShopService {
   }
 
   /**
+   * 删除商品的全部媒体记录，并复用单条删除的文件清理和主图维护逻辑。
+   */
+  async deletePhoneImages(phoneId) {
+    const [images] = await db.getDatabase().query(
+      'SELECT id FROM H5_images WHERE phone_id = ? ORDER BY id',
+      [phoneId]
+    )
+
+    for (const image of images) {
+      await this.deleteImage(image.id)
+    }
+
+    return images.length
+  }
+
+  /**
    * 删除物理文件
    * @param {string} imageUrl - 图片URL路径
    */

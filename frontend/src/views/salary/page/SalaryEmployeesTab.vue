@@ -54,7 +54,7 @@
           :model-value="salaryMonth"
           type="month"
           placeholder="选择月份"
-          value-format="YYYY-MM"
+          :value-format="TIME_FORMATS.YEAR_MONTH"
           @update:model-value="emit('update:salaryMonth', $event)"
           @change="emit('monthChange')"
         />
@@ -481,6 +481,7 @@
 </template>
 
 <script setup lang="ts">
+import { TIME_FORMATS } from '@/utils/time'
 import { computed, ref } from 'vue'
 import { shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import Pagination from '@/components/Pagination.vue'
@@ -674,7 +675,7 @@ defineExpose({ resetInteraction })
   display: contents;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .table-section > .section-header {
     display: none;
   }

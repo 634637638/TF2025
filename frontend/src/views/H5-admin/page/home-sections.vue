@@ -152,12 +152,11 @@
                   </div>
                 </div>
               </div>
-              <div
+              <DataEmptyState
                 v-else-if="canViewField('products.product_info')"
-                class="no-products"
-              >
-                <p>暂无推荐商品</p>
-              </div>
+                size="compact"
+                description="暂无推荐商品"
+              />
             </div>
           </div>
         </div>
@@ -585,8 +584,9 @@
 </template>
 
 <script setup lang="ts">
+import { confirmAction } from '@/utils/message-box'
 import { ref, onMounted, onUnmounted, onActivated, computed, inject, watch } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { Refresh, Plus } from '@element-plus/icons-vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import SectionLoading from '@/components/SectionLoading.vue'
@@ -609,9 +609,11 @@ import { formatImageUrl } from '@/utils/format'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { useLoadingState } from '@/composables'
+import { useNotification } from '@/composables/useNotification'
 import { logger } from '@/utils/logger'
 import type { HeaderAction } from '@/types'
 const homeSectionPermissions = usePagePermissions('h5-admin-home-sections')
+const { confirm } = useNotification()
 const { handleNoPermission } = homeSectionPermissions
 const canView = computed(() => homeSectionPermissions.canView.value)
 const canCreate = computed(() => homeSectionPermissions.canCreate.value)
@@ -796,7 +798,7 @@ const deleteSection = (section: HomeSection) => {
     return
   }
 
-  ElMessageBox.confirm(
+  confirmAction(
     `确定要删除推荐区域"${section.section_name}"吗？`,
     '删除确认',
     {
@@ -1032,7 +1034,7 @@ const removeProduct = (product: HomeSectionProduct) => {
     return
   }
 
-  ElMessageBox.confirm(
+  confirmAction(
     '确定要移除该商品吗？',
     '移除确认',
     {
@@ -1065,7 +1067,7 @@ const clearAllProducts = () => {
     return
   }
 
-  ElMessageBox.confirm(
+  confirmAction(
     '确定要清空所有商品吗？',
     '清空确认',
     {
@@ -1155,7 +1157,7 @@ const applyTemplate = () => {
 }
 
 // 根据区域名称自动生成区域标识
-const generateSectionKey = () => {
+const generateSectionKey = async () => {
   if (!canEditSectionForm.value) {
     handleNoPermission(editingSection.value ? 'edit' : 'create')
     return
@@ -1166,7 +1168,11 @@ const generateSectionKey = () => {
     return
   }
 
-  if (sectionForm.value.section_key && !confirm('是否重新生成区域标识？')) {
+  if (sectionForm.value.section_key && !(await confirm('是否重新生成区域标识？', '重新生成确认', {
+    type: 'warning',
+    confirmButtonText: '重新生成',
+    cancelButtonText: '取消'
+  }))) {
     return
   }
 
@@ -1752,7 +1758,7 @@ onUnmounted(() => {
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .home-sections-config-page {
     width: 100%;
     padding: 0;

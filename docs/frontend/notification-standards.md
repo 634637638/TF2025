@@ -670,7 +670,7 @@ sed -i '' 's/messageStore\.info(/info(/g' *.vue
 
 ### 已完成迁移的页面
 
-截至 2025-01-16，以下页面已完成统一通知系统迁移：
+截至 2026-10-01，以下页面已完成统一通知系统迁移；新增页面必须直接使用统一通知入口：
 
 1. **品牌管理** (`src/views/brands/BrandsView.vue`)
    - 完全迁移到 useNotification
@@ -837,9 +837,8 @@ const handleDeleteConfirm = async (item: any) => {
 
 - [Element Plus Message 组件](https://element-plus.org/zh-CN/component/message.html)
 - [Element Plus MessageBox 组件](https://element-plus.org/zh-CN/component/message-box.html)
-- [项目通知测试页面](../src/views/test/NotificationTest.vue)
-- [通知服务源码](../src/services/notification-simple.ts)
-- [销售页面通知使用示例](../src/views/sales/SalesView.vue)
+- 通知服务源码：`frontend/src/services/notification-simple.ts`
+- 销售页面通知使用示例：`frontend/src/views/sales/SalesView.vue`
 
 ---
 

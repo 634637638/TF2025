@@ -1,7 +1,17 @@
 .sales-sale-dialog,
 .sales-edit-dialog,
-.inventory-detail-modal {
+.inventory-detail-modal,
+.sales-batch-sale-dialog {
   --dialog-vertical-gap: 24px;
+}
+
+.sales-batch-sale-dialog {
+  --mobile-dialog-body-padding: 0;
+  --mobile-dialog-footer-padding: var(--tf-space-3) var(--tf-space-5) var(--tf-space-5);
+  --tf-dialog-footer-padding-block-start: var(--tf-space-3);
+  --tf-dialog-footer-padding-inline: var(--tf-space-5);
+  --tf-dialog-footer-padding-block-end: var(--tf-space-5);
+  --tf-dialog-mobile-radius: var(--tf-radius-dialog);
 }
 
 .sales-edit-dialog {
@@ -59,7 +69,7 @@
   .sales-sale-dialog .el-dialog {
     width: calc(100vw - 8px) !important;
     max-width: calc(100vw - 8px) !important;
-    border-radius: 18px !important;
+    border-radius: var(--tf-radius-dialog) !important;
   }
 
   .mobile-dialog-sheet-overlay.sales-sale-dialog {
@@ -105,4 +115,3 @@
     padding: 4px !important;
   }
 }
-

@@ -2,7 +2,35 @@ const QueryService = require('../services/query.service')
 const ApiResponse = require('../utils/response')
 const dataMaskingService = require('../services/dataMaskingService')
 const { PAGINATION } = require('../config/constants')
+const { isSuperAdmin } = require('../middleware/unified-auth')
 const log = require('../utils/log')
+
+const getRequestedStoreId = (value) => {
+  const rawValue = Array.isArray(value) ? value[0] : value
+  if (rawValue === undefined || rawValue === null || rawValue === '') return null
+
+  const storeId = Number(rawValue)
+  return Number.isInteger(storeId) && storeId > 0 ? storeId : undefined
+}
+
+const validateRequestedStoreScope = (req, res) => {
+  if (isSuperAdmin(req.user)) return null
+
+  const requestedStoreId = getRequestedStoreId(req.query.store_id)
+  if (requestedStoreId === undefined) {
+    return ApiResponse.error(res, 'store_id 参数无效', 400)
+  }
+  if (requestedStoreId === null) return null
+
+  const userStoreIds = Array.isArray(req.user?.store_ids)
+    ? req.user.store_ids.map(Number).filter(id => Number.isInteger(id) && id > 0)
+    : []
+  if (!userStoreIds.includes(requestedStoreId)) {
+    return ApiResponse.error(res, '无权查询该门店数据', 403)
+  }
+
+  return null
+}
 
 class QueryController {
   constructor() {
@@ -14,6 +42,9 @@ class QueryController {
    */
   async getComprehensiveQuery(req, res) {
     try {
+      const scopeError = validateRequestedStoreScope(req, res)
+      if (scopeError) return scopeError
+
       // 验证查询参数
       await this.queryService.validateQueryFilters(req.query)
 
@@ -48,6 +79,9 @@ class QueryController {
    */
   async getStatistics(req, res) {
     try {
+      const scopeError = validateRequestedStoreScope(req, res)
+      if (scopeError) return scopeError
+
       // 获取用户关联的门店ID（用于数据权限过滤）
       const userStoreId = req.user?.store_id || null
       const userStoreIds = req.user?.store_ids || []
@@ -153,6 +187,9 @@ class QueryController {
    */
   async exportToExcel(req, res) {
     try {
+      const scopeError = validateRequestedStoreScope(req, res)
+      if (scopeError) return scopeError
+
       // 验证查询参数
       await this.queryService.validateQueryFilters(req.query)
 
@@ -193,7 +230,13 @@ class QueryController {
   async getQueryOptions(req, res) {
     try {
       // 从数据库获取各种选项数据
-      const optionsData = await this.queryService.getQueryOptions()
+      const userStoreIds = Array.isArray(req.user?.store_ids)
+        ? req.user.store_ids.map(Number).filter(id => Number.isInteger(id) && id > 0)
+        : []
+      const optionsData = await this.queryService.getQueryOptions({
+        storeIds: userStoreIds,
+        allStores: isSuperAdmin(req.user)
+      })
 
       const options = {
         suppliers: optionsData.suppliers || [], // 从suppliers表获取
@@ -241,8 +284,7 @@ class QueryController {
       const models = await this.queryService.getQueryModels({
         brand_id: req.query.brand_id,
         name: req.query.name,
-        include_id: req.query.include_id,
-        page_size: req.query.page_size
+        include_id: req.query.include_id
       })
       return ApiResponse.success(res, '获取型号成功', models)
     } catch (error) {

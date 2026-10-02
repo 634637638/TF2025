@@ -125,7 +125,7 @@
                 {{ item.specs }}
               </p>
               <div class="item-footer">
-                <span class="item-price">¥{{ parseFloat(item.sale_price).toFixed(2) }}</span>
+                <span class="item-price">¥{{ formatAmount(item.sale_price) }}</span>
                 <span class="item-quantity">x{{ item.quantity }}</span>
               </div>
             </div>
@@ -137,7 +137,7 @@
       <div class="section price-section">
         <div class="price-row">
           <span>商品总额</span>
-          <span>¥{{ parseFloat(orderData.total_amount).toFixed(2) }}</span>
+          <span>¥{{ formatAmount(orderData.total_amount) }}</span>
         </div>
         <div class="price-row">
           <span>运费</span>
@@ -145,7 +145,7 @@
         </div>
         <div class="price-row total">
           <span>应付金额</span>
-          <span class="total-amount">¥{{ parseFloat(orderData.total_amount).toFixed(2) }}</span>
+          <span class="total-amount">¥{{ formatAmount(orderData.total_amount) }}</span>
         </div>
       </div>
 
@@ -210,7 +210,7 @@
           <!-- 订单金额 -->
           <div class="order-amount">
             <span class="label">订单金额</span>
-            <span class="amount">¥{{ parseFloat(orderData?.total_amount || 0).toFixed(2) }}</span>
+            <span class="amount">¥{{ formatAmount(orderData?.total_amount) }}</span>
           </div>
 
           <!-- 支付方式选项 -->
@@ -404,7 +404,7 @@
       <template #footer>
         <div
           v-if="paymentStep === 'select'"
-          class="dialog-footer"
+          class="tf-dialog-actions dialog-footer"
         >
           <el-button
             type="default"
@@ -423,7 +423,7 @@
         </div>
         <div
           v-else
-          class="dialog-footer"
+          class="tf-dialog-actions dialog-footer"
         >
           <el-button
             type="default"
@@ -446,12 +446,13 @@
 </template>
 
 <script setup lang="ts">
+import { confirmAction } from '@/utils/message-box'
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { getOrderByNumber, getPublicConfig, cancelOrder, confirmPayment } from '@/api/shop-public'
 import { TimeUtil } from '@/utils/time'
-import { formatDateTime as formatGlobalDateTime } from '@/utils/format'
+import { formatAmount, formatDateTime as formatGlobalDateTime } from '@/utils/format'
 import Image from '@/components/Image.vue'
 import SectionLoading from '@/components/SectionLoading.vue'
 import { formatImageUrl } from '@/utils/format'
@@ -672,7 +673,7 @@ const completePayment = async () => {
 // 取消订单
 const handleCancelOrder = async () => {
   try {
-    await ElMessageBox.confirm(
+    await confirmAction(
       '取消后订单将无法恢复，是否继续？',
       '取消订单',
       {
@@ -975,14 +976,11 @@ onUnmounted(() => {
 :deep(.payment-dialog) {
   border-radius: 16px;
   overflow: hidden;
-
-  .el-dialog__body {
-    padding: 10px 20px 20px;
-  }
-
-  .el-dialog__footer {
-    padding: 0 20px 20px;
-  }
+  --tf-dialog-body-padding-inline: var(--tf-space-5);
+  --tf-dialog-body-padding-block: var(--tf-space-3) var(--tf-space-5);
+  --tf-dialog-footer-padding-inline: var(--tf-space-5);
+  --tf-dialog-footer-padding-block-start: 0px;
+  --tf-dialog-footer-padding-block-end: var(--tf-space-5);
 }
 
 .payment-dialog-content {
@@ -1231,9 +1229,4 @@ onUnmounted(() => {
   }
 }
 
-.dialog-footer {
-  display: flex;
-  gap: 12px;
-
-}
 </style>

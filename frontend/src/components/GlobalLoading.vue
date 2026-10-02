@@ -99,7 +99,7 @@ export default defineComponent({
   height: 100%;
   min-height: 100dvh;
   box-sizing: border-box;
-  z-index: 9998;
+  z-index: var(--tf-z-loading);
   pointer-events: auto;
 }
 
@@ -240,7 +240,7 @@ export default defineComponent({
   opacity: 0;
 }
 
-@media (max-width: 480px) {
+@media (max-width: 479px) {
   .loading-content {
     width: min(248px, 100%);
     padding: 20px 18px 18px;

@@ -624,7 +624,7 @@ defineExpose({
   }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 479px) {
   .content-wrapper {
     padding: 4px 2px;
   }
@@ -674,17 +674,4 @@ defineExpose({
   }
 }
 
-/* 打印样式 */
-@media print {
-  .mobile-header,
-  .mobile-footer,
-  .fab-container,
-  .sidebar-mobile {
-    display: none !important;
-  }
-
-  .main-content {
-    padding-left: 0 !important;
-  }
-}
 </style>

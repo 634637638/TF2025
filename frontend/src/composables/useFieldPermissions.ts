@@ -1,4 +1,4 @@
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { unifiedApi as api } from '@/utils/unified-api'
 import { extractResponseData } from '@/utils/api-response'
@@ -22,6 +22,15 @@ export function useFieldPermissions() {
   const authStore = useAuthStore()
   const loading = ref(false)
   const permissions = ref<Record<string, ModuleFieldPermissions>>({})
+
+  watch(
+    () => [authStore.isAuthenticated, authStore.user?.id] as const,
+    ([isAuthenticated], previousValue) => {
+      if (!isAuthenticated || (previousValue && previousValue[1] !== authStore.user?.id)) {
+        permissions.value = {}
+      }
+    }
+  )
 
   const getNormalizedModuleKeys = (moduleKey: string) => {
     const normalizedKeys = new Set<string>()

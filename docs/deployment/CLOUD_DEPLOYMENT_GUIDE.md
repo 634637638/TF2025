@@ -1,6 +1,7 @@
-# TF2025 云端部署指南
+# TF2025 全云端部署参考
 
-本文档详细说明如何将 TF2025 项目部署到云端服务器。
+本文仅适用于前后端均迁至同一云环境或云服务器的替代部署场景，不描述当前“外部 HTTPS 前端代理到家庭后端”的运行拓扑。当前实际部署优先按[部署文档索引](INDEX.md)和[宝塔前端部署说明](BAOTA_DEPLOYMENT_GUIDE.md)核对。本文出现的域名、证书、数据库地址和目录均为示例，不代表线上实际配置。
+> 后端 `.env` 文件包含数据库和签名密钥等私密配置，只能保存在服务器；不要提交、粘贴或打包进前端。详见[环境配置与密钥管理](../security/ENVIRONMENT_SECRETS.md)。
 
 ## 目录
 
@@ -27,16 +28,16 @@
                      │
                      ▼
 ┌─────────────────────────────────────────────────────────┐
-│                    Nginx 反向代理                          │
-│  前端: v6.cn9527.cn:33336                                 │
-│  API:  api.cn9527.cn:3001                                │
+│                    云服务器 Nginx 反向代理                  │
+│  前端: https://app.example.com                             │
+│  API:   https://app.example.com/api/                       │
 └────────┬──────────────────────────────┬─────────────────┘
          │                              │
          ▼                              ▼
 ┌──────────────────┐          ┌──────────────────┐
 │   Vue 3 前端      │          │  Node.js 后端     │
 │   静态文件        │          │  Express API      │
-│   端口: 33336     │          │  端口: 3001       │
+│   Nginx 提供      │          │  监听 127.0.0.1:3000 │
 └──────────────────┘          └────────┬─────────┘
                                        │
                                        ▼
@@ -123,8 +124,7 @@ npm run install:all
 # 复制环境变量模板
 cd backend
 cp .env.example .env.production
-
-# 编辑生产环境配置
+# 仅在服务器本机编辑；该文件含密钥，不要提交到 Git
 nano .env.production
 ```
 
@@ -143,8 +143,8 @@ DB_CONNECTION_LIMIT=20
 JWT_SECRET=your_very_secure_jwt_secret_key_at_least_32_characters_long_change_me
 JWT_EXPIRES_IN=24h
 
-# 服务器配置
-PORT=3001
+# 后端 Node.js 监听端口
+PORT=3000
 NODE_ENV=production
 
 # 日志配置
@@ -196,37 +196,9 @@ NODE_ENV=production node server.js
 ### 2. 使用 PM2 管理进程
 
 ```bash
-# 创建 PM2 配置文件
-cat > ecosystem.config.js << 'EOF'
-module.exports = {
-  apps: [{
-    name: 'tf2025-backend',
-    script: './server.js',
-    cwd: '/var/www/tf2025/backend',
-    instances: 2,
-    exec_mode: 'cluster',
-    env: {
-      NODE_ENV: 'production',
-      PORT: 3001
-    },
-    error_file: '/var/log/tf2025/backend-error.log',
-    out_file: '/var/log/tf2025/backend-out.log',
-    log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
-    merge_logs: true,
-    autorestart: true,
-    max_restarts: 10,
-    min_uptime: '10s',
-    max_memory_restart: '500M'
-  }]
-}
-EOF
-
-# 创建日志目录
-sudo mkdir -p /var/log/tf2025
-sudo chown $USER:$USER /var/log/tf2025
-
-# 启动应用
-pm2 start ecosystem.config.js
+# 在 backend/.env.production 配好服务器本地密钥后，使用仓库跟踪的生产配置启动
+cd /var/www/tf2025/backend
+pm2 start ecosystem.production.config.js --env production
 
 # 保存 PM2 配置
 pm2 save
@@ -245,8 +217,8 @@ pm2 status
 # 查看日志
 pm2 logs tf2025-backend
 
-# 测试 API
-curl http://localhost:3001/api/health
+# 测试 Node 后端健康检查
+curl http://127.0.0.1:3000/health
 ```
 
 ---
@@ -260,7 +232,8 @@ cd /var/www/tf2025/frontend
 
 # 创建生产环境配置
 cat > .env.production << 'EOF'
-VITE_API_BASE_URL=https://api.cn9527.cn
+# 浏览器请求同源 /api，由云服务器 Nginx 代理到本机 Node :3000
+VITE_API_BASE_URL=/api
 VITE_APP_TITLE=TF2025 销售管理系统
 VITE_APP_ENV=production
 EOF
@@ -334,7 +307,7 @@ sudo systemctl reload nginx
 ```nginx
 # TF2025 后端 Nginx 配置
 upstream tf2025_backend {
-    server 127.0.0.1:3001;
+    server 127.0.0.1:3000;
     keepalive 64;
 }
 
@@ -677,7 +650,7 @@ npm run migrate:shop-media -- --apply
 
 ```bash
 # 查看端口占用
-sudo netstat -tlnp | grep :3001
+sudo netstat -tlnp | grep :3000
 
 # 杀死占用进程
 sudo kill -9 <PID>
@@ -698,7 +671,7 @@ sudo chmod -R 755 /var/www/tf2025
 检查后端服务是否运行：
 ```bash
 pm2 status
-curl http://localhost:3001/api/health
+curl http://localhost:3000/health
 ```
 
 ### 4. 前端白屏

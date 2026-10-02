@@ -25,16 +25,16 @@
       class="sort-order-cell"
     >
       <div class="sort-order-wrapper">
-        <input
+        <el-input-number
           v-if="isEditing"
-          v-model.number="localSortOrder"
-          type="number"
-          class="sort-order-input"
-          min="0"
-          max="9999"
+          v-model="localSortOrder"
+          class="sort-order-control"
+          :min="0"
+          :max="9999"
+          :controls="false"
           @blur="handleSortOrderChange"
           @keyup.enter="handleSortOrderChange"
-        >
+        />
         <span
           v-else
           class="sort-order-display"
@@ -226,19 +226,7 @@ const handleSortOrderChange = () => {
   }
 }
 
-.sort-order-input {
+.sort-order-control {
   width: 50px;
-  height: 28px;
-  padding: 0 6px;
-  border: 1px solid var(--tf-color-blue-500);
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 600;
-  text-align: center;
-  outline: none;
-
-  &:focus {
-    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
-  }
 }
 </style>

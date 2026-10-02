@@ -234,8 +234,8 @@
                 v-model="register_date_range"
                 start-placeholder="注册开始日期"
                 end-placeholder="注册结束日期"
-                value-format="YYYY-MM-DD"
-                format="YYYY-MM-DD"
+                :value-format="TIME_FORMATS.DATE"
+                :format="TIME_FORMATS.DATE"
                 clearable
                 @change="handleDateRangeChange"
               />
@@ -718,7 +718,7 @@
                   :min="1"
                   :precision="2"
                   :step="100"
-                  controls-position="right"
+                  :controls="false"
                   class="points-ratio-input"
                 />
                 <span>元 = 1 积分</span>
@@ -965,8 +965,8 @@
                     type="date"
                     placeholder="请选择生日"
                     class="w-full"
-                    format="YYYY-MM-DD"
-                    value-format="YYYY-MM-DD"
+                    :format="TIME_FORMATS.DATE"
+                    :value-format="TIME_FORMATS.DATE"
                     :disabled="!canEditField('birthday')"
                   />
                 </el-form-item>
@@ -1064,10 +1064,10 @@
                   <el-input-number
                     v-model="customerForm.balance"
                     :precision="2"
-                    :step="0.01"
-                    :min="0"
-                    placeholder="请输入余额"
-                    controls-position="right"
+                  :step="0.01"
+                  :min="0"
+                  placeholder="请输入余额"
+                  :controls="false"
                     class="w-full"
                     :disabled="!canEditField('balance')"
                   />
@@ -1676,7 +1676,7 @@ import { useSearchHighlight } from '@/composables/useSearchHighlight'
 import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { unifiedApi } from '@/utils/unified-api'
 import { useMobile } from '@/composables/mobile'
-import { ElButton, ElMessageBox, ElTable } from 'element-plus'
+import { ElButton, ElTable } from 'element-plus'
 import Pagination from '../../components/Pagination.vue'
 import CitySelector from '../../components/CitySelector.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
@@ -1828,7 +1828,7 @@ const canManagePoints = computed(() => hasPermission('manage'))
 
 // 路由和状态管理
 const _router = useRouter()
-const { success, error, warning, info, handleApiError } = useNotification({ debounce: true })
+const { success, error, warning, info, handleApiError, confirm } = useNotification({ debounce: true })
 const { refreshing, refresh } = useRefreshData()
 const { init: initFieldPermissions } = fieldPermissions
 const { isMobile } = useMobile()
@@ -2936,16 +2936,15 @@ const deleteCustomer = async (customer: CustomerListItem) => {
   }
 
   try {
-    await ElMessageBox.confirm(
+    if (!await confirm(
       `确定删除客户 "${customer.name}" 吗？此操作不可恢复。`,
       '删除确认',
       {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
-        type: 'warning',
-        customClass: 'message-box-unified'
+        type: 'warning'
       }
-    )
+    )) return
   } catch {
     return
   }
@@ -3102,7 +3101,7 @@ const formatCustomerRegion = (
 const formatNumber = (num: number | string) => {
   const n = typeof num === 'string' ? parseFloat(num) : num
   if (isNaN(n)) return '0'
-  return n.toFixed(2)
+  return n.toFixed(2).replace(/\.?(?:0)+$/, '') || '0'
 }
 
 
@@ -3142,34 +3141,6 @@ onUnmounted(() => {
   height: 100%;
   min-height: 100vh;
   background: var(--el-bg-color-page);
-}
-
-.permission-loading {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 50vh;
-
-  .loading-spinner {
-    width: 40px;
-    height: 40px;
-    border: 4px solid var(--el-border-color-lighter);
-    border-top: 4px solid var(--el-color-primary);
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin-bottom: 16px;
-  }
-
-  p {
-    color: var(--el-text-color-regular);
-    margin: 0;
-  }
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
 }
 
 .page-content {
@@ -3495,7 +3466,7 @@ onUnmounted(() => {
 }
 
 // 小屏幕手机适配（小于480px）
-@media (max-width: 480px) {
+@media (max-width: 479px) {
   .page-body {
     padding: 0;
   }
@@ -3927,7 +3898,7 @@ onUnmounted(() => {
 }
 
 // 移动端响应式样式
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .customers-dialog-form {
     :deep(.el-row) {
       margin-left: 0 !important;
@@ -4155,7 +4126,7 @@ onUnmounted(() => {
 
 }
 
-@media (max-width: 480px) {
+@media (max-width: 479px) {
   .customers-form-dialog,
   .customers-detail-dialog {
     --dialog-side-gap: 4px;

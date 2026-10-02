@@ -28,13 +28,13 @@
           {{ preorder.imei || '-' }}
         </el-descriptions-item>
         <el-descriptions-item label="定金">
-          ¥{{ preorder.deposit_amount?.toFixed(2) }}
+          ¥{{ formatAmount(preorder.deposit_amount) }}
         </el-descriptions-item>
         <el-descriptions-item label="约定价格">
-          ¥{{ preorder.total_price?.toFixed(2) || '-' }}
+          ¥{{ formatAmount(preorder.total_price) }}
         </el-descriptions-item>
         <el-descriptions-item label="尾款">
-          ¥{{ (preorder.remaining_amount || 0).toFixed(2) }}
+          ¥{{ formatAmount(preorder.remaining_amount) }}
         </el-descriptions-item>
       </el-descriptions>
 
@@ -49,6 +49,7 @@
             v-model="formData.actual_price"
             :min="0"
             :precision="2"
+            :controls="false"
             style="width: 100%"
           />
         </el-form-item>
@@ -86,6 +87,7 @@
 import { ref, reactive, computed, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { preorderApi, Preorder } from '@/api/preorder'
+import { formatAmount } from '@/utils/format'
 import type { ModalProps, SuccessEmits, UpdateVisibleEmits } from '@/types'
 
 interface Props extends ModalProps {

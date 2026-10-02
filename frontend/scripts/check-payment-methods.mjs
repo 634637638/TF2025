@@ -22,6 +22,23 @@ if (existsSync(configPath)) {
       findings.push(`公共支付配置缺少兼容值：${requiredValue}`)
     }
   }
+
+  const readOptionValues = (constantName) => {
+    const block = config.match(new RegExp(`export const ${constantName}[^=]*= \\[([\\s\\S]*?)\\n\\]`))
+    if (!block) return null
+    return {
+      values: [...block[1].matchAll(/value: '([^']+)'/g)].map(match => match[1]),
+      raw: block[1]
+    }
+  }
+  const expectedSalesMethods = ['cash', 'mobile', 'bank_card', 'subsidy_card']
+  for (const constantName of ['SALE_PAYMENT_METHODS', 'BATCH_SALE_PAYMENT_METHODS']) {
+    const optionSet = readOptionValues(constantName)
+    const isBatchAlias = constantName === 'BATCH_SALE_PAYMENT_METHODS' && optionSet?.raw.includes('...SALE_PAYMENT_METHODS') && !optionSet.raw.includes("value: 'transfer'")
+    if (!optionSet || (!isBatchAlias && optionSet.values.join(',') !== expectedSalesMethods.join(','))) {
+      findings.push(`${constantName} 必须严格包含现金、移动支付、银行卡、国补刷卡四种顶层方式，银行转账只能作为银行卡渠道`)
+    }
+  }
 }
 
 if (findings.length) {

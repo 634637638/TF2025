@@ -25,7 +25,7 @@ export const formatInventoryPrice = (price?: number | string): string => {
   if (Number.isInteger(numericPrice) || numericPrice % 1 === 0) {
     return Math.floor(numericPrice).toString()
   }
-  return numericPrice.toFixed(2)
+  return numericPrice.toFixed(2).replace(/\.?(?:0)+$/, '') || '0'
 }
 
 export const getInventoryDaysClass = (days: number): string => {

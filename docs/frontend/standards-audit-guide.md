@@ -12,7 +12,16 @@
 npm run check:standards
 ```
 
-该命令首先运行规范覆盖审计，再依次运行统一 UI 结构、TAB、按钮、表格、加载动画、空状态和数据实时性审计。任意一项失败都会返回非零退出码，并停止后续启动或构建。
+该命令首先运行规范覆盖审计，再依次运行时间工具、交互、表单控件、公共组件采用率、类型检查、后端安全、运行时模式、样式债务、字段一致性、Lint、权限、统一 UI 结构、TAB、按钮、表格、加载动画、空状态、数据实时性和支付方式审计。任意一项失败都会返回非零退出码，并停止后续启动或构建。
+
+时间工具审计可单独运行：
+
+```bash
+cd frontend
+npm run check:time
+```
+
+`check:time` 检查业务代码是否重复直接定义日期格式、调用浏览器日期本地化 API，或把日期-only 值误当作 ISO 时间。`Date.now()` 在缓存、性能、手势、限流和请求去重等技术计时场景仍然允许；时间处理边界见[全局时间工具与日期格式规范](./time-standards.md)。
 
 空状态审计可单独运行：
 
@@ -35,6 +44,24 @@ npm run check:ui
 ```
 
 `check:ui` 检查 Dialog 公共正文与 footer 入口、统一搜索根组件、公共分页组件、后台页面根结构和页面私有公共选择器覆盖。页面直接使用 `el-pagination`、覆盖 `.unified-search-panel` / `.tf-pagination` / `.tf-dialog-actions`，或使用 `PageHeader` 却没有 `admin-page` 与 `admin-page-content`，都会失败。
+
+公共组件采用率审计可单独运行：
+
+```bash
+cd frontend
+npm run check:component-adoption
+```
+
+`check:component-adoption` 登记原生 `button` 的公共实现和专用控件例外，并检查 `DataEmptyState`、`UnifiedSearchPanel`、`Pagination`、`MobileDialog` 和加载组件入口存在。后台普通命令按钮、新增列表搜索和新增分页不得绕开对应公共入口。
+
+弹窗采用率审计可单独运行：
+
+```bash
+cd frontend
+npm run check:dialogs
+```
+
+`check:dialogs` 登记必须保留直接 `el-dialog` 的工作台例外，并要求这些弹窗声明业务 class；未登记的直接 `el-dialog` 必须迁移到 `MobileDialog`。
 
 表格审计也可单独运行：
 

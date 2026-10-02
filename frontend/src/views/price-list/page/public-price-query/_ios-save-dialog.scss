@@ -1,0 +1,98 @@
+// iOS 图片保存弹窗样式
+.ios-save-image {
+  -webkit-touch-callout: default !important;
+  -webkit-user-select: auto !important;
+  user-select: auto !important;
+  pointer-events: auto !important;
+  touch-action: auto !important;
+}
+
+.ios-image-dialog {
+  .el-dialog__body {
+    padding: 10px 20px 20px;
+  }
+
+  .ios-save-container {
+    .success-message {
+      text-align: center;
+      padding: 12px 20px;
+      background: var(--tf-color-green-ios);
+      color: white;
+      border-radius: 25px;
+      font-size: 14px;
+      font-weight: 500;
+      margin-bottom: 20px;
+    }
+
+    .instructions {
+      text-align: center;
+      padding: 20px;
+      background: var(--tf-color-surface-muted);
+      border-radius: 12px;
+      margin-bottom: 20px;
+
+      h3 {
+        font-size: 16px;
+        color: var(--text-primary);
+        margin: 0 0 15px 0;
+      }
+
+      p {
+        font-size: 13px;
+        color: var(--text-secondary);
+        line-height: 1.8;
+        margin: 5px 0;
+
+        .highlight {
+          color: var(--tf-color-blue-bootstrap);
+          font-weight: 600;
+        }
+      }
+    }
+
+    .image-wrapper {
+      text-align: center;
+      border-radius: 8px;
+      overflow: hidden;
+      background: white;
+
+      img {
+        max-width: 100%;
+        height: auto;
+        display: block;
+        margin: 0 auto;
+      }
+
+      .ios-save-image {
+        -webkit-touch-callout: default !important;
+        -webkit-user-select: auto !important;
+        user-select: auto !important;
+        pointer-events: auto !important;
+        touch-action: auto !important;
+      }
+    }
+  }
+}
+
+@media (max-width: 767px) {
+  .ios-image-dialog {
+    .el-dialog {
+      width: 95% !important;
+      margin: 20px auto !important;
+    }
+
+    .ios-save-container {
+      .instructions {
+        padding: 15px;
+
+        h3 {
+          font-size: 14px;
+        }
+
+        p {
+          font-size: 12px;
+        }
+      }
+    }
+  }
+}

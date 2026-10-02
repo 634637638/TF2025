@@ -141,17 +141,4 @@ onMounted(async () => {
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
   padding: 32px 2rem;
 }
-
-.optimization-empty-state {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 260px;
-  padding: 24px;
-  background: white;
-  border-radius: 12px;
-  color: var(--color-text-regular);
-  text-align: center;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-}
 </style>

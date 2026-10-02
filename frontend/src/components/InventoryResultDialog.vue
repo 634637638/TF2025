@@ -1,37 +1,15 @@
 <template>
-  <Teleport to="body">
-    <transition name="inventory-mobile-fade">
-      <div
-        v-if="visible && isMobile"
-        class="inventory-mobile-overlay"
-        :style="mobileViewportStyle"
-        @click.self="handleClose"
-      >
-        <div class="inventory-mobile-sheet">
-          <div class="inventory-mobile-header">
-            <div class="inventory-mobile-title">
-              {{ product.brand }} {{ product.model }} 在库明细
-            </div>
-            <button
-              type="button"
-              class="inventory-mobile-close"
-              @click="handleClose"
-            >
-              <i class="el-icon">
-                <svg
-                  viewBox="0 0 1024 1024"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    fill="currentColor"
-                    d="M764.288 214.656a42.624 42.624 0 0 1 60.224 60.288L572.16 527.104l252.352 252.224a42.624 42.624 0 1 1-60.224 60.288L512 587.392 259.648 839.616a42.624 42.624 0 1 1-60.224-60.288l252.352-252.224L199.424 274.944a42.624 42.624 0 0 1 60.224-60.288L512 466.88z"
-                  />
-                </svg>
-              </i>
-            </button>
-          </div>
-
-          <div class="inventory-mobile-body">
+  <MobileDialog
+    v-if="isMobile"
+    v-model="visible"
+    :title="`${product.brand} ${product.model} 在库明细`"
+    width="600px"
+    :force-fullscreen="true"
+    :close-on-click-modal="true"
+    dialog-class="inventory-result-dialog"
+    :show-default-footer="false"
+  >
+    <div class="inventory-mobile-body">
             <div class="product-header mobile-only">
               <div class="product-info">
                 <div class="product-main">
@@ -85,6 +63,7 @@
                 <div class="item-content">
                   <div class="item-header">
                     <span class="store-name">{{ item.store_name }}</span>
+                    <span class="supplier-name">{{ item.supplier_name || '未关联' }}</span>
                     <span class="date">{{ item.inventory_date }}</span>
                   </div>
                   <div class="item-details">
@@ -103,21 +82,16 @@
                 </div>
               </div>
 
-              <div
+              <DataEmptyState
                 v-if="!loading && inventoryData.length === 0"
-                class="empty-result"
-              >
-                <DataEmptyState description="暂无在库明细" />
-              </div>
+                description="暂无在库明细"
+              />
             </div>
-          </div>
-        </div>
-      </div>
-    </transition>
-  </Teleport>
+    </div>
+  </MobileDialog>
 
   <MobileDialog
-    v-if="!isMobile"
+    v-else
     v-model="visible"
     :title="`${product.brand} ${product.model} 在库明细`"
     width="600px"
@@ -179,6 +153,7 @@
         <div class="item-content">
           <div class="item-header">
             <span class="store-name">{{ item.store_name }}</span>
+            <span class="supplier-name">{{ item.supplier_name || '未关联' }}</span>
             <span class="date">{{ item.inventory_date }}</span>
           </div>
           <div class="item-details">
@@ -197,19 +172,16 @@
         </div>
       </div>
 
-      <div
+      <DataEmptyState
         v-if="!loading && inventoryData.length === 0"
-        class="empty-result"
-      >
-        <DataEmptyState description="暂无在库明细" />
-      </div>
+        description="暂无在库明细"
+      />
     </div>
   </MobileDialog>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
-import type { CSSProperties } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { unifiedApi } from '@/utils/unified-api'
 import { extractResponseData } from '@/utils/api-response'
@@ -270,22 +242,10 @@ const emit = defineEmits<Emits>()
 const visible = ref(props.modelValue)
 const loading = ref(false)
 const inventoryData = ref<InventoryItem[]>([])
-const mobileViewportHeight = ref(0)
 const { isMobile } = useMobile()
 
 // 计算属性
 const totalCount = computed(() => inventoryData.value.length)
-const mobileViewportStyle = computed<CSSProperties>(() => {
-  if (!mobileViewportHeight.value) return {}
-
-  return {
-    '--inventory-viewport-height': `${mobileViewportHeight.value}px`
-  }
-})
-
-const syncMobileViewportHeight = () => {
-  mobileViewportHeight.value = Math.round(window.visualViewport?.height || window.innerHeight)
-}
 
 watch(() => props.modelValue, (newVal) => {
   visible.value = newVal
@@ -296,9 +256,6 @@ watch(() => props.modelValue, (newVal) => {
 
 watch(visible, (newVal) => {
   emit('update:modelValue', newVal)
-  if (isMobile.value) {
-    document.body.style.overflow = newVal ? 'hidden' : ''
-  }
 })
 
 // 方法
@@ -350,10 +307,6 @@ if (visible.value) {
   loadData()
 }
 
-const handleClose = () => {
-  visible.value = false
-}
-
 const getDaysClass = (days: number) => {
   if (days >= 30) return 'days-critical'
   if (days >= 20) return 'days-warning'
@@ -367,145 +320,12 @@ const getDeviceIdentifier = (item: InventoryItem) => {
   return String(item.serial_number || item.imei || '未录入').trim()
 }
 
-onMounted(() => {
-  syncMobileViewportHeight()
-  window.addEventListener('resize', syncMobileViewportHeight)
-  window.addEventListener('orientationchange', syncMobileViewportHeight)
-  window.visualViewport?.addEventListener('resize', syncMobileViewportHeight)
-})
-
-onUnmounted(() => {
-  window.removeEventListener('resize', syncMobileViewportHeight)
-  window.removeEventListener('orientationchange', syncMobileViewportHeight)
-  window.visualViewport?.removeEventListener('resize', syncMobileViewportHeight)
-  document.body.style.overflow = ''
-})
 </script>
 
 <style lang="scss" scoped>
-.inventory-mobile-overlay {
-  position: fixed;
-  inset: 0 0 auto;
-  box-sizing: border-box;
-  height: var(--inventory-viewport-height, 100vh);
-  height: var(--inventory-viewport-height, 100dvh);
-  z-index: 10000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: max(24px, env(safe-area-inset-top)) 4px max(24px, env(safe-area-inset-bottom));
-  background: rgba(15, 23, 42, 0.42);
-  backdrop-filter: blur(6px);
-  overflow-y: auto;
-}
-
-.inventory-mobile-sheet {
-  width: 100%;
-  max-width: 100%;
-  max-height: calc(var(--inventory-viewport-height, 100vh) - 48px);
-  display: flex;
-  flex-direction: column;
-  background: var(--color-bg-white);
-  border-radius: 18px;
-  box-shadow: 0 24px 48px rgba(15, 23, 42, 0.22);
-  overflow: hidden;
-}
-
-.inventory-mobile-header {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 68px;
-  padding: 12px 52px 12px 16px;
-  background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
-  color: var(--color-bg-white);
-}
-
-.inventory-mobile-title {
-  font-size: 17px;
-  font-weight: 700;
-  line-height: 1.35;
-  text-align: center;
-}
-
-.inventory-mobile-close {
-  position: absolute;
-  top: 50%;
-  right: 12px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  padding: 0;
-  border: none;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.18);
-  color: var(--color-bg-white);
-  transform: translateY(-50%);
-}
-
-.inventory-mobile-close .el-icon,
-.inventory-mobile-close svg {
-  width: 18px;
-  height: 18px;
-}
-
 .inventory-mobile-body {
-  flex: 1 1 auto;
   min-height: 0;
-  padding: 10px 8px max(12px, env(safe-area-inset-bottom));
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-}
-
-.inventory-mobile-fade-enter-active,
-.inventory-mobile-fade-leave-active {
-  transition: opacity 0.2s ease;
-}
-
-.inventory-mobile-fade-enter-from,
-.inventory-mobile-fade-leave-to {
-  opacity: 0;
-}
-
-:deep(.inventory-result-dialog) {
-  .el-dialog {
-    overflow: hidden !important;
-    width: min(96vw, 600px) !important;
-    max-width: min(96vw, 600px) !important;
-  }
-
-  .el-dialog__header {
-    padding: 12px 0 0 !important;
-  }
-
-  .el-dialog__body {
-    padding: 10px 0 0 !important;
-    background: var(--color-bg-white) !important;
-  }
-
-}
-
-:deep(.el-dialog.inventory-result-dialog) {
-  display: flex;
-  flex-direction: column;
-  max-height: calc(100vh - 64px);
-  max-height: calc(100dvh - 64px);
-  overflow: hidden;
-}
-
-:deep(.el-dialog.inventory-result-dialog .el-dialog__header) {
-  flex: 0 0 auto;
-}
-
-:deep(.el-dialog.inventory-result-dialog .el-dialog__body) {
-  flex: 1 1 auto;
-  min-height: 0;
-  padding-bottom: 14px !important;
-  overflow-y: auto;
-  overscroll-behavior: contain;
+  padding: 0;
 }
 
 .product-header {
@@ -672,9 +492,9 @@ onUnmounted(() => {
       gap: 6px;
 
       .item-header {
-        display: flex;
+        display: grid;
+        grid-template-columns: minmax(0, 24%) minmax(0, 1fr) auto;
         align-items: center;
-        flex-wrap: nowrap;
         gap: 8px;
         min-width: 0;
 
@@ -682,11 +502,22 @@ onUnmounted(() => {
           font-weight: 600;
           color: var(--tf-color-indigo-brand);
           font-size: 14px;
-          flex: 1 1 auto;
           min-width: 0;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
+          white-space: normal;
+          overflow-wrap: anywhere;
+        }
+
+        .supplier-name {
+          min-width: 0;
+          padding: 3px 9px;
+          border-radius: 999px;
+          background: var(--tf-color-indigo-50);
+          color: var(--tf-color-indigo-700);
+          font-size: 12px;
+          font-weight: 600;
+          white-space: normal;
+          overflow-wrap: anywhere;
+          text-align: center;
         }
 
         .date {
@@ -787,24 +618,11 @@ onUnmounted(() => {
     }
   }
 
-  .empty-result {
-    padding: 40px 20px;
-    text-align: center;
-  }
 }
 
 // 手机端重写：移除旧的缩放/多断点叠加逻辑，按内容自然撑开
-@media (max-width: 768px) {
-  .inventory-mobile-sheet {
-    border-radius: 18px;
-    max-height: calc(var(--inventory-viewport-height, 100vh) - 48px);
-  }
-
-  .inventory-mobile-body {
-    padding: 10px 8px max(12px, env(safe-area-inset-bottom));
-  }
-
-  .inventory-mobile-sheet .product-header {
+@media (max-width: 767px) {
+  .mobile-dialog-sheet-panel.inventory-result-dialog .product-header {
     margin: 0 0 10px 0;
     padding: 12px;
     border-radius: 16px;
@@ -867,7 +685,7 @@ onUnmounted(() => {
     }
   }
 
-  .inventory-mobile-sheet .inventory-list {
+  .mobile-dialog-sheet-panel.inventory-result-dialog .inventory-list {
     padding: 0;
     border-radius: 0;
 
@@ -900,12 +718,18 @@ onUnmounted(() => {
 
       .item-header {
         display: grid;
-        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-columns: minmax(0, 24%) minmax(0, 1fr) auto;
         gap: 8px;
         align-items: center;
 
         .store-name {
           font-size: 13px;
+          line-height: 1.3;
+        }
+
+        .supplier-name {
+          padding: var(--tf-space-1) var(--tf-space-2);
+          font-size: 11px;
           line-height: 1.3;
         }
 
@@ -945,34 +769,7 @@ onUnmounted(() => {
 }
 
 @media (max-width: 390px) {
-  .inventory-mobile-overlay {
-    padding: max(20px, env(safe-area-inset-top)) 2px max(20px, env(safe-area-inset-bottom));
-  }
-
-  .inventory-mobile-sheet {
-    max-height: calc(var(--inventory-viewport-height, 100vh) - 40px);
-  }
-
-  .inventory-mobile-header {
-    min-height: 62px;
-    padding: 10px 46px 10px 12px;
-  }
-
-  .inventory-mobile-title {
-    font-size: 16px;
-  }
-
-  .inventory-mobile-close {
-    right: 10px;
-    width: 34px;
-    height: 34px;
-  }
-
-  .inventory-mobile-body {
-    padding: 8px 4px max(10px, env(safe-area-inset-bottom));
-  }
-
-  .inventory-mobile-sheet .product-header {
+  .mobile-dialog-sheet-panel.inventory-result-dialog .product-header {
     padding: 10px;
 
     .product-info {
@@ -1004,7 +801,7 @@ onUnmounted(() => {
     }
   }
 
-  .inventory-mobile-sheet .inventory-list {
+  .mobile-dialog-sheet-panel.inventory-result-dialog .inventory-list {
     .inventory-item {
       grid-template-columns: 30px minmax(0, 1fr);
       gap: 8px;

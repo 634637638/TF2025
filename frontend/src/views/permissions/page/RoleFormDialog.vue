@@ -12,25 +12,22 @@
       <form @submit.prevent="emit('submit')">
         <div class="form-group">
           <label>角色名称 <span class="required">*</span></label>
-          <input
+          <el-input
             v-model="name"
-            type="text"
-            class="form-control"
+            class="permission-standard-input"
             required
             placeholder="请输入角色名称，如：门店负责人、采购专员、财务审核等"
-          >
+          />
         </div>
         <div class="form-group">
           <label>角色编码</label>
-          <input
+          <el-input
             v-model="code"
-            type="text"
-            class="form-control"
+            class="permission-standard-input"
             :readonly="isEdit"
-            :aria-readonly="isEdit"
             :title="isEdit ? '角色编码创建后不可修改' : ''"
             :placeholder="isEdit ? '' : '请输入稳定编码，如：store_manager，留空则系统自动生成'"
-          >
+          />
           <small class="form-help-text">
             {{ isEdit ? '角色编码是系统稳定标识，创建后不可修改。' : '建议使用字母、数字、下划线、中划线或冒号，留空则系统自动生成。' }}
           </small>

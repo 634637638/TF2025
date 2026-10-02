@@ -43,8 +43,8 @@ export const sortInventorySummary = (
 
 export const sortAvailableSalesPhones = (records: readonly Phone[]): Phone[] => {
   return [...records].sort((left, right) => {
-    const leftInventoryTime = new Date(left.inventory_time || 0).getTime()
-    const rightInventoryTime = new Date(right.inventory_time || 0).getTime()
+    const leftInventoryTime = TimeUtil.toBeijing(left.inventory_time || 0).valueOf()
+    const rightInventoryTime = TimeUtil.toBeijing(right.inventory_time || 0).valueOf()
     if (leftInventoryTime !== rightInventoryTime) {
       return rightInventoryTime - leftInventoryTime
     }
@@ -69,3 +69,4 @@ export const sortAvailableSalesPhones = (records: readonly Phone[]): Phone[] => 
     return (left.color || '').localeCompare(right.color || '')
   })
 }
+import { TimeUtil } from '@/utils/time'

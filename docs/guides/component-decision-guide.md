@@ -2,7 +2,7 @@
 
 > **文档说明**：指导在特定场景下选择合适的组件，确保项目组件使用的一致性
 >
-> **最后更新**：2025-12-20
+> **最后更新**：2026-10-01
 > **版本**：v1.0.0
 > **维护者**：TF2025 开发团队
 
@@ -17,18 +17,19 @@
 | 场景 | 推荐组件 | 理由 | 示例 |
 |------|----------|------|------|
 | 通用业务弹窗 | **MobileDialog** | 响应式设计、功能完整、自动适配移动端 | [示例](#mobiledialog-示例) |
-| 简单确认框 | **ElMessageBox** | Element Plus 内置、快速实现 | [示例](#elmessagebox-示例) |
+| 简单确认框 | **useNotification().confirm()** | 统一文案、按钮和关闭清理 | [示例](#统一确认示例) |
 | 复杂内容弹窗 | **MobileDialog** + 业务内容变体 | 复用统一外壳，内容布局可定制 | [对话框规范](../frontend/dialog-standards.md) |
 | 表单弹窗 | **MobileDialog + MobileForm** | 移动端优化、响应式布局 | [示例](#表单弹窗-示例) |
-| 详情查看弹窗 | **MobileDialog** | 支持拖拽、自动全屏 | [示例](#详情弹窗-示例) |
-| 确认删除弹窗 | **ElMessageBox.confirm** | 标准确认流程 | [示例](#确认弹窗-示例) |
+| 详情查看弹窗 | **MobileDialog** | 支持拖拽和统一移动端模式 | [示例](#详情弹窗-示例) |
+| 确认删除弹窗 | **useNotification().confirm()** | 统一确认流程和关闭清理 | [示例](#统一确认示例) |
 | 全屏展示 | **MobileDialog** + `force-fullscreen` | 移动端自动全屏 | [示例](#全屏弹窗-示例) |
 
 ### 2. 表格组件选择
 
 | 场景 | 推荐组件 | 理由 | 示例 |
 |------|----------|------|------|
-| 标准数据表格 | **MobileTable** | 自动响应式、移动端卡片布局 | [示例](#mobiletable-示例) |
+| 标准后台数据表格 | **el-table.data-table / admin-data-table** | 接入全局表格视觉、滚动和审计 | [表格规范](../frontend/admin-table-standards.md) |
+| 移动端卡片式数据 | **MobileTable** | 仅用于已确认的移动端卡片式场景 | [示例](#mobiletable-示例) |
 | 大数据量表格 | **El-Table-V2** | 虚拟滚动、性能优化 | [示例](#el-table-v2-示例) |
 | 简单列表 | **El-Table** | 基础功能足够 | [示例](#el-table-示例) |
 | 复杂表头表格 | **El-Table** + 自定义列 | 灵活性高 | [示例](#复杂表格-示例) |
@@ -59,7 +60,7 @@
 
 ### 1. 优先级原则
 
-1. **首选统一组件**：优先使用项目封装的组件（MobileDialog、MobileTable、MobileForm）
+1. **首选统一组件**：优先使用项目封装的组件（MobileDialog、公共表格样式、MobileForm）
 2. **其次 Element Plus**：当统一组件不满足需求时，使用 Element Plus 组件
 3. **最后自定义**：在特殊场景下，创建自定义组件
 
@@ -84,7 +85,7 @@
   <MobileDialog
     v-model="visible"
     title="编辑商品"
-    :width="800"
+    width="800px"
     :force-fullscreen="isMobile"
     :draggable="!isMobile"
     @confirm="handleSave"
@@ -104,8 +105,8 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { MobileDialog } from '@/components'
-import { useResponsive } from '@/composables/useResponsive'
+import MobileDialog from '@/components/MobileDialog.vue'
+import { useResponsive } from '@/composables/responsive'
 
 const visible = ref(false)
 const { isMobile } = useResponsive()
@@ -125,15 +126,17 @@ const handleCancel = () => {
 </script>
 ```
 
-### ElMessageBox 示例
+### 统一确认示例
 
 ```typescript
 // 确认删除
-import { ElMessageBox } from 'element-plus'
+import { useNotification } from '@/composables/useNotification'
+
+const { confirm, success } = useNotification()
 
 const handleDelete = async (id: string) => {
   try {
-    await ElMessageBox.confirm(
+    if (await confirm(
       '确定要删除这条记录吗？',
       '删除确认',
       {
@@ -141,13 +144,13 @@ const handleDelete = async (id: string) => {
         cancelButtonText: '取消',
         type: 'warning'
       }
-    )
-
-    // 执行删除
-    await deleteRecord(id)
-    ElMessage.success('删除成功')
+    )) {
+      // 执行删除
+      await deleteRecord(id)
+      success('删除成功')
+    }
   } catch {
-    // 用户取消
+    // 用户取消或确认框关闭
   }
 }
 ```
@@ -173,7 +176,7 @@ const handleDelete = async (id: string) => {
 
 <script setup>
 import { ref } from 'vue'
-import { MobileTable } from '@/components'
+import MobileTable from '@/components/MobileTable.vue'
 
 const tableData = ref([])
 const loading = ref(false)
@@ -211,8 +214,10 @@ const handleAction = ({ action, row }) => {
 >
   <div>内容</div>
   <template #footer>
-    <el-button @click="dialogVisible = false">取消</el-button>
-    <el-button type="primary" @click="handleConfirm">确定</el-button>
+    <div class="tf-dialog-actions">
+      <el-button @click="dialogVisible = false">取消</el-button>
+      <el-button type="primary" @click="handleConfirm">确定</el-button>
+    </div>
   </template>
 </el-dialog>
 
@@ -220,14 +225,18 @@ const handleAction = ({ action, row }) => {
 <MobileDialog
   v-model="dialogVisible"
   title="标题"
-  width="600"
+  width="600px"
   @confirm="handleConfirm"
 >
   <div>内容</div>
 </MobileDialog>
 ```
 
-### 从 el-table 迁移到 MobileTable
+### 移动端卡片式表格场景
+
+`MobileTable` 不是后台主数据表的通用替代品。后台列表仍按
+`admin-table-standards.md` 使用 `el-table.data-table`、`el-table.admin-data-table` 或
+`PaginatedTable`；只有明确需要移动端卡片式呈现时才采用以下组件：
 
 ```vue
 <!-- 迁移前 -->
@@ -294,7 +303,7 @@ const handleAction = ({ action, row }) => {
   :title="dialogTitle"
   :width="dialogWidth"
   :loading="isLoading"
-  :show-footer="true"
+  :show-default-footer="true"
 >
 
 <!-- ❌ 避免：模糊的属性 -->
@@ -347,7 +356,8 @@ A: 当你需要：
 
 ### Q: MobileTable 可以完全替代 el-table 吗？
 
-A: 大部分场景可以，但某些特殊功能可能需要使用 el-table：
+A: 不能完全替代。后台主数据表必须接入公共 `el-table`/`PaginatedTable` 方案；
+`MobileTable` 仅用于明确的移动端卡片式展示。以下场景仍使用公共 `el-table`：
 - 复杂的表头合并
 - 多级表头
 - 自定义的拖拽排序

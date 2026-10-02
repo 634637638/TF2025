@@ -72,10 +72,7 @@
       class="all-data-section"
     >
       <!-- 空数据提示 -->
-      <div
-        v-if="allDataList.length === 0"
-        class="empty-data-section"
-      >
+      <div v-if="allDataList.length === 0">
         <DataEmptyState
           :title="`${currentCheck?.label || '当前数据表'} - 暂无数据`"
           description="该数据表当前没有数据，请先添加数据后再查看"
@@ -469,8 +466,9 @@
 </template>
 
 <script setup lang="ts">
+import { confirmAction } from '@/utils/message-box'
 import { ref, reactive, computed, onMounted } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { dataCheckApi } from '@/api/data-optimization'
 import { extractResponseData } from '@/utils/api-response'
 import { usePagePermissions } from '@/composables/usePagePermissions'
@@ -915,7 +913,7 @@ const handleMergeGroup = async (group: any) => {
       return
     }
 
-    await ElMessageBox.confirm(
+    await confirmAction(
       `确定要将 ${group.duplicates.length} 条重复记录合并到主记录吗？`,
       '确认合并',
       {
@@ -967,7 +965,7 @@ const handleDeleteGroup = async (group: any) => {
       ? `确定要删除 ${group.count - 1} 条重复数据行吗？（保留一条主记录）`
       : `确定要删除 ${group.duplicates.length} 条重复记录吗？`
 
-    await ElMessageBox.confirm(
+    await confirmAction(
       confirmMessage,
       '确认删除',
       {
@@ -1085,7 +1083,7 @@ const handleMergeSelected = async () => {
     confirmMessage += '✓ 关联的数据会自动更新到主记录\n\n'
     confirmMessage += groupsToMerge.map(g => `- 保留 "${g.primary_name}"，合并 ${g.count} 条记录`).join('\n')
 
-    await ElMessageBox.confirm(
+    await confirmAction(
       confirmMessage,
       '确认批量合并',
       {
@@ -1173,7 +1171,7 @@ const handleDeleteSelected = async () => {
 
       const totalToDelete = groupsToCleanup.reduce((sum, g) => sum + g.deleteCount, 0)
 
-      await ElMessageBox.confirm(
+      await confirmAction(
         `确定要删除选中的 ${totalToDelete} 条重复数据行吗？\n\n将保留最早创建的主记录，只删除重复的行。`,
         '确认删除',
         {
@@ -1226,7 +1224,7 @@ const handleDeleteSelected = async () => {
       return
     }
 
-    await ElMessageBox.confirm(
+    await confirmAction(
       `确定要删除选中的 ${deletableIds.length} 条重复记录吗？（主记录已自动过滤，不会被删除）`,
       '确认删除',
       {
@@ -1265,7 +1263,7 @@ const handleCleanupAllDuplicates = async () => {
   }
 
   try {
-    await ElMessageBox.confirm(
+    await confirmAction(
       '此操作将自动清理所有客户的重复数据行（每个ID保留最早创建的记录，删除其余的）。此操作不可撤销，是否继续？',
       '确认清理所有重复行',
       {
@@ -1343,7 +1341,7 @@ const handleDeleteItem = async (item: any, itemIndex: number, group: any) => {
   try {
     // 对于重复数据行类型，需要特殊处理
     if (group.is_duplicate_rows) {
-      await ElMessageBox.confirm(
+      await confirmAction(
         '确定要删除这条重复记录吗？',
         '确认删除',
         {
@@ -1368,7 +1366,7 @@ const handleDeleteItem = async (item: any, itemIndex: number, group: any) => {
     }
 
     // 常规删除
-    await ElMessageBox.confirm(
+    await confirmAction(
       '确定要删除这条记录吗？',
       '确认删除',
       {
@@ -1677,36 +1675,6 @@ onMounted(() => {
   background: var(--tf-color-surface);
   border-radius: 8px;
   padding: 20px;
-
-  // 空数据状态
-  .empty-data-section {
-    background: white;
-    border-radius: 8px;
-    padding: 60px 20px;
-    text-align: center;
-
-    .empty-state {
-      i {
-        font-size: 80px;
-        color: var(--color-border);
-        margin-bottom: 20px;
-        display: block;
-      }
-
-      h3 {
-        font-size: 20px;
-        font-weight: 600;
-        color: var(--color-text-primary);
-        margin: 0 0 12px 0;
-      }
-
-      p {
-        font-size: 14px;
-        color: var(--color-info);
-        margin: 0 0 24px 0;
-      }
-    }
-  }
 
   .section-header {
     display: flex;

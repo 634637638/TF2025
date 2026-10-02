@@ -2,15 +2,15 @@
 
 ## 📋 概述
 
-本指南说明如何在前端和后端部署在不同服务器时配置跨域访问。
+本指南说明前后端分离部署方式。优先由前端 Nginx 代理 `/api/` 到后端 API 入口，这样浏览器访问同源地址，不需要 CORS。
 
 ## 🔧 后端 CORS 配置
 
-### 当前配置
+### 后端实现与默认值
 
-后端已经配置了完整的 CORS 支持，位于 `backend/src/middleware/cors.js`。
+后端 CORS 中间件位于 `backend/src/middleware/cors.js`，允许来源默认值由 `backend/src/config/constants.js` 提供。
 
-### 默认允许的域名
+### 默认开发来源
 
 ```javascript
 const allowedOrigins = [
@@ -19,10 +19,11 @@ const allowedOrigins = [
   'http://localhost:3000',  // 备用前端端口
   'http://127.0.0.1:5173',
   'http://127.0.0.1:5176',
-  'http://127.0.0.1:3000',
-  '*'  // 生产环境允许所有来源
+  'http://127.0.0.1:3000'
 ]
 ```
+
+生产环境应只配置可信的准确来源。后端读取 `ALLOWED_ORIGINS`（兼容旧变量 `CORS_ORIGIN`）；直连跨域时必须显式配置准确的 scheme、host 和 port。未提供环境变量时默认只允许源码列出的本地开发来源。开发环境 CORS 中间件较宽松，不应把开发行为当作生产策略。
 
 ### CORS 配置选项
 
@@ -75,7 +76,7 @@ server {
 
     # API 代理到后端（避免跨域）
     location /api/ {
-        proxy_pass http://v4.cn9527.cn:30000/api/;
+        proxy_pass http://v4.cn9527.cn:3000/api/;
         proxy_http_version 1.1;
 
         # 请求头设置
@@ -92,23 +93,6 @@ server {
         proxy_connect_timeout 30s;
         proxy_send_timeout 60s;
         proxy_read_timeout 60s;
-
-        # CORS 头部（如果后端也需要配置）
-        add_header Access-Control-Allow-Origin "$http_origin" always;
-        add_header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS" always;
-        add_header Access-Control-Allow-Headers "DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization" always;
-        add_header Access-Control-Allow-Credentials "true" always;
-
-        # 处理 OPTIONS 预检请求
-        if ($request_method = 'OPTIONS') {
-            add_header Access-Control-Allow-Origin "$http_origin" always;
-            add_header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS" always;
-            add_header Access-Control-Allow-Headers "DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization" always;
-            add_header Access-Control-Allow-Credentials "true" always;
-            add_header Content-Length 0;
-            add_header Content-Type 'text/plain; charset=utf-8';
-            return 204;
-        }
 
         # 支持文件上传
         client_max_body_size 10M;
@@ -132,17 +116,17 @@ VITE_API_TIMEOUT=15000
 
 ### 直接跨域访问配置（不推荐）
 
-如果前端需要直接访问后端 API（不使用 Nginx 代理），配置：
+如确需浏览器直接访问独立 API 域名（不使用 Nginx 代理），配置：
 
 ```bash
 # 生产环境配置
 VITE_NODE_ENV=production
-# 后端服务器的完整地址
-VITE_API_BASE_URL=https://v4.cn9527.cn:30000/api
+# 仅直接跨域访问时才设置后端完整地址；应由后端 ALLOWED_ORIGINS 严格白名单保护
+VITE_API_BASE_URL=https://api.example.com/api
 VITE_API_TIMEOUT=15000
 ```
 
-**注意**：这种情况下，后端必须配置正确的 CORS 允许域名。
+**注意**：这种情况下，后端必须在 `ALLOWED_ORIGINS` 配置前端完整 origin；不得使用 `*`，也不得在代理层反射请求的 `Origin`。
 
 ## 🔍 调试 CORS 问题
 
@@ -228,7 +212,7 @@ curl https://your-backend.com/api/auth/login \
 ┌─────────────────┐
 │   后端服务器     │
 │  (Node.js API)  │
-│ v4.cn9527.cn:30000│
+│ v4.cn9527.cn:3000 │
 └─────────────────┘
          │
          ▼
@@ -241,16 +225,18 @@ curl https://your-backend.com/api/auth/login \
 
 这种架构的优势：
 1. **无跨域问题**：前端通过 Nginx 代理访问后端，同源策略
-2. **安全性更好**：后端不直接暴露给公网
-3. **性能更好**：可以利用 Nginx 缓存和负载均衡
+2. **入口集中**：可在 HTTPS 前端入口统一配置 TLS、请求限制和安全响应头
+3. **部署灵活**：API 可使用 `/api` 相对路径，是否启用缓存或负载均衡需单独配置
 
-## 📝 配置清单
+反向代理只改变浏览器访问路径，不会自动关闭或隐藏可从公网直连的后端地址。若需限制后端网络暴露，必须另外配置防火墙、访问控制或私有网络；当前家庭后端 DDNS/P2P 链路按服务器实际可达性核验。
+
+## 配置清单
 
 部署前检查：
 
-- [ ] 后端 CORS 配置正确
+- [ ] 直连跨域时，后端允许列表包含准确的前端 origin；同源代理时确认后端自定义 Origin 校验与代理链路匹配
 - [ ] 前端 API 基础 URL 配置正确
 - [ ] 前端使用 `withCredentials: true`
-- [ ] 后端返回正确的 CORS 响应头
+- [ ] 只有浏览器直接跨域请求时，才要求验证 CORS 响应头；同源代理不依赖 `Access-Control-Allow-Origin`
 - [ ] 数据库连接配置正确
 - [ ] 防火墙规则正确配置

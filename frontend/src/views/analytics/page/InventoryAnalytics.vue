@@ -250,7 +250,7 @@
       </el-table>
 
       <template #footer>
-        <div class="dialog-footer">
+        <div class="tf-dialog-actions dialog-footer">
           <el-button @click="showLowStockDialog = false">
             关闭
           </el-button>
@@ -1800,7 +1800,7 @@ onBeforeUnmount(() => {
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .inventory-analytics {
     .overview-cards {
       :deep(.el-col) {

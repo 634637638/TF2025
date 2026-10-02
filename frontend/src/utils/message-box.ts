@@ -229,6 +229,47 @@ const normalizeConfirmConfig = (
   }
 }
 
+/**
+ * 统一确认动作入口。
+ *
+ * 与 Element Plus 原生 confirm 保持相同的 Promise 语义：
+ * 确认时 resolve，取消或关闭时 reject，便于历史 try/catch 流程安全迁移。
+ */
+export const confirmAction = async (
+  message: unknown,
+  title?: unknown,
+  options?: MessageBoxOptions
+) => {
+  const { ElMessageBox } = await loadElementPlus()
+  const normalized = normalizeConfirmConfig(message, title, options)
+  return ElMessageBox.confirm(
+    normalized.message as Parameters<typeof ElMessageBox.confirm>[0],
+    normalized.title as Parameters<typeof ElMessageBox.confirm>[1],
+    normalized.options as Parameters<typeof ElMessageBox.confirm>[2]
+  )
+}
+
+/**
+ * 统一信息提示入口，保留 Element Plus alert 的异步行为和配置。
+ */
+export const alertAction = async (
+  message: unknown,
+  title?: unknown,
+  options?: MessageBoxOptions
+) => {
+  const { ElMessageBox } = await loadElementPlus()
+  const resolvedOptions = {
+    ...(options || {}),
+    appendTo: options?.appendTo || (typeof document !== 'undefined' ? document.body : undefined),
+    customClass: mergeCustomClass(options?.customClass, ['message-box-unified'])
+  }
+  return ElMessageBox.alert(
+    message as Parameters<typeof ElMessageBox.alert>[0],
+    title as Parameters<typeof ElMessageBox.alert>[1],
+    resolvedOptions as Parameters<typeof ElMessageBox.alert>[2]
+  )
+}
+
 export const enhanceGlobalMessageBox = async () => {
   if (isEnhanced) {
     return

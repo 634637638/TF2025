@@ -10,6 +10,7 @@ export interface UserFilters {
   role?: string
   status?: string | number
   store_id?: number
+  keyword?: string
 }
 
 export interface UserListResponse {
@@ -44,13 +45,6 @@ export const userApi = {
    */
   getUserProfile: (username: string) => {
     return unifiedApi.get('/users/profile', { params: { username } })
-  },
-
-  /**
-   * 获取操作员列表（销售员）
-   */
-  getOperators: (filters: { store_id?: number } = {}) => {
-    return unifiedApi.get('/users/operators', { params: filters })
   },
 
   /**

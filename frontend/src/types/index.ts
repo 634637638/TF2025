@@ -19,8 +19,11 @@ export interface ApiResponse<T = unknown> {
   code?: string
   pagination?: {
     page: number
-    limit: number
+    page_size: number
     total: number
+    total_pages?: number
+    has_next?: boolean
+    has_prev?: boolean
     stats?: {
       total_records?: number
       total_phones?: number
@@ -32,7 +35,7 @@ export interface ApiResponse<T = unknown> {
   meta?: {
     total?: number
     page?: number
-    limit?: number
+    page_size?: number
     stats?: {
       total_records?: number
       total_phones?: number
@@ -81,9 +84,11 @@ export interface PaginatedResponse<T = unknown> {
   data: T[]
   pagination: {
     page: number
-    limit: number
+    page_size: number
     total: number
-    totalPages: number
+    total_pages: number
+    has_next: boolean
+    has_prev: boolean
   }
   timestamp?: string
 }

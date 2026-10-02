@@ -300,8 +300,9 @@
 </template>
 
 <script setup lang="ts">
+import { confirmAction } from '@/utils/message-box'
 import { ref, computed, onMounted, watch } from 'vue'
-import { ElMessage, ElMessageBox, ElConfigProvider } from 'element-plus'
+import { ElMessage, ElConfigProvider } from 'element-plus'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import { salaryTemplateApi } from '@/api/salary-template'
 import { salaryApi } from '@/api/salary'
@@ -329,7 +330,6 @@ import SalaryEmployeesTab from './page/SalaryEmployeesTab.vue'
 import SalaryPayoutTab from './page/SalaryPayoutTab.vue'
 import SalaryStatsCards from './page/SalaryStatsCards.vue'
 import SalaryTemplatesTab from './page/SalaryTemplatesTab.vue'
-import dayjs from 'dayjs'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import { logger } from '@/utils/logger'
 import { getActionColumnMinWidth, getIdentifierColumnMinWidth, getTextColumnMinWidth } from '@/utils/table-layout'
@@ -497,7 +497,8 @@ const resetMyStats = () => {
 }
 
 const getMonthDateRange = (date?: any) => {
-  const d = date ? dayjs(date) : TimeUtil.now()
+  const parsedDate = date ? TimeUtil.parse(String(date)) : null
+  const d = parsedDate?.isValid() ? parsedDate : TimeUtil.now()
   const year = d.year()
   const month = d.month() + 1
   const lastDay = TimeUtil.endOf(d, 'month').date()
@@ -830,7 +831,7 @@ const handleViewEmployeeSalesDetail = async (row: any) => {
     const [year, month] = monthStr.split('-')
     const startDate = `${year}-${month}-01`
     // 计算该月的最后一天
-    const daysInMonth = TimeUtil.endOf(dayjs(`${year}-${month}-01`), 'month').date()
+    const daysInMonth = TimeUtil.daysInMonth(Number(year), Number(month))
     const endDate = `${year}-${month}-${daysInMonth}`
 
     // 使用专门的员工销售明细API获取该员工的销售明细
@@ -985,7 +986,7 @@ const loadMyRecords = async () => {
       // period_end = 结束月份的最后一天
       const endYear = myPeriodRange.value[1].split('-')[0]
       const endMonth = myPeriodRange.value[1].split('-')[1]
-      const daysInMonth = new Date(parseInt(endYear), parseInt(endMonth), 0).getDate()
+      const daysInMonth = TimeUtil.daysInMonth(Number(endYear), Number(endMonth))
       params.period_end = `${endYear}-${endMonth}-${daysInMonth}`
     }
 
@@ -1089,7 +1090,7 @@ const loadMyStats = async () => {
       : []
 
     const baseSalary = parseFloat(mySalaryInfo?.current_salary || mySalaryInfo?.base_salary || 0) || 0
-    const daysInMonth = new Date(currentYear, currentMonth, 0).getDate()
+    const daysInMonth = TimeUtil.daysInMonth(currentYear, currentMonth)
     const dailySalary = daysInMonth > 0 ? baseSalary / daysInMonth : 0
     const leaveDeduction = dailySalary * (stats.value.myLeaveDays || 0)
     const overtimeRate = parseFloat(myTemplate?.overtime_hourly_rate || 0) || 0
@@ -1371,9 +1372,7 @@ const calculateLeaveDeduction = (employeeId: number, leaveDays: number) => {
   // 根据当前标签页获取选择的月份
   const monthStr = activeTab.value === 'payout' ? payoutMonth.value : employeeSalaryMonth.value
   const [year, month] = monthStr.split('-').map(Number)
-  // new Date(year, month, 0) 会创建 year年month月0日，实际是 year年month-1月的最后一天
-  // 所以要获取 month 月的天数，需要用 month + 1，然后取第0天
-  const daysInMonth = new Date(year, month, 0).getDate()
+  const daysInMonth = TimeUtil.daysInMonth(year, month)
 
   // 使用员工当前底薪（包含工龄涨薪）计算日薪
   const baseSalary = parseFloat(getEmployeeBaseSalary(employeeId)) || 0
@@ -1382,7 +1381,7 @@ const calculateLeaveDeduction = (employeeId: number, leaveDays: number) => {
   const dailySalary = baseSalary / daysInMonth
 
   // 请假扣款 = 日薪 × 请假天数
-  return (dailySalary * leaveDays).toFixed(2)
+  return formatAmount(dailySalary * leaveDays)
 }
 
 // 计算加班费
@@ -1390,7 +1389,7 @@ const calculateOvertimePay = (employeeId: number, overtimeHours: number) => {
   const template = getTemplateById(getEmployeeTemplateId(employeeId))
   if (!template || !overtimeHours) return 0
   const overtimeRate = template.overtime_hourly_rate || 0
-  return (overtimeHours * overtimeRate).toFixed(2)
+  return formatAmount(overtimeHours * overtimeRate)
 }
 
 // 计算预计实发工资
@@ -1413,7 +1412,7 @@ const calculateEstimatedSalary = (employeeId: number) => {
     return '-'
   }
 
-  return estimated.toFixed(2)
+  return formatAmount(estimated)
 }
 
 // 获取员工模板ID
@@ -1455,7 +1454,7 @@ const calculateWorkDays = (employeeId: number) => {
   // 根据当前标签页获取选择的月份
   const monthStr = activeTab.value === 'payout' ? payoutMonth.value : employeeSalaryMonth.value
   const [year, month] = monthStr.split('-').map(Number)
-  const daysInMonth = new Date(year, month, 0).getDate()
+  const daysInMonth = TimeUtil.daysInMonth(year, month)
 
   const stats = getEmployeeAttendanceStats(employeeId)
   // 工作天数 = 当月天数 - 请假天数
@@ -1491,7 +1490,7 @@ const calculateSalesCommission = (employeeId: number) => {
     commission = totalProfit * percentage / 100
   }
 
-  return commission.toFixed(2)
+  return formatAmount(commission)
 }
 
 // 获取员工有提成的机型数量（用于显示）
@@ -1564,8 +1563,8 @@ const getEmployeePayoutRecord = (employeeId: number) => {
 
 const parseTimestamp = (value: any) => {
   if (!value) return null
-  const parsed = dayjs(value)
-  return parsed.isValid() ? parsed.valueOf() : null
+  const parsed = TimeUtil.parse(String(value))
+  return parsed?.isValid() ? parsed.valueOf() : null
 }
 
 const getPayoutSettledTimestamp = (record: any) => {
@@ -1586,7 +1585,7 @@ const getSalaryRecalculationNotice = (employeeId: number) => {
 
   const leaveDateText = stats.latest_leave_record_date ? `请假日期：${stats.latest_leave_record_date}` : '存在后补请假'
   const activityText = TimeUtil.isValid(stats.latest_leave_activity_at)
-    ? TimeUtil.format(stats.latest_leave_activity_at, 'YYYY-MM-DD HH:mm')
+    ? TimeUtil.format(stats.latest_leave_activity_at, TIME_FORMATS.DATETIME_MINUTE)
     : stats.latest_leave_activity_at
 
   return {
@@ -1647,10 +1646,10 @@ const handleBulkRecalculatePayout = async () => {
   try {
     const [year, month] = payoutMonth.value.split('-')
     const startDate = `${year}-${month}-01`
-    const daysInMonth = TimeUtil.endOf(dayjs(`${year}-${month}-01`), 'month').date()
+    const daysInMonth = TimeUtil.daysInMonth(Number(year), Number(month))
     const endDate = `${year}-${month}-${String(daysInMonth).padStart(2, '0')}`
 
-    await ElMessageBox.confirm(
+    await confirmAction(
       `确认批量重算 ${payoutMonth.value} 全部员工工资？将覆盖历史记录`,
       '确认',
       { type: 'warning' }
@@ -1705,7 +1704,7 @@ const handlePayoutByEmployee = async (employee: any) => {
     const [year, month] = payoutMonth.value.split('-')
     const startDate = `${year}-${month}-01`
     // period_end 是月底（统计当月所有数据）
-    const daysInMonth = TimeUtil.endOf(dayjs(`${year}-${month}-01`), 'month').date()
+    const daysInMonth = TimeUtil.daysInMonth(Number(year), Number(month))
     const endDate = `${year}-${month}-${daysInMonth}`
 
     // 使用后端计算 API（支持自动涨薪）
@@ -1809,7 +1808,7 @@ const confirmSettle = async () => {
       // 情况2：已有记录的结算（使用 recordId）
       const [year, month] = payoutMonth.value.split('-')
       const startDate = `${year}-${month}-01`
-      const daysInMonth = TimeUtil.endOf(dayjs(`${year}-${month}-01`), 'month').date()
+      const daysInMonth = TimeUtil.daysInMonth(Number(year), Number(month))
       const endDate = `${year}-${month}-${daysInMonth}`
 
       // 重新计算并覆盖保存，确保以最新数据为准
@@ -1853,7 +1852,7 @@ const handleRecalculatePayout = async (employee: any) => {
   try {
     const [year, month] = payoutMonth.value.split('-')
     const startDate = `${year}-${month}-01`
-    const daysInMonth = TimeUtil.endOf(dayjs(`${year}-${month}-01`), 'month').date()
+    const daysInMonth = TimeUtil.daysInMonth(Number(year), Number(month))
     const endDate = `${year}-${month}-${daysInMonth}`
 
     // 重新计算工资
@@ -1943,7 +1942,7 @@ const handleSaveEditPayout = async () => {
     // 获取期间日期
     const [year, month] = payoutMonth.value.split('-')
     const startDate = `${year}-${month}-01`
-    const daysInMonth = TimeUtil.endOf(dayjs(`${year}-${month}-01`), 'month').date()
+    const daysInMonth = TimeUtil.daysInMonth(Number(year), Number(month))
     const endDate = `${year}-${month}-${daysInMonth}`
 
     // 获取员工统计数据
@@ -2044,7 +2043,7 @@ const handleDeletePayout = async (employee: any) => {
   if (!record) return
 
   try {
-    await ElMessageBox.confirm(`确认删除 ${employee.name || employee.username} 的工资记录？此操作不可恢复！`, '警告', {
+    await confirmAction(`确认删除 ${employee.name || employee.username} 的工资记录？此操作不可恢复！`, '警告', {
       type: 'warning',
       customClass: 'message-box-unified'
     })
@@ -2184,7 +2183,7 @@ const loadEmployeeAttendance = async (employeeId: number) => {
     const [year, month] = employeeSalaryMonth.value.split('-')
     const startDate = `${year}-${month}-01`
     // 获取当月的最后一天
-    const daysInMonth = TimeUtil.endOf(dayjs(`${year}-${month}-01`), 'month').date()
+    const daysInMonth = TimeUtil.daysInMonth(Number(year), Number(month))
     const endDate = `${year}-${month}-${daysInMonth}`
 
     const response = await attendanceApi.getAttendanceRecords({
@@ -2380,7 +2379,7 @@ const handleDeleteAttendance = async (id: number) => {
   }
 
   try {
-    await ElMessageBox.confirm('确认删除此考勤记录？', '警告')
+    await confirmAction('确认删除此考勤记录？', '警告')
     await attendanceApi.deleteAttendanceRecord(id)
     ElMessage.success('删除成功')
     if (currentAttendanceEmployee.value) {
@@ -2549,7 +2548,7 @@ const handleSetDefault = async (row: any) => {
   }
 
   try {
-    await ElMessageBox.confirm(`确认将 "${row.name}" 设为默认模板？`, '确认', {
+    await confirmAction(`确认将 "${row.name}" 设为默认模板？`, '确认', {
       customClass: 'message-box-unified'
     })
     await salaryTemplateApi.setAsDefault(row.id)
@@ -2570,7 +2569,7 @@ const handleToggleTemplateStatus = async (row: any) => {
   try {
     const newStatus = !row.is_active
     const actionText = newStatus ? '启用' : '禁用'
-    await ElMessageBox.confirm(`确认${actionText}模板 "${row.name}"？`, '确认', {
+    await confirmAction(`确认${actionText}模板 "${row.name}"？`, '确认', {
       customClass: 'message-box-unified'
     })
     await salaryTemplateApi.updateTemplate(row.id, { is_active: newStatus })
@@ -2595,7 +2594,7 @@ const handleDeleteTemplate = async (row: any) => {
   }
 
   try {
-    await ElMessageBox.confirm(`确认删除模板 "${row.name}"？`, '警告', {
+    await confirmAction(`确认删除模板 "${row.name}"？`, '警告', {
       type: 'warning',
       customClass: 'message-box-unified'
     })
@@ -2639,7 +2638,7 @@ const loadPayoutList = async () => {
     // 获取当月所有员工工资记录（不筛选状态，状态筛选由计算属性处理）
     const [year, month] = payoutMonth.value.split('-')
     const startDate = `${year}-${month}-01`
-    const daysInMonth = TimeUtil.endOf(dayjs(`${year}-${month}-01`), 'month').date()
+    const daysInMonth = TimeUtil.daysInMonth(Number(year), Number(month))
     const endDate = `${year}-${month}-${String(daysInMonth).padStart(2, '0')}`
 
     const response = await salaryApi.getSalaryRecords({
@@ -2872,36 +2871,6 @@ watch(activeTab, async (newTab, oldTab) => {
   font-size: 13px;
 }
 
-/* 空状态 */
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 80px 20px;
-  background: linear-gradient(135deg, var(--tf-color-surface-neutral) 0%, var(--tf-color-surface) 100%);
-  border-radius: 12px;
-  color: var(--color-info);
-  margin-top: 20px;
-}
-
-.empty-state i {
-  font-size: 72px;
-  margin-bottom: 20px;
-  opacity: 0.15;
-  background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.empty-state p {
-  font-size: 16px;
-  margin: 0;
-  color: var(--color-text-regular);
-  font-weight: 500;
-}
-
 /* 分页 */
 .pagination-wrapper {
   display: flex;
@@ -2913,19 +2882,15 @@ watch(activeTab, async (newTab, oldTab) => {
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
 }
 
-// 工资模块统一弹窗样式
-
-:deep(.salary-dialog .el-dialog__body) {
-  background: var(--color-bg-white) !important;
-  color: var(--color-text-primary);
-  padding: 24px;
-}
-
-:deep(.salary-dialog .el-dialog__footer) {
-  background: var(--tf-color-neutral-25) !important;
-  border-top: 1px solid var(--tf-color-gray-200);
-  padding: 16px 24px;
-  border-radius: 0 0 12px 12px;
+:deep(.salary-dialog) {
+  --tf-dialog-surface: var(--color-bg-white);
+  --tf-dialog-body-text: var(--color-text-primary);
+  --tf-dialog-body-padding-inline: var(--tf-space-6);
+  --tf-dialog-body-padding-block: var(--tf-space-6);
+  --tf-dialog-footer-bg: var(--tf-color-neutral-25);
+  --tf-dialog-footer-padding-inline: var(--tf-space-6);
+  --tf-dialog-footer-padding-block-start: var(--tf-space-4);
+  --tf-dialog-footer-padding-block-end: var(--tf-space-4);
 }
 
 :deep(.salary-dialog-large .el-dialog) {
@@ -3335,24 +3300,6 @@ input:checked + .slider:before {
   flex-wrap: wrap;
 }
 
-/* 空状态 */
-.empty-state {
-  text-align: center;
-  padding: 60px 20px;
-  color: var(--tf-color-gray-ant-500);
-}
-
-.empty-state i {
-  font-size: 48px;
-  margin-bottom: 16px;
-  opacity: 0.5;
-}
-
-.empty-state p {
-  font-size: 14px;
-  margin: 0;
-}
-
 /* 预计工资样式 */
 .estimated-salary {
   font-size: 14px;
@@ -3361,7 +3308,7 @@ input:checked + .slider:before {
 }
 
 /* 响应式 */
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .salary-tabs .table-section > .section-header {
     display: none;
   }
@@ -3595,26 +3542,6 @@ input:checked + .slider:before {
 
 .sales-summary-item .value.highlight {
   color: var(--color-success);
-}
-
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 60px 20px;
-  color: var(--color-info);
-}
-
-.empty-state i {
-  font-size: 48px;
-  margin-bottom: 16px;
-  opacity: 0.5;
-}
-
-.empty-state p {
-  margin: 0;
-  font-size: 14px;
 }
 
 /* ==================== 销售明细对话框样式（参考供应商打款页面） ==================== */
@@ -3905,7 +3832,7 @@ input:checked + .slider:before {
   }
 }
 
-@media (min-width: 768px) and (max-width: 1023px) {
+@media (min-width: 768px) and (max-width: 1024px) {
   .form-row {
     gap: 12px;
   }
@@ -4044,7 +3971,7 @@ input:checked + .slider:before {
   }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 479px) {
   .salary-dialog,
   .salary-dialog-large {
     --dialog-side-gap: 4px;

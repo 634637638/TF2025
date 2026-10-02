@@ -13,16 +13,16 @@
   --breakpoint-min: 375px;  /* iPhone SE, iPhone 12 Mini */
 
   /* 小屏手机 */
-  --breakpoint-xs: 414px;  /* iPhone SE 2022, iPhone 12, 13 */
+  --breakpoint-xs: 479px;  /* 小屏手机最大宽度 */
 
   /* 中屏手机 */
-  --breakpoint-sm: 480px;  /* 大屏手机竖屏 */
+  --breakpoint-sm: 767px;  /* 手机最大宽度 */
 
   /* 大屏手机 */
   --breakpoint-md: 768px;  /* 平板竖屏/大屏手机横屏 */
 
   /* 平板 */
-  --breakpoint-lg: 1024px; /* 桌面起点 */
+  --breakpoint-lg: 1024px; /* 平板最大宽度 */
 
   /* 桌面 */
   --breakpoint-xl: 1200px; /* 宽屏/大桌面 */
@@ -138,7 +138,7 @@ body {
 }
 
 /* iPad 单独适配 - 768px ~ 1024px */
-@media (min-width: 768px) and (max-width: 1023px) {
+@media (min-width: 768px) and (max-width: 1024px) {
   /* iPad可以保留两列布局或其他特殊样式 */
   .grid-2,
   .grid-3 {
@@ -576,21 +576,7 @@ html.device-phone {
 }
 
 /* ================================
-   8. 打印样式
-   ================================ */
-
-@media print {
-  .no-print {
-    display: none !important;
-  }
-
-  body {
-    min-width: auto;
-  }
-}
-
-/* ================================
-   9. 高对比度模式
+   8. 高对比度模式
    ================================ */
 
 @media (prefers-contrast: high) {
@@ -600,7 +586,7 @@ html.device-phone {
 }
 
 /* ================================
-   10. 减少动画偏好
+   9. 减少动画偏好
    ================================ */
 
 @media (prefers-reduced-motion: reduce) {

@@ -36,12 +36,12 @@ export const formatSalaryOvertimeHours = (hours: unknown) => {
 export const formatSalaryAmount = (amount: unknown) => {
   const numericAmount = Number(amount)
   if (Number.isNaN(numericAmount)) return '0'
-  return Number.isInteger(numericAmount) ? numericAmount.toString() : numericAmount.toFixed(2)
+  return numericAmount.toFixed(2).replace(/\.?(?:0)+$/, '') || '0'
 }
 
 export const formatSalaryMonth = (periodStart: string) => {
   if (!periodStart) return '-'
-  return TimeUtil.format(periodStart, 'YYYY-M月')
+  return TimeUtil.format(periodStart, TIME_FORMATS.YEAR_MONTH_COMPACT_DISPLAY)
 }
 
 export const formatSalaryNumber = (value: number | string): string => {

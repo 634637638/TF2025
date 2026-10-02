@@ -235,8 +235,8 @@
           v-model="ctx.logSearchForm.dateRange"
           start-placeholder="开始日期"
           end-placeholder="结束日期"
-          format="YYYY-MM-DD"
-          value-format="YYYY-MM-DD"
+          :format="TIME_FORMATS.DATE"
+          :value-format="TIME_FORMATS.DATE"
           clearable
           style="width: 100%"
           @change="ctx.searchLogs"
@@ -247,6 +247,7 @@
 </template>
 
 <script setup lang="ts">
+import { TIME_FORMATS } from '@/utils/time'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import DateRangePicker from '@/components/DateRangePicker.vue'
 import { usePermissionsPageContext } from './context'

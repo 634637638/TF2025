@@ -477,17 +477,19 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage, ElMessageBox, FormInstance } from 'element-plus'
+import { ElMessage, FormInstance } from 'element-plus'
 import { ValidationRules } from '@/composables'
 import { getPublicConfig } from '@/api/shop-public'
 import { userManager, getUserSales, logout as authLogout, updateProfile, getUserProfile, type AuthUser, type H5CustomerSale } from '@/api/auth'
 import { storage } from '@/services/storage'
 import { H5_STORAGE_KEYS } from '@/constants/storage'
 import { normalizeAppleId, normalizeIdCard, normalizePersonName } from '@/utils/security'
-import { formatDate as formatGlobalDate, formatImageUrl } from '@/utils/format'
+import { formatAmount, formatDate as formatGlobalDate, formatImageUrl } from '@/utils/format'
 import { logger } from '@/utils/logger'
 import SectionLoading from '@/components/SectionLoading.vue'
+import { useNotification } from '@/composables/useNotification'
 const router = useRouter()
+const { confirm } = useNotification()
 const shopConfig = ref<any>({})
 const serviceVisible = ref(false)
 const shopVisible = ref(false)
@@ -553,23 +555,21 @@ const goToRegister = () => {
 
 // 登出
 const handleLogout = async () => {
-  try {
-    await ElMessageBox.confirm('确定要退出登录吗？', '提示', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    })
+  if (!await confirm('确定要退出登录吗？', '提示', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning'
+  })) return
 
+  try {
     await authLogout()
     userManager.clearAuth()
     currentUser.value = null
 
     ElMessage.success('已退出登录')
   } catch (error) {
-    if (error !== 'cancel') {
-      logger.error('登出失败:', error)
-      ElMessage.error('登出失败')
-    }
+    logger.error('登出失败:', error)
+    ElMessage.error('登出失败')
   }
 }
 
@@ -604,7 +604,7 @@ const formatDate = (date: string | null) => {
 }
 
 const formatSalePrice = (price: number | null) => (
-  price === null || price === undefined || !Number.isFinite(price) ? '-' : `¥${price.toFixed(2)}`
+  price === null || price === undefined || !Number.isFinite(price) ? '-' : `¥${formatAmount(price)}`
 )
 
 // 获取支付方式文本
@@ -699,7 +699,7 @@ const showProfileEdit = async () => {
     } catch (error: any) {
       logger.error('获取用户资料失败:', error)
       // 如果API调用失败，尝试从本地存储读取
-      const savedAddress = storage.get<any>(H5_STORAGE_KEYS.DEFAULT_ADDRESS, 'local')
+      const savedAddress = storage.get<any>(H5_STORAGE_KEYS.DEFAULT_ADDRESS, 'session')
       const addressData = savedAddress || {}
 
       profileForm.value = {
@@ -746,7 +746,7 @@ const saveProfile = async () => {
       idCard: profileForm.value.idCard,
       appleId: profileForm.value.appleId,
       address: profileForm.value.address
-    }, 'local')
+    }, 'session')
 
     ElMessage.success('个人资料保存成功')
     profileVisible.value = false
@@ -1520,8 +1520,7 @@ onMounted(() => {
 <style lang="scss">
 // 客服弹窗全局样式
 .service-dialog-custom {
-  .el-dialog__body {
-    padding: 16px 20px;
-  }
+  --tf-dialog-body-padding-inline: var(--tf-space-5);
+  --tf-dialog-body-padding-block: var(--tf-space-4);
 }
 </style>

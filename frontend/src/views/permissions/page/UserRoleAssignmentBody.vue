@@ -10,23 +10,24 @@
 
         <div class="search-input-wrapper assignment-search-box">
           <i class="fas fa-search search-icon" />
-          <input
+          <el-input
             v-model="search"
-            type="text"
-            class="form-control search-input"
+            class="search-input"
             placeholder="搜索角色名称、编码或描述"
             :disabled="isSaving"
-          >
-          <button
+          />
+          <el-button
             v-if="search"
-            type="button"
+            native-type="button"
             class="search-clear-btn"
+            text
+            aria-label="清空搜索"
             :disabled="isSaving"
             title="清空搜索"
             @click="search = ''"
           >
             <i class="fas fa-times" />
-          </button>
+          </el-button>
         </div>
 
         <div class="assignment-filter-row">

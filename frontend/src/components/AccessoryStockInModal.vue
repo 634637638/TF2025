@@ -297,7 +297,7 @@
                     :min="0"
                     :precision="0"
                     :step="1"
-                    controls-position="right"
+                    :controls="false"
                     class="full-width"
                   />
                 </el-form-item>
@@ -315,7 +315,7 @@
                     :min="0"
                     :precision="0"
                     :step="1"
-                    controls-position="right"
+                    :controls="false"
                     class="full-width"
                   />
                 </el-form-item>
@@ -563,7 +563,7 @@
     </div>
 
     <template #footer>
-      <div class="dialog-footer">
+      <div class="tf-dialog-actions dialog-footer">
         <el-button
           type="default"
           size="large"
@@ -1037,27 +1037,6 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-/* 配件模态框 - 参考项目统一风格 */
-.accessory-dialog :deep(.el-dialog__header) {
-  padding: 0;
-  margin-bottom: 20px;
-}
-
-.accessory-dialog :deep(.el-dialog__title) {
-  display: none;
-}
-
-.accessory-dialog :deep(.el-dialog__body) {
-  padding: 20px;
-  max-height: 70vh;
-  overflow-y: auto;
-}
-
-.accessory-dialog :deep(.el-dialog__footer) {
-  padding: 16px 20px;
-  border-top: 1px solid var(--color-border-light);
-}
-
 /* 模态框头部 */
 .dialog-header {
   display: flex;
@@ -1352,15 +1331,8 @@ onMounted(async () => {
   font-size: 12px;
 }
 
-/* 底部按钮 */
-.dialog-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-}
-
 /* 响应式 */
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .scan-image-section {
     grid-template-columns: 1fr;
   }
@@ -1384,10 +1356,6 @@ onMounted(async () => {
     flex-direction: column;
     align-items: flex-start;
     padding: 12px;
-  }
-
-  .dialog-footer {
-    flex-direction: column;
   }
 
 }

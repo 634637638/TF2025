@@ -1,35 +1,17 @@
 # 数据库文档索引
 
-> TF2025 项目数据库相关文档
+本目录提供字段契约、结构专题和迁移状态入口。仓库没有统一 DDL 或 SQL migration 目录；任何文档均不等同于生产数据库快照。
 
-## 📚 文档列表
+- [数据库结构与模块资料入口](DATABASE_MODULE_MAPPING.md)
+- [字段统一迁移进度](field-consistency-progress.md)
+- [字段一致性迁移记录](field-consistency-migration.md) - 按日期记录的历史核验
+- [字段兼容清单](field-compatibility-inventory.md) - 契约迁移与退役字段记录
+- [客户表结构文档](customers-table-schema.md)
 
-### [数据库模块映射表](DATABASE_MODULE_MAPPING.md)
-- **说明**: 完整的模块与数据表对应关系
-- **内容**:
-  - 所有模块与数据表的映射关系
-  - 表之间的关联关系
-  - 核心业务流程说明
-  - 数据库迁移文件列表
-  - 数据库操作脚本列表
+相关入口：
 
-### [客户表结构文档](customers-table-schema.md)
-- **说明**: 客户表详细结构说明
-- **内容**: 客户表字段定义、类型、约束等
-
-### [字段统一迁移进度](field-consistency-progress.md)
-- **说明**: 规范 API 字段、数据库物理字段映射和模块迁移状态
-- **内容**: 已完成模块、进行中模块、验证命令和下一步迁移顺序
-
----
-
-## 🔗 相关文档
-
-- [权限系统文档](../permissions/)
-- [API 标准](../guides/api-standards.md)
-- [云端部署指南](../deployment/CLOUD_DEPLOYMENT_GUIDE.md)
-- [后端性能优化](../deployment/PERFORMANCE_OPTIMIZATION.md)
-
----
-
-**最后更新**: 2026-01-27
+- 字段/API 契约：`config/field-contracts.json`
+- 后端数据库连接：`backend/src/config/database.js`
+- 部署环境变量与密钥：[环境配置与密钥管理](../security/ENVIRONMENT_SECRETS.md)
+- [权限数据模型](../permissions/INDEX.md)
+- [部署文档](../deployment/INDEX.md)

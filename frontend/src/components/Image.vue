@@ -22,7 +22,7 @@
     :style="containerStyle"
   >
     <img
-      v-if="loaded && !hasError"
+      v-if="loaded && !hasError && !isVideoSource"
       :src="currentSrc"
       :alt="alt"
       :style="imageStyle"
@@ -31,6 +31,17 @@
       @load="handleLoad"
       @error.stop="handleImageError"
     >
+    <video
+      v-else-if="loaded && !hasError && isVideoSource"
+      :src="currentSrc"
+      :style="imageStyle"
+      class="tf-image-img tf-image-video"
+      muted
+      playsinline
+      preload="metadata"
+      @loadeddata="handleLoad"
+      @error.stop="handleImageError"
+    />
     <div
       v-else-if="hasError"
       class="tf-image-error"
@@ -50,6 +61,21 @@
     </div>
   </div>
 
+  <video
+    v-else-if="isVideoSource"
+    :src="currentSrc"
+    :style="imageStyle"
+    class="tf-image tf-image-video"
+    :class="[
+      `tf-image--${mode}`,
+      { 'tf-image--error': hasError, 'fade-in': fadeIn && !hasError }
+    ]"
+    muted
+    playsinline
+    preload="metadata"
+    @loadeddata="handleLoad"
+    @error.stop="handleImageError"
+  />
   <img
     v-else
     :src="currentSrc"
@@ -70,6 +96,7 @@ import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import type { CSSProperties } from 'vue'
 import { formatImageUrl, generateProductPlaceholder, getBackendOrigin, type ProductPlaceholderOptions } from '@/utils/format'
 import InlineLoading from '@/components/InlineLoading.vue'
+import { isVideoMedia } from '@/utils/media'
 
 interface Props {
   src?: string
@@ -123,6 +150,7 @@ const hasFallbackApplied = ref(false)
 const urlCandidates = ref<string[]>([])
 const currentIndex = ref(0)
 const currentSrc = ref('')
+const isVideoSource = computed(() => isVideoMedia(currentSrc.value || props.src))
 
 let observer: IntersectionObserver | null = null
 

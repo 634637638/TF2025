@@ -4,9 +4,12 @@ const { getDatabase, isConnected } = require('../config/database')
 const ApiResponse = require('../utils/response')
 const { cacheMiddleware, clearCache } = require('../middleware/cache')
 const { validateBody, validateQuery } = require('../middleware/validation')
-const { unifiedAuth, requirePermission } = require('../middleware/unified-auth')
+const { unifiedAuth, requirePermission, requireAnyPermission } = require('../middleware/unified-auth')
 const { CACHE_TTL, PAGINATION } = require('../config/constants')
 const log = require('../utils/log')
+const compatibilityRoute = require('../middleware/compatibility-route')
+const deprecatedRoute = require('../middleware/deprecated-route')
+const { listModelsByBrand } = require('../services/reference-options.service')
 
 const clearBrandsRouteCache = () => {
   try {
@@ -56,12 +59,13 @@ router.get('/stats/overview', unifiedAuth, requirePermission('brands:view'), asy
 })
 
 // 获取品牌列表 - 增强搜索功能
-router.get('/', unifiedAuth, requirePermission('brands:view'), validateQuery({
+router.get('/', unifiedAuth, requireAnyPermission(['brands:view', 'inventory:view', 'h5-templates:view', 'h5-admin:view']), validateQuery({
   name: { type: 'string', required: false, maxLength: 100 },
   status: { type: 'number', required: false, integer: true },
   page: { type: 'number', required: false, min: 1, integer: true },
   page_size: { type: 'number', required: false, min: 1, max: PAGINATION.MAX_LIMIT, integer: true },
-  suggest: { type: 'enum', required: false, allowedValues: ['true', 'false'] }
+  suggest: { type: ['true', 'false'], required: false },
+  all: { type: ['true', 'false'], required: false }
 }), cacheMiddleware({ ttl: CACHE_TTL.SHORT }), async (req, res) => {
   try {
     log.debug('收到获取品牌列表请求')
@@ -76,7 +80,8 @@ router.get('/', unifiedAuth, requirePermission('brands:view'), validateQuery({
       status,
       page = PAGINATION.DEFAULT_PAGE,
       page_size = PAGINATION.DEFAULT_LIMIT,
-      suggest = false
+      suggest = false,
+      all = false
     } = req.query
     const pageSizeNum = parseInt(page_size) || PAGINATION.DEFAULT_LIMIT
     const pageNum = parseInt(page) || PAGINATION.DEFAULT_PAGE
@@ -127,6 +132,9 @@ router.get('/', unifiedAuth, requirePermission('brands:view'), validateQuery({
       query += ' WHERE' + conditions.join(' AND')
     }
 
+    // 参考选项请求使用 all=true，必须返回所有匹配项，不能被列表分页截断。
+    const returnAll = all === 'true' || all === true
+
     // 搜索建议模式使用不同的排序
     if (suggest === 'true') {
       query += ` ORDER BY
@@ -140,9 +148,11 @@ router.get('/', unifiedAuth, requirePermission('brands:view'), validateQuery({
         id ASC
         LIMIT ? OFFSET ?`
       params.push(`${name}%`, `%${name}%`, pageSizeNum, offset)
-    } else {
+    } else if (!returnAll) {
       query += ' ORDER BY sort_order ASC, name ASC, id ASC LIMIT ? OFFSET ?'
       params.push(pageSizeNum, offset)
+    } else {
+      query += ' ORDER BY sort_order ASC, name ASC, id ASC'
     }
 
     // 使用pool.format来处理参数，避免LIMIT/OFFSET参数问题
@@ -201,6 +211,10 @@ router.get('/', unifiedAuth, requirePermission('brands:view'), validateQuery({
       created_at: row.created_at ? new Date(row.created_at).toISOString() : null,
       updated_at: row.updated_at ? new Date(row.updated_at).toISOString() : null
     }))
+
+    if (returnAll) {
+      return ApiResponse.success(res, formattedBrands)
+    }
 
     const total = parseInt(countResult[0].total) || 0
     const total_pages = Math.ceil(total / pageSizeNum)
@@ -476,63 +490,24 @@ router.get('/suggest', unifiedAuth, requirePermission('brands:view'), async (req
 
 // 获取品牌下的型号列表
 // 支持 brandId 为品牌ID（数字）或品牌名称（字符串）
-router.get('/:brandId/models', unifiedAuth, requirePermission('brands:view'), async (req, res) => {
-  try {
-    if (!isConnected()) {
-      return ApiResponse.error(res, '数据库未连接', 500)
+router.get('/:brandId/models', unifiedAuth,
+  compatibilityRoute({ compatibilityId: 'brands-models-by-brand', replacement: '/api/models?all=true&brand_id=:brandId', reason: '迁移期兼容入口' }),
+  deprecatedRoute({ replacement: '/api/models?all=true&brand_id=:brandId', migrationId: 'brand-models-to-models' }),
+  requirePermission('brands:view'),
+  async (req, res) => {
+    try {
+      const models = await listModelsByBrand({
+        brand_id: req.params.brandId,
+        name: req.query.name,
+        include_id: req.query.include_id,
+        activeOnly: false
+      })
+      return ApiResponse.success(res, models)
+    } catch (error) {
+      log.error('品牌型号兼容路由转发失败:', error)
+      return ApiResponse.serverError(res, '获取品牌型号列表失败', error)
     }
-
-    const { brandId } = req.params
-    const pool = getDatabase()
-
-    // 判断 brandId 是数字ID还是品牌名称
-    const isNumericId = /^\d+$/.test(brandId)
-
-    let query, params
-
-    if (isNumericId) {
-      // 使用品牌ID查询
-      query = `
-        SELECT m.id, m.brand_id, m.name, m.status, m.sort_order,
-               m.created_at, m.updated_at, b.name AS brand_name
-        FROM models m
-        LEFT JOIN brands b ON m.brand_id = b.id
-        WHERE m.brand_id = ?
-        ORDER BY m.sort_order ASC, m.id DESC
-      `
-      params = [parseInt(brandId)]
-    } else {
-      // 使用品牌名称查询
-      query = `
-        SELECT m.id, m.brand_id, m.name, m.status, m.sort_order,
-               m.created_at, m.updated_at, b.name AS brand_name
-        FROM models m
-        LEFT JOIN brands b ON m.brand_id = b.id
-        WHERE b.name = ?
-        ORDER BY m.sort_order ASC, m.id DESC
-      `
-      params = [decodeURIComponent(brandId)]
-    }
-
-    const [models] = await pool.execute(query, params)
-
-    const formattedModels = models.map(row => ({
-      id: row.id ? parseInt(row.id) : 0,
-      brand_id: row.brand_id ? parseInt(row.brand_id) : 0,
-      brand_name: String(row.brand_name || '未知品牌').trim(),
-      name: String(row.name || '').trim(),
-      status: row.status ? parseInt(row.status) : 0,
-      sort_order: row.sort_order ? parseInt(row.sort_order) : 0,
-      created_at: row.created_at ? new Date(row.created_at).toISOString() : null,
-      updated_at: row.updated_at ? new Date(row.updated_at).toISOString() : null
-    }))
-
-    ApiResponse.success(res, formattedModels)
-
-  } catch (error) {
-    log.error('获取品牌型号列表失败:', error)
-    ApiResponse.error(res, '获取品牌型号列表失败', 500)
   }
-})
+)
 
 module.exports = router

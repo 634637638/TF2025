@@ -13,19 +13,12 @@
             <el-button
               v-if="canViewField('system_info.operations')"
               type="info"
+              :loading="isRefreshing"
               :disabled="isRefreshing"
               @click="refreshData"
             >
-              <InlineLoading
-                v-if="isRefreshing"
-                text="刷新中..."
-                size="small"
-                variant="inherit"
-              />
-              <template v-else>
-                <i class="fas fa-sync-alt" />
-                刷新数据
-              </template>
+              <i class="fas fa-sync-alt" />
+              刷新数据
             </el-button>
           </template>
         </PageHeader>
@@ -137,41 +130,46 @@
           >
             <h2>快速操作</h2>
             <div class="actions-grid">
-              <button
+              <el-button
+                type="default"
                 class="action-btn"
                 @click="goToSales"
               >
                 <i class="fas fa-plus" />
                 新建销售
-              </button>
-              <button
+              </el-button>
+              <el-button
+                type="default"
                 class="action-btn"
                 @click="addCustomer"
               >
                 <i class="fas fa-user-plus" />
                 添加客户
-              </button>
-              <button
+              </el-button>
+              <el-button
+                type="default"
                 class="action-btn"
                 @click="goToInventory"
               >
                 <i class="fas fa-box" />
                 库存管理
-              </button>
-              <button
+              </el-button>
+              <el-button
+                type="default"
                 class="action-btn"
                 @click="goToRepairs"
               >
                 <i class="fas fa-wrench" />
                 维修管理
-              </button>
-              <button
+              </el-button>
+              <el-button
+                type="default"
                 class="action-btn"
                 @click="showSystemInfo"
               >
                 <i class="fas fa-info-circle" />
                 系统信息
-              </button>
+              </el-button>
             </div>
           </div>
 
@@ -226,7 +224,6 @@ import { useAuthStore } from '@/stores/auth'
 import { unifiedApi } from '@/utils/unified-api'
 import { canAccessRoutePath } from '@/constants/routePermissions'
 import { PageHeader, PermissionGate } from '@/components/base'
-import InlineLoading from '@/components/InlineLoading.vue'
 import SectionLoading from '@/components/SectionLoading.vue'
 import ComprehensiveWarnings from '@/components/ComprehensiveWarnings.vue'
 import PendingApprovals from '@/components/PendingApprovals.vue'
@@ -303,10 +300,10 @@ const normalizeRecentActivities = (payload: unknown): DashboardActivity[] => {
     ))
     .filter(activity => {
       if (!activity.occurred_at) return false
-      return !Number.isNaN(new Date(activity.occurred_at).getTime())
+      return Boolean(TimeUtil.parse(String(activity.occurred_at))?.isValid())
     })
     .sort((a, b) => (
-      new Date(String(b.occurred_at)).getTime() - new Date(String(a.occurred_at)).getTime()
+      (TimeUtil.parse(String(b.occurred_at))?.valueOf() || 0) - (TimeUtil.parse(String(a.occurred_at))?.valueOf() || 0)
     ))
     .slice(0, 8)
     .map((activity, index) => {
@@ -939,7 +936,7 @@ onUnmounted(() => {
 }
 
 /* 小屏手机 */
-@media (max-width: 480px) {
+@media (max-width: 479px) {
   .dashboard {
     padding: 0;
   }

@@ -576,9 +576,9 @@ import { useAnalyticsFieldVisibility } from './useAnalyticsFieldVisibility'
 import echarts, { ECharts } from '@/utils/echarts'
 import { buildCsvContent } from '@/utils/csv-export'
 import { sortOptionsByOrder } from '@/utils/option-sort'
-import dayjs from 'dayjs'
 import { logger } from '@/utils/logger'
 import { TimeUtil } from '@/utils/time'
+import { getCachedStores } from '@/services/reference-options'
 
 const props = withDefaults(defineProps<SalesAnalyticsProps>(), {
   loading: false,
@@ -715,8 +715,7 @@ const showSalesTableRow = computed(() => canViewAnySalesField(['top_products_tab
 const CACHE_KEYS = {
   sales: (params: any) => `/analytics/sales:${JSON.stringify(params)}`,
   salesCondition: (params: any) => `/analytics/sales-by-condition:${JSON.stringify(params)}`,
-  transfer: (params: any) => `/transfers/statistics:${JSON.stringify(params)}`,
-  stores: '/stores:all'
+  transfer: (params: any) => `/transfers/statistics:${JSON.stringify(params)}`
 }
 
 // 方法
@@ -822,14 +821,14 @@ defineExpose({
 // 加载月度销售趋势数据
 const loadMonthlyTrendData = async () => {
   try {
-    const currentYear = dayjs().year()
+    const currentYear = TimeUtil.now().year()
     const newCounts = Array(12).fill(0)
     const usedCounts = Array(12).fill(0)
 
     // 获取当前年份每个月的数据
     for (let month = 1; month <= 12; month++) {
       const startDate = `${currentYear}-${String(month).padStart(2, '0')}-01`
-      const lastDay = dayjs(`${currentYear}-${month}`).daysInMonth()
+      const lastDay = TimeUtil.daysInMonth(currentYear, Number(month))
       const endDate = `${currentYear}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
 
       const cacheKey = CACHE_KEYS.salesCondition({ start_date: startDate, end_date: endDate })
@@ -860,8 +859,7 @@ const loadMonthlyTrendData = async () => {
 const loadStoreComparisonData = async () => {
   try {
     // 获取店铺列表（使用缓存）
-    const storesResponse = await useCachedRequest(CACHE_KEYS.stores, () =>
-      unifiedApi.get('/stores', { params: { all: true } }), DEFAULT_CACHE_TTL.STATIC)
+    const storesResponse = await getCachedStores()
     if (!storesResponse.success || !storesResponse.data) return
 
     const stores = sortOptionsByOrder<any>(Array.isArray(storesResponse.data)
@@ -2085,7 +2083,7 @@ onBeforeUnmount(() => {
     }
   }
 
-  @media (max-width: 768px) {
+  @media (max-width: 767px) {
     .overview-cards {
       margin-bottom: 18px;
 

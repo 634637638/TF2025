@@ -213,7 +213,7 @@ button.customer-name-lock-input__status,
   opacity: 0.78;
 }
 
-@media (max-width: 480px) {
+@media (max-width: 479px) {
   .customer-name-lock-input {
     gap: 4px;
   }

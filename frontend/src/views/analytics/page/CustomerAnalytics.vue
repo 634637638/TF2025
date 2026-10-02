@@ -457,6 +457,7 @@ import type { CustomerAnalyticsProps } from '@/types/component'
 import { useAnalyticsFieldVisibility } from './useAnalyticsFieldVisibility'
 import { logger } from '@/utils/logger'
 import { formatDate as formatGlobalDate } from '@/utils/format'
+import { TimeUtil } from '@/utils/time'
 
 const props = withDefaults(defineProps<CustomerAnalyticsProps>(), {
   loading: false,
@@ -735,7 +736,7 @@ const loadOverview = async (showLoadingState = true) => {
     customerInsights.value = (data.insights || []).map((insight, index) => ({
       ...insight,
       id: insight.id || `customer-insight-${index}`,
-      date: insight.date || new Date().toISOString(),
+      date: insight.date || TimeUtil.toISOString(),
       impact_text: insight.impact_text || ''
     }))
 
@@ -1576,7 +1577,7 @@ defineExpose({
 }
 
 // 响应式设计
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .customer-analytics {
     padding: 12px;
 

@@ -16,6 +16,7 @@ const {
   publicAuthRateLimit,
   publicOrderRateLimit,
   publicLookupRateLimit,
+  publicOrderPhoneLookupRateLimit,
   publicMarketingRateLimit
 } = require('../middleware/rate-limit')
 const { createOrderAccessToken, verifyOrderAccessToken } = require('../utils/order-access')
@@ -846,7 +847,7 @@ router.get('/orders/:orderNumber', publicLookupRateLimit, async (req, res) => {
  * 根据手机号查询订单列表
  * GET /api/public/orders/phone/:phone
  */
-router.get('/orders/phone/:customer_phone', publicLookupRateLimit, async (req, res) => {
+router.get('/orders/phone/:customer_phone', publicLookupRateLimit, publicOrderPhoneLookupRateLimit, async (req, res) => {
   try {
     const customer_phone = String(req.params.customer_phone || '').replace(/\D/g, '')
     const { page = 1, customer_name = '' } = req.query
@@ -1318,7 +1319,6 @@ router.get('/auth/sales', async (req, res) => {
         m.name as model_name,
         c.name as color_name,
         NULLIF(TRIM(CONCAT_WS(' ', b.name, m.name, c.name)), '') as product_name,
-        (p.sale_price - p.purchase_cost) as profit,
         p.is_new
        FROM sales s
        LEFT JOIN stores st ON s.store_id = st.id
@@ -1328,8 +1328,7 @@ router.get('/auth/sales', async (req, res) => {
        LEFT JOIN models m ON p.model_id = m.id
        LEFT JOIN colors c ON p.color_id = c.id
        WHERE s.customer_id = ?
-       ORDER BY COALESCE(s.sale_time, p.sale_time) DESC
-       LIMIT 100`,
+       ORDER BY COALESCE(s.sale_time, p.sale_time) DESC`,
       [customerId]
     )
 
@@ -1348,7 +1347,6 @@ router.get('/auth/sales', async (req, res) => {
       brand_name: sale.brand_name ?? null,
       model_name: sale.model_name ?? null,
       color_name: sale.color_name ?? null,
-      profit: sale.profit === null || sale.profit === undefined ? null : Number(sale.profit),
       is_new: sale.is_new === null || sale.is_new === undefined ? null : Number(sale.is_new)
     }))
 

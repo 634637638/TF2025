@@ -1262,8 +1262,7 @@ import { useImportExport } from '@/composables/useImportExport'
 import { unifiedApi } from '@/utils/unified-api'
 import echarts, { ECharts } from '@/utils/echarts'
 import { buildCsvContent } from '@/utils/csv-export'
-import dayjs from 'dayjs'
-import { TimeUtil } from '@/utils/time'
+import { TIME_FORMATS, TimeUtil } from '@/utils/time'
 import { useAnalyticsFieldVisibility } from './useAnalyticsFieldVisibility'
 import type { ProfitAnalyticsProps, LoadingChangeEmits } from '@/types/component'
 import { storage } from '@/composables/core/useLocalStorage'
@@ -1418,19 +1417,19 @@ const transferData = ref({
 })
 
 const getTrendAnchorDate = () => {
-  const anchor = endDate.value ? dayjs(endDate.value) : TimeUtil.now()
-  return anchor.isValid() ? anchor : TimeUtil.now()
+  const anchor = endDate.value ? TimeUtil.parse(endDate.value) : null
+  return anchor?.isValid() ? anchor : TimeUtil.now()
 }
 
-const getQuarterLabel = (date: dayjs.Dayjs) => `${date.year()}年Q${Math.floor(date.month() / 3) + 1}`
+const getQuarterLabel = (date: ReturnType<typeof TimeUtil.now>) => `${date.year()}年Q${Math.floor(date.month() / 3) + 1}`
 
 const currentFilterPeriodLabel = computed(() => {
-  const start = startDate.value ? dayjs(startDate.value) : null
-  const end = endDate.value ? dayjs(endDate.value) : null
+  const start = startDate.value ? TimeUtil.parse(startDate.value) : null
+  const end = endDate.value ? TimeUtil.parse(endDate.value) : null
 
   if (start && end && start.isValid() && end.isValid()) {
     if (start.isSame(start.startOf('month'), 'day') && end.isSame(end.endOf('month'), 'day') && start.isSame(end, 'month')) {
-      return start.format('YYYY年M月')
+      return TimeUtil.format(start, TIME_FORMATS.YEAR_MONTH_DISPLAY)
     }
 
     if (start.isSame(start.startOf('month').month(Math.floor(start.month() / 3) * 3), 'day') &&
@@ -1443,11 +1442,11 @@ const currentFilterPeriodLabel = computed(() => {
       return `${start.year()}年`
     }
 
-    return `${start.format('YYYY-MM-DD')}至${end.format('YYYY-MM-DD')}`
+    return `${TimeUtil.format(start, TIME_FORMATS.DATE)}至${TimeUtil.format(end, TIME_FORMATS.DATE)}`
   }
 
   if (end && end.isValid()) {
-    return end.format('YYYY年M月')
+    return TimeUtil.format(end, TIME_FORMATS.YEAR_MONTH_DISPLAY)
   }
 
   return '当前周期'
@@ -1736,7 +1735,7 @@ const _loadSalesByCondition = async () => {
       // 如果是 YYYY-MM 格式（月份），转换为该月最后一天
       if (endDate.value.match(/^\d{4}-\d{2}$/)) {
         const [year, month] = endDate.value.split('-')
-        const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate()
+        const lastDay = TimeUtil.daysInMonth(Number(year), Number(month))
         params.end_date = endDate.value + '-' + String(lastDay).padStart(2, '0')  // 月末
       } else {
         params.end_date = endDate.value
@@ -1832,7 +1831,7 @@ const _loadBrandRankings = async () => {
     if (endDate.value) {
       if (endDate.value.match(/^\d{4}-\d{2}$/)) {
         const [year, month] = endDate.value.split('-')
-        const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate()
+        const lastDay = TimeUtil.daysInMonth(Number(year), Number(month))
         params.end_date = endDate.value + '-' + String(lastDay).padStart(2, '0')
       } else {
         params.end_date = endDate.value
@@ -1869,7 +1868,7 @@ const buildRankingParams = () => {
   if (endDate.value) {
     if (endDate.value.match(/^\d{4}-\d{2}$/)) {
       const [year, month] = endDate.value.split('-')
-      const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate()
+      const lastDay = TimeUtil.daysInMonth(Number(year), Number(month))
       params.end_date = endDate.value + '-' + String(lastDay).padStart(2, '0')
     } else {
       params.end_date = endDate.value
@@ -2057,7 +2056,7 @@ const loadProfitData = async (showLoadingState = true) => {
       // 如果是 YYYY-MM 格式（月份），转换为该月最后一天
       if (endDate.value.match(/^\d{4}-\d{2}$/)) {
         const [year, month] = endDate.value.split('-')
-        const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate()
+        const lastDay = TimeUtil.daysInMonth(Number(year), Number(month))
         params.end_date = endDate.value + '-' + String(lastDay).padStart(2, '0')
       } else {
         params.end_date = endDate.value
@@ -2621,7 +2620,8 @@ const updateForecastChart = () => {
   const clampRate = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max)
   const historyLabels = historySeries.map(item => item.label)
   const historyProfitData = historySeries.map(item => Math.round(item.totalProfit || 0))
-  const anchorDate = dayjs(historySeries[historySeries.length - 1]?.endDate || endDate.value || TimeUtil.nowFormatted('YYYY-MM-DD'))
+  const anchorValue = historySeries[historySeries.length - 1]?.endDate || endDate.value || TimeUtil.nowFormatted(TIME_FORMATS.DATE)
+  const anchorDate = TimeUtil.parse(anchorValue) || TimeUtil.now()
 
   const calculateAverageGrowth = (values: number[]) => {
     const validRates: number[] = []
@@ -2661,7 +2661,7 @@ const updateForecastChart = () => {
   }
 
   const futureLabels = Array.from({ length: monthsCount }, (_, index) => {
-    return anchorDate.add(index + 1, 'month').format('YYYY年M月')
+    return TimeUtil.format(anchorDate.add(index + 1, 'month'), TIME_FORMATS.YEAR_MONTH_DISPLAY)
   })
 
   const buildScenarioSeries = (scenario: keyof typeof scenarioRates) => {
@@ -2874,8 +2874,8 @@ const _handleExport = () => {
 // 刷新所有数据
 const refreshAllData = async (showLoadingState = true) => {
   // 使用父组件传递的参数
-  const computedStartDate = startDate.value || TimeUtil.now().startOf('month').format('YYYY-MM-DD')
-  const computedEndDate = endDate.value || TimeUtil.now().endOf('month').format('YYYY-MM-DD')
+  const computedStartDate = startDate.value || TimeUtil.format(TimeUtil.now().startOf('month'), TIME_FORMATS.DATE)
+  const computedEndDate = endDate.value || TimeUtil.format(TimeUtil.now().endOf('month'), TIME_FORMATS.DATE)
 
   // 使用 loadDataWithDates 加载所有数据
   await loadDataWithDates(computedStartDate, computedEndDate, showLoadingState)
@@ -2919,7 +2919,7 @@ const loadStoreProfit = async () => {
     if (endDate.value) {
       if (endDate.value.match(/^\d{4}-\d{2}$/)) {
         const [year, month] = endDate.value.split('-')
-        const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate()
+        const lastDay = TimeUtil.daysInMonth(Number(year), Number(month))
         params.end_date = endDate.value + '-' + String(lastDay).padStart(2, '0')
       } else {
         params.end_date = endDate.value
@@ -2965,7 +2965,7 @@ const loadEmployeePerformance = async () => {
     if (endDate.value) {
       if (endDate.value.match(/^\d{4}-\d{2}$/)) {
         const [year, month] = endDate.value.split('-')
-        const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate()
+        const lastDay = TimeUtil.daysInMonth(Number(year), Number(month))
         params.end_date = endDate.value + '-' + String(lastDay).padStart(2, '0')
       } else {
         params.end_date = endDate.value
@@ -3076,8 +3076,8 @@ watch(() => profitData.value, (newVal) => {
 onMounted(async () => {
   // 不再需要加载店铺和供应商列表，由父组件提供
   // 使用父组件传递的日期或默认本月
-  const startOfMonth = startDate.value || TimeUtil.now().startOf('month').format('YYYY-MM-DD')
-  const endOfMonth = endDate.value || TimeUtil.now().endOf('month').format('YYYY-MM-DD')
+  const startOfMonth = startDate.value || TimeUtil.format(TimeUtil.now().startOf('month'), TIME_FORMATS.DATE)
+  const endOfMonth = endDate.value || TimeUtil.format(TimeUtil.now().endOf('month'), TIME_FORMATS.DATE)
 
   // 如果 TAB 已经激活，立即加载数据
   if (props.isActive) {
@@ -3091,8 +3091,8 @@ onMounted(async () => {
 // 监听 isActive 变化，当 TAB 激活时加载数据
 watch(() => props.isActive, async (newVal) => {
   if (newVal) {
-    const startOfMonth = startDate.value || TimeUtil.now().startOf('month').format('YYYY-MM-DD')
-    const endOfMonth = endDate.value || TimeUtil.now().endOf('month').format('YYYY-MM-DD')
+    const startOfMonth = startDate.value || TimeUtil.format(TimeUtil.now().startOf('month'), TIME_FORMATS.DATE)
+    const endOfMonth = endDate.value || TimeUtil.format(TimeUtil.now().endOf('month'), TIME_FORMATS.DATE)
     await nextTick()
     setTimeout(async () => {
       await loadDataWithDates(startOfMonth, endOfMonth)
@@ -3117,7 +3117,7 @@ onBeforeUnmount(() => {
 
 <style lang="scss" scoped>
 .profit-analytics {
-  @media (max-width: 768px) {
+  @media (max-width: 767px) {
     .overview-cards {
       margin-bottom: 18px;
 

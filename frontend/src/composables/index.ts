@@ -32,6 +32,7 @@ export { useMediaQuery, useBreakpoints, useDevice, useThemePreference, useCustom
 export { useWindowSize, useScroll, useViewport } from './ui/useWindowSize'
 export { useLoading, createLoading, useLoadingState } from './useLoading'
 export { useImportExport } from './useImportExport'
+export { useKeyboardShortcut, type KeyboardShortcutOptions } from './useKeyboardShortcut'
 
 // 工具类
 export { useClipboard, ClipboardUtil } from './utils/useClipboard'

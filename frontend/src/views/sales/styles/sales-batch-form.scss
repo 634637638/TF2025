@@ -51,11 +51,99 @@
   margin-bottom: 20px;
 }
 
+/* PC 端客户姓名、电话、Apple ID 同行展示；窄屏回到统一响应式列数。 */
+.customer-fields {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.sales-fields {
+  grid-template-columns: minmax(240px, 1.35fr) repeat(3, minmax(150px, 1fr));
+}
+
+@media (min-width: 768px) and (max-width: 1024px) {
+  .customer-fields,
+  .sales-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 .form-group {
   display: flex;
   min-width: 0;
   flex-direction: column;
   gap: 8px;
+}
+
+.unified-price-control {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.unified-price-control :deep(.unified-price-input) {
+  min-width: 0;
+  flex: 1;
+}
+
+.batch-items-table :deep(.el-input-number) {
+  width: 100%;
+}
+
+.batch-items-section {
+  overflow: hidden;
+}
+
+.batch-items-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--tf-color-gray-material-300);
+  border-radius: 8px;
+}
+
+.batch-items-table {
+  width: 100%;
+  min-width: 680px;
+  border-collapse: collapse;
+  background: var(--color-bg-white);
+}
+
+.batch-items-table :deep(.el-table__cell) {
+  padding: 12px;
+  border-bottom: 1px solid var(--tf-color-gray-material-300);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.batch-items-table :deep(.el-table__header th) {
+  background: var(--tf-color-surface-muted);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.batch-items-table :deep(.el-table__body tr:last-child td) {
+  border-bottom: 0;
+}
+
+.batch-items-table :deep(.el-table__body td:first-child) {
+  min-width: 230px;
+}
+
+.batch-items-table :deep(strong),
+.batch-items-table :deep(small) {
+  display: block;
+}
+
+.batch-items-table :deep(small) {
+  margin-top: 4px;
+  color: var(--tf-color-muted);
+  font-size: 12px;
+}
+
+.batch-items-table :deep(.item-profit) {
+  color: var(--success-color);
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .form-label {
@@ -246,8 +334,10 @@ select.form-control:focus {
   border-top: 1px solid var(--tf-color-gray-material-300);
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .form-row,
+  .customer-fields,
+  .sales-fields,
   .profit-summary {
     grid-template-columns: 1fr;
   }
@@ -255,6 +345,10 @@ select.form-control:focus {
   .form-actions {
     flex-direction: row;
     gap: 10px;
+  }
+
+  .unified-price-control {
+    flex-direction: column;
   }
 }
 

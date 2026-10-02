@@ -470,9 +470,13 @@
               v-model="form.target_user_ids"
               multiple
               filterable
+              remote
+              reserve-keyword
+              :remote-method="searchReminderUsers"
               collapse-tags
               collapse-tags-tooltip
               placeholder="选择员工"
+              @focus="searchReminderUsers('')"
             >
               <el-option
                 v-for="user in activeUsers"
@@ -519,8 +523,8 @@
             <el-date-picker
               v-model="form.start_at"
               type="datetime"
-              value-format="YYYY-MM-DD HH:mm:ss"
-              format="YYYY-MM-DD HH:mm"
+              :value-format="TIME_FORMATS.DATETIME"
+              :format="TIME_FORMATS.DATETIME_MINUTE"
               placeholder="选择执行时间"
               @change="syncRepeatRuleFromStart"
             />
@@ -588,8 +592,8 @@
             <el-date-picker
               v-model="form.end_at"
               type="date"
-              value-format="YYYY-MM-DD"
-              format="YYYY-MM-DD"
+              :value-format="TIME_FORMATS.DATE"
+              :format="TIME_FORMATS.DATE"
             />
           </el-form-item>
           <el-form-item
@@ -905,8 +909,9 @@
 </template>
 
 <script setup lang="ts">
+import { confirmAction } from '@/utils/message-box'
 import { computed, onMounted, reactive, ref } from 'vue'
-import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
+import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { PageHeader, PermissionGate } from '@/components/base'
 import Pagination from '@/components/Pagination.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
@@ -949,6 +954,7 @@ const formRules: FormRules = { title:[{ required:true,message:'请输入事项�
 
 const activeTypes = computed(() => types.value.filter(item => !canViewReminderField('type_is_active') || Boolean(item.is_active)))
 const activeUsers = computed(() => users.value.filter(user => user.status === undefined || user.status === 1 || user.status === '1' || user.status === 'active'))
+let reminderUserSearchSequence = 0
 const activeCount = computed(() => canViewReminderField('status') ? reminderSummary.active_count : 0)
 const completedCount = computed(() => canViewReminderField('completed_count') ? reminderSummary.completed_count : 0)
 const ignoredCount = computed(() => canViewReminderField('ignored_count') ? reminderSummary.ignored_count : 0)
@@ -985,9 +991,9 @@ const typeSortColumnWidth = computed(() => getTextColumnMinWidth(
   { minWidth: 72, horizontalPadding: 28 }
 ))
 
-const localDate = (date:Date) => TimeUtil.format(date, TIME_FORMATS.DATE)
-const localDateTime = (date:Date) => TimeUtil.format(date, TIME_FORMATS.DATETIME)
-const parseDate = (value:any) => value ? TimeUtil.parse(String(value))?.toDate() || null : null
+const localDate = (date:ReturnType<typeof TimeUtil.now>) => TimeUtil.format(date, TIME_FORMATS.DATE)
+const localDateTime = (date:ReturnType<typeof TimeUtil.now>) => TimeUtil.format(date, TIME_FORMATS.DATETIME)
+const parseDate = (value:any) => value ? TimeUtil.parse(String(value)) : null
 const formatDate = (value:any) => { const date=parseDate(value); return date ? localDate(date) : '-' }
 const formatDateTime = (value:any) => { const date=parseDate(value); return date ? localDateTime(date) : '' }
 
@@ -1015,24 +1021,45 @@ const detailActionAtColumnWidth = computed(() => getTextColumnMinWidth(
 ))
 
 const loadTypes = async () => { if(!canViewReminderField('type_name')&&!canManage.value)return;const response:any=await api.get('/reminders/types'); if(response.success) types.value=Array.isArray(response.data)?response.data:[] }
-const loadUsers = async () => { if(!canViewReminderField('target_users')||(!canCreate.value&&!canManage.value)) return; const response:any=await api.get('/reminders/users'); if(response.success) users.value=Array.isArray(response.data)?response.data:[] }
+const loadUsers = async (keyword = '') => {
+  if (!canViewReminderField('target_users') || (!canCreate.value && !canManage.value)) return
+
+  const sequence = ++reminderUserSearchSequence
+  const selectedIds = new Set(form.target_user_ids)
+  const selected = users.value.filter(user => selectedIds.has(user.id))
+  try {
+    const response: any = await api.get('/reminders/users', {
+      params: { keyword: keyword.trim() || undefined, page: 1, page_size: 20 }
+    })
+    if (sequence !== reminderUserSearchSequence) return
+    if (response.success) {
+      const results = Array.isArray(response.data) ? response.data : []
+      users.value = [...results, ...selected.filter(user => !results.some((item: ReminderUser) => item.id === user.id))]
+    }
+  } catch (error) {
+    logger.error('加载提醒接收人失败', error)
+    ElMessage.error('加载提醒接收人失败')
+  }
+}
+
+const searchReminderUsers = (keyword: string) => { void loadUsers(keyword) }
 const loadReminders = async () => { loading.value=true; try{ const params:Record<string,unknown>={ page:pagination.page,page_size:pagination.page_size };if((canViewReminderField('title')||canViewReminderField('content'))&&filters.keyword)params.keyword=filters.keyword;if(canViewReminderField('type_name')&&filters.type_id)params.type_id=filters.type_id;if(canViewReminderField('status')&&filters.status)params.status=filters.status;const response:any=await api.get('/reminders',{ params }); if(response.success){reminders.value=Array.isArray(response.data)?response.data:[];pagination.total=Number(response.pagination?.total||0);Object.assign(reminderSummary,{ total:Number(response.summary?.total||0),active_count:Number(response.summary?.active_count||0),completed_count:Number(response.summary?.completed_count||0),ignored_count:Number(response.summary?.ignored_count||0) })} }catch(error){logger.error('加载待办失败',error);ElMessage.error('加载待办失败')}finally{loading.value=false} }
 const handleSearch=()=>{pagination.page=1;loadReminders()}; const resetSearch=()=>{filters.keyword='';filters.type_id='';filters.status='';handleSearch()}; const handlePageChange=(page:number,size:number)=>{pagination.page=page;pagination.page_size=size;loadReminders()}
 const resetForm=()=>Object.assign(form,defaultForm())
-const openCreateDialog=()=>{editingId.value=null;resetForm();form.start_at=localDateTime(new Date());formVisible.value=true}
-const openEditDialog=async(row:ReminderRow)=>{const response:any=await api.get(`/reminders/${row.id}`);if(!response.success)return;const data=response.data;editingId.value=row.id;const getters:Record<string,()=>unknown>={ type_id:()=>data.type_id||'',title:()=>data.title||'',content:()=>data.content||'',priority:()=>data.priority||'normal',target_mode:()=>data.target_mode||'specific',target_user_ids:()=>Array.isArray(data.targets)?data.targets.map((item:any)=>item.id):[],repeat_type:()=>data.repeat_type||'once',interval_value:()=>Number(data.interval_value||1),weekdays:()=>{try{return JSON.parse(data.weekdays_json||'[]')}catch{return[1]}},year_month:()=>Number(data.year_month||1),month_day:()=>Number(data.month_day||1),missing_day_policy:()=>data.missing_day_policy||'last-day',start_at:()=>formatDateTime(data.start_at),remind_before_days:()=>Number(data.remind_before_days||0),end_type:()=>data.end_type||'never',end_at:()=>data.end_at?formatDate(data.end_at):'',occurrence_limit:()=>Number(data.occurrence_limit||10) };Object.entries(getters).forEach(([key,getter])=>{const field=reminderPayloadFieldMap[key];if(field&&canViewReminderField(field))(form as Record<string,unknown>)[key]=getter()});formVisible.value=true}
+const openCreateDialog=()=>{editingId.value=null;resetForm();form.start_at=localDateTime(TimeUtil.now());formVisible.value=true}
+const openEditDialog=async(row:ReminderRow)=>{const response:any=await api.get(`/reminders/${row.id}`);if(!response.success)return;const data=response.data;editingId.value=row.id;const getters:Record<string,()=>unknown>={ type_id:()=>data.type_id||'',title:()=>data.title||'',content:()=>data.content||'',priority:()=>data.priority||'normal',target_mode:()=>data.target_mode||'specific',target_user_ids:()=>Array.isArray(data.targets)?data.targets.map((item:any)=>item.id):[],repeat_type:()=>data.repeat_type||'once',interval_value:()=>Number(data.interval_value||1),weekdays:()=>{try{return JSON.parse(data.weekdays_json||'[]')}catch{return[1]}},year_month:()=>Number(data.year_month||1),month_day:()=>Number(data.month_day||1),missing_day_policy:()=>data.missing_day_policy||'last-day',start_at:()=>formatDateTime(data.start_at),remind_before_days:()=>Number(data.remind_before_days||0),end_type:()=>data.end_type||'never',end_at:()=>data.end_at?formatDate(data.end_at):'',occurrence_limit:()=>Number(data.occurrence_limit||10) };Object.entries(getters).forEach(([key,getter])=>{const field=reminderPayloadFieldMap[key];if(field&&canViewReminderField(field))(form as Record<string,unknown>)[key]=getter()});if(Array.isArray(data.targets)){users.value=[...data.targets,...users.value.filter(user=>!data.targets.some((target:any)=>target.id===user.id))]}formVisible.value=true}
 const handleTypeChange=(id:any)=>{if(editingId.value)return;const type=types.value.find(item=>item.id===id);if(type)form.remind_before_days=Number(type.default_remind_days||0)}
-const syncRepeatRuleFromStart=()=>{if(!['monthly','yearly'].includes(form.repeat_type))return;const start=parseDate(form.start_at);if(!start)return;form.month_day=start.getDate();form.missing_day_policy='last-day';if(form.repeat_type==='yearly')form.year_month=start.getMonth()+1}
-const normalizeRepeatFields=()=>{if(form.repeat_type==='once')form.end_type='never';if(['daily','weekly'].includes(form.repeat_type))form.start_at=localDateTime(new Date());if(form.repeat_type==='weekly'&&!form.weekdays.length)form.weekdays=[1];syncRepeatRuleFromStart()}
+const syncRepeatRuleFromStart=()=>{if(!['monthly','yearly'].includes(form.repeat_type))return;const start=parseDate(form.start_at);if(!start?.isValid())return;form.month_day=start.date();form.missing_day_policy='last-day';if(form.repeat_type==='yearly')form.year_month=start.month()+1}
+const normalizeRepeatFields=()=>{if(form.repeat_type==='once')form.end_type='never';if(['daily','weekly'].includes(form.repeat_type))form.start_at=localDateTime(TimeUtil.now());if(form.repeat_type==='weekly'&&!form.weekdays.length)form.weekdays=[1];syncRepeatRuleFromStart()}
 const saveReminder=async()=>{if(!formRef.value||!canSaveReminder.value)return;if(canViewReminderField('repeat_type')&&canViewReminderField('start_at'))syncRepeatRuleFromStart();await formRef.value.validate();saving.value=true;try{const source={ ...form,target_user_ids:form.target_mode==='all'?[]:form.target_user_ids,end_at:form.end_type==='date'?form.end_at:null,occurrence_limit:form.end_type==='count'?form.occurrence_limit:null };const payload=pickVisibleReminderFields(source,reminderPayloadFieldMap);const response:any=editingId.value?await api.put(`/reminders/${editingId.value}`,payload):await api.post('/reminders',payload);if(response.success){ElMessage.success(editingId.value?'待办已更新':'待办已创建');formVisible.value=false;pagination.page=1;await loadReminders()}}catch(error:any){logger.error('保存待办失败',error);ElMessage.error(error?.response?.data?.message||'保存待办失败')}finally{saving.value=false}}
-const deleteReminder=async(row:ReminderRow)=>{try{const target=canViewReminderField('title')?`“${row.title}”`:'';await ElMessageBox.confirm(`确定删除待办${target}吗？历史执行记录将保留。`,'删除确认',{ type:'warning' });const response:any=await api.delete(`/reminders/${row.id}`);if(response.success){ElMessage.success('待办已删除');loadReminders()}}catch(error){if(error!=='cancel')logger.error('删除待办失败',error)}}
+const deleteReminder=async(row:ReminderRow)=>{try{const target=canViewReminderField('title')?`“${row.title}”`:'';await confirmAction(`确定删除待办${target}吗？历史执行记录将保留。`,'删除确认',{ type:'warning' });const response:any=await api.delete(`/reminders/${row.id}`);if(response.success){ElMessage.success('待办已删除');loadReminders()}}catch(error){if(error!=='cancel')logger.error('删除待办失败',error)}}
 const openDetail=async(row:ReminderRow)=>{const response:any=await api.get(`/reminders/${row.id}`);if(response.success){detail.value=response.data;detailVisible.value=true}}
 const openTypeManager=async()=>{await loadTypes();typeManagerVisible.value=true}
 const handleTypeColorPreview=(color:string|null)=>{if(color&&/^#[0-9a-f]{6}$/i.test(color))typeForm.color=color}
 const openTypeForm=(row?:ReminderType)=>{const base={ id:row?.id||0,name:'',default_remind_days:7,color:'#409EFF',sort_order:0 };Object.assign(typeForm,base);if(row){const values:Record<string,unknown>={ name:row.name,default_remind_days:row.default_remind_days,color:row.color||'#409EFF',sort_order:row.sort_order };Object.entries(values).forEach(([key,value])=>{const field=typePayloadFieldMap[key];if(field&&canViewReminderField(field))(typeForm as Record<string,unknown>)[key]=value})}typeFormVisible.value=true}
 const saveType=async()=>{if(canViewReminderField('type_name')&&!typeForm.name.trim()){ElMessage.warning('请输入类型名称');return}typeSaving.value=true;try{const payload=pickVisibleReminderFields(typeForm,typePayloadFieldMap);const response:any=typeForm.id?await api.put(`/reminders/types/${typeForm.id}`,payload):await api.post('/reminders/types',payload);if(response.success){ElMessage.success('事项类型已保存');typeFormVisible.value=false;loadTypes()}}catch(error:any){ElMessage.error(error?.response?.data?.message||'事项类型保存失败')}finally{typeSaving.value=false}}
 const toggleType=async(row:ReminderType,value:any)=>{try{const response:any=await api.patch(`/reminders/types/${row.id}/toggle`,{ is_active:Boolean(value) });if(response.success){row.is_active=Boolean(value);ElMessage.success('类型状态已更新')}}catch{ElMessage.error('类型状态更新失败')}}
-const deleteType=async(row:ReminderType)=>{try{await ElMessageBox.confirm(`确定删除事项类型“${row.name}”吗？`,'删除确认',{ type:'warning' });const response:any=await api.delete(`/reminders/types/${row.id}`);if(response.success){ElMessage.success('事项类型已删除');await loadTypes()}}catch(error:any){if(error==='cancel'||error==='close')return;ElMessage.error(error?.response?.data?.message||'事项类型删除失败')}}
+const deleteType=async(row:ReminderType)=>{try{await confirmAction(`确定删除事项类型“${row.name}”吗？`,'删除确认',{ type:'warning' });const response:any=await api.delete(`/reminders/types/${row.id}`);if(response.success){ElMessage.success('事项类型已删除');await loadTypes()}}catch(error:any){if(error==='cancel'||error==='close')return;ElMessage.error(error?.response?.data?.message||'事项类型删除失败')}}
 
 onMounted(async()=>{await fieldPermissions.init();await Promise.all([loadTypes(),loadUsers()]);await loadReminders()})
 </script>
@@ -1063,5 +1090,5 @@ onMounted(async()=>{await fieldPermissions.init();await Promise.all([loadTypes()
 }
 
 .reminder-type-table-wrap,.reminder-type-table{width:100%}
-@media(max-width:768px){.reminder-form-grid{grid-template-columns:1fr}.reminder-form-grid .span-2{grid-column:auto}.detail-summary{grid-template-columns:1fr}.type-toolbar{align-items:flex-start;flex-direction:column}.reminder-form-dialog :deep(.el-dialog),.reminder-detail-dialog :deep(.el-dialog),.reminder-type-dialog :deep(.el-dialog){width:calc(100vw - 16px)!important;margin:8px auto}.weekday-options :deep(.el-checkbox-button__inner){padding:8px 10px}}
+@media(max-width: 767px){.reminder-form-grid{grid-template-columns:1fr}.reminder-form-grid .span-2{grid-column:auto}.detail-summary{grid-template-columns:1fr}.type-toolbar{align-items:flex-start;flex-direction:column}.reminder-form-dialog :deep(.el-dialog),.reminder-detail-dialog :deep(.el-dialog),.reminder-type-dialog :deep(.el-dialog){width:calc(100vw - 16px)!important;margin:8px auto}.weekday-options :deep(.el-checkbox-button__inner){padding:8px 10px}}
 </style>

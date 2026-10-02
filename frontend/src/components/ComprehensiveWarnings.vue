@@ -697,14 +697,14 @@ onUnmounted(() => {
 <style lang="scss" scoped>
 .comprehensive-warnings {
   background: white;
-  border-radius: 12px;
+  border-radius: var(--tf-radius-panel);
   overflow: hidden;
 
   .warnings-overview {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     gap: 15px;
-    padding: 20px;
+    padding: var(--tf-space-5);
     background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
 
     .overview-card {
@@ -767,7 +767,7 @@ onUnmounted(() => {
         }
 
         .card-label {
-          font-size: 12px;
+          font-size: var(--tf-font-caption);
           color: rgba(255, 255, 255, 0.8);
         }
       }
@@ -775,7 +775,7 @@ onUnmounted(() => {
   }
 
   .warning-detail {
-    padding: 20px;
+    padding: var(--tf-space-5);
 
     .out-of-stock-text {
       color: var(--tf-color-red-600);
@@ -814,11 +814,11 @@ onUnmounted(() => {
 
         h4 {
           margin: 0;
-          font-size: 16px;
+          font-size: var(--tf-font-body-lg);
           color: var(--tf-color-heading);
           display: flex;
           align-items: center;
-          gap: 8px;
+          gap: var(--tf-space-2);
 
           i {
             color: var(--tf-color-blue-legacy);
@@ -852,9 +852,9 @@ onUnmounted(() => {
 
           .label {
             display: block;
-            font-size: 12px;
+            font-size: var(--tf-font-caption);
             color: var(--tf-color-gray-cool-500);
-            margin-bottom: 8px;
+            margin-bottom: var(--tf-space-2);
             font-weight: 500;
           }
 
@@ -898,10 +898,10 @@ onUnmounted(() => {
           .trend-item {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: var(--tf-space-3);
             padding: 10px;
             background: var(--color-bg-white);
-            border-radius: 8px;
+            border-radius: var(--tf-radius-card);
             border: 1px solid var(--tf-color-gray-flat-200);
             transition: all 0.2s ease;
 
@@ -911,7 +911,7 @@ onUnmounted(() => {
             }
 
             .trend-date {
-              font-size: 12px;
+              font-size: var(--tf-font-caption);
               color: var(--tf-color-gray-cool-500);
               width: 55px;
               text-align: right;
@@ -922,14 +922,14 @@ onUnmounted(() => {
               flex: 1;
               height: 28px;
               background: var(--tf-color-gray-flat-200);
-              border-radius: 6px;
+              border-radius: var(--tf-radius-control);
               overflow: hidden;
               position: relative;
 
               .bar-fill {
                 height: 100%;
                 background: linear-gradient(90deg, var(--tf-color-blue-legacy), var(--tf-color-blue-flat-dark));
-                border-radius: 6px;
+                border-radius: var(--tf-radius-control);
                 transition: width 0.5s ease;
                 position: relative;
 
@@ -965,7 +965,7 @@ onUnmounted(() => {
         margin-top: 20px;
 
         .el-alert {
-          border-radius: 8px;
+          border-radius: var(--tf-radius-card);
         }
       }
 
@@ -1024,7 +1024,7 @@ onUnmounted(() => {
       gap: 10px;
 
       .overview-card {
-        padding: 12px;
+        padding: var(--tf-space-3);
 
         .card-icon {
           width: 38px;
@@ -1060,10 +1060,10 @@ onUnmounted(() => {
             }
 
             .value {
-              font-size: 16px;
+              font-size: var(--tf-font-body-lg);
 
               i {
-                font-size: 12px;
+                font-size: var(--tf-font-caption);
               }
             }
           }
@@ -1072,7 +1072,7 @@ onUnmounted(() => {
         .trend-list {
           .trend-item {
             flex-wrap: wrap;
-            padding: 8px;
+            padding: var(--tf-space-2);
 
             .trend-date {
               font-size: 11px;

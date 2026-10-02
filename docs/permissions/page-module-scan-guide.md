@@ -32,7 +32,7 @@
 
 - `src/views/<module>/<PageName>.vue`
 - `src/views/<module>/page/<PageName>.vue`，但必须同时满足：
-  - 该文件在 [frontend/src/router/index.ts](/Users/imac/Desktop/webtset/TF2025/frontend/src/router/index.ts) 中被直接作为路由页面引用
+  - 该文件在 `frontend/src/router/index.ts` 中被直接作为路由页面引用
   - 文件名符合独立页面命名规则，例如 `*View.vue` 或 `*Page.vue`
   - 或已列入兼容特例，例如 `GitManagement.vue`
 
@@ -132,7 +132,7 @@ src/views/<module>/page/<ComponentName>Card.vue
 
 1. 在 `src/views/<module>/` 或 `src/views/<module>/page/` 新建页面文件。
 2. 文件名使用 `*View.vue` 或 `*Page.vue`。
-3. 在 [frontend/src/router/index.ts](/Users/imac/Desktop/webtset/TF2025/frontend/src/router/index.ts) 中注册路由。
+3. 在 `frontend/src/router/index.ts` 中注册路由。
 4. 在 `backend/src/config/module-permission-capabilities.json` 登记稳定模块键和真实动作。
 5. 页面内部接入 `usePagePermissions(...)`，后端接口接入相同动作的 `requirePermission(...)`。
 6. 执行 `cd frontend && npm run check:permissions`，再执行模块扫描或模块同步。

@@ -14,6 +14,9 @@ const { isValidIdCard } = require('../utils/security-enhanced')
 const { generateInvoiceNumber } = require('../utils/invoice-number')
 const { validateUploadedFileSignature, removeUploadedFiles } = require('../utils/upload-file-validation')
 const dataMaskingService = require('../services/dataMaskingService')
+const { searchCustomers: searchCustomerOptions } = require('../services/customer-search.service')
+const { searchOperators } = require('../services/operator-search.service')
+const auditUnpaginatedPersonnelSearch = require('../middleware/unpaginated-personnel-search')
 
 router.use(unifiedAuth)
 
@@ -230,14 +233,14 @@ router.get('/customers', requireAnyPermission(['rentals:view', 'rentals:create']
     if (!searchableColumns.length) {
       return res.status(403).json({ success: false, message: '没有可用的客户搜索字段', code: 'FIELD_PERMISSION_DENIED' })
     }
-    const db = getDatabase()
-    const like = `%${keyword}%`
-    const [rows] = await db.execute(
-      `SELECT id, name, phone, id_card FROM customers
-       WHERE status = 1 AND (${searchableColumns.map(([, column]) => `${column} LIKE ?`).join(' OR ')})
-       ORDER BY id DESC LIMIT 20`,
-      searchableColumns.map(() => like)
-    )
+    const result = await searchCustomerOptions({
+      keyword,
+      page: req.query.page,
+      page_size: req.query.page_size,
+      fields: ['id', 'name', 'phone', 'id_card'],
+      search_fields: searchableColumns.map(([, column]) => column)
+    })
+    const rows = result.records
     const visibleRows = rows.map(row => ({
       id: row.id,
       name: hiddenFields.has('customer_info.customer_name') ? null : row.name,
@@ -251,18 +254,29 @@ router.get('/customers', requireAnyPermission(['rentals:view', 'rentals:create']
   }
 })
 
-router.get('/sales-options', requireAnyPermission(['rentals:view', 'rentals:create']), async (req, res) => {
+router.get('/sales-options', requireAnyPermission(['rentals:view', 'rentals:create']), auditUnpaginatedPersonnelSearch('rentals-sales-options'), async (req, res) => {
   try {
     const hiddenFields = await getRentalHiddenFields(req)
     const db = getDatabase()
-    const [operators] = hiddenFields.has('sales_info.sale_operator_name')
-      ? [[]]
-      : await db.execute(`SELECT id, username, name FROM users WHERE status=1
-         ORDER BY COALESCE(NULLIF(name,''), username), id`)
+    const operatorResult = hiddenFields.has('sales_info.sale_operator_name')
+      ? { records: [], pagination: null }
+      : await searchOperators({
+        user: req.user,
+        keyword: req.query.keyword,
+        page: req.query.page,
+        page_size: req.query.page_size,
+        status: '1'
+      })
+    const operators = operatorResult.records.map(user => ({
+      id: Number(user.id),
+      username: user.username,
+      name: user.name || user.username
+    }))
     const [stores] = hiddenFields.has('sales_info.sale_store_name')
       ? [[]]
       : await db.execute('SELECT id, name FROM stores WHERE status=1 ORDER BY sort_order, name, id')
-    return ApiResponse.success(res, { operators, stores }, '获取销售选项成功')
+    return ApiResponse.success(res, { operators, stores }, '获取销售选项成功', 200,
+      operatorResult.pagination ? { pagination: operatorResult.pagination } : {})
   } catch (error) {
     log.error('获取租赁销售选项失败:', error)
     return ApiResponse.serverError(res, '获取销售选项失败', error)

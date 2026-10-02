@@ -103,9 +103,10 @@
 </template>
 
 <script setup lang="ts">
+import { confirmAction } from '@/utils/message-box'
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessageBox, ElMessage } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { getCart, removeFromCart } from '@/api/shop-public'
 import type { CartItem } from '@/api/shop-public'
 import { storage } from '@/services/storage'
@@ -114,6 +115,7 @@ import Image from '@/components/Image.vue'
 import SectionLoading from '@/components/SectionLoading.vue'
 import { logger } from '@/utils/logger'
 import { getCartId as ensureCartId } from '@/composables/useCart'
+import { formatAmount } from '@/utils/format'
 const router = useRouter()
 
 // 数据
@@ -129,7 +131,7 @@ const isAllSelected = computed(() => {
 
 // 选中商品总价
 const selectedTotal = computed(() => {
-  if (!cartData.value) return '0.00'
+  if (!cartData.value) return '0'
 
   let total = 0
   cartData.value.items.forEach((item: CartItem) => {
@@ -139,12 +141,12 @@ const selectedTotal = computed(() => {
     }
   })
 
-  return total.toFixed(2)
+  return formatAmount(total)
 })
 
 const formatPrice = (value: number | string | null | undefined) => {
   const numericValue = parseFloat(String(value ?? 0)) || 0
-  return numericValue.toFixed(2)
+  return formatAmount(numericValue)
 }
 
 // 获取购物车
@@ -207,7 +209,7 @@ const toggleSelectAll = () => {
 
 // 确认删除
 const confirmDelete = (item: CartItem) => {
-  ElMessageBox.confirm(
+  confirmAction(
     `确定要删除 ${item.brand_name} ${item.model_name} 吗？`,
     '提示',
     {
@@ -495,11 +497,4 @@ onMounted(() => {
   }
 }
 
-// 空状态
-.empty-state {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: calc(100vh - 44px);
-}
 </style>

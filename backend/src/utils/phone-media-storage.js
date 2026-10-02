@@ -10,19 +10,19 @@ function sanitizePhoneMediaPart(value, fallback = '') {
   return sanitized || fallback
 }
 
-function buildPhoneMediaDirectoryName({ serialNumber, inventoryTime } = {}) {
+function buildPhoneMediaDirectoryName({ serialNumber, inventoryTime, isNew = false } = {}) {
   const safeSerialNumber = sanitizePhoneMediaPart(serialNumber)
   const dateMatch = String(inventoryTime || '').match(/(\d{4})[-/]?(\d{1,2})[-/]?(\d{1,2})/)
 
   if (!safeSerialNumber) {
-    throw new Error('二手机缺少序列号，无法创建图片目录')
+    throw new Error('手机缺少序列号，无法创建媒体目录')
   }
   if (!dateMatch) {
-    throw new Error('二手机缺少有效入库日期，无法创建图片目录')
+    throw new Error('手机缺少有效入库日期，无法创建媒体目录')
   }
 
   const safeInventoryDate = `${dateMatch[1]}${dateMatch[2].padStart(2, '0')}${dateMatch[3].padStart(2, '0')}`
-  return `${safeSerialNumber}-${safeInventoryDate}`
+  return `${Number(isNew) === 1 ? 'NEW-' : ''}${safeSerialNumber}-${safeInventoryDate}`
 }
 
 async function archivePhoneMediaUpload({ phoneId, file, mediaRoot = 'phones', database } = {}) {
@@ -44,15 +44,12 @@ async function archivePhoneMediaUpload({ phoneId, file, mediaRoot = 'phones', da
     throw new Error('手机记录不存在')
   }
 
-  const folderName = Number(phones[0].is_new) === 0
-    ? buildPhoneMediaDirectoryName({
-      serialNumber: phones[0].serial_number,
-      inventoryTime: phones[0].inventory_time
-    })
-    : ''
-  const targetDirectory = folderName
-    ? getUploadSubdir(mediaRoot, folderName)
-    : getUploadSubdir(mediaRoot)
+  const folderName = buildPhoneMediaDirectoryName({
+    serialNumber: phones[0].serial_number,
+    inventoryTime: phones[0].inventory_time,
+    isNew: phones[0].is_new
+  })
+  const targetDirectory = getUploadSubdir(mediaRoot, folderName)
   const filename = path.basename(file.filename)
   const sourcePath = path.resolve(file.path)
   const targetPath = path.resolve(targetDirectory, filename)
@@ -76,9 +73,7 @@ async function archivePhoneMediaUpload({ phoneId, file, mediaRoot = 'phones', da
 
   file.path = targetPath
   file.destination = targetDirectory
-  return folderName
-    ? getUploadUrl(mediaRoot, folderName, filename)
-    : getUploadUrl(mediaRoot, filename)
+  return getUploadUrl(mediaRoot, folderName, filename)
 }
 
 module.exports = {

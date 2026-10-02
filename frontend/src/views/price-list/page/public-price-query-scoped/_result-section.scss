@@ -1,0 +1,389 @@
+.results-section {
+  padding: 10px 20px 40px;
+  min-height: 400px;
+
+  // 移动端去除边距
+  @media (max-width: 767px) {
+    padding: 4px 0 20px;
+    // 防止左右移动
+    overflow-x: hidden;
+  }
+
+  .container {
+    max-width: 1000px;
+    margin: 0 auto;
+
+    // 移动端全宽
+    @media (max-width: 767px) {
+      padding: 0;
+      max-width: 100%;
+      // 防止左右移动
+      width: 100%;
+      overflow-x: hidden;
+    }
+  }
+
+  .loading-container {
+    text-align: center;
+    padding: 60px 20px;
+    color: white;
+
+    .el-icon {
+      font-size: 64px;
+      margin-bottom: 20px;
+    }
+
+    p {
+      font-size: 18px;
+      opacity: 0.8;
+    }
+  }
+
+  .results-list {
+    background: white;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+
+    // 移动端去除内边距和圆角
+    @media (max-width: 767px) {
+      padding: 0;
+      border-radius: 0;
+      box-shadow: none;
+    }
+
+    .results-header {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 20px;
+      padding-bottom: 15px;
+      border-bottom: 1px solid var(--tf-color-gray-200-alt);
+      flex-wrap: nowrap;
+      // 防止内容溢出
+      min-width: 0;
+
+      // 移动端头部样式
+      @media (max-width: 767px) {
+        margin: 0;
+        padding: 12px;
+        background: var(--tf-color-surface);
+        border-bottom: 1px solid var(--tf-color-gray-300-alt);
+        gap: 8px;
+      }
+
+      // 小尺寸响应式
+      @media (max-width: 479px) {
+        gap: 4px;
+        padding: 8px 6px;
+      }
+
+      @media (max-width: 380px) {
+        gap: 3px;
+        padding: 6px 4px;
+      }
+
+      h2 {
+        margin: 0;
+        font-size: 20px;
+        color: var(--text-primary);
+        white-space: nowrap;
+        flex-shrink: 0;
+
+        @media (max-width: 767px) {
+          font-size: 15px;
+        }
+
+        @media (max-width: 479px) {
+          font-size: 13px;
+        }
+
+        @media (max-width: 380px) {
+          font-size: 12px;
+        }
+      }
+
+      .hot-badge {
+        font-size: 12px;
+        font-weight: bold;
+        padding: 0 6px;
+        height: 20px;
+        line-height: 20px;
+        border-radius: 4px;
+        animation: pulse 2s infinite;
+
+        @media (max-width: 767px) {
+          font-size: 10px;
+          height: 18px;
+          line-height: 18px;
+          padding: 0 4px;
+        }
+
+        @media (max-width: 479px) {
+          font-size: 9px;
+          height: 16px;
+          line-height: 16px;
+          padding: 0 3px;
+        }
+
+        @media (max-width: 380px) {
+          font-size: 8px;
+          height: 14px;
+          line-height: 14px;
+          padding: 0 2px;
+        }
+      }
+
+      .count {
+        color: var(--color-info);
+        font-size: 14px;
+        white-space: nowrap;
+        flex-shrink: 0;
+
+        @media (max-width: 767px) {
+          font-size: 12px;
+        }
+
+        @media (max-width: 479px) {
+          font-size: 11px;
+        }
+
+        @media (max-width: 380px) {
+          font-size: 10px;
+        }
+      }
+    }
+
+    // 下载按钮区域
+    .download-section {
+      margin-bottom: 16px;
+      padding: 0 4px;
+
+      .download-btn {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 12px 24px;
+        background: var(--tf-button-success-bg);
+        border: none;
+        border-radius: 10px;
+        color: var(--tf-button-on-color);
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: var(--tf-button-success-shadow);
+
+        @media (max-width: 767px) {
+          padding: 10px 20px;
+          font-size: 14px;
+          border-radius: 8px;
+        }
+
+        &:hover:not(:disabled) {
+          background: var(--tf-button-success-hover-bg);
+          box-shadow: var(--tf-button-success-shadow);
+          transform: translateY(-2px);
+        }
+
+        &:active:not(:disabled) {
+          transform: translateY(0);
+        }
+
+        &:disabled {
+          opacity: 0.7;
+          cursor: not-allowed;
+        }
+
+        .btn-content {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+
+          &.loading {
+            color: inherit;
+          }
+
+          .download-icon {
+            width: 18px;
+            height: 18px;
+
+            @media (max-width: 767px) {
+              width: 16px;
+              height: 16px;
+            }
+          }
+        }
+      }
+    }
+
+    @keyframes spin {
+      from {
+        transform: rotate(0deg);
+      }
+      to {
+        transform: rotate(360deg);
+      }
+    }
+  }
+
+  // 表格包装器
+  .table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+
+    // 移动端负边距让表格靠边
+    @media (max-width: 767px) {
+      margin: 0;
+      width: 100%;
+      // 允许表格内部水平滚动
+      overflow-x: auto;
+      overflow-y: hidden;
+      // 隐藏滚动条
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+
+      &::-webkit-scrollbar {
+        display: none;
+      }
+    }
+
+    :deep(.el-table) {
+      font-size: 13px;
+      // 确保表格不会超出容器
+      width: 100%;
+      table-layout: auto;
+
+      // 移动端去除表格边框圆角
+      @media (max-width: 767px) {
+        border-radius: 0;
+        border-left: none;
+        border-right: none;
+        // 表格自动宽度，允许超出容器
+        width: auto;
+        min-width: 100%;
+        table-layout: auto;
+      }
+
+      .el-table__header th {
+        padding: 8px 5px;
+        font-size: 13px;
+
+        @media (max-width: 767px) {
+          padding: 8px 4px;
+          font-size: 12px;
+        }
+
+        @media (max-width: 479px) {
+          padding: 6px 3px;
+          font-size: 11px;
+        }
+
+        @media (max-width: 380px) {
+          padding: 5px 2px;
+          font-size: 10px;
+        }
+      }
+
+      .el-table__body td {
+        padding: 8px 5px;
+
+        @media (max-width: 767px) {
+          padding: 8px 4px;
+        }
+
+        @media (max-width: 479px) {
+          padding: 6px 3px;
+        }
+
+        @media (max-width: 380px) {
+          padding: 5px 2px;
+        }
+      }
+
+      // 移动端优化
+      @media (max-width: 767px) {
+        font-size: 12px;
+
+        .el-table__body-wrapper {
+          overflow-x: visible;
+        }
+
+        .el-table__cell {
+          padding: 8px 4px;
+          // 保持正常显示，不换行
+          overflow: visible;
+          word-break: normal;
+          white-space: nowrap;
+        }
+      }
+
+      @media (max-width: 479px) {
+        font-size: 11px;
+
+        .el-table__cell {
+          padding: 6px 3px;
+          overflow: visible;
+          word-break: normal;
+          white-space: nowrap;
+        }
+      }
+
+      @media (max-width: 380px) {
+        font-size: 10px;
+
+        .el-table__cell {
+          padding: 5px 2px;
+          overflow: visible;
+          word-break: normal;
+          white-space: nowrap;
+        }
+      }
+
+      // 确保表格列宽度合理分配
+      .el-table__header-wrapper,
+      .el-table__body-wrapper {
+        width: 100%;
+      }
+
+      // 单元格内容防止溢出
+      .cell {
+        overflow: visible;
+        word-break: normal;
+        white-space: nowrap;
+      }
+    }
+  }
+
+  .price {
+    font-weight: bold;
+
+    &.wholesale {
+      color: var(--color-success);
+
+      // 有库存且已验证密码时显示红色
+      &.has-stock {
+        color: var(--color-danger); // 红色
+        font-weight: 800;
+      }
+    }
+  }
+}
+
+.footer {
+  text-align: center;
+  padding: 30px 20px;
+  color: rgba(255, 255, 255, 0.8);
+
+  p {
+    margin: 5px 0;
+    font-size: 14px;
+  }
+
+  .copyright {
+    opacity: 0.6;
+  }
+}

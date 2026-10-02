@@ -6,7 +6,7 @@
 import { ref, computed } from 'vue'
 import { unifiedApi } from './unified-api'
 import { ErrorLevel, ErrorType } from './error-boundary'
-import { TimeUtil } from './time'
+import { TIME_FORMATS, TimeUtil } from './time'
 import { storage } from '@/services/storage'
 import { logger } from './logger'
 
@@ -168,7 +168,7 @@ export class ErrorLogger {
     const logEntry: ErrorLogEntry = {
       id: errorId,
       timestamp: now,
-      formattedTime: TimeUtil.format(now, 'YYYY-MM-DD HH:mm:ss.SSS'),
+      formattedTime: TimeUtil.format(now, TIME_FORMATS.DATETIME_MILLISECOND),
       level: error.level,
       type: error.type,
       message: error.message,
@@ -340,7 +340,7 @@ export class ErrorLogger {
       byLevel[log.level]++
       byType[log.type]++
 
-      const hour = new Date(log.timestamp).getHours()
+      const hour = TimeUtil.fromTimestamp(log.timestamp).hour()
       const hourKey = `${hour}:00`
       byHour[hourKey] = (byHour[hourKey] || 0) + 1
 
@@ -589,7 +589,7 @@ export class ErrorLogger {
     const logs = Array.from(this.logs.values()).sort((a, b) => b.timestamp - a.timestamp)
     const exportData = {
       sessionId: this.sessionId,
-      exportTime: TimeUtil.now().toISOString(),
+      exportTime: TimeUtil.toISOString(),
       statistics: this.getStatistics(),
       logs
     }

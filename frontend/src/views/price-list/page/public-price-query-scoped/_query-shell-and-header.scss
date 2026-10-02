@@ -1,0 +1,88 @@
+.public-price-query {
+  min-height: 100vh;
+  background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
+  // 防止页面左右移动
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
+  position: relative;
+}
+
+.header-section {
+  padding: 60px 20px 40px;
+  text-align: center;
+  color: white;
+
+  .container {
+    max-width: 800px;
+    margin: 0 auto;
+    // 防止左右移动
+    width: 100%;
+    overflow-x: hidden;
+  }
+
+  .title {
+    font-size: 42px;
+    font-weight: bold;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+
+    .title-icon {
+      font-size: 48px;
+    }
+  }
+
+  .subtitle {
+    font-size: 18px;
+    opacity: 0.9;
+    margin-bottom: 40px;
+  }
+
+  .search-box {
+    max-width: 600px;
+    margin: 0 auto 20px;
+
+    // 移动端适配
+    @media (max-width: 767px) {
+      max-width: 100%;
+      padding: 0 15px;
+      margin-bottom: 15px;
+    }
+
+  }
+
+  .search-hint {
+    text-align: center;
+    margin-top: 12px;
+    opacity: 0.85;
+    font-size: 13px;
+
+    @media (max-width: 767px) {
+      font-size: 12px;
+      padding: 0 15px;
+      line-height: 1.6;
+    }
+  }
+
+  .quick-brands {
+    .label {
+      margin-right: 10px;
+      opacity: 0.9;
+    }
+
+    .brand-tag {
+      margin: 5px;
+      cursor: pointer;
+      transition: all 0.3s;
+
+      &:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      }
+    }
+  }
+}
+

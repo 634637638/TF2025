@@ -23,19 +23,12 @@
           </el-button>
           <el-button
             type="info"
+            :loading="refreshing"
             :disabled="refreshing"
             @click="handleRefresh"
           >
-            <InlineLoading
-              v-if="refreshing"
-              text="刷新中..."
-              size="small"
-              variant="inherit"
-            />
-            <template v-else>
-              <i class="fas fa-sync-alt" />
-              <span>刷新</span>
-            </template>
+            <i class="fas fa-sync-alt" />
+            <span>{{ refreshing ? '刷新中...' : '刷新' }}</span>
           </el-button>
         </template>
       </PageHeader>
@@ -218,15 +211,15 @@
                 align="center"
               >
                 <template #default="{ row, $index }">
-                  <input
-                    v-model.number="row.sort_order"
-                    type="number"
-                    class="sort-order-input"
+                  <el-input-number
+                    v-model="row.sort_order"
+                    class="sort-order-control"
                     :disabled="!canEdit"
-                    min="0"
-                    max="9999"
+                    :min="0"
+                    :max="9999"
+                    :controls="false"
                     @change="handleSortOrderChange($index, row.sort_order)"
-                  >
+                  />
                 </template>
               </el-table-column>
               <el-table-column
@@ -444,7 +437,6 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessageBox } from 'element-plus'
 import unifiedApi from '@/utils/unified-api'
 import { extractResponseData } from '@/utils/api-response'
 import { useNotification } from '@/composables/useNotification'
@@ -761,16 +753,15 @@ const deleteBrand = async (brand: Brand) => {
 
   // 使用统一的确认对话框
   try {
-    await ElMessageBox.confirm(
+    if (!await confirm(
       `确定要删除品牌"${brand.name}"吗？删除后将无法恢复。`,
       '删除确认',
       {
         confirmButtonText: '确定删除',
         cancelButtonText: '取消',
-        type: 'warning',
-        customClass: 'message-box-unified'
+        type: 'warning'
       }
-    )
+    )) return
   } catch {
     return
   }
@@ -1387,35 +1378,6 @@ onMounted(async () => {
   background: transparent;
 }
 
-/* 排序输入框 */
-.sort-order-input {
-  width: 50px;
-  height: 28px;
-  padding: 0 6px;
-  border: 1px solid var(--tf-color-neutral-300);
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 600;
-  text-align: center;
-  outline: none;
-  transition: all 0.2s;
-}
-
-.sort-order-input:focus:not(:disabled) {
-  border-color: var(--tf-color-blue-500);
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
-}
-
-.sort-order-input:hover:not(:disabled) {
-  border-color: var(--tf-color-neutral-400);
-}
-
-.sort-order-input:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  background-color: var(--tf-color-neutral-100);
-}
-
 /* 表格内容样式 */
 .id-badge {
   background: linear-gradient(135deg, var(--tf-color-indigo-brand), var(--tf-color-purple-brand));
@@ -1491,34 +1453,6 @@ onMounted(async () => {
 
 .required {
   color: var(--danger-color);
-}
-
-.empty-row td {
-  padding: 60px 12px;
-  text-align: center;
-}
-
-.empty-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-  color: var(--tf-color-muted);
-}
-
-.empty-content i {
-  font-size: 48px;
-  opacity: 0.5;
-}
-
-.empty-text h4 {
-  margin: 0 0 8px 0;
-  color: var(--tf-color-gray-bootstrap-700);
-}
-
-.empty-text p {
-  margin: 0;
-  font-size: 14px;
 }
 
 /* 分页样式 */
@@ -1797,7 +1731,7 @@ onMounted(async () => {
 }
 
 /* 小屏手机调整 - 保持2个一行，参考销售页面 */
-@media (max-width: 480px) {
+@media (max-width: 479px) {
   .page-title {
     font-size: 22px;
   }

@@ -77,8 +77,8 @@
           <el-date-picker
             v-model="customSnoozeUntil"
             type="datetime"
-            value-format="YYYY-MM-DD HH:mm:ss"
-            format="YYYY-MM-DD HH:mm"
+            :value-format="TIME_FORMATS.DATETIME"
+            :format="TIME_FORMATS.DATETIME_MINUTE"
             :min-date="snoozeMinDate"
             :max-date="snoozeMaxDate"
             :disabled-date="disableSnoozeDate"
@@ -233,13 +233,12 @@ const canUseCompletionNotice = computed(() => (
 
 const parseDate = (value: unknown) => {
   if (!value) return null
-  if (value instanceof Date) return new Date(value.getTime())
-  return TimeUtil.parse(String(value))?.toDate() || null
+  return value instanceof Date ? TimeUtil.toBeijing(value) : TimeUtil.parse(String(value))
 }
 const formatDateTime = (value: unknown) => {
-  return value ? TimeUtil.format(value as string | Date, 'YYYY-MM-DD HH:mm') : '-'
+  return value ? TimeUtil.format(value as string | Date, TIME_FORMATS.DATETIME_MINUTE) : '-'
 }
-const toLocalDateTime = (date: Date) => (
+const toLocalDateTime = (date: ReturnType<typeof TimeUtil.now>) => (
   TimeUtil.format(date, TIME_FORMATS.DATETIME)
 )
 const typeStyle = (row: ReminderAlert) => {
@@ -252,34 +251,43 @@ const snoozePresets: Array<{ command: Exclude<SnoozeCommand, 'custom'>; label: s
   { command: '4h', label: '4小时后', milliseconds: 4 * 60 * 60 * 1000 },
   { command: '1d', label: '1天后', milliseconds: 24 * 60 * 60 * 1000 }
 ]
-const snoozeMaxDate = computed(() => {
+const snoozeDeadline = computed(() => {
   if (currentItem.value?.kind !== 'reminder') return undefined
   const scheduledAt = parseDate(currentItem.value.scheduled_at)
   if (!scheduledAt) return undefined
-  return new Date(scheduledAt.getTime() - SNOOZE_RESERVE_MS)
+  return TimeUtil.subtract(scheduledAt, SNOOZE_RESERVE_MS, 'millisecond')
+})
+const snoozeMaxDate = computed(() => {
+  const deadline = snoozeDeadline.value
+  return deadline
+    ? TimeUtil.toDatePickerValue(TimeUtil.format(deadline, TIME_FORMATS.DATETIME_LOCAL)) || undefined
+    : undefined
 })
 const isFinalReminderDay = computed(() => {
   if (currentItem.value?.kind !== 'reminder') return false
   const scheduledAt = parseDate(currentItem.value.scheduled_at)
-  return Boolean(scheduledAt && scheduledAt.getTime() <= Date.now() + SNOOZE_RESERVE_MS)
+  return Boolean(scheduledAt && scheduledAt.valueOf() <= TimeUtil.now().valueOf() + SNOOZE_RESERVE_MS)
 })
 const canChooseSnooze = computed(() => {
-  const deadline = snoozeMaxDate.value
-  return Boolean(deadline && deadline.getTime() > Date.now() + SNOOZE_MIN_LEAD_MS)
+  const deadline = snoozeDeadline.value
+  return Boolean(deadline && deadline.valueOf() > TimeUtil.now().valueOf() + SNOOZE_MIN_LEAD_MS)
 })
 const snoozeOptions = computed(() => {
-  if (!canChooseSnooze.value || !snoozeMaxDate.value) return []
-  const now = Date.now()
-  return snoozePresets.filter(option => now + option.milliseconds <= snoozeMaxDate.value!.getTime())
+  const deadline = snoozeDeadline.value
+  if (!canChooseSnooze.value || !deadline) return []
+  const now = TimeUtil.now().valueOf()
+  return snoozePresets.filter(option => now + option.milliseconds <= deadline.valueOf())
 })
-const snoozeMinDate = computed(() => new Date(Date.now() + SNOOZE_MIN_LEAD_MS))
+const snoozeMinDate = computed(() => TimeUtil.toDatePickerValue(
+  TimeUtil.format(TimeUtil.add(TimeUtil.now(), SNOOZE_MIN_LEAD_MS, 'millisecond'), TIME_FORMATS.DATETIME_LOCAL)
+) || undefined)
 const disableSnoozeDate = (date: Date) => {
-  const maxDate = snoozeMaxDate.value
-  if (!maxDate) return true
-  const day = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime()
-  const minDay = new Date().setHours(0, 0, 0, 0)
-  const maxDay = new Date(maxDate.getFullYear(), maxDate.getMonth(), maxDate.getDate()).getTime()
-  return day < minDay || day > maxDay
+  const deadline = snoozeDeadline.value
+  if (!deadline) return true
+  const day = TimeUtil.formatDatePickerValue(date, TIME_FORMATS.DATE)
+  const today = TimeUtil.nowFormatted(TIME_FORMATS.DATE)
+  const maxDay = TimeUtil.format(deadline, TIME_FORMATS.DATE)
+  return day < today || day > maxDay
 }
 
 const appendQueue = (items: ReminderQueueItem[]) => {
@@ -376,29 +384,29 @@ const handleAcknowledgeCompletion = async () => {
 const handleComplete = () => { void finishCurrent('complete') }
 const handleSnooze = (command: string | number) => {
   if (String(command) === 'custom') {
-    const deadline = snoozeMaxDate.value
+    const deadline = snoozeDeadline.value
     if (!deadline || !canChooseSnooze.value) return
-    const suggested = new Date(Math.min(Date.now() + 4 * 60 * 60 * 1000, deadline.getTime()))
-    customSnoozeUntil.value = toLocalDateTime(suggested)
+    const suggested = TimeUtil.add(TimeUtil.now(), 4, 'hour')
+    customSnoozeUntil.value = toLocalDateTime(suggested.valueOf() <= deadline.valueOf() ? suggested : deadline)
     snoozeCustomVisible.value = true
     return
   }
 
   const option = snoozePresets.find(item => item.command === String(command))
-  if (!option || !snoozeMaxDate.value || Date.now() + option.milliseconds > snoozeMaxDate.value.getTime()) return
+  if (!option || !snoozeDeadline.value || TimeUtil.now().valueOf() + option.milliseconds > snoozeDeadline.value.valueOf()) return
   void finishCurrent('snooze', {
-    snoozed_until: toLocalDateTime(new Date(Date.now() + option.milliseconds))
+    snoozed_until: toLocalDateTime(TimeUtil.add(TimeUtil.now(), option.milliseconds, 'millisecond'))
   })
 }
 const confirmCustomSnooze = () => {
   const customDate = parseDate(customSnoozeUntil.value)
-  const deadline = snoozeMaxDate.value
+  const deadline = snoozeDeadline.value
   if (!customDate || !deadline) return
-  if (customDate.getTime() <= Date.now() + SNOOZE_MIN_LEAD_MS) {
+  if (customDate.valueOf() <= TimeUtil.now().valueOf() + SNOOZE_MIN_LEAD_MS) {
     ElMessage.warning('再次提醒时间必须晚于当前时间')
     return
   }
-  if (customDate.getTime() > deadline.getTime()) {
+  if (customDate.valueOf() > deadline.valueOf()) {
     ElMessage.warning('再次提醒时间必须至少早于执行时间1天')
     return
   }
@@ -569,12 +577,9 @@ onUnmounted(() => {
   font-size: 11px;
 }
 
-.reminder-host-dialog :deep(.el-dialog__header) {
-  border-bottom: 1px solid var(--tf-color-neutral-200);
-}
-
-.reminder-host-dialog :deep(.el-dialog__footer) {
-  padding-top: 12px;
+.reminder-host-dialog {
+  --tf-dialog-border: var(--tf-color-neutral-200);
+  --tf-dialog-footer-padding-block-start: 12px;
 }
 
 @media (max-width: 560px) {

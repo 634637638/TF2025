@@ -21,18 +21,12 @@
           </el-button>
           <el-button
             type="info"
+            :loading="refreshing"
             :disabled="refreshing"
             @click="refreshData"
           >
-            <InlineLoading
-              v-if="refreshing"
-              text="刷新中..."
-              size="small"
-              variant="inherit"
-            />
-            <template v-else>
-              <i class="fas fa-refresh" /> 刷新
-            </template>
+            <i class="fas fa-refresh" />
+            {{ refreshing ? '刷新中...' : '刷新' }}
           </el-button>
         </template>
       </PageHeader>
@@ -440,47 +434,47 @@
         dialog-class="repairs-dialog"
         :show-default-footer="false"
         :close-on-click-modal="false"
+      >
+        <el-form
+          :model="formData"
+          label-width="88px"
+          :disabled="submitting"
         >
-          <el-form
-            :model="formData"
-            label-width="88px"
-            :disabled="submitting"
-          >
           <el-row :gutter="16">
             <el-col
               v-if="canViewRepairField('phone_id')"
               :span="24"
             >
-            <el-form-item label="设备检索">
-            <el-autocomplete
-              v-model="deviceSearchKeyword"
-              class="device-search-input"
-              value-key="display_label"
-              :fetch-suggestions="searchDeviceSuggestions"
-              :loading="deviceSearching"
-              clearable
-              placeholder="输入 IMEI 或序列号检索"
-              @select="handleDeviceSelect"
-              @clear="clearSelectedDevice"
-            >
-              <template #default="{ item }">
-                <div class="device-search-option">
-                  <strong>{{ item.brand_name || '-' }} {{ item.model_name || '-' }}</strong>
-                  <div class="device-search-identifiers">
-                    <span>IMEI：{{ item.imei || '-' }}</span>
-                    <span>序列号：{{ item.serial_number || '-' }}</span>
-                  </div>
-                  <small>{{ item.customer_name ? `购买人：${item.customer_name}` : '暂无销售客户' }}</small>
+              <el-form-item label="设备检索">
+                <el-autocomplete
+                  v-model="deviceSearchKeyword"
+                  class="device-search-input"
+                  value-key="display_label"
+                  :fetch-suggestions="searchDeviceSuggestions"
+                  :loading="deviceSearching"
+                  clearable
+                  placeholder="输入 IMEI 或序列号检索"
+                  @select="handleDeviceSelect"
+                  @clear="clearSelectedDevice"
+                >
+                  <template #default="{ item }">
+                    <div class="device-search-option">
+                      <strong>{{ item.brand_name || '-' }} {{ item.model_name || '-' }}</strong>
+                      <div class="device-search-identifiers">
+                        <span>IMEI：{{ item.imei || '-' }}</span>
+                        <span>序列号：{{ item.serial_number || '-' }}</span>
+                      </div>
+                      <small>{{ item.customer_name ? `购买人：${item.customer_name}` : '暂无销售客户' }}</small>
+                    </div>
+                  </template>
+                </el-autocomplete>
+                <div
+                  v-if="selectedDevice"
+                  class="device-linked-hint"
+                >
+                  已关联库存设备，修改设备字段后将解除关联，可继续手动填写。
                 </div>
-              </template>
-            </el-autocomplete>
-            <div
-              v-if="selectedDevice"
-              class="device-linked-hint"
-            >
-              已关联库存设备，修改设备字段后将解除关联，可继续手动填写。
-            </div>
-            </el-form-item>
+              </el-form-item>
             </el-col>
           </el-row>
           <el-row :gutter="16">
@@ -489,70 +483,78 @@
               :span="12"
               :xs="24"
             >
-            <el-form-item label="姓名" required>
-            <el-select
-              v-model="formData.customer_id"
-              v-if="customerMode !== 'manual'"
-              placeholder="输入姓名或手机号检索"
-              filterable
-              remote
-              clearable
-              :remote-method="searchCustomers"
-              :loading="customerSearching"
-              @change="handleCustomerSelect"
-              @clear="resetCustomerSelection"
-            >
-              <el-option
-                v-for="customer in customers"
-                :key="customer.id"
-                :label="getCustomerOptionLabel(customer)"
-                :value="customer.id"
-              />
-              <template #empty>
-                <div class="repair-customer-empty">
-                  <span>{{ customerSearchKeyword.length >= 2 ? '暂无匹配客户' : '输入至少2位姓名或手机号' }}</span>
-                  <el-button
-                    v-if="customerSearchKeyword.length >= 2 && canViewRepairField('customer_name') && canViewRepairField('customer_phone')"
-                    link
-                    type="primary"
-                    @click.stop="startManualCustomer"
-                  >
-                    新增客户
-                  </el-button>
-                </div>
-              </template>
-            </el-select>
-            <el-input
-              v-else
-              v-model="customerDraft.name"
-              placeholder="请输入客户姓名"
-              maxlength="100"
-            >
-              <template #append>
-                <el-button :loading="customerSaving" @click="saveRepairCustomer">保存客户</el-button>
-              </template>
-            </el-input>
-            </el-form-item>
+              <el-form-item
+                label="姓名"
+                required
+              >
+                <el-select
+                  v-if="customerMode !== 'manual'"
+                  v-model="formData.customer_id"
+                  placeholder="输入姓名或手机号检索"
+                  filterable
+                  remote
+                  clearable
+                  :remote-method="searchCustomers"
+                  :loading="customerSearching"
+                  @change="handleCustomerSelect"
+                  @clear="resetCustomerSelection"
+                >
+                  <el-option
+                    v-for="customer in customers"
+                    :key="customer.id"
+                    :label="getCustomerOptionLabel(customer)"
+                    :value="customer.id"
+                  />
+                  <template #empty>
+                    <div class="repair-customer-empty">
+                      <span>{{ customerSearchKeyword.length >= 2 ? '暂无匹配客户' : '输入至少2位姓名或手机号' }}</span>
+                      <el-button
+                        v-if="customerSearchKeyword.length >= 2 && canViewRepairField('customer_name') && canViewRepairField('customer_phone')"
+                        link
+                        type="primary"
+                        @click.stop="startManualCustomer"
+                      >
+                        新增客户
+                      </el-button>
+                    </div>
+                  </template>
+                </el-select>
+                <el-input
+                  v-else
+                  v-model="customerDraft.name"
+                  placeholder="请输入客户姓名"
+                  maxlength="100"
+                >
+                  <template #append>
+                    <el-button
+                      :loading="customerSaving"
+                      @click="saveRepairCustomer"
+                    >
+                      保存客户
+                    </el-button>
+                  </template>
+                </el-input>
+              </el-form-item>
             </el-col>
             <el-col
               v-if="canViewRepairField('customer_phone')"
               :span="12"
               :xs="24"
             >
-            <el-form-item label="手机号码">
-              <el-input
-                v-if="customerMode === 'selected'"
-                :model-value="selectedCustomerPhone"
-                placeholder="选择姓名后自动显示"
-                readonly
-              />
-              <el-input
-                v-else
-                v-model="customerDraft.phone"
-                placeholder="请输入手机号码"
-                maxlength="11"
-              />
-            </el-form-item>
+              <el-form-item label="手机号码">
+                <el-input
+                  v-if="customerMode === 'selected'"
+                  :model-value="selectedCustomerPhone"
+                  placeholder="选择姓名后自动显示"
+                  readonly
+                />
+                <el-input
+                  v-else
+                  v-model="customerDraft.phone"
+                  placeholder="请输入手机号码"
+                  maxlength="11"
+                />
+              </el-form-item>
             </el-col>
           </el-row>
           <el-row :gutter="16">
@@ -561,36 +563,36 @@
               :span="12"
               :xs="24"
             >
-            <el-form-item label="维修时间">
-              <el-date-picker
-                v-model="formData.repair_time"
-                type="date"
-                value-format="YYYY-MM-DD"
-                placeholder="请选择维修时间"
-                :clearable="false"
-                class="w-full"
-              />
-            </el-form-item>
+              <el-form-item label="维修时间">
+                <el-date-picker
+                  v-model="formData.repair_time"
+                  type="date"
+                  :value-format="TIME_FORMATS.DATE"
+                  placeholder="请选择维修时间"
+                  :clearable="false"
+                  class="w-full"
+                />
+              </el-form-item>
             </el-col>
             <el-col
               v-if="canViewRepairField('technician_name')"
               :span="12"
               :xs="24"
             >
-            <el-form-item label="维修员">
-            <el-select
-              v-model="formData.technician_id"
-              placeholder="请选择维修员"
-              clearable
-            >
-              <el-option
-                v-for="technician in technicians"
-                :key="technician.id"
-                :label="technician.name"
-                :value="technician.id"
-              />
-            </el-select>
-            </el-form-item>
+              <el-form-item label="维修员">
+                <el-select
+                  v-model="formData.technician_id"
+                  placeholder="请选择维修员"
+                  clearable
+                >
+                  <el-option
+                    v-for="technician in technicians"
+                    :key="technician.id"
+                    :label="technician.name"
+                    :value="technician.id"
+                  />
+                </el-select>
+              </el-form-item>
             </el-col>
           </el-row>
           <el-row :gutter="16">
@@ -599,46 +601,52 @@
               :span="12"
               :xs="24"
             >
-            <el-form-item label="品牌" required>
-            <el-select
-              v-model="formData.brand_id"
-              placeholder="请选择品牌"
-              filterable
-              clearable
-              @change="onBrandChange"
-            >
-              <el-option
-                v-for="brand in brands"
-                :key="brand.id"
-                :label="brand.name"
-                :value="brand.id"
-              />
-            </el-select>
-            </el-form-item>
+              <el-form-item
+                label="品牌"
+                required
+              >
+                <el-select
+                  v-model="formData.brand_id"
+                  placeholder="请选择品牌"
+                  filterable
+                  clearable
+                  @change="onBrandChange"
+                >
+                  <el-option
+                    v-for="brand in brands"
+                    :key="brand.id"
+                    :label="brand.name"
+                    :value="brand.id"
+                  />
+                </el-select>
+              </el-form-item>
             </el-col>
             <el-col
               v-if="canViewRepairField('phone_model')"
               :span="12"
               :xs="24"
             >
-            <el-form-item label="型号" required>
-            <el-select
-              v-model="formData.phone_model"
-              placeholder="请输入手机型号"
-              filterable
-              allow-create
-              default-first-option
-              clearable
-              @change="handleManualDeviceChange"
-            >
-              <el-option
-                v-for="model in filteredModels"
-                :key="model.id"
-                :label="model.name"
-                :value="model.name"
-              />
-            </el-select>
-            </el-form-item>
+              <el-form-item
+                label="型号"
+                required
+              >
+                <el-select
+                  v-model="formData.phone_model"
+                  placeholder="请输入手机型号"
+                  filterable
+                  allow-create
+                  default-first-option
+                  clearable
+                  @change="handleManualDeviceChange"
+                >
+                  <el-option
+                    v-for="model in filteredModels"
+                    :key="model.id"
+                    :label="model.name"
+                    :value="model.name"
+                  />
+                </el-select>
+              </el-form-item>
             </el-col>
           </el-row>
           <el-row :gutter="16">
@@ -647,44 +655,44 @@
               :span="12"
               :xs="24"
             >
-            <el-form-item label="颜色">
-            <el-select
-              v-model="formData.color_id"
-              placeholder="请选择颜色"
-              filterable
-              clearable
-              @change="handleManualDeviceChange"
-            >
-              <el-option
-                v-for="color in colors"
-                :key="color.id"
-                :label="color.name"
-                :value="color.id"
-              />
-            </el-select>
-            </el-form-item>
+              <el-form-item label="颜色">
+                <el-select
+                  v-model="formData.color_id"
+                  placeholder="请选择颜色"
+                  filterable
+                  clearable
+                  @change="handleManualDeviceChange"
+                >
+                  <el-option
+                    v-for="color in colors"
+                    :key="color.id"
+                    :label="color.name"
+                    :value="color.id"
+                  />
+                </el-select>
+              </el-form-item>
             </el-col>
             <el-col
               v-if="canViewRepairField('memory_size')"
               :span="12"
               :xs="24"
             >
-            <el-form-item label="内存">
-            <el-select
-              v-model="formData.memory_id"
-              placeholder="请选择内存"
-              filterable
-              clearable
-              @change="handleManualDeviceChange"
-            >
-              <el-option
-                v-for="memory in memories"
-                :key="memory.id"
-                :label="memory.size"
-                :value="memory.id"
-              />
-            </el-select>
-            </el-form-item>
+              <el-form-item label="内存">
+                <el-select
+                  v-model="formData.memory_id"
+                  placeholder="请选择内存"
+                  filterable
+                  clearable
+                  @change="handleManualDeviceChange"
+                >
+                  <el-option
+                    v-for="memory in memories"
+                    :key="memory.id"
+                    :label="memory.size"
+                    :value="memory.id"
+                  />
+                </el-select>
+              </el-form-item>
             </el-col>
           </el-row>
           <el-row :gutter="16">
@@ -693,106 +701,106 @@
               :span="12"
               :xs="24"
             >
-            <el-form-item label="IMEI">
-            <el-input
-              v-model="formData.imei"
-              placeholder="请输入 IMEI"
-              @input="handleManualDeviceChange"
-            />
-            </el-form-item>
+              <el-form-item label="IMEI">
+                <el-input
+                  v-model="formData.imei"
+                  placeholder="请输入 IMEI"
+                  @input="handleManualDeviceChange"
+                />
+              </el-form-item>
             </el-col>
             <el-col
               v-if="canViewRepairField('serial_number')"
               :span="12"
               :xs="24"
             >
-            <el-form-item label="序列号">
-            <el-input
-              v-model="formData.serial_number"
-              placeholder="请输入序列号"
-              @input="handleManualDeviceChange"
-            />
-            </el-form-item>
+              <el-form-item label="序列号">
+                <el-input
+                  v-model="formData.serial_number"
+                  placeholder="请输入序列号"
+                  @input="handleManualDeviceChange"
+                />
+              </el-form-item>
             </el-col>
           </el-row>
           <el-row :gutter="16">
             <el-col :span="24">
-            <el-form-item
-              v-if="canViewRepairField('photos')"
-              label="维修照片"
-            >
-              <el-upload
-                class="repair-media-upload"
-                action="#"
-                multiple
-                :show-file-list="false"
-                :http-request="uploadFormMedia"
-                accept="image/*,video/*,.heic,.heif"
+              <el-form-item
+                v-if="canViewRepairField('photos')"
+                label="维修照片"
               >
-                <el-button
-                  type="primary"
-                  :loading="mediaUploading"
+                <el-upload
+                  class="repair-media-upload"
+                  action="#"
+                  multiple
+                  :show-file-list="false"
+                  :http-request="uploadFormMedia"
+                  accept="image/*,video/*,.heic,.heif"
                 >
-                  <i class="fas fa-cloud-arrow-up" /> 上传照片/视频
-                </el-button>
-              </el-upload>
-              <div
-                v-if="formData.photos?.length"
-                class="repair-media-list"
-              >
-                <button
-                  v-for="(media, index) in formData.photos"
-                  :key="`${media.url}-${index}`"
-                  type="button"
-                  class="repair-media-item"
-                  @click="openMediaPreview(formData.photos || [], index)"
-                >
-                  <video
-                    v-if="isVideoMedia(media)"
-                    :src="formatMediaUrl(media.url)"
-                    muted
-                    preload="metadata"
-                  />
-                  <img
-                    v-else
-                    :src="formatMediaUrl(media.url)"
-                    :alt="media.name || '维修媒体'"
+                  <el-button
+                    type="primary"
+                    :loading="mediaUploading"
                   >
-                  <span>{{ media.type === 'video' ? '视频' : '图片' }}</span>
-                  <i
-                    class="fas fa-trash"
-                    @click.stop="removeFormMedia(index)"
-                  />
-                </button>
-              </div>
-            </el-form-item>
+                    <i class="fas fa-cloud-arrow-up" /> 上传照片/视频
+                  </el-button>
+                </el-upload>
+                <div
+                  v-if="formData.photos?.length"
+                  class="repair-media-list"
+                >
+                  <button
+                    v-for="(media, index) in formData.photos"
+                    :key="`${media.url}-${index}`"
+                    type="button"
+                    class="repair-media-item"
+                    @click="openMediaPreview(formData.photos || [], index)"
+                  >
+                    <video
+                      v-if="isVideoMedia(media)"
+                      :src="formatMediaUrl(media.url)"
+                      muted
+                      preload="metadata"
+                    />
+                    <img
+                      v-else
+                      :src="formatMediaUrl(media.url)"
+                      :alt="media.name || '维修媒体'"
+                    >
+                    <span>{{ media.type === 'video' ? '视频' : '图片' }}</span>
+                    <i
+                      class="fas fa-trash"
+                      @click.stop="removeFormMedia(index)"
+                    />
+                  </button>
+                </div>
+              </el-form-item>
             </el-col>
           </el-row>
           <el-row :gutter="16">
             <el-col :span="24">
-            <el-form-item
-              v-if="canViewRepairField('problem_description')"
-              label="故障"
-              required
-            >
-            <el-select
-              v-model="selectedProblems"
-              multiple
-              filterable
-              allow-create
-              default-first-option
-              clearable
-              placeholder="选择或输入故障项目，可多选"
-              class="repair-fault-select"
-            >
-              <el-option
-                v-for="fault in repairFaultOptions"
-                :key="fault"
-                :label="fault"
-                :value="fault"
-              />
-            </el-select>
-            </el-form-item>
+              <el-form-item
+                v-if="canViewRepairField('problem_description')"
+                label="故障"
+                required
+              >
+                <el-select
+                  v-model="selectedProblems"
+                  multiple
+                  filterable
+                  allow-create
+                  default-first-option
+                  clearable
+                  placeholder="选择或输入故障项目，可多选"
+                  class="repair-fault-select"
+                >
+                  <el-option
+                    v-for="fault in repairFaultOptions"
+                    :key="fault"
+                    :label="fault"
+                    :value="fault"
+                  />
+                </el-select>
+              </el-form-item>
             </el-col>
           </el-row>
           <el-row :gutter="16">
@@ -801,35 +809,35 @@
               :span="12"
               :xs="24"
             >
-            <el-form-item label="维修费">
-            <el-input-number
-              v-model="formData.actual_cost"
-              :min="0"
-              :precision="2"
-              :step="10"
-              controls-position="right"
-            />
-            </el-form-item>
+              <el-form-item label="维修费">
+                <el-input-number
+                  v-model="formData.actual_cost"
+                  :min="0"
+                  :precision="2"
+                  :step="10"
+                  :controls="false"
+                />
+              </el-form-item>
             </el-col>
           </el-row>
           <el-row :gutter="16">
             <el-col :span="24">
-            <el-form-item
-              v-if="canViewRepairField('remarks')"
-              label="备注"
-            >
-            <el-input
-              v-model="formData.remarks"
-              type="textarea"
-              :rows="3"
-              placeholder="其他备注信息"
-            />
-            </el-form-item>
+              <el-form-item
+                v-if="canViewRepairField('remarks')"
+                label="备注"
+              >
+                <el-input
+                  v-model="formData.remarks"
+                  type="textarea"
+                  :rows="3"
+                  placeholder="其他备注信息"
+                />
+              </el-form-item>
             </el-col>
           </el-row>
-          </el-form>
+        </el-form>
         <template #footer>
-          <div class="modal-footer">
+          <div class="tf-dialog-actions modal-footer">
             <el-button
               type="info"
               @click="closeModal"
@@ -864,11 +872,17 @@
             :http-request="uploadManagerMedia"
             accept="image/*,video/*,.heic,.heif"
           >
-            <el-button type="primary" :loading="mediaUploading">
+            <el-button
+              type="primary"
+              :loading="mediaUploading"
+            >
               <i class="fas fa-cloud-arrow-up" /> 选择照片/视频
             </el-button>
           </el-upload>
-          <div v-if="managerMedia.length" class="repair-media-list repair-media-list--manager">
+          <div
+            v-if="managerMedia.length"
+            class="repair-media-list repair-media-list--manager"
+          >
             <button
               v-for="(media, index) in managerMedia"
               :key="`${media.url}-${index}`"
@@ -876,18 +890,44 @@
               class="repair-media-item"
               @click="openMediaPreview(managerMedia, index)"
             >
-              <video v-if="isVideoMedia(media)" :src="formatMediaUrl(media.url)" muted preload="metadata" />
-              <img v-else :src="formatMediaUrl(media.url)" :alt="media.name || '维修媒体'">
+              <video
+                v-if="isVideoMedia(media)"
+                :src="formatMediaUrl(media.url)"
+                muted
+                preload="metadata"
+              />
+              <img
+                v-else
+                :src="formatMediaUrl(media.url)"
+                :alt="media.name || '维修媒体'"
+              >
               <span>{{ media.type === 'video' ? '视频' : '图片' }}</span>
-              <i v-if="canEdit" class="fas fa-trash" @click.stop="removeManagerMedia(index)" />
+              <i
+                v-if="canEdit"
+                class="fas fa-trash"
+                @click.stop="removeManagerMedia(index)"
+              />
             </button>
           </div>
-          <DataEmptyState v-else description="暂无维修照片或视频" />
+          <DataEmptyState
+            v-else
+            description="暂无维修照片或视频"
+          />
         </div>
         <template #footer>
-          <div class="modal-footer">
-            <el-button type="info" @click="closeMediaManager">关闭</el-button>
-            <el-button v-if="canEdit" type="primary" :loading="mediaSaving" @click="saveManagerMedia">
+          <div class="tf-dialog-actions modal-footer">
+            <el-button
+              type="info"
+              @click="closeMediaManager"
+            >
+              关闭
+            </el-button>
+            <el-button
+              v-if="canEdit"
+              type="primary"
+              :loading="mediaSaving"
+              @click="saveManagerMedia"
+            >
               保存
             </el-button>
           </div>
@@ -904,7 +944,6 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
-import { ElMessageBox } from 'element-plus'
 import { useLoadingState } from '@/composables'
 import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { useMobile } from '@/composables/mobile'
@@ -923,8 +962,10 @@ import { logger } from '@/utils/logger'
 import { getIdentifierColumnMinWidth, getTextColumnMinWidth } from '@/utils/table-layout'
 import { repairsApi } from '@/api/repairs'
 import { unifiedApi } from '@/utils/unified-api'
+import { searchCustomerOptions } from '@/services/customer-options'
 import type { RepairDeviceSearchResult, RepairMedia, RepairOrder, RepairOrderForm, RepairStatus } from '@/types/repair'
 import { formatDate as formatGlobalDate } from '@/utils/format'
+import { TIME_FORMATS, TimeUtil } from '@/utils/time'
 import { formatImageUrl } from '@/utils/format'
 import { isVideoMedia, type MediaPreviewItem } from '@/utils/media'
 
@@ -937,7 +978,7 @@ interface TechnicianOption { id: number; name: string }
 
 const { canView, canCreate, canEdit, canDelete, handleNoPermission } = usePagePermissions('repairs')
 const repairsApiAvailable = true
-const { success, error: notifyError, info } = useNotification()
+const { success, error: notifyError, info, confirm } = useNotification()
 const { isMobile } = useMobile()
 const { loading } = useLoadingState()
 
@@ -1112,9 +1153,10 @@ const searchCustomers = async (keyword: string) => {
   }
   customerSearching.value = true
   try {
-    const response = await repairsApi.searchCustomers(customerSearchKeyword.value)
     if (sequence === customerSearchSequence) {
-      customers.value = Array.isArray(response.data) ? response.data.filter((item): item is CustomerOption => Boolean(item.name)) : []
+      customers.value = (await searchCustomerOptions(customerSearchKeyword.value, 'repairs'))
+        .filter(item => Boolean(item.name))
+        .map(item => ({ id: item.id, name: item.name, phone: item.phone || null }))
     }
   } catch (error) {
     logger.error('检索维修客户失败:', error)
@@ -1262,7 +1304,7 @@ const resetForm = () => Object.assign(formData, {
   customer_id: null, phone_id: null, brand_id: null, phone_model: '', imei: '', serial_number: '',
   color_id: null, memory_id: null, problem_description: '',
   actual_cost: undefined, technician_id: null, remarks: '',
-  repair_time: formatGlobalDate(new Date()), photos: []
+  repair_time: TimeUtil.nowFormatted(TIME_FORMATS.DATE), photos: []
 })
 
 const showAddModal = () => {
@@ -1305,7 +1347,7 @@ const buildDeviceLabel = (device: RepairDeviceSearchResult) => [
 
 const searchDeviceSuggestions = (
   queryString: string,
-  callback: (results: RepairDeviceSearchResult[]) => void
+  callback: (_results: RepairDeviceSearchResult[]) => void
 ) => {
   const keyword = queryString.trim()
   if (keyword.length < 2) {
@@ -1548,20 +1590,20 @@ const editRepair = (repair: RepairOrder) => {
   selectedProblems.value = parseRepairProblems(repair.problem_description)
   selectedDevice.value = repair.phone_id
     ? {
-        phone_id: repair.phone_id,
-        imei: repair.imei,
-        serial_number: repair.serial_number,
-        brand_id: repair.brand_id,
-        brand_name: repair.brand_name,
-        model_name: repair.phone_model,
-        color_id: repair.color_id,
-        color_name: repair.color_name,
-        memory_id: repair.memory_id,
-        memory_size: repair.memory_size,
-        customer_id: repair.customer_id,
-        customer_name: repair.customer_name,
-        customer_phone: repair.customer_phone
-      }
+      phone_id: repair.phone_id,
+      imei: repair.imei,
+      serial_number: repair.serial_number,
+      brand_id: repair.brand_id,
+      brand_name: repair.brand_name,
+      model_name: repair.phone_model,
+      color_id: repair.color_id,
+      color_name: repair.color_name,
+      memory_id: repair.memory_id,
+      memory_size: repair.memory_size,
+      customer_id: repair.customer_id,
+      customer_name: repair.customer_name,
+      customer_phone: repair.customer_phone
+    }
     : null
   deviceSearchKeyword.value = selectedDevice.value ? buildDeviceLabel(selectedDevice.value) : ''
   Object.entries(values).forEach(([field, value]) => {
@@ -1580,11 +1622,11 @@ const deleteRepair = async (repair: RepairOrder) => {
   }
 
   try {
-    await ElMessageBox.confirm(
+    if (!await confirm(
       '删除后维修单会标记为已取消，已完成的维修单不能删除。',
       '确认删除维修单',
       { type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消' }
-    )
+    )) return
     await repairsApi.cancel(repair.id)
     success('维修单已删除')
     await loadRepairs()
@@ -1788,12 +1830,6 @@ onMounted(async () => {
   background: var(--tf-status-danger-bg);
   color: var(--tf-status-danger-color);
   border: 1px solid var(--tf-status-danger-border);
-}
-
-.modal-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
 }
 
 :deep(.repairs-dialog .el-select),

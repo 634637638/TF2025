@@ -462,13 +462,11 @@
       :show-default-footer="false"
     >
       <div class="history-content">
-        <div
+        <DataEmptyState
           v-if="importHistory.length === 0"
-          class="empty-history"
-        >
-          <i class="fas fa-inbox" />
-          <p>暂无导入历史</p>
-        </div>
+          description="暂无导入历史"
+          size="compact"
+        />
         <el-table
           v-else
           :data="importHistory"
@@ -594,8 +592,9 @@
 </template>
 
 <script setup lang="ts">
+import { confirmAction } from '@/utils/message-box'
 import { computed, ref, onUnmounted } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { Delete } from '@element-plus/icons-vue'
 import { dataImportApi } from '@/api/data-optimization'
 import { usePagePermissions } from '@/composables/usePagePermissions'
@@ -885,7 +884,7 @@ const startImport = async () => {
   // 如果是完全替换策略，需要二次确认
   if (selectedStrategy.value === 'replace_all') {
     try {
-      await ElMessageBox.confirm(
+      await confirmAction(
         '⚠️  警告：完全替换将删除所有现有数据！\n\n' +
         '此操作将清空以下表的所有数据：\n' +
         '• 销售记录 (sales)\n' +
@@ -1114,7 +1113,7 @@ const handleDeleteHistory = async (row: any) => {
   }
 
   try {
-    await ElMessageBox.confirm(
+    await confirmAction(
       `确定要删除这条导入历史记录吗？\n\n文件名: ${row.file_name}\n导入时间: ${formatDateTime(row.start_time)}`,
       '删除确认',
       {
@@ -1860,23 +1859,6 @@ const handleDeleteHistory = async (row: any) => {
 
 // 导入历史对话框样式
 .history-content {
-  .empty-history {
-    text-align: center;
-    padding: 60px 20px;
-    color: var(--color-info);
-
-    i {
-      font-size: 64px;
-      margin-bottom: 16px;
-      opacity: 0.5;
-    }
-
-    p {
-      font-size: 16px;
-      margin: 0;
-    }
-  }
-
   .history-table {
     .timestamp-cell {
       display: flex;

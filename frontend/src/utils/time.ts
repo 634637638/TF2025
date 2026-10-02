@@ -5,6 +5,7 @@
  */
 
 import dayjs from 'dayjs'
+import customParseFormat from 'dayjs/plugin/customParseFormat'
 import timezone from 'dayjs/plugin/timezone'
 import utc from 'dayjs/plugin/utc'
 import relativeTime from 'dayjs/plugin/relativeTime'
@@ -12,29 +13,37 @@ import 'dayjs/locale/zh-cn'
 
 // 配置dayjs插件
 dayjs.extend(utc)
+dayjs.extend(customParseFormat)
 dayjs.extend(timezone)
 dayjs.extend(relativeTime)
 dayjs.locale('zh-cn')
-import { logger } from '@/utils/logger'
 import type { App } from 'vue'
 
 // 北京时区配置
 export const BEIJING_TIMEZONE = 'Asia/Shanghai'
 type TimeInput = Date | string | number | dayjs.Dayjs
-type TimeUnit = 'year' | 'month' | 'week' | 'day' | 'hour' | 'minute' | 'second'
+type TimeUnit = 'year' | 'month' | 'week' | 'day' | 'hour' | 'minute' | 'second' | 'millisecond'
 
 /**
  * 时间格式类型
  */
 export interface TimeFormats {
   DATE: string // 日期格式：YYYY-MM-DD
+  DATE_UNPADDED: string // 非补零日期显示：YYYY-M-D
+  DATE_COMPACT: string // 紧凑日期：YYYYMMDD
   TIME: string // 时间格式：HH:mm:ss
+  TIME_COMPACT: string // 紧凑时间：HHmm
   DATETIME: string // 日期时间格式：YYYY-MM-DD HH:mm:ss
+  DATETIME_MINUTE: string // 分钟精度日期时间：YYYY-MM-DD HH:mm
+  DATETIME_MILLISECOND: string // 毫秒精度日期时间：YYYY-MM-DD HH:mm:ss.SSS
   DATETIME_SHORT: string // 短日期时间：YYYY/MM/DD HH:mm
+  DATETIME_LOCAL: string // HTML datetime-local 格式：YYYY-MM-DDTHH:mm
   MONTH_DAY: string // 月日格式：MM-DD
+  MONTH_DAY_DISPLAY: string // 月日显示：M月D日
   YEAR_MONTH: string // 年月格式：YYYY-MM
+  YEAR_MONTH_DISPLAY: string // 中文年月显示：YYYY年M月
+  YEAR_MONTH_COMPACT_DISPLAY: string // 紧凑年月显示：YYYY-M月
   TIMESTAMP: string // 时间戳格式：YYYY-MM-DD HH:mm:ss.SSS
-  ISO: string // ISO格式
   DISPLAY: string // 显示格式：YYYY年MM月DD日 HH:mm
   DISPLAY_SHORT: string // 简短显示格式：MM-DD HH:mm
   DISPLAY_DATE: string // 日期显示格式：YYYY年MM月DD日
@@ -45,13 +54,21 @@ export interface TimeFormats {
  */
 export const TIME_FORMATS: TimeFormats = {
   DATE: 'YYYY-MM-DD',
+  DATE_UNPADDED: 'YYYY-M-D',
+  DATE_COMPACT: 'YYYYMMDD',
   TIME: 'HH:mm:ss',
+  TIME_COMPACT: 'HHmm',
   DATETIME: 'YYYY-MM-DD HH:mm:ss',
+  DATETIME_MINUTE: 'YYYY-MM-DD HH:mm',
+  DATETIME_MILLISECOND: 'YYYY-MM-DD HH:mm:ss.SSS',
   DATETIME_SHORT: 'YYYY/MM/DD HH:mm',
+  DATETIME_LOCAL: 'YYYY-MM-DDTHH:mm',
   MONTH_DAY: 'MM-DD',
+  MONTH_DAY_DISPLAY: 'M月D日',
   YEAR_MONTH: 'YYYY-MM',
+  YEAR_MONTH_DISPLAY: 'YYYY年M月',
+  YEAR_MONTH_COMPACT_DISPLAY: 'YYYY-M月',
   TIMESTAMP: 'YYYY-MM-DD HH:mm:ss.SSS',
-  ISO: 'YYYY-MM-DDTHH:mm:ss.SSS[Z]',
   DISPLAY: 'YYYY年MM月DD日 HH:mm',
   DISPLAY_SHORT: 'MM-DD HH:mm',
   DISPLAY_DATE: 'YYYY年MM月DD日'
@@ -82,8 +99,48 @@ export class TimeUtil {
       }
     }
 
-    const formatted = this.format(date, TIME_FORMATS.DATE)
-    return formatted === 'Invalid Date' ? null : formatted
+    const parsed = this.toBeijing(date)
+    return parsed.isValid() ? parsed.format(TIME_FORMATS.DATE) : null
+  }
+
+  /**
+   * Convert a business date to the browser-local Date shape expected by Element Plus.
+   * The selected calendar fields stay in Beijing time regardless of browser timezone.
+   */
+  static toDatePickerValue(value?: string | null): Date | null {
+    if (!value?.trim()) return null
+
+    const normalized = /^\d{4}-\d{2}$/.test(value.trim()) ? `${value.trim()}-01` : value.trim()
+    const parsed = this.toBeijing(normalized)
+    if (!parsed.isValid()) return null
+
+    return new Date(
+      parsed.year(),
+      parsed.month(),
+      parsed.date(),
+      parsed.hour(),
+      parsed.minute(),
+      parsed.second(),
+      parsed.millisecond()
+    )
+  }
+
+  /** Format the wall-clock fields supplied by a native date picker without timezone conversion. */
+  static formatDatePickerValue(date: Date, format: keyof TimeFormats | string = TIME_FORMATS.DATE): string {
+    const formatString = TIME_FORMATS[format as keyof TimeFormats] || format
+    return dayjs(date).format(formatString)
+  }
+
+  /** Return the number of calendar days in a Beijing business month (month is 1-based). */
+  static daysInMonth(year: number, month: number): number {
+    const normalizedYear = year + Math.floor((month - 1) / 12)
+    const normalizedMonth = ((month - 1) % 12 + 12) % 12 + 1
+    const value = dayjs.tz(
+      `${normalizedYear}-${String(normalizedMonth).padStart(2, '0')}-01`,
+      TIME_FORMATS.DATE,
+      BEIJING_TIMEZONE
+    )
+    return value.isValid() ? value.daysInMonth() : 0
   }
 
   /**
@@ -142,6 +199,15 @@ export class TimeUtil {
   }
 
   /**
+   * 生成 ISO 8601 传输值。
+   *
+   * ISO 值用于接口、日志和导出等机器数据，不用于日期-only 表单字段。
+   */
+  static toISOString(date: TimeInput = this.now()): string {
+    return this.toBeijing(date).toISOString()
+  }
+
+  /**
    * 相对时间（如：2小时前）
    */
   static fromNow(date: Date | string | number | dayjs.Dayjs): string {
@@ -168,7 +234,7 @@ export class TimeUtil {
   static add(
     date: Date | string | number | dayjs.Dayjs,
     amount: number,
-    unit: 'year' | 'month' | 'week' | 'day' | 'hour' | 'minute' | 'second'
+    unit: TimeUnit
   ): dayjs.Dayjs {
     const time = this.toBeijing(date)
     return time.add(amount, unit)
@@ -180,7 +246,7 @@ export class TimeUtil {
   static subtract(
     date: Date | string | number | dayjs.Dayjs,
     amount: number,
-    unit: 'year' | 'month' | 'week' | 'day' | 'hour' | 'minute' | 'second'
+    unit: TimeUnit
   ): dayjs.Dayjs {
     const time = this.toBeijing(date)
     return time.subtract(amount, unit)
@@ -395,9 +461,10 @@ export class TimeUtil {
     format?: string
   ): dayjs.Dayjs | null {
     try {
-      return format ? dayjs(dateString, format) : this.toBeijing(dateString)
-    } catch (error) {
-      logger.error('时间解析失败:', error)
+      return format
+        ? dayjs.tz(dateString, format, BEIJING_TIMEZONE)
+        : this.toBeijing(dateString)
+    } catch {
       return null
     }
   }
@@ -521,14 +588,13 @@ export function useTime() {
   return {
     timeUtil: TimeUtil,
     now: () => TimeUtil.now(),
-    getBeijingTime: () => TimeUtil.now().toDate(),
     format: (date: TimeInput, format?: keyof TimeFormats | string) => TimeUtil.format(date, format),
     fromNow: (date: TimeInput) => TimeUtil.fromNow(date),
-    diff: (date1: TimeInput, date2?: TimeInput, unit?: TimeUnit) => TimeUtil.diff(date1, date2, unit),
+    diff: (date1: TimeInput, date2?: TimeInput, unit?: Parameters<typeof TimeUtil.diff>[2]) => TimeUtil.diff(date1, date2, unit),
     add: (date: TimeInput, amount: number, unit: TimeUnit) => TimeUtil.add(date, amount, unit),
     subtract: (date: TimeInput, amount: number, unit?: TimeUnit) => TimeUtil.subtract(date, amount, unit),
-    startOf: (date: TimeInput, unit: TimeUnit) => TimeUtil.startOf(date, unit),
-    endOf: (date: TimeInput, unit: TimeUnit) => TimeUtil.endOf(date, unit),
+    startOf: (date: TimeInput, unit: Parameters<typeof TimeUtil.startOf>[1]) => TimeUtil.startOf(date, unit),
+    endOf: (date: TimeInput, unit: Parameters<typeof TimeUtil.endOf>[1]) => TimeUtil.endOf(date, unit),
     isToday: (date: TimeInput) => TimeUtil.isToday(date),
     isWeekday: (date?: TimeInput) => TimeUtil.isWeekday(date),
     isWeekend: (date?: TimeInput) => TimeUtil.isWeekend(date),
@@ -547,7 +613,7 @@ export function useTime() {
  * @returns 格式化后的北京时间字符串
  */
 export function formatBeijingTime(
-  date: Date | string | number | dayjs.Dayjs = new Date(),
+  date: Date | string | number | dayjs.Dayjs = TimeUtil.now(),
   format: string = TIME_FORMATS.DATETIME
 ): string {
   return TimeUtil.format(date, format)

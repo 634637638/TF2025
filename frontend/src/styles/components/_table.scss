@@ -87,6 +87,26 @@
 
 // ==================== 表格单元格样式（与销售管理一致） ====================
 
+.el-table .sort-order-control.el-input-number {
+  width: 50px;
+  vertical-align: middle;
+}
+
+.el-table .sort-order-control .el-input__wrapper {
+  min-height: 28px;
+  padding-inline: 6px;
+  border-radius: var(--tf-radius-control);
+  box-shadow: 0 0 0 1px var(--el-border-color) inset;
+}
+
+.el-table .sort-order-control .el-input__inner {
+  height: 26px;
+  color: var(--el-text-color-primary);
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+}
+
 .el-table__body-wrapper td {
   padding: var(--admin-data-table-cell-padding-y, 10px) var(--admin-data-table-cell-padding-x, 8px) !important;
   height: var(--admin-data-table-row-height, 40px) !important;
@@ -798,7 +818,7 @@ body.is-admin-table-dragging * {
   color: var(--color-text-primary);
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .tf-action-row--compact {
     gap: 4px !important;
   }
@@ -875,7 +895,7 @@ body.is-admin-table-dragging * {
   }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 479px) {
   .tf-action-row--compact .el-button i {
     display: none !important;
   }

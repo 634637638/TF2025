@@ -27,19 +27,12 @@
           />
           <el-button
             type="info"
+            :loading="refreshing"
             :disabled="refreshing"
             @click="handleRefresh"
           >
-            <InlineLoading
-              v-if="refreshing"
-              text="刷新中..."
-              size="small"
-              variant="inherit"
-            />
-            <template v-else>
-              <i class="fas fa-sync-alt" />
-              <span>刷新</span>
-            </template>
+            <i class="fas fa-sync-alt" />
+            <span>{{ refreshing ? '刷新中...' : '刷新' }}</span>
           </el-button>
         </template>
       </PageHeader>
@@ -68,6 +61,7 @@
           @reset="resetFilters"
           @search="loadInventory"
           @search-input="debounceLoadInventory"
+          @operator-search="searchOperatorsRemote"
         />
 
         <InventoryTable
@@ -163,7 +157,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, computed, watch, onUnmounted, onActivated, defineAsyncComponent } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { useMobileDetection } from '@/composables/mobile'
 import { useNotification } from '@/composables/useNotification'
 import { useImportExport } from '@/composables/useImportExport'
@@ -177,12 +171,12 @@ import { normalizePermissionList } from '@/utils/permissionList'
 import { getAdaptiveActionColumnWidth, getIdentifierColumnMinWidth, getTextColumnMinWidth } from '@/utils/table-layout'
 import { toCanonicalPhoneUpdatePayload } from '@/utils/phone-update-payload'
 import { resolvePhoneReferenceIds } from '@/utils/phone-reference-ids'
+import { getModels } from '@/services/reference-options'
 import { useAuthStore } from '@/stores/auth'
 import { logger } from '@/utils/logger'
 import { useLoadingStore } from '@/stores/loading'
 import { TimeUtil } from '@/utils/time'
 import Toast from '../../components/Toast.vue'
-import InlineLoading from '@/components/InlineLoading.vue'
 import ImportExportActions from '@/components/business/ImportExportActions.vue'
 import { PageHeader, PermissionGate } from '@/components/base'
 import InventoryStatsCards from './page/InventoryStatsCards.vue'
@@ -208,7 +202,7 @@ interface Stats {
 const router = useRouter()
 const route = useRoute()
 const mobileDetection = useMobileDetection()
-const { success, error, warning } = useNotification()
+const { success, error, warning, confirm } = useNotification()
 const {
   canView,
   canCreate,
@@ -572,21 +566,14 @@ const remoteSearchModel = async (query: string) => {
   try {
     modelSearchLoading.value = true
 
-    // 构建搜索参数
-    const params = new URLSearchParams()
-    params.append('name', query.trim())
-    params.append('status', '1')
-    params.append('page_size', '50')
-
-    // 如果选择了品牌，添加品牌过滤
-    if (editForm.brand) {
-      const brand = brands.value.find((b: any) => b.name === editForm.brand)
-      if (brand) {
-        params.append('brand_id', String(brand.id))
-      }
-    }
-
-    const response = await api.get(`/models?${params.toString()}`)
+    const brand = editForm.brand
+      ? brands.value.find((item: any) => item.name === editForm.brand)
+      : undefined
+    const response = await getModels({
+      brandId: brand?.id,
+      keyword: query.trim(),
+      status: 1
+    })
     if (response.success) {
       const modelsData = extractResponseData<any[]>(response)
 
@@ -838,7 +825,7 @@ const handleRefresh = async () => {
   success('数据刷新成功')
 }
 
-const { fetchBasicData, fetchBrandModels, handleBrandChange } = useInventoryBaseOptions({
+const { fetchBasicData, handleBrandChange, searchOperatorsRemote } = useInventoryBaseOptions({
   refs: {
     suppliers,
     stores,
@@ -1102,7 +1089,7 @@ const fetchEditBrandModels = async (brandName: string) => {
     }
 
     // 使用品牌ID获取型号列表
-    const response = await api.get(`/models?brand_id=${brand.id}&status=1`)
+    const response = await getModels({ brandId: brand.id, status: 1 })
     if (response.success) {
       const modelsData = extractResponseData<any[]>(response)
 
@@ -1345,14 +1332,14 @@ const quickSaleItem = (item: InventoryItem) => {
       auto_open_sale: '1',
       ...(effectiveStatus === 'reserved'
         ? {
-            imei: item.imei || '',
-            preorder_id: String(item.preorder_id),
-            customer_id: String(item.preorder_customer_id || ''),
-            customer_name: item.preorder_customer_name || '',
-            customer_phone: item.preorder_customer_phone || '',
-            expected_price: String(item.preorder_actual_price || item.preorder_total_price || ''),
-            advance_payment: String(item.preorder_deposit_amount || '')
-          }
+          imei: item.imei || '',
+          preorder_id: String(item.preorder_id),
+          customer_id: String(item.preorder_customer_id || ''),
+          customer_name: item.preorder_customer_name || '',
+          customer_phone: item.preorder_customer_phone || '',
+          expected_price: String(item.preorder_actual_price || item.preorder_total_price || ''),
+          advance_payment: String(item.preorder_deposit_amount || '')
+        }
         : {})
     }
   })
@@ -1428,7 +1415,7 @@ const deleteItem = async (item: InventoryItem) => {
       identityParts.push(`序列号: ${item.serial_number}`)
     }
 
-    await ElMessageBox.confirm(
+    if (!await confirm(
       `确定要删除商品“${identityParts.join('，')}”吗？`,
       '删除确认',
       {
@@ -1436,7 +1423,7 @@ const deleteItem = async (item: InventoryItem) => {
         cancelButtonText: '取消',
         type: 'warning'
       }
-    )
+    )) return
 
     loadingStore.setLoading(true)
 
@@ -1628,39 +1615,6 @@ const _handleSelect = (item: InventoryItem) => {
   gap: 8px;
 }
 
-.inventory-edit-footer {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  align-items: stretch;
-  gap: 10px;
-  padding-top: 2px;
-}
-
-.inventory-edit-footer.has-config {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.inventory-edit-footer :deep(.el-button) {
-  width: 100%;
-  min-height: 46px;
-  height: 46px;
-  border-radius: 14px;
-  font-size: 15px;
-  margin: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  line-height: 1;
-}
-
-.inventory-edit-footer :deep(.el-button > span) {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  line-height: 1;
-}
-
 .inventory-edit-dialog .el-select,
 .inventory-edit-dialog .el-date-editor.el-input,
 .inventory-edit-dialog .el-date-editor.el-input__wrapper,
@@ -1702,6 +1656,11 @@ const _handleSelect = (item: InventoryItem) => {
   --dialog-max-width: calc(100vw - 8px);
   --mobile-dialog-body-padding: 8px 4px 8px;
   --mobile-dialog-footer-padding: 0 4px 4px;
+  --tf-dialog-body-padding-inline: 28px;
+  --tf-dialog-body-padding-block: 28px;
+  --tf-dialog-footer-padding-inline: 28px;
+  --tf-dialog-footer-padding-block-start: 18px;
+  --tf-dialog-footer-padding-block-end: 28px;
 }
 
 .inventory-edit-dialog .el-dialog,
@@ -1721,24 +1680,7 @@ const _handleSelect = (item: InventoryItem) => {
   border-radius: 20px !important;
 }
 
-.inventory-edit-dialog .el-dialog__body {
-  padding: 28px !important;
-  background: var(--color-bg-white) !important;
-}
-
-.inventory-edit-dialog .el-dialog__footer {
-  padding: 18px 28px 28px !important;
-  background: var(--color-bg-white) !important;
-  border-top: 1px solid rgba(15, 23, 42, 0.06) !important;
-}
-
-.inventory-detail-dialog .el-dialog__body,
-.inventory-detail-dialog .el-dialog__footer {
-  padding: 0 !important;
-  background: var(--color-bg-white) !important;
-}
-
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .inventory-edit-dialog .el-dialog,
   .inventory-detail-dialog .el-dialog {
     width: calc(100vw - 8px) !important;
@@ -1765,20 +1707,14 @@ const _handleSelect = (item: InventoryItem) => {
     transform: none !important;
   }
 
-  .inventory-edit-dialog .el-dialog__body {
-    padding: 8px 4px !important;
-  }
-
-  .inventory-edit-dialog .el-dialog__footer {
-    padding: 0 4px 4px !important;
-  }
-
-  .mobile-dialog-sheet-panel.inventory-edit-dialog .mobile-dialog-sheet-body {
-    padding: 8px 4px !important;
-  }
-
-  .mobile-dialog-sheet-panel.inventory-edit-dialog .mobile-dialog-sheet-footer {
-    padding: 0 4px 4px !important;
+  .inventory-edit-dialog {
+    --tf-dialog-body-padding-inline: 4px;
+    --tf-dialog-body-padding-block: 8px;
+    --tf-dialog-footer-padding-inline: 4px;
+    --tf-dialog-footer-padding-block-start: 0px;
+    --tf-dialog-footer-padding-block-end: 4px;
+    --mobile-dialog-body-padding: 8px 4px 8px;
+    --mobile-dialog-footer-padding: 0 4px 4px;
   }
 
   .inventory-edit-summary-grid {
@@ -1827,19 +1763,9 @@ const _handleSelect = (item: InventoryItem) => {
     justify-content: flex-start;
   }
 
-  .inventory-edit-footer {
-    gap: 8px;
-  }
-
-  .inventory-edit-footer .el-button {
-    width: 100%;
-    min-width: 0;
-    padding-inline: 10px;
-    font-size: 14px;
-  }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 479px) {
   .inventory-edit-summary-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 8px;
@@ -1859,7 +1785,7 @@ const _handleSelect = (item: InventoryItem) => {
   }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 479px) {
   .inventory-edit-dialog {
     --dialog-vertical-gap: 24px;
   }
@@ -2180,21 +2106,8 @@ const _handleSelect = (item: InventoryItem) => {
   font-style: italic;
 }
 
-/* 模态框底部 */
-.inventory-modal-footer {
-  background: var(--admin-table-panel-bg);
-  border-top: 1px solid var(--admin-table-panel-border);
-  padding: 20px 32px;
-}
-
-.footer-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-}
-
 /* 响应式设计 */
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .modal-header-content {
     padding: 20px 24px;
   }
@@ -2274,15 +2187,6 @@ const _handleSelect = (item: InventoryItem) => {
 
   .card-content {
     padding: 16px;
-  }
-
-  .inventory-modal-footer {
-    padding: 16px 24px;
-  }
-
-  .footer-actions {
-    flex-direction: row;
-    gap: 8px;
   }
 
 }
@@ -2437,33 +2341,6 @@ const _handleSelect = (item: InventoryItem) => {
   color: var(--tf-button-danger-soft-color);
 }
 
-/* ===== 权限加载中样式 ===== */
-.loading-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 60vh;
-  background: var(--admin-table-panel-bg);
-  border-radius: var(--admin-panel-radius);
-  margin: 20px 0;
-}
-
-.loading-spinner {
-  width: 40px;
-  height: 40px;
-  border: 4px solid var(--tf-button-disabled-bg);
-  border-top: 4px solid var(--tf-button-primary-bg);
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin-bottom: 20px;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
 /* 权限禁用样式 */
 .permission-disabled {
   display: flex;
@@ -2485,22 +2362,6 @@ const _handleSelect = (item: InventoryItem) => {
 }
 
 /* 空状态样式 */
-.empty-state {
-  text-align: center;
-  color: var(--admin-record-count-color);
-  padding: 60px 20px;
-}
-
-.empty-state i {
-  font-size: 48px;
-  margin-bottom: 16px;
-  opacity: 0.5;
-}
-
-.empty-state p {
-  margin: 0;
-  font-size: 16px;
-}
 
 /* 分页样式 */
 .pagination-wrapper {
@@ -2518,12 +2379,6 @@ const _handleSelect = (item: InventoryItem) => {
 
 .py-8 {
   padding: 32px 0;
-}
-
-.dialog-footer {
-  display: flex;
-  gap: 10px;
-  justify-content: flex-end;
 }
 
 /* 可编辑下拉框样式 */
@@ -2618,7 +2473,7 @@ const _handleSelect = (item: InventoryItem) => {
 }
 
 /* 响应式设计 */
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .inventory-view {
     padding: 4px 0;
   }
@@ -2643,38 +2498,11 @@ const _handleSelect = (item: InventoryItem) => {
     grid-template-columns: 1fr;
   }
 
-  .loading-container {
-    margin: 10px;
-    min-height: 50vh;
-  }
-
-  .loading-spinner {
-    width: 32px;
-    height: 32px;
-    margin-bottom: 16px;
-  }
 }
 
 /* ===== 移动端卡片样式 ===== */
 .mobile-cards-container {
   padding: 0;
-}
-
-.mobile-empty-state {
-  text-align: center;
-  padding: 60px 20px;
-  color: var(--admin-record-count-color);
-
-  .empty-icon {
-    font-size: 48px;
-    margin-bottom: 16px;
-    opacity: 0.5;
-  }
-
-  .empty-text {
-    margin: 0;
-    font-size: 16px;
-  }
 }
 
 .inventory-cards {
@@ -2836,7 +2664,7 @@ const _handleSelect = (item: InventoryItem) => {
   box-sizing: border-box;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   /* 仅在移动端确保占据全宽 */
   .grid-container {
     width: 100vw;
@@ -2849,7 +2677,7 @@ const _handleSelect = (item: InventoryItem) => {
 }
 
 /* 小屏幕优化 */
-@media (max-width: 480px) {
+@media (max-width: 479px) {
   .grid-container {
     grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
     gap: 12px;
@@ -2888,7 +2716,7 @@ const _handleSelect = (item: InventoryItem) => {
 }
 
 /* 小屏幕优化 */
-@media (max-width: 480px) {
+@media (max-width: 479px) {
   .device-card {
     padding: 12px;
     gap: 8px;
@@ -2934,7 +2762,7 @@ const _handleSelect = (item: InventoryItem) => {
 }
 
 /* 小屏幕优化 */
-@media (max-width: 480px) {
+@media (max-width: 479px) {
   .device-header .device-brand {
     font-size: 14px;
   }
@@ -2989,7 +2817,7 @@ const _handleSelect = (item: InventoryItem) => {
 }
 
 /* 小屏幕优化 */
-@media (max-width: 480px) {
+@media (max-width: 479px) {
   .device-info .info-row {
     font-size: 12px;
   }
@@ -3018,32 +2846,11 @@ const _handleSelect = (item: InventoryItem) => {
 }
 
 /* 小屏幕优化 */
-@media (max-width: 480px) {
+@media (max-width: 479px) {
   .device-actions {
     gap: 6px;
     padding-top: 6px;
   }
-}
-
-.mobile-empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 60px 20px;
-  text-align: center;
-}
-
-.mobile-empty-state .empty-icon {
-  font-size: 48px;
-  color: #6c757d;
-  margin-bottom: 16px;
-}
-
-.mobile-empty-state .empty-text {
-  font-size: 16px;
-  color: #6c757d;
-  margin: 0;
 }
 
 /* 桌面端分页样式优化 */
@@ -3141,18 +2948,6 @@ const _handleSelect = (item: InventoryItem) => {
     max-width: 80px;
   }
 
-  .inventory-modal-footer {
-    padding: 12px 16px;
-    position: sticky;
-    bottom: 0;
-    background: #f8fafc;
-    border-top: 1px solid #e2e8f0;
-  }
-
-  .footer-actions {
-    gap: 10px;
-  }
-
 }
 
 /* 编辑弹窗样式已使用内联样式，此处保留旧样式以备后用 */
@@ -3160,7 +2955,7 @@ const _handleSelect = (item: InventoryItem) => {
 /* ===== 移动端适配 ===== */
 
 /* 小屏手机优化 (≤480px) */
-@media (max-width: 480px) {
+@media (max-width: 479px) {
   .inventory-view {
     padding: 4px 0;
     overflow-x: hidden;
@@ -3241,15 +3036,10 @@ const _handleSelect = (item: InventoryItem) => {
     max-width: 70px;
   }
 
-  .footer-actions {
-    flex-direction: column;
-    gap: 8px;
-  }
-
 }
 
 /* 第二个480px断点 - 全局滚动和触摸优化 */
-@media (max-width: 480px) {
+@media (max-width: 479px) {
   * {
     -webkit-overflow-scrolling: touch !important;
   }
@@ -3487,21 +3277,6 @@ const _handleSelect = (item: InventoryItem) => {
   .remarks-card .remarks-text {
     font-size: 13px;
     line-height: 1.5;
-  }
-
-  /* 底部操作栏 */
-  .inventory-modal-footer {
-    padding: 12px 16px;
-    position: sticky;
-    bottom: 0;
-    background: white;
-    border-top: 1px solid #e2e8f0;
-    z-index: 10;
-  }
-
-  .footer-actions {
-    display: flex;
-    gap: 8px;
   }
 
 }

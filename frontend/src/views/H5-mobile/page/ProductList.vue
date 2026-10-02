@@ -136,6 +136,7 @@
     <!-- 筛选弹窗 -->
     <el-drawer
       v-model="showFilterPopup"
+      class="tf-drawer"
       direction="rtl"
       size="80%"
     >
@@ -1351,8 +1352,7 @@ watch(
   padding: 0;
 }
 
-// 空状态
-.empty-state,
+// 加载状态
 .loading-state {
   padding: 40px 16px;
   text-align: center;

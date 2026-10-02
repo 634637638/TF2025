@@ -2,14 +2,14 @@
   --tf-button-height: 36px;
   --tf-button-height-small: 28px;
   --tf-button-height-large: 44px;
-  --tf-button-padding-x: 16px;
+  --tf-button-padding-x: var(--tf-space-4);
   --tf-button-padding-x-small: 10px;
-  --tf-button-radius: 6px;
-  --tf-button-font-size: 14px;
+  --tf-button-radius: var(--tf-radius-control);
+  --tf-button-font-size: var(--tf-font-body);
   --tf-button-font-size-small: 13px;
   --tf-button-font-weight: 600;
   --tf-toolbar-button-height: 34px;
-  --tf-toolbar-button-padding-x: 12px;
+  --tf-toolbar-button-padding-x: var(--tf-space-3);
   --tf-toolbar-button-font-size: 13px;
   --tf-search-control-height: var(--tf-toolbar-button-height);
   --tf-topbar-control-height: 40px;
@@ -496,7 +496,7 @@ button.btn-icon.btn-danger {
   font-size: var(--tf-toolbar-button-font-size) !important;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   :root {
     --tf-button-height: clamp(34px, 9.6vw, 36px);
     --tf-button-height-small: clamp(30px, 8.54vw, 32px);

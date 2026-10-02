@@ -131,7 +131,7 @@
             class="summary-item"
           >
             <span class="summary-label">销售价格</span>
-            <span class="summary-value">¥{{ currentDetail.sale_price?.toFixed(2) }}</span>
+            <span class="summary-value">¥{{ formatAmount(currentDetail.sale_price) }}</span>
           </div>
           <div
             v-if="fieldVisibility.store_name"
@@ -166,7 +166,7 @@
             class="summary-item"
           >
             <span class="summary-label">补贴金额</span>
-            <span class="summary-value subsidy-highlight">¥{{ currentDetail.subsidy_amount?.toFixed(2) }}</span>
+            <span class="summary-value subsidy-highlight">¥{{ formatAmount(currentDetail.subsidy_amount) }}</span>
           </div>
         </div>
 
@@ -227,7 +227,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import MobileDialog from '@/components/MobileDialog.vue'
-import { formatImageUrl } from '@/utils/format'
+import { formatAmount, formatImageUrl } from '@/utils/format'
 import { unifiedApi } from '@/utils/unified-api'
 import { normalizeIdCard, normalizePersonName, normalizePhoneDigits } from '@/utils/security'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
@@ -566,7 +566,7 @@ watch(
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .detail-section {
     padding: 14px;
   }

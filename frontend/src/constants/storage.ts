@@ -38,23 +38,23 @@ export const AUTH_STORAGE_KEYS = {
 
 // ==================== H5 移动端相关 ====================
 export const H5_STORAGE_KEYS = {
-  /** H5 认证令牌 (localStorage) */
+  /** H5 认证令牌 (sessionStorage) */
   AUTH_TOKEN: 'h5_auth_token',
-  /** H5 用户信息 (localStorage) */
+  /** H5 用户信息 (sessionStorage) */
   AUTH_USER: 'h5_auth_user',
   /** H5 购物车ID (localStorage) */
   CART_ID: 'h5_cart_id',
   /** H5 购物车数量 (localStorage) */
   CART_COUNT: 'h5_cart_count',
-  /** H5 上次手机号 (localStorage) */
+  /** H5 上次手机号 (sessionStorage) */
   LAST_PHONE: 'h5_last_phone',
-  /** H5 上次姓名 (localStorage) */
+  /** H5 上次姓名 (sessionStorage) */
   LAST_NAME: 'h5_last_name',
   /** 结算商品项 (sessionStorage) */
   CHECKOUT_ITEMS: 'checkout_items',
   /** 订单成功信息 (sessionStorage) */
   ORDER_SUCCESS: 'order_success',
-  /** 用户默认地址 (localStorage) */
+  /** 用户默认地址 (sessionStorage) */
   DEFAULT_ADDRESS: 'user_default_address'
 } as const
 
@@ -78,7 +78,7 @@ export const SECURITY_STORAGE_KEYS = {
   SCREEN_LOCK_TIME: 'screen_lock_time',
   /** 屏幕锁定设置 (localStorage) */
   SCREEN_LOCK_SETTINGS: 'screenLockSettings',
-  /** CSRF 令牌 (localStorage) */
+  /** CSRF 令牌 (sessionStorage) */
   CSRF_TOKEN: 'tf2025_csrf_token'
 } as const
 
@@ -144,4 +144,59 @@ export function cleanupDeprecatedKeys(): void {
     localStorage.removeItem(key)
     sessionStorage.removeItem(key)
   })
+}
+
+/**
+ * 清理旧版本可能写入 localStorage 的认证和个人敏感数据。
+ *
+ * 这些键只做兼容清理，不再从 localStorage 恢复，避免浏览器中残留的
+ * 旧会话在用户未重新登录时被重新激活。
+ */
+export function cleanupLegacySensitiveStorage(): void {
+  if (typeof window === 'undefined') return
+
+  const legacySensitiveKeys = [
+    AUTH_STORAGE_KEYS.AUTH,
+    AUTH_STORAGE_KEYS.AUTH_BACKUP,
+    AUTH_STORAGE_KEYS.TOKEN_BACKUP,
+    AUTH_STORAGE_KEYS.TIMED_BACKUP,
+    AUTH_STORAGE_KEYS.DEV_TOKEN,
+    H5_STORAGE_KEYS.AUTH_TOKEN,
+    H5_STORAGE_KEYS.AUTH_USER,
+    H5_STORAGE_KEYS.LAST_PHONE,
+    H5_STORAGE_KEYS.LAST_NAME,
+    H5_STORAGE_KEYS.DEFAULT_ADDRESS,
+    SECURITY_STORAGE_KEYS.CSRF_TOKEN,
+    CACHE_STORAGE_KEYS.PERMISSIONS_CACHE,
+    CACHE_STORAGE_KEYS.ICON_PICKER_CACHE,
+    CACHE_STORAGE_KEYS.VISIT_HISTORY,
+    'iconify-count',
+    'iconify-version',
+    'menuWidth',
+    'menuWidthMobile',
+    'priceMarkupConfig',
+    'recently-used-menus',
+    'recentlyVisited',
+    'tf2025:marketing-admin-draft',
+    'tf2025_messages',
+    'tf2025_dynamic_permissions',
+    'isAuthenticated',
+    'isLoggedIn',
+    'permissions',
+    'user',
+    'token',
+    'refreshToken',
+    'access_token'
+  ]
+
+  legacySensitiveKeys.forEach(key => {
+    localStorage.removeItem(key)
+  })
+
+  for (let index = localStorage.length - 1; index >= 0; index -= 1) {
+    const key = localStorage.key(index)
+    if (key?.startsWith('field_permissions')) {
+      localStorage.removeItem(key)
+    }
+  }
 }

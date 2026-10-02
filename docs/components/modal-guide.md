@@ -2,7 +2,7 @@
 
 > **文档说明**：本指南介绍 TF2025 项目中 `MobileDialog` 和 `el-dialog` 的统一使用规范
 >
-> **最后更新**：2025-12-20
+> **最后更新**：2026-10-01
 > **版本**：v1.1.0
 > **维护者**：TF2025 开发团队
 
@@ -10,8 +10,8 @@
 
 TF2025 项目提供统一的模态框方案，支持从移动端到桌面端的全设备适配。系统包含两种入口：
 
-1. **MobileDialog** - 基于Element Plus的增强版对话框组件（推荐）
-2. **Element Plus Dialog** - 原生组件配合全局统一样式
+1. **MobileDialog** - 业务弹窗唯一首选入口
+2. **Element Plus Dialog** - 仅限已登记的工作台例外，并且必须复用全局统一样式
 
 ## 组件对比
 
@@ -21,7 +21,7 @@ TF2025 项目提供统一的模态框方案，支持从移动端到桌面端的�
 | 移动端优化 | ✅ 完整支持 | ✅ 由全局样式适配 |
 | PC端功能 | ✅ 拖拽、大小调整 | ✅ Element Plus 原生能力 |
 | 全屏模式 | ✅ 支持 | ✅ 支持 |
-| 推荐场景 | 通用业务弹窗 | 已有原生弹窗或特殊插槽 |
+| 推荐场景 | 所有新增业务弹窗 | 已登记的媒体/工作台或历史服务逻辑 |
 
 ## MobileDialog 组件（推荐）
 
@@ -32,7 +32,7 @@ TF2025 项目提供统一的模态框方案，支持从移动端到桌面端的�
   <MobileDialog
     v-model="dialogVisible"
     title="添加商品"
-    :width="800"
+    width="800px"
     :loading="loading"
     @confirm="handleConfirm"
     @cancel="handleCancel"
@@ -51,7 +51,7 @@ TF2025 项目提供统一的模态框方案，支持从移动端到桌面端的�
 
 <script setup>
 import { ref } from 'vue'
-import { MobileDialog } from '@/components'
+import MobileDialog from '@/components/MobileDialog.vue'
 
 const dialogVisible = ref(false)
 const loading = ref(false)
@@ -84,7 +84,8 @@ const handleCancel = () => {
   <MobileDialog
     v-model="dialogVisible"
     title="商品详情"
-    :width="1200"
+    width="1200px"
+    max-width="1280px"
     :force-fullscreen="isMobile"
     :draggable="!isMobile"
     dialog-class="product-dialog"
@@ -113,7 +114,7 @@ const handleCancel = () => {
 
     <!-- 自定义底部 -->
     <template #footer>
-      <div class="footer-actions">
+      <div class="tf-dialog-actions">
         <el-button @click="handleEdit">编辑</el-button>
         <el-button type="primary" @click="handleSave">保存</el-button>
         <el-button type="danger" @click="handleDelete">删除</el-button>
@@ -123,6 +124,7 @@ const handleCancel = () => {
 </template>
 
 <script setup>
+import MobileDialog from '@/components/MobileDialog.vue'
 import { computed } from 'vue'
 import { useResponsive } from '@/composables/responsive'
 
@@ -137,23 +139,7 @@ const { isMobile } = useResponsive()
     align-items: center;
   }
 
-  .footer-actions {
-    display: flex;
-    gap: 12px;
-  }
-}
-
-// 移动端样式
-@media (max-width: 767px) {
-  .product-dialog {
-    .footer-actions {
-      flex-direction: column;
-
-      .el-button {
-        width: 100%;
-      }
-    }
-  }
+  // 这里只维护业务内容布局；footer 尺寸和排列由全局规则维护
 }
 </style>
 ```
@@ -164,7 +150,8 @@ const { isMobile } = useResponsive()
 |------|------|--------|------|
 | modelValue | boolean | - | 对话框显示状态 |
 | title | string | '' | 对话框标题 |
-| width | string/number | '50%' | 对话框宽度 |
+| width | string/number | '680px' | 业务期望宽度，由全局规则按视口自动收缩 |
+| maxWidth | string/number | '' | 业务宽度上限 |
 | fullscreen | boolean | false | 是否全屏 |
 | forceFullscreen | boolean | false | 强制移动端全屏 |
 | closeOnClickModal | boolean | true | 点击遮罩关闭 |
@@ -172,7 +159,7 @@ const { isMobile } = useResponsive()
 | showClose | boolean | true | 显示关闭按钮 |
 | draggable | boolean | true | 可拖拽 |
 | loading | boolean | false | 确认按钮加载状态 |
-| showDefaultFooter | boolean | true | 显示默认底部按钮 |
+| showDefaultFooter | boolean | true | 显示默认底部按钮（模板中使用 `show-default-footer`） |
 | showCancelButton | boolean | true | 显示取消按钮 |
 | confirmText | string | '确定' | 确认按钮文字 |
 | cancelText | string | '取消' | 取消按钮文字 |
@@ -183,7 +170,11 @@ const { isMobile } = useResponsive()
 
 - **移动端**：< 768px
 - **平板端**：768px - 1024px
-- **桌面端**：≥ 1024px
+- **桌面端**：≥ 1025px
+
+弹窗宽度由 `width` 和可选的 `maxWidth` 声明，最终由全局样式按可用视口自动收缩：桌面端取
+声明宽度与可用视口的较小值，平板端上限为视口的 80%，手机端保留统一安全边距。页面不得复制
+`width: min(..., 100vw)`、`calc(100vw - ...)` 或 `.el-dialog__header/body/footer` 的公共样式。
 
 ### 移动端适配
 
@@ -198,16 +189,16 @@ const { isMobile } = useResponsive()
    - 触摸优化间距
 
 3. **布局调整**
-   - 底部按钮保持同一行等宽排列
+   - 底部按钮使用 `.tf-dialog-actions`，保持同一行等宽排列
    - 表格转换为卡片式
    - 滚动优化：-webkit-overflow-scrolling: touch
 
 ### PC端特性
 
 1. **功能增强**
-   - 拖拽移动
-   - 宽度调整
-   - 大小限制（最大1200px）
+   - 拖拽移动（由组件属性控制）
+   - 宽度按 `width`/`maxWidth` 声明并由全局规则自动收缩
+   - 大小限制由全局 Token 和业务宽度上限共同控制
 
 2. **布局优化**
    - 内容区域最大高度：70vh
@@ -229,11 +220,8 @@ footer 间距。不得新增 `modal-styles.scss`、`BaseModal` 或另一套弹�
 ### 1. 统一使用 MobileDialog
 
 ```javascript
-// 组件导入
-import { MobileDialog } from '@/components'
-
-// 全局注册（可选）
-app.component('MobileDialog', MobileDialog)
+// 组件导入（推荐显式导入，避免重复注册）
+import MobileDialog from '@/components/MobileDialog.vue'
 ```
 
 ### 2. 响应式内容布局
@@ -297,7 +285,7 @@ const isSmallScreen = computed(() => screenWidth.value < 600)
   <MobileDialog
     v-model="visible"
     title="数据列表"
-    :width="1000"
+    width="1000px"
     :fullscreen="isMobile"
   >
     <!-- PC端表格 -->
@@ -369,8 +357,10 @@ A: 使用 `#footer` 插槽：
 <MobileDialog v-model="visible">
   <!-- 内容 -->
   <template #footer>
-    <el-button>自定义按钮1</el-button>
-    <el-button type="primary">自定义按钮2</el-button>
+    <div class="tf-dialog-actions">
+      <el-button>自定义按钮1</el-button>
+      <el-button type="primary">自定义按钮2</el-button>
+    </div>
   </template>
 </MobileDialog>
 ```
@@ -381,7 +371,8 @@ A: 使用响应式宽度：
 ```vue
 <MobileDialog
   v-model="visible"
-  :width="1200"
+  width="1200px"
+  max-width="1280px"
 >
   <!-- 内容 -->
 </MobileDialog>
@@ -407,9 +398,7 @@ A: 设置 `draggable` 为 `false`：
 
 ## 更新日志
 
-- 2025-12-20: 完善模态框适配系统
-  - 修正最小适配宽度为375px（iPhone SE）
-  - 优化移动端断点：767px和479px双断点适配
-  - 增强PC端功能：支持拖拽、动态宽度调整
-  - 完善响应式设计：自动全屏、按钮布局优化
-  - 添加无障碍支持：高对比度、减少动画模式
+- 2026-10-01: 对齐全局 `MobileDialog` 响应式宽度和 footer 规范
+  - 统一 `width`/`maxWidth` 的视口收缩行为
+  - 修正断点为手机 `<=767px`、小屏 `<=479px`、平板 `768-1024px`、桌面 `>=1025px`
+  - 移除页面级 footer 尺寸和弹窗外壳样式示例

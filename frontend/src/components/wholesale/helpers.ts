@@ -1,9 +1,9 @@
 import { normalizePersonName, normalizePhoneDigits } from '@/utils/security'
-import { extractResponseData } from '@/utils/api-response'
 import { unifiedApi } from '@/utils/unified-api'
 import { TIME_FORMATS, TimeUtil } from '@/utils/time'
 import { sortOptionsByOrder } from '@/utils/option-sort'
-import { getCachedOperators, getCachedStores, getCachedSuppliers } from '@/services/reference-options'
+import { searchOperators, getCachedStores, getCachedSuppliers } from '@/services/reference-options'
+import { searchCustomerOptions } from '@/services/customer-options'
 import type { User } from '@/types'
 import type { Store, Supplier } from '@/types/system'
 import type {
@@ -165,18 +165,25 @@ export const buildWholesaleOpenFormPatch = (options: {
   mode: 'wholesale' | 'proxy'
   phones: WholesalePhone[]
   operatorName: string
-}): Partial<WholesaleFormData> => ({
-  supplier_id: options.mode === 'proxy' ? resolveProxySupplierId(options.phones) : null,
-  salesperson_name: options.operatorName,
-  sale_time: TimeUtil.nowFormatted(TIME_FORMATS.DATE)
-})
+}): Partial<WholesaleFormData> => {
+  const remarks = options.phones.map(phone => String(phone.remarks || '').trim())
+  const sharedRemarks = remarks.length > 0 && remarks.every(value => value && value === remarks[0])
+    ? remarks[0]
+    : ''
+
+  return {
+    supplier_id: options.mode === 'proxy' ? resolveProxySupplierId(options.phones) : null,
+    salesperson_name: options.operatorName,
+    sale_time: TimeUtil.nowFormatted(TIME_FORMATS.DATE),
+    remarks: sharedRemarks
+  }
+}
 
 export const normalizeWholesalePhoneValue = (phone: unknown): string =>
   normalizePhoneDigits(phone)
 
 export const formatWholesalePrice = (price: number): string => {
-  const formatted = price.toFixed(2)
-  return formatted.endsWith('.00') ? formatted.slice(0, -3) : formatted
+  return price.toFixed(2).replace(/\.?(?:0)+$/, '') || '0'
 }
 
 export const formatWholesaleDate = (date: string | null | undefined): string => {
@@ -302,13 +309,8 @@ export const validateWholesaleSubmit = (options: {
 export const searchWholesaleCustomers = async (
   phoneNumber: string
 ): Promise<WholesaleCustomerSearchItem[]> => {
-  const response = await unifiedApi.get(`/sales/customers?search=${encodeURIComponent(phoneNumber)}`)
-  if (!response.success) {
-    return []
-  }
-
-  return extractResponseData<Array<Partial<WholesaleCustomerSearchItem>>>(response)
-    .map((item) => normalizeWholesaleCustomerSearchItem(item))
+  const customers = await searchCustomerOptions(phoneNumber, 'sales')
+  return customers.map((item) => normalizeWholesaleCustomerSearchItem(item))
 }
 
 export const loadWholesaleSuppliers = async (): Promise<Supplier[]> => {
@@ -333,7 +335,7 @@ export const loadWholesaleStores = async (): Promise<Store[]> => {
 }
 
 export const loadWholesaleUsers = async (): Promise<User[]> => {
-  const response = await getCachedOperators()
+  const response = await searchOperators({ page: 1, page_size: 20 })
   if (!response.success) {
     return []
   }

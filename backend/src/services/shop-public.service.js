@@ -1604,7 +1604,7 @@ class ShopPublicService {
         queryParams.push(searchPattern, searchPattern, searchPattern, searchPattern)
       }
 
-      query += ` ORDER BY ${orderClause} LIMIT 500`
+      query += ` ORDER BY ${orderClause}`
 
     } else if (is_new === false) {
       // 二手机：每台手机独立显示，不分组
@@ -1659,7 +1659,6 @@ class ShopPublicService {
         LEFT JOIN memories mem ON p.memory_id = mem.id
         WHERE ${conditions.join(' AND ')}
         ORDER BY ${orderClause}
-        LIMIT 500
       `
 
     } else {
@@ -1787,7 +1786,6 @@ class ShopPublicService {
         ORDER BY
           CASE WHEN brand_name = '苹果' THEN 0 ELSE 1 END,
           brand_name, model_name, COALESCE(color_name, '默认颜色')
-        LIMIT 500
       `
     }
 

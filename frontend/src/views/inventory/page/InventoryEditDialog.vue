@@ -140,8 +140,8 @@
               v-model="editForm.inventory_time"
               type="date"
               placeholder="选择日期"
-              format="YYYY-MM-DD"
-              value-format="YYYY-MM-DD"
+              :format="TIME_FORMATS.DATE"
+              :value-format="TIME_FORMATS.DATE"
               teleported
               popper-class="tf2025-form-popper"
               class="w-full"
@@ -458,6 +458,7 @@
 </template>
 
 <script setup lang="ts">
+import { TIME_FORMATS } from '@/utils/time'
 import MobileDialog from '@/components/MobileDialog.vue'
 
 export interface InventoryEditForm {

@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "files": {
+    "src/views/data-optimization/page/DataCheckTab.vue": {
+      "radio": 0,
+      "checkbox": 1,
+      "range": 0
+    },
+    "src/views/payments/SupplierPhonePaymentsView.vue": {
+      "radio": 0,
+      "checkbox": 2,
+      "range": 0
+    },
+    "src/views/permissions/page/ModuleFieldPermissionDialog.vue": {
+      "radio": 0,
+      "checkbox": 1,
+      "range": 0
+    },
+    "src/views/permissions/page/ModuleManagementView.vue": {
+      "radio": 0,
+      "checkbox": 1,
+      "range": 0
+    },
+    "src/views/permissions/page/StoreBindingDialog.vue": {
+      "radio": 0,
+      "checkbox": 1,
+      "range": 0
+    },
+    "src/views/permissions/page/UserRoleAssignmentBody.vue": {
+      "radio": 0,
+      "checkbox": 2,
+      "range": 0
+    },
+    "src/views/salary/page/SalaryAttendanceFormDialog.vue": {
+      "radio": 5,
+      "checkbox": 0,
+      "range": 0
+    },
+    "src/views/salary/page/SalaryTemplateFormDialog.vue": {
+      "radio": 2,
+      "checkbox": 1,
+      "range": 0
+    },
+    "src/views/subsidy/components/SubsidyApplyDialog.vue": {
+      "radio": 0,
+      "checkbox": 1,
+      "range": 0
+    },
+    "src/views/system/page/GitManagement.vue": {
+      "radio": 0,
+      "checkbox": 1,
+      "range": 0
+    }
+  }
+}

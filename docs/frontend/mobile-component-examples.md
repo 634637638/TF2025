@@ -1,5 +1,7 @@
 # TF2025 移动端组件示例
 
+> **最后更新**：2026-10-01
+
 ## 📱 概述
 
 本文档提供了 TF2025 项目中常用的移动端组件示例，帮助开发者快速实现移动端页面。
@@ -120,7 +122,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { ResponsiveLayout } from '@/components'
+import ResponsiveLayout from '@/components/ResponsiveLayout.vue'
 import { useResponsive, useNotification } from '@/composables'
 
 const router = useRouter()
@@ -159,13 +161,13 @@ const handleEdit = (customer) => {
   router.push(`/customers/${customer.id}/edit`)
 }
 
-const handleDelete = (customer) => {
-  ElMessageBox.confirm('确定要删除这个客户吗？', '提示', {
-    type: 'warning'
-  }).then(() => {
+const { confirm } = useNotification()
+
+const handleDelete = async (customer) => {
+  if (await confirm('确定要删除这个客户吗？', '提示', { type: 'warning' })) {
     // 删除逻辑
     success('删除成功')
-  })
+  }
 }
 
 const handleSearch = () => {
@@ -365,7 +367,7 @@ const handleCurrentChange = (val) => {
 import { ref, reactive, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import type { FormInstance, FormRules } from 'element-plus'
-import { ResponsiveLayout } from '@/components'
+import ResponsiveLayout from '@/components/ResponsiveLayout.vue'
 import { useResponsive, useNotification } from '@/composables'
 
 const route = useRoute()
@@ -474,7 +476,7 @@ loadData()
 }
 
 // 移动端优化
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .form-container {
     padding: 12px;
   }
@@ -611,7 +613,7 @@ loadData()
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Edit, Phone } from '@element-plus/icons-vue'
-import { ResponsiveLayout } from '@/components'
+import ResponsiveLayout from '@/components/ResponsiveLayout.vue'
 import { useResponsive, useNotification } from '@/composables'
 
 const router = useRouter()
@@ -846,7 +848,7 @@ onMounted(() => {
 }
 
 // 移动端优化
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .detail-container {
     padding: 12px;
   }
@@ -1095,11 +1097,11 @@ onMounted(() => {
 
 ## 📚 相关文档
 
-- [移动端开发规范](./mobile-development-standards.md)
-- [响应式布局组件](../components/ResponsiveLayout.vue)
+- 移动端开发规范：`docs/guides/mobile-development-standards.md`
+- 响应式布局组件：`frontend/src/components/ResponsiveLayout.vue`
 - [Element Plus 移动端指南](https://element-plus.org/zh-CN/guide/mobile.html)
 
 ---
 
-**最后更新**：2025-12-18
+**最后更新**：2026-10-01
 **维护团队**：TF2025前端开发团队

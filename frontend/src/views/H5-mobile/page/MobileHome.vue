@@ -396,15 +396,11 @@
           </div>
         </div>
       </div>
-      <div
+      <DataEmptyState
         v-else
-        class="empty-section"
-      >
-        <DataEmptyState
-          :description="`暂无${section.section_name}`"
-          :image-size="60"
-        />
-      </div>
+        :description="`暂无${section.section_name}`"
+        :image-size="60"
+      />
     </div>
 
     <!-- 空状态 -->
@@ -1763,11 +1759,6 @@ onActivated(async () => {
   }
 }
 
-.empty-section {
-  padding: 20px 0;
-  text-align: center;
-}
-
 // 通用标题
 .section-title {
   display: flex;
@@ -1786,31 +1777,6 @@ onActivated(async () => {
     font-size: 13px;
     color: var(--text-muted);
     cursor: pointer;
-  }
-}
-
-// 空状态
-.empty-state {
-  padding: 60px 16px;
-  background: var(--color-bg-white);
-  min-height: 400px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  .empty-icon {
-    width: 120px;
-    height: 120px;
-    background: linear-gradient(135deg, var(--tf-color-surface) 0%, var(--tf-color-border-cool-alt) 100%);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    i {
-      font-size: 48px;
-      color: var(--tf-color-gray-300-solid);
-    }
   }
 }
 

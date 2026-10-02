@@ -58,7 +58,7 @@
           start-placeholder="开始月份"
           end-placeholder="结束月份"
           picker-type="month"
-          value-format="YYYY-MM"
+          :value-format="TIME_FORMATS.YEAR_MONTH"
           @update:model-value="emit('update:periodRange', $event)"
           @change="emit('periodChange')"
         />
@@ -323,6 +323,7 @@
 </template>
 
 <script setup lang="ts">
+import { TIME_FORMATS } from '@/utils/time'
 import { computed, ref } from 'vue'
 import { shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { getPaymentMethodLabel } from '@/constants/paymentMethods'
@@ -449,7 +450,7 @@ const handleRowTap = (row: SalaryRecordRow) => {
   font-size: 13px;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .table-section > .section-header {
     display: none;
   }

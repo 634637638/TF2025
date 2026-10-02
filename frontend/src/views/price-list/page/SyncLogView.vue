@@ -631,9 +631,10 @@
 </template>
 
 <script setup lang="ts">
+import { confirmAction } from '@/utils/message-box'
 import { ref, reactive, onMounted, onUnmounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { getSyncLogs, getSyncLogStatistics, deleteSyncLog, clearSyncLogs } from '@/api/price-list'
 import { usePagination } from '@/composables'
 import { usePagePermissions } from '@/composables/usePagePermissions'
@@ -855,7 +856,7 @@ const handleDeleteLog = async (row: any) => {
   }
 
   try {
-    await ElMessageBox.confirm(
+    await confirmAction(
       `确定要删除这条同步日志吗？\n开始时间：${formatDateTime(row.start_time)}`,
       '确认删除',
       {
@@ -893,7 +894,7 @@ const handleClearLogs = async () => {
   }
 
   try {
-    await ElMessageBox.confirm(
+    await confirmAction(
       '确定要清空所有同步日志吗？此操作不可恢复！',
       '警告',
       {
@@ -1047,11 +1048,6 @@ onUnmounted(() => {
     color: var(--tf-color-slate-700);
     background: var(--color-bg-white);
   }
-}
-
-.mobile-empty-state {
-  padding: 28px 16px;
-  text-align: center;
 }
 
 .text-gray {
@@ -1221,7 +1217,7 @@ onUnmounted(() => {
   border-top: 1px solid var(--el-border-color-lighter);
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .sync-log-view {
     padding: 12px;
   }
@@ -1262,7 +1258,7 @@ onUnmounted(() => {
   }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 479px) {
   .sync-log-mobile-summary {
     grid-template-columns: minmax(0, 1fr) auto auto;
   }

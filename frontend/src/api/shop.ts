@@ -180,21 +180,21 @@ export function reorderBanners(orders: Array<{ id: number; sort_order: number }>
  * 获取商品图片列表
  */
 export function getPhoneImages(phoneId: number) {
-  return unifiedApi.get<PhoneImage[]>(`/shop/phones/${phoneId}/images`)
+  return unifiedApi.get<PhoneImage[]>(`/phones/${phoneId}/images`)
 }
 
 /**
  * 设置主图
  */
-export function setPrimaryImage(imageId: number) {
-  return unifiedApi.put(`/shop/images/${imageId}/primary`)
+export function setPrimaryImage(phoneId: number, imageId: number) {
+  return unifiedApi.put(`/phones/${phoneId}/images/${imageId}/primary`)
 }
 
 /**
  * 删除商品图片
  */
-export function deleteImage(imageId: number) {
-  return unifiedApi.delete(`/shop/images/${imageId}`)
+export function deleteImage(phoneId: number, imageId: number) {
+  return unifiedApi.delete(`/phones/${phoneId}/images/${imageId}`)
 }
 
 // ============================================================================
@@ -286,11 +286,7 @@ export function deleteTemplate(templateId: number) {
 export function uploadTemplateImage(templateId: number, file: File) {
   const formData = new FormData()
   formData.append('image', file)
-  return unifiedApi.post(`/shop/templates/${templateId}/images`, formData, {
-    headers: {
-      'Content-Type': 'multipart/form-data'
-    }
-  })
+  return unifiedApi.upload(`/shop/templates/${templateId}/images`, formData)
 }
 
 /**

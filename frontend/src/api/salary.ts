@@ -59,7 +59,7 @@ export const salaryRecordApi = {
    * 获取个人工资记录
    */
   getMySalaryRecords: (filters: SalaryFilters = {}) => {
-    return unifiedApi.get('/salary-records/my', { params: filters })
+    return unifiedApi.get('/salary-records', { params: filters })
   },
 
   /**

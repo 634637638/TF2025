@@ -164,7 +164,7 @@ export const useAuthStore = defineStore('auth', () => {
   })
 
   const canAutoRefresh = computed(() => {
-    return !!refreshToken.value && sessionExpired.value && !isLoading.value
+    return !!token.value && sessionExpired.value && !isLoading.value
   })
 
   // =========== 权限检查方法 ===========
@@ -399,7 +399,6 @@ export const useAuthStore = defineStore('auth', () => {
         const {
           userData,
           token: finalToken,
-          refreshToken: refreshTkn,
           permissions: userPermissions,
           roles: userRoles
         } = extractAuthPayload(response)
@@ -413,7 +412,8 @@ export const useAuthStore = defineStore('auth', () => {
 
         // 设置认证信息
         token.value = finalToken
-        refreshToken.value = refreshTkn || ''
+        // 刷新令牌由后端 HttpOnly Cookie 管理，不进入前端存储。
+        refreshToken.value = ''
         user.value = { ...userData, roles: userRoles }
         permissions.value = userPermissions || []
         roles.value = userRoles || []
@@ -475,14 +475,12 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   const refreshAuth = async (): Promise<boolean> => {
-    if (!refreshToken.value || !canAutoRefresh.value) return false
+    if (!canAutoRefresh.value) return false
 
     try {
       isLoading.value = true
 
-      const response = await api.post('/auth/refresh', {
-        refreshToken: refreshToken.value
-      }, {
+      const response = await api.post('/auth/refresh', undefined, {
         showLoading: false,
         showError: false
       })
@@ -491,7 +489,6 @@ export const useAuthStore = defineStore('auth', () => {
         const {
           userData,
           token: accessToken,
-          refreshToken: nextRefreshToken,
           permissions: userPermissions,
           roles: userRoles
         } = extractAuthPayload(response)
@@ -502,7 +499,7 @@ export const useAuthStore = defineStore('auth', () => {
 
         // 更新认证信息
         token.value = accessToken
-        refreshToken.value = nextRefreshToken || refreshToken.value
+        refreshToken.value = ''
         user.value = userData
         permissions.value = userPermissions || []
         roles.value = userRoles || []
@@ -634,7 +631,6 @@ export const useAuthStore = defineStore('auth', () => {
 
       const authData: PersistedAuthState = {
         token: token.value,
-        refreshToken: refreshToken.value,
         user: userWithRole,
         permissions: permissions.value,
         roles: roles.value,
@@ -689,7 +685,7 @@ export const useAuthStore = defineStore('auth', () => {
             const authData = savedAuth
             const restoredPermissions = normalizePermissionsPayload(authData.permissions)
             const restoredRoles = normalizeRolesPayload(authData.roles || authData.user?.roles)
-            refreshToken.value = authData.refreshToken || ''
+            refreshToken.value = ''
             if (authData.user && restoredPermissions.length > 0) {
               // 同步恢复权限数据
               user.value = {
@@ -741,7 +737,7 @@ export const useAuthStore = defineStore('auth', () => {
 
           if (authData.token && authData.token.length > 10) {
             token.value = authData.token
-            refreshToken.value = authData.refreshToken || ''
+            refreshToken.value = ''
 
             // 恢复用户数据并确保有正确的role字段
             if (authData.user) {
@@ -1122,7 +1118,7 @@ export const useAuthStore = defineStore('auth', () => {
         storage.remove(AUTH_STORAGE_KEYS.BACKEND_DISCONNECT_TIME, 'session')
 
         // 清除退出标志
-        storage.remove(AUTH_STORAGE_KEYS.LOGOUT_EVENT, 'session')
+        storage.remove(AUTH_STORAGE_KEYS.LOGOUT_EVENT, 'local')
 
         // 停止会话监控
         stopSessionMonitor()

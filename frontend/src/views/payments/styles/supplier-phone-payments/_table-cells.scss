@@ -1,0 +1,102 @@
+.data-table tbody tr.mobile-action-expanded {
+  border-bottom-color: transparent;
+}
+
+/* IMEI 单元格样式 - 两种类名都支持 */
+.data-table .imei,
+.data-table .imei-cell {
+  font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Consolas', monospace;
+  font-weight: 600;
+  color: var(--tf-color-gray-bootstrap-700);
+  letter-spacing: 0.5px;
+}
+
+/* 序列号样式 */
+.data-table .serial-number {
+  font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Consolas', monospace;
+  font-weight: 600;
+  color: var(--tf-color-gray-bootstrap-700);
+  letter-spacing: 0.5px;
+}
+
+/* 序号徽章 */
+.data-table .index-badge {
+  background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
+  color: var(--color-bg-white);
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+}
+
+/* 时间单元格 */
+.data-table .time-cell {
+  color: var(--tf-color-heading);
+  font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+  text-align: center;
+  font-weight: 500;
+}
+
+/* 打款时间徽章 */
+.data-table .payment-time-badge {
+  display: inline-block;
+  max-width: 100%;
+  padding: 4px 10px;
+  box-sizing: border-box;
+  background: linear-gradient(135deg, var(--color-danger) 0%, var(--tf-color-red-legacy) 100%);
+  color: white;
+  border-radius: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  box-shadow: 0 2px 4px rgba(245, 108, 108, 0.3);
+}
+
+/* 金额单元格 - 确保居中 */
+.data-table .price {
+  font-family: 'Monaco', 'Consolas', monospace;
+  font-weight: 600;
+  color: var(--color-warning);
+  text-align: center;
+}
+
+/* 利润单元格 - 确保居中 */
+.data-table .price-cell {
+  font-family: 'Monaco', 'Consolas', monospace;
+  font-weight: 600;
+  text-align: center;
+
+  &.profit-positive {
+    color: var(--color-success);
+  }
+
+  &.profit-negative {
+    color: var(--color-danger);
+  }
+}
+
+.data-table .mobile-action-row td {
+  padding: 10px 12px;
+  background: var(--tf-color-surface-blue);
+  border-top: none;
+}
+
+.data-table .mobile-row-actions {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.data-table .mobile-action-btn {
+  min-width: 92px;
+}
+
+/* 复选框样式 */
+.data-table input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--color-primary);
+}

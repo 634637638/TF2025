@@ -354,26 +354,6 @@ const handleTableWheel = (event: WheelEvent) => {
   max-width: none;
 }
 
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 60px 20px;
-  color: var(--color-info);
-
-  i {
-    margin-bottom: 16px;
-    font-size: 48px;
-    opacity: 0.5;
-  }
-
-  p {
-    margin: 0;
-    font-size: 14px;
-  }
-}
-
 @media (hover: hover) and (pointer: fine) {
   .salary-detail-table-wrap {
     cursor: grab;

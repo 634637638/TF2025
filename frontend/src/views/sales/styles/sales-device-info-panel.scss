@@ -347,7 +347,7 @@
   color: var(--danger-color);
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .device-card.compact {
     flex-direction: column;
     text-align: center;

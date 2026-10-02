@@ -369,12 +369,40 @@ class ReminderService {
       connection.release()
     }
   }
-  async getUsers() {
+  async getUsers({ keyword = '', page, page_size: pageSizeParam } = {}) {
     await this.ensure()
-    const [rows] = await getDatabase().query(
-      "SELECT id,username,name,phone,email,status FROM users WHERE status IN (1,'1','active') ORDER BY name,username"
+    const normalizedKeyword = String(keyword || '').trim()
+    const usePagination = page !== undefined || pageSizeParam !== undefined || normalizedKeyword !== ''
+    const pageNumber = Math.max(1, asInt(page, 1))
+    const pageSize = Math.min(100, Math.max(1, asInt(pageSizeParam, 20)))
+    const whereParts = ["status IN (1,'1','active')"]
+    const params = []
+    if (normalizedKeyword) {
+      whereParts.push('(name LIKE ? OR username LIKE ? OR phone LIKE ?)')
+      const pattern = `%${normalizedKeyword}%`
+      params.push(pattern, pattern, pattern)
+    }
+    const whereSql = whereParts.join(' AND ')
+    const db = getDatabase()
+    const [rows] = await db.query(
+      `SELECT id,username,name,phone,email,status FROM users WHERE ${whereSql} ORDER BY COALESCE(NULLIF(name,''), username), id${usePagination ? ' LIMIT ? OFFSET ?' : ''}`,
+      usePagination ? [...params, pageSize, (pageNumber - 1) * pageSize] : params
     )
-    return rows
+    if (!usePagination) return { users: rows, pagination: null }
+
+    const [countRows] = await db.query(`SELECT COUNT(*) AS total FROM users WHERE ${whereSql}`, params)
+    const total = Number(countRows[0]?.total || 0)
+    return {
+      users: rows,
+      pagination: {
+        page: pageNumber,
+        page_size: pageSize,
+        total,
+        total_pages: Math.ceil(total / pageSize),
+        has_next: pageNumber * pageSize < total,
+        has_prev: pageNumber > 1
+      }
+    }
   }
 
   serialize(row) {

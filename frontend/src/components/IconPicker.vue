@@ -113,15 +113,20 @@
             :icon="icon.class"
             :svg="icon.svg"
           />
-          <button
+          <el-button
             v-if="canDeleteIcon(icon)"
-            type="button"
+            native-type="button"
+            type="danger"
+            text
+            circle
+            size="small"
             class="icon-delete-btn"
             title="删除本地图标"
+            aria-label="删除本地图标"
             @click.stop="deleteLocalIcon(icon)"
           >
             <i class="fas fa-times" />
-          </button>
+          </el-button>
         </div>
       </div>
 
@@ -166,14 +171,12 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { unifiedApi } from '@/utils/unified-api'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import InlineLoading from '@/components/InlineLoading.vue'
 import IconRenderer from '@/components/IconRenderer.vue'
 import { extractIconifyName, isIconifyIcon } from '@/utils/iconify'
-import { storage } from '@/services/storage'
-import { CACHE_STORAGE_KEYS } from '@/constants/storage'
+import { useNotification } from '@/composables/useNotification'
 
-const ICON_PICKER_CACHE_TTL = 7 * 24 * 60 * 60 * 1000
 const ICON_PICKER_FALLBACK_DELAY = 1500
 
 const DEFAULT_ICONS = [
@@ -200,9 +203,6 @@ const DEFAULT_ICONS = [
 ]
 const DEFAULT_ICON_CATEGORIES = ['navigation', 'user', 'interface', 'data', 'commerce', 'tools', 'charts', 'files', 'communication', 'notification']
 
-let memoryCachedIcons = null
-let memoryCachedCategories = null
-let iconsLoadingPromise = null
 
 const iconKeywordMap = {
   '首页': 'home',
@@ -359,55 +359,10 @@ const buildOnlineIconTags = (icon, category) => {
   ].filter(Boolean).map(item => String(item).trim()).filter(Boolean))).join(',')
 }
 
-const saveIconCache = (icons, categories) => {
-  memoryCachedIcons = icons
-  memoryCachedCategories = categories
-
-  try {
-    storage.set(CACHE_STORAGE_KEYS.ICON_PICKER_CACHE, {
-      icons,
-      categories,
-      timestamp: Date.now()
-    }, 'local')
-  } catch (e) {
-    // 静默处理
-  }
-}
-
-const readIconCache = () => {
-  if (memoryCachedIcons?.length) {
-    return {
-      icons: memoryCachedIcons,
-      categories: memoryCachedCategories || []
-    }
-  }
-
-  try {
-    const cached = storage.get<any>(CACHE_STORAGE_KEYS.ICON_PICKER_CACHE, 'local')
-    if (!cached) {
-      return null
-    }
-
-    if (Date.now() - cached.timestamp >= ICON_PICKER_CACHE_TTL) {
-      return null
-    }
-
-    memoryCachedIcons = cached.icons || []
-    memoryCachedCategories = cached.categories || []
-
-    return {
-      icons: memoryCachedIcons,
-      categories: memoryCachedCategories
-    }
-  } catch (error) {
-    return null
-  }
-}
-
 const applyFallbackIcons = () => {
-  allIcons.value = DEFAULT_ICONS
   icons.value = DEFAULT_ICONS
   categories.value = DEFAULT_ICON_CATEGORIES
+  totalIconCount.value = DEFAULT_ICONS.length
 }
 
 const props = defineProps({
@@ -422,6 +377,7 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['update:modelValue', 'select'])
+const { confirm } = useNotification()
 
 // 折叠状态
 const isCollapsed = ref(props.defaultCollapsed)
@@ -450,10 +406,11 @@ const handleSearchModeChange = (mode) => {
       searchIcons()
     } else {
       icons.value = []
+      totalIconCount.value = 0
       searching.value = false
     }
   } else {
-    icons.value = allIcons.value
+    loadLocalIcons()
     if (searchQuery.value.trim()) {
       searchIcons()
     }
@@ -483,10 +440,11 @@ const getIconifyName = (iconClass) => extractIconifyName(String(iconClass || '')
 const searchQuery = ref('')
 const selectedCategory = ref('')
 const icons = ref([])
-const allIcons = ref([]) // 保存所有加载的图标
+const allIcons = ref([]) // 仅保存当前页和当前选中的图标
 const categories = ref([])
 const currentPage = ref(1)
 const iconsPerPage = 96 // 8x12 grid
+const totalIconCount = ref(0)
 const loading = ref(true)
 const searching = ref(false)
 let searchTimer = null
@@ -505,13 +463,11 @@ const filteredIcons = computed(() => {
 })
 
 const totalPages = computed(() => {
-  return Math.ceil(filteredIcons.value.length / iconsPerPage)
+  return Math.max(1, Math.ceil(totalIconCount.value / iconsPerPage))
 })
 
 const paginatedIcons = computed(() => {
-  const start = (currentPage.value - 1) * iconsPerPage
-  const end = start + iconsPerPage
-  return filteredIcons.value.slice(start, end)
+  return filteredIcons.value
 })
 
 const emptyStateText = computed(() => {
@@ -574,15 +530,6 @@ const updateLocalIconCache = (icon) => {
     categories.value = [...categories.value, normalizedIcon.category].sort()
   }
 
-  try {
-    storage.set(CACHE_STORAGE_KEYS.ICON_PICKER_CACHE, {
-      icons: allIcons.value,
-      categories: categories.value,
-      timestamp: Date.now()
-    }, 'local')
-  } catch (error) {
-    // 静默处理
-  }
 }
 
 const persistOnlineIcon = async (icon) => {
@@ -632,7 +579,7 @@ const canDeleteIcon = (icon) => {
 const removeIconFromCache = (iconId) => {
   allIcons.value = allIcons.value.filter(icon => icon.id !== iconId)
   icons.value = icons.value.filter(icon => icon.id !== iconId)
-  saveIconCache(allIcons.value, categories.value)
+  totalIconCount.value = Math.max(0, totalIconCount.value - 1)
 }
 
 const deleteLocalIcon = async (icon) => {
@@ -641,7 +588,7 @@ const deleteLocalIcon = async (icon) => {
   }
 
   try {
-    await ElMessageBox.confirm(
+    if (!await confirm(
       `确定删除图标「${icon.name || icon.class}」吗？如果菜单正在使用，系统会阻止删除。`,
       '删除图标',
       {
@@ -649,7 +596,7 @@ const deleteLocalIcon = async (icon) => {
         cancelButtonText: '取消',
         type: 'warning'
       }
-    )
+    )) return
 
     const response = await unifiedApi.delete(`/icons/${icon.id}`)
     if (response?.success) {
@@ -657,10 +604,8 @@ const deleteLocalIcon = async (icon) => {
       ElMessage.success(response.message || '图标已删除')
     }
   } catch (error) {
-    if (error !== 'cancel' && error !== 'close') {
-      const message = error?.response?.data?.message || error?.message || '删除图标失败'
-      ElMessage.warning(message)
-    }
+    const message = error?.response?.data?.message || error?.message || '删除图标失败'
+    ElMessage.warning(message)
   }
 }
 
@@ -688,12 +633,14 @@ const selectIcon = (icon) => {
 const prevPage = () => {
   if (currentPage.value > 1) {
     currentPage.value--
+    loadLocalIcons()
   }
 }
 
 const nextPage = () => {
   if (currentPage.value < totalPages.value) {
     currentPage.value++
+    loadLocalIcons()
   }
 }
 
@@ -729,56 +676,39 @@ const getCategoryLabel = (category) => {
   return labels[category] || category
 }
 
-const loadIcons = async () => {
-  const cached = readIconCache()
+const loadLocalIcons = async () => {
   let fallbackTimer = null
+  loading.value = true
+  fallbackTimer = window.setTimeout(() => {
+    if (loading.value && icons.value.length === 0) {
+      applyFallbackIcons()
+      loading.value = false
+    }
+  }, ICON_PICKER_FALLBACK_DELAY)
 
-  if (cached?.icons?.length) {
-    allIcons.value = cached.icons
-    icons.value = cached.icons
-    categories.value = cached.categories
-    loading.value = false
-  } else {
-    loading.value = true
-    fallbackTimer = window.setTimeout(() => {
-      if (loading.value && allIcons.value.length === 0) {
-        applyFallbackIcons()
-        loading.value = false
-      }
-    }, ICON_PICKER_FALLBACK_DELAY)
+  const query = new URLSearchParams({
+    limit: String(iconsPerPage),
+    page: String(currentPage.value)
+  })
+  if (selectedCategory.value) {
+    query.set('category', selectedCategory.value)
   }
-
-  if (!iconsLoadingPromise) {
-    iconsLoadingPromise = unifiedApi.get('/icons?limit=1000', {
-      showError: false
-    })
-      .then(response => {
-        if (response && response.success && response.data && response.data.length > 0) {
-          const iconData = response.data
-          const uniqueCategories = [...new Set(iconData.map(icon => icon.category))].sort()
-          saveIconCache(iconData, uniqueCategories)
-          return {
-            icons: iconData,
-            categories: uniqueCategories
-          }
-        }
-
-        throw new Error('图标接口返回空数据')
-      })
-      .finally(() => {
-        iconsLoadingPromise = null
-      })
+  if (searchQuery.value.trim()) {
+    query.set('search', searchQuery.value.trim())
   }
 
   try {
-    const remoteData = await iconsLoadingPromise
-    allIcons.value = remoteData.icons
-    icons.value = searchQuery.value.trim() ? icons.value : remoteData.icons
-    categories.value = remoteData.categories
-  } catch (apiError) {
-    if (!cached?.icons?.length) {
-      applyFallbackIcons()
+    const response = await unifiedApi.get(`/icons?${query.toString()}`, {
+      showError: false
+    })
+    if (!response || !response.success || !Array.isArray(response.data)) {
+      throw new Error('图标接口响应无效')
     }
+    allIcons.value = response.data
+    icons.value = response.data
+    totalIconCount.value = Number(response.total || response.data.length)
+  } catch (apiError) {
+    applyFallbackIcons()
   } finally {
     if (fallbackTimer) {
       clearTimeout(fallbackTimer)
@@ -798,7 +728,14 @@ const searchIcons = async () => {
 
   // 如果搜索为空，显示所有图标
   if (!query) {
-    icons.value = useOnlineSearch.value ? [] : allIcons.value
+    if (useOnlineSearch.value) {
+      icons.value = []
+      totalIconCount.value = 0
+      searching.value = false
+      return
+    }
+    currentPage.value = 1
+    await loadLocalIcons()
     searching.value = false
     return
   }
@@ -842,8 +779,10 @@ const searchOnlineIcons = async (query) => {
 
     if (response && response.success && response.data && response.data.length > 0) {
       icons.value = response.data
+      totalIconCount.value = response.data.length
     } else {
       icons.value = []
+      totalIconCount.value = 0
     }
   } catch (error) {
     throw error
@@ -851,58 +790,41 @@ const searchOnlineIcons = async (query) => {
 }
 
 // 离线搜索图标（使用本地数据库）
-const searchOfflineIcons = async (query) => {
-  try {
-    // 优先尝试本地数据库 API 搜索
-    let searchResults = []
-    const searchKeywords = buildSearchKeywords(query)
-
-    for (const keyword of searchKeywords) {
-      try {
-        const response = await unifiedApi.get(`/icons?search=${encodeURIComponent(keyword)}&limit=1000`)
-        if (response && response.success && response.data && response.data.length > 0) {
-          searchResults = [...searchResults, ...response.data]
-        }
-      } catch (localApiError) {
-        // 本地 API 搜索失败，继续下一个关键词
-      }
-    }
-
-    searchResults = searchResults.filter((icon, index, array) =>
-      array.findIndex(item => item.class === icon.class) === index
-    )
-
-    // 如果本地 API 没有结果，使用前端过滤
-    if (searchResults.length === 0) {
-      searchResults = allIcons.value.filter(icon =>
-        searchKeywords.some(keyword =>
-          (icon.name && icon.name.toLowerCase().includes(keyword)) ||
-          (icon.class && icon.class.toLowerCase().includes(keyword)) ||
-          (icon.category && icon.category.toLowerCase().includes(keyword)) ||
-          (icon.tags && icon.tags.toLowerCase().includes(keyword)) ||
-          (icon.description && icon.description.toLowerCase().includes(keyword))
-        )
-      )
-    }
-
-    icons.value = searchResults
-  } catch (error) {
-    throw error
-  }
+const searchOfflineIcons = async (_query) => {
+  currentPage.value = 1
+  await loadLocalIcons()
 }
 
 const loadCategories = async () => {
-  // 分类已经在 loadIcons 中加载，这里只是为了兼容
-  if (icons.value.length > 0) {
-    const uniqueCategories = [...new Set(icons.value.map(icon => icon.category))]
-    categories.value = uniqueCategories.sort()
+  try {
+    const response = await unifiedApi.get('/icons/categories', { showError: false })
+    if (response?.success && Array.isArray(response.data)) {
+      categories.value = response.data
+      return
+    }
+  } catch (error) {
+    // 使用内置分类兜底
   }
+  categories.value = DEFAULT_ICON_CATEGORIES
 }
 
 // 生命周期
 onMounted(async () => {
-  await loadIcons()
   await loadCategories()
+  await loadLocalIcons()
+  const currentClass = String(props.modelValue || '').trim()
+  if (currentClass && !allIcons.value.some(icon => icon.class === currentClass)) {
+    try {
+      const response = await unifiedApi.get(`/icons/by-class?class=${encodeURIComponent(currentClass)}`, {
+        showError: false
+      })
+      if (response?.success && response.data) {
+        updateLocalIconCache(response.data)
+      }
+    } catch (error) {
+      // 当前图标可能来自在线图标库，不在本地数据库中。
+    }
+  }
 })
 
 // 监听搜索和分类变化，重置分页
@@ -1095,18 +1017,6 @@ watch([searchQuery, selectedCategory], () => {
   display: inline-flex;
 }
 
-.no-results {
-  padding: 40px;
-  text-align: center;
-  color: var(--tf-color-muted);
-}
-
-.no-results i {
-  font-size: 48px;
-  margin-bottom: 16px;
-  opacity: 0.5;
-}
-
 .icon-picker-footer {
   padding: 16px;
   background: var(--tf-color-surface-muted);
@@ -1148,13 +1058,6 @@ watch([searchQuery, selectedCategory], () => {
   color: var(--tf-color-indigo-brand);
 }
 
-.no-results .hint {
-  font-size: 12px;
-  color: var(--tf-color-gray-bootstrap-500);
-  margin-top: 8px;
-  margin-bottom: 0;
-}
-
 /* 滚动条样式 */
 .icon-grid::-webkit-scrollbar {
   width: 6px;
@@ -1175,7 +1078,7 @@ watch([searchQuery, selectedCategory], () => {
 }
 
 /* 响应式设计 */
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .icon-picker-header {
     flex-direction: column;
     gap: 8px;

@@ -144,8 +144,8 @@
                   v-model="selectedMonth"
                   type="month"
                   placeholder="选择月份"
-                  format="YYYY年MM月"
-                  value-format="YYYY-MM"
+                  :format="TIME_FORMATS.YEAR_MONTH_DISPLAY"
+                  :value-format="TIME_FORMATS.YEAR_MONTH"
                   class="w-32"
                   @change="handleMonthChange"
                 />
@@ -1380,7 +1380,7 @@ onBeforeUnmount(() => {
   }
 
   // 响应式设计 - 手机端
-  @media (max-width: 768px) {
+  @media (max-width: 767px) {
     .overview-card {
       height: auto;
       min-height: 110px;

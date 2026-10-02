@@ -2,29 +2,17 @@
 
 > **文档说明**：提供 TF2025 项目中标准组件的实际使用示例，展示最佳实践和常见模式
 >
-> **最后更新**：2025-12-20
+> **最后更新**：2026-10-01
 > **版本**：v2.0.0
 > **维护者**：TF2025 开发团队
 
 ## 📝 目录结构
 
-```
-docs/examples/
-├── modal-examples.md          # 弹窗组件示例
-├── table-examples.md          # 表格组件示例
-├── form-examples.md           # 表单组件示例
-├── layout-examples.md         # 布局组件示例
-├── navigation-examples.md     # 导航组件示例
-└── component-patterns.md      # 组件组合模式
-```
+本示例目前只覆盖模态框用法；表格、表单和布局规范请查阅[前端规范索引](../frontend/INDEX.md)。
 
 ## 🎯 快速索引
 
-- [基础弹窗使用](modal-examples.md#基础弹窗使用)
-- [表单弹窗组合](modal-examples.md#表单弹窗组合)
-- [移动端表格](table-examples.md#移动端卡片布局)
-- [响应式表单](form-examples.md#响应式表单布局)
-- [页面布局模式](layout-examples.md#标准页面布局)
+- [模态框示例](modal-examples.md)
 
 ---
 
@@ -1971,16 +1959,12 @@ const resetForm = () => {
 <template>
   <ResponsiveLayout
     :title="pageTitle"
-    :subtitle="pageSubtitle"
-    :breadcrumb="breadcrumb"
-    :loading="pageLoading"
-    :back-button="showBackButton"
-    :show-header="showHeader"
-    :show-footer="showFooter"
+    :show-back-button="showBackButton"
+    :show-mobile-footer="showFooter"
     @back="handleBack"
   >
     <!-- 头部操作区 -->
-    <template #actions>
+    <template #header-actions>
       <slot name="header-actions">
         <el-space>
           <el-button
@@ -2035,7 +2019,7 @@ const resetForm = () => {
     </template>
 
     <!-- 标签页 -->
-    <template #tabs v-if="showTabs">
+    <div v-if="showTabs" class="page-tabs">
       <el-tabs
         v-model="activeTab"
         type="card"
@@ -2060,22 +2044,20 @@ const resetForm = () => {
           </div>
         </el-tab-pane>
       </el-tabs>
-    </template>
+    </div>
 
     <!-- 主内容区（无标签页） -->
-    <template #content v-else>
-      <div class="page-content">
-        <slot>
-          <!-- 默认内容插槽 -->
-          <div class="default-content">
-            <el-empty description="暂无内容" />
-          </div>
-        </slot>
-      </div>
-    </template>
+    <div v-else class="page-content">
+      <slot>
+        <!-- 默认内容插槽 -->
+        <div class="default-content">
+          <DataEmptyState description="暂无内容" />
+        </div>
+      </slot>
+    </div>
 
     <!-- 底部操作区 -->
-    <template #footer-actions v-if="showFooterActions">
+    <template #mobile-footer v-if="showFooterActions">
       <div class="footer-actions">
         <slot name="footer-actions">
           <el-space>
@@ -3109,6 +3091,6 @@ router.afterEach(() => {
 
 ---
 
-**更新日期**：2025-12-20
+**更新日期**：2026-10-01
 **版本**：v2.0.0
 **维护者**：TF2025 前端开发团队

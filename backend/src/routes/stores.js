@@ -1,7 +1,7 @@
 const express = require('express')
 const router = express.Router()
 const ApiResponse = require('../utils/response')
-const { unifiedAuth, requirePermission } = require('../middleware/unified-auth')
+const { unifiedAuth, requirePermission, requireAnyPermission, isSuperAdmin } = require('../middleware/unified-auth')
 const { getDatabase, isConnected } = require('../config/database')
 const { cacheMiddleware, clearCache } = require('../middleware/cache')
 const XLSX = require('xlsx')
@@ -60,9 +60,9 @@ const resolveManagerAssignment = async (pool, rawManagerId, fallbackPhone = '') 
 }
 
 // 获取店铺列表
-router.get('/', unifiedAuth, requirePermission('stores:view'), cacheMiddleware({ ttl: CACHE_TTL.MEDIUM }), async (req, res) => {
+router.get('/', unifiedAuth, requireAnyPermission(['stores:view', 'inventory:view', 'sales:view', 'query:view']), cacheMiddleware({ ttl: CACHE_TTL.MEDIUM }), async (req, res) => {
   try {
-    const { name, status, page = PAGINATION.DEFAULT_PAGE, page_size = PAGINATION.DEFAULT_LIMIT, all = false } = req.query
+    const { name, status, page = PAGINATION.DEFAULT_PAGE, page_size = PAGINATION.DEFAULT_LIMIT, all = false, strict_scope = false } = req.query
 
     // 检查数据库连接状态
     if (!isConnected()) {
@@ -73,15 +73,34 @@ router.get('/', unifiedAuth, requirePermission('stores:view'), cacheMiddleware({
 
     // 如果请求所有数据，用于下拉选择
     if (all === 'true' || all === true) {
-      let query = 'SELECT id, name, sort_order FROM stores WHERE status = 1 ORDER BY sort_order ASC, name ASC, id ASC'
+      const conditions = ['s.status = 1']
       const params = []
 
+      // 综合查询显式启用 strict_scope 时按用户门店范围过滤；库存/销售商品查询允许访问完整门店选项。
+      const strictStoreScope = strict_scope === 'true' || strict_scope === true
+      const userStoreIds = Array.isArray(req.user?.store_ids)
+        ? req.user.store_ids.map(Number).filter(id => Number.isInteger(id) && id > 0)
+        : []
+      if (strictStoreScope && !isSuperAdmin(req.user)) {
+        if (userStoreIds.length === 0) {
+          return ApiResponse.success(res, [])
+        }
+        conditions.push(`s.id IN (${userStoreIds.map(() => '?').join(',')})`)
+        params.push(...userStoreIds)
+      }
+
       if (name) {
-        query = 'SELECT id, name, sort_order FROM stores WHERE status = 1 AND name LIKE ? ORDER BY sort_order ASC, name ASC, id ASC'
+        conditions.push('s.name LIKE ?')
         params.push(`%${name}%`)
       }
 
-      const [stores] = await pool.execute(query, params)
+      const [stores] = await pool.execute(
+        `SELECT s.id, s.name, s.sort_order
+           FROM stores s
+          WHERE ${conditions.join(' AND ')}
+          ORDER BY s.sort_order ASC, s.name ASC, s.id ASC`,
+        params
+      )
 
       const formattedStores = stores.map(row => ({
         id: parseInt(row.id),

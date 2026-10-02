@@ -267,6 +267,39 @@ const mapRowToSiteSettings = (row, columnMap) => {
   return siteSettings
 }
 
+const loadSiteSettings = async (db) => {
+  await ensurePublicPriceSettingColumns(db)
+  const tableMeta = await getSettingsTableMeta(db)
+
+  if (tableMeta.isKeyValueTable) {
+    return loadSiteSettingsFromKeyValueTable(db)
+  }
+
+  const columnMap = await getSettingsColumnMap(db)
+  const [settings] = await db.execute('SELECT * FROM settings LIMIT 1')
+  return settings.length > 0
+    ? mapRowToSiteSettings(settings[0], columnMap)
+    : { ...DEFAULT_SITE_SETTINGS }
+}
+
+const PUBLIC_SITE_SETTING_FIELDS = [
+  'logoUrl',
+  'siteName',
+  'siteSubtitle',
+  'siteDomain',
+  'icpNumber',
+  'companyName',
+  'publicPriceContacts',
+  'publicPriceWatermark',
+  'publicPriceWatermarkEnabled',
+  'publicPriceWatermarkTimeEnabled',
+  'publicPriceWatermarkColor'
+]
+
+const toPublicSiteSettings = (settings) => Object.fromEntries(
+  PUBLIC_SITE_SETTING_FIELDS.map((field) => [field, settings[field]])
+)
+
 const saveSiteSettingsToKeyValueTable = async (db, payload) => {
   const savedFields = []
 
@@ -863,31 +896,26 @@ router.get('/site-settings', async (req, res) => {
 
     const db = getDatabase()
 
-    try {
-      await ensurePublicPriceSettingColumns(db)
-      const tableMeta = await getSettingsTableMeta(db)
-
-      if (tableMeta.isKeyValueTable) {
-        ApiResponse.success(res, await loadSiteSettingsFromKeyValueTable(db))
-        return
-      }
-
-      const columnMap = await getSettingsColumnMap(db)
-      const [settings] = await db.execute('SELECT * FROM settings LIMIT 1')
-
-      if (settings.length > 0) {
-        ApiResponse.success(res, mapRowToSiteSettings(settings[0], columnMap))
-        return
-      }
-
-      ApiResponse.success(res, { ...DEFAULT_SITE_SETTINGS })
-    } catch (dbError) {
-      log.warn('获取站点信息设置失败:', dbError.message)
-      ApiResponse.error(res, '获取站点信息设置失败', 500)
-    }
+    const settings = await loadSiteSettings(db)
+    ApiResponse.success(res, toPublicSiteSettings(settings))
   } catch (error) {
     log.warn('获取站点信息设置失败:', error.message)
     ApiResponse.error(res, '获取站点信息设置失败', 500)
+  }
+})
+
+// 管理后台读取完整站点设置；公开路由只返回展示和公开报价所需字段。
+router.get('/site-settings/admin', unifiedAuth, requirePermission('system:view'), async (req, res) => {
+  try {
+    if (!isConnected()) {
+      return ApiResponse.error(res, '数据库未连接', 503)
+    }
+
+    const settings = await loadSiteSettings(getDatabase())
+    return ApiResponse.success(res, settings)
+  } catch (error) {
+    log.warn('读取完整站点设置失败:', error.message)
+    return ApiResponse.error(res, '读取完整站点设置失败', 500)
   }
 })
 

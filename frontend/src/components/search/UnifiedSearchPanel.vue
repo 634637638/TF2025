@@ -224,7 +224,7 @@ const handlePanelClick = (event: MouseEvent) => {
 }
 
 /* Tablet and iPad layouts may need more than one filter row. */
-@media (min-width: 769px) and (max-width: 1024px) {
+@media (min-width: 768px) and (max-width: 1024px) {
   .unified-search-panel__form {
     flex-wrap: wrap;
   }
@@ -263,7 +263,7 @@ const handlePanelClick = (event: MouseEvent) => {
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .unified-search-panel {
     padding: 12px;
     margin-bottom: 12px;
@@ -382,7 +382,7 @@ const handlePanelClick = (event: MouseEvent) => {
   }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 479px) {
   .unified-search-panel {
     padding: 10px;
   }

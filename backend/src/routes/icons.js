@@ -21,10 +21,22 @@ const {
 // 获取所有图标（从数据库）
 router.get('/', async (req, res) => {
   try {
-    const { limit = 500, category, search, includeInvalid = '0' } = req.query
+    const {
+      limit = 96,
+      page = 1,
+      offset,
+      category,
+      search,
+      includeInvalid = '0'
+    } = req.query
 
     const pool = getDatabase()
     await ensureIconSchema(pool)
+    const pageSize = Math.max(1, Math.min(parseInt(limit, 10) || 96, 100))
+    const pageNumber = Math.max(1, parseInt(page, 10) || 1)
+    const parsedOffset = Number.isFinite(Number(offset))
+      ? Math.max(0, parseInt(offset, 10) || 0)
+      : (pageNumber - 1) * pageSize
 
     // 构建查询条件
     let whereClause = 'WHERE 1=1'
@@ -65,26 +77,92 @@ router.get('/', async (req, res) => {
       FROM icons
       ${whereClause}
       ORDER BY category, name
-      LIMIT ?
+      LIMIT ? OFFSET ?
     `
 
-    params.push(parseInt(limit))
+    const countQuery = `
+      SELECT COUNT(*) AS total
+      FROM icons
+      ${whereClause}
+    `
 
     // 使用 pool.format 来处理参数，避免参数问题
-    const formattedQuery = pool.format(query, params)
-    const [icons] = await pool.execute(formattedQuery)
+    const formattedQuery = pool.format(query, [...params, pageSize, parsedOffset])
+    const formattedCountQuery = pool.format(countQuery, params)
+    const [[countResult], [icons]] = await Promise.all([
+      pool.execute(formattedCountQuery),
+      pool.execute(formattedQuery)
+    ])
+    const total = Number(countResult?.[0]?.total || 0)
 
     res.json({
       success: true,
       message: '图标数据获取成功',
       data: icons,
-      total: icons.length
+      total,
+      page: pageNumber,
+      limit: pageSize,
+      hasMore: parsedOffset + icons.length < total
     })
   } catch (error) {
     log.error('获取图标数据失败:', error)
     res.status(500).json({
       success: false,
       message: '获取图标数据失败',
+      error: error.message
+    })
+  }
+})
+
+// 按 class 精确获取单个图标，供编辑已有菜单时按需加载。
+router.get('/by-class', async (req, res) => {
+  try {
+    const iconClass = String(req.query.class || '').trim()
+    if (!iconClass) {
+      return res.status(400).json({
+        success: false,
+        message: '图标 class 不能为空'
+      })
+    }
+
+    const pool = getDatabase()
+    await ensureIconSchema(pool)
+    const [icons] = await pool.execute(`
+      SELECT
+        id,
+        class,
+        name,
+        category,
+        description,
+        tags,
+        svg,
+        iconify_name,
+        source,
+        is_valid,
+        last_checked_at,
+        created_at
+      FROM icons
+      WHERE class = ? AND (is_valid IS NULL OR is_valid = 1)
+      LIMIT 1
+    `, [iconClass])
+
+    if (icons.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: '图标不存在'
+      })
+    }
+
+    res.json({
+      success: true,
+      message: '图标获取成功',
+      data: icons[0]
+    })
+  } catch (error) {
+    log.error('按 class 获取图标失败:', error)
+    res.status(500).json({
+      success: false,
+      message: '图标获取失败',
       error: error.message
     })
   }

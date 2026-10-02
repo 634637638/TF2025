@@ -117,7 +117,7 @@
     font-size: 12px;
     border-radius: 4px;
     white-space: nowrap;
-    z-index: 9999;
+    z-index: var(--tf-z-permission-tooltip);
     pointer-events: none;
   }
 }
@@ -145,7 +145,7 @@
 }
 
 /* 响应式调整 */
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .permission-notification {
     .el-notification__group {
       .el-notification__title {

@@ -21,6 +21,7 @@ const { matchProductName } = require('../config/product-name-mapping')
 const log = require('../utils/log')
 const { DEFAULT_BROWSER_USER_AGENT, EXTERNAL_PRICE, TIMEOUTS } = require('../config/constants')
 const { ensurePriceSourceSchema } = require('../utils/price-source-schema')
+const { normalizedModelSql } = require('../utils/search')
 
 class PriceListService {
   constructor() {
@@ -860,7 +861,6 @@ class PriceListService {
         INNER JOIN memories mem ON p.memory_id = mem.id
         WHERE ${latestRetailFilters}
         ORDER BY b.name, model_sort_num, mo.name, memory_sort_num, c.name
-        LIMIT 500
       `
       const [rows] = await this.db.query(query)
       const rowsWithDisplayRetail = await this.applyRetailDisplayMarkup(rows)
@@ -891,8 +891,8 @@ class PriceListService {
 
       for (const modelName of modelNames) {
         const searchTerm = `%${modelName}%`
-        searchConditions.push('(b.name LIKE ? OR mo.name LIKE ? OR p.external_model LIKE ?)')
-        searchParams.push(searchTerm, searchTerm, searchTerm)
+        searchConditions.push(`(b.name LIKE ? OR ${normalizedModelSql('mo.name')} LIKE CONCAT('%', ${normalizedModelSql('?')}, '%') OR p.external_model LIKE ?)`)
+        searchParams.push(searchTerm, modelName, searchTerm)
       }
 
       const query = `
@@ -941,7 +941,6 @@ class PriceListService {
         WHERE (${searchConditions.join(' OR ')})
         AND ${latestRetailFilters}
         ORDER BY b.name, model_sort_num, mo.name, memory_sort_num, c.name
-        LIMIT 100
       `
       const [rows] = await this.db.query(query, searchParams)
       const rowsWithDisplayRetail = await this.applyRetailDisplayMarkup(rows)
@@ -972,8 +971,8 @@ class PriceListService {
 
       for (const modelName of modelNames) {
         const searchTerm = `%${modelName}%`
-        searchConditions.push('(b.name LIKE ? OR mo.name LIKE ? OR p.external_model LIKE ?)')
-        searchParams.push(searchTerm, searchTerm, searchTerm)
+        searchConditions.push(`(b.name LIKE ? OR ${normalizedModelSql('mo.name')} LIKE CONCAT('%', ${normalizedModelSql('?')}, '%') OR p.external_model LIKE ?)`)
+        searchParams.push(searchTerm, modelName, searchTerm)
       }
 
       const query = `
@@ -1155,7 +1154,7 @@ class PriceListService {
 
       let priceItemId
       let changeType = 'create'
-      let finalStatus = inputStatus ?? 1
+      const finalStatus = inputStatus ?? 1
       let finalIsCollect = inputIsCollect ?? 1
 
       // 判断是否是手动编辑（有传入 last_sync_time 参数）还是自动同步

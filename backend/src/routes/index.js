@@ -3,6 +3,8 @@ const router = express.Router()
 const log = require('../utils/log')
 const { isConnected } = require('../config/database')
 const { unifiedAuth, requirePermission } = require('../middleware/unified-auth')
+const compatibilityRoute = require('../middleware/compatibility-route')
+const deprecatedRoute = require('../middleware/deprecated-route')
 
 // 健康检查端点（无需认证）
 router.get('/health', (req, res) => {
@@ -140,10 +142,64 @@ router.use('/users', usersRoutes)
 router.use('/operators', operatorsRoutes)
 router.use('/employees', employeesRoutes)
 router.use('/analytics', analyticsRoutes)
-router.use('/phones', phonesRoutes)
 router.use('/models', modelsRoutes)
 router.use('/colors', colorsRoutes)
 router.use('/memories', memoriesRoutes)
+
+const forwardPhoneReferenceRoute = ({ target, mapData, query = () => ({ all: 'true' }) }) => (req, res, next) => {
+  const params = new URLSearchParams(query(req))
+  const originalJson = res.json
+  res.json = function mapLegacyReferenceResponse(payload) {
+    res.json = originalJson
+    if (payload?.success && Array.isArray(payload.data)) {
+      payload = { ...payload, data: payload.data.map(mapData) }
+    }
+    return originalJson.call(this, payload)
+  }
+
+  req.url = `${target}?${params.toString()}`
+  req.route = undefined
+  return router.handle(req, res, next)
+}
+
+// 手机模块旧基础资料路径只保留契约适配；查询由规范资源路由唯一处理。
+router.get('/phones/brands', unifiedAuth,
+  compatibilityRoute({ compatibilityId: 'phones-reference-brands', replacement: '/api/brands?all=true', reason: '前端已迁移到统一品牌资源接口' }),
+  deprecatedRoute({ replacement: '/api/brands?all=true', migrationId: 'phones-brands-to-brands' }),
+  requirePermission('brands:view'),
+  forwardPhoneReferenceRoute({ target: '/brands', mapData: brand => brand.name })
+)
+router.get('/phones/models', unifiedAuth,
+  compatibilityRoute({ compatibilityId: 'phones-reference-models', replacement: '/api/models?all=true', reason: '前端已迁移到统一型号资源接口' }),
+  deprecatedRoute({
+    replacement: req => `/api/models?all=true${req.query.brand ? `&brand_id=${encodeURIComponent(String(req.query.brand))}` : ''}`,
+    migrationId: 'phones-models-to-models'
+  }),
+  requirePermission('models:view'),
+  forwardPhoneReferenceRoute({
+    target: '/models',
+    query: req => ({ all: 'true', ...(req.query.brand ? { brand_id: String(req.query.brand) } : {}) }),
+    mapData: model => ({
+      id: model.id,
+      name: model.name,
+      brand_id: model.brand_id,
+      sort_order: model.sort_order
+    })
+  })
+)
+router.get('/phones/colors', unifiedAuth,
+  compatibilityRoute({ compatibilityId: 'phones-reference-colors', replacement: '/api/colors?all=true', reason: '前端已迁移到统一颜色资源接口' }),
+  deprecatedRoute({ replacement: '/api/colors?all=true', migrationId: 'phones-colors-to-colors' }),
+  requirePermission('colors:view'),
+  forwardPhoneReferenceRoute({ target: '/colors', mapData: color => color.name })
+)
+router.get('/phones/memories', unifiedAuth,
+  compatibilityRoute({ compatibilityId: 'phones-reference-memories', replacement: '/api/memories?all=true', reason: '前端已迁移到统一内存资源接口' }),
+  deprecatedRoute({ replacement: '/api/memories?all=true', migrationId: 'phones-memories-to-memories' }),
+  requirePermission('memories:view'),
+  forwardPhoneReferenceRoute({ target: '/memories', mapData: memory => memory.size })
+)
+router.use('/phones', phonesRoutes)
 router.use('/inventory', inventoryRoutes)
 router.use('/repairs', repairsRoutes)
 router.use('/customers', customersRoutes)

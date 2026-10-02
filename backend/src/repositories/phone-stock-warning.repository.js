@@ -421,65 +421,6 @@ class PhoneStockWarningRepository extends BaseRepository {
     }
   }
 
-  /**
-   * 获取所有启用的品牌（用于下拉选择）
-   */
-  async getActiveBrands() {
-    try {
-      // 按照 sort_order 排序，如果没有则按名称排序
-      const query = 'SELECT id, name FROM brands WHERE status = 1 ORDER BY sort_order, CONVERT(name USING gbk)'
-      const brands = await this.executeQuery(query)
-      return brands
-    } catch (error) {
-      log.error('获取品牌列表失败:', error)
-      throw error
-    }
-  }
-
-  /**
-   * 根据品牌ID获取启用的型号
-   */
-  async getActiveModelsByBrand(brandId) {
-    try {
-      // 按照 sort_order 排序，如果没有则按名称排序
-      const query = 'SELECT id, name FROM models WHERE brand_id = ? AND status = 1 ORDER BY sort_order, CONVERT(name USING gbk)'
-      const models = await this.executeQuery(query, [brandId])
-      return models
-    } catch (error) {
-      log.error('获取型号列表失败:', error)
-      throw error
-    }
-  }
-
-  /**
-   * 获取所有启用的颜色
-   */
-  async getActiveColors() {
-    try {
-      // 按照 sort_order 排序，如果没有则按名称排序
-      const query = 'SELECT id, name FROM colors WHERE status = 1 ORDER BY sort_order, CONVERT(name USING gbk)'
-      const colors = await this.executeQuery(query)
-      return colors
-    } catch (error) {
-      log.error('获取颜色列表失败:', error)
-      throw error
-    }
-  }
-
-  /**
-   * 获取所有启用的内存
-   */
-  async getActiveMemories() {
-    try {
-      // 按照 sort_order 排序，如果没有则按名称排序
-      const query = 'SELECT id, size FROM memories WHERE status = 1 ORDER BY sort_order, CONVERT(size USING gbk)'
-      const memories = await this.executeQuery(query)
-      return memories
-    } catch (error) {
-      log.error('获取内存列表失败:', error)
-      throw error
-    }
-  }
 }
 
 module.exports = PhoneStockWarningRepository

@@ -1,32 +1,29 @@
 import { ref } from 'vue'
 import type { Operator, PhoneBrand, PhoneModel, Store, Supplier } from '@/types'
 import { useNotification } from '@/composables/useNotification'
-import { DEFAULT_CACHE_TTL, useCachedRequest } from '@/composables/usePageCache'
 import { extractResponseData } from '@/utils/api-response'
 import { logger } from '@/utils/logger'
+import { useAuthStore } from '@/stores/auth'
 import { getOptionLabel, sortOptionsByOrder } from '@/utils/option-sort'
-import { unifiedApi as api } from '@/utils/unified-api'
 import type {
   SalesBrandRecord,
-  SalesColorResponse,
-  SalesMemoryResponse,
   SalesNamedOption,
   SalesModelRecord
 } from './types'
 import { hasSalesOptionName } from './types'
-
-const CACHE_KEYS = {
-  stores: '/stores:all',
-  suppliers: '/suppliers:all',
-  brands: '/brands:all',
-  models: '/models:all',
-  colors: '/colors:all',
-  memories: '/memories:all',
-  operators: '/operators:all'
-}
+import {
+  getCachedBrands,
+  getCachedColors,
+  getCachedMemories,
+  getModels,
+  searchOperators,
+  getCachedStores,
+  getCachedSuppliers
+} from '@/services/reference-options'
 
 export const useSalesBaseOptions = () => {
   const { error: showError } = useNotification()
+  const authStore = useAuthStore()
   const stores = ref<Store[]>([])
   const operators = ref<Operator[]>([])
   const suppliers = ref<Supplier[]>([])
@@ -38,17 +35,25 @@ export const useSalesBaseOptions = () => {
   const brandModels = ref<PhoneModel[]>([])
   const editBrandModels = ref<string[]>([])
 
+  const normalizeOperators = (records: Array<Record<string, unknown>>) => sortOptionsByOrder(records.map(item => ({
+    id: Number(item.id || 0),
+    username: String(item.username || ''),
+    name: String(item.name || item.username || ''),
+    status: Number(item.status || 1)
+  })))
+
   const loadStores = async () => {
     try {
-      const response = await useCachedRequest(
-        CACHE_KEYS.stores,
-        () => api.get('/stores?all=true'),
-        DEFAULT_CACHE_TTL.STATIC
-      )
+      const response = await getCachedStores()
       if (response.success) {
         const storeRecords = Array.isArray(response.data)
-          ? response.data
-          : (response.data?.data || response.data?.stores || [])
+          ? response.data.map(item => ({
+            id: Number(item.id || 0),
+            name: String(item.name || ''),
+            code: String(item.code || item.name || ''),
+            status: Number(item.status || 1)
+          }))
+          : []
         stores.value = sortOptionsByOrder(storeRecords)
       }
     } catch (error) {
@@ -60,13 +65,14 @@ export const useSalesBaseOptions = () => {
 
   const loadOperators = async () => {
     try {
-      const response = await useCachedRequest(
-        CACHE_KEYS.operators,
-        () => api.get('/operators'),
-        DEFAULT_CACHE_TTL.STATIC
-      )
+      const response = await searchOperators({ page: 1, page_size: 20 })
       if (response.success && response.data) {
-        operators.value = sortOptionsByOrder(response.data)
+        const records = Array.isArray(response.data) ? [...response.data] : []
+        const currentUser = authStore.user
+        if (currentUser?.id && !records.some(item => Number(item.id) === Number(currentUser.id))) {
+          records.unshift({ id: currentUser.id, name: currentUser.name, username: currentUser.username, status: 1 })
+        }
+        operators.value = normalizeOperators(records)
       }
     } catch (error) {
       logger.error('加载操作员列表失败:', error)
@@ -74,20 +80,28 @@ export const useSalesBaseOptions = () => {
     }
   }
 
+  const searchOperatorsRemote = async (keyword = '') => {
+    try {
+      const response = await searchOperators({ keyword: keyword.trim() || undefined, page: 1, page_size: 20 })
+      operators.value = response.success && Array.isArray(response.data)
+        ? normalizeOperators(response.data)
+        : []
+    } catch (error) {
+      logger.error('远程搜索销售员失败:', error)
+      operators.value = []
+    }
+  }
+
   const loadBrands = async () => {
     try {
-      const response = await useCachedRequest(
-        CACHE_KEYS.brands,
-        () => api.get('/brands'),
-        DEFAULT_CACHE_TTL.STATIC
-      )
+      const response = await getCachedBrands()
       if (response.success && response.data) {
         const brandRecords = extractResponseData<SalesBrandRecord[]>(response) || []
         brandsFull.value = brandRecords
         brands.value = sortOptionsByOrder(brandRecords
           .filter(item => item && item.name)
           .map(item => ({
-            id: item.id,
+            id: Number(item.id || 0),
             name: item.name,
             sort_order: item.sort_order || 0
           })))
@@ -101,20 +115,16 @@ export const useSalesBaseOptions = () => {
 
   const loadModels = async () => {
     try {
-      const response = await useCachedRequest(
-        CACHE_KEYS.models,
-        () => api.get('/models'),
-        DEFAULT_CACHE_TTL.STATIC
-      )
+      const response = await getModels()
       if (response.success && response.data) {
-        const modelRecords = Array.isArray(response.data.models)
-          ? response.data.models
-          : (Array.isArray(response.data) ? response.data : [])
+        const modelRecords = Array.isArray(response.data) ? response.data : []
         models.value = sortOptionsByOrder(modelRecords
           .filter(item => item && item.name)
           .map(item => ({
-            id: item.id,
+            id: Number(item.id || 0),
             name: item.name,
+            brand_id: Number(item.brand_id || 0),
+            status: Number(item.status || 1),
             sort_order: item.sort_order || 0
           })))
       }
@@ -126,15 +136,11 @@ export const useSalesBaseOptions = () => {
 
   const loadColors = async () => {
     try {
-      const response = await useCachedRequest(
-        CACHE_KEYS.colors,
-        () => api.get<SalesColorResponse>('/colors'),
-        DEFAULT_CACHE_TTL.STATIC
-      )
+      const response = await getCachedColors()
       if (response.success && response.data) {
         const colorRecords = Array.isArray(response.data)
           ? response.data
-          : response.data.colors || []
+          : []
         colors.value = sortOptionsByOrder(colorRecords)
           .filter(hasSalesOptionName)
           .map(item => item.name)
@@ -147,11 +153,7 @@ export const useSalesBaseOptions = () => {
 
   const loadMemories = async () => {
     try {
-      const response = await useCachedRequest(
-        CACHE_KEYS.memories,
-        () => api.get<SalesMemoryResponse>('/memories'),
-        DEFAULT_CACHE_TTL.STATIC
-      )
+      const response = await getCachedMemories()
       if (response.success && response.data) {
         const memoryRecords = extractResponseData<SalesNamedOption[]>(response)
         const memoryLabels = sortOptionsByOrder(
@@ -171,12 +173,17 @@ export const useSalesBaseOptions = () => {
 
   const loadSuppliers = async () => {
     try {
-      const response = await useCachedRequest(
-        CACHE_KEYS.suppliers,
-        () => api.get('/suppliers?page=1&page_size=100'),
-        DEFAULT_CACHE_TTL.STATIC
-      )
-      if (response.success) suppliers.value = sortOptionsByOrder(response.data || [])
+      const response = await getCachedSuppliers()
+      if (response.success) {
+        const supplierRecords = Array.isArray(response.data)
+          ? response.data.map(item => ({
+            id: Number(item.id || 0),
+            name: String(item.name || ''),
+            status: Number(item.status || 1)
+          }))
+          : []
+        suppliers.value = sortOptionsByOrder(supplierRecords)
+      }
     } catch (error) {
       logger.error('加载供应商列表失败:', error)
       suppliers.value = []
@@ -200,7 +207,7 @@ export const useSalesBaseOptions = () => {
         brandId = brand.id ?? ''
       }
 
-      const response = await api.get<SalesModelRecord[]>(`/brands/${brandId}/models`)
+      const response = await getModels({ brandId })
       const modelRecords = response.success
         ? extractResponseData<SalesModelRecord[]>(response)
         : []
@@ -221,7 +228,7 @@ export const useSalesBaseOptions = () => {
 
     try {
       const normalizedName = String(brandName).trim()
-      const brandsResponse = await api.get<SalesBrandRecord[]>('/brands')
+      const brandsResponse = await getCachedBrands()
       if (!brandsResponse.success) {
         editBrandModels.value = []
         return
@@ -239,7 +246,7 @@ export const useSalesBaseOptions = () => {
         return
       }
 
-      const modelsResponse = await api.get<SalesModelRecord[]>(`/brands/${brand.id}/models`)
+      const modelsResponse = await getModels({ brandId: brand.id })
       // 品牌型号接口使用统一响应格式，兼容 data 直接数组和包装数组两种历史返回。
       const modelRecords = modelsResponse.success
         ? extractResponseData<SalesModelRecord[]>(modelsResponse)
@@ -266,6 +273,7 @@ export const useSalesBaseOptions = () => {
     editBrandModels,
     loadStores,
     loadOperators,
+    searchOperatorsRemote,
     loadBrands,
     loadModels,
     loadColors,

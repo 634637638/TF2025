@@ -1,278 +1,52 @@
-# TF2025 文档规范指南
+# 文档编写与维护规范
 
-> **最后更新**：2025-12-20
-> **版本**：v1.0.0
-> **维护者**：TF2025 开发团队
+本文档规定 TF2025 文档的目录职责、事实标准和维护方式。文档总入口为 [docs/00-INDEX.md](../00-INDEX.md)，新文档可使用[统一模板](../TEMPLATE.md)。
 
-## 概述
+## 目录职责
 
-本文档定义了 TF2025 项目的文档编写规范，确保所有文档的格式、风格和内容保持一致。
+| 目录 | 放置内容 |
+| --- | --- |
+| `docs/frontend/` | 前端强制规范正文；以 `standards-manifest.json` 登记为准 |
+| `docs/guides/` | 跨模块开发、调试和维护指南 |
+| `docs/permissions/` | 权限模型和权限专项说明 |
+| `docs/business/` | 已核实的业务规则 |
+| `docs/backend/`、`docs/database/` | 后端实现、数据库结构和数据契约 |
+| `docs/deployment/` | 当前部署操作说明 |
+| `docs/development/`、`docs/performance/` | 有日期的进展、验证或分析记录；需标记适用时间和限制 |
+| `docs/archive/` | 已弃用但仍有查阅价值的内容 |
+
+`docs/frontend/` 是强制前端规范的唯一正文目录。同一规范不得在 `docs/standards/`、`docs/components/` 或 `docs/guides/` 再复制一份；旧路径需要兼容时，只保留简短迁移说明并链接权威正文。
 
 ## 文档结构
 
-### 目录结构
+每份文档应包含：
 
-```
-docs/
-├── README.md                 # 项目主文档
-├── INDEX.md                  # 文档索引
-├── TEMPLATE.md              # 文档模板
-├── DOCUMENTATION_STANDARDS.md # 文档规范（本文档）
-├── mobile-adaptation-guide.md # 移动端适配指南
-├── modal-guide.md           # 模态框使用指南
-├── style-standards.md       # 样式规范
-└── api/                     # API 文档目录
-    └── README.md
-```
+1. 唯一、具体的一级标题。
+2. 开头简述适用对象或用途。
+3. 按任务组织的章节；操作文档明确前提、步骤和验证方式。
+4. 相关文档的相对链接。
 
-### 文档命名规范
+只有内容会随代码或部署状态变化的文档才标注“最后核实日期”。日期表示实际核对日期，不是创建日期；没有复核证据时，不得写“当前”“最新”“已验证”。
 
-1. **使用英文命名**，采用 kebab-case 格式
-2. **名称要清晰表达文档内容**
-3. ** README.md** 作为目录或项目的入口文档
+不强制添加版本号、维护者、目录、更新日志或状态 emoji。只有确实需要追踪版本或变更的文档才保留这些内容。
 
-示例：
-- ✅ `mobile-adaptation-guide.md`
-- ✅ `modal-guide.md`
-- ❌ `移动端适配.md`
-- ❌ `Mobile Guide.md`
+## 事实与示例
 
-## 文档格式规范
+- 区分已实现事实、建议和待验证事项；不得把规划、估算或推断写成已完成结果。
+- 性能数字、成本收益、线上状态和数据库数据必须有可复现的测量方法、日期及范围；没有证据就删除数字或明确标为假设。
+- 命令、端口、文件路径、API、组件和导出名必须与仓库当前实现一致。部署文档不能把本机假设写成线上事实。
+- 示例凭证、真实密钥、个人数据及可复用的访问令牌不得放入文档。
+- 已被代码或配置取代的操作步骤应删除，不以“历史说明”继续放在当前操作指南中。
 
-### 1. 头部信息
+## 链接与索引
 
-每个文档必须包含标准头部信息：
+- 仓库内 Markdown 文件使用相对路径链接；路径大小写必须与文件名一致。
+- 源码位置使用仓库根目录相对的行内代码路径，例如 `frontend/src/components/Example.vue`，不要伪装成相对文档链接。
+- 每个包含两份或以上专题文档的目录必须有一个 `INDEX.md` 作为导航；单文件目录可由上级索引直接导航。新增、删除或移动文档时同步更新索引和入站链接。
+- 索引只做导航和简短说明，不复制被索引文档的大段正文。
+- 已移除的内容若仍有价值，移入 `archive/` 并注明替代文档；不再有参考价值或事实不可靠的内容直接删除。
+- 文档变更后运行 `npm run check:docs`，确保本地 Markdown 链接目标存在。
 
-```markdown
-# 文档标题
+## 前端规范变更流程
 
-> **文档说明**：简要描述本文档的用途和目标读者
->
-> **最后更新**：2025-MM-DD
-> **版本**：vX.X.X
-> **维护者**：TF2025 开发团队
-```
-
-### 2. 目录结构
-
-长文档（超过500字）必须包含目录：
-
-```markdown
-## 目录
-
-- [概述](#概述)
-- [主要内容](#主要内容)
-- [使用指南](#使用指南)
-- [最佳实践](#最佳实践)
-- [常见问题](#常见问题)
-- [更新日志](#更新日志)
-```
-
-### 3. 标题规范
-
-- 使用 ATX 风格（# ## ###）
-- 一级标题：文档标题（仅一个）
-- 二级标题：主要章节
-- 三级标题：子章节
-- 避免超过四级标题
-
-### 4. 内容规范
-
-#### 文字规范
-- 使用中文书写，技术术语保留英文原名
-- 段落之间空一行
-- 列表项之间换行
-
-#### 代码块规范
-```typescript
-// TypeScript/JavaScript 示例
-const example: string = 'value'
-```
-
-```vue
-<!-- Vue 组件示例 -->
-<template>
-  <div>内容</div>
-</template>
-```
-
-```scss
-// SCSS 示例
-.class-name {
-  property: value;
-}
-```
-
-#### 链接规范
-- 内部链接使用相对路径
-- 外部链接必须包含 https://
-- 为链接添加有意义的文字描述
-
-```markdown
-✅ [移动端适配指南](./mobile-adaptation-guide.md)
-✅ [Element Plus 官方文档](https://element-plus.org/)
-
-❌ 点击这里
-❅ [docs](../docs)
-```
-
-#### 图片规范
-- 图片存放在 `docs/assets/` 目录
-- 使用相对路径引用
-- 添加 alt 属性
-
-```markdown
-![架构图](./assets/architecture-diagram.png)
-```
-
-## 特殊标记规范
-
-### 状态标记
-
-```markdown
-✅ 已完成
-🚧 进行中
-📋 计划中
-❌ 已废弃
-⚠️ 注意事项
-💡 提示信息
-🔧 配置项
-🎯 目标
-📈 性能优化
-🔒 安全相关
-```
-
-### 重要性标记
-
-```markdown
-- **必须**：强制要求
-- **应该**：推荐做法
-- **可以**：可选方案
-- **不建议**：避免的做法
-```
-
-## 更新日志规范
-
-每个文档必须维护更新日志：
-
-```markdown
-## 更新日志
-
-### 2025-12-20 - v1.0.0
-- ✨ 新功能：新增移动端适配指南
-- 🔧 改进：优化响应式断点定义
-- 🐛 修复：修正文档中的错误链接
-- 📚 文档：完善API文档结构
-
-### 2025-12-15 - v0.9.0
-- 初始版本
-```
-
-### 版本号规范
-
-- **主版本号**：不兼容的API修改
-- **次版本号**：向下兼容的功能性新增
-- **修订号**：向下兼容的问题修正
-
-## 代码示例规范
-
-### 1. 注释规范
-
-```typescript
-// 单行注释：解释代码目的
-const apiKey = 'your-api-key' // 行末注释：解释变量
-
-/**
- * 多行注释：
- * 描述函数功能、参数和返回值
- * @param param1 参数说明
- * @returns 返回值说明
- */
-function exampleFunction(param1: string): boolean {
-  return true
-}
-```
-
-### 2. 组件示例
-
-```vue
-<template>
-  <!-- 模板注释 -->
-  <div class="component-name">
-    {{ message }}
-  </div>
-</template>
-
-<script setup lang="ts">
-// 导入
-import { ref } from 'vue'
-
-// 定义
-const message = ref('Hello World')
-</script>
-
-<style lang="scss" scoped>
-// 样式注释
-.component-name {
-  color: var(--el-color-primary);
-}
-</style>
-```
-
-### 3. API 示例
-
-```typescript
-// 请求示例
-const response = await unifiedApi.get('/api/v1/users', {
-  params: { page: 1, limit: 10 }
-})
-
-// 响应示例
-interface ApiResponse {
-  success: boolean
-  data: User[]
-  pagination: {
-    page: number
-    pageSize: number
-    total: number
-  }
-}
-```
-
-## 文档审查清单
-
-发布文档前请检查：
-
-- [ ] 头部信息完整
-- [ ] 目录结构清晰
-- [ ] 链接全部有效
-- [ ] 代码示例可运行
-- [ ] 版本号更新
-- [ ] 更新日志填写
-- [ ] 拼写和语法正确
-- [ ] 格式符合规范
-
-## 文档维护
-
-### 定期审查
-
-- **每月**：检查文档是否需要更新
-- **版本发布前**：更新相关文档
-- **功能变更后**：及时更新文档
-
-### 贡献指南
-
-1. 创建新文档前先查阅本规范
-2. 使用提供的模板创建文档
-3. 提交前进行自我审查
-4. PR 中包含文档变更说明
-
-## 参考资料
-
-- [Markdown 语法指南](https://www.markdownguide.org/)
-- [Vue.js 风格指南](https://v2.vuejs.org/v2/style-guide/)
-- [TypeScript 文档规范](https://typescript-eslint.io/rules/)
-
----
-
-**注意**：所有文档都应遵循本规范，确保项目的文档质量和一致性。
+新增或修改强制前端规范时，按 [规范审计接入指南](../frontend/standards-audit-guide.md) 更新规范正文、公共实现、自动审计和 `standards-manifest.json`。仅修改文档而没有同步实现或审计，不构成已落实的强制规范。

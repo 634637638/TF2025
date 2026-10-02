@@ -245,7 +245,7 @@ class TransferService {
               wholesale_date = ?,
               wholesale_price = ?,
               sale_time = ?,
-              remarks = ?
+              remarks = COALESCE(NULLIF(TRIM(?), ''), remarks)
             WHERE id = ?`,
             [price, saleTimeStr, price, saleTimeStr, remarks || null, phone_id]
           )
@@ -493,7 +493,7 @@ class TransferService {
               wholesale_date = ?,
               wholesale_price = ?,
               sale_time = ?,
-              remarks = ?
+              remarks = COALESCE(NULLIF(TRIM(?), ''), remarks)
             WHERE id = ?`,
             [final_purchase_cost, proxy_price, saleTimeStr, proxy_price, saleTimeStr, remarks || null, phone_id]
           )

@@ -3,7 +3,7 @@
  * 统一管理认证相关的存储操作
  */
 
-import { AUTH_STORAGE_KEYS } from '@/constants/storage'
+import { AUTH_STORAGE_KEYS, CACHE_STORAGE_KEYS, SECURITY_STORAGE_KEYS } from '@/constants/storage'
 import { storage } from '@/services/storage'
 
 declare global {
@@ -49,9 +49,21 @@ export const clearPersistedAuthData = (options: ClearAuthOptions = {}): void => 
   storage.remove(AUTH_STORAGE_KEYS.AUTH_BACKUP, 'local')
   storage.remove(AUTH_STORAGE_KEYS.TOKEN_BACKUP, 'local')
   storage.remove(AUTH_STORAGE_KEYS.TIMED_BACKUP, 'local')
+  storage.remove(CACHE_STORAGE_KEYS.PERMISSIONS_CACHE, 'local')
+  storage.remove(SECURITY_STORAGE_KEYS.CSRF_TOKEN, 'session')
+  storage.remove(SECURITY_STORAGE_KEYS.CSRF_TOKEN, 'local')
+
+  // 清理早期本地测试产生的字段权限缓存，避免不同角色串用测试数据。
+  for (let index = 0; index < localStorage.length; index += 1) {
+    const key = localStorage.key(index)
+    if (key?.startsWith('field_permissions')) {
+      localStorage.removeItem(key)
+      index -= 1
+    }
+  }
 
   if (notifyOtherWindows) {
-    storage.set(AUTH_STORAGE_KEYS.LOGOUT_EVENT, Date.now().toString(), 'session')
+    storage.set(AUTH_STORAGE_KEYS.LOGOUT_EVENT, Date.now().toString(), 'local')
   }
 
   window.__TF2025__GLOBAL_CLEAR__ = false

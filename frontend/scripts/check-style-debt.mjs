@@ -55,6 +55,8 @@ function styleBlocks(filePath, source) {
 
 const totals = { important: 0, colors: 0, colorUsages: 0, scopedImportant: 0, globalImportant: 0 };
 const byFile = [];
+const largeStyleBlocks = [];
+const largeStyleBlockLineCounts = {};
 const importantAllowlist = readImportantAllowlist();
 
 for (const filePath of collectFiles(sourceRoot)) {
@@ -66,6 +68,12 @@ for (const filePath of collectFiles(sourceRoot)) {
   let globalImportant = 0;
 
   for (const block of styleBlocks(filePath, source)) {
+    const blockLines = block.content.split('\n').length;
+    if (path.extname(filePath) === '.vue' && blockLines > 300) {
+      const relativeFile = path.relative(path.resolve(sourceRoot, '..'), filePath);
+      largeStyleBlocks.push({ file: relativeFile, lines: blockLines });
+      largeStyleBlockLineCounts[relativeFile] = Math.max(largeStyleBlockLineCounts[relativeFile] || 0, blockLines);
+    }
     for (const line of stripComments(block.content).split('\n')) {
       const isTokenDeclaration = /^\s*--[a-z0-9_-]+\s*:/.test(line);
       const lineImportant = (line.match(/!important\b/g) || []).length;
@@ -113,6 +121,7 @@ console.log(`样式债务审计：${totals.important} 处 !important，${totals.
 console.log(`!important 分布：scoped=${totals.scopedImportant}，global/共享=${totals.globalImportant}。`);
 console.log(`!important 分类：已登记框架覆盖=${approvedImportant}，未批准债务=${unapprovedImportant}。`);
 console.log(`排除 CSS 令牌声明后，仍有 ${totals.colorUsages} 处颜色使用点需要逐步收敛。`);
+console.log(`超长 Vue 样式块（>300 行）：${largeStyleBlocks.length} 个；登记只防止增长，不代表已完成拆分。`);
 console.log('高占用文件：');
 for (const item of byFile.slice(0, 20)) {
   console.log(`- ${item.file}: !important=${item.important}, colors=${item.colorUsages}`);
@@ -129,7 +138,18 @@ if (allowlistDrift.length > 0) {
 
 const baseline = readBaseline();
 if (baseline) {
+  if (process.argv.includes('--write-style-baseline')) {
+    baseline.max_large_style_blocks = largeStyleBlocks.length;
+    baseline.large_style_block_lines = largeStyleBlockLineCounts;
+    fs.writeFileSync(baselinePath, `${JSON.stringify(baseline, null, 2)}\n`);
+    console.log(`超长样式块基线已更新：${largeStyleBlocks.length} 个块，${Object.keys(largeStyleBlockLineCounts).length} 个文件。`);
+    process.exit(0);
+  }
+
   const regressions = [];
+  if (totals.important < baseline.max_important) {
+    console.log(`!important 较登记上限减少 ${baseline.max_important - totals.important} 处（当前 ${totals.important} / 上限 ${baseline.max_important}）。`);
+  }
   if (totals.important > baseline.max_important) {
     regressions.push(`!important ${totals.important} > ${baseline.max_important}`);
   }
@@ -139,10 +159,18 @@ if (baseline) {
   if (totals.colorUsages > baseline.max_non_token_color_usages) {
     regressions.push(`非令牌颜色使用点 ${totals.colorUsages} > ${baseline.max_non_token_color_usages}`);
   }
+  if (baseline.max_large_style_blocks !== undefined && largeStyleBlocks.length > baseline.max_large_style_blocks) {
+    regressions.push(`超长 Vue 样式块 ${largeStyleBlocks.length} > ${baseline.max_large_style_blocks}`);
+  }
+  for (const [file, lines] of Object.entries(largeStyleBlockLineCounts)) {
+    const maxLines = baseline.large_style_block_lines?.[file];
+    if (maxLines !== undefined && lines > maxLines) regressions.push(`${file} 超长样式块 ${lines} 行 > 基线 ${maxLines} 行`);
+    if (maxLines === undefined) regressions.push(`${file} 新增超长样式块 ${lines} 行，请拆分或登记迁移计划`);
+  }
   if (regressions.length > 0) {
     console.error(`样式债务超过基线：${regressions.join('；')}`);
     process.exitCode = 1;
   } else {
-    console.log(`样式债务基线守护通过：!important <= ${baseline.max_important}，未批准 !important <= ${baseline.max_unapproved_important}，非令牌颜色使用点 <= ${baseline.max_non_token_color_usages}。`);
+    console.log(`样式债务基线守护通过：!important <= ${baseline.max_important}，超长样式块 <= ${baseline.max_large_style_blocks ?? '未登记'}，未批准 !important <= ${baseline.max_unapproved_important}，非令牌颜色使用点 <= ${baseline.max_non_token_color_usages}。`);
   }
 }

@@ -2,14 +2,14 @@
 
 > **文档说明**：本指南详细说明 TF2025 项目的移动端适配方案，帮助开发者快速实现响应式设计
 >
-> **最后更新**：2025-12-20
+> **最后更新**：2026-10-01
 > **版本**：v1.2.0
 > **维护者**：TF2025 开发团队
 
 ## 概述
 
 TF2025项目已内置完善的移动端适配系统，支持从375px（iPhone SE）到所有桌面尺寸的响应式设计。
-后台左侧固定菜单以视口宽度为准，1024px 及以上进入桌面壳，不再由设备类型、UA 或触摸能力单独决定。
+后台左侧固定菜单以视口宽度为准，1025px 及以上进入桌面壳，不再由设备类型、UA 或触摸能力单独决定。
 
 ## 核心组件
 
@@ -42,7 +42,7 @@ TF2025项目已内置完善的移动端适配系统，支持从375px（iPhone SE
 </template>
 
 <script setup>
-import { ResponsiveLayout } from '@/components'
+import ResponsiveLayout from '@/components/ResponsiveLayout.vue'
 
 const fabActions = [
   {
@@ -59,7 +59,8 @@ const fabActions = [
 ### 2. 移动端表格组件
 
 #### MobileTable 组件
-自动适配移动端的表格组件，在小屏幕上切换为卡片式布局。
+移动端专用的卡片式表格组件。后台主数据表仍必须使用 `el-table.data-table`、
+`el-table.admin-data-table` 或 `PaginatedTable`，并通过公共表格规范审计；只有明确需要卡片式移动展示时才使用 `MobileTable`。
 
 ```vue
 <template>
@@ -109,7 +110,7 @@ const actions = [
   <MobileDialog
     v-model="dialogVisible"
     title="添加商品"
-    :width="800"
+    width="800px"
     :force-fullscreen="isMobile"
     @confirm="handleConfirm"
   >
@@ -118,7 +119,7 @@ const actions = [
 </template>
 
 <script setup>
-import { MobileDialog } from '@/components'
+import MobileDialog from '@/components/MobileDialog.vue'
 import { useResponsive } from '@/composables/responsive'
 
 const { isMobile } = useResponsive()
@@ -238,36 +239,16 @@ const {
 ### 1. 断点系统
 
 ```scss
-// 断点定义（与 responsive.scss 保持一致）
-:root {
-  --breakpoint-min: 375px;  // iPhone SE, iPhone 12 Mini
-  --breakpoint-xs: 414px;   // iPhone SE 2022, iPhone 12, 13
-  --breakpoint-sm: 480px;   // 大屏手机竖屏
-  --breakpoint-md: 768px;   // 平板竖屏/大屏手机横屏
-  --breakpoint-lg: 1024px;  // 桌面起点
-  --breakpoint-xl: 1200px;  // 宽屏桌面
-  --breakpoint-2xl: 1440px; // 大桌面
-}
-
-// 媒体查询断点
-$breakpoints: (
-  min: 375px,   // 最小适配宽度
-  xs: 414px,    // 小屏手机
-  sm: 480px,    // 中屏手机
-  md: 768px,    // 大屏手机/平板
-  lg: 1024px,   // 桌面起点
-  xl: 1200px,   // 宽屏桌面
-  xxl: 1440px   // 大桌面
-);
+断点以 `frontend/src/config/breakpoints.ts` 为准，样式令牌见 `frontend/src/styles/_variables.scss`。手机布局最大宽度为 `767px`，平板起始宽度为 `768px`；后台桌面固定侧栏从 `1025px` 启用。组件可因交互需求使用 `768px` 媒体查询，但不得据此改变后台导航壳的切换规则。
 
 // 使用示例
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .mobile-only {
     display: block;
   }
 }
 
-@media (min-width: 769px) {
+@media (min-width: 768px) {
   .desktop-only {
     display: block;
   }
@@ -362,7 +343,7 @@ $breakpoints: (
 <el-table-v2
   :columns="columns"
   :data="data"
-  :width="800"
+  width="800px"
   :height="600"
   :row-height="50"
 />
@@ -394,10 +375,8 @@ $breakpoints: (
 
 ## 更新日志
 
-- 2025-12-20: 完善移动端适配系统
-  - 修正断点定义：最小适配宽度改为375px（iPhone SE）
-  - 新增MobileDialog组件，提供完整的响应式模态框
-  - 优化响应式样式系统，统一断点规范
-  - 完善安全区域适配，支持iPhone X系列
-  - 提供完整的移动端组件库（表格、表单、模态框）
-- 详细文档请参考：《模态框使用指南》(docs/modal-guide.md)
+- 2026-10-01: 对齐全局响应式断点和弹窗规范
+  - 桌面壳起点统一为 `1025px`，平板范围统一为 `768-1024px`
+  - MobileDialog 宽度、footer 和安全区统一由全局 Token 维护
+  - 页面不再复制弹窗外壳或按钮布局
+- 模态框详细规范请参考[全局对话框规范](../frontend/dialog-standards.md)；组件专题说明见[模态框使用说明](../components/modal-guide.md)。

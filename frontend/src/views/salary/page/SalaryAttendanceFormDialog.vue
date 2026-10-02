@@ -55,13 +55,15 @@
         class="form-group"
       >
         <label>{{ recordType === 'overtime' ? '加班日期' : '记录日期' }} <span class="required">*</span></label>
-        <input
+        <el-date-picker
           v-model="recordDate"
           type="date"
           class="form-control"
+          :format="TIME_FORMATS.DATE"
+          :value-format="TIME_FORMATS.DATE"
+          :clearable="false"
           :disabled="!canEditField(moduleKey, 'attendance_record_date')"
-          required
-        >
+        />
       </div>
 
       <template v-if="recordType === 'monthly_leave'">
@@ -89,28 +91,30 @@
           class="form-group"
         >
           <label>请假类型 <span class="required">*</span></label>
-          <select
+          <el-select
             v-model="leaveType"
             class="form-control"
+            placeholder="请选择请假类型"
             :disabled="!canEditField(moduleKey, 'attendance_leave_type')"
             required
           >
-            <option value="">
-              请选择请假类型
-            </option>
-            <option value="事假">
-              事假
-            </option>
-            <option value="病假">
-              病假
-            </option>
-            <option value="年假">
-              年假
-            </option>
-            <option value="调休">
-              调休
-            </option>
-          </select>
+            <el-option
+              label="事假"
+              value="事假"
+            />
+            <el-option
+              label="病假"
+              value="病假"
+            />
+            <el-option
+              label="年假"
+              value="年假"
+            />
+            <el-option
+              label="调休"
+              value="调休"
+            />
+          </el-select>
         </div>
         <div
           v-if="canViewField(moduleKey, 'leave_days')"
@@ -223,6 +227,7 @@
 </template>
 
 <script setup lang="ts">
+import { TIME_FORMATS } from '@/utils/time'
 import { computed } from 'vue'
 import type { AttendanceRecord } from '@/api/attendance'
 import InlineLoading from '@/components/InlineLoading.vue'

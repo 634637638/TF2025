@@ -12,6 +12,7 @@ const { validateBody } = require('../middleware/validation')
 const { getUserAccessProfile } = require('../services/accessControl.service')
 const { hasColumn } = require('../services/schemaInspector.service')
 const { isValidFieldName, validatePassword } = require('../utils/security-enhanced')
+const { clearRefreshCookie, getCookie, setRefreshCookie } = require('../utils/http-cookie')
 const log = require('../utils/log')
 
 // 登录失败处理辅助函数
@@ -344,13 +345,13 @@ router.post('/login', validateBody({
       tokenPayload
     } = await buildAuthenticatedUserPayload(database, user)
     const { accessToken, refreshToken } = generateTokens(tokenPayload)
+    setRefreshCookie(res, refreshToken)
 
     // 登录接口特殊处理：token和user需要在顶层，而不是在data中
     res.json({
       success: true,
       message: '登录成功',
       token: accessToken,
-      refreshToken: refreshToken,
       user: userPayload,
       accessProfile
     })
@@ -397,11 +398,13 @@ router.get('/user', unifiedAuth, async (req, res) => {
 })
 
 // 刷新访问令牌
-router.post('/refresh', validateBody({
-  refreshToken: { type: 'string', required: true, minLength: 10 }
-}), async (req, res) => {
+router.post('/refresh', async (req, res) => {
   try {
-    const { refreshToken } = req.body
+    // 优先使用 HttpOnly Cookie；保留请求体回退，兼容旧版本客户端的最后一次刷新。
+    const refreshToken = getCookie(req, 'refreshToken') || req.body?.refreshToken
+    if (!refreshToken) {
+      return ApiResponse.error(res, '刷新令牌不能为空', 401)
+    }
 
     if (!isConnected()) {
       return ApiResponse.error(res, '服务暂时不可用，请稍后再试', 503)
@@ -438,10 +441,10 @@ router.post('/refresh', validateBody({
 
     // 生成新的令牌对
     const { accessToken, refreshToken: newRefreshToken } = generateTokens(tokenPayload)
+    setRefreshCookie(res, newRefreshToken)
 
     ApiResponse.success(res, {
       token: accessToken,
-      refreshToken: newRefreshToken,
       user: userPayload,
       accessProfile
     }, '令牌刷新成功')
@@ -460,16 +463,21 @@ router.post('/refresh', validateBody({
 })
 
 // 用户退出登录
-router.post('/logout', unifiedAuth, (req, res) => {
+router.post('/logout', unifiedAuth, async (req, res) => {
   try {
     const authHeader = req.headers['authorization']
     const token = authHeader && authHeader.split(' ')[1]
+    const refreshToken = getCookie(req, 'refreshToken')
 
     if (token) {
       // 将访问令牌加入黑名单
-      addToBlacklist(token, 'logout')
+      await addToBlacklist(token, 'logout')
+    }
+    if (refreshToken) {
+      await addToBlacklist(refreshToken, 'logout')
     }
 
+    clearRefreshCookie(res)
     ApiResponse.success(res, null, '退出成功')
   } catch (error) {
     log.error('退出处理失败:', error)
@@ -483,13 +491,14 @@ router.post('/logout-all', unifiedAuth, async (req, res) => {
     const database = getDatabase()
     const userId = req.user.id
 
-    // 这里可以实现将用户的所有令牌加入黑名单
-    // 目前只是记录到数据库
     await database.execute(
-      'INSERT INTO logout_all_logs (user_id, created_at) VALUES (?, NOW())',
-      [userId]
+      `INSERT INTO jwt_blacklist
+       (jti, user_id, token_type, reason, created_at, expires_at)
+       VALUES (?, ?, 'access', 'logout_all', NOW(), DATE_ADD(NOW(), INTERVAL 31 DAY))`,
+      [`jti_logout_all_${crypto.randomBytes(16).toString('hex')}`, userId]
     )
 
+    clearRefreshCookie(res)
     ApiResponse.success(res, null, '已退出所有设备')
   } catch (error) {
     log.error('退出所有设备失败:', error)

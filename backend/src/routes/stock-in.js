@@ -102,13 +102,18 @@ router.get('/', unifiedAuth, requirePermission('stock-in:view'), async (req, res
         p.serial_number LIKE ? OR
         p.purchase_number LIKE ? OR
         p.imei LIKE ? OR
+        b.name LIKE ? OR
+        m.name LIKE ? OR
+        c.name LIKE ? OR
+        mem.size LIKE ? OR
+        p.remarks LIKE ? OR
         s.name LIKE ? OR
         supp.name LIKE ? OR
         u.name LIKE ? OR
         u.username LIKE ?
       )`)
       const searchParam = `%${search}%`
-      params.push(searchParam, searchParam, searchParam, searchParam, searchParam, searchParam, searchParam)
+      params.push(...Array(12).fill(searchParam))
     }
 
     // 日期范围筛选
@@ -131,6 +136,10 @@ router.get('/', unifiedAuth, requirePermission('stock-in:view'), async (req, res
       LEFT JOIN stores s ON p.store_id = s.id
       LEFT JOIN suppliers supp ON p.supplier_id = supp.id
       LEFT JOIN users u ON p.inventory_operator_id = u.id
+      LEFT JOIN brands b ON p.brand_id = b.id
+      LEFT JOIN models m ON p.model_id = m.id
+      LEFT JOIN colors c ON p.color_id = c.id
+      LEFT JOIN memories mem ON p.memory_id = mem.id
       ${whereClause}
     `
 

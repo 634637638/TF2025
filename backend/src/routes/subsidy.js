@@ -740,7 +740,6 @@ router.get('/search-phones/:identifier', unifiedAuth, requirePermission('subsidy
       WHERE p.status = 'sold'
         AND (p.imei LIKE ? OR p.serial_number LIKE ?)
       ORDER BY p.sale_time DESC
-      LIMIT 50
     `, [searchPattern, searchPattern])
     timer.mark('phones query completed', {
       matchCount: phones.length

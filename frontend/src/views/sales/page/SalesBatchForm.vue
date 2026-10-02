@@ -16,7 +16,7 @@
     <div class="sale-form-grid">
       <div class="form-section">
         <h4>客户信息</h4>
-        <div class="form-row">
+        <div class="form-row customer-fields">
           <div
             v-if="canViewField('customer_name')"
             class="form-group"
@@ -36,10 +36,6 @@
               @save="emit('save-name')"
               @clear="emit('clear-customer')"
             />
-            <small
-              v-if="selectedCustomer && !customerNameEditing"
-              class="form-hint"
-            >双击姓名可编辑客户信息</small>
           </div>
           <div
             v-if="canViewField('customer_phone')"
@@ -47,10 +43,10 @@
           >
             <label class="form-label required">客户电话</label>
             <div class="customer-search-container">
-              <input
+              <el-input
                 v-model="batchSaleForm.customer_phone"
-                type="text"
-                class="form-control"
+                class="batch-customer-phone-input"
+                type="tel"
                 placeholder="请输入用户手机号"
                 required
                 :readonly="selectedCustomer !== null"
@@ -59,7 +55,7 @@
                 @input="emit('phone-input')"
                 @focus="showCustomerSearch = true"
                 @blur="emit('phone-blur')"
-              >
+              />
               <CustomerSearchDropdown
                 :items="customerSearchResults"
                 :loading="customerSearching"
@@ -71,100 +67,173 @@
               />
             </div>
           </div>
-        </div>
-        <div class="form-row">
           <div
             v-if="canViewField('customer_apple_id')"
             class="form-group"
           >
             <label class="form-label">Apple ID</label>
-            <input
+            <el-input
               v-model="batchSaleForm.apple_id"
-              type="text"
-              class="form-control"
+              class="batch-apple-id-input"
               placeholder="请输入Apple ID（手机号或邮箱）"
               @input="emit('apple-id-input', $event)"
-            >
+            />
           </div>
         </div>
       </div>
 
       <div class="form-section">
         <h4>销售信息</h4>
-        <div class="form-row">
+        <div class="form-row sales-fields">
           <div
             v-if="canViewField('sale_price')"
             class="form-group"
           >
-            <label class="form-label required">销售单价</label>
-            <input
-              v-model.number="batchSaleForm.sale_price"
-              type="number"
-              class="form-control"
-              placeholder="请输入销售单价"
-              step="0.01"
-              min="0.01"
-              required
-            >
+            <label class="form-label">统一销售价</label>
+            <div class="unified-price-control">
+              <el-input-number
+                v-model="unifiedSalePrice"
+                class="price-input-number unified-price-input"
+                placeholder="输入统一销售价"
+                :min="0.01"
+                :step="0.01"
+                :precision="2"
+                :controls="false"
+              />
+              <el-button
+                type="primary"
+                plain
+                :disabled="!batchSaleForm.sale_price || Number(batchSaleForm.sale_price) <= 0 || batchItems.length === 0"
+                @click="emit('apply-unified-sale-price', batchSaleForm.sale_price)"
+              >
+                应用
+              </el-button>
+            </div>
           </div>
           <div
             v-if="canViewField('store_id')"
             class="form-group"
           >
             <label class="form-label required">销售店铺</label>
-            <select
+            <el-select
               v-model="batchSaleForm.store_id"
               class="form-control"
+              placeholder="请选择销售店铺"
               required
             >
-              <option value="">
-                请选择销售店铺
-              </option>
-              <option
+              <el-option
                 v-for="store in stores"
                 :key="store.id"
-                :value="store.id"
-              >
-                {{ store.name }}
-              </option>
-            </select>
+                :label="store.name"
+                :value="String(store.id)"
+              />
+            </el-select>
           </div>
-        </div>
-        <div class="form-row">
           <div
             v-if="canViewField('operator_id')"
             class="form-group"
           >
             <label class="form-label required">销售员</label>
-            <select
+            <el-select
               v-model="batchSaleForm.operator_id"
               class="form-control"
+              placeholder="请选择销售员"
               required
+              filterable
+              remote
+              reserve-keyword
+              :remote-method="(query: string) => emit('operator-search', query)"
+              @focus="emit('operator-search', '')"
             >
-              <option value="">
-                请选择销售员
-              </option>
-              <option
+              <el-option
                 v-for="operator in operators"
                 :key="operator.id"
-                :value="operator.id"
-              >
-                {{ operator.name || operator.username }}{{ isCurrentUser(operator) ? ' (当前用户)' : '' }}
-              </option>
-            </select>
+                :label="`${operator.name || operator.username}${isCurrentUser(operator) ? ' (当前用户)' : ''}`"
+                :value="String(operator.id)"
+              />
+            </el-select>
           </div>
           <div
             v-if="canViewField('sale_time')"
             class="form-group"
           >
             <label class="form-label required">销售日期</label>
-            <input
+            <el-date-picker
               v-model="batchSaleForm.sale_time"
               type="date"
               class="form-control"
-              required
-            >
+              placeholder="请选择销售日期"
+              :format="TIME_FORMATS.DATE"
+              :value-format="TIME_FORMATS.DATE"
+              :clearable="false"
+            />
           </div>
+        </div>
+      </div>
+
+      <div class="form-section batch-items-section">
+        <h4>设备价格明细</h4>
+        <div class="batch-items-table-wrap">
+          <el-table
+            :data="batchItems"
+            class="data-table batch-items-table"
+            border
+            row-key="phone_id"
+          >
+            <el-table-column
+              label="设备"
+              min-width="230"
+            >
+              <template #default="{ row }">
+                <strong>{{ [row.brand, row.model, row.color, row.memory].filter(Boolean).join(' ') || '未命名设备' }}</strong>
+                <small>{{ row.imei || `设备ID ${row.phone_id}` }}</small>
+              </template>
+            </el-table-column>
+            <el-table-column
+              v-if="canViewPrice && canViewField('purchase_cost')"
+              label="入库价格"
+              min-width="150"
+            >
+              <template #default="{ row }">
+                <el-input-number
+                  :model-value="numberValue(row.purchase_cost)"
+                  class="price-input-number"
+                  :min="0"
+                  :step="0.01"
+                  :precision="2"
+                  :controls="false"
+                  @update:model-value="emit('update-batch-item', { phoneId: row.phone_id, field: 'purchase_cost', value: String($event ?? '') })"
+                />
+              </template>
+            </el-table-column>
+            <el-table-column
+              v-if="canViewField('sale_price')"
+              label="销售价格 *"
+              min-width="150"
+            >
+              <template #default="{ row }">
+                <el-input-number
+                  :model-value="numberValue(row.sale_price)"
+                  class="price-input-number"
+                  :min="0.01"
+                  :step="0.01"
+                  :precision="2"
+                  :controls="false"
+                  placeholder="请输入"
+                  @update:model-value="emit('update-batch-item', { phoneId: row.phone_id, field: 'sale_price', value: String($event ?? '') })"
+                />
+              </template>
+            </el-table-column>
+            <el-table-column
+              v-if="canViewPrice"
+              label="单台利润"
+              min-width="120"
+            >
+              <template #default="{ row }">
+                <span class="item-profit">¥{{ itemProfit(row) }}</span>
+              </template>
+            </el-table-column>
+          </el-table>
         </div>
       </div>
 
@@ -185,7 +254,7 @@
             />
           </div>
           <div
-            v-if="canViewField('payment_method') && (batchSaleForm.payment_method === 'mobile' || batchSaleForm.payment_method === 'transfer')"
+            v-if="canViewField('payment_method') && hasPaymentChannelOptions(batchSaleForm.payment_method)"
             class="form-group"
           >
             <label class="form-label">支付渠道</label>
@@ -198,23 +267,22 @@
           </div>
         </div>
         <div
-          v-if="canViewField('transaction_no') && (batchSaleForm.payment_method === 'mobile' || batchSaleForm.payment_method === 'transfer')"
+          v-if="canViewField('transaction_no') && requiresTransactionNumber(batchSaleForm.payment_method)"
           class="form-row"
         >
           <div class="form-group">
             <label class="form-label">交易流水号</label>
-            <input
+            <el-input
               v-model="batchSaleForm.transaction_no"
-              type="text"
-              class="form-control"
+              class="batch-transaction-input"
               placeholder="请输入交易流水号（可选）"
-            >
+            />
           </div>
         </div>
       </div>
 
       <div
-        v-if="batchSaleForm.sale_price && canViewPrice"
+        v-if="batchItems.length > 0 && batchItems.some(item => Number(item.sale_price) > 0) && canViewPrice"
         class="form-section"
       >
         <h4>利润计算</h4>
@@ -239,48 +307,25 @@
         </div>
       </div>
 
-      <div class="form-actions">
-        <el-button
-          type="success"
-          :disabled="submitting"
-          :class="{ 'btn-loading': submitting }"
-          @click="emit('submit')"
-          @keydown.enter.prevent
-        >
-          <InlineLoading
-            v-if="submitting"
-            text="处理中..."
-            size="small"
-            variant="inherit"
-          />
-          <template v-else>
-            <i class="fas fa-shopping-cart" />
-            <span>确认批量销售</span>
-          </template>
-        </el-button>
-        <el-button
-          type="info"
-          plain
-          @click="emit('clear-selection')"
-        >
-          取消
-        </el-button>
-      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { TIME_FORMATS } from '@/utils/time'
 import { computed, ref } from 'vue'
 import CustomerNameLockInput from '@/components/common/CustomerNameLockInput.vue'
 import CustomerSearchDropdown from '@/components/common/CustomerSearchDropdown.vue'
 import { PaymentChannelSelect, PaymentMethodSelect } from '@/components/payment'
+import { hasPaymentChannelOptions, requiresTransactionNumber } from '@/constants/paymentMethods'
+import { formatAmount } from '@/utils/format'
 import type { Operator, Store } from '@/types'
-import type { BatchCustomer, BatchSaleFormData } from '../types'
+import type { BatchCustomer, BatchSaleFormData, BatchSaleItem } from '../types'
 
 const props = defineProps<{
   form: BatchSaleFormData
   selectedCount: number
+  batchItems: BatchSaleItem[]
   selectedCustomer: BatchCustomer | null
   customerSearchResults: BatchCustomer[]
   customerSearching: boolean
@@ -306,23 +351,49 @@ const emit = defineEmits<{
   'disable-name-edit': []
   'save-name': []
   'clear-customer': []
+  'continue-selection': []
+  'apply-unified-sale-price': [value: string]
+  'update-batch-item': [payload: {
+    phoneId: number
+    field: 'purchase_cost' | 'sale_price'
+    value: string
+  }]
   'phone-input': []
   'phone-blur': []
   'select-customer': [customer: BatchCustomer]
   'create-customer': []
-  'apple-id-input': [event: Event]
+  'apple-id-input': [value: string]
+  'operator-search': [value: string]
   submit: []
 }>()
 
 const batchSaleForm = props.form
 const customerNameInputRef = ref<HTMLInputElement | null>(null)
+const unifiedSalePrice = computed<number | undefined>({
+  get: () => {
+    const value = Number(batchSaleForm.sale_price)
+    return Number.isFinite(value) && value > 0 ? value : undefined
+  },
+  set: value => {
+    batchSaleForm.sale_price = value === undefined ? '' : String(value)
+  }
+})
+
+const numberValue = (value: string) => {
+  const parsed = Number(value)
+  return value !== '' && Number.isFinite(parsed) ? parsed : undefined
+}
 const showCustomerSearch = computed({
   get: () => props.showCustomerSearch,
   set: value => emit('update:showCustomerSearch', value)
 })
-const totalRevenue = computed(() => (
-  Number.parseFloat(String(batchSaleForm.sale_price || 0)) * props.selectedCount
-).toFixed(2))
+const totalRevenue = computed(() => props.batchItems.reduce((sum, item) => (
+  sum + (Number.parseFloat(item.sale_price) || 0)
+), 0))
+
+const itemProfit = (item: BatchSaleItem) => (
+  formatAmount((Number.parseFloat(item.sale_price) || 0) - (Number.parseFloat(item.purchase_cost) || 0))
+)
 
 defineExpose({ input: customerNameInputRef })
 </script>

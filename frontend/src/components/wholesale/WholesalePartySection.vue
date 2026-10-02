@@ -79,8 +79,8 @@
               v-model="formData.sale_time"
               type="date"
               placeholder="选择销售时间"
-              format="YYYY-MM-DD"
-              value-format="YYYY-MM-DD"
+              :format="TIME_FORMATS.DATE"
+              :value-format="TIME_FORMATS.DATE"
               class="w-full"
             />
           </el-form-item>
@@ -91,12 +91,16 @@
               v-model="formData.salesperson_name"
               placeholder="选择销售员"
               filterable
+              remote
+              reserve-keyword
+              :remote-method="searchSalespeople"
               allow-create
               clearable
               class="w-full"
+              @focus="searchSalespeople('')"
             >
               <el-option
-                v-for="user in users"
+                v-for="user in operatorOptions"
                 :key="user.id"
                 :label="user.name"
                 :value="user.name"
@@ -234,8 +238,8 @@
               v-model="formData.sale_time"
               type="date"
               placeholder="选择划拨时间"
-              format="YYYY-MM-DD"
-              value-format="YYYY-MM-DD"
+              :format="TIME_FORMATS.DATE"
+              :value-format="TIME_FORMATS.DATE"
               class="w-full"
             />
           </el-form-item>
@@ -246,12 +250,16 @@
               v-model="formData.salesperson_name"
               placeholder="选择销售员"
               filterable
+              remote
+              reserve-keyword
+              :remote-method="searchSalespeople"
               allow-create
               clearable
               class="w-full"
+              @focus="searchSalespeople('')"
             >
               <el-option
-                v-for="user in users"
+                v-for="user in operatorOptions"
                 :key="user.id"
                 :label="user.name"
                 :value="user.name"
@@ -325,9 +333,12 @@
 </template>
 
 <script setup lang="ts">
+import { TIME_FORMATS } from '@/utils/time'
+import { ref, watch } from 'vue'
 import CustomerNameLockInput from '@/components/common/CustomerNameLockInput.vue'
 import CustomerSearchDropdown from '@/components/common/CustomerSearchDropdown.vue'
 import { PaymentChannelSelect, PaymentMethodSelect } from '@/components/payment'
+import { searchOperators } from '@/services/reference-options'
 import type { Store, User } from '@/types'
 import type { WholesaleCustomerSearchItem, WholesaleFormData } from './types'
 
@@ -359,7 +370,33 @@ interface Props {
   handlePaymentChannelChange: () => void
 }
 
-defineProps<Props>()
+const props = defineProps<Props>()
+
+const operatorOptions = ref<User[]>([...props.users])
+
+watch(() => props.users, (users) => {
+  operatorOptions.value = [...users]
+}, { deep: true })
+
+const searchSalespeople = async (keyword = '') => {
+  try {
+    const response = await searchOperators({
+      keyword: keyword.trim() || undefined,
+      page: 1,
+      page_size: 20
+    })
+    if (response.success && Array.isArray(response.data)) {
+      operatorOptions.value = response.data.map(item => ({
+        id: Number(item.id || 0),
+        name: String(item.name || item.username || ''),
+        username: String(item.username || ''),
+        status: Number(item.status) === 1 ? 'active' : 'inactive'
+      })) as User[]
+    }
+  } catch {
+    operatorOptions.value = []
+  }
+}
 
 </script>
 

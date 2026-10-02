@@ -165,7 +165,7 @@ input.form-control:focus, textarea.form-control:focus {
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .search-row {
     flex-direction: column;
     align-items: stretch;
@@ -228,12 +228,12 @@ input.form-control:focus, textarea.form-control:focus {
   padding: 12px;
 
   /* 移动端去除左右内边距，让内容占据全屏宽度 */
-  @media (max-width: 768px) {
+  @media (max-width: 767px) {
     padding: 12px 0;
   }
 
   /* 小屏幕优化 */
-  @media (max-width: 480px) {
+  @media (max-width: 479px) {
     padding: 8px 0;
   }
 
@@ -249,30 +249,17 @@ input.form-control:focus, textarea.form-control:focus {
   -ms-overflow-style: none;
 }
 
-.loading-state,
-.empty-state {
+.loading-state {
   text-align: center;
   padding: 60px 20px;
   color: var(--tf-color-muted);
 }
 
-.loading-state i,
-.empty-state i {
+.loading-state i {
   font-size: 48px;
   margin-bottom: 16px;
   display: block;
   opacity: 0.5;
-}
-
-.empty-state h3 {
-  margin: 0 0 8px 0;
-  font-size: 18px;
-  color: var(--tf-color-gray-bootstrap-700);
-}
-
-.empty-state p {
-  margin: 0;
-  font-size: 14px;
 }
 
 .grid-container {
@@ -282,7 +269,7 @@ input.form-control:focus, textarea.form-control:focus {
   width: 100%;
 
   /* 仅在移动端确保占据全宽 */
-  @media (max-width: 768px) {
+  @media (max-width: 767px) {
     width: 100%;
     margin-left: 0;
     margin-right: 0;
@@ -292,7 +279,7 @@ input.form-control:focus, textarea.form-control:focus {
   }
 
   /* 小屏幕优化 */
-  @media (max-width: 480px) {
+  @media (max-width: 479px) {
     padding-left: 0;
     padding-right: 0;
   }
@@ -305,7 +292,7 @@ input.form-control:focus, textarea.form-control:focus {
 }
 
 /* 移动端优化 - 更小的卡片 */
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .grid-container {
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
     gap: 12px;
@@ -313,7 +300,7 @@ input.form-control:focus, textarea.form-control:focus {
 }
 
 /* 超小屏幕优化 */
-@media (max-width: 480px) {
+@media (max-width: 479px) {
   
   .grid-container {
     grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
@@ -414,12 +401,12 @@ input.form-control:focus, textarea.form-control:focus {
   padding: 16px 20px;
 
   /* 移动端调整 */
-  @media (max-width: 768px) {
+  @media (max-width: 767px) {
     padding: 12px 14px;
   }
 
   /* 小屏幕优化 */
-  @media (max-width: 480px) {
+  @media (max-width: 479px) {
     padding: 12px;
   }
 
@@ -704,18 +691,6 @@ input.form-control:focus, textarea.form-control:focus {
   text-align: center;
   padding: 40px;
   color: var(--admin-record-count-color);
-}
-
-.empty-cell-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-}
-
-.empty-cell-content i {
-  font-size: 2rem;
-  margin-bottom: 8px;
 }
 
 .loading-cell {
@@ -1269,7 +1244,7 @@ input.form-control:focus, textarea.form-control:focus {
 }
 
 /* 移动端适配 */
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .form-row {
     grid-template-columns: 1fr;
   }
@@ -1356,7 +1331,7 @@ input.form-control:focus, textarea.form-control:focus {
 }
 
 /* 响应式设计 */
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .stats-grid {
     grid-template-columns: repeat(2, 1fr);
     gap: 16px;
@@ -1401,7 +1376,7 @@ input.form-control:focus, textarea.form-control:focus {
   }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 479px) {
 
   .stats-grid {
     grid-template-columns: 1fr;
@@ -1471,7 +1446,7 @@ input.form-control:focus, textarea.form-control:focus {
 }
 
 /* 响应式设计 - 移动端优化 */
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .action-buttons {
     flex-direction: row;
     width: 100%;
@@ -1609,7 +1584,7 @@ input.form-control:focus, textarea.form-control:focus {
 }
 
 /* 响应式设计 */
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .customer-search-results {
     max-height: 250px;
   }
@@ -1829,7 +1804,7 @@ input.form-control:focus, textarea.form-control:focus {
   padding: 16px;
 
   /* 超小屏幕优化 */
-  @media (max-width: 480px) {
+  @media (max-width: 479px) {
     padding: 10px;
     margin-bottom: 12px;
   }
@@ -1847,7 +1822,7 @@ input.form-control:focus, textarea.form-control:focus {
   gap: 8px;
 
   /* 超小屏幕优化 */
-  @media (max-width: 480px) {
+  @media (max-width: 479px) {
     gap: 6px;
   }
 
@@ -2101,7 +2076,7 @@ input.form-control:focus, textarea.form-control:focus {
 }
 
 /* 移动端抽屉中的输入框样式优化 */
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .drawer-content {
     max-width: none; /* 移动端允许占满宽度 */
     padding: 16px 20px; /* 减小内边距 */
@@ -2119,7 +2094,7 @@ input.form-control:focus, textarea.form-control:focus {
 }
 
 /* 小屏幕手机优化 */
-@media (max-width: 480px) {
+@media (max-width: 479px) {
   .drawer-content {
     padding: 16px 20px; /* 更小的内边距 */
   }
@@ -2313,7 +2288,7 @@ input.form-control:focus, textarea.form-control:focus {
 }
 
 /* 响应式调整 */
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .dropdown-list {
     max-height: 150px;
   }

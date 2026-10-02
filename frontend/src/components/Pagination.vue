@@ -446,7 +446,7 @@ onUnmounted(() => {
 }
 
 // 响应式设计
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .tf-pagination {
     justify-content: center;
     gap: 8px;
@@ -520,7 +520,7 @@ onUnmounted(() => {
 }
 
 // 超小屏幕优化
-@media (max-width: 480px) {
+@media (max-width: 479px) {
   .tf-pagination {
     justify-content: center;
     gap: 6px;

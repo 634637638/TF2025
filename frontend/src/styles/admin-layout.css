@@ -186,7 +186,7 @@
   --admin-data-table-badge-radius: 999px;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   :root {
     --admin-page-gap-x: 6px;
     --admin-page-gap-y: 8px;
@@ -1125,7 +1125,7 @@
   box-shadow: inset 0 2px 0 var(--tf-color-blue-500), inset 0 -2px 0 var(--tf-color-blue-500);
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .admin-page {
     width: 100%;
     max-width: 100vw;
@@ -1326,7 +1326,7 @@
   }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 479px) {
   .admin-page .stat-card,
   .admin-page .el-card.stat-card,
   .admin-page .module-stat-card {

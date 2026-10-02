@@ -1096,7 +1096,7 @@ onUnmounted(() => {
 }
 
 // 响应式设计
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .shop-config-page {
     padding: 0;
     width: 100%;
@@ -1254,7 +1254,7 @@ onUnmounted(() => {
   }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 479px) {
   .config-section {
     padding: 12px;
   }
@@ -1273,7 +1273,7 @@ onUnmounted(() => {
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   :global(.shop-config-map-dialog .mobile-dialog-sheet-body) {
     padding: 12px !important;
   }

@@ -1,66 +1,18 @@
-# 组件开发文档索引
+# 组件专题索引
 
-本目录包含 TF2025 项目组件开发相关的指南和规范。
+本目录保留组件专题说明和早期实现记录，不定义全站强制规范。当前强制前端规范见[前端规范索引](../frontend/INDEX.md)。
 
-## UI 组件
+## 组件专题
 
-### 模态框（Modal）
-- [模态框指南](modal-guide.md) - 模态框组件使用规范
-- [样式标准](style-standards.md) - 统一样式开发标准
-- [样式使用指南](style-usage-guide.md) - 样式最佳实践
+- [模态框使用说明](modal-guide.md)
+- [查询详情弹窗说明](query-modals.md)
+- [样式使用说明](style-usage-guide.md)
+- [AOS 滚动动画接入记录](AOS_SCROLL_ANIMATION.md)
 
-## 组件开发规范
+## 样式资料迁移
 
-### 组件结构
-```vue
-<template>
-  <!-- 模板内容 -->
-</template>
+- [旧样式规范入口](style-standards.md) - 指向现行样式规范。
+- [旧样式使用指南入口](style-usage-guide.md) - 指向现行令牌、按钮、页面和组件规范。
+- [组件代码示例](../examples/INDEX.md)
 
-<script setup lang="ts">
-// 1. 导入依赖
-// 2. Props 定义
-// 3. Emits 定义
-// 4. 响应式数据
-// 5. 计算属性
-// 6. 方法定义
-// 7. 生命周期
-</script>
-
-<style lang="scss" scoped>
-// 组件样式
-</style>
-```
-
-### 组件命名
-- **文件名**：kebab-case（如：`sales-order-list.vue`）
-- **组件名**：PascalCase（如：`SalesOrderList`）
-- **CSS 类**：BEM 命名（如：`.sales-order__item`）
-
-## 常用组件示例
-
-### 表单组件
-```vue
-<el-form ref="formRef" :model="formData" :rules="formRules">
-  <el-form-item label="客户" prop="customer_id">
-    <el-select v-model="formData.customer_id" />
-  </el-form-item>
-</el-form>
-```
-
-### 表格组件
-```vue
-<el-table :data="tableData" v-loading="loading">
-  <el-table-column prop="name" label="名称" />
-  <el-table-column label="操作">
-    <template #default="{ row }">
-      <el-button @click="handleEdit(row)">编辑</el-button>
-    </template>
-  </el-table-column>
-</el-table>
-```
-
-## 相关文档
-
-- [开发指南](../guides/)
-- [权限系统](../permissions/)
+组件指南用于解释具体实现，不覆盖前端强制规范；冲突时以[前端规范索引](../frontend/INDEX.md)及其清单为准。

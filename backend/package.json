@@ -7,6 +7,7 @@
     "prestart": "node scripts/check-runtime-assets.js",
     "start": "node server.js",
     "check:runtime-assets": "node scripts/check-runtime-assets.js",
+    "audit:deprecated-routes": "node scripts/audit-deprecated-routes.js",
     "migrate:subsidy-photos": "node scripts/migrate-subsidy-photos.js",
     "migrate:phone-media": "node scripts/migrate-phone-media.js",
     "migrate:phone-available-status": "node scripts/migrate-phone-available-status.js",

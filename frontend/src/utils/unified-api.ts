@@ -10,7 +10,7 @@ import { ErrorLevel, ErrorType } from './error-boundary'
 import { clearPersistedAuthData, setBackendDisconnectedState } from './auth-session'
 import { showElementError, showElementNotification, showElementSuccess, showElementWarning } from './element-feedback'
 import { storage } from '@/services/storage'
-import { AUTH_STORAGE_KEYS, ROUTER_STORAGE_KEYS, SECURITY_STORAGE_KEYS } from '@/constants/storage'
+import { AUTH_STORAGE_KEYS, CACHE_STORAGE_KEYS, ROUTER_STORAGE_KEYS, SECURITY_STORAGE_KEYS } from '@/constants/storage'
 import type { ApiResponse as GlobalApiResponse } from '@/types'
 import logger from '@/utils/logger'
 import { clearCache as clearPageCache } from '@/composables/usePageCache'
@@ -407,11 +407,6 @@ class UnifiedApiManager {
 
   private async performTokenRefresh(): Promise<boolean> {
     const authData = this.readPersistedAuthData()
-    const storedRefreshToken = authData?.refreshToken
-
-    if (!storedRefreshToken) {
-      return false
-    }
 
     try {
       const refreshClient = axios.create({
@@ -421,16 +416,13 @@ class UnifiedApiManager {
         withCredentials: true
       })
 
-      const response = await refreshClient.post('/auth/refresh', {
-        refreshToken: storedRefreshToken
-      })
+      const response = await refreshClient.post('/auth/refresh', undefined)
 
       const payload = response?.data?.data && typeof response.data.data === 'object'
         ? response.data.data
         : response?.data
 
       const nextToken = payload?.token || payload?.accessToken || ''
-      const nextRefreshToken = payload?.refreshToken || storedRefreshToken
 
       if (!response?.data?.success || !nextToken) {
         return false
@@ -441,7 +433,6 @@ class UnifiedApiManager {
         ...payload,
         token: nextToken,
         accessToken: nextToken,
-        refreshToken: nextRefreshToken,
         user: payload?.user || authData?.user || null,
         roles: payload?.user?.roles || authData?.roles || [],
         permissions: payload?.accessProfile || payload?.permissions || authData?.permissions || [],
@@ -879,7 +870,6 @@ class UnifiedApiManager {
     const exactExemptPaths = new Set([
       '/csrf/token',
       '/csrf/verify',
-      '/csrf/csrf-token',
       '/auth/login',
       '/auth/refresh',
       '/auth/init-admin',
@@ -1358,8 +1348,11 @@ class UnifiedApiManager {
   private clearAuthData(): void {
     storage.remove('access_token', 'session')
     storage.remove(AUTH_STORAGE_KEYS.TOKEN, 'session')
+    storage.remove(AUTH_STORAGE_KEYS.AUTH, 'session')
     storage.remove(AUTH_STORAGE_KEYS.AUTH, 'local')
     storage.remove(SECURITY_STORAGE_KEYS.CSRF_TOKEN, 'session')
+    storage.remove(SECURITY_STORAGE_KEYS.CSRF_TOKEN, 'local')
+    storage.remove(CACHE_STORAGE_KEYS.PERMISSIONS_CACHE, 'local')
     this.csrfToken = null
     this.csrfTokenExpiresAt = 0
   }

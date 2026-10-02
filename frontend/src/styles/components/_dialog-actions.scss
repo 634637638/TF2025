@@ -1,9 +1,9 @@
 :root {
   --tf-dialog-action-min-width: 80px;
   --tf-dialog-action-height: 40px;
-  --tf-dialog-action-padding-x: 16px;
+  --tf-dialog-action-padding-x: var(--tf-space-4);
   --tf-dialog-action-gap: 10px;
-  --tf-dialog-action-mobile-gap: 8px;
+  --tf-dialog-action-mobile-gap: var(--tf-space-2);
 }
 
 /*
@@ -171,7 +171,7 @@
   border-color: var(--tf-button-success-hover-border) !important;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .el-message-box__btns,
   :where(
     .tf-dialog-actions,

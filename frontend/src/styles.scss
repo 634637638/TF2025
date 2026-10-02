@@ -7,6 +7,8 @@
 @use './styles/components/_table.scss' as *;
 @use './styles/components/_pagination.scss' as *;
 @use './styles/components/_tabs.scss' as *;
+@use './styles/components/_print.scss' as *;
+@use './styles/components/_drawer.scss' as *;
 
 /* 全局样式重置 */
 * {
@@ -160,6 +162,28 @@ html {
   z-index: 4001 !important;
 }
 
+/* 金额/价格输入不显示增减按钮；数量、分页和排序控件不使用这些 class。 */
+.price-input.el-input input[type='number'],
+.price-input-number.el-input-number input[type='number'] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.price-input.el-input input[type='number']::-webkit-outer-spin-button,
+.price-input.el-input input[type='number']::-webkit-inner-spin-button,
+.price-input-number.el-input-number input[type='number']::-webkit-outer-spin-button,
+.price-input-number.el-input-number input[type='number']::-webkit-inner-spin-button {
+  margin: 0;
+  appearance: none;
+}
+
+.price-input-number.el-input-number .el-input-number__increase,
+.price-input-number.el-input-number .el-input-number__decrease,
+.price-input.el-input-number .el-input-number__increase,
+.price-input.el-input-number .el-input-number__decrease {
+  display: none;
+}
+
 .tf2025-form-popper .el-select-dropdown__item,
 .tf2025-form-popper .el-picker-panel__shortcut {
   min-height: 40px;
@@ -254,7 +278,7 @@ html {
   }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 479px) {
   .tf2025-form-popper.el-popper,
   .tf2025-form-popper.el-select__popper,
   .tf2025-form-popper.el-picker__popper {
@@ -407,7 +431,7 @@ html {
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .search-section,
   .table-section {
     width: 100% !important;
@@ -430,7 +454,7 @@ html {
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .mobile-action-row td {
     padding: 6px 4px 10px !important;
     background: linear-gradient(180deg, var(--tf-color-surface-blue) 0%, var(--tf-color-indigo-surface-alt) 100%) !important;
@@ -537,15 +561,15 @@ html {
 
 /* 阴影类 */
 .shadow-sm {
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  box-shadow: var(--tf-shadow-card);
 }
 
 .shadow {
-  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  box-shadow: var(--tf-shadow-popover);
 }
 
 .shadow-lg {
-  box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+  box-shadow: var(--tf-shadow-dialog);
 }
 
 /* 边框类 */
@@ -571,19 +595,19 @@ html {
 
 /* 圆角类 */
 .rounded {
-  border-radius: 4px;
+  border-radius: var(--tf-radius-control);
 }
 
 .rounded-lg {
-  border-radius: 8px;
+  border-radius: var(--tf-radius-card);
 }
 
 .rounded-xl {
-  border-radius: 12px;
+  border-radius: var(--tf-radius-panel);
 }
 
 .rounded-2xl {
-  border-radius: 16px;
+  border-radius: var(--tf-radius-dialog);
 }
 
 /* 显示类 */
@@ -868,7 +892,7 @@ html {
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .d-md-none {
     display: none;
   }
@@ -886,7 +910,7 @@ html {
   }
 }
 
-@media (max-width: 1023px) {
+@media (max-width: 1024px) {
   .d-lg-none {
     display: none;
   }
@@ -1186,7 +1210,7 @@ body .el-message {
   top: 20px !important;
   left: 50% !important;
   transform: translateX(-50%) !important;
-  z-index: 6000 !important;
+  z-index: var(--tf-z-toast) !important;
   margin: 0 !important;
   border-radius: 6px !important;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
@@ -1324,7 +1348,7 @@ body .el-message .el-message__content {
 .el-notification,
 .el-notification.right,
 .el-notification.left {
-  z-index: 6000 !important;
+  z-index: var(--tf-z-toast) !important;
 }
 
 /* ==================== 统一导入组件样式 ==================== */

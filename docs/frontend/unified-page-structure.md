@@ -33,9 +33,9 @@
         <h2>权限不足</h2>
         <p>您没有权限访问此页面</p>
         <p><strong>需要的权限：</strong>{{ modulePermission }}:view</p>
-        <button class="btn btn-primary" @click="router.back()">
+        <el-button type="default" class="tf-button--neutral" @click="router.back()">
           返回上一页
-        </button>
+        </el-button>
       </div>
     </div>
 
@@ -54,17 +54,17 @@
           <div class="header-actions">
             <div class="action-buttons">
               <slot name="header-actions">
-                <button class="btn btn-primary" @click="handleCreate" v-permission="'${modulePermission}:create'">
+                <el-button type="primary" class="tf-button--save" @click="handleCreate" v-permission="'${modulePermission}:create'">
                   <i class="fas fa-plus"></i>
                   <span>新增</span>
-                </button>
-                <button class="btn btn-outline-secondary" @click="handleRefresh" :disabled="loading">
+                </el-button>
+                <el-button class="tf-button--neutral" @click="handleRefresh" :disabled="loading">
                   <InlineLoading v-if="loading" text="刷新中..." size="small" variant="inherit" />
                   <template v-else>
                     <i class="fas fa-sync-alt"></i>
                     <span>刷新</span>
                   </template>
-                </button>
+                </el-button>
               </slot>
             </div>
           </div>
@@ -102,14 +102,14 @@
                 <slot name="search-filters" />
               </div>
               <div class="search-actions">
-                <button class="btn btn-primary" @click="handleSearch" :disabled="loading">
+                <el-button type="primary" class="tf-button--search" @click="handleSearch" :disabled="loading">
                   <i class="fas fa-search"></i>
                   搜索
-                </button>
-                <button class="btn btn-outline-secondary" @click="handleReset">
+                </el-button>
+                <el-button class="tf-button--neutral" @click="handleReset">
                   <i class="fas fa-redo"></i>
                   重置
-                </button>
+                </el-button>
               </div>
             </div>
           </div>
@@ -439,7 +439,7 @@ defineExpose({
     gap: 16px;
     align-items: flex-end;
 
-    @media (max-width: 768px) {
+    @media (max-width: 767px) {
       flex-direction: column;
       align-items: stretch;
     }
@@ -552,85 +552,9 @@ defineExpose({
   }
 }
 
-// 统一按钮样式
-.btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
-  border: 1px solid transparent;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 400;
-  line-height: 1.5;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  text-decoration: none;
-
-  &:focus {
-    outline: none;
-  }
-
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-}
-
-.btn-primary {
-  background: var(--el-color-primary);
-  border-color: var(--el-color-primary);
-  color: white;
-
-  &:hover:not(:disabled) {
-    background: var(--el-color-primary-dark-2);
-    border-color: var(--el-color-primary-dark-2);
-  }
-}
-
-.btn-outline-secondary {
-  background: transparent;
-  border-color: var(--el-border-color);
-  color: var(--el-text-color-primary);
-
-  &:hover:not(:disabled) {
-    background: var(--el-bg-color-page);
-    border-color: var(--el-border-color-hover);
-  }
-}
-
-.btn-success {
-  background: var(--el-color-success);
-  border-color: var(--el-color-success);
-  color: white;
-
-  &:hover:not(:disabled) {
-    background: var(--el-color-success-dark-2);
-    border-color: var(--el-color-success-dark-2);
-  }
-}
-
-.btn-warning {
-  background: var(--el-color-warning);
-  border-color: var(--el-color-warning);
-  color: white;
-
-  &:hover:not(:disabled) {
-    background: var(--el-color-warning-dark-2);
-    border-color: var(--el-color-warning-dark-2);
-  }
-}
-
-.btn-danger {
-  background: var(--el-color-danger);
-  border-color: var(--el-color-danger);
-  color: white;
-
-  &:hover:not(:disabled) {
-    background: var(--el-color-danger-dark-2);
-    border-color: var(--el-color-danger-dark-2);
-  }
-}
+// 统一按钮样式见 docs/frontend/button-standards.md。
+// 页面示例只能使用 Element Plus 语义类型和公共 tf-button-* class，
+// 不在页面或示例中复制 .btn-* 的颜色、尺寸和状态规则。
 
 // 统一表单控件样式
 .form-control {
@@ -654,7 +578,7 @@ defineExpose({
 }
 
 // 响应式设计
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .page-header {
     padding: 0 16px;
 
@@ -803,10 +727,10 @@ export const usePageState = () => {
 - [Element Plus 组件文档](https://element-plus.org/)
 - [Vue 3 组合式 API](https://vuejs.org/guide/extras/composition-api-faq.html)
 - [TF2025 分页组件规范](./pagination-standards.md)
-- [TF2025 权限系统指南](./permission-system-guide.md)
+- [TF2025 权限系统指南](../permissions/permission-system-guide.md)
 
 ---
 
-**更新日期**：2025-12-18
+**更新日期**：2026-10-01
 **版本**：v1.0.0
 **维护者**：TF2025 开发团队

@@ -59,8 +59,8 @@
           v-model="formData.inventory_time"
           type="date"
           placeholder="请选择入库日期"
-          format="YYYY-MM-DD"
-          value-format="YYYY-MM-DD"
+          :format="TIME_FORMATS.DATE"
+          :value-format="TIME_FORMATS.DATE"
           teleported
           popper-class="tf2025-form-popper"
         />
@@ -101,6 +101,7 @@
 </template>
 
 <script setup lang="ts">
+import { TIME_FORMATS } from '@/utils/time'
 import type { Supplier, Store } from '@/types/system'
 import type { StockInFormModel } from './types'
 

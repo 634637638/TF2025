@@ -5,6 +5,7 @@
 
 import { ref, computed, readonly, inject, type App } from 'vue'
 import logger from '@/utils/logger'
+import { TimeUtil } from '@/utils/time'
 
 const sanitizeResourceUrl = (value: unknown): string => {
   if (typeof value !== 'string' || !value) return 'unknown resource'
@@ -432,7 +433,7 @@ export class ErrorBoundary {
     logger.error(`[ErrorBoundary] ${error.level.toUpperCase()}: ${error.message}`, {
       id: error.id,
       type: error.type,
-      timestamp: new Date(error.timestamp).toISOString(),
+      timestamp: TimeUtil.toISOString(error.timestamp),
       url: error.url,
       context: error.context,
       stack: error.stack

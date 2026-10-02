@@ -6,6 +6,12 @@
  * 统一使用 unifiedApi，自动处理公开接口（/public/）无需认证
  */
 import { unifiedApi } from '@/utils/unified-api'
+import {
+  getTemplateBrands,
+  getTemplateColors,
+  getTemplateMemories,
+  getModels as getReferenceModels
+} from '@/services/reference-options'
 
 type UnknownRecord = Record<string, unknown>
 
@@ -131,7 +137,7 @@ export async function getPublicMarketingLexicon() {
  * 获取品牌列表（管理端）
  */
 export async function getAdminBrands() {
-  const response = await unifiedApi.get('/shop/base-data/brands')
+  const response = await getTemplateBrands()
   return pickArray<Brand>(response)
 }
 
@@ -139,9 +145,7 @@ export async function getAdminBrands() {
  * 获取型号列表（管理端）
  */
 export async function getAdminModels(brandId?: number) {
-  const response = await unifiedApi.get('/shop/base-data/models', {
-    params: brandId ? { brand_id: brandId } : undefined
-  })
+  const response = await getReferenceModels({ brandId })
   return pickArray<Model>(response, ['models'])
 }
 
@@ -149,7 +153,7 @@ export async function getAdminModels(brandId?: number) {
  * 获取颜色列表（管理端）
  */
 export async function getAdminColors() {
-  const response = await unifiedApi.get('/shop/base-data/colors')
+  const response = await getTemplateColors()
   return pickArray<Color>(response, ['colors'])
 }
 
@@ -157,7 +161,7 @@ export async function getAdminColors() {
  * 获取内存列表（管理端）
  */
 export async function getAdminMemories() {
-  const response = await unifiedApi.get('/shop/base-data/memories')
+  const response = await getTemplateMemories()
   return pickArray<Memory>(response, ['memories'])
 }
 

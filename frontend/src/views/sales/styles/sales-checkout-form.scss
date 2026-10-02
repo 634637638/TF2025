@@ -258,7 +258,7 @@
   color: var(--tf-color-muted);
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .form-grid {
     grid-template-columns: 1fr;
     gap: 16px;

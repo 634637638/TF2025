@@ -24,19 +24,12 @@
           <el-button
             v-if="canViewField('system_info.operations')"
             type="info"
+            :loading="refreshing"
             :disabled="refreshing"
             @click="refreshSystemStatus"
           >
-            <InlineLoading
-              v-if="refreshing"
-              text="刷新中..."
-              size="small"
-              variant="inherit"
-            />
-            <template v-else>
-              <i class="fas fa-sync-alt" />
-              <span>刷新</span>
-            </template>
+            <i class="fas fa-sync-alt" />
+            <span>{{ refreshing ? '刷新中...' : '刷新' }}</span>
           </el-button>
         </template>
       </PageHeader>
@@ -921,6 +914,7 @@
 </template>
 
 <script setup lang="ts">
+import { confirmAction } from '@/utils/message-box'
 import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
 import { Setting, Lock, Plus, Edit, Delete } from '@element-plus/icons-vue'
@@ -935,7 +929,6 @@ import { PermissionGate, PageHeader } from '@/components/base'
 import InlineLoading from '@/components/InlineLoading.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import Image from '@/components/Image.vue'
-import { ElMessageBox } from 'element-plus'
 import type { FormInstance } from 'element-plus'
 import { ValidationRules } from '@/composables'
 import PhoneWarningConfigView from '@/views/system/phone-warning-config/PhoneWarningConfigView.vue'
@@ -1025,7 +1018,7 @@ const refreshSystemStatus = async () => {
   try {
     unifiedApi.clearCache('/system')
     await Promise.all([
-      siteSettingsStore.loadSiteSettings(true),
+      siteSettingsStore.loadSiteSettings(true, true),
       loadScreenLockSettings(),
       ...(activeTab.value === 'returngoods' ? [returngoodsRef.value?.reload?.()] : [])
     ])
@@ -1233,7 +1226,7 @@ const savePriceContact = async () => {
 
 const removePriceContact = async (index: number) => {
   if (!canUpdateSettings.value) return
-  const confirmed = await ElMessageBox.confirm('确定删除这位报价联系人吗？', '删除确认', { type: 'warning' }).catch(() => false)
+  const confirmed = await confirmAction('确定删除这位报价联系人吗？', '删除确认', { type: 'warning' }).catch(() => false)
   if (!confirmed) return
   const previousValue = siteSettings.value.publicPriceContacts
   priceContactsEditor.value.splice(index, 1)
@@ -1307,7 +1300,7 @@ const saveSiteSettings = async () => {
       lastSavedTime.value = TimeUtil.nowFormatted(TIME_FORMATS.DATETIME)
 
       // 保存成功后立即重新加载站点设置以确保最新数据
-      await siteSettingsStore.loadSiteSettings(true)
+      await siteSettingsStore.loadSiteSettings(true, true)
       syncPriceContactsEditor()
 
       if (result.unsupportedFields?.length) {
@@ -1387,7 +1380,7 @@ const handleSiteLogoFileChange = async (event: Event) => {
     }
 
     siteSettingsStore.settings.logoUrl = response.data.url
-    await siteSettingsStore.loadSiteSettings(true)
+    await siteSettingsStore.loadSiteSettings(true, true)
     clearLocalSiteLogoPreview()
     success('Logo上传成功')
   } catch (err: any) {
@@ -1408,7 +1401,7 @@ const clearSiteLogo = async () => {
   }
 
   try {
-    await ElMessageBox.confirm(
+    await confirmAction(
       '确定要清空当前站点 Logo 吗？',
       '清空 Logo',
       {
@@ -1430,7 +1423,7 @@ const clearSiteLogo = async () => {
         throw new Error('清空失败')
       }
 
-      await siteSettingsStore.loadSiteSettings(true)
+      await siteSettingsStore.loadSiteSettings(true, true)
       success('Logo已清空')
     } finally {
       closeLoading()
@@ -1582,7 +1575,7 @@ const deletePassword = async (id: number) => {
   }
 
   try {
-    await ElMessageBox.confirm('确定要删除这个密码吗？', '提示', {
+    await confirmAction('确定要删除这个密码吗？', '提示', {
       confirmButtonText: '确定',
       cancelButtonText: '取消',
       type: 'warning'
@@ -1622,7 +1615,7 @@ onMounted(async () => {
 
       // 加载数据
       await Promise.all([
-        siteSettingsStore.loadSiteSettings(true), // 强制重新加载站点设置
+        siteSettingsStore.loadSiteSettings(true, true), // 强制重新加载完整站点设置
         loadScreenLockSettings(), // 加载锁屏设置
         ...(canManageInventoryPasswords.value ? [loadInventoryPasswords()] : [])
       ])
@@ -1978,7 +1971,7 @@ onBeforeUnmount(() => {
 }
 
 /* 响应式设计 */
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .system-management {
     padding: 16px;
   }
@@ -2077,7 +2070,7 @@ onBeforeUnmount(() => {
   grid-column: 1 / -1;
 }
 
-@media (max-width: 480px) {
+@media (max-width: 479px) {
   .price-watermark-form {
     grid-template-columns: 1fr;
   }
@@ -2097,7 +2090,7 @@ onBeforeUnmount(() => {
   }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 479px) {
   .site-logo-actions :deep(.el-button) {
     width: 100%;
     flex-basis: 100%;
@@ -2309,7 +2302,7 @@ onBeforeUnmount(() => {
 }
 
 /* 响应式设计 - 锁屏设置 */
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .screen-lock-settings-wrapper {
     width: 100%;
     overflow: hidden;
@@ -2556,7 +2549,7 @@ onBeforeUnmount(() => {
   }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 479px) {
   .setting-card {
     padding: 12px;
     border-radius: 12px;

@@ -270,7 +270,7 @@ const handleCommand = (command: string) => {
 }
 
 /* 响应式 - 移动端隐藏 */
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .tabs-bar {
     display: none;
   }

@@ -5,6 +5,7 @@ import type {
   UploadedMediaItem
 } from './types'
 import { isVideoMedia } from '@/utils/media'
+import { isPdfFile, validateMediaFile } from '@/utils/upload-media'
 
 export const createDefaultPublishForm = (): PublishFormState => ({
   sale_price: null,
@@ -83,22 +84,8 @@ export const getPublishUploadEndpoint = (phoneId: number | null, file: File) =>
   `/phones/${phoneId}/${file.type.startsWith('video/') ? 'upload-video' : 'upload-image'}`
 
 export const validatePublishMediaFile = (file: File): string | null => {
-  const isImage = file.type.startsWith('image/')
-  const isVideo = file.type.startsWith('video/')
-
-  if (!isImage && !isVideo) {
-    return '只能上传图片或视频文件！'
-  }
-
-  if (isImage && file.size / 1024 / 1024 > 5) {
-    return `图片 "${file.name}" 大小不能超过 5MB！`
-  }
-
-  if (isVideo && file.size / 1024 / 1024 > 50) {
-    return `视频 "${file.name}" 大小不能超过 50MB！`
-  }
-
-  return null
+  const message = validateMediaFile(file)
+  return message ? `${file.name}：${message}` : null
 }
 
 export const filterValidPublishFiles = (fileList: PendingUploadFile[]) =>
@@ -106,7 +93,7 @@ export const filterValidPublishFiles = (fileList: PendingUploadFile[]) =>
     if (file.raw) {
       const isImage = file.raw.type?.startsWith('image/')
       const isVideo = file.raw.type?.startsWith('video/')
-      return isImage || isVideo
+      return isImage || isVideo || isPdfFile(file.raw) || isHeicFormat(file.raw)
     }
 
     return file.status === 'ready'

@@ -3,6 +3,8 @@
   "version": "1.0.0",
   "description": "TF2025 Fullstack Project",
   "scripts": {
+    "check:docs": "node scripts/check-docs.mjs",
+    "check:reference-options": "node scripts/check-reference-options.mjs",
     "dev": "node scripts/fix-ports.js",
     "dev:raw": "npm run check:standards && concurrently --names \"BACKEND,FRONTEND\" --prefix name \"npm run backend\" \"npm run frontend:raw\"",
     "dev:all": "node scripts/fix-ports.js",

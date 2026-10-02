@@ -20,21 +20,22 @@
         <span>点击选择图标</span>
       </div>
     </div>
-    <button
-      type="button"
+    <el-button
+      native-type="button"
       class="btn btn-secondary"
       @click="showSelector = true"
     >
       <i class="fas fa-icons" /> 选择
-    </button>
-    <button
+    </el-button>
+    <el-button
       v-if="modelValue"
-      type="button"
+      native-type="button"
+      type="warning"
       class="btn btn-warning"
       @click="clearIcon"
     >
       <i class="fas fa-times" /> 清除
-    </button>
+    </el-button>
 
     <!-- 图标选择器模态框 -->
     <MobileDialog
@@ -46,13 +47,12 @@
     >
       <div class="modal-body icon-selector-modal">
         <div class="icon-search">
-          <input 
+          <el-input
             v-model="searchQuery" 
-            type="text" 
-            class="form-control" 
+            class="icon-search-input"
             placeholder="搜索图标..."
             @input="filterIcons"
-          >
+          />
         </div>
 
         <div class="icon-categories">
@@ -107,26 +107,31 @@
       </div>
 
       <template #footer>
-        <div class="modal-footer">
-          <button
+        <div class="tf-dialog-actions modal-footer">
+          <el-button
+            native-type="button"
             class="btn btn-secondary"
             @click="closeSelector"
           >
             取消
-          </button>
-          <button
+          </el-button>
+          <el-button
+            native-type="button"
+            type="warning"
             class="btn btn-warning"
             @click="clearIcon"
           >
             清除图标
-          </button>
-          <button
+          </el-button>
+          <el-button
+            native-type="button"
+            type="primary"
             class="btn btn-primary"
             :disabled="!modelValue"
             @click="confirmSelection"
           >
             确认选择
-          </button>
+          </el-button>
         </div>
       </template>
     </MobileDialog>
@@ -456,42 +461,12 @@ onMounted(async () => {
   line-height: 1.2;
 }
 
-.no-results {
-  text-align: center;
-  padding: 40px;
-  color: var(--text-muted);
-}
-
-.no-results i {
-  font-size: 48px;
-  margin-bottom: 10px;
-}
-
-.modal-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  padding: 20px;
-  border-top: 1px solid var(--tf-color-gray-200-alt);
-  background: var(--tf-color-surface-muted);
-}
-
 .btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
 
-.form-control {
+.icon-search-input :deep(.el-input__wrapper) {
   width: 100%;
-  padding: 10px;
-  border: 1px solid var(--tf-color-gray-300-alt);
-  border-radius: 6px;
-  font-size: 14px;
-}
-
-.form-control:focus {
-  outline: none;
-  border-color: var(--tf-color-blue-bootstrap);
-  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
 }
 </style>

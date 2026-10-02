@@ -2,6 +2,7 @@
  * 手机库存预警配置业务逻辑层
  */
 const PhoneStockWarningRepository = require('../repositories/phone-stock-warning.repository')
+const { listActiveReferenceOptions, listModelsByBrand } = require('./reference-options.service')
 const log = require('../utils/log')
 
 class PhoneStockWarningService {
@@ -416,8 +417,11 @@ class PhoneStockWarningService {
    */
   async getBrands() {
     try {
-      const brands = await this.repository.getActiveBrands()
-      return this.createSuccessResponse('获取品牌列表成功', brands)
+      const brands = await listActiveReferenceOptions('brands')
+      return this.createSuccessResponse('获取品牌列表成功', brands.map(brand => ({
+        id: Number(brand.id),
+        name: String(brand.name || '').trim()
+      })))
     } catch (error) {
       log.error('获取品牌列表失败:', error)
       return this.createErrorResponse('获取品牌列表失败', 500)
@@ -433,8 +437,11 @@ class PhoneStockWarningService {
         return this.createErrorResponse('品牌ID不能为空', 400)
       }
 
-      const models = await this.repository.getActiveModelsByBrand(brandId)
-      return this.createSuccessResponse('获取型号列表成功', models)
+      const models = await listModelsByBrand({ brand_id: brandId, activeOnly: true })
+      return this.createSuccessResponse('获取型号列表成功', models.map(model => ({
+        id: Number(model.id),
+        name: String(model.name || '').trim()
+      })))
     } catch (error) {
       log.error('获取型号列表失败:', error)
       return this.createErrorResponse('获取型号列表失败', 500)
@@ -446,8 +453,11 @@ class PhoneStockWarningService {
    */
   async getColors() {
     try {
-      const colors = await this.repository.getActiveColors()
-      return this.createSuccessResponse('获取颜色列表成功', colors)
+      const colors = await listActiveReferenceOptions('colors')
+      return this.createSuccessResponse('获取颜色列表成功', colors.map(color => ({
+        id: Number(color.id),
+        name: String(color.name || '').trim()
+      })))
     } catch (error) {
       log.error('获取颜色列表失败:', error)
       return this.createErrorResponse('获取颜色列表失败', 500)
@@ -459,8 +469,11 @@ class PhoneStockWarningService {
    */
   async getMemories() {
     try {
-      const memories = await this.repository.getActiveMemories()
-      return this.createSuccessResponse('获取内存列表成功', memories)
+      const memories = await listActiveReferenceOptions('memories')
+      return this.createSuccessResponse('获取内存列表成功', memories.map(memory => ({
+        id: Number(memory.id),
+        size: String(memory.size || '').trim()
+      })))
     } catch (error) {
       log.error('获取内存列表失败:', error)
       return this.createErrorResponse('获取内存列表失败', 500)

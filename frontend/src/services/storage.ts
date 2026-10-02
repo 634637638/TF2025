@@ -5,6 +5,7 @@
 
 import { AUTH_STORAGE_KEYS, H5_STORAGE_KEYS, PREFERENCE_STORAGE_KEYS, SECURITY_STORAGE_KEYS, CACHE_STORAGE_KEYS, ROUTER_STORAGE_KEYS, type StorageKey } from '@/constants/storage'
 import logger from '@/utils/logger'
+import { TimeUtil } from '@/utils/time'
 import type { User } from '@/types'
 
 /**
@@ -319,22 +320,38 @@ class UnifiedStorageService {
    * H5: 获取认证令牌
    */
   getH5AuthToken(): string | null {
-    return this.get<string>(H5_STORAGE_KEYS.AUTH_TOKEN, 'local')
+    const sessionToken = this.get<string>(H5_STORAGE_KEYS.AUTH_TOKEN, 'session')
+
+    // 清理旧版本持久化的 H5 身份和个人资料，不自动恢复旧令牌。
+    this.remove(H5_STORAGE_KEYS.AUTH_TOKEN, 'local')
+    this.remove(H5_STORAGE_KEYS.AUTH_USER, 'local')
+    this.remove(H5_STORAGE_KEYS.LAST_PHONE, 'local')
+    this.remove(H5_STORAGE_KEYS.LAST_NAME, 'local')
+    this.remove(H5_STORAGE_KEYS.DEFAULT_ADDRESS, 'local')
+    return sessionToken
   }
 
   /**
    * H5: 设置认证令牌
    */
   setH5AuthToken(token: string): void {
-    this.set(H5_STORAGE_KEYS.AUTH_TOKEN, token, 'local')
+    this.set(H5_STORAGE_KEYS.AUTH_TOKEN, token, 'session')
   }
 
   /**
    * H5: 清除认证数据
    */
   clearH5Auth(): void {
+    this.remove(H5_STORAGE_KEYS.AUTH_TOKEN, 'session')
+    this.remove(H5_STORAGE_KEYS.AUTH_USER, 'session')
     this.remove(H5_STORAGE_KEYS.AUTH_TOKEN, 'local')
     this.remove(H5_STORAGE_KEYS.AUTH_USER, 'local')
+    this.remove(H5_STORAGE_KEYS.LAST_PHONE, 'session')
+    this.remove(H5_STORAGE_KEYS.LAST_NAME, 'session')
+    this.remove(H5_STORAGE_KEYS.DEFAULT_ADDRESS, 'session')
+    this.remove(H5_STORAGE_KEYS.LAST_PHONE, 'local')
+    this.remove(H5_STORAGE_KEYS.LAST_NAME, 'local')
+    this.remove(H5_STORAGE_KEYS.DEFAULT_ADDRESS, 'local')
   }
 
   // ==================== 偏好设置相关 ====================
@@ -382,7 +399,7 @@ class UnifiedStorageService {
   setScreenLocked(locked: boolean): void {
     if (locked) {
       this.set(SECURITY_STORAGE_KEYS.SCREEN_LOCKED, 'true', 'local')
-      this.set(SECURITY_STORAGE_KEYS.SCREEN_LOCK_TIME, new Date().toISOString(), 'local')
+      this.set(SECURITY_STORAGE_KEYS.SCREEN_LOCK_TIME, TimeUtil.toISOString(), 'local')
     } else {
       this.remove(SECURITY_STORAGE_KEYS.SCREEN_LOCKED, 'local')
       this.remove(SECURITY_STORAGE_KEYS.SCREEN_LOCK_TIME, 'local')

@@ -1,6 +1,6 @@
 # 全局加载动画统一规范
 
-> 最后更新：2026-06-02
+> 最后更新：2026-10-01
 
 ## 背景
 
@@ -10,7 +10,8 @@
 - `InlineLoading.vue`：公共局部 loading 组件，用于表格空行、弹窗内容、按钮内部等局部场景。
 - `useLoadingStore`：全局 loading store，路由守卫已调用。
 - `useLoadingState()`：大量页面自建 loading 状态。
-- Element Plus `v-loading` / `ElLoading.service`：表格、弹窗、API 层零散使用。
+- Element Plus `v-loading`：少量有明确刷新覆盖需求的表格/配置区域保留登记例外；禁止新增未登记使用。
+- `ElLoading.service`：禁止在业务页面新增，全屏使用 `useLoadingStore`，局部使用公共组件。
 - 页面手写 `加载中...`、`正在加载数据...`、自定义 spinner。
 
 这会导致不同页面打开时 loading 样式不一致，也会出现部分页面有动画、部分页面没有动画的问题。
@@ -98,6 +99,8 @@ Element Plus 的 `el-button` 统一使用自身的 `:loading` 作为唯一加载
 - 导入、导出、同步、备份等长操作
 
 按钮 loading 主要用于防重复点击，按钮内容不要再手写 `fa-spinner fa-spin`。禁止在同一个 `el-button` 中同时使用 `:loading` 和 `InlineLoading`，否则会出现两个加载动画。
+
+存量迁移按 `frontend/scripts/check-loading-patterns.mjs` 中逐文件例外清单跟踪。例外数量只能下降，不能因重建基线增加；迁移后必须删除对应登记。Dashboard 及 18 个业务页的刷新按钮已改用 `el-button :loading`。页面按钮不得再在 Element Plus 按钮内部嵌套 `InlineLoading`。
 
 ## 禁止新增
 
@@ -240,7 +243,28 @@ Element Plus 按钮统一使用：
 - `frontend/src/components/GlobalLoading.vue` 统一读取 `loadingStore.isLoading`。
 - `frontend/src/router/guards.ts` 在页面路径变化时统一启动页面切换 loading。
 - 已删除未使用的 `LoadingOverlay.vue`，避免再出现第二套全屏覆盖 loading。
-- `BaseButton`、`Image`、`v-tf-loading` 指令已统一到 `InlineLoading`/同款蓝青色 spinner 视觉。
+- `BaseButton` 已移除；`Image` 组件和 `v-tf-loading` 指令继续使用统一的蓝青色 spinner 视觉。
 - 已新增 `TableLoadingRow.vue` 和 `SectionLoading.vue`，表格加载中位置和块级加载中位置由公共组件统一控制。
 
 后续如果需要调整页面切换 loading 的视觉效果，优先修改 `GlobalLoading.vue`，不要在业务页面新增全屏 loading。
+
+## Loading 审计（2026-10-01）
+
+执行 `cd frontend && npm run check:loading`。审计使用 `@vue/compiler-sfc` 读取完整 Vue 模板，避免 `<template #empty>` 等嵌套模板导致扫描提前结束；Vue SFC 解析失败时检查失败。
+
+最近一次扫描计数（组件模板中的使用点，不代表页面数）：
+
+| 项目 | 当前计数 | 审计策略 |
+| --- | ---: | --- |
+| `GlobalLoading` | 1 | 必须且只能由 `App.vue` 挂载 |
+| `TableLoadingRow` | 55 | 统计使用点；`PaginatedTable`、`MobileTable` 必须接入 |
+| `SectionLoading` | 32 | 统计使用点 |
+| `InlineLoading` | 48 | 统计使用点 |
+| `v-loading` | 3 | 仅允许脚本内逐文件登记且写明原因的例外，不得增加 |
+| `el-button` 内联 spinner | 26，分布于 18 个文件 | 仅允许登记文件内存量；不得新增或超过文件上限。迁移时使用 `el-button :loading` 并下调上限 |
+| `ElLoading.service` | 0 | 禁止使用 |
+| 模板手写 spinner / `.loading-spinner` 样式 | 0 | 禁止新增 |
+
+例外登记位于 `frontend/scripts/check-loading-patterns.mjs`。审计会校验例外文件存在、当前仍有实际用量、原因已登记以及用量不超过上限；清理最后一处用量后必须删除例外登记。一个文件的按钮例外上限是可减少的债务上限，不是允许新增的额度。
+
+该静态审计可验证公共入口、已知重复 spinner 和登记例外，但不能仅凭组件名判断每个业务页面是否选对了加载粒度，也不替代交互回归。新页面仍需按“页面切换、表格/列表、区块/弹窗、提交按钮”分别检查；一个操作只能呈现一个清晰的加载反馈。

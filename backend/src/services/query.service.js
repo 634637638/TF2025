@@ -531,10 +531,10 @@ class QueryService {
   /**
    * 获取查询选项数据
    */
-  async getQueryOptions() {
+  async getQueryOptions(scope = {}) {
     try {
       // 通过查询repository获取各种选项数据
-      const options = await this.queryRepository.getQueryOptionsData()
+      const options = await this.queryRepository.getQueryOptionsData(scope)
 
       return options
     } catch (error) {

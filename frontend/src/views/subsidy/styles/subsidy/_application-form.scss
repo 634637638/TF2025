@@ -1,0 +1,579 @@
+// 申请对话框样式
+.apply-form {
+  min-width: 0;
+
+  .search-step {
+    h3 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--tf-color-heading);
+      margin-bottom: 8px;
+    }
+
+    .step-hint {
+      color: var(--tf-color-muted);
+      margin-bottom: 24px;
+      font-size: 0.95rem;
+    }
+
+    .search-box {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 24px;
+      min-width: 0;
+
+      .search-input-lg {
+        flex: 1;
+        min-width: 0;
+        padding: 14px 18px;
+        border: 1px solid var(--tf-color-border-subtle);
+        border-radius: 8px;
+        font-size: 16px;
+        transition: all 0.2s;
+
+        &:focus {
+          outline: none;
+          border-color: var(--tf-color-indigo-brand);
+          box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+      }
+    }
+
+    // 新样式：只有输入框的搜索区域
+    .search-box-input-only {
+      margin-bottom: 24px;
+
+      .search-input-lg {
+        width: 100%;
+        padding: 14px 18px;
+        border: 2px solid var(--tf-color-border-subtle);
+        border-radius: 8px;
+        font-size: 16px;
+        transition: all 0.2s;
+
+        &:focus {
+          outline: none;
+          border-color: var(--tf-color-indigo-brand);
+          box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        &::placeholder {
+          color: var(--tf-color-gray-bootstrap-500);
+        }
+      }
+    }
+
+    // 设备列表
+    .device-list {
+      border: 1px solid var(--tf-color-border-subtle);
+      border-radius: 12px;
+      overflow: hidden;
+
+      .device-list-header {
+        background: var(--tf-color-surface-muted);
+        padding: 14px 20px;
+        border-bottom: 1px solid var(--tf-color-border-subtle);
+
+        h4 {
+          font-size: 1rem;
+          font-weight: 600;
+          color: var(--tf-color-heading);
+          margin: 0;
+        }
+      }
+
+      .device-list-container {
+        max-height: 400px;
+        overflow-y: auto;
+
+        .device-item {
+          padding: 16px 20px;
+          border-bottom: 1px solid var(--tf-color-border-muted);
+          cursor: pointer;
+          transition: all 0.2s;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 16px;
+
+          &:last-child {
+            border-bottom: none;
+          }
+
+          &:hover {
+            background: var(--tf-color-surface-muted);
+          }
+
+          &.selected {
+            background: var(--tf-color-blue-pale);
+            border-left: 4px solid var(--tf-color-indigo-brand);
+          }
+
+          .device-main {
+            flex: 1;
+            min-width: 0;
+
+            .device-model {
+              font-size: 1rem;
+              font-weight: 600;
+              color: var(--tf-color-heading);
+              margin-bottom: 6px;
+            }
+
+            .device-specs {
+              font-size: 0.875rem;
+              color: var(--tf-color-muted);
+              margin-bottom: 8px;
+            }
+
+            .device-identifiers {
+              display: flex;
+              gap: 16px;
+              font-size: 0.75rem;
+              color: var(--tf-color-gray-bootstrap-500);
+              flex-wrap: wrap;
+
+              span {
+                display: flex;
+                align-items: center;
+                gap: 4px;
+                min-width: 0;
+                word-break: break-all;
+
+                i {
+                  font-size: 0.875rem;
+                }
+              }
+            }
+
+            .device-customer {
+              display: flex;
+              gap: 16px;
+              font-size: 0.8125rem;
+              color: var(--tf-color-indigo-brand);
+              margin-top: 4px;
+              padding-top: 8px;
+              border-top: 1px solid var(--tf-color-border-muted);
+              flex-wrap: wrap;
+
+              span {
+                display: flex;
+                align-items: center;
+                gap: 4px;
+                min-width: 0;
+                word-break: break-all;
+
+                i {
+                  font-size: 0.875rem;
+                }
+              }
+            }
+          }
+
+          .device-meta {
+            text-align: right;
+
+            .device-price {
+              font-size: 1.25rem;
+              font-weight: 700;
+              color: var(--tf-color-heading);
+              margin-bottom: 8px;
+            }
+
+            .status-tag {
+              display: inline-block;
+              padding: 4px 12px;
+              border-radius: 12px;
+              font-size: 12px;
+              font-weight: 500;
+
+              &.eligible {
+                background: var(--tf-status-success-bg);
+                color: var(--tf-status-success-color);
+                border: 1px solid var(--tf-status-success-border);
+              }
+
+              &.not-eligible {
+                background: var(--tf-status-danger-bg);
+                color: var(--tf-status-danger-color);
+                border: 1px solid var(--tf-status-danger-border);
+              }
+            }
+          }
+        }
+      }
+
+      .device-selected-actions {
+        padding: 16px 20px;
+        border-top: 1px solid var(--tf-color-border-subtle);
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+        background: var(--tf-color-surface-muted);
+      }
+    }
+
+  }
+
+  .confirm-step {
+    h3 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--tf-color-heading);
+      margin-bottom: 20px;
+    }
+
+    .confirm-info {
+      min-width: 0;
+
+      .info-group {
+        margin-bottom: 20px;
+        background: var(--tf-color-surface-muted);
+        border-radius: 12px;
+        padding: 16px;
+        border: 1px solid var(--tf-color-border-muted);
+        min-width: 0;
+
+        h4 {
+          font-size: 0.95rem;
+          font-weight: 600;
+          color: var(--tf-color-gray-bootstrap-700);
+          margin-bottom: 12px;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+
+        .info-row {
+          display: flex;
+          padding: 10px 0;
+          border-bottom: 1px solid var(--tf-color-border-muted);
+          gap: 12px;
+          min-width: 0;
+
+          &:last-child {
+            border-bottom: none;
+          }
+
+          .info-label {
+            width: 100px;
+            color: var(--tf-color-muted);
+            font-size: 14px;
+            font-weight: 500;
+            flex-shrink: 0;
+          }
+
+          .info-value {
+            flex: 1;
+            min-width: 0;
+            color: var(--tf-color-heading);
+            font-size: 14px;
+            font-weight: 500;
+            word-break: break-word;
+
+            .form-input-inline {
+              width: 100%;
+              max-width: 300px;
+              padding: 6px 12px;
+              border: 1px solid var(--tf-color-border-subtle);
+              border-radius: 6px;
+              font-size: 14px;
+              transition: all 0.2s;
+
+              &.has-value {
+                background: var(--tf-color-green-50);
+                border-color: var(--tf-color-green-300);
+              }
+
+              &:focus {
+                outline: none;
+                border-color: var(--tf-color-indigo-brand);
+                box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+              }
+            }
+
+            .idcard-hint {
+              margin-left: 12px;
+              padding: 4px 10px;
+              background: var(--tf-color-emerald-100);
+              color: var(--tf-color-emerald-800);
+              border-radius: 4px;
+              font-size: 12px;
+              display: inline-flex;
+              align-items: center;
+              gap: 4px;
+
+              &::before {
+                content: '✓';
+                font-weight: bold;
+              }
+
+              &.modified {
+                background: var(--tf-color-amber-100);
+                color: var(--tf-color-amber-800);
+
+                &::before {
+                  content: '✎';
+                }
+              }
+            }
+
+            &.subsidy-amount-highlight {
+              color: var(--tf-color-emerald-500);
+              font-weight: 700;
+              font-size: 1.5rem;
+            }
+
+            .discount-amount {
+              color: var(--tf-color-orange-tailwind-500);
+              font-weight: 600;
+            }
+
+            .final-price {
+              color: var(--tf-color-red-500);
+              font-weight: 700;
+              font-size: 1.2rem;
+            }
+          }
+        }
+
+        .info-row-inline {
+          display: flex;
+          padding: 10px 0;
+          border-bottom: 1px solid var(--tf-color-border-muted);
+          gap: 24px;
+
+          .inline-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+
+            .info-label {
+              color: var(--tf-color-muted);
+              font-size: 14px;
+              font-weight: 500;
+              white-space: nowrap;
+            }
+
+            .info-value {
+              color: var(--tf-color-heading);
+              font-size: 14px;
+              font-weight: 500;
+
+              .form-input-inline {
+                padding: 6px 12px;
+                border: 1px solid var(--tf-color-border-subtle);
+                border-radius: 6px;
+                font-size: 14px;
+                transition: all 0.2s;
+                min-width: 200px;
+
+                &.has-value {
+                  background: var(--tf-color-green-50);
+                  border-color: var(--tf-color-green-300);
+                }
+
+                &:focus {
+                  outline: none;
+                  border-color: var(--tf-color-indigo-brand);
+                  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+                }
+              }
+            }
+          }
+        }
+
+        // 手机端响应式布局 - 字段在上，内容在下
+        @media (max-width: 767px) {
+          .info-row-inline {
+            flex-wrap: wrap;
+            gap: 12px;
+
+            .inline-item {
+              flex-direction: row; // 默认改为水平布局
+              align-items: center;
+              gap: 8px;
+              width: 100%; // 每个项目占满宽度
+
+              .info-label {
+                font-size: 12px;
+                white-space: nowrap;
+                flex-shrink: 0;
+              }
+
+              .info-value {
+                font-size: 14px;
+                font-weight: 600;
+                flex: 1;
+
+                .form-input-inline {
+                  width: 100%;
+                  min-width: 0;
+                }
+              }
+            }
+          }
+        }
+
+        &.highlight {
+          background: linear-gradient(135deg, var(--tf-color-emerald-100), var(--tf-color-emerald-200));
+          border-color: var(--tf-color-emerald-300);
+        }
+
+        .existing-subsidy-warning {
+          margin-top: 12px;
+          padding: 12px;
+          background: var(--tf-color-warning-legacy);
+          color: var(--tf-color-amber-500);
+          border-radius: 8px;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 14px;
+          font-weight: 500;
+        }
+
+        .subsidy-warning {
+          margin-top: 12px;
+          padding: 12px;
+          background: var(--tf-color-red-100);
+          color: var(--tf-color-red-500);
+          border-radius: 8px;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 14px;
+          font-weight: 500;
+        }
+
+            .price-diff-hint {
+              margin-left: 8px;
+              font-size: 12px;
+              color: var(--tf-color-amber-500);
+              font-weight: 500;
+              word-break: break-word;
+            }
+
+        // 实际办理人信息区块样式
+        &.handler-info-section {
+          background: var(--tf-color-amber-50);
+          border-color: var(--tf-color-amber-200);
+
+          .handler-info-header {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 16px;
+
+            h4 {
+              margin-bottom: 0;
+            }
+
+            .checkbox-inline {
+              display: flex;
+              align-items: center;
+              gap: 8px;
+              cursor: pointer;
+              user-select: none;
+              font-size: 14px;
+              color: var(--tf-color-gray-bootstrap-700);
+              padding: 8px 12px;
+              background: var(--color-bg-white);
+              border-radius: 6px;
+              transition: background 0.2s;
+
+              &:hover {
+                background: var(--tf-color-amber-100);
+              }
+
+              input[type="checkbox"] {
+                width: 18px;
+                height: 18px;
+                cursor: pointer;
+                accent-color: var(--tf-color-amber-500);
+              }
+
+              span {
+                flex: 1;
+              }
+            }
+          }
+
+          .handler-info-content {
+            animation: slideDown 0.3s ease-out;
+          }
+
+          .handler-info-placeholder {
+            padding: 16px;
+            background: var(--color-bg-white);
+            border-radius: 8px;
+            text-align: center;
+
+            p {
+              margin: 0;
+              font-size: 14px;
+              color: var(--tf-color-muted);
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              gap: 8px;
+
+              i {
+                color: var(--tf-color-blue-500);
+                font-size: 16px;
+              }
+            }
+          }
+
+          .info-label {
+            &.required {
+              &::after {
+                content: '*';
+                color: var(--tf-color-red-500);
+                margin-left: 4px;
+                font-weight: bold;
+              }
+            }
+          }
+        }
+      }
+
+      .form-group {
+        margin-bottom: 20px;
+
+        label {
+          display: block;
+          font-size: 14px;
+          font-weight: 600;
+          color: var(--tf-color-gray-bootstrap-700);
+          margin-bottom: 8px;
+        }
+
+        .form-textarea {
+          width: 100%;
+          padding: 10px 14px;
+          border: 1px solid var(--tf-color-border-subtle);
+          border-radius: 8px;
+          font-size: 14px;
+          resize: vertical;
+          font-family: inherit;
+          transition: all 0.2s;
+
+          &:focus {
+            outline: none;
+            border-color: var(--tf-color-indigo-brand);
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+          }
+        }
+      }
+    }
+
+    .confirm-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      padding-top: 20px;
+      border-top: 1px solid var(--tf-color-border-subtle);
+      margin-top: 20px;
+    }
+  }
+}

@@ -363,7 +363,7 @@ import { createOrder, getProductDetail, getStockDistribution } from '@/api/shop-
 import { getPublicConfig } from '@/api/shop-public'
 import { baseDataApi } from '@/api/base-data'
 import SectionLoading from '@/components/SectionLoading.vue'
-import { formatImageUrl } from '@/utils/format'
+import { formatAmount, formatImageUrl } from '@/utils/format'
 import { normalizePhoneDigits } from '@/utils/security'
 import { storage } from '@/services/storage'
 import { H5_STORAGE_KEYS } from '@/constants/storage'
@@ -631,9 +631,9 @@ const selectPaymentMethod = async (method: string) => {
 
 // 格式化价格
 const formatPrice = (price: any) => {
-  if (!price && price !== 0) return '0.00'
+  if (!price && price !== 0) return '0'
   const numPrice = typeof price === 'string' ? parseFloat(price) : price
-  return isNaN(numPrice) ? '0.00' : numPrice.toFixed(2)
+  return isNaN(numPrice) ? '0' : formatAmount(numPrice)
 }
 
 // 获取图片 URL - 使用统一的图片URL处理函数
@@ -652,7 +652,7 @@ const totalAmount = computed(() => {
     const validPrice = isNaN(price) ? 0 : price
     return sum + (validPrice * item.quantity)
   }, 0)
-  return total.toFixed(2)
+  return formatAmount(total)
 })
 
 const resetCheckoutState = () => {
@@ -756,12 +756,12 @@ const initializeCheckout = async (force = false) => {
   await loadConfig()
 
   // 自动填充上次的信息
-  const lastPhone = storage.get<string>(H5_STORAGE_KEYS.LAST_PHONE, 'local')
+  const lastPhone = storage.get<string>(H5_STORAGE_KEYS.LAST_PHONE, 'session')
   if (lastPhone && !form.value.customerPhone) {
     form.value.customerPhone = normalizeCustomerPhone(lastPhone)
   }
 
-  const lastName = storage.get<string>(H5_STORAGE_KEYS.LAST_NAME, 'local')
+  const lastName = storage.get<string>(H5_STORAGE_KEYS.LAST_NAME, 'session')
   if (lastName && !form.value.customerName) {
     form.value.customerName = lastName
   }
@@ -881,13 +881,13 @@ watch(() => form.value.customerPhone, (value) => {
       form.value.customerPhone = normalizedValue
       return
     }
-    storage.set(H5_STORAGE_KEYS.LAST_PHONE, normalizedValue, 'local')
+    storage.set(H5_STORAGE_KEYS.LAST_PHONE, normalizedValue, 'session')
   }
 })
 
 watch(() => form.value.customerName, (value) => {
   if (value) {
-    storage.set(H5_STORAGE_KEYS.LAST_NAME, value, 'local')
+    storage.set(H5_STORAGE_KEYS.LAST_NAME, value, 'session')
   }
 })
 
@@ -928,7 +928,7 @@ const loadUserDefaultAddress = async (forceRemote = false) => {
 
   try {
     const savedAddress = !forceRemote
-      ? storage.get<any>(H5_STORAGE_KEYS.DEFAULT_ADDRESS, 'local')
+      ? storage.get<any>(H5_STORAGE_KEYS.DEFAULT_ADDRESS, 'session')
       : null
 
     const localAddress = buildDefaultAddress(savedAddress)
@@ -943,7 +943,7 @@ const loadUserDefaultAddress = async (forceRemote = false) => {
 
     if (profileAddress) {
       userDefaultAddress.value = profileAddress
-      storage.set(H5_STORAGE_KEYS.DEFAULT_ADDRESS, profileAddress, 'local')
+      storage.set(H5_STORAGE_KEYS.DEFAULT_ADDRESS, profileAddress, 'session')
       syncDefaultAddressToOrder(true)
       return
     }
@@ -955,7 +955,7 @@ const loadUserDefaultAddress = async (forceRemote = false) => {
   } catch (error) {
     logger.error('获取用户地址失败:', error)
 
-    const fallbackAddress = buildDefaultAddress(storage.get<any>(H5_STORAGE_KEYS.DEFAULT_ADDRESS, 'local'))
+    const fallbackAddress = buildDefaultAddress(storage.get<any>(H5_STORAGE_KEYS.DEFAULT_ADDRESS, 'session'))
     userDefaultAddress.value = fallbackAddress
     if (fallbackAddress) {
       syncDefaultAddressToOrder(true)
@@ -979,7 +979,7 @@ const saveAddress = async () => {
       phone: normalizeCustomerPhone(addressForm.value.phone),
       address: addressForm.value.address
     }
-    storage.set(H5_STORAGE_KEYS.DEFAULT_ADDRESS, addressData, 'local')
+    storage.set(H5_STORAGE_KEYS.DEFAULT_ADDRESS, addressData, 'session')
     userDefaultAddress.value = addressData
     syncDefaultAddressToOrder(true)
 

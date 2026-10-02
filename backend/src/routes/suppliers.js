@@ -2,6 +2,7 @@ const express = require('express')
 const router = express.Router()
 const { unifiedAuth, requirePermission } = require('../middleware/unified-auth')
 const { getDatabase, isConnected } = require('../config/database')
+const { normalizeReferencePagination, buildReferenceOrder, buildPagination } = require('../services/reference-options.service')
 const ApiResponse = require('../utils/response')
 const log = require('../utils/log')
 
@@ -59,14 +60,19 @@ router.get('/', requirePermission('suppliers:view'), async (req, res) => {
     const {
       page = 1,
       page_size = DEFAULT_PAGE_SIZE,
+      all = false,
       name,
       status,
       sort_by,
       sort_order
     } = req.query
-    const pageNum = parsePositiveInteger(page, 1)
-    const pageSizeNum = Math.min(parsePositiveInteger(page_size, DEFAULT_PAGE_SIZE), MAX_PAGE_SIZE)
-    const offset = (pageNum - 1) * pageSizeNum
+    const { page: pageNum, page_size: pageSizeNum, offset } = normalizeReferencePagination({
+      page,
+      page_size,
+      defaultPage: 1,
+      defaultPageSize: DEFAULT_PAGE_SIZE,
+      maxPageSize: MAX_PAGE_SIZE
+    })
     const statusValue = parseStatus(status)
     if (statusValue === undefined) return ApiResponse.badRequest(res, '供应商状态只能是0或1')
 
@@ -83,29 +89,32 @@ router.get('/', requirePermission('suppliers:view'), async (req, res) => {
     }
 
     const whereClause = conditions.length > 0 ? ` WHERE ${conditions.join(' AND ')}` : ''
-    const sortColumn = SUPPLIER_SORT_COLUMNS.has(sort_by) ? sort_by : 'sort_order'
-    const sortDirection = String(sort_order).toLowerCase() === 'desc' ? 'DESC' : 'ASC'
-    const fallbackOrder = sortColumn === 'sort_order' ? ', name ASC, id ASC' : ', sort_order ASC, id ASC'
+    const orderBy = buildReferenceOrder({
+      sort_by,
+      sort_order,
+      allowed: [...SUPPLIER_SORT_COLUMNS],
+      fallback: ['sort_order', 'name', 'id']
+    })
     const pool = getDatabase()
+    if (all === 'true' || all === true) {
+      const [supplierRows] = await pool.execute(
+        `SELECT ${SUPPLIER_COLUMNS} FROM suppliers${whereClause} ORDER BY ${orderBy}`,
+        params
+      )
+      return ApiResponse.success(res, supplierRows.map(formatSupplier))
+    }
+
     const [[supplierRows], [countRows]] = await Promise.all([
       pool.execute(
         `SELECT ${SUPPLIER_COLUMNS} FROM suppliers${whereClause} ` +
-        `ORDER BY ${sortColumn} ${sortDirection}${fallbackOrder} LIMIT ${pageSizeNum} OFFSET ${offset}`,
+        `ORDER BY ${orderBy} LIMIT ${pageSizeNum} OFFSET ${offset}`,
         params
       ),
       pool.execute(`SELECT COUNT(*) AS total FROM suppliers${whereClause}`, params)
     ])
 
     const total = Number(countRows[0]?.total) || 0
-    const total_pages = Math.ceil(total / pageSizeNum)
-    const pagination = {
-      page: pageNum,
-      page_size: pageSizeNum,
-      total,
-      total_pages,
-      has_next: pageNum < total_pages,
-      has_prev: pageNum > 1
-    }
+    const pagination = buildPagination(pageNum, pageSizeNum, total)
     return ApiResponse.success(res, supplierRows.map(formatSupplier), '获取供应商列表成功', 200, { pagination })
   } catch (error) {
     log.error('获取供应商列表失败:', error)

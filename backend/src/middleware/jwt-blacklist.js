@@ -40,7 +40,7 @@ function cleanupExpiredTokens() {
 }
 
 // 定期清理
-setInterval(cleanupExpiredTokens, CONFIG.CLEANUP_INTERVAL)
+setInterval(cleanupExpiredTokens, CONFIG.CLEANUP_INTERVAL).unref()
 
 function shouldUsePersistentBlacklist() {
   if (!CONFIG.PERSIST_BLACKLIST) {
@@ -130,6 +130,7 @@ async function verifyToken(token, type = 'access') {
       throw new Error(`无效的令牌类型，期望: ${type}`)
     }
 
+    await assertNotLoggedOutOnAllDevices(decoded)
     return decoded
   } catch (error) {
     if (error.name === 'TokenExpiredError') {
@@ -139,6 +140,37 @@ async function verifyToken(token, type = 'access') {
     } else {
       throw error
     }
+  }
+}
+
+async function assertNotLoggedOutOnAllDevices(decoded, databaseOverride) {
+  if (!decoded?.sub) {
+    throw new Error('无效的令牌')
+  }
+
+  try {
+    const db = databaseOverride || getDatabase()
+    const [rows] = await db.execute(
+      `SELECT UNIX_TIMESTAMP(MAX(created_at)) AS logged_out_at
+       FROM jwt_blacklist
+       WHERE user_id = ?
+         AND token_type = 'access'
+         AND reason = 'logout_all'
+         AND expires_at > NOW()`,
+      [decoded.sub]
+    )
+    const loggedOutAt = Number(rows[0]?.logged_out_at || 0)
+
+    // JWT iat is in whole seconds; tokens from before or during the logout second are revoked.
+    if (loggedOutAt > 0 && Number(decoded.iat || 0) <= loggedOutAt) {
+      throw new Error('Token已被吊销')
+    }
+  } catch (error) {
+    if (error.message === 'Token已被吊销') {
+      throw error
+    }
+    log.error('检查全设备登出状态失败', error)
+    throw new Error('无法验证用户会话状态')
   }
 }
 
@@ -339,6 +371,7 @@ const clearBlacklist = async () => {
 module.exports = {
   generateTokens,
   verifyToken,
+  assertNotLoggedOutOnAllDevices,
   addToBlacklist,
   isTokenBlacklisted,
   getBlacklistStats,

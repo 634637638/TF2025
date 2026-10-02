@@ -7,16 +7,15 @@ const { validateImei } = require('../utils/imei')
 const { normalizeDateTime } = require('../utils/time')
 const { generateMemberNumber } = require('../utils/member-number')
 const log = require('../utils/log')
+const deprecatedRoute = require('../middleware/deprecated-route')
 const {
   COMPLETED_TRANSACTION_STATUSES,
   getEffectivePhoneStatusSql,
   isPhoneStatusAlias,
   normalizePhoneStatus
 } = require('../utils/phone-status')
-const COMPLETED_TRANSACTION_STATUS_SQL = `COALESCE(status, '') NOT IN (${COMPLETED_TRANSACTION_STATUSES.map(() => '?').join(', ')})`
-
-// 统计卡片使用与库存列表相同的筛选条件，确保统计结果和列表保持一致。
-const buildInventoryStatsWhere = query => {
+// 库存列表和汇总共用筛选规则；旧版 date 参数仅由列表入口启用兼容。
+const buildInventoryFilters = (query = {}, { includeLegacyDate = false } = {}) => {
   const {
     store_id,
     supplier_id,
@@ -28,6 +27,7 @@ const buildInventoryStatsWhere = query => {
     color,
     memory,
     is_new,
+    date,
     date_start,
     date_end
   } = query
@@ -75,7 +75,22 @@ const buildInventoryStatsWhere = query => {
     queryParams.push(isNewValue ? 1 : 0)
   }
 
-  if (date_start || date_end) {
+  if (includeLegacyDate && date) {
+    if (date.includes(' - ')) {
+      const [startDate, endDate] = date.split(' - ').map(value => value.trim())
+      if (startDate) {
+        whereConditions.push('DATE(p.inventory_time) >= ?')
+        queryParams.push(startDate)
+      }
+      if (endDate) {
+        whereConditions.push('DATE(p.inventory_time) <= ?')
+        queryParams.push(endDate)
+      }
+    } else if (date.includes('-')) {
+      whereConditions.push('DATE(p.inventory_time) = ?')
+      queryParams.push(date)
+    }
+  } else if (date_start || date_end) {
     if (date_start && date_end) {
       whereConditions.push('DATE(p.inventory_time) BETWEEN ? AND ?')
       queryParams.push(date_start, date_end)
@@ -117,13 +132,17 @@ const buildInventoryStatsWhere = query => {
         p.imei LIKE ? OR
         p.serial_number LIKE ? OR
         p.purchase_number LIKE ? OR
+        b.name LIKE ? OR
+        m.name LIKE ? OR
+        co.name LIKE ? OR
+        mem.size LIKE ? OR
         p.sale_price = ? OR
         p.purchase_cost = ? OR
         CAST(p.id AS CHAR) LIKE ?
       )`)
       const searchTerm = `%${searchStr}%`
       const price = parseFloat(searchStr)
-      queryParams.push(searchTerm, searchTerm, searchTerm, price, price, searchTerm)
+      queryParams.push(searchTerm, searchTerm, searchTerm, searchTerm, searchTerm, searchTerm, searchTerm, price, price, searchTerm)
     } else {
       whereConditions.push(`(
         p.imei LIKE ? OR
@@ -145,6 +164,7 @@ const buildInventoryStatsWhere = query => {
   }
 
   return {
+    whereConditions,
     whereClause: `WHERE ${whereConditions.join(' AND ')}`,
     queryParams
   }
@@ -163,211 +183,14 @@ router.get('/list', unifiedAuth, requirePermission('inventory:view'), async (req
 
     connection = await pool.getConnection()
 
-    const {
-      page = 1,
-      page_size,
-      limit = 20,
-      store_id,
-      supplier_id,
-      operator_id,
-      status,
-      search,
-      brand,
-      model,
-      color,
-      memory,
-      is_new,
-      date,
-      date_start,
-      date_end
-    } = req.query
+    const { page = 1, page_size, limit = 20 } = req.query
 
     const validLimit = Math.min(Math.max(parseInt(page_size ?? limit) || 10, 1), 100)
     const validPage = Math.max(parseInt(page) || 1, 1)
     const offset = (validPage - 1) * validLimit
 
-    // 构建WHERE条件
+    const { whereConditions, whereClause, queryParams } = buildInventoryFilters(req.query, { includeLegacyDate: true })
     const effectiveStatusSql = getEffectivePhoneStatusSql('p')
-    // 不隐藏维修、租赁、丢失、损坏等状态，库存页需要保留完整设备台账。
-    const whereConditions = [`COALESCE(p.status, '') NOT IN (${COMPLETED_TRANSACTION_STATUSES.map(() => '?').join(', ')})`]
-    const queryParams = [...COMPLETED_TRANSACTION_STATUSES]
-
-    // 店铺筛选
-    if (store_id) {
-      whereConditions.push('p.store_id = ?')
-      queryParams.push(parseInt(store_id))
-    }
-
-    // 供应商筛选
-    if (supplier_id) {
-      whereConditions.push('p.supplier_id = ?')
-      queryParams.push(parseInt(supplier_id))
-    }
-
-    // 入库员筛选
-    if (operator_id) {
-      whereConditions.push('p.inventory_operator_id = ?')
-      queryParams.push(parseInt(operator_id))
-    }
-
-    // 状态筛选
-    if (status) {
-      whereConditions.push(`${effectiveStatusSql} = ?`)
-      queryParams.push(normalizePhoneStatus(status))
-    }
-
-    // 品牌筛选
-    if (brand) {
-      whereConditions.push('b.name = ?')
-      queryParams.push(brand)
-    }
-
-    // 型号筛选
-    if (model) {
-      whereConditions.push('m.name = ?')
-      queryParams.push(model)
-    }
-
-    // 颜色筛选
-    if (color) {
-      whereConditions.push('co.name = ?')
-      queryParams.push(color)
-    }
-
-    // 内存筛选
-    if (memory) {
-      whereConditions.push('mem.size = ?')
-      queryParams.push(memory)
-    }
-
-    // 成色筛选
-    if (is_new !== undefined && is_new !== null && is_new !== '') {
-      const isNewValue = is_new === 'true' || is_new === true || is_new === '1'
-      whereConditions.push('p.is_new = ?')
-      queryParams.push(isNewValue ? 1 : 0)
-    }
-
-    // 日期范围筛选
-    if (date) {
-      log.debug('🗓️ 处理日期筛选:', date)
-
-      // 支持多种日期格式：YYYY-MM-DD 或 YYYY-MM-DD - YYYY-MM-DD
-      if (date.includes(' - ')) {
-        // 日期范围格式：YYYY-MM-DD - YYYY-MM-DD
-        const [startDate, endDate] = date.split(' - ').map(d => d.trim())
-        if (startDate) {
-          whereConditions.push('DATE(p.inventory_time) >= ?')
-          queryParams.push(startDate)
-        }
-        if (endDate) {
-          whereConditions.push('DATE(p.inventory_time) <= ?')
-          queryParams.push(endDate)
-        }
-        log.debug(`📅 日期范围筛选: ${startDate} 到 ${endDate}`)
-      } else if (date.includes('-')) {
-        // 单个日期格式：YYYY-MM-DD
-        whereConditions.push('DATE(p.inventory_time) = ?')
-        queryParams.push(date)
-        log.debug(`📅 单日筛选: ${date}`)
-      }
-    } else if (date_start || date_end) {
-      // 新的日期范围筛选
-      log.debug(`🔍 接收到日期参数: date_start='${date_start}', date_end='${date_end}'`)
-      if (date_start && date_end) {
-        // 同时有开始和结束日期
-        whereConditions.push('DATE(p.inventory_time) BETWEEN ? AND ?')
-        queryParams.push(date_start, date_end)
-        log.debug(`🔍 日期范围筛选: ${date_start} - ${date_end}`)
-      } else if (date_start) {
-        // 只有开始日期
-        whereConditions.push('DATE(p.inventory_time) >= ?')
-        queryParams.push(date_start)
-        log.debug(`🔍 日期筛选: 从 ${date_start} 开始`)
-      } else if (date_end) {
-        // 只有结束日期
-        whereConditions.push('DATE(p.inventory_time) <= ?')
-        queryParams.push(date_end)
-        log.debug(`🔍 日期筛选: 到 ${date_end} 结束`)
-      }
-    }
-
-    // 智能搜索功能 - 支持所有字段的智能识别
-    if (search) {
-      const searchStr = search.trim()
-
-      // IMEI 精确匹配 (15位数字)
-      if (/^\d{15}$/.test(searchStr)) {
-        whereConditions.push('p.imei = ?')
-        queryParams.push(searchStr)
-      }
-      // 序列号精确匹配 (字母数字组合)
-      else if (/^[A-Za-z0-9]{8,}$/.test(searchStr)) {
-        whereConditions.push('UPPER(p.serial_number) LIKE ?')
-        queryParams.push(`%${searchStr.toUpperCase()}%`)
-      }
-      // 内存规格匹配 (如 256GB, 512GB, 1TB)
-      else if (/^(\d+[Gg][Bb]|1[Tt][Bb])$/.test(searchStr)) {
-        whereConditions.push('UPPER(mem.size) LIKE ?')
-        queryParams.push(`%${searchStr.toUpperCase()}%`)
-      }
-      // 状态别名统一通过 phone-status 归一化，数据库筛选只使用规范值。
-      else if (isPhoneStatusAlias(searchStr)) {
-        whereConditions.push(`${effectiveStatusSql} = ?`)
-        queryParams.push(normalizePhoneStatus(searchStr))
-      }
-      // 成色匹配
-      else if (['new', 'used', '全新', '二手'].includes(searchStr.toLowerCase())) {
-        const isNew = ['new', '全新'].includes(searchStr.toLowerCase())
-        whereConditions.push('p.is_new = ?')
-        queryParams.push(isNew ? 1 : 0)
-      }
-      // 质量等级匹配
-      else if (/^[A-C]$/.test(searchStr.toUpperCase())) {
-        whereConditions.push('UPPER(p.quality_grade) = ?')
-        queryParams.push(searchStr.toUpperCase())
-      }
-      // 日期格式匹配 (YYYY-MM-DD)
-      else if (/^\d{4}-\d{2}-\d{2}$/.test(searchStr)) {
-        whereConditions.push('(DATE(p.inventory_time) = ? OR DATE(p.sale_time) = ?)')
-        queryParams.push(searchStr, searchStr)
-      }
-      // 价格相关匹配 (纯数字，可能查询价格、IMEI部分、序列号等)
-      else if (/^\d+$/.test(searchStr)) {
-        // 对于数字搜索，同时匹配多个可能的字段
-        whereConditions.push(`(
-          p.imei LIKE ? OR
-          p.serial_number LIKE ? OR
-          p.purchase_number LIKE ? OR
-          p.sale_price = ? OR
-          p.purchase_cost = ? OR
-          CAST(p.id AS CHAR) LIKE ?
-        )`)
-        const searchTerm = `%${searchStr}%`
-        const price = parseFloat(searchStr)
-        queryParams.push(searchTerm, searchTerm, searchTerm, price, price, searchTerm)
-      }
-      // 其他情况进行全字段模糊搜索
-      else {
-        whereConditions.push(`(
-          p.imei LIKE ? OR
-          p.serial_number LIKE ? OR
-          b.name LIKE ? OR
-          m.name LIKE ? OR
-          co.name LIKE ? OR
-          mem.size LIKE ? OR
-          p.status LIKE ? OR
-          p.quality_grade LIKE ? OR
-          p.remarks LIKE ? OR
-          st.name LIKE ? OR
-          s.name LIKE ? OR
-          p.purchase_number LIKE ?
-        )`)
-        const searchTerm = `%${searchStr}%`
-        queryParams.push(searchTerm, searchTerm, searchTerm, searchTerm, searchTerm, searchTerm, searchTerm, searchTerm, searchTerm, searchTerm, searchTerm, searchTerm)
-      }
-    }
-
-    const whereClause = whereConditions.join(' AND ')
 
     // 使用完整的查询，包含操作员信息、备注
     const dataQuery = `
@@ -414,7 +237,7 @@ router.get('/list', unifiedAuth, requirePermission('inventory:view'), async (req
         ON preorder.matched_phone_id = p.id
        AND preorder.status = 'arrived'
       LEFT JOIN customers preorder_customer ON preorder_customer.id = preorder.customer_id
-      WHERE ${whereClause}
+      ${whereClause}
       ORDER BY p.inventory_time DESC
       LIMIT ${validLimit} OFFSET ${offset}
     `
@@ -440,7 +263,7 @@ router.get('/list', unifiedAuth, requirePermission('inventory:view'), async (req
       LEFT JOIN memories mem ON p.memory_id = mem.id
       LEFT JOIN suppliers s ON p.supplier_id = s.id
       LEFT JOIN stores st ON p.store_id = st.id
-      WHERE ${whereClause}
+      ${whereClause}
     `
 
     const [countResult] = await connection.execute(countQuery, queryParams)
@@ -523,7 +346,7 @@ router.get('/stats/overview', unifiedAuth, requirePermission('inventory:view'), 
     }
 
     const pool = getDatabase()
-    const { whereClause, queryParams } = buildInventoryStatsWhere(req.query)
+    const { whereClause, queryParams } = buildInventoryFilters(req.query)
     const inventoryJoins = `
       LEFT JOIN brands b ON p.brand_id = b.id
       LEFT JOIN models m ON p.model_id = m.id
@@ -762,45 +585,59 @@ router.get('/:id', unifiedAuth, requirePermission('inventory:view'), async (req,
 })
 
 // 历史库存变动接口暂未连接真实流水表，禁止返回伪造数据。
-router.get('/:id/movements', unifiedAuth, requirePermission('inventory:view'), (req, res) => {
+router.get('/:id/movements', unifiedAuth,
+  deprecatedRoute({ migrationId: 'inventory-movements-unimplemented' }),
+  requirePermission('inventory:view'), (req, res) => {
   return ApiResponse.error(res, '库存变动记录暂未实现', 501)
 })
 
 // 历史按库存记录入库接口曾使用内存数组，统一改由真实入库事务处理。
-router.post('/:id/stock-in', unifiedAuth, requirePermission('inventory:create'), (req, res) => {
-  return ApiResponse.error(res, '请使用 /inventory/stock-in 真实入库接口', 501)
+router.post('/:id/stock-in', unifiedAuth,
+  deprecatedRoute({ replacement: '/api/stock-in', migrationId: 'inventory-item-stock-in-to-stock-in' }),
+  requirePermission('inventory:create'), (req, res) => {
+  return ApiResponse.error(res, '请使用 /stock-in 真实入库接口', 501)
 })
 
 
 
 // 历史库存出库接口没有真实库存流水事务，禁止返回伪造成功。
-router.post('/:id/stock-out', unifiedAuth, requirePermission('inventory:edit'), (req, res) => {
+router.post('/:id/stock-out', unifiedAuth,
+  deprecatedRoute({ migrationId: 'inventory-item-stock-out-unimplemented' }),
+  requirePermission('inventory:edit'), (req, res) => {
   return ApiResponse.error(res, '库存出库真实流程暂未实现', 501)
 })
 
 
 
 // 历史库存预留接口没有真实库存流水事务，禁止返回伪造成功。
-router.post('/:id/reserve', unifiedAuth, requirePermission('inventory:edit'), (req, res) => {
+router.post('/:id/reserve', unifiedAuth,
+  deprecatedRoute({ migrationId: 'inventory-item-reserve-unimplemented' }),
+  requirePermission('inventory:edit'), (req, res) => {
   return ApiResponse.error(res, '库存预留真实流程暂未实现', 501)
 })
 
 
 
 // 历史取消预留接口没有真实库存流水事务，禁止返回伪造成功。
-router.post('/:id/unreserve', unifiedAuth, requirePermission('inventory:edit'), (req, res) => {
+router.post('/:id/unreserve', unifiedAuth,
+  deprecatedRoute({ migrationId: 'inventory-item-unreserve-unimplemented' }),
+  requirePermission('inventory:edit'), (req, res) => {
   return ApiResponse.error(res, '取消库存预留真实流程暂未实现', 501)
 })
 
 
 
 // 历史库存调整接口没有真实库存流水事务，禁止返回伪造成功。
-router.put('/:id/adjust', unifiedAuth, requirePermission('inventory:edit'), (req, res) => {
+router.put('/:id/adjust', unifiedAuth,
+  deprecatedRoute({ migrationId: 'inventory-item-adjust-unimplemented' }),
+  requirePermission('inventory:edit'), (req, res) => {
   return ApiResponse.error(res, '库存调整真实流程暂未实现', 501)
 })
 
 // 旧库存入库入口已停用，统一使用 /stock-in 真实事务接口。
-router.post('/stock-in', unifiedAuth, requirePermission('inventory:create'), (req, res) => {
+router.post('/stock-in', unifiedAuth,
+  deprecatedRoute({ replacement: '/api/stock-in', migrationId: 'inventory-stock-in-to-stock-in' }),
+  requirePermission('inventory:create'), (req, res) => {
   return ApiResponse.error(res, '请使用 /stock-in 真实入库接口', 501)
 })
 

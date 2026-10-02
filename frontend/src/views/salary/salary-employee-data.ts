@@ -1,5 +1,5 @@
-import dayjs from 'dayjs'
 import type { AttendanceRecord } from '@/api/attendance'
+import { TIME_FORMATS, TimeUtil } from '@/utils/time'
 
 type NumericValue = number | string | null | undefined
 
@@ -76,14 +76,14 @@ const toNumber = (value: NumericValue) => {
 
 export const getSalaryMonthRange = (month?: string): SalaryMonthRange => {
   const requestedMonth = month && /^\d{4}-\d{2}$/.test(month)
-    ? dayjs(`${month}-01`)
-    : dayjs()
-  const selectedMonth = requestedMonth.isValid() ? requestedMonth : dayjs()
+    ? TimeUtil.parse(`${month}-01`)
+    : TimeUtil.now()
+  const selectedMonth = requestedMonth?.isValid() ? requestedMonth : TimeUtil.now()
 
   return {
-    attendance_start_date: selectedMonth.subtract(1, 'month').startOf('month').format('YYYY-MM-DD'),
-    start_date: selectedMonth.startOf('month').format('YYYY-MM-DD'),
-    end_date: selectedMonth.endOf('month').format('YYYY-MM-DD')
+    attendance_start_date: TimeUtil.format(TimeUtil.startOf(TimeUtil.subtract(selectedMonth, 1, 'month'), 'month'), TIME_FORMATS.DATE),
+    start_date: TimeUtil.format(TimeUtil.startOf(selectedMonth, 'month'), TIME_FORMATS.DATE),
+    end_date: TimeUtil.format(TimeUtil.endOf(selectedMonth, 'month'), TIME_FORMATS.DATE)
   }
 }
 
@@ -156,9 +156,12 @@ export const buildEmployeeAttendanceStats = (
     if (record.record_type === 'leave') {
       stats.leave_days += toNumber(record.leave_days)
       const activityAt = record.approved_at || record.updated_at || record.created_at || null
-      if (activityAt && (
-        !stats.latest_leave_activity_at ||
-        dayjs(activityAt).isAfter(dayjs(stats.latest_leave_activity_at))
+      const activityTime = activityAt ? TimeUtil.parse(String(activityAt)) : null
+      const latestActivityTime = stats.latest_leave_activity_at
+        ? TimeUtil.parse(stats.latest_leave_activity_at)
+        : null
+      if (activityTime?.isValid() && (
+        !latestActivityTime?.isValid() || activityTime.valueOf() > latestActivityTime.valueOf()
       )) {
         stats.latest_leave_activity_at = activityAt
         stats.latest_leave_record_date = recordDate

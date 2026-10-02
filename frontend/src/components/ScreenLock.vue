@@ -120,6 +120,7 @@ import { useNotification } from '@/composables/useNotification'
 import Image from './Image.vue'
 import InlineLoading from '@/components/InlineLoading.vue'
 import { formatDateTime as formatGlobalDateTime, formatImageUrl } from '@/utils/format'
+import { TimeUtil } from '@/utils/time'
 
 const { success, error: _error } = useNotification({ debounce: true })
 
@@ -219,7 +220,7 @@ const handleUnlock = async () => {
 watch(() => props.isLocked, (newVal) => {
   if (newVal) {
     // 进入锁定状态
-    lockTime.value = new Date()
+    lockTime.value = TimeUtil.now().toDate()
     loadLockSettings()
     // 自动聚焦到密码输入框
     nextTick(() => {
@@ -262,7 +263,7 @@ onUnmounted(() => {
   bottom: 0 !important;
   width: 100vw !important;
   height: 100vh !important;
-  z-index: 999999 !important; /* 提高z-index确保在最上层 */
+  z-index: var(--tf-z-lock) !important;
   background: rgba(0, 0, 0, 0.95) !important;
   display: flex !important;
   align-items: center !important;
@@ -479,7 +480,7 @@ onUnmounted(() => {
 }
 
 // 响应式
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .screen-lock-content {
     padding: 30px 20px;
   }

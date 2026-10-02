@@ -202,20 +202,23 @@
     </div>
 
     <template #footer>
-      <div class="modal-footer">
+      <div class="tf-dialog-actions modal-footer">
         <button
           class="btn btn-secondary"
           @click="closeModal"
         >
           关闭
         </button>
-        <button
+        <el-button
+          native-type="button"
+          type="primary"
+          size="small"
           v-if="accessory && hasEditPermission"
           class="btn btn-primary"
           @click="editAccessory"
         >
           编辑配件
-        </button>
+        </el-button>
       </div>
     </template>
   </MobileDialog>
@@ -473,22 +476,6 @@ const editAccessory = () => {
   color: var(--tf-color-red-800);
 }
 
-/* 无数据状态 */
-.no-data {
-  text-align: center;
-  padding: 40px 20px;
-  color: var(--tf-color-neutral-500);
-}
-
-.modal-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  padding: 20px 24px;
-  border-top: 1px solid var(--tf-color-neutral-200);
-  background: var(--tf-color-neutral-50);
-}
-
 /* 响应式设计 */
 @media (max-width: 640px) {
   .detail-grid {
@@ -507,8 +494,7 @@ const editAccessory = () => {
   }
 
   .modal-header,
-  .modal-body,
-  .modal-footer {
+  .modal-body {
     padding: 16px;
   }
 

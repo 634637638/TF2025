@@ -2,7 +2,7 @@
 
 > **文档说明**：定义 TF2025 项目中 Vue 组件的开发、命名、使用和维护规范，确保组件的一致性、可维护性和复用性
 >
-> **最后更新**：2025-12-20
+> **最后更新**：2026-10-01
 > **版本**：v2.0.0
 > **维护者**：TF2025 开发团队
 
@@ -20,22 +20,27 @@
 
 ## 🏗️ 组件结构
 
-### 1. 目录结构
+### 1. 现有公共组件目录示例
+
+以下为仓库当前目录中的代表性公共组件，不是要求新增的目录模板：
 
 ```
 src/components/
-├── common/              # 通用组件
-│   ├── BaseButton.vue  # 基础按钮
-│   ├── BaseInput.vue   # 基础输入框
-│   └── MobileDialog.vue # 统一响应式弹窗
-├── business/           # 业务组件
-│   ├── UserSelector.vue
-│   ├── OrderForm.vue
-│   └── ProductCard.vue
-└── layout/            # 布局组件
-    ├── PageHeader.vue
-    ├── Sidebar.vue
-    └── Footer.vue
+├── base/                # 页面基础组件与权限边界
+│   ├── PageHeader.vue
+│   └── PermissionGate.vue
+├── common/              # 跨业务通用交互
+│   ├── CustomerNameLockInput.vue
+│   └── CustomerSearchDropdown.vue
+├── mobile/              # 移动端专用组件
+│   └── MobileSlideMenu.vue
+├── query/               # 综合查询业务组件
+│   └── QueryDetailDialog.vue
+├── search/              # 统一检索组件
+│   └── UnifiedSearchPanel.vue
+├── DataEmptyState.vue   # 统一空状态
+├── MobileDialog.vue     # 统一响应式弹窗
+└── Pagination.vue       # 统一分页
 ```
 
 ### 2. 文件命名规范
@@ -747,7 +752,7 @@ const props = defineProps({
 - ✅ 需要统一确认/取消按钮的弹窗
 
 **可以使用其他场景：**
-- ⚠️ 简单提示框（使用 ElMessageBox）
+- ⚠️ 简单确认/提示（使用 `useNotification()`，由全局消息框服务承载）
 - ⚠️ 特殊内容弹窗（仍使用 MobileDialog，仅定义业务内容布局）
 
 ```vue
@@ -755,12 +760,9 @@ const props = defineProps({
 <MobileDialog
   v-model="visible"
   title="编辑用户"
-  :width="800"
+  width="800px"
   @confirm="handleSave"
 >
-
-<!-- ✅ 例外：简单确认 -->
-<ElMessageBox.confirm />
 
 <!-- ✅ 复杂内容仍复用统一外壳 -->
 <MobileDialog v-model="visible" :show-default-footer="false">
@@ -768,21 +770,35 @@ const props = defineProps({
 </MobileDialog>
 ```
 
+简单确认在 `<script setup>` 中调用统一通知 Composable：
+
+```ts
+import { useNotification } from '@/composables/useNotification'
+
+const { confirm } = useNotification()
+await confirm('确定要继续吗？')
+```
+
 ### 2. 表格组件标准
 
-**必须使用 MobileTable 的场景：**
-- ✅ 标准数据展示
-- ✅ 需要移动端响应式
-- ✅ 包含操作列的表格
+**后台标准表格必须使用公共表格方案的场景：**
+- ✅ 标准数据展示：`el-table.data-table` 或 `el-table.admin-data-table`
+- ✅ 需要分页的列表：`PaginatedTable` + 公共表格样式
+- ✅ 包含操作列的后台表格：使用动态操作列和公共按钮容器
 
-**可以使用 el-table 的场景：**
+**可以使用 Element 表格的场景：**
 - ⚠️ 大数据量（使用 el-table-v2）
 - ⚠️ 复杂表头合并
 - ⚠️ 多级表头
 - ⚠️ 树形数据
 
 ```vue
-<!-- ✅ 标准：响应式表格 -->
+<!-- ✅ 标准：后台数据表格 -->
+<el-table class="data-table" :data="data">
+  <!-- el-table-column ... -->
+</el-table>
+
+<!-- ✅ 移动端专用组件：仅用于已确认的卡片式场景，不替代后台表格审计入口 -->
 <MobileTable
   :data="data"
   :columns="columns"
@@ -867,8 +883,8 @@ const props = defineProps({
 
 <script setup>
 // 业务组件内部使用标准组件
-import { MobileDialog } from '@/components'
-import { MobileForm } from '@/components'
+import MobileDialog from '@/components/MobileDialog.vue'
+import MobileForm from '@/components/MobileForm.vue'
 </script>
 ```
 
@@ -881,7 +897,7 @@ interface DialogProps {
   title?: string
   width?: string | number
   fullscreen?: boolean
-  showFooter?: boolean
+  showDefaultFooter?: boolean
   confirmText?: string
   cancelText?: string
 }

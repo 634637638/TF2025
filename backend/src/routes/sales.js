@@ -17,9 +17,86 @@ const {
   COMPLETED_TRANSACTION_STATUSES,
   getEffectivePhoneStatusSql
 } = require('../utils/phone-status')
+const { normalizedModelSql } = require('../utils/search')
+const { searchCustomers: searchCustomerOptions } = require('../services/customer-search.service')
 const COMPLETED_TRANSACTION_STATUS_SQL = `COALESCE(p.status, '') NOT IN (${COMPLETED_TRANSACTION_STATUSES.map(() => '?').join(', ')})`
 
-const buildAvailablePhonesExportFilters = async (query = {}) => {
+const buildAvailablePhoneSearch = value => {
+  const term = String(value ?? '').trim()
+  if (!term) return null
+
+  const pattern = `%${term}%`
+  const conditions = [
+    'p.imei LIKE ?',
+    'p.serial_number LIKE ?',
+    'b.name LIKE ?',
+    `${normalizedModelSql('m.name')} LIKE CONCAT('%', ${normalizedModelSql('?')}, '%')`,
+    'co.name LIKE ?',
+    'mem.size LIKE ?'
+  ]
+  const params = [pattern, pattern, pattern, term, pattern, pattern]
+  const isNumeric = /^\d+(\.\d+)?$/.test(term)
+
+  if (isNumeric && term.includes('.')) {
+    const priceValue = parseFloat(term)
+    conditions.push('p.purchase_cost >= ?', 'p.purchase_cost < ?')
+    params.push(priceValue - 0.01, priceValue + 0.01)
+  } else if (isNumeric) {
+    conditions.push('ABS(p.purchase_cost - ?) < 0.01')
+    params.push(parseFloat(term))
+  }
+
+  return {
+    sql: `(${conditions.join(' OR ')})`,
+    params
+  }
+}
+
+const buildSalesInventoryScope = ({ storeId, supplierId, isNew, startDate, endDate } = {}) => {
+  const whereConditions = [COMPLETED_TRANSACTION_STATUS_SQL]
+  const queryParams = [...COMPLETED_TRANSACTION_STATUSES]
+
+  if (storeId !== null && storeId !== undefined && !Number.isNaN(Number(storeId))) {
+    whereConditions.push('p.store_id = ?')
+    queryParams.push(storeId)
+  }
+  if (supplierId !== null && supplierId !== undefined && !Number.isNaN(Number(supplierId))) {
+    whereConditions.push('p.supplier_id = ?')
+    queryParams.push(supplierId)
+  }
+  if (isNew !== null && isNew !== undefined && isNew !== '') {
+    whereConditions.push('p.is_new = ?')
+    queryParams.push(String(isNew) === '1' ? 1 : 0)
+  }
+  if (startDate && endDate) {
+    whereConditions.push('DATE(p.inventory_time) BETWEEN ? AND ?')
+    queryParams.push(startDate, endDate)
+  } else if (startDate) {
+    whereConditions.push('DATE(p.inventory_time) >= ?')
+    queryParams.push(startDate)
+  } else if (endDate) {
+    whereConditions.push('DATE(p.inventory_time) <= ?')
+    queryParams.push(endDate)
+  }
+
+  return { whereConditions, queryParams }
+}
+
+const SALES_REFERENCE_LOOKUP_SQL = Object.freeze({
+  brand: 'SELECT id FROM brands WHERE LOWER(TRIM(name)) = LOWER(?)',
+  color: 'SELECT id FROM colors WHERE LOWER(TRIM(name)) = LOWER(?)',
+  memory: 'SELECT id FROM memories WHERE TRIM(size) = ?'
+})
+
+const findSalesReferenceId = async (resource, value) => {
+  const query = SALES_REFERENCE_LOOKUP_SQL[resource]
+  if (!query) throw new Error(`不支持的销售筛选基础资料: ${resource}`)
+
+  const [rows] = await getDatabase().execute(query, [String(value ?? '').trim()])
+  return rows[0]?.id ?? null
+}
+
+const buildAvailablePhonesFilters = async (query = {}, { preorderDeliveryPhoneId = null } = {}) => {
   const db = getDatabase()
   const {
     phone_id,
@@ -53,28 +130,21 @@ const buildAvailablePhonesExportFilters = async (query = {}) => {
     queryParams.push(status)
   }
 
+  if (preorderDeliveryPhoneId) {
+    whereConditions.push("p.status IN ('in_stock', 'reserved')")
+    whereConditions.push('p.id = ?')
+    queryParams.push(preorderDeliveryPhoneId)
+  }
+
   if (phone_id) {
     whereConditions.push('p.id = ?')
     queryParams.push(parseInt(phone_id, 10))
   }
 
-  if (search) {
-    const isNumeric = /^\d+(\.\d+)?$/.test(search)
-
-    if (isNumeric && search.includes('.')) {
-      const priceValue = parseFloat(search)
-      whereConditions.push('p.purchase_cost >= ? AND p.purchase_cost < ?')
-      queryParams.push(priceValue - 0.01, priceValue + 0.01)
-    } else if (isNumeric && search.length >= 10) {
-      whereConditions.push('(p.imei LIKE ? OR p.serial_number LIKE ?)')
-      queryParams.push(`%${search}%`, `%${search}%`)
-    } else if (isNumeric) {
-      whereConditions.push('(p.imei LIKE ? OR p.serial_number LIKE ? OR ABS(p.purchase_cost - ?) < 0.01)')
-      queryParams.push(`%${search}%`, `%${search}%`, parseFloat(search))
-    } else {
-      whereConditions.push('(p.imei LIKE ? OR p.serial_number LIKE ?)')
-      queryParams.push(`%${search}%`, `%${search}%`)
-    }
+  const searchCondition = buildAvailablePhoneSearch(search)
+  if (searchCondition) {
+    whereConditions.push(searchCondition.sql)
+    queryParams.push(...searchCondition.params)
   }
 
   if (store_id) {
@@ -119,14 +189,10 @@ const buildAvailablePhonesExportFilters = async (query = {}) => {
     whereConditions.push('p.brand_id = ?')
     queryParams.push(parsedBrandId)
   } else if (brand) {
-    const [exactBrandResult] = await db.execute(
-      'SELECT id, name FROM brands WHERE LOWER(TRIM(name)) = LOWER(?)',
-      [brand.trim()]
-    )
-
-    if (exactBrandResult.length > 0) {
+    const exactBrandId = await findSalesReferenceId('brand', brand)
+    if (exactBrandId !== null) {
       whereConditions.push('p.brand_id = ?')
-      queryParams.push(exactBrandResult[0].id)
+      queryParams.push(exactBrandId)
     } else {
       const [fuzzyBrandResult] = await db.execute(
         'SELECT id, name FROM brands WHERE LOWER(name) LIKE LOWER(?) ORDER BY name',
@@ -174,27 +240,13 @@ const buildAvailablePhonesExportFilters = async (query = {}) => {
     whereConditions.push('p.color_id = ?')
     queryParams.push(parsedColorId)
   } else if (color) {
-    const [exactColorResult] = await db.execute(
-      'SELECT id, name FROM colors WHERE LOWER(TRIM(name)) = LOWER(?)',
-      [color.trim()]
-    )
-
-    if (exactColorResult.length > 0) {
+    const exactColorId = await findSalesReferenceId('color', color)
+    if (exactColorId !== null) {
       whereConditions.push('p.color_id = ?')
-      queryParams.push(exactColorResult[0].id)
+      queryParams.push(exactColorId)
     } else {
-      const [similarColors] = await db.execute(
-        'SELECT id, name FROM colors WHERE LOWER(name) LIKE ? ORDER BY name',
-        [`%${color.trim().toLowerCase()}%`]
-      )
-
-      if (similarColors.length > 0) {
-        whereConditions.push('p.color_id = ?')
-        queryParams.push(-1)
-      } else {
-        whereConditions.push('p.color_id = ?')
-        queryParams.push(-1)
-      }
+      whereConditions.push('p.color_id = ?')
+      queryParams.push(-1)
     }
   }
 
@@ -202,27 +254,13 @@ const buildAvailablePhonesExportFilters = async (query = {}) => {
     whereConditions.push('p.memory_id = ?')
     queryParams.push(parsedMemoryId)
   } else if (memory) {
-    const [exactMemoryResult] = await db.execute(
-      'SELECT id, size FROM memories WHERE TRIM(size) = ?',
-      [memory.trim()]
-    )
-
-    if (exactMemoryResult.length > 0) {
+    const exactMemoryId = await findSalesReferenceId('memory', memory)
+    if (exactMemoryId !== null) {
       whereConditions.push('p.memory_id = ?')
-      queryParams.push(exactMemoryResult[0].id)
+      queryParams.push(exactMemoryId)
     } else {
-      const [similarMemories] = await db.execute(
-        'SELECT id, size FROM memories WHERE LOWER(size) LIKE ? ORDER BY size',
-        [`%${memory.trim().toLowerCase()}%`]
-      )
-
-      if (similarMemories.length > 0) {
-        whereConditions.push('p.memory_id = ?')
-        queryParams.push(-1)
-      } else {
-        whereConditions.push('p.memory_id = ?')
-        queryParams.push(-1)
-      }
+      whereConditions.push('p.memory_id = ?')
+      queryParams.push(-1)
     }
   }
 
@@ -401,33 +439,7 @@ const buildAvailablePhonesExportFile = (phones = []) => {
 // 获取可销售手机列表
 router.get('/phones/available', unifiedAuth, requirePermission('sales:view'), async (req, res) => {
   try {
-    const {
-      page = 1,
-      page_size,
-      phone_id,
-      search,
-      supplier_id,
-      store_id,
-      operator_id,
-      is_new,
-      status,
-      brand_id,
-      model_id,
-      color_id,
-      memory_id,
-      model_exact,
-      start_date,
-      end_date,
-      brand,
-      model,
-      color,
-      memory,
-      customer_id,
-      sale_status,
-      salesman_id,
-      price_range,
-      preorder_id
-    } = req.query
+    const { page = 1, page_size, preorder_id } = req.query
 
     const requestedPage = Number.parseInt(String(page), 10)
     const requestedPageSize = Number.parseInt(String(page_size ?? 100), 10)
@@ -464,263 +476,9 @@ router.get('/phones/available', unifiedAuth, requirePermission('sales:view'), as
       preorderDeliveryPhoneId = Number(preorderRows[0].matched_phone_id)
     }
 
-    const whereConditions = [COMPLETED_TRANSACTION_STATUS_SQL]
-    const queryParams = [...COMPLETED_TRANSACTION_STATUSES]
-    if (status) {
-      whereConditions.push(`${getEffectivePhoneStatusSql('p')} = ?`)
-      queryParams.push(status)
-    }
-    if (preorderDeliveryPhoneId) {
-      whereConditions.push("p.status IN ('in_stock', 'reserved')")
-      whereConditions.push('p.id = ?')
-      queryParams.push(preorderDeliveryPhoneId)
-    }
-
-    if (phone_id) {
-      whereConditions.push('p.id = ?')
-      queryParams.push(parseInt(phone_id, 10))
-    }
-
-    // 添加搜索条件 - 支持搜索 IMEI、序列号(serial_number) 和 入库价格(purchase_cost)
-    if (search) {
-      // 判断是否为纯数字（可能是价格或纯数字 IMEI/序列号）
-      const isNumeric = /^\d+(\.\d+)?$/.test(search)
-
-      if (isNumeric && search.includes('.')) {
-        // 包含小数点，视为价格搜索 - 使用范围匹配避免精度问题
-        const priceValue = parseFloat(search)
-        whereConditions.push('p.purchase_cost >= ? AND p.purchase_cost < ?')
-        queryParams.push(priceValue - 0.01, priceValue + 0.01)
-      } else if (isNumeric && search.length >= 10) {
-        // 纯数字且长度>=10，可能是 IMEI 或序列号
-        whereConditions.push('(p.imei LIKE ? OR p.serial_number LIKE ?)')
-        queryParams.push(`%${search}%`, `%${search}%`)
-      } else if (isNumeric) {
-        // 短数字，同时搜索 IMEI、序列号和价格
-        whereConditions.push('(p.imei LIKE ? OR p.serial_number LIKE ? OR ABS(p.purchase_cost - ?) < 0.01)')
-        queryParams.push(`%${search}%`, `%${search}%`, parseFloat(search))
-      } else {
-        // 非纯数字，搜索 IMEI 或序列号
-        whereConditions.push('(p.imei LIKE ? OR p.serial_number LIKE ?)')
-        queryParams.push(`%${search}%`, `%${search}%`)
-      }
-    }
-
-    if (store_id) {
-      whereConditions.push('p.store_id = ?')
-      queryParams.push(store_id)
-    }
-
-    if (supplier_id) {
-      whereConditions.push('p.supplier_id = ?')
-      queryParams.push(supplier_id)
-    }
-
-    if (operator_id) {
-      whereConditions.push('p.inventory_operator_id = ?')
-      queryParams.push(operator_id)
-    }
-
-    if (is_new !== undefined && is_new !== '') {
-      whereConditions.push('p.is_new = ?')
-      const isNewValue = is_new === '1' ? 1 : 0
-      queryParams.push(isNewValue)
-    }
-
-    // 日期筛选：支持单个日期和日期范围
-    if (start_date || end_date) {
-      if (start_date && end_date) {
-        // 同时有开始和结束日期
-        whereConditions.push('DATE(p.inventory_time) BETWEEN ? AND ?')
-        queryParams.push(start_date, end_date)
-      } else if (start_date) {
-        // 只有开始日期
-        whereConditions.push('DATE(p.inventory_time) >= ?')
-        queryParams.push(start_date)
-      } else if (end_date) {
-        // 只有结束日期
-        whereConditions.push('DATE(p.inventory_time) <= ?')
-        queryParams.push(end_date)
-      }
-    }
-
-    const parsedBrandId = brand_id !== undefined && brand_id !== '' ? parseInt(brand_id) : null
-    const parsedModelId = model_id !== undefined && model_id !== '' ? parseInt(model_id) : null
-    const parsedColorId = color_id !== undefined && color_id !== '' ? parseInt(color_id) : null
-    const parsedMemoryId = memory_id !== undefined && memory_id !== '' ? parseInt(memory_id) : null
-
-    // 添加品牌筛选条件
-    if (parsedBrandId !== null && !Number.isNaN(parsedBrandId)) {
-      whereConditions.push('p.brand_id = ?')
-      queryParams.push(parsedBrandId)
-    } else if (brand) {
-      // 先尝试精确匹配
-      const [exactBrandResult] = await getDatabase().execute(
-        'SELECT id, name FROM brands WHERE LOWER(TRIM(name)) = LOWER(?)',
-        [brand.trim()]
-      )
-
-      if (exactBrandResult.length > 0) {
-        const brandId = exactBrandResult[0].id
-        whereConditions.push('p.brand_id = ?')
-        queryParams.push(brandId)
-      } else {
-        // 精确匹配失败，尝试模糊匹配
-        const [fuzzyBrandResult] = await getDatabase().execute(
-          'SELECT id, name FROM brands WHERE LOWER(name) LIKE LOWER(?) ORDER BY name',
-          [`%${brand.trim().toLowerCase()}%`]
-        )
-
-        if (fuzzyBrandResult.length > 0) {
-          const brandId = fuzzyBrandResult[0].id
-          whereConditions.push('p.brand_id = ?')
-          queryParams.push(brandId)
-        } else {
-          // 如果品牌不存在，设置一个不会匹配任何结果的条件
-          whereConditions.push('p.brand_id = ?')
-          queryParams.push(-1)
-        }
-      }
-    }
-
-    // 添加型号筛选条件
-    if (parsedModelId !== null && !Number.isNaN(parsedModelId)) {
-      whereConditions.push('p.model_id = ?')
-      queryParams.push(parsedModelId)
-    } else if (model) {
-      const normalizedModel = model.trim()
-      const querySql = model_exact === '1' || model_exact === 1 || model_exact === true
-        ? 'SELECT id, name FROM models WHERE LOWER(TRIM(name)) = LOWER(?) ORDER BY name'
-        : 'SELECT id, name FROM models WHERE LOWER(name) LIKE LOWER(?) ORDER BY name'
-      const queryValue = model_exact === '1' || model_exact === 1 || model_exact === true
-        ? normalizedModel
-        : `%${normalizedModel}%`
-
-      const [modelResults] = await getDatabase().execute(querySql, [queryValue])
-
-      if (modelResults.length > 0) {
-        if (model_exact === '1' || model_exact === 1 || model_exact === true) {
-          whereConditions.push('p.model_id = ?')
-          queryParams.push(modelResults[0].id)
-        } else {
-          // 收集所有匹配的型号ID
-          const modelIds = modelResults.map(m => m.id)
-          whereConditions.push(`p.model_id IN (${modelIds.map(() => '?').join(',')})`)
-          queryParams.push(...modelIds)
-        }
-      } else {
-        whereConditions.push('p.model_id = ?')
-        queryParams.push(-1)
-      }
-    }
-
-    // 添加颜色筛选条件
-    if (parsedColorId !== null && !Number.isNaN(parsedColorId)) {
-      whereConditions.push('p.color_id = ?')
-      queryParams.push(parsedColorId)
-    } else if (color) {
-      // 先尝试精确匹配
-      const [exactColorResult] = await getDatabase().execute(
-        'SELECT id, name FROM colors WHERE LOWER(TRIM(name)) = LOWER(?)',
-        [color.trim()]
-      )
-
-      if (exactColorResult.length > 0) {
-        const colorId = exactColorResult[0].id
-        whereConditions.push('p.color_id = ?')
-        queryParams.push(colorId)
-      } else {
-        // 如果精确匹配失败，查看数据库中所有相似的颜色
-        const [similarColors] = await getDatabase().execute(
-          'SELECT id, name FROM colors WHERE LOWER(name) LIKE ? ORDER BY name',
-          [`%${color.trim().toLowerCase()}%`]
-        )
-
-        if (similarColors.length > 0) {
-          whereConditions.push('p.color_id = ?')
-          queryParams.push(-1)
-        } else {
-          whereConditions.push('p.color_id = ?')
-          queryParams.push(-1)
-        }
-      }
-    }
-
-    // 添加内存筛选条件
-    if (parsedMemoryId !== null && !Number.isNaN(parsedMemoryId)) {
-      whereConditions.push('p.memory_id = ?')
-      queryParams.push(parsedMemoryId)
-    } else if (memory) {
-      // 先尝试精确匹配
-      const [exactMemoryResult] = await getDatabase().execute(
-        'SELECT id, size FROM memories WHERE TRIM(size) = ?',
-        [memory.trim()]
-      )
-
-      if (exactMemoryResult.length > 0) {
-        const memoryId = exactMemoryResult[0].id
-        whereConditions.push('p.memory_id = ?')
-        queryParams.push(memoryId)
-      } else {
-        // 如果精确匹配失败，查看数据库中所有相似的内存
-        const [similarMemories] = await getDatabase().execute(
-          'SELECT id, size FROM memories WHERE LOWER(size) LIKE ? ORDER BY size',
-          [`%${memory.trim().toLowerCase()}%`]
-        )
-
-        if (similarMemories.length > 0) {
-          whereConditions.push('p.memory_id = ?')
-          queryParams.push(-1)
-        } else {
-          whereConditions.push('p.memory_id = ?')
-          queryParams.push(-1)
-        }
-      }
-    }
-
-    // 客户筛选条件 - 查找与该客户相关联的设备
-    if (customer_id) {
-      whereConditions.push('EXISTS (SELECT 1 FROM sales_orders so WHERE so.customer_id = ? AND so.phone_id = p.id AND so.status != \'cancelled\')')
-      queryParams.push(customer_id)
-    }
-
-    // 销售状态筛选条件 - 查找特定销售状态的设备
-    if (sale_status) {
-      switch (sale_status) {
-      case 'available':
-        whereConditions.push(`${getEffectivePhoneStatusSql('p')} = 'in_stock' AND NOT EXISTS (SELECT 1 FROM sales_orders so WHERE so.phone_id = p.id AND so.status != 'cancelled')`)
-        break
-      case 'reserved':
-        whereConditions.push(`${getEffectivePhoneStatusSql('p')} = 'reserved'`)
-        break
-      case 'sold':
-        whereConditions.push(`${getEffectivePhoneStatusSql('p')} = 'sold'`)
-        break
-      case 'shipped':
-        whereConditions.push('EXISTS (SELECT 1 FROM sales_orders so WHERE so.phone_id = p.id AND so.status = \'shipped\')')
-        break
-      case 'completed':
-        whereConditions.push('EXISTS (SELECT 1 FROM sales_orders so WHERE so.phone_id = p.id AND so.status = \'completed\')')
-        break
-      default:
-        whereConditions.push(`${getEffectivePhoneStatusSql('p')} = 'in_stock'`)
-      }
-    }
-
-    // 销售员筛选条件 - 查找该销售员负责的设备
-    if (salesman_id) {
-      whereConditions.push('EXISTS (SELECT 1 FROM sales_orders so WHERE so.salesman_id = ? AND so.phone_id = p.id AND so.status != \'cancelled\')')
-      queryParams.push(salesman_id)
-    }
-
-    // 价格范围筛选条件
-    if (price_range) {
-      const [minPrice, maxPrice] = price_range.split('-')
-      if (minPrice && maxPrice) {
-        whereConditions.push('p.sale_price BETWEEN ? AND ?')
-        queryParams.push(parseFloat(minPrice), parseFloat(maxPrice))
-      }
-    }
+    const { whereConditions, queryParams } = await buildAvailablePhonesFilters(req.query, {
+      preorderDeliveryPhoneId
+    })
 
     // 构建SQL查询
     const limitNum = requestedPageSize
@@ -876,7 +634,7 @@ router.get('/phones/available', unifiedAuth, requirePermission('sales:view'), as
 
 router.get('/phones/available/export', unifiedAuth, requirePermission('sales:export'), async (req, res) => {
   try {
-    const { whereConditions, queryParams } = await buildAvailablePhonesExportFilters(req.query)
+    const { whereConditions, queryParams } = await buildAvailablePhonesFilters(req.query)
     const query = buildAvailablePhonesSelectQuery(whereConditions)
     const [phones] = await getDatabase().execute(query, queryParams)
     const exportFile = buildAvailablePhonesExportFile(formatAvailablePhones(phones))
@@ -1296,7 +1054,7 @@ router.post('/phone', unifiedAuth, requireAnyPermission(['sales:sell', 'inventor
             sale_price = ?,
             purchase_cost = ?,
             supplier_id = ?,
-            remarks = ?,
+            remarks = COALESCE(NULLIF(TRIM(?), ''), remarks),
             sale_time = ?,
             sale_operator_id = ?
           WHERE id = ? AND status IN ('in_stock', 'reserved')`,
@@ -1466,142 +1224,7 @@ router.get('/stats', unifiedAuth, requirePermission('sales:view'), async (req, r
 // 获取可销售手机统计数据（库存卡片统计）
 router.get('/phones/available/stats', unifiedAuth, requirePermission('sales:view'), async (req, res) => {
   try {
-    const {
-      search,
-      supplier_id,
-      store_id,
-      operator_id,
-      is_new,
-      start_date,
-      end_date,
-      brand,
-      model,
-      color,
-      memory
-    } = req.query
-
-    // 构建查询条件（与/phones/available相同的逻辑）
-    const whereConditions = [COMPLETED_TRANSACTION_STATUS_SQL]
-    const queryParams = [...COMPLETED_TRANSACTION_STATUSES]
-
-    if (search) {
-      // 判断是否为纯数字（可能是价格或纯数字 IMEI/序列号）
-      const isNumeric = /^\d+(\.\d+)?$/.test(search)
-
-      if (isNumeric && search.includes('.')) {
-        // 包含小数点，视为价格搜索 - 使用范围匹配避免精度问题
-        const priceValue = parseFloat(search)
-        whereConditions.push('p.purchase_cost >= ? AND p.purchase_cost < ?')
-        queryParams.push(priceValue - 0.01, priceValue + 0.01)
-      } else if (isNumeric && search.length >= 10) {
-        // 纯数字且长度>=10，可能是 IMEI 或序列号
-        whereConditions.push('(p.imei LIKE ? OR p.serial_number LIKE ?)')
-        queryParams.push(`%${search}%`, `%${search}%`)
-      } else if (isNumeric) {
-        // 短数字，同时搜索 IMEI、序列号和价格
-        whereConditions.push('(p.imei LIKE ? OR p.serial_number LIKE ? OR ABS(p.purchase_cost - ?) < 0.01)')
-        queryParams.push(`%${search}%`, `%${search}%`, parseFloat(search))
-      } else {
-        // 非纯数字，搜索 IMEI 或序列号
-        whereConditions.push('(p.imei LIKE ? OR p.serial_number LIKE ?)')
-        queryParams.push(`%${search}%`, `%${search}%`)
-      }
-    }
-
-    if (store_id) {
-      whereConditions.push('p.store_id = ?')
-      queryParams.push(store_id)
-    }
-
-    if (supplier_id) {
-      whereConditions.push('p.supplier_id = ?')
-      queryParams.push(supplier_id)
-    }
-
-    if (operator_id) {
-      whereConditions.push('p.inventory_operator_id = ?')
-      queryParams.push(operator_id)
-    }
-
-    if (is_new !== undefined && is_new !== '') {
-      whereConditions.push('p.is_new = ?')
-      const isNewValue = is_new === '1' ? 1 : 0
-      queryParams.push(isNewValue)
-    }
-
-    if (start_date || end_date) {
-      if (start_date && end_date) {
-        // 同时有开始和结束日期
-        whereConditions.push('DATE(p.inventory_time) BETWEEN ? AND ?')
-        queryParams.push(start_date, end_date)
-      } else if (start_date) {
-        // 只有开始日期
-        whereConditions.push('DATE(p.inventory_time) >= ?')
-        queryParams.push(start_date)
-      } else if (end_date) {
-        // 只有结束日期
-        whereConditions.push('DATE(p.inventory_time) <= ?')
-        queryParams.push(end_date)
-      }
-    }
-
-    if (brand) {
-      const [brandResult] = await getDatabase().execute(
-        'SELECT id FROM brands WHERE LOWER(TRIM(name)) = LOWER(?)',
-        [brand.trim()]
-      )
-      if (brandResult.length > 0) {
-        whereConditions.push('p.brand_id = ?')
-        queryParams.push(brandResult[0].id)
-      } else {
-        whereConditions.push('p.brand_id = ?')
-        queryParams.push(-1)
-      }
-    }
-
-    if (model) {
-      // 使用模糊匹配，与主接口保持一致
-      const [modelResults] = await getDatabase().execute(
-        'SELECT id FROM models WHERE LOWER(name) LIKE LOWER(?)',
-        [`%${model.trim()}%`]
-      )
-      if (modelResults.length > 0) {
-        const modelIds = modelResults.map(m => m.id)
-        whereConditions.push(`p.model_id IN (${modelIds.map(() => '?').join(',')})`)
-        queryParams.push(...modelIds)
-      } else {
-        whereConditions.push('p.model_id = ?')
-        queryParams.push(-1)
-      }
-    }
-
-    if (color) {
-      const [colorResult] = await getDatabase().execute(
-        'SELECT id FROM colors WHERE TRIM(name) = ?',
-        [color.trim()]
-      )
-      if (colorResult.length > 0) {
-        whereConditions.push('p.color_id = ?')
-        queryParams.push(colorResult[0].id)
-      } else {
-        whereConditions.push('p.color_id = ?')
-        queryParams.push(-1)
-      }
-    }
-
-    if (memory) {
-      const [memoryResult] = await getDatabase().execute(
-        'SELECT id FROM memories WHERE TRIM(size) = ?',
-        [memory.trim()]
-      )
-      if (memoryResult.length > 0) {
-        whereConditions.push('p.memory_id = ?')
-        queryParams.push(memoryResult[0].id)
-      } else {
-        whereConditions.push('p.memory_id = ?')
-        queryParams.push(-1)
-      }
-    }
+    const { whereConditions, queryParams } = await buildAvailablePhonesFilters(req.query)
 
     const whereClause = whereConditions.join(' AND ')
 
@@ -1722,7 +1345,6 @@ router.get('/customer/phone/:phone', unifiedAuth, requirePermission('sales:view'
 router.get('/customers', unifiedAuth, requirePermission('sales:view'), async (req, res) => {
   try {
     const { search } = req.query
-    const pool = getDatabase()
 
     if (!search || search.length < 2) {
       return res.json({
@@ -1732,39 +1354,20 @@ router.get('/customers', unifiedAuth, requirePermission('sales:view'), async (re
       })
     }
 
-    // 判断是手机号还是姓名
-    const isNumeric = /^\d+$/.test(search)
+    const result = await searchCustomerOptions({
+      keyword: search,
+      page: req.query.page,
+      page_size: req.query.page_size,
+      fields: ['id', 'name', 'phone', 'apple_id', 'member_number', 'vip_level', 'created_at'],
+      search_fields: /^\d+$/.test(search) ? ['phone'] : ['name'],
+      order_by: 'created_at'
+    })
 
-    let query, params
-
-    if (isNumeric) {
-      // 手机号搜索
-      query = `
-        SELECT id, name, phone, apple_id, member_number, vip_level, created_at
-        FROM customers
-        WHERE phone LIKE ?
-        ORDER BY created_at DESC
-        LIMIT 10
-      `
-      params = [`%${search}%`]
-    } else {
-      // 姓名搜索
-      query = `
-        SELECT id, name, phone, apple_id, member_number, vip_level, created_at
-        FROM customers
-        WHERE name LIKE ?
-        ORDER BY created_at DESC
-        LIMIT 10
-      `
-      params = [`%${search}%`]
-    }
-
-    const [customers] = await pool.execute(query, params)
-
-    res.json({
+    return res.json({
       success: true,
       message: '搜索客户成功',
-      data: customers
+      data: result.records,
+      pagination: result.pagination
     })
   } catch (error) {
     log.error('❌ 搜索客户失败:', error)
@@ -1813,47 +1416,20 @@ router.get('/inventory-summary', unifiedAuth, requirePermission('sales:view'), a
       return ApiResponse.badRequest(res, '供应商编号无效')
     }
 
-    // 构建查询条件
-    const whereConditions = [COMPLETED_TRANSACTION_STATUS_SQL]
-    const queryParams = [...COMPLETED_TRANSACTION_STATUSES]
-
-    if (normalizedStoreId) {
-      whereConditions.push('p.store_id = ?')
-      queryParams.push(normalizedStoreId)
-    }
-
-    if (normalizedSupplierId) {
-      whereConditions.push('p.supplier_id = ?')
-      queryParams.push(normalizedSupplierId)
-    }
-
-    if (is_new !== undefined && is_new !== '') {
-      whereConditions.push('p.is_new = ?')
-      const isNewValue = is_new === '1' ? 1 : 0
-      queryParams.push(isNewValue)
-    }
-
-    // 日期范围筛选
-    if (normalizedStartDate && normalizedEndDate) {
-      whereConditions.push('DATE(p.inventory_time) BETWEEN ? AND ?')
-      queryParams.push(normalizedStartDate, normalizedEndDate)
-    } else if (normalizedStartDate) {
-      whereConditions.push('DATE(p.inventory_time) >= ?')
-      queryParams.push(normalizedStartDate)
-    } else if (normalizedEndDate) {
-      whereConditions.push('DATE(p.inventory_time) <= ?')
-      queryParams.push(normalizedEndDate)
-    }
+    const { whereConditions, queryParams } = buildSalesInventoryScope({
+      storeId: normalizedStoreId,
+      supplierId: normalizedSupplierId,
+      isNew: is_new,
+      startDate: normalizedStartDate,
+      endDate: normalizedEndDate
+    })
 
     // 品牌筛选
     if (brand) {
-      const [brandResult] = await getDatabase().execute(
-        'SELECT id FROM brands WHERE LOWER(TRIM(name)) = LOWER(?)',
-        [brand.trim()]
-      )
-      if (brandResult.length > 0) {
+      const brandId = await findSalesReferenceId('brand', brand)
+      if (brandId !== null) {
         whereConditions.push('p.brand_id = ?')
-        queryParams.push(brandResult[0].id)
+        queryParams.push(brandId)
       } else {
         whereConditions.push('p.brand_id = ?')
         queryParams.push(-1)
@@ -1878,13 +1454,10 @@ router.get('/inventory-summary', unifiedAuth, requirePermission('sales:view'), a
 
     // 颜色筛选
     if (color) {
-      const [colorResult] = await getDatabase().execute(
-        'SELECT id FROM colors WHERE LOWER(TRIM(name)) = LOWER(?)',
-        [color.trim()]
-      )
-      if (colorResult.length > 0) {
+      const colorId = await findSalesReferenceId('color', color)
+      if (colorId !== null) {
         whereConditions.push('p.color_id = ?')
-        queryParams.push(colorResult[0].id)
+        queryParams.push(colorId)
       } else {
         whereConditions.push('p.color_id = ?')
         queryParams.push(-1)
@@ -1893,13 +1466,10 @@ router.get('/inventory-summary', unifiedAuth, requirePermission('sales:view'), a
 
     // 内存筛选
     if (memory) {
-      const [memoryResult] = await getDatabase().execute(
-        'SELECT id FROM memories WHERE TRIM(size) = ?',
-        [memory.trim()]
-      )
-      if (memoryResult.length > 0) {
+      const memoryId = await findSalesReferenceId('memory', memory)
+      if (memoryId !== null) {
         whereConditions.push('p.memory_id = ?')
-        queryParams.push(memoryResult[0].id)
+        queryParams.push(memoryId)
       } else {
         whereConditions.push('p.memory_id = ?')
         queryParams.push(-1)
@@ -2030,8 +1600,8 @@ router.get('/inventory-detail', unifiedAuth, requirePermission('sales:view'), as
     // 只有当 model 不为空时才查找型号ID
     if (model && model.trim()) {
       const [modelResults] = await getDatabase().execute(
-        'SELECT id FROM models WHERE name = ? LIMIT 1',
-        [model]
+        'SELECT id FROM models WHERE name = ? AND brand_id = ? LIMIT 1',
+        [model, brandId]
       )
       if (modelResults.length > 0) {
         modelId = modelResults[0].id
@@ -2060,21 +1630,11 @@ router.get('/inventory-detail', unifiedAuth, requirePermission('sales:view'), as
       }
     }
 
-    // 构建动态查询条件
-    const conditions = [COMPLETED_TRANSACTION_STATUS_SQL]
-    const queryParams = [...COMPLETED_TRANSACTION_STATUSES]
-
-    // supplier_id 条件
-    if (numericSupplierId !== null && !isNaN(numericSupplierId)) {
-      conditions.push('p.supplier_id = ?')
-      queryParams.push(numericSupplierId)
-    }
-
-    // store_id 条件
-    if (numericStoreId !== null && !isNaN(numericStoreId)) {
-      conditions.push('p.store_id = ?')
-      queryParams.push(numericStoreId)
-    }
+    const { whereConditions: conditions, queryParams } = buildSalesInventoryScope({
+      storeId: numericStoreId,
+      supplierId: numericSupplierId,
+      isNew: is_new
+    })
 
     // brand_id 条件（必需）
     conditions.push('p.brand_id = ?')
@@ -2102,12 +1662,6 @@ router.get('/inventory-detail', unifiedAuth, requirePermission('sales:view'), as
       queryParams.push(memoryId)
     } else {
       conditions.push('p.memory_id IS NULL')
-    }
-
-    // is_new 条件（可选）
-    if (is_new !== null) {
-      conditions.push('p.is_new = ?')
-      queryParams.push(is_new)
     }
 
     const whereClause = conditions.join(' AND ')

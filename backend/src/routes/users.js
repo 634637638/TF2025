@@ -1,9 +1,11 @@
 const express = require('express')
-const { unifiedAuth, requirePermission, requireAnyPermission } = require('../middleware/unified-auth')
+const { unifiedAuth, requirePermission, requireAnyPermission, isSuperAdmin } = require('../middleware/unified-auth')
 const UserRepository = require('../repositories/user.repository')
 const ApiResponse = require('../utils/response')
 const { getDatabase, isConnected } = require('../config/database')
 const { getAttendanceAccessScope, hasUserPermission } = require('../services/accessControl.service')
+const { searchOperators } = require('../services/operator-search.service')
+const auditUnpaginatedPersonnelSearch = require('../middleware/unpaginated-personnel-search')
 const log = require('../utils/log')
 
 const router = express.Router()
@@ -109,36 +111,92 @@ async function selectPublicUser(connection, { id, username } = {}) {
  * - 考勤管理用户，或有综合查询权限：可以看到所有员工
  * - 普通用户（只有个人考勤查看权限）：只能看到自己
  */
-router.get('/employees', unifiedAuth, requireAnyPermission(['attendance:view', 'attendance:view:own', 'attendance:view:all', 'query:view']), async (req, res) => {
+router.get('/employees', unifiedAuth, requireAnyPermission(['attendance:view', 'attendance:view:own', 'attendance:view:all', 'query:view']), auditUnpaginatedPersonnelSearch('users-employees'), async (req, res) => {
   try {
-    const { status = '1' } = req.query
+    const {
+      status = '1',
+      keyword = '',
+      page,
+      page_size: pageSizeParam,
+      store_id: storeIdParam,
+      strict_scope: strictScopeParam = false
+    } = req.query
     const userId = req.user.id
 
-    const db = getDatabase()
     const [attendanceScope, hasQueryPermission] = await Promise.all([
       getAttendanceAccessScope(userId),
       hasUserPermission(userId, 'query_queryview', 'view')
     ])
     const isAdmin = attendanceScope.isAdmin || hasQueryPermission
 
+    const normalizedKeyword = String(keyword || '').trim()
+    const requestedStoreId = storeIdParam === undefined || storeIdParam === ''
+      ? null
+      : Number(storeIdParam)
+    if (requestedStoreId !== null && (!Number.isInteger(requestedStoreId) || requestedStoreId <= 0)) {
+      return ApiResponse.error(res, 'store_id 参数无效', 400)
+    }
+
+    const userStoreIds = Array.isArray(req.user?.store_ids)
+      ? req.user.store_ids.map(Number).filter(id => Number.isInteger(id) && id > 0)
+      : []
+    const superAdmin = isSuperAdmin(req.user)
+    const strictStoreScope = strictScopeParam === 'true' || strictScopeParam === true
+    const scopedStoreIds = requestedStoreId === null ? userStoreIds : [requestedStoreId]
+    if (strictStoreScope && !superAdmin && requestedStoreId !== null && !userStoreIds.includes(requestedStoreId)) {
+      return ApiResponse.error(res, '无权访问该门店员工', 403)
+    }
+
+    const usePagination = page !== undefined || pageSizeParam !== undefined || normalizedKeyword !== ''
+    const pageInt = Math.max(1, Number.parseInt(String(page || 1), 10) || 1)
+    const pageSizeInt = Math.min(100, Math.max(1, Number.parseInt(String(pageSizeParam || 50), 10) || 50))
+    const whereParts = ['u.status = ?']
+    const whereParams = [status]
+
+    if (normalizedKeyword) {
+      whereParts.push('(u.name LIKE ? OR u.username LIKE ? OR u.phone LIKE ?)')
+      const pattern = `%${normalizedKeyword}%`
+      whereParams.push(pattern, pattern, pattern)
+    }
+
+    if (strictStoreScope && !superAdmin) {
+      if (scopedStoreIds.length === 0) {
+        whereParts.push('1 = 0')
+      } else {
+        const placeholders = scopedStoreIds.map(() => '?').join(',')
+        whereParts.push(`(u.store_id IN (${placeholders}) OR EXISTS (SELECT 1 FROM user_stores scope_us WHERE scope_us.user_id = u.id AND scope_us.store_id IN (${placeholders})))`)
+        whereParams.push(...scopedStoreIds, ...scopedStoreIds)
+      }
+    } else if (strictStoreScope && requestedStoreId !== null) {
+      whereParts.push('(u.store_id = ? OR EXISTS (SELECT 1 FROM user_stores scope_us WHERE scope_us.user_id = u.id AND scope_us.store_id = ?))')
+      whereParams.push(requestedStoreId, requestedStoreId)
+    }
+
+    const db = getDatabase()
+    const whereSql = whereParts.join(' AND ')
     let users
+    let total = 0
     if (isAdmin) {
       // 默认只返回在职员工；编辑历史销售记录时由前端额外补回当前历史员工。
+      const countResult = await db.execute(`SELECT COUNT(*) AS total FROM users u WHERE ${whereSql}`, whereParams)
+      total = Number(countResult[0][0]?.total || 0)
+      const paginationSql = usePagination ? ` LIMIT ${pageSizeInt} OFFSET ${(pageInt - 1) * pageSizeInt}` : '';
       [users] = await db.execute(
-        `SELECT id, username, name, status
-         FROM users
-         WHERE status = ?
-         ORDER BY COALESCE(NULLIF(name, ''), username) ASC, id ASC`,
-        [status]
+        `SELECT u.id, u.username, u.name, u.status
+         FROM users u
+         WHERE ${whereSql}
+         ORDER BY COALESCE(NULLIF(u.name, ''), u.username) ASC, u.id ASC${paginationSql}`,
+        whereParams
       )
     } else {
       // 普通用户：只能看到自己
       [users] = await db.execute(
-        `SELECT id, username, name, status
-         FROM users
-         WHERE id = ? AND status = ?`,
-        [userId, status]
+        `SELECT u.id, u.username, u.name, u.status
+         FROM users u
+         WHERE u.id = ? AND ${whereSql}`,
+        [userId, ...whereParams]
       )
+      total = users.length
     }
 
     const employees = users.map(user => ({
@@ -150,7 +208,15 @@ router.get('/employees', unifiedAuth, requireAnyPermission(['attendance:view', '
 
     return ApiResponse.success(res, {
       employees,
-      total: employees.length,
+      total: usePagination ? total : employees.length,
+      pagination: usePagination ? {
+        page: pageInt,
+        page_size: pageSizeInt,
+        total,
+        total_pages: Math.ceil(total / pageSizeInt),
+        has_next: pageInt * pageSizeInt < total,
+        has_prev: pageInt > 1
+      } : undefined,
       is_admin: isAdmin
     }, '获取员工列表成功')
   } catch (error) {
@@ -266,34 +332,22 @@ router.get('/operators', unifiedAuth, requireAnyPermission([
   'inventory:view',
   'preorders:view',
   'return-goods:view'
-]), async (req, res) => {
+]), auditUnpaginatedPersonnelSearch('users-operators'), async (req, res) => {
   try {
-    const db = getDatabase()
-
-    // 查询有角色的用户作为操作员 (通过user_roles和roles表关联查询)
-    // 使用 GROUP_CONCAT 合并多个角色，避免重复用户
-    const [operators] = await db.execute(`
-      SELECT
-        u.id,
-        u.username,
-        u.name,
-        u.phone,
-        u.status,
-        u.salary_template_id,
-        GROUP_CONCAT(DISTINCT r.name SEPARATOR ', ') as role_name,
-        GROUP_CONCAT(DISTINCT COALESCE(r.code, CONCAT('role_', r.id)) SEPARATOR ', ') as role_codes
-      FROM users u
-      INNER JOIN user_roles ur ON u.id = ur.user_id
-      INNER JOIN roles r ON ur.role_id = r.id
-      WHERE u.status = 1 AND r.is_active = 1
-      GROUP BY u.id, u.username, u.name, u.phone, u.status, u.salary_template_id
-      ORDER BY COALESCE(NULLIF(u.name, ''), u.username) ASC, u.id ASC
-    `)
-
-    // 转换为前端需要的格式 - 使用name字段作为显示名称
-    const formattedOperators = operators.map(user => ({
+    const result = await searchOperators({
+      user: req.user,
+      superAdmin: isSuperAdmin(req.user),
+      keyword: req.query.keyword,
+      page: req.query.page,
+      page_size: req.query.page_size,
+      store_id: req.query.store_id,
+      status: req.query.status,
+      strict_scope: req.query.strict_scope,
+      includeDetails: true
+    })
+    const formattedOperators = result.records.map(user => ({
       id: user.id,
-      name: user.name || user.username, // 优先使用真实姓名，没有则使用用户名
+      name: user.name || user.username,
       username: user.username,
       phone: user.phone,
       salary_template_id: user.salary_template_id,
@@ -301,7 +355,7 @@ router.get('/operators', unifiedAuth, requireAnyPermission([
       role_codes: user.role_codes ? user.role_codes.split(', ') : []
     }))
 
-    return ApiResponse.success(res, formattedOperators, '获取操作员列表成功')
+    return ApiResponse.success(res, formattedOperators, '获取操作员列表成功', 200, result.usePagination ? { pagination: result.pagination } : {})
   } catch (error) {
     log.error('获取操作员列表失败:', error)
     return ApiResponse.error(res, '获取操作员列表失败', 500)

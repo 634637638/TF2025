@@ -1,5 +1,4 @@
 import { nextTick, ref, type Ref } from 'vue'
-import { extractResponseData } from '@/utils/api-response'
 import {
   isValidMobilePhone,
   normalizeAppleId,
@@ -9,6 +8,7 @@ import {
 } from '@/utils/security'
 import { unifiedApi as api } from '@/utils/unified-api'
 import { logger } from '@/utils/logger'
+import { searchCustomerOptions } from '@/services/customer-options'
 import type {
   BatchCustomer,
   BatchSaleFormData,
@@ -125,11 +125,7 @@ export const useSalesCustomers = ({
   const searchCustomers = async (phoneNumber: string) => {
     try {
       customerSearching.value = true
-      const response = await api.get(`/sales/customers?search=${encodeURIComponent(phoneNumber)}`)
-
-      customerSearchResults.value = response.success
-        ? extractResponseData<SalesCustomer[]>(response)
-        : []
+      customerSearchResults.value = await searchCustomerOptions(phoneNumber, 'sales') as SalesCustomer[]
     } catch (error) {
       logger.error('搜索客户失败:', error)
       customerSearchResults.value = []
@@ -478,10 +474,13 @@ export const useSalesCustomers = ({
     }
 
     try {
-      const response = await api.get(`/sales/customers?search=${encodeURIComponent(phone)}`)
-      batchCustomerSearchResults.value = response.success
-        ? extractResponseData<BatchCustomer[]>(response)
-        : []
+      batchCustomerSearchResults.value = (await searchCustomerOptions(phone, 'sales')).map(item => ({
+        ...item,
+        address: '',
+        total_orders: 0,
+        total_amount: 0,
+        status: 1
+      })) as BatchCustomer[]
     } catch (error) {
       logger.error('批量搜索客户失败:', error)
       batchCustomerSearchResults.value = []

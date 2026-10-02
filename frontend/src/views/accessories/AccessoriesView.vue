@@ -22,30 +22,45 @@
           </el-button>
           <el-button
             type="info"
+            :loading="refreshing"
             plain
             :disabled="refreshing"
             @click="handleRefresh"
           >
-            <InlineLoading
-              v-if="refreshing"
-              size="small"
-            />
-            <i
-              v-else
-              class="fas fa-sync-alt"
-            />
-            刷新
+            <i class="fas fa-sync-alt" />
+            {{ refreshing ? '刷新中...' : '刷新' }}
           </el-button>
         </template>
       </PageHeader>
 
       <div class="accessories-table-container admin-page-content">
+        <UnifiedSearchPanel
+          v-model:expanded="searchExpanded"
+          :loading="loading"
+          @search="handleSearch"
+          @reset="handleReset"
+        >
+          <template #primary>
+            <el-input
+              v-model="searchKeyword"
+              placeholder="搜索配件名称、分类、品牌或型号..."
+              clearable
+              @keyup.enter="handleSearch"
+              @click.stop
+            >
+              <template #prefix>
+                <i class="fas fa-search" />
+              </template>
+            </el-input>
+          </template>
+        </UnifiedSearchPanel>
+
         <div class="table-container table-section admin-panel admin-table-panel">
           <div class="section-header">
             <div class="section-title">
               <i class="fas fa-list" />
               配件列表
-              <span class="record-count">共 {{ accessories.length }} 条记录</span>
+              <span class="record-count">共 {{ filteredAccessories.length }} 条记录</span>
             </div>
           </div>
 
@@ -318,10 +333,10 @@
           </div>
 
           <Pagination
-            v-if="accessories.length > 0"
+            v-if="filteredAccessories.length > 0"
             v-model:current="currentPage"
             v-model:page-size="itemsPerPage"
-            :total="accessories.length"
+            :total="filteredAccessories.length"
             :page-sizes="[16, 32, 64, 100]"
             :show-total="true"
             :show-range="true"
@@ -351,16 +366,18 @@
 
 <script setup lang="ts">
 import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { useLoadingState } from '@/composables'
 import { useMobile } from '@/composables/mobile'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { useRefreshData } from '@/composables/useRefreshData'
+import { useNotification } from '@/composables/useNotification'
 import { PageHeader, PermissionGate } from '@/components/base'
 import InlineLoading from '@/components/InlineLoading.vue'
 import Pagination from '@/components/Pagination.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
+import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import { extractResponseData } from '@/utils/api-response'
 import { logger } from '@/utils/logger'
 import { getTextColumnMinWidth } from '@/utils/table-layout'
@@ -395,6 +412,7 @@ const showActionColumn = computed(() => shouldShowActionColumn(
 const { refreshing, refresh } = useRefreshData()
 const { isMobile } = useMobile()
 const { loading } = useLoadingState()
+const { confirm } = useNotification()
 
 loading.value = true
 const error = ref('')
@@ -402,18 +420,38 @@ const accessories = ref<AccessoryItem[]>([])
 const showDetailsModal = ref(false)
 const showStockInModal = ref(false)
 const selectedAccessory = ref<AccessoryItem | null>(null)
+const searchExpanded = ref(false)
+const searchKeyword = ref('')
 const currentPage = ref(1)
 const itemsPerPage = ref(16)
 const mobileActionRowId = ref<string | null>(null)
 const lastTappedRowId = ref<string | null>(null)
 const lastTapTimestamp = ref(0)
 
-const paginatedAccessories = computed(() => {
-  const start = (currentPage.value - 1) * itemsPerPage.value
-  return accessories.value.slice(start, start + itemsPerPage.value)
+const filteredAccessories = computed(() => {
+  const keyword = searchKeyword.value.trim().toLocaleLowerCase()
+  if (!keyword) return accessories.value
+
+  return accessories.value.filter((accessory) => {
+    const searchableText = [
+      accessory.name,
+      accessory.category,
+      accessory.brand_name,
+      accessory.model_name
+    ]
+      .filter(Boolean)
+      .join(' ')
+      .toLocaleLowerCase()
+    return searchableText.includes(keyword)
+  })
 })
 
-const totalPages = computed(() => Math.max(1, Math.ceil(accessories.value.length / itemsPerPage.value)))
+const paginatedAccessories = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage.value
+  return filteredAccessories.value.slice(start, start + itemsPerPage.value)
+})
+
+const totalPages = computed(() => Math.max(1, Math.ceil(filteredAccessories.value.length / itemsPerPage.value)))
 
 const accessoryNameColumnWidth = computed(() => getTextColumnMinWidth(
   ['配件名称', ...(canViewAccessoryField('name') ? paginatedAccessories.value.map(accessory => accessory.name) : [])],
@@ -434,6 +472,16 @@ const getStockStatusBadgeClass = (accessory: AccessoryItem) => {
   if (stock === 0) return 'status-out-of-stock'
   if (stock <= 20) return 'status-low-stock'
   return 'status-in-stock'
+}
+
+const handleSearch = () => {
+  currentPage.value = 1
+  mobileActionRowId.value = null
+}
+
+const handleReset = () => {
+  searchKeyword.value = ''
+  handleSearch()
 }
 
 const isAccessoryEnabled = (accessory: AccessoryItem) => (
@@ -500,12 +548,11 @@ const deleteAccessory = async (accessory: AccessoryItem) => {
 
   try {
     const targetName = canViewAccessoryField('name') ? accessory.name || '该配件' : '该配件'
-    await ElMessageBox.confirm(`确定要删除 ${targetName} 吗？此操作不可撤销。`, '删除确认', {
+    if (!await confirm(`确定要删除 ${targetName} 吗？此操作不可撤销。`, '删除确认', {
       confirmButtonText: '确定',
       cancelButtonText: '取消',
-      type: 'warning',
-      customClass: 'message-box-unified'
-    })
+      type: 'warning'
+    })) return
   } catch {
     return
   }
