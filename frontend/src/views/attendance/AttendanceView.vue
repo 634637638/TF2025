@@ -1194,6 +1194,7 @@
               >
                 <el-input
                   v-model="formData.leave_reason"
+                  class="tf-textarea"
                   type="textarea"
                   :rows="3"
                   placeholder="请说明请假原因"
@@ -1238,6 +1239,7 @@
                   :max="24"
                   :step="0.5"
                   :precision="1"
+                  :controls="false"
                   class="w-full"
                   :disabled="!canEditAttendanceField('attendance_attendanceview', 'overtime_hours')"
                 />
@@ -1256,6 +1258,7 @@
               >
                 <el-input
                   v-model="formData.overtime_reason"
+                  class="tf-textarea"
                   type="textarea"
                   :rows="3"
                   placeholder="请说明加班原因"
@@ -1443,6 +1446,7 @@
             >
               <el-input
                 v-model="approveForm.note"
+                class="tf-textarea"
                 type="textarea"
                 :rows="3"
                 placeholder="请输入审批备注(可选)"
@@ -3314,15 +3318,7 @@ onMounted(async () => {
 
   .attendance-dialog-form :deep(.el-input__wrapper),
   .attendance-dialog-form :deep(.el-input-number .el-input__wrapper),
-  .attendance-dialog-form :deep(.el-date-editor .el-input__wrapper),
-  .attendance-dialog-form :deep(.el-textarea__inner) {
-    border-radius: 12px;
-  }
-
-  .attendance-dialog-form :deep(.el-input__wrapper),
-  .attendance-dialog-form :deep(.el-input-number .el-input__wrapper),
   .attendance-dialog-form :deep(.el-date-editor .el-input__wrapper) {
-    min-height: 42px;
     padding: 1px 12px;
   }
 

@@ -42,19 +42,26 @@
         type="button"
         class="customer-name-lock-input__status customer-name-lock-input__status--editing"
         title="保存姓名并重新锁定"
+        aria-label="保存姓名并重新锁定"
         @mousedown.prevent
         @click="emit('save')"
       >
-        <i class="fas fa-lock-open" />
-        <span>保存</span>
+        <i
+          class="fas fa-lock-open"
+          aria-hidden="true"
+        />
       </button>
       <span
         v-else-if="selected"
         class="customer-name-lock-input__status"
         title="已锁定，双击姓名输入框可编辑"
+        role="img"
+        aria-label="已锁定，双击姓名输入框可编辑"
       >
-        <i class="fas fa-lock" />
-        <span>已锁定</span>
+        <i
+          class="fas fa-lock"
+          aria-hidden="true"
+        />
       </span>
 
       <button
@@ -170,10 +177,11 @@ defineExpose({ input, focus: () => input.value?.focus() })
 
 .customer-name-lock-input__status {
   display: inline-flex;
+  width: 28px;
+  min-width: 28px;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  padding: 0 7px;
+  padding: 0;
   background: var(--tf-color-surface-muted);
   color: var(--tf-color-text-secondary);
 }
@@ -223,8 +231,8 @@ button.customer-name-lock-input__status,
   }
 
   .customer-name-lock-input__status {
-    padding: 0 5px;
-    font-size: 10px;
+    width: 26px;
+    min-width: 26px;
   }
 
   .customer-name-lock-input__change {

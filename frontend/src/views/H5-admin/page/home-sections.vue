@@ -317,6 +317,7 @@
               v-model="sectionForm.product_limit"
               :min="1"
               :max="50"
+              :controls="false"
             />
             <template #tip>
               <span class="tip-text">同时显示的商品数量，只展示后台已选择且仍有效的商品。</span>
@@ -329,6 +330,7 @@
             <el-input-number
               v-model="sectionForm.sort_order"
               :min="0"
+              :controls="false"
             />
             <template #tip>
               <span class="tip-text">数值越小越靠前</span>
@@ -1972,19 +1974,6 @@ onUnmounted(() => {
     padding: 12px !important;
   }
 
-  :global(.home-section-dialog .mobile-dialog-sheet-footer),
-  :global(.home-section-products-dialog .mobile-dialog-sheet-footer) {
-    display: grid !important;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
-    padding: 10px 12px calc(10px + env(safe-area-inset-bottom)) !important;
-  }
-
-  :global(.home-section-dialog .mobile-dialog-sheet-footer .el-button),
-  :global(.home-section-products-dialog .mobile-dialog-sheet-footer .el-button) {
-    width: 100%;
-    margin: 0 !important;
-  }
 }
 
 @media (max-width: 420px) {

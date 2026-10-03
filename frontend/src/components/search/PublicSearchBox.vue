@@ -119,6 +119,11 @@ const emit = defineEmits<{
     box-shadow: none;
   }
 
+  /* 公共搜索框由外层容器绘制聚焦反馈，避免内部输入框重复显示焦点圈。 */
+  :deep(.el-input__wrapper.is-focus.is-focus) {
+    box-shadow: none;
+  }
+
   :deep(.el-input__inner) {
     color: var(--text-primary);
     font-size: var(--tf-font-body-lg);

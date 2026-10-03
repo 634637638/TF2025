@@ -41,6 +41,11 @@ requireToken(searchSource, '.filter-item--date-range', 'src/components/search/Un
 requireToken(dateRangeSource, 'placement="bottom-start"', 'src/components/DateRangePicker.vue', '公共日期范围组件必须从输入框下方展开')
 requireToken(customerNameLockSource, 'class="customer-name-lock-input"', 'src/components/common/CustomerNameLockInput.vue', '公共客户姓名组件必须保留 customer-name-lock-input 根节点')
 requireToken(customerNameLockSource, 'title="更换客户"', 'src/components/common/CustomerNameLockInput.vue', '客户姓名锁定与更换客户必须保持独立操作')
+requireToken(customerNameLockSource, 'aria-label="已锁定，双击姓名输入框可编辑"', 'src/components/common/CustomerNameLockInput.vue', '锁定图标必须保留无障碍说明')
+requireToken(customerNameLockSource, 'aria-label="保存姓名并重新锁定"', 'src/components/common/CustomerNameLockInput.vue', '保存图标必须保留无障碍说明')
+if (/<span>\s*(?:已锁定|保存)\s*<\/span>/.test(customerNameLockSource)) {
+  findings.push('src/components/common/CustomerNameLockInput.vue 锁定/保存状态只能显示图标，不得恢复文字标签')
+}
 requireToken(dialogStyleSource, '--tf-dialog-body-padding-inline', 'src/styles/components/_dialog.scss', 'Dialog 正文间距必须由公共变量控制')
 requireToken(dialogStyleSource, '.mobile-dialog-sheet-body', 'src/styles/components/_dialog.scss', 'MobileDialog 滚动容器必须接入公共 Dialog 样式')
 requireToken(dialogStyleSource, '.el-dialog__body::-webkit-scrollbar', 'src/styles/components/_dialog.scss', 'Dialog 必须隐藏可见滚动条并保留滚动能力')

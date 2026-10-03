@@ -1,5 +1,6 @@
 const { getDatabase } = require('../config/database')
 const { normalizeDateTime } = require('../utils/time')
+const { ensureInvoiceSequenceTable } = require('../utils/invoice-number')
 const log = require('../utils/log')
 
 /**
@@ -86,6 +87,8 @@ class TransferService {
     const connection = await pool.getConnection()
 
     try {
+      // 发票序列表的建表预检必须发生在业务事务之前；CREATE TABLE 会隐式提交并清除事务保存点。
+      await ensureInvoiceSequenceTable(connection)
       await connection.beginTransaction()
 
       if (!sale_time) {
@@ -354,6 +357,8 @@ class TransferService {
     const connection = await pool.getConnection()
 
     try {
+      // 与批发相同，避免发票序列表初始化破坏划拨事务中的保存点。
+      await ensureInvoiceSequenceTable(connection)
       await connection.beginTransaction()
 
       if (!sale_time) {

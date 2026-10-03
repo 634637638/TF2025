@@ -14,6 +14,7 @@
 - [价格采集 iPad Air 尺寸匹配说明](price-sync-ipad-air-size-guide.md) - iPad Air7/Air8 11 寸与 13 寸采集匹配规范
 - [报价采集归一化规范](price-list-normalization-standard.md) - 颜色标准归一化与 iPhone 型号代码匹配规范
 - [价目表动态同步说明](PRICE_LIST_GUIDE.md) - 功能说明；操作前以当前价目表页面为准
+- [三渠道价格规则](price-channel-pricing.md) - 销售、批发和 H5 商城价格的独立计算边界
 - [智能用户匹配指南](SMART_USER_MATCHING_GUIDE.md) - 导入用户匹配规则
 
 ### 导入功能

@@ -356,9 +356,10 @@
           <el-form-item label="备注">
             <el-input
               v-model="formData.remarks"
+              class="tf-textarea"
               placeholder="请输入备注信息"
               :type="isEditMode ? 'textarea' : 'text'"
-              :autosize="isEditMode ? { minRows: 1, maxRows: 4 } : undefined"
+              :rows="isEditMode ? 2 : undefined"
             />
           </el-form-item>
         </el-col>

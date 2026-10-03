@@ -657,8 +657,9 @@
             >
               <el-input
                 v-model="form.remarks"
+                class="tf-textarea"
                 type="textarea"
-                :rows="3"
+                :rows="2"
                 maxlength="500"
                 show-word-limit
               />

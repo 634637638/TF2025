@@ -12,13 +12,14 @@ const compatibilityRoute = ({ compatibilityId, replacement = null, reason = null
   if (compatibilityId) res.setHeader('X-Compatibility-Id', compatibilityId)
   if (replacement) res.setHeader('X-Compatibility-Replacement', replacement)
 
-  log.debug('兼容接口访问', {
+  log.info('兼容接口访问', {
     compatibility_id: compatibilityId || 'unspecified',
     method: req.method,
-    path: req.originalUrl,
+    path: (req.originalUrl || '').split('?')[0],
     replacement,
     reason,
-    user_id: req.user?.id || null
+    user_id: req.user?.id || null,
+    user_agent: req.headers?.['user-agent'] || null
   })
   next()
 }

@@ -387,7 +387,7 @@
                 :min="0"
                 :max="9999"
                 placeholder="请输入排序值，数字越小越靠前"
-                controls-position="right"
+                :controls="false"
                 style="width: 100%"
                 :disabled="!canEditField('sort_order')"
               />
@@ -1202,11 +1202,6 @@ onMounted(async () => {
   width: 100%;
 }
 
-.brands-dialog-form :deep(.el-input__wrapper),
-.brands-dialog-form :deep(.el-input-number .el-input__wrapper) {
-  border-radius: 12px;
-}
-
 /* 保留原有的表单样式（用于对话框等） */
 .form-label {
   font-size: 14px;
@@ -1704,7 +1699,6 @@ onMounted(async () => {
 
   .brands-dialog-form :deep(.el-input__wrapper),
   .brands-dialog-form :deep(.el-input-number .el-input__wrapper) {
-    min-height: 42px;
     padding: 1px 12px;
   }
 
@@ -1722,10 +1716,6 @@ onMounted(async () => {
     border-radius: 12px;
     display: inline-flex;
     align-items: center;
-  }
-
-  .brands-form-dialog :deep(.mobile-dialog-footer) {
-    width: 100%;
   }
 
 }

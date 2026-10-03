@@ -943,6 +943,7 @@
           <el-form-item label="备注">
             <el-input
               v-model="shipForm.remarks"
+              class="tf-textarea"
               type="textarea"
               :rows="3"
               placeholder="请输入备注信息（可选）"
@@ -983,6 +984,7 @@
           <el-form-item label="备注">
             <el-input
               v-model="completeForm.remarks"
+              class="tf-textarea"
               type="textarea"
               :rows="4"
               placeholder="请输入备注信息（可选）"
@@ -1026,6 +1028,7 @@
           >
             <el-input
               v-model="cancelForm.reason"
+              class="tf-textarea"
               type="textarea"
               :rows="4"
               placeholder="请输入取消原因"
@@ -1978,12 +1981,6 @@ onUnmounted(() => {
     }
   }
 
-  // 弹窗底部按钮
-  .dialog-footer {
-    display: flex;
-    justify-content: flex-end;
-    gap: 12px;
-  }
 }
 
 // 响应式设计
@@ -2125,12 +2122,6 @@ onUnmounted(() => {
       }
     }
 
-    .dialog-footer {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 8px;
-
-    }
   }
 
   .order-detail .order-items .order-item {
@@ -2148,18 +2139,6 @@ onUnmounted(() => {
 
   :global(.h5-order-dialog .mobile-dialog-sheet-body) {
     padding: 12px !important;
-  }
-
-  :global(.h5-order-dialog .mobile-dialog-sheet-footer) {
-    display: grid !important;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
-    padding: 10px 12px calc(10px + env(safe-area-inset-bottom)) !important;
-  }
-
-  :global(.h5-order-dialog .mobile-dialog-sheet-footer .el-button) {
-    width: 100%;
-    margin: 0 !important;
   }
 
   :deep(.h5-order-action-form),

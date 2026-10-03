@@ -410,6 +410,7 @@
             <label class="form-label">备注</label>
             <el-input
               v-model="editForm.remarks"
+              class="tf-textarea"
               type="textarea"
               :rows="2"
               placeholder="请输入备注信息"

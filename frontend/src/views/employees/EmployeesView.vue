@@ -924,6 +924,7 @@
             <el-form-item label="角色描述">
               <el-input
                 v-model="roleForm.description"
+                class="tf-textarea"
                 type="textarea"
                 placeholder="请输入角色描述"
                 :rows="3"
@@ -2959,15 +2960,6 @@ onMounted(async () => {
     font-size: 13px;
     line-height: 1.4;
     padding-bottom: 4px;
-  }
-
-  .employees-form-dialog .el-input__wrapper,
-  .employees-form-dialog .el-select__wrapper,
-  .employees-form-dialog .el-date-editor.el-input__wrapper,
-  .employees-form-dialog .el-date-editor.el-input,
-  .employees-form-dialog .el-textarea__inner {
-    min-height: 42px;
-    border-radius: 12px;
   }
 
   .employees-form-dialog .el-row {

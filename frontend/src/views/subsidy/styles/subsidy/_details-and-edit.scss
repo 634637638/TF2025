@@ -263,7 +263,6 @@
   }
 
   :deep(.el-textarea__inner) {
-    border-radius: 8px;
     font-size: 14px;
     padding: 10px 12px;
     transition: all 0.2s;
@@ -394,8 +393,4 @@
       }
     }
   }
-}
-
-.apply-dialog-footer {
-  gap: 10px;
 }

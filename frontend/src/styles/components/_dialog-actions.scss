@@ -9,7 +9,7 @@
 /*
  * Unified dialog action layout.
  * Desktop: content-sized actions aligned right.
- * Mobile: actions share one row and shrink equally.
+ * Mobile: actions stay on one centered row with equal, bounded widths.
  */
 :where(
   .tf-dialog-actions,
@@ -203,7 +203,10 @@
     .user-role-footer-actions
   ) {
     align-items: stretch !important;
-    justify-content: stretch !important;
+    justify-content: center !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-inline: 0 !important;
     gap: var(--tf-dialog-action-mobile-gap) !important;
   }
 
@@ -267,8 +270,9 @@
     .user-role-footer-actions
   ) > .btn {
     flex: 1 1 0 !important;
-    width: 0 !important;
+    width: auto !important;
     min-width: 0 !important;
+    max-width: none !important;
     padding-inline: 10px !important;
   }
 }

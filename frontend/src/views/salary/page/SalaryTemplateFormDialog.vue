@@ -30,10 +30,11 @@
         class="form-group"
       >
         <label>说明</label>
-        <textarea
+        <el-input
           v-model="description"
-          class="form-control"
-          rows="2"
+          class="tf-textarea"
+          type="textarea"
+          :rows="2"
           placeholder="请输入模板说明"
           :disabled="!canEditField(moduleKey, 'template_description')"
         />
@@ -44,16 +45,16 @@
         class="form-group"
       >
         <label>底薪（元） <span class="required">*</span></label>
-        <input
+        <el-input-number
           v-model.number="baseSalary"
-          type="number"
           class="form-control"
           placeholder="请输入底薪"
-          min="0"
-          step="100"
+          :min="0"
+          :step="100"
+          :controls="false"
           :disabled="!canEditField(moduleKey, 'template_base_salary')"
           required
-        >
+        />
       </div>
 
       <div
@@ -88,16 +89,16 @@
         class="form-group"
       >
         <label>全新机提成（元/台） <span class="required">*</span></label>
-        <input
+        <el-input-number
           v-model.number="commissionNewFixed"
-          type="number"
           class="form-control"
           placeholder="请输入全新机提成金额"
-          min="0"
-          step="1"
+          :min="0"
+          :step="1"
+          :controls="false"
           :disabled="!canEditField(moduleKey, 'template_commission_new_fixed')"
           required
-        >
+        />
         <span class="form-tip">销售全新机的提成金额，设为0则不计算提成</span>
       </div>
 
@@ -106,15 +107,15 @@
         class="form-group"
       >
         <label>二手机提成（元/台）</label>
-        <input
+        <el-input-number
           v-model.number="commissionUsedFixed"
-          type="number"
           class="form-control"
           placeholder="请输入二手机提成金额"
-          min="0"
-          step="1"
+          :min="0"
+          :step="1"
+          :controls="false"
           :disabled="!canEditField(moduleKey, 'template_commission_used_fixed')"
-        >
+        />
         <span class="form-tip">销售二手机的提成金额，设为0则不计算提成</span>
       </div>
 
@@ -123,17 +124,17 @@
         class="form-group"
       >
         <label>利润提成（%） <span class="required">*</span></label>
-        <input
+        <el-input-number
           v-model.number="commissionPercentage"
-          type="number"
           class="form-control"
           placeholder="请输入利润提成比例"
-          min="0"
-          max="100"
-          step="1"
+          :min="0"
+          :max="100"
+          :step="1"
+          :controls="false"
           :disabled="!canEditField(moduleKey, 'template_commission_percentage')"
           required
-        >
+        />
       </div>
 
       <div
@@ -141,16 +142,16 @@
         class="form-group"
       >
         <label>加班费率（元/小时） <span class="required">*</span></label>
-        <input
+        <el-input-number
           v-model.number="overtimeHourlyRate"
-          type="number"
           class="form-control"
           placeholder="请输入加班费率"
-          min="0"
-          step="10"
+          :min="0"
+          :step="10"
+          :controls="false"
           :disabled="!canEditField(moduleKey, 'template_overtime_hourly_rate')"
           required
-        >
+        />
       </div>
 
       <div
@@ -158,17 +159,17 @@
         class="form-group"
       >
         <label>每月休息天数 <span class="required">*</span></label>
-        <input
+        <el-input-number
           v-model.number="restDays"
-          type="number"
           class="form-control"
           placeholder="请输入每月休息天数"
-          min="0"
-          max="31"
-          step="1"
+          :min="0"
+          :max="31"
+          :step="1"
+          :controls="false"
           :disabled="!canEditField(moduleKey, 'template_rest_days')"
           required
-        >
+        />
         <span class="form-tip">请假天数超过此设置的部分，按日薪扣除工资</span>
       </div>
 
@@ -202,17 +203,17 @@
           class="form-group"
         >
           <label>涨薪周期（月） <span class="required">*</span></label>
-          <input
+          <el-input-number
             v-model.number="autoRaiseMonths"
-            type="number"
             class="form-control"
             placeholder="请输入涨薪周期"
-            min="1"
-            max="60"
-            step="1"
+            :min="1"
+            :max="60"
+            :step="1"
+            :controls="false"
             :disabled="!canEditField(moduleKey, 'template_auto_raise_months')"
             required
-          >
+          />
           <span class="form-tip">员工入职每满此月数自动涨薪</span>
         </div>
 
@@ -221,16 +222,16 @@
           class="form-group"
         >
           <label>涨薪金额（元） <span class="required">*</span></label>
-          <input
+          <el-input-number
             v-model.number="autoRaiseAmount"
-            type="number"
             class="form-control"
             placeholder="请输入涨薪金额"
-            min="0"
-            step="50"
+            :min="0"
+            :step="50"
+            :controls="false"
             :disabled="!canEditField(moduleKey, 'template_auto_raise_amount')"
             required
-          >
+          />
           <span class="form-tip">每次涨薪增加的金额</span>
         </div>
 
@@ -239,16 +240,16 @@
           class="form-group"
         >
           <label>最高底薪（元） <span class="required">*</span></label>
-          <input
+          <el-input-number
             v-model.number="autoRaiseMaxSalary"
-            type="number"
             class="form-control"
             placeholder="请输入最高底薪"
-            min="0"
-            step="100"
+            :min="0"
+            :step="100"
+            :controls="false"
             :disabled="!canEditField(moduleKey, 'template_auto_raise_max_salary')"
             required
-          >
+          />
           <span class="form-tip">达到此金额后不再自动涨薪</span>
         </div>
       </template>
@@ -382,12 +383,6 @@ const showAutoRaiseSection = computed(() => [
     border-color: var(--tf-color-blue-ant-light);
     box-shadow: 0 0 0 2px rgb(24 144 255 / 20%);
   }
-}
-
-textarea.form-control {
-  min-height: 60px;
-  resize: vertical;
-  font-family: inherit;
 }
 
 .form-tip {

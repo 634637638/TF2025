@@ -1082,7 +1082,7 @@
                     v-model="customerForm.points"
                     :min="0"
                     placeholder="请输入积分"
-                    controls-position="right"
+                    :controls="false"
                     class="w-full"
                     :disabled="!canEditField('points')"
                   />
@@ -1174,9 +1174,10 @@
             >
               <el-input
                 v-model="customerForm.remarks"
+                class="tf-textarea"
                 type="textarea"
                 placeholder="请输入备注信息"
-                :rows="3"
+                :rows="2"
                 maxlength="500"
                 show-word-limit
                 :disabled="!canEditField('remarks')"
@@ -3933,15 +3934,8 @@ onUnmounted(() => {
     }
 
     :deep(.el-input__wrapper),
-    :deep(.el-textarea__inner),
-    :deep(.el-input-number .el-input__wrapper) {
-      border-radius: 12px;
-    }
-
-    :deep(.el-input__wrapper),
     :deep(.el-input-number .el-input__wrapper),
     :deep(.el-date-editor .el-input__wrapper) {
-      min-height: 42px;
       padding: 1px 12px;
     }
 

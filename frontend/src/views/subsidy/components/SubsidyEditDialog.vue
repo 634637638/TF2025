@@ -311,8 +311,9 @@
           >
             <el-input
               v-model="editForm.remarks"
+              class="tf-textarea"
               type="textarea"
-              :rows="3"
+              :rows="2"
               placeholder="请输入备注信息（可选）"
             />
           </el-form-item>
@@ -808,8 +809,5 @@ const submitEdit = async () => {
     grid-template-columns: 1fr;
   }
 
-  .apply-dialog-footer {
-    justify-content: flex-end;
-  }
 }
 </style>

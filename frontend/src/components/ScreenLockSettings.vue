@@ -38,8 +38,6 @@
                 :closable="false"
                 style="margin-bottom: 20px;"
               >
-                <p>• 点击顶部操作栏的"锁定"按钮即可锁定屏幕</p>
-                <p>• 解锁时需要输入您当前的登录密码</p>
                 <p>• 下方设置用于自定义锁屏背景和提示信息</p>
               </el-alert>
 
@@ -175,8 +173,6 @@
               <el-form-item label="锁定提示">
                 <el-input
                   v-model="screenLockForm.message"
-                  type="textarea"
-                  :rows="2"
                   placeholder="请输入密码解锁"
                   maxlength="100"
                   show-word-limit

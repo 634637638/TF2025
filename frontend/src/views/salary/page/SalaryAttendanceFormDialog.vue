@@ -72,16 +72,16 @@
           class="form-group"
         >
           <label>休假天数（天） <span class="required">*</span></label>
-          <input
+          <el-input-number
             v-model.number="monthlyLeaveDays"
-            type="number"
             class="form-control"
-            min="0.5"
-            max="31"
-            step="0.5"
+            :min="0.5"
+            :max="31"
+            :step="0.5"
+            :controls="false"
             :disabled="!canEditField(moduleKey, 'monthly_leave_days')"
             required
-          >
+          />
         </div>
       </template>
 
@@ -121,16 +121,16 @@
           class="form-group"
         >
           <label>请假天数（天） <span class="required">*</span></label>
-          <input
+          <el-input-number
             v-model.number="leaveDays"
-            type="number"
             class="form-control"
-            min="0.1"
-            max="31"
-            step="0.5"
+            :min="0.1"
+            :max="31"
+            :step="0.5"
+            :controls="false"
             :disabled="!canEditField(moduleKey, 'leave_days')"
             required
-          >
+          />
           <span class="form-tip">无薪，扣工资</span>
         </div>
       </template>
@@ -141,16 +141,16 @@
           class="form-group"
         >
           <label>加班时长（小时） <span class="required">*</span></label>
-          <input
+          <el-input-number
             v-model.number="overtimeHours"
-            type="number"
             class="form-control"
-            min="0.5"
-            max="24"
-            step="0.5"
+            :min="0.5"
+            :max="24"
+            :step="0.5"
+            :controls="false"
             :disabled="!canEditField(moduleKey, 'overtime_hours')"
             required
-          >
+          />
           <span class="form-tip tag-success">有加班费</span>
         </div>
       </template>
@@ -160,10 +160,11 @@
         class="form-group"
       >
         <label>备注</label>
-        <textarea
+        <el-input
           v-model="reason"
-          class="form-control"
-          rows="2"
+          class="tf-textarea"
+          type="textarea"
+          :rows="2"
           placeholder="请输入备注（可选）"
           :disabled="!canEditField(moduleKey, 'attendance_reason')"
         />
@@ -182,7 +183,7 @@
               value="approved"
               :disabled="!canEditField(moduleKey, 'attendance_status')"
             >
-            <span><i class="fas fa-check-circle text-success mr-1" />已通过（直接生效）</span>
+            <span>已通过（直接生效）</span>
           </label>
           <label class="radio-label">
             <input
@@ -191,7 +192,7 @@
               value="pending"
               :disabled="!canEditField(moduleKey, 'attendance_status')"
             >
-            <span><i class="fas fa-clock text-secondary mr-1" />待审批（需审批后生效）</span>
+            <span>待审批（需审批后生效）</span>
           </label>
         </div>
       </div>
@@ -302,12 +303,6 @@ const status = createFieldModel('status')
     border-color: var(--tf-color-blue-ant-light);
     box-shadow: 0 0 0 2px rgb(24 144 255 / 20%);
   }
-}
-
-textarea.form-control {
-  min-height: 60px;
-  resize: vertical;
-  font-family: inherit;
 }
 
 .radio-group {

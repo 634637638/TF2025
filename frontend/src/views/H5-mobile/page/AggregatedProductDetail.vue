@@ -460,7 +460,7 @@ const loadProductByTemplateId = async (templateId: number, sequence = loadSequen
         })
         .filter((p: number) => p > 0)
 
-      // 优先使用 price_options 中的价格，如果没有则使用模板的 sale_price 或 min_retail_price
+      // 优先使用独立的 H5 价格选项，没有选项时使用模板计算结果。
       let calculatedMinPrice: number
       let calculatedMaxPrice: number
 
@@ -469,7 +469,7 @@ const loadProductByTemplateId = async (templateId: number, sequence = loadSequen
         calculatedMaxPrice = Math.max(...prices)
       } else {
         // price_options 为空，使用模板数据的价格
-        const templatePrice = parseFloat(templateData.sale_price || templateData.min_retail_price || 0)
+        const templatePrice = parseFloat(templateData.sale_price || templateData.min_wholesale_price || 0)
         calculatedMinPrice = templatePrice
         calculatedMaxPrice = templatePrice
       }
@@ -496,7 +496,7 @@ const loadProductByTemplateId = async (templateId: number, sequence = loadSequen
         .map((po: any) => parseFloat(po.display_price || po.sale_price || 0))
         .filter((p: number) => p > 0)
 
-      // 优先使用 price_options 中的价格，如果没有则使用模板的 sale_price 或 min_retail_price
+      // 优先使用独立的 H5 价格选项，没有选项时使用模板计算结果。
       let calculatedMinPrice: number
       let calculatedMaxPrice: number
 
@@ -505,7 +505,7 @@ const loadProductByTemplateId = async (templateId: number, sequence = loadSequen
         calculatedMaxPrice = Math.max(...prices)
       } else {
         // price_options 为空，使用模板数据的价格
-        const templatePrice = parseFloat(templateData.sale_price || templateData.min_retail_price || 0)
+        const templatePrice = parseFloat(templateData.sale_price || templateData.min_wholesale_price || 0)
         calculatedMinPrice = templatePrice
         calculatedMaxPrice = templatePrice
       }

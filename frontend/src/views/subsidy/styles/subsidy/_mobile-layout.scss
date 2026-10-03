@@ -4,10 +4,6 @@
     padding: 12px;
   }
 
-  .apply-dialog-footer {
-    gap: 8px;
-  }
-
   /* 移动端卡片列表 */
   .mobile-card-list {
     display: flex;
@@ -405,12 +401,6 @@
   .device-selected-actions {
     flex-direction: column;
 
-  }
-}
-
-@media (max-width: 479px) {
-  .apply-dialog-footer {
-    gap: 6px;
   }
 }
 

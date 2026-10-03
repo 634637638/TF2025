@@ -157,14 +157,15 @@
           <label class="brand-field">
             <span>型号</span>
             <div class="brand-field-control">
-              <input
+              <el-input
                 v-model.trim="modelKeyword"
                 type="text"
+                class="brand-field-input"
                 placeholder="点击或输入筛选型号"
                 @focus="openSearchField('model')"
                 @click.stop="openSearchField('model')"
                 @input="openSearchField('model')"
-              >
+              />
               <button
                 type="button"
                 class="brand-field-toggle"
@@ -205,14 +206,15 @@
           <label class="brand-field">
             <span>颜色</span>
             <div class="brand-field-control">
-              <input
+              <el-input
                 v-model.trim="colorKeyword"
                 type="text"
+                class="brand-field-input"
                 placeholder="点击或输入筛选颜色"
                 @focus="openSearchField('color')"
                 @click.stop="openSearchField('color')"
                 @input="openSearchField('color')"
-              >
+              />
               <button
                 type="button"
                 class="brand-field-toggle"
@@ -253,14 +255,15 @@
           <label class="brand-field">
             <span>内存</span>
             <div class="brand-field-control">
-              <input
+              <el-input
                 v-model.trim="memoryKeyword"
                 type="text"
+                class="brand-field-input"
                 placeholder="点击或输入筛选内存"
                 @focus="openSearchField('memory')"
                 @click.stop="openSearchField('memory')"
                 @input="openSearchField('memory')"
-              >
+              />
               <button
                 type="button"
                 class="brand-field-toggle"
@@ -1507,20 +1510,23 @@ onActivated(async () => {
   .brand-field-control {
     position: relative;
 
-    input {
+    .brand-field-input {
       width: 100%;
       min-width: 0;
-      height: 36px;
-      padding: 0 38px 0 10px;
-      border-radius: 10px;
-      border: 1px solid var(--tf-color-danger-legacy);
-      background: var(--color-bg-white);
-      color: var(--text-primary);
-      font-size: 12px;
-      outline: none;
+      :deep(.el-input__wrapper) {
+        padding: 0 38px 0 10px;
+        border: 1px solid var(--tf-color-danger-legacy);
+        background: var(--color-bg-white);
+        box-shadow: none;
+      }
 
-      &::placeholder {
-        color: var(--tf-color-gray-element-placeholder);
+      :deep(.el-input__inner) {
+        color: var(--text-primary);
+        font-size: 12px;
+
+        &::placeholder {
+          color: var(--tf-color-gray-element-placeholder);
+        }
       }
     }
   }

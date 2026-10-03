@@ -897,7 +897,7 @@
                   :rows="2"
                   maxlength="1000"
                   placeholder="填写本次打款备注（可选）"
-                  class="form-control payment-remarks-input"
+                  class="form-control payment-remarks-input tf-textarea"
                   :disabled="!canEditPaymentField('remarks')"
                 />
               </div>
@@ -1208,7 +1208,7 @@
                   :rows="2"
                   maxlength="1000"
                   placeholder="填写本次打款备注（可选）"
-                  class="form-control payment-remarks-input"
+                  class="form-control payment-remarks-input tf-textarea"
                   :disabled="!canEditPaymentField('remarks')"
                 />
               </div>
@@ -1623,8 +1623,9 @@
               >
                 <el-input
                   v-model="editPaymentForm.payment_remarks"
+                  class="tf-textarea"
                   type="textarea"
-                  :rows="3"
+                  :rows="2"
                   maxlength="1000"
                   placeholder="填写打款备注（可选）"
                   :disabled="!canEditPaymentField('remarks')"

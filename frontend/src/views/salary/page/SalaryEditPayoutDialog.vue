@@ -30,28 +30,28 @@
             class="form-group"
           >
             <label>底薪</label>
-            <input
+            <el-input-number
               v-model.number="baseSalary"
-              type="number"
               class="form-control"
-              min="0"
-              step="0.01"
+              :min="0"
+              :step="0.01"
+              :controls="false"
               :disabled="!canEditField('salary_salaryrecordsview', 'base_salary')"
-            >
+            />
           </div>
           <div
             v-if="canViewField('salary_salaryrecordsview', 'commission_amount')"
             class="form-group"
           >
             <label>销售提成</label>
-            <input
+            <el-input-number
               v-model.number="commissionAmount"
-              type="number"
               class="form-control"
-              min="0"
-              step="0.01"
+              :min="0"
+              :step="0.01"
+              :controls="false"
               :disabled="!canEditField('salary_salaryrecordsview', 'commission_amount')"
-            >
+            />
           </div>
         </div>
       </div>
@@ -64,28 +64,28 @@
             class="form-group"
           >
             <label>加班费</label>
-            <input
+            <el-input-number
               v-model.number="overtimePay"
-              type="number"
               class="form-control"
-              min="0"
-              step="0.01"
+              :min="0"
+              :step="0.01"
+              :controls="false"
               :disabled="!canEditField('salary_salaryrecordsview', 'overtime_pay')"
-            >
+            />
           </div>
           <div
             v-if="canViewField('salary_salaryrecordsview', 'leave_deduction')"
             class="form-group"
           >
             <label>请假扣除</label>
-            <input
+            <el-input-number
               v-model.number="leaveDeduction"
-              type="number"
               class="form-control"
-              min="0"
-              step="0.01"
+              :min="0"
+              :step="0.01"
+              :controls="false"
               :disabled="!canEditField('salary_salaryrecordsview', 'leave_deduction')"
-            >
+            />
           </div>
           <div
             v-if="canViewField('salary_salaryrecordsview', 'net_salary')"

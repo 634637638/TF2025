@@ -1622,21 +1622,6 @@ const _handleSelect = (item: InventoryItem) => {
   width: 100% !important;
 }
 
-.inventory-edit-dialog .el-select__wrapper,
-.inventory-edit-dialog .el-input__wrapper,
-.inventory-edit-dialog .el-textarea__inner,
-.inventory-edit-dialog .el-input-number .el-input__wrapper {
-  min-height: 42px;
-  border-radius: 12px;
-  box-shadow: 0 0 0 1px var(--color-border) inset;
-}
-
-.inventory-edit-dialog .el-select__wrapper.is-focused,
-.inventory-edit-dialog .el-input__wrapper.is-focus,
-.inventory-edit-dialog .el-input-number .el-input__wrapper.is-focus {
-  box-shadow: 0 0 0 1px var(--tf-color-violet-600) inset;
-}
-
 /* 隐藏入库时间日期选择器的图标 */
 .inventory-edit-dialog .el-input__prefix,
 .inventory-edit-dialog .el-input__suffix,

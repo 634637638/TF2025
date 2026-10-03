@@ -3136,12 +3136,6 @@ watch(activeTab, async (newTab, oldTab) => {
   color: var(--tf-color-silver);
 }
 
-textarea.form-control {
-  resize: vertical;
-  min-height: 60px;
-  font-family: inherit;
-}
-
 /* 单选框组样式 */
 .radio-group {
   display: flex;

@@ -358,10 +358,10 @@
               >
                 <template #default="{ row }">
                   <span
-                    v-if="row.retail_price !== null && row.retail_price !== undefined && row.retail_price > 0"
+                    v-if="row.sales_display_price !== null && row.sales_display_price !== undefined && row.sales_display_price > 0"
                     class="retail-price-tag"
                   >
-                    ¥{{ Number(row.retail_price).toFixed(0) }}
+                    ¥{{ Number(row.sales_display_price).toFixed(0) }}
                   </span>
                   <span
                     v-else
@@ -409,10 +409,10 @@
               >
                 <template #default="{ row }">
                   <span
-                    v-if="row.wholesale_price"
+                    v-if="row.wholesale_display_price !== null && row.wholesale_display_price !== undefined && row.wholesale_display_price > 0"
                     class="wholesale-price-tag"
                   >
-                    ¥{{ Number(row.wholesale_price).toFixed(0) }}
+                    ¥{{ Number(row.wholesale_display_price).toFixed(0) }}
                   </span>
                   <span
                     v-else
@@ -782,9 +782,6 @@
                 :value="source.id"
               />
             </el-select>
-            <div class="mt-1 text-secondary text-xs">
-              未指定时使用默认来源；指定后仅该商品采用对应来源价格。公开未登录来源需先在“同步设置”中新增。
-            </div>
           </el-form-item>
           <el-row :gutter="16">
             <el-col :span="12">
@@ -884,8 +881,9 @@
           <el-form-item label="备注">
             <el-input
               v-model="editForm.remark"
+              class="tf-textarea"
               type="textarea"
-              :rows="3"
+              :rows="2"
               placeholder="请输入备注"
             />
           </el-form-item>
@@ -960,7 +958,7 @@
                       v-model="syncConfig.sync_interval"
                       :min="10"
                       :max="1440"
-                      controls-position="right"
+                      :controls="false"
                       style="width: 150px"
                     />
                     <span class="ml-2 text-gray-500 text-sm">分钟</span>
@@ -1825,6 +1823,9 @@ const fetchPriceList = async () => {
         // 修复：0 也应该被保留，不应该被转换为 null
         wholesale_price: item.wholesale_price !== null && item.wholesale_price !== undefined ? Number(item.wholesale_price) : null,
         retail_price: item.retail_price !== null && item.retail_price !== undefined ? Number(item.retail_price) : null,
+        // 保留后端按全局规则计算的渠道展示价，表格列使用这两个字段渲染。
+        sales_display_price: item.sales_display_price !== null && item.sales_display_price !== undefined ? Number(item.sales_display_price) : null,
+        wholesale_display_price: item.wholesale_display_price !== null && item.wholesale_display_price !== undefined ? Number(item.wholesale_display_price) : null,
         stock_quantity: Number(item.stock_quantity) || 0,
         last_sync_time: item.last_sync_time || null,
         is_collect: item.is_collect !== undefined ? Number(item.is_collect) : 1,

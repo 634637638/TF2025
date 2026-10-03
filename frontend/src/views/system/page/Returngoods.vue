@@ -112,13 +112,15 @@
 
       <div
         v-if="!isMobile"
-        class="table-wrapper"
+        class="table-wrapper table-responsive"
       >
         <el-table
-          class="data-table"
+          class="data-table devices-table compact-fit-table base-data-table returngoods-data-table"
           :data="loading ? [] : records"
           border
           stripe
+          table-layout="fixed"
+          :fit="true"
           style="width: 100%"
         >
           <template #empty>
@@ -462,8 +464,9 @@
             <label>备注</label>
             <el-input
               v-model="editForm.remarks"
+              class="tf-textarea"
               type="textarea"
-              :rows="4"
+              :rows="2"
               placeholder="请输入退库备注"
               clearable
             />

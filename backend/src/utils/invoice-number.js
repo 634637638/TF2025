@@ -145,6 +145,7 @@ function parseInvoiceNumber(invoiceNumber) {
 }
 
 module.exports = {
+  ensureInvoiceSequenceTable: ensureSequenceTable,
   generateInvoiceNumber,
   generateInvoiceNumberForDate,
   parseInvoiceNumber

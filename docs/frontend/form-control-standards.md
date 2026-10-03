@@ -20,18 +20,31 @@
 | 表格内排序值 | `el-input-number` | 使用 `controls="false"` 保留紧凑单元格；范围和变更提交沿用字段业务规则 |
 | 文件、颜色、扫码和拖动输入 | 原生 `input` | 浏览器能力或第三方库要求时允许保留 |
 
-## 原生文本输入盘点
+数字输入和文本域的公共行为由 `frontend/src/styles/components/_form-controls.scss` 统一维护，页面不得复制一套控件行为样式。
 
-普通搜索、名称、手机号、Apple ID、交易流水号，以及只读的员工/金额展示都使用 `el-input`。原生 `input[type="text"]` 只用于有明确交互约束的场景，当前保留项如下：
+Element Plus 的 `el-select`、`el-date-picker`、`el-input`、`el-input-number`、`el-cascader` 和 `el-time-picker` 自带内部输入框边框。即使历史组件需要传递 `.form-control` 以保持宽度，也只能由公共 `_form-controls.scss` 清除控件根节点的外层边框，最终保留一层内部边框；页面不得再次给这些组件添加外层边框。
 
-| 文件 | 数量 | 保留原因 |
-| --- | ---: | --- |
-| `views/H5-mobile/page/MobileHome.vue` | 3 | 型号、颜色、内存输入驱动 H5 移动端选择器 |
-| `views/H5-mobile/page/MyOrders.vue` | 1 | 顾客端订单查询轻量姓名输入 |
-| `views/auth/LoginViewSimple.vue` | 1 | 认证专用布局及浏览器用户名自动填充 |
-| `views/subsidy/components/SubsidyApplyDialog.vue` | 6 | IMEI、证件、姓名和电话输入执行实时归一化并使用紧凑业务布局 |
+## 圆角与高度唯一入口
 
-以上数量由 `check:form-controls` 逐文件登记并作为上限；某项迁移后必须同步下调登记数量，不能把已迁移控件保留为永久豁免。`el-input` 发出的值是字符串，改造事件时应按其组件事件签名同步更新类型，不得假定 `$event.target` 一定存在。
+普通输入、选择、日期和数字控件的圆角与高度只允许由
+`frontend/src/styles/components/_form-controls.scss` 维护：
+
+- PC 端普通控件高度统一为 `var(--input-height-default)`，当前值为 `38px`。
+- 手机端普通控件高度统一为 `var(--mobile-control-height)`，默认 `40px`；超窄屏由全局移动端令牌调整为 `38px`。
+- 普通控件圆角统一为 `var(--tf-radius-control)`，当前值为 `6px`。
+- 控件聚焦时统一使用 `var(--tf-form-control-focus-color)` 和 `var(--tf-form-control-focus-ring)`，当前为报价在库卡片同款橙色 `1px` 完整外圈；禁止页面单独设置聚焦颜色、宽度或 `inset` 阴影。
+- 选择、日期、数字控件必须与普通输入使用同一 wrapper 高度和圆角。
+- 统一检索面板使用公共 `--tf-search-control-height` 紧凑规格；表格排序控件使用公共表格规格，这两类例外只能在公共组件中维护。
+- 业务页面和业务组件禁止直接为 `.el-input__wrapper`、`.el-select__wrapper`、`.el-date-editor`、`.el-input-number` 或 `.el-textarea__inner` 设置 `height`、`min-height` 或 `border-radius`。
+- 页面只能维护布局宽度、字段间距、状态边框和业务颜色，不能复制一套控件高度、圆角或外壳。
+
+因此，销售、库存、综合查询、系统设置、国补、工资、权限、基础资料、付款和 H5 管理页面必须使用同一公共控件入口；新增页面若出现页面级控件圆角或高度，`check:form-controls` 必须失败。
+
+## 原生业务输入盘点
+
+普通搜索、名称、手机号、Apple ID、交易流水号、密码、数字字段，以及只读的员工/金额展示全部使用 `el-input` 或 `el-input-number`。当前业务模板中的原生普通文本和数字输入数量均为 0，由 `check:form-controls` 持续守护；迁移后的组件事件必须使用 Element Plus 发出的值，不得再依赖 `$event.target.value`。
+
+文件上传、颜色、范围、复选和单选属于浏览器能力或专用编辑语义，继续按“原生控件边界”章节管理。
 
 新建或大幅修改的后台表单必须优先使用 Element Plus 控件。公共组件可以封装 Element Plus，但不能让业务页面重新维护相同的基础样式。
 
@@ -42,10 +55,15 @@
 - 必填标记由表单规则统一提供；业务页面不得通过多个手写星号制造不同间距。
 - 下拉选项必须使用稳定的 `key`，展示文本与提交值分离；基础资料选项继续遵守《后台列表检索统一规范》的排序规则。
 - 后台表格中的普通数值编辑也使用 `el-input-number`；排序字段不得直接使用原生 `<input type="number">`，公共尺寸由 `_table.scss` 中的 `.sort-order-control` 维护。
-- 金额和价格字段不得显示上下增减按钮。使用 `el-input` 时不得设置 `type="number"`，改用 `inputmode="decimal"` 和 `.price-input`；使用 `el-input-number` 时必须设置 `:controls="false"` 并使用 `.price-input-number`。数量、分页、排序等非金额字段不套用价格 class。
+- 所有数字输入字段都不得显示上下增减按钮。每个 `el-input-number` 必须显式使用 `:controls="false"`，公共样式会隐藏历史页面遗漏的步进按钮、移除预留的左右空白并保持边框连续；原生 `input[type="number"]` 同时隐藏浏览器自带的数字旋钮。金额字段仍使用 `.price-input` / `.price-input-number` 语义 class，但不再单独维护按钮样式。
+- 备注、说明、地址等多行文本统一使用固定 `rows` 的 `el-input type="textarea"`，这是强制规则：控件首次渲染保持固定高度，不随输入内容自动向下展开；禁止使用 `autosize`。公共样式只允许 `resize: vertical`，用户可以通过文本域底部手柄手动向下拉伸，禁止横向、双向或完全禁止拉伸。页面不得通过私有 CSS 改回自动扩展、横向拉伸或固定不可调整高度。
+- `rows="2"` 是备注、锁定提示、短说明和短地址等常规文本的统一紧凑规格，公共令牌按 PC/手机断点提供统一初始高度；`rows="3"` 及以上只用于确实需要展示更长内容的业务字段，并须保留固定 rows，不得用页面私有 `height`/`min-height` 覆盖公共行为。
+- 短系统文案（例如锁屏标题、锁定提示、站点名称和公司地址）使用单行 `el-input`；只有备注、说明、地址详情等可能包含换行的内容才使用 textarea。字段语义优先于统一套用多行控件。
+- 所有业务页面模板不得使用原生 `<textarea>`；统一控件可添加 `tf-textarea` 语义 class，但高度必须由 `rows` 明确声明。复制到剪贴板等脚本临时创建的隐藏 textarea 不属于业务表单控件。
 - 金额展示统一使用 `formatAmount`/`formatCurrency` 或页面对应的公共价格格式化函数：`1500.00` 显示为 `1500`，`1500.50` 显示为 `1500.5`，不得直接在模板中使用金额 `toFixed(2)`。
 - 日期字段必须明确 `type`、`format`、`value-format`，业务代码不得直接依赖浏览器本地日期字符串解析。
 - 控件宽度由父级布局和公共搜索/弹窗规则控制；业务页面不得为普通输入、选择和日期控件复制一套固定高度、圆角或颜色。
+- 表格内的编辑输入框不得被列边框和单元格留白切成左右独立区域；需要连续铺满时，必须给编辑列登记语义 class，并只在该列收口单元格边框与水平内边距。
 - 手机端控件必须允许收缩或换行，文字、占位符和错误提示不得被裁切。
 
 ## 原生控件边界
@@ -64,9 +82,9 @@
 - 例外数量不能增加，必须通过 `check:form-controls`；
 - 完成页面迁移后删除例外登记。
 
-回归观察清单由 `frontend/scripts/check-form-controls.mjs` 维护。当前运行时代码中的原生 `select` 和原生日期控件数量均为 0；原生普通文本输入由专用交互例外清单精确约束。`exceptionBaseline` 中未实际包含原生控件的文件只是 select/date 的回归观察范围，不代表这些文件当前仍有原生控件。
+回归观察清单由 `frontend/scripts/check-form-controls.mjs` 维护。当前运行时代码中的原生文本、数字、`select` 和日期输入数量均为 0；文件上传、颜色、范围、复选和单选仍按浏览器能力边界保留。
 
-截至 2026 年 10 月 1 日，原生文本框从 22 个降至 11 个：图标搜索、角色搜索、工资模板名称、销售批量表单电话/Apple ID/流水号及只读工资人员/金额展示已迁移到 `el-input`；公开报价页统一使用 `PublicSearchBox`，不再由页面维护原生文本框、清除按钮和搜索按钮。工资考勤弹窗、角色表单、权限模块管理和模块搜索中的普通字段也已统一。销售字段的业务事件、只读状态和客户搜索联动保持不变。销售批量表单中的 Apple ID 输入事件已明确为组件值字符串。
+截至 2026 年 10 月 3 日，登录、屏幕解锁、H5 商品筛选、H5 订单查询、国补申请、菜单宽度、工资考勤、工资模板和工资发放中的普通输入均已迁移到统一 Element Plus 控件。国补身份证、姓名、电话归一化已改用组件字符串事件，业务校验行为保持不变。
 
 下拉、日期、排序数字控件的迁移仍按各自的组件语义审计；省份仍提交编码，城市仍提交名称，省份变化时会继续清空城市；禁用态和错误态也已保留。
 
@@ -95,13 +113,17 @@ npm run check:form-controls
 
 审计会检查：
 
-- 新增原生普通文本输入是否已迁移或登记为专用交互例外；6 个例外文件的文本框数量是否超过登记上限；
+- 普通文本和数字输入是否全部使用 `el-input`/`el-input-number`；
 - 原生 `select` 是否属于现有登记例外；
 - 原生日期输入是否属于现有登记例外；
 - 六类基础资料排序字段是否继续使用统一 `el-input-number`；
 - 角色表单和权限模块管理的普通文本字段是否继续使用登记数量的 `el-input`；
 - 已登记文件的例外数量是否增加；
 - 统一文档、审计命令和公共入口是否已登记。
+- 数字输入是否重新引入 `controls-position`，文本域是否重新引入 `autosize` 或 `resize="none"`；这些行为由公共表单控件入口统一控制。
+- 所有业务模板是否仍存在原生 `<textarea>`；每个 `el-input type="textarea"` 是否声明固定 `rows`；文本域是否只保留垂直手动拉伸。
+- 页面/组件是否私自维护普通表单控件的 `border-radius`、`height` 或 `min-height`；统一圆角和高度必须来自 `_form-controls.scss`，检索和表格排序只能使用已登记的公共组件例外。
+- 页面/组件是否私自维护普通表单控件的 `:focus`、`.is-focus` 或 `.is-focused` 边框、阴影和颜色；聚焦状态必须来自 `_form-controls.scss`，公共检索容器的外层聚焦效果除外。
 
 当前策略是原生 `select` 和日期输入默认清零；若确需重新引入，必须先登记原因、公共替代方案和回归范围，并运行完整 `npm run check:standards`。
 
@@ -111,4 +133,12 @@ npm run check:form-controls
 
 金额规范适用于后台、销售、库存、国补、预订单、供应商、工资和 H5 页面。金额模板不得直接调用 `toFixed(2)`；统一使用 `formatAmount`/`formatCurrency` 或已登记的公共价格格式化函数。新增金额字段必须同时完成输入控件和展示格式接入，并通过 `check:form-controls` 与构建检查。
 
-最后更新：2026-10-01
+## 本轮统一记录（2026-10-04）
+
+- 已将工资模板、考勤、角色管理、模块管理、国补申请和 Git 提交表单中的原生 textarea 全部迁移为 `el-input type="textarea"`。
+- 已将“默认固定高度、允许手动向下展开”纳入强制审计；`check:form-controls` 现在会拦截原生 textarea、缺少 `rows` 或 `tf-textarea` 语义 class 的多行控件，以及横向/双向/禁止拉伸和自动高度配置。
+- 当前业务模板原生 textarea 数量为 0，所有业务多行控件均已接入 `tf-textarea`；`rows=2` 使用全局 PC/手机高度令牌，`rows>=3` 按长内容语义保留固定行数并仍允许垂直手动展开。
+- 已将普通控件的圆角和高度收口到 `_form-controls.scss`，移除销售、综合查询、库存、国补、权限、付款、H5 和基础资料页面的私有控件圆角/高度覆盖；`check:form-controls` 现在会阻止新增私有控件圆角或高度。
+- 已将普通输入、选择、日期和数字控件的聚焦状态收口到 `_form-controls.scss`，统一为报价在库卡片同款橙色 1px 完整外圈，并移除销售、库存、综合查询、权限、国补、付款、城市选择、菜单和屏幕锁定页面的私有聚焦覆盖；公共检索容器仍保留自身外层聚焦反馈，内部输入不重复绘制。
+
+最后更新：2026-10-04

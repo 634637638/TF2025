@@ -70,9 +70,7 @@
 }
 
 .permissions-dialog .permission-standard-input .el-input__wrapper {
-  min-height: 42px;
   padding-inline: 14px;
-  border-radius: var(--tf-radius-control);
 }
 
 .permissions-dialog .permission-standard-input .el-input__inner[readonly] {
@@ -86,13 +84,6 @@
   border-color: var(--tf-color-slate-200);
   cursor: not-allowed;
   box-shadow: none;
-}
-
-.modal-body textarea.form-control {
-  resize: vertical;
-  min-height: 80px;
-  font-family: inherit;
-  line-height: 1.5;
 }
 
 .modal-body select.form-control {
@@ -821,13 +812,8 @@
 .search-input .el-input__wrapper {
   padding-left: 40px;
   padding-right: 40px;
-  border-radius: 8px;
   box-shadow: 0 0 0 2px var(--tf-color-border-muted) inset;
   transition: box-shadow 0.3s ease;
-}
-
-.search-input .el-input__wrapper.is-focus {
-  box-shadow: 0 0 0 2px var(--color-primary) inset, 0 0 0 0.2rem rgba(64, 158, 255, 0.18);
 }
 
 .search-icon {
@@ -2215,11 +2201,6 @@
     max-height: calc(100dvh - 16px);
   }
 
-  .dialog-footer {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
   .permission-summary-footer {
     height: 112px;
     min-height: 112px;
@@ -3136,11 +3117,6 @@
     max-height: none;
   }
 
-  .permissions-view .user-role-modal .modal-footer.user-role-footer {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
   .permissions-view .user-role-footer-actions {
     justify-content: flex-end;
   }
@@ -3401,7 +3377,6 @@
 
   .user-role-modal .user-role-footer-actions {
     flex: 0 0 auto;
-    width: auto;
   }
 
   .user-role-modal .modal-body {
@@ -4122,8 +4097,7 @@
   }
 
   .user-role-modal .assignment-toolbar-head,
-  .user-role-modal .assignment-filter-row,
-  .user-role-modal .modal-footer.user-role-footer {
+  .user-role-modal .assignment-filter-row {
     align-items: stretch;
     flex-direction: column;
   }
@@ -4131,10 +4105,6 @@
   .user-role-modal .assignment-toolbar-meta,
   .user-role-modal .user-role-footer-actions {
     justify-content: stretch;
-  }
-
-  .user-role-modal .user-role-footer-actions .el-button {
-    flex: 1 1 0;
   }
 
   .user-role-modal .assignment-filter-toggle,

@@ -28,5 +28,7 @@
 - [权限提示手工验证](PERMISSION_TOAST_TEST.md)
 - [旧文档结构指南迁移说明](UNIFIED_STRUCTURE.md)
 - [公共选项与检索统一实施方案](reference-options-search-unification.md)
+- [兼容接口与弃用路由台账](compatibility-route-retirement-ledger.md)
+- [销售与调货事务标准](sales-transfer-transaction-standards.md)
 
 权限系统的实现与权限动作清单见[权限文档索引](../permissions/INDEX.md)。历史测试说明不作为当前规范。

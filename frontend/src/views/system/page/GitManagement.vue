@@ -311,10 +311,11 @@
                         <i class="fas fa-comment-alt" />
                         提交信息
                       </label>
-                      <textarea
+                      <el-input
                         v-model="commitForm.message"
-                        class="form-textarea"
-                        rows="2"
+                        class="tf-textarea"
+                        type="textarea"
+                        :rows="2"
                         placeholder="简要描述本次更改..."
                       />
                     </div>
@@ -323,10 +324,11 @@
                         <i class="fas fa-edit" />
                         详细说明（修改了什么）
                       </label>
-                      <textarea
+                      <el-input
                         v-model="commitForm.details"
-                        class="form-textarea"
-                        rows="2"
+                        class="tf-textarea"
+                        type="textarea"
+                        :rows="2"
                         placeholder="详细描述本次修改的内容..."
                       />
                     </div>
@@ -347,10 +349,11 @@
                           {{ opt.label }}
                         </el-tag>
                       </div>
-                      <textarea
+                      <el-input
                         v-model="commitForm.optimizations"
-                        class="form-textarea"
-                        rows="2"
+                        class="tf-textarea"
+                        type="textarea"
+                        :rows="2"
                         placeholder="描述本次优化的内容，或点击上方标签快速添加..."
                       />
                     </div>
@@ -466,7 +469,6 @@ import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { unifiedApi } from '@/utils/unified-api'
 import { PageHeader, PermissionGate } from '@/components/base'
-import InlineLoading from '@/components/InlineLoading.vue'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { fieldPermissions } from '@/composables/useFieldPermissions'
 import { useLoadingState } from '@/composables'
@@ -1336,16 +1338,6 @@ watch(canView, async (value) => {
   font-size: 14px;
   color: var(--color-text-regular);
   font-weight: 500;
-}
-
-.form-textarea {
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  font-size: 14px;
-  font-family: inherit;
-  resize: vertical;
 }
 
 .checkbox-label {

@@ -501,6 +501,7 @@
         >
           <el-input
             v-model="formData.remarks"
+            class="tf-textarea"
             type="textarea"
             :rows="2"
             maxlength="200"
@@ -2382,7 +2383,6 @@ onBeforeUnmount(() => {
 :deep(.el-date-editor .el-input__wrapper),
 :deep(.el-input-number .el-input__wrapper),
 :deep(.el-textarea__inner) {
-  border-radius: 12px;
   box-shadow: 0 0 0 1px var(--tf-color-border-blue) inset;
 }
 
@@ -2390,7 +2390,6 @@ onBeforeUnmount(() => {
 :deep(.el-select__wrapper),
 :deep(.el-date-editor .el-input__wrapper),
 :deep(.el-input-number .el-input__wrapper) {
-  min-height: 42px;
   padding: 1px 12px;
 }
 
@@ -2404,18 +2403,6 @@ onBeforeUnmount(() => {
 
 :deep(.el-input-number .el-input__wrapper) {
   width: 100%;
-}
-
-:deep(.el-input-number .el-input-number__decrease),
-:deep(.el-input-number .el-input-number__increase) {
-  border-radius: 10px;
-}
-
-:deep(.el-input__wrapper.is-focus),
-:deep(.el-select__wrapper.is-focused),
-:deep(.el-date-editor .el-input__wrapper.is-focus),
-:deep(.el-input-number .el-input__wrapper.is-focus) {
-  box-shadow: 0 0 0 1px var(--tf-color-violet-600) inset;
 }
 
 :deep(.el-input-number .el-input__wrapper) {
@@ -2462,7 +2449,6 @@ onBeforeUnmount(() => {
   :deep(.el-select__wrapper),
   :deep(.el-date-editor .el-input__wrapper),
   :deep(.el-input-number .el-input__wrapper) {
-    min-height: 40px;
     padding: 1px 10px;
   }
 

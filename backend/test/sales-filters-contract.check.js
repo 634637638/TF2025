@@ -34,6 +34,27 @@ test('sales inventory list, export and stats share the same filter builder', () 
   assert.doesNotMatch(list, /const whereConditions\s*=\s*\[COMPLETED_TRANSACTION_STATUS_SQL\]/)
 })
 
+test('sales available stats keep reference joins for text search filters', () => {
+  const route = fs.readFileSync(path.join(__dirname, '../src/routes/sales.js'), 'utf8')
+  const statsStart = route.indexOf("router.get('/phones/available/stats'")
+  const statsEnd = route.indexOf("router.get('/customer/phone/:phone'")
+  const stats = route.slice(statsStart, statsEnd)
+
+  assert.ok(statsStart >= 0 && statsEnd > statsStart)
+  assert.match(route, /const AVAILABLE_PHONE_REFERENCE_JOINS = `[^`]*LEFT JOIN brands b ON p\.brand_id = b\.id/)
+  assert.equal((stats.match(/\$\{AVAILABLE_PHONE_REFERENCE_JOINS\}/g) || []).length, 3)
+})
+
+test('sales transaction initializes invoice sequence before beginTransaction', () => {
+  const route = fs.readFileSync(path.join(__dirname, '../src/routes/sales.js'), 'utf8')
+  const saleStart = route.indexOf("router.post('/phone'")
+  const transactionStart = route.indexOf('await conn.beginTransaction()', saleStart)
+  const beforeTransaction = route.slice(saleStart, transactionStart)
+
+  assert.ok(saleStart >= 0 && transactionStart > saleStart)
+  assert.match(beforeTransaction, /await ensureInvoiceSequenceTable\(conn\)/)
+})
+
 test('sales inventory summary and detail share base scope and resolve model within brand', () => {
   const route = fs.readFileSync(path.join(__dirname, '../src/routes/sales.js'), 'utf8')
   const helperStart = route.indexOf('const buildSalesInventoryScope =')

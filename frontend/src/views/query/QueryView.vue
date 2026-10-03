@@ -3089,12 +3089,6 @@ select.form-control {
   grid-column: 1 / -1;
 }
 
-.return-form textarea.form-control,
-textarea.form-control {
-  resize: vertical;
-  min-height: 100px;
-}
-
 .input-icon {
   position: absolute;
   left: 12px;
@@ -3424,8 +3418,7 @@ textarea.form-control {
 }
 
 .edit-form input.form-control,
-.edit-form select.form-control,
-.edit-form textarea.form-control {
+.edit-form select.form-control {
   width: 100%;
   padding: 8px 12px;
   border: 1px solid var(--color-border);
@@ -3434,8 +3427,7 @@ textarea.form-control {
 }
 
 .edit-form input.form-control:focus,
-.edit-form select.form-control:focus,
-.edit-form textarea.form-control:focus {
+.edit-form select.form-control:focus {
   border-color: var(--color-primary);
   outline: none;
 }

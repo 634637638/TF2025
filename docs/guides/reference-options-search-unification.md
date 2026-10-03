@@ -112,6 +112,8 @@ GET /stores?all=true
 
 ## 六（一）、旧基础选项入口核对清单
 
+兼容/弃用接口的完整逐路由台账、权限/响应差异、日志观察起点和删除条件统一维护在[兼容接口与弃用路由台账](compatibility-route-retirement-ledger.md)。本节仅记录公共选项相关入口，不作为完整弃用路由清单。
+
 | 入口 | 当前调用方/用途 | 处理结论 |
 | --- | --- | --- |
 | `/shop/base-data/brands`、`models`、`colors`、`memories` | H5 管理端商城模板历史入口 | 前端已改用规范资源路由及统一 `reference-options.ts`；旧路径复用同一查询服务，返回弃用和兼容审计标记，保留一个发布周期后根据访问日志删除 |

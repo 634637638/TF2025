@@ -47,7 +47,7 @@
 }
 
 /* 输入框样式 */
-input.form-control, textarea.form-control {
+input.form-control {
   width: 100%;
   padding: 10px 12px 10px 36px;
   border: 2px solid var(--tf-color-border-cool);
@@ -108,7 +108,7 @@ input[type="date"].form-control {
   }
 }
 
-input.form-control:focus, textarea.form-control:focus {
+input.form-control:focus {
   outline: none;
   border-color: var(--success-color);
   background: white;
@@ -938,13 +938,6 @@ input.form-control:focus, textarea.form-control:focus {
   gap: 20px;
 }
 
-.sale-dialog-footer {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-  width: 100%;
-}
-
 .sale-form-section :deep(.el-input),
 .sale-form-section :deep(.el-select),
 .sale-form-section :deep(.el-date-editor.el-input),
@@ -955,32 +948,18 @@ input.form-control:focus, textarea.form-control:focus {
 .sale-form-section :deep(.el-input__wrapper),
 .sale-form-section :deep(.el-select__wrapper),
 .sale-form-section :deep(.el-textarea__inner) {
-  border-radius: 12px;
   box-shadow: 0 0 0 1px var(--tf-button-neutral-border) inset;
 }
 
 .sale-form-section :deep(.el-input__wrapper),
 .sale-form-section :deep(.el-select__wrapper),
 .sale-form-section :deep(.el-date-editor .el-input__wrapper) {
-  min-height: 42px;
   padding: 1px 12px;
 }
 
 .sale-form-section :deep(.el-input__inner),
 .sale-form-section :deep(.el-select__selected-item),
 .sale-form-section :deep(.el-date-editor .el-input__inner) {
-  font-size: 14px;
-}
-
-.sale-form-section :deep(.el-input__wrapper.is-focus),
-.sale-form-section :deep(.el-select__wrapper.is-focused),
-.sale-form-section :deep(.el-date-editor .el-input__wrapper.is-focus) {
-  box-shadow: 0 0 0 1px var(--tf-button-primary-border) inset;
-}
-
-.sale-form-section :deep(.el-textarea__inner) {
-  min-height: 88px;
-  padding: 10px 12px;
   font-size: 14px;
 }
 
@@ -2459,14 +2438,9 @@ input.form-control:focus, textarea.form-control:focus {
     flex-direction: column;
   }
 
-  .sale-dialog-footer {
-    gap: 8px;
-  }
-
   .sale-form-section :deep(.el-input__wrapper),
   .sale-form-section :deep(.el-select__wrapper),
   .sale-form-section :deep(.el-date-editor .el-input__wrapper) {
-    min-height: 40px;
     padding: 1px 10px;
   }
 

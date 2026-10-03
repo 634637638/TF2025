@@ -336,14 +336,11 @@
               :creating="customerCreating"
               @unlock="enableCustomerNameEdit"
               @touchend="handleCustomerNameTouchEnd"
-              @input="formatCustomerName"
-              @blur="handleCustomerNameBlur"
-              @save="saveCustomerNameEdit"
-              @clear="clearSelectedCustomer"
-            />
-            <div class="input-hint">
-              只允许中文和英文
-            </div>
+            @input="formatCustomerName"
+            @blur="handleCustomerNameBlur"
+            @save="saveCustomerNameEdit"
+            @clear="clearSelectedCustomer"
+          />
           </el-form-item>
 
           <el-form-item
@@ -362,9 +359,6 @@
                 <i class="fab fa-apple apple-icon" />
               </template>
             </el-input>
-            <div class="input-hint">
-              支持手机号或邮箱
-            </div>
           </el-form-item>
         </div>
       </div>
@@ -472,6 +466,7 @@
         >
           <el-input
             v-model="formData.remarks"
+            class="tf-textarea"
             type="textarea"
             :rows="2"
             placeholder="销售备注信息"
@@ -479,9 +474,6 @@
             show-word-limit
             @input="formatRemarks"
           />
-          <div class="input-hint">
-            不允许特殊字符和HTML标签
-          </div>
         </el-form-item>
       </div>
     </el-form>
@@ -1426,11 +1418,6 @@ watch(
     margin-bottom: 16px;
   }
 
-  :deep(.el-input__wrapper),
-  :deep(.el-select__wrapper) {
-    border-radius: 6px;
-  }
-
   // 输入框图标
   .imei-icon,
   .serial-icon,
@@ -1444,24 +1431,6 @@ watch(
   :deep(.el-form-item__content) {
     position: relative;
   }
-}
-
-:global(.quick-sale-dialog) {
-  --dialog-side-gap: 4px;
-  --dialog-vertical-gap: 12px;
-  --dialog-max-width: min(800px, calc(100vw - 8px));
-  --mobile-dialog-body-padding: 8px 6px 8px;
-  --mobile-dialog-footer-padding: 0 6px 6px;
-}
-
-:global(.quick-sale-dialog.mobile-dialog-sheet-panel) {
-  border-radius: 24px !important;
-  max-height: calc(100dvh - 24px) !important;
-}
-
-:global(.quick-sale-dialog .mobile-dialog-sheet-header) {
-  min-height: calc(82px + env(safe-area-inset-top));
-  padding: calc(18px + env(safe-area-inset-top)) 64px 18px 18px;
 }
 
 .form-section {
@@ -1995,14 +1964,6 @@ watch(
 
 // 小屏幕适配（iPhone SE）
 @media (max-width: 390px) {
-  :global(.quick-sale-dialog) {
-    --dialog-side-gap: 4px;
-    --dialog-vertical-gap: 12px;
-    --dialog-max-width: calc(100vw - 8px);
-    --mobile-dialog-body-padding: 6px 4px 6px;
-    --mobile-dialog-footer-padding: 0 4px 4px;
-  }
-
   .quick-sale-form {
     :deep(.el-form-item) {
       margin-bottom: 12px;

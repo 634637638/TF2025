@@ -2,7 +2,7 @@ const express = require('express')
 const router = express.Router()
 const { unifiedAuth, requirePermission, requireAnyPermission } = require('../middleware/unified-auth')
 const { getDatabase } = require('../config/database')
-const { generateInvoiceNumber } = require('../utils/invoice-number')
+const { generateInvoiceNumber, ensureInvoiceSequenceTable } = require('../utils/invoice-number')
 const { normalizeDateTime } = require('../utils/time')
 const { hasColumn } = require('../services/schemaInspector.service')
 const { generateMemberNumber } = require('../utils/member-number')
@@ -20,6 +20,11 @@ const {
 const { normalizedModelSql } = require('../utils/search')
 const { searchCustomers: searchCustomerOptions } = require('../services/customer-search.service')
 const COMPLETED_TRANSACTION_STATUS_SQL = `COALESCE(p.status, '') NOT IN (${COMPLETED_TRANSACTION_STATUSES.map(() => '?').join(', ')})`
+const AVAILABLE_PHONE_REFERENCE_JOINS = `
+      LEFT JOIN brands b ON p.brand_id = b.id
+      LEFT JOIN models m ON p.model_id = m.id
+      LEFT JOIN colors co ON p.color_id = co.id
+      LEFT JOIN memories mem ON p.memory_id = mem.id`
 
 const buildAvailablePhoneSearch = value => {
   const term = String(value ?? '').trim()
@@ -735,6 +740,8 @@ router.post('/phone', unifiedAuth, requireAnyPermission(['sales:sell', 'inventor
     const conn = await db.getConnection()
 
     try {
+      // 发票序列表初始化必须在销售事务之前完成，避免建表隐式提交清除事务状态。
+      await ensureInvoiceSequenceTable(conn)
       await conn.beginTransaction()
       const supportsSalesPaymentChannel = await hasColumn('sales', 'payment_channel', conn)
 
@@ -1233,6 +1240,7 @@ router.get('/phones/available/stats', unifiedAuth, requirePermission('sales:view
     const [totalValueResult] = await getDatabase().execute(`
       SELECT COALESCE(SUM(p.purchase_cost), 0) as total_value
       FROM phones p
+      ${AVAILABLE_PHONE_REFERENCE_JOINS}
       WHERE ${whereClause}
     `, queryParams)
 
@@ -1246,6 +1254,7 @@ router.get('/phones/available/stats', unifiedAuth, requirePermission('sales:view
     const [todaySoldResult] = await getDatabase().execute(`
       SELECT COUNT(*) as today_sold
       FROM phones p
+      ${AVAILABLE_PHONE_REFERENCE_JOINS}
       WHERE ${todayConditions.join(' AND ')}
     `, [...queryParams.slice(COMPLETED_TRANSACTION_STATUSES.length), todayStart])
 
@@ -1261,6 +1270,7 @@ router.get('/phones/available/stats', unifiedAuth, requirePermission('sales:view
           END
         ), 0) as total_profit_margin
       FROM phones p
+      ${AVAILABLE_PHONE_REFERENCE_JOINS}
       WHERE ${whereClause}
         AND p.sale_price > 0
         AND p.purchase_cost > 0

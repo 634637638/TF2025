@@ -6,6 +6,7 @@
 
 - [环境配置与密钥管理](ENVIRONMENT_SECRETS.md) - 后端 `.env*` 保管、Git 忽略和前端公开配置边界。
 - [H5 订单查询临时风险](ORDER_LOOKUP_RISK.md) - 姓名与手机号查询订单的已接受风险、凭证能力及补偿控制。
+- [在库查询密码保护](INVENTORY_QUERY_PASSWORD.md) - 报价查询页在库密码的失败重试限制与前端重复提交保护。
 - [安全改进历史总结](SECURITY_IMPROVEMENTS.md) - 历史实施汇总；其中所列路径和机制需以当前源码核对，不作为现状证明。
 
 ## 审计记录

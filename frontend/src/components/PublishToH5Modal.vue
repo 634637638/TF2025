@@ -1371,13 +1371,6 @@ defineExpose({
   cursor: zoom-in;
 }
 
-.publish-to-h5-footer {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-  padding-top: 2px;
-}
-
 :deep(.publish-to-h5-form .el-form-item) {
   margin-bottom: 14px;
 }
@@ -1398,8 +1391,6 @@ defineExpose({
 :deep(.publish-to-h5-form .publish-to-h5-control.el-date-editor.el-input),
 :deep(.publish-to-h5-form .publish-to-h5-control.el-date-editor.el-input__wrapper) {
   width: 100% !important;
-  --el-component-size: 40px;
-  height: 40px;
 }
 
 :deep(.publish-to-h5-form .el-form-item__content) {
@@ -1409,11 +1400,7 @@ defineExpose({
 
 :deep(.publish-to-h5-form .publish-to-h5-control .el-select__wrapper),
 :deep(.publish-to-h5-form .publish-to-h5-control .el-input__wrapper),
-:deep(.publish-to-h5-form .publish-to-h5-control.el-date-editor .el-input__wrapper),
-:deep(.publish-to-h5-form .el-textarea__inner) {
-  height: 40px !important;
-  min-height: 40px !important;
-  border-radius: 12px;
+:deep(.publish-to-h5-form .publish-to-h5-control.el-date-editor .el-input__wrapper) {
   box-sizing: border-box;
   display: flex;
   align-items: center;
@@ -1429,8 +1416,6 @@ defineExpose({
 :deep(.publish-to-h5-form .publish-to-h5-control.el-date-editor .el-range-input),
 :deep(.publish-to-h5-form .publish-to-h5-control.el-date-editor .el-input__inner) {
   font-size: 14px;
-  height: 40px !important;
-  line-height: 40px !important;
 }
 
 :deep(.publish-to-h5-form .publish-to-h5-control .el-input__prefix),
@@ -1499,10 +1484,6 @@ defineExpose({
     min-width: 0;
   }
 
-  .publish-to-h5-footer {
-    gap: 8px;
-  }
-
   .publish-to-h5-media .image-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
@@ -1511,27 +1492,20 @@ defineExpose({
   :deep(.publish-to-h5-form .publish-to-h5-input-control),
   :deep(.publish-to-h5-form .publish-to-h5-picker-control),
   :deep(.publish-to-h5-form .publish-to-h5-select-control) {
-    --el-component-size: 36px;
-    height: 36px !important;
   }
 
   :deep(.publish-to-h5-form .publish-to-h5-input-control .el-input__wrapper),
   :deep(.publish-to-h5-form .publish-to-h5-picker-control .el-input__wrapper),
   :deep(.publish-to-h5-form .publish-to-h5-select-control .el-select__wrapper) {
-    height: 36px !important;
-    min-height: 36px !important;
     padding-top: 0 !important;
     padding-bottom: 0 !important;
     padding-left: 10px !important;
     padding-right: 10px !important;
-    border-radius: 10px !important;
   }
 
   :deep(.publish-to-h5-form .publish-to-h5-input-control .el-input__inner),
   :deep(.publish-to-h5-form .publish-to-h5-picker-control .el-input__inner),
   :deep(.publish-to-h5-form .publish-to-h5-select-control .el-select__selected-item) {
-    height: 36px !important;
-    line-height: 36px !important;
     font-size: 16px !important;
   }
 
@@ -1540,7 +1514,6 @@ defineExpose({
   :deep(.publish-to-h5-form .publish-to-h5-picker-control .el-input__prefix),
   :deep(.publish-to-h5-form .publish-to-h5-picker-control .el-input__suffix),
   :deep(.publish-to-h5-form .publish-to-h5-select-control .el-select__suffix) {
-    height: 36px !important;
     display: inline-flex;
     align-items: center;
   }

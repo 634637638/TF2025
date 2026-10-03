@@ -208,6 +208,9 @@ class PhoneStockWarningService {
       })
     } catch (error) {
       log.error('创建预警配置失败:', error)
+      if (error?.code === 'ER_DUP_ENTRY') {
+        return this.createErrorResponse('该品牌、型号、颜色、内存和库存类型的预警配置已存在', 400)
+      }
       return this.createErrorResponse('创建预警配置失败', 500)
     }
   }
@@ -376,6 +379,9 @@ class PhoneStockWarningService {
       })
     } catch (error) {
       log.error('❌ 更新预警配置失败:', error)
+      if (error?.code === 'ER_DUP_ENTRY') {
+        return this.createErrorResponse('该品牌、型号、颜色、内存和库存类型的预警配置已存在', 400)
+      }
       return this.createErrorResponse('更新预警配置失败: ' + error.message, 500)
     }
   }

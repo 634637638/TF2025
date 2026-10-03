@@ -162,9 +162,9 @@
                     <el-input
                       v-model="typeLexiconForm[item.value].linesText"
                       :disabled="!canWriteLexiconText(typeLexiconForm[item.value].linesText)"
+                      class="tf-textarea"
                       type="textarea"
                       :rows="4"
-                      resize="none"
                       placeholder="每行一条，点击当前类型即可维护对应语录"
                     />
                   </el-form-item>
@@ -198,9 +198,9 @@
                       <el-input
                         v-model="modeLexiconForm.opening.linesText"
                         :disabled="!canWriteLexiconText(modeLexiconForm.opening.linesText)"
+                        class="tf-textarea"
                         type="textarea"
                         :rows="4"
-                        resize="none"
                       />
                     </el-form-item>
                   </div>
@@ -215,18 +215,18 @@
                       <el-input
                         v-model="modeLexiconForm.sales.linesText"
                         :disabled="!canWriteLexiconText(modeLexiconForm.sales.linesText)"
+                        class="tf-textarea"
                         type="textarea"
                         :rows="4"
-                        resize="none"
                       />
                     </el-form-item>
                     <el-form-item :label="`销售话术 - ${modeLexiconLineCount('sales', 'salesTalks')} 条`">
                       <el-input
                         v-model="modeLexiconForm.sales.salesTalksText"
                         :disabled="!canWriteLexiconText(modeLexiconForm.sales.salesTalksText)"
+                        class="tf-textarea"
                         type="textarea"
                         :rows="4"
-                        resize="none"
                         placeholder="每行一条，补充成交、带走、安排等销售表达"
                       />
                     </el-form-item>
@@ -234,9 +234,9 @@
                       <el-input
                         v-model="modeLexiconForm.sales.nightLinesText"
                         :disabled="!canWriteLexiconText(modeLexiconForm.sales.nightLinesText)"
+                        class="tf-textarea"
                         type="textarea"
                         :rows="4"
-                        resize="none"
                       />
                     </el-form-item>
                   </div>
@@ -304,10 +304,9 @@
                       <el-input
                         v-model="entry.text"
                         :disabled="!canWriteLexiconText(entry.text)"
-                        class="lexicon-entry-value"
+                        class="tf-textarea lexicon-entry-value"
                         type="textarea"
                         :rows="4"
-                        resize="none"
                         placeholder="每行一条语录"
                       />
                       <el-button

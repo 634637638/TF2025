@@ -50,14 +50,14 @@
       <div class="lock-form">
         <div class="password-input-group">
           <i class="fas fa-key input-icon" />
-          <input
+          <el-input
             ref="passwordInput"
             v-model="password"
             :type="showPassword ? 'text' : 'password'"
             :placeholder="lockSettings.placeholder || '请输入解锁密码'"
             class="password-input"
             @keyup.enter="handleUnlock"
-          >
+          />
           <button
             type="button"
             class="toggle-password"
@@ -144,7 +144,7 @@ const password = ref('')
 const showPassword = ref(false)
 const isUnlocking = ref(false)
 const errorMessage = ref('')
-const passwordInput = ref<HTMLInputElement>()
+const passwordInput = ref<{ focus: () => void } | null>(null)
 const lockTime = ref<Date | null>(null)
 
 // 锁定设置
@@ -357,23 +357,23 @@ onUnmounted(() => {
 
     .password-input {
       width: 100%;
-      padding: 16px 50px 16px 50px;
-      background: rgba(255, 255, 255, 0.1);
-      border: 2px solid rgba(255, 255, 255, 0.2);
-      border-radius: 12px;
-      color: var(--color-bg-white);
-      font-size: 16px;
-      outline: none;
-      transition: all 0.3s ease;
-
-      &::placeholder {
-        color: rgba(255, 255, 255, 0.5);
+      .el-input__wrapper {
+        padding: var(--tf-space-4) var(--tf-space-8);
+        background: rgba(255, 255, 255, 0.1);
+        border: 2px solid rgba(255, 255, 255, 0.2);
+        box-shadow: none;
+        transition: all 0.3s ease;
       }
 
-      &:focus {
-        background: rgba(255, 255, 255, 0.15);
-        border-color: rgba(255, 255, 255, 0.4);
+      .el-input__inner {
+        color: var(--color-bg-white);
+        font-size: 16px;
+
+        &::placeholder {
+          color: rgba(255, 255, 255, 0.5);
+        }
       }
+
     }
 
     .toggle-password {

@@ -848,19 +848,12 @@ defineExpose({
 
     .form-control {
       :deep(.el-select__wrapper) {
-        min-height: 44px;
         padding: 12px 16px;
         border: 2px solid var(--tf-color-neutral-200);
-        border-radius: 8px;
         background: white;
         box-shadow: none;
         font-size: 14px;
         transition: border-color 0.2s ease, box-shadow 0.2s ease;
-      }
-
-      :deep(.el-select__wrapper.is-focused) {
-        border-color: var(--tf-color-blue-500);
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
       }
 
       &.is-invalid :deep(.el-select__wrapper) {

@@ -34,10 +34,11 @@
         </div>
         <div class="form-group">
           <label>角色描述 <span class="required">*</span></label>
-          <textarea
+          <el-input
             v-model="description"
-            class="form-control"
-            rows="3"
+            class="tf-textarea"
+            type="textarea"
+            :rows="3"
             required
             placeholder="请输入角色描述，详细说明该角色的职责和权限范围"
           />

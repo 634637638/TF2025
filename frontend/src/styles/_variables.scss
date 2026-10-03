@@ -45,6 +45,8 @@
   --tf-radius-panel: 12px;
   --tf-radius-dialog: 16px;
   --tf-radius-full: 9999px;
+  --tf-form-control-focus-color: var(--tf-color-orange);
+  --tf-form-control-focus-ring: 0 0 0 1px var(--tf-form-control-focus-color);
   --tf-shadow-card: var(--shadow-sm);
   --tf-shadow-popover: var(--shadow-md);
   --tf-shadow-dialog: var(--shadow-lg);
@@ -83,7 +85,7 @@
 
   // 输入框高度
   --input-height-small: 32px;
-  --input-height-default: 40px;
+  --input-height-default: 38px;
   --input-height-large: 48px;
 
   // 图标尺寸

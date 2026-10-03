@@ -1,4 +1,5 @@
 import { unifiedApi } from '@/utils/unified-api'
+import { CUSTOMER_SEARCH_PAGE_SIZE } from '@/services/customer-options'
 import type { ApiResponse } from '@/types'
 import type { RepairDeviceSearchResult, RepairMedia, RepairOrder, RepairOrderFilters, RepairOrderForm, RepairStats } from '@/types/repair'
 
@@ -34,7 +35,7 @@ export const repairsApi = {
   ),
   options: () => unifiedApi.get<RepairOptions>('/repairs/options'),
   searchCustomers: (keyword: string) => unifiedApi.get<Array<{ id: number; name: string; phone: string | null }>>('/repairs/customers/search', {
-    params: { keyword },
+    params: { keyword, page: 1, page_size: CUSTOMER_SEARCH_PAGE_SIZE },
     useCache: false
   }),
   createCustomer: (data: { name: string; phone: string }) => (

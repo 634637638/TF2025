@@ -68,8 +68,9 @@
           >
             <el-input
               v-model="formData.remarks"
+              class="tf-textarea"
               type="textarea"
-              :rows="3"
+              :rows="2"
               placeholder="请输入备注信息"
               maxlength="200"
               show-word-limit

@@ -145,7 +145,10 @@
         </el-table>
       </div>
 
-      <div class="dialog-actions">
+    </div>
+
+    <template #footer>
+      <div class="tf-dialog-actions">
         <el-button
           :disabled="submitting"
           @click="dialogVisible = false"
@@ -161,7 +164,7 @@
           {{ isRematch ? '确认更换' : '确定匹配' }}
         </el-button>
       </div>
-    </div>
+    </template>
   </MobileDialog>
 </template>
 
@@ -297,12 +300,6 @@ watch(
   overflow: auto;
 }
 
-.dialog-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
 @media (max-width: 767px) {
   .match-preorder-modal {
     gap: 12px;
@@ -316,14 +313,5 @@ watch(
     max-height: none;
   }
 
-  .dialog-actions {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .dialog-actions :deep(.el-button) {
-    width: 100%;
-    margin: 0;
-  }
 }
 </style>

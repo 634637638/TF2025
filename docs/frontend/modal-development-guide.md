@@ -181,7 +181,7 @@ const setCurrentTime = (field: string) => {
 
 3. **统一视觉风格**
    - 头部、遮罩、圆角、阴影、正文间距和关闭按钮统一读取 `_dialog.scss` 令牌
-   - footer 使用 `.tf-dialog-actions`，按钮尺寸和移动端等宽行为由全局维护
+   - footer 使用 `.tf-dialog-actions`，按钮尺寸和移动端居中等分行为由全局维护
    - 不在业务页面复制具体颜色、圆角、间距或按钮尺寸
 
 4. **业务样式边界**
@@ -192,6 +192,12 @@ const setCurrentTime = (field: string) => {
 5. **全局配置**
    - 在 `main.ts` 中配置 Element Plus 中文语言包
    - 由 `main.ts` 全局加载 `_dialog.scss` 和 `_dialog-actions.scss`
+
+6. **footer 一致性**
+   - PC 端 footer 按钮按内容宽度靠右排列；手机端居中等分并保持一行。
+   - 业务页面不再为销售、入库、批发、划拨、权限或 H5 管理弹窗单独维护 grid、纵向按钮或固定按钮尺寸。
+   - `MobileDialog` 对历史直接按钮插槽提供统一包装；新增弹窗仍应显式使用 `.tf-dialog-actions`。
+   - 使用 `npm run check:dialog-actions` 检查 footer 覆盖。
 
 ### ❌ 避免做法
 
@@ -230,6 +236,7 @@ const setCurrentTime = (field: string) => {
 - [ ] 移动端按钮保持一行并避开安全区
 - [ ] 没有页面级 `.el-dialog__header/body/footer` 或自建弹窗外壳
 - [ ] 运行 `npm run check:dialogs`、`npm run check:ui` 和 `npm run type-check`
+- [ ] 运行 `npm run check:dialog-actions`，确认没有页面级 footer 尺寸或方向覆盖
 
 ---
 

@@ -942,11 +942,6 @@ watch([searchQuery, selectedCategory], () => {
   min-width: 118px;
 }
 
-.icon-picker-search :deep(.el-input__wrapper),
-.icon-picker-search :deep(.el-select__wrapper) {
-  border-radius: 10px;
-}
-
 .icon-picker-search :deep(.el-segmented) {
   --el-segmented-item-selected-bg-color: #0f766e;
   --el-segmented-item-selected-color: #fff;

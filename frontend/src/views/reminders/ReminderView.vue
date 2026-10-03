@@ -444,6 +444,7 @@
           >
             <el-input
               v-model="form.content"
+              class="tf-textarea"
               type="textarea"
               :rows="3"
               maxlength="2000"
@@ -537,6 +538,7 @@
               v-model="form.interval_value"
               :min="1"
               :max="365"
+              :controls="false"
             /><span class="input-suffix">{{ intervalUnit }}</span>
           </el-form-item>
           <el-form-item
@@ -547,6 +549,7 @@
               v-model="form.remind_before_days"
               :min="0"
               :max="365"
+              :controls="false"
             /><span class="input-suffix">天</span>
           </el-form-item>
           <el-form-item
@@ -604,6 +607,7 @@
               v-model="form.occurrence_limit"
               :min="1"
               :max="10000"
+              :controls="false"
             /><span class="input-suffix">次</span>
           </el-form-item>
         </div>
@@ -857,8 +861,9 @@
         >
           <el-input-number
             v-model="typeForm.default_remind_days"
-            :min="0"
-            :max="365"
+          :min="0"
+          :max="365"
+          :controls="false"
           /><span class="input-suffix">天</span>
         </el-form-item>
         <el-form-item
@@ -884,8 +889,9 @@
           label="排序"
         >
           <el-input-number
-            v-model="typeForm.sort_order"
-            :min="0"
+          v-model="typeForm.sort_order"
+          :min="0"
+          :controls="false"
           />
         </el-form-item>
       </el-form>

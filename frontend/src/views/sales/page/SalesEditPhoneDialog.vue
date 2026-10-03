@@ -388,12 +388,12 @@
             <label class="sales-edit-field-label">备注</label>
             <el-input
               v-model="editForm.remarks"
+              class="tf-textarea full-width"
               type="textarea"
               :rows="2"
               placeholder="请输入备注信息"
               maxlength="500"
               show-word-limit
-              class="full-width"
               :disabled="!canEditField('remarks')"
             />
           </div>

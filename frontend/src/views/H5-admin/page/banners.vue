@@ -276,6 +276,7 @@
             <el-input-number
               v-model="form.sort_order"
               :min="0"
+              :controls="false"
             />
           </el-form-item>
           <el-form-item
@@ -287,6 +288,7 @@
               :min="500"
               :max="10000"
               :step="500"
+              :controls="false"
             />
             <template #tip>
               <span class="tip-text">每张图片显示时间（毫秒），默认3000ms（3秒）</span>
@@ -1358,7 +1360,6 @@ onUnmounted(() => {
 
   :deep(.banner-form .el-range-editor.el-input__wrapper) {
     width: 100% !important;
-    min-height: 40px;
   }
 
   .tip-text {
@@ -1371,17 +1372,6 @@ onUnmounted(() => {
     padding: 12px !important;
   }
 
-  :global(.banner-dialog .mobile-dialog-sheet-footer) {
-    display: grid !important;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
-    padding: 10px 12px calc(10px + env(safe-area-inset-bottom)) !important;
-  }
-
-  :global(.banner-dialog .mobile-dialog-sheet-footer .el-button) {
-    width: 100%;
-    margin: 0 !important;
-  }
 }
 
 @media (max-width: 420px) {

@@ -240,6 +240,17 @@ class UnifiedApiManager {
       throw error
     }
 
+    const isInvalidInventoryQueryPassword =
+      error.response?.status === 401 &&
+      this.normalizeApiPath(requestConfig?.url || '') === '/screen-lock/verify-inventory-query'
+
+    if (isInvalidInventoryQueryPassword) {
+      if (metadata) {
+        this.recordPerformance(metadata, Date.now() - metadata.startTime, error.response?.status || 0)
+      }
+      throw error
+    }
+
     const transientRecoveredResponse = await this.tryRecoverTransientReadError(error)
     if (transientRecoveredResponse !== null) {
       return transientRecoveredResponse

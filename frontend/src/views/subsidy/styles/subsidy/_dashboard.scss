@@ -418,7 +418,6 @@
 
   /* Element Plus 组件样式覆盖 */
   :deep(.el-input__wrapper) {
-    border-radius: 8px;
     box-shadow: 0 0 0 1px var(--tf-color-border-subtle) inset;
     transition: all 0.2s;
 
@@ -428,18 +427,6 @@
 
     &.is-focus {
       box-shadow: 0 0 0 1px var(--tf-color-indigo-brand) inset;
-    }
-  }
-
-  :deep(.el-select) {
-    .el-input__wrapper {
-      border-radius: 8px;
-    }
-  }
-
-  :deep(.el-date-editor) {
-    .el-input__wrapper {
-      border-radius: 8px;
     }
   }
 

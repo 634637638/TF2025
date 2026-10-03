@@ -134,6 +134,7 @@
             >
               <el-input
                 v-model="configs.shop_address"
+                class="tf-textarea"
                 type="textarea"
                 :rows="2"
                 placeholder="请输入店铺地址"
@@ -282,6 +283,7 @@
             >
               <el-input
                 v-model="configs.bank_info"
+                class="tf-textarea"
                 type="textarea"
                 :rows="3"
                 placeholder="请输入银行账号、开户行等信息"
@@ -1160,11 +1162,6 @@ onUnmounted(() => {
     width: 100%;
   }
 
-  .config-section :deep(.el-input__wrapper),
-  .config-section :deep(.el-textarea__inner) {
-    border-radius: 12px;
-  }
-
   .config-section :deep(.el-form-item__tip),
   .tip-text {
     display: block;
@@ -1278,16 +1275,5 @@ onUnmounted(() => {
     padding: 12px !important;
   }
 
-  :global(.shop-config-map-dialog .mobile-dialog-sheet-footer) {
-    display: grid !important;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
-    padding: 10px 12px calc(10px + env(safe-area-inset-bottom)) !important;
-  }
-
-  :global(.shop-config-map-dialog .mobile-dialog-sheet-footer .el-button) {
-    width: 100%;
-    margin: 0 !important;
-  }
 }
 </style>

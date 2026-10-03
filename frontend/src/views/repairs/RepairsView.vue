@@ -828,8 +828,9 @@
               >
                 <el-input
                   v-model="formData.remarks"
+                  class="tf-textarea"
                   type="textarea"
-                  :rows="3"
+                  :rows="2"
                   placeholder="其他备注信息"
                 />
               </el-form-item>

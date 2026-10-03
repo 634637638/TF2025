@@ -454,7 +454,7 @@
               :min="0"
               :max="999999"
               placeholder="请输入排序值，数字越小越靠前"
-              controls-position="right"
+              :controls="false"
               style="width: 100%"
               :disabled="!canEditField('sort_order')"
             />
@@ -469,6 +469,7 @@
           >
             <el-input
               v-model="storeForm.address"
+              class="tf-textarea"
               type="textarea"
               placeholder="请输入门店地址"
               :rows="3"

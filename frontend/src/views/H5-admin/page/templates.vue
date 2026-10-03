@@ -530,6 +530,7 @@
                       >
                         <el-input
                           v-model="currentChild.description"
+                          class="tf-textarea"
                           type="textarea"
                           :rows="5"
                           placeholder="填写当前颜色的商品描述"
@@ -590,6 +591,7 @@
                                 :max="100"
                                 :precision="2"
                                 :step="1"
+                                :controls="false"
                                 class="markup-input"
                                 @update:model-value="handlePercentageMarkupChange(currentChild, $event)"
                               />
@@ -616,6 +618,7 @@
                           v-model="currentChild.sort_order"
                           :min="0"
                           :step="1"
+                          :controls="false"
                           style="width: 100%"
                         />
                       </el-form-item>
@@ -2319,7 +2322,6 @@ onUnmounted(() => {
 }
 
 :deep(.memory-select .el-select__wrapper) {
-  min-height: 42px;
   height: auto;
 }
 
@@ -2682,14 +2684,6 @@ onUnmounted(() => {
     padding: 10px 8px;
   }
 
-  :deep(.template-dialog .mobile-dialog-footer),
-  :global(.template-dialog .mobile-dialog-footer) {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
-    width: 100%;
-  }
-
   :deep(.template-dialog .el-form-item) {
     margin-bottom: 14px;
   }
@@ -2852,13 +2846,6 @@ onUnmounted(() => {
   .image-card img,
   .image-card video {
     height: 112px;
-  }
-
-  :global(.template-dialog .mobile-dialog-footer) {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
-    width: 100%;
   }
 
 }

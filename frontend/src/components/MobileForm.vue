@@ -35,9 +35,9 @@
       >
         <!-- 输入框 -->
         <el-input
-          v-if="field.type === 'input' || field.type === 'text' || field.type === 'password'"
+          v-if="field.type === 'input' || field.type === 'text' || field.type === 'password' || field.type === 'textarea'"
           :model-value="getInputValue(field)"
-          :type="field.type || 'text'"
+          :type="field.type === 'textarea' ? 'textarea' : (field.type || 'text')"
           :placeholder="field.placeholder || `请输入${field.label}`"
           :disabled="field.disabled"
           :readonly="field.readonly"
@@ -46,9 +46,8 @@
           :show-word-limit="field.showWordLimit"
           :prefix-icon="field.prefixIcon"
           :suffix-icon="field.suffixIcon"
-          :rows="field.rows"
-          :autosize="field.autosize"
-          resize="none"
+          :class="{ 'tf-textarea': field.type === 'textarea' }"
+          :rows="field.type === 'textarea' ? (field.rows || 2) : undefined"
           @update:model-value="setFieldValue(field, $event)"
           @blur="handleFieldBlur(field)"
           @focus="handleFieldFocus(field)"
@@ -64,7 +63,7 @@
           :max="field.max"
           :step="field.step || 1"
           :precision="field.precision"
-          :controls-position="getControlsPosition(field)"
+          :controls="false"
           style="width: 100%"
           @update:model-value="setFieldValue(field, $event)"
         />
@@ -354,14 +353,12 @@ interface FormField {
   prefixIcon?: string
   suffixIcon?: string
   rows?: number
-  autosize?: boolean
 
   // 数字输入框特有
   min?: number
   max?: number
   step?: number
   precision?: number
-  controlsPosition?: 'left' | 'right'
 
   // 选择器特有
   options?: FormFieldOption[]
@@ -559,10 +556,6 @@ const getUploadFileList = (field: FormField): UploadFiles => {
   return Array.isArray(value) ? value as UploadFiles : []
 }
 
-const getControlsPosition = (field: FormField): '' | 'right' => (
-  field.controlsPosition === 'right' ? 'right' : ''
-)
-
 const getDatePickerType = (field: FormField): DatePickerType => field.dateType || 'date'
 
 const getOptionValue = (option: FormFieldOption): string | number | boolean => (
@@ -748,8 +741,7 @@ defineExpose({
           width: 100%;
         }
 
-        .el-input__inner,
-        .el-textarea__inner {
+        .el-input__inner {
           min-height: 44px;
           font-size: 16px; /* 防止iOS自动缩放 */
         }

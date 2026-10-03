@@ -92,10 +92,10 @@
             >
               <el-input
                 v-model="stockInForm.remarks"
+                class="tf-textarea"
                 type="textarea"
                 :rows="2"
                 placeholder="请输入备注信息"
-                resize="none"
               />
             </el-form-item>
           </div>
@@ -148,6 +148,7 @@
           v-model="batchCount"
           :min="1"
           :max="100"
+          :controls="false"
           placeholder="请输入要添加的商品数量"
           style="width: 100%"
         />

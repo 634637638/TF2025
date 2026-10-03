@@ -235,14 +235,26 @@
                       </template>
                     </el-button>
                   </div>
-                  <el-table
-                    class="data-table compact-fit-table"
-                    :data="visibleSiteSettingsList"
+                  <div class="table-responsive">
+                    <el-table
+                    class="data-table devices-table compact-fit-table base-data-table"
+                    :data="isSiteSettingsLoading ? [] : visibleSiteSettingsList"
                     border
                     stripe
-                    table-layout="auto"
+                    table-layout="fixed"
                     :fit="true"
-                  >
+                    >
+                      <template #empty>
+                        <TableLoadingRow
+                          v-if="isSiteSettingsLoading"
+                          mode="block"
+                          text="加载站点设置..."
+                        />
+                        <DataEmptyState
+                          v-else
+                          description="暂无站点设置"
+                        />
+                      </template>
                     <el-table-column
                       prop="category"
                       label="分类"
@@ -263,6 +275,8 @@
                       prop="label"
                       label="设置项"
                       min-width="150"
+                      class-name="flat-edit-label-column"
+                      label-class-name="flat-edit-label-column"
                     >
                       <template #default="{ row }">
                         <i :class="row.icon" />
@@ -274,6 +288,8 @@
                       prop="value"
                       label="当前值"
                       min-width="160"
+                      class-name="flat-edit-value-column"
+                      label-class-name="flat-edit-value-column"
                     >
                       <template #default="{ row }">
                         <el-input
@@ -286,6 +302,7 @@
                         <el-input
                           v-else-if="row.type === 'textarea'"
                           v-model="siteSettings[row.key]"
+                          class="tf-textarea"
                           type="textarea"
                           :rows="2"
                           :placeholder="row.placeholder"
@@ -302,7 +319,8 @@
                         <span v-else>{{ siteSettings[row.key] || row.defaultValue }}</span>
                       </template>
                     </el-table-column>
-                  </el-table>
+                    </el-table>
+                  </div>
                 </div>
               </div>
             </div>
@@ -333,14 +351,26 @@
                       <i class="fas fa-plus" /><span>新增联系人</span>
                     </el-button>
                   </div>
-                  <el-table
-                    :data="priceContactsEditor"
+                  <div class="table-responsive">
+                    <el-table
+                    :data="isSiteSettingsLoading ? [] : priceContactsEditor"
                     border
                     stripe
-                    class="data-table compact-fit-table"
-                    table-layout="auto"
+                    class="data-table devices-table compact-fit-table base-data-table"
+                    table-layout="fixed"
                     :fit="true"
-                  >
+                    >
+                      <template #empty>
+                        <TableLoadingRow
+                          v-if="isSiteSettingsLoading"
+                          mode="block"
+                          text="加载报价联系人..."
+                        />
+                        <DataEmptyState
+                          v-else
+                          description="暂无报价联系人"
+                        />
+                      </template>
                     <el-table-column
                       v-if="canViewField('settings.price_watermark')"
                       type="index"
@@ -410,11 +440,8 @@
                         </div>
                       </template>
                     </el-table-column>
-                  </el-table>
-                  <DataEmptyState
-                    v-if="!priceContactsEditor.length"
-                    description="暂无报价联系人"
-                  />
+                    </el-table>
+                  </div>
                 </div>
                 <div class="price-watermark-settings">
                   <div class="card-header-with-action">
@@ -467,9 +494,6 @@
                       />
                     </el-form-item>
                   </el-form>
-                  <p class="form-help">
-                    水印文字直接按最终显示内容填写；开启“显示时间”后会在文字末尾自动追加当前时间，颜色可单独设置。
-                  </p>
                 </div>
 
                 <div class="price-watermark-settings setting-card price-query-card">
@@ -493,13 +517,15 @@
                         添加密码
                       </el-button>
                     </div>
-                    <el-table
+                    <div class="table-responsive">
+                      <el-table
                       :data="loadingPasswords ? [] : inventoryPasswords"
                       border
                       stripe
-                      class="data-table mobile-password-table"
-                      style="width: 100%; margin-top: 12px;"
-                    >
+                      class="data-table devices-table compact-fit-table base-data-table"
+                      table-layout="fixed"
+                      :fit="true"
+                      >
                       <template #empty>
                         <TableLoadingRow
                           v-if="loadingPasswords"
@@ -582,7 +608,8 @@
                           </div>
                         </template>
                       </el-table-column>
-                    </el-table>
+                      </el-table>
+                    </div>
                   </div>
                   <el-alert
                     v-else
@@ -625,17 +652,6 @@
                       </template>
                     </el-button>
                   </div>
-
-                  <el-alert
-                    title="功能说明"
-                    type="info"
-                    show-icon
-                    :closable="false"
-                    style="margin-bottom: 20px;"
-                  >
-                    <p>• 点击顶部操作栏的"锁定"按钮即可锁定屏幕</p>
-                    <p>• 解锁时需要输入您当前的登录密码</p>
-                  </el-alert>
 
                   <el-form
                     ref="screenLockFormRef"
@@ -757,8 +773,6 @@
                     <el-form-item label="锁定提示">
                       <el-input
                         v-model="screenLockSettings.message"
-                        type="textarea"
-                        :rows="2"
                         placeholder="请输入密码解锁"
                         maxlength="100"
                         show-word-limit
@@ -874,6 +888,7 @@
           >
             <el-input
               v-model="passwordForm.remarks"
+              class="tf-textarea"
               type="textarea"
               :rows="2"
               placeholder="请输入备注说明（可选）"
@@ -1032,6 +1047,7 @@ const refreshSystemStatus = async () => {
 
 // 使用全局站点设置store
 const siteSettings = computed(() => siteSettingsStore.settings)
+const isSiteSettingsLoading = computed(() => siteSettingsStore.isLoading)
 const siteLogoPreviewUrl = computed(() => {
   if (localSiteLogoPreviewUrl.value) {
     return localSiteLogoPreviewUrl.value
@@ -1134,7 +1150,7 @@ const siteSettingsList = [
     label: '公司地址',
     category: 'company',
     categoryLabel: '公司信息',
-    type: 'textarea',
+    type: 'input',
     icon: 'fas fa-map-marker-alt',
     placeholder: '请输入公司地址'
   }
@@ -1925,17 +1941,14 @@ onBeforeUnmount(() => {
   max-width: 900px;
 }
 
-.site-settings-table :deep(.el-input__wrapper) {
-  border-radius: 6px;
-}
-
-.site-settings-table :deep(.el-input__inner) {
-  border: 1px solid var(--border-light, var(--tf-color-border-muted));
-}
-
 .site-settings-table :deep(.el-textarea__inner) {
-  border-radius: 6px;
   border: 1px solid var(--border-light, var(--tf-color-border-muted));
+}
+
+.site-settings-table :deep(td.flat-edit-value-column .cell),
+.site-settings-table :deep(td.flat-edit-value-column .el-input),
+.site-settings-table :deep(td.flat-edit-value-column .el-textarea) {
+  width: 100%;
 }
 
 .text-muted {
@@ -2486,25 +2499,6 @@ onBeforeUnmount(() => {
     justify-content: flex-end;
   }
 
-  .screen-lock-settings-wrapper :deep(.mobile-password-table) {
-    display: block;
-    width: 100% !important;
-    overflow-x: auto;
-    font-size: 12px;
-    border-radius: 12px;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .screen-lock-settings-wrapper :deep(.mobile-password-table .el-table__inner-wrapper) {
-    min-width: 520px;
-  }
-
-  .screen-lock-settings-wrapper :deep(.mobile-password-table .cell) {
-    padding-left: 6px;
-    padding-right: 6px;
-    white-space: nowrap;
-  }
-
   :global(.system-password-dialog .el-form) {
     width: 100%;
   }
@@ -2578,8 +2572,5 @@ onBeforeUnmount(() => {
     width: 100%;
   }
 
-  .screen-lock-settings-wrapper :deep(.mobile-password-table .el-table__inner-wrapper) {
-    min-width: 500px;
-  }
 }
 </style>

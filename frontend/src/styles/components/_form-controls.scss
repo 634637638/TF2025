@@ -1,0 +1,143 @@
+/*
+ * Element Plus 控件自带 .el-input__wrapper 边框。
+ * 当历史页面把 .form-control 传到控件根节点时，只保留内部边框，避免出现双层边框。
+ * 选择器提高了对页面 scoped .form-control 规则的覆盖优先级，业务页面无需重复修复。
+ */
+html body :is(
+  .el-select,
+  .el-cascader,
+  .el-date-editor,
+  .el-input,
+  .el-input-number,
+  .el-time-picker
+).form-control {
+  width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+/* 所有普通表单控件只在公共入口维护圆角，页面不得为控件重复设置私有值。 */
+html body :is(
+  .el-input__wrapper,
+  .el-select__wrapper,
+  .el-date-editor .el-input__wrapper,
+  .el-input-number .el-input__wrapper,
+  .el-textarea__inner
+) {
+  border-radius: var(--tf-radius-control);
+}
+
+/* 普通表单控件高度统一为 PC 端 38px；搜索区和表格排序控件由各自公共组件维护紧凑规格。 */
+:where(
+  .el-input__wrapper,
+  .el-select__wrapper,
+  .el-date-editor .el-input__wrapper,
+  .el-input-number .el-input__wrapper
+) {
+  height: var(--input-height-default);
+  min-height: var(--input-height-default);
+  box-sizing: border-box;
+}
+
+/* 聚焦状态统一使用报价在库卡片同款的橙色细外圈，避免页面各自维护颜色和 inset 阴影。 */
+html body :is(
+  .el-input__wrapper.is-focus,
+  .el-select__wrapper.is-focused,
+  .el-date-editor .el-input__wrapper.is-focus,
+  .el-input-number .el-input__wrapper.is-focus,
+  .el-textarea__inner:focus
+) {
+  box-shadow: var(--tf-form-control-focus-ring);
+}
+
+:where(
+  .el-input__inner,
+  .el-select__selected-item,
+  .el-date-editor .el-input__inner,
+  .el-input-number .el-input__inner
+) {
+  min-height: 0;
+}
+
+/* 全局表单控件行为：数字输入不显示步进按钮，多行文本默认固定高度并允许手动向下拉伸。 */
+:root {
+  --tf-textarea-compact-height: 60px;
+}
+input[type='number'],
+.el-input-number input[type='number'] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+input[type='number']::-webkit-outer-spin-button,
+input[type='number']::-webkit-inner-spin-button,
+.el-input-number input[type='number']::-webkit-outer-spin-button,
+.el-input-number input[type='number']::-webkit-inner-spin-button {
+  margin: 0;
+  appearance: none;
+}
+
+.el-input-number.el-input-number .el-input-number__increase,
+.el-input-number.el-input-number .el-input-number__decrease {
+  display: none;
+  pointer-events: none;
+  width: 0;
+  border: 0;
+}
+
+/* Element Plus 默认会为控制区预留左右空间，统一收口为一个连续输入框。 */
+.el-input-number .el-input {
+  width: 100%;
+}
+
+.el-input-number.is-without-controls .el-input__wrapper,
+.el-input-number.is-controls-right .el-input__wrapper,
+.el-input-number.el-input-number .el-input__wrapper,
+.el-input-number.el-input-number.is-controls-right .el-input__wrapper {
+  padding-left: var(--tf-space-3);
+  padding-right: var(--tf-space-3);
+}
+
+.tf-textarea {
+  width: 100%;
+}
+
+.el-textarea__inner,
+.tf-textarea .el-textarea__inner {
+  /* rows 提供稳定的初始高度；只允许用户垂直拉伸，禁止横向破坏布局。 */
+  resize: vertical;
+}
+
+/* rows=2 是备注、提示和短说明的统一规格；用户仍可通过手柄向下拉伸。 */
+.el-textarea__inner[rows='2'],
+.tf-textarea .el-textarea__inner[rows='2'] {
+  height: var(--tf-textarea-compact-height);
+  min-height: var(--tf-textarea-compact-height);
+}
+
+@media (max-width: 767px) {
+  :root {
+    --tf-textarea-compact-height: 68px;
+  }
+
+  :where(
+    .el-input__wrapper,
+    .el-select__wrapper,
+    .el-date-editor .el-input__wrapper,
+    .el-input-number .el-input__wrapper
+  ) {
+    height: var(--mobile-control-height);
+    min-height: var(--mobile-control-height);
+  }
+
+  :where(
+    .el-input__inner,
+    .el-date-editor .el-input__inner,
+    .el-input-number .el-input__inner
+  ) {
+    height: var(--mobile-control-height);
+  }
+}

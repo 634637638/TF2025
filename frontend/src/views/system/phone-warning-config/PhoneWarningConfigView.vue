@@ -38,9 +38,6 @@
               <div class="card-toolbar__title">
                 型号母模板
               </div>
-              <div class="card-toolbar__subtitle">
-                展开后查看并维护颜色 / 内存 / 库存类型子模板
-              </div>
             </div>
           </div>
         </template>
@@ -50,8 +47,8 @@
           stripe
           border
           row-key="groupKey"
-          class="data-table compact-fit-table main-table"
-          :table-layout="'auto'"
+          class="data-table devices-table compact-fit-table base-data-table main-table"
+          table-layout="fixed"
           :fit="true"
           style="width: 100%"
         >
@@ -141,8 +138,8 @@
                     :data="row.children"
                     stripe
                     border
-                    class="data-table compact-fit-table child-table"
-                    :table-layout="'auto'"
+                    class="data-table devices-table compact-fit-table base-data-table child-table"
+                    table-layout="fixed"
                     :fit="true"
                   >
                     <el-table-column
@@ -557,9 +554,6 @@
               :value="item.value"
             />
           </el-select>
-          <div class="form-tip">
-            支持多选全新和二手，不选则生成“全部库存”子模板
-          </div>
         </el-form-item>
 
         <div class="dialog-grid">
@@ -586,18 +580,15 @@
                 :min="0"
                 :max="100"
                 :step="1"
-                controls-position="right"
+                :controls="false"
               />
               <span class="unit-label">台</span>
               <el-button
                 plain
                 @click="applyDefaultThresholdToAll"
               >
-                应用到全部组合
+                应用全部
               </el-button>
-            </div>
-            <div class="form-tip">
-              这是默认值，下面每个颜色 / 内存组合都可以再单独改成 2 台、5 台等不同阈值
             </div>
           </el-form-item>
         </div>
@@ -608,6 +599,7 @@
         >
           <el-input
             v-model="formData.remarks"
+            class="tf-textarea"
             type="textarea"
             :rows="2"
             placeholder="选填"
@@ -652,8 +644,8 @@
                 :data="variantDrafts"
                 border
                 stripe
-                class="data-table compact-fit-table variant-table"
-                :table-layout="'auto'"
+                class="data-table devices-table compact-fit-table base-data-table variant-table"
+                table-layout="fixed"
                 :fit="true"
               >
                 <el-table-column
@@ -722,7 +714,7 @@
                       :min="0"
                       :max="100"
                       :step="1"
-                      controls-position="right"
+                      :controls="false"
                     />
                   </template>
                 </el-table-column>
@@ -1592,13 +1584,6 @@ defineExpose({
   :deep(.el-table .el-table__expanded-cell) {
     padding: 16px;
     background: var(--tf-color-surface-gray);
-  }
-
-  :deep(.el-input__wrapper),
-  :deep(.el-select__wrapper),
-  :deep(.el-textarea__inner),
-  :deep(.el-input-number) {
-    border-radius: 14px;
   }
 
   :deep(.el-button) {

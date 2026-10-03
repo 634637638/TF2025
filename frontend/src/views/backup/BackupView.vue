@@ -219,6 +219,7 @@
             v-model="keepCount"
             :min="1"
             :max="20"
+            :controls="false"
           />
           <span class="form-tip">保留最近的 {{ keepCount }} 份备份</span>
         </el-form-item>

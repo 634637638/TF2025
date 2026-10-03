@@ -185,7 +185,6 @@
     .sales-edit-form-grid :deep(.el-select__wrapper),
     .sales-edit-form-grid :deep(.el-date-editor .el-input__wrapper),
     .sales-edit-form-grid :deep(.el-input-number) {
-      min-height: 36px;
     }
 
     .sales-edit-form-grid :deep(.el-input__inner),
@@ -196,9 +195,5 @@
       font-size: 13px;
     }
 
-    .sales-edit-form-grid :deep(.el-textarea__inner) {
-      min-height: 68px;
-      padding: 8px 10px;
-    }
   }
 }

@@ -548,22 +548,6 @@
           margin-bottom: 8px;
         }
 
-        .form-textarea {
-          width: 100%;
-          padding: 10px 14px;
-          border: 1px solid var(--tf-color-border-subtle);
-          border-radius: 8px;
-          font-size: 14px;
-          resize: vertical;
-          font-family: inherit;
-          transition: all 0.2s;
-
-          &:focus {
-            outline: none;
-            border-color: var(--tf-color-indigo-brand);
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-          }
-        }
       }
     }
 

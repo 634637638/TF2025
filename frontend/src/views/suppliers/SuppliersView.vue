@@ -478,9 +478,10 @@
             >
               <el-input
                 v-model="formData.address"
+                class="tf-textarea"
                 type="textarea"
                 placeholder="请输入地址"
-                :rows="3"
+                :rows="2"
                 maxlength="200"
                 show-word-limit
                 :disabled="!canEditField('address')"
@@ -493,6 +494,7 @@
             >
               <el-input
                 v-model="formData.bank_info"
+                class="tf-textarea"
                 type="textarea"
                 placeholder="请输入银行信息"
                 :rows="3"
@@ -524,6 +526,7 @@
                 v-model="formData.sort_order"
                 :min="0"
                 :max="9999"
+                :controls="false"
                 placeholder="请输入排序值"
                 style="width: 100%"
                 :disabled="!canEditField('sort_order')"
@@ -553,9 +556,10 @@
             >
               <el-input
                 v-model="formData.remarks"
+                class="tf-textarea"
                 type="textarea"
                 placeholder="请输入备注信息"
-                :rows="3"
+                :rows="2"
                 maxlength="500"
                 show-word-limit
                 :disabled="!canEditField('remarks')"

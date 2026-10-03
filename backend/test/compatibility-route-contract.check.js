@@ -31,6 +31,28 @@ test('compatibility route middleware exposes audit headers without deprecation',
   assert.equal(nextCalled, true)
 })
 
+test('兼容路由写入可持久化且不含查询参数的审计日志', () => {
+  const log = require('../src/utils/log')
+  const originalInfo = log.info
+  let event
+  log.info = (...args) => { event = args }
+  try {
+    compatibilityRoute({ compatibilityId: 'legacy-options' })({
+      method: 'GET',
+      originalUrl: '/api/legacy/options?keyword=private-value',
+      headers: { 'user-agent': 'contract-test' },
+      user: { id: 12 }
+    }, { setHeader() {} }, () => {})
+  } finally {
+    log.info = originalInfo
+  }
+
+  assert.equal(event[0], '兼容接口访问')
+  assert.equal(event[1].path, '/api/legacy/options')
+  assert.equal(event[1].user_agent, 'contract-test')
+  assert.equal(JSON.stringify(event), JSON.stringify(event).replace('private-value', ''))
+})
+
 test('仍在使用的兼容入口全部接入统一审计中间件', () => {
   const root = path.resolve(__dirname, '..', '..')
   const routeFiles = [

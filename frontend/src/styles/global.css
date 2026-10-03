@@ -429,15 +429,6 @@ body {
   padding: 1rem;
 }
 
-.modal-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.5rem;
-  padding: 1rem;
-  border-top: 1px solid var(--tf-color-border-subtle);
-  background-color: var(--tf-color-surface-muted);
-}
-
 /* 移动端适配样式 */
 @media (max-width: 767px) {
   /* 安全区域适配 */
@@ -496,15 +487,6 @@ body {
     margin: 0;
     max-height: calc(100vh - 120px);
     overflow-y: auto;
-  }
-
-  .modal-footer {
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.5rem;
-    padding: 1rem;
-    border-top: 1px solid var(--tf-color-border-subtle);
-    background-color: var(--tf-color-surface-muted);
   }
 
   /* 移动端表格优化 */
@@ -813,7 +795,6 @@ table th .vue-component {
 .el-date-editor .el-input__inner,
 .el-date-editor .el-range-input,
 .el-input-number .el-input__inner {
-  min-height: 40px;
   padding: 8px 12px;
   line-height: 1.4;
   box-sizing: border-box;

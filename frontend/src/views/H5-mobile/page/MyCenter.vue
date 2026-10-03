@@ -445,6 +445,7 @@
         >
           <el-input
             v-model="profileForm.address"
+            class="tf-textarea"
             type="textarea"
             placeholder="请输入详细收货地址"
             :rows="2"

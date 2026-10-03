@@ -759,10 +759,11 @@
 
               <div class="form-group">
                 <label class="form-label">模块描述</label>
-                <textarea
+                <el-input
                   v-model="newModule.description"
-                  class="form-control"
-                  rows="3"
+                  class="tf-textarea"
+                  type="textarea"
+                  :rows="3"
                   placeholder="简要描述该模块的功能..."
                 />
               </div>
@@ -2517,9 +2518,7 @@ export default {
   }
 
   .module-standard-input .el-input__wrapper {
-    min-height: 42px;
     padding-inline: 14px;
-    border-radius: var(--tf-radius-control);
   }
 
   .module-standard-input.is-invalid .el-input__wrapper {

@@ -171,8 +171,7 @@
   align-items: stretch;
 }
 
-input.form-control,
-textarea.form-control {
+input.form-control {
   width: 100%;
   padding: 10px 12px 10px 36px;
   border: 2px solid var(--tf-color-border-cool);
@@ -201,7 +200,6 @@ input[type='date'].form-control {
 }
 
 input.form-control:focus,
-textarea.form-control:focus,
 select.form-control:focus {
   border-color: var(--success-color);
   outline: 0;

@@ -170,12 +170,6 @@
       </el-table-column>
     </el-table>
 
-    <DataEmptyState
-      v-if="!loading && records.length === 0"
-      size="compact"
-      description="暂无考勤记录"
-    />
-
     <template #footer>
       <el-button
         type="info"

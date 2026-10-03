@@ -11,7 +11,7 @@
       >
         <div class="form-group">
           <label for="username">用户名</label>
-          <input
+          <el-input
             id="username"
             v-model="username"
             type="text"
@@ -19,11 +19,11 @@
             placeholder="请输入用户名"
             :disabled="loading || isLocked"
             autocomplete="username"
-          >
+          />
         </div>
         <div class="form-group">
           <label for="password">密码</label>
-          <input
+          <el-input
             id="password"
             v-model="password"
             type="password"
@@ -31,7 +31,7 @@
             placeholder="请输入密码"
             :disabled="loading || isLocked"
             autocomplete="current-password"
-          >
+          />
         </div>
 
         <!-- 登录尝试次数提示 -->

@@ -1,6 +1,6 @@
 const test = require('node:test')
 const assert = require('node:assert/strict')
-const { parseDeprecatedLogLine } = require('../scripts/audit-deprecated-routes')
+const { parseDeprecatedLogLine, parseCompatibilityLogLine, summarizeLogFiles } = require('../scripts/audit-deprecated-routes')
 
 test('deprecated route audit extracts migration ID without exposing request details', () => {
   const line = JSON.stringify({
@@ -27,4 +27,35 @@ test('deprecated route audit ignores unrelated or malformed log lines', () => {
     level: 'warn',
     message: `兼容接口仍被调用 ${JSON.stringify({ migration_id: 'example-migration' })}`
   })), null)
+})
+
+test('compatibility route audit extracts compatibility IDs from production info logs', () => {
+  const line = JSON.stringify({
+    level: 'info',
+    message: `兼容接口访问 ${JSON.stringify({
+      compatibility_id: 'legacy-reference-options',
+      method: 'GET',
+      path: '/api/shop/base-data/models',
+      user_id: 42
+    })}`
+  })
+
+  assert.deepEqual(parseCompatibilityLogLine(line), { compatibility_id: 'legacy-reference-options' })
+  assert.equal(parseCompatibilityLogLine(JSON.stringify({ level: 'debug', message: '兼容接口访问 {}' })), null)
+})
+
+test('combined audit summarizes deprecated and compatibility events separately', () => {
+  const files = ['/logs/combined-2026-10-01.log']
+  const originalReadFileSync = require('node:fs').readFileSync
+  require('node:fs').readFileSync = () => [
+    JSON.stringify({ level: 'warn', message: `兼容接口仍被调用 ${JSON.stringify({ migration_id: 'old-route' })}` }),
+    JSON.stringify({ level: 'info', message: `兼容接口访问 ${JSON.stringify({ compatibility_id: 'still-supported' })}` })
+  ].join('\n')
+  try {
+    const summary = summarizeLogFiles(files)
+    assert.deepEqual(summary.counts, [['old-route', 1]])
+    assert.deepEqual(summary.compatibilityCounts, [['still-supported', 1]])
+  } finally {
+    require('node:fs').readFileSync = originalReadFileSync
+  }
 })

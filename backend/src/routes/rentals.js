@@ -11,7 +11,7 @@ const log = require('../utils/log')
 const { ensureRentalSchema } = require('../utils/rental-schema')
 const { getUploadSubdir, getUploadUrl, getUploadPathFromUrl } = require('../utils/upload-paths')
 const { isValidIdCard } = require('../utils/security-enhanced')
-const { generateInvoiceNumber } = require('../utils/invoice-number')
+const { generateInvoiceNumber, ensureInvoiceSequenceTable } = require('../utils/invoice-number')
 const { validateUploadedFileSignature, removeUploadedFiles } = require('../utils/upload-file-validation')
 const dataMaskingService = require('../services/dataMaskingService')
 const { searchCustomers: searchCustomerOptions } = require('../services/customer-search.service')
@@ -570,6 +570,8 @@ router.post('/', requirePermission('rentals:create'), rejectHiddenRentalWriteFie
     }
 
     connection = await getDatabase().getConnection()
+    // 买断销售会在事务中生成发票号，先完成序列表初始化，避免建表隐式提交事务。
+    await ensureInvoiceSequenceTable(connection)
     await connection.beginTransaction()
     const [customers] = await connection.execute('SELECT id,id_card FROM customers WHERE id=? AND status=1 FOR UPDATE', [customerId])
     if (!customers.length || !isValidIdCard(String(customers[0].id_card || ''))) throw new Error('客户不存在、已停用或缺少正确身份证号')

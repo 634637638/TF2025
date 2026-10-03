@@ -6,6 +6,7 @@
 const db = require('../config/database')
 const { createOrderAccessToken } = require('../utils/order-access')
 const log = require('../utils/log')
+const pricingService = require('./pricing.service')
 
 const H5_ORDER_FIELDS = [
   'id', 'order_number', 'customer_name', 'customer_phone', 'customer_address',
@@ -37,6 +38,111 @@ const buildPaginationResult = (data, page, page_size, total) => {
 }
 
 class ShopPublicService {
+  /**
+   * 批量加载商城模板及其采集基准价。
+   * 商城只使用批发采集价作为基准，销售报价字段不得参与商城计算。
+   */
+  async getH5TemplatePriceMap(products, executor = db.getDatabase()) {
+    const specs = [...new Set((Array.isArray(products) ? products : [])
+      .filter(product => Number(product?.is_new) === 1)
+      .filter(product => product?.brand_id && product?.model_id && product?.color_id)
+      .map(product => `${product.brand_id}:${product.model_id}:${product.color_id}`))]
+
+    if (specs.length === 0) return new Map()
+
+    const tuples = specs.map(spec => spec.split(':').map(Number))
+    const placeholders = tuples.map(() => '(?,?,?)').join(',')
+    const [templates] = await executor.query(
+      `SELECT id, brand_id, model_id, color_id, memory_ids, price_markup, price_markup_type
+       FROM H5_newtemplates
+       WHERE is_active = TRUE
+         AND (brand_id, model_id, color_id) IN (${placeholders})
+       ORDER BY id ASC`,
+      tuples.flat()
+    )
+
+    const [prices] = await executor.query(
+      `SELECT brand_id, model_id, color_id, memory_id, wholesale_price
+       FROM price_list
+       WHERE (brand_id, model_id, color_id) IN (${placeholders})
+         AND wholesale_price IS NOT NULL
+         AND wholesale_price > 0`,
+      tuples.flat()
+    )
+
+    const templateMap = new Map()
+    templates.forEach(template => {
+      const key = `${template.brand_id}:${template.model_id}:${template.color_id}`
+      if (!templateMap.has(key)) templateMap.set(key, template)
+    })
+
+    const priceMap = new Map()
+    prices.forEach(price => {
+      const key = `${price.brand_id}:${price.model_id}:${price.color_id}`
+      const rows = priceMap.get(key) || []
+      rows.push(price)
+      priceMap.set(key, rows)
+    })
+
+    const result = new Map()
+    specs.forEach(key => {
+      result.set(key, {
+        template: templateMap.get(key) || null,
+        prices: priceMap.get(key) || []
+      })
+    })
+    return result
+  }
+
+  getH5TemplatePriceRows(product, priceMap) {
+    const key = `${product?.brand_id}:${product?.model_id}:${product?.color_id}`
+    const entry = priceMap.get(key)
+    if (!entry?.template) return []
+
+    let memoryIds = null
+    if (entry.template.memory_ids) {
+      try {
+        const parsed = typeof entry.template.memory_ids === 'string'
+          ? JSON.parse(entry.template.memory_ids)
+          : entry.template.memory_ids
+        if (Array.isArray(parsed) && parsed.length > 0) memoryIds = new Set(parsed.map(Number))
+      } catch (error) {
+        log.warn('[H5价格] 模板内存配置无效:', entry.template.id, error.message)
+      }
+    }
+
+    return entry.prices
+      .filter(price => memoryIds === null || memoryIds.has(Number(price.memory_id)))
+      .filter(price => product?.memory_id === undefined || product?.memory_id === null || Number(price.memory_id) === Number(product.memory_id))
+      .map(price => ({
+        ...price,
+        sale_price: pricingService.calculateH5PriceByTemplate(price.wholesale_price, entry.template)
+      }))
+  }
+
+  async applyH5TemplatePricing(products, executor = db.getDatabase()) {
+    if (!Array.isArray(products) || products.length === 0) return products || []
+
+    const priceMap = await this.getH5TemplatePriceMap(products, executor)
+    products.forEach(product => {
+      if (Number(product?.is_new) !== 1) return
+      const rows = this.getH5TemplatePriceRows(product, priceMap)
+      product.min_price = rows.length > 0 ? Math.min(...rows.map(row => Number(row.sale_price))) : 0
+      product.max_price = rows.length > 0 ? Math.max(...rows.map(row => Number(row.sale_price))) : 0
+      if (Object.prototype.hasOwnProperty.call(product, 'sale_price')) {
+        product.sale_price = rows.length > 0 ? Number(rows[0].sale_price) : 0
+      }
+      if (Object.prototype.hasOwnProperty.call(product, 'price_options')) {
+        product.price_options = rows.map(row => ({
+          memory_id: row.memory_id,
+          base_price: Number(row.wholesale_price),
+          sale_price: Number(row.sale_price)
+        }))
+      }
+    })
+    return products
+  }
+
   // ============================================================================
   // 商城配置（公开）
   // ============================================================================
@@ -311,6 +417,8 @@ class ShopPublicService {
       if (!product.main_image && images.length > 0) product.main_image = images[0].image_url
     })
 
+    await this.applyH5TemplatePricing(newProducts)
+
     return buildPaginationResult(products, page, page_size, total)
   }
 
@@ -348,7 +456,7 @@ class ShopPublicService {
 
     // 排序映射（对于模板，使用sort_order）
     const sortField = sort === 'price' || sort === 'price_asc' || sort === 'price_desc'
-      ? '(SELECT MIN(p.sale_price) FROM phones p LEFT JOIN H5_product h5 ON p.id = h5.phone_id WHERE p.brand_id = t.brand_id AND p.model_id = t.model_id AND p.color_id = t.color_id AND p.is_new = 1 AND p.status = "in_stock" AND (h5.is_published = 1 OR h5.is_published IS NULL))'
+      ? '(SELECT MIN(pl.wholesale_price) FROM price_list pl WHERE pl.brand_id = t.brand_id AND pl.model_id = t.model_id AND pl.color_id = t.color_id AND pl.wholesale_price > 0)'
       : 't.sort_order'
     const sortDirection = sort === 'price_asc' ? 'ASC' : (sort === 'price_desc' ? 'DESC' : 'ASC')
 
@@ -380,12 +488,12 @@ class ShopPublicService {
         m.name as model_name,
         c.name as color_name,
         (SELECT image_url FROM H5_newimages WHERE template_id = t.id AND is_primary = 1 LIMIT 1) as main_image,
-        (SELECT MIN(pl.retail_price)
+        (SELECT MIN(pl.wholesale_price)
          FROM price_list pl
          WHERE pl.brand_id = t.brand_id AND pl.model_id = t.model_id AND pl.color_id = t.color_id
            AND (t.memory_ids IS NULL OR JSON_CONTAINS(t.memory_ids, CAST(pl.memory_id AS JSON)))
-           AND pl.retail_price IS NOT NULL AND pl.retail_price > 0
-        ) as min_retail_price,
+           AND pl.wholesale_price IS NOT NULL AND pl.wholesale_price > 0
+        ) as min_wholesale_price,
         (SELECT COUNT(*) FROM phones p LEFT JOIN H5_product h5 ON p.id = h5.phone_id WHERE p.brand_id = t.brand_id AND p.model_id = t.model_id AND p.color_id = t.color_id AND p.is_new = 1 AND p.status = "in_stock" AND (h5.is_published = 1 OR h5.is_published IS NULL)) as stock_count,
         t.sort_order
       FROM H5_newtemplates t
@@ -421,11 +529,11 @@ class ShopPublicService {
         .map(key => key.split(':').map(Number))
       const [priceRows] = await db.getDatabase().query(
         `SELECT pl.brand_id,pl.model_id,pl.color_id,pl.memory_id,mem.size AS memory_name,
-                pl.retail_price AS sale_price,pl.wholesale_price AS base_price
+                pl.wholesale_price AS base_price
          FROM price_list pl
          LEFT JOIN memories mem ON pl.memory_id = mem.id
          WHERE (pl.brand_id,pl.model_id,pl.color_id) IN (${tuples.map(() => '(?,?,?)').join(',')})
-           AND pl.retail_price IS NOT NULL AND pl.retail_price > 0
+           AND pl.wholesale_price IS NOT NULL AND pl.wholesale_price > 0
          ORDER BY pl.memory_id`,
         tuples.flat()
       )
@@ -442,16 +550,6 @@ class ShopPublicService {
       const images = imagesByTemplate.get(Number(product.id)) || []
       product.images = images.map(image => image.image_url)
       if (!product.main_image && images.length > 0) product.main_image = images[0].image_url
-
-      // H5销售价：直接使用 price_list.retail_price（已经是最终销售价：采集价+加价）
-      if (product.min_retail_price) {
-        product.sale_price = parseFloat(product.min_retail_price)
-        log.debug('[H5价格] 模板ID:', product.id, '销售价:', product.sale_price)
-      } else {
-        // 没有采集价格，显示"电询"
-        product.sale_price = 0
-        log.debug('[H5价格] 模板ID:', product.id, '无采集价格 - 显示电询')
-      }
 
       // 获取该模板所有内存规格的价格详情（用于详情页展示）
       let memoryList = null
@@ -474,8 +572,21 @@ class ShopPublicService {
       const memoryPrices = (priceRowsByProductKey.get(productKey) || [])
         .filter(price => !allowedMemoryIds || allowedMemoryIds.has(Number(price.memory_id)))
 
+      const h5Prices = memoryPrices.map(price => ({
+        ...price,
+        sale_price: pricingService.calculateH5PriceByTemplate(price.base_price, product)
+      }))
+
+      if (h5Prices.length > 0) {
+        product.sale_price = Math.min(...h5Prices.map(price => Number(price.sale_price)))
+        log.debug('[H5价格] 模板ID:', product.id, '模板独立商城价:', product.sale_price)
+      } else {
+        product.sale_price = 0
+        log.debug('[H5价格] 模板ID:', product.id, '无采集批发价 - 显示电询')
+      }
+
       // 构建价格选项
-      product.price_options = memoryPrices.map(mp => ({
+      product.price_options = h5Prices.map(mp => ({
         memory_id: mp.memory_id,
         memory_name: mp.memory_name,
         base_price: parseFloat(mp.base_price),
@@ -483,7 +594,7 @@ class ShopPublicService {
       }))
 
       // 删除临时字段
-      delete product.min_retail_price
+      delete product.min_wholesale_price
       delete product.price_markup
       delete product.price_markup_type
       delete product.memory_ids
@@ -510,16 +621,18 @@ class ShopPublicService {
         t.model_id,
         t.color_id,
         t.memory_ids,
+        t.price_markup,
+        t.price_markup_type,
         b.name as brand_name,
         m.name as model_name,
         c.name as color_name,
         (SELECT image_url FROM H5_newimages WHERE template_id = t.id AND is_primary = 1 LIMIT 1) as main_image,
-        (SELECT MIN(pl.retail_price)
+        (SELECT MIN(pl.wholesale_price)
          FROM price_list pl
          WHERE pl.brand_id = t.brand_id AND pl.model_id = t.model_id AND pl.color_id = t.color_id
            AND (t.memory_ids IS NULL OR JSON_CONTAINS(t.memory_ids, CAST(pl.memory_id AS JSON)))
-           AND pl.retail_price IS NOT NULL AND pl.retail_price > 0
-        ) as min_retail_price,
+           AND pl.wholesale_price IS NOT NULL AND pl.wholesale_price > 0
+        ) as min_wholesale_price,
         (SELECT COUNT(*) FROM phones p LEFT JOIN H5_product h5 ON p.id = h5.phone_id WHERE p.brand_id = t.brand_id AND p.model_id = t.model_id AND p.color_id = t.color_id AND p.is_new = 1 AND p.status = "in_stock" AND (h5.is_published = 1 OR h5.is_published IS NULL)) as stock_count
       FROM H5_newtemplates t
       LEFT JOIN brands b ON t.brand_id = b.id
@@ -561,16 +674,19 @@ class ShopPublicService {
           const placeholders = memoryList.map(() => '?').join(',')
           const priceQuery = `
             SELECT pl.memory_id, mem.size as memory_name,
-                   pl.retail_price as display_price
+                   pl.wholesale_price as base_price
             FROM price_list pl
             LEFT JOIN memories mem ON pl.memory_id = mem.id
             WHERE pl.brand_id = ? AND pl.model_id = ? AND pl.color_id = ?
               AND pl.memory_id IN (${placeholders})
-              AND pl.retail_price IS NOT NULL AND pl.retail_price > 0
+              AND pl.wholesale_price IS NOT NULL AND pl.wholesale_price > 0
             ORDER BY pl.memory_id
           `
           const [prices] = await db.getDatabase().query(priceQuery, [template.brand_id, template.model_id, template.color_id, ...memoryList])
-          priceOptions = prices
+          priceOptions = prices.map(price => ({
+            ...price,
+            sale_price: pricingService.calculateH5PriceByTemplate(price.base_price, template)
+          }))
 
           log.debug('[getProductDetail] 模板ID:', productId, '获取到', priceOptions.length, '个价格选项:', priceOptions)
         }
@@ -588,7 +704,9 @@ class ShopPublicService {
         })),
         price_options: priceOptions,
         is_new: 1,
-        sale_price: template.min_retail_price || 0
+        sale_price: priceOptions.length > 0
+          ? Math.min(...priceOptions.map(price => Number(price.sale_price)))
+          : 0
       }
     }
 
@@ -616,7 +734,7 @@ class ShopPublicService {
         s.name as store_name,
         s.location as store_address,
         s.phone as store_phone,
-        pl.retail_price as display_price,
+        pl.wholesale_price as base_price,
         pl.wholesale_price
       FROM phones p
       LEFT JOIN H5_product h5 ON p.id = h5.phone_id
@@ -643,20 +761,13 @@ class ShopPublicService {
     const product = products[0]
     log.debug('[getProductDetail] 商品基本信息:', { id: product.id, is_new: product.is_new, brand_id: product.brand_id, model_id: product.model_id, color_id: product.color_id })
 
-    // 🔥 价格显示逻辑：全新机和二手机使用不同来源
-    // 全新机：使用 price_list.retail_price（根据价目表）
+    // 价格显示逻辑：全新机使用模板商城价，二手机使用独立的 H5_product 售价。
     // 二手机：使用 H5_product.sale_price（上架时手动设置）
-    if (product.is_new === 1) {
-      // 全新机：使用 price_list.retail_price
-      if (product.display_price && product.display_price > 0) {
-        product.sale_price = product.display_price
-        log.debug('[getProductDetail] 全新机，使用 price_list 零售价:', product.sale_price)
-      } else {
-        // 全新机没有价格，显示"电询"
-        product.sale_price = 0
-        product.show_contact = true
-        log.debug('[getProductDetail] 全新机没有零售价，显示电询')
-      }
+    if (Number(product.is_new) === 1) {
+      await this.applyH5TemplatePricing([product])
+      product.sale_price = Number(product.min_price || 0)
+      product.show_contact = product.sale_price <= 0
+      log.debug('[getProductDetail] 全新机使用模板商城价:', product.sale_price)
     } else {
       // 二手机：稍后从 H5_product 获取价格
       log.debug('[getProductDetail] 二手机，等待从 H5_product 获取价格')
@@ -666,7 +777,7 @@ class ShopPublicService {
 
     // 获取商品图片
     let images
-    if (product.is_new === 1) {
+    if (Number(product.is_new) === 1) {
       log.debug('[getProductDetail] 全新机商品，查询模板图片')
       // 全新机：查询模板图片
       // 首先获取对应的模板
@@ -926,8 +1037,12 @@ class ShopPublicService {
         c.id as cart_id,
         1 as quantity,
         p.id,
+        p.brand_id,
+        p.model_id,
+        p.color_id,
+        p.memory_id,
         CASE
-          WHEN p.is_new = 1 THEN COALESCE(pl.retail_price, 0)
+          WHEN p.is_new = 1 THEN COALESCE(pl.wholesale_price, 0)
           ELSE COALESCE(h5.sale_price, 0)
         END as sale_price,
         p.is_new,
@@ -967,6 +1082,8 @@ class ShopPublicService {
     `
 
     const [items] = await db.getDatabase().query(query, [cartId])
+
+    await this.applyH5TemplatePricing(items)
 
     // 计算总价
     const total = items.reduce((sum, item) => sum + ((parseFloat(item.sale_price) || 0) * item.quantity), 0)
@@ -1067,8 +1184,9 @@ class ShopPublicService {
         // 获取商品信息
         const [products] = await connection.query(
           `SELECT p.id,
+                  p.brand_id, p.model_id, p.color_id, p.memory_id, p.is_new,
                   CASE
-                    WHEN p.is_new = 1 THEN COALESCE(pl.retail_price, 0)
+                    WHEN p.is_new = 1 THEN COALESCE(pl.wholesale_price, 0)
                     ELSE COALESCE(h5.sale_price, 0)
                   END as sale_price,
                   b.name as brand_name, m.name as model_name,
@@ -1092,6 +1210,11 @@ class ShopPublicService {
         }
 
         const product = products[0]
+
+        if (Number(product.is_new) === 1) {
+          await this.applyH5TemplatePricing([product], connection)
+          product.sale_price = Number(product.min_price || 0)
+        }
 
         // 验证价格
         const salePrice = parseFloat(product.sale_price) || 0
@@ -1551,21 +1674,21 @@ class ShopPublicService {
              AND p.status = 'in_stock'
              AND (hp.is_published = 1 OR hp.is_published IS NULL)
           ) as total_stock,
-          (SELECT MIN(pl.retail_price)
+          (SELECT MIN(pl.wholesale_price)
            FROM price_list pl
            WHERE pl.brand_id = t.brand_id
              AND pl.model_id = t.model_id
              AND pl.color_id = t.color_id
-             AND pl.retail_price IS NOT NULL
-             AND pl.retail_price > 0
+             AND pl.wholesale_price IS NOT NULL
+             AND pl.wholesale_price > 0
           ) as min_price,
-          (SELECT MAX(pl.retail_price)
+          (SELECT MAX(pl.wholesale_price)
            FROM price_list pl
            WHERE pl.brand_id = t.brand_id
              AND pl.model_id = t.model_id
              AND pl.color_id = t.color_id
-             AND pl.retail_price IS NOT NULL
-             AND pl.retail_price > 0
+             AND pl.wholesale_price IS NOT NULL
+             AND pl.wholesale_price > 0
           ) as max_price,
           (SELECT p.id FROM phones p
            LEFT JOIN H5_product hp ON p.id = hp.phone_id
@@ -1577,7 +1700,9 @@ class ShopPublicService {
              AND (hp.is_published = 1 OR hp.is_published IS NULL)
            ORDER BY p.id ASC LIMIT 1
           ) as first_phone_id,
-          t.memory_ids
+          t.memory_ids,
+          t.price_markup,
+          t.price_markup_type
         FROM H5_newtemplates t
         LEFT JOIN brands b ON t.brand_id = b.id
         LEFT JOIN models m ON t.model_id = m.id
@@ -1688,21 +1813,21 @@ class ShopPublicService {
              AND p.status = 'in_stock'
              AND (hp.is_published = 1 OR hp.is_published IS NULL)
           ) as total_stock,
-          (SELECT MIN(pl.retail_price)
+          (SELECT MIN(pl.wholesale_price)
            FROM price_list pl
            WHERE pl.brand_id = t.brand_id
              AND pl.model_id = t.model_id
              AND pl.color_id = t.color_id
-             AND pl.retail_price IS NOT NULL
-             AND pl.retail_price > 0
+             AND pl.wholesale_price IS NOT NULL
+             AND pl.wholesale_price > 0
           ) as min_price,
-          (SELECT MAX(pl.retail_price)
+          (SELECT MAX(pl.wholesale_price)
            FROM price_list pl
            WHERE pl.brand_id = t.brand_id
              AND pl.model_id = t.model_id
              AND pl.color_id = t.color_id
-             AND pl.retail_price IS NOT NULL
-             AND pl.retail_price > 0
+             AND pl.wholesale_price IS NOT NULL
+             AND pl.wholesale_price > 0
           ) as max_price,
           (SELECT p.id FROM phones p
            LEFT JOIN H5_product hp ON p.id = hp.phone_id
@@ -1718,7 +1843,9 @@ class ShopPublicService {
           NULL as quality_grade,
           NULL as condition_grade,
           NULL as main_image,
-          t.memory_ids
+          t.memory_ids,
+          t.price_markup,
+          t.price_markup_type
         FROM H5_newtemplates t
         LEFT JOIN brands b ON t.brand_id = b.id
         LEFT JOIN models m ON t.model_id = m.id
@@ -1759,7 +1886,9 @@ class ShopPublicService {
           NULL as quality_grade,
           NULL as condition_grade,
           NULL as main_image,
-          NULL as memory_ids
+          NULL as memory_ids,
+          NULL as price_markup,
+          NULL as price_markup_type
         FROM phones p
         LEFT JOIN H5_product h5 ON p.id = h5.phone_id
         LEFT JOIN brands b ON p.brand_id = b.id
@@ -1810,6 +1939,9 @@ class ShopPublicService {
       return buildPaginationResult([], page, page_size, 0)
     }
 
+    // 聚合列表中的全新机也必须按颜色模板计算商城价，不能直接返回销售报价字段。
+    await this.applyH5TemplatePricing(products.filter(product => Number(product.is_new) === 1))
+
     // 处理全新机：查询模板图片
     const newProducts = products.filter(p => p.is_new === 1 || p.is_new === '1')
     log.debug('[聚合商品] 全新机数量:', newProducts.length)
@@ -1851,13 +1983,13 @@ class ShopPublicService {
               pl.brand_id,
               pl.model_id,
               pl.color_id,
-              MIN(pl.retail_price) as min_price,
-              MAX(pl.retail_price) as max_price
+              MIN(pl.wholesale_price) as min_price,
+              MAX(pl.wholesale_price) as max_price
             FROM price_list pl
             WHERE pl.brand_id IN (${brandIds.map(() => '?').join(',')})
               AND pl.model_id IN (${modelIds.map(() => '?').join(',')})
               AND pl.color_id IN (${colorIds.map(() => '?').join(',')})
-              AND pl.retail_price IS NOT NULL AND pl.retail_price > 0
+              AND pl.wholesale_price IS NOT NULL AND pl.wholesale_price > 0
             GROUP BY pl.brand_id, pl.model_id, pl.color_id
           `, [...brandIds, ...modelIds, ...colorIds])
 
@@ -2236,13 +2368,13 @@ class ShopPublicService {
         pl.brand_id,
         pl.model_id,
         pl.color_id,
-        MIN(pl.retail_price) as min_price,
-        MAX(pl.retail_price) as max_price
+        MIN(pl.wholesale_price) as min_price,
+        MAX(pl.wholesale_price) as max_price
       FROM price_list pl
       WHERE pl.brand_id IN (${brandIds.map(() => '?').join(',')})
         AND pl.model_id IN (${modelIds.map(() => '?').join(',')})
         AND pl.color_id IN (${colorIds.map(() => '?').join(',')})
-        AND pl.retail_price IS NOT NULL AND pl.retail_price > 0
+        AND pl.wholesale_price IS NOT NULL AND pl.wholesale_price > 0
       GROUP BY pl.brand_id, pl.model_id, pl.color_id
     `, [...brandIds, ...modelIds, ...colorIds])
 
@@ -2294,6 +2426,8 @@ class ShopPublicService {
 
       return product
     })
+
+    await this.applyH5TemplatePricing(result)
 
     // 批量查询没有模板的商品的图片（从H5_images）
     const productsWithoutTemplate = result.filter(p => !p.template_id && !p.main_image)
@@ -2366,17 +2500,17 @@ class ShopPublicService {
         t.color_id,
         COALESCE(c.name, '默认颜色') as color_name,
         1 as is_new,
-        (SELECT MIN(pl.retail_price)
+        (SELECT MIN(pl.wholesale_price)
          FROM price_list pl
          WHERE pl.brand_id = t.brand_id AND pl.model_id = t.model_id AND pl.color_id = t.color_id
            AND (t.memory_ids IS NULL OR JSON_CONTAINS(t.memory_ids, CAST(pl.memory_id AS JSON)))
-           AND pl.retail_price IS NOT NULL AND pl.retail_price > 0
+           AND pl.wholesale_price IS NOT NULL AND pl.wholesale_price > 0
         ) as min_price,
-        (SELECT MAX(pl.retail_price)
+        (SELECT MAX(pl.wholesale_price)
          FROM price_list pl
          WHERE pl.brand_id = t.brand_id AND pl.model_id = t.model_id AND pl.color_id = t.color_id
            AND (t.memory_ids IS NULL OR JSON_CONTAINS(t.memory_ids, CAST(pl.memory_id AS JSON)))
-           AND pl.retail_price IS NOT NULL AND pl.retail_price > 0
+           AND pl.wholesale_price IS NOT NULL AND pl.wholesale_price > 0
         ) as max_price,
         (SELECT COUNT(*) FROM phones p LEFT JOIN H5_product h5 ON p.id = h5.phone_id
          WHERE p.brand_id = t.brand_id AND p.model_id = t.model_id AND p.color_id = t.color_id
@@ -2385,7 +2519,9 @@ class ShopPublicService {
          WHERE ni.template_id = t.id AND ni.is_primary = 1
          LIMIT 1) as main_image,
         t.id as template_id,
-        t.memory_ids
+        t.memory_ids,
+        t.price_markup,
+        t.price_markup_type
       FROM H5_newtemplates t
       LEFT JOIN brands b ON t.brand_id = b.id
       LEFT JOIN models m ON t.model_id = m.id
@@ -2433,14 +2569,14 @@ class ShopPublicService {
 
       const memoryQuery = `
         SELECT pl.memory_id, mem.size as memory_name,
-               pl.retail_price as price,
+               pl.wholesale_price as base_price,
                (SELECT COUNT(*) FROM phones p LEFT JOIN H5_product h5 ON p.id = h5.phone_id
                 WHERE p.brand_id = ? AND p.model_id = ? AND p.color_id = ? AND p.memory_id = pl.memory_id
                   AND p.is_new = 1 AND p.status = 'in_stock' AND (h5.is_published = 1 OR h5.is_published IS NULL)) as stock_count
         FROM price_list pl
         LEFT JOIN memories mem ON pl.memory_id = mem.id
         WHERE 1=1 ${whereClause}
-          AND pl.retail_price IS NOT NULL AND pl.retail_price > 0
+          AND pl.wholesale_price IS NOT NULL AND pl.wholesale_price > 0
         ORDER BY pl.memory_id
       `
 
@@ -2448,17 +2584,22 @@ class ShopPublicService {
         product.brand_id, product.model_id, product.color_id, ...queryParams
       ])
 
+      const pricedMemories = memories.map(memory => ({
+        ...memory,
+        price: pricingService.calculateH5PriceByTemplate(memory.base_price, product)
+      }))
+
       return {
         ...product,
         images: imageList,
-        memories: memories.map(m => ({
+        memories: pricedMemories.map(m => ({
           id: m.memory_id,
           name: m.memory_name,
           stock: m.stock_count,
           price: m.price
         })),
-        min_price: product.min_price || 0,
-        max_price: product.max_price || 0
+        min_price: pricedMemories.length > 0 ? Math.min(...pricedMemories.map(m => Number(m.price))) : 0,
+        max_price: pricedMemories.length > 0 ? Math.max(...pricedMemories.map(m => Number(m.price))) : 0
       }
     }))
 
@@ -2628,8 +2769,8 @@ class ShopPublicService {
         COALESCE(p.color_id, 0) as color_id,
         COALESCE(c.name, '默认颜色') as color_name,
         p.is_new,
-        MIN(COALESCE(h5.sale_price, p.sale_price)) as min_price,
-        MAX(COALESCE(h5.sale_price, p.sale_price)) as max_price,
+        MIN(pl.wholesale_price) as min_price,
+        MAX(pl.wholesale_price) as max_price,
         COUNT(*) as total_stock,
         (SELECT image_url FROM H5_images hi
          INNER JOIN phones p2 ON hi.phone_id = p2.id
@@ -2641,12 +2782,23 @@ class ShopPublicService {
       LEFT JOIN brands b ON p.brand_id = b.id
       LEFT JOIN models m ON p.model_id = m.id
       LEFT JOIN colors c ON p.color_id = c.id
+      LEFT JOIN price_list pl ON pl.brand_id = p.brand_id
+        AND pl.model_id = p.model_id
+        AND pl.color_id = p.color_id
+        AND pl.memory_id = p.memory_id
       ${whereClause}
       GROUP BY p.brand_id, COALESCE(p.model_id, 0), COALESCE(p.color_id, 0), p.is_new, COALESCE(b.name, '未知品牌'), COALESCE(m.name, '未知型号'), COALESCE(c.name, '默认颜色')
       ORDER BY COALESCE(b.name, '未知品牌'), COALESCE(m.name, '未知型号'), COALESCE(c.name, '默认颜色')
     `
 
     const [products] = await db.getDatabase().query(query, queryParams)
+
+    const h5PriceMap = await this.getH5TemplatePriceMap(products)
+    products.forEach(product => {
+      const rows = this.getH5TemplatePriceRows(product, h5PriceMap)
+      product.min_price = rows.length > 0 ? Math.min(...rows.map(row => Number(row.sale_price))) : 0
+      product.max_price = rows.length > 0 ? Math.max(...rows.map(row => Number(row.sale_price))) : 0
+    })
 
     // 为每个聚合产品查询可用的内存选项
     const result = await Promise.all(products.map(async (product) => {
@@ -2655,10 +2807,14 @@ class ShopPublicService {
           p.memory_id,
           COALESCE(mem.size, '标准版') as memory_name,
           COUNT(*) as stock_count,
-          MIN(COALESCE(h5.sale_price, p.sale_price)) as price
+          MIN(pl.wholesale_price) as base_price
         FROM phones p
         LEFT JOIN H5_product h5 ON p.id = h5.phone_id
         LEFT JOIN memories mem ON p.memory_id = mem.id
+        LEFT JOIN price_list pl ON pl.brand_id = p.brand_id
+          AND pl.model_id = p.model_id
+          AND pl.color_id = p.color_id
+          AND pl.memory_id = p.memory_id
         WHERE p.brand_id = ? AND COALESCE(p.model_id, 0) = COALESCE(?, 0) AND COALESCE(p.color_id, 0) = COALESCE(?, 0)
           AND p.is_new = 1 AND p.status = 'in_stock' AND (h5.is_published = 1 OR h5.is_published IS NULL)
         GROUP BY p.memory_id, COALESCE(mem.size, '标准版')
@@ -2677,7 +2833,10 @@ class ShopPublicService {
           id: m.memory_id,
           name: m.memory_name,
           stock: m.stock_count,
-          price: m.price
+          price: pricingService.calculateH5PriceByTemplate(
+            m.base_price,
+            h5PriceMap.get(`${product.brand_id}:${product.model_id}:${product.color_id}`)?.template
+          )
         }))
       }
     }))
@@ -2693,13 +2852,21 @@ class ShopPublicService {
     const query = `
       SELECT
         p.id as phone_id,
+        p.brand_id,
+        p.model_id,
+        p.color_id,
+        p.memory_id,
+        p.is_new,
         p.imei,
         p.store_id,
         s.name as store_name,
         s.location as store_address,
         s.phone as store_phone,
         p.quality_grade,
-        COALESCE(h5.sale_price, p.sale_price) as sale_price,
+        CASE
+          WHEN p.is_new = 1 THEN COALESCE(pl.wholesale_price, 0)
+          ELSE COALESCE(h5.sale_price, p.sale_price)
+        END as sale_price,
         h5.condition_grade,
         CASE
           WHEN p.is_new = 1 THEN (
@@ -2730,6 +2897,8 @@ class ShopPublicService {
     `
 
     const [stocks] = await db.getDatabase().query(query, [brand_id, model_id, color_id, memory_id, is_new ? 1 : 0])
+
+    if (is_new) await this.applyH5TemplatePricing(stocks)
 
     // 按店铺分组库存
     const storeGroups = {}

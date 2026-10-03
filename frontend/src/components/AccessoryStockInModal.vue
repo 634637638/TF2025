@@ -333,7 +333,7 @@
                     :min="0"
                     :max="9999"
                     :precision="0"
-                    controls-position="right"
+                    :controls="false"
                     class="full-width"
                   />
                 </el-form-item>
@@ -470,7 +470,7 @@
                   :min="1"
                   :max="9999"
                   :step="1"
-                  controls-position="right"
+                  :controls="false"
                   @change="handleTotalQuantityChange"
                 />
                 <span
@@ -509,7 +509,7 @@
                     :max="canViewAccessoryField('total_quantity') ? formData.total_quantity : undefined"
                     :disabled="!store.checked"
                     size="small"
-                    controls-position="right"
+                    :controls="false"
                     @change="handleDistributionChange"
                   />
                   <span
@@ -552,6 +552,7 @@
             <el-form-item label="备注">
               <el-input
                 v-model="formData.remarks"
+                class="tf-textarea"
                 type="textarea"
                 :rows="2"
                 placeholder="请输入备注信息（可选）"
@@ -1227,12 +1228,6 @@ onMounted(async () => {
 .accessory-form :deep(.el-form-item__label) {
   font-weight: 500;
   color: var(--color-text-regular);
-}
-
-.accessory-form :deep(.el-input__wrapper),
-.accessory-form :deep(.el-select .el-input__wrapper),
-.accessory-form :deep(.el-textarea__inner) {
-  border-radius: 6px;
 }
 
 .full-width {

@@ -95,7 +95,6 @@
 .el-table .sort-order-control .el-input__wrapper {
   min-height: 28px;
   padding-inline: 6px;
-  border-radius: var(--tf-radius-control);
   box-shadow: 0 0 0 1px var(--el-border-color) inset;
 }
 
@@ -105,6 +104,19 @@
   font-size: 13px;
   font-weight: 600;
   text-align: center;
+}
+
+// 表格内连续编辑列：输入控件直接铺满单元格，避免左右出现重复边界。
+.el-table th.flat-edit-label-column,
+.el-table th.flat-edit-value-column {
+  --admin-data-table-header-border: transparent;
+  --admin-data-table-header-padding-x: 0px;
+}
+
+.el-table td.flat-edit-label-column,
+.el-table td.flat-edit-value-column {
+  --admin-data-table-cell-border: transparent;
+  --admin-data-table-cell-padding-x: 0px;
 }
 
 .el-table__body-wrapper td {

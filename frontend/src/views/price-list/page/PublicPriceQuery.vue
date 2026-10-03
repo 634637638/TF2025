@@ -6,7 +6,8 @@
           v-model="searchKeyword"
           :placeholder="passwordVerified ? `欢迎${verifiedUserName}使用${siteSettingsStore.settings.siteName || '报价系统'}` : '搜索品牌或型号'"
           :verified="passwordVerified"
-          :loading="loading"
+          :loading="loading || searchSubmitting"
+          :disabled="loading || searchSubmitting"
           @search="handleSearchInput"
           @clear="handleClear"
         />
@@ -477,6 +478,7 @@ const watermarkText = computed(() => formatPublicPriceWatermark(siteSettingsStor
 const watermarkColor = computed(() => siteSettingsStore.settings.publicPriceWatermarkColor || '#6b7280')
 const phoneHref = (phone: string) => String(phone || '').replace(/[^\d+]/g, '')
 const searchKeyword = ref('')
+const searchSubmitting = ref(false)
 const allResults = ref<any[]>([])
 const searchResults = ref<any[]>([])
 const hasSearched = ref(false)
@@ -591,29 +593,38 @@ const loadAllData = async () => {
 
 // 处理搜索输入（自动检测密码）
 const handleSearchInput = async () => {
-  const keyword = searchKeyword.value.trim()
+  if (searchSubmitting.value || loading.value) return
+  searchSubmitting.value = true
 
-  if (!keyword || passwordVerified.value) {
-    await handleSearch()
-    return
+  try {
+    const keyword = searchKeyword.value.trim()
+
+    if (!keyword || passwordVerified.value) {
+      await handleSearch()
+      return
+    }
+
+    // 普通关键词优先搜索，避免每次查询都消耗密码验证限流额度。
+    const searchResult = keyword.length >= 2 ? await handleSearch(false) : false
+    if (searchResult !== false) return
+
+    const verified = await verifyInventoryPassword(keyword)
+    if (verified) {
+      searchKeyword.value = ''
+      await loadAllData()
+      return
+    }
+
+    if (verified === null) return
+
+    ElMessage.warning({
+      message: keyword.length < 2 ? '搜索关键词至少需要 2 个字符' : '未检索到相关数据',
+      duration: 2000,
+      offset: 60
+    })
+  } finally {
+    searchSubmitting.value = false
   }
-
-  // 普通关键词优先搜索，避免每次查询都消耗密码验证限流额度。
-  const searchResult = keyword.length >= 2 ? await handleSearch(false) : false
-  if (searchResult !== false) return
-
-  const verified = await verifyInventoryPassword(keyword)
-  if (verified) {
-    searchKeyword.value = ''
-    await loadAllData()
-    return
-  }
-
-  ElMessage.warning({
-    message: keyword.length < 2 ? '搜索关键词至少需要 2 个字符' : '未检索到相关数据',
-    duration: 2000,
-    offset: 60
-  })
 }
 
 // 搜索
@@ -688,7 +699,7 @@ const resetInventoryAccess = (showExpiredMessage = false) => {
 }
 
 // 验证在库查询密码（仅使用后端验证）
-const verifyInventoryPassword = async (password: string): Promise<boolean> => {
+const verifyInventoryPassword = async (password: string): Promise<boolean | null> => {
   // 使用后端验证
   try {
     const response = await unifiedApi.post('/screen-lock/verify-inventory-query', {
@@ -713,11 +724,14 @@ const verifyInventoryPassword = async (password: string): Promise<boolean> => {
       // 静默失败，作为搜索关键词
       return false
     }
-  } catch {
-    // 完全忽略所有错误，不打印错误日志，不显示任何提示
-    // 这样可以让密码验证完全静默，和普通搜索无结果无法区分
+  } catch (error: any) {
+    const status = Number(error?.status || error?.response?.status || error?.response?.data?.status)
+    if (status === 429) {
+      ElMessage.warning(error?.response?.data?.message || '密码验证尝试过多，请稍后再试')
+      return null
+    }
 
-    // 如果验证失败，静默返回 false，让输入作为搜索关键词
+    // 普通密码错误保持静默，让密码输入和无结果搜索的反馈一致。
     return false
   }
 }

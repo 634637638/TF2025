@@ -376,14 +376,11 @@ body {
   }
 
   .el-input__wrapper {
-    min-height: var(--mobile-control-height) !important; /* iOS 触摸最小尺寸 */
     padding: 0 12px !important;
-    border-radius: 12px !important;
     align-items: center !important;
   }
 
   .el-input__inner {
-    height: var(--mobile-control-height) !important;
     font-size: var(--mobile-text-body-lg) !important;
     line-height: var(--mobile-line-height-body) !important;
     font-family: var(--app-font-family-sans) !important;
@@ -412,16 +409,7 @@ body {
   .el-textarea__inner {
     font-size: var(--mobile-text-body-lg) !important;
     line-height: var(--mobile-line-height-body) !important;
-    border-radius: 12px !important;
     padding: 10px 12px !important;
-  }
-
-  .el-input-number,
-  .el-date-editor.el-input,
-  .el-date-editor.el-input__wrapper,
-  .el-select,
-  .el-select__wrapper {
-    min-height: var(--mobile-control-height) !important;
   }
 
   .el-select {

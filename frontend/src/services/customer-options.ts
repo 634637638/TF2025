@@ -2,6 +2,9 @@ import { unifiedApi } from '@/utils/unified-api'
 
 export type CustomerSearchContext = 'generic' | 'sales' | 'rentals' | 'repairs'
 
+/** 客户手机号/关键词下拉统一展示条数。页面不得单独覆盖。 */
+export const CUSTOMER_SEARCH_PAGE_SIZE = 50
+
 export interface CustomerOption {
   id: number
   name: string
@@ -61,7 +64,7 @@ export const searchCustomerOptions = async (
     params: {
       [endpoint.parameter]: normalizedKeyword,
       page: 1,
-      page_size: 20
+      page_size: CUSTOMER_SEARCH_PAGE_SIZE
     },
     useCache: false,
     showError: false
@@ -72,4 +75,3 @@ export const searchCustomerOptions = async (
     .map(normalizeCustomerOption)
     .filter((item): item is CustomerOption => item !== null)
 }
-

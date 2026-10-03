@@ -9,6 +9,7 @@
 @use './styles/components/_tabs.scss' as *;
 @use './styles/components/_print.scss' as *;
 @use './styles/components/_drawer.scss' as *;
+@use './styles/components/_form-controls.scss' as *;
 
 /* 全局样式重置 */
 * {
@@ -56,7 +57,7 @@ html {
   --mobile-text-table-header: 13px;
   --mobile-line-height-body: 1.5;
   --mobile-line-height-compact: 1.35;
-  --mobile-control-height: 44px;
+  --mobile-control-height: 40px;
   --mobile-control-height-lg: 48px;
   --mobile-button-height: 44px;
   --mobile-button-height-sm: 36px;
@@ -160,28 +161,6 @@ html {
 /* 全局统一表单浮层样式：销售/库存等模态框的 el-select 和日期面板共用 */
 .tf2025-form-popper {
   z-index: 4001 !important;
-}
-
-/* 金额/价格输入不显示增减按钮；数量、分页和排序控件不使用这些 class。 */
-.price-input.el-input input[type='number'],
-.price-input-number.el-input-number input[type='number'] {
-  appearance: textfield;
-  -moz-appearance: textfield;
-}
-
-.price-input.el-input input[type='number']::-webkit-outer-spin-button,
-.price-input.el-input input[type='number']::-webkit-inner-spin-button,
-.price-input-number.el-input-number input[type='number']::-webkit-outer-spin-button,
-.price-input-number.el-input-number input[type='number']::-webkit-inner-spin-button {
-  margin: 0;
-  appearance: none;
-}
-
-.price-input-number.el-input-number .el-input-number__increase,
-.price-input-number.el-input-number .el-input-number__decrease,
-.price-input.el-input-number .el-input-number__increase,
-.price-input.el-input-number .el-input-number__decrease {
-  display: none;
 }
 
 .tf2025-form-popper .el-select-dropdown__item,
@@ -300,7 +279,7 @@ html {
     --mobile-text-stat-label: 11px;
     --mobile-text-table: 11px;
     --mobile-text-table-header: 11px;
-    --mobile-control-height: 42px;
+    --mobile-control-height: 38px;
     --mobile-button-height: 42px;
     --mobile-button-height-sm: 34px;
     --mobile-button-height-lg: 46px;

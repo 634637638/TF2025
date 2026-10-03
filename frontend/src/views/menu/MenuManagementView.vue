@@ -249,14 +249,14 @@
                     <span>PC端</span>
                   </label>
                   <div class="range-input">
-                    <input
+                    <el-input-number
                       v-model.number="pcMenuWidth"
-                      type="number"
-                      min="100"
-                      max="500"
+                      :min="100"
+                      :max="500"
+                      :controls="false"
                       class="form-range"
                       placeholder="请输入宽度"
-                    >
+                    />
                   </div>
                 </div>
 
@@ -267,14 +267,14 @@
                     <span>手机端</span>
                   </label>
                   <div class="range-input">
-                    <input
+                    <el-input-number
                       v-model.number="mobileMenuWidth"
-                      type="number"
-                      min="100"
-                      max="500"
+                      :min="100"
+                      :max="500"
+                      :controls="false"
                       class="form-range"
                       placeholder="请输入宽度"
-                    >
+                    />
                   </div>
                 </div>
               </div>
@@ -628,7 +628,7 @@
                           v-model="formData.sort_order"
                           :min="0"
                           :max="9999"
-                          controls-position="right"
+                          :controls="false"
                           placeholder="越小越靠前"
                           class="w-full"
                         />
@@ -660,9 +660,10 @@
                   <el-form-item label="备注">
                     <el-input
                       v-model="formData.remarks"
+                      class="tf-textarea"
                       type="textarea"
                       placeholder="给自己或同事留一点上下文，例如这个菜单的用途。"
-                      :rows="3"
+                      :rows="2"
                       maxlength="500"
                       show-word-limit
                     />
@@ -2489,7 +2490,6 @@ onMounted(async () => {
 .menu-editor-form :deep(.el-input__wrapper),
 .menu-editor-form :deep(.el-select__wrapper),
 .menu-editor-form :deep(.el-textarea__inner) {
-  border-radius: 12px;
   background: var(--tf-color-slate-50);
   box-shadow: 0 0 0 1px var(--tf-color-border-blue-light) inset;
   transition: box-shadow 0.2s ease, background 0.2s ease;
@@ -2499,13 +2499,6 @@ onMounted(async () => {
 .menu-editor-form :deep(.el-select__wrapper:hover),
 .menu-editor-form :deep(.el-textarea__inner:hover) {
   box-shadow: 0 0 0 1px var(--color-text-placeholder) inset;
-}
-
-.menu-editor-form :deep(.el-input__wrapper.is-focus),
-.menu-editor-form :deep(.el-select__wrapper.is-focused),
-.menu-editor-form :deep(.el-textarea__inner:focus) {
-  background: var(--color-bg-white);
-  box-shadow: 0 0 0 1px var(--tf-color-teal-700) inset, 0 0 0 3px rgba(15, 118, 110, 0.12);
 }
 
 .menu-editor-form :deep(.el-input__prefix) {
@@ -2580,15 +2573,6 @@ onMounted(async () => {
 
   .editor-card--side {
     position: static;
-  }
-
-  .modal-footer.mobile-dialog-footer {
-    display: flex !important;
-    flex-direction: row !important;
-    justify-content: flex-end !important;
-    align-items: center !important;
-    flex-wrap: nowrap !important;
-    gap: 12px !important;
   }
 
   .menu-management {

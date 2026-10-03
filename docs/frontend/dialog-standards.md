@@ -8,7 +8,7 @@
 | --- | --- |
 | `frontend/src/components/MobileDialog.vue` | 弹窗结构、关闭行为、响应式模式、默认 footer |
 | `frontend/src/styles/components/_dialog.scss` | 遮罩、宽度、圆角、标题栏、关闭按钮、正文间距、移动端边界 |
-| `frontend/src/styles/components/_dialog-actions.scss` | 取消/确认按钮的排列、尺寸、间距和移动端等宽布局 |
+| `frontend/src/styles/components/_dialog-actions.scss` | 取消/确认按钮的排列、尺寸、间距和移动端居中等分布局 |
 | `frontend/src/styles/components/_buttons.scss` | 按钮颜色、语义和普通按钮视觉 |
 
 `MobileDialog` 在手机和平板使用 sheet 布局，在桌面使用 Element Plus Dialog。宽度按断点收敛：手机（`<=767px`）使用接近满宽的弹窗；平板（`768-1024px`）宽度上限为视口的 `80%`，并继续受页面 `width`/`maxWidth` 参数约束；桌面（`>=1025px`）按页面声明宽度并受全局最大宽度约束。最终规则统一采用 `min(页面声明宽度, 可用视口宽度)`，与库存管理弹窗的自适应行为一致。不要在业务页面用 `!important` 再覆盖这些断点规则。
@@ -40,6 +40,8 @@
 业务页面不得再写 `width: min(..., 100vw)`、`width: calc(100vw - ...)` 或按断点重复覆盖 `.el-dialog` / `.mobile-dialog-sheet-panel`。需要更宽的表格或媒体工作台时，只声明 `width`/`maxWidth` 或使用已登记的工作台例外；不要复制库存页面的局部宽度 CSS。
 
 `/query` 页面及 `QueryDetailDialog.vue` 中的所有业务弹窗必须使用 `MobileDialog`；媒体工作台也不再以直接 `el-dialog` 作为响应式例外。`check:dialogs` 会持续检查这两个入口。
+
+`QuickSaleModal.vue` 属于 `/query` 的标准业务弹窗。其 `dialog-class` 只能用于标识业务内容布局；不得在页面内覆盖标题栏高度、标题栏内边距、圆角、弹窗外壳最大高度、正文间距或 footer 间距。需要调整弹窗宽度时使用 `width`/`maxWidth` 属性，统一外壳视觉始终由 `MobileDialog` 和本文件规定的全局样式控制。
 
 以上样式由 `frontend/src/main.ts` 全局加载。页面不得再维护第二套弹窗外壳样式。
 
@@ -114,11 +116,19 @@
 
 - 所有业务 footer 容器必须使用 `.tf-dialog-actions`（可与业务语义 class 并列）。
 - PC 端按钮靠右、按内容宽度排列；按钮使用统一最小宽度、统一高度和统一间距。
-- 手机端按钮保持一行并等宽收缩，取消在左、确认/保存/提交在右；按钮间距和底部安全区由全局令牌控制。
-- 三个及以上按钮仍使用同一行等宽布局，不在页面中改成独立 grid 或分别设置左右宽度。
+- 手机端按钮保持一行并在 footer 可用宽度内居中等分，取消在左、确认/保存/提交在右；按钮组占满可用宽度，所有按钮等宽，左右留白必须对称。按钮间距和底部安全区由全局令牌控制。
+- 三个及以上按钮仍使用同一行居中等分布局；不在页面中改成独立 grid 或分别设置左右宽度。
 - 不在页面中给 footer 按钮重复设置高度、宽度、圆角或间距。
 - 取消使用中性语义，保存/确认使用 `primary`，删除使用 `danger`，完成使用 `success`。
 - 业务 footer 容器可以保留自己的 class，但应同时使用 `.tf-dialog-actions`。
+
+`MobileDialog` 会自动为未显式包裹的 footer 插槽增加 `.mobile-dialog-footer`，因此历史页面中直接放置
+`<el-button>` 仍会获得同一套按钮高度、宽度、间距和移动端居中等分规则；新代码仍必须显式使用
+`.tf-dialog-actions`，便于审计和维护。原生 `el-dialog` 不具备这个插槽包装能力，必须显式包裹。
+
+业务 footer 只允许维护摘要、提示和弹窗宽度等业务布局。禁止在页面样式中重新声明 footer 的 `grid`、
+手机端 `flex-direction: column`、按钮 `width/min-width/max-width/height/min-height/padding`。这些规则由
+`_dialog-actions.scss` 唯一维护，`npm run check:dialog-actions` 会在启动和构建前拦截重复实现。
 
 ## 页面覆盖边界
 
@@ -137,4 +147,5 @@
 - [ ] 页面没有重复的弹窗外壳样式
 - [ ] 运行 `npm run type-check`、`npm run check:ui` 和 `npm run build`
 - [ ] 运行 `npm run check:dialogs`，确认直接 `el-dialog` 属于已登记的工作台例外
+- [ ] 运行 `npm run check:dialog-actions`，确认没有 footer 的 grid、纵向排列或固定按钮尺寸覆盖
 - [ ] 检查没有页面级 `width: calc(100vw - ...)` 或 `width: min(..., 100vw)` 覆盖全局宽度

@@ -535,6 +535,17 @@ test('wholesale transfer zeroes proxy amounts and rolls back each failed phone',
   assert.match(migration, /await db\.rollback\(\)/);
 });
 
+test('transfer invoice sequence initialization happens before the transaction', () => {
+  const service = read('src/services/transfer.service.js');
+  for (const method of ['async wholesaleToPeer', 'async proxyTransferForSupplier']) {
+    const methodStart = service.indexOf(method);
+    const transactionStart = service.indexOf('await connection.beginTransaction()', methodStart);
+    const methodBody = service.slice(methodStart, transactionStart);
+    assert.ok(methodStart >= 0 && transactionStart > methodStart, `${method} 缺少事务入口`);
+    assert.match(methodBody, /await ensureInvoiceSequenceTable\(connection\)/);
+  }
+});
+
 test('wholesale page uses canonical inventory cost and time fields', () => {
   const helpers = fs.readFileSync(path.join(root, '../frontend/src/components/wholesale/helpers.ts'), 'utf8');
   const types = fs.readFileSync(path.join(root, '../frontend/src/components/wholesale/types.ts'), 'utf8');

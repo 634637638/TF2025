@@ -4,6 +4,21 @@ import { extname, join, relative, resolve } from 'node:path'
 const root = resolve(import.meta.dirname, '..')
 const sourceRoot = join(root, 'src')
 const findings = []
+const sharedFormControlsPath = join(sourceRoot, 'styles/components/_form-controls.scss')
+const sharedFormControls = readFileSync(sharedFormControlsPath, 'utf8')
+const sharedFormControlsRelativePath = relative(root, sharedFormControlsPath)
+const publicControlSizeFiles = new Set([
+  sharedFormControlsRelativePath,
+  'src/styles/components/_table.scss',
+  'src/components/search/UnifiedSearchPanel.vue',
+  'src/components/search/PublicSearchBox.vue'
+])
+const publicControlFocusFiles = new Set([
+  sharedFormControlsRelativePath,
+  'src/components/search/PublicSearchBox.vue'
+])
+let inputNumberCount = 0
+let inputNumberControlsCount = 0
 const sortOrderControlFiles = [
   'src/components/DraggableRow.vue',
   'src/views/brands/BrandsView.vue',
@@ -56,11 +71,15 @@ const exceptionBaseline = {
   'src/views/subsidy/SubsidyView.vue': { select: 0, date: 0, reason: '补贴暂无原生日期控件' },
   'src/views/subsidy/components/SubsidyEditDialog.vue': { select: 0, date: 0, reason: '补贴编辑暂无原生日期控件' }
 }
-const nativeTextExceptionBaseline = {
-  'src/views/H5-mobile/page/MobileHome.vue': { count: 3, reason: 'H5 首页型号、颜色、内存筛选依赖移动端选择器交互' },
-  'src/views/H5-mobile/page/MyOrders.vue': { count: 1, reason: 'H5 订单查询姓名输入保留顾客端轻量表单行为' },
-  'src/views/auth/LoginViewSimple.vue': { count: 1, reason: '登录页使用专用认证布局与浏览器用户名自动填充' },
-  'src/views/subsidy/components/SubsidyApplyDialog.vue': { count: 6, reason: '补贴申请的 IMEI、证件、姓名和电话字段保留实时归一化及专用紧凑布局' }
+const nativeTextExceptionBaseline = {}
+
+if (!sharedFormControls.includes('.el-input-number .el-input-number__increase')
+  || !sharedFormControls.includes('.el-textarea__inner')
+  || !sharedFormControls.includes(".el-textarea__inner[rows='2']")
+  || !sharedFormControls.includes('.tf-textarea .el-textarea__inner')
+  || !sharedFormControls.includes('--tf-textarea-compact-height')
+  || !sharedFormControls.includes('border-radius: var(--tf-radius-control)')) {
+  findings.push('公共表单控件样式必须统一维护数字步进按钮和文本域手动拉伸行为')
 }
 
 function walk(directory, files = []) {
@@ -73,27 +92,123 @@ function walk(directory, files = []) {
   return files
 }
 
+function walkStyleFiles(directory, files = []) {
+  for (const entry of readdirSync(directory)) {
+    const path = join(directory, entry)
+    const stat = statSync(path)
+    if (stat.isDirectory()) walkStyleFiles(path, files)
+    else if (['.css', '.scss', '.vue'].includes(extname(path))) files.push(path)
+  }
+  return files
+}
+
+function findPrivateControlRadius(source) {
+  const matches = []
+  const blockPattern = /([^{}]+)\{([^{}]*)\}/gs
+  let match
+  while ((match = blockPattern.exec(source))) {
+    const selector = match[1].trim().replace(/\s+/g, ' ')
+    const body = match[2]
+    if (/(?:el-input__wrapper|el-select__wrapper|el-date-editor|el-input-number|el-textarea__inner)/.test(selector)
+      && /border-radius\s*:/.test(body)) {
+      matches.push((body.match(/border-radius\s*:[^;]+/g) || []).join(', '))
+    }
+  }
+  return matches
+}
+
+function findPrivateControlHeight(source) {
+  const matches = []
+  const blockPattern = /([^{}]+)\{([^{}]*)\}/gs
+  let match
+  while ((match = blockPattern.exec(source))) {
+    const selector = match[1].trim().replace(/\s+/g, ' ')
+    const body = match[2]
+    const heightDeclarations = body.match(/(?<![\w-])(?:min-)?height\s*:[^;]+/g) || []
+    const privateHeightDeclarations = heightDeclarations.filter(declaration => !/:\s*(?:100%|auto|0(?:px)?)(?:\s*!important)?\s*$/i.test(declaration.trim()))
+    if (/(?:el-input__wrapper|el-select__wrapper|el-date-editor|el-input-number|el-textarea__inner)/.test(selector)
+      && privateHeightDeclarations.length > 0) {
+      matches.push(privateHeightDeclarations.join(', '))
+    }
+  }
+  return matches
+}
+
+function findPrivateControlFocus(source) {
+  const matches = []
+  const blockPattern = /([^{}]+)\{([^{}]*)\}/gs
+  let match
+  while ((match = blockPattern.exec(source))) {
+    const selector = match[1].trim().replace(/\s+/g, ' ')
+    const body = match[2]
+    if (/(?:el-input__wrapper|el-select__wrapper|el-date-editor|el-input-number|el-textarea__inner)/.test(selector)
+      && /(?:focus|is-focus|is-focused)/.test(selector)
+      && /(?:box-shadow|border-color|outline|background)/.test(body)) {
+      matches.push((body.match(/(?:box-shadow|border-color|outline|background)\s*:[^;]+/g) || []).join(', '))
+    }
+  }
+  return matches
+}
+
 function countControls(source) {
   return {
     select: (source.match(/<select\b/gi) || []).length,
     date: (source.match(/<input\b(?:(?!>)[\s\S])*\btype\s*=\s*["'](?:date|datetime-local|month|time)["'](?:(?!>)[\s\S])*>/gi) || []).length,
+    number: (source.match(/<input\b(?:(?!>)[\s\S])*\btype\s*=\s*["']number["'](?:(?!>)[\s\S])*>/gi) || []).length,
     sortOrderNative: (source.match(/<input\b(?=[^>]*\bclass\s*=\s*["'][^"']*\bsort-order-(?:input|control)\b)(?=[^>]*\btype\s*=\s*["']number["'])[^>]*>/gi) || []).length,
     sortOrderComponent: (source.match(/<el-input-number\b(?=[^>]*\bclass\s*=\s*["'][^"']*\bsort-order-control\b)[^>]*>/gi) || []).length,
     nativeText: (source.match(/<input\b(?=[^>]*\btype\s*=\s*["']text["'])[^>]*>/gi) || []).length
   }
 }
 
+function countNativeTextareas(source) {
+  // 只匹配模板中的原生标签；脚本为剪贴板临时创建的 textarea 不属于业务控件。
+  return (source.match(/<textarea\b/gi) || []).length
+}
+
+function textareaComponentTags(source) {
+  return source
+    .split(/<el-input(?!-)\b/gi)
+    .slice(1)
+    .map(part => part.slice(0, part.indexOf('/>') >= 0 ? part.indexOf('/>') + 2 : part.indexOf('>') + 1))
+    .filter(tag => /\btype\s*=\s*["']textarea["']/.test(tag)
+      || /:type\s*=\s*["'][^>]*textarea/.test(tag))
+}
+
+function countStandardTextInputs(source) {
+  const inputTags = source
+    .split(/<el-input(?!-)\b/gi)
+    .slice(1)
+    .map(part => part.slice(0, part.indexOf('/>') >= 0 ? part.indexOf('/>') + 2 : part.indexOf('>') + 1))
+  return inputTags.filter(tag => !/\btype\s*=\s*["']textarea["']/.test(tag)).length
+}
+
 let nativeSelectCount = 0
 let nativeDateCount = 0
+let nativeNumberCount = 0
 let nativeTextCount = 0
 
 for (const file of walk(sourceRoot)) {
   const relativeFile = relative(root, file)
   const source = readFileSync(file, 'utf8')
+  inputNumberCount += (source.match(/<el-input-number\b/g) || []).length
+  inputNumberControlsCount += (source.match(/:controls=["']false["']/g) || []).length
   const counts = countControls(source)
+  const nativeTextareas = countNativeTextareas(source)
+  const textareaTags = textareaComponentTags(source)
   nativeSelectCount += counts.select
   nativeDateCount += counts.date
+  nativeNumberCount += counts.number
   nativeTextCount += counts.nativeText
+  if (nativeTextareas > 0) {
+    findings.push(`${relativeFile} 仍使用 ${nativeTextareas} 个原生 textarea，必须迁移到 el-input type="textarea"`)
+  }
+  if (textareaTags.some(tag => !/(?:\:)?rows\s*=\s*["'][^"']+["']/.test(tag))) {
+    findings.push(`${relativeFile} 的多行 el-input 必须声明固定 rows，禁止依赖自动高度`)
+  }
+  if (textareaTags.some(tag => !/(?:\bclass|:class)\s*=\s*["'][^>]*\btf-textarea\b/.test(tag))) {
+    findings.push(`${relativeFile} 的多行 el-input 必须使用 tf-textarea 语义 class，统一接入文本域公共行为`)
+  }
   if (counts.sortOrderNative > 0) {
     findings.push(`${relativeFile} 排序字段仍使用原生 number input，必须迁移到 el-input-number`)
   }
@@ -104,6 +219,12 @@ for (const file of walk(sourceRoot)) {
     } else if (counts.nativeText > textBaseline.count) {
       findings.push(`${relativeFile} 原生文本 input 数量从 ${textBaseline.count} 增加到 ${counts.nativeText}，不得扩大文本控件例外`)
     }
+  }
+  if (counts.number > 0) {
+    findings.push(`${relativeFile} 仍使用 ${counts.number} 个原生 number input，必须迁移到 el-input-number`)
+  }
+  if (/\bautosize\b|resize\s*=\s*["'](?:none|horizontal|both)["']|resize\s*:\s*(?:none|horizontal|both)\b|\bcontrols-position\s*=/.test(source)) {
+    findings.push(`${relativeFile} 多行文本只能垂直手动拉伸，不得使用 autosize、横向/双向/禁止 resize 或 controls-position`)
   }
   const hasNativeControls = counts.select > 0 || counts.date > 0
   if (!hasNativeControls) continue
@@ -122,6 +243,51 @@ for (const file of walk(sourceRoot)) {
   }
 }
 
+for (const file of walkStyleFiles(sourceRoot)) {
+  const relativeFile = relative(root, file)
+  const source = readFileSync(file, 'utf8')
+  if (relativeFile !== sharedFormControlsRelativePath) {
+    const privateControlRadii = findPrivateControlRadius(source)
+    if (privateControlRadii.length > 0) {
+      findings.push(`${relativeFile} 含有页面/组件私有表单控件圆角（${privateControlRadii.join('；')}），必须移除并交由 _form-controls.scss 统一维护`)
+    }
+  }
+  if (!publicControlSizeFiles.has(relativeFile)) {
+    const privateControlHeights = findPrivateControlHeight(source)
+    if (privateControlHeights.length > 0) {
+      findings.push(`${relativeFile} 含有页面/组件私有表单控件高度（${privateControlHeights.join('；')}），必须移除并交由公共控件入口统一维护`)
+    }
+  }
+  if (!publicControlFocusFiles.has(relativeFile)) {
+    const privateControlFocus = findPrivateControlFocus(source)
+    if (privateControlFocus.length > 0) {
+      findings.push(`${relativeFile} 含有页面/组件私有表单控件聚焦样式（${privateControlFocus.join('；')}），必须移除并交由 _form-controls.scss 统一维护`)
+    }
+  }
+  if (/\bautosize\b|resize\s*=\s*["'](?:none|horizontal|both)["']|resize\s*:\s*(?:none|horizontal|both)\b/.test(source)) {
+    findings.push(`${relativeFile} 多行文本只能垂直手动拉伸，不得使用 autosize、横向/双向/禁止 resize`)
+  }
+  if (!relativeFile.endsWith('styles/components/_form-controls.scss')
+    && !relativeFile.endsWith('styles/global.css')
+    && !relativeFile.endsWith('styles/responsive.scss')) {
+    const textareaSelectorIndex = source.search(/(?:el-textarea__inner|textarea\.form-control)/)
+    if (textareaSelectorIndex >= 0) {
+      const blockEnd = source.indexOf('}', textareaSelectorIndex)
+      const textareaStyleWindow = source.slice(
+        textareaSelectorIndex,
+        blockEnd >= 0 ? blockEnd : textareaSelectorIndex + 500
+      )
+      if (/(?:^|\n)\s*(?:min-)?height\s*:/.test(textareaStyleWindow)) {
+        findings.push(`${relativeFile} 不得为文本域维护页面私有 height/min-height，rows=2 高度由全局令牌统一`)
+      }
+    }
+  }
+}
+
+if (inputNumberControlsCount !== inputNumberCount) {
+  findings.push(`所有 el-input-number 必须显式设置 :controls="false"（当前 ${inputNumberControlsCount}/${inputNumberCount}）`)
+}
+
 for (const file of sortOrderControlFiles) {
   const source = readFileSync(join(root, file), 'utf8')
   const counts = countControls(source)
@@ -133,7 +299,7 @@ for (const file of sortOrderControlFiles) {
 for (const [file, expected] of standardTextInputFiles) {
   const source = readFileSync(join(root, file), 'utf8')
   const counts = countControls(source)
-  const standardInputs = (source.match(/<el-input(?!-number)\b/g) || []).length
+  const standardInputs = countStandardTextInputs(source)
   if (counts.nativeText > 0 || standardInputs !== expected) {
     findings.push(`${file} 普通文本字段必须使用 ${expected} 个 el-input，当前原生文本输入=${counts.nativeText}、el-input=${standardInputs}`)
   }
@@ -167,4 +333,4 @@ if (findings.length) {
   process.exit(1)
 }
 
-console.log(`表单控件统一审计通过：运行时代码原生文本=${nativeTextCount}（专用例外 ${Object.keys(nativeTextExceptionBaseline).length} 个文件）、select=${nativeSelectCount}、日期控件=${nativeDateCount}；${Object.keys(exceptionBaseline).length} 个文件保留回归观察登记。`)
+console.log(`表单控件统一审计通过：运行时代码原生文本=${nativeTextCount}、number=${nativeNumberCount}、select=${nativeSelectCount}、日期控件=${nativeDateCount}；${Object.keys(exceptionBaseline).length} 个文件保留回归观察登记。`)

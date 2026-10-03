@@ -223,6 +223,7 @@
                 >
                   <el-input
                     v-model="deliveryForm.address"
+                    class="tf-textarea"
                     type="textarea"
                     placeholder="详细地址"
                     :rows="2"
@@ -241,6 +242,7 @@
         </h3>
         <el-input
           v-model="form.remarks"
+          class="tf-textarea"
           type="textarea"
           placeholder="如有特殊要求，请在此备注"
           :rows="3"
@@ -329,6 +331,7 @@
         >
           <el-input
             v-model="addressForm.address"
+            class="tf-textarea"
             type="textarea"
             placeholder="请输入详细地址"
             :rows="3"

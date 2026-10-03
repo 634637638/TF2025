@@ -25,13 +25,13 @@
           </p>
 
           <div class="search-box-input-only">
-            <input
+            <el-input
               v-model="searchIdentifier"
               type="text"
               class="search-input-lg"
               placeholder="输入IMEI或序列号..."
               @keyup.enter="searchPhones"
-            >
+            />
           </div>
 
           <div
@@ -147,14 +147,14 @@
                 <div class="inline-item">
                   <span class="info-label">身份证:</span>
                   <div class="info-value">
-                    <input
+                    <el-input
                       v-model="applyForm.customer_idcard"
                       type="text"
                       class="form-input-inline"
                       :class="{ 'has-value': applyForm.customer_idcard }"
                       placeholder="请输入身份证号"
-                      @input="applyForm.customer_idcard = normalizeIdCard(applyForm.customer_idcard)"
-                    >
+                      @update:model-value="applyForm.customer_idcard = normalizeIdCard($event)"
+                    />
                   </div>
                 </div>
               </div>
@@ -185,14 +185,14 @@
                 >
                   <span class="info-label required">姓名:</span>
                   <div class="info-value">
-                    <input
+                    <el-input
                       v-model="applyForm.handler_name"
                       type="text"
                       class="form-input-inline"
                       :class="{ 'has-value': applyForm.handler_name }"
                       placeholder="实际办理人姓名"
-                      @input="applyForm.handler_name = normalizePersonName(applyForm.handler_name, 20)"
-                    >
+                      @update:model-value="applyForm.handler_name = normalizePersonName($event, 20)"
+                    />
                   </div>
                 </div>
                 <div
@@ -201,14 +201,14 @@
                 >
                   <span class="info-label required">电话:</span>
                   <div class="info-value">
-                    <input
+                    <el-input
                       v-model="applyForm.handler_phone"
                       type="text"
                       class="form-input-inline"
                       :class="{ 'has-value': applyForm.handler_phone }"
                       placeholder="实际办理人电话"
-                      @input="applyForm.handler_phone = normalizePhoneDigits(applyForm.handler_phone)"
-                    >
+                      @update:model-value="applyForm.handler_phone = normalizePhoneDigits($event)"
+                    />
                   </div>
                 </div>
                 <div
@@ -217,14 +217,14 @@
                 >
                   <span class="info-label required">身份证:</span>
                   <div class="info-value">
-                    <input
+                    <el-input
                       v-model="applyForm.handler_idcard"
                       type="text"
                       class="form-input-inline"
                       :class="{ 'has-value': applyForm.handler_idcard }"
                       placeholder="实际办理人身份证"
-                      @input="applyForm.handler_idcard = normalizeIdCard(applyForm.handler_idcard)"
-                    >
+                      @update:model-value="applyForm.handler_idcard = normalizeIdCard($event)"
+                    />
                   </div>
                 </div>
               </div>
@@ -281,13 +281,13 @@
                 <div class="inline-item">
                   <span class="info-label">IMEI2:</span>
                   <div class="info-value">
-                    <input
+                    <el-input
                       v-model="applyForm.imei2"
                       type="text"
                       class="form-input-inline"
                       :class="{ 'has-value': applyForm.imei2 }"
                       placeholder="请输入IMEI2"
-                    >
+                    />
                   </div>
                 </div>
               </div>
@@ -461,10 +461,11 @@
               class="form-group"
             >
               <label>备注</label>
-              <textarea
+              <el-input
                 v-model="applyForm.remarks"
-                class="form-textarea"
-                rows="3"
+                class="tf-textarea"
+                type="textarea"
+                :rows="3"
                 placeholder="请输入备注信息（可选）"
               />
             </div>
@@ -1095,18 +1096,22 @@ watch(
 }
 
 .search-input-lg,
-.form-input-inline,
-.form-textarea {
+.form-input-inline {
   width: 100%;
-  padding: 12px 14px;
-  border: 1px solid var(--tf-color-neutral-300);
-  border-radius: 8px;
-  outline: none;
-
-  &:focus {
-    border-color: var(--tf-color-indigo-brand);
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.12);
+  :deep(.el-input__wrapper) {
+    padding: 12px 14px;
+    border: 1px solid var(--tf-color-neutral-300);
+    box-shadow: none;
   }
+
+  :deep(.el-input__inner) {
+    color: var(--text-primary);
+  }
+
+}
+
+.tf-textarea {
+  width: 100%;
 }
 
 .device-list,
@@ -1283,22 +1288,23 @@ watch(
 .info-value .form-input-inline {
   width: 100%;
   max-width: 300px;
-  padding: 6px 12px;
-  border: 1px solid var(--tf-color-border-subtle);
-  border-radius: 6px;
-  font-size: 14px;
-  transition: all 0.2s;
 
-  &.has-value {
+  :deep(.el-input__wrapper) {
+    padding: 6px 12px;
+    border: 1px solid var(--tf-color-border-subtle);
+    box-shadow: none;
+    transition: all 0.2s;
+  }
+
+  :deep(.el-input__inner) {
+    font-size: 14px;
+  }
+
+  &.has-value :deep(.el-input__wrapper) {
     background: var(--tf-color-green-50);
     border-color: var(--tf-color-green-300);
   }
 
-  &:focus {
-    outline: none;
-    border-color: var(--tf-color-indigo-brand);
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-  }
 }
 
 .handler-info-header {

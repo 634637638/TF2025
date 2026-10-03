@@ -225,10 +225,10 @@
         <label class="form-label">备注</label>
         <el-input
           v-model="saleForm.remarks"
+          class="tf-textarea"
           type="textarea"
-          :rows="3"
+          :rows="2"
           placeholder="销售备注信息"
-          resize="none"
         />
       </div>
 

@@ -168,6 +168,7 @@
                     v-model="connectionForm.port"
                     :min="1"
                     :max="65535"
+                    :controls="false"
                     placeholder="3306"
                   />
                 </el-form-item>
@@ -485,6 +486,7 @@
                 :min="1"
                 :max="1000"
                 :step="10"
+                :controls="false"
               />
               <span style="margin-left: 10px; color: #909399; font-size: 12px">
                 每批次处理的数据量

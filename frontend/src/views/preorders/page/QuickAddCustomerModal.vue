@@ -38,6 +38,7 @@
       <el-form-item label="地址">
         <el-input
           :model-value="form.values.address"
+          class="tf-textarea"
           type="textarea"
           :rows="2"
           @update:model-value="setFieldValue('address', $event)"

@@ -6,8 +6,9 @@ const path = require('node:path')
 const LOG_DIR = path.resolve(__dirname, '../logs')
 const LOG_NAME_PATTERN = /^combined-(\d{4}-\d{2}-\d{2})\.log$/
 const TEST_MIGRATION_IDS = new Set(['example-migration', 'brand-models-migration'])
+const TEST_COMPATIBILITY_IDS = new Set(['example-compatibility'])
 
-const parseDeprecatedLogLine = line => {
+const parseAuditLogLine = (line, { level, marker, idField, excludedIds }) => {
   let entry
   try {
     entry = JSON.parse(line)
@@ -15,8 +16,7 @@ const parseDeprecatedLogLine = line => {
     return null
   }
 
-  if (entry.level !== 'warn' || typeof entry.message !== 'string') return null
-  const marker = '兼容接口仍被调用'
+  if (entry.level !== level || typeof entry.message !== 'string') return null
   const markerIndex = entry.message.indexOf(marker)
   if (markerIndex < 0) return null
 
@@ -25,15 +25,31 @@ const parseDeprecatedLogLine = line => {
 
   try {
     const details = JSON.parse(entry.message.slice(objectStart))
-    if (typeof details.migration_id !== 'string' || TEST_MIGRATION_IDS.has(details.migration_id)) return null
-    return { migration_id: details.migration_id }
+    const id = details[idField]
+    if (typeof id !== 'string' || excludedIds.has(id)) return null
+    return { [idField]: id }
   } catch {
     return null
   }
 }
 
+const parseDeprecatedLogLine = line => parseAuditLogLine(line, {
+  level: 'warn',
+  marker: '兼容接口仍被调用',
+  idField: 'migration_id',
+  excludedIds: TEST_MIGRATION_IDS
+})
+
+const parseCompatibilityLogLine = line => parseAuditLogLine(line, {
+  level: 'info',
+  marker: '兼容接口访问',
+  idField: 'compatibility_id',
+  excludedIds: TEST_COMPATIBILITY_IDS
+})
+
 const summarizeLogFiles = files => {
   const counts = new Map()
+  const compatibilityCounts = new Map()
   let scannedLines = 0
   let matchedLines = 0
   const dates = []
@@ -53,9 +69,14 @@ const summarizeLogFiles = files => {
       if (!line) continue
       scannedLines += 1
       const event = parseDeprecatedLogLine(line)
-      if (!event) continue
-      matchedLines += 1
-      counts.set(event.migration_id, (counts.get(event.migration_id) || 0) + 1)
+      if (event) {
+        matchedLines += 1
+        counts.set(event.migration_id, (counts.get(event.migration_id) || 0) + 1)
+        continue
+      }
+      const compatibilityEvent = parseCompatibilityLogLine(line)
+      if (!compatibilityEvent) continue
+      compatibilityCounts.set(compatibilityEvent.compatibility_id, (compatibilityCounts.get(compatibilityEvent.compatibility_id) || 0) + 1)
     }
   }
 
@@ -65,7 +86,8 @@ const summarizeLogFiles = files => {
     through: sortedDates[sortedDates.length - 1] || null,
     scannedLines,
     matchedLines,
-    counts: [...counts.entries()].sort((a, b) => a[0].localeCompare(b[0]))
+    counts: [...counts.entries()].sort((a, b) => a[0].localeCompare(b[0])),
+    compatibilityCounts: [...compatibilityCounts.entries()].sort((a, b) => a[0].localeCompare(b[0]))
   }
 }
 
@@ -89,9 +111,14 @@ const run = () => {
   for (const [migrationId, count] of summary.counts) {
     console.log(`${migrationId}\t${count}`)
   }
+  const compatibilityTotal = summary.compatibilityCounts.reduce((total, [, count]) => total + count, 0)
+  console.log(`兼容接口访问 ${compatibilityTotal} 次`)
+  for (const [compatibilityId, count] of summary.compatibilityCounts) {
+    console.log(`${compatibilityId}\t${count}`)
+  }
   console.log('注意：无访问记录不等于可以删除；需覆盖完整发布观察期，且 combined 日志默认仅保留 14 天。')
 }
 
 if (require.main === module) run()
 
-module.exports = { parseDeprecatedLogLine, summarizeLogFiles }
+module.exports = { parseDeprecatedLogLine, parseCompatibilityLogLine, summarizeLogFiles }

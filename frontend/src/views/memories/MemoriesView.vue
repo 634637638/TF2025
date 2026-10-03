@@ -396,7 +396,7 @@
                 :min="0"
                 :max="9999"
                 placeholder="请输入排序值，数字越小越靠前"
-                controls-position="right"
+                :controls="false"
                 style="width: 100%"
                 :disabled="!canEditField('sort_order')"
               />
@@ -1478,13 +1478,6 @@ onMounted(() => {
     font-size: 13px;
     line-height: 1.4;
     padding-bottom: 4px;
-  }
-
-  .memories-dialog-form .el-input__wrapper,
-  .memories-dialog-form .el-input-number .el-input__wrapper,
-  .memories-dialog-form .el-select__wrapper {
-    min-height: 42px;
-    border-radius: 12px;
   }
 
   .memories-dialog-form .el-radio-group {

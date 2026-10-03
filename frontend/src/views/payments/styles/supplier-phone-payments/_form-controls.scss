@@ -10,14 +10,7 @@
   padding: 10px 12px;
   border: none !important;
   background: transparent !important;
-  box-shadow: none !important;
   transition: all 0.3s ease;
-  border-radius: 0;
-}
-
-.el-input-form-control :deep(.el-input__wrapper:hover),
-.el-input-form-control :deep(.el-input__wrapper.is-focus) {
-  box-shadow: none !important;
 }
 
 .el-input-form-control :deep(.el-input__inner) {
@@ -35,7 +28,6 @@
   background: transparent !important;
   cursor: not-allowed;
   padding: 10px 12px;
-  min-height: 40px;
   box-shadow: none !important;
   border: none !important;
 }
@@ -50,12 +42,6 @@
 
 .el-input-form-control :deep(.el-input__wrapper:hover) {
   background: rgba(59, 130, 246, 0.02) !important;
-  box-shadow: none !important;
-}
-
-.el-input-form-control :deep(.el-input__wrapper.is-focus) {
-  background: rgba(59, 130, 246, 0.05) !important;
-  box-shadow: none !important;
 }
 
 /* 选择器样式 - 完全无边框简洁设计 */
@@ -68,14 +54,7 @@
   padding: 10px 12px;
   border: none !important;
   background: transparent !important;
-  box-shadow: none !important;
   transition: all 0.3s ease;
-  border-radius: 0;
-}
-
-.el-select-form-control :deep(.el-input__wrapper:hover),
-.el-select-form-control :deep(.el-input__wrapper.is-focus) {
-  box-shadow: none !important;
 }
 
 .el-select-form-control :deep(.el-input__inner) {
@@ -88,12 +67,6 @@
 
 .el-select-form-control :deep(.el-input__wrapper:hover) {
   background: rgba(59, 130, 246, 0.02) !important;
-  box-shadow: none !important;
-}
-
-.el-select-form-control :deep(.el-input__wrapper.is-focus) {
-  background: rgba(59, 130, 246, 0.05) !important;
-  box-shadow: none !important;
 }
 
 /* 日期选择器样式 - 完全无边框简洁设计 */
@@ -106,14 +79,7 @@
   padding: 10px 12px;
   border: none !important;
   background: transparent !important;
-  box-shadow: none !important;
   transition: all 0.3s ease;
-  border-radius: 0;
-}
-
-.el-date-form-control :deep(.el-input__wrapper:hover),
-.el-date-form-control :deep(.el-input__wrapper.is-focus) {
-  box-shadow: none !important;
 }
 
 .el-date-form-control :deep(.el-input__inner) {
@@ -126,10 +92,4 @@
 
 .el-date-form-control :deep(.el-input__wrapper:hover) {
   background: rgba(59, 130, 246, 0.02) !important;
-  box-shadow: none !important;
-}
-
-.el-date-form-control :deep(.el-input__wrapper.is-focus) {
-  background: rgba(59, 130, 246, 0.05) !important;
-  box-shadow: none !important;
 }

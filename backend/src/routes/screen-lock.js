@@ -14,7 +14,6 @@ const { getDatabase, isConnected } = require('../config/database')
 const ApiResponse = require('../utils/response')
 const log = require('../utils/log')
 const { getUploadSubdir, getUploadUrl } = require('../utils/upload-paths')
-const { authRateLimit } = require('../middleware/rate-limit')
 const { createInventoryQueryToken } = require('../utils/inventory-query-token')
 const { validateUploadedFileSignature, removeUploadedFiles } = require('../utils/upload-file-validation')
 
@@ -536,7 +535,7 @@ router.delete('/query-users/:id', unifiedAuth, requirePermission('system:delete'
 })
 
 // 验证在库查询密码（无需登录，使用多密码验证）
-router.post('/verify-inventory-query', authRateLimit, async (req, res) => {
+router.post('/verify-inventory-query', async (req, res) => {
   let connection
   try {
     log.debug('📦 开始验证在库查询密码（无需登录）')

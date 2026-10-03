@@ -11,19 +11,19 @@
       <template #primary>
         <div class="search-box">
           <i class="fas fa-phone search-icon" />
-          <input
+          <el-input
             v-model="customer_phone"
             type="tel"
             maxlength="11"
             placeholder="请输入手机号查询订单"
-            @input="onPhoneInput"
-          >
-          <input
+            @update:model-value="onPhoneInput"
+          />
+          <el-input
             v-model.trim="customer_name"
             type="text"
             maxlength="50"
             placeholder="请输入下单姓名"
-          >
+          />
           <el-button
             v-if="customer_phone"
             class="clear-btn"
@@ -204,9 +204,9 @@ const hasMore = computed(() => {
 })
 
 // 手机号输入
-const onPhoneInput = (e: any) => {
+const onPhoneInput = (value: string) => {
   // 只允许输入数字
-  customer_phone.value = e.target.value.replace(/\D/g, '')
+  customer_phone.value = value.replace(/\D/g, '')
 }
 
 // 清空手机号

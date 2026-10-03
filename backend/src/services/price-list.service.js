@@ -22,6 +22,7 @@ const log = require('../utils/log')
 const { DEFAULT_BROWSER_USER_AGENT, EXTERNAL_PRICE, TIMEOUTS } = require('../config/constants')
 const { ensurePriceSourceSchema } = require('../utils/price-source-schema')
 const { normalizedModelSql } = require('../utils/search')
+const pricingService = require('./pricing.service')
 
 class PriceListService {
   constructor() {
@@ -519,7 +520,7 @@ class PriceListService {
       FROM price_list pls
       WHERE pls.status = 1
         AND (pls.show_price = 1 OR pls.show_price IS NULL)
-        AND COALESCE(pls.retail_price, 0) > 0
+        AND COALESCE(pls.wholesale_price, 0) > 0
         AND pls.last_sync_time IS NOT NULL
         AND COALESCE(pls.source_config_id, 0) = COALESCE(p.source_config_id, 0)
     )`
@@ -530,7 +531,7 @@ class PriceListService {
     return `
       ${alias}.status = 1
       AND (${alias}.show_price = 1 OR ${alias}.show_price IS NULL)
-      AND COALESCE(${alias}.retail_price, 0) > 0
+      AND COALESCE(${alias}.wholesale_price, 0) > 0
       AND ${alias}.last_sync_time IS NOT NULL
       AND ${alias}.last_sync_time = ${latestSyncTimeSubquery}
     `
@@ -698,6 +699,13 @@ class PriceListService {
       const allParams = [...queryParams, parseInt(limit), parseInt(offset)]
 
       const [rows] = await this.db.query(dataQuery, allParams)
+
+      // 管理列表同时返回三个价格概念，避免把采集原价和渠道展示价混为一谈。
+      const markupConfig = await this.getGlobalMarkupConfig()
+      rows.forEach(row => {
+        row.sales_display_price = pricingService.calculateSalesPriceByConfig(row.wholesale_price, markupConfig)
+        row.wholesale_display_price = pricingService.calculateWholesalePriceByConfig(row.wholesale_price, markupConfig)
+      })
 
       log.debug('查询到的价格列表数据:', rows.length, '条')
       if (rows.length > 0) {
@@ -888,11 +896,22 @@ class PriceListService {
       // 构建搜索条件：支持品牌、型号名称、外部型号代码
       const searchConditions = []
       const searchParams = []
+      const searchExternalModel = /[a-z]/i.test(keyword)
 
       for (const modelName of modelNames) {
         const searchTerm = `%${modelName}%`
-        searchConditions.push(`(b.name LIKE ? OR ${normalizedModelSql('mo.name')} LIKE CONCAT('%', ${normalizedModelSql('?')}, '%') OR p.external_model LIKE ?)`)
-        searchParams.push(searchTerm, modelName, searchTerm)
+        const modelConditions = [
+          'b.name LIKE ?',
+          `${normalizedModelSql('mo.name')} LIKE CONCAT('%', ${normalizedModelSql('?')}, '%')`
+        ]
+        searchParams.push(searchTerm, modelName)
+
+        if (searchExternalModel) {
+          modelConditions.push('p.external_model LIKE ?')
+          searchParams.push(searchTerm)
+        }
+
+        searchConditions.push(`(${modelConditions.join(' OR ')})`)
       }
 
       const query = `
@@ -968,11 +987,22 @@ class PriceListService {
       // 构建搜索条件：支持品牌、型号名称、外部型号代码
       const searchConditions = []
       const searchParams = []
+      const searchExternalModel = /[a-z]/i.test(keyword)
 
       for (const modelName of modelNames) {
         const searchTerm = `%${modelName}%`
-        searchConditions.push(`(b.name LIKE ? OR ${normalizedModelSql('mo.name')} LIKE CONCAT('%', ${normalizedModelSql('?')}, '%') OR p.external_model LIKE ?)`)
-        searchParams.push(searchTerm, modelName, searchTerm)
+        const modelConditions = [
+          'b.name LIKE ?',
+          `${normalizedModelSql('mo.name')} LIKE CONCAT('%', ${normalizedModelSql('?')}, '%')`
+        ]
+        searchParams.push(searchTerm, modelName)
+
+        if (searchExternalModel) {
+          modelConditions.push('p.external_model LIKE ?')
+          searchParams.push(searchTerm)
+        }
+
+        searchConditions.push(`(${modelConditions.join(' OR ')})`)
       }
 
       const query = `
@@ -1116,9 +1146,13 @@ class PriceListService {
         memory_id = memoryResult[0]?.id || null
       }
 
-      // 如果零售价为空且有批发价，按“模板优先、全局兜底”自动计算销售价
+      // 自动同步时，零售价必须由全局销售规则计算；手动编辑显式填写的零售价仍保留。
+      const detectedManualEdit = data.hasOwnProperty('last_sync_time') || data.is_manual_edit === true
+      isManualEdit = isManualEdit || detectedManualEdit
+
+      // 销售渠道只使用全局销售规则，H5 模板不参与 price_list 销售价计算。
       let finalRetailPrice = retail_price
-      if ((!finalRetailPrice || finalRetailPrice === null) && wholesale_price && wholesale_price > 0) {
+      if (wholesale_price && wholesale_price > 0 && (!isManualEdit || !finalRetailPrice)) {
         try {
           const retailPriceResult = await this.calculateRetailPrice(
             brand_id,
@@ -1161,10 +1195,6 @@ class PriceListService {
       // 手动编辑时 last_sync_time 可能是 null（清空）或具体时间
       // 自动同步时没有传入 last_sync_time，使用 syncTime 参数
       // 或者直接使用 is_manual_edit 标志
-      // 合并 options 传入的 isManualEdit 和从 data 判断的结果
-      const detectedManualEdit = data.hasOwnProperty('last_sync_time') || data.is_manual_edit === true
-      isManualEdit = isManualEdit || detectedManualEdit
-
       log.debug(`🔍 手动编辑检测: isManualEdit=${isManualEdit}, hasOwnProperty('last_sync_time')=${data.hasOwnProperty('last_sync_time')}, is_manual_edit=${data.is_manual_edit}`)
       if (isManualEdit && data.hasOwnProperty('last_sync_time')) {
         log.debug(`  last_sync_time 值: ${last_sync_time}`)
@@ -1208,12 +1238,12 @@ class PriceListService {
         const newRetail = normalizePrice(finalRetailPrice)
         const newWholesale = normalizePrice(wholesale_price)
 
-        // 手动编辑和自动同步都统一走“模板优先、全局兜底”销售价计算
+        // 自动同步只走全局销售规则；模板规则仅由 H5 商城读取时计算。
         let finalRetailPriceForUpdate = newRetail
         let autoCalculatedRetailPrice = null
         let retailPriceSourceLabel = ''
 
-        if ((retail_price === null || retail_price === undefined || retail_price === '') && newWholesale && newWholesale > 0) {
+        if ((!isManualEdit || retail_price === null || retail_price === undefined || retail_price === '') && newWholesale && newWholesale > 0) {
           try {
             const retailPriceResult = await this.calculateRetailPrice(
               brand_id,
@@ -4179,136 +4209,13 @@ class PriceListService {
     return isNaN(parsed) ? null : parsed
   }
 
-  async findTemplateMarkup(brandId, modelId, colorId, memoryId = null) {
-    if (!brandId || !modelId) return null
-
-    const exactMemoryMatch = memoryId !== null && memoryId !== undefined
-    const templateQuery = `
-      SELECT id, price_markup, price_markup_type
-      FROM H5_newtemplates
-      WHERE brand_id = ?
-        AND model_id = ?
-        AND (color_id = ? OR (color_id IS NULL AND ? IS NULL))
-        AND is_active = 1
-        AND (
-          (
-            ? IS NOT NULL
-            AND memory_id = ?
-          )
-          OR (
-            ? IS NOT NULL
-            AND memory_id IS NULL
-            AND memory_ids IS NOT NULL
-            AND JSON_CONTAINS(memory_ids, CAST(? AS JSON), '$')
-          )
-          OR (
-            memory_id IS NULL
-            AND (memory_ids IS NULL OR JSON_LENGTH(memory_ids) = 0)
-          )
-        )
-      ORDER BY
-        CASE WHEN ? IS NOT NULL AND memory_id = ? THEN 3 ELSE 0 END DESC,
-        CASE WHEN ? IS NOT NULL AND memory_ids IS NOT NULL AND JSON_CONTAINS(memory_ids, CAST(? AS JSON), '$') THEN 2 ELSE 0 END DESC,
-        id DESC
-      LIMIT 1
-    `
-
-    const memoryJsonValue = exactMemoryMatch ? String(memoryId) : null
-    const [templateRows] = await this.db.query(templateQuery, [
-      brandId,
-      modelId,
-      colorId,
-      colorId,
-      exactMemoryMatch ? memoryId : null,
-      exactMemoryMatch ? memoryId : null,
-      exactMemoryMatch ? memoryId : null,
-      memoryJsonValue,
-      exactMemoryMatch ? memoryId : null,
-      exactMemoryMatch ? memoryId : null,
-      exactMemoryMatch ? memoryId : null,
-      memoryJsonValue
-    ])
-
-    return templateRows && templateRows.length > 0 ? templateRows[0] : null
-  }
-
-  getDefaultGlobalMarkupConfig() {
-    return {
-      mode: 'fixed',
-      lowFixed: 250,
-      highFixed: 200,
-      lowPercent: 8.0,
-      highPercent: 3.0,
-      threshold: 6000,
-      enabled: true,
-      wholesale: {
-        enabled: false,
-        adjustment: 0
-      }
-    }
-  }
-
-  normalizeGlobalMarkupConfig(config) {
-    const defaultConfig = this.getDefaultGlobalMarkupConfig()
-    const wholesaleConfig = config?.wholesale && typeof config.wholesale === 'object'
-      ? config.wholesale
-      : {}
-
-    return {
-      mode: config?.mode === 'percentage' ? 'percentage' : 'fixed',
-      lowFixed: Number(config?.lowFixed ?? defaultConfig.lowFixed),
-      highFixed: Number(config?.highFixed ?? defaultConfig.highFixed),
-      lowPercent: Number(config?.lowPercent ?? defaultConfig.lowPercent),
-      highPercent: Number(config?.highPercent ?? defaultConfig.highPercent),
-      threshold: Number(config?.threshold ?? defaultConfig.threshold),
-      enabled: typeof config?.enabled === 'boolean' ? config.enabled : defaultConfig.enabled,
-      wholesale: {
-        enabled: typeof wholesaleConfig.enabled === 'boolean'
-          ? wholesaleConfig.enabled
-          : defaultConfig.wholesale.enabled,
-        adjustment: Number(wholesaleConfig.adjustment ?? defaultConfig.wholesale.adjustment)
-      }
-    }
-  }
-
   async getGlobalMarkupConfig() {
-    const defaultConfig = this.getDefaultGlobalMarkupConfig()
-
-    try {
-      const setting = await SystemSettingsService.getSettingByKey('price_markup_config')
-      const config = setting?.value
-      if (!config || typeof config !== 'object') {
-        return defaultConfig
-      }
-
-      return this.normalizeGlobalMarkupConfig(config)
-    } catch (error) {
-      log.error('获取全局加价配置失败，改用默认配置:', error.message)
-      return defaultConfig
-    }
+    return pricingService.getGlobalConfig()
   }
 
   async calculateRetailPriceByGlobalConfig(wholesalePrice) {
-    const wholesalePriceNum = parseFloat(wholesalePrice)
-    if (!wholesalePriceNum || wholesalePriceNum <= 0) return null
-
     const config = await this.getGlobalMarkupConfig()
-    if (!config.enabled) {
-      return Math.round(wholesalePriceNum * 100) / 100
-    }
-
-    const isLowTier = wholesalePriceNum < Number(config.threshold || 0)
-    let retailPrice = wholesalePriceNum
-
-    if (config.mode === 'percentage') {
-      const markupPercent = isLowTier ? Number(config.lowPercent || 0) : Number(config.highPercent || 0)
-      retailPrice = wholesalePriceNum * (1 + markupPercent / 100)
-    } else {
-      const markupAmount = isLowTier ? Number(config.lowFixed || 0) : Number(config.highFixed || 0)
-      retailPrice = wholesalePriceNum + markupAmount
-    }
-
-    return Math.round(retailPrice * 100) / 100
+    return pricingService.calculateSalesPriceByConfig(wholesalePrice, config)
   }
 
   async applyWholesaleDisplayMarkup(items) {
@@ -4317,24 +4224,15 @@ class PriceListService {
     }
 
     const config = await this.getGlobalMarkupConfig()
-    const wholesaleConfig = config.wholesale || { enabled: false, adjustment: 0 }
-    const adjustment = Number(wholesaleConfig.adjustment || 0)
 
     return items.map(item => {
       const wholesalePrice = Number(item.wholesale_price)
-      let displayWholesalePrice = item.wholesale_price
-
-      if (
-        wholesaleConfig.enabled &&
-        Number.isFinite(wholesalePrice) &&
-        wholesalePrice > 0
-      ) {
-        displayWholesalePrice = Math.round((wholesalePrice + adjustment) * 100) / 100
-      }
+      const displayWholesalePrice = pricingService.calculateWholesalePriceByConfig(wholesalePrice, config)
 
       return {
         ...item,
-        display_wholesale_price: displayWholesalePrice
+        display_wholesale_price: displayWholesalePrice,
+        wholesale_price_base: item.wholesale_price
       }
     })
   }
@@ -4344,78 +4242,27 @@ class PriceListService {
       return items || []
     }
 
-    return Promise.all(items.map(async (item) => {
+    const config = await this.getGlobalMarkupConfig()
+
+    return items.map(item => {
       const wholesalePrice = Number(item.wholesale_price)
-      let displayRetailPrice = item.retail_price
-
-      if (Number.isFinite(wholesalePrice) && wholesalePrice > 0) {
-        try {
-          const retailPriceResult = await this.calculateRetailPrice(
-            item.brand_id,
-            item.model_id,
-            item.color_id,
-            item.memory_id,
-            wholesalePrice
-          )
-
-          if (retailPriceResult.retailPrice !== null) {
-            displayRetailPrice = retailPriceResult.retailPrice
-          }
-        } catch (error) {
-          log.warn(`销售显示价实时计算失败，使用已保存销售价: ${error.message}`)
-        }
-      }
+      const displayRetailPrice = pricingService.calculateSalesPriceByConfig(wholesalePrice, config)
 
       return {
         ...item,
-        display_retail_price: displayRetailPrice
+        display_retail_price: displayRetailPrice,
+        retail_price_base: item.retail_price
       }
-    }))
-  }
-
-  async calculateRetailPriceByTemplate(brandId, modelId, colorId, memoryId, wholesalePrice) {
-    const wholesalePriceNum = parseFloat(wholesalePrice)
-    if (!wholesalePriceNum || wholesalePriceNum <= 0) return null
-
-    const template = await this.findTemplateMarkup(brandId, modelId, colorId, memoryId)
-    if (!template) return null
-
-    const markup = parseFloat(template.price_markup) || 0
-    if (markup <= 0) return null
-
-    let retailPrice = 0
-    if (template.price_markup_type === 'percentage') {
-      retailPrice = wholesalePriceNum * (1 + markup / 100)
-    } else {
-      retailPrice = wholesalePriceNum + markup
-    }
-
-    return Math.round(retailPrice * 100) / 100
+    })
   }
 
   async calculateRetailPrice(brandId, modelId, colorId, memoryId, wholesalePrice) {
-    const retailPriceByTemplate = await this.calculateRetailPriceByTemplate(
-      brandId,
-      modelId,
-      colorId,
-      memoryId,
-      wholesalePrice
-    )
-
-    if (retailPriceByTemplate !== null) {
-      return {
-        retailPrice: retailPriceByTemplate,
-        source: 'template',
-        sourceLabel: '模板'
-      }
-    }
-
     const retailPriceByGlobalConfig = await this.calculateRetailPriceByGlobalConfig(wholesalePrice)
     if (retailPriceByGlobalConfig !== null) {
       return {
         retailPrice: retailPriceByGlobalConfig,
-        source: 'global_config',
-        sourceLabel: '全局加价配置'
+        source: 'sales_global_config',
+        sourceLabel: '全局销售加价配置'
       }
     }
 

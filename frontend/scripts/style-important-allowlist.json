@@ -22,12 +22,12 @@
     },
     {
       "file": "src/styles/responsive.scss",
-      "max": 65,
+      "max": 60,
       "reason": "Global mobile breakpoints, safe-area rules and Safari phone fallbacks must win over desktop legacy declarations."
     },
     {
       "file": "src/styles/components/_dialog-actions.scss",
-      "max": 43,
+      "max": 44,
       "reason": "Teleported Element Plus dialog action layout and mobile footer contract."
     },
     {
@@ -107,7 +107,7 @@
     },
     {
       "file": "src/components/PublishToH5Modal.vue",
-      "max": 29,
+      "max": 18,
       "reason": "Teleported MobileDialog safe-area, compact controls and footer dimensions."
     },
     {
@@ -162,7 +162,7 @@
     },
     {
       "file": "src/views/payments/styles/supplier-phone-payments/_form-controls.scss",
-      "max": 35,
+      "max": 20,
       "reason": "Supplier payment Element Plus form wrappers retain specific dimensions and states against shared control rules."
     },
     {
@@ -247,7 +247,7 @@
     },
     {
       "file": "src/views/system/SystemView.vue",
-      "max": 12,
+      "max": 11,
       "reason": "System settings forms override Element Plus label width and content indentation on mobile."
     },
     {
