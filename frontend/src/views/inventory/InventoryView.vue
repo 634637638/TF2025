@@ -1814,6 +1814,8 @@ const _handleSelect = (item: InventoryItem) => {
     max-width: 100vw !important;
     height: 100vh !important;
     max-height: 100vh !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
     border-radius: 0 !important;
   }
 }

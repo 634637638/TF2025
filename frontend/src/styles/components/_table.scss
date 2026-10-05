@@ -782,7 +782,7 @@ body.is-admin-table-dragging * {
   width: 100% !important;
   box-sizing: border-box !important;
   overflow: visible !important;
-  padding-inline: var(--admin-data-table-action-edge-space, 16px) !important;
+  padding-inline: var(--admin-data-table-action-edge-space, 8px) !important;
 }
 
 :is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table)

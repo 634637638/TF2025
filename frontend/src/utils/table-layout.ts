@@ -68,7 +68,7 @@ const getActionLabelWidth = (
   options: ActionColumnWidthOptions
 ) => {
   const {
-    buttonWidth = 72,
+    buttonWidth = 66,
     buttonHorizontalPadding = 20,
     iconWidth = 14,
     iconTextGap = 4,
@@ -95,9 +95,9 @@ export const getActionColumnMinWidth = (
 ) => {
   const {
     minWidth = 54,
-    buttonWidth = 72,
+    buttonWidth = 66,
     buttonGap = 8,
-    horizontalPadding = 32
+    horizontalPadding = 16
   } = options
   const buttonWidths = typeof actions === 'number'
     ? Array.from({ length: Math.max(0, Math.floor(actions)) }, () => buttonWidth)

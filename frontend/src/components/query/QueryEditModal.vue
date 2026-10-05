@@ -174,25 +174,20 @@
           >
             <div
               class="imei-input-wrapper"
-              @dblclick="toggleNoIMEIMode"
+              @dblclick="handleImeiDoubleClick(undefined)"
+              @touchend.stop="handleImeiTouchEnd($event, undefined)"
             >
               <el-input
                 v-model="formData.imei"
-                :placeholder="formData.isNoIMEIMode ? '已启用无IMEI模式' : '请输入15位IMEI号'"
+                :class="{ 'tf-imei-input--no-imei': formData.isNoIMEIMode }"
+                :placeholder="formData.isNoIMEIMode ? '' : '请输入15位IMEI号'"
                 :maxlength="formData.isNoIMEIMode ? 30 : 15"
                 clearable
                 @input="formatImei"
               >
                 <template #suffix>
-                  <span
-                    v-if="formData.isNoIMEIMode"
-                    class="imei-badge"
-                  >
-                    <i class="fas fa-check-circle" />
-                    无IMEI
-                  </span>
                   <i
-                    v-else
+                    v-if="!formData.isNoIMEIMode"
                     class="fas fa-barcode"
                   />
                 </template>
@@ -526,6 +521,7 @@ import CustomerSearchDropdown from '@/components/common/CustomerSearchDropdown.v
 import { PaymentChannelSelect, PaymentMethodSelect } from '@/components/payment'
 import SectionLoading from '@/components/SectionLoading.vue'
 import { useMobile } from '@/composables/mobile'
+import { useTouchDoubleTap } from '@/composables/useTouchDoubleTap'
 import unifiedApi from '@/utils/unified-api'
 import { toCanonicalPhoneUpdatePayload } from '@/utils/phone-update-payload'
 import { searchCustomerOptions } from '@/services/customer-options'
@@ -1527,6 +1523,11 @@ const toggleNoIMEIMode = () => {
   showInfo('已切换回标准 IMEI 模式')
 }
 
+const {
+  handleTouchEnd: handleImeiTouchEnd,
+  handleDoubleClick: handleImeiDoubleClick
+} = useTouchDoubleTap(toggleNoIMEIMode)
+
 const formatCustomerPhone = () => {
   formData.customer_phone = normalizeCustomerPhone(formData.customer_phone)
 }
@@ -2192,14 +2193,6 @@ onBeforeUnmount(() => {
 
 .imei-input-wrapper {
   cursor: pointer;
-}
-
-.imei-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 12px;
-  color: var(--tf-color-emerald-500);
 }
 
 .customer-search-container {

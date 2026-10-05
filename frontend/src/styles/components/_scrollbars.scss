@@ -1,0 +1,17 @@
+/* 全局隐藏可见滚动条，但保留页面、触摸和鼠标滚动能力。 */
+html,
+body,
+#app,
+.public-price-query {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar,
+#app::-webkit-scrollbar,
+.public-price-query::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}

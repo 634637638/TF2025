@@ -5,6 +5,11 @@ export interface PublicPriceContact {
   phone: string
 }
 
+export const getPublicPriceContactKey = (contact?: PublicPriceContact | null) => {
+  if (!contact) return ''
+  return `${contact.name}|${contact.phone}`
+}
+
 export const parsePublicPriceContacts = (raw: string | PublicPriceContact[] | undefined): PublicPriceContact[] => {
   if (Array.isArray(raw)) {
     return raw
@@ -16,6 +21,15 @@ export const parsePublicPriceContacts = (raw: string | PublicPriceContact[] | un
     const [name, ...phoneParts] = line.split('|')
     return { name: String(name || '').trim(), phone: phoneParts.join('|').trim() }
   }).filter(item => item.name && item.phone)
+}
+
+export const getDefaultPublicPriceContact = (
+  contacts: PublicPriceContact[],
+  configuredKey?: string
+) => {
+  if (!contacts.length) return undefined
+  const key = String(configuredKey || '').trim()
+  return contacts.find(contact => getPublicPriceContactKey(contact) === key) || contacts[0]
 }
 
 export const formatPublicPriceWatermark = (template: string | undefined, contact?: PublicPriceContact, includeTime = true): string => {

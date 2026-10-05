@@ -382,60 +382,89 @@
                       v-if="canViewField('settings.price_watermark')"
                       prop="name"
                       label="姓名"
-                      min-width="140"
+                      :min-width="priceContactNameWidth"
                       align="center"
+                      class-name="complete-text-column"
                     />
                     <el-table-column
                       v-if="canViewField('settings.price_watermark')"
                       prop="phone"
                       label="手机号码"
-                      min-width="160"
+                      :min-width="priceContactPhoneWidth"
                       align="center"
+                      class-name="complete-text-column"
                     />
                     <el-table-column
                       v-if="canViewField('system_info.operations')"
+                      label="默认"
+                      :width="priceContactDefaultWidth"
+                      align="center"
+                      class-name="actions-column"
+                    >
+                      <template #default="{ $index }">
+                        <div class="action-buttons">
+                          <el-button
+                            class="table-action"
+                            :class="isDefaultPriceContact($index) ? 'table-action--success' : 'table-action--pin'"
+                            size="small"
+                            plain
+                            :disabled="!canUpdateSettings || isDefaultPriceContact($index)"
+                            @click.stop="setDefaultPriceContact($index)"
+                          >
+                            <i :class="isDefaultPriceContact($index) ? 'fas fa-check' : 'fas fa-thumbtack'" />
+                            <span>{{ isDefaultPriceContact($index) ? '默认' : '设为默认' }}</span>
+                          </el-button>
+                        </div>
+                      </template>
+                    </el-table-column>
+                    <el-table-column
+                      v-if="canViewField('system_info.operations')"
                       label="操作"
-                      :width="$getActionColumnWidth(4)"
+                      :width="$getActionColumnWidth(['编辑', '删除', '上移', '下移'])"
                       align="center"
                       class-name="actions-column"
                     >
                       <template #default="{ $index, row }">
                         <div class="action-buttons">
                           <el-button
+                            class="table-action table-action--edit"
                             size="small"
                             plain
-                            type="primary"
                             :disabled="!canUpdateSettings"
                             @click.stop="openPriceContactDialog(row, $index)"
                           >
-                            编辑
+                            <i class="fas fa-edit" />
+                            <span>编辑</span>
                           </el-button>
                           <el-button
+                            class="table-action table-action--delete"
                             size="small"
                             plain
-                            type="danger"
                             :disabled="!canUpdateSettings"
                             @click.stop="removePriceContact($index)"
                           >
-                            删除
+                            <i class="fas fa-trash-alt" />
+                            <span>删除</span>
                           </el-button>
                           <el-button
+                            class="table-action table-action--neutral"
                             size="small"
                             plain
-                            type="info"
                             :disabled="!canUpdateSettings || $index === 0"
                             @click.stop="movePriceContact($index, -1)"
                           >
-                            上移
+                            <i class="fas fa-arrow-up" />
+                            <span>上移</span>
                           </el-button>
                           <el-button
+                            class="table-action table-action--neutral"
                             size="small"
                             plain
-                            type="info"
                             :disabled="!canUpdateSettings || $index === priceContactsEditor.length - 1"
                             @click.stop="movePriceContact($index, 1)"
                           >
-                            下移
+                            <i class="fas fa-arrow-down" />
+                            <span>下移</span>
                           </el-button>
                         </div>
                       </template>
@@ -950,7 +979,8 @@ import PhoneWarningConfigView from '@/views/system/phone-warning-config/PhoneWar
 import Returngoods from '@/views/system/page/Returngoods.vue'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import { logger } from '@/utils/logger'
-import { parsePublicPriceContacts } from '@/utils/publicPriceSettings'
+import { getPublicPriceContactKey, parsePublicPriceContacts } from '@/utils/publicPriceSettings'
+import { getAdaptiveActionColumnWidth, getTextColumnMinWidth } from '@/utils/table-layout'
 
 const SITE_LOGO_ALLOWED_MIME_TYPES = {
   '.jpg': ['image/jpeg'],
@@ -1196,6 +1226,41 @@ const priceContactDialogVisible = ref(false)
 const priceContactEditIndex = ref<number | null>(null)
 const priceContactForm = reactive({ name: '', phone: '' })
 
+const priceContactNameWidth = computed(() => getTextColumnMinWidth(
+  ['姓名', ...priceContactsEditor.value.map(contact => contact.name)],
+  { minWidth: 72, horizontalPadding: 16 }
+))
+
+const priceContactPhoneWidth = computed(() => getTextColumnMinWidth(
+  ['手机号码', ...priceContactsEditor.value.map(contact => contact.phone)],
+  { minWidth: 104, horizontalPadding: 16 }
+))
+
+const priceContactDefaultWidth = computed(() => getAdaptiveActionColumnWidth(
+  priceContactsEditor.value,
+  [{
+    label: contact => getPublicPriceContactKey(contact) === siteSettings.value.publicPriceDefaultContact ? '默认' : '设为默认',
+    visible: true
+  }]
+))
+
+const isDefaultPriceContact = (index: number) => {
+  const contact = priceContactsEditor.value[index]
+  return Boolean(contact) && getPublicPriceContactKey(contact) === siteSettings.value.publicPriceDefaultContact
+}
+
+const setDefaultPriceContact = async (index: number) => {
+  if (!canUpdateSettings.value) return
+  const contact = priceContactsEditor.value[index]
+  if (!contact) return
+  const previousValue = siteSettings.value.publicPriceDefaultContact
+  const nextValue = getPublicPriceContactKey(contact)
+  siteSettings.value.publicPriceDefaultContact = nextValue
+  const result = await siteSettingsStore.updateSiteSettings({ publicPriceDefaultContact: nextValue })
+  if (!result) siteSettings.value.publicPriceDefaultContact = previousValue
+  else success('默认报价联系人已更新')
+}
+
 const syncPriceContactsEditor = () => {
   priceContactsEditor.value = parsePublicPriceContacts(siteSettings.value.publicPriceContacts)
 }
@@ -1212,7 +1277,8 @@ const persistPriceContacts = async (previousValue?: string) => {
   const result = await siteSettingsStore.updateSiteSettings({
     publicPriceContacts: priceContactsEditor.value
       .map(contact => `${contact.name}|${contact.phone}`)
-      .join('\n')
+      .join('\n'),
+    publicPriceDefaultContact: siteSettings.value.publicPriceDefaultContact
   })
 
   if (!result && previousValue !== undefined) {
@@ -1232,11 +1298,24 @@ const savePriceContact = async () => {
     return
   }
   const previousValue = siteSettings.value.publicPriceContacts
+  const previousDefault = siteSettings.value.publicPriceDefaultContact
+  const previousContact = priceContactEditIndex.value === null
+    ? undefined
+    : priceContactsEditor.value[priceContactEditIndex.value]
   const item = { name, phone }
   if (priceContactEditIndex.value === null) priceContactsEditor.value.push(item)
   else priceContactsEditor.value.splice(priceContactEditIndex.value, 1, item)
   siteSettings.value.publicPriceContacts = priceContactsEditor.value.map(contact => `${contact.name}|${contact.phone}`).join('\n')
-  if (!(await persistPriceContacts(previousValue))) return
+  const previousDefaultKey = getPublicPriceContactKey(previousContact)
+  if (priceContactsEditor.value.length === 1 || previousDefault === previousDefaultKey || !priceContactsEditor.value.some(contact => getPublicPriceContactKey(contact) === previousDefault)) {
+    siteSettings.value.publicPriceDefaultContact = previousDefault === previousDefaultKey
+      ? getPublicPriceContactKey(item)
+      : getPublicPriceContactKey(priceContactsEditor.value[0])
+  }
+  if (!(await persistPriceContacts(previousValue))) {
+    siteSettings.value.publicPriceDefaultContact = previousDefault
+    return
+  }
   priceContactDialogVisible.value = false
 }
 
@@ -1247,6 +1326,9 @@ const removePriceContact = async (index: number) => {
   const previousValue = siteSettings.value.publicPriceContacts
   priceContactsEditor.value.splice(index, 1)
   siteSettings.value.publicPriceContacts = priceContactsEditor.value.map(contact => `${contact.name}|${contact.phone}`).join('\n')
+  if (!priceContactsEditor.value.some(contact => getPublicPriceContactKey(contact) === siteSettings.value.publicPriceDefaultContact)) {
+    siteSettings.value.publicPriceDefaultContact = getPublicPriceContactKey(priceContactsEditor.value[0])
+  }
   await persistPriceContacts(previousValue)
 }
 

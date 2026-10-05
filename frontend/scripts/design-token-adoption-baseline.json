@@ -815,7 +815,7 @@
       "max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left))",
       "max(20px, env(safe-area-inset-top)) 2px max(20px, env(safe-area-inset-bottom))",
       "max(24px, env(safe-area-inset-top)) 4px max(24px, env(safe-area-inset-bottom))",
-      "var(--admin-data-table-action-edge-space, 16px) !important",
+      "var(--admin-data-table-action-edge-space, 8px) !important",
       "var(--admin-data-table-action-gap, 8px)",
       "var(--admin-data-table-action-gap, 8px) !important",
       "var(--admin-data-table-action-padding-y, 5px) var(--admin-data-table-action-padding-x, 10px) !important",

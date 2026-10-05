@@ -244,6 +244,8 @@
 
 ## 字体规范
 
+字体由 `frontend/src/styles.scss` 和 `frontend/src/styles/responsive.scss` 的公共令牌统一控制。禁止使用 `p, span` 等宽泛选择器覆盖业务字段字号；Android Chrome 的文字自动调整由全局 `text-size-adjust: 100%` 统一关闭。`375px` 及以下仅收紧正文、标签和表格字号，输入框继续使用 `16px`，以兼容 iOS Safari 聚焦行为。
+
 ### 移动端字体大小
 ```css
 /* 基础字体 */

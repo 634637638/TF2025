@@ -58,8 +58,8 @@ const searchCustomers = async ({
      FROM customers
      WHERE ${whereClause}
      ORDER BY ${sortField} ${sortDirection}, id DESC
-     LIMIT ? OFFSET ?`,
-    [...params, pageSize, offset]
+     LIMIT ${pageSize} OFFSET ${offset}`,
+    params
   )
   const [countRows] = await db.execute(
     `SELECT COUNT(*) AS total FROM customers WHERE ${whereClause}`,
@@ -86,4 +86,3 @@ module.exports = {
   normalizePage,
   normalizePageSize
 }
-

@@ -125,7 +125,6 @@
 
 <script setup lang="ts">
 import { confirmAction } from '@/utils/message-box'
-import '@/styles/admin-layout.css'
 import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue'
 import ResponsiveMenu from '@/components/ResponsiveMenu.vue'
 import SimpleSidebar from '@/components/SimpleSidebar.vue'
@@ -928,24 +927,25 @@ onUnmounted(() => {
   .topbar-actions {
     width: 100%;
     justify-content: flex-end;
-    gap: 6px;
+    gap: 4px;
   }
 
   .user-info {
     height: var(--tf-topbar-control-height, 36px);
-    padding: 4px 10px;
+    padding: 3px 6px;
     justify-content: flex-end;
     width: auto;
     min-width: 0;
-    flex: 0 1 auto;
-    max-width: calc(100% - 92px);
+    flex: 1 1 auto;
+    max-width: none;
     margin-left: auto;
-    gap: 8px;
+    gap: 4px;
+    overflow: hidden;
   }
 
   .user-avatar {
-    width: 24px;
-    height: 24px;
+    width: 22px;
+    height: 22px;
     font-size: 10px;
     flex-shrink: 0; /* 头像不缩小 */
   }
@@ -955,8 +955,8 @@ onUnmounted(() => {
     flex-direction: row;
     align-items: center;
     justify-content: flex-end;
-    gap: 4px;
-    flex: 0 1 auto;
+    gap: 3px;
+    flex: 1 1 auto;
     min-width: 0;
     height: 100%;
     flex-wrap: nowrap;
@@ -964,31 +964,39 @@ onUnmounted(() => {
   }
 
   .user-name {
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
     line-height: 1;
     white-space: nowrap;
     flex: 0 1 auto;
     min-width: 0;
     width: fit-content;
-    max-width: min(28vw, 140px);
+    max-width: min(30vw, 96px);
     overflow: hidden;
     text-overflow: ellipsis;
-    padding: 3px 8px;
+    padding: 2px 5px;
     border-radius: 8px;
   }
 
   .user-role {
-    font-size: 10px;
-    padding: 3px 6px;
+    max-width: 58px;
+    font-size: 9px;
+    padding: 2px 4px;
     border-radius: 8px;
     white-space: nowrap;
     flex-shrink: 0;
   }
 
   .topbar-buttons {
-    gap: 6px;
-    flex-shrink: 0;
+    gap: 4px;
+    flex: 0 0 auto;
+  }
+
+  .btn-lock,
+  .logout-btn {
+    width: 36px;
+    min-width: 36px;
+    padding-inline: 0;
   }
 
   .btn-lock i {
@@ -1046,18 +1054,18 @@ onUnmounted(() => {
 
 .admin-container.compact-device .user-info {
   min-width: 0;
-  flex: 0 1 auto;
-  width: fit-content;
-  max-width: 100%;
+  flex: 1 1 auto;
+  width: auto;
+  max-width: none;
   margin-left: auto;
   justify-content: flex-end;
   overflow: hidden;
 }
 
 .admin-container.compact-device .user-main-info {
-  flex: 0 1 auto;
+  flex: 1 1 auto;
   min-width: 0;
-  width: fit-content;
+  width: auto;
   justify-content: flex-end;
   flex-wrap: nowrap;
   gap: 4px;
@@ -1080,6 +1088,18 @@ onUnmounted(() => {
   align-items: center;
   gap: 6px;
   flex-shrink: 0;
+}
+
+.admin-container.compact-device .btn-lock span,
+.admin-container.compact-device .logout-btn .btn-text {
+  display: none;
+}
+
+.admin-container.compact-device .btn-lock,
+.admin-container.compact-device .logout-btn {
+  width: 36px;
+  min-width: 36px;
+  padding-inline: 0;
 }
 
 @media (min-width: 768px) and (max-width: 1024px) {

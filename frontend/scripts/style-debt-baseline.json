@@ -62,6 +62,6 @@
     "src/views/subsidy/components/SubsidyPhotoManageDialog.vue": 400,
     "src/views/suppliers/SuppliersView.vue": 556,
     "src/views/system/SystemView.vue": 948,
-    "src/views/system/page/SimpleAdminView.vue": 665
+    "src/views/system/page/SimpleAdminView.vue": 686
   }
 }

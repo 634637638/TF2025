@@ -460,7 +460,7 @@ import { useMobile } from '@/composables/mobile'
 import { logger } from '@/utils/logger'
 import { loadHtml2Canvas } from '@/utils/html2canvas'
 import { useSiteSettingsStore } from '@/stores/siteSettings'
-import { parsePublicPriceContacts, formatPublicPriceWatermark } from '@/utils/publicPriceSettings'
+import { parsePublicPriceContacts, getDefaultPublicPriceContact, formatPublicPriceWatermark } from '@/utils/publicPriceSettings'
 
 const InventoryResultDialog = defineAsyncComponent(() => import('@/components/InventoryResultDialog.vue'))
 const IMAGE_CAPTURE_WIDTH = 430
@@ -472,7 +472,10 @@ const priceContacts = computed(() => {
   const configured = parsePublicPriceContacts(siteSettingsStore.settings.publicPriceContacts)
   return configured
 })
-const primaryPriceContact = computed(() => priceContacts.value[0])
+const primaryPriceContact = computed(() => getDefaultPublicPriceContact(
+  priceContacts.value,
+  siteSettingsStore.settings.publicPriceDefaultContact
+))
 const watermarkEnabled = computed(() => siteSettingsStore.settings.publicPriceWatermarkEnabled !== '0')
 const watermarkText = computed(() => formatPublicPriceWatermark(siteSettingsStore.settings.publicPriceWatermark, primaryPriceContact.value, siteSettingsStore.settings.publicPriceWatermarkTimeEnabled !== '0'))
 const watermarkColor = computed(() => siteSettingsStore.settings.publicPriceWatermarkColor || '#6b7280')

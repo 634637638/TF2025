@@ -11,7 +11,7 @@
         @click="emit('toggle-batch-mode')"
       >
         <i :class="batchMode ? 'fas fa-check-square' : 'fas fa-mobile-alt'" />
-        <span>{{ batchMode ? '批量模式' : '单台模式' }}</span>
+        <span>{{ batchMode ? '批量' : '单台' }}</span>
       </el-button>
       <el-tag
         v-if="batchMode && selectedCount > 0"

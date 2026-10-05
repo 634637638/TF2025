@@ -41,6 +41,9 @@ html {
   overflow-x: hidden;
   overflow-y: auto;
   min-height: 100%;
+  /* 防止 Android Chrome 对窄屏文本自动放大，字号统一由公共断点令牌控制。 */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 body {
@@ -103,13 +106,17 @@ body {
     display: block !important;
   }
 
-  /* 统一字体大小 */
+  /* 统一标题字体大小；正文和标识字体由公共令牌及组件语义控制。 */
   h1 { font-size: 24px !important; }
   h2 { font-size: 20px !important; }
   h3 { font-size: 18px !important; }
   h4 { font-size: 16px !important; }
-  p, span, input, select, textarea {
-    font-size: 16px !important; /* 16px防止iOS缩放 */
+
+  /* 原生输入框保留 16px，避免 iOS Safari 聚焦时自动缩放；普通 span 不得被全局放大。 */
+  input,
+  select,
+  textarea {
+    font-size: 16px;
   }
 
   /* 表格统一为单列 */
@@ -332,6 +339,15 @@ body {
 
   .mobile-hidden {
     display: none !important;
+  }
+}
+
+/* 360/375px 最小屏：字号令牌由 styles.scss 唯一维护；此处只同步根字号。 */
+@media (max-width: 375px) {
+  html,
+  body,
+  #app {
+    font-size: var(--mobile-text-body);
   }
 }
 

@@ -10,6 +10,7 @@
 @use './styles/components/_print.scss' as *;
 @use './styles/components/_drawer.scss' as *;
 @use './styles/components/_form-controls.scss' as *;
+@use './styles/components/_scrollbars.scss' as *;
 
 /* 全局样式重置 */
 * {
@@ -905,26 +906,6 @@ html {
   .text-lg-center {
     text-align: center;
   }
-}
-
-/* 自定义滚动条 */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: var(--tf-color-gray-100);
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--tf-color-gray-300);
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--tf-color-gray-400);
 }
 
 /* 选择文本样式 */

@@ -127,6 +127,7 @@ const DEFAULT_SITE_SETTINGS = {
   contactEmail: '',
   companyAddress: ''
   ,publicPriceContacts: ''
+  ,publicPriceDefaultContact: ''
   ,publicPriceWatermark: ''
   ,publicPriceWatermarkEnabled: '1'
   ,publicPriceWatermarkTimeEnabled: '1'
@@ -144,6 +145,7 @@ const SITE_SETTINGS_COLUMN_ALIASES = {
   contactEmail: ['company_email', 'contact_email', 'email'],
   companyAddress: ['company_address', 'address']
   ,publicPriceContacts: ['public_price_contacts']
+  ,publicPriceDefaultContact: ['public_price_default_contact']
   ,publicPriceWatermark: ['public_price_watermark']
   ,publicPriceWatermarkEnabled: ['public_price_watermark_enabled']
   ,publicPriceWatermarkTimeEnabled: ['public_price_watermark_time_enabled']
@@ -161,6 +163,7 @@ const SITE_SETTINGS_KEY_MAP = {
   contactEmail: 'company_email',
   companyAddress: 'company_address'
   ,publicPriceContacts: 'public_price_contacts'
+  ,publicPriceDefaultContact: 'public_price_default_contact'
   ,publicPriceWatermark: 'public_price_watermark'
   ,publicPriceWatermarkEnabled: 'public_price_watermark_enabled'
   ,publicPriceWatermarkTimeEnabled: 'public_price_watermark_time_enabled'
@@ -178,6 +181,7 @@ const SITE_SETTINGS_KEY_DESCRIPTIONS = {
   contactEmail: '联系邮箱',
   companyAddress: '公司地址'
   ,publicPriceContacts: '公开报价联系方式'
+  ,publicPriceDefaultContact: '默认报价联系人'
   ,publicPriceWatermark: '公开报价图片水印'
   ,publicPriceWatermarkEnabled: '公开报价图片水印开关'
   ,publicPriceWatermarkTimeEnabled: '公开报价水印时间开关'
@@ -206,6 +210,7 @@ const ensurePublicPriceSettingColumns = async (db) => {
   const existing = new Set(columns.map(column => column.Field))
   const definitions = {
     public_price_contacts: 'TEXT NULL COMMENT \'公开报价联系人配置\'',
+    public_price_default_contact: 'VARCHAR(160) NULL COMMENT \'默认报价联系人标识\'',
     public_price_watermark: 'VARCHAR(255) NULL COMMENT \'公开报价水印文字\'',
     public_price_watermark_enabled: 'TINYINT(1) NOT NULL DEFAULT 1 COMMENT \'公开报价水印开关\'',
     public_price_watermark_time_enabled: 'TINYINT(1) NOT NULL DEFAULT 1 COMMENT \'公开报价水印时间开关\''
@@ -290,6 +295,7 @@ const PUBLIC_SITE_SETTING_FIELDS = [
   'icpNumber',
   'companyName',
   'publicPriceContacts',
+  'publicPriceDefaultContact',
   'publicPriceWatermark',
   'publicPriceWatermarkEnabled',
   'publicPriceWatermarkTimeEnabled',

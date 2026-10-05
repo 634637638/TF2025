@@ -5,9 +5,11 @@ import router from './router'
 // Element Plus 按需导入由 unplugin 自动处理
 import './styles.scss'
 import './styles/responsive.scss'
+import './styles/admin-layout.css'
 import './styles/permission-toast.scss'
 import './styles/components/_dialog.scss'
 import './styles/components/_dialog-actions.scss'
+import './styles/components/_price-contact.scss'
 
 // 导入安全工具
 import { vSanitize, vEscapeHtml, initCSPReporting } from '@/utils/security'

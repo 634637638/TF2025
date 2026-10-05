@@ -272,6 +272,12 @@ onUnmounted(() => {
   overflow: hidden !important;
 }
 
+@supports (height: 100dvh) {
+  .screen-lock-overlay {
+    height: 100dvh !important;
+  }
+}
+
 .screen-lock-content {
   width: 100%;
   max-width: 500px;

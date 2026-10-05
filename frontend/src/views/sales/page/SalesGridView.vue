@@ -29,7 +29,15 @@
         :key="phone.id"
         class="device-card"
       >
-        <div class="card-image">
+        <div
+          :class="['card-image', { 'media-preview-trigger': isUsedPhone(phone) }]"
+          :role="isUsedPhone(phone) ? 'button' : undefined"
+          :tabindex="isUsedPhone(phone) ? 0 : undefined"
+          :aria-label="isUsedPhone(phone) ? `预览${phone.model || '设备'}图片` : undefined"
+          @click.stop="openPhoneMediaPreview(phone)"
+          @keydown.enter.stop="openPhoneMediaPreview(phone)"
+          @keydown.space.prevent.stop="openPhoneMediaPreview(phone)"
+        >
           <Image
             :src="getPhoneImageSrc(phone)"
             :alt="phone.model"
@@ -167,16 +175,28 @@
       </div>
     </div>
   </div>
+
+  <MediaPreviewViewer
+    v-model="showMediaPreview"
+    :items="previewMediaItems"
+    :initial-index="previewMediaIndex"
+  />
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue'
 import Image from '@/components/Image.vue'
+import MediaPreviewViewer from '@/components/MediaPreviewViewer.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import { shouldShowActionColumn } from '@/composables/useFieldPermissions'
+import { unifiedApi } from '@/utils/unified-api'
+import { extractResponseData } from '@/utils/api-response'
+import { logger } from '@/utils/logger'
+import type { MediaPreviewItem } from '@/utils/media'
 import type { Phone } from '@/types'
 import { isPhoneSaleActionAvailable } from '../sales-phone-helpers'
 
-defineProps<{
+const props = defineProps<{
   phones: Phone[]
   loading: boolean
   hasActiveFilters: boolean
@@ -189,6 +209,62 @@ defineProps<{
   formatNumber: (_value: number) => string
   formatDate: (_value?: string) => string
 }>()
+
+const showMediaPreview = ref(false)
+const previewMediaItems = ref<MediaPreviewItem[]>([])
+const previewMediaIndex = ref(0)
+let mediaRequestVersion = 0
+
+const isUsedPhone = (phone: Phone): boolean => {
+  const newValue: unknown = phone.is_new
+  const isNew = newValue === true || newValue === 1 || newValue === '1'
+  return !isNew
+}
+
+const getFallbackMediaItem = (phone: Phone): MediaPreviewItem => ({
+  id: `phone-${phone.id}`,
+  url: props.getPhoneImageSrc(phone),
+  label: `${phone.brand || ''} ${phone.model || ''}`.trim() || '设备图片'
+})
+
+const openPhoneMediaPreview = async (phone: Phone) => {
+  if (!isUsedPhone(phone)) return
+
+  const requestVersion = ++mediaRequestVersion
+  const fallbackItem = getFallbackMediaItem(phone)
+  previewMediaItems.value = [fallbackItem]
+  previewMediaIndex.value = 0
+  showMediaPreview.value = true
+
+  try {
+    const response = await unifiedApi.get(`/phones/${phone.id}/images`, {
+      useCache: false,
+      showError: false
+    })
+    if (requestVersion !== mediaRequestVersion) return
+
+    const media = extractResponseData<Array<Record<string, unknown>>>(response)
+    const items = (Array.isArray(media) ? media : [])
+      .map<MediaPreviewItem | null>((item) => {
+        const url = typeof item.image_url === 'string' ? item.image_url.trim() : ''
+        if (!url) return null
+
+        return {
+          id: typeof item.id === 'number' || typeof item.id === 'string' ? item.id : url,
+          url,
+          type: typeof item.image_type === 'string' ? item.image_type : undefined,
+          label: item.image_type === 'video' ? '设备视频' : '设备图片'
+        }
+      })
+      .filter((item): item is MediaPreviewItem => Boolean(item))
+
+    previewMediaItems.value = items.length > 0 ? items : [fallbackItem]
+  } catch (error) {
+    if (requestVersion === mediaRequestVersion) {
+      logger.warn('销售图文模式加载设备媒体失败，使用主图预览:', error)
+    }
+  }
+}
 
 const emit = defineEmits<{
   sale: [phone: Phone]

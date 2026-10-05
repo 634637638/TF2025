@@ -21,6 +21,7 @@ interface SiteSettings {
   contactEmail: string
   companyAddress: string
   publicPriceContacts: string
+  publicPriceDefaultContact: string
   publicPriceWatermark: string
   publicPriceWatermarkEnabled: string
   publicPriceWatermarkTimeEnabled: string
@@ -132,6 +133,7 @@ export const useSiteSettingsStore = defineStore('siteSettings', () => {
     contactEmail: '',
     companyAddress: ''
     ,publicPriceContacts: ''
+    ,publicPriceDefaultContact: ''
     ,publicPriceWatermark: ''
     ,publicPriceWatermarkEnabled: '1'
     ,publicPriceWatermarkTimeEnabled: '1'
@@ -273,6 +275,7 @@ export const useSiteSettingsStore = defineStore('siteSettings', () => {
       contactEmail: '',
       companyAddress: ''
       ,publicPriceContacts: ''
+      ,publicPriceDefaultContact: ''
       ,publicPriceWatermark: ''
       ,publicPriceWatermarkEnabled: '1'
       ,publicPriceWatermarkTimeEnabled: '1'

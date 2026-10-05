@@ -1,0 +1,93 @@
+@mixin responsive-price-table {
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+
+  @media (max-width: 767px) {
+    margin: 0;
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  :deep(.el-table) {
+    width: 100%;
+    table-layout: auto;
+    font-size: var(--tf-font-table);
+
+    @media (max-width: 767px) {
+      width: auto;
+      min-width: 100%;
+      border-left: none;
+      border-right: none;
+      border-radius: 0;
+      font-size: var(--tf-font-table-mobile);
+
+      .el-table__body-wrapper {
+        overflow-x: visible;
+      }
+
+      .el-table__cell {
+        padding: var(--tf-space-2) var(--tf-space-1);
+        overflow: visible;
+        word-break: normal;
+        white-space: nowrap;
+      }
+    }
+
+    .el-table__header th {
+      padding: var(--tf-space-2) var(--tf-space-1);
+      font-size: var(--tf-font-table);
+    }
+
+    .el-table__body td {
+      padding: var(--tf-space-2) var(--tf-space-1);
+    }
+
+    .el-table__header-wrapper,
+    .el-table__body-wrapper {
+      width: 100%;
+    }
+
+    .cell {
+      overflow: visible;
+      word-break: normal;
+    }
+
+    @media (max-width: 479px) {
+      font-size: var(--tf-font-table-compact);
+
+      .el-table__header th {
+        padding: var(--tf-space-1);
+        font-size: var(--tf-font-table-compact);
+      }
+
+      .el-table__body td,
+      .el-table__cell {
+        padding: var(--tf-space-1);
+      }
+    }
+
+    @media (max-width: 380px) {
+      font-size: var(--tf-font-table-narrow);
+
+      .el-table__header th {
+        padding: var(--tf-space-1);
+        font-size: var(--tf-font-table-narrow);
+      }
+
+      .el-table__body td,
+      .el-table__cell {
+        padding: var(--tf-space-1);
+      }
+    }
+  }
+}

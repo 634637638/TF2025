@@ -3624,6 +3624,7 @@ select.form-control {
     overflow-y: auto !important;
     -webkit-overflow-scrolling: touch !important;
     height: 100vh !important;
+    height: 100dvh !important;
     position: relative !important;
   }
 

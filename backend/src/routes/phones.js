@@ -1485,6 +1485,7 @@ const shopService = new ShopServiceClass()
 const phoneMediaController = require('../controllers/phone-media.controller')
 
 const PHONE_MEDIA_VIEW_PERMISSIONS = [
+  'sales:view',
   'inventory:view',
   'query:view',
   'h5-sold-products:view',

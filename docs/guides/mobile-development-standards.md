@@ -70,6 +70,25 @@ const fabActions = [
 </script>
 ```
 
+### 2.1 键盘和动态视口
+
+- Android Chrome 和 iOS Safari 的软键盘会改变 `visualViewport` 高度；页面不得只读取一次 `window.innerHeight` 判断键盘状态。
+- 统一使用 `useVirtualKeyboard` 或 `useMobileViewport`，由公共 Composable 维护初始视口基线、键盘高度和方向变化。
+- 全屏遮罩、弹窗和移动端工作区使用 `100vh` 作为旧浏览器回退，并在支持时使用 `100dvh`；禁止在业务页面重新实现一套视口计算。
+- 固定底部操作必须叠加 `env(safe-area-inset-bottom, 0px)`，避免 iPhone Home Indicator 遮挡按钮。
+
+### 2.2 字体和最小屏
+
+- 全局字体令牌入口为 `frontend/src/styles.scss`；`frontend/src/styles/responsive.scss` 只负责断点下的组件应用规则和根字号同步。页面不得通过通用 `span`、`p` 选择器强制放大业务内容。
+- `frontend/src/styles.scss` 是移动端字号令牌的唯一来源；`responsive.scss` 只负责断点下的组件应用规则和根字号同步，不得重复定义 `--mobile-text-*`。`375px` 及以下由 `styles.scss` 统一收紧正文、标签和表格密度，输入框保留 `16px` 以避免 iOS Safari 聚焦缩放。
+- 全局 `html` 必须使用 `-webkit-text-size-adjust: 100%` 和 `text-size-adjust: 100%`，避免 Android Chrome 对窄屏文本自动放大。
+- IMEI、序列号、手机号等标识字段必须使用组件语义字号和不换行策略；不得依赖全局 `span` 字号覆盖，导致 360px 设备产生换行或遮挡。
+- 在库明细、库存卡片等移动端结果中，序列号/IMEI正文不得低于 `--mobile-text-body`（普通手机 15px，375px 以下 14px）；字段标签使用 `--mobile-text-label`，不得在窄屏断点降到 10px/11px。
+- 商品标题、品牌/型号/颜色/容量等组合文本不属于单一标识字段，禁止强制 `white-space: nowrap`；必须允许在卡片内部换行，并通过 `min-width: 0`、`overflow-wrap` 和 `--mobile-text-body` 公共移动端字号避免超出视口。不得为了突出商品信息使用 18px 以上的页面私有字号。
+- 360px 级 Android 设备是最小回归基线；375px 以上设备应通过公共断点自然获得更充足的可用空间，不得新增页面私有机型判断。
+- 小卡片中的“字段 + 内容”必须使用全局 `tf-inline-field` 工具类；首个子元素作为字段、末个子元素作为内容，统一水平居中、单行和溢出省略。禁止页面重新定义一套标签和值的对齐规则。
+- IMEI、序列号、日期等长字段使用全局 `tf-stack-field` 上下布局；在 375px 最小屏断点使用公共紧凑字号，保证两列卡片内单行完整展示，禁止通过换行或页面私有字号处理。
+
 ### 3. 移动端检测
 
 ```typescript

@@ -67,12 +67,10 @@
                     <span class="date">{{ item.inventory_date }}</span>
                   </div>
                   <div class="item-details">
-                    <span class="imei">
-                      <span class="imei-label">序列号：</span>
-                      <span class="imei-value">{{ getDeviceIdentifier(item) }}</span>
-                    </span>
+                    <span class="identifier-label">序列号</span>
+                    <span class="identifier-value">{{ getDeviceIdentifier(item) }}</span>
                     <span
-                      class="item-days"
+                      class="inventory-age"
                       :class="getDaysClass(item.inventory_days)"
                     >
                       <span class="number">{{ item.inventory_days }}</span>
@@ -155,14 +153,12 @@
             <span class="store-name">{{ item.store_name }}</span>
             <span class="supplier-name">{{ item.supplier_name || '未关联' }}</span>
             <span class="date">{{ item.inventory_date }}</span>
-          </div>
-          <div class="item-details">
-            <span class="imei">
-              <span class="imei-label">序列号：</span>
-              <span class="imei-value">{{ getDeviceIdentifier(item) }}</span>
-            </span>
+        </div>
+        <div class="item-details">
+            <span class="identifier-label">序列号</span>
+            <span class="identifier-value">{{ getDeviceIdentifier(item) }}</span>
             <span
-              class="item-days"
+              class="inventory-age"
               :class="getDaysClass(item.inventory_days)"
             >
               <span class="number">{{ item.inventory_days }}</span>
@@ -314,10 +310,11 @@ const getDaysClass = (days: number) => {
   return 'days-normal'
 }
 
-const isImei = (value?: string) => /^\d{15}$/.test(String(value || '').trim())
+const formatIdentifier = (value?: string | null) => String(value || '').trim()
+const isImei = (value?: string | null) => /^\d{15}$/.test(formatIdentifier(value))
 const getDeviceIdentifier = (item: InventoryItem) => {
-  if (isImei(item.imei)) return String(item.imei).trim()
-  return String(item.serial_number || item.imei || '未录入').trim()
+  if (isImei(item.imei)) return formatIdentifier(item.imei) || '未录入'
+  return formatIdentifier(item.serial_number) || formatIdentifier(item.imei) || '未录入'
 }
 
 </script>
@@ -489,16 +486,25 @@ const getDeviceIdentifier = (item: InventoryItem) => {
       flex: 1;
       min-width: 0;
       display: grid;
-      gap: 6px;
+      --inventory-columns: minmax(58px, 0.85fr) minmax(max-content, 1.7fr) minmax(52px, 0.85fr);
+      grid-template-columns: var(--inventory-columns);
+      grid-template-rows: auto auto;
+      column-gap: 12px;
+      row-gap: 6px;
+      align-items: center;
 
       .item-header {
         display: grid;
-        grid-template-columns: minmax(0, 24%) minmax(0, 1fr) auto;
+        grid-column: 1 / -1;
+        grid-row: 1;
+        grid-template-columns: var(--inventory-columns);
         align-items: center;
-        gap: 8px;
         min-width: 0;
 
         .store-name {
+          grid-column: 1;
+          grid-row: 1;
+          justify-self: start;
           font-weight: 600;
           color: var(--tf-color-indigo-brand);
           font-size: 14px;
@@ -508,6 +514,12 @@ const getDeviceIdentifier = (item: InventoryItem) => {
         }
 
         .supplier-name {
+          grid-column: 2;
+          grid-row: 1;
+          justify-self: center;
+          margin-inline: auto;
+          width: fit-content;
+          max-width: 100%;
           min-width: 0;
           padding: 3px 9px;
           border-radius: 999px;
@@ -521,6 +533,9 @@ const getDeviceIdentifier = (item: InventoryItem) => {
         }
 
         .date {
+          grid-column: 3;
+          grid-row: 1;
+          justify-self: end;
           color: var(--tf-color-green-legacy);
           font-size: 12px;
           display: flex;
@@ -532,42 +547,41 @@ const getDeviceIdentifier = (item: InventoryItem) => {
       }
 
       .item-details {
-        display: flex;
+        display: grid;
+        grid-template-columns: var(--inventory-columns);
+        grid-column: 1 / -1;
+        grid-row: 2;
         align-items: center;
-        justify-content: space-between;
-        gap: 8px;
+        min-height: 28px;
         min-width: 0;
 
-        .imei {
-          display: flex;
-          align-items: center;
-          gap: 4px;
-          color: var(--tf-color-gray-cool-500);
+        .identifier-label {
+          grid-column: 1;
+          justify-self: start;
           font-size: 13px;
-          font-family: 'Courier New', monospace;
-          min-width: 0;
-          flex: 1 1 auto;
           white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-
-          .imei-label {
-            color: var(--tf-color-slate-600);
-            font-weight: 600;
-            flex-shrink: 0;
-          }
-
-          .imei-value {
-            min-width: 0;
-            overflow: hidden;
-            color: var(--tf-color-slate-900);
-            font-weight: 700;
-            text-overflow: ellipsis;
-          }
+          color: var(--tf-color-slate-600);
+          font-weight: 600;
         }
 
-        .item-days {
-          flex: 0 0 auto;
+        .identifier-value {
+          grid-column: 2;
+          justify-self: center;
+          min-width: max-content;
+          width: max-content;
+          max-width: none;
+          overflow: visible;
+          color: var(--tf-color-slate-900);
+          font-size: 13px;
+          font-family: 'Courier New', monospace;
+          font-weight: 700;
+          white-space: nowrap;
+          text-align: center;
+        }
+
+        .inventory-age {
+          grid-column: 3;
+          justify-self: end;
           display: inline-flex;
           align-items: baseline;
           justify-content: center;
@@ -711,29 +725,40 @@ const getDeviceIdentifier = (item: InventoryItem) => {
       }
 
       .item-content {
-        display: grid;
-        gap: 8px;
+        --inventory-columns: minmax(52px, 0.8fr) minmax(max-content, 1.8fr) minmax(48px, 0.8fr);
+        grid-template-columns: var(--inventory-columns);
+        grid-template-rows: auto auto;
+        column-gap: 8px;
+        row-gap: 8px;
         min-width: 0;
       }
 
       .item-header {
         display: grid;
-        grid-template-columns: minmax(0, 24%) minmax(0, 1fr) auto;
-        gap: 8px;
+        grid-column: 1 / -1;
+        grid-row: 1;
+        grid-template-columns: var(--inventory-columns);
         align-items: center;
 
         .store-name {
+          grid-column: 1;
+          grid-row: 1;
           font-size: 13px;
           line-height: 1.3;
         }
 
         .supplier-name {
+          grid-column: 2;
+          grid-row: 1;
+          justify-self: center;
           padding: var(--tf-space-1) var(--tf-space-2);
           font-size: 11px;
           line-height: 1.3;
         }
 
         .date {
+          grid-column: 3;
+          grid-row: 1;
           font-size: 11px;
           line-height: 1.2;
         }
@@ -741,16 +766,32 @@ const getDeviceIdentifier = (item: InventoryItem) => {
 
       .item-details {
         display: grid;
-        grid-template-columns: minmax(0, 1fr) auto;
-        gap: 8px;
-        align-items: center;
+        grid-template-columns: var(--inventory-columns);
+        grid-column: 1 / -1;
+        grid-row: 2;
+        min-height: 26px;
 
-        .imei {
-          font-size: 11px;
+        .identifier-label {
+          grid-column: 1;
+          justify-self: start;
+          font-size: var(--mobile-text-body);
           line-height: 1.3;
         }
 
-        .item-days {
+        .identifier-value {
+          grid-column: 2;
+          justify-self: center;
+          width: max-content;
+          max-width: none;
+          overflow: visible;
+          font-size: var(--mobile-text-body);
+          line-height: 1.3;
+          white-space: nowrap;
+        }
+
+        .inventory-age {
+          grid-column: 3;
+          justify-self: end;
           min-width: 46px;
           padding: 4px 8px;
 
@@ -824,11 +865,18 @@ const getDeviceIdentifier = (item: InventoryItem) => {
       }
 
       .item-details {
-        .imei {
-          font-size: 10px;
+        .identifier-label {
+          font-size: var(--mobile-text-label);
         }
 
-        .item-days {
+        .identifier-value {
+          width: max-content;
+          max-width: none;
+          font-size: var(--mobile-text-label);
+          white-space: nowrap;
+        }
+
+        .inventory-age {
           min-width: 42px;
           padding: 3px 7px;
 

@@ -1,6 +1,6 @@
 <template>
-  <div class="public-price-query">
-    <PublicPriceHeader :title="`${siteSettingsStore.settings.siteName || '销售报价'} · 最新销售报价`">
+  <div class="public-price-query sales-price-display">
+    <PublicPriceHeader title="最新销售价">
       <template #search>
         <PublicSearchBox
           v-model="searchKeyword"
@@ -119,7 +119,7 @@
               <el-table-column
                 prop="brand_name"
                 label="品牌"
-                min-width="80"
+                min-width="60"
               />
               <el-table-column
                 prop="model_number"
@@ -129,23 +129,24 @@
               <el-table-column
                 prop="color_name"
                 label="颜色"
-                min-width="60"
+                min-width="50"
               />
               <el-table-column
                 prop="memory"
                 label="内存"
-                min-width="70"
+                min-width="60"
               />
               <el-table-column
                 prop="display_retail_price"
                 label="销售价格"
-                min-width="80"
+                min-width="70"
+                class-name="sales-price-column"
                 align="right"
               >
                 <template #default="{ row }">
                   <span
                     v-if="hasDisplayRetailPrice(row)"
-                    class="price wholesale"
+                    class="price sales-price-value"
                   >{{ formatDisplayRetailPrice(row) }}</span>
                 </template>
               </el-table-column>
@@ -239,7 +240,7 @@ import { logger } from '@/utils/logger'
 import { ElMessage } from 'element-plus'
 import { loadHtml2Canvas } from '@/utils/html2canvas'
 import { useSiteSettingsStore } from '@/stores/siteSettings'
-import { parsePublicPriceContacts, formatPublicPriceWatermark } from '@/utils/publicPriceSettings'
+import { parsePublicPriceContacts, getDefaultPublicPriceContact, formatPublicPriceWatermark } from '@/utils/publicPriceSettings'
 
 const IMAGE_CAPTURE_WIDTH = 430
 // 状态
@@ -249,7 +250,10 @@ const priceContacts = computed(() => {
   const configured = parsePublicPriceContacts(siteSettingsStore.settings.publicPriceContacts)
   return configured
 })
-const primaryPriceContact = computed(() => priceContacts.value[0])
+const primaryPriceContact = computed(() => getDefaultPublicPriceContact(
+  priceContacts.value,
+  siteSettingsStore.settings.publicPriceDefaultContact
+))
 const watermarkEnabled = computed(() => siteSettingsStore.settings.publicPriceWatermarkEnabled !== '0')
 const watermarkText = computed(() => formatPublicPriceWatermark(siteSettingsStore.settings.publicPriceWatermark, primaryPriceContact.value, siteSettingsStore.settings.publicPriceWatermarkTimeEnabled !== '0'))
 const watermarkColor = computed(() => siteSettingsStore.settings.publicPriceWatermarkColor || '#6b7280')
@@ -798,6 +802,7 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped lang="scss">
+@use "./public-price-query-scoped/price-table" as price-table;
 .public-price-query {
   min-height: 100vh;
   background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
@@ -1024,91 +1029,9 @@ onBeforeUnmount(() => {
     }
   }
 
+  // 批发报价与销售报价共用同一套 360px 基准表格布局。
   .table-wrapper {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-
-    // 移动端负边距让表格靠边
-    @media (max-width: 767px) {
-      margin: 0;
-      width: 100%;
-    }
-
-    :deep(.el-table) {
-      font-size: 13px;
-
-      // 移动端去除表格边框圆角
-      @media (max-width: 767px) {
-        border-radius: 0;
-        border-left: none;
-        border-right: none;
-      }
-
-      .el-table__header th {
-        padding: 8px 5px;
-        font-size: 13px;
-
-        @media (max-width: 767px) {
-          padding: 8px 4px;
-          font-size: 12px;
-        }
-
-        @media (max-width: 479px) {
-          padding: 6px 3px;
-          font-size: 11px;
-        }
-
-        @media (max-width: 380px) {
-          padding: 5px 2px;
-          font-size: 10px;
-        }
-      }
-
-      .el-table__body td {
-        padding: 8px 5px;
-
-        @media (max-width: 767px) {
-          padding: 8px 4px;
-        }
-
-        @media (max-width: 479px) {
-          padding: 6px 3px;
-        }
-
-        @media (max-width: 380px) {
-          padding: 5px 2px;
-        }
-      }
-
-      // 移动端优化
-      @media (max-width: 767px) {
-        font-size: 12px;
-
-        .el-table__body-wrapper {
-          overflow-x: visible;
-        }
-
-        .el-table__cell {
-          padding: 8px 4px;
-        }
-      }
-
-      @media (max-width: 479px) {
-        font-size: 11px;
-
-        .el-table__cell {
-          padding: 6px 3px;
-        }
-      }
-
-      @media (max-width: 380px) {
-        font-size: 10px;
-
-        .el-table__cell {
-          padding: 5px 2px;
-        }
-      }
-    }
+    @include price-table.responsive-price-table;
   }
 
   .price {
@@ -1117,6 +1040,26 @@ onBeforeUnmount(() => {
     &.wholesale {
       color: var(--color-success);
     }
+  }
+
+  :deep(.sales-price-column .cell),
+  :deep(.sales-price-value) {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: nowrap;
+  }
+
+  :deep(.sales-price-column .cell) {
+    min-width: 0;
+    padding-inline: 4px;
+  }
+
+  .sales-price-value {
+    display: inline-block;
+    min-width: max-content;
+    color: var(--color-primary);
+    font-size: var(--font-sm);
+    line-height: 1.3;
   }
 }
 }
@@ -1156,7 +1099,7 @@ onBeforeUnmount(() => {
 
 // 结果列表中的联系电话卡片
 .results-list {
-  .contact-card {
+  .contact-card-legacy {
     margin-top: 24px;
     background: linear-gradient(135deg, var(--tf-color-border-cool-soft) 0%, var(--tf-color-border-cool-muted) 100%);
     border: 1px solid var(--tf-color-border-cool-strong);

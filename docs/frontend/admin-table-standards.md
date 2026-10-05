@@ -188,9 +188,9 @@ const actionWidth = computed(() => getAdaptiveActionColumnWidth(
 
 - PC 端主列表的查看、编辑、删除、审核等常规操作必须使用“图标 + 中文文字”，不得只显示图标让用户猜测功能。
 - 主列表操作按钮统一使用 `.action-buttons` 和 `el-button size="small"`，事件必须使用 `@click.stop`；按钮文字必须完整显示。
-- `.action-buttons` 的排列、间距和不换行由公共样式控制。PC 主列表按钮间距统一为 `8px`，`.actions-column .cell` 通过 `--admin-data-table-action-edge-space` 明确设置左右各 `16px` 安全空间，操作列宽度函数同步预留总计 `32px`，因此左右边距稳定一致。手机端分别收紧为按钮间距 `6px`、左右各 `8px`。按钮内部图标与文字只使用公共 `4px` 间距，公共规则会清除历史 `mr-*` 以及页面图标 `margin`，避免重复间距改变按钮实际宽度。业务页面不得设置 `gap`、`flex-wrap: wrap`、按钮或图标外边距、操作单元格内边距或固定偏移，该覆盖会被统一审计直接拦截。
+- `.action-buttons` 的排列、间距和不换行由公共样式控制。PC 和手机端的操作列按钮间距统一读取公共变量，`.actions-column .cell` 通过 `--admin-data-table-action-edge-space` 设置左右各 `8px` 安全空间，操作列宽度函数同步预留总计 `16px`，保持按钮组紧凑且左右对称。按钮内部图标与文字只使用公共 `4px` 间距，公共规则会清除历史 `mr-*` 以及页面图标 `margin`，避免重复间距改变按钮实际宽度。业务页面不得设置 `gap`、`flex-wrap: wrap`、按钮或图标外边距、操作单元格内边距或固定偏移，该覆盖会被统一审计直接拦截。
 - 审批、到账等位于普通业务字段列中的单个按钮使用 `.table-inline-action`。宽度固定为 `auto`，最小宽度为 `0`，使用全局紧凑变量 `--admin-data-table-inline-action-padding-x`、`--admin-data-table-inline-action-icon-size` 和 `--admin-data-table-inline-action-icon-gap`，不得设置 `width: 100%` 或业务固定宽度。
-- 操作列宽度根据当前权限下实际显示的按钮和按钮文字调用 `getActionColumnMinWidth` 计算。两字标准按钮仍可传数量；出现“页面权限”“取消打款”“设为默认”等三字以上按钮时必须传文字数组，由公共函数分别测量文字、图标、间距、内边距和边框后求和。按钮增减后列宽需要同步变化，禁止依赖固定窄列遮挡文字。
+- 操作列宽度根据当前权限下实际显示的按钮和按钮文字调用 `getActionColumnMinWidth` 计算。紧凑表格按钮按公共 `66px` 基准测量；两字标准按钮仍可传数量；出现“页面权限”“取消打款”“设为默认”等三字以上按钮时必须传文字数组，由公共函数分别测量文字、图标、间距、内边距和边框后求和，并统一预留左右各 `8px` 安全空间。按钮增减后列宽需要同步变化，禁止依赖固定窄列遮挡文字。
 - 同一列的按钮会随记录状态变化时，按钮数量取当前页所有行可能出现的最大值。例如考勤待审批记录比普通记录多一个“审批”按钮，当前页出现待审批记录后操作列必须自动扩展，最后一条待审批记录处理完成后自动缩回。需要防止 Element Plus `fit` 把剩余空间持续分给操作列时，应使用计算值绑定动态 `:width`；不得写死一个始终按最大按钮数显示的固定宽度。
 - 状态型操作列统一在 Vue `computed` 中调用 `getAdaptiveActionColumnWidth(rows, actions)`。`actions` 使用 `{ label, visible }` 描述按钮，`label` 可以是文字或按行返回文字的函数，`visible` 可以是权限布尔值或 `(row) => boolean` 行状态条件。公共函数会扫描当前页，按单行实际可见按钮组合计算最大宽度；页面不得重复维护“是否存在待审批”等私有计数逻辑。旧的布尔值数组继续兼容，但只适合全部为两字标准按钮的页面。
 - 普通业务列使用内容驱动 `:min-width` 并允许 Element Plus `fit` 分配剩余空间；操作列使用公共函数结果绑定动态 `:width`，避免剩余空间让操作列看起来始终是最大尺寸。综合查询是该组合的参考实现。
@@ -373,7 +373,7 @@ const clearSelection = () => {
 3. 可滑动时隐藏可见滚动条，不增加独立的“左右拉动条”。
    该规则同时适用于 PC 和手机；桌面端支持鼠标左键拖动、触控板和 `Shift + 滚轮`，手机端支持原生触摸横移。
 4. 普通页面按业务优先级减少手机端列数，表格宽度保持在页面卡片内。
-5. 手机端正文统一读取 `--mobile-text-table`，表头读取 `--mobile-text-table-header`。当前普通手机均为 `13px`，`375px` 及以下均为 `11px`。表格内的 `span` 必须继承单元格字号，不能被通用正文样式放大；禁止 `clamp(...vw...)`、小于公共字号的像素值或按机型连续缩放字体。
+5. 手机端正文统一读取 `--mobile-text-table`，表头读取 `--mobile-text-table-header`，两个令牌只在 `frontend/src/styles.scss` 定义。当前普通手机均为 `13px`，`375px` 及以下均为 `11px`。`responsive.scss` 不得再次覆盖这两个令牌。表格内的 `span` 必须继承单元格字号，不能被通用正文样式放大；禁止 `clamp(...vw...)`、小于公共字号的像素值或按机型连续缩放字体。
 6. 手机端双击打开详情时，使用两次 `row-click` 模拟；必须忽略按钮、链接和表单控件，防止误触。
 7. 操作按钮统一使用 `.action-buttons` 和 `el-button size="small"`，按钮点击必须添加 `.stop`。
 
@@ -488,12 +488,14 @@ Element Plus 弹窗默认可能通过 Teleport 挂载到 `body`，不再位于�
 - 普通字段、序列号、IMEI、名称、金额、状态和 Apple ID 均完整展示；只有具备完整查看入口的备注等长文本可以省略。
 - 普通字段不得使用 `show-overflow-tooltip` 截断；长说明使用 `.complete-text-column.wrapped-text-column`，明确具有完整查看入口的长文本例外才使用 `.ellipsis-text-column`。
 - 超宽表格只保留 Element Plus 内部一个滚动区域，PC 鼠标拖动和手机触摸横移均可用。
+- 全站页面、报价页根容器和表格滚动容器隐藏可见滚动条，但必须保留原有上下/左右滚动能力；统一实现位于 `frontend/src/styles/components/_scrollbars.scss` 和价格表公共混入，页面不得单独恢复可见滚动条。
 - PC 鼠标拖动后表头、表体和汇总行保持同一 `scrollLeft`，不存在表头与内容错位。
 - PC 主列表操作按钮显示“图标 + 文字”，列宽随可见按钮数量自适应；模态框纯图标按钮具备 `title` 或 tooltip。
 - 操作按钮组在列内居中，左右安全留白一致；备注双击能查看完整内容，Apple ID 示例长度无需双击即可完整显示。
 - `npm run check:tables` 同时验证公共变量、公共样式引用、完整内容、内部横向滚动、表头/汇总同步、全局拖动初始化和页面私有覆盖；任一项失败都会阻止开发启动和生产构建。
 - 分别使用管理员全字段账号和普通权限账号验收；隐藏列、隐藏操作后宽度会重新计算，剩余字段自动铺满且不保留无效空白。
 - 表头全选/半选按当前可选 ID 计算；单项取消、全选后取消一项、跨页保留和清空全部均已验证。
+- 动态勾选列（批量、调货、划拨）不得改变表头高度；公共样式固定表头行和 `.cell` 高度，移动端与 PC 端均读取 `--admin-data-table-header-height`。
 - 复选框和操作按钮使用 `@click.stop`，不会误触发行详情或手机端连续点击操作。
 - 调货/同行批发行使用 `admin-row--peer-transfer`，金额使用公共格式函数且无千分位逗号。
 - 加载状态使用 `TableLoadingRow mode="block"`，无数据使用 `empty-state`。

@@ -2,7 +2,7 @@
 
 ## 公共入口
 
-基础令牌只在 `frontend/src/styles/_variables.scss` 定义。业务页面和公共组件按语义读取 CSS 变量，不直接复制相同的圆角、阴影、间距、字号或层级数字。
+基础令牌只在 `frontend/src/styles/_variables.scss` 定义；移动端语义字号令牌统一在 `frontend/src/styles.scss` 的 `:root` 和 `max-width: 375px` 断点定义。业务页面和公共组件按语义读取 CSS 变量，不直接复制相同的圆角、阴影、间距、字号或层级数字。
 
 | 类型 | 现行令牌 | 用途 |
 | --- | --- | --- |

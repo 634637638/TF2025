@@ -172,8 +172,8 @@ const findings = walk(sourceRoot).flatMap(auditFile)
 if (!/--admin-data-table-action-gap:\s*8px/i.test(adminLayoutSource)) {
   findings.push('src/styles/admin-layout.css PC 表格操作按钮间距必须统一为 8px')
 }
-if (!/--admin-data-table-action-edge-space:\s*16px/i.test(adminLayoutSource)) {
-  findings.push('src/styles/admin-layout.css PC 操作列左右安全间距必须统一为 16px')
+if (!/--admin-data-table-action-edge-space:\s*8px/i.test(adminLayoutSource)) {
+  findings.push('src/styles/admin-layout.css PC 操作列左右安全间距必须统一为 8px')
 }
 if (!/gap:\s*var\(--admin-data-table-action-gap,\s*8px\)\s*!important/i.test(tableStyleSource)) {
   findings.push('src/styles/components/_table.scss 公共操作按钮容器必须强制读取全局按钮间距')
@@ -181,14 +181,14 @@ if (!/gap:\s*var\(--admin-data-table-action-gap,\s*8px\)\s*!important/i.test(tab
 if (!/body\s+:is\([^)]*\.action-buttons[^)]*\)\s+\.el-button\.el-button\.el-button/i.test(tableStyleSource)) {
   findings.push('src/styles/components/_table.scss 表格操作按钮选择器优先级必须高于普通按钮基线，确保内边距与列宽计算一致')
 }
-if (!/padding-inline:\s*var\(--admin-data-table-action-edge-space,\s*16px\)\s*!important/i.test(tableStyleSource)) {
+if (!/padding-inline:\s*var\(--admin-data-table-action-edge-space,\s*8px\)\s*!important/i.test(tableStyleSource)) {
   findings.push('src/styles/components/_table.scss 公共操作列必须读取左右安全间距变量')
 }
 if (!/\.el-button\.table-action i\s*\{[\s\S]*?margin-inline:\s*0\s*!important/i.test(tableStyleSource)) {
   findings.push('src/styles/components/_table.scss 公共操作按钮图标必须清除页面历史外边距')
 }
-if (!/buttonGap\s*=\s*8[\s\S]*?horizontalPadding\s*=\s*32/i.test(tableLayoutSource)) {
-  findings.push('src/utils/table-layout.ts 操作列宽度计算必须与 8px 按钮间距、左右各 16px 安全间距同步')
+if (!/buttonGap\s*=\s*8[\s\S]*?horizontalPadding\s*=\s*16/i.test(tableLayoutSource)) {
+  findings.push('src/utils/table-layout.ts 操作列宽度计算必须与 8px 按钮间距、左右各 8px 安全间距同步')
 }
 if (!/--tf-button-primary-soft-bg:\s*#eff6ff/i.test(buttonStyleSource)) {
   findings.push('src/styles/components/_buttons.scss 必须集中定义实心、浅色和工具按钮语义颜色')

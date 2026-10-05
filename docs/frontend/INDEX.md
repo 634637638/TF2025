@@ -14,6 +14,7 @@
 - [CRUD 与数据刷新](crud-standards.md)
 - [视觉令牌](design-token-standard.md)
 - [客户搜索与姓名保护](customer-search-standard.md)
+- [报价页联系方式](price-contact-standard.md)
 - [数据实时刷新](data-freshness-standard.md)
 - [对话框](dialog-standards.md)
 - [空状态](empty-state-standard.md)

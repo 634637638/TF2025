@@ -323,37 +323,22 @@
             v-if="canViewField('imei')"
             class="sales-edit-imei-field"
           >
-            <label class="sales-edit-field-label">
-              IMEI
-              <span
-                v-if="isNoImeiMode"
-                class="sales-edit-imei-badge"
-              >
-                <i class="fas fa-check-circle" /> 无IMEI
-              </span>
-            </label>
+            <label class="sales-edit-field-label">IMEI</label>
             <div
               class="cursor-pointer"
               :title="isNoImeiMode ? '双击切换回标准模式' : '双击启用无IMEI模式（支持字母+数字）'"
-              @dblclick="emit('toggle-no-imei')"
+              @dblclick="handleImeiDoubleClick(undefined)"
+              @touchend.stop="handleImeiTouchEnd($event, undefined)"
             >
               <el-input
                 v-model="editForm.imei"
-                :placeholder="isNoImeiMode ? '无IMEI模式' : '请输入IMEI'"
+                :class="{ 'tf-imei-input--no-imei': isNoImeiMode }"
+                :placeholder="isNoImeiMode ? '' : '请输入IMEI'"
                 :maxlength="isNoImeiMode ? 30 : 15"
                 class="full-width"
                 :disabled="!canEditField('imei')"
                 @input="value => emit('imei-input', value)"
-              >
-                <template
-                  v-if="isNoImeiMode"
-                  #suffix
-                >
-                  <span class="sales-edit-imei-suffix">
-                    <i class="fas fa-check-circle" /> 无IMEI
-                  </span>
-                </template>
-              </el-input>
+              />
             </div>
             <div
               v-if="isNoImeiMode"
@@ -425,6 +410,7 @@
 import { TIME_FORMATS } from '@/utils/time'
 import { computed } from 'vue'
 import MobileDialog from '@/components/MobileDialog.vue'
+import { useTouchDoubleTap } from '@/composables/useTouchDoubleTap'
 import type { PhoneBrand } from '@/types'
 import type {
   SalesEditForm,
@@ -467,6 +453,11 @@ const visible = computed({
 const editForm = props.form
 const canViewField = (fieldName: string) => props.canViewField(fieldName)
 const canEditField = (fieldName: string) => props.canEditField(fieldName)
+const toggleNoImei = () => emit('toggle-no-imei')
+const {
+  handleTouchEnd: handleImeiTouchEnd,
+  handleDoubleClick: handleImeiDoubleClick
+} = useTouchDoubleTap(toggleNoImei)
 </script>
 
 <style scoped lang="scss" src="../styles/sales-edit-phone-dialog.scss"></style>

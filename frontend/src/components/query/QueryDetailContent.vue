@@ -21,75 +21,75 @@
     </div>
 
     <div class="price-row">
-      <div class="price-item">
-        <span class="price-label">入库价格</span>
+      <div class="price-item tf-inline-field">
+        <span class="price-label">入库价格：</span>
         <span class="price-value green">{{ fieldPermissions.isFieldVisible('query_queryview', 'basic_info.purchase_cost') ? formatPrice(detailItem.价格信息?.purchase_cost) : '-' }}</span>
       </div>
-      <div class="price-item">
-        <span class="price-label">销售价格</span>
+      <div class="price-item tf-inline-field">
+        <span class="price-label">销售价格：</span>
         <span class="price-value highlight">{{ fieldPermissions.isFieldVisible('query_queryview', 'basic_info.sale_price') ? formatPrice(detailItem.价格信息?.sale_price) : '-' }}</span>
       </div>
     </div>
 
     <div class="customer-row">
-      <div class="customer-item">
-        <span class="customer-label">姓名</span>
+      <div class="customer-item tf-inline-field">
+        <span class="customer-label">姓名：</span>
         <span class="customer-value">{{ fieldPermissions.isFieldVisible('query_queryview', 'customer_info.customer_name') ? (detailItem.客户信息?.customer_name || '-') : '-' }}</span>
       </div>
-      <div class="customer-item">
-        <span class="customer-label">电话</span>
+      <div class="customer-item tf-inline-field">
+        <span class="customer-label">电话：</span>
         <span class="customer-value">{{ fieldPermissions.isFieldVisible('query_queryview', 'customer_info.customer_phone') ? (detailItem.客户信息?.customer_phone || '-') : '-' }}</span>
       </div>
     </div>
 
     <div class="code-row">
-      <div class="code-item">
-        <span class="code-label">IMEI</span>
+      <div class="code-item tf-stack-field tf-stack-field--identifier">
+        <span class="code-label">IMEI：</span>
         <span class="code-value">{{ fieldPermissions.isFieldVisible('query_queryview', 'basic_info.imei') ? (detailItem.基本信息?.imei || '-') : '-' }}</span>
       </div>
-      <div class="code-item">
-        <span class="code-label">序列号</span>
+      <div class="code-item tf-stack-field tf-stack-field--identifier">
+        <span class="code-label">序列号：</span>
         <span class="code-value">{{ fieldPermissions.isFieldVisible('query_queryview', 'basic_info.serial_number') ? (detailItem.基本信息?.serial_number || '-') : '-' }}</span>
       </div>
     </div>
 
     <div class="info-grid">
-      <div class="info-item">
-        <span class="info-item-label">供应商</span>
+      <div class="info-item tf-inline-field">
+        <span class="info-item-label">供应商：</span>
         <span class="info-item-value">{{ fieldPermissions.isFieldVisible('query_queryview', 'supplier_info.supplier_name') ? (detailItem.供应商信息?.supplier_name || '-') : '-' }}</span>
       </div>
-      <div class="info-item">
-        <span class="info-item-label">销售店铺</span>
+      <div class="info-item tf-inline-field">
+        <span class="info-item-label">销售店铺：</span>
         <span class="info-item-value">{{ fieldPermissions.isFieldVisible('query_queryview', 'store_info.store_name') ? (detailItem.店铺信息?.store_name || '-') : '-' }}</span>
       </div>
-      <div class="info-item">
-        <span class="info-item-label">入库时间</span>
+      <div class="info-item tf-stack-field">
+        <span class="info-item-label">入库日期：</span>
         <span class="info-item-value">{{ fieldPermissions.isFieldVisible('query_queryview', 'time_info.inventory_time') ? formatDate(detailItem.时间信息?.inventory_time) : '-' }}</span>
       </div>
-      <div class="info-item">
-        <span class="info-item-label">销售时间</span>
+      <div class="info-item tf-stack-field">
+        <span class="info-item-label">销售日期：</span>
         <span class="info-item-value">{{ fieldPermissions.isFieldVisible('query_queryview', 'time_info.sale_time') ? formatDate(detailItem.时间信息?.sale_time) : '-' }}</span>
       </div>
     </div>
 
     <div class="operator-row">
-      <div class="operator-item">
-        <span class="operator-label">入库员</span>
+      <div class="operator-item tf-inline-field">
+        <span class="operator-label">入库员：</span>
         <span class="operator-value">{{ fieldPermissions.isFieldVisible('query_queryview', 'operator_info.inventory_operator_name') ? (detailItem.操作员信息?.inventory_operator_name || '-') : '-' }}</span>
       </div>
-      <div class="operator-item">
-        <span class="operator-label">销售员</span>
+      <div class="operator-item tf-inline-field">
+        <span class="operator-label">销售员：</span>
         <span class="operator-value">{{ fieldPermissions.isFieldVisible('query_queryview', 'operator_info.sale_operator_name') ? (detailItem.操作员信息?.sale_operator_name || '-') : '-' }}</span>
       </div>
     </div>
 
     <div class="apple-id-row">
-      <span class="apple-id-label">Apple ID</span>
+      <span class="apple-id-label">Apple ID：</span>
       <span class="apple-id-value">{{ fieldPermissions.isFieldVisible('query_queryview', 'customer_info.apple_id') ? (detailItem.客户信息?.apple_id || '-') : '-' }}</span>
     </div>
 
     <div class="remark-row">
-      <span class="remark-label">备注</span>
+      <span class="remark-label">备注：</span>
       <span class="remark-value">{{ fieldPermissions.isFieldVisible('query_queryview', 'basic_info.remarks') ? (detailItem.基本信息?.remarks || '-') : '-' }}</span>
     </div>
 
@@ -330,9 +330,6 @@ const getStatusBadgeClass = (status?: string) => {
 
 .price-item {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
 }
 
 .price-label,

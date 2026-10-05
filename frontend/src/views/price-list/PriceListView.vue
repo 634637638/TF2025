@@ -349,7 +349,6 @@
                 align="center"
               />
               <el-table-column
-                v-if="!isMobile"
                 prop="retail_price"
                 label="零售价"
                 :min-width="getPriceListColumnWidth('retail_price')"

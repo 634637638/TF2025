@@ -954,22 +954,22 @@ onMounted(() => {
   }
 
   .product-title {
-    font-size: clamp(13px, 4.5vw, 18px);
+    font-size: var(--mobile-text-body);
     font-weight: 600;
     color: var(--text-primary);
     margin: 0;
     display: flex;
     align-items: center;
-    flex-wrap: nowrap;
-    white-space: nowrap;
-    line-height: 1.3;
+    flex-wrap: wrap;
+    overflow-wrap: anywhere;
+    line-height: 1.35;
     background: linear-gradient(135deg, var(--tf-color-surface) 0%, var(--tf-color-border-form) 100%);
     padding: 12px 16px;
     border-radius: 8px;
 
     .title-item {
       display: inline-block;
-      flex-shrink: 1;
+      overflow-wrap: anywhere;
     }
 
     .title-separator {

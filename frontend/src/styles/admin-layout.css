@@ -102,7 +102,7 @@
   --admin-data-table-wholesale-color: #4f5fc7;
   --admin-data-table-line-height: 1.45;
   --admin-data-table-action-gap: 8px;
-  --admin-data-table-action-edge-space: 16px;
+  --admin-data-table-action-edge-space: 8px;
   --admin-data-table-action-height: 28px;
   --admin-data-table-action-padding-y: 5px;
   --admin-data-table-action-padding-x: 10px;
@@ -877,7 +877,27 @@
   border-bottom: 2px solid var(--admin-data-table-header-border) !important;
 }
 
+/*
+ * 动态列（例如批量销售、调货和划拨的勾选列）出现时，Element Plus
+ * 会根据表头内容重新计算行高。固定公共表头行和 cell 高度，避免
+ * 动态增加勾选列后表头被撑高，手机端与桌面端始终使用同一规范。
+ */
+:is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table) .el-table__header,
+:is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table) .el-table__header tr {
+  height: var(--admin-data-table-header-height);
+}
+
+:is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table) .el-table__header th {
+  min-height: var(--admin-data-table-header-height);
+  max-height: var(--admin-data-table-header-height);
+  vertical-align: middle;
+  overflow: hidden;
+}
+
 :is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table) .el-table__header th .cell {
+  display: flex;
+  align-items: center;
+  height: 100%;
   justify-content: center !important;
   text-align: center !important;
   color: inherit !important;

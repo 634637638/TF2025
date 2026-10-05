@@ -22,12 +22,12 @@
     },
     {
       "file": "src/styles/responsive.scss",
-      "max": 60,
+      "max": 59,
       "reason": "Global mobile breakpoints, safe-area rules and Safari phone fallbacks must win over desktop legacy declarations."
     },
     {
       "file": "src/styles/components/_dialog-actions.scss",
-      "max": 44,
+      "max": 47,
       "reason": "Teleported Element Plus dialog action layout and mobile footer contract."
     },
     {
@@ -47,7 +47,7 @@
     },
     {
       "file": "src/styles/components/_dialog.scss",
-      "max": 128,
+      "max": 130,
       "reason": "Element Plus dialog structure and viewport boundary overrides."
     },
     {
@@ -97,7 +97,7 @@
     },
     {
       "file": "src/views/query/QueryView.vue",
-      "max": 32,
+      "max": 33,
       "reason": "Mobile viewport lock and existing Element Plus table and dialog dimensions."
     },
     {
@@ -117,7 +117,7 @@
     },
     {
       "file": "src/views/inventory/InventoryView.vue",
-      "max": 31,
+      "max": 33,
       "reason": "Inventory teleported dialogs and mobile full-screen stock-in layout override global dialog dimensions."
     },
     {
@@ -127,7 +127,7 @@
     },
     {
       "file": "src/views/sales/styles/sales-view-dialogs.scss",
-      "max": 34,
+      "max": 29,
       "reason": "Sales teleported dialogs override global dialog dimensions, safe-area spacing and surfaces."
     },
     {
@@ -176,11 +176,6 @@
       "reason": "Teleported permission dialogs and controls override the unified dialog and button contracts."
     },
     {
-      "file": "src/views/menu/MenuManagementView.vue",
-      "max": 6,
-      "reason": "Teleported menu dialogs, permission poppers and compact action rows override vendor dimensions."
-    },
-    {
       "file": "src/views/employees/EmployeesView.vue",
       "max": 14,
       "reason": "Employee table state rows and mobile dialog grid override the shared table and dialog contracts."
@@ -227,13 +222,8 @@
     },
     {
       "file": "src/components/ScreenLock.vue",
-      "max": 14,
+      "max": 15,
       "reason": "Security lock overlay must cover every teleported dialog and application layer."
-    },
-    {
-      "file": "src/components/query/QuickSaleModal.vue",
-      "max": 2,
-      "reason": "Quick-sale dialog and input action buttons override teleported and Element Plus dimensions."
     },
     {
       "file": "src/views/attendance/AttendanceView.vue",
@@ -252,17 +242,17 @@
     },
     {
       "file": "src/views/shared/SharedView.vue",
-      "max": 10,
+      "max": 7,
       "reason": "Rich-content tables and mobile teleported editor dialogs override embedded content and vendor dimensions."
     },
     {
       "file": "src/views/H5-admin/page/orders.vue",
-      "max": 7,
+      "max": 4,
       "reason": "H5 order editor mobile form and safe-area footer override desktop dialog layout."
     },
     {
       "file": "src/views/H5-admin/page/banners.vue",
-      "max": 9,
+      "max": 6,
       "reason": "H5 banner editor mobile form and safe-area footer override desktop dialog layout."
     },
     {
@@ -307,12 +297,12 @@
     },
     {
       "file": "src/views/H5-admin/page/config.vue",
-      "max": 7,
+      "max": 4,
       "reason": "H5 configuration editor mobile form and safe-area footer override desktop dialog layout."
     },
     {
       "file": "src/views/H5-admin/page/home-sections.vue",
-      "max": 8,
+      "max": 5,
       "reason": "H5 section editor mobile form, controls and safe-area footer override desktop dialog layout."
     },
     {

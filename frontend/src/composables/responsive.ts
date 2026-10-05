@@ -101,29 +101,63 @@ export const useSafeArea = () => {
 export const useVirtualKeyboard = () => {
   const initialHeight = typeof window === 'undefined' ? 0 : window.innerHeight
   const viewportHeight = ref(initialHeight)
+  const baselineHeight = ref(initialHeight)
   const keyboardHeight = ref(0)
+
+  const currentViewportHeight = () => {
+    if (typeof window === 'undefined') return viewportHeight.value
+    return Math.round(window.visualViewport?.height ?? window.innerHeight)
+  }
+
+  const isEditableElementFocused = () => {
+    if (typeof document === 'undefined') return false
+    const activeElement = document.activeElement
+    return activeElement instanceof HTMLInputElement
+      || activeElement instanceof HTMLTextAreaElement
+      || activeElement instanceof HTMLElement && activeElement.isContentEditable
+  }
 
   const updateKeyboardState = () => {
     if (typeof window === 'undefined') return
 
-    const visualViewportHeight = window.visualViewport?.height ?? window.innerHeight
-    const currentKeyboardHeight = Math.max(0, window.innerHeight - visualViewportHeight)
+    const visualViewportHeight = currentViewportHeight()
+    const currentKeyboardHeight = Math.max(0, baselineHeight.value - visualViewportHeight)
+    const keyboardVisible = isEditableElementFocused() && currentKeyboardHeight > 80
 
     viewportHeight.value = visualViewportHeight
-    keyboardHeight.value = currentKeyboardHeight > 80 ? Math.round(currentKeyboardHeight) : 0
+    keyboardHeight.value = keyboardVisible ? currentKeyboardHeight : 0
+
+    if (!keyboardVisible && visualViewportHeight > baselineHeight.value) {
+      baselineHeight.value = visualViewportHeight
+    }
+  }
+
+  const resetViewportBaseline = () => {
+    window.requestAnimationFrame(() => {
+      baselineHeight.value = currentViewportHeight()
+      keyboardHeight.value = 0
+      viewportHeight.value = baselineHeight.value
+    })
   }
 
   onMounted(() => {
+    baselineHeight.value = currentViewportHeight()
     updateKeyboardState()
     window.visualViewport?.addEventListener('resize', updateKeyboardState, { passive: true })
     window.visualViewport?.addEventListener('scroll', updateKeyboardState, { passive: true })
     window.addEventListener('resize', updateKeyboardState, { passive: true })
+    window.addEventListener('orientationchange', resetViewportBaseline, { passive: true })
+    document.addEventListener('focusin', updateKeyboardState, { passive: true })
+    document.addEventListener('focusout', updateKeyboardState, { passive: true })
   })
 
   onUnmounted(() => {
     window.visualViewport?.removeEventListener('resize', updateKeyboardState)
     window.visualViewport?.removeEventListener('scroll', updateKeyboardState)
     window.removeEventListener('resize', updateKeyboardState)
+    window.removeEventListener('orientationchange', resetViewportBaseline)
+    document.removeEventListener('focusin', updateKeyboardState)
+    document.removeEventListener('focusout', updateKeyboardState)
   })
 
   return {

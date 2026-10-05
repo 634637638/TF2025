@@ -337,23 +337,17 @@
               v-if="canViewField('imei')"
               class="inventory-edit-imei-field"
             >
-              <label class="form-label">
-                IMEI
-                <span
-                  v-if="noImeiMode"
-                  class="text-success text-xs ml-2"
-                >
-                  <i class="fas fa-check-circle" /> 无IMEI模式
-                </span>
-              </label>
+              <label class="form-label">IMEI</label>
               <div
                 class="cursor-pointer"
                 :title="noImeiMode ? '双击切换回标准模式' : '双击启用无IMEI模式（支持字母+数字）'"
-                @dblclick="emit('toggle-no-imei')"
+                @dblclick="handleImeiDoubleClick(undefined)"
+                @touchend.stop="handleImeiTouchEnd($event, undefined)"
               >
                 <el-input
                   v-model="editForm.imei"
-                  :placeholder="noImeiMode ? '无IMEI模式' : '请输入15位IMEI'"
+                  :class="{ 'tf-imei-input--no-imei': noImeiMode }"
+                  :placeholder="noImeiMode ? '' : '请输入15位IMEI'"
                   :maxlength="noImeiMode ? 30 : 15"
                   :disabled="!canEditField('imei')"
                   @input="emit('format-imei')"
@@ -461,6 +455,7 @@
 <script setup lang="ts">
 import { TIME_FORMATS } from '@/utils/time'
 import MobileDialog from '@/components/MobileDialog.vue'
+import { useTouchDoubleTap } from '@/composables/useTouchDoubleTap'
 
 export interface InventoryEditForm {
   brand_id: number | null
@@ -527,4 +522,10 @@ const emit = defineEmits<{
 const handlePublishChange = (value: string | number | boolean) => {
   emit('publish-change', Number(value))
 }
+
+const toggleNoImei = () => emit('toggle-no-imei')
+const {
+  handleTouchEnd: handleImeiTouchEnd,
+  handleDoubleClick: handleImeiDoubleClick
+} = useTouchDoubleTap(toggleNoImei)
 </script>

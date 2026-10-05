@@ -181,18 +181,22 @@
           >
             <div
               style="cursor: pointer; width: 100%;"
-              @dblclick="handleImeiDoubleClick"
-              @touchend.stop="handleImeiTouchEnd"
+              @dblclick="handleImeiDoubleClick(undefined)"
+              @touchend.stop="handleImeiTouchEnd($event, undefined)"
             >
               <el-input
                 v-model="formData.imei"
-                :placeholder="formData.isNoIMEIMode ? '已启用无IMEI模式' : '请输入15位IMEI号'"
+                :class="{ 'tf-imei-input--no-imei': formData.isNoIMEIMode }"
+                :placeholder="formData.isNoIMEIMode ? '' : '请输入15位IMEI号'"
                 :maxlength="formData.isNoIMEIMode ? 30 : 15"
                 clearable
                 @input="formatIMEI"
-              >
-                <template #suffix>
-                  <i class="fas fa-barcode imei-icon" />
+                >
+                  <template #suffix>
+                  <i
+                    v-if="!formData.isNoIMEIMode"
+                    class="fas fa-barcode imei-icon"
+                  />
                 </template>
               </el-input>
             </div>
@@ -495,6 +499,7 @@ import CustomerNameLockInput from '@/components/common/CustomerNameLockInput.vue
 import CustomerSearchDropdown from '@/components/common/CustomerSearchDropdown.vue'
 import { PaymentChannelSelect, PaymentMethodSelect } from '@/components/payment'
 import { useMobile } from '@/composables/mobile'
+import { useTouchDoubleTap } from '@/composables/useTouchDoubleTap'
 import { onMounted, onUnmounted } from 'vue'
 import { isValidMobilePhone, normalizeAppleId, normalizePersonName, normalizePhoneDigits } from '@/utils/security'
 import type { SuccessEmits, UpdateModelValueEmits } from '@/types'
@@ -839,32 +844,10 @@ const enableNoIMEIMode = () => {
   }
 }
 
-// 移动端不可靠地产生 dblclick，用同一输入区域的两次触摸模拟双击。
-let lastImeiTouchAt = 0
-let suppressNativeImeiDoubleClickUntil = 0
-
-const handleImeiTouchEnd = (event: TouchEvent) => {
-  const target = event.target as HTMLElement | null
-  if (target?.closest('button, .el-button, .el-input__clear, .el-input__suffix')) {
-    lastImeiTouchAt = 0
-    return
-  }
-
-  const now = Date.now()
-  if (now - lastImeiTouchAt <= 400) {
-    lastImeiTouchAt = 0
-    suppressNativeImeiDoubleClickUntil = now + 500
-    enableNoIMEIMode()
-    return
-  }
-
-  lastImeiTouchAt = now
-}
-
-const handleImeiDoubleClick = () => {
-  if (Date.now() < suppressNativeImeiDoubleClickUntil) return
-  enableNoIMEIMode()
-}
+const {
+  handleTouchEnd: handleImeiTouchEnd,
+  handleDoubleClick: handleImeiDoubleClick
+} = useTouchDoubleTap(enableNoIMEIMode)
 
 // 格式化序列号 - 只允许字母和数字，转大写，最多18位
 const formatSerialNumber = () => {

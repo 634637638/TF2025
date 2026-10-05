@@ -200,11 +200,12 @@
               <div
                 class="cursor-pointer"
                 @dblclick="handleImeiDoubleClick(phone)"
-                @touchend.stop="handleImeiTouchEnd(phone, $event)"
+                @touchend.stop="handleImeiTouchEnd($event, phone)"
               >
                 <el-input
                   v-model="phone.imei"
-                  :placeholder="phone.isNoIMEIMode ? '无IMEI' : 'IMEI'"
+                  :class="{ 'tf-imei-input--no-imei': phone.isNoIMEIMode }"
+                  :placeholder="phone.isNoIMEIMode ? '' : 'IMEI'"
                   :maxlength="phone.isNoIMEIMode ? 30 : 15"
                   size="small"
                   @input="formatImei(phone)"
@@ -420,25 +421,20 @@
                 <div
                   class="long-input-field imei-field"
                   @dblclick="handleImeiDoubleClick(phone)"
-                  @touchend.stop="handleImeiTouchEnd(phone, $event)"
+                  @touchend.stop="handleImeiTouchEnd($event, phone)"
                 >
                   <el-input
                     v-model="phone.imei"
-                    :placeholder="phone.isNoIMEIMode ? '已启用无IMEI模式，允许字母+数字' : '请输入15位IMEI号（双击启用无IMEI模式）'"
+                    :class="{ 'tf-imei-input--no-imei': phone.isNoIMEIMode }"
+                    :placeholder="phone.isNoIMEIMode ? '' : '请输入15位IMEI号（双击启用无IMEI模式）'"
                     :maxlength="phone.isNoIMEIMode ? 30 : 15"
                     clearable
                     @input="formatImei(phone)"
                     @blur="validateImeiOnBlur(phone)"
                   >
                     <template #suffix>
-                      <span
-                        v-if="phone.isNoIMEIMode"
-                        class="text-xs text-success"
-                      >
-                        <i class="fas fa-check-circle" /> 无IMEI
-                      </span>
                       <el-button
-                        v-else-if="isMobile"
+                        v-if="isMobile"
                         link
                         type="primary"
                         title="扫码识别IMEI"
@@ -520,6 +516,7 @@
 <script setup lang="ts">
 import type { Brand, Color, MemoryOption as Memory, Model } from '@/types'
 import type { StockInFormModel, StockInPhoneItem } from './types'
+import { useTouchDoubleTap } from '@/composables/useTouchDoubleTap'
 
 interface Props {
   isMobile: boolean
@@ -559,36 +556,10 @@ const getRowClassName = ({ row }: { row: StockInPhoneItem }) => (
   props.hasRowError(row) ? 'row-error' : ''
 )
 
-let lastImeiTouchPhone: StockInPhoneItem | null = null
-let lastImeiTouchAt = 0
-let suppressNativeImeiDoubleClickUntil = 0
-
-// 移动端不可靠地产生 dblclick，用同一 IMEI 输入区域的两次触摸模拟双击。
-const handleImeiTouchEnd = (phone: StockInPhoneItem, event: TouchEvent) => {
-  const target = event.target as HTMLElement | null
-  if (target?.closest('button, .el-button, .el-input__clear, .el-input__suffix')) {
-    lastImeiTouchPhone = null
-    lastImeiTouchAt = 0
-    return
-  }
-
-  const now = Date.now()
-  if (lastImeiTouchPhone === phone && now - lastImeiTouchAt <= 400) {
-    lastImeiTouchPhone = null
-    lastImeiTouchAt = 0
-    suppressNativeImeiDoubleClickUntil = now + 500
-    props.enableNoImeiMode(phone)
-    return
-  }
-
-  lastImeiTouchPhone = phone
-  lastImeiTouchAt = now
-}
-
-const handleImeiDoubleClick = (phone: StockInPhoneItem) => {
-  if (Date.now() < suppressNativeImeiDoubleClickUntil) return
-  props.enableNoImeiMode(phone)
-}
+const {
+  handleTouchEnd: handleImeiTouchEnd,
+  handleDoubleClick: handleImeiDoubleClick
+} = useTouchDoubleTap<StockInPhoneItem>(phone => props.enableNoImeiMode(phone))
 </script>
 
 <style lang="scss" scoped>

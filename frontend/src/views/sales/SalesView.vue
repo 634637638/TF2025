@@ -1039,8 +1039,9 @@ const buildAvailablePhoneParams = (includePagination = true) => {
     params.page_size = pagination.page_size || 100
   }
 
+  const isAutoOpenSaleRoute = String(route.query.auto_open_sale || '') === '1'
   const routePhoneId = String(route.query.sale_phone_id || '').trim()
-  if (routePhoneId) {
+  if (isAutoOpenSaleRoute && routePhoneId) {
     params.phone_id = routePhoneId
     return params
   }
@@ -1104,27 +1105,35 @@ const getRouteAutoOpenSalePhoneId = () => {
   return autoOpenSale && routePhoneId ? routePhoneId : readStoredAutoOpenSalePhoneId()
 }
 
-const clearRouteAutoOpenSaleQuery = () => {
+const clearRouteAutoOpenSaleQuery = async () => {
   clearStoredAutoOpenSalePhoneId()
 
   const nextQuery = { ...route.query }
-  delete nextQuery.sale_phone_id
-  delete nextQuery.auto_open_sale
+  const oneTimeQueryKeys = [
+    'sale_phone_id',
+    'auto_open_sale',
+    'imei',
+    'preorder_id',
+    'customer_id',
+    'customer_name',
+    'customer_phone',
+    'expected_price',
+    'advance_payment'
+  ]
+  const hasOneTimeQuery = oneTimeQueryKeys.some(key => key in nextQuery)
 
-  const queryParams = new URLSearchParams()
-  Object.entries(nextQuery).forEach(([key, value]) => {
-    if (Array.isArray(value)) {
-      value.forEach(item => {
-        if (item !== null && item !== undefined) queryParams.append(key, String(item))
-      })
-    } else if (value !== null && value !== undefined) {
-      queryParams.set(key, String(value))
-    }
+  oneTimeQueryKeys.forEach(key => {
+    delete nextQuery[key]
   })
 
-  const queryString = queryParams.toString()
-  const cleanUrl = `${route.path}${queryString ? `?${queryString}` : ''}${route.hash || ''}`
-  window.history.replaceState(window.history.state, '', cleanUrl)
+  if (hasOneTimeQuery) {
+    // 必须通过 Router 更新响应式 route.query，不能只改浏览器地址栏。
+    await router.replace({
+      path: route.path,
+      query: nextQuery,
+      hash: route.hash
+    })
+  }
 }
 
 const handleRouteAutoOpenSale = async (records: Phone[] = []) => {
@@ -1470,19 +1479,8 @@ const loadAvailablePhones = async (_bustCache = false, silentError = false, show
             expected_price: String(route.query.expected_price || ''),
             advance_payment: String(route.query.advance_payment || '')
           })
-          // 清理URL参数
-          const nextQuery = { ...route.query }
-          delete nextQuery.imei
-          delete nextQuery.preorder_id
-          delete nextQuery.sale_phone_id
-          delete nextQuery.auto_open_sale
-          delete nextQuery.customer_id
-          delete nextQuery.customer_name
-          delete nextQuery.customer_phone
-          delete nextQuery.expected_price
-          delete nextQuery.advance_payment
-          clearStoredAutoOpenSalePhoneId()
-          router.replace({ path: route.path, query: nextQuery })
+          // 清理一次性预定交付参数，避免后续刷新继续只请求这一台设备。
+          await clearRouteAutoOpenSaleQuery()
         }
       }
       // 处理原有的通过phone_id打开销售的方式
@@ -1910,7 +1908,7 @@ const deletePhone = async (phone: any) => {
 }
 
 // 重置筛选
-const resetFilters = () => {
+const resetFilters = async () => {
   Object.assign(filters, {
     supplier_id: '',
     brand: '',
@@ -1925,11 +1923,13 @@ const resetFilters = () => {
     end_date: '',
     search: ''
   })
-  loadAvailablePhones()
+  await clearRouteAutoOpenSaleQuery()
+  await loadAvailablePhones()
 }
 
 // 刷新数据 - 使用统一的 composable
 const handleRefresh = async () => {
+  await clearRouteAutoOpenSaleQuery()
   await refresh(async () => {
     await Promise.all([
       loadAvailablePhones(true, true, false),

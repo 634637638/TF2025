@@ -5,7 +5,7 @@
         :data="loading ? [] : phones"
         border
         stripe
-        class="data-table devices-table sales-data-table"
+        class="data-table admin-data-table devices-table"
         table-layout="fixed"
         :fit="true"
         row-key="id"

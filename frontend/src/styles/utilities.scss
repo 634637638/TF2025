@@ -183,6 +183,81 @@
 .whitespace-nowrap { white-space: nowrap; }
 .whitespace-normal { white-space: normal; }
 
+// 标签和值同一行的紧凑信息字段，适用于移动端小卡片。
+.tf-inline-field {
+  display: flex;
+  align-items: baseline;
+  gap: var(--tf-space-2);
+  min-width: 0;
+}
+
+.tf-inline-field > :first-child {
+  flex: 0 0 auto;
+  margin-block: 0;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.tf-inline-field > :last-child {
+  min-width: 0;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  word-break: normal;
+}
+
+// 长标识和日期使用上下结构，避免窄屏两列卡片横向空间不足。
+.tf-stack-field {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--tf-space-1);
+  min-width: 0;
+  text-align: center;
+}
+
+.tf-stack-field > :first-child {
+  flex: 0 0 auto;
+  margin-block: 0;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+
+.tf-stack-field > :last-child {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  font-size: var(--font-sm);
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  word-break: normal;
+}
+
+.tf-stack-field.tf-stack-field--identifier > :last-child {
+  color: var(--tf-color-purple-800);
+  font-weight: 700;
+}
+
+// 无 IMEI 模式只通过统一提示色表达状态，不在输入框内追加文字徽章，避免占用标识内容的宽度。
+.tf-imei-input--no-imei .el-input__inner {
+  color: var(--color-warning);
+}
+
+.tf-imei-input--no-imei .el-input__inner::placeholder {
+  color: var(--color-warning);
+  opacity: 0.8;
+}
+
+/* 360px 级两列小卡片的长字段：保持单行并压缩字号，优先完整展示日期和 IMEI。 */
+@media (max-width: 375px) {
+  .tf-stack-field > :last-child {
+    font-size: var(--font-xs);
+  }
+}
+
 // ==================== 显示工具类 ====================
 .block { display: block; }
 .inline-block { display: inline-block; }

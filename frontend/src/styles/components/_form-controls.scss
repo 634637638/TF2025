@@ -62,6 +62,18 @@ html body :is(
   min-height: 0;
 }
 
+/* 浏览器自动填充不能覆盖统一控件背景，避免安卓/Chrome 选中保存信息后出现浅蓝色内阴影。 */
+html body input:-webkit-autofill,
+html body input:-webkit-autofill:hover,
+html body input:-webkit-autofill:focus,
+html body input:-webkit-autofill:active {
+  -webkit-text-fill-color: var(--el-text-color-primary, var(--text-primary));
+  -webkit-box-shadow: var(--tf-shadow-autofill);
+  box-shadow: var(--tf-shadow-autofill);
+  transition: var(--tf-transition-autofill);
+  caret-color: var(--el-text-color-primary, var(--text-primary));
+}
+
 /* 全局表单控件行为：数字输入不显示步进按钮，多行文本默认固定高度并允许手动向下拉伸。 */
 :root {
   --tf-textarea-compact-height: 60px;

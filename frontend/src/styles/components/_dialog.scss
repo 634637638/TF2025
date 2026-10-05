@@ -235,6 +235,17 @@
   max-height: calc(100vh - 220px) !important;
 }
 
+/* Dynamic viewport support for Android Chrome and iOS Safari address bars. */
+@supports (height: 100dvh) {
+  .el-dialog:not(.is-fullscreen) {
+    max-height: calc(100dvh - 32px) !important;
+  }
+
+  .el-dialog__body {
+    max-height: calc(100dvh - 220px) !important;
+  }
+}
+
 .el-dialog__footer,
 .el-message-box__btns {
   display: flex !important;

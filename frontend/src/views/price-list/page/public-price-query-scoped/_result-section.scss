@@ -1,3 +1,5 @@
+@use "./price-table" as price-table;
+
 .results-section {
   padding: 10px 20px 40px;
   min-height: 400px;
@@ -230,132 +232,9 @@
     }
   }
 
-  // 表格包装器
+  // 批发报价与销售报价共用同一套 360px 基准表格布局。
   .table-wrapper {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-
-    // 移动端负边距让表格靠边
-    @media (max-width: 767px) {
-      margin: 0;
-      width: 100%;
-      // 允许表格内部水平滚动
-      overflow-x: auto;
-      overflow-y: hidden;
-      // 隐藏滚动条
-      -ms-overflow-style: none;
-      scrollbar-width: none;
-
-      &::-webkit-scrollbar {
-        display: none;
-      }
-    }
-
-    :deep(.el-table) {
-      font-size: 13px;
-      // 确保表格不会超出容器
-      width: 100%;
-      table-layout: auto;
-
-      // 移动端去除表格边框圆角
-      @media (max-width: 767px) {
-        border-radius: 0;
-        border-left: none;
-        border-right: none;
-        // 表格自动宽度，允许超出容器
-        width: auto;
-        min-width: 100%;
-        table-layout: auto;
-      }
-
-      .el-table__header th {
-        padding: 8px 5px;
-        font-size: 13px;
-
-        @media (max-width: 767px) {
-          padding: 8px 4px;
-          font-size: 12px;
-        }
-
-        @media (max-width: 479px) {
-          padding: 6px 3px;
-          font-size: 11px;
-        }
-
-        @media (max-width: 380px) {
-          padding: 5px 2px;
-          font-size: 10px;
-        }
-      }
-
-      .el-table__body td {
-        padding: 8px 5px;
-
-        @media (max-width: 767px) {
-          padding: 8px 4px;
-        }
-
-        @media (max-width: 479px) {
-          padding: 6px 3px;
-        }
-
-        @media (max-width: 380px) {
-          padding: 5px 2px;
-        }
-      }
-
-      // 移动端优化
-      @media (max-width: 767px) {
-        font-size: 12px;
-
-        .el-table__body-wrapper {
-          overflow-x: visible;
-        }
-
-        .el-table__cell {
-          padding: 8px 4px;
-          // 保持正常显示，不换行
-          overflow: visible;
-          word-break: normal;
-          white-space: nowrap;
-        }
-      }
-
-      @media (max-width: 479px) {
-        font-size: 11px;
-
-        .el-table__cell {
-          padding: 6px 3px;
-          overflow: visible;
-          word-break: normal;
-          white-space: nowrap;
-        }
-      }
-
-      @media (max-width: 380px) {
-        font-size: 10px;
-
-        .el-table__cell {
-          padding: 5px 2px;
-          overflow: visible;
-          word-break: normal;
-          white-space: nowrap;
-        }
-      }
-
-      // 确保表格列宽度合理分配
-      .el-table__header-wrapper,
-      .el-table__body-wrapper {
-        width: 100%;
-      }
-
-      // 单元格内容防止溢出
-      .cell {
-        overflow: visible;
-        word-break: normal;
-        white-space: nowrap;
-      }
-    }
+    @include price-table.responsive-price-table;
   }
 
   .price {

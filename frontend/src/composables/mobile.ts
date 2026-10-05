@@ -545,6 +545,7 @@ export function useMobileGestures(
  * 移动端视口管理 Composable
  */
 export function useMobileViewport() {
+  const initialViewportHeight = getViewportDimensions().height
   const viewportState = reactive({
     width: getViewportDimensions().width,
     height: getViewportDimensions().height,
@@ -560,6 +561,20 @@ export function useMobileViewport() {
     keyboardHeight: 0,
     orientation: 'portrait' as 'portrait' | 'landscape'
   })
+  const viewportBaselineHeight = ref(initialViewportHeight)
+
+  const currentVisualViewportHeight = () => {
+    if (typeof window === 'undefined') return viewportState.height
+    return Math.round(window.visualViewport?.height || window.innerHeight || viewportState.height)
+  }
+
+  const isEditableElementFocused = () => {
+    if (typeof document === 'undefined') return false
+    const activeElement = document.activeElement
+    return activeElement instanceof HTMLInputElement
+      || activeElement instanceof HTMLTextAreaElement
+      || activeElement instanceof HTMLElement && activeElement.isContentEditable
+  }
 
   // 获取安全区域
   const getSafeArea = () => {
@@ -600,14 +615,25 @@ export function useMobileViewport() {
     }
   }
 
+  const handleVisualViewportChange = () => {
+    updateVisualViewport()
+    detectKeyboard()
+  }
+
   // 检测键盘状态
   const detectKeyboard = () => {
-    const initialHeight = getViewportDimensions().height
-    const currentHeight = getViewportDimensions().height
-    const keyboardHeight = initialHeight - currentHeight
+    const currentHeight = currentVisualViewportHeight()
+    const baselineHeight = viewportBaselineHeight.value || currentHeight
+    const keyboardHeight = Math.max(0, baselineHeight - currentHeight)
+    const keyboardVisible = isEditableElementFocused() && keyboardHeight > 80
 
-    viewportState.isKeyboardVisible = keyboardHeight > 150
-    viewportState.keyboardHeight = Math.max(0, keyboardHeight)
+    viewportState.isKeyboardVisible = keyboardVisible
+    viewportState.keyboardHeight = keyboardVisible ? keyboardHeight : 0
+
+    // 地址栏收起、旋转或键盘关闭后，用新的完整视口作为下一次基线。
+    if (!keyboardVisible && currentHeight > viewportBaselineHeight.value) {
+      viewportBaselineHeight.value = currentHeight
+    }
   }
 
   // 防抖处理
@@ -622,7 +648,13 @@ export function useMobileViewport() {
     }, 100)
   }
 
+  const handleOrientationChange = () => {
+    viewportBaselineHeight.value = currentVisualViewportHeight()
+    handleResize()
+  }
+
   onMounted(() => {
+    viewportBaselineHeight.value = currentVisualViewportHeight()
     updateViewportSize()
     updateVisualViewport()
     getSafeArea()
@@ -630,8 +662,8 @@ export function useMobileViewport() {
     window.addEventListener('resize', handleResize)
 
     if ('visualViewport' in window) {
-      window.visualViewport?.addEventListener('resize', updateVisualViewport)
-      window.visualViewport?.addEventListener('scroll', updateVisualViewport)
+      window.visualViewport?.addEventListener('resize', handleVisualViewportChange)
+      window.visualViewport?.addEventListener('scroll', handleVisualViewportChange)
     }
 
     // 监听焦点事件检测键盘
@@ -639,20 +671,20 @@ export function useMobileViewport() {
     document.addEventListener('focusout', detectKeyboard)
 
     // 监听方向变化
-    window.addEventListener('orientationchange', handleResize)
+    window.addEventListener('orientationchange', handleOrientationChange)
   })
 
   onUnmounted(() => {
     window.removeEventListener('resize', handleResize)
 
     if ('visualViewport' in window) {
-      window.visualViewport?.removeEventListener('resize', updateVisualViewport)
-      window.visualViewport?.removeEventListener('scroll', updateVisualViewport)
+      window.visualViewport?.removeEventListener('resize', handleVisualViewportChange)
+      window.visualViewport?.removeEventListener('scroll', handleVisualViewportChange)
     }
 
     document.removeEventListener('focusin', detectKeyboard)
     document.removeEventListener('focusout', detectKeyboard)
-    window.removeEventListener('orientationchange', handleResize)
+    window.removeEventListener('orientationchange', handleOrientationChange)
     clearTimeout(resizeTimer)
   })
 

@@ -20,6 +20,8 @@
 html {
   font-size: 14px;
   -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 /* 移动端触摸优化 */
