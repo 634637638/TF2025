@@ -8,6 +8,7 @@ const tableStyleSource = readFileSync(join(sourceRoot, 'styles/components/_table
 const tableLayoutSource = readFileSync(join(sourceRoot, 'utils/table-layout.ts'), 'utf8')
 const messageBoxSource = readFileSync(join(sourceRoot, 'utils/message-box.ts'), 'utf8')
 const buttonStyleSource = readFileSync(join(sourceRoot, 'styles/components/_buttons.scss'), 'utf8')
+const standardsViewSource = readFileSync(join(sourceRoot, 'views/standards/StandardsAuditView.vue'), 'utf8')
 const checkedExtensions = new Set(['.vue', '.scss', '.css'])
 const publicLayoutFiles = new Set([
   'src/styles/admin-layout.css',
@@ -169,6 +170,31 @@ function auditFile(file) {
 
 const findings = walk(sourceRoot).flatMap(auditFile)
 
+// :not() 会累加选择器优先级，基线筛选条件必须放入 :where()，避免盖住语义按钮。
+const baseButtonSelectors = [
+  ".el-button:where(:not([class*='el-button--']):not(.is-text):not(.is-link):not([link]))",
+  '.el-button:where(:not(.is-circle):not(.is-text):not(.is-link))'
+]
+for (const selector of baseButtonSelectors) {
+  if (!buttonStyleSource.includes(selector)) {
+    findings.push('src/styles/components/_buttons.scss 默认按钮基线必须用 :where() 降低优先级，不能覆盖公共语义按钮的颜色和尺寸')
+  }
+}
+
+const standardsButtonRequirements = [
+  [/card-actions\s+tf-actions--fit-row/, '规范与审计标杆页卡片操作必须使用 .card-actions.tf-actions--fit-row'],
+  [/class=["'][^"']*tf-button--view/, '规范与审计标杆页查看按钮必须声明 tf-button--view 语义'],
+  [/class=["'][^"']*tf-button--save/, '规范与审计标杆页主操作预览必须声明 tf-button--save 语义'],
+  [/class=["'][^"']*tf-button--complete/, '规范与审计标杆页完成预览必须声明 tf-button--complete 语义'],
+  [/class=["'][^"']*tf-button--delete/, '规范与审计标杆页删除预览必须声明 tf-button--delete 语义']
+]
+for (const [pattern, message] of standardsButtonRequirements) {
+  if (!pattern.test(standardsViewSource)) findings.push(`src/views/standards/StandardsAuditView.vue ${message}`)
+}
+if (/standard-card-actions|mobile-card-actions/.test(standardsViewSource)) {
+  findings.push('src/views/standards/StandardsAuditView.vue 不得新增重复的卡片操作布局 class')
+}
+
 if (!/--admin-data-table-action-gap:\s*8px/i.test(adminLayoutSource)) {
   findings.push('src/styles/admin-layout.css PC 表格操作按钮间距必须统一为 8px')
 }
@@ -193,11 +219,20 @@ if (!/buttonGap\s*=\s*8[\s\S]*?horizontalPadding\s*=\s*16/i.test(tableLayoutSour
 if (!/--tf-button-primary-soft-bg:\s*#eff6ff/i.test(buttonStyleSource)) {
   findings.push('src/styles/components/_buttons.scss 必须集中定义实心、浅色和工具按钮语义颜色')
 }
-if (!/\.el-button\.is-circle:not\(\.is-text\):not\(\.is-link\)\s*\{[\s\S]*?width:\s*var\(--tf-button-height\)\s*!important[\s\S]*?height:\s*var\(--tf-button-height\)\s*!important[\s\S]*?border-radius:\s*50%\s*!important/i.test(buttonStyleSource)) {
+if (!/\.el-button\.is-circle:not\(\.is-text\):not\(\.is-link\)\s*\{[\s\S]*?width:\s*var\(--tf-button-height\)\s*!important[\s\S]*?height:\s*var\(--tf-button-height\)\s*!important[\s\S]*?border-radius:\s*(?:50%|var\(--tf-radius-full\))\s*!important/i.test(buttonStyleSource)) {
   findings.push('src/styles/components/_buttons.scss 圆形图标按钮必须使用全局按钮高度作为等宽直径')
 }
 if (!/\.el-button\.el-button--small\.is-circle:not\(\.is-text\):not\(\.is-link\)\s*\{[\s\S]*?width:\s*var\(--tf-button-height-small\)\s*!important[\s\S]*?height:\s*var\(--tf-button-height-small\)\s*!important/i.test(buttonStyleSource)) {
   findings.push('src/styles/components/_buttons.scss 小号圆形图标按钮必须跟随全局小按钮尺寸')
+}
+if (!/tf-button--dialog-close\s*\{[\s\S]*?--el-button-bg-color:\s*var\(--tf-dialog-close-bg\)\s*!important[\s\S]*?--el-button-text-color:\s*var\(--tf-dialog-header-text\)\s*!important/i.test(buttonStyleSource)) {
+  findings.push('src/styles/components/_buttons.scss 关闭按钮必须同步覆盖 Element Plus 按钮变量，避免手机端出现白色按钮底')
+}
+if (!/<el-button[\s\S]*?\btext\b[\s\S]*?\bcircle\b[\s\S]*?class="[^"]*mobile-dialog-sheet-close[^"]*tf-button--dialog-close[^"]*"/i.test(readFileSync(join(sourceRoot, 'components/MobileDialog.vue'), 'utf8'))) {
+  findings.push('src/components/MobileDialog.vue 手机端关闭按钮必须使用 Element Plus text + circle 语义，避免普通白色矩形按钮')
+}
+if (!/tf-button--dialog-close svg\s*\{[\s\S]*?width:\s*var\(--tf-dialog-close-icon-size\)\s*!important[\s\S]*?height:\s*var\(--tf-dialog-close-icon-size\)\s*!important/i.test(buttonStyleSource)) {
+  findings.push('src/styles/components/_buttons.scss 关闭按钮 SVG 必须使用统一图标尺寸')
 }
 if (/--admin-action-[\w-]+:\s*(?:#[0-9a-f]{3,8}\b|rgba?\(|hsla?\()/i.test(adminLayoutSource)) {
   findings.push('src/styles/admin-layout.css 表格操作颜色不得维护第二套色值，必须引用 --tf-button-* 公共变量')

@@ -41,6 +41,14 @@
               <el-button
                 type="info"
                 plain
+                @click="openMenuWidthModal"
+              >
+                <i class="fas fa-ruler-horizontal" />
+                <span>设置</span>
+              </el-button>
+              <el-button
+                type="info"
+                plain
                 :loading="refreshing"
                 :disabled="refreshing"
                 @click="refreshData"
@@ -193,95 +201,6 @@
           </div>
         </UnifiedSearchPanel>
 
-        <!-- 操作工具栏 -->
-        <div class="toolbar-section admin-panel">
-          <div class="toolbar-left">
-            <div class="btn-group">
-              <el-button
-                type="primary"
-                plain
-                @click="expandAll"
-              >
-                <i class="fas fa-expand-alt" />
-                展开全部
-              </el-button>
-              <el-button
-                type="primary"
-                plain
-                @click="collapseAll"
-              >
-                <i class="fas fa-compress-alt" />
-                折叠全部
-              </el-button>
-            </div>
-          </div>
-          <div class="toolbar-right">
-            <!-- PC和手机端菜单宽度设置 -->
-            <div class="menu-widths-setting">
-              <div class="setting-header">
-                <div class="setting-title">
-                  <i class="fas fa-sliders-h" />
-                  <span>菜单宽度设置</span>
-                </div>
-                <el-button
-                  type="success"
-                  size="small"
-                  :disabled="isWidthLoading"
-                  @click="applyBothMenuWidths"
-                >
-                  <InlineLoading
-                    v-if="isWidthLoading"
-                    text="保存中..."
-                    size="small"
-                    variant="inherit"
-                  />
-                  <template v-else>
-                    <i class="fas fa-check" />
-                    保存设置
-                  </template>
-                </el-button>
-              </div>
-              <div class="width-controls">
-                <!-- PC端宽度设置 -->
-                <div class="width-control pc-width">
-                  <label class="inline-width-label">
-                    <i class="fas fa-desktop" />
-                    <span>PC端</span>
-                  </label>
-                  <div class="range-input">
-                    <el-input-number
-                      v-model.number="pcMenuWidth"
-                      :min="100"
-                      :max="500"
-                      :controls="false"
-                      class="form-range"
-                      placeholder="请输入宽度"
-                    />
-                  </div>
-                </div>
-
-                <!-- 手机端宽度设置 -->
-                <div class="width-control mobile-width">
-                  <label class="inline-width-label">
-                    <i class="fas fa-mobile-alt" />
-                    <span>手机端</span>
-                  </label>
-                  <div class="range-input">
-                    <el-input-number
-                      v-model.number="mobileMenuWidth"
-                      :min="100"
-                      :max="500"
-                      :controls="false"
-                      class="form-range"
-                      placeholder="请输入宽度"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
         <!-- 菜单数据加载状态 -->
         <TableLoadingRow
           v-if="loading"
@@ -339,15 +258,15 @@
                   :style="{ paddingLeft: `${row.depth * 22}px` }"
                 >
                   <div class="menu-text">
-                    <button
-                      v-if="row.children?.length"
+                    <el-button
+                      v-if="row.hasChildren"
                       class="expand-btn"
-                      type="button"
+                      native-type="button"
                       :title="isMenuExpanded(row.id) ? '折叠子菜单' : '展开子菜单'"
                       @click.stop="toggleMenuExpansion(row.id)"
                     >
                       <i :class="isMenuExpanded(row.id) ? 'fas fa-chevron-down' : 'fas fa-chevron-right'" />
-                    </button>
+                    </el-button>
                     <span
                       v-else
                       class="expand-placeholder"
@@ -726,6 +645,87 @@
             </div>
           </template>
         </MobileDialog>
+
+        <!-- 菜单宽度设置模态框 -->
+        <MobileDialog
+          v-model="showMenuWidthModal"
+          title="菜单宽度设置"
+          width="520px"
+          :close-on-click-modal="false"
+          :show-default-footer="false"
+          dialog-class="menu-width-dialog"
+          destroy-on-close
+          @close="closeMenuWidthModal"
+          @cancel="closeMenuWidthModal"
+        >
+          <el-form
+            label-position="top"
+            class="tf-dialog-form menu-width-form"
+          >
+            <p class="menu-width-form__hint">
+              分别设置桌面端和手机端侧边菜单的显示宽度，范围 100-500px。
+            </p>
+            <el-row :gutter="16">
+              <el-col :xs="24" :sm="12">
+                <el-form-item label="PC端">
+                  <el-input-number
+                    v-model.number="pcMenuWidth"
+                    :min="100"
+                    :max="500"
+                    :controls="false"
+                    class="menu-width-form__input"
+                  >
+                    <template #suffix>px</template>
+                  </el-input-number>
+                </el-form-item>
+              </el-col>
+              <el-col :xs="24" :sm="12">
+                <el-form-item label="手机端">
+                  <el-input-number
+                    v-model.number="mobileMenuWidth"
+                    :min="100"
+                    :max="500"
+                    :controls="false"
+                    class="menu-width-form__input"
+                  >
+                    <template #suffix>px</template>
+                  </el-input-number>
+                </el-form-item>
+              </el-col>
+            </el-row>
+          </el-form>
+
+          <template #footer>
+            <div class="tf-dialog-actions">
+              <el-button
+                type="info"
+                native-type="button"
+                :disabled="isWidthLoading"
+                @click="closeMenuWidthModal"
+              >
+                <i class="fas fa-times" />
+                取消
+              </el-button>
+              <el-button
+                type="primary"
+                native-type="button"
+                :disabled="isWidthLoading"
+                @click="applyBothMenuWidths"
+              >
+                <InlineLoading
+                  v-if="isWidthLoading"
+                  text="保存中..."
+                  size="small"
+                  variant="inherit"
+                />
+                <template v-else>
+                  <i class="fas fa-save" />
+                  保存
+                </template>
+              </el-button>
+            </div>
+          </template>
+        </MobileDialog>
       </div>  <!-- END: .content -->
     </PermissionGate>
   </div>    <!-- END: .menu-management -->
@@ -799,6 +799,7 @@ const menuImportInputRef = ref<HTMLInputElement | null>(null)
 const exportingMenus = ref(false)
 const importingMenus = ref(false)
 const showModal = ref(false)
+const showMenuWidthModal = ref(false)
 const submitting = ref(false)
 const isEdit = ref(false)
 const currentEditId = ref(null)
@@ -1267,12 +1268,18 @@ const _displayChildren = (children, parentId) => {
   return children
 }
 
-// Element Plus 表格使用扁平可见行，保留原有的展开状态并避免页面自绘原生 table。
+// 表格使用扁平可见行，由本页统一维护展开状态。
+// 去掉行上的 children 字段，避免 Element Plus 再生成一枚未接入本页状态的树形箭头。
 const visibleMenuRows = computed(() => {
   const rows: any[] = []
   const append = (menus: any[], depth = 0) => {
     menus.forEach(menu => {
-      rows.push({ ...menu, depth })
+      rows.push({
+        ...menu,
+        children: undefined,
+        hasChildren: Array.isArray(menu.children) && menu.children.length > 0,
+        depth
+      })
       if (menu.children?.length && isMenuExpanded(menu.id)) {
         append(menu.children, depth + 1)
       }
@@ -1281,31 +1288,6 @@ const visibleMenuRows = computed(() => {
   append(menuTree.value)
   return rows
 })
-
-// 展开所有菜单
-const expandAll = () => {
-  const allMenuIds = []
-
-  // 递归收集所有有子菜单的菜单ID
-  const collectMenuIds = (menus) => {
-    menus.forEach(menu => {
-      if (menu.children && menu.children.length > 0) {
-        allMenuIds.push(menu.id)
-        collectMenuIds(menu.children)
-      }
-    })
-  }
-
-  collectMenuIds(menuTree.value)
-  expandedMenus.value = new Set(allMenuIds)
-  success('已展开所有菜单', { duration: 2000 })
-}
-
-// 折叠所有菜单
-const collapseAll = () => {
-  expandedMenus.value.clear()
-  success('已折叠所有菜单', { duration: 2000 })
-}
 
 // PC和手机端菜单宽度相关方法
 const initializeMenuWidths = async () => {
@@ -1327,6 +1309,15 @@ const normalizeMenuWidth = (value: number, fallback: number) => {
   return Math.min(500, Math.max(100, Math.round(numericValue)))
 }
 
+const openMenuWidthModal = () => {
+  showMenuWidthModal.value = true
+}
+
+const closeMenuWidthModal = () => {
+  if (isWidthLoading.value) return
+  showMenuWidthModal.value = false
+}
+
 const applyBothMenuWidths = async () => {
   try {
     isWidthLoading.value = true
@@ -1341,6 +1332,7 @@ const applyBothMenuWidths = async () => {
       title: `PC端: ${pcMenuWidth.value}px, 手机端: ${mobileMenuWidth.value}px`,
       duration: 3000
     })
+    showMenuWidthModal.value = false
   } catch (err) {
     logger.error('应用菜单宽度失败:', err)
     error('设置失败', err.message || '应用菜单宽度时发生错误')
@@ -1774,6 +1766,25 @@ onMounted(async () => {
   flex-wrap: wrap;
 }
 
+.menu-width-form {
+  padding: 4px 0 0;
+}
+
+.menu-width-form__hint {
+  margin: 0 0 var(--tf-space-4);
+  color: var(--tf-color-slate-500);
+  font-size: var(--tf-type-scale-13);
+  line-height: var(--tf-line-height-body);
+}
+
+.menu-width-form__input {
+  width: 100%;
+}
+
+.menu-width-form :deep(.el-input-number .el-input__wrapper) {
+  width: 100%;
+}
+
 /* 表单组 */
 .form-group {
   display: flex;
@@ -1788,7 +1799,7 @@ onMounted(async () => {
 
 .form-label {
   display: block;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   font-weight: 500;
   color: var(--tf-color-gray-bootstrap-700);
   margin-bottom: 8px;
@@ -1808,7 +1819,7 @@ onMounted(async () => {
   position: absolute;
   left: 12px;
   color: var(--tf-color-muted);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   z-index: 2;
 }
 
@@ -1817,7 +1828,7 @@ onMounted(async () => {
   padding: 10px 12px 10px 40px;
   border: 2px solid var(--tf-color-border-muted);
   border-radius: 8px;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   transition: all 0.3s ease;
   background: white;
 }
@@ -1832,139 +1843,6 @@ onMounted(async () => {
   display: flex;
   gap: 12px;
   align-items: center;
-}
-
-/* ===== 工具栏样式 ===== */
-.toolbar-section {
-  background: white;
-  border-radius: 12px;
-  padding: 16px 18px;
-  margin-bottom: 18px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  border: 1px solid var(--tf-color-border-muted);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 14px;
-}
-
-.toolbar-left {
-  display: flex;
-  gap: 12px;
-}
-
-.toolbar-right {
-  display: flex;
-  gap: 20px;
-  align-items: center;
-}
-
-.menu-widths-setting {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 14px;
-  padding: 12px 14px;
-  border: 1px solid var(--tf-color-border-form);
-  border-radius: 14px;
-  background: linear-gradient(180deg, var(--color-bg-white) 0%, var(--tf-color-surface-blue) 100%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
-}
-
-.setting-header {
-  min-width: 168px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.setting-title {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--tf-color-neutral-800);
-}
-
-.setting-title i {
-  color: var(--tf-color-blue-600);
-}
-
-.width-controls {
-  display: flex;
-  gap: 14px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.width-control {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 198px;
-}
-
-.width-control.pc-width {
-  border-left: none;
-  padding-left: 0;
-}
-
-.width-control.mobile-width {
-  border-left: none;
-  padding-left: 0;
-}
-
-.inline-width-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  min-width: 56px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--tf-color-slate-700);
-  white-space: nowrap;
-}
-
-.inline-width-label i {
-  color: var(--tf-color-blue-600);
-}
-
-.range-input {
-  display: block;
-}
-
-.form-range {
-  width: 100%;
-  min-height: 36px;
-  padding: 8px 10px;
-  border: 1px solid var(--tf-color-border-blue);
-  border-radius: 10px;
-  background: var(--color-bg-white);
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--tf-color-neutral-800);
-  outline: none;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.setting-header :deep(.el-button) {
-  min-height: 34px;
-  height: 34px;
-  padding: 8px 12px;
-  border-radius: 10px;
-  font-size: 12px;
-}
-
-.form-range:focus {
-  border-color: var(--tf-color-indigo-brand);
-  box-shadow: 0 0 0 3px rgba(89, 126, 247, 0.12);
-}
-
-.btn-group {
-  display: flex;
-  gap: 8px;
 }
 
 /* ===== 加载和错误状态样式 ===== */
@@ -1988,19 +1866,19 @@ onMounted(async () => {
 }
 
 .loading-icon {
-  font-size: 32px;
+  font-size: var(--tf-type-scale-32);
   color: var(--tf-color-indigo-brand);
 }
 
 .loading-text,
 .error-text {
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
   color: var(--tf-color-muted);
   margin: 0;
 }
 
 .error-icon {
-  font-size: 32px;
+  font-size: var(--tf-type-scale-32);
   color: var(--danger-color);
 }
 
@@ -2054,7 +1932,7 @@ onMounted(async () => {
   text-align: left;
   font-weight: 600;
   color: var(--tf-color-heading);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   border-bottom: 2px solid var(--tf-color-border-subtle);
   white-space: nowrap;
   min-height: 48px; /* 确保一致的点击区域 */
@@ -2138,7 +2016,7 @@ onMounted(async () => {
 }
 
 .expand-btn i {
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   transition: transform 0.2s ease;
 }
 
@@ -2157,7 +2035,7 @@ onMounted(async () => {
 .menu-title {
   font-weight: 600;
   color: var(--tf-color-heading);
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
   background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
   background-clip: text;
   -webkit-background-clip: text;
@@ -2182,7 +2060,7 @@ onMounted(async () => {
 }
 
 .menu-type {
-  font-size: 11px;
+  font-size: var(--tf-type-scale-11);
   padding: 2px 6px;
   border-radius: 4px;
   font-weight: 500;
@@ -2204,7 +2082,7 @@ onMounted(async () => {
 }
 
 .menu-remarks {
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: var(--tf-color-muted);
   font-style: italic;
 }
@@ -2223,7 +2101,7 @@ onMounted(async () => {
   background: var(--tf-color-surface-muted);
   padding: 4px 8px;
   border-radius: 4px;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: var(--tf-color-gray-bootstrap-700);
   font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
   display: inline-block;
@@ -2250,14 +2128,14 @@ onMounted(async () => {
 }
 
 .menu-icon {
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
   color: var(--tf-color-indigo-brand);
   width: 24px;
   text-align: center;
 }
 
 .icon-text {
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: var(--tf-color-muted);
   font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
   min-width: 0;
@@ -2276,7 +2154,7 @@ onMounted(async () => {
   color: var(--tf-color-blue-material-700);
   padding: 4px 8px;
   border-radius: 4px;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   font-weight: 600;
 }
 
@@ -2291,7 +2169,7 @@ onMounted(async () => {
   gap: 4px;
   padding: 4px 8px;
   border-radius: 4px;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   font-weight: 500;
 }
 
@@ -2359,7 +2237,7 @@ onMounted(async () => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 24px;
+  font-size: var(--tf-type-scale-24);
   color: var(--tf-color-slate-ink);
   background: rgba(255, 255, 255, 0.9);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 12px 26px rgba(0, 0, 0, 0.18);
@@ -2373,7 +2251,7 @@ onMounted(async () => {
 }
 
 .preview-copy strong {
-  font-size: 20px;
+  font-size: var(--tf-type-scale-20);
   line-height: 1.25;
   white-space: nowrap;
   overflow: hidden;
@@ -2386,7 +2264,7 @@ onMounted(async () => {
 }
 
 .preview-eyebrow {
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -2401,7 +2279,7 @@ onMounted(async () => {
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.12);
   border: 1px solid rgba(255, 255, 255, 0.22);
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   font-weight: 700;
 }
 
@@ -2459,14 +2337,14 @@ onMounted(async () => {
 
 .editor-card-head h6 {
   margin: 0;
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
   color: var(--tf-color-slate-custom);
 }
 
 .editor-card-head p {
   margin: 3px 0 0;
   color: var(--tf-color-gray-ui-550);
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
 }
 
 /* Element Plus 统一表单控件 */
@@ -2482,7 +2360,7 @@ onMounted(async () => {
   min-height: 22px;
   margin-bottom: 7px;
   color: var(--tf-color-slate-700);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   font-weight: 700;
   line-height: 1.35;
 }
@@ -2522,13 +2400,13 @@ onMounted(async () => {
 }
 
 .preview-icon {
-  font-size: 24px;
+  font-size: var(--tf-type-scale-24);
   color: var(--tf-color-indigo-brand);
 }
 
 .preview-text {
   font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   color: var(--color-info);
   background: var(--color-bg-white);
   padding: 4px 8px;
@@ -2537,7 +2415,7 @@ onMounted(async () => {
 
 /* 辅助文本 */
 .text-muted {
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: var(--color-info);
   display: flex;
   align-items: center;
@@ -2546,7 +2424,7 @@ onMounted(async () => {
 }
 
 .text-muted i {
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
 }
 
 /* ===== 响应式设计 ===== */
@@ -2595,68 +2473,9 @@ onMounted(async () => {
     min-width: 0;
   }
 
-  .toolbar-section {
-    flex-direction: column;
-    gap: 16px;
-    align-items: stretch;
-  }
-
-  .menu-widths-setting {
-    width: 100%;
-    flex-direction: column;
-    gap: 10px;
-    align-items: stretch;
-    padding: 12px 10px;
-  }
-
-  .setting-header {
-    min-width: 0;
-    width: 100%;
-  }
-
-  .setting-title {
-    font-size: 13px;
-  }
-
-  .width-controls {
-    flex-direction: row;
-    flex-wrap: nowrap;
-    gap: 8px;
-    width: 100%;
-  }
-
-  .width-control {
-    width: calc(50% - 4px);
-    min-width: 0;
-    gap: 4px;
-  }
-
-  .setting-header :deep(.el-button) {
-    min-height: 32px;
-    height: 32px;
-    padding: 6px 10px;
-    font-size: 11px;
-  }
-
-  /* 增强触摸交互 */
-  .range-input {
-    width: 100%;
-  }
-
-  .form-range {
-    min-height: 34px;
-    padding: 7px 8px;
-    font-size: 12px;
-  }
-
-  .inline-width-label {
-    min-width: 44px;
-    font-size: 11px;
-  }
-
   :deep(.menu-data-table .el-table__body td),
   :deep(.menu-data-table .el-table__header th) {
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
   }
 
   :deep(.menu-data-table .menu-name-column .cell),
@@ -2689,7 +2508,7 @@ onMounted(async () => {
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
     font-weight: 700;
   }
 
@@ -2709,7 +2528,7 @@ onMounted(async () => {
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
-    font-size: 11px;
+    font-size: var(--tf-type-scale-11);
   }
 
   .icon-display {
@@ -2722,7 +2541,7 @@ onMounted(async () => {
   }
 
   .menu-icon {
-    font-size: 15px;
+    font-size: var(--tf-type-scale-15);
   }
 
   .child-row .child-prefix {
@@ -2732,25 +2551,16 @@ onMounted(async () => {
 }
 
 @media (max-width: 479px) {
-  .menu-widths-setting {
-    padding: 16px;
-    margin: 16px 0;
-  }
-
-  .width-control {
-    padding: 16px;
-  }
-
   .stats-card {
     padding: 16px;
   }
 
   .stats-number {
-    font-size: 24px;
+    font-size: var(--tf-type-scale-24);
   }
 
   .stats-label {
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
   }
 
   .menu-editor-body {
@@ -2759,7 +2569,7 @@ onMounted(async () => {
 
   /* 表格在移动端的优化 */
   .menu-table {
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
   }
 
   /* 确保触摸滚动顺畅 */
@@ -2789,27 +2599,11 @@ onMounted(async () => {
     scroll-behavior: smooth;
   }
 
-  /* 移动端按钮组优化 */
-  .btn-group {
-    display: flex;
-    flex-direction: row;
-    flex-wrap: wrap;
-    gap: 8px;
-    width: auto;
-  }
-
-  .btn-group :deep(.el-button) {
-    flex: 0 0 auto;
-    min-height: 44px;
-    width: auto;
-    margin: 0;
-  }
-
   /* 移动端表格优化 */
   .menu-table th,
   .menu-table td {
     padding: 8px;
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;

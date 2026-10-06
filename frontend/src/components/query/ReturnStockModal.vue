@@ -390,7 +390,7 @@ watch(
 }
 
 :global(.query-return-stock-dialog .mobile-dialog-sheet-title) {
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
   font-weight: 700;
   line-height: 1.3;
 }
@@ -399,7 +399,6 @@ watch(
   top: calc(12px + env(safe-area-inset-top));
   right: 16px;
   transform: none;
-  background: rgba(255, 255, 255, 0.16);
 }
 
 .device-info-card {
@@ -414,7 +413,7 @@ watch(
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   font-weight: 700;
   color: var(--tf-color-slate-700);
   margin-bottom: 14px;
@@ -444,7 +443,7 @@ watch(
 .label {
   flex-shrink: 0;
   min-width: 52px;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: var(--tf-color-slate-500);
   font-weight: 600;
 }
@@ -452,7 +451,7 @@ watch(
 .value {
   min-width: 0;
   color: var(--tf-color-slate-900);
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   font-weight: 600;
   word-break: break-all;
 
@@ -472,7 +471,7 @@ watch(
   min-width: 56px;
   padding: 4px 10px;
   border-radius: 999px;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   font-weight: 700;
 
   &.new {
@@ -498,7 +497,7 @@ watch(
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
   font-weight: 700;
   color: var(--tf-color-slate-900);
   margin-bottom: 16px;
@@ -526,11 +525,11 @@ watch(
   border: 1px solid var(--tf-color-orange-tailwind-200);
   border-radius: 12px;
   color: var(--tf-color-orange-tailwind-700);
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   margin-top: 8px;
 
   i {
-    font-size: 16px;
+    font-size: var(--tf-type-scale-16);
     flex-shrink: 0;
     margin-top: 2px;
   }

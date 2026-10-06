@@ -64,7 +64,7 @@ withDefaults(defineProps<Props>(), {
 
 .inline-loading--small {
   gap: 6px;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
 }
 
 .inline-loading--small .inline-loading__spinner {
@@ -74,12 +74,12 @@ withDefaults(defineProps<Props>(), {
 }
 
 .inline-loading--medium {
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
 }
 
 .inline-loading--large {
   gap: 10px;
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
 }
 
 .inline-loading--large .inline-loading__spinner {

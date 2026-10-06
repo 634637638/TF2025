@@ -8,6 +8,8 @@
 | --- | --- | --- |
 | 开发与代码规范 | [开发指南](guides/INDEX.md) | API、类型、日志、错误处理、移动端及文档写作规范 |
 | 前端强制规范 | [前端规范索引](frontend/INDEX.md) | 唯一权威前端规范；审计清单见 `frontend/standards-manifest.json` |
+| 规范与审计可视化 | 登录后台访问 `/standards` | 按类型查看规范要求、效果预览、公共实现和审计命令 |
+| 页面与功能单元台账 | [前端页面与功能单元台账](frontend/page-audit-inventory.md) | 路由、Tab、弹窗、表格和公共组件清单；新增、删除、迁移必须同步维护 |
 | 后端 | [后端文档索引](backend/INDEX.md) | 后端接口、上传存储和数据迁移说明 |
 | 权限 | [权限文档索引](permissions/INDEX.md) | RBAC、页面能力、字段权限及审计要求 |
 | 部署 | [部署文档索引](deployment/INDEX.md) | 环境变量、服务器部署、Nginx 与上传发布 |

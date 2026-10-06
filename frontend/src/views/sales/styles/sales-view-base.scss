@@ -42,7 +42,7 @@
   top: 50%;
   transform: translateY(-50%);
   color: var(--tf-color-muted);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   z-index: 1;
 }
 
@@ -52,7 +52,7 @@ input.form-control {
   padding: 10px 12px 10px 36px;
   border: 2px solid var(--tf-color-border-cool);
   border-radius: 8px;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   transition: all 0.3s ease;
   background: var(--tf-color-surface-muted);
 }
@@ -63,7 +63,7 @@ select.form-control {
   padding: 10px 12px;
   border: 2px solid var(--tf-color-border-cool);
   border-radius: 8px;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   transition: all 0.3s ease;
   background: var(--tf-color-surface-muted);
   appearance: auto;
@@ -83,7 +83,7 @@ input[type="date"].form-control {
   padding: 10px 12px; /* 简化padding，让日历图标正常显示 */
   border: 2px solid var(--tf-color-border-cool);
   border-radius: 8px;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   transition: all 0.3s ease;
   background: var(--tf-color-surface-muted);
   box-sizing: border-box;
@@ -214,7 +214,7 @@ input.form-control:focus {
 
 .pagination-info {
   color: var(--admin-record-count-color);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
 }
 
 
@@ -256,7 +256,7 @@ input.form-control:focus {
 }
 
 .loading-state i {
-  font-size: 48px;
+  font-size: var(--tf-type-scale-48);
   margin-bottom: 16px;
   display: block;
   opacity: 0.5;
@@ -376,7 +376,7 @@ input.form-control:focus {
   max-width: 100%;
   padding: 4px 8px;
   border-radius: 12px;
-  font-size: 11px;
+  font-size: var(--tf-type-scale-11);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -424,7 +424,7 @@ input.form-control:focus {
 
 .device-title {
   margin: 0 0 8px 0;
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
   font-weight: 600;
   color: var(--tf-color-heading);
 }
@@ -455,14 +455,14 @@ input.form-control:focus {
   border-radius: 999px;
   background: var(--tf-color-surface-blue-soft);
   color: var(--tf-color-blue-600);
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   font-weight: 600;
   white-space: nowrap;
 }
 
 .title-price {
   color: var(--tf-color-orange-legacy);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   font-weight: 700;
   white-space: nowrap;
 }
@@ -495,7 +495,7 @@ input.form-control:focus {
 .spec-item {
   display: flex;
   justify-content: space-between;
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   flex: 1;
   min-width: 0;
 }
@@ -547,13 +547,13 @@ input.form-control:focus {
 }
 
 .cost-price {
-  font-size: 18px;
+  font-size: var(--tf-type-scale-18);
   font-weight: 700;
   color: var(--tf-color-red-legacy);
 }
 
 .price-label {
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: var(--tf-color-muted);
   margin-top: 2px;
 }
@@ -581,7 +581,7 @@ input.form-control:focus {
 }
 
 .device-code {
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: var(--tf-color-muted);
 }
 
@@ -589,7 +589,7 @@ input.form-control:focus {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
 }
 
 .imei {
@@ -617,7 +617,7 @@ input.form-control:focus {
   align-items: center;
   padding: 4px 8px;
   border-radius: 12px;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   font-weight: 600;
 }
 
@@ -637,7 +637,7 @@ input.form-control:focus {
   align-items: center;
   padding: 5px 12px;
   border-radius: 12px;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   font-weight: 700;
   letter-spacing: 0.3px;
   color: var(--tf-status-neutral-color);
@@ -714,7 +714,7 @@ input.form-control:focus {
 
 .sale-form-section h4 {
   margin: 0 0 20px 0;
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
   font-weight: 600;
   color: var(--admin-section-title-color);
 }
@@ -744,7 +744,7 @@ input.form-control:focus {
 
 .device-details h5 {
   margin: 0 0 12px 0;
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
   font-weight: 600;
   color: var(--admin-data-table-cell-color);
 }
@@ -768,7 +768,7 @@ input.form-control:focus {
   background: var(--admin-table-panel-bg);
   border: 1px solid var(--admin-table-panel-border);
   border-radius: 10px;
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
 }
 
 .meta-item-wide {
@@ -778,7 +778,7 @@ input.form-control:focus {
 .meta-label {
   color: var(--admin-record-count-color);
   font-weight: 600;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   line-height: 1.2;
 }
 
@@ -835,12 +835,12 @@ input.form-control:focus {
 }
 
 .sale-mobile-device-name {
-  font-size: 15px;
+  font-size: var(--tf-type-scale-15);
   font-weight: 700;
 }
 
 .sale-mobile-device-specs {
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   opacity: 0.92;
 }
 
@@ -860,7 +860,7 @@ input.form-control:focus {
   border-radius: 999px;
   background: var(--tf-button-overlay-bg);
   color: var(--tf-button-on-color);
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   font-weight: 700;
   -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
@@ -901,7 +901,7 @@ input.form-control:focus {
 .sale-mobile-spec-label,
 .sale-mobile-purchase-label {
   display: block;
-  font-size: 11px;
+  font-size: var(--tf-type-scale-11);
   color: var(--admin-record-count-color);
 }
 
@@ -910,7 +910,7 @@ input.form-control:focus {
 .sale-mobile-purchase-value {
   display: block;
   margin-top: 4px;
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   font-weight: 600;
   color: var(--admin-data-table-cell-color);
   word-break: break-word;
@@ -925,7 +925,7 @@ input.form-control:focus {
 .sale-mobile-code-value {
   display: block;
   margin-top: 4px;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   line-height: 1.45;
   font-family: 'Courier New', monospace;
   color: var(--admin-data-table-cell-color);
@@ -960,7 +960,7 @@ input.form-control:focus {
 .sale-form-section :deep(.el-input__inner),
 .sale-form-section :deep(.el-select__selected-item),
 .sale-form-section :deep(.el-date-editor .el-input__inner) {
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
 }
 
 .form-grid {
@@ -976,7 +976,7 @@ input.form-control:focus {
 }
 
 .form-label {
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   font-weight: 600;
   color: var(--admin-data-table-cell-color);
 }
@@ -987,7 +987,7 @@ input.form-control:focus {
 }
 
 .form-hint {
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: var(--admin-record-count-color);
   margin-top: 4px;
   display: block;
@@ -997,7 +997,7 @@ input.form-control:focus {
 .current-user-badge {
   color: var(--tf-button-success-soft-color);
   font-weight: 600;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   margin-left: 8px;
 }
 
@@ -1029,7 +1029,7 @@ input.form-control:focus {
   background: var(--tf-button-success-soft-bg);
   border: 1px solid var(--tf-button-success-soft-border);
   border-radius: 6px;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   color: var(--tf-button-success-soft-color);
   margin-left: 12px;
   font-weight: 600;
@@ -1083,7 +1083,7 @@ input.form-control:focus {
   align-items: center;
   justify-content: center;
   font-weight: 600;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   margin-right: 12px;
   flex-shrink: 0;
 }
@@ -1104,13 +1104,13 @@ input.form-control:focus {
 
 .batch-summary .label {
   display: block;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: var(--text-secondary);
   margin-bottom: 4px;
 }
 
 .batch-summary .value {
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
   font-weight: 600;
   color: var(--text-primary);
 }
@@ -1143,7 +1143,7 @@ input.form-control:focus {
 .form-header h3 {
   margin: 0;
   color: var(--text-primary);
-  font-size: 18px;
+  font-size: var(--tf-type-scale-18);
   font-weight: 600;
 }
 
@@ -1162,7 +1162,7 @@ input.form-control:focus {
 .form-section h4 {
   margin: 0 0 20px 0;
   color: var(--tf-color-gray-bootstrap-700);
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
   font-weight: 600;
   padding-bottom: 8px;
   border-bottom: 2px solid var(--tf-color-blue-bootstrap);
@@ -1195,13 +1195,13 @@ input.form-control:focus {
 
 .profit-item .label {
   display: block;
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   color: var(--tf-color-muted);
   margin-bottom: 8px;
 }
 
 .profit-item .value {
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
   font-weight: 600;
   color: var(--text-primary);
 }
@@ -1261,7 +1261,7 @@ input.form-control:focus {
 
 .profit-calculator h5 {
   margin: 0 0 16px 0;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   font-weight: 600;
   color: var(--tf-color-heading);
 }
@@ -1276,14 +1276,14 @@ input.form-control:focus {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
 }
 
 .profit-row.total {
   padding-top: 8px;
   border-top: 1px solid var(--tf-color-border-subtle);
   font-weight: 600;
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
 }
 
 .profit-row.margin {
@@ -1457,7 +1457,7 @@ input.form-control:focus {
   padding: 16px 20px;
   text-align: center;
   color: var(--admin-record-count-color);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1502,14 +1502,14 @@ input.form-control:focus {
 .customer-name {
   font-weight: 600;
   color: var(--admin-data-table-cell-color);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   line-height: 1.2;
   min-width: 0;
 }
 
 .customer-phone {
   color: var(--admin-record-count-color);
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   line-height: 1.2;
 }
 
@@ -1518,7 +1518,7 @@ input.form-control:focus {
   color: var(--tf-button-primary-soft-color);
   padding: 2px 8px;
   border-radius: 999px;
-  font-size: 11px;
+  font-size: var(--tf-type-scale-11);
   font-weight: 600;
   line-height: 1.2;
   justify-self: end;
@@ -1529,7 +1529,7 @@ input.form-control:focus {
   color: var(--tf-button-warning-soft-color);
   padding: 2px 8px;
   border-radius: 999px;
-  font-size: 11px;
+  font-size: var(--tf-type-scale-11);
   font-weight: 600;
   line-height: 1.2;
   flex-shrink: 0;
@@ -1550,7 +1550,7 @@ input.form-control:focus {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   font-weight: 500;
 }
 
@@ -1559,7 +1559,7 @@ input.form-control:focus {
 }
 
 .create-new-customer i {
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
 }
 
 /* 响应式设计 */
@@ -1573,11 +1573,11 @@ input.form-control:focus {
   }
 
   .customer-name {
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
   }
 
   .customer-phone {
-    font-size: 11px;
+    font-size: var(--tf-type-scale-11);
   }
 
   .customer-headline,
@@ -1591,7 +1591,7 @@ input.form-control:focus {
 
   .member-number,
   .vip-badge {
-    font-size: 8px;
+    font-size: var(--tf-type-scale-8);
     padding: 1px 5px;
     line-height: 1.1;
     white-space: nowrap;
@@ -1599,12 +1599,12 @@ input.form-control:focus {
 
   .create-new-customer {
     padding: 10px 12px;
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
     gap: 6px;
   }
 
   .create-new-customer i {
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
   }
 }
 
@@ -1648,7 +1648,7 @@ input.form-control:focus {
   top: 50%;
   transform: translateY(-50%);
   color: var(--admin-record-count-color);
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
   z-index: 2;
   pointer-events: none;
 }
@@ -1659,7 +1659,7 @@ input.form-control:focus {
   padding: 0 48px 0 44px;
   border: none;
   border-radius: 22px;
-  font-size: 15px;
+  font-size: var(--tf-type-scale-15);
   background: var(--tf-button-neutral-bg);
   color: var(--admin-data-table-cell-color);
   transition: all 0.3s ease;
@@ -1686,7 +1686,7 @@ input.form-control:focus {
   background: none;
   border: none;
   color: var(--tf-button-tool-color);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   cursor: pointer;
   padding: 4px;
   border-radius: 50%;
@@ -1708,7 +1708,7 @@ input.form-control:focus {
   border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: 20px;
   color: white;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   font-weight: 500;
   transition: all 0.3s ease;
   cursor: pointer;
@@ -1748,7 +1748,7 @@ input.form-control:focus {
 
 .advanced-search-header h3 {
   margin: 0;
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
   font-weight: 600;
   color: var(--tf-color-heading);
 }
@@ -1757,7 +1757,7 @@ input.form-control:focus {
   background: none;
   border: none;
   color: var(--tf-color-muted);
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
   cursor: pointer;
   padding: 4px;
   border-radius: 4px;
@@ -1822,7 +1822,7 @@ input.form-control:focus {
   padding: 0 40px 0 36px;
   border: 1px solid var(--color-border);
   border-radius: 20px;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   background: var(--tf-color-surface);
 
   &:focus {
@@ -1871,7 +1871,7 @@ input.form-control:focus {
   border-radius: 8px;
   background: var(--tf-button-neutral-bg);
   color: var(--tf-button-tool-color);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   cursor: pointer;
   transition: all 0.3s;
   white-space: nowrap;
@@ -1889,7 +1889,7 @@ input.form-control:focus {
   }
 
   i {
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
   }
 }
 
@@ -1915,7 +1915,7 @@ input.form-control:focus {
   padding: 0 12px;
   border: 1px solid var(--color-border);
   border-radius: 6px;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   background: white;
 
   &:focus {
@@ -1956,7 +1956,7 @@ input.form-control:focus {
 
   h3 {
     margin: 0;
-    font-size: 18px;
+    font-size: var(--tf-type-scale-18);
     color: var(--tf-color-heading);
     display: flex;
     align-items: center;
@@ -1968,7 +1968,7 @@ input.form-control:focus {
   }
 
   .close-btn {
-    font-size: 18px;
+    font-size: var(--tf-type-scale-18);
     color: var(--tf-button-tool-color);
     padding: 8px;
 
@@ -1994,7 +1994,7 @@ input.form-control:focus {
 
     .section-title {
       margin: 0 0 12px 0;
-      font-size: 16px;
+      font-size: var(--tf-type-scale-16);
       font-weight: 600;
       color: var(--tf-color-gray-bootstrap-700);
       display: flex;
@@ -2034,7 +2034,7 @@ input.form-control:focus {
 
   .search-trigger-btn {
     height: 48px;
-    font-size: 16px;
+    font-size: var(--tf-type-scale-16);
     position: relative;
 
     span {
@@ -2067,7 +2067,7 @@ input.form-control:focus {
 
     .search-input {
       height: 40px; /* 稍微小一点的高度 */
-      font-size: 16px; /* 保持16px防止iOS缩放 */
+      font-size: var(--tf-type-scale-16); /* 保持16px防止iOS缩放 */
     }
   }
 }
@@ -2096,7 +2096,7 @@ input.form-control:focus {
     transform: translateY(-50%);
     color: var(--color-info);
     z-index: 1;
-    font-size: 16px;
+    font-size: var(--tf-type-scale-16);
   }
 
   .search-input {
@@ -2105,7 +2105,7 @@ input.form-control:focus {
     padding: 0 40px 0 40px;
     border: 1px solid var(--color-border);
     border-radius: 8px;
-    font-size: 16px; /* Prevent iOS zoom */
+    font-size: var(--tf-type-scale-16); /* Prevent iOS zoom */
     background: var(--color-bg-white);
     transition: border-color 0.2s;
 
@@ -2163,7 +2163,7 @@ input.form-control:focus {
   transform: translateY(-50%);
   color: var(--tf-color-muted);
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   z-index: 2;
   opacity: 0.7;
   transition: opacity 0.2s ease;
@@ -2181,7 +2181,7 @@ input.form-control:focus {
   transform: translateY(-50%);
   color: var(--tf-color-muted);
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   z-index: 2;
   opacity: 0.7;
   transition: opacity 0.2s ease;
@@ -2215,7 +2215,7 @@ input.form-control:focus {
   cursor: pointer;
   transition: background-color 0.2s ease;
   border-bottom: 1px solid var(--tf-color-surface-muted);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   color: var(--tf-color-gray-bootstrap-700);
 }
 
@@ -2245,7 +2245,7 @@ input.form-control:focus {
 
 .dropdown-item.new-item i {
   margin-right: 6px;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
 }
 
 /* 滚动条样式 */
@@ -2274,7 +2274,7 @@ input.form-control:focus {
 
   .dropdown-item {
     padding: 8px 10px;
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
   }
 }
 
@@ -2319,7 +2319,7 @@ input.form-control:focus {
   /* 设备信息区域 */
   .device-info-section h4,
   .sale-form-section h4 {
-    font-size: 15px;
+    font-size: var(--tf-type-scale-15);
     margin-bottom: 16px;
   }
 
@@ -2332,7 +2332,7 @@ input.form-control:focus {
   }
 
   .device-details h5 {
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
     text-align: left;
     margin-bottom: 0;
   }
@@ -2351,17 +2351,17 @@ input.form-control:focus {
   }
 
   .sale-mobile-device-name {
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
   }
 
   .sale-mobile-device-specs {
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
   }
 
   .sale-mobile-device-tag {
     min-height: 24px;
     padding: 0 8px;
-    font-size: 11px;
+    font-size: var(--tf-type-scale-11);
   }
 
   .sale-mobile-info-grid,
@@ -2380,16 +2380,16 @@ input.form-control:focus {
   .sale-mobile-info-label,
   .sale-mobile-code-label,
   .sale-mobile-purchase-label {
-    font-size: 10px;
+    font-size: var(--tf-type-scale-10);
   }
 
   .sale-mobile-info-value,
   .sale-mobile-purchase-value {
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
   }
 
   .sale-mobile-code-value {
-    font-size: 11px;
+    font-size: var(--tf-type-scale-11);
   }
 
   /* 批量设备列表优化 */
@@ -2405,7 +2405,7 @@ input.form-control:focus {
   .device-number {
     width: 20px;
     height: 20px;
-    font-size: 11px;
+    font-size: var(--tf-type-scale-11);
   }
 
   .device-item .device-image {
@@ -2414,11 +2414,11 @@ input.form-control:focus {
   }
 
   .device-name {
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
   }
 
   .device-specs .spec-item {
-    font-size: 11px;
+    font-size: var(--tf-type-scale-11);
   }
 
   /* 批量统计信息 */
@@ -2429,7 +2429,7 @@ input.form-control:focus {
   }
 
   .batch-summary .summary-item {
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
   }
 
   /* 表单优化 */
@@ -2448,7 +2448,7 @@ input.form-control:focus {
   .sale-form-section :deep(.el-select__selected-item),
   .sale-form-section :deep(.el-date-editor .el-input__inner),
   .sale-form-section :deep(.el-textarea__inner) {
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
   }
 
   .form-grid {
@@ -2462,12 +2462,12 @@ input.form-control:focus {
   }
 
   .form-label {
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
     margin-bottom: 6px;
   }
 
   .form-control {
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
     padding: 10px 12px;
   }
 
@@ -2481,15 +2481,15 @@ input.form-control:focus {
   }
 
   .customer-name {
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
   }
 
   .customer-phone {
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
   }
 
   .create-new-customer {
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
     padding: 10px;
   }
 
@@ -2500,7 +2500,7 @@ input.form-control:focus {
   }
 
   .profit-calculator h5 {
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
     margin-bottom: 12px;
   }
 
@@ -2509,11 +2509,11 @@ input.form-control:focus {
   }
 
   .profit-row {
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
   }
 
   .profit-row.total {
-    font-size: 15px;
+    font-size: var(--tf-type-scale-15);
     padding-top: 10px;
   }
 
@@ -2531,13 +2531,13 @@ input.form-control:focus {
   .form-actions .el-button {
     flex: 1;
     height: 44px;
-    font-size: 15px;
+    font-size: var(--tf-type-scale-15);
     margin: 0;
   }
 
   /* 小提示文字 */
   .form-hint {
-    font-size: 11px;
+    font-size: var(--tf-type-scale-11);
   }
 
   /* 输入组优化 */
@@ -2559,37 +2559,37 @@ input.form-control:focus {
 /* 超小屏幕优化 */
 @media (max-width: 375px) {
   .form-label {
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
   }
 
   .form-control {
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
     padding: 9px 11px;
   }
 
   .device-meta {
-    font-size: 11px;
+    font-size: var(--tf-type-scale-11);
   }
 
   .meta-label {
     min-width: 55px;
-    font-size: 10px;
+    font-size: var(--tf-type-scale-10);
   }
 
   .meta-value {
-    font-size: 11px;
+    font-size: var(--tf-type-scale-11);
   }
 
   .profit-row {
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
   }
 
   .profit-row.total {
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
   }
 
   .form-actions .el-button {
     height: 42px;
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
   }
 }

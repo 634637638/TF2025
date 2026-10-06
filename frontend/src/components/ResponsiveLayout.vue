@@ -13,14 +13,15 @@
         :class="{ 'safe-area-top': deviceInfo.safeArea.top > 0 }"
       >
         <div class="mobile-header-content">
-          <button
+          <el-button
             v-if="showBackButton"
-            class="back-button"
+            native-type="button"
+            class="back-button tf-button--mobile-nav"
             aria-label="返回"
             @click="$emit('back')"
           >
             <el-icon><ArrowLeft /></el-icon>
-          </button>
+          </el-button>
 
           <h2 class="mobile-title">
             {{ title }}
@@ -28,14 +29,15 @@
 
           <div class="mobile-header-actions">
             <slot name="header-actions" />
-            <button
+            <el-button
               v-if="showMenuButton"
-              class="menu-button"
+              native-type="button"
+              class="menu-button tf-button--menu"
               aria-label="菜单"
               @click="toggleMobileMenu"
             >
-              <el-icon><Menu /></el-icon>
-            </button>
+              <IconRenderer :svg="menuBarsIcon" aria-hidden="true" />
+            </el-button>
           </div>
         </div>
       </div>
@@ -72,7 +74,7 @@
         <div class="content-wrapper">
           <!-- 面包屑导航 -->
           <nav
-            v-if="showBreadcrumb && !isMobile"
+            v-if="showBreadcrumb && (isMobile || isTablet)"
             class="breadcrumb"
           >
             <slot name="breadcrumb" />
@@ -104,11 +106,12 @@
           class="fab-container"
           :style="fabContainerStyles"
         >
-          <button
+          <el-button
             v-for="(action, index) in fabActions"
+            native-type="button"
             :key="action.id"
-            class="fab-button"
-            :class="[`fab-${action.type || 'primary'}`, { 'fab-mini': index > 0 }]"
+            class="fab-button tf-button--fab"
+            :class="[`fab-${action.type || 'primary'}`, { 'fab-mini tf-button--fab-mini': index > 0 }]"
             :style="fabButtonStyles(index)"
             :aria-label="action.label"
             @click="action.handler"
@@ -116,7 +119,7 @@
             <el-icon v-if="action.icon">
               <component :is="action.icon" />
             </el-icon>
-          </button>
+          </el-button>
         </div>
       </transition>
 
@@ -138,7 +141,9 @@ import {
   useSafeArea,
   clsx
 } from '@/composables/responsive'
-import { ArrowLeft, Menu } from '@element-plus/icons-vue'
+import { ArrowLeft } from '@element-plus/icons-vue'
+import IconRenderer from './IconRenderer.vue'
+import menuBarsIcon from '@/assets/icons/menu-bars.svg?raw'
 
 // ============ Props 定义 ============
 interface FabAction {
@@ -367,10 +372,10 @@ defineExpose({
   left: 0;
   right: 0;
   z-index: 1000;
-  background: var(--el-bg-color, var(--color-bg-white));
-  border-bottom: 1px solid var(--el-border-color-light, var(--color-border-light));
+  background: var(--tf-nav-topbar-bg);
+  border-bottom: 1px solid var(--tf-nav-topbar-border);
   backdrop-filter: blur(10px);
-  background: rgba(255, 255, 255, 0.95);
+  color: var(--tf-nav-topbar-text);
 }
 
 .mobile-header.safe-area-top {
@@ -390,26 +395,15 @@ defineExpose({
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
-  border: none;
-  background: transparent;
-  border-radius: 50%;
   cursor: pointer;
   transition: all 0.2s ease;
-  color: var(--el-text-color-primary, var(--color-text-primary));
-}
-
-.back-button:hover,
-.menu-button:hover {
-  background-color: var(--el-fill-color-light, var(--tf-color-surface));
 }
 
 .mobile-title {
-  font-size: 18px;
+  font-size: var(--tf-type-scale-18);
   font-weight: 600;
   margin: 0;
-  color: var(--el-text-color-primary, var(--color-text-primary));
+  color: var(--tf-nav-topbar-text);
   flex: 1;
   text-align: center;
   overflow: hidden;
@@ -438,8 +432,8 @@ defineExpose({
 /* 侧边栏 */
 .sidebar {
   position: relative;
-  background: var(--el-bg-color-page, var(--color-bg-white));
-  border-right: 1px solid var(--el-border-color-light, var(--color-border-light));
+  background: var(--tf-nav-surface-color);
+  border-right: 1px solid var(--tf-nav-border);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   z-index: 100;
 }
@@ -484,7 +478,11 @@ defineExpose({
 
 .breadcrumb {
   margin-bottom: 20px;
-  padding: 12px 0;
+  padding: var(--tf-space-3) var(--tf-space-4);
+  color: var(--tf-nav-topbar-text);
+  background: var(--tf-nav-topbar-bg);
+  border: 1px solid var(--tf-nav-topbar-border);
+  border-radius: var(--tf-radius-control);
 }
 
 .page-content {
@@ -504,8 +502,8 @@ defineExpose({
   bottom: 0;
   left: 0;
   right: 0;
-  background: var(--el-bg-color, var(--color-bg-white));
-  border-top: 1px solid var(--el-border-color-light, var(--color-border-light));
+  background: var(--tf-nav-surface-color);
+  border-top: 1px solid var(--tf-nav-border);
   z-index: 1000;
 }
 
@@ -525,53 +523,15 @@ defineExpose({
 }
 
 .fab-button {
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  border: none;
-  box-shadow: var(--tf-button-shadow);
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 24px;
-}
-
-.fab-button.fab-mini {
-  width: 40px;
-  height: 40px;
-  font-size: 18px;
-}
-
-.fab-button.fab-primary {
-  background: var(--el-color-primary, var(--color-primary));
-  color: var(--tf-button-on-color);
-}
-
-.fab-button.fab-success {
-  background: var(--el-color-success, var(--color-success));
-  color: var(--tf-button-on-color);
-}
-
-.fab-button.fab-warning {
-  background: var(--el-color-warning, var(--color-warning));
-  color: var(--tf-button-on-color);
-}
-
-.fab-button.fab-danger {
-  background: var(--el-color-danger, var(--color-danger));
-  color: var(--tf-button-on-color);
-}
-
-.fab-button.fab-info {
-  background: var(--el-color-info, var(--color-info));
-  color: var(--tf-button-on-color);
 }
 
 .fab-button:hover {
   transform: scale(1.1);
-  box-shadow: var(--tf-button-shadow-hover);
 }
 
 .fab-button:active {
@@ -637,17 +597,6 @@ defineExpose({
     right: 12px;
   }
 
-  .fab-button {
-    width: 48px;
-    height: 48px;
-    font-size: 20px;
-  }
-
-  .fab-button.fab-mini {
-    width: 36px;
-    height: 36px;
-    font-size: 16px;
-  }
 }
 
 /* 高对比度模式 */
@@ -656,9 +605,7 @@ defineExpose({
     border-bottom: 2px solid var(--el-border-color, var(--color-border));
   }
 
-  .fab-button {
-    border: 2px solid currentColor;
-  }
+  .fab-button { border-width: 2px !important; }
 }
 
 /* 减少动画模式 */

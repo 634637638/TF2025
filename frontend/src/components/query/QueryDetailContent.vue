@@ -213,7 +213,7 @@ const getStatusBadgeClass = (status?: string) => {
 .device-info {
   min-width: 0;
   flex: 0 1 auto;
-  font-size: 18px;
+  font-size: var(--tf-type-scale-18);
   font-weight: 700;
   line-height: 1.3;
   overflow: hidden;
@@ -231,7 +231,7 @@ const getStatusBadgeClass = (status?: string) => {
 .device-meta {
   min-width: 0;
   flex: 1 1 auto;
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   color: rgba(255, 255, 255, 0.92);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -246,7 +246,7 @@ const getStatusBadgeClass = (status?: string) => {
   justify-content: center;
   padding: 4px 10px;
   border-radius: 12px;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   font-weight: 700;
   letter-spacing: 0.2px;
   flex-shrink: 0;
@@ -339,12 +339,12 @@ const getStatusBadgeClass = (status?: string) => {
 .operator-label,
 .apple-id-label,
 .remark-label {
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: var(--color-info);
 }
 
 .price-value {
-  font-size: 18px;
+  font-size: var(--tf-type-scale-18);
   font-weight: 700;
   color: var(--color-text-regular);
 }
@@ -367,7 +367,7 @@ const getStatusBadgeClass = (status?: string) => {
 .customer-value,
 .operator-value {
   flex: 1;
-  font-size: 15px;
+  font-size: var(--tf-type-scale-15);
   font-weight: 600;
   color: var(--color-text-primary);
   min-width: 0;
@@ -380,7 +380,7 @@ const getStatusBadgeClass = (status?: string) => {
 }
 
 .code-value {
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   font-family: 'Courier New', monospace;
   color: var(--color-text-primary);
   line-height: 1.45;
@@ -394,7 +394,7 @@ const getStatusBadgeClass = (status?: string) => {
 }
 
 .info-item-value {
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   color: var(--color-text-primary);
   font-weight: 600;
   word-break: break-word;
@@ -412,7 +412,7 @@ const getStatusBadgeClass = (status?: string) => {
 }
 
 .apple-id-value {
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   color: var(--color-text-primary);
   font-weight: 600;
   text-align: right;
@@ -433,7 +433,7 @@ const getStatusBadgeClass = (status?: string) => {
 }
 
 .remark-value {
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   color: var(--color-text-regular);
   line-height: 1.6;
   word-break: break-word;
@@ -450,7 +450,7 @@ const getStatusBadgeClass = (status?: string) => {
   width: 100%;
   height: 44px;
   border-radius: 14px;
-  font-size: 15px;
+  font-size: var(--tf-type-scale-15);
   margin: 0;
 }
 
@@ -471,11 +471,11 @@ const getStatusBadgeClass = (status?: string) => {
   }
 
   .device-info {
-    font-size: 16px;
+    font-size: var(--tf-type-scale-16);
   }
 
   .device-meta {
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
   }
 
   .price-row,
@@ -498,12 +498,12 @@ const getStatusBadgeClass = (status?: string) => {
   }
 
   .price-value {
-    font-size: 17px;
+    font-size: var(--tf-type-scale-17);
   }
 
   .customer-value,
   .operator-value {
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
   }
 
   .detail-actions {
@@ -513,7 +513,7 @@ const getStatusBadgeClass = (status?: string) => {
   .detail-actions :deep(.el-button) {
     height: 42px;
     border-radius: 12px;
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
   }
 }
 
@@ -523,18 +523,18 @@ const getStatusBadgeClass = (status?: string) => {
   }
 
   .device-info {
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
   }
 
   .device-meta {
-    font-size: 11px;
+    font-size: var(--tf-type-scale-11);
   }
 
   .condition-badge,
   .status-badge {
     min-height: 26px;
     padding: 4px 8px;
-    font-size: 11px;
+    font-size: var(--tf-type-scale-11);
   }
 
   .price-row,
@@ -551,7 +551,7 @@ const getStatusBadgeClass = (status?: string) => {
   }
 
   .detail-actions :deep(.el-button) {
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
   }
 }
 </style>

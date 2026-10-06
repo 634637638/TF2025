@@ -31,12 +31,12 @@
     color: white;
 
     .el-icon {
-      font-size: 64px;
+      font-size: var(--tf-type-scale-64);
       margin-bottom: 20px;
     }
 
     p {
-      font-size: 18px;
+      font-size: var(--tf-type-scale-18);
       opacity: 0.8;
     }
   }
@@ -88,26 +88,26 @@
 
       h2 {
         margin: 0;
-        font-size: 20px;
+        font-size: var(--tf-type-scale-20);
         color: var(--text-primary);
         white-space: nowrap;
         flex-shrink: 0;
 
         @media (max-width: 767px) {
-          font-size: 15px;
+          font-size: var(--tf-type-scale-15);
         }
 
         @media (max-width: 479px) {
-          font-size: 13px;
+          font-size: var(--tf-type-scale-13);
         }
 
         @media (max-width: 380px) {
-          font-size: 12px;
+          font-size: var(--tf-type-scale-12);
         }
       }
 
       .hot-badge {
-        font-size: 12px;
+        font-size: var(--tf-type-scale-12);
         font-weight: bold;
         padding: 0 6px;
         height: 20px;
@@ -116,21 +116,21 @@
         animation: pulse 2s infinite;
 
         @media (max-width: 767px) {
-          font-size: 10px;
+          font-size: var(--tf-type-scale-10);
           height: 18px;
           line-height: 18px;
           padding: 0 4px;
         }
 
         @media (max-width: 479px) {
-          font-size: 9px;
+          font-size: var(--tf-type-scale-9);
           height: 16px;
           line-height: 16px;
           padding: 0 3px;
         }
 
         @media (max-width: 380px) {
-          font-size: 8px;
+          font-size: var(--tf-type-scale-8);
           height: 14px;
           line-height: 14px;
           padding: 0 2px;
@@ -139,20 +139,20 @@
 
       .count {
         color: var(--color-info);
-        font-size: 14px;
+        font-size: var(--tf-type-scale-14);
         white-space: nowrap;
         flex-shrink: 0;
 
         @media (max-width: 767px) {
-          font-size: 12px;
+          font-size: var(--tf-type-scale-12);
         }
 
         @media (max-width: 479px) {
-          font-size: 11px;
+          font-size: var(--tf-type-scale-11);
         }
 
         @media (max-width: 380px) {
-          font-size: 10px;
+          font-size: var(--tf-type-scale-10);
         }
       }
     }
@@ -173,7 +173,7 @@
         border: none;
         border-radius: 10px;
         color: var(--tf-button-on-color);
-        font-size: 16px;
+        font-size: var(--tf-type-scale-16);
         font-weight: 600;
         cursor: pointer;
         transition: all 0.3s ease;
@@ -181,7 +181,7 @@
 
         @media (max-width: 767px) {
           padding: 10px 20px;
-          font-size: 14px;
+          font-size: var(--tf-type-scale-14);
           border-radius: 8px;
         }
 
@@ -259,7 +259,7 @@
 
   p {
     margin: 5px 0;
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
   }
 
   .copyright {

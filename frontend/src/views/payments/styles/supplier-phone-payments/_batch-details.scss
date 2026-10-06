@@ -91,13 +91,13 @@
 
 .payment-details .payment-form-heading strong {
   color: var(--tf-color-slate-900);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   line-height: 1.2;
 }
 
 .payment-details .payment-form-heading small {
   color: var(--tf-color-slate-500);
-  font-size: 11px;
+  font-size: var(--tf-type-scale-11);
   line-height: 1.2;
 }
 
@@ -159,7 +159,7 @@
   gap: 6px;
   padding: 0;
   color: var(--tf-color-slate-600);
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   font-weight: 700;
   line-height: 1.2;
   white-space: nowrap;
@@ -168,7 +168,7 @@
 .payment-details .payment-form-cards > .info-row label i {
   width: 16px;
   color: var(--payment-form-accent, var(--tf-color-primary-500));
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   text-align: center;
 }
 

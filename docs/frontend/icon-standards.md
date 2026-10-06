@@ -7,6 +7,7 @@
 | 页面内静态操作/状态图标 | Font Awesome class，例如 `fas fa-search` | 用于代码固定的界面语义，不保存为用户数据 |
 | 菜单、权限模块等数据库动态图标 | `IconRenderer` | 统一支持本地图标 class、Iconify 名称和已保存 SVG |
 | 用户选择图标 | `IconPicker` / `IconSelector` | 选择器只负责选择，最终展示仍走 `IconRenderer` |
+| Iconify 图标 | `IconRenderer` / `IconPicker` | `iconify <prefix>:<name>` 由前端直接渲染，不请求 `/icons/by-class`；本地 Font Awesome 等 class 才按需查询图标表 |
 | SVG 内容 | `IconRenderer` | 必须经 DOMPurify 的 SVG profile 清洗；业务页面禁止自行 `v-html` 图标字符串 |
 
 动态菜单图标由数据库按当前菜单/权限数据返回，不应为了渲染一个图标而在应用启动时加载整套图标目录。Iconify 图标以名称解析并按需请求图标资源；不得把数据库字段拼成任意 HTML 或未经编码的 URL。
@@ -27,4 +28,4 @@ npm run check:icons
 
 审计验证动态 SVG 清洗、Iconify 解析、尺寸/颜色继承及菜单图标消费者是否使用公共 renderer。静态业务图标可以保留 Font Awesome class。
 
-最后更新：2026-10-01
+最后更新：2026-10-06

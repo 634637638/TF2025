@@ -1083,13 +1083,13 @@ watch(
     justify-content: center;
     gap: 4px;
     padding: 12px;
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
     color: var(--text-primary);
     background: var(--color-bg-white);
     cursor: pointer;
 
     i {
-      font-size: 12px;
+      font-size: var(--tf-type-scale-12);
       color: var(--text-muted);
     }
   }
@@ -1132,7 +1132,7 @@ watch(
         left: 8px;
         background: rgba(255, 107, 0, 0.9);
         color: var(--color-bg-white);
-        font-size: 10px;
+        font-size: var(--tf-type-scale-10);
         padding: 2px 6px;
         border-radius: 4px;
       }
@@ -1143,7 +1143,7 @@ watch(
         left: 8px;
         background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
         color: var(--color-bg-white);
-        font-size: 10px;
+        font-size: var(--tf-type-scale-10);
         padding: 2px 6px;
         border-radius: 4px;
       }
@@ -1153,7 +1153,7 @@ watch(
       padding: 8px;
 
 .product-title {
-        font-size: 14px;
+        font-size: var(--tf-type-scale-14);
         font-weight: 500;
         color: var(--text-primary);
         margin: 0 0 8px;
@@ -1176,19 +1176,19 @@ watch(
           gap: 4px;
 
           .price-label {
-            font-size: 11px;
+            font-size: var(--tf-type-scale-11);
             color: var(--text-muted);
             font-weight: normal;
           }
 
           .price-value {
-            font-size: 17px;
+            font-size: var(--tf-type-scale-17);
             font-weight: 600;
             color: var(--tf-color-accent-pink);
             letter-spacing: -0.3px;
 
             &.price-inquire {
-              font-size: 15px;
+              font-size: var(--tf-type-scale-15);
               color: var(--tf-color-accent-orange);
               font-weight: 500;
             }
@@ -1196,7 +1196,7 @@ watch(
         }
 
         .cart-icon {
-          font-size: 18px;
+          font-size: var(--tf-type-scale-18);
           color: var(--tf-color-accent-orange);
           cursor: pointer;
           padding: 4px;
@@ -1218,7 +1218,7 @@ watch(
         }
 
         .product-grade {
-          font-size: 11px;
+          font-size: var(--tf-type-scale-11);
           color: var(--tf-color-accent-green);
           background: rgba(0, 200, 83, 0.1);
           padding: 2px 6px;
@@ -1236,10 +1236,10 @@ watch(
     gap: 8px;
     padding: 16px;
     color: var(--text-muted);
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
 
     .el-icon {
-      font-size: 18px;
+      font-size: var(--tf-type-scale-18);
     }
   }
 
@@ -1263,12 +1263,12 @@ watch(
         align-items: center;
         gap: 6px;
         color: var(--text-muted);
-        font-size: 13px;
+        font-size: var(--tf-type-scale-13);
         white-space: nowrap;
 
         i {
           color: var(--tf-color-green-material);
-          font-size: 14px;
+          font-size: var(--tf-type-scale-14);
         }
       }
     }
@@ -1298,7 +1298,7 @@ watch(
     border-bottom: 1px solid var(--tf-color-gray-200-alt);
 
     h3 {
-      font-size: 16px;
+      font-size: var(--tf-type-scale-16);
       font-weight: 500;
       margin: 0;
     }
@@ -1313,7 +1313,7 @@ watch(
       margin-bottom: 24px;
 
       h4 {
-        font-size: 14px;
+        font-size: var(--tf-type-scale-14);
         font-weight: 500;
         color: var(--text-primary);
         margin: 0 0 12px;
@@ -1328,7 +1328,7 @@ watch(
           padding: 8px 16px;
           background: var(--tf-color-surface-soft);
           border-radius: 4px;
-          font-size: 13px;
+          font-size: var(--tf-type-scale-13);
           color: var(--text-secondary);
           cursor: pointer;
           transition: all 0.2s;

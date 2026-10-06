@@ -50,12 +50,12 @@
               <span class="item-price">¥{{ formatPrice(item.sale_price) }}</span>
               <div class="item-actions">
                 <span class="device-quantity">1 台</span>
-                <button
+                <el-button
                   class="delete-btn"
                   @click="confirmDelete(item)"
                 >
                   <i class="fas fa-trash" />
-                </button>
+                </el-button>
               </div>
             </div>
           </div>
@@ -314,7 +314,7 @@ onMounted(() => {
       margin-right: 8px;
 
       i {
-        font-size: 20px;
+        font-size: var(--tf-type-scale-20);
         color: var(--tf-color-gray-300-alt);
 
         &.active {
@@ -344,7 +344,7 @@ onMounted(() => {
       overflow: hidden;
 
       .item-title {
-        font-size: 14px;
+        font-size: var(--tf-type-scale-14);
         font-weight: 500;
         color: var(--text-primary);
         margin: 0 0 4px;
@@ -354,7 +354,7 @@ onMounted(() => {
       }
 
       .item-specs {
-        font-size: 12px;
+        font-size: var(--tf-type-scale-12);
         color: var(--text-muted);
         margin: 0 0 8px;
       }
@@ -365,7 +365,7 @@ onMounted(() => {
         justify-content: space-between;
 
         .item-price {
-          font-size: 16px;
+          font-size: var(--tf-type-scale-16);
           font-weight: 500;
           color: var(--tf-color-accent-pink);
         }
@@ -376,7 +376,7 @@ onMounted(() => {
           gap: 12px;
 
           .device-quantity {
-            font-size: 13px;
+            font-size: var(--tf-type-scale-13);
             color: var(--el-text-color-secondary);
             white-space: nowrap;
           }
@@ -400,7 +400,7 @@ onMounted(() => {
             }
 
             i {
-              font-size: 14px;
+              font-size: var(--tf-type-scale-14);
             }
           }
         }
@@ -418,7 +418,7 @@ onMounted(() => {
       align-items: center;
       justify-content: center;
       color: var(--color-bg-white);
-      font-size: 18px;
+      font-size: var(--tf-type-scale-18);
       cursor: pointer;
       transition: right 0.3s;
 
@@ -458,7 +458,7 @@ onMounted(() => {
     margin-right: 16px;
 
     i {
-      font-size: 18px;
+      font-size: var(--tf-type-scale-18);
       color: var(--tf-color-gray-300-alt);
 
       &.active {
@@ -467,7 +467,7 @@ onMounted(() => {
     }
 
     span {
-      font-size: 14px;
+      font-size: var(--tf-type-scale-14);
       color: var(--text-primary);
     }
   }
@@ -477,12 +477,12 @@ onMounted(() => {
     text-align: right;
 
     .total-label {
-      font-size: 14px;
+      font-size: var(--tf-type-scale-14);
       color: var(--text-secondary);
     }
 
     .total-price {
-      font-size: 18px;
+      font-size: var(--tf-type-scale-18);
       font-weight: 500;
       color: var(--tf-color-accent-pink);
     }

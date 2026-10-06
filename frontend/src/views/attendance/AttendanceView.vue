@@ -1716,10 +1716,7 @@ const showAttendanceDetailColumn = computed(() => (
   canViewAttendanceField('attendance_attendanceview', 'overtime_hours')
 ))
 const showAttendanceReasonColumn = computed(() => canViewAttendanceField('attendance_attendanceview', 'reason') && !isMobile.value)
-const showAttendanceStatusColumn = computed(() => shouldShowActionColumn(
-  canViewAttendanceField('attendance_attendanceview', 'status'),
-  [canApprove.value]
-))
+const showAttendanceStatusColumn = computed(() => canViewAttendanceField('attendance_attendanceview', 'status'))
 const showAttendanceApprovalColumn = computed(() => canViewAttendanceField('attendance_attendanceview', 'approval_note') && !isMobile.value)
 const showAttendanceActionField = computed(() => (
   shouldShowActionColumn(
@@ -3019,7 +3016,7 @@ onMounted(async () => {
 }
 
 .stat-value {
-  font-size: 28px;
+  font-size: var(--tf-type-scale-28);
   font-weight: 700;
   color: var(--color-text-primary);
   line-height: 1;
@@ -3027,13 +3024,13 @@ onMounted(async () => {
 }
 
 .stat-label {
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   color: var(--color-info);
 }
 
 .stat-detail {
   margin-top: 4px;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -3074,7 +3071,7 @@ onMounted(async () => {
 }
 
 .filter-item label {
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   font-weight: 500;
   color: var(--color-text-regular);
 }
@@ -3094,7 +3091,7 @@ onMounted(async () => {
   align-items: center;
   gap: 4px;
   padding: 4px 10px;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   font-weight: 500;
   border-radius: 6px;
   border: none;
@@ -3130,12 +3127,12 @@ onMounted(async () => {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   color: var(--color-text-regular);
 }
 
 .detail-icon {
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: var(--color-info);
 }
 
@@ -3179,7 +3176,7 @@ onMounted(async () => {
   align-items: center;
   justify-content: center;
   border-radius: 8px;
-  font-size: 20px;
+  font-size: var(--tf-type-scale-20);
   color: white;
 }
 
@@ -3200,26 +3197,26 @@ onMounted(async () => {
 }
 
 .stat-result-value {
-  font-size: 24px;
+  font-size: var(--tf-type-scale-24);
   font-weight: 700;
   color: var(--color-text-primary);
 }
 
 .stat-result-label {
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   color: var(--color-info);
 }
 
 /* 对话框样式 */
 .days-display {
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
   font-weight: 600;
   color: var(--color-text-primary);
 }
 
 .date-range {
   margin-left: 10px;
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   color: var(--color-info);
 }
 
@@ -3247,7 +3244,7 @@ onMounted(async () => {
   .stat-detail,
   .stat-desc {
     margin-top: 4px;
-    font-size: 10px;
+    font-size: var(--tf-type-scale-10);
     line-height: 1.35;
     display: -webkit-box;
     line-clamp: 2;
@@ -3302,7 +3299,7 @@ onMounted(async () => {
   }
 
   .attendance-dialog-form :deep(.el-form-item__label) {
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
     line-height: 1.4;
     padding-bottom: 4px;
   }
@@ -3328,7 +3325,7 @@ onMounted(async () => {
   .attendance-dialog-form :deep(.el-select__selected-item),
   .attendance-dialog-form :deep(.el-date-editor input),
   .attendance-dialog-form :deep(.el-range-input) {
-    font-size: 16px !important;
+    font-size: var(--tf-type-scale-16) !important;
   }
 
   .attendance-dialog-form :deep(.el-radio-group) {
@@ -3350,11 +3347,11 @@ onMounted(async () => {
 
   .attendance-detail-descriptions :deep(.el-descriptions__label) {
     width: 88px;
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
   }
 
   .attendance-detail-descriptions :deep(.el-descriptions__content) {
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
     line-height: 1.45;
     word-break: break-word;
   }
@@ -3371,7 +3368,7 @@ onMounted(async () => {
 
   .stat-detail,
   .stat-desc {
-    font-size: 9px;
+    font-size: var(--tf-type-scale-9);
   }
 
   .attendance-dialog-form :deep(.el-form-item) {
@@ -3387,7 +3384,7 @@ onMounted(async () => {
     min-height: 36px;
     padding: 0 6px;
     border-radius: 10px;
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
   }
 
   .attendance-dialog-form :deep(.el-radio__label) {
@@ -3396,7 +3393,7 @@ onMounted(async () => {
     justify-content: center;
     gap: 4px;
     padding-left: 0;
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
     line-height: 1.2;
     white-space: nowrap;
   }
@@ -3406,7 +3403,7 @@ onMounted(async () => {
   }
 
   .attendance-dialog-form :deep(.el-radio i) {
-    font-size: 11px;
+    font-size: var(--tf-type-scale-11);
   }
 
   .attendance-date-range-grid {
@@ -3415,7 +3412,7 @@ onMounted(async () => {
 
   .attendance-detail-descriptions :deep(.el-descriptions__label),
   .attendance-detail-descriptions :deep(.el-descriptions__content) {
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
   }
 }
 </style>

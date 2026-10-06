@@ -713,14 +713,14 @@ watch(routeProductKey, () => {
   background: var(--tf-color-surface-soft);
 
   .el-icon {
-    font-size: 48px;
+    font-size: var(--tf-type-scale-48);
     color: var(--tf-color-indigo-brand);
     margin-bottom: 16px;
   }
 
   p {
     color: var(--text-muted);
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
   }
 }
 
@@ -770,7 +770,7 @@ watch(routeProductKey, () => {
       padding: 4px 12px;
       border-radius: 12px;
       color: var(--color-bg-white);
-      font-size: 12px;
+      font-size: var(--tf-type-scale-12);
       font-weight: 500;
     }
   }
@@ -786,7 +786,7 @@ watch(routeProductKey, () => {
       display: inline-block;
       padding: 6px 12px;
       border-radius: 6px;
-      font-size: 12px;
+      font-size: var(--tf-type-scale-12);
       font-weight: 600;
       color: var(--color-bg-white);
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
@@ -827,7 +827,7 @@ watch(routeProductKey, () => {
   gap: 12px;
 
   .price-label {
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
     color: var(--text-muted);
     font-weight: 500;
   }
@@ -838,20 +838,20 @@ watch(routeProductKey, () => {
     gap: 4px;
 
     .price-symbol {
-      font-size: 20px;
+      font-size: var(--tf-type-scale-20);
       font-weight: 600;
       color: var(--tf-color-red-coral);
     }
 
     .price-value {
-      font-size: 36px;
+      font-size: var(--tf-type-scale-36);
       font-weight: 700;
       color: var(--tf-color-red-coral);
       line-height: 1;
     }
 
     .price-separator {
-      font-size: 18px;
+      font-size: var(--tf-type-scale-18);
       color: var(--text-muted);
       margin: 0 2px;
     }
@@ -862,7 +862,7 @@ watch(routeProductKey, () => {
     border-left-color: var(--tf-color-orange-material-500);
 
     .price-value.inquire {
-      font-size: 24px;
+      font-size: var(--tf-type-scale-24);
       color: var(--tf-color-orange-material-500);
     }
   }
@@ -871,7 +871,7 @@ watch(routeProductKey, () => {
 // ========== 商品信息卡片 ==========
 .info-card {
   .product-title {
-    font-size: 20px;
+    font-size: var(--tf-type-scale-20);
     font-weight: 700;
     color: var(--tf-color-neutral-950);
     margin: 0;
@@ -893,7 +893,7 @@ watch(routeProductKey, () => {
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 16px;
+    font-size: var(--tf-type-scale-16);
     font-weight: 600;
     color: var(--tf-color-neutral-950);
     margin: 0;
@@ -904,7 +904,7 @@ watch(routeProductKey, () => {
   }
 
   .required-mark {
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
     color: var(--tf-color-red-coral);
     font-weight: 500;
   }
@@ -937,13 +937,13 @@ watch(routeProductKey, () => {
         gap: 2px;
 
         .memory-name {
-          font-size: 13px;
+          font-size: var(--tf-type-scale-13);
           font-weight: 500;
           color: var(--text-primary);
         }
 
         .memory-price {
-          font-size: 16px;
+          font-size: var(--tf-type-scale-16);
           font-weight: 700;
           color: var(--tf-color-red-coral);
         }
@@ -963,7 +963,7 @@ watch(routeProductKey, () => {
         transition: all 0.2s ease;
 
         i {
-          font-size: 10px;
+          font-size: var(--tf-type-scale-10);
           color: var(--color-bg-white);
         }
       }
@@ -1016,7 +1016,7 @@ watch(routeProductKey, () => {
           margin-bottom: 8px;
 
           .store-name {
-            font-size: 15px;
+            font-size: var(--tf-type-scale-15);
             font-weight: 600;
             color: var(--tf-color-neutral-950);
             margin: 0;
@@ -1024,7 +1024,7 @@ watch(routeProductKey, () => {
 
           .store-check-indicator {
             i {
-              font-size: 20px;
+              font-size: var(--tf-type-scale-20);
               color: var(--tf-color-gray-material-300);
               transition: all 0.3s ease;
 
@@ -1037,7 +1037,7 @@ watch(routeProductKey, () => {
 
         .store-address,
         .store-phone {
-          font-size: 13px;
+          font-size: var(--tf-type-scale-13);
           color: var(--text-secondary);
           margin: 4px 0;
           display: flex;
@@ -1045,7 +1045,7 @@ watch(routeProductKey, () => {
           gap: 6px;
 
           i {
-            font-size: 12px;
+            font-size: var(--tf-type-scale-12);
             color: var(--text-muted);
           }
         }
@@ -1077,12 +1077,12 @@ watch(routeProductKey, () => {
         border-radius: 8px;
 
         .detail-label {
-          font-size: 12px;
+          font-size: var(--tf-type-scale-12);
           color: var(--text-muted);
         }
 
         .detail-value {
-          font-size: 14px;
+          font-size: var(--tf-type-scale-14);
           font-weight: 500;
           color: var(--tf-color-neutral-950);
 
@@ -1092,7 +1092,7 @@ watch(routeProductKey, () => {
             background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
             color: var(--color-bg-white);
             border-radius: 4px;
-            font-size: 12px;
+            font-size: var(--tf-type-scale-12);
           }
 
           .tag-used-mini {
@@ -1101,7 +1101,7 @@ watch(routeProductKey, () => {
             background: linear-gradient(135deg, var(--tf-color-coral) 0%, var(--tf-color-red-gradient) 100%);
             color: var(--color-bg-white);
             border-radius: 4px;
-            font-size: 12px;
+            font-size: var(--tf-type-scale-12);
           }
         }
       }
@@ -1114,11 +1114,11 @@ watch(routeProductKey, () => {
       padding: 12px;
       background: var(--tf-color-amber-material-50);
       border-radius: 8px;
-      font-size: 13px;
+      font-size: var(--tf-type-scale-13);
       color: var(--tf-color-orange-material-500);
 
       i {
-        font-size: 16px;
+        font-size: var(--tf-type-scale-16);
       }
     }
   }
@@ -1153,7 +1153,7 @@ watch(routeProductKey, () => {
     background: var(--tf-button-neutral-bg);
     border-radius: 8px;
     color: var(--tf-button-tool-color);
-    font-size: 11px;
+    font-size: var(--tf-type-scale-11);
     text-decoration: none;
     transition: all 0.3s ease;
     flex-shrink: 0;
@@ -1163,7 +1163,7 @@ watch(routeProductKey, () => {
     }
 
     i {
-      font-size: 20px;
+      font-size: var(--tf-type-scale-20);
     }
   }
 
@@ -1173,7 +1173,7 @@ watch(routeProductKey, () => {
     height: 44px;
     margin: 0;
     border-radius: 8px;
-    font-size: 15px;
+    font-size: var(--tf-type-scale-15);
     font-weight: 600;
     display: flex;
     align-items: center;
@@ -1191,7 +1191,7 @@ watch(routeProductKey, () => {
     }
 
     i {
-      font-size: 16px;
+      font-size: var(--tf-type-scale-16);
     }
   }
 
@@ -1228,12 +1228,12 @@ watch(routeProductKey, () => {
     height: 44px;
     background: var(--tf-color-surface-soft);
     color: var(--text-muted);
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
     border-radius: 22px;
     padding: 0 20px;
 
     i {
-      font-size: 16px;
+      font-size: var(--tf-type-scale-16);
     }
   }
 }

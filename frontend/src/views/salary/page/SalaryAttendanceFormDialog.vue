@@ -280,7 +280,7 @@ const status = createFieldModel('status')
     display: block;
     margin-bottom: 8px;
     color: var(--tf-color-gray-ant-600);
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
     font-weight: 500;
   }
 }
@@ -295,7 +295,7 @@ const status = createFieldModel('status')
   border: 1px solid var(--tf-color-gray-ant-400);
   border-radius: 6px;
   background: var(--tf-color-white);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   transition: border-color 0.2s, box-shadow 0.2s;
 
   &:focus {
@@ -315,7 +315,7 @@ const status = createFieldModel('status')
   align-items: center;
   gap: 6px;
   color: var(--tf-color-gray-ant-600);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   cursor: pointer;
 
   input {
@@ -334,7 +334,7 @@ const status = createFieldModel('status')
   display: block;
   margin-top: 6px;
   color: var(--tf-color-gray-ant-500);
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   line-height: 1.5;
 }
 
@@ -347,13 +347,13 @@ const status = createFieldModel('status')
     margin-bottom: 16px;
 
     > label {
-      font-size: 13px;
+      font-size: var(--tf-type-scale-13);
     }
   }
 
   .form-control {
     padding: 8px 10px;
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
   }
 
   .radio-group {
@@ -362,7 +362,7 @@ const status = createFieldModel('status')
   }
 
   .radio-label {
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
   }
 }
 </style>

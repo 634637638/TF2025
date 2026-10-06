@@ -116,7 +116,7 @@
   margin: 0 !important;
   padding-inline: var(--tf-dialog-action-padding-x) !important;
   border-radius: var(--tf-button-radius, 6px) !important;
-  font-size: var(--tf-button-font-size, 14px) !important;
+  font-size: var(--tf-button-font-size, var(--tf-type-scale-14)) !important;
   font-weight: var(--tf-button-font-weight, 600) !important;
   line-height: 1 !important;
   white-space: nowrap !important;
@@ -171,7 +171,7 @@
   border-color: var(--tf-button-success-hover-border) !important;
 }
 
-@media (max-width: 767px) {
+@media (max-width: 1024px) {
   .el-message-box__btns,
   :where(
     .tf-dialog-actions,
@@ -211,6 +211,7 @@
   }
 
   .el-message-box__btns > .el-button,
+  .el-dialog__footer > .el-button,
   :where(
     .tf-dialog-actions,
     .mobile-dialog-footer,

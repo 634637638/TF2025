@@ -14,14 +14,14 @@
         >
           <template #actions>
             <el-button
-              v-if="canViewField('system_info.operations')"
+              v-if="showOperations"
               @click="openPublicPage"
             >
               <el-icon><Link /></el-icon>
               <span>打开公开页</span>
             </el-button>
             <el-button
-              v-if="canViewField('system_info.operations')"
+              v-if="showOperations"
               :loading="locationLoading"
               @click="refreshAutoContext"
             >
@@ -104,7 +104,6 @@
                       </div>
                     </div>
                     <el-button
-                      v-if="canViewField('system_info.operations')"
                       size="small"
                       :loading="previewLoadingType === item.type"
                       @click="refreshPreview(item.type)"
@@ -310,7 +309,7 @@
                         placeholder="每行一条语录"
                       />
                       <el-button
-                        v-if="canDelete && canViewField('system_info.operations')"
+                        v-if="canDelete"
                         type="danger"
                         text
                         @click="removeContextLexiconEntry(item.value, index)"
@@ -324,7 +323,7 @@
                       description="暂无语句"
                     />
                     <el-button
-                      v-if="canCreate && canViewField('system_info.operations')"
+                      v-if="canCreate"
                       type="primary"
                       plain
                       :disabled="!canAddContextLexiconEntry(item.value)"
@@ -338,7 +337,7 @@
               </el-tabs>
               <div class="inline-actions">
                 <el-button
-                  v-if="canWriteLexicon && canViewField('system_info.operations') && (canViewField('lexicon.type') || canViewField('lexicon.mode') || canViewField('lexicon.context'))"
+                  v-if="canWriteLexicon && (canViewField('lexicon.type') || canViewField('lexicon.mode') || canViewField('lexicon.context'))"
                   type="primary"
                   :loading="settingsSaving"
                   @click="saveLexicon"
@@ -365,7 +364,7 @@ import {
 } from '@element-plus/icons-vue'
 import { PageHeader, PermissionGate } from '@/components/base'
 import { usePagePermissions } from '@/composables/usePagePermissions'
-import { fieldPermissions } from '@/composables/useFieldPermissions'
+import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { systemSettingsApi } from '@/api/system-settings'
 import { TimeUtil } from '@/utils/time'
 import {
@@ -387,6 +386,10 @@ const { canView, canCreate, canEdit, canDelete, handleNoPermission } = usePagePe
 const MARKETING_MODULE_KEY = 'marketing'
 const canViewField = (fieldKey: string) => fieldPermissions.isFieldVisible(MARKETING_MODULE_KEY, fieldKey)
 const canWriteLexicon = computed(() => canCreate.value || canEdit.value || canDelete.value)
+const showOperations = computed(() => shouldShowActionColumn(
+  canViewField('system_info.operations'),
+  [canCreate.value, canEdit.value, canDelete.value]
+))
 const canWriteLexiconText = (_value: unknown) => canCreate.value || canEdit.value
 
 const lexiconTab = ref<MarketingCopyType>('cute')
@@ -934,14 +937,14 @@ onMounted(async () => {
 
   h2 {
     margin: 0;
-    font-size: 18px;
+    font-size: var(--tf-type-scale-18);
     color: var(--tf-color-neutral-900);
   }
 
   p {
     margin: 6px 0 0;
     color: var(--tf-color-slate-500);
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
     line-height: 1.6;
   }
 }
@@ -980,7 +983,7 @@ onMounted(async () => {
 
 .section-title {
   margin: 16px 0 12px;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   font-weight: 700;
   color: var(--tf-color-slate-700);
 }
@@ -988,7 +991,7 @@ onMounted(async () => {
 .lexicon-hint {
   margin: -4px 0 12px;
   color: var(--tf-color-slate-500);
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   line-height: 1.6;
 }
 
@@ -1007,7 +1010,7 @@ onMounted(async () => {
   gap: 8px;
   margin-bottom: 10px;
   color: var(--tf-color-slate-500);
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   line-height: 1.6;
 }
 
@@ -1032,12 +1035,12 @@ onMounted(async () => {
 
 .subsidy-toggle-row strong {
   color: var(--tf-color-blue-tailwind-900);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
 }
 
 .subsidy-toggle-row span {
   color: var(--tf-color-slate-600);
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
 }
 
 .context-category-summary__label {
@@ -1096,12 +1099,12 @@ onMounted(async () => {
 }
 
 .context-label {
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: var(--tf-color-slate-500);
 }
 
 .context-value {
-  font-size: 15px;
+  font-size: var(--tf-type-scale-15);
   font-weight: 600;
   color: var(--tf-color-slate-900);
   word-break: break-word;
@@ -1122,7 +1125,7 @@ onMounted(async () => {
   min-width: 0;
   flex: 0 1 auto;
   color: var(--tf-color-indigo-600);
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   white-space: nowrap;
 }
 
@@ -1131,7 +1134,7 @@ onMounted(async () => {
   flex: 1 1 auto;
   overflow: hidden;
   color: var(--tf-color-slate-600);
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   line-height: 1.5;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1153,7 +1156,7 @@ onMounted(async () => {
   h3 {
     margin: 0;
     color: var(--tf-color-slate-900);
-    font-size: 15px;
+    font-size: var(--tf-type-scale-15);
   }
 }
 
@@ -1186,7 +1189,7 @@ onMounted(async () => {
 
 .preview-card :deep(.copy-title) {
   color: var(--tf-color-slate-900);
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
   font-weight: 700;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1201,13 +1204,13 @@ onMounted(async () => {
 .preview-card :deep(.copy-tone) {
   margin-top: 4px;
   color: var(--tf-color-slate-500);
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
 }
 
 .preview-card :deep(.copy-text) {
   min-height: 108px;
   color: var(--tf-color-slate-600);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   line-height: 1.8;
   overflow-wrap: anywhere;
   white-space: pre-wrap;
@@ -1261,11 +1264,11 @@ onMounted(async () => {
   }
 
   .card-head h2 {
-    font-size: 16px;
+    font-size: var(--tf-type-scale-16);
   }
 
   .card-head p {
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
     line-height: 1.5;
   }
 
@@ -1284,11 +1287,11 @@ onMounted(async () => {
   }
 
   .context-label {
-    font-size: 11px;
+    font-size: var(--tf-type-scale-11);
   }
 
   .context-value {
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
     line-height: 1.65;
   }
 
@@ -1307,12 +1310,12 @@ onMounted(async () => {
   }
 
   .preview-card :deep(.copy-title) {
-    font-size: 15px;
+    font-size: var(--tf-type-scale-15);
   }
 
   .preview-card :deep(.copy-text) {
     min-height: auto;
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
     line-height: 1.7;
   }
 }

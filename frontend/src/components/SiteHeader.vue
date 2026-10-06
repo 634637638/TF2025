@@ -86,14 +86,14 @@ onUnmounted(() => {
 }
 
 .site-name {
-  font-size: 18px;
+  font-size: var(--tf-type-scale-18);
   font-weight: 600;
   color: var(--tf-color-heading);
   line-height: 1.2;
 }
 
 .site-subtitle {
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: var(--tf-color-gray-cool-500);
   line-height: 1.2;
 }
@@ -110,11 +110,11 @@ onUnmounted(() => {
   }
 
   .site-name {
-    font-size: 16px;
+    font-size: var(--tf-type-scale-16);
   }
 
   .site-subtitle {
-    font-size: 11px;
+    font-size: var(--tf-type-scale-11);
   }
 }
 

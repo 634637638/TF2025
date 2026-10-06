@@ -28,7 +28,7 @@
             >
               <el-button
                 native-type="button"
-                class="media-preview-tool"
+                class="media-preview-tool tf-button--overlay-tool"
                 title="缩小图片"
                 aria-label="缩小图片"
                 :disabled="zoomScale <= MIN_ZOOM"
@@ -38,7 +38,7 @@
               </el-button>
               <el-button
                 native-type="button"
-                class="media-preview-tool media-preview-zoom-reset"
+                class="media-preview-tool media-preview-zoom-reset tf-button--overlay-tool tf-button--overlay-reset"
                 title="恢复原始大小"
                 aria-label="恢复原始大小"
                 @click.stop="resetZoom"
@@ -47,7 +47,7 @@
               </el-button>
               <el-button
                 native-type="button"
-                class="media-preview-tool"
+                class="media-preview-tool tf-button--overlay-tool"
                 title="放大图片"
                 aria-label="放大图片"
                 :disabled="zoomScale >= MAX_ZOOM"
@@ -60,35 +60,35 @@
               v-if="deletable"
               native-type="button"
               type="danger"
-              class="media-preview-tool media-preview-delete"
+              class="media-preview-tool media-preview-delete tf-button--overlay-tool tf-button--overlay-danger"
               title="删除当前素材"
               aria-label="删除当前素材"
               @click.stop="emitDelete"
             >
               <i class="fas fa-trash" />
             </el-button>
-            <button
-              type="button"
-              class="media-preview-tool"
+            <el-button
+              native-type="button"
+              class="media-preview-tool tf-button--overlay-tool"
               title="关闭预览"
               aria-label="关闭预览"
               @click="close"
             >
               <i class="fas fa-times" />
-            </button>
+            </el-button>
           </div>
         </div>
 
-        <button
+        <el-button
           v-if="items.length > 1"
-          type="button"
-          class="media-preview-nav media-preview-prev"
+          native-type="button"
+          class="media-preview-nav media-preview-prev tf-button--overlay-tool"
           title="上一个"
           aria-label="上一个"
           @click.stop="showPrevious"
         >
           <i class="fas fa-chevron-left" />
-        </button>
+        </el-button>
 
         <div
           ref="stageElement"
@@ -141,16 +141,16 @@
           </div>
         </div>
 
-        <button
+        <el-button
           v-if="items.length > 1"
-          type="button"
-          class="media-preview-nav media-preview-next"
+          native-type="button"
+          class="media-preview-nav media-preview-next tf-button--overlay-tool"
           title="下一个"
           aria-label="下一个"
           @click.stop="showNext"
         >
           <i class="fas fa-chevron-right" />
-        </button>
+        </el-button>
       </div>
     </Transition>
   </Teleport>
@@ -534,7 +534,7 @@ onUnmounted(() => {
 .media-preview-count {
   flex: none;
   color: rgba(255, 255, 255, 0.7);
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
 }
 
 .media-preview-tool,
@@ -542,19 +542,12 @@ onUnmounted(() => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 42px;
-  height: 42px;
-  padding: 0;
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.1);
-  color: var(--color-bg-white);
   cursor: pointer;
 }
 
 .media-preview-tool:hover,
 .media-preview-nav:hover {
-  background: rgba(255, 255, 255, 0.2);
+  transform: none;
 }
 
 .media-preview-tool:disabled {
@@ -563,18 +556,11 @@ onUnmounted(() => {
 }
 
 .media-preview-zoom-reset {
-  width: 56px;
-  border-radius: var(--tf-radius-full);
   font-size: var(--tf-font-table-compact);
   font-variant-numeric: tabular-nums;
 }
 
-.media-preview-delete {
-  border-color: rgba(248, 113, 113, 0.6);
-  background: rgba(185, 28, 28, 0.72);
-}
-
-.media-preview-stage {
+  .media-preview-stage {
   grid-column: 2;
   grid-row: 2;
   display: flex;
@@ -585,7 +571,8 @@ onUnmounted(() => {
   min-width: 0;
   min-height: 0;
   overflow: hidden;
-  touch-action: pan-y;
+    touch-action: pan-y;
+    overscroll-behavior: contain;
   user-select: none;
 }
 
@@ -612,7 +599,7 @@ video.media-preview-content {
 }
 
 .media-preview-error i {
-  font-size: 30px;
+  font-size: var(--tf-type-scale-30);
 }
 
 .media-preview-nav {
@@ -648,28 +635,13 @@ video.media-preview-content {
     padding: calc(8px + env(safe-area-inset-top)) 8px 8px;
   }
 
-  .media-preview-tool,
-  .media-preview-nav {
-    width: 38px;
-    height: 38px;
-  }
-
   .media-preview-zoom-actions {
     gap: var(--tf-space-1);
   }
 
-  .media-preview-zoom-actions .media-preview-tool {
-    width: 32px;
-    height: 32px;
-  }
-
-  .media-preview-zoom-actions .media-preview-zoom-reset {
-    width: 44px;
-  }
-
   .media-preview-meta {
     gap: 7px;
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
   }
 }
 </style>

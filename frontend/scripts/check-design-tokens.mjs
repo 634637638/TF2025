@@ -75,9 +75,13 @@ function collectLegacyDesignValues() {
         pattern.lastIndex = 0
         for (const match of css.matchAll(pattern)) {
           const value = match[1].trim().replace(/\s+/g, ' ')
+          // A token name such as --tf-type-scale-0-75rem contains a unit-like
+          // suffix but does not introduce a new design value. Keep numeric
+          // fallbacks visible to the audit while ignoring custom-property names.
+          const auditableValue = value.replace(/--[\w-]+/g, '')
           const hasLiteral = category === 'layering'
             ? /^-?\d+$/.test(value)
-            : literalPattern.test(value)
+            : literalPattern.test(auditableValue)
           if (!hasLiteral) continue
           values[category].add(value)
           counts[category] += 1

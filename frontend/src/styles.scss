@@ -45,17 +45,18 @@ html {
   --app-font-family-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC',
     'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans SC', 'Segoe UI', Roboto,
     'Helvetica Neue', Arial, sans-serif;
-  --mobile-text-body: 15px;
-  --mobile-text-body-lg: 16px;
-  --mobile-text-label: 14px;
-  --mobile-text-caption: 12px;
-  --mobile-text-button: 14px;
-  --mobile-text-title: 18px;
-  --mobile-text-section-title: 16px;
-  --mobile-text-stat-value: 22px;
-  --mobile-text-stat-label: 12px;
-  --mobile-text-table: 13px;
-  --mobile-text-table-header: 13px;
+  /* Compatibility aliases. Canonical typography lives in _variables.scss. */
+  --mobile-text-body: var(--tf-font-body-mobile);
+  --mobile-text-body-lg: var(--tf-font-body-lg-mobile);
+  --mobile-text-label: var(--tf-font-label-mobile);
+  --mobile-text-caption: var(--tf-font-caption-mobile);
+  --mobile-text-button: var(--tf-font-button-mobile);
+  --mobile-text-title: var(--tf-font-title-mobile);
+  --mobile-text-section-title: var(--tf-font-section-mobile);
+  --mobile-text-stat-value: var(--tf-font-stat-value-mobile);
+  --mobile-text-stat-label: var(--tf-font-stat-label-mobile);
+  --mobile-text-table: var(--tf-font-table-mobile-size);
+  --mobile-text-table-header: var(--tf-font-table-header-mobile);
   --mobile-line-height-body: 1.5;
   --mobile-line-height-compact: 1.35;
   --mobile-control-height: 40px;
@@ -269,17 +270,17 @@ html {
 
 @media (max-width: 375px) {
   :root {
-    --mobile-text-body: 14px;
-    --mobile-text-body-lg: 15px;
-    --mobile-text-label: 13px;
-    --mobile-text-caption: 11px;
-    --mobile-text-button: 13px;
-    --mobile-text-title: 17px;
-    --mobile-text-section-title: 15px;
-    --mobile-text-stat-value: 20px;
-    --mobile-text-stat-label: 11px;
-    --mobile-text-table: 11px;
-    --mobile-text-table-header: 11px;
+    --mobile-text-body: var(--tf-font-body-narrow);
+    --mobile-text-body-lg: var(--tf-font-body-lg-narrow);
+    --mobile-text-label: var(--tf-font-label-narrow);
+    --mobile-text-caption: var(--tf-font-caption-narrow);
+    --mobile-text-button: var(--tf-font-button-narrow);
+    --mobile-text-title: var(--tf-font-title-narrow);
+    --mobile-text-section-title: var(--tf-font-section-narrow);
+    --mobile-text-stat-value: var(--tf-font-stat-value-narrow);
+    --mobile-text-stat-label: var(--tf-font-stat-label-narrow);
+    --mobile-text-table: var(--tf-font-table-narrow-size);
+    --mobile-text-table-header: var(--tf-font-table-header-narrow);
     --mobile-control-height: 38px;
     --mobile-button-height: 42px;
     --mobile-button-height-sm: 34px;
@@ -333,7 +334,7 @@ html {
   min-width: 112px;
   padding: 10px 14px;
   color: var(--tf-loading-surface-text, var(--tf-color-slate-700));
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   font-weight: 600;
   background: rgba(255, 255, 255, 0.92);
   border: 1px solid var(--tf-loading-surface-border, rgba(226, 232, 240, 0.78));
@@ -730,31 +731,31 @@ html {
 
 /* 字体大小类 */
 .text-xs {
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
 }
 
 .text-sm {
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
 }
 
 .text-base {
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
 }
 
 .text-lg {
-  font-size: 18px;
+  font-size: var(--tf-type-scale-18);
 }
 
 .text-xl {
-  font-size: 20px;
+  font-size: var(--tf-type-scale-20);
 }
 
 .text-2xl {
-  font-size: 24px;
+  font-size: var(--tf-type-scale-24);
 }
 
 .text-3xl {
-  font-size: 30px;
+  font-size: var(--tf-type-scale-30);
 }
 
 /* 字体粗细类 */
@@ -1175,7 +1176,7 @@ body .el-message {
   border-radius: 6px !important;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
   padding: 10px 14px !important;
-  font-size: 13px !important;
+  font-size: var(--tf-type-scale-13) !important;
   border: 1px solid transparent !important;
   // 先按内容的最大自然宽度布局，超过 max-width 后再换行。
   // fit-content 在 flex 子项较多时会提前收缩，中文短提示容易被挤成两行。
@@ -1263,7 +1264,7 @@ body .el-message {
 /* 关闭按钮样式 */
 .el-message .el-message__closeBtn {
   color: var(--tf-button-tool-color) !important;
-  font-size: 14px !important;
+  font-size: var(--tf-type-scale-14) !important;
   width: 20px !important;
   height: 20px !important;
   display: flex !important;
@@ -1282,14 +1283,14 @@ body .el-message {
 
 /* 图标和内容样式 - 确保一行显示 */
 .el-message .el-message-icon {
-  font-size: 16px !important;
+  font-size: var(--tf-type-scale-16) !important;
   margin-right: 8px !important;
   flex-shrink: 0 !important;
   align-self: center !important;
 }
 
 body .el-message .el-message__content {
-  font-size: 13px !important;
+  font-size: var(--tf-type-scale-13) !important;
   line-height: 1.4 !important;
   padding: 0 !important;
   margin: 0 !important;

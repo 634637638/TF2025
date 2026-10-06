@@ -2071,7 +2071,7 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 8px;
   margin-bottom: 16px;
-  font-size: 15px;
+  font-size: var(--tf-type-scale-15);
   font-weight: 700;
   color: var(--tf-color-neutral-800);
 
@@ -2161,7 +2161,7 @@ onBeforeUnmount(() => {
 }
 
 :global(.query-edit-dialog .mobile-dialog-sheet-title) {
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
   font-weight: 700;
   line-height: 1.3;
 }
@@ -2170,19 +2170,18 @@ onBeforeUnmount(() => {
   top: calc(12px + env(safe-area-inset-top));
   right: 16px;
   transform: none;
-  background: rgba(255, 255, 255, 0.16);
 }
 
 .input-hint {
   margin-top: 6px;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   line-height: 1.4;
   color: var(--tf-color-neutral-500);
 }
 
 .profit-hint {
   margin-top: 8px;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: var(--tf-color-slate-500);
 }
 
@@ -2221,7 +2220,7 @@ onBeforeUnmount(() => {
   justify-content: center;
   padding: 16px 20px;
   color: var(--text-secondary);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
 }
 
 .customer-item {
@@ -2262,14 +2261,14 @@ onBeforeUnmount(() => {
 .customer-name {
   font-weight: 600;
   color: var(--tf-color-neutral-800);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   line-height: 1.2;
   min-width: 0;
 }
 
 .customer-phone {
   color: var(--tf-color-slate-600);
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   line-height: 1.2;
 }
 
@@ -2278,7 +2277,7 @@ onBeforeUnmount(() => {
   color: var(--tf-color-blue-700);
   padding: 2px 8px;
   border-radius: 999px;
-  font-size: 11px;
+  font-size: var(--tf-type-scale-11);
   font-weight: 600;
   line-height: 1.2;
   justify-self: end;
@@ -2289,7 +2288,7 @@ onBeforeUnmount(() => {
   color: white;
   padding: 2px 8px;
   border-radius: 999px;
-  font-size: 11px;
+  font-size: var(--tf-type-scale-11);
   font-weight: 600;
   line-height: 1.2;
   flex-shrink: 0;
@@ -2305,7 +2304,7 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   font-weight: 500;
 
   &:hover {
@@ -2320,7 +2319,7 @@ onBeforeUnmount(() => {
 
   .search-loading {
     padding: 10px 12px;
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
     gap: 6px;
   }
 
@@ -2338,16 +2337,16 @@ onBeforeUnmount(() => {
   }
 
   .customer-name {
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
   }
 
   .customer-phone {
-    font-size: 11px;
+    font-size: var(--tf-type-scale-11);
   }
 
   .member-number,
   .vip-badge {
-    font-size: 8px;
+    font-size: var(--tf-type-scale-8);
     padding: 1px 5px;
     line-height: 1.1;
     white-space: nowrap;
@@ -2355,7 +2354,7 @@ onBeforeUnmount(() => {
 
   .create-new-customer {
     padding: 10px 12px;
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
     gap: 6px;
   }
 }
@@ -2391,7 +2390,7 @@ onBeforeUnmount(() => {
 :deep(.el-date-editor .el-input__inner),
 :deep(.el-input-number .el-input__inner),
 :deep(.el-textarea__inner) {
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
 }
 
 :deep(.el-input-number .el-input__wrapper) {
@@ -2450,7 +2449,7 @@ onBeforeUnmount(() => {
   :deep(.el-date-editor .el-input__inner),
   :deep(.el-input-number .el-input__inner),
   :deep(.el-textarea__inner) {
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
   }
 
   :deep(.el-form-item) {

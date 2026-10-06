@@ -824,12 +824,12 @@ const tableColumns = computed(() => {
     {
       key: 'apply_time',
       label: '国补提交',
-      visible: shouldShowActionColumn(fieldVisibility.value.apply_time, [canApprove.value])
+      visible: fieldVisibility.value.apply_time
     },
     {
       key: 'arrival_time',
       label: '国补到账',
-      visible: shouldShowActionColumn(fieldVisibility.value.arrival_time, [canArrival.value])
+      visible: fieldVisibility.value.arrival_time
     },
     { key: 'actions', label: '操作', visible: canShowActions.value }
   ].filter(col => col.visible)
@@ -1836,7 +1836,7 @@ onUnmounted(() => {
 
   .subsidy-dialog .mobile-dialog-sheet-title,
   .subsidy-detail-dialog .mobile-dialog-sheet-title {
-    font-size: 16px !important;
+    font-size: var(--tf-type-scale-16) !important;
   }
 
   .subsidy-dialog .mobile-dialog-sheet-close,
@@ -1886,14 +1886,14 @@ onUnmounted(() => {
     align-items: center;
     gap: 8px;
     color: white;
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
 
     i {
-      font-size: 16px;
+      font-size: var(--tf-type-scale-16);
     }
 
     strong {
-      font-size: 16px;
+      font-size: var(--tf-type-scale-16);
       font-weight: 600;
     }
   }
@@ -1924,11 +1924,11 @@ onUnmounted(() => {
   border: 1px solid var(--tf-color-blue-ant-100);
   border-radius: 8px;
   color: var(--tf-color-sky-700);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   margin-bottom: 12px;
 
   i {
-    font-size: 16px;
+    font-size: var(--tf-type-scale-16);
   }
 
   strong {
@@ -1988,12 +1988,12 @@ onUnmounted(() => {
     padding: 10px 16px;
     background: var(--el-bg-color-page);
     border-bottom: 1px solid var(--el-border-color);
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
     font-weight: 500;
     color: var(--el-text-color-primary);
 
     i {
-      font-size: 14px;
+      font-size: var(--tf-type-scale-14);
     }
   }
 
@@ -2008,7 +2008,7 @@ onUnmounted(() => {
     gap: 12px;
     padding: 8px 16px;
     border-bottom: 1px solid var(--el-border-color-lighter);
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
 
     &:last-child {
       border-bottom: none;
@@ -2035,7 +2035,7 @@ onUnmounted(() => {
     padding: 8px 16px;
     text-align: center;
     color: var(--el-text-color-secondary);
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
     background: var(--el-bg-color-page);
   }
 }

@@ -8,7 +8,7 @@
     }
 
     h4 {
-      font-size: 0.95rem;
+      font-size: var(--tf-type-scale-0-95rem);
       font-weight: 600;
       color: var(--tf-color-gray-bootstrap-700);
       margin-bottom: 12px;
@@ -25,7 +25,7 @@
       .detail-label {
         width: 120px;
         color: var(--tf-color-muted);
-        font-size: 14px;
+        font-size: var(--tf-type-scale-14);
         font-weight: 500;
         flex-shrink: 0;
       }
@@ -33,20 +33,20 @@
       .detail-value {
         flex: 1;
         color: var(--tf-color-heading);
-        font-size: 14px;
+        font-size: var(--tf-type-scale-14);
         font-weight: 500;
 
         &.subsidy-highlight {
           color: var(--tf-color-emerald-500);
           font-weight: 700;
-          font-size: 1.25rem;
+          font-size: var(--tf-type-scale-1-25rem);
         }
 
         .status-badge {
           display: inline-block;
           padding: 6px 14px;
           border-radius: 20px;
-          font-size: 12px;
+          font-size: var(--tf-type-scale-12);
           font-weight: 600;
 
           &.status-pending {
@@ -78,7 +78,7 @@
 
     .detail-remarks {
       color: var(--tf-color-gray-bootstrap-700);
-      font-size: 14px;
+      font-size: var(--tf-type-scale-14);
       line-height: 1.7;
       margin: 0;
       white-space: pre-wrap;
@@ -113,7 +113,7 @@
           gap: 8px;
 
           .toggle-hint {
-            font-size: 12px;
+            font-size: var(--tf-type-scale-12);
             font-weight: 500;
             color: var(--tf-color-muted);
             background: var(--tf-color-surface-muted);
@@ -201,7 +201,7 @@
 // 审批对话框
 .approve-content {
   p {
-    font-size: 16px;
+    font-size: var(--tf-type-scale-16);
     color: var(--tf-color-gray-bootstrap-700);
     margin-bottom: 16px;
   }
@@ -210,11 +210,11 @@
     padding: 16px;
     background: var(--tf-color-surface-muted);
     border-radius: 8px;
-    font-size: 15px;
+    font-size: var(--tf-type-scale-15);
 
     strong {
       color: var(--tf-color-emerald-500);
-      font-size: 1.5rem;
+      font-size: var(--tf-type-scale-1-5rem);
     }
   }
 }
@@ -240,7 +240,7 @@
   :deep(.el-form-item__label) {
     font-weight: 600;
     color: var(--color-text-primary);
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
   }
 
   :deep(.el-input__wrapper) {
@@ -259,11 +259,11 @@
   }
 
   :deep(.el-input__inner) {
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
   }
 
   :deep(.el-textarea__inner) {
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
     padding: 10px 12px;
     transition: all 0.2s;
 
@@ -301,7 +301,7 @@
       color: var(--tf-button-on-color);
       border: none;
       border-radius: 8px;
-      font-size: 13px;
+      font-size: var(--tf-type-scale-13);
       font-weight: 500;
       cursor: pointer;
       transition: all 0.2s;
@@ -317,7 +317,7 @@
       }
 
       i {
-        font-size: 14px;
+        font-size: var(--tf-type-scale-14);
       }
     }
 
@@ -331,7 +331,7 @@
       color: var(--tf-button-on-color);
       border: none;
       border-radius: 8px;
-      font-size: 13px;
+      font-size: var(--tf-type-scale-13);
       font-weight: 500;
       cursor: pointer;
       transition: all 0.2s;
@@ -347,7 +347,7 @@
       }
 
       i {
-        font-size: 14px;
+        font-size: var(--tf-type-scale-14);
       }
     }
   }
@@ -361,7 +361,7 @@
     border: 1px solid var(--tf-color-border-subtle);
 
     .readonly-title {
-      font-size: 13px;
+      font-size: var(--tf-type-scale-13);
       font-weight: 600;
       color: var(--tf-color-muted);
       margin-bottom: 12px;

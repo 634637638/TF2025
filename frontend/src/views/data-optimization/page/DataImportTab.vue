@@ -1162,14 +1162,14 @@ const handleDeleteHistory = async (row: any) => {
         margin-bottom: 30px;
 
         h2 {
-          font-size: 20px;
+          font-size: var(--tf-type-scale-20);
           font-weight: 600;
           color: var(--color-text-primary);
           margin: 0 0 8px 0;
         }
 
         p {
-          font-size: 14px;
+          font-size: var(--tf-type-scale-14);
           color: var(--color-info);
           margin: 0;
         }
@@ -1199,19 +1199,19 @@ const handleDeleteHistory = async (row: any) => {
 
         .upload-content {
           i {
-            font-size: 64px;
+            font-size: var(--tf-type-scale-64);
             color: var(--color-primary);
             margin-bottom: 16px;
           }
 
           .upload-text {
-            font-size: 16px;
+            font-size: var(--tf-type-scale-16);
             color: var(--color-text-primary);
             margin-bottom: 8px;
           }
 
           .upload-hint {
-            font-size: 14px;
+            font-size: var(--tf-type-scale-14);
             color: var(--color-info);
             margin: 0;
           }
@@ -1230,7 +1230,7 @@ const handleDeleteHistory = async (row: any) => {
           border-radius: 4px;
 
           i {
-            font-size: 24px;
+            font-size: var(--tf-type-scale-24);
             color: var(--color-success);
           }
 
@@ -1245,7 +1245,7 @@ const handleDeleteHistory = async (row: any) => {
             }
 
             .file-size {
-              font-size: 12px;
+              font-size: var(--tf-type-scale-12);
               color: var(--color-info);
             }
           }
@@ -1263,7 +1263,7 @@ const handleDeleteHistory = async (row: any) => {
         .progress-text {
           text-align: center;
           margin-top: 12px;
-          font-size: 14px;
+          font-size: var(--tf-type-scale-14);
           color: var(--tf-color-blue-material-700);
           font-weight: 500;
         }
@@ -1280,7 +1280,7 @@ const handleDeleteHistory = async (row: any) => {
         .progress-text {
           text-align: center;
           margin-top: 12px;
-          font-size: 14px;
+          font-size: var(--tf-type-scale-14);
           color: var(--tf-color-green-700);
           font-weight: 500;
         }
@@ -1304,14 +1304,14 @@ const handleDeleteHistory = async (row: any) => {
 
             .label {
               display: block;
-              font-size: 14px;
+              font-size: var(--tf-type-scale-14);
               color: var(--color-info);
               margin-bottom: 8px;
             }
 
             .value {
               display: block;
-              font-size: 24px;
+              font-size: var(--tf-type-scale-24);
               font-weight: 600;
               color: var(--color-text-primary);
             }
@@ -1331,7 +1331,7 @@ const handleDeleteHistory = async (row: any) => {
           margin-bottom: 24px;
 
           h3 {
-            font-size: 16px;
+            font-size: var(--tf-type-scale-16);
             font-weight: 600;
             color: var(--color-text-primary);
             margin: 0 0 16px 0;
@@ -1355,7 +1355,7 @@ const handleDeleteHistory = async (row: any) => {
               border: 1px solid var(--tf-color-border-element);
 
               i {
-                font-size: 24px;
+                font-size: var(--tf-type-scale-24);
                 color: var(--color-primary);
                 width: 32px;
                 text-align: center;
@@ -1366,14 +1366,14 @@ const handleDeleteHistory = async (row: any) => {
                 flex-direction: column;
 
                 .stat-value {
-                  font-size: 20px;
+                  font-size: var(--tf-type-scale-20);
                   font-weight: 600;
                   color: var(--color-text-primary);
                   line-height: 1.2;
                 }
 
                 .stat-label {
-                  font-size: 12px;
+                  font-size: var(--tf-type-scale-12);
                   color: var(--color-info);
                   margin-top: 4px;
                 }
@@ -1384,7 +1384,7 @@ const handleDeleteHistory = async (row: any) => {
 
         .duplicates-preview {
           h3 {
-            font-size: 16px;
+            font-size: var(--tf-type-scale-16);
             font-weight: 600;
             color: var(--color-warning);
             margin: 0 0 8px 0;
@@ -1394,7 +1394,7 @@ const handleDeleteHistory = async (row: any) => {
           }
 
           p {
-            font-size: 14px;
+            font-size: var(--tf-type-scale-14);
             color: var(--color-text-regular);
             margin: 0 0 12px 0;
           }
@@ -1412,7 +1412,7 @@ const handleDeleteHistory = async (row: any) => {
 
             i {
               color: var(--tf-color-purple-material);
-              font-size: 16px;
+              font-size: var(--tf-type-scale-16);
               margin-top: 2px;
             }
 
@@ -1427,7 +1427,7 @@ const handleDeleteHistory = async (row: any) => {
               list-style: none;
 
               li {
-                font-size: 13px;
+                font-size: var(--tf-type-scale-13);
                 color: var(--color-text-regular);
                 margin-bottom: 4px;
                 line-height: 1.6;
@@ -1515,12 +1515,12 @@ const handleDeleteHistory = async (row: any) => {
                   .dup-imei {
                     font-weight: 600;
                     color: var(--tf-color-orange-material-900);
-                    font-size: 15px;
+                    font-size: var(--tf-type-scale-15);
                     font-family: 'Courier New', monospace;
                   }
 
                   .dup-row {
-                    font-size: 12px;
+                    font-size: var(--tf-type-scale-12);
                     color: var(--tf-color-orange-material-500);
                     background: var(--tf-color-orange-material-50);
                     padding: 4px 8px;
@@ -1529,7 +1529,7 @@ const handleDeleteHistory = async (row: any) => {
                   }
 
                   .dup-cloud-status {
-                    font-size: 11px;
+                    font-size: var(--tf-type-scale-11);
                     padding: 4px 8px;
                     border-radius: 4px;
                     font-weight: 600;
@@ -1559,14 +1559,14 @@ const handleDeleteHistory = async (row: any) => {
                     gap: 8px;
 
                     .detail-label {
-                      font-size: 12px;
+                      font-size: var(--tf-type-scale-12);
                       color: var(--color-info);
                       font-weight: 500;
                       min-width: 60px;
                     }
 
                     .detail-value {
-                      font-size: 13px;
+                      font-size: var(--tf-type-scale-13);
                       color: var(--color-text-primary);
                       font-weight: 500;
                       word-break: break-all;
@@ -1598,18 +1598,18 @@ const handleDeleteHistory = async (row: any) => {
                         .cloud-value {
                           color: var(--tf-color-gray-material-500);
                           text-decoration: line-through;
-                          font-size: 12px;
+                          font-size: var(--tf-type-scale-12);
                         }
 
                         .diff-arrow {
                           color: var(--warning-color);
-                          font-size: 12px;
+                          font-size: var(--tf-type-scale-12);
                         }
 
                         .excel-value {
                           color: var(--tf-color-green-material-800);
                           font-weight: 600;
-                          font-size: 13px;
+                          font-size: var(--tf-type-scale-13);
                         }
                       }
                     }
@@ -1623,7 +1623,7 @@ const handleDeleteHistory = async (row: any) => {
               }
 
               .dup-info {
-                font-size: 12px;
+                font-size: var(--tf-type-scale-12);
                 color: var(--color-info);
               }
             }
@@ -1632,7 +1632,7 @@ const handleDeleteHistory = async (row: any) => {
               text-align: center;
               padding: 8px;
               color: var(--color-info);
-              font-size: 14px;
+              font-size: var(--tf-type-scale-14);
             }
           }
         }
@@ -1675,7 +1675,7 @@ const handleDeleteHistory = async (row: any) => {
               right: 8px;
               background: linear-gradient(135deg, var(--tf-color-purple-material) 0%, var(--tf-color-orange-material-500) 100%);
               color: white;
-              font-size: 10px;
+              font-size: var(--tf-type-scale-10);
               padding: 2px 8px;
               border-radius: 10px;
               font-weight: 600;
@@ -1751,21 +1751,21 @@ const handleDeleteHistory = async (row: any) => {
           }
 
           .strategy-icon {
-            font-size: 32px;
+            font-size: var(--tf-type-scale-32);
             color: var(--color-primary);
             margin-bottom: 12px;
           }
 
           .strategy-content {
             h3 {
-              font-size: 18px;
+              font-size: var(--tf-type-scale-18);
               font-weight: 600;
               color: var(--color-text-primary);
               margin: 0 0 8px 0;
             }
 
             p {
-              font-size: 14px;
+              font-size: var(--tf-type-scale-14);
               color: var(--color-text-regular);
               margin: 0 0 12px 0;
             }
@@ -1776,7 +1776,7 @@ const handleDeleteHistory = async (row: any) => {
               margin: 0;
 
               li {
-                font-size: 12px;
+                font-size: var(--tf-type-scale-12);
                 color: var(--color-info);
                 margin-bottom: 4px;
                 display: flex;
@@ -1798,7 +1798,7 @@ const handleDeleteHistory = async (row: any) => {
         text-align: center;
 
         .progress-message {
-          font-size: 16px;
+          font-size: var(--tf-type-scale-16);
           color: var(--color-text-regular);
           margin: 20px 0;
         }
@@ -1819,14 +1819,14 @@ const handleDeleteHistory = async (row: any) => {
 
               .label {
                 display: block;
-                font-size: 14px;
+                font-size: var(--tf-type-scale-14);
                 color: var(--color-info);
                 margin-bottom: 8px;
               }
 
               .value {
                 display: block;
-                font-size: 24px;
+                font-size: var(--tf-type-scale-24);
                 font-weight: 600;
               }
 
@@ -1864,7 +1864,7 @@ const handleDeleteHistory = async (row: any) => {
       display: flex;
       align-items: center;
       gap: 6px;
-      font-size: 13px;
+      font-size: var(--tf-type-scale-13);
 
       i {
         color: var(--color-info);
@@ -1875,7 +1875,7 @@ const handleDeleteHistory = async (row: any) => {
       display: flex;
       align-items: center;
       gap: 6px;
-      font-size: 13px;
+      font-size: var(--tf-type-scale-13);
 
       i {
         color: var(--color-primary);
@@ -1892,7 +1892,7 @@ const handleDeleteHistory = async (row: any) => {
         display: flex;
         align-items: center;
         gap: 2px;
-        font-size: 12px;
+        font-size: var(--tf-type-scale-12);
 
         .stat-label {
           color: var(--color-info);

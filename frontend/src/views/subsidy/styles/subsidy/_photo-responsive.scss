@@ -96,13 +96,13 @@
               height: 36px;
 
               i {
-                font-size: 14px;
+                font-size: var(--tf-type-scale-14);
               }
             }
           }
 
           .selected-overlay i {
-            font-size: 36px;
+            font-size: var(--tf-type-scale-36);
           }
         }
       }
@@ -159,11 +159,11 @@
     font-weight: 600;
     color: var(--tf-color-gray-bootstrap-700);
     margin-bottom: 8px;
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
   }
 
   .qrcode-value {
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
     color: var(--tf-color-muted);
     margin-bottom: 12px;
     word-break: break-all;

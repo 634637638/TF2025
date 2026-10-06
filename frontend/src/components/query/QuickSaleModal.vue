@@ -1407,7 +1407,7 @@ watch(
   .phone-icon,
   .idcard-icon {
     color: var(--color-info);
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
   }
 
   // 点击外部关闭下拉菜单
@@ -1432,7 +1432,7 @@ watch(
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 15px;
+  font-size: var(--tf-type-scale-15);
   font-weight: 600;
   color: var(--color-text-primary);
   margin-bottom: 16px;
@@ -1441,7 +1441,7 @@ watch(
 
   i {
     color: var(--color-primary);
-    font-size: 16px;
+    font-size: var(--tf-type-scale-16);
   }
 }
 
@@ -1480,7 +1480,7 @@ watch(
 
 .profit-hint {
   margin-top: 4px;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: var(--color-info);
 
   .profit-value {
@@ -1512,7 +1512,7 @@ watch(
     padding: 16px 20px;
     text-align: center;
     color: var(--text-secondary);
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1558,7 +1558,7 @@ watch(
       }
 
       .customer-name {
-        font-size: 14px;
+        font-size: var(--tf-type-scale-14);
         font-weight: 600;
         color: var(--tf-color-neutral-800);
         line-height: 1.2;
@@ -1568,7 +1568,7 @@ watch(
       }
 
       .customer-phone {
-        font-size: 12px;
+        font-size: var(--tf-type-scale-12);
         color: var(--tf-color-slate-600);
         line-height: 1.2;
         min-width: 0;
@@ -1580,7 +1580,7 @@ watch(
         background: linear-gradient(135deg, var(--tf-color-surface-blue-soft) 0%, var(--tf-color-blue-tailwind-100) 100%);
         color: var(--tf-color-blue-700);
         border-radius: 999px;
-        font-size: 11px;
+        font-size: var(--tf-type-scale-11);
         font-weight: 600;
         line-height: 1.2;
         flex: 0 0 auto;
@@ -1591,7 +1591,7 @@ watch(
         color: white;
         padding: 2px 8px;
         border-radius: 999px;
-        font-size: 11px;
+        font-size: var(--tf-type-scale-11);
         font-weight: 600;
         line-height: 1.2;
         flex-shrink: 0;
@@ -1610,7 +1610,7 @@ watch(
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
     font-weight: 500;
 
     &:hover {
@@ -1652,7 +1652,7 @@ watch(
 
   .customer-search-results .search-loading {
     padding: 16px 20px;
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
     gap: 8px;
   }
 
@@ -1670,22 +1670,22 @@ watch(
   }
 
   .customer-search-results .customer-name {
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
   }
 
   .customer-search-results .member-number {
-    font-size: 8px;
+    font-size: var(--tf-type-scale-8);
     line-height: 1.1;
     padding: 1px 5px;
     white-space: nowrap;
   }
 
   .customer-search-results .customer-phone {
-    font-size: 11px;
+    font-size: var(--tf-type-scale-11);
   }
 
   .customer-search-results .vip-badge {
-    font-size: 8px;
+    font-size: var(--tf-type-scale-8);
     padding: 1px 5px;
     line-height: 1.1;
     white-space: nowrap;
@@ -1694,7 +1694,7 @@ watch(
 
   .customer-search-results .create-new-customer {
     padding: 10px 12px;
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
     gap: 6px;
   }
 }
@@ -1724,20 +1724,20 @@ watch(
   }
 
   .customer-search-results .customer-phone {
-    font-size: 8.5px;
+    font-size: var(--tf-type-scale-8-5);
     white-space: nowrap;
     word-break: keep-all;
     letter-spacing: -0.02em;
   }
 
   .customer-search-results .customer-name {
-    font-size: 10.5px;
+    font-size: var(--tf-type-scale-10-5);
     line-height: 1.1;
   }
 
   .customer-search-results .member-number,
   .customer-search-results .vip-badge {
-    font-size: 6px;
+    font-size: var(--tf-type-scale-6);
     padding: 0 3px;
     line-height: 1;
     max-width: 100%;
@@ -1750,17 +1750,17 @@ watch(
   }
 
   .customer-search-results .customer-name {
-    font-size: 10px;
+    font-size: var(--tf-type-scale-10);
   }
 
   .customer-search-results .customer-phone {
-    font-size: 8px;
+    font-size: var(--tf-type-scale-8);
     letter-spacing: -0.025em;
   }
 
   .customer-search-results .member-number,
   .customer-search-results .vip-badge {
-    font-size: 5px;
+    font-size: var(--tf-type-scale-5);
     padding: 0 2px;
     transform: scale(0.92);
     transform-origin: right center;
@@ -1778,17 +1778,17 @@ watch(
   }
 
   .customer-search-results .customer-name {
-    font-size: 9px;
+    font-size: var(--tf-type-scale-9);
   }
 
   .customer-search-results .customer-phone {
-    font-size: 7.5px;
+    font-size: var(--tf-type-scale-7-5);
     letter-spacing: -0.03em;
   }
 
   .customer-search-results .member-number,
   .customer-search-results .vip-badge {
-    font-size: 4.5px;
+    font-size: var(--tf-type-scale-4-5);
     padding: 0 1px;
     transform: scale(0.88);
     transform-origin: right center;
@@ -1814,19 +1814,19 @@ watch(
   }
 
   .customer-search-results .customer-name {
-    font-size: 7px;
+    font-size: var(--tf-type-scale-7);
     line-height: 1;
   }
 
   .customer-search-results .customer-phone {
-    font-size: 6.5px;
+    font-size: var(--tf-type-scale-6-5);
     line-height: 1.05;
     letter-spacing: -0.04em;
   }
 
   .customer-search-results .member-number,
   .customer-search-results .vip-badge {
-    font-size: 3.5px;
+    font-size: var(--tf-type-scale-3-5);
     padding: 0 1px;
     line-height: 0.9;
     border-radius: 999px;
@@ -1857,11 +1857,11 @@ watch(
   align-items: center;
   gap: 6px;
   margin-top: 4px;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: var(--color-primary);
 
   i {
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
   }
 }
 
@@ -1870,21 +1870,21 @@ watch(
   align-items: center;
   gap: 6px;
   margin-top: 4px;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: var(--color-success);
   background: var(--tf-color-blue-50);
   padding: 4px 8px;
   border-radius: 4px;
 
   i {
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
   }
 }
 
 .readonly-hint {
   display: block;
   margin-top: 2px;
-  font-size: 11px;
+  font-size: var(--tf-type-scale-11);
   color: var(--color-info);
 }
 
@@ -1892,7 +1892,7 @@ watch(
 .input-hint {
   display: block;
   margin-top: 4px;
-  font-size: 11px;
+  font-size: var(--tf-type-scale-11);
   color: var(--color-info);
   line-height: 1.4;
 }
@@ -1905,7 +1905,7 @@ watch(
     }
 
     :deep(.el-form-item__label) {
-      font-size: 13px;
+      font-size: var(--tf-type-scale-13);
       margin-bottom: 4px;
     }
   }
@@ -1938,7 +1938,7 @@ watch(
   }
 
   .section-title {
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
     margin-bottom: 12px;
     padding-bottom: 6px;
   }
@@ -1958,11 +1958,11 @@ watch(
   }
 
   .section-title {
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
   }
 
   .profit-hint {
-    font-size: 11px;
+    font-size: var(--tf-type-scale-11);
   }
 }
 </style>

@@ -104,7 +104,7 @@ const emit = defineEmits<{
   flex: 0 0 auto;
   margin-right: var(--tf-space-2);
   color: var(--tf-color-indigo-brand);
-  font-size: 18px;
+  font-size: var(--tf-type-scale-18);
 }
 
 .public-search-box__input {
@@ -247,7 +247,7 @@ const emit = defineEmits<{
     }
 
     :deep(.el-input__inner) {
-      font-size: 13px;
+      font-size: var(--tf-type-scale-13);
     }
   }
 
@@ -263,7 +263,7 @@ const emit = defineEmits<{
     min-width: 50px;
     height: 32px;
     padding: 0 var(--tf-space-1);
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
   }
 }
 </style>

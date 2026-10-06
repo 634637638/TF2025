@@ -67,6 +67,15 @@ const routes: RouteRecordRaw[] = [
         }
       },
       {
+        path: 'standards',
+        name: 'StandardsAudit',
+        component: () => import('@/views/standards/StandardsAuditView.vue'),
+        meta: {
+          title: '规范与审计',
+          icon: 'fas fa-clipboard-check'
+        }
+      },
+      {
         path: 'git-management',
         name: 'GitManagement',
         component: () => import('@/views/system/page/GitManagement.vue'),

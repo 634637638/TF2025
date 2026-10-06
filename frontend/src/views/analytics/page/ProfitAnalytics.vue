@@ -3162,7 +3162,7 @@ onBeforeUnmount(() => {
         width: 42px;
         height: 42px;
         border-radius: 14px;
-        font-size: 18px;
+        font-size: var(--tf-type-scale-18);
         box-shadow: 0 8px 18px rgba(102, 126, 234, 0.16);
         flex-shrink: 0;
       }
@@ -3172,7 +3172,7 @@ onBeforeUnmount(() => {
 
         .card-title {
           margin-bottom: 2px;
-          font-size: 10px;
+          font-size: var(--tf-type-scale-10);
           line-height: 1.35;
           font-weight: 700;
           letter-spacing: 0.45px;
@@ -3183,7 +3183,7 @@ onBeforeUnmount(() => {
 
         .card-value {
           margin-bottom: 0;
-          font-size: 21px;
+          font-size: var(--tf-type-scale-21);
           line-height: 1.18;
           color: var(--tf-color-neutral-ios);
           white-space: normal;
@@ -3231,7 +3231,7 @@ onBeforeUnmount(() => {
         }
 
         .stat-value {
-          font-size: 18px;
+          font-size: var(--tf-type-scale-18);
           line-height: 1.25;
           overflow-wrap: anywhere;
         }
@@ -3275,7 +3275,7 @@ onBeforeUnmount(() => {
 
         h3 {
           margin: 0;
-          font-size: 16px;
+          font-size: var(--tf-type-scale-16);
           font-weight: 600;
           display: flex;
           align-items: center;
@@ -3298,25 +3298,25 @@ onBeforeUnmount(() => {
         }
 
         .stat-label {
-          font-size: 12px;
+          font-size: var(--tf-type-scale-12);
           color: var(--el-text-color-secondary);
           margin-bottom: 8px;
         }
 
         .stat-value {
-          font-size: 20px;
+          font-size: var(--tf-type-scale-20);
           font-weight: 600;
           color: var(--el-text-color-primary);
           margin-bottom: 8px;
         }
 
         .stat-desc {
-          font-size: 12px;
+          font-size: var(--tf-type-scale-12);
           color: var(--el-text-color-placeholder);
         }
 
         .stat-change {
-          font-size: 12px;
+          font-size: var(--tf-type-scale-12);
           display: flex;
           align-items: center;
           gap: 4px;
@@ -3330,7 +3330,7 @@ onBeforeUnmount(() => {
           }
 
           i {
-            font-size: 10px;
+            font-size: var(--tf-type-scale-10);
           }
         }
 
@@ -3340,7 +3340,7 @@ onBeforeUnmount(() => {
           gap: 8px;
 
           .progress-text {
-            font-size: 12px;
+            font-size: var(--tf-type-scale-12);
             color: var(--el-text-color-regular);
           }
         }
@@ -3360,7 +3360,7 @@ onBeforeUnmount(() => {
 
         h3 {
           margin: 0;
-          font-size: 16px;
+          font-size: var(--tf-type-scale-16);
           font-weight: 600;
           display: flex;
           align-items: center;
@@ -3397,7 +3397,7 @@ onBeforeUnmount(() => {
           align-items: center;
           justify-content: center;
           font-weight: 600;
-          font-size: 15px;
+          font-size: var(--tf-type-scale-15);
           flex-shrink: 0;
 
           &.rank-first {
@@ -3427,7 +3427,7 @@ onBeforeUnmount(() => {
           padding-right: 12px;
 
           .ranking-name {
-            font-size: 15px;
+            font-size: var(--tf-type-scale-15);
             font-weight: 500;
             margin-bottom: 8px;
             color: var(--el-text-color-primary);
@@ -3460,13 +3460,13 @@ onBeforeUnmount(() => {
             min-width: 80px;
 
             .label {
-              font-size: 12px;
+              font-size: var(--tf-type-scale-12);
               color: var(--el-text-color-placeholder);
               margin-bottom: 4px;
             }
 
             .num {
-              font-size: 16px;
+              font-size: var(--tf-type-scale-16);
               font-weight: 600;
               color: var(--el-text-color-primary);
             }
@@ -3488,7 +3488,7 @@ onBeforeUnmount(() => {
 
         h3 {
           margin: 0;
-          font-size: 16px;
+          font-size: var(--tf-type-scale-16);
           font-weight: 600;
           display: flex;
           align-items: center;
@@ -3501,7 +3501,7 @@ onBeforeUnmount(() => {
       }
 
       :deep(.el-table) {
-        font-size: 13px;
+        font-size: var(--tf-type-scale-13);
       }
     }
   }
@@ -3527,7 +3527,7 @@ onBeforeUnmount(() => {
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 24px;
+      font-size: var(--tf-type-scale-24);
       color: white;
 
       &.revenue {
@@ -3551,13 +3551,13 @@ onBeforeUnmount(() => {
       flex: 1;
 
       .card-title {
-        font-size: 14px;
+        font-size: var(--tf-type-scale-14);
         color: var(--el-text-color-secondary);
         margin-bottom: 4px;
       }
 
       .card-value {
-        font-size: 24px;
+        font-size: var(--tf-type-scale-24);
         font-weight: 600;
         color: var(--el-text-color-primary);
         margin-bottom: 4px;
@@ -3566,7 +3566,7 @@ onBeforeUnmount(() => {
       .card-change {
         display: flex;
         align-items: center;
-        font-size: 12px;
+        font-size: var(--tf-type-scale-12);
         font-weight: 500;
         gap: 4px;
 
@@ -3611,7 +3611,7 @@ onBeforeUnmount(() => {
       border-bottom: 1px solid rgba(148, 163, 184, 0.18);
 
       .metric-title {
-        font-size: 15px;
+        font-size: var(--tf-type-scale-15);
         color: var(--tf-color-slate-700);
         font-weight: 600;
         letter-spacing: 0.02em;
@@ -3628,7 +3628,7 @@ onBeforeUnmount(() => {
       gap: 12px;
 
       .metric-value {
-        font-size: 30px;
+        font-size: var(--tf-type-scale-30);
         font-weight: 700;
         color: var(--tf-color-slate-900);
         margin-bottom: 4px;
@@ -3636,7 +3636,7 @@ onBeforeUnmount(() => {
       }
 
       .metric-desc {
-        font-size: 12px;
+        font-size: var(--tf-type-scale-12);
         color: var(--tf-color-slate-500);
         margin-bottom: 12px;
       }
@@ -3645,12 +3645,12 @@ onBeforeUnmount(() => {
         margin-top: 12px;
 
         :deep(.el-progress__text) {
-          font-size: 12px;
+          font-size: var(--tf-type-scale-12);
         }
       }
 
       .metric-comparison {
-        font-size: 12px;
+        font-size: var(--tf-type-scale-12);
         color: var(--el-text-color-secondary);
 
         .text-success {
@@ -3684,13 +3684,13 @@ onBeforeUnmount(() => {
           padding: 6px 8px;
 
           .metric-compare-label {
-            font-size: 12px;
+            font-size: var(--tf-type-scale-12);
             color: var(--tf-color-slate-500);
             margin-bottom: 6px;
           }
 
           .metric-compare-value {
-            font-size: 19px;
+            font-size: var(--tf-type-scale-19);
             font-weight: 700;
             color: var(--tf-color-slate-900);
             margin-bottom: 4px;
@@ -3698,7 +3698,7 @@ onBeforeUnmount(() => {
           }
 
           .metric-compare-rate {
-            font-size: 12px;
+            font-size: var(--tf-type-scale-12);
             color: var(--tf-color-emerald-600);
             font-weight: 600;
           }
@@ -3706,7 +3706,7 @@ onBeforeUnmount(() => {
 
         .metric-compare-divider {
           color: var(--tf-color-slate-400);
-          font-size: 16px;
+          font-size: var(--tf-type-scale-16);
           padding: 0 8px;
         }
       }
@@ -3716,7 +3716,7 @@ onBeforeUnmount(() => {
         align-items: center;
         justify-content: center;
         gap: 8px;
-        font-size: 12px;
+        font-size: var(--tf-type-scale-12);
         margin-top: auto;
         padding: 10px 12px;
         border-radius: 12px;
@@ -3795,7 +3795,7 @@ onBeforeUnmount(() => {
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 13px;
+            font-size: var(--tf-type-scale-13);
             font-weight: 600;
             background: var(--el-color-primary);
             color: white;
@@ -3812,7 +3812,7 @@ onBeforeUnmount(() => {
             min-width: 0;
 
             .store-profit-name {
-              font-size: 13px;
+              font-size: var(--tf-type-scale-13);
               font-weight: 600;
               color: var(--tf-color-slate-900);
               margin-bottom: 4px;
@@ -3822,13 +3822,13 @@ onBeforeUnmount(() => {
             }
 
             .store-profit-value {
-              font-size: 12px;
+              font-size: var(--tf-type-scale-12);
               color: var(--tf-color-slate-500);
             }
           }
 
           .store-profit-rate {
-            font-size: 13px;
+            font-size: var(--tf-type-scale-13);
             font-weight: 600;
             flex-shrink: 0;
           }
@@ -3842,10 +3842,10 @@ onBeforeUnmount(() => {
         justify-content: center;
         padding: 24px;
         color: var(--el-text-color-secondary);
-        font-size: 13px;
+        font-size: var(--tf-type-scale-13);
 
         i {
-          font-size: 32px;
+          font-size: var(--tf-type-scale-32);
           margin-bottom: 8px;
           opacity: 0.5;
         }
@@ -3874,7 +3874,7 @@ onBeforeUnmount(() => {
 
       h3 {
         margin: 0;
-        font-size: 16px;
+        font-size: var(--tf-type-scale-16);
         font-weight: 600;
       }
     }
@@ -3895,7 +3895,7 @@ onBeforeUnmount(() => {
   }
 
   .trend-card-subtitle {
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
     color: var(--el-text-color-secondary);
   }
 
@@ -3926,13 +3926,13 @@ onBeforeUnmount(() => {
   }
 
   .trend-summary-label {
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
     color: var(--el-text-color-secondary);
     margin-bottom: 6px;
   }
 
   .trend-summary-value {
-    font-size: 20px;
+    font-size: var(--tf-type-scale-20);
     font-weight: 700;
     color: var(--el-text-color-primary);
     line-height: 1.2;
@@ -3999,13 +3999,13 @@ onBeforeUnmount(() => {
     background: var(--el-fill-color-extra-light);
 
     .summary-label {
-      font-size: 12px;
+      font-size: var(--tf-type-scale-12);
       color: var(--el-text-color-secondary);
       margin-bottom: 6px;
     }
 
     .summary-name {
-      font-size: 13px;
+      font-size: var(--tf-type-scale-13);
       color: var(--el-text-color-primary);
       margin-bottom: 6px;
       white-space: nowrap;
@@ -4014,7 +4014,7 @@ onBeforeUnmount(() => {
     }
 
     .summary-value {
-      font-size: 18px;
+      font-size: var(--tf-type-scale-18);
       font-weight: 700;
       color: var(--el-text-color-primary);
       line-height: 1.2;
@@ -4035,13 +4035,13 @@ onBeforeUnmount(() => {
     background: var(--el-fill-color-extra-light);
 
     .summary-label {
-      font-size: 12px;
+      font-size: var(--tf-type-scale-12);
       color: var(--el-text-color-secondary);
       margin-bottom: 6px;
     }
 
     .summary-name {
-      font-size: 13px;
+      font-size: var(--tf-type-scale-13);
       color: var(--el-text-color-primary);
       margin-bottom: 6px;
       white-space: nowrap;
@@ -4050,7 +4050,7 @@ onBeforeUnmount(() => {
     }
 
     .summary-value {
-      font-size: 18px;
+      font-size: var(--tf-type-scale-18);
       font-weight: 700;
       color: var(--el-text-color-primary);
       line-height: 1.2;
@@ -4077,12 +4077,12 @@ onBeforeUnmount(() => {
   }
 
   .forecast-summary-label {
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
     color: var(--el-text-color-secondary);
   }
 
   .forecast-summary-value {
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
     font-weight: 600;
     color: var(--el-text-color-primary);
   }
@@ -4123,7 +4123,7 @@ onBeforeUnmount(() => {
     justify-content: center;
     gap: 6px;
     padding: 4px 8px;
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
 
     .summary-item-inline {
       display: inline-flex;
@@ -4180,7 +4180,7 @@ onBeforeUnmount(() => {
 
       .summary-label {
         white-space: nowrap;
-        font-size: 12px;
+        font-size: var(--tf-type-scale-12);
       }
 
       .summary-value {

@@ -2769,15 +2769,15 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 12px;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
 }
 
 .summary-info i {
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
 }
 
 .summary-info strong {
-  font-size: 18px;
+  font-size: var(--tf-type-scale-18);
   font-weight: 700;
 }
 
@@ -2817,7 +2817,7 @@ onUnmounted(() => {
 .form-label {
   display: block;
   margin-bottom: 4px;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: var(--color-text-regular);
   font-weight: 500;
 }
@@ -2838,14 +2838,14 @@ onUnmounted(() => {
 }
 
 .stat-value {
-  font-size: 24px;
+  font-size: var(--tf-type-scale-24);
   font-weight: 700;
   color: var(--tf-color-heading);
   margin-bottom: 4px;
 }
 
 .stat-label {
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   color: var(--tf-color-muted);
   font-weight: 500;
 }
@@ -2871,15 +2871,6 @@ onUnmounted(() => {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
-.condition-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 4px 8px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: 600;
-}
-
 .condition-badge.new {
   background: rgba(40, 167, 69, 0.1);
   color: var(--success-color);
@@ -2891,13 +2882,6 @@ onUnmounted(() => {
 }
 
 .status-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 5px 12px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.3px;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -3012,7 +2996,7 @@ onUnmounted(() => {
 
 .pagination-info {
   color: var(--tf-color-muted);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
 }
 
 .pagination-controls {
@@ -3033,7 +3017,7 @@ onUnmounted(() => {
   margin-bottom: 6px;
   font-weight: 500;
   color: var(--text-primary);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
 }
 
 .return-form .form-label.required,
@@ -3053,7 +3037,7 @@ onUnmounted(() => {
   padding: 10px 14px;
   border: 1px solid var(--tf-color-slate-200);
   border-radius: 8px;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
   box-sizing: border-box;
 }
@@ -3093,7 +3077,7 @@ select.form-control {
   position: absolute;
   left: 12px;
   color: var(--tf-color-gray-chakra-500);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   z-index: 2;
   pointer-events: none;
 }
@@ -3115,19 +3099,19 @@ select.form-control {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
 }
 
 .device-info-section .section-title i {
   color: var(--tf-color-indigo-500);
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
 }
 
 /* 设备信息表格样式 */
 .device-info-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
 }
 
 .device-info-table tbody tr {
@@ -3173,7 +3157,7 @@ select.form-control {
   padding: 4px 10px;
   border-radius: 4px;
   font-family: 'Monaco', 'Menlo', 'SF Mono', monospace;
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   letter-spacing: 0.5px;
   display: inline-block;
 }
@@ -3184,7 +3168,7 @@ select.form-control {
   display: inline-block;
   padding: 4px 12px;
   border-radius: 12px;
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   font-weight: 500;
 }
 
@@ -3214,7 +3198,7 @@ select.form-control {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
   padding-bottom: 10px;
   border-bottom: 2px solid var(--tf-color-pink-gradient);
 }
@@ -3251,7 +3235,7 @@ select.form-control {
 .device-info-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
 }
 
 .device-info-table tbody tr {
@@ -3297,7 +3281,7 @@ select.form-control {
   padding: 4px 10px;
   border-radius: 4px;
   font-family: 'Monaco', 'Menlo', 'SF Mono', monospace;
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   letter-spacing: 0.5px;
   display: inline-block;
 }
@@ -3308,7 +3292,7 @@ select.form-control {
   display: inline-block;
   padding: 4px 12px;
   border-radius: 12px;
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   font-weight: 500;
 }
 
@@ -3329,7 +3313,7 @@ select.form-control {
   }
 
   .device-info-table {
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
   }
 
   .device-info-table tbody tr {
@@ -3347,7 +3331,7 @@ select.form-control {
 
   .device-info-table .label-cell {
     color: var(--tf-color-neutral-400);
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
   }
 
   .device-info-table .value-cell {
@@ -3365,7 +3349,7 @@ select.form-control {
   .device-info-table .label-cell,
   .device-info-table .value-cell {
     padding: 10px 12px;
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
   }
 }
 .modal-body {
@@ -3423,7 +3407,7 @@ select.form-control {
   padding: 8px 12px;
   border: 1px solid var(--color-border);
   border-radius: 4px;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
 }
 
 .edit-form input.form-control:focus,
@@ -3469,11 +3453,11 @@ select.form-control {
   }
 
   .edit-form .form-label {
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
   }
 
   .edit-form .form-control {
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
     padding: 10px 12px;
   }
 }
@@ -3502,13 +3486,13 @@ select.form-control {
   }
 
   .stat-value {
-    font-size: 20px;
+    font-size: var(--tf-type-scale-20);
     font-weight: 600;
     line-height: 1.2;
   }
 
   .stat-label {
-    font-size: 11px;
+    font-size: var(--tf-type-scale-11);
     line-height: 1.2;
   }
 
@@ -3518,9 +3502,9 @@ select.form-control {
     justify-content: center;
   }
 
-  .pagination button,
+  .pagination .el-button,
   .pagination select {
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
     padding: 6px 10px;
   }
 }
@@ -3547,7 +3531,7 @@ select.form-control {
   align-items: center;
   gap: 8px;
   color: var(--tf-color-warning-text-legacy);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
 }
 
 /* 表格行样式 */
@@ -3652,11 +3636,11 @@ select.form-control {
   }
 
   .stat-value {
-    font-size: 16px;
+    font-size: var(--tf-type-scale-16);
   }
 
   .stat-label {
-    font-size: 10px;
+    font-size: var(--tf-type-scale-10);
   }
 
   .form-group {
@@ -3665,7 +3649,7 @@ select.form-control {
 
   .form-group input,
   .form-group select {
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
     padding: 6px 8px;
   }
 
@@ -3677,7 +3661,7 @@ select.form-control {
   }
 
   table {
-    font-size: 11px;
+    font-size: var(--tf-type-scale-11);
   }
 
   th, td {
@@ -3693,7 +3677,7 @@ select.form-control {
 /* 图片预览相关样式 */
 .image-hint {
   margin-left: 4px;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: var(--color-primary);
   opacity: 0.7;
 }
@@ -3713,13 +3697,13 @@ select.form-control {
     text-align: center;
 
     h3 {
-      font-size: 18px;
+      font-size: var(--tf-type-scale-18);
       color: var(--text-primary);
       margin-bottom: 4px;
     }
 
     p {
-      font-size: 14px;
+      font-size: var(--tf-type-scale-14);
       color: var(--text-muted);
     }
   }
@@ -3740,7 +3724,7 @@ select.form-control {
   }
 
   .no-images i {
-    font-size: 36px;
+    font-size: var(--tf-type-scale-36);
   }
 
   .no-images p {
@@ -3786,7 +3770,7 @@ select.form-control {
       border-radius: 4px;
       background: rgba(15, 23, 42, 0.78);
       color: var(--color-bg-white);
-      font-size: 12px;
+      font-size: var(--tf-type-scale-12);
       pointer-events: none;
     }
 
@@ -3798,7 +3782,7 @@ select.form-control {
       color: var(--color-bg-white);
       padding: 4px 8px;
       border-radius: 4px;
-      font-size: 12px;
+      font-size: var(--tf-type-scale-12);
 
       i {
         margin-right: 4px;
@@ -3823,7 +3807,7 @@ select.form-control {
       z-index: 5;
 
       i {
-        font-size: 12px;
+        font-size: var(--tf-type-scale-12);
         color: white;
       }
     }
@@ -3850,7 +3834,7 @@ select.form-control {
       z-index: 5;
 
       i {
-        font-size: 14px;
+        font-size: var(--tf-type-scale-14);
         color: var(--tf-button-danger-soft-color);
       }
 
@@ -3880,7 +3864,7 @@ select.form-control {
       z-index: 6;
 
       i {
-        font-size: 12px;
+        font-size: var(--tf-type-scale-12);
       }
 
       &:hover {

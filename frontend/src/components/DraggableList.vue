@@ -149,7 +149,7 @@ const handleDrop = (dropIndex: number, event: DragEvent) => {
 
 .drag-handle {
   color: var(--tf-color-neutral-400);
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
   cursor: grab;
   display: flex;
   align-items: center;
@@ -175,7 +175,7 @@ const handleDrop = (dropIndex: number, event: DragEvent) => {
     background: var(--tf-color-neutral-100);
     color: var(--tf-color-neutral-500);
     border-radius: 6px;
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
     font-weight: 500;
   }
 }

@@ -19,7 +19,7 @@
 .form-header h3 {
   margin: 0;
   color: var(--text-primary);
-  font-size: 18px;
+  font-size: var(--tf-type-scale-18);
   font-weight: 600;
 }
 
@@ -40,7 +40,7 @@
   padding-bottom: 8px;
   border-bottom: 2px solid var(--tf-color-blue-bootstrap);
   color: var(--tf-color-gray-bootstrap-700);
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
   font-weight: 600;
 }
 
@@ -116,7 +116,7 @@
 .batch-items-table :deep(.el-table__header th) {
   background: var(--tf-color-surface-muted);
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   font-weight: 600;
   white-space: nowrap;
 }
@@ -137,7 +137,7 @@
 .batch-items-table :deep(small) {
   margin-top: 4px;
   color: var(--tf-color-muted);
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
 }
 
 .batch-items-table :deep(.item-profit) {
@@ -148,7 +148,7 @@
 
 .form-label {
   color: var(--admin-data-table-cell-color);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   font-weight: 600;
 }
 
@@ -161,7 +161,7 @@
   display: block;
   margin-top: 4px;
   color: var(--admin-record-count-color);
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   font-style: italic;
 }
 
@@ -177,7 +177,7 @@ input.form-control {
   border: 2px solid var(--tf-color-border-cool);
   border-radius: 8px;
   background: var(--tf-color-surface-muted);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   transition: all 0.3s ease;
 }
 
@@ -187,7 +187,7 @@ select.form-control {
   border: 2px solid var(--tf-color-border-cool);
   border-radius: 8px;
   background: var(--tf-color-surface-muted);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   transition: all 0.3s ease;
   appearance: auto;
   cursor: pointer;
@@ -233,7 +233,7 @@ select.form-control:focus {
   gap: 8px;
   padding: 16px 20px;
   color: var(--admin-record-count-color);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
 }
 
 .customer-item {
@@ -259,14 +259,14 @@ select.form-control:focus {
 
 .customer-name {
   color: var(--admin-data-table-cell-color);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   font-weight: 600;
 }
 
 .customer-phone,
 .customer-meta {
   color: var(--admin-record-count-color);
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
 }
 
 .create-new-customer {
@@ -277,7 +277,7 @@ select.form-control:focus {
   background: var(--tf-button-success-soft-bg);
   color: var(--tf-button-success-soft-color);
   cursor: pointer;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   font-weight: 500;
   transition: background-color 0.2s;
 }
@@ -307,12 +307,12 @@ select.form-control:focus {
   display: block;
   margin-bottom: 8px;
   color: var(--tf-color-muted);
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
 }
 
 .profit-item .value {
   color: var(--text-primary);
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
   font-weight: 600;
 }
 
@@ -358,12 +358,12 @@ select.form-control:focus {
 
   .form-label {
     margin-bottom: 6px;
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
   }
 
   .form-control {
     padding: 10px 12px;
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
   }
 
   .customer-search-results {
@@ -377,7 +377,7 @@ select.form-control:focus {
   .create-new-customer {
     gap: 6px;
     padding: 10px;
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
   }
 
   .input-group {
@@ -398,22 +398,22 @@ select.form-control:focus {
     height: 44px;
     flex: 1;
     margin: 0;
-    font-size: 15px;
+    font-size: var(--tf-type-scale-15);
   }
 }
 
 @media (max-width: 375px) {
   .form-label {
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
   }
 
   .form-control {
     padding: 9px 11px;
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
   }
 
   .form-actions :deep(.el-button) {
     height: 42px;
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
   }
 }

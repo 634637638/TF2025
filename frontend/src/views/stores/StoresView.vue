@@ -1486,7 +1486,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
   font-weight: 600;
   color: var(--tf-color-heading);
   margin-bottom: 20px;
@@ -1500,7 +1500,7 @@ onUnmounted(() => {
 
 .record-count {
   margin-left: auto;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   color: var(--tf-color-muted);
   font-weight: 400;
 }
@@ -1535,7 +1535,7 @@ onUnmounted(() => {
 }
 
 .form-label {
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   font-weight: 500;
   color: var(--tf-color-gray-bootstrap-700);
 }
@@ -1550,7 +1550,7 @@ onUnmounted(() => {
   top: 50%;
   transform: translateY(-50%);
   color: var(--tf-color-muted);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   z-index: 1;
 }
 
@@ -1559,7 +1559,7 @@ onUnmounted(() => {
   padding: 10px 12px 10px 36px;
   border: 2px solid var(--tf-color-border-cool);
   border-radius: 8px;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   transition: all 0.3s ease;
   background: var(--tf-color-surface-muted);
 }
@@ -1586,7 +1586,7 @@ onUnmounted(() => {
 
 .drag-handle {
   color: var(--tf-color-neutral-400);
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
   cursor: grab;
   display: inline-flex;
   align-items: center;
@@ -1629,12 +1629,12 @@ onUnmounted(() => {
 .store-name {
   font-weight: 600;
   color: var(--tf-color-slate-800);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
 }
 
 .store-address {
   color: var(--tf-color-slate-500);
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   text-align: center;
 }
 
@@ -1649,7 +1649,7 @@ onUnmounted(() => {
   align-items: center;
   gap: 8px;
   color: var(--tf-color-neutral-700);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
 }
 
 .contact-item i {
@@ -1671,7 +1671,7 @@ onUnmounted(() => {
 /* Element Plus 表单错误提示样式 */
 .invalid-feedback {
   color: var(--color-danger);
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   margin-top: 4px;
   line-height: 1;
 }
@@ -1685,7 +1685,7 @@ onUnmounted(() => {
   justify-content: space-between;
   align-items: center;
   margin-top: 4px;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: var(--tf-color-muted);
 }
 
@@ -1704,7 +1704,7 @@ onUnmounted(() => {
   h4 {
     margin: 0 0 16px 0;
     padding: 0;
-    font-size: 16px;
+    font-size: var(--tf-type-scale-16);
     font-weight: 600;
     color: var(--tf-color-neutral-700);
     border-bottom: 1px solid var(--tf-color-neutral-200);
@@ -1727,14 +1727,14 @@ onUnmounted(() => {
     color: var(--tf-color-neutral-500);
     min-width: 100px;
     margin-right: 16px;
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
   }
 
   .value {
     flex: 1;
     color: var(--tf-color-neutral-800);
     font-weight: 500;
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
     word-break: break-word;
   }
 }
@@ -1750,13 +1750,13 @@ onUnmounted(() => {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   color: var(--tf-color-neutral-700);
 }
 
 .contact-name,
 .phone-number {
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   color: var(--tf-color-neutral-700);
   font-weight: 500;
 }
@@ -1764,7 +1764,7 @@ onUnmounted(() => {
 .no-data {
   color: var(--tf-color-neutral-400);
   font-style: italic;
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
 }
 
 /* 查看详情模态框样式 */
@@ -1783,7 +1783,7 @@ onUnmounted(() => {
 .detail-section h4 {
   margin: 0 0 16px 0;
   padding: 0;
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
   font-weight: 600;
   color: var(--tf-color-neutral-700);
   border-bottom: 1px solid var(--tf-color-neutral-200);
@@ -1803,7 +1803,7 @@ onUnmounted(() => {
 }
 
 .detail-item label {
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   font-weight: 500;
   color: var(--tf-color-neutral-500);
   text-transform: uppercase;
@@ -1811,7 +1811,7 @@ onUnmounted(() => {
 }
 
 .detail-item span {
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   font-weight: 500;
   color: var(--tf-color-neutral-800);
   word-break: break-word;
@@ -1821,7 +1821,7 @@ onUnmounted(() => {
   display: inline-block;
   padding: 6px 12px;
   border-radius: 20px;
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.025em;

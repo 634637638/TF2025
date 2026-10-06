@@ -335,7 +335,7 @@ const inventoryTimeText = computed(() => {
 .detail-intro-main {
   min-width: 0;
   flex: 0 1 auto;
-  font-size: 18px;
+  font-size: var(--tf-type-scale-18);
   font-weight: 700;
   line-height: 1.3;
   color: var(--color-bg-white);
@@ -346,7 +346,7 @@ const inventoryTimeText = computed(() => {
 .detail-intro-meta {
   min-width: 0;
   flex: 1 1 auto;
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   color: rgba(255, 255, 255, 0.92);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -358,7 +358,7 @@ const inventoryTimeText = computed(() => {
   min-height: 28px;
   padding: 4px 10px;
   border-radius: 999px;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   font-weight: 700;
   color: var(--color-bg-white);
   background: rgba(255, 255, 255, 0.18);
@@ -394,7 +394,7 @@ const inventoryTimeText = computed(() => {
 
 .detail-section-head h3 {
   margin: 0;
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
   color: var(--tf-color-neutral-800);
 }
 
@@ -415,7 +415,7 @@ const inventoryTimeText = computed(() => {
 }
 
 .field-label {
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   font-weight: 700;
   color: var(--tf-color-neutral-500);
   letter-spacing: 0.08em;
@@ -423,7 +423,7 @@ const inventoryTimeText = computed(() => {
 }
 
 .field-value {
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   font-weight: 600;
   color: var(--tf-color-neutral-800);
   word-break: break-word;
@@ -440,7 +440,7 @@ const inventoryTimeText = computed(() => {
   height: 30px;
   padding: 0 12px;
   border-radius: 999px;
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   font-weight: 700;
 }
 
@@ -458,7 +458,7 @@ const inventoryTimeText = computed(() => {
   padding: 8px 0 0;
   color: var(--tf-color-neutral-700);
   line-height: 1.65;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   white-space: pre-wrap;
   word-break: break-word;
 }
@@ -505,25 +505,25 @@ const inventoryTimeText = computed(() => {
   }
 
   .detail-intro-main {
-    font-size: 16px;
+    font-size: var(--tf-type-scale-16);
   }
 
   .detail-intro-meta {
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
   }
 
   .detail-intro-badge {
     min-height: 26px;
     padding: 4px 9px;
-    font-size: 11px;
+    font-size: var(--tf-type-scale-11);
   }
 
   .field-label {
-    font-size: 11px;
+    font-size: var(--tf-type-scale-11);
   }
 
   .field-value {
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
   }
 
   .detail-grid {

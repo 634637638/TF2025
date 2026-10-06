@@ -48,13 +48,14 @@
           <small>剩余尝试次数: {{ remainingAttempts }}/5</small>
         </div>
 
-        <button
-          type="submit"
+        <el-button
+          native-type="submit"
+          type="primary"
           class="login-button"
           :disabled="loading || isLocked"
         >
           {{ loading ? '登录中...' : isLocked ? '账户已锁定' : '登录' }}
-        </button>
+        </el-button>
       </form>
     </div>
   </div>
@@ -317,14 +318,14 @@ const handleLogin = async () => {
 .login-header h1 {
   color: var(--text-primary);
   margin-bottom: 10px;
-  font-size: 2rem;
+  font-size: var(--tf-type-scale-2rem);
   font-weight: 600;
 }
 
 .login-header p {
   color: var(--text-secondary);
   margin: 0;
-  font-size: 0.95rem;
+  font-size: var(--tf-type-scale-0-95rem);
 }
 
 .login-tips {
@@ -347,7 +348,7 @@ const handleLogin = async () => {
 
 .login-tips small {
   color: var(--tf-color-gray-500-solid);
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   line-height: 1.4;
 }
 
@@ -376,7 +377,7 @@ const handleLogin = async () => {
   padding: 12px;
   border: 1px solid var(--tf-color-gray-300-alt);
   border-radius: 5px;
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
   transition: border-color 0.3s;
 }
 
@@ -388,23 +389,6 @@ const handleLogin = async () => {
 
 .login-button {
   width: 100%;
-  padding: 12px;
-  background: var(--tf-button-primary-bg);
-  color: var(--tf-button-on-color);
-  border: none;
-  border-radius: 5px;
-  font-size: 16px;
-  cursor: pointer;
-  transition: background 0.3s;
-}
-
-.login-button:hover:not(:disabled) {
-  background: var(--tf-button-primary-hover-bg);
-}
-
-.login-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
 }
 
 </style>

@@ -3304,7 +3304,7 @@ onUnmounted(() => {
     min-width: 0;
     color: var(--el-text-color-secondary);
     font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
 
     i {
       flex: 0 0 auto;
@@ -3387,7 +3387,7 @@ onUnmounted(() => {
   padding: 8px 12px;
   border: 1px solid var(--el-border-color);
   border-radius: 6px;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   color: var(--el-text-color-regular);
   background: var(--el-bg-color);
   transition: border-color 0.2s ease;
@@ -3409,7 +3409,7 @@ onUnmounted(() => {
     flex-wrap: wrap;
     gap: 8px;
     color: var(--el-text-color-regular);
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
   }
 
   .points-ratio-input {
@@ -3424,7 +3424,7 @@ onUnmounted(() => {
   border-radius: 6px;
   background: var(--el-fill-color-light);
   color: var(--el-text-color-regular);
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   line-height: 1.6;
 
   .preview-title {
@@ -3446,12 +3446,12 @@ onUnmounted(() => {
   }
 
   .page-title {
-    font-size: 24px;
+    font-size: var(--tf-type-scale-24);
     margin-bottom: 6px;
   }
 
   .page-subtitle {
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
   }
 
   .points-settings-form {
@@ -3499,7 +3499,7 @@ onUnmounted(() => {
     padding: 8px 0;
     border-bottom: 1px solid var(--tf-color-neutral-200);
     color: var(--tf-color-neutral-700);
-    font-size: 16px;
+    font-size: var(--tf-type-scale-16);
     font-weight: 600;
   }
 }
@@ -3538,7 +3538,7 @@ onUnmounted(() => {
         justify-content: center;
 
         i {
-          font-size: 28px;
+          font-size: var(--tf-type-scale-28);
         }
       }
 
@@ -3547,7 +3547,7 @@ onUnmounted(() => {
 
         .customer-name {
           margin: 0 0 8px;
-          font-size: 20px;
+          font-size: var(--tf-type-scale-20);
           font-weight: 600;
         }
 
@@ -3567,7 +3567,7 @@ onUnmounted(() => {
           border-radius: 4px;
           background: rgba(255, 255, 255, 0.16);
           color: var(--color-bg-white);
-          font-size: 12px;
+          font-size: var(--tf-type-scale-12);
           font-weight: 600;
           line-height: 1;
         }
@@ -3654,7 +3654,7 @@ onUnmounted(() => {
         }
 
         .label {
-          font-size: 13px;
+          font-size: var(--tf-type-scale-13);
           color: var(--tf-color-muted);
           font-weight: 500;
           line-height: 1.35;
@@ -3663,13 +3663,13 @@ onUnmounted(() => {
 
           i {
             color: var(--tf-color-muted);
-            font-size: 14px;
+            font-size: var(--tf-type-scale-14);
           }
         }
 
         .value {
           min-width: 0;
-          font-size: 13px;
+          font-size: var(--tf-type-scale-13);
           color: var(--tf-color-gray-bootstrap-900);
           font-weight: 500;
           line-height: 1.3;
@@ -3728,7 +3728,7 @@ onUnmounted(() => {
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 18px;
+          font-size: var(--tf-type-scale-18);
 
         }
 
@@ -3736,13 +3736,13 @@ onUnmounted(() => {
           flex: 1;
 
           .stat-label {
-            font-size: 12px;
+            font-size: var(--tf-type-scale-12);
             color: var(--tf-color-muted);
             margin-bottom: 4px;
           }
 
           .stat-value {
-            font-size: 18px;
+            font-size: var(--tf-type-scale-18);
             font-weight: 700;
             color: var(--tf-color-gray-bootstrap-900);
           }
@@ -3767,12 +3767,12 @@ onUnmounted(() => {
       padding: 8px 16px;
       background: white;
       border-radius: 8px;
-      font-size: 13px;
+      font-size: var(--tf-type-scale-13);
       color: var(--tf-color-gray-bootstrap-700);
       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 
       i {
-        font-size: 14px;
+        font-size: var(--tf-type-scale-14);
       }
 
       &.remarks {
@@ -3792,13 +3792,13 @@ onUnmounted(() => {
   .amount-value {
     color: var(--tf-color-red-600);
     font-weight: 700;
-    font-size: 16px;
+    font-size: var(--tf-type-scale-16);
   }
 
   .total-spent {
     color: var(--tf-color-red-600);
     font-weight: 700;
-    font-size: 16px;
+    font-size: var(--tf-type-scale-16);
   }
 
   .text-success {
@@ -3816,7 +3816,7 @@ onUnmounted(() => {
   }
 
   .small {
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
   }
 
   .remarks-text {
@@ -3840,7 +3840,7 @@ onUnmounted(() => {
   h4 {
     margin: 0 0 12px 0;
     color: var(--tf-color-neutral-700);
-    font-size: 16px;
+    font-size: var(--tf-type-scale-16);
     font-weight: 600;
   }
 }
@@ -3861,13 +3861,13 @@ onUnmounted(() => {
     width: 100px;
     color: var(--tf-color-neutral-500);
     font-weight: 500;
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
   }
 
   .value {
     flex: 1;
     color: var(--tf-color-neutral-700);
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
     word-break: break-word;
 
     &.status-active {
@@ -3918,7 +3918,7 @@ onUnmounted(() => {
     }
 
     :deep(.el-form-item__label) {
-      font-size: 13px;
+      font-size: var(--tf-type-scale-13);
       line-height: 1.4;
       padding-bottom: 4px;
     }
@@ -3974,13 +3974,13 @@ onUnmounted(() => {
           height: 50px;
 
           i {
-            font-size: 24px;
+            font-size: var(--tf-type-scale-24);
           }
         }
 
         .customer-basic {
           .customer-name {
-            font-size: 18px;
+            font-size: var(--tf-type-scale-18);
           }
         }
       }
@@ -4001,12 +4001,12 @@ onUnmounted(() => {
           .stat-icon {
             width: 36px;
             height: 36px;
-            font-size: 16px;
+            font-size: var(--tf-type-scale-16);
           }
 
           .stat-content {
             .stat-value {
-              font-size: 16px;
+              font-size: var(--tf-type-scale-16);
             }
           }
         }
@@ -4019,7 +4019,7 @@ onUnmounted(() => {
 
       .extra-info-item {
         padding: 6px 12px;
-        font-size: 12px;
+        font-size: var(--tf-type-scale-12);
       }
     }
 
@@ -4033,15 +4033,15 @@ onUnmounted(() => {
         column-gap: 8px;
 
         .label {
-          font-size: 12px;
+          font-size: var(--tf-type-scale-12);
 
           i {
-            font-size: 13px;
+            font-size: var(--tf-type-scale-13);
           }
         }
 
         .value {
-          font-size: 12px;
+          font-size: var(--tf-type-scale-12);
           text-align: right;
         }
       }
@@ -4054,11 +4054,11 @@ onUnmounted(() => {
     gap: 8px;
 
     h4 {
-      font-size: 14px;
+      font-size: var(--tf-type-scale-14);
     }
 
     .record-count {
-      font-size: 12px;
+      font-size: var(--tf-type-scale-12);
     }
   }
 
@@ -4067,19 +4067,19 @@ onUnmounted(() => {
   }
 
   .purchase-table {
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
 
     thead {
       th {
         padding: 8px 10px;
-        font-size: 11px;
+        font-size: var(--tf-type-scale-11);
       }
     }
 
     tbody {
       td {
         padding: 8px 10px;
-        font-size: 11px;
+        font-size: var(--tf-type-scale-11);
       }
     }
   }
@@ -4090,7 +4090,7 @@ onUnmounted(() => {
     padding: 10px;
 
     .pagination-info {
-      font-size: 12px;
+      font-size: var(--tf-type-scale-12);
     }
   }
 }
@@ -4148,7 +4148,7 @@ onUnmounted(() => {
   }
 
   .customer-detail-view .panel-left .info-header .customer-basic .customer-name {
-    font-size: 16px;
+    font-size: var(--tf-type-scale-16);
   }
 
   .customer-detail-view .panel-right .stats-card {

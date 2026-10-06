@@ -11,7 +11,7 @@
         <PageHeader title="仪表盘">
           <template #actions>
             <el-button
-              v-if="canViewField('system_info.operations')"
+              v-if="shouldShowActionColumn(canViewField('system_info.operations'), [])"
               type="info"
               :loading="isRefreshing"
               :disabled="isRefreshing"
@@ -216,7 +216,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useNotification } from '@/composables/useNotification'
 import { usePagePermissions } from '@/composables/usePagePermissions'
-import { fieldPermissions } from '@/composables/useFieldPermissions'
+import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { useLoadingState } from '@/composables'
 import { useCachedRequest, DEFAULT_CACHE_TTL } from '@/composables/usePageCache'
 import { useSiteSettingsStore } from '@/stores/siteSettings'
@@ -561,7 +561,7 @@ onUnmounted(() => {
 }
 
 .welcome-content h2 {
-  font-size: 28px;
+  font-size: var(--tf-type-scale-28);
   margin-bottom: 0;
 }
 
@@ -572,7 +572,7 @@ onUnmounted(() => {
   padding: 12px 24px;
   border-radius: 8px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   font-weight: 500;
   display: flex;
   align-items: center;
@@ -603,7 +603,7 @@ onUnmounted(() => {
 }
 
 .stat-change {
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   font-weight: 500;
   display: inline-flex;
   align-items: center;
@@ -628,7 +628,7 @@ onUnmounted(() => {
   color: var(--tf-color-warning-text-legacy);
   padding: 4px 8px;
   border-radius: 4px;
-  font-size: 11px;
+  font-size: var(--tf-type-scale-11);
   margin-top: 8px;
   display: inline-flex;
   align-items: center;
@@ -649,7 +649,7 @@ onUnmounted(() => {
 }
 
 .quick-actions h2 {
-  font-size: 18px;
+  font-size: var(--tf-type-scale-18);
   color: var(--tf-color-heading);
   margin-bottom: 20px;
 }
@@ -671,7 +671,7 @@ onUnmounted(() => {
   flex-direction: column;
   align-items: center;
   gap: 10px;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   color: var(--tf-button-tool-color);
 }
 
@@ -683,7 +683,7 @@ onUnmounted(() => {
 }
 
 .action-btn i {
-  font-size: 24px;
+  font-size: var(--tf-type-scale-24);
 }
 
 /* 最近活动 */
@@ -702,7 +702,7 @@ onUnmounted(() => {
 }
 
 .activity-header h2 {
-  font-size: 18px;
+  font-size: var(--tf-type-scale-18);
   color: var(--tf-color-heading);
   margin: 0;
 }
@@ -714,7 +714,7 @@ onUnmounted(() => {
   padding: 8px 16px;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   transition: all 0.3s ease;
 }
 
@@ -756,7 +756,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   margin-right: 15px;
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
   flex-shrink: 0;
 }
 
@@ -787,12 +787,12 @@ onUnmounted(() => {
 .activity-content p {
   margin-bottom: 4px;
   color: var(--tf-color-heading);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
 }
 
 .activity-time {
   color: var(--tf-color-gray-cool-500);
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
 }
 
 .activity-action {
@@ -844,7 +844,7 @@ onUnmounted(() => {
   }
 
   .welcome-content h2 {
-    font-size: 18px;
+    font-size: var(--tf-type-scale-18);
     margin-bottom: 0;
   }
 
@@ -854,17 +854,17 @@ onUnmounted(() => {
 
   .refresh-btn {
     padding: 8px 12px;
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
     white-space: nowrap;
   }
 
   .stat-change {
-    font-size: 10px;
+    font-size: var(--tf-type-scale-10);
   }
 
   .inventory-warning,
   .urgent-repairs {
-    font-size: 9px;
+    font-size: var(--tf-type-scale-9);
     padding: 2px 6px;
   }
 
@@ -876,7 +876,7 @@ onUnmounted(() => {
   }
 
   .quick-actions h2 {
-    font-size: 16px;
+    font-size: var(--tf-type-scale-16);
     margin-bottom: 12px;
   }
 
@@ -887,12 +887,12 @@ onUnmounted(() => {
 
   .action-btn {
     padding: 14px 12px;
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
     gap: 8px;
   }
 
   .action-btn i {
-    font-size: 18px;
+    font-size: var(--tf-type-scale-18);
   }
 
   /* 最近活动 */
@@ -903,12 +903,12 @@ onUnmounted(() => {
   }
 
   .activity-header h2 {
-    font-size: 16px;
+    font-size: var(--tf-type-scale-16);
   }
 
   .view-all-btn {
     padding: 6px 10px;
-    font-size: 11px;
+    font-size: var(--tf-type-scale-11);
   }
 
   .activity-item {
@@ -918,16 +918,16 @@ onUnmounted(() => {
   .activity-icon {
     width: 36px;
     height: 36px;
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
     margin-right: 12px;
   }
 
   .activity-content p {
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
   }
 
   .activity-time {
-    font-size: 11px;
+    font-size: var(--tf-type-scale-11);
   }
 
   .activity-action {
@@ -946,16 +946,16 @@ onUnmounted(() => {
   }
 
   .welcome-content h2 {
-    font-size: 16px;
+    font-size: var(--tf-type-scale-16);
   }
 
   .action-btn {
     padding: 12px 10px;
-    font-size: 11px;
+    font-size: var(--tf-type-scale-11);
   }
 
   .action-btn i {
-    font-size: 16px;
+    font-size: var(--tf-type-scale-16);
   }
 }
 

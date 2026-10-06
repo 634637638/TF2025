@@ -313,21 +313,21 @@ const handlePrint = () => {
       <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Microsoft YaHei', sans-serif; padding: 20px; }
-        .receipt-title { text-align: center; font-size: 24px; font-weight: bold; margin-bottom: 10px; }
+        .receipt-title { text-align: center; font-size: var(--tf-type-scale-24); font-weight: bold; margin-bottom: 10px; }
         .receipt-meta { text-align: center; color: var(--text-secondary); margin-bottom: 5px; }
         .info-bar { display: flex; gap: 12px; margin-bottom: 16px; padding: 12px; background: var(--tf-color-surface-muted); border-radius: 8px; }
-        .info-tag { font-size: 13px; color: var(--text-primary); }
+        .info-tag { font-size: var(--tf-type-scale-13); color: var(--text-primary); }
         .items-list { display: flex; flex-direction: column; gap: 12px; }
         .item-row { border: 1px solid var(--tf-color-gray-200); border-radius: 10px; padding: 14px; }
         .item-header { display: flex; justify-content: space-between; margin-bottom: 8px; }
-        .item-name { font-size: 15px; font-weight: 600; }
-        .item-price { font-size: 18px; font-weight: 700; }
+        .item-name { font-size: var(--tf-type-scale-15); font-weight: 600; }
+        .item-price { font-size: var(--tf-type-scale-18); font-weight: 700; }
         .item-tags { display: flex; gap: 6px; margin-bottom: 8px; }
-        .tag { padding: 3px 10px; background: var(--tf-color-gray-200); border-radius: 4px; font-size: 12px; }
-        .item-codes { display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 12px; color: var(--text-secondary); }
+        .tag { padding: 3px 10px; background: var(--tf-color-gray-200); border-radius: 4px; font-size: var(--tf-type-scale-12); }
+        .item-codes { display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: var(--tf-type-scale-12); color: var(--text-secondary); }
         .totals-bar { display: flex; justify-content: space-between; padding: 16px 20px; background: var(--tf-color-surface-muted); border-radius: 10px; }
-        .total-amount { font-size: 24px; font-weight: 700; }
-        .receipt-footer { text-align: center; font-size: 13px; color: var(--text-muted); padding-top: 12px; border-top: 1px solid var(--tf-color-gray-200); }
+        .total-amount { font-size: var(--tf-type-scale-24); font-weight: 700; }
+        .receipt-footer { text-align: center; font-size: var(--tf-type-scale-13); color: var(--text-muted); padding-top: 12px; border-top: 1px solid var(--tf-color-gray-200); }
       </style>
     </head>
     <body>${printContent}</body>
@@ -444,7 +444,7 @@ const handleSearchClear = () => {
   padding: 8px 12px;
   background: var(--tf-color-sky-100);
   color: var(--tf-color-sky-700);
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   font-weight: 500;
   border-bottom: 1px solid var(--color-primary);
 }
@@ -475,14 +475,14 @@ const handleSearchClear = () => {
 }
 
 .item-imei {
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: var(--color-text-regular);
 }
 
 .search-error {
   margin-top: 8px;
   color: var(--color-danger);
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
 }
 
 .receipt-scroll-area {
@@ -507,7 +507,7 @@ const handleSearchClear = () => {
 
 .receipt-title {
   margin: 0 0 8px;
-  font-size: 22px;
+  font-size: var(--tf-type-scale-22);
   font-weight: 700;
 }
 
@@ -516,7 +516,7 @@ const handleSearchClear = () => {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   color: rgba(255, 255, 255, 0.9);
 }
 
@@ -537,7 +537,7 @@ const handleSearchClear = () => {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   color: var(--tf-color-gray-bootstrap-700);
   font-weight: 500;
 
@@ -581,7 +581,7 @@ const handleSearchClear = () => {
 }
 
 .item-name {
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
   font-weight: 600;
   color: var(--tf-color-gray-bootstrap-900);
 }
@@ -589,7 +589,7 @@ const handleSearchClear = () => {
 .item-price {
   flex-shrink: 0;
   padding: 4px 12px;
-  font-size: 24px;
+  font-size: var(--tf-type-scale-24);
   font-weight: 800;
   color: var(--tf-color-indigo-brand);
   background: linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%);
@@ -609,7 +609,7 @@ const handleSearchClear = () => {
   padding: 4px 12px;
   background: var(--tf-color-border-muted);
   color: var(--tf-color-gray-bootstrap-700);
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   border-radius: 6px;
   font-weight: 500;
 }
@@ -629,7 +629,7 @@ const handleSearchClear = () => {
   flex-wrap: wrap;
   gap: 6px 16px;
   padding-top: 4px;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: var(--tf-color-muted);
 }
 
@@ -658,14 +658,14 @@ const handleSearchClear = () => {
 }
 
 .total-label {
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   color: var(--tf-color-gray-bootstrap-700);
   font-weight: 500;
 }
 
 .total-amount {
   padding: 8px 16px;
-  font-size: 32px;
+  font-size: var(--tf-type-scale-32);
   font-weight: 900;
   color: var(--tf-color-indigo-brand);
   background: var(--color-bg-white);
@@ -677,7 +677,7 @@ const handleSearchClear = () => {
 .receipt-footer {
   text-align: center;
   padding: 16px 28px;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: var(--tf-color-gray-bootstrap-500);
   background: var(--tf-color-surface-muted);
 }
@@ -725,7 +725,7 @@ const handleSearchClear = () => {
   }
 
   .receipt-title {
-    font-size: 18px;
+    font-size: var(--tf-type-scale-18);
   }
 
   .info-bar {
@@ -739,11 +739,11 @@ const handleSearchClear = () => {
   }
 
   .item-name {
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
   }
 
   .item-price {
-    font-size: 18px;
+    font-size: var(--tf-type-scale-18);
   }
 
   .totals-bar {
@@ -754,12 +754,12 @@ const handleSearchClear = () => {
   }
 
   .total-amount {
-    font-size: 22px;
+    font-size: var(--tf-type-scale-22);
   }
 
   .receipt-footer {
     padding: 12px 20px;
-    font-size: 11px;
+    font-size: var(--tf-type-scale-11);
   }
 
   .action-buttons {
@@ -782,16 +782,16 @@ const handleSearchClear = () => {
   }
 
   .receipt-title {
-    font-size: 16px;
+    font-size: var(--tf-type-scale-16);
   }
 
   .item-codes {
-    font-size: 11px;
+    font-size: var(--tf-type-scale-11);
     gap: 4px 12px;
   }
 
   .total-amount {
-    font-size: 20px;
+    font-size: var(--tf-type-scale-20);
   }
 }
 </style>

@@ -89,7 +89,7 @@
         border-radius: 8px;
         background: rgba(248, 250, 252, 0.88);
         color: var(--tf-color-slate-500);
-        font-size: 10px;
+        font-size: var(--tf-type-scale-10);
         line-height: 1.15;
       }
 
@@ -97,7 +97,7 @@
         min-width: 0;
         overflow: hidden;
         color: var(--tf-color-slate-900);
-        font-size: 12px;
+        font-size: var(--tf-type-scale-12);
         font-weight: 800;
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -110,7 +110,7 @@
         display: grid;
         place-items: center;
         color: white;
-        font-size: 15px;
+        font-size: var(--tf-type-scale-15);
       }
 
       .stat-card__head-copy {
@@ -119,7 +119,7 @@
       }
 
       .stat-card__eyebrow {
-        font-size: 10px;
+        font-size: var(--tf-type-scale-10);
         font-weight: 700;
         letter-spacing: 0.08em;
         text-transform: uppercase;
@@ -128,7 +128,7 @@
       }
 
       .stat-card__title {
-        font-size: 14px;
+        font-size: var(--tf-type-scale-14);
         font-weight: 700;
         color: var(--tf-color-slate-900);
       }
@@ -137,7 +137,7 @@
         flex-shrink: 0;
         padding: 3px 7px;
         border-radius: 999px;
-        font-size: 10px;
+        font-size: var(--tf-type-scale-10);
         font-weight: 700;
         color: color-mix(in srgb, var(--card-accent) 78%, var(--tf-color-slate-800) 22%);
         background: color-mix(in srgb, var(--card-accent) 12%, white 88%);
@@ -157,7 +157,7 @@
       }
 
       .stat-card__value {
-        font-size: 30px;
+        font-size: var(--tf-type-scale-30);
         line-height: 1;
         font-weight: 800;
         letter-spacing: 0;
@@ -166,7 +166,7 @@
       }
 
       .stat-card__value-unit {
-        font-size: 12px;
+        font-size: var(--tf-type-scale-12);
         font-weight: 700;
         color: var(--tf-color-slate-500);
         padding-bottom: 4px;
@@ -191,14 +191,14 @@
 
       .stat-metric__label {
         display: block;
-        font-size: 11px;
+        font-size: var(--tf-type-scale-11);
         color: var(--tf-color-slate-500);
         margin-bottom: 4px;
       }
 
       .stat-metric__value {
         display: block;
-        font-size: 14px;
+        font-size: var(--tf-type-scale-14);
         font-weight: 800;
         color: var(--tf-color-slate-900);
         line-height: 1.2;
@@ -234,7 +234,7 @@
         justify-content: space-between;
         flex-wrap: wrap;
         gap: 6px;
-        font-size: 10px;
+        font-size: var(--tf-type-scale-10);
         color: var(--tf-color-slate-500);
       }
 
@@ -273,7 +273,7 @@
 
       .store-pill__name {
         min-width: 0;
-        font-size: 12px;
+        font-size: var(--tf-type-scale-12);
         font-weight: 600;
         color: var(--tf-color-slate-700);
         overflow: hidden;
@@ -283,7 +283,7 @@
 
       .store-pill__value {
         flex-shrink: 0;
-        font-size: 12px;
+        font-size: var(--tf-type-scale-12);
         font-weight: 800;
         color: color-mix(in srgb, var(--card-accent) 74%, var(--tf-color-slate-900) 26%);
       }
@@ -333,7 +333,7 @@
         .stat-fact strong {
           width: 100%;
           overflow: visible;
-          font-size: 11px;
+          font-size: var(--tf-type-scale-11);
           text-overflow: clip;
         }
 
@@ -355,30 +355,30 @@
           width: 30px;
           height: 30px;
           border-radius: 9px;
-          font-size: 12px;
+          font-size: var(--tf-type-scale-12);
         }
 
         .stat-card__eyebrow {
-          font-size: 9px;
+          font-size: var(--tf-type-scale-9);
         }
 
         .stat-card__title {
-          font-size: 12px;
+          font-size: var(--tf-type-scale-12);
         }
 
         .stat-card__value {
-          font-size: 24px;
+          font-size: var(--tf-type-scale-24);
         }
 
         &.stat-card--income {
           .stat-card__value {
-            font-size: 18px;
+            font-size: var(--tf-type-scale-18);
           }
         }
 
         .stat-card__badge {
           padding: 2px 5px;
-          font-size: 9px;
+          font-size: var(--tf-type-scale-9);
         }
 
         .stat-card__metrics {
@@ -391,12 +391,12 @@
         }
 
         .stat-metric__label {
-          font-size: 10px;
+          font-size: var(--tf-type-scale-10);
           margin-bottom: 3px;
         }
 
         .stat-metric__value {
-          font-size: 11px;
+          font-size: var(--tf-type-scale-11);
         }
 
         .store-pill {
@@ -406,7 +406,7 @@
 
         .store-pill__name,
         .store-pill__value {
-          font-size: 11px;
+          font-size: var(--tf-type-scale-11);
         }
       }
     }
@@ -441,7 +441,7 @@
     }
 
     .section-title {
-      font-size: 1.125rem;
+      font-size: var(--tf-type-scale-1-125rem);
       font-weight: 600;
       color: var(--tf-color-heading);
       margin-bottom: 16px;
@@ -451,7 +451,7 @@
 
       .record-count {
         margin-left: auto;
-        font-size: 0.875rem;
+        font-size: var(--tf-type-scale-0-875rem);
         font-weight: 400;
         color: var(--tf-color-muted);
       }
@@ -474,7 +474,7 @@
             padding: 12px 10px;
             text-align: center;
             font-weight: 600;
-            font-size: 14px;
+            font-size: var(--tf-type-scale-14);
             border-right: 1px solid var(--tf-color-border-subtle);
             border-bottom: 2px solid var(--tf-color-border-subtle);
             white-space: nowrap;
@@ -534,7 +534,7 @@
               padding: 6px 6px;
               border-right: 1px solid var(--tf-color-border-muted);
               border-bottom: 1px solid var(--tf-color-border-muted);
-              font-size: 14px;
+              font-size: var(--tf-type-scale-14);
               color: var(--tf-color-heading);
               font-weight: 500;
               transition: all 0.2s ease;
@@ -563,7 +563,7 @@
         td:nth-child(11), /* IMEI1 */
         td:nth-child(12)  /* IMEI2 */
         {
-          font-size: 13px !important;
+          font-size: var(--tf-type-scale-13) !important;
           font-weight: 500 !important;
           color: var(--tf-color-neutral-800) !important;
           background: rgba(40, 167, 69, 0.05) !important;
@@ -619,14 +619,14 @@
           gap: 6px;
           padding: 8px 14px;
           border-radius: 6px;
-          font-size: 13px;
+          font-size: var(--tf-type-scale-13);
           font-weight: 600;
           box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
           transition: all 0.3s ease;
           border: 1px solid transparent;
 
           i {
-            font-size: 14px;
+            font-size: var(--tf-type-scale-14);
           }
 
           &.approval-time {
@@ -664,7 +664,7 @@
       margin-top: 20px;
 
       .page-info {
-        font-size: 14px;
+        font-size: var(--tf-type-scale-14);
         color: var(--tf-color-gray-bootstrap-700);
         font-weight: 500;
       }

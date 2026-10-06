@@ -1344,7 +1344,7 @@ onBeforeUnmount(() => {
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 24px;
+      font-size: var(--tf-type-scale-24);
       color: white;
 
       &.total {
@@ -1373,13 +1373,13 @@ onBeforeUnmount(() => {
       min-width: 0;
 
       .card-title {
-        font-size: 14px;
+        font-size: var(--tf-type-scale-14);
         color: var(--el-text-color-secondary);
         margin-bottom: 8px;
       }
 
       .card-value {
-        font-size: 28px;
+        font-size: var(--tf-type-scale-28);
         font-weight: 700;
         letter-spacing: -0.02em;
         color: var(--el-text-color-primary);
@@ -1388,7 +1388,7 @@ onBeforeUnmount(() => {
       }
 
       .card-desc {
-        font-size: 12px;
+        font-size: var(--tf-type-scale-12);
         line-height: 1.5;
         color: var(--el-text-color-regular);
         margin-bottom: 10px;
@@ -1398,7 +1398,7 @@ onBeforeUnmount(() => {
       .card-change {
         display: flex;
         align-items: center;
-        font-size: 12px;
+        font-size: var(--tf-type-scale-12);
         font-weight: 500;
         gap: 4px;
 
@@ -1460,7 +1460,7 @@ onBeforeUnmount(() => {
 
       h3 {
         margin: 0;
-        font-size: 16px;
+        font-size: var(--tf-type-scale-16);
         font-weight: 700;
         color: var(--tf-color-slate-900);
       }
@@ -1468,7 +1468,7 @@ onBeforeUnmount(() => {
       .card-header-subtitle {
         display: block;
         margin-top: 4px;
-        font-size: 12px;
+        font-size: var(--tf-type-scale-12);
         color: var(--tf-color-slate-500);
       }
 
@@ -1486,7 +1486,7 @@ onBeforeUnmount(() => {
         border-radius: 999px;
         background: rgba(15, 118, 110, 0.08);
         color: var(--tf-color-teal-700);
-        font-size: 12px;
+        font-size: var(--tf-type-scale-12);
         font-weight: 600;
         white-space: nowrap;
 
@@ -1554,13 +1554,13 @@ onBeforeUnmount(() => {
     .summary-label {
       display: block;
       margin-bottom: 6px;
-      font-size: 12px;
+      font-size: var(--tf-type-scale-12);
       color: var(--tf-color-slate-500);
     }
 
     .summary-value {
       display: block;
-      font-size: 18px;
+      font-size: var(--tf-type-scale-18);
       font-weight: 700;
       color: var(--tf-color-slate-900);
       line-height: 1.2;
@@ -1586,13 +1586,13 @@ onBeforeUnmount(() => {
     }
 
     .summary-label {
-      font-size: 12px;
+      font-size: var(--tf-type-scale-12);
       color: var(--el-text-color-secondary);
       margin-bottom: 6px;
     }
 
     .summary-value {
-      font-size: 20px;
+      font-size: var(--tf-type-scale-20);
       font-weight: 700;
       color: var(--el-text-color-primary);
       line-height: 1.1;
@@ -1658,12 +1658,12 @@ onBeforeUnmount(() => {
       .card-icon {
         width: 50px;
         height: 50px;
-        font-size: 20px;
+        font-size: var(--tf-type-scale-20);
       }
 
       .card-info {
         .card-value {
-          font-size: 24px;
+          font-size: var(--tf-type-scale-24);
         }
       }
     }
@@ -1695,24 +1695,24 @@ onBeforeUnmount(() => {
       .card-icon {
         width: 40px;
         height: 40px;
-        font-size: 16px;
+        font-size: var(--tf-type-scale-16);
       }
 
       .card-info {
         .card-title {
-          font-size: 12px;
+          font-size: var(--tf-type-scale-12);
         }
 
         .card-value {
-          font-size: 18px;
+          font-size: var(--tf-type-scale-18);
         }
 
         .card-desc {
-          font-size: 11px;
+          font-size: var(--tf-type-scale-11);
         }
 
         .card-change {
-          font-size: 10px;
+          font-size: var(--tf-type-scale-10);
         }
       }
     }
@@ -1725,7 +1725,7 @@ onBeforeUnmount(() => {
         gap: 8px;
 
         h3 {
-          font-size: 14px;
+          font-size: var(--tf-type-scale-14);
         }
 
         .card-header-actions {
@@ -1741,7 +1741,7 @@ onBeforeUnmount(() => {
     }
 
     .el-table {
-      font-size: 12px;
+      font-size: var(--tf-type-scale-12);
     }
   }
 

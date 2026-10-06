@@ -58,13 +58,15 @@
             class="password-input"
             @keyup.enter="handleUnlock"
           />
-          <button
-            type="button"
-            class="toggle-password"
+          <el-button
+            native-type="button"
+            class="toggle-password tf-button--overlay-tool"
+            :aria-label="showPassword ? '隐藏密码' : '显示密码'"
+            :title="showPassword ? '隐藏密码' : '显示密码'"
             @click="showPassword = !showPassword"
           >
             <i :class="showPassword ? 'fas fa-eye-slash' : 'fas fa-eye'" />
-          </button>
+          </el-button>
         </div>
 
         <!-- 错误提示 -->
@@ -77,23 +79,20 @@
         </div>
 
         <!-- 解锁按钮 -->
-        <button
-          type="button"
-          class="unlock-button"
+        <el-button
+          native-type="button"
+          class="unlock-button tf-button--success"
+          aria-label="解锁"
+          :loading="isUnlocking"
           :disabled="isUnlocking || !password"
           @click="handleUnlock"
         >
-          <InlineLoading
-            v-if="isUnlocking"
-            text="验证中..."
-            size="small"
-            variant="inherit"
-          />
+          <template v-if="isUnlocking">验证中...</template>
           <template v-else>
             <i class="fas fa-unlock" />
             解锁
           </template>
-        </button>
+        </el-button>
       </div>
 
       <!-- 底部信息 -->
@@ -118,7 +117,6 @@ import { ref, reactive, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { unifiedApi } from '@/utils/unified-api'
 import { useNotification } from '@/composables/useNotification'
 import Image from './Image.vue'
-import InlineLoading from '@/components/InlineLoading.vue'
 import { formatDateTime as formatGlobalDateTime, formatImageUrl } from '@/utils/format'
 import { TimeUtil } from '@/utils/time'
 
@@ -326,14 +324,14 @@ onUnmounted(() => {
   margin-bottom: 40px;
 
   .lock-icon {
-    font-size: 64px;
+    font-size: var(--tf-type-scale-64);
     color: rgba(255, 255, 255, 0.9);
     margin-bottom: 20px;
     text-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   }
 
   .lock-title {
-    font-size: 32px;
+    font-size: var(--tf-type-scale-32);
     font-weight: 700;
     color: var(--color-bg-white);
     margin: 0 0 16px 0;
@@ -341,7 +339,7 @@ onUnmounted(() => {
   }
 
   .lock-message {
-    font-size: 16px;
+    font-size: var(--tf-type-scale-16);
     color: rgba(255, 255, 255, 0.8);
     margin: 0;
   }
@@ -373,7 +371,7 @@ onUnmounted(() => {
 
       .el-input__inner {
         color: var(--color-bg-white);
-        font-size: 16px;
+        font-size: var(--tf-type-scale-16);
 
         &::placeholder {
           color: rgba(255, 255, 255, 0.5);
@@ -387,23 +385,18 @@ onUnmounted(() => {
       right: 16px;
       top: 50%;
       transform: translateY(-50%);
-      background: none;
-      border: none;
-      color: rgba(255, 255, 255, 0.6);
       cursor: pointer;
-      padding: 4px;
-      font-size: 16px;
       transition: color 0.3s ease;
 
       &:hover {
-        color: rgba(255, 255, 255, 0.9);
+        transform: translateY(-50%);
       }
     }
   }
 
   .error-message {
     color: var(--tf-color-coral);
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
     margin-bottom: 20px;
     display: flex;
     align-items: center;
@@ -411,40 +404,12 @@ onUnmounted(() => {
     gap: 8px;
 
     i {
-      font-size: 16px;
+      font-size: var(--tf-type-scale-16);
     }
   }
 
   .unlock-button {
     width: 100%;
-    padding: 16px 32px;
-    background: var(--tf-button-success-bg);
-    color: var(--tf-button-on-color);
-    border: none;
-    border-radius: 12px;
-    font-size: 16px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-
-    &:hover:not(:disabled) {
-      background: var(--tf-button-success-hover-bg);
-      transform: translateY(-2px);
-      box-shadow: var(--tf-button-success-shadow);
-    }
-
-    &:active:not(:disabled) {
-      transform: translateY(0);
-    }
-
-    &:disabled {
-      opacity: 0.7;
-      cursor: not-allowed;
-    }
   }
 }
 
@@ -452,13 +417,13 @@ onUnmounted(() => {
   margin-top: 40px;
 
   .lock-time {
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
     color: rgba(255, 255, 255, 0.7);
     margin: 0 0 12px 0;
   }
 
   .lock-tips {
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
     color: rgba(255, 255, 255, 0.6);
     margin: 0;
     display: flex;
@@ -467,7 +432,7 @@ onUnmounted(() => {
     gap: 6px;
 
     i {
-      font-size: 12px;
+      font-size: var(--tf-type-scale-12);
     }
   }
 }
@@ -493,14 +458,14 @@ onUnmounted(() => {
 
   .lock-info {
     .lock-title {
-      font-size: 28px;
+      font-size: var(--tf-type-scale-28);
     }
   }
 
   .lock-form {
     .password-input-group {
       .password-input {
-        font-size: 16px;
+        font-size: var(--tf-type-scale-16);
       }
     }
   }

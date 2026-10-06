@@ -709,7 +709,6 @@ sed -i '' 's/messageStore\.info(/info(/g' *.vue
     - `src/views/analytics/components/CustomerAnalytics.vue`
 
 12. **公共组件**
-    - `src/components/DynamicSidebar.vue`
     - `src/components/ErrorBoundary.vue`
     - `src/components/GlobalMessage.vue`
     - `src/components/PhoneDetailsModal.vue`

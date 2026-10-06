@@ -805,7 +805,7 @@ onMounted(() => {
     }
 
     i {
-      font-size: 36px;
+      font-size: var(--tf-type-scale-36);
       opacity: 0.9;
     }
   }
@@ -814,13 +814,13 @@ onMounted(() => {
     flex: 1;
 
     .user-title {
-      font-size: 22px;
+      font-size: var(--tf-type-scale-22);
       font-weight: 600;
       margin: 0 0 4px;
     }
 
     .user-desc {
-      font-size: 14px;
+      font-size: var(--tf-type-scale-14);
       opacity: 0.9;
       margin: 0;
     }
@@ -830,21 +830,21 @@ onMounted(() => {
       align-items: center;
       gap: 8px;
       flex-wrap: wrap;
-      font-size: 13px;
+      font-size: var(--tf-type-scale-13);
       opacity: 0.95;
 
       .user-name {
         font-weight: 600;
-        font-size: 16px;
+        font-size: var(--tf-type-scale-16);
       }
 
       .user-phone {
-        font-size: 13px;
+        font-size: var(--tf-type-scale-13);
         opacity: 0.9;
       }
 
       .member-number {
-        font-size: 11px;
+        font-size: var(--tf-type-scale-11);
         color: var(--color-bg-white);
         background: rgba(255, 255, 255, 0.25);
         padding: 2px 6px;
@@ -861,7 +861,7 @@ onMounted(() => {
     color: var(--tf-button-on-color);
 
     i {
-      font-size: 18px;
+      font-size: var(--tf-type-scale-18);
     }
   }
 }
@@ -881,7 +881,7 @@ onMounted(() => {
     cursor: pointer;
 
     .section-title {
-      font-size: 16px;
+      font-size: var(--tf-type-scale-16);
       font-weight: 500;
       color: var(--text-primary);
       margin: 0;
@@ -895,20 +895,20 @@ onMounted(() => {
     }
 
     .section-more {
-      font-size: 13px;
+      font-size: var(--tf-type-scale-13);
       color: var(--text-muted);
       display: flex;
       align-items: center;
       gap: 4px;
 
       i {
-        font-size: 12px;
+        font-size: var(--tf-type-scale-12);
       }
     }
   }
 
   .section-title {
-    font-size: 16px;
+    font-size: var(--tf-type-scale-16);
     font-weight: 500;
     color: var(--text-primary);
     margin: 0 0 16px;
@@ -944,11 +944,11 @@ onMounted(() => {
     box-shadow: var(--tf-button-shadow);
 
     i {
-      font-size: 20px;
+      font-size: var(--tf-type-scale-20);
     }
 
     span {
-      font-size: 16px;
+      font-size: var(--tf-type-scale-16);
       font-weight: 500;
     }
 
@@ -1003,12 +1003,12 @@ onMounted(() => {
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 
       i {
-        font-size: 24px;
+        font-size: var(--tf-type-scale-24);
       }
     }
 
     .grid-label {
-      font-size: 13px;
+      font-size: var(--tf-type-scale-13);
       color: var(--text-primary);
       text-align: center;
     }
@@ -1038,12 +1038,12 @@ onMounted(() => {
     }
 
     i {
-      font-size: 24px;
+      font-size: var(--tf-type-scale-24);
       color: var(--text-secondary);
     }
 
     span {
-      font-size: 12px;
+      font-size: var(--tf-type-scale-12);
       color: var(--text-secondary);
     }
   }
@@ -1080,13 +1080,13 @@ onMounted(() => {
 
     .item-name {
       flex: 1;
-      font-size: 15px;
+      font-size: var(--tf-type-scale-15);
       color: var(--text-primary);
     }
 
     .item-arrow {
       color: var(--tf-color-gray-300-alt);
-      font-size: 14px;
+      font-size: var(--tf-type-scale-14);
     }
   }
 }
@@ -1133,7 +1133,7 @@ onMounted(() => {
         }
 
         i {
-          font-size: 20px;
+          font-size: var(--tf-type-scale-20);
         }
       }
 
@@ -1141,13 +1141,13 @@ onMounted(() => {
         text-align: center;
 
         .service-label {
-          font-size: 12px;
+          font-size: var(--tf-type-scale-12);
           color: var(--text-secondary);
           margin-bottom: 4px;
         }
 
         .service-value {
-          font-size: 14px;
+          font-size: var(--tf-type-scale-14);
           font-weight: 500;
           color: var(--text-primary);
           overflow: hidden;
@@ -1194,7 +1194,7 @@ onMounted(() => {
       }
 
       i {
-        font-size: 20px;
+        font-size: var(--tf-type-scale-20);
       }
     }
 
@@ -1203,13 +1203,13 @@ onMounted(() => {
       min-width: 0;
 
       .info-label {
-        font-size: 12px;
+        font-size: var(--tf-type-scale-12);
         color: var(--text-secondary);
         margin-bottom: 4px;
       }
 
       .info-value {
-        font-size: 15px;
+        font-size: var(--tf-type-scale-15);
         font-weight: 500;
         color: var(--text-primary);
         overflow: hidden;
@@ -1220,7 +1220,7 @@ onMounted(() => {
 
     .info-arrow {
       color: var(--tf-color-gray-300-alt);
-      font-size: 14px;
+      font-size: var(--tf-type-scale-14);
       flex-shrink: 0;
     }
   }
@@ -1264,7 +1264,7 @@ onMounted(() => {
       }
 
       i {
-        font-size: 20px;
+        font-size: var(--tf-type-scale-20);
       }
     }
 
@@ -1273,13 +1273,13 @@ onMounted(() => {
       min-width: 0;
 
       .info-label {
-        font-size: 12px;
+        font-size: var(--tf-type-scale-12);
         color: var(--text-secondary);
         margin-bottom: 4px;
       }
 
       .info-value {
-        font-size: 15px;
+        font-size: var(--tf-type-scale-15);
         font-weight: 500;
         color: var(--text-primary);
         overflow: hidden;
@@ -1290,7 +1290,7 @@ onMounted(() => {
 
     .info-arrow {
       color: var(--tf-color-gray-300-alt);
-      font-size: 14px;
+      font-size: var(--tf-type-scale-14);
       flex-shrink: 0;
     }
   }
@@ -1301,13 +1301,13 @@ onMounted(() => {
     color: var(--text-muted);
 
     i {
-      font-size: 40px;
+      font-size: var(--tf-type-scale-40);
       margin-bottom: 12px;
       opacity: 0.5;
     }
 
     p {
-      font-size: 14px;
+      font-size: var(--tf-type-scale-14);
       margin: 0;
     }
   }
@@ -1347,12 +1347,12 @@ onMounted(() => {
     color: var(--color-bg-white);
 
     i {
-      font-size: 24px;
+      font-size: var(--tf-type-scale-24);
     }
   }
 
   .service-text {
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
     color: var(--tf-color-accent-green);
     font-weight: 500;
     background: rgba(255, 255, 255, 0.9);
@@ -1381,7 +1381,7 @@ onMounted(() => {
     }
 
     span {
-      font-size: 14px;
+      font-size: var(--tf-type-scale-14);
       color: var(--text-primary);
       display: flex;
       align-items: center;
@@ -1391,12 +1391,12 @@ onMounted(() => {
     .phone-link {
       color: var(--color-primary);
       text-decoration: none;
-      font-size: 16px;
+      font-size: var(--tf-type-scale-16);
     }
 
     .address-text,
     .hours-text {
-      font-size: 14px;
+      font-size: var(--tf-type-scale-14);
       color: var(--text-secondary);
       line-height: 1.6;
       margin: 0;
@@ -1417,12 +1417,12 @@ onMounted(() => {
     }
 
     .label {
-      font-size: 14px;
+      font-size: var(--tf-type-scale-14);
       color: var(--text-secondary);
     }
 
     .value {
-      font-size: 14px;
+      font-size: var(--tf-type-scale-14);
       color: var(--text-primary);
       text-align: right;
 
@@ -1452,13 +1452,13 @@ onMounted(() => {
         margin-bottom: 8px;
 
         .invoice-number {
-          font-size: 13px;
+          font-size: var(--tf-type-scale-13);
           font-weight: 500;
           color: var(--text-primary);
         }
 
         .sale-date {
-          font-size: 12px;
+          font-size: var(--tf-type-scale-12);
           color: var(--text-muted);
         }
       }
@@ -1467,7 +1467,7 @@ onMounted(() => {
         margin-bottom: 8px;
 
         .product-name {
-          font-size: 15px;
+          font-size: var(--tf-type-scale-15);
           font-weight: 500;
           color: var(--text-primary);
           margin-bottom: 4px;
@@ -1476,7 +1476,7 @@ onMounted(() => {
         .record-details {
           display: flex;
           gap: 12px;
-          font-size: 12px;
+          font-size: var(--tf-type-scale-12);
           color: var(--text-secondary);
 
           .imei {
@@ -1493,13 +1493,13 @@ onMounted(() => {
         border-top: 1px solid var(--tf-color-border-muted);
 
         .price {
-          font-size: 18px;
+          font-size: var(--tf-type-scale-18);
           font-weight: 500;
           color: var(--tf-color-accent-pink);
         }
 
         .payment-method {
-          font-size: 12px;
+          font-size: var(--tf-type-scale-12);
           color: var(--text-secondary);
           background: var(--tf-color-border-muted);
           padding: 2px 8px;
@@ -1512,7 +1512,7 @@ onMounted(() => {
 
 // 个人资料表单样式
 .form-tip {
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: var(--text-muted);
   margin-top: 4px;
 }

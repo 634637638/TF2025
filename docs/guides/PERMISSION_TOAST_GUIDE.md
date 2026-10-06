@@ -17,12 +17,13 @@
 ```vue
 <template>
   <!-- 简单用法 - 只提供权限字符串 -->
-  <button v-permission-tip="'stores_storesview:edit'">
+  <el-button native-type="button" v-permission-tip="'stores_storesview:edit'">
     编辑店铺
-  </button>
+  </el-button>
 
   <!-- 完整用法 - 提供配置对象 -->
-  <button
+  <el-button
+    native-type="button"
     v-permission-tip="{
       permission: 'stores_storesview:delete',
       moduleName: '店铺管理',
@@ -30,12 +31,12 @@
     }"
   >
     删除店铺
-  </button>
+  </el-button>
 
   <!-- 快捷用法 - 简写格式 -->
-  <button v-permission-tip="{ permission: 'stores_storesview:create', moduleName: '店铺管理', action: 'create' }">
+  <el-button native-type="button" v-permission-tip="{ permission: 'stores_storesview:create', moduleName: '店铺管理', action: 'create' }">
     新增店铺
-  </button>
+  </el-button>
 </template>
 ```
 
@@ -45,9 +46,9 @@
 
 ```vue
 <template>
-  <button v-permission="'stores_storesview:edit'">
+  <el-button native-type="button" v-permission="'stores_storesview:edit'">
     编辑
-  </button>
+  </el-button>
 </template>
 ```
 

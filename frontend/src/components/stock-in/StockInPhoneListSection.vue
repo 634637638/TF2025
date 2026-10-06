@@ -585,7 +585,7 @@ const {
   border-radius: 11px;
   background: var(--el-color-primary-light-9);
   color: var(--el-color-primary);
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   font-weight: 600;
   white-space: nowrap;
   box-sizing: border-box;
@@ -634,7 +634,7 @@ const {
 
 .phone-number {
   color: var(--el-text-color-primary);
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   font-weight: 600;
 }
 
@@ -669,7 +669,7 @@ const {
 }
 
 .error-message {
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: var(--el-color-danger);
   margin-top: 4px;
   line-height: 1.4;

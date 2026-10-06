@@ -77,6 +77,7 @@
     "suppliers_suppliersview": ["view", "create", "edit", "delete", "export"],
     "payments_supplierphonepaymentsview": ["view", "create", "edit", "delete", "approve", "export"],
     "system_systemview": ["view", "edit", "delete"],
+    "standards_standardsauditview": ["view"],
     "system_returngoods": ["view", "edit", "delete"],
     "system_gitmanagement": ["view", "create", "edit", "delete"],
     "backup_backupview": ["view", "create", "delete"],

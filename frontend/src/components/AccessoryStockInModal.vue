@@ -1060,19 +1060,19 @@ onMounted(async () => {
   background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
   color: white;
   border-radius: 10px;
-  font-size: 18px;
+  font-size: var(--tf-type-scale-18);
 }
 
 .header-text h3 {
   margin: 0;
-  font-size: 18px;
+  font-size: var(--tf-type-scale-18);
   font-weight: 600;
   color: var(--color-text-primary);
 }
 
 .header-text p {
   margin: 4px 0 0;
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   color: var(--color-info);
 }
 
@@ -1142,12 +1142,12 @@ onMounted(async () => {
 }
 
 .image-overlay i {
-  font-size: 20px;
+  font-size: var(--tf-type-scale-20);
   margin-bottom: 4px;
 }
 
 .image-overlay span {
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
 }
 
 .image-placeholder {
@@ -1163,11 +1163,11 @@ onMounted(async () => {
 }
 
 .image-placeholder i {
-  font-size: 24px;
+  font-size: var(--tf-type-scale-24);
 }
 
 .image-placeholder span {
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
 }
 
 /* 条码输入 */
@@ -1205,18 +1205,18 @@ onMounted(async () => {
   justify-content: center;
   background: rgba(255, 255, 255, 0.2);
   border-radius: 6px;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
 }
 
 .card-title {
   margin: 0;
-  font-size: 15px;
+  font-size: var(--tf-type-scale-15);
   font-weight: 600;
 }
 
 .optional-text {
   font-weight: 400;
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   opacity: 0.8;
 }
 
@@ -1250,7 +1250,7 @@ onMounted(async () => {
   background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
   color: white;
   border-radius: 6px;
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   font-weight: 500;
 }
 
@@ -1267,7 +1267,7 @@ onMounted(async () => {
   gap: 12px;
   padding: 10px 14px;
   background: var(--tf-color-surface);
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   font-weight: 500;
   color: var(--color-text-regular);
 }
@@ -1293,7 +1293,7 @@ onMounted(async () => {
 .item-amount {
   color: var(--color-success);
   font-weight: 500;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
 }
 
 /* 分配状态 */
@@ -1307,7 +1307,7 @@ onMounted(async () => {
   border: 1px solid var(--tf-color-blue-tailwind-300);
   border-radius: 6px;
   color: var(--tf-color-blue-ant);
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
 }
 
 .distribution-status.complete {
@@ -1317,13 +1317,13 @@ onMounted(async () => {
 }
 
 .distribution-status strong {
-  font-size: 15px;
+  font-size: var(--tf-type-scale-15);
 }
 
 .remaining-hint {
   margin-left: auto;
   opacity: 0.8;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
 }
 
 /* 响应式 */

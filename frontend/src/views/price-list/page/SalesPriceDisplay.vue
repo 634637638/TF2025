@@ -12,9 +12,10 @@
       </template>
 
       <template #actions>
-        <button
-          type="button"
+        <el-button
+          native-type="button"
           class="price-header-action price-header-action--download"
+          :loading="isGenerating"
           :disabled="isGenerating || searchResults.length === 0"
           @click="downloadAsImage"
         >
@@ -29,12 +30,9 @@
             v-else
             class="btn-content loading"
           >
-            <InlineLoading
-              text="生成中..."
-              size="small"
-            />
+            生成中...
           </span>
-        </button>
+        </el-button>
       </template>
     </PublicPriceHeader>
 
@@ -471,35 +469,6 @@ const saveImageToGallery = async (canvas: HTMLCanvasElement) => {
   })
 }
 
-const applyContactImageStyles = (clonedDocument: Document) => {
-  const card = clonedDocument.querySelector<HTMLElement>('.contact-card')
-  if (!card) return
-
-  card.style.setProperty('background', 'linear-gradient(135deg, #e6f0f4 0%, #dce9ee 100%)', 'important')
-  card.style.setProperty('border', '1px solid #c7d8e0', 'important')
-  card.style.setProperty('border-radius', '10px', 'important')
-  card.style.setProperty('box-shadow', 'none', 'important')
-  card.style.setProperty('display', 'block', 'important')
-  card.style.setProperty('height', 'auto', 'important')
-  card.style.setProperty('min-height', '0', 'important')
-  card.style.setProperty('overflow', 'visible', 'important')
-  const grid = card.querySelector<HTMLElement>('.contact-grid')
-  grid?.style.setProperty('display', 'grid', 'important')
-  grid?.style.setProperty('grid-template-columns', 'repeat(2, minmax(0, 1fr))', 'important')
-  grid?.style.setProperty('visibility', 'visible', 'important')
-  card.querySelectorAll<HTMLElement>('.contact-title').forEach((el) => {
-    el.style.setProperty('color', '#334155', 'important')
-  })
-  card.querySelectorAll<HTMLElement>('.contact-link').forEach((el) => {
-    el.style.setProperty('display', 'flex', 'important')
-    el.style.setProperty('justify-content', 'space-between', 'important')
-    el.style.setProperty('height', 'auto', 'important')
-    el.style.setProperty('min-height', '48px', 'important')
-    el.style.setProperty('visibility', 'visible', 'important')
-    el.style.setProperty('opacity', '1', 'important')
-  })
-}
-
 // Safari 对 html2canvas 克隆后的表格布局会重新计算，显式固定生成图宽度和五列宽度，避免价格列被裁切。
 const applyPriceTableImageStyles = (clonedDocument: Document) => {
   const results = clonedDocument.querySelector<HTMLElement>('.results-list.generating-image')
@@ -695,7 +664,6 @@ const downloadAsImage = async () => {
       logging: false,
       allowTaint: true,
       onclone: (clonedDocument) => {
-        applyContactImageStyles(clonedDocument)
         applyPriceTableImageStyles(clonedDocument)
       }
     })
@@ -819,7 +787,7 @@ onBeforeUnmount(() => {
   }
 
   .title {
-    font-size: 42px;
+    font-size: var(--tf-type-scale-42);
     font-weight: bold;
     margin-bottom: 10px;
     display: flex;
@@ -828,12 +796,12 @@ onBeforeUnmount(() => {
     gap: 15px;
 
     .title-icon {
-      font-size: 48px;
+      font-size: var(--tf-type-scale-48);
     }
   }
 
   .subtitle {
-    font-size: 18px;
+    font-size: var(--tf-type-scale-18);
     opacity: 0.9;
     margin-bottom: 40px;
   }
@@ -855,10 +823,10 @@ onBeforeUnmount(() => {
     text-align: center;
     margin-top: 12px;
     opacity: 0.85;
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
 
     @media (max-width: 767px) {
-      font-size: 12px;
+      font-size: var(--tf-type-scale-12);
       padding: 0 15px;
       line-height: 1.6;
     }
@@ -909,12 +877,12 @@ onBeforeUnmount(() => {
     color: white;
 
     .el-icon {
-      font-size: 64px;
+      font-size: var(--tf-type-scale-64);
       margin-bottom: 20px;
     }
 
     p {
-      font-size: 18px;
+      font-size: var(--tf-type-scale-18);
       opacity: 0.8;
     }
   }
@@ -964,24 +932,24 @@ onBeforeUnmount(() => {
 
     h2 {
       margin: 0;
-      font-size: 20px;
+      font-size: var(--tf-type-scale-20);
       color: var(--text-primary);
 
       @media (max-width: 767px) {
-        font-size: 16px;
+        font-size: var(--tf-type-scale-16);
       }
 
       @media (max-width: 479px) {
-        font-size: 14px;
+        font-size: var(--tf-type-scale-14);
       }
 
       @media (max-width: 380px) {
-        font-size: 13px;
+        font-size: var(--tf-type-scale-13);
       }
     }
 
     .hot-badge {
-      font-size: 12px;
+      font-size: var(--tf-type-scale-12);
       font-weight: bold;
       padding: 0 6px;
       height: 20px;
@@ -990,21 +958,21 @@ onBeforeUnmount(() => {
       animation: pulse 2s infinite;
 
       @media (max-width: 767px) {
-        font-size: 10px;
+        font-size: var(--tf-type-scale-10);
         height: 18px;
         line-height: 18px;
         padding: 0 4px;
       }
 
       @media (max-width: 479px) {
-        font-size: 9px;
+        font-size: var(--tf-type-scale-9);
         height: 16px;
         line-height: 16px;
         padding: 0 3px;
       }
 
       @media (max-width: 380px) {
-        font-size: 8px;
+        font-size: var(--tf-type-scale-8);
         height: 14px;
         line-height: 14px;
         padding: 0 2px;
@@ -1013,18 +981,18 @@ onBeforeUnmount(() => {
 
     .count {
       color: var(--color-info);
-      font-size: 14px;
+      font-size: var(--tf-type-scale-14);
 
       @media (max-width: 767px) {
-        font-size: 12px;
+        font-size: var(--tf-type-scale-12);
       }
 
       @media (max-width: 479px) {
-        font-size: 11px;
+        font-size: var(--tf-type-scale-11);
       }
 
       @media (max-width: 380px) {
-        font-size: 10px;
+        font-size: var(--tf-type-scale-10);
       }
     }
   }
@@ -1071,7 +1039,7 @@ onBeforeUnmount(() => {
 
   p {
     margin: 5px 0;
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
   }
 
   .copyright {
@@ -1139,36 +1107,36 @@ onBeforeUnmount(() => {
       }
 
       .contact-icon {
-        font-size: 22px;
+        font-size: var(--tf-type-scale-22);
 
         @media (max-width: 767px) {
-          font-size: 18px;
+          font-size: var(--tf-type-scale-18);
         }
 
         @media (max-width: 479px) {
-          font-size: 16px;
+          font-size: var(--tf-type-scale-16);
         }
 
         @media (max-width: 380px) {
-          font-size: 14px;
+          font-size: var(--tf-type-scale-14);
         }
       }
 
       .contact-title {
-        font-size: 16px;
+        font-size: var(--tf-type-scale-16);
         font-weight: bold;
         color: var(--tf-color-slate-700);
 
         @media (max-width: 767px) {
-          font-size: 14px;
+          font-size: var(--tf-type-scale-14);
         }
 
         @media (max-width: 479px) {
-          font-size: 13px;
+          font-size: var(--tf-type-scale-13);
         }
 
         @media (max-width: 380px) {
-          font-size: 12px;
+          font-size: var(--tf-type-scale-12);
         }
       }
     }
@@ -1239,7 +1207,7 @@ onBeforeUnmount(() => {
           gap: 6px;
           flex: 0 1 auto;
           min-width: 0;
-          font-size: clamp(10px, 2.6vw, 13px);
+          font-size: var(--tf-font-mobile-scale-compact);
           line-height: 1.2;
           color: var(--tf-color-slate-700);
           margin-bottom: 0;
@@ -1273,7 +1241,7 @@ onBeforeUnmount(() => {
           flex: 1 1 auto;
           min-width: 0;
           justify-content: flex-end;
-          font-size: clamp(10px, 2.8vw, 13px);
+          font-size: var(--tf-font-mobile-scale-body);
           line-height: 1.2;
           font-weight: 700;
           color: var(--tf-color-neutral-800);
@@ -1324,7 +1292,7 @@ onBeforeUnmount(() => {
     .watermark-text {
       display: inline-block;
       opacity: 0.16;
-      font-size: clamp(10px, 3vw, 14px);
+      font-size: var(--tf-font-mobile-scale-label);
       font-weight: 700;
       color: rgba(220, 38, 38, 0.15);
       max-width: 100%;
@@ -1367,15 +1335,15 @@ onBeforeUnmount(() => {
     gap: 8px !important;
 
     h2 {
-      font-size: 14px !important;
+      font-size: var(--tf-type-scale-14) !important;
     }
 
     .count {
-      font-size: 11px !important;
+      font-size: var(--tf-type-scale-11) !important;
     }
 
     .hot-badge {
-      font-size: 9px !important;
+      font-size: var(--tf-type-scale-9) !important;
       height: 16px !important;
       line-height: 16px !important;
       padding: 0 3px !important;
@@ -1401,7 +1369,7 @@ onBeforeUnmount(() => {
     :deep(.el-table) {
       width: 430px !important;
       min-width: 430px !important;
-      font-size: 12px !important;
+      font-size: var(--tf-type-scale-12) !important;
       border-radius: 0 !important;
       border-left: 1px solid var(--el-table-border-color, var(--tf-color-gray-200-alt)) !important;
       border-right: 1px solid var(--el-table-border-color, var(--tf-color-gray-200-alt)) !important;
@@ -1418,7 +1386,7 @@ onBeforeUnmount(() => {
 
       .el-table__header th {
         padding: 8px 4px !important;
-        font-size: 12px !important;
+        font-size: var(--tf-type-scale-12) !important;
         white-space: nowrap !important;
         height: auto !important;
       }
@@ -1506,17 +1474,6 @@ onBeforeUnmount(() => {
     }
   }
 
-  .contact-card {
-    margin-top: 0 !important;
-    margin-bottom: 0 !important;
-    padding: 4px 2px !important;
-    padding-bottom: 8px !important;
-    border-radius: 0 !important;
-    background: linear-gradient(135deg, var(--tf-color-border-cool-soft) 0%, var(--tf-color-border-cool-muted) 100%) !important;
-    border: 1px solid var(--tf-color-border-cool-strong) !important;
-    box-shadow: none !important;
-    backdrop-filter: none !important;
-  }
 }
 
 .ios-save-image {

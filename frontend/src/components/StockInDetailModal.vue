@@ -458,7 +458,7 @@ const generatePrintContent = (record: StockInRecord) => {
 
           body {
             font-family: 'Microsoft YaHei', Arial, sans-serif;
-            font-size: 14px;
+            font-size: var(--tf-type-scale-14);
             line-height: 1.6;
             color: var(--text-primary);
             background: var(--color-bg-white);
@@ -473,14 +473,14 @@ const generatePrintContent = (record: StockInRecord) => {
           }
 
           .print-title {
-            font-size: 24px;
+            font-size: var(--tf-type-scale-24);
             font-weight: bold;
             margin-bottom: 10px;
             color: var(--text-primary);
           }
 
           .print-subtitle {
-            font-size: 16px;
+            font-size: var(--tf-type-scale-16);
             color: var(--text-secondary);
           }
 
@@ -489,7 +489,7 @@ const generatePrintContent = (record: StockInRecord) => {
           }
 
           .section-title {
-            font-size: 16px;
+            font-size: var(--tf-type-scale-16);
             font-weight: bold;
             margin-bottom: 15px;
             color: var(--text-primary);
@@ -538,20 +538,20 @@ const generatePrintContent = (record: StockInRecord) => {
           }
 
           .price-label {
-            font-size: 12px;
+            font-size: var(--tf-type-scale-12);
             color: var(--text-secondary);
             margin-bottom: 5px;
           }
 
           .price-value {
-            font-size: 18px;
+            font-size: var(--tf-type-scale-18);
             font-weight: bold;
             color: var(--text-primary);
           }
 
           .price-value.total-value {
             color: var(--color-primary);
-            font-size: 20px;
+            font-size: var(--tf-type-scale-20);
           }
 
           .note-content {
@@ -566,7 +566,7 @@ const generatePrintContent = (record: StockInRecord) => {
             display: inline-block;
             padding: 4px 8px;
             border-radius: 4px;
-            font-size: 12px;
+            font-size: var(--tf-type-scale-12);
             font-weight: 500;
           }
 
@@ -594,7 +594,7 @@ const generatePrintContent = (record: StockInRecord) => {
             padding-top: 20px;
             border-top: 1px solid var(--tf-color-gray-200-alt);
             color: var(--text-secondary);
-            font-size: 12px;
+            font-size: var(--tf-type-scale-12);
           }
 
           @media print {
@@ -772,7 +772,7 @@ const generatePrintContent = (record: StockInRecord) => {
 
 .section-title {
   margin: 0 0 16px 0;
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
   font-weight: 600;
   color: var(--el-text-color-primary);
   display: flex;
@@ -795,7 +795,7 @@ const generatePrintContent = (record: StockInRecord) => {
   background: var(--el-color-primary-light-9);
   padding: 2px 6px;
   border-radius: 4px;
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
 }
 
 .price-grid {
@@ -820,13 +820,13 @@ const generatePrintContent = (record: StockInRecord) => {
 }
 
 .price-label {
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   color: var(--el-text-color-regular);
   margin-bottom: 8px;
 }
 
 .price-value {
-  font-size: 20px;
+  font-size: var(--tf-type-scale-20);
   font-weight: 700;
   color: var(--el-text-color-primary);
 }
@@ -837,7 +837,7 @@ const generatePrintContent = (record: StockInRecord) => {
 
 .total-value {
   color: var(--el-color-primary);
-  font-size: 24px;
+  font-size: var(--tf-type-scale-24);
 }
 
 .note-content {
@@ -865,7 +865,7 @@ const generatePrintContent = (record: StockInRecord) => {
 }
 
 .timeline-operator {
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: var(--el-text-color-secondary);
 }
 
@@ -877,7 +877,7 @@ const generatePrintContent = (record: StockInRecord) => {
   }
 
   .section-title {
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
     margin-bottom: 12px;
   }
 
@@ -891,11 +891,11 @@ const generatePrintContent = (record: StockInRecord) => {
   }
 
   .price-value {
-    font-size: 18px;
+    font-size: var(--tf-type-scale-18);
   }
 
   .total-value {
-    font-size: 20px;
+    font-size: var(--tf-type-scale-20);
   }
 }
 

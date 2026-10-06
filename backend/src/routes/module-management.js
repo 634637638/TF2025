@@ -32,7 +32,9 @@ async function ensureConfiguredModulesRegistered() {
     if (missingKeys.size === 0) return
 
     const scannedModules = await moduleScanner.scanViewsDirectory()
-    for (const scannedModule of scannedModules) {
+    // 共享能力清单包含没有独立页面文件的模块，也必须参与自动注册。
+    const availableModules = moduleScanner.mergeCapabilityModules(scannedModules)
+    for (const scannedModule of availableModules) {
       if (!missingKeys.has(scannedModule.key)) continue
 
       const metadata = getModulePermissionMetadata(scannedModule.key)
@@ -302,6 +304,9 @@ router.post('/sync-all', requirePermission('permissions:admin'), async (req, res
 router.get('/registered', requirePermission('permissions:admin'), async (req, res) => {
   try {
     const pool = getDatabase()
+
+    // 打开模块管理时补齐共享能力清单，避免扫描完成但权限页缺少新模块。
+    await ensureConfiguredModulesRegistered()
 
     // 管理列表必须包含已禁用模块，否则禁用后将无法从界面重新启用。
     const [rows] = await pool.execute(`

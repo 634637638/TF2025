@@ -319,7 +319,8 @@ module.exports = Object.freeze({
   'system:view': ['system_systemview:view', 'system_systemview:menu_view'],
   'system:create': ['system_systemview:create'],
   'system:edit': ['system_systemview:edit'],
-  'system:delete': ['system_systemview:delete']
+  'system:delete': ['system_systemview:delete'],
+  'standards:view': ['standards_standardsauditview:view']
 
   // 通用映射规则
 })

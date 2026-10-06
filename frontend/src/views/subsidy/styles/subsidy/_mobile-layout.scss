@@ -51,12 +51,12 @@
         align-items: center;
         gap: 6px;
         margin-bottom: 8px;
-        font-size: 12px;
+        font-size: var(--tf-type-scale-12);
         font-weight: 700;
         color: var(--tf-color-neutral-950);
 
         i {
-          font-size: 14px;
+          font-size: var(--tf-type-scale-14);
           color: var(--tf-color-indigo-brand);
         }
       }
@@ -81,7 +81,7 @@
           }
 
           .item-label {
-            font-size: 10px;
+            font-size: var(--tf-type-scale-10);
             color: var(--tf-color-gray-ios);
             font-weight: 600;
             text-transform: uppercase;
@@ -89,7 +89,7 @@
           }
 
           .item-value {
-            font-size: 13px;
+            font-size: var(--tf-type-scale-13);
             color: var(--tf-color-neutral-ios);
             font-weight: 600;
             word-break: break-all;
@@ -134,12 +134,12 @@
 
             &.price-highlight {
               color: var(--tf-color-red-material);
-              font-size: 14px;
+              font-size: var(--tf-type-scale-14);
             }
 
             &.subsidy-amount {
               color: var(--tf-color-green-ios);
-              font-size: 14px;
+              font-size: var(--tf-type-scale-14);
             }
 
             .time-badge {
@@ -148,7 +148,7 @@
               gap: 4px;
               padding: 4px 10px;
               border-radius: 16px;
-              font-size: 10px;
+              font-size: var(--tf-type-scale-10);
               font-weight: 600;
               box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 
@@ -163,7 +163,7 @@
               }
 
               i {
-                font-size: 9px;
+                font-size: var(--tf-type-scale-9);
               }
             }
           }
@@ -190,12 +190,12 @@
           align-items: center;
           flex-wrap: nowrap;
           gap: 3px;
-          font-size: 10px;
+          font-size: var(--tf-type-scale-10);
 
           .info-label {
             color: var(--tf-color-gray-ios);
             font-weight: 600;
-            font-size: 9px;
+            font-size: var(--tf-type-scale-9);
             min-width: 24px;
             flex-shrink: 0;
           }
@@ -210,7 +210,7 @@
             font-weight: 600;
             word-break: keep-all;
             white-space: nowrap;
-            font-size: 10px;
+            font-size: var(--tf-type-scale-10);
             flex-shrink: 0;
 
             &.clickable-text {
@@ -254,12 +254,12 @@
           display: flex;
           align-items: center;
           gap: 6px;
-          font-size: 11px;
+          font-size: var(--tf-type-scale-11);
 
           .info-label {
             color: var(--tf-color-gray-ios);
             font-weight: 600;
-            font-size: 10px;
+            font-size: var(--tf-type-scale-10);
             min-width: 32px;
             flex-shrink: 0;
           }
@@ -269,7 +269,7 @@
             font-weight: 600;
             flex: 1;
             word-break: keep-all;
-            font-size: 11px;
+            font-size: var(--tf-type-scale-11);
 
             &.clickable-text {
               color: var(--tf-color-indigo-brand);
@@ -301,12 +301,12 @@
 
       h3 {
         margin-bottom: 6px;
-        font-size: 1.15rem;
+        font-size: var(--tf-type-scale-1-15rem);
       }
 
       .step-hint {
         margin-bottom: 12px;
-        font-size: 0.9rem;
+        font-size: var(--tf-type-scale-0-9rem);
       }
 
       .device-list {
@@ -351,7 +351,7 @@
 
             .info-label {
               width: auto;
-              font-size: 13px;
+              font-size: var(--tf-type-scale-13);
             }
 
             .info-value {

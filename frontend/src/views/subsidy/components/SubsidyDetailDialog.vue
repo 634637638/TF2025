@@ -392,7 +392,7 @@ watch(
     justify-content: space-between;
     gap: 12px;
     margin: 0 0 12px;
-    font-size: 15px;
+    font-size: var(--tf-type-scale-15);
     color: var(--tf-color-heading);
   }
 
@@ -410,7 +410,7 @@ watch(
 }
 
 .toggle-hint {
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: var(--tf-color-muted);
   font-weight: 400;
 }
@@ -490,13 +490,13 @@ watch(
 }
 
 .summary-label {
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: var(--tf-color-neutral-500);
 }
 
 .summary-value {
   color: var(--tf-color-neutral-800);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   font-weight: 600;
   word-break: break-word;
 }
@@ -529,12 +529,12 @@ watch(
 }
 
 .chip-label {
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: var(--tf-color-neutral-500);
 }
 
 .chip-value {
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   font-weight: 700;
   color: var(--tf-color-neutral-900);
 }
@@ -545,7 +545,7 @@ watch(
   width: fit-content;
   padding: 4px 10px;
   border-radius: 999px;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
 
   &.status-pending {
     background: var(--tf-status-warning-bg);

@@ -21,11 +21,12 @@
   --tf-dialog-side-gap: 32px;
   --tf-dialog-width: 680px;
   --tf-dialog-max-width: 880px;
-  --tf-dialog-message-width: 420px;
+  /* Confirmation messages need room for product names and identifiers. */
+  --tf-dialog-message-width: 560px;
   --tf-dialog-header-padding-y: 18px;
   --tf-dialog-header-padding-x: 22px;
   --tf-dialog-header-padding-right: 64px;
-  --tf-dialog-title-size: var(--tf-font-section);
+  --tf-dialog-title-size: var(--tf-font-dialog-title, var(--tf-font-section));
   --tf-dialog-title-weight: 600;
   --tf-dialog-title-line-height: 1.5;
   --tf-dialog-close-size: 32px;
@@ -49,7 +50,7 @@
   --tf-dialog-mobile-footer-padding-block-end: calc(12px + env(safe-area-inset-bottom, 0px));
   --tf-dialog-mobile-radius: var(--tf-dialog-radius);
   --tf-dialog-sheet-header-min-height: 72px;
-  --tf-dialog-sheet-title-size: 16px;
+  --tf-dialog-sheet-title-size: var(--tf-font-dialog-title);
 
   /* Backwards-compatible aliases for existing page-level variants. */
   --dialog-overlay-bg: var(--tf-dialog-overlay-bg);
@@ -204,6 +205,47 @@
   transition: background-color var(--tf-motion-fast) var(--tf-motion-ease-standard), transform var(--tf-motion-fast) var(--tf-motion-ease-standard) !important;
 }
 
+/* MobileDialog renders the sheet close control through Element Plus. Keep a
+ * structural fallback here so a component-class forwarding or CSS load-order
+ * difference can never expose the browser/Element Plus white button surface.
+ */
+body .mobile-dialog-sheet-close {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  width: var(--tf-dialog-close-size) !important;
+  min-width: var(--tf-dialog-close-size) !important;
+  max-width: var(--tf-dialog-close-size) !important;
+  height: var(--tf-dialog-close-size) !important;
+  min-height: var(--tf-dialog-close-size) !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: var(--tf-radius-full) !important;
+  background: var(--tf-dialog-close-bg) !important;
+  color: var(--tf-dialog-header-text) !important;
+  box-shadow: none !important;
+}
+
+body .mobile-dialog-sheet-close > span,
+body .mobile-dialog-sheet-close > .el-icon,
+body .mobile-dialog-sheet-close > .el-dialog__close {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: var(--tf-dialog-close-icon-size) !important;
+  height: var(--tf-dialog-close-icon-size) !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  background: transparent !important;
+  color: var(--tf-dialog-header-text) !important;
+}
+
+body .mobile-dialog-sheet-close svg {
+  display: block !important;
+  width: var(--tf-dialog-close-icon-size) !important;
+  height: var(--tf-dialog-close-icon-size) !important;
+  fill: currentColor !important;
+}
+
 .el-dialog__headerbtn:hover,
 .el-message-box__headerbtn:hover {
   background: var(--tf-dialog-close-bg-hover) !important;
@@ -226,7 +268,15 @@
   margin: 0 !important;
   background: var(--tf-dialog-surface) !important;
   color: var(--tf-dialog-body-text) !important;
+  font-size: var(--tf-font-body) !important;
+  line-height: var(--tf-line-height-body) !important;
   box-shadow: none !important;
+}
+
+.mobile-dialog-sheet-body {
+  color: var(--tf-dialog-body-text);
+  font-size: var(--tf-font-body);
+  line-height: var(--tf-line-height-body);
 }
 
 .el-dialog__body {
@@ -261,8 +311,8 @@
 
 .el-message-box__message {
   color: var(--tf-dialog-body-text) !important;
-  font-size: 15px !important;
-  line-height: 1.6 !important;
+  font-size: var(--tf-font-body) !important;
+  line-height: var(--tf-line-height-body) !important;
   word-break: break-word !important;
   white-space: pre-wrap !important;
 }
@@ -326,6 +376,16 @@
 .tf-dialog-form .el-form-item__label,
 .tf-dialog-form .el-form-item__content {
   box-sizing: border-box;
+}
+
+.tf-dialog-form .el-form-item__label {
+  font-size: var(--tf-font-label) !important;
+  line-height: var(--tf-line-height-body) !important;
+}
+
+.tf-dialog-form .el-form-item__content {
+  font-size: var(--tf-font-body);
+  line-height: var(--tf-line-height-body);
 }
 
 .tf-dialog-form .el-form-item__label {
@@ -479,7 +539,7 @@
     --tf-dialog-header-padding-y: 14px;
     --tf-dialog-header-padding-x: 16px;
     --tf-dialog-header-padding-right: 56px;
-    --tf-dialog-title-size: 16px;
+    --tf-dialog-title-size: var(--tf-font-dialog-title);
     --tf-dialog-close-top: 14px;
     --tf-dialog-close-right: 12px;
     --tf-dialog-close-size: 30px;

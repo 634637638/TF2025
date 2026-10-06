@@ -770,13 +770,13 @@ watch(() => props.visible, async (newVal) => {
   align-items: center;
   gap: 8px;
   margin: 0 0 16px;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   font-weight: 600;
   color: var(--tf-color-indigo-brand);
 }
 
 .section-title i {
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
 }
 
 /* 移动端适配 */
@@ -794,7 +794,7 @@ watch(() => props.visible, async (newVal) => {
 
   // 备注文本框优化
   :deep(.el-textarea__inner) {
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
   }
 }
 
@@ -805,7 +805,7 @@ watch(() => props.visible, async (newVal) => {
   }
 
   .section-title {
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
   }
 }
 </style>

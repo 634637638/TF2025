@@ -144,7 +144,7 @@ defineProps<Props>()
 .display-header {
   background: var(--tf-color-surface);
   padding: 10px 16px;
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   font-weight: 600;
   color: var(--color-text-regular);
   border-bottom: 1px solid var(--tf-color-border-element);
@@ -193,7 +193,7 @@ defineProps<Props>()
 }
 
 .phone-detail {
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   color: var(--color-text-primary);
   font-weight: 500;
 }
@@ -217,7 +217,7 @@ defineProps<Props>()
 }
 
 .price-value {
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   font-weight: 600;
   min-width: 80px;
 }
@@ -305,7 +305,7 @@ defineProps<Props>()
   }
 
   .price-label {
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
   }
 
   .price-input {
@@ -345,7 +345,7 @@ defineProps<Props>()
     flex-direction: column;
     gap: 6px;
     padding-left: 0;
-    font-size: 11px;
+    font-size: var(--tf-type-scale-11);
   }
 
   .price-summary {

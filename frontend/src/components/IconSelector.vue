@@ -56,14 +56,14 @@
         </div>
 
         <div class="icon-categories">
-          <button 
+          <el-button
             v-for="category in categories" 
             :key="category.key"
             :class="['category-btn', { active: selectedCategory === category.key }]"
             @click="selectedCategory = category.key; filterIcons()"
           >
             {{ category.name }} ({{ category.count }})
-          </button>
+          </el-button>
         </div>
 
         <div
@@ -317,18 +317,18 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 18px;
+  font-size: var(--tf-type-scale-18);
   color: var(--text-primary);
 }
 
 .selected-icon i {
-  font-size: 24px;
+  font-size: var(--tf-type-scale-24);
   color: var(--tf-color-blue-bootstrap);
 }
 
 .icon-class {
   font-family: 'Courier New', monospace;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   color: var(--text-secondary);
 }
 
@@ -341,11 +341,11 @@ onMounted(async () => {
 }
 
 .icon-placeholder i {
-  font-size: 24px;
+  font-size: var(--tf-type-scale-24);
 }
 
 .icon-placeholder span {
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
 }
 
 .icon-selector-modal {
@@ -377,7 +377,7 @@ onMounted(async () => {
   border-radius: 20px;
   cursor: pointer;
   transition: all 0.3s ease;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
 }
 
 .category-btn:hover {
@@ -444,18 +444,18 @@ onMounted(async () => {
 }
 
 .icon-item i {
-  font-size: 20px;
+  font-size: var(--tf-type-scale-20);
   color: var(--tf-color-blue-bootstrap);
 }
 
 .icon-fallback {
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
   font-weight: bold;
   color: var(--tf-color-muted);
 }
 
 .icon-name {
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: var(--text-secondary);
   word-break: break-all;
   line-height: 1.2;

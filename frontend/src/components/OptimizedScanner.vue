@@ -994,7 +994,7 @@ onBeforeUnmount(() => {
   border-radius: 6px;
   background: rgba(15, 23, 42, 0.78);
   color: var(--color-bg-white);
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   line-height: 20px;
   white-space: nowrap;
   transform: translateX(-50%);
@@ -1026,7 +1026,7 @@ onBeforeUnmount(() => {
 .scan-candidate-display span {
   overflow: hidden;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 15px;
+  font-size: var(--tf-type-scale-15);
   font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1034,7 +1034,7 @@ onBeforeUnmount(() => {
 
 .scan-candidate-display small {
   color: var(--tf-color-blue-tailwind-200);
-  font-size: 11px;
+  font-size: var(--tf-type-scale-11);
 }
 
 .scan-issue-display {
@@ -1051,7 +1051,7 @@ onBeforeUnmount(() => {
   border-radius: 8px;
   background: rgba(15, 23, 42, 0.9);
   color: var(--tf-color-blue-tailwind-100);
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   line-height: 18px;
   text-align: center;
   backdrop-filter: blur(8px);
@@ -1067,7 +1067,7 @@ onBeforeUnmount(() => {
   overflow: hidden;
   color: var(--color-bg-white);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -1093,7 +1093,7 @@ onBeforeUnmount(() => {
   border-radius: 6px;
   background: rgba(15, 23, 42, 0.72);
   color: rgba(255, 255, 255, 0.88);
-  font-size: 11px;
+  font-size: var(--tf-type-scale-11);
   line-height: 16px;
   pointer-events: none;
 }
@@ -1127,7 +1127,7 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   font-weight: 600;
   margin-bottom: 8px;
   opacity: 0.95;
@@ -1135,11 +1135,11 @@ onBeforeUnmount(() => {
 
 .result-label i {
   color: var(--color-bg-white);
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
 }
 
 .result-value {
-  font-size: 18px;
+  font-size: var(--tf-type-scale-18);
   font-weight: 700;
   font-family: 'Courier New', monospace;
   letter-spacing: 1px;
@@ -1180,7 +1180,7 @@ onBeforeUnmount(() => {
   .scanner-guide__label {
     max-width: calc(100vw - 48px);
     overflow: hidden;
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
     text-overflow: ellipsis;
   }
 

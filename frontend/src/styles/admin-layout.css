@@ -29,7 +29,7 @@
   --admin-stat-card-padding: 24px;
   --admin-stat-card-gap: 16px;
   --admin-stat-icon-size: 48px;
-  --admin-stat-icon-font-size: 20px;
+  --admin-stat-icon-font-size: var(--tf-type-scale-20);
   --admin-stat-icon-radius: 12px;
   /* 统计卡片语义色：页面只声明 --card-accent，不直接维护颜色。 */
   --admin-stat-color-primary: #2563eb;
@@ -57,12 +57,12 @@
   --admin-stat-label-color: #6c757d;
   --admin-section-title-gap: 20px;
   --admin-section-title-padding-bottom: 12px;
-  --admin-section-title-font-size: 16px;
+  --admin-section-title-font-size: var(--tf-type-scale-16);
   --admin-section-title-font-weight: 600;
   --admin-section-title-color: #2c3e50;
   --admin-section-title-icon-color: #667eea;
   --admin-section-title-border: #e0e0e0;
-  --admin-record-count-font-size: 14px;
+  --admin-record-count-font-size: var(--tf-type-scale-14);
   --admin-record-count-font-weight: 400;
   --admin-record-count-color: #6c757d;
   --admin-data-table-radius: 8px;
@@ -74,16 +74,16 @@
   --admin-data-table-header-color: #ffffff;
   --admin-data-table-header-padding-y: 6px;
   --admin-data-table-header-padding-x: 10px;
-  --admin-data-table-header-height: 38px;
-  --admin-data-table-header-font-size: 13px;
+  --admin-data-table-header-height: 48px;
+  --admin-data-table-header-font-size: var(--tf-type-scale-13);
   --admin-data-table-header-font-weight: 600;
   --admin-data-table-header-letter-spacing: 0;
   --admin-data-table-header-border: #dee2e6;
   --admin-data-table-header-accent: linear-gradient(90deg, #667eea, #764ba2);
   --admin-data-table-cell-padding-y: 10px;
   --admin-data-table-cell-padding-x: 8px;
-  --admin-data-table-row-height: 40px;
-  --admin-data-table-cell-font-size: 13px;
+  --admin-data-table-row-height: 48px;
+  --admin-data-table-cell-font-size: var(--tf-type-scale-13);
   --admin-data-table-cell-font-weight: 500;
   --admin-data-table-cell-color: #2c3e50;
   --admin-data-table-cell-border: #e9ecef;
@@ -106,7 +106,8 @@
   --admin-data-table-action-height: 28px;
   --admin-data-table-action-padding-y: 5px;
   --admin-data-table-action-padding-x: 10px;
-  --admin-data-table-action-font-size: 13px;
+  --admin-data-table-action-cell-padding-y: 9px;
+  --admin-data-table-action-font-size: var(--tf-type-scale-13);
   --admin-data-table-action-radius: 4px;
   --admin-data-table-action-icon-size: 14px;
   --admin-data-table-inline-action-padding-x: 7px;
@@ -184,6 +185,10 @@
   --admin-data-table-badge-padding-y: 3px;
   --admin-data-table-badge-padding-x: 8px;
   --admin-data-table-badge-radius: 999px;
+  --admin-data-table-badge-height: 20px;
+  --admin-data-table-color-swatch-size: 18px;
+  --admin-data-table-spec-font-size: var(--admin-data-table-cell-font-size);
+  --admin-data-table-spec-height: 20px;
 }
 
 @media (max-width: 767px) {
@@ -201,7 +206,7 @@
     --admin-stat-card-padding: 12px;
     --admin-stat-card-gap: 10px;
     --admin-stat-icon-size: 40px;
-    --admin-stat-icon-font-size: 18px;
+    --admin-stat-icon-font-size: var(--tf-type-scale-18);
     --admin-stat-value-size: 22px;
     --admin-stat-label-size: 12px;
     --admin-section-title-gap: 16px;
@@ -213,7 +218,7 @@
     --admin-data-table-header-height: 40px;
     --admin-data-table-cell-padding-y: 8px;
     --admin-data-table-cell-padding-x: 4px;
-    --admin-data-table-row-height: 38px;
+    --admin-data-table-row-height: 40px;
     --admin-data-table-cell-font-size: var(--mobile-text-table);
     --admin-data-table-header-font-size: var(--mobile-text-table-header);
     --admin-data-table-action-gap: 6px;
@@ -221,8 +226,12 @@
     --admin-data-table-action-height: 32px;
     --admin-data-table-action-padding-y: 6px;
     --admin-data-table-action-padding-x: 12px;
+    --admin-data-table-action-cell-padding-y: 4px;
     --admin-data-table-action-font-size: var(--mobile-text-table);
     --admin-data-table-inline-action-padding-x: 8px;
+    --admin-data-table-badge-height: 20px;
+    --admin-data-table-color-swatch-size: 18px;
+    --admin-data-table-spec-height: 20px;
   }
 }
 
@@ -835,6 +844,8 @@
   width: 100% !important;
   min-width: 100% !important;
   max-width: 100% !important;
+  font-size: var(--admin-data-table-cell-font-size) !important;
+  line-height: var(--admin-data-table-line-height) !important;
   border-radius: var(--admin-data-table-radius) !important;
   overflow: hidden !important;
   background: var(--admin-data-table-bg) !important;
@@ -862,11 +873,18 @@
   pointer-events: none;
 }
 
+:is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table) .el-table__header,
+:is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table) .el-table__header tr,
+:is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table) .el-table__header th {
+  height: var(--admin-data-table-header-height) !important;
+  min-height: var(--admin-data-table-header-height) !important;
+  max-height: var(--admin-data-table-header-height) !important;
+}
+
 :is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table) .el-table__header th {
   background: var(--admin-data-table-header-bg) !important;
   color: var(--admin-data-table-header-color) !important;
   padding: var(--admin-data-table-header-padding-y) var(--admin-data-table-header-padding-x) !important;
-  height: var(--admin-data-table-header-height) !important;
   box-sizing: border-box !important;
   text-align: center !important;
   font-weight: var(--admin-data-table-header-font-weight) !important;
@@ -906,9 +924,15 @@
   white-space: nowrap !important;
 }
 
+:is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table) .el-table__body,
+:is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table) .el-table__body tr,
+:is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table) .el-table__body td {
+  height: var(--admin-data-table-row-height) !important;
+  min-height: 0 !important;
+}
+
 :is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table) .el-table__body td {
   padding: var(--admin-data-table-cell-padding-y) var(--admin-data-table-cell-padding-x) !important;
-  height: var(--admin-data-table-row-height) !important;
   box-sizing: border-box !important;
   border-right: 1px solid var(--admin-data-table-cell-border) !important;
   border-bottom: 1px solid var(--admin-data-table-cell-border) !important;
@@ -921,10 +945,14 @@
 }
 
 :is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table) .el-table__body td .cell {
+  display: flex !important;
+  align-items: center !important;
   justify-content: center !important;
   text-align: center !important;
   font-size: var(--admin-data-table-cell-font-size) !important;
+  height: 100% !important;
   min-height: 0 !important;
+  padding: 0 !important;
   line-height: var(--admin-data-table-line-height) !important;
   white-space: nowrap !important;
 }
@@ -1093,48 +1121,92 @@
   cursor: not-allowed;
 }
 
-.admin-page .base-data-table .status-badge {
+/* All public Element tables share the same compact badge geometry. Business
+ * pages may provide semantic colors, but cannot stretch the public row. */
+:is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table) .condition-badge,
+:is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table) .status-badge {
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
   width: auto !important;
   max-width: none !important;
-  padding: var(--admin-data-table-badge-padding-y) var(--admin-data-table-badge-padding-x) !important;
+  height: var(--admin-data-table-badge-height) !important;
+  min-height: var(--admin-data-table-badge-height) !important;
+  box-sizing: border-box !important;
+  padding: 0 var(--admin-data-table-badge-padding-x) !important;
   border-radius: var(--admin-data-table-badge-radius) !important;
   gap: 4px !important;
   font-size: inherit !important;
-  line-height: 1.2 !important;
+  line-height: 1 !important;
   white-space: nowrap !important;
 }
 
-.admin-page .base-data-table .id-badge {
+:is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table) .id-badge {
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
   width: auto !important;
   min-width: 0 !important;
-  height: auto !important;
-  padding: var(--admin-data-table-badge-padding-y) var(--admin-data-table-badge-padding-x) !important;
+  height: var(--admin-data-table-badge-height) !important;
+  min-height: var(--admin-data-table-badge-height) !important;
+  box-sizing: border-box !important;
+  padding: 0 var(--admin-data-table-badge-padding-x) !important;
   border-radius: 6px !important;
   font-size: inherit !important;
-  line-height: 1.2 !important;
+  line-height: 1 !important;
   box-shadow: none !important;
   white-space: nowrap !important;
 }
 
-.admin-page .base-data-table .role-badge {
+:is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table) .role-badge {
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
   width: auto !important;
   max-width: 100% !important;
-  padding: var(--admin-data-table-badge-padding-y) var(--admin-data-table-badge-padding-x) !important;
+  height: var(--admin-data-table-badge-height) !important;
+  min-height: var(--admin-data-table-badge-height) !important;
+  box-sizing: border-box !important;
+  padding: 0 var(--admin-data-table-badge-padding-x) !important;
   border-radius: var(--admin-data-table-badge-radius) !important;
   gap: 4px !important;
   font-size: inherit !important;
-  line-height: 1.2 !important;
+  line-height: 1 !important;
   box-shadow: none !important;
   white-space: nowrap !important;
+}
+
+/* 基础资料表格的业务控件只能使用公共内容尺寸，避免把数据行撑高。 */
+:is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table) .color-circle {
+  width: var(--admin-data-table-color-swatch-size) !important;
+  height: var(--admin-data-table-color-swatch-size) !important;
+  min-width: var(--admin-data-table-color-swatch-size) !important;
+  min-height: var(--admin-data-table-color-swatch-size) !important;
+  box-sizing: border-box !important;
+  flex: 0 0 var(--admin-data-table-color-swatch-size) !important;
+}
+
+:is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table) .storage-spec {
+  align-items: center !important;
+  line-height: 1 !important;
+}
+
+:is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table) .storage-size,
+:is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table) .storage-unit {
+  height: var(--admin-data-table-spec-height) !important;
+  min-height: var(--admin-data-table-spec-height) !important;
+  box-sizing: border-box !important;
+  line-height: 1 !important;
+}
+
+:is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table) .storage-size {
+  font-size: var(--admin-data-table-spec-font-size) !important;
+}
+
+:is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table) .storage-unit {
+  display: inline-flex !important;
+  align-items: center !important;
+  padding-block: 0 !important;
 }
 
 .element-table-sort-ghost > td {
@@ -1288,7 +1360,7 @@
 
   .admin-page .section-title .record-count,
   .admin-page .record-count {
-    font-size: 14px !important;
+    font-size: var(--tf-type-scale-14) !important;
     line-height: 1.35 !important;
   }
 

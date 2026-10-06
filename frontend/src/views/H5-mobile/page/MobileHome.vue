@@ -145,13 +145,13 @@
             <strong>{{ selectedBrandName }}</strong>
             <span>精准筛选</span>
           </div>
-          <button
-            type="button"
+          <el-button
+            native-type="button"
             class="brand-reset-btn"
             @click="resetBrandSearch"
           >
             重置
-          </button>
+          </el-button>
         </div>
         <div class="brand-search-grid">
           <label class="brand-field">
@@ -166,8 +166,8 @@
                 @click.stop="openSearchField('model')"
                 @input="openSearchField('model')"
               />
-              <button
-                type="button"
+              <el-button
+                native-type="button"
                 class="brand-field-toggle"
                 @click.stop="toggleSearchField('model')"
               >
@@ -175,31 +175,31 @@
                   class="fas"
                   :class="activeSearchField === 'model' ? 'fa-chevron-up' : 'fa-chevron-down'"
                 />
-              </button>
+              </el-button>
             </div>
             <div
               v-if="activeSearchField === 'model'"
               class="brand-option-dropdown"
             >
               <div class="brand-option-list">
-                <button
-                  type="button"
+                <el-button
+                  native-type="button"
                   class="brand-option"
                   :class="{ active: selectedModelId === '' }"
                   @click="selectModelOption(null)"
                 >
                   全部型号
-                </button>
-                <button
+                </el-button>
+                <el-button
                   v-for="model in filteredBrandModels"
                   :key="model.id"
-                  type="button"
+                  native-type="button"
                   class="brand-option"
                   :class="{ active: selectedModelId === String(model.id) }"
                   @click="selectModelOption(model)"
                 >
                   {{ model.name }}
-                </button>
+                </el-button>
               </div>
             </div>
           </label>
@@ -215,8 +215,8 @@
                 @click.stop="openSearchField('color')"
                 @input="openSearchField('color')"
               />
-              <button
-                type="button"
+              <el-button
+                native-type="button"
                 class="brand-field-toggle"
                 @click.stop="toggleSearchField('color')"
               >
@@ -224,31 +224,31 @@
                   class="fas"
                   :class="activeSearchField === 'color' ? 'fa-chevron-up' : 'fa-chevron-down'"
                 />
-              </button>
+              </el-button>
             </div>
             <div
               v-if="activeSearchField === 'color'"
               class="brand-option-dropdown"
             >
               <div class="brand-option-list">
-                <button
-                  type="button"
+                <el-button
+                  native-type="button"
                   class="brand-option"
                   :class="{ active: selectedColorId === '' }"
                   @click="selectColorOption(null)"
                 >
                   全部颜色
-                </button>
-                <button
+                </el-button>
+                <el-button
                   v-for="color in filteredColors"
                   :key="color.id"
-                  type="button"
+                  native-type="button"
                   class="brand-option"
                   :class="{ active: selectedColorId === String(color.id) }"
                   @click="selectColorOption(color)"
                 >
                   {{ color.name }}
-                </button>
+                </el-button>
               </div>
             </div>
           </label>
@@ -264,8 +264,8 @@
                 @click.stop="openSearchField('memory')"
                 @input="openSearchField('memory')"
               />
-              <button
-                type="button"
+              <el-button
+                native-type="button"
                 class="brand-field-toggle"
                 @click.stop="toggleSearchField('memory')"
               >
@@ -273,31 +273,31 @@
                   class="fas"
                   :class="activeSearchField === 'memory' ? 'fa-chevron-up' : 'fa-chevron-down'"
                 />
-              </button>
+              </el-button>
             </div>
             <div
               v-if="activeSearchField === 'memory'"
               class="brand-option-dropdown"
             >
               <div class="brand-option-list">
-                <button
-                  type="button"
+                <el-button
+                  native-type="button"
                   class="brand-option"
                   :class="{ active: selectedMemoryId === '' }"
                   @click="selectMemoryOption(null)"
                 >
                   全部内存
-                </button>
-                <button
+                </el-button>
+                <el-button
                   v-for="memory in filteredMemories"
                   :key="memory.id"
-                  type="button"
+                  native-type="button"
                   class="brand-option"
                   :class="{ active: selectedMemoryId === String(memory.id) }"
                   @click="selectMemoryOption(memory)"
                 >
                   {{ memory.size || memory.name }}
-                </button>
+                </el-button>
               </div>
             </div>
           </label>
@@ -306,20 +306,20 @@
           选择内存时将自动按二手机检索
         </p>
         <div class="brand-search-actions">
-          <button
-            type="button"
+          <el-button
+            native-type="button"
             class="ghost-btn"
             @click="collapseBrandSearch"
           >
             收起
-          </button>
-          <button
-            type="button"
+          </el-button>
+          <el-button
+            native-type="button"
             class="search-btn"
             @click="searchBrandProducts"
           >
             检索商品
-          </button>
+          </el-button>
         </div>
       </div>
     </div>
@@ -1090,7 +1090,7 @@ const initMap = async () => {
     const _info = new (window as any).TMap.InfoWindow({
       map: mobileMap,
       position: center,
-      content: `<div style="padding:10px;font-size:14px;"><strong>${config.value.shop_name || '店铺'}</strong><br>${config.value.shop_address || ''}</div>`
+      content: `<div style="padding:10px;font-size:var(--tf-type-scale-14);"><strong>${config.value.shop_name || '店铺'}</strong><br>${config.value.shop_address || ''}</div>`
     })
 
   } catch (error) {
@@ -1216,7 +1216,7 @@ onActivated(async () => {
       min-width: 0;
 
       .merchant-name {
-        font-size: 15px;
+        font-size: var(--tf-type-scale-15);
         font-weight: 600;
         color: var(--color-bg-white);
         margin-bottom: 2px;
@@ -1226,7 +1226,7 @@ onActivated(async () => {
       }
 
       .merchant-address {
-        font-size: 12px;
+        font-size: var(--tf-type-scale-12);
         color: rgba(255, 255, 255, 0.9);
         display: flex;
         align-items: center;
@@ -1236,7 +1236,7 @@ onActivated(async () => {
         text-overflow: ellipsis;
 
         i {
-          font-size: 10px;
+          font-size: var(--tf-type-scale-10);
         }
       }
     }
@@ -1264,7 +1264,7 @@ onActivated(async () => {
       }
 
       i {
-        font-size: 16px;
+        font-size: var(--tf-type-scale-16);
         color: var(--tf-button-on-color);
       }
     }
@@ -1346,7 +1346,7 @@ onActivated(async () => {
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 20px;
+      font-size: var(--tf-type-scale-20);
       color: var(--color-bg-white);
 
       &.new {
@@ -1363,7 +1363,7 @@ onActivated(async () => {
     }
 
     span {
-      font-size: 13px;
+      font-size: var(--tf-type-scale-13);
       color: var(--text-primary);
     }
   }
@@ -1408,7 +1408,7 @@ onActivated(async () => {
 
     span {
       max-width: 84px;
-      font-size: 12px;
+      font-size: var(--tf-type-scale-12);
       line-height: 1;
       color: var(--tf-color-gray-500-solid);
       text-align: center;
@@ -1454,13 +1454,13 @@ onActivated(async () => {
     gap: 4px;
 
     strong {
-      font-size: 14px;
+      font-size: var(--tf-type-scale-14);
       color: var(--text-primary);
       line-height: 1.2;
     }
 
     span {
-      font-size: 11px;
+      font-size: var(--tf-type-scale-11);
       color: var(--text-muted);
       line-height: 1;
     }
@@ -1473,7 +1473,7 @@ onActivated(async () => {
     border: none;
     outline: none;
     cursor: pointer;
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
   }
 
   .brand-reset-btn {
@@ -1497,7 +1497,7 @@ onActivated(async () => {
     gap: 6px;
 
     span {
-      font-size: 11px;
+      font-size: var(--tf-type-scale-11);
       color: var(--tf-color-gray-short);
       line-height: 1;
     }
@@ -1522,7 +1522,7 @@ onActivated(async () => {
 
       :deep(.el-input__inner) {
         color: var(--text-primary);
-        font-size: 12px;
+        font-size: var(--tf-type-scale-12);
 
         &::placeholder {
           color: var(--tf-color-gray-element-placeholder);
@@ -1539,7 +1539,7 @@ onActivated(async () => {
     border: none;
     background: transparent;
     color: var(--text-muted);
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
     padding: 0;
     cursor: pointer;
   }
@@ -1572,7 +1572,7 @@ onActivated(async () => {
     border: 1px solid var(--tf-color-gray-material-300);
     background: var(--color-bg-white);
     color: var(--text-secondary);
-    font-size: 11px;
+    font-size: var(--tf-type-scale-11);
     line-height: 1;
     cursor: pointer;
 
@@ -1586,7 +1586,7 @@ onActivated(async () => {
 
   .brand-search-hint {
     margin: 10px 0 0;
-    font-size: 11px;
+    font-size: var(--tf-type-scale-11);
     color: var(--text-muted);
     line-height: 1.4;
   }
@@ -1673,7 +1673,7 @@ onActivated(async () => {
         left: 8px;
         background: rgba(255, 107, 0, 0.9);
         color: var(--color-bg-white);
-        font-size: 10px;
+        font-size: var(--tf-type-scale-10);
         padding: 2px 6px;
         border-radius: 4px;
       }
@@ -1684,7 +1684,7 @@ onActivated(async () => {
         left: 8px;
         background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
         color: var(--color-bg-white);
-        font-size: 10px;
+        font-size: var(--tf-type-scale-10);
         padding: 2px 6px;
         border-radius: 4px;
       }
@@ -1694,7 +1694,7 @@ onActivated(async () => {
       padding: 10px 8px;
 
       .product-title {
-        font-size: 14px;
+        font-size: var(--tf-type-scale-14);
         font-weight: 600;
         color: var(--text-primary);
         margin: 0 0 6px;
@@ -1711,19 +1711,19 @@ onActivated(async () => {
           gap: 4px;
 
           .price-label {
-            font-size: 11px;
+            font-size: var(--tf-type-scale-11);
             color: var(--text-muted);
             font-weight: normal;
           }
 
           .price-value {
-            font-size: 17px;
+            font-size: var(--tf-type-scale-17);
             font-weight: 600;
             color: var(--tf-color-accent-pink);
             letter-spacing: -0.3px;
 
             &.price-inquire {
-              font-size: 15px;
+              font-size: var(--tf-type-scale-15);
               color: var(--tf-color-accent-orange);
               font-weight: 500;
             }
@@ -1731,7 +1731,7 @@ onActivated(async () => {
         }
 
         .cart-icon {
-          font-size: 18px;
+          font-size: var(--tf-type-scale-18);
           color: var(--tf-color-accent-orange);
           cursor: pointer;
           padding: 4px;
@@ -1773,14 +1773,14 @@ onActivated(async () => {
   margin-bottom: 16px;
 
   h3 {
-    font-size: 16px;
+    font-size: var(--tf-type-scale-16);
     font-weight: 500;
     color: var(--text-primary);
     margin: 0;
   }
 
   span {
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
     color: var(--text-muted);
     cursor: pointer;
   }
@@ -1805,17 +1805,17 @@ onActivated(async () => {
     color: var(--text-muted);
 
     i {
-      font-size: 48px;
+      font-size: var(--tf-type-scale-48);
       margin-bottom: 16px;
       color: var(--tf-color-gray-300-alt);
     }
 
     p {
       margin: 8px 0;
-      font-size: 14px;
+      font-size: var(--tf-type-scale-14);
 
       &.hint {
-        font-size: 12px;
+        font-size: var(--tf-type-scale-12);
         color: var(--tf-color-silver);
       }
     }

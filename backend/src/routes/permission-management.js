@@ -31,6 +31,7 @@ const PERMISSION_LIST_DEFAULT_PAGE_SIZE = 50
 const PERMISSION_LIST_MAX_PAGE_SIZE = 500
 
 const ENSURED_PERMISSION_MODULE_KEYS = [
+  'standards_standardsauditview',
   'attendance_attendanceview',
   'attendance_myattendanceview',
   'system_gitmanagement',

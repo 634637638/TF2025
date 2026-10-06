@@ -37,9 +37,9 @@
       v-if="selected || editing"
       class="customer-name-lock-input__controls"
     >
-      <button
+      <el-button
         v-if="editing && !locked"
-        type="button"
+        native-type="button"
         class="customer-name-lock-input__status customer-name-lock-input__status--editing"
         title="保存姓名并重新锁定"
         aria-label="保存姓名并重新锁定"
@@ -50,7 +50,7 @@
           class="fas fa-lock-open"
           aria-hidden="true"
         />
-      </button>
+      </el-button>
       <span
         v-else-if="selected"
         class="customer-name-lock-input__status"
@@ -64,9 +64,9 @@
         />
       </span>
 
-      <button
+      <el-button
         v-if="selected && clearable && !locked && !editing"
-        type="button"
+        native-type="button"
         class="customer-name-lock-input__change"
         title="更换客户"
         aria-label="更换客户"
@@ -74,7 +74,7 @@
         @click="emit('clear')"
       >
         <i class="fas fa-exchange-alt" />
-      </button>
+      </el-button>
     </div>
   </div>
 </template>
@@ -170,7 +170,7 @@ defineExpose({ input, focus: () => input.value?.focus() })
   border: 1px solid var(--tf-color-border-input);
   border-radius: 5px;
   font-family: inherit;
-  font-size: 11px;
+  font-size: var(--tf-type-scale-11);
   line-height: 1;
   white-space: nowrap;
 }
@@ -186,7 +186,7 @@ defineExpose({ input, focus: () => input.value?.focus() })
   color: var(--tf-color-text-secondary);
 }
 
-button.customer-name-lock-input__status,
+.el-button.customer-name-lock-input__status,
 .customer-name-lock-input__change {
   cursor: pointer;
 }

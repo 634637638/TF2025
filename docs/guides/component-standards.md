@@ -489,9 +489,9 @@ const handleChildUpdate = (value: any) => {
 
     <footer class="card__footer">
       <slot name="footer" :actions="footerActions">
-        <button v-for="action in footerActions" :key="action.id">
+        <el-button v-for="action in footerActions" :key="action.id" native-type="button">
           {{ action.label }}
-        </button>
+        </el-button>
       </slot>
     </footer>
   </div>
@@ -509,7 +509,7 @@ const handleChildUpdate = (value: any) => {
     </template>
 
     <template #footer="{ actions }">
-      <button @click="handleCustomAction">Custom Action</button>
+      <el-button native-type="button" @click="handleCustomAction">Custom Action</el-button>
     </template>
   </ChildComponent>
 </template>
@@ -719,7 +719,8 @@ const props = defineProps({
 ```vue
 <template>
   <!-- 语义化标签 -->
-  <button
+  <el-button
+    native-type="button"
     :disabled="disabled"
     :aria-label="ariaLabel"
     @click="handleClick"
@@ -730,7 +731,7 @@ const props = defineProps({
     <span v-else>
       <slot />
     </span>
-  </button>
+  </el-button>
 </template>
 ```
 

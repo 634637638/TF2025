@@ -59,7 +59,7 @@
 - 颜色替换工具 `scripts/normalize-style-colors.mjs` 默认只报告，使用 `--write` 才会修改共享样式；短色值匹配带边界保护。
 - 分析页面共享卡片样式使用 `#app .analytics-view` 作为明确级联边界，移除该文件全部 183 个 `!important`；桌面和手机端属性值保持不变，避免继续依靠逐属性强制覆盖。
 - 样式审计会先移除 CSS/SCSS 注释再统计，避免把注释中的示例误算为债务；`style-debt-baseline.json` 已接入检查，新增强制声明或非令牌颜色会直接让 `check:standards` 失败。
-- 清理普通页面布局中的 242 个强制声明；保留的 Element Plus、Teleport、打印、表格状态、无障碍和移动安全区覆盖全部登记在 `scripts/style-important-allowlist.json`，包含文件上限与具体原因。
+- 清理普通页面布局中的 242 个强制声明；保留的 Element Plus、Teleport、打印、表格状态、无障碍和移动安全区覆盖全部登记在 `scripts/style-important-allowlist.json`，包含文件上限与具体原因。2026-10-06 全局按钮迁移新增的移动端语义按钮覆盖已登记在 `_buttons.scss`，当前公共按钮入口为 264 处，不得将该登记扩展到业务页面。
 - 将 1932 个非令牌颜色使用点全部迁移到共享语义色板；高频状态色统一复用，19 个需要保持视觉身份的品牌色和图表色使用明确业务令牌。
 - 样式债务门禁基线当前为：`!important <= 1933`、未批准 `!important <= 0`、非令牌颜色使用点 `<= 0`。任何新增未登记存量都会让审计失败。
 

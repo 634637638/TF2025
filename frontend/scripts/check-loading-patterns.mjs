@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url'
 import { parse } from '@vue/compiler-sfc'
 
 const sourceRoot = fileURLToPath(new URL('../src/', import.meta.url))
+const standardsViewSource = await readFile(join(sourceRoot, 'views/standards/StandardsAuditView.vue'), 'utf8')
 const elementButtonPattern = /<el-button\b(?:(?!<el-button\b|<\/el-button>)[\s\S])*?<\/el-button>/gi
 const spinnerPattern = /<InlineLoading\b|fa-spinner|fa-spin|loading-spinner|\bis-loading\b/i
 const buttonInlineLoadingExceptions = new Map(Object.entries({
@@ -53,6 +54,16 @@ let sectionLoadingCount = 0
 let inlineLoadingCount = 0
 let buttonInlineLoadingCount = 0
 let loadingDirectiveCount = 0
+
+const standardsLoadingRequirements = [
+  [/global-loading-standard\.md/, '规范与审计标杆页必须登记全局 Loading 规范预览'],
+  [/runPreviewLoading/, '规范与审计标杆页全局 Loading 必须提供可点击演示入口'],
+  [/loadingStore\.startLoading\(/, '规范与审计标杆页演示必须调用统一 Loading Store'],
+  [/演示 Loading/, '规范与审计标杆页必须显示“演示 Loading”按钮']
+]
+for (const [pattern, message] of standardsLoadingRequirements) {
+  if (!pattern.test(standardsViewSource)) violations.push(`views/standards/StandardsAuditView.vue ${message}`)
+}
 
 for (const file of files) {
   const source = await readFile(file, 'utf8')

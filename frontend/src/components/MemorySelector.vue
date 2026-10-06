@@ -275,7 +275,7 @@ const handleClose = () => {
     justify-content: center;
 
     h4 {
-      font-size: 14px;
+      font-size: var(--tf-type-scale-14);
       font-weight: 500;
       color: var(--text-primary);
       margin: 0 0 4px;
@@ -285,7 +285,7 @@ const handleClose = () => {
     }
 
     .price-range {
-      font-size: 13px;
+      font-size: var(--tf-type-scale-13);
       color: var(--tf-color-accent-pink);
       margin: 0;
     }
@@ -328,13 +328,13 @@ const handleClose = () => {
       gap: 2px;
 
       .memory-name {
-        font-size: 15px;
+        font-size: var(--tf-type-scale-15);
         font-weight: 500;
         color: var(--text-primary);
       }
 
       .store-name {
-        font-size: 12px;
+        font-size: var(--tf-type-scale-12);
         color: var(--text-muted);
       }
     }
@@ -344,14 +344,14 @@ const handleClose = () => {
 
       .price {
         display: block;
-        font-size: 16px;
+        font-size: var(--tf-type-scale-16);
         font-weight: 500;
         color: var(--tf-color-accent-pink);
       }
 
       .stock-count {
         display: block;
-        font-size: 11px;
+        font-size: var(--tf-type-scale-11);
         color: var(--text-muted);
         margin-top: 2px;
       }

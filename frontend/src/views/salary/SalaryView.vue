@@ -2803,7 +2803,7 @@ watch(activeTab, async (newTab, oldTab) => {
 }
 
 .filter-item label {
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   font-weight: 500;
   color: var(--color-text-regular);
   white-space: nowrap;
@@ -2836,7 +2836,7 @@ watch(activeTab, async (newTab, oldTab) => {
 .net-salary {
   color: var(--color-success);
   font-weight: 700;
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
 }
 
 .amount {
@@ -2851,12 +2851,12 @@ watch(activeTab, async (newTab, oldTab) => {
 
 .income-detail,
 .deduction-detail {
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   line-height: 1.6;
 }
 
 .rate-info {
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   line-height: 1.5;
 }
 
@@ -2868,7 +2868,7 @@ watch(activeTab, async (newTab, oldTab) => {
 .period-text,
 .work-days {
   color: var(--color-text-regular);
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
 }
 
 /* 分页 */
@@ -2910,13 +2910,13 @@ watch(activeTab, async (newTab, oldTab) => {
 }
 
 .form-label {
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   font-weight: 500;
   color: var(--color-text-regular);
 }
 
 .form-value {
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   color: var(--color-text-primary);
   font-weight: 500;
 }
@@ -2928,13 +2928,13 @@ watch(activeTab, async (newTab, oldTab) => {
 }
 
 .template-name {
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   font-weight: 500;
   color: var(--color-text-primary);
 }
 
 .template-detail {
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: var(--color-info);
 }
 
@@ -2947,7 +2947,7 @@ watch(activeTab, async (newTab, oldTab) => {
 }
 
 .preview-title {
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   font-weight: 600;
   color: var(--color-text-primary);
   margin-bottom: 12px;
@@ -2963,7 +2963,7 @@ watch(activeTab, async (newTab, oldTab) => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
 }
 
 .preview-label {
@@ -2983,19 +2983,19 @@ watch(activeTab, async (newTab, oldTab) => {
 }
 
 .employee-username {
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: var(--color-info);
 }
 
 /* 员工信息单行显示 */
 .employee-info-inline {
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   font-weight: 500;
   color: var(--color-text-primary);
 }
 
 .commission-info {
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   line-height: 1.5;
 }
 
@@ -3031,7 +3031,7 @@ watch(activeTab, async (newTab, oldTab) => {
 }
 
 .template-name {
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: var(--color-info);
 }
 
@@ -3057,13 +3057,13 @@ watch(activeTab, async (newTab, oldTab) => {
 }
 
 .amount-deduction {
-  font-size: 11px;
+  font-size: var(--tf-type-scale-11);
   color: var(--color-danger);
   font-weight: 500;
 }
 
 .amount-overtime {
-  font-size: 11px;
+  font-size: var(--tf-type-scale-11);
   color: var(--color-success);
   font-weight: 500;
 }
@@ -3079,7 +3079,7 @@ watch(activeTab, async (newTab, oldTab) => {
 
 .form-section h4 {
   margin: 0 0 16px 0;
-  font-size: 15px;
+  font-size: var(--tf-type-scale-15);
   font-weight: 600;
   color: var(--color-text-primary);
   padding-bottom: 8px;
@@ -3109,7 +3109,7 @@ watch(activeTab, async (newTab, oldTab) => {
   margin-bottom: 8px;
   font-weight: 500;
   color: var(--tf-color-gray-ant-600);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
 }
 
 .required {
@@ -3121,7 +3121,7 @@ watch(activeTab, async (newTab, oldTab) => {
   padding: 10px 12px;
   border: 1px solid var(--tf-color-gray-ant-400);
   border-radius: 6px;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   transition: all 0.2s;
   background: white;
 }
@@ -3147,7 +3147,7 @@ watch(activeTab, async (newTab, oldTab) => {
   align-items: center;
   gap: 6px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   color: var(--tf-color-gray-ant-600);
 }
 
@@ -3223,7 +3223,7 @@ input:checked + .slider:before {
 
 .divider span {
   color: var(--tf-color-gray-ant-500);
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   font-weight: 500;
 }
 
@@ -3235,7 +3235,7 @@ input:checked + .slider:before {
 .form-tip {
   display: block;
   margin-top: 6px;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: var(--tf-color-gray-ant-500);
   line-height: 1.5;
 }
@@ -3248,7 +3248,7 @@ input:checked + .slider:before {
   &::before {
     content: '✓';
     margin-right: 6px;
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
     font-weight: 700;
   }
 }
@@ -3264,7 +3264,7 @@ input:checked + .slider:before {
 
 .template-preview-box h4 {
   margin: 0 0 12px 0;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   font-weight: 600;
   color: var(--tf-color-blue-600);
 }
@@ -3277,13 +3277,13 @@ input:checked + .slider:before {
 
 .template-preview-box .preview-label {
   color: var(--tf-color-gray-ant-600);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
 }
 
 .template-preview-box .preview-value {
   color: var(--tf-color-neutral-ant);
   font-weight: 500;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
 }
 
 /* 考勤操作栏 */
@@ -3296,7 +3296,7 @@ input:checked + .slider:before {
 
 /* 预计工资样式 */
 .estimated-salary {
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   font-weight: 600;
   color: var(--color-primary);
 }
@@ -3375,12 +3375,12 @@ input:checked + .slider:before {
 }
 
 .detail-info-item .label {
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   color: var(--color-info);
 }
 
 .detail-info-item .value {
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
   font-weight: 600;
   color: var(--color-text-primary);
 }
@@ -3406,7 +3406,7 @@ input:checked + .slider:before {
 .sales-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
 }
 
 .sales-table thead {
@@ -3461,7 +3461,7 @@ input:checked + .slider:before {
 }
 
 .salary-detail-table-section > .section-title {
-  font-size: 15px;
+  font-size: var(--tf-type-scale-15);
   font-weight: 600;
   color: var(--color-text-primary);
   margin: 20px 0 12px 0;
@@ -3472,7 +3472,7 @@ input:checked + .slider:before {
 .salary-detail-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   background: var(--color-bg-white);
   border: 1px solid var(--color-border-light);
   border-radius: 8px;
@@ -3514,14 +3514,14 @@ input:checked + .slider:before {
 .salary-detail-table td.value.net-salary {
   color: var(--color-danger);
   font-weight: 600;
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
 }
 
 .sales-summary-item {
   display: flex;
   align-items: baseline;
   gap: 8px;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
 }
 
 .sales-summary-item .label {
@@ -3529,7 +3529,7 @@ input:checked + .slider:before {
 }
 
 .sales-summary-item .value {
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
   font-weight: 600;
   color: var(--color-text-primary);
 }
@@ -3575,14 +3575,14 @@ input:checked + .slider:before {
       }
 
       label {
-        font-size: 12px;
+        font-size: var(--tf-type-scale-12);
         color: var(--color-info);
         font-weight: 500;
         white-space: nowrap;
       }
 
       span {
-        font-size: 14px;
+        font-size: var(--tf-type-scale-14);
         color: var(--color-text-primary);
         font-weight: 600;
         white-space: nowrap;
@@ -3599,7 +3599,7 @@ input:checked + .slider:before {
 
         &.highlight {
           color: var(--color-primary);
-          font-size: 16px;
+          font-size: var(--tf-type-scale-16);
         }
       }
     }
@@ -3614,7 +3614,7 @@ input:checked + .slider:before {
     border: 1px solid var(--tf-color-border-element);
 
     .section-title {
-      font-size: 15px;
+      font-size: var(--tf-type-scale-15);
       font-weight: 600;
       color: var(--color-text-primary);
       margin: 0 0 16px 0;
@@ -3634,13 +3634,13 @@ input:checked + .slider:before {
       }
 
       label {
-        font-size: 14px;
+        font-size: var(--tf-type-scale-14);
         color: var(--color-text-regular);
         font-weight: 500;
       }
 
       span {
-        font-size: 16px;
+        font-size: var(--tf-type-scale-16);
         color: var(--color-text-primary);
         font-weight: 600;
 
@@ -3651,7 +3651,7 @@ input:checked + .slider:before {
 
         &.net-salary {
           color: var(--color-warning);
-          font-size: 18px;
+          font-size: var(--tf-type-scale-18);
           font-weight: 700;
         }
 
@@ -3665,7 +3665,7 @@ input:checked + .slider:before {
   // 销售明细表格区域
   .sales-details-table {
     .section-title {
-      font-size: 15px;
+      font-size: var(--tf-type-scale-15);
       font-weight: 600;
       color: var(--color-text-primary);
       margin: 0 0 16px 0;
@@ -3704,18 +3704,18 @@ input:checked + .slider:before {
       display: flex;
       align-items: center;
       gap: 8px;
-      font-size: 12px;
+      font-size: var(--tf-type-scale-12);
     }
 
     .commission-label {
       color: var(--color-info);
-      font-size: 12px;
+      font-size: var(--tf-type-scale-12);
     }
 
     .commission-value {
       color: var(--color-text-primary);
       font-weight: 600;
-      font-size: 12px;
+      font-size: var(--tf-type-scale-12);
     }
   }
 }
@@ -3798,12 +3798,12 @@ input:checked + .slider:before {
   }
 
   .form-group label {
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
   }
 
   .form-control {
     padding: 8px 10px;
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
   }
 
   // 单选框组响应式
@@ -3812,7 +3812,7 @@ input:checked + .slider:before {
   }
 
   .radio-label {
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
   }
 
   // 模板预览框响应式
@@ -3821,7 +3821,7 @@ input:checked + .slider:before {
   }
 
   .preview-row {
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
     padding: 6px 0;
   }
 }
@@ -3848,7 +3848,7 @@ input:checked + .slider:before {
 
   h4 {
     margin: 0 0 12px 0;
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
     font-weight: 600;
     color: var(--tf-color-gray-bootstrap-700);
     display: flex;
@@ -3869,7 +3869,7 @@ input:checked + .slider:before {
     align-items: center;
     padding: 8px 0;
     border-bottom: 1px dashed var(--tf-color-border-subtle);
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
 
     &:last-child {
       border-bottom: none;
@@ -3892,7 +3892,7 @@ input:checked + .slider:before {
 .form-tip {
   display: block;
   margin-top: 6px;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: var(--tf-color-gray-ant-500);
   line-height: 1.4;
 }

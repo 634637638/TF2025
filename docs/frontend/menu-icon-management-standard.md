@@ -6,7 +6,7 @@
 
 - 图标目录以数据库 `icons` 表为准；前端不得内置完整图标目录。
 - 图标选择器默认使用本地库，每次只请求当前页，默认每页 96 项。分类和关键词通过 `/icons` 查询参数交给后端筛选。
-- 编辑已有菜单时，如果当前图标不在已加载页内，按 class 调用 `/icons/by-class` 精确获取，不需要预先下载整张图标表。
+- 编辑已有菜单时，如果当前图标不在已加载页内，仅对本地图标 class 按需调用 `/icons/by-class` 精确获取；`iconify <prefix>:<name>` 由 `IconRenderer` 直接渲染，不请求本地图标接口。
 - 本地分类通过 `/icons/categories` 获取。
 - 接口不可用时，界面只使用 `IconPicker.vue` 中少量内置图标作为临时兜底，不将兜底项视为数据库完整目录。
 
@@ -28,7 +28,7 @@
 | 接口 | 用途 |
 | --- | --- |
 | `GET /api/icons?limit=96&page=1` | 分页读取本地图标，可按 `category`、`search` 筛选 |
-| `GET /api/icons/by-class?class=...` | 精确加载当前菜单正在使用的图标 |
+| `GET /api/icons/by-class?class=...` | 仅精确加载当前菜单正在使用的本地图标 class；Iconify 图标不调用此接口 |
 | `GET /api/icons/categories` | 读取分类 |
 | `GET /api/icons/search/online?query=...&limit=100` | 按需在线检索 |
 | `POST /api/icons/cache` | 经授权后将在线图标写入本地库 |

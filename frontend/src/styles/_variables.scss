@@ -41,10 +41,28 @@
   --tf-space-7: 32px;
   --tf-space-8: 48px;
   --tf-radius-control: 6px;
+  --tf-radius-compact: 4px;
   --tf-radius-card: 8px;
   --tf-radius-panel: 12px;
   --tf-radius-dialog: 16px;
   --tf-radius-full: 9999px;
+  /* Navigation chrome separates the white topbar from the purple menus. */
+  --tf-nav-topbar-bg: var(--color-bg-white);
+  --tf-nav-topbar-text: var(--color-text-primary);
+  --tf-nav-topbar-border: var(--tf-color-border-cool);
+  --tf-nav-header-bg: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
+  --tf-nav-surface-color: #51409d;
+  --tf-nav-submenu-surface-color: #433783;
+  --tf-nav-header-text: #ffffff;
+  --tf-nav-border: rgba(255, 255, 255, 0.18);
+  --tf-nav-item-bg: transparent;
+  --tf-nav-item-hover-bg: rgba(255, 255, 255, 0.1);
+  --tf-nav-item-active-bg: rgba(255, 255, 255, 0.15);
+  --tf-nav-submenu-bg: rgba(0, 0, 0, 0.12);
+  --tf-nav-menu-item-height: 50px;
+  --tf-nav-menu-text-size: var(--tf-type-scale-14);
+  --tf-nav-submenu-text-size: var(--tf-type-scale-14);
+  --tf-nav-menu-arrow-size: var(--tf-type-scale-12);
   --tf-form-control-focus-color: var(--tf-color-orange);
   --tf-form-control-focus-ring: 0 0 0 1px var(--tf-form-control-focus-color);
   --tf-shadow-card: var(--shadow-sm);
@@ -54,14 +72,116 @@
   --tf-shadow-autofill: 0 0 0 1000px var(--el-fill-color-blank, transparent) inset;
   --tf-transition-autofill: background-color 9999s ease-out;
   --tf-font-caption: var(--font-xs);
+  --tf-font-small: 11px;
+  --tf-font-micro: 10px;
   --tf-font-body: var(--font-sm);
   --tf-font-body-lg: var(--font-base);
   --tf-font-section: var(--font-lg);
   --tf-font-title: var(--font-xxl);
+  /* Canonical semantic typography contract. Pages should use these names. */
+  --tf-font-page-title: var(--tf-font-title);
+  --tf-font-section-title: var(--tf-font-section);
+  --tf-font-dialog-title: var(--tf-font-body-lg);
+  --tf-font-label: var(--tf-font-body);
+  --tf-font-button: var(--tf-font-body);
+  --tf-font-family-sans: var(--font-family-sans);
+  --tf-font-family-mono: var(--font-family-mono);
+  --tf-line-height-body: var(--line-height-normal);
+  --tf-line-height-compact: var(--line-height-tight);
   --tf-font-table: 13px;
+  --tf-font-table-header: var(--tf-font-table);
+  --tf-font-table-body: var(--tf-font-table);
   --tf-font-table-mobile: var(--font-xs);
   --tf-font-table-compact: 11px;
   --tf-font-table-narrow: 10px;
+  --tf-font-stat-value: 22px;
+  --tf-font-stat-label: var(--tf-font-caption);
+  --tf-font-emphasis: 20px;
+  --tf-font-display: 30px;
+  --tf-font-display-lg: 36px;
+  --tf-font-hero: 48px;
+  --tf-font-body-mobile: 15px;
+  --tf-font-body-narrow: 14px;
+  --tf-font-body-lg-mobile: 16px;
+  --tf-font-body-lg-narrow: 15px;
+  --tf-font-label-mobile: 14px;
+  --tf-font-label-narrow: 13px;
+  --tf-font-caption-mobile: 12px;
+  --tf-font-caption-narrow: 11px;
+  --tf-font-button-mobile: 14px;
+  --tf-font-button-narrow: 13px;
+  --tf-font-title-mobile: 18px;
+  --tf-font-title-narrow: 17px;
+  --tf-font-section-mobile: 16px;
+  --tf-font-section-narrow: 15px;
+  --tf-font-stat-value-mobile: 22px;
+  --tf-font-stat-value-narrow: 20px;
+  --tf-font-stat-label-mobile: 12px;
+  --tf-font-stat-label-narrow: 11px;
+  --tf-font-table-mobile-size: 13px;
+  --tf-font-table-header-mobile: 13px;
+  --tf-font-table-narrow-size: 11px;
+  --tf-font-table-header-narrow: 11px;
+
+  /* Exact scale aliases keep legacy component details centrally adjustable. */
+  --tf-type-scale-8: 8px;
+  --tf-type-scale-9: 9px;
+  --tf-type-scale-10: 10px;
+  --tf-type-scale-11: 11px;
+  --tf-type-scale-12: 12px;
+  --tf-type-scale-13: 13px;
+  --tf-type-scale-14: 14px;
+  --tf-type-scale-15: 15px;
+  --tf-type-scale-16: 16px;
+  --tf-type-scale-17: 17px;
+  --tf-type-scale-18: 18px;
+  --tf-type-scale-19: 19px;
+  --tf-type-scale-20: 20px;
+  --tf-type-scale-21: 21px;
+  --tf-type-scale-22: 22px;
+  --tf-type-scale-24: 24px;
+  --tf-type-scale-25: 25px;
+  --tf-type-scale-26: 26px;
+  --tf-type-scale-28: 28px;
+  --tf-type-scale-30: 30px;
+  --tf-type-scale-32: 32px;
+  --tf-type-scale-34: 34px;
+  --tf-type-scale-36: 36px;
+  --tf-type-scale-40: 40px;
+  --tf-type-scale-42: 42px;
+  --tf-type-scale-48: 48px;
+  --tf-type-scale-64: 64px;
+  --tf-type-scale-120: 120px;
+  --tf-type-scale-3-5: 3.5px;
+  --tf-type-scale-4-5: 4.5px;
+  --tf-type-scale-5: 5px;
+  --tf-type-scale-6: 6px;
+  --tf-type-scale-6-5: 6.5px;
+  --tf-type-scale-7: 7px;
+  --tf-type-scale-7-5: 7.5px;
+  --tf-type-scale-8-5: 8.5px;
+  --tf-type-scale-10-5: 10.5px;
+  --tf-type-scale-0-7rem: 0.7rem;
+  --tf-type-scale-0-75rem: 0.75rem;
+  --tf-type-scale-0-8125rem: 0.8125rem;
+  --tf-type-scale-0-875rem: 0.875rem;
+  --tf-type-scale-0-9rem: 0.9rem;
+  --tf-type-scale-0-95rem: 0.95rem;
+  --tf-type-scale-1rem: 1rem;
+  --tf-type-scale-1-125rem: 1.125rem;
+  --tf-type-scale-1-15rem: 1.15rem;
+  --tf-type-scale-1-2rem: 1.2rem;
+  --tf-type-scale-1-25rem: 1.25rem;
+  --tf-type-scale-1-5rem: 1.5rem;
+  --tf-type-scale-2rem: 2rem;
+  --tf-type-scale-0-7em: 0.7em;
+  --tf-type-scale-0-85em: 0.85em;
+  --tf-type-scale-0-875em: 0.875em;
+  --tf-type-scale-0-9em: 0.9em;
+  --tf-font-analytics-value: clamp(1.18rem, 1.65vw, 1.55rem);
+  --tf-font-mobile-scale-compact: clamp(10px, 2.6vw, 13px);
+  --tf-font-mobile-scale-body: clamp(10px, 2.8vw, 13px);
+  --tf-font-mobile-scale-label: clamp(10px, 3vw, 14px);
   --tf-font-contact-name: 16px;
   --tf-font-contact-number: 18px;
   --tf-font-contact-name-mobile: 13px;
@@ -154,6 +274,38 @@
   --font-weight-medium: 500;
   --font-weight-semibold: 600;
   --font-weight-bold: 700;
+}
+
+@media (max-width: 767px) {
+  :root {
+    --tf-font-body: var(--tf-font-body-mobile);
+    --tf-font-body-lg: var(--tf-font-body-lg-mobile);
+    --tf-font-label: var(--tf-font-label-mobile);
+    --tf-font-caption: var(--tf-font-caption-mobile);
+    --tf-font-button: var(--tf-font-button-mobile);
+    --tf-font-title: var(--tf-font-title-mobile);
+    --tf-font-section: var(--tf-font-section-mobile);
+    --tf-font-stat-value: var(--tf-font-stat-value-mobile);
+    --tf-font-stat-label: var(--tf-font-stat-label-mobile);
+    --tf-font-table-mobile: var(--tf-font-table-mobile-size);
+    --tf-font-table-header: var(--tf-font-table-header-mobile);
+  }
+}
+
+@media (max-width: 375px) {
+  :root {
+    --tf-font-body: var(--tf-font-body-narrow);
+    --tf-font-body-lg: var(--tf-font-body-lg-narrow);
+    --tf-font-label: var(--tf-font-label-narrow);
+    --tf-font-caption: var(--tf-font-caption-narrow);
+    --tf-font-button: var(--tf-font-button-narrow);
+    --tf-font-title: var(--tf-font-title-narrow);
+    --tf-font-section: var(--tf-font-section-narrow);
+    --tf-font-stat-value: var(--tf-font-stat-value-narrow);
+    --tf-font-stat-label: var(--tf-font-stat-label-narrow);
+    --tf-font-table-mobile: var(--tf-font-table-narrow-size);
+    --tf-font-table-header: var(--tf-font-table-header-narrow);
+  }
 }
 
 // ==================== 颜色变量 ====================

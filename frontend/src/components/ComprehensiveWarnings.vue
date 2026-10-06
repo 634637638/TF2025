@@ -736,7 +736,7 @@ onUnmounted(() => {
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 20px;
+        font-size: var(--tf-type-scale-20);
         color: white;
 
         &.phone {
@@ -760,7 +760,7 @@ onUnmounted(() => {
         flex: 1;
 
         .card-value {
-          font-size: 20px;
+          font-size: var(--tf-type-scale-20);
           font-weight: 700;
           color: white;
           line-height: 1.2;
@@ -779,7 +779,7 @@ onUnmounted(() => {
 
     .out-of-stock-text {
       color: var(--tf-color-red-600);
-      font-size: 15px;
+      font-size: var(--tf-type-scale-15);
       font-weight: 700;
       letter-spacing: 0.5px;
     }
@@ -793,7 +793,7 @@ onUnmounted(() => {
       border-radius: 999px;
       background: var(--tf-color-orange-ant-surface);
       color: var(--tf-color-amber-700);
-      font-size: 13px;
+      font-size: var(--tf-type-scale-13);
       font-weight: 700;
       border: 1px solid var(--tf-color-amber-muted);
     }
@@ -859,7 +859,7 @@ onUnmounted(() => {
           }
 
           .value {
-            font-size: 20px;
+            font-size: var(--tf-type-scale-20);
             font-weight: 700;
             color: var(--tf-color-heading);
 
@@ -872,7 +872,7 @@ onUnmounted(() => {
             }
 
             i {
-              font-size: 14px;
+              font-size: var(--tf-type-scale-14);
               margin-right: 4px;
             }
           }
@@ -883,7 +883,7 @@ onUnmounted(() => {
         margin-top: 20px;
 
         h5 {
-          font-size: 15px;
+          font-size: var(--tf-type-scale-15);
           color: var(--tf-color-slate-legacy);
           margin-bottom: 15px;
           padding-bottom: 10px;
@@ -946,14 +946,14 @@ onUnmounted(() => {
             }
 
             .trend-count {
-              font-size: 13px;
+              font-size: var(--tf-type-scale-13);
               color: var(--tf-color-heading);
               width: 50px;
               font-weight: 600;
             }
 
             .trend-amount {
-              font-size: 11px;
+              font-size: var(--tf-type-scale-11);
               color: var(--tf-color-gray-cool-500);
               width: 70px;
             }
@@ -1029,16 +1029,16 @@ onUnmounted(() => {
         .card-icon {
           width: 38px;
           height: 38px;
-          font-size: 18px;
+          font-size: var(--tf-type-scale-18);
         }
 
         .card-content {
           .card-value {
-            font-size: 18px;
+            font-size: var(--tf-type-scale-18);
           }
 
           .card-label {
-            font-size: 11px;
+            font-size: var(--tf-type-scale-11);
           }
         }
       }
@@ -1056,7 +1056,7 @@ onUnmounted(() => {
             padding: 12px;
 
             .label {
-              font-size: 11px;
+              font-size: var(--tf-type-scale-11);
             }
 
             .value {
@@ -1075,7 +1075,7 @@ onUnmounted(() => {
             padding: var(--tf-space-2);
 
             .trend-date {
-              font-size: 11px;
+              font-size: var(--tf-type-scale-11);
               width: 45px;
             }
 
@@ -1084,12 +1084,12 @@ onUnmounted(() => {
             }
 
             .trend-count {
-              font-size: 11px;
+              font-size: var(--tf-type-scale-11);
               width: 40px;
             }
 
             .trend-amount {
-              font-size: 10px;
+              font-size: var(--tf-type-scale-10);
               width: 55px;
             }
           }

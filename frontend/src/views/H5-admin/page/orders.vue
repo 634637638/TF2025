@@ -1760,7 +1760,7 @@ onUnmounted(() => {
     }
 
     .section-title {
-      font-size: 14px;
+      font-size: var(--tf-type-scale-14);
       font-weight: 600;
       color: var(--text-primary);
       margin-bottom: 12px;
@@ -1774,7 +1774,7 @@ onUnmounted(() => {
       gap: 16px;
 
       .order-time {
-        font-size: 13px;
+        font-size: var(--tf-type-scale-13);
         color: var(--text-muted);
       }
     }
@@ -1794,12 +1794,12 @@ onUnmounted(() => {
         }
 
         label {
-          font-size: 13px;
+          font-size: var(--tf-type-scale-13);
           color: var(--text-muted);
         }
 
         span {
-          font-size: 14px;
+          font-size: var(--tf-type-scale-14);
           color: var(--text-primary);
         }
       }
@@ -1818,30 +1818,30 @@ onUnmounted(() => {
 
       .item-info {
         .item-name {
-          font-size: 14px;
+          font-size: var(--tf-type-scale-14);
           font-weight: 500;
           color: var(--text-primary);
         }
 
         .item-specs {
-          font-size: 12px;
+          font-size: var(--tf-type-scale-12);
           color: var(--text-muted);
           margin-top: 2px;
         }
       }
 
       .item-quantity {
-        font-size: 14px;
+        font-size: var(--tf-type-scale-14);
         color: var(--text-secondary);
       }
 
       .item-price {
-        font-size: 14px;
+        font-size: var(--tf-type-scale-14);
         color: var(--text-secondary);
       }
 
       .item-subtotal {
-        font-size: 14px;
+        font-size: var(--tf-type-scale-14);
         font-weight: 600;
         color: var(--tf-color-accent-pink);
       }
@@ -1853,18 +1853,18 @@ onUnmounted(() => {
       display: flex;
       justify-content: space-between;
       padding: 8px 0;
-      font-size: 14px;
+      font-size: var(--tf-type-scale-14);
       color: var(--text-secondary);
 
       &.total {
         border-top: 1px solid var(--tf-color-gray-200-alt);
         padding-top: 12px;
         margin-top: 8px;
-        font-size: 16px;
+        font-size: var(--tf-type-scale-16);
         font-weight: 500;
 
         .total-amount {
-          font-size: 20px;
+          font-size: var(--tf-type-scale-20);
           font-weight: 600;
           color: var(--tf-color-accent-pink);
         }
@@ -1907,13 +1907,13 @@ onUnmounted(() => {
         flex: 1;
 
         .timeline-title {
-          font-size: 14px;
+          font-size: var(--tf-type-scale-14);
           font-weight: 500;
           color: var(--text-primary);
         }
 
         .timeline-time {
-          font-size: 12px;
+          font-size: var(--tf-type-scale-12);
           color: var(--text-muted);
           margin-top: 4px;
         }
@@ -1938,12 +1938,12 @@ onUnmounted(() => {
       }
 
       label {
-        font-size: 12px;
+        font-size: var(--tf-type-scale-12);
         color: var(--text-muted);
       }
 
       span {
-        font-size: 14px;
+        font-size: var(--tf-type-scale-14);
         color: var(--text-primary);
       }
     }
@@ -1962,20 +1962,20 @@ onUnmounted(() => {
       }
 
       .operation-action {
-        font-size: 14px;
+        font-size: var(--tf-type-scale-14);
         font-weight: 500;
         color: var(--text-primary);
         margin-bottom: 4px;
       }
 
       .operation-detail {
-        font-size: 13px;
+        font-size: var(--tf-type-scale-13);
         color: var(--text-secondary);
         margin-bottom: 4px;
       }
 
       .operation-time {
-        font-size: 12px;
+        font-size: var(--tf-type-scale-12);
         color: var(--text-muted);
       }
     }
@@ -2036,7 +2036,7 @@ onUnmounted(() => {
   .mobile-order-card__number {
     min-width: 0;
     color: var(--tf-color-slate-900);
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
     font-weight: 800;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -2060,13 +2060,13 @@ onUnmounted(() => {
 
     span {
       color: var(--tf-color-slate-500);
-      font-size: 11px;
+      font-size: var(--tf-type-scale-11);
       font-weight: 700;
     }
 
     strong {
       color: var(--tf-color-slate-900);
-      font-size: 12px;
+      font-size: var(--tf-type-scale-12);
       line-height: 1.3;
       overflow-wrap: anywhere;
     }
@@ -2084,7 +2084,7 @@ onUnmounted(() => {
       margin: 0;
       padding: 8px 6px;
       justify-content: center;
-      font-size: 12px;
+      font-size: var(--tf-type-scale-12);
     }
   }
 
@@ -2159,7 +2159,7 @@ onUnmounted(() => {
     margin-bottom: 8px;
     padding: 0 !important;
     color: var(--tf-color-slate-700);
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
     font-weight: 700;
     line-height: 1.4;
     text-align: left;

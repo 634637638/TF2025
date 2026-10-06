@@ -82,7 +82,7 @@
                   </div>
                   <el-space wrap>
                     <el-button
-                      v-if="canEditWarningConfig && canViewField('system_info.operations')"
+                      v-if="canEditWarningConfig && showOperations"
                       type="primary"
                       size="small"
                       plain
@@ -91,7 +91,7 @@
                       批量编辑
                     </el-button>
                     <el-button
-                      v-if="canEditWarningConfig && canViewField('system_info.operations')"
+                      v-if="canEditWarningConfig && showOperations"
                       type="danger"
                       size="small"
                       plain
@@ -255,7 +255,7 @@
                     />
 
                     <el-table-column
-                      v-if="canEditWarningConfig && canViewField('system_info.operations')"
+                      v-if="canEditWarningConfig && showOperations"
                       label="操作"
                       :width="$getActionColumnWidth(2)"
                       align="center"
@@ -263,7 +263,7 @@
                     >
                       <template #default="{ row: child }">
                         <div
-                          v-if="canEditWarningConfig"
+                          v-if="canEditWarningConfig && showOperations"
                           class="table-actions"
                         >
                           <el-button
@@ -402,7 +402,7 @@
           />
 
           <el-table-column
-            v-if="canEditWarningConfig && canViewField('system_info.operations')"
+            v-if="canEditWarningConfig && showOperations"
             label="操作"
             :width="$getActionColumnWidth(2)"
             align="center"
@@ -410,7 +410,7 @@
           >
             <template #default="{ row }">
               <div
-                v-if="canEditWarningConfig"
+                v-if="canEditWarningConfig && showOperations"
                 class="table-actions"
               >
                 <el-button
@@ -765,7 +765,7 @@ import { type FormInstance } from 'element-plus'
 import { ValidationRules } from '@/composables'
 import { useNotification } from '@/composables/useNotification'
 import { usePagePermissions } from '@/composables/usePagePermissions'
-import { fieldPermissions } from '@/composables/useFieldPermissions'
+import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { useLoadingState } from '@/composables'
 import phoneStockWarningsApi from '@/api/phone-stock-warnings'
 import { baseDataApi } from '@/api/base-data'
@@ -780,6 +780,10 @@ const {
 } = usePagePermissions('settings')
 const PHONE_WARNING_MODULE_KEY = 'phone_warning_config'
 const canViewField = (fieldKey: string) => fieldPermissions.isFieldVisible(PHONE_WARNING_MODULE_KEY, fieldKey)
+const showOperations = computed(() => shouldShowActionColumn(
+  canViewField('system_info.operations'),
+  [canEditWarningConfig.value]
+))
 
 const { loading } = useLoadingState()
 const configList = ref<any[]>([])
@@ -1413,7 +1417,7 @@ defineExpose({
   }
 
   .card-toolbar__title {
-    font-size: 20px;
+    font-size: var(--tf-type-scale-20);
     font-weight: 700;
     color: var(--tf-color-neutral-800);
   }
@@ -1421,7 +1425,7 @@ defineExpose({
   .card-toolbar__subtitle {
     margin-top: 6px;
     color: var(--tf-color-gray-ui-500);
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
   }
 
   .template-name__title {
@@ -1432,7 +1436,7 @@ defineExpose({
   .template-name__sub {
     margin-top: 6px;
     color: var(--tf-color-gray-ui-500);
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
   }
 
   .summary-tags {
@@ -1462,7 +1466,7 @@ defineExpose({
 
   .status-summary__label {
     color: var(--tf-color-gray-ui-500);
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
   }
 
   .child-panel {
@@ -1483,7 +1487,7 @@ defineExpose({
   }
 
   .child-panel__title {
-    font-size: 15px;
+    font-size: var(--tf-type-scale-15);
     font-weight: 700;
     color: var(--tf-color-neutral-800);
   }
@@ -1491,7 +1495,7 @@ defineExpose({
   .child-panel__subtitle {
     margin-top: 4px;
     color: var(--tf-color-gray-ui-500);
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
   }
 
   .child-panel__meta {
@@ -1543,7 +1547,7 @@ defineExpose({
   }
 
   .variant-editor__title {
-    font-size: 15px;
+    font-size: var(--tf-type-scale-15);
     font-weight: 700;
     color: var(--tf-color-neutral-800);
   }
@@ -1551,7 +1555,7 @@ defineExpose({
   .variant-editor__subtitle {
     margin-top: 4px;
     color: var(--tf-color-gray-ui-500);
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
   }
 
   .variant-table {
@@ -1565,7 +1569,7 @@ defineExpose({
   .form-tip {
     margin-top: 6px;
     color: var(--tf-color-gray-ui-500);
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
     line-height: 1.6;
   }
 

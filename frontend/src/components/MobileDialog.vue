@@ -33,10 +33,12 @@
               <span class="el-dialog__title mobile-dialog-sheet-title">{{ title }}</span>
             </div>
 
-            <button
+            <el-button
               v-if="showClose"
-              type="button"
-              class="el-dialog__headerbtn mobile-dialog-sheet-close"
+              native-type="button"
+              text
+              circle
+              class="el-dialog__headerbtn mobile-dialog-sheet-close tf-button--dialog-close"
               aria-label="关闭"
               @click="handleSheetClose"
             >
@@ -51,7 +53,7 @@
                   />
                 </svg>
               </i>
-            </button>
+            </el-button>
           </div>
 
           <div class="el-dialog__body mobile-dialog-sheet-body">
@@ -541,9 +543,9 @@ onUnmounted(() => {
 
 .mobile-dialog-sheet-title {
   color: var(--color-bg-white);
-  font-size: var(--tf-dialog-sheet-title-size, 16px);
+  font-size: var(--tf-dialog-sheet-title-size, var(--tf-font-dialog-title));
   font-weight: 700;
-  line-height: 1.35;
+  line-height: var(--tf-dialog-title-line-height, 1.5);
   text-align: center;
 }
 
@@ -558,8 +560,30 @@ onUnmounted(() => {
   justify-content: center;
   border: 0;
   border-radius: 50%;
-  background: var(--tf-dialog-close-bg, rgba(255, 255, 255, 0.18));
-  color: var(--tf-dialog-header-text, var(--color-bg-white));
+  -webkit-appearance: none;
+  appearance: none;
+  --el-button-bg-color: var(--tf-dialog-close-bg, rgba(255, 255, 255, 0.16));
+  --el-button-border-color: transparent;
+  --el-button-text-color: var(--tf-dialog-header-text, var(--color-bg-white));
+  --el-button-hover-bg-color: var(--tf-dialog-close-bg-hover, rgba(255, 255, 255, 0.24));
+  --el-button-hover-border-color: transparent;
+  --el-button-hover-text-color: var(--tf-dialog-header-text, var(--color-bg-white));
+  background: var(--tf-dialog-close-bg, rgba(255, 255, 255, 0.16)) !important;
+  background-color: var(--tf-dialog-close-bg, rgba(255, 255, 255, 0.16)) !important;
+  color: var(--tf-dialog-header-text, var(--color-bg-white)) !important;
+  box-shadow: none;
+}
+
+.mobile-dialog-sheet-close > span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--tf-dialog-close-icon-size, 18px);
+  height: var(--tf-dialog-close-icon-size, 18px);
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  color: inherit;
 }
 
 .mobile-dialog-sheet-close .el-icon,
@@ -585,12 +609,12 @@ onUnmounted(() => {
 
 .mobile-dialog-sheet-footer :deep(.el-button) {
   min-height: 42px;
-  font-size: var(--tf-button-font-size, 15px);
+  font-size: var(--tf-button-font-size, var(--tf-type-scale-15));
 }
 
 .mobile-dialog-sheet-footer :deep(.el-button.el-button--large) {
   min-height: 44px;
-  font-size: var(--tf-button-font-size, 16px);
+  font-size: var(--tf-button-font-size, var(--tf-type-scale-16));
 }
 
 .mobile-dialog-sheet-panel :deep(.el-form-item) {
@@ -607,6 +631,7 @@ onUnmounted(() => {
   line-height: 1.45;
   padding: 0 0 6px !important;
   margin: 0 !important;
+  font-size: var(--tf-font-label) !important;
   text-align: left !important;
   white-space: normal;
 }
@@ -701,12 +726,12 @@ onUnmounted(() => {
   }
 
   .mobile-dialog-sheet-title {
-    font-size: var(--tf-dialog-sheet-title-size, 16px);
+    font-size: var(--tf-dialog-sheet-title-size, var(--tf-font-dialog-title));
   }
 
   .mobile-dialog-sheet-panel :deep(.el-form-item__label) {
     padding-bottom: 5px !important;
-    font-size: 13px;
+    font-size: var(--tf-font-label) !important;
   }
 }
 

@@ -22,7 +22,7 @@
   }
 
   .title {
-    font-size: 42px;
+    font-size: var(--tf-type-scale-42);
     font-weight: bold;
     margin-bottom: 10px;
     display: flex;
@@ -31,12 +31,12 @@
     gap: 15px;
 
     .title-icon {
-      font-size: 48px;
+      font-size: var(--tf-type-scale-48);
     }
   }
 
   .subtitle {
-    font-size: 18px;
+    font-size: var(--tf-type-scale-18);
     opacity: 0.9;
     margin-bottom: 40px;
   }
@@ -58,10 +58,10 @@
     text-align: center;
     margin-top: 12px;
     opacity: 0.85;
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
 
     @media (max-width: 767px) {
-      font-size: 12px;
+      font-size: var(--tf-type-scale-12);
       padding: 0 15px;
       line-height: 1.6;
     }

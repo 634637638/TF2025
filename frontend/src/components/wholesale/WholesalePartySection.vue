@@ -412,13 +412,13 @@ const searchSalespeople = async (keyword = '') => {
   align-items: center;
   gap: 8px;
   margin: 0 0 16px;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   font-weight: 600;
   color: var(--tf-color-indigo-brand);
 }
 
 .section-title i {
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
 }
 
 .customer-search-results {
@@ -440,7 +440,7 @@ const searchSalespeople = async (keyword = '') => {
   padding: 16px 20px;
   text-align: center;
   color: var(--text-secondary);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -483,7 +483,7 @@ const searchSalespeople = async (keyword = '') => {
 }
 
 .customer-name {
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   font-weight: 600;
   color: var(--tf-color-neutral-800);
   line-height: 1.2;
@@ -491,7 +491,7 @@ const searchSalespeople = async (keyword = '') => {
 }
 
 .customer-phone {
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: var(--tf-color-slate-600);
   line-height: 1.2;
 }
@@ -501,7 +501,7 @@ const searchSalespeople = async (keyword = '') => {
   color: var(--tf-color-blue-700);
   padding: 2px 8px;
   border-radius: 999px;
-  font-size: 11px;
+  font-size: var(--tf-type-scale-11);
   font-weight: 600;
   line-height: 1.2;
   justify-self: end;
@@ -512,7 +512,7 @@ const searchSalespeople = async (keyword = '') => {
   color: white;
   padding: 2px 8px;
   border-radius: 999px;
-  font-size: 11px;
+  font-size: var(--tf-type-scale-11);
   font-weight: 600;
   line-height: 1.2;
   flex-shrink: 0;
@@ -526,7 +526,7 @@ const searchSalespeople = async (keyword = '') => {
   cursor: pointer;
   transition: background-color 0.2s;
   color: var(--success-color);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   font-weight: 500;
   display: flex;
   align-items: center;
@@ -564,7 +564,7 @@ const searchSalespeople = async (keyword = '') => {
   }
 
   :deep(.el-form-item__label) {
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
   }
 
   .customer-headline,
@@ -578,7 +578,7 @@ const searchSalespeople = async (keyword = '') => {
 
   .member-number,
   .vip-badge {
-    font-size: 8px;
+    font-size: var(--tf-type-scale-8);
     padding: 1px 5px;
     line-height: 1.1;
     white-space: nowrap;
@@ -589,16 +589,16 @@ const searchSalespeople = async (keyword = '') => {
   }
 
   .customer-name {
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
   }
 
   .customer-phone {
-    font-size: 11px;
+    font-size: var(--tf-type-scale-11);
   }
 
   .create-new-customer {
     padding: 10px 12px;
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
   }
 }
 </style>

@@ -460,9 +460,9 @@
                   class="mobile-card-actions"
                   @click.stop
                 >
-                  <button
+                  <el-button
                     v-if="fieldVisibility.subsidy_photos || canUpload"
-                    type="button"
+                    native-type="button"
                     class="mobile-action-mark mobile-photo-action"
                     :class="{ 'has-photos': photoCount(item) > 0 }"
                     :title="canUpload ? (photoCount(item) > 0 ? '查看/管理国补照片' : '上传国补照片') : '查看国补照片'"
@@ -473,7 +473,7 @@
                       v-if="photoCount(item) > 0"
                       class="mobile-photo-count"
                     >{{ photoCount(item) }}</span>
-                  </button>
+                  </el-button>
                   <el-button
                     v-if="canEdit"
                     type="primary"
@@ -971,11 +971,11 @@ onUnmounted(() => {
     align-items: center;
     gap: 8px;
     color: white;
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
   }
 
   .batch-info strong {
-    font-size: 16px;
+    font-size: var(--tf-type-scale-16);
     font-weight: 600;
   }
 
@@ -1004,7 +1004,7 @@ onUnmounted(() => {
     gap: 4px;
     padding: 3px 6px;
     border-radius: 4px;
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
     font-weight: 600;
     box-shadow: none;
   }
@@ -1064,7 +1064,7 @@ onUnmounted(() => {
     padding: 2px 10px;
     background-color: var(--warning-color);
     color: var(--color-bg-white);
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
     border-radius: 4px;
     cursor: pointer;
     transition: all 0.2s;
@@ -1094,7 +1094,7 @@ onUnmounted(() => {
 
   .photo-icon,
   .photo-icon-empty {
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
   }
 
   .photo-icon,
@@ -1105,12 +1105,12 @@ onUnmounted(() => {
   }
 
   .upload-hint {
-    font-size: 11px;
+    font-size: var(--tf-type-scale-11);
   }
 
   .photo-count {
     min-width: 14px;
-    font-size: 10px;
+    font-size: var(--tf-type-scale-10);
     font-weight: 600;
     background: rgba(255, 255, 255, 0.2);
     padding: 1px 4px;
@@ -1205,7 +1205,7 @@ onUnmounted(() => {
 
   .mobile-date {
     flex-shrink: 0;
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
     color: var(--tf-color-slate-500);
     font-weight: 700;
   }
@@ -1215,7 +1215,7 @@ onUnmounted(() => {
     overflow-wrap: anywhere;
     white-space: normal;
     color: var(--tf-color-slate-900);
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
     font-weight: 700;
   }
 
@@ -1225,7 +1225,7 @@ onUnmounted(() => {
     border-radius: 999px;
     background: linear-gradient(135deg, var(--tf-color-orange-tailwind-500), var(--tf-color-amber-500));
     color: var(--color-bg-white);
-    font-size: 11px;
+    font-size: var(--tf-type-scale-11);
     font-weight: 800;
     line-height: 1.2;
     box-shadow: 0 6px 12px rgba(249, 115, 22, 0.22);
@@ -1288,7 +1288,7 @@ onUnmounted(() => {
     border-radius: 999px;
     background: var(--tf-color-red-500);
     color: var(--color-bg-white);
-    font-size: 10px;
+    font-size: var(--tf-type-scale-10);
     font-weight: 800;
     line-height: 16px;
     box-shadow: 0 2px 6px rgba(239, 68, 68, 0.32);
@@ -1313,7 +1313,7 @@ onUnmounted(() => {
     background: linear-gradient(135deg, var(--tf-color-blue-tailwind-50), var(--tf-color-blue-tailwind-100));
     border-color: var(--tf-color-blue-tailwind-200);
     color: var(--tf-color-blue-700);
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
     font-weight: 800;
     box-shadow: 0 4px 10px rgba(37, 99, 235, 0.08);
   }
@@ -1324,7 +1324,7 @@ onUnmounted(() => {
     background: var(--color-bg-white);
     border-color: var(--tf-color-slate-300);
     color: var(--tf-color-slate-900);
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
     font-weight: 800;
     line-height: 1.3;
     box-shadow: 0 5px 12px rgba(15, 23, 42, 0.08);
@@ -1336,7 +1336,7 @@ onUnmounted(() => {
     background: var(--tf-color-slate-50);
     border-color: var(--tf-color-slate-200);
     color: var(--tf-color-slate-600);
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
     font-weight: 700;
   }
 
@@ -1344,7 +1344,7 @@ onUnmounted(() => {
     min-width: 0;
     overflow-wrap: anywhere;
     color: var(--tf-color-red-600);
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
     font-weight: 800;
   }
 
@@ -1356,7 +1356,7 @@ onUnmounted(() => {
     align-self: start;
     gap: 4px;
     color: var(--tf-color-slate-600);
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
     font-weight: 700;
     line-height: 1.35;
     overflow-wrap: anywhere;
@@ -1401,7 +1401,7 @@ onUnmounted(() => {
   .mobile-workflow-label {
     flex: 0 0 auto;
     color: var(--tf-color-slate-600);
-    font-size: 10px;
+    font-size: var(--tf-type-scale-10);
     font-weight: 700;
     white-space: nowrap;
   }
@@ -1411,7 +1411,7 @@ onUnmounted(() => {
     min-width: 0;
     margin: 0;
     padding: 0 7px;
-    font-size: 11px;
+    font-size: var(--tf-type-scale-11);
   }
 
   .mobile-card-actions {
@@ -1444,7 +1444,7 @@ onUnmounted(() => {
     height: 24px;
     padding: 0 6px;
     border-radius: 999px;
-    font-size: 10px;
+    font-size: var(--tf-type-scale-10);
     font-weight: 700;
   }
 
@@ -1499,7 +1499,7 @@ onUnmounted(() => {
     flex: 0 0 auto;
     font-weight: 600;
     color: var(--color-bg-white);
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
     line-height: 22px;
     padding: 0 7px;
     background: var(--tf-color-indigo-600);
@@ -1508,7 +1508,7 @@ onUnmounted(() => {
 
   .qrcode-value {
     flex: 0 0 auto;
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
     font-weight: 600;
     line-height: 20px;
     color: var(--tf-color-indigo-700);

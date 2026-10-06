@@ -1347,18 +1347,9 @@ const normalizeSearchId = (value: SearchId): number | undefined => {
 
 const showPendingStatusField = computed(() => canViewPreorderField('status'))
 const showPendingMatchedTimeField = computed(() => canViewPreorderField('matched_time'))
-const showMatchedStatusField = computed(() => shouldShowActionColumn(
-  canViewPreorderField('status'),
-  []
-))
-const showMatchedTimeField = computed(() => shouldShowActionColumn(
-  canViewPreorderField('matched_time'),
-  []
-))
-const showMatchedDeliveryField = computed(() => shouldShowActionColumn(
-  canViewPreorderField('delivered_time'),
-  []
-))
+const showMatchedStatusField = computed(() => canViewPreorderField('status'))
+const showMatchedTimeField = computed(() => canViewPreorderField('matched_time'))
+const showMatchedDeliveryField = computed(() => canViewPreorderField('delivered_time'))
 const showPendingActionField = computed(() => (
   !isMobile.value && shouldShowActionColumn(
     canViewPreorderField('operations'),

@@ -877,13 +877,13 @@ onMounted(() => {
 
   .stat-content {
     .stat-value {
-      font-size: 32px;
+      font-size: var(--tf-type-scale-32);
       font-weight: bold;
       margin-bottom: 8px;
     }
 
     .stat-label {
-      font-size: 14px;
+      font-size: var(--tf-type-scale-14);
       color: var(--color-info);
     }
   }
@@ -902,7 +902,7 @@ onMounted(() => {
 
       .dist-label {
         width: 80px;
-        font-size: 14px;
+        font-size: var(--tf-type-scale-14);
         color: var(--color-text-regular);
       }
 
@@ -965,7 +965,7 @@ onMounted(() => {
       padding: 15px;
       border-radius: 4px;
       font-family: 'Courier New', monospace;
-      font-size: 12px;
+      font-size: var(--tf-type-scale-12);
       line-height: 1.6;
       overflow-x: auto;
       white-space: pre-wrap;

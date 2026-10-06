@@ -145,23 +145,23 @@
         @click.stop
       >
         <div class="pagination">
-          <button
-            type="button"
+          <el-button
+            native-type="button"
             :disabled="currentPage === 1"
             class="btn btn-sm btn-outline-secondary"
             @click.stop="prevPage"
           >
             <i class="fas fa-chevron-left" />
-          </button>
+          </el-button>
           <span class="page-info">{{ currentPage }} / {{ totalPages }}</span>
-          <button
-            type="button"
+          <el-button
+            native-type="button"
             :disabled="currentPage === totalPages"
             class="btn btn-sm btn-outline-secondary"
             @click.stop="nextPage"
           >
             <i class="fas fa-chevron-right" />
-          </button>
+          </el-button>
         </div>
       </div>
     </div>
@@ -813,7 +813,12 @@ onMounted(async () => {
   await loadCategories()
   await loadLocalIcons()
   const currentClass = String(props.modelValue || '').trim()
-  if (currentClass && !allIcons.value.some(icon => icon.class === currentClass)) {
+  // Iconify 图标由 IconRenderer 直接从图标库渲染，不需要查询本地图标表。
+  if (
+    currentClass &&
+    !isIconifyIcon(currentClass) &&
+    !allIcons.value.some(icon => icon.class === currentClass)
+  ) {
     try {
       const response = await unifiedApi.get(`/icons/by-class?class=${encodeURIComponent(currentClass)}`, {
         showError: false
@@ -822,7 +827,7 @@ onMounted(async () => {
         updateLocalIconCache(response.data)
       }
     } catch (error) {
-      // 当前图标可能来自在线图标库，不在本地数据库中。
+      // 本地图标可能已被删除，当前值仍由 IconRenderer 保留展示。
     }
   }
 })
@@ -846,20 +851,20 @@ watch([searchQuery, selectedCategory], () => {
 .iconify {
   display: inline-block;
   vertical-align: middle;
-  font-size: 18px;
+  font-size: var(--tf-type-scale-18);
   width: 1em;
   height: 1em;
 }
 
 /* 确保图标网格中的图标大小一致 */
 .icon-item .iconify {
-  font-size: 24px;
+  font-size: var(--tf-type-scale-24);
   width: 24px;
   height: 24px;
 }
 
 .icon-item .icon-renderer {
-  font-size: 24px;
+  font-size: var(--tf-type-scale-24);
   width: 24px;
   height: 24px;
 }
@@ -890,7 +895,7 @@ watch([searchQuery, selectedCategory], () => {
 }
 
 .collapse-icon {
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: var(--tf-color-muted);
   transition: transform 0.3s;
 }
@@ -904,12 +909,12 @@ watch([searchQuery, selectedCategory], () => {
 }
 
 .current-icon {
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
   color: var(--tf-color-indigo-brand);
 }
 
 .collapse-hint {
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: var(--tf-color-gray-bootstrap-500);
 }
 
@@ -973,7 +978,7 @@ watch([searchQuery, selectedCategory], () => {
   cursor: pointer;
   transition: all 0.3s ease;
   background: var(--tf-color-surface-muted);
-  font-size: 18px;
+  font-size: var(--tf-type-scale-18);
   color: var(--tf-color-gray-bootstrap-700);
 }
 
@@ -1004,7 +1009,7 @@ watch([searchQuery, selectedCategory], () => {
   display: none;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
+  font-size: var(--tf-type-scale-10);
   box-shadow: var(--tf-button-danger-shadow);
 }
 
@@ -1027,7 +1032,7 @@ watch([searchQuery, selectedCategory], () => {
 }
 
 .page-info {
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   font-weight: 500;
   color: var(--tf-color-gray-bootstrap-700);
   min-width: 60px;
@@ -1049,7 +1054,7 @@ watch([searchQuery, selectedCategory], () => {
 }
 
 .loading-content i {
-  font-size: 32px;
+  font-size: var(--tf-type-scale-32);
   color: var(--tf-color-indigo-brand);
 }
 
@@ -1103,7 +1108,7 @@ watch([searchQuery, selectedCategory], () => {
   .icon-item {
     width: 40px;
     height: 40px;
-    font-size: 16px;
+    font-size: var(--tf-type-scale-16);
   }
 }
 </style>

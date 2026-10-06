@@ -628,7 +628,7 @@ defineExpose({ resetInteraction })
 
 .commission-info,
 .rate-info {
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   line-height: 1.5;
 }
 
@@ -667,7 +667,7 @@ defineExpose({ resetInteraction })
 
 .estimated-salary {
   color: var(--color-primary);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   font-weight: 600;
 }
 

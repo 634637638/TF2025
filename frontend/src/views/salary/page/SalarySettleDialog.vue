@@ -129,12 +129,12 @@ const paymentMethod = computed({
 
   .value {
     color: var(--tf-color-neutral-ant);
-    font-size: 16px;
+    font-size: var(--tf-type-scale-16);
     font-weight: 500;
 
     &.amount {
       color: var(--tf-color-red-ant);
-      font-size: 24px;
+      font-size: var(--tf-type-scale-24);
       font-weight: 600;
     }
   }
@@ -151,7 +151,7 @@ const paymentMethod = computed({
     display: block;
     margin-bottom: 8px;
     color: var(--tf-color-gray-ant-600);
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
     font-weight: 500;
   }
 }
@@ -166,7 +166,7 @@ const paymentMethod = computed({
   border: 1px solid var(--tf-color-gray-ant-400);
   border-radius: 6px;
   background: var(--tf-color-white);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   transition: border-color 0.2s, box-shadow 0.2s;
 
   &:focus {
@@ -181,13 +181,13 @@ const paymentMethod = computed({
     margin-bottom: 16px;
 
     label {
-      font-size: 13px;
+      font-size: var(--tf-type-scale-13);
     }
   }
 
   .form-control {
     padding: 8px 10px;
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
   }
 }
 </style>

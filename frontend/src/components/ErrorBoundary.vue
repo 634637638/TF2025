@@ -544,7 +544,7 @@ defineExpose({
 }
 
 .error-icon {
-  font-size: 48px;
+  font-size: var(--tf-type-scale-48);
   color: var(--color-danger);
   flex-shrink: 0;
 }
@@ -554,14 +554,14 @@ defineExpose({
 }
 
 .error-title {
-  font-size: 20px;
+  font-size: var(--tf-type-scale-20);
   font-weight: 600;
   color: var(--color-text-primary);
   margin: 0 0 8px 0;
 }
 
 .error-message {
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   color: var(--color-text-regular);
   margin: 0 0 24px 0;
   line-height: 1.6;
@@ -586,14 +586,14 @@ defineExpose({
 .error-details h4 {
   margin: 0 0 12px 0;
   color: var(--color-text-primary);
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
 }
 
 .error-details pre {
   background-color: var(--tf-color-surface);
   padding: 12px;
   border-radius: 4px;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: var(--color-text-regular);
   overflow-x: auto;
   white-space: pre-wrap;

@@ -13,6 +13,7 @@
 - [公共组件采用与例外](component-adoption-standard.md)
 - [CRUD 与数据刷新](crud-standards.md)
 - [视觉令牌](design-token-standard.md)
+- [全局文字与排版](typography-standards.md)
 - [客户搜索与姓名保护](customer-search-standard.md)
 - [报价页联系方式](price-contact-standard.md)
 - [数据实时刷新](data-freshness-standard.md)
@@ -23,6 +24,7 @@
 - [表单控件](form-control-standards.md)
 - [最新请求处理](latest-request-standard.md)
 - [菜单图标管理](menu-icon-management-standard.md)
+- [后台导航与面包屑视觉](navigation-standards.md)
 - [型号搜索](model-search-standard.md)
 - [通知](notification-standards.md)
 - [页面结构](page-structure-standards.md)
@@ -34,6 +36,7 @@
 - [安全与运行时审计](security-runtime-standards.md)
 - [Shared 经验分享](shared-standards.md)
 - [规范审计接入](standards-audit-guide.md)
+- 可视化入口：登录后台访问 `/standards`（详见[规范审计接入](standards-audit-guide.md)）
 - [标签页](tab-standards.md)
 - [全局时间工具与日期格式](time-standards.md)
 - [全局动效](motion-standards.md)
@@ -45,6 +48,7 @@
 - [主题切换](theme-standards.md)
 - [全局交互反馈](interaction-standards.md)
 - [统一页面结构](unified-page-structure.md)
+- [前端页面与功能单元台账](page-audit-inventory.md)
 
 ## 专项指南与记录
 

@@ -206,7 +206,7 @@
                   >
                     <i
                       class="fas fa-times"
-                      style="font-size: 12px; color: white;"
+                      style="font-size: var(--tf-type-scale-12); color: white;"
                     />
                   </div>
                 </div>
@@ -993,7 +993,7 @@ onUnmounted(() => {
     .drag-handle {
       cursor: move;
       color: var(--text-muted);
-      font-size: 18px;
+      font-size: var(--tf-type-scale-18);
       padding: 8px;
     }
 
@@ -1037,7 +1037,7 @@ onUnmounted(() => {
           justify-content: center;
           background: rgba(0, 0, 0, 0.5);
           color: var(--color-bg-white);
-          font-size: 12px;
+          font-size: var(--tf-type-scale-12);
           font-weight: 500;
         }
       }
@@ -1048,7 +1048,7 @@ onUnmounted(() => {
       min-width: 0;
 
       .banner-title {
-        font-size: 15px;
+        font-size: var(--tf-type-scale-15);
         font-weight: 500;
         color: var(--text-primary);
         margin: 0 0 4px;
@@ -1058,7 +1058,7 @@ onUnmounted(() => {
       }
 
       .banner-meta {
-        font-size: 13px;
+        font-size: var(--tf-type-scale-13);
         color: var(--text-muted);
         margin: 0;
 
@@ -1069,7 +1069,7 @@ onUnmounted(() => {
           margin-right: 16px;
 
           i {
-            font-size: 12px;
+            font-size: var(--tf-type-scale-12);
           }
         }
       }
@@ -1093,7 +1093,7 @@ onUnmounted(() => {
 
 // 提示文本
 .tip-text {
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: var(--text-muted);
   line-height: 1.5;
   display: block;
@@ -1149,7 +1149,7 @@ onUnmounted(() => {
     left: 4px;
     background: rgba(255, 107, 0, 0.9);
     color: var(--color-bg-white);
-    font-size: 11px;
+    font-size: var(--tf-type-scale-11);
     padding: 2px 6px;
     border-radius: 4px;
     font-weight: 500;
@@ -1188,12 +1188,12 @@ onUnmounted(() => {
     gap: 4px;
 
     i {
-      font-size: 20px;
+      font-size: var(--tf-type-scale-20);
       color: var(--tf-color-gray-element);
     }
 
     span {
-      font-size: 12px;
+      font-size: var(--tf-type-scale-12);
       color: var(--text-muted);
     }
   }
@@ -1240,7 +1240,7 @@ onUnmounted(() => {
         align-items: center;
         justify-content: center;
         padding: 0;
-        font-size: 15px;
+        font-size: var(--tf-type-scale-15);
       }
 
       .banner-image {
@@ -1256,7 +1256,7 @@ onUnmounted(() => {
 
         .banner-title {
           margin-bottom: 5px;
-          font-size: 14px;
+          font-size: var(--tf-type-scale-14);
           font-weight: 700;
           line-height: 1.25;
         }
@@ -1265,7 +1265,7 @@ onUnmounted(() => {
           display: flex;
           flex-wrap: wrap;
           gap: 5px;
-          font-size: 11px;
+          font-size: var(--tf-type-scale-11);
           line-height: 1.3;
 
           span {
@@ -1297,7 +1297,7 @@ onUnmounted(() => {
           margin: 0;
           padding: 8px 6px;
           justify-content: center;
-          font-size: 12px;
+          font-size: var(--tf-type-scale-12);
         }
       }
     }
@@ -1338,7 +1338,7 @@ onUnmounted(() => {
     margin-bottom: 8px;
     padding: 0 !important;
     color: var(--tf-color-slate-700);
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
     font-weight: 700;
     line-height: 1.4;
     text-align: left;
@@ -1364,7 +1364,7 @@ onUnmounted(() => {
 
   .tip-text {
     margin-top: 6px;
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
     line-height: 1.45;
   }
 

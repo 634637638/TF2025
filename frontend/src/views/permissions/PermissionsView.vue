@@ -498,6 +498,7 @@ const selectedDialogPermissions = ref<string[]>([])
 const selectedDialogMenuPermissions = ref<{ module_key: string; menu_visible: boolean | number }[]>([])
 const savingDialogPermissions = ref(false)
 const loadingPermissionDialog = ref(false)
+const dialogBulkPermissionType = ref('edit')
 
 // 角色字段权限弹窗状态
 const roleFieldPermissionDialogVisible = ref(false)
@@ -1605,6 +1606,89 @@ const isDialogMenuPermissionSelected = (moduleKey: string): boolean => {
   return selectedDialogMenuPermissionMap.value.get(moduleKey) === true
 }
 
+// 批量动作只作用于当前正在配置的角色，且只覆盖当前矩阵中已注册该动作的模块。
+const dialogActionPermissionTypes = computed(() => {
+  const types = new Set<string>()
+
+  permissionDialogMatrix.value.forEach((module) => {
+    module.permissions.forEach((permission) => {
+      const permissionType = permission.permission_type || permission.type
+      if (permissionType && permissionType !== 'view' && permissionType !== 'menu_view') {
+        types.add(permissionType)
+      }
+    })
+  })
+
+  return Array.from(types)
+})
+
+watch(dialogActionPermissionTypes, (permissionTypes) => {
+  if (!permissionTypes.includes(dialogBulkPermissionType.value)) {
+    dialogBulkPermissionType.value = permissionTypes[0] || ''
+  }
+}, { immediate: true })
+
+const toggleDialogActionAcrossModules = async (permissionType: string, enabled: boolean) => {
+  if (!permissionType || !permissionDialogMatrix.value.length || savingDialogPermissions.value) return
+
+  const targetModuleKeys = new Set(
+    permissionDialogMatrix.value
+      .filter(module => module.permissions.some((permission) => {
+        const type = permission.permission_type || permission.type
+        return type === permissionType
+      }))
+      .map(module => module.module_key || module.key)
+  )
+
+  if (targetModuleKeys.size === 0) {
+    info(`当前角色没有已注册${getPermissionNameEnhanced(permissionType)}权限的模块`)
+    return
+  }
+
+  if (!enabled) {
+    try {
+      await confirmAction(
+        `确定关闭角色“${selectedRoleForPermission.value?.name || ''}”在全部相关模块中的“${getPermissionNameEnhanced(permissionType)}”权限吗？`,
+        '批量关闭权限确认',
+        {
+          confirmButtonText: '确定关闭',
+          cancelButtonText: '取消',
+          type: 'warning',
+          customClass: 'message-box-unified'
+        }
+      )
+    } catch {
+      return
+    }
+  }
+
+  const previousPermissions = [...selectedDialogPermissions.value]
+
+  try {
+    savingDialogPermissions.value = true
+    const targetPermissionKeys = new Set(
+      Array.from(targetModuleKeys, moduleKey => `${moduleKey}:${permissionType}`)
+    )
+
+    selectedDialogPermissions.value = enabled
+      ? Array.from(new Set([
+          ...selectedDialogPermissions.value,
+          ...targetPermissionKeys
+        ]))
+      : selectedDialogPermissions.value.filter(permission => !targetPermissionKeys.has(permission))
+
+    await persistDialogPermissions()
+    success(`当前角色已${enabled ? '开启' : '关闭'}全部相关模块的${getPermissionNameEnhanced(permissionType)}权限`)
+  } catch (err: any) {
+    selectedDialogPermissions.value = previousPermissions
+    const errorMessage = err.response?.data?.message || err.message || '批量更新页面动作权限失败'
+    error(errorMessage)
+    logger.error('批量更新页面动作权限失败:', err)
+  } finally {
+    savingDialogPermissions.value = false
+  }
+}
+
 // 角色字段权限处理函数
 const handleRoleFieldPermissions = async (role: Role) => {
   selectedRoleForFieldPermission.value = role
@@ -2472,6 +2556,9 @@ Object.assign(permissionsPageContext, {
   selectedRoleForPermission,
   permissionDialogMatrix,
   savingDialogPermissions,
+  dialogBulkPermissionType,
+  dialogActionPermissionTypes,
+  toggleDialogActionAcrossModules,
   loadingPermissionDialog,
   loadPermissionDialog,
   closePermissionDialog,

@@ -524,7 +524,7 @@ defineExpose({ resetInteraction })
 .template-name-cell .status-badge {
   height: 18px;
   padding: 2px 6px;
-  font-size: 11px;
+  font-size: var(--tf-type-scale-11);
   line-height: 18px;
 }
 

@@ -350,7 +350,7 @@ const tableColumns = computed(() => {
     if (column.key === 'actions') {
       return shouldShowActionColumn(
         canViewField('actions'),
-        [true, canSell.value, canEdit.value, canDelete.value]
+        [canSell.value, canEdit.value, canDelete.value]
       )
     }
 
@@ -1683,7 +1683,7 @@ const _handleSelect = (item: InventoryItem) => {
   }
 
   .mobile-dialog-sheet-panel.inventory-edit-dialog .mobile-dialog-sheet-title {
-    font-size: 16px !important;
+    font-size: var(--tf-type-scale-16) !important;
   }
 
   .mobile-dialog-sheet-panel.inventory-edit-dialog .mobile-dialog-sheet-close {
@@ -1856,19 +1856,19 @@ const _handleSelect = (item: InventoryItem) => {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 20px;
+  font-size: var(--tf-type-scale-20);
 }
 
 .modal-title {
   margin: 0;
-  font-size: 24px;
+  font-size: var(--tf-type-scale-24);
   font-weight: 600;
   color: white;
 }
 
 .modal-subtitle {
   margin: 4px 0 0 0;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   color: rgba(255, 255, 255, 0.8);
   font-weight: 400;
 }
@@ -1885,7 +1885,7 @@ const _handleSelect = (item: InventoryItem) => {
   justify-content: center;
   cursor: pointer;
   transition: all 0.2s ease;
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
 }
 
 .modal-close-btn:hover {
@@ -1939,7 +1939,7 @@ const _handleSelect = (item: InventoryItem) => {
   align-items: center;
   justify-content: center;
   color: var(--tf-button-primary-color);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
 }
 
 .card-icon.price-icon {
@@ -1948,7 +1948,7 @@ const _handleSelect = (item: InventoryItem) => {
 
 .card-title {
   margin: 0;
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
   font-weight: 600;
   color: var(--admin-section-title-color);
 }
@@ -1984,7 +1984,7 @@ const _handleSelect = (item: InventoryItem) => {
 .table-cell {
   flex: 1;
   padding: 12px 16px;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   display: flex;
   align-items: center;
   min-height: 48px;
@@ -1998,7 +1998,7 @@ const _handleSelect = (item: InventoryItem) => {
   min-width: 120px;
   max-width: 120px;
   text-transform: uppercase;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   letter-spacing: 0.5px;
 }
 
@@ -2012,7 +2012,7 @@ const _handleSelect = (item: InventoryItem) => {
 .value-cell.price-cell {
   color: var(--tf-button-success-soft-color);
   font-weight: 700;
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
 }
 
 .full-width-row .label-cell {
@@ -2041,7 +2041,7 @@ const _handleSelect = (item: InventoryItem) => {
 }
 
 .info-label {
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   font-weight: 500;
   color: var(--admin-record-count-color);
   text-transform: uppercase;
@@ -2049,7 +2049,7 @@ const _handleSelect = (item: InventoryItem) => {
 }
 
 .info-value {
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   color: var(--admin-data-table-cell-color);
   font-weight: 500;
 }
@@ -2066,13 +2066,13 @@ const _handleSelect = (item: InventoryItem) => {
 }
 
 .price-label {
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   color: var(--admin-record-count-color);
   font-weight: 500;
 }
 
 .price-value {
-  font-size: 20px;
+  font-size: var(--tf-type-scale-20);
   font-weight: 700;
   color: var(--tf-button-success-soft-color);
 }
@@ -2087,7 +2087,7 @@ const _handleSelect = (item: InventoryItem) => {
   padding: 16px;
   border-radius: 8px;
   border-left: 4px solid var(--tf-button-primary-border);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   line-height: 1.6;
   color: var(--admin-data-table-cell-color);
   font-style: italic;
@@ -2100,13 +2100,13 @@ const _handleSelect = (item: InventoryItem) => {
   }
 
   .modal-title {
-    font-size: 20px;
+    font-size: var(--tf-type-scale-20);
   }
 
   .modal-icon {
     width: 40px;
     height: 40px;
-    font-size: 16px;
+    font-size: var(--tf-type-scale-16);
   }
 
   .details-container {
@@ -2156,7 +2156,7 @@ const _handleSelect = (item: InventoryItem) => {
     border-right: none;
     min-width: auto;
     max-width: none;
-    font-size: 11px;
+    font-size: var(--tf-type-scale-11);
   }
 
   .value-cell {
@@ -2199,7 +2199,7 @@ const _handleSelect = (item: InventoryItem) => {
   top: 50%;
   transform: translateY(-50%);
   color: var(--admin-record-count-color);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   z-index: 1;
 }
 
@@ -2208,7 +2208,7 @@ const _handleSelect = (item: InventoryItem) => {
   padding: 10px 12px;
   border: 2px solid var(--tf-button-neutral-border);
   border-radius: 8px;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   transition: all 0.3s ease;
   background: var(--tf-button-neutral-hover-bg);
 }
@@ -2250,7 +2250,7 @@ const _handleSelect = (item: InventoryItem) => {
 .condition-badge {
   padding: 4px 8px;
   border-radius: 12px;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   font-weight: 500;
   display: inline-block;
 }
@@ -2273,7 +2273,7 @@ const _handleSelect = (item: InventoryItem) => {
   align-items: center;
   padding: 5px 12px;
   border-radius: 12px;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   font-weight: 700;
   letter-spacing: 0.3px;
 }
@@ -2340,7 +2340,7 @@ const _handleSelect = (item: InventoryItem) => {
   border-radius: 6px;
   color: var(--tf-button-disabled-color);
   cursor: not-allowed;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
 }
 
 .permission-disabled:hover {
@@ -2385,7 +2385,7 @@ const _handleSelect = (item: InventoryItem) => {
   transform: translateY(-50%);
   color: var(--tf-color-muted);
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   z-index: 2;
 }
 
@@ -2400,7 +2400,7 @@ const _handleSelect = (item: InventoryItem) => {
   transform: translateY(-50%);
   color: var(--tf-color-muted);
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   z-index: 2;
 }
 
@@ -2430,7 +2430,7 @@ const _handleSelect = (item: InventoryItem) => {
   padding: 10px 12px;
   cursor: pointer;
   border-bottom: 1px solid var(--tf-color-surface-muted);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   color: var(--tf-color-gray-bootstrap-700);
   transition: all 0.2s ease;
 }
@@ -2531,13 +2531,13 @@ const _handleSelect = (item: InventoryItem) => {
 
         .brand {
           font-weight: 700;
-          font-size: 16px;
+          font-size: var(--tf-type-scale-16);
           color: var(--tf-button-primary-soft-color);
         }
 
         .model {
           font-weight: 600;
-          font-size: 14px;
+          font-size: var(--tf-type-scale-14);
           color: var(--admin-data-table-cell-color);
         }
       }
@@ -2573,7 +2573,7 @@ const _handleSelect = (item: InventoryItem) => {
         }
 
         .info-label {
-          font-size: 12px;
+          font-size: var(--tf-type-scale-12);
           font-weight: 500;
           color: var(--admin-record-count-color);
           text-transform: uppercase;
@@ -2581,7 +2581,7 @@ const _handleSelect = (item: InventoryItem) => {
         }
 
         .info-value {
-          font-size: 14px;
+          font-size: var(--tf-type-scale-14);
           font-weight: 500;
           color: var(--admin-data-table-cell-color);
           word-break: break-all;
@@ -2589,13 +2589,13 @@ const _handleSelect = (item: InventoryItem) => {
           &.price {
             color: var(--tf-button-success-soft-color);
             font-weight: 600;
-            font-size: 16px;
+            font-size: var(--tf-type-scale-16);
           }
 
           &.serial-number,
           &.imei {
             font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Consolas', monospace;
-            font-size: 12px;
+            font-size: var(--tf-type-scale-12);
             background: var(--admin-table-panel-bg);
             padding: 4px 8px;
             border-radius: 4px;
@@ -2730,7 +2730,7 @@ const _handleSelect = (item: InventoryItem) => {
 
 .device-header .device-brand {
   font-weight: 600;
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
   color: #2c3e50;
   flex: 1;
   white-space: nowrap;
@@ -2740,7 +2740,7 @@ const _handleSelect = (item: InventoryItem) => {
 
 .device-header .device-model {
   font-weight: 500;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   color: #6c757d;
   flex: 1;
   white-space: nowrap;
@@ -2751,11 +2751,11 @@ const _handleSelect = (item: InventoryItem) => {
 /* 小屏幕优化 */
 @media (max-width: 479px) {
   .device-header .device-brand {
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
   }
 
   .device-header .device-model {
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
   }
 }
 
@@ -2771,7 +2771,7 @@ const _handleSelect = (item: InventoryItem) => {
   justify-content: space-between;
   align-items: center;
   gap: 8px;
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
 }
 
 .device-info .info-row .label {
@@ -2797,7 +2797,7 @@ const _handleSelect = (item: InventoryItem) => {
 }
 
 .device-info .info-row .value.remark {
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: #6c757d;
   text-align: left;
   line-height: 1.4;
@@ -2806,20 +2806,20 @@ const _handleSelect = (item: InventoryItem) => {
 /* 小屏幕优化 */
 @media (max-width: 479px) {
   .device-info .info-row {
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
   }
 
   .device-info .info-row .label {
     min-width: 50px;
-    font-size: 11px;
+    font-size: var(--tf-type-scale-11);
   }
 
   .device-info .info-row .value {
-    font-size: 11px;
+    font-size: var(--tf-type-scale-11);
   }
 
   .device-info .info-row .value.remark {
-    font-size: 10px;
+    font-size: var(--tf-type-scale-10);
   }
 }
 
@@ -2867,19 +2867,19 @@ const _handleSelect = (item: InventoryItem) => {
   }
 
   .modal-title {
-    font-size: 18px;
+    font-size: var(--tf-type-scale-18);
     line-height: 1.3;
   }
 
   .modal-subtitle {
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
     margin-top: 2px;
   }
 
   .modal-icon {
     width: 32px;
     height: 32px;
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
   }
 
   .modal-close-btn {
@@ -2908,11 +2908,11 @@ const _handleSelect = (item: InventoryItem) => {
   .card-icon {
     width: 32px;
     height: 32px;
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
   }
 
   .card-title {
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
   }
 
   .card-content {
@@ -2920,17 +2920,17 @@ const _handleSelect = (item: InventoryItem) => {
   }
 
   .info-table {
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
   }
 
   .table-cell {
     padding: 8px 12px;
     min-height: 36px;
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
   }
 
   .table-cell.label-cell {
-    font-size: 11px;
+    font-size: var(--tf-type-scale-11);
     min-width: 80px;
     max-width: 80px;
   }
@@ -2962,9 +2962,9 @@ const _handleSelect = (item: InventoryItem) => {
     justify-content: center;
   }
 
-  .pagination button,
+  .pagination .el-button,
   .pagination select {
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
     padding: 6px 10px;
   }
 
@@ -2983,11 +2983,11 @@ const _handleSelect = (item: InventoryItem) => {
   }
 
   .modal-title {
-    font-size: 18px;
+    font-size: var(--tf-type-scale-18);
   }
 
   .modal-subtitle {
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
   }
 
   .inventory-modal-body {
@@ -3009,16 +3009,16 @@ const _handleSelect = (item: InventoryItem) => {
   }
 
   .info-table {
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
   }
 
   .table-cell {
     padding: 8px 6px;
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
   }
 
   .table-cell.label-cell {
-    font-size: 11px;
+    font-size: var(--tf-type-scale-11);
     min-width: 70px;
     max-width: 70px;
   }
@@ -3079,7 +3079,7 @@ const _handleSelect = (item: InventoryItem) => {
   }
 
   .header-actions .el-button span {
-    font-size: 9px;
+    font-size: var(--tf-type-scale-9);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: clip;
@@ -3110,21 +3110,21 @@ const _handleSelect = (item: InventoryItem) => {
   .modal-icon {
     width: 36px;
     height: 36px;
-    font-size: 16px;
+    font-size: var(--tf-type-scale-16);
   }
 
   .modal-title {
-    font-size: 16px;
+    font-size: var(--tf-type-scale-16);
   }
 
   .modal-subtitle {
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
   }
 
   .modal-close-btn {
     width: 32px;
     height: 32px;
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
   }
 
   .inventory-modal-body {
@@ -3150,11 +3150,11 @@ const _handleSelect = (item: InventoryItem) => {
   .card-icon {
     width: 28px;
     height: 28px;
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
   }
 
   .card-title {
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
   }
 
   .card-content {
@@ -3201,7 +3201,7 @@ const _handleSelect = (item: InventoryItem) => {
     text-align: left;
     font-weight: 600;
     color: #64748b;
-    font-size: 11px;
+    font-size: var(--tf-type-scale-11);
     display: flex;
     align-items: center;
     background: #f8fafc;
@@ -3215,7 +3215,7 @@ const _handleSelect = (item: InventoryItem) => {
     text-align: left;
     font-weight: 500;
     color: #1e293b;
-    font-size: 11px;
+    font-size: var(--tf-type-scale-11);
     word-break: break-word;
     display: flex;
     align-items: center;
@@ -3251,18 +3251,18 @@ const _handleSelect = (item: InventoryItem) => {
 
   /* 机况徽章 */
   .condition-badge {
-    font-size: 11px;
+    font-size: var(--tf-type-scale-11);
     padding: 3px 8px;
   }
 
   /* 价格单元格 */
   .price-cell {
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
   }
 
   /* 备注卡片 */
   .remarks-card .remarks-text {
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
     line-height: 1.5;
   }
 
@@ -3275,17 +3275,17 @@ const _handleSelect = (item: InventoryItem) => {
   }
 
   .modal-title {
-    font-size: 15px;
+    font-size: var(--tf-type-scale-15);
   }
 
   .modal-subtitle {
-    font-size: 11px;
+    font-size: var(--tf-type-scale-11);
   }
 
   .modal-icon {
     width: 32px;
     height: 32px;
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
   }
 
   .details-container {
@@ -3300,11 +3300,11 @@ const _handleSelect = (item: InventoryItem) => {
   .card-icon {
     width: 26px;
     height: 26px;
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
   }
 
   .card-title {
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
   }
 
   .card-content {
@@ -3320,21 +3320,21 @@ const _handleSelect = (item: InventoryItem) => {
   }
 
   .table-cell.label-cell {
-    font-size: 10px;
+    font-size: var(--tf-type-scale-10);
     min-width: 45px;
   }
 
   .table-cell.value-cell {
-    font-size: 11px;
+    font-size: var(--tf-type-scale-11);
   }
 
   .condition-badge {
-    font-size: 10px;
+    font-size: var(--tf-type-scale-10);
     padding: 2px 6px;
   }
 
   .price-cell {
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
   }
 
 }

@@ -488,7 +488,7 @@
                 :step="10"
                 :controls="false"
               />
-              <span style="margin-left: 10px; color: #909399; font-size: 12px">
+              <span style="margin-left: 10px; color: #909399; font-size: var(--tf-type-scale-12)">
                 每批次处理的数据量
               </span>
             </el-form-item>
@@ -1395,7 +1395,7 @@ onBeforeUnmount(() => {
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 24px;
+          font-size: var(--tf-type-scale-24);
           backdrop-filter: blur(10px);
         }
 
@@ -1406,7 +1406,7 @@ onBeforeUnmount(() => {
 
           p {
             margin: 5px 0 0 0;
-            font-size: 14px;
+            font-size: var(--tf-type-scale-14);
             opacity: 0.9;
           }
         }
@@ -1422,10 +1422,10 @@ onBeforeUnmount(() => {
           display: flex;
           align-items: center;
           gap: 8px;
-          font-size: 14px;
+          font-size: var(--tf-type-scale-14);
 
           i {
-            font-size: 16px;
+            font-size: var(--tf-type-scale-16);
             opacity: 0.8;
           }
         }
@@ -1439,7 +1439,7 @@ onBeforeUnmount(() => {
           color: var(--tf-button-primary-soft-color);
           border: none;
           padding: 12px 30px;
-          font-size: 15px;
+          font-size: var(--tf-type-scale-15);
           font-weight: 600;
           transition: all 0.3s ease;
 
@@ -1502,7 +1502,7 @@ onBeforeUnmount(() => {
         .selected-info {
           display: flex;
           gap: 30px;
-          font-size: 14px;
+          font-size: var(--tf-type-scale-14);
         }
       }
 
@@ -1518,7 +1518,7 @@ onBeforeUnmount(() => {
 
         pre {
           margin: 0;
-          font-size: 12px;
+          font-size: var(--tf-type-scale-12);
           max-height: 200px;
           overflow: auto;
         }

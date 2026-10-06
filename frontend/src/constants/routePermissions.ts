@@ -5,6 +5,7 @@ export const ROUTE_PERMISSION_MAP: Record<string, string[]> = {
   '/suppliers': ['suppliers:view'],
   '/payments': ['supplier-payments:view'],
   '/system': ['system:view'],
+  '/standards': ['standards:view'],
   '/git-management': ['git-management:view'],
   '/backup': ['backup:view'],
   '/data-optimization': ['data-check:view'],

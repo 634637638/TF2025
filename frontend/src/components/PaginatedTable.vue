@@ -367,7 +367,7 @@ defineExpose({
     background: var(--el-color-primary-light-9);
     color: var(--el-color-primary);
     border-radius: 4px;
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
   }
 
   &__table-wrapper {

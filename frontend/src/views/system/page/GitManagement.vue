@@ -1122,14 +1122,14 @@ watch(canView, async (value) => {
 }
 
 .stat-value {
-  font-size: 24px;
+  font-size: var(--tf-type-scale-24);
   font-weight: 600;
   color: var(--color-text-primary);
   margin-bottom: 4px;
 }
 
 .stat-label {
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   color: var(--color-info);
 }
 
@@ -1170,7 +1170,7 @@ watch(canView, async (value) => {
   align-items: center;
   gap: 8px;
   margin: 0;
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
   font-weight: 600;
   color: var(--color-text-primary);
 }
@@ -1197,7 +1197,7 @@ watch(canView, async (value) => {
 
 .change-file {
   flex: 1;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   color: var(--color-text-regular);
   font-family: 'Courier New', monospace;
   word-break: break-all;
@@ -1223,7 +1223,7 @@ watch(canView, async (value) => {
   align-items: center;
   justify-content: center;
   color: white;
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
   flex-shrink: 0;
 }
 
@@ -1232,7 +1232,7 @@ watch(canView, async (value) => {
 }
 
 .commit-message {
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   color: var(--color-text-primary);
   margin-bottom: 6px;
   font-weight: 500;
@@ -1243,7 +1243,7 @@ watch(canView, async (value) => {
   padding: 8px 12px;
   background: var(--tf-color-surface);
   border-radius: 6px;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
 }
 
 .detail-section {
@@ -1272,7 +1272,7 @@ watch(canView, async (value) => {
   display: flex;
   flex-wrap: wrap;
   gap: 16px;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: var(--color-info);
 }
 
@@ -1315,14 +1315,14 @@ watch(canView, async (value) => {
 }
 
 .recent-message {
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   color: var(--color-text-primary);
   margin-bottom: 4px;
   font-weight: 500;
 }
 
 .recent-time {
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: var(--color-info);
 }
 
@@ -1335,7 +1335,7 @@ watch(canView, async (value) => {
   align-items: center;
   gap: 6px;
   margin-bottom: 8px;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   color: var(--color-text-regular);
   font-weight: 500;
 }

@@ -77,13 +77,13 @@ interface UseRefreshDataReturn {
  * </script>
  *
  * <template>
- *   <button @click="handleRefresh" :disabled="refreshing">
+ *   <el-button native-type="button" @click="handleRefresh" :disabled="refreshing">
  *     <InlineLoading v-if="refreshing" text="刷新中..." size="small" variant="inherit" />
  *     <template v-else>
  *       <i class="fas fa-sync-alt"></i>
  *       刷新
  *     </template>
- *   </button>
+ *   </el-button>
  * </template>
  * ```
  */

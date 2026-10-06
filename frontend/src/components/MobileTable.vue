@@ -439,14 +439,14 @@ defineExpose({
 
 .mobile-table__card-title {
   margin: 0;
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
   font-weight: 600;
   color: var(--el-text-color-primary);
 }
 
 .mobile-table__card-subtitle {
   margin-top: 4px;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   color: var(--el-text-color-secondary);
 }
 
@@ -464,7 +464,7 @@ defineExpose({
 
 .mobile-table__field-label {
   min-width: 80px;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   color: var(--el-text-color-secondary);
   font-weight: 500;
   flex-shrink: 0;
@@ -472,7 +472,7 @@ defineExpose({
 
 .mobile-table__field-value {
   flex: 1;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   color: var(--el-text-color-primary);
   word-break: break-all;
 }
@@ -504,15 +504,15 @@ defineExpose({
 
   .mobile-table__field-label {
     min-width: 70px;
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
   }
 
   .mobile-table__field-value {
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
   }
 
   .mobile-table__mobile-action-btn {
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
     padding: 6px 12px;
   }
 }
@@ -526,7 +526,7 @@ defineExpose({
   .mobile-table__mobile-action-btn {
     flex: 1;
     min-width: 0;
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
     padding: 6px 8px;
   }
 }

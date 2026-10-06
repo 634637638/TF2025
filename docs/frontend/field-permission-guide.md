@@ -23,7 +23,7 @@ await init()
 - `isFieldVisible(moduleKey, fieldKey)` 控制字段是否展示。
 - `isFieldEditable(moduleKey, fieldKey)` 只在字段可见且字段被列入 `editable_fields` 时返回 `true`。
 - `getHiddenFields(moduleKey)` 和 `filterFieldsByPermission(...)` 用于统一过滤。
-- `shouldShowActionColumn(fieldVisible, actionPermissions)` 用于计算字段列是否需要承载有权限的操作按钮。
+- `shouldShowActionColumn(fieldVisible, actionPermissions)` 用于计算操作列是否展示。
 
 具体模块名与字段 ID 应使用页面注册值，不要依赖短名称猜测兄弟页面的字段配置。
 
@@ -35,7 +35,9 @@ await init()
 
 - 字段权限决定数据列是否可见、字段是否可编辑。
 - 页面动作权限决定创建、编辑、审批、到账、上传等操作能否执行。
-- 如果一个字段列承载对应操作，列可见性按“字段可见或至少一个列内动作获权”计算；按钮仍单独校验自己的动作权限。
+- 所有业务操作列、卡片操作区和手机展开操作区必须使用公共 `shouldShowActionColumn(fieldVisible, actionPermissions)`，列可见性按“操作字段可见或至少一个列内动作获权”计算；禁止页面自行写 AND 条件。按钮仍单独校验自己的动作权限。
+- 关闭操作字段后，只要用户仍拥有编辑、删除、匹配等任一动作权限，PC 操作列和手机展开操作区仍保留对应操作入口。
+- 普通业务字段（例如状态、时间、金额）只由自身字段权限控制，不能因为用户拥有某个动作权限而被强制显示。
 
 ## 后端边界
 

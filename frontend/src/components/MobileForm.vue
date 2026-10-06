@@ -743,7 +743,7 @@ defineExpose({
 
         .el-input__inner {
           min-height: 44px;
-          font-size: 16px; /* 防止iOS自动缩放 */
+          font-size: var(--tf-type-scale-16); /* 防止iOS自动缩放 */
         }
 
         .el-input-number {
@@ -765,7 +765,7 @@ defineExpose({
 }
 
 .field-title {
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
   font-weight: 600;
   color: var(--el-text-color-primary);
   margin-bottom: 16px;
@@ -797,7 +797,7 @@ defineExpose({
 
 .field-tip {
   margin-top: 4px;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: var(--el-text-color-secondary);
 
   &.error-tip {
@@ -825,7 +825,7 @@ defineExpose({
     .el-button {
       flex: 1;
       min-height: 44px;
-      font-size: 16px;
+      font-size: var(--tf-type-scale-16);
     }
   }
 }
@@ -847,7 +847,7 @@ defineExpose({
   }
 
   .el-icon {
-    font-size: 24px;
+    font-size: var(--tf-type-scale-24);
   }
 }
 
@@ -893,7 +893,7 @@ $mobile-form-breakpoints: (
     }
 
     .field-tip {
-      font-size: 13px;
+      font-size: var(--tf-type-scale-13);
     }
 
     .form-actions-container {

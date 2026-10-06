@@ -1156,20 +1156,20 @@ watch(
 }
 
 .device-model {
-  font-size: 1rem;
+  font-size: var(--tf-type-scale-1rem);
   font-weight: 600;
   color: var(--tf-color-heading);
   margin-bottom: 6px;
 }
 
 .device-specs {
-  font-size: 0.875rem;
+  font-size: var(--tf-type-scale-0-875rem);
   color: var(--tf-color-muted);
   margin-bottom: 8px;
 }
 
 .device-identifiers {
-  font-size: 0.75rem;
+  font-size: var(--tf-type-scale-0-75rem);
   color: var(--tf-color-gray-bootstrap-500);
 
   span {
@@ -1180,13 +1180,13 @@ watch(
     word-break: break-all;
 
     i {
-      font-size: 0.875rem;
+      font-size: var(--tf-type-scale-0-875rem);
     }
   }
 }
 
 .device-customer {
-  font-size: 0.8125rem;
+  font-size: var(--tf-type-scale-0-8125rem);
   color: var(--tf-color-indigo-brand);
   margin-top: 4px;
   padding-top: 8px;
@@ -1200,7 +1200,7 @@ watch(
     word-break: break-all;
 
     i {
-      font-size: 0.875rem;
+      font-size: var(--tf-type-scale-0-875rem);
     }
   }
 }
@@ -1210,7 +1210,7 @@ watch(
 }
 
 .device-price {
-  font-size: 1.25rem;
+  font-size: var(--tf-type-scale-1-25rem);
   font-weight: 700;
   color: var(--tf-color-heading);
   margin-bottom: 8px;
@@ -1220,7 +1220,7 @@ watch(
   display: inline-block;
   padding: 4px 12px;
   border-radius: 12px;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   font-weight: 500;
 
   &.eligible {
@@ -1251,7 +1251,7 @@ watch(
 }
 
 .confirm-step h3 {
-  font-size: 1.25rem;
+  font-size: var(--tf-type-scale-1-25rem);
   font-weight: 600;
   color: var(--tf-color-heading);
   margin-bottom: 20px;
@@ -1272,7 +1272,7 @@ watch(
   width: 100px;
   flex-shrink: 0;
   color: var(--tf-color-muted);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   font-weight: 500;
 }
 
@@ -1280,7 +1280,7 @@ watch(
   flex: 1;
   min-width: 0;
   color: var(--tf-color-heading);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   font-weight: 500;
   word-break: break-word;
 }
@@ -1297,7 +1297,7 @@ watch(
   }
 
   :deep(.el-input__inner) {
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
   }
 
   &.has-value :deep(.el-input__wrapper) {
@@ -1320,7 +1320,7 @@ watch(
   gap: 8px;
   cursor: pointer;
   user-select: none;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   color: var(--tf-color-gray-bootstrap-700);
   padding: 8px 12px;
   background: var(--color-bg-white);
@@ -1366,7 +1366,7 @@ watch(
 
 .inline-item .info-value {
   color: var(--tf-color-heading);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   font-weight: 500;
 }
 
@@ -1449,7 +1449,7 @@ watch(
   gap: 2px;
   background: rgba(15, 23, 42, 0.34);
   color: var(--color-bg-white);
-  font-size: 10px;
+  font-size: var(--tf-type-scale-10);
   font-weight: 600;
   opacity: 0;
   transition: opacity 0.18s ease;
@@ -1472,12 +1472,12 @@ watch(
   border-radius: 50%;
   background: rgba(220, 53, 69, 0.9);
   color: var(--color-bg-white);
-  font-size: 10px;
+  font-size: var(--tf-type-scale-10);
 }
 
 .photo-action-hint {
   margin-top: 8px;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: var(--tf-color-slate-500);
 }
 
@@ -1489,14 +1489,14 @@ watch(
 .final-price {
   color: var(--tf-color-red-500);
   font-weight: 700;
-  font-size: 1.2rem;
+  font-size: var(--tf-type-scale-1-2rem);
 }
 
 .subsidy-warning,
 .existing-subsidy-warning {
   padding: 10px 12px;
   border-radius: 8px;
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
 }
 
 .subsidy-warning {
@@ -1507,7 +1507,7 @@ watch(
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   font-weight: 500;
 }
 
@@ -1519,13 +1519,13 @@ watch(
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   font-weight: 500;
 }
 
 .price-diff-hint {
   margin-left: 8px;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: var(--tf-color-amber-500);
   font-weight: 500;
   word-break: break-word;
@@ -1617,7 +1617,7 @@ watch(
 
   .price-diff-hint {
     margin-top: 4px;
-    font-size: 11px;
+    font-size: var(--tf-type-scale-11);
     text-align: left;
     white-space: nowrap;
   }
@@ -1668,7 +1668,7 @@ watch(
     align-items: flex-start;
     justify-content: flex-end;
     padding: 6px;
-    font-size: 9px;
+    font-size: var(--tf-type-scale-9);
   }
 
   .photo-viewer-footer {

@@ -699,7 +699,7 @@ watch(
 .batch-count-hint {
   margin-top: 8px;
   color: var(--el-text-color-secondary);
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   line-height: 1.5;
 }
 
@@ -738,7 +738,7 @@ watch(
   margin: 0;
   padding-left: 10px;
   color: var(--el-text-color-primary);
-  font-size: 15px;
+  font-size: var(--tf-type-scale-15);
   font-weight: 700;
   line-height: 24px;
 }
@@ -761,7 +761,7 @@ watch(
 .stock-in-dialog .field-hint {
   margin-top: 4px;
   color: var(--el-text-color-secondary);
-  font-size: 11px;
+  font-size: var(--tf-type-scale-11);
   line-height: 1.4;
 }
 
@@ -776,7 +776,7 @@ watch(
   }
 
   .stock-in-dialog .stock-in-section__title {
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
   }
 }
 </style>

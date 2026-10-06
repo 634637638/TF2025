@@ -1438,7 +1438,7 @@ onMounted(() => {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      font-size: 22px;
+      font-size: var(--tf-type-scale-22);
       color: var(--color-primary);
     }
 
@@ -1447,7 +1447,7 @@ onMounted(() => {
       flex: 1;
 
       h3 {
-        font-size: 15px;
+        font-size: var(--tf-type-scale-15);
         font-weight: 600;
         color: var(--color-text-primary);
         margin: 0 0 5px;
@@ -1457,7 +1457,7 @@ onMounted(() => {
         display: flex;
         flex-wrap: wrap;
         gap: 4px 10px;
-        font-size: 12px;
+        font-size: var(--tf-type-scale-12);
 
         .stat-item {
           color: var(--color-info);
@@ -1491,7 +1491,7 @@ onMounted(() => {
     border-bottom: 1px solid var(--color-border-light);
 
     h2 {
-      font-size: 20px;
+      font-size: var(--tf-type-scale-20);
       font-weight: 600;
       color: var(--color-text-primary);
       margin: 0;
@@ -1518,12 +1518,12 @@ onMounted(() => {
     border-radius: 8px;
 
     i {
-      font-size: 64px;
+      font-size: var(--tf-type-scale-64);
       margin-bottom: 16px;
     }
 
     p {
-      font-size: 16px;
+      font-size: var(--tf-type-scale-16);
       margin: 0;
     }
   }
@@ -1552,7 +1552,7 @@ onMounted(() => {
           }
 
           .group-count {
-            font-size: 14px;
+            font-size: var(--tf-type-scale-14);
             color: var(--color-danger);
           }
         }
@@ -1614,7 +1614,7 @@ onMounted(() => {
                 display: inline-block;
                 padding: 4px 12px;
                 border-radius: 4px;
-                font-size: 12px;
+                font-size: var(--tf-type-scale-12);
                 font-weight: 600;
 
                 &.badge-primary {
@@ -1685,7 +1685,7 @@ onMounted(() => {
     border-bottom: 1px solid var(--color-border-light);
 
     h2 {
-      font-size: 20px;
+      font-size: var(--tf-type-scale-20);
       font-weight: 600;
       color: var(--color-text-primary);
       margin: 0;
@@ -1706,7 +1706,7 @@ onMounted(() => {
       .duplicate-summary {
         display: flex;
         gap: 16px;
-        font-size: 14px;
+        font-size: var(--tf-type-scale-14);
 
         .summary-item {
           display: flex;

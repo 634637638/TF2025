@@ -14,20 +14,20 @@
       </template>
 
       <template #actions>
-        <button
-          type="button"
-          class="price-header-action price-header-action--notice"
+        <el-button
+          native-type="button"
+          class="price-header-action price-header-action--notice tf-button--warning"
           @click="showNoticeDialog = true"
         >
           <el-icon class="btn-icon">
             <WarningFilled />
           </el-icon>
           <span class="btn-text">调货须知</span>
-        </button>
-        <button
+        </el-button>
+        <el-button
           v-if="passwordVerified"
-          type="button"
-          class="price-header-action price-header-action--inventory"
+          native-type="button"
+          class="price-header-action price-header-action--inventory tf-button--view"
           :class="{ active: showInStockOnly }"
           :disabled="isGenerating || allResults.length === 0"
           :aria-pressed="showInStockOnly"
@@ -38,10 +38,11 @@
             <Box v-else />
           </el-icon>
           <span class="btn-text">{{ showInStockOnly ? '全部' : '在库' }}</span>
-        </button>
-        <button
-          type="button"
-          class="price-header-action price-header-action--download"
+        </el-button>
+        <el-button
+          native-type="button"
+          class="price-header-action price-header-action--download tf-button--export"
+          :loading="isGenerating"
           :disabled="isGenerating || searchResults.length === 0"
           @click="downloadAsImage"
         >
@@ -56,12 +57,9 @@
             v-else
             class="btn-content loading"
           >
-            <InlineLoading
-              text="生成中..."
-              size="small"
-            />
+            生成中...
           </span>
-        </button>
+        </el-button>
       </template>
     </PublicPriceHeader>
 
@@ -425,17 +423,17 @@
         </div>
       </div>
       <template #footer>
-        <el-button @click="toggleIOSImageMode">
+        <el-button class="tf-button--neutral" @click="toggleIOSImageMode">
           长按保存
         </el-button>
         <el-button
-          type="primary"
+          class="tf-button--manage"
           @click="shareIOSImage"
         >
           我要分享
         </el-button>
         <el-button
-          type="primary"
+          class="tf-button--neutral"
           @click="closeIOSImageModal"
         >
           关闭
@@ -904,35 +902,6 @@ const saveImageToGallery = async (canvas: HTMLCanvasElement) => {
   })
 }
 
-const applyContactImageStyles = (clonedDocument: Document) => {
-  const card = clonedDocument.querySelector<HTMLElement>('.contact-card')
-  if (!card) return
-
-  card.style.setProperty('background', 'linear-gradient(135deg, #e6f0f4 0%, #dce9ee 100%)', 'important')
-  card.style.setProperty('border', '1px solid #c7d8e0', 'important')
-  card.style.setProperty('border-radius', '10px', 'important')
-  card.style.setProperty('box-shadow', 'none', 'important')
-  card.style.setProperty('display', 'block', 'important')
-  card.style.setProperty('height', 'auto', 'important')
-  card.style.setProperty('min-height', '0', 'important')
-  card.style.setProperty('overflow', 'visible', 'important')
-  const grid = card.querySelector<HTMLElement>('.contact-grid')
-  grid?.style.setProperty('display', 'grid', 'important')
-  grid?.style.setProperty('grid-template-columns', 'repeat(2, minmax(0, 1fr))', 'important')
-  grid?.style.setProperty('visibility', 'visible', 'important')
-  card.querySelectorAll<HTMLElement>('.contact-title').forEach((el) => {
-    el.style.setProperty('color', '#334155', 'important')
-  })
-  card.querySelectorAll<HTMLElement>('.contact-link').forEach((el) => {
-    el.style.setProperty('display', 'flex', 'important')
-    el.style.setProperty('justify-content', 'space-between', 'important')
-    el.style.setProperty('height', 'auto', 'important')
-    el.style.setProperty('min-height', '48px', 'important')
-    el.style.setProperty('visibility', 'visible', 'important')
-    el.style.setProperty('opacity', '1', 'important')
-  })
-}
-
 // Safari 对 html2canvas 克隆后的表格布局会重新计算，显式固定生成图宽度和五列宽度，避免价格列被裁切。
 const applyPriceTableImageStyles = (clonedDocument: Document) => {
   const results = clonedDocument.querySelector<HTMLElement>('.results-list.generating-image')
@@ -1129,7 +1098,6 @@ const downloadAsImage = async () => {
       logging: false,
       allowTaint: true,
       onclone: (clonedDocument) => {
-        applyContactImageStyles(clonedDocument)
         applyPriceTableImageStyles(clonedDocument)
       }
     })

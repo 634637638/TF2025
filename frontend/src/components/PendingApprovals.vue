@@ -548,7 +548,7 @@ defineExpose({
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 20px;
+        font-size: var(--tf-type-scale-20);
         color: white;
 
         &.attendance {
@@ -568,14 +568,14 @@ defineExpose({
         flex: 1;
 
         .card-value {
-          font-size: 24px;
+          font-size: var(--tf-type-scale-24);
           font-weight: 700;
           color: white;
           line-height: 1.2;
         }
 
         .card-label {
-          font-size: 12px;
+          font-size: var(--tf-type-scale-12);
           color: rgba(255, 255, 255, 0.9);
         }
       }
@@ -592,7 +592,7 @@ defineExpose({
         align-items: center;
         justify-content: center;
         color: white;
-        font-size: 12px;
+        font-size: var(--tf-type-scale-12);
         animation: bell-ring 1s ease-in-out infinite;
 
         @keyframes bell-ring {
@@ -623,7 +623,7 @@ defineExpose({
 
       h4 {
         margin: 0;
-        font-size: 16px;
+        font-size: var(--tf-type-scale-16);
         color: var(--tf-color-heading);
         display: flex;
         align-items: center;
@@ -669,7 +669,7 @@ defineExpose({
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 16px;
+          font-size: var(--tf-type-scale-16);
           flex-shrink: 0;
         }
 
@@ -678,14 +678,14 @@ defineExpose({
           min-width: 0;
 
           .item-title {
-            font-size: 14px;
+            font-size: var(--tf-type-scale-14);
             font-weight: 500;
             color: var(--tf-color-heading);
             margin-bottom: 4px;
           }
 
           .item-info {
-            font-size: 12px;
+            font-size: var(--tf-type-scale-12);
             display: flex;
             gap: 8px;
             flex-wrap: wrap;
@@ -719,7 +719,7 @@ defineExpose({
           gap: 4px;
 
           .time-text {
-            font-size: 11px;
+            font-size: var(--tf-type-scale-11);
             color: var(--tf-color-gray-legacy-500);
           }
         }
@@ -745,7 +745,7 @@ defineExpose({
 
     .no-approvals-text {
       color: var(--tf-color-green-legacy);
-      font-size: 14px;
+      font-size: var(--tf-type-scale-14);
       margin-top: 10px;
     }
   }
@@ -765,23 +765,23 @@ defineExpose({
         .card-icon {
           width: 38px;
           height: 38px;
-          font-size: 18px;
+          font-size: var(--tf-type-scale-18);
         }
 
         .card-content {
           .card-value {
-            font-size: 20px;
+            font-size: var(--tf-type-scale-20);
           }
 
           .card-label {
-            font-size: 11px;
+            font-size: var(--tf-type-scale-11);
           }
         }
 
         .card-badge {
           width: 20px;
           height: 20px;
-          font-size: 10px;
+          font-size: var(--tf-type-scale-10);
         }
       }
     }
@@ -798,16 +798,16 @@ defineExpose({
           .item-icon {
             width: 36px;
             height: 36px;
-            font-size: 14px;
+            font-size: var(--tf-type-scale-14);
           }
 
           .item-content {
             .item-title {
-              font-size: 13px;
+              font-size: var(--tf-type-scale-13);
             }
 
             .item-info {
-              font-size: 11px;
+              font-size: var(--tf-type-scale-11);
               display: flex;
               flex-wrap: wrap;
               gap: 6px;
@@ -840,7 +840,7 @@ defineExpose({
             }
 
             .time-text {
-              font-size: 10px;
+              font-size: var(--tf-type-scale-10);
             }
           }
         }

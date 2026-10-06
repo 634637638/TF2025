@@ -167,7 +167,7 @@ const handleSortOrderChange = () => {
 
 .drag-handle {
   color: var(--tf-color-neutral-400);
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
   cursor: grab;
   display: inline-flex;
   align-items: center;
@@ -214,7 +214,7 @@ const handleSortOrderChange = () => {
   background: var(--tf-color-neutral-100);
   color: var(--tf-color-neutral-500);
   border-radius: 6px;
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;

@@ -282,7 +282,7 @@ onMounted(() => {
   margin-bottom: 16px;
 
   i {
-    font-size: 64px;
+    font-size: var(--tf-type-scale-64);
     color: var(--tf-color-accent-green);
     animation: scaleIn 0.5s ease-out;
   }
@@ -302,7 +302,7 @@ onMounted(() => {
 // 成功标题
 .success-title {
   text-align: center;
-  font-size: 20px;
+  font-size: var(--tf-type-scale-20);
   font-weight: 500;
   color: var(--text-primary);
   margin: 0 0 24px;
@@ -325,16 +325,16 @@ onMounted(() => {
     }
 
     .label {
-      font-size: 14px;
+      font-size: var(--tf-type-scale-14);
       color: var(--text-secondary);
     }
 
     .value {
-      font-size: 14px;
+      font-size: var(--tf-type-scale-14);
       color: var(--text-primary);
 
       &.amount {
-        font-size: 20px;
+        font-size: var(--tf-type-scale-20);
         font-weight: 500;
         color: var(--tf-color-accent-pink);
       }
@@ -347,7 +347,7 @@ onMounted(() => {
   margin-bottom: 16px;
 
   .section-title {
-    font-size: 16px;
+    font-size: var(--tf-type-scale-16);
     font-weight: 500;
     color: var(--text-primary);
     margin: 0 0 12px;
@@ -364,7 +364,7 @@ onMounted(() => {
       align-items: center;
       gap: 8px;
       margin-bottom: 12px;
-      font-size: 16px;
+      font-size: var(--tf-type-scale-16);
       font-weight: 500;
       color: var(--text-primary);
     }
@@ -386,7 +386,7 @@ onMounted(() => {
 
     .payment-tip {
       text-align: center;
-      font-size: 13px;
+      font-size: var(--tf-type-scale-13);
       color: var(--text-muted);
       margin: 0;
     }
@@ -395,7 +395,7 @@ onMounted(() => {
       padding: 12px;
       background: var(--tf-color-surface-soft);
       border-radius: 4px;
-      font-size: 14px;
+      font-size: var(--tf-type-scale-14);
       color: var(--text-primary);
       line-height: 1.8;
       white-space: pre-line;
@@ -407,7 +407,7 @@ onMounted(() => {
         align-items: center;
         gap: 8px;
         padding: 8px 0;
-        font-size: 14px;
+        font-size: var(--tf-type-scale-14);
         color: var(--text-primary);
         margin: 0;
 
@@ -435,7 +435,7 @@ onMounted(() => {
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
     color: var(--tf-color-accent-orange);
     margin: 8px 0;
 
@@ -448,7 +448,7 @@ onMounted(() => {
     }
 
     i {
-      font-size: 14px;
+      font-size: var(--tf-type-scale-14);
     }
 
     a {
@@ -475,7 +475,7 @@ onMounted(() => {
     min-width: 0;
     height: 44px;
     border-radius: 22px;
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
     padding: 0 8px;
     display: flex;
     align-items: center;
@@ -483,7 +483,7 @@ onMounted(() => {
     gap: 4px;
 
     i {
-      font-size: 13px;
+      font-size: var(--tf-type-scale-13);
     }
 
     &.home {

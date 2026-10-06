@@ -4,6 +4,7 @@ import { extname, join, relative, resolve } from 'node:path'
 const root = resolve(import.meta.dirname, '..')
 const sourceRoot = join(root, 'src')
 const globalTabStylePath = join(sourceRoot, 'styles/components/_tabs.scss')
+const tabsBarSource = readFileSync(join(sourceRoot, 'components/TabsBar.vue'), 'utf8')
 
 function walk(directory, files = []) {
   for (const entry of readdirSync(directory)) {
@@ -47,6 +48,13 @@ if (!/\.tf-page-tabs\.el-tabs[\s\S]*?\.el-tabs__item\s*\{[\s\S]*?border:\s*1px\s
 
 if (!/\.el-tabs__nav-prev,[\s\S]*?\.el-tabs__nav-next\s*\{[\s\S]*?border:\s*1px\s+solid\s+var\(--tf-tab-scroll-control-border\)/.test(globalTabStyle)) {
   findings.push('src/styles/components/_tabs.scss:1 TAB 溢出导航按钮未使用全局独立边框')
+}
+
+for (const fragment of ['tf-topbar-tabs', 'tf-topbar-tab', 'is-active']) {
+  if (!tabsBarSource.includes(fragment)) findings.push(`src/components/TabsBar.vue 页头 TAB 缺少统一接入标记：${fragment}`)
+}
+for (const fragment of ['--tf-tab-bg:', '--tf-tab-active-bg:', '--tf-tab-hover-bg:']) {
+  if (!globalTabStyle.includes(fragment)) findings.push(`src/styles/components/_tabs.scss 页头 TAB 缺少公共状态令牌：${fragment}`)
 }
 
 for (const file of walk(sourceRoot)) {

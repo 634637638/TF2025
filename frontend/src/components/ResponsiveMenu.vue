@@ -13,35 +13,24 @@
       :user-role="userInfo.role"
       :quick-actions="activeQuickActions"
       @close="closeSlideMenu"
-      @menu-click="handleMenuClick"
+      @menu-click="forwardMenuClick"
       @quick-action="handleQuickAction"
     />
 
 
-    <!-- 桌面端菜单 -->
-    <div
-      v-else
-      class="desktop-menu"
-    >
-      <SimpleSidebar
-        :collapsed="sidebarCollapsed"
-        @menu-click="handleMenuClick"
-      />
-    </div>
-
-    <!-- 移动端菜单按钮（汉堡菜单） -->
-    <button
+    <!-- 手机端默认菜单入口；菜单展开后仍保留此入口，不在面板内复制关闭按钮。 -->
+    <el-button
       v-if="isDrawerNavigation && showMenuButton"
-      type="button"
-      class="mobile-menu-button"
-      :class="{ 'is-active': isSlideMenuOpen }"
+      native-type="button"
+      class="mobile-menu-button tf-button--menu"
+      :class="{ 'is-active': isSlideMenuOpen, 'is-hidden-behind-menu': isSlideMenuOpen }"
       aria-label="菜单"
       @click.stop.prevent="handleMenuButtonClick"
     >
-      <span class="menu-line" />
-      <span class="menu-line" />
-      <span class="menu-line" />
-    </button>
+      <IconRenderer :svg="menuBarsIcon" aria-hidden="true" />
+    </el-button>
+
+
   </div>
 </template>
 
@@ -50,20 +39,17 @@ import { computed, watch, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useMobileMenu } from '@/composables/useMobileMenu'
 import { useMobile } from '@/composables/mobile'
-import { useMenuWidth } from '@/composables/useMenuWidth'
 import { isDrawerNavigationViewport } from '@/config/breakpoints'
+import IconRenderer from './IconRenderer.vue'
+import menuBarsIcon from '@/assets/icons/menu-bars.svg?raw'
 import MobileSlideMenu from './mobile/MobileSlideMenu.vue'
-import SimpleSidebar from './SimpleSidebar.vue'
 import type { MenuItem } from '@/types/menu'
 
 // Props
 interface Props {
   menuItems?: MenuItem[]
-  sidebarCollapsed?: boolean
   showMenuButton?: boolean
-  maxBottomNavItems?: number
   enableGestures?: boolean
-  enableAutoHide?: boolean
   quickActions?: Array<{
     id: string
     name: string
@@ -75,13 +61,14 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
   menuItems: () => [],
-  sidebarCollapsed: false,
   showMenuButton: true,
-  maxBottomNavItems: 5,
   enableGestures: true,
-  enableAutoHide: true,
   quickActions: () => []
 })
+
+const emit = defineEmits<{
+  'menu-click': [menu: MenuItem]
+}>()
 
 // 使用移动端菜单 Composable
 const {
@@ -93,15 +80,12 @@ const {
   toggleSlideMenu,
   closeSlideMenu,
   openSlideMenu,
-  handleMenuClick,
   handleQuickAction,
   refreshMenu,
   syncMenuItems
 } = useMobileMenu({
   items: props.menuItems,
-  maxBottomNavItems: props.maxBottomNavItems,
   enableGestures: props.enableGestures,
-  enableAutoHide: props.enableAutoHide,
   quickActions: props.quickActions
 })
 
@@ -113,16 +97,6 @@ const isDrawerNavigation = computed(() => (
   isDrawerNavigationViewport(screenWidth.value)
 ))
 
-// 菜单宽度管理
-const { isCollapsed, setCollapsed } = useMenuWidth()
-
-// 监听桌面端菜单折叠状态
-watch(() => props.sidebarCollapsed, (collapsed) => {
-  if (collapsed !== isCollapsed.value) {
-    setCollapsed(collapsed)
-  }
-})
-
 watch(() => props.menuItems, (items) => {
   if (Array.isArray(items) && items.length > 0) {
     syncMenuItems(items)
@@ -131,6 +105,10 @@ watch(() => props.menuItems, (items) => {
 
 // 路由
 const route = useRoute()
+
+const forwardMenuClick = (menu: MenuItem) => {
+  emit('menu-click', menu)
+}
 
 const handleMenuButtonClick = async () => {
   await toggleSlideMenu()
@@ -170,142 +148,27 @@ defineExpose({
   height: 100%;
 }
 
-// 移动端菜单按钮（汉堡按钮）
 .mobile-menu-button {
   position: fixed;
   top: 8px;
   left: 8px;
   z-index: var(--tf-z-drawer);
-  width: 40px;
-  height: 40px;
-  background: var(--primary-color, var(--tf-color-indigo-brand));
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
-  box-shadow: var(--tf-button-shadow);
-  transition: all 0.3s ease;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
-
-  &:hover {
-    background: var(--primary-dark, var(--tf-color-primary-legacy-dark));
-    transform: scale(1.05);
-  }
-
-  &:active {
-    transform: scale(0.95);
-  }
-
-  &.is-active {
-    background: var(--danger-color, var(--danger-color));
-
-    .menu-line {
-      &:nth-child(1) {
-        transform: translateY(9px) rotate(45deg);
-      }
-
-      &:nth-child(2) {
-        opacity: 0;
-      }
-
-      &:nth-child(3) {
-        transform: translateY(-9px) rotate(-45deg);
-      }
-    }
-  }
-
-  .menu-line {
-    width: 20px;
-    height: 2px;
-    background: var(--tf-button-neutral-bg);
-    border-radius: 1px;
-    transition: all 0.3s ease;
-    transform-origin: center;
-  }
 }
 
-// 适配不同屏幕尺寸
-@media (max-width: 360px) {
-  .mobile-menu-button {
-    width: 34px;
-    height: 34px;
-    top: 8px;
-    left: 8px;
-    border-radius: 8px;
-
-    .menu-line {
-      width: 16px;
-    }
-  }
+.mobile-menu-button.is-hidden-behind-menu {
+  z-index: calc(var(--tf-z-drawer-overlay) - 1);
 }
 
-// 大屏手机
-@media (min-width: 414px) {
-  .mobile-menu-button {
-    width: 40px;
-    height: 40px;
-    top: 8px;
-    left: 8px;
-    border-radius: 8px;
-
-    .menu-line {
-      width: 18px;
-      height: 2px;
-    }
-  }
-}
-
-// 桌面设备使用常驻侧栏，不显示侧滑菜单按钮
 @media (min-width: 1025px) {
   .mobile-menu-button {
     display: none;
   }
 }
 
-/* Safari 的桌面网站模式可能把 iPhone/iPad CSS 视口报告为桌面宽度；
- * 设备检测确认是移动设备时，菜单入口必须继续可见。 */
-:global(html.device-phone) .mobile-menu-button {
-  display: flex;
-}
-
-:global(html.device-tablet) .mobile-menu-button {
-  display: flex;
-}
-
-// 横屏模式调整
-@media (orientation: landscape) and (max-height: 500px) {
-  .mobile-menu-button {
-    top: 8px;
-    left: 8px;
-    width: 36px;
-    height: 36px;
-    border-radius: 8px;
-  }
-}
-
-// 确保菜单按钮在其他元素之上
-.mobile-menu-button {
-  position: fixed;
-  z-index: var(--tf-z-drawer);
-}
-
 // 暗色模式
-:global(body.dark) {
-  .mobile-menu-button {
-    background: var(--primary-color, var(--tf-color-indigo-brand));
-
-    &:hover {
-      background: var(--primary-dark, var(--tf-color-primary-legacy-dark));
-    }
-
-    &.is-active {
-      background: var(--danger-color, var(--tf-color-red-500));
-    }
-  }
-}
 </style>

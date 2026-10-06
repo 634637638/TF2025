@@ -2,8 +2,8 @@
   "files": [
     {
       "file": "src/styles/admin-layout.css",
-      "max": 361,
-      "reason": "Unified admin layout must override legacy page-scoped spacing, table shells, and statistic card colors."
+      "max": 394,
+      "reason": "Unified admin layout must override legacy page-scoped spacing, table shells, statistic card colors, and base-table content dimensions."
     },
     {
       "file": "src/styles.scss",
@@ -12,13 +12,13 @@
     },
     {
       "file": "src/styles/components/_table.scss",
-      "max": 199,
-      "reason": "Unified Element Plus table contract overrides vendor and legacy page table declarations."
+      "max": 201,
+      "reason": "Unified Element Plus table contract overrides vendor and legacy page table declarations, including the action-column cell padding contract."
     },
     {
       "file": "src/styles/components/_buttons.scss",
-      "max": 124,
-      "reason": "Unified button contract overrides Element Plus component variables and legacy button classes."
+      "max": 266,
+      "reason": "Unified button contract overrides Element Plus component variables, legacy button classes, and the zero-native-button mobile semantic surfaces."
     },
     {
       "file": "src/styles/responsive.scss",
@@ -47,7 +47,7 @@
     },
     {
       "file": "src/styles/components/_dialog.scss",
-      "max": 130,
+      "max": 156,
       "reason": "Element Plus dialog structure and viewport boundary overrides."
     },
     {
@@ -92,8 +92,8 @@
     },
     {
       "file": "src/views/price-list/page/SalesPriceDisplay.vue",
-      "max": 90,
-      "reason": "Shareable price canvas, Safari table rendering, and public mobile layout intentionally override global admin shells."
+      "max": 81,
+      "reason": "Shareable price canvas, Safari table rendering, and public mobile layout intentionally override global admin shells. Contact cards use the shared public contact styles."
     },
     {
       "file": "src/views/query/QueryView.vue",
@@ -109,6 +109,16 @@
       "file": "src/components/PublishToH5Modal.vue",
       "max": 18,
       "reason": "Teleported MobileDialog safe-area, compact controls and footer dimensions."
+    },
+    {
+      "file": "src/components/mobile/MobileSlideMenu.vue",
+      "max": 8,
+      "reason": "Mobile menu expand control must override Element Plus button dimensions while preserving the shared menu action contract."
+    },
+    {
+      "file": "src/components/ResponsiveLayout.vue",
+      "max": 1,
+      "reason": "High-contrast mode must add a visible FAB border after the shared FAB contract removes the default border."
     },
     {
       "file": "src/views/subsidy/components/SubsidyPhotoManageDialog.vue",
@@ -187,18 +197,13 @@
     },
     {
       "file": "src/components/MobileDialog.vue",
-      "max": 24,
+      "max": 27,
       "reason": "Core dialog component must control Element Plus teleported dimensions, safe areas and transition state."
     },
     {
       "file": "src/components/common/CustomerSearchDropdown.vue",
       "max": 4,
       "reason": "Customer search dropdown keeps compact mobile labels and selected-state affordances readable across teleported form surfaces."
-    },
-    {
-      "file": "src/components/DynamicSidebar.vue",
-      "max": 23,
-      "reason": "Dynamic sidebar overrides nested vendor menu spacing, active state and collapsed visibility."
     },
     {
       "file": "src/components/WholesaleModal.vue",
@@ -312,12 +317,12 @@
     },
     {
       "file": "src/views/brands/BrandsView.vue",
-      "max": 6,
+      "max": 3,
       "reason": "Drag row states and reduced-motion accessibility rules override shared table and animation contracts."
     },
     {
       "file": "src/views/colors/ColorsView.vue",
-      "max": 5,
+      "max": 2,
       "reason": "Drag row states and mobile action rows override shared table background and cell padding."
     },
     {
@@ -337,12 +342,12 @@
     },
     {
       "file": "src/views/memories/MemoriesView.vue",
-      "max": 3,
+      "max": 0,
       "reason": "Drag row states override shared table hover backgrounds and cell padding."
     },
     {
       "file": "src/views/models/ModelsView.vue",
-      "max": 5,
+      "max": 2,
       "reason": "Drag row states and mobile action rows override shared table background and cell padding."
     },
     {

@@ -807,7 +807,7 @@ defineExpose({
       margin-bottom: 8px;
       font-weight: 500;
       color: var(--tf-color-neutral-700);
-      font-size: 14px;
+      font-size: var(--tf-type-scale-14);
 
       .required {
         color: var(--tf-color-red-500);
@@ -819,7 +819,7 @@ defineExpose({
       padding: 12px 16px;
       border: 2px solid var(--tf-color-neutral-200);
       border-radius: 8px;
-      font-size: 14px;
+      font-size: var(--tf-type-scale-14);
       transition: border-color 0.2s ease, box-shadow 0.2s ease;
       background: white;
       box-sizing: border-box;
@@ -852,7 +852,7 @@ defineExpose({
         border: 2px solid var(--tf-color-neutral-200);
         background: white;
         box-shadow: none;
-        font-size: 14px;
+        font-size: var(--tf-type-scale-14);
         transition: border-color 0.2s ease, box-shadow 0.2s ease;
       }
 
@@ -873,7 +873,7 @@ defineExpose({
 
     .invalid-feedback {
       color: var(--tf-color-red-500);
-      font-size: 12px;
+      font-size: var(--tf-type-scale-12);
       margin-top: 4px;
     }
   }

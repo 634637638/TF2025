@@ -8,7 +8,9 @@
 
 后台页面的卡片间距、圆角、背景、表格字体、行高、表头颜色和操作按钮必须由公共样式统一控制。业务页面只负责字段、权限、数据格式、徽章颜色和业务操作，不得复制一套通用表格 CSS。
 
-PC 端公共表头使用 `38px` 高度和 `6px` 上下内边距，由 `admin-layout.css` 的 `--admin-data-table-header-height`、`--admin-data-table-header-padding-y` 统一控制。页面不得用私有样式重新放大表头。表头和内容默认居中对齐；公共 `.cell` 同时使用 `text-align: center` 和 Flex 的 `justify-content: center`，带图标、徽章或自定义容器的内容也必须居中。业务语义明确要求左对齐或右对齐时，必须在同一 `el-table-column` 上同时设置 `align` 与 `header-align`，避免表头和内容错位。
+PC 端公共表头使用 `48px` 高度和 `6px` 上下内边距，由 `admin-layout.css` 的 `--admin-data-table-header-height`、`--admin-data-table-header-padding-y` 统一控制。页面不得用私有样式重新放大表头。表头和内容默认居中对齐；公共 `.cell` 同时使用 `text-align: center` 和 Flex 的 `justify-content: center`，带图标、徽章或自定义容器的内容也必须居中。业务语义明确要求左对齐或右对齐时，必须在同一 `el-table-column` 上同时设置 `align` 与 `header-align`，避免表头和内容错位。
+
+PC 端数据行使用 `48px`，手机端数据行使用 `40px`；手机端表头使用 `40px`。所有 `data-table`、`devices-table` 和 `admin-data-table` 都继承这套尺寸，不得只给 `base-data-table` 单独维护一份规则。公共入口同时约束 Element Plus 的表头包装层、表头行、表头单元格、表体包装层、数据行和数据单元格，数据 `.cell` 必须使用 Flex 垂直居中，避免不同页面因 Element 内部默认值产生高度差异。表格内的机况、状态、序号和角色徽章统一使用公共 `20px` 高度、统一水平内边距和单行布局；业务页面只能维护语义颜色、图标和交互，不能重新设置徽章的高度、内边距、圆角或字体尺寸，避免徽章把综合查询基准行高撑大。
 
 表格行状态统一使用三级识别：鼠标悬停为柔和的薰衣草紫 `--admin-data-table-row-hover-bg`，并使用 `--admin-interactive-hover-border` 与 `--admin-interactive-hover-shadow` 在整行显示和经验分享卡片一致的灰蓝外包围；Element 表格必须同时支持 `:hover` 与 `.hover-row`，确保鼠标位于任意字段、操作按钮或固定列时外包围持续显示，且不得通过移动整行制造悬停闪烁。勾选行为蓝色 `--admin-data-table-row-selected-bg` 并在首列显示 `--admin-data-table-row-selected-accent` 左侧强调线；勾选行再次悬停使用更深的 `--admin-data-table-row-selected-hover-bg`。悬停与勾选使用不同层次，业务页面只添加 `row-selected`，不得自行覆盖这套状态颜色或逐个单元格添加悬停阴影。
 
@@ -32,6 +34,17 @@ PC 端公共表头使用 `38px` 高度和 `6px` 上下内边距，由 `admin-lay
 `admin-layout.css` 已由 `frontend/src/main.ts` 全局加载，页面不需要再次导入。
 
 `RentalsView.vue` 中由 `printContract()` 生成的原生 `<table>` 仅属于打印合同 HTML 模板，不是页面主数据表，不适用本规范的 `el-table` 要求。新增页面列表不得复制这种打印模板；页面可见的主数据表仍必须使用统一 `data-table` / `admin-data-table`。
+
+## 2.1 规范与审计标杆页
+
+`/standards` 的“效果预览”表格是统一表格的展示基准，必须与业务表格使用同一套公共入口：
+
+- 根节点同时使用 `.data-table` / `.admin-data-table`，并保持 `table-layout="fixed"`、`:fit="true"`；
+- 表头、数据行、字体、单元格内边距和手机端行高全部读取 `--admin-data-table-*`，当前基准为 PC 表头/数据行 `48px`、手机表头/数据行 `40px`；
+- 普通字段使用 `complete-text-column`，操作列使用 `actions-column`、`.table-actions` 和 `getAdaptiveActionColumnWidth`，不得写死操作列宽度；
+- 点击“查看”必须产生真实展开/收起反馈，不能只放置无行为的装饰按钮。
+
+规范页自身不得新增第二套表格或按钮尺寸。任何公共高度、宽度、间距或字体调整，都必须先修改公共变量和本文，再同步检查 `/standards` 预览及 `check:tables`。
 
 ## 3. 标准页面结构
 
@@ -242,7 +255,7 @@ const actionColumnWidth = computed(() => getAdaptiveActionColumnWidth(rows.value
 
 ### 操作按钮尺寸与语义颜色
 
-表格、列表卡片和手机展开区共用同一套操作按钮。尺寸与颜色变量全部定义在 `frontend/src/styles/admin-layout.css`，结构和状态规则定义在 `frontend/src/styles/components/_table.scss`。PC 端当前高度为 `28px`、水平内边距为 `10px`、按钮间距为 `8px`、字体为 `13px`、圆角为 `4px`；手机端高度为 `32px`、水平内边距为 `12px`、按钮间距为 `6px`，字体读取公共手机表格字号。普通业务字段中的 `.table-inline-action` 使用更紧凑的 PC `7px`、手机 `8px` 水平内边距。页面不得写死这些值。
+表格、列表卡片和手机展开区共用同一套操作按钮。尺寸与颜色变量全部定义在 `frontend/src/styles/admin-layout.css`，结构和状态规则定义在 `frontend/src/styles/components/_table.scss`。PC 端当前高度为 `28px`、水平内边距为 `10px`、按钮间距为 `8px`、字体为 `13px`、圆角为 `4px`；手机端高度为 `32px`、水平内边距为 `12px`、按钮间距为 `6px`，字体读取公共手机表格字号。普通业务字段中的 `.table-inline-action` 使用更紧凑的 PC `7px`、手机 `8px` 水平内边距。操作列单元格的上下内边距由公共样式同步设置为 PC `9px`、手机 `4px`，确保 PC 按钮高度与 `48px` 内容行高、手机按钮高度与 `40px` 内容行高对齐；无按钮时也保留同一行高，不得由业务页面单独覆盖。页面不得写死这些值。
 
 | 操作语义 | 推荐 class | 颜色含义 |
 | --- | --- | --- |
@@ -362,9 +375,14 @@ const clearSelection = () => {
 | 斑马纹、悬停、选中颜色 | `--admin-data-table-row-*` |
 | 操作按钮尺寸、字体、间距、圆角 | `--admin-data-table-action-*` |
 | 操作按钮语义色与禁用色 | `--admin-action-view-*`、`--admin-action-edit-*`、`--admin-action-delete-*`、`--admin-action-pin-*`、`--admin-action-success-*`、`--admin-action-neutral-*`、`--admin-action-manage-*`、`--admin-action-finance-*`、`--admin-action-transfer-*`、`--admin-action-export-*`、`--admin-action-warning-*`、`--admin-action-disabled-*` |
-| 表格状态徽章内边距与圆角 | `--admin-data-table-badge-*` |
+| 表格状态徽章高度、内边距与圆角 | `--admin-data-table-badge-*` |
+| 表格颜色色块、存储规格尺寸 | `--admin-data-table-color-swatch-size`、`--admin-data-table-spec-*` |
 
 桌面端变量定义在默认 `:root`，手机端统一覆盖放在 `@media (max-width: 767px)` 内。不要为 `320px`、`360px`、`375px`、`390px` 或 `430px` 分别创建表格字号。
+
+基础资料页从旧版原生表格迁移到 Element Plus 后，历史 `.table`、`.table th/td`、旧拖拽单元格和徽章几何样式必须删除，不能继续留在页面私有 `<style>` 中。公共表格已经接管表头、单元格、行高、内边距、操作按钮和通用徽章尺寸；页面只允许保留颜色预览、状态颜色、存储单位等业务语义样式。这样可以避免“源码看似接入公共样式、实际仍有第二套尺寸规则”的问题。
+
+表格内状态徽章、序号徽章、角色徽章统一使用 `--admin-data-table-badge-height`；颜色预览色块统一使用 `--admin-data-table-color-swatch-size`；内存页的存储数字和单位统一使用 `--admin-data-table-spec-*`。业务页面不得通过 `padding`、`font-size`、`width` 或 `height` 重新定义这些元素的几何尺寸，否则会突破公共数据行高度。
 
 ## 6. 手机端规则
 
@@ -478,6 +496,8 @@ Element Plus 弹窗默认可能通过 Teleport 挂载到 `body`，不再位于�
 - 使用 `nth-child` 绑定业务字段。
 
 ## 8. 新增或升级检查清单
+
+页面生命周期要求：新增或删除表格页面、Tab、弹窗、表格组件时，必须同步更新[前端页面与功能单元台账](page-audit-inventory.md)及其中的表格专项清单；改名、迁移或合并也必须更新旧记录、新记录和统计数量。未更新台账不得标记为完成。
 
 - 页面根节点有 `.admin-page`，内容区有 `.admin-page-content`。
 - 手机端统计卡片始终每行两张，`320px` 至 `768px` 不允许退化成单列。

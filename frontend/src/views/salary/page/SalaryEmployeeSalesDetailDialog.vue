@@ -318,14 +318,14 @@ const handleTableWheel = (event: WheelEvent) => {
 
     label {
       color: var(--color-info);
-      font-size: 12px;
+      font-size: var(--tf-type-scale-12);
       font-weight: 500;
       white-space: nowrap;
     }
 
     span {
       color: var(--color-text-primary);
-      font-size: 14px;
+      font-size: var(--tf-type-scale-14);
       font-weight: 600;
       white-space: nowrap;
     }
@@ -342,7 +342,7 @@ const handleTableWheel = (event: WheelEvent) => {
 
     .highlight {
       color: var(--color-primary);
-      font-size: 16px;
+      font-size: var(--tf-type-scale-16);
     }
   }
 
@@ -352,7 +352,7 @@ const handleTableWheel = (event: WheelEvent) => {
       padding-bottom: 10px;
       border-bottom: 2px solid var(--tf-color-border-element);
       color: var(--color-text-primary);
-      font-size: 15px;
+      font-size: var(--tf-type-scale-15);
       font-weight: 600;
     }
 

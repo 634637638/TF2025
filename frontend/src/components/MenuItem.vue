@@ -216,14 +216,14 @@ const addChild = () => {
   width: 20px;
   text-align: center;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
 }
 
 .menu-icon {
   width: 20px;
   text-align: center;
   color: var(--tf-color-blue-bootstrap);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
 }
 
 .menu-details {
@@ -234,7 +234,7 @@ const addChild = () => {
 .menu-name {
   font-weight: 600;
   color: var(--text-primary);
-  font-size: 15px;
+  font-size: var(--tf-type-scale-15);
   margin-bottom: 4px;
 }
 
@@ -247,7 +247,7 @@ const addChild = () => {
 
 .menu-url {
   color: var(--tf-color-blue-corporate);
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   font-family: 'Courier New', monospace;
   background: var(--tf-color-blue-pale);
   padding: 2px 6px;
@@ -257,7 +257,7 @@ const addChild = () => {
 
 .menu-order {
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: var(--tf-type-scale-11);
   background: var(--tf-color-gray-200);
   padding: 2px 6px;
   border-radius: 3px;
@@ -265,7 +265,7 @@ const addChild = () => {
 
 .menu-target {
   color: var(--tf-color-orange-coral);
-  font-size: 11px;
+  font-size: var(--tf-type-scale-11);
   background: var(--tf-color-orange-ant-surface);
   padding: 2px 6px;
   border-radius: 3px;
@@ -274,13 +274,13 @@ const addChild = () => {
 
 .menu-id {
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--tf-type-scale-11);
   font-family: monospace;
 }
 
 .menu-remarks {
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   margin-top: 4px;
   font-style: italic;
   background: var(--tf-color-surface-plain);
@@ -290,7 +290,7 @@ const addChild = () => {
 }
 
 .menu-status {
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   padding: 4px 10px;
   border-radius: 12px;
   font-weight: 600;
@@ -337,7 +337,7 @@ const addChild = () => {
   align-items: center;
   justify-content: center;
   font-weight: bold;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   transition: all 0.2s;
 }
 

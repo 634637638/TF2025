@@ -408,7 +408,7 @@
   left: 4px;
   background: rgba(0, 0, 0, 0.7);
   color: white;
-  font-size: 10px;
+  font-size: var(--tf-type-scale-10);
   padding: 2px 6px;
   border-radius: 4px;
   display: flex;
@@ -456,7 +456,7 @@
   left: 4px;
   background: var(--color-danger);
   color: white;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   padding: 2px 6px;
   border-radius: 4px;
   z-index: 5;
@@ -488,17 +488,17 @@
 
 .map-loading-container i,
 .map-error-container i {
-  font-size: 32px;
+  font-size: var(--tf-type-scale-32);
   margin-bottom: 12px;
 }
 
 .map-error-container div:first-of-type {
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   margin-top: 8px;
 }
 
 .map-error-tip {
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   margin-top: 8px;
 }
 
@@ -585,7 +585,7 @@
 // ==================== 表单标签样式（通用） ====================
 .form-label {
   display: block;
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   font-weight: 600;
   color: var(--tf-color-neutral-600);
   margin-bottom: 6px;

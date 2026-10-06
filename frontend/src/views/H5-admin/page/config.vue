@@ -83,7 +83,7 @@
                   />
                 </el-upload>
                 <el-button
-                  v-if="configs.shop_logo && canEdit && canViewField('system_info.operations')"
+                  v-if="configs.shop_logo && canEdit"
                   plain
                   type="danger"
                   size="small"
@@ -157,7 +157,7 @@
                   />
                 </div>
                 <el-button
-                  v-if="canViewField('system_info.operations')"
+                  v-if="showOperations"
                   plain
                   type="primary"
                   :disabled="!canEdit"
@@ -221,7 +221,7 @@
                   />
                 </el-upload>
                 <el-button
-                  v-if="configs.wechat_qrcode && canEdit && canViewField('system_info.operations')"
+                  v-if="configs.wechat_qrcode && canEdit"
                   plain
                   type="danger"
                   size="small"
@@ -263,7 +263,7 @@
                   />
                 </el-upload>
                 <el-button
-                  v-if="configs.alipay_qrcode && canEdit && canViewField('system_info.operations')"
+                  v-if="configs.alipay_qrcode && canEdit"
                   plain
                   type="danger"
                   size="small"
@@ -338,7 +338,7 @@
         <!-- 保存按钮 -->
         <div class="actions">
           <el-button
-            v-if="canEdit && canViewField('system_info.operations')"
+            v-if="canEdit"
             :loading="saving"
             plain
             type="primary"
@@ -353,7 +353,7 @@
 
       <!-- 地图选择对话框 -->
       <MobileDialog
-        v-if="canViewField('system_info.operations')"
+        v-if="showOperations"
         v-model="showMapDialog"
         title="选择地图位置"
         width="900px"
@@ -415,7 +415,7 @@ import SectionLoading from '@/components/SectionLoading.vue'
 import { PermissionGate } from '@/components/base/index'
 import { useAuthStore } from '@/stores/auth'
 import { usePagePermissions } from '@/composables/usePagePermissions'
-import { fieldPermissions } from '@/composables/useFieldPermissions'
+import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { formatImageUrl } from '@/utils/format'
 import { unifiedApi } from '@/utils/unified-api'
 import { deleteTempFiles } from '@/utils/temp-file-cleaner'
@@ -430,6 +430,10 @@ const canView = computed(() => configPermissions.canView.value)
 const canEdit = computed(() => configPermissions.canEdit.value)
 const CONFIG_MODULE_KEY = 'h5_admin_configview'
 const canViewField = (fieldKey: string) => fieldPermissions.isFieldVisible(CONFIG_MODULE_KEY, fieldKey)
+const showOperations = computed(() => shouldShowActionColumn(
+  canViewField('system_info.operations'),
+  [canEdit.value]
+))
 
 // 注入父组件提供的注册方法
 const registerHeaderActions = inject<(_actions: HeaderAction[]) => void>('registerHeaderActions')
@@ -966,7 +970,7 @@ onUnmounted(() => {
   min-width: 0;
 
   .section-title {
-    font-size: 18px;
+    font-size: var(--tf-type-scale-18);
     font-weight: 500;
     color: var(--text-primary);
     margin: 0 0 20px;
@@ -976,7 +980,7 @@ onUnmounted(() => {
 
   :deep(.el-form-item__tip) {
     .tip-text {
-      font-size: 12px;
+      font-size: var(--tf-type-scale-12);
       color: var(--text-muted);
     }
   }
@@ -999,7 +1003,7 @@ onUnmounted(() => {
       }
 
       i {
-        font-size: 28px;
+        font-size: var(--tf-type-scale-28);
         color: var(--tf-color-gray-element);
       }
     }
@@ -1021,7 +1025,7 @@ onUnmounted(() => {
     }
 
     i {
-      font-size: 28px;
+      font-size: var(--tf-type-scale-28);
       color: var(--tf-color-gray-element);
     }
   }
@@ -1061,7 +1065,7 @@ onUnmounted(() => {
 
     h4 {
       margin: 0 0 12px;
-      font-size: 14px;
+      font-size: var(--tf-type-scale-14);
       color: var(--text-primary);
     }
 
@@ -1071,7 +1075,7 @@ onUnmounted(() => {
 
       li {
         margin-bottom: 4px;
-        font-size: 13px;
+        font-size: var(--tf-type-scale-13);
         color: var(--text-secondary);
       }
     }
@@ -1080,7 +1084,7 @@ onUnmounted(() => {
       padding: 8px 12px;
       background: var(--color-bg-white);
       border-radius: 4px;
-      font-size: 13px;
+      font-size: var(--tf-type-scale-13);
       color: var(--text-primary);
 
       strong {
@@ -1120,7 +1124,7 @@ onUnmounted(() => {
     .section-title {
       margin-bottom: 14px;
       padding-left: 10px;
-      font-size: 15px;
+      font-size: var(--tf-type-scale-15);
       font-weight: 700;
     }
   }
@@ -1144,7 +1148,7 @@ onUnmounted(() => {
     margin-bottom: 7px;
     padding: 0 !important;
     color: var(--tf-color-slate-700);
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
     font-weight: 700;
     line-height: 1.4;
     text-align: left;
@@ -1166,7 +1170,7 @@ onUnmounted(() => {
   .tip-text {
     display: block;
     margin-top: 6px;
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
     line-height: 1.45;
   }
 
@@ -1186,7 +1190,7 @@ onUnmounted(() => {
 
   .config-section .image-upload-wrapper :deep(.el-upload i),
   .config-section :deep(.el-upload i) {
-    font-size: 22px;
+    font-size: var(--tf-type-scale-22);
   }
 
   .config-section .delete-image-btn {
@@ -1215,7 +1219,7 @@ onUnmounted(() => {
 
   .map-picker-container .map-instructions h4 {
     margin-bottom: 8px;
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
   }
 
   .map-picker-container .map-instructions ul {
@@ -1224,7 +1228,7 @@ onUnmounted(() => {
 
   .map-picker-container .map-instructions ul li,
   .map-picker-container .map-instructions .current-location {
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
     line-height: 1.45;
   }
 

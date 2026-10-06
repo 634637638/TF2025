@@ -562,7 +562,7 @@
             <div class="confirm-content">
               <i
                 class="fas fa-exclamation-triangle"
-                style="color: #f59e0b; font-size: 48px;"
+                style="color: #f59e0b; font-size: var(--tf-type-scale-48);"
               />
               <div class="confirm-message">
                 <h4>确认恢复</h4>
@@ -1430,13 +1430,13 @@ export default {
 }
 
 .form-group label {
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   color: var(--tf-color-slate-legacy);
   font-weight: 500;
 }
 
 .form-help-text {
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   line-height: 1.6;
   color: var(--tf-color-slate-500);
   background: var(--tf-color-slate-50);
@@ -1464,7 +1464,7 @@ export default {
   padding: 8px 12px;
   border: 1px solid var(--tf-color-gray-300-alt);
   border-radius: 10px;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   transition: border-color 0.2s, box-shadow 0.2s;
   min-height: 34px;
   background: var(--color-bg-white);
@@ -1530,7 +1530,7 @@ export default {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 20px;
-  font-size: 18px;
+  font-size: var(--tf-type-scale-18);
   font-weight: 600;
   color: var(--tf-color-heading);
 }
@@ -1548,7 +1548,7 @@ export default {
 }
 
 .record-count {
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   color: var(--tf-color-gray-cool-500);
 }
 
@@ -1568,7 +1568,7 @@ export default {
   color: var(--tf-button-primary-soft-color);
   text-decoration: underline;
   cursor: pointer;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   padding: 0;
 }
 
@@ -1594,7 +1594,7 @@ export default {
   background: var(--tf-color-surface-muted);
   font-weight: 600;
   color: var(--tf-color-slate-legacy);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
 }
 
 .module-row:hover {
@@ -1605,7 +1605,7 @@ export default {
   display: inline-block;
   padding: 4px 8px;
   border-radius: 12px;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   font-weight: 500;
   text-align: center;
 }
@@ -1624,7 +1624,7 @@ export default {
 
 .module-key {
   font-family: 'Courier New', monospace;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   background: var(--tf-color-surface-google);
   padding: 2px 6px;
   border-radius: 3px;
@@ -1644,7 +1644,7 @@ export default {
 }
 
 .module-description {
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: var(--tf-color-gray-cool-500);
   line-height: 1.3;
 }
@@ -1654,7 +1654,7 @@ export default {
   color: var(--tf-color-warning-text-legacy);
   border: 1px solid var(--tf-color-amber-pastel);
   border-radius: 10px;
-  font-size: 10px;
+  font-size: var(--tf-type-scale-10);
   padding: 2px 6px;
   font-weight: 500;
 }
@@ -1663,7 +1663,7 @@ export default {
   display: inline-block;
   padding: 4px 8px;
   border-radius: 12px;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   font-weight: 500;
   text-align: center;
 }
@@ -1692,7 +1692,7 @@ export default {
   border: 1px solid var(--tf-color-amber-pastel);
   border-radius: 12px;
   padding: 2px 6px;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   font-weight: 500;
 }
 
@@ -1700,7 +1700,7 @@ export default {
   display: inline-block;
   padding: 4px 8px;
   border-radius: 12px;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   font-weight: 500;
   text-align: center;
 }
@@ -1798,7 +1798,7 @@ export default {
 }
 
 .module-status-text {
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   font-weight: 700;
   color: var(--tf-color-slate-600);
 }
@@ -1809,7 +1809,7 @@ export default {
   align-items: center;
   width: fit-content;
   max-width: 100%;
-  font-size: 11px;
+  font-size: var(--tf-type-scale-11);
   color: var(--tf-color-slate-500);
   background: var(--tf-color-surface-blue-muted);
   padding: 4px 8px;
@@ -1834,7 +1834,7 @@ export default {
   align-items: center;
   gap: 6px;
   min-width: 0;
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
   line-height: 1.25;
   white-space: nowrap;
 }
@@ -1857,7 +1857,7 @@ export default {
   background: linear-gradient(135deg, var(--tf-color-warning-legacy) 0%, var(--tf-color-amber-pastel) 100%);
   border: 1px solid rgba(245, 158, 11, 0.3);
   color: var(--tf-color-amber-700);
-  font-size: 11px;
+  font-size: var(--tf-type-scale-11);
   font-weight: 700;
 }
 
@@ -1868,14 +1868,14 @@ export default {
   min-height: 28px;
   padding: 0 10px;
   border-radius: 999px;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   font-weight: 700;
   white-space: nowrap;
   flex-shrink: 0;
 }
 
 .module-description-text {
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   line-height: 1.4;
   color: var(--tf-color-slate-500);
   overflow: hidden;
@@ -1909,7 +1909,7 @@ export default {
 .info-item label {
   flex: 0 0 auto;
   margin: 0;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: var(--tf-color-slate-500);
   font-weight: 600;
   line-height: 1.2;
@@ -1921,7 +1921,7 @@ export default {
   align-items: center;
   justify-content: flex-end;
   min-width: 0;
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   color: var(--tf-color-slate-800);
   line-height: 1.45;
   text-align: right;
@@ -1940,7 +1940,7 @@ export default {
   min-height: 28px;
   padding: 0 10px;
   border-radius: 999px;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   font-weight: 700;
 }
 
@@ -1990,7 +1990,7 @@ export default {
   align-items: center;
   gap: 8px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   color: var(--tf-color-gray-bootstrap-700);
 }
 
@@ -2004,7 +2004,7 @@ export default {
 
 .input-hint {
   margin-top: 4px;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: var(--tf-color-muted);
 }
 
@@ -2032,7 +2032,7 @@ export default {
 
 .warning-icon {
   color: var(--warning-color);
-  font-size: 48px;
+  font-size: var(--tf-type-scale-48);
   flex-shrink: 0;
 }
 
@@ -2065,7 +2065,7 @@ export default {
 
 .detail-section h4 {
   margin: 0 0 16px 0;
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
   color: var(--tf-color-heading);
   border-bottom: 1px solid var(--tf-color-gray-200-alt);
   padding-bottom: 8px;
@@ -2084,14 +2084,14 @@ export default {
 }
 
 .detail-item label {
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   color: var(--tf-color-muted);
   font-weight: 500;
   min-width: 80px;
 }
 
 .detail-item span {
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   color: var(--tf-color-gray-bootstrap-700);
   flex: 1;
 }
@@ -2131,11 +2131,11 @@ export default {
   }
 
   .module-card .module-name {
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
   }
 
   .module-description-text {
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
     line-height: 1.4;
   }
 
@@ -2145,18 +2145,18 @@ export default {
   }
 
   .info-item label {
-    font-size: 11px;
+    font-size: var(--tf-type-scale-11);
   }
 
   .info-item span {
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
   }
 
 }
 
 @media (max-width: 479px) {
   .module-table {
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
   }
 
   .module-grid {
@@ -2195,7 +2195,7 @@ export default {
       margin-bottom: 8px;
       font-weight: 500;
       color: var(--tf-color-neutral-700);
-      font-size: 14px;
+      font-size: var(--tf-type-scale-14);
 
       .required {
         color: var(--tf-color-red-500);
@@ -2207,7 +2207,7 @@ export default {
       padding: 12px 16px;
       border: 2px solid var(--tf-color-neutral-200);
       border-radius: 8px;
-      font-size: 14px;
+      font-size: var(--tf-type-scale-14);
       transition: border-color 0.2s ease, box-shadow 0.2s ease;
       background: white;
       box-sizing: border-box;
@@ -2230,7 +2230,7 @@ export default {
 
     .input-hint {
       margin-top: 4px;
-      font-size: 12px;
+      font-size: var(--tf-type-scale-12);
       color: var(--tf-color-neutral-500);
     }
 
@@ -2304,7 +2304,7 @@ export default {
     h4 {
       margin: 0 0 12px 0;
       color: var(--tf-color-neutral-700);
-      font-size: 16px;
+      font-size: var(--tf-type-scale-16);
       font-weight: 600;
     }
   }
@@ -2325,13 +2325,13 @@ export default {
       width: 100px;
       color: var(--tf-color-neutral-500);
       font-weight: 500;
-      font-size: 14px;
+      font-size: var(--tf-type-scale-14);
     }
 
     .value {
       flex: 1;
       color: var(--tf-color-neutral-700);
-      font-size: 14px;
+      font-size: var(--tf-type-scale-14);
       word-break: break-word;
     }
 
@@ -2340,7 +2340,7 @@ export default {
       padding: 2px 6px;
       border-radius: 4px;
       font-family: monospace;
-      font-size: 13px;
+      font-size: var(--tf-type-scale-13);
     }
 
     .custom-badge {
@@ -2348,14 +2348,14 @@ export default {
       color: white;
       padding: 2px 8px;
       border-radius: 12px;
-      font-size: 12px;
+      font-size: var(--tf-type-scale-12);
       margin-left: 8px;
     }
 
     .category-badge {
       padding: 2px 8px;
       border-radius: 12px;
-      font-size: 12px;
+      font-size: var(--tf-type-scale-12);
       font-weight: 500;
 
       &.system {
@@ -2377,7 +2377,7 @@ export default {
     .status-badge {
       padding: 2px 8px;
       border-radius: 12px;
-      font-size: 12px;
+      font-size: var(--tf-type-scale-12);
       font-weight: 500;
 
       &.active {
@@ -2400,7 +2400,7 @@ export default {
   gap: 16px;
 
   i {
-    font-size: 48px;
+    font-size: var(--tf-type-scale-48);
     flex-shrink: 0;
     margin-top: 8px;
   }
@@ -2411,13 +2411,13 @@ export default {
     h4 {
       margin: 0 0 8px 0;
       color: var(--tf-color-neutral-700);
-      font-size: 16px;
+      font-size: var(--tf-type-scale-16);
     }
 
     p {
       margin: 0 0 4px 0;
       color: var(--tf-color-neutral-700);
-      font-size: 14px;
+      font-size: var(--tf-type-scale-14);
     }
 
     strong {
@@ -2441,7 +2441,7 @@ export default {
   margin-bottom: 6px;
   font-weight: 500;
   color: var(--tf-color-neutral-700);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
 }
 
 .form-label .required {
@@ -2452,14 +2452,14 @@ export default {
 .form-text {
   display: block;
   margin-top: 4px;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: var(--tf-color-neutral-500);
 }
 
 .invalid-feedback {
   display: block;
   margin-top: 4px;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: var(--tf-color-red-500);
 }
 
@@ -2487,7 +2487,7 @@ export default {
 }
 
 .flex-checkbox span {
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   color: var(--tf-color-neutral-700);
 }
 
@@ -2557,7 +2557,7 @@ export default {
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
     color: var(--tf-color-neutral-700);
     cursor: pointer;
 

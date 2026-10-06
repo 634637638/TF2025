@@ -121,7 +121,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, useAttrs, watch } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { useRoute } from 'vue-router'
 import { useMobile, useMobileGestures } from '../composables/mobile'
 import { useTheme } from '../composables/useTheme'
 import { useMenuWidth } from '../composables/useMenuWidth'
@@ -149,7 +149,6 @@ const props = defineProps({
 const emit = defineEmits(['menu-click', 'mobile-close'])
 
 // Router
-const router = useRouter()
 const route = useRoute()
 const menuStore = useMenuStore()
 
@@ -222,7 +221,7 @@ const isMenuActive = (menu) => {
          normalizedCurrentPath.startsWith(normalizedMenuPath + '/')
 }
 
-const navigateToMenu = async (menu) => {
+const navigateToMenu = (menu) => {
   // 获取目标路径
   const targetPath = menu.url || menu.path
 
@@ -234,29 +233,6 @@ const navigateToMenu = async (menu) => {
   // 通知父组件
   emit('menu-click', menu)
 
-  // 检查当前路由，避免冗余导航
-  const currentRoute = router.currentRoute.value
-  if (currentRoute.path === targetPath || currentRoute.path === targetPath + '/') {
-    // 已经在目标页面，不需要导航
-    return
-  }
-
-  try {
-    // 使用Vue Router进行导航
-    await router.push(targetPath)
-  } catch (error) {
-    // 忽略导航取消错误和冗余导航错误，这些是正常的用户行为
-    if (error.name === 'NavigationCancelledError' ||
-        error.message?.includes('Navigation cancelled') ||
-        error.message?.includes('Avoided redundant navigation') ||
-        error.name === 'NavigationDuplicated' ||
-        (error.type === 'async' && error.message?.includes('Navigation cancelled'))) {
-      // 这些都是正常的导航行为，不需要显示错误
-      return
-    }
-    // 其他错误仍然需要处理
-    logger.error('菜单导航失败:', error)
-  }
 }
 
 
@@ -375,8 +351,8 @@ onUnmounted(() => {
 .modern-sidebar {
   width: var(--sidebar-width, 150px);
   height: 100vh;
-  background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
-  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--tf-nav-header-bg);
+  border-right: 1px solid var(--tf-nav-border);
   display: flex;
   flex-direction: column;
   transition: width 0.3s ease;
@@ -432,7 +408,7 @@ onUnmounted(() => {
 }
 
 .menu-item:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--tf-nav-item-hover-bg);
 }
 
 .menu-item.active {
@@ -446,8 +422,8 @@ onUnmounted(() => {
   position: absolute;
   inset: 6px 8px;
   border-radius: 9px;
-  background: rgba(255, 255, 255, 0.16);
-  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: var(--tf-nav-item-active-bg);
+  border: 1px solid var(--tf-nav-border);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   pointer-events: none;
   z-index: 0;
@@ -469,7 +445,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   color: var(--color-bg-white);
-  font-size: 18px;
+  font-size: var(--tf-type-scale-18);
   margin-right: 12px;
   flex-shrink: 0;
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
@@ -477,7 +453,7 @@ onUnmounted(() => {
 
 /* Iconify 图标样式 */
 .menu-icon .iconify {
-  font-size: 18px;
+  font-size: var(--tf-type-scale-18);
   width: 18px;
   height: 18px;
   display: inline-block;
@@ -488,7 +464,7 @@ onUnmounted(() => {
 .menu-text {
   flex: 1;
   color: var(--color-bg-white);
-  font-size: 14px;
+  font-size: var(--tf-nav-menu-text-size);
   font-weight: 500;
   white-space: nowrap;
   overflow: hidden;
@@ -504,7 +480,7 @@ onUnmounted(() => {
 .badge-count {
   background: var(--tf-color-red-coral);
   color: var(--color-bg-white);
-  font-size: 11px;
+  font-size: var(--tf-type-scale-11);
   font-weight: 600;
   padding: 2px 6px;
   border-radius: 10px;
@@ -525,7 +501,7 @@ onUnmounted(() => {
 }
 
 .sub-item .menu-text {
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   font-weight: 400;
 }
 
@@ -539,7 +515,7 @@ onUnmounted(() => {
 
 .menu-arrow {
   color: rgba(255, 255, 255, 0.6);
-  font-size: 12px;
+  font-size: var(--tf-nav-menu-arrow-size);
   margin-right: 8px;
   flex-shrink: 0;
   transition: transform 0.2s ease;
@@ -561,7 +537,7 @@ onUnmounted(() => {
 
 /* 主题切换 */
 .modern-sidebar.theme-dark {
-  background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
+  background: var(--tf-nav-header-bg);
 }
 
 
@@ -614,7 +590,7 @@ onUnmounted(() => {
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s ease;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   color: var(--tf-button-tool-color);
 }
 
@@ -624,7 +600,7 @@ onUnmounted(() => {
 }
 
 .logout-btn i {
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
 }
 
 
@@ -675,8 +651,8 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   padding: 12px 16px; /* 更紧凑的padding */
-  border-bottom: 1px solid var(--theme-border-color, var(--tf-color-gray-ant-300));
-  background: var(--theme-header-bg, var(--color-bg-white));
+  border-bottom: 1px solid var(--tf-nav-topbar-border);
+  background: var(--tf-nav-topbar-bg);
   min-height: 52px; /* 稍小的高度 */
 }
 
@@ -699,9 +675,9 @@ onUnmounted(() => {
 }
 
 .mobile-title {
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
   font-weight: 600;
-  color: var(--theme-text-color, var(--text-primary));
+  color: var(--tf-nav-topbar-text);
 }
 
 .mobile-actions {
@@ -746,14 +722,14 @@ onUnmounted(() => {
   display: grid;
   grid-template-columns: repeat(4, 1fr); /* 4列网格 */
   gap: 1px;
-  background: var(--theme-border-color, var(--tf-color-gray-200));
+  background: var(--tf-nav-border);
   padding: 1px;
 }
 
 .mobile-grid .mobile-item {
   border-bottom: none;
-  border-right: 1px solid var(--theme-border-color, var(--tf-color-gray-200));
-  background: var(--theme-bg, var(--color-bg-white));
+  border-right: 1px solid var(--tf-nav-border);
+  background: var(--tf-nav-surface-color);
   padding: 20px 8px; /* 网格项padding */
   min-height: 80px; /* 网格项高度 */
   min-width: 0; /* 允许网格项收缩 */
@@ -764,7 +740,7 @@ onUnmounted(() => {
 }
 
 .mobile-grid .mobile-item .menu-icon {
-  font-size: 20px; /* 网格中图标稍小 */
+  font-size: var(--tf-type-scale-20); /* 网格中图标稍小 */
   margin-bottom: 4px; /* 图标与tooltip间距 */
 }
 
@@ -819,7 +795,7 @@ onUnmounted(() => {
 }
 
 .mobile-item .menu-text {
-  font-size: 15px;
+  font-size: var(--tf-type-scale-15);
   line-height: 1.3;
   flex: 1;
   font-weight: 500;
@@ -829,7 +805,7 @@ onUnmounted(() => {
 }
 
 .mobile-item .menu-icon {
-  font-size: 24px; /* 手机端图标更大 */
+  font-size: var(--tf-type-scale-24); /* 手机端图标更大 */
   margin: 0; /* 移除边距，居中显示 */
   width: 24px;
   height: 24px;
@@ -842,7 +818,7 @@ onUnmounted(() => {
 
 /* 移动端子菜单 */
 .mobile-sub-menu {
-  background: var(--theme-hover-bg, var(--tf-color-surface-neutral-alt));
+  background: var(--tf-nav-submenu-bg);
   padding-left: 16px; /* 减少缩进 */
 }
 
@@ -856,13 +832,13 @@ onUnmounted(() => {
 }
 
 .mobile-sub-menu .sub-item .menu-text {
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   line-height: 1.3;
   flex: 1;
 }
 
 .mobile-sub-menu .sub-item .menu-icon {
-  font-size: 14px; /* 子菜单图标更小 */
+  font-size: var(--tf-type-scale-14); /* 子菜单图标更小 */
   margin-right: 10px;
   width: 14px;
   text-align: center;
@@ -871,13 +847,13 @@ onUnmounted(() => {
 
 /* 移动端菜单项激活状态 */
 .mobile-item.active {
-  background: var(--theme-primary-bg, var(--tf-color-cyan-ant-50));
-  color: var(--theme-primary-color, var(--tf-color-blue-ant));
+  background: var(--tf-nav-item-active-bg);
+  color: var(--tf-nav-header-text);
 }
 
 .mobile-item.active .menu-icon {
-  color: var(--theme-primary-color, var(--tf-color-blue-ant));
-  font-size: 26px; /* 激活状态图标稍大 */
+  color: var(--tf-nav-header-text);
+  font-size: var(--tf-type-scale-26); /* 激活状态图标稍大 */
 }
 
 /* 手机端Tooltip样式 */
@@ -891,7 +867,7 @@ onUnmounted(() => {
   color: white;
   padding: 4px 8px;
   border-radius: 4px;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   white-space: nowrap;
   z-index: 1000;
   pointer-events: none;
@@ -986,7 +962,7 @@ onUnmounted(() => {
   }
 
   .menu-text {
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
   }
 }
 
@@ -1020,11 +996,11 @@ onUnmounted(() => {
   }
 
   .mobile-item .menu-text {
-    font-size: 18px;
+    font-size: var(--tf-type-scale-18);
   }
 
   .mobile-item .menu-icon {
-    font-size: 20px;
+    font-size: var(--tf-type-scale-20);
   }
 }
 

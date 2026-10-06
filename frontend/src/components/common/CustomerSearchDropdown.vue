@@ -21,10 +21,10 @@
       </div>
 
       <template v-else>
-        <button
+        <el-button
           v-for="(customer, index) in items"
           :key="customerKey(customer, index)"
-          type="button"
+          native-type="button"
           class="customer-search-dropdown__item"
           role="option"
           @mousedown.prevent
@@ -46,18 +46,18 @@
               >{{ vipLabel(customer.vip_level) }}</span>
             </span>
           </span>
-        </button>
+        </el-button>
 
-        <button
+        <el-button
           v-if="showEmptyCreate"
-          type="button"
+          native-type="button"
           class="customer-search-dropdown__create"
           @mousedown.prevent
           @click="$emit('create')"
         >
           <i class="fas fa-user-plus" />
           <span class="customer-search-dropdown__create-text">{{ emptyCreateText }}</span>
-        </button>
+        </el-button>
       </template>
     </div>
   </Teleport>
@@ -155,7 +155,7 @@ const vipLabel = (level: string) => ({
   justify-content: center;
   padding: 16px 20px;
   color: var(--admin-record-count-color);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
 }
 
 .customer-search-dropdown__item,
@@ -206,7 +206,7 @@ const vipLabel = (level: string) => ({
   min-width: 0;
   overflow: hidden;
   color: var(--admin-data-table-cell-color);
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   line-height: 1.2;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -215,7 +215,7 @@ const vipLabel = (level: string) => ({
 .customer-search-dropdown__phone,
 .customer-search-dropdown__meta {
   color: var(--admin-record-count-color);
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   line-height: 1.2;
   white-space: nowrap;
 }
@@ -240,7 +240,7 @@ const vipLabel = (level: string) => ({
   flex-shrink: 0;
   padding: 2px 6px;
   border-radius: 999px;
-  font-size: 10px;
+  font-size: var(--tf-type-scale-10);
   font-weight: 600;
   line-height: 1.2;
 }
@@ -264,7 +264,7 @@ const vipLabel = (level: string) => ({
   padding: 12px 14px;
   background: var(--tf-button-success-soft-bg);
   color: var(--tf-button-success-soft-color);
-  font-size: 12px !important;
+  font-size: var(--tf-type-scale-12) !important;
   font-weight: 500 !important;
   line-height: 1.35;
   white-space: nowrap;
@@ -310,14 +310,14 @@ const vipLabel = (level: string) => ({
   .customer-search-dropdown__create {
     gap: 5px;
     padding-inline: 10px;
-    font-size: 10px !important;
+    font-size: var(--tf-type-scale-10) !important;
     line-height: 1.35;
   }
 
   .customer-search-dropdown__create > i {
     flex-basis: 14px;
     width: 14px;
-    font-size: 11px;
+    font-size: var(--tf-type-scale-11);
   }
 
   .customer-search-dropdown__line--subline {
@@ -325,12 +325,12 @@ const vipLabel = (level: string) => ({
   }
 
   .customer-search-dropdown__phone {
-    font-size: 11px;
+    font-size: var(--tf-type-scale-11);
   }
 
   .customer-search-dropdown__line--subline .customer-search-dropdown__vip {
     padding: 2px 5px;
-    font-size: 9px;
+    font-size: var(--tf-type-scale-9);
   }
 }
 </style>

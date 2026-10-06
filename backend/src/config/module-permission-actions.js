@@ -54,6 +54,12 @@ const MODULE_PERMISSION_METADATA = {
     category: 'system',
     icon: 'fas fa-cogs'
   },
+  standards_standardsauditview: {
+    name: '规范与审计',
+    description: '查看统一规范、公共实现入口和审计命令',
+    category: 'system',
+    icon: 'fas fa-clipboard-check'
+  },
   system_returngoods: {
     name: '退库管理',
     description: '查看、编辑和删除退库记录',

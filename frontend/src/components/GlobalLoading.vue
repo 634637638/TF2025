@@ -192,7 +192,7 @@ export default defineComponent({
 }
 
 .loading-title {
-  font-size: 15px;
+  font-size: var(--tf-type-scale-15);
   color: var(--tf-loading-surface-text, var(--tf-color-slate-900));
   font-weight: 800;
   letter-spacing: 0;
@@ -200,7 +200,7 @@ export default defineComponent({
 
 .loading-subtitle {
   margin-top: 6px;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: var(--tf-color-slate-500);
   font-weight: 600;
   letter-spacing: 0;

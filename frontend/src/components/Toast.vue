@@ -16,12 +16,15 @@
         <div class="toast-message">
           {{ toast.message }}
         </div>
-        <button
-          class="toast-close"
+        <el-button
+          class="toast-close tf-button--dismiss"
+          native-type="button"
+          aria-label="关闭提示"
+          title="关闭提示"
           @click.stop="removeToast(toast.id)"
         >
           <i class="fas fa-times" />
-        </button>
+        </el-button>
       </div>
     </div>
   </teleport>
@@ -85,35 +88,21 @@ const getIconClass = (type: string) => {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
 }
 
 .toast-message {
   flex: 1;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   line-height: 1.4;
   color: var(--tf-color-neutral-800);
 }
 
 .toast-close {
   flex-shrink: 0;
-  background: none;
-  border: none;
-  color: var(--tf-color-neutral-500);
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
-  transition: all 0.2s;
-}
-
-.toast-close:hover {
-  background: rgba(0, 0, 0, 0.1);
-  color: var(--tf-color-neutral-700);
 }
 
 /* Toast 类型样式 */

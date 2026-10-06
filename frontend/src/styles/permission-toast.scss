@@ -34,7 +34,7 @@
     text-align: left;
     white-space: pre-line;
     line-height: 1.8;
-    font-size: 14px;
+    font-size: var(--tf-font-body);
   }
 }
 
@@ -44,7 +44,7 @@
   align-items: center;
   padding: 4px 12px;
   border-radius: 4px;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   font-weight: 500;
   gap: 6px;
 
@@ -73,7 +73,7 @@
   }
 
   i {
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
   }
 }
 
@@ -95,7 +95,7 @@
         background: var(--tf-color-surface);
         padding: 4px 8px;
         border-radius: 4px;
-        font-size: 12px;
+        font-size: var(--tf-type-scale-12);
       }
     }
   }
@@ -114,7 +114,7 @@
     padding: 6px 12px;
     background: var(--tf-button-tooltip-bg);
     color: var(--tf-button-on-color);
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
     border-radius: 4px;
     white-space: nowrap;
     z-index: var(--tf-z-permission-tooltip);
@@ -128,7 +128,7 @@
   align-items: center;
   gap: 8px;
   color: var(--color-info);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
 
   .el-icon {
     animation: rotate 1s linear infinite;
@@ -149,11 +149,11 @@
   .permission-notification {
     .el-notification__group {
       .el-notification__title {
-        font-size: 14px;
+        font-size: var(--tf-type-scale-14);
       }
 
       .el-notification__content {
-        font-size: 13px;
+        font-size: var(--tf-type-scale-13);
       }
     }
   }

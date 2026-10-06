@@ -248,7 +248,7 @@ const paymentMethod = createFieldModel('payment_method')
     padding-bottom: 8px;
     border-bottom: 2px solid var(--tf-color-border-element);
     color: var(--color-text-primary);
-    font-size: 15px;
+    font-size: var(--tf-type-scale-15);
     font-weight: 600;
   }
 }
@@ -274,7 +274,7 @@ const paymentMethod = createFieldModel('payment_method')
     display: block;
     margin-bottom: 8px;
     color: var(--tf-color-gray-ant-600);
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
     font-weight: 500;
   }
 }
@@ -285,7 +285,7 @@ const paymentMethod = createFieldModel('payment_method')
   border: 1px solid var(--tf-color-gray-ant-400);
   border-radius: 6px;
   background: var(--tf-color-white);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   transition: border-color 0.2s, box-shadow 0.2s;
 
   &:focus {
@@ -315,13 +315,13 @@ const paymentMethod = createFieldModel('payment_method')
     margin-bottom: 16px;
 
     label {
-      font-size: 13px;
+      font-size: var(--tf-type-scale-13);
     }
   }
 
   .form-control {
     padding: 8px 10px;
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
   }
 }
 

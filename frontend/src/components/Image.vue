@@ -368,12 +368,12 @@ onUnmounted(() => {
   min-height: 100px;
   box-sizing: border-box;
   color: var(--text-muted);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   text-align: center;
 }
 
 .tf-image-placeholder i {
-  font-size: 24px;
+  font-size: var(--tf-type-scale-24);
   color: var(--tf-color-gray-300-alt);
 }
 
@@ -382,6 +382,6 @@ onUnmounted(() => {
 }
 
 .tf-image-error i {
-  font-size: 24px;
+  font-size: var(--tf-type-scale-24);
 }
 </style>

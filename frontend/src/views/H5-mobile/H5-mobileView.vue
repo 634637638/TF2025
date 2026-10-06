@@ -411,7 +411,7 @@ defineExpose({
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 18px;
+    font-size: var(--tf-type-scale-18);
     color: var(--text-primary);
     cursor: pointer;
 
@@ -423,7 +423,7 @@ defineExpose({
   .header-title {
     flex: 1;
     text-align: center;
-    font-size: 16px;
+    font-size: var(--tf-type-scale-16);
     font-weight: 500;
     color: var(--text-primary);
     overflow: hidden;
@@ -474,12 +474,12 @@ defineExpose({
     cursor: pointer;
 
     i {
-      font-size: 20px;
+      font-size: var(--tf-type-scale-20);
       margin-bottom: 4px;
     }
 
     span {
-      font-size: 12px;
+      font-size: var(--tf-type-scale-12);
     }
 
     &.active {
@@ -494,7 +494,7 @@ defineExpose({
       height: 16px;
       background: var(--tf-color-accent-pink);
       color: var(--color-bg-white);
-      font-size: 10px;
+      font-size: var(--tf-type-scale-10);
       border-radius: 8px;
       display: flex;
       align-items: center;
@@ -560,12 +560,12 @@ defineExpose({
     color: var(--color-bg-white);
 
     i {
-      font-size: 24px;
+      font-size: var(--tf-type-scale-24);
     }
   }
 
   .service-text {
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
     color: var(--tf-color-accent-green);
     font-weight: 500;
     background: rgba(255, 255, 255, 0.9);
@@ -617,7 +617,7 @@ defineExpose({
         }
 
         i {
-          font-size: 20px;
+          font-size: var(--tf-type-scale-20);
         }
       }
 
@@ -625,13 +625,13 @@ defineExpose({
         text-align: center;
 
         .service-label {
-          font-size: 12px;
+          font-size: var(--tf-type-scale-12);
           color: var(--text-secondary);
           margin-bottom: 4px;
         }
 
         .service-value {
-          font-size: 14px;
+          font-size: var(--tf-type-scale-14);
           font-weight: 500;
           color: var(--text-primary);
           overflow: hidden;
@@ -678,7 +678,7 @@ defineExpose({
       }
 
       i {
-        font-size: 20px;
+        font-size: var(--tf-type-scale-20);
       }
     }
 
@@ -687,13 +687,13 @@ defineExpose({
       min-width: 0;
 
       .info-label {
-        font-size: 12px;
+        font-size: var(--tf-type-scale-12);
         color: var(--text-secondary);
         margin-bottom: 4px;
       }
 
       .info-value {
-        font-size: 15px;
+        font-size: var(--tf-type-scale-15);
         font-weight: 500;
         color: var(--text-primary);
         overflow: hidden;
@@ -704,7 +704,7 @@ defineExpose({
 
     .info-arrow {
       color: var(--tf-color-gray-300-alt);
-      font-size: 14px;
+      font-size: var(--tf-type-scale-14);
       flex-shrink: 0;
     }
   }
@@ -748,7 +748,7 @@ defineExpose({
       }
 
       i {
-        font-size: 20px;
+        font-size: var(--tf-type-scale-20);
       }
     }
 
@@ -757,13 +757,13 @@ defineExpose({
       min-width: 0;
 
       .info-label {
-        font-size: 12px;
+        font-size: var(--tf-type-scale-12);
         color: var(--text-secondary);
         margin-bottom: 4px;
       }
 
       .info-value {
-        font-size: 15px;
+        font-size: var(--tf-type-scale-15);
         font-weight: 500;
         color: var(--text-primary);
         overflow: hidden;
@@ -774,7 +774,7 @@ defineExpose({
 
     .info-arrow {
       color: var(--tf-color-gray-300-alt);
-      font-size: 14px;
+      font-size: var(--tf-type-scale-14);
       flex-shrink: 0;
     }
   }
@@ -785,13 +785,13 @@ defineExpose({
     color: var(--text-muted);
 
     i {
-      font-size: 40px;
+      font-size: var(--tf-type-scale-40);
       margin-bottom: 12px;
       opacity: 0.5;
     }
 
     p {
-      font-size: 14px;
+      font-size: var(--tf-type-scale-14);
       margin: 0;
     }
   }
@@ -833,12 +833,12 @@ defineExpose({
     color: var(--color-bg-white);
 
     i {
-      font-size: 24px;
+      font-size: var(--tf-type-scale-24);
     }
   }
 
   .service-text {
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
     color: var(--tf-color-accent-green);
     font-weight: 500;
     background: rgba(255, 255, 255, 0.9);
@@ -889,7 +889,7 @@ defineExpose({
       }
 
       i {
-        font-size: 20px;
+        font-size: var(--tf-type-scale-20);
       }
     }
 
@@ -898,13 +898,13 @@ defineExpose({
       min-width: 0;
 
       .info-label {
-        font-size: 12px;
+        font-size: var(--tf-type-scale-12);
         color: var(--text-secondary);
         margin-bottom: 4px;
       }
 
       .info-value {
-        font-size: 15px;
+        font-size: var(--tf-type-scale-15);
         font-weight: 500;
         color: var(--text-primary);
         overflow: hidden;
@@ -915,7 +915,7 @@ defineExpose({
 
     .info-arrow {
       color: var(--tf-color-gray-300-alt);
-      font-size: 14px;
+      font-size: var(--tf-type-scale-14);
       flex-shrink: 0;
     }
   }
@@ -926,13 +926,13 @@ defineExpose({
     color: var(--text-muted);
 
     i {
-      font-size: 40px;
+      font-size: var(--tf-type-scale-40);
       margin-bottom: 12px;
       opacity: 0.5;
     }
 
     p {
-      font-size: 14px;
+      font-size: var(--tf-type-scale-14);
       margin: 0;
     }
   }

@@ -732,25 +732,25 @@ onUnmounted(() => {
 
   .status-icon {
     i {
-      font-size: 48px;
+      font-size: var(--tf-type-scale-48);
       margin-bottom: 12px;
     }
   }
 
   .status-title {
-    font-size: 20px;
+    font-size: var(--tf-type-scale-20);
     font-weight: 500;
     margin: 0 0 8px;
   }
 
   .status-tip {
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
     opacity: 0.9;
     margin: 0;
 
     .countdown {
       font-weight: 600;
-      font-size: 16px;
+      font-size: var(--tf-type-scale-16);
       color: var(--color-bg-white);
       background: rgba(255, 255, 255, 0.2);
       padding: 2px 8px;
@@ -772,7 +772,7 @@ onUnmounted(() => {
   border-radius: 8px;
 
   .section-title {
-    font-size: 16px;
+    font-size: var(--tf-type-scale-16);
     font-weight: 500;
     color: var(--text-primary);
     margin: 0 0 12px;
@@ -787,12 +787,12 @@ onUnmounted(() => {
     padding: 8px 0;
 
     .label {
-      font-size: 14px;
+      font-size: var(--tf-type-scale-14);
       color: var(--text-secondary);
     }
 
     .value {
-      font-size: 14px;
+      font-size: var(--tf-type-scale-14);
       color: var(--text-primary);
       text-align: right;
     }
@@ -833,14 +833,14 @@ onUnmounted(() => {
       justify-content: space-between;
 
       .item-name {
-        font-size: 14px;
+        font-size: var(--tf-type-scale-14);
         font-weight: 500;
         color: var(--text-primary);
         margin: 0;
       }
 
       .item-specs {
-        font-size: 12px;
+        font-size: var(--tf-type-scale-12);
         color: var(--text-muted);
         margin: 4px 0;
       }
@@ -851,13 +851,13 @@ onUnmounted(() => {
         align-items: center;
 
         .item-price {
-          font-size: 16px;
+          font-size: var(--tf-type-scale-16);
           font-weight: 500;
           color: var(--tf-color-accent-pink);
         }
 
         .item-quantity {
-          font-size: 14px;
+          font-size: var(--tf-type-scale-14);
           color: var(--text-secondary);
         }
       }
@@ -871,18 +871,18 @@ onUnmounted(() => {
     display: flex;
     justify-content: space-between;
     padding: 8px 0;
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
 
     &.total {
       border-top: 1px solid var(--tf-color-gray-200);
       padding-top: 12px;
       margin-top: 4px;
-      font-size: 16px;
+      font-size: var(--tf-type-scale-16);
       font-weight: 500;
 
       .total-amount {
         color: var(--tf-color-accent-pink);
-        font-size: 20px;
+        font-size: var(--tf-type-scale-20);
       }
     }
   }
@@ -890,7 +890,7 @@ onUnmounted(() => {
 
 // 备注
 .remarks {
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   color: var(--text-secondary);
   line-height: 1.6;
   margin: 0;
@@ -915,7 +915,7 @@ onUnmounted(() => {
   .action-btn {
     height: 48px;
     border-radius: 24px;
-    font-size: 15px;
+    font-size: var(--tf-type-scale-15);
     font-weight: 500;
     transition: all 0.3s ease;
     border: none;
@@ -962,7 +962,6 @@ onUnmounted(() => {
 // 支付弹窗样式
 :deep(.pay-dialog) {
   .el-message-box__message {
-    font-size: 16px;
     line-height: 1.8;
     white-space: pre-line;
   }
@@ -994,12 +993,12 @@ onUnmounted(() => {
     margin-bottom: 20px;
 
     .label {
-      font-size: 14px;
+      font-size: var(--tf-type-scale-14);
       color: var(--text-secondary);
     }
 
     .amount {
-      font-size: 24px;
+      font-size: var(--tf-type-scale-24);
       font-weight: 600;
       color: var(--tf-color-red-coral);
     }
@@ -1050,7 +1049,7 @@ onUnmounted(() => {
       background: var(--tf-color-surface-soft);
       border-radius: 10px;
       margin-right: 12px;
-      font-size: 20px;
+      font-size: var(--tf-type-scale-20);
       color: var(--text-secondary);
       transition: all 0.3s ease;
 
@@ -1070,20 +1069,20 @@ onUnmounted(() => {
       gap: 2px;
 
       .payment-name {
-        font-size: 15px;
+        font-size: var(--tf-type-scale-15);
         font-weight: 500;
         color: var(--text-primary);
       }
 
       .payment-desc {
-        font-size: 12px;
+        font-size: var(--tf-type-scale-12);
         color: var(--text-muted);
       }
     }
 
     .payment-check {
       i {
-        font-size: 20px;
+        font-size: var(--tf-type-scale-20);
         color: var(--tf-color-gray-300-alt);
         transition: all 0.3s ease;
       }
@@ -1095,7 +1094,7 @@ onUnmounted(() => {
   width: 100%;
   height: 48px;
   border-radius: 24px;
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
   font-weight: 600;
   background: var(--tf-button-danger-bg);
   border: none;
@@ -1124,7 +1123,7 @@ onUnmounted(() => {
     align-items: center;
     justify-content: center;
     gap: 8px;
-    font-size: 18px;
+    font-size: var(--tf-type-scale-18);
     font-weight: 600;
     color: var(--text-primary);
     margin-bottom: 20px;
@@ -1147,7 +1146,7 @@ onUnmounted(() => {
   }
 
   .payment-tip {
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
     color: var(--text-secondary);
     margin: 0;
   }
@@ -1162,7 +1161,7 @@ onUnmounted(() => {
     align-items: center;
     justify-content: center;
     gap: 8px;
-    font-size: 18px;
+    font-size: var(--tf-type-scale-18);
     font-weight: 600;
     color: var(--text-primary);
     margin-bottom: 20px;
@@ -1174,7 +1173,7 @@ onUnmounted(() => {
     border-radius: 12px;
 
     p {
-      font-size: 14px;
+      font-size: var(--tf-type-scale-14);
       color: var(--text-primary);
       line-height: 1.8;
       margin: 0;
@@ -1191,7 +1190,7 @@ onUnmounted(() => {
     align-items: center;
     justify-content: center;
     gap: 8px;
-    font-size: 18px;
+    font-size: var(--tf-type-scale-18);
     font-weight: 600;
     color: var(--text-primary);
     margin-bottom: 20px;
@@ -1207,14 +1206,14 @@ onUnmounted(() => {
       display: flex;
       align-items: center;
       gap: 12px;
-      font-size: 14px;
+      font-size: var(--tf-type-scale-14);
       color: var(--text-primary);
       line-height: 2;
       margin: 0;
 
       i {
         color: var(--tf-color-accent-orange);
-        font-size: 16px;
+        font-size: var(--tf-type-scale-16);
         width: 20px;
         text-align: center;
       }
@@ -1223,7 +1222,7 @@ onUnmounted(() => {
 
   .payment-tip {
     text-align: center;
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
     color: var(--text-secondary);
     margin: 0;
   }

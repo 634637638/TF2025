@@ -542,12 +542,12 @@ const moduleActionLabel = (action: string) => ({
 .permission-log-summary span,
 .permission-log-section-heading span {
   color: var(--tf-color-slate-500);
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
 }
 
 .permission-log-summary strong {
   color: var(--tf-color-slate-custom);
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   overflow-wrap: anywhere;
 }
 
@@ -558,7 +558,7 @@ const moduleActionLabel = (action: string) => ({
 .permission-log-section h4 {
   margin: 0 0 12px;
   color: var(--tf-color-slate-custom);
-  font-size: 15px;
+  font-size: var(--tf-type-scale-15);
 }
 
 .permission-log-section-heading {
@@ -608,7 +608,7 @@ const moduleActionLabel = (action: string) => ({
 
 .permission-module-operation-list code {
   color: var(--tf-color-slate-500);
-  font-size: 11px;
+  font-size: var(--tf-type-scale-11);
   overflow-wrap: anywhere;
 }
 
@@ -626,7 +626,7 @@ const moduleActionLabel = (action: string) => ({
   min-height: 26px;
   padding: 3px 8px;
   border-radius: 4px;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
 }
 
 .permission-change-actions .is-added,
@@ -663,7 +663,7 @@ const moduleActionLabel = (action: string) => ({
   display: block;
   margin-bottom: 8px;
   color: var(--tf-color-slate-500);
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   font-weight: 700;
 }
 
@@ -747,7 +747,7 @@ const moduleActionLabel = (action: string) => ({
 
   .permission-log-fields {
     grid-template-columns: 96px minmax(0, 1fr);
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
   }
 
   .permission-module-change {
@@ -758,7 +758,7 @@ const moduleActionLabel = (action: string) => ({
   .permission-change-actions span {
     min-height: 24px;
     padding: 2px 6px;
-    font-size: 11px;
+    font-size: var(--tf-type-scale-11);
   }
 }
 </style>

@@ -353,7 +353,7 @@ const getDeviceIdentifier = (item: InventoryItem) => {
     align-items: center;
     gap: 8px;
     flex: 0 0 auto;
-    font-size: 16px;
+    font-size: var(--tf-type-scale-16);
     font-weight: 500;
   }
 
@@ -367,7 +367,7 @@ const getDeviceIdentifier = (item: InventoryItem) => {
 
   .brand {
     font-weight: 600;
-    font-size: 18px;
+    font-size: var(--tf-type-scale-18);
   }
 
   .color,
@@ -375,7 +375,7 @@ const getDeviceIdentifier = (item: InventoryItem) => {
     background: rgba(255, 255, 255, 0.2);
     padding: 2px 10px;
     border-radius: 12px;
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
     white-space: nowrap;
   }
 
@@ -383,7 +383,7 @@ const getDeviceIdentifier = (item: InventoryItem) => {
     background: rgba(255, 255, 255, 0.3);
     padding: 4px 12px;
     border-radius: 12px;
-    font-size: 15px;
+    font-size: var(--tf-type-scale-15);
     font-weight: 700;
     color: var(--color-bg-white);
     margin-left: auto;
@@ -457,7 +457,7 @@ const getDeviceIdentifier = (item: InventoryItem) => {
       align-items: center;
       justify-content: center;
       font-weight: 600;
-      font-size: 14px;
+      font-size: var(--tf-type-scale-14);
       background: var(--tf-color-gray-200);
       color: var(--text-muted);
       flex-shrink: 0;
@@ -478,7 +478,7 @@ const getDeviceIdentifier = (item: InventoryItem) => {
       }
 
       i {
-        font-size: 16px;
+        font-size: var(--tf-type-scale-16);
       }
     }
 
@@ -507,7 +507,7 @@ const getDeviceIdentifier = (item: InventoryItem) => {
           justify-self: start;
           font-weight: 600;
           color: var(--tf-color-indigo-brand);
-          font-size: 14px;
+          font-size: var(--tf-type-scale-14);
           min-width: 0;
           white-space: normal;
           overflow-wrap: anywhere;
@@ -525,7 +525,7 @@ const getDeviceIdentifier = (item: InventoryItem) => {
           border-radius: 999px;
           background: var(--tf-color-indigo-50);
           color: var(--tf-color-indigo-700);
-          font-size: 12px;
+          font-size: var(--tf-type-scale-12);
           font-weight: 600;
           white-space: normal;
           overflow-wrap: anywhere;
@@ -537,7 +537,7 @@ const getDeviceIdentifier = (item: InventoryItem) => {
           grid-row: 1;
           justify-self: end;
           color: var(--tf-color-green-legacy);
-          font-size: 12px;
+          font-size: var(--tf-type-scale-12);
           display: flex;
           align-items: center;
           white-space: nowrap;
@@ -558,7 +558,7 @@ const getDeviceIdentifier = (item: InventoryItem) => {
         .identifier-label {
           grid-column: 1;
           justify-self: start;
-          font-size: 13px;
+          font-size: var(--tf-type-scale-13);
           white-space: nowrap;
           color: var(--tf-color-slate-600);
           font-weight: 600;
@@ -572,7 +572,7 @@ const getDeviceIdentifier = (item: InventoryItem) => {
           max-width: none;
           overflow: visible;
           color: var(--tf-color-slate-900);
-          font-size: 13px;
+          font-size: var(--tf-type-scale-13);
           font-family: 'Courier New', monospace;
           font-weight: 700;
           white-space: nowrap;
@@ -593,13 +593,13 @@ const getDeviceIdentifier = (item: InventoryItem) => {
           white-space: nowrap;
 
           .number {
-            font-size: 18px;
+            font-size: var(--tf-type-scale-18);
             font-weight: 700;
             line-height: 1;
           }
 
           .label {
-            font-size: 12px;
+            font-size: var(--tf-type-scale-12);
             font-weight: 600;
             opacity: 0.9;
           }
@@ -657,12 +657,12 @@ const getDeviceIdentifier = (item: InventoryItem) => {
       gap: 4px;
       flex: 0 1 auto;
       min-width: 0;
-      font-size: 13px;
+      font-size: var(--tf-type-scale-13);
       flex-wrap: nowrap;
     }
 
     .brand {
-      font-size: 14px;
+      font-size: var(--tf-type-scale-14);
     }
 
     .model {
@@ -683,7 +683,7 @@ const getDeviceIdentifier = (item: InventoryItem) => {
 
     .color,
     .memory {
-      font-size: 11px;
+      font-size: var(--tf-type-scale-11);
       padding: 3px 8px;
       border-radius: 9px;
     }
@@ -693,7 +693,7 @@ const getDeviceIdentifier = (item: InventoryItem) => {
       flex: 0 0 auto;
       justify-self: auto;
       align-self: center;
-      font-size: 11px;
+      font-size: var(--tf-type-scale-11);
       padding: 3px 8px;
       border-radius: 9px;
     }
@@ -716,11 +716,11 @@ const getDeviceIdentifier = (item: InventoryItem) => {
       .item-rank {
         width: 34px;
         height: 34px;
-        font-size: 12px;
+        font-size: var(--tf-type-scale-12);
         margin-top: 2px;
 
         i {
-          font-size: 14px;
+          font-size: var(--tf-type-scale-14);
         }
       }
 
@@ -743,7 +743,7 @@ const getDeviceIdentifier = (item: InventoryItem) => {
         .store-name {
           grid-column: 1;
           grid-row: 1;
-          font-size: 13px;
+          font-size: var(--tf-type-scale-13);
           line-height: 1.3;
         }
 
@@ -752,14 +752,14 @@ const getDeviceIdentifier = (item: InventoryItem) => {
           grid-row: 1;
           justify-self: center;
           padding: var(--tf-space-1) var(--tf-space-2);
-          font-size: 11px;
+          font-size: var(--tf-type-scale-11);
           line-height: 1.3;
         }
 
         .date {
           grid-column: 3;
           grid-row: 1;
-          font-size: 11px;
+          font-size: var(--tf-type-scale-11);
           line-height: 1.2;
         }
       }
@@ -796,11 +796,11 @@ const getDeviceIdentifier = (item: InventoryItem) => {
           padding: 4px 8px;
 
           .number {
-            font-size: 15px;
+            font-size: var(--tf-type-scale-15);
           }
 
           .label {
-            font-size: 10px;
+            font-size: var(--tf-type-scale-10);
           }
         }
       }
@@ -819,15 +819,15 @@ const getDeviceIdentifier = (item: InventoryItem) => {
 
     .product-main {
       gap: 3px;
-      font-size: 12px;
+      font-size: var(--tf-type-scale-12);
     }
 
     .brand {
-      font-size: 13px;
+      font-size: var(--tf-type-scale-13);
     }
 
     .model {
-      font-size: 12px;
+      font-size: var(--tf-type-scale-12);
     }
 
     .product-specs {
@@ -837,7 +837,7 @@ const getDeviceIdentifier = (item: InventoryItem) => {
     .color,
     .memory,
     .total-count {
-      font-size: 10px;
+      font-size: var(--tf-type-scale-10);
       padding: 2px 6px;
     }
   }
@@ -851,16 +851,16 @@ const getDeviceIdentifier = (item: InventoryItem) => {
       .item-rank {
         width: 30px;
         height: 30px;
-        font-size: 11px;
+        font-size: var(--tf-type-scale-11);
       }
 
       .item-header {
         .store-name {
-          font-size: 12px;
+          font-size: var(--tf-type-scale-12);
         }
 
         .date {
-          font-size: 10px;
+          font-size: var(--tf-type-scale-10);
         }
       }
 
@@ -881,11 +881,11 @@ const getDeviceIdentifier = (item: InventoryItem) => {
           padding: 3px 7px;
 
           .number {
-            font-size: 14px;
+            font-size: var(--tf-type-scale-14);
           }
 
           .label {
-            font-size: 9px;
+            font-size: var(--tf-type-scale-9);
           }
         }
       }

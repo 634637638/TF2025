@@ -665,13 +665,13 @@ onUnmounted(() => {
   color: var(--text-muted);
 
   i {
-    font-size: 48px;
+    font-size: var(--tf-type-scale-48);
     margin-bottom: 16px;
     display: block;
   }
 
   p {
-    font-size: 16px;
+    font-size: var(--tf-type-scale-16);
   }
 }
 
@@ -705,7 +705,7 @@ onUnmounted(() => {
   min-width: 0;
 
   h3 {
-    font-size: 18px;
+    font-size: var(--tf-type-scale-18);
     color: var(--text-primary);
     margin-bottom: 8px;
   }
@@ -716,7 +716,7 @@ onUnmounted(() => {
     margin-bottom: 8px;
 
     .detail-item {
-      font-size: 14px;
+      font-size: var(--tf-type-scale-14);
       color: var(--text-secondary);
 
       i {
@@ -732,7 +732,7 @@ onUnmounted(() => {
     gap: 4px;
 
     .meta-item {
-      font-size: 12px;
+      font-size: var(--tf-type-scale-12);
       color: var(--text-muted);
 
       i {
@@ -753,12 +753,12 @@ onUnmounted(() => {
   flex-shrink: 0;
 
   i {
-    font-size: 24px;
+    font-size: var(--tf-type-scale-24);
     margin-bottom: 4px;
   }
 
   span {
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
     font-weight: 500;
   }
 }
@@ -783,7 +783,7 @@ onUnmounted(() => {
   margin-top: 24px;
 
   .page-info {
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
     color: var(--text-secondary);
   }
 }
@@ -794,13 +794,13 @@ onUnmounted(() => {
     text-align: center;
 
     h3 {
-      font-size: 18px;
+      font-size: var(--tf-type-scale-18);
       color: var(--text-primary);
       margin-bottom: 4px;
     }
 
     p {
-      font-size: 14px;
+      font-size: var(--tf-type-scale-14);
       color: var(--text-muted);
     }
   }
@@ -812,7 +812,7 @@ onUnmounted(() => {
     color: var(--text-muted);
 
     i {
-      font-size: 36px;
+      font-size: var(--tf-type-scale-36);
       margin-bottom: 12px;
       display: block;
     }
@@ -850,7 +850,7 @@ onUnmounted(() => {
       border-radius: 4px;
       background: rgba(15, 23, 42, 0.78);
       color: var(--color-bg-white);
-      font-size: 12px;
+      font-size: var(--tf-type-scale-12);
       pointer-events: none;
     }
 
@@ -862,7 +862,7 @@ onUnmounted(() => {
       color: var(--color-bg-white);
       padding: 4px 8px;
       border-radius: 4px;
-      font-size: 12px;
+      font-size: var(--tf-type-scale-12);
 
       i {
         margin-right: 4px;
@@ -884,7 +884,7 @@ onUnmounted(() => {
       transition: opacity 0.3s;
 
       i {
-        font-size: 12px;
+        font-size: var(--tf-type-scale-12);
       }
 
       &:hover {
@@ -919,7 +919,7 @@ onUnmounted(() => {
 
     h3 {
       margin-bottom: 6px;
-      font-size: 15px;
+      font-size: var(--tf-type-scale-15);
       line-height: 1.3;
       word-break: break-word;
     }
@@ -930,7 +930,7 @@ onUnmounted(() => {
       flex-wrap: wrap;
 
       .detail-item {
-        font-size: 12px;
+        font-size: var(--tf-type-scale-12);
       }
     }
 
@@ -938,7 +938,7 @@ onUnmounted(() => {
       gap: 3px;
 
       .meta-item {
-        font-size: 11px;
+        font-size: var(--tf-type-scale-11);
         line-height: 1.35;
         word-break: break-all;
       }
@@ -953,11 +953,11 @@ onUnmounted(() => {
 
     i {
       margin-bottom: 2px;
-      font-size: 16px;
+      font-size: var(--tf-type-scale-16);
     }
 
     span {
-      font-size: 11px;
+      font-size: var(--tf-type-scale-11);
       line-height: 1.2;
       white-space: nowrap;
     }
@@ -975,7 +975,7 @@ onUnmounted(() => {
       margin: 0;
       padding: 8px 6px;
       justify-content: center;
-      font-size: 12px;
+      font-size: var(--tf-type-scale-12);
     }
   }
 

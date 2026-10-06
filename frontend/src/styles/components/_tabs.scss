@@ -87,7 +87,74 @@
 
 .tf-page-tabs.tab-navigation .el-button .el-icon,
 .tf-page-tabs.tab-navigation .el-button i {
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
+}
+
+/* 页头标签复用同一套 TAB 令牌，容器保持顶部栏白色。 */
+.tf-topbar-tabs {
+  display: flex;
+  align-items: center;
+  flex: 1 1 auto;
+  min-width: 0;
+  gap: var(--tf-tabs-gap);
+  height: var(--tf-tabs-height);
+  padding: 0 var(--tf-tabs-padding);
+  overflow: hidden;
+  background: var(--tf-nav-topbar-bg);
+}
+
+.tf-topbar-tabs .tf-topbar-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--tf-tabs-gap);
+  flex: 0 0 auto !important;
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: 180px;
+  height: var(--tf-tabs-height) !important;
+  min-height: var(--tf-tabs-height) !important;
+  margin: 0 !important;
+  padding-inline: var(--tf-tab-padding-x) !important;
+  border: 1px solid var(--tf-tab-border) !important;
+  border-radius: var(--tf-tab-radius) !important;
+  background: var(--tf-tab-bg) !important;
+  box-shadow: var(--tf-tab-shadow) !important;
+  color: var(--tf-tab-color) !important;
+  font-size: var(--tf-tab-font-size) !important;
+  font-weight: var(--tf-tab-font-weight) !important;
+  white-space: nowrap;
+}
+
+.tf-topbar-tabs .tf-topbar-tab:hover,
+.tf-topbar-tabs .tf-topbar-tab:focus-visible {
+  border-color: var(--tf-tab-hover-border) !important;
+  background: var(--tf-tab-hover-bg) !important;
+  box-shadow: var(--tf-tab-hover-shadow) !important;
+  color: var(--tf-tab-hover-color) !important;
+}
+
+.tf-topbar-tabs .tf-topbar-tab.is-active {
+  border-color: var(--tf-tab-active-border) !important;
+  background: var(--tf-tab-active-bg) !important;
+  box-shadow: var(--tf-tab-active-shadow) !important;
+  color: var(--tf-tab-active-color) !important;
+}
+
+.tf-topbar-tabs .tf-topbar-tab .tab-icon,
+.tf-topbar-tabs .tf-topbar-tab .tab-close {
+  color: currentColor;
+  font-size: var(--tf-type-scale-12);
+}
+
+.tf-topbar-tabs .tf-topbar-tab .tab-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tf-topbar-tabs .tf-topbar-tab.is-active .tab-close:hover {
+  background: var(--tf-button-danger-hover-bg);
+  color: var(--tf-button-danger-color);
 }
 
 .tf-page-tabs.el-tabs {
@@ -193,7 +260,7 @@
   background: var(--tf-tab-scroll-control-bg);
   box-shadow: var(--tf-tab-scroll-control-shadow);
   color: var(--tf-tab-scroll-control-color);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   line-height: var(--tf-tabs-height);
   transition: border-color 0.18s ease, background-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
 }
@@ -272,7 +339,7 @@
     --tf-tabs-radius: var(--mobile-card-radius, 12px);
     --tf-tab-radius: 6px;
     --tf-tab-padding-x: 11px;
-    --tf-tab-font-size: 12px;
+    --tf-tab-font-size: var(--tf-type-scale-12);
     --tf-tab-scroll-control-size: 28px;
   }
 
@@ -281,9 +348,14 @@
     margin-bottom: var(--admin-panel-gap, 10px);
   }
 
+  .tf-topbar-tabs {
+    --tf-tabs-height: 34px;
+    --tf-tabs-padding: var(--tf-space-1);
+  }
+
   .tf-page-tabs.tab-navigation .el-button .el-icon,
   .tf-page-tabs.tab-navigation .el-button i,
   .tf-page-tabs .tab-label i {
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
   }
 }

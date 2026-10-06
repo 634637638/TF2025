@@ -204,12 +204,12 @@ const canOperationAvailable = (mode: Exclude<OperationMode, null>) => {
 }
 
 .sales-mode-tab i {
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
 }
 
 .sales-mode-tab .badge {
   margin-left: 2px;
-  font-size: 11px;
+  font-size: var(--tf-type-scale-11);
   opacity: 0.85;
 }
 
@@ -224,7 +224,7 @@ const canOperationAvailable = (mode: Exclude<OperationMode, null>) => {
   align-items: center;
   gap: 5px;
   white-space: nowrap;
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
 }
 
 .selection-count {
@@ -262,11 +262,11 @@ const canOperationAvailable = (mode: Exclude<OperationMode, null>) => {
     height: 30px;
     min-height: 30px;
     padding: 0 7px;
-    font-size: 11px;
+    font-size: var(--tf-type-scale-11);
   }
 
   .sales-mode-tab i {
-    font-size: 11px;
+    font-size: var(--tf-type-scale-11);
   }
 
   .sales-mode-tab .badge {
@@ -288,16 +288,16 @@ const canOperationAvailable = (mode: Exclude<OperationMode, null>) => {
     height: 28px;
     min-height: 28px;
     padding: 0 5px;
-    font-size: 10px;
+    font-size: var(--tf-type-scale-10);
   }
 
   .sales-mode-tab i {
-    font-size: 10px;
+    font-size: var(--tf-type-scale-10);
   }
 
   .selection-count,
   .operation-info {
-    font-size: 11px;
+    font-size: var(--tf-type-scale-11);
   }
 }
 </style>

@@ -58,10 +58,10 @@
             v-else-if="fieldGroups.length > 0"
             class="group-nav-list"
           >
-            <button
+            <el-button
               v-for="group in fieldGroups"
               :key="group.name"
-              type="button"
+              native-type="button"
               :class="['group-nav-item', { active: activeGroupName === group.name }]"
               @click="activeGroupName = group.name"
             >
@@ -75,7 +75,7 @@
                 </span>
                 <span class="group-nav-hidden">已隐藏 {{ getHiddenCount(group) }}</span>
               </div>
-            </button>
+            </el-button>
           </div>
           <div
             v-else

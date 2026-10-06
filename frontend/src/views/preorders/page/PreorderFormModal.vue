@@ -1109,7 +1109,7 @@ onBeforeUnmount(() => {
       padding: 12px 16px;
       text-align: center;
       color: var(--color-info);
-      font-size: 14px;
+      font-size: var(--tf-type-scale-14);
     }
 
     .customer-item {
@@ -1133,21 +1133,21 @@ onBeforeUnmount(() => {
         flex: 1;
 
         .customer-name {
-          font-size: 14px;
+          font-size: var(--tf-type-scale-14);
           font-weight: 500;
           color: var(--color-text-primary);
           margin-bottom: 4px;
         }
 
         .customer-phone {
-          font-size: 12px;
+          font-size: var(--tf-type-scale-12);
           color: var(--color-info);
         }
       }
 
       .customer-select {
         color: var(--color-success);
-        font-size: 16px;
+        font-size: var(--tf-type-scale-16);
       }
     }
 
@@ -1155,7 +1155,7 @@ onBeforeUnmount(() => {
       padding: 12px 16px;
       text-align: center;
       color: var(--color-info);
-      font-size: 13px;
+      font-size: var(--tf-type-scale-13);
 
       i {
         margin-right: 4px;
@@ -1175,7 +1175,7 @@ onBeforeUnmount(() => {
   color: var(--color-text-regular);
 
   .amount-value {
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
     font-weight: 500;
     color: var(--color-primary);
   }
@@ -1200,14 +1200,14 @@ onBeforeUnmount(() => {
       margin-bottom: 16px;
 
       .el-form-item__label {
-        font-size: 13px;
+        font-size: var(--tf-type-scale-13);
         padding-bottom: 4px;
       }
 
       .el-input__inner,
       .el-select .el-input__inner,
       .el-textarea__inner {
-        font-size: 14px;
+        font-size: var(--tf-type-scale-14);
       }
     }
 
@@ -1229,28 +1229,28 @@ onBeforeUnmount(() => {
 
         .customer-info {
           .customer-name {
-            font-size: 13px;
+            font-size: var(--tf-type-scale-13);
           }
 
           .customer-phone {
-            font-size: 11px;
+            font-size: var(--tf-type-scale-11);
           }
         }
       }
 
       .no-customer-hint {
         padding: 10px 12px;
-        font-size: 12px;
+        font-size: var(--tf-type-scale-12);
       }
     }
   }
 
   .remaining-amount-display {
     height: 36px;
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
 
     .amount-value {
-      font-size: 15px;
+      font-size: var(--tf-type-scale-15);
     }
   }
 }

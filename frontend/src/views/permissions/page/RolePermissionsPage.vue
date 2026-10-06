@@ -71,6 +71,41 @@
             <i class="fas fa-eye-slash" />
             隐藏所有菜单
           </el-button>
+          <div class="permission-bulk-action">
+            <span class="permission-bulk-action__label">当前角色批量动作</span>
+            <el-select
+              v-model="ctx.dialogBulkPermissionType"
+              size="small"
+              class="permission-bulk-action__select"
+              :disabled="ctx.savingDialogPermissions || ctx.dialogActionPermissionTypes.length === 0"
+              placeholder="选择动作"
+            >
+              <el-option
+                v-for="permissionType in ctx.dialogActionPermissionTypes"
+                :key="permissionType"
+                :label="ctx.getPermissionNameEnhanced(permissionType)"
+                :value="permissionType"
+              />
+            </el-select>
+            <el-button
+              size="small"
+              type="success"
+              :disabled="ctx.savingDialogPermissions || !ctx.dialogBulkPermissionType"
+              @click="ctx.toggleDialogActionAcrossModules(ctx.dialogBulkPermissionType, true)"
+            >
+              <i class="fas fa-toggle-on" />
+              开启
+            </el-button>
+            <el-button
+              size="small"
+              type="warning"
+              :disabled="ctx.savingDialogPermissions || !ctx.dialogBulkPermissionType"
+              @click="ctx.toggleDialogActionAcrossModules(ctx.dialogBulkPermissionType, false)"
+            >
+              <i class="fas fa-toggle-off" />
+              关闭
+            </el-button>
+          </div>
         </div>
 
         <div
@@ -122,8 +157,8 @@
                 </div>
 
                 <div class="permission-switch-grid">
-                  <button
-                    type="button"
+                  <el-button
+                    native-type="button"
                     class="permission-switch"
                     :class="{ checked: ctx.isDialogMenuPermissionSelected(group.parent.module_key), disabled: ctx.savingDialogPermissions }"
                     :disabled="ctx.savingDialogPermissions"
@@ -142,12 +177,12 @@
                         <span class="permission-switch__thumb" />
                       </span>
                     </span>
-                  </button>
+                  </el-button>
 
-                  <button
+                  <el-button
                     v-for="permission in group.parent.permissions"
                     :key="`${group.parent.module_key}-${getPermissionType(permission)}`"
-                    type="button"
+                    native-type="button"
                     class="permission-switch"
                     :class="{ checked: ctx.isDialogPermissionSelected(group.parent.module_key, getPermissionType(permission)), disabled: ctx.savingDialogPermissions }"
                     :disabled="ctx.savingDialogPermissions"
@@ -168,7 +203,7 @@
                         <span class="permission-switch__thumb" />
                       </span>
                     </span>
-                  </button>
+                  </el-button>
                 </div>
               </article>
 
@@ -204,8 +239,8 @@
                   </div>
 
                   <div class="permission-switch-grid">
-                    <button
-                      type="button"
+                    <el-button
+                      native-type="button"
                       class="permission-switch"
                       :class="{ checked: ctx.isDialogMenuPermissionSelected(child.module_key), disabled: ctx.savingDialogPermissions }"
                       :disabled="ctx.savingDialogPermissions"
@@ -224,12 +259,12 @@
                           <span class="permission-switch__thumb" />
                         </span>
                       </span>
-                    </button>
+                    </el-button>
 
-                    <button
+                    <el-button
                       v-for="permission in child.permissions"
                       :key="`${child.module_key}-${getPermissionType(permission)}`"
-                      type="button"
+                      native-type="button"
                       class="permission-switch"
                       :class="{ checked: ctx.isDialogPermissionSelected(child.module_key, getPermissionType(permission)), disabled: ctx.savingDialogPermissions }"
                       :disabled="ctx.savingDialogPermissions"
@@ -250,7 +285,7 @@
                           <span class="permission-switch__thumb" />
                         </span>
                       </span>
-                    </button>
+                    </el-button>
                   </div>
 
                   <div
@@ -512,7 +547,7 @@ const totalModuleCount = computed(() =>
 }
 
 .permission-role-summary__label {
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: var(--tf-color-slate-500);
 }
 
@@ -525,7 +560,7 @@ const totalModuleCount = computed(() =>
 }
 
 .permission-role-summary__content strong {
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
   color: var(--tf-color-slate-900);
 }
 
@@ -534,7 +569,7 @@ const totalModuleCount = computed(() =>
   border-radius: 999px;
   background: var(--tf-color-slate-200);
   color: var(--tf-color-slate-600);
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
 }
 
 .permission-role-summary__meta {
@@ -542,7 +577,7 @@ const totalModuleCount = computed(() =>
   gap: 10px;
   flex-wrap: wrap;
   color: var(--tf-color-slate-600);
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   font-weight: 600;
 }
 
@@ -554,6 +589,28 @@ const totalModuleCount = computed(() =>
   border-radius: 14px;
   background: var(--color-bg-white);
   border: 1px solid var(--tf-color-slate-200);
+}
+
+.permission-bulk-action {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--tf-space-2);
+  min-width: min(100%, 360px);
+  margin-left: auto;
+  padding-left: var(--tf-space-3);
+  border-left: 1px solid var(--tf-color-slate-200);
+}
+
+.permission-bulk-action__label {
+  color: var(--tf-color-slate-600);
+  font-size: var(--tf-type-scale-12);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.permission-bulk-action__select {
+  width: 112px;
 }
 
 .permission-group-list {
@@ -585,7 +642,7 @@ const totalModuleCount = computed(() =>
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 18px;
+  font-size: var(--tf-type-scale-18);
   color: var(--tf-color-slate-900);
 }
 
@@ -596,7 +653,7 @@ const totalModuleCount = computed(() =>
   border-radius: 999px;
   background: var(--tf-color-blue-tailwind-50);
   color: var(--tf-color-blue-700);
-  font-size: 11px;
+  font-size: var(--tf-type-scale-11);
   font-weight: 700;
 }
 
@@ -668,13 +725,13 @@ const totalModuleCount = computed(() =>
 }
 
 .permission-module-card__title {
-  font-size: 15px;
+  font-size: var(--tf-type-scale-15);
   font-weight: 700;
   color: var(--tf-color-slate-900);
 }
 
 .permission-module-card__summary {
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   font-weight: 600;
   color: var(--tf-color-slate-500);
   white-space: nowrap;
@@ -686,7 +743,7 @@ const totalModuleCount = computed(() =>
   border-radius: 999px;
   background: rgba(226, 232, 240, 0.9);
   color: var(--tf-color-slate-600);
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
 }
 
 .page-type-badge {
@@ -695,7 +752,7 @@ const totalModuleCount = computed(() =>
   border-radius: 999px;
   background: var(--tf-color-blue-tailwind-100);
   color: var(--tf-color-blue-700);
-  font-size: 11px;
+  font-size: var(--tf-type-scale-11);
   font-weight: 700;
 }
 
@@ -710,7 +767,7 @@ const totalModuleCount = computed(() =>
   min-height: 24px;
   padding: 2px 10px;
   border-radius: 999px;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   font-weight: 700;
   border: 1px solid transparent;
 }
@@ -740,17 +797,19 @@ const totalModuleCount = computed(() =>
 }
 
 .permission-switch-grid {
-  --permission-switch-width: 160px;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(var(--permission-switch-width), var(--permission-switch-width)));
-  justify-content: start;
+  display: flex;
+  flex-wrap: wrap;
+  width: 100%;
   align-items: stretch;
   gap: 8px;
 }
 
 .permission-switch {
   appearance: none;
-  width: 100%;
+  width: max-content;
+  max-width: 100%;
+  min-width: 0;
+  flex: 0 1 auto;
   min-height: 46px;
   display: flex;
   align-items: center;
@@ -767,7 +826,7 @@ const totalModuleCount = computed(() =>
 
 .permission-switch:hover {
   border-color: var(--tf-color-violet-400);
-  box-shadow: 0 8px 18px rgba(139, 92, 246, 0.08);
+  box-shadow: var(--tf-shadow-popover);
 }
 
 .permission-switch:disabled,
@@ -788,7 +847,7 @@ const totalModuleCount = computed(() =>
   align-items: center;
   gap: 8px;
   min-width: 0;
-  flex: 1 1 auto;
+  flex: 0 1 auto;
 }
 
 .permission-switch__icon {
@@ -801,7 +860,7 @@ const totalModuleCount = computed(() =>
   background: var(--tf-color-violet-100);
   color: var(--tf-color-violet-700);
   flex-shrink: 0;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
 }
 
 .permission-switch.checked .permission-switch__icon {
@@ -813,17 +872,16 @@ const totalModuleCount = computed(() =>
   min-width: 0;
   display: flex;
   align-items: center;
-  flex: 1 1 auto;
+  flex: 0 1 auto;
 }
 
 .permission-switch__label {
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   font-weight: 700;
   color: var(--tf-color-slate-900);
   line-height: 1.2;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .permission-switch.checked .permission-switch__label {
@@ -866,7 +924,7 @@ const totalModuleCount = computed(() =>
 
 .permission-empty {
   color: var(--tf-color-slate-500);
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   padding: 4px 0;
 }
 
@@ -881,7 +939,7 @@ const totalModuleCount = computed(() =>
 
 .permission-hint {
   color: var(--tf-color-slate-500);
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
 }
 
 @media (max-width: 767px) {
@@ -899,15 +957,19 @@ const totalModuleCount = computed(() =>
     padding-left: 12px;
   }
 
-  .permission-switch-grid {
-    --permission-switch-width: minmax(0, 1fr);
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .permission-bulk-action {
+    width: 100%;
+    min-width: 0;
+    margin-left: 0;
+    padding-top: var(--tf-space-3);
+    padding-left: 0;
+    border-top: 1px solid var(--tf-color-slate-200);
+    border-left: 0;
   }
-}
 
-@media (max-width: 520px) {
-  .permission-switch-grid {
-    grid-template-columns: 1fr;
+  .permission-bulk-action__select {
+    flex: 1 1 112px;
+    min-width: 112px;
   }
 }
 </style>

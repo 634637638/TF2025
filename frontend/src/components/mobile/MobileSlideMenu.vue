@@ -27,9 +27,6 @@
         <div class="header-content">
           <!-- 用户信息 -->
           <div class="user-info">
-            <div class="user-avatar">
-              <i class="fas fa-user-circle" />
-            </div>
             <div class="user-details">
               <div class="user-name">
                 {{ userName }}
@@ -89,15 +86,16 @@
                     />
                   </div>
                   <span class="menu-name">{{ menu.name || menu.title || '未命名菜单' }}</span>
-                  <button
+                  <el-button
                     v-if="menu.children && menu.children.length > 0"
-                    type="button"
-                    class="menu-actions"
+                    text
+                    native-type="button"
+                    class="menu-actions tf-button--menu-action"
                     :aria-label="expandedMenus.has(String(menu.id)) ? '收起子菜单' : '展开子菜单'"
                     @click.stop="toggleMenuExpansion(menu)"
                   >
                     <i class="expand-icon fas fa-chevron-down" />
-                  </button>
+                  </el-button>
                 </div>
               </div>
 
@@ -223,6 +221,7 @@ const filteredMenuList = computed(() => {
 
 // Styles
 const menuStyles = computed(() => {
+  // 手机端和 PC 端都严格使用后台菜单宽度配置，不在组件内增加固定宽度兜底。
   const viewportWidth = typeof window === 'undefined' ? 320 : window.innerWidth
   const configuredWidth = Number(menuWidth.value) || 160
   const baseTransform = isDragging.value
@@ -469,9 +468,9 @@ onUnmounted(() => {
   left: 0;
   bottom: 0;
   /* 宽度现在由 JavaScript 中的 menuStyles 动态设置 */
-  width: 280px; /* 默认宽度，会被 JavaScript 覆盖 */
+  width: 100%; /* 实际宽度由 useMenuWidth 的后台配置通过内联样式覆盖 */
   max-width: none; /* 移除最大宽度限制 */
-  background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
+  background: var(--tf-nav-header-bg);
   box-shadow: 2px 0 12px rgba(102, 126, 234, 0.3);
   z-index: 2;
   display: flex;
@@ -483,9 +482,9 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   padding: 16px 20px;
-  background: rgba(255, 255, 255, 0.1);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-  color: var(--color-bg-white);
+  background: var(--tf-nav-item-hover-bg);
+  border-bottom: 1px solid var(--tf-nav-border);
+  color: var(--tf-nav-header-text);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
@@ -515,70 +514,45 @@ onUnmounted(() => {
 .user-info {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  margin-left: auto;
+  justify-content: flex-start;
+  width: 100%;
+  margin: 0;
   color: var(--color-bg-white);
   text-align: left;
 }
 
-.close-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: var(--radius-full, 50%);
-  border: 1px solid var(--tf-button-neutral-border);
-  background: var(--bg-secondary, var(--color-bg-white));
-  color: var(--text-secondary, var(--text-secondary));
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-size: 14px;
-}
-
-.close-btn:hover {
-  background: var(--primary-color, var(--danger-color));
-  color: var(--tf-button-on-color);
-  border-color: var(--primary-color, var(--danger-color));
-}
-
-.user-avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: var(--radius-full, 50%);
-  background: rgba(255, 255, 255, 0.2);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 20px;
-  margin-right: 12px;
-  margin-left: 0;
-  color: var(--color-bg-white);
-  border: 2px solid rgba(255, 255, 255, 0.3);
-}
-
 .user-details {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--tf-space-2);
+  width: 100%;
+  min-width: 0;
 }
 
 .user-name {
-  font-size: 14px;
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--tf-type-scale-14);
   font-weight: 600;
-  margin-bottom: 2px;
+  margin: 0;
   line-height: 1.2;
   color: var(--color-bg-white);
 }
 
 .user-role {
-  font-size: 11px;
+  flex: 0 0 auto;
+  font-size: var(--tf-type-scale-11);
   line-height: 1.2;
   color: var(--tf-color-neutral-950);
   background: var(--tf-color-emerald-300);
   padding: 2px 8px;
   border-radius: 10px;
-  margin-top: 2px;
+  margin: 0;
 }
 
 
@@ -604,12 +578,12 @@ onUnmounted(() => {
   min-height: 180px;
   padding: 24px 20px;
   color: rgba(255, 255, 255, 0.92);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
 }
 
 .section-title {
   padding: 20px 20px 12px;
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   font-weight: 600;
   color: rgba(255, 255, 255, 0.8);
   text-transform: uppercase;
@@ -622,7 +596,7 @@ onUnmounted(() => {
 }
 
 .all-menus .menu-list .menu-item.active {
-  background: rgba(255, 255, 255, 0.15);
+  background: var(--tf-nav-item-active-bg);
 }
 
 .all-menus .menu-list .menu-item.active .menu-item-content .menu-name {
@@ -643,18 +617,21 @@ onUnmounted(() => {
   grid-template-columns: 20px minmax(0, 1fr);
   column-gap: 8px;
   align-items: center;
-  padding: 14px 12px;
-  min-height: 52px;
+  height: var(--tf-nav-menu-item-height);
+  min-height: var(--tf-nav-menu-item-height);
+  padding: 0 12px;
+  box-sizing: border-box;
   cursor: pointer;
   transition: background 0.2s;
 }
 
 .all-menus .menu-list .menu-item .menu-item-content.has-actions {
-  grid-template-columns: 20px minmax(0, 1fr) 16px;
+  grid-template-columns: 20px minmax(0, 1fr) 32px;
+  column-gap: 8px;
 }
 
 .all-menus .menu-list .menu-item .menu-item-content:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--tf-nav-item-hover-bg);
 }
 
 .all-menus .menu-list .menu-item .menu-item-content .menu-icon {
@@ -670,7 +647,7 @@ onUnmounted(() => {
   min-width: 0;
   text-align: left;
   color: rgba(255, 255, 255, 0.95);
-  font-size: 15px;
+  font-size: var(--tf-nav-menu-text-size);
   line-height: 1.35;
   white-space: nowrap;
   overflow: hidden;
@@ -678,29 +655,38 @@ onUnmounted(() => {
 }
 
 .all-menus .menu-list .menu-item .menu-item-content .menu-actions {
+  flex: 0 0 32px !important;
+  width: 32px !important;
+  min-width: 32px !important;
+  max-width: 32px !important;
+  height: 32px !important;
+  min-height: 32px !important;
+  max-height: 32px !important;
+  padding: 0 !important;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  justify-self: end;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 16px;
-  height: 28px;
-  gap: 8px;
-  border: 0;
-  background: transparent;
-  padding: 0;
-  margin: 0;
-  cursor: pointer;
-  appearance: none;
-  -webkit-tap-highlight-color: transparent;
 }
 
 .all-menus .menu-list .menu-item .menu-item-content .menu-actions .expand-icon {
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.7);
+  font-size: var(--tf-nav-menu-arrow-size);
   transition: transform 0.3s;
 }
 
+.all-menus .menu-list .menu-item .menu-item-content .menu-actions:hover,
+.all-menus .menu-list .menu-item .menu-item-content .menu-actions:focus,
+.all-menus .menu-list .menu-item .menu-item-content .menu-actions:active {
+  background: transparent;
+  box-shadow: none;
+}
+
 .all-menus .menu-list .sub-menu-list {
-  background: rgba(0, 0, 0, 0.1);
+  background: var(--tf-nav-submenu-bg);
 }
 
 .all-menus .menu-list .sub-menu-list .sub-menu-item {
@@ -718,11 +704,11 @@ onUnmounted(() => {
 }
 
 .all-menus .menu-list .sub-menu-list .sub-menu-item:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--tf-nav-item-hover-bg);
 }
 
 .all-menus .menu-list .sub-menu-list .sub-menu-item.active {
-  background: rgba(255, 255, 255, 0.15);
+  background: var(--tf-nav-item-active-bg);
 }
 
 .all-menus .menu-list .sub-menu-list .sub-menu-item.active .menu-name {
@@ -743,7 +729,7 @@ onUnmounted(() => {
   min-width: 0;
   text-align: left;
   color: rgba(255, 255, 255, 0.9);
-  font-size: 14px;
+  font-size: var(--tf-nav-submenu-text-size);
   line-height: 1.55;
   white-space: nowrap;
   overflow: hidden;
@@ -792,13 +778,13 @@ onUnmounted(() => {
 .iconify {
   display: inline-block;
   vertical-align: middle;
-  font-size: 18px;
+  font-size: var(--tf-type-scale-18);
   width: 1em;
   height: 1em;
 }
 
 .menu-icon .iconify {
-  font-size: 20px;
+  font-size: var(--tf-type-scale-20);
   width: 20px;
   height: 20px;
 }

@@ -23,12 +23,15 @@
             {{ notification.message }}
           </div>
         </div>
-        <button
-          class="notification-close"
+        <el-button
+          class="notification-close tf-button--dismiss"
+          native-type="button"
+          aria-label="关闭通知"
+          title="关闭通知"
           @click="removeNotification(notification.id)"
         >
           <i class="fas fa-times" />
-        </button>
+        </el-button>
         <div
           class="notification-progress"
           :style="{ animationDuration: `${notification.duration}ms` }"
@@ -104,7 +107,7 @@ const getIconClass = (type: string) => {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
 }
 
 .notification-success .notification-icon {
@@ -130,37 +133,24 @@ const getIconClass = (type: string) => {
 
 .notification-title {
   font-weight: 600;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   color: var(--text-primary);
   margin-bottom: 4px;
   line-height: 1.4;
 }
 
 .notification-message {
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   color: var(--text-secondary);
   line-height: 1.4;
   word-wrap: break-word;
 }
 
 .notification-close {
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  font-size: 12px;
-  transition: all var(--tf-motion-standard) var(--tf-motion-ease-standard);
-}
-
-.notification-close:hover {
-  background: var(--tf-color-surface-soft);
-  color: var(--text-secondary);
 }
 
 .notification-progress {
@@ -247,11 +237,11 @@ const getIconClass = (type: string) => {
   }
 
   .notification-title {
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
   }
 
   .notification-message {
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
   }
 }
 

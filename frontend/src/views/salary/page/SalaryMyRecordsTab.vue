@@ -440,14 +440,14 @@ const handleRowTap = (row: SalaryRecordRow) => {
 
 .net-salary {
   color: var(--color-success);
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
   font-weight: 700;
 }
 
 .period-text,
 .work-days {
   color: var(--color-text-regular);
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
 }
 
 @media (max-width: 767px) {

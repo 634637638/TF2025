@@ -209,13 +209,13 @@
                 class-name="complete-text-column"
               >
                 <template #default="{ row }">
-                  <button
+                  <el-button
                     class="reminder-title"
-                    type="button"
+                    native-type="button"
                     @click="openDetail(row)"
                   >
                     {{ row.title }}
-                  </button>
+                  </el-button>
                 </template>
               </el-table-column>
               <el-table-column
@@ -1076,8 +1076,8 @@ onMounted(async()=>{await fieldPermissions.init();await Promise.all([loadTypes()
 .type-badge { display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border:1px solid;border-radius:999px;font-weight:700;white-space:nowrap; }
 .execution-summary{font-variant-numeric:tabular-nums;color:var(--tf-color-slate-600);}.user-option-meta{float:right;margin-left:16px;color:var(--tf-color-slate-400);}.input-suffix{margin-left:8px;color:var(--tf-color-slate-500);}
 .reminder-form-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0 18px}.reminder-form-grid .span-2{grid-column:1/-1}.reminder-form-grid :deep(.el-select),.reminder-form-grid :deep(.el-date-editor){width:100%}.weekday-options{display:flex;flex-wrap:wrap}
-.detail-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.detail-summary>div{display:flex;flex-direction:column;padding:10px 12px;background:var(--tf-color-slate-50);border-left:3px solid var(--tf-color-indigo-brand)}.detail-summary span{font-size:12px;color:var(--tf-color-slate-500)}.detail-summary strong{margin-top:3px;color:var(--tf-color-slate-800)}.detail-content{margin:14px 0;padding:12px;background:var(--tf-color-slate-50);white-space:pre-wrap;color:var(--tf-color-slate-700)}.detail-record-table{width:100%}.recipient-status{display:inline-flex;padding:3px 8px;border:1px solid transparent;border-radius:999px;font-weight:700}.recipient-status.is-completed{color:var(--tf-status-success-color);background:var(--tf-status-success-bg);border-color:var(--tf-status-success-border)}.recipient-status.is-ignored{color:var(--tf-status-danger-color);background:var(--tf-status-danger-bg);border-color:var(--tf-status-danger-border)}.recipient-status.is-pending{color:var(--tf-status-warning-color);background:var(--tf-status-warning-bg);border-color:var(--tf-status-warning-border)}.recipient-status.is-read,.recipient-status.is-snoozed{color:var(--tf-status-info-color);background:var(--tf-status-info-bg);border-color:var(--tf-status-info-border)}
-.type-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;color:var(--tf-color-slate-500);font-size:13px}
+.detail-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.detail-summary>div{display:flex;flex-direction:column;padding:10px 12px;background:var(--tf-color-slate-50);border-left:3px solid var(--tf-color-indigo-brand)}.detail-summary span{font-size:var(--tf-type-scale-12);color:var(--tf-color-slate-500)}.detail-summary strong{margin-top:3px;color:var(--tf-color-slate-800)}.detail-content{margin:14px 0;padding:12px;background:var(--tf-color-slate-50);white-space:pre-wrap;color:var(--tf-color-slate-700)}.detail-record-table{width:100%}.recipient-status{display:inline-flex;padding:3px 8px;border:1px solid transparent;border-radius:999px;font-weight:700}.recipient-status.is-completed{color:var(--tf-status-success-color);background:var(--tf-status-success-bg);border-color:var(--tf-status-success-border)}.recipient-status.is-ignored{color:var(--tf-status-danger-color);background:var(--tf-status-danger-bg);border-color:var(--tf-status-danger-border)}.recipient-status.is-pending{color:var(--tf-status-warning-color);background:var(--tf-status-warning-bg);border-color:var(--tf-status-warning-border)}.recipient-status.is-read,.recipient-status.is-snoozed{color:var(--tf-status-info-color);background:var(--tf-status-info-bg);border-color:var(--tf-status-info-border)}
+.type-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;color:var(--tf-color-slate-500);font-size:var(--tf-type-scale-13)}
 .type-color-control{display:flex;align-items:center;gap:14px;min-width:0}.type-color-preview{max-width:240px;overflow:hidden;text-overflow:ellipsis}
 /* Element Plus teleports the color picker footer outside the dialog. Keep both
    footer buttons content-sized so they always fit on one horizontal row. */

@@ -57,7 +57,7 @@ defineProps<Props>()
   }
 
   .title {
-    font-size: 42px;
+    font-size: var(--tf-type-scale-42);
     font-weight: bold;
     margin-bottom: 10px;
     display: flex;
@@ -112,7 +112,7 @@ defineProps<Props>()
     border: 1px solid transparent;
     border-radius: var(--tf-button-radius, 6px);
     box-sizing: border-box;
-    font-size: var(--tf-button-font-size, 14px);
+    font-size: var(--tf-button-font-size, var(--tf-type-scale-14));
     font-weight: var(--tf-button-font-weight, 600);
     line-height: 1;
     cursor: pointer;
@@ -122,7 +122,7 @@ defineProps<Props>()
       flex: 0 0 auto;
       width: var(--icon-small, 16px);
       height: var(--icon-small, 16px);
-      font-size: var(--icon-small, 16px);
+      font-size: var(--icon-small, var(--tf-type-scale-16));
     }
 
     .btn-text {
@@ -206,7 +206,7 @@ defineProps<Props>()
     padding: 44px 16px 28px;
 
     .title {
-      font-size: 32px;
+      font-size: var(--tf-type-scale-32);
       gap: 10px;
     }
   }
@@ -223,7 +223,7 @@ defineProps<Props>()
     height: var(--touch-min, 44px);
     min-height: var(--touch-min, 44px);
     padding: 0 16px;
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
   }
 }
 
@@ -232,7 +232,7 @@ defineProps<Props>()
     padding: 32px 12px 22px;
 
     .title {
-      font-size: 26px;
+      font-size: var(--tf-type-scale-26);
       gap: 8px;
     }
   }
@@ -248,7 +248,7 @@ defineProps<Props>()
   .notice-section :deep(.price-header-action) {
     gap: 4px;
     padding: 0 12px;
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
 
     .btn-content {
       gap: 4px;

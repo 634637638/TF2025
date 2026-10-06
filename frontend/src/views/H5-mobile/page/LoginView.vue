@@ -64,6 +64,7 @@
           <el-button
             type="primary"
             size="large"
+            native-type="button"
             :loading="loading"
             class="w-full"
             @click="handleLogin"
@@ -224,20 +225,20 @@ onMounted(() => {
     margin: 0 auto 16px;
 
     i {
-      font-size: 32px;
+      font-size: var(--tf-type-scale-32);
       color: var(--color-bg-white);
     }
   }
 
   .title {
-    font-size: 24px;
+    font-size: var(--tf-type-scale-24);
     font-weight: 600;
     color: var(--text-primary);
     margin: 0 0 8px;
   }
 
   .subtitle {
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
     color: var(--text-muted);
     margin: 0;
   }
@@ -266,12 +267,12 @@ onMounted(() => {
   margin-top: 16px;
 
   .footer-text {
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
     color: var(--text-secondary);
   }
 
   .footer-link {
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
     color: var(--tf-color-indigo-brand);
     text-decoration: none;
     font-weight: 500;
@@ -288,7 +289,7 @@ onMounted(() => {
   margin-top: 24px;
 
   a {
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
     color: var(--text-muted);
     text-decoration: none;
     display: inline-flex;
@@ -300,7 +301,7 @@ onMounted(() => {
     }
 
     i {
-      font-size: 12px;
+      font-size: var(--tf-type-scale-12);
     }
   }
 }

@@ -17,22 +17,22 @@
           >({{ phone.brand }})</span>
         </h3>
         <div class="header-actions">
-          <button
+          <el-button
             v-if="hasFlash"
-            class="icon-btn flash-btn"
+            class="icon-btn flash-btn tf-button--overlay-tool"
             :class="{ active: flashOn }"
             title="闪光灯"
             @click="toggleFlash"
           >
             <i :class="flashOn ? 'fas fa-lightbulb' : 'far fa-lightbulb'" />
-          </button>
-          <button
-            class="icon-btn close-btn"
+          </el-button>
+          <el-button
+            class="icon-btn close-btn tf-button--overlay-tool tf-button--overlay-danger"
             title="关闭"
             @click="handleCancel"
           >
             <i class="fas fa-times" />
-          </button>
+          </el-button>
         </div>
       </div>
 
@@ -105,39 +105,39 @@
         <!-- 控制面板 -->
         <div class="control-panel">
           <div class="control-group">
-            <button
-              class="control-btn"
+            <el-button
+              class="control-btn tf-button--scanner-control"
               :class="{ active: showRegion }"
               @click="toggleRegion"
             >
               <i class="fas fa-crop-alt" />
               <span>扫描框</span>
-            </button>
-            <button
-              class="control-btn"
+            </el-button>
+            <el-button
+              class="control-btn tf-button--scanner-control"
               :class="{ active: autoFocus }"
               @click="toggleAutoFocus"
             >
               <i class="fas fa-crosshairs" />
               <span>自动对焦</span>
-            </button>
-            <button
-              class="control-btn"
+            </el-button>
+            <el-button
+              class="control-btn tf-button--scanner-control"
               @click="takeSnapshot"
             >
               <i class="fas fa-camera" />
               <span>拍照</span>
-            </button>
+            </el-button>
           </div>
 
           <div class="control-group">
-            <button
-              class="control-btn manual-btn"
+            <el-button
+              class="control-btn manual-btn tf-button--scanner-control tf-button--overlay-warning"
               @click="handleManualInput"
             >
               <i class="fas fa-keyboard" />
               <span>手动输入</span>
-            </button>
+            </el-button>
           </div>
         </div>
       </div>
@@ -792,11 +792,11 @@ onBeforeUnmount(() => {
     align-items: center;
     gap: 8px;
     margin: 0;
-    font-size: 18px;
+    font-size: var(--tf-type-scale-18);
     font-weight: 600;
 
     .phone-brand {
-      font-size: 14px;
+      font-size: var(--tf-type-scale-14);
       opacity: 0.9;
     }
   }
@@ -941,7 +941,7 @@ onBeforeUnmount(() => {
       color: white;
       padding: 6px 12px;
       border-radius: 20px;
-      font-size: 12px;
+      font-size: var(--tf-type-scale-12);
       display: flex;
       align-items: center;
       gap: 6px;
@@ -966,7 +966,7 @@ onBeforeUnmount(() => {
     color: white;
     padding: 6px 12px;
     border-radius: 20px;
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
     display: flex;
     align-items: center;
     gap: 6px;
@@ -995,7 +995,7 @@ onBeforeUnmount(() => {
         display: flex;
         align-items: center;
         gap: 6px;
-        font-size: 12px;
+        font-size: var(--tf-type-scale-12);
         transition: all 0.2s ease;
 
         &:hover {
@@ -1028,14 +1028,14 @@ onBeforeUnmount(() => {
       align-items: flex-start;
       gap: 8px;
       margin-bottom: 6px;
-      font-size: 13px;
+      font-size: var(--tf-type-scale-13);
       color: var(--tf-color-gray-bootstrap-700);
       line-height: 1.4;
 
       i {
         color: var(--success-color);
         margin-top: 2px;
-        font-size: 12px;
+        font-size: var(--tf-type-scale-12);
         flex-shrink: 0;
       }
     }
@@ -1051,11 +1051,11 @@ onBeforeUnmount(() => {
       display: flex;
       align-items: center;
       gap: 6px;
-      font-size: 12px;
+      font-size: var(--tf-type-scale-12);
       color: var(--tf-color-muted);
 
       i {
-        font-size: 11px;
+        font-size: var(--tf-type-scale-11);
       }
     }
   }
@@ -1066,7 +1066,7 @@ onBeforeUnmount(() => {
     padding: 8px;
     border-radius: 6px;
     font-family: monospace;
-    font-size: 11px;
+    font-size: var(--tf-type-scale-11);
 
     .debug-item {
       margin-bottom: 2px;
@@ -1107,7 +1107,7 @@ onBeforeUnmount(() => {
     padding: 12px 16px;
 
     .scanner-title {
-      font-size: 16px;
+      font-size: var(--tf-type-scale-16);
     }
   }
 
@@ -1120,7 +1120,7 @@ onBeforeUnmount(() => {
     .control-group {
       .control-btn {
         padding: 6px 12px;
-        font-size: 11px;
+        font-size: var(--tf-type-scale-11);
 
         span {
           display: none;
@@ -1131,7 +1131,7 @@ onBeforeUnmount(() => {
 
   .action-hints {
     gap: 16px;
-    font-size: 11px;
+    font-size: var(--tf-type-scale-11);
   }
 }
 </style>

@@ -7,7 +7,6 @@
     "src/components/ComprehensiveWarnings.vue": 4,
     "src/components/DraggableList.vue": 1,
     "src/components/DraggableRow.vue": 3,
-    "src/components/DynamicSidebar.vue": 1,
     "src/components/ErrorManagement/ErrorDashboardSimple.vue": 1,
     "src/components/GlobalLoading.vue": 3,
     "src/components/GlobalMessage.vue": 4,

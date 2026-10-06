@@ -50,7 +50,8 @@
 
       <!-- 分页按钮 -->
       <div class="tf-pagination__pager">
-        <button
+        <el-button
+          native-type="button"
           class="tf-pagination__btn tf-pagination__btn--prev"
           :class="{ 'is-disabled': currentPage <= 1 }"
           :disabled="currentPage <= 1 || disabled"
@@ -58,13 +59,14 @@
         >
           <i class="fas fa-chevron-left" />
           上一页
-        </button>
+        </el-button>
 
         <!-- 页码 -->
         <div class="tf-pagination__numbers">
-          <button
+          <el-button
             v-for="page in visiblePages"
             :key="page"
+            native-type="button"
             class="tf-pagination__number"
             :class="{
               'is-current': page === currentPage,
@@ -74,10 +76,11 @@
             @click="handlePageClick(page)"
           >
             {{ page }}
-          </button>
+          </el-button>
         </div>
 
-        <button
+        <el-button
+          native-type="button"
           class="tf-pagination__btn tf-pagination__btn--next"
           :class="{ 'is-disabled': currentPage >= totalPages }"
           :disabled="currentPage >= totalPages || disabled"
@@ -85,7 +88,7 @@
         >
           下一页
           <i class="fas fa-chevron-right" />
-        </button>
+        </el-button>
       </div>
 
       <!-- 快速跳转 -->
@@ -319,7 +322,7 @@ onUnmounted(() => {
   padding: 8px 0;
   gap: 12px;
   flex-wrap: wrap;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   color: var(--el-text-color-regular);
 
   &__info {
@@ -377,7 +380,7 @@ onUnmounted(() => {
     border-radius: 4px;
     background: var(--el-bg-color);
     color: var(--el-text-color-regular);
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
     cursor: pointer;
     transition: all 0.2s;
     user-select: none;
@@ -408,7 +411,7 @@ onUnmounted(() => {
     border-radius: 4px;
     background: var(--el-bg-color);
     color: var(--el-text-color-regular);
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
     cursor: pointer;
     transition: all 0.2s;
     user-select: none;
@@ -455,7 +458,7 @@ onUnmounted(() => {
 
     &__info {
       justify-content: center;
-      font-size: 13px;
+      font-size: var(--tf-type-scale-13);
       order: 1;
       width: auto;
     }
@@ -476,7 +479,7 @@ onUnmounted(() => {
       justify-content: center;
 
       &-text {
-        font-size: 13px;
+        font-size: var(--tf-type-scale-13);
       }
 
       .el-select {
@@ -489,7 +492,7 @@ onUnmounted(() => {
 
       .tf-pagination__btn {
         padding: 5px 10px;
-        font-size: 13px;
+        font-size: var(--tf-type-scale-13);
 
         i {
           margin: 0 2px;
@@ -501,7 +504,7 @@ onUnmounted(() => {
       .tf-pagination__number {
         min-width: 28px;
         height: 28px;
-        font-size: 13px;
+        font-size: var(--tf-type-scale-13);
       }
     }
 
@@ -509,7 +512,7 @@ onUnmounted(() => {
       order: 3;
 
       &-text {
-        font-size: 13px;
+        font-size: var(--tf-type-scale-13);
       }
 
       .el-input-number {
@@ -531,7 +534,7 @@ onUnmounted(() => {
       justify-content: center;
       text-align: center;
       gap: 6px;
-      font-size: 12px;
+      font-size: var(--tf-type-scale-12);
       width: 100%;
     }
 
@@ -546,7 +549,7 @@ onUnmounted(() => {
 
       .tf-pagination__btn {
         padding: 4px 8px;
-        font-size: 12px;
+        font-size: var(--tf-type-scale-12);
 
         i {
           display: none;
@@ -560,7 +563,7 @@ onUnmounted(() => {
       .tf-pagination__number {
         min-width: 24px;
         height: 24px;
-        font-size: 12px;
+        font-size: var(--tf-type-scale-12);
         padding: 0 4px;
       }
     }
@@ -581,34 +584,34 @@ onUnmounted(() => {
 
 // 小尺寸
 .tf-pagination[data-size="small"] {
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
 
   .tf-pagination__btn {
     padding: 4px 8px;
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
   }
 
   .tf-pagination__number {
     min-width: 28px;
     height: 28px;
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
     padding: 0 6px;
   }
 }
 
 // 大尺寸
 .tf-pagination[data-size="large"] {
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
 
   .tf-pagination__btn {
     padding: 12px 16px;
-    font-size: 16px;
+    font-size: var(--tf-type-scale-16);
   }
 
   .tf-pagination__number {
     min-width: 36px;
     height: 36px;
-    font-size: 16px;
+    font-size: var(--tf-type-scale-16);
     padding: 0 12px;
   }
 }

@@ -1202,7 +1202,7 @@ onBeforeUnmount(() => {
           gap: 12px;
 
           .filter-label {
-            font-size: 14px;
+            font-size: var(--tf-type-scale-14);
             color: var(--color-text-regular);
             font-weight: 500;
           }
@@ -1232,7 +1232,7 @@ onBeforeUnmount(() => {
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 22px;
+      font-size: var(--tf-type-scale-22);
       color: white;
 
       &.transfer {
@@ -1272,20 +1272,20 @@ onBeforeUnmount(() => {
       flex: 1;
 
       .card-title {
-        font-size: 13px;
+        font-size: var(--tf-type-scale-13);
         color: var(--el-text-color-secondary);
         margin-bottom: 4px;
       }
 
       .card-value {
-        font-size: 22px;
+        font-size: var(--tf-type-scale-22);
         font-weight: 600;
         color: var(--el-text-color-primary);
         margin-bottom: 4px;
       }
 
       .card-subtitle {
-        font-size: 12px;
+        font-size: var(--tf-type-scale-12);
         color: var(--el-text-color-placeholder);
         font-weight: 400;
       }
@@ -1294,7 +1294,7 @@ onBeforeUnmount(() => {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        font-size: 11px;
+        font-size: var(--tf-type-scale-11);
         margin-top: 4px;
 
         .compare-label {
@@ -1317,7 +1317,7 @@ onBeforeUnmount(() => {
       .card-change {
         display: flex;
         align-items: center;
-        font-size: 12px;
+        font-size: var(--tf-type-scale-12);
         font-weight: 500;
         gap: 4px;
 
@@ -1345,7 +1345,7 @@ onBeforeUnmount(() => {
 
       h3 {
         margin: 0;
-        font-size: 16px;
+        font-size: var(--tf-type-scale-16);
         font-weight: 600;
       }
     }
@@ -1365,7 +1365,7 @@ onBeforeUnmount(() => {
   }
 
   .product-name {
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
     color: var(--el-text-color-regular);
   }
 
@@ -1396,7 +1396,7 @@ onBeforeUnmount(() => {
       .card-icon {
         width: 44px;
         height: 44px;
-        font-size: 18px;
+        font-size: var(--tf-type-scale-18);
         flex-shrink: 0;
       }
 
@@ -1405,7 +1405,7 @@ onBeforeUnmount(() => {
         flex: 1;
 
         .card-title {
-          font-size: 12px;
+          font-size: var(--tf-type-scale-12);
           margin-bottom: 3px;
           white-space: nowrap;
           overflow: hidden;
@@ -1413,7 +1413,7 @@ onBeforeUnmount(() => {
         }
 
         .card-value {
-          font-size: 18px;
+          font-size: var(--tf-type-scale-18);
           margin-bottom: 3px;
           white-space: nowrap;
           overflow: hidden;
@@ -1421,13 +1421,13 @@ onBeforeUnmount(() => {
         }
 
         .card-compare {
-          font-size: 10px;
+          font-size: var(--tf-type-scale-10);
           margin-top: 3px;
           flex-wrap: wrap;
           gap: 4px;
 
           .compare-label {
-            font-size: 10px;
+            font-size: var(--tf-type-scale-10);
           }
         }
       }
@@ -1449,7 +1449,7 @@ onBeforeUnmount(() => {
         gap: 8px;
 
         h3 {
-          font-size: 14px;
+          font-size: var(--tf-type-scale-14);
         }
       }
     }

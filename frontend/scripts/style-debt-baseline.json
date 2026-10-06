@@ -1,5 +1,5 @@
 {
-  "max_important": 1933,
+  "max_important": 2072,
   "max_large_style_blocks": 60,
   "max_unapproved_important": 0,
   "max_non_token_color_usages": 0,
@@ -7,7 +7,7 @@
     "src/components/AccessoryStockInModal.vue": 356,
     "src/components/ComprehensiveWarnings.vue": 405,
     "src/components/InventoryResultDialog.vue": 662,
-    "src/components/MobileDialog.vue": 321,
+    "src/components/MobileDialog.vue": 343,
     "src/components/Pagination.vue": 302,
     "src/components/PendingApprovals.vue": 362,
     "src/components/ProfessionalScanner.vue": 392,

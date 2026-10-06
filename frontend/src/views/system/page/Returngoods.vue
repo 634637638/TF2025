@@ -830,7 +830,7 @@ onMounted(() => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
+  font-size: var(--tf-type-scale-18);
   color: var(--color-bg-white);
 }
 
@@ -851,7 +851,7 @@ onMounted(() => {
 }
 
 .overview-value {
-  font-size: 28px;
+  font-size: var(--tf-type-scale-28);
   line-height: 1;
   font-weight: 700;
   color: var(--tf-color-slate-900);
@@ -859,7 +859,7 @@ onMounted(() => {
 
 .overview-label {
   margin-top: 6px;
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   color: var(--tf-color-slate-500);
 }
 
@@ -879,7 +879,7 @@ onMounted(() => {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
   font-weight: 700;
   color: var(--tf-color-slate-900);
 }
@@ -889,7 +889,7 @@ onMounted(() => {
 }
 
 .product-name {
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   font-weight: 600;
   color: var(--tf-color-slate-900);
   line-height: 1.4;
@@ -898,7 +898,7 @@ onMounted(() => {
 
 .product-meta {
   margin-top: 4px;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: var(--tf-color-slate-500);
 }
 
@@ -938,14 +938,14 @@ onMounted(() => {
 }
 
 .record-title {
-  font-size: 15px;
+  font-size: var(--tf-type-scale-15);
   font-weight: 700;
   color: var(--tf-color-slate-900);
   line-height: 1.45;
 }
 
 .record-time {
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: var(--tf-color-blue-600);
   font-weight: 600;
 }
@@ -964,12 +964,12 @@ onMounted(() => {
 }
 
 .record-label {
-  font-size: 11px;
+  font-size: var(--tf-type-scale-11);
   color: var(--tf-color-slate-500);
 }
 
 .record-value {
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   color: var(--tf-color-slate-900);
   font-weight: 600;
   word-break: break-word;
@@ -985,7 +985,7 @@ onMounted(() => {
 }
 
 .record-remark-text {
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   line-height: 1.5;
   color: var(--tf-color-slate-700);
   word-break: break-word;
@@ -1020,7 +1020,7 @@ onMounted(() => {
 }
 
 .edit-item label {
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   font-weight: 600;
   color: var(--tf-color-slate-700);
 }
@@ -1045,15 +1045,15 @@ onMounted(() => {
     width: 36px;
     height: 36px;
     border-radius: 12px;
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
   }
 
   .overview-value {
-    font-size: 20px;
+    font-size: var(--tf-type-scale-20);
   }
 
   .overview-label {
-    font-size: 11px;
+    font-size: var(--tf-type-scale-11);
     margin-top: 4px;
   }
 

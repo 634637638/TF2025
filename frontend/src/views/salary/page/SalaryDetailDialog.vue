@@ -180,7 +180,7 @@ const emit = defineEmits<{
     padding-bottom: 10px;
     border-bottom: 2px solid var(--tf-color-border-cool-alt);
     color: var(--tf-color-heading);
-    font-size: 15px;
+    font-size: var(--tf-type-scale-15);
     font-weight: 600;
 
     &::before {
@@ -245,7 +245,7 @@ const emit = defineEmits<{
       background: linear-gradient(135deg, var(--tf-color-orange-coral) 0%, var(--tf-color-orange-ant) 100%);
       background-clip: text;
       color: transparent;
-      font-size: 28px;
+      font-size: var(--tf-type-scale-28);
       font-weight: 700;
     }
   }
@@ -253,7 +253,7 @@ const emit = defineEmits<{
   .label {
     min-width: 100px;
     color: var(--tf-color-slate-500);
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
     font-weight: 500;
   }
 
@@ -265,7 +265,7 @@ const emit = defineEmits<{
 
 .net-salary-large {
   color: var(--tf-color-red-ant);
-  font-size: 24px;
+  font-size: var(--tf-type-scale-24);
   font-weight: 600;
 }
 
@@ -277,7 +277,7 @@ const emit = defineEmits<{
   border-radius: 20px;
   box-shadow: 0 2px 8px rgb(0 0 0 / 10%);
   color: var(--tf-color-white);
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   font-weight: 600;
   letter-spacing: 0.3px;
 }
@@ -313,7 +313,7 @@ const emit = defineEmits<{
       padding: 14px 12px;
 
       .net-salary-large {
-        font-size: 22px;
+        font-size: var(--tf-type-scale-22);
       }
     }
   }
@@ -321,7 +321,7 @@ const emit = defineEmits<{
 
 @media (max-width: 479px) {
   .detail-row.highlight .net-salary-large {
-    font-size: 20px;
+    font-size: var(--tf-type-scale-20);
   }
 }
 </style>

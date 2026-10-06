@@ -229,7 +229,7 @@
         </el-form>
 
         <div
-          v-if="canViewField('system_info.operations')"
+          v-if="shouldShowActionColumn(canViewField('system_info.operations'), [])"
           class="form-actions"
         >
           <el-button
@@ -288,7 +288,7 @@
                 </div>
               </div>
               <el-button
-                v-if="canViewField('system_info.operations')"
+                v-if="shouldShowActionColumn(canViewField('system_info.operations'), [])"
                 circle
                 size="small"
                 plain
@@ -324,7 +324,7 @@ import {
   CopyDocument
 } from '@element-plus/icons-vue'
 import { PublicPriceHeader } from '@/components/base'
-import { fieldPermissions } from '@/composables/useFieldPermissions'
+import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { getPublicBrands, getPublicColors, getPublicMarketingLexicon, getPublicMemories, getPublicModels, type Brand, type Color, type Memory, type Model } from '@/api/base-data'
 import { TimeUtil } from '@/utils/time'
 import {
@@ -793,14 +793,14 @@ onMounted(async () => {
 
   h2 {
     margin: 0;
-    font-size: 18px;
+    font-size: var(--tf-type-scale-18);
     color: var(--tf-color-neutral-900);
   }
 
   p {
     margin: 6px 0 0;
     color: var(--tf-color-slate-500);
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
     line-height: 1.6;
   }
 }
@@ -818,7 +818,7 @@ onMounted(async () => {
 }
 
 .hero-copy__title {
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
   font-weight: 600;
   line-height: 1.5;
 }
@@ -871,12 +871,12 @@ onMounted(async () => {
 }
 
 .context-label {
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: var(--tf-color-slate-500);
 }
 
 .context-value {
-  font-size: 15px;
+  font-size: var(--tf-type-scale-15);
   font-weight: 600;
   color: var(--tf-color-slate-900);
   word-break: break-word;
@@ -894,12 +894,12 @@ onMounted(async () => {
   align-items: center;
   gap: 6px;
   color: var(--tf-color-indigo-600);
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
 }
 
 .context-summary {
   color: var(--tf-color-slate-600);
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   line-height: 1.6;
 }
 
@@ -943,7 +943,7 @@ onMounted(async () => {
 
 .marketing-switch-title {
   color: var(--tf-color-slate-700);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   font-weight: 600;
   line-height: 20px;
 }
@@ -998,7 +998,7 @@ onMounted(async () => {
 .copy-type-picker__label {
   flex: 0 0 auto;
   color: var(--tf-color-slate-600);
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   font-weight: 600;
 }
 
@@ -1039,21 +1039,21 @@ onMounted(async () => {
 }
 
 .copy-title {
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
   font-weight: 700;
   color: var(--tf-color-slate-900);
 }
 
 .copy-tone {
   margin-top: 4px;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: var(--tf-color-slate-500);
 }
 
 .copy-text {
   white-space: pre-wrap;
   color: var(--tf-color-neutral-800);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   line-height: 1.8;
   min-height: 108px;
 }
@@ -1093,7 +1093,7 @@ onMounted(async () => {
   }
 
   .hero-copy__title {
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
     line-height: 1.45;
   }
 
@@ -1131,7 +1131,7 @@ onMounted(async () => {
   }
 
   .marketing-switch-title {
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
   }
 
   .condition-buttons {
@@ -1155,7 +1155,7 @@ onMounted(async () => {
   }
 
   .card-head h2 {
-    font-size: 16px;
+    font-size: var(--tf-type-scale-16);
   }
 
   .header-actions {
@@ -1177,7 +1177,7 @@ onMounted(async () => {
     height: 32px !important;
     min-height: 32px !important;
     padding-inline: 2px !important;
-    font-size: 12px !important;
+    font-size: var(--tf-type-scale-12) !important;
   }
 
   .form-actions :deep(.el-button > span) {
@@ -1186,7 +1186,7 @@ onMounted(async () => {
 
   .form-actions :deep(.el-button .el-icon) {
     margin-right: 0;
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
   }
 
   .copy-type-picker {
@@ -1218,16 +1218,16 @@ onMounted(async () => {
   }
 
   .copy-title {
-    font-size: 15px;
+    font-size: var(--tf-type-scale-15);
   }
 
   .copy-tone {
-    font-size: 11px;
+    font-size: var(--tf-type-scale-11);
   }
 
   .copy-text {
     min-height: auto;
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
     line-height: 1.7;
   }
 }

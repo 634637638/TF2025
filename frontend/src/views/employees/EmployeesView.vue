@@ -1921,7 +1921,7 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
   font-weight: 600;
   color: var(--tf-color-heading);
   margin-bottom: 20px;
@@ -1935,7 +1935,7 @@ onMounted(async () => {
 
 .record-count {
   margin-left: auto;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   color: var(--tf-color-muted);
   font-weight: 400;
 }
@@ -1969,7 +1969,7 @@ onMounted(async () => {
   padding: 12px 10px;
   text-align: center;
   font-weight: 600;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   border-right: 1px solid var(--tf-color-border-subtle);
   border-bottom: 2px solid var(--tf-color-border-subtle);
   white-space: nowrap;
@@ -1992,7 +1992,7 @@ onMounted(async () => {
 
 .table td {
   padding: 6px 6px;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   border-right: 1px solid var(--tf-color-border-muted);
   border-bottom: 1px solid var(--tf-color-border-muted);
   vertical-align: middle;
@@ -2030,7 +2030,7 @@ onMounted(async () => {
   color: white;
   padding: 4px 8px;
   border-radius: 6px;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   font-weight: 600;
   display: inline-block;
 }
@@ -2047,7 +2047,7 @@ onMounted(async () => {
   gap: 8px;
   margin-bottom: 4px;
   justify-content: center;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
 }
 
 .employee-name strong {
@@ -2057,7 +2057,7 @@ onMounted(async () => {
 
 .employee-code {
   font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Consolas', monospace;
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   font-weight: 600;
   color: var(--tf-color-gray-bootstrap-700);
   letter-spacing: 0.8px;
@@ -2069,7 +2069,7 @@ onMounted(async () => {
 }
 
 .employee-role {
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: var(--tf-color-muted);
   display: flex;
   align-items: center;
@@ -2085,7 +2085,7 @@ onMounted(async () => {
 }
 
 .system-role {
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: var(--tf-color-gray-bootstrap-700);
   display: flex;
   align-items: center;
@@ -2098,7 +2098,7 @@ onMounted(async () => {
 
 /* 角色徽章基础样式 */
 .role-badge {
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -2111,7 +2111,7 @@ onMounted(async () => {
 }
 
 .role-badge i {
-  font-size: 11px;
+  font-size: var(--tf-type-scale-11);
 }
 
 /* 管理员 - 橙红色渐变 */
@@ -2171,7 +2171,7 @@ onMounted(async () => {
 }
 
 .custom-roles {
-  font-size: 11px;
+  font-size: var(--tf-type-scale-11);
   color: var(--tf-color-purple-bootstrap);
   display: flex;
   align-items: center;
@@ -2185,7 +2185,7 @@ onMounted(async () => {
 }
 
 .employee-username {
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: var(--tf-color-muted);
   margin-top: 2px;
 }
@@ -2195,7 +2195,7 @@ onMounted(async () => {
   color: var(--tf-color-gray-bootstrap-900);
   padding: 2px 6px;
   border-radius: 4px;
-  font-size: 10px;
+  font-size: var(--tf-type-scale-10);
   font-weight: 500;
 }
 
@@ -2207,7 +2207,7 @@ onMounted(async () => {
 }
 
 .phone-number {
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   color: var(--tf-color-gray-bootstrap-700);
   display: flex;
   align-items: center;
@@ -2225,7 +2225,7 @@ onMounted(async () => {
 .status-badge {
   padding: 6px 12px;
   border-radius: 20px;
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   font-weight: 600;
   display: inline-flex;
   align-items: center;
@@ -2234,7 +2234,7 @@ onMounted(async () => {
 }
 
 .status-badge i {
-  font-size: 10px;
+  font-size: var(--tf-type-scale-10);
 }
 
 .status-active {
@@ -2271,7 +2271,7 @@ onMounted(async () => {
 }
 
 .time-info {
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   color: var(--tf-color-muted);
   display: flex;
   align-items: center;
@@ -2366,7 +2366,7 @@ onMounted(async () => {
 .section-header h4 {
   margin: 0;
   color: var(--tf-color-gray-bootstrap-700);
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
   font-weight: 600;
   display: flex;
   align-items: center;
@@ -2375,7 +2375,7 @@ onMounted(async () => {
 
 .section-header h4 i {
   color: var(--warning-color);
-  font-size: 18px;
+  font-size: var(--tf-type-scale-18);
 }
 
 .password-fields {
@@ -2383,7 +2383,7 @@ onMounted(async () => {
 }
 
 .form-help {
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: var(--tf-color-muted);
   margin-top: 4px;
   display: block;
@@ -2409,7 +2409,7 @@ onMounted(async () => {
   border: 2px solid var(--tf-color-gray-bootstrap-300);
   border-radius: 6px;
   padding: 12px 16px;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   transition: all 0.3s ease;
   background: white;
 }
@@ -2448,7 +2448,7 @@ onMounted(async () => {
   padding: 10px;
   border: 1px solid var(--tf-color-gray-300-alt);
   border-radius: 5px;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
 }
 
 .form-group input:disabled {
@@ -2463,14 +2463,14 @@ onMounted(async () => {
   border: 1px solid var(--tf-color-red-pastel);
   border-radius: 4px;
   color: var(--tf-color-red-material-800);
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   display: flex;
   align-items: center;
   gap: 6px;
 }
 
 .error-message i {
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
 }
 
 .form-actions {
@@ -2502,13 +2502,13 @@ onMounted(async () => {
 
 .overview-item label {
   display: block;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   color: var(--tf-color-muted);
   margin-bottom: 8px;
 }
 
 .overview-item .amount {
-  font-size: 24px;
+  font-size: var(--tf-type-scale-24);
   font-weight: 600;
   color: var(--tf-color-heading);
 }
@@ -2549,7 +2549,7 @@ onMounted(async () => {
 }
 
 .no-salary-info i {
-  font-size: 48px;
+  font-size: var(--tf-type-scale-48);
   margin-bottom: 15px;
   opacity: 0.5;
 }
@@ -2571,7 +2571,7 @@ onMounted(async () => {
 .section-header h4 {
   margin: 0;
   color: var(--tf-color-gray-bootstrap-700);
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
   font-weight: 600;
   display: flex;
   align-items: center;
@@ -2580,7 +2580,7 @@ onMounted(async () => {
 
 .section-header h4 i {
   color: var(--info-color);
-  font-size: 18px;
+  font-size: var(--tf-type-scale-18);
 }
 
 .roles-grid {
@@ -2613,7 +2613,7 @@ onMounted(async () => {
 .role-header h5 {
   margin: 0;
   color: var(--tf-color-heading);
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
   font-weight: 600;
 }
 
@@ -2624,7 +2624,7 @@ onMounted(async () => {
 
 .role-description {
   color: var(--tf-color-muted);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   margin-bottom: 15px;
   line-height: 1.4;
 }
@@ -2633,7 +2633,7 @@ onMounted(async () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: var(--tf-color-muted);
 }
 
@@ -2657,7 +2657,7 @@ onMounted(async () => {
 .current-roles h4, .available-roles h4 {
   margin-bottom: 15px;
   color: var(--tf-color-gray-bootstrap-700);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   font-weight: 600;
 }
 
@@ -2672,7 +2672,7 @@ onMounted(async () => {
 }
 
 .no-roles i {
-  font-size: 24px;
+  font-size: var(--tf-type-scale-24);
   margin-bottom: 8px;
   opacity: 0.6;
 }
@@ -2691,7 +2691,7 @@ onMounted(async () => {
   color: white;
   padding: 6px 12px;
   border-radius: 20px;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   font-weight: 500;
 }
 
@@ -2701,7 +2701,7 @@ onMounted(async () => {
   color: white;
   cursor: pointer;
   padding: 0;
-  font-size: 10px;
+  font-size: var(--tf-type-scale-10);
   border-radius: 50%;
   width: 16px;
   height: 16px;
@@ -2756,7 +2756,7 @@ onMounted(async () => {
 
 .role-info small {
   color: var(--tf-color-muted);
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   line-height: 1.3;
 }
 
@@ -2874,7 +2874,7 @@ onMounted(async () => {
 
 .role-info small {
   color: var(--tf-color-muted);
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
 }
 
 .no-roles {
@@ -2929,7 +2929,7 @@ onMounted(async () => {
 }
 
 .status-btn i {
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
 }
 
 </style>
@@ -2957,7 +2957,7 @@ onMounted(async () => {
   }
 
   .employees-form-dialog .el-form-item__label {
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
     line-height: 1.4;
     padding-bottom: 4px;
   }
@@ -3011,7 +3011,7 @@ onMounted(async () => {
   .employees-form-dialog .role-checkbox-name {
     display: inline-flex;
     align-items: center;
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
     font-weight: 600;
     color: var(--tf-color-neutral-800);
   }

@@ -7,20 +7,14 @@ import { useRoute, useRouter } from 'vue-router'
 import { useMobile } from './mobile'
 import { useAuthStore } from '@/stores/auth'
 import { useMenuStore } from '@/stores/menu'
-import { canAccessRoutePath } from '@/constants/routePermissions'
-import { showElementWarning } from '@/utils/element-feedback'
 import type { MenuItem } from '@/types/menu'
 import { useKeyboardShortcut } from '@/composables/useKeyboardShortcut'
 
 export interface MobileMenuConfig {
   // 菜单项配置
   items: MenuItem[]
-  // 最大显示数量（底部导航）
-  maxBottomNavItems?: number
   // 是否启用手势
   enableGestures?: boolean
-  // 是否启用自动隐藏
-  enableAutoHide?: boolean
   // 快捷操作
   quickActions?: Array<{
     id: string
@@ -41,13 +35,11 @@ export function useMobileMenu(config: MobileMenuConfig) {
 
   // 菜单状态
   const isSlideMenuOpen = ref(false)
-  const isBottomNavVisible = ref(true)
   const isMenuLoading = ref(false)
   const activeQuickActions = ref(config.quickActions || [])
 
   // 菜单数据
   const menuItems = ref<MenuItem[]>(config.items || [])
-  const bottomNavItems = ref<MenuItem[]>([])
   const slideMenuItems = ref<MenuItem[]>([])
 
   // 触摸手势相关
@@ -64,39 +56,12 @@ export function useMobileMenu(config: MobileMenuConfig) {
     role: authStore.userRole || '员工'
   }))
 
-  // 根据屏幕尺寸和菜单项数量动态分配底部导航和侧滑菜单
+  // 当前后台只有侧滑菜单承载完整菜单，不能把项目分流到未渲染的底部导航。
   const computeMenuDistribution = () => {
-    const maxItems = computeMaxBottomNavItems()
-
     // 确保 menuItems.value 存在且是数组
     const items = Array.isArray(menuItems.value) ? menuItems.value : []
 
-    const important = items
-      .filter(item => item.priority !== undefined && item.priority <= 3)
-      .slice(0, maxItems)
-
-    bottomNavItems.value = important
-    slideMenuItems.value = items.filter(item =>
-      !important.find(i => i.id === item.id)
-    )
-
-    // 如果 slideMenuItems 为空数组且 items 不为空，则将所有菜单项作为侧滑菜单
-    if (slideMenuItems.value.length === 0 && items.length > 0) {
-      slideMenuItems.value = items
-    }
-  }
-
-  // 计算底部导航最大显示数量
-  const computeMaxBottomNavItems = () => {
-    if (!isMobile.value) return 0
-
-    const width = screenSize.value.width
-
-    // 根据屏幕宽度计算
-    if (width < 360) return 4 // 小屏手机
-    if (width < 414) return 4 // 标准手机
-    if (width < 768) return 5 // 大屏手机
-    return config.maxBottomNavItems || 5
+    slideMenuItems.value = items
   }
 
   // ========== 方法 ==========
@@ -163,36 +128,6 @@ export function useMobileMenu(config: MobileMenuConfig) {
     }
   }
 
-  // 处理菜单点击
-  const handleMenuClick = (menu: MenuItem) => {
-    const path = menu.url || menu.path
-
-    if (path) {
-      if (path.startsWith('http')) {
-        // 外部链接
-        window.open(path, '_blank')
-      } else {
-        if (!canAccessRoutePath(path, authStore)) {
-          showElementWarning('您没有访问此页面的权限')
-          if (isMobile.value) {
-            closeSlideMenu()
-          }
-          return
-        }
-
-        // 内部路由 - 检查是否为当前路由，避免重复导航警告
-        if (router.currentRoute.value.path !== path) {
-          router.push(path)
-        }
-      }
-    }
-
-    // 移动端点击后自动关闭菜单
-    if (isMobile.value) {
-      closeSlideMenu()
-    }
-  }
-
   // 处理快捷操作
   const handleQuickAction = (action: NonNullable<MobileMenuConfig['quickActions']>[number]) => {
     if (action.handler) {
@@ -242,35 +177,6 @@ export function useMobileMenu(config: MobileMenuConfig) {
     }
   }
 
-  // 处理滚动事件（自动隐藏底部导航）
-  let scrollTimer: NodeJS.Timeout
-  let lastScrollY = 0
-  const handleScroll = () => {
-    if (!config.enableAutoHide || !isMobile.value) return
-
-    const currentScrollY = window.scrollY
-    const scrollDelta = currentScrollY - lastScrollY
-
-    // 向下滚动超过100px时隐藏
-    if (scrollDelta > 100) {
-      isBottomNavVisible.value = false
-    }
-    // 向上滚动超过50px时显示
-    else if (scrollDelta < -50) {
-      isBottomNavVisible.value = true
-    }
-
-    lastScrollY = currentScrollY
-
-    // 停止滚动2秒后自动显示
-    if (scrollTimer) {
-      clearTimeout(scrollTimer)
-    }
-    scrollTimer = setTimeout(() => {
-      isBottomNavVisible.value = true
-    }, 2000)
-  }
-
   // 退出登录
   const handleLogout = () => {
     authStore.logout()
@@ -294,10 +200,6 @@ export function useMobileMenu(config: MobileMenuConfig) {
 
     window.addEventListener('resize', handleResize)
 
-    if (config.enableAutoHide) {
-      window.addEventListener('scroll', handleScroll, { passive: true })
-    }
-
     // 监听屏幕方向变化
     window.addEventListener('orientationchange', handleResize)
   })
@@ -307,12 +209,7 @@ export function useMobileMenu(config: MobileMenuConfig) {
     document.removeEventListener('touchstart', handleGlobalTouchStart)
     document.removeEventListener('touchend', handleGlobalTouchEnd)
     window.removeEventListener('resize', handleResize)
-    window.removeEventListener('scroll', handleScroll)
     window.removeEventListener('orientationchange', handleResize)
-
-    if (scrollTimer) {
-      clearTimeout(scrollTimer)
-    }
 
     setSlideMenuOpen(false)
   })
@@ -334,13 +231,11 @@ export function useMobileMenu(config: MobileMenuConfig) {
     isTablet,
     screenSize,
     isSlideMenuOpen,
-    isBottomNavVisible,
     isMenuLoading,
 
     // 数据
     userInfo,
     menuItems,
-    bottomNavItems,
     slideMenuItems,
     activeQuickActions,
 
@@ -348,7 +243,6 @@ export function useMobileMenu(config: MobileMenuConfig) {
     toggleSlideMenu,
     closeSlideMenu,
     openSlideMenu,
-    handleMenuClick,
     handleQuickAction,
     handleLogout,
     syncMenuItems,

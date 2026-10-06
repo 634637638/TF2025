@@ -426,7 +426,7 @@ const actionsStyle = computed<CSSProperties>(() => ({
 
 .page-title {
   margin: 0;
-  font-size: 32px;
+  font-size: var(--tf-type-scale-32);
   font-weight: 700;
   color: var(--color-bg-white);
   display: flex;
@@ -435,7 +435,7 @@ const actionsStyle = computed<CSSProperties>(() => ({
   flex-wrap: wrap;
 
   .page-title-icon {
-    font-size: 0.9em;
+    font-size: var(--tf-type-scale-0-9em);
     color: var(--color-bg-white);
     width: 0.9em;
     height: 0.9em;
@@ -459,21 +459,21 @@ const actionsStyle = computed<CSSProperties>(() => ({
   }
 
   @media (max-width: 767px) {
-    font-size: 24px;
+    font-size: var(--tf-type-scale-24);
 
     .page-title-icon {
-      font-size: 0.9em;
+      font-size: var(--tf-type-scale-0-9em);
       width: 0.9em;
       height: 0.9em;
     }
   }
 
   @media (max-width: 390px) {
-    font-size: 16px;
+    font-size: var(--tf-type-scale-16);
     gap: 6px;
 
     .page-title-icon {
-      font-size: 0.85em;
+      font-size: var(--tf-type-scale-0-85em);
       width: 0.85em;
       height: 0.85em;
       flex-shrink: 0;
@@ -484,12 +484,12 @@ const actionsStyle = computed<CSSProperties>(() => ({
 .page-description {
   margin: 0;
   padding-top: 8px;
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
   color: rgba(232, 226, 226, 0.8);
   line-height: 1.5;
 
   @media (max-width: 767px) {
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
   }
 }
 
@@ -534,17 +534,17 @@ const actionsStyle = computed<CSSProperties>(() => ({
   }
 
   .page-title {
-    font-size: 15px;
+    font-size: var(--tf-type-scale-15);
 
     .page-title-icon {
-      font-size: 0.9em;
+      font-size: var(--tf-type-scale-0-9em);
       width: 0.9em;
       height: 0.9em;
     }
   }
 
   .page-description {
-    font-size: 0.7rem;
+    font-size: var(--tf-type-scale-0-7rem);
   }
 
   .header-actions {

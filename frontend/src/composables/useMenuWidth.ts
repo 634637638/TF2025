@@ -42,6 +42,32 @@ const DEFAULT_BREAKPOINTS = {
   desktop: 1025
 }
 
+const getStoredMenuConfig = (): MenuWidthConfig => {
+  try {
+    const savedConfig = storage.get<MenuWidthConfig>(PREFERENCE_STORAGE_KEYS.MENU_WIDTH, 'local')
+    if (savedConfig) {
+      return { ...DEFAULT_CONFIG, ...savedConfig }
+    }
+  } catch {
+    // 使用默认配置，避免本地存储损坏阻断后台布局初始化。
+  }
+
+  return { ...DEFAULT_CONFIG }
+}
+
+const initialMenuWidthConfig = getStoredMenuConfig()
+
+// 菜单宽度是后台壳层状态，不应随着 PC、平板和手机组件分别创建多份 ref。
+// 所有 useMenuWidth() 调用共享这一组状态；组件卸载时只清理自己的窗口尺寸监听。
+const sharedMenuWidthState = {
+  config: ref<MenuWidthConfig>(initialMenuWidthConfig),
+  currentWidth: ref<number>(initialMenuWidthConfig.desktop),
+  isCollapsed: ref(false),
+  isLoading: ref(false),
+  lastSyncTime: ref(0),
+  menuWidth: ref<number>(initialMenuWidthConfig.desktop)
+}
+
 let sharedLoadMenuWidthsPromise: Promise<{ pc: number; mobile: number }> | null = null
 
 export function useMenuWidth(options: MenuWidthOptions = {}) {
@@ -57,38 +83,15 @@ export function useMenuWidth(options: MenuWidthOptions = {}) {
   // 当前窗口宽度的响应式引用
   const windowWidth = computed(() => size.value?.innerWidth || 0)
 
-  // 辅助函数：同步获取初始宽度
-  const getInitialWidth = () => {
-    if (useStorage) {
-      try {
-        const savedConfig = storage.get<MenuWidthConfig>(storageKey, 'local')
-        if (savedConfig) {
-          return savedConfig.desktop || defaultConfig.desktop
-        }
-      } catch (error) {
-        // 静默处理
-      }
-    }
-    return defaultConfig.desktop
-  }
-
-  // 当前宽度配置
-  const config = ref<MenuWidthConfig>({ ...defaultConfig })
-
-  // 当前菜单宽度 - 同步加载初始值避免闪烁
-  const currentWidth = ref<number>(getInitialWidth())
-
-  // 菜单是否折叠
-  const isCollapsed = ref<boolean>(false)
-
-  // 加载状态
-  const isLoading = ref<boolean>(false)
-
-  // 最后同步时间
-  const lastSyncTime = ref<number>(0)
-
-  // 用于外部响应式的菜单宽度 - 同步加载初始值避免闪烁
-  const menuWidth = ref<number>(getInitialWidth())
+  // 所有后台导航实例共享同一组响应式状态。
+  const {
+    config,
+    currentWidth,
+    isCollapsed,
+    isLoading,
+    lastSyncTime,
+    menuWidth
+  } = sharedMenuWidthState
 
   // 是否处于移动端
   const isMobile = computed(() => isMobileViewport(windowWidth.value))
@@ -167,6 +170,11 @@ export function useMenuWidth(options: MenuWidthOptions = {}) {
   const setMenuWidth = (width: number) => {
     currentWidth.value = width
     menuWidth.value = width
+    config.value = {
+      ...config.value,
+      desktop: width,
+      large: width
+    }
 
     // 保存到本地存储
     if (useStorage) {
@@ -371,6 +379,7 @@ export function useMenuWidth(options: MenuWidthOptions = {}) {
   const resetConfig = () => {
     config.value = { ...defaultConfig }
     currentWidth.value = config.value.desktop
+    menuWidth.value = config.value.desktop
     isCollapsed.value = false
 
     // 清除本地存储

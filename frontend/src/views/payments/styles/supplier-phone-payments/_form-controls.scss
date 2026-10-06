@@ -14,7 +14,7 @@
 }
 
 .el-input-form-control :deep(.el-input__inner) {
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   color: var(--tf-color-gray-bootstrap-700);
   height: auto;
   border: none !important;
@@ -58,7 +58,7 @@
 }
 
 .el-select-form-control :deep(.el-input__inner) {
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   color: var(--tf-color-gray-bootstrap-700);
   height: auto;
   border: none !important;
@@ -83,7 +83,7 @@
 }
 
 .el-date-form-control :deep(.el-input__inner) {
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   color: var(--tf-color-gray-bootstrap-700);
   height: auto;
   border: none !important;

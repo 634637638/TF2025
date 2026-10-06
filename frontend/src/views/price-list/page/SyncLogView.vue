@@ -133,8 +133,8 @@
               :key="row.id"
               class="sync-log-mobile-item"
             >
-              <button
-                type="button"
+              <el-button
+                native-type="button"
                 class="sync-log-mobile-summary"
                 @click="handleMobileRowTap(row.id)"
               >
@@ -172,7 +172,7 @@
                   class="fas"
                   :class="mobileActionRowId === row.id ? 'fa-chevron-up' : 'fa-chevron-down'"
                 />
-              </button>
+              </el-button>
               <div class="sync-log-mobile-meta">
                 <span>成功 {{ row.success_count ?? '-' }}</span>
                 <span>失败 {{ row.failed_count ?? '-' }}</span>
@@ -1036,14 +1036,14 @@ onUnmounted(() => {
   }
 
   th {
-    font-size: 11px;
+    font-size: var(--tf-type-scale-11);
     font-weight: 700;
     color: var(--tf-color-slate-600);
     background: var(--tf-color-surface);
   }
 
   td {
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
     font-weight: 600;
     color: var(--tf-color-slate-700);
     background: var(--color-bg-white);
@@ -1072,7 +1072,7 @@ onUnmounted(() => {
     padding: 16px;
     border-radius: 8px;
     margin-bottom: 20px;
-    font-size: 16px;
+    font-size: var(--tf-type-scale-16);
     font-weight: 600;
 
     &.banner-success {
@@ -1091,13 +1091,13 @@ onUnmounted(() => {
     }
 
     i {
-      font-size: 24px;
+      font-size: var(--tf-type-scale-24);
     }
   }
 
   .detail-descriptions {
     .stat-number {
-      font-size: 20px;
+      font-size: var(--tf-type-scale-20);
       font-weight: 600;
 
       &.success {
@@ -1123,7 +1123,7 @@ onUnmounted(() => {
       color: var(--color-danger);
 
       i {
-        font-size: 16px;
+        font-size: var(--tf-type-scale-16);
       }
     }
 
@@ -1137,7 +1137,7 @@ onUnmounted(() => {
       color: var(--color-text-regular);
 
       i {
-        font-size: 16px;
+        font-size: var(--tf-type-scale-16);
       }
     }
   }
@@ -1199,7 +1199,7 @@ onUnmounted(() => {
 
 .sync-log-mobile-config {
   color: var(--el-text-color-secondary);
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
 }
 
 .sync-log-mobile-meta {
@@ -1208,7 +1208,7 @@ onUnmounted(() => {
   gap: 6px 14px;
   padding: 0 12px 10px;
   color: var(--el-text-color-secondary);
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
 }
 
 .sync-log-mobile-item .mobile-row-actions {
@@ -1235,10 +1235,10 @@ onUnmounted(() => {
     .detail-banner {
       padding: 12px;
       margin-bottom: 14px;
-      font-size: 14px;
+      font-size: var(--tf-type-scale-14);
 
       i {
-        font-size: 20px;
+        font-size: var(--tf-type-scale-20);
       }
     }
 
@@ -1247,7 +1247,7 @@ onUnmounted(() => {
 
       .detail-section-title {
         padding: 10px 12px;
-        font-size: 13px;
+        font-size: var(--tf-type-scale-13);
       }
     }
   }

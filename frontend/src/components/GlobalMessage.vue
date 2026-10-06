@@ -123,7 +123,7 @@ export default defineComponent({
 .message-icon {
   margin-right: 12px;
   margin-top: 2px;
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
 }
 
 .message-success .message-icon {
@@ -148,7 +148,7 @@ export default defineComponent({
 }
 
 .message-title {
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   font-weight: 600;
   color: var(--color-text-primary);
   margin-bottom: 4px;
@@ -156,7 +156,7 @@ export default defineComponent({
 }
 
 .message-text {
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   color: var(--color-text-regular);
   line-height: 1.4;
   word-break: break-word;
@@ -166,7 +166,7 @@ export default defineComponent({
   margin-left: 12px;
   cursor: pointer;
   color: var(--color-info);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   transition: color 0.3s;
 }
 

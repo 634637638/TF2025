@@ -55,14 +55,14 @@
 .inventory-detail-modal .summary-card .card-label {
   margin-bottom: 4px;
   color: var(--admin-record-count-color);
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   font-weight: 500;
   text-align: center;
 }
 
 .inventory-detail-modal .summary-card .card-value {
   color: var(--admin-data-table-cell-color);
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
   font-weight: 700;
   text-align: center;
 }
@@ -78,7 +78,7 @@
   display: inline-flex;
   padding: 4px 8px;
   border-radius: 12px;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   font-weight: 600;
 }
 
@@ -109,7 +109,7 @@
 .inventory-detail-modal .detail-header h4 {
   margin: 0;
   color: var(--tf-color-heading);
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
   font-weight: 700;
 }
 
@@ -118,7 +118,7 @@
   border-radius: 12px;
   background: var(--tf-color-surface-muted);
   color: var(--tf-color-muted);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
 }
 
 .inventory-detail-modal .priority-badge {
@@ -131,11 +131,11 @@
   border-radius: 50%;
   background: var(--tf-button-danger-bg);
   color: var(--tf-button-on-color);
-  font-size: 11px;
+  font-size: var(--tf-type-scale-11);
 }
 
 .inventory-detail-modal .priority-badge i {
-  font-size: 10px;
+  font-size: var(--tf-type-scale-10);
 }
 
 .inventory-detail-modal .priority-rank {
@@ -145,7 +145,7 @@
   border-radius: 8px;
   background: var(--tf-button-neutral-hover-bg);
   color: var(--tf-button-tool-color);
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   font-weight: 600;
 }
 
@@ -158,7 +158,7 @@
   display: inline-flex;
   padding: 3px 8px;
   border-radius: 12px;
-  font-size: 11px;
+  font-size: var(--tf-type-scale-11);
   font-weight: 600;
 }
 
@@ -201,11 +201,11 @@
   }
 
   .inventory-detail-modal .summary-card .card-label {
-    font-size: 10px;
+    font-size: var(--tf-type-scale-10);
   }
 
   .inventory-detail-modal .summary-card .card-value {
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
   }
 
   .inventory-detail-modal .detail-table-wrapper {

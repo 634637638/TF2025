@@ -1385,7 +1385,7 @@ defineExpose({
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 24px;
+          font-size: var(--tf-type-scale-24);
           color: white;
         }
 
@@ -1393,20 +1393,20 @@ defineExpose({
           flex: 1;
 
           .card-title {
-            font-size: 14px;
+            font-size: var(--tf-type-scale-14);
             color: var(--color-info);
             margin-bottom: 4px;
           }
 
           .card-value {
-            font-size: 24px;
+            font-size: var(--tf-type-scale-24);
             font-weight: bold;
             color: var(--color-text-primary);
             margin-bottom: 4px;
           }
 
           .card-trend {
-            font-size: 12px;
+            font-size: var(--tf-type-scale-12);
             display: flex;
             align-items: center;
             gap: 2px;
@@ -1496,7 +1496,7 @@ defineExpose({
         margin-bottom: 8px;
 
         .insight-icon {
-          font-size: 18px;
+          font-size: var(--tf-type-scale-18);
 
           &.success {
             color: var(--color-success);
@@ -1523,7 +1523,7 @@ defineExpose({
 
       .insight-content {
         color: var(--color-text-regular);
-        font-size: 14px;
+        font-size: var(--tf-type-scale-14);
         line-height: 1.5;
         margin-bottom: 8px;
       }
@@ -1532,7 +1532,7 @@ defineExpose({
         display: flex;
         justify-content: space-between;
         align-items: center;
-        font-size: 12px;
+        font-size: var(--tf-type-scale-12);
 
         .insight-impact {
           padding: 2px 8px;
@@ -1589,12 +1589,12 @@ defineExpose({
           .card-icon {
             width: 40px;
             height: 40px;
-            font-size: 20px;
+            font-size: var(--tf-type-scale-20);
           }
 
           .card-info {
             .card-value {
-              font-size: 20px;
+              font-size: var(--tf-type-scale-20);
             }
           }
         }

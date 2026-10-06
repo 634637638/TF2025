@@ -61,7 +61,7 @@
 
   .handler-badge {
     display: inline-block;
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
     padding: 2px 8px;
     border-radius: 10px;
     font-weight: 500;
@@ -78,7 +78,7 @@
 
 .remarks-display {
   color: var(--tf-color-muted);
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   max-width: 200px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -91,7 +91,7 @@
   padding: 2px 10px;
   background-color: var(--warning-color);
   color: var(--color-bg-white);
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.2s;
@@ -106,7 +106,7 @@
 .remarks-icon {
   color: var(--warning-color);
   cursor: pointer;
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
   transition: all 0.2s;
   padding: 4px;
   border-radius: 4px;

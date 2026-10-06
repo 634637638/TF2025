@@ -39,19 +39,19 @@ const goHome = () => {
 }
 
 .content h1 {
-  font-size: 120px;
+  font-size: var(--tf-type-scale-120);
   margin: 0;
   color: var(--color-primary);
 }
 
 .content h2 {
-  font-size: 32px;
+  font-size: var(--tf-type-scale-32);
   margin: 20px 0;
   color: var(--text-primary);
 }
 
 .content p {
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
   color: var(--text-secondary);
   margin-bottom: 30px;
 }

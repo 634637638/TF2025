@@ -748,10 +748,10 @@
                   v-if="formData.photos?.length"
                   class="repair-media-list"
                 >
-                  <button
+                  <el-button
                     v-for="(media, index) in formData.photos"
                     :key="`${media.url}-${index}`"
-                    type="button"
+                    native-type="button"
                     class="repair-media-item"
                     @click="openMediaPreview(formData.photos || [], index)"
                   >
@@ -771,7 +771,7 @@
                       class="fas fa-trash"
                       @click.stop="removeFormMedia(index)"
                     />
-                  </button>
+                  </el-button>
                 </div>
               </el-form-item>
             </el-col>
@@ -884,10 +884,10 @@
             v-if="managerMedia.length"
             class="repair-media-list repair-media-list--manager"
           >
-            <button
+            <el-button
               v-for="(media, index) in managerMedia"
               :key="`${media.url}-${index}`"
-              type="button"
+              native-type="button"
               class="repair-media-item"
               @click="openMediaPreview(managerMedia, index)"
             >
@@ -908,7 +908,7 @@
                 class="fas fa-trash"
                 @click.stop="removeManagerMedia(index)"
               />
-            </button>
+            </el-button>
           </div>
           <DataEmptyState
             v-else
@@ -1068,10 +1068,7 @@ const showStatsCards = computed(() => [
 const searchableRepairFields = ['order_no', 'customer_name', 'customer_phone', 'phone_model', 'imei', 'serial_number']
 const showRepairSearchField = computed(() => searchableRepairFields.some(canViewRepairField))
 const showRepairSearchPanel = computed(() => showRepairSearchField.value || canViewRepairField('status'))
-const showRepairStatusField = computed(() => shouldShowActionColumn(
-  canViewRepairField('status'),
-  [canEdit.value]
-))
+const showRepairStatusField = computed(() => canViewRepairField('status'))
 const requiredCreateFields = ['customer_name', 'brand_name', 'phone_model', 'problem_description']
 const canSubmitVisibleFields = computed(() => (
   Boolean(editingRepairId.value) || requiredCreateFields.every(canViewRepairField)
@@ -1781,7 +1778,7 @@ onMounted(async () => {
   border-radius: 3px;
   background: color-mix(in srgb, var(--tf-color-black) 60%, transparent);
   color: var(--color-bg-white);
-  font-size: 11px;
+  font-size: var(--tf-type-scale-11);
 }
 
 .repair-media-item > i {
@@ -1796,7 +1793,7 @@ onMounted(async () => {
   border-radius: 50%;
   background: color-mix(in srgb, var(--tf-color-black) 60%, transparent);
   color: var(--color-bg-white);
-  font-size: 11px;
+  font-size: var(--tf-type-scale-11);
 }
 
 .repair-media-manager {
@@ -1865,13 +1862,13 @@ onMounted(async () => {
 .device-search-option span,
 .device-search-option small {
   color: var(--el-text-color-secondary);
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
 }
 
 .device-linked-hint {
   margin-top: 4px;
   color: var(--el-color-success);
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   line-height: 1.4;
 }
 </style>

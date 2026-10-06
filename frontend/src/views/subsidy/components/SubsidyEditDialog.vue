@@ -752,13 +752,13 @@ const submitEdit = async () => {
   padding-bottom: 8px;
   border-bottom: 1px solid var(--tf-border-color, var(--tf-color-neutral-200));
   color: var(--tf-text-primary, var(--tf-color-neutral-800));
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   font-weight: 600;
 }
 
 .edit-section-title i {
   color: var(--tf-color-primary, var(--tf-color-blue-600));
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
 }
 
 .edit-form :deep(.el-form-item) {
@@ -782,7 +782,7 @@ const submitEdit = async () => {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: var(--tf-color-muted);
 }
 
@@ -792,7 +792,7 @@ const submitEdit = async () => {
 
 .readonly-title {
   margin-bottom: 12px;
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   color: var(--tf-color-muted);
 }
 

@@ -14,7 +14,7 @@
       >
         <template #actions>
           <el-button
-            v-if="canCreate && canViewField('system_info.operations')"
+            v-if="canCreate"
             type="primary"
             :loading="isCreating"
             @click="createBackup"
@@ -26,7 +26,7 @@
             </template>
           </el-button>
           <el-button
-            v-if="canViewField('system_info.operations')"
+            v-if="showActionColumn"
             type="info"
             plain
             @click="loadBackupList"
@@ -69,7 +69,7 @@
           </div>
           <div class="info-actions">
             <el-button
-              v-if="canViewField('system_info.operations')"
+            v-if="showActionColumn"
               type="warning"
               size="small"
               plain
@@ -109,7 +109,7 @@
                 description="暂无备份记录"
               >
                 <el-button
-                  v-if="canCreate && canViewField('system_info.operations')"
+                  v-if="canCreate"
                   type="primary"
                   @click="createBackup"
                 >
@@ -258,7 +258,7 @@ const { canView, canCreate, canDelete, requirePermission } = usePagePermissions(
 const canViewField = (fieldKey: string) => fieldPermissions.isFieldVisible('backup_backupview', fieldKey)
 const showActionColumn = computed(() => shouldShowActionColumn(
   fieldPermissions.isFieldVisible('backup_backupview', 'system_info.operations'),
-  [canDelete.value]
+  [canCreate.value, canDelete.value]
 ))
 
 // 状态
@@ -528,7 +528,7 @@ watch(canView, async (value) => {
 }
 
 .storage-info-card .info-icon i {
-  font-size: 20px;
+  font-size: var(--tf-type-scale-20);
   color: white;
 }
 
@@ -543,18 +543,18 @@ watch(canView, async (value) => {
 }
 
 .storage-info-card .info-label {
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   color: var(--text-secondary, var(--tf-color-muted));
 }
 
 .storage-info-card .info-value {
-  font-size: 20px;
+  font-size: var(--tf-type-scale-20);
   font-weight: 600;
   color: var(--text-primary, var(--tf-color-heading));
 }
 
 .storage-info-card .info-path {
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   font-weight: 500;
   word-break: break-all;
   line-height: 1.5;
@@ -580,7 +580,7 @@ watch(canView, async (value) => {
 
 .card-header h3 {
   margin: 0;
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
   font-weight: 600;
   color: var(--text-primary, var(--tf-color-heading));
   display: flex;
@@ -601,7 +601,7 @@ watch(canView, async (value) => {
 
 .filename-cell i {
   color: var(--primary-color, var(--tf-color-indigo-brand));
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
 }
 
 /* 操作按钮 */
@@ -614,7 +614,7 @@ watch(canView, async (value) => {
 /* 表单提示 */
 .form-tip {
   margin-left: 12px;
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   color: var(--text-secondary, var(--tf-color-muted));
 }
 

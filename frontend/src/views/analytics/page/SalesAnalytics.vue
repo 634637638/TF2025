@@ -1683,7 +1683,7 @@ onBeforeUnmount(() => {
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 24px;
+    font-size: var(--tf-type-scale-24);
     color: white;
     flex-shrink: 0;
 
@@ -1726,7 +1726,7 @@ onBeforeUnmount(() => {
     overflow: hidden;
 
     .card-title {
-      font-size: 13px;
+      font-size: var(--tf-type-scale-13);
       color: var(--el-text-color-secondary);
       margin-bottom: 6px;
       white-space: nowrap;
@@ -1735,7 +1735,7 @@ onBeforeUnmount(() => {
     }
 
     .card-value {
-      font-size: 20px;
+      font-size: var(--tf-type-scale-20);
       font-weight: 600;
       color: var(--el-text-color-primary);
       margin-bottom: 4px;
@@ -1753,7 +1753,7 @@ onBeforeUnmount(() => {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        font-size: 12px;
+        font-size: var(--tf-type-scale-12);
 
         .stat-label {
           color: var(--el-text-color-secondary);
@@ -1770,7 +1770,7 @@ onBeforeUnmount(() => {
     .card-change {
       display: flex;
       align-items: center;
-      font-size: 11px;
+      font-size: var(--tf-type-scale-11);
       font-weight: 500;
       gap: 3px;
 
@@ -1788,7 +1788,7 @@ onBeforeUnmount(() => {
     }
 
     .card-subtitle {
-      font-size: 12px;
+      font-size: var(--tf-type-scale-12);
       color: var(--el-text-color-secondary);
       margin-top: 2px;
       white-space: nowrap;
@@ -1815,7 +1815,7 @@ onBeforeUnmount(() => {
 
       h3 {
         margin: 0 0 4px 0;
-        font-size: 16px;
+        font-size: var(--tf-type-scale-16);
         font-weight: 600;
       }
 
@@ -1826,7 +1826,7 @@ onBeforeUnmount(() => {
         margin-top: 4px;
 
         .update-text {
-          font-size: 12px;
+          font-size: var(--tf-type-scale-12);
           color: var(--el-text-color-secondary);
         }
       }
@@ -1853,7 +1853,7 @@ onBeforeUnmount(() => {
     }
 
     .model {
-      font-size: 12px;
+      font-size: var(--tf-type-scale-12);
       color: var(--el-text-color-secondary);
     }
   }
@@ -1892,7 +1892,7 @@ onBeforeUnmount(() => {
 
         h4 {
           margin: 0;
-          font-size: 16px;
+          font-size: var(--tf-type-scale-16);
           font-weight: 600;
           color: var(--el-text-color-primary);
         }
@@ -1908,17 +1908,17 @@ onBeforeUnmount(() => {
           font-weight: 600;
 
           .label {
-            font-size: 13px;
+            font-size: var(--tf-type-scale-13);
             opacity: 0.9;
           }
 
           .value {
-            font-size: 18px;
+            font-size: var(--tf-type-scale-18);
             font-weight: 700;
           }
 
           .unit {
-            font-size: 12px;
+            font-size: var(--tf-type-scale-12);
             opacity: 0.9;
           }
         }
@@ -1948,7 +1948,7 @@ onBeforeUnmount(() => {
               display: flex;
               align-items: center;
               gap: 4px;
-              font-size: 12px;
+              font-size: var(--tf-type-scale-12);
               line-height: 1.4;
               flex-wrap: wrap;
 
@@ -1978,12 +1978,12 @@ onBeforeUnmount(() => {
               gap: 4px;
 
               .label {
-                font-size: 12px;
+                font-size: var(--tf-type-scale-12);
                 color: var(--el-text-color-secondary);
               }
 
               .value {
-                font-size: 18px;
+                font-size: var(--tf-type-scale-18);
                 font-weight: 700;
                 color: var(--el-text-color-primary);
               }
@@ -2001,7 +2001,7 @@ onBeforeUnmount(() => {
 
             .stat-item:first-child .value {
               color: var(--color-success);
-              font-size: 20px;
+              font-size: var(--tf-type-scale-20);
             }
           }
 
@@ -2037,7 +2037,7 @@ onBeforeUnmount(() => {
         gap: 8px;
 
         i {
-          font-size: 16px;
+          font-size: var(--tf-type-scale-16);
         }
 
         span {
@@ -2071,7 +2071,7 @@ onBeforeUnmount(() => {
         gap: 8px;
 
         i {
-          font-size: 16px;
+          font-size: var(--tf-type-scale-16);
           margin-top: 2px;
           flex-shrink: 0;
         }
@@ -2129,7 +2129,7 @@ onBeforeUnmount(() => {
       width: 42px;
       height: 42px;
       border-radius: 14px;
-      font-size: 18px;
+      font-size: var(--tf-type-scale-18);
       box-shadow: 0 8px 18px rgba(102, 126, 234, 0.16);
     }
 
@@ -2141,7 +2141,7 @@ onBeforeUnmount(() => {
 
       .card-title {
         margin-bottom: 0;
-        font-size: 10px;
+        font-size: var(--tf-type-scale-10);
         line-height: 1.35;
         font-weight: 700;
         letter-spacing: 0.45px;
@@ -2154,7 +2154,7 @@ onBeforeUnmount(() => {
 
       .card-value {
         margin-bottom: 0;
-        font-size: 21px;
+        font-size: var(--tf-type-scale-21);
         line-height: 1.18;
         color: var(--tf-color-neutral-ios);
         white-space: normal;
@@ -2169,7 +2169,7 @@ onBeforeUnmount(() => {
         align-self: flex-start;
         padding: 4px 8px;
         border-radius: 8px;
-        font-size: 11px;
+        font-size: var(--tf-type-scale-11);
         line-height: 1.35;
         font-weight: 600;
         color: var(--tf-color-neutral-600);

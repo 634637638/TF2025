@@ -1,11 +1,12 @@
 <template>
-  <div class="tabs-bar">
+  <div class="tabs-bar tf-topbar-tabs">
     <div class="tabs-container">
-      <div
+      <el-button
         v-for="tab in tabs"
         :key="tab.path"
-        class="tab-item"
-        :class="{ active: tab.path === activeTab }"
+        class="tab-item tf-topbar-tab"
+        :class="{ 'is-active': tab.path === activeTab }"
+        native-type="button"
         @click="switchTab(tab.path)"
       >
         <i
@@ -19,19 +20,20 @@
           class="fas fa-times tab-close"
           @click.stop="closeTab(tab.path)"
         />
-      </div>
+      </el-button>
     </div>
     <div class="tabs-actions">
       <el-dropdown
         trigger="click"
         @command="handleCommand"
       >
-        <button
-          class="tabs-action-btn"
+        <el-button
+          class="tabs-action-btn tf-button--tab-action"
+          native-type="button"
           title="标签页操作"
         >
           <i class="fas fa-ellipsis-v" />
-        </button>
+        </el-button>
         <template #dropdown>
           <el-dropdown-menu>
             <el-dropdown-item command="closeOthers">
@@ -131,21 +133,14 @@ const handleCommand = (command: string) => {
 
 <style scoped>
 .tabs-bar {
-  display: flex;
-  align-items: center;
-  background: var(--tf-color-surface);
-  border-bottom: 1px solid var(--tf-color-border-element);
-  height: 40px;
-  padding: 0 8px;
-  gap: 8px;
-  overflow: hidden;
+  min-width: 0;
 }
 
 .tabs-container {
   flex: 1;
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--tf-tabs-gap);
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: thin;
@@ -166,77 +161,30 @@ const handleCommand = (command: string) => {
 }
 
 .tab-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  background: white;
-  border: 1px solid var(--tf-color-border-element);
-  border-radius: 4px 4px 0 0;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  white-space: nowrap;
-  flex-shrink: 0;
   max-width: 180px;
-  position: relative;
 }
 
-.tab-item:hover {
-  background: var(--tf-color-surface-ant);
-}
-
-.tab-item.active {
-  background: white;
-  border-bottom-color: white;
-  box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.05);
-}
-
-.tab-item.active::after {
-  content: '';
-  position: absolute;
-  bottom: -1px;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
-}
-
-.tab-icon {
-  font-size: 12px;
-  color: var(--color-text-regular);
+.tab-icon,
+.tab-title,
+.tab-close {
   flex-shrink: 0;
-}
-
-.tab-item.active .tab-icon {
-  color: var(--tf-color-indigo-brand);
 }
 
 .tab-title {
-  font-size: 13px;
-  color: var(--color-text-regular);
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.tab-item.active .tab-title {
-  color: var(--color-text-primary);
-  font-weight: 500;
 }
 
 .tab-close {
-  font-size: 11px;
-  color: var(--color-info);
   padding: 2px;
-  border-radius: 2px;
-  transition: all 0.2s ease;
-  flex-shrink: 0;
-  margin-left: 2px;
+  border-radius: var(--tf-radius-compact);
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 .tab-close:hover {
-  background: var(--color-danger);
-  color: white;
+  background: var(--tf-button-danger-bg);
+  color: var(--tf-button-danger-color);
 }
 
 .tabs-actions {
@@ -250,23 +198,11 @@ const handleCommand = (command: string) => {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
-  background: var(--tf-button-neutral-bg);
-  border: 1px solid var(--tf-button-neutral-border);
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  color: var(--tf-button-tool-color);
-}
-
-.tabs-action-btn:hover {
-  background: var(--tf-button-neutral-hover-bg);
-  border-color: var(--tf-button-neutral-hover-border);
+  flex-shrink: 0;
 }
 
 .tabs-action-btn i {
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
 }
 
 /* 响应式 - 移动端隐藏 */

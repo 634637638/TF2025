@@ -4,7 +4,7 @@
 
   .search-step {
     h3 {
-      font-size: 1.25rem;
+      font-size: var(--tf-type-scale-1-25rem);
       font-weight: 600;
       color: var(--tf-color-heading);
       margin-bottom: 8px;
@@ -13,7 +13,7 @@
     .step-hint {
       color: var(--tf-color-muted);
       margin-bottom: 24px;
-      font-size: 0.95rem;
+      font-size: var(--tf-type-scale-0-95rem);
     }
 
     .search-box {
@@ -28,7 +28,7 @@
         padding: 14px 18px;
         border: 1px solid var(--tf-color-border-subtle);
         border-radius: 8px;
-        font-size: 16px;
+        font-size: var(--tf-type-scale-16);
         transition: all 0.2s;
 
         &:focus {
@@ -48,7 +48,7 @@
         padding: 14px 18px;
         border: 2px solid var(--tf-color-border-subtle);
         border-radius: 8px;
-        font-size: 16px;
+        font-size: var(--tf-type-scale-16);
         transition: all 0.2s;
 
         &:focus {
@@ -75,7 +75,7 @@
         border-bottom: 1px solid var(--tf-color-border-subtle);
 
         h4 {
-          font-size: 1rem;
+          font-size: var(--tf-type-scale-1rem);
           font-weight: 600;
           color: var(--tf-color-heading);
           margin: 0;
@@ -114,14 +114,14 @@
             min-width: 0;
 
             .device-model {
-              font-size: 1rem;
+              font-size: var(--tf-type-scale-1rem);
               font-weight: 600;
               color: var(--tf-color-heading);
               margin-bottom: 6px;
             }
 
             .device-specs {
-              font-size: 0.875rem;
+              font-size: var(--tf-type-scale-0-875rem);
               color: var(--tf-color-muted);
               margin-bottom: 8px;
             }
@@ -129,7 +129,7 @@
             .device-identifiers {
               display: flex;
               gap: 16px;
-              font-size: 0.75rem;
+              font-size: var(--tf-type-scale-0-75rem);
               color: var(--tf-color-gray-bootstrap-500);
               flex-wrap: wrap;
 
@@ -141,7 +141,7 @@
                 word-break: break-all;
 
                 i {
-                  font-size: 0.875rem;
+                  font-size: var(--tf-type-scale-0-875rem);
                 }
               }
             }
@@ -149,7 +149,7 @@
             .device-customer {
               display: flex;
               gap: 16px;
-              font-size: 0.8125rem;
+              font-size: var(--tf-type-scale-0-8125rem);
               color: var(--tf-color-indigo-brand);
               margin-top: 4px;
               padding-top: 8px;
@@ -164,7 +164,7 @@
                 word-break: break-all;
 
                 i {
-                  font-size: 0.875rem;
+                  font-size: var(--tf-type-scale-0-875rem);
                 }
               }
             }
@@ -174,7 +174,7 @@
             text-align: right;
 
             .device-price {
-              font-size: 1.25rem;
+              font-size: var(--tf-type-scale-1-25rem);
               font-weight: 700;
               color: var(--tf-color-heading);
               margin-bottom: 8px;
@@ -184,7 +184,7 @@
               display: inline-block;
               padding: 4px 12px;
               border-radius: 12px;
-              font-size: 12px;
+              font-size: var(--tf-type-scale-12);
               font-weight: 500;
 
               &.eligible {
@@ -217,7 +217,7 @@
 
   .confirm-step {
     h3 {
-      font-size: 1.25rem;
+      font-size: var(--tf-type-scale-1-25rem);
       font-weight: 600;
       color: var(--tf-color-heading);
       margin-bottom: 20px;
@@ -235,7 +235,7 @@
         min-width: 0;
 
         h4 {
-          font-size: 0.95rem;
+          font-size: var(--tf-type-scale-0-95rem);
           font-weight: 600;
           color: var(--tf-color-gray-bootstrap-700);
           margin-bottom: 12px;
@@ -257,7 +257,7 @@
           .info-label {
             width: 100px;
             color: var(--tf-color-muted);
-            font-size: 14px;
+            font-size: var(--tf-type-scale-14);
             font-weight: 500;
             flex-shrink: 0;
           }
@@ -266,7 +266,7 @@
             flex: 1;
             min-width: 0;
             color: var(--tf-color-heading);
-            font-size: 14px;
+            font-size: var(--tf-type-scale-14);
             font-weight: 500;
             word-break: break-word;
 
@@ -276,7 +276,7 @@
               padding: 6px 12px;
               border: 1px solid var(--tf-color-border-subtle);
               border-radius: 6px;
-              font-size: 14px;
+              font-size: var(--tf-type-scale-14);
               transition: all 0.2s;
 
               &.has-value {
@@ -297,7 +297,7 @@
               background: var(--tf-color-emerald-100);
               color: var(--tf-color-emerald-800);
               border-radius: 4px;
-              font-size: 12px;
+              font-size: var(--tf-type-scale-12);
               display: inline-flex;
               align-items: center;
               gap: 4px;
@@ -320,7 +320,7 @@
             &.subsidy-amount-highlight {
               color: var(--tf-color-emerald-500);
               font-weight: 700;
-              font-size: 1.5rem;
+              font-size: var(--tf-type-scale-1-5rem);
             }
 
             .discount-amount {
@@ -331,7 +331,7 @@
             .final-price {
               color: var(--tf-color-red-500);
               font-weight: 700;
-              font-size: 1.2rem;
+              font-size: var(--tf-type-scale-1-2rem);
             }
           }
         }
@@ -349,21 +349,21 @@
 
             .info-label {
               color: var(--tf-color-muted);
-              font-size: 14px;
+              font-size: var(--tf-type-scale-14);
               font-weight: 500;
               white-space: nowrap;
             }
 
             .info-value {
               color: var(--tf-color-heading);
-              font-size: 14px;
+              font-size: var(--tf-type-scale-14);
               font-weight: 500;
 
               .form-input-inline {
                 padding: 6px 12px;
                 border: 1px solid var(--tf-color-border-subtle);
                 border-radius: 6px;
-                font-size: 14px;
+                font-size: var(--tf-type-scale-14);
                 transition: all 0.2s;
                 min-width: 200px;
 
@@ -395,13 +395,13 @@
               width: 100%; // 每个项目占满宽度
 
               .info-label {
-                font-size: 12px;
+                font-size: var(--tf-type-scale-12);
                 white-space: nowrap;
                 flex-shrink: 0;
               }
 
               .info-value {
-                font-size: 14px;
+                font-size: var(--tf-type-scale-14);
                 font-weight: 600;
                 flex: 1;
 
@@ -428,7 +428,7 @@
           display: flex;
           align-items: center;
           gap: 8px;
-          font-size: 14px;
+          font-size: var(--tf-type-scale-14);
           font-weight: 500;
         }
 
@@ -441,13 +441,13 @@
           display: flex;
           align-items: center;
           gap: 8px;
-          font-size: 14px;
+          font-size: var(--tf-type-scale-14);
           font-weight: 500;
         }
 
             .price-diff-hint {
               margin-left: 8px;
-              font-size: 12px;
+              font-size: var(--tf-type-scale-12);
               color: var(--tf-color-amber-500);
               font-weight: 500;
               word-break: break-word;
@@ -474,7 +474,7 @@
               gap: 8px;
               cursor: pointer;
               user-select: none;
-              font-size: 14px;
+              font-size: var(--tf-type-scale-14);
               color: var(--tf-color-gray-bootstrap-700);
               padding: 8px 12px;
               background: var(--color-bg-white);
@@ -510,7 +510,7 @@
 
             p {
               margin: 0;
-              font-size: 14px;
+              font-size: var(--tf-type-scale-14);
               color: var(--tf-color-muted);
               display: flex;
               align-items: center;
@@ -519,7 +519,7 @@
 
               i {
                 color: var(--tf-color-blue-500);
-                font-size: 16px;
+                font-size: var(--tf-type-scale-16);
               }
             }
           }
@@ -542,7 +542,7 @@
 
         label {
           display: block;
-          font-size: 14px;
+          font-size: var(--tf-type-scale-14);
           font-weight: 600;
           color: var(--tf-color-gray-bootstrap-700);
           margin-bottom: 8px;

@@ -417,8 +417,8 @@
                     v-else
                     class="text-gray"
                   >-</span>
-                  <div class="text-secondary text-xs">
-                    {{ row.source_name || '默认来源' }}
+                  <div class="price-source-account text-secondary text-xs">
+                    {{ row.source_type === 'public' ? '公开未登录' : (row.source_login_username || row.source_name || '默认来源') }}
                   </div>
                 </template>
               </el-table-column>
@@ -1835,6 +1835,7 @@ const fetchPriceList = async () => {
           : null,
         source_name: item.source_name || '默认来源',
         source_type: item.source_type === 'public' ? 'public' : 'account',
+        source_login_username: item.source_login_username || '',
         id: item.price_list_id || item.id || null,
         price_list_id: item.price_list_id || item.id || null
       }))
@@ -3171,7 +3172,7 @@ onUnmounted(() => {
 
       h3 {
         margin: 0;
-        font-size: 16px;
+        font-size: var(--tf-type-scale-16);
         font-weight: 600;
         color: var(--color-text-primary);
       }
@@ -3201,7 +3202,7 @@ onUnmounted(() => {
 
       h3 {
         margin: 0;
-        font-size: 14px;
+        font-size: var(--tf-type-scale-14);
         font-weight: 600;
         color: var(--color-text-regular);
       }
@@ -3239,6 +3240,10 @@ onUnmounted(() => {
   color: var(--color-info);
 }
 
+.price-source-account {
+  white-space: nowrap;
+}
+
 // 价格历史对话框样式
 .history-header {
   margin-bottom: 16px;
@@ -3253,7 +3258,7 @@ onUnmounted(() => {
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
 
     .label {
       font-weight: 600;
@@ -3270,7 +3275,7 @@ onUnmounted(() => {
       background: var(--tf-color-primary-surface-element);
       color: var(--color-primary);
       border-radius: 4px;
-      font-size: 12px;
+      font-size: var(--tf-type-scale-12);
     }
 
     .memory {
@@ -3278,7 +3283,7 @@ onUnmounted(() => {
       background: var(--tf-color-blue-50);
       color: var(--color-success);
       border-radius: 4px;
-      font-size: 12px;
+      font-size: var(--tf-type-scale-12);
     }
   }
 
@@ -3299,7 +3304,7 @@ onUnmounted(() => {
   align-items: center;
 
   .selected-count {
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
     color: var(--color-danger);
     font-weight: 500;
   }
@@ -3312,7 +3317,7 @@ onUnmounted(() => {
   background: linear-gradient(135deg, var(--tf-color-violet-500) 0%, var(--tf-color-violet-500) 100%);
   color: var(--color-bg-white);
   border-radius: 4px;
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   font-weight: 600;
 }
 
@@ -3323,7 +3328,7 @@ onUnmounted(() => {
   background: linear-gradient(135deg, var(--tf-color-blue-500) 0%, var(--tf-color-blue-400) 100%);
   color: var(--color-bg-white);
   border-radius: 4px;
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   font-weight: 600;
 }
 
@@ -3357,7 +3362,7 @@ onUnmounted(() => {
   gap: 4px;
   padding: 2px 8px;
   border-radius: 999px;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   font-weight: 600;
   line-height: 1.4;
 }
@@ -3388,7 +3393,7 @@ onUnmounted(() => {
   border-radius: 4px;
   transition: all 0.2s;
   font-weight: 600;
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   line-height: 1.2;
 
   &:hover {
@@ -3401,7 +3406,7 @@ onUnmounted(() => {
   background: rgba(245, 108, 108, 0.1);
 
   i {
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
   }
 }
 
@@ -3410,7 +3415,7 @@ onUnmounted(() => {
   background: rgba(103, 194, 58, 0.1);
 
   i {
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
   }
 }
 
@@ -3419,7 +3424,7 @@ onUnmounted(() => {
   background: rgba(144, 147, 153, 0.1);
 
   i {
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
   }
 }
 
@@ -3455,6 +3460,10 @@ onUnmounted(() => {
 }
 
 @media (max-width: 767px) {
+  .price-source-account {
+    display: none;
+  }
+
   .table-card {
     .pagination-container {
       justify-content: center;
@@ -3475,7 +3484,7 @@ onUnmounted(() => {
 
     .record-count {
       color: var(--color-text-regular);
-      font-size: 14px;
+      font-size: var(--tf-type-scale-14);
     }
   }
 
@@ -3494,11 +3503,11 @@ onUnmounted(() => {
           background: linear-gradient(135deg, var(--tf-color-orange) 0%, var(--tf-color-coral) 100%);
           color: white;
           border-radius: 50%;
-          font-size: 11px;
+          font-size: var(--tf-type-scale-11);
           box-shadow: 0 2px 4px rgba(255, 107, 107, 0.3);
 
           i {
-            font-size: 10px;
+            font-size: var(--tf-type-scale-10);
           }
         }
       }
@@ -3512,7 +3521,7 @@ onUnmounted(() => {
       text-align: center;
       background: var(--tf-color-surface-soft);
       border-radius: 50%;
-      font-size: 12px;
+      font-size: var(--tf-type-scale-12);
       font-weight: 500;
       color: var(--text-muted);
     }
@@ -3523,7 +3532,7 @@ onUnmounted(() => {
     padding: 4px 12px;
     border-radius: 12px;
     font-weight: 600;
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
 
     &.days-normal {
       background: var(--tf-color-surface-green);

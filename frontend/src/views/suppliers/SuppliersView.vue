@@ -1601,7 +1601,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
   font-weight: 600;
   color: var(--tf-color-heading);
   margin-bottom: 20px;
@@ -1615,7 +1615,7 @@ onUnmounted(() => {
 
 .record-count {
   margin-left: auto;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   color: var(--tf-color-muted);
   font-weight: 400;
 }
@@ -1648,7 +1648,7 @@ onUnmounted(() => {
   padding: 12px 10px;
   text-align: center;
   font-weight: 600;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   border-right: 1px solid var(--tf-color-border-subtle);
   border-bottom: 2px solid var(--tf-color-border-subtle);
   position: relative;
@@ -1661,7 +1661,7 @@ onUnmounted(() => {
 
 .table td {
   padding: 6px 6px;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   border-right: 1px solid var(--tf-color-border-muted);
   border-bottom: 1px solid var(--tf-color-border-muted);
   vertical-align: middle;
@@ -1713,7 +1713,7 @@ onUnmounted(() => {
 
 .drag-handle {
   color: var(--tf-color-neutral-400);
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
   cursor: grab;
   display: inline-flex;
   align-items: center;
@@ -1750,7 +1750,7 @@ onUnmounted(() => {
   color: var(--tf-color-neutral-500);
   padding: 4px 8px;
   border-radius: 6px;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   font-weight: 600;
   display: inline-block;
   min-width: 32px;
@@ -1762,7 +1762,7 @@ onUnmounted(() => {
   color: white;
   padding: 4px 8px;
   border-radius: 6px;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   font-weight: 600;
   display: inline-block;
 }
@@ -1779,7 +1779,7 @@ onUnmounted(() => {
   justify-content: center;
   gap: 8px;
   margin-bottom: 4px;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
 }
 
 .warning-badge {
@@ -1787,12 +1787,12 @@ onUnmounted(() => {
   color: var(--tf-color-gray-bootstrap-900);
   padding: 2px 6px;
   border-radius: 4px;
-  font-size: 10px;
+  font-size: var(--tf-type-scale-10);
   font-weight: 500;
 }
 
 .supplier-remarks {
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   color: var(--tf-color-muted);
   display: flex;
   align-items: center;
@@ -1810,7 +1810,7 @@ onUnmounted(() => {
 }
 
 .contact-name, .phone-number, .address-text {
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   color: var(--tf-color-gray-bootstrap-700);
   display: flex;
   align-items: center;
@@ -1826,7 +1826,7 @@ onUnmounted(() => {
 .status-badge {
   padding: 6px 12px;
   border-radius: 20px;
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   font-weight: 600;
   display: inline-flex;
   align-items: center;
@@ -1846,7 +1846,7 @@ onUnmounted(() => {
 }
 
 .time-info {
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   color: var(--tf-color-muted);
   display: flex;
   align-items: center;
@@ -1877,7 +1877,7 @@ onUnmounted(() => {
 
 .pagination-info {
   color: var(--tf-color-muted);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
 }
 
 .pagination-controls {
@@ -1942,7 +1942,7 @@ onUnmounted(() => {
   h4 {
     margin: 0 0 16px 0;
     padding: 0;
-    font-size: 16px;
+    font-size: var(--tf-type-scale-16);
     font-weight: 600;
     color: var(--tf-color-neutral-700);
     border-bottom: 1px solid var(--tf-color-neutral-200);
@@ -1965,14 +1965,14 @@ onUnmounted(() => {
     color: var(--tf-color-neutral-500);
     min-width: 100px;
     margin-right: 16px;
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
   }
 
   .value {
     flex: 1;
     color: var(--tf-color-neutral-800);
     font-weight: 500;
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
     word-break: break-word;
   }
 }
@@ -1992,14 +1992,14 @@ onUnmounted(() => {
   border: 1px solid var(--tf-color-neutral-200);
 
   .stat-number {
-    font-size: 24px;
+    font-size: var(--tf-type-scale-24);
     font-weight: 700;
     color: var(--tf-color-neutral-800);
     margin-bottom: 4px;
   }
 
   .stat-label {
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
     color: var(--tf-color-neutral-500);
     font-weight: 500;
     text-transform: uppercase;
@@ -2007,7 +2007,7 @@ onUnmounted(() => {
   }
 
   .stat-amount {
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
     color: var(--tf-color-emerald-600);
     font-weight: 600;
   }
@@ -2021,10 +2021,10 @@ onUnmounted(() => {
   gap: 12px;
   padding: 40px 0;
   color: var(--tf-color-neutral-500);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
 
   i {
-    font-size: 20px;
+    font-size: var(--tf-type-scale-20);
   }
 }
 
@@ -2035,7 +2035,7 @@ onUnmounted(() => {
 }
 
 .stat-value {
-  font-size: 24px;
+  font-size: var(--tf-type-scale-24);
   font-weight: bold;
   color: var(--tf-color-blue-bootstrap);
   margin-bottom: 5px;
@@ -2047,7 +2047,7 @@ onUnmounted(() => {
 }
 
 .stat-amount {
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   color: var(--success-color);
   font-weight: 500;
 }
@@ -2055,7 +2055,7 @@ onUnmounted(() => {
 .account-type {
   padding: 4px 8px;
   border-radius: 4px;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   font-weight: 500;
 }
 
@@ -2093,7 +2093,7 @@ onUnmounted(() => {
 }
 
 .small {
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
 }
 
 /* 响应式设计 */

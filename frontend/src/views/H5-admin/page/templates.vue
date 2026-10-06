@@ -437,10 +437,10 @@
                 v-if="childDrafts.length > 0"
                 class="child-list"
               >
-                <button
+                <el-button
                   v-for="child in childDrafts"
                   :key="child.localKey"
-                  type="button"
+                  native-type="button"
                   class="child-item"
                   :class="{ active: child.localKey === selectedChildKey }"
                   @click="selectedChildKey = child.localKey"
@@ -459,7 +459,7 @@
                     <span>{{ formatMemoryNames(child.memory_ids) || '未选内存' }}</span>
                     <span>{{ child.is_active ? '启用' : '停用' }}</span>
                   </div>
-                </button>
+                </el-button>
               </div>
 
               <DataEmptyState
@@ -630,7 +630,7 @@
                 </div>
 
                 <div
-                  v-if="canViewField('template.images') || canViewField('system_info.operations')"
+                  v-if="canViewField('template.images') || shouldShowActionColumn(canViewField('system_info.operations'), [canEdit, canDelete])"
                   class="editor-block image-block"
                 >
                   <div class="image-block-header">
@@ -718,28 +718,28 @@
                               content="设为主图"
                               placement="top"
                             >
-                              <button
-                                type="button"
+                              <el-button
+                                native-type="button"
                                 class="image-action-btn primary"
                                 :class="{ active: image.is_primary }"
                                 :disabled="image.is_primary"
                                 @click="handleSetPrimaryImage(currentChild, image)"
                               >
                                 <i class="fas fa-star" />
-                              </button>
+                              </el-button>
                             </el-tooltip>
                             <el-tooltip
                               v-if="canDelete"
                               content="删除图片"
                               placement="top"
                             >
-                              <button
-                                type="button"
+                              <el-button
+                                native-type="button"
                                 class="image-action-btn danger"
                                 @click="handleDeleteImage(currentChild, image)"
                               >
                                 <i class="fas fa-trash" />
-                              </button>
+                              </el-button>
                             </el-tooltip>
                           </div>
                         </div>
@@ -1839,7 +1839,7 @@ onUnmounted(() => {
   border-radius: 12px;
   background: var(--tf-color-blue-tailwind-50);
   color: var(--tf-color-blue-700);
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
 }
 
 .group-table-header {
@@ -1848,7 +1848,7 @@ onUnmounted(() => {
   gap: 12px;
   padding: 0 16px 12px;
   color: var(--tf-color-neutral-500);
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   font-weight: 600;
 }
 
@@ -1928,7 +1928,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   color: var(--tf-color-neutral-400);
-  font-size: 22px;
+  font-size: var(--tf-type-scale-22);
 }
 
 .product-meta {
@@ -1936,14 +1936,14 @@ onUnmounted(() => {
 }
 
 .product-title {
-  font-size: 15px;
+  font-size: var(--tf-type-scale-15);
   font-weight: 700;
   color: var(--tf-color-neutral-900);
   margin-bottom: 4px;
 }
 
 .product-subtitle {
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: var(--tf-color-neutral-500);
   margin-bottom: 8px;
 }
@@ -1981,7 +1981,7 @@ onUnmounted(() => {
 }
 
 .form-label {
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   font-weight: 600;
   color: var(--tf-color-neutral-700);
 }
@@ -1996,13 +1996,13 @@ onUnmounted(() => {
 }
 
 .summary-title {
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
   font-weight: 700;
   color: var(--tf-color-neutral-900);
 }
 
 .summary-tip {
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: var(--tf-color-neutral-500);
 }
 
@@ -2024,13 +2024,13 @@ onUnmounted(() => {
 
 .children-panel-header h4 {
   margin: 0;
-  font-size: 15px;
+  font-size: var(--tf-type-scale-15);
   color: var(--tf-color-neutral-900);
 }
 
 .children-panel-header p {
   margin: 6px 0 0;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: var(--tf-color-neutral-500);
 }
 
@@ -2073,7 +2073,7 @@ onUnmounted(() => {
 }
 
 .child-name {
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   font-weight: 700;
   color: var(--tf-color-neutral-900);
 }
@@ -2082,7 +2082,7 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: var(--tf-color-neutral-500);
 }
 
@@ -2105,14 +2105,14 @@ onUnmounted(() => {
 
 .editor-title-row h3 {
   margin: 0 0 6px;
-  font-size: 18px;
+  font-size: var(--tf-type-scale-18);
   color: var(--tf-color-neutral-900);
 }
 
 .editor-title-row p {
   margin: 0;
   color: var(--tf-color-neutral-500);
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
 }
 
 .editor-form-grid {
@@ -2183,7 +2183,7 @@ onUnmounted(() => {
   transform: translateY(-50%);
   pointer-events: none;
   color: var(--tf-color-neutral-600);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   font-weight: 700;
   line-height: 1;
 }
@@ -2193,14 +2193,14 @@ onUnmounted(() => {
 }
 
 .block-title {
-  font-size: 15px;
+  font-size: var(--tf-type-scale-15);
   font-weight: 700;
   color: var(--tf-color-neutral-900);
   margin-bottom: 14px;
 }
 
 .stock-line {
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   color: var(--tf-color-neutral-500);
 }
 
@@ -2214,7 +2214,7 @@ onUnmounted(() => {
 
 .image-block-header p {
   margin: 6px 0 0;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: var(--tf-color-neutral-500);
 }
 
@@ -2224,7 +2224,7 @@ onUnmounted(() => {
   border-radius: 12px;
   background: var(--tf-color-orange-50);
   color: var(--tf-color-orange-tailwind-700);
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
 }
 
 .image-grid {
@@ -2280,7 +2280,7 @@ onUnmounted(() => {
   gap: 8px;
   align-items: center;
   margin-bottom: 8px;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: var(--tf-color-neutral-500);
 }
 
@@ -2389,7 +2389,7 @@ onUnmounted(() => {
     margin-bottom: 10px;
     padding: 9px 10px;
     border-radius: 12px;
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
     line-height: 1.45;
   }
 
@@ -2423,7 +2423,7 @@ onUnmounted(() => {
     height: 30px;
     flex: 0 0 30px;
     border-radius: 10px;
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
   }
 
   .product-cell {
@@ -2440,13 +2440,13 @@ onUnmounted(() => {
 
   .product-title {
     margin-bottom: 3px;
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
     line-height: 1.35;
   }
 
   .product-subtitle {
     margin-bottom: 7px;
-    font-size: 11px;
+    font-size: var(--tf-type-scale-11);
     line-height: 1.4;
   }
 
@@ -2465,7 +2465,7 @@ onUnmounted(() => {
     border-radius: 12px;
     background: var(--tf-color-slate-50);
     color: var(--tf-color-slate-900);
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
     font-weight: 800;
     line-height: 1.2;
     text-align: center;
@@ -2474,7 +2474,7 @@ onUnmounted(() => {
   .group-stat::before {
     content: attr(data-label);
     color: var(--tf-color-slate-500);
-    font-size: 10px;
+    font-size: var(--tf-type-scale-10);
     font-weight: 700;
   }
 
@@ -2508,7 +2508,7 @@ onUnmounted(() => {
   }
 
   .form-label {
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
   }
 
   .header-form-summary {
@@ -2517,7 +2517,7 @@ onUnmounted(() => {
   }
 
   .summary-title {
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
   }
 
   .editor-layout {
@@ -2569,11 +2569,11 @@ onUnmounted(() => {
   }
 
   .child-name {
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
   }
 
   .child-item-meta {
-    font-size: 11px;
+    font-size: var(--tf-type-scale-11);
   }
 
   .editor-title-row {
@@ -2582,12 +2582,12 @@ onUnmounted(() => {
   }
 
   .editor-title-row h3 {
-    font-size: 15px;
+    font-size: var(--tf-type-scale-15);
     line-height: 1.35;
   }
 
   .editor-title-row p {
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
     line-height: 1.45;
   }
 
@@ -2609,7 +2609,7 @@ onUnmounted(() => {
 
   .block-title {
     margin-bottom: 10px;
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
   }
 
   .markup-row {
@@ -2629,7 +2629,7 @@ onUnmounted(() => {
   }
 
   .image-block-header p {
-    font-size: 11px;
+    font-size: var(--tf-type-scale-11);
     line-height: 1.45;
   }
 
@@ -2657,7 +2657,7 @@ onUnmounted(() => {
     right: 8px;
     width: 26px;
     height: 26px;
-    font-size: 11px;
+    font-size: var(--tf-type-scale-11);
   }
 
   .image-card-body {
@@ -2667,7 +2667,7 @@ onUnmounted(() => {
   .image-card-meta {
     align-items: flex-start;
     margin-bottom: 7px;
-    font-size: 10px;
+    font-size: var(--tf-type-scale-10);
   }
 
   .image-card-actions {
@@ -2691,7 +2691,7 @@ onUnmounted(() => {
   :deep(.template-dialog .el-form-item__label) {
     margin-bottom: 6px;
     color: var(--tf-color-slate-700);
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
     font-weight: 700;
   }
 
@@ -2805,14 +2805,14 @@ onUnmounted(() => {
   }
 
   .editor-title-row h3 {
-    font-size: 15px;
+    font-size: var(--tf-type-scale-15);
     line-height: 1.35;
     overflow-wrap: anywhere;
   }
 
   .editor-title-row p,
   .image-block-header p {
-    font-size: 11px;
+    font-size: var(--tf-type-scale-11);
     line-height: 1.45;
   }
 
@@ -2835,7 +2835,7 @@ onUnmounted(() => {
 
   .block-title {
     margin-bottom: 10px;
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
   }
 
   .image-grid {

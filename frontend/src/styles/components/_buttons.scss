@@ -10,9 +10,21 @@
   --tf-button-font-weight: 600;
   --tf-toolbar-button-height: 34px;
   --tf-toolbar-button-padding-x: var(--tf-space-3);
-  --tf-toolbar-button-font-size: 13px;
+  --tf-toolbar-button-font-size: var(--tf-type-scale-13);
   --tf-search-control-height: var(--tf-toolbar-button-height);
   --tf-topbar-control-height: 40px;
+  --tf-topbar-user-info-max-width: min(46vw, 360px);
+  --tf-button-mobile-nav-size: 40px;
+  --tf-button-fab-size: 56px;
+  --tf-button-fab-mini-size: 40px;
+  --tf-button-overlay-size: 42px;
+  --tf-button-overlay-reset-size: 56px;
+  --tf-button-dismiss-size: 28px;
+  --tf-button-tab-size: 28px;
+  --tf-button-menu-action-size: 40px;
+  --tf-button-menu-size: 40px;
+  --tf-button-menu-radius: 12px;
+  --tf-button-menu-icon-size: 20px;
 
   --tf-button-primary-bg: #2563eb;
   --tf-button-primary-border: #2563eb;
@@ -168,9 +180,10 @@
   }
 }
 
-.el-button:not(.is-circle):not(.is-text):not(.is-link),
-button.btn,
-button[class*='btn-']:not(.btn-close) {
+/* 默认基线保持低优先级，公共语义按钮可覆盖尺寸与表面。 */
+.el-button:where(:not(.is-circle):not(.is-text):not(.is-link)),
+.el-button.btn,
+.el-button[class*='btn-']:not(.btn-close) {
   width: auto;
   min-width: 0;
   height: var(--tf-button-height) !important;
@@ -213,7 +226,7 @@ button[class*='btn-']:not(.btn-close) {
   min-height: var(--tf-button-height) !important;
   max-height: var(--tf-button-height) !important;
   padding: 0 !important;
-  border-radius: 50% !important;
+  border-radius: var(--tf-radius-full) !important;
   box-sizing: border-box;
 }
 
@@ -255,9 +268,9 @@ button[class*='btn-']:not(.btn-close) {
   gap: 6px;
 }
 
-button.btn i,
-button[class*='btn-']:not(.btn-close) i {
-  font-size: 14px;
+.el-button.btn i,
+.el-button[class*='btn-']:not(.btn-close) i {
+  font-size: var(--tf-type-scale-14);
 }
 
 .el-button--primary,
@@ -370,7 +383,7 @@ button[class*='btn-']:not(.btn-close) i {
 .el-button.tf-button--neutral,
 .el-button.tf-button--cancel,
 .el-button.tf-button--close,
-.el-button:not([class*='el-button--']):not(.is-text):not(.is-link):not([link]) {
+.el-button:where(:not([class*='el-button--']):not(.is-text):not(.is-link):not([link])) {
   --el-button-bg-color: var(--tf-button-neutral-bg) !important;
   --el-button-border-color: var(--tf-button-neutral-border) !important;
   --el-button-text-color: var(--tf-button-neutral-color) !important;
@@ -386,6 +399,248 @@ button[class*='btn-']:not(.btn-close) i {
   }
 }
 
+body .el-button.el-button.tf-button--dialog-close {
+  --el-button-bg-color: var(--tf-dialog-close-bg) !important;
+  --el-button-border-color: transparent !important;
+  --el-button-text-color: var(--tf-dialog-header-text) !important;
+  --el-button-hover-bg-color: var(--tf-dialog-close-bg-hover) !important;
+  --el-button-hover-border-color: transparent !important;
+  --el-button-hover-text-color: var(--tf-dialog-header-text) !important;
+  width: var(--tf-dialog-close-size) !important;
+  min-width: var(--tf-dialog-close-size) !important;
+  max-width: var(--tf-dialog-close-size) !important;
+  height: var(--tf-dialog-close-size) !important;
+  min-height: var(--tf-dialog-close-size) !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: var(--tf-radius-full) !important;
+  background: var(--tf-dialog-close-bg) !important;
+  color: var(--tf-dialog-header-text) !important;
+  box-shadow: none !important;
+}
+
+body .el-button.el-button.tf-button--dialog-close svg {
+  display: block !important;
+  width: var(--tf-dialog-close-icon-size) !important;
+  height: var(--tf-dialog-close-icon-size) !important;
+  overflow: visible !important;
+}
+
+body .el-button.el-button.tf-button--dialog-close:hover,
+body .el-button.el-button.tf-button--dialog-close:focus {
+  background: var(--tf-dialog-close-bg-hover) !important;
+  color: var(--tf-dialog-header-text) !important;
+}
+
+/* Mobile and overlay controls use the same public button surfaces. */
+body .el-button.el-button.tf-button--menu {
+  @include tf-filled-button(
+    var(--tf-color-indigo-brand), var(--tf-color-indigo-brand), var(--color-bg-white),
+    var(--tf-color-purple-brand), var(--tf-color-purple-brand)
+  );
+  width: var(--tf-button-menu-size) !important;
+  min-width: var(--tf-button-menu-size) !important;
+  max-width: var(--tf-button-menu-size) !important;
+  height: var(--tf-button-menu-size) !important;
+  min-height: var(--tf-button-menu-size) !important;
+  max-height: var(--tf-button-menu-size) !important;
+  padding: 0 !important;
+  border: 1px solid var(--tf-color-indigo-brand) !important;
+  border-radius: var(--tf-button-menu-radius) !important;
+  box-shadow: var(--shadow-sm) !important;
+}
+
+body .el-button.el-button.tf-button--menu .el-icon,
+body .el-button.el-button.tf-button--menu .icon-renderer,
+body .el-button.el-button.tf-button--menu svg,
+body .el-button.el-button.tf-button--menu i {
+  color: var(--color-bg-white) !important;
+  fill: currentColor !important;
+}
+
+body .el-button.el-button.tf-button--menu .icon-renderer {
+  font-size: var(--tf-button-menu-icon-size);
+}
+
+body .el-button.el-button.tf-button--mobile-nav {
+  width: var(--tf-button-mobile-nav-size) !important;
+  min-width: var(--tf-button-mobile-nav-size) !important;
+  max-width: var(--tf-button-mobile-nav-size) !important;
+  height: var(--tf-button-mobile-nav-size) !important;
+  min-height: var(--tf-button-mobile-nav-size) !important;
+  max-height: var(--tf-button-mobile-nav-size) !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: var(--tf-radius-full) !important;
+  background: transparent !important;
+  color: var(--tf-button-tool-color) !important;
+}
+
+body .el-button.el-button.tf-button--mobile-nav:hover,
+body .el-button.el-button.tf-button--mobile-nav:focus {
+  background: var(--tf-button-tool-hover-bg) !important;
+  color: var(--tf-button-neutral-color) !important;
+}
+
+body .el-button.el-button.tf-button--fab {
+  width: var(--tf-button-fab-size) !important;
+  min-width: var(--tf-button-fab-size) !important;
+  max-width: var(--tf-button-fab-size) !important;
+  height: var(--tf-button-fab-size) !important;
+  min-height: var(--tf-button-fab-size) !important;
+  max-height: var(--tf-button-fab-size) !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: var(--tf-radius-full) !important;
+  box-shadow: var(--tf-button-shadow) !important;
+  color: var(--tf-button-on-color) !important;
+}
+
+body .el-button.el-button.tf-button--fab.tf-button--fab-mini {
+  width: var(--tf-button-fab-mini-size) !important;
+  min-width: var(--tf-button-fab-mini-size) !important;
+  max-width: var(--tf-button-fab-mini-size) !important;
+  height: var(--tf-button-fab-mini-size) !important;
+  min-height: var(--tf-button-fab-mini-size) !important;
+  max-height: var(--tf-button-fab-mini-size) !important;
+}
+
+body .el-button.el-button.tf-button--fab.fab-primary,
+body .el-button.el-button.tf-button--fab.fab-info {
+  background: var(--tf-button-primary-bg) !important;
+  border-color: var(--tf-button-primary-border) !important;
+}
+
+body .el-button.el-button.tf-button--fab.fab-success {
+  background: var(--tf-button-success-bg) !important;
+  border-color: var(--tf-button-success-border) !important;
+}
+
+body .el-button.el-button.tf-button--fab.fab-warning {
+  background: var(--tf-button-warning-bg) !important;
+  border-color: var(--tf-button-warning-border) !important;
+}
+
+body .el-button.el-button.tf-button--fab.fab-danger {
+  background: var(--tf-button-danger-bg) !important;
+  border-color: var(--tf-button-danger-border) !important;
+}
+
+body .el-button.el-button.tf-button--fab:hover {
+  box-shadow: var(--tf-button-shadow-hover) !important;
+}
+
+body .el-button.el-button.tf-button--overlay-tool {
+  width: var(--tf-button-overlay-size) !important;
+  min-width: var(--tf-button-overlay-size) !important;
+  max-width: var(--tf-button-overlay-size) !important;
+  height: var(--tf-button-overlay-size) !important;
+  min-height: var(--tf-button-overlay-size) !important;
+  max-height: var(--tf-button-overlay-size) !important;
+  padding: 0 !important;
+  border: 1px solid var(--tf-button-neutral-border) !important;
+  border-radius: var(--tf-radius-full) !important;
+  background: var(--tf-button-overlay-bg) !important;
+  color: var(--tf-button-on-color) !important;
+}
+
+body .el-button.el-button.tf-button--overlay-tool:hover,
+body .el-button.el-button.tf-button--overlay-tool:focus {
+  background: var(--tf-button-overlay-hover-bg) !important;
+  color: var(--tf-button-on-color) !important;
+}
+
+body .el-button.el-button.tf-button--overlay-reset {
+  width: var(--tf-button-overlay-reset-size) !important;
+  min-width: var(--tf-button-overlay-reset-size) !important;
+  max-width: var(--tf-button-overlay-reset-size) !important;
+  border-radius: var(--tf-radius-full) !important;
+}
+
+body .el-button.el-button.tf-button--overlay-danger {
+  background: var(--tf-button-overlay-danger-bg) !important;
+  border-color: var(--tf-button-danger-soft-border) !important;
+}
+
+body .el-button.el-button.tf-button--overlay-warning {
+  background: var(--tf-button-warning-bg) !important;
+  border-color: var(--tf-button-warning-border) !important;
+}
+
+body .el-button.el-button.tf-button--scanner-control {
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  height: var(--tf-button-height) !important;
+  min-height: var(--tf-button-height) !important;
+  max-height: var(--tf-button-height) !important;
+  padding-inline: var(--tf-button-padding-x) !important;
+  border: 1px solid var(--tf-button-neutral-border) !important;
+  border-radius: var(--tf-radius-control) !important;
+  background: var(--tf-button-overlay-bg) !important;
+  color: var(--tf-button-on-color) !important;
+}
+
+body .el-button.el-button.tf-button--dismiss,
+body .el-button.el-button.tf-button--tab-action {
+  width: var(--tf-button-dismiss-size) !important;
+  min-width: var(--tf-button-dismiss-size) !important;
+  max-width: var(--tf-button-dismiss-size) !important;
+  height: var(--tf-button-dismiss-size) !important;
+  min-height: var(--tf-button-dismiss-size) !important;
+  max-height: var(--tf-button-dismiss-size) !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: var(--tf-radius-control) !important;
+  background: transparent !important;
+  color: var(--tf-button-tool-color) !important;
+}
+
+body .el-button.el-button.tf-button--dismiss:hover,
+body .el-button.el-button.tf-button--dismiss:focus,
+body .el-button.el-button.tf-button--tab-action:hover,
+body .el-button.el-button.tf-button--tab-action:focus {
+  background: var(--tf-button-tool-hover-bg) !important;
+  color: var(--tf-button-neutral-color) !important;
+}
+
+body .el-button.el-button.tf-button--menu-action {
+  flex: 0 0 32px !important;
+  width: 32px !important;
+  min-width: 32px !important;
+  max-width: 32px !important;
+  height: 32px !important;
+  min-height: 32px !important;
+  max-height: 32px !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: var(--tf-nav-header-text) !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+body .el-button.el-button.tf-button--menu-action:hover,
+body .el-button.el-button.tf-button--menu-action:focus {
+  background: transparent !important;
+  color: var(--tf-nav-header-text) !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+/* Phone controls keep a reliable touch target even when the visual icon is small. */
+@media (max-width: 767px) {
+  body .el-button.el-button.tf-button--dismiss,
+  body .el-button.el-button.tf-button--tab-action {
+    width: var(--tf-button-mobile-nav-size) !important;
+    min-width: var(--tf-button-mobile-nav-size) !important;
+    max-width: var(--tf-button-mobile-nav-size) !important;
+    height: var(--tf-button-mobile-nav-size) !important;
+    min-height: var(--tf-button-mobile-nav-size) !important;
+    max-height: var(--tf-button-mobile-nav-size) !important;
+  }
+}
+
 .btn.btn-dark {
   @include tf-filled-button(var(--tf-color-slate-700), var(--tf-color-slate-700), var(--color-bg-white), var(--tf-color-slate-800), var(--tf-color-slate-800));
 }
@@ -398,7 +653,7 @@ button[class*='btn-']:not(.btn-close) i {
   );
 }
 
-button.btn-icon {
+.el-button.btn-icon {
   width: var(--tf-button-height-small) !important;
   min-width: var(--tf-button-height-small) !important;
   max-width: var(--tf-button-height-small) !important;
@@ -410,7 +665,7 @@ button.btn-icon {
   color: var(--tf-button-neutral-color) !important;
 }
 
-button.btn-icon.btn-danger {
+.el-button.btn-icon.btn-danger {
   background: var(--tf-button-danger-bg) !important;
   border-color: var(--tf-button-danger-border) !important;
   color: var(--tf-button-danger-color) !important;
@@ -502,13 +757,17 @@ button.btn-icon.btn-danger {
     --tf-button-height-small: clamp(30px, 8.54vw, 32px);
     --tf-button-padding-x: clamp(10px, 3.2vw, 12px);
     --tf-button-padding-x-small: clamp(6px, 2.14vw, 8px);
-    --tf-button-font-size: 13px;
+    --tf-button-font-size: var(--tf-type-scale-13);
     --tf-button-font-size-small: 12px;
     --tf-toolbar-button-height: clamp(28px, 7.5vw, 30px);
     --tf-toolbar-button-padding-x: clamp(5px, 1.6vw, 7px);
-    --tf-toolbar-button-font-size: 12px;
+    --tf-toolbar-button-font-size: var(--tf-type-scale-12);
     --tf-search-control-height: var(--tf-toolbar-button-height);
     --tf-topbar-control-height: var(--tf-button-height);
+    --tf-button-mobile-nav-size: var(--tf-button-height);
+    --tf-button-fab-size: 48px;
+    --tf-button-fab-mini-size: 36px;
+    --tf-button-overlay-reset-size: 44px;
   }
 
   .page-header .header-actions .el-button {
@@ -532,7 +791,7 @@ button.btn-icon.btn-danger {
 
   .page-header .header-actions .el-button i,
   .unified-search-panel__actions .el-button i {
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
   }
 
   /* Four common page commands share the available header width on mobile. */
@@ -541,12 +800,12 @@ button.btn-icon.btn-danger {
     width: auto;
     min-width: 0;
     padding-inline: clamp(3px, 1.2vw, 5px) !important;
-    font-size: 11px !important;
+    font-size: var(--tf-type-scale-11) !important;
   }
 
   .page-header .header-actions[data-action-count='4'] .el-button i {
     flex: 0 0 auto;
-    font-size: 11px;
+    font-size: var(--tf-type-scale-11);
   }
 
   .page-header .header-actions[data-action-count='4'] .el-button > span {
@@ -557,7 +816,7 @@ button.btn-icon.btn-danger {
 
 @media (prefers-contrast: high) {
   .el-button:not(.is-text):not(.is-link),
-  button.btn {
+  .el-button.btn {
     border-width: 2px !important;
   }
 }

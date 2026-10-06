@@ -92,7 +92,7 @@
 
 /* 权限提示样式 */
 .permission-hint {
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: var(--color-info);
   margin-top: 4px;
   display: flex;
@@ -101,7 +101,7 @@
 }
 
 .permission-hint i {
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
 }
 
 /* 字段权限指示器 */
@@ -111,7 +111,7 @@
   justify-content: center;
   width: 16px;
   height: 16px;
-  font-size: 10px;
+  font-size: var(--tf-type-scale-10);
   margin-left: 4px;
   border-radius: 50%;
 }
@@ -133,7 +133,7 @@
   border: 1px solid var(--tf-color-orange-material-50);
   border-radius: 4px;
   color: var(--color-warning);
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   margin-bottom: 12px;
   display: flex;
   align-items: center;
@@ -194,6 +194,6 @@
   .field-permission-indicator {
     width: 14px;
     height: 14px;
-    font-size: 9px;
+    font-size: var(--tf-type-scale-9);
   }
 }

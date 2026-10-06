@@ -15,7 +15,7 @@
     .watermark-text {
       display: inline-block;
       opacity: 0.16;
-      font-size: clamp(10px, 3vw, 14px);
+      font-size: var(--tf-font-mobile-scale-label);
       font-weight: 700;
       color: rgba(220, 38, 38, 0.15);
       max-width: 100%;
@@ -58,15 +58,15 @@
     gap: 8px !important;
 
     h2 {
-      font-size: 14px !important;
+      font-size: var(--tf-type-scale-14) !important;
     }
 
     .count {
-      font-size: 11px !important;
+      font-size: var(--tf-type-scale-11) !important;
     }
 
     .hot-badge {
-      font-size: 9px !important;
+      font-size: var(--tf-type-scale-9) !important;
       height: 16px !important;
       line-height: 16px !important;
       padding: 0 3px !important;
@@ -92,7 +92,7 @@
     :deep(.el-table) {
       width: 430px !important;
       min-width: 430px !important;
-      font-size: 12px !important;
+      font-size: var(--tf-type-scale-12) !important;
       border-radius: 0 !important;
       border-left: 1px solid var(--el-table-border-color, var(--tf-color-gray-200-alt)) !important;
       border-right: 1px solid var(--el-table-border-color, var(--tf-color-gray-200-alt)) !important;
@@ -109,7 +109,7 @@
 
       .el-table__header th {
         padding: 8px 4px !important;
-        font-size: 12px !important;
+        font-size: var(--tf-type-scale-12) !important;
         white-space: nowrap !important;
         height: auto !important;
       }

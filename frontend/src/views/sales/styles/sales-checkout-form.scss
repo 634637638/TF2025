@@ -1,7 +1,7 @@
 .sale-form-section h4 {
   margin: 0 0 20px;
   color: var(--admin-section-title-color);
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
   font-weight: 600;
 }
 
@@ -33,7 +33,7 @@
 .sale-form-section :deep(.el-input__inner),
 .sale-form-section :deep(.el-select__selected-item),
 .sale-form-section :deep(.el-date-editor .el-input__inner) {
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
 }
 
 .sale-date-picker {
@@ -55,7 +55,7 @@
 
 .form-label {
   color: var(--admin-data-table-cell-color);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   font-weight: 600;
 }
 
@@ -68,7 +68,7 @@
   display: block;
   margin-top: 4px;
   color: var(--admin-record-count-color);
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   font-style: italic;
 }
 
@@ -104,7 +104,7 @@
   gap: 8px;
   padding: 16px 20px;
   color: var(--admin-record-count-color);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   text-align: center;
 }
 
@@ -140,14 +140,14 @@
 .customer-name {
   min-width: 0;
   color: var(--admin-data-table-cell-color);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   font-weight: 600;
   line-height: 1.2;
 }
 
 .customer-phone {
   color: var(--admin-record-count-color);
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   line-height: 1.2;
 }
 
@@ -155,7 +155,7 @@
 .vip-badge {
   padding: 2px 8px;
   border-radius: 999px;
-  font-size: 11px;
+  font-size: var(--tf-type-scale-11);
   font-weight: 600;
   justify-self: end;
   line-height: 1.2;
@@ -181,7 +181,7 @@
   background: var(--tf-button-success-soft-bg);
   color: var(--tf-button-success-soft-color);
   cursor: pointer;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   font-weight: 500;
   transition: background-color 0.2s;
 }
@@ -191,7 +191,7 @@
 }
 
 .create-new-customer i {
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
 }
 
 .profit-calculator {
@@ -204,7 +204,7 @@
 .profit-calculator h5 {
   margin: 0 0 16px;
   color: var(--tf-color-heading);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   font-weight: 600;
 }
 
@@ -218,13 +218,13 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
 }
 
 .profit-row.total {
   padding-top: 8px;
   border-top: 1px solid var(--tf-color-border-subtle);
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
   font-weight: 600;
 }
 
@@ -254,7 +254,7 @@
 @media (max-width: 767px) {
   .sale-form-section h4 {
     margin-bottom: 16px;
-    font-size: 15px;
+    font-size: var(--tf-type-scale-15);
   }
 
   .sale-form {
@@ -272,7 +272,7 @@
   .sale-form-section :deep(.el-select__selected-item),
   .sale-form-section :deep(.el-date-editor .el-input__inner),
   .sale-form-section :deep(.el-textarea__inner) {
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
   }
 
   .form-grid {
@@ -287,7 +287,7 @@
 
   .form-label {
     margin-bottom: 6px;
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
   }
 
   .customer-search-results {
@@ -299,17 +299,17 @@
   }
 
   .customer-name {
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
   }
 
   .customer-phone {
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
   }
 
   .create-new-customer {
     gap: 6px;
     padding: 10px;
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
   }
 
   .profit-calculator {
@@ -319,7 +319,7 @@
 
   .profit-calculator h5 {
     margin-bottom: 12px;
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
   }
 
   .profit-rows {
@@ -327,16 +327,16 @@
   }
 
   .profit-row {
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
   }
 
   .profit-row.total {
     padding-top: 10px;
-    font-size: 15px;
+    font-size: var(--tf-type-scale-15);
   }
 
   .form-hint {
-    font-size: 11px;
+    font-size: var(--tf-type-scale-11);
   }
 
   .input-group {
@@ -348,15 +348,15 @@
 
 @media (max-width: 375px) {
   .form-label {
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
   }
 
   .profit-row {
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
   }
 
   .profit-row.total {
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
   }
 }
 

@@ -1221,7 +1221,7 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
   font-weight: 600;
   color: var(--tf-color-heading);
   margin-bottom: 20px;
@@ -1235,7 +1235,7 @@ onBeforeUnmount(() => {
 
 .record-count {
   margin-left: auto;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   color: var(--tf-color-muted);
   font-weight: 400;
 }
@@ -1256,127 +1256,7 @@ onBeforeUnmount(() => {
   border-radius: 8px;
 }
 
-.table {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
-  margin: 0;
-  background: white;
-}
-
-.table th {
-  background: linear-gradient(135deg, var(--tf-color-gray-bootstrap-700) 0%, var(--tf-color-gray-bootstrap-800) 100%);
-  color: white;
-  padding: 12px 10px;
-  text-align: center;
-  font-weight: 600;
-  font-size: 14px;
-  border-right: 1px solid var(--tf-color-border-subtle);
-  border-bottom: 2px solid var(--tf-color-border-subtle);
-  position: relative;
-  white-space: nowrap;
-}
-
-.table th:last-child {
-  border-right: none;
-}
-
-.table td {
-  padding: 6px 6px;
-  font-size: 14px;
-  border-right: 1px solid var(--tf-color-border-muted);
-  border-bottom: 1px solid var(--tf-color-border-muted);
-  vertical-align: middle;
-  text-align: center;
-  color: var(--tf-color-heading);
-  font-weight: 500;
-}
-
-.table td:last-child {
-  border-right: none;
-}
-
-.table tbody tr {
-  transition: all 0.2s ease;
-  position: relative;
-}
-
-.table tbody tr:nth-child(even) {
-  background: var(--tf-color-surface-muted);
-}
-
-.table tbody tr:hover {
-  background: var(--tf-color-blue-100);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-}
-
-.table tbody tr:hover td {
-  border-bottom-color: var(--tf-color-border-subtle);
-}
-
-.table tbody tr.is-dragging {
-  opacity: 0.5;
-  background: var(--tf-color-blue-tailwind-50) !important;
-}
-
-.table tbody tr.is-drag-over {
-  background: var(--tf-color-blue-50) !important;
-  border-top: 2px solid var(--tf-color-blue-500);
-}
-
-/* 拖拽手柄 */
-.drag-handle-cell {
-  padding: 8px 4px !important;
-  text-align: center;
-  cursor: move;
-  user-select: none;
-}
-
-.drag-handle {
-  color: var(--tf-color-neutral-400);
-  font-size: 16px;
-  cursor: grab;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  border-radius: 4px;
-  transition: all 0.2s;
-}
-
-.drag-handle:hover {
-  color: var(--tf-color-blue-500);
-  background: var(--tf-color-blue-tailwind-50);
-}
-
-.drag-handle:active {
-  cursor: grabbing;
-}
-
-.drag-handle.disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
-  pointer-events: none;
-}
-
-.drag-handle.disabled:hover {
-  color: var(--tf-color-neutral-400);
-  background: transparent;
-}
-
 /* 表格内容样式 */
-.id-badge {
-  background: linear-gradient(135deg, var(--tf-color-indigo-brand), var(--tf-color-purple-brand));
-  color: white;
-  padding: 4px 8px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 600;
-  display: inline-block;
-}
-
 .color-info {
   max-width: 200px;
   text-align: center;
@@ -1389,7 +1269,7 @@ onBeforeUnmount(() => {
   justify-content: center;
   gap: 8px;
   margin-bottom: 4px;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
 }
 
 .warning-badge {
@@ -1397,7 +1277,7 @@ onBeforeUnmount(() => {
   color: var(--tf-color-gray-bootstrap-900);
   padding: 2px 6px;
   border-radius: 4px;
-  font-size: 10px;
+  font-size: var(--tf-type-scale-10);
   font-weight: 500;
 }
 
@@ -1417,19 +1297,9 @@ onBeforeUnmount(() => {
 }
 
 .color-code {
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   color: var(--tf-color-muted);
   font-family: monospace;
-}
-
-.status-badge {
-  padding: 6px 12px;
-  border-radius: 20px;
-  font-size: 13px;
-  font-weight: 600;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
 }
 
 .status-active {
@@ -1445,7 +1315,7 @@ onBeforeUnmount(() => {
 }
 
 .time-info {
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   color: var(--tf-color-muted);
   display: flex;
   align-items: center;
@@ -1474,7 +1344,7 @@ onBeforeUnmount(() => {
   justify-content: space-between;
   align-items: center;
   margin-top: 4px;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: var(--tf-color-muted);
 }
 
@@ -1497,7 +1367,7 @@ onBeforeUnmount(() => {
 
 .validation-message {
   margin-top: 4px;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: var(--danger-color);
   font-weight: 500;
 }
@@ -1511,7 +1381,7 @@ onBeforeUnmount(() => {
 }
 
 .preview-label {
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   font-weight: 600;
   color: var(--tf-color-gray-bootstrap-700);
   margin-bottom: 8px;
@@ -1539,7 +1409,7 @@ onBeforeUnmount(() => {
 }
 
 .color-code-text {
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   color: var(--tf-color-gray-bootstrap-700);
   font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
   font-weight: 600;
@@ -1614,17 +1484,6 @@ onBeforeUnmount(() => {
     overflow-x: auto;
   }
 
-  /* 表格在移动端的优化 */
-  .table {
-    min-width: 600px;
-  }
-
-  .table th,
-  .table td {
-    padding: 12px 8px;
-    font-size: 14px;
-  }
-
   .actions {
     min-width: 80px;
   }
@@ -1670,20 +1529,14 @@ onBeforeUnmount(() => {
     padding: 16px;
   }
 
-  .table th,
-  .table td {
-    padding: 8px 4px;
-    font-size: 12px;
-  }
-
   .id-badge,
   .sort-badge {
-    font-size: 10px;
+    font-size: var(--tf-type-scale-10);
     padding: 2px 6px;
   }
 
   .status-badge {
-    font-size: 10px;
+    font-size: var(--tf-type-scale-10);
     padding: 4px 8px;
   }
 
@@ -1720,18 +1573,6 @@ onBeforeUnmount(() => {
     border-radius: 12px;
   }
 
-  .colors-view .table {
-    width: 100%;
-    min-width: 0;
-    table-layout: fixed;
-  }
-
-  .colors-view .table th,
-  .colors-view .table td {
-    white-space: normal;
-    word-break: break-word;
-  }
-
   .colors-view .color-info {
     width: 100%;
     max-width: none;
@@ -1761,7 +1602,7 @@ onBeforeUnmount(() => {
   }
 
   .colors-dialog-form .el-form-item__label {
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
     line-height: 1.4;
     padding-bottom: 4px;
   }
@@ -1791,7 +1632,7 @@ onBeforeUnmount(() => {
   }
 
   .colors-view .color-name {
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
     font-weight: 700;
   }
 
@@ -1801,7 +1642,7 @@ onBeforeUnmount(() => {
     justify-content: center;
     gap: 6px;
     margin-top: 6px;
-    font-size: 11px;
+    font-size: var(--tf-type-scale-11);
     color: var(--tf-color-neutral-500);
   }
 

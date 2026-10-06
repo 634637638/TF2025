@@ -130,10 +130,10 @@
         v-if="selectedIds.length > 0"
         class="selected-roles-list assignment-selected-list"
       >
-        <button
+        <el-button
           v-for="roleId in selectedIds"
           :key="roleId"
-          type="button"
+          native-type="button"
           class="selected-role-tag assignment-selected-tag"
           title="点击移除"
           :disabled="isSaving"
@@ -141,7 +141,7 @@
         >
           <span>{{ getRoleName(roleId) }}</span>
           <i class="fas fa-times" />
-        </button>
+        </el-button>
       </div>
 
       <div

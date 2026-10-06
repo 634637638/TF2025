@@ -203,12 +203,12 @@
 
     <template #footer>
       <div class="tf-dialog-actions modal-footer">
-        <button
+        <el-button
           class="btn btn-secondary"
           @click="closeModal"
         >
           关闭
-        </button>
+        </el-button>
         <el-button
           native-type="button"
           type="primary"
@@ -361,7 +361,7 @@ const editAccessory = () => {
 
 .detail-section h3 {
   margin: 0 0 12px 0;
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
   font-weight: 600;
   color: var(--tf-color-neutral-800);
   border-bottom: 2px solid var(--tf-color-blue-500);
@@ -408,7 +408,7 @@ const editAccessory = () => {
 .status-badge {
   padding: 4px 8px;
   border-radius: 4px;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   font-weight: 500;
 }
 
@@ -435,7 +435,7 @@ const editAccessory = () => {
   font-weight: 600;
   padding: 2px 6px;
   border-radius: 4px;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
 }
 
 .profit-rate.high-profit {
@@ -458,7 +458,7 @@ const editAccessory = () => {
   font-weight: 500;
   padding: 2px 6px;
   border-radius: 4px;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
 }
 
 .stock-status.normal-stock {

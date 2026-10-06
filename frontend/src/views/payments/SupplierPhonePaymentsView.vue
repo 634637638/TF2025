@@ -1886,10 +1886,7 @@ const showPaymentActionField = computed(() => shouldShowActionColumn(
   [canEditPayment.value, canDeletePayment.value]
 ))
 const showPaymentStatusField = computed(() => {
-  const visible = shouldShowActionColumn(
-    canViewPaymentField('payment_status'),
-    [canCreatePayment.value]
-  )
+  const visible = canViewPaymentField('payment_status')
   return visible && (!isMobile.value || paymentMobileCoreFields.has('payment_status'))
 })
 const showPaymentTimeColumn = computed(() => {
@@ -3380,7 +3377,7 @@ onMounted(async () => {
   .supplier-phone-payments-dialog {
     .el-dialog__title,
     .mobile-dialog-sheet-title {
-      font-size: 15px;
+      font-size: var(--tf-type-scale-15);
     }
   }
 

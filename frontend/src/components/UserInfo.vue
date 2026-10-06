@@ -62,7 +62,7 @@ const currentUser = computed(() => {
   align-items: center;
   justify-content: center;
   color: white;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
 }
 
 .user-details {
@@ -74,7 +74,7 @@ const currentUser = computed(() => {
 .user-name {
   color: white;
   font-weight: 600;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
 }
 
 .user-meta {
@@ -82,7 +82,7 @@ const currentUser = computed(() => {
   align-items: center;
   gap: 12px;
   color: rgba(255, 255, 255, 0.8);
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
 }
 
 .user-id, .user-position {

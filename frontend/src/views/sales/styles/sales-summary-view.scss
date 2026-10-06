@@ -49,7 +49,7 @@
   border: 1px solid transparent;
   border-radius: 8px;
   box-shadow: var(--tf-button-shadow);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   transition: box-shadow 0.3s ease, transform 0.3s ease;
 }
 
@@ -103,7 +103,7 @@
 .badge {
   padding: 4px 8px;
   border-radius: 12px;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
 }
 
 .badge-new {

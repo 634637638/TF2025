@@ -89,7 +89,7 @@ watch(productId, (id) => {
   color: var(--text-muted);
 
   .el-icon {
-    font-size: 32px;
+    font-size: var(--tf-type-scale-32);
     color: var(--tf-color-indigo-brand);
   }
 }

@@ -4,14 +4,15 @@ import path from 'node:path'
 const frontendRoot = path.resolve(import.meta.dirname, '..')
 const sourceRoot = path.join(frontendRoot, 'src')
 const rendererPath = path.join(sourceRoot, 'components/IconRenderer.vue')
+const pickerPath = path.join(sourceRoot, 'components/IconPicker.vue')
 const findings = []
 const rendererConsumers = [
   'components/MenuItem.vue',
-  'components/DynamicSidebar.vue',
   'components/SimpleSidebar.vue',
   'components/IconPicker.vue'
 ]
 const renderer = fs.readFileSync(rendererPath, 'utf8')
+const picker = fs.readFileSync(pickerPath, 'utf8')
 
 for (const fragment of [
   'DOMPurify.sanitize',
@@ -32,6 +33,9 @@ for (const relativeFile of rendererConsumers) {
 
 const iconifyUtility = fs.readFileSync(path.join(sourceRoot, 'utils/iconify.ts'), 'utf8')
 if (!iconifyUtility.includes('extractIconifyName')) findings.push('IconRenderer 必须使用统一 Iconify 名称解析工具')
+if (!picker.includes('!isIconifyIcon(currentClass)')) {
+  findings.push('IconPicker 编辑已有图标时必须跳过 Iconify class 的本地图标查询')
+}
 
 if (findings.length) {
   console.error(`图标规范审计失败，共 ${findings.length} 项：`)

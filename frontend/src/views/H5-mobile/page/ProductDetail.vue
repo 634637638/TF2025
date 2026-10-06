@@ -879,7 +879,7 @@ onMounted(() => {
       color: var(--color-bg-white);
       padding: 6px 12px;
       border-radius: 20px;
-      font-size: 13px;
+      font-size: var(--tf-type-scale-13);
       font-weight: 500;
       display: flex;
       align-items: center;
@@ -889,7 +889,7 @@ onMounted(() => {
       pointer-events: none;
 
       i {
-        font-size: 12px;
+        font-size: var(--tf-type-scale-12);
       }
     }
   }
@@ -902,12 +902,12 @@ onMounted(() => {
     color: var(--color-bg-white);
     padding: 4px 8px;
     border-radius: 4px;
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
   }
 
   :deep(.swiper-pagination-fraction) {
     color: var(--color-bg-white);
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
     bottom: 12px;
     left: 12px;
     right: auto;
@@ -928,18 +928,18 @@ onMounted(() => {
     margin-bottom: 8px;
 
     .price-label {
-      font-size: 14px;
+      font-size: var(--tf-type-scale-14);
       color: var(--text-muted);
       font-weight: 500;
     }
 
     .price {
-      font-size: 24px;
+      font-size: var(--tf-type-scale-24);
       font-weight: 500;
       color: var(--tf-color-accent-pink);
 
       &.inquire {
-        font-size: 18px;
+        font-size: var(--tf-type-scale-18);
         color: var(--tf-color-orange-material-500);
       }
     }
@@ -947,7 +947,7 @@ onMounted(() => {
     .tag-used {
       background: var(--tf-color-accent-orange);
       color: var(--color-bg-white);
-      font-size: 12px;
+      font-size: var(--tf-type-scale-12);
       padding: 2px 6px;
       border-radius: 4px;
     }
@@ -981,7 +981,7 @@ onMounted(() => {
   }
 
   .product-subtitle {
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
     color: var(--text-muted);
     margin: 0;
   }
@@ -1009,13 +1009,13 @@ onMounted(() => {
     gap: 8px;
 
     .spec-card-title {
-      font-size: 12px;
+      font-size: var(--tf-type-scale-12);
       color: var(--tf-color-neutral-500);
       font-weight: 500;
     }
 
     .spec-card-value {
-      font-size: 14px;
+      font-size: var(--tf-type-scale-14);
       color: var(--text-primary);
     }
   }
@@ -1028,7 +1028,7 @@ onMounted(() => {
   margin-bottom: 8px;
 
   .description-content {
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
     color: var(--text-primary);
     line-height: 1.8;
     background: var(--tf-color-orange-ant-surface);
@@ -1062,12 +1062,12 @@ onMounted(() => {
       align-items: center;
       gap: 8px;
       padding: 8px 0;
-      font-size: 13px;
+      font-size: var(--tf-type-scale-13);
       color: var(--text-primary);
 
       i {
         color: var(--tf-color-accent-green);
-        font-size: 16px;
+        font-size: var(--tf-type-scale-16);
         flex-shrink: 0;
       }
 
@@ -1079,12 +1079,12 @@ onMounted(() => {
 
         .item-label {
           color: var(--text-muted);
-          font-size: 12px;
+          font-size: var(--tf-type-scale-12);
         }
 
         .item-value {
           color: var(--text-primary);
-          font-size: 13px;
+          font-size: var(--tf-type-scale-13);
         }
       }
     }
@@ -1095,7 +1095,7 @@ onMounted(() => {
       border-radius: 8px;
       background: var(--tf-color-orange-ant-surface);
       color: var(--tf-color-warning-text-legacy);
-      font-size: 13px;
+      font-size: var(--tf-type-scale-13);
       line-height: 1.6;
     }
 
@@ -1113,7 +1113,7 @@ onMounted(() => {
   margin-bottom: 8px;
 
   .detail-content-inner {
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
     color: var(--text-secondary);
     line-height: 1.8;
 
@@ -1130,7 +1130,7 @@ onMounted(() => {
 
 // 通用标题
 .section-title {
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
   font-weight: 500;
   color: var(--text-primary);
   margin: 0 0 12px;
@@ -1156,7 +1156,7 @@ onMounted(() => {
     flex: 1;
     height: 44px;
     border-radius: 22px;
-    font-size: 15px;
+    font-size: var(--tf-type-scale-15);
   }
 
   .cart-btn {
@@ -1187,12 +1187,12 @@ onMounted(() => {
     height: 44px;
     background: var(--tf-color-surface-soft);
     color: var(--text-muted);
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
     border-radius: 22px;
     padding: 0 20px;
 
     i {
-      font-size: 16px;
+      font-size: var(--tf-type-scale-16);
     }
   }
 }
@@ -1208,13 +1208,13 @@ onMounted(() => {
     gap: 12px;
 
     .el-icon {
-      font-size: 32px;
+      font-size: var(--tf-type-scale-32);
       color: var(--tf-color-accent-orange);
     }
 
     span {
       color: var(--text-secondary);
-      font-size: 14px;
+      font-size: var(--tf-type-scale-14);
     }
   }
 
@@ -1251,13 +1251,13 @@ onMounted(() => {
         margin-bottom: 8px;
 
         .memory-name {
-          font-size: 16px;
+          font-size: var(--tf-type-scale-16);
           font-weight: 600;
           color: var(--text-primary);
         }
 
         .memory-price {
-          font-size: 18px;
+          font-size: var(--tf-type-scale-18);
           font-weight: 600;
           color: var(--tf-color-accent-pink);
         }
@@ -1267,7 +1267,7 @@ onMounted(() => {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        font-size: 13px;
+        font-size: var(--tf-type-scale-13);
 
         .store-name {
           color: var(--text-secondary);

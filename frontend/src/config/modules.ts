@@ -165,6 +165,14 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
     permissions: getCapabilityPermissions('system_systemview')
   },
 
+  // 规范与审计模块
+  STANDARDS_AUDIT: {
+    id: 'standards',
+    key: 'standards_standardsauditview',
+    name: '规范与审计',
+    permissions: getCapabilityPermissions('standards_standardsauditview')
+  },
+
   // 数据分析模块
   ANALYTICS: {
     id: 'analytics',

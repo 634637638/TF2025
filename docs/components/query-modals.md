@@ -196,31 +196,34 @@ const handleReturnSuccess = () => {
 <template>
   <div class="query-view">
     <!-- 页面头部按钮 -->
-    <button
+    <el-button
+      native-type="button"
       @click="showQuickSaleModal = true"
       class="btn btn-warning"
       v-permission="'inventory_inventoryview:create'"
     >
       <i class="fas fa-bolt"></i>
       快速出库
-    </button>
+    </el-button>
 
     <!-- 表格操作列 -->
     <td class="actions-cell">
-      <button
+      <el-button
+        native-type="button"
         @click="openEditModal(item)"
         v-permission="'query_queryview:edit'"
       >
         <i class="fas fa-edit"></i>
         编辑
-      </button>
-      <button
+      </el-button>
+      <el-button
+        native-type="button"
         @click="openReturnModal(item)"
         v-permission="'query_queryview:create'"
       >
         <i class="fas fa-undo-alt"></i>
         退库
-      </button>
+      </el-button>
     </td>
 
     <!-- 模态框组件 -->

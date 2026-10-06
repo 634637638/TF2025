@@ -58,6 +58,10 @@
 
 ## 推荐分层
 
+### 规范与审计标杆页预览
+
+登录 `/standards` 后打开“全局 Loading”规范，点击“演示 Loading”必须触发与生产页面相同的 `useLoadingStore` 全局状态，并由 `App.vue` 中唯一的 `GlobalLoading` 显示全屏遮罩；演示约两秒后自动结束。页面内的 `InlineLoading` 只用于反馈当前演示状态，不得在规范页另行挂载 `GlobalLoading` 或创建第二套全屏实现。
+
 ### 1. 页面切换 loading
 
 统一使用：
@@ -155,6 +159,8 @@ ElLoading.service({ text: '加载中...' })
 - `SectionLoading`：只用于非列表/非表格的块级区域，如详情弹窗、权限配置面板、移动端详情页、整块 dashboard 内容。
 - `InlineLoading`：只用于按钮、短文本、小范围提示。
 - `GlobalLoading`：只用于路由切换或全局长操作，不在业务页面重复挂载。
+
+规范与审计标杆页必须提供“演示 Loading”按钮，通过统一 Loading Store 触发真实全局遮罩；不能只用静态标签表示“加载中”。
 
 原生按钮或自定义按钮内 loading 建议使用：
 

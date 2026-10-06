@@ -365,12 +365,12 @@ const goHome = () => {
       border-bottom: 1px solid var(--tf-color-gray-200);
 
       .order-number {
-        font-size: 13px;
+        font-size: var(--tf-type-scale-13);
         color: var(--text-secondary);
       }
 
       .order-status {
-        font-size: 13px;
+        font-size: var(--tf-type-scale-13);
         font-weight: 500;
         padding: 2px 8px;
         border-radius: 4px;
@@ -419,12 +419,12 @@ const goHome = () => {
           padding: 4px 0;
 
           .label {
-            font-size: 13px;
+            font-size: var(--tf-type-scale-13);
             color: var(--text-muted);
           }
 
           .value {
-            font-size: 13px;
+            font-size: var(--tf-type-scale-13);
             color: var(--text-primary);
           }
         }
@@ -442,7 +442,7 @@ const goHome = () => {
           background: var(--tf-color-surface-soft);
           padding: 6px 10px;
           border-radius: 6px;
-          font-size: 12px;
+          font-size: var(--tf-type-scale-12);
           color: var(--text-secondary);
 
           img {
@@ -454,7 +454,7 @@ const goHome = () => {
 
           .more-count {
             color: var(--text-muted);
-            font-size: 11px;
+            font-size: var(--tf-type-scale-11);
           }
         }
       }
@@ -468,12 +468,12 @@ const goHome = () => {
 
         .order-total {
           .label {
-            font-size: 14px;
+            font-size: var(--tf-type-scale-14);
             color: var(--text-secondary);
           }
 
           .amount {
-            font-size: 18px;
+            font-size: var(--tf-type-scale-18);
             font-weight: 500;
             color: var(--tf-color-accent-pink);
           }
@@ -481,7 +481,7 @@ const goHome = () => {
 
         .arrow-icon {
           color: var(--tf-color-gray-300-alt);
-          font-size: 14px;
+          font-size: var(--tf-type-scale-14);
         }
       }
     }
@@ -510,19 +510,19 @@ const goHome = () => {
     text-align: center;
 
     .tips-icon {
-      font-size: 64px;
+      font-size: var(--tf-type-scale-64);
       color: var(--tf-color-gray-300-alt);
       margin-bottom: 16px;
     }
 
     .tips-title {
-      font-size: 18px;
+      font-size: var(--tf-type-scale-18);
       color: var(--text-primary);
       margin: 0 0 8px;
     }
 
     .tips-desc {
-      font-size: 14px;
+      font-size: var(--tf-type-scale-14);
       color: var(--text-muted);
       margin: 0;
     }

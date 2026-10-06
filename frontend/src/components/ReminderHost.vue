@@ -493,7 +493,7 @@ onUnmounted(() => {
   padding: 4px 9px;
   border: 1px solid;
   border-radius: 999px;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   font-weight: 700;
 }
 
@@ -505,13 +505,13 @@ onUnmounted(() => {
 
 .reminder-alert__sequence {
   color: var(--tf-color-slate-400);
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
 }
 
 .reminder-alert h3 {
   margin: 14px 0 8px;
   color: var(--tf-color-slate-800);
-  font-size: 20px;
+  font-size: var(--tf-type-scale-20);
 }
 
 .reminder-alert__content {
@@ -527,7 +527,7 @@ onUnmounted(() => {
   gap: 6px;
   margin-top: 16px;
   color: var(--tf-color-slate-500);
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
 }
 
 .reminder-alert__meta span {
@@ -545,7 +545,7 @@ onUnmounted(() => {
   border-left: 3px solid var(--tf-color-orange-500);
   background: var(--tf-color-orange-50);
   color: var(--tf-color-orange-700);
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   line-height: 1.5;
 }
 
@@ -574,7 +574,7 @@ onUnmounted(() => {
 
 .reminder-alert__dropdown-icon {
   margin-left: 6px;
-  font-size: 11px;
+  font-size: var(--tf-type-scale-11);
 }
 
 .reminder-host-dialog {

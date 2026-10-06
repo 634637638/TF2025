@@ -57,7 +57,7 @@
   .contact-name,
   .contact-number {
     box-sizing: border-box;
-    min-width: 0;
+    min-width: max-content;
     margin: 0;
     line-height: 1.25;
     white-space: nowrap;
@@ -66,8 +66,8 @@
   .contact-name {
     width: max-content;
     max-width: min(42vw, 220px);
-    overflow: hidden;
-    text-overflow: ellipsis;
+    overflow: visible;
+    text-overflow: clip;
     white-space: nowrap;
     justify-content: center;
     padding: var(--tf-space-1) var(--tf-space-2);
@@ -81,10 +81,10 @@
 
   .contact-number {
     width: max-content;
-    max-width: min(52vw, 280px);
+    max-width: min(52vw, var(--tf-type-scale-280));
     justify-content: center;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    overflow: visible;
+    text-overflow: clip;
     font-size: var(--tf-font-contact-number);
     font-weight: 750;
     letter-spacing: 0.25px;
@@ -138,6 +138,7 @@
     .contact-name {
       width: auto;
       max-width: 100%;
+      flex: 0 0 auto;
       padding-inline: var(--tf-space-1);
       font-size: var(--tf-font-contact-name-narrow);
     }
@@ -145,6 +146,7 @@
     .contact-number {
       width: auto;
       max-width: 100%;
+      flex: 0 0 auto;
       padding-inline: var(--tf-space-1);
       font-size: var(--tf-font-contact-number-narrow);
     }

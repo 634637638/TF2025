@@ -105,7 +105,7 @@
             <!-- 商品列表 -->
             <div class="section-products">
               <div
-                v-if="canViewField('products.product_info') || canViewField('system_info.operations')"
+                v-if="canViewField('products.product_info') || shouldShowActionColumn(canViewField('system_info.operations'), [canEdit, canDelete])"
                 class="products-header"
               >
                 <div class="products-count-info">
@@ -115,7 +115,7 @@
                   >推荐商品 ({{ section.product_count || 0 }}/{{ section.product_limit }})</span>
                 </div>
                 <el-button
-                  v-if="canEdit && canViewField('system_info.operations')"
+                  v-if="canEdit"
                   plain
                   type="primary"
                   size="small"
@@ -501,7 +501,7 @@
 
           <!-- 已添加的商品列表 -->
           <div
-            v-if="canViewField('products.product_info') || canViewField('system_info.operations')"
+            v-if="canViewField('products.product_info') || shouldShowActionColumn(canViewField('system_info.operations'), [canEdit, canDelete])"
             class="products-list-section"
           >
             <div class="list-header">
@@ -534,7 +534,7 @@
               <template #item="{ element: product }">
                 <div class="product-card">
                   <div
-                    v-if="canEdit && canViewField('system_info.operations')"
+                    v-if="canEdit"
                     class="product-remove"
                     @click="removeProduct(product)"
                   >
@@ -1345,19 +1345,19 @@ onUnmounted(() => {
         min-width: 0;
 
         i {
-          font-size: 24px;
+          font-size: var(--tf-type-scale-24);
           color: var(--tf-color-indigo-brand);
         }
 
         h4 {
-          font-size: 16px;
+          font-size: var(--tf-type-scale-16);
           font-weight: 500;
           margin: 0 0 4px;
           word-break: break-word;
         }
 
         .section-key {
-          font-size: 12px;
+          font-size: var(--tf-type-scale-12);
           color: var(--text-muted);
           margin: 0;
           word-break: break-all;
@@ -1371,7 +1371,7 @@ onUnmounted(() => {
         flex-wrap: nowrap;
 
         i {
-          font-size: 14px;
+          font-size: var(--tf-type-scale-14);
         }
 
         .el-button {
@@ -1390,7 +1390,7 @@ onUnmounted(() => {
         justify-content: space-between;
         align-items: center;
         margin-bottom: 12px;
-        font-size: 14px;
+        font-size: var(--tf-type-scale-14);
         color: var(--text-secondary);
 
         .products-count-info {
@@ -1407,14 +1407,14 @@ onUnmounted(() => {
             display: flex;
             align-items: center;
             gap: 4px;
-            font-size: 12px;
+            font-size: var(--tf-type-scale-12);
             color: var(--tf-color-indigo-brand);
             background: var(--tf-color-indigo-surface);
             padding: 2px 8px;
             border-radius: 12px;
 
             i {
-              font-size: 11px;
+              font-size: var(--tf-type-scale-11);
             }
           }
         }
@@ -1456,7 +1456,7 @@ onUnmounted(() => {
             text-align: center;
 
             .product-name {
-              font-size: 11px;
+              font-size: var(--tf-type-scale-11);
               color: var(--text-primary);
               margin: 0 0 4px;
               overflow: hidden;
@@ -1465,7 +1465,7 @@ onUnmounted(() => {
             }
 
             .product-price {
-              font-size: 13px;
+              font-size: var(--tf-type-scale-13);
               color: var(--tf-color-accent-pink);
               font-weight: 600;
               margin: 0;
@@ -1478,14 +1478,14 @@ onUnmounted(() => {
         text-align: center;
         padding: 20px;
         color: var(--text-muted);
-        font-size: 14px;
+        font-size: var(--tf-type-scale-14);
       }
     }
   }
 }
 
 .tip-text {
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: var(--text-muted);
   line-height: 1.6;
 
@@ -1501,7 +1501,7 @@ onUnmounted(() => {
       justify-content: space-between;
       align-items: center;
       margin-bottom: 16px;
-      font-size: 14px;
+      font-size: var(--tf-type-scale-14);
       font-weight: 500;
     }
 
@@ -1592,7 +1592,7 @@ onUnmounted(() => {
           }
 
           .product-name {
-            font-size: 11px;
+            font-size: var(--tf-type-scale-11);
             color: var(--text-primary);
             overflow: hidden;
             text-overflow: ellipsis;
@@ -1601,12 +1601,12 @@ onUnmounted(() => {
           }
 
           .product-specs {
-            font-size: 11px;
+            font-size: var(--tf-type-scale-11);
             color: var(--text-muted);
           }
 
           .product-price {
-            font-size: 13px;
+            font-size: var(--tf-type-scale-13);
             color: var(--tf-color-accent-pink);
             font-weight: 600;
           }
@@ -1642,12 +1642,12 @@ onUnmounted(() => {
   }
 
   .product-name {
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
     color: var(--text-primary);
   }
 
   .product-price {
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
     color: var(--tf-color-accent-pink);
   }
 }
@@ -1723,7 +1723,7 @@ onUnmounted(() => {
         background: rgba(34, 197, 94, 0.9);
         color: var(--color-bg-white);
         border-radius: 50%;
-        font-size: 12px;
+        font-size: var(--tf-type-scale-12);
         z-index: 1;
       }
     }
@@ -1742,7 +1742,7 @@ onUnmounted(() => {
       text-align: center;
 
       .product-name {
-        font-size: 11px;
+        font-size: var(--tf-type-scale-11);
         color: var(--text-primary);
         overflow: hidden;
         text-overflow: ellipsis;
@@ -1751,7 +1751,7 @@ onUnmounted(() => {
       }
 
       .product-price {
-        font-size: 13px;
+        font-size: var(--tf-type-scale-13);
         color: var(--tf-color-accent-pink);
         font-weight: 600;
         margin-bottom: 4px;
@@ -1798,11 +1798,11 @@ onUnmounted(() => {
             flex: 0 0 34px;
             border-radius: 10px;
             background: rgba(102, 126, 234, 0.1);
-            font-size: 16px;
+            font-size: var(--tf-type-scale-16);
           }
 
           h4 {
-            font-size: 15px;
+            font-size: var(--tf-type-scale-15);
             font-weight: 700;
             line-height: 1.3;
           }
@@ -1823,7 +1823,7 @@ onUnmounted(() => {
             min-width: 0;
             justify-content: center;
             padding: 8px 6px;
-            font-size: 12px;
+            font-size: var(--tf-type-scale-12);
           }
         }
       }
@@ -1842,7 +1842,7 @@ onUnmounted(() => {
             min-width: 0;
 
             .main-count {
-              font-size: 13px;
+              font-size: var(--tf-type-scale-13);
             }
           }
 
@@ -1872,12 +1872,12 @@ onUnmounted(() => {
               text-align: left;
 
               .product-name {
-                font-size: 11px;
+                font-size: var(--tf-type-scale-11);
                 line-height: 1.3;
               }
 
               .product-price {
-                font-size: 12px;
+                font-size: var(--tf-type-scale-12);
               }
             }
           }
@@ -1885,7 +1885,7 @@ onUnmounted(() => {
 
         .no-products {
           padding: 14px;
-          font-size: 13px;
+          font-size: var(--tf-type-scale-13);
         }
       }
     }
@@ -1906,7 +1906,7 @@ onUnmounted(() => {
     margin-bottom: 8px;
     padding: 0 !important;
     color: var(--tf-color-slate-700);
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
     font-weight: 700;
     line-height: 1.4;
     text-align: left;
@@ -1926,7 +1926,7 @@ onUnmounted(() => {
   }
 
   .tip-text {
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
     line-height: 1.45;
   }
 
@@ -1938,7 +1938,7 @@ onUnmounted(() => {
 
       .list-header {
         margin-bottom: 10px;
-        font-size: 13px;
+        font-size: var(--tf-type-scale-13);
       }
     }
 
@@ -1963,7 +1963,7 @@ onUnmounted(() => {
 
       .product-details .product-name,
       .product-info .product-name {
-        font-size: 11px;
+        font-size: var(--tf-type-scale-11);
         line-height: 1.3;
       }
     }

@@ -31,13 +31,13 @@
     border-left: 4px solid var(--warning-color);
 
     .banner-icon {
-      font-size: 18px;
+      font-size: var(--tf-type-scale-18);
       flex-shrink: 0;
       animation: shake 0.5s ease;
     }
 
     .banner-text {
-      font-size: 14px;
+      font-size: var(--tf-type-scale-14);
       color: var(--tf-color-warning-text-legacy);
       line-height: 1.4;
 
@@ -51,11 +51,11 @@
       gap: 8px;
 
       .banner-icon {
-        font-size: 16px;
+        font-size: var(--tf-type-scale-16);
       }
 
       .banner-text {
-        font-size: 12px;
+        font-size: var(--tf-type-scale-12);
       }
     }
   }
@@ -175,7 +175,7 @@
 
       .card-title {
         margin: 0;
-        font-size: 16px;
+        font-size: var(--tf-type-scale-16);
         font-weight: 600;
         color: var(--color-text-primary);
       }
@@ -183,7 +183,7 @@
       .card-badge {
         padding: 4px 10px;
         border-radius: 12px;
-        font-size: 11px;
+        font-size: var(--tf-type-scale-11);
         font-weight: 600;
         color: white;
         text-transform: uppercase;
@@ -198,7 +198,7 @@
       li {
         position: relative;
         padding: 4px 0 4px 18px;
-        font-size: 13px;
+        font-size: var(--tf-type-scale-13);
         color: var(--color-text-regular);
         line-height: 1.5;
 
@@ -216,7 +216,7 @@
 
           &:before {
             content: '⚠';
-            font-size: 12px;
+            font-size: var(--tf-type-scale-12);
           }
         }
 
@@ -235,7 +235,7 @@
 
         &.note {
           color: var(--color-info);
-          font-size: 12px;
+          font-size: var(--tf-type-scale-12);
         }
       }
     }
@@ -250,11 +250,11 @@
 
     p {
       margin: 4px 0;
-      font-size: 14px;
+      font-size: var(--tf-type-scale-14);
       color: var(--color-text-regular);
 
       &:first-child {
-        font-size: 15px;
+        font-size: var(--tf-type-scale-15);
         font-weight: 500;
         color: var(--color-primary);
       }
@@ -264,10 +264,10 @@
       padding: 14px 16px;
 
       p {
-        font-size: 12px;
+        font-size: var(--tf-type-scale-12);
 
         &:first-child {
-          font-size: 13px;
+          font-size: var(--tf-type-scale-13);
         }
       }
     }

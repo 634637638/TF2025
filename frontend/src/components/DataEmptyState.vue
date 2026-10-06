@@ -146,14 +146,14 @@ const resolvedImageSize = computed(() => {
 
 .data-empty-state__title {
   color: var(--color-text-primary);
-  font-size: 15px;
+  font-size: var(--tf-type-scale-15);
   font-weight: 600;
   line-height: 1.45;
 }
 
 .data-empty-state__description {
   color: var(--color-text-secondary);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   line-height: 1.6;
 }
 

@@ -8,6 +8,7 @@ const adminLayoutSource = readFileSync(join(root, 'src/styles/admin-layout.css')
 const tableStyleSource = readFileSync(join(root, 'src/styles/components/_table.scss'), 'utf8')
 const mainSource = readFileSync(join(root, 'src/main.ts'), 'utf8')
 const tableDragSource = readFileSync(join(root, 'src/utils/admin-table-drag-scroll.ts'), 'utf8')
+const standardsViewSource = readFileSync(join(root, 'src/views/standards/StandardsAuditView.vue'), 'utf8')
 
 function walk(directory, files = []) {
   for (const entry of readdirSync(directory)) {
@@ -24,6 +25,22 @@ function lineNumber(source, index) {
 }
 
 const findings = []
+const auditedViewTableFiles = new Set()
+const auditedComponentTableFiles = new Set()
+let auditedTableCount = 0
+let auditedOperationColumnCount = 0
+
+const standardsTableRequirements = [
+  [/class=["'][^"']*data-table[^"']*admin-data-table/, '规范与审计标杆页预览表格必须同时接入 data-table 和 admin-data-table'],
+  [/standards-preview-table/, '规范与审计标杆页必须登记预览表格 class'],
+  [/class-name=["'][^"']*complete-text-column/, '规范与审计标杆页普通字段必须使用 complete-text-column'],
+  [/class-name=["'][^"']*actions-column/, '规范与审计标杆页操作列必须使用 actions-column'],
+  [/getAdaptiveActionColumnWidth/, '规范与审计标杆页操作列必须使用公共自适应宽度函数'],
+  [/togglePreviewDetail/, '规范与审计标杆页表格查看按钮必须有真实展开/收起行为']
+]
+for (const [pattern, message] of standardsTableRequirements) {
+  if (!pattern.test(standardsViewSource)) findings.push(`src/views/standards/StandardsAuditView.vue ${message}`)
+}
 
 const requiredTableVariables = [
   'admin-data-table-radius',
@@ -64,7 +81,10 @@ const publicStyleRequirements = [
   [/font-size:\s*var\(--admin-data-table-cell-font-size\)\s*!important/i, '公共单元格字体必须读取 --admin-data-table-cell-font-size'],
   [/height:\s*var\(--admin-data-table-row-height\)\s*!important/i, '公共行高必须读取 --admin-data-table-row-height'],
   [/background:\s*var\(--admin-data-table-row-hover-bg\)\s*!important/i, '公共悬停颜色必须读取 --admin-data-table-row-hover-bg'],
-  [/background:\s*var\(--admin-data-table-row-selected-bg\)\s*!important/i, '公共选中颜色必须读取 --admin-data-table-row-selected-bg']
+  [/background:\s*var\(--admin-data-table-row-selected-bg\)\s*!important/i, '公共选中颜色必须读取 --admin-data-table-row-selected-bg'],
+  [/:is\(\.data-table\.el-table, \.devices-table\.el-table, \.admin-data-table\.el-table\) \.condition-badge[\s\S]{0,500}?height:\s*var\(--admin-data-table-badge-height\)\s*!important/i, '公共表格机况徽章必须使用统一高度'],
+  [/:is\(\.data-table\.el-table, \.devices-table\.el-table, \.admin-data-table\.el-table\) \.status-badge[\s\S]{0,800}?padding:\s*0 var\(--admin-data-table-badge-padding-x\)\s*!important/i, '公共表格状态徽章必须使用统一内边距'],
+  [/:is\(\.data-table\.el-table, \.devices-table\.el-table, \.admin-data-table\.el-table\) \.id-badge[\s\S]*?height:\s*var\(--admin-data-table-badge-height\)\s*!important/i, '公共表格序号徽章必须使用统一高度']
 ]
 
 for (const [pattern, message] of publicStyleRequirements) {
@@ -109,7 +129,8 @@ const teleportedTableRequirements = [
   [/:is\(\.data-table\.el-table, \.devices-table\.el-table, \.admin-data-table\.el-table\)\s*\{[\s\S]*?min-width:\s*100%\s*!important[\s\S]*?max-width:\s*100%\s*!important/i, '统一 Element 表格根节点必须限制在容器宽度内，禁止外层形成第二个横向滚动层'],
   [/:is\(\.data-table\.el-table, \.devices-table\.el-table, \.admin-data-table\.el-table\)\.compact-fit-table\s*\{[\s\S]*?min-width:\s*100%\s*!important/i, 'compact-fit-table 必须直接由统一表格 class 覆盖为 min-width: 100%，禁止继承 1200px 形成外层横向滚动'],
   [/:is\(\.data-table\.el-table, \.devices-table\.el-table, \.admin-data-table\.el-table\)\s+\.el-table__header th\s*\{[\s\S]*?background:\s*var\(--admin-data-table-header-bg\)\s*!important/i, '统一表头样式不得依赖 .admin-page，Teleport 弹窗必须与页面表格一致'],
-  [/:is\(\.data-table\.el-table, \.devices-table\.el-table, \.admin-data-table\.el-table\)\s+\.el-table__body td\s*\{[\s\S]*?height:\s*var\(--admin-data-table-row-height\)\s*!important/i, '统一单元格样式不得依赖 .admin-page，Teleport 弹窗必须继承公共行高和字体']
+  [/:is\(\.data-table\.el-table, \.devices-table\.el-table, \.admin-data-table\.el-table\)\s+\.el-table__body td\s*\{[\s\S]*?height:\s*var\(--admin-data-table-row-height\)\s*!important/i, '统一单元格样式不得依赖 .admin-page，Teleport 弹窗必须继承公共行高和字体'],
+  [/:is\(\.data-table\.el-table, \.devices-table\.el-table, \.admin-data-table\.el-table\)\s+\.el-table__body td \.cell\s*\{[\s\S]*?padding:\s*0\s*!important/i, '统一表格 cell 必须清除 Element 默认内边距，避免不同页面行高不一致']
 ]
 
 for (const [pattern, message] of teleportedTableRequirements) {
@@ -124,6 +145,14 @@ for (const file of [...walk(viewsRoot), ...walk(componentsRoot)]) {
   const source = readFileSync(file, 'utf8')
   const relativeFile = relative(root, file)
   const templateSource = source.split(/<script\b/i, 1)[0]
+  const templateTableTags = [...templateSource.matchAll(/<el-table(?=\s|>)[^>]*>/gi)]
+  const templateHasNativeTable = /<table\b/i.test(templateSource)
+  if (templateTableTags.length > 0 || templateHasNativeTable) {
+    if (file.startsWith(`${viewsRoot}/`)) auditedViewTableFiles.add(relativeFile)
+    if (file.startsWith(`${componentsRoot}/`)) auditedComponentTableFiles.add(relativeFile)
+    auditedTableCount += templateTableTags.length
+    auditedOperationColumnCount += [...templateSource.matchAll(/<el-table-column\b[^>]*label=["']操作["'][^>]*>/gi)].length
+  }
 
   if (/<table\b/i.test(templateSource)) {
     const line = lineNumber(source, source.search(/<table\b/i))
@@ -261,4 +290,8 @@ if (findings.length) {
   process.exit(1)
 }
 
-console.log('表格布局统一审计通过：表格已接入公共样式，内容完整展示，操作列使用公共自适应规则。')
+console.log(
+  `表格布局统一审计通过：${auditedViewTableFiles.size} 个页面模板、${auditedComponentTableFiles.size} 个公共组件，` +
+  `${auditedTableCount} 个 Element 表格和 ${auditedOperationColumnCount} 个操作列均已接入公共样式；` +
+  '内容完整展示，操作列使用公共自适应规则。'
+)

@@ -7,9 +7,11 @@
 | 文件 | 职责 |
 | --- | --- |
 | `frontend/src/components/MobileDialog.vue` | 弹窗结构、关闭行为、响应式模式、默认 footer |
-| `frontend/src/styles/components/_dialog.scss` | 遮罩、宽度、圆角、标题栏、关闭按钮、正文间距、移动端边界 |
+| `frontend/src/styles/components/_dialog.scss` | 遮罩、宽度、圆角、标题栏、关闭按钮、正文间距、确认框内容宽度、移动端边界 |
 | `frontend/src/styles/components/_dialog-actions.scss` | 取消/确认按钮的排列、尺寸、间距和移动端居中等分布局 |
 | `frontend/src/styles/components/_buttons.scss` | 按钮颜色、语义和普通按钮视觉 |
+
+关闭按钮统一使用 `MobileDialog` 的 `tf-button--dialog-close` 语义。该语义同时覆盖 Element Plus 的 `--el-button-*` 变量和 SVG 图标尺寸；公共弹窗样式还按 `.mobile-dialog-sheet-close` 结构类提供兜底，禁止浏览器默认按钮外观在手机端泄漏。PC 与手机端都必须保持半透明标题栏背景、白色关闭图标和圆形触控区域；业务页面不得重新设置关闭按钮背景、颜色、宽高或 SVG 尺寸。
 
 `MobileDialog` 在手机和平板使用 sheet 布局，在桌面使用 Element Plus Dialog。宽度按断点收敛：手机（`<=767px`）使用接近满宽的弹窗；平板（`768-1024px`）宽度上限为视口的 `80%`，并继续受页面 `width`/`maxWidth` 参数约束；桌面（`>=1025px`）按页面声明宽度并受全局最大宽度约束。最终规则统一采用 `min(页面声明宽度, 可用视口宽度)`，与库存管理弹窗的自适应行为一致。不要在业务页面用 `!important` 再覆盖这些断点规则。
 
@@ -73,6 +75,21 @@
 
 默认值适用于 PC；`768px` 以下切换到移动端宽度、间距和安全区；`480px` 以下进一步收紧标题、正文和 footer。修改全局弹窗视觉时只改 `_dialog.scss`，不要在页面中复制具体像素值。
 
+### 弹窗文字字号
+
+弹窗文字统一读取 `frontend/src/styles/_variables.scss` 的语义文字令牌：
+
+| 文字类型 | PC | 手机 | 超窄屏（不超过 375px） |
+| --- | ---: | ---: | ---: |
+| 标题 | 16px | 16px | 15px |
+| 正文和提示 | 14px | 15px | 14px |
+| 表单标签 | 14px | 14px | 13px |
+| 操作按钮 | 14px | 14px | 13px |
+
+标题使用 `--tf-font-dialog-title`，正文使用 `--tf-font-body`，标签使用 `--tf-font-label`，按钮使用 `--tf-button-font-size`。`MobileDialog`、Element Plus Dialog 和 MessageBox 必须遵循同一组令牌；业务页面不得单独设置弹窗标题、提示正文或表单标签字号。业务提示可以调整换行、最大高度和行高，但不得复制字号值。
+
+MessageBox 的默认宽度由 `--tf-dialog-message-width` 统一控制，当前为 `560px`，用于减少删除确认、清空确认等长内容的无必要换行。手机端仍通过视口可用宽度自动收缩，页面不得单独给某一个删除确认框设置宽度。
+
 历史页面使用的 `--dialog-*` 变量仍保留为兼容别名，新增代码应使用 `--tf-dialog-*` 变量。`crud-dialog-sm/md/lg` 只改变弹窗宽度，不改变标题、圆角和底部按钮。
 
 ## 标准结构
@@ -114,9 +131,10 @@
 
 ## Footer 按钮
 
+- 按钮公共尺寸：PC 高度为 `40px`、最小宽度 `80px`、水平内边距 `16px`、按钮间距 `10px`；手机和平板（`<=1024px`）高度仍为 `40px`，按钮在可用宽度内等分，间距为 `8px`、水平内边距 `10px`，不设置固定宽度。
 - 所有业务 footer 容器必须使用 `.tf-dialog-actions`（可与业务语义 class 并列）。
 - PC 端按钮靠右、按内容宽度排列；按钮使用统一最小宽度、统一高度和统一间距。
-- 手机端按钮保持一行并在 footer 可用宽度内居中等分，取消在左、确认/保存/提交在右；按钮组占满可用宽度，所有按钮等宽，左右留白必须对称。按钮间距和底部安全区由全局令牌控制。
+- 手机和平板按钮保持一行并在 footer 可用宽度内居中等分，取消在左、确认/保存/提交在右；按钮组占满可用宽度，所有按钮等宽，左右留白必须对称。按钮间距和底部安全区由全局令牌控制。
 - 三个及以上按钮仍使用同一行居中等分布局；不在页面中改成独立 grid 或分别设置左右宽度。
 - 不在页面中给 footer 按钮重复设置高度、宽度、圆角或间距。
 - 取消使用中性语义，保存/确认使用 `primary`，删除使用 `danger`，完成使用 `success`。
@@ -124,7 +142,7 @@
 
 `MobileDialog` 会自动为未显式包裹的 footer 插槽增加 `.mobile-dialog-footer`，因此历史页面中直接放置
 `<el-button>` 仍会获得同一套按钮高度、宽度、间距和移动端居中等分规则；新代码仍必须显式使用
-`.tf-dialog-actions`，便于审计和维护。原生 `el-dialog` 不具备这个插槽包装能力，必须显式包裹。
+`.tf-dialog-actions`，便于审计和维护。原生 `el-dialog` 的直接 footer 按钮也由 `_dialog-actions.scss` 统一覆盖；新代码仍应显式包裹，便于审计和维护。
 
 业务 footer 只允许维护摘要、提示和弹窗宽度等业务布局。禁止在页面样式中重新声明 footer 的 `grid`、
 手机端 `flex-direction: column`、按钮 `width/min-width/max-width/height/min-height/padding`。这些规则由

@@ -1278,7 +1278,7 @@ defineExpose({
 }
 
 :global(.mobile-dialog-sheet-panel.publish-to-h5-dialog .mobile-dialog-sheet-title) {
-  font-size: 16px !important;
+  font-size: var(--tf-type-scale-16) !important;
 }
 
 :global(.mobile-dialog-sheet-panel.publish-to-h5-dialog .mobile-dialog-sheet-close) {
@@ -1415,7 +1415,7 @@ defineExpose({
 :deep(.publish-to-h5-form .publish-to-h5-control .el-select__selected-item),
 :deep(.publish-to-h5-form .publish-to-h5-control.el-date-editor .el-range-input),
 :deep(.publish-to-h5-form .publish-to-h5-control.el-date-editor .el-input__inner) {
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
 }
 
 :deep(.publish-to-h5-form .publish-to-h5-control .el-input__prefix),
@@ -1506,7 +1506,7 @@ defineExpose({
   :deep(.publish-to-h5-form .publish-to-h5-input-control .el-input__inner),
   :deep(.publish-to-h5-form .publish-to-h5-picker-control .el-input__inner),
   :deep(.publish-to-h5-form .publish-to-h5-select-control .el-select__selected-item) {
-    font-size: 16px !important;
+    font-size: var(--tf-type-scale-16) !important;
   }
 
   :deep(.publish-to-h5-form .publish-to-h5-input-control .el-input__prefix),

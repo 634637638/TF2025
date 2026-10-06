@@ -1546,7 +1546,7 @@ onBeforeUnmount(() => {
     height: 52px;
     border-radius: 16px;
     color: var(--color-bg-white);
-    font-size: 24px;
+    font-size: var(--tf-type-scale-24);
     background: linear-gradient(135deg, var(--inventory-primary), var(--inventory-secondary));
     box-shadow: 0 12px 22px rgba(32, 87, 129, 0.2);
   }
@@ -1566,33 +1566,33 @@ onBeforeUnmount(() => {
   .insight-card__label {
     margin-top: 22px;
     color: var(--color-text-regular);
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
     letter-spacing: 0.02em;
   }
 
   .insight-card__value {
     margin-top: 12px;
-    font-size: 34px;
+    font-size: var(--tf-type-scale-34);
     line-height: 1;
     font-weight: 700;
     color: var(--tf-color-slate-deep);
   }
 
   .insight-card__value--currency {
-    font-size: 30px;
+    font-size: var(--tf-type-scale-30);
   }
 
   .insight-card__meta {
     margin-top: 10px;
     color: var(--tf-color-gray-ui-muted);
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
   }
 
   .insight-card__footer {
     margin-top: 18px;
     padding-top: 14px;
     border-top: 1px solid rgba(32, 87, 129, 0.08);
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
     color: var(--color-text-regular);
   }
 
@@ -1605,7 +1605,7 @@ onBeforeUnmount(() => {
   }
 
   .panel-title {
-    font-size: 17px;
+    font-size: var(--tf-type-scale-17);
     font-weight: 700;
     color: var(--tf-color-slate-deep);
   }
@@ -1613,7 +1613,7 @@ onBeforeUnmount(() => {
   .panel-subtitle {
     margin-top: 6px;
     color: var(--tf-color-gray-ui-muted);
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
     line-height: 1.5;
   }
 
@@ -1629,7 +1629,7 @@ onBeforeUnmount(() => {
     border-radius: 999px;
     background: var(--tf-color-surface-cool-soft);
     color: var(--tf-color-gray-chakra-600);
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
     border: 1px solid rgba(32, 87, 129, 0.08);
   }
 
@@ -1670,12 +1670,12 @@ onBeforeUnmount(() => {
     display: block;
     margin-bottom: 6px;
     color: var(--tf-color-gray-ui-600);
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
   }
 
   .warning-stat__value {
     color: var(--tf-color-slate-deep);
-    font-size: 20px;
+    font-size: var(--tf-type-scale-20);
     font-weight: 700;
   }
 
@@ -1701,12 +1701,12 @@ onBeforeUnmount(() => {
 
     .model {
       color: var(--color-text-regular);
-      font-size: 13px;
+      font-size: var(--tf-type-scale-13);
     }
 
     .color {
       color: var(--tf-color-gray-ui-500);
-      font-size: 12px;
+      font-size: var(--tf-type-scale-12);
     }
   }
 
@@ -1731,12 +1731,12 @@ onBeforeUnmount(() => {
     span {
       display: block;
       margin-bottom: 6px;
-      font-size: 12px;
+      font-size: var(--tf-type-scale-12);
       color: var(--tf-color-gray-ui-600);
     }
 
     strong {
-      font-size: 22px;
+      font-size: var(--tf-type-scale-22);
       color: var(--tf-color-slate-deep);
       font-weight: 700;
     }
@@ -1764,13 +1764,13 @@ onBeforeUnmount(() => {
   .supplier-highlight__meta {
     margin-top: 6px;
     color: var(--tf-color-gray-ui-muted);
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
   }
 
   .supplier-highlight__value {
     white-space: nowrap;
     color: var(--inventory-primary);
-    font-size: 15px;
+    font-size: var(--tf-type-scale-15);
     font-weight: 700;
   }
 
@@ -1778,7 +1778,7 @@ onBeforeUnmount(() => {
     padding: 20px 12px;
     text-align: center;
     color: var(--tf-color-gray-ui-500);
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
   }
 
   :deep(.el-card__header) {
@@ -1814,7 +1814,7 @@ onBeforeUnmount(() => {
 
     .insight-card__value,
     .insight-card__value--currency {
-      font-size: 28px;
+      font-size: var(--tf-type-scale-28);
     }
 
     .panel-header {

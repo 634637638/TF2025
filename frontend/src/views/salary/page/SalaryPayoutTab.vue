@@ -558,10 +558,7 @@ const showActionColumn = computed(() => shouldShowActionColumn(
   props.canViewField('salary_salaryrecordsview', 'actions'),
   [props.canCreate, props.canEdit, props.canDelete]
 ))
-const showStatusColumn = computed(() => shouldShowActionColumn(
-  props.canViewField('salary_salaryrecordsview', 'salary_status'),
-  []
-))
+const showStatusColumn = computed(() => props.canViewField('salary_salaryrecordsview', 'salary_status'))
 
 const emit = defineEmits<{
   delete: [row: SalaryPayoutRow]
@@ -643,7 +640,7 @@ defineExpose({ resetInteraction })
 
 .payout-salary-amount {
   display: inline-block;
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   font-weight: 600;
   line-height: 1.25;
   white-space: nowrap;

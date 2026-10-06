@@ -75,6 +75,11 @@ const publicFiles = new Set([
   'src/styles/components/_dialog-actions.scss'
 ])
 
+const dialogActionsSource = readFileSync(join(sourceRoot, 'styles/components/_dialog-actions.scss'), 'utf8')
+if (!/\.el-dialog__footer\s*>\s*\.el-button,/.test(dialogActionsSource)) {
+  findings.push('src/styles/components/_dialog-actions.scss 移动端必须覆盖直接 el-dialog footer 按钮，确保未包裹 footer 也等分')
+}
+
 for (const filePath of walk(sourceRoot)) {
   const relativeFile = relative(root, filePath).split('\\').join('/')
   if (publicFiles.has(relativeFile)) continue

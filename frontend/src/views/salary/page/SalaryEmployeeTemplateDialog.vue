@@ -164,7 +164,7 @@ const updateSelectedTemplate = (value: number | undefined) => {
     display: block;
     margin-bottom: 8px;
     color: var(--tf-color-gray-ant-600);
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
     font-weight: 500;
   }
 }
@@ -175,7 +175,7 @@ const updateSelectedTemplate = (value: number | undefined) => {
   border: 1px solid var(--tf-color-gray-ant-400);
   border-radius: 6px;
   background: var(--tf-color-white);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   transition: border-color 0.2s, box-shadow 0.2s;
 
   &:focus {
@@ -198,7 +198,7 @@ const updateSelectedTemplate = (value: number | undefined) => {
     gap: 6px;
     margin: 0 0 12px;
     color: var(--tf-color-gray-bootstrap-700);
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
     font-weight: 600;
 
     &::before {
@@ -216,7 +216,7 @@ const updateSelectedTemplate = (value: number | undefined) => {
   justify-content: space-between;
   padding: 8px 0;
   border-bottom: 1px dashed var(--tf-color-border-subtle);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
 
   &:last-child {
     border-bottom: 0;
@@ -243,13 +243,13 @@ const updateSelectedTemplate = (value: number | undefined) => {
     margin-bottom: 16px;
 
     label {
-      font-size: 13px;
+      font-size: var(--tf-type-scale-13);
     }
   }
 
   .form-control {
     padding: 8px 10px;
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
   }
 
   .template-preview-box {
@@ -258,7 +258,7 @@ const updateSelectedTemplate = (value: number | undefined) => {
 
   .preview-row {
     padding: 6px 0;
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
   }
 }
 </style>

@@ -268,7 +268,7 @@ const searchableTabs = ['roles', 'userRoles', 'storeBindings', 'logs']
   background: var(--tf-color-slate-50);
   border: 1px dashed rgba(100, 116, 139, 0.28);
   color: var(--tf-color-slate-500);
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   line-height: 1.5;
 }
 </style>

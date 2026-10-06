@@ -845,7 +845,7 @@ const savePhotoChanges = async () => {
 
 .selected-count {
   color: var(--tf-color-muted);
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
 }
 
 .photo-grid {
@@ -941,7 +941,7 @@ const savePhotoChanges = async () => {
   pointer-events: none;
 
   i {
-    font-size: 42px;
+    font-size: var(--tf-type-scale-42);
     color: var(--color-primary);
   }
 }
@@ -1101,11 +1101,11 @@ const savePhotoChanges = async () => {
       min-width: 0;
       padding: 0 12px !important;
       height: 36px;
-      font-size: 12px !important;
+      font-size: var(--tf-type-scale-12) !important;
     }
 
     :deep(.toolbar-action-btn [class*="fa-"]) {
-      font-size: 11px;
+      font-size: var(--tf-type-scale-11);
       margin-right: 4px;
     }
 

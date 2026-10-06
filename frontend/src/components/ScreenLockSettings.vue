@@ -514,7 +514,7 @@ onUnmounted(() => {
     h3 {
       margin: 0 0 8px 0;
       color: var(--tf-color-heading);
-      font-size: 20px;
+      font-size: var(--tf-type-scale-20);
       display: flex;
       align-items: center;
       gap: 12px;
@@ -527,7 +527,7 @@ onUnmounted(() => {
     .card-description {
       margin: 0;
       color: var(--tf-color-gray-cool-500);
-      font-size: 14px;
+      font-size: var(--tf-type-scale-14);
     }
   }
 
@@ -537,7 +537,7 @@ onUnmounted(() => {
 
   .form-help {
     margin-top: 8px;
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
     color: var(--color-info);
     line-height: 1.6;
   }
@@ -598,12 +598,12 @@ onUnmounted(() => {
     transition: opacity 0.3s;
 
     i {
-      font-size: 24px;
+      font-size: var(--tf-type-scale-24);
       margin-bottom: 8px;
     }
 
     span {
-      font-size: 14px;
+      font-size: var(--tf-type-scale-14);
     }
   }
 
@@ -623,12 +623,12 @@ onUnmounted(() => {
     background: var(--tf-color-neutral-25);
 
     i {
-      font-size: 32px;
+      font-size: var(--tf-type-scale-32);
       margin-bottom: 8px;
     }
 
     span {
-      font-size: 14px;
+      font-size: var(--tf-type-scale-14);
     }
   }
 
@@ -656,10 +656,10 @@ onUnmounted(() => {
     align-items: center;
     gap: 6px;
     color: var(--color-success);
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
 
     i {
-      font-size: 16px;
+      font-size: var(--tf-type-scale-16);
     }
   }
 
@@ -681,7 +681,7 @@ onUnmounted(() => {
       font-weight: 600;
 
       i {
-        font-size: 16px;
+        font-size: var(--tf-type-scale-16);
       }
     }
 
@@ -713,12 +713,12 @@ onUnmounted(() => {
 
         .label {
           color: var(--tf-color-gray-cool-500);
-          font-size: 14px;
+          font-size: var(--tf-type-scale-14);
         }
 
         .value {
           color: var(--tf-color-heading);
-          font-size: 14px;
+          font-size: var(--tf-type-scale-14);
           font-weight: 500;
         }
       }

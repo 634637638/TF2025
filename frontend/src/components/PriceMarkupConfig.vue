@@ -526,12 +526,12 @@ const handleClose = () => {
   display: block;
   margin-bottom: 6px;
   color: var(--tf-color-gray-ui-alt);
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
 }
 
 .overview-value {
   color: var(--tf-color-neutral-900);
-  font-size: 17px;
+  font-size: var(--tf-type-scale-17);
   font-weight: 700;
   letter-spacing: 0.01em;
 }
@@ -556,14 +556,14 @@ const handleClose = () => {
 .form-section-title {
   margin: 0;
   color: var(--tf-color-neutral-900);
-  font-size: 17px;
+  font-size: var(--tf-type-scale-17);
   font-weight: 700;
 }
 
 .section-subtitle {
   margin: 3px 0 0;
   color: var(--tf-color-gray-ui-alt);
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   line-height: 1.5;
 }
 
@@ -627,7 +627,7 @@ const handleClose = () => {
 
   .price-label {
     color: var(--tf-color-neutral-700);
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
     font-weight: 600;
   }
 
@@ -637,7 +637,7 @@ const handleClose = () => {
 
   .price-unit {
     color: var(--color-info);
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
     min-width: 30px;
   }
 }
@@ -648,7 +648,7 @@ const handleClose = () => {
   gap: 6px;
   margin-top: 8px;
   color: var(--tf-color-gray-ui-alt);
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   line-height: 1.5;
 }
 
@@ -670,13 +670,13 @@ const handleClose = () => {
 
       .preview-label {
         color: var(--tf-color-slate-500);
-        font-size: 13px;
+        font-size: var(--tf-type-scale-13);
       }
 
       .preview-value {
         color: var(--color-success);
         font-weight: bold;
-        font-size: 14px;
+        font-size: var(--tf-type-scale-14);
       }
 
       .preview-value--wholesale {

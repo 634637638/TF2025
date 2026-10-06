@@ -539,20 +539,20 @@ const goHome = () => {
       margin-bottom: 32px;
 
       .verify-icon {
-        font-size: 48px;
+        font-size: var(--tf-type-scale-48);
         color: var(--color-primary);
         margin-bottom: 16px;
       }
 
       .verify-title {
-        font-size: 24px;
+        font-size: var(--tf-type-scale-24);
         font-weight: 600;
         color: var(--text-primary);
         margin: 0 0 8px;
       }
 
       .verify-desc {
-        font-size: 14px;
+        font-size: var(--tf-type-scale-14);
         color: var(--text-muted);
         margin: 0;
       }
@@ -567,7 +567,7 @@ const goHome = () => {
         display: flex;
         align-items: center;
         gap: 8px;
-        font-size: 13px;
+        font-size: var(--tf-type-scale-13);
         color: var(--text-secondary);
         margin: 8px 0;
 
@@ -599,17 +599,17 @@ const goHome = () => {
       display: flex;
       align-items: center;
       gap: 8px;
-      font-size: 15px;
+      font-size: var(--tf-type-scale-15);
       color: var(--text-primary);
 
       i {
-        font-size: 24px;
+        font-size: var(--tf-type-scale-24);
         color: var(--color-primary);
       }
 
       .phone {
         color: var(--text-muted);
-        font-size: 14px;
+        font-size: var(--tf-type-scale-14);
       }
     }
   }
@@ -643,12 +643,12 @@ const goHome = () => {
       border-bottom: 1px solid var(--tf-color-gray-200);
 
       .order-number {
-        font-size: 13px;
+        font-size: var(--tf-type-scale-13);
         color: var(--text-secondary);
       }
 
       .order-status {
-        font-size: 13px;
+        font-size: var(--tf-type-scale-13);
         font-weight: 500;
         padding: 2px 8px;
         border-radius: 4px;
@@ -697,12 +697,12 @@ const goHome = () => {
           padding: 4px 0;
 
           .label {
-            font-size: 13px;
+            font-size: var(--tf-type-scale-13);
             color: var(--text-muted);
           }
 
           .value {
-            font-size: 13px;
+            font-size: var(--tf-type-scale-13);
             color: var(--text-primary);
           }
         }
@@ -720,7 +720,7 @@ const goHome = () => {
           background: var(--tf-color-surface-soft);
           padding: 6px 10px;
           border-radius: 6px;
-          font-size: 12px;
+          font-size: var(--tf-type-scale-12);
           color: var(--text-secondary);
 
           img {
@@ -732,7 +732,7 @@ const goHome = () => {
 
           .more-count {
             color: var(--text-muted);
-            font-size: 11px;
+            font-size: var(--tf-type-scale-11);
           }
         }
       }
@@ -746,12 +746,12 @@ const goHome = () => {
 
         .order-total {
           .label {
-            font-size: 14px;
+            font-size: var(--tf-type-scale-14);
             color: var(--text-secondary);
           }
 
           .amount {
-            font-size: 18px;
+            font-size: var(--tf-type-scale-18);
             font-weight: 500;
             color: var(--tf-color-accent-pink);
           }
@@ -759,7 +759,7 @@ const goHome = () => {
 
         .arrow-icon {
           color: var(--tf-color-gray-300-alt);
-          font-size: 14px;
+          font-size: var(--tf-type-scale-14);
         }
       }
     }

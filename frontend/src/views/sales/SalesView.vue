@@ -1879,7 +1879,7 @@ const deletePhone = async (phone: any) => {
 
   try {
     await confirmAction(
-      `确定要删除这台手机吗？\n\n品牌型号：${phone.brand} ${phone.model}\nIMEI：${phone.imei || '无'}\n\n此操作不可恢复！`,
+      `确定删除设备“${phone.brand} ${phone.model}”（IMEI：${phone.imei || '无'}）吗？此操作不可恢复！`,
       '删除确认',
       {
         confirmButtonText: '确定删除',

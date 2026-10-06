@@ -655,6 +655,7 @@ class PriceListService {
           pl.source_config_id,
           COALESCE(selected_source.config_name, default_source.config_name, '默认来源') as source_name,
           COALESCE(selected_source.source_type, default_source.source_type, 'account') as source_type,
+          COALESCE(selected_source.login_username, default_source.login_username) as source_login_username,
           -- 提取型号数字用于排序
           CAST(REGEXP_SUBSTR(mo.name, '[0-9]+') AS UNSIGNED) as model_sort_num,
           -- 提取内存数值用于排序

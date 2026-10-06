@@ -22,7 +22,16 @@
             <span>新增</span>
           </el-button>
           <el-button
-            v-if="canViewField('system_info.operations')"
+            v-if="canView"
+            type="info"
+            plain
+            @click="router.push('/standards')"
+          >
+            <i class="fas fa-clipboard-check" />
+            <span>规范与审计</span>
+          </el-button>
+          <el-button
+            v-if="showOperations"
             type="info"
             :loading="refreshing"
             :disabled="refreshing"
@@ -101,7 +110,7 @@
                       站点 Logo 设置
                     </h3>
                     <el-button
-                      v-if="canViewField('system_info.operations')"
+                      v-if="showOperations"
                       type="primary"
                       size="small"
                       :loading="isLoading"
@@ -221,7 +230,7 @@
                       编辑站点信息
                     </h3>
                     <el-button
-                      v-if="canViewField('system_info.operations')"
+                      v-if="showOperations"
                       type="primary"
                       size="small"
                       :loading="isLoading"
@@ -342,7 +351,7 @@
                       <i class="fas fa-tags" />报价联系人
                     </h3>
                     <el-button
-                      v-if="canViewField('system_info.operations')"
+                      v-if="showOperations"
                       type="primary"
                       size="small"
                       :disabled="!canUpdateSettings"
@@ -395,7 +404,7 @@
                       class-name="complete-text-column"
                     />
                     <el-table-column
-                      v-if="canViewField('system_info.operations')"
+                      v-if="showOperations"
                       label="默认"
                       :width="priceContactDefaultWidth"
                       align="center"
@@ -418,7 +427,7 @@
                       </template>
                     </el-table-column>
                     <el-table-column
-                      v-if="canViewField('system_info.operations')"
+                      v-if="showOperations"
                       label="操作"
                       :width="$getActionColumnWidth(['编辑', '删除', '上移', '下移'])"
                       align="center"
@@ -478,7 +487,7 @@
                       <i class="fas fa-stamp" />报价图片水印
                     </h3>
                     <el-button
-                      v-if="canViewField('system_info.operations')"
+                      v-if="showOperations"
                       type="primary"
                       size="small"
                       :loading="isLoading"
@@ -608,7 +617,7 @@
                         </template>
                       </el-table-column>
                       <el-table-column
-                        v-if="canViewField('system_info.operations')"
+                        v-if="showOperations"
                         label="操作"
                         :width="$getActionColumnWidth(1 + Number(canDeleteInventoryPasswords))"
                         align="center"
@@ -944,7 +953,7 @@
             取消
           </el-button>
           <el-button
-            v-if="canViewField('system_info.operations')"
+            v-if="showOperations"
             type="primary"
             :loading="savingPassword"
             @click="savePassword"
@@ -960,13 +969,13 @@
 <script setup lang="ts">
 import { confirmAction } from '@/utils/message-box'
 import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { Setting, Lock, Plus, Edit, Delete } from '@element-plus/icons-vue'
 import { unifiedApi } from '@/utils/unified-api'
 import { extractResponseData } from '@/utils/api-response'
 import { useNotification } from '@/composables/useNotification'
 import { usePagePermissions } from '@/composables/usePagePermissions'
-import { fieldPermissions } from '@/composables/useFieldPermissions'
+import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { useSiteSettingsStore } from '@/stores/siteSettings'
 import { buildLogoUrl } from '@/utils/logoUtils'
 import { PermissionGate, PageHeader } from '@/components/base'
@@ -1017,6 +1026,7 @@ const isValidSiteLogoMimeType = (extension: string, mimeType: string) => {
 
 // 路由和权限
 const route = useRoute()
+const router = useRouter()
 const siteSettingsStore = useSiteSettingsStore()
 const { success, error, warning, loading } = useNotification()
 
@@ -1028,6 +1038,10 @@ const SYSTEM_MODULE_KEY = 'system'
 const canViewField = (fieldKey: string) => fieldPermissions.isFieldVisible(SYSTEM_MODULE_KEY, fieldKey)
 const canManageInventoryPasswords = computed(() => canEdit.value)
 const canDeleteInventoryPasswords = computed(() => canDelete.value)
+const showOperations = computed(() => shouldShowActionColumn(
+  canViewField('system_info.operations'),
+  [canView.value, canEdit.value, canDelete.value]
+))
 
 // 状态数据
 const isLoading = ref(false)
@@ -1797,7 +1811,7 @@ onBeforeUnmount(() => {
 .card-header-with-action .card-title,
 .card-header-with-action .section-subtitle {
   margin: 0;
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
   font-weight: 600;
   color: var(--text-primary, var(--tf-color-heading));
   display: flex;
@@ -1859,7 +1873,7 @@ onBeforeUnmount(() => {
 }
 
 .site-logo-empty i {
-  font-size: 30px;
+  font-size: var(--tf-type-scale-30);
   color: var(--tf-color-gray-chakra-400);
 }
 
@@ -1872,7 +1886,7 @@ onBeforeUnmount(() => {
   border-radius: 8px;
   background: rgba(44, 62, 80, 0.72);
   color: var(--color-bg-white);
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   line-height: 1.4;
   text-align: center;
   pointer-events: none;
@@ -1895,7 +1909,7 @@ onBeforeUnmount(() => {
 
 .logo-editor-header h3 {
   margin: 0;
-  font-size: 18px;
+  font-size: var(--tf-type-scale-18);
   font-weight: 600;
   color: var(--text-primary, var(--tf-color-heading));
   display: flex;
@@ -1909,7 +1923,7 @@ onBeforeUnmount(() => {
 
 .logo-editor-tip {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   line-height: 1.7;
   color: var(--text-secondary, var(--tf-color-muted));
 }
@@ -1922,7 +1936,7 @@ onBeforeUnmount(() => {
 }
 
 .logo-editor-help {
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   line-height: 1.6;
   color: var(--text-muted, var(--text-muted));
 }
@@ -1971,7 +1985,7 @@ onBeforeUnmount(() => {
 }
 
 .settings-card .card-icon i {
-  font-size: 20px;
+  font-size: var(--tf-type-scale-20);
   color: white;
 }
 
@@ -1982,14 +1996,14 @@ onBeforeUnmount(() => {
 
 .settings-card .card-content h4 {
   margin: 0 0 6px 0;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   font-weight: 600;
   color: var(--text-secondary, var(--tf-color-muted));
 }
 
 .settings-card .card-content p {
   margin: 0;
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
   font-weight: 500;
   color: var(--text-primary, var(--tf-color-heading));
   white-space: nowrap;
@@ -1999,7 +2013,7 @@ onBeforeUnmount(() => {
 
 .section-subtitle {
   margin: 0;
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
   font-weight: 600;
   color: var(--text-primary, var(--tf-color-heading));
   display: flex;
@@ -2035,7 +2049,7 @@ onBeforeUnmount(() => {
 
 .text-muted {
   color: var(--text-muted, var(--text-muted));
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
 }
 
 .section-header {
@@ -2047,7 +2061,7 @@ onBeforeUnmount(() => {
 
 .section-header h2 {
   margin: 0;
-  font-size: 20px;
+  font-size: var(--tf-type-scale-20);
   color: var(--text-primary, var(--tf-color-heading));
   font-weight: 600;
   display: flex;
@@ -2116,15 +2130,15 @@ onBeforeUnmount(() => {
   }
 
   .settings-card .card-icon i {
-    font-size: 16px;
+    font-size: var(--tf-type-scale-16);
   }
 
   .settings-card .card-content h4 {
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
   }
 
   .settings-card .card-content p {
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
   }
 
   /* 站点信息表格响应式 */
@@ -2133,7 +2147,7 @@ onBeforeUnmount(() => {
   }
 
   .section-subtitle {
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
   }
 }
 
@@ -2232,14 +2246,14 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: 12px;
-  font-size: 18px;
+  font-size: var(--tf-type-scale-18);
   font-weight: 600;
   color: var(--text-primary, var(--tf-color-heading));
   margin: 0;
 }
 
 .card-title i {
-  font-size: 20px;
+  font-size: var(--tf-type-scale-20);
   color: var(--primary-color, var(--tf-color-indigo-brand));
 }
 
@@ -2280,12 +2294,12 @@ onBeforeUnmount(() => {
 }
 
 .step-text {
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   color: var(--text-primary, var(--tf-color-heading));
 }
 
 .demo-arrow {
-  font-size: 20px;
+  font-size: var(--tf-type-scale-20);
   color: var(--primary-color, var(--tf-color-indigo-brand));
   margin: 4px 0;
 }
@@ -2347,18 +2361,18 @@ onBeforeUnmount(() => {
 }
 
 .upload-placeholder i {
-  font-size: 48px;
+  font-size: var(--tf-type-scale-48);
   margin-bottom: 12px;
   color: var(--text-secondary, var(--tf-color-muted));
 }
 
 .upload-placeholder span {
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
 }
 
 .form-help {
   margin-top: 8px;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   color: var(--text-muted, var(--text-muted));
   line-height: 1.5;
 }
@@ -2377,7 +2391,7 @@ onBeforeUnmount(() => {
 
 .password-list-header h4 {
   margin: 0;
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
   font-weight: 600;
   color: var(--text-primary, var(--tf-color-heading));
 }
@@ -2427,12 +2441,12 @@ onBeforeUnmount(() => {
   .card-title {
     min-width: 0;
     gap: 8px;
-    font-size: 15px;
+    font-size: var(--tf-type-scale-15);
     line-height: 1.25;
   }
 
   .card-title i {
-    font-size: 16px;
+    font-size: var(--tf-type-scale-16);
   }
 
   .card-header-custom .el-button {
@@ -2453,7 +2467,7 @@ onBeforeUnmount(() => {
 
   .screen-lock-settings-wrapper :deep(.el-alert p) {
     margin: 3px 0;
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
     line-height: 1.45;
   }
 
@@ -2463,7 +2477,7 @@ onBeforeUnmount(() => {
   }
 
   .step-text {
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
   }
 
   .image-preview,
@@ -2497,7 +2511,7 @@ onBeforeUnmount(() => {
     margin-bottom: 8px;
     padding: 0 !important;
     line-height: 1.4;
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
     font-weight: 700;
     text-align: left !important;
   }
@@ -2527,7 +2541,7 @@ onBeforeUnmount(() => {
   }
 
   .screen-lock-settings-wrapper :deep(.el-radio__label) {
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
     line-height: 1.3;
   }
 
@@ -2545,12 +2559,12 @@ onBeforeUnmount(() => {
 
   .upload-placeholder i {
     margin-bottom: 8px;
-    font-size: 30px;
+    font-size: var(--tf-type-scale-30);
   }
 
   .upload-placeholder span,
   .form-help {
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
   }
 
   .form-help {
@@ -2569,7 +2583,7 @@ onBeforeUnmount(() => {
   }
 
   .screen-lock-settings-wrapper .password-list-header h4 {
-    font-size: 15px;
+    font-size: var(--tf-type-scale-15);
   }
 
   .screen-lock-settings-wrapper .password-list-header .el-button {
@@ -2595,7 +2609,7 @@ onBeforeUnmount(() => {
     margin-bottom: 8px;
     padding: 0 !important;
     text-align: left !important;
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
     font-weight: 700;
   }
 

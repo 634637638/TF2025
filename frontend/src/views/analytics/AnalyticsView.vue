@@ -16,7 +16,7 @@
         >
           <template #actions>
             <el-button
-              v-if="canViewAnalyticsField('system_info.operations')"
+              v-if="shouldShowActionColumn(canViewAnalyticsField('system_info.operations'), [])"
               type="info"
               :icon="Refresh"
               :loading="refreshing"
@@ -26,7 +26,7 @@
               刷新
             </el-button>
             <el-button
-              v-if="canExport && canViewAnalyticsField('system_info.operations')"
+              v-if="canExport"
               type="success"
               :icon="Download"
               @click="exportAnalyticsData"
@@ -255,7 +255,7 @@ import { usePagePermissions } from '@/composables/usePagePermissions'
 import { useLoadingState } from '@/composables'
 import { unifiedApi } from '@/utils/unified-api'
 import { useImportExport } from '@/composables/useImportExport'
-import { fieldPermissions } from '@/composables/useFieldPermissions'
+import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { PermissionGate, PageHeader } from '@/components/base'
 import DateRangePicker from '@/components/DateRangePicker.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'

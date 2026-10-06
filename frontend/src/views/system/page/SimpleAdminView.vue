@@ -24,10 +24,8 @@
         v-else
         ref="responsiveMenuRef"
         :menu-items="menuItems"
-        :sidebar-collapsed="sidebarCollapsed"
         :show-menu-button="true"
         :enable-gestures="true"
-        :enable-auto-hide="true"
         :quick-actions="quickActions"
         @menu-click="handleMenuNavigation"
       />
@@ -246,7 +244,7 @@ const navigateIfAllowed = async (targetPath: string) => {
   await router.push(targetPath)
 }
 
-const handleMenuNavigation = async (menu) => {
+const handleMenuNavigation = async (menu: MenuItem) => {
   // 获取目标路径
   const targetPath = menu.url || menu.path
 
@@ -255,9 +253,8 @@ const handleMenuNavigation = async (menu) => {
     return
   }
 
-  if (!canAccessRoutePath(targetPath, authStore)) {
-    tabsStore.closeTab(targetPath)
-    ElMessage.warning('您没有访问此页面的权限')
+  if (/^https?:\/\//i.test(targetPath)) {
+    window.open(targetPath, '_blank', 'noopener,noreferrer')
     return
   }
 
@@ -267,7 +264,7 @@ const handleMenuNavigation = async (menu) => {
   }
 
   try {
-    // 使用Vue Router进行导航，添加错误处理防止导航取消错误
+    // 内部菜单统一经过权限预检后再交给路由守卫处理。
     await navigateIfAllowed(targetPath)
   } catch (error) {
     // 静默处理导航取消
@@ -492,10 +489,10 @@ onUnmounted(() => {
 }
 
 .topbar {
-  background: white;
+  background: var(--tf-nav-topbar-bg);
   padding: 0;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  border-bottom: 1px solid var(--tf-color-border-cool);
+  border-bottom: 1px solid var(--tf-nav-topbar-border);
   display: flex;
   justify-content: space-between;
   align-items: stretch;
@@ -509,7 +506,7 @@ onUnmounted(() => {
 
 .topbar.scrolled {
   box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-  border-bottom-color: var(--tf-color-border-blue-light);
+  border-bottom-color: var(--tf-nav-topbar-border);
 }
 
 .header-left {
@@ -517,30 +514,6 @@ onUnmounted(() => {
   display: flex;
   align-items: stretch;
   overflow: hidden;
-}
-
-.sidebar-toggle-btn {
-  width: 44px;
-  min-width: 44px;
-  height: 40px;
-  align-self: center;
-  margin: 0 8px 0 12px;
-  border: 1px solid var(--tf-color-border-cool);
-  border-radius: 6px;
-  background: var(--color-bg-white);
-  color: var(--tf-color-indigo-brand);
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
-}
-
-.sidebar-toggle-btn:hover {
-  background: var(--tf-color-surface-blue);
-  border-color: var(--tf-color-indigo-brand);
-  color: var(--tf-color-indigo-brand);
 }
 
 .topbar-actions {
@@ -555,11 +528,11 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
 }
 
 .breadcrumb-item {
-  color: var(--text-secondary);
+  color: var(--tf-nav-topbar-text);
   text-decoration: none;
   display: flex;
   align-items: center;
@@ -569,24 +542,24 @@ onUnmounted(() => {
 }
 
 .breadcrumb-item:hover {
-  color: var(--tf-color-blue-legacy);
+  color: var(--tf-color-indigo-brand);
 }
 
 .breadcrumb-item.current {
-  color: var(--text-primary);
+  color: var(--tf-nav-topbar-text);
   font-weight: 600;
   cursor: default;
 }
 
 .breadcrumb-separator {
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
 }
 
 .header-divider {
   width: 1px;
   height: 24px;
-  background: var(--tf-color-gray-300-alt);
+  background: var(--tf-nav-topbar-border);
   margin: 0 20px;
 }
 
@@ -595,6 +568,9 @@ onUnmounted(() => {
   align-items: center;
   gap: 8px;
   height: var(--tf-topbar-control-height, 40px);
+  flex: 0 1 auto;
+  width: fit-content;
+  max-width: var(--tf-topbar-user-info-max-width, 360px);
   margin: 0;
   padding: 0 14px;
   background: linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%);
@@ -621,7 +597,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   color: white;
-  font-size: 14px; /* 调整字体大小 */
+  font-size: var(--tf-type-scale-14); /* 调整字体大小 */
   flex-shrink: 0;
   box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
   position: relative;
@@ -642,7 +618,8 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 8px;
-  flex: 1 1 auto;
+  flex: 0 1 auto;
+  width: fit-content;
   min-width: 0;
   height: 100%;
 }
@@ -661,7 +638,7 @@ onUnmounted(() => {
 .user-name {
   display: inline-flex;
   align-items: center;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   font-weight: 600;
   color: var(--tf-color-amber-800);
   line-height: 1;
@@ -680,7 +657,7 @@ onUnmounted(() => {
 }
 
 .user-role {
-  font-size: 10px;
+  font-size: var(--tf-type-scale-10);
   color: var(--tf-color-indigo-brand);
   font-weight: 600;
   background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
@@ -700,7 +677,7 @@ onUnmounted(() => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
+  font-size: var(--tf-type-scale-11);
   color: var(--tf-color-indigo-brand);
   white-space: nowrap;
   font-weight: 600;
@@ -713,7 +690,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 11px;
+  font-size: var(--tf-type-scale-11);
   color: var(--tf-color-gray-legacy-500);
 }
 
@@ -730,7 +707,7 @@ onUnmounted(() => {
 }
 
 .login-time {
-  font-size: 10px;
+  font-size: var(--tf-type-scale-10);
   color: var(--tf-color-gray-flat-400);
 }
 
@@ -772,19 +749,19 @@ onUnmounted(() => {
 .welcome-section h1 {
   margin: 0 0 8px 0;
   color: var(--tf-color-heading);
-  font-size: 28px;
+  font-size: var(--tf-type-scale-28);
 }
 
 .welcome-section p {
   margin: 0;
   color: var(--tf-color-gray-cool-500);
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
 }
 
 .dashboard h2 {
   margin: 0 0 20px 0;
   color: var(--tf-color-heading);
-  font-size: 22px;
+  font-size: var(--tf-type-scale-22);
 }
 
 .placeholder-content {
@@ -798,13 +775,13 @@ onUnmounted(() => {
 .placeholder-content h2 {
   margin: 0 0 12px 0;
   color: var(--tf-color-heading);
-  font-size: 24px;
+  font-size: var(--tf-type-scale-24);
 }
 
 .placeholder-content p {
   margin: 0;
   color: var(--tf-color-gray-cool-500);
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
 }
 
 /* 响应式设计 */
@@ -824,7 +801,7 @@ onUnmounted(() => {
 
   .topbar {
     padding: 8px 12px;
-    padding-left: 70px; /* 为汉堡按钮预留空间 */
+    padding-left: 70px;
     flex-direction: row;
     gap: 8px;
     align-items: center;
@@ -848,19 +825,21 @@ onUnmounted(() => {
     height: var(--tf-topbar-control-height, 36px);
     padding: 4px 10px;
     min-width: 0;
-    flex: 1 1 auto;
-    max-width: none;
+    flex: 0 1 auto;
+    width: fit-content;
+    max-width: var(--tf-topbar-user-info-max-width, 360px);
   }
 
   .user-avatar {
     width: 28px;
     height: 28px;
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
     flex-shrink: 0; /* 头像不缩小 */
   }
 
   .user-main-info {
-    flex: 1; /* 主要信息区域占据剩余空间 */
+    flex: 0 1 auto;
+    width: fit-content;
     min-width: 0; /* 允许缩小 */
     display: flex;
     flex-direction: column;
@@ -869,7 +848,7 @@ onUnmounted(() => {
   }
 
   .user-name {
-    font-size: 11px;
+    font-size: var(--tf-type-scale-11);
     font-weight: 600;
     line-height: 1.2;
     overflow: hidden;
@@ -881,7 +860,7 @@ onUnmounted(() => {
   }
 
   .user-role {
-    font-size: 9px;
+    font-size: var(--tf-type-scale-9);
     padding: 1px 4px;
     display: inline-flex; /* 显示角色标签 */
     line-height: 1;
@@ -896,7 +875,7 @@ onUnmounted(() => {
   }
 
   .last-login {
-    font-size: 10px;
+    font-size: var(--tf-type-scale-10);
   }
 
   .topbar-buttons {
@@ -934,10 +913,10 @@ onUnmounted(() => {
     height: var(--tf-topbar-control-height, 36px);
     padding: 3px 6px;
     justify-content: flex-end;
-    width: auto;
+    width: fit-content;
     min-width: 0;
-    flex: 1 1 auto;
-    max-width: none;
+    flex: 0 1 auto;
+    max-width: var(--tf-topbar-user-info-max-width, 360px);
     margin-left: auto;
     gap: 4px;
     overflow: hidden;
@@ -946,7 +925,7 @@ onUnmounted(() => {
   .user-avatar {
     width: 22px;
     height: 22px;
-    font-size: 10px;
+    font-size: var(--tf-type-scale-10);
     flex-shrink: 0; /* 头像不缩小 */
   }
 
@@ -956,7 +935,8 @@ onUnmounted(() => {
     align-items: center;
     justify-content: flex-end;
     gap: 3px;
-    flex: 1 1 auto;
+    flex: 0 1 auto;
+    width: fit-content;
     min-width: 0;
     height: 100%;
     flex-wrap: nowrap;
@@ -964,7 +944,7 @@ onUnmounted(() => {
   }
 
   .user-name {
-    font-size: 11px;
+    font-size: var(--tf-type-scale-11);
     font-weight: 600;
     line-height: 1;
     white-space: nowrap;
@@ -980,7 +960,7 @@ onUnmounted(() => {
 
   .user-role {
     max-width: 58px;
-    font-size: 9px;
+    font-size: var(--tf-type-scale-9);
     padding: 2px 4px;
     border-radius: 8px;
     white-space: nowrap;
@@ -1000,7 +980,7 @@ onUnmounted(() => {
   }
 
   .btn-lock i {
-    font-size: 14px; /* 锁定按钮图标大小 */
+    font-size: var(--tf-type-scale-14); /* 锁定按钮图标大小 */
   }
 
   .btn-lock span {
@@ -1014,7 +994,7 @@ onUnmounted(() => {
   }
 
   .logout-btn i {
-    font-size: 14px; /* 退出按钮图标大小 */
+    font-size: var(--tf-type-scale-14); /* 退出按钮图标大小 */
   }
 
   .logout-btn .btn-text {
@@ -1054,18 +1034,18 @@ onUnmounted(() => {
 
 .admin-container.compact-device .user-info {
   min-width: 0;
-  flex: 1 1 auto;
-  width: auto;
-  max-width: none;
+  flex: 0 1 auto;
+  width: fit-content;
+  max-width: var(--tf-topbar-user-info-max-width, 360px);
   margin-left: auto;
   justify-content: flex-end;
   overflow: hidden;
 }
 
 .admin-container.compact-device .user-main-info {
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   min-width: 0;
-  width: auto;
+  width: fit-content;
   justify-content: flex-end;
   flex-wrap: nowrap;
   gap: 4px;

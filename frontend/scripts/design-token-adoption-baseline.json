@@ -925,13 +925,6 @@
       "spacing": 3,
       "layering": 0
     },
-    "src/components/DynamicSidebar.vue": {
-      "radius": 2,
-      "shadow": 0,
-      "typography": 7,
-      "spacing": 10,
-      "layering": 0
-    },
     "src/components/ErrorBoundary.vue": {
       "radius": 3,
       "shadow": 2,

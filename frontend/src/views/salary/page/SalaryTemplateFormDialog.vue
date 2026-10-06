@@ -360,7 +360,7 @@ const showAutoRaiseSection = computed(() => [
     display: block;
     margin-bottom: 8px;
     color: var(--tf-color-gray-ant-600);
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
     font-weight: 500;
   }
 }
@@ -375,7 +375,7 @@ const showAutoRaiseSection = computed(() => [
   border: 1px solid var(--tf-color-gray-ant-400);
   border-radius: 6px;
   background: var(--tf-color-white);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   transition: border-color 0.2s, box-shadow 0.2s;
 
   &:focus {
@@ -389,7 +389,7 @@ const showAutoRaiseSection = computed(() => [
   display: block;
   margin-top: 6px;
   color: var(--tf-color-gray-ant-500);
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   line-height: 1.5;
 }
 
@@ -403,7 +403,7 @@ const showAutoRaiseSection = computed(() => [
   align-items: center;
   gap: 6px;
   color: var(--tf-color-gray-ant-600);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   cursor: pointer;
 
   input {
@@ -469,7 +469,7 @@ input:checked + .slider {
 
   span {
     color: var(--tf-color-gray-ant-500);
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
     font-weight: 500;
   }
 
@@ -483,13 +483,13 @@ input:checked + .slider {
     margin-bottom: 16px;
 
     > label:not(.switch-label) {
-      font-size: 13px;
+      font-size: var(--tf-type-scale-13);
     }
   }
 
   .form-control {
     padding: 8px 10px;
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
   }
 
   .radio-group {
@@ -497,7 +497,7 @@ input:checked + .slider {
   }
 
   .radio-label {
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
   }
 }
 </style>

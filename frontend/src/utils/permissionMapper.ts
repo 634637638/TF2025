@@ -98,6 +98,7 @@ export const MODULE_KEY_MAP: Record<string, string> = {
 
   // 系统管理映射
   'system': 'system_systemview',
+  'standards': 'standards_standardsauditview',
   'settings': 'system_systemview',
   'admin': 'system_adminview',
   '404': 'system_404',
@@ -187,6 +188,7 @@ export const BACKEND_MODULE_MAP: Record<string, string> = {
   'customers_customersview': 'customers',
   'permissions_permissionsview': 'permissions',
   'permissions_modulemanagementview': 'module-management',
+  'standards_standardsauditview': 'standards',
   'menu_menumanagementview': 'menus',
   'query_queryview': 'query',
   'accessories_accessoriesview': 'accessories',
@@ -260,7 +262,7 @@ const MODULE_DISPLAY_NAMES: Record<string, string> = {
   brands: '品牌管理', models: '型号管理', colors: '颜色管理', memories: '内存管理',
   employee: '员工管理', stores: '门店管理', suppliers: '供应商管理',
   'supplier-payments': '供应商打款', accessories: '配件管理', permissions: '权限管理',
-  'module-management': '模块管理', menus: '菜单管理', query: '综合查询', system: '系统管理',
+  'module-management': '模块管理', menus: '菜单管理', query: '综合查询', system: '系统管理', standards: '规范与审计',
   analytics: '数据分析', attendance: '考勤管理', 'my-attendance': '我的考勤',
   salary: '工资管理', 'my-salary': '我的工资', 'salary-records': '工资记录',
   'salary-templates': '工资模板', 'data-check': '数据优化', preorders: '新品预定',

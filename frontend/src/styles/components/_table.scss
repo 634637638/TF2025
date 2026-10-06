@@ -47,7 +47,7 @@
   background: var(--admin-data-table-header-bg, linear-gradient(135deg, var(--tf-color-gray-bootstrap-700) 0%, var(--tf-color-gray-bootstrap-800) 100%)) !important;
   color: var(--admin-data-table-header-color, var(--color-bg-white)) !important;
   font-weight: var(--admin-data-table-header-font-weight, 600) !important;
-  font-size: var(--admin-data-table-header-font-size, 13px) !important;
+  font-size: var(--admin-data-table-header-font-size, var(--tf-type-scale-13)) !important;
   padding: var(--admin-data-table-header-padding-y, 6px) var(--admin-data-table-header-padding-x, 10px) !important;
   height: var(--admin-data-table-header-height, 38px) !important;
   box-sizing: border-box !important;
@@ -101,7 +101,7 @@
 .el-table .sort-order-control .el-input__inner {
   height: 26px;
   color: var(--el-text-color-primary);
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   font-weight: 600;
   text-align: center;
 }
@@ -121,12 +121,12 @@
 
 .el-table__body-wrapper td {
   padding: var(--admin-data-table-cell-padding-y, 10px) var(--admin-data-table-cell-padding-x, 8px) !important;
-  height: var(--admin-data-table-row-height, 40px) !important;
+  height: var(--admin-data-table-row-height, 48px) !important;
   box-sizing: border-box !important;
   border-right: 1px solid var(--admin-data-table-cell-border, var(--tf-color-border-muted)) !important;
   border-bottom: 1px solid var(--admin-data-table-cell-border, var(--tf-color-border-muted)) !important;
   vertical-align: middle !important;
-  font-size: var(--admin-data-table-cell-font-size, 13px) !important;
+  font-size: var(--admin-data-table-cell-font-size, var(--tf-type-scale-13)) !important;
   color: var(--admin-data-table-cell-color, var(--tf-color-heading)) !important;
   font-weight: var(--admin-data-table-cell-font-weight, 500) !important;
   text-align: center !important;
@@ -364,7 +364,7 @@
     width: 100%;
     max-width: none;
     color: var(--color-info) !important;
-    font-size: 14px !important;
+    font-size: var(--tf-type-scale-14) !important;
     line-height: 1.5;
   }
 }
@@ -384,7 +384,7 @@ body .el-button.el-button.el-button.table-inline-action.table-action {
   margin: 0 !important;
   padding: var(--admin-data-table-action-padding-y, 5px) var(--admin-data-table-inline-action-padding-x, 7px) !important;
   border-radius: var(--admin-data-table-action-radius, 4px) !important;
-  font-size: var(--admin-data-table-action-font-size, 13px) !important;
+  font-size: var(--admin-data-table-action-font-size, var(--tf-type-scale-13)) !important;
   white-space: nowrap !important;
 }
 
@@ -398,7 +398,7 @@ body .el-button.el-button.el-button.table-inline-action.table-action {
 
 .table-inline-action.el-button i,
 .table-inline-action.el-button.table-action i {
-  font-size: var(--admin-data-table-inline-action-icon-size, 12px) !important;
+  font-size: var(--admin-data-table-inline-action-icon-size, var(--tf-type-scale-12)) !important;
 }
 
 // 操作列按钮统一样式 - 全局生效
@@ -424,13 +424,13 @@ body .el-button.el-button.el-button.table-inline-action.table-action {
 // three :not() clauses. This public table selector must win so rendered button
 // padding stays synchronized with getActionColumnMinWidth().
 body :is(.action-buttons, .mobile-row-actions, .mobile-inline-actions, .table-actions, .tf-table-actions, .card-actions, .batch-actions-buttons) .el-button.el-button.el-button,
-.action-buttons button.btn,
-.mobile-row-actions button.btn,
-.mobile-inline-actions button.btn,
-.table-actions button.btn,
-.tf-table-actions button.btn,
-.card-actions button.btn,
-.batch-actions-buttons button.btn,
+.action-buttons .el-button.btn,
+.mobile-row-actions .el-button.btn,
+.mobile-inline-actions .el-button.btn,
+.table-actions .el-button.btn,
+.tf-table-actions .el-button.btn,
+.card-actions .el-button.btn,
+.batch-actions-buttons .el-button.btn,
 .btn-action,
 body .el-button.el-button.el-button.table-action {
   display: inline-flex !important;
@@ -446,26 +446,26 @@ body .el-button.el-button.el-button.table-action {
   border-style: solid !important;
   border-radius: var(--admin-data-table-action-radius, 4px) !important;
   box-shadow: none !important;
-  font-size: var(--admin-data-table-action-font-size, 13px) !important;
+  font-size: var(--admin-data-table-action-font-size, var(--tf-type-scale-13)) !important;
   font-weight: 700 !important;
   line-height: 1 !important;
   white-space: nowrap !important;
 }
 
 body :where(.action-buttons, .mobile-row-actions, .mobile-inline-actions, .table-actions, .tf-table-actions, .card-actions, .batch-actions-buttons) .el-button i,
-.action-buttons button.btn i,
-.mobile-row-actions button.btn i,
-.mobile-inline-actions button.btn i,
-.table-actions button.btn i,
-.tf-table-actions button.btn i,
-.card-actions button.btn i,
-.batch-actions-buttons button.btn i,
+.action-buttons .el-button.btn i,
+.mobile-row-actions .el-button.btn i,
+.mobile-inline-actions .el-button.btn i,
+.table-actions .el-button.btn i,
+.tf-table-actions .el-button.btn i,
+.card-actions .el-button.btn i,
+.batch-actions-buttons .el-button.btn i,
 .btn-action i,
 .el-button.table-action i {
   // Historical mr-* helpers and page-level icon margins must not change the
   // public icon/text spacing or make the measured action width inaccurate.
   margin-inline: 0 !important;
-  font-size: var(--admin-data-table-action-icon-size, 14px) !important;
+  font-size: var(--admin-data-table-action-icon-size, var(--tf-type-scale-14)) !important;
 }
 
 body :where(.action-buttons, .mobile-row-actions, .mobile-inline-actions, .table-actions, .tf-table-actions, .card-actions, .batch-actions-buttons) .el-button > span,
@@ -567,7 +567,7 @@ body .el-button.mobile-action-btn-approve {
 }
 
 body .btn-action.btn-edit,
-body :where(.action-buttons, .mobile-row-actions, .mobile-inline-actions, .table-actions, .tf-table-actions, .card-actions, .batch-actions-buttons) button.btn-outline-primary {
+body :where(.action-buttons, .mobile-row-actions, .mobile-inline-actions, .table-actions, .tf-table-actions, .card-actions, .batch-actions-buttons) .el-button.btn-outline-primary {
   @include tf-action-colors(
     var(--admin-action-edit-bg), var(--admin-action-edit-border), var(--admin-action-edit-color),
     var(--admin-action-edit-hover-bg), var(--admin-action-edit-hover-border), var(--admin-action-edit-hover-color)
@@ -790,6 +790,11 @@ body.is-admin-table-dragging * {
   margin-inline: auto !important;
 }
 
+// 操作按钮必须完整落在统一表格行高内，避免普通单元格内边距与按钮高度叠加撑高行。
+:is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table) td.actions-column {
+  padding-block: var(--admin-data-table-action-cell-padding-y) !important;
+}
+
 :is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table) td.actions-column .actions-cell {
   display: flex !important;
   align-items: center !important;
@@ -801,7 +806,7 @@ body.is-admin-table-dragging * {
   // Link 按钮样式
   .el-button--link {
     padding: 6px 8px !important;
-    font-size: 14px !important;
+    font-size: var(--tf-type-scale-14) !important;
     transition: all 0.3s ease !important;
 
     &:hover {
@@ -809,14 +814,14 @@ body.is-admin-table-dragging * {
     }
 
     i {
-      font-size: 16px !important;
+      font-size: var(--tf-type-scale-16) !important;
     }
   }
 
   // 普通小型按钮
   .el-button--small {
     padding: var(--admin-data-table-action-padding-y, 5px) var(--admin-data-table-action-padding-x, 10px) !important;
-    font-size: var(--admin-data-table-action-font-size, 13px) !important;
+    font-size: var(--admin-data-table-action-font-size, var(--tf-type-scale-13)) !important;
     height: var(--admin-data-table-action-height, 28px) !important;
     min-height: var(--admin-data-table-action-height, 28px) !important;
     border-radius: var(--admin-data-table-action-radius, 4px) !important;
@@ -831,6 +836,10 @@ body.is-admin-table-dragging * {
 }
 
 @media (max-width: 767px) {
+  :is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table) td.actions-column {
+    padding-block: var(--admin-data-table-action-cell-padding-y) !important;
+  }
+
   .tf-action-row--compact {
     gap: 4px !important;
   }
@@ -839,7 +848,7 @@ body.is-admin-table-dragging * {
     height: var(--tf-toolbar-button-height, 30px) !important;
     min-height: var(--tf-toolbar-button-height, 30px) !important;
     padding-inline: var(--tf-toolbar-button-padding-x, 7px) !important;
-    font-size: var(--tf-toolbar-button-font-size, 12px) !important;
+    font-size: var(--tf-toolbar-button-font-size, var(--tf-type-scale-12)) !important;
   }
 
   .mobile-row-actions,
@@ -859,16 +868,16 @@ body.is-admin-table-dragging * {
     border-radius: 8px !important;
   }
 
-  :where(.mobile-row-actions, .mobile-inline-actions) :where(.el-button, .mobile-action-btn, button.btn) {
+  :where(.mobile-row-actions, .mobile-inline-actions) :where(.el-button, .mobile-action-btn) {
     flex: 1 1 0 !important;
     min-width: 0 !important;
   }
 
-  :where(.mobile-row-actions, .mobile-inline-actions) :where(.el-button, button.btn) i {
+  :where(.mobile-row-actions, .mobile-inline-actions) :where(.el-button, .mobile-action-btn) i {
     margin-right: 2px !important;
   }
 
-  :where(.mobile-row-actions, .mobile-inline-actions) :where(.el-button, button.btn):hover {
+  :where(.mobile-row-actions, .mobile-inline-actions) :where(.el-button, .mobile-action-btn):hover {
     transform: none !important;
     box-shadow: none !important;
   }

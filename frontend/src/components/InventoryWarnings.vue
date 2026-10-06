@@ -264,7 +264,7 @@ onUnmounted(() => {
 
     h3 {
       margin: 0;
-      font-size: 18px;
+      font-size: var(--tf-type-scale-18);
       color: var(--tf-color-heading);
       display: flex;
       align-items: center;
@@ -283,7 +283,7 @@ onUnmounted(() => {
 
   .no-warning-text {
     color: var(--tf-color-green-legacy);
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
     margin-top: 10px;
   }
 
@@ -306,7 +306,7 @@ onUnmounted(() => {
 
         h4 {
           margin: 0;
-          font-size: 15px;
+          font-size: var(--tf-type-scale-15);
           color: var(--tf-color-slate-legacy);
           display: flex;
           align-items: center;
@@ -349,7 +349,7 @@ onUnmounted(() => {
 
             .item-model,
             .item-name {
-              font-size: 14px;
+              font-size: var(--tf-type-scale-14);
               font-weight: 500;
               color: var(--tf-color-heading);
               margin-bottom: 4px;
@@ -358,7 +358,7 @@ onUnmounted(() => {
             .item-details {
               display: flex;
               gap: 12px;
-              font-size: 12px;
+              font-size: var(--tf-type-scale-12);
               color: var(--tf-color-gray-cool-500);
 
               .detail-item {
@@ -377,7 +377,7 @@ onUnmounted(() => {
             }
 
             .item-min-stock {
-              font-size: 12px;
+              font-size: var(--tf-type-scale-12);
               color: var(--tf-color-gray-legacy-500);
             }
           }
@@ -395,7 +395,7 @@ onUnmounted(() => {
               color: var(--tf-color-red-legacy);
 
               .stock-label {
-                font-size: 11px;
+                font-size: var(--tf-type-scale-11);
                 font-weight: normal;
               }
             }
@@ -405,7 +405,7 @@ onUnmounted(() => {
               color: var(--tf-color-warning-text-legacy);
 
               .stock-label {
-                font-size: 11px;
+                font-size: var(--tf-type-scale-11);
                 font-weight: normal;
               }
             }
@@ -415,17 +415,17 @@ onUnmounted(() => {
               color: var(--tf-color-green-material-800);
 
               .stock-label {
-                font-size: 11px;
+                font-size: var(--tf-type-scale-11);
                 font-weight: normal;
               }
             }
 
             .stock-count {
-              font-size: 18px;
+              font-size: var(--tf-type-scale-18);
             }
 
             .stock-label {
-              font-size: 11px;
+              font-size: var(--tf-type-scale-11);
             }
           }
         }
@@ -445,7 +445,7 @@ onUnmounted(() => {
       gap: 12px;
 
       h3 {
-        font-size: 16px;
+        font-size: var(--tf-type-scale-16);
       }
 
       .header-actions {
@@ -463,7 +463,7 @@ onUnmounted(() => {
           padding: 8px 12px;
 
           h4 {
-            font-size: 14px;
+            font-size: var(--tf-type-scale-14);
           }
         }
 
@@ -474,11 +474,11 @@ onUnmounted(() => {
             .item-info {
               .item-model,
               .item-name {
-                font-size: 13px;
+                font-size: var(--tf-type-scale-13);
               }
 
               .item-details {
-                font-size: 11px;
+                font-size: var(--tf-type-scale-11);
                 gap: 8px;
               }
             }
@@ -487,7 +487,7 @@ onUnmounted(() => {
               padding: 4px 10px;
 
               .stock-count {
-                font-size: 16px;
+                font-size: var(--tf-type-scale-16);
               }
             }
           }

@@ -647,7 +647,9 @@ const loadBrands = async (bustCache = false, silentError = false, _showLoadingSt
       const sortedData = brandData.sort((a: Brand, b: Brand) => (a.sort_order || 0) - (b.sort_order || 0))
       brands.value = sortedData
       // 确保 total 是数字类型
-      const apiPagination = response.pagination || {
+      // 统一 API 返回的是后端响应体，分页信息位于 data.pagination。
+      // 读取真实总数，不能用当前页品牌数量代替。
+      const apiPagination = response.data?.pagination || {
         page: 1,
         page_size: 10,
         total: 0,
@@ -1115,7 +1117,7 @@ onMounted(async () => {
   align-items: center;
   justify-content: center;
   color: white;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
 }
 
 .user-details {
@@ -1127,7 +1129,7 @@ onMounted(async () => {
 .user-name {
   color: white;
   font-weight: 600;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
 }
 
 .user-meta {
@@ -1135,7 +1137,7 @@ onMounted(async () => {
   align-items: center;
   gap: 12px;
   color: rgba(255, 255, 255, 0.8);
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
 }
 
 .user-id, .user-position {
@@ -1151,7 +1153,7 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 16px;
+  font-size: var(--tf-type-scale-16);
   font-weight: 600;
   color: var(--tf-color-heading);
   margin-bottom: 20px;
@@ -1165,7 +1167,7 @@ onMounted(async () => {
 
 .record-count {
   margin-left: auto;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   color: var(--tf-color-muted);
   font-weight: 400;
 }
@@ -1176,7 +1178,7 @@ onMounted(async () => {
   color: var(--tf-color-warning-text-legacy);
   padding: 2px 6px;
   border-radius: 4px;
-  font-size: 10px;
+  font-size: var(--tf-type-scale-10);
   font-weight: 500;
   margin-left: 6px;
 }
@@ -1204,7 +1206,7 @@ onMounted(async () => {
 
 /* 保留原有的表单样式（用于对话框等） */
 .form-label {
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   font-weight: 500;
   color: var(--tf-color-gray-bootstrap-700);
 }
@@ -1219,7 +1221,7 @@ onMounted(async () => {
   top: 50%;
   transform: translateY(-50%);
   color: var(--tf-color-muted);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   z-index: 1;
 }
 
@@ -1228,7 +1230,7 @@ onMounted(async () => {
   padding: 10px 12px 10px 36px;
   border: 2px solid var(--tf-color-border-cool);
   border-radius: 8px;
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
   transition: all 0.3s ease;
   background: var(--tf-color-surface-muted);
 }
@@ -1246,7 +1248,7 @@ onMounted(async () => {
 
 .form-help small {
   color: var(--tf-color-muted);
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
 }
 
 .form-actions {
@@ -1262,128 +1264,7 @@ onMounted(async () => {
   border-radius: 8px;
 }
 
-.table {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
-  margin: 0;
-  background: white;
-}
-
-.table th {
-  background: linear-gradient(135deg, var(--tf-color-gray-bootstrap-700) 0%, var(--tf-color-gray-bootstrap-800) 100%);
-  color: white;
-  padding: 12px 10px;
-  text-align: center;
-  font-weight: 600;
-  font-size: 14px;
-  border-right: 1px solid var(--tf-color-border-subtle);
-  border-bottom: 2px solid var(--tf-color-border-subtle);
-  position: relative;
-  white-space: nowrap;
-}
-
-.table th:last-child {
-  border-right: none;
-}
-
-.table td {
-  padding: 6px 6px;
-  border-right: 1px solid var(--tf-color-border-muted);
-  border-bottom: 1px solid var(--tf-color-border-muted);
-  vertical-align: middle;
-  font-size: 14px;
-  color: var(--tf-color-heading);
-  font-weight: 500;
-  text-align: center;
-  position: relative;
-}
-
-.table td:last-child {
-  border-right: none;
-}
-
-.table tbody tr {
-  transition: all 0.2s ease;
-  position: relative;
-}
-
-.table tbody tr:nth-child(even) {
-  background: var(--tf-color-surface-muted);
-}
-
-.table tbody tr:hover {
-  background: var(--tf-color-blue-100);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-}
-
-.table tbody tr:hover td {
-  border-bottom-color: var(--tf-color-border-subtle);
-}
-
-.table tbody tr.is-dragging {
-  opacity: 0.5;
-  background: var(--tf-color-blue-tailwind-50) !important;
-}
-
-.table tbody tr.is-drag-over {
-  background: var(--tf-color-blue-50) !important;
-  border-top: 2px solid var(--tf-color-blue-500);
-}
-
-/* 拖拽手柄 */
-.drag-handle-cell {
-  padding: 8px 4px !important;
-  text-align: center;
-  cursor: move;
-  user-select: none;
-}
-
-.drag-handle {
-  color: var(--tf-color-neutral-400);
-  font-size: 16px;
-  cursor: grab;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  border-radius: 4px;
-  transition: all 0.2s;
-}
-
-.drag-handle:hover {
-  color: var(--tf-color-blue-500);
-  background: var(--tf-color-blue-tailwind-50);
-}
-
-.drag-handle:active {
-  cursor: grabbing;
-}
-
-.drag-handle.disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
-  pointer-events: none;
-}
-
-.drag-handle.disabled:hover {
-  color: var(--tf-color-neutral-400);
-  background: transparent;
-}
-
 /* 表格内容样式 */
-.id-badge {
-  background: linear-gradient(135deg, var(--tf-color-indigo-brand), var(--tf-color-purple-brand));
-  color: white;
-  padding: 4px 8px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 600;
-  display: inline-block;
-}
-
 .brand-info {
   max-width: 200px;
   text-align: center;
@@ -1396,17 +1277,7 @@ onMounted(async () => {
   justify-content: center;
   gap: 8px;
   margin-bottom: 4px;
-  font-size: 14px;
-}
-
-.status-badge {
-  padding: 6px 12px;
-  border-radius: 20px;
-  font-size: 13px;
-  font-weight: 600;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
+  font-size: var(--tf-type-scale-14);
 }
 
 .status-active {
@@ -1431,13 +1302,13 @@ onMounted(async () => {
   color: var(--tf-color-gray-bootstrap-700);
   padding: 4px 8px;
   border-radius: 6px;
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   font-weight: 600;
   display: inline-block;
 }
 
 .time-info {
-  font-size: 13px;
+  font-size: var(--tf-type-scale-13);
   color: var(--tf-color-muted);
   display: flex;
   align-items: center;
@@ -1462,7 +1333,7 @@ onMounted(async () => {
 
 .pagination-info {
   color: var(--tf-color-muted);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
 }
 
 .pagination-controls {
@@ -1489,7 +1360,7 @@ onMounted(async () => {
 }
 .no-permission-text {
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--tf-type-scale-12);
   font-style: italic;
   padding: 6px 10px;
   background: var(--tf-color-surface-soft);
@@ -1539,7 +1410,7 @@ onMounted(async () => {
 
 .pagination-info {
   color: var(--tf-color-muted);
-  font-size: 14px;
+  font-size: var(--tf-type-scale-14);
 }
 
 .pagination-controls {
@@ -1608,33 +1479,6 @@ onMounted(async () => {
     border-radius: 12px;
   }
 
-  .table {
-    width: 100%;
-    max-width: 100%;
-    min-width: 0;
-    table-layout: fixed;
-    font-size: 12px;
-    box-sizing: border-box;
-  }
-
-  .table th,
-  .table td {
-    padding: 8px 6px;
-    white-space: normal;
-    word-break: break-word;
-    box-sizing: border-box;
-  }
-
-  .table th:first-child,
-  .table td:first-child {
-    padding-left: 8px;
-  }
-
-  .table th:last-child,
-  .table td:last-child {
-    padding-right: 8px;
-  }
-
   /* 操作按钮优化 */
   .actions {
     vertical-align: middle;
@@ -1684,7 +1528,7 @@ onMounted(async () => {
   .btn-page {
     width: 36px;
     height: 36px;
-    font-size: 12px;
+    font-size: var(--tf-type-scale-12);
   }
 
   .brands-dialog-form :deep(.el-form-item) {
@@ -1692,7 +1536,7 @@ onMounted(async () => {
   }
 
   .brands-dialog-form :deep(.el-form-item__label) {
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
     line-height: 1.4;
     padding-bottom: 4px;
   }
@@ -1723,21 +1567,21 @@ onMounted(async () => {
 /* 小屏手机调整 - 保持2个一行，参考销售页面 */
 @media (max-width: 479px) {
   .page-title {
-    font-size: 22px;
+    font-size: var(--tf-type-scale-22);
   }
 
   .page-description {
-    font-size: 14px;
+    font-size: var(--tf-type-scale-14);
   }
 
   .brand-name {
-    font-size: 13px;
+    font-size: var(--tf-type-scale-13);
     line-height: 1.35;
     font-weight: 700;
   }
 
   .status-badge {
-    font-size: 10px;
+    font-size: var(--tf-type-scale-10);
     padding: 4px 6px;
     max-width: 72px;
   }
@@ -1773,9 +1617,6 @@ onMounted(async () => {
     overflow: visible;
   }
 
-  .table {
-    min-width: auto;
-  }
 }
 
 /* 高对比度模式支持 */
@@ -1788,14 +1629,6 @@ onMounted(async () => {
     border-width: 2px;
   }
 
-  .table th {
-    background-color: var(--tf-color-black);
-    color: var(--color-bg-white);
-  }
-
-  .table tr:nth-child(even) {
-    background-color: var(--tf-color-gray-200);
-  }
 }
 
 /* 减少动画模式支持 */
