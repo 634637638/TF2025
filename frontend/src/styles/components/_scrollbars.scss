@@ -2,7 +2,8 @@
 html,
 body,
 #app,
-.public-price-query {
+.public-price-query,
+.customer-search-dropdown {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
@@ -10,7 +11,9 @@ body,
 html::-webkit-scrollbar,
 body::-webkit-scrollbar,
 #app::-webkit-scrollbar,
-.public-price-query::-webkit-scrollbar {
+.public-price-query::-webkit-scrollbar,
+.customer-search-dropdown::-webkit-scrollbar,
+.customer-search-dropdown::-webkit-scrollbar-button {
   display: none;
   width: 0;
   height: 0;

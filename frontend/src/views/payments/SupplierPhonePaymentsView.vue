@@ -312,7 +312,8 @@
 
           <div class="table-responsive payment-list-table-wrapper">
             <el-table
-              :data="loading ? [] : phones"
+              v-tf-loading="loading"
+              :data="phones"
               border
               stripe
               class="data-table devices-table supplier-payment-table"

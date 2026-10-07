@@ -310,6 +310,25 @@ class PriceListController {
   }
 
   /**
+   * 批量设置价格记录的采集来源。
+   * 只更新 source_config_id，不改变当前采集原价。
+   */
+  async batchUpdatePriceSource(req, res) {
+    try {
+      initDb()
+      const priceListService = getPriceListService()
+      const result = await priceListService.batchUpdatePriceSource(req.body)
+      if (result.success) {
+        return ApiResponse.success(res, result.data, result.message)
+      }
+      return ApiResponse.error(res, result.message, result.statusCode || 400)
+    } catch (error) {
+      log.error('批量设置采集来源失败:', error)
+      return ApiResponse.error(res, '批量设置采集来源失败', 500)
+    }
+  }
+
+  /**
    * 删除价格记录
    */
   async deletePriceItem(req, res) {

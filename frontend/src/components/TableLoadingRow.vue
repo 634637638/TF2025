@@ -8,7 +8,7 @@
       class="table-loading-row__cell"
     >
       <SectionLoading
-        :text="text"
+        :text="displayText"
         :size="sectionSize"
       />
     </td>
@@ -18,7 +18,7 @@
     class="table-loading-row__block"
   >
     <SectionLoading
-      :text="text"
+      :text="displayText"
       :size="sectionSize"
     />
   </div>
@@ -43,6 +43,7 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const sectionSize = computed(() => props.size === 'small' ? 'compact' : props.size === 'large' ? 'large' : 'normal')
+const displayText = computed(() => props.text === '加载中...' ? '加载数据中...' : props.text)
 </script>
 
 <style scoped>
@@ -59,7 +60,9 @@ td.table-loading-row__cell,
 }
 
 .table-loading-row__block {
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 100%;
   line-height: normal;
 }
@@ -67,18 +70,13 @@ td.table-loading-row__cell,
 .table-loading-row__cell :deep(.section-loading),
 .table-loading-row__block :deep(.section-loading) {
   width: 100%;
-  min-height: 132px;
+  min-height: 0;
+  padding: var(--tf-space-3) var(--tf-space-4);
   box-sizing: border-box;
-  border-radius: 0;
-  border-left: 0;
-  border-right: 0;
+  border-radius: var(--tf-radius-card);
+  border: 0;
   box-shadow: none;
-  background: linear-gradient(
-    90deg,
-    var(--tf-color-surface, var(--color-bg-white)) 0%,
-    var(--tf-color-sky-50, var(--tf-color-surface-muted)) 50%,
-    var(--tf-color-surface, var(--color-bg-white)) 100%
-  );
+  background: transparent;
 }
 
 .table-loading-row__cell :deep(.section-loading)::before,

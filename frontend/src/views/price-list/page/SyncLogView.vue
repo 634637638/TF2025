@@ -205,7 +205,8 @@
         <el-table
           v-else
           class="data-table"
-          :data="loading ? [] : logList"
+              v-tf-loading="loading"
+              :data="logList"
           stripe
           border
           style="width: 100%"

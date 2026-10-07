@@ -9,8 +9,12 @@
     destroy-on-close
     @update:model-value="emit('update:modelValue', $event)"
   >
+    <SectionLoading
+      v-if="modelValue && detailLoading"
+      text="加载详情中..."
+    />
     <div
-      v-if="modelValue && currentDetail"
+      v-else-if="modelValue && currentDetail"
       class="detail-content"
     >
       <div
@@ -227,6 +231,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import MobileDialog from '@/components/MobileDialog.vue'
+import SectionLoading from '@/components/SectionLoading.vue'
 import { formatAmount, formatImageUrl } from '@/utils/format'
 import { unifiedApi } from '@/utils/unified-api'
 import { normalizeIdCard, normalizePersonName, normalizePhoneDigits } from '@/utils/security'
@@ -248,6 +253,7 @@ const emit = defineEmits<{
 }>()
 
 const currentDetail = ref<any>(null)
+const detailLoading = ref(false)
 const showHandlerInfo = ref(false)
 let detailRequestSeq = 0
 
@@ -331,6 +337,7 @@ const formatDate = (date: string) => date ? TimeUtil.format(date, TIME_FORMATS.D
 
 const loadDetail = async (item: any) => {
   const requestSeq = ++detailRequestSeq
+  detailLoading.value = true
   currentDetail.value = normalizeSubsidyRecord(item)
   showHandlerInfo.value = false
 
@@ -340,7 +347,8 @@ const loadDetail = async (item: any) => {
   }
 
   try {
-    const response = await unifiedApi.get(`/subsidy/${item.id}`)
+    // 弹窗使用自己的区块 Loading，避免详情请求同时触发全屏 Loading。
+    const response = await unifiedApi.get(`/subsidy/${item.id}`, { showLoading: false })
     if (requestSeq !== detailRequestSeq) return
 
     if (response.success) {
@@ -354,6 +362,10 @@ const loadDetail = async (item: any) => {
     if (requestSeq !== detailRequestSeq) return
     logger.error('获取详情失败:', error)
     ElMessage.warning('获取详细信息失败，显示基本数据')
+  } finally {
+    if (requestSeq === detailRequestSeq) {
+      detailLoading.value = false
+    }
   }
 }
 

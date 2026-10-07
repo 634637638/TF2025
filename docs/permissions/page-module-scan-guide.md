@@ -194,6 +194,12 @@ src/views/<module>/page/<ComponentName>Card.vue
 
 ## 落地建议
 
+菜单的一级/二级位置只由 `parent_id` 决定，不改变角色授权。主菜单必须关联实际路由主页面模块，不能因显示名称相同关联到子 Tab。例如“工资管理”使用 `salary_salaryview`，“工资记录”使用 `salary_salaryrecordsview`，“我的工资”使用 `salary_mysalaryview`。
+
+扫描器的增量关联和全量修复统一委托 `menuModuleLinker.js`，禁止另建重复特殊映射。明确规则优先于模块名称和数据库查询顺序，规范模块尚未注册时也不能让同名子模块抢占主菜单。模块关联修复不向普通角色自动发放权限。
+
+变动后按[统一菜单 API 规范](../backend/menu-api-specification.md)检查二级菜单显示、父节点保留、菜单与页面权限的独立性，以及子 Tab 数据范围。
+
 - 新增独立页面时，优先使用 `View` / `Page` 后缀
 - 新增局部组件时，优先使用 `Modal` / `Tab` / `Panel` / `Card` 后缀
 - 执行模块同步前，先确认目标文件是否真的应该进入权限系统

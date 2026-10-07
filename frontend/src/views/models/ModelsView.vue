@@ -182,7 +182,7 @@
             <el-table
               ref="modelsTableRef"
               class="data-table devices-table base-data-table models-data-table"
-              v-loading="showTableLoadingOverlay && models.length > 0"
+              v-tf-loading="tableLoading"
               :data="models"
               border
               stripe
@@ -606,7 +606,6 @@ const submitting = ref(false)
 const savingOrder = ref(false)
 const models = ref<Model[]>([])
 const modelStats = ref({ total: 0, active: 0, inactive: 0, related_brands: 0 })
-const showTableLoadingOverlay = computed(() => tableLoading.value && models.value.length > 0)
 const getModelRowKey = (model: Model) => String(model.id)
 const brands = ref<Brand[]>([])
 let lastLoadedQueryKey = ''

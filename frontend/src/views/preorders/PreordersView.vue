@@ -264,6 +264,7 @@
             <div class="table-responsive">
               <el-table
                 ref="pendingTableRef"
+                v-tf-loading="loading"
                 :data="pendingPreorders"
                 border
                 stripe
@@ -560,6 +561,7 @@
             <div class="table-responsive">
               <el-table
                 ref="matchedTableRef"
+                v-tf-loading="loading"
                 :data="matchedPreorders"
                 border
                 stripe
@@ -986,6 +988,7 @@
             <div class="table-responsive">
               <el-table
                 ref="deliveredTableRef"
+                v-tf-loading="loading"
                 :data="deliveredPreorders"
                 border
                 stripe

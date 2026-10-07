@@ -11,6 +11,19 @@
 - 综合查询快速出库使用独立的 `POST /inventory/quick-sale` 事务，不生成发票序号、也不使用批发/划拨保存点；失败时统一回滚并释放连接。
 - 统计查询必须复用销售库存筛选条件所需的品牌、型号、颜色和内存关联，不能只查询 `phones` 表却引用 `b`、`m`、`co` 或 `mem` 别名。
 
+### 单据号类型后缀
+
+单据号格式为 `YYYYMMDD + 四位序号 + 类型后缀`。调货和批发属于同一种同行交易类型，必须共用 `PF` 后缀；供应商划拨仍使用 `HB`，普通销售使用 `XS`。
+
+| 业务类型 | 后缀 | 说明 |
+| --- | --- | --- |
+| `retail` | `XS` | 普通销售 |
+| `wholesale` | `PF` | 批发 |
+| `peer_transfer` | `PF` | 调货，与批发共用序列空间 |
+| `supplier_proxy` | `HB` | 供应商划拨 |
+
+公共工具 `backend/src/utils/invoice-number.js` 是唯一的新单号规则入口。历史已经生成的 `DH` 调货单号不改写，解析工具继续识别 `DH`，但任何新建或补生成单号都不得再使用 `DH`。
+
 ## 当前实现
 
 - `backend/src/utils/invoice-number.js` 暴露 `ensureInvoiceSequenceTable` 作为统一预检入口。
@@ -18,6 +31,7 @@
 - `backend/src/services/transfer.service.js` 在批发、划拨事务前预检。
 - `backend/src/routes/rentals.js` 在租赁买断事务前预检。
 - `backend/src/routes/inventory.js` 的快速出库保持独立事务回滚，不属于弃用接口。
+- 调货和批发的新单号均由公共工具生成 `PF`；手机编辑接口的历史补生成分支也遵循该规则。
 
 ## 验证
 

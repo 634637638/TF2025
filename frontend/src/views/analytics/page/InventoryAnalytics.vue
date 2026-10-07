@@ -166,7 +166,8 @@
     >
       <el-table
         class="data-table"
-        :data="loading ? [] : filteredLowStockItems"
+        v-tf-loading="loading"
+        :data="filteredLowStockItems"
         stripe
         :table-layout="'auto'"
       >
@@ -284,7 +285,8 @@
           </template>
           <el-table
             class="data-table"
-            :data="loading ? [] : recentSoldModels"
+            v-tf-loading="loading"
+            :data="recentSoldModels"
             stripe
             :table-layout="'auto'"
           >
@@ -499,7 +501,8 @@
 
           <el-table
             class="data-table"
-            :data="loading ? [] : filteredLowStockItems"
+            v-tf-loading="loading"
+            :data="filteredLowStockItems"
             stripe
             style="width: 100%"
             :table-layout="'auto'"

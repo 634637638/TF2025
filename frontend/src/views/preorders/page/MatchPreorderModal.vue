@@ -47,7 +47,7 @@
       <div class="table-responsive matchable-table-wrap">
         <el-table
           class="data-table base-data-table matchable-table"
-          v-loading="loading && phones.length > 0"
+          v-tf-loading="loading"
           :data="phones"
           border
           stripe

@@ -15,6 +15,7 @@
 - [视觉令牌](design-token-standard.md)
 - [全局文字与排版](typography-standards.md)
 - [客户搜索与姓名保护](customer-search-standard.md)
+- [前端规范豁免登记](standards-exemptions.md)
 - [报价页联系方式](price-contact-standard.md)
 - [数据实时刷新](data-freshness-standard.md)
 - [对话框](dialog-standards.md)

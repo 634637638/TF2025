@@ -318,69 +318,6 @@ class ModuleScanner {
     return categoryMap[folder] || 'custom'
   }
 
-  normalizeMatcherToken(value) {
-    return String(value || '')
-      .toLowerCase()
-      .replace(/[^a-z0-9\u4e00-\u9fa5]/g, '')
-  }
-
-  buildUrlTokens(menuUrl) {
-    const rawParts = String(menuUrl || '')
-      .replace(/^\//, '')
-      .split('/')
-      .map(part => this.normalizeMatcherToken(part))
-      .filter(Boolean)
-
-    const tokenSet = new Set()
-    rawParts.forEach(token => {
-      tokenSet.add(token)
-      if (token.endsWith('s') && token.length > 3) {
-        tokenSet.add(token.slice(0, -1))
-      }
-    })
-
-    return Array.from(tokenSet)
-  }
-
-  matchModuleByUrl(menuUrl, modules = []) {
-    const urlTokens = this.buildUrlTokens(menuUrl)
-    if (urlTokens.length === 0) {
-      return null
-    }
-
-    const normalizedPath = urlTokens.join('')
-    const normalizedModules = modules.map(module => ({
-      ...module,
-      normalizedKey: this.normalizeMatcherToken(module.key)
-    }))
-
-    const directMatch = normalizedModules.find(module =>
-      module.normalizedKey === normalizedPath ||
-      module.normalizedKey.startsWith(normalizedPath) ||
-      normalizedPath.startsWith(module.normalizedKey)
-    )
-
-    if (directMatch) {
-      return directMatch
-    }
-
-    const scoredMatches = normalizedModules
-      .map(module => {
-        const score = urlTokens.reduce((total, token) => {
-          if (!module.normalizedKey.includes(token)) {
-            return total
-          }
-          return total + (token.length > 4 ? 2 : 1)
-        }, 0)
-
-        return { module, score }
-      })
-      .filter(item => item.score > 0)
-      .sort((a, b) => b.score - a.score || a.module.normalizedKey.length - b.module.normalizedKey.length)
-
-    return scoredMatches[0]?.module || null
-  }
-
   /**
    * 同步所有模块
    */
@@ -658,7 +595,7 @@ class ModuleScanner {
 
         if (result.insertId > 0) {
           // 自动关联对应的菜单
-          await this.autoLinkMenusToModule(moduleInfo.key, moduleInfo.name)
+          await this.autoLinkMenusToModule(moduleInfo.key)
         }
 
         await this.createModulePermissions(moduleInfo.key)
@@ -713,59 +650,27 @@ class ModuleScanner {
   /**
    * 自动关联菜单到模块
    */
-  async autoLinkMenusToModule(moduleKey, moduleName) {
+  async autoLinkMenusToModule(moduleKey) {
     try {
       const pool = getDatabase()
 
-      // 构建菜单名称匹配规则
-      const menuNamePatterns = [
-        moduleName, // 直接使用模块名称
-        moduleName.replace('管理', '') // 移除"管理"后缀
-      ]
+      const [modules] = await pool.execute(
+        'SELECT id, `key`, name FROM modules WHERE is_active = 1'
+      )
+      const [menus] = await pool.execute(
+        'SELECT id, name, url FROM menus WHERE (module_id IS NULL OR module_id = 0) AND is_active = 1'
+      )
 
-      // 特殊映射规则（使用实际的模块 key）
-      const specialMappings = {
-        'salary_salaryrecordsview': '工资管理',
-        'salary_salarytemplatesview': '工资模板',
-        'salary_salaryview': '工资管理',
-        'salary_mysalaryview': '我的工资',
-        'attendance_attendanceview': '考勤管理',
-        'attendance_myattendanceview': '我的考勤',
-        'subsidy_subsidyview': '国补管理',
-        'system_gitmanagement': 'Git管理',
-        'shared_sharedview': '经验分享'
-      }
+      // 与全量同步共用匹配规则，子模块不能因显示名称相同抢占主菜单。
+      for (const menu of menus) {
+        const matchedModule = this.menuLinker.findModuleForMenu(menu, modules)
+        if (matchedModule?.key !== moduleKey) continue
 
-      if (specialMappings[moduleKey]) {
-        menuNamePatterns.unshift(specialMappings[moduleKey])
-      }
-
-      // 查找未关联的菜单并更新
-      for (const menuName of menuNamePatterns) {
-        const [menus] = await pool.execute(
-          'SELECT id, name FROM menus WHERE name = ? AND (module_id IS NULL OR module_id = 0) AND is_active = 1',
-          [menuName]
+        await pool.execute(
+          'UPDATE menus SET module_id = ?, module_key = ?, updated_at = NOW() WHERE id = ? AND (module_id IS NULL OR module_id = 0)',
+          [matchedModule.id, moduleKey, menu.id]
         )
-
-        if (menus.length > 0) {
-          // 获取模块 ID
-          const [modules] = await pool.execute(
-            'SELECT id FROM modules WHERE `key` = ?',
-            [moduleKey]
-          )
-
-          if (modules.length > 0) {
-            const moduleId = modules[0].id
-
-            // 更新菜单关联
-            await pool.execute(
-              'UPDATE menus SET module_id = ?, module_key = ?, updated_at = NOW() WHERE id = ?',
-              [moduleId, moduleKey, menus[0].id]
-            )
-
-            log.debug(`🔗 自动关联菜单 "${menuName}" -> 模块 "${moduleKey}"`)
-          }
-        }
+        log.debug(`🔗 自动关联菜单 "${menu.name}" -> 模块 "${moduleKey}"`)
       }
     } catch (error) {
       log.error('自动关联菜单失败:', error)
@@ -831,89 +736,17 @@ class ModuleScanner {
    * 在扫描模块后自动调用，确保菜单正确关联到最新的模块
    */
   async autoFixAllMenuLinks() {
-    const pool = getDatabase()
-    const connection = await pool.getConnection()
-
     try {
-      // 1. 获取所有活跃的模块
-      const [modules] = await connection.execute(
-        'SELECT id, `key`, name, category FROM modules WHERE is_active = 1'
-      )
-
-      log.debug(`🔍 找到 ${modules.length} 个活跃模块`)
-
-      // 2. 获取所有活跃的菜单
-      const [menus] = await connection.execute(
-        'SELECT id, name, url, module_id, module_key FROM menus WHERE is_active = 1'
-      )
-
-      log.debug(`🔍 找到 ${menus.length} 个活跃菜单`)
-
-      // 3. 构建菜单名称到模块的映射
-      const menuModuleMap = new Map()
-
-      // 优先使用特殊映射
-      const specialMappings = {
-        'salary_salaryrecordsview': '工资管理',
-        'salary_salarytemplatesview': '工资模板',
-        'salary_salaryview': '工资管理',
-        'salary_mysalaryview': '我的工资',
-        'attendance_attendanceview': '考勤管理',
-        'attendance_myattendanceview': '我的考勤',
-        'subsidy_subsidyview': '国补管理',
-        'system_gitmanagement': 'Git管理'
-      }
-
-      // 构建映射关系
-      for (const module of modules) {
-        const mappedName = specialMappings[module.key] || module.name
-        menuModuleMap.set(mappedName, module)
-        menuModuleMap.set(mappedName.replace('管理', ''), module) // 也支持不带"管理"的名称
-        if (module.key === 'system_gitmanagement') {
-          menuModuleMap.set('Git仓库', module)
-          menuModuleMap.set('GIT仓库', module)
-          menuModuleMap.set('Git 仓库管理', module)
-        }
-      }
-
-      // 4. 更新菜单关联
-      let updatedCount = 0
-      const addedPermissionCount = 0
-
-      for (const menu of menus) {
-        // 查找匹配的模块
-        let matchedModule = menuModuleMap.get(menu.name)
-
-        if (!matchedModule) {
-          matchedModule = this.matchModuleByUrl(menu.url, modules)
-        }
-
-        if (matchedModule && matchedModule.id !== menu.module_id) {
-          // 更新菜单关联
-          await connection.execute(
-            'UPDATE menus SET module_id = ?, module_key = ?, updated_at = NOW() WHERE id = ?',
-            [matchedModule.id, matchedModule.key, menu.id]
-          )
-
-          log.debug(`   🔗 更新菜单 "${menu.name}" -> 模块 "${matchedModule.name}" (${matchedModule.key})`)
-          updatedCount++
-
-        }
-      }
-
-      log.debug(`📊 修复完成: 更新了 ${updatedCount} 个菜单关联，未自动发放角色权限`)
-
+      const result = await this.menuLinker.syncAllMenusToModules()
       return {
-        success: true,
-        updatedCount,
-        addedPermissionCount
+        success: result.success,
+        updatedCount: result.linked + result.corrected,
+        addedPermissionCount: 0
       }
 
     } catch (error) {
       log.error('❌ 自动修复菜单关联失败:', error)
       throw error
-    } finally {
-      connection.release()
     }
   }
 }

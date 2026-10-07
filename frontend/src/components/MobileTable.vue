@@ -1,6 +1,7 @@
 <template>
   <div
     ref="containerRef"
+    v-tf-loading="loading"
     class="mobile-table"
   >
     <!-- 桌面端表格 -->
@@ -10,7 +11,7 @@
     >
       <el-table
         ref="desktopTableRef"
-        :data="loading ? [] : data"
+        :data="data"
         :stripe="stripe"
         :border="border"
         :size="size"
@@ -20,9 +21,9 @@
       >
         <template #empty>
           <TableLoadingRow
-            v-if="loading"
+            v-if="loading && data.length === 0"
             mode="block"
-            text="加载中..."
+            text="加载数据中..."
           />
           <DataEmptyState
             v-else
@@ -86,13 +87,7 @@
       v-else
       class="mobile-table__mobile"
     >
-      <SectionLoading
-        v-if="loading"
-        text="加载中..."
-      />
-
       <div
-        v-else
         class="mobile-table__card-list"
       >
         <div
@@ -183,7 +178,6 @@
 
 <script setup lang="ts">
 import { ref, type Component } from 'vue'
-import SectionLoading from '@/components/SectionLoading.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import type { TableAction, TableColumn } from '@/types/component'
 import { useMobile } from '@/composables/mobile'

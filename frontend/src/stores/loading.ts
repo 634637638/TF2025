@@ -13,20 +13,39 @@ export const useLoadingStore = defineStore('loading', () => {
   const loadingText = ref('')
   const loadingProgress = ref(0)
   const loadingOperations = ref(new Set<string>())
+  const localLoadingCount = ref(0)
 
   // 计算属性
   const hasActiveOperations = computed(() => loadingOperations.value.size > 0)
   const activeOperationCount = computed(() => loadingOperations.value.size)
+  const hasLocalLoading = computed(() => localLoadingCount.value > 0)
+  const isGlobalVisible = computed(() => isLoading.value && !hasLocalLoading.value)
+
+  // 局部数据 Loading 拥有更高展示优先级，保证一次操作只有一个可见 Loading。
+  const startLocalLoading = () => {
+    localLoadingCount.value += 1
+    if (isLoading.value) {
+      isLoading.value = false
+      loadingText.value = ''
+    }
+  }
+
+  const stopLocalLoading = () => {
+    localLoadingCount.value = Math.max(0, localLoadingCount.value - 1)
+  }
 
   // 开始加载
   const startLoading = (text = '加载中...', operationId?: string) => {
-    isLoading.value = true
-    loadingText.value = text
-    loadingProgress.value = 0
-
     if (operationId) {
       loadingOperations.value.add(operationId)
     }
+
+    // 表格/列表正在显示局部数据 Loading 时，全局 Loading 只记录任务，不抢占界面。
+    if (hasLocalLoading.value) return
+
+    isLoading.value = true
+    loadingText.value = text
+    loadingProgress.value = 0
 
   }
 
@@ -72,6 +91,7 @@ export const useLoadingStore = defineStore('loading', () => {
     loadingText.value = ''
     loadingProgress.value = 0
     loadingOperations.value.clear()
+    localLoadingCount.value = 0
 
   }
 
@@ -117,10 +137,12 @@ export const useLoadingStore = defineStore('loading', () => {
   return {
     // 状态
     isLoading: computed(() => isLoading.value),
+    isGlobalVisible,
     loadingText: computed(() => loadingText.value),
     loadingProgress: computed(() => loadingProgress.value),
     hasActiveOperations,
     activeOperationCount,
+    hasLocalLoading,
 
     // 方法
     startLoading,
@@ -130,7 +152,9 @@ export const useLoadingStore = defineStore('loading', () => {
     setLoadingText,
     clearAllLoading,
     isOperationLoading,
-    executeWithLoading
+    executeWithLoading,
+    startLocalLoading,
+    stopLocalLoading
   }
 })
 

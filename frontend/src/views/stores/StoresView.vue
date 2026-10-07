@@ -171,7 +171,8 @@
           <div class="table-responsive">
             <el-table
               ref="storesTableRef"
-              :data="isLoading ? [] : stores"
+              v-tf-loading="isLoading"
+              :data="stores"
               border
               stripe
               class="data-table devices-table base-data-table compact-fit-table stores-data-table"

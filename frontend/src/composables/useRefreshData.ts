@@ -8,6 +8,7 @@ import { useRoute } from 'vue-router'
 import { useNotification } from './useNotification'
 import logger from '@/utils/logger'
 import { unifiedApi } from '@/utils/unified-api'
+import { useLoadingStore } from '@/stores/loading'
 
 type RefreshCacheScope = string | RegExp | false
 
@@ -91,6 +92,7 @@ export function useRefreshData(): UseRefreshDataReturn {
   const refreshing = ref(false)
   const { success, error } = useNotification()
   const route = useRoute()
+  const loadingStore = useLoadingStore()
 
   const getDefaultCacheScope = (): string | undefined => {
     const [section] = route.path.split('/').filter(Boolean)
@@ -124,6 +126,8 @@ export function useRefreshData(): UseRefreshDataReturn {
     } = options
 
     refreshing.value = true
+    // 刷新属于局部数据操作，统一压制全屏 Loading，避免与表格遮罩叠加。
+    loadingStore.startLocalLoading()
 
     try {
       // 手动刷新按页面模块清理缓存，确保当前页面看到最新数据库状态。
@@ -154,6 +158,7 @@ export function useRefreshData(): UseRefreshDataReturn {
       return null
     } finally {
       refreshing.value = false
+      loadingStore.stopLocalLoading()
     }
   }
 

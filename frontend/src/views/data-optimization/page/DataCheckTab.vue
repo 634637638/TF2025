@@ -124,7 +124,8 @@
         <div class="data-table-container">
           <el-table
             class="data-table"
-            :data="loading ? [] : paginatedAllData"
+            v-tf-loading="loading"
+            :data="paginatedAllData"
             stripe
             border
             :row-class-name="getRowClassName"

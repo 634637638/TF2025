@@ -166,9 +166,10 @@ defineExpose({ input, focus: () => input.value?.focus() })
 .customer-name-lock-input__status,
 .customer-name-lock-input__change {
   box-sizing: border-box;
-  height: 28px;
+  height: var(--tf-button-height-small);
+  max-height: var(--tf-button-height-small);
   border: 1px solid var(--tf-color-border-input);
-  border-radius: 5px;
+  border-radius: var(--tf-radius-control);
   font-family: inherit;
   font-size: var(--tf-type-scale-11);
   line-height: 1;
@@ -177,8 +178,8 @@ defineExpose({ input, focus: () => input.value?.focus() })
 
 .customer-name-lock-input__status {
   display: inline-flex;
-  width: 28px;
-  min-width: 28px;
+  width: var(--tf-button-height-small);
+  min-width: var(--tf-button-height-small);
   align-items: center;
   justify-content: center;
   padding: 0;
@@ -188,6 +189,10 @@ defineExpose({ input, focus: () => input.value?.focus() })
 
 .el-button.customer-name-lock-input__status,
 .customer-name-lock-input__change {
+  height: var(--tf-button-height-small);
+  min-height: var(--tf-button-height-small);
+  max-height: var(--tf-button-height-small);
+  padding: 0;
   cursor: pointer;
 }
 
@@ -199,11 +204,11 @@ defineExpose({ input, focus: () => input.value?.focus() })
 
 .customer-name-lock-input__change {
   display: inline-flex;
-  width: 28px;
-  min-width: 28px;
+  width: var(--tf-button-height-small);
+  min-width: var(--tf-button-height-small);
+  max-width: var(--tf-button-height-small);
   align-items: center;
   justify-content: center;
-  padding: 0;
   background: var(--tf-button-neutral-bg);
   color: var(--tf-button-neutral-color);
 }
@@ -230,14 +235,11 @@ defineExpose({ input, focus: () => input.value?.focus() })
     gap: 3px;
   }
 
-  .customer-name-lock-input__status {
-    width: 26px;
-    min-width: 26px;
-  }
-
+  .customer-name-lock-input__status,
   .customer-name-lock-input__change {
-    width: 26px;
-    min-width: 26px;
+    width: var(--tf-button-height-small);
+    min-width: var(--tf-button-height-small);
+    max-width: var(--tf-button-height-small);
   }
 }
 </style>

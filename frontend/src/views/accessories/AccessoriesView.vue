@@ -66,7 +66,8 @@
 
           <div class="table-responsive">
             <el-table
-              :data="loading ? [] : paginatedAccessories"
+              v-tf-loading="loading"
+              :data="paginatedAccessories"
               border
               stripe
               class="data-table devices-table base-data-table accessories-data-table"

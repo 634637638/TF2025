@@ -1,5 +1,8 @@
 <template>
-  <div class="comprehensive-warnings">
+  <div
+    v-tf-loading="loading"
+    class="comprehensive-warnings"
+  >
     <!-- 预警概览卡片 -->
     <div class="warnings-overview">
       <div

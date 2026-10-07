@@ -29,6 +29,7 @@
       </UnifiedSearchPanel>
 
       <el-card
+        v-tf-loading="loading"
         class="table-card"
         shadow="never"
       >

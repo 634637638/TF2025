@@ -288,11 +288,30 @@
             <i class="fas fa-tags" />
             <span>报价列表</span>
             <span class="record-count">共 {{ pagination.total }} 条记录</span>
+            <div class="section-actions">
+              <span
+                v-if="selectedPriceRows.length > 0"
+                class="selection-count"
+              >
+                已选择 {{ selectedPriceRows.length }} 条
+              </span>
+              <el-button
+                v-if="canEdit"
+                type="primary"
+                size="small"
+                :disabled="selectedPriceRows.length === 0"
+                @click="openBatchSourceDialog"
+              >
+                <i class="fas fa-link" />
+                批量设置
+              </el-button>
+            </div>
           </div>
 
           <div class="table-responsive price-list-table-wrapper">
             <el-table
-              :data="loading ? [] : priceList"
+              v-tf-loading="loading"
+              :data="priceList"
               stripe
               border
               class="data-table devices-table price-list-data-table"
@@ -300,21 +319,22 @@
               :fit="true"
               :row-key="getPriceListRowKey"
               :expand-row-keys="isMobile && mobileActionRowId ? [mobileActionRowId] : []"
+              @selection-change="handlePriceSelectionChange"
               @expand-change="handleMobileExpandChange"
               @row-click="(row) => handleMobileRowTap(row.price_list_id || row.id)"
             >
               <template #empty>
-                <TableLoadingRow
-                  v-if="loading"
-                  mode="block"
-                  text="加载报价列表..."
-                />
                 <DataEmptyState
-                  v-else
+                  v-if="!loading"
                   description="暂无价目表数据"
                 />
               </template>
 
+              <el-table-column
+                type="selection"
+                width="48"
+                align="center"
+              />
               <el-table-column
                 v-if="!isMobile"
                 type="index"
@@ -417,9 +437,6 @@
                     v-else
                     class="text-gray"
                   >-</span>
-                  <div class="price-source-account text-secondary text-xs">
-                    {{ row.source_type === 'public' ? '公开未登录' : (row.source_login_username || row.source_name || '默认来源') }}
-                  </div>
                 </template>
               </el-table-column>
               <el-table-column
@@ -484,13 +501,26 @@
                   >
                     不采集
                   </el-tag>
-                  <el-tag
+                  <span
                     v-else
-                    type="success"
-                    size="small"
+                    class="source-tag-group"
                   >
-                    采集
-                  </el-tag>
+                    <el-tag
+                      type="success"
+                      size="small"
+                    >
+                      采集
+                    </el-tag>
+                    <span class="source-tag-separator">-</span>
+                    <el-tag
+                      effect="light"
+                      size="small"
+                      class="source-config-tag"
+                      :class="getSourceNameClass(row)"
+                    >
+                      {{ row.source_name || '默认来源' }}
+                    </el-tag>
+                  </span>
                 </template>
               </el-table-column>
               <el-table-column
@@ -771,7 +801,7 @@
               placeholder="跟随默认采集源"
             >
               <el-option
-                :value="null"
+                value=""
                 label="跟随默认采集源"
               />
               <el-option
@@ -898,6 +928,53 @@
             type="primary"
             :loading="saving"
             @click="handleSave"
+          >
+            保存
+          </el-button>
+        </template>
+      </MobileDialog>
+
+      <!-- 批量设置采集来源对话框 -->
+      <MobileDialog
+        v-model="showBatchSourceDialog"
+        title="批量设置"
+        width="520px"
+        dialog-class="price-list-batch-source-dialog"
+        :show-default-footer="false"
+        @open="fetchSyncConfigsList"
+      >
+        <el-form label-width="110px">
+          <el-form-item label="已选择">
+            <span>{{ selectedPriceRows.length }} 条价格记录</span>
+          </el-form-item>
+          <el-form-item label="采集来源">
+            <el-select
+              v-model="batchSourceConfigId"
+              class="w-full"
+              clearable
+              placeholder="跟随默认采集源"
+            >
+              <el-option
+                :value="DEFAULT_SOURCE_CONFIG_VALUE"
+                label="跟随默认采集源"
+              />
+              <el-option
+                v-for="source in syncConfigsList"
+                :key="source.id"
+                :label="formatPriceSourceLabel(source)"
+                :value="source.id"
+              />
+            </el-select>
+          </el-form-item>
+        </el-form>
+        <template #footer>
+          <el-button @click="showBatchSourceDialog = false">
+            取消
+          </el-button>
+          <el-button
+            type="primary"
+            :loading="batchSourceSaving"
+            @click="handleBatchSourceSave"
           >
             保存
           </el-button>
@@ -1454,6 +1531,7 @@ import {
   getStockPhones,
   getPriceList,
   upsertPriceItem,
+  batchUpdatePriceSource,
   deletePriceItem,
   getSyncConfigById,
   getAllSyncConfigs,
@@ -1479,7 +1557,6 @@ import { fieldPermissions, shouldShowActionColumn } from '@/composables/useField
 import { PageHeader, PermissionGate } from '@/components/base'
 import Pagination from '@/components/Pagination.vue'
 import SectionLoading from '@/components/SectionLoading.vue'
-import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import ImportExportActions from '@/components/business/ImportExportActions.vue'
 import { canAccessRoutePath } from '@/constants/routePermissions'
@@ -1526,6 +1603,7 @@ const priceListImportInputRef = ref<HTMLInputElement | null>(null)
 const loadingOptions = ref(false)
 const loadingModels = ref(false)
 const priceList = ref<any[]>([])
+const selectedPriceRows = ref<any[]>([])
 const priceHistoryMap = ref<Map<number, any[]>>(new Map())
 let trendLoadSeq = 0
 const hasInitializedPageData = ref(false)
@@ -1641,6 +1719,10 @@ const savingConfig = ref(false)
 const syncing = ref(false)
 const clearingPrices = ref(false)
 const syncConfigsList = ref<any[]>([])
+const showBatchSourceDialog = ref(false)
+const batchSourceSaving = ref(false)
+const DEFAULT_SOURCE_CONFIG_VALUE = '__default_source__'
+const batchSourceConfigId = ref<number | string | null | undefined>(DEFAULT_SOURCE_CONFIG_VALUE)
 const syncConfigActionColumnWidth = computed(() => getAdaptiveActionColumnWidth(
   syncConfigsList.value,
   [
@@ -1752,6 +1834,95 @@ const getPriceListRowKey = (row: any) => {
   return String(row.price_list_id || row.id || `${row.model_number}-${row.color_name}-${row.memory}`)
 }
 
+const handlePriceSelectionChange = (rows: any[]) => {
+  selectedPriceRows.value = rows
+}
+
+const openBatchSourceDialog = async () => {
+  if (!canEdit.value) {
+    handleNoPermission('edit')
+    return
+  }
+  if (selectedPriceRows.value.length === 0) {
+    ElMessage.warning('请先选择价格记录')
+    return
+  }
+
+  batchSourceConfigId.value = DEFAULT_SOURCE_CONFIG_VALUE
+  await fetchSyncConfigsList()
+  showBatchSourceDialog.value = true
+}
+
+const handleBatchSourceSave = async () => {
+  if (batchSourceSaving.value) return
+  if (!canEdit.value) {
+    handleNoPermission('edit')
+    return
+  }
+
+  const ids = selectedPriceRows.value
+    .map(row => Number(row.price_list_id || row.id))
+    .filter(id => Number.isInteger(id) && id > 0)
+
+  if (ids.length === 0) {
+    ElMessage.warning('选中的记录无有效 ID，请刷新后重试')
+    return
+  }
+
+  try {
+    await confirmAction(
+      `确定将选中的 ${ids.length} 条价格记录绑定到所选采集来源吗？绑定关系将在后续同步时生效。`,
+      '批量设置',
+      { type: 'warning' }
+    )
+
+    batchSourceSaving.value = true
+    const sourceConfigId = batchSourceConfigId.value === DEFAULT_SOURCE_CONFIG_VALUE ||
+      batchSourceConfigId.value === '' ||
+      batchSourceConfigId.value === null ||
+      batchSourceConfigId.value === undefined
+      ? null
+      : Number(batchSourceConfigId.value)
+    const res = await batchUpdatePriceSource(ids, sourceConfigId)
+    if (!res.success) {
+      ElMessage.error(res.message || '批量设置采集来源失败')
+      return
+    }
+
+    ElMessage.success(res.message || '采集来源设置成功')
+    showBatchSourceDialog.value = false
+    selectedPriceRows.value = []
+    await fetchPriceList()
+  } catch (error) {
+    if (error !== 'cancel') {
+      logger.error('批量设置采集来源失败', error)
+      ElMessage.error('批量设置采集来源失败')
+    }
+  } finally {
+    batchSourceSaving.value = false
+  }
+}
+
+const getSourceNameClass = (row: any) => {
+  const sourceNameClasses = [
+    'source-name--purple',
+    'source-name--blue'
+  ] as const
+  const sourceId = Number(
+    row.source_config_id
+    ?? syncConfigsList.value.find(source => source.is_default)?.id
+  )
+  const sourceIndex = Number.isInteger(sourceId)
+    ? syncConfigsList.value.findIndex(source => Number(source.id) === sourceId)
+    : -1
+
+  if (sourceIndex >= 0) {
+    return sourceNameClasses[sourceIndex % sourceNameClasses.length]
+  }
+
+  return sourceNameClasses[0]
+}
+
 const updateMobileState = () => {
   if (typeof window === 'undefined') return
   isMobile.value = isCurrentMobileViewport()
@@ -1801,6 +1972,7 @@ const fetchPriceList = async () => {
     return
   }
 
+  selectedPriceRows.value = []
   loading.value = true
   try {
     const res = await getPriceList(buildPriceListParams(true))
@@ -3156,6 +3328,21 @@ onUnmounted(() => {
 
 <style scoped lang="scss">
 
+.section-title {
+  .section-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--tf-space-2);
+    margin-left: auto;
+  }
+
+  .selection-count {
+    color: var(--color-text-regular);
+    font-size: var(--tf-type-scale-13);
+    white-space: nowrap;
+  }
+}
+
 // 同步设置样式
 .sync-settings-container {
   .edit-section {
@@ -3240,8 +3427,32 @@ onUnmounted(() => {
   color: var(--color-info);
 }
 
-.price-source-account {
-  white-space: nowrap;
+</style>
+
+<style scoped lang="scss">
+
+.source-tag-group {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--tf-space-1);
+}
+
+.source-tag-separator {
+  color: var(--tf-color-gray-ui-alt);
+  font-size: var(--tf-type-scale-12);
+  font-weight: 600;
+}
+
+.source-config-tag.source-name--purple {
+  color: var(--tf-color-violet-500);
+  background-color: var(--tf-color-violet-100);
+  border-color: var(--tf-color-violet-500);
+}
+
+.source-config-tag.source-name--blue {
+  color: var(--tf-color-blue-500);
+  background-color: var(--tf-color-blue-100);
+  border-color: var(--tf-color-blue-500);
 }
 
 // 价格历史对话框样式
@@ -3460,10 +3671,6 @@ onUnmounted(() => {
 }
 
 @media (max-width: 767px) {
-  .price-source-account {
-    display: none;
-  }
-
   .table-card {
     .pagination-container {
       justify-content: center;
@@ -3471,6 +3678,9 @@ onUnmounted(() => {
     }
   }
 }
+</style>
+
+<style scoped lang="scss">
 
 // 库存对话框样式
 .inventory-dialog-content {

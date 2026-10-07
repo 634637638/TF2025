@@ -34,7 +34,8 @@
               :loading="customerSearching"
               :visible="showCustomerSearch && !selectedCustomer"
               :keyword="formData.customer_phone"
-              :min-query-length="11"
+              :min-query-length="2"
+              :create-min-query-length="11"
               @select="selectCustomer($event)"
               @create="autoCreateCustomer"
             />
@@ -296,7 +297,8 @@
               :loading="customerSearching"
               :visible="showCustomerSearch && !selectedCustomer"
               :keyword="formData.customer_phone"
-              :min-query-length="11"
+              :min-query-length="2"
+              :create-min-query-length="11"
               @select="selectCustomer($event)"
               @create="autoCreateCustomer"
             />

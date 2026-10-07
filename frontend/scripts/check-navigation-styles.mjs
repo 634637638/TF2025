@@ -5,6 +5,7 @@ const root = resolve(import.meta.dirname, '..')
 const files = {
   adminShell: join(root, 'src/views/system/page/SimpleAdminView.vue'),
   tabs: join(root, 'src/components/TabsBar.vue'),
+  tabsStyles: join(root, 'src/styles/components/_tabs.scss'),
   responsiveLayout: join(root, 'src/components/ResponsiveLayout.vue'),
   responsiveMenu: join(root, 'src/components/ResponsiveMenu.vue'),
   sidebar: join(root, 'src/components/SimpleSidebar.vue'),
@@ -24,7 +25,7 @@ const forbid = (key, pattern, message) => {
 
 requireText('adminShell', 'background: var(--tf-nav-topbar-bg)', '顶部栏必须使用白色顶部栏令牌')
 requireText('adminShell', 'color: var(--tf-nav-topbar-text)', '面包屑文字必须使用顶部栏对比色')
-requireText('tabs', 'background: var(--tf-nav-topbar-bg)', '标签页必须使用白色顶部栏令牌')
+requireText('tabsStyles', 'background: var(--tf-nav-topbar-bg)', '标签页必须使用白色顶部栏令牌')
 requireText('sidebar', 'background: var(--tf-nav-header-bg)', '侧边栏必须使用统一导航背景令牌')
 requireText('sidebar', 'background: var(--tf-nav-submenu-bg)', '侧边栏二级菜单必须使用统一子菜单背景令牌')
 requireText('mobileMenu', 'background: var(--tf-nav-submenu-bg)', '侧滑菜单二级菜单必须使用统一子菜单背景令牌')

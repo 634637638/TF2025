@@ -5,6 +5,11 @@ const ApiResponse = require('../utils/response')
 const { cacheMiddleware, clearCache } = require('../middleware/cache')
 const { generateMemberNumber } = require('../utils/member-number')
 const { validateImei } = require('../utils/imei')
+const {
+  generateInvoiceNumber,
+  generateInvoiceNumberForDate,
+  getInvoiceTypeSuffix
+} = require('../utils/invoice-number')
 const log = require('../utils/log')
 const { PAGINATION } = require('../config/constants')
 const { requireInventoryQueryToken } = require('../utils/inventory-query-token')
@@ -1102,7 +1107,6 @@ router.put('/:id', unifiedAuth, requireAnyPermission(['phones:edit', 'sales-edit
       const saleType = statusToSaleType[effectiveStatus] || 'retail'
 
       // 生成发票号
-      const { _generateInvoiceNumberForDate } = require('../utils/invoice-number')
       let invoiceNumber
       const saleDate = effectiveSaleTime ?? null
 
@@ -1113,13 +1117,7 @@ router.put('/:id', unifiedAuth, requireAnyPermission(['phones:edit', 'sales-edit
         const day = String(targetDate.getDate()).padStart(2, '0')
         const dateStr = `${year}${month}${day}`
 
-        const typeSuffixMap = {
-          'retail': 'XS',
-          'peer_transfer': 'DH',
-          'supplier_proxy': 'HB',
-          'wholesale': 'PF'
-        }
-        const typeSuffix = typeSuffixMap[saleType] || 'XS'
+        const typeSuffix = getInvoiceTypeSuffix(saleType)
 
         const prefixPattern = `${dateStr}%${typeSuffix}`
         const [rows] = await connection.execute(
@@ -1136,10 +1134,8 @@ router.put('/:id', unifiedAuth, requireAnyPermission(['phones:edit', 'sales-edit
           }
         }
 
-        const sequenceStr = String(sequence).padStart(4, '0')
-        invoiceNumber = `${dateStr}${sequenceStr}${typeSuffix}`
+        invoiceNumber = generateInvoiceNumberForDate(saleDate, sequence, saleType)
       } else {
-        const generateInvoiceNumber = require('../utils/invoice-number').generateInvoiceNumber
         invoiceNumber = await generateInvoiceNumber(saleType, connection)
       }
 
@@ -1172,7 +1168,6 @@ router.put('/:id', unifiedAuth, requireAnyPermission(['phones:edit', 'sales-edit
 
       // 🔥 如果发票号为空，自动生成发票号（使用销售时间）
       if (!existingSale.invoice_number) {
-        const { _generateInvoiceNumberForDate } = require('../utils/invoice-number')
         const saleType = existingSale.sale_type || 'retail'
         // 使用销售时间，优先使用 phones.sale_time，否则使用销售记录时间
         const saleDate = effectiveSaleTime ?? existingSale.sale_time
@@ -1186,13 +1181,7 @@ router.put('/:id', unifiedAuth, requireAnyPermission(['phones:edit', 'sales-edit
           const day = String(targetDate.getDate()).padStart(2, '0')
           const dateStr = `${year}${month}${day}`
 
-          const typeSuffixMap = {
-            'retail': 'XS',
-            'peer_transfer': 'DH',
-            'supplier_proxy': 'HB',
-            'wholesale': 'PF'
-          }
-          const typeSuffix = typeSuffixMap[saleType] || 'XS'
+          const typeSuffix = getInvoiceTypeSuffix(saleType)
 
           // 查询该日期该类型的最大序号
           const prefixPattern = `${dateStr}%${typeSuffix}`
@@ -1211,11 +1200,9 @@ router.put('/:id', unifiedAuth, requireAnyPermission(['phones:edit', 'sales-edit
             }
           }
 
-          const sequenceStr = String(sequence).padStart(4, '0')
-          invoiceNumber = `${dateStr}${sequenceStr}${typeSuffix}`
+          invoiceNumber = generateInvoiceNumberForDate(saleDate, sequence, saleType)
         } else {
           // 如果没有销售时间，使用当前时间
-          const generateInvoiceNumber = require('../utils/invoice-number').generateInvoiceNumber
           invoiceNumber = await generateInvoiceNumber(saleType, connection)
         }
 

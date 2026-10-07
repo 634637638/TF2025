@@ -3,7 +3,7 @@
  * 规则: 日期 + 序列号后4位 + 类型
  * 格式: YYYYMMDD + 序号后4位 + 类型代码
  * 例如: 20260207001XS (2026年2月7日，序号...001，零售)
- *       20260207002DH (2026年2月7日，序号...002，调货)
+ *       20260207002PF (2026年2月7日，序号...002，调货/批发)
  *       20260207003HB (2026年2月7日，序号...003，划拨)
  *
  * @param {string} saleType - 销售类型: 'retail'(零售/默认), 'peer_transfer'(调货), 'supplier_proxy'(供应商划拨)
@@ -12,6 +12,18 @@
  * @returns {Promise<string>} 单据编号
  */
 let sequenceTableReady
+
+const INVOICE_TYPE_SUFFIXES = Object.freeze({
+  retail: 'XS',
+  peer_transfer: 'PF',
+  supplier_proxy: 'HB',
+  batch_item: 'XS',
+  wholesale: 'PF'
+})
+
+function getInvoiceTypeSuffix(saleType = 'retail') {
+  return INVOICE_TYPE_SUFFIXES[saleType] || 'XS'
+}
 
 const ensureSequenceTable = async (connection) => {
   if (!sequenceTableReady) {
@@ -42,14 +54,7 @@ async function generateInvoiceNumber(saleType = 'retail', connection, saleDate) 
   const dateStr = `${year}${month}${day}`
 
   // 根据销售类型确定后缀
-  const typeSuffixMap = {
-    'retail': 'XS',           // 零售
-    'peer_transfer': 'DH',    // 调货
-    'supplier_proxy': 'HB',   // 供应商划拨
-    'batch_item': 'XS',       // 批量销售项
-    'wholesale': 'PF'         // 批发
-  }
-  const typeSuffix = typeSuffixMap[saleType] || 'XS'
+  const typeSuffix = getInvoiceTypeSuffix(saleType)
 
   await ensureSequenceTable(connection)
   const prefixPattern = `${dateStr}%${typeSuffix}`
@@ -97,14 +102,7 @@ function generateInvoiceNumberForDate(date, sequence, saleType = 'retail') {
   const day = String(targetDate.getDate()).padStart(2, '0')
   const dateStr = `${year}${month}${day}`
 
-  const typeSuffixMap = {
-    'retail': 'XS',
-    'peer_transfer': 'DH',
-    'supplier_proxy': 'HB',
-    'batch_item': 'XS',
-    'wholesale': 'PF'
-  }
-  const typeSuffix = typeSuffixMap[saleType] || 'XS'
+  const typeSuffix = getInvoiceTypeSuffix(saleType)
 
   const sequenceStr = String(sequence).padStart(4, '0')
 
@@ -131,6 +129,7 @@ function parseInvoiceNumber(invoiceNumber) {
 
   const typeMap = {
     'XS': 'retail',
+    // DH 是历史调货单号后缀，仅保留读取兼容；新单号统一使用 PF。
     'DH': 'peer_transfer',
     'HB': 'supplier_proxy',
     'PF': 'wholesale'
@@ -146,6 +145,7 @@ function parseInvoiceNumber(invoiceNumber) {
 
 module.exports = {
   ensureInvoiceSequenceTable: ensureSequenceTable,
+  getInvoiceTypeSuffix,
   generateInvoiceNumber,
   generateInvoiceNumberForDate,
   parseInvoiceNumber

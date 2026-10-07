@@ -181,9 +181,10 @@
 }
 
 /* 默认基线保持低优先级，公共语义按钮可覆盖尺寸与表面。 */
-.el-button:where(:not(.is-circle):not(.is-text):not(.is-link)),
-.el-button.btn,
-.el-button[class*='btn-']:not(.btn-close) {
+.el-button:where(:not([class*='el-button--']):not(.is-text):not(.is-link):not([link])):where(:not(.customer-search-dropdown__item):not(.customer-name-lock-input__status):not(.customer-name-lock-input__change)),
+.el-button:where(:not(.is-circle):not(.is-text):not(.is-link)):where(:not(.customer-search-dropdown__item):not(.customer-name-lock-input__status):not(.customer-name-lock-input__change)),
+:where(.el-button.btn),
+:where(.el-button[class*='btn-']:not(.btn-close)) {
   width: auto;
   min-width: 0;
   height: var(--tf-button-height) !important;

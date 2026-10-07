@@ -56,6 +56,13 @@ router.post('/import', unifiedAuth, requirePermission('price-list:import'), uplo
 router.post('/', unifiedAuth, requirePermission('price-list:edit'), priceListController.upsertPriceItem)
 
 /**
+ * @route   PUT /api/price-list/batch-source
+ * @desc    批量设置价格记录的采集来源
+ * @access  Private
+ */
+router.put('/batch-source', unifiedAuth, requirePermission('price-list:edit'), priceListController.batchUpdatePriceSource)
+
+/**
  * @route   DELETE /api/price-list/:id
  * @desc    删除价格记录
  * @access  Private

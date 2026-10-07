@@ -1,8 +1,11 @@
 <template>
   <Teleport to="body">
-    <Transition name="loading">
+    <Transition
+      name="loading"
+      :duration="{ enter: 180, leave: 0 }"
+    >
       <div
-        v-if="showGlobalLoading"
+        v-if="showGlobalLoading && loadingStore.isGlobalVisible"
         v-bind="$attrs"
         class="global-loading"
         role="status"
@@ -57,14 +60,14 @@ export default defineComponent({
     let showTimer = null
 
     watch(
-      () => loadingStore.isLoading,
-      (isLoading) => {
+      () => loadingStore.isGlobalVisible,
+      (isGlobalVisible) => {
         if (showTimer) {
           clearTimeout(showTimer)
           showTimer = null
         }
 
-        if (isLoading) {
+        if (isGlobalVisible) {
           showTimer = setTimeout(() => {
             showGlobalLoading.value = true
             showTimer = null
@@ -75,6 +78,21 @@ export default defineComponent({
         showGlobalLoading.value = false
       },
       { immediate: true }
+    )
+
+    // 局部表格遮罩出现时，立即取消全屏 Loading 的等待和离场动画，
+    // 避免刷新瞬间同时看到“加载中”和“加载数据中”。
+    watch(
+      () => loadingStore.hasLocalLoading,
+      (hasLocalLoading) => {
+        if (!hasLocalLoading) return
+
+        if (showTimer) {
+          clearTimeout(showTimer)
+          showTimer = null
+        }
+        showGlobalLoading.value = false
+      }
     )
 
     onBeforeUnmount(() => {

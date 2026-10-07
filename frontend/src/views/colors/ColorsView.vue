@@ -160,7 +160,8 @@
           <div class="table-responsive">
             <el-table
               ref="colorsTableRef"
-              :data="tableLoading ? [] : colors"
+              v-tf-loading="tableLoading"
+              :data="colors"
               border
               stripe
               class="data-table devices-table base-data-table colors-data-table"

@@ -90,7 +90,8 @@
       <div class="table-responsive">
         <el-table
           ref="tableRef"
-          :data="loading ? [] : employees"
+          v-tf-loading="loading"
+          :data="employees"
           border
           stripe
           table-layout="fixed"

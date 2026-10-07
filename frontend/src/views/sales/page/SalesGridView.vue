@@ -1,5 +1,8 @@
 <template>
-  <div class="sales-grid-view">
+  <div
+    v-tf-loading="loading"
+    class="sales-grid-view"
+  >
     <TableLoadingRow
       v-if="loading"
       mode="block"

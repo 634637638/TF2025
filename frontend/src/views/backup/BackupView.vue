@@ -93,7 +93,8 @@
 
           <el-table
             class="data-table"
-            :data="isLoading ? [] : backupList"
+              v-tf-loading="isLoading"
+              :data="backupList"
             border
             stripe
             style="width: 100%"

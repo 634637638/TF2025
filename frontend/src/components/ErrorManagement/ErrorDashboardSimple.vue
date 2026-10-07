@@ -307,7 +307,8 @@
       </template>
 
       <el-table
-        :data="loading ? [] : paginatedLogs"
+              v-tf-loading="loading"
+              :data="paginatedLogs"
         class="data-table compact-fit-table"
         border
         :fit="true"

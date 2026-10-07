@@ -116,7 +116,8 @@
       >
         <el-table
           class="data-table devices-table compact-fit-table base-data-table returngoods-data-table"
-          :data="loading ? [] : records"
+          v-tf-loading="loading"
+          :data="records"
           border
           stripe
           table-layout="fixed"

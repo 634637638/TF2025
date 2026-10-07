@@ -1,6 +1,7 @@
 <template>
   <div
     v-if="canViewPendingApprovals"
+    v-tf-loading="loading"
     class="pending-approvals"
   >
     <!-- 预警概览卡片 -->

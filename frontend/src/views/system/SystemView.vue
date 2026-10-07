@@ -557,7 +557,8 @@
                     </div>
                     <div class="table-responsive">
                       <el-table
-                      :data="loadingPasswords ? [] : inventoryPasswords"
+                      v-tf-loading="loadingPasswords"
+                      :data="inventoryPasswords"
                       border
                       stripe
                       class="data-table devices-table compact-fit-table base-data-table"

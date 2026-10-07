@@ -160,7 +160,8 @@
           <div class="table-responsive">
             <el-table
               ref="brandsTableRef"
-              :data="tableLoading ? [] : brands"
+              v-tf-loading="tableLoading"
+              :data="brands"
               border
               stripe
               class="data-table devices-table base-data-table brands-data-table"

@@ -175,7 +175,8 @@ class SystemSettingsController {
         enabled: true,
         wholesale: {
           enabled: false,
-          adjustment: 0
+          adjustment: 0,
+          sourceAdjustments: {}
         }
       }
 

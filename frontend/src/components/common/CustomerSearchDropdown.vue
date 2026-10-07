@@ -82,6 +82,7 @@ const props = withDefaults(defineProps<{
   visible?: boolean
   keyword?: string
   minQueryLength?: number
+  createMinQueryLength?: number
   allowCreate?: boolean
   emptyCreateText?: string
   teleportTarget?: string
@@ -91,6 +92,7 @@ const props = withDefaults(defineProps<{
   visible: false,
   keyword: '',
   minQueryLength: 1,
+  createMinQueryLength: undefined,
   allowCreate: true,
   emptyCreateText: '暂无数据，点击创建新客户！',
   teleportTarget: '',
@@ -106,7 +108,7 @@ const showEmptyCreate = computed(() =>
   props.allowCreate
   && !props.loading
   && props.items.length === 0
-  && props.keyword.trim().length >= props.minQueryLength
+  && props.keyword.trim().length >= (props.createMinQueryLength ?? props.minQueryLength)
 )
 
 const customerKey = (customer: CustomerSearchDropdownItem, index: number) =>
@@ -131,7 +133,9 @@ const vipLabel = (level: string) => ({
   right: 0;
   left: 0;
   max-height: 300px;
+  overflow-x: hidden;
   overflow-y: auto;
+  overscroll-behavior: contain;
   border: 1px solid var(--admin-table-panel-border);
   border-radius: var(--admin-data-table-radius);
   background: var(--admin-data-table-bg);
@@ -163,17 +167,23 @@ const vipLabel = (level: string) => ({
   box-sizing: border-box;
   display: block;
   width: 100%;
+  margin: 0;
   border: 0;
   font-family: inherit;
   text-align: left;
   cursor: pointer;
 }
 
-.customer-search-dropdown__item {
-  padding: 12px 14px;
+.customer-search-dropdown .el-button.customer-search-dropdown__item {
+  height: auto;
+  min-height: 0;
+  max-height: none;
+  padding: var(--tf-space-3) var(--tf-space-4);
   border-bottom: 1px solid var(--admin-data-table-cell-border);
   background: transparent;
   color: inherit;
+  line-height: normal;
+  white-space: normal;
   transition: background-color 0.2s ease;
 }
 
@@ -190,7 +200,7 @@ const vipLabel = (level: string) => ({
 .customer-search-dropdown__content {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: var(--tf-space-1);
   min-width: 0;
 }
 
@@ -198,7 +208,7 @@ const vipLabel = (level: string) => ({
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 6px;
+  gap: var(--tf-space-2);
   min-width: 0;
 }
 
@@ -212,8 +222,7 @@ const vipLabel = (level: string) => ({
   white-space: nowrap;
 }
 
-.customer-search-dropdown__phone,
-.customer-search-dropdown__meta {
+.customer-search-dropdown__phone {
   color: var(--admin-record-count-color);
   font-size: var(--tf-type-scale-12);
   line-height: 1.2;
@@ -222,6 +231,7 @@ const vipLabel = (level: string) => ({
 
 .customer-search-dropdown__phone {
   overflow: visible;
+  min-width: 0;
   flex: 0 0 auto;
 }
 
@@ -302,9 +312,9 @@ const vipLabel = (level: string) => ({
     max-width: calc(100vw - 24px);
   }
 
-  .customer-search-dropdown__item,
+  .customer-search-dropdown .el-button.customer-search-dropdown__item,
   .customer-search-dropdown__create {
-    padding: 10px 12px;
+    padding: var(--tf-space-2) var(--tf-space-3);
   }
 
   .customer-search-dropdown__create {
@@ -320,17 +330,20 @@ const vipLabel = (level: string) => ({
     font-size: var(--tf-type-scale-11);
   }
 
-  .customer-search-dropdown__line--subline {
-    gap: 4px;
-  }
-
   .customer-search-dropdown__phone {
     font-size: var(--tf-type-scale-11);
   }
 
-  .customer-search-dropdown__line--subline .customer-search-dropdown__vip {
+  .customer-search-dropdown__member,
+  .customer-search-dropdown__vip {
     padding: 2px 5px;
     font-size: var(--tf-type-scale-9);
+  }
+}
+
+@media (max-width: 375px) {
+  .customer-search-dropdown__content {
+    gap: var(--tf-space-1);
   }
 }
 </style>

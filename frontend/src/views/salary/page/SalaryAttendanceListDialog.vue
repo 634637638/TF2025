@@ -47,7 +47,8 @@
     </div>
 
     <el-table
-      :data="loading ? [] : records"
+          v-tf-loading="loading"
+          :data="records"
       border
       stripe
       class="data-table"

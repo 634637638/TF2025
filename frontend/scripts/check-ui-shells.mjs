@@ -9,6 +9,9 @@ const paginationSource = readFileSync(join(root, 'src/components/Pagination.vue'
 const searchSource = readFileSync(join(root, 'src/components/search/UnifiedSearchPanel.vue'), 'utf8')
 const dateRangeSource = readFileSync(join(root, 'src/components/DateRangePicker.vue'), 'utf8')
 const customerNameLockSource = readFileSync(join(root, 'src/components/common/CustomerNameLockInput.vue'), 'utf8')
+const customerSearchSource = readFileSync(join(root, 'src/components/common/CustomerSearchDropdown.vue'), 'utf8')
+const customerOptionsSource = readFileSync(join(root, 'src/services/customer-options.ts'), 'utf8')
+const exemptionsSource = readFileSync(join(root, '..', 'docs/frontend/standards-exemptions.md'), 'utf8')
 const dialogStyleSource = readFileSync(join(root, 'src/styles/components/_dialog.scss'), 'utf8')
 const dialogActionsSource = readFileSync(join(root, 'src/styles/components/_dialog-actions.scss'), 'utf8')
 const paginationStyleSource = readFileSync(join(root, 'src/styles/components/_pagination.scss'), 'utf8')
@@ -43,6 +46,11 @@ requireToken(customerNameLockSource, 'class="customer-name-lock-input"', 'src/co
 requireToken(customerNameLockSource, 'title="更换客户"', 'src/components/common/CustomerNameLockInput.vue', '客户姓名锁定与更换客户必须保持独立操作')
 requireToken(customerNameLockSource, 'aria-label="已锁定，双击姓名输入框可编辑"', 'src/components/common/CustomerNameLockInput.vue', '锁定图标必须保留无障碍说明')
 requireToken(customerNameLockSource, 'aria-label="保存姓名并重新锁定"', 'src/components/common/CustomerNameLockInput.vue', '保存图标必须保留无障碍说明')
+requireToken(customerSearchSource, 'class="customer-search-dropdown"', 'src/components/common/CustomerSearchDropdown.vue', '客户检索必须使用公共下拉容器')
+requireToken(customerSearchSource, 'customer-search-dropdown__item', 'src/components/common/CustomerSearchDropdown.vue', '客户检索结果必须使用公共结果项布局')
+requireToken(customerSearchSource, 'createMinQueryLength', 'src/components/common/CustomerSearchDropdown.vue', '客户检索必须区分检索门槛和新增客户门槛')
+requireToken(customerOptionsSource, 'CUSTOMER_SEARCH_PAGE_SIZE = 50', 'src/services/customer-options.ts', '客户检索条数必须由公共常量统一维护')
+requireToken(exemptionsSource, 'EX-UI-001', 'docs/frontend/standards-exemptions.md', '客户检索自适应结果项必须登记为公共豁免')
 if (/<span>\s*(?:已锁定|保存)\s*<\/span>/.test(customerNameLockSource)) {
   findings.push('src/components/common/CustomerNameLockInput.vue 锁定/保存状态只能显示图标，不得恢复文字标签')
 }

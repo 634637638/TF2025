@@ -331,7 +331,8 @@
                 :loading="editCustomerLookupLoading"
                 :visible="editShowCustomerSearchResults && !editFoundCustomer"
                 :keyword="formData.customer_phone"
-                :min-query-length="11"
+                :min-query-length="2"
+                :create-min-query-length="11"
                 @select="selectCustomer($event as CustomerOption)"
                 @create="createNewCustomer"
               />

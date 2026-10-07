@@ -72,6 +72,17 @@ export function upsertPriceItem(data: unknown) {
 }
 
 /**
+ * 批量设置价格记录的采集来源。
+ * sourceConfigId 为空时恢复跟随默认采集源。
+ */
+export function batchUpdatePriceSource(priceListIds: number[], sourceConfigId: number | null) {
+  return unifiedApi.put('/price-list/batch-source', {
+    price_list_ids: priceListIds,
+    source_config_id: sourceConfigId
+  })
+}
+
+/**
  * 删除价格记录
  */
 export function deletePriceItem(id: number) {
@@ -245,6 +256,8 @@ export interface PriceMarkupConfig {
   wholesale: {
     enabled: boolean
     adjustment: number
+    /** 按同步来源覆盖默认批发加价，键为 price_sync_config.id */
+    sourceAdjustments: Record<string, number>
   }
 }
 

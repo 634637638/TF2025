@@ -43,7 +43,8 @@
         </template>
 
         <el-table
-          :data="loading ? [] : filteredGroupedConfigs"
+            v-tf-loading="loading"
+            :data="filteredGroupedConfigs"
           stripe
           border
           row-key="groupKey"

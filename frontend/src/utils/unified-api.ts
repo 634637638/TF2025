@@ -114,6 +114,12 @@ class UnifiedApiManager {
   private async handleRequest(config: any): Promise<any> {
     const requestConfig = config as RequestConfig
 
+    // 统一 API 默认反馈请求加载状态：首次进入页面由 GlobalLoading 承担。
+    // 手动刷新由 v-tf-loading/useRefreshData 抑制全局层；明确不需要反馈的请求仍可传 showLoading: false。
+    if (requestConfig.showLoading === undefined) {
+      requestConfig.showLoading = true
+    }
+
     if (!requestConfig.timeout) {
       const method = String(config.method || 'get').toLowerCase()
       requestConfig.timeout = method === 'get' ? DEFAULT_READ_TIMEOUT : DEFAULT_WRITE_TIMEOUT

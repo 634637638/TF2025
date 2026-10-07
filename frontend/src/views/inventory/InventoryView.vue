@@ -21,7 +21,7 @@
           <ImportExportActions
             :can-export="canExport"
             :export-loading="exporting"
-            :export-disabled="loadingStore.isLoading || exporting"
+            :export-disabled="tableLoading || exporting"
             export-icon-class="fas fa-download"
             @export="exportInventory"
           />
@@ -39,7 +39,7 @@
 
       <div class="content admin-page-content">
         <InventoryStatsCards
-          :loading="loadingStore.isLoading"
+          :loading="tableLoading"
           :stats="statCards"
           :visible="showStatsCards"
         />
@@ -50,7 +50,7 @@
           :can-view-field="canViewField"
           :colors="colors"
           :filters="filters"
-          :loading="isLoading"
+          :loading="false"
           :memories="memories"
           :model-count="models.length"
           :operators="operators"
@@ -79,7 +79,7 @@
           :get-sale-status-class="getSaleStatusClass"
           :get-sale-status-label="getSaleStatusLabel"
           :inventory="inventory"
-          :loading="isLoading"
+          :loading="tableLoading"
           :pagination="pagination"
           @delete="deleteItem"
           @edit="editItem"
@@ -174,7 +174,6 @@ import { resolvePhoneReferenceIds } from '@/utils/phone-reference-ids'
 import { getModels } from '@/services/reference-options'
 import { useAuthStore } from '@/stores/auth'
 import { logger } from '@/utils/logger'
-import { useLoadingStore } from '@/stores/loading'
 import { TimeUtil } from '@/utils/time'
 import Toast from '../../components/Toast.vue'
 import ImportExportActions from '@/components/business/ImportExportActions.vue'
@@ -214,11 +213,9 @@ const {
 } = usePagePermissions('inventory')
 const { refreshing, refresh } = useRefreshData()
 const authStore = useAuthStore()
-const loadingStore = useLoadingStore()
 const { init: initFieldPermissions } = fieldPermissions
 const { exportFile, buildDateFilename } = useImportExport()
 const exporting = ref(false)
-const initialTableLoading = ref(true)
 
 // 搜索相关状态
 const searchExpanded = ref(false) // 搜索区域展开状态（移动端默认折叠）
@@ -606,9 +603,6 @@ const colors = ref<string[]>([])
 const memories = ref<string[]>([])
 const brandModels = ref<Array<{id: number, name: string}>>([])  // 存储当前品牌对应的型号列表
 
-// 加载状态
-const isLoading = computed(() => initialTableLoading.value || loadingStore.isLoading)
-
 const normalizedInventoryPermissions = computed<string[]>(() => {
   return normalizePermissionList(authStore.permissions)
 })
@@ -818,7 +812,7 @@ const resetFilters = () => {
 const handleRefresh = async () => {
   await refresh(async () => {
     await Promise.all([
-      loadInventoryData({}, { showLoadingState: false }),
+      loadInventoryData({}, { showLoadingState: true }),
       fetchBasicData()
     ])
   })
@@ -845,14 +839,14 @@ const { fetchBasicData, handleBrandChange, searchOperatorsRemote } = useInventor
 const {
   debounceLoadInventory,
   loadInventory,
-  loadInventoryData
+  loadInventoryData,
+  tableLoading
 } = useInventoryData({
   inventory,
   filters,
   pagination,
   stats,
   statsAvailable,
-  loadingStore,
   onError: message => error(message)
 })
 
@@ -1425,7 +1419,7 @@ const deleteItem = async (item: InventoryItem) => {
       }
     )) return
 
-    loadingStore.setLoading(true)
+    tableLoading.value = true
 
     const response = await api.delete(`/inventory/${item.id}`, { showError: false })
 
@@ -1456,7 +1450,7 @@ const deleteItem = async (item: InventoryItem) => {
       }
     }
   } finally {
-    loadingStore.setLoading(false)
+    tableLoading.value = false
   }
 }
 
@@ -1499,7 +1493,6 @@ onMounted(async () => {
 
   // 检查是否有页面访问权限
   if (!canView.value) {
-    initialTableLoading.value = false
     return
   }
 
@@ -1512,7 +1505,6 @@ onMounted(async () => {
 
   // 在后台延后加载基础数据，避免和首屏列表抢占请求
   initialInventoryLoad.finally(() => {
-    initialTableLoading.value = false
     basicDataWarmupTimer = setTimeout(() => {
       fetchBasicData().then(() => {
         // 初始化型号列表为所有型号

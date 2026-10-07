@@ -38,9 +38,12 @@
     </div>
 
     <!-- 表格 -->
-    <div class="tf-paginated-table__table-wrapper">
+    <div
+      v-tf-loading="loading"
+      class="tf-paginated-table__table-wrapper"
+    >
       <el-table
-        :data="loading ? [] : tableData"
+        :data="tableData"
         :height="tableHeight"
         :max-height="maxHeight"
         :stripe="stripe"
@@ -118,9 +121,9 @@
         <!-- 空状态 -->
         <template #empty>
           <TableLoadingRow
-            v-if="loading"
+            v-if="loading && tableData.length === 0"
             mode="block"
-            text="加载中..."
+            text="加载数据中..."
           />
           <DataEmptyState
             v-else

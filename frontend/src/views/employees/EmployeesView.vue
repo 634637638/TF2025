@@ -164,7 +164,8 @@
           <div class="table-responsive">
             <el-table
               ref="employeesTableRef"
-              :data="loading ? [] : paginatedEmployees"
+              v-tf-loading="loading"
+              :data="paginatedEmployees"
               border
               stripe
               class="data-table devices-table base-data-table employees-data-table"

@@ -144,7 +144,8 @@
 
           <div class="table-responsive">
             <el-table
-              :data="loading ? [] : rentals"
+              v-tf-loading="loading"
+              :data="rentals"
               border
               stripe
               class="data-table compact-fit-table"

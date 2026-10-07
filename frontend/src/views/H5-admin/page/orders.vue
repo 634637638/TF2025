@@ -229,7 +229,8 @@
         shadow="never"
       >
         <el-table
-          :data="loading ? [] : orders"
+          v-tf-loading="loading"
+          :data="orders"
           class="data-table w-full"
           :border="true"
         >

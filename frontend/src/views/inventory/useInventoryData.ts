@@ -1,4 +1,4 @@
-import { type Ref } from 'vue'
+import { ref, type Ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { extractResponseData } from '@/utils/api-response'
 import { unifiedApi as api } from '@/utils/unified-api'
@@ -33,17 +33,12 @@ interface StatsState {
   totalValue: number
 }
 
-interface LoadingController {
-  setLoading: (value: boolean) => void
-}
-
 interface UseInventoryDataOptions {
   inventory: Ref<InventoryItem[]>
   filters: InventoryFilters
   pagination: PaginationState
   stats: StatsState
   statsAvailable: Ref<boolean>
-  loadingStore: LoadingController
   onError: (message: string) => void
 }
 
@@ -77,10 +72,11 @@ export const useInventoryData = ({
   pagination,
   stats,
   statsAvailable,
-  loadingStore,
   onError
 }: UseInventoryDataOptions) => {
   let statsRequestId = 0
+  // 列表刷新只锁定库存表格，不能使用全局 LoadingStore 遮罩整个页面。
+  const tableLoading = ref(false)
 
   const clearStats = () => {
     // Invalidate an in-flight request so stale statistics cannot overwrite a
@@ -147,7 +143,7 @@ export const useInventoryData = ({
     options: LoadOptions = {}
   ) => {
     const { showLoadingState = true, useCache = true } = options
-    if (showLoadingState) loadingStore.setLoading(true)
+    if (showLoadingState) tableLoading.value = true
 
     try {
       const params: Record<string, unknown> = {
@@ -246,7 +242,7 @@ export const useInventoryData = ({
       pagination.total = 0
       clearStats()
     } finally {
-      if (showLoadingState) loadingStore.setLoading(false)
+      if (showLoadingState) tableLoading.value = false
     }
   }
 
@@ -268,6 +264,7 @@ export const useInventoryData = ({
     debounceLoadInventory,
     loadInventory,
     loadInventoryData,
+    tableLoading,
     updateStats
   }
 }

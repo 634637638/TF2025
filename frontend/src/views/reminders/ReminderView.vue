@@ -173,7 +173,8 @@
           </div>
           <div class="table-responsive">
             <el-table
-              :data="loading ? [] : reminders"
+              v-tf-loading="loading"
+              :data="reminders"
               border
               stripe
               class="data-table devices-table reminder-table"

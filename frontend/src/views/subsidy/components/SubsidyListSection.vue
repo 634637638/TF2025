@@ -54,7 +54,10 @@
         </div>
       </div>
 
-      <div class="table-container table-responsive">
+      <div
+        v-tf-loading="loading"
+        class="table-container table-responsive"
+      >
         <TableLoadingRow
           v-if="loading"
           mode="block"

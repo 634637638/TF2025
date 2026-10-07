@@ -1932,7 +1932,7 @@ const handleRefresh = async () => {
   await clearRouteAutoOpenSaleQuery()
   await refresh(async () => {
     await Promise.all([
-      loadAvailablePhones(true, true, false),
+      loadAvailablePhones(true, true, true),
       loadStores(),
       loadOperators(),
       loadSuppliers(),

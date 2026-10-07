@@ -289,7 +289,8 @@
               <el-table
                 v-else
                 ref="customersTableRef"
-                :data="isLoading ? [] : customers"
+                v-tf-loading="isLoading"
+                :data="customers"
                 border
                 stripe
                 class="data-table devices-table base-data-table customers-data-table"

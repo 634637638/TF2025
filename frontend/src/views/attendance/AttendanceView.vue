@@ -296,7 +296,8 @@
                 <div class="table-responsive">
                   <el-table
                     ref="attendanceTableRef"
-                    :data="loading ? [] : tableData"
+                    v-tf-loading="loading"
+                    :data="tableData"
                     border
                     stripe
                     class="data-table devices-table compact-fit-table"

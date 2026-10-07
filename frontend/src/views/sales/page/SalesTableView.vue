@@ -2,7 +2,8 @@
   <div class="sales-view-panel">
     <div class="table-responsive">
       <el-table
-        :data="loading ? [] : phones"
+        v-tf-loading="loading"
+        :data="phones"
         border
         stripe
         class="data-table admin-data-table devices-table"

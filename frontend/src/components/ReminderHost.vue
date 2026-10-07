@@ -312,8 +312,12 @@ const loadPending = (force = false): Promise<void> => {
   lastLoadedAt = Date.now()
   loadPendingPromise = (async () => {
     const [pendingResponse, completionResponse] = await Promise.all([
-      canUsePendingReminder.value ? api.get('/reminders/my/pending') : Promise.resolve(null),
-      canUseCompletionNotice.value ? api.get('/reminders/completed/pending') : Promise.resolve(null)
+      canUsePendingReminder.value
+        ? api.get('/reminders/my/pending', { showLoading: false })
+        : Promise.resolve(null),
+      canUseCompletionNotice.value
+        ? api.get('/reminders/completed/pending', { showLoading: false })
+        : Promise.resolve(null)
     ])
 
     if (pendingResponse?.success) {

@@ -80,7 +80,8 @@
       <div class="table-responsive">
         <el-table
           ref="tableRef"
-          :data="loading ? [] : templates"
+          v-tf-loading="loading"
+          :data="templates"
           border
           stripe
           table-layout="fixed"

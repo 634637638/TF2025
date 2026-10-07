@@ -8,7 +8,8 @@
 
     <div class="table-responsive">
       <el-table
-        :data="ctx.usersLoading ? [] : ctx.paginatedUsers"
+        v-tf-loading="ctx.usersLoading"
+        :data="ctx.paginatedUsers"
         border
         stripe
         class="data-table devices-table compact-fit-table permissions-data-table"

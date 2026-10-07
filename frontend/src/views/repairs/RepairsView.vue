@@ -162,7 +162,8 @@
 
           <div class="table-responsive">
             <el-table
-              :data="loading ? [] : repairs"
+              v-tf-loading="loading"
+              :data="repairs"
               border
               stripe
               class="data-table devices-table base-data-table repairs-data-table"

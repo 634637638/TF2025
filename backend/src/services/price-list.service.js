@@ -705,7 +705,11 @@ class PriceListService {
       const markupConfig = await this.getGlobalMarkupConfig()
       rows.forEach(row => {
         row.sales_display_price = pricingService.calculateSalesPriceByConfig(row.wholesale_price, markupConfig)
-        row.wholesale_display_price = pricingService.calculateWholesalePriceByConfig(row.wholesale_price, markupConfig)
+        row.wholesale_display_price = pricingService.calculateWholesalePriceByConfig(
+          row.wholesale_price,
+          markupConfig,
+          row.source_config_id
+        )
       })
 
       log.debug('查询到的价格列表数据:', rows.length, '条')
@@ -727,6 +731,79 @@ class PriceListService {
   }
 
   /**
+   * 批量绑定价格记录的采集来源。
+   * 绑定关系用于后续同步和批发加价匹配，当前已采集原价保持不变。
+   */
+  async batchUpdatePriceSource(data = {}) {
+    try {
+      if (!this.db) {
+        return { success: false, message: '数据库未初始化', statusCode: 503 }
+      }
+
+      const rawIds = Array.isArray(data.price_list_ids) ? data.price_list_ids : []
+      const ids = [...new Set(rawIds.map(value => Number(value)))]
+
+      if (ids.length === 0) {
+        return { success: false, message: '请选择至少一条价格记录' }
+      }
+      if (ids.some(id => !Number.isInteger(id) || id <= 0)) {
+        return { success: false, message: '价格记录 ID 无效' }
+      }
+      if (ids.length > 500) {
+        return { success: false, message: '单次最多选择500条价格记录' }
+      }
+
+      const hasSourceConfigId = Object.prototype.hasOwnProperty.call(data, 'source_config_id')
+      const sourceConfigId = data.source_config_id === null || data.source_config_id === '' || data.source_config_id === undefined
+        ? null
+        : Number(data.source_config_id)
+
+      if (!hasSourceConfigId) {
+        return { success: false, message: '请选择采集来源' }
+      }
+      if (sourceConfigId !== null && (!Number.isInteger(sourceConfigId) || sourceConfigId <= 0)) {
+        return { success: false, message: '采集来源无效' }
+      }
+
+      if (sourceConfigId !== null) {
+        const [sourceRows] = await this.db.query(
+          'SELECT id FROM price_sync_config WHERE id = ? LIMIT 1',
+          [sourceConfigId]
+        )
+        if (sourceRows.length === 0) {
+          return { success: false, message: '采集来源不存在' }
+        }
+      }
+
+      const placeholders = ids.map(() => '?').join(', ')
+      const [existingRows] = await this.db.query(
+        `SELECT id FROM price_list WHERE id IN (${placeholders})`,
+        ids
+      )
+      if (existingRows.length !== ids.length) {
+        return { success: false, message: '部分价格记录不存在，请刷新后重试' }
+      }
+
+      const updatedAt = this.getBeijingTime()
+      const [result] = await this.db.query(
+        `UPDATE price_list
+         SET source_config_id = ?, updated_at = ?
+         WHERE id IN (${placeholders})`,
+        [sourceConfigId, updatedAt, ...ids]
+      )
+
+      return this.createSuccessResponse('采集来源设置成功', {
+        requested: ids.length,
+        updated: Number(result.affectedRows) || 0,
+        source_config_id: sourceConfigId
+      })
+    } catch (error) {
+      log.error('批量设置采集来源失败:', error)
+      return this.createErrorResponse('批量设置采集来源失败')
+    }
+  }
+
+  /**
    * 根据品牌获取价格（公开接口）
    */
   async getPricesByBrand(brandName) {
@@ -737,6 +814,7 @@ class PriceListService {
           mo.name as model_number,
           c.name as color_name,
           mem.size as memory,
+          p.source_config_id,
           p.retail_price,
           p.wholesale_price,
           p.stock_quantity,
@@ -760,8 +838,9 @@ class PriceListService {
         ORDER BY model_sort_num, mo.name, memory_sort_num, c.name
       `
       const [rows] = await this.db.query(query, [brandName])
+      const rowsWithDisplayMarkup = await this.applyWholesaleDisplayMarkup(rows)
 
-      return this.createSuccessResponse('获取成功', rows)
+      return this.createSuccessResponse('获取成功', rowsWithDisplayMarkup)
     } catch (error) {
       log.error('根据品牌获取价格失败:', error)
       return this.createErrorResponse('获取价格失败')
@@ -781,6 +860,7 @@ class PriceListService {
           p.model_id,
           p.color_id,
           p.memory_id,
+          p.source_config_id,
           b.name as brand_name,
           mo.name as model_number,
           c.name as color_name,
@@ -1012,6 +1092,7 @@ class PriceListService {
           p.model_id,
           p.color_id,
           p.memory_id,
+          p.source_config_id,
           b.name as brand_name,
           mo.name as model_number,
           c.name as color_name,
@@ -1218,6 +1299,7 @@ class PriceListService {
         // 自动同步，使用 syncTime 或当前北京时间
         finalSyncTime = syncTime || this.getBeijingTime()
       }
+      const hasSyncSourceConfig = sourceConfigId !== null && sourceConfigId !== undefined && sourceConfigId !== ''
 
       if (existing.length > 0) {
         // 更新 - 只在价格变化时才更新
@@ -1351,7 +1433,8 @@ class PriceListService {
             wholesale_price === undefined
 
           // 分步构建 SQL 和参数，避免模板字符串变量求值问题
-          const shouldUpdateSourceConfig = setSourceConfig || (isManualEdit && hasSourceConfigId)
+          // 自动同步传入来源时必须保存绑定关系，否则下一次列表计算会回退到默认加价。
+          const shouldUpdateSourceConfig = hasSyncSourceConfig || (isManualEdit && hasSourceConfigId)
           const updateQuery = `UPDATE price_list
             SET retail_price = ${onlyUpdatingShowPrice ? 'retail_price' : (isManualEdit ? '?' : 'COALESCE(?, retail_price)')},
                 wholesale_price = ${onlyUpdatingShowPrice ? 'wholesale_price' : (isManualEdit ? '?' : 'COALESCE(?, wholesale_price)')},
@@ -1393,7 +1476,7 @@ class PriceListService {
           updateParams.push(remark)
           updateParams.push(external_model)
           if (shouldUpdateSourceConfig) {
-            updateParams.push(setSourceConfig ? Number(sourceConfigId) : inputSourceConfigId)
+            updateParams.push(hasSyncSourceConfig ? Number(sourceConfigId) : inputSourceConfigId)
           }
 
           // 只有在手动编辑且传入了 show_price 时才更新该字段
@@ -1431,6 +1514,12 @@ class PriceListService {
               'UPDATE price_list SET last_sync_time = ?, updated_at = ? WHERE id = ?',
               [finalSyncTime, updatedAt, priceItemId]
             )
+          } else if (hasSyncSourceConfig) {
+            // 即使本次原价没有变化，也要保存自动同步来源绑定。
+            await this.db.query(
+              'UPDATE price_list SET source_config_id = ?, last_sync_time = ?, updated_at = ? WHERE id = ?',
+              [Number(sourceConfigId), finalSyncTime || updatedAt, updatedAt, priceItemId]
+            )
           } else {
             // 其他情况保持原有逻辑：自动同步或未传同步时间时更新为当前同步时间
             await this.db.query(
@@ -1461,8 +1550,8 @@ class PriceListService {
             color_id,
             memory_id,
             external_model,
-            setSourceConfig || hasSourceConfigId
-              ? (setSourceConfig ? Number(sourceConfigId) : inputSourceConfigId)
+            (sourceConfigId !== null && sourceConfigId !== undefined && sourceConfigId !== '') || hasSourceConfigId
+              ? (hasSyncSourceConfig ? Number(sourceConfigId) : inputSourceConfigId)
               : null,
             finalRetailPrice || null,
             wholesale_price || null,
@@ -4228,7 +4317,11 @@ class PriceListService {
 
     return items.map(item => {
       const wholesalePrice = Number(item.wholesale_price)
-      const displayWholesalePrice = pricingService.calculateWholesalePriceByConfig(wholesalePrice, config)
+      const displayWholesalePrice = pricingService.calculateWholesalePriceByConfig(
+        wholesalePrice,
+        config,
+        item.source_config_id
+      )
 
       return {
         ...item,

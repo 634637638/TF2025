@@ -298,7 +298,8 @@
             </div>
           </template>
           <el-table
-            :data="loading ? [] : displayRecords"
+            v-tf-loading="loading"
+            :data="displayRecords"
             stripe
             class="data-table w-full"
             max-height="400"

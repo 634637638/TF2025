@@ -546,6 +546,22 @@ test('transfer invoice sequence initialization happens before the transaction', 
   }
 });
 
+test('invoice suffixes share PF for wholesale and peer transfer', () => {
+  const {
+    generateInvoiceNumberForDate,
+    getInvoiceTypeSuffix,
+    parseInvoiceNumber
+  } = require('../src/utils/invoice-number');
+
+  assert.equal(getInvoiceTypeSuffix('retail'), 'XS');
+  assert.equal(getInvoiceTypeSuffix('wholesale'), 'PF');
+  assert.equal(getInvoiceTypeSuffix('peer_transfer'), 'PF');
+  assert.equal(getInvoiceTypeSuffix('supplier_proxy'), 'HB');
+  assert.equal(generateInvoiceNumberForDate('2026-10-07', 5, 'wholesale'), '202610070005PF');
+  assert.equal(generateInvoiceNumberForDate('2026-10-07', 6, 'peer_transfer'), '202610070006PF');
+  assert.equal(parseInvoiceNumber('202610070007DH').saleType, 'peer_transfer');
+});
+
 test('wholesale page uses canonical inventory cost and time fields', () => {
   const helpers = fs.readFileSync(path.join(root, '../frontend/src/components/wholesale/helpers.ts'), 'utf8');
   const types = fs.readFileSync(path.join(root, '../frontend/src/components/wholesale/types.ts'), 'utf8');

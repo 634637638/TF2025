@@ -27,7 +27,8 @@
               :loading="customerSearching"
               :visible="!preorderDelivery && showCustomerSearch && !selectedCustomer"
               :keyword="saleForm.customer_phone"
-              :min-query-length="11"
+              :min-query-length="2"
+              :create-min-query-length="11"
               @select="emit('select-customer', $event as SalesCustomer)"
               @create="emit('create-customer')"
             />

@@ -32,8 +32,8 @@
     },
     {
       "file": "src/styles/components/_tabs.scss",
-      "max": 29,
-      "reason": "Unified tab navigation overrides vendor and historical page tab styles."
+      "max": 51,
+      "reason": "Unified tab navigation overrides vendor and historical page tab styles, including the shared topbar tab surface."
     },
     {
       "file": "src/assets/css/field-permissions.css",
@@ -47,8 +47,8 @@
     },
     {
       "file": "src/styles/components/_dialog.scss",
-      "max": 156,
-      "reason": "Element Plus dialog structure and viewport boundary overrides."
+      "max": 160,
+      "reason": "Element Plus dialog structure, viewport boundary and shared MobileDialog close-control overrides."
     },
     {
       "file": "src/styles/utilities.scss",
@@ -197,8 +197,8 @@
     },
     {
       "file": "src/components/MobileDialog.vue",
-      "max": 27,
-      "reason": "Core dialog component must control Element Plus teleported dimensions, safe areas and transition state."
+      "max": 29,
+      "reason": "Core dialog component must control Element Plus teleported dimensions, safe areas, transition state and the shared sheet close control."
     },
     {
       "file": "src/components/common/CustomerSearchDropdown.vue",

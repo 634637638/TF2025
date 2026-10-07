@@ -202,8 +202,9 @@
           </template>
 
           <el-table
+            v-tf-loading="customerLoading"
             class="data-table"
-            :data="customerLoading ? [] : filteredCustomers"
+            :data="filteredCustomers"
             stripe
             :max-height="400"
           >

@@ -345,7 +345,8 @@
 
             <div class="table-responsive">
               <el-table
-                :data="loading ? [] : queryData"
+                v-tf-loading="loading"
+                :data="queryData"
                 border
                 stripe
                 class="data-table devices-table"
@@ -1836,7 +1837,7 @@ const handleRefresh = async () => {
   await refresh(async () => {
     invalidateQueryCaches()
     await Promise.all([
-      loadQueryData(true, false),
+      loadQueryData(true, true),
       loadQueryOptions()
     ])
   })

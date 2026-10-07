@@ -201,7 +201,7 @@
 
           <div class="inline-grid inline-grid--single">
             <el-form-item
-              label="加价金额"
+              label="默认加价"
               class="compact-form-item"
             >
               <div class="price-input-group">
@@ -216,6 +216,53 @@
                 <span class="price-unit">元</span>
               </div>
             </el-form-item>
+          </div>
+
+          <div class="source-adjustment-section">
+            <div class="source-adjustment-heading">
+              <div>
+                <span class="source-adjustment-title">采集来源加价</span>
+                <p class="section-subtitle">
+                  未单独设置的来源自动跟随默认加价
+                </p>
+              </div>
+            </div>
+
+            <div
+              v-if="syncSources.length"
+              class="source-adjustment-list"
+            >
+              <div
+                v-for="source in syncSources"
+                :key="source.id"
+                class="source-adjustment-row"
+              >
+                <div class="source-adjustment-name">
+                  <span class="source-adjustment-name-text">{{ getSourceLabel(source) }}</span>
+                  <span class="source-adjustment-type">
+                    {{ source.source_type === 'public' ? '公开未登录' : '登录账户' }}
+                  </span>
+                </div>
+                <div class="price-input-group source-adjustment-input">
+                  <el-input-number
+                    :model-value="getSourceAdjustment(source.id)"
+                    :min="-1000"
+                    :max="1000"
+                    :step="50"
+                    :controls="false"
+                    placeholder="跟随默认"
+                    @update:model-value="(value) => setSourceAdjustment(source.id, value)"
+                  />
+                  <span class="price-unit">元</span>
+                </div>
+              </div>
+            </div>
+            <p
+              v-else
+              class="source-adjustment-empty"
+            >
+              暂无已配置的采集来源，请先在同步配置中添加账户。
+            </p>
           </div>
         </section>
       </el-form>
@@ -249,6 +296,19 @@
             <span class="preview-value preview-value--wholesale">批发价: {{ calculateWholesalePreview(8000) }}元</span>
           </div>
         </div>
+        <div
+          v-if="syncSources.length"
+          class="source-preview-list"
+        >
+          <div
+            v-for="source in syncSources"
+            :key="`preview-${source.id}`"
+            class="source-preview-item"
+          >
+            <span>{{ getSourceLabel(source) }}批发价（采集价 5600 元）</span>
+            <strong>{{ calculateSourceWholesalePreview(5600, source.id) }} 元</strong>
+          </div>
+        </div>
       </section>
     </div>
 
@@ -275,7 +335,12 @@
 import { ref, computed, watch } from 'vue'
 import { ElMessage, FormInstance } from 'element-plus'
 import { ValidationRules } from '@/composables'
-import { getMarkupConfig, saveMarkupConfig, type PriceMarkupConfig } from '@/api/price-list'
+import {
+  getAllSyncConfigs,
+  getMarkupConfig,
+  saveMarkupConfig,
+  type PriceMarkupConfig
+} from '@/api/price-list'
 import type { ModelValueProps, UpdateModelValueEmits } from '@/types/component'
 import { logger } from '@/utils/logger'
 
@@ -285,6 +350,13 @@ interface Props extends ModelValueProps {
 
 interface Emits extends UpdateModelValueEmits {
   'save': [config: PriceMarkupConfig]
+}
+
+interface SyncSource {
+  id: number
+  config_name?: string
+  source_type?: 'account' | 'public' | string
+  login_username?: string
 }
 
 const props = defineProps<Props>()
@@ -310,7 +382,8 @@ const defaultConfig: PriceMarkupConfig = {
   enabled: true,
   wholesale: {
     enabled: false,
-    adjustment: 0
+    adjustment: 0,
+    sourceAdjustments: {}
   }
 }
 
@@ -327,13 +400,27 @@ function normalizeConfig(raw: any): PriceMarkupConfig {
       enabled: defaultConfig.enabled,
       wholesale: {
         enabled: defaultConfig.wholesale.enabled,
-        adjustment: defaultConfig.wholesale.adjustment
+        adjustment: defaultConfig.wholesale.adjustment,
+        sourceAdjustments: {}
       }
     }
   }
 
   const wholesaleConfig = config.wholesale && typeof config.wholesale === 'object'
     ? config.wholesale
+    : {}
+  const sourceAdjustments = wholesaleConfig.sourceAdjustments
+    && typeof wholesaleConfig.sourceAdjustments === 'object'
+    ? Object.entries(wholesaleConfig.sourceAdjustments).reduce<Record<string, number>>(
+      (result, [sourceId, adjustment]) => {
+        const value = Number(adjustment)
+        if (sourceId && Number.isFinite(value)) {
+          result[String(sourceId)] = value
+        }
+        return result
+      },
+      {}
+    )
     : {}
 
   return {
@@ -348,23 +435,41 @@ function normalizeConfig(raw: any): PriceMarkupConfig {
       enabled: typeof wholesaleConfig.enabled === 'boolean'
         ? wholesaleConfig.enabled
         : defaultConfig.wholesale.enabled,
-      adjustment: Number(wholesaleConfig.adjustment ?? defaultConfig.wholesale.adjustment)
+      adjustment: Number(wholesaleConfig.adjustment ?? defaultConfig.wholesale.adjustment),
+      sourceAdjustments
     }
   }
 }
 
 // 表单数据
 const form = ref<PriceMarkupConfig>(normalizeConfig(defaultConfig))
+const syncSources = ref<SyncSource[]>([])
 
 // 从后端加载配置
 const loadConfig = async () => {
   loading.value = true
   try {
-    const response = await getMarkupConfig()
-    if (response.success && response.data) {
-      form.value = normalizeConfig(response.data)
+    const [configResult, sourcesResult] = await Promise.allSettled([
+      getMarkupConfig(),
+      getAllSyncConfigs()
+    ])
+    if (configResult.status === 'fulfilled' && configResult.value.success && configResult.value.data) {
+      form.value = normalizeConfig(configResult.value.data)
     } else {
       form.value = normalizeConfig(defaultConfig)
+    }
+    if (sourcesResult.status === 'fulfilled' && sourcesResult.value.success && Array.isArray(sourcesResult.value.data)) {
+      syncSources.value = sourcesResult.value.data
+        .map((source: SyncSource) => ({
+          ...source,
+          id: Number(source.id)
+        }))
+        .filter(source => Number.isInteger(source.id) && source.id > 0)
+    } else {
+      syncSources.value = []
+      if (sourcesResult.status === 'rejected') {
+        logger.warn('加载采集来源失败，批发加价仍可使用默认规则', sourcesResult.reason)
+      }
     }
   } catch (error) {
     logger.error('加载加价配置失败:', error)
@@ -431,6 +536,37 @@ const calculateWholesalePreview = (wholesalePrice: number): string => {
   }
 
   return (wholesalePrice + Number(form.value.wholesale.adjustment || 0)).toFixed(0)
+}
+
+const getSourceLabel = (source: SyncSource): string => {
+  if (source.config_name) return source.config_name
+  if (source.source_type === 'public') return '公开来源'
+  return source.login_username ? `账户${source.login_username}` : `来源${source.id}`
+}
+
+const getSourceAdjustment = (sourceId: number): number | null => {
+  const value = form.value.wholesale.sourceAdjustments[String(sourceId)]
+  return Number.isFinite(value) ? value : null
+}
+
+const setSourceAdjustment = (sourceId: number, value: number | null | undefined) => {
+  const sourceKey = String(sourceId)
+  const nextAdjustments = { ...form.value.wholesale.sourceAdjustments }
+  if (value === null || value === undefined || !Number.isFinite(Number(value))) {
+    delete nextAdjustments[sourceKey]
+  } else {
+    nextAdjustments[sourceKey] = Number(value)
+  }
+  form.value.wholesale.sourceAdjustments = nextAdjustments
+}
+
+const calculateSourceWholesalePreview = (wholesalePrice: number, sourceId: number): string => {
+  if (!form.value.wholesale.enabled) return wholesalePrice.toString()
+  const adjustment = getSourceAdjustment(sourceId)
+  const amount = adjustment === null
+    ? Number(form.value.wholesale.adjustment || 0)
+    : adjustment
+  return (wholesalePrice + amount).toFixed(0)
 }
 
 const getLowTierPreviewPrice = (): number => {
@@ -641,6 +777,79 @@ const handleClose = () => {
     min-width: 30px;
   }
 }
+</style>
+
+<style scoped lang="scss">
+
+.source-adjustment-section {
+  margin-top: var(--tf-space-1);
+  padding-top: var(--tf-space-4);
+  border-top: 1px solid var(--tf-color-border-neutral-alt);
+}
+
+.source-adjustment-heading {
+  margin-bottom: var(--tf-space-3);
+}
+
+.source-adjustment-title {
+  color: var(--tf-color-neutral-800);
+  font-size: var(--tf-type-scale-14);
+  font-weight: 700;
+}
+
+.source-adjustment-list {
+  display: grid;
+  gap: var(--tf-space-2);
+}
+
+.source-adjustment-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--tf-space-4);
+  min-height: 48px;
+  padding: var(--tf-space-2) var(--tf-space-3);
+  background: var(--tf-color-surface-neutral);
+  border: 1px solid var(--tf-color-border-neutral-alt);
+  border-radius: var(--tf-radius-card);
+}
+
+.source-adjustment-name {
+  display: flex;
+  align-items: baseline;
+  gap: var(--tf-space-2);
+  min-width: 0;
+}
+
+.source-adjustment-name-text {
+  overflow: hidden;
+  color: var(--tf-color-neutral-800);
+  font-size: var(--tf-type-scale-14);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.source-adjustment-type {
+  flex: 0 0 auto;
+  color: var(--tf-color-gray-ui-alt);
+  font-size: var(--tf-type-scale-12);
+}
+
+.source-adjustment-input {
+  flex: 0 0 170px;
+  justify-content: flex-end;
+}
+
+.source-adjustment-input :deep(.el-input-number) {
+  width: 130px;
+}
+
+.source-adjustment-empty {
+  margin: 0;
+  color: var(--tf-color-gray-ui-alt);
+  font-size: var(--tf-type-scale-13);
+}
 
 .form-tip {
   display: flex;
@@ -686,6 +895,30 @@ const handleClose = () => {
   }
 }
 
+.source-preview-list {
+  display: grid;
+  gap: var(--tf-space-2);
+  margin-top: var(--tf-space-3);
+}
+
+.source-preview-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--tf-space-3);
+  padding: var(--tf-space-2) var(--tf-space-3);
+  color: var(--tf-color-gray-ui-alt);
+  font-size: var(--tf-type-scale-12);
+  background: var(--tf-color-surface-neutral);
+  border-radius: var(--tf-radius-card);
+}
+
+.source-preview-item strong {
+  flex: 0 0 auto;
+  color: var(--color-primary);
+  font-size: var(--tf-type-scale-14);
+}
+
 @media (max-width: 767px) {
   .overview-panel {
     grid-template-columns: 1fr;
@@ -722,6 +955,29 @@ const handleClose = () => {
   .tier-input-wrap .price-input {
     flex: 1;
     width: auto;
+  }
+
+  .source-adjustment-row {
+    align-items: stretch;
+    flex-direction: column;
+    gap: var(--tf-space-2);
+  }
+
+  .source-adjustment-input {
+    flex-basis: auto;
+    justify-content: flex-start;
+    width: 100%;
+  }
+
+  .source-adjustment-input :deep(.el-input-number) {
+    flex: 1;
+    width: auto;
+  }
+
+  .source-preview-item {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: var(--tf-space-1);
   }
 }
 </style>

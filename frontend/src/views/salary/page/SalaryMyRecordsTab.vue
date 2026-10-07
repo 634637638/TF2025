@@ -74,7 +74,8 @@
       <div class="table-responsive my-salary-table">
         <el-table
           ref="tableRef"
-          :data="loading ? [] : records"
+          v-tf-loading="loading"
+          :data="records"
           border
           stripe
           table-layout="fixed"

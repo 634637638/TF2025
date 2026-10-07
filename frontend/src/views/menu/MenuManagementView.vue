@@ -752,6 +752,8 @@ import IconRenderer from '@/components/IconRenderer.vue'
 import { useEventBus } from '@/composables/core/useEventBus'
 import { PageHeader, PermissionGate } from '@/components/base'
 import { logger } from '@/utils/logger'
+import { getRoutePermissions } from '@/constants/routePermissions'
+import { MODULE_KEY_MAP } from '@/utils/permissionMapper'
 
 const IconPicker = defineAsyncComponent(() => import('@/components/IconPicker.vue'))
 
@@ -1157,46 +1159,13 @@ const loadModules = async () => {
 }
 
 // 根据 URL 智能识别模块
-const detectModuleFromUrl = (url) => {
+const detectModuleFromUrl = (url: string) => {
   if (!url || modules.value.length === 0) return null
-
-  const path = url.toLowerCase().replace(/^\//, '')
-
-  // 精确匹配
-  let module = modules.value.find(m => m.key.toLowerCase() === path)
-  if (module) return module
-
-  // 模糊匹配
-  module = modules.value.find(m => path.includes(m.key.toLowerCase()))
-  if (module) return module
-
-  // 路径映射
-  const pathModuleMapping = {
-    'payment': 'supplier-payments',
-    'payments': 'supplier-payments',
-    'supplier': 'suppliers',
-    'sales': 'sales',
-    'inventory': 'inventory',
-    'customer': 'customers',
-    'repair': 'repairs',
-    'attendance': 'attendance',
-    'salary': 'salary',
-    'subsidy': 'subsidy',
-    'git': 'git',
-    'settings': 'settings',
-    'system': 'system',
-    'report': 'reports',
-    'dashboard': 'dashboard'
-  }
-
-  const firstPart = path.split('/')[0]
-  const mappedKey = pathModuleMapping[firstPart]
-  if (mappedKey) {
-    module = modules.value.find(m => m.key === mappedKey || m.key.toLowerCase().includes(mappedKey))
-    if (module) return module
-  }
-
-  return null
+  // 路由查看权限已定义主页面模块，禁止用 includes 猜测同名子 Tab。
+  const permissions = getRoutePermissions(url) || getRoutePermissions(url.toLowerCase())
+  const shortKey = permissions?.[0]?.split(':')[0]
+  const moduleKey = shortKey ? MODULE_KEY_MAP[shortKey] : undefined
+  return moduleKey ? modules.value.find(module => module.key === moduleKey) || null : null
 }
 
 // 监听 URL 变化，自动识别模块

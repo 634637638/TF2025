@@ -8,7 +8,8 @@
 
     <div class="table-responsive">
       <el-table
-        :data="loading ? [] : inventory"
+          v-tf-loading="loading"
+          :data="inventory"
         border
         stripe
         class="data-table devices-table inventory-table"

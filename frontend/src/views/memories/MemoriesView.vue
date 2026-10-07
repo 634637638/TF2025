@@ -158,7 +158,8 @@
           <div class="table-responsive">
             <el-table
               ref="memoriesTableRef"
-              :data="tableLoading ? [] : memories"
+              v-tf-loading="tableLoading"
+              :data="memories"
               border
               stripe
               class="data-table devices-table base-data-table memories-data-table"

@@ -1,7 +1,7 @@
 # 前端页面与功能单元台账
 
 > 状态：强制登记，持续维护
-> 统计日期：2026-10-06
+> 统计日期：2026-10-07
 > 统计来源：`frontend/src/router/index.ts`、`frontend/src/views/**/*.vue`、`frontend/src/components/**/*.vue`
 
 > 导航审计记录：后台 PC 与手机入口均由 `views/system/page/SimpleAdminView.vue` 统一承载；菜单数据来自 `stores/menu.ts`，菜单点击统一派发 `menu-click`，权限预检统一由主布局执行。手机端不再将菜单分流到未渲染的底部导航；`DynamicSidebar` 已退役，`ResponsiveLayout` 仅作为通用内容布局保留。
@@ -18,7 +18,7 @@
 | 实际叶子路由 | 可直接访问的页面路由，排除 3 个布局容器 | 60 |
 | 页面源文件 | `frontend/src/views/**/*.vue`，包括 Tab、弹窗和页面内部单元 | 128 |
 | 非路由功能单元 | 页面源文件中未被路由直接加载的 Tab、弹窗或复用单元 | 68 |
-| 公共组件源文件 | `frontend/src/components/**/*.vue` | 72 |
+| 公共组件源文件 | `frontend/src/components/**/*.vue` | 71 |
 | 涉及表格的页面源文件 | 页面中出现 Element/原生表格或公共表格入口 | 56 |
 | 涉及表格的公共组件 | 公共组件中出现表格或表格封装 | 5 |
 | 含按钮的页面/功能单元源文件 | `frontend/src/views/**/*.vue` 中出现 `el-button` | 110 |
@@ -69,7 +69,7 @@
 | `/subsidy` | `views/subsidy/SubsidyView.vue` | 国补管理 | 是 | 已登记 |
 | `/rentals` | `views/rentals/RentalsView.vue` | 租赁管理 | 是 | 已登记 |
 | `/repairs` | `views/repairs/RepairsView.vue` | 维修管理 | 是 | 已登记 |
-| `/price-list` | `views/price-list/PriceListView.vue` | 价目表管理 | 是 | 已登记 |
+| `/price-list` | `views/price-list/PriceListView.vue` | 价目表管理（支持批量绑定采集来源） | 是 | 已登记 |
 | `/price-list/sync-logs` | `views/price-list/page/SyncLogView.vue` | 同步日志 | 是 | 已登记 |
 
 ### 2.2 H5 商城管理页面
@@ -244,7 +244,7 @@
 | --- | --- | --- |
 | 页面结构、标题、Tab | `page-structure-standards.md`、`tab-standards.md` | 所有后台页、H5 管理页、含 Tab 的子页 |
 | 表格、行高、字体、操作列 | `admin-table-standards.md`、`npm run check:tables` | 56 个页面承载单元、5 个表格组件 |
-| 全局文字与排版 | `typography-standards.md`、`npm run check:typography` | 128 个页面源文件、72 个公共组件、全局样式 |
+| 全局文字与排版 | `typography-standards.md`、`npm run check:typography` | 128 个页面源文件、71 个公共组件、全局样式 |
 | 按钮、底部操作区 | `button-standards.md`、`dialog-standards.md` | 所有列表、表单、弹窗和移动端 footer |
 | 权限、字段与操作列 | `permission-capability-standards.md`、`field-permission-guide.md` | 权限管理、库存、销售、综合查询及所有操作列 |
 | 搜索、选项和分页 | `search-standards.md`、`model-search-standard.md`、`pagination-standards.md` | 所有检索页、基础资料、库存/销售/综合查询 |
@@ -290,11 +290,17 @@
 
 ## 7. 当前审计结果与边界
 
-- 页面清单统计已完成：路由入口 63、叶子路由 60、视图源文件 128、公共组件 72。
+- 页面清单统计已完成：路由入口 63、叶子路由 60、视图源文件 128、公共组件 71。
 - 表格逐页审计已完成：台账范围为 56 个页面承载单元、5 个公共表格组件；当前 56 个页面模板直接渲染表格，库存 `InventoryView.vue` 与 `InventoryTable.vue` 按承载关系共同纳入范围。当前模板实际包含 90 个 Element 表格和 55 个操作列，`npm run check:tables` 已逐文件通过。
 - “审计通过”仅表示静态规则通过；文字溢出、触摸滚动、按钮位置、真实权限和云端 API 行为仍需按本台账进行浏览器/云端回归。
 - 当前台账不把 `views` 目录下的每个文件都当作独立 URL；新增路由、Tab、弹窗和公共组件必须分别登记，防止重复计数或漏查。
-- 按钮专项已完成零容忍迁移：Vue 源码共扫描 `el-button=967`，原生 `<button>=0`；以后新增按钮必须使用 `el-button`，不得新增原生按钮例外。
+- 按钮专项已完成零容忍迁移：Vue 源码共扫描 `el-button=969`，原生 `<button>=0`；以后新增按钮必须使用 `el-button`，不得新增原生按钮例外。
+- Loading 已按本台账逐文件审计：128 个页面/功能单元、71 个公共组件和 1 个应用入口全部通过 `npm run check:loading`；扫描结果为 `GlobalLoading=1`、`v-tf-loading=48`、`TableLoadingRow=56`、`SectionLoading=32`、`InlineLoading=46`、登记 `v-loading` 例外 1 处。
+- Loading 触发边界已收口：页面切换和明确的全局长操作由 `App.vue` 唯一挂载的 `GlobalLoading` 承载；表格刷新由 `v-tf-loading` 锁定表格边界并显示“加载数据中...”；局部状态通过 `useLoadingStore.hasLocalLoading/isGlobalVisible` 互斥仲裁，同一次操作不得同时显示全屏与局部 Loading。
+- 统一 API 已补齐默认 Loading：128 个页面及其公共功能单元不再依赖逐页传入 `showLoading: true`；首次数据请求默认进入全局 Loading，只有明确的 `showLoading: false` 请求保持静默。
+- 全屏 Loading 例外仅保留 2 个已登记场景：规范页的真实演示，以及数据优化页的清理、批量合并和删除等明确长操作；数据优化页的表格查询仍使用局部 Loading，两类操作不能共用同一次反馈。
+- 逐页核对结论已同步至 `global-loading-standard.md`：无专属 Loading 标记的布局、父级和公共功能单元均已注明统一 API 或父子组件承载关系；详情弹窗使用 `SectionLoading`，首屏和表格刷新不再叠加两层反馈。
+- 仪表盘预警和待审批组件已接入根区域 `v-tf-loading`；提醒弹窗的后台轮询明确关闭 Loading，避免定时探测覆盖用户当前页面。
 - 统计变化时，以路由文件和源文件实际扫描结果为准；文档中的数量和分组必须随代码变更同步更新。
 
 ## 8. 维护记录
@@ -304,6 +310,11 @@
 | 2026-10-06 | 首次建立全局页面、功能单元和表格专项台账 | 已登记，后续新增/修改必须按第 6 节执行 |
 | 2026-10-06 | 新增 `/standards` 规范与审计管理页及独立权限模块 | 已接入，纳入页面、权限和规范审计流程 |
 | 2026-10-06 | 按台账逐页复核表格入口、操作列、行高、表头、滚动和私有覆盖；校正表格组件统计口径 | 56 个页面承载单元、5 个公共表格组件全部通过 `npm run check:tables`；90 个 Element 表格、55 个操作列已接入公共规则 |
-| 2026-10-06 | 按台账迁移全部原生按钮，并将组件采用审计改为零容忍；同步收口公共按钮选择器和规范文档 | Vue 源码 `el-button=967`、原生 `<button>=0`；`check:component-adoption` 和 `check:buttons` 纳入后续强制门禁 |
+| 2026-10-06 | 按台账迁移全部原生按钮，并将组件采用审计改为零容忍；同步收口公共按钮选择器和规范文档 | 当日记录 Vue 源码 `el-button=967`、原生 `<button>=0`；`check:component-adoption` 和 `check:buttons` 纳入后续强制门禁 |
 | 2026-10-06 | 手机端按钮专项复核：侧滑菜单展开/关闭、通知关闭、锁屏密码切换、分页、媒体预览和 H5 登录统一触控尺寸、语义 class、无障碍标签及窄屏布局 | `check:component-adoption` 原生 `<button>=0`、`check:responsive`、`check:buttons`、`check:dialog-actions`、`check:design-tokens`、`type-check` 和生产构建通过；手机端需按 360/390/430px 实机回归 |
 | 2026-10-06 | 导航视觉专项复核：顶部栏、标签页、面包屑、桌面侧栏、手机侧滑菜单及二级菜单统一导航令牌，移除白色背景兜底 | 新增 `navigation-standards.md` 与 `check:navigation`；PC/手机展示组件仍可不同，但背景、状态层级和权限菜单数据统一 |
+| 2026-10-07 | 按台账逐文件复核 Loading 分层和触发边界；新增页面/公共组件逐项审计输出，并把全局/局部 Loading 互斥规则接入 `useLoadingStore`、`v-tf-loading` 和 `useRefreshData` | 128 个页面/功能单元、71 个公共组件、1 个应用入口通过 `npm run check:loading`；GlobalLoading=1、v-tf-loading=48；仅保留 2 个有原因的全局长操作例外 |
+| 2026-10-07 | 统一首次进入/F5 与手动刷新的 Loading 生命周期；`v-tf-loading` 首次加载不再抢占全局层，首次完成后的再次请求才显示表格遮罩 | 全站首次加载只使用 `GlobalLoading`，手动刷新/搜索/分页使用 `v-tf-loading`；`check:loading` 和完整 `check:standards` 通过 |
+| 2026-10-07 | 修复统一 API 默认不展示 Loading 的缺口；未显式关闭的首次请求统一进入 `GlobalLoading`，继续由局部刷新互斥规则接管手动刷新 | 页面/功能单元不再因遗漏 `showLoading: true` 而无任何加载反馈；`check:loading`、类型检查和完整规范审计通过 |
+| 2026-10-07 | 按台账补充无直接 Loading 标记页面的承载说明，并为国补详情弹窗接入 `SectionLoading`；详情请求关闭全局层避免重复反馈 | 128 个页面/功能单元、71 个公共组件逐项核对；`check:loading`、`check:coverage`、`type-check` 通过 |
+| 2026-10-07 | 报价管理主表新增批量选择和批量来源绑定，接入统一权限、API、弹窗和表格规范 | 支持绑定具体采集账户或恢复默认来源；来源校验、500 条上限、类型检查和相关规范审计通过 |

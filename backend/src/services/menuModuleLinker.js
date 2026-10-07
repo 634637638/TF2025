@@ -19,6 +19,9 @@ class MenuModuleLinker {
       { menu_pattern: (name) => name === '工资记录', module_key: 'salary_salaryrecordsview' },
       { menu_pattern: (name) => name === '我的考勤', module_key: 'attendance_myattendanceview' },
       { menu_pattern: (name) => name === '我的工资', module_key: 'salary_mysalaryview' },
+      { menu_pattern: (name) => name === '国补管理', module_key: 'subsidy_subsidyview' },
+      { menu_pattern: (name) => name === '经验分享', module_key: 'shared_sharedview' },
+      { menu_pattern: (name) => name === '营销文案', module_key: 'marketing_marketingmanagementview' },
       { menu_pattern: (name) => name === 'Git管理', module_key: 'system_gitmanagement' },
       { menu_pattern: (name) => name === 'Git仓库', module_key: 'system_gitmanagement' },
       { menu_pattern: (name) => name === 'GIT仓库', module_key: 'system_gitmanagement' },
@@ -56,6 +59,29 @@ class MenuModuleLinker {
 
     return Number(menu.module_id || 0) !== Number(expectedModuleId) ||
       String(menu.module_key || '') !== expectedModuleKey
+  }
+
+  /**
+   * 扫描注册和菜单同步共用同一匹配入口。
+   * 明确规则优先于模块显示名称，避免同名业务 Tab 抢占主菜单。
+   */
+  findModuleForMenu(menu, modules = []) {
+    // 纯导航父节点不因名称含“考勤/工资”等词被自动绑定到业务模块。
+    if (!menu.url || menu.url === '#') return null
+
+    const canonicalKey = this.findModuleKeyForMenu(menu.name || '')
+    if (canonicalKey) {
+      return modules.find(module => module.key === canonicalKey) || null
+    }
+
+    const namedModules = modules.filter(module =>
+      module.name === menu.name || module.name.replace('管理', '') === menu.name
+    )
+    if (namedModules.length === 1) {
+      return namedModules[0]
+    }
+
+    return this.matchModuleByPath(menu.url, modules)
   }
 
   normalizeMatcherToken(value) {
@@ -114,12 +140,6 @@ class MenuModuleLinker {
         'SELECT id, `key`, name FROM modules WHERE is_active = 1'
       )
 
-      const moduleMap = new Map()
-      for (const module of allModules) {
-        moduleMap.set(module.key, module.id)
-        moduleMap.set(module.name, module.id)
-      }
-
       log.debug(`📦 当前有 ${allModules.length} 个模块可用`)
 
       // 3. 尝试关联每个菜单
@@ -129,11 +149,13 @@ class MenuModuleLinker {
       const results = []
 
       for (const menu of activeMenus) {
-        const moduleKey = this.findModuleKeyForMenu(menu.name)
-        const moduleId = moduleKey ? moduleMap.get(moduleKey) : null
+        const matchedModule = this.findModuleForMenu(menu, allModules)
+        const moduleKey = matchedModule?.key
+        const moduleId = matchedModule?.id
         const isUnlinked = !menu.module_id
+        const hasCanonicalRule = Boolean(this.findModuleKeyForMenu(menu.name))
 
-        if (moduleId && this.needsModuleRelink(menu, moduleId, moduleKey)) {
+        if (moduleId && (isUnlinked || hasCanonicalRule) && this.needsModuleRelink(menu, moduleId, moduleKey)) {
           // 明确名称规则优先，可同时关联新菜单并纠正历史错误绑定
           await connection.execute(
             'UPDATE menus SET module_id = ?, module_key = ?, updated_at = NOW() WHERE id = ?',
@@ -155,37 +177,15 @@ class MenuModuleLinker {
 
           log.debug(`✅ 已${isUnlinked ? '关联' : '纠正'}菜单 "${menu.name}" -> 模块 "${moduleKey}" (ID: ${moduleId})`)
         } else if (isUnlinked) {
-          // 尝试通过 URL 路径匹配
-          const matchedByPath = this.matchModuleByPath(menu.url, moduleMap, allModules)
+          notFoundCount++
+          results.push({
+            menu_id: menu.id,
+            menu_name: menu.name,
+            action: 'not-found',
+            reason: 'no matching module'
+          })
 
-          if (matchedByPath) {
-            await connection.execute(
-              'UPDATE menus SET module_id = ?, module_key = ?, updated_at = NOW() WHERE id = ?',
-              [matchedByPath.id, matchedByPath.key, menu.id]
-            )
-
-            linkedCount++
-            results.push({
-              menu_id: menu.id,
-              menu_name: menu.name,
-              action: 'linked',
-              module_key: matchedByPath.key,
-              module_id: matchedByPath.id,
-              method: 'path-match'
-            })
-
-            log.debug(`✅ 已关联菜单 "${menu.name}" -> 模块 "${matchedByPath.key}" (通过 URL 匹配)`)
-          } else {
-            notFoundCount++
-            results.push({
-              menu_id: menu.id,
-              menu_name: menu.name,
-              action: 'not-found',
-              reason: 'no matching module'
-            })
-
-            log.debug(`⚠️ 未找到匹配模块: "${menu.name}" (URL: ${menu.url})`)
-          }
+          log.debug(`⚠️ 未找到匹配模块: "${menu.name}" (URL: ${menu.url})`)
         }
       }
 
@@ -211,7 +211,7 @@ class MenuModuleLinker {
   /**
    * 通过 URL 路径匹配模块
    */
-  matchModuleByPath(menuUrl, moduleMap, allModules) {
+  matchModuleByPath(menuUrl, allModules) {
     if (!menuUrl) return null
 
     const urlTokens = this.buildUrlTokens(menuUrl)

@@ -1612,9 +1612,9 @@ const dialogActionPermissionTypes = computed(() => {
 
   permissionDialogMatrix.value.forEach((module) => {
     module.permissions.forEach((permission) => {
-      const permissionType = permission.permission_type || permission.type
-      if (permissionType && permissionType !== 'view' && permissionType !== 'menu_view') {
-        types.add(permissionType)
+      const actionType = permission.permission_type || permission.type
+      if (actionType && actionType !== 'view' && actionType !== 'menu_view') {
+        types.add(actionType)
       }
     })
   })
@@ -1628,27 +1628,27 @@ watch(dialogActionPermissionTypes, (permissionTypes) => {
   }
 }, { immediate: true })
 
-const toggleDialogActionAcrossModules = async (permissionType: string, enabled: boolean) => {
-  if (!permissionType || !permissionDialogMatrix.value.length || savingDialogPermissions.value) return
+const toggleDialogActionAcrossModules = async (actionType: string, enabled: boolean) => {
+  if (!actionType || !permissionDialogMatrix.value.length || savingDialogPermissions.value) return
 
   const targetModuleKeys = new Set(
     permissionDialogMatrix.value
       .filter(module => module.permissions.some((permission) => {
         const type = permission.permission_type || permission.type
-        return type === permissionType
+        return type === actionType
       }))
       .map(module => module.module_key || module.key)
   )
 
   if (targetModuleKeys.size === 0) {
-    info(`当前角色没有已注册${getPermissionNameEnhanced(permissionType)}权限的模块`)
+    info(`当前角色没有已注册${getPermissionNameEnhanced(actionType)}权限的模块`)
     return
   }
 
   if (!enabled) {
     try {
       await confirmAction(
-        `确定关闭角色“${selectedRoleForPermission.value?.name || ''}”在全部相关模块中的“${getPermissionNameEnhanced(permissionType)}”权限吗？`,
+        `确定关闭角色“${selectedRoleForPermission.value?.name || ''}”在全部相关模块中的“${getPermissionNameEnhanced(actionType)}”权限吗？`,
         '批量关闭权限确认',
         {
           confirmButtonText: '确定关闭',
@@ -1667,7 +1667,7 @@ const toggleDialogActionAcrossModules = async (permissionType: string, enabled: 
   try {
     savingDialogPermissions.value = true
     const targetPermissionKeys = new Set(
-      Array.from(targetModuleKeys, moduleKey => `${moduleKey}:${permissionType}`)
+      Array.from(targetModuleKeys, moduleKey => `${moduleKey}:${actionType}`)
     )
 
     selectedDialogPermissions.value = enabled
@@ -1678,7 +1678,7 @@ const toggleDialogActionAcrossModules = async (permissionType: string, enabled: 
       : selectedDialogPermissions.value.filter(permission => !targetPermissionKeys.has(permission))
 
     await persistDialogPermissions()
-    success(`当前角色已${enabled ? '开启' : '关闭'}全部相关模块的${getPermissionNameEnhanced(permissionType)}权限`)
+    success(`当前角色已${enabled ? '开启' : '关闭'}全部相关模块的${getPermissionNameEnhanced(actionType)}权限`)
   } catch (err: any) {
     selectedDialogPermissions.value = previousPermissions
     const errorMessage = err.response?.data?.message || err.message || '批量更新页面动作权限失败'

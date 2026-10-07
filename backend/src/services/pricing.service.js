@@ -45,7 +45,18 @@ class PricingService {
         enabled: typeof wholesale.enabled === 'boolean'
           ? wholesale.enabled
           : DEFAULT_CONFIG.wholesale.enabled,
-        adjustment: Number(wholesale.adjustment ?? DEFAULT_CONFIG.wholesale.adjustment)
+        adjustment: Number(wholesale.adjustment ?? DEFAULT_CONFIG.wholesale.adjustment),
+        sourceAdjustments: Object.entries(
+          wholesale.sourceAdjustments && typeof wholesale.sourceAdjustments === 'object'
+            ? wholesale.sourceAdjustments
+            : {}
+        ).reduce((result, [sourceId, adjustment]) => {
+          const numericAdjustment = Number(adjustment)
+          if (sourceId && Number.isFinite(numericAdjustment)) {
+            result[String(sourceId)] = numericAdjustment
+          }
+          return result
+        }, {})
       }
     }
   }
@@ -79,11 +90,22 @@ class PricingService {
     return this.calculateSalesPriceByConfig(wholesalePrice, config)
   }
 
-  calculateWholesalePriceByConfig(wholesalePrice, config) {
+  calculateWholesalePriceByConfig(wholesalePrice, config, sourceConfigId = null) {
     const base = Number(wholesalePrice)
     if (!Number.isFinite(base) || base <= 0) return null
     if (!config.wholesale.enabled) return roundPrice(base)
-    return roundPrice(base + config.wholesale.adjustment)
+
+    const sourceKey = sourceConfigId === null || sourceConfigId === undefined || sourceConfigId === ''
+      ? null
+      : String(sourceConfigId)
+    const sourceAdjustments = config.wholesale.sourceAdjustments || {}
+    const hasSourceAdjustment = sourceKey !== null
+      && Object.prototype.hasOwnProperty.call(sourceAdjustments, sourceKey)
+    const adjustment = hasSourceAdjustment
+      ? Number(sourceAdjustments[sourceKey])
+      : Number(config.wholesale.adjustment)
+
+    return roundPrice(base + (Number.isFinite(adjustment) ? adjustment : 0))
   }
 
   async calculateWholesalePrice(wholesalePrice) {

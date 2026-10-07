@@ -173,7 +173,8 @@
           <div class="table-responsive">
             <el-table
               ref="suppliersTableRef"
-              :data="loading ? [] : suppliers"
+              v-tf-loading="loading"
+              :data="suppliers"
               border
               stripe
               class="data-table devices-table base-data-table suppliers-data-table"

@@ -6,6 +6,7 @@
 import type { App, Directive, DirectiveBinding } from 'vue'
 import { installPermissionDirective } from './permission'
 import { isCurrentMobileViewport } from '@/utils/device-detection'
+import { useLoadingStore } from '@/stores/loading'
 
 type DirectiveHandler = (...args: unknown[]) => unknown
 
@@ -18,25 +19,52 @@ interface DirectiveElement extends HTMLElement {
   _lazyPlaceholder?: HTMLElement
   _numberHandler?: EventListener
   _rippleHandler?: EventListener
+  _tfLoadingRegistered?: boolean
+  _tfLoadingInitialPending?: boolean
+  _tfLoadingInitialised?: boolean
 }
 
 // 加载指令
 export const vTFLoading: Directive = {
   mounted(el: HTMLElement, binding: DirectiveBinding<boolean>) {
     if (binding.value) {
-      showLoading(el)
+      startTableLoading(el)
     }
   },
   updated(el: HTMLElement, binding: DirectiveBinding<boolean>) {
     if (binding.value) {
-      showLoading(el)
+      startTableLoading(el)
     } else {
+      markInitialTableLoadComplete(el)
       hideLoading(el)
     }
   },
   unmounted(el: HTMLElement) {
     hideLoading(el)
   }
+}
+
+/**
+ * 表格首次加载由全局 Loading 负责，首次完成后的再次加载才视为刷新。
+ * 这样页面进入/F5 与点击刷新不会同时出现两套可见 Loading。
+ */
+function startTableLoading(el: HTMLElement) {
+  const loadingElement = el as DirectiveElement
+
+  if (!loadingElement._tfLoadingInitialised) {
+    loadingElement._tfLoadingInitialPending = true
+    return
+  }
+
+  showLoading(el)
+}
+
+function markInitialTableLoadComplete(el: HTMLElement) {
+  const loadingElement = el as DirectiveElement
+  if (!loadingElement._tfLoadingInitialPending) return
+
+  loadingElement._tfLoadingInitialPending = false
+  loadingElement._tfLoadingInitialised = true
 }
 
 // 复制指令
@@ -385,20 +413,42 @@ function showLoading(el: HTMLElement) {
   }
 
   el.classList.add('tf2025-loading')
+  el.setAttribute('aria-busy', 'true')
+
+  const loadingElement = el as DirectiveElement
+  if (!loadingElement._tfLoadingRegistered) {
+    useLoadingStore().startLocalLoading()
+    loadingElement._tfLoadingRegistered = true
+  }
 
   // 创建加载动画元素
+  const overlay = document.createElement('div')
+  overlay.className = 'tf2025-loading-overlay'
+  overlay.setAttribute('aria-hidden', 'true')
+
   const loading = document.createElement('div')
   loading.className = 'tf2025-loading-spinner'
   loading.innerHTML = `
     <div class="tf2025-loading-spinner__icon"></div>
-    <span>加载中...</span>
+    <span>加载数据中...</span>
   `
 
+  el.appendChild(overlay)
   el.appendChild(loading)
 }
 
 function hideLoading(el: HTMLElement) {
   el.classList.remove('tf2025-loading')
+  el.removeAttribute('aria-busy')
+  const loadingElement = el as DirectiveElement
+  if (loadingElement._tfLoadingRegistered) {
+    useLoadingStore().stopLocalLoading()
+    loadingElement._tfLoadingRegistered = false
+  }
+  const overlay = el.querySelector('.tf2025-loading-overlay')
+  if (overlay) {
+    overlay.remove()
+  }
   const spinner = el.querySelector('.tf2025-loading-spinner')
   if (spinner) {
     spinner.remove()
