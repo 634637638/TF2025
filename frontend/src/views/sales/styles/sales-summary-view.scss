@@ -50,12 +50,6 @@
   border-radius: 8px;
   box-shadow: var(--tf-button-shadow);
   font-size: var(--tf-type-scale-14);
-  transition: box-shadow 0.3s ease, transform 0.3s ease;
-}
-
-.memory-badge:hover {
-  box-shadow: var(--tf-button-shadow-hover);
-  transform: translateY(-1px);
 }
 
 .memory-1tb {

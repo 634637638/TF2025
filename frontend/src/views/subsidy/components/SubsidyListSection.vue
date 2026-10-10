@@ -1070,12 +1070,6 @@ onUnmounted(() => {
     font-size: var(--tf-type-scale-12);
     border-radius: 4px;
     cursor: pointer;
-    transition: all 0.2s;
-  }
-
-  .remarks-tag:hover {
-    background-color: var(--tf-color-yellow-bootstrap);
-    transform: scale(1.05);
   }
 
   .subsidy-photo-cell .photo-icon-wrapper {

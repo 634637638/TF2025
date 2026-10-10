@@ -97,7 +97,7 @@
     },
     {
       "file": "src/views/query/QueryView.vue",
-      "max": 33,
+      "max": 32,
       "reason": "Mobile viewport lock and existing Element Plus table and dialog dimensions."
     },
     {

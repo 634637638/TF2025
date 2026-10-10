@@ -297,6 +297,7 @@
 - 按钮专项已完成零容忍迁移：Vue 源码共扫描 `el-button=969`，原生 `<button>=0`；以后新增按钮必须使用 `el-button`，不得新增原生按钮例外。
 - Loading 已按本台账逐文件审计：128 个页面/功能单元、71 个公共组件和 1 个应用入口全部通过 `npm run check:loading`；扫描结果为 `GlobalLoading=1`、`v-tf-loading=48`、`TableLoadingRow=56`、`SectionLoading=32`、`InlineLoading=46`、登记 `v-loading` 例外 1 处。
 - Loading 触发边界已收口：页面切换和明确的全局长操作由 `App.vue` 唯一挂载的 `GlobalLoading` 承载；表格刷新由 `v-tf-loading` 锁定表格边界并显示“加载数据中...”；局部状态通过 `useLoadingStore.hasLocalLoading/isGlobalVisible` 互斥仲裁，同一次操作不得同时显示全屏与局部 Loading。
+- 徽章专项已按台账扫描全部页面和公共组件：徽章 hover 外包围线与过渡唯一由 `styles/components/_badges.scss` 控制；页面仅保留业务颜色、图标和文字，禁止私有 hover、阴影、位移和重复 `global.css` 状态入口。结果由 `npm run check:badges` 强制校验。
 - 统一 API 已补齐默认 Loading：128 个页面及其公共功能单元不再依赖逐页传入 `showLoading: true`；首次数据请求默认进入全局 Loading，只有明确的 `showLoading: false` 请求保持静默。
 - 全屏 Loading 例外仅保留 2 个已登记场景：规范页的真实演示，以及数据优化页的清理、批量合并和删除等明确长操作；数据优化页的表格查询仍使用局部 Loading，两类操作不能共用同一次反馈。
 - 逐页核对结论已同步至 `global-loading-standard.md`：无专属 Loading 标记的布局、父级和公共功能单元均已注明统一 API 或父子组件承载关系；详情弹窗使用 `SectionLoading`，首屏和表格刷新不再叠加两层反馈。
@@ -318,3 +319,4 @@
 | 2026-10-07 | 修复统一 API 默认不展示 Loading 的缺口；未显式关闭的首次请求统一进入 `GlobalLoading`，继续由局部刷新互斥规则接管手动刷新 | 页面/功能单元不再因遗漏 `showLoading: true` 而无任何加载反馈；`check:loading`、类型检查和完整规范审计通过 |
 | 2026-10-07 | 按台账补充无直接 Loading 标记页面的承载说明，并为国补详情弹窗接入 `SectionLoading`；详情请求关闭全局层避免重复反馈 | 128 个页面/功能单元、71 个公共组件逐项核对；`check:loading`、`check:coverage`、`type-check` 通过 |
 | 2026-10-07 | 报价管理主表新增批量选择和批量来源绑定，接入统一权限、API、弹窗和表格规范 | 支持绑定具体采集账户或恢复默认来源；来源校验、500 条上限、类型检查和相关规范审计通过 |
+| 2026-10-10 | 按台账逐页复核徽章接入；删除旧 `global.css` 状态入口和各页面私有 hover/过渡，统一徽章外包围线、动效和触摸设备行为 | 71 个实际使用徽章的页面/公共样式文件、863 个引用通过 `check:badges`；完整 `check:standards` 通过 |

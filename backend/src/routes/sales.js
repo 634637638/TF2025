@@ -785,6 +785,8 @@ router.post('/phone', unifiedAuth, requireAnyPermission(['sales:sell', 'inventor
           p.purchase_cost,
           p.is_new,
           p.is_preordered,
+          p.supplier_id,
+          p.remarks,
           pr.customer_id as preorder_customer_id,
           c.name as preorder_customer_name
         FROM phones p
@@ -906,6 +908,14 @@ router.post('/phone', unifiedAuth, requireAnyPermission(['sales:sell', 'inventor
       const existingPhoneConditionMap = new Map(
         phoneChecks.map((phone) => [phone.id, phone.is_new])
       )
+      const phoneRemarksMap = new Map(
+        phoneChecks.map((phone) => [phone.id, phone.remarks])
+      )
+      const hasRemarksField = Object.prototype.hasOwnProperty.call(req.body, 'remarks')
+      const requestedRemarks = String(remarks ?? '').trim()
+      // 单台出库的备注字段由前端带入原值：原值未改则保持，用户清空则明确清空。
+      // 批量表单为空时没有逐台备注，继续沿用每台设备的原备注。
+      const shouldApplyRequestedRemarks = hasRemarksField && (!isBatchSale || requestedRemarks !== '')
 
       const finalizedPhonesToSell = phonesToSell.map((phone) => {
         const resolvedPrice = parseFloat(phone.sale_price)
@@ -917,7 +927,11 @@ router.post('/phone', unifiedAuth, requireAnyPermission(['sales:sell', 'inventor
           ...phone,
           sale_price: resolvedPrice,
           resolved_purchase_cost: resolvedPurchaseCost !== undefined ? resolvedPurchaseCost : null,
-          is_new: existingPhoneConditionMap.get(phone.phone_id)
+          is_new: existingPhoneConditionMap.get(phone.phone_id),
+          // 单台出库空备注表示清空；未提供字段或批量空备注才沿用设备当前备注。
+          final_remarks: shouldApplyRequestedRemarks
+            ? (requestedRemarks || null)
+            : (phoneRemarksMap.get(phone.phone_id) || null)
         }
       })
 
@@ -951,7 +965,7 @@ router.post('/phone', unifiedAuth, requireAnyPermission(['sales:sell', 'inventor
         }
 
         salesInsertColumns.push('invoice_number', 'remarks', 'sale_time')
-        salesInsertValues.push(invoiceNumber, remarks || null, saleTimeStr)
+        salesInsertValues.push(invoiceNumber, finalizedPhonesToSell[0].final_remarks, saleTimeStr)
 
         const [salesResult] = await conn.execute(
           `INSERT INTO sales (
@@ -989,7 +1003,7 @@ router.post('/phone', unifiedAuth, requireAnyPermission(['sales:sell', 'inventor
           }
 
           salesInsertColumns.push('invoice_number', 'remarks', 'sale_time')
-          salesInsertValues.push(invoiceNumber, remarks || null, saleTimeStr)
+          salesInsertValues.push(invoiceNumber, phone.final_remarks, saleTimeStr)
 
           await conn.execute(
             `INSERT INTO sales (
@@ -1035,24 +1049,14 @@ router.post('/phone', unifiedAuth, requireAnyPermission(['sales:sell', 'inventor
       await conn.execute('SET FOREIGN_KEY_CHECKS = 1')
 
       // 6. 更新所有手机状态和备注
-      // 先查询所有手机的当前 supplier_id，以便在更新时保持原值
-      const phoneIdsForSupplier = finalizedPhonesToSell.map(p => p.phone_id)
-      const [currentPhones] = await conn.execute(
-        `SELECT id, supplier_id FROM phones WHERE id IN (${phoneIdsForSupplier.map(() => '?').join(',')})`,
-        phoneIdsForSupplier
-      )
-
-      // 创建 phone_id -> supplier_id 的映射
-      const supplierIdMap = {}
-      currentPhones.forEach(p => {
-        supplierIdMap[p.id] = p.supplier_id
-      })
+      // supplier_id、remarks 已在事务开始时随 FOR UPDATE 一并读取，确保两张表使用同一份快照。
+      const supplierIdMap = new Map(phoneChecks.map(phone => [phone.id, phone.supplier_id]))
 
       const phoneUpdatePromises = finalizedPhonesToSell.map(phone => {
         // 如果前端没有提供 supplier_id，则保持数据库中的原值
         const finalSupplierId = phone.supplier_id !== undefined && phone.supplier_id !== null
           ? parseInt(phone.supplier_id)
-          : supplierIdMap[phone.phone_id]
+          : supplierIdMap.get(phone.phone_id)
 
         return conn.execute(
           `UPDATE phones SET
@@ -1061,7 +1065,7 @@ router.post('/phone', unifiedAuth, requireAnyPermission(['sales:sell', 'inventor
             sale_price = ?,
             purchase_cost = ?,
             supplier_id = ?,
-            remarks = COALESCE(NULLIF(TRIM(?), ''), remarks),
+            remarks = ?,
             sale_time = ?,
             sale_operator_id = ?
           WHERE id = ? AND status IN ('in_stock', 'reserved')`,
@@ -1069,7 +1073,7 @@ router.post('/phone', unifiedAuth, requireAnyPermission(['sales:sell', 'inventor
             parseFloat(phone.sale_price),
             phone.resolved_purchase_cost, // 未显式传值时回退为设备原始入库成本，避免被写成 null
             finalSupplierId, // 供应商：使用前端提供的值，或保持数据库原值
-            remarks || null,
+            phone.final_remarks,
             saleTimeStr, // 使用用户选择的时间或当前时间
             operator_id || req.user.id, // 使用传递的销售员ID，如果没有则使用当前用户ID
             phone.phone_id

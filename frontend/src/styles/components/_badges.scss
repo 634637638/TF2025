@@ -1,5 +1,7 @@
 /* Shared semantic status tokens. Pages must use these tokens instead of owning colors. */
 :root {
+  --tf-badge-transition: background-color var(--tf-motion-fast) var(--tf-motion-ease-standard), border-color var(--tf-motion-fast) var(--tf-motion-ease-standard);
+
   --tf-status-success-bg: var(--tf-button-success-soft-bg);
   --tf-status-success-border: var(--tf-button-success-soft-border);
   --tf-status-success-color: var(--tf-button-success-soft-color);
@@ -80,6 +82,7 @@
 .status-badge {
   display: inline-flex;
   align-items: center;
+  box-sizing: border-box;
   white-space: nowrap;
   border-radius: 12px;
   font-size: var(--tf-type-scale-12);
@@ -87,6 +90,7 @@
 }
 
 .condition-badge {
+  border: 1px solid transparent;
   padding: 4px 8px;
 }
 
@@ -235,8 +239,53 @@
   border-color: var(--tf-status-primary-border);
 }
 
-.status-badge:hover {
-  border-color: var(--tf-status-neutral-hover-border);
+/* Every badge uses the same fine outer hover line as compact action buttons. */
+:where(
+  .condition-badge,
+  .status-badge,
+  .memory-badge,
+  .role-badge,
+  .el-tag,
+  .selected-role-tag,
+  .assignment-selected-tag,
+  .remarks-tag,
+  .optimization-tag,
+  .role-tag,
+  .store-status-badge,
+  [class*='badge']
+) {
+  transition: var(--tf-badge-transition);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  /* Repeated semantic classes intentionally give the shared interaction
+   * border enough priority to win over page-level state and disabled styles. */
+  :is(
+    .condition-badge.condition-badge.condition-badge,
+    .status-badge.status-badge.status-badge,
+    .memory-badge.memory-badge.memory-badge,
+    .role-badge.role-badge.role-badge,
+    .el-tag.el-tag.el-tag,
+    .selected-role-tag.selected-role-tag.selected-role-tag,
+    .assignment-selected-tag.assignment-selected-tag.assignment-selected-tag,
+    .remarks-tag.remarks-tag.remarks-tag,
+    .optimization-tag.optimization-tag.optimization-tag,
+    .role-tag.role-tag.role-tag,
+    .store-status-badge.store-status-badge.store-status-badge,
+    [class*='badge']
+  ):hover {
+    border-color: currentColor;
+  }
+
+  /* Some table cells intentionally set pointer-events:none on the badge so
+   * the cell keeps its double-click handler. Proxy the same hover line from
+   * that cell instead of forcing every page to reimplement the interaction. */
+  :is(
+    .clickable-cell:hover > .condition-badge.condition-badge,
+    .clickable-cell:hover > .status-badge.status-badge
+  ) {
+    border-color: currentColor;
+  }
 }
 
 /* Element Plus tags use the same semantic palette as native status badges. */

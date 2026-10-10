@@ -2056,7 +2056,8 @@ class PriceListService {
       await this.updateSyncLog(logId, { status: 'running' })
 
       // 获取配置 - 优先使用 configId 获取完整配置
-      let config
+    let config
+    let syncConfigForError = null
       if (configId) {
         const result = await this.getSyncConfigWithPassword(configId)
         if (!result.success || !result.data) {
@@ -2072,6 +2073,7 @@ class PriceListService {
       }
 
       const syncConfig = config.data
+      syncConfigForError = syncConfig
       log.debug(`🔧 使用同步配置: ${syncConfig.config_name}, 账号: ${syncConfig.login_username || '无'}`)
       log.debug('📋 配置详情:', {
         login_url: syncConfig.login_url,
@@ -2103,7 +2105,7 @@ class PriceListService {
 
       // 抓取价格数据
       log.debug('🌐 开始抓取价格数据...')
-      const prices = await this.fetchPriceData(syncConfig)
+      const prices = await this.fetchPriceDataWithRetry(syncConfig)
       log.debug('✅ 数据抓取完成')
 
       // 生成统一的同步时间（北京时间）
@@ -2176,8 +2178,8 @@ class PriceListService {
         },
         timestamp: new Date().toISOString(),
         config: {
-          id: configId,
-          name: 'Unknown'  // 在错误情况下无法获取配置名称
+          id: syncConfigForError?.id || configId,
+          name: syncConfigForError?.config_name || 'Unknown'
         }
       }
 
@@ -2287,6 +2289,150 @@ class PriceListService {
       log.error('❌ 登录失败:', error.message)
       return false
     }
+  }
+
+  /**
+   * 返回外部报价站点的型号搜索候选词。
+   *
+   * 外部站点对型号代码和展示名称的检索并不始终等价：代码检索可能返回
+   * 通用表格或空表，名称检索才会返回完整的系列数据。因此代码优先，名称
+   * 作为有条件的补搜；真正写回前仍由型号代码、颜色和内存严格匹配。
+   */
+  getExternalModelSearchTerms(modelKey, modelNumber, externalModel, modelCode) {
+    const normalizedKey = String(modelKey || '').toLowerCase().replace(/\s+/g, '')
+    const formatModelSearchTerm = () => {
+      if (modelNumber && /iphone/i.test(modelNumber)) return modelNumber
+
+      const suffix = normalizedKey.replace(/^iphone/, '')
+        .replace(/promax$/, ' Pro Max')
+        .replace(/pro$/, ' Pro')
+        .replace(/plus$/, ' Plus')
+        .replace(/duo$/, ' Duo')
+        .replace(/air$/, ' Air')
+
+      return normalizedKey.startsWith('iphone')
+        ? `iPhone ${suffix}`
+        : (modelNumber || modelKey)
+    }
+
+    const nameTerm = normalizedKey === 'iphone16'
+      ? 'iPhone 16'
+      : (/^iphone\d/.test(normalizedKey)
+        ? `iPhone ${normalizedKey.slice(6).replace(/promax$/, ' Pro Max').replace(/pro$/, ' Pro').replace(/plus$/, ' Plus').replace(/duo$/, ' Duo').replace(/air$/, ' Air')}`
+        : formatModelSearchTerm())
+    const candidates = [modelCode, externalModel, nameTerm]
+      .map(value => String(value || '').trim())
+      .filter(Boolean)
+
+    return [...new Set(candidates)]
+  }
+
+  /**
+   * 判断一次外部搜索结果是否确实包含目标型号。
+   * 不满足时允许调用方使用名称搜索补齐，避免把登录页/通用页当成有效结果。
+   */
+  hasExternalModelInTable(tableHtml, modelCode, modelKey) {
+    const html = String(tableHtml || '')
+    if (!html) return false
+    if (modelCode && html.toLowerCase().includes(String(modelCode).toLowerCase())) return true
+
+    const normalized = String(modelKey || '').toLowerCase().replace(/\s+/g, '')
+    if (!normalized) return false
+
+    const text = html
+      .replace(/<[^>]*>/g, ' ')
+      .toLowerCase()
+      .replace(/\s+/g, '')
+    const aliases = [
+      normalized,
+      normalized.replace(/^iphone/, 'iphone '),
+      normalized.replace(/^iphone/, '苹果iphone')
+    ]
+    return aliases.some(alias => text.includes(alias.replace(/\s+/g, '')))
+  }
+
+  /**
+   * 判断外部表格是否包含可解析的商品行。
+   * 外部站点无结果时仍会返回搜索表格和表头，不能只用 table 是否存在判断成功。
+   */
+  hasExternalPriceRows(tableHtml) {
+    if (!cheerio || !tableHtml) return false
+
+    const $ = cheerio.load(`<table>${tableHtml}</table>`)
+    return $('tr').toArray().some(row => {
+      const cells = $(row).find('td')
+      if (cells.length < 2) return false
+
+      const rowText = $(row).text().replace(/\s+/g, ' ')
+      return /[￥¥]\s*\d+(?:\.\d+)?/.test(rowText)
+    })
+  }
+
+  /**
+   * 构造外部型号检索地址。
+   *
+   * 型号代码是跨品牌的数据源标识，外部站点在同时传入 pp=苹果 时会把
+   * A3521 等代码过滤成空表。因此型号检索必须保留空品牌筛选，品牌只在
+   * 返回行的严格匹配阶段校验。
+   */
+  buildExternalModelSearchUrl(searchTerm) {
+    const params = new URLSearchParams({
+      km: '',
+      pp: '',
+      network: '',
+      arg_name: String(searchTerm || ''),
+      s_jg: '',
+      e_jg: '',
+      policyid: '',
+      tykhgsdm: '',
+      isqh: '0'
+    })
+
+    return `${EXTERNAL_PRICE.BASE_URL}/quoteList.action?${params.toString()}`
+  }
+
+  /**
+   * 抓取价格数据并对外部站点的瞬时失败做一次受控重试。
+   *
+   * 登录站点偶发返回重定向页、连接中断或空页面。第一次失败时清理当前
+   * 会话并重新登录，第二次仍失败才结束本次来源同步，避免把短暂网络波动
+   * 误判成“没有价格数据”。
+   */
+  async fetchPriceDataWithRetry(config, options = {}) {
+    const maxAttempts = Math.max(1, Number(options.maxAttempts) || 2)
+    const parsedRetryDelayMs = Number(options.retryDelayMs)
+    const retryDelayMs = Number.isFinite(parsedRetryDelayMs)
+      ? Math.max(0, parsedRetryDelayMs)
+      : 1000
+    let lastError = null
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      try {
+        return await this.fetchPriceData(config)
+      } catch (error) {
+        lastError = error
+        if (attempt >= maxAttempts) break
+
+        log.warn(`价格抓取第 ${attempt} 次失败，准备重试来源 ${config.config_name || config.id}: ${error.message}`)
+
+        const cookieKeys = [config.id, `${config.id}_array`]
+        cookieKeys.forEach(key => this.cookies.delete(key))
+
+        if (config.source_type !== 'public' && config.login_url && config.login_username) {
+          const loginSuccess = await this.loginToSource(config)
+          if (!loginSuccess) {
+            lastError = new Error('重试前重新登录失败')
+            break
+          }
+        }
+
+        if (retryDelayMs > 0) {
+          await new Promise(resolve => setTimeout(resolve, retryDelayMs))
+        }
+      }
+    }
+
+    throw lastError || new Error('价格抓取失败')
   }
 
   /**
@@ -2637,50 +2783,68 @@ class PriceListService {
             const { modelKey, modelNumber, externalModel } = target
             const modelCode = modelCodeMappings[modelKey]
 
-            // 🔥 关键修复：对于 iPhone 16 系列，使用产品名称搜索而不是型号代码
-            // 因为外部网站搜索 "iPhone 16" 会返回所有 16 系列产品（包括 Plus、Pro、Pro Max）
-            // 已确认的 iPhone 型号代码优先于 price_list 中历史保存的 external_model。
-            // 旧记录可能保存成“17promax”“iPhone17pro”等展示名称，直接拿它们检索外部站点会返回空表；
-            // A3518/A3521/A3524/A3527/A3635 等代码才是数据源稳定识别型号的入口。
-            let searchTerm = modelCode || externalModel || formatModelSearchTerm(modelNumber, modelKey)
-            if (modelKey === 'iphone16') {
-              searchTerm = 'iPhone 16' // 搜索 "iPhone 16" 会返回所有 16 系列产品
-              log.debug(`  正在搜索 ${modelKey} (使用搜索词: "${searchTerm}")...`)
-            } else {
-              log.debug(`  正在搜索 ${modelKey} (使用搜索词: "${searchTerm}")...`)
+            // 型号代码优先；当代码搜索返回通用表格/空结果时，再使用展示名称补搜。
+            // price_list 中可能保存历史展示名，不能让它覆盖已确认的型号代码。
+            const searchTerms = this.getExternalModelSearchTerms(
+              modelKey,
+              modelNumber,
+              externalModel,
+              modelCode
+            )
+            let appendedModelRows = false
+
+            for (const searchTerm of searchTerms) {
+              const searchUrl = this.buildExternalModelSearchUrl(searchTerm)
+
+              try {
+                log.debug(`  正在搜索 ${modelKey} (使用搜索词: "${searchTerm}")...`)
+                log.debug(`  请求URL: ${searchUrl}`)
+                log.debug(`  请求头Cookie: ${headers.Cookie?.substring(0, 100)}...`)
+                const response = await axios.get(searchUrl, {
+                  headers,
+                  timeout: TIMEOUTS.EXTERNAL_API,
+                  maxRedirects: 5
+                })
+
+                log.debug(`  响应状态: ${response.status}`)
+                log.debug(`  响应数据长度: ${response.data?.length || 0}`)
+
+                // 提取表格内容并合并（只合并行，不添加table标签）。
+                const $ = cheerio.load(response.data)
+                const table = $('table').first()
+                if (table.length === 0) {
+                  log.debug(`  ⚠️ ${modelKey} (${searchTerm}) 响应中没有找到表格`)
+                  log.debug(`     页面标题: ${$('title').text()}`)
+                  continue
+                }
+
+                const tableHtml = table.html() || ''
+                if (!this.hasExternalPriceRows(tableHtml)) {
+                  log.debug(`  ⚠️ ${modelKey} (${searchTerm}) 只返回搜索表格，没有商品价格行，继续下一个候选词`)
+                  continue
+                }
+
+                const hasTargetModel = this.hasExternalModelInTable(tableHtml, modelCode, modelKey)
+                if (modelCode && !hasTargetModel) {
+                  log.debug(`  ⚠️ ${modelKey} (${searchTerm}) 返回商品行，但未包含目标型号，继续下一个候选词`)
+                  continue
+                }
+
+                const rowCount = $('tr').length
+                combinedRows += tableHtml
+                appendedModelRows = true
+                log.debug(`  ✓ ${modelKey} (${searchTerm}) 数据获取成功，行数: ${rowCount}`)
+                break
+              } catch (error) {
+                log.debug(`  ⚠️ ${modelKey} (${searchTerm}) 数据获取失败:`, error.message)
+                if (error.response) {
+                  log.debug(`     响应状态: ${error.response.status}`)
+                }
+              }
             }
 
-            const encodedSearchTerm = encodeURIComponent(searchTerm)
-            const searchUrl = `${EXTERNAL_PRICE.BASE_URL}/quoteList.action?km=&pp=%E8%8B%B9%E6%9E%9C&network=&arg_name=${encodedSearchTerm}&s_jg=&e_jg=&policyid=&tykhgsdm=&isqh=0`
-
-            try {
-              log.debug(`  请求URL: ${searchUrl}`)
-              log.debug(`  请求头Cookie: ${headers.Cookie?.substring(0, 100)}...`)
-              const response = await axios.get(searchUrl, {
-                headers,
-                timeout: TIMEOUTS.EXTERNAL_API,
-                maxRedirects: 5
-              })
-
-              log.debug(`  响应状态: ${response.status}`)
-              log.debug(`  响应数据长度: ${response.data?.length || 0}`)
-
-              // 提取表格内容并合并（只合并行，不添加table标签）
-              const $ = cheerio.load(response.data)
-              const table = $('table').first()
-              if (table.length > 0) {
-                const rowCount = $('tr').length
-                combinedRows += table.html()
-                log.debug(`  ✓ ${modelKey} (${searchTerm}) 数据获取成功，行数: ${rowCount}`)
-              } else {
-                log.debug(`  ⚠️ ${modelKey} (${modelCode}) 响应中没有找到表格`)
-                log.debug(`     页面标题: ${$('title').text()}`)
-              }
-            } catch (error) {
-              log.debug(`  ⚠️ ${modelKey} (${modelCode}) 数据获取失败:`, error.message)
-              if (error.response) {
-                log.debug(`     响应状态: ${error.response.status}`)
-              }
+            if (!appendedModelRows) {
+              log.debug(`  ⚠️ ${modelKey} 所有搜索词均未返回目标型号数据`)
             }
           }
 

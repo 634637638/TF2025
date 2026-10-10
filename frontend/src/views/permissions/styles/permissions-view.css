@@ -916,12 +916,6 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  transition: all 0.2s ease;
-}
-
-.selected-role-tag:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(0, 123, 255, 0.2);
 }
 
 /* 响应式设计优化 */
@@ -2439,7 +2433,6 @@
   border-radius: 20px;
   font-size: var(--tf-type-scale-13);
   font-weight: 500;
-  transition: all 0.3s ease;
 }
 
 .store-status-bound {
@@ -2449,21 +2442,11 @@
   box-shadow: none;
 }
 
-.store-status-bound:hover {
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
-  transform: translateY(-1px);
-}
-
 .store-status-unbound {
   background: var(--tf-status-neutral-bg);
   color: var(--tf-status-neutral-color);
   border: 1px solid var(--tf-status-neutral-border);
   box-shadow: none;
-}
-
-.store-status-unbound:hover {
-  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
-  transform: translateY(-1px);
 }
 
 .store-status-badge .status-icon {
@@ -2494,7 +2477,6 @@
   font-size: var(--tf-type-scale-12);
   font-weight: 600;
   letter-spacing: 0.3px;
-  transition: all 0.3s ease;
 }
 
 .role-badge i {
@@ -2523,11 +2505,6 @@
   background: linear-gradient(135deg, var(--tf-color-neutral-500) 0%, var(--tf-color-neutral-600) 100%);
   color: white;
   box-shadow: 0 2px 8px rgba(107, 114, 128, 0.3);
-}
-
-.role-badge:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .permissions-view {
@@ -3052,13 +3029,6 @@
   background: rgba(239, 246, 255, 0.96);
   border: 1px solid rgba(59, 130, 246, 0.16);
   border-radius: 8px;
-  transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
-}
-
-.permissions-view .assignment-selected-tag:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 10px 20px rgba(37, 99, 235, 0.12);
-  background: rgba(219, 234, 254, 1);
 }
 
 .permissions-view .user-role-footer-actions {
@@ -3954,7 +3924,6 @@
   border-radius: 8px;
   background: rgba(239, 246, 255, 0.96);
   font-size: var(--tf-type-scale-12);
-  transition: background 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
 }
 
 .user-role-modal .assignment-selected-tag span {
@@ -3962,12 +3931,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.user-role-modal .assignment-selected-tag:hover:not(:disabled) {
-  transform: translateY(-1px);
-  background: rgba(219, 234, 254, 1);
-  box-shadow: 0 8px 16px rgba(37, 99, 235, 0.1);
 }
 
 .user-role-modal .assignment-selected-tag:disabled,

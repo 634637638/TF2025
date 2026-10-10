@@ -969,14 +969,33 @@ const applyPriceTableImageStyles = (clonedDocument: Document) => {
     .results-list.generating-image .el-table::after,
     .results-list.generating-image .el-table__inner-wrapper::before,
     .results-list.generating-image .el-table__inner-wrapper::after,
-    .results-list.generating-image .el-table__header th::after { display: none !important; }
+    .results-list.generating-image .el-table__header-wrapper::before,
+    .results-list.generating-image .el-table__header-wrapper::after,
+    .results-list.generating-image .el-table__header::before,
+    .results-list.generating-image .el-table__header::after,
+    .results-list.generating-image .el-table__header tr::before,
+    .results-list.generating-image .el-table__header tr::after,
+    .results-list.generating-image .el-table__header th::before,
+    .results-list.generating-image .el-table__header th::after {
+      content: none !important;
+      display: none !important;
+      visibility: hidden !important;
+      opacity: 0 !important;
+      position: static !important;
+      inset: auto !important;
+      width: 0 !important;
+      height: 0 !important;
+      background: none !important;
+      background-image: none !important;
+      border: 0 !important;
+      box-shadow: none !important;
+    }
     .results-list.generating-image .el-table__header,
     .results-list.generating-image .el-table__header tr,
     .results-list.generating-image .el-table__header th,
     .results-list.generating-image .el-table__header td,
     .results-list.generating-image .el-table__header-wrapper,
     .results-list.generating-image .el-table__header-wrapper * {
-      border-bottom: 0 !important;
       box-shadow: none !important;
     }
   `
@@ -993,9 +1012,12 @@ const applyPriceTableImageStyles = (clonedDocument: Document) => {
   const headerWrapper = table.querySelector<HTMLElement>('.el-table__header-wrapper')
   if (headerWrapper) {
     headerWrapper.style.setProperty('position', 'relative', 'important')
-    headerWrapper.style.setProperty('overflow', 'visible', 'important')
-    headerWrapper.style.setProperty('border-bottom', '2px solid var(--admin-data-table-header-accent, var(--tf-color-violet-500))', 'important')
+    // 与正常页面一致，表头容器裁剪掉位于底部之外的伪元素。
+    headerWrapper.style.setProperty('overflow', 'hidden', 'important')
   }
+  table.querySelectorAll<HTMLElement>('.el-table__header, .el-table__header tr, .el-table__header th').forEach((element) => {
+    element.style.setProperty('box-shadow', 'none', 'important')
+  })
   if (innerWrapper) {
     const rightBorder = clonedDocument.createElement('span')
     rightBorder.setAttribute('aria-hidden', 'true')
@@ -1084,15 +1106,11 @@ const downloadAsImage = async () => {
     await new Promise(resolve => setTimeout(resolve, 150))
 
     const html2canvas = await loadHtml2Canvas()
-    const captureWidth = Math.max(IMAGE_CAPTURE_WIDTH, Math.ceil(element.scrollWidth))
-    const captureHeight = Math.ceil(element.scrollHeight)
 
-    // 使用 html2canvas 生成图片（完整捕获）
+    // 让 html2canvas 在克隆后的 430px 响应式布局中测量元素边界，避免沿用桌面端尺寸。
     const canvas = await html2canvas(element, {
       scale: 3, // 提高清晰度，适配手机
-      width: captureWidth,
-      height: captureHeight,
-      windowWidth: captureWidth,
+      windowWidth: IMAGE_CAPTURE_WIDTH,
       useCORS: true, // 支持跨域图片
       backgroundColor: '#ffffff',
       logging: false,

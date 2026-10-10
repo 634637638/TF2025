@@ -2863,90 +2863,6 @@ onUnmounted(() => {
   transform: scale(0.98);
 }
 
-.status-cell-clickable:hover {
-  background: rgba(102, 126, 234, 0.15) !important;
-}
-
-.status-cell-clickable:hover .status-badge {
-  transform: scale(1.05);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-}
-
-.condition-badge.new {
-  background: rgba(40, 167, 69, 0.1);
-  color: var(--success-color);
-}
-
-.condition-badge.used {
-  background: rgba(253, 126, 20, 0.1);
-  color: var(--tf-color-orange-bootstrap);
-}
-
-.status-badge {
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-/* 可售 - 绿色 */
-.status-badge.in-stock {
-  background: var(--tf-status-sale-available-bg);
-  color: var(--tf-status-sale-available-color);
-  border-color: var(--tf-status-sale-available-border);
-}
-
-/* 已售 - 绿色 */
-.status-badge.sold {
-  background: var(--tf-status-sold-bg);
-  color: var(--tf-status-sold-color);
-  border-color: var(--tf-status-sold-border);
-}
-
-/* 调货 - 蓝色 */
-.status-badge.peer-transfer {
-  background: var(--tf-status-transfer-bg);
-  color: var(--tf-status-transfer-color);
-  border-color: var(--tf-status-transfer-border);
-}
-
-/* 划拨 - 紫色 */
-.status-badge.supplier-proxy {
-  background: var(--tf-status-allocation-bg);
-  color: var(--tf-status-allocation-color);
-  border-color: var(--tf-status-allocation-border);
-}
-
-/* 预定 - 青色 */
-.status-badge.reserved {
-  background: var(--tf-status-reserved-bg);
-  color: var(--tf-status-reserved-color);
-  border-color: var(--tf-status-reserved-border);
-}
-
-/* 维修 - 橙色 */
-.status-badge.repair {
-  background: var(--tf-status-repair-bg);
-  color: var(--tf-status-repair-color);
-  border-color: var(--tf-status-repair-border);
-}
-
-/* 丢失 - 红色 */
-.status-badge.lost {
-  background: var(--tf-status-lost-bg);
-  color: var(--tf-status-lost-color);
-  border-color: var(--tf-status-lost-border);
-}
-
-.status-badge.returned {
-  background: var(--tf-status-returned-bg);
-  color: var(--tf-status-returned-color);
-  border-color: var(--tf-status-returned-border);
-}
-
-.status-badge.damaged {
-  background: var(--tf-status-damaged-bg);
-  color: var(--tf-status-damaged-color);
-  border-color: var(--tf-status-damaged-border);
-}
-
 .price-cell {
   font-weight: 600;
   color: var(--tf-color-red-legacy);
@@ -3557,10 +3473,6 @@ select.form-control {
     cursor: pointer;
   }
 
-  .clickable-cell:hover {
-    background-color: var(--tf-color-blue-50);
-  }
-
   /* 确保状态徽章不会阻止事件 */
   .clickable-cell .status-badge,
   .clickable-cell .condition-badge {
@@ -3685,11 +3597,6 @@ select.form-control {
 
 .clickable-cell {
   cursor: pointer;
-  transition: background-color 0.2s;
-
-  &:hover {
-    background-color: var(--tf-color-surface);
-  }
 }
 
 .image-preview-modal {

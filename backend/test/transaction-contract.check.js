@@ -506,7 +506,10 @@ test('sale and transfer flows preserve inventory remarks when no new remark is p
   const salesHandler = salesRoute.slice(salesStart, salesEnd > salesStart ? salesEnd : undefined);
 
   assert.ok(salesStart >= 0 && salesEnd > salesStart, '销售出库路由不存在');
-  assert.match(salesHandler, /remarks\s*=\s*COALESCE\(NULLIF\(TRIM\(\?\), ''\), remarks\)/);
+  assert.match(salesHandler, /final_remarks:/);
+  assert.match(salesHandler, /remarks\s*=\s*\?,/);
+  assert.match(salesHandler, /phone\.final_remarks/);
+  assert.doesNotMatch(salesHandler, /remarks\s*=\s*COALESCE\(NULLIF\(TRIM\(\?\), ''\), remarks\)/);
   assert.match(transferService, /status = 'peer_transfer',[\s\S]*remarks\s*=\s*COALESCE\(NULLIF\(TRIM\(\?\), ''\), remarks\)/);
   assert.match(transferService, /status = 'supplier_proxy',[\s\S]*remarks\s*=\s*COALESCE\(NULLIF\(TRIM\(\?\), ''\), remarks\)/);
 });

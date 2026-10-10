@@ -273,41 +273,6 @@ body {
   color: var(--danger-color);
 }
 
-/* 状态指示器 */
-.status-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 4px 8px;
-  font-size: var(--tf-type-scale-12);
-  font-weight: 500;
-  border-radius: 12px;
-  white-space: nowrap;
-}
-
-.status-badge.status-active {
-  background-color: var(--tf-status-success-bg);
-  color: var(--tf-status-success-color);
-  border: 1px solid var(--tf-status-success-border);
-}
-
-.status-badge.status-inactive {
-  background-color: var(--tf-status-danger-bg);
-  color: var(--tf-status-danger-color);
-  border: 1px solid var(--tf-status-danger-border);
-}
-
-.status-badge.status-success {
-  background-color: var(--tf-status-success-bg);
-  color: var(--tf-status-success-color);
-  border: 1px solid var(--tf-status-success-border);
-}
-
-.status-badge.status-warning {
-  background-color: var(--tf-status-warning-bg);
-  color: var(--tf-status-warning-color);
-  border: 1px solid var(--tf-status-warning-border);
-}
-
 /* 响应式设计 */
 @media (max-width: 767px) {
   .container {

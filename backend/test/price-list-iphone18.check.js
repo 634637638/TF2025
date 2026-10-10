@@ -73,3 +73,71 @@ test('external iPhone 18 Pro Max rows retain model, color and memory details', a
   assert.equal(parsed?.color, '勃艮第酒红色')
   assert.equal(parsed?.isLocal, true)
 })
+
+test('external searches try confirmed model codes before display-name fallbacks', () => {
+  assert.deepEqual(
+    priceListService.getExternalModelSearchTerms('iphone17pro', 'iPhone17pro', '', 'A3524'),
+    ['A3524', 'iPhone 17 Pro']
+  )
+  assert.deepEqual(
+    priceListService.getExternalModelSearchTerms('iphone18promax', '18promax', '', 'A3718'),
+    ['A3718', 'iPhone 18 Pro Max']
+  )
+})
+
+test('external model search does not combine a brand filter with model codes', () => {
+  const searchUrl = new URL(priceListService.buildExternalModelSearchUrl('A3521'))
+
+  assert.equal(searchUrl.searchParams.get('arg_name'), 'A3521')
+  assert.equal(searchUrl.searchParams.get('pp'), '')
+  assert.equal(searchUrl.searchParams.get('km'), '')
+  assert.equal(searchUrl.searchParams.get('isqh'), '0')
+})
+
+test('external empty tables are not treated as successful price results', () => {
+  assert.equal(
+    priceListService.hasExternalPriceRows('<tbody><tr><td>型号</td><td>价格</td></tr></tbody>'),
+    false
+  )
+  assert.equal(
+    priceListService.hasExternalPriceRows('<tbody><tr><td>苹果 iPhone 17 (A3521)</td><td>￥5650.00</td></tr></tbody>'),
+    true
+  )
+})
+
+test('external table detection rejects unrelated generic results', () => {
+  assert.equal(priceListService.hasExternalModelInTable('<tr><td>iPhone 16 (A3288)</td></tr>', 'A3521', 'iphone17'), false)
+  assert.equal(priceListService.hasExternalModelInTable('<tr><td>iPhone 17 (A3521)</td></tr>', 'A3521', 'iphone17'), true)
+  assert.equal(priceListService.hasExternalModelInTable('<tr><td>iPhone 18 Pro Max-256GB</td></tr>', 'A3718', 'iphone18promax'), true)
+})
+
+test('price fetch retries once after a transient source failure', async () => {
+  const originalFetch = priceListService.fetchPriceData
+  const originalLogin = priceListService.loginToSource
+  let fetchAttempts = 0
+  let loginAttempts = 0
+
+  priceListService.fetchPriceData = async () => {
+    fetchAttempts += 1
+    if (fetchAttempts === 1) throw new Error('temporary redirect')
+    return '<table><tr><td>ok</td></tr></table>'
+  }
+  priceListService.loginToSource = async () => {
+    loginAttempts += 1
+    return true
+  }
+
+  try {
+    const result = await priceListService.fetchPriceDataWithRetry(
+      { id: 2, config_name: '新凯3333', source_type: 'account', login_url: '/login', login_username: 'tester' },
+      { retryDelayMs: 0 }
+    )
+
+    assert.equal(result, '<table><tr><td>ok</td></tr></table>')
+    assert.equal(fetchAttempts, 2)
+    assert.equal(loginAttempts, 1)
+  } finally {
+    priceListService.fetchPriceData = originalFetch
+    priceListService.loginToSource = originalLogin
+  }
+})

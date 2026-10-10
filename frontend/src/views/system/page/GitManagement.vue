@@ -1298,7 +1298,6 @@ watch(canView, async (value) => {
 .optimization-tag {
   cursor: pointer;
   user-select: none;
-  transition: all 0.2s ease;
 }
 
 .action-buttons {

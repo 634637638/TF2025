@@ -2711,10 +2711,6 @@ onMounted(async () => {
   justify-content: center;
 }
 
-.role-tag .remove-role:hover {
-  background: rgba(255,255,255,0.2);
-}
-
 .role-checkboxes {
   display: flex;
   flex-direction: column;
