@@ -1608,10 +1608,10 @@
               >
                 <el-date-picker
                   v-model="editPaymentForm.payment_time"
-                  type="date"
+                  type="datetime"
                   placeholder="选择打款时间"
-                  :format="TIME_FORMATS.DATE"
-                  :value-format="TIME_FORMATS.DATE"
+                  :format="TIME_FORMATS.DATETIME"
+                  :value-format="TIME_FORMATS.DATETIME"
                   class="form-control el-date-form-control"
                   :clearable="true"
                   :disabled="!canEditPaymentField('payment_time')"
@@ -1780,6 +1780,7 @@ interface SupplierPaymentPhone {
   payment_status?: 'paid' | 'unpaid' | string
   payment_method?: string | null
   payment_remarks?: string
+  payment_batch_id?: string | null
   payment_time?: string | null
   payment_operator_name?: string
   phone_status?: string | null
@@ -1824,6 +1825,10 @@ interface SupplierPaymentApiResponse<T> {
   data: T
   message?: string
   pagination?: SupplierPaymentPagination
+}
+
+interface SupplierPaymentUpdateResult {
+  batch_count?: number
 }
 
 type PaymentDialogColumnField =
@@ -2848,11 +2853,11 @@ const handleEditPayment = (phone: SupplierPaymentPhone) => {
 
   editingPhone.value = phone
   editPaymentForm.payment_method = phone.payment_method || 'bank_transfer'
-  // 如果有打款时间则转换为正确格式，否则使用当前北京时间
+  // 编辑保留完整北京时间，避免只选日期后补当前时分秒导致批次被拆开。
   if (phone.payment_time) {
-    editPaymentForm.payment_time = TimeUtil.toDateInputValue(phone.payment_time) || getCurrentBeijingDate()
+    editPaymentForm.payment_time = TimeUtil.format(phone.payment_time, TIME_FORMATS.DATETIME)
   } else {
-    editPaymentForm.payment_time = getCurrentBeijingDate()
+    editPaymentForm.payment_time = getCurrentBeijingTime()
   }
   editPaymentForm.payment_remarks = phone.payment_remarks || ''
   showEditPaymentDialog.value = true
@@ -2872,10 +2877,11 @@ const handleEditPaymentSubmit = async () => {
       ...editPaymentForm,
       payment_time: normalizePaymentDateTime(editPaymentForm.payment_time),
       payment_remarks: editPaymentForm.payment_remarks
-    }) as SupplierPaymentApiResponse<unknown>
+    }) as SupplierPaymentApiResponse<SupplierPaymentUpdateResult>
 
     if (response.success) {
-      success('修改成功')
+      const batchCount = Number(response.data?.batch_count || 1)
+      success(batchCount > 1 ? `修改成功，已同步 ${batchCount} 台` : '修改成功')
       showEditPaymentDialog.value = false
       refreshData({ showSuccess: false })
     }
@@ -3126,7 +3132,8 @@ const handleShowPaymentDetails = async (phone: SupplierPaymentPhone) => {
     const response = await unifiedApi.get('/supplier-payments/batch-details', {
       params: {
         supplier_id: phone.supplier_id,
-        payment_time: paymentTime
+        payment_time: paymentTime,
+        ...(phone.payment_batch_id ? { payment_batch_id: phone.payment_batch_id } : {})
       }
     }) as SupplierPaymentApiResponse<SupplierPaymentPhone[]>
 

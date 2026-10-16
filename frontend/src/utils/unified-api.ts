@@ -58,6 +58,21 @@ export interface RequestConfig extends AxiosRequestConfig {
 // 第三方/旧接口响应结构在运行时动态变化；以 JSON.parse 的运行时结果作为单一动态边界。
 type DynamicResponse = ReturnType<typeof JSON.parse>
 export type ApiResponse<T = DynamicResponse> = GlobalApiResponse<T>
+
+/**
+ * Axios 响应拦截器会返回响应体本身，文件请求因此可能得到 Blob，也可能得到带 data 的原始响应。
+ * 下载和媒体预览统一通过这里解包，避免把 undefined 传给 URL.createObjectURL。
+ */
+export function extractBlobResponse(response: unknown): Blob {
+  const payload = response instanceof Blob
+    ? response
+    : (response as { data?: unknown } | null)?.data
+  if (!(payload instanceof Blob)) {
+    throw new Error('下载响应不是有效文件')
+  }
+  return payload
+}
+
 /**
  * 统一API管理器
  */
@@ -1445,8 +1460,8 @@ class UnifiedApiManager {
     return this.instance.get<Blob>(url, {
       ...config,
       responseType: 'blob'
-    }).then((response: AxiosResponse<Blob>) => {
-      const blob = response.data
+    }).then((response: AxiosResponse<Blob> | Blob) => {
+      const blob = extractBlobResponse(response)
       const downloadUrl = window.URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = downloadUrl

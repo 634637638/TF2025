@@ -135,6 +135,8 @@ export const MODULE_KEY_MAP: Record<string, string> = {
   'reminders': 'reminders_reminderview',
   'reminder': 'reminders_reminderview',
   'shared': 'shared_sharedview',
+  'guide': 'guide_guidemanagementview',
+  'guide_guideview': 'guide_guidemanagementview',
   'marketing': 'marketing_marketingmanagementview',
 
   // 价目表映射
@@ -213,6 +215,7 @@ export const BACKEND_MODULE_MAP: Record<string, string> = {
   'preorders_preordersview': 'preorders',
   'reminders_reminderview': 'reminders',
   'shared_sharedview': 'shared',
+  'guide_guidemanagementview': 'guide',
   'marketing_marketingmanagementview': 'marketing',
   'payments_supplierphonepaymentsview': 'supplier-payments',
   'price_list_pricelistview': 'price-list',

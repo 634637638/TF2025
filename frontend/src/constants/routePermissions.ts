@@ -34,7 +34,8 @@ export const ROUTE_PERMISSION_MAP: Record<string, string[]> = {
   '/rentals': ['rentals:view'],
   '/repairs': ['repairs:view'],
   '/price-list': ['price-list:view'],
-  '/price-list/sync-logs': ['price-list-sync-logs:view']
+  '/price-list/sync-logs': ['price-list-sync-logs:view'],
+  '/guide': ['guide:view']
 }
 
 export const H5_ROUTE_PERMISSION_MAP: Record<string, string[]> = {

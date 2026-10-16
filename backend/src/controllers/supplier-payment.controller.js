@@ -244,11 +244,12 @@ class SupplierPaymentController {
    */
   async getPaymentBatchDetails(req, res) {
     try {
-      const { supplier_id, payment_time } = req.query
+      const { supplier_id, payment_time, payment_batch_id } = req.query
 
       const details = await supplierPaymentService.getPaymentBatchDetails(
         Number.parseInt(supplier_id, 10),
-        payment_time
+        payment_time,
+        payment_batch_id || null
       )
 
       res.json({

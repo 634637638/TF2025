@@ -47,7 +47,8 @@
     "H5-mobile/H5-mobileView.vue",
     "marketing/MarketingView.vue",
     "price-list/page/PublicPriceQuery.vue",
-    "price-list/page/SalesPriceDisplay.vue"
+    "price-list/page/SalesPriceDisplay.vue",
+    "guide/GuidePublicView.vue"
   ],
   "scanExcludedPages": [
     "system/page/SimpleAdminView.vue"
@@ -74,6 +75,7 @@
     "preorders_preordersview": ["view", "create", "edit", "delete", "match", "deliver", "cancel"],
     "reminders_reminderview": ["view", "create", "edit", "delete", "manage"],
     "shared_sharedview": ["view", "create", "edit", "delete", "manage"],
+    "guide_guidemanagementview": ["view", "create", "edit", "delete", "upload"],
     "suppliers_suppliersview": ["view", "create", "edit", "delete", "export"],
     "payments_supplierphonepaymentsview": ["view", "create", "edit", "delete", "approve", "export"],
     "system_systemview": ["view", "edit", "delete"],

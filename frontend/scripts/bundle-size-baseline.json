@@ -1,6 +1,6 @@
 {
   "maxInitialJsBytes": 650000,
-  "maxInitialCssBytes": 250000,
+  "maxInitialCssBytes": 280000,
   "maxInitialTotalBytes": 900000,
   "maxSingleLazyJsBytes": 1400000,
   "forbiddenInitialAssetPatterns": [

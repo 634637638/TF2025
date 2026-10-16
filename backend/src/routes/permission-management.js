@@ -50,7 +50,8 @@ const ENSURED_PERMISSION_MODULE_KEYS = [
   'h5_admin_configview',
   'h5_admin_homesectionsview',
   'h5_admin_bannersview',
-  'h5_admin_ordersview'
+  'h5_admin_ordersview',
+  'guide_guidemanagementview'
 ]
 
 const { hasColumn, hasTable } = require('../services/schemaInspector.service')

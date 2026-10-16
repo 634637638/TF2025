@@ -15,6 +15,7 @@ const { getDatabase } = require('../config/database')
 const { verifyToken } = require('./jwt-blacklist')
 const { getRoleHierarchyFromDB } = require('../services/accessControl.service')
 const { normalizePermissionType } = require('../config/module-permission-actions')
+const { normalizeModuleKey } = require('../utils/moduleKeyNormalizer')
 const { CACHE_TTL } = require('../config/constants')
 const { isDatabaseAvailabilityError } = require('../utils/database-errors')
 const log = require('../utils/log')
@@ -635,12 +636,12 @@ const normalizePermissionString = (perm) => {
   if (typeof perm === 'string') {
     const [moduleKey, permType] = perm.split(':')
     if (permType) {
-      return `${moduleKey}:${normalizePermissionType(permType)}`
+      return `${normalizeModuleKey(moduleKey)}:${normalizePermissionType(permType)}`
     }
     return perm
   }
   if (perm.module_key && perm.permission_type) {
-    return `${perm.module_key}:${normalizePermissionType(perm.permission_type)}`
+    return `${normalizeModuleKey(perm.module_key)}:${normalizePermissionType(perm.permission_type)}`
   }
   return perm
 }

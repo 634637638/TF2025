@@ -3,6 +3,8 @@
  */
 const { getDatabase } = require('../config/database')
 const { ensureSupplierPaymentSchema } = require('../utils/supplier-payment-schema')
+const { normalizeDateTime } = require('../utils/time')
+const { randomUUID } = require('node:crypto')
 const log = require('../utils/log')
 
 async function executeQuery(sql, params) {
@@ -257,6 +259,7 @@ class SupplierPaymentService {
         p.payment_method,
         p.payment_time,
         p.payment_remarks,
+        p.payment_batch_id,
         p.payment_operator_id,
         p.inventory_time,
         p.status as phone_status,
@@ -312,6 +315,7 @@ class SupplierPaymentService {
       payment_method: p.payment_method,
       payment_time: p.payment_time,
       payment_remarks: p.payment_remarks || '',
+      payment_batch_id: p.payment_batch_id || null,
       payment_operator_id: p.payment_operator_id,
       payment_operator_name: p.payment_operator_name || '-',
       inventory_time: p.inventory_time,
@@ -377,15 +381,16 @@ class SupplierPaymentService {
 
       if (phones.length === 0) throw new Error('没有找到可打款的手机')
 
-      const paymentTime = new Date(payment_time)
-      if (Number.isNaN(paymentTime.getTime())) throw new Error('打款时间无效')
+      const paymentTime = normalizeDateTime(payment_time, false)
+      if (!paymentTime) throw new Error('打款时间无效')
+      const paymentBatchId = randomUUID()
 
       for (const phone of phones) {
         await connection.execute(`
           UPDATE phones
-          SET payment_status = 'paid', payment_method = ?, payment_time = ?, payment_remarks = ?, payment_operator_id = ?
+          SET payment_status = 'paid', payment_method = ?, payment_time = ?, payment_remarks = ?, payment_batch_id = ?, payment_operator_id = ?
           WHERE id = ?
-        `, [payment_method, paymentTime, payment_remarks?.trim() || null, operator_id, phone.id])
+        `, [payment_method, paymentTime, payment_remarks?.trim() || null, paymentBatchId, operator_id, phone.id])
       }
       await connection.commit()
 
@@ -393,7 +398,8 @@ class SupplierPaymentService {
         count: phones.length,
         total_amount: phones.reduce((sum, p) => sum + Number(p.purchase_cost || 0), 0),
         payment_method,
-        payment_time: paymentTime
+        payment_time: paymentTime,
+        payment_batch_id: paymentBatchId
       }
     } catch (error) {
       await connection.rollback()
@@ -429,12 +435,12 @@ class SupplierPaymentService {
       if (phone.status === 'supplier_proxy') throw new Error('划拨手机不可打款')
       if (phone.payment_status === 'paid') throw new Error('该手机已打款')
 
-      const paymentTime = new Date(payment_time)
-      if (Number.isNaN(paymentTime.getTime())) throw new Error('打款时间无效')
+      const paymentTime = normalizeDateTime(payment_time, false)
+      if (!paymentTime) throw new Error('打款时间无效')
 
       await connection.execute(`
         UPDATE phones
-        SET payment_status = 'paid', payment_method = ?, payment_time = ?, payment_remarks = ?, payment_operator_id = ?
+        SET payment_status = 'paid', payment_method = ?, payment_time = ?, payment_remarks = ?, payment_batch_id = NULL, payment_operator_id = ?
         WHERE id = ?
       `, [payment_method, paymentTime, payment_remarks?.trim() || null, operator_id, phone_id])
       await connection.commit()
@@ -479,7 +485,7 @@ class SupplierPaymentService {
         await connection.execute(`
           UPDATE phones
           SET payment_status = NULL, payment_method = NULL,
-              payment_time = NULL, payment_remarks = NULL, payment_operator_id = NULL
+              payment_time = NULL, payment_remarks = NULL, payment_batch_id = NULL, payment_operator_id = NULL
           WHERE id = ?
         `, [phone.id])
       }
@@ -504,72 +510,148 @@ class SupplierPaymentService {
     await ensureSupplierPaymentSchema()
     const db = getDatabase()
 
-    // 获取手机信息
-    const phones = await executeQuery(`
-      SELECT id, imei, payment_status
-      FROM phones
-      WHERE id = ?
-    `, [phone_id])
+    const connection = await db.getConnection()
+    try {
+      await connection.beginTransaction()
 
-    if (!phones || phones.length === 0) {
-      throw new Error('手机不存在')
-    }
-
-    const phone = phones[0]
-
-    // 如果 payment_method 和 payment_time 都为 null，则是取消打款操作
-    if (payment_method === null && payment_time === null) {
-      // 取消打款：恢复到未打款状态（设为 NULL）
-      await db.execute(`
-        UPDATE phones
-        SET payment_status = NULL,
-            payment_method = NULL,
-            payment_time = NULL,
-            payment_remarks = NULL,
-            payment_operator_id = NULL
+      // 先锁定被编辑记录，使用原始打款时间确定批次，避免编辑时被当前时间拆批。
+      const [phones] = await connection.execute(`
+        SELECT
+          id,
+          imei,
+          supplier_id,
+          payment_status,
+          payment_method,
+          payment_remarks,
+          payment_batch_id,
+          DATE_FORMAT(payment_time, '%Y-%m-%d %H:%i:%s') AS batch_payment_time
+        FROM phones
         WHERE id = ?
+        FOR UPDATE
       `, [phone_id])
+
+      if (!phones || phones.length === 0) {
+        throw new Error('手机不存在')
+      }
+
+      const phone = phones[0]
+
+      // 如果 payment_method 和 payment_time 都为 null，则是取消打款操作。
+      if (payment_method === null && payment_time === null) {
+        await connection.execute(`
+          UPDATE phones
+          SET payment_status = NULL,
+              payment_method = NULL,
+              payment_time = NULL,
+              payment_remarks = NULL,
+              payment_batch_id = NULL,
+              payment_operator_id = NULL
+          WHERE id = ?
+        `, [phone_id])
+        await connection.commit()
+
+        return {
+          phone_id,
+          imei: phone.imei,
+          payment_status: 'unpaid',
+          payment_method: null,
+          payment_time: null
+        }
+      }
+
+      if (phone.payment_status !== 'paid') {
+        throw new Error('该手机未打款，无法编辑')
+      }
+
+      const paymentTime = payment_time === undefined
+        ? phone.batch_payment_time
+        : normalizeDateTime(payment_time, false)
+      if (!paymentTime) throw new Error('打款时间无效')
+
+      const nextPaymentMethod = payment_method === undefined
+        ? phone.payment_method
+        : payment_method
+      const nextPaymentRemarks = payment_remarks === undefined
+        ? (phone.payment_remarks?.trim() || null)
+        : (payment_remarks?.trim() || null)
+
+      let batchPhones
+      if (phone.payment_batch_id) {
+        [batchPhones] = await connection.execute(`
+          SELECT id
+          FROM phones
+          WHERE payment_batch_id = ?
+            AND supplier_id = ?
+            AND payment_status = 'paid'
+          FOR UPDATE
+        `, [phone.payment_batch_id, phone.supplier_id])
+      } else if (phone.batch_payment_time) {
+        // 兼容历史数据：没有批次编号时，回退到供应商和原始秒级时间。
+        [batchPhones] = await connection.execute(`
+          SELECT id
+          FROM phones
+          WHERE supplier_id = ?
+            AND payment_status = 'paid'
+            AND DATE_FORMAT(payment_time, '%Y-%m-%d %H:%i:%s') = ?
+          FOR UPDATE
+        `, [phone.supplier_id, phone.batch_payment_time])
+      } else {
+        // 历史脏数据没有打款时间时，仅更新当前记录，避免误合并其他批次。
+        batchPhones = [{ id: phone_id }]
+      }
+
+      const batchIds = batchPhones.map(item => item.id)
+      if (batchIds.length === 0) {
+        throw new Error('未找到可编辑的打款批次')
+      }
+
+      await connection.execute(`
+        UPDATE phones
+        SET payment_method = ?,
+            payment_time = ?,
+            payment_remarks = ?
+        WHERE id IN (${batchIds.map(() => '?').join(',')})
+      `, [nextPaymentMethod, paymentTime, nextPaymentRemarks, ...batchIds])
+
+      await connection.commit()
 
       return {
         phone_id,
         imei: phone.imei,
-        payment_status: 'unpaid',
-        payment_method: null,
-        payment_time: null
+        batch_count: batchIds.length,
+        payment_method: nextPaymentMethod,
+        payment_time: paymentTime,
+        payment_remarks: nextPaymentRemarks,
+        payment_batch_id: phone.payment_batch_id || null
       }
-    }
-
-    // 正常更新打款信息
-    if (phone.payment_status !== 'paid') {
-      throw new Error('该手机未打款，无法编辑')
-    }
-
-    const paymentTime = new Date(payment_time)
-
-    // 更新打款信息
-    await db.execute(`
-      UPDATE phones
-        SET payment_method = ?,
-          payment_time = ?,
-          payment_remarks = ?
-      WHERE id = ?
-    `, [payment_method, paymentTime, payment_remarks?.trim() || null, phone_id])
-
-    return {
-      phone_id,
-      imei: phone.imei,
-      payment_method,
-      payment_time: paymentTime
+    } catch (error) {
+      await connection.rollback()
+      throw error
+    } finally {
+      connection.release()
     }
   }
 
   /**
-   * 获取打款批次详情（精确到分钟）
+   * 获取打款批次详情
    * @param {number} supplier_id - 供应商ID
-   * @param {string} payment_time - 打款时间（从数据库读取的DATETIME格式字符串）
+   * @param {string} payment_time - 历史记录回退使用的打款时间
+   * @param {string|null} payment_batch_id - 新记录使用的批次编号
    */
-  async getPaymentBatchDetails(supplier_id, payment_time) {
-    log.debug('🔍 [批次详情] 查询参数:', { supplier_id, payment_time })
+  async getPaymentBatchDetails(supplier_id, payment_time, payment_batch_id = null) {
+    await ensureSupplierPaymentSchema()
+    log.debug('🔍 [批次详情] 查询参数:', { supplier_id, payment_time, payment_batch_id })
+
+    const batchCondition = payment_batch_id
+      ? `p.payment_batch_id = ?
+        AND p.supplier_id = ?
+        AND p.payment_status = 'paid'`
+      : `p.supplier_id = ?
+        AND p.payment_status = 'paid'
+        AND DATE_FORMAT(p.payment_time, '%Y-%m-%d %H:%i:%s') = ?`
+    const batchParams = payment_batch_id
+      ? [payment_batch_id, supplier_id]
+      : [supplier_id, payment_time]
 
     // 直接使用数据库的格式化字符串进行精确匹配
     // 不在JavaScript中进行任何时区转换，避免时区问题
@@ -583,6 +665,7 @@ class SupplierPaymentService {
         p.payment_time,
         p.payment_method,
         p.payment_remarks,
+        p.payment_batch_id,
         p.payment_operator_id,
         p.inventory_time,
         p.sale_time,
@@ -605,11 +688,9 @@ class SupplierPaymentService {
       LEFT JOIN memories mem ON p.memory_id = mem.id
       LEFT JOIN stores st ON p.store_id = st.id
       LEFT JOIN users u ON p.payment_operator_id = u.id
-      WHERE p.supplier_id = ?
-        AND p.payment_status = 'paid'
-        AND DATE_FORMAT(p.payment_time, '%Y-%m-%d %H:%i:%s') = ?
+      WHERE ${batchCondition}
       ORDER BY p.sale_time DESC, p.payment_time DESC
-    `, [supplier_id, payment_time])
+    `, batchParams)
 
     log.debug('🔍 [批次详情] 精确查询结果数量:', phones.length)
 
@@ -622,6 +703,7 @@ class SupplierPaymentService {
       payment_time: p.payment_time,
       payment_method: p.payment_method,
       payment_remarks: p.payment_remarks || '',
+      payment_batch_id: p.payment_batch_id || null,
       payment_operator_id: p.payment_operator_id,
       payment_operator_name: p.payment_operator_name,
       inventory_time: p.inventory_time,

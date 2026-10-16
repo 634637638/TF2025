@@ -14,6 +14,12 @@
 所有文件 URL 必须通过 `backend/src/utils/upload-paths.js` 生成或解析，禁止在
 路由、服务和前端中手工拼接服务器绝对路径。
 
+私有文件必须遵守 [`secure-file-access-standard.md`](secure-file-access-standard.md)，不得使用通用 `/uploads` 静态直链。公开商品图片、商城公开媒体等明确用于公开展示的资源，才可以登记为静态公开资源。
+
+### 导航站文件
+
+导航站文件存放在 `uploads/guide/`，使用 `guide_links.file_url`、`file_name` 和 `file_mime` 关联。该目录禁止通用静态访问，必须使用导航文件短时签名接口。删除导航、分类或替换文件时同步删除物理文件。
+
 ## 目录规范
 
 ### 国补照片

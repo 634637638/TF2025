@@ -14,6 +14,10 @@ async function ensureSupplierPaymentSchema() {
       if (!columns.some(column => column.Field === 'payment_remarks')) {
         await db.query('ALTER TABLE phones ADD COLUMN payment_remarks TEXT NULL AFTER payment_operator_id')
       }
+      const [updatedColumns] = await db.query('SHOW COLUMNS FROM phones')
+      if (!updatedColumns.some(column => column.Field === 'payment_batch_id')) {
+        await db.query('ALTER TABLE phones ADD COLUMN payment_batch_id VARCHAR(36) NULL AFTER payment_remarks')
+      }
     })().catch(error => {
       ensurePromise = null
       throw error

@@ -6,6 +6,7 @@
 
 - [供应商打款指南](SUPPLIER_PAYMENT_GUIDE.md) - 供应商打款流程说明
 - [供应商打款菜单设置](SUPPLIER_PAYMENT_MENU_SETUP.md) - 打款功能菜单配置
+- [供应商打款批次规范](SUPPLIER_PAYMENT_BATCH_STANDARD.md) - 批次识别、整批编辑与北京时间规则
 
 ## 功能概述
 

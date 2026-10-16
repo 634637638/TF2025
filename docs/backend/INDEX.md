@@ -11,6 +11,8 @@
 - [手机媒体接口统一说明](phone-media-api-unification.md) - canonical 路由、兼容迁移和权限边界
 - [维修设备关联规范](repairs-device-link.md) - IMEI/序列号检索、手动录入和维修设备字段迁移
 - [手机库存预警配置](phone-stock-warning.md) - 品牌、型号、颜色、内存和库存类型的唯一配置规则
+- [导航站接口](guide-navigation-api.md) - `/DH` 公开导航、`/guide` 管理接口、密码策略和二维码存储
+- [安全文件访问](secure-file-access-standard.md) - 私有文件受控访问、短时签名、静态目录边界和生命周期
 
 ## 契约测试
 

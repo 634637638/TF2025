@@ -147,7 +147,8 @@ router.get('/batch-details',
   requirePermission('supplier-payments:view'),
   [
     query('supplier_id').isInt({ min: 1 }),
-    query('payment_time').isString()
+    query('payment_time').optional().isString(),
+    query('payment_batch_id').optional().isUUID()
   ],
   validateRequest,
   supplierPaymentController.getPaymentBatchDetails

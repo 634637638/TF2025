@@ -13,6 +13,8 @@
 - [权限操作日志](permission-operation-log.md) - 权限操作日志接口和数据要求。
 - [无权限组件](permission-denied-component.md) - 页面无权限状态展示。
 
+导航站管理模块使用 `guide_guidemanagementview`；能力清单和后端权限映射分别以 `backend/src/config/module-permission-capabilities.json`、`permission-mapping.js` 为唯一来源。
+
 ## 安全边界
 
 - 浏览器可见的权限、角色、菜单和路由信息只用于界面渲染，不能当作秘密。

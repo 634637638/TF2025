@@ -230,6 +230,15 @@ const routes: RouteRecordRaw[] = [
         }
       },
       {
+        path: 'guide',
+        name: 'GuideManagement',
+        component: () => import('@/views/guide/GuideManagementView.vue'),
+        meta: {
+          title: '导航管理',
+          icon: 'fas fa-compass'
+        }
+      },
+      {
         path: 'marketing',
         name: 'MarketingManagement',
         component: () => import('@/views/marketing/MarketingManagementView.vue'),
@@ -413,6 +422,12 @@ const routes: RouteRecordRaw[] = [
     path: '/sales-price-display',
     name: 'SalesPriceDisplay',
     component: () => import('@/views/price-list/page/SalesPriceDisplay.vue'),
+    meta: { requiresAuth: false }
+  },
+  {
+    path: '/DH',
+    name: 'GuidePublic',
+    component: () => import('@/views/guide/GuidePublicView.vue'),
     meta: { requiresAuth: false }
   },
   {

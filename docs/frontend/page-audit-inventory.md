@@ -14,8 +14,8 @@
 
 | 对象 | 统计口径 | 当前数量 |
 | --- | --- | ---: |
-| 懒加载路由入口 | `router/index.ts` 中的 `component: () => import(...)` | 63 |
-| 实际叶子路由 | 可直接访问的页面路由，排除 3 个布局容器 | 60 |
+| 懒加载路由入口 | `router/index.ts` 中的 `component: () => import(...)` | 65 |
+| 实际叶子路由 | 可直接访问的页面路由，排除 3 个布局容器 | 62 |
 | 页面源文件 | `frontend/src/views/**/*.vue`，包括 Tab、弹窗和页面内部单元 | 128 |
 | 非路由功能单元 | 页面源文件中未被路由直接加载的 Tab、弹窗或复用单元 | 68 |
 | 公共组件源文件 | `frontend/src/components/**/*.vue` | 71 |
@@ -26,6 +26,22 @@
 | 原生按钮 | 所有 Vue 页面和公共组件中的 `<button>` | 0 |
 
 “实际叶子路由”与“页面源文件”不能相加作为页面总数：一个路由页通常由多个 Tab、弹窗和业务组件组成；同一个源文件也可能被多个 URL 复用。没有路由入口的 Tab、弹窗和组件仍然属于后续统一审计范围。
+
+### 下载安全专项登记
+
+所有页面涉及文件预览、下载或导出时，必须同时遵守 [`download-security-standard.md`](download-security-standard.md)。新增入口必须先补充本表，再实现页面功能。
+
+| 页面/功能 | 文件类型 | 前端统一入口 | 后端接口/方式 | 公开性 | 权限与归属校验 | 生命周期 |
+| --- | --- | --- | --- | --- | --- | --- |
+| `/DH` 导航文件 | 图片、PDF、Office、文本、压缩包 | 图片统一预览；其他 `unifiedApi.download()` | `/api/public/guide/files/:id` 短时签名 | 导航公开或分类密码保护 | 连接、分类启用状态和签名校验 | 删除/替换导航同步删除 |
+| `/rentals` 合同附件 | 合同文件 | `unifiedApi.download()` | `/api/rentals/:id/files/:fileId/download` | 私有 | 登录、租赁记录归属 | 删除合同同步删除 |
+| `/backup` 备份文件 | 数据库备份 | 统一下载入口 | 备份受控下载接口 | 私有 | 管理权限和下载令牌 | 过期清理 |
+| `/shared` 经验分享附件 | 图片、附件 | 统一媒体/下载入口 | `/api/shared/files/*` | 私有 | 登录、分享记录归属 | 分享删除同步清理 |
+| `/repairs` 维修媒体 | 图片、视频 | 统一媒体预览 | `/api/repairs/media/*` | 私有 | 登录、维修记录权限 | 维修记录删除同步清理 |
+| `/subsidy` 国补材料 | 图片、附件 | 统一媒体/下载入口 | `/api/subsidy/files/*` | 私有 | 登录、国补记录权限 | 国补记录删除同步清理 |
+| `/query`、`/inventory`、`/sales` | 设备图片 | 统一媒体预览 | 设备媒体受控或公开展示接口 | 按业务配置 | 记录权限/设备关联 | 设备删除同步清理 |
+| `/price-query`、`/sales-price-display` | 报价截图 | 页面统一导出/Blob 入口 | 前端生成文件 | 不上传服务器 | 当前页面访问权限 | 浏览器临时对象及时释放 |
+| 各后台导出功能 | CSV、JSON、XLSX | `unifiedApi.download()` 或统一导出服务 | 对应导出接口 | 私有 | 模块权限、字段权限和审计 | 响应完成后不落盘 |
 
 ## 2. 路由页面清单
 
@@ -59,6 +75,7 @@
 | `/preorders` | `views/preorders/PreordersView.vue` | 预定管理 | 是 | 已登记 |
 | `/reminders` | `views/reminders/ReminderView.vue` | 提醒列表 | 是 | 已登记 |
 | `/shared` | `views/shared/SharedView.vue` | 经验分享 | 是 | 已登记 |
+| `/guide` | `views/guide/GuideManagementView.vue` | 导航站后台管理 | 是 | 已接入 |
 | `/marketing` | `views/marketing/MarketingManagementView.vue` | 营销管理 | 否 | 已登记 |
 | `/error-management` | `components/ErrorManagement/ErrorDashboardSimple.vue` | 错误管理 | 是 | 已登记 |
 | `/query` | `views/query/QueryView.vue` | 综合查询 | 是 | 已登记 |
@@ -91,6 +108,7 @@
 | --- | --- | --- | --- | --- |
 | `/price-query` | `views/price-list/page/PublicPriceQuery.vue` | 公开查询 | 是 | 已登记 |
 | `/sales-price-display` | `views/price-list/page/SalesPriceDisplay.vue` | 公开报价 | 是 | 已登记 |
+| `/DH` | `views/guide/GuidePublicView.vue` | 公开导航站 | 否 | 已接入 |
 | `/Marketing_Copy` | `views/marketing/MarketingView.vue` | 公开营销页 | 否 | 已登记 |
 
 ### 2.4 H5 手机端页面

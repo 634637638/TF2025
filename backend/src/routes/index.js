@@ -117,6 +117,8 @@ const sharedRoutes = require('./shared')
 
 // 备份管理路由
 const backupRoutes = require('./backup')
+const { adminRouter: guideRoutes } = require('./guide')
+const guidePublicRoutes = require('./guide-public')
 
 // 注册版本化路由（新的架构）
 // TODO: v1 路由待开发，暂时注释掉
@@ -294,6 +296,10 @@ router.use('/shared', sharedRoutes)
 
 // 备份管理路由
 router.use('/backup', backupRoutes)
+
+// 导航站：后台管理需要认证，公开前台独立挂载到 /public/guide
+router.use('/guide', guideRoutes)
+router.use('/public/guide', guidePublicRoutes)
 
 // 批发/划拨管理路由
 const transfersRoutes = require('./transfers')

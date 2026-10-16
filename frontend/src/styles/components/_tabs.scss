@@ -10,6 +10,9 @@
   --tf-tabs-bg: #e9eff7;
   --tf-tabs-border: #cbd6e5;
   --tf-tabs-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
+  --tf-topbar-tabs-height: var(--tf-button-height-small);
+  --tf-topbar-tab-padding-x: var(--tf-button-padding-x-small);
+  --tf-topbar-tab-font-size: var(--tf-button-font-size-small);
   --tf-tab-color: #334155;
   --tf-tab-bg: rgba(255, 255, 255, 0.58);
   --tf-tab-border: #c4cfde;
@@ -97,7 +100,8 @@
   flex: 1 1 auto;
   min-width: 0;
   gap: var(--tf-tabs-gap);
-  height: var(--tf-tabs-height);
+  align-self: center;
+  height: var(--tf-topbar-tabs-height);
   padding: 0 var(--tf-tabs-padding);
   overflow: hidden;
   background: var(--tf-nav-topbar-bg);
@@ -111,16 +115,16 @@
   width: auto !important;
   min-width: 0 !important;
   max-width: 180px;
-  height: var(--tf-tabs-height) !important;
-  min-height: var(--tf-tabs-height) !important;
+  height: var(--tf-topbar-tabs-height) !important;
+  min-height: var(--tf-topbar-tabs-height) !important;
   margin: 0 !important;
-  padding-inline: var(--tf-tab-padding-x) !important;
+  padding-inline: var(--tf-topbar-tab-padding-x) !important;
   border: 1px solid var(--tf-tab-border) !important;
   border-radius: var(--tf-tab-radius) !important;
   background: var(--tf-tab-bg) !important;
   box-shadow: var(--tf-tab-shadow) !important;
   color: var(--tf-tab-color) !important;
-  font-size: var(--tf-tab-font-size) !important;
+  font-size: var(--tf-topbar-tab-font-size) !important;
   font-weight: var(--tf-tab-font-weight) !important;
   white-space: nowrap;
 }
@@ -349,7 +353,7 @@
   }
 
   .tf-topbar-tabs {
-    --tf-tabs-height: 34px;
+    --tf-topbar-tabs-height: var(--tf-button-height-small);
     --tf-tabs-padding: var(--tf-space-1);
   }
 

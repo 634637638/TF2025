@@ -263,6 +263,13 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
     key: 'rentals_rentalsview',
     name: '租赁管理',
     permissions: getCapabilityPermissions('rentals_rentalsview')
+  },
+
+  GUIDE: {
+    id: 'guide',
+    key: 'guide_guidemanagementview',
+    name: '导航管理',
+    permissions: getCapabilityPermissions('guide_guidemanagementview')
   }
 }
 

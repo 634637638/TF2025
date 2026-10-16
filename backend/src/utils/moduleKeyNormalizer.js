@@ -21,7 +21,9 @@ const LEGACY_MODULE_KEY_MAP = {
   'git-management': 'system_gitmanagement',
   'h5-sold-products': 'h5_admin_soldproductsview',
   'h5-admin-sold-products': 'h5_admin_soldproductsview',
-  backup: 'backup_backupview'
+  backup: 'backup_backupview',
+  guide: 'guide_guidemanagementview',
+  guide_guideview: 'guide_guidemanagementview'
 }
 
 function normalizeModuleKey(moduleKey) {

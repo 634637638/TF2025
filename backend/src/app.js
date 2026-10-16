@@ -14,6 +14,7 @@ const {
 const { refreshExpiredRentalStatuses } = require('./services/rental-status.service')
 const { ensureRateLimitLogTable } = require('./middleware/rate-limit')
 const { ensurePriceSourceSchema } = require('./utils/price-source-schema')
+const { ensureGuideSchema } = require('./utils/guide-schema')
 
 // 导入路由
 const routes = require('./routes')
@@ -38,14 +39,14 @@ const formatBeijingTime = () => new Date().toLocaleString('zh-CN', { timeZone: '
 const redactSensitiveQuery = (requestUrl = '') => {
   try {
     const url = new URL(requestUrl, 'http://localhost')
-    for (const key of ['token', 'access_token', 'refresh_token']) {
+    for (const key of ['token', 'access_token', 'refresh_token', 'signature', 'expires', 'download_token', 'file_token']) {
       if (url.searchParams.has(key)) {
         url.searchParams.set(key, '[REDACTED]')
       }
     }
     return `${url.pathname}${url.search}`
   } catch {
-    return String(requestUrl).replace(/([?&](?:token|access_token|refresh_token)=)[^&]*/gi, '$1[REDACTED]')
+    return String(requestUrl).replace(/([?&](?:token|access_token|refresh_token|signature|expires|download_token|file_token)=)[^&]*/gi, '$1[REDACTED]')
   }
 }
 
@@ -85,6 +86,7 @@ const uploadStaticMiddleware = (req, res, next) => {
     req.path.startsWith('/shared/') ||
     req.path.startsWith('/rentals/') ||
     req.path.startsWith('/repairs/')
+    || req.path.startsWith('/guide/')
   ) {
     return res.status(404).json({
       success: false,
@@ -158,6 +160,12 @@ async function initializeApp() {
           await ensurePriceSourceSchema()
         } catch (priceSourceSchemaError) {
           log.warn('报价采集来源结构检查失败:', priceSourceSchemaError.message)
+        }
+
+        try {
+          await ensureGuideSchema()
+        } catch (guideSchemaError) {
+          log.warn('导航站数据结构检查失败:', guideSchemaError.message)
         }
       }
     } catch (dbError) {

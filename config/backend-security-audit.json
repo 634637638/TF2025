@@ -46,7 +46,11 @@
     "shop-public.js|POST|/auth/register": "公开客户注册；有独立限流",
     "shop-public.js|POST|/auth/login": "公开客户登录；有独立限流",
     "shop-public.js|GET|/home/sections": "商城首页公开展示数据",
-    "system.js|GET|/site-settings": "公开站点展示设置，不包含管理设置"
+    "system.js|GET|/site-settings": "公开站点展示设置，不包含管理设置",
+    "guide-public.js|GET|/": "公开导航站数据；仅返回启用公告、公开分类和锁定分类摘要，不返回密码哈希",
+    "guide-public.js|POST|/categories/:id/unlock": "公开分类密码校验；仅签发短期分类访问令牌，密码使用 bcrypt 校验并受全局限流",
+    "guide-public.js|GET|/categories/:id": "公开分类读取；公开分类直接返回，密码分类必须通过 X-Guide-Token 服务端校验",
+    "guide-public.js|GET|/files/:id": "公开导航文件受控读取；公开分类无需令牌但必须校验数据库连接归属、分类/导航启用状态及安全物理路径；密码分类必须额外通过 X-Guide-File-Expires 和 X-Guide-File-Signature 短时签名"
   },
   "manualAuthRoutes": {
     "auth.js|POST|/refresh": ["verifyToken"],

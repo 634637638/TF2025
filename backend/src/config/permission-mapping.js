@@ -282,6 +282,13 @@ module.exports = Object.freeze({
   'shared:delete': ['shared_sharedview:delete'],
   'shared:manage': ['shared_sharedview:manage'],
 
+  // 导航站权限映射
+  'guide:view': ['guide_guidemanagementview:view'],
+  'guide:create': ['guide_guidemanagementview:create'],
+  'guide:edit': ['guide_guidemanagementview:edit'],
+  'guide:delete': ['guide_guidemanagementview:delete'],
+  'guide:upload': ['guide_guidemanagementview:upload'],
+
   // 价目表管理权限映射
   'price-list:view': ['price_list_pricelistview:view', 'price_list_pricelistview:menu_view'],
   'price-list:create': ['price_list_pricelistview:create'],

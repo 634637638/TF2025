@@ -36,6 +36,12 @@ const MODULE_PERMISSION_METADATA = {
     category: 'system',
     icon: 'fas fa-lightbulb'
   },
+  guide_guidemanagementview: {
+    name: '导航管理',
+    description: '维护公开导航站公告、分类、网址和文件访问权限',
+    category: 'system',
+    icon: 'fas fa-compass'
+  },
   suppliers_suppliersview: {
     name: '供应商管理',
     description: '维护供应商档案、排序和导出数据',
