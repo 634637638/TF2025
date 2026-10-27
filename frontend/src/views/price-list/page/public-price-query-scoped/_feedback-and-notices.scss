@@ -223,12 +223,14 @@
         &.highlight {
           color: var(--color-primary);
           background: rgba(64, 158, 255, 0.08);
-          padding: 4px 8px;
+          padding: var(--tf-space-1) var(--tf-space-2) var(--tf-space-1) var(--tf-space-6);
           border-radius: 4px;
           margin-top: 4px;
+          overflow-wrap: anywhere;
 
           &:before {
             content: '✓';
+            left: var(--tf-space-2);
             color: var(--color-primary);
           }
         }

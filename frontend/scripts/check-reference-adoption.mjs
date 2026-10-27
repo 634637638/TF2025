@@ -46,8 +46,23 @@ const referenceService = fs.readFileSync(path.resolve(sourceRoot, 'services/refe
 for (const token of ['searchCustomerOptions', 'CustomerSearchContext']) {
   if (!customerService.includes(token)) throw new Error(`客户公共检索服务缺少 ${token}`)
 }
-for (const token of ['getCachedStores', 'getCachedSuppliers', 'getModels', 'getTemplateBrands']) {
+for (const token of ['getCachedStores', 'getCachedSuppliers', 'getModels', 'getTemplateBrands', 'sortResponseRecords', 'sortOptionGroups', 'sortOptionsByOrder']) {
   if (!referenceService.includes(token)) throw new Error(`基础选项公共服务缺少 ${token}`)
+}
+const requiredSortedExports = [
+  ['供应商', /export const getCachedSuppliers\s*=\s*\(\)\s*=>\s*sortResponseRecords\([\s\S]*?\/suppliers\?all=true/],
+  ['门店', /export const getCachedStores[\s\S]*?return sortResponseRecords\(cachedGet/],
+  ['品牌', /export const getCachedBrands\s*=\s*\(\)\s*=>\s*sortResponseRecords\(/],
+  ['型号', /return sortResponseRecords\(cachedGet<ReferenceRecord\[]>\(url, url\)\)/],
+  ['颜色', /export const getCachedColors\s*=\s*\(\)\s*=>\s*sortResponseRecords\(/],
+  ['内存', /export const getCachedMemories\s*=\s*\(\)\s*=>\s*sortResponseRecords\(/],
+  ['组合查询选项', /export const getCachedQueryOptions[\s\S]*?sortOptionGroups\(response\.data\)/],
+  ['手机选项', /export const getCachedPhoneOptions[\s\S]*?sortOptionGroups\(response\.data\)/],
+  ['员工检索', /export const searchEmployees[\s\S]*?sortOptionsByOrder\(response\.data\.employees\)/],
+  ['操作员检索', /export const searchOperators\s*=\s*\(params: ReferenceSearchParams = \{\}\)\s*=>\s*sortResponseRecords/]
+]
+for (const [label, pattern] of requiredSortedExports) {
+  if (!pattern.test(referenceService)) throw new Error(`${label}基础检索选项未在公共服务层执行 sort_order 排序`)
 }
 
 console.log('公共检索入口审计通过：客户和基础选项请求均通过统一服务。')

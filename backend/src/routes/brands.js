@@ -135,20 +135,8 @@ router.get('/', unifiedAuth, requireAnyPermission(['brands:view', 'inventory:vie
     // 参考选项请求使用 all=true，必须返回所有匹配项，不能被列表分页截断。
     const returnAll = all === 'true' || all === true
 
-    // 搜索建议模式使用不同的排序
-    if (suggest === 'true') {
-      query += ` ORDER BY
-        CASE
-          WHEN name LIKE ? THEN 1
-          WHEN LOWER(name) LIKE LOWER(?) THEN 2
-          ELSE 3
-        END,
-        sort_order ASC,
-        name ASC,
-        id ASC
-        LIMIT ? OFFSET ?`
-      params.push(`${name}%`, `%${name}%`, pageSizeNum, offset)
-    } else if (!returnAll) {
+    // 检索只缩小匹配集合，搜索建议同样优先遵守后台排序。
+    if (!returnAll) {
       query += ' ORDER BY sort_order ASC, name ASC, id ASC LIMIT ? OFFSET ?'
       params.push(pageSizeNum, offset)
     } else {
@@ -238,17 +226,13 @@ router.get('/', unifiedAuth, requireAnyPermission(['brands:view', 'inventory:vie
       // 如果是搜索建议，添加额外的搜索建议信息
       if (suggest === 'true') {
         const [suggestions] = await pool.execute(`
-          SELECT DISTINCT name,
-            CASE
-              WHEN name LIKE ? THEN 1
-              WHEN LOWER(name) LIKE LOWER(?) THEN 2
-              ELSE 3
-            END as relevance_score
+          SELECT name
           FROM brands
           WHERE (name LIKE ? OR LOWER(name) LIKE LOWER(?))
-          ORDER BY relevance_score, sort_order ASC
+          GROUP BY name
+          ORDER BY MIN(sort_order) ASC, name ASC, MIN(id) ASC
           LIMIT 5
-        `, [`${name}%`, `%${name}%`, `%${name}%`, `%${name}%`])
+        `, [`%${name}%`, `%${name}%`])
 
         responseData.suggestions = suggestions.map(s => s.name)
       }

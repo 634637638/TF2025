@@ -1,11 +1,11 @@
 :root {
-  --tf-tabs-height: 38px;
-  --tf-tabs-padding: 6px;
+  --tf-tabs-height: var(--tf-button-height-small, var(--tf-space-4));
+  --tf-tabs-padding: var(--tf-space-1);
   --tf-tabs-gap: var(--tf-space-1);
   --tf-tabs-radius: var(--admin-panel-radius, var(--tf-radius-panel));
   --tf-tab-radius: var(--tf-radius-control);
-  --tf-tab-padding-x: var(--tf-space-4);
-  --tf-tab-font-size: var(--tf-font-body);
+  --tf-tab-padding-x: var(--tf-button-padding-x-small);
+  --tf-tab-font-size: var(--tf-button-font-size-small, var(--tf-font-body));
   --tf-tab-font-weight: 600;
   --tf-tabs-bg: #e9eff7;
   --tf-tabs-border: #cbd6e5;
@@ -25,11 +25,6 @@
   --tf-tab-active-border: var(--tf-button-primary-border, #2563eb);
   --tf-tab-active-color: #ffffff;
   --tf-tab-active-shadow: 0 3px 9px rgba(37, 99, 235, 0.24);
-  --tf-tab-scroll-control-size: 30px;
-  --tf-tab-scroll-control-bg: rgba(255, 255, 255, 0.92);
-  --tf-tab-scroll-control-border: #b8c5d6;
-  --tf-tab-scroll-control-color: #475569;
-  --tf-tab-scroll-control-shadow: 0 2px 6px rgba(15, 23, 42, 0.1);
 }
 
 /* Top-level page tabs. Business-specific segmented controls must not use this class. */
@@ -39,11 +34,14 @@
   flex-wrap: nowrap;
   gap: var(--tf-tabs-gap);
   width: 100%;
+  min-width: 0;
   max-width: 100%;
+  box-sizing: border-box;
   margin: 0 0 var(--admin-panel-gap, 16px);
   padding: var(--tf-tabs-padding);
   overflow-x: auto;
   overflow-y: hidden;
+  scrollbar-width: none;
   border: 1px solid var(--tf-tabs-border);
   border-radius: var(--tf-tabs-radius);
   background: var(--tf-tabs-bg);
@@ -163,7 +161,9 @@
 
 .tf-page-tabs.el-tabs {
   width: 100%;
+  min-width: 0;
   max-width: 100%;
+  box-sizing: border-box;
   margin: 0;
   padding: 0;
   border: 0;
@@ -173,7 +173,9 @@
 
 .tf-page-tabs.el-tabs > .el-tabs__header {
   width: 100%;
+  min-width: 0;
   max-width: 100%;
+  box-sizing: border-box;
   margin: 0 0 var(--admin-panel-gap, 16px);
   padding: var(--tf-tabs-padding);
   overflow: hidden;
@@ -188,11 +190,17 @@
   display: none;
 }
 
+.tf-page-tabs.el-tabs > .el-tabs__header .el-tabs__nav-wrap {
+  min-width: 0;
+  max-width: 100%;
+}
+
 .tf-page-tabs.el-tabs > .el-tabs__header .el-tabs__nav-scroll {
   width: 100%;
   max-width: 100%;
   overflow-x: auto;
   overflow-y: hidden;
+  scrollbar-width: none;
   touch-action: pan-x;
   overscroll-behavior-x: contain;
   cursor: grab;
@@ -207,7 +215,7 @@
 }
 
 .tf-page-tabs.el-tabs > .el-tabs__header .el-tabs__nav-wrap.is-scrollable {
-  padding-inline: calc(var(--tf-tab-scroll-control-size) + var(--tf-tabs-gap));
+  padding-inline: 0;
 }
 
 .tf-page-tabs.el-tabs > .el-tabs__header .el-tabs__nav {
@@ -216,6 +224,8 @@
   min-width: 100%;
   gap: var(--tf-tabs-gap);
   border: 0;
+  /* Element Plus writes an inline translation; native scrolling owns the offset. */
+  transform: none !important;
 }
 
 .tf-page-tabs.el-tabs > .el-tabs__header .el-tabs__item {
@@ -251,38 +261,7 @@
 
 .tf-page-tabs.el-tabs > .el-tabs__header .el-tabs__nav-prev,
 .tf-page-tabs.el-tabs > .el-tabs__header .el-tabs__nav-next {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 2;
-  top: 0;
-  width: var(--tf-tab-scroll-control-size);
-  height: var(--tf-tabs-height);
-  box-sizing: border-box;
-  border: 1px solid var(--tf-tab-scroll-control-border);
-  border-radius: var(--tf-tab-radius);
-  background: var(--tf-tab-scroll-control-bg);
-  box-shadow: var(--tf-tab-scroll-control-shadow);
-  color: var(--tf-tab-scroll-control-color);
-  font-size: var(--tf-type-scale-14);
-  line-height: var(--tf-tabs-height);
-  transition: border-color 0.18s ease, background-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
-}
-
-.tf-page-tabs.el-tabs > .el-tabs__header .el-tabs__nav-prev:hover,
-.tf-page-tabs.el-tabs > .el-tabs__header .el-tabs__nav-next:hover {
-  border-color: var(--tf-tab-hover-border);
-  background: var(--tf-tab-hover-bg);
-  box-shadow: var(--tf-tab-hover-shadow);
-  color: var(--tf-tab-hover-color);
-}
-
-.tf-page-tabs.el-tabs > .el-tabs__header .el-tabs__nav-prev {
-  left: 0;
-}
-
-.tf-page-tabs.el-tabs > .el-tabs__header .el-tabs__nav-next {
-  right: 0;
+  display: none;
 }
 
 .tf-page-tabs.el-tabs > .el-tabs__content {
@@ -290,6 +269,14 @@
   max-width: 100%;
   min-width: 0;
   overflow: visible;
+}
+
+/* Dense category navigation uses the same compact dimensions as table actions. */
+.tf-page-tabs--compact {
+  --tf-tabs-height: var(--tf-button-height-small);
+  --tf-tabs-padding: var(--tf-space-1);
+  --tf-tab-padding-x: var(--tf-button-padding-x-small);
+  --tf-tab-font-size: var(--tf-button-font-size-small);
 }
 
 /* Every page TAB uses the same zero-inset content frame. Business panels own their
@@ -337,14 +324,13 @@
 
 @media (max-width: 767px) {
   :root {
-    --tf-tabs-height: 34px;
-    --tf-tabs-padding: 4px;
+    --tf-tabs-height: var(--tf-button-height-small);
+    --tf-tabs-padding: var(--tf-space-1);
     --tf-tabs-gap: var(--tf-space-1);
     --tf-tabs-radius: var(--mobile-card-radius, 12px);
     --tf-tab-radius: 6px;
-    --tf-tab-padding-x: 11px;
-    --tf-tab-font-size: var(--tf-type-scale-12);
-    --tf-tab-scroll-control-size: 28px;
+    --tf-tab-padding-x: var(--tf-button-padding-x-small);
+    --tf-tab-font-size: var(--tf-button-font-size-small);
   }
 
   .tf-page-tabs.tab-navigation,

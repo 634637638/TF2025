@@ -6,6 +6,7 @@
  * 统一使用 unifiedApi，自动处理公开接口（/public/）无需认证
  */
 import { unifiedApi } from '@/utils/unified-api'
+import { sortOptionsByOrder } from '@/utils/option-sort'
 import {
   getTemplateBrands,
   getTemplateColors,
@@ -21,23 +22,23 @@ const asRecord = (value: unknown): UnknownRecord | null => (
 
 const pickArray = <T>(payload: unknown, keys: string[] = []): T[] => {
   if (Array.isArray(payload)) {
-    return payload as T[]
+    return sortOptionsByOrder(payload as T[])
   }
 
   const record = asRecord(payload)
   for (const key of keys) {
     const value = record?.[key]
     if (Array.isArray(value)) {
-      return value as T[]
+      return sortOptionsByOrder(value as T[])
     }
   }
 
   if (Array.isArray(record?.data)) {
-    return record.data as T[]
+    return sortOptionsByOrder(record.data as T[])
   }
 
   if (Array.isArray(record?.records)) {
-    return record.records as T[]
+    return sortOptionsByOrder(record.records as T[])
   }
 
   return []

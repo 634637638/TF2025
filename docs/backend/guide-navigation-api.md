@@ -2,7 +2,7 @@
 
 ## 数据表
 
-启动时由 `backend/src/utils/guide-schema.js` 检查并创建 `guide_announcements`、`guide_categories`、`guide_links` 和 `guide_access_tokens`。四张表独立于商城模板、经验分享和 H5 数据。公告表的 `is_pinned` 表示置顶状态，同一时间最多保留一条置顶公告。
+启动时由 `backend/src/utils/guide-schema.js` 检查并创建 `guide_settings`、`guide_announcements`、`guide_categories`、`guide_links` 和 `guide_access_tokens`。这些表独立于商城模板、经验分享和 H5 数据。`guide_settings` 使用固定 `id=1` 保存 `/DH` 顶部副标题、主标题、底部信息、客服微信和客服电话。启动时幂等补齐旧数据库缺少的 `site_eyebrow` 和 `footer_text` 列。历史客服二维码列仅为旧版数据库兼容保留，不再由接口读取或写入。公告表的 `is_pinned` 表示置顶状态，同一时间最多保留一条置顶公告。
 
 `guide_categories.parent_id` 用于两级分类：为空表示一级分类，填写一级分类 ID 表示二级分类。二级分类不能再创建下级分类。`guide_links.category_id` 表示连接所属分类，可绑定任意一级或二级分类；服务端验证目标分类存在。启动迁移会清理旧版 `guide_links.parent_id` 连接父级字段，保留连接记录和所属分类，不再把连接当作分类标题。
 
@@ -19,5 +19,11 @@
 ## 管理接口
 
 管理接口统一使用 `/api/guide` 前缀，并在身份认证后检查 `guide:*` 权限。公开路由独立位于 `guide-public.js`，后台管理路由位于 `guide.js`，保持逐路由安全审计边界清楚。文件上传只返回受控存储信息，文件名由服务端生成，所有网址、标题、分类名称、访问策略、扩展名和 MIME 均在服务端再次校验。
+
+| 方法 | 路径 | 权限 | 说明 |
+| --- | --- | --- | --- |
+| PUT | `/api/guide/settings` | `guide:edit` | 保存顶部副标题、主标题、底部信息、微信和电话 |
+
+展示文字统一使用 `site_eyebrow`（顶部副标题，默认 `DH NAVIGATION`）、`site_title`（主标题，默认 `导航中心`）、`footer_text`（底部信息，默认 `DH Navigation`）。三个字段分别保存，去除首尾空格后均必填且最多 120 字符；旧客户端未传字段时保留原值。管理接口与公开接口返回同一组字段，前台使用文本插值展示，不解析 HTML。
 
 文件类型导航通过 `GET /api/public/guide/files/:id` 访问。公开分类不要求签名，图片可由浏览器直接展示；后端仍重新读取数据库记录，校验连接和分类启用状态、文件关联和真实路径。密码分类文件需要 10 分钟有效的 HMAC 签名，前端通过 `X-Guide-File-Expires` 和 `X-Guide-File-Signature` 请求头提交，避免把访问凭证放入 URL 和访问日志。图片以内联方式返回，其他文件（包括 Apple `.mobileconfig`、APK/IPA、音频和视频）以附件方式返回，服务端不执行或解析这些文件。`/uploads/guide/` 已从通用静态服务中禁止直接访问，不能把数据库中的物理存储地址暴露给前端。

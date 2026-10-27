@@ -30,6 +30,56 @@ const normalizeName = (value, label) => {
   return name
 }
 
+const normalizePhone = value => {
+  const phone = toNullableText(value)
+  if (!phone) return null
+  if (!/^[0-9+()\-\s]{6,30}$/.test(phone)) throw new Error('客服电话格式无效')
+  return phone
+}
+
+function normalizeGuideSettings(payload = {}, existing = {}) {
+  const siteTitle = normalizeName(payload.site_title ?? existing.site_title ?? '导航中心', '导航标题')
+  const siteEyebrow = normalizeName(payload.site_eyebrow ?? existing.site_eyebrow ?? 'DH NAVIGATION', '顶部副标题')
+  const footerText = normalizeName(payload.footer_text ?? existing.footer_text ?? 'DH Navigation', '底部信息')
+  const wechat = toNullableText(payload.contact_wechat ?? existing.contact_wechat)
+  if (wechat && wechat.length > 120) throw new Error('客服微信不能超过120个字符')
+  return {
+    site_title: siteTitle,
+    site_eyebrow: siteEyebrow,
+    footer_text: footerText,
+    contact_wechat: wechat,
+    contact_phone: normalizePhone(payload.contact_phone ?? existing.contact_phone)
+  }
+}
+
+function publicGuideSettings(row) {
+  return {
+    site_title: row?.site_title || '导航中心',
+    site_eyebrow: row?.site_eyebrow || 'DH NAVIGATION',
+    footer_text: row?.footer_text || 'DH Navigation',
+    contact_wechat: row?.contact_wechat || null,
+    contact_phone: row?.contact_phone || null
+  }
+}
+
+async function getGuideSettings({ publicOnly = false } = {}) {
+  const db = getDatabase()
+  const [rows] = await db.query('SELECT id, site_title, site_eyebrow, footer_text, contact_wechat, contact_phone, updated_by, updated_at FROM guide_settings WHERE id=1 LIMIT 1')
+  const row = rows[0] || { site_title: '导航中心', site_eyebrow: 'DH NAVIGATION', footer_text: 'DH Navigation' }
+  return publicOnly ? publicGuideSettings(row) : { ...row, id: 1 }
+}
+
+async function updateGuideSettings(userId, payload) {
+  const current = await getGuideSettings()
+  const settings = normalizeGuideSettings(payload, current)
+  const db = getDatabase()
+  await db.query(
+    'UPDATE guide_settings SET site_title=?, site_eyebrow=?, footer_text=?, contact_wechat=?, contact_phone=?, updated_by=? WHERE id=1',
+    [settings.site_title, settings.site_eyebrow, settings.footer_text, settings.contact_wechat, settings.contact_phone, userId]
+  )
+  return getGuideSettings()
+}
+
 function normalizeCategoryAccess(payload, existing = {}) {
   const accessMode = payload.access_mode === 'password' ? 'password' : 'public'
   if (accessMode === 'public') {
@@ -141,6 +191,7 @@ async function listPublicGuide() {
   const categories = await listCategories({ publicOnly: true, includeLinks: true })
   return {
     announcements,
+    settings: await getGuideSettings({ publicOnly: true }),
     categories: categories.map(category => publicCategory(
       category,
       category.access_mode === 'public' ? category.links : [],
@@ -390,4 +441,4 @@ async function deleteCategory(id) { await getDatabase().query('DELETE FROM guide
 async function deleteAnnouncement(id) { await getDatabase().query('DELETE FROM guide_announcements WHERE id=?', [id]) }
 async function deleteLink(id) { await getDatabase().query('DELETE FROM guide_links WHERE id=?', [id]) }
 
-module.exports = { listAnnouncements, listCategories, listPublicGuide, unlockCategory, getProtectedCategory, createAnnouncement, updateAnnouncement, deleteAnnouncement, createCategory, updateCategory, deleteCategory, createLink, updateLink, deleteLink, getLink, getLinkStorage, getCategoryLinksStorage, getFileAccessRecord, getAdminCategory }
+module.exports = { listAnnouncements, listCategories, listPublicGuide, getGuideSettings, updateGuideSettings, unlockCategory, getProtectedCategory, createAnnouncement, updateAnnouncement, deleteAnnouncement, createCategory, updateCategory, deleteCategory, createLink, updateLink, deleteLink, getLink, getLinkStorage, getCategoryLinksStorage, getFileAccessRecord, getAdminCategory }

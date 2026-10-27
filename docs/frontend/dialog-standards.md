@@ -41,6 +41,8 @@
 
 业务页面不得再写 `width: min(..., 100vw)`、`width: calc(100vw - ...)` 或按断点重复覆盖 `.el-dialog` / `.mobile-dialog-sheet-panel`。需要更宽的表格或媒体工作台时，只声明 `width`/`maxWidth` 或使用已登记的工作台例外；不要复制库存页面的局部宽度 CSS。
 
+短内容弹窗沿用 `MobileDialog` 的内容自适应布局；内容超过可用高度时，由公共正文区域滚动。客服等多行卡片必须使用公共内容按钮规格，不能继承普通按钮的固定高度，也不得通过增大弹窗高度或页面私有 `max-height` 掩盖卡片溢出。手机端验收须确认图标、标签、号码的实际边界均位于卡片和弹窗正文内。
+
 `/query` 页面及 `QueryDetailDialog.vue` 中的所有业务弹窗必须使用 `MobileDialog`；媒体工作台也不再以直接 `el-dialog` 作为响应式例外。`check:dialogs` 会持续检查这两个入口。
 
 `QuickSaleModal.vue` 属于 `/query` 的标准业务弹窗。其 `dialog-class` 只能用于标识业务内容布局；不得在页面内覆盖标题栏高度、标题栏内边距、圆角、弹窗外壳最大高度、正文间距或 footer 间距。需要调整弹窗宽度时使用 `width`/`maxWidth` 属性，统一外壳视觉始终由 `MobileDialog` 和本文件规定的全局样式控制。

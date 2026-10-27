@@ -3,9 +3,9 @@
     <section class="guide-shell">
       <header class="guide-brand">
         <div class="guide-brand__mark"><i class="fas fa-compass" /></div>
-        <div>
-          <p class="guide-brand__eyebrow">DH NAVIGATION</p>
-          <h1>导航中心</h1>
+        <div class="guide-brand__text">
+          <p class="guide-brand__eyebrow">{{ settings.site_eyebrow || 'DH NAVIGATION' }}</p>
+          <h1>{{ settings.site_title || '导航中心' }}</h1>
         </div>
       </header>
 
@@ -52,13 +52,12 @@
               v-if="!category.locked && category.children?.length"
               class="guide-category__tabs"
             >
-              <el-tabs v-model="activeCategoryTabs[category.id]" class="tf-page-tabs">
-                <el-tab-pane :label="category.name" :name="categoryTabName(category)" class="tf-tab-panel" />
+              <el-tabs v-model="activeCategoryTabs[category.id]" class="tf-page-tabs tf-page-tabs--compact">
                 <el-tab-pane
-                  v-for="subcategory in category.children"
-                  :key="subcategory.id"
-                  :label="subcategory.name"
-                  :name="categoryTabName(subcategory)"
+                  v-for="item in publicCategoryTabs(category)"
+                  :key="item.id"
+                  :label="item.name"
+                  :name="categoryTabName(item)"
                   class="tf-tab-panel"
                 />
               </el-tabs>
@@ -100,8 +99,41 @@
         <span>请稍后再来查看</span>
       </div>
 
-      <footer class="guide-footer">DH Navigation</footer>
+      <footer class="guide-footer">{{ settings.footer_text || 'DH Navigation' }}</footer>
     </section>
+
+    <div
+      v-if="hasCustomerService"
+      class="guide-floating-service"
+    >
+      <el-button class="tf-button--service-float" aria-label="联系客服" title="联系客服" @click="serviceVisible = true">
+        <i class="fas fa-headset" />
+      </el-button>
+      <span class="guide-floating-service__label">客服</span>
+    </div>
+
+    <MobileDialog v-model="serviceVisible" title="联系客服" width="320px" :show-close="true" :show-default-footer="false">
+      <div class="guide-service">
+        <div v-if="settings.contact_phone && settings.contact_wechat" class="guide-service__row">
+          <el-button tag="a" class="tf-button--service-card" :href="`tel:${settings.contact_phone}`">
+            <span class="guide-service__icon guide-service__icon--phone"><i class="fas fa-phone" /></span>
+            <span class="guide-service__content"><span>拨打</span><strong>{{ settings.contact_phone }}</strong></span>
+          </el-button>
+          <el-button native-type="button" class="tf-button--service-card" @click="addWechat">
+            <span class="guide-service__icon guide-service__icon--wechat"><i class="fab fa-weixin" /></span>
+            <span class="guide-service__content"><span>加微信</span><strong>{{ settings.contact_wechat }}</strong></span>
+          </el-button>
+        </div>
+        <el-button v-else-if="settings.contact_phone" tag="a" class="tf-button--service-card" :href="`tel:${settings.contact_phone}`">
+          <span class="guide-service__icon guide-service__icon--phone"><i class="fas fa-phone" /></span>
+          <span class="guide-service__content"><span>客服电话</span><strong>{{ settings.contact_phone }}</strong></span>
+        </el-button>
+        <el-button v-else-if="settings.contact_wechat" native-type="button" class="tf-button--service-card" @click="addWechat">
+          <span class="guide-service__icon guide-service__icon--wechat"><i class="fab fa-weixin" /></span>
+          <span class="guide-service__content"><span>微信号</span><strong>{{ settings.contact_wechat }}</strong></span>
+        </el-button>
+      </div>
+    </MobileDialog>
 
     <MobileDialog v-model="unlockVisible" title="访问受限分类" width="420px" :show-default-footer="false">
       <form class="guide-dialog-form" @submit.prevent="submitUnlock">
@@ -126,10 +158,12 @@ import { ElMessage } from 'element-plus'
 import MobileDialog from '@/components/MobileDialog.vue'
 import { guideApi } from '@/api/guide'
 import { extractBlobResponse, unifiedApi } from '@/utils/unified-api'
-import type { GuideAnnouncement, GuideCategory, GuideLink, GuideUnlockResponse } from '@/types/guide'
+import type { GuideAnnouncement, GuideCategory, GuideLink, GuideSettings, GuideUnlockResponse } from '@/types/guide'
 
 const announcements = ref<GuideAnnouncement[]>([])
 const categories = ref<GuideCategory[]>([])
+const settings = ref<GuideSettings>({ site_title: '导航中心', site_eyebrow: 'DH NAVIGATION', footer_text: 'DH Navigation', contact_wechat: null, contact_phone: null })
+const serviceVisible = ref(false)
 const unlockVisible = ref(false)
 const unlocking = ref(false)
 const password = ref('')
@@ -146,8 +180,21 @@ const pinnedAnnouncement = computed(() => announcements.value.find(item => item.
 const scrollingAnnouncements = computed(() => announcements.value.filter(item => !item.is_pinned))
 const currentScrollingAnnouncement = computed(() => scrollingAnnouncements.value[announcementIndex.value] || null)
 const categoryTabName = (category: GuideCategory) => `category-${category.id}`
-const publicActiveTarget = (category: GuideCategory) => category.children?.find(item => categoryTabName(item) === activeCategoryTabs[category.id]) || category
+const publicCategoryTabs = (category: GuideCategory) => category.links.length
+  ? [category, ...(category.children || [])]
+  : category.children || []
+const publicActiveTarget = (category: GuideCategory) => {
+  if (category.locked) return category
+  const tabs = publicCategoryTabs(category)
+  return tabs.find(item => categoryTabName(item) === activeCategoryTabs[category.id]) || tabs[0] || category
+}
+const syncCategoryTabs = () => {
+  categories.value.forEach(category => {
+    activeCategoryTabs[category.id] = categoryTabName(publicActiveTarget(category))
+  })
+}
 const isImageFile = (mime: string | null | undefined) => String(mime || '').toLowerCase().startsWith('image/')
+const hasCustomerService = computed(() => Boolean(settings.value.contact_phone || settings.value.contact_wechat))
 
 const stopAnnouncementRotation = () => {
   if (announcementTimer) {
@@ -169,10 +216,23 @@ const startAnnouncementRotation = () => {
 const loadGuide = async () => {
   const response = await guideApi.public()
   announcements.value = response.data?.announcements || []
+  settings.value = response.data?.settings || settings.value
   categories.value = response.data?.categories || []
-  categories.value.forEach(category => {
-    if (!activeCategoryTabs[category.id]) activeCategoryTabs[category.id] = categoryTabName(category)
-  })
+  syncCategoryTabs()
+}
+
+const addWechat = async () => {
+  const wechat = settings.value.contact_wechat
+  if (!wechat) return
+  try {
+    await navigator.clipboard.writeText(wechat)
+    ElMessage.success('微信号已复制，正在打开微信...')
+    window.setTimeout(() => {
+      window.location.href = `weixin://dl/chat?${encodeURIComponent(wechat)}`
+    }, 1000)
+  } catch (_) {
+    ElMessage.info(`请添加客服微信：${wechat}`)
+  }
 }
 
 watch(scrollingAnnouncements, () => { startAnnouncementRotation() }, { deep: true })
@@ -218,6 +278,7 @@ const replaceCategory = (updated: GuideCategory) => {
     return items.some(item => replaceIn(item.children || []))
   }
   replaceIn(categories.value)
+  syncCategoryTabs()
 }
 
 const openImagePreview = async (link: GuideLink) => {
@@ -278,7 +339,8 @@ onBeforeUnmount(() => {
 .guide-public { min-height: 100vh; background: var(--tf-color-slate-50); color: var(--tf-color-slate-800); }
 .guide-shell { width: min(100% - var(--tf-space-7), 760px); margin: 0 auto; padding: var(--tf-space-6) 0 var(--tf-space-7); }
 .guide-brand { display: flex; align-items: center; gap: var(--tf-space-3); margin-bottom: var(--tf-space-6); }
-.guide-brand__mark { display: grid; width: 44px; height: 44px; place-items: center; border-radius: var(--tf-radius-panel); background: var(--tf-color-indigo-600); color: var(--tf-color-white); font-size: var(--tf-type-scale-20); }
+.guide-brand__text { min-width: 0; overflow-wrap: anywhere; }
+.guide-brand__mark { display: grid; flex-shrink: 0; width: 44px; height: 44px; place-items: center; border-radius: var(--tf-radius-panel); background: var(--tf-color-indigo-600); color: var(--tf-color-white); font-size: var(--tf-type-scale-20); }
 .guide-brand__eyebrow { margin: 0 0 var(--tf-space-1); color: var(--tf-color-slate-500); font-size: var(--tf-type-scale-11); font-weight: 700; }
 .guide-brand h1 { margin: 0; color: var(--tf-color-slate-900); font-size: var(--tf-type-scale-24); line-height: 1.2; }
 .guide-notices { display: grid; gap: var(--tf-space-2); }
@@ -289,8 +351,8 @@ onBeforeUnmount(() => {
 .guide-notice { display: grid; min-width: 0; justify-items: center; gap: var(--tf-space-1); padding: var(--tf-space-2) var(--tf-space-3); color: var(--tf-color-slate-700); text-align: center; text-decoration: none; overflow-wrap: anywhere; }
 .guide-notice strong { color: var(--tf-color-slate-900); font-size: var(--tf-type-scale-15); text-align: center; }
 .guide-notice span { width: 100%; text-align: left; text-indent: 2em; }
-.guide-categories { display: grid; gap: var(--tf-space-4); margin-top: var(--tf-space-5); }
-.guide-category { padding: var(--tf-space-4); border: 1px solid var(--tf-color-slate-200); border-radius: var(--tf-radius-panel); background: var(--tf-color-white); box-shadow: var(--tf-shadow-card); }
+.guide-categories { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--tf-space-4); margin-top: var(--tf-space-5); }
+.guide-category { min-width: 0; padding: var(--tf-space-4); border: 1px solid var(--tf-color-slate-200); border-radius: var(--tf-radius-panel); background: var(--tf-color-white); box-shadow: var(--tf-shadow-card); }
 .guide-category__header { display: flex; flex-wrap: wrap; align-items: center; gap: var(--tf-space-2); min-width: 0; }
 .guide-category__icon { display: grid; flex: none; width: 30px; height: 30px; place-items: center; border-radius: var(--tf-radius-card); background: var(--tf-color-indigo-50); color: var(--tf-color-indigo-600); font-size: var(--tf-type-scale-16); }
 .guide-category__heading { min-width: 0; flex: 0 1 auto; }
@@ -298,10 +360,6 @@ onBeforeUnmount(() => {
 .guide-category__heading p { margin: var(--tf-space-1) 0 0; color: var(--tf-color-slate-500); font-size: var(--tf-type-scale-12); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .guide-category__tabs {
   --admin-panel-gap: var(--tf-space-1);
-  --tf-tabs-height: var(--tf-button-height-small);
-  --tf-tabs-padding: var(--tf-space-1);
-  --tf-tab-padding-x: var(--tf-space-2);
-  --tf-tab-font-size: var(--tf-type-scale-13);
   width: fit-content;
   min-width: 0;
   max-width: 100%;
@@ -322,7 +380,19 @@ onBeforeUnmount(() => {
 .guide-category__empty { margin-top: var(--tf-space-4); color: var(--tf-color-slate-400); font-size: var(--tf-type-scale-13); text-align: center; }
 .guide-empty { display: grid; min-height: 300px; place-content: center; justify-items: center; gap: var(--tf-space-2); color: var(--tf-color-slate-500); text-align: center; }
 .guide-empty i { color: var(--tf-color-indigo-400); font-size: var(--tf-font-display-lg); }
-.guide-footer { padding-top: var(--tf-space-6); color: var(--tf-color-slate-400); font-size: var(--tf-type-scale-12); text-align: center; }
+.guide-footer { padding-top: var(--tf-space-6); color: var(--tf-color-slate-400); font-size: var(--tf-type-scale-12); text-align: center; overflow-wrap: anywhere; }
+.guide-floating-service { position: fixed; right: var(--tf-service-float-right); bottom: var(--tf-service-float-bottom); z-index: var(--tf-z-viewer); display: flex; width: var(--tf-service-float-size); min-width: var(--tf-service-float-size); max-width: var(--tf-service-float-size); flex-direction: column; align-items: center; gap: 0; background: transparent; }
+.guide-floating-service i { color: var(--tf-button-on-color); font-size: var(--tf-service-float-icon-size); line-height: 1; }
+.guide-floating-service__label { display: inline-flex; width: auto; max-width: 100%; align-self: center; padding: var(--tf-space-1) var(--tf-space-2); background: transparent; color: var(--tf-color-green-600); font-size: var(--tf-type-scale-12); font-weight: 500; line-height: 1.2; white-space: nowrap; }
+.guide-service { display: grid; gap: var(--tf-space-3); }
+.guide-service__row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; gap: var(--tf-space-3); }
+.guide-service__icon { display: grid; flex: none; width: var(--tf-button-height-large); height: var(--tf-button-height-large); place-items: center; border-radius: var(--tf-radius-full); color: var(--tf-button-on-color); font-size: var(--tf-type-scale-20); }
+.guide-service__icon--phone { background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%); }
+.guide-service__icon--wechat { background: linear-gradient(135deg, var(--tf-color-accent-green) 0%, var(--tf-color-green-accent) 100%); }
+.guide-service__icon i { color: inherit; }
+.guide-service__content { display: grid; min-width: 0; max-width: 100%; gap: var(--tf-space-1); text-align: center; }
+.guide-service__content span { color: var(--tf-color-slate-500); font-size: var(--tf-type-scale-12); }
+.guide-service__content strong { max-width: 100%; color: var(--tf-color-slate-800); font-size: var(--tf-type-scale-14); font-weight: 500; overflow-wrap: anywhere; }
 .guide-dialog-form { display: grid; gap: var(--tf-space-4); }
 .guide-dialog-form__hint { margin: 0; color: var(--tf-color-slate-600); line-height: 1.6; overflow-wrap: anywhere; }
 .guide-dialog-form__actions { display: flex; justify-content: flex-end; gap: var(--tf-space-2); }

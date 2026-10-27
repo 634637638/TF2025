@@ -208,7 +208,8 @@ export const useInventoryBaseOptions = ({
         operators.value = sortOptionsByOrder(response.data.map(item => ({
           id: Number(item.id || 0),
           name: String(item.name || item.username || ''),
-          username: String(item.username || '')
+          username: String(item.username || ''),
+          sort_order: Number(item.sort_order || 0)
         })))
       }
     } catch (error) {
@@ -225,7 +226,8 @@ export const useInventoryBaseOptions = ({
         ? sortOptionsByOrder(response.data.map(item => ({
           id: Number(item.id || 0),
           name: String(item.name || item.username || ''),
-          username: String(item.username || '')
+          username: String(item.username || ''),
+          sort_order: Number(item.sort_order || 0)
         })))
         : []
       operators.value = selectedOperator && !results.some(item => Number(item.id) === Number(selectedOperator.id))

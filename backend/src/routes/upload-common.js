@@ -16,6 +16,7 @@ const TEMP_DIRECTORY_PERMISSIONS = {
   repairs: ['repairs:create', 'repairs:edit'],
   'screen-lock': ['system:edit'],
   import: ['data-import:upload'],
+  guide: ['guide:upload'],
   shop: [
     'h5-config:edit',
     'h5-admin:edit',
@@ -35,6 +36,9 @@ const requireTempFilePermissions = (req, res, next) => {
     const directory = relativePath.split('/')[0]
     if (!directory || !TEMP_DIRECTORY_PERMISSIONS[directory]) {
       return ApiResponse.error(res, '该目录不允许通过临时文件接口删除', 403)
+    }
+    if (directory === 'guide' && !/^draft_[0-9]+_[a-f0-9]{20}\.[a-z0-9]{1,10}$/i.test(path.basename(relativePath))) {
+      return ApiResponse.error(res, '导航正式文件不允许通过临时接口删除', 403)
     }
     directories.add(directory)
   }

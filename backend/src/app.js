@@ -15,6 +15,7 @@ const { refreshExpiredRentalStatuses } = require('./services/rental-status.servi
 const { ensureRateLimitLogTable } = require('./middleware/rate-limit')
 const { ensurePriceSourceSchema } = require('./utils/price-source-schema')
 const { ensureGuideSchema } = require('./utils/guide-schema')
+const { cleanupExpiredGuideDrafts } = require('./utils/guide-upload')
 
 // 导入路由
 const routes = require('./routes')
@@ -164,6 +165,11 @@ async function initializeApp() {
 
         try {
           await ensureGuideSchema()
+          await cleanupExpiredGuideDrafts()
+          const guideUploadCleanupTimer = setInterval(() => {
+            cleanupExpiredGuideDrafts().catch(error => log.warn('清理过期导航草稿失败:', error.message))
+          }, 60 * 60 * 1000)
+          guideUploadCleanupTimer.unref?.()
         } catch (guideSchemaError) {
           log.warn('导航站数据结构检查失败:', guideSchemaError.message)
         }

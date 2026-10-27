@@ -107,6 +107,7 @@ export interface Operator {
   status?: number
   store_id?: number
   store_name?: string
+  sort_order?: number
 }
 
 /**

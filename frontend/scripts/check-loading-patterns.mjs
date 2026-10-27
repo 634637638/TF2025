@@ -79,6 +79,7 @@ for (const [pattern, message] of standardsLoadingRequirements) {
 
 const loadingStoreSource = await readFile(join(sourceRoot, 'stores/loading.ts'), 'utf8')
 const globalLoadingSource = await readFile(join(sourceRoot, 'components/GlobalLoading.vue'), 'utf8')
+const loadingConstantsSource = await readFile(join(sourceRoot, 'constants/loading.ts'), 'utf8')
 const refreshDataSource = await readFile(join(sourceRoot, 'composables/useRefreshData.ts'), 'utf8')
 const unifiedApiSource = await readFile(join(sourceRoot, 'utils/unified-api.ts'), 'utf8')
 for (const [source, token, message] of [
@@ -86,6 +87,8 @@ for (const [source, token, message] of [
   [loadingStoreSource, 'if (hasLocalLoading.value) return', '局部 Loading 期间不得启动全屏 Loading'],
   [globalLoadingSource, 'loadingStore.isGlobalVisible', 'GlobalLoading 必须读取互斥可见状态'],
   [globalLoadingSource, '() => loadingStore.isGlobalVisible', 'GlobalLoading 必须按互斥后的可见状态启动延迟显示'],
+  [globalLoadingSource, 'GLOBAL_LOADING_SHOW_DELAY_MS', 'GlobalLoading 必须使用公共延迟常量'],
+  [loadingConstantsSource, 'GLOBAL_LOADING_SHOW_DELAY_MS = 5000', '全屏 GlobalLoading 延迟必须统一为 5 秒'],
   [await readFile(join(sourceRoot, 'directives/index.ts'), 'utf8'), '_tfLoadingInitialPending', '表格指令必须区分首次加载和后续刷新'],
   [await readFile(join(sourceRoot, 'components/TableLoadingRow.vue'), 'utf8'), "'加载中...' ? '加载数据中...'", '表格兜底文案必须统一为“加载数据中...”'],
   [unifiedApiSource, 'requestConfig.showLoading === undefined', '统一 API 必须默认启用首次请求的全局 Loading，showLoading: false 才允许静默'],

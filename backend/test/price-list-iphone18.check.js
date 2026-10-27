@@ -85,6 +85,23 @@ test('external searches try confirmed model codes before display-name fallbacks'
   )
 })
 
+test('iPhone Duo search covers external display-name aliases', () => {
+  assert.deepEqual(
+    priceListService.getExternalModelSearchTerms('iphone18duo', 'iPhone Duo', '', ''),
+    ['iPhone Duo', 'iPhone 18 Duo', '18 Duo', '18duo']
+  )
+  assert.equal(
+    priceListService.hasExternalModelInTable(
+      '<tr><td>苹果 iPhone 18 Duo - 512GB</td><td>¥8999</td></tr>',
+      '',
+      'iphone18duo'
+    ),
+    true
+  )
+  assert.equal(priceListService.normalizeModelForMatch('18duo'), 'iphoneduo')
+  assert.equal(priceListService.normalizeModelForMatch('iPhone Duo'), 'iphoneduo')
+})
+
 test('external model search does not combine a brand filter with model codes', () => {
   const searchUrl = new URL(priceListService.buildExternalModelSearchUrl('A3521'))
 

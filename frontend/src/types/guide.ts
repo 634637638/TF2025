@@ -49,7 +49,18 @@ export interface GuideCategory {
 
 export interface PublicGuideResponse {
   announcements: GuideAnnouncement[]
+  settings: GuideSettings
   categories: GuideCategory[]
+}
+
+export interface GuideSettings {
+  id?: number
+  site_title: string
+  site_eyebrow: string
+  footer_text: string
+  contact_wechat: string | null
+  contact_phone: string | null
+  updated_at?: string
 }
 
 export interface GuideUnlockResponse {

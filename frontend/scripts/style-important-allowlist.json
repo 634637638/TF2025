@@ -32,8 +32,8 @@
     },
     {
       "file": "src/styles/components/_tabs.scss",
-      "max": 51,
-      "reason": "Unified tab navigation overrides vendor and historical page tab styles, including the shared topbar tab surface."
+      "max": 52,
+      "reason": "Unified tab styles override vendor styles, including the inline tab-list transform so native scrolling owns the horizontal offset without arrows."
     },
     {
       "file": "src/assets/css/field-permissions.css",

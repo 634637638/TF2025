@@ -55,6 +55,31 @@ async function ensureGuideSchema() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `)
 
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS guide_settings (
+        id TINYINT UNSIGNED NOT NULL,
+        site_title VARCHAR(120) NOT NULL DEFAULT '导航中心',
+        site_eyebrow VARCHAR(120) NOT NULL DEFAULT 'DH NAVIGATION',
+        footer_text VARCHAR(120) NOT NULL DEFAULT 'DH Navigation',
+        contact_wechat VARCHAR(120) NULL,
+        contact_phone VARCHAR(30) NULL,
+        updated_by INT UNSIGNED NULL,
+        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        PRIMARY KEY (id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `)
+    await db.query(
+      "INSERT INTO guide_settings (id, site_title) VALUES (1, '导航中心') " +
+      'ON DUPLICATE KEY UPDATE id=id'
+    )
+
+    if (!(await hasColumn(db, 'guide_settings', 'site_eyebrow'))) {
+      await db.query("ALTER TABLE guide_settings ADD COLUMN site_eyebrow VARCHAR(120) NOT NULL DEFAULT 'DH NAVIGATION' AFTER site_title")
+    }
+    if (!(await hasColumn(db, 'guide_settings', 'footer_text'))) {
+      await db.query("ALTER TABLE guide_settings ADD COLUMN footer_text VARCHAR(120) NOT NULL DEFAULT 'DH Navigation' AFTER site_eyebrow")
+    }
+
     if (!(await hasColumn(db, 'guide_announcements', 'is_pinned'))) {
       await db.query('ALTER TABLE guide_announcements ADD COLUMN is_pinned TINYINT(1) NOT NULL DEFAULT 0 AFTER link_url')
     }

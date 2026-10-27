@@ -69,6 +69,11 @@
   --tf-shadow-popover: var(--shadow-md);
   --tf-shadow-dialog: var(--shadow-lg);
   --tf-shadow-floating: var(--shadow-xl);
+  --tf-service-float-size: 56px;
+  --tf-service-float-bottom: 148px;
+  --tf-service-float-right: 16px;
+  --tf-service-float-icon-size: var(--tf-type-scale-24);
+  --tf-service-card-min-height: 144px;
   --tf-shadow-autofill: 0 0 0 1000px var(--el-fill-color-blank, transparent) inset;
   --tf-transition-autofill: background-color 9999s ease-out;
   --tf-font-caption: var(--font-xs);

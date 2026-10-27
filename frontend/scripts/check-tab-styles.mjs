@@ -5,6 +5,8 @@ const root = resolve(import.meta.dirname, '..')
 const sourceRoot = join(root, 'src')
 const globalTabStylePath = join(sourceRoot, 'styles/components/_tabs.scss')
 const tabsBarSource = readFileSync(join(sourceRoot, 'components/TabsBar.vue'), 'utf8')
+const tabScrollSource = readFileSync(join(sourceRoot, 'utils/page-tab-scroll.ts'), 'utf8')
+const mainSource = readFileSync(join(sourceRoot, 'main.ts'), 'utf8')
 
 function walk(directory, files = []) {
   for (const entry of readdirSync(directory)) {
@@ -26,10 +28,7 @@ const requiredGlobalTokens = [
   '--tf-tab-bg:',
   '--tf-tab-border:',
   '--tf-tab-hover-border:',
-  '--tf-tab-active-border:',
-  '--tf-tab-scroll-control-size:',
-  '--tf-tab-scroll-control-bg:',
-  '--tf-tab-scroll-control-border:'
+  '--tf-tab-active-border:'
 ]
 
 for (const token of requiredGlobalTokens) {
@@ -46,8 +45,24 @@ if (!/\.tf-page-tabs\.el-tabs[\s\S]*?\.el-tabs__item\s*\{[\s\S]*?border:\s*1px\s
   findings.push('src/styles/components/_tabs.scss:1 Element Plus TAB 未使用全局独立边框')
 }
 
-if (!/\.el-tabs__nav-prev,[\s\S]*?\.el-tabs__nav-next\s*\{[\s\S]*?border:\s*1px\s+solid\s+var\(--tf-tab-scroll-control-border\)/.test(globalTabStyle)) {
-  findings.push('src/styles/components/_tabs.scss:1 TAB 溢出导航按钮未使用全局独立边框')
+if (!/\.el-tabs__nav-prev,[\s\S]*?\.el-tabs__nav-next\s*\{\s*display:\s*none\s*;/.test(globalTabStyle)) {
+  findings.push('src/styles/components/_tabs.scss TAB 不得显示左右切换箭头')
+}
+for (const selector of ['.tf-page-tabs.tab-navigation', '.tf-page-tabs.el-tabs', '.tf-page-tabs.el-tabs > .el-tabs__header']) {
+  const start = globalTabStyle.indexOf(`${selector} {`)
+  const body = globalTabStyle.slice(start, globalTabStyle.indexOf('}', start))
+  if (start < 0 || !/min-width:\s*0\s*;/.test(body) || !/max-width:\s*100%\s*;/.test(body) || !/box-sizing:\s*border-box\s*;/.test(body)) {
+    findings.push(`src/styles/components/_tabs.scss ${selector} 必须限制在父容器可用宽度内并允许收缩`)
+  }
+}
+if (!/\.el-tabs__nav\s*\{[^}]*transform:\s*none\s*!important/.test(globalTabStyle)) {
+  findings.push('src/styles/components/_tabs.scss 原生 TAB 滚动不得叠加框架位移')
+}
+for (const fragment of ['initPageTabScroll', 'scrollLeft', 'MutationObserver', "addEventListener('wheel'"]) {
+  if (!tabScrollSource.includes(fragment)) findings.push(`src/utils/page-tab-scroll.ts 缺少统一滚动行为：${fragment}`)
+}
+if (!/initPageTabScroll\(\)/.test(mainSource)) {
+  findings.push('src/main.ts 必须初始化全局 TAB 原生滚动')
 }
 
 for (const fragment of ['tf-topbar-tabs', 'tf-topbar-tab', 'is-active']) {

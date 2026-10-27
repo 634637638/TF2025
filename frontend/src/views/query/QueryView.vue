@@ -1608,7 +1608,8 @@ const searchSalesUsersRemote = async (keyword = '') => {
       ? sortOptionsByOrder(usersRes.data.employees.map(item => ({
         id: Number(item.id || 0),
         name: String(item.name || item.username || ''),
-        status: Number(item.status)
+        status: Number(item.status),
+        sort_order: Number(item.sort_order || 0)
       })))
       : []
     options.value.users = selectedUser && !users.some(user => Number(user.id) === Number(selectedUser.id))

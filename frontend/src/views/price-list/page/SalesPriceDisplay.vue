@@ -4,7 +4,7 @@
       <template #search>
         <PublicSearchBox
           v-model="searchKeyword"
-          placeholder="搜索品牌或型号..."
+          placeholder="搜索品牌、型号、颜色或内存..."
           :loading="loading"
           @search="handleSearch"
           @clear="handleClear"

@@ -120,7 +120,8 @@ export function useBrandModels() {
           id: Number(item.id || 0),
           name: item.name ? String(item.name) : undefined,
           size: item.size ? String(item.size) : undefined,
-          capacity: item.capacity ? String(item.capacity) : undefined
+          capacity: item.capacity ? String(item.capacity) : undefined,
+          sort_order: item.sort_order
         }))
         memories.value = sortOptionsByOrder(memories.value, { labelKeys: ['size', 'capacity', 'name'] })
         return memories.value

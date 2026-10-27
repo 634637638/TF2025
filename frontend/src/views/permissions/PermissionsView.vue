@@ -2344,7 +2344,8 @@ const loadStoreList = async () => {
     if (response.success) {
       storeList.value = sortOptionsByOrder((Array.isArray(response.data) ? response.data : []).map(item => ({
         id: Number(item.id || 0),
-        name: String(item.name || '')
+        name: String(item.name || ''),
+        sort_order: Number(item.sort_order || 0)
       })))
     }
   } catch (err) {

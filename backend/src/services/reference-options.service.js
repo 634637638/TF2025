@@ -92,9 +92,8 @@ const listModelsByBrand = async ({ brand_id, name = '', include_id = null, activ
     }
   }
 
-  const orderSql = Number.isSafeInteger(includeId) && includeId > 0
-    ? `CASE WHEN m.id = ${includeId} THEN 0 ELSE 1 END, m.sort_order ASC, m.name ASC, m.id ASC`
-    : 'm.sort_order ASC, m.name ASC, m.id ASC'
+  // include_id 只保证已选项仍在结果中，不能覆盖配置的排序优先级。
+  const orderSql = 'm.sort_order ASC, m.name ASC, m.id ASC'
   const [rows] = await getDatabase().execute(`
     SELECT m.id, m.name, m.brand_id, m.status, m.sort_order,
            m.created_at, m.updated_at, b.name AS brand_name

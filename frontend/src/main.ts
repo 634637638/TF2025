@@ -51,6 +51,7 @@ import { ensureIconAssets } from '@/utils/iconify'
 import { enhanceGlobalMessageBox } from '@/utils/message-box'
 import logger from '@/utils/logger'
 import { initAdminTableDragScroll } from '@/utils/admin-table-drag-scroll'
+import { initPageTabScroll } from '@/utils/page-tab-scroll'
 import { getActionColumnMinWidth } from '@/utils/table-layout'
 import {
   applyDeviceRootClass,
@@ -131,6 +132,7 @@ const initializeApp = async () => {
     // 站点名称和 Logo 使用 store 的稳定默认值，接口返回后会自动更新。
     app.mount('#app')
     initAdminTableDragScroll()
+    initPageTabScroll()
 
     // 站点设置在后台加载，不阻塞登录页和路由渲染。
     initializeSiteSettings().catch((error) => {

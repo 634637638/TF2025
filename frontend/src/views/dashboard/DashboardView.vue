@@ -162,14 +162,6 @@
                 <i class="fas fa-wrench" />
                 维修管理
               </el-button>
-              <el-button
-                type="default"
-                class="action-btn"
-                @click="showSystemInfo"
-              >
-                <i class="fas fa-info-circle" />
-                系统信息
-              </el-button>
             </div>
           </div>
 
@@ -236,7 +228,6 @@ const {
   warning,
   info,
   confirm,
-  alert,
   handleApiError,
   handleApiSuccess: _handleApiSuccess
 } = useNotification()
@@ -254,7 +245,7 @@ const pendingApprovementsRef = ref<InstanceType<typeof PendingApprovals> | null>
 const siteSettingsStore = useSiteSettingsStore()
 
 // 响应式数据
-const todaySales = ref('0.00')
+const todaySales = ref('0')
 const totalCustomers = ref('0')
 const totalProducts = ref('0')
 const pendingRepairs = ref('0')
@@ -421,15 +412,6 @@ const showDetails = (type: string) => {
   }
 }
 
-// 显示系统信息
-const showSystemInfo = async () => {
-  await alert(
-    `系统版本：TF2025 v1.0.0\n当前时间：${TimeUtil.nowFormatted(TIME_FORMATS.DATETIME)}\n\n系统状态详情请前往系统管理页面查看。`,
-    '系统信息',
-    'info'
-  )
-}
-
 const updateLastUpdateTime = () => {
   lastUpdateTime.value = TimeUtil.nowFormatted(TIME_FORMATS.DATETIME)
 }
@@ -495,8 +477,9 @@ const loadDashboardData = async (showLoadingState = true) => {
 
 // 格式化金额（不添加货币符号，因为模板中已有）
 const formatCurrency = (amount: number): string => {
-  return (amount || 0).toLocaleString('zh-CN', {
-    minimumFractionDigits: 2,
+  const numericAmount = Number(amount) || 0
+  return numericAmount.toLocaleString('zh-CN', {
+    minimumFractionDigits: 0,
     maximumFractionDigits: 2
   })
 }

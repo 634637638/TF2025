@@ -21,15 +21,15 @@ router.get('/phone-options', requireAnyPermission(['accessories:view', 'accessor
       SELECT id, name, sort_order
       FROM colors
       WHERE status = 1
-      ORDER BY sort_order, name
+      ORDER BY sort_order ASC, name ASC, id ASC
     `)
 
     // 从专门的memories表查询所有启用的内存容量
     const [memories] = await pool.execute(`
-      SELECT size
+      SELECT id, size, sort_order, status
       FROM memories
       WHERE status = 1
-      ORDER BY sort_order, size
+      ORDER BY sort_order ASC, size ASC, id ASC
     `)
 
     // 从专门的brands表查询所有启用的品牌（完整对象）
@@ -37,7 +37,7 @@ router.get('/phone-options', requireAnyPermission(['accessories:view', 'accessor
       SELECT id, name, sort_order, status
       FROM brands
       WHERE status = 1
-      ORDER BY sort_order, name
+      ORDER BY sort_order ASC, name ASC, id ASC
     `)
 
     // 从models表查询所有启用的型号（完整对象，包含brand_id）
@@ -46,55 +46,55 @@ router.get('/phone-options', requireAnyPermission(['accessories:view', 'accessor
       FROM models m
       INNER JOIN brands b ON m.brand_id = b.id
       WHERE m.status = 1 AND b.status = 1
-      ORDER BY b.sort_order, b.name, m.sort_order, m.name
+      ORDER BY m.sort_order ASC, m.name ASC, m.id ASC
     `)
 
     // 从phones表获取实际使用的型号（补充专用表中没有的型号）
     const [actualModels] = await pool.execute(`
-      SELECT DISTINCT m.name as model
+      SELECT DISTINCT m.id, m.name as model, m.brand_id, m.sort_order
       FROM phones p
       LEFT JOIN models m ON p.model_id = m.id
       WHERE m.name IS NOT NULL AND m.name != ''
       AND m.name NOT IN (
         SELECT name FROM models WHERE status = 1
       )
-      ORDER BY m.name
+      ORDER BY m.sort_order ASC, m.name ASC, m.id ASC
     `)
 
     // 从phones表获取实际使用的品牌（补充专用表中没有的品牌）
     const [actualBrands] = await pool.execute(`
-      SELECT DISTINCT b.name as brand
+      SELECT DISTINCT b.id, b.name as brand, b.sort_order
       FROM phones p
       LEFT JOIN brands b ON p.brand_id = b.id
       WHERE b.name IS NOT NULL AND b.name != ''
       AND b.name NOT IN (
         SELECT name FROM brands WHERE status = 1
       )
-      ORDER BY b.name
+      ORDER BY b.sort_order ASC, b.name ASC, b.id ASC
     `)
 
     // 从phones表获取实际使用的颜色（补充专用表中没有的颜色）
     const [actualColors] = await pool.execute(`
-      SELECT DISTINCT c.name as color
+      SELECT DISTINCT c.id, c.name as color, c.sort_order
       FROM phones p
       LEFT JOIN colors c ON p.color_id = c.id
       WHERE c.name IS NOT NULL AND c.name != ''
       AND c.name NOT IN (
         SELECT name FROM colors WHERE status = 1
       )
-      ORDER BY c.name
+      ORDER BY c.sort_order ASC, c.name ASC, c.id ASC
     `)
 
     // 从phones表获取实际使用的内存（补充专用表中没有的内存）
     const [actualMemories] = await pool.execute(`
-      SELECT DISTINCT mem.size as memory
+      SELECT DISTINCT mem.id, mem.size as memory, mem.sort_order
       FROM phones p
       LEFT JOIN memories mem ON p.memory_id = mem.id
       WHERE mem.size IS NOT NULL AND mem.size != ''
       AND mem.size NOT IN (
         SELECT size FROM memories WHERE status = 1
       )
-      ORDER BY mem.size
+      ORDER BY mem.sort_order ASC, mem.size ASC, mem.id ASC
     `)
 
     // 查询所有采购编号
@@ -127,8 +127,10 @@ router.get('/phone-options', requireAnyPermission(['accessories:view', 'accessor
       { value: 0, label: '二手' }
     ]
 
-    const _colorOptions = [...colors.map(row => String(row.name)), ...actualColors.map(row => String(row.color))]
-    const capacityOptions = [...memories.map(row => String(row.size)), ...actualMemories.map(row => String(row.memory))]
+    const capacityOptions = [
+      ...memories.map(row => ({ id: row.id, size: String(row.size), sort_order: row.sort_order })),
+      ...actualMemories.map(row => ({ id: row.id, size: String(row.memory), sort_order: row.sort_order }))
+    ]
     // 品牌和型号返回完整对象数组，不只是名称
     const brandObjects = brands.map(row => ({
       id: row.id,
@@ -151,9 +153,9 @@ router.get('/phone-options', requireAnyPermission(['accessories:view', 'accessor
       status: 1
     }))
 
-    const brandOptions = [...brandObjects, ...actualBrands.map(row => ({ id: 0, name: String(row.brand), sort_order: 999, status: 1 }))]
-    const modelOptions = [...modelObjects, ...actualModels.map((row, index) => ({ id: 10000 + index, name: String(row.model), brand_id: null, sort_order: 999, status: 1 }))]
-    const fullColorOptions = [...colorObjects, ...actualColors.map((row, index) => ({ id: 10000 + index, name: String(row.color), sort_order: 999, status: 1 }))]
+    const brandOptions = [...brandObjects, ...actualBrands.map(row => ({ id: row.id, name: String(row.brand), sort_order: row.sort_order, status: 1 }))]
+    const modelOptions = [...modelObjects, ...actualModels.map(row => ({ id: row.id, name: String(row.model), brand_id: row.brand_id, sort_order: row.sort_order, status: 1 }))]
+    const fullColorOptions = [...colorObjects, ...actualColors.map(row => ({ id: row.id, name: String(row.color), sort_order: row.sort_order, status: 1 }))]
 
     const purchaseNumberOptions = purchaseNumbers.map(row => String(row.purchase_number))
     const conditionOptions = conditions.map(row => String(row.quality_grade))
@@ -165,7 +167,7 @@ router.get('/phone-options', requireAnyPermission(['accessories:view', 'accessor
 
     ApiResponse.success(res, {
       colors: fullColorOptions, // 完整对象数组
-      memories: capacityOptions, // 名称数组
+      memories: capacityOptions, // 保留排序信息的完整对象数组
       brands: brandOptions, // 完整对象数组
       models: modelOptions, // 完整对象数组
       purchaseNumbers: purchaseNumberOptions,

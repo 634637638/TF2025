@@ -329,6 +329,7 @@ export const loadWholesaleStores = async (): Promise<Store[]> => {
       id: Number(item.id || 0),
       name: String(item.name || ''),
       code: String(item.code || item.name || ''),
+      sort_order: Number(item.sort_order || 0),
       status: Number(item.status || 1)
     })) as unknown as Store[])
     : []
@@ -345,6 +346,7 @@ export const loadWholesaleUsers = async (): Promise<User[]> => {
       id: Number(item.id || 0),
       username: String(item.username || ''),
       name: String(item.name || item.username || ''),
+      sort_order: Number(item.sort_order || 0),
       status: Number(item.status) === 1 ? 'active' : 'inactive'
     })) as unknown as User[])
     : []

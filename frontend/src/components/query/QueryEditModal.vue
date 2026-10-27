@@ -889,7 +889,8 @@ const fetchEditOptions = async (): Promise<EditModalOptions> => {
             ? sortOptionsByOrder(usersRes.data.employees.map((item) => ({
               id: Number(item.id || 0),
               name: String(item.name || item.username || ''),
-              status: Number(item.status)
+              status: Number(item.status),
+              sort_order: item.sort_order
             })))
             : []
         }
@@ -1118,7 +1119,8 @@ const searchSaleOperatorsRemote = async (keyword = '') => {
       ? usersRes.data.employees.map(item => ({
         id: Number(item.id || 0),
         name: String(item.name || item.username || ''),
-        status: Number(item.status)
+        status: Number(item.status),
+        sort_order: item.sort_order
       }))
       : []
 

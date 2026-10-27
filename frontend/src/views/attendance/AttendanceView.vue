@@ -2912,7 +2912,8 @@ const loadEmployees = async () => {
       employees.value = sortOptionsByOrder((response.data.employees || []).map(item => ({
         id: Number(item.id || 0),
         name: String(item.name || item.username || ''),
-        username: item.username ? String(item.username) : undefined
+        username: item.username ? String(item.username) : undefined,
+        sort_order: Number(item.sort_order || 0)
       })))
     }
   } catch (error) {
@@ -2937,7 +2938,8 @@ const searchAttendanceEmployeesRemote = async (keyword = '') => {
     const nextEmployees = loadedEmployees.map(item => ({
       id: Number(item.id || 0),
       name: String(item.name || item.username || ''),
-      username: item.username ? String(item.username) : undefined
+      username: item.username ? String(item.username) : undefined,
+      sort_order: item.sort_order
     }))
     employees.value = sortOptionsByOrder(
       [...nextEmployees, ...selectedEmployees.filter(selected => !nextEmployees.some(item => item.id === selected.id))]

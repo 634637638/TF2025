@@ -41,13 +41,25 @@ for (const methodName of ['searchPrices', 'searchSalesPrices']) {
     const result = await captureSearch(methodName, '18')
 
     assert.doesNotMatch(result.query, /p\.external_model LIKE \?/)
-    assert.deepEqual(result.params, ['%18%', '18'])
+    assert.match(result.query, /c\.name LIKE \?/)
+    assert.match(result.query, /mem\.size LIKE \?/)
+    assert.deepEqual(result.params, ['%18%', '18', '%18%', '%18%'])
   })
 
   test(`${methodName} keeps external model code search for alphanumeric keywords`, async () => {
     const result = await captureSearch(methodName, 'A3518')
 
     assert.match(result.query, /p\.external_model LIKE \?/)
-    assert.deepEqual(result.params, ['%A3518%', 'A3518', '%A3518%'])
+    assert.match(result.query, /c\.name LIKE \?/)
+    assert.match(result.query, /mem\.size LIKE \?/)
+    assert.deepEqual(result.params, ['%A3518%', 'A3518', '%A3518%', '%A3518%', '%A3518%'])
+  })
+
+  test(`${methodName} searches color and memory fields`, async () => {
+    const result = await captureSearch(methodName, '256GB')
+
+    assert.match(result.query, /c\.name LIKE \?/)
+    assert.match(result.query, /mem\.size LIKE \?/)
+    assert.deepEqual(result.params, ['%256GB%', '256GB', '%256GB%', '%256GB%', '%256GB%'])
   })
 }

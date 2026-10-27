@@ -181,8 +181,8 @@
 }
 
 /* 默认基线保持低优先级，公共语义按钮可覆盖尺寸与表面。 */
-.el-button:where(:not([class*='el-button--']):not(.is-text):not(.is-link):not([link])):where(:not(.customer-search-dropdown__item):not(.customer-name-lock-input__status):not(.customer-name-lock-input__change)),
-.el-button:where(:not(.is-circle):not(.is-text):not(.is-link)):where(:not(.customer-search-dropdown__item):not(.customer-name-lock-input__status):not(.customer-name-lock-input__change)),
+.el-button:where(:not([class*='el-button--']):not(.is-text):not(.is-link):not([link])):where(:not(.customer-search-dropdown__item):not(.customer-name-lock-input__status):not(.customer-name-lock-input__change):not(.tf-button--service-card):not(.tf-button--service-float)),
+.el-button:where(:not(.is-circle):not(.is-text):not(.is-link)):where(:not(.customer-search-dropdown__item):not(.customer-name-lock-input__status):not(.customer-name-lock-input__change):not(.tf-button--service-card):not(.tf-button--service-float)),
 :where(.el-button.btn),
 :where(.el-button[class*='btn-']:not(.btn-close)) {
   width: auto;
@@ -384,7 +384,7 @@
 .el-button.tf-button--neutral,
 .el-button.tf-button--cancel,
 .el-button.tf-button--close,
-.el-button:where(:not([class*='el-button--']):not(.is-text):not(.is-link):not([link])) {
+.el-button:where(:not([class*='el-button--']):not(.is-text):not(.is-link):not([link])):where(:not(.tf-button--service-card):not(.tf-button--service-float)) {
   --el-button-bg-color: var(--tf-button-neutral-bg) !important;
   --el-button-border-color: var(--tf-button-neutral-border) !important;
   --el-button-text-color: var(--tf-button-neutral-color) !important;
@@ -398,6 +398,65 @@
     border-color: var(--tf-button-neutral-hover-border) !important;
     color: var(--tf-button-neutral-hover-color) !important;
   }
+}
+
+/* Contact cards grow with their content instead of inheriting toolbar button height. */
+.el-button.tf-button--service-card {
+  --el-button-bg-color: var(--tf-color-surface-muted);
+  --el-button-border-color: transparent;
+  --el-button-text-color: var(--tf-color-slate-800);
+  --el-button-hover-bg-color: var(--tf-color-slate-100);
+  --el-button-hover-border-color: transparent;
+  --el-button-hover-text-color: var(--tf-color-slate-800);
+  --el-button-active-bg-color: var(--el-button-hover-bg-color);
+  --el-button-active-border-color: transparent;
+  --el-button-active-text-color: var(--el-button-text-color);
+  display: flex;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  height: auto;
+  min-height: var(--tf-service-card-min-height);
+  margin: 0;
+  padding: var(--tf-space-4);
+  border: 0;
+  border-radius: var(--tf-radius-control);
+  white-space: normal;
+  text-decoration: none;
+}
+
+.el-button.tf-button--service-card > span {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--tf-space-2);
+  white-space: normal;
+}
+
+.el-button.tf-button--service-card + .el-button.tf-button--service-card {
+  margin-left: 0;
+}
+
+.el-button.tf-button--service-float {
+  --el-button-bg-color: var(--tf-color-accent-green);
+  --el-button-border-color: transparent;
+  --el-button-text-color: var(--tf-button-on-color);
+  --el-button-hover-bg-color: var(--tf-color-green-accent);
+  --el-button-hover-border-color: transparent;
+  --el-button-hover-text-color: var(--tf-button-on-color);
+  --el-button-active-bg-color: var(--el-button-hover-bg-color);
+  --el-button-active-border-color: transparent;
+  --el-button-active-text-color: var(--el-button-text-color);
+  flex: none;
+  width: var(--tf-service-float-size);
+  min-width: var(--tf-service-float-size);
+  height: var(--tf-service-float-size);
+  padding: 0;
+  border: 0;
+  border-radius: var(--tf-radius-full);
+  box-shadow: var(--tf-shadow-floating);
 }
 
 body .el-button.el-button.tf-button--dialog-close {

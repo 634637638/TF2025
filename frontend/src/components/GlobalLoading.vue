@@ -40,6 +40,7 @@
 import { defineComponent, ref, watch, onBeforeUnmount } from 'vue'
 import { useLoadingStore } from '@/stores/loading'
 import InlineLoading from '@/components/InlineLoading.vue'
+import { GLOBAL_LOADING_SHOW_DELAY_MS } from '@/constants/loading'
 
 export default defineComponent({
   name: 'GlobalLoading',
@@ -71,7 +72,7 @@ export default defineComponent({
           showTimer = setTimeout(() => {
             showGlobalLoading.value = true
             showTimer = null
-          }, 700)
+          }, GLOBAL_LOADING_SHOW_DELAY_MS)
           return
         }
 

@@ -1,6 +1,6 @@
 # 全局加载动画统一规范
 
-> 最后更新：2026-10-07
+> 最后更新：2026-10-27
 
 ## 背景
 
@@ -21,6 +21,7 @@
 ## 统一目标
 
 - 页面切换使用同一套全局 loading。
+- 全屏 `GlobalLoading` 延迟 5 秒显示；短于 5 秒完成的请求不显示全屏遮罩，避免页面闪烁。统一常量为 `frontend/src/constants/loading.ts` 的 `GLOBAL_LOADING_SHOW_DELAY_MS`。
 - 统一 Axios 实例默认将请求纳入全局 Loading；只有明确传 `showLoading: false` 的健康检查、静默预取或后台探测可以关闭反馈。
 - 首次进入页面或 F5 刷新只显示全局 `GlobalLoading`；首次表格请求不得再启动 `v-tf-loading`。
 - 首次数据请求完成后，点击刷新、搜索、筛选或分页才允许启动 `v-tf-loading`；同一次操作只能绑定一种 Loading。

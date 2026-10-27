@@ -4,7 +4,7 @@
       <template #search>
         <PublicSearchBox
           v-model="searchKeyword"
-          :placeholder="passwordVerified ? `欢迎${verifiedUserName}使用${siteSettingsStore.settings.siteName || '报价系统'}` : '搜索品牌或型号'"
+          :placeholder="passwordVerified ? `欢迎${verifiedUserName}使用${siteSettingsStore.settings.siteName || '报价系统'}` : '搜索品牌、型号、颜色或内存'"
           :verified="passwordVerified"
           :loading="loading || searchSubmitting"
           :disabled="loading || searchSubmitting"
@@ -140,7 +140,7 @@
               </div>
             </div>
             <ul class="card-list">
-              <li>仅限分宜本地激活</li>
+              <li>仅限新余市范围内激活</li>
               <li>禁止跨市区激活</li>
               <li class="highlight">
                 水印相机拍照：串码同框

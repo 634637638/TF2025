@@ -39,7 +39,8 @@ export const useSalesBaseOptions = () => {
     id: Number(item.id || 0),
     username: String(item.username || ''),
     name: String(item.name || item.username || ''),
-    status: Number(item.status || 1)
+    status: Number(item.status || 1),
+    sort_order: Number(item.sort_order || 0)
   })))
 
   const loadStores = async () => {
@@ -51,7 +52,8 @@ export const useSalesBaseOptions = () => {
             id: Number(item.id || 0),
             name: String(item.name || ''),
             code: String(item.code || item.name || ''),
-            status: Number(item.status || 1)
+            status: Number(item.status || 1),
+            sort_order: Number(item.sort_order || 0)
           }))
           : []
         stores.value = sortOptionsByOrder(storeRecords)
@@ -179,6 +181,7 @@ export const useSalesBaseOptions = () => {
           ? response.data.map(item => ({
             id: Number(item.id || 0),
             name: String(item.name || ''),
+            sort_order: Number(item.sort_order || 0),
             status: Number(item.status || 1)
           }))
           : []

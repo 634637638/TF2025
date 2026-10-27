@@ -1,8 +1,9 @@
 import { unifiedApi } from '@/utils/unified-api'
 import type { ApiResponse } from '@/types'
-import type { GuideAnnouncement, GuideCategory, GuideLink, GuideUnlockResponse, PublicGuideResponse } from '@/types/guide'
+import type { GuideAnnouncement, GuideCategory, GuideLink, GuideSettings, GuideUnlockResponse, PublicGuideResponse } from '@/types/guide'
 
 export interface GuideAdminResponse {
+  settings: GuideSettings
   announcements: GuideAnnouncement[]
   categories: GuideCategory[]
 }
@@ -12,6 +13,7 @@ export const guideApi = {
   unlock: (categoryId: number, password: string) => unifiedApi.post<GuideUnlockResponse>(`/public/guide/categories/${categoryId}/unlock`, { password }, { showLoading: false, useCache: false }),
   category: (categoryId: number, token: string) => unifiedApi.get<GuideCategory>(`/public/guide/categories/${categoryId}`, { headers: { 'X-Guide-Token': token }, showLoading: false, useCache: false }),
   admin: () => unifiedApi.get<GuideAdminResponse>('/guide', { useCache: false }),
+  updateSettings: (data: Partial<GuideSettings>) => unifiedApi.put<GuideSettings>('/guide/settings', data),
   createAnnouncement: (data: Partial<GuideAnnouncement>) => unifiedApi.post<GuideAnnouncement>('/guide/announcements', data),
   updateAnnouncement: (id: number, data: Partial<GuideAnnouncement>) => unifiedApi.put<GuideAnnouncement>(`/guide/announcements/${id}`, data),
   deleteAnnouncement: (id: number) => unifiedApi.delete(`/guide/announcements/${id}`),

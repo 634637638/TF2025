@@ -343,6 +343,12 @@ class PriceListService {
       return 'ipadair811寸'
     }
 
+    // 外部数据可能写成“iPhone Duo”“iPhone 18 Duo”或“18duo”，
+    // 这些都是本地的同一型号，必须使用同一个匹配键。
+    if (normalized === 'iphoneduo' || normalized === 'iphone18duo' || normalized === '18duo') {
+      return 'iphoneduo'
+    }
+
     return normalized
   }
 
@@ -974,7 +980,7 @@ class PriceListService {
         modelNames.push(mapping.model)
       }
 
-      // 构建搜索条件：支持品牌、型号名称、外部型号代码
+      // 构建搜索条件：支持品牌、型号、颜色、内存和外部型号代码。
       const searchConditions = []
       const searchParams = []
       const searchExternalModel = /[a-z]/i.test(keyword)
@@ -983,9 +989,11 @@ class PriceListService {
         const searchTerm = `%${modelName}%`
         const modelConditions = [
           'b.name LIKE ?',
-          `${normalizedModelSql('mo.name')} LIKE CONCAT('%', ${normalizedModelSql('?')}, '%')`
+          `${normalizedModelSql('mo.name')} LIKE CONCAT('%', ${normalizedModelSql('?')}, '%')`,
+          'c.name LIKE ?',
+          'mem.size LIKE ?'
         ]
-        searchParams.push(searchTerm, modelName)
+        searchParams.push(searchTerm, modelName, searchTerm, searchTerm)
 
         if (searchExternalModel) {
           modelConditions.push('p.external_model LIKE ?')
@@ -1065,7 +1073,7 @@ class PriceListService {
         modelNames.push(mapping.model)
       }
 
-      // 构建搜索条件：支持品牌、型号名称、外部型号代码
+      // 构建搜索条件：支持品牌、型号、颜色、内存和外部型号代码。
       const searchConditions = []
       const searchParams = []
       const searchExternalModel = /[a-z]/i.test(keyword)
@@ -1074,9 +1082,11 @@ class PriceListService {
         const searchTerm = `%${modelName}%`
         const modelConditions = [
           'b.name LIKE ?',
-          `${normalizedModelSql('mo.name')} LIKE CONCAT('%', ${normalizedModelSql('?')}, '%')`
+          `${normalizedModelSql('mo.name')} LIKE CONCAT('%', ${normalizedModelSql('?')}, '%')`,
+          'c.name LIKE ?',
+          'mem.size LIKE ?'
         ]
-        searchParams.push(searchTerm, modelName)
+        searchParams.push(searchTerm, modelName, searchTerm, searchTerm)
 
         if (searchExternalModel) {
           modelConditions.push('p.external_model LIKE ?')
@@ -2315,12 +2325,18 @@ class PriceListService {
         : (modelNumber || modelKey)
     }
 
-    const nameTerm = normalizedKey === 'iphone16'
+    const isDuoModel = ['iphone18duo', 'iphoneduo', '18duo'].includes(normalizedKey)
+    const nameTerm = isDuoModel
+      ? 'iPhone Duo'
+      : normalizedKey === 'iphone16'
       ? 'iPhone 16'
       : (/^iphone\d/.test(normalizedKey)
         ? `iPhone ${normalizedKey.slice(6).replace(/promax$/, ' Pro Max').replace(/pro$/, ' Pro').replace(/plus$/, ' Plus').replace(/duo$/, ' Duo').replace(/air$/, ' Air')}`
         : formatModelSearchTerm())
-    const candidates = [modelCode, externalModel, nameTerm]
+    const duoAliases = isDuoModel
+      ? ['iPhone Duo', 'iPhone 18 Duo', '18 Duo', '18duo']
+      : []
+    const candidates = [modelCode, externalModel, nameTerm, ...duoAliases]
       .map(value => String(value || '').trim())
       .filter(Boolean)
 
@@ -2346,7 +2362,10 @@ class PriceListService {
     const aliases = [
       normalized,
       normalized.replace(/^iphone/, 'iphone '),
-      normalized.replace(/^iphone/, '苹果iphone')
+      normalized.replace(/^iphone/, '苹果iphone'),
+      ...(['iphone18duo', 'iphoneduo', '18duo'].includes(normalized)
+        ? ['iphoneduo', 'iphone duo', 'iphone18duo', 'iphone 18 duo', '18duo', '18 duo']
+        : [])
     ]
     return aliases.some(alias => text.includes(alias.replace(/\s+/g, '')))
   }

@@ -529,12 +529,12 @@ defineExpose({
 // 悬浮客服按钮
 .floating-service {
   position: fixed;
-  bottom: 148px;
-  right: 16px;
+  bottom: var(--tf-service-float-bottom);
+  right: var(--tf-service-float-right);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: var(--tf-space-1);
   cursor: pointer;
   z-index: 1000;
   animation: pulse 2s infinite;
@@ -549,9 +549,9 @@ defineExpose({
   }
 
   .service-icon {
-    width: 56px;
-    height: 56px;
-    border-radius: 50%;
+    width: var(--tf-service-float-size);
+    height: var(--tf-service-float-size);
+    border-radius: var(--tf-radius-full);
     background: linear-gradient(135deg, var(--tf-color-accent-green) 0%, var(--tf-color-green-accent) 100%);
     box-shadow: 0 4px 16px rgba(0, 200, 83, 0.4);
     display: flex;
@@ -560,7 +560,7 @@ defineExpose({
     color: var(--color-bg-white);
 
     i {
-      font-size: var(--tf-type-scale-24);
+      font-size: var(--tf-service-float-icon-size);
     }
   }
 
@@ -569,8 +569,8 @@ defineExpose({
     color: var(--tf-color-accent-green);
     font-weight: 500;
     background: rgba(255, 255, 255, 0.9);
-    padding: 2px 8px;
-    border-radius: 10px;
+    padding: var(--tf-space-1) var(--tf-space-2);
+    border-radius: var(--tf-radius-full);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   }
 }
@@ -802,12 +802,12 @@ defineExpose({
 // 悬浮客服按钮（全局样式，确保在所有页面都能正常显示）
 .floating-service {
   position: fixed;
-  bottom: 148px;
-  right: 16px;
+  bottom: var(--tf-service-float-bottom);
+  right: var(--tf-service-float-right);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: var(--tf-space-1);
   cursor: pointer;
   z-index: 1000;
   animation: pulse 2s infinite;
@@ -822,9 +822,9 @@ defineExpose({
   }
 
   .service-icon {
-    width: 56px;
-    height: 56px;
-    border-radius: 50%;
+    width: var(--tf-service-float-size);
+    height: var(--tf-service-float-size);
+    border-radius: var(--tf-radius-full);
     background: linear-gradient(135deg, var(--tf-color-accent-green) 0%, var(--tf-color-green-accent) 100%);
     box-shadow: 0 4px 16px rgba(0, 200, 83, 0.4);
     display: flex;
@@ -833,7 +833,7 @@ defineExpose({
     color: var(--color-bg-white);
 
     i {
-      font-size: var(--tf-type-scale-24);
+      font-size: var(--tf-service-float-icon-size);
     }
   }
 
@@ -842,8 +842,8 @@ defineExpose({
     color: var(--tf-color-accent-green);
     font-weight: 500;
     background: rgba(255, 255, 255, 0.9);
-    padding: 2px 8px;
-    border-radius: 10px;
+    padding: var(--tf-space-1) var(--tf-space-2);
+    border-radius: var(--tf-radius-full);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   }
 }

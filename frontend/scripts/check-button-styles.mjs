@@ -181,6 +181,18 @@ for (const selector of baseButtonSelectors) {
   }
 }
 
+for (const semantic of ['service-card', 'service-float']) {
+  if (!buttonStyleSource.includes(`:not(.tf-button--${semantic})`)) {
+    findings.push(`src/styles/components/_buttons.scss 客服 ${semantic} 必须排除普通按钮基线，避免固定高度和默认白底`)
+  }
+}
+if (!/\.el-button\.tf-button--service-card\s*\{[^}]*height:\s*auto\s*;[^}]*min-height:\s*var\(--tf-service-card-min-height\)/.test(buttonStyleSource)) {
+  findings.push('src/styles/components/_buttons.scss 客服卡片必须按内容自适应高度并使用公共最小高度')
+}
+if (!/\.el-button\.tf-button--service-card\s*\+\s*\.el-button\.tf-button--service-card\s*\{\s*margin-left:\s*0/.test(buttonStyleSource)) {
+  findings.push('src/styles/components/_buttons.scss 客服卡片须清除相邻按钮左边距，防止手机端横向溢出')
+}
+
 const standardsButtonRequirements = [
   [/card-actions\s+tf-actions--fit-row/, '规范与审计标杆页卡片操作必须使用 .card-actions.tf-actions--fit-row'],
   [/class=["'][^"']*tf-button--view/, '规范与审计标杆页查看按钮必须声明 tf-button--view 语义'],

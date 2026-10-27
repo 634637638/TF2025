@@ -1079,20 +1079,20 @@ class QueryRepository extends BaseRepository {
         memoriesResult
       ] = await Promise.all([
         // 供应商：优先显示启用状态，但如果没有则显示全部
-        db.query('SELECT id, name, sort_order FROM suppliers WHERE (status = 1 OR status IS NULL) ORDER BY sort_order, id'),
+        db.query('SELECT id, name, sort_order FROM suppliers WHERE (status = 1 OR status IS NULL) ORDER BY sort_order ASC, name ASC, id ASC'),
         // 店铺：查询选项必须在服务端按当前用户数据范围过滤。
         (() => {
           const normalizedStoreIds = Array.isArray(storeIds)
             ? storeIds.map(Number).filter(id => Number.isInteger(id) && id > 0)
             : []
           if (allStores) {
-            return db.query('SELECT id, name, sort_order FROM stores WHERE (status = 1 OR status IS NULL) ORDER BY sort_order, id')
+            return db.query('SELECT id, name, sort_order FROM stores WHERE (status = 1 OR status IS NULL) ORDER BY sort_order ASC, name ASC, id ASC')
           }
           if (normalizedStoreIds.length === 0) return Promise.resolve([[]])
           return db.query(
             `SELECT id, name, sort_order FROM stores
              WHERE (status = 1 OR status IS NULL) AND id IN (${normalizedStoreIds.map(() => '?').join(',')})
-             ORDER BY sort_order, id`,
+             ORDER BY sort_order ASC, name ASC, id ASC`,
             normalizedStoreIds
           )
         })(),

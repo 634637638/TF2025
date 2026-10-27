@@ -4,12 +4,12 @@ const express = require('express')
 const multer = require('multer')
 const fs = require('fs')
 const path = require('path')
-const crypto = require('crypto')
 const { unifiedAuth, requirePermission } = require('../middleware/unified-auth')
 const ApiResponse = require('../utils/response')
 const guideService = require('../services/guide.service')
 const { getUploadSubdir, getUploadUrl, getUploadPathFromUrl } = require('../utils/upload-paths')
 const { getGuideFileDisposition, encodeGuideFileName } = require('../utils/guide-file-access')
+const { createGuideDraftFilename, isGuideDraftUrl, promoteGuideDraft, removeGuideDraft } = require('../utils/guide-upload')
 
 const adminRouter = express.Router()
 const uploadDir = getUploadSubdir('guide')
@@ -45,7 +45,7 @@ const allowedFileTypes = new Map([
 ])
 const storage = multer.diskStorage({
   destination: (_req, _file, callback) => callback(null, uploadDir),
-  filename: (_req, file, callback) => callback(null, `${Date.now()}_${crypto.randomBytes(10).toString('hex')}${path.extname(file.originalname).toLowerCase()}`)
+  filename: (_req, file, callback) => callback(null, createGuideDraftFilename(path.extname(file.originalname).toLowerCase()))
 })
 const guideFileUpload = multer({
   storage,
@@ -80,12 +80,38 @@ const removeUploadAfterChange = (previousUrl, nextUrl) => {
   if (previousUrl && previousUrl !== nextUrl) removeLocalUpload(previousUrl)
 }
 
+const prepareGuideLinkPayload = async payload => {
+  const preparedPayload = { ...(payload || {}) }
+  if (preparedPayload.link_type !== 'file' || !isGuideDraftUrl(preparedPayload.file_url)) {
+    return { payload: preparedPayload, promoted: null }
+  }
+
+  const promoted = await promoteGuideDraft(preparedPayload.file_url)
+  preparedPayload.file_url = promoted.fileUrl
+  return { payload: preparedPayload, promoted: promoted.promoted ? { fileUrl: promoted.fileUrl } : null }
+}
+
+const discardUnusedGuideDraft = async payload => {
+  if (payload?.link_type !== 'file' && isGuideDraftUrl(payload?.file_url)) {
+    await removeGuideDraft(payload.file_url).catch(() => {})
+  }
+}
+
 adminRouter.use(unifiedAuth)
 
 adminRouter.get('/', requirePermission('guide:view'), async (_req, res) => {
   try {
-    return ApiResponse.success(res, { announcements: await guideService.listAnnouncements(), categories: await guideService.listCategories({ includeLinks: true }) }, '获取导航管理数据成功')
+    return ApiResponse.success(res, { settings: await guideService.getGuideSettings(), announcements: await guideService.listAnnouncements(), categories: await guideService.listCategories({ includeLinks: true }) }, '获取导航管理数据成功')
   } catch (error) { return handleError(res, error, '获取导航管理数据失败') }
+})
+
+adminRouter.put('/settings', requirePermission('guide:edit'), async (req, res) => {
+  try {
+    const result = await guideService.updateGuideSettings(req.user.id, req.body)
+    return ApiResponse.success(res, result, '导航设置已保存')
+  } catch (error) {
+    return handleError(res, error, '导航设置保存失败')
+  }
 })
 
 adminRouter.post('/announcements', requirePermission('guide:create'), async (req, res) => {
@@ -114,15 +140,33 @@ adminRouter.delete('/categories/:id', requirePermission('guide:delete'), async (
 })
 
 adminRouter.post('/categories/:id/links', requirePermission('guide:create'), async (req, res) => {
-  try { return ApiResponse.created(res, '导航新增成功', await guideService.createLink(req.user.id, Number(req.params.id), req.body)) } catch (error) { return handleError(res, error, '导航新增失败') }
+  let promoted = null
+  try {
+    const prepared = await prepareGuideLinkPayload(req.body)
+    promoted = prepared.promoted
+    const result = await guideService.createLink(req.user.id, Number(req.params.id), prepared.payload)
+    await discardUnusedGuideDraft(req.body)
+    return ApiResponse.created(res, '导航新增成功', result)
+  } catch (error) {
+    if (promoted?.fileUrl) removeLocalUpload(promoted.fileUrl)
+    return handleError(res, error, '导航新增失败')
+  }
 })
 adminRouter.put('/links/:id', requirePermission('guide:edit'), async (req, res) => {
+  let promoted = null
   try {
     const previous = await guideService.getLinkStorage(Number(req.params.id))
-    const result = await guideService.updateLink(Number(req.params.id), req.body)
-    removeUploadAfterChange(previous?.file_url, result?.file_url)
+    const prepared = await prepareGuideLinkPayload(req.body)
+    promoted = prepared.promoted
+    const result = await guideService.updateLink(Number(req.params.id), prepared.payload)
+    const nextStored = await guideService.getLinkStorage(Number(req.params.id))
+    removeUploadAfterChange(previous?.file_url, nextStored?.file_url)
+    await discardUnusedGuideDraft(req.body)
     return ApiResponse.success(res, result, '导航更新成功')
-  } catch (error) { return handleError(res, error, '导航更新失败') }
+  } catch (error) {
+    if (promoted?.fileUrl) removeLocalUpload(promoted.fileUrl)
+    return handleError(res, error, '导航更新失败')
+  }
 })
 adminRouter.delete('/links/:id', requirePermission('guide:delete'), async (req, res) => {
   try {
@@ -133,9 +177,9 @@ adminRouter.delete('/links/:id', requirePermission('guide:delete'), async (req, 
   } catch (error) { return handleError(res, error, '导航删除失败') }
 })
 
-const sendStoredGuideFile = async (req, res, inlineOnly = false) => {
+const sendStoredGuideFile = async (req, res, inlineOnly = false, allowDisabled = false) => {
   const record = await guideService.getLinkStorage(Number(req.params.id))
-  if (!record || record.link_type !== 'file' || !record.file_url || Number(record.is_enabled) !== 1) return res.status(404).end()
+  if (!record || record.link_type !== 'file' || !record.file_url || (!allowDisabled && Number(record.is_enabled) !== 1)) return res.status(404).end()
   const filePath = getUploadPathFromUrl(record.file_url)
   const guideRoot = path.resolve(uploadDir)
   if (!filePath.startsWith(`${guideRoot}${path.sep}`) || !fs.existsSync(filePath)) return res.status(404).end()
@@ -146,16 +190,19 @@ const sendStoredGuideFile = async (req, res, inlineOnly = false) => {
 }
 
 adminRouter.get('/links/:id/preview', requirePermission('guide:view'), async (req, res) => {
-  try { return await sendStoredGuideFile(req, res, true) } catch (error) { return handleError(res, error, '文件预览失败') }
+  try { return await sendStoredGuideFile(req, res, true, true) } catch (error) { return handleError(res, error, '文件预览失败') }
 })
 
 adminRouter.get('/links/:id/download', requirePermission('guide:view'), async (req, res) => {
-  try { return await sendStoredGuideFile(req, res) } catch (error) { return handleError(res, error, '文件下载失败') }
+  try { return await sendStoredGuideFile(req, res, false, true) } catch (error) { return handleError(res, error, '文件下载失败') }
 })
 
 adminRouter.post('/upload/file', requirePermission('guide:upload'), (req, res) => {
   guideFileUpload.single('file')(req, res, error => {
-    if (error) return handleError(res, error, '文件上传失败')
+    if (error) {
+      if (req.file?.path) fs.unlink(req.file.path, () => {})
+      return handleError(res, error, '文件上传失败')
+    }
     if (!req.file) return ApiResponse.error(res, '请选择文件', 400)
     const extension = path.extname(req.file.originalname).toLowerCase()
     const canonicalMime = [...(allowedFileTypes.get(extension) || [])].find(mime => mime !== 'application/octet-stream') || 'application/octet-stream'
@@ -170,7 +217,7 @@ adminRouter.post('/upload/file', requirePermission('guide:upload'), (req, res) =
 
 adminRouter.get('/upload/preview/:filename', requirePermission('guide:view'), (req, res) => {
   const filename = String(req.params.filename || '')
-  if (!/^[0-9]+_[a-f0-9]{20}\.[a-z0-9]{1,10}$/i.test(filename)) return res.status(404).end()
+  if (!/^(?:draft_)?[0-9]+_[a-f0-9]{20}\.[a-z0-9]{1,10}$/i.test(filename)) return res.status(404).end()
   const filePath = path.resolve(uploadDir, filename)
   if (!filePath.startsWith(`${path.resolve(uploadDir)}${path.sep}`) || !fs.existsSync(filePath)) return res.status(404).end()
   const extension = path.extname(filename).toLowerCase()
