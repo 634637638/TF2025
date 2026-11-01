@@ -8,6 +8,16 @@ const { createOrderAccessToken } = require('../utils/order-access')
 const log = require('../utils/log')
 const pricingService = require('./pricing.service')
 
+const PUBLIC_SHOP_CONFIG_KEYS = [
+  'shop_name', 'shop_logo', 'shop_subtitle', 'shop_phone', 'wechat_id',
+  'shop_address', 'shop_hours', 'map_latitude', 'map_longitude',
+  'map_provider', 'tencent_map_key', 'amap_map_key', 'baidu_map_key', 'wechat_qrcode', 'alipay_qrcode', 'other_qrcode',
+  'bank_info', 'banner_enabled', 'cart_enabled', 'direct_buy_enabled',
+  'payment_provider', 'payment_default_method', 'payment_qr_wechat_enabled', 'payment_qr_alipay_enabled',
+  'payment_qr_other_enabled', 'payment_qr_other_name', 'payment_bank_enabled', 'payment_merchant_other_enabled',
+  'wechat_pay_enabled', 'alipay_pay_enabled'
+]
+
 const H5_ORDER_FIELDS = [
   'id', 'order_number', 'customer_name', 'customer_phone', 'customer_address',
   'total_amount', 'status', 'payment_method', 'remarks', 'created_at',
@@ -151,23 +161,46 @@ class ShopPublicService {
    * 获取公开配置（用户端需要的信息）
    */
   async getPublicConfig() {
+    const placeholders = PUBLIC_SHOP_CONFIG_KEYS.map(() => '?').join(', ')
     const query = `
       SELECT config_key, config_value, config_type
       FROM H5_config
-      WHERE category IN ('general', 'contact', 'payment', 'cart', 'banner')
+      WHERE config_key IN (${placeholders})
       ORDER BY config_key
     `
-    const [configs] = await db.getDatabase().query(query)
+    const [configs] = await db.getDatabase().query(query, PUBLIC_SHOP_CONFIG_KEYS)
 
     // 转换为键值对对象
     const result = {}
     configs.forEach(config => {
-      result[config.config_key] = this.parseConfigValue(config.config_value, config.config_type)
+      const value = this.parseConfigValue(config.config_value, config.config_type)
+      result[config.config_key] = [
+        'wechat_pay_enabled', 'alipay_pay_enabled', 'payment_qr_wechat_enabled',
+        'payment_qr_alipay_enabled', 'payment_qr_other_enabled', 'payment_bank_enabled',
+        'payment_merchant_other_enabled'
+      ].includes(config.config_key)
+        ? value === true || value === 1 || value === '1' || value === 'true'
+        : value
     })
 
     // 确保地图坐标字段存在（如果数据库中没有，使用默认值）
     if (!result.map_latitude) result.map_latitude = ''
     if (!result.map_longitude) result.map_longitude = ''
+    if (!result.tencent_map_key) result.tencent_map_key = ''
+    if (!result.amap_map_key) result.amap_map_key = ''
+    if (!result.baidu_map_key) result.baidu_map_key = ''
+    if (!result.map_provider) result.map_provider = 'tencent'
+    if (!result.payment_provider) result.payment_provider = 'manual'
+    if (result.wechat_pay_enabled === undefined) result.wechat_pay_enabled = false
+    if (result.alipay_pay_enabled === undefined) result.alipay_pay_enabled = false
+    if (result.payment_default_method === undefined) result.payment_default_method = 'pickup'
+    if (result.payment_qr_wechat_enabled === undefined) result.payment_qr_wechat_enabled = false
+    if (result.payment_qr_alipay_enabled === undefined) result.payment_qr_alipay_enabled = false
+    if (result.payment_qr_other_enabled === undefined) result.payment_qr_other_enabled = false
+    if (result.payment_qr_other_name === undefined) result.payment_qr_other_name = ''
+    if (result.payment_bank_enabled === undefined) result.payment_bank_enabled = false
+    if (result.payment_merchant_other_enabled === undefined) result.payment_merchant_other_enabled = false
+    if (result.other_qrcode === undefined) result.other_qrcode = ''
 
     return result
   }
@@ -195,6 +228,22 @@ class ShopPublicService {
       interval: banner.interval,
       images: banner.images ? (typeof banner.images === 'string' ? JSON.parse(banner.images) : banner.images) : null
     }))
+  }
+
+  async validatePaymentMethod(method) {
+    const config = await this.getPublicConfig()
+    const enabled = new Set(['pickup'])
+    if (config.payment_qr_wechat_enabled && config.wechat_qrcode) enabled.add('qr_wechat')
+    if (config.payment_qr_alipay_enabled && config.alipay_qrcode) enabled.add('qr_alipay')
+    if (config.payment_qr_other_enabled && config.other_qrcode && config.payment_qr_other_name) enabled.add('qr_other')
+    if (config.payment_bank_enabled && config.bank_info) enabled.add('bank')
+
+    if (['merchant_wechat', 'merchant_alipay', 'merchant_other'].includes(method)) {
+      throw new Error('该商家支付接口尚未完成下单与回调验签接入，请先使用已配置的收款方式')
+    }
+    if (!enabled.has(method)) {
+      throw new Error('所选支付方式未启用或收款资料不完整，请刷新页面后重试')
+    }
   }
 
   // ============================================================================
@@ -1163,8 +1212,10 @@ class ShopPublicService {
    * 创建订单
    */
   async createOrder(orderData) {
-    const { customerName, customerPhone, customerAddress, items, paymentMethod, remarks } = orderData
+    const { customerName, customerPhone, customerAddress, items, paymentMethod: requestedPaymentMethod, remarks } = orderData
 
+    const paymentMethod = String(requestedPaymentMethod || 'pickup')
+    await this.validatePaymentMethod(paymentMethod)
     const connection = await db.getDatabase().getConnection()
 
     try {
@@ -1246,7 +1297,7 @@ class ShopPublicService {
       const [orderResult] = await connection.query(
         `INSERT INTO H5_orders (order_number, customer_name, customer_phone, customer_address, total_amount, payment_method, remarks, status, expires_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', DATE_ADD(NOW(), INTERVAL 24 HOUR))`,
-        [orderNumber, customerName, customerPhone, customerAddress, totalAmount, paymentMethod || 'other', remarks || null]
+        [orderNumber, customerName, customerPhone, customerAddress, totalAmount, paymentMethod, remarks || null]
       )
 
       const orderId = orderResult.insertId

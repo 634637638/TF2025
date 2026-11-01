@@ -6,6 +6,7 @@ const projectRoot = resolve(frontendRoot, '..')
 const docsRoot = resolve(projectRoot, 'docs/frontend')
 const manifestPath = resolve(docsRoot, 'standards-manifest.json')
 const packagePath = resolve(frontendRoot, 'package.json')
+const catalogPath = resolve(frontendRoot, 'src/services/standards-catalog.ts')
 const findings = []
 
 if (!existsSync(manifestPath)) {
@@ -15,6 +16,11 @@ if (!existsSync(manifestPath)) {
 
 const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'))
 const packageJson = JSON.parse(readFileSync(packagePath, 'utf8'))
+const catalogSource = readFileSync(catalogPath, 'utf8')
+const titleMap = catalogSource.match(/const titles:[\s\S]*?\n}\n/)?.[0] || ''
+const categoryMap = catalogSource.match(/const categoryByDocument:[\s\S]*?\n}\n/)?.[0] || ''
+const summaryMap = catalogSource.match(/const summaryByDocument:[\s\S]*?\n}\n/)?.[0] || ''
+const previewMap = catalogSource.match(/const previewByDocument:[\s\S]*?\n}\n/)?.[0] || ''
 const entries = Array.isArray(manifest.standards) ? manifest.standards : []
 if (manifest.authorityRoot !== 'docs/frontend') {
   findings.push('standards-manifest.json 的唯一权威规范目录必须是 docs/frontend')
@@ -38,6 +44,18 @@ const standardsCommand = String(packageJson.scripts?.['check:standards'] || '')
 for (const entry of entries) {
   const documentPath = resolve(docsRoot, entry.document)
   if (!existsSync(documentPath)) findings.push(`规范文档不存在：docs/frontend/${entry.document}`)
+  if (!titleMap.includes(`'${entry.document}'`)) {
+    findings.push(`规范目录缺少中文标题：docs/frontend/${entry.document}`)
+  }
+  if (!categoryMap.includes(`'${entry.document}'`)) {
+    findings.push(`规范目录缺少分类：docs/frontend/${entry.document}`)
+  }
+  if (!summaryMap.includes(`'${entry.document}'`)) {
+    findings.push(`规范目录缺少专属摘要：docs/frontend/${entry.document}`)
+  }
+  if (!previewMap.includes(`'${entry.document}'`)) {
+    findings.push(`规范目录缺少对应效果预览：docs/frontend/${entry.document}`)
+  }
   if (!Array.isArray(entry.checks) || entry.checks.length === 0) {
     findings.push(`docs/frontend/${entry.document} 没有配置审计命令`)
   }

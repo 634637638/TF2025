@@ -372,6 +372,23 @@ body {
 
 /* 5.1 Form - 移动端通用适配 */
 @media (max-width: 767px) {
+  .product-detail-page .product-title--used {
+    flex-wrap: nowrap;
+    padding-inline: var(--tf-space-3);
+    font-size: var(--tf-type-scale-13);
+    white-space: nowrap;
+  }
+
+  .product-detail-page .product-title--used .title-item {
+    flex-shrink: 0;
+    overflow-wrap: normal;
+    white-space: nowrap;
+  }
+
+  .product-detail-page .product-title--used .title-separator {
+    margin-inline: 0;
+  }
+
   html,
   body,
   #app {

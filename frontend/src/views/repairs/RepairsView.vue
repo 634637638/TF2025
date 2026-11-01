@@ -17,7 +17,7 @@
             type="primary"
             @click="showAddModal"
           >
-            <i class="fas fa-plus" /> 新建维修单
+            <i class="fas fa-plus" /> 新增
           </el-button>
           <el-button
             type="info"
@@ -430,7 +430,7 @@
 
       <MobileDialog
         v-model="showModal"
-        :title="editingRepairId ? '编辑维修单' : '新建维修单'"
+        :title="editingRepairId ? '编辑维修单' : '新增维修单'"
         width="600px"
         dialog-class="repairs-dialog"
         :show-default-footer="false"

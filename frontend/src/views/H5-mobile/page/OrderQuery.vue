@@ -216,6 +216,7 @@ import SectionLoading from '@/components/SectionLoading.vue'
 import { formatAmount, formatDateTime as formatGlobalDateTime, formatImageUrl } from '@/utils/format'
 import { normalizePhoneDigits } from '@/utils/security'
 import { logger } from '@/utils/logger'
+import { getPaymentMethodLabel } from '@/utils/shop-payment'
 import { storage } from '@/services/storage'
 import { H5_STORAGE_KEYS } from '@/constants/storage'
 const router = useRouter()
@@ -472,12 +473,7 @@ const getStatusText = (status: string) => {
 
 // 获取支付方式文本
 const getPaymentText = (method: string) => {
-  const texts: Record<string, string> = {
-    pickup: '到店自提',
-    wechat: '微信支付',
-    alipay: '支付宝'
-  }
-  return texts[method] || method
+  return getPaymentMethodLabel(method)
 }
 
 // 格式化时间

@@ -227,7 +227,7 @@
                 :class="{ active: draftFilters.memory_id === memory.id }"
                 @click="draftFilters.memory_id = memory.id"
               >
-                {{ memory.name }}
+                {{ memory.size || memory.name }}
               </div>
             </div>
           </div>
@@ -508,7 +508,7 @@ const filterText = computed(() => {
   // 内存筛选在二手机模式下可用
   if (filters.value.is_new === false && filters.value.memory_id) {
     const memory = memories.value.find(m => m.id === filters.value.memory_id)
-    if (memory) texts.push(memory.name)
+    if (memory) texts.push(memory.size || memory.name)
   }
   return texts.length > 0 ? texts.join(' · ') : '筛选'
 })

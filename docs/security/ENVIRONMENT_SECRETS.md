@@ -31,7 +31,9 @@ chmod 600 .env.production
 
 ## 前端环境文件
 
-`frontend/.env.production` 用于构建前端。`VITE_` 前缀变量会被编译进浏览器可下载的静态资源，因此只能放公开配置，例如 API 地址、页面标题或公开地图 Key；不能放数据库密码、JWT 密钥、私有令牌或其他后端凭据。
+`frontend/.env.production` 用于构建前端。`VITE_` 前缀变量会被编译进浏览器可下载的静态资源，因此只能放公开配置，例如 API 地址、页面标题或公开地图 Key；不能放数据库密码、JWT 密钥、私有令牌或其他后端凭据。商城配置页也支持维护 `tencent_map_key`，它同样是浏览器公开 Key；必须在腾讯地图控制台配置域名白名单，不能填写服务端私钥。
+
+微信支付 API v3 Key、商户私钥和支付宝应用私钥属于后端秘密。生产环境需在后端 `.env.production` 设置独立的 `CONFIG_ENCRYPTION_KEY`，使用 `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` 生成；该值必须稳定备份，轮换前先设计密文迁移，否则历史支付配置无法解密。详细边界见[商城地图与支付服务配置](../backend/shop-provider-config-standard.md)。
 
 ## 发现密钥误提交时
 

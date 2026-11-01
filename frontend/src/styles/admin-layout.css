@@ -12,8 +12,8 @@
   --admin-panel-gap: 16px;
   --admin-panel-padding: 14px;
   --admin-panel-radius: 12px;
-  --admin-search-panel-padding-y: 12px;
-  --admin-search-panel-padding-x: 16px;
+  --admin-search-panel-padding-y: 8px;
+  --admin-search-panel-padding-x: 8px;
   --admin-search-panel-bg: var(--tf-color-surface-cool-blue);
   --admin-table-panel-padding-y: 24px;
   --admin-table-panel-padding-x: 16px;
@@ -70,8 +70,8 @@
   --admin-data-table-bg: #ffffff;
   --admin-data-table-container-border: #dee2e6;
   --admin-data-table-container-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  --admin-data-table-header-bg: linear-gradient(135deg, #495057 0%, #343a40 100%);
-  --admin-data-table-header-color: #ffffff;
+  --admin-data-table-header-bg: linear-gradient(135deg, var(--tf-color-gray-bootstrap-700) 0%, var(--tf-color-gray-bootstrap-800) 100%);
+  --admin-data-table-header-color: var(--color-bg-white);
   --admin-data-table-header-padding-y: 6px;
   --admin-data-table-header-padding-x: 10px;
   --admin-data-table-header-height: 48px;
@@ -79,7 +79,7 @@
   --admin-data-table-header-font-weight: 600;
   --admin-data-table-header-letter-spacing: 0;
   --admin-data-table-header-border: #dee2e6;
-  --admin-data-table-header-accent: linear-gradient(90deg, #667eea, #764ba2);
+  --admin-data-table-header-accent: linear-gradient(90deg, var(--tf-color-gray-ant-400), var(--tf-color-gray-bootstrap-300));
   --admin-data-table-cell-padding-y: 10px;
   --admin-data-table-cell-padding-x: 8px;
   --admin-data-table-row-height: 48px;

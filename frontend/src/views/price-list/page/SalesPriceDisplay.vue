@@ -209,6 +209,7 @@
           长按保存
         </el-button>
         <el-button
+          :loading="isSharingImage"
           type="primary"
           @click="shareIOSImage"
         >
@@ -237,6 +238,7 @@ import { useLoadingState } from '@/composables'
 import { logger } from '@/utils/logger'
 import { ElMessage } from 'element-plus'
 import { loadHtml2Canvas } from '@/utils/html2canvas'
+import { createShareImageFile } from '@/utils/share-image'
 import { useSiteSettingsStore } from '@/stores/siteSettings'
 import { parsePublicPriceContacts, getDefaultPublicPriceContact, formatPublicPriceWatermark } from '@/utils/publicPriceSettings'
 
@@ -267,6 +269,7 @@ const iosImageFile = ref<File | null>(null)
 const iosBlobImageUrl = ref('')
 const iosDataImageUrl = ref('')
 const iosUseDataImage = ref(false)
+const isSharingImage = ref(false)
 
 const blobToDataUrl = (blob: Blob) => new Promise<string>((resolve, reject) => {
   const reader = new FileReader()
@@ -396,15 +399,16 @@ const closeIOSImageModal = () => {
 }
 
 const shareIOSImage = async () => {
+  if (isSharingImage.value) return
   const file = iosImageFile.value
   if (!file || !navigator.share) {
     ElMessage.warning('当前浏览器不支持系统分享，请长按图片保存')
     return
   }
 
+  isSharingImage.value = true
   try {
-    const siteName = siteSettingsStore.settings.siteName || '销售报价'
-    const shareData = { files: [file], title: `${siteName}销售报价`, text: '报价单图片' }
+    const shareData = { files: [file] }
     if (navigator.canShare && !navigator.canShare(shareData)) {
       ElMessage.warning('当前浏览器不支持系统分享，请长按图片保存')
       return
@@ -414,6 +418,8 @@ const shareIOSImage = async () => {
     if ((error as Error).name !== 'AbortError') {
       ElMessage.warning('系统分享未成功，请长按图片保存')
     }
+  } finally {
+    isSharingImage.value = false
   }
 }
 
@@ -433,8 +439,7 @@ const saveImageToGallery = async (canvas: HTMLCanvasElement) => {
 
       if (isIOS()) {
         try {
-          const file = new File([blob], fileName, { type: 'image/png' })
-          iosImageFile.value = file
+          iosImageFile.value = await createShareImageFile(canvas, fileName)
           iosBlobImageUrl.value = URL.createObjectURL(blob)
           iosDataImageUrl.value = await blobToDataUrl(blob)
           iosUseDataImage.value = shouldUseDataImageForIOS()

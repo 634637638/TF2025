@@ -343,6 +343,8 @@ test('quick-sale accepts canonical IDs, prices, times and operator fields', () =
   assert.doesNotMatch(handler, /purchaseCost \|\||salePrice \|\||sale_price \|\| 0/);
   assert.match(handler, /apple_id/);
   assert.match(handler, /payment_channel/);
+  assert.match(handler, /generateInvoiceNumber\('retail', connection, saleTimeStr\)/);
+  assert.match(handler, /invoice_number/);
   assert.match(frontend, /purchase_cost:/);
   assert.match(frontend, /inventory_time:/);
   assert.match(frontend, /sale_time:/);
@@ -355,6 +357,19 @@ test('quick-sale accepts canonical IDs, prices, times and operator fields', () =
   assert.match(modal, /:value="color\.id"/);
   assert.match(modal, /:value="memory\.id"/);
   assert.doesNotMatch(queryView, /editModalOptions\.brands = \['Apple'/);
+});
+
+test('historical sale invoice backfill is preview-first, transactional and idempotent', () => {
+  const script = read('scripts/backfill-sale-invoice-numbers.js');
+  const packageJson = JSON.parse(read('../backend/package.json'));
+
+  assert.match(script, /const applyChanges = process\.argv\.includes\('--apply'\)/);
+  assert.match(script, /if \(!applyChanges\)/);
+  assert.match(script, /ORDER BY sale_time, id\s+FOR UPDATE/);
+  assert.match(script, /generateInvoiceNumber\(/);
+  assert.match(script, /SET invoice_number = \?/);
+  assert.match(script, /remaining_missing_invoice_count/);
+  assert.equal(packageJson.scripts['backfill:sale-invoice-numbers'], 'node scripts/backfill-sale-invoice-numbers.js');
 });
 
 test('field contract registry has an auditable source mapping for every module', () => {

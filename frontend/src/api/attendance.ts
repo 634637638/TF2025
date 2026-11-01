@@ -6,6 +6,7 @@ import { unifiedApi } from '@/utils/unified-api'
 export interface AttendanceRecord {
   id?: number
   employee_id?: number
+  attendance_batch_id?: string
   record_date: string
   record_type: 'leave' | 'overtime' | 'monthly_leave'
   leave_type?: string
@@ -72,6 +73,16 @@ export interface AttendanceLeaveBalance {
   monthly_history: AttendanceLeaveHistory[]
   last_month_remaining: number
   message: string | null
+  monthly_balances?: Array<{
+    month: string
+    monthly_limit: number
+    carry_in: number
+    paid_used: number
+    unpaid_used: number
+    available: number
+    carry_out: number
+    quota: number
+  }>
 }
 
 export interface AttendanceDashboardStats {
@@ -164,9 +175,9 @@ export const attendanceApi = {
   /**
    * 获取用户休假余额
    */
-  getLeaveBalance: (employee_id?: number) => {
+  getLeaveBalance: (employee_id?: number, range?: { start_date?: string, end_date?: string }) => {
     return unifiedApi.get<AttendanceLeaveBalance>('/attendance/leave-balance', {
-      params: employee_id ? { employee_id } : {}
+      params: { ...(employee_id ? { employee_id } : {}), ...(range || {}) }
     })
   },
 

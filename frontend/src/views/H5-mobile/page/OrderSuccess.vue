@@ -28,12 +28,12 @@
     <!-- 支付方式 -->
     <div class="payment-section">
       <h3 class="section-title">
-        请选择付款方式
+        {{ paymentMethodLabel }}
       </h3>
 
       <!-- 微信支付 -->
       <div
-        v-if="shopConfig.wechat_qrcode"
+        v-if="selectedPaymentMethod === 'qr_wechat' && shopConfig.wechat_qrcode"
         class="payment-method"
       >
         <div class="method-header">
@@ -56,7 +56,7 @@
 
       <!-- 支付宝 -->
       <div
-        v-if="shopConfig.alipay_qrcode"
+        v-if="selectedPaymentMethod === 'qr_alipay' && shopConfig.alipay_qrcode"
         class="payment-method"
       >
         <div class="method-header">
@@ -79,7 +79,22 @@
 
       <!-- 银行转账 -->
       <div
-        v-if="shopConfig.bank_info"
+        v-if="selectedPaymentMethod === 'qr_other' && shopConfig.other_qrcode"
+        class="payment-method"
+      >
+        <div class="method-header">
+          <i class="fas fa-qrcode" /><span>{{ shopConfig.payment_qr_other_name }}</span>
+        </div>
+        <div class="qrcode-box">
+          <img
+            :src="formatImageUrl(shopConfig.other_qrcode)"
+            :alt="`${shopConfig.payment_qr_other_name}二维码`"
+          >
+        </div>
+      </div>
+
+      <div
+        v-if="selectedPaymentMethod === 'bank' && shopConfig.bank_info"
         class="payment-method bank"
       >
         <div class="method-header">
@@ -95,7 +110,10 @@
       </div>
 
       <!-- 到店自提 -->
-      <div class="payment-method pickup">
+      <div
+        v-if="selectedPaymentMethod === 'pickup'"
+        class="payment-method pickup"
+      >
         <div class="method-header">
           <i
             class="fas fa-store"
@@ -150,7 +168,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { getPublicConfig, getOrderByNumber } from '@/api/shop-public'
 import { ElMessage } from 'element-plus'
@@ -158,6 +176,7 @@ import { formatImageUrl } from '@/utils/format'
 import { storage } from '@/services/storage'
 import { H5_STORAGE_KEYS } from '@/constants/storage'
 import { logger } from '@/utils/logger'
+import { getPaymentMethodLabel } from '@/utils/shop-payment'
 const router = useRouter()
 const route = useRoute()
 
@@ -165,6 +184,8 @@ const route = useRoute()
 const orderNumber = ref('')
 const totalAmount = ref('')
 const shopConfig = ref<any>({})
+const selectedPaymentMethod = ref('pickup')
+const paymentMethodLabel = computed(() => getPaymentMethodLabel(selectedPaymentMethod.value, shopConfig.value))
 
 // 获取商城配置
 const loadConfig = async () => {
@@ -178,7 +199,7 @@ const loadConfig = async () => {
 // 获取订单详情
 const loadOrder = async () => {
   // 1. 优先从 sessionStorage 获取订单信息
-  const sessionOrder = storage.get<{ orderNumber: string; totalAmount: string; accessToken?: string; timestamp: number }>(H5_STORAGE_KEYS.ORDER_SUCCESS, 'session')
+  const sessionOrder = storage.get<{ orderNumber: string; totalAmount: string; paymentMethod?: string; accessToken?: string; timestamp: number }>(H5_STORAGE_KEYS.ORDER_SUCCESS, 'session')
 
   if (sessionOrder?.orderNumber) {
     // 验证时间戳（30分钟内有效，允许刷新）
@@ -194,12 +215,14 @@ const loadOrder = async () => {
 
     orderNumber.value = sessionOrder.orderNumber
     totalAmount.value = sessionOrder.totalAmount || '0.00'
+    selectedPaymentMethod.value = sessionOrder.paymentMethod || 'pickup'
 
     // 从后端获取真实订单信息验证
     try {
       const order = await getOrderByNumber(sessionOrder.orderNumber, sessionOrder.accessToken)
       if (order) {
         totalAmount.value = String(order.total_amount || totalAmount.value)
+        selectedPaymentMethod.value = String(order.payment_method || 'pickup')
       }
     } catch (error) {
       logger.error('验证订单失败:', error)
@@ -219,6 +242,7 @@ const loadOrder = async () => {
       if (order) {
         orderNumber.value = orderNum
         totalAmount.value = String(order.total_amount || '0.00')
+        selectedPaymentMethod.value = String(order.payment_method || 'pickup')
         // 保存到 sessionStorage 方便后续使用
         storage.set(H5_STORAGE_KEYS.ORDER_SUCCESS, {
           orderNumber: orderNum,

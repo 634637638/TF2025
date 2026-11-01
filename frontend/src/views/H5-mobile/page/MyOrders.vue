@@ -176,6 +176,7 @@ import Image from '@/components/Image.vue'
 import SectionLoading from '@/components/SectionLoading.vue'
 import { useLoadingState } from '@/composables'
 import { logger } from '@/utils/logger'
+import { getPaymentMethodLabel } from '@/utils/shop-payment'
 import { storage } from '@/services/storage'
 import { H5_STORAGE_KEYS } from '@/constants/storage'
 import { formatAmount, formatDateTime as formatGlobalDateTime } from '@/utils/format'
@@ -288,12 +289,7 @@ const getStatusText = (status: string) => {
 
 // 获取支付方式文本
 const getPaymentText = (method: string) => {
-  const texts: Record<string, string> = {
-    pickup: '到店自提',
-    wechat: '微信支付',
-    alipay: '支付宝'
-  }
-  return texts[method] || method
+  return getPaymentMethodLabel(method)
 }
 
 // 格式化时间

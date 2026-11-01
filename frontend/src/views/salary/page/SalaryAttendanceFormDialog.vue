@@ -54,8 +54,15 @@
         v-if="canViewField(moduleKey, 'attendance_record_date')"
         class="form-group"
       >
-        <label>{{ recordType === 'overtime' ? '加班日期' : '记录日期' }} <span class="required">*</span></label>
+        <label>{{ recordType === 'overtime' ? '加班日期' : `${recordType === 'monthly_leave' ? '休假' : '请假'}日期` }} <span class="required">*</span></label>
+        <DateRangePicker
+          v-if="recordType !== 'overtime'"
+          v-model="leaveDateRange"
+          :clearable="false"
+          :disabled="!canEditField(moduleKey, 'attendance_record_date')"
+        />
         <el-date-picker
+          v-else
           v-model="recordDate"
           type="date"
           class="form-control"
@@ -73,13 +80,14 @@
         >
           <label>休假天数（天） <span class="required">*</span></label>
           <el-input-number
-            v-model.number="monthlyLeaveDays"
+            :model-value="calculatedLeaveDays"
             class="form-control"
             :min="0.5"
             :max="31"
             :step="0.5"
             :controls="false"
-            :disabled="!canEditField(moduleKey, 'monthly_leave_days')"
+            :disabled="!canViewField(moduleKey, 'monthly_leave_days')"
+            readonly
             required
           />
         </div>
@@ -122,16 +130,16 @@
         >
           <label>请假天数（天） <span class="required">*</span></label>
           <el-input-number
-            v-model.number="leaveDays"
+            :model-value="calculatedLeaveDays"
             class="form-control"
             :min="0.1"
             :max="31"
             :step="0.5"
             :controls="false"
-            :disabled="!canEditField(moduleKey, 'leave_days')"
+            :disabled="!canViewField(moduleKey, 'leave_days')"
+            readonly
             required
           />
-          <span class="form-tip">无薪，扣工资</span>
         </div>
       </template>
 
@@ -183,7 +191,7 @@
               value="approved"
               :disabled="!canEditField(moduleKey, 'attendance_status')"
             >
-            <span>已通过（直接生效）</span>
+            <span>已通过</span>
           </label>
           <label class="radio-label">
             <input
@@ -192,7 +200,7 @@
               value="pending"
               :disabled="!canEditField(moduleKey, 'attendance_status')"
             >
-            <span>待审批（需审批后生效）</span>
+            <span>待审批</span>
           </label>
         </div>
       </div>
@@ -228,13 +236,14 @@
 </template>
 
 <script setup lang="ts">
-import { TIME_FORMATS } from '@/utils/time'
+import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import { computed } from 'vue'
 import type { AttendanceRecord } from '@/api/attendance'
+import DateRangePicker from '@/components/DateRangePicker.vue'
 import InlineLoading from '@/components/InlineLoading.vue'
 import MobileDialog from '@/components/MobileDialog.vue'
 
-export type AttendanceForm = AttendanceRecord & { reason: string }
+export type AttendanceForm = AttendanceRecord & { reason: string, record_end_date?: string }
 
 const moduleKey = 'salary_salaryrecordsview'
 const props = defineProps<{
@@ -260,12 +269,38 @@ const createFieldModel = <K extends keyof AttendanceForm>(key: K) => computed({
 
 const recordType = createFieldModel('record_type')
 const recordDate = createFieldModel('record_date')
-const monthlyLeaveDays = createFieldModel('monthly_leave_days')
+const recordEndDate = createFieldModel('record_end_date')
 const leaveType = createFieldModel('leave_type')
-const leaveDays = createFieldModel('leave_days')
 const overtimeHours = createFieldModel('overtime_hours')
 const reason = createFieldModel('reason')
 const status = createFieldModel('status')
+
+const leaveDateRange = computed<[string, string] | null>({
+  get: (): [string, string] | null => recordDate.value
+    ? [recordDate.value, recordEndDate.value || '']
+    : null,
+  set: (value) => {
+    const start = value?.[0] || ''
+    const end = value?.[1] || ''
+    const days = start && end
+      ? Math.abs(TimeUtil.parse(end).diff(TimeUtil.parse(start), 'day')) + 1
+      : 1
+    emit('update:form', {
+      ...props.form,
+      record_date: start,
+      record_end_date: end,
+      ...(recordType.value === 'monthly_leave'
+        ? { monthly_leave_days: days }
+        : { leave_days: days })
+    })
+  }
+})
+
+const calculatedLeaveDays = computed(() => {
+  if (!recordDate.value) return 1
+  const end = recordEndDate.value || recordDate.value
+  return Math.abs(TimeUtil.parse(end).diff(TimeUtil.parse(recordDate.value), 'day')) + 1
+})
 </script>
 
 <style lang="scss" scoped>

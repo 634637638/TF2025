@@ -6,7 +6,8 @@ const _ApiResponse = require('../utils/response')
 const SystemSettingsService = require('./system-settings.service')
 const SalaryRecordService = require('./salary-record.service')
 const SalaryCalculatorService = require('./salary-calculator.service')
-const { getMonthDateRange } = require('../utils/time')
+const { getMonthDateRange, getBeijingTimeString, parseLocalDate, formatLocalDate } = require('../utils/time')
+const { buildMonthlyLeaveBalances, monthKey, shiftMonth } = require('../utils/leave-balance')
 const log = require('../utils/log')
 
 class AttendanceService {
@@ -210,81 +211,66 @@ class AttendanceService {
    * 3. 上个月只有带薪休假（monthly_leave）时，未用完部分仍可累计
    * 4. 累计上限最多 2 个月
    */
-  async getUserLeaveBalance(employeeId) {
+  async getUserLeaveBalance(employeeId, options = {}) {
     try {
-      const now = new Date()
-      const currentYear = now.getFullYear()
-      const currentMonth = now.getMonth() + 1
+      const today = parseLocalDate(getBeijingTimeString())
+      const requestedStart = parseLocalDate(options.start_date) || today
+      const requestedEnd = parseLocalDate(options.end_date) || requestedStart
+      const start = requestedStart <= requestedEnd ? requestedStart : requestedEnd
+      const end = requestedStart <= requestedEnd ? requestedEnd : requestedStart
+      const targetStartKey = monthKey(start)
+      const targetEndKey = monthKey(end)
+      const usageEnd = new Date(end.getFullYear(), end.getMonth() + 1, 0)
 
       // 从员工工资模板获取每月休假天数配置
       const monthlyLeaveDays = await this.getEmployeeMonthlyLeaveDays(employeeId)
 
-      // 获取上个月的使用情况
-      const lastMonthDate = new Date(currentYear, currentMonth - 2, 1)
-      const lastMonthYear = lastMonthDate.getFullYear()
-      const lastMonth = lastMonthDate.getMonth() + 1
-
-      const lastMonthUsed = await this.getUserUsedMonthlyLeaveDays(
+      const monthlyUsage = await this.repository.getUserLeaveMonthlyUsage(
         employeeId,
-        lastMonthYear,
-        lastMonth
+        '1900-01-01',
+        formatLocalDate(usageEnd)
       )
-      const lastMonthRegularLeaveDays = await this.repository.getUserRegularLeaveDays(
-        employeeId,
-        lastMonthYear,
-        lastMonth
-      )
-
-      // 只有上个月存在普通请假（leave）时，才阻断上月剩余额度累计到本月
-      const lastMonthHasRegularLeave = Number(lastMonthRegularLeaveDays || 0) > 0
-
-      // 计算上个月剩余天数
-      const lastMonthRemaining = Math.max(0, monthlyLeaveDays - (lastMonthUsed || 0))
-      const carryForwardDays = lastMonthHasRegularLeave
-        ? 0
-        : Math.min(monthlyLeaveDays, lastMonthRemaining)
-
-      const monthlyUsage = [{
-        year: lastMonthYear,
-        month: lastMonth,
-        used: lastMonthUsed || 0,
-        regular_leave_days: lastMonthRegularLeaveDays || 0,
+      const monthlyBalances = buildMonthlyLeaveBalances({
+        monthlyLimit: monthlyLeaveDays,
+        monthlyUsage,
+        startDate: formatLocalDate(start),
+        endDate: formatLocalDate(end)
+      })
+      const selectedBalance = monthlyBalances.find(item => item.month === targetStartKey) || {
+        month: targetStartKey,
         monthly_limit: monthlyLeaveDays,
-        is_full: (lastMonthUsed || 0) >= monthlyLeaveDays || lastMonthHasRegularLeave,
-        remaining: carryForwardDays,
-        has_regular_leave: lastMonthHasRegularLeave
-      }]
-
-      // 获取当月已使用天数
-      const currentMonthUsed = await this.getUserUsedMonthlyLeaveDays(
-        employeeId,
-        currentYear,
-        currentMonth
-      )
-
-      // 本月总可用额度 = 本月额度 + 上月可累计额度，最多 2 个月
-      const totalMonthlyQuota = Math.min(
-        monthlyLeaveDays * 2,
-        monthlyLeaveDays + carryForwardDays
-      )
-      const totalAvailableDays = totalMonthlyQuota - currentMonthUsed
-
-      const availableDays = Math.max(0, totalAvailableDays)
+        carry_in: 0,
+        paid_used: 0,
+        unpaid_used: 0,
+        available: monthlyLeaveDays,
+        carry_out: monthlyLeaveDays,
+        quota: monthlyLeaveDays
+      }
+      const previousBalance = monthlyBalances.find(item => item.month === shiftMonth(targetStartKey, -1))
+      const availableDays = selectedBalance.available
 
       return {
         monthly_limit: monthlyLeaveDays,
-        used: currentMonthUsed || 0,
+        used: selectedBalance.paid_used,
         available: availableDays,
-        total_quota: totalMonthlyQuota,
+        total_quota: selectedBalance.carry_in + monthlyLeaveDays,
         is_leave_disabled: false,
         consecutive_full_months: 0,
-        monthly_history: monthlyUsage,
-        last_month_remaining: carryForwardDays,
-        message: carryForwardDays > 0
-          ? `上月剩余${carryForwardDays}天可累积到本月，本月总额度${totalMonthlyQuota}天，当前还可用${availableDays}天`
-          : (lastMonthHasRegularLeave
-            ? '上月存在请假记录，本月不累计上月剩余休假额度'
-            : null)
+        monthly_history: previousBalance ? [{
+          year: Number(previousBalance.month.slice(0, 4)),
+          month: Number(previousBalance.month.slice(5, 7)),
+          used: previousBalance.paid_used,
+          regular_leave_days: previousBalance.unpaid_used,
+          monthly_limit: monthlyLeaveDays,
+          is_full: previousBalance.available <= 0,
+          remaining: previousBalance.carry_out,
+          has_regular_leave: previousBalance.unpaid_used > 0
+        }] : [],
+        last_month_remaining: selectedBalance.carry_in,
+        monthly_balances: monthlyBalances,
+        message: selectedBalance.carry_in > 0
+          ? `上月结转${selectedBalance.carry_in}天，本月额度${monthlyLeaveDays}天，当前还可用${availableDays}天`
+          : `本月额度${monthlyLeaveDays}天，当前还可用${availableDays}天`
       }
     } catch (error) {
       throw error

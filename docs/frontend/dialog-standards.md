@@ -92,6 +92,8 @@
 
 MessageBox 的默认宽度由 `--tf-dialog-message-width` 统一控制，当前为 `560px`，用于减少删除确认、清空确认等长内容的无必要换行。手机端仍通过视口可用宽度自动收缩，页面不得单独给某一个删除确认框设置宽度。
 
+退出登录确认使用 `message-box-logout` 语义 class 隐藏标题前的警示状态图标；删除、清空等具有风险提示意义的确认框继续保留公共状态图标。页面不得通过全局选择器统一隐藏所有 MessageBox 图标。
+
 历史页面使用的 `--dialog-*` 变量仍保留为兼容别名，新增代码应使用 `--tf-dialog-*` 变量。`crud-dialog-sm/md/lg` 只改变弹窗宽度，不改变标题、圆角和底部按钮。
 
 ## 标准结构
@@ -111,6 +113,8 @@ MessageBox 的默认宽度由 `--tf-dialog-message-width` 统一控制，当前�
 </MobileDialog>
 ```
 
+`MobileDialog` 的自定义 footer 插槽会直接渲染在唯一的 `.el-dialog__footer` 容器内。不得在公共组件中再套 `.mobile-dialog-footer` 等外壳；业务方只保留按钮组 `.tf-dialog-actions`。外层 footer 的边框、背景、间距和安全区由 `_dialog.scss` 统一控制，按钮排列由 `_dialog-actions.scss` 统一控制。这样可避免底部出现嵌套背景、重复留白或双层边界。
+
 使用原生 `el-dialog` 时，footer 使用统一 class：
 
 ```vue
@@ -126,6 +130,7 @@ MessageBox 的默认宽度由 `--tf-dialog-message-width` 统一控制，当前�
 
 - 普通横向表单使用 `.tf-dialog-form`。
 - 标签置顶的编辑器使用 `.tf-dialog-form--stacked`。
+- 弹窗中的输入框、下拉框、日期框和数字框与全局普通表单统一为 `30px` 高；各设备共用 `_form-controls.scss` 和公共表单高度令牌。
 - 默认正文间距由 `_dialog.scss` 控制，页面不重复设置 `.el-dialog__body` 的 padding。
 - 图片、表格或富文本确实需要贴边时使用 `.tf-dialog-body-flush`，只用于该业务变体。
 - 内容超高时正文滚动，不能隐藏滚动导致按钮不可操作。
@@ -133,18 +138,17 @@ MessageBox 的默认宽度由 `--tf-dialog-message-width` 统一控制，当前�
 
 ## Footer 按钮
 
-- 按钮公共尺寸：PC 高度为 `40px`、最小宽度 `80px`、水平内边距 `16px`、按钮间距 `10px`；手机和平板（`<=1024px`）高度仍为 `40px`，按钮在可用宽度内等分，间距为 `8px`、水平内边距 `10px`，不设置固定宽度。
+- 按钮公共尺寸：PC 高度为 `32px`、最小宽度 `64px`、水平内边距 `8px`、按钮间距 `4px`；手机和平板（`<=1024px`）高度为 `40px`，按钮在可用宽度内等分并占满按钮组宽度，间距为 `8px`、水平内边距 `10px`，不设置固定宽度或最小宽度。
 - 所有业务 footer 容器必须使用 `.tf-dialog-actions`（可与业务语义 class 并列）。
 - PC 端按钮靠右、按内容宽度排列；按钮使用统一最小宽度、统一高度和统一间距。
 - 手机和平板按钮保持一行并在 footer 可用宽度内居中等分，取消在左、确认/保存/提交在右；按钮组占满可用宽度，所有按钮等宽，左右留白必须对称。按钮间距和底部安全区由全局令牌控制。
 - 三个及以上按钮仍使用同一行居中等分布局；不在页面中改成独立 grid 或分别设置左右宽度。
 - 不在页面中给 footer 按钮重复设置高度、宽度、圆角或间距。
+- PC footer 按钮由全局令牌统一为 `32px`；平板和手机维持 `40px`。`MobileDialog` 不得另设按钮尺寸等级或覆盖对应断点高度。
 - 取消使用中性语义，保存/确认使用 `primary`，删除使用 `danger`，完成使用 `success`。
 - 业务 footer 容器可以保留自己的 class，但应同时使用 `.tf-dialog-actions`。
 
-`MobileDialog` 会自动为未显式包裹的 footer 插槽增加 `.mobile-dialog-footer`，因此历史页面中直接放置
-`<el-button>` 仍会获得同一套按钮高度、宽度、间距和移动端居中等分规则；新代码仍必须显式使用
-`.tf-dialog-actions`，便于审计和维护。原生 `el-dialog` 的直接 footer 按钮也由 `_dialog-actions.scss` 统一覆盖；新代码仍应显式包裹，便于审计和维护。
+历史页面即使在 footer 插槽中直接放置 `<el-button>`，也会由 `_dialog-actions.scss` 对 Element Plus footer 直接子级统一尺寸；新代码仍必须显式使用 `.tf-dialog-actions`，便于维护一致的按钮间距和响应式排列。`MobileDialog` 不会为自定义 footer 插槽添加额外包装层。
 
 业务 footer 只允许维护摘要、提示和弹窗宽度等业务布局。禁止在页面样式中重新声明 footer 的 `grid`、
 手机端 `flex-direction: column`、按钮 `width/min-width/max-width/height/min-height/padding`。这些规则由
@@ -162,10 +166,12 @@ MessageBox 的默认宽度由 `--tf-dialog-message-width` 统一控制，当前�
 - [ ] PC、iPad、手机宽度均不溢出
 - [ ] 标题、关闭按钮、正文和 footer 使用公共令牌
 - [ ] footer 使用 `.tf-dialog-actions`
+- [ ] 自定义 footer 插槽只有一个 `.el-dialog__footer` 外壳，没有嵌套 `.mobile-dialog-footer` 背景层
 - [ ] 手机端按钮保持一行且避开安全区
 - [ ] 正文可滚动，footer 始终可操作
 - [ ] 页面没有重复的弹窗外壳样式
 - [ ] 运行 `npm run type-check`、`npm run check:ui` 和 `npm run build`
 - [ ] 运行 `npm run check:dialogs`，确认直接 `el-dialog` 属于已登记的工作台例外
 - [ ] 运行 `npm run check:dialog-actions`，确认没有 footer 的 grid、纵向排列或固定按钮尺寸覆盖
+- [ ] 运行 `npm run check:dialogs`，确认 `MobileDialog` 没有重复 footer 包装层
 - [ ] 检查没有页面级 `width: calc(100vw - ...)` 或 `width: min(..., 100vw)` 覆盖全局宽度

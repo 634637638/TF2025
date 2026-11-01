@@ -39,6 +39,71 @@ export const formatAmount = (amount: number | string | null | undefined, decimal
   return num.toFixed(fractionDigits).replace(/\.?(?:0)+$/, '') || '0'
 }
 
+const RMB_DIGITS = ['零', '壹', '贰', '叁', '肆', '伍', '陆', '柒', '捌', '玖']
+const RMB_SECTION_UNITS = ['', '万', '亿', '兆']
+const RMB_DIGIT_UNITS = ['', '拾', '佰', '仟']
+
+const formatRmbSection = (section: number): string => {
+  let text = ''
+  let zeroPending = false
+
+  for (let position = 3; position >= 0; position -= 1) {
+    const divisor = 10 ** position
+    const digit = Math.floor(section / divisor) % 10
+    if (digit === 0) {
+      if (text) zeroPending = true
+      continue
+    }
+
+    if (zeroPending) text += RMB_DIGITS[0]
+    text += RMB_DIGITS[digit] + RMB_DIGIT_UNITS[position]
+    zeroPending = false
+  }
+
+  return text
+}
+
+/** 格式化人民币大写金额，金额最多保留两位小数。 */
+export const formatRmbUppercase = (amount: number | string | null | undefined): string => {
+  const numericAmount = typeof amount === 'string' ? Number.parseFloat(amount) : Number(amount)
+  if (!Number.isFinite(numericAmount) || numericAmount < 0) return '零元整'
+
+  const roundedAmount = Math.round((numericAmount + Number.EPSILON) * 100) / 100
+  const integerPart = Math.floor(roundedAmount)
+  const decimalPart = Math.round((roundedAmount - integerPart) * 100)
+  const sections: number[] = []
+  let remaining = integerPart
+
+  while (remaining > 0) {
+    sections.push(remaining % 10000)
+    remaining = Math.floor(remaining / 10000)
+  }
+
+  let integerText = ''
+  let hasEmptySection = false
+  for (let index = sections.length - 1; index >= 0; index -= 1) {
+    const section = sections[index]
+    if (section === 0) {
+      if (integerText) hasEmptySection = true
+      continue
+    }
+
+    const needsZero = Boolean(integerText && (section < 1000 || hasEmptySection))
+    if (needsZero && !integerText.endsWith('零')) integerText += '零'
+    integerText += `${formatRmbSection(section)}${RMB_SECTION_UNITS[index]}`
+    hasEmptySection = false
+  }
+
+  integerText = (integerText || RMB_DIGITS[0]).replace(/零+/g, '零').replace(/零$/, '')
+  const jiao = Math.floor(decimalPart / 10)
+  const fen = decimalPart % 10
+
+  if (jiao === 0 && fen === 0) return `${integerText}元整`
+  if (jiao === 0) return `${integerText}元零${RMB_DIGITS[fen]}分`
+  if (fen === 0) return `${integerText}元${RMB_DIGITS[jiao]}角整`
+  return `${integerText}元${RMB_DIGITS[jiao]}角${RMB_DIGITS[fen]}分`
+}
+
 /**
  * 格式化数字
  * @param num 数字
@@ -806,6 +871,7 @@ const escapeHtml = (text: string): string => {
 export default {
   formatCurrency,
   formatAmount,
+  formatRmbUppercase,
   formatNumber,
   formatPercentage,
   formatDateTime,

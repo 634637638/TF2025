@@ -4,12 +4,21 @@
  */
 
 const db = require('../config/database')
+const crypto = require('crypto')
 const fs = require('fs').promises
 const path = require('path')
 const log = require('../utils/log')
 const { getUploadsRoot, getRelativeUploadPathFromUrl, getUploadPathFromUrl } = require('../utils/upload-paths')
 const { archiveShopTemplateUpload, stageShopTemplateUpload, relocateShopTemplateMedia } = require('../utils/shop-media-storage')
 const { ensureShopTemplateMediaSchema } = require('../utils/shop-template-media-schema')
+
+const SECRET_CONFIG_KEYS = new Set([
+  'wechat_pay_api_v3_key',
+  'wechat_pay_private_key',
+  'alipay_private_key',
+  'alipay_public_key',
+  'other_payment_secret'
+])
 
 const H5_ORDER_FIELDS = [
   'id', 'order_number', 'customer_name', 'customer_phone', 'customer_address',
@@ -124,7 +133,7 @@ class ShopService {
       }
       result[config.category].push({
         key: config.config_key,
-        value: this.parseConfigValue(config.config_value, config.config_type),
+        value: this.getConfigDisplayValue(config),
         type: config.config_type,
         description: config.description
       })
@@ -146,7 +155,7 @@ class ShopService {
 
     return configs.map(config => ({
       key: config.config_key,
-      value: this.parseConfigValue(config.config_value, config.config_type),
+      value: this.getConfigDisplayValue(config),
       type: config.config_type,
       description: config.description
     }))
@@ -156,12 +165,18 @@ class ShopService {
    * 更新单个配置
    */
   async updateConfig(key, value) {
+    const storedValue = this.prepareConfigValue(key, value)
+    if (storedValue === undefined) return
     const query = `
       UPDATE H5_config
-      SET config_value = ?, updated_at = NOW()
+      SET config_value = ?, category = CASE
+        WHEN ? IN ('map_provider', 'map_latitude', 'map_longitude', 'tencent_map_key', 'amap_map_key', 'baidu_map_key') THEN 'integration'
+        WHEN ? LIKE 'payment_provider%' OR ? LIKE 'payment_merchant_%' OR ? LIKE 'wechat_pay_%' OR ? LIKE 'alipay_%' OR ? LIKE 'other_payment_%' THEN 'integration'
+        ELSE category
+      END, updated_at = NOW()
       WHERE config_key = ?
     `
-    await db.getDatabase().query(query, [value, key])
+    await db.getDatabase().query(query, [storedValue, key, key, key, key, key, key, key])
   }
 
   /**
@@ -187,10 +202,11 @@ class ShopService {
 
       // 根据配置键推断分类
       const getCategoryByKey = (key) => {
+        if (['map_provider', 'map_latitude', 'map_longitude', 'tencent_map_key', 'amap_map_key', 'baidu_map_key'].includes(key)) return 'integration'
         if (existingMap[key]) return existingMap[key]
         if (key.startsWith('shop_') && key !== 'shop_name' && key !== 'shop_logo' && key !== 'shop_subtitle') return 'contact'
-        if (key.startsWith('map_')) return 'contact'
-        if (key.includes('qrcode') || key.includes('payment') || key.includes('bank')) return 'payment'
+        if (key.includes('qrcode') || key.includes('bank') || key.startsWith('payment_qr_') || key.startsWith('payment_bank_') || key === 'payment_default_method') return 'payment'
+        if (key.startsWith('payment_provider') || key.startsWith('payment_merchant_') || key.startsWith('wechat_pay_') || key.startsWith('alipay_') || key.startsWith('other_payment_')) return 'integration'
         if (key.includes('banner')) return 'banner'
         if (key.includes('cart')) return 'cart'
         return 'general'
@@ -201,13 +217,17 @@ class ShopService {
 
         // 使用 INSERT ... ON DUPLICATE KEY UPDATE
         // 如果记录不存在则插入，存在则更新
+        const storedValue = this.prepareConfigValue(config.key, config.value, existingMap[config.key])
+        if (storedValue === undefined) continue
+
         await connection.query(
           `INSERT INTO H5_config (config_key, config_value, config_type, category, updated_at)
            VALUES (?, ?, 'string', ?, NOW())
            ON DUPLICATE KEY UPDATE
            config_value = VALUES(config_value),
+           category = VALUES(category),
            updated_at = NOW()`,
-          [config.key, config.value, category]
+          [config.key, storedValue, category]
         )
       }
 
@@ -218,6 +238,63 @@ class ShopService {
     } finally {
       connection.release()
     }
+  }
+
+  getConfigEncryptionKey() {
+    const configuredKey = process.env.CONFIG_ENCRYPTION_KEY
+    const sourceKey = configuredKey || (process.env.NODE_ENV !== 'production'
+      ? process.env.JWT_SECRET || 'tf2025-development-config-encryption-key'
+      : '')
+    if (!sourceKey) {
+      throw new Error('生产环境必须配置 CONFIG_ENCRYPTION_KEY 后才能保存支付密钥')
+    }
+    return crypto.createHash('sha256')
+      .update(sourceKey)
+      .digest()
+  }
+
+  encryptConfigSecret(value) {
+    const iv = crypto.randomBytes(12)
+    const cipher = crypto.createCipheriv('aes-256-gcm', this.getConfigEncryptionKey(), iv)
+    const encrypted = Buffer.concat([cipher.update(String(value), 'utf8'), cipher.final()])
+    return `enc:v1:${iv.toString('hex')}:${cipher.getAuthTag().toString('hex')}:${encrypted.toString('hex')}`
+  }
+
+  decryptConfigSecret(value) {
+    if (!String(value || '').startsWith('enc:v1:')) return String(value || '')
+    try {
+      const [, , ivHex, tagHex, encryptedHex] = String(value).split(':')
+      const decipher = crypto.createDecipheriv('aes-256-gcm', this.getConfigEncryptionKey(), Buffer.from(ivHex, 'hex'))
+      decipher.setAuthTag(Buffer.from(tagHex, 'hex'))
+      return Buffer.concat([decipher.update(Buffer.from(encryptedHex, 'hex')), decipher.final()]).toString('utf8')
+    } catch (error) {
+      throw new Error(`配置密钥解密失败: ${error.message}`)
+    }
+  }
+
+  getConfigDisplayValue(config) {
+    const value = this.parseConfigValue(config.config_value, config.config_type)
+    return SECRET_CONFIG_KEYS.has(config.config_key) && value ? '••••••••' : value
+  }
+
+  prepareConfigValue(key, value) {
+    if (SECRET_CONFIG_KEYS.has(key)) {
+      const normalized = String(value ?? '')
+      if (normalized === '••••••••') return undefined
+      return normalized ? this.encryptConfigSecret(normalized) : ''
+    }
+    return value
+  }
+
+  async getConfigValue(key) {
+    const [rows] = await db.getDatabase().query(
+      'SELECT config_key, config_value, config_type FROM H5_config WHERE config_key = ? LIMIT 1',
+      [key]
+    )
+    if (rows.length === 0) return null
+    const config = rows[0]
+    const value = this.parseConfigValue(config.config_value, config.config_type)
+    return SECRET_CONFIG_KEYS.has(key) ? this.decryptConfigSecret(value) : value
   }
 
   // ============================================================================

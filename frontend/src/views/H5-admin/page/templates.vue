@@ -398,78 +398,48 @@
               class="header-form-summary"
             >
               <span class="summary-title">{{ currentBrandName }} {{ currentModelName }}</span>
-              <span class="summary-tip">在弹窗里按颜色维护各自的子模板</span>
             </div>
           </div>
 
-          <div class="editor-layout">
-            <aside class="children-panel">
-              <div class="children-panel-header">
-                <div>
-                  <h4>颜色子模板</h4>
-                  <p>点击颜色切换编辑内容</p>
-                </div>
-              </div>
-
-              <div class="add-child-box">
-                <el-select
-                  v-model="pendingColorId"
-                  placeholder="新增颜色子模板"
-                  filterable
-                  :disabled="!groupForm.brand_id || !groupForm.model_id"
-                >
-                  <el-option
-                    v-for="color in availableColors"
-                    :key="color.id"
-                    :label="color.name"
-                    :value="color.id"
-                  />
-                </el-select>
-                <el-button
-                  type="primary"
-                  :disabled="!canWriteDialog || !pendingColorId || !groupForm.brand_id || !groupForm.model_id"
-                  @click="handleAddChild"
-                >
-                  新增
-                </el-button>
-              </div>
-
-              <div
-                v-if="childDrafts.length > 0"
-                class="child-list"
+          <div class="child-template-selector">
+            <div class="add-child-box">
+              <el-select
+                v-model="pendingColorId"
+                placeholder="新增颜色子模板"
+                filterable
+                :disabled="!groupForm.brand_id || !groupForm.model_id"
               >
-                <el-button
-                  v-for="child in childDrafts"
-                  :key="child.localKey"
-                  native-type="button"
-                  class="child-item"
-                  :class="{ active: child.localKey === selectedChildKey }"
-                  @click="selectedChildKey = child.localKey"
-                >
-                  <div class="child-item-top">
-                    <span class="child-name">{{ child.color_name || `颜色#${child.color_id}` }}</span>
-                    <el-tag
-                      v-if="child.isNew"
-                      type="warning"
-                      size="small"
-                    >
-                      新建
-                    </el-tag>
-                  </div>
-                  <div class="child-item-meta">
-                    <span>{{ formatMemoryNames(child.memory_ids) || '未选内存' }}</span>
-                    <span>{{ child.is_active ? '启用' : '停用' }}</span>
-                  </div>
-                </el-button>
-              </div>
+                <el-option
+                  v-for="color in availableColors"
+                  :key="color.id"
+                  :label="color.name"
+                  :value="color.id"
+                />
+              </el-select>
+              <el-button
+                type="primary"
+                :disabled="!canWriteDialog || !pendingColorId || !groupForm.brand_id || !groupForm.model_id"
+                @click="handleAddChild"
+              >
+                新增
+              </el-button>
+            </div>
 
-              <DataEmptyState
-                v-else
-                description="先添加颜色子模板"
-                :image-size="80"
+            <el-tabs
+              v-if="childDrafts.length"
+              v-model="selectedChildKey"
+              class="tf-page-tabs tf-page-tabs--inline child-template-tabs"
+            >
+              <el-tab-pane
+                v-for="child in childDrafts"
+                :key="child.localKey"
+                :label="child.color_name || `颜色#${child.color_id}`"
+                :name="child.localKey"
+                class="tf-tab-panel"
               />
-            </aside>
-
+            </el-tabs>
+          </div>
+          <div class="editor-layout">
             <section class="editor-panel">
               <template v-if="currentChild">
                 <div class="editor-title-row">
@@ -570,10 +540,10 @@
                             >
                               <el-input-number
                                 :model-value="currentChild.price_markup"
-                              :min="0"
-                              :precision="2"
-                              :step="100"
-                              :controls="false"
+                                :min="0"
+                                :precision="2"
+                                :step="100"
+                                :controls="false"
                                 class="markup-input"
                                 @update:model-value="handleFixedMarkupChange(currentChild, $event)"
                               >
@@ -677,10 +647,7 @@
                   >
                     <template #item="{ element: image, index }">
                       <div class="image-card">
-                        <div
-                          class="image-drag-handle"
-                          title="拖拽排序"
-                        >
+                        <div class="image-drag-handle">
                           <i class="fas fa-grip-vertical" />
                         </div>
                         <img
@@ -711,7 +678,6 @@
                             >
                               视频
                             </el-tag>
-                            <span>拖拽排序</span>
                           </div>
                           <div class="image-card-actions">
                             <el-tooltip
@@ -1107,16 +1073,6 @@ const createEmptyChildDraft = (colorId: number): EditableChildTemplate => {
 }
 
 const getImageUrl = (path: string) => formatImageUrl(path)
-
-const formatMemoryNames = (memoryIds: number[] = []) => {
-  if (!memoryIds.length) {
-    return ''
-  }
-  return memoryIds
-    .map(id => memories.value.find(item => item.id === id)?.size)
-    .filter(Boolean)
-    .join(' / ')
-}
 
 const buildTemplateName = (child: EditableChildTemplate) => {
   const brandName = currentBrandName.value || child.brand_name || ''
@@ -2002,97 +1958,37 @@ onUnmounted(() => {
   color: var(--tf-color-neutral-900);
 }
 
-.summary-tip {
-  font-size: var(--tf-type-scale-12);
-  color: var(--tf-color-neutral-500);
-}
-
 .editor-layout {
+  display: block;
+  min-width: 0;
+}
+
+.child-template-selector {
   display: grid;
-  grid-template-columns: 280px 1fr;
-  gap: 18px;
+  grid-template-columns: minmax(260px, 0.7fr) minmax(0, 1.3fr);
+  align-items: center;
+  gap: var(--tf-space-4);
+  margin-bottom: var(--admin-panel-gap);
   min-width: 0;
-}
-
-.children-panel {
-  border: 1px solid var(--tf-color-neutral-200);
-  border-radius: 18px;
-  padding: 16px;
-  background: var(--tf-color-neutral-25);
-  min-height: 540px;
-  min-width: 0;
-}
-
-.children-panel-header h4 {
-  margin: 0;
-  font-size: var(--tf-type-scale-15);
-  color: var(--tf-color-neutral-900);
-}
-
-.children-panel-header p {
-  margin: 6px 0 0;
-  font-size: var(--tf-type-scale-12);
-  color: var(--tf-color-neutral-500);
+  max-width: 100%;
 }
 
 .add-child-box {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin: 16px 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 96px;
+  gap: var(--tf-space-2);
+  min-width: 0;
+  margin: 0;
 }
 
-.child-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.child-item {
-  width: 100%;
-  border: 1px solid var(--tf-color-neutral-200);
-  border-radius: 14px;
-  padding: 12px;
-  text-align: left;
-  background: var(--color-bg-white);
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.child-item:hover,
-.child-item.active {
-  border-color: var(--tf-color-blue-600);
-  box-shadow: 0 10px 24px rgba(37, 99, 235, 0.12);
-}
-
-.child-item-top {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  align-items: center;
-  margin-bottom: 6px;
-}
-
-.child-name {
-  font-size: var(--tf-type-scale-14);
-  font-weight: 700;
-  color: var(--tf-color-neutral-900);
-}
-
-.child-item-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  font-size: var(--tf-type-scale-12);
-  color: var(--tf-color-neutral-500);
+.child-template-tabs {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .editor-panel {
-  border: 1px solid var(--tf-color-neutral-200);
-  border-radius: 18px;
-  padding: 18px;
-  background: var(--color-bg-white);
-  min-height: 540px;
+  min-height: 0;
   min-width: 0;
 }
 
@@ -2272,15 +2168,22 @@ onUnmounted(() => {
 }
 
 .image-card-body {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   padding: 12px;
 }
 
 .image-card-meta {
   display: flex;
-  justify-content: space-between;
+  flex: 1;
+  justify-content: flex-start;
+  flex-wrap: wrap;
   gap: 8px;
   align-items: center;
-  margin-bottom: 8px;
+  min-width: 0;
+  margin: 0;
   font-size: var(--tf-type-scale-12);
   color: var(--tf-color-neutral-500);
 }
@@ -2289,6 +2192,7 @@ onUnmounted(() => {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
+  flex-shrink: 0;
 }
 
 .image-action-btn {
@@ -2352,14 +2256,6 @@ onUnmounted(() => {
   }
 
   .dialog-header-form {
-    grid-template-columns: 1fr;
-  }
-
-  .editor-layout {
-    grid-template-columns: 1fr;
-  }
-
-  .editor-form-grid {
     grid-template-columns: 1fr;
   }
 
@@ -2521,62 +2417,6 @@ onUnmounted(() => {
     font-size: var(--tf-type-scale-14);
   }
 
-  .editor-layout {
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
-
-  .children-panel,
-  .editor-panel {
-    min-height: 0;
-    padding: 12px;
-    border-radius: 14px;
-  }
-
-  .children-panel-header {
-    display: none;
-  }
-
-  .add-child-box {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 72px;
-    gap: 8px;
-    margin: 0 0 10px;
-  }
-
-  .add-child-box .el-button {
-    width: 100%;
-    margin: 0;
-  }
-
-  .child-list {
-    display: grid;
-    grid-auto-flow: column;
-    grid-auto-columns: minmax(132px, 44%);
-    gap: 8px;
-    overflow-x: auto;
-    padding-bottom: 2px;
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .child-list::-webkit-scrollbar {
-    display: none;
-  }
-
-  .child-item {
-    padding: 10px;
-    border-radius: 12px;
-  }
-
-  .child-name {
-    font-size: var(--tf-type-scale-13);
-  }
-
-  .child-item-meta {
-    font-size: var(--tf-type-scale-11);
-  }
-
   .editor-title-row {
     gap: 10px;
     margin-bottom: 12px;
@@ -2666,8 +2506,7 @@ onUnmounted(() => {
   }
 
   .image-card-meta {
-    align-items: flex-start;
-    margin-bottom: 7px;
+    align-items: center;
     font-size: var(--tf-type-scale-10);
   }
 
@@ -2730,9 +2569,7 @@ onUnmounted(() => {
   .dialog-header-form,
   .editor-layout,
   .editor-form-grid,
-  .editor-block,
-  .children-panel,
-  .editor-panel {
+  .editor-block {
     width: 100%;
     max-width: 100%;
     min-width: 0;
@@ -2745,53 +2582,14 @@ onUnmounted(() => {
     margin-bottom: 12px;
   }
 
-  .editor-layout {
+  .child-template-selector {
     grid-template-columns: 1fr;
     gap: 10px;
-  }
-
-  .children-panel,
-  .editor-panel {
-    min-height: 0;
-    padding: 12px;
-    border-radius: 14px;
-  }
-
-  .children-panel-header {
-    display: none;
+    margin-bottom: 12px;
   }
 
   .add-child-box {
-    display: grid;
     grid-template-columns: minmax(0, 1fr) 72px;
-    gap: 8px;
-    margin: 0 0 10px;
-  }
-
-  .add-child-box .el-button {
-    width: 100%;
-    margin: 0;
-  }
-
-  .child-list {
-    display: grid;
-    grid-auto-flow: column;
-    grid-auto-columns: minmax(132px, 44%);
-    gap: 8px;
-    overflow-x: auto;
-    padding-bottom: 2px;
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .child-list::-webkit-scrollbar {
-    display: none;
-  }
-
-  .child-item {
-    min-width: 0;
-    padding: 10px;
-    border-radius: 12px;
   }
 
   .editor-title-row,

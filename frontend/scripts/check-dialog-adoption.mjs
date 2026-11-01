@@ -20,6 +20,7 @@ const requiredMobileDialogFiles = [
   'src/views/query/QueryView.vue',
   'src/components/query/QueryDetailDialog.vue'
 ]
+const mobileDialogPath = join(sourceRoot, 'components/MobileDialog.vue')
 
 function walk(directory, files = []) {
   for (const entry of readdirSync(directory, { withFileTypes: true })) {
@@ -56,6 +57,11 @@ for (const relativeFile of requiredMobileDialogFiles) {
   if (!/<MobileDialog\b/.test(source)) {
     findings.push(`${relativeFile} 的查询弹窗必须接入 MobileDialog 全局响应式方案`)
   }
+}
+
+const mobileDialogSource = readFileSync(mobileDialogPath, 'utf8')
+if (/class="mobile-dialog-footer"/.test(mobileDialogSource)) {
+  findings.push('src/components/MobileDialog.vue 自定义 footer 不得自动包裹 .mobile-dialog-footer；底部只能保留一个 .el-dialog__footer 外壳')
 }
 
 if (findings.length) {

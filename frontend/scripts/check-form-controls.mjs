@@ -6,6 +6,8 @@ const sourceRoot = join(root, 'src')
 const findings = []
 const sharedFormControlsPath = join(sourceRoot, 'styles/components/_form-controls.scss')
 const sharedFormControls = readFileSync(sharedFormControlsPath, 'utf8')
+const variablesSource = readFileSync(join(sourceRoot, 'styles/_variables.scss'), 'utf8')
+const globalStylesSource = readFileSync(join(sourceRoot, 'styles.scss'), 'utf8')
 const sharedFormControlsRelativePath = relative(root, sharedFormControlsPath)
 const publicControlSizeFiles = new Set([
   sharedFormControlsRelativePath,
@@ -80,6 +82,12 @@ if (!sharedFormControls.includes('.el-input-number .el-input-number__increase')
   || !sharedFormControls.includes('--tf-textarea-compact-height')
   || !sharedFormControls.includes('border-radius: var(--tf-radius-control)')) {
   findings.push('公共表单控件样式必须统一维护数字步进按钮和文本域手动拉伸行为')
+}
+
+if (!/--input-height-default\s*:\s*30px\s*;/.test(variablesSource)
+  || !/--mobile-control-height\s*:\s*30px\s*;/.test(globalStylesSource)
+  || !/@media\s*\(max-width:\s*479px\)[\s\S]*?--mobile-control-height\s*:\s*30px\s*;/.test(globalStylesSource)) {
+  findings.push('普通表单控件在 PC、移动端和超窄屏的全局高度令牌必须统一为 30px')
 }
 
 function walk(directory, files = []) {

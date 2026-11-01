@@ -74,6 +74,53 @@ html body input:-webkit-autofill:active {
   caret-color: var(--el-text-color-primary, var(--text-primary));
 }
 
+/*
+ * Autofill paints the native input with an inset shadow. Repaint the wrapper
+ * edge above that shadow so the control keeps one continuous border.
+ */
+html body :is(
+  .el-input__wrapper,
+  .el-select__wrapper,
+  .el-date-editor .el-input__wrapper,
+  .el-input-number .el-input__wrapper
+):has(input:-webkit-autofill) {
+  position: relative;
+  box-shadow: none;
+}
+
+html body :is(
+  .el-input__wrapper,
+  .el-select__wrapper,
+  .el-date-editor .el-input__wrapper,
+  .el-input-number .el-input__wrapper
+):has(input:-webkit-autofill)::after {
+  position: absolute;
+  border: 1px solid var(--el-border-color, var(--tf-color-gray-300-alt));
+  border-radius: inherit;
+  content: '';
+  inset: 0;
+  pointer-events: none;
+  box-sizing: border-box;
+}
+
+html body :is(
+  .el-input__wrapper,
+  .el-select__wrapper,
+  .el-date-editor .el-input__wrapper,
+  .el-input-number .el-input__wrapper
+):has(input:-webkit-autofill:focus) {
+  box-shadow: var(--tf-form-control-focus-ring);
+}
+
+html body :is(
+  .el-input__wrapper,
+  .el-select__wrapper,
+  .el-date-editor .el-input__wrapper,
+  .el-input-number .el-input__wrapper
+):has(input:-webkit-autofill:focus)::after {
+  border-color: transparent;
+}
+
 /* 全局表单控件行为：数字输入不显示步进按钮，多行文本默认固定高度并允许手动向下拉伸。 */
 :root {
   --tf-textarea-compact-height: 60px;

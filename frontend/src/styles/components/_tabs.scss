@@ -185,6 +185,11 @@
   box-shadow: var(--tf-tabs-shadow);
 }
 
+/* Inline toolbar TAB shares a row with form controls and must not reserve page-level spacing. */
+.tf-page-tabs.el-tabs.tf-page-tabs--inline > .el-tabs__header {
+  margin-bottom: 0;
+}
+
 .tf-page-tabs.el-tabs > .el-tabs__header .el-tabs__nav-wrap::after,
 .tf-page-tabs.el-tabs > .el-tabs__header .el-tabs__active-bar {
   display: none;

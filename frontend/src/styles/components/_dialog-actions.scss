@@ -1,8 +1,8 @@
 :root {
-  --tf-dialog-action-min-width: 80px;
-  --tf-dialog-action-height: 40px;
-  --tf-dialog-action-padding-x: var(--tf-space-4);
-  --tf-dialog-action-gap: 10px;
+  --tf-dialog-action-min-width: 64px;
+  --tf-dialog-action-height: 32px;
+  --tf-dialog-action-padding-x: min(var(--tf-space-2), var(--tf-space-4));
+  --tf-dialog-action-gap: var(--tf-space-1);
   --tf-dialog-action-mobile-gap: var(--tf-space-2);
 }
 
@@ -127,6 +127,11 @@
   color: var(--tf-button-danger-bg) !important;
 }
 
+/* 退出确认标题已经明确表达动作，不显示标题前的警示图标。 */
+.message-box-logout .el-message-box__status {
+  display: none;
+}
+
 .message-box-danger .el-message-box__btns .el-button--primary {
   background: var(--tf-button-danger-bg) !important;
   border-color: var(--tf-button-danger-border) !important;
@@ -172,6 +177,10 @@
 }
 
 @media (max-width: 1024px) {
+  :root {
+    --tf-dialog-action-height: 40px;
+  }
+
   .el-message-box__btns,
   :where(
     .tf-dialog-actions,

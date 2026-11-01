@@ -236,7 +236,7 @@ for (const file of [...walk(viewsRoot), ...walk(componentsRoot)]) {
     const tag = match[0]
     const line = lineNumber(source, match.index)
     const compact = /\bclass-name=["'][^"']*\bcompact-action-column\b/i.test(tag)
-    const dynamicWidth = /:width=["'](?:[^"']*ActionColumnWidth|[^"']*\$?get(?:Adaptive)?ActionColumnMin?Width\s*\()[^"']*["']/i.test(tag)
+    const dynamicWidth = /:(?:min-)?width=["'](?:[^"']*ActionColumnWidth|[^"']*\$?get(?:Adaptive)?ActionColumnMin?Width\s*\()[^"']*["']/i.test(tag)
     const columnEnd = source.indexOf('</el-table-column>', match.index)
     const columnSource = columnEnd === -1 ? tag : source.slice(match.index, columnEnd)
 

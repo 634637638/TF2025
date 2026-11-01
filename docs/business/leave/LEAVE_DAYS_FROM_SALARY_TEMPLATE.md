@@ -2,7 +2,7 @@
 
 ## 功能说明
 
-**每月带薪休假天数现在从员工的工资模板中获取**，而不是使用全局统一的系统设置。
+**每月带薪休假天数从员工的工资模板中获取**。未使用额度最多结转一个自然月，因此可用上限按模板动态计算为“月额度 × 2”，而不是固定 4 天。若上月有无薪请假记录，上月余额不结转到本月；本月模板额度仍有效。
 
 ## 修改内容
 
@@ -45,7 +45,7 @@ CREATE TABLE salary_templates (
   id INT PRIMARY KEY AUTO_INCREMENT,
   name VARCHAR(100),
   base_salary DECIMAL(10, 2),
-  rest_days INT DEFAULT 2,  -- 每月带薪休假天数
+  rest_days INT DEFAULT 2,  -- 每月带薪休假天数；2 是系统兜底值，实际以模板配置为准
   -- 其他字段...
 );
 ```
@@ -70,9 +70,9 @@ CREATE TABLE users (
 
 | 模板名称 | 底薪 | 休假天数 |
 |----------|------|----------|
-| 普通员工 | 3000 | 2天 |
-| 主管 | 5000 | 3天 |
-| 经理 | 8000 | 4天 |
+| 普通员工 | 3000 | 2天，最多累计4天 |
+| 主管 | 5000 | 3天，最多累计6天 |
+| 经理 | 8000 | 4天，最多累计8天 |
 
 **员工分配：**
 - 员工A（普通员工模板）：每月2天带薪休假
@@ -84,8 +84,8 @@ CREATE TABLE users (
 **员工B（主管模板，每月3天休假）**
 
 ```
-2025年12月：休假2天（未用满，剩余1天）
-2026年1月：可用 = 1(上月剩余) + 3(本月配额) = 4天
+2025年12月：月额度3天，休假2天（未用满，剩余1天）
+2026年1月：可用 = 1(上月剩余) + 3(本月配额) = 4天，最高不超过6天
 
 申请：
   1月5日：休假2天 → 剩余2天
@@ -120,9 +120,9 @@ async getEmployeeMonthlyLeaveDays(employeeId) {
 | 场景 | 处理方式 |
 |------|----------|
 | 员工有工资模板，配置了休假天数 | 使用工资模板的配置 ✅ |
-| 员工有工资模板，但未配置休假天数 | 使用系统默认值（2天） |
-| 员工没有分配工资模板 | 使用系统默认值（2天） |
-| 数据库查询出错 | 使用系统默认值（2天） |
+| 员工有工资模板，但未配置休假天数 | 使用系统配置的默认额度 |
+| 员工没有分配工资模板 | 使用系统配置的默认额度 |
+| 数据库查询出错 | 使用系统配置的默认额度 |
 
 ## 工资模板管理
 
@@ -157,7 +157,7 @@ ORDER BY rest_days DESC;
 │ 休假说明                                │
 ├─────────────────────────────────────────┤
 │ 上月剩余1天可累积到本月，本月最多可用   │
-│ 4天（来自工资模板配置）                 │
+│ 4天（当前模板月额度2天 × 2）             │
 │                                         │
 │ 上个月休假记录：                         │
 │ 2025年12月：已休 2/3 天 [剩余1天可累积] │
@@ -166,21 +166,14 @@ ORDER BY rest_days DESC;
 
 ## 工资计算
 
-工资计算时也会使用相同的 `rest_days` 配置：
+工资结算与休假申请共用按自然月计算的额度规则。带薪休假日保留工资和提成；无薪请假日按实际请假记录扣除工资并排除当天提成。额度检查使用 `rest_days`，上月存在无薪请假时不结转上月余额：
 
 ```javascript
 // salary-calculator.service.js
 const template = await getEmployeeSalaryTemplate(employeeId);
-const restDays = template.rest_days; // 与休假申请使用相同的配置
-
-// 计算请假扣款
-if (leaveDays <= restDays) {
-  // 在休假天数内，不扣款
-  deduction = 0;
-} else {
-  // 超过休假天数，扣款
-  deduction = dailySalary * (leaveDays - restDays);
-}
+const monthlyBalances = buildMonthlyLeaveBalances({ monthlyLimit: template.rest_days, monthlyUsage, startDate, endDate });
+const eligiblePaidLeave = monthlyBalances.find(item => item.month === payrollMonth)?.quota ?? template.rest_days;
+const unpaidLeaveDeduction = dailySalary * actualUnpaidLeaveDays;
 ```
 
 ## 总结

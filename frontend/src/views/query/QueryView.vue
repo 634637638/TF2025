@@ -548,7 +548,6 @@
       :sales-operator="receiptSalesOperator"
       :receipt-number="receiptNumber"
       :sale-date="receiptSaleDate"
-      :purchase-date="receiptPurchaseDate"
       @close="showReceipt = false"
       @add-item="handleAddItemToReceipt"
     />
@@ -802,7 +801,6 @@ const receiptStoreName = ref('')
 const receiptSalesOperator = ref('')
 const receiptNumber = ref('')
 const receiptSaleDate = ref('')
-const receiptPurchaseDate = ref('')
 
 // 图片预览相关状态
 const showImageModal = ref(false)
@@ -2278,15 +2276,9 @@ const openReceiptForItem = (item: QueryItem) => {
     memory: basicInfo.memory || '',
     imei: basicInfo.imei || '',
     serialNumber: basicInfo.serial_number || '',
-    purchasePrice: priceInfo.purchase_cost || 0,
     salePrice: priceInfo.sale_price || 0,
     // 正确处理 is_new 字段：0=二手，1=全新，undefined 默认为全新
-    isNew: basicInfo.is_new !== undefined ? basicInfo.is_new : 1,
-    purchaseDate: timeInfo.inventory_time || '',
-    // 销售日期用于多商品时单独显示 - 确保不为空字符串
-    saleDate: timeInfo.sale_time && timeInfo.sale_time.trim() !== '' ? timeInfo.sale_time : undefined,
-    // 店铺名称 - 单个商品也需要显示 - 确保不为空字符串或'-'
-    storeName: storeInfo.store_name && storeInfo.store_name.trim() !== '' && storeInfo.store_name !== '-' ? storeInfo.store_name : undefined
+    isNew: basicInfo.is_new !== undefined ? basicInfo.is_new : 1
   }]
   receiptCustomerName.value = normalizePersonName(customerInfo.customer_name || '', 20)
   receiptCustomerPhone.value = normalizePhoneDigits(customerInfo.customer_phone || '')
@@ -2297,8 +2289,6 @@ const openReceiptForItem = (item: QueryItem) => {
 
   // 销售时间从"时间信息"对象中获取
   receiptSaleDate.value = timeInfo.sale_time || ''
-  receiptPurchaseDate.value = timeInfo.inventory_time || ''
-
   showReceipt.value = true
 }
 
@@ -2354,14 +2344,10 @@ const _openSelectedReceipt = () => {
   // 销售时间从"时间信息"对象中获取（使用第一个选中项的时间信息）
   const timeInfo = firstItem.时间信息 || {} as QueryItem['时间信息']
   receiptSaleDate.value = timeInfo.sale_time || ''
-  receiptPurchaseDate.value = timeInfo.inventory_time || ''
-
   // 构建商品列表
   receiptItems.value = selectedItems.value.map(item => {
     const basic = item.基本信息 || {} as QueryItem['基本信息']
     const price = item.价格信息 || {} as QueryItem['价格信息']
-    const timeInfo = item.时间信息 || {} as QueryItem['时间信息']
-    const storeInfo = item.店铺信息 || {} as QueryItem['店铺信息']
     return {
       phone_id: basic.phone_id,
       brand: basic.brand || '',
@@ -2370,15 +2356,9 @@ const _openSelectedReceipt = () => {
       memory: basic.memory || '',
       imei: basic.imei || '',
       serialNumber: basic.serial_number || '',
-      purchasePrice: price.purchase_cost || 0,
       salePrice: price.sale_price || 0,
       // 正确处理 is_new 字段：0=二手，1=全新，undefined 默认为全新
-      isNew: basic.is_new !== undefined ? basic.is_new : 1,
-      purchaseDate: timeInfo.inventory_time || '',
-      // 销售日期：多商品时每个商品单独显示 - 确保不为空字符串
-      saleDate: timeInfo.sale_time && timeInfo.sale_time.trim() !== '' ? timeInfo.sale_time : undefined,
-      // 店铺名称 - 多商品时每个商品单独显示 - 确保不为空字符串或'-'
-      storeName: storeInfo.store_name && storeInfo.store_name.trim() !== '' && storeInfo.store_name !== '-' ? storeInfo.store_name : undefined
+      isNew: basic.is_new !== undefined ? basic.is_new : 1
     }
   })
 
@@ -2442,14 +2422,9 @@ const handleAddItemToReceipt = (item: any) => {
     memory: item.memory || item.memory_size || '',
     imei: item.imei || '',
     serialNumber: item.serial_number || '',
-    purchasePrice: Number(item.purchase_cost || 0),
     salePrice: Number(item.sale_price || item.price || 0),
     // 正确处理 is_new 字段：0=二手，1=全新，undefined 默认为全新
-    isNew: item.is_new !== undefined ? item.is_new : 1,
-    purchaseDate: item.inventory_time || '',
-    // 添加销售时间和店铺信息 - 确保不为空字符串
-    saleDate: item.sale_time ? item.sale_time.trim() || undefined : undefined,
-    storeName: item.store_name && item.store_name.trim() !== '' && item.store_name !== '-' ? item.store_name : undefined
+    isNew: item.is_new !== undefined ? item.is_new : 1
   }
 
   // 检查是否已存在

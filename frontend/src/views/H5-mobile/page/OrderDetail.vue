@@ -215,88 +215,26 @@
 
           <!-- 支付方式选项 -->
           <div class="payment-options">
-            <!-- 微信支付 -->
             <div
-              v-if="shopConfig.wechat_qrcode"
+              v-for="option in paymentMethodOptions"
+              :key="option.code"
               class="payment-option"
-              :class="{ active: selectedPaymentMethod === 'wechat' }"
-              @click="selectPaymentMethod('wechat')"
+              :class="{ active: selectedPaymentMethod === option.code }"
+              @click="selectPaymentMethod(option.code)"
             >
-              <div class="payment-icon wechat">
-                <i class="fab fa-weixin" />
+              <div
+                class="payment-icon"
+                :class="option.iconClass"
+              >
+                <i :class="option.icon" />
               </div>
               <div class="payment-info">
-                <span class="payment-name">微信支付</span>
-                <span class="payment-desc">推荐使用微信支付</span>
+                <span class="payment-name">{{ option.label }}</span>
+                <span class="payment-desc">{{ option.description }}</span>
               </div>
               <div class="payment-check">
                 <i
-                  v-if="selectedPaymentMethod === 'wechat'"
-                  class="fas fa-check-circle"
-                />
-              </div>
-            </div>
-
-            <!-- 支付宝 -->
-            <div
-              v-if="shopConfig.alipay_qrcode"
-              class="payment-option"
-              :class="{ active: selectedPaymentMethod === 'alipay' }"
-              @click="selectPaymentMethod('alipay')"
-            >
-              <div class="payment-icon alipay">
-                <i class="fab fa-alipay" />
-              </div>
-              <div class="payment-info">
-                <span class="payment-name">支付宝</span>
-                <span class="payment-desc">支付宝安全支付</span>
-              </div>
-              <div class="payment-check">
-                <i
-                  v-if="selectedPaymentMethod === 'alipay'"
-                  class="fas fa-check-circle"
-                />
-              </div>
-            </div>
-
-            <!-- 银行转账 -->
-            <div
-              v-if="shopConfig.bank_info"
-              class="payment-option"
-              :class="{ active: selectedPaymentMethod === 'bank' }"
-              @click="selectPaymentMethod('bank')"
-            >
-              <div class="payment-icon bank">
-                <i class="fas fa-university" />
-              </div>
-              <div class="payment-info">
-                <span class="payment-name">银行转账</span>
-                <span class="payment-desc">银行柜台转账</span>
-              </div>
-              <div class="payment-check">
-                <i
-                  v-if="selectedPaymentMethod === 'bank'"
-                  class="fas fa-check-circle"
-                />
-              </div>
-            </div>
-
-            <!-- 到店自提 -->
-            <div
-              class="payment-option"
-              :class="{ active: selectedPaymentMethod === 'pickup' }"
-              @click="selectPaymentMethod('pickup')"
-            >
-              <div class="payment-icon pickup">
-                <i class="fas fa-store" />
-              </div>
-              <div class="payment-info">
-                <span class="payment-name">到店自提</span>
-                <span class="payment-desc">到店支付，方便快捷</span>
-              </div>
-              <div class="payment-check">
-                <i
-                  v-if="selectedPaymentMethod === 'pickup'"
+                  v-if="selectedPaymentMethod === option.code"
                   class="fas fa-check-circle"
                 />
               </div>
@@ -308,7 +246,7 @@
         <template v-else-if="paymentStep === 'pay'">
           <!-- 微信支付二维码 -->
           <div
-            v-if="selectedPaymentMethod === 'wechat'"
+            v-if="selectedPaymentMethod === 'qr_wechat'"
             class="payment-qrcode"
           >
             <div class="qrcode-header">
@@ -331,7 +269,7 @@
 
           <!-- 支付宝二维码 -->
           <div
-            v-else-if="selectedPaymentMethod === 'alipay'"
+            v-else-if="selectedPaymentMethod === 'qr_alipay'"
             class="payment-qrcode"
           >
             <div class="qrcode-header">
@@ -350,6 +288,21 @@
             <p class="payment-tip">
               请使用支付宝扫一扫，扫描二维码完成支付
             </p>
+          </div>
+
+          <div
+            v-else-if="selectedPaymentMethod === 'qr_other'"
+            class="payment-qrcode"
+          >
+            <div class="qrcode-header">
+              <i class="fas fa-qrcode" /><span>{{ shopConfig.payment_qr_other_name }}</span>
+            </div>
+            <div class="qrcode-box">
+              <img
+                :src="formatImageUrl(shopConfig.other_qrcode)"
+                :alt="`${shopConfig.payment_qr_other_name}二维码`"
+              >
+            </div>
           </div>
 
           <!-- 银行转账信息 -->
@@ -459,6 +412,7 @@ import { formatImageUrl } from '@/utils/format'
 import { logger } from '@/utils/logger'
 import { storage } from '@/services/storage'
 import { H5_STORAGE_KEYS } from '@/constants/storage'
+import { getShopPaymentOptions, getPaymentMethodLabel } from '@/utils/shop-payment'
 const router = useRouter()
 const route = useRoute()
 
@@ -466,6 +420,7 @@ const orderData = ref<any>(null)
 const orderAccessToken = ref('')
 const loading = ref(true)
 const shopConfig = ref<any>({})
+const paymentMethodOptions = computed(() => getShopPaymentOptions(shopConfig.value))
 const cancelling = ref(false)
 const remainingTime = ref(0)
 let countdownTimer: any = null
@@ -547,12 +502,7 @@ const getStatusText = (status: string) => {
 
 // 获取支付方式文本
 const getPaymentText = (method: string) => {
-  const texts: Record<string, string> = {
-    pickup: '到店自提',
-    wechat: '微信支付',
-    alipay: '支付宝'
-  }
-  return texts[method] || method
+  return getPaymentMethodLabel(method, shopConfig.value)
 }
 
 // 计算剩余时间（秒）

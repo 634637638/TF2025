@@ -493,7 +493,7 @@ import { formatSafeImageUrl, generateProductPlaceholder } from '@/utils/format'
 import { storage } from '@/services/storage'
 import { logger } from '@/utils/logger'
 import { sortOptionsByOrder } from '@/utils/option-sort'
-import { buildTencentMapScriptUrl, ensureTencentMapKey } from '@/utils/tencent-map'
+import { ensureTencentMapKey, loadTencentMapScript } from '@/utils/tencent-map'
 // 滚动位置存储键前缀
 const SCROLL_POSITION_PREFIX = 'scroll-pos_'
 
@@ -995,47 +995,22 @@ const handleShare = () => {
 
 const openExternalMap = () => {
   if (config.value.map_latitude && config.value.map_longitude) {
-    // 打开腾讯地图导航
     const lat = config.value.map_latitude
     const lng = config.value.map_longitude
     const name = encodeURIComponent(config.value.shop_name || '店铺')
     const addr = encodeURIComponent(config.value.shop_address || '')
-    window.open(`https://apis.map.qq.com/uri/v1/routeplan?type=drive&to=${name}&tocoord=${lat},${lng}&addr=${addr}&referer=TF2025`, '_blank')
+    const provider = config.value.map_provider || 'tencent'
+    const mapUrl = provider === 'amap'
+      ? `https://uri.amap.com/marker?position=${lng},${lat}&name=${name}&src=TF2025&coordinate=gaode&callnative=0`
+      : provider === 'baidu'
+        ? `https://api.map.baidu.com/marker?location=${lat},${lng}&title=${name}&content=${addr}&output=html&src=TF2025`
+        : `https://apis.map.qq.com/uri/v1/routeplan?type=drive&to=${name}&tocoord=${lat},${lng}&addr=${addr}&referer=TF2025`
+    window.open(mapUrl, '_blank', 'noopener,noreferrer')
   }
 }
 
 // 地图相关
 let mobileMap: any = null
-let mapScriptLoaded = false
-
-// 加载腾讯地图脚本
-const loadTencentMapScript = () => {
-  return new Promise((resolve, reject) => {
-    if (mapScriptLoaded || (window as any).TMap) {
-      mapScriptLoaded = true
-      resolve(true)
-      return
-    }
-
-    const mapScriptUrl = buildTencentMapScriptUrl()
-    if (!mapScriptUrl) {
-      ensureTencentMapKey()
-      reject(new Error('腾讯地图 Key 未配置'))
-      return
-    }
-
-    const script = document.createElement('script')
-    script.src = mapScriptUrl
-    script.onload = () => {
-      mapScriptLoaded = true
-      resolve(true)
-    }
-    script.onerror = () => {
-      reject(new Error('地图脚本加载失败'))
-    }
-    document.head.appendChild(script)
-  })
-}
 
 // 初始化地图
 const initMap = async () => {
@@ -1044,14 +1019,26 @@ const initMap = async () => {
   }
 
   try {
-    await loadTencentMapScript()
-
     await nextTick()
     const container = document.getElementById('mobile-map-container')
     if (!container) {
       logger.error('地图容器不存在')
       return
     }
+
+    if ((config.value.map_provider || 'tencent') !== 'tencent') {
+      container.innerHTML = '<div class="map-error-container"><div>当前地图服务商尚未接入</div><div class="map-error-tip">请在后台选择腾讯地图，或等待对应地图 SDK 接入</div></div>'
+      return
+    }
+
+    const mapKey = ensureTencentMapKey(config.value.tencent_map_key)
+    if (!mapKey) {
+      container.innerHTML = '<div class="map-error-container"><div>地图服务尚未配置</div><div class="map-error-tip">请联系管理员在商城配置中填写腾讯地图 Key</div></div>'
+      return
+    }
+    await loadTencentMapScript(mapKey)
+
+    await nextTick()
 
     // 如果地图已初始化，先销毁
     if (mobileMap) {

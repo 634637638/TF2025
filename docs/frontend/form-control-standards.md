@@ -29,12 +29,13 @@ Element Plus 的 `el-select`、`el-date-picker`、`el-input`、`el-input-number`
 普通输入、选择、日期和数字控件的圆角与高度只允许由
 `frontend/src/styles/components/_form-controls.scss` 维护：
 
-- PC 端普通控件高度统一为 `var(--input-height-default)`，当前值为 `38px`。
-- 手机端普通控件高度统一为 `var(--mobile-control-height)`，默认 `40px`；超窄屏由全局移动端令牌调整为 `38px`。
+- PC、平板、手机和超窄屏的普通输入、选择、日期和数字控件统一为 `30px`；PC 使用 `--input-height-default`，移动端使用 `--mobile-control-height`，两者由公共样式统一赋值。
 - 普通控件圆角统一为 `var(--tf-radius-control)`，当前值为 `6px`。
 - 控件聚焦时统一使用 `var(--tf-form-control-focus-color)` 和 `var(--tf-form-control-focus-ring)`，当前为报价在库卡片同款橙色 `1px` 完整外圈；禁止页面单独设置聚焦颜色、宽度或 `inset` 阴影。
+- 浏览器自动填充由 `_form-controls.scss` 统一处理：内部 input 使用公共自动填充背景和文字令牌；未聚焦时 wrapper 使用位于输入内容上层的 `::after` 绘制同为 `1px` 的连续边框，聚焦时隐藏该补边并只显示全局焦点环，避免边框加粗。页面不得单独复制 `:-webkit-autofill` 规则。
 - 选择、日期、数字控件必须与普通输入使用同一 wrapper 高度和圆角。
-- 统一检索面板使用公共 `--tf-search-control-height` 紧凑规格；表格排序控件使用公共表格规格，这两类例外只能在公共组件中维护。
+- 所有设备的模态框表单控件与普通页面相同，统一为 `30px`，不再维护单独的弹窗高度。
+- 统一检索面板和表格排序控件也统一为 `30px`；检索使用 `--tf-search-control-height`，表格排序使用 `--input-height-default`，页面不得再维护其他输入控件高度。
 - 业务页面和业务组件禁止直接为 `.el-input__wrapper`、`.el-select__wrapper`、`.el-date-editor`、`.el-input-number` 或 `.el-textarea__inner` 设置 `height`、`min-height` 或 `border-radius`。
 - 页面只能维护布局宽度、字段间距、状态边框和业务颜色，不能复制一套控件高度、圆角或外壳。
 

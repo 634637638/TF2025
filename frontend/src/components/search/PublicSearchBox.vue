@@ -76,7 +76,7 @@ const emit = defineEmits<{
   width: 100%;
   height: 52px;
   box-sizing: border-box;
-  padding: 0 var(--tf-space-4);
+  padding: 0 var(--tf-space-2);
   border: 2px solid rgba(255, 255, 255, 0.2);
   border-radius: var(--tf-radius-panel);
   background: rgba(255, 255, 255, 0.95);
@@ -101,8 +101,12 @@ const emit = defineEmits<{
 }
 
 .public-search-box__icon {
-  flex: 0 0 auto;
-  margin-right: var(--tf-space-2);
+  display: inline-flex;
+  flex: 0 0 calc(var(--tf-space-4) * 2);
+  align-items: center;
+  justify-content: center;
+  width: calc(var(--tf-space-4) * 2);
+  margin-right: 0;
   color: var(--tf-color-indigo-brand);
   font-size: var(--tf-type-scale-18);
 }
@@ -113,7 +117,7 @@ const emit = defineEmits<{
 
   :deep(.el-input__wrapper) {
     height: 100%;
-    padding: 0 var(--tf-space-2);
+    padding: 0;
     border: 0;
     background: transparent;
     box-shadow: none;
@@ -190,20 +194,22 @@ const emit = defineEmits<{
 @media (max-width: 767px) {
   .public-search-box {
     height: 48px;
-    padding: 0 var(--tf-space-2);
+    padding: 0 var(--tf-space-1);
     border-radius: var(--tf-radius-card);
   }
 
   .public-search-box__icon {
-    margin-right: 6px;
+    flex-basis: calc(var(--tf-space-3) * 2);
+    width: calc(var(--tf-space-3) * 2);
+    margin-right: 0;
     font-size: var(--tf-font-body-lg);
   }
 
   .public-search-box__input {
-    padding: 0 var(--tf-space-1);
+    padding: 0;
 
     :deep(.el-input__wrapper) {
-      padding: 0 var(--tf-space-1);
+      padding: 0;
     }
 
     :deep(.el-input__inner) {
@@ -235,15 +241,17 @@ const emit = defineEmits<{
   }
 
   .public-search-box__icon {
-    margin-right: var(--tf-space-1);
+    flex-basis: calc(var(--tf-space-3) * 2);
+    width: calc(var(--tf-space-3) * 2);
+    margin-right: 0;
     font-size: var(--tf-font-body);
   }
 
   .public-search-box__input {
-    padding: 0 2px 0 4px;
+    padding: 0;
 
     :deep(.el-input__wrapper) {
-      padding: 0 2px 0 4px;
+      padding: 0;
     }
 
     :deep(.el-input__inner) {

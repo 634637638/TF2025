@@ -1,0 +1,136 @@
+/* H5 配置页的接口配置布局，集中维护以保持页面样式块可审计。 */
+.payment-default-select {
+  width: min(100%, 320px);
+}
+
+.payment-method-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--tf-space-2) var(--tf-space-4);
+  width: 100%;
+}
+
+.payment-method-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--tf-space-3);
+  min-width: 0;
+  padding: var(--tf-space-3);
+  border: 1px solid var(--tf-color-border-element);
+  border-radius: var(--tf-radius-control);
+  color: var(--text-primary);
+}
+
+.payment-method-status,
+.interface-status-tip {
+  flex: 0 0 auto;
+  font-size: var(--tf-type-scale-12);
+  color: var(--text-muted);
+}
+
+.payment-method-status.is-enabled {
+  color: var(--el-color-success);
+}
+
+.payment-method-status.is-incomplete {
+  color: var(--el-color-warning);
+}
+
+.payment-method-status.is-disabled {
+  color: var(--text-muted);
+}
+
+.payment-method-tip {
+  margin: var(--tf-space-3) 0 0;
+}
+
+.payment-interface-tabs {
+  min-width: 0;
+
+  :deep(.el-tabs__nav-wrap) {
+    overflow-x: auto;
+  }
+
+  :deep(.el-tabs__nav) {
+    min-width: max-content;
+  }
+}
+
+.payment-image-upload-wrapper {
+  display: flex;
+  align-items: center;
+  gap: var(--tf-space-3);
+  min-width: 0;
+
+  :deep(.el-upload.el-upload--picture-card) {
+    flex: 0 0 100px;
+    width: 100px;
+    height: 100px;
+    line-height: 98px;
+  }
+
+  :deep(.uploaded-image) {
+    display: block;
+    width: 100px;
+    height: 100px;
+    object-fit: contain;
+  }
+}
+
+@media (max-width: 767px) {
+  .payment-image-upload-wrapper {
+    align-items: flex-start;
+  }
+
+  .payment-image-upload-wrapper :deep(.el-upload.el-upload--picture-card) {
+    flex-basis: 82px;
+    width: 82px;
+    height: 82px;
+    line-height: 80px;
+  }
+
+  .payment-image-upload-wrapper :deep(.uploaded-image) {
+    width: 82px;
+    height: 82px;
+  }
+}
+
+@media (max-width: 479px) {
+  .payment-method-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.integration-entry-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--tf-space-3);
+}
+
+.service-location-fields {
+  display: flex;
+  align-items: center;
+  gap: var(--tf-space-2);
+  width: 100%;
+
+  .el-input {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+}
+
+.service-dialog-tip {
+  margin: 0;
+  line-height: 1.5;
+}
+
+@media (max-width: 767px) {
+  .service-location-fields {
+    flex-wrap: wrap;
+
+    .el-button {
+      width: 100%;
+    }
+  }
+}

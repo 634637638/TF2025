@@ -8,6 +8,7 @@ const {
 
 const ATTENDANCE_WRITE_FIELDS = new Set([
   'employee_id',
+  'attendance_batch_id',
   'record_date',
   'record_type',
   'leave_type',
@@ -267,7 +268,10 @@ class AttendanceController {
         ? (req.query.employee_id ? parseInt(req.query.employee_id, 10) : userId)
         : userId
 
-      const result = await AttendanceService.getUserLeaveBalance(employeeId)
+      const result = await AttendanceService.getUserLeaveBalance(employeeId, {
+        start_date: req.query.start_date,
+        end_date: req.query.end_date
+      })
       ApiResponse.success(res, '获取休假余额成功', result, 200)
     } catch (error) {
       log.error('获取休假余额失败:', error)

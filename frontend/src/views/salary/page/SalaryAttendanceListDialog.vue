@@ -17,38 +17,11 @@
         <i class="fas fa-plus" />
         新增考勤
       </el-button>
-      <el-button
-        v-if="canCreate"
-        v-permission="'salary-records:create'"
-        type="success"
-        @click="emit('quickAdd', 'overtime')"
-      >
-        <i class="fas fa-business-time" />
-        新增加班
-      </el-button>
-      <el-button
-        v-if="canCreate"
-        v-permission="'salary-records:create'"
-        type="success"
-        @click="emit('quickAdd', 'monthly_leave')"
-      >
-        <i class="fas fa-umbrella-beach" />
-        新增休假
-      </el-button>
-      <el-button
-        v-if="canCreate"
-        v-permission="'salary-records:create'"
-        type="warning"
-        @click="emit('quickAdd', 'leave')"
-      >
-        <i class="fas fa-user-clock" />
-        新增请假
-      </el-button>
     </div>
 
     <el-table
-          v-tf-loading="loading"
-          :data="records"
+      v-tf-loading="loading"
+      :data="records"
       border
       stripe
       class="data-table"
@@ -67,15 +40,22 @@
 
       <el-table-column
         v-if="canViewField(moduleKey, 'attendance_record_date')"
-        prop="record_date"
         label="日期"
-        width="120"
+        :min-width="dateColumnMinWidth"
         align="center"
-      />
+      >
+        <template #default="{ row }">
+          {{ formatAttendanceTableDateRange(
+            row.record_date,
+            row.record_type,
+            row.record_type === 'monthly_leave' ? row.monthly_leave_days : row.leave_days
+          ) }}
+        </template>
+      </el-table-column>
       <el-table-column
         v-if="canViewField(moduleKey, 'attendance_record_type')"
         label="类型"
-        width="100"
+        :min-width="typeColumnMinWidth"
         align="center"
       >
         <template #default="{ row }">
@@ -90,27 +70,30 @@
       <el-table-column
         v-if="showDetailColumn"
         label="详情"
-        width="150"
+        :min-width="detailColumnMinWidth"
         align="center"
       >
         <template #default="{ row }">
-          <span v-if="row.record_type === 'monthly_leave'">{{ row.monthly_leave_days }}天</span>
-          <span v-else-if="row.record_type === 'leave'">{{ row.leave_type }} {{ row.leave_days }}天</span>
-          <span v-else-if="row.record_type === 'overtime'">{{ row.overtime_hours }}小时</span>
+          <span v-if="row.record_type === 'monthly_leave'">休假 {{ formatDays(row.monthly_leave_days) }} 天</span>
+          <span v-else-if="row.record_type === 'leave'">请假 {{ formatDays(row.leave_days) }} 天</span>
+          <span v-else-if="row.record_type === 'overtime'">{{ formatDays(row.overtime_hours) }}小时</span>
         </template>
       </el-table-column>
       <el-table-column
         v-if="canViewField(moduleKey, 'attendance_reason')"
-        prop="reason"
         label="原因"
-        min-width="150"
+        :min-width="reasonColumnMinWidth"
         class-name="complete-text-column wrapped-text-column"
-      />
+      >
+        <template #default="{ row }">
+          {{ getReasonText(row) }}
+        </template>
+      </el-table-column>
       <el-table-column
         v-if="canViewField(moduleKey, 'attendance_status')"
         prop="status"
         label="状态"
-        width="90"
+        :min-width="statusColumnMinWidth"
         align="center"
       >
         <template #default="{ row }">
@@ -140,7 +123,7 @@
       <el-table-column
         v-if="shouldShowActionColumn(canViewField(moduleKey, 'actions'), [canEdit, canDelete])"
         label="操作"
-        :width="getActionColumnMinWidth(Number(canEdit) + Number(canDelete))"
+        :min-width="attendanceRecordActionColumnWidth"
         align="center"
         class-name="actions-column"
       >
@@ -189,10 +172,16 @@ import { shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import type { AttendanceRecord } from '@/api/attendance'
 import MobileDialog from '@/components/MobileDialog.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
-import { getActionColumnMinWidth } from '@/utils/table-layout'
+import {
+  getAdaptiveActionColumnWidth,
+  getTextColumnMinWidth
+} from '@/utils/table-layout'
+import {
+  formatAttendanceLeaveReason,
+  formatAttendanceTableDateRange
+} from '@/utils/attendance-leave-allocation'
 
 type AttendanceListRecord = AttendanceRecord & { reason?: string }
-type AttendanceType = AttendanceRecord['record_type']
 
 interface EmployeeSummary {
   name?: string | null
@@ -217,9 +206,60 @@ const emit = defineEmits<{
   add: []
   delete: [id: number]
   edit: [record: AttendanceListRecord]
-  quickAdd: [type: AttendanceType]
   'update:modelValue': [value: boolean]
 }>()
+
+const formatDays = (value: number | undefined) => {
+  const days = Number(value) || 0
+  return Number.isInteger(days) ? String(days) : String(Number(days.toFixed(2)))
+}
+
+const getReasonText = (row: AttendanceListRecord) => {
+  if (row.record_type === 'monthly_leave') {
+    return `休假 ${formatDays(row.monthly_leave_days)} 天`
+  }
+  if (row.record_type === 'leave') return getLeaveReasonText(row)
+  if (row.record_type === 'overtime') return row.overtime_reason || '-'
+  return '-'
+}
+
+const getLeaveReasonText = (row: AttendanceListRecord) => {
+  return formatAttendanceLeaveReason(row.leave_reason, row.leave_days)
+}
+
+const dateColumnMinWidth = computed(() => getTextColumnMinWidth([
+  '日期',
+  ...props.records.map(row => formatAttendanceTableDateRange(
+    row.record_date,
+    row.record_type,
+    row.record_type === 'monthly_leave' ? row.monthly_leave_days : row.leave_days
+  ))
+], { minWidth: 112, maxWidth: 190 }))
+const typeColumnMinWidth = computed(() => getTextColumnMinWidth([
+  '类型',
+  ...props.records.map(row => props.getAttendanceTypeText(row.record_type))
+], { minWidth: 76, maxWidth: 128 }))
+const detailColumnMinWidth = computed(() => getTextColumnMinWidth([
+  '详情',
+  ...props.records.map(row => {
+    if (row.record_type === 'monthly_leave') return `休假 ${formatDays(row.monthly_leave_days)} 天`
+    if (row.record_type === 'leave') return `请假 ${formatDays(row.leave_days)} 天`
+    if (row.record_type === 'overtime') return `${formatDays(row.overtime_hours)}小时`
+    return '-'
+  })
+], { minWidth: 100, maxWidth: 190 }))
+const reasonColumnMinWidth = computed(() => getTextColumnMinWidth([
+  '原因',
+  ...props.records.map(getReasonText)
+], { minWidth: 120, maxWidth: 280 }))
+const statusColumnMinWidth = computed(() => getTextColumnMinWidth([
+  '状态',
+  ...props.records.map(row => row.status === 'pending' ? '待审批' : row.status === 'approved' ? '已通过' : '已拒绝')
+], { minWidth: 76, maxWidth: 112 }))
+const attendanceRecordActionColumnWidth = computed(() => getAdaptiveActionColumnWidth(props.records, [
+  { label: '编辑', visible: props.canEdit },
+  { label: '删除', visible: props.canDelete }
+]))
 
 const showDetailColumn = computed(() => [
   'attendance_record_type',

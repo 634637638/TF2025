@@ -196,7 +196,7 @@ const setCurrentTime = (field: string) => {
 6. **footer 一致性**
    - PC 端 footer 按钮按内容宽度靠右排列；手机端居中等分并保持一行。
    - 业务页面不再为销售、入库、批发、划拨、权限或 H5 管理弹窗单独维护 grid、纵向按钮或固定按钮尺寸。
-   - `MobileDialog` 对历史直接按钮插槽提供统一包装；新增弹窗仍应显式使用 `.tf-dialog-actions`。
+   - `MobileDialog` 的自定义 footer 插槽直接使用唯一的 `.el-dialog__footer` 外壳，不再自动套第二层 footer；新增弹窗仍应显式使用 `.tf-dialog-actions`。
    - 使用 `npm run check:dialog-actions` 检查 footer 覆盖。
 
 ### ❌ 避免做法

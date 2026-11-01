@@ -15,6 +15,7 @@ const { refreshExpiredRentalStatuses } = require('./services/rental-status.servi
 const { ensureRateLimitLogTable } = require('./middleware/rate-limit')
 const { ensurePriceSourceSchema } = require('./utils/price-source-schema')
 const { ensureGuideSchema } = require('./utils/guide-schema')
+const { ensureAttendanceSchema } = require('./utils/attendance-schema')
 const { cleanupExpiredGuideDrafts } = require('./utils/guide-upload')
 
 // 导入路由
@@ -161,6 +162,12 @@ async function initializeApp() {
           await ensurePriceSourceSchema()
         } catch (priceSourceSchemaError) {
           log.warn('报价采集来源结构检查失败:', priceSourceSchemaError.message)
+        }
+
+        try {
+          await ensureAttendanceSchema()
+        } catch (attendanceSchemaError) {
+          log.warn('考勤批次字段启动检查失败:', attendanceSchemaError.message)
         }
 
         try {

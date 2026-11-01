@@ -6,6 +6,7 @@ const { getDatabase, isConnected } = require('../config/database')
 const { validateImei } = require('../utils/imei')
 const { normalizeDateTime } = require('../utils/time')
 const { generateMemberNumber } = require('../utils/member-number')
+const { generateInvoiceNumber } = require('../utils/invoice-number')
 const log = require('../utils/log')
 const deprecatedRoute = require('../middleware/deprecated-route')
 const {
@@ -1171,6 +1172,8 @@ router.post('/quick-sale', unifiedAuth, requirePermission('inventory:sell'), asy
     if (!inventoryTimeStr || !saleTimeStr) {
       throw new Error('请选择有效的入库日期和销售日期')
     }
+    // 快速出库属于普通销售，复用统一单据编号规则生成 XS 编码。
+    const invoiceNumber = await generateInvoiceNumber('retail', connection, saleTimeStr)
 
     const insertParams = [
       purchase_number,
@@ -1205,8 +1208,8 @@ router.post('/quick-sale', unifiedAuth, requirePermission('inventory:sell'), asy
     const [saleResult] = await connection.execute(`
       INSERT INTO sales (
         phone_id, customer_id, sale_type, operator_id, store_id,
-        sale_price, purchase_cost, payment_method, payment_channel, sale_time
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        sale_price, purchase_cost, payment_method, payment_channel, invoice_number, sale_time
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       phone_id,
       customer_id,
@@ -1217,6 +1220,7 @@ router.post('/quick-sale', unifiedAuth, requirePermission('inventory:sell'), asy
       purchaseCost,
       payment_method,
       normalizedPaymentChannel,
+      invoiceNumber,
       saleTimeStr
     ])
     const sale_id = saleResult.insertId
@@ -1232,6 +1236,7 @@ router.post('/quick-sale', unifiedAuth, requirePermission('inventory:sell'), asy
       customer_name,
       purchase_cost: purchaseCost,
       sale_price: salePrice,
+      invoice_number: invoiceNumber,
       inventory_time: inventoryTimeStr,
       sale_time: saleTimeStr,
       sale_operator_id: saleOperatorId,

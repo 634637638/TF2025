@@ -141,37 +141,6 @@
               />
             </el-form-item>
             <el-form-item
-              v-if="canViewField('contact.map_location')"
-              label="地图位置"
-            >
-              <div class="map-location-row">
-                <div class="map-coordinate-inputs">
-                  <el-input
-                    v-model="configs.map_latitude"
-                    placeholder="纬度 (如: 22.5431)"
-                    class="mb-2"
-                  />
-                  <el-input
-                    v-model="configs.map_longitude"
-                    placeholder="经度 (如: 114.0579)"
-                  />
-                </div>
-                <el-button
-                  v-if="showOperations"
-                  plain
-                  type="primary"
-                  :disabled="!canEdit"
-                  class="btn-sm"
-                  @click="openMapPicker"
-                >
-                  选择位置
-                </el-button>
-              </div>
-              <template #tip>
-                <span class="tip-text">在地图上选择店铺位置，前台点击地图图标可查看</span>
-              </template>
-            </el-form-item>
-            <el-form-item
               v-if="canViewField('contact.shop_hours')"
               label="营业时间"
             >
@@ -194,105 +163,112 @@
             :disabled="!canEdit"
           >
             <el-form-item
-              v-if="canViewField('payment.wechat_qrcode')"
-              label="微信收款码"
+              v-if="canViewField('payment.default_method')"
+              label="默认方式"
             >
-              <div class="image-upload-wrapper">
-                <el-upload
-                  :action="uploadAction"
-                  :headers="uploadHeaders"
-                  :data="{ module: 'h5_config' }"
-                  :show-file-list="false"
-                  :on-success="(res) => handleUploadSuccess(res, 'wechat_qrcode')"
-                  :before-upload="beforeUpload"
-                  :disabled="!canEdit"
-                  name="files"
-                  accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
-                  list-type="picture-card"
-                >
-                  <img
-                    v-if="configs.wechat_qrcode"
-                    :src="getImagePreviewUrl(configs.wechat_qrcode)"
-                    class="uploaded-image"
-                  >
-                  <i
-                    v-else
-                    class="fas fa-plus"
-                  />
-                </el-upload>
-                <el-button
-                  v-if="configs.wechat_qrcode && canEdit"
-                  plain
-                  type="danger"
-                  size="small"
-                  class="delete-image-btn btn-sm"
-                  @click="handleDeleteImage('wechat_qrcode')"
-                >
-                  <i class="fas fa-trash mr-1" />删除
-                </el-button>
+              <el-select
+                v-model="configs.payment_default_method"
+                class="payment-default-select"
+              >
+                <el-option
+                  v-for="option in availablePaymentMethods"
+                  :key="option.value"
+                  :label="option.label"
+                  :value="option.value"
+                />
+              </el-select>
+            </el-form-item>
+            <div class="payment-method-list">
+              <div
+                v-if="canViewField('payment.qr_wechat_enabled')"
+                class="payment-method-row"
+              >
+                <span>微信二维码</span><span
+                  class="payment-method-status"
+                  :class="getPaymentStatusClass(configs.payment_qr_wechat_enabled, !!configs.wechat_qrcode)"
+                >{{ getPaymentStatusText(configs.payment_qr_wechat_enabled, !!configs.wechat_qrcode) }}</span>
               </div>
-              <template #tip>
-                <span class="tip-text">用户支付时将显示此二维码</span>
-              </template>
-            </el-form-item>
-            <el-form-item
-              v-if="canViewField('payment.alipay_qrcode')"
-              label="支付宝收款码"
-            >
-              <div class="image-upload-wrapper">
-                <el-upload
-                  :action="uploadAction"
-                  :headers="uploadHeaders"
-                  :data="{ module: 'h5_config' }"
-                  :show-file-list="false"
-                  :on-success="(res) => handleUploadSuccess(res, 'alipay_qrcode')"
-                  :before-upload="beforeUpload"
-                  :disabled="!canEdit"
-                  name="files"
-                  accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
-                  list-type="picture-card"
-                >
-                  <img
-                    v-if="configs.alipay_qrcode"
-                    :src="getImagePreviewUrl(configs.alipay_qrcode)"
-                    class="uploaded-image"
-                  >
-                  <i
-                    v-else
-                    class="fas fa-plus"
-                  />
-                </el-upload>
-                <el-button
-                  v-if="configs.alipay_qrcode && canEdit"
-                  plain
-                  type="danger"
-                  size="small"
-                  class="delete-image-btn btn-sm"
-                  @click="handleDeleteImage('alipay_qrcode')"
-                >
-                  <i class="fas fa-trash mr-1" />删除
-                </el-button>
+              <div
+                v-if="canViewField('payment.qr_alipay_enabled')"
+                class="payment-method-row"
+              >
+                <span>支付宝二维码</span><span
+                  class="payment-method-status"
+                  :class="getPaymentStatusClass(configs.payment_qr_alipay_enabled, !!configs.alipay_qrcode)"
+                >{{ getPaymentStatusText(configs.payment_qr_alipay_enabled, !!configs.alipay_qrcode) }}</span>
               </div>
-              <template #tip>
-                <span class="tip-text">用户支付时将显示此二维码</span>
-              </template>
-            </el-form-item>
-            <el-form-item
-              v-if="canViewField('payment.bank_info')"
-              label="银行转账信息"
-            >
-              <el-input
-                v-model="configs.bank_info"
-                class="tf-textarea"
-                type="textarea"
-                :rows="3"
-                placeholder="请输入银行账号、开户行等信息"
-              />
-              <template #tip>
-                <span class="tip-text">支持换行，将原样显示给用户</span>
-              </template>
-            </el-form-item>
+              <div
+                v-if="canViewField('payment.qr_other_enabled')"
+                class="payment-method-row"
+              >
+                <span>{{ configs.payment_qr_other_name || '其他二维码' }}</span><span
+                  class="payment-method-status"
+                  :class="getPaymentStatusClass(configs.payment_qr_other_enabled, !!configs.other_qrcode && !!configs.payment_qr_other_name)"
+                >{{ getPaymentStatusText(configs.payment_qr_other_enabled, !!configs.other_qrcode && !!configs.payment_qr_other_name) }}</span>
+              </div>
+              <div
+                v-if="canViewField('payment.bank_enabled')"
+                class="payment-method-row"
+              >
+                <span>银行转账</span><span
+                  class="payment-method-status"
+                  :class="getPaymentStatusClass(configs.payment_bank_enabled, !!configs.bank_info)"
+                >{{ getPaymentStatusText(configs.payment_bank_enabled, !!configs.bank_info) }}</span>
+              </div>
+              <div
+                v-if="canViewField('integration.wechat_pay_enabled')"
+                class="payment-method-row"
+              >
+                <span>微信商家接口</span><span
+                  class="payment-method-status"
+                  :class="getMerchantStatusClass(configs.wechat_pay_enabled)"
+                >{{ getMerchantStatusText(configs.wechat_pay_enabled, hasWechatMerchantConfig) }}</span>
+              </div>
+              <div
+                v-if="canViewField('integration.alipay_pay_enabled')"
+                class="payment-method-row"
+              >
+                <span>支付宝商家接口</span><span
+                  class="payment-method-status"
+                  :class="getMerchantStatusClass(configs.alipay_pay_enabled)"
+                >{{ getMerchantStatusText(configs.alipay_pay_enabled, hasAlipayMerchantConfig) }}</span>
+              </div>
+              <div
+                v-if="canViewField('integration.other_payment_enabled')"
+                class="payment-method-row"
+              >
+                <span>{{ configs.payment_provider_name || '其他服务商接口' }}</span><span
+                  class="payment-method-status"
+                  :class="getMerchantStatusClass(configs.payment_merchant_other_enabled)"
+                >{{ getMerchantStatusText(configs.payment_merchant_other_enabled, hasOtherMerchantConfig) }}</span>
+              </div>
+            </div>
           </el-form>
+          <p class="tip-text payment-method-tip">
+            支付方式的启停和接口资料统一在“支付接口”中维护。
+          </p>
+        </div>
+
+        <div class="config-section">
+          <h3 class="section-title">
+            接口配置
+          </h3>
+          <div class="integration-entry-list">
+            <el-button
+              v-if="canViewField('integration.map_provider')"
+              class="btn-sm"
+              @click="showMapSettingsDialog = true"
+            >
+              地图接口
+            </el-button>
+            <el-button
+              v-if="canViewField('integration.payment_provider')"
+              class="btn-sm"
+              @click="showPaymentSettingsDialog = true"
+            >
+              支付接口
+            </el-button>
+          </div>
         </div>
 
         <!-- 功能开关 -->
@@ -350,6 +326,529 @@
           </el-button>
         </div>
       </div>
+
+      <!-- 地图接口配置 -->
+      <MobileDialog
+        v-model="showMapSettingsDialog"
+        title="地图接口配置"
+        width="620px"
+        :close-on-click-modal="false"
+        dialog-class="shop-config-service-dialog"
+        :show-default-footer="false"
+      >
+        <el-form
+          class="config-form service-dialog-form"
+          label-width="120px"
+          :disabled="!canEdit"
+        >
+          <el-form-item
+            v-if="canViewField('integration.map_provider')"
+            label="地图服务商"
+          >
+            <el-select v-model="configs.map_provider">
+              <el-option
+                label="腾讯地图"
+                value="tencent"
+              />
+              <el-option
+                label="高德地图（待接入）"
+                value="amap"
+              />
+              <el-option
+                label="百度地图（待接入）"
+                value="baidu"
+              />
+            </el-select>
+          </el-form-item>
+          <el-form-item
+            v-if="configs.map_provider === 'tencent' && canViewField('integration.tencent_map_key')"
+            label="腾讯浏览器 Key"
+          >
+            <el-input
+              v-model.trim="configs.tencent_map_key"
+              type="password"
+              show-password
+              autocomplete="off"
+              placeholder="请输入腾讯地图浏览器 Key"
+            />
+          </el-form-item>
+          <el-form-item
+            v-if="configs.map_provider === 'amap' && canViewField('integration.amap_map_key')"
+            label="高德 Web Key"
+          >
+            <el-input
+              v-model.trim="configs.amap_map_key"
+              type="password"
+              show-password
+              autocomplete="off"
+              placeholder="请输入高德地图 Web Key"
+            />
+          </el-form-item>
+          <el-form-item
+            v-if="configs.map_provider === 'baidu' && canViewField('integration.baidu_map_key')"
+            label="百度 AK"
+          >
+            <el-input
+              v-model.trim="configs.baidu_map_key"
+              type="password"
+              show-password
+              autocomplete="off"
+              placeholder="请输入百度地图浏览器 AK"
+            />
+          </el-form-item>
+          <el-form-item
+            v-if="canViewField('integration.map_location')"
+            label="店铺位置"
+          >
+            <div class="service-location-fields">
+              <el-input
+                v-model.trim="configs.map_latitude"
+                placeholder="纬度"
+              />
+              <el-input
+                v-model.trim="configs.map_longitude"
+                placeholder="经度"
+              />
+              <el-button
+                v-if="showOperations && configs.map_provider === 'tencent'"
+                class="btn-sm"
+                plain
+                type="primary"
+                @click="openMapPicker"
+              >
+                选择位置
+              </el-button>
+            </div>
+          </el-form-item>
+          <p class="tip-text service-dialog-tip">
+            目前已接入腾讯地图 SDK；高德和百度先保存服务商配置，完成对应 SDK 适配后再启用。
+          </p>
+        </el-form>
+        <template #footer>
+          <el-button
+            class="btn-sm"
+            @click="showMapSettingsDialog = false"
+          >
+            关闭
+          </el-button>
+          <el-button
+            v-if="canEdit"
+            class="btn-sm"
+            plain
+            type="primary"
+            :loading="saving"
+            @click="saveMapSettings"
+          >
+            保存
+          </el-button>
+        </template>
+      </MobileDialog>
+
+      <!-- 支付接口配置 -->
+      <MobileDialog
+        v-model="showPaymentSettingsDialog"
+        title="支付接口配置"
+        width="760px"
+        :close-on-click-modal="false"
+        dialog-class="shop-config-service-dialog"
+        :show-default-footer="false"
+      >
+        <el-tabs
+          v-model="paymentInterfaceTab"
+          class="payment-interface-tabs tf-page-tabs"
+        >
+          <el-tab-pane
+            label="二维码与转账"
+            name="qr"
+            class="tf-tab-panel"
+          >
+            <el-form
+              class="config-form service-dialog-form"
+              label-width="140px"
+              :disabled="!canEdit"
+            >
+              <el-form-item
+                v-if="canViewField('payment.qr_wechat_enabled')"
+                label="微信二维码"
+              >
+                <el-switch v-model="configs.payment_qr_wechat_enabled" />
+                <span class="interface-status-tip">{{ configs.wechat_qrcode ? '已上传收款码' : '请上传收款码' }}</span>
+              </el-form-item>
+              <el-form-item
+                v-if="canViewField('payment.wechat_qrcode')"
+                label="微信收款码"
+              >
+                <div class="image-upload-wrapper payment-image-upload-wrapper">
+                  <el-upload
+                    :action="uploadAction"
+                    :headers="uploadHeaders"
+                    :data="{ module: 'h5_config' }"
+                    :show-file-list="false"
+                    :on-success="(res) => handleUploadSuccess(res, 'wechat_qrcode')"
+                    :before-upload="beforeUpload"
+                    :disabled="!canEdit"
+                    name="files"
+                    accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                    list-type="picture-card"
+                  >
+                    <img
+                      v-if="configs.wechat_qrcode"
+                      :src="getImagePreviewUrl(configs.wechat_qrcode)"
+                      class="uploaded-image"
+                    ><i
+                      v-else
+                      class="fas fa-plus"
+                    />
+                  </el-upload>
+                  <el-button
+                    v-if="configs.wechat_qrcode && canEdit"
+                    class="btn-sm"
+                    plain
+                    type="danger"
+                    @click="handleDeleteImage('wechat_qrcode')"
+                  >
+                    删除
+                  </el-button>
+                </div>
+              </el-form-item>
+              <el-form-item
+                v-if="canViewField('payment.qr_alipay_enabled')"
+                label="支付宝二维码"
+              >
+                <el-switch v-model="configs.payment_qr_alipay_enabled" />
+                <span class="interface-status-tip">{{ configs.alipay_qrcode ? '已上传收款码' : '请上传收款码' }}</span>
+              </el-form-item>
+              <el-form-item
+                v-if="canViewField('payment.alipay_qrcode')"
+                label="支付宝收款码"
+              >
+                <div class="image-upload-wrapper payment-image-upload-wrapper">
+                  <el-upload
+                    :action="uploadAction"
+                    :headers="uploadHeaders"
+                    :data="{ module: 'h5_config' }"
+                    :show-file-list="false"
+                    :on-success="(res) => handleUploadSuccess(res, 'alipay_qrcode')"
+                    :before-upload="beforeUpload"
+                    :disabled="!canEdit"
+                    name="files"
+                    accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                    list-type="picture-card"
+                  >
+                    <img
+                      v-if="configs.alipay_qrcode"
+                      :src="getImagePreviewUrl(configs.alipay_qrcode)"
+                      class="uploaded-image"
+                    ><i
+                      v-else
+                      class="fas fa-plus"
+                    />
+                  </el-upload>
+                  <el-button
+                    v-if="configs.alipay_qrcode && canEdit"
+                    class="btn-sm"
+                    plain
+                    type="danger"
+                    @click="handleDeleteImage('alipay_qrcode')"
+                  >
+                    删除
+                  </el-button>
+                </div>
+              </el-form-item>
+              <el-form-item
+                v-if="canViewField('payment.qr_other_enabled')"
+                label="其他二维码"
+              >
+                <el-switch v-model="configs.payment_qr_other_enabled" />
+              </el-form-item>
+              <el-form-item
+                v-if="canViewField('payment.qr_other_name')"
+                label="其他方式名称"
+              >
+                <el-input
+                  v-model.trim="configs.payment_qr_other_name"
+                  placeholder="方式名称，例如云闪付"
+                />
+              </el-form-item>
+              <el-form-item
+                v-if="canViewField('payment.other_qrcode')"
+                label="自定义二维码"
+              >
+                <div class="image-upload-wrapper payment-image-upload-wrapper">
+                  <el-upload
+                    :action="uploadAction"
+                    :headers="uploadHeaders"
+                    :data="{ module: 'h5_config' }"
+                    :show-file-list="false"
+                    :on-success="(res) => handleUploadSuccess(res, 'other_qrcode')"
+                    :before-upload="beforeUpload"
+                    :disabled="!canEdit"
+                    name="files"
+                    accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                    list-type="picture-card"
+                  >
+                    <img
+                      v-if="configs.other_qrcode"
+                      :src="getImagePreviewUrl(configs.other_qrcode)"
+                      class="uploaded-image"
+                    ><i
+                      v-else
+                      class="fas fa-plus"
+                    />
+                  </el-upload>
+                  <el-button
+                    v-if="configs.other_qrcode && canEdit"
+                    class="btn-sm"
+                    plain
+                    type="danger"
+                    @click="handleDeleteImage('other_qrcode')"
+                  >
+                    删除
+                  </el-button>
+                </div>
+              </el-form-item>
+              <el-form-item
+                v-if="canViewField('payment.bank_enabled')"
+                label="银行转账"
+              >
+                <el-switch v-model="configs.payment_bank_enabled" />
+              </el-form-item>
+              <el-form-item
+                v-if="canViewField('payment.bank_info')"
+                label="银行转账信息"
+              >
+                <el-input
+                  v-model="configs.bank_info"
+                  class="tf-textarea"
+                  type="textarea"
+                  :rows="3"
+                  placeholder="请输入银行账号、开户行等信息"
+                />
+              </el-form-item>
+            </el-form>
+          </el-tab-pane>
+          <el-tab-pane
+            label="微信商家接口"
+            name="wechat"
+            class="tf-tab-panel"
+          >
+            <el-form
+              class="config-form service-dialog-form"
+              label-width="140px"
+              :disabled="!canEdit"
+            >
+              <el-form-item
+                v-if="canViewField('integration.wechat_pay_enabled')"
+                label="启用接口"
+              >
+                <el-switch v-model="configs.wechat_pay_enabled" />
+                <span class="interface-status-tip">完成下单和回调配置后再启用</span>
+              </el-form-item>
+              <template v-if="canViewField('integration.wechat_pay_app_id')">
+                <el-form-item label="微信 AppID">
+                  <el-input
+                    v-model.trim="configs.wechat_pay_app_id"
+                    placeholder="请输入微信公众平台 AppID"
+                  />
+                </el-form-item>
+                <el-form-item
+                  v-if="canViewField('integration.wechat_pay_mch_id')"
+                  label="微信商户号"
+                >
+                  <el-input
+                    v-model.trim="configs.wechat_pay_mch_id"
+                    placeholder="请输入微信支付商户号"
+                  />
+                </el-form-item>
+                <el-form-item
+                  v-if="canViewField('integration.wechat_pay_api_v3_key')"
+                  label="微信 API v3 Key"
+                >
+                  <el-input
+                    v-model.trim="configs.wechat_pay_api_v3_key"
+                    type="password"
+                    show-password
+                    autocomplete="off"
+                  />
+                </el-form-item>
+                <el-form-item
+                  v-if="canViewField('integration.wechat_pay_private_key')"
+                  label="微信商户私钥"
+                >
+                  <el-input
+                    v-model="configs.wechat_pay_private_key"
+                    class="tf-textarea"
+                    type="textarea"
+                    :rows="3"
+                    autocomplete="off"
+                    placeholder="粘贴微信支付商户私钥 PEM 内容"
+                  />
+                </el-form-item>
+                <el-form-item
+                  v-if="canViewField('integration.wechat_pay_serial_no')"
+                  label="微信证书序列号"
+                >
+                  <el-input
+                    v-model.trim="configs.wechat_pay_serial_no"
+                    placeholder="请输入商户证书序列号"
+                  />
+                </el-form-item>
+                <el-form-item
+                  v-if="canViewField('integration.wechat_pay_notify_url')"
+                  label="微信回调地址"
+                >
+                  <el-input
+                    v-model.trim="configs.wechat_pay_notify_url"
+                    placeholder="https://你的域名/api/payment/wechat/notify"
+                  />
+                </el-form-item>
+              </template>
+            </el-form>
+          </el-tab-pane>
+          <el-tab-pane
+            label="支付宝商家接口"
+            name="alipay"
+            class="tf-tab-panel"
+          >
+            <el-form
+              class="config-form service-dialog-form"
+              label-width="140px"
+              :disabled="!canEdit"
+            >
+              <el-form-item
+                v-if="canViewField('integration.alipay_pay_enabled')"
+                label="启用接口"
+              >
+                <el-switch v-model="configs.alipay_pay_enabled" />
+                <span class="interface-status-tip">完成下单和回调配置后再启用</span>
+              </el-form-item>
+              <el-form-item
+                v-if="canViewField('integration.alipay_app_id')"
+                label="支付宝 AppID"
+              >
+                <el-input
+                  v-model.trim="configs.alipay_app_id"
+                  placeholder="请输入支付宝应用 AppID"
+                />
+              </el-form-item>
+              <el-form-item
+                v-if="canViewField('integration.alipay_private_key')"
+                label="支付宝应用私钥"
+              >
+                <el-input
+                  v-model="configs.alipay_private_key"
+                  class="tf-textarea"
+                  type="textarea"
+                  :rows="3"
+                  autocomplete="off"
+                  placeholder="粘贴支付宝应用私钥内容"
+                />
+              </el-form-item>
+              <el-form-item
+                v-if="canViewField('integration.alipay_public_key')"
+                label="支付宝公钥"
+              >
+                <el-input
+                  v-model="configs.alipay_public_key"
+                  class="tf-textarea"
+                  type="textarea"
+                  :rows="3"
+                  autocomplete="off"
+                  placeholder="粘贴支付宝公钥内容"
+                />
+              </el-form-item>
+              <el-form-item
+                v-if="canViewField('integration.alipay_notify_url')"
+                label="支付宝回调地址"
+              >
+                <el-input
+                  v-model.trim="configs.alipay_notify_url"
+                  placeholder="https://你的域名/api/payment/alipay/notify"
+                />
+              </el-form-item>
+            </el-form>
+          </el-tab-pane>
+          <el-tab-pane
+            label="其他服务商"
+            name="other"
+            class="tf-tab-panel"
+          >
+            <el-form
+              class="config-form service-dialog-form"
+              label-width="140px"
+              :disabled="!canEdit"
+            >
+              <el-form-item
+                v-if="canViewField('integration.other_payment_enabled')"
+                label="启用接口"
+              >
+                <el-switch v-model="configs.payment_merchant_other_enabled" />
+                <span class="interface-status-tip">需提供服务商下单接口和回调协议</span>
+              </el-form-item>
+              <el-form-item
+                v-if="canViewField('integration.payment_provider_name')"
+                label="服务商名称"
+              >
+                <el-input
+                  v-model.trim="configs.payment_provider_name"
+                  placeholder="请输入支付公司名称"
+                />
+              </el-form-item>
+              <el-form-item
+                v-if="canViewField('integration.other_payment_api_url')"
+                label="接口地址"
+              >
+                <el-input
+                  v-model.trim="configs.other_payment_api_url"
+                  placeholder="请输入服务商下单接口地址"
+                />
+              </el-form-item>
+              <el-form-item
+                v-if="canViewField('integration.other_payment_merchant_id')"
+                label="商户标识"
+              >
+                <el-input
+                  v-model.trim="configs.other_payment_merchant_id"
+                  placeholder="请输入服务商商户标识"
+                />
+              </el-form-item>
+              <el-form-item
+                v-if="canViewField('integration.other_payment_secret')"
+                label="接口密钥"
+              >
+                <el-input
+                  v-model="configs.other_payment_secret"
+                  type="password"
+                  show-password
+                  autocomplete="off"
+                  placeholder="接口密钥将加密保存"
+                />
+              </el-form-item>
+            </el-form>
+          </el-tab-pane>
+        </el-tabs>
+        <p class="tip-text service-dialog-tip">
+          只有启用开关和必要资料都完整的收款方式才会进入商城；商家接口还必须完成真实下单与回调验签适配。
+        </p>
+        <template #footer>
+          <el-button
+            class="btn-sm"
+            @click="showPaymentSettingsDialog = false"
+          >
+            关闭
+          </el-button>
+          <el-button
+            v-if="canEdit"
+            class="btn-sm"
+            plain
+            type="primary"
+            :loading="saving"
+            @click="savePaymentSettings"
+          >
+            保存
+          </el-button>
+        </template>
+      </MobileDialog>
 
       <!-- 地图选择对话框 -->
       <MobileDialog
@@ -420,7 +919,7 @@ import { formatImageUrl } from '@/utils/format'
 import { unifiedApi } from '@/utils/unified-api'
 import { deleteTempFiles } from '@/utils/temp-file-cleaner'
 import { logger } from '@/utils/logger'
-import { buildTencentMapScriptUrl, ensureTencentMapKey } from '@/utils/tencent-map'
+import { ensureTencentMapKey, loadTencentMapScript } from '@/utils/tencent-map'
 import type { HeaderAction } from '@/types'
 
 const authStore = useAuthStore()
@@ -465,6 +964,34 @@ const configs = ref<any>({
   shop_hours: '',
   map_latitude: '',
   map_longitude: '',
+  map_provider: 'tencent',
+  tencent_map_key: '',
+  amap_map_key: '',
+  baidu_map_key: '',
+  payment_provider: 'manual',
+  payment_default_method: 'pickup',
+  payment_qr_wechat_enabled: false,
+  payment_qr_alipay_enabled: false,
+  payment_qr_other_enabled: false,
+  payment_qr_other_name: '',
+  payment_bank_enabled: false,
+  payment_merchant_other_enabled: false,
+  wechat_pay_enabled: false,
+  alipay_pay_enabled: false,
+  wechat_pay_app_id: '',
+  wechat_pay_mch_id: '',
+  wechat_pay_api_v3_key: '',
+  wechat_pay_private_key: '',
+  wechat_pay_serial_no: '',
+  wechat_pay_notify_url: '',
+  alipay_app_id: '',
+  alipay_private_key: '',
+  alipay_public_key: '',
+  alipay_notify_url: '',
+  payment_provider_name: '',
+  other_payment_api_url: '',
+  other_payment_merchant_id: '',
+  other_payment_secret: '',
   wechat_qrcode: '',
   alipay_qrcode: '',
   bank_info: '',
@@ -476,14 +1003,58 @@ const loading = ref(true)
 const saving = ref(false)
 const hasInitializedPageData = ref(false)
 const showMapDialog = ref(false)
-const IMAGE_FIELDS = ['shop_logo', 'wechat_qrcode', 'alipay_qrcode'] as const
+const showMapSettingsDialog = ref(false)
+const showPaymentSettingsDialog = ref(false)
+const paymentInterfaceTab = ref<'qr' | 'wechat' | 'alipay' | 'other'>('qr')
+const IMAGE_FIELDS = ['shop_logo', 'wechat_qrcode', 'alipay_qrcode', 'other_qrcode'] as const
 type ImageField = typeof IMAGE_FIELDS[number]
 const originalImageConfigs = ref<Record<ImageField, string>>({
   shop_logo: '',
   wechat_qrcode: '',
-  alipay_qrcode: ''
+  alipay_qrcode: '',
+  other_qrcode: ''
 })
 const uploadedTempImages = ref<string[]>([])
+const hasWechatMerchantConfig = computed(() => Boolean(
+  configs.value.wechat_pay_app_id
+  && configs.value.wechat_pay_mch_id
+  && configs.value.wechat_pay_api_v3_key
+  && configs.value.wechat_pay_private_key
+  && configs.value.wechat_pay_serial_no
+  && configs.value.wechat_pay_notify_url
+))
+const hasAlipayMerchantConfig = computed(() => Boolean(
+  configs.value.alipay_app_id
+  && configs.value.alipay_private_key
+  && configs.value.alipay_public_key
+  && configs.value.alipay_notify_url
+))
+const hasOtherMerchantConfig = computed(() => Boolean(
+  configs.value.payment_provider_name
+  && configs.value.other_payment_api_url
+  && configs.value.other_payment_merchant_id
+  && configs.value.other_payment_secret
+))
+const getPaymentStatusText = (enabled: boolean, complete: boolean) => {
+  if (!enabled) return '已关闭'
+  return complete ? '已开启' : '待完善'
+}
+const getMerchantStatusText = (enabled: boolean, complete: boolean) => {
+  if (!enabled) return '已关闭'
+  return complete ? '待接入' : '待完善'
+}
+const getPaymentStatusClass = (enabled: boolean, complete: boolean) => {
+  if (!enabled) return 'is-disabled'
+  return complete ? 'is-enabled' : 'is-incomplete'
+}
+const getMerchantStatusClass = (enabled: boolean) => enabled ? 'is-incomplete' : 'is-disabled'
+const availablePaymentMethods = computed(() => [
+  { value: 'pickup', label: '到店自提' },
+  ...(configs.value.payment_qr_wechat_enabled && configs.value.wechat_qrcode ? [{ value: 'qr_wechat', label: '微信二维码' }] : []),
+  ...(configs.value.payment_qr_alipay_enabled && configs.value.alipay_qrcode ? [{ value: 'qr_alipay', label: '支付宝二维码' }] : []),
+  ...(configs.value.payment_qr_other_enabled && configs.value.other_qrcode && configs.value.payment_qr_other_name ? [{ value: 'qr_other', label: configs.value.payment_qr_other_name }] : []),
+  ...(configs.value.payment_bank_enabled && configs.value.bank_info ? [{ value: 'bank', label: '银行转账' }] : [])
+])
 
 // 上传配置
 const uploadAction = computed(() => `${import.meta.env.VITE_API_BASE_URL || '/api'}/shop/upload/image`)
@@ -531,7 +1102,8 @@ const syncOriginalImageConfigs = () => {
   originalImageConfigs.value = {
     shop_logo: configs.value.shop_logo || '',
     wechat_qrcode: configs.value.wechat_qrcode || '',
-    alipay_qrcode: configs.value.alipay_qrcode || ''
+    alipay_qrcode: configs.value.alipay_qrcode || '',
+    other_qrcode: configs.value.other_qrcode || ''
   }
 }
 
@@ -540,7 +1112,8 @@ const handleUploadSuccess = async (response: any, field: string) => {
   const fieldMap: Record<string, string> = {
     shop_logo: 'shop.shop_logo',
     wechat_qrcode: 'payment.wechat_qrcode',
-    alipay_qrcode: 'payment.alipay_qrcode'
+    alipay_qrcode: 'payment.alipay_qrcode',
+    other_qrcode: 'payment.other_qrcode'
   }
   if (!canViewField(fieldMap[field] || field)) {
     return
@@ -601,7 +1174,8 @@ const handleDeleteImage = async (field: string) => {
   const fieldMap: Record<string, string> = {
     shop_logo: 'shop.shop_logo',
     wechat_qrcode: 'payment.wechat_qrcode',
-    alipay_qrcode: 'payment.alipay_qrcode'
+    alipay_qrcode: 'payment.alipay_qrcode',
+    other_qrcode: 'payment.other_qrcode'
   }
   if (!canViewField(fieldMap[field] || field)) {
     return
@@ -645,7 +1219,7 @@ const loadConfigs = async () => {
 
     // 将嵌套的配置转换为平铺的键值对
     configs.value = {}
-    const booleanFields = ['banner_enabled', 'cart_enabled', 'direct_buy_enabled']
+    const booleanFields = ['banner_enabled', 'cart_enabled', 'direct_buy_enabled', 'wechat_pay_enabled', 'alipay_pay_enabled', 'payment_qr_wechat_enabled', 'payment_qr_alipay_enabled', 'payment_qr_other_enabled', 'payment_bank_enabled', 'payment_merchant_other_enabled']
     Object.keys(data).forEach(category => {
       const categoryData = data[category]
       // 确保是数组才进行 forEach
@@ -653,13 +1227,34 @@ const loadConfigs = async () => {
         categoryData.forEach((item: any) => {
           // 布尔类型字段转换为布尔值
           if (booleanFields.includes(item.key)) {
-            configs.value[item.key] = Boolean(item.value)
+            configs.value[item.key] = item.value === true || item.value === 1 || item.value === '1' || item.value === 'true'
           } else {
             configs.value[item.key] = item.value
           }
         })
       }
     })
+    configs.value.map_provider ||= 'tencent'
+    configs.value.payment_provider ||= 'manual'
+    configs.value.payment_default_method ||= 'pickup'
+    configs.value.wechat_pay_enabled ??= false
+    configs.value.alipay_pay_enabled ??= false
+    configs.value.payment_qr_wechat_enabled ??= false
+    configs.value.payment_qr_alipay_enabled ??= false
+    configs.value.payment_qr_other_enabled ??= false
+    configs.value.payment_bank_enabled ??= false
+    configs.value.payment_merchant_other_enabled ??= false
+    configs.value.tencent_map_key ??= ''
+    for (const key of [
+      'amap_map_key', 'baidu_map_key',
+      'wechat_pay_app_id', 'wechat_pay_mch_id', 'wechat_pay_api_v3_key',
+      'wechat_pay_private_key', 'wechat_pay_serial_no', 'wechat_pay_notify_url',
+      'alipay_app_id', 'alipay_private_key', 'alipay_public_key', 'alipay_notify_url',
+      'payment_provider_name', 'other_payment_api_url', 'other_payment_merchant_id', 'other_payment_secret',
+      'payment_default_method', 'payment_qr_other_name', 'other_qrcode'
+    ]) {
+      configs.value[key] ??= ''
+    }
     syncOriginalImageConfigs()
     uploadedTempImages.value = []
   } catch (error) {
@@ -672,13 +1267,16 @@ const loadConfigs = async () => {
 
 // 保存配置
 const handleSave = async () => {
-  if (saving.value) return
+  if (saving.value) return false
   if (!ensureEditPermission()) {
-    return
+    return false
   }
 
   saving.value = true
   try {
+    if (!availablePaymentMethods.value.some(option => option.value === configs.value.payment_default_method)) {
+      configs.value.payment_default_method = availablePaymentMethods.value[0]?.value || 'pickup'
+    }
     const deletedSavedImages = IMAGE_FIELDS
       .map((field) => ({
         oldUrl: originalImageConfigs.value[field],
@@ -694,11 +1292,40 @@ const handleSave = async () => {
       shop_phone: 'contact.shop_phone',
       wechat_id: 'contact.wechat_id',
       shop_address: 'contact.shop_address',
-      map_latitude: 'contact.map_location',
-      map_longitude: 'contact.map_location',
+      map_latitude: 'integration.map_location',
+      map_longitude: 'integration.map_location',
+      map_provider: 'integration.map_provider',
+      tencent_map_key: 'integration.tencent_map_key',
+      amap_map_key: 'integration.amap_map_key',
+      baidu_map_key: 'integration.baidu_map_key',
+      payment_provider: 'integration.payment_provider',
+      payment_default_method: 'payment.default_method',
+      payment_qr_wechat_enabled: 'payment.qr_wechat_enabled',
+      payment_qr_alipay_enabled: 'payment.qr_alipay_enabled',
+      payment_qr_other_enabled: 'payment.qr_other_enabled',
+      payment_qr_other_name: 'payment.qr_other_name',
+      payment_bank_enabled: 'payment.bank_enabled',
+      payment_merchant_other_enabled: 'integration.other_payment_enabled',
+      payment_provider_name: 'integration.payment_provider_name',
+      other_payment_api_url: 'integration.other_payment_api_url',
+      other_payment_merchant_id: 'integration.other_payment_merchant_id',
+      other_payment_secret: 'integration.other_payment_secret',
+      wechat_pay_enabled: 'integration.wechat_pay_enabled',
+      alipay_pay_enabled: 'integration.alipay_pay_enabled',
+      wechat_pay_app_id: 'integration.wechat_pay_app_id',
+      wechat_pay_mch_id: 'integration.wechat_pay_mch_id',
+      wechat_pay_api_v3_key: 'integration.wechat_pay_api_v3_key',
+      wechat_pay_private_key: 'integration.wechat_pay_private_key',
+      wechat_pay_serial_no: 'integration.wechat_pay_serial_no',
+      wechat_pay_notify_url: 'integration.wechat_pay_notify_url',
+      alipay_app_id: 'integration.alipay_app_id',
+      alipay_private_key: 'integration.alipay_private_key',
+      alipay_public_key: 'integration.alipay_public_key',
+      alipay_notify_url: 'integration.alipay_notify_url',
       shop_hours: 'contact.shop_hours',
       wechat_qrcode: 'payment.wechat_qrcode',
       alipay_qrcode: 'payment.alipay_qrcode',
+      other_qrcode: 'payment.other_qrcode',
       bank_info: 'payment.bank_info',
       banner_enabled: 'features.banner_enabled',
       cart_enabled: 'features.cart_enabled',
@@ -721,9 +1348,11 @@ const handleSave = async () => {
     syncOriginalImageConfigs()
     uploadedTempImages.value = []
     ElMessage.success('配置保存成功')
+    return true
   } catch (error: any) {
     logger.error('保存配置失败:', error)
     ElMessage.error(error.message || '保存配置失败')
+    return false
   } finally {
     saving.value = false
   }
@@ -734,30 +1363,18 @@ const selectedLocation = ref({ lat: '', lng: '' })
 let map: any = null
 let marker: any = null
 
-const loadTencentMapScript = (): Promise<void> => {
-  return new Promise((resolve, reject) => {
-    if ((window as any).TMap) {
-      resolve()
-      return
-    }
-
-    const mapScriptUrl = buildTencentMapScriptUrl()
-    if (!mapScriptUrl) {
-      ensureTencentMapKey()
-      reject(new Error('腾讯地图 Key 未配置'))
-      return
-    }
-
-    const script = document.createElement('script')
-    script.src = mapScriptUrl
-    script.onload = () => resolve()
-    script.onerror = () => reject(new Error('地图加载失败'))
-    document.head.appendChild(script)
-  })
-}
-
 const openMapPicker = async () => {
   if (!ensureEditPermission()) {
+    return
+  }
+
+  if (configs.value.map_provider !== 'tencent') {
+    ElMessage.info('当前地图服务商尚未接入地图选点')
+    return
+  }
+
+  const mapKey = ensureTencentMapKey(configs.value.tencent_map_key)
+  if (!mapKey) {
     return
   }
 
@@ -776,7 +1393,7 @@ const openMapPicker = async () => {
 
   // 先加载地图脚本，然后等待对话框渲染完成后初始化地图
   try {
-    await loadTencentMapScript()
+    await loadTencentMapScript(mapKey)
     await nextTick()
     setTimeout(() => {
       initMap()
@@ -794,7 +1411,7 @@ const initMap = () => {
   // 检查 TMap 是否已加载
   if (!(window as any).TMap) {
     container.innerHTML = '<div class="map-loading-container">地图加载中...</div>'
-    loadTencentMapScript().then(() => {
+    loadTencentMapScript(configs.value.tencent_map_key).then(() => {
       initMap()
     }).catch(() => {
       container.innerHTML = '<div class="map-error-container"><i class="fas fa-exclamation-circle"></i><div>地图加载失败</div><div class="map-error-tip">请检查网络或稍后重试</div></div>'
@@ -872,6 +1489,14 @@ const cancelMapLocation = () => {
   showMapDialog.value = false
 }
 
+const saveMapSettings = async () => {
+  if (await handleSave()) showMapSettingsDialog.value = false
+}
+
+const savePaymentSettings = async () => {
+  if (await handleSave()) showPaymentSettingsDialog.value = false
+}
+
 const initializePageData = async () => {
   if (!canView.value) {
     loading.value = false
@@ -943,6 +1568,8 @@ onUnmounted(() => {
 </script>
 
 <style scoped lang="scss">
+@use './config-page.scss';
+
 .shop-config-page {
   padding: 24px;
   min-width: 0;
@@ -1278,6 +1905,6 @@ onUnmounted(() => {
   :global(.shop-config-map-dialog .mobile-dialog-sheet-body) {
     padding: 12px !important;
   }
-
 }
+
 </style>

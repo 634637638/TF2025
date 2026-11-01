@@ -11,8 +11,11 @@
   --tf-toolbar-button-height: 34px;
   --tf-toolbar-button-padding-x: var(--tf-space-3);
   --tf-toolbar-button-font-size: var(--tf-type-scale-13);
-  --tf-search-control-height: var(--tf-toolbar-button-height);
-  --tf-topbar-control-height: 40px;
+  --tf-search-control-height: var(--input-height-default);
+  --tf-topbar-control-height: 32px;
+  --tf-topbar-control-min-width: 64px;
+  --tf-topbar-control-padding-x: var(--tf-space-2);
+  --tf-topbar-control-gap: var(--tf-space-1);
   --tf-topbar-user-info-max-width: min(46vw, 360px);
   --tf-button-mobile-nav-size: 40px;
   --tf-button-fab-size: 56px;
@@ -258,8 +261,15 @@
 
 /* Main application topbar controls share one stable desktop height. */
 .btn.tf-button--topbar {
+  --tf-button-padding-x: var(--tf-topbar-control-padding-x);
   height: var(--tf-topbar-control-height) !important;
   min-height: var(--tf-topbar-control-height) !important;
+}
+
+@media (min-width: 1025px) {
+  .btn.tf-button--topbar {
+    min-width: var(--tf-topbar-control-min-width);
+  }
 }
 
 .el-button > span {
@@ -822,7 +832,7 @@ body .el-button.el-button.tf-button--menu-action:focus {
     --tf-toolbar-button-height: clamp(28px, 7.5vw, 30px);
     --tf-toolbar-button-padding-x: clamp(5px, 1.6vw, 7px);
     --tf-toolbar-button-font-size: var(--tf-type-scale-12);
-    --tf-search-control-height: var(--tf-toolbar-button-height);
+    --tf-search-control-height: var(--input-height-default);
     --tf-topbar-control-height: var(--tf-button-height);
     --tf-button-mobile-nav-size: var(--tf-button-height);
     --tf-button-fab-size: 48px;

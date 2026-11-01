@@ -151,6 +151,23 @@ export interface ShopConfig {
   shop_phone: string
   shop_address: string
   shop_hours: string
+  map_latitude?: string
+  map_longitude?: string
+  tencent_map_key?: string
+  map_provider?: string
+  payment_provider?: string
+  amap_map_key?: string
+  baidu_map_key?: string
+  wechat_pay_enabled?: boolean
+  alipay_pay_enabled?: boolean
+  payment_default_method?: string
+  payment_qr_wechat_enabled?: boolean
+  payment_qr_alipay_enabled?: boolean
+  payment_qr_other_enabled?: boolean
+  payment_qr_other_name?: string
+  payment_bank_enabled?: boolean
+  payment_merchant_other_enabled?: boolean
+  other_qrcode?: string
   wechat_qrcode: string
   alipay_qrcode: string
   bank_info: string

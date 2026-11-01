@@ -21,6 +21,7 @@
 - 普通命令按钮使用[全局按钮统一规范](button-standards.md)的语义 class 或 Element Plus 语义类型。
 - 统计卡片使用[后台统计卡片颜色规范](admin-stat-card-color-standard.md)的 `stat-card--*` 和 `--admin-stat-color-*`。
 - 表格、列表卡片和操作区使用[后台卡片与表格统一规范](admin-table-standards.md)的 `--admin-data-table-*`、`--admin-action-*` 和按钮语义令牌。
+- 表格表头使用 `--admin-data-table-header-bg` 引用 `#495057` 到 `#343a40` 的深灰渐变，白色文字和底部灰色强调线由同组表格令牌统一控制；不得在业务页面单独覆盖表头颜色。
 - 弹窗使用[对话框统一规范](dialog-standards.md)的 `--tf-dialog-*`；弹窗 footer 按钮使用 `--tf-button-*`。
 - 通知、加载、标签页、空状态和分页使用各自规范登记的公共入口，不直接复制颜色。
 - 业务状态颜色可以表达业务含义，但必须使用语义名称，例如 `success`、`warning`、`danger`、`new`、`used`、`income`；不得按页面位置或随机色值配色。

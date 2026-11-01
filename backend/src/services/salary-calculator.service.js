@@ -12,6 +12,8 @@ const {
   buildLeaveExclusionRules,
   shouldExcludeSaleByLeave
 } = require('../utils/leave-sales-filter')
+const { buildMonthlyLeaveBalances, monthKey } = require('../utils/leave-balance')
+const SystemSettingsService = require('./system-settings.service')
 
 const EXPECTED_SALARY_ERRORS = new Set([
   '员工不存在',
@@ -113,19 +115,6 @@ class SalaryCalculatorService {
       )
       salaryBreakdown.leave_deduction = deductions.leaveDeduction
       salaryBreakdown.leave_days = deductions.actualLeaveDays
-
-      // 10. 检查长期/整月请假
-      // 长期请假则无工资、无提成；整月请假也必须明确归零，避免扣款抵消后仍计算提成或加班费。
-      const workDays = this._calculateWorkDays(periodStart, periodEnd)
-      const isFullPeriodLeave = attendanceData.leaveDays >= periodDays
-      if (isFullPeriodLeave || attendanceData.leaveDays > workDays / 2) {
-        salaryBreakdown.base_salary = 0
-        salaryBreakdown.base_salary_adjustment = 0
-        salaryBreakdown.commission_amount = 0
-        salaryBreakdown.overtime_pay = 0
-        salaryBreakdown.leave_deduction = 0
-        salaryBreakdown.base_salary_note = isFullPeriodLeave ? '整月请假，无工资无提成' : '长期请假，无工资无提成'
-      }
 
       // 11. 计算实发工资（不扣社保个税）
       // base_salary 已经包含了涨薪调整，不需要再加 base_salary_adjustment
@@ -330,9 +319,9 @@ class SalaryCalculatorService {
   }
 
   /**
-   * 获取考勤数据（支持2个月累积休假逻辑）
+   * 获取考勤数据（支持模板月额度两倍的跨月休假结转）
    * - 请假（leave）记录：只查询当月的记录
-   * - 休假（monthly_leave）记录：查询2个月（当月+上月）来计算累积和超额
+   * - 休假（monthly_leave）记录：按自然月额度计算，未用额度最多结转一个月
    * - 加班（overtime）记录：只查询当月的记录
    */
   async _getAttendanceData(employeeId, periodStart, periodEnd) {
@@ -344,9 +333,6 @@ class SalaryCalculatorService {
       currentMonthStartDate.setDate(1)
       const currentMonthStart = formatLocalDate(currentMonthStartDate)
 
-      const lastMonthStartDate = new Date(currentMonthStartDate)
-      lastMonthStartDate.setMonth(lastMonthStartDate.getMonth() - 1)
-      const lastMonthStart = formatLocalDate(lastMonthStartDate)
 
       // 查询1：当月的请假和加班记录（只查询计算周期内的）
       const currentPeriodQuery = `
@@ -378,44 +364,34 @@ class SalaryCalculatorService {
         }
       })
 
-      // 查询2：2个月的休假记录（用于计算累积和超额）
+      // 查询2：历史带薪休假和无薪请假记录，用于计算有效结转额度。
       const restDaysQuery = `
         SELECT
           monthly_leave_days,
+          leave_days,
+          record_type,
           record_date
         FROM attendance_records
         WHERE employee_id = ?
           AND record_date BETWEEN ? AND ?
           AND status = 'approved'
-          AND record_type = 'monthly_leave'
+          AND record_type IN ('monthly_leave', 'leave')
         ORDER BY record_date
       `
 
-      const [restRows] = await conn.execute(restDaysQuery, [employeeId, lastMonthStart, periodEnd])
+      const [restRows] = await conn.execute(restDaysQuery, [employeeId, '1900-01-01', periodEnd])
 
-      let lastMonthRestDays = 0
-      let currentMonthRestDays = 0
+      const monthlyUsage = {}
       restRows.forEach(row => {
-        const restDays = parseFloat(row.monthly_leave_days) || 0
-        const recordDate = new Date(row.record_date)
-        if (recordDate < currentMonthStartDate) {
-          lastMonthRestDays += restDays
-        } else {
-          currentMonthRestDays += restDays
+        const key = monthKey(row.record_date)
+        if (!key) return
+        monthlyUsage[key] ||= { paidUsed: 0, unpaidUsed: 0 }
+        if (row.record_type === 'monthly_leave') {
+          monthlyUsage[key].paidUsed += parseFloat(row.monthly_leave_days) || 0
+        } else if (row.record_type === 'leave') {
+          monthlyUsage[key].unpaidUsed += parseFloat(row.leave_days) || 0
         }
       })
-
-      // 查询3：上个月是否存在普通请假（leave），有则不累计上月剩余休假额度
-      const lastMonthLeaveQuery = `
-        SELECT COUNT(*) AS leave_count
-        FROM attendance_records
-        WHERE employee_id = ?
-          AND record_date BETWEEN ? AND DATE_SUB(?, INTERVAL 1 DAY)
-          AND status = 'approved'
-          AND record_type = 'leave'
-      `
-      const [lastMonthLeaveRows] = await conn.execute(lastMonthLeaveQuery, [employeeId, lastMonthStart, currentMonthStart])
-      const lastMonthHasRegularLeave = (lastMonthLeaveRows[0]?.leave_count || 0) > 0
 
       // 获取员工模板以确定月均休假天数
       const templateQuery = `
@@ -425,20 +401,22 @@ class SalaryCalculatorService {
         WHERE u.id = ?
       `
       const [templateRows] = await conn.execute(templateQuery, [employeeId])
-      const monthlyRestDays = (templateRows[0]?.rest_days) || 2
+      const configuredRestDays = Number(templateRows[0]?.rest_days)
+      const monthlyRestDays = Number.isFinite(configuredRestDays) && configuredRestDays >= 0
+        ? configuredRestDays
+        : await SystemSettingsService.getMonthlyLeaveDays()
 
-      // 上个月只有普通请假才阻断累计；只有休假不阻断累计，且累计上限最多 2 个月。
-      const carryForwardRestDays = lastMonthHasRegularLeave
-        ? 0
-        : Math.min(monthlyRestDays, Math.max(0, monthlyRestDays - lastMonthRestDays))
-      const allowedCurrentRestDays = Math.min(
-        monthlyRestDays * 2,
-        monthlyRestDays + carryForwardRestDays
-      )
+      const currentMonthBalance = buildMonthlyLeaveBalances({
+        monthlyLimit: monthlyRestDays,
+        monthlyUsage,
+        startDate: currentMonthStart,
+        endDate: currentMonthStart
+      }).find(item => item.month === monthKey(currentMonthStart))
+      const currentMonthRestDays = monthlyUsage[monthKey(currentMonthStart)]?.paidUsed || 0
 
       // 当月休假超出本月可用额度时，超出部分转为请假扣款
-      if (currentMonthRestDays > allowedCurrentRestDays) {
-        const excessDays = currentMonthRestDays - allowedCurrentRestDays
+      if (currentMonthBalance && currentMonthRestDays > currentMonthBalance.quota) {
+        const excessDays = currentMonthRestDays - currentMonthBalance.quota
         result.leaveDays += excessDays
       }
 

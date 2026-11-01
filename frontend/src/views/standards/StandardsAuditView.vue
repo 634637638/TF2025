@@ -62,7 +62,6 @@
               v-model="keyword"
               clearable
               placeholder="搜索规范名称、文档或审计命令"
-              @keyup.enter="applySearch"
             >
               <template #prefix><i class="fas fa-search" /></template>
             </el-input>
@@ -195,6 +194,10 @@
           <div class="standard-detail__preview">
             <div class="standard-detail__label">效果预览</div>
             <div class="preview-stage">
+              <div class="preview-context">
+                <strong>{{ selectedStandard.title }} · 对应规范效果</strong>
+                <p>{{ selectedDocumentSummary || selectedStandard.summary }}</p>
+              </div>
               <div v-if="selectedStandard.previewKind === 'button'" class="preview-button-row">
                 <el-button type="primary" class="tf-button--save" @click="previewButtonAction('主要操作')">主要操作</el-button>
                 <el-button type="success" class="tf-button--complete" @click="previewButtonAction('完成')">完成</el-button>
@@ -219,63 +222,64 @@
                 </div>
                 <el-tag v-if="previewDialogResult" type="success">{{ previewDialogResult }}</el-tag>
               </div>
-              <el-table
-                v-else-if="selectedStandard.previewKind === 'table'"
-                :data="previewRows"
-                class="data-table admin-data-table standards-preview-table"
-                border
-                stripe
-                table-layout="fixed"
-                :fit="true"
-              >
-                <el-table-column
-                  prop="field"
-                  label="字段"
-                  min-width="150"
-                  class-name="complete-text-column"
-                />
-                <el-table-column
-                  label="状态"
-                  width="90"
-                  align="center"
+              <template v-else-if="selectedStandard.previewKind === 'table'">
+                <el-table
+                  :data="previewRows"
+                  class="data-table admin-data-table standards-preview-table"
+                  border
+                  stripe
+                  table-layout="fixed"
+                  :fit="true"
                 >
-                  <template #default="{ row }">
-                    <el-tag size="small" type="success">{{ row.status }}</el-tag>
-                  </template>
-                </el-table-column>
-                <el-table-column
-                  label="操作"
-                  :width="previewActionColumnWidth"
-                  class-name="actions-column"
-                  align="center"
-                >
-                  <template #default>
-                    <div class="table-actions">
-                      <el-button
-                        type="info"
-                        class="table-action table-action--view"
-                        size="small"
-                        @click.stop="togglePreviewDetail"
-                      >
-                        <i :class="previewDetailVisible ? 'fas fa-chevron-up' : 'fas fa-eye'" />
-                        {{ previewDetailVisible ? '收起' : '查看' }}
-                      </el-button>
-                    </div>
-                  </template>
-                </el-table-column>
-              </el-table>
-              <div v-if="selectedStandard.previewKind === 'table' && previewDetailVisible" class="preview-table-detail">
-                <div class="preview-table-detail__head">
-                  <strong>设备详情（预览）</strong>
-                  <el-tag type="success" size="small">在库</el-tag>
+                  <el-table-column
+                    prop="field"
+                    label="字段"
+                    min-width="150"
+                    class-name="complete-text-column"
+                  />
+                  <el-table-column
+                    label="状态"
+                    width="90"
+                    align="center"
+                  >
+                    <template #default="{ row }">
+                      <el-tag size="small" type="success">{{ row.status }}</el-tag>
+                    </template>
+                  </el-table-column>
+                  <el-table-column
+                    label="操作"
+                    :width="previewActionColumnWidth"
+                    class-name="actions-column"
+                    align="center"
+                  >
+                    <template #default>
+                      <div class="table-actions">
+                        <el-button
+                          type="info"
+                          class="table-action table-action--view"
+                          size="small"
+                          @click.stop="togglePreviewDetail"
+                        >
+                          <i :class="previewDetailVisible ? 'fas fa-chevron-up' : 'fas fa-eye'" />
+                          {{ previewDetailVisible ? '收起' : '查看' }}
+                        </el-button>
+                      </div>
+                    </template>
+                  </el-table-column>
+                </el-table>
+                <div v-if="previewDetailVisible" class="preview-table-detail">
+                  <div class="preview-table-detail__head">
+                    <strong>设备详情（预览）</strong>
+                    <el-tag type="success" size="small">在库</el-tag>
+                  </div>
+                  <div class="preview-table-detail__grid">
+                    <span>型号：iPhone 15 Pro</span>
+                    <span>颜色：原色钛金属</span>
+                    <span>内存：256G</span>
+                    <span>序列号：NEW-DEMO-001</span>
+                  </div>
                 </div>
-                <div class="preview-table-detail__grid">
-                  <span>型号：iPhone 15 Pro</span>
-                  <span>颜色：原色钛金属</span>
-                  <span>内存：256G</span>
-                  <span>序列号：NEW-DEMO-001</span>
-                </div>
-              </div>
+              </template>
               <div v-else-if="selectedStandard.previewKind === 'search'" class="preview-search">
                 <el-input
                   v-model="previewSearchKeyword"
@@ -292,6 +296,49 @@
                 <div class="preview-form__actions">
                   <el-button type="primary" class="tf-button--save" @click="submitFormPreview">提交演示</el-button>
                   <el-tag v-if="previewFormSubmitted" type="success">表单校验通过</el-tag>
+                </div>
+              </div>
+              <div v-else-if="selectedStandard.previewKind === 'time'" class="preview-time">
+                <div class="preview-time__timezone">
+                  <i class="fas fa-location-dot" />
+                  <span>业务时区</span>
+                  <strong>Asia/Shanghai（北京时间）</strong>
+                </div>
+                <div class="preview-time__values">
+                  <div>
+                    <span>日期</span>
+                    <strong>{{ previewTimeDate }}</strong>
+                    <code>TIME_FORMATS.DATE</code>
+                  </div>
+                  <div>
+                    <span>日期时间</span>
+                    <strong>{{ previewTimeDateTime }}</strong>
+                    <code>TIME_FORMATS.DATETIME</code>
+                  </div>
+                </div>
+                <div class="preview-time__actions">
+                  <el-button type="primary" class="tf-button--save" @click="refreshTimePreview">
+                    <i class="fas fa-rotate-right" />刷新北京时间
+                  </el-button>
+                  <el-tag type="info">统一入口：TimeUtil</el-tag>
+                </div>
+              </div>
+              <div v-else-if="selectedStandard.previewKind === 'rules'" class="preview-rules">
+                <div class="preview-rules__head">
+                  <i class="fas fa-list-check" />
+                  <strong>{{ selectedStandard.title }}关键规则</strong>
+                </div>
+                <ul>
+                  <li v-for="requirement in activeDocumentRequirements.slice(0, previewPolicyExpanded ? undefined : 3)" :key="requirement">
+                    <i class="fas fa-check" />{{ requirement }}
+                  </li>
+                </ul>
+                <div class="preview-rules__actions">
+                  <el-button class="tf-button--neutral" size="small" @click="togglePolicyRequirements">
+                    <i :class="previewPolicyExpanded ? 'fas fa-chevron-up' : 'fas fa-chevron-down'" />
+                    {{ previewPolicyExpanded ? '收起规则' : '查看全部规则' }}
+                  </el-button>
+                  <el-tag type="info">{{ selectedStandard.checks.length }} 项审计 · {{ selectedStandard.publicSources.length }} 个公共入口</el-tag>
                 </div>
               </div>
               <div v-else-if="selectedStandard.previewKind === 'feedback'" class="preview-feedback">
@@ -366,10 +413,11 @@
           <div class="standard-detail__columns">
             <section>
               <div class="standard-detail__label">规范说明</div>
-              <p>{{ selectedStandard.summary }}</p>
-              <div class="standard-detail__label">关键要求</div>
+              <InlineLoading v-if="documentLoading" text="正在读取规范正文" size="small" />
+              <p v-else>{{ selectedDocumentSummary || selectedStandard.summary }}</p>
+              <div class="standard-detail__label">规范要点</div>
               <ul class="standard-requirement-list">
-                <li v-for="requirement in selectedStandard.requirements" :key="requirement">
+                <li v-for="requirement in (selectedDocumentRequirements.length ? selectedDocumentRequirements : selectedStandard.requirements)" :key="requirement">
                   {{ requirement }}
                 </li>
               </ul>
@@ -392,6 +440,7 @@ import { computed, onBeforeUnmount, ref } from 'vue'
 import { useNotification } from '@/composables/useNotification'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { getAdaptiveActionColumnWidth } from '@/utils/table-layout'
+import { TIME_FORMATS, TimeUtil } from '@/utils/time'
 import { useLoadingStore } from '@/stores/loading'
 import { useMobile } from '@/composables/mobile'
 import IconRenderer from '@/components/IconRenderer.vue'
@@ -401,6 +450,7 @@ import MobileDialog from '@/components/MobileDialog.vue'
 import DataEmptyState from '@/components/DataEmptyState.vue'
 import InlineLoading from '@/components/InlineLoading.vue'
 import {
+  loadStandardDocument,
   standardCategories,
   standardsCatalog,
   type StandardCatalogItem,
@@ -413,10 +463,12 @@ const { success, warning } = useNotification()
 const loadingStore = useLoadingStore()
 const { isMobile, isTablet } = useMobile()
 const keyword = ref('')
-const appliedKeyword = ref('')
 const activeCategory = ref<'全部' | StandardCategory>('全部')
 const detailVisible = ref(false)
 const selectedStandard = ref<StandardCatalogItem | null>(null)
+const selectedDocumentSummary = ref('')
+const selectedDocumentRequirements = ref<string[]>([])
+const documentLoading = ref(false)
 const previewDetailVisible = ref(false)
 const previewLoadingActive = ref(false)
 const previewLoadingOperationId = 'standards-preview-loading'
@@ -434,10 +486,17 @@ const previewSecurityAllowed = ref(true)
 const previewSecurityResult = ref('')
 const previewRuntimeResult = ref('')
 const previewPageTab = ref<'current' | 'other'>('current')
+const previewTimeValue = ref(TimeUtil.now())
+const previewTimeDate = computed(() => TimeUtil.format(previewTimeValue.value, TIME_FORMATS.DATE))
+const previewTimeDateTime = computed(() => TimeUtil.format(previewTimeValue.value, TIME_FORMATS.DATETIME))
+const previewPolicyExpanded = ref(false)
 const previewRows = [{ field: '完整展示文本', status: '正常' }]
 const previewActionColumnWidth = computed(() => getAdaptiveActionColumnWidth(previewRows, [
   { label: '查看', visible: true }
 ]))
+const activeDocumentRequirements = computed(() => selectedDocumentRequirements.value.length
+  ? selectedDocumentRequirements.value
+  : selectedStandard.value?.requirements || [])
 
 const configuredCount = computed(() => standardsCatalog.filter(item => item.checks.length > 0).length)
 const sourceCount = computed(() => new Set(standardsCatalog.flatMap(item => item.publicSources)).size)
@@ -446,32 +505,39 @@ const categoryCounts = computed(() => Object.fromEntries(
 ) as Record<StandardCategory, number>)
 
 const filteredStandards = computed(() => {
-  const normalizedKeyword = appliedKeyword.value.trim().toLowerCase()
+  const normalizedKeyword = keyword.value.trim().toLowerCase()
   return standardsCatalog.filter((item) => {
     const matchesCategory = activeCategory.value === '全部' || item.category === activeCategory.value
     if (!matchesCategory) return false
     if (!normalizedKeyword) return true
-    return [item.title, item.document, item.category, ...item.checks, ...item.publicSources]
+    return [item.title, item.document, item.category, item.summary, ...item.requirements, ...item.checks, ...item.publicSources]
       .join(' ')
       .toLowerCase()
       .includes(normalizedKeyword)
   })
 })
 
-const applySearch = () => {
-  appliedKeyword.value = keyword.value
-}
-
 const resetFilters = () => {
   keyword.value = ''
-  appliedKeyword.value = ''
   activeCategory.value = '全部'
 }
 
-const openDetail = (standard: StandardCatalogItem) => {
+const openDetail = async (standard: StandardCatalogItem) => {
   resetPreviewState()
   selectedStandard.value = standard
+  selectedDocumentSummary.value = ''
+  selectedDocumentRequirements.value = []
+  documentLoading.value = true
   detailVisible.value = true
+  try {
+    const detail = await loadStandardDocument(standard.document, standard.summary, standard.requirements)
+    if (selectedStandard.value?.document === standard.document) {
+      selectedDocumentSummary.value = detail.summary
+      selectedDocumentRequirements.value = detail.requirements
+    }
+  } finally {
+    if (selectedStandard.value?.document === standard.document) documentLoading.value = false
+  }
 }
 
 const togglePreviewDetail = () => {
@@ -516,6 +582,8 @@ const resetPreviewState = () => {
   previewSecurityResult.value = ''
   previewRuntimeResult.value = ''
   previewPageTab.value = 'current'
+  previewTimeValue.value = TimeUtil.now()
+  previewPolicyExpanded.value = false
 }
 
 const previewButtonAction = (label: string) => {
@@ -559,6 +627,14 @@ const runRuntimePreview = () => {
   previewRuntimeResult.value = '演示审计已执行'
 }
 
+const refreshTimePreview = () => {
+  previewTimeValue.value = TimeUtil.now()
+}
+
+const togglePolicyRequirements = () => {
+  previewPolicyExpanded.value = !previewPolicyExpanded.value
+}
+
 const copyDocumentPath = async (standard: StandardCatalogItem) => {
   const path = `docs/frontend/${standard.document}`
   try {
@@ -576,6 +652,7 @@ const categoryIcon = (category: StandardCategory) => {
     '页面与布局': 'fas fa-table-columns',
     '视觉与组件': 'fas fa-palette',
     '数据与表格': 'fas fa-table-list',
+    '数据与时间': 'fas fa-clock',
     '搜索与表单': 'fas fa-magnifying-glass',
     '反馈与交互': 'fas fa-bolt',
     '权限与安全': 'fas fa-shield-halved',
@@ -594,7 +671,9 @@ const previewIcon = (kind: StandardPreviewKind) => {
     form: 'fas fa-list-check',
     feedback: 'fas fa-bell',
     security: 'fas fa-shield-halved',
-    runtime: 'fas fa-terminal'
+    runtime: 'fas fa-terminal',
+    time: 'fas fa-clock',
+    rules: 'fas fa-list-check'
   }
   return icons[kind]
 }
@@ -637,11 +716,31 @@ const previewIcon = (kind: StandardPreviewKind) => {
 .standard-detail__head code, .standard-detail__chips code { padding: var(--tf-space-1) var(--tf-space-2); border-radius: var(--tf-radius-compact); background: var(--tf-color-slate-100); color: var(--tf-color-slate-600); font-size: var(--tf-font-caption); }
 .standard-detail__label { margin-bottom: var(--tf-space-2); color: var(--admin-section-title-color); font-size: var(--tf-font-body); font-weight: 700; }
 .preview-stage { min-height: 108px; padding: var(--tf-space-4); border: 1px solid var(--admin-table-panel-border); border-radius: var(--tf-radius-card); background: var(--tf-color-slate-50); }
+.preview-context { display: grid; gap: var(--tf-space-1); margin-bottom: var(--tf-space-3); padding-bottom: var(--tf-space-3); border-bottom: 1px solid var(--tf-color-slate-200); }
+.preview-context strong { color: var(--admin-section-title-color); font-size: var(--tf-font-body); }
+.preview-context p { margin: 0; color: var(--tf-color-slate-500); font-size: var(--tf-font-caption); line-height: var(--tf-line-height-body); }
 .preview-button-row, .preview-search, .preview-feedback, .preview-security, .preview-runtime { display: flex; align-items: center; flex-wrap: wrap; gap: var(--tf-space-2); }
 .preview-feedback { flex-direction: column; align-items: stretch; }
 .preview-feedback__states, .preview-loading-demo, .preview-feedback__actions, .preview-form__actions { display: flex; align-items: center; flex-wrap: wrap; gap: var(--tf-space-2); }
 .preview-loading-demo { padding-top: var(--tf-space-2); border-top: 1px solid var(--tf-color-slate-200); }
 .preview-loading-demo__hint { color: var(--tf-color-slate-500); font-size: var(--tf-font-caption); }
+.preview-time { display: grid; gap: var(--tf-space-3); }
+.preview-time__timezone, .preview-time__actions { display: flex; align-items: center; flex-wrap: wrap; gap: var(--tf-space-2); }
+.preview-time__timezone { color: var(--tf-color-slate-600); font-size: var(--tf-font-body); }
+.preview-time__timezone i { color: var(--tf-color-sky-700); }
+.preview-time__timezone strong { color: var(--tf-color-slate-800); }
+.preview-time__values { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--tf-space-3); }
+.preview-time__values > div { display: grid; min-width: 0; gap: var(--tf-space-1); padding: var(--tf-space-3); border: 1px solid var(--tf-color-border-slate); border-radius: var(--tf-radius-control); background: var(--color-bg-white); }
+.preview-time__values span { color: var(--tf-color-slate-500); font-size: var(--tf-font-caption); }
+.preview-time__values strong { color: var(--tf-color-slate-800); font-size: var(--tf-font-body); font-variant-numeric: tabular-nums; }
+.preview-time__values code { color: var(--tf-color-sky-700); font-size: var(--tf-font-caption); }
+.preview-rules { display: grid; gap: var(--tf-space-3); }
+.preview-rules__head, .preview-rules__actions { display: flex; align-items: center; flex-wrap: wrap; gap: var(--tf-space-2); }
+.preview-rules__head { color: var(--tf-button-primary-soft-color); font-size: var(--tf-font-body); }
+.preview-rules__head i { font-size: var(--tf-type-scale-16); }
+.preview-rules ul { display: grid; gap: var(--tf-space-2); margin: 0; padding: 0; list-style: none; }
+.preview-rules li { display: flex; align-items: flex-start; gap: var(--tf-space-2); color: var(--tf-color-slate-600); font-size: var(--tf-font-body); line-height: var(--tf-line-height-body); }
+.preview-rules li i { flex: 0 0 auto; margin-top: var(--tf-space-1); color: var(--tf-button-success-soft-color); }
 .preview-form__actions { grid-column: 1 / -1; }
 .preview-result { display: flex; align-items: center; flex-wrap: wrap; gap: var(--tf-space-2); min-height: 128px; justify-content: center; color: var(--tf-button-success-soft-color); font-size: var(--tf-font-body); font-weight: 600; }
 .preview-result--success i { font-size: var(--tf-type-scale-20); }
@@ -680,5 +779,6 @@ const previewIcon = (kind: StandardPreviewKind) => {
   .standards-grid { grid-template-columns: 1fr; }
   .standard-detail__columns, .preview-form { grid-template-columns: 1fr; }
   .preview-table-detail__grid { grid-template-columns: 1fr; }
+  .preview-time__values { grid-template-columns: 1fr; }
 }
 </style>

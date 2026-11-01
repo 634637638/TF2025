@@ -80,6 +80,17 @@ if (!/\.el-dialog__footer\s*>\s*\.el-button,/.test(dialogActionsSource)) {
   findings.push('src/styles/components/_dialog-actions.scss 移动端必须覆盖直接 el-dialog footer 按钮，确保未包裹 footer 也等分')
 }
 
+const mobileDialogPath = join(sourceRoot, 'components/MobileDialog.vue')
+const mobileDialogSource = readFileSync(mobileDialogPath, 'utf8')
+for (const style of extractStyleSources(mobileDialogPath, mobileDialogSource)) {
+  for (const block of blocks(style.source)) {
+    if (!/mobile-dialog-sheet-footer/.test(block.selector) || !/:deep\(\.el-button/.test(block.selector)) continue
+    if (/(?:^|[;\s])(?:min-)?height\s*:/i.test(directDeclarations(block.body))) {
+      findings.push('src/components/MobileDialog.vue 不得覆盖移动端 footer 按钮高度，统一固定为 40px')
+    }
+  }
+}
+
 for (const filePath of walk(sourceRoot)) {
   const relativeFile = relative(root, filePath).split('\\').join('/')
   if (publicFiles.has(relativeFile)) continue

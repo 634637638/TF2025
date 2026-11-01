@@ -15,7 +15,7 @@
             :disabled="!canCreateRentalBase"
             @click="openCreateDialog"
           >
-            <i class="fas fa-plus" /><span>新建合同</span>
+            <i class="fas fa-plus" /><span>新增</span>
           </el-button>
           <el-button
             type="info"
@@ -343,7 +343,7 @@
 
       <MobileDialog
         v-model="formVisible"
-        :title="editingId ? '编辑租赁合同' : '新建租赁合同'"
+        :title="editingId ? '编辑租赁合同' : '新增租赁合同'"
         width="780px"
         :show-default-footer="false"
       >

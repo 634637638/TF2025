@@ -10,6 +10,8 @@
 
 PC 端公共表头使用 `48px` 高度和 `6px` 上下内边距，由 `admin-layout.css` 的 `--admin-data-table-header-height`、`--admin-data-table-header-padding-y` 统一控制。页面不得用私有样式重新放大表头。表头和内容默认居中对齐；公共 `.cell` 同时使用 `text-align: center` 和 Flex 的 `justify-content: center`，带图标、徽章或自定义容器的内容也必须居中。业务语义明确要求左对齐或右对齐时，必须在同一 `el-table-column` 上同时设置 `align` 与 `header-align`，避免表头和内容错位。
 
+公共表头背景统一使用 `#495057` 到 `#343a40` 的 135 度深灰渐变，表头文字为白色；底部使用中性灰细渐变强调线。颜色由 `admin-layout.css` 的 `--admin-data-table-header-bg`、`--admin-data-table-header-color` 和 `--admin-data-table-header-accent` 控制，所有业务表格共用，页面不得覆盖。
+
 PC 端数据行使用 `48px`，手机端数据行使用 `40px`；手机端表头使用 `40px`。所有 `data-table`、`devices-table` 和 `admin-data-table` 都继承这套尺寸，不得只给 `base-data-table` 单独维护一份规则。公共入口同时约束 Element Plus 的表头包装层、表头行、表头单元格、表体包装层、数据行和数据单元格，数据 `.cell` 必须使用 Flex 垂直居中，避免不同页面因 Element 内部默认值产生高度差异。表格内的机况、状态、序号和角色徽章统一使用公共 `20px` 高度、统一水平内边距和单行布局；业务页面只能维护语义颜色、图标和交互，不能重新设置徽章的高度、内边距、圆角或字体尺寸，避免徽章把综合查询基准行高撑大。
 
 所有公共徽章（包括机况、状态、角色、内存、Element 标签及带有 `badge` 语义 class 的徽章）在支持鼠标悬停的设备上统一通过自身圆角边框显示单层 `1px` 细外包围线，颜色跟随徽章文字颜色，过渡由 `frontend/src/styles/components/_badges.scss` 的公共令牌控制。该效果与表格操作按钮一致，不叠加外扩阴影，不使用方形 `outline`，也不改变徽章尺寸。表格为保留整格双击事件而设置 `pointer-events: none` 时，公共入口会从 `.clickable-cell:hover` 代理同一条徽章外包围线；页面不得单独添加 `:hover` 阴影、位移或边框。触摸设备不模拟 hover，避免移动端出现残留悬停状态。
@@ -371,7 +373,7 @@ const clearSelection = () => {
 | 页面左右和上下留白 | `--admin-page-gap-*`、`--admin-page-padding-*` |
 | 页面卡片之间的距离 | `--admin-panel-gap` |
 | 普通卡片内边距与圆角 | `--admin-panel-padding`、`--admin-panel-radius` |
-| 搜索卡片内边距 | `--admin-search-panel-padding-*` |
+| 搜索卡片内边距 | `--admin-search-panel-padding-*`（PC 上下/左右 `8px`；手机上下/左右 `12px`）|
 | 表格卡片内边距、背景、边框、阴影 | `--admin-table-panel-*` |
 | 统计卡片间距、内边距、背景、边框、阴影 | `--admin-stats-grid-gap`、`--admin-stat-card-*` |
 | 统计图标、数值、标签 | `--admin-stat-icon-*`、`--admin-stat-value-*`、`--admin-stat-label-*` |
@@ -472,6 +474,8 @@ Element Plus 弹窗默认可能通过 Teleport 挂载到 `body`，不再位于�
 薪资页 `/salary` 的工资模板、员工工资、工资计算和工资发放四个 Tab 使用同一套 Element Plus 公共表格结构。手机端保留完整业务字段并通过表格内部横向滚动查看，操作通过连续两次点击同一行展开，不得维护独立手机表格或固定右侧操作列。四个 Tab 均使用标准列表标题、记录数和统一分页。
 
 薪资销售明细弹窗使用内容驱动的紧凑列宽：型号、IMEI 和客户按当前两张明细表的数据计算宽度，颜色、金额、利润和时间使用固定语义宽度；弹窗宽度随列宽总和自适应。IMEI 仅使用等宽文本，不得添加背景、边框、圆角或悬停缩放。
+
+薪资页员工工资中的考勤记录弹窗也必须使用内容驱动列宽：日期、类型、详情、原因、状态和操作列以当前数据计算最小宽度作为保底，表格剩余宽度由可见列共同分配；编辑、删除按钮按当前权限计算操作列宽度。不得使用固定操作列宽度或让表格只渲染在弹窗左侧而留下右侧空白。
 
 ### 权限管理页规则
 

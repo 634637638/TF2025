@@ -2,10 +2,13 @@
 
 ## 功能描述
 
-当用户申请的休假天数超过本月可用天数时，系统会：
-1. **按日期自动拆分**：前N天为休假，后M天为请假
+当在考勤管理或工资管理的“新增考勤”中申请跨月或超过相应月份可用额度时，系统会：
+1. **按自然月逐日拆分**：每个日期按所属月份的月额度和未过期结转额度分配
 2. **分别创建记录**：每天创建一条独立的考勤记录
-3. **清晰显示提示**：确认对话框中显示具体日期分配
+3. **超额先提示**：存在无薪日期时，保存前显示带薪/无薪汇总和具体日期分配，取消不会创建任何记录
+4. **入口规则一致**：考勤页和工资页共用 `frontend/src/utils/attendance-leave-allocation.ts`，不允许各页面自行实现额度算法
+
+带薪休假有工资和提成；自动转换的无薪请假当天无工资、无提成。未使用额度最多结转一个自然月，任一月份最多可用“工资模板月额度 × 2”（例如月额度 2 天最多 4 天，月额度 5 天最多 10 天）。若上月存在无薪请假记录，则上月余额不结转到本月，本月模板额度仍有效。
 
 ## 使用场景示例
 
@@ -59,7 +62,7 @@
   "record_date": "2026-01-06",
   "leave_type": "事假",
   "leave_days": 1,
-  "leave_reason": "休假申请（超过休假天数，自动转为请假）",
+  "leave_reason": "请假 1 天，无薪无提成！",
   "status": "pending",
   "created_at": "2026-01-05 10:00:01"
 }
@@ -118,41 +121,44 @@
 - 1月7日：休假1天
 - 1月8日：请假1天
 
+## 工资管理新增考勤
+
+工资页“员工工资”TAB中的新增考勤与考勤管理使用相同规则：
+
+- 选择“休假”并设置日期范围后，先调用 `/attendance/leave-balance` 查询当前员工和日期范围的余额。
+- 日期逐日计算后，同一自然月内连续且同一类型的日期合并保存；超出带薪额度的日期自动按“事假”创建无薪记录，原因显示为“请假 X 天，无薪无提成！”。
+- 合并记录的日期由“日期”字段统一展示，休假/请假天数字段只展示天数，避免重复日期。
+- 考勤与工资考勤列表日期统一使用 `YYYY-MM-DD`：单日显示“2026-10-10”，同月多日显示“2026-10-10至18号”；跨月申请按自然月拆分后分别展示，不显示跨月日期范围。
+- 同一次提交使用同一个 `attendance_batch_id`；列表只合并同批次、同员工、同月份、同类型、同状态且日期连续的记录。跨月分开汇总，不连续日期（例如 10 号和 28 号）分开展示。
+- 旧记录没有批次 ID 时，仅在原始 ID 连续、员工/创建人/类型/状态/原因一致、日期连续且创建时间间隔不超过 3 秒时推断为同次提交；条件不足时保持独立展示。历史 ID 143–146 经只读核对后可分为 10 月 1 条、11 月 1 条。
+- 管理员新增记录默认使用“已通过”状态，页面选择的状态会传给每条拆分记录。
+- 用户取消“休假额度不足”确认框时，不创建任何记录，也不提示保存失败。
+- 编辑既有记录只更新原记录，不重新套用新增时的额度拆分，避免把已有记录重复计入余额。
+
 ## 代码实现要点
 
-### 前端（AttendanceView.vue）
+### 前端共享分配工具
+
+`buildAttendanceLeaveAllocation` 接收日期范围、工资模板月额度和接口返回的月度余额，返回每天的类型以及带薪/无薪汇总。`AttendanceView.vue` 和 `SalaryView.vue` 都必须调用该工具。
+
+### 前端分配入口
 
 ```typescript
-// 1. 生成日期分配说明
-const dates: string[] = []
-for (let i = 0; i < requestedDays; i++) {
-  const d = new Date(startDate)
-  d.setDate(d.getDate() + i)
-  const dateStr = `${d.getMonth() + 1}月${d.getDate()}日`
-  if (i < monthlyLeaveDays) {
-    dates.push(`${dateStr}:休假`)
-  } else {
-    dates.push(`${dateStr}:请假`)
-  }
-}
+const allocation = buildAttendanceLeaveAllocation({
+  requestedDays,
+  range: [startDate, endDate],
+  monthlyLimit,
+  available,
+  monthlyBalances
+})
 
-// 2. 按日期分别创建记录
-for (let i = 0; i < monthlyLeaveDays; i++) {
-  // 创建休假记录（前N天）
+for (const assignment of allocation.assignments) {
   await attendanceApi.createAttendanceRecord({
-    record_type: 'monthly_leave',
-    record_date: dateStr,
-    monthly_leave_days: 1
-  })
-}
-
-for (let i = monthlyLeaveDays; i < requestedDays; i++) {
-  // 创建请假记录（后N天）
-  await attendanceApi.createAttendanceRecord({
-    record_type: 'leave',
-    record_date: dateStr,
-    leave_type: '事假',
-    leave_days: 1
+    record_type: assignment.type,
+    record_date: assignment.date,
+    monthly_leave_days: assignment.type === 'monthly_leave' ? 1 : undefined,
+    leave_type: assignment.type === 'leave' ? '事假' : undefined,
+    leave_days: assignment.type === 'leave' ? 1 : undefined
   })
 }
 ```
@@ -160,14 +166,14 @@ for (let i = monthlyLeaveDays; i < requestedDays; i++) {
 ## 优势
 
 1. **清晰明了**：每天独立记录，便于查看和审批
-2. **自动分配**：前N天优先为休假，超过部分为请假
+2. **自动分配**：按月额度、历史已用天数和结转规则逐日分配，不以整个日期范围的单一余额简单切分
 3. **灵活调整**：如需修改，可以单独调整某一天的记录
 4. **准确计算**：工资计算时可以准确区分带薪和无薪天数
 5. **审批友好**：审批人可以看到每天的具体类型
 
 ## 注意事项
 
-1. **日期顺序**：系统按照日期范围从前往后分配，前N天为休假
+1. **日期顺序**：系统按照日期范围从前往后，结合每个自然月的余额逐日分配
 2. **独立记录**：每天都是独立的考勤记录，可以单独修改
-3. **状态同步**：所有创建的记录初始状态都是"待审批"
+3. **状态同步**：考勤申请沿用“待审批”；工资管理新增考勤沿用表单状态，默认“已通过”
 4. **批量操作**：如需批量审批，可以在列表中多选操作

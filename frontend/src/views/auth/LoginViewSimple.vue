@@ -15,7 +15,7 @@
             id="username"
             v-model="username"
             type="text"
-            class="form-control"
+            class="login-input-control"
             placeholder="请输入用户名"
             :disabled="loading || isLocked"
             autocomplete="username"
@@ -27,7 +27,7 @@
             id="password"
             v-model="password"
             type="password"
-            class="form-control"
+            class="login-input-control"
             placeholder="请输入密码"
             :disabled="loading || isLocked"
             autocomplete="current-password"
@@ -372,19 +372,16 @@ const handleLogin = async () => {
   font-weight: 500;
 }
 
-.form-control {
+.login-input-control {
   width: 100%;
-  padding: 12px;
-  border: 1px solid var(--tf-color-gray-300-alt);
-  border-radius: 5px;
-  font-size: var(--tf-type-scale-16);
-  transition: border-color 0.3s;
 }
 
-.form-control:focus {
-  outline: none;
-  border-color: var(--tf-color-indigo-brand);
-  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+.login-form :deep(.login-input-control) {
+  --el-fill-color-blank: var(--color-bg-white);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .login-button {

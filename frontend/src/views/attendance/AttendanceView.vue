@@ -297,7 +297,7 @@
                   <el-table
                     ref="attendanceTableRef"
                     v-tf-loading="loading"
-                    :data="tableData"
+                    :data="displayAttendanceRows"
                     border
                     stripe
                     class="data-table devices-table compact-fit-table"
@@ -337,7 +337,7 @@
                             <i class="fas fa-eye mr-1" /><span>查看</span>
                           </el-button>
                           <el-button
-                            v-if="canEdit"
+                            v-if="canEdit && !isAggregatedAttendanceRow(row)"
                             size="small"
                             plain
                             type="primary"
@@ -348,7 +348,7 @@
                             <i class="fas fa-edit mr-1" /><span>{{ row.status === 'pending' ? '编辑' : '修改' }}</span>
                           </el-button>
                           <el-button
-                            v-if="canDelete"
+                            v-if="canDelete && !isAggregatedAttendanceRow(row)"
                             size="small"
                             type="danger"
                             class="table-action table-action--delete"
@@ -364,9 +364,13 @@
                       v-if="showAttendanceIdColumn"
                       prop="id"
                       label="ID"
-                      width="64"
+                      min-width="90"
                       align="center"
-                    />
+                    >
+                      <template #default="{ row }">
+                        {{ getAttendanceRowIds(row) }}
+                      </template>
+                    </el-table-column>
                     <el-table-column
                       v-if="showAttendanceEmployeeColumn"
                       prop="employee_name"
@@ -423,40 +427,39 @@
                           v-if="row.record_type === 'monthly_leave'"
                           class="detail-item"
                         >
-                          <i class="fas fa-calendar-alt detail-icon" />
-                          {{ formatAttendanceQuantity(row.monthly_leave_days) }}天
+                          休假 {{ formatAttendanceQuantity(row.monthly_leave_days) }} 天
                         </span>
                         <span
                           v-else-if="row.record_type === 'leave'"
                           class="detail-item"
                         >
-                          <i class="fas fa-info-circle detail-icon" />
-                          {{ row.leave_type || '-' }} {{ formatAttendanceQuantity(row.leave_days) }}天
+                          请假 {{ formatAttendanceQuantity(row.leave_days) }} 天
                         </span>
                         <span
                           v-else-if="row.record_type === 'overtime'"
                           class="detail-item"
                         >
-                          <i class="fas fa-hourglass-half detail-icon" />
                           {{ formatAttendanceQuantity(row.overtime_hours) }}小时
                         </span>
                         <span
                           v-else
                           class="detail-item"
                         >
-                          <i class="fas fa-exclamation-triangle detail-icon" />
                           -
                         </span>
                       </template>
                     </el-table-column>
                     <el-table-column
                       v-if="showAttendanceDateColumn"
-                      prop="record_date"
                       label="日期"
                       :min-width="attendanceDateColumnWidth"
                       align="center"
                       class-name="complete-text-column"
-                    />
+                    >
+                      <template #default="{ row }">
+                        {{ getAttendanceRecordDateText(row) }}
+                      </template>
+                    </el-table-column>
                     <el-table-column
                       v-if="showAttendanceReasonColumn"
                       label="原因"
@@ -498,7 +501,7 @@
                             已拒绝
                           </el-tag>
                           <el-button
-                            v-if="canApprove && row.status === 'pending'"
+                            v-if="canApprove && row.status === 'pending' && !isAggregatedAttendanceRow(row)"
                             size="small"
                             plain
                             type="success"
@@ -539,7 +542,7 @@
                             <i class="fas fa-eye mr-1" />查看
                           </el-button>
                           <el-button
-                            v-if="canEdit"
+                            v-if="canEdit && !isAggregatedAttendanceRow(row)"
                             size="small"
                             plain
                             type="primary"
@@ -550,7 +553,7 @@
                             <i class="fas fa-edit mr-1" />{{ row.status === 'pending' ? '编辑' : '修改' }}
                           </el-button>
                           <el-button
-                            v-if="canDelete"
+                            v-if="canDelete && !isAggregatedAttendanceRow(row)"
                             size="small"
                             type="danger"
                             class="table-action table-action--delete"
@@ -689,7 +692,7 @@
                 <div class="table-responsive">
                   <el-table
                     ref="myAttendanceTableRef"
-                    :data="myLoading ? [] : myTableData"
+                    :data="myLoading ? [] : displayMyAttendanceRows"
                     border
                     stripe
                     class="data-table devices-table compact-fit-table"
@@ -729,7 +732,7 @@
                             <i class="fas fa-eye mr-1" /><span>查看</span>
                           </el-button>
                           <el-button
-                            v-if="row.status === 'pending'"
+                            v-if="row.status === 'pending' && !isAggregatedAttendanceRow(row)"
                             size="small"
                             type="danger"
                             class="table-action table-action--warning"
@@ -745,9 +748,13 @@
                       v-if="showMyAttendanceIdColumn"
                       prop="id"
                       label="ID"
-                      width="64"
+                      min-width="90"
                       align="center"
-                    />
+                    >
+                      <template #default="{ row }">
+                        {{ getAttendanceRowIds(row) }}
+                      </template>
+                    </el-table-column>
                     <el-table-column
                       v-if="showMyAttendanceTypeColumn"
                       label="类型"
@@ -796,40 +803,39 @@
                           v-if="row.record_type === 'monthly_leave'"
                           class="detail-item"
                         >
-                          <i class="fas fa-calendar-alt detail-icon" />
-                          {{ formatAttendanceQuantity(row.monthly_leave_days) }}天
+                          休假 {{ formatAttendanceQuantity(row.monthly_leave_days) }} 天
                         </span>
                         <span
                           v-else-if="row.record_type === 'leave'"
                           class="detail-item"
                         >
-                          <i class="fas fa-info-circle detail-icon" />
-                          {{ row.leave_type || '-' }} {{ formatAttendanceQuantity(row.leave_days) }}天
+                          请假 {{ formatAttendanceQuantity(row.leave_days) }} 天
                         </span>
                         <span
                           v-else-if="row.record_type === 'overtime'"
                           class="detail-item"
                         >
-                          <i class="fas fa-hourglass-half detail-icon" />
                           {{ formatAttendanceQuantity(row.overtime_hours) }}小时
                         </span>
                         <span
                           v-else
                           class="detail-item"
                         >
-                          <i class="fas fa-exclamation-triangle detail-icon" />
                           -
                         </span>
                       </template>
                     </el-table-column>
                     <el-table-column
                       v-if="showMyAttendanceDateColumn"
-                      prop="record_date"
                       label="日期"
                       :min-width="myAttendanceDateColumnWidth"
                       align="center"
                       class-name="complete-text-column"
-                    />
+                    >
+                      <template #default="{ row }">
+                        {{ getAttendanceRecordDateText(row) }}
+                      </template>
+                    </el-table-column>
                     <el-table-column
                       v-if="showMyAttendanceReasonColumn"
                       label="原因"
@@ -899,7 +905,7 @@
                             <i class="fas fa-eye mr-1" />查看
                           </el-button>
                           <el-button
-                            v-if="row.status === 'pending'"
+                            v-if="row.status === 'pending' && !isAggregatedAttendanceRow(row)"
                             size="small"
                             type="danger"
                             class="table-action table-action--warning"
@@ -1089,11 +1095,11 @@
                   ({{ leaveDateRange[0] }} 至 {{ leaveDateRange[1] }})
                 </span>
                 <el-tag
-                  v-if="formData.monthly_leave_days > (leaveBalance?.available || 0)"
+                  v-if="leaveAllocationPreview.regularLeaveDaysCount > 0"
                   type="warning"
                   class="ml-2"
                 >
-                  超过可用天数 {{ formData.monthly_leave_days - (leaveBalance?.available || 0) }} 天
+                  超过可用额度 {{ leaveAllocationPreview.regularLeaveDaysCount }} 天
                 </el-tag>
               </el-form-item>
             </template>
@@ -1341,7 +1347,17 @@
               v-if="canViewAttendanceField('attendance_attendanceview', 'record_date')"
               label="日期"
             >
-              {{ currentRecord.record_date }}
+              {{ currentRecord.record_type === 'monthly_leave'
+                ? formatAttendanceTableDateRange(currentRecord.record_date, currentRecord.record_type, currentRecord.monthly_leave_days)
+                : currentRecord.record_type === 'leave'
+                  ? formatAttendanceTableDateRange(currentRecord.record_date, currentRecord.record_type, currentRecord.leave_days)
+                  : formatAttendanceTableDateRange(currentRecord.record_date, currentRecord.record_type) }}
+            </el-descriptions-item>
+            <el-descriptions-item
+              v-if="isAggregatedAttendanceRow(currentRecord)"
+              label="原记录 ID"
+            >
+              {{ getAttendanceRowIds(currentRecord) }}
             </el-descriptions-item>
             <el-descriptions-item
               v-if="canViewAttendanceField('attendance_attendanceview', 'leave_type') && currentRecord.leave_type"
@@ -1353,7 +1369,13 @@
               v-if="canViewAttendanceField('attendance_attendanceview', 'leave_days') && currentRecord.leave_days"
               label="请假天数"
             >
-              {{ formatAttendanceQuantity(currentRecord.leave_days) }} 天
+              请假 {{ formatAttendanceQuantity(currentRecord.leave_days) }} 天
+            </el-descriptions-item>
+            <el-descriptions-item
+              v-if="canViewAttendanceField('attendance_attendanceview', 'monthly_leave_days') && currentRecord.monthly_leave_days"
+              label="休假天数"
+            >
+              休假 {{ formatAttendanceQuantity(currentRecord.monthly_leave_days) }} 天
             </el-descriptions-item>
             <el-descriptions-item
               v-if="canViewAttendanceField('attendance_attendanceview', 'overtime_hours') && currentRecord.overtime_hours"
@@ -1399,6 +1421,89 @@
               {{ currentRecord.approval_note }}
             </el-descriptions-item>
           </el-descriptions>
+
+          <el-table
+            v-if="currentRecord && isAggregatedAttendanceRow(currentRecord)"
+            :data="currentRecord.source_records"
+            row-key="id"
+            border
+            stripe
+            class="data-table attendance-group-details"
+          >
+            <el-table-column
+              label="ID"
+              prop="id"
+              :min-width="attendanceGroupDetailIdColumnWidth"
+              align="center"
+            />
+            <el-table-column
+              label="日期"
+              :min-width="attendanceGroupDetailDateColumnWidth"
+              align="center"
+            >
+              <template #default="{ row }">
+                {{ getAttendanceRecordDateText(row) }}
+              </template>
+            </el-table-column>
+            <el-table-column
+              label="详情"
+              :min-width="attendanceGroupDetailDetailColumnWidth"
+              align="center"
+            >
+              <template #default="{ row }">
+                {{ getAttendanceDetailText(row) }}
+              </template>
+            </el-table-column>
+            <el-table-column
+              label="操作"
+              :min-width="attendanceGroupDetailActionColumnWidth"
+              align="center"
+              class-name="actions-column"
+            >
+              <template #default="{ row }">
+                <div class="action-buttons">
+                  <template v-if="activeTab === 'all'">
+                    <el-button
+                      v-if="canEdit"
+                      size="small"
+                      type="primary"
+                      @click.stop="handleEdit(row)"
+                    >
+                      <i class="fas fa-edit" />
+                      编辑
+                    </el-button>
+                    <el-button
+                      v-if="canDelete"
+                      size="small"
+                      type="danger"
+                      @click.stop="handleDelete(row)"
+                    >
+                      <i class="fas fa-trash" />
+                      删除
+                    </el-button>
+                    <el-button
+                      v-if="canApprove && row.status === 'pending'"
+                      size="small"
+                      type="success"
+                      @click.stop="handleApprove(row)"
+                    >
+                      <i class="fas fa-check" />
+                      审批
+                    </el-button>
+                  </template>
+                  <el-button
+                    v-else-if="row.status === 'pending'"
+                    size="small"
+                    type="danger"
+                    @click.stop="handleCancel(row)"
+                  >
+                    <i class="fas fa-times" />
+                    撤销
+                  </el-button>
+                </div>
+              </template>
+            </el-table-column>
+          </el-table>
 
           <template #footer>
             <el-button
@@ -1507,6 +1612,15 @@ import DateRangePicker from '@/components/DateRangePicker.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import { PageHeader, PermissionGate } from '@/components/base'
 import { TIME_FORMATS, TimeUtil } from '@/utils/time'
+import {
+  buildAttendanceLeaveAllocation,
+  createAttendanceBatchId,
+  formatAttendanceTableDateRange,
+  formatAttendanceLeaveReason,
+  groupAttendanceRecordsForDisplay,
+  groupAttendanceLeaveAssignments,
+  type AttendanceLeaveAllocation
+} from '@/utils/attendance-leave-allocation'
 
 interface AttendanceTableRow extends Omit<
   AttendanceRecord,
@@ -1516,6 +1630,8 @@ interface AttendanceTableRow extends Omit<
   leave_days?: number | string
   overtime_hours?: number | string
   monthly_leave_days?: number | string
+  source_records?: AttendanceTableRow[]
+  source_record_ids?: number[]
 }
 
 interface EmployeeOption {
@@ -1537,6 +1653,16 @@ interface LeaveBalanceInfo {
   total_quota?: number
   last_month_remaining?: number
   monthly_history?: LeaveHistoryItem[]
+  monthly_balances?: Array<{
+    month: string
+    monthly_limit: number
+    carry_in: number
+    paid_used: number
+    unpaid_used: number
+    available: number
+    carry_out: number
+    quota: number
+  }>
 }
 
 interface ExpandableAttendanceTableRef {
@@ -1744,9 +1870,30 @@ const showMyAttendanceActionField = computed(() => (
     [canCreateOwnAttendance.value]
   ) && !isMobile.value
 ))
+const displayAttendanceRows = computed(() => groupAttendanceRecordsForDisplay(
+  tableData.value as AttendanceRecord[]
+) as AttendanceTableRow[])
+const displayMyAttendanceRows = computed(() => groupAttendanceRecordsForDisplay(
+  myTableData.value as AttendanceRecord[]
+) as AttendanceTableRow[])
+const isAggregatedAttendanceRow = (row: AttendanceTableRow) => (
+  (row.source_records?.length || 0) > 1
+)
+const getAttendanceRowIds = (row: AttendanceTableRow) => (
+  row.source_record_ids?.length
+    ? row.source_record_ids.join('、')
+    : row.id || '-'
+)
+const getAttendanceRecordDateText = (row: AttendanceTableRow) => {
+  return formatAttendanceTableDateRange(
+    row.record_date,
+    row.record_type,
+    row.record_type === 'monthly_leave' ? row.monthly_leave_days : row.leave_days
+  )
+}
 const getAttendanceDetailText = (row: AttendanceTableRow) => {
-  if (row.record_type === 'monthly_leave') return `${formatAttendanceQuantity(row.monthly_leave_days)}天`
-  if (row.record_type === 'leave') return `${row.leave_type || '-'} ${formatAttendanceQuantity(row.leave_days)}天`
+  if (row.record_type === 'monthly_leave') return `休假 ${formatAttendanceQuantity(row.monthly_leave_days)} 天`
+  if (row.record_type === 'leave') return `请假 ${formatAttendanceQuantity(row.leave_days)} 天`
   if (row.record_type === 'overtime') return `${formatAttendanceQuantity(row.overtime_hours)}小时`
   return '-'
 }
@@ -1768,8 +1915,8 @@ const getAttendanceColumnWidth = (
 })
 const attendanceEmployeeColumnWidth = computed(() => getAttendanceColumnWidth('员工', tableData.value.map(row => row.employee_name), isMobile.value ? 76 : 82))
 const attendanceTypeColumnWidth = computed(() => getAttendanceColumnWidth('类型', tableData.value.map(() => '休假'), isMobile.value ? 66 : 76, 88, 34))
-const attendanceDetailColumnWidth = computed(() => getAttendanceColumnWidth('详情', tableData.value.map(getAttendanceDetailText), isMobile.value ? 74 : 88, 132, 36))
-const attendanceDateColumnWidth = computed(() => getAttendanceColumnWidth('日期', tableData.value.map(row => row.record_date), isMobile.value ? 82 : 102))
+const attendanceDetailColumnWidth = computed(() => getAttendanceColumnWidth('详情', tableData.value.map(getAttendanceDetailText), isMobile.value ? 120 : 156, 240, 36))
+const attendanceDateColumnWidth = computed(() => getAttendanceColumnWidth('日期', displayAttendanceRows.value.map(getAttendanceRecordDateText), isMobile.value ? 82 : 102, 190))
 const attendanceReasonColumnWidth = computed(() => getAttendanceColumnWidth('原因', tableData.value.map(getReasonText), 96, 168))
 const attendanceStatusColumnWidth = computed(() => Math.max(
   getAttendanceColumnWidth('状态', tableData.value.map(getAttendanceStatusText), 88, 98, 34),
@@ -1779,8 +1926,8 @@ const attendanceStatusColumnWidth = computed(() => Math.max(
 ))
 const attendanceApprovalColumnWidth = computed(() => getAttendanceColumnWidth('审批备注', tableData.value.map(row => row.approval_note), 104, 168))
 const myAttendanceTypeColumnWidth = computed(() => getAttendanceColumnWidth('类型', myTableData.value.map(() => '休假'), isMobile.value ? 70 : 76, 88, 34))
-const myAttendanceDetailColumnWidth = computed(() => getAttendanceColumnWidth('详情', myTableData.value.map(getAttendanceDetailText), isMobile.value ? 74 : 88, 132, 36))
-const myAttendanceDateColumnWidth = computed(() => getAttendanceColumnWidth('日期', myTableData.value.map(row => row.record_date), isMobile.value ? 82 : 102))
+const myAttendanceDetailColumnWidth = computed(() => getAttendanceColumnWidth('详情', myTableData.value.map(getAttendanceDetailText), isMobile.value ? 120 : 156, 240, 36))
+const myAttendanceDateColumnWidth = computed(() => getAttendanceColumnWidth('日期', displayMyAttendanceRows.value.map(getAttendanceRecordDateText), isMobile.value ? 82 : 102, 190))
 const myAttendanceReasonColumnWidth = computed(() => getAttendanceColumnWidth('原因', myTableData.value.map(getReasonText), 96, 168))
 const myAttendanceStatusColumnWidth = computed(() => getAttendanceColumnWidth('状态', myTableData.value.map(getAttendanceStatusText), 88, 98, 34))
 const myAttendanceApprovalColumnWidth = computed(() => getAttendanceColumnWidth('审批备注', myTableData.value.map(row => row.approval_note), 104, 168))
@@ -1799,6 +1946,44 @@ const myAttendanceActionColumnWidth = computed(() => getAdaptiveActionColumnWidt
     { label: '撤销', visible: row => row.status === 'pending' }
   ]
 ))
+const attendanceGroupDetailRows = computed(() => currentRecord.value?.source_records || [])
+const attendanceGroupDetailIdColumnWidth = computed(() => getTextColumnMinWidth(
+  ['ID', ...attendanceGroupDetailRows.value.map(row => row.id)],
+  {
+    minWidth: 64,
+    maxWidth: 96,
+    horizontalPadding: 24
+  }
+))
+const attendanceGroupDetailDateColumnWidth = computed(() => getAttendanceColumnWidth(
+  '日期',
+  attendanceGroupDetailRows.value.map(getAttendanceRecordDateText),
+  isMobile.value ? 110 : 128,
+  190
+))
+const attendanceGroupDetailDetailColumnWidth = computed(() => getAttendanceColumnWidth(
+  '详情',
+  attendanceGroupDetailRows.value.map(getAttendanceDetailText),
+  isMobile.value ? 96 : 112,
+  160
+))
+const attendanceGroupDetailActionColumnWidth = computed(() => {
+  const actions = activeTab.value === 'all'
+    ? [
+      { label: '编辑', visible: canEdit.value },
+      { label: '删除', visible: canDelete.value },
+      { label: '审批', visible: (row: AttendanceTableRow) => canApprove.value && row.status === 'pending' }
+    ]
+    : [
+      { label: '撤销', visible: (row: AttendanceTableRow) => row.status === 'pending' }
+    ]
+
+  return getAdaptiveActionColumnWidth(attendanceGroupDetailRows.value, actions, {
+    buttonWidth: 66,
+    buttonGap: 8,
+    horizontalPadding: 16
+  })
+})
 const _attendanceVisibleColumnCount = computed(() => {
   return [
     showAttendanceIdColumn.value,
@@ -2172,14 +2357,11 @@ const _updateStats = (data: AttendanceTableRow[]) => {
     .filter((r) => r.record_type === 'monthly_leave')
     .reduce((sum: number, r) => sum + Math.round(toAttendanceNumber(r.monthly_leave_days, 0)), 0)
 
-  const lastMonthHasRegularLeave = Boolean(leaveBalance.value?.monthly_history?.[0]?.has_regular_leave)
   const lastMonthUnusedDays = typeof leaveBalance.value?.last_month_remaining === 'number'
     ? Number(leaveBalance.value.last_month_remaining || 0)
-    : (lastMonthHasRegularLeave
-      ? 0
-      : Math.min(monthly_limit, Math.max(0, monthly_limit - lastMonthUsedLeaveDays)))
+    : Math.min(monthly_limit, Math.max(0, monthly_limit - lastMonthUsedLeaveDays))
 
-  // 本月总可用天数 = 本月额度 + 上月可累计额度，最多累计 2 个月
+  // 本月总可用天数 = 本月额度 + 上月可累计额度，最多为模板月额度的两倍
   const totalAvailableThisMonth = Math.min(monthly_limit * 2, monthly_limit + lastMonthUnusedDays)
 
   // 本月已使用的休假天数（只统计 monthly_leave 类型，带薪休假）
@@ -2241,13 +2423,19 @@ const showCreateDialog = async () => {
   dialogVisible.value = true
 }
 
-const loadLeaveBalance = async (employeeId?: number | string) => {
+const loadLeaveBalance = async (
+  employeeId?: number | string,
+  range?: [string, string] | null
+) => {
   try {
     const normalizedEmployeeId = employeeId === '' || employeeId === null || employeeId === undefined
       ? undefined
       : Number(employeeId)
     const response = await attendanceApi.getLeaveBalance(
-      Number.isFinite(normalizedEmployeeId) ? normalizedEmployeeId : undefined
+      Number.isFinite(normalizedEmployeeId) ? normalizedEmployeeId : undefined,
+      range && range.length === 2
+        ? { start_date: range[0], end_date: range[1] }
+        : undefined
     )
     // unifiedApi 返回的是 response.data
     if (response.data) {
@@ -2282,100 +2470,69 @@ const loadLeaveConfig = async () => {
 const isAttendanceDialogCancelled = (error: unknown) =>
   error === 'cancel' || error === 'close'
 
-const buildAttendanceSplitDateDetail = (
-  requestedDays: number,
-  monthlyLeaveDaysCount: number,
-  range: [string, string] | null
-) => {
-  if (!range || range.length !== 2) {
-    return ''
-  }
+const buildLeaveAllocation = (requestedDays: number, range: [string, string] | null) =>
+  buildAttendanceLeaveAllocation({
+    requestedDays,
+    range,
+    monthlyLimit: Number(leaveBalance.value?.monthly_limit ?? monthly_leave_days.value),
+    available: Number(leaveBalance.value?.available) || 0,
+    monthlyBalances: leaveBalance.value?.monthly_balances || []
+  })
 
-  const start_date = TimeUtil.parse(range[0])
-  if (!start_date?.isValid()) return ''
-  const dates: string[] = []
+const leaveAllocationPreview = computed(() => buildLeaveAllocation(
+  Number(formData.monthly_leave_days) || 0,
+  leaveDateRange.value
+))
 
-  for (let i = 0; i < requestedDays; i++) {
-    const date = TimeUtil.add(start_date, i, 'day')
-    const dateLabel = TimeUtil.format(date, TIME_FORMATS.MONTH_DAY_DISPLAY)
-    dates.push(`${dateLabel}:${i < monthlyLeaveDaysCount ? '休假' : '请假'}`)
-  }
-
-  return `\n\n具体日期分配：\n${dates.join('\n')}`
+const buildAttendanceSplitDateDetail = (allocation: AttendanceLeaveAllocation) => {
+  if (allocation.assignments.length === 0) return ''
+  return `\n\n具体日期分配：\n${groupAttendanceLeaveAssignments(allocation.assignments).map(item => {
+    const date = TimeUtil.parse(item.startDate)
+    const endDate = TimeUtil.parse(item.endDate)
+    const dateLabel = date?.isValid() ? TimeUtil.format(date, TIME_FORMATS.MONTH_DAY_DISPLAY) : item.startDate
+    const endDateLabel = endDate?.isValid() ? TimeUtil.format(endDate, TIME_FORMATS.MONTH_DAY_DISPLAY) : item.endDate
+    return `${dateLabel}${item.days > 1 ? `至${endDateLabel}` : ''}：${item.type === 'monthly_leave' ? `休假 ${item.days} 天` : `请假 ${item.days} 天，无薪无提成！`}`
+  }).join('\n')}`
 }
 
 const buildAttendanceSplitConfirmMessage = (
   requestedDays: number,
   availableDays: number,
-  monthlyLeaveDaysCount: number,
-  regularLeaveDaysCount: number,
-  range: [string, string] | null
-) => `本月可用休假天数：${availableDays}天
+  allocation: AttendanceLeaveAllocation
+) => `申请日期范围内可用休假天数：${availableDays}天
 申请天数：${requestedDays}天
-将自动创建：
-- 休假 ${monthlyLeaveDaysCount} 天（带薪，不扣工资）
-- 请假 ${regularLeaveDaysCount} 天（无薪，扣工资）${buildAttendanceSplitDateDetail(
-  requestedDays,
-  monthlyLeaveDaysCount,
-  range
-)}
+${allocation.monthlyLeaveDaysCount > 0 ? `休假 ${allocation.monthlyLeaveDaysCount} 天\n` : ''}${allocation.regularLeaveDaysCount > 0 ? `请假 ${allocation.regularLeaveDaysCount} 天，无薪无提成！` : ''}${buildAttendanceSplitDateDetail(allocation)}
 
 是否继续？`
 
 const createSplitAttendanceRecords = async (
   submitData: AttendanceRecord,
-  requestedDays: number,
-  monthlyLeaveDaysCount: number,
-  regularLeaveDaysCount: number,
-  range: [string, string] | null
+  allocation: AttendanceLeaveAllocation
 ) => {
-  if (range && range.length === 2) {
-    const start_date = TimeUtil.parse(range[0])
-    if (!start_date?.isValid()) return
-
-    for (let i = 0; i < monthlyLeaveDaysCount; i++) {
-      const date = TimeUtil.add(start_date, i, 'day')
+  const groups = groupAttendanceLeaveAssignments(allocation.assignments)
+  const batchId = createAttendanceBatchId()
+  for (const group of groups) {
+    if (group.type === 'monthly_leave') {
       await attendanceApi.createAttendanceRecord({
         employee_id: submitData.employee_id,
+        attendance_batch_id: batchId,
         record_type: 'monthly_leave',
-        record_date: TimeUtil.format(date, TIME_FORMATS.DATE),
-        monthly_leave_days: 1,
+        record_date: group.startDate,
+        monthly_leave_days: group.days,
         status: 'pending'
       })
-    }
-
-    for (let i = monthlyLeaveDaysCount; i < requestedDays; i++) {
-      const date = TimeUtil.add(start_date, i, 'day')
+    } else {
       await attendanceApi.createAttendanceRecord({
         employee_id: submitData.employee_id,
+        attendance_batch_id: batchId,
         record_type: 'leave',
-        record_date: TimeUtil.format(date, TIME_FORMATS.DATE),
+        record_date: group.startDate,
         leave_type: '事假',
-        leave_days: 1,
-        leave_reason: '休假申请（超过休假天数，自动转为请假）',
+        leave_days: group.days,
+        leave_reason: `请假 ${group.days} 天，无薪无提成！`,
         status: 'pending'
       })
     }
-
-    return
-  }
-
-  if (monthlyLeaveDaysCount > 0) {
-    await attendanceApi.createAttendanceRecord({
-      ...submitData,
-      monthly_leave_days: monthlyLeaveDaysCount
-    })
-  }
-
-  if (regularLeaveDaysCount > 0) {
-    await attendanceApi.createAttendanceRecord({
-      employee_id: submitData.employee_id,
-      record_type: 'leave',
-      record_date: submitData.record_date,
-      leave_type: '事假',
-      leave_days: regularLeaveDaysCount,
-      leave_reason: `休假申请（超过休假天数${regularLeaveDaysCount}天，自动转为请假）`
-    })
   }
 }
 
@@ -2400,6 +2557,7 @@ const handleEdit = (row: AttendanceTableRow) => {
     return
   }
 
+  detailDialogVisible.value = false
   dialogTitle.value = '编辑考勤记录'
   Object.assign(formData, {
     id: row.id,
@@ -2504,21 +2662,18 @@ const handleSubmit = async () => {
       const submitData = filterSubmitData(formData)
 
       if (formData.record_type === 'monthly_leave' && !formData.id) {
-        const requestedDays = formData.monthly_leave_days || 0
-        const availableDays = leaveBalance.value?.available || 0
+        const requestedDays = Number(formData.monthly_leave_days) || 0
+        const requestRange = leaveDateRange.value
+        await loadLeaveBalance(formData.employee_id, requestRange)
+        const allocation = buildLeaveAllocation(requestedDays, requestRange)
+        const availableDays = allocation.assignments.filter(item => item.type === 'monthly_leave').length
 
-        // 如果申请天数超过本月可用天数，超过的部分转为请假
-        if (requestedDays > availableDays) {
-          const monthlyLeaveDaysCount = availableDays
-          const regularLeaveDaysCount = requestedDays - availableDays
-
+        if (allocation.regularLeaveDaysCount > 0) {
           await confirmAction(
             buildAttendanceSplitConfirmMessage(
               requestedDays,
               availableDays,
-              monthlyLeaveDaysCount,
-              regularLeaveDaysCount,
-              leaveDateRange.value
+              allocation
             ),
             '休假天数提示',
             {
@@ -2528,21 +2683,12 @@ const handleSubmit = async () => {
             }
           )
 
-          await createSplitAttendanceRecords(
-            submitData,
-            requestedDays,
-            monthlyLeaveDaysCount,
-            regularLeaveDaysCount,
-            leaveDateRange.value
-          )
-
-          ElMessage.success(
-            buildAttendanceSubmitSuccessMessage(monthlyLeaveDaysCount, regularLeaveDaysCount)
-          )
-        } else {
-          await attendanceApi.createAttendanceRecord(submitData)
-          ElMessage.success('提交成功')
         }
+        await createSplitAttendanceRecords(submitData, allocation)
+        ElMessage.success(buildAttendanceSubmitSuccessMessage(
+          allocation.monthlyLeaveDaysCount,
+          allocation.regularLeaveDaysCount
+        ))
       } else if (formData.id) {
         await attendanceApi.updateAttendanceRecord(formData.id, submitData)
         ElMessage.success('更新成功')
@@ -2569,6 +2715,7 @@ const handleApprove = async (row: AttendanceTableRow) => {
     return
   }
 
+  detailDialogVisible.value = false
   currentRecord.value = row
   approveForm.status = 'approved'
   approveForm.note = ''
@@ -2686,6 +2833,7 @@ const syncLeaveDateRange = () => {
   }
 
   handleLeaveDateChange(leaveDateRange.value)
+  void loadLeaveBalance(formData.employee_id, leaveDateRange.value)
 }
 
 const handleLeaveBoundaryChange = (boundary: 'start' | 'end', value: string | null) => {
@@ -2707,6 +2855,7 @@ const handleDelete = async (row: AttendanceTableRow) => {
     await confirmAction('确认删除该考勤记录？', '删除确认')
     await attendanceApi.deleteAttendanceRecord(row.id)
     ElMessage.success('删除成功')
+    detailDialogVisible.value = false
     await loadData()
   } catch (error) {
     if (error !== 'cancel') {
@@ -2726,6 +2875,7 @@ const handleCancel = async (row: AttendanceTableRow) => {
     await confirmAction('确定要撤销此申请吗？', '提示', { type: 'warning' })
     await attendanceApi.cancelAttendanceRequest(row.id)
     ElMessage.success('已撤销')
+    detailDialogVisible.value = false
     loadMyData()
   } catch (error) {
     if (!isAttendanceDialogCancelled(error)) {
@@ -2738,9 +2888,9 @@ const handleCancel = async (row: AttendanceTableRow) => {
 // 获取原因文本 - 根据记录类型返回对应的 reason 字段
 const getReasonText = (row: AttendanceTableRow) => {
   if (row.record_type === 'monthly_leave') {
-    return `月度带薪休假 ${formatAttendanceQuantity(row.monthly_leave_days)} 天`
+    return `休假 ${formatAttendanceQuantity(row.monthly_leave_days)} 天`
   } else if (row.record_type === 'leave') {
-    return row.leave_reason || '-'
+    return formatAttendanceLeaveReason(row.leave_reason, row.leave_days)
   } else if (row.record_type === 'overtime') {
     return row.overtime_reason || '-'
   }
@@ -2768,7 +2918,7 @@ const handleMobileRowDblClick = (row: AttendanceTableRow, scope: 'all' | 'my') =
   if (scope === 'all') {
     const shouldExpand = mobileExpandedAttendanceId.value !== row.id
     if (mobileExpandedAttendanceId.value && mobileExpandedAttendanceId.value !== row.id) {
-      const previous = tableData.value.find(item => item.id === mobileExpandedAttendanceId.value)
+      const previous = displayAttendanceRows.value.find(item => item.id === mobileExpandedAttendanceId.value)
       if (previous) {
         attendanceTableRef.value?.toggleRowExpansion(previous, false)
       }
@@ -2780,7 +2930,7 @@ const handleMobileRowDblClick = (row: AttendanceTableRow, scope: 'all' | 'my') =
 
   const shouldExpand = mobileExpandedMyAttendanceId.value !== row.id
   if (mobileExpandedMyAttendanceId.value && mobileExpandedMyAttendanceId.value !== row.id) {
-    const previous = myTableData.value.find(item => item.id === mobileExpandedMyAttendanceId.value)
+    const previous = displayMyAttendanceRows.value.find(item => item.id === mobileExpandedMyAttendanceId.value)
     if (previous) {
       myAttendanceTableRef.value?.toggleRowExpansion(previous, false)
     }
@@ -2812,13 +2962,13 @@ const handleMobileRowTap = (row: AttendanceTableRow, scope: 'all' | 'my') => {
 
 const clearMobileActions = () => {
   if (mobileExpandedAttendanceId.value) {
-    const current = tableData.value.find(item => item.id === mobileExpandedAttendanceId.value)
+    const current = displayAttendanceRows.value.find(item => item.id === mobileExpandedAttendanceId.value)
     if (current) {
       attendanceTableRef.value?.toggleRowExpansion(current, false)
     }
   }
   if (mobileExpandedMyAttendanceId.value) {
-    const current = myTableData.value.find(item => item.id === mobileExpandedMyAttendanceId.value)
+    const current = displayMyAttendanceRows.value.find(item => item.id === mobileExpandedMyAttendanceId.value)
     if (current) {
       myAttendanceTableRef.value?.toggleRowExpansion(current, false)
     }
@@ -3129,18 +3279,8 @@ onMounted(async () => {
 .detail-item {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
   font-size: var(--tf-type-scale-13);
   color: var(--color-text-regular);
-}
-
-.detail-icon {
-  font-size: var(--tf-type-scale-12);
-  color: var(--color-info);
-}
-
-.data-table :deep(.el-table__body tr:hover .detail-icon) {
-  color: var(--color-primary);
 }
 
 /* 分页 */

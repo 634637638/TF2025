@@ -83,7 +83,10 @@
             class="tag-used"
           >二手</span>
         </div>
-        <h1 class="product-title">
+        <h1
+          class="product-title"
+          :class="{ 'product-title--used': !product.is_new }"
+        >
           <template
             v-for="(item, index) in productTitleItems"
             :key="`${item}-${index}`"

@@ -281,6 +281,7 @@ const handleLogout = async () => {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'warning',
+        customClass: 'message-box-logout',
         center: true
       }
     )
@@ -677,7 +678,7 @@ onUnmounted(() => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: var(--tf-type-scale-11);
+  font-size: var(--tf-type-scale-13);
   color: var(--tf-color-indigo-brand);
   white-space: nowrap;
   font-weight: 600;
@@ -714,7 +715,7 @@ onUnmounted(() => {
 .topbar-buttons {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--tf-topbar-control-gap);
   flex-shrink: 0;
 }
 

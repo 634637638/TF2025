@@ -68,12 +68,9 @@
             v-if="$slots.footer || showDefaultFooter"
             class="el-dialog__footer mobile-dialog-sheet-footer"
           >
-            <div
-              v-if="$slots.footer"
-              class="mobile-dialog-footer"
-            >
+            <template v-if="$slots.footer">
               <slot name="footer" />
-            </div>
+            </template>
             <div
               v-else-if="showDefaultFooter"
               class="default-footer"
@@ -142,12 +139,9 @@
       v-if="$slots.footer || showDefaultFooter"
       #footer
     >
-      <div
-        v-if="$slots.footer"
-        class="mobile-dialog-footer"
-      >
+      <template v-if="$slots.footer">
         <slot name="footer" />
-      </div>
+      </template>
       <div
         v-else-if="showDefaultFooter"
         class="default-footer"
@@ -605,16 +599,6 @@ onUnmounted(() => {
 .mobile-dialog-sheet-footer {
   padding: var(--mobile-dialog-footer-padding, 0 4px 4px);
   background: var(--color-bg-white);
-}
-
-.mobile-dialog-sheet-footer :deep(.el-button) {
-  min-height: 42px;
-  font-size: var(--tf-button-font-size, var(--tf-type-scale-15));
-}
-
-.mobile-dialog-sheet-footer :deep(.el-button.el-button--large) {
-  min-height: 44px;
-  font-size: var(--tf-button-font-size, var(--tf-type-scale-16));
 }
 
 .mobile-dialog-sheet-panel :deep(.el-form-item) {

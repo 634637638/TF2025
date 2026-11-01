@@ -280,7 +280,6 @@
           @add="handleAddAttendance"
           @delete="handleDeleteAttendance"
           @edit="handleEditAttendance"
-          @quick-add="handleQuickAdd"
         />
 
         <SalaryAttendanceFormDialog
@@ -331,6 +330,11 @@ import SalaryPayoutTab from './page/SalaryPayoutTab.vue'
 import SalaryStatsCards from './page/SalaryStatsCards.vue'
 import SalaryTemplatesTab from './page/SalaryTemplatesTab.vue'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
+import {
+  buildAttendanceLeaveAllocation,
+  createAttendanceBatchId,
+  groupAttendanceLeaveAssignments
+} from '@/utils/attendance-leave-allocation'
 import { logger } from '@/utils/logger'
 import { getActionColumnMinWidth, getIdentifierColumnMinWidth, getTextColumnMinWidth } from '@/utils/table-layout'
 import { getSalaryFieldKey } from './salary-field-permissions'
@@ -2138,10 +2142,11 @@ const attendanceFormVisible = ref(false)
 const attendanceSaving = ref(false)
 const attendanceDialogTitle = ref('新增考勤记录')
 const editingAttendanceId = ref<number | null>(null) // 正在编辑的考勤记录ID
-type AttendanceFormModel = AttendanceRecord & { reason: string }
+type AttendanceFormModel = AttendanceRecord & { reason: string, record_end_date?: string }
 
 const attendanceForm = ref<AttendanceFormModel>({
   record_date: '',
+  record_end_date: '',
   record_type: 'leave',
   leave_type: '事假',
   leave_days: 1,
@@ -2155,6 +2160,31 @@ const attendanceForm = ref<AttendanceFormModel>({
 const handleAttendanceTypeChange = () => {
   // 类型变更时重置日期
   attendanceForm.value.record_date = TimeUtil.nowFormatted(TIME_FORMATS.DATE)
+  attendanceForm.value.record_end_date = ''
+  attendanceForm.value.leave_days = attendanceForm.value.record_type === 'leave' ? 1 : 0
+  attendanceForm.value.monthly_leave_days = attendanceForm.value.record_type === 'monthly_leave' ? 1 : 0
+}
+
+const buildAttendanceEndDate = (startDate: string, days?: number) => {
+  const date = TimeUtil.parse(startDate)
+  const dayCount = Math.max(1, Number(days) || 1)
+  return date?.isValid()
+    ? TimeUtil.format(date.add(dayCount - 1, 'day'), TIME_FORMATS.DATE)
+    : startDate
+}
+
+const buildAttendanceDateRange = (startDate: string, endDate: string) => {
+  const start = TimeUtil.parse(startDate)
+  const end = TimeUtil.parse(endDate)
+  if (!start?.isValid() || !end?.isValid() || end.isBefore(start, 'day')) return []
+
+  const dates: string[] = []
+  let current = start
+  while (!current.isAfter(end, 'day')) {
+    dates.push(TimeUtil.format(current, TIME_FORMATS.DATE))
+    current = current.add(1, 'day')
+  }
+  return dates
 }
 
 // 打开员工考勤记录对话框
@@ -2214,6 +2244,7 @@ const handleAddAttendance = () => {
   attendanceDialogTitle.value = '新增考勤记录'
   attendanceForm.value = {
     record_date: TimeUtil.nowFormatted(TIME_FORMATS.DATE),
+    record_end_date: '',
     record_type: 'leave',
     leave_type: '事假',
     leave_days: 1,
@@ -2235,39 +2266,14 @@ const handleEditAttendance = (row: any) => {
   attendanceDialogTitle.value = '编辑考勤记录'
   attendanceForm.value = {
     record_date: row.record_date,
+    record_end_date: buildAttendanceEndDate(row.record_date, row.record_type === 'monthly_leave' ? row.monthly_leave_days : row.leave_days),
     record_type: row.record_type,
     leave_type: row.leave_type || '事假',
     leave_days: row.leave_days || 0,
     overtime_hours: row.overtime_hours || 0,
     monthly_leave_days: row.monthly_leave_days || 0,
-    reason: row.reason || '',
+    reason: row.reason || row.leave_reason || row.overtime_reason || '',
     status: row.status
-  }
-  attendanceFormVisible.value = true
-}
-
-// 快捷新增考勤记录
-const handleQuickAdd = (type: 'overtime' | 'monthly_leave' | 'leave') => {
-  if (!requireSalaryRecordPermission('create')) {
-    return
-  }
-
-  editingAttendanceId.value = null // 清空编辑ID，表示新增模式
-  const typeLabels: Record<string, string> = {
-    overtime: '加班',
-    monthly_leave: '休假',
-    leave: '请假'
-  }
-  attendanceDialogTitle.value = `新增${typeLabels[type]}记录`
-  attendanceForm.value = {
-    record_date: TimeUtil.nowFormatted(TIME_FORMATS.DATE),
-    record_type: type,
-    leave_type: type === 'leave' ? '事假' : '',
-    leave_days: type === 'leave' ? 1 : 0,
-    overtime_hours: type === 'overtime' ? 2 : 0,
-    monthly_leave_days: type === 'monthly_leave' ? 1 : 0,
-    reason: '',
-    status: 'approved'
   }
   attendanceFormVisible.value = true
 }
@@ -2290,7 +2296,17 @@ const handleSaveAttendance = async () => {
   try {
     const recordType = attendanceForm.value.record_type || 'leave'
     const recordDate = attendanceForm.value.record_date || TimeUtil.nowFormatted(TIME_FORMATS.DATE)
+    const recordEndDate = attendanceForm.value.record_end_date || recordDate
     const recordStatus = attendanceForm.value.status || 'approved'
+    const recordDates = recordType === 'leave' || recordType === 'monthly_leave'
+      ? buildAttendanceDateRange(recordDate, recordEndDate)
+      : [recordDate]
+
+    if (recordDates.length === 0) {
+      ElMessage.warning('请选择有效的开始日期和结束日期')
+      return
+    }
+    const isEdit = !!editingAttendanceId.value
 
     // 根据记录类型构建提交数据
     const submitData: any = {
@@ -2302,15 +2318,96 @@ const handleSaveAttendance = async () => {
 
     switch (recordType) {
     case 'monthly_leave':
-      submitData.monthly_leave_days = attendanceForm.value.monthly_leave_days
+      submitData.monthly_leave_days = recordDates.length
       if (!submitData.monthly_leave_days || submitData.monthly_leave_days <= 0) {
         ElMessage.warning('请输入休假天数')
+        return
+      }
+
+      if (!isEdit) {
+        const balanceResponse = await attendanceApi.getLeaveBalance(
+          Number(currentAttendanceEmployee.value.id),
+          { start_date: recordDate, end_date: recordEndDate }
+        )
+        const balance = balanceResponse.data
+        const allocation = buildAttendanceLeaveAllocation({
+          requestedDays: recordDates.length,
+          range: [recordDate, recordEndDate],
+          monthlyLimit: Number(balance.monthly_limit) || 0,
+          available: Number(balance.available) || 0,
+          monthlyBalances: balance.monthly_balances || []
+        })
+
+        if (allocation.assignments.length !== recordDates.length) {
+          ElMessage.error('休假额度计算失败，请检查日期后重试')
+          return
+        }
+        const groups = groupAttendanceLeaveAssignments(allocation.assignments)
+
+        if (allocation.regularLeaveDaysCount > 0) {
+          const dateDetails = groups.map(item => {
+            const date = TimeUtil.parse(item.startDate)
+            const endDate = TimeUtil.parse(item.endDate)
+            const dateLabel = date?.isValid()
+              ? TimeUtil.format(date, TIME_FORMATS.MONTH_DAY_DISPLAY)
+              : item.startDate
+            const endDateLabel = endDate?.isValid()
+              ? TimeUtil.format(endDate, TIME_FORMATS.MONTH_DAY_DISPLAY)
+              : item.endDate
+            return `${dateLabel}${item.days > 1 ? `至${endDateLabel}` : ''}：${item.type === 'monthly_leave' ? `休假 ${item.days} 天` : `请假 ${item.days} 天，无薪无提成！`}`
+          }).join('\n')
+
+          await confirmAction(
+            `申请天数：${recordDates.length}天\n${allocation.monthlyLeaveDaysCount > 0 ? `休假 ${allocation.monthlyLeaveDaysCount} 天` : ''}\n${allocation.regularLeaveDaysCount > 0 ? `请假 ${allocation.regularLeaveDaysCount} 天，无薪无提成！` : ''}\n\n${dateDetails}\n\n是否继续？`,
+            '休假额度不足',
+            {
+              confirmButtonText: '确认并保存',
+              cancelButtonText: '取消',
+              type: 'warning'
+            }
+          )
+        }
+
+        const manualReason = attendanceForm.value.reason.trim()
+        const attendanceBatchId = createAttendanceBatchId()
+        for (const group of groups) {
+          if (group.type === 'monthly_leave') {
+            await attendanceApi.createAttendanceRecord({
+              employee_id: currentAttendanceEmployee.value.id,
+              attendance_batch_id: attendanceBatchId,
+              record_type: 'monthly_leave',
+              record_date: group.startDate,
+              monthly_leave_days: group.days,
+              status: recordStatus
+            })
+          } else {
+            const autoReason = `请假 ${group.days} 天，无薪无提成！`
+            await attendanceApi.createAttendanceRecord({
+              employee_id: currentAttendanceEmployee.value.id,
+              attendance_batch_id: attendanceBatchId,
+              record_type: 'leave',
+              record_date: group.startDate,
+              leave_type: '事假',
+              leave_days: group.days,
+              leave_reason: manualReason ? `${manualReason}；${autoReason}` : autoReason,
+              status: recordStatus
+            })
+          }
+        }
+
+        ElMessage.success(allocation.regularLeaveDaysCount > 0
+          ? `添加成功：带薪休假 ${allocation.monthlyLeaveDaysCount} 天，无薪请假 ${allocation.regularLeaveDaysCount} 天`
+          : `添加成功：带薪休假 ${allocation.monthlyLeaveDaysCount} 天`)
+        attendanceFormVisible.value = false
+        await loadEmployeeAttendance(currentAttendanceEmployee.value.id)
+        await loadAllEmployeesAttendance(employeeSalaryMonth.value)
+        await loadAllEmployeesSales(employeeSalaryMonth.value)
         return
       }
       break
     case 'leave':
       submitData.leave_type = attendanceForm.value.leave_type || '事假'
-      submitData.leave_days = attendanceForm.value.leave_days
+      submitData.leave_days = recordDates.length
       if (attendanceForm.value.reason.trim()) {
         submitData.leave_reason = attendanceForm.value.reason.trim()
       }
@@ -2336,14 +2433,23 @@ const handleSaveAttendance = async () => {
     }
 
     // 根据是否有编辑ID判断是新增还是编辑
-    const isEdit = !!editingAttendanceId.value
+    const attendanceBatchId = !isEdit && (recordType === 'monthly_leave' || recordType === 'leave')
+      ? createAttendanceBatchId()
+      : undefined
+    for (const [index, date] of recordDates.entries()) {
+      const dailyData = {
+        ...submitData,
+        ...(attendanceBatchId ? { attendance_batch_id: attendanceBatchId } : {}),
+        record_date: date,
+        ...(recordType === 'monthly_leave' ? { monthly_leave_days: 1 } : {}),
+        ...(recordType === 'leave' ? { leave_days: 1 } : {})
+      }
 
-    if (isEdit) {
-      // 编辑模式：调用更新API
-      await attendanceApi.updateAttendanceRecord(editingAttendanceId.value, submitData)
-    } else {
-      // 新增模式：调用创建API
-      await attendanceApi.createAttendanceRecord(submitData)
+      if (isEdit && index === 0) {
+        await attendanceApi.updateAttendanceRecord(editingAttendanceId.value as number, dailyData)
+      } else {
+        await attendanceApi.createAttendanceRecord(dailyData)
+      }
     }
 
     const typeLabels: Record<string, string> = {
@@ -2365,7 +2471,8 @@ const handleSaveAttendance = async () => {
 
     // 刷新销售数据
     await loadAllEmployeesSales(employeeSalaryMonth.value)
-  } catch {
+  } catch (error) {
+    if (error === 'cancel' || error === 'close') return
     ElMessage.error(`${editingAttendanceId.value ? '修改' : '添加'}失败`)
   } finally {
     attendanceSaving.value = false

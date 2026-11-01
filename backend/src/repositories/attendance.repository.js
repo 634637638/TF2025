@@ -66,6 +66,7 @@ class AttendanceRepository extends BaseRepository {
         SELECT
           ar.id,
           ar.employee_id,
+          ar.attendance_batch_id,
           DATE_FORMAT(ar.record_date, '%Y-%m-%d') as record_date,
           ar.record_type,
           ar.leave_type,
@@ -132,6 +133,7 @@ class AttendanceRepository extends BaseRepository {
         SELECT
           ar.id,
           ar.employee_id,
+          ar.attendance_batch_id,
           DATE_FORMAT(ar.record_date, '%Y-%m-%d') as record_date,
           ar.record_type,
           ar.leave_type,
@@ -306,29 +308,6 @@ class AttendanceRepository extends BaseRepository {
   }
 
   /**
-   * 检查用户某月是否有普通请假记录（leave）
-   * 仅普通请假会阻断上月剩余休假累计到本月。
-   */
-  async hasAnyRegularLeaveRecords(employeeId, year, month) {
-    try {
-      const query = `
-        SELECT COUNT(*) as count
-        FROM ${this.tableName}
-        WHERE employee_id = ?
-          AND record_type = 'leave'
-          AND status IN ('pending', 'approved')
-          AND YEAR(record_date) = ?
-          AND MONTH(record_date) = ?
-      `
-      const result = await this.executeQuery(query, [employeeId, year, month])
-      return (result[0]?.count || 0) > 0
-    } catch (error) {
-      log.error('检查用户普通请假记录失败:', error)
-      throw error
-    }
-  }
-
-  /**
    * 获取用户某月普通请假天数（leave）
    */
   async getUserRegularLeaveDays(employeeId, year, month) {
@@ -348,6 +327,27 @@ class AttendanceRepository extends BaseRepository {
       log.error('获取用户普通请假天数失败:', error)
       throw error
     }
+  }
+
+  /** 获取指定日期范围内按自然月汇总的带薪/无薪记录。 */
+  async getUserLeaveMonthlyUsage(employeeId, startDate, endDate) {
+    const query = `
+      SELECT
+        DATE_FORMAT(record_date, '%Y-%m') AS month_key,
+        COALESCE(SUM(CASE WHEN record_type = 'monthly_leave' THEN monthly_leave_days ELSE 0 END), 0) AS paid_used,
+        COALESCE(SUM(CASE WHEN record_type = 'leave' THEN leave_days ELSE 0 END), 0) AS unpaid_used
+      FROM ${this.tableName}
+      WHERE employee_id = ?
+        AND record_date BETWEEN ? AND ?
+        AND status IN ('pending', 'approved')
+        AND record_type IN ('monthly_leave', 'leave')
+      GROUP BY DATE_FORMAT(record_date, '%Y-%m')
+    `
+    const rows = await this.executeQuery(query, [employeeId, startDate, endDate])
+    return Object.fromEntries(rows.map(row => [row.month_key, {
+      paidUsed: Number(row.paid_used) || 0,
+      unpaidUsed: Number(row.unpaid_used) || 0
+    }]))
   }
 }
 

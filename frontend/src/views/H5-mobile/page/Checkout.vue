@@ -58,34 +58,14 @@
         </h3>
         <div class="payment-tabs">
           <div
+            v-for="option in paymentMethodOptions"
+            :key="option.code"
             class="payment-tab"
-            :class="{ active: form.paymentMethod === 'pickup' }"
-            @click="selectPaymentMethod('pickup')"
+            :class="{ active: form.paymentMethod === option.code }"
+            @click="selectPaymentMethod(option.code)"
           >
-            <i class="fas fa-store" />
-            <span>到店自提</span>
-          </div>
-          <div
-            class="payment-tab"
-            :class="{ active: form.paymentMethod === 'wechat' }"
-            @click="selectPaymentMethod('wechat')"
-          >
-            <i
-              class="fab fa-weixin"
-              style="color: #09bb07;"
-            />
-            <span>微信</span>
-          </div>
-          <div
-            class="payment-tab"
-            :class="{ active: form.paymentMethod === 'alipay' }"
-            @click="selectPaymentMethod('alipay')"
-          >
-            <i
-              class="fab fa-alipay"
-              style="color: #1677ff;"
-            />
-            <span>支付宝</span>
+            <i :class="[option.icon, option.iconClass]" />
+            <span>{{ option.label }}</span>
           </div>
         </div>
 
@@ -132,7 +112,7 @@
 
         <!-- 微信/支付宝 - 收货信息 -->
         <div
-          v-if="form.paymentMethod === 'wechat' || form.paymentMethod === 'alipay'"
+          v-if="isOnlinePaymentMethod(form.paymentMethod)"
           class="payment-content"
         >
           <div
@@ -372,6 +352,7 @@ import { storage } from '@/services/storage'
 import { H5_STORAGE_KEYS } from '@/constants/storage'
 import { tokenManager, userManager, getUserProfile, type AuthUser } from '@/api/auth'
 import { logger } from '@/utils/logger'
+import { getShopPaymentOptions, isOnlinePaymentMethod } from '@/utils/shop-payment'
 const router = useRouter()
 const route = useRoute()
 
@@ -532,6 +513,7 @@ const orderItems = ref<any[]>([])
 const loading = ref(true)
 const submitting = ref(false)
 const shopConfig = ref<any>({})
+const paymentMethodOptions = computed(() => getShopPaymentOptions(shopConfig.value))
 
 const syncCustomerFields = (payload: {
   name?: string
@@ -625,7 +607,7 @@ const selectPaymentMethod = async (method: string) => {
     )
   }
 
-  if ((method === 'wechat' || method === 'alipay') && isLoggedIn.value && !userDefaultAddress.value?.address) {
+  if (isOnlinePaymentMethod(method) && isLoggedIn.value && !userDefaultAddress.value?.address) {
     await loadUserDefaultAddress(true)
   }
 
@@ -784,6 +766,10 @@ const initializeCheckout = async (force = false) => {
 const loadConfig = async () => {
   try {
     shopConfig.value = await getPublicConfig()
+    const configuredMethod = shopConfig.value.payment_default_method
+    form.value.paymentMethod = paymentMethodOptions.value.some(option => option.code === configuredMethod)
+      ? configuredMethod
+      : paymentMethodOptions.value[0]?.code || 'pickup'
   } catch (error) {
     logger.error('获取配置失败:', error)
   }
@@ -860,6 +846,7 @@ const handleSubmit = async () => {
     storage.set(H5_STORAGE_KEYS.ORDER_SUCCESS, {
       orderNumber: result.orderNumber,
       totalAmount: result.totalAmount,
+      paymentMethod: form.value.paymentMethod,
       accessToken: result.accessToken,
       timestamp: Date.now()
     }, 'session')
@@ -1015,7 +1002,7 @@ const handleAddressModalClose = () => {
 }
 
 watch(deliveryForm, () => {
-  if (!isLoggedIn.value && (form.value.paymentMethod === 'wechat' || form.value.paymentMethod === 'alipay')) {
+  if (!isLoggedIn.value && isOnlinePaymentMethod(form.value.paymentMethod)) {
     syncGuestDeliveryToOrder()
   }
 }, { deep: true })

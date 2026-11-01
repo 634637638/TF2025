@@ -13,6 +13,7 @@
 - [手机库存预警配置](phone-stock-warning.md) - 品牌、型号、颜色、内存和库存类型的唯一配置规则
 - [导航站接口](guide-navigation-api.md) - `/DH` 公开导航、`/guide` 管理接口、密码策略和二维码存储
 - [安全文件访问](secure-file-access-standard.md) - 私有文件受控访问、短时签名、静态目录边界和生命周期
+- [商城地图与支付服务配置](shop-provider-config-standard.md) - provider 配置、密钥加密、公开字段白名单与支付接入边界
 
 ## 契约测试
 
