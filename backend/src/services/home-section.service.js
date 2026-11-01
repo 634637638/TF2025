@@ -5,6 +5,30 @@
 
 const db = require('../config/database')
 
+const resolveAutomaticSectionCondition = (section) => {
+  const sectionKey = String(section?.section_key || '').toLowerCase()
+  const sectionName = String(section?.section_name || '')
+
+  if (
+    sectionKey.includes('quality') ||
+    sectionKey.includes('liangji') ||
+    sectionName.includes('靓机')
+  ) {
+    return 'AND (h5.condition_grade = \'靓机\' OR p.quality_grade = \'A\')'
+  }
+
+  if (
+    sectionKey === 'used_phones' ||
+    sectionKey.includes('used') ||
+    sectionName.includes('工作机') ||
+    sectionName.includes('二手')
+  ) {
+    return 'AND h5.condition_grade = \'工作机\' AND COALESCE(p.quality_grade, \'\') <> \'A\''
+  }
+
+  return null
+}
+
 class HomeSectionService {
   normalizeCount(value, fallback = 0) {
     const normalized = Number(value)
@@ -151,30 +175,15 @@ class HomeSectionService {
 
     if (normalizedProductLimit === 0) return []
 
-    // 靓机/二手机专区除了手动设置外，自动补充真实在库二手机。
+    // 工作机/原装靓机专区除了手动设置外，自动补充对应的真实在库商品。
     // 其他专区仍只展示后台明确配置的商品，避免商品跨专区串入。
-    const sectionKey = String(section?.section_key || '').toLowerCase()
-    const sectionName = String(section?.section_name || '')
-    const isAutomaticUsedSection = (
-      sectionKey.includes('quality') ||
-      sectionKey.includes('liangji') ||
-      sectionKey.includes('used') ||
-      sectionName.includes('靓机') ||
-      sectionName.includes('二手')
-    )
+    const automaticSectionCondition = resolveAutomaticSectionCondition(section)
 
-    if (!isAutomaticUsedSection || products.length >= normalizedProductLimit) {
+    if (!automaticSectionCondition || products.length >= normalizedProductLimit) {
       return products.slice(0, normalizedProductLimit)
     }
 
     const remainingLimit = normalizedProductLimit - products.length
-    const qualityCondition = (
-      sectionKey.includes('quality') ||
-      sectionKey.includes('liangji') ||
-      sectionName.includes('靓机')
-    )
-      ? 'AND (h5.condition_grade = \'靓机\' OR p.quality_grade = \'A\')'
-      : ''
     const autoQuery = `
       SELECT
         2147483647 as sort_order,
@@ -208,7 +217,7 @@ class HomeSectionService {
       WHERE p.status = 'in_stock'
         AND p.is_new = 0
         AND (h5.is_published = 1 OR h5.is_published IS NULL)
-        ${qualityCondition}
+        ${automaticSectionCondition}
         AND NOT EXISTS (
           SELECT 1 FROM H5_home_section_products configured
           WHERE configured.section_id = ? AND configured.phone_id = p.id
@@ -513,3 +522,4 @@ class HomeSectionService {
 }
 
 module.exports = new HomeSectionService()
+module.exports.resolveAutomaticSectionCondition = resolveAutomaticSectionCondition

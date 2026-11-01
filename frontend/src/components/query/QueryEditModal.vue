@@ -52,14 +52,14 @@
       label-position="top"
       class="edit-form-content"
     >
-      <div class="form-section">
-        <div class="section-title">
+      <div class="tf-query-modal-section">
+        <div class="tf-query-modal-section-title">
           <i class="fas fa-mobile-alt" />
           设备信息
         </div>
 
         <!-- 品牌、型号、颜色、内存 一行展示 -->
-        <div class="form-row form-row-4">
+        <div class="tf-query-modal-row tf-query-modal-row--4">
           <el-form-item
             label="品牌"
             prop="brand"
@@ -149,8 +149,8 @@
           </el-form-item>
         </div>
 
-        <!-- 序列号、IMEI、机况 一行展示 -->
-        <div class="form-row form-row-3">
+        <!-- 序列号、IMEI、成色、状态一行展示 -->
+        <div class="tf-query-modal-row tf-query-modal-row--4">
           <el-form-item
             label="序列号"
             prop="serial_number"
@@ -196,7 +196,7 @@
           </el-form-item>
 
           <el-form-item
-            label="机况"
+            label="成色"
             prop="is_new"
           >
             <el-select
@@ -215,9 +215,29 @@
               />
             </el-select>
           </el-form-item>
+
+          <el-form-item
+            label="状态"
+            prop="status"
+          >
+            <el-select
+              v-model="formData.status"
+              placeholder="请选择状态"
+              teleported
+              popper-class="tf2025-form-popper"
+            >
+              <el-option
+                v-for="option in PHONE_STATUS_OPTIONS"
+                :key="option.value"
+                :label="option.label"
+                :value="option.value"
+                :disabled="option.value === 'rented' && formData.status !== 'rented'"
+              />
+            </el-select>
+          </el-form-item>
         </div>
 
-        <div class="form-row form-row-4">
+        <div class="tf-query-modal-row tf-query-modal-row--4">
           <el-form-item
             label="供应商"
             prop="supplier_id"
@@ -278,7 +298,7 @@
           </el-form-item>
 
           <el-form-item
-            label="销售价格"
+            :label="formData.status === 'peer_transfer' ? '批发价格' : formData.status === 'supplier_proxy' ? '划拨金额' : '销售价格'"
             prop="sale_price"
           >
             <el-input
@@ -302,16 +322,15 @@
         </div>
       </div>
 
-      <div class="form-section">
-        <div class="section-title">
+      <div class="tf-query-modal-section">
+        <div class="tf-query-modal-section-title">
           <i class="fas fa-user" />
           客户信息
         </div>
 
-        <div class="form-row form-row-3">
+        <div class="tf-query-modal-row tf-query-modal-row--3">
           <el-form-item
             label="客户手机"
-            class="mobile-span-2"
           >
             <div class="customer-search-container">
               <el-input
@@ -357,7 +376,10 @@
             />
           </el-form-item>
 
-          <el-form-item label="Apple ID">
+          <el-form-item
+            label="Apple ID"
+            class="tf-query-modal-span-2"
+          >
             <el-input
               v-model="formData.apple_id"
               placeholder="请输入 Apple ID（可选）"
@@ -373,16 +395,16 @@
         </div>
       </div>
 
-      <div class="form-section">
-        <div class="section-title">
+      <div class="tf-query-modal-section">
+        <div class="tf-query-modal-section-title">
           <i class="fas fa-shopping-cart" />
           销售信息
         </div>
 
-        <div class="form-row form-row-3">
+        <div class="tf-query-modal-row tf-query-modal-row--3">
           <el-form-item
             label="入库日期"
-            class="date-picker-item"
+            class="full-width"
           >
             <el-date-picker
               v-model="formData.inventory_time"
@@ -396,7 +418,7 @@
 
           <el-form-item
             label="销售日期"
-            class="date-picker-item"
+            class="full-width"
           >
             <el-date-picker
               v-model="formData.sale_time"
@@ -421,7 +443,7 @@
           </el-form-item>
         </div>
 
-        <div class="form-row form-row-4">
+        <div class="tf-query-modal-row tf-query-modal-row--3">
           <el-form-item label="销售员">
             <el-select
               v-model="formData.sale_operator_id"
@@ -470,31 +492,9 @@
             />
           </el-form-item>
 
-          <el-form-item
-            label="状态"
-            prop="status"
-          >
-            <el-select
-              v-model="formData.status"
-              placeholder="请选择状态"
-              teleported
-              popper-class="tf2025-form-popper"
-            >
-              <el-option
-                v-for="option in PHONE_STATUS_OPTIONS"
-                :key="option.value"
-                :label="option.label"
-                :value="option.value"
-                :disabled="option.value === 'rented' && formData.status !== 'rented'"
-              />
-            </el-select>
-          </el-form-item>
         </div>
 
-        <el-form-item
-          label="备注"
-          class="mobile-span-2"
-        >
+        <el-form-item label="备注">
           <el-input
             v-model="formData.remarks"
             class="tf-textarea"
@@ -2061,79 +2061,8 @@ onBeforeUnmount(() => {
   padding: 0;
 }
 
-.form-section {
-  margin-bottom: 24px;
-  padding: 18px 18px 14px;
-  border: 1px solid var(--tf-color-surface-cool);
-  border-radius: 18px;
-  background: linear-gradient(180deg, var(--color-bg-white) 0%, var(--tf-color-surface-cool-alt) 100%);
-}
-
-.section-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 16px;
-  font-size: var(--tf-type-scale-15);
-  font-weight: 700;
-  color: var(--tf-color-neutral-800);
-
-  i {
-    color: var(--tf-color-blue-600);
-  }
-}
-
-.form-row {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-}
-
-.form-row-3 {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.form-row-4 {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
-.form-row-5 {
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-}
-
 .full-width {
   width: 100%;
-}
-
-// 日期选择器输入框紧凑宽度 - PC端
-:deep(.el-date-editor.el-input),
-:deep(.el-date-editor) {
-  width: 140px !important;
-  min-width: 140px !important;
-  max-width: 140px !important;
-}
-
-// 日期选择器表单项紧凑宽度
-.date-picker-item {
-  width: 140px !important;
-  flex: 0 0 140px !important;
-  max-width: 140px !important;
-}
-
-.date-picker-item :deep(.el-date-editor) {
-  width: 140px !important;
-}
-
-.date-picker-item :deep(.el-input__wrapper) {
-  width: 140px !important;
-}
-
-/* 日期选择器输入框使用紧凑宽度 - PC端 */
-:global(.query-edit-dialog .el-date-editor.el-input),
-:global(.query-edit-dialog .el-date-editor) {
-  width: 140px !important;
-  min-width: 140px !important;
-  max-width: 140px !important;
 }
 
 :global(.query-edit-dialog) {
@@ -2362,10 +2291,6 @@ onBeforeUnmount(() => {
   }
 }
 
-:deep(.el-form-item) {
-  margin-bottom: 14px;
-}
-
 :deep(.el-input),
 :deep(.el-select),
 :deep(.el-date-editor.el-input),
@@ -2404,36 +2329,7 @@ onBeforeUnmount(() => {
   width: 100%;
 }
 
-@media (max-width: 1200px) {
-  .form-row-5,
-  .form-row-4 {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .form-row-3 {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
 @media (max-width: 767px) {
-  .form-section {
-    margin-bottom: 12px;
-    padding: 10px 8px 8px;
-    border-radius: 14px;
-  }
-
-  .form-row,
-  .form-row-3,
-  .form-row-4,
-  .form-row-5 {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
-  }
-
-  .mobile-span-2 {
-    grid-column: span 2;
-  }
-
   .dialog-footer {
     :deep(.el-button [class*='fa-']) {
       margin-right: 4px;
@@ -2455,9 +2351,6 @@ onBeforeUnmount(() => {
     font-size: var(--tf-type-scale-13);
   }
 
-  :deep(.el-form-item) {
-    margin-bottom: 8px;
-  }
 }
 
 @media (max-width: 479px) {
@@ -2483,10 +2376,6 @@ onBeforeUnmount(() => {
     right: 14px;
   }
 
-  .form-section {
-    padding: 8px 6px 6px;
-    border-radius: 12px;
-  }
 }
 
 </style>

@@ -7,6 +7,7 @@ import type { App, Directive, DirectiveBinding } from 'vue'
 import { installPermissionDirective } from './permission'
 import { isCurrentMobileViewport } from '@/utils/device-detection'
 import { useLoadingStore } from '@/stores/loading'
+import { vTableDoubleTap } from './table-double-tap'
 
 type DirectiveHandler = (...args: unknown[]) => unknown
 
@@ -519,6 +520,7 @@ export function installDirectives(app: App) {
 
   // 注册其他指令
   app.directive('tf-loading', vTFLoading)
+  app.directive('table-double-tap', vTableDoubleTap)
   app.directive('copy', vCopy)
   app.directive('debounce', vDebounce)
   app.directive('throttle', vThrottle)

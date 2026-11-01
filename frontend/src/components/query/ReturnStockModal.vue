@@ -51,7 +51,7 @@
           <span class="value">{{ deviceInfo.model || '-' }}</span>
         </div>
         <div class="info-item">
-          <span class="label">机况</span>
+          <span class="label">成色</span>
           <span :class="['condition-badge', normalizedIsNew ? 'new' : 'used']">
             {{ normalizedIsNew ? '全新' : '二手' }}
           </span>

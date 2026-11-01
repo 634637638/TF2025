@@ -21,6 +21,9 @@ const DEFAULT_CONFIG = Object.freeze({
   wholesale: {
     enabled: false,
     adjustment: 0
+  },
+  used: {
+    adjustment: 0
   }
 })
 
@@ -31,6 +34,9 @@ class PricingService {
     const source = config && typeof config === 'object' ? config : {}
     const wholesale = source.wholesale && typeof source.wholesale === 'object'
       ? source.wholesale
+      : {}
+    const used = source.used && typeof source.used === 'object'
+      ? source.used
       : {}
 
     return {
@@ -57,6 +63,9 @@ class PricingService {
           }
           return result
         }, {})
+      },
+      used: {
+        adjustment: Math.max(0, Number(used.adjustment ?? DEFAULT_CONFIG.used.adjustment) || 0)
       }
     }
   }
@@ -111,6 +120,13 @@ class PricingService {
   async calculateWholesalePrice(wholesalePrice) {
     const config = await this.getGlobalConfig()
     return this.calculateWholesalePriceByConfig(wholesalePrice, config)
+  }
+
+  calculateUsedInventoryPriceByConfig(inventoryPrice, config) {
+    const base = Number(inventoryPrice)
+    if (!Number.isFinite(base) || base < 0) return null
+    const adjustment = Number(config?.used?.adjustment ?? DEFAULT_CONFIG.used.adjustment)
+    return roundPrice(base + (Number.isFinite(adjustment) ? Math.max(0, adjustment) : 0))
   }
 
   calculateH5PriceByTemplate(basePrice, template) {

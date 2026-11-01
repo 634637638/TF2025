@@ -255,19 +255,19 @@
         </el-col>
       </el-row>
 
-      <!-- 机况 + 预定时间/预计到货 -->
+      <!-- 成色 + 预定时间/预计到货 -->
       <el-row :gutter="20">
         <el-col
           v-if="canViewPreorderField('is_new')"
           :span="12"
         >
           <el-form-item
-            label="机况"
+            label="成色"
             prop="is_new"
           >
             <el-select
               v-model="formData.is_new"
-              placeholder="请选择机况"
+              placeholder="请选择成色"
               class="w-full"
             >
               <el-option

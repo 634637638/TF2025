@@ -265,6 +265,38 @@
             </p>
           </div>
         </section>
+
+        <section class="config-card">
+          <div class="section-heading">
+            <div>
+              <h4 class="form-section-title">
+                二手机价格加价
+              </h4>
+              <p class="section-subtitle">
+                在库二手机按每台入库价格单独加价展示
+              </p>
+            </div>
+          </div>
+
+          <div class="inline-grid inline-grid--single">
+            <el-form-item
+              label="默认加价"
+              class="compact-form-item"
+            >
+              <div class="price-input-group">
+                <el-input-number
+                  v-model="form.used.adjustment"
+                  :min="0"
+                  :max="10000"
+                  :step="50"
+                  :controls="false"
+                  class="price-input"
+                />
+                <span class="price-unit">元</span>
+              </div>
+            </el-form-item>
+          </div>
+        </section>
       </el-form>
 
       <section class="price-preview">
@@ -294,6 +326,10 @@
           <div class="preview-item">
             <span class="preview-label">采集价 8000元</span>
             <span class="preview-value preview-value--wholesale">批发价: {{ calculateWholesalePreview(8000) }}元</span>
+          </div>
+          <div class="preview-item">
+            <span class="preview-label">入库价 3000元</span>
+            <span class="preview-value preview-value--wholesale">二手机价格: {{ calculateUsedPreview(3000) }}元</span>
           </div>
         </div>
         <div
@@ -384,6 +420,9 @@ const defaultConfig: PriceMarkupConfig = {
     enabled: false,
     adjustment: 0,
     sourceAdjustments: {}
+  },
+  used: {
+    adjustment: 0
   }
 }
 
@@ -402,7 +441,8 @@ function normalizeConfig(raw: any): PriceMarkupConfig {
         enabled: defaultConfig.wholesale.enabled,
         adjustment: defaultConfig.wholesale.adjustment,
         sourceAdjustments: {}
-      }
+      },
+      used: { ...defaultConfig.used }
     }
   }
 
@@ -437,6 +477,9 @@ function normalizeConfig(raw: any): PriceMarkupConfig {
         : defaultConfig.wholesale.enabled,
       adjustment: Number(wholesaleConfig.adjustment ?? defaultConfig.wholesale.adjustment),
       sourceAdjustments
+    },
+    used: {
+      adjustment: Math.max(0, Number(config.used?.adjustment ?? defaultConfig.used.adjustment) || 0)
     }
   }
 }
@@ -537,6 +580,10 @@ const calculateWholesalePreview = (wholesalePrice: number): string => {
 
   return (wholesalePrice + Number(form.value.wholesale.adjustment || 0)).toFixed(0)
 }
+
+const calculateUsedPreview = (inventoryPrice: number): string => (
+  (inventoryPrice + Number(form.value.used.adjustment || 0)).toFixed(0)
+)
 
 const getSourceLabel = (source: SyncSource): string => {
   if (source.config_name) return source.config_name

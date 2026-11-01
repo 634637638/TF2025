@@ -1274,7 +1274,7 @@ class QueryRepository extends BaseRepository {
         pr.total_price as sale_price,
         NULL as wholesale_price,
         NULL as retail_price,
-        COALESCE(pr.is_new, p.is_new, 1) as is_new,  -- 优先显示预订的机况
+        COALESCE(pr.is_new, p.is_new, 1) as is_new,  -- 优先显示预订的成色
         COALESCE(p.is_preordered, 0) as is_preordered,
         'reserved' as status,
         pr.status as preorder_status,

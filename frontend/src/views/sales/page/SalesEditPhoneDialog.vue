@@ -11,103 +11,73 @@
       <div class="info-cards-container">
         <div
           v-if="canViewField('brand')"
-          class="info-card"
+          class="bg-gradient-brand"
         >
-          <div class="card-icon brand">
-            <i class="fas fa-tag" />
-          </div>
-          <div class="card-details">
-            <div class="card-label">
+          <div class="text-xs opacity-80 mb-1">
               品牌
-            </div>
-            <div class="card-primary-text">
-              {{ editForm.brand || '未设置' }}
-            </div>
+          </div>
+          <div class="text-base font-semibold">
+            {{ editForm.brand || '未设置' }}
           </div>
         </div>
 
         <div
           v-if="canViewField('model')"
-          class="info-card"
+          class="bg-gradient-model"
         >
-          <div class="card-icon model">
-            <i class="fas fa-mobile-screen" />
-          </div>
-          <div class="card-details">
-            <div class="card-label">
+          <div class="text-xs opacity-80 mb-1">
               型号
-            </div>
-            <div class="card-primary-text">
-              {{ editForm.model || '未设置' }}
-            </div>
+          </div>
+          <div class="text-base font-semibold">
+            {{ editForm.model || '未设置' }}
           </div>
         </div>
 
         <div
           v-if="canViewField('color')"
-          class="info-card"
+          class="bg-gradient-color"
         >
-          <div class="card-icon color">
-            <i class="fas fa-palette" />
-          </div>
-          <div class="card-details">
-            <div class="card-label">
+          <div class="text-xs opacity-80 mb-1">
               颜色
-            </div>
-            <div class="card-primary-text">
-              {{ editForm.color || '未设置' }}
-            </div>
+          </div>
+          <div class="text-base font-semibold">
+            {{ editForm.color || '未设置' }}
           </div>
         </div>
 
         <div
           v-if="canViewField('memory')"
-          class="info-card"
+          class="bg-gradient-memory"
         >
-          <div class="card-icon memory">
-            <i class="fas fa-memory" />
-          </div>
-          <div class="card-details">
-            <div class="card-label">
+          <div class="text-xs opacity-80 mb-1">
               内存
-            </div>
-            <div class="card-primary-text">
-              {{ editForm.memory || '未设置' }}
-            </div>
+          </div>
+          <div class="text-base font-semibold">
+            {{ editForm.memory || '未设置' }}
           </div>
         </div>
 
         <div
           v-if="canViewField('serial_number')"
-          class="info-card"
+          class="bg-gradient-serial"
         >
-          <div class="card-icon serial">
-            <i class="fas fa-barcode" />
-          </div>
-          <div class="card-details">
-            <div class="card-label">
+          <div class="text-xs opacity-80 mb-1">
               序列号
-            </div>
-            <div class="card-primary-text small-text">
-              {{ editForm.serial_number || '未设置' }}
-            </div>
+          </div>
+          <div class="text-sm font-semibold">
+            {{ editForm.serial_number || '未设置' }}
           </div>
         </div>
 
         <div
           v-if="canViewPrice"
-          class="info-card"
+          class="bg-gradient-purchase"
         >
-          <div class="card-icon price">
-            <i class="fas fa-yen-sign" />
-          </div>
-          <div class="card-details">
-            <div class="card-label">
+          <div class="text-xs opacity-80 mb-1">
               入库价格
-            </div>
-            <div class="card-primary-text">
-              {{ editForm.purchase_cost ? `¥${Math.round(editForm.purchase_cost)}` : '未定价' }}
-            </div>
+          </div>
+          <div class="text-base font-semibold">
+            {{ editForm.purchase_cost ? `¥${Math.round(editForm.purchase_cost)}` : '未定价' }}
           </div>
         </div>
       </div>
@@ -166,16 +136,16 @@
               :value-format="TIME_FORMATS.DATE"
               teleported
               popper-class="tf2025-form-popper"
-              style="width: 140px"
+              class="full-width"
               :disabled="!canEditField('inventory_time')"
             />
           </div>
 
           <div v-if="canViewField('condition')">
-            <label class="sales-edit-field-label">机况</label>
+            <label class="sales-edit-field-label">成色</label>
             <el-select
               v-model="editForm.condition"
-              placeholder="选择机况"
+              placeholder="选择成色"
               teleported
               popper-class="tf2025-form-popper"
               class="full-width"
@@ -192,7 +162,7 @@
             </el-select>
           </div>
 
-          <div>
+          <div class="sales-edit-status-field">
             <label class="sales-edit-field-label">状态</label>
             <el-select
               v-model="editForm.status"

@@ -705,6 +705,12 @@ const checkSinglePermission = (userPermissions, requiredPermission, _moduleType)
   return false
 }
 
+const hasUnifiedPermission = async (user, requiredPermission, moduleType = 'system') => {
+  if (!user?.id || !requiredPermission) return false
+  const permissions = await getUserPermissions(user.id)
+  return checkSinglePermission(permissions, requiredPermission, moduleType)
+}
+
 /**
  * 快捷权限检查中间件
  */
@@ -882,6 +888,7 @@ module.exports = {
   requirePermission,
   requireAllPermissions,
   requireAnyPermission,
+  hasUnifiedPermission,
 
   // 工具函数
   getUserPermissions,

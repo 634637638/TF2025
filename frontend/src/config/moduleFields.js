@@ -380,7 +380,7 @@ export const MODULE_FIELDS = {
       },
       {
         id: 'basic.is_new',
-        name: '机况',
+        name: '成色',
         group: '基本信息',
         type: FIELD_TYPES.BOOLEAN,
         sensitivity: SENSITIVITY_LEVELS.PUBLIC,
@@ -656,11 +656,11 @@ export const MODULE_FIELDS = {
       },
       {
         id: 'sale.condition',
-        name: '机况',
+        name: '成色',
         group: '商品信息',
         type: FIELD_TYPES.TEXT,
         sensitivity: SENSITIVITY_LEVELS.INTERNAL,
-        description: '设备机况'
+        description: '设备成色'
       },
       {
         id: 'sale.remarks',
@@ -2375,11 +2375,11 @@ export const MODULE_FIELDS = {
       },
       {
         id: 'product_info.is_new',
-        name: '机况',
+        name: '成色',
         group: '商品信息',
         type: FIELD_TYPES.BOOLEAN,
         sensitivity: SENSITIVITY_LEVELS.PUBLIC,
-        description: '全新或二手机况'
+        description: '全新或二手成色'
       },
       {
         id: 'product_info.imei',
@@ -2963,7 +2963,7 @@ export const MODULE_FIELDS = {
     category: '营销管理',
     fields: [
       { id: 'filters.mode', name: '文案模式', group: '文案筛选', type: FIELD_TYPES.SELECT, sensitivity: SENSITIVITY_LEVELS.INTERNAL, description: '营业或销售文案模式' },
-      { id: 'filters.condition', name: '机况筛选', group: '文案筛选', type: FIELD_TYPES.SELECT, sensitivity: SENSITIVITY_LEVELS.INTERNAL, description: '全新或二手机况' },
+      { id: 'filters.condition', name: '成色筛选', group: '文案筛选', type: FIELD_TYPES.SELECT, sensitivity: SENSITIVITY_LEVELS.INTERNAL, description: '全新或二手成色' },
       { id: 'filters.brand', name: '品牌筛选', group: '文案筛选', type: FIELD_TYPES.SELECT, sensitivity: SENSITIVITY_LEVELS.PUBLIC, description: '文案商品品牌' },
       { id: 'filters.model', name: '型号筛选', group: '文案筛选', type: FIELD_TYPES.SELECT, sensitivity: SENSITIVITY_LEVELS.PUBLIC, description: '文案商品型号' },
       { id: 'filters.color', name: '颜色筛选', group: '文案筛选', type: FIELD_TYPES.SELECT, sensitivity: SENSITIVITY_LEVELS.PUBLIC, description: '文案商品颜色' },

@@ -6,7 +6,7 @@ const { getDatabase, isConnected } = require('../config/database')
 const { validateImei } = require('../utils/imei')
 const { normalizeDateTime } = require('../utils/time')
 const { generateMemberNumber } = require('../utils/member-number')
-const { generateInvoiceNumber } = require('../utils/invoice-number')
+const { ensureInvoiceSequenceTable, generateInvoiceNumber } = require('../utils/invoice-number')
 const log = require('../utils/log')
 const deprecatedRoute = require('../middleware/deprecated-route')
 const {
@@ -1000,8 +1000,19 @@ router.delete('/:id', unifiedAuth, requirePermission('inventory:delete'), async 
   }
 })
 
-// 快速出库接口 - 直接创建已销售记录，跳过入库流程
-router.post('/quick-sale', unifiedAuth, requirePermission('inventory:sell'), async (req, res) => {
+const requireQuickSalePermission = (req, res, next) => {
+  const permissionByStatus = {
+    sold: ['inventory:sell', 'system'],
+    peer_transfer: ['sales:wholesale', 'business'],
+    supplier_proxy: ['sales:proxy-transfer', 'business']
+  }
+  const requirement = permissionByStatus[req.body?.status || 'sold']
+  if (!requirement) return next()
+  return requirePermission(...requirement)(req, res, next)
+}
+
+// 快速出库接口 - 直接创建销售、批发调货或划拨记录，跳过入库流程
+router.post('/quick-sale', unifiedAuth, requireQuickSalePermission, async (req, res) => {
   let connection
   try {
     log.debug('🔍 快速出库API: 收到快速出库请求')
@@ -1011,6 +1022,7 @@ router.post('/quick-sale', unifiedAuth, requirePermission('inventory:sell'), asy
     const pool = getDatabase()
     connection = await pool.getConnection()
 
+    await ensureInvoiceSequenceTable(connection)
     await connection.beginTransaction()
 
     const {
@@ -1038,8 +1050,18 @@ router.post('/quick-sale', unifiedAuth, requirePermission('inventory:sell'), asy
       sale_operator_id,
       payment_method,
       payment_channel,
+      status = 'sold',
       remarks
     } = req.body
+
+    const transactionConfig = {
+      sold: { saleType: 'retail', phoneStatus: 'sold', invoiceType: 'retail' },
+      peer_transfer: { saleType: 'wholesale', phoneStatus: 'peer_transfer', invoiceType: 'wholesale' },
+      supplier_proxy: { saleType: 'supplier_proxy', phoneStatus: 'supplier_proxy', invoiceType: 'supplier_proxy' }
+    }[status]
+    if (!transactionConfig) {
+      throw new Error('请选择销售、批发调货或划拨')
+    }
 
     if (![brand_id, model_id, color_id, memory_id].every(id => Number.isInteger(id) && id > 0)) {
       throw new Error('设备信息不完整，请选择有效的品牌、型号、颜色和内存')
@@ -1066,16 +1088,24 @@ router.post('/quick-sale', unifiedAuth, requirePermission('inventory:sell'), asy
     if (!supplier_id || !store_id) {
       throw new Error('供应商和店铺不能为空')
     }
-    const purchaseCost = purchase_cost === null || purchase_cost === undefined ? null : Number(purchase_cost)
-    const salePrice = sale_price === null || sale_price === undefined ? null : Number(sale_price)
+    const requestedPurchaseCost = purchase_cost === null || purchase_cost === undefined ? null : Number(purchase_cost)
+    const requestedSalePrice = sale_price === null || sale_price === undefined ? null : Number(sale_price)
+    const purchaseCost = status === 'supplier_proxy' ? 0 : requestedPurchaseCost
+    const salePrice = status === 'supplier_proxy' ? 0 : requestedSalePrice
     if (purchaseCost !== null && (!Number.isFinite(purchaseCost) || purchaseCost < 0)) {
       throw new Error('入库价格不能为负数')
     }
-    if (salePrice !== null && (!Number.isFinite(salePrice) || salePrice < 0)) {
-      throw new Error('销售价格不能为负数')
+    if (status !== 'supplier_proxy' && (!Number.isFinite(salePrice) || salePrice <= 0)) {
+      throw new Error(status === 'peer_transfer' ? '批发价格必须大于0' : '销售价格必须大于0')
+    }
+    if (status === 'peer_transfer' && (!Number.isFinite(purchaseCost) || purchaseCost < 0)) {
+      throw new Error('批发调货必须填写有效的入库成本')
     }
     if (!customer_phone) {
       throw new Error('客户手机号不能为空')
+    }
+    if (status === 'sold' && !['cash', 'mobile', 'bank_card', 'subsidy_card'].includes(payment_method)) {
+      throw new Error('请选择有效的支付方式')
     }
 
     // 入库员只能取当前登录账户，销售员则使用表单中选择的账户。
@@ -1088,17 +1118,16 @@ router.post('/quick-sale', unifiedAuth, requirePermission('inventory:sell'), asy
     if (!Number.isInteger(saleOperatorId) || saleOperatorId <= 0) {
       throw new Error('请选择有效的销售员')
     }
-    if (!['cash', 'mobile', 'bank_card', 'subsidy_card'].includes(payment_method)) {
-      throw new Error('请选择有效的支付方式')
-    }
     const allowedPaymentChannels = {
       cash: [null],
       mobile: ['wechat', 'alipay'],
       bank_card: ['card_consumption', 'bank_transfer'],
       subsidy_card: ['subsidy_card']
     }
-    const normalizedPaymentChannel = payment_method === 'cash' ? null : String(payment_channel || '')
-    if (!allowedPaymentChannels[payment_method].includes(normalizedPaymentChannel)) {
+    const normalizedPaymentChannel = status !== 'sold' || payment_method === 'cash'
+      ? null
+      : String(payment_channel || '')
+    if (status === 'sold' && !allowedPaymentChannels[payment_method].includes(normalizedPaymentChannel)) {
       throw new Error('请选择有效的支付渠道')
     }
     const normalizedAppleId = String(apple_id || '').trim() || null
@@ -1172,8 +1201,7 @@ router.post('/quick-sale', unifiedAuth, requirePermission('inventory:sell'), asy
     if (!inventoryTimeStr || !saleTimeStr) {
       throw new Error('请选择有效的入库日期和销售日期')
     }
-    // 快速出库属于普通销售，复用统一单据编号规则生成 XS 编码。
-    const invoiceNumber = await generateInvoiceNumber('retail', connection, saleTimeStr)
+    const invoiceNumber = await generateInvoiceNumber(transactionConfig.invoiceType, connection, saleTimeStr)
 
     const insertParams = [
       purchase_number,
@@ -1183,13 +1211,13 @@ router.post('/quick-sale', unifiedAuth, requirePermission('inventory:sell'), asy
       purchaseCost, salePrice,
       is_new !== undefined ? is_new : 1,
       supplier_id, store_id,
-      'sold',
+      transactionConfig.phoneStatus,
       is_new === 1 ? 'A' : 'B', // quality_grade: 全新为A，二手为B
       remarks || null,
       inventoryTimeStr, // inventory_time (北京时间 YYYY-MM-DD HH:mm:ss)
       saleTimeStr, // sale_time (北京时间 YYYY-MM-DD HH:mm:ss)
       saleOperatorId,
-      payment_method
+      status === 'sold' ? payment_method : null
     ]
 
     log.debug('📝 准备插入phones表，参数数量:', insertParams.length)
@@ -1204,26 +1232,57 @@ router.post('/quick-sale', unifiedAuth, requirePermission('inventory:sell'), asy
     `, insertParams)
     const phone_id = phoneResult.insertId
 
-    // 8. 创建销售记录（包含价格和成本、店铺信息）
+    // 8. 统一创建交易记录；批发调货使用 PF，划拨使用 HB。
     const [saleResult] = await connection.execute(`
       INSERT INTO sales (
         phone_id, customer_id, sale_type, operator_id, store_id,
-        sale_price, purchase_cost, payment_method, payment_channel, invoice_number, sale_time
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        sale_price, purchase_cost, payment_method, payment_channel, invoice_number, sale_time, remarks
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       phone_id,
       customer_id,
-      'retail',
+      transactionConfig.saleType,
       saleOperatorId,
       store_id,  // 🔥 添加店铺ID
       salePrice,
       purchaseCost,
-      payment_method,
+      status === 'sold' ? payment_method : null,
       normalizedPaymentChannel,
       invoiceNumber,
-      saleTimeStr
+      saleTimeStr,
+      remarks || null
     ])
     const sale_id = saleResult.insertId
+
+    await connection.execute(
+      `UPDATE phones SET sale_id = ?,
+         wholesale_date = ?, wholesale_price = ?
+       WHERE id = ?`,
+      [
+        sale_id,
+        status === 'peer_transfer' ? saleTimeStr : null,
+        status === 'peer_transfer' ? salePrice : 0,
+        phone_id
+      ]
+    )
+
+    if (status === 'sold') {
+      await connection.execute(
+        `INSERT INTO payment_records (
+          order_id, customer_id, payment_method, payment_channel,
+          amount, payment_status, payment_time, remarks
+        ) VALUES (?, ?, ?, ?, ?, 'success', ?, ?)`,
+        [
+          sale_id,
+          customer_id,
+          payment_method,
+          normalizedPaymentChannel,
+          salePrice,
+          saleTimeStr,
+          '快速出库销售收款'
+        ]
+      )
+    }
 
     await connection.commit()
 
@@ -1241,7 +1300,9 @@ router.post('/quick-sale', unifiedAuth, requirePermission('inventory:sell'), asy
       sale_time: saleTimeStr,
       sale_operator_id: saleOperatorId,
       payment_method,
-      payment_channel: normalizedPaymentChannel
+      payment_channel: normalizedPaymentChannel,
+      status: transactionConfig.phoneStatus,
+      sale_type: transactionConfig.saleType
     })
 
   } catch (error) {

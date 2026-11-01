@@ -25,17 +25,6 @@
       .search-input-lg {
         flex: 1;
         min-width: 0;
-        padding: 14px 18px;
-        border: 1px solid var(--tf-color-border-subtle);
-        border-radius: 8px;
-        font-size: var(--tf-type-scale-16);
-        transition: all 0.2s;
-
-        &:focus {
-          outline: none;
-          border-color: var(--tf-color-indigo-brand);
-          box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
       }
     }
 
@@ -45,21 +34,6 @@
 
       .search-input-lg {
         width: 100%;
-        padding: 14px 18px;
-        border: 2px solid var(--tf-color-border-subtle);
-        border-radius: 8px;
-        font-size: var(--tf-type-scale-16);
-        transition: all 0.2s;
-
-        &:focus {
-          outline: none;
-          border-color: var(--tf-color-indigo-brand);
-          box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
-
-        &::placeholder {
-          color: var(--tf-color-gray-bootstrap-500);
-        }
       }
     }
 
@@ -273,22 +247,6 @@
             .form-input-inline {
               width: 100%;
               max-width: 300px;
-              padding: 6px 12px;
-              border: 1px solid var(--tf-color-border-subtle);
-              border-radius: 6px;
-              font-size: var(--tf-type-scale-14);
-              transition: all 0.2s;
-
-              &.has-value {
-                background: var(--tf-color-green-50);
-                border-color: var(--tf-color-green-300);
-              }
-
-              &:focus {
-                outline: none;
-                border-color: var(--tf-color-indigo-brand);
-                box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-              }
             }
 
             .idcard-hint {
@@ -360,23 +318,7 @@
               font-weight: 500;
 
               .form-input-inline {
-                padding: 6px 12px;
-                border: 1px solid var(--tf-color-border-subtle);
-                border-radius: 6px;
-                font-size: var(--tf-type-scale-14);
-                transition: all 0.2s;
                 min-width: 200px;
-
-                &.has-value {
-                  background: var(--tf-color-green-50);
-                  border-color: var(--tf-color-green-300);
-                }
-
-                &:focus {
-                  outline: none;
-                  border-color: var(--tf-color-indigo-brand);
-                  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-                }
               }
             }
           }

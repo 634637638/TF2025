@@ -61,6 +61,14 @@
                 popper-class="tf2025-form-popper"
               >
                 <el-option
+                  label="靓机"
+                  value="靓机"
+                />
+                <el-option
+                  label="工作机"
+                  value="工作机"
+                />
+                <el-option
                   label="99新"
                   value="99新"
                 />
@@ -75,10 +83,6 @@
                 <el-option
                   label="95新"
                   value="95新"
-                />
-                <el-option
-                  label="靓机"
-                  value="靓机"
                 />
                 <el-option
                   label="小花"

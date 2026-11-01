@@ -57,6 +57,16 @@
               </el-button>
             </div>
             <el-button
+              v-if="downloadable"
+              native-type="button"
+              class="media-preview-tool tf-button--overlay-tool"
+              title="下载当前素材"
+              aria-label="下载当前素材"
+              @click.stop="emitDownload"
+            >
+              <i class="fas fa-download" />
+            </el-button>
+            <el-button
               v-if="deletable"
               native-type="button"
               type="danger"
@@ -167,6 +177,7 @@ interface Props {
   items: MediaPreviewItem[]
   initialIndex?: number
   deletable?: boolean
+  downloadable?: boolean
   autoPlayVideos?: boolean
 }
 
@@ -174,11 +185,13 @@ interface Emits {
   'update:modelValue': [value: boolean]
   change: [item: MediaPreviewItem, index: number]
   delete: [item: MediaPreviewItem, index: number]
+  download: [item: MediaPreviewItem, index: number]
 }
 
 const props = withDefaults(defineProps<Props>(), {
   initialIndex: 0,
   deletable: false,
+  downloadable: false,
   autoPlayVideos: true
 })
 const emit = defineEmits<Emits>()
@@ -427,8 +440,15 @@ const emitDelete = () => {
   }
 }
 
+const emitDownload = () => {
+  if (currentItem.value) {
+    emit('download', currentItem.value, currentIndex.value)
+  }
+}
+
 const handleKeydown = (event: KeyboardEvent) => {
-  if (!props.modelValue) return
+  if (!props.modelValue || event.defaultPrevented) return
+  if (event.target instanceof Element && event.target.closest('.el-message-box')) return
 
   if (event.key === 'Escape') {
     event.preventDefault()

@@ -822,7 +822,7 @@
                   placeholder="输入价格或留空删除"
                   clearable
                 >
-                  <template #prepend>
+                  <template #prefix>
                     ¥
                   </template>
                 </el-input>

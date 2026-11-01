@@ -13,7 +13,7 @@
     >
       <div class="photo-preview-content">
         <div class="photo-upload-area">
-          <div class="photo-upload-actions">
+          <div class="tf-dialog-toolbar photo-upload-actions">
             <el-upload
               v-if="canUpload"
               class="toolbar-upload"
@@ -24,16 +24,12 @@
             >
               <el-button
                 type="primary"
-                size="default"
-                class="toolbar-action-btn"
               >
                 <i class="fas fa-image" /> 上传图片
               </el-button>
             </el-upload>
             <el-button
-              class="toolbar-action-btn"
               type="success"
-              size="default"
               :disabled="previewPhotos.length === 0"
               @click="downloadToolbarPhotos"
             >
@@ -41,9 +37,7 @@
             </el-button>
             <el-button
               v-if="canUpload"
-              class="toolbar-action-btn"
               type="danger"
-              size="default"
               :disabled="previewPhotos.length === 0"
               @click="deleteToolbarPhotos"
             >
@@ -106,7 +100,10 @@
 
               <div class="photo-actions">
                 <el-button
-                  class="action-btn view-btn"
+                  type="primary"
+                  size="small"
+                  title="查看照片"
+                  aria-label="查看照片"
                   circle
                   @click.stop="openPhotoViewer(index)"
                 >
@@ -114,7 +111,10 @@
                 </el-button>
                 <el-button
                   v-if="canUpload"
-                  class="action-btn delete-btn"
+                  type="danger"
+                  size="small"
+                  title="删除照片"
+                  aria-label="删除照片"
                   circle
                   @click.stop="removePhotoFromPreview(index)"
                 >
@@ -162,66 +162,16 @@
       </template>
     </el-dialog>
 
-    <el-dialog
+    <MediaPreviewViewer
       v-model="showPhotoViewer"
-      :title="`照片预览 (${currentPhotoIndex + 1}/${previewPhotos.length})`"
-      width="90%"
-      class="photo-viewer-dialog"
-      append-to-body
-      destroy-on-close
-    >
-      <div class="photo-viewer-content">
-        <div class="photo-viewer-main">
-          <el-button
-            class="photo-nav-btn prev"
-            circle
-            :disabled="currentPhotoIndex === 0"
-            @click="prevPhoto"
-          >
-            <i class="fas fa-chevron-left" />
-          </el-button>
-          <div class="photo-viewer-image">
-            <AsyncImage
-              :key="resolvePhotoUrl(previewPhotos[currentPhotoIndex])"
-              :src="resolvePhotoUrl(previewPhotos[currentPhotoIndex])"
-              alt="国补照片"
-              mode="eager"
-              @load="handleViewerImageLoad"
-              @error="handleViewerImageLoad"
-            />
-            <div
-              v-if="viewerLoading"
-              class="photo-viewer-loading"
-            >
-              <InlineLoading text="图片加载中..." />
-            </div>
-          </div>
-          <el-button
-            class="photo-nav-btn next"
-            circle
-            :disabled="currentPhotoIndex === previewPhotos.length - 1"
-            @click="nextPhoto"
-          >
-            <i class="fas fa-chevron-right" />
-          </el-button>
-        </div>
-        <div class="photo-viewer-actions">
-          <el-button
-            type="primary"
-            @click="downloadCurrentPhoto"
-          >
-            <i class="fas fa-download" /> 下载
-          </el-button>
-          <el-button
-            v-if="canUpload"
-            type="danger"
-            @click="removePhotoFromPreview(currentPhotoIndex)"
-          >
-            <i class="fas fa-trash" /> 删除
-          </el-button>
-        </div>
-      </div>
-    </el-dialog>
+      :items="previewMediaItems"
+      :initial-index="currentPhotoIndex"
+      :deletable="canUpload"
+      downloadable
+      @change="(_item, index) => preloadNearbyPhotos(index)"
+      @delete="(_item, index) => removePhotoFromPreview(index)"
+      @download="(_item, index) => downloadCurrentPhoto(index)"
+    />
   </div>
 </template>
 
@@ -236,6 +186,7 @@ import { useImportExport } from '@/composables/useImportExport'
 import { unifiedApi } from '@/utils/unified-api'
 import { logger } from '@/utils/logger'
 import { formatImageUrl } from '@/utils/format'
+import type { MediaPreviewItem } from '@/utils/media'
 import { convertPdfToImage, isPdfFile } from '@/utils/upload-media'
 
 const AsyncImage = defineAsyncComponent(() => import('@/components/Image.vue'))
@@ -262,7 +213,6 @@ const selectedPhotos = ref<number[]>([])
 const photoSelectAll = ref(false)
 const isDragging = ref(false)
 const showPhotoViewer = ref(false)
-const viewerLoading = ref(false)
 const canUpload = computed(() => props.canUpload)
 
 const decodedPhotoCache = new Set<string>()
@@ -295,7 +245,6 @@ const resetState = () => {
   photoSelectAll.value = false
   isDragging.value = false
   showPhotoViewer.value = false
-  viewerLoading.value = false
 }
 
 const cleanupUnSavedUploads = async () => {
@@ -318,6 +267,13 @@ const closeDialog = async () => {
 }
 
 const resolvePhotoUrl = (photo?: string) => formatImageUrl(photo || '')
+
+const previewMediaItems = computed<MediaPreviewItem[]>(() => previewPhotos.value.map((photo, index) => ({
+  id: photo,
+  url: resolvePhotoUrl(photo),
+  type: 'image',
+  label: `国补照片 ${index + 1}`
+})))
 
 const getPhotoOwnerName = () => {
   const handler_name = props.item?.handler_info?.handler_name || props.item?.handler_name || ''
@@ -386,11 +342,6 @@ const preloadNearbyPhotos = (index: number) => {
   preloadPhotoAt(index + 1)
 }
 
-const syncViewerLoading = (index: number) => {
-  const resolvedUrl = resolvePhotoUrl(previewPhotos.value[index])
-  viewerLoading.value = !!resolvedUrl && !decodedPhotoCache.has(resolvedUrl)
-}
-
 const queuePhotoWarmup = () => {
   const firstPhoto = previewPhotos.value[0]
   if (!firstPhoto) {
@@ -431,16 +382,6 @@ watch(
   },
   { immediate: true }
 )
-
-watch(currentPhotoIndex, (index) => {
-  if (!showPhotoViewer.value) return
-  syncViewerLoading(index)
-  preloadNearbyPhotos(index)
-})
-
-const handleViewerImageLoad = () => {
-  viewerLoading.value = false
-}
 
 const customUploadRequest = async (options: any) => {
   if (!canUpload.value) {
@@ -639,8 +580,6 @@ const applyPhotoDeletion = (indexes: number[], successMessage: string) => {
   if (previewPhotos.value.length === 0) {
     showPhotoViewer.value = false
     currentPhotoIndex.value = 0
-  } else if (currentPhotoIndex.value >= previewPhotos.value.length) {
-    currentPhotoIndex.value = previewPhotos.value.length - 1
   }
 
   ElMessage.success(successMessage)
@@ -681,19 +620,10 @@ const deleteToolbarPhotos = () => {
 
 const openPhotoViewer = (index: number) => {
   currentPhotoIndex.value = index
-  syncViewerLoading(index)
   showPhotoViewer.value = true
   nextTick(() => {
     preloadNearbyPhotos(index)
   })
-}
-
-const prevPhoto = () => {
-  if (currentPhotoIndex.value > 0) currentPhotoIndex.value--
-}
-
-const nextPhoto = () => {
-  if (currentPhotoIndex.value < previewPhotos.value.length - 1) currentPhotoIndex.value++
 }
 
 const removePhotoFromPreview = (index: number) => {
@@ -702,30 +632,33 @@ const removePhotoFromPreview = (index: number) => {
     return
   }
 
+  const photo = previewPhotos.value[index]
+  if (!photo) return
+
   confirmAction('确定要删除这张照片吗？', '提示', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
   }).then(() => {
-    deletedPhotos.value.push(previewPhotos.value[index])
-    previewPhotos.value.splice(index, 1)
+    const photoIndex = previewPhotos.value.indexOf(photo)
+    if (photoIndex < 0) return
+    deletedPhotos.value.push(photo)
+    previewPhotos.value.splice(photoIndex, 1)
     if (previewPhotos.value.length === 0) {
       showPhotoViewer.value = false
-    } else if (currentPhotoIndex.value >= previewPhotos.value.length) {
-      currentPhotoIndex.value = previewPhotos.value.length - 1
     }
     ElMessage.success('照片已删除')
   }).catch(() => {})
 }
 
-const downloadCurrentPhoto = async () => {
-  const photoUrl = previewPhotos.value[currentPhotoIndex.value]
+const downloadCurrentPhoto = async (index: number) => {
+  const photoUrl = previewPhotos.value[index]
   if (!photoUrl) return
 
   try {
     await downloadPhotoBlob(
       photoUrl,
-      getPhotoDownloadFilename(currentPhotoIndex.value, photoUrl)
+      getPhotoDownloadFilename(index, photoUrl)
     )
     ElMessage.success('照片下载成功')
   } catch {
@@ -800,7 +733,6 @@ const savePhotoChanges = async () => {
   margin-bottom: 18px;
 }
 
-.photo-upload-actions,
 .toolbar-left {
   display: flex;
   align-items: center;
@@ -811,8 +743,6 @@ const savePhotoChanges = async () => {
 .photo-upload-actions {
   width: fit-content;
   max-width: 100%;
-  gap: 12px;
-  align-items: center;
 
   :deep(.toolbar-upload) {
     display: inline-flex;
@@ -825,22 +755,6 @@ const savePhotoChanges = async () => {
     width: auto;
   }
 
-  :deep(.toolbar-action-btn) {
-    display: inline-flex;
-    width: auto;
-    min-width: 0;
-    height: 40px;
-    margin-left: 0 !important;
-    white-space: nowrap;
-  }
-
-  :deep(.toolbar-action-btn > span) {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    white-space: nowrap;
-  }
 }
 
 .selected-count {
@@ -900,37 +814,6 @@ const savePhotoChanges = async () => {
   transform: translateX(-50%);
 }
 
-.action-btn {
-  width: 36px !important;
-  min-width: 36px !important;
-  height: 36px !important;
-  padding: 0 !important;
-  border: none !important;
-  display: inline-flex !important;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50% !important;
-  box-shadow: var(--tf-button-shadow);
-
-  :deep(span) {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-    height: 100%;
-  }
-}
-
-.view-btn {
-  background: var(--tf-button-primary-bg) !important;
-  color: var(--tf-button-on-color) !important;
-}
-
-.delete-btn {
-  background: var(--tf-button-danger-bg) !important;
-  color: var(--tf-button-on-color) !important;
-}
-
 .selected-overlay {
   position: absolute;
   inset: 0;
@@ -956,131 +839,7 @@ const savePhotoChanges = async () => {
   padding: 56px 20px;
 }
 
-.photo-viewer-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-}
-
-.photo-viewer-main {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: clamp(360px, 62vh, 640px);
-  min-height: 0;
-  padding: 20px;
-  overflow: hidden;
-  background: var(--tf-color-surface-soft);
-  border-radius: 8px;
-  box-sizing: border-box;
-}
-
-.photo-nav-btn {
-  position: absolute;
-  top: calc(50% - 22px);
-  z-index: 2;
-  width: 44px !important;
-  min-width: 44px !important;
-  max-width: 44px;
-  height: 44px !important;
-  min-height: 44px !important;
-  max-height: 44px;
-  margin: 0 !important;
-  padding: 0 !important;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 44px;
-  border-radius: 50% !important;
-  box-sizing: border-box;
-  transform: none !important;
-  transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, color 0.15s ease !important;
-  background: var(--tf-button-overlay-bg);
-  box-shadow: var(--tf-button-shadow);
-
-  :deep(span) {
-    width: 100%;
-    height: 100%;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  i {
-    width: 1em;
-    line-height: 1;
-    text-align: center;
-  }
-
-  &.prev {
-    left: 16px;
-  }
-
-  &.next {
-    right: 16px;
-  }
-}
-
-.photo-viewer-content .photo-viewer-main .photo-nav-btn.el-button,
-.photo-viewer-content .photo-viewer-main .photo-nav-btn.el-button:hover,
-.photo-viewer-content .photo-viewer-main .photo-nav-btn.el-button:focus,
-.photo-viewer-content .photo-viewer-main .photo-nav-btn.el-button:active {
-  transform: none !important;
-}
-
-.photo-viewer-image {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  max-width: calc(100% - 120px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  :deep(img) {
-    max-width: 100%;
-    max-height: 100%;
-    object-fit: contain;
-  }
-}
-
-.photo-viewer-loading {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  color: var(--color-text-regular);
-  background: rgba(245, 247, 250, 0.92);
-  border-radius: 8px;
-}
-
 @media (max-width: 767px) {
-  :deep(.photo-preview-dialog .el-dialog) {
-    width: calc(100vw - 16px) !important;
-    max-width: calc(100vw - 16px);
-    max-height: calc(100vh - 24px);
-    margin: 12px auto !important;
-    display: flex;
-    flex-direction: column;
-  }
-
-  .photo-viewer-actions {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
-
-    :deep(.el-button) {
-      width: 100%;
-      min-width: 0;
-      margin-left: 0 !important;
-    }
-  }
-
   .photo-upload-area,
   .photo-toolbar,
   .toolbar-left {
@@ -1093,74 +852,12 @@ const savePhotoChanges = async () => {
   }
 
   .photo-upload-actions {
-    gap: 6px;
-    width: 100%;
     justify-content: flex-start;
-
-    :deep(.toolbar-action-btn) {
-      min-width: 0;
-      padding: 0 12px !important;
-      height: 36px;
-      font-size: var(--tf-type-scale-12) !important;
-    }
-
-    :deep(.toolbar-action-btn [class*="fa-"]) {
-      font-size: var(--tf-type-scale-11);
-      margin-right: 4px;
-    }
-
-    :deep(.toolbar-action-btn > span) {
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-  }
-
-  .photo-upload-actions :deep(.el-button),
-  .toolbar-left :deep(.el-button) {
-    margin-left: 0 !important;
-  }
-
-  .photo-preview-footer {
-    :deep(.el-button > span) {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 4px;
-      white-space: nowrap;
-    }
   }
 
   .photo-grid {
     grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
   }
 
-  .photo-viewer-main {
-    height: clamp(280px, 52vh, 480px);
-    min-height: 0;
-    padding: 12px;
-  }
-
-  .photo-nav-btn {
-    width: 44px !important;
-    min-width: 44px !important;
-    max-width: 44px;
-    height: 44px !important;
-    min-height: 44px !important;
-    max-height: 44px;
-    flex-basis: 44px;
-
-    &.prev {
-      left: 10px;
-    }
-
-    &.next {
-      right: 10px;
-    }
-  }
-
-  .photo-viewer-image {
-    max-width: calc(100% - 104px);
-  }
 }
 </style>

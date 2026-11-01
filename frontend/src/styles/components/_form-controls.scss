@@ -30,7 +30,7 @@ html body :is(
   border-radius: var(--tf-radius-control);
 }
 
-/* 普通表单控件高度统一为 PC 端 38px；搜索区和表格排序控件由各自公共组件维护紧凑规格。 */
+/* 普通表单控件高度统一读取公共令牌（当前为 30px），搜索区和表格排序复用同一规格。 */
 :where(
   .el-input__wrapper,
   .el-select__wrapper,

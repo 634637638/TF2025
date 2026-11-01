@@ -4,6 +4,12 @@
 
 本文档介绍了综合查询页面使用的三个模态框组件，这些组件基于 `MobileDialog` 封装，提供了统一的UI风格和响应式体验。
 
+## 手机端详情入口
+
+综合查询在手机和平板（视口宽度不超过 `1024px`）上，连续轻触同一行两次打开 `QueryDetailDialog`。识别由全局 `v-table-double-tap` 负责，复用现有 `openDetailModal`，不依赖浏览器生成的兼容点击事件。滑动、长按、按钮及表单操作不会触发行详情；电脑端状态单元格双击查看销售单等行为保持原逻辑。
+
+手势规则和适用范围统一维护于[后台卡片与表格统一规范](../frontend/admin-table-standards.md#手机端双击详情)，本指南不另设私有计时方案。
+
 ## 组件列表
 
 ### 1. QueryEditModal - 编辑模态框
@@ -11,6 +17,21 @@
 用于编辑设备的基本信息、供应商、店铺、价格等。
 
 **文件位置：** `frontend/src/components/query/QueryEditModal.vue`
+
+#### 编辑与快速出库的共享布局
+
+`QueryEditModal` 和 `QuickSaleModal` 共用 `frontend/src/styles/components/_query-modal.scss` 中的表单布局类，避免两套弹窗分别维护网格和区块样式：
+
+- `tf-query-modal-section`、`tf-query-modal-section-title`：统一信息分区、标题和间距。
+- `tf-query-modal-row`：默认两列；`tf-query-modal-row--3`、`tf-query-modal-row--4` 分别用于三列和四列字段组。
+- PC 端四字段组在视口宽度不超过 1200px 时收为两列；手机端所有字段组统一两列。
+- `tf-query-modal-span-2` 用于手机端跨两列的字段；日期控件填满所在字段列，不使用固定宽度。
+- 快速出库设备信息按三行展示：第一行供应商/店铺/成色/状态，第二行品牌/型号/颜色/内存，第三行序列号/IMEI/入库价格/销售或批发价格；划拨状态隐藏两个价格字段。手机端入库员和销售员并排，客户手机和姓名并排，Apple ID占整行。
+- 快速出库手机端的序列号和 IMEI 输入框必须使用同一外层结构，并复用入库页面的 `OptimizedScanner`；扫码按钮只在移动端显示，扫码或手动输入成功后回填对应字段并清除该字段校验提示。
+- 快速出库扫码必须通过 `phone.brand` 传入当前品牌名称，复用[设备扫码规则](../business/inventory/DEVICE_SCANNING_RULES.md)识别 Apple 包装多出的 `S` 字段标识；不能在表单回填或手动输入时直接删除真实序列号首字母。
+- 快速出库支持销售、批发/调货、划拨三种交易类型；交易类型决定设备状态、销售记录类型和 `XS/PF/HB` 单号后缀。销售需要支付方式，批发/调货填写批发价格，划拨不填写金额。该字段统一称为“成色”。
+
+新增或调整这两个弹窗的表单布局时，优先使用上述公共类；业务组件只保留特有的检索下拉、利润提示等交互样式。
 
 #### 使用示例
 

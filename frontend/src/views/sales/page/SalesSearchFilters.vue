@@ -157,7 +157,7 @@
     >
       <el-select
         v-model="filters.is_new"
-        placeholder="机况"
+        placeholder="成色"
         clearable
         :teleported="true"
         popper-class="tf2025-form-popper"

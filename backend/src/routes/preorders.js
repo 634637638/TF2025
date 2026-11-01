@@ -725,7 +725,7 @@ router.post('/', unifiedAuth, requirePermission('preorders:create'), rejectHidde
     const normalizedExpectedArrival = expected_arrival || new Date().toISOString().slice(0, 10)
 
     if (![0, 1].includes(normalizedCondition)) {
-      return ApiResponse.badRequest(res, '机况必须为全新或二手')
+      return ApiResponse.badRequest(res, '成色必须为全新或二手')
     }
 
     const pool = require('../config/database').getDatabase()
@@ -1054,7 +1054,7 @@ router.put('/:id/match', unifiedAuth, requirePermission('preorders:match'), reje
 
     if (!exactMatch) {
       await connection.rollback()
-      return ApiResponse.badRequest(res, '设备的品牌、型号、颜色、内存或机况与预定单不一致')
+      return ApiResponse.badRequest(res, '设备的品牌、型号、颜色、内存或成色与预定单不一致')
     }
 
     const requestedPrice = actual_price === undefined || actual_price === null || actual_price === ''
@@ -1306,7 +1306,7 @@ router.put('/:id', unifiedAuth, requirePermission('preorders:edit'), rejectHidde
 
     if (updateData.is_new !== undefined && ![0, 1].includes(Number(updateData.is_new))) {
       await connection.rollback()
-      return ApiResponse.badRequest(res, '机况必须为全新或二手')
+      return ApiResponse.badRequest(res, '成色必须为全新或二手')
     }
 
     if (updateData.deposit_amount !== undefined) {

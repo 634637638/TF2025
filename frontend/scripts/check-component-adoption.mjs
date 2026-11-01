@@ -47,6 +47,12 @@ for (const file of walk(sourceRoot)) {
       findings.push(`${fileName} 使用已移除组件 ${componentName}，请改用 Element Plus 或现行公共组件`)
     }
   }
+
+  for (const scanner of source.matchAll(/<OptimizedScanner\b[^>]*>/g)) {
+    if (!/:phone\s*=/.test(scanner[0])) {
+      findings.push(`${fileName} 扫码器必须绑定 phone 品牌上下文，避免 Apple 包装序列号前缀识别失效`)
+    }
+  }
 }
 
 for (const file of [

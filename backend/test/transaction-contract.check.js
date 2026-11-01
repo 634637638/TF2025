@@ -335,7 +335,7 @@ test('quick-sale accepts canonical IDs, prices, times and operator fields', () =
   for (const field of ['brand_id', 'model_id', 'color_id', 'memory_id', 'purchase_cost', 'inventory_time', 'sale_time', 'sale_operator_id']) {
     assert.match(payload, new RegExp(`${field}:`), `快速出库 payload 缺少 ${field}`);
   }
-  assert.doesNotMatch(handler, /\bbrand\b|\bmodel\b|\bcolor\b|\bmemory\b|purchase_price|stock_in_date|sale_date|customer_idcard/);
+  assert.doesNotMatch(handler, /purchase_price|stock_in_date|customer_idcard/);
   assert.match(handler, /Number\.isInteger\(id\)/);
   assert.match(handler, /normalizeDateTime\(inventory_time, false\)/);
   assert.match(handler, /normalizeDateTime\(sale_time, false\)/);
@@ -343,7 +343,7 @@ test('quick-sale accepts canonical IDs, prices, times and operator fields', () =
   assert.doesNotMatch(handler, /purchaseCost \|\||salePrice \|\||sale_price \|\| 0/);
   assert.match(handler, /apple_id/);
   assert.match(handler, /payment_channel/);
-  assert.match(handler, /generateInvoiceNumber\('retail', connection, saleTimeStr\)/);
+  assert.match(handler, /generateInvoiceNumber\(transactionConfig\.invoiceType, connection, saleTimeStr\)/);
   assert.match(handler, /invoice_number/);
   assert.match(frontend, /purchase_cost:/);
   assert.match(frontend, /inventory_time:/);

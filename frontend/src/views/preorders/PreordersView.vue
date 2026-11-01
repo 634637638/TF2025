@@ -397,7 +397,7 @@
                 </el-table-column>
                 <el-table-column
                   v-if="canViewPreorderField('is_new')"
-                  label="机况"
+                  label="成色"
                   min-width="70"
                 >
                   <template #default="{ row }">
@@ -754,7 +754,7 @@
                 </el-table-column>
                 <el-table-column
                   v-if="canViewPreorderField('is_new')"
-                  label="机况"
+                  label="成色"
                   min-width="70"
                 >
                   <template #default="{ row }">
@@ -1103,7 +1103,7 @@
                 </el-table-column>
                 <el-table-column
                   v-if="canViewPreorderField('is_new')"
-                  label="机况"
+                  label="成色"
                   min-width="70"
                 >
                   <template #default="{ row }">

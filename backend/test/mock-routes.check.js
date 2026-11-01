@@ -27,7 +27,6 @@ test('analytics has no runtime routes or fixed payloads for simulated metrics', 
       `analytics must not retain simulated metric marker: ${marker}`);
   }
 });
-
 test('business pages do not fabricate settings, weather, inventory totals or cost categories', () => {
   assert.doesNotMatch(systemSource, /腾飞数码|tf2025\.com|400-123-4567|北京市朝阳区/);
   assert.doesNotMatch(marketingSource, /return ['"]天气正常['"]|return normalized \|\| ['"]天气不错['"]/);

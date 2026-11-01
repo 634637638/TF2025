@@ -8,15 +8,16 @@
 
     <div class="table-responsive">
       <el-table
-          v-tf-loading="loading"
-          :data="inventory"
+        v-tf-loading="loading"
+        v-table-double-tap="{ enabled: enableRowDoubleTap, getRowKey: getTapRowKey, onDoubleTap: handleRowDoubleTap }"
+        :data="inventory"
         border
         stripe
         class="data-table devices-table inventory-table"
         table-layout="fixed"
         :fit="true"
         row-key="id"
-        @row-click="handleRowClick"
+        @row-dblclick="handleRowDoubleClick"
       >
         <el-table-column
           v-for="column in columns"
@@ -156,6 +157,7 @@ const props = defineProps<{
   canDelete: boolean
   canEdit: boolean
   columns: InventoryColumn[]
+  enableRowDoubleTap: boolean
   formatDate: (_value?: string) => string
   formatNumber: (_value: number) => string
   getColumnClass: (_column: InventoryColumn) => string
@@ -175,12 +177,18 @@ const emit = defineEmits<{
   edit: [item: InventoryItem]
   'pagination-change': [pagination: { page: number; pageSize: number }]
   'quick-sale': [item: InventoryItem]
-  'row-tap': [item: InventoryItem, column: unknown, event: MouseEvent]
   view: [item: InventoryItem]
 }>()
 
-const handleRowClick = (item: InventoryItem, column: unknown, event: MouseEvent) => {
-  emit('row-tap', item, column, event)
+const getTapRowKey = (rowIndex: number) => props.inventory[rowIndex]?.id
+
+const handleRowDoubleClick = (item: InventoryItem) => {
+  if (props.enableRowDoubleTap) emit('view', item)
+}
+
+const handleRowDoubleTap = (rowIndex: number) => {
+  const item = props.inventory[rowIndex]
+  if (item) handleRowDoubleClick(item)
 }
 
 const {
@@ -188,6 +196,7 @@ const {
   canDelete,
   canEdit,
   columns,
+  enableRowDoubleTap,
   formatDate,
   formatNumber,
   getColumnClass,

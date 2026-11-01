@@ -125,6 +125,11 @@ const vipLabel = (level: string) => ({
 <style scoped lang="scss">
 .customer-search-dropdown {
   box-sizing: border-box;
+  display: grid;
+  grid-auto-rows: max-content;
+  align-content: start;
+  gap: var(--tf-space-1);
+  padding: var(--tf-space-1);
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
   position: absolute;
@@ -178,8 +183,8 @@ const vipLabel = (level: string) => ({
   height: auto;
   min-height: 0;
   max-height: none;
+  margin: 0;
   padding: var(--tf-space-3) var(--tf-space-4);
-  border-bottom: 1px solid var(--admin-data-table-cell-border);
   background: transparent;
   color: inherit;
   line-height: normal;
@@ -193,8 +198,10 @@ const vipLabel = (level: string) => ({
   background: var(--admin-data-table-row-even-bg);
 }
 
-.customer-search-dropdown__item:last-of-type {
-  border-bottom: 0;
+.customer-search-dropdown .el-button.customer-search-dropdown__item :deep(> span) {
+  display: block;
+  width: 100%;
+  min-width: 0;
 }
 
 .customer-search-dropdown__content {
@@ -227,9 +234,6 @@ const vipLabel = (level: string) => ({
   font-size: var(--tf-type-scale-12);
   line-height: 1.2;
   white-space: nowrap;
-}
-
-.customer-search-dropdown__phone {
   overflow: visible;
   min-width: 0;
   flex: 0 0 auto;

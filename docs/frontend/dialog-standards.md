@@ -7,6 +7,7 @@
 | 文件 | 职责 |
 | --- | --- |
 | `frontend/src/components/MobileDialog.vue` | 弹窗结构、关闭行为、响应式模式、默认 footer |
+| `frontend/src/components/MediaPreviewViewer.vue` | 图片/视频全屏预览、缩放、切换及可选删除/下载事件 |
 | `frontend/src/styles/components/_dialog.scss` | 遮罩、宽度、圆角、标题栏、关闭按钮、正文间距、确认框内容宽度、移动端边界 |
 | `frontend/src/styles/components/_dialog-actions.scss` | 取消/确认按钮的排列、尺寸、间距和移动端居中等分布局 |
 | `frontend/src/styles/components/_buttons.scss` | 按钮颜色、语义和普通按钮视觉 |
@@ -15,9 +16,15 @@
 
 `MobileDialog` 在手机和平板使用 sheet 布局，在桌面使用 Element Plus Dialog。宽度按断点收敛：手机（`<=767px`）使用接近满宽的弹窗；平板（`768-1024px`）宽度上限为视口的 `80%`，并继续受页面 `width`/`maxWidth` 参数约束；桌面（`>=1025px`）按页面声明宽度并受全局最大宽度约束。最终规则统一采用 `min(页面声明宽度, 可用视口宽度)`，与库存管理弹窗的自适应行为一致。不要在业务页面用 `!important` 再覆盖这些断点规则。
 
+手机和平板遮罩关闭必须确认同一次主指针在遮罩上按下并抬起；正文、标题栏、footer 内开始的操作，以及移动超过 `10px`、指针取消或弹窗出现后的兼容穿透点击，均不得触发遮罩关闭。每次弹窗打开/关闭都清空记录。该规则由 `MobileDialog` 统一维护，`check:dialogs` 检查接入；不能靠业务页复制延时器或缩小正文点击区域处理。
+
 ### 宽度行为
 
 `width` 只声明业务弹窗的期望宽度，`maxWidth` 用于声明更严格的上限；两者都不是固定像素锁定。全局实现会根据当前视口自动取较小值：
+
+普通新增/编辑弹窗优先省略 `width`，由 `MobileDialog` 直接读取公共令牌 `--tf-dialog-width`（当前 `680px`）。国补新增申请和编辑信息已统一采用此默认值；原新增 `900px`、编辑 `760px` 及父页面手机端强制加宽的覆盖已移除。默认宽度只在 `_dialog.scss` 定义，不能在组件中再保存一份像素默认值。
+
+统一的是宽度计算、上限和响应式规则，并非要求所有业务弹窗完全同宽。表格、照片管理等确需更大空间的工作台仍可通过 `width`/`maxWidth` 声明业务宽度，不能用私有 CSS 覆盖外壳、标题栏或手机端边界。
 
 | 视口 | 统一行为 |
 | --- | --- |
@@ -57,6 +64,10 @@
 - 图片预览、富文本、表格工作台等复杂内容可以使用业务 class，但只允许调整内容布局或宽度变体。
 
 当前直接 `el-dialog` 例外由 `frontend/scripts/check-dialog-adoption.mjs` 登记并审计。例外只覆盖全局提醒宿主、媒体/照片预览工作台、备份清理、待办、经验分享和国补照片管理；普通新增业务弹窗不得直接复制这些例外。
+
+国补申请和照片管理中的图片查看统一使用 `MediaPreviewViewer`，不得恢复独立的照片查看 Dialog、翻页按钮或预览工具尺寸。照片管理主工作台保留已登记的 `el-dialog`；其缩略图查看/删除使用公共小号圆形按钮，删除入口继续受原上传权限控制。全屏预览工具使用 `tf-button--overlay-tool`，删除附加 `tf-button--overlay-danger`；下载通过 `downloadable` 和 `download` 事件交回业务下载入口处理，公共查看器不直接发起下载请求。
+
+预览中触发的删除确认必须显示在查看器上方。`_variables.scss` 将 `--tf-z-message-box` 定义为查看器层级加一，`_dialog.scss` 同时控制 MessageBox 根遮罩和内容层；禁止业务页单独提高层级。确认框处理键盘事件时，查看器不同时响应关闭或翻页。
 
 ## 统一视觉令牌
 
@@ -145,10 +156,13 @@ MessageBox 的默认宽度由 `--tf-dialog-message-width` 统一控制，当前�
 - 三个及以上按钮仍使用同一行居中等分布局；不在页面中改成独立 grid 或分别设置左右宽度。
 - 不在页面中给 footer 按钮重复设置高度、宽度、圆角或间距。
 - PC footer 按钮由全局令牌统一为 `32px`；平板和手机维持 `40px`。`MobileDialog` 不得另设按钮尺寸等级或覆盖对应断点高度。
+- 公共 footer 和 `.tf-dialog-toolbar` 内的 `small/default/large` 高度别名统一映射到 `--tf-dialog-action-height`，防止页面遗留的 `size` 属性覆盖公共规格；新代码不再为这些按钮指定尺寸等级。
 - 取消使用中性语义，保存/确认使用 `primary`，删除使用 `danger`，完成使用 `success`。
 - 业务 footer 容器可以保留自己的 class，但应同时使用 `.tf-dialog-actions`。
 
 历史页面即使在 footer 插槽中直接放置 `<el-button>`，也会由 `_dialog-actions.scss` 对 Element Plus footer 直接子级统一尺寸；新代码仍必须显式使用 `.tf-dialog-actions`，便于维护一致的按钮间距和响应式排列。`MobileDialog` 不会为自定义 footer 插槽添加额外包装层。
+
+弹窗正文中的上传、批量下载等命令按钮组使用 `.tf-dialog-toolbar`，复用 footer 的高度、字号和内边距，按内容排列且窄屏可换行；不要在页面中再写 `40px/36px` 等高度。缩略图圆形图标和全屏媒体工具遵守各自的公共按钮语义，不套用正文命令按钮组。
 
 业务 footer 只允许维护摘要、提示和弹窗宽度等业务布局。禁止在页面样式中重新声明 footer 的 `grid`、
 手机端 `flex-direction: column`、按钮 `width/min-width/max-width/height/min-height/padding`。这些规则由

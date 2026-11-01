@@ -126,6 +126,10 @@ Element Plus 模态框 footer 内使用 `.tf-dialog-actions`：
 
 PC 端模态框 footer 按钮按内容自适应并靠右，单个按钮最小宽度 `64px`、高度 `32px`、左右内边距 `8px`、间距 `4px`；平板和手机（`<=1024px`）保持 `40px` 高，操作组占满可用宽度，按钮等分且保持同宽、左右内边距 `10px`、间距 `8px`，不得改成上下排列或产生单侧大留白。
 
+公共 footer、MessageBox 操作区和正文 `.tf-dialog-toolbar` 将 `small/default/large` 高度别名统一到弹窗高度令牌，避免遗留的 `size` 属性改变尺寸。正文上传/批量下载等命令按钮复用 `.tf-dialog-toolbar`，按内容宽度排列，空间不足时可换行；不允许页面重新维护按钮高度、内边距或字号。
+
+照片缩略图的查看/删除使用 `el-button` 的 `primary/danger` 语义、小号 `circle` 规格，并提供 `title` 和 `aria-label`。全屏图片预览统一接入 `MediaPreviewViewer`，其工具按钮由 `tf-button--overlay-tool` 维护，删除附加 `tf-button--overlay-danger`；这些图标工具遵循公共媒体工具规格，不与 footer 普通文字按钮混用。国补申请、国补照片管理均遵守此规则。
+
 所有模态框（包括销售出库、批量销售、入库、划拨、批发、综合查询、权限和 H5 管理弹窗）都必须遵守同一条规则：
 PC 端按钮按内容自适应并靠右，手机端按钮居中等分、保持同一行，按钮高度、最小宽度、最大宽度和间距只能由
 `_dialog-actions.scss` 控制。业务页面不得用 `grid-template-columns`、`flex-direction: column` 或按钮固定宽度覆盖这套规则。

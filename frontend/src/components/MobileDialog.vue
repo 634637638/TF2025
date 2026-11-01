@@ -8,6 +8,10 @@
         v-if="activeUseMobileSheet && mobileSheetMounted"
         v-show="dialogVisible"
         :class="overlayClasses"
+        @pointerdown="handleOverlayPointerDown"
+        @pointermove="handleOverlayPointerMove"
+        @pointerup="handleOverlayPointerUp"
+        @pointercancel="resetOverlayPointer"
         @click.self="handleOverlayClick"
       >
         <div
@@ -144,11 +148,10 @@
       </template>
       <div
         v-else-if="showDefaultFooter"
-        class="default-footer"
+        class="tf-dialog-actions default-footer"
       >
         <el-button
           v-if="showCancelButton"
-          :size="isMobile ? 'large' : 'default'"
           :disabled="loading"
           @click="handleCancel"
         >
@@ -156,7 +159,6 @@
         </el-button>
         <el-button
           type="primary"
-          :size="isMobile ? 'large' : 'default'"
           :loading="loading"
           @click="handleConfirm"
         >
@@ -202,7 +204,7 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
   title: '',
-  width: '680px',
+  width: 'var(--tf-dialog-width)',
   maxWidth: '',
   fullscreen: false,
   forceFullscreen: false,
@@ -277,7 +279,7 @@ const dialogWidth = computed(() => {
   }
 
   // 桌面端默认宽度
-  return '60vw'
+  return 'var(--tf-dialog-width)'
 })
 
 // 是否全屏显示
@@ -397,8 +399,39 @@ const handleSheetClose = () => {
   dialogVisible.value = false
 }
 
+let overlayPointer: { id: number; x: number; y: number } | null = null
+let overlayClickReady = false
+const resetOverlayPointer = () => {
+  overlayPointer = null
+  overlayClickReady = false
+}
+
+const handleOverlayPointerDown = (event: PointerEvent) => {
+  resetOverlayPointer()
+  if (event.target !== event.currentTarget || !event.isPrimary || event.button !== 0) return
+  overlayPointer = { id: event.pointerId, x: event.clientX, y: event.clientY }
+}
+
+const handleOverlayPointerMove = (event: PointerEvent) => {
+  if (overlayPointer && (event.pointerId !== overlayPointer.id
+    || Math.abs(event.clientX - overlayPointer.x) > 10
+    || Math.abs(event.clientY - overlayPointer.y) > 10)) resetOverlayPointer()
+}
+
+const handleOverlayPointerUp = (event: PointerEvent) => {
+  const pointer = overlayPointer
+  resetOverlayPointer()
+  overlayClickReady = Boolean(pointer && event.pointerId === pointer.id
+    && event.target === event.currentTarget
+    && Math.abs(event.clientX - pointer.x) <= 10
+    && Math.abs(event.clientY - pointer.y) <= 10)
+}
+
 const handleOverlayClick = () => {
-  if (!props.closeOnClickModal) return
+  // 只关闭从遮罩开始并在遮罩结束的完整点击，拒绝弹窗出现后的穿透点击。
+  const shouldClose = overlayClickReady && props.closeOnClickModal
+  resetOverlayPointer()
+  if (!shouldClose) return
   dialogVisible.value = false
 }
 
@@ -422,6 +455,7 @@ const handleKeydown = (event: KeyboardEvent) => {
 
 // 监听屏幕变化，动态更新对话框
 watch(dialogVisible, async (visible) => {
+  resetOverlayPointer()
   if (visible) {
     lockedMobileSheet.value = useMobileSheet.value
   } else {

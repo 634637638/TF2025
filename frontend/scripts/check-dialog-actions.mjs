@@ -76,6 +76,17 @@ const publicFiles = new Set([
 ])
 
 const dialogActionsSource = readFileSync(join(sourceRoot, 'styles/components/_dialog-actions.scss'), 'utf8')
+for (const token of ['--tf-button-height', '--tf-button-height-small', '--tf-button-height-large']) {
+  if (!dialogActionsSource.includes(`${token}: var(--tf-dialog-action-height);`)) {
+    findings.push(`src/styles/components/_dialog-actions.scss 必须将 ${token} 归一到公共弹窗高度，避免 size 等级放大或缩小底部按钮`)
+  }
+}
+if (!dialogActionsSource.includes('.tf-dialog-toolbar')
+  || !dialogActionsSource.includes('@include tf-dialog-button-sizes;')
+  || !dialogActionsSource.includes('--tf-button-padding-x-small: var(--tf-dialog-action-padding-x);')
+  || !dialogActionsSource.includes('--tf-button-font-size-small: var(--tf-button-font-size);')) {
+  findings.push('src/styles/components/_dialog-actions.scss 弹窗工具栏和底部操作区必须共用尺寸、内边距及字号，不得另建页面按钮规格')
+}
 if (!/\.el-dialog__footer\s*>\s*\.el-button,/.test(dialogActionsSource)) {
   findings.push('src/styles/components/_dialog-actions.scss 移动端必须覆盖直接 el-dialog footer 按钮，确保未包裹 footer 也等分')
 }

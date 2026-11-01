@@ -10,7 +10,8 @@ const config = pricingService.normalizeGlobalConfig({
   highFixed: 200,
   threshold: 6000,
   enabled: true,
-  wholesale: { enabled: true, adjustment: 30 }
+  wholesale: { enabled: true, adjustment: 30 },
+  used: { adjustment: 50 }
 })
 
 test('销售渠道只使用全局销售规则', () => {
@@ -20,6 +21,11 @@ test('销售渠道只使用全局销售规则', () => {
 
 test('批发渠道只使用批发规则', () => {
   assert.equal(pricingService.calculateWholesalePriceByConfig(5800, config), 5830)
+})
+
+test('二手机渠道按原始入库价独立加价', () => {
+  assert.equal(pricingService.calculateUsedInventoryPriceByConfig(3000, config), 3050)
+  assert.equal(pricingService.calculateWholesalePriceByConfig(3000, config), 3030)
 })
 
 test('H5 渠道只使用模板规则', () => {

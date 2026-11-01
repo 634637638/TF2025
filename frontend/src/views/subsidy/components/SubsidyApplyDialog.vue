@@ -2,9 +2,8 @@
   <MobileDialog
     :model-value="modelValue"
     title="新建国补申请"
-    width="900px"
     :force-fullscreen="isMobile"
-    dialog-class="subsidy-dialog subsidy-dialog-wide"
+    dialog-class="subsidy-dialog"
     :show-default-footer="false"
     :close-on-click-modal="false"
     destroy-on-close
@@ -19,10 +18,12 @@
           v-if="applyStep === 1"
           class="search-step"
         >
-          <h3>步骤1：搜索设备</h3>
-          <p class="step-hint">
-            输入IMEI或序列号，在搜索结果中选择正确的设备
-          </p>
+          <div class="search-step-intro">
+            <h3>步骤1：搜索设备</h3>
+            <p class="step-hint">
+              输入IMEI或序列号，在搜索结果中选择正确的设备
+            </p>
+          </div>
 
           <div class="search-box-input-only">
             <el-input
@@ -102,14 +103,7 @@
             state="filtered"
             description="未找到匹配的设备"
             size="compact"
-          >
-            <el-button
-              type="info"
-              @click="resetDeviceSearch"
-            >
-              重新搜索
-            </el-button>
-          </DataEmptyState>
+          />
         </div>
 
         <div
@@ -151,7 +145,6 @@
                       v-model="applyForm.customer_idcard"
                       type="text"
                       class="form-input-inline"
-                      :class="{ 'has-value': applyForm.customer_idcard }"
                       placeholder="请输入身份证号"
                       @update:model-value="applyForm.customer_idcard = normalizeIdCard($event)"
                     />
@@ -189,7 +182,6 @@
                       v-model="applyForm.handler_name"
                       type="text"
                       class="form-input-inline"
-                      :class="{ 'has-value': applyForm.handler_name }"
                       placeholder="实际办理人姓名"
                       @update:model-value="applyForm.handler_name = normalizePersonName($event, 20)"
                     />
@@ -205,7 +197,6 @@
                       v-model="applyForm.handler_phone"
                       type="text"
                       class="form-input-inline"
-                      :class="{ 'has-value': applyForm.handler_phone }"
                       placeholder="实际办理人电话"
                       @update:model-value="applyForm.handler_phone = normalizePhoneDigits($event)"
                     />
@@ -221,7 +212,6 @@
                       v-model="applyForm.handler_idcard"
                       type="text"
                       class="form-input-inline"
-                      :class="{ 'has-value': applyForm.handler_idcard }"
                       placeholder="实际办理人身份证"
                       @update:model-value="applyForm.handler_idcard = normalizeIdCard($event)"
                     />
@@ -285,7 +275,6 @@
                       v-model="applyForm.imei2"
                       type="text"
                       class="form-input-inline"
-                      :class="{ 'has-value': applyForm.imei2 }"
                       placeholder="请输入IMEI2"
                     />
                   </div>
@@ -487,13 +476,6 @@
             取消
           </el-button>
           <el-button
-            v-if="deviceList.length > 0"
-            type="info"
-            @click="resetDeviceSearch"
-          >
-            重新搜索
-          </el-button>
-          <el-button
             type="primary"
             :disabled="!searchIdentifier || searching"
             @click="searchPhones"
@@ -563,62 +545,13 @@
     </template>
   </MobileDialog>
 
-  <el-dialog
+  <MediaPreviewViewer
     v-model="showPhotoViewer"
-    :title="`照片预览 (${currentPhotoIndex + 1}/${applyForm.subsidy_photos.length})`"
-    width="90%"
-    append-to-body
-    :z-index="4000"
-    class="photo-viewer-dialog"
-    destroy-on-close
-  >
-    <div class="photo-viewer-content">
-      <div class="photo-viewer-main">
-        <el-button
-          class="photo-nav-btn prev"
-          circle
-          :disabled="currentPhotoIndex === 0"
-          @click="prevPhoto"
-        >
-          <i class="fas fa-chevron-left" />
-        </el-button>
-        <div class="photo-viewer-image">
-          <AsyncImage
-            :src="applyForm.subsidy_photos[currentPhotoIndex]"
-            alt="国补照片"
-            mode="eager"
-          />
-        </div>
-        <el-button
-          class="photo-nav-btn next"
-          circle
-          :disabled="currentPhotoIndex === applyForm.subsidy_photos.length - 1"
-          @click="nextPhoto"
-        >
-          <i class="fas fa-chevron-right" />
-        </el-button>
-      </div>
-    </div>
-    <template #footer>
-      <div class="tf-dialog-actions photo-viewer-footer">
-        <el-button
-          v-if="canUpload"
-          type="danger"
-          plain
-          @click="removeCurrentPreviewPhoto"
-        >
-          <i class="fas fa-trash-alt" />
-          <span>删除当前图片</span>
-        </el-button>
-        <el-button
-          type="primary"
-          @click="showPhotoViewer = false"
-        >
-          <span>关闭预览</span>
-        </el-button>
-      </div>
-    </template>
-  </el-dialog>
+    :items="previewMediaItems"
+    :initial-index="currentPhotoIndex"
+    :deletable="canUpload"
+    @delete="removeCurrentPreviewPhoto"
+  />
 </template>
 
 <script setup lang="ts">
@@ -633,6 +566,7 @@ import { normalizeIdCard, normalizePersonName, normalizePhoneDigits } from '@/ut
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import { logger } from '@/utils/logger'
 import { formatAmount } from '@/utils/format'
+import type { MediaPreviewItem } from '@/utils/media'
 import { convertPdfToImage, isPdfFile } from '@/utils/upload-media'
 
 const AsyncImage = defineAsyncComponent(() => import('@/components/Image.vue'))
@@ -975,22 +909,25 @@ const removePhoto = async (index: number) => {
   }
 }
 
-const removeCurrentPreviewPhoto = async () => {
+const previewMediaItems = computed<MediaPreviewItem[]>(() => applyForm.subsidy_photos.map((photo, index) => ({
+  id: photo,
+  url: photo,
+  type: 'image',
+  label: `国补照片 ${index + 1}`
+})))
+
+const removeCurrentPreviewPhoto = async (_item: MediaPreviewItem, index: number) => {
   if (applyForm.subsidy_photos.length === 0) {
     showPhotoViewer.value = false
     return
   }
 
-  await removePhoto(currentPhotoIndex.value)
+  if (!canUpload.value) return
+  await removePhoto(index)
 
   if (applyForm.subsidy_photos.length === 0) {
     showPhotoViewer.value = false
     currentPhotoIndex.value = 0
-    return
-  }
-
-  if (currentPhotoIndex.value >= applyForm.subsidy_photos.length) {
-    currentPhotoIndex.value = applyForm.subsidy_photos.length - 1
   }
 }
 
@@ -1061,14 +998,6 @@ const openPhotoViewer = (index: number) => {
   showPhotoViewer.value = true
 }
 
-const prevPhoto = () => {
-  if (currentPhotoIndex.value > 0) currentPhotoIndex.value--
-}
-
-const nextPhoto = () => {
-  if (currentPhotoIndex.value < applyForm.subsidy_photos.length - 1) currentPhotoIndex.value++
-}
-
 watch(
   () => props.modelValue,
   async (visible, prevVisible) => {
@@ -1091,23 +1020,35 @@ watch(
   gap: 16px;
 }
 
+.search-step {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tf-space-4);
+  min-width: 0;
+}
+
+.search-step-intro {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tf-space-2);
+}
+
+.search-step-intro h3,
+.search-step-intro .step-hint {
+  margin: 0;
+}
+
+.search-step-intro .step-hint {
+  color: var(--tf-color-muted);
+}
+
 .search-box-input-only {
-  margin-bottom: 20px;
+  min-width: 0;
 }
 
 .search-input-lg,
 .form-input-inline {
   width: 100%;
-  :deep(.el-input__wrapper) {
-    padding: 12px 14px;
-    border: 1px solid var(--tf-color-neutral-300);
-    box-shadow: none;
-  }
-
-  :deep(.el-input__inner) {
-    color: var(--text-primary);
-  }
-
 }
 
 .tf-textarea {
@@ -1288,23 +1229,6 @@ watch(
 .info-value .form-input-inline {
   width: 100%;
   max-width: 300px;
-
-  :deep(.el-input__wrapper) {
-    padding: 6px 12px;
-    border: 1px solid var(--tf-color-border-subtle);
-    box-shadow: none;
-    transition: all 0.2s;
-  }
-
-  :deep(.el-input__inner) {
-    font-size: var(--tf-type-scale-14);
-  }
-
-  &.has-value :deep(.el-input__wrapper) {
-    background: var(--tf-color-green-50);
-    border-color: var(--tf-color-green-300);
-  }
-
 }
 
 .handler-info-header {
@@ -1531,59 +1455,6 @@ watch(
   word-break: break-word;
 }
 
-.photo-viewer-main {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 400px;
-  background: var(--tf-color-surface-soft);
-  border-radius: 8px;
-  padding: 20px;
-}
-
-.photo-nav-btn {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-
-  &.prev {
-    left: 16px;
-  }
-
-  &.next {
-    right: 16px;
-  }
-}
-
-.photo-viewer-image {
-  max-width: calc(100% - 100px);
-
-  :deep(img) {
-    max-width: 100%;
-    max-height: 70vh;
-    object-fit: contain;
-  }
-}
-
-.photo-viewer-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-}
-
-:deep(.photo-viewer-dialog) {
-  z-index: 4000 !important;
-}
-
-:deep(.photo-viewer-dialog .el-overlay) {
-  z-index: 4000 !important;
-}
-
-:deep(.photo-viewer-dialog .el-dialog) {
-  z-index: 4001 !important;
-}
-
 @media (max-width: 767px) {
   .device-item,
   .handler-info-header,
@@ -1658,10 +1529,6 @@ watch(
     white-space: nowrap;
   }
 
-  .photo-viewer-main {
-    min-height: 280px;
-  }
-
   .photo-preview-mask {
     opacity: 1;
     background: linear-gradient(180deg, rgba(15, 23, 42, 0.04) 0%, rgba(15, 23, 42, 0.42) 100%);
@@ -1671,12 +1538,5 @@ watch(
     font-size: var(--tf-type-scale-9);
   }
 
-  .photo-viewer-footer {
-    justify-content: stretch;
-
-    :deep(.el-button) {
-      flex: 1;
-    }
-  }
 }
 </style>

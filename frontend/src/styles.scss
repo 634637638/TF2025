@@ -10,6 +10,7 @@
 @use './styles/components/_print.scss' as *;
 @use './styles/components/_drawer.scss' as *;
 @use './styles/components/_form-controls.scss' as *;
+@use './styles/components/_query-modal.scss' as *;
 @use './styles/components/_scrollbars.scss' as *;
 
 /* 全局样式重置 */
@@ -204,7 +205,7 @@ html {
 
 .el-select-dropdown {
   background-color: var(--color-bg-white) !important;
-  border: 1px solid var(--tf-color-border-element) !important;
+  border: 0 !important;
 }
 
 .el-select-dropdown .el-select-dropdown__item {
@@ -212,7 +213,7 @@ html {
   background-color: var(--color-bg-white) !important;
 }
 
-.el-select-dropdown .el-select-dropdown__item:hover {
+.el-select-dropdown .el-select-dropdown__item:not(.is-disabled):is(:hover, .is-hovering) {
   background-color: var(--tf-color-surface) !important;
   color: var(--color-primary) !important;
 }
@@ -220,6 +221,13 @@ html {
 .el-select-dropdown .el-select-dropdown__item.is-selected {
   color: var(--color-primary) !important;
   font-weight: 700 !important;
+}
+
+/* 仅悬停或键盘定位的结果项展示完整细包围，不给整个面板或已选项常驻加圈。 */
+.el-select-dropdown .el-select-dropdown__item:not(.is-disabled):is(:hover, .is-hovering),
+.customer-search-dropdown .el-button.customer-search-dropdown__item:not(:disabled):is(:hover, :focus-visible) {
+  border-radius: var(--tf-radius-control);
+  box-shadow: var(--tf-shadow-dropdown-option);
 }
 
 .el-select-dropdown .el-select-dropdown__item.is-disabled {

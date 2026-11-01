@@ -12,6 +12,15 @@ export function getStockPhones(params?: unknown) {
   return unifiedApi.get('/sales/phones/available', { params })
 }
 
+/** 获取令牌范围内的在库二手机型号汇总，不返回设备识别信息。 */
+export function getInventoryUsedModels(queryToken: string, keyword = '') {
+  return unifiedApi.get('/phones/used-models', {
+    params: keyword ? { keyword } : undefined,
+    headers: { 'X-Inventory-Query-Token': queryToken },
+    useCache: false
+  })
+}
+
 /**
  * 获取价格列表（管理端）
  */
@@ -258,6 +267,10 @@ export interface PriceMarkupConfig {
     adjustment: number
     /** 按同步来源覆盖默认批发加价，键为 price_sync_config.id */
     sourceAdjustments: Record<string, number>
+  }
+  used: {
+    /** 二手机在库展示价在入库价基础上的固定加价 */
+    adjustment: number
   }
 }
 

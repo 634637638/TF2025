@@ -177,6 +177,9 @@ class SystemSettingsController {
           enabled: false,
           adjustment: 0,
           sourceAdjustments: {}
+        },
+        used: {
+          adjustment: 0
         }
       }
 

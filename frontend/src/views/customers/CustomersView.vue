@@ -727,7 +727,7 @@
             </el-form-item>
 
             <el-form-item
-              label="参与机况"
+              label="参与成色"
               required
             >
               <el-checkbox-group v-model="pointsIncludedConditions">
@@ -2292,7 +2292,7 @@ const pointsConfigPreview = computed(() => {
   const conditions = [
     pointsConfigForm.value.include_new ? '全新' : '',
     pointsConfigForm.value.include_used ? '二手' : ''
-  ].filter(Boolean).join('、') || '未选择机况'
+  ].filter(Boolean).join('、') || '未选择成色'
 
   if (!pointsConfigForm.value.enabled) {
     return '自动积分已停用；销售出库暂不累计积分。'
@@ -2403,7 +2403,7 @@ const closePointsSettings = () => {
 
 const savePointsSettings = async () => {
   if (!pointsConfigValid.value) {
-    warning('请设置有效的积分比例，并至少选择一种参与机况')
+    warning('请设置有效的积分比例，并至少选择一种参与成色')
     return
   }
 

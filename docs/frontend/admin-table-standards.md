@@ -12,9 +12,9 @@ PC 端公共表头使用 `48px` 高度和 `6px` 上下内边距，由 `admin-lay
 
 公共表头背景统一使用 `#495057` 到 `#343a40` 的 135 度深灰渐变，表头文字为白色；底部使用中性灰细渐变强调线。颜色由 `admin-layout.css` 的 `--admin-data-table-header-bg`、`--admin-data-table-header-color` 和 `--admin-data-table-header-accent` 控制，所有业务表格共用，页面不得覆盖。
 
-PC 端数据行使用 `48px`，手机端数据行使用 `40px`；手机端表头使用 `40px`。所有 `data-table`、`devices-table` 和 `admin-data-table` 都继承这套尺寸，不得只给 `base-data-table` 单独维护一份规则。公共入口同时约束 Element Plus 的表头包装层、表头行、表头单元格、表体包装层、数据行和数据单元格，数据 `.cell` 必须使用 Flex 垂直居中，避免不同页面因 Element 内部默认值产生高度差异。表格内的机况、状态、序号和角色徽章统一使用公共 `20px` 高度、统一水平内边距和单行布局；业务页面只能维护语义颜色、图标和交互，不能重新设置徽章的高度、内边距、圆角或字体尺寸，避免徽章把综合查询基准行高撑大。
+PC 端数据行使用 `48px`，手机端数据行使用 `40px`；手机端表头使用 `40px`。所有 `data-table`、`devices-table` 和 `admin-data-table` 都继承这套尺寸，不得只给 `base-data-table` 单独维护一份规则。公共入口同时约束 Element Plus 的表头包装层、表头行、表头单元格、表体包装层、数据行和数据单元格，数据 `.cell` 必须使用 Flex 垂直居中，避免不同页面因 Element 内部默认值产生高度差异。表格内的成色、状态、序号和角色徽章统一使用公共 `20px` 高度、统一水平内边距和单行布局；业务页面只能维护语义颜色、图标和交互，不能重新设置徽章的高度、内边距、圆角或字体尺寸，避免徽章把综合查询基准行高撑大。
 
-所有公共徽章（包括机况、状态、角色、内存、Element 标签及带有 `badge` 语义 class 的徽章）在支持鼠标悬停的设备上统一通过自身圆角边框显示单层 `1px` 细外包围线，颜色跟随徽章文字颜色，过渡由 `frontend/src/styles/components/_badges.scss` 的公共令牌控制。该效果与表格操作按钮一致，不叠加外扩阴影，不使用方形 `outline`，也不改变徽章尺寸。表格为保留整格双击事件而设置 `pointer-events: none` 时，公共入口会从 `.clickable-cell:hover` 代理同一条徽章外包围线；页面不得单独添加 `:hover` 阴影、位移或边框。触摸设备不模拟 hover，避免移动端出现残留悬停状态。
+所有公共徽章（包括成色、状态、角色、内存、Element 标签及带有 `badge` 语义 class 的徽章）在支持鼠标悬停的设备上统一通过自身圆角边框显示单层 `1px` 细外包围线，颜色跟随徽章文字颜色，过渡由 `frontend/src/styles/components/_badges.scss` 的公共令牌控制。该效果与表格操作按钮一致，不叠加外扩阴影，不使用方形 `outline`，也不改变徽章尺寸。表格为保留整格双击事件而设置 `pointer-events: none` 时，公共入口会从 `.clickable-cell:hover` 代理同一条徽章外包围线；页面不得单独添加 `:hover` 阴影、位移或边框。触摸设备不模拟 hover，避免移动端出现残留悬停状态。
 
 徽章专项审计覆盖台账内全部页面源文件和公共组件。`npm run check:badges` 会检查公共入口、旧的 `global.css` 状态徽章定义，以及页面私有的徽章 `:hover` 和 `transition`；任一页面重新添加私有徽章动效或重复全局入口，启动、开发和构建门禁均不通过。公共 hover 选择器使用足够的语义优先级，确保 `.new`、`.used`、`.in-stock` 等业务状态颜色以及权限页的禁用阴影规则不会覆盖悬停外包围线。业务颜色、图标和文字可以由页面维护，但不能复制公共 hover、过渡或状态徽章基础入口。
 
@@ -38,6 +38,7 @@ PC 端数据行使用 `48px`，手机端数据行使用 `40px`；手机端表头
 | `frontend/src/styles/responsive.scss` | 手机端布局与滚动行为，继续读取公共变量 | 否 |
 | `frontend/src/utils/table-layout.ts` | 普通文本、标识字段，以及按权限和行状态自动伸缩的操作列宽度计算 | 否 |
 | `frontend/src/utils/admin-table-drag-scroll.ts` | 统一表格 PC 鼠标拖动横向浏览，手机端保留原生触摸滑动 | 否 |
+| `frontend/src/directives/table-double-tap.ts` | 普通平面表格同一行的手机端双击识别，由全局指令入口注册 | 否 |
 | `frontend/src/utils/format.ts` | 统一金额与货币格式 | 否 |
 | 业务页面 `<style scoped>` | 业务字段、状态徽章、金额、IMEI、特殊交互 | 是，但不得覆盖通用视觉 |
 
@@ -167,7 +168,7 @@ const actionWidth = computed(() => getAdaptiveActionColumnWidth(
 
 管理员可能显示全部字段的多列表格，应使用紧凑但安全的字段最小值，并将实际单元格内边距计入 `horizontalPadding`；优先收紧各普通列累计留白，为操作列保留完整按钮空间，不得通过缩小操作按钮、裁切文字或减小全局字体强行塞入一屏。
 
-同类短徽章字段应共用相同的最小宽度和 `horizontalPadding`。例如综合查询的“机况”和“状态”在两字内容下保持同宽；只有实际状态文字更长时才由内容测量结果扩展。
+同类短徽章字段应共用相同的最小宽度和 `horizontalPadding`。例如综合查询的“成色”和“状态”在两字内容下保持同宽；只有实际状态文字更长时才由内容测量结果扩展。
 
 操作列默认使用 `getAdaptiveActionColumnWidth` 根据实际权限和行状态自动计算。按钮数量只由权限决定、且不随行状态变化的简单页面，可以在模板调用全局 `$getActionColumnWidth(count)`；该入口由 `main.ts` 统一注册，内部仍只调用 `getActionColumnMinWidth`，页面不得复制计算公式。页面语义最小宽度只能增加安全空间，不得替代实际可见按钮数量计算。
 
@@ -202,7 +203,7 @@ const actionWidth = computed(() => getAdaptiveActionColumnWidth(
 | 备注 | `88px` 至 `144px`，超出显示省略号；PC 双击该单元格查看完整原文 |
 | Apple ID | 完整单行展示，最小 `180px`，至少容纳 `15279028053@139.com`，不设置双击查看 |
 | 型号 | 最小 `74px`，`horizontalPadding: 16`，`asciiCharacterWidth: 7` |
-| 机况、状态 | 最小 `50px`，`horizontalPadding: 44`；同长度短徽章保持同宽 |
+| 成色、状态 | 最小 `50px`，`horizontalPadding: 44`；同长度短徽章保持同宽 |
 | 操作 | 使用 `getAdaptiveActionColumnWidth` 按当前用户实际可见按钮计算动态 `width`；一个、两个、三个、四个标准按钮当前约为 `104px`、`184px`、`264px`、`344px`，权限减少时自动缩小，按钮增加时自动扩大；按钮组居中且左右留白相等 |
 
 管理员、普通用户和不同角色看到的字段及操作数量可能不同。表格必须以当前登录用户实际可见的列、当前页数据和实际可用操作重新计算宽度；不得缓存管理员列宽给普通用户，也不得为隐藏按钮预留空白。管理员全字段需要完整且紧凑，普通用户字段较少时由 `fit` 自动铺满可用宽度，两种账号均不得遮挡、错位或产生页面级横向溢出。
@@ -402,8 +403,18 @@ const clearSelection = () => {
    该规则同时适用于 PC 和手机；桌面端支持鼠标左键拖动、触控板和 `Shift + 滚轮`，手机端支持原生触摸横移。
 4. 普通页面按业务优先级减少手机端列数，表格宽度保持在页面卡片内。
 5. 手机端正文统一读取 `--mobile-text-table`，表头读取 `--mobile-text-table-header`，两个令牌只在 `frontend/src/styles.scss` 定义。当前普通手机均为 `13px`，`375px` 及以下均为 `11px`。`responsive.scss` 不得再次覆盖这两个令牌。表格内的 `span` 必须继承单元格字号，不能被通用正文样式放大；禁止 `clamp(...vw...)`、小于公共字号的像素值或按机型连续缩放字体。
-6. 手机端双击打开详情时，使用两次 `row-click` 模拟；必须忽略按钮、链接和表单控件，防止误触。
+6. 手机端双击打开详情时，使用全局 `v-table-double-tap` 直接识别两次完整触摸，不依赖浏览器生成两次 `row-click`；必须忽略按钮、链接和表单控件，防止误触。
 7. 操作按钮统一使用 `.action-buttons` 和 `el-button size="small"`，按钮点击必须添加 `.stop`。
+
+### 手机端双击详情
+
+综合查询和库存管理在视口宽度不超过 `1024px` 时启用公共 `v-table-double-tap`。同一记录的两次轻触间隔不超过 `400ms` 时打开详情；单次长按超过 `400ms`、移动超过 `10px`、滚动、多指、触摸取消或触摸期间记录被替换时清空手势。按钮、链接、表单控件和操作区不参与行双击识别；单击不打开详情，也不改变选择状态。
+
+确认第二次轻触时，公共指令对可取消的 `touchend` 执行 `preventDefault()`，并在 `400ms` 内捕获同一表格非交互区域随后生成的原生 `dblclick`，抑制同一次手势重复触发，防止弹窗刚打开即被遮罩误关闭或额外触发单元格双击。仅此结束监听使用 `passive: false`；未确认的轻触、移动和原生滚动继续保持默认行为。公共 `MobileDialog` 另行核对完整遮罩按下/抬起过程，不得用单独的 `click.self` 作为关闭依据。
+
+指令由 `src/directives/index.ts` 全局注册，页面提供 `enabled`、`getRowKey(rowIndex)` 和 `onDoubleTap(rowIndex)`。`getRowKey` 必须使用稳定的业务主键，回调读取与表格当前显示顺序完全一致的数据列表；卸载时由指令统一移除监听器。页面不得复制点击计时器或按行维护双击计时 Map。`check:tables` 校验公共注册及两个参考页面的接入，并阻止旧私有计时逻辑回退。
+
+该指令适用于普通平面 Element Plus 表格。树表、虚拟表或由 Element 在前端另行排序/过滤的表格，必须先建立可靠的可见行与业务记录映射，不能直接以原始数组索引接入。电脑端继续使用原生 `row-dblclick` 和已有单元格双击行为；不得将手机端双击扩展为隐式选择或修改操作。
 
 ### 弹窗表格自适应规则
 
@@ -495,7 +506,7 @@ Element Plus 弹窗默认可能通过 Teleport 挂载到 `body`，不再位于�
 
 ## 7. 允许与禁止
 
-业务页面允许定义：状态/机况徽章颜色、金额强调、IMEI 与序列号的等宽字体、字段专属基础宽度、业务按钮显隐、移动端展示哪些字段。关键标识的实际宽度必须通过公共 `getIdentifierColumnMinWidth` 计算。
+业务页面允许定义：状态/成色徽章颜色、金额强调、IMEI 与序列号的等宽字体、字段专属基础宽度、业务按钮显隐、移动端展示哪些字段。关键标识的实际宽度必须通过公共 `getIdentifierColumnMinWidth` 计算。
 
 业务页面禁止定义：
 

@@ -2,7 +2,6 @@
   <MobileDialog
     :model-value="modelValue"
     title="编辑国补信息"
-    width="760px"
     dialog-class="subsidy-dialog"
     :show-default-footer="false"
     destroy-on-close
@@ -218,7 +217,7 @@
                 :disabled="!canEditField('sale_price')"
                 @blur="normalizeSalePrice"
               >
-                <template #prepend>
+                <template #prefix>
                   ¥
                 </template>
               </el-input>
@@ -330,24 +329,20 @@
           >
             <el-switch
               v-model="editForm.has_different_handler"
-              active-text="是"
-              inactive-text="否"
+              aria-label="他人代办"
               :disabled="!canEditField('has_different_handler')"
             />
-            <span class="form-item-tip">
-              {{ editForm.has_different_handler ? '办理者信息' : '' }}
-            </span>
           </el-form-item>
 
           <template v-if="canViewField('has_different_handler') && editForm.has_different_handler">
             <div class="form-row">
               <el-form-item
                 v-if="canViewField('handler_name')"
-                label="代办人姓名"
+                label="客户姓名"
               >
                 <el-input
                   v-model="editForm.handler_name"
-                  placeholder="请输入实际代办人姓名"
+                  placeholder="请输入客户姓名"
                   clearable
                   :disabled="!canEditField('handler_name')"
                   @input="editForm.handler_name = normalizePersonName(editForm.handler_name, 20)"
@@ -356,11 +351,11 @@
 
               <el-form-item
                 v-if="canViewField('handler_phone')"
-                label="代办人手机"
+                label="手机号码"
               >
                 <el-input
                   v-model="editForm.handler_phone"
-                  placeholder="请输入实际代办人手机号"
+                  placeholder="请输入手机号码"
                   clearable
                   maxlength="11"
                   :disabled="!canEditField('handler_phone')"
@@ -371,11 +366,11 @@
 
             <el-form-item
               v-if="canViewField('handler_idcard')"
-              label="代办人身份证"
+              label="身份证"
             >
               <el-input
                 v-model="editForm.handler_idcard"
-                placeholder="请输入实际代办人身份证号"
+                placeholder="请输入身份证"
                 clearable
                 maxlength="18"
                 :disabled="!canEditField('handler_idcard')"
@@ -777,8 +772,7 @@ const submitEdit = async () => {
   gap: 12px;
 }
 
-.form-tip,
-.form-item-tip {
+.form-tip {
   display: inline-flex;
   align-items: center;
   gap: 4px;

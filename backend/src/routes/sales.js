@@ -414,7 +414,7 @@ const buildAvailablePhonesExportFile = (phones = []) => {
     供应商: phone.supplier_name || '',
     入库员: phone.inventory_operator_name || phone.operator_username || '',
     新旧: phone.is_new ? '全新' : '二手',
-    机况: phone.quality_grade || '',
+    成色: phone.quality_grade || '',
     状态: getSalesStatusLabel(phone.status),
     库存售价: phone.sale_price || '',
     入库成本: phone.purchase_cost || '',
@@ -1393,7 +1393,7 @@ router.get('/customers', unifiedAuth, requirePermission('sales:view'), async (re
   }
 })
 
-// 库存统计表 - 按供应商、品牌、型号、颜色、内存、机况聚合统计
+// 库存统计表 - 按供应商、品牌、型号、颜色、内存、成色聚合统计
 router.get('/inventory-summary', unifiedAuth, requirePermission('sales:view'), async (req, res) => {
   try {
     const {
@@ -1492,7 +1492,7 @@ router.get('/inventory-summary', unifiedAuth, requirePermission('sales:view'), a
 
     const whereClause = whereConditions.join(' AND ')
 
-    // 聚合查询 - 按供应商、店铺、品牌、型号、颜色、内存、机况分组统计
+    // 聚合查询 - 按供应商、店铺、品牌、型号、颜色、内存、成色分组统计
     const query = `
       SELECT
         supp.id as supplier_id,

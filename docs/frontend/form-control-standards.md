@@ -38,8 +38,27 @@ Element Plus 的 `el-select`、`el-date-picker`、`el-input`、`el-input-number`
 - 统一检索面板和表格排序控件也统一为 `30px`；检索使用 `--tf-search-control-height`，表格排序使用 `--input-height-default`，页面不得再维护其他输入控件高度。
 - 业务页面和业务组件禁止直接为 `.el-input__wrapper`、`.el-select__wrapper`、`.el-date-editor`、`.el-input-number` 或 `.el-textarea__inner` 设置 `height`、`min-height` 或 `border-radius`。
 - 页面只能维护布局宽度、字段间距、状态边框和业务颜色，不能复制一套控件高度、圆角或外壳。
+- 普通输入框不能仅因“已填写”就改用绿色边框或底色；聚焦、禁用和校验状态继续由公共控件处理。国补新增申请的检索、身份证、代办人和 IMEI 输入均复用此规则，不再使用 `has-value` 私有外观或额外的实体边框，避免与公共聚焦外圈叠加。拆分前遗留在父页面样式中的同类覆盖也必须同步清理。
 
 因此，销售、库存、综合查询、系统设置、国补、工资、权限、基础资料、付款和 H5 管理页面必须使用同一公共控件入口；新增页面若出现页面级控件圆角或高度，`check:form-controls` 必须失败。
+
+## 下拉选项统一包围
+
+- Element Plus `el-select` 的弹出选项由 `frontend/src/styles.scss` 的公共 `.el-select-dropdown` 规则维护，页面无需另行接入或复制样式。
+- 仅鼠标悬停或键盘定位（`.is-hovering`）的选项使用 `--tf-shadow-dropdown-option` 绘制 `1px` 内嵌细包围，圆角读取 `--tf-radius-control`（当前为 `6px`）；鼠标离开后移除包围，禁用项及仅选中的非交互项不常驻加圈，选中文字颜色和字重沿用原有语义。
+- 包围颜色必须复用输入框聚焦色 `--tf-form-control-focus-color`（当前为 `--tf-color-orange`），禁止下拉选项另用灰蓝色或其他交互色；PC 和手机使用同一规则，后续调整输入框聚焦色时，下拉包围同步变化。
+- 下拉大面板及箭头保留普通浮层样式，不增加橙色或聚焦色包围；内部 `.el-select-dropdown` 不重复绘制面板边框，避免与悬停选项重叠。输入框本体仍保留原有聚焦圈。
+- 内嵌阴影不改变选项宽度、高度或间距，原有背景、文字和选中语义保持一致；输入控件本体的聚焦外圈仍由 `_form-controls.scss` 维护。
+- 公共客户检索组件 `CustomerSearchDropdown` 仅在鼠标悬停或键盘聚焦的结果项展示同款完整包围，容器使用普通面板边框；列表留白、自适应高度和内容对齐按[客户检索统一规范](customer-search-standard.md)维护，禁止全部结果常驻加圈或复制第二套包围颜色。
+- `check:form-controls` 检查公共状态覆盖和令牌引用，`check:design-tokens` 与 `check:style-debt` 检查新增硬编码和样式债务，不得提高基线绕过检查。
+
+## 下拉列表滚动
+
+- 选择、级联、自动补全、日期时间和操作菜单下拉统一由 `frontend/src/styles/components/_scrollbars.scss` 隐藏可见滚动条，包含浏览器原生滚动条、上下滚动按钮和 Element Plus 的 `.el-scrollbar__bar`；页面不再单独维护。
+- 只隐藏滚动条的视觉元素，不删除滚动容器或设置 `overflow-y: hidden` / `overflow: clip`；列表原有最大高度、鼠标滚轮、触摸滑动和键盘定位能力保留，长列表仍可查看全部选项。
+- 公共客户检索结果沿用同一滚动条入口，继续遵守[客户检索统一规范](customer-search-standard.md)的滚动容器和高度豁免要求。
+- 自定义业务下拉的实际滚动容器必须添加公共语义 class `tf-dropdown-scroll`，复用同一原生滚动条隐藏规则，不在页面复制 CSS。商城首页型号、颜色、内存三个筛选列表已接入；保留各自的最大高度和滚动行为。
+- `check:form-controls` 检查公共样式导入、下拉类型覆盖、原生和组件滚动条隐藏规则及滚动能力边界。
 
 ## 原生业务输入盘点
 
@@ -57,6 +76,7 @@ Element Plus 的 `el-select`、`el-date-picker`、`el-input`、`el-input-number`
 - 下拉选项必须使用稳定的 `key`，展示文本与提交值分离；基础资料选项继续遵守《后台列表检索统一规范》的排序规则。
 - 后台表格中的普通数值编辑也使用 `el-input-number`；排序字段不得直接使用原生 `<input type="number">`，公共尺寸由 `_table.scss` 中的 `.sort-order-control` 维护。
 - 所有数字输入字段都不得显示上下增减按钮。每个 `el-input-number` 必须显式使用 `:controls="false"`，公共样式会隐藏历史页面遗漏的步进按钮、移除预留的左右空白并保持边框连续；原生 `input[type="number"]` 同时隐藏浏览器自带的数字旋钮。金额字段仍使用 `.price-input` / `.price-input-number` 语义 class，但不再单独维护按钮样式。
+- `el-input` 的人民币符号统一放在 `#prefix` 插槽内，与金额共用同一个输入框边框、背景和高度；禁止用 `#prepend` 显示独立的灰色金额前置块。国补编辑销售价格、报价编辑采集价与综合查询编辑使用同一方式，`check:form-controls` 持续检查此规则。
 - 备注、说明、地址等多行文本统一使用固定 `rows` 的 `el-input type="textarea"`，这是强制规则：控件首次渲染保持固定高度，不随输入内容自动向下展开；禁止使用 `autosize`。公共样式只允许 `resize: vertical`，用户可以通过文本域底部手柄手动向下拉伸，禁止横向、双向或完全禁止拉伸。页面不得通过私有 CSS 改回自动扩展、横向拉伸或固定不可调整高度。
 - `rows="2"` 是备注、锁定提示、短说明和短地址等常规文本的统一紧凑规格，公共令牌按 PC/手机断点提供统一初始高度；`rows="3"` 及以上只用于确实需要展示更长内容的业务字段，并须保留固定 rows，不得用页面私有 `height`/`min-height` 覆盖公共行为。
 - 短系统文案（例如锁屏标题、锁定提示、站点名称和公司地址）使用单行 `el-input`；只有备注、说明、地址详情等可能包含换行的内容才使用 textarea。字段语义优先于统一套用多行控件。
@@ -125,6 +145,9 @@ npm run check:form-controls
 - 所有业务模板是否仍存在原生 `<textarea>`；每个 `el-input type="textarea"` 是否声明固定 `rows`；文本域是否只保留垂直手动拉伸。
 - 页面/组件是否私自维护普通表单控件的 `border-radius`、`height` 或 `min-height`；统一圆角和高度必须来自 `_form-controls.scss`，检索和表格排序只能使用已登记的公共组件例外。
 - 页面/组件是否私自维护普通表单控件的 `:focus`、`.is-focus` 或 `.is-focused` 边框、阴影和颜色；聚焦状态必须来自 `_form-controls.scss`，公共检索容器的外层聚焦效果除外。
+- 公共下拉选项是否只在鼠标悬停或键盘定位时使用统一内嵌包围令牌，并排除禁用项及仅选中状态。
+- 下拉大面板、箭头和客户检索容器是否恢复普通浮层样式，内部面板是否没有重复边框。
+- 下拉是否隐藏原生和 Element Plus 可见滚动条，且没有通过隐藏溢出来禁止列表继续滚动。
 
 当前策略是原生 `select` 和日期输入默认清零；若确需重新引入，必须先登记原因、公共替代方案和回归范围，并运行完整 `npm run check:standards`。
 
@@ -142,4 +165,4 @@ npm run check:form-controls
 - 已将普通控件的圆角和高度收口到 `_form-controls.scss`，移除销售、综合查询、库存、国补、权限、付款、H5 和基础资料页面的私有控件圆角/高度覆盖；`check:form-controls` 现在会阻止新增私有控件圆角或高度。
 - 已将普通输入、选择、日期和数字控件的聚焦状态收口到 `_form-controls.scss`，统一为报价在库卡片同款橙色 1px 完整外圈，并移除销售、库存、综合查询、权限、国补、付款、城市选择、菜单和屏幕锁定页面的私有聚焦覆盖；公共检索容器仍保留自身外层聚焦反馈，内部输入不重复绘制。
 
-最后更新：2026-10-04
+最后更新：2026-11-01

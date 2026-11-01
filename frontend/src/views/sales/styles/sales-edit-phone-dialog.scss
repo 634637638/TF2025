@@ -1,93 +1,9 @@
 .edit-phone-dialog {
   .info-cards-container {
     display: grid;
-    grid-template-columns: repeat(6, 1fr);
-    gap: 12px;
-    margin-bottom: 24px;
-  }
-
-  .info-card {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 10px;
-    padding: 16px;
-    border: 1px solid rgba(0, 0, 0, 0.06);
-    border-radius: 12px;
-    background: white;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-    transition: all 0.3s ease;
-  }
-
-  .info-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
-  }
-
-  .card-icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 42px;
-    height: 42px;
-    flex-shrink: 0;
-    border-radius: 10px;
-    color: white;
-    font-size: var(--tf-type-scale-18);
-  }
-
-  .card-icon.brand {
-    background: var(--tf-button-primary-bg);
-  }
-
-  .card-icon.model {
-    background: var(--tf-button-view-soft-color);
-  }
-
-  .card-icon.color {
-    background: var(--tf-button-manage-bg);
-  }
-
-  .card-icon.memory {
-    background: var(--tf-button-warning-bg);
-  }
-
-  .card-icon.serial {
-    background: var(--tf-button-finance-bg);
-  }
-
-  .card-icon.price {
-    background: var(--tf-button-success-bg);
-  }
-
-  .card-details {
-    width: 100%;
-    min-width: 0;
-    flex: 1;
-    text-align: center;
-  }
-
-  .card-label {
-    margin-bottom: 4px;
-    color: var(--tf-color-slate-400);
-    font-size: var(--tf-type-scale-10);
-    font-weight: 600;
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
-  }
-
-  .card-primary-text {
-    overflow: hidden;
-    color: var(--tf-color-slate-800);
-    font-size: var(--tf-type-scale-13);
-    font-weight: 700;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .card-primary-text.small-text {
-    font-size: var(--tf-type-scale-11);
-    font-weight: 600;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+    margin-bottom: 20px;
   }
 
   .sales-edit-form-shell {
@@ -116,12 +32,16 @@
     font-size: var(--tf-type-scale-11);
   }
 
-  .sales-edit-imei-field,
   .sales-edit-remarks-field {
-    grid-column: span 2;
+    grid-column: 1 / -1;
   }
 
   .full-width {
+    width: 100%;
+  }
+
+  :deep(.el-date-editor.el-input),
+  :deep(.el-date-editor.el-input__wrapper) {
     width: 100%;
   }
 }
@@ -129,26 +49,9 @@
 @media (max-width: 767px) {
   .edit-phone-dialog {
     .info-cards-container {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 8px;
-    }
-
-    .info-card {
-      padding: 12px;
-    }
-
-    .card-icon {
-      width: 36px;
-      height: 36px;
-      font-size: var(--tf-type-scale-16);
-    }
-
-    .card-label {
-      font-size: var(--tf-type-scale-9);
-    }
-
-    .card-primary-text {
-      font-size: var(--tf-type-scale-12);
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: var(--tf-space-2);
+      margin-bottom: 12px;
     }
 
     .sales-edit-form-shell {
@@ -157,7 +60,7 @@
     }
 
     .sales-edit-form-grid {
-      grid-template-columns: minmax(0, 0.92fr) minmax(0, 0.92fr) minmax(112px, 1.16fr);
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 10px;
     }
 
@@ -166,18 +69,14 @@
       font-size: var(--tf-type-scale-12);
     }
 
-    .sales-edit-imei-field {
-      grid-column: span 2;
-    }
-
     .sales-edit-remarks-field {
       grid-column: 1 / -1;
+      order: 2;
     }
 
-    .sales-edit-form-grid :deep(.el-input__wrapper),
-    .sales-edit-form-grid :deep(.el-select__wrapper),
-    .sales-edit-form-grid :deep(.el-date-editor .el-input__wrapper),
-    .sales-edit-form-grid :deep(.el-input-number) {
+    .sales-edit-status-field,
+    .sales-edit-price-field {
+      order: 1;
     }
 
     .sales-edit-form-grid :deep(.el-input__inner),

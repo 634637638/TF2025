@@ -55,7 +55,7 @@
           class="summary-card highlight"
         >
           <div class="card-label">
-            机况
+            成色
           </div>
           <div class="card-value">
             <span :class="['badge', firstItem?.is_new ? 'badge-new' : 'badge-used']">

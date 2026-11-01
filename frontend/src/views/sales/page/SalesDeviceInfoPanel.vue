@@ -306,7 +306,7 @@
             v-if="canViewSaleField('condition')"
             class="meta-item"
           >
-            <span class="meta-label">机况:</span>
+            <span class="meta-label">成色:</span>
             <span class="meta-value">{{ getNewConditionLabel(selectedPhone?.is_new ?? false) }}</span>
           </div>
           <div

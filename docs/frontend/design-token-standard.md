@@ -8,7 +8,7 @@
 | --- | --- | --- |
 | 间距 | `--tf-space-1` 至 `--tf-space-8` | 4、8、12、16、20、24、32、48px |
 | 圆角 | `--tf-radius-control`、`--tf-radius-card`、`--tf-radius-panel`、`--tf-radius-dialog`、`--tf-radius-full` | 控件、卡片、面板、弹窗、圆形元素 |
-| 阴影 | `--tf-shadow-card`、`--tf-shadow-popover`、`--tf-shadow-dialog`、`--tf-shadow-floating` | 卡片、下拉层、弹窗和悬浮层 |
+| 阴影 | `--tf-shadow-card`、`--tf-shadow-popover`、`--tf-shadow-dialog`、`--tf-shadow-floating`、`--tf-shadow-dropdown-option` | 卡片、下拉层、弹窗、悬浮层和下拉选项细包围 |
 | 字号 | `--tf-font-caption`、`--tf-font-body`、`--tf-font-body-lg`、`--tf-font-section`、`--tf-font-title` | 辅助、正文、强调正文、区块标题、页面标题 |
 | 层级 | `--tf-z-sidebar`、`--tf-z-dropdown`、`--tf-z-drawer-overlay`、`--tf-z-drawer`、`--tf-z-dialog-sheet`、`--tf-z-dialog`、`--tf-z-loading`、`--tf-z-toast`、`--tf-z-message`、`--tf-z-lock`、`--tf-z-viewer`、`--tf-z-message-box`、`--tf-z-popper`、`--tf-z-permission-tooltip` | 导航、下拉、抽屉遮罩/菜单、弹窗、Loading、消息、锁屏、预览器和浮层 |
 
@@ -16,11 +16,14 @@
 
 表单控件是强制唯一入口：普通输入、选择、日期、数字和文本域的圆角、高度、聚焦外圈、边框连续性和数字按钮行为统一由 `frontend/src/styles/components/_form-controls.scss` 维护。业务页面不得直接设置这些控件的 `border-radius`、`height`、`min-height`、聚焦 `box-shadow` 或聚焦边框颜色；检索面板和表格排序的紧凑高度只能由对应公共组件维护。
 
+下拉选项包围令牌 `--tf-shadow-dropdown-option` 在 `_variables.scss` 定义为 `1px` 内嵌阴影，颜色只引用输入框聚焦色 `--tf-form-control-focus-color`；`styles.scss` 只引用该阴影令牌。标准下拉和公共客户检索仅在鼠标悬停或键盘定位的结果项显示完整包围，排除禁用项，不给仅选中的选项常驻加圈。大面板及箭头保留普通浮层样式，不添加聚焦色外框；内部 `.el-select-dropdown` 不重复绘制面板边框，避免与选项高亮重叠。详细行为见[表单控件统一规范](form-control-standards.md)和[客户检索统一规范](customer-search-standard.md)。
+
 ## 使用边界
 
 - 业务页面可以因内容尺寸使用局部值，但通用控件和页面壳不得重新定义同一类视觉值。
 - 图表颜色、业务状态颜色和品牌色继续遵循[颜色令牌规范](color-token-standard.md)，不混入间距或层级令牌。
 - Teleport 浮层必须使用公共层级；页面不得通过继续提高 `z-index` 解决层叠问题。
+- 媒体预览中的确认操作使用 `--tf-z-message-box: calc(var(--tf-z-viewer) + 1)`，MessageBox 根遮罩和内容层均读取此令牌，确保删除确认显示在查看器上方。
 - 历史页面中的字面量会逐步迁移，审计先保证公共入口和令牌定义不回退，再按页面批次减少存量。
 
 ## 审计
@@ -36,4 +39,4 @@ npm run check:design-tokens
 
 此基线是渐进式迁移门禁，不代表存量已经全部令牌化。每次整理页面时应优先替换该页面基线中的间距、字号、圆角、阴影和层级字面量；不得通过更新基线来消除审计错误。
 
-最后更新：2026-10-01
+最后更新：2026-11-01

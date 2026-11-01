@@ -118,6 +118,7 @@
   overflow: auto !important;
 }
 
+.el-overlay.is-message-box,
 .el-overlay-message-box {
   z-index: var(--tf-z-message-box) !important;
 }

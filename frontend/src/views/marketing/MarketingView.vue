@@ -68,7 +68,7 @@
                 class="marketing-condition-item"
               >
                 <div class="marketing-switch-title">
-                  机况
+                  成色
                 </div>
                 <el-radio-group
                   v-model="form.condition"

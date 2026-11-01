@@ -43,6 +43,7 @@ export interface QuickSaleFormState {
   color_id: number | null
   memory_id: number | null
   is_new: string
+  status: string
   imei: string
   serial_number: string
   supplier_id: number | null

@@ -73,7 +73,7 @@
             v-if="canViewField('is_new')"
             class="detail-field"
           >
-            <span class="field-label">机况</span>
+            <span class="field-label">成色</span>
             <span class="field-value field-value-badge">
               <span
                 class="condition-pill"

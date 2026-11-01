@@ -2,7 +2,7 @@
   QuickSaleModal - 快速出库模态框组件（基于 MobileDialog）
 
   功能描述：
-  - 快速创建销售出库记录，跳过入库流程
+  - 快速创建销售、批发调货或划拨出库记录，跳过入库流程
   - 完整的表单验证
   - 响应式设计，移动端友好
   - 自动计算利润和利润率
@@ -56,13 +56,13 @@
       class="quick-sale-form"
     >
       <!-- 设备信息 -->
-      <div class="form-section">
-        <div class="section-title">
+      <div class="tf-query-modal-section quick-sale-device-section">
+        <div class="tf-query-modal-section-title">
           <i class="fas fa-mobile-alt" />
           设备信息
         </div>
 
-        <div class="form-row form-row-5">
+        <div class="tf-query-modal-row tf-query-modal-row--4 quick-sale-device-row--product">
           <el-form-item
             label="品牌"
             prop="brand_id"
@@ -137,6 +137,78 @@
             </el-select>
           </el-form-item>
 
+        </div>
+
+        <div class="tf-query-modal-row tf-query-modal-row--4 quick-sale-device-row--identifier">
+          <el-form-item
+            label="序列号"
+            prop="serial_number"
+          >
+            <div class="quick-sale-identifier-field">
+              <el-input
+                v-model="formData.serial_number"
+                class="quick-sale-identifier-input"
+                placeholder="请输入序列号"
+                maxlength="18"
+                clearable
+                @input="formatSerialNumber"
+              >
+                <template #suffix>
+                  <el-button
+                    v-if="isMobile"
+                    link
+                    type="primary"
+                    title="扫码识别序列号"
+                    @click.stop="openScanner('serial')"
+                  >
+                    <i class="fas fa-qrcode" />
+                  </el-button>
+                  <i
+                    v-else
+                    class="fas fa-hashtag serial-icon"
+                  />
+                </template>
+              </el-input>
+            </div>
+          </el-form-item>
+
+          <el-form-item
+            label="IMEI"
+            prop="imei"
+          >
+            <div
+              class="quick-sale-identifier-field"
+              @dblclick="handleImeiDoubleClick(undefined)"
+              @touchend.stop="handleImeiTouchEnd($event, undefined)"
+            >
+              <el-input
+                v-model="formData.imei"
+                class="quick-sale-identifier-input"
+                :class="{ 'tf-imei-input--no-imei': formData.isNoIMEIMode }"
+                :placeholder="formData.isNoIMEIMode ? '' : '请输入15位IMEI号'"
+                :maxlength="formData.isNoIMEIMode ? 30 : 15"
+                clearable
+                @input="formatIMEI"
+              >
+                <template #suffix>
+                  <el-button
+                    v-if="isMobile"
+                    link
+                    type="primary"
+                    title="扫码识别 IMEI"
+                    @click.stop="openScanner('imei')"
+                  >
+                    <i class="fas fa-qrcode" />
+                  </el-button>
+                  <i
+                    v-if="!isMobile && !formData.isNoIMEIMode"
+                    class="fas fa-barcode imei-icon"
+                  />
+                </template>
+              </el-input>
+            </div>
+          </el-form-item>
+
           <el-form-item
             label="成色"
             prop="is_new"
@@ -155,55 +227,23 @@
               />
             </el-select>
           </el-form-item>
-        </div>
 
-        <div class="form-row">
-          <el-form-item
-            label="序列号"
-            prop="serial_number"
-          >
-            <el-input
-              v-model="formData.serial_number"
-              placeholder="请输入序列号"
-              maxlength="18"
-              clearable
-              @input="formatSerialNumber"
+          <el-form-item label="状态" prop="status">
+            <el-select
+              v-model="formData.status"
+              placeholder="请选择状态"
+              teleported
+              popper-class="tf2025-form-popper"
+              @change="handleTransactionTypeChange"
             >
-              <template #suffix>
-                <i class="fas fa-hashtag serial-icon" />
-              </template>
-            </el-input>
-          </el-form-item>
-
-          <el-form-item
-            label="IMEI"
-            prop="imei"
-          >
-            <div
-              style="cursor: pointer; width: 100%;"
-              @dblclick="handleImeiDoubleClick(undefined)"
-              @touchend.stop="handleImeiTouchEnd($event, undefined)"
-            >
-              <el-input
-                v-model="formData.imei"
-                :class="{ 'tf-imei-input--no-imei': formData.isNoIMEIMode }"
-                :placeholder="formData.isNoIMEIMode ? '' : '请输入15位IMEI号'"
-                :maxlength="formData.isNoIMEIMode ? 30 : 15"
-                clearable
-                @input="formatIMEI"
-                >
-                  <template #suffix>
-                  <i
-                    v-if="!formData.isNoIMEIMode"
-                    class="fas fa-barcode imei-icon"
-                  />
-                </template>
-              </el-input>
-            </div>
+              <el-option label="已售" value="sold" />
+              <el-option label="调货" value="peer_transfer" />
+              <el-option label="划拨" value="supplier_proxy" />
+            </el-select>
           </el-form-item>
         </div>
 
-        <div class="form-row form-row-4">
+        <div class="tf-query-modal-row tf-query-modal-row--4 quick-sale-device-row--transaction">
           <el-form-item
             label="供应商"
             prop="supplier_id"
@@ -241,6 +281,7 @@
           </el-form-item>
 
           <el-form-item
+            v-if="formData.status !== 'supplier_proxy'"
             label="入库价格"
             prop="purchase_cost"
           >
@@ -258,12 +299,13 @@
           </el-form-item>
 
           <el-form-item
-            label="销售价格"
+            v-if="formData.status !== 'supplier_proxy'"
+            :label="formData.status === 'peer_transfer' ? '批发价格' : '销售价格'"
             prop="sale_price"
           >
             <el-input
               :model-value="formatPriceInputValue(formData.sale_price)"
-              placeholder="请输入销售价格"
+              :placeholder="formData.status === 'peer_transfer' ? '请输入批发价格' : '请输入销售价格'"
               inputmode="numeric"
               clearable
               @input="handlePriceInput('sale_price', $event)"
@@ -283,17 +325,16 @@
       </div>
 
       <!-- 客户信息 -->
-      <div class="form-section">
-        <div class="section-title">
+      <div class="tf-query-modal-section">
+        <div class="tf-query-modal-section-title">
           <i class="fas fa-user" />
           客户信息
         </div>
 
-        <div class="form-row form-row-3 customer-form-row">
+        <div class="tf-query-modal-row tf-query-modal-row--3">
           <el-form-item
             label="客户手机"
             prop="customer_phone"
-            class="customer-phone-item"
           >
             <div
               ref="customerSearchContainerRef"
@@ -329,7 +370,6 @@
           <el-form-item
             label="客户姓名"
             prop="customer_name"
-            class="customer-name-item"
           >
             <CustomerNameLockInput
               ref="customerNameInputRef"
@@ -351,7 +391,7 @@
           <el-form-item
             label="Apple ID"
             prop="apple_id"
-            class="customer-apple-item"
+            class="tf-query-modal-span-2"
           >
             <el-input
               v-model="formData.apple_id"
@@ -369,100 +409,103 @@
       </div>
 
       <!-- 销售信息 -->
-      <div class="form-section">
-        <div class="section-title">
+      <div class="tf-query-modal-section">
+        <div class="tf-query-modal-section-title">
           <i class="fas fa-shopping-cart" />
-          销售信息
+          {{ formData.status === 'sold' ? '销售信息' : formData.status === 'peer_transfer' ? '批发信息' : '划拨信息' }}
         </div>
 
-        <div class="form-row form-row-3">
-          <el-form-item
-            label="入库日期"
-            prop="inventory_time"
-          >
-            <el-date-picker
-              v-model="formData.inventory_time"
-              type="date"
-              placeholder="请选择入库日期"
-              :format="TIME_FORMATS.DATE"
-              :value-format="TIME_FORMATS.DATE"
-              style="width: 140px"
-            />
-          </el-form-item>
-
-          <el-form-item
-            label="销售日期"
-            prop="sale_time"
-          >
-            <el-date-picker
-              v-model="formData.sale_time"
-              type="date"
-              placeholder="请选择销售日期"
-              :format="TIME_FORMATS.DATE"
-              :value-format="TIME_FORMATS.DATE"
-              style="width: 140px"
-            />
-          </el-form-item>
-
-          <el-form-item
-            label="入库员"
-            prop="purchase_operator_id"
-          >
-            <el-input
-              :value="currentUserName"
-              disabled
-              placeholder="当前用户"
+        <div class="quick-sale-transaction-meta">
+          <div class="tf-query-modal-row tf-query-modal-row--3">
+            <el-form-item
+              label="入库日期"
+              prop="inventory_time"
             >
-              <template #suffix>
-                <i class="fas fa-user user-icon" />
-              </template>
-            </el-input>
-          </el-form-item>
-        </div>
-
-        <div class="form-row form-row-3">
-          <el-form-item
-            label="销售员"
-            prop="sale_operator_id"
-          >
-            <el-select
-              v-model="formData.sale_operator_id"
-              placeholder="请选择销售员"
-              filterable
-            >
-              <el-option
-                v-for="user in options.users"
-                :key="user.id"
-                :label="user.name"
-                :value="user.id"
+              <el-date-picker
+                v-model="formData.inventory_time"
+                type="date"
+                placeholder="请选择入库日期"
+                :format="TIME_FORMATS.DATE"
+                :value-format="TIME_FORMATS.DATE"
+                class="full-width"
               />
-            </el-select>
-          </el-form-item>
+            </el-form-item>
 
-          <el-form-item
-            label="支付方式"
-            prop="payment_method"
-          >
-            <PaymentMethodSelect
-              v-model="formData.payment_method"
-              variant="sale"
-              placeholder="请选择"
-              @change="handlePaymentMethodChange"
-            />
-          </el-form-item>
+            <el-form-item
+              label="交易日期"
+              prop="sale_time"
+            >
+              <el-date-picker
+                v-model="formData.sale_time"
+                type="date"
+                placeholder="请选择销售日期"
+                :format="TIME_FORMATS.DATE"
+                :value-format="TIME_FORMATS.DATE"
+                class="full-width"
+              />
+            </el-form-item>
 
-          <el-form-item
-            v-if="formData.payment_method === 'mobile' || formData.payment_method === 'bank_card' || formData.payment_method === 'subsidy_card'"
-            label="支付渠道"
-            prop="payment_channel"
-          >
-            <PaymentChannelSelect
-              v-model="formData.payment_channel"
-              :payment-method="formData.payment_method"
-              placeholder="请选择"
-              @change="handlePaymentChannelChange"
-            />
-          </el-form-item>
+            <el-form-item
+              label="入库员"
+              prop="purchase_operator_id"
+            >
+              <el-input
+                :value="currentUserName"
+                disabled
+                placeholder="当前用户"
+              >
+                <template #suffix>
+                  <i class="fas fa-user user-icon" />
+                </template>
+              </el-input>
+            </el-form-item>
+          </div>
+
+          <div class="tf-query-modal-row tf-query-modal-row--3">
+            <el-form-item
+              label="销售员"
+              prop="sale_operator_id"
+            >
+              <el-select
+                v-model="formData.sale_operator_id"
+                placeholder="请选择销售员"
+                filterable
+              >
+                <el-option
+                  v-for="user in options.users"
+                  :key="user.id"
+                  :label="user.name"
+                  :value="user.id"
+                />
+              </el-select>
+            </el-form-item>
+
+            <el-form-item
+              v-if="formData.status === 'sold'"
+              label="支付方式"
+              prop="payment_method"
+            >
+              <PaymentMethodSelect
+                v-model="formData.payment_method"
+                variant="sale"
+                placeholder="请选择"
+                @change="handlePaymentMethodChange"
+              />
+            </el-form-item>
+
+            <el-form-item
+              v-if="formData.status === 'sold' && ['mobile', 'bank_card', 'subsidy_card'].includes(formData.payment_method)"
+              label="支付渠道"
+              prop="payment_channel"
+            >
+              <PaymentChannelSelect
+                v-model="formData.payment_channel"
+                :payment-method="formData.payment_method"
+                placeholder="请选择"
+                @change="handlePaymentChannelChange"
+              />
+            </el-form-item>
+          </div>
         </div>
 
         <el-form-item
@@ -483,11 +526,24 @@
       </div>
     </el-form>
   </MobileDialog>
+
+  <teleport to="body">
+    <OptimizedScanner
+      v-model:visible="optimizedScannerVisible"
+      :scan-type="currentScanType"
+      :phone="scannerPhone"
+      :show-r-o-i-display="true"
+      :enable-android-optimization="true"
+      @success="handleScanSuccess"
+      @manual="handleScanManual"
+      @cancel="handleScanCancel"
+    />
+  </teleport>
 </template>
 
 <script setup lang="ts">
 import { TIME_FORMATS } from '@/utils/time'
-import { ref, reactive, computed, watch, nextTick } from 'vue'
+import { ref, reactive, computed, watch, nextTick, defineAsyncComponent } from 'vue'
 import type { FormInstance, FormRules } from 'element-plus'
 import { ValidationRules } from '@/composables'
 import { useNotification } from '@/composables/useNotification'
@@ -530,6 +586,9 @@ import type {
   PriceField,
   QuickSaleProps
 } from './quick-sale/types'
+import { buildStockInScanPromptConfig } from '../stock-in/helpers'
+
+const OptimizedScanner = defineAsyncComponent(() => import('../OptimizedScanner.vue'))
 
 // ==================== 类型定义 ====================
 
@@ -540,7 +599,13 @@ const emit = defineEmits<UpdateModelValueEmits & SuccessEmits>()
 
 const { isMobile, isIOS } = useMobile()
 const authStore = useAuthStore()
-const { success: showSuccess, error: showError, warning: showWarning, info: showInfo } = useNotification()
+const {
+  success: showSuccess,
+  error: showError,
+  warning: showWarning,
+  info: showInfo,
+  prompt
+} = useNotification()
 
 // ==================== 响应式数据 ====================
 
@@ -551,9 +616,16 @@ const dialogVisible = computed({
 
 const formRef = ref<FormInstance>()
 const submitting = ref(false)
+const optimizedScannerVisible = ref(false)
+const currentScanType = ref<'imei' | 'serial'>('imei')
 
 // 表单数据
 const formData = reactive(createDefaultQuickSaleForm(authStore.user?.id || null))
+
+// 传入所选品牌，复用公共扫码器的 Apple 包装序列号前缀识别规则。
+const scannerPhone = computed(() => ({
+  brand: props.options.brands.find(brand => Number(brand.id) === Number(formData.brand_id))?.name
+}))
 
 // 可用型号列表
 const filteredModels = ref<BrandModelOption[]>([])
@@ -744,9 +816,12 @@ const formRules = computed<FormRules>(() => ({
   purchase_cost: [
     ValidationRules.positiveNumber('入库价格不能为负数')
   ],
-  sale_price: [
-    ValidationRules.positiveNumber('销售价格不能为负数')
-  ],
+  sale_price: formData.status === 'supplier_proxy'
+    ? []
+    : [
+      ValidationRules.required(formData.status === 'peer_transfer' ? '请输入批发价格' : '请输入销售价格'),
+      ValidationRules.positiveNumber('交易价格不能为负数')
+    ],
   customer_phone: [
     ValidationRules.phone()
   ],
@@ -759,13 +834,13 @@ const formRules = computed<FormRules>(() => ({
   sale_operator_id: [
     ValidationRules.required('请选择销售员')
   ],
-  payment_method: [
-    ValidationRules.required('请选择支付方式')
-  ],
-  payment_channel: [
+  payment_method: formData.status === 'sold'
+    ? [ValidationRules.required('请选择支付方式')]
+    : [],
+  payment_channel: formData.status === 'sold' ? [
     {
       validator: (_rule: unknown, value: string, callback: (_error?: Error) => void) => {
-        if (formData.payment_method !== 'cash' && !value) {
+        if (formData.status === 'sold' && formData.payment_method !== 'cash' && !value) {
           callback(new Error('请选择支付渠道'))
           return
         }
@@ -773,7 +848,7 @@ const formRules = computed<FormRules>(() => ({
       },
       trigger: 'change'
     }
-  ]
+  ] : []
 }))
 
 // ==================== 方法 ====================
@@ -855,6 +930,56 @@ const formatSerialNumber = () => {
   formData.serial_number = formatQuickSaleSerialNumber(formData.serial_number)
 }
 
+const openScanner = (scanType: 'imei' | 'serial') => {
+  currentScanType.value = scanType
+  optimizedScannerVisible.value = true
+}
+
+const handleScanSuccess = (result: string) => {
+  if (currentScanType.value === 'imei') {
+    formData.imei = formatQuickSaleIMEI(result, formData.isNoIMEIMode)
+    formRef.value?.clearValidate('imei')
+  } else {
+    formData.serial_number = formatQuickSaleSerialNumber(result)
+    formRef.value?.clearValidate('serial_number')
+  }
+
+  optimizedScannerVisible.value = false
+}
+
+const handleScanManual = async () => {
+  const scanType = currentScanType.value
+  const promptConfig = buildStockInScanPromptConfig(
+    scanType,
+    scanType === 'imei' && formData.isNoIMEIMode
+  )
+
+  try {
+    const result = await prompt(
+      promptConfig.message,
+      promptConfig.title,
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        inputType: 'text',
+        inputPattern: promptConfig.inputPattern,
+        inputErrorMessage: promptConfig.inputErrorMessage,
+        inputPlaceholder: promptConfig.inputPlaceholder
+      }
+    )
+
+    if (result?.value) {
+      handleScanSuccess(result.value)
+    }
+  } catch {
+    // 用户取消手动输入时保持快速出库表单不变。
+  }
+}
+
+const handleScanCancel = () => {
+  optimizedScannerVisible.value = false
+}
+
 // 支付方式变化处理
 const handlePaymentMethodChange = () => {
   // 如果选择了国补刷卡，检查金额是否超过6000
@@ -875,6 +1000,16 @@ const handlePaymentMethodChange = () => {
       formData.remarks = ''
     }
   }
+}
+
+const handleTransactionTypeChange = (value: string) => {
+  if (value !== 'sold') {
+    formData.payment_method = ''
+    formData.payment_channel = ''
+    if (formData.remarks.startsWith('刷卡实际支付')) formData.remarks = ''
+  }
+  if (value === 'supplier_proxy') formData.sale_price = 0
+  else if (Number(formData.sale_price) === 0) formData.sale_price = null
 }
 
 // 支付渠道变化处理（保留，以防手动选择时使用）
@@ -1398,8 +1533,12 @@ watch(
 .quick-sale-form {
   padding: 0;
 
-  :deep(.el-form-item) {
-    margin-bottom: 16px;
+  .quick-sale-identifier-input {
+    width: 100%;
+  }
+
+  .quick-sale-identifier-field {
+    width: 100%;
   }
 
   // 输入框图标
@@ -1417,65 +1556,88 @@ watch(
   }
 }
 
-.form-section {
-  margin-bottom: 24px;
-  padding-bottom: 20px;
-  border-bottom: 1px solid var(--tf-color-gray-200);
-
-  &:last-of-type {
-    border-bottom: none;
-    margin-bottom: 0;
-    padding-bottom: 0;
-  }
-}
-
-.section-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: var(--tf-type-scale-15);
-  font-weight: 600;
-  color: var(--color-text-primary);
-  margin-bottom: 16px;
-  padding-bottom: 8px;
-  border-bottom: 2px solid var(--color-primary);
-
-  i {
-    color: var(--color-primary);
-    font-size: var(--tf-type-scale-16);
-  }
-}
-
-.form-row {
+/* 设备信息按“供应商/店铺/成色/状态、规格、序列号与价格”分三行排列。 */
+.quick-sale-device-section {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--tf-space-4);
 
-  &.form-row-3 {
-    grid-template-columns: repeat(3, 1fr);
+  > .tf-query-modal-section-title {
+    grid-column: 1 / -1;
   }
 
-  &.form-row-4 {
-    grid-template-columns: repeat(4, 1fr);
+  .tf-query-modal-row {
+    display: contents;
   }
 
-  &.form-row-5 {
-    grid-template-columns: repeat(5, 1fr);
+  .quick-sale-device-row--transaction > .el-form-item:nth-child(1) {
+    order: 1;
+  }
+
+  .quick-sale-device-row--transaction > .el-form-item:nth-child(2) {
+    order: 2;
+  }
+
+  .quick-sale-device-row--identifier > .el-form-item:nth-child(3) {
+    order: 3;
+  }
+
+  .quick-sale-device-row--identifier > .el-form-item:nth-child(4) {
+    order: 4;
+  }
+
+  .quick-sale-device-row--product > .el-form-item:nth-child(1) {
+    order: 5;
+  }
+
+  .quick-sale-device-row--product > .el-form-item:nth-child(2) {
+    order: 6;
+  }
+
+  .quick-sale-device-row--product > .el-form-item:nth-child(3) {
+    order: 7;
+  }
+
+  .quick-sale-device-row--product > .el-form-item:nth-child(4) {
+    order: 8;
+  }
+
+  .quick-sale-device-row--identifier > .el-form-item:nth-child(1) {
+    order: 9;
+  }
+
+  .quick-sale-device-row--identifier > .el-form-item:nth-child(2) {
+    order: 10;
+  }
+
+  .quick-sale-device-row--transaction > .el-form-item:nth-child(3) {
+    order: 11;
+  }
+
+  .quick-sale-device-row--transaction > .el-form-item:nth-child(4) {
+    order: 12;
   }
 }
 
-// 序列号和IMEI输入框样式 - 确保占满可用空间
-.form-row {
-  :deep(.el-form-item__content) {
-    width: 100%;
+@media (max-width: 1200px) {
+  .quick-sale-device-section {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.quick-sale-transaction-meta {
+  display: block;
+}
+
+@media (max-width: 767px) {
+  .quick-sale-transaction-meta {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--tf-space-2);
   }
 
-  :deep(.el-input) {
-    width: 100%;
-  }
-
-  :deep(.el-input__wrapper) {
-    width: 100%;
+  .quick-sale-transaction-meta .tf-query-modal-row {
+    display: contents;
   }
 }
 
@@ -1633,20 +1795,6 @@ watch(
 }
 
 @media (max-width: 767px) {
-  .customer-form-row {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .customer-phone-item,
-  .customer-name-item {
-    grid-column: span 1;
-    min-width: 0;
-  }
-
-  .customer-apple-item {
-    grid-column: 1 / -1;
-  }
-
   .customer-search-results {
     max-height: 250px;
   }
@@ -1901,67 +2049,12 @@ watch(
 // 移动端适配
 @media (max-width: 767px) {
   .quick-sale-form {
-    :deep(.el-form-item) {
-      margin-bottom: 8px;
-    }
-
-    :deep(.el-form-item__label) {
-      font-size: var(--tf-type-scale-13);
-      margin-bottom: 4px;
-    }
-  }
-
-  .form-section {
-    margin-bottom: 12px;
-    padding: 10px 8px 8px;
-    border: 1px solid var(--tf-color-surface-cool);
-    border-radius: 14px;
-    background: linear-gradient(180deg, var(--color-bg-white) 0%, var(--tf-color-surface-cool-alt) 100%);
-
-    &:last-of-type {
-      margin-bottom: 0;
-      padding-bottom: 8px;
-    }
-  }
-
-  .form-row {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
-
-    &.form-row-3,
-    &.form-row-5 {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-  }
-
-  .form-row.form-row-4 {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .section-title {
-    font-size: var(--tf-type-scale-14);
-    margin-bottom: 12px;
-    padding-bottom: 6px;
   }
 
 }
 
 // 小屏幕适配（iPhone SE）
 @media (max-width: 390px) {
-  .quick-sale-form {
-    :deep(.el-form-item) {
-      margin-bottom: 12px;
-    }
-  }
-
-  .form-row {
-    gap: 8px;
-  }
-
-  .section-title {
-    font-size: var(--tf-type-scale-13);
-  }
-
   .profit-hint {
     font-size: var(--tf-type-scale-11);
   }

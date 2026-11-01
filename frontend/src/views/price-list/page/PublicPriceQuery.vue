@@ -40,10 +40,25 @@
           <span class="btn-text">{{ showInStockOnly ? '全部' : '在库' }}</span>
         </el-button>
         <el-button
+          v-if="passwordVerified"
+          native-type="button"
+          class="price-header-action price-header-action--inventory tf-button--success"
+          :class="{ active: showUsedPhonesOnly }"
+          :loading="usedModelsLoading"
+          :disabled="isGenerating || usedModelsLoading"
+          :aria-pressed="showUsedPhonesOnly"
+          @click="toggleUsedPhonesFilter"
+        >
+          <el-icon class="btn-icon">
+            <Box />
+          </el-icon>
+          <span class="btn-text">二手机</span>
+        </el-button>
+        <el-button
           native-type="button"
           class="price-header-action price-header-action--download tf-button--export"
           :loading="isGenerating"
-          :disabled="isGenerating || searchResults.length === 0"
+          :disabled="isGenerating || displayedRows.length === 0"
           @click="downloadAsImage"
         >
           <span
@@ -241,10 +256,10 @@
       <div class="container">
         <!-- 加载状态 -->
         <div
-          v-if="loading"
+          v-if="loading || (showUsedPhonesOnly && usedModelsLoading)"
           class="loading-container"
         >
-          <InlineLoading text="正在查询价格..." />
+          <InlineLoading :text="showUsedPhonesOnly ? '正在查询二手机库存...' : '正在查询价格...'" />
         </div>
 
         <!-- 空状态 -->
@@ -256,9 +271,9 @@
 
         <!-- 无结果 -->
         <DataEmptyState
-          v-else-if="searchResults.length === 0"
+          v-else-if="displayedRows.length === 0"
           state="filtered"
-          description="未找到相关价格信息"
+          :description="showUsedPhonesOnly ? '暂无在库二手机型号' : '未找到相关价格信息'"
         />
 
         <!-- 结果列表 -->
@@ -268,16 +283,19 @@
           class="results-list"
         >
           <div class="results-header">
-            <h2>最新报价</h2>
+            <h2>
+              {{ showUsedPhonesOnly ? '在库二手机' : '最新报价' }}
+            </h2>
             <el-tag
+              v-if="!showUsedPhonesOnly"
               class="hot-badge"
               type="danger"
               effect="dark"
             >
               HOT
             </el-tag>
-            <h2>{{ primaryPriceContact?.phone || '' }}</h2>
-            <span class="count">共 {{ searchResults.length }} 条</span>
+            <h2 v-if="!showUsedPhonesOnly">{{ primaryPriceContact?.phone || '' }}</h2>
+            <span class="count">共 {{ displayedRows.length }} 条</span>
           </div>
 
           <!-- 水印（仅生成图片时显示） -->
@@ -310,10 +328,10 @@
           <div class="table-wrapper">
             <el-table
               class="data-table"
-              :data="searchResults"
+              :data="displayedRows"
               stripe
               border
-              style="cursor: pointer;"
+              :style="{ cursor: showUsedPhonesOnly ? 'default' : 'pointer' }"
               @row-dblclick="handleRowDoubleClick"
               @row-click="handleRowClick"
             >
@@ -342,18 +360,18 @@
                 </template>
               </el-table-column>
               <el-table-column
-                prop="wholesale_price"
-                label="调货价格"
+                :prop="showUsedPhonesOnly ? 'display_inventory_price' : 'wholesale_price'"
+                :label="showUsedPhonesOnly ? '价格' : '调货价格'"
                 min-width="70"
                 align="right"
               >
                 <template #default="{ row }">
                   <span
-                    v-if="hasWholesalePrice(row)"
+                    v-if="showUsedPhonesOnly ? hasInventoryPrice(row) : hasWholesalePrice(row)"
                     class="price wholesale"
                     :class="{ 'has-stock': passwordVerified && row.stock_quantity > 0 }"
                   >
-                    {{ formatWholesalePrice(row) }}
+                    {{ showUsedPhonesOnly ? formatInventoryPrice(row) : formatWholesalePrice(row) }}
                   </span>
                 </template>
               </el-table-column>
@@ -362,7 +380,7 @@
 
           <!-- 联系方式 -->
           <div
-            v-if="priceContacts.length"
+            v-if="!showUsedPhonesOnly && priceContacts.length"
             class="contact-card"
           >
             <div class="contact-header">
@@ -400,6 +418,8 @@
       v-model="showInventoryResult"
       :product="selectedProduct"
       :query-token="inventoryQueryToken"
+      :is-new="!selectedProductIsUsed"
+      :purchase-cost="selectedProductPurchaseCost"
       @authorization-expired="handleInventoryAuthorizationExpired"
     />
 
@@ -450,7 +470,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, defineAsyncComponent } from 'vue'
 import { WarningFilled, Box, Grid, Download } from '@element-plus/icons-vue'
-import { getAllPrices, searchPrices } from '@/api/price-list'
+import { getAllPrices, getInventoryUsedModels, searchPrices } from '@/api/price-list'
 import { PublicPriceHeader } from '@/components/base'
 import PublicSearchBox from '@/components/search/PublicSearchBox.vue'
 import InlineLoading from '@/components/InlineLoading.vue'
@@ -491,12 +511,34 @@ const hasSearched = ref(false)
 const showNoticeDialog = ref(false)
 const isGenerating = ref(false)
 const showInStockOnly = ref(false)
+const showUsedPhonesOnly = ref(false)
+const usedModelsLoading = ref(false)
+
+interface UsedPhoneModel {
+  brand_id: number
+  model_id: number
+  color_id: number
+  memory_id: number
+  brand_name: string
+  model_name: string
+  model_number: string
+  color_name: string
+  memory: string
+  stock_quantity: number
+  inventory_price?: number | string | null
+  display_inventory_price?: number | string | null
+}
+
+const usedPhoneModels = ref<UsedPhoneModel[]>([])
+const displayedRows = computed(() => showUsedPhonesOnly.value ? usedPhoneModels.value : searchResults.value)
 
 // 在库查询相关状态
 const passwordVerified = ref(false)
 const verifiedUserName = ref('') // 验证成功的用户名
 const inventoryQueryToken = ref('')
 const showInventoryResult = ref(false)
+const selectedProductIsUsed = ref(false)
+const selectedProductPurchaseCost = ref<number | null>(null)
 let inventoryTokenExpiryTimer: ReturnType<typeof setTimeout> | null = null
 let activePriceRequestId = 0
 const selectedProduct = ref<{
@@ -548,8 +590,52 @@ const normalizePriceRows = (rows: unknown): any[] => {
 const toggleInStockFilter = () => {
   if (!passwordVerified.value) return
 
+  showUsedPhonesOnly.value = false
   showInStockOnly.value = !showInStockOnly.value
   applyInventoryFilter()
+}
+
+const loadUsedPhoneModels = async (keyword = '') => {
+  if (!passwordVerified.value || !inventoryQueryToken.value) return
+  usedModelsLoading.value = true
+  try {
+    const response = await getInventoryUsedModels(inventoryQueryToken.value, keyword)
+    if (response.success) {
+      usedPhoneModels.value = (Array.isArray(response.data) ? response.data : []).map((model: UsedPhoneModel) => ({
+        ...model,
+        model_number: model.model_name
+      }))
+    } else {
+      usedPhoneModels.value = []
+      ElMessage.error(response.message || '二手机库存加载失败')
+    }
+  } catch (error: any) {
+    usedPhoneModels.value = []
+    const status = Number(error?.status || error?.response?.status || error?.response?.data?.status)
+    if (status === 401) {
+      resetInventoryAccess(true)
+    } else {
+      logger.error('加载在库二手机型号失败', error)
+      ElMessage.error('二手机库存加载失败，请稍后重试')
+    }
+  } finally {
+    usedModelsLoading.value = false
+  }
+}
+
+const toggleUsedPhonesFilter = async () => {
+  if (!passwordVerified.value) return
+  if (showUsedPhonesOnly.value) {
+    showUsedPhonesOnly.value = false
+    showInStockOnly.value = false
+    applyInventoryFilter()
+    return
+  }
+
+  showInStockOnly.value = false
+  showUsedPhonesOnly.value = true
+  hasSearched.value = true
+  await loadUsedPhoneModels(searchKeyword.value.trim())
 }
 
 // 触屏设备双击检测。iPad 在部分 Safari 版本不会可靠触发 row-dblclick，
@@ -636,6 +722,14 @@ const handleSearchInput = async () => {
 // 搜索
 const handleSearch = async (notifyNoResults = true): Promise<boolean | null> => {
   const keyword = searchKeyword.value.trim()
+  if (showUsedPhonesOnly.value) {
+    if (keyword.length === 1) {
+      if (notifyNoResults) ElMessage.warning('搜索关键词至少需要 2 个字符')
+      return false
+    }
+    await loadUsedPhoneModels(keyword)
+    return usedPhoneModels.value.length > 0
+  }
   if (!keyword) {
     // 如果搜索为空，加载所有数据
     await loadAllData()
@@ -699,6 +793,8 @@ const resetInventoryAccess = (showExpiredMessage = false) => {
   verifiedUserName.value = ''
   inventoryQueryToken.value = ''
   showInStockOnly.value = false
+  showUsedPhonesOnly.value = false
+  usedPhoneModels.value = []
   showInventoryResult.value = false
   applyInventoryFilter()
   if (showExpiredMessage) ElMessage.info('在库查询验证已失效，请重新验证')
@@ -745,7 +841,11 @@ const verifyInventoryPassword = async (password: string): Promise<boolean | null
 // 清空
 const handleClear = () => {
   searchKeyword.value = ''
-  void loadAllData()
+  if (showUsedPhonesOnly.value) {
+    void loadUsedPhoneModels()
+  } else {
+    void loadAllData()
+  }
 }
 
 const hasWholesalePrice = (row: any) => {
@@ -757,6 +857,15 @@ const formatWholesalePrice = (row: any) => {
   const price = Number(row?.display_wholesale_price ?? row?.wholesale_price ?? 0)
   return Math.round(price)
 }
+
+const hasInventoryPrice = (row: UsedPhoneModel) => (
+  row.display_inventory_price !== null
+  && row.display_inventory_price !== undefined
+  && row.display_inventory_price !== ''
+  && Number.isFinite(Number(row.display_inventory_price))
+)
+
+const formatInventoryPrice = (row: UsedPhoneModel) => Math.round(Number(row.display_inventory_price) || 0)
 
 // 固定安全区域并轻微倾斜，避免随机位置靠近边缘导致水印被裁剪。
 interface WatermarkPosition {
@@ -1231,6 +1340,10 @@ const showInventoryResultDialog = (row: any) => {
     color: row.color_name,
     memory: row.memory
   }
+  selectedProductIsUsed.value = showUsedPhonesOnly.value
+  selectedProductPurchaseCost.value = showUsedPhonesOnly.value && row.inventory_price !== null
+    ? Number(row.inventory_price)
+    : null
   showInventoryResult.value = true
 }
 

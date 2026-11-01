@@ -69,6 +69,7 @@
   --tf-shadow-popover: var(--shadow-md);
   --tf-shadow-dialog: var(--shadow-lg);
   --tf-shadow-floating: var(--shadow-xl);
+  --tf-shadow-dropdown-option: inset 0 0 0 1px var(--tf-form-control-focus-color);
   --tf-service-float-size: 56px;
   --tf-service-float-bottom: 148px;
   --tf-service-float-right: 16px;
@@ -208,7 +209,7 @@
   --tf-z-message: 10000;
   --tf-z-lock: 999999;
   --tf-z-viewer: 12000;
-  --tf-z-message-box: 10000;
+  --tf-z-message-box: calc(var(--tf-z-viewer) + 1);
   --tf-z-popper: 4005;
   --tf-z-permission-tooltip: 9999;
   --tf-drawer-max-width: 480px;

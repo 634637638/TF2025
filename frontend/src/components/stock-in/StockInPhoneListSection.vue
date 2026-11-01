@@ -727,13 +727,4 @@ const {
   }
 }
 
-@media (max-width: 479px) {
-  .phone-list-actions {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .phone-list-actions :deep(.el-button:nth-child(3)) {
-    grid-column: span 2;
-  }
-}
 </style>

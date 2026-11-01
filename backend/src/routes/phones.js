@@ -1,11 +1,12 @@
 const express = require('express')
 const router = express.Router()
-const { unifiedAuth, requirePermission, requireAnyPermission } = require('../middleware/unified-auth')
+const { unifiedAuth, requirePermission, requireAnyPermission, hasUnifiedPermission } = require('../middleware/unified-auth')
 const ApiResponse = require('../utils/response')
 const { cacheMiddleware, clearCache } = require('../middleware/cache')
 const { generateMemberNumber } = require('../utils/member-number')
 const { validateImei } = require('../utils/imei')
 const {
+  ensureInvoiceSequenceTable,
   generateInvoiceNumber,
   generateInvoiceNumberForDate,
   getInvoiceTypeSuffix
@@ -13,6 +14,7 @@ const {
 const log = require('../utils/log')
 const { PAGINATION } = require('../config/constants')
 const { requireInventoryQueryToken } = require('../utils/inventory-query-token')
+const pricingService = require('../services/pricing.service')
 const {
   getEffectivePhoneStatusSql,
   isPhoneStatusAlias,
@@ -454,12 +456,87 @@ router.get('/search-by-identifier', unifiedAuth, requirePermission('query:view')
 // ===== 公开端点（无需登录认证）=====
 // 注意：这些路由必须在 /:id 之前定义，否则会被 /:id 路由拦截
 
+// 按规格和入库价汇总在库二手机；仅返回公开查询所需的聚合字段。
+router.get('/used-models', requireInventoryQueryToken, async (req, res) => {
+  let connection
+  try {
+    const keyword = String(req.query.keyword || '').trim()
+    if (keyword.length > 80) return ApiResponse.badRequest(res, '搜索关键词不能超过 80 个字符')
+
+    const conditions = [
+      "p.status = 'in_stock'",
+      'p.is_new = 0',
+      'COALESCE(p.is_preordered, 0) = 0'
+    ]
+    const params = []
+    if (keyword) {
+      conditions.push('(b.name LIKE ? OR m.name LIKE ? OR c.name LIKE ? OR mem.size LIKE ?)')
+      params.push(`%${keyword}%`, `%${keyword}%`, `%${keyword}%`, `%${keyword}%`)
+    }
+
+    connection = await require('../config/database').getDatabase().getConnection()
+    const pricingConfig = await pricingService.getGlobalConfig()
+    const [rows] = await connection.execute(`
+      SELECT
+        p.brand_id,
+        p.model_id,
+        p.color_id,
+        p.memory_id,
+        b.name AS brand_name,
+        m.name AS model_name,
+        c.name AS color_name,
+        mem.size AS memory,
+        COUNT(*) AS stock_quantity,
+        p.purchase_cost AS inventory_price
+      FROM phones p
+      INNER JOIN brands b ON b.id = p.brand_id
+      INNER JOIN models m ON m.id = p.model_id
+      LEFT JOIN colors c ON c.id = p.color_id
+      LEFT JOIN memories mem ON mem.id = p.memory_id
+      WHERE ${conditions.join(' AND ')}
+      GROUP BY p.brand_id, p.model_id, p.color_id, p.memory_id,
+               b.name, m.name, c.name, mem.size, p.purchase_cost,
+               b.id, m.id, c.id, mem.id,
+               b.sort_order, m.sort_order, c.sort_order, mem.sort_order
+      ORDER BY b.sort_order ASC, b.name ASC, b.id ASC,
+               m.sort_order ASC, m.name ASC, m.id ASC,
+               c.sort_order ASC, c.name ASC, c.id ASC,
+               mem.sort_order ASC, mem.size ASC, mem.id ASC,
+               p.purchase_cost ASC
+    `, params)
+
+    return ApiResponse.success(res, rows.map(row => ({
+      ...row,
+      stock_quantity: Number(row.stock_quantity) || 0,
+      inventory_price: row.inventory_price === null ? null : Number(row.inventory_price) || 0,
+      display_inventory_price: row.inventory_price === null
+        ? null
+        : pricingService.calculateUsedInventoryPriceByConfig(row.inventory_price, pricingConfig)
+    })), '获取在库二手机型号成功')
+  } catch (error) {
+    log.error('获取在库二手机型号失败:', error)
+    return ApiResponse.serverError(res, '获取在库二手机型号失败', error)
+  } finally {
+    if (connection) connection.release()
+  }
+})
+
 // 获取在库最久的商品信息（用于同行咨询，无需登录）
 router.get('/longest-inventory', requireInventoryQueryToken, async (req, res) => {
   log.debug('🔓 [公开端点] longest-inventory 被调用！')
   let connection
   try {
     const { brand_id, model_id, color_id, memory_id, store_id } = req.query
+    const isNew = req.query.is_new === undefined ? 1 : Number(req.query.is_new)
+    if (isNew !== 0 && isNew !== 1) {
+      return ApiResponse.badRequest(res, 'is_new 必须为 0 或 1')
+    }
+    const hasPurchaseCostFilter = req.query.purchase_cost !== undefined
+    const purchaseCostIsNull = req.query.purchase_cost === 'null'
+    const purchaseCost = hasPurchaseCostFilter && !purchaseCostIsNull ? Number(req.query.purchase_cost) : null
+    if (hasPurchaseCostFilter && !purchaseCostIsNull && (!Number.isFinite(purchaseCost) || purchaseCost < 0)) {
+      return ApiResponse.badRequest(res, 'purchase_cost 参数无效')
+    }
     const filterIds = { brand_id, model_id, color_id, memory_id, store_id }
     for (const [field, value] of Object.entries(filterIds)) {
       if (value !== undefined && (!Number.isInteger(Number(value)) || Number(value) <= 0)) {
@@ -483,9 +560,15 @@ router.get('/longest-inventory', requireInventoryQueryToken, async (req, res) =>
     // 构建WHERE条件
     const whereConditions = [
       'p.status = "in_stock"',
-      'p.is_new = 1'
+      'p.is_new = ?'
     ]
-    const queryParams = []
+    const queryParams = [isNew]
+    if (purchaseCostIsNull) {
+      whereConditions.push('p.purchase_cost IS NULL')
+    } else if (purchaseCost !== null) {
+      whereConditions.push('p.purchase_cost = ?')
+      queryParams.push(purchaseCost)
+    }
 
     if (brand_id) {
       whereConditions.push('p.brand_id = ?')
@@ -669,6 +752,7 @@ router.get('/:id', unifiedAuth, requirePermission('sales:view'), async (req, res
 // 更新手机 - 支持四种权限：phones:edit（库存管理）、sales-editphoneview:edit（销售管理）、query:edit（综合查询编辑）、inventory:edit（库存编辑）
 router.put('/:id', unifiedAuth, requireAnyPermission(['phones:edit', 'sales-editphoneview:edit', 'query:edit', 'inventory:edit']), async (req, res) => {
   let connection
+  let transactionStarted = false
   try {
     const { id } = req.params
 
@@ -878,15 +962,57 @@ router.put('/:id', unifiedAuth, requireAnyPermission(['phones:edit', 'sales-edit
       updateFields.push('status = ?')
     }
 
-    const finalPurchaseCost = effectivePurchaseCost === null || effectivePurchaseCost === undefined || effectivePurchaseCost === ''
+    let finalPurchaseCost = effectivePurchaseCost === null || effectivePurchaseCost === undefined || effectivePurchaseCost === ''
       ? null
       : Number(effectivePurchaseCost)
-    const finalSalePrice = effectiveSalePrice === null || effectiveSalePrice === undefined || effectiveSalePrice === ''
+    let finalSalePrice = effectiveSalePrice === null || effectiveSalePrice === undefined || effectiveSalePrice === ''
       ? null
       : Number(effectiveSalePrice)
     if ([finalPurchaseCost, finalSalePrice].some(value => value !== null && !Number.isFinite(value))) {
       return ApiResponse.badRequest(res, '价格字段必须是有效数字')
     }
+    const transactionTypeByStatus = {
+      sold: 'retail',
+      peer_transfer: 'wholesale',
+      supplier_proxy: 'supplier_proxy'
+    }
+    const targetSaleType = transactionTypeByStatus[effectiveStatus]
+    const isTransactionTypeChange = Boolean(
+      status && targetSaleType && effectiveStatus !== normalizePhoneStatus(currentPhone.status)
+    )
+
+    if (isTransactionTypeChange) {
+      const requiredPermission = {
+        retail: ['sales:sell', 'business'],
+        wholesale: ['sales:wholesale', 'business'],
+        supplier_proxy: ['sales:proxy-transfer', 'business']
+      }[targetSaleType]
+      const hasTargetPermission = requiredPermission
+        ? await hasUnifiedPermission(req.user, requiredPermission[0], requiredPermission[1])
+        : false
+      const hasInventorySellPermission = targetSaleType === 'retail'
+        ? await hasUnifiedPermission(req.user, 'inventory:sell', 'system')
+        : false
+
+      if (!hasTargetPermission && !hasInventorySellPermission) {
+        return res.status(403).json({
+          success: false,
+          message: '缺少目标交易类型的操作权限',
+          code: 'INSUFFICIENT_PERMISSIONS'
+        })
+      }
+    }
+
+    if (isTransactionTypeChange && effectiveStatus === 'supplier_proxy') {
+      finalSalePrice = 0
+    } else if (isTransactionTypeChange && effectiveStatus === 'peer_transfer' && (!finalSalePrice || finalSalePrice <= 0)) {
+      return ApiResponse.badRequest(res, '转为批发/调货时，批发价格必须大于0')
+    } else if (isTransactionTypeChange && effectiveStatus === 'sold' && (!finalSalePrice || finalSalePrice <= 0)) {
+      return ApiResponse.badRequest(res, '转为销售时，销售价格必须大于0')
+    }
+    const finalTransactionCost = effectiveStatus === 'supplier_proxy'
+      ? 0
+      : finalPurchaseCost
     const normalizedCondition = effectiveCondition === 'new' || effectiveCondition === '全新' ? 'new' : 'used'
 
     const updateValues = [
@@ -897,7 +1023,7 @@ router.put('/:id', unifiedAuth, requireAnyPermission(['phones:edit', 'sales-edit
       storeId,
       normalizedImei,
       normalizedSerialNumber,
-      finalPurchaseCost, // 更新purchase_cost字段（真正的成本价）
+      finalPurchaseCost,
       finalSalePrice,     // 更新sale_price字段（销售价格）
       normalizedCondition === 'new' ? 1 : 0,
       normalizedCondition === 'new' ? 'A' : 'B',
@@ -912,10 +1038,29 @@ router.put('/:id', unifiedAuth, requireAnyPermission(['phones:edit', 'sales-edit
     // 如果提供了status字段，添加到更新值
     if (status) {
       updateValues.push(effectiveStatus)
+      if (targetSaleType) {
+        updateFields.push('wholesale_date = ?', 'wholesale_price = ?')
+        updateValues.push(
+          effectiveStatus === 'peer_transfer' ? effectiveSaleTime : null,
+          effectiveStatus === 'peer_transfer' ? finalSalePrice : 0
+        )
+      }
     }
 
     // 添加id作为最后一个参数
     updateValues.push(id)
+
+    // 锁定并在单一事务内同步设备、销售记录和新类型单号。
+    await ensureInvoiceSequenceTable(connection)
+    await connection.beginTransaction()
+    transactionStarted = true
+    const [lockedPhones] = await connection.execute(
+      'SELECT status FROM phones WHERE id = ? FOR UPDATE',
+      [id]
+    )
+    if (!lockedPhones.length || normalizePhoneStatus(lockedPhones[0].status) !== normalizePhoneStatus(currentPhone.status)) {
+      throw new Error('设备状态已被其他操作修改，请刷新后重试')
+    }
 
     // 执行更新phones表
     const updateSQL = `UPDATE phones SET ${updateFields.join(', ')} WHERE id = ?`
@@ -1082,6 +1227,7 @@ router.put('/:id', unifiedAuth, requireAnyPermission(['phones:edit', 'sales-edit
       'SELECT id, customer_id, operator_id, sale_time, store_id, remarks, invoice_number, sale_price, purchase_cost, sale_type FROM sales WHERE phone_id = ? ORDER BY created_at DESC LIMIT 1',
       [id]
     )
+    let synchronizedSaleId = existingSales[0]?.id || null
 
     // 预定交付后，销售管理或综合查询修改销售员时同步回预定单。
     // 预定页只读这条销售员关系，避免三个页面显示不一致。
@@ -1095,7 +1241,10 @@ router.put('/:id', unifiedAuth, requireAnyPermission(['phones:edit', 'sales-edit
     }
 
     // 🔥 如果提供了客户信息但没有销售记录，创建一条销售记录
-    if ((finalCustomerId || customer_name || customer_phone) && existingSales.length === 0) {
+    if (
+      existingSales.length === 0 && targetSaleType &&
+      (finalCustomerId || customer_name || customer_phone || isTransactionTypeChange)
+    ) {
       log.debug('🔥 没有销售记录但提供了客户信息，创建销售记录')
 
       // 确定销售类型
@@ -1106,38 +1255,8 @@ router.put('/:id', unifiedAuth, requireAnyPermission(['phones:edit', 'sales-edit
       }
       const saleType = statusToSaleType[effectiveStatus] || 'retail'
 
-      // 生成发票号
-      let invoiceNumber
       const saleDate = effectiveSaleTime ?? null
-
-      if (saleDate) {
-        const targetDate = new Date(saleDate)
-        const year = targetDate.getFullYear()
-        const month = String(targetDate.getMonth() + 1).padStart(2, '0')
-        const day = String(targetDate.getDate()).padStart(2, '0')
-        const dateStr = `${year}${month}${day}`
-
-        const typeSuffix = getInvoiceTypeSuffix(saleType)
-
-        const prefixPattern = `${dateStr}%${typeSuffix}`
-        const [rows] = await connection.execute(
-          'SELECT invoice_number FROM sales WHERE invoice_number LIKE ? ORDER BY id DESC LIMIT 1',
-          [prefixPattern]
-        )
-
-        let sequence = 1
-        if (rows.length > 0 && rows[0].invoice_number) {
-          const currentSequenceStr = rows[0].invoice_number.substring(8, 12)
-          const currentSequence = parseInt(currentSequenceStr, 10)
-          if (!isNaN(currentSequence)) {
-            sequence = currentSequence + 1
-          }
-        }
-
-        invoiceNumber = generateInvoiceNumberForDate(saleDate, sequence, saleType)
-      } else {
-        invoiceNumber = await generateInvoiceNumber(saleType, connection)
-      }
+      const invoiceNumber = await generateInvoiceNumber(saleType, connection, saleDate)
 
       // 创建销售记录
       const [insertResult] = await connection.execute(
@@ -1152,22 +1271,24 @@ router.put('/:id', unifiedAuth, requireAnyPermission(['phones:edit', 'sales-edit
           saleOperatorId || null,
           storeId,
           finalSalePrice,
-          finalPurchaseCost || null,
+          finalTransactionCost || null,
           saleDate || null,
           invoiceNumber,
           finalNotes || null
         ]
       )
+      synchronizedSaleId = insertResult.insertId
 
       log.debug(`✅ 创建销售记录成功, ID: ${insertResult.insertId}, customer_id: ${finalCustomerId}, invoice_number: ${invoiceNumber}`)
     } else if (existingSales.length > 0) {
       const existingSale = existingSales[0]
+
       // 存在销售记录，执行更新
       const updateSalesFields = []
       const updateSalesValues = []
 
-      // 🔥 如果发票号为空，自动生成发票号（使用销售时间）
-      if (!existingSale.invoice_number) {
+      // 🔥 如果发票号为空，自动生成发票号（使用销售时间）。类型转换时直接按新类型生成，避免产生无效的旧类型序号。
+      if (!existingSale.invoice_number && !isTransactionTypeChange) {
         const saleType = existingSale.sale_type || 'retail'
         // 使用销售时间，优先使用 phones.sale_time，否则使用销售记录时间
         const saleDate = effectiveSaleTime ?? existingSale.sale_time
@@ -1211,6 +1332,22 @@ router.put('/:id', unifiedAuth, requireAnyPermission(['phones:edit', 'sales-edit
         log.debug(`✅ 自动生成发票号: ${invoiceNumber}, 类型: ${saleType}, 销售日期: ${saleDate || '当前时间'}`)
       }
 
+      if (isTransactionTypeChange) {
+        const convertedInvoiceNumber = await generateInvoiceNumber(
+          targetSaleType,
+          connection,
+          effectiveSaleTime || existingSale.sale_time
+        )
+        updateSalesFields.push('sale_type = ?', 'invoice_number = ?')
+        updateSalesValues.push(targetSaleType, convertedInvoiceNumber)
+        log.info('销售交易类型已转换', {
+          phone_id: Number(id),
+          from: existingSale.sale_type,
+          to: targetSaleType,
+          invoice_number: convertedInvoiceNumber
+        })
+      }
+
       // 同步 customer_id（使用处理后的finalCustomerId）
       if (finalCustomerId !== null && finalCustomerId !== undefined && finalCustomerId !== '') {
         updateSalesFields.push('customer_id = ?')
@@ -1245,7 +1382,7 @@ router.put('/:id', unifiedAuth, requireAnyPermission(['phones:edit', 'sales-edit
 
       // 同步入库成本
       const costValue = effectivePurchaseCost !== null && effectivePurchaseCost !== undefined
-        ? finalPurchaseCost
+        ? finalTransactionCost
         : null
       if (costValue !== null && costValue !== undefined) {
         updateSalesFields.push('purchase_cost = ?')
@@ -1262,7 +1399,7 @@ router.put('/:id', unifiedAuth, requireAnyPermission(['phones:edit', 'sales-edit
         updateSalesValues.push(id)
 
         const [updateSalesResult] = await connection.execute(
-          `UPDATE sales SET ${updateSalesFields.join(', ')} WHERE phone_id = ?`,
+          `UPDATE sales SET ${updateSalesFields.join(', ')} WHERE id = ?`,
           updateSalesValues
         )
 
@@ -1270,37 +1407,15 @@ router.put('/:id', unifiedAuth, requireAnyPermission(['phones:edit', 'sales-edit
       }
     }
 
-    // 根据状态更新销售记录的sale_type
-    if (status !== undefined && status !== null && status !== '') {
-      log.debug('🔄 根据状态更新销售记录的sale_type...')
-
-      // 状态到sale_type的映射
-      const statusToSaleType = {
-        'sold': 'retail',           // 正常零售
-        'peer_transfer': 'wholesale',  // 批发给同行
-        'supplier_proxy': 'supplier_proxy'  // 代供应商划拨
-      }
-
-      const targetSaleType = statusToSaleType[effectiveStatus]
-
-      if (targetSaleType) {
-        // 更新该手机的销售记录中的sale_type
-        const [updateSaleTypeResult] = await connection.execute(
-          `UPDATE sales
-           SET sale_type = ?, updated_at = NOW()
-           WHERE phone_id = ?`,
-          [targetSaleType, id]
-        )
-
-        if (updateSaleTypeResult.affectedRows > 0) {
-          log.debug(`✅ 更新销售记录sale_type成功，影响行数: ${updateSaleTypeResult.affectedRows}, 新sale_type: ${targetSaleType}`)
-        } else {
-          log.debug('ℹ️ 该手机没有销售记录，或无需更新sale_type')
-        }
-      } else {
-        log.debug(`ℹ️ 状态 "${effectiveStatus}" 不需要更新sale_type (在库、预定、维修、丢失等状态)`)
-      }
+    if (synchronizedSaleId) {
+      await connection.execute(
+        'UPDATE phones SET sale_id = ?, sale_operator_id = ? WHERE id = ?',
+        [synchronizedSaleId, saleOperatorId || null, id]
+      )
     }
+
+    await connection.commit()
+    transactionStarted = false
 
     // 获取更新后的完整手机信息
     log.debug(`🔍 查询更新后的手机信息，ID: ${id}`)
@@ -1418,7 +1533,14 @@ router.put('/:id', unifiedAuth, requireAnyPermission(['phones:edit', 'sales-edit
 
     ApiResponse.success(res, updatedPhone, '手机更新成功')
   } catch (error) {
+    if (connection && transactionStarted) {
+      await connection.rollback()
+      transactionStarted = false
+    }
     log.error('更新手机失败:', error)
+    if (error instanceof Error && !error.code) {
+      return ApiResponse.badRequest(res, error.message || '更新手机失败')
+    }
     ApiResponse.serverError(res, '更新手机失败', error)
   } finally {
     if (connection) {

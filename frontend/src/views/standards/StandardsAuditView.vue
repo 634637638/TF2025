@@ -216,6 +216,10 @@
               <div v-else-if="selectedStandard.previewKind === 'dialog'" class="preview-dialog-box">
                 <strong>统一模态框标题</strong>
                 <p>正文区域使用公共间距，底部操作区在手机端居中等分。</p>
+                <div class="tf-dialog-toolbar">
+                  <el-button type="primary" @click="previewDialogAction('上传图片')">上传图片</el-button>
+                  <el-button type="success" @click="previewDialogAction('下载选中')">下载选中</el-button>
+                </div>
                 <div class="tf-dialog-actions preview-dialog-actions">
                   <el-button class="tf-button--neutral" @click="previewDialogAction('取消')">取消</el-button>
                   <el-button type="primary" class="tf-button--save" @click="previewDialogAction('确认')">确认</el-button>

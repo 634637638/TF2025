@@ -81,7 +81,7 @@
 | 销售编辑 | 使用手机规范 payload | 通过 `phones` 映射层写入 | 已完成入口收敛 |
 | 库存编辑 | 使用手机规范 payload | 通过 `phones` 映射层写入 | 已完成入口收敛 |
 | 入库 `stock-in` | 创建、编辑、列表、详情、统计、筛选和分页统一使用 `inventory_time/purchase_cost/remarks/payment_status/page_size/total_pages` 等 snake_case 字段；结算状态读取真实付款状态，二手预定匹配使用真实 `is_new` | `stock_in_date/notes/purchase_price` 及旧分页、筛选、统计响应别名已退役，运行时兼容边界为 0；不存在的 `phones.created_at/updated_at` 不再读写 | 2026-08-27 已完成 986 条真实入库记录的物理列、关联、时间排序、IMEI 唯一性和付款状态只读验证，写操作 0；71 条历史记录缺少有效采购成本，保持真实值且不伪造补值；登录态创建、编辑、删除、自动匹配和权限流程待回归 |
-| 快速出库 `quick-sale` | 使用规范 ID、成本、时间、销售员、支付方式和支付渠道字段；库存列表响应提供规范成本、时间、机况和分页字段；表单内部状态统一为 `purchase_cost`、`inventory_time`、`sale_time` | `brand/model/color/memory/purchase_price/stock_in_date/sale_date/operator_id/customer_idcard` 仅作为已退役的端点参数，不再进入快速出库处理器；`phones` 物理列已迁移 | 已完成真实库 77 条快速出库记录只读验证：销售关联、基础资料关联、成本售价及操作员均通过，写操作为 0；发现 2 条历史手机销售时间与销售表时间不一致，待人工确认，不自动改历史数据；登录态快速出库提交和权限流程待回归 |
+| 快速出库 `quick-sale` | 使用规范 ID、成本、时间、销售员、支付方式和支付渠道字段；库存列表响应提供规范成本、时间、成色和分页字段；表单内部状态统一为 `purchase_cost`、`inventory_time`、`sale_time` | `brand/model/color/memory/purchase_price/stock_in_date/sale_date/operator_id/customer_idcard` 仅作为已退役的端点参数，不再进入快速出库处理器；`phones` 物理列已迁移 | 已完成真实库 77 条快速出库记录只读验证：销售关联、基础资料关联、成本售价及操作员均通过，写操作为 0；发现 2 条历史手机销售时间与销售表时间不一致，待人工确认，不自动改历史数据；登录态快速出库提交和权限流程待回归 |
 | 综合查询 `query` | 筛选、分页、响应分组、列配置、详情弹窗、单据和退库列表统一使用规范字段；数据库查询失败向上返回错误，不再伪装为空选项 | 手机和销售物理列均已迁移；`limit/purchase_price/Inventorytime/salestime/sale_date` 已退役，运行时兼容为 0 | 2026-08-28 已完成 16232 条手机、15471 条销售及真实门店范围的排序、分页和响应只读验证，孤立销售 0、分页重叠 0、旧响应键 0；历史空金额保持 `NULL`；登录态查询、导出、编辑和权限待回归 |
 | 租赁 `rentals` | 合同列表、统计、筛选、客户/设备选项、创建/编辑表单、详情、打印、还款计划和合同附件均接入 `rentals_rentalsview` 字段权限；还款动作归属待付租金列，归还动作归属状态列；请求与分页统一使用 snake_case | 后端按允许字段构造搜索条件，列表/选项/还款响应脱敏，隐藏字段写入返回 `FIELD_PERMISSION_DENIED`；编辑仅动态更新请求中允许的字段；`purchase_cost` 正式纳入租赁字段契约 | 字段权限和静态契约已完成；真实数据库只读物理列此前已验证，本轮未执行登录态创建、编辑、还款、归还或附件写入，标记待验证 |
 | 批发/划拨 `wholesale-transfer` | 提交、表单内部计算、记录/统计筛选和分页统一使用 `sale_time/purchase_cost/wholesale_price/supplier_id/page_size/total_pages/has_next/has_prev`；代划拨按业务规则将入库价、销售价和划拨价统一为 0，逐台写入使用行锁和事务保存点；普通批发继续保留进价、售价和利润 | `wholesale_date` 是独立业务时间字段；真实库不存在 `proxy_supplier_id`，供应商关系统一读取 `phones.supplier_id`；5 个历史业务字段已退役；真实权限表仍有 4 条 `sales_salesview` 记录，仅由全局 `permission-mapping.js` 兼容 | 2026-08-27 已通过事务脚本将 231 台代划拨手机的 `purchase_cost/sale_price/wholesale_price` 和 229 条代划拨销售的 `purchase_cost/sale_price` 全部归零并复核；代划拨三项汇总均为 0，关联缺失和金额不一致均为 0；106 条普通批发金额保持 `739178.00/733328.00/5850.00` 不变；权限表迁移和登录态流程仍待回归 |
@@ -330,7 +330,7 @@ RUN_DB_TESTS=true npm test
 
 - 涉及页面：`frontend/src/views/H5-mobile/page/MyCenter.vue`；涉及接口：`GET /public/auth/sales`；涉及 API：`frontend/src/api/auth.ts`。
 - 响应、API 类型和页面消费统一为 `id/invoice_number/sale_time/sale_price/payment_method/store_name/operator_name/imei/serial_number/product_name/brand_name/model_name/color_name/profit/is_new`；页面购买记录不再使用 `any[]`。
-- `/public/auth/sales` 使用显式列和显式响应映射；销售时间按 `COALESCE(s.sale_time, p.sale_time)` 返回和倒序。缺失金额、门店、操作员、商品和机况保持 `null`，不再伪造成 `0`、`未知...` 或 `二手`。
+- `/public/auth/sales` 使用显式列和显式响应映射；销售时间按 `COALESCE(s.sale_time, p.sale_time)` 返回和倒序。缺失金额、门店、操作员、商品和成色保持 `null`，不再伪造成 `0`、`未知...` 或 `二手`。
 - 2026-08-27 已完成真实库只读验证：`sales` 15471 条均关联客户，有效销售时间缺失 0、孤儿客户关联 0；最大客户样本 202 条，接口上限抽样 100 条倒序正确，写操作 0。
 - `sale_date/salestime` 已退役，运行时兼容字段和兼容边界均为 0。当前有效 H5 客户令牌为 0，因此真实登录态鉴权和浏览器弹窗流程仍待产生有效登录会话后回归。
 

@@ -181,7 +181,7 @@
               v-if="activeSearchField === 'model'"
               class="brand-option-dropdown"
             >
-              <div class="brand-option-list">
+              <div class="brand-option-list tf-dropdown-scroll">
                 <el-button
                   native-type="button"
                   class="brand-option"
@@ -230,7 +230,7 @@
               v-if="activeSearchField === 'color'"
               class="brand-option-dropdown"
             >
-              <div class="brand-option-list">
+              <div class="brand-option-list tf-dropdown-scroll">
                 <el-button
                   native-type="button"
                   class="brand-option"
@@ -279,7 +279,7 @@
               v-if="activeSearchField === 'memory'"
               class="brand-option-dropdown"
             >
-              <div class="brand-option-list">
+              <div class="brand-option-list tf-dropdown-scroll">
                 <el-button
                   native-type="button"
                   class="brand-option"

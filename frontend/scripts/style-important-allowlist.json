@@ -121,11 +121,6 @@
       "reason": "High-contrast mode must add a visible FAB border after the shared FAB contract removes the default border."
     },
     {
-      "file": "src/views/subsidy/components/SubsidyPhotoManageDialog.vue",
-      "max": 32,
-      "reason": "Photo manager overrides teleported dialog and image viewer inline dimensions."
-    },
-    {
       "file": "src/views/inventory/InventoryView.vue",
       "max": 33,
       "reason": "Inventory teleported dialogs and mobile full-screen stock-in layout override global dialog dimensions."
@@ -139,11 +134,6 @@
       "file": "src/views/sales/styles/sales-view-dialogs.scss",
       "max": 29,
       "reason": "Sales teleported dialogs override global dialog dimensions, safe-area spacing and surfaces."
-    },
-    {
-      "file": "src/views/subsidy/SubsidyView.vue",
-      "max": 23,
-      "reason": "Remaining inline Subsidy styles retain dialog and Element Plus overrides not yet migrated into style partials."
     },
     {
       "file": "src/views/subsidy/styles/subsidy/_dashboard.scss",
@@ -162,13 +152,8 @@
     },
     {
       "file": "src/views/subsidy/styles/subsidy/_photo-responsive.scss",
-      "max": 6,
-      "reason": "Subsidy photo preview and QR responsive rules override teleported dialog dimensions."
-    },
-    {
-      "file": "src/views/subsidy/styles/subsidy/_photos.scss",
-      "max": 16,
-      "reason": "Subsidy photo upload and preview styles override the teleported image viewer layout."
+      "max": 1,
+      "reason": "Legacy subsidy amount input width override in the responsive form layout."
     },
     {
       "file": "src/views/payments/styles/supplier-phone-payments/_form-controls.scss",
@@ -192,8 +177,8 @@
     },
     {
       "file": "src/components/query/QueryEditModal.vue",
-      "max": 16,
-      "reason": "Query editor fixed label widths, teleported dialog surface and compact input actions override shared contracts."
+      "max": 5,
+      "reason": "Query editor teleported dialog surface and compact input actions override shared contracts."
     },
     {
       "file": "src/components/MobileDialog.vue",
@@ -372,8 +357,8 @@
     },
     {
       "file": "src/views/subsidy/components/SubsidyApplyDialog.vue",
-      "max": 4,
-      "reason": "Teleported date poppers must layer above the subsidy dialog and inputs must fill their grid cell."
+      "max": 1,
+      "reason": "Element Plus numeric inputs fill the subsidy form grid cell."
     },
     {
       "file": "src/views/suppliers/SuppliersView.vue",
@@ -389,6 +374,11 @@
       "file": "src/views/system/phone-warning-config/PhoneWarningConfigView.vue",
       "max": 2,
       "reason": "Element Plus dialog and form label inline widths require mobile viewport overrides."
+    },
+    {
+      "file": "src/views/subsidy/SubsidyView.vue",
+      "max": 3,
+      "reason": "Selected and pinned subsidy table row backgrounds override Element Plus row states; dialog shell uses shared styles."
     }
   ]
 }

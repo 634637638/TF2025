@@ -141,8 +141,8 @@
         </el-table-column>
         <el-table-column
           v-if="canViewField('condition')"
-          label="机况"
-          :min-width="getColumnWidth('condition', '机况', 64)"
+          label="成色"
+          :min-width="getColumnWidth('condition', '成色', 64)"
           align="center"
         >
           <template #default="{ row: phone }">

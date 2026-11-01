@@ -271,14 +271,14 @@
               </el-select>
             </div>
 
-            <!-- 机况 -->
+            <!-- 成色 -->
             <div
               class="form-group filter-item"
               data-field="condition"
             >
               <el-select
                 v-model="filters.is_new"
-                placeholder="机况"
+                placeholder="成色"
                 filterable
                 clearable
                 @change="triggerLoadQueryData"
@@ -346,6 +346,7 @@
             <div class="table-responsive">
               <el-table
                 v-tf-loading="loading"
+                v-table-double-tap="{ enabled: windowWidth <= 1024, getRowKey: getQueryTapRowKey, onDoubleTap: handleQueryRowDoubleTap }"
                 :data="queryData"
                 border
                 stripe
@@ -354,7 +355,6 @@
                 :fit="true"
                 :row-key="getQueryRowKey"
                 :row-class-name="getQueryRowClassName"
-                @row-click="handleRowTap"
                 @row-dblclick="handleRowDoubleClick"
               >
                 <el-table-column
@@ -833,51 +833,15 @@ const windowWidth = computed(() => (
 const showDetailModal = ref(false)
 const detailItem = ref<QueryItem | null>(null)
 
-// 触摸事件相关状态（用于移动端双击检测）
-const touchTimers = ref<Map<string, ReturnType<typeof setTimeout>>>(new Map())
-const lastTapTime = ref<Map<string, number>>(new Map())
-
-// Element Plus 表格不会在移动端可靠触发 dblclick，使用两次 row-click 模拟双击。
-const handleRowTap = (item: QueryItem, _column: unknown, event: MouseEvent) => {
-  if (windowWidth.value > 1024) return
-
-  const target = event.target as HTMLElement | null
-  if (target?.closest('button, a, input, select, textarea, .actions-cell')) return
-
-  const rowKey = String(item.基本信息?.phone_id ?? item.基本信息?.imei ?? JSON.stringify(item))
-  const now = Date.now()
-  const lastTime = lastTapTime.value.get(rowKey) || 0
-  const timeDiff = now - lastTime
-
-  // 清除之前的定时器
-  const existingTimer = touchTimers.value.get(rowKey)
-  if (existingTimer) {
-    clearTimeout(existingTimer)
-    touchTimers.value.delete(rowKey)
-  }
-
-  // 手机端点击事件可能略有延迟，400ms 内点击同一行视为双击。
-  if (timeDiff <= 400 && timeDiff > 0) {
-    // 双击触发
-    handleRowDoubleClick(item)
-    lastTapTime.value.delete(rowKey)
-  } else {
-    // 单击：等待可能的双击
-    const timer = setTimeout(() => {
-      // 超时后视为单击，可以做单击处理（如果需要）
-      lastTapTime.value.delete(rowKey)
-      touchTimers.value.delete(rowKey)
-    }, 400)
-    touchTimers.value.set(rowKey, timer)
-  }
-
-  lastTapTime.value.set(rowKey, now)
+const getQueryTapRowKey = (rowIndex: number) => {
+  const row = queryData.value[rowIndex]
+  return row ? getQueryRowKey(row) : undefined
 }
 
-// 添加窗口大小监听
-watch(() => windowWidth.value, () => {
-  // 可以在这里添加额外的响应式逻辑
-})
+const handleQueryRowDoubleTap = (rowIndex: number) => {
+  const row = queryData.value[rowIndex]
+  if (row) handleRowDoubleClick(row)
+}
 
 watch(showReturnModal, (visible) => {
   if (!visible) {
@@ -2216,7 +2180,7 @@ const handleRowDoubleClick = (item: QueryItem) => {
   }
 }
 
-// 双击全新机或二手机的机况单元格，打开图片/视频管理
+// 双击全新机或二手机的成色单元格，打开图片/视频管理
 const handleMediaDoubleClick = async (item: QueryItem) => {
   const basicInfo = item.基本信息 || {} as QueryItem['基本信息']
 
@@ -2501,7 +2465,7 @@ const tableColumns = computed(() => {
     { 'key': 'customer_info.apple_id', label: 'Apple ID', field: '客户信息', prop: 'apple_id' },
     { key: 'operator_info.inventory_operator', label: '入库员', field: '操作员信息', prop: 'inventory_operator_name' },
     { key: 'operator_info.sale_operator', label: '销售员', field: '操作员信息', prop: 'sale_operator_name' },
-    { key: 'basic_info.is_new', label: '机况', field: '基本信息', prop: 'is_new' },
+    { key: 'basic_info.is_new', label: '成色', field: '基本信息', prop: 'is_new' },
     { key: 'basic_info.status', label: '状态', field: '基本信息', prop: 'status' },
     { key: 'system_info.operations', label: '操作', field: '系统信息', prop: 'operations' }
   ]
@@ -2702,10 +2666,6 @@ onUnmounted(() => {
     clearTimeout(debounceTimer)
   }
 
-  // 清理所有触摸定时器
-  touchTimers.value.forEach(timer => clearTimeout(timer))
-  touchTimers.value.clear()
-  lastTapTime.value.clear()
 })
 </script>
 
@@ -3055,7 +3015,7 @@ select.form-control {
   display: inline-block;
 }
 
-/* 机况标签样式 */
+/* 成色标签样式 */
 .badge-new,
 .badge-used {
   display: inline-block;
@@ -3179,7 +3139,7 @@ select.form-control {
   display: inline-block;
 }
 
-/* 机况标签样式 */
+/* 成色标签样式 */
 .badge-new,
 .badge-used {
   display: inline-block;

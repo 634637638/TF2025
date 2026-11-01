@@ -208,10 +208,10 @@
                   <span class="float-right text-secondary text-xs">new_phones</span>
                 </el-option>
                 <el-option
-                  label="二手机"
+                  label="工作机"
                   value="used_phones"
                 >
-                  <span>二手机</span>
+                  <span>工作机</span>
                   <span class="float-right text-secondary text-xs">used_phones</span>
                 </el-option>
                 <el-option
@@ -645,7 +645,7 @@ const selectedTemplate = ref<string>('')
 const sectionTemplates: Record<string, { name: string; icon: string; key: string }> = {
   hot_recommend: { name: '热门推荐', icon: 'fas fa-fire', key: 'hot_recommend' },
   new_phones: { name: '全新机', icon: 'fas fa-mobile-alt', key: 'new_phones' },
-  used_phones: { name: '二手机', icon: 'fas fa-recycle', key: 'used_phones' },
+  used_phones: { name: '工作机', icon: 'fas fa-recycle', key: 'used_phones' },
   quality_used: { name: '原装靓机', icon: 'fas fa-certificate', key: 'quality_used' },
   new_arrivals: { name: '新品上架', icon: 'fas fa-star', key: 'new_arrivals' },
   flash_sale: { name: '限时特惠', icon: 'fas fa-bolt', key: 'flash_sale' },

@@ -476,7 +476,7 @@ class QueryService {
       颜色: item?.basic_info?.color || '',
       内存: item?.basic_info?.memory || '',
       新旧: item?.basic_info?.is_new === 1 ? '全新' : item?.basic_info?.is_new === 0 ? '二手' : '',
-      机况: item?.basic_info?.quality_grade || '',
+      成色: item?.basic_info?.quality_grade || '',
       状态: item?.basic_info?.status || '',
       备注: item?.basic_info?.remarks || '',
       供应商: item?.supplier_info?.supplier_name || '',

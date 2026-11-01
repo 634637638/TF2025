@@ -49,6 +49,22 @@ requireToken(customerNameLockSource, 'aria-label="保存姓名并重新锁定"',
 requireToken(customerSearchSource, 'class="customer-search-dropdown"', 'src/components/common/CustomerSearchDropdown.vue', '客户检索必须使用公共下拉容器')
 requireToken(customerSearchSource, 'customer-search-dropdown__item', 'src/components/common/CustomerSearchDropdown.vue', '客户检索结果必须使用公共结果项布局')
 requireToken(customerSearchSource, 'createMinQueryLength', 'src/components/common/CustomerSearchDropdown.vue', '客户检索必须区分检索门槛和新增客户门槛')
+const customerDropdownLayout = customerSearchSource.match(/\.customer-search-dropdown\s*\{([^{}]*)\}/)?.[1] || ''
+const customerDropdownItem = customerSearchSource.match(/\.customer-search-dropdown\s+\.el-button\.customer-search-dropdown__item\s*\{([^{}]*)\}/)?.[1] || ''
+const customerDropdownContent = customerSearchSource.match(/\.customer-search-dropdown\s+\.el-button\.customer-search-dropdown__item\s+:deep\(>\s*span\)\s*\{([^{}]*)\}/)?.[1] || ''
+if (!/grid-auto-rows\s*:\s*max-content\s*;/.test(customerDropdownLayout)
+  || !/gap\s*:\s*var\(--tf-space-1\)\s*;/.test(customerDropdownLayout)
+  || !/padding\s*:\s*var\(--tf-space-1\)\s*;/.test(customerDropdownLayout)
+  || !/border\s*:\s*1px\s+solid\s+var\(--admin-table-panel-border\)\s*;/.test(customerDropdownLayout)
+  || !/height\s*:\s*auto\s*;/.test(customerDropdownItem)
+  || !/margin\s*:\s*0\s*;/.test(customerDropdownItem)
+  || !/width\s*:\s*100%\s*;/.test(customerDropdownContent)
+  || /border-bottom\s*:/.test(customerDropdownItem)) {
+  findings.push('src/components/common/CustomerSearchDropdown.vue 客户检索结果必须保留自适应高度、普通面板边框、完整包围的容器留白、独立间距及全宽内容，容器不得增加聚焦色包围')
+}
+if (!/\.customer-search-dropdown\s+\.el-button\.customer-search-dropdown__item:not\(:disabled\):is\(:hover,\s*:focus-visible\)\s*\{[^{}]*box-shadow\s*:\s*var\(--tf-shadow-dropdown-option\)/.test(stylesSource)) {
+  findings.push('src/styles.scss 客户检索结果必须仅在悬停或键盘焦点时复用公共下拉包围令牌，避免全部结果常驻加圈')
+}
 requireToken(customerOptionsSource, 'CUSTOMER_SEARCH_PAGE_SIZE = 50', 'src/services/customer-options.ts', '客户检索条数必须由公共常量统一维护')
 requireToken(exemptionsSource, 'EX-UI-001', 'docs/frontend/standards-exemptions.md', '客户检索自适应结果项必须登记为公共豁免')
 if (/<span>\s*(?:已锁定|保存)\s*<\/span>/.test(customerNameLockSource)) {

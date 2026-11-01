@@ -35,7 +35,7 @@ export interface Preorder {
   color_name?: string
   memory_id?: number
   memory_size?: string
-  is_new?: number // 机况: 1=全新, 0=二手
+  is_new?: number // 成色: 1=全新, 0=二手
   expected_arrival?: string
   total_price?: number
   deposit_amount: number
@@ -75,7 +75,7 @@ export interface CreatePreorderParams {
   model_id: number
   color_id: number
   memory_id: number
-  is_new?: number // 机况: 1=全新, 0=二手
+  is_new?: number // 成色: 1=全新, 0=二手
   total_price?: number
   deposit_amount: number
   remarks?: string

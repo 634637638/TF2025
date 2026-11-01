@@ -203,17 +203,23 @@ interface LongInventoryQueryParams {
   model_id?: number
   color_id?: number
   memory_id?: number
+  is_new?: 0 | 1
+  purchase_cost?: number | 'null'
 }
 
 // Props
 interface Props extends ModelValueProps {
   product?: Product
   queryToken?: string
+  isNew?: boolean
+  purchaseCost?: number | null
 }
 
 const props = withDefaults(defineProps<Props>(), {
   modelValue: false,
   queryToken: '',
+  isNew: true,
+  purchaseCost: null,
   product: () => ({
     brand_id: undefined,
     model_id: undefined,
@@ -262,10 +268,15 @@ const loadData = async () => {
       brand_id: props.product.brand_id,
       model_id: props.product.model_id,
       color_id: props.product.color_id,
-      memory_id: props.product.memory_id
+      memory_id: props.product.memory_id,
+      is_new: props.isNew ? 1 : 0,
+      ...(!props.isNew
+        ? { purchase_cost: props.purchaseCost === null ? 'null' : props.purchaseCost }
+        : {})
     }
 
-    if (Object.values(params).some(id => !Number.isSafeInteger(Number(id)) || Number(id) <= 0)) {
+    const requiredSpecIds = [params.brand_id, params.model_id, params.color_id, params.memory_id]
+    if (requiredSpecIds.some(id => !Number.isSafeInteger(Number(id)) || Number(id) <= 0)) {
       inventoryData.value = []
       ElMessage.error('当前报价缺少完整规格，无法查询在库明细')
       return

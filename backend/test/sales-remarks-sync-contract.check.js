@@ -39,5 +39,5 @@ test('phone editing keeps the canonical remark and synchronizes sales records', 
 
   assert.match(handler, /const finalNotes = valueOrCurrent\(remarks, currentPhone\.remarks\) \?\? ''/)
   assert.match(handler, /remarks = \?/)
-  assert.match(handler, /UPDATE sales SET \$\{updateSalesFields\.join\(', '\)\} WHERE phone_id = \?/)
+  assert.match(handler, /UPDATE sales SET \$\{updateSalesFields\.join\(', '\)\} WHERE id = \?/)
 })

@@ -69,6 +69,7 @@
           :can-delete="canDelete"
           :can-edit="canEdit"
           :columns="tableColumns"
+          :enable-row-double-tap="windowWidth <= 1024"
           :format-date="formatDate"
           :format-number="formatNumber"
           :get-column-class="getInventoryColumnClass"
@@ -85,7 +86,6 @@
           @edit="editItem"
           @pagination-change="handlePaginationChange"
           @quick-sale="quickSaleItem"
-          @row-tap="handleInventoryRowTap"
           @view="viewDetails"
         />
 
@@ -220,51 +220,12 @@ const exporting = ref(false)
 // 搜索相关状态
 const searchExpanded = ref(false) // 搜索区域展开状态（移动端默认折叠）
 
-// 触摸事件相关状态（用于移动端双击检测）
-const touchTimers = ref<Map<string, ReturnType<typeof setTimeout>>>(new Map())
-const lastTapTime = ref<Map<string, number>>(new Map())
-
 // 统一使用全局移动端状态，避免桌面书签 / 独立窗口和普通浏览器判断不一致
 const windowWidth = computed(() => (
   mobileDetection.isMobile
     ? Math.min(mobileDetection.deviceState.screenWidth, 768)
     : mobileDetection.deviceState.screenWidth
 ))
-
-// Element Plus 表格在移动端不会可靠触发 dblclick，使用两次 row-click 模拟双击。
-const handleInventoryRowTap = (item: InventoryItem, _column: unknown, event: MouseEvent) => {
-  if (windowWidth.value > 1024) return
-
-  const target = event.target as HTMLElement | null
-  if (target?.closest('button, a, input, select, textarea, .action-buttons')) return
-
-  const rowKey = String(item.id ?? item.imei ?? item.serial_number)
-  const now = Date.now()
-  const lastTime = lastTapTime.value.get(rowKey) || 0
-  const timeDiff = now - lastTime
-
-  // 清除之前的定时器
-  const existingTimer = touchTimers.value.get(rowKey)
-  if (existingTimer) {
-    clearTimeout(existingTimer)
-    touchTimers.value.delete(rowKey)
-  }
-
-  // 手机端点击事件可能略有延迟，400ms 内点击同一行视为双击。
-  if (timeDiff <= 400 && timeDiff > 0) {
-    viewDetails(item)
-    lastTapTime.value.delete(rowKey)
-  } else {
-    // 单击：等待可能的双击
-    const timer = setTimeout(() => {
-      lastTapTime.value.delete(rowKey)
-      touchTimers.value.delete(rowKey)
-    }, 400)
-    touchTimers.value.set(rowKey, timer)
-  }
-
-  lastTapTime.value.set(rowKey, now)
-}
 
 const inventoryFieldMap: Record<string, string> = {
   stats_total_phones: 'stats.total_phones',
@@ -325,7 +286,7 @@ const tableColumns = computed(() => {
     { key: 'imei', label: 'IMEI' },
     { key: 'purchase_cost', label: '入库价格' },
     { key: 'inventory_operator_name', label: '入库员' },
-    { key: 'is_new', label: '机况' },
+    { key: 'is_new', label: '成色' },
     { key: 'is_preordered', label: '状态' },
     { key: 'inventory_time', label: '入库时间' },
     { key: 'actions', label: '操作' }
@@ -741,12 +702,12 @@ const _sortInventoryData = (data: InventoryItem[]): InventoryItem[] => {
       return brandWeightA - brandWeightB
     }
 
-    // 2. 品牌相同，按机况排序（全新在前，二手在后）
+    // 2. 品牌相同，按成色排序（全新在前，二手在后）
     if (conditionA !== conditionB) {
       return conditionA === '全新' ? -1 : 1
     }
 
-    // 3. 机况相同，按型号系列号从小到大排序
+    // 3. 成色相同，按型号系列号从小到大排序
     const seriesA = extractSeriesNumber(modelA)
     const seriesB = extractSeriesNumber(modelB)
     if (seriesA !== seriesB) {
@@ -1525,11 +1486,6 @@ onActivated(() => {
 
 // 清理监听器
 onUnmounted(() => {
-  // 清理所有触摸定时器
-  touchTimers.value.forEach(timer => clearTimeout(timer))
-  touchTimers.value.clear()
-  lastTapTime.value.clear()
-
   if (basicDataWarmupTimer) {
     clearTimeout(basicDataWarmupTimer)
   }
@@ -1576,10 +1532,7 @@ const _handleSelect = (item: InventoryItem) => {
 
 /* 序列号和IMEI行容器 */
 .inventory-edit-serial-imei-row {
-  grid-column: span 3;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
+  display: contents;
 }
 
 .inventory-edit-price-field {
@@ -1695,31 +1648,40 @@ const _handleSelect = (item: InventoryItem) => {
   }
 
   .inventory-edit-summary-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 10px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--tf-space-2);
     margin-bottom: 12px;
   }
 
   .inventory-edit-form-shell {
-    padding: 12px 10px;
+    padding: var(--tf-space-3) var(--tf-space-2);
     border-radius: 12px;
   }
 
   .inventory-edit-form-grid {
-    grid-template-columns: minmax(0, 0.92fr) minmax(0, 0.92fr) minmax(118px, 1.16fr);
-    gap: 10px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--tf-space-2);
   }
 
   .inventory-edit-serial-imei-row {
-    grid-column: span 3;
+    grid-column: span 2;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--tf-space-2);
   }
 
   .inventory-edit-price-field {
     grid-column: span 1;
+    order: 1;
+  }
+
+  .inventory-edit-status-field {
+    order: 1;
   }
 
   .inventory-edit-remarks-field {
-    grid-column: span 3;
+    grid-column: span 2;
+    order: 2;
   }
 
   .inventory-edit-price-input {
@@ -1744,16 +1706,16 @@ const _handleSelect = (item: InventoryItem) => {
 
 @media (max-width: 479px) {
   .inventory-edit-summary-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
   }
 
   .inventory-edit-form-shell {
-    padding: 10px 8px;
+    padding: var(--tf-space-2);
   }
 
   .inventory-edit-form-grid {
-    grid-template-columns: minmax(0, 0.88fr) minmax(0, 0.88fr) minmax(112px, 1.24fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .inventory-edit-price-input {
@@ -1777,18 +1739,18 @@ const _handleSelect = (item: InventoryItem) => {
     right: 14px !important;
   }
 
-  /* 手机端：保持3列布局，但序列号和IMEI占据2列 */
+  /* 超窄手机也保持两列，字段内容通过最小宽度和换行保持完整。 */
   .inventory-edit-form-grid {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 8px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--tf-space-2);
   }
 
-  /* 序列号和IMEI行占据3列，内部分成两个字段 */
+  /* 序列号和IMEI各占一列。 */
   .inventory-edit-serial-imei-row {
-    grid-column: span 3;
+    grid-column: span 2;
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 8px;
+    gap: var(--tf-space-2);
   }
 
   .inventory-edit-price-field {
@@ -1796,7 +1758,7 @@ const _handleSelect = (item: InventoryItem) => {
   }
 
   .inventory-edit-remarks-field {
-    grid-column: span 3;
+    grid-column: span 2;
   }
 }
 
@@ -3241,7 +3203,7 @@ const _handleSelect = (item: InventoryItem) => {
     background: white;
   }
 
-  /* 机况徽章 */
+  /* 成色徽章 */
   .condition-badge {
     font-size: var(--tf-type-scale-11);
     padding: 3px 8px;

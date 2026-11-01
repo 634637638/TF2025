@@ -8,6 +8,8 @@ const adminLayoutSource = readFileSync(join(root, 'src/styles/admin-layout.css')
 const tableStyleSource = readFileSync(join(root, 'src/styles/components/_table.scss'), 'utf8')
 const mainSource = readFileSync(join(root, 'src/main.ts'), 'utf8')
 const tableDragSource = readFileSync(join(root, 'src/utils/admin-table-drag-scroll.ts'), 'utf8')
+const directivesSource = readFileSync(join(root, 'src/directives/index.ts'), 'utf8')
+const tableDoubleTapSource = readFileSync(join(root, 'src/directives/table-double-tap.ts'), 'utf8')
 const standardsViewSource = readFileSync(join(root, 'src/views/standards/StandardsAuditView.vue'), 'utf8')
 
 function walk(directory, files = []) {
@@ -29,6 +31,28 @@ const auditedViewTableFiles = new Set()
 const auditedComponentTableFiles = new Set()
 let auditedTableCount = 0
 let auditedOperationColumnCount = 0
+
+if (!/app\.directive\(['"]table-double-tap['"],\s*vTableDoubleTap\)/.test(directivesSource)
+  || !/import\s*\{\s*vTableDoubleTap\s*\}\s*from\s*['"]\.\/table-double-tap['"]/.test(directivesSource)) {
+  findings.push('src/directives/index.ts 必须全局注册公共 v-table-double-tap，手机端双击不得依赖浏览器兼容 click')
+}
+if (!/if\s*\(event\.cancelable\)\s*event\.preventDefault\(\)/.test(tableDoubleTapSource)
+  || !/addEventListener\(['"]touchend['"],\s*handleTouchEnd,\s*\{\s*passive:\s*false\s*\}/.test(tableDoubleTapSource)) {
+  findings.push('src/directives/table-double-tap.ts 确认双击时必须抑制兼容点击，避免点击穿透新弹窗遮罩')
+}
+
+for (const file of ['src/views/query/QueryView.vue', 'src/views/inventory/page/InventoryTable.vue']) {
+  const source = readFileSync(join(root, file), 'utf8')
+  if (!/<el-table(?=\s|>)[\s\S]*?\bv-table-double-tap\s*=/.test(source)) {
+    findings.push(`${file} 手机端行双击必须接入公共 v-table-double-tap`)
+  }
+}
+for (const file of ['src/views/query/QueryView.vue', 'src/views/inventory/InventoryView.vue']) {
+  const source = readFileSync(join(root, file), 'utf8')
+  if (/\b(?:touchTimers|lastTapTime|handleRowTap|handleInventoryRowTap)\b/.test(source)) {
+    findings.push(`${file} 不得恢复私有行点击计时逻辑，必须复用公共 v-table-double-tap`)
+  }
+}
 
 const standardsTableRequirements = [
   [/class=["'][^"']*data-table[^"']*admin-data-table/, '规范与审计标杆页预览表格必须同时接入 data-table 和 admin-data-table'],
@@ -82,7 +106,7 @@ const publicStyleRequirements = [
   [/height:\s*var\(--admin-data-table-row-height\)\s*!important/i, '公共行高必须读取 --admin-data-table-row-height'],
   [/background:\s*var\(--admin-data-table-row-hover-bg\)\s*!important/i, '公共悬停颜色必须读取 --admin-data-table-row-hover-bg'],
   [/background:\s*var\(--admin-data-table-row-selected-bg\)\s*!important/i, '公共选中颜色必须读取 --admin-data-table-row-selected-bg'],
-  [/:is\(\.data-table\.el-table, \.devices-table\.el-table, \.admin-data-table\.el-table\) \.condition-badge[\s\S]{0,500}?height:\s*var\(--admin-data-table-badge-height\)\s*!important/i, '公共表格机况徽章必须使用统一高度'],
+  [/:is\(\.data-table\.el-table, \.devices-table\.el-table, \.admin-data-table\.el-table\) \.condition-badge[\s\S]{0,500}?height:\s*var\(--admin-data-table-badge-height\)\s*!important/i, '公共表格成色徽章必须使用统一高度'],
   [/:is\(\.data-table\.el-table, \.devices-table\.el-table, \.admin-data-table\.el-table\) \.status-badge[\s\S]{0,800}?padding:\s*0 var\(--admin-data-table-badge-padding-x\)\s*!important/i, '公共表格状态徽章必须使用统一内边距'],
   [/:is\(\.data-table\.el-table, \.devices-table\.el-table, \.admin-data-table\.el-table\) \.id-badge[\s\S]*?height:\s*var\(--admin-data-table-badge-height\)\s*!important/i, '公共表格序号徽章必须使用统一高度']
 ]

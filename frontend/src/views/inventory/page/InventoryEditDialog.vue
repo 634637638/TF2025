@@ -151,12 +151,12 @@
             />
           </div>
 
-          <!-- 机况 -->
+          <!-- 成色 -->
           <div v-if="canViewField('is_new')">
-            <label class="form-label">机况</label>
+            <label class="form-label">成色</label>
             <el-select
               v-model="editForm.condition"
-              placeholder="选择机况"
+              placeholder="选择成色"
               filterable
               reserve-keyword
               default-first-option
@@ -177,7 +177,7 @@
             </el-select>
           </div>
 
-          <div>
+          <div class="inventory-edit-status-field">
             <label class="form-label">状态</label>
             <el-select
               v-model="editForm.status"

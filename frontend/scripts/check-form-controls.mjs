@@ -8,7 +8,26 @@ const sharedFormControlsPath = join(sourceRoot, 'styles/components/_form-control
 const sharedFormControls = readFileSync(sharedFormControlsPath, 'utf8')
 const variablesSource = readFileSync(join(sourceRoot, 'styles/_variables.scss'), 'utf8')
 const globalStylesSource = readFileSync(join(sourceRoot, 'styles.scss'), 'utf8')
+const scrollbarStylesSource = readFileSync(join(sourceRoot, 'styles/components/_scrollbars.scss'), 'utf8')
 const sharedFormControlsRelativePath = relative(root, sharedFormControlsPath)
+for (const relativeFile of [
+  'src/views/subsidy/components/SubsidyApplyDialog.vue',
+  'src/views/subsidy/styles/subsidy/_application-form.scss'
+]) {
+  const source = readFileSync(join(root, relativeFile), 'utf8')
+  const styles = relativeFile.endsWith('.vue')
+    ? [...source.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi)].map(match => match[1]).join('\n')
+    : source
+  if (/\bhas-value\b/.test(source)) {
+    findings.push(`${relativeFile} 不得按是否填写切换普通输入框边框颜色，必须使用公共控件状态`)
+  }
+  for (const [, selector, body] of styles.matchAll(/([^{}]+)\{([^{}]*)\}/gs)) {
+    if (/(?:search-input-lg|form-input-inline|el-input__wrapper)/.test(selector)
+      && /(?:^|[;\s])(?:border(?:-color|-width)?|box-shadow|background(?:-color)?)\s*:/.test(body)) {
+      findings.push(`${relativeFile} 不得为申请输入框重复绘制边框、背景或阴影，统一由 _form-controls.scss 维护`)
+    }
+  }
+}
 const publicControlSizeFiles = new Set([
   sharedFormControlsRelativePath,
   'src/styles/components/_table.scss',
@@ -88,6 +107,48 @@ if (!/--input-height-default\s*:\s*30px\s*;/.test(variablesSource)
   || !/--mobile-control-height\s*:\s*30px\s*;/.test(globalStylesSource)
   || !/@media\s*\(max-width:\s*479px\)[\s\S]*?--mobile-control-height\s*:\s*30px\s*;/.test(globalStylesSource)) {
   findings.push('普通表单控件在 PC、移动端和超窄屏的全局高度令牌必须统一为 30px')
+}
+
+// 下拉选项的包围效果只在公共样式维护，禁用选项不得出现交互外圈。
+const dropdownOptionRule = globalStylesSource.match(/\.el-select-dropdown\s+\.el-select-dropdown__item:not\(\.is-disabled\):is\(:hover,\s*\.is-hovering\),\s*\.customer-search-dropdown\s+\.el-button\.customer-search-dropdown__item:not\(:disabled\):is\(:hover,\s*:focus-visible\)\s*\{([^{}]*)\}/)
+if (!dropdownOptionRule
+  || !/border-radius\s*:\s*var\(--tf-radius-control\)/.test(dropdownOptionRule[1])
+  || !/box-shadow\s*:\s*var\(--tf-shadow-dropdown-option\)/.test(dropdownOptionRule[1])
+  || !/--tf-shadow-dropdown-option\s*:\s*inset\s+0\s+0\s+0\s+1px\s+var\(--tf-form-control-focus-color\)\s*;/.test(variablesSource)) {
+  findings.push('公共下拉选项和客户检索结果必须仅在悬停或键盘定位时使用输入框聚焦色的 1px 内嵌包围，禁用项及仅选中状态不常驻加圈')
+}
+
+const highlightedDropdownPanels = [...globalStylesSource.matchAll(/([^{}]+)\{([^{}]*)\}/g)].filter(([, selector, body]) =>
+  /el-select-dropdown|el-popper/.test(selector)
+  && !selector.includes('el-select-dropdown__item')
+  && /var\(--tf-(?:form-control-focus-(?:color|ring)|shadow-dropdown-option)\)/.test(body)
+)
+if (highlightedDropdownPanels.length
+  || !/\.el-select-dropdown\s*\{[^{}]*border\s*:\s*0\s*!important\s*;/.test(globalStylesSource)) {
+  findings.push('下拉大面板及箭头不得增加聚焦色包围，内部 el-select-dropdown 不得重复绘制面板边框')
+}
+
+const dropdownScrollRoots = [
+  '.el-select__popper', '.el-select-dropdown', '.el-cascader__dropdown',
+  '.el-autocomplete-suggestion', '.el-picker__popper', '.el-dropdown__popper',
+  '.tf-dropdown-scroll'
+]
+if (!globalStylesSource.includes("@use './styles/components/_scrollbars.scss' as *;")) {
+  findings.push('全局样式必须加载公共滚动条入口 _scrollbars.scss')
+}
+if (!dropdownScrollRoots.every(selector => scrollbarStylesSource.includes(selector))
+  || !/\.el-scrollbar__wrap\s*\{[^{}]*scrollbar-width\s*:\s*none\s*;/.test(scrollbarStylesSource)
+  || !/&::\-webkit-scrollbar,\s*&::\-webkit-scrollbar-button\s*\{[^{}]*display\s*:\s*none\s*;/.test(scrollbarStylesSource)
+  || !/\.el-scrollbar__bar\s*\{[^{}]*display\s*:\s*none\s*;/.test(scrollbarStylesSource)
+  || /overflow(?:-y)?\s*:\s*(?:hidden|clip)\s*[;!]/.test(scrollbarStylesSource)) {
+  findings.push('下拉列表必须通过公共样式隐藏原生及 Element Plus 可见滚动条，并保留滚轮、触摸和键盘滚动，禁止裁断滚动容器')
+}
+
+const mobileHomeSource = readFileSync(join(sourceRoot, 'views/H5-mobile/page/MobileHome.vue'), 'utf8')
+for (const [, classes] of mobileHomeSource.matchAll(/class=["']([^"']*\bbrand-option-list\b[^"']*)["']/g)) {
+  if (!classes.split(/\s+/).includes('tf-dropdown-scroll')) {
+    findings.push('商城首页的自定义筛选下拉必须通过 tf-dropdown-scroll 接入公共滚动条规则')
+  }
 }
 
 function walk(directory, files = []) {
@@ -208,6 +269,9 @@ for (const file of walk(sourceRoot)) {
   nativeDateCount += counts.date
   nativeNumberCount += counts.number
   nativeTextCount += counts.nativeText
+  if (/<template\s+(?:#prepend|v-slot:prepend)\s*>\s*(?:¥|￥|&yen;|&#165;|&#x0*a5;)\s*<\/template>/i.test(source)) {
+    findings.push(`${relativeFile} 金额符号必须放在 el-input 的 prefix 插槽内，不得用 prepend 创建独立外置区域`)
+  }
   if (nativeTextareas > 0) {
     findings.push(`${relativeFile} 仍使用 ${nativeTextareas} 个原生 textarea，必须迁移到 el-input type="textarea"`)
   }

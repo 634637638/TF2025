@@ -3,7 +3,8 @@ html,
 body,
 #app,
 .public-price-query,
-.customer-search-dropdown {
+.customer-search-dropdown,
+.tf-dropdown-scroll {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
@@ -13,8 +14,36 @@ body::-webkit-scrollbar,
 #app::-webkit-scrollbar,
 .public-price-query::-webkit-scrollbar,
 .customer-search-dropdown::-webkit-scrollbar,
-.customer-search-dropdown::-webkit-scrollbar-button {
+.customer-search-dropdown::-webkit-scrollbar-button,
+.tf-dropdown-scroll::-webkit-scrollbar,
+.tf-dropdown-scroll::-webkit-scrollbar-button {
   display: none;
   width: 0;
   height: 0;
+}
+
+/* 下拉列表隐藏原生和 Element Plus 可见滚动条，保留原有滚动容器。 */
+:is(
+  .el-select__popper,
+  .el-select-dropdown,
+  .el-cascader__dropdown,
+  .el-autocomplete-suggestion,
+  .el-picker__popper,
+  .el-dropdown__popper
+) {
+  .el-scrollbar__wrap {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar,
+    &::-webkit-scrollbar-button {
+      display: none;
+      width: 0;
+      height: 0;
+    }
+  }
+
+  .el-scrollbar__bar {
+    display: none;
+  }
 }
