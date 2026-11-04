@@ -159,7 +159,6 @@ const handleSortOrderChange = () => {
 
 .drag-handle-cell {
   width: 40px;
-  padding: 8px 4px !important;
   text-align: center;
   cursor: move;
   user-select: none;
@@ -195,7 +194,6 @@ const handleSortOrderChange = () => {
 
 .sort-order-cell {
   width: 60px;
-  padding: 8px !important;
   text-align: center;
 }
 

@@ -136,18 +136,19 @@ document.querySelectorAll('[v-permission], [v-cloak]')
 
 ### Q3: 如何实时查看权限变化？
 
-**A**: 在开发环境中，可以在组件中添加权限监听：
+**A**: 优先使用浏览器开发工具临时查看；确需在开发组件中短时监听时使用统一 logger，并在验证后删除该临时代码：
 
 ```vue
 <script setup>
 import { watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import { logger } from '@/utils/logger'
 
 const authStore = useAuthStore()
 
 // 监听权限变化
 watch(() => authStore.userPermissions, (newPerms) => {
-  console.log('权限已更新:', newPerms)
+  logger.debug('权限已更新:', newPerms)
   // 执行相应的更新操作
 }, { deep: true })
 </script>

@@ -1,0 +1,102 @@
+
+// 所有数据视图样式
+.all-data-section {
+  margin-top: 20px;
+  background: var(--tf-color-surface);
+  border-radius: 8px;
+  padding: 20px;
+
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--color-border-light);
+
+    h2 {
+      font-size: var(--tf-type-scale-20);
+      font-weight: 600;
+      color: var(--color-text-primary);
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+
+      i {
+        color: var(--color-primary);
+      }
+    }
+
+    .section-actions {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+
+      .duplicate-summary {
+        display: flex;
+        gap: 16px;
+        font-size: var(--tf-type-scale-14);
+
+        .summary-item {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          padding: 6px 12px;
+          border-radius: 4px;
+          background: white;
+
+          &.total {
+            color: var(--color-text-regular);
+            font-weight: 600;
+          }
+
+          &.duplicate {
+            color: var(--color-danger);
+            background: var(--tf-color-red-surface-light);
+
+            i {
+              color: var(--color-danger);
+            }
+          }
+
+          &.ok {
+            color: var(--color-success);
+            background: var(--tf-color-blue-50);
+
+            i {
+              color: var(--color-success);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  .data-table-container {
+    background: white;
+    border-radius: 8px;
+    padding: 16px;
+
+    // 重复数据行高亮样式
+    :deep(.el-table .duplicate-row) {
+      background-color: var(--tf-color-red-ant-surface) !important;
+
+      &:hover > td {
+        background-color: var(--tf-color-red-pastel-light) !important;
+      }
+    }
+
+    .duplicate-badge {
+      color: var(--color-danger);
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+
+      i {
+        color: var(--color-danger);
+      }
+    }
+  }
+}

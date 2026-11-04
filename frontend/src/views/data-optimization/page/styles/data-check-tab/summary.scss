@@ -1,0 +1,274 @@
+
+.data-check-tab {
+  .action-bar {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+}
+
+.check-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+
+  .check-card {
+    background: white;
+    border-radius: 8px;
+    min-height: 96px;
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    border: 2px solid transparent;
+
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    &.has-duplicates {
+      border-color: var(--color-danger);
+    }
+
+    .card-icon {
+      flex: 0 0 32px;
+      width: 32px;
+      height: 32px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: var(--tf-type-scale-22);
+      color: var(--color-primary);
+    }
+
+    .card-content {
+      min-width: 0;
+      flex: 1;
+
+      h3 {
+        font-size: var(--tf-type-scale-15);
+        font-weight: 600;
+        color: var(--color-text-primary);
+        margin: 0 0 5px;
+      }
+
+      .card-stats {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px 10px;
+        font-size: var(--tf-type-scale-12);
+
+        .stat-item {
+          color: var(--color-info);
+
+          &.duplicate {
+            color: var(--color-danger);
+            font-weight: 600;
+          }
+
+          &.ok {
+            color: var(--color-success);
+          }
+        }
+      }
+    }
+  }
+}
+
+.duplicates-section {
+  margin-top: 20px;
+  background: var(--tf-color-surface);
+  border-radius: 8px;
+  padding: 20px;
+
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--color-border-light);
+
+    h2 {
+      font-size: var(--tf-type-scale-20);
+      font-weight: 600;
+      color: var(--color-text-primary);
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+
+      i {
+        color: var(--color-warning);
+      }
+    }
+
+    .section-actions {
+      display: flex;
+      gap: 12px;
+    }
+  }
+
+  .no-duplicates {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--color-success);
+    background: white;
+    border-radius: 8px;
+
+    i {
+      font-size: var(--tf-type-scale-64);
+      margin-bottom: 16px;
+    }
+
+    p {
+      font-size: var(--tf-type-scale-16);
+      margin: 0;
+    }
+  }
+
+  .duplicates-list {
+    .duplicate-group {
+      margin-bottom: 24px;
+      border: 1px solid var(--color-border-light);
+      border-radius: 8px;
+      overflow: hidden;
+      background: white;
+
+      .group-header {
+        background: var(--tf-color-surface);
+        padding: 12px 16px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid var(--color-border-light);
+
+        .group-info {
+          .group-key {
+            font-weight: 600;
+            color: var(--color-text-primary);
+            margin-right: 16px;
+          }
+
+          .group-count {
+            font-size: var(--tf-type-scale-14);
+            color: var(--color-danger);
+          }
+        }
+
+        .group-actions {
+          display: flex;
+          gap: 8px;
+        }
+      }
+
+      .group-items {
+        .duplicate-item {
+          display: flex;
+          align-items: center;
+          padding: 16px;
+          border-bottom: 1px solid var(--color-border-light);
+
+          &:last-child {
+            border-bottom: none;
+          }
+
+          // 主记录样式：蓝色背景
+          &.primary {
+            background: var(--tf-color-blue-100);
+            border-left: 4px solid var(--tf-color-blue-material-500);
+          }
+
+          // 重复记录样式：浅红色背景
+          &.duplicate {
+            background: var(--tf-color-red-50);
+            border-left: 4px solid var(--tf-color-red-material);
+          }
+
+          &.selected {
+            background: var(--tf-color-orange-material-50);
+            border-left-width: 6px;
+          }
+
+          .item-select {
+            margin-right: 12px;
+
+            // 禁用复选框样式
+            input[type="checkbox"]:disabled {
+              cursor: not-allowed;
+              opacity: 0.5;
+              + * {
+                cursor: not-allowed;
+              }
+            }
+          }
+
+          .item-content {
+            flex: 1;
+
+            .item-badge {
+              margin-bottom: 8px;
+
+              .badge {
+                display: inline-block;
+                padding: 4px 12px;
+                border-radius: 4px;
+                font-size: var(--tf-type-scale-12);
+                font-weight: 600;
+
+                &.badge-primary {
+                  background: var(--tf-color-blue-material-500);
+                  color: white;
+                }
+
+                &.badge-duplicate {
+                  background: var(--tf-color-red-material);
+                  color: white;
+                }
+              }
+            }
+
+            .item-fields {
+              display: flex;
+              flex-wrap: wrap;
+              gap: 16px;
+
+              .item-field {
+                label {
+                  font-weight: 600;
+                  color: var(--color-text-regular);
+                  margin-right: 4px;
+                }
+
+                span {
+                  color: var(--color-info);
+                }
+              }
+            }
+          }
+
+          .item-actions {
+            display: flex;
+            gap: 8px;
+          }
+        }
+      }
+    }
+  }
+}
+
+.pagination-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  background: white;
+  border-radius: 8px;
+  margin-top: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}

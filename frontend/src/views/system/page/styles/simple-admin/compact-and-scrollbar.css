@@ -1,0 +1,125 @@
+/* Safari iPhone 桌面网站模式的 CSS 视口可能大于 768px；
+ * 设备根标记用于补齐必须保留的手机后台布局规则。 */
+.admin-container.compact-device .main-content {
+  margin-left: 0;
+  min-width: 0;
+}
+
+.admin-container.compact-device .topbar {
+  padding: 8px 12px;
+  padding-left: 70px;
+  flex-direction: row;
+  gap: 8px;
+  align-items: center;
+  min-height: 56px;
+}
+
+.admin-container.compact-device .header-left {
+  display: none;
+}
+
+.admin-container.compact-device .topbar-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.admin-container.compact-device .user-info {
+  min-width: 0;
+  flex: 0 1 auto;
+  width: fit-content;
+  max-width: var(--tf-topbar-user-info-max-width, 360px);
+  margin-left: auto;
+  justify-content: flex-end;
+  overflow: hidden;
+}
+
+.admin-container.compact-device .user-main-info {
+  flex: 0 1 auto;
+  min-width: 0;
+  width: fit-content;
+  justify-content: flex-end;
+  flex-wrap: nowrap;
+  gap: 4px;
+  overflow: hidden;
+}
+
+.admin-container.compact-device .user-name {
+  flex: 0 1 auto;
+  min-width: 0;
+  width: fit-content;
+  max-width: min(28vw, 140px);
+}
+
+.admin-container.compact-device .user-role {
+  flex: 0 0 auto;
+}
+
+.admin-container.compact-device .topbar-buttons {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.admin-container.compact-device .btn-lock span,
+.admin-container.compact-device .logout-btn .btn-text {
+  display: none;
+}
+
+.admin-container.compact-device .btn-lock,
+.admin-container.compact-device .logout-btn {
+  width: 36px;
+  min-width: 36px;
+  padding-inline: 0;
+}
+
+@media (min-width: 768px) and (max-width: 1024px) {
+  .admin-container.compact-device .topbar {
+    padding-left: 64px;
+  }
+
+  .admin-container.compact-device .topbar-actions {
+    gap: 10px;
+  }
+
+  .admin-container.compact-device .user-info {
+    overflow: hidden;
+  }
+
+  .admin-container.compact-device .user-main-info {
+    justify-content: flex-end;
+    text-align: right;
+  }
+
+  .admin-container.compact-device .user-name,
+  .admin-container.compact-device .user-role {
+    white-space: nowrap;
+    text-align: right;
+  }
+
+  .admin-container.compact-device .user-time-info {
+    display: none;
+  }
+}
+
+/* 滚动条样式 */
+.content-area::-webkit-scrollbar {
+  width: 6px;
+}
+
+.content-area::-webkit-scrollbar-track {
+  background: var(--tf-color-gray-100);
+}
+
+.content-area::-webkit-scrollbar-thumb {
+  background: var(--tf-color-gray-300);
+  border-radius: 3px;
+}
+
+.content-area::-webkit-scrollbar-thumb:hover {
+  background: var(--tf-color-gray-400);
+}

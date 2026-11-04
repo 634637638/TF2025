@@ -106,6 +106,8 @@ npm --prefix backend run migrate:h5-order-history-index -- --rollback
 
 新增 `backend/test/logging-security.check.js`，并更新前端错误上报契约测试，避免服务端和前端各自维护不同的脱敏逻辑。
 
+前端错误上报进一步收敛为单一实现：删除 `frontend/src/utils/logger.ts` 中失效的 `/api/logs` 私有上报逻辑，普通 `logger` 只保留环境化诊断输出；全局未捕获错误由 Error Boundary 的 `onError`、API 错误由统一请求层转交 `globalErrorLogger`，最终只通过 `/api/logs/errors` 上报。契约测试同时禁止普通日志工具重新引入私有 `fetch`、上报地址或 `sendToServer()`。
+
 当前环境没有配置 Redis 连接信息，因此本轮没有伪造“多实例缓存一致性已完成”的结论。需要多实例共享的一致性敏感缓存以及登录失败计数迁移 Redis 仍为明确遗留。
 
 ### CORS、上传与临时接口复核

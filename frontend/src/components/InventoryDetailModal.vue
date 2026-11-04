@@ -553,10 +553,7 @@ const inventoryTimeText = computed(() => {
   .inventory-product-detail-dialog {
     --dialog-max-width: calc(100vw - 4px);
     --dialog-side-gap: 2px;
-  }
-
-  .mobile-dialog-sheet-overlay.inventory-product-detail-dialog {
-    padding: 12px !important;
+    --mobile-dialog-overlay-padding: 12px;
   }
 
   .mobile-dialog-sheet-panel.inventory-product-detail-dialog {
@@ -570,12 +567,9 @@ const inventoryTimeText = computed(() => {
 @media (max-width: 767px) {
   .inventory-product-detail-dialog {
     --dialog-side-gap: 4px;
+    --mobile-dialog-overlay-padding: 8px 4px;
     --mobile-dialog-body-padding: 2px;
     --mobile-dialog-footer-padding: 0 4px 4px;
-  }
-
-  .mobile-dialog-sheet-overlay.inventory-product-detail-dialog {
-    padding: 8px 4px !important;
   }
 
 }

@@ -2958,12 +2958,9 @@ onMounted(async () => {
     --dialog-side-gap: 6px;
     --dialog-vertical-gap: 12px;
     --dialog-max-width: calc(100vw - 12px);
+    --mobile-dialog-overlay-padding: 12px 6px;
     --mobile-dialog-body-padding: 10px 8px 8px;
     --mobile-dialog-footer-padding: 0 8px 8px;
-  }
-
-  .mobile-dialog-sheet-overlay.employees-form-dialog {
-    padding: 12px 6px !important;
   }
 
   .employees-form-dialog .el-form-item {
@@ -3052,12 +3049,9 @@ onMounted(async () => {
     --dialog-side-gap: 4px;
     --dialog-vertical-gap: 12px;
     --dialog-max-width: calc(100vw - 8px);
+    --mobile-dialog-overlay-padding: 12px 4px;
     --mobile-dialog-body-padding: 8px 6px 6px;
     --mobile-dialog-footer-padding: 0 6px 6px;
-  }
-
-  .mobile-dialog-sheet-overlay.employees-form-dialog {
-    padding: 12px 4px !important;
   }
 }
 </style>

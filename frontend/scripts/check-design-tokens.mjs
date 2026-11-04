@@ -59,6 +59,19 @@ function styleSources(filePath, source) {
   return blocks
 }
 
+function sourceWithExternalStyles(relativePath) {
+  const filePath = path.join(frontendRoot, relativePath)
+  const source = fs.readFileSync(filePath, 'utf8')
+  if (!filePath.endsWith('.vue')) return source
+  const externalStyles = []
+  for (const match of source.matchAll(/<style\b([^>]*)>/gi)) {
+    const sourceMatch = match[1].match(/\bsrc=["']([^"']+)["']/i)
+    if (!sourceMatch) continue
+    externalStyles.push(fs.readFileSync(path.resolve(path.dirname(filePath), sourceMatch[1]), 'utf8'))
+  }
+  return [source, ...externalStyles].join('\n')
+}
+
 function collectLegacyDesignValues() {
   const values = Object.fromEntries(Object.keys(categories).map(category => [category, new Set()]))
   const fileCounts = {}
@@ -135,7 +148,7 @@ for (const token of requiredTokens) {
 }
 
 for (const [relativePath, tokens] of Object.entries(requiredPublicReferences)) {
-  const source = fs.readFileSync(path.join(frontendRoot, relativePath), 'utf8')
+  const source = sourceWithExternalStyles(relativePath)
   for (const token of tokens) {
     if (!source.includes(`var(${token}`)) {
       findings.push(`${relativePath} 未使用公共令牌 ${token}`)

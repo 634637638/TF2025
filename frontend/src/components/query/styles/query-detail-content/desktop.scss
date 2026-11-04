@@ -1,0 +1,274 @@
+
+.query-detail-content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.device-card-inline {
+  background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
+  border-radius: 16px;
+  padding: 14px 16px;
+  color: var(--color-bg-white);
+  box-shadow: 0 10px 24px rgba(102, 126, 234, 0.22);
+}
+
+.device-card-main {
+  width: 100%;
+  min-width: 0;
+}
+
+.device-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+  width: 100%;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.device-info {
+  min-width: 0;
+  flex: 0 1 auto;
+  font-size: var(--tf-type-scale-18);
+  font-weight: 700;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.device-card-tags {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  flex-wrap: nowrap;
+}
+
+.device-meta {
+  min-width: 0;
+  flex: 1 1 auto;
+  font-size: var(--tf-type-scale-13);
+  color: rgba(255, 255, 255, 0.92);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.condition-badge,
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  justify-content: center;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: var(--tf-type-scale-12);
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  flex-shrink: 0;
+}
+
+.condition-badge {
+  background: rgba(255, 255, 255, 0.22);
+  color: var(--color-bg-white);
+}
+
+.condition-badge.new {
+  background: var(--success-color);
+  color: var(--color-bg-white);
+}
+
+.condition-badge.used {
+  background: var(--tf-color-amber-500);
+  color: var(--color-bg-white);
+}
+
+.status-badge.in-stock {
+  background: var(--tf-status-sale-available-bg);
+  color: var(--tf-status-sale-available-color);
+  border-color: var(--tf-status-sale-available-border);
+}
+
+.status-badge.sold {
+  background: var(--tf-status-sold-bg);
+  color: var(--tf-status-sold-color);
+  border-color: var(--tf-status-sold-border);
+}
+
+.status-badge.peer-transfer {
+  background: var(--tf-status-transfer-bg);
+  color: var(--tf-status-transfer-color);
+  border-color: var(--tf-status-transfer-border);
+}
+
+.status-badge.supplier-proxy {
+  background: var(--tf-status-allocation-bg);
+  color: var(--tf-status-allocation-color);
+  border-color: var(--tf-status-allocation-border);
+}
+
+.status-badge.reserved {
+  background: var(--tf-status-reserved-bg);
+  color: var(--tf-status-reserved-color);
+  border-color: var(--tf-status-reserved-border);
+}
+
+.status-badge.repair {
+  background: var(--tf-status-repair-bg);
+  color: var(--tf-status-repair-color);
+  border-color: var(--tf-status-repair-border);
+}
+
+.status-badge.lost {
+  background: var(--tf-status-lost-bg);
+  color: var(--tf-status-lost-color);
+  border-color: var(--tf-status-lost-border);
+}
+
+.price-row,
+.customer-row,
+.code-row,
+.operator-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.price-item,
+.customer-item,
+.code-item,
+.operator-item,
+.info-item {
+  background: var(--tf-color-surface-cool-page);
+  border-radius: 14px;
+  padding: 12px 14px;
+}
+
+.price-item {
+  display: flex;
+}
+
+.price-label,
+.customer-label,
+.code-label,
+.info-item-label,
+.operator-label,
+.apple-id-label,
+.remark-label {
+  font-size: var(--tf-type-scale-12);
+  color: var(--color-info);
+}
+
+.price-value {
+  font-size: var(--tf-type-scale-18);
+  font-weight: 700;
+  color: var(--color-text-regular);
+}
+
+.price-value.highlight {
+  color: var(--color-danger);
+}
+
+.price-value.green {
+  color: var(--color-success);
+}
+
+.customer-item,
+.operator-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.customer-value,
+.operator-value {
+  flex: 1;
+  font-size: var(--tf-type-scale-15);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  min-width: 0;
+}
+
+.code-label,
+.info-item-label {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.code-value {
+  font-size: var(--tf-type-scale-12);
+  font-family: 'Courier New', monospace;
+  color: var(--color-text-primary);
+  line-height: 1.45;
+  word-break: break-all;
+}
+
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.info-item-value {
+  font-size: var(--tf-type-scale-13);
+  color: var(--color-text-primary);
+  font-weight: 600;
+  word-break: break-word;
+}
+
+.apple-id-row {
+  background: linear-gradient(135deg, var(--tf-color-surface) 0%, var(--tf-color-border-cool) 100%);
+  border: 1px solid var(--tf-color-border-neutral);
+  border-radius: 14px;
+  padding: 12px 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.apple-id-value {
+  font-size: var(--tf-type-scale-13);
+  color: var(--color-text-primary);
+  font-weight: 600;
+  text-align: right;
+  word-break: break-all;
+}
+
+.remark-row {
+  background: var(--tf-color-orange-ant-surface);
+  border-left: 4px solid var(--color-warning);
+  border-radius: 14px;
+  padding: 12px 14px;
+}
+
+.remark-label {
+  display: block;
+  color: var(--tf-color-goldenrod);
+  margin-bottom: 6px;
+}
+
+.remark-value {
+  font-size: var(--tf-type-scale-13);
+  color: var(--color-text-regular);
+  line-height: 1.6;
+  word-break: break-word;
+}
+
+.detail-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  padding-top: 2px;
+}
+
+.detail-actions :deep(.el-button) {
+  width: 100%;
+  height: 44px;
+  border-radius: 14px;
+  font-size: var(--tf-type-scale-15);
+  margin: 0;
+}

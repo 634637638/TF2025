@@ -722,7 +722,7 @@ export function useForm<T extends Record<string, any>>(
 
       return result
     } catch (error) {
-      console.error('表单提交失败:', error)
+      logger.error('表单提交失败:', error)
       throw error
     } finally {
       loading.value = false
@@ -1083,9 +1083,9 @@ const handleCurrentChange = (page: number) => {
 const handleExport = async (format: string) => {
   try {
     // 实现导出逻辑
-    console.log('Export format:', format)
+    logger.debug('导出格式:', format)
   } catch (error) {
-    console.error('Export failed:', error)
+    logger.error('导出失败:', error)
   }
 }
 

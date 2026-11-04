@@ -120,6 +120,16 @@
   --admin-data-table-cell-padding-x: 0px;
 }
 
+.el-table td.drag-handle-cell {
+  --admin-data-table-cell-padding-y: 8px;
+  --admin-data-table-cell-padding-x: 4px;
+}
+
+.el-table td.sort-order-cell {
+  --admin-data-table-cell-padding-y: 8px;
+  --admin-data-table-cell-padding-x: 8px;
+}
+
 .el-table__body-wrapper td {
   padding: var(--admin-data-table-cell-padding-y, 10px) var(--admin-data-table-cell-padding-x, 8px) !important;
   height: var(--admin-data-table-row-height, 48px) !important;

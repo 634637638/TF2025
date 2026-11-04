@@ -46,3 +46,21 @@ test('前端错误上报配置已启用并指向统一接口', () => {
   assert.match(loggerSource, /enabled: true/)
   assert.match(loggerSource, /endpoint: '\/api\/logs\/errors'/)
 })
+
+test('普通日志工具不维护私有服务端上报实现', () => {
+  const loggerSource = fs.readFileSync(path.join(frontendRoot, 'src/utils/logger.ts'), 'utf8')
+
+  assert.doesNotMatch(loggerSource, /sendToServer/)
+  assert.doesNotMatch(loggerSource, /fetch\s*\(/)
+  assert.doesNotMatch(loggerSource, /\/api\/logs/)
+  assert.doesNotMatch(loggerSource, /enableFileLog/)
+})
+
+test('全局错误边界和统一请求层共用 globalErrorLogger', () => {
+  const mainSource = fs.readFileSync(path.join(frontendRoot, 'src/main.ts'), 'utf8')
+  const unifiedApiSource = fs.readFileSync(path.join(frontendRoot, 'src/utils/unified-api.ts'), 'utf8')
+
+  assert.match(mainSource, /enableReporting:\s*false/)
+  assert.match(mainSource, /onError:\s*\(error\)\s*=>\s*\{[\s\S]*globalErrorLogger\.logError\(/)
+  assert.match(unifiedApiSource, /globalErrorLogger\.logError\(/)
+})

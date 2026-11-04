@@ -1,0 +1,121 @@
+
+@media (max-width: 767px) {
+  .sales-receipt {
+    --receipt-section-inset: var(--tf-space-4);
+  }
+
+  .receipt-header {
+    padding-block: var(--tf-space-5);
+  }
+
+  .receipt-title {
+    font-size: var(--tf-type-scale-22);
+  }
+
+  .receipt-meta {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    justify-content: stretch;
+    gap: var(--tf-space-2) var(--tf-space-3);
+  }
+
+  .receipt-meta-item {
+    flex-wrap: wrap;
+  }
+  .party-panel {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .party-panel--supplier {
+    grid-template-columns: minmax(0, 1fr);
+    padding-inline: var(--tf-space-3);
+  }
+  .party-column + .party-column {
+    border-top: 1px solid var(--tf-color-border-muted);
+    border-left: 0;
+  }
+
+  .party-item {
+    gap: var(--tf-space-4);
+  }
+
+  .totals-bar {
+    grid-template-columns: minmax(0, 1fr);
+    flex: 0 0 auto;
+    height: auto;
+    min-height: 0;
+    max-height: none;
+  }
+
+  .total-amount-words,
+  .total-amount {
+    border-top: 1px solid var(--tf-color-border-muted);
+    border-left: 0;
+  }
+
+  .total-amount {
+    justify-content: flex-start;
+  }
+
+  .total-amount strong {
+    font-size: var(--tf-type-scale-18);
+  }
+
+  .receipt-signature {
+    padding-block: var(--tf-space-4);
+  }
+
+}
+
+@media (max-width: 479px) {
+  .sales-receipt {
+    --receipt-section-inset: var(--tf-space-3);
+  }
+
+  .add-item-section {
+    padding: var(--tf-space-3) var(--tf-space-4);
+  }
+
+  .receipt-header {
+    padding-inline: var(--tf-space-3);
+  }
+
+  .receipt-meta {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .party-column {
+    padding-inline: var(--tf-space-3);
+  }
+
+  .after-sale-notes {
+    padding-inline: var(--tf-space-3);
+  }
+
+  .totals-bar {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .receipt-signature {
+    padding-inline: 0;
+  }
+
+  .party-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--tf-space-2);
+  }
+
+  .party-field {
+    width: 100%;
+  }
+
+  .totals-bar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .receipt-title {
+    font-size: var(--tf-type-scale-19);
+  }
+}

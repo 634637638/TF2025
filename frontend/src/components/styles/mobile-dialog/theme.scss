@@ -1,0 +1,67 @@
+
+// 暗色主题适配
+@media (prefers-color-scheme: dark) {
+  .mobile-dialog {
+    :deep(.el-dialog) {
+      background-color: var(--el-bg-color);
+
+      .el-dialog__header {
+        border-bottom-color: var(--el-border-color);
+      }
+
+      .el-dialog__footer {
+        border-top-color: var(--el-border-color);
+      }
+    }
+  }
+}
+
+// 高对比度模式
+@media (prefers-contrast: high) {
+  .mobile-dialog {
+    :deep(.el-dialog) {
+      border: 2px solid var(--el-border-color);
+    }
+  }
+}
+
+// 减少动画模式
+@media (prefers-reduced-motion: reduce) {
+  .mobile-dialog {
+    :deep(.el-dialog) {
+      transition: none;
+
+      .el-dialog__header,
+      .el-dialog__body,
+      .el-dialog__footer {
+        transition: none;
+      }
+    }
+  }
+
+  .mobile-dialog-sheet-overlay,
+  .mobile-dialog-sheet-panel {
+    transition: none !important;
+  }
+}
+
+.mobile-dialog-sheet-fade-enter-active,
+.mobile-dialog-sheet-fade-leave-active {
+  transition: opacity var(--tf-motion-enter) var(--tf-motion-ease-standard);
+}
+
+.mobile-dialog-sheet-fade-enter-active .mobile-dialog-sheet-panel,
+.mobile-dialog-sheet-fade-leave-active .mobile-dialog-sheet-panel {
+  transition: transform var(--tf-motion-enter) var(--tf-motion-ease-standard), opacity var(--tf-motion-enter) var(--tf-motion-ease-standard);
+}
+
+.mobile-dialog-sheet-fade-enter-from,
+.mobile-dialog-sheet-fade-leave-to {
+  opacity: 0;
+}
+
+.mobile-dialog-sheet-fade-enter-from .mobile-dialog-sheet-panel,
+.mobile-dialog-sheet-fade-leave-to .mobile-dialog-sheet-panel {
+  opacity: 0;
+  transform: translateY(18px) scale(0.985);
+}

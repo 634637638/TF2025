@@ -1,0 +1,250 @@
+
+
+.cell-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tf-space-1);
+
+  span {
+    color: var(--tf-color-gray-bootstrap-600);
+    font-size: var(--tf-type-scale-12);
+  }
+}
+
+.receipt-product-name {
+  color: var(--tf-color-gray-bootstrap-900);
+  font-size: var(--tf-type-scale-15);
+  font-weight: 600;
+}
+
+.receipt-product-amount {
+  color: var(--tf-color-gray-bootstrap-800);
+  font-weight: 600;
+}
+
+.totals-bar {
+  display: grid;
+  grid-template-columns: minmax(140px, 0.75fr) minmax(0, 2.75fr) minmax(220px, 1.5fr);
+  align-items: stretch;
+  box-sizing: border-box;
+  flex: 0 0 var(--tf-space-7);
+  height: var(--tf-space-7);
+  min-height: var(--tf-space-7);
+  max-height: var(--tf-space-7);
+  margin: var(--tf-space-4) var(--receipt-section-inset) 0;
+  padding: 0;
+  background: var(--tf-color-neutral-25);
+  border: 1px solid var(--tf-color-border-muted);
+}
+
+.total-count,
+.total-amount-words,
+.total-amount {
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  gap: var(--tf-space-3);
+  min-width: 0;
+  height: 100%;
+  min-height: 0;
+  margin: 0;
+  padding: 0 var(--tf-space-4);
+  font-size: var(--tf-type-scale-14);
+  line-height: var(--tf-line-height-compact);
+  color: var(--tf-color-gray-bootstrap-700);
+}
+
+.total-count > span {
+  color: var(--tf-color-red-700);
+  font-weight: 600;
+}
+
+.total-amount-words,
+.total-amount {
+  border-left: 1px solid var(--tf-color-border-muted);
+}
+
+.total-amount {
+  justify-content: flex-end;
+  white-space: nowrap;
+}
+
+.total-count span,
+.total-amount-words span,
+.total-amount span {
+  white-space: nowrap;
+}
+
+.total-count strong,
+.total-amount-words strong,
+.total-amount strong {
+  color: var(--tf-color-gray-bootstrap-900);
+  font-size: var(--tf-type-scale-18);
+  font-weight: 700;
+}
+
+.total-amount strong {
+  color: var(--tf-color-red-700);
+  font-size: var(--tf-type-scale-22);
+  white-space: nowrap;
+}
+
+.total-amount-words strong {
+  color: var(--tf-color-gray-bootstrap-900);
+  font-weight: 700;
+}
+
+.after-sale-notes {
+  margin: var(--tf-space-5) var(--receipt-section-inset) 0;
+  padding: var(--tf-space-4) var(--tf-space-5);
+  font-size: var(--tf-type-scale-12);
+  color: var(--tf-color-gray-bootstrap-500);
+  background: var(--color-bg-white);
+  border: 1px solid var(--tf-color-border-muted);
+
+  > strong {
+    color: var(--tf-color-gray-bootstrap-800);
+    font-weight: 700;
+  }
+
+  p {
+    display: block;
+    margin: var(--tf-space-1) 0 0;
+    color: var(--tf-color-gray-bootstrap-600);
+    text-align: left;
+  }
+}
+
+.receipt-signature {
+  margin: var(--tf-space-6) var(--receipt-section-inset) 0;
+  padding: var(--tf-space-4) 0;
+  color: var(--tf-color-gray-bootstrap-800);
+  font-size: var(--tf-type-scale-13);
+  border-top: 1px dashed var(--tf-color-border-muted);
+}
+
+.receipt-signature-meta {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.receipt-signature-item {
+  display: flex;
+  align-items: baseline;
+  gap: var(--tf-space-2);
+  white-space: nowrap;
+
+  strong {
+    color: var(--tf-color-gray-bootstrap-700);
+    font-weight: 600;
+  }
+}
+.transfer-receipt .receipt-title,
+.transfer-receipt .total-amount strong {
+  color: var(--tf-color-orange-material-500);
+}
+.supplier-receipt .receipt-title,
+.supplier-receipt .total-amount strong {
+  color: var(--tf-color-violet-500);
+}
+.receipt-theme--transfer .party-panel,
+.receipt-theme--transfer .items-list,
+.receipt-theme--transfer .totals-bar,
+.receipt-theme--transfer .after-sale-notes,
+.receipt-theme--supplier .party-panel,
+.receipt-theme--supplier .items-list,
+.receipt-theme--supplier .totals-bar,
+.receipt-theme--supplier .after-sale-notes {
+  border-width: 1px;
+  border-style: solid;
+  border-color: var(--tf-color-gray-ant-300);
+}
+
+.receipt-theme--transfer .party-column + .party-column,
+.receipt-theme--transfer .total-amount-words,
+.receipt-theme--transfer .total-amount,
+.receipt-theme--supplier .party-column + .party-column,
+.receipt-theme--supplier .total-amount-words,
+.receipt-theme--supplier .total-amount {
+  border-color: var(--tf-color-gray-ant-300);
+}
+.receipt-theme--transfer .party-panel,
+.receipt-theme--transfer .after-sale-notes {
+  background: var(--tf-color-blue-50);
+}
+.receipt-theme--transfer .totals-bar {
+  background: var(--tf-color-blue-100);
+}
+.receipt-theme--supplier .party-panel,
+.receipt-theme--supplier .after-sale-notes {
+  background: var(--tf-color-teal-50);
+}
+.receipt-theme--supplier .totals-bar {
+  background: var(--tf-color-emerald-50);
+}
+.receipt-theme--transfer .party-label,
+.receipt-theme--transfer .total-count > span,
+.receipt-theme--transfer .after-sale-notes,
+.receipt-theme--transfer .after-sale-notes p,
+.receipt-theme--transfer .receipt-signature,
+.receipt-theme--transfer .receipt-signature-item strong,
+.receipt-theme--transfer .cell-stack span,
+.receipt-theme--supplier .party-label,
+.receipt-theme--supplier .total-count > span,
+.receipt-theme--supplier .after-sale-notes,
+.receipt-theme--supplier .after-sale-notes p,
+.receipt-theme--supplier .receipt-signature,
+.receipt-theme--supplier .receipt-signature-item strong,
+.receipt-theme--supplier .cell-stack span {
+  color: var(--tf-color-gray-bootstrap-600);
+}
+
+.receipt-theme--transfer {
+  --receipt-export-accent: var(--tf-color-blue-700);
+  --receipt-theme-header-background: linear-gradient(135deg, var(--tf-color-blue-600) 0%, var(--tf-color-sky-700) 100%);
+}
+
+.receipt-theme--supplier {
+  --receipt-export-accent: var(--tf-color-teal-700);
+  --receipt-theme-header-background: linear-gradient(135deg, var(--tf-color-teal-500) 0%, var(--tf-color-emerald-700) 100%);
+}
+
+.receipt-theme--sales {
+  --receipt-export-accent: var(--tf-color-indigo-700);
+}
+
+.sales-receipt .party-value,
+.sales-receipt .receipt-product-amount,
+.sales-receipt .total-amount strong,
+.sales-receipt .after-sale-notes > strong,
+.sales-receipt .receipt-signature-item span {
+  color: transparent;
+  background-image: var(--receipt-theme-header-background);
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.sales-receipt .total-count strong,
+.sales-receipt .total-amount-words strong {
+  color: var(--tf-color-red-700);
+  background-image: none;
+  -webkit-text-fill-color: currentColor;
+}
+
+.sales-receipt.receipt-export-mode .party-value,
+.sales-receipt.receipt-export-mode .receipt-product-amount,
+.sales-receipt.receipt-export-mode .total-amount strong,
+.sales-receipt.receipt-export-mode .after-sale-notes > strong,
+.sales-receipt.receipt-export-mode .receipt-signature-item span {
+  color: var(--receipt-export-accent);
+  background-image: none;
+  background-clip: border-box;
+  -webkit-text-fill-color: var(--receipt-export-accent);
+}
+
+.action-buttons {
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
+}

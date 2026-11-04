@@ -1,0 +1,256 @@
+
+.employee-analytics {
+  .overview-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .overview-card {
+    height: 152px;
+    border: 1px solid rgba(15, 23, 42, 0.06);
+    box-shadow: 0 14px 34px rgba(15, 23, 42, 0.06);
+
+    :deep(.el-card__body) {
+      height: 100%;
+      padding: 18px 18px 16px;
+    }
+
+    .card-content {
+      display: flex;
+      align-items: flex-start;
+      height: 100%;
+      gap: 16px;
+    }
+
+    .card-icon {
+      width: 60px;
+      height: 60px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: var(--tf-type-scale-24);
+      color: white;
+
+      &.total {
+        background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
+      }
+
+      &.active {
+        background: linear-gradient(135deg, var(--tf-color-pink-gradient) 0%, var(--tf-color-coral-gradient) 100%);
+      }
+
+      &.salary {
+        background: linear-gradient(135deg, var(--tf-color-teal-700) 0%, var(--tf-color-teal-tailwind-500) 100%);
+      }
+
+      &.new-sales {
+        background: linear-gradient(135deg, var(--tf-color-blue-600) 0%, var(--tf-color-blue-400) 100%);
+      }
+
+      &.used-sales {
+        background: linear-gradient(135deg, var(--tf-color-pink-600) 0%, var(--tf-color-pink-tailwind-400) 100%);
+      }
+    }
+
+    .card-info {
+      flex: 1;
+      min-width: 0;
+
+      .card-title {
+        font-size: var(--tf-type-scale-14);
+        color: var(--el-text-color-secondary);
+        margin-bottom: 8px;
+      }
+
+      .card-value {
+        font-size: var(--tf-type-scale-28);
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        color: var(--el-text-color-primary);
+        margin-bottom: 8px;
+        line-height: 1.1;
+      }
+
+      .card-desc {
+        font-size: var(--tf-type-scale-12);
+        line-height: 1.5;
+        color: var(--el-text-color-regular);
+        margin-bottom: 10px;
+        word-break: break-word;
+      }
+
+      .card-change {
+        display: flex;
+        align-items: center;
+        font-size: var(--tf-type-scale-12);
+        font-weight: 500;
+        gap: 4px;
+
+        &.positive { color: var(--el-color-success); }
+        &.negative { color: var(--el-color-danger); }
+        &.neutral { color: var(--el-color-info); }
+      }
+    }
+  }
+
+  .overview-card-salary {
+    background:
+      radial-gradient(circle at top right, rgba(20, 184, 166, 0.18), transparent 42%),
+      linear-gradient(180deg, rgba(240, 253, 250, 0.96), rgba(255, 255, 255, 1));
+
+    .card-icon.salary {
+      box-shadow: 0 12px 24px rgba(20, 184, 166, 0.25);
+    }
+  }
+
+  .charts-section {
+    margin-bottom: 24px;
+
+    :deep(.el-col) {
+      display: flex;
+      margin-bottom: 0;
+    }
+  }
+
+  .table-section {
+    margin-bottom: 24px;
+  }
+
+  .chart-card,
+  .table-card {
+    width: 100%;
+    border: 1px solid rgba(15, 23, 42, 0.06);
+    box-shadow: 0 18px 42px rgba(15, 23, 42, 0.08);
+
+    :deep(.el-card__header) {
+      padding: 16px 18px 12px;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+      background: linear-gradient(180deg, rgba(248, 250, 252, 0.92), rgba(255, 255, 255, 0.98));
+    }
+
+    :deep(.el-card__body) {
+      padding: 18px;
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+
+      .card-header-main {
+        min-width: 0;
+      }
+
+      h3 {
+        margin: 0;
+        font-size: var(--tf-type-scale-16);
+        font-weight: 700;
+        color: var(--tf-color-slate-900);
+      }
+
+      .card-header-subtitle {
+        display: block;
+        margin-top: 4px;
+        font-size: var(--tf-type-scale-12);
+        color: var(--tf-color-slate-500);
+      }
+
+      .card-header-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .header-chip {
+        display: inline-flex;
+        align-items: center;
+        height: 28px;
+        padding: 0 10px;
+        border-radius: 999px;
+        background: rgba(15, 118, 110, 0.08);
+        color: var(--tf-color-teal-700);
+        font-size: var(--tf-type-scale-12);
+        font-weight: 600;
+        white-space: nowrap;
+
+        &.highlight {
+          background: rgba(37, 99, 235, 0.08);
+          color: var(--tf-color-blue-600);
+        }
+      }
+    }
+  }
+
+  .chart-card {
+    height: 100%;
+    overflow: hidden;
+
+    :deep(.el-card__body) {
+      display: flex;
+      flex-direction: column;
+      min-height: 360px;
+    }
+  }
+
+  .role-chart-card {
+    background:
+      radial-gradient(circle at top left, rgba(99, 102, 241, 0.12), transparent 34%),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.96));
+  }
+
+  .sales-chart-card {
+    background:
+      radial-gradient(circle at top right, rgba(37, 99, 235, 0.14), transparent 34%),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.96));
+  }
+
+  .chart-container {
+    flex: 1;
+    min-height: 320px;
+
+    .chart {
+      width: 100%;
+      height: 100%;
+    }
+  }
+
+  .attendance-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  .performance-summary-strip {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+
+  .performance-summary-item {
+    padding: 12px 14px;
+    border-radius: 14px;
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    background: linear-gradient(180deg, rgba(248, 250, 252, 0.96), rgba(255, 255, 255, 0.98));
+
+    .summary-label {
+      display: block;
+      margin-bottom: 6px;
+      font-size: var(--tf-type-scale-12);
+      color: var(--tf-color-slate-500);
+    }
+
+    .summary-value {
+      display: block;
+      font-size: var(--tf-type-scale-18);
+      font-weight: 700;
+      color: var(--tf-color-slate-900);
+      line-height: 1.2;
+    }
+  }
+}

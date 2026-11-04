@@ -314,7 +314,7 @@
               :data="priceList"
               stripe
               border
-              class="data-table devices-table price-list-data-table"
+              class="data-table devices-table base-data-table price-list-data-table"
               table-layout="fixed"
               :fit="true"
               :row-key="getPriceListRowKey"
@@ -3677,37 +3677,6 @@ onUnmounted(() => {
   i {
     font-size: var(--tf-type-scale-12);
   }
-}
-
-.mobile-row-actions {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  width: 100%;
-  padding: 8px;
-  background: var(--tf-color-slate-50);
-
-}
-
-:deep(.price-list-data-table .el-table__expanded-cell) {
-  padding: 0 !important;
-  background: var(--tf-color-slate-50) !important;
-}
-
-:deep(.price-list-data-table th.mobile-expand-header),
-:deep(.price-list-data-table td.mobile-expand-column) {
-  width: 1px !important;
-  min-width: 1px !important;
-  padding: 0 !important;
-  border-right: 0 !important;
-}
-
-:deep(.price-list-data-table th.mobile-expand-header .cell),
-:deep(.price-list-data-table td.mobile-expand-column .cell) {
-  display: none !important;
-  width: 0 !important;
-  min-width: 0 !important;
-  padding: 0 !important;
-  overflow: hidden !important;
 }
 
 @media (max-width: 767px) {

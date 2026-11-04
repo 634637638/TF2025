@@ -1,0 +1,100 @@
+
+.all-menus .menu-list .sub-menu-list .sub-menu-item {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  column-gap: 8px;
+  align-items: center;
+  width: 100%;
+  min-height: 48px;
+  padding: 12px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.all-menus .menu-list .sub-menu-list .sub-menu-item:hover {
+  background: var(--tf-nav-item-hover-bg);
+}
+
+.all-menus .menu-list .sub-menu-list .sub-menu-item.active {
+  background: var(--tf-nav-item-active-bg);
+}
+
+.all-menus .menu-list .sub-menu-list .sub-menu-item.active .menu-name {
+  color: var(--color-bg-white);
+  font-weight: 500;
+}
+
+.all-menus .menu-list .sub-menu-list .sub-menu-item .menu-icon {
+  width: 20px;
+  min-width: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.all-menus .menu-list .sub-menu-list .sub-menu-item .menu-name {
+  min-width: 0;
+  text-align: left;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: var(--tf-nav-submenu-text-size);
+  line-height: 1.55;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+
+.sub-menu-enter-active,
+.sub-menu-leave-active {
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+.sub-menu-enter-from,
+.sub-menu-leave-to {
+  max-height: 0;
+  opacity: 0;
+}
+
+.sub-menu-enter-to,
+.sub-menu-leave-from {
+  max-height: 500px;
+  opacity: 1;
+}
+
+// Dark mode
+:global(body.dark) {
+  .menu-container {
+    background: var(--bg-primary-dark, var(--tf-color-neutral-950));
+  }
+
+  .menu-header {
+    background: linear-gradient(135deg, var(--tf-color-gray-chakra-600) 0%, var(--tf-color-slate-sidebar) 100%);
+  }
+
+  .section-title {
+    color: var(--text-secondary-dark, var(--tf-color-gray-chakra-400));
+  }
+
+  .menu-item {
+    border-bottom-color: var(--border-color-dark, var(--tf-color-gray-chakra-600));
+  }
+}
+
+/* Iconify icon styles */
+.iconify {
+  display: inline-block;
+  vertical-align: middle;
+  font-size: var(--tf-type-scale-18);
+  width: 1em;
+  height: 1em;
+}
+
+.menu-icon .iconify {
+  font-size: var(--tf-type-scale-20);
+  width: 20px;
+  height: 20px;
+}

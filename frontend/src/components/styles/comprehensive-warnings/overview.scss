@@ -1,0 +1,80 @@
+
+.comprehensive-warnings {
+  background: white;
+  border-radius: var(--tf-radius-panel);
+  overflow: hidden;
+
+  .warnings-overview {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 15px;
+    padding: var(--tf-space-5);
+    background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
+
+    .overview-card {
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(10px);
+      border-radius: 10px;
+      padding: 15px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border: 2px solid transparent;
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.25);
+        transform: translateY(-2px);
+      }
+
+      &.active {
+        border-color: rgba(255, 255, 255, 0.5);
+        background: rgba(255, 255, 255, 0.25);
+      }
+
+      .card-icon {
+        width: 45px;
+        height: 45px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: var(--tf-type-scale-20);
+        color: white;
+
+        &.phone {
+          background: linear-gradient(135deg, var(--tf-color-blue-legacy), var(--tf-color-blue-flat-dark));
+        }
+
+        &.accessory {
+          background: linear-gradient(135deg, var(--tf-color-orange-legacy), var(--tf-color-orange-flat-dark));
+        }
+
+        &.sales {
+          background: linear-gradient(135deg, var(--tf-color-green-flat), var(--tf-color-green-legacy));
+        }
+
+        &.purchase {
+          background: linear-gradient(135deg, var(--tf-color-purple-flat), var(--tf-color-purple-flat-dark));
+        }
+      }
+
+      .card-content {
+        flex: 1;
+
+        .card-value {
+          font-size: var(--tf-type-scale-20);
+          font-weight: 700;
+          color: white;
+          line-height: 1.2;
+        }
+
+        .card-label {
+          font-size: var(--tf-font-caption);
+          color: rgba(255, 255, 255, 0.8);
+        }
+      }
+    }
+  }
+}

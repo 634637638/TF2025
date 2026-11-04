@@ -1,0 +1,132 @@
+
+.contact-name,
+.phone-number {
+  font-size: var(--tf-type-scale-13);
+  color: var(--tf-color-neutral-700);
+  font-weight: 500;
+}
+
+.no-data {
+  color: var(--tf-color-neutral-400);
+  font-style: italic;
+  font-size: var(--tf-type-scale-13);
+}
+
+/* 查看详情模态框样式 */
+.store-details {
+  padding: 0;
+}
+
+.detail-section {
+  margin-bottom: 24px;
+}
+
+.detail-section:last-child {
+  margin-bottom: 0;
+}
+
+.detail-section h4 {
+  margin: 0 0 16px 0;
+  padding: 0;
+  font-size: var(--tf-type-scale-16);
+  font-weight: 600;
+  color: var(--tf-color-neutral-700);
+  border-bottom: 1px solid var(--tf-color-neutral-200);
+  padding-bottom: 8px;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 16px;
+}
+
+.detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.detail-item label {
+  font-size: var(--tf-type-scale-12);
+  font-weight: 500;
+  color: var(--tf-color-neutral-500);
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.detail-item span {
+  font-size: var(--tf-type-scale-14);
+  font-weight: 500;
+  color: var(--tf-color-neutral-800);
+  word-break: break-word;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: var(--tf-type-scale-13);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.status-badge.active {
+  background-color: var(--tf-status-success-bg);
+  color: var(--tf-status-success-color);
+  border: 1px solid var(--tf-status-success-border);
+}
+
+.status-badge.inactive {
+  background-color: var(--tf-status-danger-bg);
+  color: var(--tf-status-danger-color);
+  border: 1px solid var(--tf-status-danger-border);
+}
+
+.status-badge.status-active {
+  background: var(--tf-status-success-bg);
+  color: var(--tf-status-success-color);
+  border-color: var(--tf-status-success-border);
+}
+
+.status-badge.status-inactive {
+  background: var(--tf-status-danger-bg);
+  color: var(--tf-status-danger-color);
+  border-color: var(--tf-status-danger-border);
+}
+
+/* ===== 移动端响应式适配 ===== */
+@media (max-width: 767px) {
+  .stores-view {
+    padding: 16px;
+  }
+
+  .form-actions {
+    flex-direction: column;
+  }
+
+  /* 详情视图移动端适配 */
+  .detail-row {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 16px 0;
+
+    .label {
+      min-width: auto;
+      margin-right: 0;
+      margin-bottom: 8px;
+    }
+
+    .value {
+      width: 100%;
+    }
+  }
+}
+
+@media (max-width: 479px) {
+  .stores-view {
+    padding: 12px;
+  }
+
+}

@@ -1,7 +1,7 @@
 # TF2025 全云端部署参考
 
 本文仅适用于前后端均迁至同一云环境或云服务器的替代部署场景，不描述当前“外部 HTTPS 前端代理到家庭后端”的运行拓扑。当前实际部署优先按[部署文档索引](INDEX.md)和[宝塔前端部署说明](BAOTA_DEPLOYMENT_GUIDE.md)核对。本文出现的域名、证书、数据库地址和目录均为示例，不代表线上实际配置。
-> 后端 `.env` 文件包含数据库和签名密钥等私密配置，只能保存在服务器；不要提交、粘贴或打包进前端。详见[环境配置与密钥管理](../security/ENVIRONMENT_SECRETS.md)。
+> 后端生产配置固定使用服务器本机的 `.env.production`，其中包含数据库和签名密钥等私密配置；不要提交、粘贴或打包进前端。变量清单和轮换要求只以[环境配置与密钥管理](../security/ENVIRONMENT_SECRETS.md)及 `backend/.env.example` 为准。
 
 ## 目录
 
@@ -128,40 +128,14 @@ cp .env.example .env.production
 nano .env.production
 ```
 
-**生产环境配置示例：**
+不要在部署指南中维护第二份生产变量清单。复制模板后，按照 `backend/.env.example` 的逐项注释在服务器本机生成独立值；不得从本地 `.env` 整份覆盖，也不得复用示例、JWT 或其他用途的密钥。生产启动前执行：
 
 ```bash
-# 数据库配置（云端数据库）
-DB_HOST=127.0.0.1
-DB_PORT=3306
-DB_USER=tf2025_user
-DB_PASSWORD=your_strong_password_here
-DB_NAME=tf2025_prod
-DB_CONNECTION_LIMIT=20
-
-# JWT 配置（使用强密钥）
-JWT_SECRET=your_very_secure_jwt_secret_key_at_least_32_characters_long_change_me
-JWT_EXPIRES_IN=24h
-
-# 后端 Node.js 监听端口
-PORT=3000
-NODE_ENV=production
-
-# 日志配置
-LOG_LEVEL=warn
-
-# API 配置（生产环境适当收紧）
-API_RATE_LIMIT=60
-API_RATE_WINDOW_MS=900000
-
-# 安全配置
-BCRYPT_ROUNDS=12
-SESSION_SECRET=your_session_secret_key_change_me_to_something_secure
-
-# 缓存配置
-CACHE_TTL=3600
-CACHE_MAX_KEYS=5000
+cd /var/www/tf2025/backend
+NODE_ENV=production ENV_FILE=.env.production npm run check:runtime-assets
 ```
+
+缺少当前版本要求的数据库、CORS、JWT、签名或加密变量时，应先按[环境配置与密钥管理](../security/ENVIRONMENT_SECRETS.md)补齐，不得通过删除校验或回退到其他密钥启动。
 
 ### 3. 创建数据库
 

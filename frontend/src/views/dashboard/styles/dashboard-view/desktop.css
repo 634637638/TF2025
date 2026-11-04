@@ -1,0 +1,276 @@
+
+.dashboard {
+  padding: 0;
+}
+
+/* 欢迎横幅 */
+.welcome-banner {
+  background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
+  color: white;
+  padding: 20px 40px;
+  border-radius: 16px;
+  margin-bottom: 30px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 4px 20px rgba(102, 126, 234, 0.1);
+}
+
+.welcome-content h2 {
+  font-size: var(--tf-type-scale-28);
+  margin-bottom: 0;
+}
+
+.refresh-btn {
+  background: var(--tf-button-overlay-bg);
+  border: 2px solid var(--tf-button-neutral-border);
+  color: var(--tf-button-on-color);
+  padding: 12px 24px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: var(--tf-type-scale-14);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s ease;
+}
+
+.refresh-btn:hover:not(:disabled) {
+  background: var(--tf-button-overlay-hover-bg);
+  transform: translateY(-2px);
+}
+
+.refresh-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* 仪表盘网格 */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 30px;
+}
+
+/* 统计卡片可点击，具体尺寸和颜色由后台公共卡片规范统一管理。 */
+.dashboard-grid .stat-card {
+  cursor: pointer;
+}
+
+.stat-change {
+  font-size: var(--tf-type-scale-12);
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.stat-change.positive {
+  color: var(--tf-color-green-legacy);
+}
+
+.stat-change.negative {
+  color: var(--tf-color-red-legacy);
+}
+
+.stat-change.neutral {
+  color: var(--tf-color-gray-legacy-500);
+}
+
+.inventory-warning,
+.urgent-repairs {
+  background: var(--tf-color-warning-legacy);
+  color: var(--tf-color-warning-text-legacy);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: var(--tf-type-scale-11);
+  margin-top: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.urgent-repairs {
+  background: var(--tf-color-danger-legacy);
+  color: var(--tf-color-danger-text-legacy);
+}
+
+/* 快速操作 */
+.quick-actions {
+  background: white;
+  padding: 25px;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.quick-actions h2 {
+  font-size: var(--tf-type-scale-18);
+  color: var(--tf-color-heading);
+  margin-bottom: 20px;
+}
+
+.actions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+}
+
+.action-btn {
+  background: var(--tf-button-neutral-bg);
+  border: 2px solid var(--tf-button-neutral-border);
+  padding: 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  font-size: var(--tf-type-scale-14);
+  color: var(--tf-button-tool-color);
+}
+
+.action-btn:hover {
+  background: var(--tf-button-primary-hover-bg);
+  border-color: var(--tf-button-primary-soft-hover-border);
+  color: var(--tf-button-on-color);
+  transform: translateY(-2px);
+}
+
+.action-btn i {
+  font-size: var(--tf-type-scale-24);
+}
+
+/* 最近活动 */
+.recent-activity {
+  background: white;
+  padding: 25px;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.activity-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.activity-header h2 {
+  font-size: var(--tf-type-scale-18);
+  color: var(--tf-color-heading);
+  margin: 0;
+}
+
+.view-all-btn {
+  background: none;
+  border: 1px solid var(--tf-button-neutral-border);
+  color: var(--tf-button-primary-soft-color);
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: var(--tf-type-scale-14);
+  transition: all 0.3s ease;
+}
+
+.view-all-btn:hover {
+  background: var(--tf-button-primary-hover-bg);
+  color: var(--tf-button-on-color);
+}
+
+.activity-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.activity-item {
+  display: flex;
+  align-items: center;
+  padding: 15px 0;
+  border-bottom: 1px solid var(--tf-color-surface-google);
+  transition: background 0.3s ease;
+}
+
+.activity-item:hover {
+  background: var(--tf-color-surface-muted);
+  margin: 0 -15px;
+  padding: 15px;
+  border-radius: 6px;
+}
+
+.activity-item:last-child {
+  border-bottom: none;
+}
+
+.activity-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 15px;
+  font-size: var(--tf-type-scale-16);
+  flex-shrink: 0;
+}
+
+.activity-icon.sales {
+  background: var(--tf-color-blue-100);
+  color: var(--tf-color-blue-material-500);
+}
+
+.activity-icon.customer {
+  background: var(--tf-color-purple-50);
+  color: var(--tf-color-purple-material);
+}
+
+.activity-icon.inventory {
+  background: var(--tf-color-surface-green-alt);
+  color: var(--tf-color-green-material);
+}
+
+.activity-icon.repair {
+  background: var(--tf-color-orange-material-50);
+  color: var(--tf-color-orange-material-500);
+}
+
+.activity-content {
+  flex: 1;
+}
+
+.activity-content p {
+  margin-bottom: 4px;
+  color: var(--tf-color-heading);
+  font-size: var(--tf-type-scale-14);
+}
+
+.activity-time {
+  color: var(--tf-color-gray-cool-500);
+  font-size: var(--tf-type-scale-12);
+}
+
+.activity-action {
+  background: none;
+  border: none;
+  color: var(--tf-color-gray-legacy-500);
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+}
+
+.activity-action:hover {
+  background: var(--tf-color-gray-flat-200);
+  color: var(--tf-color-heading);
+}
+
+/* ===== 响应式设计 ===== */
+
+/* 平板优化 */
+@media (max-width: 1200px) {
+  .actions-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

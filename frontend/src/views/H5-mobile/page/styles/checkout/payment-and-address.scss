@@ -1,0 +1,206 @@
+// 支付方式区域
+.payment-section {
+  .payment-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .payment-tab {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 12px 8px;
+    background: var(--tf-color-surface-muted);
+    border: 2px solid transparent;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+
+    i {
+      font-size: var(--tf-type-scale-24);
+      margin-bottom: 6px;
+    }
+
+    span {
+      font-size: var(--tf-type-scale-13);
+      color: var(--text-secondary);
+    }
+
+    &.active {
+      background: var(--color-bg-white);
+      border-color: var(--tf-color-indigo-brand);
+      box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+
+      span {
+        color: var(--tf-color-indigo-brand);
+        font-weight: 500;
+      }
+    }
+  }
+
+  .payment-content {
+    animation: fadeIn 0.3s ease;
+  }
+
+  .content-title {
+    font-size: var(--tf-type-scale-14);
+    font-weight: 500;
+    color: var(--text-primary);
+    margin: 0 0 12px;
+  }
+}
+
+// 店铺选择
+.store-selection {
+  .store-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .store-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px;
+    background: var(--tf-color-surface-muted);
+    border: 2px solid transparent;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+
+    &:hover {
+      background: var(--color-bg-white);
+      border-color: var(--tf-color-gray-material-300);
+    }
+
+    &.selected {
+      background: var(--tf-color-indigo-surface);
+      border-color: var(--tf-color-indigo-brand);
+
+      i.fa-check-circle.active {
+        color: var(--tf-color-indigo-brand);
+      }
+    }
+
+    .store-info {
+      flex: 1;
+
+      .store-name {
+        font-size: var(--tf-type-scale-14);
+        font-weight: 500;
+        color: var(--text-primary);
+        margin: 0 0 6px;
+      }
+
+      .store-address {
+        font-size: var(--tf-type-scale-12);
+        color: var(--text-secondary);
+        margin: 0 0 4px;
+      }
+
+      .store-phone {
+        font-size: var(--tf-type-scale-12);
+        color: var(--text-muted);
+        margin: 0;
+
+        i {
+          font-size: var(--tf-type-scale-12);
+          margin-right: 4px;
+        }
+      }
+    }
+
+    i.fa-check-circle,
+    i.fa-circle {
+      font-size: var(--tf-type-scale-20);
+      color: var(--tf-color-gray-300-alt);
+    }
+  }
+}
+
+// 用户地址信息（已登录）
+.user-address-info {
+  .user-address-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px;
+    background: linear-gradient(135deg, var(--tf-color-surface-muted) 0%, var(--tf-color-border-muted) 100%);
+    border-radius: 8px;
+
+    .address-info {
+      flex: 1;
+
+      .address-name-phone {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 8px;
+
+        .address-name {
+          font-size: var(--tf-type-scale-15);
+          font-weight: 500;
+          color: var(--text-primary);
+          margin: 0;
+        }
+
+        .address-phone {
+          font-size: var(--tf-type-scale-13);
+          color: var(--text-secondary);
+          margin: 0;
+        }
+      }
+
+      .address-detail {
+        font-size: var(--tf-type-scale-13);
+        color: var(--text-secondary);
+        margin: 0;
+        line-height: 1.5;
+      }
+    }
+  }
+
+  .no-address-hint {
+    text-align: center;
+    padding: 24px 16px;
+    background: var(--tf-color-surface-muted);
+    border-radius: 8px;
+
+    p {
+      font-size: var(--tf-type-scale-14);
+      color: var(--text-muted);
+      margin: 0 0 12px;
+    }
+  }
+}
+
+// 访客地址信息（未登录）
+.guest-address-info {
+  .delivery-form {
+    .form-row {
+      display: flex;
+      gap: 12px;
+
+      .form-item-half {
+        flex: 1;
+        margin-bottom: 16px;
+
+        &:last-child {
+          margin-bottom: 0;
+        }
+      }
+    }
+
+    .el-form-item {
+      margin-bottom: 16px;
+
+      &:last-child {
+        margin-bottom: 0;
+      }
+    }
+  }
+}

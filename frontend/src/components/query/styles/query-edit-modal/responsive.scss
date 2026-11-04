@@ -1,0 +1,49 @@
+
+@media (max-width: 767px) {
+  .dialog-footer {
+    :deep(.el-button [class*='fa-']) {
+      margin-right: 4px;
+    }
+  }
+
+  :deep(.el-input__wrapper),
+  :deep(.el-select__wrapper),
+  :deep(.el-date-editor .el-input__wrapper),
+  :deep(.el-input-number .el-input__wrapper) {
+    padding: 1px 10px;
+  }
+
+  :deep(.el-input__inner),
+  :deep(.el-select__selected-item),
+  :deep(.el-date-editor .el-input__inner),
+  :deep(.el-input-number .el-input__inner),
+  :deep(.el-textarea__inner) {
+    font-size: var(--tf-type-scale-13);
+  }
+
+}
+
+@media (max-width: 479px) {
+  :global(.query-edit-dialog) {
+    --dialog-side-gap: 4px;
+    --dialog-vertical-gap: 12px;
+    --dialog-max-width: calc(100vw - 8px);
+    --mobile-dialog-body-padding: 6px 4px 6px;
+    --mobile-dialog-footer-padding: 0 4px 4px;
+  }
+
+  :global(.query-edit-dialog.mobile-dialog-sheet-panel) {
+    border-radius: 24px !important;
+  }
+
+  :global(.query-edit-dialog .mobile-dialog-sheet-header) {
+    min-height: calc(62px + env(safe-area-inset-top));
+    padding: calc(8px + env(safe-area-inset-top)) 50px 8px 14px;
+  }
+
+  :global(.query-edit-dialog .mobile-dialog-sheet-close) {
+    top: calc(8px + env(safe-area-inset-top));
+    right: 14px;
+  }
+
+}

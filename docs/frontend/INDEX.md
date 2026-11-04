@@ -57,12 +57,12 @@
 
 - [响应式与主题视觉回归清单](visual-regression-checklist.md)
 - [字段权限使用指南](field-permission-guide.md)
-- [模态框开发指南](modal-development-guide.md)
-- [通知使用指南](notification-guide.md)
-- [移动端组件示例](mobile-component-examples.md)
+- [模态框开发旧入口](modal-development-guide.md) — 迁移导航，唯一正文为“对话框”
+- [通知使用旧入口](notification-guide.md) — 迁移导航，唯一正文为“通知”
+- [移动端组件旧示例入口](mobile-component-examples.md) — 迁移导航，按专项规范和当前源码选取示例
 - [手机状态编辑说明](phone-status-editing.md)
 - [近期 UI 与数据修复记录（2026-06-01）](recent-ui-and-data-fixes-2026-06-01.md)
-- [前端性能优化指南](PERFORMANCE_OPTIMIZATION.md)
+- [前端性能优化旧入口](PERFORMANCE_OPTIMIZATION.md) — 迁移导航，统一使用 Telemetry、数据实时性和构建体积门禁
 
 ## 其他入口
 

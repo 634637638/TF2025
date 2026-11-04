@@ -1,0 +1,193 @@
+.mobile-home {
+  min-height: 100vh;
+  background: var(--tf-color-surface-soft);
+}
+
+// 商家信息栏
+.merchant-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
+  padding: 8px 16px;
+  z-index: 100;
+
+  .merchant-info {
+    display: flex;
+    align-items: center;
+    flex: 1;
+    cursor: pointer;
+
+    .merchant-logo {
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      overflow: hidden;
+      background: var(--color-bg-white);
+      margin-right: 10px;
+      flex-shrink: 0;
+
+      img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+    }
+
+    .merchant-text {
+      flex: 1;
+      min-width: 0;
+
+      .merchant-name {
+        font-size: var(--tf-type-scale-15);
+        font-weight: 600;
+        color: var(--color-bg-white);
+        margin-bottom: 2px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .merchant-address {
+        font-size: var(--tf-type-scale-12);
+        color: rgba(255, 255, 255, 0.9);
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+
+        i {
+          font-size: var(--tf-type-scale-10);
+        }
+      }
+    }
+  }
+
+  .merchant-actions {
+    display: flex;
+    gap: 8px;
+
+    .action-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--tf-button-overlay-bg);
+      backdrop-filter: blur(10px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.3s;
+
+      &:active {
+        transform: scale(0.95);
+        background: var(--tf-button-overlay-hover-bg);
+      }
+
+      i {
+        font-size: var(--tf-type-scale-16);
+        color: var(--tf-button-on-color);
+      }
+    }
+  }
+}
+
+// 轮播图
+.banner-section {
+  background: var(--color-bg-white);
+  margin-bottom: 8px;
+
+  .banner-swiper {
+    height: 200px;
+
+    :deep(.swiper-wrapper) {
+      height: 100%;
+    }
+
+    :deep(.swiper-slide) {
+      height: 100%;
+    }
+
+    .banner-slide {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: var(--color-bg-white);
+
+      :deep(.tf-image) {
+        width: 100%;
+        height: 100%;
+      }
+
+      :deep(img) {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+    }
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      cursor: pointer;
+    }
+  }
+
+  :deep(.swiper-pagination-bullet) {
+    background: rgba(255, 255, 255, 0.5);
+    opacity: 1;
+
+    &.swiper-pagination-bullet-active {
+      background: var(--tf-color-accent-orange);
+    }
+  }
+}
+
+// 快速分类
+.category-section {
+  background: var(--color-bg-white);
+  padding: 16px;
+  display: flex;
+  justify-content: space-around;
+  margin-bottom: 8px;
+
+  .category-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+
+    .category-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: var(--tf-type-scale-20);
+      color: var(--color-bg-white);
+
+      &.new {
+        background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
+      }
+
+      &.used {
+        background: linear-gradient(135deg, var(--tf-color-pink-gradient) 0%, var(--tf-color-coral-gradient) 100%);
+      }
+
+      &.all {
+        background: linear-gradient(135deg, var(--tf-color-sky-gradient) 0%, var(--tf-color-cyan-gradient) 100%);
+      }
+    }
+
+    span {
+      font-size: var(--tf-type-scale-13);
+      color: var(--text-primary);
+    }
+  }
+}

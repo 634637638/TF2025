@@ -78,9 +78,12 @@ const canAccessSalaryPage = computed(() => canViewSalaryPage.value)
 
 ```ts
 import { canAccessRoutePath } from '@/constants/routePermissions'
+import { useNotification } from '@/composables/useNotification'
+
+const { warning } = useNotification()
 
 if (!canAccessRoutePath(targetPath, authStore)) {
-  ElMessage.warning('您没有访问此页面的权限')
+  warning('您没有访问此页面的权限')
   return
 }
 ```

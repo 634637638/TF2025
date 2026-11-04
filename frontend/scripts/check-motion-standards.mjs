@@ -30,6 +30,19 @@ function getStyleSources(filePath, source) {
   return [...source.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi)].map(match => match[1])
 }
 
+function sourceWithExternalStyles(relativeFile) {
+  const filePath = path.join(frontendRoot, relativeFile)
+  const source = fs.readFileSync(filePath, 'utf8')
+  if (!filePath.endsWith('.vue')) return source
+  const externalStyles = []
+  for (const match of source.matchAll(/<style\b([^>]*)>/gi)) {
+    const sourceMatch = match[1].match(/\bsrc=["']([^"']+)["']/i)
+    if (!sourceMatch) continue
+    externalStyles.push(fs.readFileSync(path.resolve(path.dirname(filePath), sourceMatch[1]), 'utf8'))
+  }
+  return [source, ...externalStyles].join('\n')
+}
+
 const variables = fs.readFileSync(variablesPath, 'utf8')
 for (const token of requiredTokens) {
   if (!new RegExp(`${token}\\s*:`).test(variables)) findings.push(`_variables.scss 缺少公共动效令牌 ${token}`)
@@ -41,7 +54,7 @@ if (!/@media\s*\(prefers-reduced-motion:\s*reduce\)/.test(responsiveStyles)) {
 }
 
 for (const relativeFile of requiredReferences) {
-  const source = fs.readFileSync(path.join(sourceRoot, relativeFile.replace(/^src\//, '')), 'utf8')
+  const source = sourceWithExternalStyles(relativeFile)
   if (!source.includes('var(--tf-motion-')) findings.push(`${relativeFile} 未读取公共动效令牌`)
 }
 

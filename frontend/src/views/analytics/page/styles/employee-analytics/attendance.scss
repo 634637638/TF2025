@@ -1,0 +1,200 @@
+
+.employee-analytics {
+  .attendance-summary-item {
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid var(--el-border-color-lighter);
+    background: linear-gradient(180deg, rgba(248, 250, 252, 0.96), rgba(255, 255, 255, 0.98));
+
+    &.warning {
+      background: linear-gradient(180deg, rgba(255, 247, 237, 0.96), rgba(255, 255, 255, 0.98));
+    }
+
+    &.primary {
+      background: linear-gradient(180deg, rgba(239, 246, 255, 0.96), rgba(255, 255, 255, 0.98));
+    }
+
+    &.success {
+      background: linear-gradient(180deg, rgba(240, 253, 244, 0.96), rgba(255, 255, 255, 0.98));
+    }
+
+    .summary-label {
+      font-size: var(--tf-type-scale-12);
+      color: var(--el-text-color-secondary);
+      margin-bottom: 6px;
+    }
+
+    .summary-value {
+      font-size: var(--tf-type-scale-20);
+      font-weight: 700;
+      color: var(--el-text-color-primary);
+      line-height: 1.1;
+    }
+  }
+
+  .new-sales {
+    color: var(--tf-color-blue-ant);
+    font-weight: 600;
+  }
+
+  .used-sales {
+    color: var(--tf-color-pink-500);
+    font-weight: 600;
+  }
+
+  .wholesale-count {
+    color: var(--tf-color-blue-600);
+    font-weight: 700;
+  }
+
+  .allocation-count {
+    color: var(--tf-color-teal-700);
+    font-weight: 700;
+  }
+
+  .excellent {
+    color: var(--el-color-success);
+    font-weight: 600;
+  }
+
+  .good {
+    color: var(--el-color-warning);
+    font-weight: 600;
+  }
+
+  .warning {
+    color: var(--el-color-danger);
+    font-weight: 600;
+  }
+
+  .positive {
+    color: var(--el-color-success);
+  }
+
+  .negative {
+    color: var(--el-color-danger);
+  }
+
+  .neutral {
+    color: var(--el-text-color-regular);
+  }
+
+  // 响应式设计支持
+  @media (max-width: 1200px) {
+    .overview-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .overview-card {
+      height: 136px;
+
+      .card-icon {
+        width: 50px;
+        height: 50px;
+        font-size: var(--tf-type-scale-20);
+      }
+
+      .card-info {
+        .card-value {
+          font-size: var(--tf-type-scale-24);
+        }
+      }
+    }
+
+    .chart-container {
+      height: 250px;
+      min-height: 250px;
+    }
+  }
+
+  @media (max-width: 767px) {
+    .attendance-summary-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .performance-summary-strip {
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+
+    .overview-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .overview-card {
+      height: 124px;
+
+      .card-icon {
+        width: 40px;
+        height: 40px;
+        font-size: var(--tf-type-scale-16);
+      }
+
+      .card-info {
+        .card-title {
+          font-size: var(--tf-type-scale-12);
+        }
+
+        .card-value {
+          font-size: var(--tf-type-scale-18);
+        }
+
+        .card-desc {
+          font-size: var(--tf-type-scale-11);
+        }
+
+        .card-change {
+          font-size: var(--tf-type-scale-10);
+        }
+      }
+    }
+
+    .chart-card,
+    .table-card {
+      .card-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+
+        h3 {
+          font-size: var(--tf-type-scale-14);
+        }
+
+        .card-header-actions {
+          width: 100%;
+          justify-content: space-between;
+        }
+      }
+    }
+
+    .chart-container {
+      height: 200px;
+      min-height: 200px;
+    }
+
+    .el-table {
+      font-size: var(--tf-type-scale-12);
+    }
+  }
+
+  @media (max-width: 479px) {
+    .overview-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .attendance-summary-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .charts-section,
+    .table-section {
+      :deep(.el-col) {
+        width: 100%;
+        max-width: 100%;
+        flex: 0 0 100%;
+        margin-bottom: 16px;
+      }
+    }
+  }
+}

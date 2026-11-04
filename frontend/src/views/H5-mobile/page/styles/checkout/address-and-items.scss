@@ -1,0 +1,215 @@
+.checkout-page {
+  min-height: 100vh;
+  background: var(--tf-color-surface-soft);
+  padding-bottom: 60px;
+}
+
+// 加载状态
+.loading-state {
+  padding: 20px;
+}
+
+// 内容区域
+.checkout-content {
+  padding: 8px;
+}
+
+// 区块
+.section {
+  background: var(--color-bg-white);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 8px;
+
+  .section-title {
+    font-size: var(--tf-type-scale-16);
+    font-weight: 500;
+    color: var(--text-primary);
+    margin: 0 0 16px;
+  }
+}
+
+// 收货地址 - 小卡片风格
+.address-section {
+  padding: 12px 14px;
+
+  .address-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+
+    .section-title {
+      margin: 0;
+      font-size: var(--tf-type-scale-14);
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+
+    .required-hint {
+      font-size: var(--tf-type-scale-11);
+      color: var(--tf-color-accent-pink);
+    }
+  }
+
+  .address-cards {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .address-card {
+    flex: 1;
+    min-width: calc(50% - 4px);
+    background: var(--tf-color-surface-muted);
+    border: 1px solid var(--tf-color-border-muted);
+    border-radius: 8px;
+    padding: 8px 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s ease;
+
+    &:hover {
+      border-color: var(--tf-color-indigo-brand);
+      background: var(--color-bg-white);
+      box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
+    }
+
+    &.full-width {
+      flex: 100%;
+      min-width: 100%;
+    }
+
+    .card-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+
+      i {
+        font-size: var(--tf-type-scale-14);
+        color: var(--color-bg-white);
+      }
+    }
+
+    .card-input {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .card-form-item {
+      margin: 0;
+
+      :deep(.el-form-item__content) {
+        margin-left: 0;
+        line-height: normal;
+      }
+
+      :deep(.el-form-item__error) {
+        position: absolute;
+        bottom: -18px;
+        left: 0;
+        font-size: var(--tf-type-scale-11);
+      }
+    }
+
+    .card-input-field {
+      &:deep(.el-input__wrapper) {
+        background: transparent;
+        border: none;
+        box-shadow: none;
+        padding: 0;
+        font-size: var(--tf-type-scale-13);
+
+        .el-input__inner {
+          color: var(--text-primary);
+
+          &::placeholder {
+            color: var(--text-muted);
+            font-size: var(--tf-type-scale-12);
+          }
+        }
+      }
+
+      &:deep(.el-input__clear) {
+        font-size: var(--tf-type-scale-14);
+        color: var(--text-muted);
+      }
+
+      &:deep(.el-input__clear:hover) {
+        color: var(--tf-color-indigo-brand);
+      }
+    }
+  }
+}
+
+// 商品列表
+.order-items {
+  .order-item {
+    display: flex;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--tf-color-surface-soft);
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    .item-image {
+      width: 80px;
+      height: 80px;
+      border-radius: 8px;
+      overflow: hidden;
+      background: var(--tf-color-surface-soft);
+      flex-shrink: 0;
+
+      img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+    }
+
+    .item-info {
+      flex: 1;
+      margin-left: 12px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+
+      .item-title {
+        font-size: var(--tf-type-scale-14);
+        font-weight: 500;
+        color: var(--text-primary);
+        margin: 0 0 4px;
+      }
+
+      .item-specs {
+        font-size: var(--tf-type-scale-12);
+        color: var(--text-muted);
+        margin: 0 0 8px;
+      }
+
+      .item-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+
+        .item-price {
+          font-size: var(--tf-type-scale-16);
+          font-weight: 500;
+          color: var(--tf-color-accent-pink);
+        }
+
+        .item-quantity {
+          font-size: var(--tf-type-scale-14);
+          color: var(--text-muted);
+        }
+      }
+    }
+  }
+}

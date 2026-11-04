@@ -3,376 +3,409 @@
     {
       "file": "src/styles/admin-layout.css",
       "max": 394,
+      "category": "shared-contract",
       "reason": "Unified admin layout must override legacy page-scoped spacing, table shells, statistic card colors, and base-table content dimensions."
     },
     {
       "file": "src/styles.scss",
       "max": 131,
+      "category": "shared-contract",
       "reason": "Global Element Plus poppers, teleported dialogs, loading states and mobile safe-area contracts."
     },
     {
       "file": "src/styles/components/_table.scss",
       "max": 201,
+      "category": "shared-contract",
       "reason": "Unified Element Plus table contract overrides vendor and legacy page table declarations, including the action-column cell padding contract."
     },
     {
       "file": "src/styles/components/_buttons.scss",
       "max": 266,
+      "category": "shared-contract",
       "reason": "Unified button contract overrides Element Plus component variables, legacy button classes, and the zero-native-button mobile semantic surfaces."
     },
     {
       "file": "src/styles/responsive.scss",
       "max": 59,
+      "category": "responsive-safety",
       "reason": "Global mobile breakpoints, safe-area rules and Safari phone fallbacks must win over desktop legacy declarations."
     },
     {
       "file": "src/styles/components/_dialog-actions.scss",
       "max": 47,
+      "category": "shared-contract",
       "reason": "Teleported Element Plus dialog action layout and mobile footer contract."
     },
     {
       "file": "src/styles/components/_tabs.scss",
       "max": 52,
+      "category": "shared-contract",
       "reason": "Unified tab styles override vendor styles, including the inline tab-list transform so native scrolling owns the horizontal offset without arrows."
     },
     {
       "file": "src/assets/css/field-permissions.css",
       "max": 19,
+      "category": "accessibility-security",
       "reason": "Field masking and permission visibility must override business-page display rules."
     },
     {
       "file": "src/styles/global.css",
       "max": 16,
+      "category": "accessibility-security",
       "reason": "Global accessibility and application shell state overrides."
     },
     {
       "file": "src/styles/components/_dialog.scss",
-      "max": 160,
+      "max": 159,
+      "category": "shared-contract",
       "reason": "Element Plus dialog structure, viewport boundary and shared MobileDialog close-control overrides."
     },
     {
       "file": "src/styles/utilities.scss",
       "max": 5,
+      "category": "shared-contract",
       "reason": "Explicit utility classes whose documented purpose is forced visibility or spacing."
     },
     {
       "file": "src/styles/mixins/_responsive.scss",
       "max": 3,
+      "category": "responsive-safety",
       "reason": "Responsive mixins emit intentional breakpoint overrides."
     },
     {
       "file": "src/styles/permission-toast.scss",
       "max": 3,
+      "category": "teleport-layer",
       "reason": "Permission toast is teleported and must override notification vendor positioning."
     },
     {
       "file": "src/views/price-list/page/PublicPriceQuery.vue",
       "max": 8,
+      "category": "render-export",
       "reason": "Remaining inline PublicPriceQuery styles retain explicit Element Plus layout overrides."
     },
     {
       "file": "src/views/price-list/page/public-price-query/_image-capture.scss",
       "max": 77,
+      "category": "render-export",
       "reason": "Generated quote images must retain fixed-width table layout and watermark visibility over the shared table contract."
     },
     {
       "file": "src/views/price-list/page/public-price-query/_ios-save-dialog.scss",
       "max": 12,
+      "category": "render-export",
       "reason": "The teleported iOS save dialog must preserve touch behavior and its mobile dialog dimensions."
     },
     {
       "file": "src/views/price-list/page/public-price-query/_notice-dialog.scss",
       "max": 1,
+      "category": "teleport-layer",
       "reason": "The globally rendered notice dialog root must override MobileDialog's inline width on mobile; this also covers its teleported mobile sheet."
     },
     {
       "file": "src/views/price-list/page/public-price-query/_mobile-safari.scss",
       "max": 15,
+      "category": "render-export",
       "reason": "Mobile Safari viewport and table scrolling rules must override the shared admin table contract."
     },
     {
       "file": "src/views/price-list/page/SalesPriceDisplay.vue",
       "max": 81,
+      "category": "render-export",
       "reason": "Shareable price canvas, Safari table rendering, and public mobile layout intentionally override global admin shells. Contact cards use the shared public contact styles."
     },
     {
       "file": "src/views/query/styles/query-view/responsive.css",
       "max": 1,
+      "category": "responsive-safety",
       "reason": "The mobile query table keeps momentum scrolling over the shared table overflow contract."
     },
     {
       "file": "src/views/query/styles/query-view/image-preview.css",
       "max": 8,
+      "category": "teleport-layer",
       "reason": "Teleported image-preview controls retain fixed delete-button dimensions and dialog width over Element Plus defaults."
     },
     {
-      "file": "src/views/H5-admin/page/SoldProductsView.vue",
+      "file": "src/views/H5-admin/page/styles/sold-products-view/desktop.scss",
       "max": 7,
+      "category": "teleport-layer",
       "reason": "Element Plus media management dialog buttons require fixed dimensions and state colors."
     },
     {
       "file": "src/components/PublishToH5Modal.vue",
-      "max": 18,
+      "max": 17,
+      "category": "teleport-layer",
       "reason": "Teleported MobileDialog safe-area, compact controls and footer dimensions."
-    },
-    {
-      "file": "src/components/mobile/MobileSlideMenu.vue",
-      "max": 8,
-      "reason": "Mobile menu expand control must override Element Plus button dimensions while preserving the shared menu action contract."
     },
     {
       "file": "src/components/ResponsiveLayout.vue",
       "max": 1,
+      "category": "accessibility-security",
       "reason": "High-contrast mode must add a visible FAB border after the shared FAB contract removes the default border."
     },
     {
       "file": "src/views/inventory/InventoryView.vue",
-      "max": 33,
+      "max": 32,
+      "category": "teleport-layer",
       "reason": "Inventory teleported dialogs and mobile full-screen stock-in layout override global dialog dimensions."
     },
     {
       "file": "src/views/sales/styles/sales-view-base.scss",
       "max": 5,
+      "category": "responsive-safety",
       "reason": "Sales table states, compact input actions and mobile checkout override shared table and button contracts."
     },
     {
       "file": "src/views/sales/styles/sales-view-dialogs.scss",
-      "max": 29,
+      "max": 27,
+      "category": "teleport-layer",
       "reason": "Sales teleported dialogs override global dialog dimensions, safe-area spacing and surfaces."
     },
     {
       "file": "src/views/subsidy/styles/subsidy/_dashboard.scss",
       "max": 9,
+      "category": "responsive-safety",
       "reason": "Subsidy dashboard stat-card layout overrides shared responsive card dimensions."
     },
     {
       "file": "src/views/subsidy/styles/subsidy/_details-and-edit.scss",
       "max": 3,
+      "category": "vendor-boundary",
       "reason": "Subsidy detail and edit sections retain Element Plus form sizing overrides."
     },
     {
       "file": "src/views/subsidy/styles/subsidy/_mobile-layout.scss",
       "max": 1,
+      "category": "responsive-safety",
       "reason": "Subsidy mobile layout retains one narrow-screen grid override."
-    },
-    {
-      "file": "src/views/subsidy/styles/subsidy/_photo-responsive.scss",
-      "max": 1,
-      "reason": "Legacy subsidy amount input width override in the responsive form layout."
     },
     {
       "file": "src/views/payments/styles/supplier-phone-payments/_form-controls.scss",
       "max": 20,
+      "category": "shared-contract",
       "reason": "Supplier payment Element Plus form wrappers retain specific dimensions and states against shared control rules."
     },
     {
       "file": "src/views/payments/styles/supplier-phone-payments/_mobile-layout.scss",
       "max": 9,
+      "category": "teleport-layer",
       "reason": "Supplier payment mobile layout retains narrow-screen table and dialog overrides."
     },
     {
       "file": "src/views/permissions/styles/permissions-view.css",
       "max": 12,
+      "category": "accessibility-security",
       "reason": "Teleported permission dialogs and controls override the unified dialog and button contracts."
     },
     {
       "file": "src/views/employees/EmployeesView.vue",
-      "max": 14,
+      "max": 12,
+      "category": "teleport-layer",
       "reason": "Employee table state rows and mobile dialog grid override the shared table and dialog contracts."
     },
     {
-      "file": "src/components/query/QueryEditModal.vue",
-      "max": 5,
+      "file": "src/components/query/styles/query-edit-modal/base.scss",
+      "max": 4,
+      "category": "teleport-layer",
       "reason": "Query editor teleported dialog surface and compact input actions override shared contracts."
     },
     {
-      "file": "src/components/MobileDialog.vue",
-      "max": 29,
+      "file": "src/components/query/styles/query-edit-modal/responsive.scss",
+      "max": 1,
+      "category": "teleport-layer",
+      "reason": "Query editor teleported dialog surface and compact input actions override shared contracts."
+    },
+    {
+      "file": "src/components/styles/mobile-dialog/base.scss",
+      "max": 28,
+      "category": "shared-contract",
+      "reason": "Core dialog component must control Element Plus teleported dimensions, safe areas, transition state and the shared sheet close control."
+    },
+    {
+      "file": "src/components/styles/mobile-dialog/theme.scss",
+      "max": 1,
+      "category": "accessibility-security",
       "reason": "Core dialog component must control Element Plus teleported dimensions, safe areas, transition state and the shared sheet close control."
     },
     {
       "file": "src/components/common/CustomerSearchDropdown.vue",
       "max": 4,
+      "category": "teleport-layer",
       "reason": "Customer search dropdown keeps compact mobile labels and selected-state affordances readable across teleported form surfaces."
     },
     {
       "file": "src/components/WholesaleModal.vue",
       "max": 10,
+      "category": "teleport-layer",
       "reason": "Wholesale teleported dialog uses explicit desktop and mobile viewport dimensions."
     },
     {
       "file": "src/components/InventoryDetailModal.vue",
-      "max": 5,
+      "max": 3,
+      "category": "teleport-layer",
       "reason": "Inventory detail teleported dialog overrides global body, footer and mobile viewport spacing."
     },
     {
       "file": "src/components/wholesale/WholesalePartySection.vue",
       "max": 8,
+      "category": "vendor-boundary",
       "reason": "Wholesale party inputs and compact action buttons override Element Plus grid and button dimensions."
-    },
-    {
-      "file": "src/components/search/UnifiedSearchPanel.vue",
-      "max": 16,
-      "reason": "Unified search controls enforce one height across Element Plus input and select internals."
     },
     {
       "file": "src/components/ScreenLock.vue",
       "max": 15,
+      "category": "accessibility-security",
       "reason": "Security lock overlay must cover every teleported dialog and application layer."
     },
     {
-      "file": "src/views/attendance/AttendanceView.vue",
-      "max": 13,
+      "file": "src/views/attendance/styles/attendance-view/responsive.css",
+      "max": 11,
+      "category": "responsive-safety",
       "reason": "Mobile attendance table intentionally collapses desktop-only columns and overrides shared table padding."
     },
     {
       "file": "src/views/price-list/PriceListView.vue",
-      "max": 12,
-      "reason": "Price-list split table hides structural columns and overrides shared table cell dimensions."
+      "max": 1,
+      "category": "state-precedence",
+      "reason": "The price-trend warning row must override the shared striped table background."
     },
     {
       "file": "src/views/system/styles/system-view/screen-lock-responsive.css",
       "max": 11,
+      "category": "responsive-safety",
       "reason": "System settings forms override Element Plus label width and content indentation on mobile."
     },
     {
       "file": "src/views/shared/SharedView.vue",
       "max": 7,
+      "category": "teleport-layer",
       "reason": "Rich-content tables and mobile teleported editor dialogs override embedded content and vendor dimensions."
     },
     {
-      "file": "src/views/H5-admin/page/orders.vue",
+      "file": "src/views/H5-admin/page/styles/orders/responsive.scss",
       "max": 4,
+      "category": "teleport-layer",
       "reason": "H5 order editor mobile form and safe-area footer override desktop dialog layout."
     },
     {
-      "file": "src/views/H5-admin/page/banners.vue",
+      "file": "src/views/H5-admin/page/styles/banners/responsive.scss",
       "max": 6,
+      "category": "teleport-layer",
       "reason": "H5 banner editor mobile form and safe-area footer override desktop dialog layout."
     },
     {
-      "file": "src/views/marketing/MarketingView.vue",
+      "file": "src/views/marketing/styles/marketing-view/copy-cards.scss",
       "max": 9,
+      "category": "shared-contract",
       "reason": "Public marketing compact action controls override unified admin button dimensions."
-    },
-    {
-      "file": "src/views/salary/SalaryView.vue",
-      "max": 2,
-      "reason": "Teleported salary mobile sheets keep the narrow-screen side gaps defined by the salary dialog contract."
     },
     {
       "file": "src/views/subsidy/components/styles/subsidy-list/table-and-photos.scss",
       "max": 1,
+      "category": "shared-contract",
       "reason": "Subsidy muted text intentionally overrides the global forced text utility."
     },
     {
       "file": "src/components/DraggableRow.vue",
-      "max": 4,
-      "reason": "Reusable drag rows must override shared table hover backgrounds and cell padding while dragging."
+      "max": 2,
+      "category": "state-precedence",
+      "reason": "Reusable drag rows must override shared table hover backgrounds while dragging."
     },
     {
       "file": "src/components/PriceMarkupConfig.vue",
       "max": 1,
+      "category": "vendor-boundary",
       "reason": "Element Plus form content applies an inline label offset that the compact tier form must reset."
     },
     {
       "file": "src/components/ReminderHost.vue",
       "max": 1,
+      "category": "teleport-layer",
       "reason": "The teleported reminder dialog must stay within the mobile viewport."
     },
     {
       "file": "src/components/query/ReturnStockModal.vue",
       "max": 5,
+      "category": "teleport-layer",
       "reason": "Return-stock MobileDialog surface and nested teleported confirmation dialog override vendor surfaces."
     },
     {
       "file": "src/components/stock-in/StockInPhoneListSection.vue",
       "max": 1,
+      "category": "state-precedence",
       "reason": "Invalid stock-in table rows must override shared table hover and stripe backgrounds."
     },
     {
-      "file": "src/views/H5-admin/page/config.vue",
+      "file": "src/views/H5-admin/page/styles/config/responsive.scss",
       "max": 4,
+      "category": "teleport-layer",
       "reason": "H5 configuration editor mobile form and safe-area footer override desktop dialog layout."
     },
     {
       "file": "src/views/H5-admin/page/styles/home-sections/responsive.scss",
       "max": 5,
+      "category": "teleport-layer",
       "reason": "H5 section editor mobile form, controls and safe-area footer override desktop dialog layout."
     },
     {
-      "file": "src/views/H5-mobile/page/AggregatedProductDetail.vue",
+      "file": "src/views/H5-mobile/page/styles/aggregated-product-detail/bottom-bar.scss",
       "max": 7,
+      "category": "responsive-safety",
       "reason": "Public product action buttons override the authenticated global button contract."
     },
     {
       "file": "src/views/brands/styles/brands-view/accessibility.css",
       "max": 3,
+      "category": "accessibility-security",
       "reason": "Drag row states and reduced-motion accessibility rules override shared table and animation contracts."
     },
     {
-      "file": "src/views/colors/ColorsView.vue",
-      "max": 2,
-      "reason": "Drag row states and mobile action rows override shared table background and cell padding."
-    },
-    {
       "file": "src/views/customers/CustomersView.vue",
-      "max": 6,
-      "reason": "Element Plus grid inline gutters and teleported MobileDialog spacing require mobile overrides."
+      "max": 4,
+      "category": "responsive-safety",
+      "reason": "Element Plus grid inline gutters require mobile overrides."
     },
     {
-      "file": "src/views/data-optimization/page/DataCheckTab.vue",
+      "file": "src/views/data-optimization/page/styles/data-check-tab/data-table.scss",
       "max": 2,
+      "category": "state-precedence",
       "reason": "Duplicate-data row states must override shared table stripe and hover backgrounds."
-    },
-    {
-      "file": "src/views/memories/MemoriesView.vue",
-      "max": 0,
-      "reason": "Drag row states override shared table hover backgrounds and cell padding."
-    },
-    {
-      "file": "src/views/models/ModelsView.vue",
-      "max": 2,
-      "reason": "Drag row states and mobile action rows override shared table background and cell padding."
     },
     {
       "file": "src/views/permissions/page/ModuleManagementView.vue",
       "max": 5,
+      "category": "accessibility-security",
       "reason": "Teleported module editor and confirmation dialogs override global dialog dimensions and surfaces."
     },
     {
       "file": "src/views/preorders/PreordersView.vue",
       "max": 4,
+      "category": "state-precedence",
       "reason": "The fixed Element Plus action column must remain visible above horizontally scrolling preorder data."
     },
     {
       "file": "src/views/reminders/ReminderView.vue",
       "max": 7,
+      "category": "teleport-layer",
       "reason": "Reminder poppers and teleported dialogs must remain above overlays and within mobile viewport bounds."
     },
     {
-      "file": "src/views/stores/StoresView.vue",
-      "max": 2,
-      "reason": "Compact table handles and validation state override shared table padding and input borders."
-    },
-    {
-      "file": "src/views/subsidy/components/SubsidyApplyDialog.vue",
-      "max": 1,
-      "reason": "Element Plus numeric inputs fill the subsidy form grid cell."
-    },
-    {
-      "file": "src/views/system/page/SimpleAdminView.vue",
+      "file": "src/views/system/page/styles/simple-admin/content-responsive.css",
       "max": 4,
+      "category": "responsive-safety",
       "reason": "Route transitions are deliberately disabled and mobile content must remove the desktop sidebar offset."
     },
     {
       "file": "src/views/system/phone-warning-config/PhoneWarningConfigView.vue",
       "max": 2,
+      "category": "teleport-layer",
       "reason": "Element Plus dialog and form label inline widths require mobile viewport overrides."
     },
     {
       "file": "src/views/subsidy/SubsidyView.vue",
       "max": 3,
+      "category": "state-precedence",
       "reason": "Selected and pinned subsidy table row backgrounds override Element Plus row states; dialog shell uses shared styles."
     }
   ]

@@ -155,10 +155,10 @@ npm run check:fields
 
 cd ../backend
 npm test
-RUN_DB_TESTS=true npm test
+npm run test:db
 ```
 
-本文中的真实数据库数字来自 2026-08-27 至 2026-08-28 的只读快照或当日回归记录；2026-09-30 仅重新执行了静态字段审计和本地契约检查，没有连接线上数据库重新取数。当前真实数据库回归结果以目标环境最近一次 `RUN_DB_TESTS=true npm test` 为准；每轮字段契约变更后必须重新执行并在交付记录中说明结果。
+本文中的真实数据库数字来自 2026-08-27 至 2026-08-28 的只读快照或当日回归记录；2026-09-30 仅重新执行了静态字段审计和本地契约检查，没有连接线上数据库重新取数。当前真实数据库回归必须通过 `npm run test:db` 的独立测试库入口执行；明确授权的业务库模式按[后端数据库回归测试](../backend/database-testing.md)追加完整授权参数。每轮字段契约变更后必须重新执行并在交付记录中说明结果。
 
 2026-08-27 最近一次结果：106 项通过、0 失败、0 跳过。该结果覆盖当前后端数据库测试集，不代表所有登录态页面人工流程已经验收。
 
@@ -366,7 +366,7 @@ RUN_DB_TESTS=true npm test
 - 字段权限运行时契约已统一：聚合字段只使用 `hidden_fields`、`editable_fields`，单字段属性只使用 `can_view`、`can_edit`、`can_search`、`can_export`、`is_hidden`、`permission_level`。旧 camelCase 响应字段和兼容读取已删除。
 - 删除无调用方且请求不存在接口的旧 `fieldPermissionService`、`FieldPermissionTable`、`FieldPermissionWrapper` 和旧权限组合式函数；全局指令仅保留实际使用的 `v-permission`、`v-permission-not`。
 - `/permissions/field-permissions/:role_id` 用于管理员维护某个角色的字段配置，`/permissions/user-field-permissions` 用于读取当前用户多角色合并后的生效配置；两者职责不同，但请求和响应字段采用同一 snake_case 契约。
-- 已验证：旧 `/fields/permissions` 调用及完整旧字段标识符扫描为 0；前端类型检查、字段一致性审计和生产构建通过；开启 `RUN_DB_TESTS=true` 后端 103 项测试全部通过，无跳过。
+- 已验证：旧 `/fields/permissions` 调用及完整旧字段标识符扫描为 0；前端类型检查、字段一致性审计和生产构建通过；当时后端真实数据库测试 103 项全部通过、无跳过。该数量属于历史记录，当前入口和结果以数据库测试规范及本轮实际汇总为准。
 
 ### 用户列表接口（`users.js`，2026-08-26）
 

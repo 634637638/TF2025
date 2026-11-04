@@ -107,9 +107,24 @@ app.use(ErrorBoundaryPlugin, {
   enabled: true,
   maxErrors: 100,
   enableConsoleLog: true,
-  enableReporting: false,
+  enableReporting: false, // 网络上报统一由下方 globalErrorLogger 处理，避免重复发送
   autoRetry: true,
-  maxRetries: 3
+  maxRetries: 3,
+  onError: (error) => {
+    const component = typeof error.context?.component === 'string'
+      ? error.context.component
+      : undefined
+
+    globalErrorLogger.logError({
+      level: error.level,
+      type: error.type,
+      message: error.message,
+      stack: error.stack,
+      context: error.context,
+      component,
+      tags: error.tags
+    })
+  }
 })
 
 // 安装统一通知系统

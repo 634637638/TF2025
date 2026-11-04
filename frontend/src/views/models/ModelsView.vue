@@ -1537,12 +1537,6 @@ onMounted(async () => {
 }
 
 @media (max-width: 479px) {
-  .mobile-action-row td {
-    padding: 6px 4px 10px !important;
-    background: linear-gradient(180deg, var(--tf-color-surface-blue) 0%, var(--tf-color-indigo-surface-alt) 100%);
-    border-top: none !important;
-  }
-
   .models-view .model-name {
     font-size: var(--tf-type-scale-14);
     font-weight: 700;

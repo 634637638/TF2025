@@ -264,7 +264,7 @@ npm run migrate:shop-media -- --apply
 执行要求：
 
 - 运行前备份数据库和完整 `uploads` 目录。
-- 确认 `backend/.env` 指向预期数据库。脚本会更新该数据库中的 URL。
+- 明确指定并核对目标环境。仅本地开发可使用 `backend/.env`；服务器生产迁移必须设置 `NODE_ENV=production ENV_FILE=.env.production`。脚本会更新该环境连接的数据库 URL，不能依赖默认文件猜测目标。
 - 先查看预演中的缺失文件、目标冲突和未引用文件。
 - 迁移期间停止相关上传和编辑操作。
 - 执行后再次运行预演，正常结果应为待迁移文件数 `0`。

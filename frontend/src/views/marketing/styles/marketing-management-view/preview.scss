@@ -1,0 +1,137 @@
+
+.preview-card :deep(.copy-card__head > div) {
+  min-width: 0;
+}
+
+.preview-card :deep(.copy-title) {
+  color: var(--tf-color-slate-900);
+  font-size: var(--tf-type-scale-16);
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.preview-card :deep(.copy-card__head .el-button) {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.preview-card :deep(.copy-tone) {
+  margin-top: 4px;
+  color: var(--tf-color-slate-500);
+  font-size: var(--tf-type-scale-12);
+}
+
+.preview-card :deep(.copy-text) {
+  min-height: 108px;
+  color: var(--tf-color-slate-600);
+  font-size: var(--tf-type-scale-14);
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.preview-card__empty {
+  color: var(--tf-color-slate-400);
+}
+
+@media (max-width: 1100px) {
+  .marketing-admin-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 767px) {
+  .marketing-admin-content {
+    padding: 16px 12px 20px;
+  }
+
+  .marketing-admin-grid {
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .form-grid,
+  .context-grid,
+  .context-lexicon-grid,
+  .event-lexicon-grid,
+  .preview-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .span-two {
+    grid-column: span 1;
+  }
+
+  .lexicon-entry-row {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .card-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .subsidy-toggle-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .card-head h2 {
+    font-size: var(--tf-type-scale-16);
+  }
+
+  .card-head p {
+    font-size: var(--tf-type-scale-12);
+    line-height: 1.5;
+  }
+
+  .mode-tabs {
+    margin-bottom: 12px;
+  }
+
+  .header-actions {
+    width: 100%;
+    gap: 8px;
+  }
+
+  .header-actions .el-button {
+    flex: 1 1 calc(50% - 4px);
+    justify-content: center;
+  }
+
+  .context-label {
+    font-size: var(--tf-type-scale-11);
+  }
+
+  .context-value {
+    font-size: var(--tf-type-scale-13);
+    line-height: 1.65;
+  }
+
+  .context-footer {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .context-summary {
+    white-space: normal;
+  }
+
+  .preview-card {
+    padding: 14px;
+    border-radius: 14px;
+  }
+
+  .preview-card :deep(.copy-title) {
+    font-size: var(--tf-type-scale-15);
+  }
+
+  .preview-card :deep(.copy-text) {
+    min-height: auto;
+    font-size: var(--tf-type-scale-13);
+    line-height: 1.7;
+  }
+}

@@ -1,0 +1,179 @@
+
+// 响应式设计
+@media (max-width: 767px) {
+  .shop-config-page {
+    padding: 0;
+    width: 100%;
+    overflow: hidden;
+  }
+
+  .config-content {
+    max-width: 100%;
+    width: 100%;
+  }
+
+  .config-section {
+    padding: 14px;
+    margin-bottom: 12px;
+    border-radius: 14px;
+    border: 1px solid rgba(226, 232, 240, 0.88);
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+
+    .section-title {
+      margin-bottom: 14px;
+      padding-left: 10px;
+      font-size: var(--tf-type-scale-15);
+      font-weight: 700;
+    }
+  }
+
+  .config-section :deep(.config-form) {
+    width: 100%;
+  }
+
+  .config-section :deep(.el-form-item) {
+    display: block;
+    margin-bottom: 15px;
+  }
+
+  .config-section :deep(.el-form-item:last-child) {
+    margin-bottom: 0;
+  }
+
+  .config-section :deep(.el-form-item__label) {
+    width: 100% !important;
+    height: auto;
+    margin-bottom: 7px;
+    padding: 0 !important;
+    color: var(--tf-color-slate-700);
+    font-size: var(--tf-type-scale-13);
+    font-weight: 700;
+    line-height: 1.4;
+    text-align: left;
+  }
+
+  .config-section :deep(.el-form-item__content) {
+    width: 100%;
+    min-width: 0;
+    margin-left: 0 !important;
+    line-height: 1.4;
+  }
+
+  .config-section :deep(.el-input),
+  .config-section :deep(.el-textarea) {
+    width: 100%;
+  }
+
+  .config-section :deep(.el-form-item__tip),
+  .tip-text {
+    display: block;
+    margin-top: 6px;
+    font-size: var(--tf-type-scale-12);
+    line-height: 1.45;
+  }
+
+  .config-section .image-upload-wrapper {
+    align-items: flex-start;
+    gap: 10px;
+    width: 100%;
+  }
+
+  .config-section .image-upload-wrapper :deep(.el-upload),
+  .config-section :deep(.el-upload) {
+    width: 82px;
+    height: 82px;
+    line-height: 82px;
+    border-radius: 14px;
+  }
+
+  .config-section .image-upload-wrapper :deep(.el-upload i),
+  .config-section :deep(.el-upload i) {
+    font-size: var(--tf-type-scale-22);
+  }
+
+  .config-section .delete-image-btn {
+    min-height: 32px;
+    padding: 6px 10px;
+  }
+
+  .map-location-row {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .map-coordinate-inputs {
+    width: 100%;
+  }
+
+  .map-location-row .el-button {
+    width: 100%;
+  }
+
+  .map-picker-container .map-instructions {
+    margin-bottom: 12px;
+    padding: 12px;
+    border-radius: 12px;
+  }
+
+  .map-picker-container .map-instructions h4 {
+    margin-bottom: 8px;
+    font-size: var(--tf-type-scale-13);
+  }
+
+  .map-picker-container .map-instructions ul {
+    padding-left: 18px;
+  }
+
+  .map-picker-container .map-instructions ul li,
+  .map-picker-container .map-instructions .current-location {
+    font-size: var(--tf-type-scale-12);
+    line-height: 1.45;
+  }
+
+  .map-picker-container .map-frame {
+    height: min(46vh, 320px);
+    min-height: 240px;
+    border-radius: 12px;
+  }
+
+  .actions {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    margin: 0 -2px;
+    padding: 10px 0 calc(10px + env(safe-area-inset-bottom));
+    background: linear-gradient(180deg, rgba(245, 247, 250, 0), rgba(245, 247, 250, 0.96) 34%, var(--tf-color-surface));
+
+    .el-button {
+      width: 100%;
+      max-width: none;
+      min-height: 40px;
+      border-radius: 999px;
+    }
+  }
+}
+
+@media (max-width: 479px) {
+  .config-section {
+    padding: 12px;
+  }
+
+  .config-section .image-upload-wrapper {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .config-section .delete-image-btn {
+    width: 100%;
+  }
+
+  .map-picker-container .map-frame {
+    height: 240px;
+  }
+}
+
+@media (max-width: 767px) {
+  :global(.shop-config-map-dialog .mobile-dialog-sheet-body) {
+    padding: 12px !important;
+  }
+}

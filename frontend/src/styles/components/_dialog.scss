@@ -506,14 +506,9 @@ body .mobile-dialog-sheet-close svg {
     --dialog-side-gap: 4px;
     --dialog-vertical-gap: 12px;
     --dialog-max-width: calc(100vw - 8px);
+    --mobile-dialog-overlay-padding: 12px 4px;
     --mobile-dialog-body-padding: 10px 6px 8px;
     --mobile-dialog-footer-padding: 0 6px 8px;
-  }
-
-  .mobile-dialog-sheet-overlay.crud-dialog-sm,
-  .mobile-dialog-sheet-overlay.crud-dialog-md,
-  .mobile-dialog-sheet-overlay.crud-dialog-lg {
-    padding: 12px 4px !important;
   }
 
   .mobile-dialog-sheet-panel.crud-dialog-sm,

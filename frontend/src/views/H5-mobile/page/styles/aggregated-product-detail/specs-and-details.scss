@@ -1,0 +1,218 @@
+// ========== 内存规格选择卡片 ==========
+.spec-card {
+  .memory-options {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+
+    .memory-option {
+      position: relative;
+      padding: 10px 8px;
+      background: var(--tf-color-surface-muted);
+      border: 1px solid var(--tf-color-gray-material-300);
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+
+      &:active {
+        transform: scale(0.98);
+      }
+
+      .memory-info {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+
+        .memory-name {
+          font-size: var(--tf-type-scale-13);
+          font-weight: 500;
+          color: var(--text-primary);
+        }
+
+        .memory-price {
+          font-size: var(--tf-type-scale-16);
+          font-weight: 700;
+          color: var(--tf-color-red-coral);
+        }
+      }
+
+      .memory-check {
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: var(--tf-color-gray-material-300);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s ease;
+
+        i {
+          font-size: var(--tf-type-scale-10);
+          color: var(--color-bg-white);
+        }
+      }
+
+      &.active {
+        background: linear-gradient(135deg, var(--tf-color-indigo-brand-alpha) 0%, var(--tf-color-purple-brand-alpha) 100%);
+        border-color: var(--tf-color-indigo-brand);
+
+        .memory-check {
+          background: var(--tf-color-indigo-brand);
+        }
+      }
+
+      &.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+
+        .memory-price {
+          color: var(--text-muted);
+        }
+      }
+    }
+  }
+}
+
+// ========== 店铺选择卡片 ==========
+.store-card {
+  .store-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+
+    .store-option {
+      padding: 16px;
+      background: var(--tf-color-surface-muted);
+      border: 2px solid transparent;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+
+      &:active {
+        transform: scale(0.99);
+      }
+
+      .store-content {
+        .store-header-info {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 8px;
+
+          .store-name {
+            font-size: var(--tf-type-scale-15);
+            font-weight: 600;
+            color: var(--tf-color-neutral-950);
+            margin: 0;
+          }
+
+          .store-check-indicator {
+            i {
+              font-size: var(--tf-type-scale-20);
+              color: var(--tf-color-gray-material-300);
+              transition: all 0.3s ease;
+
+              &.fa-check-circle {
+                color: var(--tf-color-indigo-brand);
+              }
+            }
+          }
+        }
+
+        .store-address,
+        .store-phone {
+          font-size: var(--tf-type-scale-13);
+          color: var(--text-secondary);
+          margin: 4px 0;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+
+          i {
+            font-size: var(--tf-type-scale-12);
+            color: var(--text-muted);
+          }
+        }
+      }
+
+      &.active {
+        background: linear-gradient(135deg, var(--tf-color-indigo-brand-alpha) 0%, var(--tf-color-purple-brand-alpha) 100%);
+        border-color: var(--tf-color-indigo-brand);
+      }
+    }
+  }
+}
+
+// ========== 商品详情卡片 ==========
+.detail-card {
+  .detail-content {
+    .detail-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin-bottom: 16px;
+
+      .detail-item {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        padding: 12px;
+        background: var(--tf-color-surface-muted);
+        border-radius: 8px;
+
+        .detail-label {
+          font-size: var(--tf-type-scale-12);
+          color: var(--text-muted);
+        }
+
+        .detail-value {
+          font-size: var(--tf-type-scale-14);
+          font-weight: 500;
+          color: var(--tf-color-neutral-950);
+
+          .tag-new-mini {
+            display: inline-block;
+            padding: 2px 8px;
+            background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
+            color: var(--color-bg-white);
+            border-radius: 4px;
+            font-size: var(--tf-type-scale-12);
+          }
+
+          .tag-used-mini {
+            display: inline-block;
+            padding: 2px 8px;
+            background: linear-gradient(135deg, var(--tf-color-coral) 0%, var(--tf-color-red-gradient) 100%);
+            color: var(--color-bg-white);
+            border-radius: 4px;
+            font-size: var(--tf-type-scale-12);
+          }
+        }
+      }
+    }
+
+    .warranty-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px;
+      background: var(--tf-color-amber-material-50);
+      border-radius: 8px;
+      font-size: var(--tf-type-scale-13);
+      color: var(--tf-color-orange-material-500);
+
+      i {
+        font-size: var(--tf-type-scale-16);
+      }
+    }
+  }
+}
+
+// ========== 底部安全间距 ==========
+.bottom-spacer {
+  height: 12px;
+}

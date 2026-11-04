@@ -1627,15 +1627,15 @@ const _handleSelect = (item: InventoryItem) => {
 }
 
 @media (max-width: 767px) {
+  .inventory-edit-dialog {
+    --mobile-dialog-overlay-padding: 8px 4px;
+  }
+
   .inventory-edit-dialog .el-dialog,
   .inventory-detail-dialog .el-dialog {
     width: calc(100vw - 8px) !important;
     max-width: calc(100vw - 8px) !important;
     border-radius: 18px !important;
-  }
-
-  .mobile-dialog-sheet-overlay.inventory-edit-dialog {
-    padding: 8px 4px !important;
   }
 
   .mobile-dialog-sheet-panel.inventory-edit-dialog .mobile-dialog-sheet-header {

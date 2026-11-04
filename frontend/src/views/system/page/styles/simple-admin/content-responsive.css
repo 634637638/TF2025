@@ -1,0 +1,284 @@
+.content-area {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+  min-height: 0; /* 确保flex子元素可以滚动 */
+  position: relative;
+}
+
+/* 禁用路由切换动画，避免闪烁 */
+.content-area :deep(.v-enter-active),
+.content-area :deep(.v-leave-active) {
+  transition: none !important;
+}
+
+.content-area :deep(.v-enter-from),
+.content-area :deep(.v-leave-to) {
+  opacity: 1 !important;
+  transform: none !important;
+}
+
+.welcome-section {
+  background: white;
+  padding: 24px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.welcome-section h1 {
+  margin: 0 0 8px 0;
+  color: var(--tf-color-heading);
+  font-size: var(--tf-type-scale-28);
+}
+
+.welcome-section p {
+  margin: 0;
+  color: var(--tf-color-gray-cool-500);
+  font-size: var(--tf-type-scale-16);
+}
+
+.dashboard h2 {
+  margin: 0 0 20px 0;
+  color: var(--tf-color-heading);
+  font-size: var(--tf-type-scale-22);
+}
+
+.placeholder-content {
+  background: white;
+  padding: 40px;
+  border-radius: 8px;
+  text-align: center;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.placeholder-content h2 {
+  margin: 0 0 12px 0;
+  color: var(--tf-color-heading);
+  font-size: var(--tf-type-scale-24);
+}
+
+.placeholder-content p {
+  margin: 0;
+  color: var(--tf-color-gray-cool-500);
+  font-size: var(--tf-type-scale-16);
+}
+
+/* 响应式设计 */
+@media (max-width: 767px) {
+  .admin-layout {
+    position: relative;
+  }
+
+  .main-content {
+    margin-left: 0 !important;
+    padding-bottom: max(0px, env(safe-area-inset-bottom));
+  }
+
+  .content-area {
+    padding: 4px 2px;
+  }
+
+  .topbar {
+    padding: 8px 12px;
+    padding-left: 70px;
+    flex-direction: row;
+    gap: 8px;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    min-height: 56px; /* 确保最小高度适合触摸 */
+  }
+
+  .topbar-actions {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 6px;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .user-info {
+    gap: 6px;
+    height: var(--tf-topbar-control-height, 36px);
+    padding: 4px 10px;
+    min-width: 0;
+    flex: 0 1 auto;
+    width: fit-content;
+    max-width: var(--tf-topbar-user-info-max-width, 360px);
+  }
+
+  .user-avatar {
+    width: 28px;
+    height: 28px;
+    font-size: var(--tf-type-scale-12);
+    flex-shrink: 0; /* 头像不缩小 */
+  }
+
+  .user-main-info {
+    flex: 0 1 auto;
+    width: fit-content;
+    min-width: 0; /* 允许缩小 */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px;
+  }
+
+  .user-name {
+    font-size: var(--tf-type-scale-11);
+    font-weight: 600;
+    line-height: 1.2;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+    padding: 3px 8px;
+    border-radius: 8px;
+  }
+
+  .user-role {
+    font-size: var(--tf-type-scale-9);
+    padding: 1px 4px;
+    display: inline-flex; /* 显示角色标签 */
+    line-height: 1;
+    white-space: nowrap;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .user-time-info {
+    display: none; /* 中等屏幕隐藏时间信息 */
+  }
+
+  .last-login {
+    font-size: var(--tf-type-scale-10);
+  }
+
+  .topbar-buttons {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  /* 锁定按钮图标优先，文字可能隐藏 */
+  .btn-lock span {
+    display: none; /* 隐藏按钮文字，只显示图标 */
+  }
+
+}
+
+@media (max-width: 479px) {
+  .topbar {
+    padding: 6px 8px;
+    padding-left: 56px;
+    min-height: 52px;
+  }
+
+  .header-left {
+    display: none; /* 隐藏网站标题以节省空间 */
+  }
+
+  .topbar-actions {
+    width: 100%;
+    justify-content: flex-end;
+    gap: 4px;
+  }
+
+  .user-info {
+    height: var(--tf-topbar-control-height, 36px);
+    padding: 3px 6px;
+    justify-content: flex-end;
+    width: fit-content;
+    min-width: 0;
+    flex: 0 1 auto;
+    max-width: var(--tf-topbar-user-info-max-width, 360px);
+    margin-left: auto;
+    gap: 4px;
+    overflow: hidden;
+  }
+
+  .user-avatar {
+    width: 22px;
+    height: 22px;
+    font-size: var(--tf-type-scale-10);
+    flex-shrink: 0; /* 头像不缩小 */
+  }
+
+  .user-main-info {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 3px;
+    flex: 0 1 auto;
+    width: fit-content;
+    min-width: 0;
+    height: 100%;
+    flex-wrap: nowrap;
+    overflow: hidden;
+  }
+
+  .user-name {
+    font-size: var(--tf-type-scale-11);
+    font-weight: 600;
+    line-height: 1;
+    white-space: nowrap;
+    flex: 0 1 auto;
+    min-width: 0;
+    width: fit-content;
+    max-width: min(30vw, 96px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding: 2px 5px;
+    border-radius: 8px;
+  }
+
+  .user-role {
+    max-width: 58px;
+    font-size: var(--tf-type-scale-9);
+    padding: 2px 4px;
+    border-radius: 8px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .topbar-buttons {
+    gap: 4px;
+    flex: 0 0 auto;
+  }
+
+  .btn-lock,
+  .logout-btn {
+    width: 36px;
+    min-width: 36px;
+    padding-inline: 0;
+  }
+
+  .btn-lock i {
+    font-size: var(--tf-type-scale-14); /* 锁定按钮图标大小 */
+  }
+
+  .btn-lock span {
+    display: none; /* 隐藏文字，只显示图标 */
+  }
+
+  /* 退出登录按钮在小屏幕上只显示图标 */
+  .logout-btn {
+    font-size: 0; /* 隐藏文字 */
+    border-radius: 4px;
+  }
+
+  .logout-btn i {
+    font-size: var(--tf-type-scale-14); /* 退出按钮图标大小 */
+  }
+
+  .logout-btn .btn-text {
+    display: none; /* 隐藏文字，只显示图标 */
+  }
+
+}

@@ -1,0 +1,101 @@
+
+@media (max-width: 767px) {
+  .query-detail-content {
+    gap: 8px;
+  }
+
+  .device-card-inline {
+    padding: 14px;
+    border-radius: 14px;
+  }
+
+  .device-card-main,
+  .device-meta-row,
+  .device-card-tags {
+    gap: 6px;
+  }
+
+  .device-info {
+    font-size: var(--tf-type-scale-16);
+  }
+
+  .device-meta {
+    font-size: var(--tf-type-scale-12);
+  }
+
+  .price-row,
+  .customer-row,
+  .code-row,
+  .operator-row,
+  .info-grid {
+    gap: 8px;
+  }
+
+  .price-item,
+  .customer-item,
+  .code-item,
+  .operator-item,
+  .info-item,
+  .apple-id-row,
+  .remark-row {
+    padding: 10px 12px;
+    border-radius: 12px;
+  }
+
+  .price-value {
+    font-size: var(--tf-type-scale-17);
+  }
+
+  .customer-value,
+  .operator-value {
+    font-size: var(--tf-type-scale-14);
+  }
+
+  .detail-actions {
+    gap: 8px;
+  }
+
+  .detail-actions :deep(.el-button) {
+    height: 42px;
+    border-radius: 12px;
+    font-size: var(--tf-type-scale-14);
+  }
+}
+
+@media (max-width: 420px) {
+  .device-meta-row {
+    gap: 4px;
+  }
+
+  .device-info {
+    font-size: var(--tf-type-scale-14);
+  }
+
+  .device-meta {
+    font-size: var(--tf-type-scale-11);
+  }
+
+  .condition-badge,
+  .status-badge {
+    min-height: 26px;
+    padding: 4px 8px;
+    font-size: var(--tf-type-scale-11);
+  }
+
+  .price-row,
+  .customer-row,
+  .code-row,
+  .operator-row,
+  .info-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .detail-actions {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .detail-actions :deep(.el-button) {
+    font-size: var(--tf-type-scale-13);
+  }
+}

@@ -1,0 +1,129 @@
+
+.inventory-analytics {
+  .supplier-summary {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+
+  .supplier-summary__item {
+    padding: 12px 14px;
+    border-radius: 14px;
+    background: linear-gradient(180deg, var(--tf-color-surface-cool-soft) 0%, var(--tf-color-surface-cool-blue) 100%);
+    border: 1px solid rgba(32, 87, 129, 0.08);
+
+    span {
+      display: block;
+      margin-bottom: 6px;
+      font-size: var(--tf-type-scale-12);
+      color: var(--tf-color-gray-ui-600);
+    }
+
+    strong {
+      font-size: var(--tf-type-scale-22);
+      color: var(--tf-color-slate-deep);
+      font-weight: 700;
+    }
+  }
+
+  .supplier-highlights {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 18px;
+  }
+
+  .supplier-highlight {
+    padding: 12px 14px;
+    border-radius: 14px;
+    background: var(--tf-color-surface-gray);
+    border: 1px solid rgba(32, 87, 129, 0.08);
+  }
+
+  .supplier-highlight__name {
+    color: var(--tf-color-slate-deep);
+    font-weight: 700;
+  }
+
+  .supplier-highlight__meta {
+    margin-top: 6px;
+    color: var(--tf-color-gray-ui-muted);
+    font-size: var(--tf-type-scale-12);
+  }
+
+  .supplier-highlight__value {
+    white-space: nowrap;
+    color: var(--inventory-primary);
+    font-size: var(--tf-type-scale-15);
+    font-weight: 700;
+  }
+
+  .supplier-empty {
+    padding: 20px 12px;
+    text-align: center;
+    color: var(--tf-color-gray-ui-500);
+    font-size: var(--tf-type-scale-13);
+  }
+
+  :deep(.el-card__header) {
+    padding: 18px 20px;
+    border-bottom: 1px solid rgba(32, 87, 129, 0.08);
+  }
+
+  :deep(.el-card__body) {
+    padding: 20px;
+  }
+}
+
+@media (max-width: 1200px) {
+  .inventory-analytics {
+    .warning-overview {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+}
+
+@media (max-width: 767px) {
+  .inventory-analytics {
+    .overview-cards {
+      :deep(.el-col) {
+        margin-bottom: 12px;
+      }
+    }
+
+    .insight-card {
+      min-height: auto;
+    }
+
+    .insight-card__value,
+    .insight-card__value--currency {
+      font-size: var(--tf-type-scale-28);
+    }
+
+    .panel-header {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .panel-metrics {
+      justify-content: flex-start;
+    }
+
+    .warning-overview,
+    .supplier-summary {
+      grid-template-columns: 1fr;
+    }
+
+    .chart-container,
+    .supplier-chart-container {
+      height: 260px;
+    }
+
+    .supplier-highlight {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+  }
+}

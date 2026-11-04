@@ -1,0 +1,211 @@
+.aggregated-product-page {
+  min-height: 100vh;
+  background: linear-gradient(180deg, var(--tf-color-surface-muted) 0%, var(--tf-color-surface-soft) 100%);
+  padding-bottom: calc(80px + env(safe-area-inset-bottom));
+}
+
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: var(--tf-color-surface-soft);
+
+  .el-icon {
+    font-size: var(--tf-type-scale-48);
+    color: var(--tf-color-indigo-brand);
+    margin-bottom: 16px;
+  }
+
+  p {
+    color: var(--text-muted);
+    font-size: var(--tf-type-scale-14);
+  }
+}
+
+// ========== 商品图片轮播卡片 ==========
+.product-gallery-card {
+  position: relative;
+  width: 100%;
+  background: var(--color-bg-white);
+  border-radius: 0 0 16px 16px;
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+
+  .product-swiper {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    overflow: hidden;
+
+    :deep(.swiper-wrapper) {
+      height: 100%;
+    }
+
+    :deep(.swiper-slide) {
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .swiper-image-wrapper {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--tf-color-surface-muted);
+
+      img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+      }
+    }
+
+    :deep(.swiper-pagination) {
+      bottom: 12px;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 4px 12px;
+      border-radius: 12px;
+      color: var(--color-bg-white);
+      font-size: var(--tf-type-scale-12);
+      font-weight: 500;
+    }
+  }
+
+  .gallery-tags {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    z-index: 10;
+
+    .tag-used,
+    .tag-new {
+      display: inline-block;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: var(--tf-type-scale-12);
+      font-weight: 600;
+      color: var(--color-bg-white);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    }
+
+    .tag-used {
+      background: linear-gradient(135deg, var(--tf-color-coral) 0%, var(--tf-color-red-gradient) 100%);
+    }
+
+    .tag-new {
+      background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
+    }
+  }
+}
+
+// ========== 通用卡片样式 ==========
+.info-card,
+.spec-card,
+.store-card,
+.detail-card {
+  background: var(--color-bg-white);
+  margin: 12px;
+  padding: 16px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+// ========== 价格卡片 ==========
+.price-card {
+  background: linear-gradient(135deg, var(--tf-color-red-surface) 0%, var(--color-bg-white) 100%);
+  margin: 12px;
+  padding: 20px 16px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  border-left: 4px solid var(--tf-color-red-coral);
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+
+  .price-label {
+    font-size: var(--tf-type-scale-14);
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+
+  .price-values {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+
+    .price-symbol {
+      font-size: var(--tf-type-scale-20);
+      font-weight: 600;
+      color: var(--tf-color-red-coral);
+    }
+
+    .price-value {
+      font-size: var(--tf-type-scale-36);
+      font-weight: 700;
+      color: var(--tf-color-red-coral);
+      line-height: 1;
+    }
+
+    .price-separator {
+      font-size: var(--tf-type-scale-18);
+      color: var(--text-muted);
+      margin: 0 2px;
+    }
+  }
+
+  &.price-inquire {
+    background: linear-gradient(135deg, var(--tf-color-amber-surface) 0%, var(--color-bg-white) 100%);
+    border-left-color: var(--tf-color-orange-material-500);
+
+    .price-value.inquire {
+      font-size: var(--tf-type-scale-24);
+      color: var(--tf-color-orange-material-500);
+    }
+  }
+}
+
+// ========== 商品信息卡片 ==========
+.info-card {
+  .product-title {
+    font-size: var(--tf-type-scale-20);
+    font-weight: 700;
+    color: var(--tf-color-neutral-950);
+    margin: 0;
+    line-height: 1.4;
+    word-break: break-word;
+  }
+}
+
+// ========== 卡片头部 ==========
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--tf-color-gray-200);
+
+  .card-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: var(--tf-type-scale-16);
+    font-weight: 600;
+    color: var(--tf-color-neutral-950);
+    margin: 0;
+
+    i {
+      color: var(--tf-color-indigo-brand);
+    }
+  }
+
+  .required-mark {
+    font-size: var(--tf-type-scale-12);
+    color: var(--tf-color-red-coral);
+    font-weight: 500;
+  }
+}

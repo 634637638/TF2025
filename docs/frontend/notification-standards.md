@@ -101,10 +101,8 @@ import { simpleNotification } from '@/services/notification-simple'
 // ❌ 禁止：直接使用 Element Plus
 import { ElMessage } from 'element-plus' // 禁止
 
-// ❌ 禁止：使用已废弃的 composables
-// 以下文件已删除，功能已合并到 useNotification：
-// - useNotification.ts
-// - useNotificationWithDebounce.ts
+// ❌ 禁止：新建第二套通知 composable 或从旧路径复制实现
+// 唯一组合式入口是 @/composables/useNotification
 ```
 
 ### 2. 基础用法
@@ -266,7 +264,7 @@ progress('数据处理', 60, {
 ```typescript
 // 获取历史记录
 const history = notification.getHistory()
-console.log('最近通知：', history)
+logger.debug('最近通知：', history)
 
 // 清除所有通知
 clearAll()
@@ -541,10 +539,12 @@ it('应该在操作成功时显示通知', async () => {
 ### 调试技巧
 
 ```typescript
+import { logger } from '@/utils/logger'
+
 // 开启调试模式
 if (import.meta.env.DEV) {
-  console.log('通知配置：', getDefaultConfig())
-  console.log('通知历史：', getHistory())
+  logger.debug('通知配置：', getDefaultConfig())
+  logger.debug('通知历史：', getHistory())
 }
 ```
 
@@ -568,10 +568,8 @@ await confirm('确定吗？')
 ### 从已废弃的 Composables 迁移
 
 ```typescript
-// ❌ 已废弃（已合并到 useNotification）
-// 旧实现已删除：
-// - useNotification.ts
-// - useNotificationWithDebounce.ts
+// ❌ 已废弃：自行创建通知 composable、从历史分支复制通知实现，
+// 或绕开当前统一入口直接维护第二套防抖/历史记录逻辑。
 
 // ✅ 新的统一实现
 import { useNotification } from '@/composables/useNotification'

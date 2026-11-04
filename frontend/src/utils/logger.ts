@@ -20,14 +20,12 @@ function formatLogTimestamp(): string {
 interface LogConfig {
   level: 'debug' | 'info' | 'warn' | 'error' | 'none'
   enableConsole: boolean
-  enableFileLog: boolean
 }
 
 class Logger {
   private config: LogConfig = {
     level: 'info',
-    enableConsole: true,
-    enableFileLog: false
+    enableConsole: true
   }
 
   constructor() {
@@ -35,14 +33,12 @@ class Logger {
     if (import.meta.env.PROD) {
       this.config = {
         level: 'none',
-        enableConsole: false,
-        enableFileLog: true
+        enableConsole: false
       }
     } else {
       this.config = {
         level: 'debug',
-        enableConsole: true,
-        enableFileLog: false
+        enableConsole: true
       }
     }
   }
@@ -82,34 +78,6 @@ class Logger {
   error(message: string, error?: unknown): void {
     if (!this.shouldLog('error') || !this.config.enableConsole) return
     console.error(...this.formatMessage('error', message, error))
-
-    // 错误日志可以发送到服务器
-    if (this.config.enableFileLog && import.meta.env.PROD) {
-      this.sendToServer(message, error)
-    }
-  }
-
-  private sendToServer(message: string, error: unknown): void {
-    // 发送错误日志到服务器
-    try {
-      fetch('/api/logs', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          message,
-          error: error instanceof Error ? error.stack || error.message : error,
-          timestamp: TimeUtil.toISOString(),
-          url: window.location.href,
-          userAgent: navigator.userAgent
-        })
-      }).catch(() => {
-        // 忽略日志发送失败
-      })
-    } catch {
-      // 忽略日志发送失败
-    }
   }
 
   // 创建组件日志

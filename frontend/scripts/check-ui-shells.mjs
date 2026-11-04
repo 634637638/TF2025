@@ -1,12 +1,21 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs'
-import { extname, join, relative, resolve } from 'node:path'
+import { dirname, extname, join, relative, resolve } from 'node:path'
 
 const root = resolve(import.meta.dirname, '..')
 const sourceRoot = join(root, 'src')
 const mainSource = readFileSync(join(root, 'src/main.ts'), 'utf8')
 const stylesSource = readFileSync(join(root, 'src/styles.scss'), 'utf8')
 const paginationSource = readFileSync(join(root, 'src/components/Pagination.vue'), 'utf8')
-const searchSource = readFileSync(join(root, 'src/components/search/UnifiedSearchPanel.vue'), 'utf8')
+
+function readVueWithExternalStyles(relativePath) {
+  const filePath = join(root, relativePath)
+  const source = readFileSync(filePath, 'utf8')
+  const externalStyles = [...source.matchAll(/<style\b[^>]*\bsrc=["']([^"']+)["'][^>]*>/gi)]
+    .map(match => readFileSync(resolve(dirname(filePath), match[1]), 'utf8'))
+  return [source, ...externalStyles].join('\n')
+}
+
+const searchSource = readVueWithExternalStyles('src/components/search/UnifiedSearchPanel.vue')
 const dateRangeSource = readFileSync(join(root, 'src/components/DateRangePicker.vue'), 'utf8')
 const customerNameLockSource = readFileSync(join(root, 'src/components/common/CustomerNameLockInput.vue'), 'utf8')
 const customerSearchSource = readFileSync(join(root, 'src/components/common/CustomerSearchDropdown.vue'), 'utf8')

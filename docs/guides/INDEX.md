@@ -11,6 +11,7 @@
 - [组件标准](component-standards.md)
 - [组件决策指南](component-decision-guide.md)
 - [代码审查标准](CODE_REVIEW_STANDARDS.md)
+- [全局测试与清理规范](TESTING_STANDARDS.md)
 
 ## 移动端
 

@@ -60,8 +60,8 @@
 |------|------|------|-------------------|
 | 底层引擎 | `backend/src/utils/logger.js` | Winston 配置、文件写入、分级控制 | ❌ 否 |
 | 统一入口 | `backend/src/utils/log.js` | 便捷 API、格式化输出、语义化方法 | ✅ 是 |
-| 统一入口 | `frontend/src/utils/logger.ts` | 环境控制、组件日志、错误上报 | ✅ 是 |
-| 错误系统 | `error-logger.ts` | 错误收集、统计分析、上报服务 | 按需使用 |
+| 统一入口 | `frontend/src/utils/logger.ts` | 环境控制、组件诊断日志，不发起网络上报 | ✅ 是 |
+| 错误系统 | `error-logger.ts` | 全局错误收集、去重、统计和服务端上报 | 基础设施使用 |
 
 ---
 
@@ -152,8 +152,17 @@ class UserService {
 ```
 frontend/src/utils/
 ├── logger.ts        # ✅ 统一入口，业务层使用此文件
-└── error-logger.ts  # 错误上报系统（按需使用）
+└── error-logger.ts  # ✅ 唯一服务端错误上报系统
 ```
+
+职责边界：
+
+- `logger.ts` 只负责按环境输出诊断日志，不得维护上报地址、`fetch` 或私有 Axios 请求。
+- `error-logger.ts` 是唯一服务端错误上报实现，固定通过 `unifiedApi` 调用 `/api/logs/errors`。
+- 全局未捕获错误由 `ErrorBoundaryPlugin` 的 `onError` 转交 `globalErrorLogger`；API 错误由 `unified-api.ts` 转交。
+- Error Boundary 自带的 `enableReporting` 必须保持关闭，避免它与 `globalErrorLogger` 重复发送同一错误。
+- `logger.error()` 不等同于服务端上报。业务代码通常只记录诊断信息；确需纳入监控的错误必须通过已有错误边界或统一请求层进入，不得另建上报器。
+- 禁止页面、组件、store、service 自行请求 `/api/logs/errors`，避免同一错误重复上报。
 
 ### 3.2 使用方式
 

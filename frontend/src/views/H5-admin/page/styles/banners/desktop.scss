@@ -1,0 +1,244 @@
+
+.banner-management-page {
+  padding: 24px;
+  min-width: 0;
+}
+
+// 加载状态
+.loading-state {
+  padding: 40px;
+}
+
+// 轮播图列表
+.banner-list {
+  max-width: 900px;
+  margin: 0 auto;
+  min-width: 0;
+
+  .banner-item {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: var(--color-bg-white);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s;
+
+    &.inactive {
+      opacity: 0.6;
+    }
+
+    .drag-handle {
+      cursor: move;
+      color: var(--text-muted);
+      font-size: var(--tf-type-scale-18);
+      padding: 8px;
+    }
+
+    .banner-image {
+      width: 120px;
+      height: 64px;
+      border-radius: 6px;
+      overflow: hidden;
+      background: var(--tf-color-surface-soft);
+      flex-shrink: 0;
+      position: relative;
+
+      img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      // 多图显示
+      .banner-images-multi {
+        display: flex;
+        width: 100%;
+        height: 100%;
+        gap: 2px;
+
+        .multi-image {
+          flex: 1;
+          height: 100%;
+          object-fit: cover;
+          border-radius: 4px;
+        }
+
+        .more-images {
+          position: absolute;
+          top: 0;
+          right: 0;
+          bottom: 0;
+          left: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: rgba(0, 0, 0, 0.5);
+          color: var(--color-bg-white);
+          font-size: var(--tf-type-scale-12);
+          font-weight: 500;
+        }
+      }
+    }
+
+    .banner-info {
+      flex: 1;
+      min-width: 0;
+
+      .banner-title {
+        font-size: var(--tf-type-scale-15);
+        font-weight: 500;
+        color: var(--text-primary);
+        margin: 0 0 4px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .banner-meta {
+        font-size: var(--tf-type-scale-13);
+        color: var(--text-muted);
+        margin: 0;
+
+        span {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          margin-right: 16px;
+
+          i {
+            font-size: var(--tf-type-scale-12);
+          }
+        }
+      }
+    }
+
+    .banner-status {
+      margin-right: 16px;
+    }
+
+    .banner-actions {
+      display: flex;
+      gap: 8px;
+
+      .el-button {
+        margin-left: 0;
+        white-space: nowrap;
+      }
+    }
+  }
+}
+
+// 提示文本
+.tip-text {
+  font-size: var(--tf-type-scale-12);
+  color: var(--text-muted);
+  line-height: 1.5;
+  display: block;
+  margin-top: 4px;
+}
+
+// 轮播图图片容器
+.banner-images-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+// 单个图片项
+.banner-image-item {
+  position: relative;
+  width: 120px;
+  height: 80px;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid var(--tf-color-gray-material-300);
+  background: var(--tf-color-surface-soft);
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .image-actions {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    opacity: 0;
+    transition: opacity 0.3s;
+
+    &:hover {
+      opacity: 1;
+    }
+  }
+
+  .image-index {
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    background: rgba(255, 107, 0, 0.9);
+    color: var(--color-bg-white);
+    font-size: var(--tf-type-scale-11);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 500;
+  }
+
+  &:hover .image-actions {
+    opacity: 1;
+  }
+}
+
+// 上传按钮样式
+.banner-upload-trigger {
+  :deep(.el-upload) {
+    width: 120px;
+    height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px dashed var(--tf-color-gray-ant-400);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s;
+    background: var(--tf-color-neutral-25);
+
+    &:hover {
+      border-color: var(--tf-color-accent-orange);
+      background: var(--tf-color-orange-surface);
+    }
+  }
+
+  .upload-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+
+    i {
+      font-size: var(--tf-type-scale-20);
+      color: var(--tf-color-gray-element);
+    }
+
+    span {
+      font-size: var(--tf-type-scale-12);
+      color: var(--text-muted);
+    }
+  }
+}
+
+:deep(.banner-dialog .el-form-item__tip) {
+  margin-top: 4px;
+}

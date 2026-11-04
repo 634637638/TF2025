@@ -1,0 +1,263 @@
+.quick-sale-form {
+  padding: 0;
+
+  .quick-sale-identifier-input {
+    width: 100%;
+  }
+
+  .quick-sale-identifier-field {
+    width: 100%;
+  }
+
+  // 输入框图标
+  .imei-icon,
+  .serial-icon,
+  .phone-icon,
+  .idcard-icon {
+    color: var(--color-info);
+    font-size: var(--tf-type-scale-14);
+  }
+
+  // 点击外部关闭下拉菜单
+  :deep(.el-form-item__content) {
+    position: relative;
+  }
+}
+
+/* 设备信息按“供应商/店铺/成色/状态、规格、序列号与价格”分三行排列。 */
+.quick-sale-device-section {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--tf-space-4);
+
+  > .tf-query-modal-section-title {
+    grid-column: 1 / -1;
+  }
+
+  .tf-query-modal-row {
+    display: contents;
+  }
+
+  .quick-sale-device-row--transaction > .el-form-item:nth-child(1) {
+    order: 1;
+  }
+
+  .quick-sale-device-row--transaction > .el-form-item:nth-child(2) {
+    order: 2;
+  }
+
+  .quick-sale-device-row--identifier > .el-form-item:nth-child(3) {
+    order: 3;
+  }
+
+  .quick-sale-device-row--identifier > .el-form-item:nth-child(4) {
+    order: 4;
+  }
+
+  .quick-sale-device-row--product > .el-form-item:nth-child(1) {
+    order: 5;
+  }
+
+  .quick-sale-device-row--product > .el-form-item:nth-child(2) {
+    order: 6;
+  }
+
+  .quick-sale-device-row--product > .el-form-item:nth-child(3) {
+    order: 7;
+  }
+
+  .quick-sale-device-row--product > .el-form-item:nth-child(4) {
+    order: 8;
+  }
+
+  .quick-sale-device-row--identifier > .el-form-item:nth-child(1) {
+    order: 9;
+  }
+
+  .quick-sale-device-row--identifier > .el-form-item:nth-child(2) {
+    order: 10;
+  }
+
+  .quick-sale-device-row--transaction > .el-form-item:nth-child(3) {
+    order: 11;
+  }
+
+  .quick-sale-device-row--transaction > .el-form-item:nth-child(4) {
+    order: 12;
+  }
+}
+
+@media (max-width: 1200px) {
+  .quick-sale-device-section {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.quick-sale-transaction-meta {
+  display: block;
+}
+
+@media (max-width: 767px) {
+  .quick-sale-transaction-meta {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--tf-space-2);
+  }
+
+  .quick-sale-transaction-meta .tf-query-modal-row {
+    display: contents;
+  }
+}
+
+.profit-hint {
+  margin-top: 4px;
+  font-size: var(--tf-type-scale-12);
+  color: var(--color-info);
+
+  .profit-value {
+    color: var(--color-success);
+    font-weight: 600;
+  }
+}
+
+// 客户检索相关样式
+.customer-search-container {
+  position: relative;
+}
+
+.customer-search-results {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 300px;
+  overflow-y: auto;
+  background: white;
+  border: 1px solid var(--tf-color-gray-300-alt);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1001;
+  min-width: 0;
+
+  .search-loading {
+    padding: 16px 20px;
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: var(--tf-type-scale-14);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+
+    i {
+      margin-right: 0;
+    }
+  }
+
+  .customer-item {
+    padding: 16px 20px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--tf-color-gray-200-alt);
+    transition: background-color 0.2s;
+
+    &:hover {
+      background-color: var(--tf-color-surface-muted);
+    }
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    .customer-info {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+
+      .customer-headline {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: nowrap;
+        min-width: 0;
+      }
+
+      .customer-subline {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .customer-name {
+        font-size: var(--tf-type-scale-14);
+        font-weight: 600;
+        color: var(--tf-color-neutral-800);
+        line-height: 1.2;
+        min-width: 0;
+        flex: 0 1 auto;
+        white-space: nowrap;
+      }
+
+      .customer-phone {
+        font-size: var(--tf-type-scale-12);
+        color: var(--tf-color-slate-600);
+        line-height: 1.2;
+        min-width: 0;
+        white-space: nowrap;
+      }
+
+      .member-number {
+        padding: 2px 8px;
+        background: linear-gradient(135deg, var(--tf-color-surface-blue-soft) 0%, var(--tf-color-blue-tailwind-100) 100%);
+        color: var(--tf-color-blue-700);
+        border-radius: 999px;
+        font-size: var(--tf-type-scale-11);
+        font-weight: 600;
+        line-height: 1.2;
+        flex: 0 0 auto;
+      }
+
+      .vip-badge {
+        background: linear-gradient(135deg, var(--tf-color-rose-400) 0%, var(--tf-color-amber-500) 100%);
+        color: white;
+        padding: 2px 8px;
+        border-radius: 999px;
+        font-size: var(--tf-type-scale-11);
+        font-weight: 600;
+        line-height: 1.2;
+        flex-shrink: 0;
+        justify-self: end;
+        box-shadow: 0 6px 14px rgba(245, 158, 11, 0.18);
+      }
+    }
+  }
+
+  .create-new-customer {
+    padding: 16px 20px;
+    background: var(--tf-color-surface-muted);
+    cursor: pointer;
+    transition: background-color 0.2s;
+    color: var(--success-color);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: var(--tf-type-scale-14);
+    font-weight: 500;
+
+    &:hover {
+      background: var(--tf-color-border-muted);
+    }
+
+    i {
+      margin-right: 0;
+    }
+  }
+}
+
+.customer-search-results--floating {
+  position: fixed;
+  right: auto;
+  z-index: 3100;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}

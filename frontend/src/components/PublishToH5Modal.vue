@@ -1271,6 +1271,7 @@ defineExpose({
 :global(.publish-to-h5-dialog) {
   --dialog-max-width: 700px;
   --dialog-vertical-gap: 24px;
+  --mobile-dialog-overlay-padding: 8px 4px;
   --mobile-dialog-body-padding: 8px 4px 8px;
   --mobile-dialog-footer-padding: 0 4px 4px;
   --tf-dialog-body-padding-inline: var(--tf-space-6);
@@ -1278,10 +1279,6 @@ defineExpose({
   --tf-dialog-footer-padding-inline: var(--tf-space-6);
   --tf-dialog-footer-padding-block-start: 0px;
   --tf-dialog-footer-padding-block-end: var(--tf-space-6);
-}
-
-:global(.mobile-dialog-sheet-overlay.publish-to-h5-dialog) {
-  padding: 8px 4px !important;
 }
 
 :global(.mobile-dialog-sheet-panel.publish-to-h5-dialog .mobile-dialog-sheet-header) {

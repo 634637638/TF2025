@@ -8,6 +8,16 @@ const sourceExtensions = new Set(['.vue', '.css', '.scss']);
 const nonRuntimeBackupPattern = /(?:\s+copy|\.bak|\.backup)\.(?:vue|css|scss)$/i;
 const baselinePath = path.resolve(new URL('.', import.meta.url).pathname, 'style-debt-baseline.json');
 const importantAllowlistPath = path.resolve(new URL('.', import.meta.url).pathname, 'style-important-allowlist.json');
+const externalStyleScopes = new Map();
+const importantCategories = new Map([
+  ['shared-contract', '公共样式与组件契约'],
+  ['vendor-boundary', '第三方组件边界'],
+  ['teleport-layer', 'Teleport、弹层与安全区'],
+  ['responsive-safety', '响应式与移动端安全'],
+  ['render-export', '截图、导出与浏览器渲染'],
+  ['accessibility-security', '无障碍、权限与安全状态'],
+  ['state-precedence', '表格与交互状态优先级'],
+]);
 
 function readBaseline() {
   if (!fs.existsSync(baselinePath)) return null;
@@ -18,7 +28,7 @@ function readImportantAllowlist() {
   const parsed = JSON.parse(fs.readFileSync(importantAllowlistPath, 'utf8'));
   const entries = new Map();
   for (const entry of parsed.files || []) {
-    if (!entry.file || !Number.isInteger(entry.max) || entry.max < 0 || !entry.reason) {
+    if (!entry.file || !Number.isInteger(entry.max) || entry.max < 0 || !importantCategories.has(entry.category) || !entry.reason) {
       throw new Error(`Invalid !important allowlist entry: ${JSON.stringify(entry)}`);
     }
     entries.set(entry.file, entry);
@@ -45,8 +55,32 @@ function collectFiles(directory) {
   return files;
 }
 
+function collectExternalStyleScopes(files) {
+  for (const filePath of files) {
+    if (path.extname(filePath) !== '.vue') continue;
+    const source = fs.readFileSync(filePath, 'utf8');
+    for (const match of source.matchAll(/<style\b([^>]*)>/gi)) {
+      const attributes = match[1];
+      const sourceMatch = attributes.match(/\bsrc=["']([^"']+)["']/i);
+      if (!sourceMatch) continue;
+      const externalPath = path.resolve(path.dirname(filePath), sourceMatch[1]);
+      if (!externalPath.startsWith(`${sourceRoot}${path.sep}`)) {
+        throw new Error(`External style source must stay inside frontend/src: ${externalPath}`);
+      }
+      const scoped = /\bscoped\b/i.test(attributes);
+      const previous = externalStyleScopes.get(externalPath);
+      if (previous !== undefined && previous !== scoped) {
+        throw new Error(`External style source has mixed scoped usage: ${externalPath}`);
+      }
+      externalStyleScopes.set(externalPath, scoped);
+    }
+  }
+}
+
 function styleBlocks(filePath, source) {
-  if (path.extname(filePath) !== '.vue') return [{ content: source, scoped: false }];
+  if (path.extname(filePath) !== '.vue') {
+    return [{ content: source, scoped: externalStyleScopes.get(path.resolve(filePath)) || false }];
+  }
   return [...source.matchAll(/<style\b([^>]*)>([\s\S]*?)<\/style>/gi)].map(match => ({
     content: match[2],
     scoped: /\bscoped\b/i.test(match[1]),
@@ -58,8 +92,10 @@ const byFile = [];
 const largeStyleBlocks = [];
 const largeStyleBlockLineCounts = {};
 const importantAllowlist = readImportantAllowlist();
+const sourceFiles = collectFiles(sourceRoot);
+collectExternalStyleScopes(sourceFiles);
 
-for (const filePath of collectFiles(sourceRoot)) {
+for (const filePath of sourceFiles) {
   const source = fs.readFileSync(filePath, 'utf8');
   let important = 0;
   let colors = 0;
@@ -98,11 +134,15 @@ for (const filePath of collectFiles(sourceRoot)) {
 
 byFile.sort((left, right) => (right.important + right.colorUsages) - (left.important + left.colorUsages));
 let approvedImportant = 0;
+const approvedImportantByCategory = new Map([...importantCategories.keys()].map(category => [category, 0]));
 const unapprovedByFile = [];
 for (const item of byFile) {
   const entry = importantAllowlist.get(item.file);
   const approvedForFile = entry ? Math.min(item.important, entry.max) : 0;
   approvedImportant += approvedForFile;
+  if (entry) {
+    approvedImportantByCategory.set(entry.category, approvedImportantByCategory.get(entry.category) + approvedForFile);
+  }
   const unapprovedForFile = item.important - approvedForFile;
   if (unapprovedForFile > 0) {
     unapprovedByFile.push({ file: item.file, important: unapprovedForFile });
@@ -120,6 +160,10 @@ for (const [file, entry] of importantAllowlist) {
 console.log(`样式债务审计：${totals.important} 处 !important，${totals.colors} 处颜色字面量。`);
 console.log(`!important 分布：scoped=${totals.scopedImportant}，global/共享=${totals.globalImportant}。`);
 console.log(`!important 分类：已登记框架覆盖=${approvedImportant}，未批准债务=${unapprovedImportant}。`);
+console.log('已登记强制覆盖类别：');
+for (const [category, label] of importantCategories) {
+  console.log(`- ${label}：${approvedImportantByCategory.get(category)} 处`);
+}
 console.log(`排除 CSS 令牌声明后，仍有 ${totals.colorUsages} 处颜色使用点需要逐步收敛。`);
 console.log(`超长 Vue 样式块（>300 行）：${largeStyleBlocks.length} 个；登记只防止增长，不代表已完成拆分。`);
 console.log('高占用文件：');

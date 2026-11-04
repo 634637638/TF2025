@@ -1,0 +1,260 @@
+
+.product-detail-page {
+  min-height: 100vh;
+  background: var(--tf-color-surface-soft);
+  padding-bottom: 60px;
+}
+
+// 加载状态
+.loading-state {
+  padding: 20px;
+}
+
+// 图片/视频轮播
+.image-swiper-section {
+  position: relative;
+  background: var(--tf-color-black);
+
+  .image-swiper {
+    height: 375px;
+
+    .media-item {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    .media-video-label {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      background: rgba(255, 107, 0, 0.9);
+      color: var(--color-bg-white);
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: var(--tf-type-scale-13);
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      box-shadow: 0 2px 8px rgba(255, 107, 0, 0.3);
+      z-index: 10;
+      pointer-events: none;
+
+      i {
+        font-size: var(--tf-type-scale-12);
+      }
+    }
+  }
+
+  .image-count {
+    position: absolute;
+    bottom: 12px;
+    right: 12px;
+    background: rgba(0, 0, 0, 0.5);
+    color: var(--color-bg-white);
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: var(--tf-type-scale-12);
+  }
+
+  :deep(.swiper-pagination-fraction) {
+    color: var(--color-bg-white);
+    font-size: var(--tf-type-scale-14);
+    bottom: 12px;
+    left: 12px;
+    right: auto;
+    width: auto;
+  }
+}
+
+// 价格区域
+.price-section {
+  background: var(--color-bg-white);
+  padding: 16px;
+  margin-bottom: 12px;
+
+  .price-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+
+    .price-label {
+      font-size: var(--tf-type-scale-14);
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .price {
+      font-size: var(--tf-type-scale-24);
+      font-weight: 500;
+      color: var(--tf-color-accent-pink);
+
+      &.inquire {
+        font-size: var(--tf-type-scale-18);
+        color: var(--tf-color-orange-material-500);
+      }
+    }
+
+    .tag-used {
+      background: var(--tf-color-accent-orange);
+      color: var(--color-bg-white);
+      font-size: var(--tf-type-scale-12);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+  }
+
+  .product-title {
+    font-size: var(--mobile-text-body);
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    overflow-wrap: anywhere;
+    line-height: 1.35;
+    background: linear-gradient(135deg, var(--tf-color-surface) 0%, var(--tf-color-border-form) 100%);
+    padding: 12px 16px;
+    border-radius: 8px;
+
+    .title-item {
+      display: inline-block;
+      overflow-wrap: anywhere;
+    }
+
+    .title-separator {
+      margin: 0 4px;
+      color: var(--text-muted);
+      opacity: 0.8;
+      flex-shrink: 0;
+    }
+  }
+
+  .product-subtitle {
+    font-size: var(--tf-type-scale-14);
+    color: var(--text-muted);
+    margin: 0;
+  }
+}
+
+// 规格信息
+.specs-section {
+  background: var(--color-bg-white);
+  padding: 16px;
+  margin-bottom: 8px;
+
+  .specs-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .spec-card {
+    background: var(--tf-color-neutral-50);
+    border: 1px solid var(--tf-color-neutral-200);
+    border-radius: 8px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+
+    .spec-card-title {
+      font-size: var(--tf-type-scale-12);
+      color: var(--tf-color-neutral-500);
+      font-weight: 500;
+    }
+
+    .spec-card-value {
+      font-size: var(--tf-type-scale-14);
+      color: var(--text-primary);
+    }
+  }
+}
+
+// 商家描述
+.merchant-description-section {
+  background: var(--color-bg-white);
+  padding: 16px;
+  margin-bottom: 8px;
+
+  .description-content {
+    font-size: var(--tf-type-scale-14);
+    color: var(--text-primary);
+    line-height: 1.8;
+    background: var(--tf-color-orange-ant-surface);
+    padding: 12px;
+    border-radius: 8px;
+    border-left: 4px solid var(--tf-color-accent-orange);
+
+    p {
+      margin: 0;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+  }
+}
+
+// 验机报告
+.inspection-section {
+  background: var(--color-bg-white);
+  padding: 16px;
+  margin-bottom: 8px;
+
+  .inspection-content {
+    .inspection-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px 16px;
+    }
+
+    .inspection-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 0;
+      font-size: var(--tf-type-scale-13);
+      color: var(--text-primary);
+
+      i {
+        color: var(--tf-color-accent-green);
+        font-size: var(--tf-type-scale-16);
+        flex-shrink: 0;
+      }
+
+      .item-content {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        flex: 1;
+
+        .item-label {
+          color: var(--text-muted);
+          font-size: var(--tf-type-scale-12);
+        }
+
+        .item-value {
+          color: var(--text-primary);
+          font-size: var(--tf-type-scale-13);
+        }
+      }
+    }
+
+    .inspection-empty {
+      margin-top: 8px;
+      padding: 12px;
+      border-radius: 8px;
+      background: var(--tf-color-orange-ant-surface);
+      color: var(--tf-color-warning-text-legacy);
+      font-size: var(--tf-type-scale-13);
+      line-height: 1.6;
+    }
+
+    :deep(.condition-grade) {
+      color: var(--tf-color-accent-orange);
+      font-weight: 600;
+    }
+  }
+}

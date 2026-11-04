@@ -1,0 +1,24 @@
+
+.sales-receipt-theme .total-amount-words,
+.sales-receipt-theme .total-amount,
+.sales-receipt-theme .receipt-product-name {
+  color: var(--receipt-theme-accent);
+}
+
+.sales-receipt-theme .receipt-title,
+.sales-receipt-theme .total-count strong,
+.sales-receipt-theme .after-sale-notes > strong {
+  color: var(--receipt-theme-heading);
+}
+
+.sales-receipt-theme .receipt-signature-item span {
+  color: var(--tf-color-blue-700);
+}
+
+.sales-receipt-theme .receipt-meta-item .receipt-number-value {
+  color: var(--receipt-theme-heading);
+}
+
+.sales-receipt-theme .receipt-meta-item .receipt-date-value {
+  color: var(--tf-color-emerald-700);
+}

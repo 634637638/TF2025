@@ -156,7 +156,7 @@ import { hasPendingRequest } from '@/composables/usePageCache'
 
 // 检查是否有正在进行的请求
 if (hasPendingRequest('/dashboard')) {
-  console.log('请求正在进行中...')
+  logger.debug('请求正在进行中...')
 }
 ```
 

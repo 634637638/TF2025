@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "description": "TF2025 Fullstack Project",
   "scripts": {
-    "check:docs": "node scripts/check-docs.mjs && node scripts/check-doc-examples.mjs",
-    "test:docs": "node --test scripts/test/doc-examples.check.mjs",
+    "check:docs": "node scripts/check-docs.mjs && node scripts/check-doc-examples.mjs && node scripts/check-doc-standards-conflicts.mjs",
+    "test:docs": "node --test scripts/test/doc-examples.check.mjs scripts/test/doc-standards-conflicts.check.mjs",
     "test:lint-config": "node --test scripts/test/eslint-config.check.mjs",
     "check:reference-options": "node scripts/check-reference-options.mjs --strict",
     "dev": "node scripts/fix-ports.js",

@@ -1,0 +1,273 @@
+
+.inventory-analytics {
+  --inventory-primary: #205781;
+  --inventory-secondary: #4f959d;
+  --inventory-accent: #f6b17a;
+  --inventory-success: #98d2c0;
+  --inventory-border: rgba(32, 87, 129, 0.1);
+
+  .overview-cards,
+  .charts-section,
+  .table-section {
+    margin-bottom: 24px;
+  }
+
+  .mt-16 {
+    margin-top: 16px;
+  }
+
+  .dialog-footer {
+    text-align: right;
+  }
+
+  .insight-card {
+    position: relative;
+    min-height: 204px;
+    overflow: hidden;
+    border: 1px solid var(--inventory-border);
+    border-radius: 20px;
+    background:
+      radial-gradient(circle at top right, rgba(255, 255, 255, 0.42), transparent 38%),
+      linear-gradient(180deg, var(--color-bg-white) 0%, var(--tf-color-surface-neutral) 100%);
+    box-shadow: 0 14px 36px rgba(22, 34, 55, 0.08);
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+
+    &::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(32, 87, 129, 0.08), transparent 58%);
+      pointer-events: none;
+    }
+
+    &:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 18px 40px rgba(22, 34, 55, 0.12);
+    }
+
+    &.clickable {
+      cursor: pointer;
+    }
+  }
+
+  .insight-card--primary {
+    background:
+      radial-gradient(circle at top right, rgba(79, 149, 157, 0.16), transparent 38%),
+      linear-gradient(180deg, var(--color-bg-white) 0%, var(--tf-color-surface-cool-soft) 100%);
+  }
+
+  .insight-card--success {
+    background:
+      radial-gradient(circle at top right, rgba(152, 210, 192, 0.25), transparent 42%),
+      linear-gradient(180deg, var(--color-bg-white) 0%, var(--tf-color-surface-gray) 100%);
+  }
+
+  .insight-card--warning {
+    background:
+      radial-gradient(circle at top right, rgba(246, 177, 122, 0.22), transparent 42%),
+      linear-gradient(180deg, var(--color-bg-white) 0%, var(--tf-color-amber-surface) 100%);
+  }
+
+  .insight-card--supplier {
+    background:
+      radial-gradient(circle at top right, rgba(79, 149, 157, 0.14), transparent 42%),
+      linear-gradient(180deg, var(--color-bg-white) 0%, var(--tf-color-surface-gray) 100%);
+  }
+
+  .insight-card__header,
+  .insight-card__footer,
+  .panel-header,
+  .suggestion-title-row,
+  .supplier-highlight {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .insight-card__header,
+  .insight-card__label,
+  .insight-card__value,
+  .insight-card__meta,
+  .insight-card__footer {
+    position: relative;
+    z-index: 1;
+  }
+
+  .insight-card__icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 52px;
+    height: 52px;
+    border-radius: 16px;
+    color: var(--color-bg-white);
+    font-size: var(--tf-type-scale-24);
+    background: linear-gradient(135deg, var(--inventory-primary), var(--inventory-secondary));
+    box-shadow: 0 12px 22px rgba(32, 87, 129, 0.2);
+  }
+
+  .insight-card--success .insight-card__icon {
+    background: linear-gradient(135deg, var(--tf-color-inventory-chart-green), var(--tf-color-inventory-chart-mint));
+  }
+
+  .insight-card--warning .insight-card__icon {
+    background: linear-gradient(135deg, var(--tf-color-orange-legacy), var(--tf-color-amber-muted));
+  }
+
+  .insight-card--supplier .insight-card__icon {
+    background: linear-gradient(135deg, var(--tf-color-slate-500), var(--tf-color-inventory-chart-cyan));
+  }
+
+  .insight-card__label {
+    margin-top: 22px;
+    color: var(--color-text-regular);
+    font-size: var(--tf-type-scale-14);
+    letter-spacing: 0.02em;
+  }
+
+  .insight-card__value {
+    margin-top: 12px;
+    font-size: var(--tf-type-scale-34);
+    line-height: 1;
+    font-weight: 700;
+    color: var(--tf-color-slate-deep);
+  }
+
+  .insight-card__value--currency {
+    font-size: var(--tf-type-scale-30);
+  }
+
+  .insight-card__meta {
+    margin-top: 10px;
+    color: var(--tf-color-gray-ui-muted);
+    font-size: var(--tf-type-scale-13);
+  }
+
+  .insight-card__footer {
+    margin-top: 18px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(32, 87, 129, 0.08);
+    font-size: var(--tf-type-scale-12);
+    color: var(--color-text-regular);
+  }
+
+  .panel-card {
+    height: 100%;
+    border: 1px solid rgba(32, 87, 129, 0.08);
+    border-radius: 20px;
+    box-shadow: 0 12px 30px rgba(18, 38, 63, 0.06);
+    background: linear-gradient(180deg, var(--color-bg-white) 0%, var(--tf-color-surface-cool-alt) 100%);
+  }
+
+  .panel-title {
+    font-size: var(--tf-type-scale-17);
+    font-weight: 700;
+    color: var(--tf-color-slate-deep);
+  }
+
+  .panel-subtitle {
+    margin-top: 6px;
+    color: var(--tf-color-gray-ui-muted);
+    font-size: var(--tf-type-scale-13);
+    line-height: 1.5;
+  }
+
+  .panel-metrics {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  .metric-chip {
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: var(--tf-color-surface-cool-soft);
+    color: var(--tf-color-gray-chakra-600);
+    font-size: var(--tf-type-scale-12);
+    border: 1px solid rgba(32, 87, 129, 0.08);
+  }
+
+  .period-select,
+  .alert-select {
+    min-width: 122px;
+  }
+
+  .chart-card {
+    height: 100%;
+  }
+
+  .chart-container,
+  .supplier-chart-container {
+    height: 320px;
+
+    .chart {
+      width: 100%;
+      height: 100%;
+    }
+  }
+
+  .warning-overview {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 18px;
+  }
+
+  .warning-stat {
+    padding: 14px 16px;
+    border-radius: 16px;
+    background: linear-gradient(180deg, var(--tf-color-surface-gray) 0%, var(--tf-color-surface-cool-blue) 100%);
+    border: 1px solid rgba(32, 87, 129, 0.08);
+  }
+
+  .warning-stat__label {
+    display: block;
+    margin-bottom: 6px;
+    color: var(--tf-color-gray-ui-600);
+    font-size: var(--tf-type-scale-12);
+  }
+
+  .warning-stat__value {
+    color: var(--tf-color-slate-deep);
+    font-size: var(--tf-type-scale-20);
+    font-weight: 700;
+  }
+
+  .stretch-col {
+    display: flex;
+  }
+
+  .low-stock-card,
+  .supplier-card {
+    height: 100%;
+    width: 100%;
+  }
+
+  .product-name {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+
+    .brand {
+      color: var(--tf-color-slate-deep);
+      font-weight: 700;
+    }
+
+    .model {
+      color: var(--color-text-regular);
+      font-size: var(--tf-type-scale-13);
+    }
+
+    .color {
+      color: var(--tf-color-gray-ui-500);
+      font-size: var(--tf-type-scale-12);
+    }
+  }
+
+  .supplier-card {
+    display: flex;
+    flex-direction: column;
+  }
+}

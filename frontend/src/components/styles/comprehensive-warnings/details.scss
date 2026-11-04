@@ -1,0 +1,242 @@
+
+.comprehensive-warnings {
+  .warning-detail {
+    padding: var(--tf-space-5);
+
+    .out-of-stock-text {
+      color: var(--tf-color-red-600);
+      font-size: var(--tf-type-scale-15);
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+
+    .warning-threshold-text {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 28px;
+      padding: 2px 10px;
+      border-radius: 999px;
+      background: var(--tf-color-orange-ant-surface);
+      color: var(--tf-color-amber-700);
+      font-size: var(--tf-type-scale-13);
+      font-weight: 700;
+      border: 1px solid var(--tf-color-amber-muted);
+    }
+
+    .detail-section {
+      // 表格宽度自适应
+      .el-table {
+        width: 100%;
+      }
+
+      .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+        flex-wrap: wrap;
+        gap: 10px;
+
+        h4 {
+          margin: 0;
+          font-size: var(--tf-font-body-lg);
+          color: var(--tf-color-heading);
+          display: flex;
+          align-items: center;
+          gap: var(--tf-space-2);
+
+          i {
+            color: var(--tf-color-blue-legacy);
+          }
+        }
+
+        .header-actions {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+      }
+
+      .sales-summary {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 15px;
+        margin-bottom: 20px;
+
+        .summary-item {
+          background: var(--tf-color-surface-muted);
+          padding: 18px;
+          border-radius: 10px;
+          text-align: center;
+          transition: all 0.2s ease;
+
+          &:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+          }
+
+          .label {
+            display: block;
+            font-size: var(--tf-font-caption);
+            color: var(--tf-color-gray-cool-500);
+            margin-bottom: var(--tf-space-2);
+            font-weight: 500;
+          }
+
+          .value {
+            font-size: var(--tf-type-scale-20);
+            font-weight: 700;
+            color: var(--tf-color-heading);
+
+            &.profit {
+              color: var(--tf-color-green-legacy);
+            }
+
+            &.below {
+              color: var(--tf-color-red-legacy);
+            }
+
+            i {
+              font-size: var(--tf-type-scale-14);
+              margin-right: 4px;
+            }
+          }
+        }
+      }
+
+      .sales-trend {
+        margin-top: 20px;
+
+        h5 {
+          font-size: var(--tf-type-scale-15);
+          color: var(--tf-color-slate-legacy);
+          margin-bottom: 15px;
+          padding-bottom: 10px;
+          border-bottom: 2px solid var(--tf-color-gray-flat-200);
+        }
+
+        .trend-list {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+
+          .trend-item {
+            display: flex;
+            align-items: center;
+            gap: var(--tf-space-3);
+            padding: 10px;
+            background: var(--color-bg-white);
+            border-radius: var(--tf-radius-card);
+            border: 1px solid var(--tf-color-gray-flat-200);
+            transition: all 0.2s ease;
+
+            &:hover {
+              border-color: var(--tf-color-blue-legacy);
+              box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            }
+
+            .trend-date {
+              font-size: var(--tf-font-caption);
+              color: var(--tf-color-gray-cool-500);
+              width: 55px;
+              text-align: right;
+              font-weight: 500;
+            }
+
+            .trend-bar {
+              flex: 1;
+              height: 28px;
+              background: var(--tf-color-gray-flat-200);
+              border-radius: var(--tf-radius-control);
+              overflow: hidden;
+              position: relative;
+
+              .bar-fill {
+                height: 100%;
+                background: linear-gradient(90deg, var(--tf-color-blue-legacy), var(--tf-color-blue-flat-dark));
+                border-radius: var(--tf-radius-control);
+                transition: width 0.5s ease;
+                position: relative;
+
+                &::after {
+                  content: '';
+                  position: absolute;
+                  top: 0;
+                  left: 0;
+                  right: 0;
+                  bottom: 0;
+                  background: linear-gradient(90deg, rgba(255,255,255,0.2), transparent);
+                }
+              }
+            }
+
+            .trend-count {
+              font-size: var(--tf-type-scale-13);
+              color: var(--tf-color-heading);
+              width: 50px;
+              font-weight: 600;
+            }
+
+            .trend-amount {
+              font-size: var(--tf-type-scale-11);
+              color: var(--tf-color-gray-cool-500);
+              width: 70px;
+            }
+          }
+        }
+      }
+
+      .sales-alert {
+        margin-top: 20px;
+
+        .el-alert {
+          border-radius: var(--tf-radius-card);
+        }
+      }
+
+      .purchase-alert {
+        margin-bottom: 15px;
+      }
+    }
+  }
+}
+
+// PC端优化（宽度大于768px）
+@media (min-width: 768px) {
+  .comprehensive-warnings {
+    .warning-detail {
+      .detail-section {
+        // 确保表格在PC端自适应宽度
+        .el-table {
+          width: 100%;
+
+          // 表格列自适应
+          .el-table__body-wrapper {
+            overflow-x: auto;
+          }
+
+          // 当屏幕宽度较小时，允许水平滚动
+          @media (max-width: 1200px) {
+            .el-table__body-wrapper {
+              overflow-x: auto;
+            }
+          }
+        }
+
+        // 手机库存预警表格优化
+        &:has(.el-table) {
+          overflow-x: auto;
+
+          .el-table {
+            min-width: 600px;
+
+            @media (min-width: 1200px) {
+              min-width: 100%;
+            }
+          }
+        }
+      }
+    }
+  }
+}
