@@ -428,6 +428,27 @@ function isConnected() {
   return dbConnected
 }
 
+async function checkDatabaseHealth(timeoutMs = 1500) {
+  if (!pool || !dbConnected) return false
+
+  let timer
+  try {
+    await Promise.race([
+      pool.query('SELECT 1 AS ok'),
+      new Promise((_, reject) => {
+        timer = setTimeout(() => reject(new Error('数据库健康检查超时')), timeoutMs)
+        timer.unref?.()
+      })
+    ])
+    return true
+  } catch (error) {
+    log.warn('数据库健康检查失败:', error.message)
+    return false
+  } finally {
+    if (timer) clearTimeout(timer)
+  }
+}
+
 // 设置连接状态（用于手动重连）
 function setConnected(status) {
   dbConnected = status
@@ -464,6 +485,7 @@ module.exports = {
   connectToDatabase,
   createDatabasePool,
   isConnected,
+  checkDatabaseHealth,
   setConnected,
   closeDatabase,
   getPoolStats,

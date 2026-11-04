@@ -4,6 +4,7 @@
  */
 const { getDatabase } = require('../config/database')
 const log = require('../utils/log')
+const { prepareDataCheckBackupSchema } = require('../utils/data-check-backup-schema')
 
 class DataBackupService {
   constructor() {
@@ -18,23 +19,7 @@ class DataBackupService {
    * 初始化备份表
    */
   async initBackupTable() {
-    const connection = await this.getPool().getConnection()
-    try {
-      await connection.execute(`
-        CREATE TABLE IF NOT EXISTS ${this.backupTable} (
-          id INT AUTO_INCREMENT PRIMARY KEY,
-          table_name VARCHAR(50) NOT NULL,
-          operation_type ENUM('merge', 'delete') NOT NULL,
-          backup_data JSON NOT NULL,
-          created_by VARCHAR(100),
-          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          INDEX idx_table (table_name),
-          INDEX idx_date (created_at)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-      `)
-    } finally {
-      connection.release()
-    }
+    await prepareDataCheckBackupSchema(this.getPool())
   }
 
   /**

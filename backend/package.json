@@ -9,6 +9,7 @@
     "check:runtime-assets": "node scripts/check-runtime-assets.js",
     "audit:deprecated-routes": "node scripts/audit-deprecated-routes.js",
     "migrate:subsidy-photos": "node scripts/migrate-subsidy-photos.js",
+    "migrate:schema": "node scripts/migrate-schema.js",
     "migrate:phone-media": "node scripts/migrate-phone-media.js",
     "migrate:phone-available-status": "node scripts/migrate-phone-available-status.js",
     "migrate:shop-media": "node scripts/migrate-shop-media.js",

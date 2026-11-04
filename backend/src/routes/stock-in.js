@@ -7,7 +7,30 @@ const router = express.Router()
 const { unifiedAuth, requirePermission, requireAnyPermission } = require('../middleware/unified-auth')
 const ApiResponse = require('../utils/response')
 const { validateImei } = require('../utils/imei')
+const { randomBytes } = require('crypto')
+const { getBeijingTimeString } = require('../utils/time')
+const {
+  appendStoreScopeCondition,
+  assertStoreInScope,
+  isStoreScopeError,
+  resolveStoreScope
+} = require('../utils/store-scope')
 const log = require('../utils/log')
+
+const MAX_STOCK_IN_PRODUCTS = 200
+
+const sendStoreScopeError = (res, error) => {
+  if (!isStoreScopeError(error)) return false
+  ApiResponse.error(res, error.message, error.statusCode)
+  return true
+}
+
+const createPurchaseNumber = () => {
+  const compactTime = getBeijingTimeString()
+    .replace(/[-:\s]/g, '')
+    .replace(/\.\d+$/, '')
+  return `PO${compactTime}${randomBytes(3).toString('hex').toUpperCase()}`
+}
 
 const formatStockInRecord = (record) => ({
   id: record.id,
@@ -68,6 +91,8 @@ router.get('/', unifiedAuth, requirePermission('stock-in:view'), async (req, res
     // 构建查询条件
     const whereConditions = []
     const params = []
+    const storeScope = resolveStoreScope(req.user, store_id)
+    appendStoreScopeCondition(storeScope, 'p.store_id', whereConditions, params)
 
     // 商品类型筛选 (通过is_new字段判断，1=全新，0=二手)
     if (product_type) {
@@ -82,12 +107,6 @@ router.get('/', unifiedAuth, requirePermission('stock-in:view'), async (req, res
     if (brand_id) {
       whereConditions.push('p.brand_id = ?')
       params.push(parseInt(brand_id, 10))
-    }
-
-    // 门店筛选
-    if (store_id) {
-      whereConditions.push('p.store_id = ?')
-      params.push(parseInt(store_id, 10))
     }
 
     // 供应商筛选
@@ -202,6 +221,7 @@ router.get('/', unifiedAuth, requirePermission('stock-in:view'), async (req, res
       }
     })
   } catch (error) {
+    if (sendStoreScopeError(res, error)) return
     log.error('获取入库记录失败:', error)
     ApiResponse.serverError(res, '获取入库记录失败', error)
   } finally {
@@ -224,12 +244,8 @@ router.get('/stats/overview', unifiedAuth, requirePermission('stock-in:view'), a
     // 构建查询条件
     const whereConditions = []
     const params = []
-
-    // 门店筛选
-    if (store_id) {
-      whereConditions.push('p.store_id = ?')
-      params.push(parseInt(store_id, 10))
-    }
+    const storeScope = resolveStoreScope(req.user, store_id)
+    appendStoreScopeCondition(storeScope, 'p.store_id', whereConditions, params)
 
     // 日期范围筛选
     if (start_date) {
@@ -321,6 +337,7 @@ router.get('/stats/overview', unifiedAuth, requirePermission('stock-in:view'), a
 
     ApiResponse.success(res, finalStats)
   } catch (error) {
+    if (sendStoreScopeError(res, error)) return
     log.error('获取入库统计失败:', error)
     ApiResponse.serverError(res, '获取入库统计失败', error)
   } finally {
@@ -335,6 +352,10 @@ router.get('/:id', unifiedAuth, requirePermission('stock-in:view'), async (req, 
   let connection
   try {
     const { id } = req.params
+    const storeScope = resolveStoreScope(req.user, req.query.store_id)
+    const scopeConditions = ['p.id = ?']
+    const scopeParams = [id]
+    appendStoreScopeCondition(storeScope, 'p.store_id', scopeConditions, scopeParams)
 
     // 获取数据库连接
     const pool = require('../config/database').getDatabase()
@@ -373,10 +394,10 @@ router.get('/:id', unifiedAuth, requirePermission('stock-in:view'), async (req, 
       LEFT JOIN models m ON p.model_id = m.id
       LEFT JOIN colors c ON p.color_id = c.id
       LEFT JOIN memories mem ON p.memory_id = mem.id
-      WHERE p.id = ?
+      WHERE ${scopeConditions.join(' AND ')}
     `
 
-    const [records] = await connection.execute(query, [id])
+    const [records] = await connection.execute(query, scopeParams)
 
     if (records.length === 0) {
       return ApiResponse.notFound(res, '入库记录不存在')
@@ -384,6 +405,7 @@ router.get('/:id', unifiedAuth, requirePermission('stock-in:view'), async (req, 
 
     ApiResponse.success(res, formatStockInRecord(records[0]))
   } catch (error) {
+    if (sendStoreScopeError(res, error)) return
     log.error('获取入库详情失败:', error)
     ApiResponse.serverError(res, '获取入库详情失败', error)
   } finally {
@@ -442,6 +464,8 @@ router.post('/', unifiedAuth, requireAnyPermission(['stock-in:create', 'inventor
     if (!store_id) {
       return ApiResponse.badRequest(res, '请选择店铺')
     }
+    const storeScope = resolveStoreScope(req.user, store_id)
+    const normalizedStoreId = assertStoreInScope(storeScope, store_id)
 
     if (!inventoryTime) {
       return ApiResponse.badRequest(res, '请选择入库时间')
@@ -458,7 +482,11 @@ router.post('/', unifiedAuth, requireAnyPermission(['stock-in:create', 'inventor
     if (!products || !Array.isArray(products) || products.length === 0) {
       return ApiResponse.badRequest(res, '商品列表不能为空')
     }
+    if (products.length > MAX_STOCK_IN_PRODUCTS) {
+      return ApiResponse.badRequest(res, `单次最多入库 ${MAX_STOCK_IN_PRODUCTS} 件商品`)
+    }
 
+    const submittedImeis = new Set()
     // 验证每个商品
     for (let i = 0; i < products.length; i++) {
       const product = products[i]
@@ -490,6 +518,10 @@ router.post('/', unifiedAuth, requireAnyPermission(['stock-in:create', 'inventor
 
       product.imei = imeiValidation.normalizedImei
       product.serial_number = imeiValidation.normalizedSerialNumber
+      if (submittedImeis.has(product.imei)) {
+        return ApiResponse.badRequest(res, `第${i + 1}行商品IMEI号在本次入库中重复`)
+      }
+      submittedImeis.add(product.imei)
 
       if (product.serial_number && product.serial_number.length > 50) {
         return ApiResponse.badRequest(res, `第${i + 1}行商品序列号最长50位`)
@@ -500,15 +532,8 @@ router.post('/', unifiedAuth, requireAnyPermission(['stock-in:create', 'inventor
       }
     }
 
-    // 生成入库单号（使用北京时间：PO + 年份 + 时分秒6位）
-    const now = new Date()
-    // 转换为北京时间 (UTC+8)
-    const beijingTime = new Date(now.getTime() + (8 * 60 * 60 * 1000))
-    const year = beijingTime.getUTCFullYear()
-    const hours = String(beijingTime.getUTCHours()).padStart(2, '0')
-    const minutes = String(beijingTime.getUTCMinutes()).padStart(2, '0')
-    const seconds = String(beijingTime.getUTCSeconds()).padStart(2, '0')
-    const purchase_number = `PO${year}${hours}${minutes}${seconds}`
+    // 完整北京时间 + 随机后缀，避免跨日期和并发请求生成相同单号。
+    const purchase_number = createPurchaseNumber()
 
     // 开始事务
     await connection.beginTransaction()
@@ -516,42 +541,42 @@ router.post('/', unifiedAuth, requireAnyPermission(['stock-in:create', 'inventor
     try {
       const insertedProducts = []
 
+      const loadReferenceMap = async (table, valueColumn, ids) => {
+        const uniqueIds = [...new Set(ids.map(Number).filter(Number.isInteger))]
+        const placeholders = uniqueIds.map(() => '?').join(', ')
+        const [rows] = await connection.query(
+          `SELECT id, ${valueColumn} AS value FROM ${table} WHERE id IN (${placeholders})`,
+          uniqueIds
+        )
+        return new Map(rows.map(row => [Number(row.id), row.value]))
+      }
+      const [brandMap, modelMap, colorMap, memoryMap, existingPhoneRows] = await Promise.all([
+        loadReferenceMap('brands', 'name', products.map(product => product.brand_id)),
+        loadReferenceMap('models', 'name', products.map(product => product.model_id)),
+        loadReferenceMap('colors', 'name', products.map(product => product.color_id)),
+        loadReferenceMap('memories', 'size', products.map(product => product.memory_id)),
+        connection.query(
+          `SELECT id, imei, status FROM phones WHERE imei IN (${products.map(() => '?').join(', ')})`,
+          products.map(product => product.imei)
+        ).then(([rows]) => rows)
+      ])
+      const existingPhonesByImei = new Map(existingPhoneRows.map(row => [String(row.imei), row]))
+
       // 批量插入每个商品
       for (let i = 0; i < products.length; i++) {
         const product = products[i]
 
-        // 获取品牌、型号、颜色、内存的名称
-        const [brandResult] = await connection.execute(
-          'SELECT name FROM brands WHERE id = ?',
-          [product.brand_id]
-        )
-        const [modelResult] = await connection.execute(
-          'SELECT name FROM models WHERE id = ?',
-          [product.model_id]
-        )
-        const [colorResult] = await connection.execute(
-          'SELECT name FROM colors WHERE id = ?',
-          [product.color_id]
-        )
-        const [memoryResult] = await connection.execute(
-          'SELECT size FROM memories WHERE id = ?',
-          [product.memory_id]
-        )
-
-        const brandName = brandResult[0]?.name || ''
-        const modelName = modelResult[0]?.name || ''
-        const colorName = colorResult[0]?.name || ''
-        const memoryName = memoryResult[0]?.size || ''
-
-        // 检查IMEI是否已存在 - 只检查在库状态，允许回收已售商品重新入库
-        const [existingPhones] = await connection.execute(
-          'SELECT id, status FROM phones WHERE imei = ?',
-          [product.imei]
-        )
+        const brandName = brandMap.get(Number(product.brand_id)) || ''
+        const modelName = modelMap.get(Number(product.model_id)) || ''
+        const colorName = colorMap.get(Number(product.color_id)) || ''
+        const memoryName = memoryMap.get(Number(product.memory_id)) || ''
+        if (!brandName || !modelName || !colorName || !memoryName) {
+          throw new Error(`第${i + 1}行商品的品牌、型号、颜色或内存不存在`)
+        }
 
         // 只有在库状态才报错，已售出的商品可以回收后重新入库
-        if (existingPhones.length > 0) {
-          const existingPhone = existingPhones[0]
+        const existingPhone = existingPhonesByImei.get(product.imei)
+        if (existingPhone) {
           if (existingPhone.status === 'in_stock') {
             await connection.rollback()
             return ApiResponse.badRequest(res, `第${i + 1}行商品IMEI号已在库中，无法重复入库`)
@@ -578,7 +603,7 @@ router.post('/', unifiedAuth, requireAnyPermission(['stock-in:create', 'inventor
             : null,
           condition === '全新' ? 1 : 0,
           supplier_id,
-          store_id,
+          normalizedStoreId,
           'in_stock',
           condition === '全新' ? 'A' : 'B', // quality_grade
           finalRemarks,
@@ -624,7 +649,7 @@ router.post('/', unifiedAuth, requireAnyPermission(['stock-in:create', 'inventor
           model_id: product.model_id || null,
           color_id: product.color_id || null,
           memory_id: product.memory_id || null,
-          store_id: store_id || null,
+          store_id: normalizedStoreId,
           brand_name: brandName,
           model_name: modelName,
           color_name: colorName,
@@ -636,22 +661,17 @@ router.post('/', unifiedAuth, requireAnyPermission(['stock-in:create', 'inventor
         })
       }
 
-      // 提交事务
-      await connection.commit()
-
       // 检查是否有匹配的待匹配预定单，并自动匹配
-      const _matchablePreorders = []
       const autoMatchedPreorders = []
 
       for (const product of insertedProducts) {
-        try {
-          const brandId = product.brand_id || null
-          const modelId = product.model_id || null
-          const colorId = product.color_id || null
-          const memoryId = product.memory_id || null
+        const brandId = product.brand_id || null
+        const modelId = product.model_id || null
+        const colorId = product.color_id || null
+        const memoryId = product.memory_id || null
 
-          // 查找匹配的待匹配预定单（不限制店铺）
-          const [preorderResult] = await connection.execute(`
+        // 锁定同门店最早待匹配预订单，确保并发入库只能匹配一次。
+        const [preorderResult] = await connection.execute(`
             SELECT
               p.id,
               p.preorder_number,
@@ -668,6 +688,8 @@ router.post('/', unifiedAuth, requireAnyPermission(['stock-in:create', 'inventor
             FROM preorders p
             LEFT JOIN customers c ON c.id = p.customer_id
             WHERE p.status = 'pending'
+              AND p.matched_phone_id IS NULL
+              AND p.store_id = ?
               AND p.brand_id = ?
               AND p.model_id = ?
               AND p.color_id = ?
@@ -675,48 +697,53 @@ router.post('/', unifiedAuth, requireAnyPermission(['stock-in:create', 'inventor
               AND p.is_new = ?
             ORDER BY p.created_at ASC
             LIMIT 1
-          `, [brandId, modelId, colorId, memoryId, product.is_new])
+            FOR UPDATE
+          `, [normalizedStoreId, brandId, modelId, colorId, memoryId, product.is_new])
 
-          if (preorderResult.length > 0) {
-            const preorder = preorderResult[0]
+        if (preorderResult.length > 0) {
+          const preorder = preorderResult[0]
 
-            // 自动匹配：更新预定单状态
-            await connection.execute(`
+          const [preorderUpdate] = await connection.execute(`
               UPDATE preorders SET
                 status = 'arrived',
                 matched_phone_id = ?,
                 imei = ?,
                 matched_time = NOW(),
                 updated_at = NOW()
-              WHERE id = ?
+              WHERE id = ? AND status = 'pending' AND matched_phone_id IS NULL
             `, [product.id, product.imei, preorder.id])
-
-            // 标记手机为已预定
-            await connection.execute(`
-              UPDATE phones SET is_preordered = 1
-              WHERE id = ?
-            `, [product.id])
-
-            autoMatchedPreorders.push({
-              preorder_id: preorder.id,
-              preorder_number: preorder.preorder_number,
-              customer_name: preorder.customer_name,
-              phone_id: product.id,
-              imei: product.imei
-            })
-
-            log.debug(`✅ 自动匹配预定单: ${preorder.preorder_number} -> IMEI: ${product.imei}`)
+          if (preorderUpdate.affectedRows !== 1) {
+            throw new Error(`预订单 ${preorder.preorder_number} 已被其他入库操作匹配`)
           }
-        } catch (matchError) {
-          log.warn('自动匹配预定单失败:', matchError)
+
+          const [phoneUpdate] = await connection.execute(`
+              UPDATE phones SET is_preordered = 1
+              WHERE id = ? AND COALESCE(is_preordered, 0) = 0
+            `, [product.id])
+          if (phoneUpdate.affectedRows !== 1) {
+            throw new Error(`入库商品 ${product.imei} 的预订状态更新失败`)
+          }
+
+          autoMatchedPreorders.push({
+            preorder_id: preorder.id,
+            preorder_number: preorder.preorder_number,
+            customer_name: preorder.customer_name,
+            phone_id: product.id,
+            imei: product.imei
+          })
+
+          log.debug(`✅ 自动匹配预定单: ${preorder.preorder_number} -> IMEI: ${product.imei}`)
         }
       }
+
+      // 入库与自动匹配在同一事务中提交，任何一步失败都不产生半完成数据。
+      await connection.commit()
 
       // 构建响应数据
       const responseData = {
         purchase_number,
         supplier_id,
-        store_id,
+        store_id: normalizedStoreId,
         inventory_time: inventoryTime,
         operator_name: actualOperatorName,
         condition,
@@ -748,6 +775,7 @@ router.post('/', unifiedAuth, requireAnyPermission(['stock-in:create', 'inventor
     if (connection) {
       await connection.rollback()
     }
+    if (sendStoreScopeError(res, error)) return
     log.error('创建入库记录失败:', error)
     ApiResponse.serverError(res, '创建入库记录失败', error)
   } finally {
@@ -762,16 +790,18 @@ router.put('/:id', unifiedAuth, requirePermission('stock-in:edit'), async (req, 
   let connection
   try {
     const { id } = req.params
+    const storeScope = resolveStoreScope(req.user, req.body?.store_id)
 
     // 获取数据库连接
     const pool = require('../config/database').getDatabase()
     connection = await pool.getConnection()
 
     // 检查记录是否存在
-    const [existingRecords] = await connection.execute('SELECT id FROM phones WHERE id = ?', [id])
+    const [existingRecords] = await connection.execute('SELECT id, store_id FROM phones WHERE id = ?', [id])
     if (existingRecords.length === 0) {
       return ApiResponse.notFound(res, '入库记录不存在')
     }
+    assertStoreInScope(storeScope, existingRecords[0].store_id)
 
     const updateData = req.body
     const updateFields = []
@@ -844,7 +874,7 @@ router.put('/:id', unifiedAuth, requirePermission('stock-in:edit'), async (req, 
 
     if (updateData.store_id !== undefined) {
       updateFields.push('store_id = ?')
-      updateValues.push(updateData.store_id)
+      updateValues.push(assertStoreInScope(storeScope, updateData.store_id))
     }
 
     if (updateData.supplier_id !== undefined) {
@@ -900,6 +930,7 @@ router.put('/:id', unifiedAuth, requirePermission('stock-in:edit'), async (req, 
 
     ApiResponse.success(res, updatedRecords[0], '入库记录更新成功')
   } catch (error) {
+    if (sendStoreScopeError(res, error)) return
     log.error('更新入库记录失败:', error)
     ApiResponse.serverError(res, '更新入库记录失败', error)
   } finally {
@@ -914,16 +945,18 @@ router.delete('/:id', unifiedAuth, requirePermission('stock-in:delete'), async (
   let connection
   try {
     const { id } = req.params
+    const storeScope = resolveStoreScope(req.user, req.query.store_id)
 
     // 获取数据库连接
     const pool = require('../config/database').getDatabase()
     connection = await pool.getConnection()
 
     // 检查记录是否存在
-    const [existingRecords] = await connection.execute('SELECT id FROM phones WHERE id = ?', [id])
+    const [existingRecords] = await connection.execute('SELECT id, store_id FROM phones WHERE id = ?', [id])
     if (existingRecords.length === 0) {
       return ApiResponse.notFound(res, '入库记录不存在')
     }
+    assertStoreInScope(storeScope, existingRecords[0].store_id)
 
     // 删除记录
     await connection.execute('DELETE FROM phones WHERE id = ?', [id])
@@ -933,6 +966,7 @@ router.delete('/:id', unifiedAuth, requirePermission('stock-in:delete'), async (
       deleted: true
     }, '入库记录删除成功')
   } catch (error) {
+    if (sendStoreScopeError(res, error)) return
     log.error('删除入库记录失败:', error)
     ApiResponse.serverError(res, '删除入库记录失败', error)
   } finally {

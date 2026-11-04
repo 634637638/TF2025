@@ -475,6 +475,7 @@ class DataImportService {
     const connection = await this.getPool().getConnection()
     const importId = options.import_id || crypto.randomUUID()
     const startTime = Date.now()
+    let replaceAllTransactionStarted = false
 
     // 从文件路径提取文件名
     const fileName = safeFilePath.split('/').pop() || 'unknown.xlsx'
@@ -509,9 +510,12 @@ class DataImportService {
 
       // 如果是完全替换策略，先清空所有数据并重置ID
       if (strategy === 'replace_all') {
-        await connection.beginTransaction()
-
         try {
+          // 完全替换必须把“清空 + 全量导入”放在同一事务中。
+          // 任意一行失败都回滚旧数据，禁止留下清空后只导入一部分的状态。
+          await prepareInvoiceNumberTransaction(connection)
+          await connection.beginTransaction()
+          replaceAllTransactionStarted = true
           this.updateProgress(importId, 15, '正在清空所有旧数据...')
 
           // 1. 删除所有关联数据（从子表到主表的顺序）
@@ -527,37 +531,16 @@ class DataImportService {
           await connection.execute('DELETE FROM models')
           await connection.execute('DELETE FROM brands')
 
-          this.updateProgress(importId, 18, '正在重置自增ID...')
+          // 自增值不属于业务数据，事务内禁止通过 ALTER TABLE 重置，避免 DDL 隐式提交。
+          this.updateProgress(importId, 18, '旧数据清理完成，正在重建基础数据...')
 
-          // 3. 重置所有表的自增ID（从1开始）
-          const tables = [
-            'sales', 'phones', 'customers', 'stores',
-            'suppliers', 'memories', 'colors', 'models', 'brands'
-          ]
-
-          for (const table of tables) {
-            try {
-              await connection.execute(`ALTER TABLE ${table} AUTO_INCREMENT = 1`)
-            } catch (err) {
-              log.warn(`重置表 ${table} 自增ID失败:`, err.message)
-            }
-          }
-
-          await connection.commit()
-
-          // 清空基础数据映射，重新开始
-          maps = {
-            brands: new Map(),
-            models: new Map(),
-            colors: new Map(),
-            memories: new Map(),
-            suppliers: new Map(),
-            stores: new Map(),
-            customers: new Map(),
-            users: new Map()
-          }
+          // 删除后的基础表映射为空，但用户映射仍需从同一事务读取。
+          maps = await this.buildDataMaps(connection, data)
         } catch (error) {
-          await connection.rollback()
+          if (replaceAllTransactionStarted) {
+            await connection.rollback()
+            replaceAllTransactionStarted = false
+          }
           throw new Error('清空数据失败: ' + error.message)
         }
       } else {
@@ -574,13 +557,17 @@ class DataImportService {
         let transactionStarted = false
 
         try {
-          // 每行独立提交：单号、销售记录、设备和基础资料必须同时成功或同时回滚。
-          await prepareInvoiceNumberTransaction(connection)
-          await connection.beginTransaction()
-          transactionStarted = true
+          // 普通策略每行独立提交；完全替换策略复用覆盖整个导入过程的事务。
+          if (strategy !== 'replace_all') {
+            await prepareInvoiceNumberTransaction(connection)
+            await connection.beginTransaction()
+            transactionStarted = true
+          }
           const result = await this.importRow(connection, row, maps, strategy, user)
-          await connection.commit()
-          transactionStarted = false
+          if (strategy !== 'replace_all') {
+            await connection.commit()
+            transactionStarted = false
+          }
 
           if (result.status === 'imported') {
             imported++
@@ -596,6 +583,9 @@ class DataImportService {
           maps = mapSnapshot
           log.error(`导入第 ${i + 2} 行失败:`, error)
           errors++
+          if (strategy === 'replace_all') {
+            throw new Error(`完全替换在第 ${i + 2} 行失败，已回滚全部数据: ${error.message}`)
+          }
         }
 
         processed++
@@ -605,6 +595,11 @@ class DataImportService {
           const progress = 20 + Math.floor((processed / data.length) * 75)
           this.updateProgress(importId, progress, `已处理 ${processed}/${data.length} 条数据`)
         }
+      }
+
+      if (replaceAllTransactionStarted) {
+        await connection.commit()
+        replaceAllTransactionStarted = false
       }
 
       // 完成
@@ -660,6 +655,14 @@ class DataImportService {
 
       return result
     } catch (error) {
+      if (replaceAllTransactionStarted) {
+        try {
+          await connection.rollback()
+        } catch (rollbackError) {
+          log.error('完全替换导入回滚失败:', rollbackError)
+        }
+        replaceAllTransactionStarted = false
+      }
       this.updateProgress(importId, -1, '导入失败: ' + error.message)
       throw error
     } finally {

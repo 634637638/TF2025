@@ -7,6 +7,7 @@ const db = require('../config/database')
 const fs = require('fs').promises
 const path = require('path')
 const log = require('../utils/log')
+const { schemaChangesAllowed } = require('../utils/schema-change-policy')
 const { decryptConfigSecret, encryptConfigSecret } = require('../utils/config-secret-crypto')
 const { getUploadsRoot, getRelativeUploadPathFromUrl, getUploadPathFromUrl } = require('../utils/upload-paths')
 const { archiveShopTemplateUpload, stageShopTemplateUpload, relocateShopTemplateMedia } = require('../utils/shop-media-storage')
@@ -1012,6 +1013,7 @@ class ShopService {
    * 执行成色字段迁移
    */
   async migrateConditionGrade() {
+    if (!schemaChangesAllowed()) throw new Error('生产环境禁止通过请求执行数据库结构迁移')
     try {
       // 添加condition_grade字段
       await db.getDatabase().query(`
@@ -1034,6 +1036,7 @@ class ShopService {
   }
 
   async migrateSalePrice() {
+    if (!schemaChangesAllowed()) throw new Error('生产环境禁止通过请求执行数据库结构迁移')
     try {
       // 检查字段是否已存在
       const [columns] = await db.getDatabase().query(`

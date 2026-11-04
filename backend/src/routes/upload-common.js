@@ -9,22 +9,9 @@ const { getUploadsRoot, getUploadPathFromUrl, getRelativeUploadPathFromUrl } = r
 
 const MAX_TEMP_FILE_AGE_MS = 2 * 60 * 60 * 1000
 const TEMP_DIRECTORY_PERMISSIONS = {
-  subsidy: ['subsidy:create', 'subsidy:edit'],
-  accessories: ['accessories:create', 'accessories:edit'],
-  phones: ['inventory:edit'],
-  videos: ['inventory:edit'],
-  repairs: ['repairs:create', 'repairs:edit'],
-  'screen-lock': ['system:edit'],
-  import: ['data-import:upload'],
-  guide: ['guide:upload'],
-  shop: [
-    'h5-config:edit',
-    'h5-admin:edit',
-    'h5-banners:create',
-    'h5-banners:edit',
-    'h5-templates:create',
-    'h5-templates:edit'
-  ]
+  // 仅保留具备“草稿 -> 正式文件”提升流程且文件名绑定上传者的导航文件。
+  // 其他模块必须使用自己的清理接口，避免通用接口误删已被业务记录引用的正式文件。
+  guide: ['guide:upload']
 }
 
 const requireTempFilePermissions = (req, res, next) => {
@@ -37,7 +24,8 @@ const requireTempFilePermissions = (req, res, next) => {
     if (!directory || !TEMP_DIRECTORY_PERMISSIONS[directory]) {
       return ApiResponse.error(res, '该目录不允许通过临时文件接口删除', 403)
     }
-    if (directory === 'guide' && !/^draft_[0-9]+_[a-f0-9]{20}\.[a-z0-9]{1,10}$/i.test(path.basename(relativePath))) {
+    const expectedPrefix = `draft_${Number(req.user?.id)}_`
+    if (directory === 'guide' && !path.basename(relativePath).startsWith(expectedPrefix)) {
       return ApiResponse.error(res, '导航正式文件不允许通过临时接口删除', 403)
     }
     directories.add(directory)
@@ -96,7 +84,7 @@ router.post('/delete-temp-files', unifiedAuth, requireTempFilePermissions, async
           continue
         }
 
-        // 删除文件
+        // 删除文件。此接口只处理带上传者前缀且尚未提升的导航草稿。
         if (fs.existsSync(filePath)) {
           const stats = fs.statSync(filePath)
           if (!stats.isFile() || Date.now() - stats.mtimeMs > MAX_TEMP_FILE_AGE_MS) {

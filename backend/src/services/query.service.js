@@ -2,6 +2,7 @@ const QueryRepository = require('../repositories/query.repository')
 const _ApiResponse = require('../utils/response')
 const XLSX = require('xlsx')
 const { normalizePhoneStatus } = require('../utils/phone-status')
+const { isStoreScopeError } = require('../utils/store-scope')
 
 class QueryService {
   constructor() {
@@ -17,7 +18,7 @@ class QueryService {
   /**
    * 获取综合查询数据
    */
-  async getComprehensiveQuery(filters, userStoreId = null, userStoreIds = []) {
+  async getComprehensiveQuery(filters, userStoreId = null, userStoreIds = [], allStores = false) {
     try {
       // 处理数组参数
       const processArrayParam = (param) => {
@@ -54,7 +55,7 @@ class QueryService {
       // 3. 如果用户手动选择了店铺筛选（cleanFilters.store_id有值），则使用用户选择的值
       // 4. 优先使用 userStoreIds（多门店），如果没有则使用 userStoreId（单门店）
 
-      if (!cleanFilters.store_id) {
+      if (!cleanFilters.store_id && !allStores) {
         // 用户没有手动选择店铺筛选，应用自动店铺过滤
         if (userStoreIds && userStoreIds.length > 0) {
           // 用户有关联的多个门店，应用多门店过滤
@@ -184,7 +185,7 @@ class QueryService {
   /**
    * 获取统计信息
    */
-  async getStatistics(filters, userStoreId = null, userStoreIds = []) {
+  async getStatistics(filters, userStoreId = null, userStoreIds = [], allStores = false) {
     try {
       // 清理统计过滤参数
       const cleanFilters = {
@@ -203,7 +204,7 @@ class QueryService {
       }
 
       // 店铺权限控制（与查询方法保持一致）
-      if (!cleanFilters.store_id) {
+      if (!cleanFilters.store_id && !allStores) {
         // 用户没有手动选择店铺筛选，应用自动店铺过滤
         if (userStoreIds && userStoreIds.length > 0) {
           // 用户有关联的多个门店，应用多门店过滤
@@ -254,7 +255,7 @@ class QueryService {
   /**
    * 获取退库记录
    */
-  async getReturnGoodsRecords(filters = {}) {
+  async getReturnGoodsRecords(filters = {}, storeScope = {}) {
     try {
       const cleanFilters = {
         page: parseInt(filters.page, 10) || 1,
@@ -264,7 +265,7 @@ class QueryService {
         end_date: filters.end_date ? String(filters.end_date).trim() : ''
       }
 
-      const result = await this.queryRepository.getReturnGoodsRecords(cleanFilters)
+      const result = await this.queryRepository.getReturnGoodsRecords(cleanFilters, storeScope)
 
       return {
         success: true,
@@ -274,11 +275,12 @@ class QueryService {
         stats: result.stats
       }
     } catch (error) {
+      if (isStoreScopeError(error)) throw error
       throw new Error('退库记录查询失败: ' + error.message)
     }
   }
 
-  async updateReturnGoodsRecord(recordId, payload = {}) {
+  async updateReturnGoodsRecord(recordId, payload = {}, storeScope = {}) {
     try {
       if (!recordId) {
         throw new Error('退库记录ID不能为空')
@@ -290,30 +292,32 @@ class QueryService {
         original_sale_operator_name: payload.original_sale_operator_name ? String(payload.original_sale_operator_name).trim() : null,
         reversal_date: payload.reversal_date ? String(payload.reversal_date).trim() : null,
         remarks: payload.remarks ? String(payload.remarks).trim() : null
-      })
+      }, storeScope)
 
       return {
         success: true,
         message: '退库记录更新成功'
       }
     } catch (error) {
+      if (isStoreScopeError(error)) throw error
       throw new Error('退库记录更新失败: ' + error.message)
     }
   }
 
-  async deleteReturnGoodsRecord(recordId) {
+  async deleteReturnGoodsRecord(recordId, storeScope = {}) {
     try {
       if (!recordId) {
         throw new Error('退库记录ID不能为空')
       }
 
-      await this.queryRepository.deleteReturnGoodsRecord(recordId)
+      await this.queryRepository.deleteReturnGoodsRecord(recordId, storeScope)
 
       return {
         success: true,
         message: '退库记录删除成功'
       }
     } catch (error) {
+      if (isStoreScopeError(error)) throw error
       throw new Error('退库记录删除失败: ' + error.message)
     }
   }
@@ -322,13 +326,13 @@ class QueryService {
   /**
    * 执行退库操作 - 删除购买信息，恢复库存状态
    */
-  async returnToStock(phoneId, operatorId, returnInfo = {}) {
+  async returnToStock(phoneId, operatorId, returnInfo = {}, storeScope = {}) {
     try {
       if (!phoneId || !operatorId) {
         throw new Error('手机ID和操作员ID不能为空')
       }
 
-      const result = await this.queryRepository.returnToStock(phoneId, operatorId, returnInfo)
+      const result = await this.queryRepository.returnToStock(phoneId, operatorId, returnInfo, storeScope)
 
       return {
         success: true,
@@ -336,6 +340,7 @@ class QueryService {
         data: result
       }
     } catch (error) {
+      if (isStoreScopeError(error)) throw error
       throw new Error('退库操作失败: ' + error.message)
     }
   }
@@ -343,13 +348,13 @@ class QueryService {
   /**
    * 删除手机记录
    */
-  async deletePhoneRecord(phoneId) {
+  async deletePhoneRecord(phoneId, storeScope = {}) {
     try {
       if (!phoneId) {
         throw new Error('手机ID不能为空')
       }
 
-      const result = await this.queryRepository.deletePhoneRecord(phoneId)
+      const result = await this.queryRepository.deletePhoneRecord(phoneId, storeScope)
 
       return {
         success: true,
@@ -357,6 +362,7 @@ class QueryService {
         data: result
       }
     } catch (error) {
+      if (isStoreScopeError(error)) throw error
       throw new Error('删除手机记录失败: ' + error.message)
     }
   }

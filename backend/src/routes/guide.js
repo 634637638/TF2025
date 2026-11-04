@@ -45,7 +45,13 @@ const allowedFileTypes = new Map([
 ])
 const storage = multer.diskStorage({
   destination: (_req, _file, callback) => callback(null, uploadDir),
-  filename: (_req, file, callback) => callback(null, createGuideDraftFilename(path.extname(file.originalname).toLowerCase()))
+  filename: (req, file, callback) => {
+    try {
+      callback(null, createGuideDraftFilename(path.extname(file.originalname).toLowerCase(), req.user?.id))
+    } catch (error) {
+      callback(error)
+    }
+  }
 })
 const guideFileUpload = multer({
   storage,
@@ -217,7 +223,7 @@ adminRouter.post('/upload/file', requirePermission('guide:upload'), (req, res) =
 
 adminRouter.get('/upload/preview/:filename', requirePermission('guide:view'), (req, res) => {
   const filename = String(req.params.filename || '')
-  if (!/^(?:draft_)?[0-9]+_[a-f0-9]{20}\.[a-z0-9]{1,10}$/i.test(filename)) return res.status(404).end()
+  if (!/^(?:draft_(?:[0-9]+_)?|)[0-9]+_[a-f0-9]{20}\.[a-z0-9]{1,10}$/i.test(filename)) return res.status(404).end()
   const filePath = path.resolve(uploadDir, filename)
   if (!filePath.startsWith(`${path.resolve(uploadDir)}${path.sep}`) || !fs.existsSync(filePath)) return res.status(404).end()
   const extension = path.extname(filename).toLowerCase()

@@ -8,6 +8,7 @@ const router = express.Router()
 const { getDatabase } = require('../config/database')
 const { unifiedAuth, requirePermission } = require('../middleware/unified-auth')
 const { PAGINATION, TIMEOUTS } = require('../config/constants')
+const { iconifyRateLimit } = require('../middleware/rate-limit')
 const log = require('../utils/log')
 const {
   ensureIconSchema,
@@ -15,6 +16,35 @@ const {
   fetchIconifySvg,
   sanitizeSvg
 } = require('../utils/iconStore')
+
+const iconifyJsonCache = new Map()
+const ICONIFY_CACHE_TTL_MS = 5 * 60 * 1000
+const ICONIFY_CACHE_MAX = 100
+
+const fetchIconifyJson = async url => {
+  const cached = iconifyJsonCache.get(url)
+  if (cached && cached.expiresAt > Date.now()) return cached.promise
+  if (cached) iconifyJsonCache.delete(url)
+
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), TIMEOUTS.ICON_FETCH)
+  timer.unref?.()
+  const promise = fetch(url, {
+    method: 'GET',
+    headers: { Accept: 'application/json' },
+    signal: controller.signal
+  }).then(async response => {
+    if (!response.ok) throw new Error(`Iconify API 请求失败: ${response.status}`)
+    return response.json()
+  }).finally(() => clearTimeout(timer))
+
+  iconifyJsonCache.set(url, { promise, expiresAt: Date.now() + ICONIFY_CACHE_TTL_MS })
+  promise.catch(() => iconifyJsonCache.delete(url))
+  while (iconifyJsonCache.size > ICONIFY_CACHE_MAX) {
+    iconifyJsonCache.delete(iconifyJsonCache.keys().next().value)
+  }
+  return promise
+}
 
 // ==================== 本地数据库功能 ====================
 
@@ -412,11 +442,13 @@ function translateKeywords(query) {
  * 从 Iconify API 搜索图标（在线搜索）
  * GET /api/icons/search/online?query=home&limit=50
  */
-router.get('/search/online', async (req, res) => {
+router.get('/search/online', unifiedAuth, requirePermission('menus:view'), iconifyRateLimit, async (req, res) => {
   try {
     const { query, limit = PAGINATION.DEFAULT_LIMIT, prefix = '' } = req.query
 
-    if (!query || query.trim() === '') {
+    const normalizedQuery = String(query || '').trim()
+    const normalizedPrefix = String(prefix || '').trim()
+    if (!normalizedQuery) {
       return res.json({
         success: true,
         data: [],
@@ -425,32 +457,24 @@ router.get('/search/online', async (req, res) => {
         source: 'online'
       })
     }
+    if (normalizedQuery.length > 100) return res.status(400).json({ success: false, message: '搜索关键词不能超过100个字符' })
+    if (normalizedPrefix && !/^[a-z0-9-]{1,64}$/i.test(normalizedPrefix)) {
+      return res.status(400).json({ success: false, message: '图标集合前缀无效' })
+    }
 
-    const queryLimit = Math.max(1, Math.min(parseInt(limit, 10) || 100, 1000))
-    const translatedQueries = translateKeywords(query.trim())
+    const queryLimit = Math.max(1, Math.min(parseInt(limit, 10) || 50, 100))
+    const translatedQueries = translateKeywords(normalizedQuery)
     const iconMap = new Map()
     let mergedCollections = {}
 
     for (const translatedQuery of translatedQueries) {
       let apiUrl = `https://api.iconify.design/search?query=${encodeURIComponent(translatedQuery)}&limit=${queryLimit}`
 
-      if (prefix) {
-        apiUrl += `&prefix=${prefix}`
+      if (normalizedPrefix) {
+        apiUrl += `&prefix=${encodeURIComponent(normalizedPrefix)}`
       }
 
-      const response = await fetch(apiUrl, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json'
-        },
-        timeout: TIMEOUTS.ICON_FETCH
-      })
-
-      if (!response.ok) {
-        throw new Error(`Iconify API 请求失败: ${response.status}`)
-      }
-
-      const iconifyData = await response.json()
+      const iconifyData = await fetchIconifyJson(apiUrl)
       mergedCollections = {
         ...mergedCollections,
         ...(iconifyData.collections || {})
@@ -528,22 +552,9 @@ router.get('/search/online', async (req, res) => {
  * 获取 Iconify 图标集合列表
  * GET /api/icons/collections
  */
-router.get('/collections', async (req, res) => {
+router.get('/collections', unifiedAuth, requirePermission('menus:view'), iconifyRateLimit, async (req, res) => {
   try {
-    // 调用 Iconify API
-    const response = await fetch('https://api.iconify.design/collections', {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json'
-      },
-      timeout: 15000 // 15秒超时
-    })
-
-    if (!response.ok) {
-      throw new Error(`Iconify API 请求失败: ${response.status}`)
-    }
-
-    const collections = await response.json()
+    const collections = await fetchIconifyJson('https://api.iconify.design/collections')
 
     // 转换格式
     const collectionList = Object.entries(collections).map(([id, info]) => ({
@@ -579,28 +590,19 @@ router.get('/collections', async (req, res) => {
  * 获取特定集合的图标
  * GET /api/icons/collection/:prefix
  */
-router.get('/collection/:prefix', async (req, res) => {
+router.get('/collection/:prefix', unifiedAuth, requirePermission('menus:view'), iconifyRateLimit, async (req, res) => {
   try {
     const { prefix } = req.params
     const { limit = 500 } = req.query
-
-    // 调用 Iconify API
-    const response = await fetch(`https://api.iconify.design/collection?prefix=${prefix}`, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json'
-      },
-      timeout: 15000
-    })
-
-    if (!response.ok) {
-      throw new Error(`Iconify API 请求失败: ${response.status}`)
+    if (!/^[a-z0-9-]{1,64}$/i.test(prefix)) {
+      return res.status(400).json({ success: false, message: '图标集合前缀无效' })
     }
+    const normalizedLimit = Math.max(1, Math.min(parseInt(limit, 10) || 500, 500))
 
-    const collectionData = await response.json()
+    const collectionData = await fetchIconifyJson(`https://api.iconify.design/collection?prefix=${encodeURIComponent(prefix)}`)
 
     // 转换为前端格式
-    const icons = (collectionData.icons || []).slice(0, parseInt(limit)).map((iconName, index) => ({
+    const icons = (collectionData.icons || []).slice(0, normalizedLimit).map((iconName, index) => ({
       id: `${prefix}-${index}`,
       class: `iconify ${prefix}:${iconName}`,
       name: iconName.replace(/-/g, ' '),

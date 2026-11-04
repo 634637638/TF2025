@@ -6,9 +6,15 @@ const path = require('path')
 const { getUploadSubdir, getUploadUrl, getUploadPathFromUrl, getRelativeUploadPathFromUrl } = require('./upload-paths')
 
 const GUIDE_DRAFT_MAX_AGE_MS = 2 * 60 * 60 * 1000
-const GUIDE_DRAFT_FILENAME = /^draft_[0-9]+_[a-f0-9]{20}\.[a-z0-9]{1,10}$/i
+const GUIDE_DRAFT_FILENAME = /^draft_(?:[0-9]+_)?[0-9]+_[a-f0-9]{20}\.[a-z0-9]{1,10}$/i
 
-const createGuideDraftFilename = extension => `draft_${Date.now()}_${crypto.randomBytes(10).toString('hex')}${extension}`
+const createGuideDraftFilename = (extension, userId) => {
+  const normalizedUserId = Number(userId)
+  if (!Number.isInteger(normalizedUserId) || normalizedUserId <= 0) {
+    throw new Error('导航草稿缺少上传者信息')
+  }
+  return `draft_${normalizedUserId}_${Date.now()}_${crypto.randomBytes(10).toString('hex')}${extension}`
+}
 
 const getGuideDraftPath = fileUrl => {
   const relativePath = getRelativeUploadPathFromUrl(fileUrl)

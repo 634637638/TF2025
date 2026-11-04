@@ -585,7 +585,7 @@ const getSearchSummary = () => {
 // 加载店铺列表
 const loadStoreList = async () => {
   try {
-    const response = await getCachedStores()
+    const response = await getCachedStores(true)
     if (response.success) {
       const stores = extractResponseData<Store[]>(response)
       storeList.value = Array.isArray(stores) ? sortOptionsByOrder(stores) : []

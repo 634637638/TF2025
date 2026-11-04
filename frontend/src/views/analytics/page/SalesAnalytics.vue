@@ -734,6 +734,11 @@ const CACHE_KEYS = {
   transfer: (params: Record<string, number | string | undefined>) => `/transfers/statistics:${JSON.stringify(params)}`
 }
 
+const getStoreParams = (): { store_id?: number } => {
+  const storeId = Number(props.storeId)
+  return Number.isSafeInteger(storeId) && storeId > 0 ? { store_id: storeId } : {}
+}
+
 // 方法
 const loadSalesData = async (showLoadingState = true) => {
   try {
@@ -848,10 +853,11 @@ const loadMonthlyTrendData = async () => {
       const lastDay = TimeUtil.daysInMonth(currentYear, Number(month))
       const endDate = `${currentYear}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
 
-      const cacheKey = CACHE_KEYS.salesCondition({ start_date: startDate, end_date: endDate })
+      const params = { start_date: startDate, end_date: endDate, ...getStoreParams() }
+      const cacheKey = CACHE_KEYS.salesCondition(params)
       const response = await useCachedRequest(cacheKey, () =>
         unifiedApi.get<SalesConditionResponse>('/analytics/sales-by-condition', {
-          params: { start_date: startDate, end_date: endDate }
+          params
         }), DEFAULT_CACHE_TTL.STATIC)
 
       if (response.success && response.data) {
@@ -1266,7 +1272,8 @@ const generateForecast = async () => {
     const response = await unifiedApi.get<SalesForecastResponse>('/analytics/sales-forecast', {
       params: {
         period: forecastPeriod.value,
-        page_size: 10
+        page_size: 10,
+        ...getStoreParams()
       }
     })
 

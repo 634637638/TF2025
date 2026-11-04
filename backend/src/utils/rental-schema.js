@@ -1,8 +1,10 @@
 const { getDatabase } = require('../config/database')
+const { schemaChangesAllowed } = require('./schema-change-policy')
 
 let ensurePromise = null
 
 async function ensureRentalSchema() {
+  if (!schemaChangesAllowed()) return
   if (ensurePromise) return ensurePromise
 
   ensurePromise = (async () => {

@@ -99,3 +99,61 @@ test('第二份当前待办、未标记历史报告和无替代入口归档必�
     'archive-lifecycle-metadata'
   ]) assert.ok(rules.has(rule), `缺少规则：${rule}`)
 }))
+
+test('兼容接口归档清单与代码、批次和入口链接一致时通过', () => withFixture(root => {
+  writeFixture(root, 'backend/src/routes/example.js', `
+    deprecatedRoute({ migrationId: 'old-to-new' })
+    compatibilityRoute({ compatibilityId: 'old-options' })
+  `)
+  writeFixture(root, 'backend/src/routes/source.js', 'module.exports = true\n')
+  writeFixture(root, 'docs/archive/compatibility-routes/route-retirement-manifest.json', JSON.stringify({
+    summary: { deprecated_routes: 1, compatibility_routes: 1, deprecated_only_routes: 0 },
+    entries: [{
+      migration_id: 'old-to-new',
+      compatibility_id: 'old-options',
+      method: 'GET',
+      path: '/api/old',
+      source: 'backend/src/routes/source.js',
+      batch: 1,
+      status: 'observing'
+    }]
+  }))
+  for (const file of [
+    'INDEX.md',
+    'SOURCE_BASELINE.md',
+    'batch-01-inventory-410.md',
+    'batch-02-canonical-replacements.md',
+    'batch-03-compatibility-adapters.md',
+    'batch-04-shop-media.md'
+  ]) writeFixture(root, `docs/archive/compatibility-routes/${file}`, '# 归档\n')
+  writeFixture(root, 'docs/guides/compatibility-route-retirement-ledger.md', '位置：docs/archive/compatibility-routes\n')
+  writeFixture(root, 'docs/development/TECHNICAL_DEBT_PROGRESS.md', '位置：../archive/compatibility-routes/INDEX.md\n')
+  writeFixture(root, 'docs/archive/INDEX.md', '位置：archive/compatibility-routes/INDEX.md\n')
+
+  assert.deepEqual(scanDocumentationConflicts(root), [])
+}))
+
+test('兼容接口归档清单漂移、缺批次或缺入口链接时必须失败', () => withFixture(root => {
+  writeFixture(root, 'backend/src/routes/example.js', `deprecatedRoute({ migrationId: 'code-only' })\n`)
+  writeFixture(root, 'docs/archive/compatibility-routes/route-retirement-manifest.json', JSON.stringify({
+    summary: { deprecated_routes: 2, compatibility_routes: 0, deprecated_only_routes: 2 },
+    entries: [{
+      migration_id: 'manifest-only',
+      compatibility_id: null,
+      method: 'GET',
+      path: '/api/old',
+      source: 'backend/src/routes/missing.js',
+      batch: 1,
+      status: 'observing'
+    }]
+  }))
+
+  const rules = new Set(scanDocumentationConflicts(root).map(issue => issue.rule))
+  for (const rule of [
+    'compatibility-manifest-count',
+    'compatibility-manifest-code-drift',
+    'compatibility-manifest-source',
+    'compatibility-archive-structure',
+    'compatibility-archive-link'
+  ]) assert.ok(rules.has(rule), `缺少规则：${rule}`)
+}))

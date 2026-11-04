@@ -648,10 +648,15 @@ const getSegmentText = (segment: string): string => {
 const CACHE_KEYS = {
   customerOverview: (params: Record<string, unknown>) => `/analytics/customers:${JSON.stringify(params)}`,
   customerList: (params: Record<string, unknown>) => `/analytics/customers/high-value:${JSON.stringify(params)}`,
-  customerGrowth: (period: string) => `/analytics/customers/growth:${period}`,
-  customerSegments: '/analytics/customers/segments',
-  customerRetention: (cohort: string) => `/analytics/customers/retention:${cohort}`,
-  customerActivity: '/analytics/customers/activity'
+  customerGrowth: (params: Record<string, unknown>) => `/analytics/customers/growth:${JSON.stringify(params)}`,
+  customerSegments: (params: Record<string, unknown>) => `/analytics/customers/segments:${JSON.stringify(params)}`,
+  customerRetention: (params: Record<string, unknown>) => `/analytics/customers/retention:${JSON.stringify(params)}`,
+  customerActivity: (params: Record<string, unknown>) => `/analytics/customers/activity:${JSON.stringify(params)}`
+}
+
+const getStoreParams = (): { store_id?: number } => {
+  const storeId = Number(props.storeId)
+  return Number.isSafeInteger(storeId) && storeId > 0 ? { store_id: storeId } : {}
 }
 
 const loadOverview = async (showLoadingState = true) => {
@@ -811,8 +816,9 @@ const initGrowthChart = async () => {
     const chart = createOrReuseChart('growth', growthChartRef.value)
     if (!chart) return
 
-    const cacheKey = CACHE_KEYS.customerGrowth(growthPeriod.value)
-    const response = await useCachedRequest(cacheKey, () => analyticsService.getCustomerGrowth({ period: growthPeriod.value }), DEFAULT_CACHE_TTL.DYNAMIC)
+    const params = { period: growthPeriod.value, ...getStoreParams() }
+    const cacheKey = CACHE_KEYS.customerGrowth(params)
+    const response = await useCachedRequest(cacheKey, () => analyticsService.getCustomerGrowth(params), DEFAULT_CACHE_TTL.DYNAMIC)
     const data = response?.data || { labels: [], values: [] }
 
     const option = {
@@ -886,7 +892,8 @@ const initSegmentChart = async () => {
     const chart = createOrReuseChart('segment', segmentChartRef.value)
     if (!chart) return
 
-    const response = await useCachedRequest(CACHE_KEYS.customerSegments, () => analyticsService.getCustomerSegments(), DEFAULT_CACHE_TTL.STATIC)
+    const params = getStoreParams()
+    const response = await useCachedRequest(CACHE_KEYS.customerSegments(params), () => analyticsService.getCustomerSegments(params), DEFAULT_CACHE_TTL.STATIC)
     const data = response.data || response
 
     if (!Array.isArray(data)) {
@@ -946,8 +953,9 @@ const initRetentionChart = async () => {
     const chart = createOrReuseChart('retention', retentionChartRef.value)
     if (!chart) return
 
-    const cacheKey = CACHE_KEYS.customerRetention(retentionCohort.value)
-    const response = await useCachedRequest(cacheKey, () => analyticsService.getCustomerRetention({ cohort: retentionCohort.value }), DEFAULT_CACHE_TTL.DYNAMIC)
+    const params = { cohort: retentionCohort.value, ...getStoreParams() }
+    const cacheKey = CACHE_KEYS.customerRetention(params)
+    const response = await useCachedRequest(cacheKey, () => analyticsService.getCustomerRetention(params), DEFAULT_CACHE_TTL.DYNAMIC)
 
     const data = parseRetentionData(response)
     if (!data) {
@@ -1049,7 +1057,8 @@ const initActivityChart = async () => {
     const chart = createOrReuseChart('activity', activityChartRef.value)
     if (!chart) return
 
-    const response = await useCachedRequest(CACHE_KEYS.customerActivity, () => analyticsService.getCustomerActivity(), DEFAULT_CACHE_TTL.STATIC)
+    const params = getStoreParams()
+    const response = await useCachedRequest(CACHE_KEYS.customerActivity(params), () => analyticsService.getCustomerActivity(params), DEFAULT_CACHE_TTL.STATIC)
     const data = response?.data || { active_rate: 0 }
 
     const option = {
@@ -1184,7 +1193,7 @@ const initCustomerDetailCharts = async () => {
     preferences: Array<{ name: string; value: number }>
   } = { trends: [], preferences: [] }
   try {
-    const response = await analyticsService.getCustomerDetail(selectedCustomer.value.id)
+    const response = await analyticsService.getCustomerDetail(selectedCustomer.value.id, getStoreParams())
     detailData = response?.data || detailData
   } catch (error) {
     logger.error('加载客户详情图表数据失败:', error)

@@ -883,7 +883,9 @@ test('employee analytics page sends canonical date and store filters', () => {
   assert.match(api, /getAttendanceSummary\(params\?: \{[\s\S]*start_date\?: string[\s\S]*end_date\?: string[\s\S]*store_id\?/);
   assert.match(view, /params\.start_date = props\.startDate/);
   assert.match(view, /params\.end_date = props\.endDate/);
-  assert.match(view, /params\.store_id = props\.storeId/);
+  assert.match(view, /const getStoreParams = \(\): \{ store_id\?: number \} =>/);
+  assert.match(view, /Number\.isSafeInteger\(storeId\) && storeId > 0/);
+  assert.match(view, /Object\.assign\(params, getStoreParams\(\)\)/);
   assert.doesNotMatch(view, /params\.startDate\s*=/);
   assert.doesNotMatch(view, /params\.endDate\s*=/);
   assert.doesNotMatch(view, /params\.storeId\s*=/);
@@ -901,7 +903,7 @@ test('analytics pages use canonical pagination and date request fields', () => {
   assert.match(inventory, /page_size: 200/);
   assert.match(inventory, /page_size: 10/);
   assert.doesNotMatch(inventory, /limit: (?:200|10)/);
-  assert.match(sales, /params: \{ start_date: startDate, end_date: endDate \}/);
+  assert.match(sales, /const params = \{ start_date: startDate, end_date: endDate, \.\.\.getStoreParams\(\) \}/);
   assert.match(sales, /params: \{ store_id: store\.id \}/);
   assert.match(sales, /page_size: 10/);
   assert.match(profit, /\{ page_size: 10 \}/);
@@ -909,7 +911,7 @@ test('analytics pages use canonical pagination and date request fields', () => {
   assert.match(route, /const pageSize = req\.query\.page_size/);
   assert.match(route, /const storeId = req\.query\.store_id/);
   assert.doesNotMatch(route, /req\.query\.limit|req\.query\.storeId/);
-  assert.match(route, /LIMIT \$\{pageSizeNum\}/);
+  assert.match(route, /LIMIT \?/);
 });
 
 test('inventory analytics recent sales use canonical time fields', () => {
@@ -1844,8 +1846,10 @@ test('subsidy uses canonical pagination and handler fields without runtime schem
   assert.match(route, /router\.get\('\/:id\/photos', unifiedAuth, requireSubsidyUpload/);
   assert.match(route, /router\.put\('\/:id\/photos', unifiedAuth, requireSubsidyUpload/);
   assert.match(route, /router\.post\('\/upload\/photo', unifiedAuth, requireSubsidyUpload/);
-  assert.match(route, /requireVisibleSubsidyPhotosOrUpload/);
-  assert.doesNotMatch(route, /requireVisibleSubsidyPhotosWhenPresent/);
+  assert.match(route, /createPrivateFileUrl\(\{/);
+  assert.match(route, /verifyPrivateFileAccess\(\{/);
+  assert.match(route, /namespace: 'subsidy-file'/);
+  assert.doesNotMatch(route, /req\.query\.token|verifyToken/);
   assert.match(route, /requirePermission\('subsidy:export'\)/);
   assert.match(route, /maskSubsidyList\(formattedSubsidies, req\)/);
   assert.match(route, /buildSubsidyExportFile\([\s\S]*hiddenFields\)/);

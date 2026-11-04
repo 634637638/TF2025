@@ -1,4 +1,5 @@
 const { getDatabase } = require('../config/database')
+const { schemaChangesAllowed } = require('./schema-change-policy')
 
 let ensurePromise = null
 
@@ -70,6 +71,7 @@ async function runEnsurePhoneStockWarningSchema() {
 }
 
 async function ensurePhoneStockWarningSchema() {
+  if (!schemaChangesAllowed()) return
   if (!ensurePromise) {
     ensurePromise = runEnsurePhoneStockWarningSchema().catch(error => {
       ensurePromise = null

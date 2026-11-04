@@ -15,6 +15,7 @@ const mysql = require('mysql2/promise')
 const config = require('../config')
 const { isConnected } = require('../config/database')
 const { formatLocalDate, formatBeijingDate } = require('./time')
+const { schemaChangesAllowed } = require('./schema-change-policy')
 
 let sequenceTableReady
 // 每个业务事务独立预留，避免批量分配后尚未写入 sales 时重复使用空号。
@@ -35,6 +36,7 @@ function getInvoiceTypeSuffix(saleType = 'retail') {
 }
 
 const ensureSequenceTable = async (connection) => {
+  if (!schemaChangesAllowed()) return
   if (!sequenceTableReady) {
     sequenceTableReady = connection.execute(`
       CREATE TABLE IF NOT EXISTS invoice_sequences (

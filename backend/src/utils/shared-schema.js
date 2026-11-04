@@ -1,4 +1,5 @@
 const { getDatabase } = require('../config/database')
+const { schemaChangesAllowed } = require('./schema-change-policy')
 
 let ensurePromise = null
 
@@ -81,6 +82,7 @@ async function runEnsureSharedSchema() {
 }
 
 async function ensureSharedSchema() {
+  if (!schemaChangesAllowed()) return
   if (!ensurePromise) {
     ensurePromise = runEnsureSharedSchema().catch(error => {
       ensurePromise = null

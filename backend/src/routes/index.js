@@ -1,22 +1,14 @@
 const express = require('express')
 const router = express.Router()
 const log = require('../utils/log')
-const { isConnected } = require('../config/database')
+const { livenessHandler, readinessHandler } = require('../utils/health')
 const { unifiedAuth, requirePermission } = require('../middleware/unified-auth')
 const compatibilityRoute = require('../middleware/compatibility-route')
 const deprecatedRoute = require('../middleware/deprecated-route')
 
 // 健康检查端点（无需认证）
-router.get('/health', (req, res) => {
-  const databaseConnected = isConnected()
-  res.status(databaseConnected ? 200 : 503).json({
-    success: databaseConnected,
-    message: databaseConnected ? 'Backend is healthy' : 'Backend is running but database is disconnected',
-    database: databaseConnected ? 'connected' : 'disconnected',
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime()
-  })
-})
+router.get('/live', livenessHandler)
+router.get('/health', readinessHandler)
 
 // 导入现有的旧版路由（保持向后兼容）
 const authRoutes = require('./auth')

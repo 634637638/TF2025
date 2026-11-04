@@ -4,6 +4,7 @@ const { unifiedAuth, requirePermission } = require('../middleware/unified-auth')
 const { getDatabase, isConnected, connectToDatabase, setConnected } = require('../config/database')
 const ApiResponse = require('../utils/response')
 const log = require('../utils/log')
+const { schemaChangesAllowed } = require('../utils/schema-change-policy')
 const _mysql = require('mysql2/promise')
 const multer = require('multer')
 const path = require('path')
@@ -207,6 +208,7 @@ const getSettingsTableMeta = async (db) => {
 const ensurePublicPriceSettingColumns = async (db) => {
   const { columns, isKeyValueTable } = await getSettingsTableMeta(db)
   if (isKeyValueTable) return
+  if (!schemaChangesAllowed()) return
   const existing = new Set(columns.map(column => column.Field))
   const definitions = {
     public_price_contacts: 'TEXT NULL COMMENT \'公开报价联系人配置\'',

@@ -1,6 +1,7 @@
 'use strict'
 
 const { getDatabase } = require('../config/database')
+const { schemaChangesAllowed } = require('./schema-change-policy')
 
 let ensurePromise = null
 
@@ -31,6 +32,7 @@ async function migrateLegacyGuidePermissionKey(db) {
 }
 
 async function ensureGuideSchema() {
+  if (!schemaChangesAllowed()) return
   if (ensurePromise) return ensurePromise
 
   ensurePromise = (async () => {

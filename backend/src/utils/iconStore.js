@@ -1,4 +1,5 @@
 const log = require('./log')
+const { schemaChangesAllowed } = require('./schema-change-policy')
 
 let schemaReadyPromise = null
 let menuIconSchemaReadyPromise = null
@@ -50,6 +51,7 @@ function sanitizeSvg(svg = '') {
 }
 
 async function ensureIconSchema(db) {
+  if (!schemaChangesAllowed()) return
   if (!schemaReadyPromise) {
     schemaReadyPromise = (async () => {
       const [columns] = await db.execute('SHOW COLUMNS FROM icons')
@@ -84,6 +86,7 @@ async function ensureIconSchema(db) {
 }
 
 async function ensureMenuIconSchema(db) {
+  if (!schemaChangesAllowed()) return
   if (!menuIconSchemaReadyPromise) {
     menuIconSchemaReadyPromise = (async () => {
       const [columns] = await db.execute(

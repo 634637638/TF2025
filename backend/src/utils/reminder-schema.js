@@ -1,4 +1,5 @@
 const { getDatabase } = require('../config/database')
+const { schemaChangesAllowed } = require('./schema-change-policy')
 
 let ensurePromise = null
 
@@ -93,6 +94,7 @@ async function runEnsureReminderSchema() {
 }
 
 async function ensureReminderSchema() {
+  if (!schemaChangesAllowed()) return
   if (!ensurePromise) {
     ensurePromise = runEnsureReminderSchema().catch(error => {
       ensurePromise = null

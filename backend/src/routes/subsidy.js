@@ -5,8 +5,7 @@ const path = require('path')
 const fs = require('fs')
 const crypto = require('crypto')
 const convert = require('heic-convert')
-const { unifiedAuth, requirePermission, requireAnyPermission } = require('../middleware/unified-auth')
-const { verifyToken } = require('../middleware/jwt-blacklist')
+const { unifiedAuth, requirePermission } = require('../middleware/unified-auth')
 const { cacheMiddleware, clearCache } = require('../middleware/cache')
 const { CACHE_TTL } = require('../config/constants')
 const ApiResponse = require('../utils/response')
@@ -15,6 +14,7 @@ const log = require('../utils/log')
 const dataMaskingService = require('../services/dataMaskingService')
 const { getUploadsRoot, getUploadSubdir, getRelativeUploadPathFromUrl } = require('../utils/upload-paths')
 const { getSubsidyPhotoNaming, encodeSubsidyPhotoUrl } = require('../utils/subsidy-photo-storage')
+const { createPrivateFileUrl, verifyPrivateFileAccess } = require('../utils/private-file-access')
 const XLSX = require('xlsx')
 
 const maskSubsidyItem = (item, req) => (
@@ -50,12 +50,6 @@ const requireSubsidyArrivalWhenChangingArrivalTime = requirePermissionWhen(
 )
 
 const requireSubsidyUpload = requirePermission('subsidy:upload')
-const requireVisibleSubsidyPhotosOrUpload = async (req, res, next) => {
-  const hiddenFields = await getSubsidyHiddenFields(req)
-  return hiddenFields.has('subsidy_info.subsidy_photos')
-    ? requireSubsidyUpload(req, res, next)
-    : next()
-}
 
 const SUBSIDY_WRITE_FIELD_IDS = {
   customer_name: 'customer_info.customer_name',
@@ -138,25 +132,85 @@ const normalizeSubsidyPhotoPath = (photoUrl) => {
   return normalizedRelativePath
 }
 
-const buildProtectedSubsidyPhotoUrl = (photoUrl) => {
+const buildProtectedSubsidyPhotoUrl = (photoUrl, userId) => {
   const normalizedRelativePath = normalizeSubsidyPhotoPath(photoUrl)
   if (!normalizedRelativePath) {
     return photoUrl
   }
 
-  const encodedPath = normalizedRelativePath
-    .split('/')
-    .map(segment => encodeURIComponent(segment))
-    .join('/')
-
-  return `/api/subsidy/files/${encodedPath}`
+  return createPrivateFileUrl({
+    routePrefix: '/api/subsidy/files',
+    relativePath: normalizedRelativePath,
+    userId,
+    namespace: 'subsidy-file',
+    ttlSeconds: 10 * 60
+  }) || photoUrl
 }
 
-const mapSubsidyPhotoUrls = (photos = []) => (
+const mapSubsidyPhotoUrls = (photos = [], userId) => (
   Array.isArray(photos)
-    ? photos.map(photo => buildProtectedSubsidyPhotoUrl(photo))
+    ? photos.map(photo => buildProtectedSubsidyPhotoUrl(photo, userId))
     : []
 )
+
+const normalizeSubsidyPhotoStorageUrls = (photos = []) => {
+  if (!Array.isArray(photos)) {
+    const error = new Error('国补照片格式不正确')
+    error.statusCode = 400
+    throw error
+  }
+  return photos.map(photo => {
+    const relativePath = normalizeSubsidyPhotoPath(photo)
+    if (!relativePath) {
+      const error = new Error('国补照片地址无效')
+      error.statusCode = 400
+      throw error
+    }
+    return encodeSubsidyPhotoUrl(relativePath)
+  })
+}
+
+const validateSubmittedSubsidyPhotos = async ({
+  submittedPhotos,
+  storedPhotos,
+  userId,
+  database,
+  existingPaths = new Set(),
+  recordId = null
+}) => {
+  for (let index = 0; index < storedPhotos.length; index += 1) {
+    const relativePath = normalizeSubsidyPhotoPath(storedPhotos[index])
+    if (!relativePath || existingPaths.has(relativePath)) continue
+
+    const submittedUrl = submittedPhotos[index]
+    const parsedUrl = new URL(String(submittedUrl), 'http://localhost')
+    const validSignature = verifyPrivateFileAccess({
+      namespace: 'subsidy-file',
+      relativePath,
+      userId,
+      expires: parsedUrl.searchParams.get('expires'),
+      signature: parsedUrl.searchParams.get('signature')
+    })
+    if (!validSignature || Number(parsedUrl.searchParams.get('user')) !== Number(userId)) {
+      const error = new Error('国补照片链接无效、已过期或不属于当前用户')
+      error.statusCode = 400
+      throw error
+    }
+
+    const referenceSql = recordId
+      ? 'SELECT id FROM national_subsidies WHERE id <> ? AND subsidy_photos LIKE ? LIMIT 1'
+      : 'SELECT id FROM national_subsidies WHERE subsidy_photos LIKE ? LIMIT 1'
+    const referenceParams = recordId
+      ? [recordId, `%${relativePath}%`]
+      : [`%${relativePath}%`]
+    const [references] = await database.execute(referenceSql, referenceParams)
+    if (references.length > 0) {
+      const error = new Error('国补照片已被其他记录使用')
+      error.statusCode = 400
+      throw error
+    }
+  }
+}
 
 const getSafeSubsidyPhotoPath = (photoUrl) => {
   const normalizedRelativePath = normalizeSubsidyPhotoPath(photoUrl)
@@ -225,14 +279,6 @@ const parseStoredSubsidyPhotos = (value) => {
   }
 }
 
-const isProtectedSubsidyPhotoUrl = (photoUrl) => {
-  try {
-    return new URL(photoUrl, 'http://localhost').pathname.startsWith('/api/subsidy/files/')
-  } catch {
-    return false
-  }
-}
-
 const syncSubsidyPhotoDirectory = async (subsidyId, storedPhotos, namingInput) => {
   const photos = parseStoredSubsidyPhotos(storedPhotos)
   if (photos.length === 0) return
@@ -251,6 +297,7 @@ const syncSubsidyPhotoDirectory = async (subsidyId, storedPhotos, namingInput) =
       const filename = path.basename(source.relativePath)
       const targetRelativePath = path.posix.join('subsidy', naming.directoryName, filename)
       const targetPath = path.resolve(getUploadsRoot(), targetRelativePath)
+      updatedPhotos[index] = encodeSubsidyPhotoUrl(targetRelativePath)
       if (source.absolutePath === targetPath) continue
 
       if (!fs.existsSync(source.absolutePath)) {
@@ -268,13 +315,9 @@ const syncSubsidyPhotoDirectory = async (subsidyId, storedPhotos, namingInput) =
         targetPath,
         sourceRelativePath: source.relativePath
       })
-      updatedPhotos[index] = encodeSubsidyPhotoUrl(
-        targetRelativePath,
-        isProtectedSubsidyPhotoUrl(photoUrl)
-      )
     }
 
-    if (movedFiles.length > 0) {
+    if (JSON.stringify(updatedPhotos) !== JSON.stringify(photos)) {
       await getDatabase().execute(
         'UPDATE national_subsidies SET subsidy_photos = ? WHERE id = ?',
         [JSON.stringify(updatedPhotos), subsidyId]
@@ -305,44 +348,19 @@ const syncSubsidyPhotoDirectory = async (subsidyId, storedPhotos, namingInput) =
 
 const authenticateSubsidyFileAccess = async (req, res, next) => {
   try {
-    const authHeader = req.headers.authorization || ''
-    const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : ''
-    const rawQueryToken = Array.isArray(req.query.token)
-      ? req.query.token[req.query.token.length - 1]
-      : req.query.token
-    const queryToken = typeof rawQueryToken === 'string' ? rawQueryToken.trim() : ''
-    const token = bearerToken || queryToken
-
-    if (!token) {
-      return res.status(401).json({
-        success: false,
-        message: '缺少访问令牌',
-        code: 'TOKEN_MISSING'
-      })
-    }
-
-    const decoded = await verifyToken(token, 'access')
-    if (!decoded || decoded.sub === undefined || decoded.sub === null) {
-      return res.status(401).json({
-        success: false,
-        message: '无效的访问令牌',
-        code: 'INVALID_TOKEN'
-      })
-    }
-
-    req.user = {
-      id: decoded.sub || decoded.id,
-      username: decoded.username,
-      name: decoded.name
-    }
+    const relativePath = typeof req.params[0] === 'string' ? req.params[0] : ''
+    const valid = verifyPrivateFileAccess({
+      namespace: 'subsidy-file',
+      relativePath,
+      userId: req.query.user,
+      expires: req.query.expires,
+      signature: req.query.signature
+    })
+    if (!valid) return ApiResponse.error(res, '照片链接无效或已过期', 403)
 
     return next()
   } catch (error) {
-    return res.status(401).json({
-      success: false,
-      message: '访问令牌无效或已过期',
-      code: 'TOKEN_INVALID'
-    })
+    return ApiResponse.error(res, '照片链接无效或已过期', 403)
   }
 }
 
@@ -1028,6 +1046,8 @@ router.post(
   requirePermission('subsidy:create'),
   requireSubsidyUploadWhenPhotosPresent,
   async (req, res) => {
+    let connection
+    let transactionStarted = false
     try {
       const {
         phone_id,
@@ -1065,9 +1085,14 @@ router.post(
         })
       }
 
+      const storedSubsidyPhotos = normalizeSubsidyPhotoStorageUrls(subsidy_photos || [])
+      connection = await getDatabase().getConnection()
+      await connection.beginTransaction()
+      transactionStarted = true
+
       // 检查是否已存在国补记录
-      const [existing] = await getDatabase().execute(
-        'SELECT id, apply_status FROM national_subsidies WHERE phone_id = ?',
+      const [existing] = await connection.execute(
+        'SELECT id, apply_status FROM national_subsidies WHERE phone_id = ? FOR UPDATE',
         [phone_id]
       )
 
@@ -1087,12 +1112,19 @@ router.post(
 
       // 如果提供了新的身份证号，更新到 customers 表（完善客户信息）
       if (customer_idcard && customer_idcard.trim() !== '') {
-        await getDatabase().execute(`
+        await connection.execute(`
         UPDATE customers
         SET id_card = ?
         WHERE id = ?
       `, [customer_idcard.trim(), customer_id])
       }
+
+      await validateSubmittedSubsidyPhotos({
+        submittedPhotos: subsidy_photos || [],
+        storedPhotos: storedSubsidyPhotos,
+        userId: req.user.id,
+        database: connection
+      })
 
       // 处理 sale_time：直接提取日期部分，避免时区转换问题
       let processedSaleTime = null
@@ -1111,7 +1143,7 @@ router.post(
       }
 
       // 创建国补记录（同时存储 customer_idcard 和实际办理人信息到 national_subsidies 表）
-      const [result] = await getDatabase().execute(`
+      const [result] = await connection.execute(`
       INSERT INTO national_subsidies (
         sale_id,
         phone_id,
@@ -1166,12 +1198,15 @@ router.post(
         finalSubsidyAmount,
         subsidy_rate || 15,
         remarks || null,
-        JSON.stringify(subsidy_photos || []),
+        JSON.stringify(storedSubsidyPhotos),
         has_different_handler || false,
         (has_different_handler && handler_info) ? handler_info.handler_name : null,
         (has_different_handler && handler_info) ? handler_info.handler_phone : null,
         (has_different_handler && handler_info) ? handler_info.handler_idcard : null
       ])
+
+      await connection.commit()
+      transactionStarted = false
 
       clearCache('/subsidy')
       res.json({
@@ -1186,11 +1221,18 @@ router.post(
 
     } catch (error) {
       log.error('❌ 创建国补申请失败:', error)
-      res.status(500).json({
+      const statusCode = error.statusCode || 500
+      res.status(statusCode).json({
         success: false,
-        message: '创建国补申请失败',
-        error: error.message
+        message: statusCode === 400 ? error.message : '创建国补申请失败'
       })
+    } finally {
+      if (transactionStarted && connection) {
+        await connection.rollback().catch(rollbackError => {
+          log.error('创建国补申请事务回滚失败:', rollbackError)
+        })
+      }
+      connection?.release()
     }
   })
 
@@ -1327,7 +1369,7 @@ router.get('/', unifiedAuth, requirePermission('subsidy:view'), cacheMiddleware(
         sale_price: parseFloat(sub.sale_price),
         subsidy_amount: parseFloat(sub.subsidy_amount),
         subsidy_rate: parseFloat(sub.subsidy_rate),
-        subsidy_photos: mapSubsidyPhotoUrls(subsidyPhotos),
+        subsidy_photos: mapSubsidyPhotoUrls(subsidyPhotos, req.user.id),
         // 添加实际办理人信息对象
         has_different_handler: hasHandler,
         handler_info: hasHandler ? {
@@ -1539,7 +1581,7 @@ router.get('/:id/photos', unifiedAuth, requireSubsidyUpload, async (req, res) =>
 
     return res.json({
       success: true,
-      data: { subsidy_photos: mapSubsidyPhotoUrls(photos) }
+      data: { subsidy_photos: mapSubsidyPhotoUrls(photos, req.user.id) }
     })
   } catch (error) {
     log.error('读取国补照片失败:', error)
@@ -1616,7 +1658,7 @@ router.get('/:id', unifiedAuth, requirePermission('subsidy:view'), cacheMiddlewa
     }
 
     const hasHandler = subsidy.has_different_handler === 1 || subsidy.has_different_handler === true
-    subsidy.subsidy_photos = mapSubsidyPhotoUrls(subsidyPhotos)
+    subsidy.subsidy_photos = mapSubsidyPhotoUrls(subsidyPhotos, req.user.id)
     subsidy.has_different_handler = hasHandler
     subsidy.handler_info = hasHandler ? {
       handler_name: subsidy.handler_name || '',
@@ -1642,6 +1684,8 @@ router.get('/:id', unifiedAuth, requirePermission('subsidy:view'), cacheMiddlewa
 })
 
 router.put('/:id/photos', unifiedAuth, requireSubsidyUpload, async (req, res) => {
+  let connection
+  let transactionStarted = false
   try {
     const { id } = req.params
     const subsidyPhotos = req.body?.subsidy_photos
@@ -1654,21 +1698,67 @@ router.put('/:id/photos', unifiedAuth, requireSubsidyUpload, async (req, res) =>
       return res.status(400).json({ success: false, message: '待删除照片格式不正确' })
     }
 
-    const [result] = await getDatabase().execute(
-      'UPDATE national_subsidies SET subsidy_photos = ? WHERE id = ?',
-      [JSON.stringify(subsidyPhotos), id]
-    )
+    const storedPhotos = normalizeSubsidyPhotoStorageUrls(subsidyPhotos)
+    connection = await getDatabase().getConnection()
+    await connection.beginTransaction()
+    transactionStarted = true
 
-    if (result.affectedRows === 0) {
+    const [records] = await connection.execute(
+      'SELECT subsidy_photos FROM national_subsidies WHERE id = ? FOR UPDATE',
+      [id]
+    )
+    if (records.length === 0) {
+      await connection.rollback()
+      transactionStarted = false
       return res.status(404).json({ success: false, message: '国补记录不存在' })
     }
 
-    for (const photoUrl of deletedPhotos || []) {
-      const photoPath = getSafeSubsidyPhotoPath(photoUrl)
-      if (!photoPath) continue
+    const previousPhotos = parseStoredSubsidyPhotos(records[0].subsidy_photos)
+    const previousPaths = new Map(previousPhotos.map(photo => {
+      const safePath = getSafeSubsidyPhotoPath(photo)
+      return safePath ? [safePath.relativePath, safePath] : null
+    }).filter(Boolean))
+    const nextPaths = new Set(storedPhotos.map(photo => normalizeSubsidyPhotoPath(photo)).filter(Boolean))
+    const removedPaths = [...previousPaths.entries()]
+      .filter(([relativePath]) => !nextPaths.has(relativePath))
+      .map(([, safePath]) => safePath)
+
+    await validateSubmittedSubsidyPhotos({
+      submittedPhotos: subsidyPhotos,
+      storedPhotos,
+      userId: req.user.id,
+      database: connection,
+      existingPaths: new Set(previousPaths.keys()),
+      recordId: id
+    })
+
+    if (deletedPhotos !== undefined) {
+      const requestedDeletedPaths = new Set(deletedPhotos.map(photo => normalizeSubsidyPhotoPath(photo)))
+      if (requestedDeletedPaths.has('') || [...requestedDeletedPaths].some(relativePath => (
+        !previousPaths.has(relativePath) || nextPaths.has(relativePath)
+      ))) {
+        await connection.rollback()
+        transactionStarted = false
+        return res.status(400).json({ success: false, message: '待删除照片不属于当前记录或仍在使用' })
+      }
+    }
+
+    await connection.execute(
+      'UPDATE national_subsidies SET subsidy_photos = ? WHERE id = ?',
+      [JSON.stringify(storedPhotos), id]
+    )
+    await connection.commit()
+    transactionStarted = false
+
+    for (const photoPath of removedPaths) {
       if (fs.existsSync(photoPath.absolutePath)) {
-        fs.unlinkSync(photoPath.absolutePath)
-        removeEmptySubsidyPhotoDirectories(photoPath.relativePath)
+        try {
+          fs.unlinkSync(photoPath.absolutePath)
+          removeEmptySubsidyPhotoDirectories(photoPath.relativePath)
+        } catch (cleanupError) {
+          // 数据库已提交，文件清理失败只记录告警，避免把成功写入误报为失败。
+          log.warn('清理已移除国补照片失败:', cleanupError)
+        }
       }
     }
 
@@ -1676,7 +1766,18 @@ router.put('/:id/photos', unifiedAuth, requireSubsidyUpload, async (req, res) =>
     return res.json({ success: true, message: '照片保存成功' })
   } catch (error) {
     log.error('保存国补照片失败:', error)
-    return res.status(500).json({ success: false, message: '照片保存失败', error: error.message })
+    const statusCode = error.statusCode || 500
+    return res.status(statusCode).json({
+      success: false,
+      message: statusCode === 400 ? error.message : '照片保存失败'
+    })
+  } finally {
+    if (transactionStarted && connection) {
+      await connection.rollback().catch(rollbackError => {
+        log.error('保存国补照片事务回滚失败:', rollbackError)
+      })
+    }
+    connection?.release()
   }
 })
 
@@ -2430,7 +2531,7 @@ router.post('/upload/photo', unifiedAuth, requireSubsidyUpload, (req, res, next)
     // 构建文件访问URL - 统一返回相对路径，由前端 formatImageUrl 函数处理
     // 这样可以和 H5 上传保持一致，开发环境走 Vite 代理，生产环境走 Nginx 代理
     const relativeFilename = path.posix.join('subsidy', photoDirectoryName, finalFilename)
-    const fileUrl = buildProtectedSubsidyPhotoUrl(`/uploads/${relativeFilename}`)
+    const fileUrl = buildProtectedSubsidyPhotoUrl(`/uploads/${relativeFilename}`, req.user.id)
 
     // 注意：ApiResponse.success 参数顺序是 (res, message, data, statusCode, meta)
     ApiResponse.success(res, '照片上传成功', {
@@ -2453,7 +2554,7 @@ router.post('/upload/photo', unifiedAuth, requireSubsidyUpload, (req, res, next)
   }
 })
 
-router.get('/files/*', authenticateSubsidyFileAccess, requireAnyPermission(['subsidy:view', 'subsidy:upload']), requireVisibleSubsidyPhotosOrUpload, (req, res) => {
+router.get('/files/*', authenticateSubsidyFileAccess, (req, res) => {
   try {
     const requestedPath = typeof req.params[0] === 'string' ? req.params[0] : ''
     const normalizedRelativePath = normalizeSubsidyPhotoPath(`/uploads/${requestedPath}`)
@@ -2484,6 +2585,9 @@ router.get('/files/*', authenticateSubsidyFileAccess, requireAnyPermission(['sub
       })
     }
 
+    res.setHeader('Cache-Control', 'private, no-store')
+    res.setHeader('X-Content-Type-Options', 'nosniff')
+    res.setHeader('Cross-Origin-Resource-Policy', 'same-origin')
     return res.sendFile(normalizedAbsolutePath)
   } catch (error) {
     log.error('读取国补照片失败:', error)
@@ -2515,8 +2619,36 @@ router.post('/delete-temp-photos', unifiedAuth, requirePermission('subsidy:uploa
           continue
         }
 
-        // 删除文件
+        const parsedUrl = new URL(String(photoUrl), 'http://localhost')
+        const signedPath = getRelativeUploadPathFromUrl(photoUrl)
+        const validOwnerSignature = verifyPrivateFileAccess({
+          namespace: 'subsidy-file',
+          relativePath: signedPath,
+          userId: req.user.id,
+          expires: parsedUrl.searchParams.get('expires'),
+          signature: parsedUrl.searchParams.get('signature')
+        })
+        if (!validOwnerSignature || Number(parsedUrl.searchParams.get('user')) !== Number(req.user.id)) {
+          failedFiles.push(photoUrl)
+          continue
+        }
+
+        const [references] = await getDatabase().execute(
+          'SELECT id FROM national_subsidies WHERE subsidy_photos LIKE ? LIMIT 1',
+          [`%${photoPath.relativePath}%`]
+        )
+        if (references.length > 0) {
+          failedFiles.push(photoUrl)
+          continue
+        }
+
+        // 只删除当前用户刚上传且尚未被业务记录引用的文件。
         if (fs.existsSync(photoPath.absolutePath)) {
+          const stats = fs.statSync(photoPath.absolutePath)
+          if (!stats.isFile() || Date.now() - stats.mtimeMs > 2 * 60 * 60 * 1000) {
+            failedFiles.push(photoUrl)
+            continue
+          }
           fs.unlinkSync(photoPath.absolutePath)
           removeEmptySubsidyPhotoDirectories(photoPath.relativePath)
           deletedFiles.push(photoPath.relativePath)

@@ -1,6 +1,6 @@
 const express = require('express')
 const router = express.Router()
-const { exec, execSync, execFile } = require('child_process')
+const { exec, execFile } = require('child_process')
 const fs = require('fs').promises
 const fsSync = require('fs')
 const path = require('path')
@@ -32,6 +32,7 @@ const GIT_BRANCH_NAME_PATTERN = /^(?!-)(?!.*\.\.)(?!.*\/\/)(?!.*@\{)(?!.*\\)(?!.
 const GIT_COMMIT_HASH_PATTERN = /^[0-9a-fA-F]{7,40}$/
 const GITHUB_WARNING_FILE_SIZE_BYTES = 50 * 1024 * 1024
 const GITHUB_BLOCKED_FILE_SIZE_BYTES = 100 * 1024 * 1024
+let archiveBackupInProgress = false
 
 const getGitExecOptions = () => ({
   cwd: PROJECT_ROOT,
@@ -62,6 +63,16 @@ const execGitArgs = (args) => {
     })
   })
 }
+
+const execFilePromise = (command, args, options = {}) => new Promise((resolve, reject) => {
+  execFile(command, args, options, (error, stdout, stderr) => {
+    if (error) {
+      error.stderr = String(stderr || '').trim()
+      return reject(error)
+    }
+    return resolve({ stdout: String(stdout || ''), stderr: String(stderr || '') })
+  })
+})
 
 const escapeShellArg = (value) => {
   return `'${String(value || '').replace(/'/g, '\'\\\'\'')}'`
@@ -1257,6 +1268,10 @@ router.post('/delete-commit', requireGitDelete, async (req, res) => {
 
 // ==================== 创建本地压缩包备份 ====================
 router.post('/backup/archive', requireGitCreate, async (req, res) => {
+  if (archiveBackupInProgress) {
+    return res.status(409).json({ success: false, error: '已有压缩包备份正在创建，请稍后再试' })
+  }
+  archiveBackupInProgress = true
   try {
     const { name } = req.body
 
@@ -1359,31 +1374,30 @@ router.post('/backup/archive', requireGitCreate, async (req, res) => {
       'backend/.DS_Store'
     ]
 
-    // 构建 tar 命令的排除参数
-    const excludeArgs = excludePatterns.map(pattern => `--exclude="${pattern}"`).join(' ')
-    const includeArgs = archiveItems.map(item => `"${item}"`).join(' ')
+    const excludeArgs = excludePatterns.map(pattern => `--exclude=${pattern}`)
+    const tarOptions = {
+      cwd: projectRoot,
+      maxBuffer: 10 * 1024 * 1024,
+      timeout: 120000
+    }
 
-    // 使用 tar 创建压缩包
+    // 使用异步子进程创建压缩包，避免阻塞 Node.js 事件循环。
     try {
-      execSync(`tar ${excludeArgs} -czf "${backupFilePath}" ${includeArgs}`, {
-        cwd: projectRoot,
-        stdio: 'pipe',
-        timeout: 120000 // 2分钟超时
-      })
+      await execFilePromise('tar', [...excludeArgs, '-czf', backupFilePath, ...archiveItems], tarOptions)
       log.debug('✅ 压缩包创建成功')
     } catch (error) {
       log.debug('⚠️  tar 命令出现问题:', error.message)
       // tar 不可用或出错，使用简化方案：只备份核心目录
       log.debug('📦 使用简化方案：只备份核心文件...')
       try {
-        execSync(
-          `tar --exclude='node_modules' --exclude='.git' --exclude='uploads' -czf "${backupFilePath}" ${includeArgs}`,
-          {
-            cwd: projectRoot,
-            stdio: 'pipe',
-            timeout: 60000
-          }
-        )
+        await execFilePromise('tar', [
+          '--exclude=node_modules',
+          '--exclude=.git',
+          '--exclude=uploads',
+          '-czf',
+          backupFilePath,
+          ...archiveItems
+        ], { ...tarOptions, timeout: 60000 })
         log.debug('✅ 核心文件压缩包创建成功')
       } catch (err) {
         throw new Error('无法创建压缩包: ' + err.message)
@@ -1441,6 +1455,8 @@ router.post('/backup/archive', requireGitCreate, async (req, res) => {
       error: error.message || '创建本地压缩包备份失败',
       hint: '请检查磁盘空间和 tar 命令是否可用'
     })
+  } finally {
+    archiveBackupInProgress = false
   }
 })
 

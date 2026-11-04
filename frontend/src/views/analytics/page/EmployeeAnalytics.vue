@@ -796,10 +796,15 @@ const getAttendanceTagType = (type: string): 'success' | 'warning' | 'danger' | 
 const CACHE_KEYS = {
   employeeAnalytics: (params: Record<string, unknown>) => `/analytics/employees/detail:${JSON.stringify(params)}`,
   attendanceSummary: (params: Record<string, unknown>) => `/analytics/attendance/summary:${JSON.stringify(params)}`,
-  employeePerformance: (metric: string) => `/analytics/employees/performance:${metric}`,
-  employeeRoles: '/analytics/employees/roles',
-  salaryTrend: (months: number) => `/analytics/employees/salary-trend:${months}`,
-  employeeAttendance: '/analytics/employees/attendance'
+  employeePerformance: (params: Record<string, unknown>) => `/analytics/employees/performance:${JSON.stringify(params)}`,
+  employeeRoles: (params: Record<string, unknown>) => `/analytics/employees/roles:${JSON.stringify(params)}`,
+  salaryTrend: (params: Record<string, unknown>) => `/analytics/employees/salary-trend:${JSON.stringify(params)}`,
+  employeeAttendance: (params: Record<string, unknown>) => `/analytics/employees/attendance:${JSON.stringify(params)}`
+}
+
+const getStoreParams = (): { store_id?: number } => {
+  const storeId = Number(props.storeId)
+  return Number.isSafeInteger(storeId) && storeId > 0 ? { store_id: storeId } : {}
 }
 
 const loadEmployeeData = async (showLoadingState = true) => {
@@ -819,9 +824,7 @@ const loadEmployeeData = async (showLoadingState = true) => {
     if (props.endDate) {
       params.end_date = props.endDate
     }
-    if (props.storeId) {
-      params.store_id = props.storeId
-    }
+    Object.assign(params, getStoreParams())
 
     const cacheKeyEmployee = CACHE_KEYS.employeeAnalytics(params)
     const cacheKeyAttendance = CACHE_KEYS.attendanceSummary(params)
@@ -918,12 +921,14 @@ defineExpose({
 const loadEmployeePerformance = async () => {
   try {
     // 使用 analyticsService 获取员工业绩数据（使用缓存）
-    const cacheKey = CACHE_KEYS.employeePerformance(performanceMetric.value)
+    const params = {
+      metric: performanceMetric.value,
+      page_size: 20,
+      ...getStoreParams()
+    }
+    const cacheKey = CACHE_KEYS.employeePerformance(params)
     const response = await useCachedRequest(cacheKey, () =>
-      analyticsService.getEmployeePerformance({
-        metric: performanceMetric.value,
-        page_size: 20
-      }), DEFAULT_CACHE_TTL.DYNAMIC)
+      analyticsService.getEmployeePerformance(params), DEFAULT_CACHE_TTL.DYNAMIC)
 
     if (response.success && response.data) {
       employeePerformance.value = response.data.map(record => {
@@ -989,8 +994,9 @@ const updateRoleChart = async () => {
 
   try {
     // 从API获取真实数据（使用缓存）
-    const response = await useCachedRequest(CACHE_KEYS.employeeRoles, () =>
-      analyticsService.getEmployeeRoles(), DEFAULT_CACHE_TTL.STATIC)
+    const params = getStoreParams()
+    const response = await useCachedRequest(CACHE_KEYS.employeeRoles(params), () =>
+      analyticsService.getEmployeeRoles(params), DEFAULT_CACHE_TTL.STATIC)
     const data = response.success && Array.isArray(response.data)
       ? response.data.map(item => ({
         name: String(item.name || ''),
@@ -1054,7 +1060,8 @@ const updateSalesCompareChart = async () => {
   let usedData = months.map(() => 0)
   try {
     const response = await analyticsService.getSalesTrends({
-      period: salesComparePeriod.value === 'month' ? 'weekly' : 'monthly'
+      period: salesComparePeriod.value === 'month' ? 'weekly' : 'monthly',
+      ...getStoreParams()
     })
     const rows = response.success && Array.isArray(response.data) ? response.data : []
     newData = months.map((_, index) => Number(rows[index]?.new || rows[index]?.new_count || 0))
@@ -1113,11 +1120,13 @@ const updateSalaryTrendChart = async () => {
 
   try {
     // 从API获取真实数据（使用缓存）
-    const cacheKey = CACHE_KEYS.salaryTrend(parseInt(salaryTrendPeriod.value))
+    const params = {
+      months: parseInt(salaryTrendPeriod.value),
+      ...getStoreParams()
+    }
+    const cacheKey = CACHE_KEYS.salaryTrend(params)
     const response = await useCachedRequest(cacheKey, () =>
-      analyticsService.getEmployeeSalaryTrend({
-        months: parseInt(salaryTrendPeriod.value)
-      }), DEFAULT_CACHE_TTL.STATIC)
+      analyticsService.getEmployeeSalaryTrend(params), DEFAULT_CACHE_TTL.STATIC)
 
     let months: string[] = []
     let salaries: number[] = []
@@ -1172,8 +1181,9 @@ const updateAttendanceChart = async () => {
 
   try {
     // 从API获取真实数据（使用缓存）
-    const response = await useCachedRequest(CACHE_KEYS.employeeAttendance, () =>
-      analyticsService.getEmployeeAttendance(), DEFAULT_CACHE_TTL.STATIC)
+    const params = getStoreParams()
+    const response = await useCachedRequest(CACHE_KEYS.employeeAttendance(params), () =>
+      analyticsService.getEmployeeAttendance(params), DEFAULT_CACHE_TTL.STATIC)
     const data = response.success && Array.isArray(response.data) ? response.data : []
 
     const option = {

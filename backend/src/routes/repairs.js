@@ -15,6 +15,7 @@ const { generateMemberNumber } = require('../utils/member-number')
 const { getUploadSubdir, getUploadUrl, getRelativeUploadPathFromUrl, getUploadPathFromUrl } = require('../utils/upload-paths')
 const { validateUploadedFileSignature, removeUploadedFiles } = require('../utils/upload-file-validation')
 const { searchCustomers: searchCustomerOptions } = require('../services/customer-search.service')
+const { createPrivateFileUrl, verifyPrivateFileAccess } = require('../utils/private-file-access')
 
 const REPAIR_FIELD_MODULE_KEY = 'repairs_repairsview'
 const hasRepairAction = (req, action) => {
@@ -120,7 +121,13 @@ const parseStoredRepairMedia = value => {
 }
 
 const mediaTypeFromUrl = url => /\.(mp4|webm|mov|ogg|m4v)(?:$|[?#])/i.test(url) ? 'video' : 'image'
-const buildRepairMediaUrl = relativePath => `/api/repairs/media/${String(relativePath).replace(/\\/g, '/').replace(/^repairs\//, '')}`
+const buildRepairMediaUrl = (relativePath, userId) => createPrivateFileUrl({
+  routePrefix: '/api/repairs/media',
+  relativePath: String(relativePath).replace(/\\/g, '/').replace(/^repairs\//, ''),
+  userId,
+  namespace: 'repair-media',
+  ttlSeconds: 10 * 60
+})
 const normalizeRepairMedia = value => {
   if (!Array.isArray(value)) return []
   return value.map(item => {
@@ -132,30 +139,93 @@ const normalizeRepairMedia = value => {
       ? 'video'
       : mediaTypeFromUrl(relative)
     return {
-      url: relative.startsWith('repairs/temp/') ? getUploadUrl(...relative.split('/')) : buildRepairMediaUrl(relative),
+      url: getUploadUrl(...relative.split('/')),
       type,
       name: String(item?.name || path.basename(relative))
     }
   })
 }
 
-const normalizeRepairRow = row => ({
+const invalidRepairMedia = message => Object.assign(new Error(message), { statusCode: 400 })
+
+const validateSubmittedRepairMedia = (value, userId, existingMedia = []) => {
+  const submitted = Array.isArray(value) ? value : []
+  const existingPaths = new Set(existingMedia.map(item => getRelativeUploadPathFromUrl(item?.url)).filter(Boolean))
+
+  for (const item of submitted) {
+    const url = typeof item === 'string' ? item : item?.url
+    const relative = getRelativeUploadPathFromUrl(url)
+    if (!relative || !relative.startsWith('repairs/')) throw invalidRepairMedia('维修媒体地址无效')
+    if (existingPaths.has(relative)) continue
+    if (!relative.startsWith('repairs/temp/')) throw invalidRepairMedia('只能新增当前用户上传的临时维修媒体')
+
+    const parsedUrl = new URL(String(url), 'http://localhost')
+    const validSignature = verifyPrivateFileAccess({
+      namespace: 'repair-media',
+      relativePath: relative.replace(/^repairs\//, ''),
+      userId,
+      expires: parsedUrl.searchParams.get('expires'),
+      signature: parsedUrl.searchParams.get('signature')
+    })
+    if (!validSignature || Number(parsedUrl.searchParams.get('user')) !== Number(userId)) {
+      throw invalidRepairMedia('维修媒体链接无效、已过期或不属于当前用户')
+    }
+  }
+
+  return normalizeRepairMedia(submitted)
+}
+
+const normalizeRepairRow = (row, userId) => ({
   ...row,
-  photos: normalizeRepairMedia(parseStoredRepairMedia(row.photos))
+  photos: normalizeRepairMedia(parseStoredRepairMedia(row.photos)).map(item => ({
+    ...item,
+    url: buildRepairMediaUrl(getRelativeUploadPathFromUrl(item.url), userId)
+  }))
 })
 
 const moveRepairTempMedia = async (media, repairId, userId) => {
   const targetDirectory = getUploadSubdir('repairs', String(repairId))
   await fs.promises.mkdir(targetDirectory, { recursive: true })
-  return Promise.all(media.map(async item => {
-    const relative = getRelativeUploadPathFromUrl(item.url)
-    if (!relative.startsWith('repairs/temp/')) return item
-    const filename = path.basename(relative)
-    if (!filename.startsWith(`${Number(userId)}_`)) throw new Error('只能保存当前用户上传的临时媒体')
-    const targetPath = path.join(targetDirectory, filename)
-    await fs.promises.rename(getUploadPathFromUrl(item.url), targetPath)
-    return { ...item, url: buildRepairMediaUrl(`repairs/${repairId}/${filename}`) }
-  }))
+  const archivedMedia = []
+  const movedFiles = []
+
+  try {
+    for (const item of media) {
+      const relative = getRelativeUploadPathFromUrl(item.url)
+      if (!relative.startsWith('repairs/temp/')) {
+        archivedMedia.push(item)
+        continue
+      }
+      const filename = path.basename(relative)
+      if (!filename.startsWith(`${Number(userId)}_`)) throw new Error('只能保存当前用户上传的临时媒体')
+      const sourcePath = getUploadPathFromUrl(item.url)
+      const targetPath = path.join(targetDirectory, filename)
+      await fs.promises.rename(sourcePath, targetPath)
+      movedFiles.push({ sourcePath, targetPath })
+      archivedMedia.push({ ...item, url: getUploadUrl('repairs', String(repairId), filename) })
+    }
+    return { archivedMedia, movedFiles }
+  } catch (error) {
+    for (const moved of movedFiles.reverse()) {
+      try {
+        if (fs.existsSync(moved.targetPath) && !fs.existsSync(moved.sourcePath)) {
+          await fs.promises.mkdir(path.dirname(moved.sourcePath), { recursive: true })
+          await fs.promises.rename(moved.targetPath, moved.sourcePath)
+        }
+      } catch (rollbackError) {
+        error.message += `；维修媒体回滚失败: ${rollbackError.message}`
+      }
+    }
+    throw error
+  }
+}
+
+const rollbackRepairMediaMoves = async movedFiles => {
+  for (const moved of [...movedFiles].reverse()) {
+    if (!fs.existsSync(moved.targetPath) || fs.existsSync(moved.sourcePath)) continue
+    await fs.promises.mkdir(path.dirname(moved.sourcePath), { recursive: true })
+    await fs.promises.rename(moved.targetPath, moved.sourcePath)
+  }
 }
 
 const removeRepairMediaFiles = async media => {
@@ -271,7 +341,7 @@ router.get('/', unifiedAuth, requirePermission('repairs:view'), async (req, res)
     const rows = rowsResult[0] || []
     const total = Number(countResult[0]?.[0]?.total || 0)
     const total_pages = Math.ceil(total / page_size)
-    return ApiResponse.success(res, await maskRepairList(rows.map(normalizeRepairRow), req), '获取维修记录成功', 200, {
+    return ApiResponse.success(res, await maskRepairList(rows.map(row => normalizeRepairRow(row, req.user.id)), req), '获取维修记录成功', 200, {
       pagination: {
         page,
         page_size,
@@ -502,7 +572,7 @@ router.post('/upload/media', unifiedAuth, requireAnyPermission(['repairs:create'
     }
     return ApiResponse.success(res, {
       files: files.map(file => ({
-        url: buildRepairMediaUrl(`repairs/temp/${file.filename}`),
+        url: buildRepairMediaUrl(`temp/${file.filename}`, req.user.id),
         name: file.originalname,
         type: file.mimetype || mediaTypeFromUrl(file.filename),
         size: file.size
@@ -543,9 +613,17 @@ router.post('/upload/cleanup', unifiedAuth, requireAnyPermission(['repairs:creat
   }
 })
 
-router.get('/media/*', unifiedAuth, requirePermission('repairs:view'), async (req, res) => {
+router.get('/media/*', async (req, res) => {
   try {
     const requestedPath = typeof req.params[0] === 'string' ? req.params[0] : ''
+    const validSignature = verifyPrivateFileAccess({
+      namespace: 'repair-media',
+      relativePath: requestedPath,
+      userId: req.query.user,
+      expires: req.query.expires,
+      signature: req.query.signature
+    })
+    if (!validSignature) return ApiResponse.error(res, '维修媒体链接无效或已过期', 403)
     const relative = `repairs/${requestedPath}`.replace(/\\/g, '/')
     if (!/^repairs\/(?:temp\/)?[a-zA-Z0-9._-]+(?:\/[a-zA-Z0-9._-]+)?$/.test(relative)) {
       return res.status(400).json({ success: false, message: '无效的维修媒体路径' })
@@ -555,7 +633,10 @@ router.get('/media/*', unifiedAuth, requirePermission('repairs:view'), async (re
     if (!absolutePath.startsWith(`${root}${path.sep}`) || !fs.existsSync(absolutePath)) {
       return res.status(404).json({ success: false, message: '维修媒体不存在' })
     }
-    return res.sendFile(absolutePath)
+    res.setHeader('Cache-Control', 'private, no-store')
+    res.setHeader('X-Content-Type-Options', 'nosniff')
+    res.setHeader('Cross-Origin-Resource-Policy', 'same-origin')
+    return res.sendFile(absolutePath, { acceptRanges: true })
   } catch (error) {
     log.error('读取维修媒体失败:', error)
     return ApiResponse.serverError(res, '读取维修媒体失败', error)
@@ -569,7 +650,7 @@ router.get('/:id', unifiedAuth, requirePermission('repairs:view'), async (req, r
     const db = await getDb()
     const [rows] = await db.execute(`${listQuery} WHERE r.id = ?`, [id])
     if (!rows.length) return ApiResponse.notFound(res, '维修单不存在')
-    return ApiResponse.success(res, await maskRepairItem(normalizeRepairRow(rows[0]), req), '获取维修单详情成功')
+    return ApiResponse.success(res, await maskRepairItem(normalizeRepairRow(rows[0], req.user.id), req), '获取维修单详情成功')
   } catch (error) {
     log.error('获取维修单详情失败:', error)
     return ApiResponse.serverError(res, '获取维修单详情失败', error)
@@ -577,6 +658,10 @@ router.get('/:id', unifiedAuth, requirePermission('repairs:view'), async (req, r
 })
 
 router.post('/', unifiedAuth, requirePermission('repairs:create'), rejectHiddenRepairWriteFields, async (req, res) => {
+  let connection
+  let transactionStarted = false
+  let committed = false
+  let movedMedia = []
   try {
     const customerId = parsePositiveId(req.body?.customer_id)
     const brandId = req.body?.brand_id ? parsePositiveId(req.body.brand_id) : null
@@ -592,7 +677,7 @@ router.post('/', unifiedAuth, requirePermission('repairs:create'), rejectHiddenR
     if (repairTime && !/^\d{4}-\d{2}-\d{2}(?:[ T]\d{2}:\d{2}(?::\d{2})?)?$/.test(repairTime)) {
       return ApiResponse.badRequest(res, '维修时间格式不正确')
     }
-    const submittedMedia = normalizeRepairMedia(req.body?.photos || [])
+    const submittedMedia = validateSubmittedRepairMedia(req.body?.photos || [], req.user.id)
     const db = await getDb()
     const [customerRows] = await db.execute('SELECT id FROM customers WHERE id = ? AND status = 1', [customerId])
     if (!customerRows.length) return ApiResponse.badRequest(res, '客户不存在或已停用')
@@ -617,23 +702,49 @@ router.post('/', unifiedAuth, requirePermission('repairs:create'), rejectHiddenR
       if (!technicianRows.length) return ApiResponse.badRequest(res, '维修员不存在或已停用')
     }
     const orderNo = generateOrderNo()
-    const [result] = await db.execute(`
+    connection = await db.getConnection()
+    await connection.beginTransaction()
+    transactionStarted = true
+    const [result] = await connection.execute(`
       INSERT INTO repairs (order_no, customer_id, phone_id, brand_id, phone_model, imei, serial_number, color_id, memory_id, problem_description, technician_id, remarks, photos, created_at, repair_time, status)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), COALESCE(?, NOW()), 'pending')
     `, [orderNo, customerId, phoneId, brandId, phoneModel, String(req.body?.imei || '').trim() || null, String(req.body?.serial_number || '').trim() || null, colorId, memoryId, problem, technicianId, String(req.body?.remarks || '').trim() || null, '[]', repairTime])
-    const archivedMedia = await moveRepairTempMedia(submittedMedia, result.insertId, req.user.id)
+    const moveResult = await moveRepairTempMedia(submittedMedia, result.insertId, req.user.id)
+    const archivedMedia = moveResult.archivedMedia
+    movedMedia = moveResult.movedFiles
     if (archivedMedia.length) {
-      await db.execute('UPDATE repairs SET photos = ? WHERE id = ?', [JSON.stringify(archivedMedia), result.insertId])
+      await connection.execute('UPDATE repairs SET photos = ? WHERE id = ?', [JSON.stringify(archivedMedia), result.insertId])
     }
-    const [rows] = await db.execute(`${listQuery} WHERE r.id = ?`, [result.insertId])
-    return ApiResponse.created(res, await maskRepairItem(normalizeRepairRow(rows[0]), req), '维修单创建成功')
+    await connection.commit()
+    transactionStarted = false
+    committed = true
+    const [rows] = await connection.execute(`${listQuery} WHERE r.id = ?`, [result.insertId])
+    return ApiResponse.created(res, await maskRepairItem(normalizeRepairRow(rows[0], req.user.id), req), '维修单创建成功')
   } catch (error) {
+    if (transactionStarted && connection) {
+      await connection.rollback().catch(rollbackError => {
+        log.error('创建维修单事务回滚失败:', rollbackError)
+      })
+      transactionStarted = false
+    }
+    if (!committed && movedMedia.length > 0) {
+      await rollbackRepairMediaMoves(movedMedia).catch(rollbackError => {
+        log.error('创建维修单媒体回滚失败:', rollbackError)
+      })
+    }
+    if (error.statusCode === 400) return ApiResponse.badRequest(res, error.message)
     log.error('创建维修单失败:', error)
     return ApiResponse.serverError(res, '创建维修单失败', error)
+  } finally {
+    connection?.release()
   }
 })
 
 router.put('/:id', unifiedAuth, requirePermission('repairs:edit'), rejectHiddenRepairWriteFields, async (req, res) => {
+  let connection
+  let transactionStarted = false
+  let committed = false
+  let movedMedia = []
   try {
     const id = parsePositiveId(req.params.id)
     if (!id) return ApiResponse.badRequest(res, '维修单编号无效')
@@ -714,16 +825,7 @@ router.put('/:id', unifiedAuth, requirePermission('repairs:edit'), rejectHiddenR
     }
     let submittedMedia
     if (Object.prototype.hasOwnProperty.call(req.body || {}, 'photos')) {
-      submittedMedia = normalizeRepairMedia(req.body.photos)
-      const [existingRows] = await db.execute('SELECT photos FROM repairs WHERE id = ?', [id])
-      if (!existingRows.length) return ApiResponse.notFound(res, '维修单不存在')
-      const existingMedia = normalizeRepairMedia(parseStoredRepairMedia(existingRows[0].photos))
-      const archivedMedia = await moveRepairTempMedia(submittedMedia, id, req.user.id)
-      updates.push('photos = ?')
-      params.push(JSON.stringify(archivedMedia))
-      const nextUrls = new Set(archivedMedia.map(item => item.url))
-      mediaToRemove = existingMedia.filter(item => !nextUrls.has(item.url))
-      submittedMedia = archivedMedia
+      submittedMedia = req.body.photos
     }
     if (Object.prototype.hasOwnProperty.call(req.body || {}, 'repair_time')) {
       const value = req.body.repair_time ? String(req.body.repair_time).trim() : null
@@ -733,16 +835,61 @@ router.put('/:id', unifiedAuth, requirePermission('repairs:edit'), rejectHiddenR
       updates.push('repair_time = ?')
       params.push(value)
     }
-    if (!updates.length) return ApiResponse.badRequest(res, '没有可更新的字段')
+    if (!updates.length && submittedMedia === undefined) return ApiResponse.badRequest(res, '没有可更新的字段')
+
+    connection = await db.getConnection()
+    await connection.beginTransaction()
+    transactionStarted = true
+    if (submittedMedia !== undefined) {
+      const [existingRows] = await connection.execute('SELECT photos FROM repairs WHERE id = ? FOR UPDATE', [id])
+      if (!existingRows.length) {
+        const notFoundError = new Error('维修单不存在')
+        notFoundError.statusCode = 404
+        throw notFoundError
+      }
+      const existingMedia = normalizeRepairMedia(parseStoredRepairMedia(existingRows[0].photos))
+      submittedMedia = validateSubmittedRepairMedia(submittedMedia, req.user.id, existingMedia)
+      const moveResult = await moveRepairTempMedia(submittedMedia, id, req.user.id)
+      const archivedMedia = moveResult.archivedMedia
+      movedMedia = moveResult.movedFiles
+      updates.push('photos = ?')
+      params.push(JSON.stringify(archivedMedia))
+      const nextUrls = new Set(archivedMedia.map(item => item.url))
+      mediaToRemove = existingMedia.filter(item => !nextUrls.has(item.url))
+    }
     params.push(id)
-    const [result] = await db.execute(`UPDATE repairs SET ${updates.join(', ')} WHERE id = ?`, params)
-    if (!result.affectedRows) return ApiResponse.notFound(res, '维修单不存在')
-    await removeRepairMediaFiles(mediaToRemove)
-    const [rows] = await db.execute(`${listQuery} WHERE r.id = ?`, [id])
-    return ApiResponse.success(res, await maskRepairItem(normalizeRepairRow(rows[0]), req), '维修单更新成功')
+    const [result] = await connection.execute(`UPDATE repairs SET ${updates.join(', ')} WHERE id = ?`, params)
+    if (!result.affectedRows) {
+      const notFoundError = new Error('维修单不存在')
+      notFoundError.statusCode = 404
+      throw notFoundError
+    }
+    await connection.commit()
+    transactionStarted = false
+    committed = true
+    await removeRepairMediaFiles(mediaToRemove).catch(cleanupError => {
+      log.warn('清理已移除维修媒体失败:', cleanupError)
+    })
+    const [rows] = await connection.execute(`${listQuery} WHERE r.id = ?`, [id])
+    return ApiResponse.success(res, await maskRepairItem(normalizeRepairRow(rows[0], req.user.id), req), '维修单更新成功')
   } catch (error) {
+    if (transactionStarted && connection) {
+      await connection.rollback().catch(rollbackError => {
+        log.error('更新维修单事务回滚失败:', rollbackError)
+      })
+      transactionStarted = false
+    }
+    if (!committed && movedMedia.length > 0) {
+      await rollbackRepairMediaMoves(movedMedia).catch(rollbackError => {
+        log.error('更新维修单媒体回滚失败:', rollbackError)
+      })
+    }
+    if (error.statusCode === 400) return ApiResponse.badRequest(res, error.message)
+    if (error.statusCode === 404) return ApiResponse.notFound(res, error.message)
     log.error('更新维修单失败:', error)
     return ApiResponse.serverError(res, '更新维修单失败', error)
+  } finally {
+    connection?.release()
   }
 })
 
@@ -755,7 +902,7 @@ router.patch('/:id/status', unifiedAuth, requirePermission('repairs:edit'), asyn
     const [result] = await db.execute('UPDATE repairs SET status = ?, completed_at = CASE WHEN ? = \'completed\' THEN COALESCE(completed_at, NOW()) ELSE NULL END WHERE id = ?', [status, status, id])
     if (!result.affectedRows) return ApiResponse.notFound(res, '维修单不存在')
     const [rows] = await db.execute(`${listQuery} WHERE r.id = ?`, [id])
-    return ApiResponse.success(res, await maskRepairItem(normalizeRepairRow(rows[0]), req), '维修状态更新成功')
+    return ApiResponse.success(res, await maskRepairItem(normalizeRepairRow(rows[0], req.user.id), req), '维修状态更新成功')
   } catch (error) {
     log.error('更新维修状态失败:', error)
     return ApiResponse.serverError(res, '更新维修状态失败', error)

@@ -26,13 +26,15 @@ node backend/scripts/migrate-repair-device-fields.js --apply
 
 ```json
 {
-  "url": "/api/repairs/media/12/example.jpg",
+  "url": "/uploads/repairs/12/example.jpg",
   "type": "image",
   "name": "example.jpg"
 }
 ```
 
-上传接口为 `POST /api/repairs/upload/media`，字段名为 `files`，支持多选图片和视频，单文件最大 100MB，上传先进入 `uploads/repairs/temp`。维修单保存成功后，临时文件会移动到对应维修单目录；关闭新增、编辑或媒体管理窗口而未保存时，前端会调用通用临时文件清理接口，避免留下无主文件。
+数据库只保存 `/uploads/repairs/...` 稳定路径。接口读取维修单时才把稳定路径转换为 `/api/repairs/media/...` 短时 HMAC URL；URL 绑定当前用户、规范化文件路径和过期时间，不能写回数据库或携带登录 Token。
+
+上传接口为 `POST /api/repairs/upload/media`，字段名为 `files`，支持多选图片和视频，单文件最大 100MB，上传先进入 `uploads/repairs/temp`。维修单保存成功后，临时文件会移动到对应维修单目录；创建或编辑在数据库事务提交前失败时，已移动文件会恢复到临时目录。编辑提交成功后，仅清理原记录存在但新列表已移除的媒体。关闭新增、编辑或媒体管理窗口而未保存时，前端调用维修专用 `POST /api/repairs/upload/cleanup`，只允许清理当前用户两小时内上传的临时文件。
 
 维修表格的“媒体”按钮可查看已有照片和视频；拥有 `repairs:edit` 权限的用户可以继续上传、删除并保存。移动端沿用国补的单一上传入口，系统文件选择器会提供拍照入口，拍摄后直接上传。字段权限对应 `repairs_repairsview` 模块的 `repair_info.photos`。
 

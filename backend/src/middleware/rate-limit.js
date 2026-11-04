@@ -2,6 +2,7 @@ const { rateLimit, ipKeyGenerator } = require('express-rate-limit')
 const { getDatabase, isConnected } = require('../config/database')
 const config = require('../config')
 const log = require('../utils/log')
+const { schemaChangesAllowed } = require('../utils/schema-change-policy')
 
 const baseRetryAfterSeconds = Math.max(1, Math.ceil(config.api.rateWindowMs / 1000))
 
@@ -159,6 +160,38 @@ const publicMarketingRateLimit = createPublicRateLimit({
   message: '文案生成过于频繁，请稍后再试'
 })
 
+const iconifyRateLimit = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: '在线图标请求过于频繁，请稍后再试',
+    code: 'ICONIFY_RATE_LIMIT_EXCEEDED'
+  },
+  keyGenerator: req => {
+    const ip = ipKeyGenerator(req.ip || req.socket.remoteAddress || 'unknown')
+    return `${ip}:${Number(req.user?.id) || 'anonymous'}`
+  }
+})
+
+const frontendErrorLogRateLimit = rateLimit({
+  windowMs: 5 * 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: '错误日志上报过于频繁，请稍后再试',
+    code: 'FRONTEND_ERROR_LOG_RATE_LIMIT_EXCEEDED'
+  },
+  keyGenerator: req => {
+    const ip = ipKeyGenerator(req.ip || req.socket.remoteAddress || 'unknown')
+    return `${Number(req.user?.id) || 'anonymous'}:${ip}`
+  }
+})
+
 // 搜索API限流（较宽松）
 const searchRateLimit = rateLimit({
   windowMs: 1 * 60 * 1000, // 1分钟
@@ -272,6 +305,7 @@ const rateLimitLogger = (req, res, next) => {
 let rateLimitLogTablePromise = null
 
 async function ensureRateLimitLogTable(database) {
+  if (!schemaChangesAllowed()) return
   if (!rateLimitLogTablePromise) {
     rateLimitLogTablePromise = database.execute(`
       CREATE TABLE IF NOT EXISTS rate_limit_logs (
@@ -333,6 +367,8 @@ module.exports = {
   publicLookupRateLimit,
   publicOrderPhoneLookupRateLimit,
   publicMarketingRateLimit,
+  iconifyRateLimit,
+  frontendErrorLogRateLimit,
   searchRateLimit,
   uploadRateLimit,
   dbRateLimit,

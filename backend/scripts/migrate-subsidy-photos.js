@@ -54,15 +54,6 @@ function normalizeSubsidyRelativePath(photoUrl) {
   return normalized
 }
 
-function isProtectedSubsidyUrl(photoUrl) {
-  try {
-    const pathname = new URL(photoUrl, 'http://localhost').pathname
-    return pathname.startsWith('/api/subsidy/files/')
-  } catch {
-    return false
-  }
-}
-
 function buildPlan(rows) {
   const subsidyRoot = getUploadSubdir('subsidy')
   const sourceGroups = new Map()
@@ -96,6 +87,16 @@ function buildPlan(rows) {
 
       const pathParts = relativePath.split('/')
       if (pathParts.length > 2) {
+        const canonicalUrl = encodeSubsidyPhotoUrl(relativePath)
+        if (canonicalUrl !== photoUrl) {
+          migratedPhotos[photoIndex] = canonicalUrl
+          recordPlan.changes.push({
+            photoIndex,
+            photoUrl,
+            targetUrl: canonicalUrl,
+            dbOnly: true
+          })
+        }
         return
       }
 
@@ -110,10 +111,7 @@ function buildPlan(rows) {
         return
       }
 
-      const targetUrl = encodeSubsidyPhotoUrl(
-        targetRelativePath,
-        isProtectedSubsidyUrl(photoUrl)
-      )
+      const targetUrl = encodeSubsidyPhotoUrl(targetRelativePath)
       migratedPhotos[photoIndex] = targetUrl
       recordPlan.changes.push({
         photoIndex,
@@ -199,7 +197,9 @@ function buildPlan(rows) {
   )
   const executableRecords = records
     .map(record => {
-      const executableChanges = record.changes.filter(change => !blockedSources.has(change.sourcePath))
+      const executableChanges = record.changes.filter(change => (
+        change.dbOnly || !blockedSources.has(change.sourcePath)
+      ))
       const executableIndexes = new Set(executableChanges.map(change => change.photoIndex))
       return {
         ...record,
@@ -228,8 +228,8 @@ function summarize(plan) {
   const sample = plan.records.slice(0, 20).flatMap(record => (
     record.changes.map(change => ({
       id: record.id,
-      source: path.relative(process.cwd(), change.sourcePath),
-      target: path.relative(process.cwd(), change.targetPath)
+      source: change.sourcePath ? path.relative(process.cwd(), change.sourcePath) : null,
+      target: change.targetPath ? path.relative(process.cwd(), change.targetPath) : change.targetUrl
     }))
   ))
 
@@ -334,7 +334,7 @@ async function main() {
       return
     }
 
-    if (plan.operations.length === 0) {
+    if (plan.records.length === 0) {
       console.log(JSON.stringify(summarize(plan), null, 2))
       return
     }

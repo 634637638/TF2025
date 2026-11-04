@@ -2,34 +2,22 @@ const QueryService = require('../services/query.service')
 const ApiResponse = require('../utils/response')
 const dataMaskingService = require('../services/dataMaskingService')
 const { PAGINATION } = require('../config/constants')
-const { isSuperAdmin } = require('../middleware/unified-auth')
+const {
+  isStoreScopeError,
+  resolveStoreScope
+} = require('../utils/store-scope')
 const log = require('../utils/log')
 
-const getRequestedStoreId = (value) => {
-  const rawValue = Array.isArray(value) ? value[0] : value
-  if (rawValue === undefined || rawValue === null || rawValue === '') return null
-
-  const storeId = Number(rawValue)
-  return Number.isInteger(storeId) && storeId > 0 ? storeId : undefined
-}
-
 const validateRequestedStoreScope = (req, res) => {
-  if (isSuperAdmin(req.user)) return null
-
-  const requestedStoreId = getRequestedStoreId(req.query.store_id)
-  if (requestedStoreId === undefined) {
-    return ApiResponse.error(res, 'store_id 参数无效', 400)
+  try {
+    return resolveStoreScope(req.user, req.query.store_id)
+  } catch (error) {
+    if (isStoreScopeError(error)) {
+      ApiResponse.error(res, error.message, error.statusCode)
+      return null
+    }
+    throw error
   }
-  if (requestedStoreId === null) return null
-
-  const userStoreIds = Array.isArray(req.user?.store_ids)
-    ? req.user.store_ids.map(Number).filter(id => Number.isInteger(id) && id > 0)
-    : []
-  if (!userStoreIds.includes(requestedStoreId)) {
-    return ApiResponse.error(res, '无权查询该门店数据', 403)
-  }
-
-  return null
 }
 
 class QueryController {
@@ -42,17 +30,22 @@ class QueryController {
    */
   async getComprehensiveQuery(req, res) {
     try {
-      const scopeError = validateRequestedStoreScope(req, res)
-      if (scopeError) return scopeError
+      const storeScope = validateRequestedStoreScope(req, res)
+      if (!storeScope) return
 
       // 验证查询参数
       await this.queryService.validateQueryFilters(req.query)
 
       // 获取用户关联的门店ID（用于数据权限过滤）
-      const userStoreId = req.user?.store_id || null
-      const userStoreIds = req.user?.store_ids || []
+      const userStoreId = storeScope.requestedStoreId || null
+      const userStoreIds = storeScope.allStores ? [] : storeScope.storeIds
 
-      const result = await this.queryService.getComprehensiveQuery(req.query, userStoreId, userStoreIds)
+      const result = await this.queryService.getComprehensiveQuery(
+        req.query,
+        userStoreId,
+        userStoreIds,
+        storeScope.allStores
+      )
 
       // 根据用户权限过滤敏感数据
       if (result.data && result.data.length > 0) {
@@ -79,14 +72,19 @@ class QueryController {
    */
   async getStatistics(req, res) {
     try {
-      const scopeError = validateRequestedStoreScope(req, res)
-      if (scopeError) return scopeError
+      const storeScope = validateRequestedStoreScope(req, res)
+      if (!storeScope) return
 
       // 获取用户关联的门店ID（用于数据权限过滤）
-      const userStoreId = req.user?.store_id || null
-      const userStoreIds = req.user?.store_ids || []
+      const userStoreId = storeScope.requestedStoreId || null
+      const userStoreIds = storeScope.allStores ? [] : storeScope.storeIds
 
-      const result = await this.queryService.getStatistics(req.query, userStoreId, userStoreIds)
+      const result = await this.queryService.getStatistics(
+        req.query,
+        userStoreId,
+        userStoreIds,
+        storeScope.allStores
+      )
 
       return ApiResponse.success(res, result.message, result.data)
     } catch (error) {
@@ -100,7 +98,8 @@ class QueryController {
    */
   async getReturnGoodsRecords(req, res) {
     try {
-      const result = await this.queryService.getReturnGoodsRecords(req.query)
+      const storeScope = resolveStoreScope(req.user, req.query.store_id)
+      const result = await this.queryService.getReturnGoodsRecords(req.query, storeScope)
 
       return ApiResponse.paginated(
         res,
@@ -112,6 +111,9 @@ class QueryController {
         }
       )
     } catch (error) {
+      if (isStoreScopeError(error)) {
+        return ApiResponse.error(res, error.message, error.statusCode)
+      }
       log.error('QueryController: 退库记录查询失败:', error)
       return ApiResponse.serverError(res, '退库记录查询失败', error)
     }
@@ -120,9 +122,13 @@ class QueryController {
   async updateReturnGoodsRecord(req, res) {
     try {
       const { id } = req.params
-      const result = await this.queryService.updateReturnGoodsRecord(id, req.body)
+      const storeScope = resolveStoreScope(req.user, req.body?.store_id)
+      const result = await this.queryService.updateReturnGoodsRecord(id, req.body, storeScope)
       return ApiResponse.success(res, result.message, result.data)
     } catch (error) {
+      if (isStoreScopeError(error)) {
+        return ApiResponse.error(res, error.message, error.statusCode)
+      }
       log.error('QueryController: 退库记录更新失败:', error)
       return ApiResponse.serverError(res, '退库记录更新失败', error)
     }
@@ -131,9 +137,13 @@ class QueryController {
   async deleteReturnGoodsRecord(req, res) {
     try {
       const { id } = req.params
-      const result = await this.queryService.deleteReturnGoodsRecord(id)
+      const storeScope = resolveStoreScope(req.user, req.query.store_id)
+      const result = await this.queryService.deleteReturnGoodsRecord(id, storeScope)
       return ApiResponse.success(res, result.message, result.data)
     } catch (error) {
+      if (isStoreScopeError(error)) {
+        return ApiResponse.error(res, error.message, error.statusCode)
+      }
       log.error('QueryController: 退库记录删除失败:', error)
       return ApiResponse.serverError(res, '退库记录删除失败', error)
     }
@@ -148,15 +158,19 @@ class QueryController {
       const { id } = req.params
       const operatorId = req.user.id // 从JWT token中获取操作员ID
       const returnInfo = req.body // 获取退库信息
+      const storeScope = resolveStoreScope(req.user, returnInfo?.store_id)
 
       if (!id) {
         return ApiResponse.error(res, '手机ID不能为空', 400)
       }
 
-      const result = await this.queryService.returnToStock(id, operatorId, returnInfo)
+      const result = await this.queryService.returnToStock(id, operatorId, returnInfo, storeScope)
 
       return ApiResponse.success(res, result.message, result.data)
     } catch (error) {
+      if (isStoreScopeError(error)) {
+        return ApiResponse.error(res, error.message, error.statusCode)
+      }
       log.error('QueryController: 退库操作失败:', error)
       return ApiResponse.serverError(res, '退库操作失败', error)
     }
@@ -168,15 +182,19 @@ class QueryController {
   async deletePhoneRecord(req, res) {
     try {
       const { id } = req.params
+      const storeScope = resolveStoreScope(req.user, req.query.store_id)
 
       if (!id) {
         return ApiResponse.error(res, '手机ID不能为空', 400)
       }
 
-      const result = await this.queryService.deletePhoneRecord(id)
+      const result = await this.queryService.deletePhoneRecord(id, storeScope)
 
       return ApiResponse.success(res, result.message, result.data)
     } catch (error) {
+      if (isStoreScopeError(error)) {
+        return ApiResponse.error(res, error.message, error.statusCode)
+      }
       log.error('QueryController: 删除手机记录失败:', error)
       return ApiResponse.serverError(res, '删除手机记录失败', error)
     }
@@ -187,18 +205,19 @@ class QueryController {
    */
   async exportToExcel(req, res) {
     try {
-      const scopeError = validateRequestedStoreScope(req, res)
-      if (scopeError) return scopeError
+      const storeScope = validateRequestedStoreScope(req, res)
+      if (!storeScope) return
 
       // 验证查询参数
       await this.queryService.validateQueryFilters(req.query)
 
-      const userStoreId = req.user?.store_id || null
-      const userStoreIds = req.user?.store_ids || []
+      const userStoreId = storeScope.requestedStoreId || null
+      const userStoreIds = storeScope.allStores ? [] : storeScope.storeIds
       const result = await this.queryService.getComprehensiveQuery(
         { ...req.query, page: PAGINATION.DEFAULT_PAGE, page_size: PAGINATION.DEFAULT_LIMIT },
         userStoreId,
-        userStoreIds
+        userStoreIds,
+        storeScope.allStores
       )
 
       let exportData = result.data || []
@@ -230,12 +249,10 @@ class QueryController {
   async getQueryOptions(req, res) {
     try {
       // 从数据库获取各种选项数据
-      const userStoreIds = Array.isArray(req.user?.store_ids)
-        ? req.user.store_ids.map(Number).filter(id => Number.isInteger(id) && id > 0)
-        : []
+      const storeScope = resolveStoreScope(req.user, null)
       const optionsData = await this.queryService.getQueryOptions({
-        storeIds: userStoreIds,
-        allStores: isSuperAdmin(req.user)
+        storeIds: storeScope.storeIds,
+        allStores: storeScope.allStores
       })
 
       const options = {
@@ -299,6 +316,7 @@ class QueryController {
   async batchOperations(req, res) {
     try {
       const { operation, phone_ids } = req.body
+      const storeScope = resolveStoreScope(req.user, req.body?.store_id)
 
       if (!operation || !phone_ids || !Array.isArray(phone_ids)) {
         return ApiResponse.error(res, '操作类型和手机ID列表不能为空', 400)
@@ -310,7 +328,7 @@ class QueryController {
       case 'delete':
         for (const phoneId of phone_ids) {
           try {
-            const result = await this.queryService.deletePhoneRecord(phoneId)
+            const result = await this.queryService.deletePhoneRecord(phoneId, storeScope)
             results.push({ phone_id: phoneId, success: true, message: result.message })
           } catch (error) {
             results.push({ phone_id: phoneId, success: false, message: '操作失败' })
@@ -334,6 +352,9 @@ class QueryController {
         }
       })
     } catch (error) {
+      if (isStoreScopeError(error)) {
+        return ApiResponse.error(res, error.message, error.statusCode)
+      }
       log.error('QueryController: 批量操作失败:', error)
       return ApiResponse.serverError(res, '批量操作失败', error)
     }

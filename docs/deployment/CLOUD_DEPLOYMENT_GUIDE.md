@@ -586,9 +586,15 @@ sudo nginx -t && sudo systemctl reload nginx
 # 备份当前数据库
 mysqldump -u tf2025_user -p tf2025_prod > backup_$(date +%Y%m%d_%H%M%S).sql
 
-# 执行迁移脚本
-mysql -u tf2025_user -p tf2025_prod < migration_script.sql
+# 使用服务器本机生产环境文件预览统一结构迁移；默认不修改数据库
+cd /var/www/tf2025/backend
+NODE_ENV=production ENV_FILE=.env.production npm run migrate:schema
+
+# 核对目标库、备份和预览后显式执行
+NODE_ENV=production ENV_FILE=.env.production npm run migrate:schema -- --apply
 ```
+
+统一结构迁移会登记 `schema_migrations(id, name, checksum, applied_at, execution_time)`，并使用数据库命名锁阻止并发执行。历史独立迁移脚本不会被自动重跑；checksum 不一致时必须停止部署并人工核对，禁止删除台账或修改 checksum 绕过。推荐发布顺序：数据库及上传目录备份 → 结构迁移预览 → `--apply` → 核验迁移台账 → 启动新版 → 验证健康检查。
 
 ### 上传目录与数据库 URL 同步
 
@@ -645,8 +651,11 @@ sudo chmod -R 755 /var/www/tf2025
 检查后端服务是否运行：
 ```bash
 pm2 status
+curl http://localhost:3000/live
 curl http://localhost:3000/health
 ```
+
+`/live` 只表示 Node 进程仍在运行；`/health` 会检查数据库就绪状态，数据库不可用时返回 503。生产应由云监控、宝塔或独立探针主动请求 `/health` 并告警；Nginx `proxy_next_upstream` 只处理请求失败后的被动重试，不能替代主动健康检查。
 
 ### 4. 前端白屏
 

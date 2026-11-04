@@ -25,6 +25,15 @@ const currentDebtDocument = 'docs/development/TECHNICAL_DEBT_PROGRESS.md'
 const historicalSnapshotMarker = '文档类型：历史审计快照'
 const archivedDocumentMarker = '文档类型：归档资料'
 const currentDebtLink = 'TECHNICAL_DEBT_PROGRESS.md'
+const compatibilityManifestPath = 'docs/archive/compatibility-routes/route-retirement-manifest.json'
+const compatibilityArchiveDocuments = [
+  'docs/archive/compatibility-routes/INDEX.md',
+  'docs/archive/compatibility-routes/SOURCE_BASELINE.md',
+  'docs/archive/compatibility-routes/batch-01-inventory-410.md',
+  'docs/archive/compatibility-routes/batch-02-canonical-replacements.md',
+  'docs/archive/compatibility-routes/batch-03-compatibility-adapters.md',
+  'docs/archive/compatibility-routes/batch-04-shop-media.md'
+]
 
 const walkMarkdown = (directory, output = []) => {
   if (!fs.existsSync(directory)) return output
@@ -47,6 +56,12 @@ const addMatches = (issues, repoRoot, relativePath, pattern, rule, message, allo
     }
   })
 }
+
+const sortedUnique = values => [...new Set(values)].sort()
+
+const sameStringSet = (left, right) => (
+  JSON.stringify(sortedUnique(left)) === JSON.stringify(sortedUnique(right))
+)
 
 export function scanDocumentationConflicts(repoRoot) {
   const issues = []
@@ -164,6 +179,120 @@ export function scanDocumentationConflicts(repoRoot) {
     'notification-authority-self-conflict',
     'useNotification.ts 是当前唯一公共入口，不得同时描述为已删除或已废弃。'
   )
+
+  const absoluteManifestPath = path.join(repoRoot, compatibilityManifestPath)
+  if (fs.existsSync(absoluteManifestPath)) {
+    let manifest
+    try {
+      manifest = JSON.parse(fs.readFileSync(absoluteManifestPath, 'utf8'))
+    } catch (error) {
+      issues.push({
+        rule: 'compatibility-manifest-json',
+        file: compatibilityManifestPath,
+        line: 1,
+        message: `兼容接口归档清单不是有效 JSON：${error.message}`
+      })
+    }
+
+    if (manifest) {
+      const entries = Array.isArray(manifest.entries) ? manifest.entries : []
+      const migrationIds = entries.map(entry => entry?.migration_id).filter(Boolean)
+      const compatibilityIds = entries.map(entry => entry?.compatibility_id).filter(Boolean)
+      const duplicateMigrationIds = migrationIds.filter((id, index) => migrationIds.indexOf(id) !== index)
+      const duplicateCompatibilityIds = compatibilityIds.filter((id, index) => compatibilityIds.indexOf(id) !== index)
+
+      if (entries.length === 0 || entries.some(entry => (
+        !entry?.migration_id || !entry?.method || !entry?.path || !entry?.source || !entry?.batch || !entry?.status
+      ))) {
+        issues.push({
+          rule: 'compatibility-manifest-shape',
+          file: compatibilityManifestPath,
+          line: 1,
+          message: '每个兼容接口归档条目必须包含 migration_id、method、path、source、batch 和 status。'
+        })
+      }
+
+      if (duplicateMigrationIds.length > 0 || duplicateCompatibilityIds.length > 0) {
+        issues.push({
+          rule: 'compatibility-manifest-duplicate-id',
+          file: compatibilityManifestPath,
+          line: 1,
+          message: '兼容接口归档清单存在重复 migration_id 或 compatibility_id。'
+        })
+      }
+
+      const summary = manifest.summary || {}
+      if (
+        summary.deprecated_routes !== entries.length ||
+        summary.compatibility_routes !== compatibilityIds.length ||
+        summary.deprecated_only_routes !== entries.length - compatibilityIds.length
+      ) {
+        issues.push({
+          rule: 'compatibility-manifest-count',
+          file: compatibilityManifestPath,
+          line: 1,
+          message: '兼容接口归档汇总数量与实际条目不一致。'
+        })
+      }
+
+      const routeRoot = path.join(repoRoot, 'backend/src/routes')
+      if (fs.existsSync(routeRoot)) {
+        const routeSource = fs.readdirSync(routeRoot, { withFileTypes: true })
+          .filter(entry => entry.isFile() && entry.name.endsWith('.js'))
+          .map(entry => fs.readFileSync(path.join(routeRoot, entry.name), 'utf8'))
+          .join('\n')
+        const codeMigrationIds = [...routeSource.matchAll(/migrationId:\s*['"]([^'"]+)['"]/g)].map(match => match[1])
+        const codeCompatibilityIds = [...routeSource.matchAll(/compatibilityId:\s*['"]([^'"]+)['"]/g)].map(match => match[1])
+
+        if (!sameStringSet(migrationIds, codeMigrationIds) || !sameStringSet(compatibilityIds, codeCompatibilityIds)) {
+          issues.push({
+            rule: 'compatibility-manifest-code-drift',
+            file: compatibilityManifestPath,
+            line: 1,
+            message: '归档清单中的 migration_id/compatibility_id 与 backend/src/routes 当前代码不一致。'
+          })
+        }
+      }
+
+      for (const entry of entries) {
+        if (entry?.source && !fs.existsSync(path.join(repoRoot, entry.source))) {
+          issues.push({
+            rule: 'compatibility-manifest-source',
+            file: compatibilityManifestPath,
+            line: 1,
+            message: `归档条目的源码文件不存在：${entry.source}`
+          })
+        }
+      }
+    }
+
+    for (const relativePath of compatibilityArchiveDocuments) {
+      if (!fs.existsSync(path.join(repoRoot, relativePath))) {
+        issues.push({
+          rule: 'compatibility-archive-structure',
+          file: relativePath,
+          line: 1,
+          message: '兼容接口删除前归档缺少规定的索引、基线或批次文档。'
+        })
+      }
+    }
+
+    for (const relativePath of [
+      'docs/guides/compatibility-route-retirement-ledger.md',
+      currentDebtDocument,
+      'docs/archive/INDEX.md'
+    ]) {
+      const absolutePath = path.join(repoRoot, relativePath)
+      if (!fs.existsSync(absolutePath) || !fs.readFileSync(absolutePath, 'utf8').includes('archive/compatibility-routes')) {
+        issues.push({
+          rule: 'compatibility-archive-link',
+          file: relativePath,
+          line: 1,
+          message: '兼容接口台账、全局待办和归档索引必须记录删除前归档位置。'
+        })
+      }
+    }
+  }
 
   for (const relativePath of navigationDocuments) {
     const absolutePath = path.join(repoRoot, relativePath)

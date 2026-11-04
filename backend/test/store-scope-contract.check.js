@@ -11,13 +11,50 @@ const read = relativePath => fs.readFileSync(path.join(root, relativePath), 'utf
 
 test('comprehensive query rejects manually selected stores outside the user scope', () => {
   const controller = read('src/controllers/query.controller.js')
+  const storeScope = read('src/utils/store-scope.js')
 
-  assert.match(controller, /const getRequestedStoreId = \(value\) =>/)
   assert.match(controller, /const validateRequestedStoreScope = \(req, res\) =>/)
-  assert.match(controller, /if \(isSuperAdmin\(req\.user\)\) return null/)
-  assert.match(controller, /!userStoreIds\.includes\(requestedStoreId\)/)
-  assert.match(controller, /无权查询该门店数据/)
+  assert.match(controller, /resolveStoreScope\(req\.user, req\.query\.store_id\)/)
+  assert.match(storeScope, /if \(isSuperAdmin\(user\)\)/)
+  assert.match(storeScope, /!userStoreIds\.includes\(requestedStoreId\)/)
+  assert.match(storeScope, /无权访问该门店数据/)
   assert.equal((controller.match(/validateRequestedStoreScope\(req, res\)/g) || []).length, 3)
+})
+
+test('stock-in and return-goods mutations share the canonical store scope guard', () => {
+  const stockIn = read('src/routes/stock-in.js')
+  const controller = read('src/controllers/query.controller.js')
+  const repository = read('src/repositories/query.repository.js')
+
+  assert.match(stockIn, /resolveStoreScope\(req\.user, store_id\)/)
+  assert.match(stockIn, /assertStoreInScope\(storeScope, existingRecords\[0\]\.store_id\)/)
+  assert.match(controller, /returnToStock\(id, operatorId, returnInfo, storeScope\)/)
+  assert.match(repository, /SELECT status, store_id FROM phones WHERE id = \? FOR UPDATE/)
+  assert.match(repository, /WHERE id = \? AND status IN \('sold', 'peer_transfer', 'supplier_proxy'\)/)
+})
+
+test('analytics requires backend permission and an authorized store scope', () => {
+  const route = read('src/routes/analytics.js')
+  const customerPage = read('../frontend/src/views/analytics/page/CustomerAnalytics.vue')
+  const employeePage = read('../frontend/src/views/analytics/page/EmployeeAnalytics.vue')
+  const salesPage = read('../frontend/src/views/analytics/page/SalesAnalytics.vue')
+  const analyticsPage = read('../frontend/src/views/analytics/AnalyticsView.vue')
+  const analyticsApi = read('../frontend/src/api/analytics.ts')
+
+  assert.match(route, /router\.use\(unifiedAuth, requirePermission\('analytics:view'\), enforceAnalyticsStoreScope\)/)
+  assert.match(route, /请选择授权门店后再查看分析数据/)
+  assert.match(route, /router\.use\('\/customers', requirePermission\('customers:view'\)\)/)
+  assert.match(route, /router\.use\('\/inventory', requirePermission\('inventory:view'\)\)/)
+  assert.match(customerPage, /getCustomerSegments\(params\)/)
+  assert.match(customerPage, /getCustomerActivity\(params\)/)
+  assert.match(customerPage, /getCustomerDetail\(selectedCustomer\.value\.id, getStoreParams\(\)\)/)
+  assert.match(employeePage, /getEmployeeRoles\(params\)/)
+  assert.match(employeePage, /getEmployeeAttendance\(params\)/)
+  assert.match(employeePage, /getSalesTrends\(\{[\s\S]*\.\.\.getStoreParams\(\)/)
+  assert.match(salesPage, /sales-by-condition'[\s\S]*params/)
+  assert.match(salesPage, /period: forecastPeriod\.value,[\s\S]*\.\.\.getStoreParams\(\)/)
+  assert.match(analyticsPage, /getCachedStores\(true\)/)
+  assert.match(analyticsApi, /getCustomerSegments\(params\?: \{[\s\S]*store_id\?: number/)
 })
 
 test('strict store options remain separate from inventory and sales store access', () => {
@@ -28,5 +65,6 @@ test('strict store options remain separate from inventory and sales store access
   assert.match(storesRoute, /strict_scope/)
   assert.match(storesRoute, /if \(strictStoreScope && !isSuperAdmin\(req\.user\)\)/)
   assert.match(referenceOptions, /strictScope \? '\/stores\?all=true&strict_scope=true' : '\/stores\?all=true'/)
-  assert.match(queryController, /storeIds: userStoreIds/)
+  assert.match(queryController, /storeIds: storeScope\.storeIds/)
+  assert.match(queryController, /allStores: storeScope\.allStores/)
 })

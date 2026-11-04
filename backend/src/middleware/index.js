@@ -1,6 +1,7 @@
 const express = require('express')
 const { unifiedAuth, optionalAuth, requireRole } = require('./unified-auth')
 const log = require('../utils/log')
+const { livenessHandler, readinessHandler } = require('../utils/health')
 
 // 导入安全中间件
 const { corsMiddleware, corsLogger } = require('./cors')
@@ -88,16 +89,9 @@ function setupBasicMiddleware(app) {
  * @param {Router} routes 路由模块
  */
 function setupRoutes(app, routes) {
-  // 健康检查端点
-  app.get('/health', (req, res) => {
-    res.json({
-      success: true,
-      status: 'success',
-      message: '服务运行正常',
-      timestamp: new Date().toISOString(),
-      uptime: process.uptime()
-    })
-  })
+  // /live 只检查进程；/health 执行真实数据库就绪检查。
+  app.get('/live', livenessHandler)
+  app.get('/health', readinessHandler)
 
   // API路由
   app.use('/api', validateGlobalCSRFToken, routes)

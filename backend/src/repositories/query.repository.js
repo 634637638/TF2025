@@ -1,6 +1,7 @@
 const BaseRepository = require('./base.repository')
 const { hasColumn, hasTable } = require('../services/schemaInspector.service')
 const log = require('../utils/log')
+const { appendStoreScopeCondition, StoreScopeError } = require('../utils/store-scope')
 const {
   COMPLETED_TRANSACTION_STATUSES,
   getEffectivePhoneStatusSql,
@@ -637,7 +638,7 @@ class QueryRepository extends BaseRepository {
   /**
    * 获取退库记录列表
    */
-  async getReturnGoodsRecords(filters = {}) {
+  async getReturnGoodsRecords(filters = {}, storeScope = {}) {
     const page = Math.max(parseInt(filters.page, 10) || 1, 1)
     const page_size = Math.min(Math.max(parseInt(filters.page_size, 10) || 20, 1), 100)
     const offset = (page - 1) * page_size
@@ -647,6 +648,7 @@ class QueryRepository extends BaseRepository {
 
     const whereConditions = []
     const params = []
+    appendStoreScopeCondition(storeScope, 'p.store_id', whereConditions, params)
 
     if (keyword) {
       whereConditions.push(`(
@@ -787,7 +789,7 @@ class QueryRepository extends BaseRepository {
     }
   }
 
-  async updateReturnGoodsRecord(recordId, payload = {}) {
+  async updateReturnGoodsRecord(recordId, payload = {}, storeScope = {}) {
     const db = this.getConnection()
     const updateFields = []
     const params = []
@@ -821,12 +823,17 @@ class QueryRepository extends BaseRepository {
       throw new Error('没有可更新的字段')
     }
 
-    params.push(recordId)
+    const scopeConditions = []
+    const scopeParams = []
+    appendStoreScopeCondition(storeScope, 'p.store_id', scopeConditions, scopeParams)
+    const scopeWhere = scopeConditions.length > 0 ? scopeConditions.join(' AND ') : '1 = 1'
+    params.push(recordId, ...scopeParams)
 
     const [result] = await db.execute(
-      `UPDATE sale_reversal_logs
-       SET ${updateFields.join(', ')}, updated_at = NOW()
-       WHERE id = ?`,
+      `UPDATE sale_reversal_logs srl
+       INNER JOIN phones p ON p.id = srl.phone_id
+       SET ${updateFields.map(field => `srl.${field}`).join(', ')}, srl.updated_at = NOW()
+       WHERE srl.id = ? AND ${scopeWhere}`,
       params
     )
 
@@ -837,11 +844,17 @@ class QueryRepository extends BaseRepository {
     return true
   }
 
-  async deleteReturnGoodsRecord(recordId) {
+  async deleteReturnGoodsRecord(recordId, storeScope = {}) {
     const db = this.getConnection()
+    const scopeConditions = []
+    const scopeParams = []
+    appendStoreScopeCondition(storeScope, 'p.store_id', scopeConditions, scopeParams)
+    const scopeWhere = scopeConditions.length > 0 ? scopeConditions.join(' AND ') : '1 = 1'
     const [result] = await db.execute(
-      'DELETE FROM sale_reversal_logs WHERE id = ?',
-      [recordId]
+      `DELETE srl FROM sale_reversal_logs srl
+       INNER JOIN phones p ON p.id = srl.phone_id
+       WHERE srl.id = ? AND ${scopeWhere}`,
+      [recordId, ...scopeParams]
     )
 
     if (!result.affectedRows) {
@@ -855,7 +868,7 @@ class QueryRepository extends BaseRepository {
   /**
    * 退库操作 - 删除购买信息，恢复库存状态
    */
-  async returnToStock(phoneId, operatorId, returnInfo = {}) {
+  async returnToStock(phoneId, operatorId, returnInfo = {}, storeScope = {}) {
     const pool = this.getConnection()
     let connection
 
@@ -868,7 +881,7 @@ class QueryRepository extends BaseRepository {
 
       // 1. 获取手机当前信息
       const [phoneRecords] = await connection.execute(
-        'SELECT status FROM phones WHERE id = ?',
+        'SELECT status, store_id FROM phones WHERE id = ? FOR UPDATE',
         [phoneId]
       )
 
@@ -877,6 +890,9 @@ class QueryRepository extends BaseRepository {
       }
 
       const phone = phoneRecords[0]
+      if (!storeScope.allStores && !storeScope.storeIds?.includes(Number(phone.store_id))) {
+        throw new StoreScopeError('无权操作该门店数据')
+      }
 
       // 只允许退库已售出、同行批发、代供应商划拨的手机
       const allowedStatuses = ['sold', 'peer_transfer', 'supplier_proxy']
@@ -896,7 +912,10 @@ class QueryRepository extends BaseRepository {
         LEFT JOIN users sale_user ON s.operator_id = sale_user.id
         LEFT JOIN phones p ON s.phone_id = p.id
         LEFT JOIN users phone_sale_user ON p.sale_operator_id = phone_sale_user.id
-        WHERE s.phone_id = ?`,
+        WHERE s.phone_id = ?
+        ORDER BY s.id DESC
+        LIMIT 1
+        FOR UPDATE`,
         [phoneId]
       )
 
@@ -925,21 +944,26 @@ class QueryRepository extends BaseRepository {
       })
 
       // 3. 删除销售记录
-      await connection.execute(
-        'DELETE FROM sales WHERE phone_id = ?',
-        [phoneId]
+      const [deleteSaleResult] = await connection.execute(
+        'DELETE FROM sales WHERE id = ?',
+        [originalSaleId]
       )
+      if (deleteSaleResult.affectedRows !== 1) {
+        throw new Error('销售记录状态已变化，请刷新后重试')
+      }
 
-      // 4. 更新手机状态，清除所有销售相关信息，恢复到入库时的原始状态
-      await connection.execute(
+      const [phoneUpdateResult] = await connection.execute(
         `UPDATE phones SET
           status = 'in_stock',
           sale_time = NULL,
           sale_price = NULL,
           sale_operator_id = NULL
-        WHERE id = ?`,
+        WHERE id = ? AND status IN ('sold', 'peer_transfer', 'supplier_proxy')`,
         [phoneId]
       )
+      if (phoneUpdateResult.affectedRows !== 1) {
+        throw new Error('手机状态已变化，请刷新后重试')
+      }
 
       // 5. 记录退库日志
       const remarks = returnInfo.remarks || `客户退库操作 - ${returnInfo.return_reason || '未指定原因'} (${returnInfo.handle_method || '未指定处理方式'})`
@@ -972,7 +996,7 @@ class QueryRepository extends BaseRepository {
   /**
    * 删除手机记录（包括关联的销售记录）
    */
-  async deletePhoneRecord(phoneId) {
+  async deletePhoneRecord(phoneId, storeScope = {}) {
     const pool = this.getConnection()
     let connection
 
@@ -982,6 +1006,17 @@ class QueryRepository extends BaseRepository {
 
       // 开始事务
       await connection.beginTransaction()
+
+      const [phoneRows] = await connection.execute(
+        'SELECT store_id FROM phones WHERE id = ? FOR UPDATE',
+        [phoneId]
+      )
+      if (phoneRows.length === 0) {
+        throw new Error('手机记录不存在')
+      }
+      if (!storeScope.allStores && !storeScope.storeIds?.includes(Number(phoneRows[0].store_id))) {
+        throw new StoreScopeError('无权操作该门店数据')
+      }
 
       // 1. 删除关联的销售记录
       await connection.execute(

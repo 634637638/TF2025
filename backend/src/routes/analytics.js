@@ -1,6 +1,11 @@
 const express = require('express')
 const router = express.Router()
-const { unifiedAuth, requireBusinessUser } = require('../middleware/unified-auth')
+const {
+  unifiedAuth,
+  requireBusinessUser,
+  requirePermission,
+  requireAnyPermission
+} = require('../middleware/unified-auth')
 const ApiResponse = require('../utils/response')
 const { getDatabase, isConnected } = require('../config/database')
 const SalaryCalculatorService = require('../services/salary-calculator.service')
@@ -9,8 +14,53 @@ const DashboardRepository = require('../repositories/dashboard.repository')
 const log = require('../utils/log')
 const os = require('os')
 const deprecatedRoute = require('../middleware/deprecated-route')
+const { isStoreScopeError, resolveStoreScope } = require('../utils/store-scope')
 
 const dashboardRepository = new DashboardRepository()
+
+const enforceAnalyticsStoreScope = (req, res, next) => {
+  try {
+    const storeScope = resolveStoreScope(req.user, req.query.store_id)
+    if (storeScope.allStores) {
+      req.storeScope = storeScope
+      return next()
+    }
+
+    if (storeScope.storeIds.length === 0) {
+      return ApiResponse.error(res, '当前账号未关联任何门店，无法查看分析数据', 403)
+    }
+
+    if (storeScope.requestedStoreId === null) {
+      if (storeScope.storeIds.length > 1) {
+        return ApiResponse.error(res, '请选择授权门店后再查看分析数据', 400)
+      }
+      req.query.store_id = String(storeScope.storeIds[0])
+    }
+
+    req.storeScope = storeScope
+    return next()
+  } catch (error) {
+    if (isStoreScopeError(error)) {
+      return ApiResponse.error(res, error.message, error.statusCode)
+    }
+    return next(error)
+  }
+}
+
+router.use(unifiedAuth, requirePermission('analytics:view'), enforceAnalyticsStoreScope)
+router.use('/inventory', requirePermission('inventory:view'))
+router.use('/customers', requirePermission('customers:view'))
+router.use(['/employee-performance', '/employees'], requirePermission('salary:view'))
+router.use('/attendance', requireAnyPermission([
+  'attendance:view',
+  'attendance:view:own',
+  'attendance:view:all'
+]))
+router.use('/employees/attendance', requireAnyPermission([
+  'attendance:view',
+  'attendance:view:own',
+  'attendance:view:all'
+]))
 
 function formatDateString(date) {
   const year = date.getFullYear()
@@ -146,12 +196,14 @@ function buildStoreFilterClause(storeId, {
   }
 }
 
-async function calculatePayrollSnapshot(db, periodStart, periodEnd) {
+async function calculatePayrollSnapshot(db, periodStart, periodEnd, storeId = null) {
   const [employeeRows] = await db.execute(
     `SELECT id
      FROM users
      WHERE status = 1
        AND salary_template_id IS NOT NULL`
+      + (storeId !== null ? ' AND store_id = ?' : ''),
+    storeId !== null ? [storeId] : []
   )
 
   const summary = {
@@ -386,6 +438,7 @@ router.get('/sales', unifiedAuth, requireBusinessUser, async (req, res) => {
 // 获取全新机/二手机销量趋势
 const getSalesTrends = async (req, res) => {
   try {
+    const storeId = parseOptionalInt(req.query.store_id)
     const period = String(req.query.period || 'monthly')
     const periodConfig = {
       daily: { expression: 'DATE(s.sale_time)', days: 30 },
@@ -407,6 +460,10 @@ const getSalesTrends = async (req, res) => {
       `s.sale_time >= DATE_SUB(CURDATE(), INTERVAL ${periodConfig.days} DAY)`
     ]
     const params = []
+    if (storeId !== null) {
+      conditions.push('s.store_id = ?')
+      params.push(storeId)
+    }
     const startDate = req.query.start_date
     const endDate = req.query.end_date
     if (startDate) {
@@ -1202,6 +1259,7 @@ router.get('/customers', unifiedAuth, requireBusinessUser, async (req, res) => {
 // 获取实时数据
 router.get('/realtime', unifiedAuth, requireBusinessUser, async (req, res) => {
   try {
+    const storeId = parseOptionalInt(req.query.store_id)
     if (!isConnected()) {
       return ApiResponse.serverError(res, '数据库连接失败')
     }
@@ -1216,6 +1274,7 @@ router.get('/realtime', unifiedAuth, requireBusinessUser, async (req, res) => {
       FROM sales_orders
       WHERE DATE(created_at) = CURDATE()
       AND order_status = 'completed'
+      ${storeId !== null ? 'AND store_id = ?' : ''}
     `
 
     // 获取待处理订单数
@@ -1223,11 +1282,12 @@ router.get('/realtime', unifiedAuth, requireBusinessUser, async (req, res) => {
       SELECT COUNT(*) as pending_count
       FROM sales_orders
       WHERE order_status IN ('pending', 'processing')
+      ${storeId !== null ? 'AND store_id = ?' : ''}
     `
 
     const [salesData, pendingData] = await Promise.all([
-      db.execute(todaySalesQuery),
-      db.execute(pendingOrdersQuery)
+      db.execute(todaySalesQuery, storeId !== null ? [storeId] : []),
+      db.execute(pendingOrdersQuery, storeId !== null ? [storeId] : [])
     ])
 
     const cpuCount = Math.max(os.cpus().length, 1)
@@ -1334,6 +1394,7 @@ function _generateCLVTrends() {
 router.get('/customers/growth', unifiedAuth, requireBusinessUser, async (req, res) => {
   try {
     const { period } = req.query
+    const storeId = parseOptionalInt(req.query.store_id)
 
     if (!isConnected()) {
       return ApiResponse.serverError(res, '数据库连接失败')
@@ -1347,15 +1408,16 @@ router.get('/customers/growth', unifiedAuth, requireBusinessUser, async (req, re
 
     const query = `
       SELECT
-        DATE(created_at) as date,
+        DATE(c.created_at) as date,
         COUNT(*) as newCustomers
-      FROM customers
-      WHERE created_at >= DATE_SUB(NOW(), INTERVAL ${days} DAY)
-      GROUP BY DATE(created_at)
+      FROM customers c
+      WHERE c.created_at >= DATE_SUB(NOW(), INTERVAL ${days} DAY)
+        ${storeId !== null ? 'AND c.store_id = ?' : ''}
+      GROUP BY DATE(c.created_at)
       ORDER BY date ASC
     `
 
-    const [results] = await db.execute(query)
+    const [results] = await db.execute(query, storeId !== null ? [storeId] : [])
 
     const labels = results.map(item => item.date)
     const values = results.map(item => item.newCustomers)
@@ -1499,6 +1561,7 @@ router.get('/customers/high-value', unifiedAuth, requireBusinessUser, async (req
 router.get('/customers/:id/detail', unifiedAuth, requireBusinessUser, async (req, res) => {
   try {
     const customerId = Number.parseInt(String(req.params.id), 10)
+    const storeId = parseOptionalInt(req.query.store_id)
     if (!Number.isSafeInteger(customerId) || customerId <= 0) {
       return ApiResponse.badRequest(res, '客户编号无效')
     }
@@ -1512,10 +1575,11 @@ router.get('/customers/:id/detail', unifiedAuth, requireBusinessUser, async (req
              COALESCE(SUM(sale_price), 0) AS amount
       FROM sales
       WHERE customer_id = ?
+        ${storeId !== null ? 'AND store_id = ?' : ''}
       GROUP BY DATE_FORMAT(sale_time, '%Y-%m')
       ORDER BY period DESC
       LIMIT 6
-    `, [customerId])
+    `, [customerId, ...(storeId !== null ? [storeId] : [])])
 
     const [preferenceRows] = await db.execute(`
       SELECT COALESCE(NULLIF(m.name, ''), NULLIF(b.name, ''), '其他') AS name,
@@ -1525,10 +1589,11 @@ router.get('/customers/:id/detail', unifiedAuth, requireBusinessUser, async (req
       LEFT JOIN models m ON m.id = p.model_id
       LEFT JOIN brands b ON b.id = p.brand_id
       WHERE s.customer_id = ?
+        ${storeId !== null ? 'AND s.store_id = ?' : ''}
       GROUP BY COALESCE(NULLIF(m.name, ''), NULLIF(b.name, ''), '其他')
       ORDER BY value DESC, name ASC
       LIMIT 8
-    `, [customerId])
+    `, [customerId, ...(storeId !== null ? [storeId] : [])])
 
     const trends = trendRows
       .slice()
@@ -1549,6 +1614,7 @@ router.get('/customers/:id/detail', unifiedAuth, requireBusinessUser, async (req
 // 获取客户细分数据
 router.get('/customers/segments', unifiedAuth, requireBusinessUser, async (req, res) => {
   try {
+    const storeId = parseOptionalInt(req.query.store_id)
     if (!isConnected()) {
       return ApiResponse.serverError(res, '数据库连接失败')
     }
@@ -1574,12 +1640,13 @@ router.get('/customers/segments', unifiedAuth, requireBusinessUser, async (req, 
         FROM customers c
         LEFT JOIN sales s ON c.id = s.customer_id
         WHERE c.status = 1
+          ${storeId !== null ? 'AND c.store_id = ?' : ''}
         GROUP BY c.id
       ) customerData
       GROUP BY segment
     `
 
-    const [results] = await db.execute(segmentQuery, [])
+    const [results] = await db.execute(segmentQuery, storeId !== null ? [storeId] : [])
 
     ApiResponse.success(res, results.map(item => ({
       segment: item.segment,
@@ -1597,6 +1664,7 @@ router.get('/customers/segments', unifiedAuth, requireBusinessUser, async (req, 
 router.get('/customers/retention', unifiedAuth, requireBusinessUser, async (req, res) => {
   try {
     const { cohort = 'monthly' } = req.query
+    const storeId = parseOptionalInt(req.query.store_id)
     const cohortConfig = {
       monthly: { unit: 'MONTH', windowMonths: 11, periods: '月' },
       quarterly: { unit: 'QUARTER', windowMonths: 23, periods: '季度' },
@@ -1627,9 +1695,10 @@ router.get('/customers/retention', unifiedAuth, requireBusinessUser, async (req,
         AND s.sale_time >= c.created_at
         AND s.sale_time < DATE_ADD(c.created_at, INTERVAL ${cohortConfig.unit === 'YEAR' ? 6 : cohortConfig.unit === 'QUARTER' ? 6 : 6} ${cohortConfig.unit})
       WHERE c.status = 1
+        ${storeId !== null ? 'AND c.store_id = ?' : ''}
         AND c.created_at >= DATE_SUB(CURDATE(), INTERVAL ${cohortConfig.windowMonths} MONTH)
       GROUP BY c.id, c.created_at, period_offset
-    `)
+    `, storeId !== null ? [storeId] : [])
 
     const cohortMap = new Map()
     const getCohortKey = dateValue => {
@@ -1676,6 +1745,7 @@ router.get('/customers/retention', unifiedAuth, requireBusinessUser, async (req,
 // 获取客户活跃度
 router.get('/customers/activity', unifiedAuth, requireBusinessUser, async (req, res) => {
   try {
+    const storeId = parseOptionalInt(req.query.store_id)
     if (!isConnected()) {
       return ApiResponse.serverError(res, '数据库连接失败')
     }
@@ -1699,12 +1769,13 @@ router.get('/customers/activity', unifiedAuth, requireBusinessUser, async (req, 
           FROM customers c
           INNER JOIN sales s ON c.id = s.customer_id
           WHERE c.status = 1
+            ${storeId !== null ? 'AND c.store_id = ?' : ''}
           GROUP BY c.id
         ) customer_activity
         GROUP BY activity_level
       ) as result
     `
-    const [activityDistResult] = await db.execute(activityDistributionQuery, [])
+    const [activityDistResult] = await db.execute(activityDistributionQuery, storeId !== null ? [storeId] : [])
 
     // 2. 活跃客户率（90天内有购买记录的客户占比）
     const activeRateQuery = `
@@ -1714,8 +1785,9 @@ router.get('/customers/activity', unifiedAuth, requireBusinessUser, async (req, 
       FROM customers c
       LEFT JOIN sales s ON c.id = s.customer_id
       WHERE c.status = 1
+        ${storeId !== null ? 'AND c.store_id = ?' : ''}
     `
-    const [activeRateResult] = await db.execute(activeRateQuery, [])
+    const [activeRateResult] = await db.execute(activeRateQuery, storeId !== null ? [storeId] : [])
     const rateData = activeRateResult[0] && activeRateResult[0][0] ? activeRateResult[0][0] : { total_customers: 0, active_customers: 0 }
     const activeRate = rateData.total_customers > 0
       ? ((rateData.active_customers / rateData.total_customers) * 100).toFixed(1)
@@ -1731,10 +1803,11 @@ router.get('/customers/activity', unifiedAuth, requireBusinessUser, async (req, 
         UNION SELECT 4 UNION SELECT 5 UNION SELECT 6
       ) days
       LEFT JOIN sales s ON DATE(s.sale_time) = DATE(DATE_SUB(NOW(), INTERVAL n DAY))
+        ${storeId !== null ? 'AND s.store_id = ?' : ''}
       GROUP BY DATE(DATE_SUB(NOW(), INTERVAL n DAY))
       ORDER BY date ASC
     `
-    const [weeklyActivityResult] = await db.execute(weeklyActivityQuery, [])
+    const [weeklyActivityResult] = await db.execute(weeklyActivityQuery, storeId !== null ? [storeId] : [])
 
     const dayNames = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
     const weeklyActivity = weeklyActivityResult.map(row => {
@@ -3362,7 +3435,11 @@ router.get('/employees/detail', unifiedAuth, requireBusinessUser, async (req, re
       // 在职员工
       db.execute(`SELECT COUNT(*) as count FROM users WHERE status = 1 ${storeFilter}`, userStoreParams),
       // 店铺数量
-      db.execute('SELECT COUNT(DISTINCT store_id) as count FROM users WHERE store_id IS NOT NULL'),
+      db.execute(
+        `SELECT COUNT(DISTINCT store_id) as count FROM users
+         WHERE store_id IS NOT NULL ${storeFilter}`,
+        userStoreParams
+      ),
       // 指定日期范围内全新机销量
       db.execute(
         `SELECT COUNT(*) as count
@@ -3384,7 +3461,7 @@ router.get('/employees/detail', unifiedAuth, requireBusinessUser, async (req, re
          WHERE status = 'sold' AND DATE(sale_time) >= ? AND DATE(sale_time) <= ? ${storeFilter}`,
         [queryStartDate, queryEndDate, ...phoneStoreParams]
       ),
-      calculatePayrollSnapshot(db, queryStartDate, queryEndDate)
+      calculatePayrollSnapshot(db, queryStartDate, queryEndDate, storeId)
     ])
 
     log.debug('📊 [员工分析] 查询结果:', {
@@ -3414,11 +3491,16 @@ router.get('/employees/detail', unifiedAuth, requireBusinessUser, async (req, re
       SELECT
         COUNT(CASE WHEN status = 'approved' THEN 1 END) as approved,
         COUNT(*) as total
-      FROM attendance_records
-      WHERE DATE(created_at) >= ? AND DATE(created_at) <= ?
-        AND status != 'cancelled'
+      FROM attendance_records ar
+      INNER JOIN users u ON u.id = ar.employee_id
+      WHERE DATE(ar.created_at) >= ? AND DATE(ar.created_at) <= ?
+        AND ar.status != 'cancelled'
+        ${storeId !== null ? 'AND u.store_id = ?' : ''}
     `
-    const [attendanceResult] = await db.execute(attendanceQuery, [queryStartDate, queryEndDate])
+    const [attendanceResult] = await db.execute(
+      attendanceQuery,
+      [queryStartDate, queryEndDate, ...(storeId !== null ? [storeId] : [])]
+    )
     const avgAttendance = attendanceResult[0]?.total > 0
       ? Math.round((attendanceResult[0].approved / attendanceResult[0].total) * 100)
       : 0
@@ -3465,6 +3547,7 @@ router.get('/employees/performance', unifiedAuth, requireBusinessUser, async (re
 
     const { metric = 'totalSales' } = req.query
     const pageSize = req.query.page_size ?? 20
+    const storeId = parseOptionalInt(req.query.store_id)
 
     if (!isConnected()) {
       log.error('[员工业绩] 数据库未连接')
@@ -3472,7 +3555,7 @@ router.get('/employees/performance', unifiedAuth, requireBusinessUser, async (re
     }
 
     const db = getDatabase()
-    const pageSizeNum = parseInt(String(pageSize)) || 20
+    const pageSizeNum = Math.min(100, Math.max(1, parseInt(String(pageSize), 10) || 20))
 
     log.debug('[员工业绩] 查询参数:', { metric, page_size: pageSize })
 
@@ -3511,13 +3594,17 @@ router.get('/employees/performance', unifiedAuth, requireBusinessUser, async (re
       LEFT JOIN stores s ON u.store_id = s.id
       LEFT JOIN phones p ON p.sale_operator_id = u.id AND MONTH(p.sale_time) = MONTH(CURDATE()) AND YEAR(p.sale_time) = YEAR(CURDATE())
       WHERE (u.status = 1 OR u.status = 'active')
+        ${storeId !== null ? 'AND u.store_id = ?' : ''}
       GROUP BY u.id, u.name, u.store_id, s.name
       ORDER BY ${orderBy}
-      LIMIT ${pageSizeNum}
+      LIMIT ?
     `
 
     log.debug('[员工业绩] 执行查询')
-    const [performanceData] = await db.execute(performanceQuery, [])
+    const [performanceData] = await db.query(
+      performanceQuery,
+      [...(storeId !== null ? [storeId] : []), pageSizeNum]
+    )
     log.debug('[员工业绩] 查询结果数量:', performanceData.length)
 
     // 获取本月实时工资数据（按工资计算口径，不依赖已生成工资记录）
@@ -3605,6 +3692,7 @@ router.get('/employees/performance', unifiedAuth, requireBusinessUser, async (re
  */
 router.get('/employees/roles', unifiedAuth, requireBusinessUser, async (req, res) => {
   try {
+    const storeId = parseOptionalInt(req.query.store_id)
     if (!isConnected()) {
       return ApiResponse.serverError(res, '数据库连接失败')
     }
@@ -3622,11 +3710,12 @@ router.get('/employees/roles', unifiedAuth, requireBusinessUser, async (req, res
       WHERE ur.status = 'active'
         AND u.status = 1
         AND r.is_active = 1
+        ${storeId !== null ? 'AND u.store_id = ?' : ''}
       GROUP BY r.id, r.name
       ORDER BY count DESC
     `
 
-    const [result] = await db.execute(query)
+    const [result] = await db.execute(query, storeId !== null ? [storeId] : [])
 
     const data = result.map(item => ({
       name: item.role_name,
@@ -3646,7 +3735,8 @@ router.get('/employees/roles', unifiedAuth, requireBusinessUser, async (req, res
 router.get('/employees/salary-trend', unifiedAuth, requireBusinessUser, async (req, res) => {
   try {
     const { months: monthParam = 6 } = req.query
-    const monthCount = parseInt(String(monthParam)) || 6
+    const monthCount = Math.min(24, Math.max(1, parseInt(String(monthParam), 10) || 6))
+    const storeId = parseOptionalInt(req.query.store_id)
 
     if (!isConnected()) {
       return ApiResponse.serverError(res, '数据库连接失败')
@@ -3656,16 +3746,18 @@ router.get('/employees/salary-trend', unifiedAuth, requireBusinessUser, async (r
 
     const query = `
       SELECT
-        DATE_FORMAT(period_start, '%Y-%m') as month,
-        COALESCE(SUM(net_salary), 0) as total
-      FROM salary_records
-      WHERE status != 'cancelled'
-        AND period_start >= DATE_SUB(DATE_FORMAT(NOW(), '%Y-%m-01'), INTERVAL ? MONTH)
-      GROUP BY DATE_FORMAT(period_start, '%Y-%m')
+        DATE_FORMAT(sr.period_start, '%Y-%m') as month,
+        COALESCE(SUM(sr.net_salary), 0) as total
+      FROM salary_records sr
+      INNER JOIN users u ON u.id = sr.employee_id
+      WHERE sr.status != 'cancelled'
+        AND sr.period_start >= DATE_SUB(DATE_FORMAT(NOW(), '%Y-%m-01'), INTERVAL ? MONTH)
+        ${storeId !== null ? 'AND u.store_id = ?' : ''}
+      GROUP BY DATE_FORMAT(sr.period_start, '%Y-%m')
       ORDER BY month ASC
     `
 
-    const [result] = await db.execute(query, [monthCount])
+    const [result] = await db.execute(query, [monthCount, ...(storeId !== null ? [storeId] : [])])
 
     const months = []
     const salaries = []
@@ -3693,6 +3785,7 @@ router.get('/employees/salary-trend', unifiedAuth, requireBusinessUser, async (r
  */
 router.get('/employees/attendance', unifiedAuth, requireBusinessUser, async (req, res) => {
   try {
+    const storeId = parseOptionalInt(req.query.store_id)
     if (!isConnected()) {
       return ApiResponse.serverError(res, '数据库连接失败')
     }
@@ -3701,16 +3794,18 @@ router.get('/employees/attendance', unifiedAuth, requireBusinessUser, async (req
 
     const query = `
       SELECT
-        record_type,
-        status,
+        ar.record_type,
+        ar.status,
         COUNT(*) as count
-      FROM attendance_records
-      WHERE DATE(created_at) >= DATE_FORMAT(NOW(), '%Y-%m-01')
-        AND status != 'cancelled'
-      GROUP BY record_type, status
+      FROM attendance_records ar
+      INNER JOIN users u ON u.id = ar.employee_id
+      WHERE DATE(ar.created_at) >= DATE_FORMAT(NOW(), '%Y-%m-01')
+        AND ar.status != 'cancelled'
+        ${storeId !== null ? 'AND u.store_id = ?' : ''}
+      GROUP BY ar.record_type, ar.status
     `
 
-    const [result] = await db.execute(query)
+    const [result] = await db.execute(query, storeId !== null ? [storeId] : [])
 
     // 统计各类出勤情况
     const stats = {

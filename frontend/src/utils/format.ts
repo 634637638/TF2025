@@ -4,7 +4,6 @@
  * 适配北京时间
  */
 import { TIME_FORMATS, TimeUtil } from './time'
-import { storage } from '@/services/storage'
 
 /**
  * 格式化货币
@@ -476,7 +475,6 @@ export const formatColor = (color: string): string => {
  */
 const IMAGE_FILE_PATTERN = /\.(png|jpe?g|gif|webp|bmp|svg|avif)(?:[?#].*)?$/i
 const KNOWN_IMAGE_PREFIXES = ['/uploads/', '/upload/', '/images/', '/static/', '/assets/', '/api/subsidy/files/', '/api/shared/files/']
-const PROTECTED_FILE_PREFIXES = ['/api/subsidy/files/', '/api/shared/files/']
 const FRONTEND_ROUTE_PATTERNS = [
   /^\/m(?:[/?#]|$)/,
   /^\/login(?:[/?#]|$)/,
@@ -575,18 +573,6 @@ export const formatImageUrl = (path: string | null | undefined): string => {
   const protectedSubsidyPath = normalizedPath.startsWith('/uploads/subsidy/')
     ? normalizedPath.replace('/uploads/subsidy/', '/api/subsidy/files/subsidy/')
     : normalizedPath
-  if (PROTECTED_FILE_PREFIXES.some(prefix => protectedSubsidyPath.startsWith(prefix))) {
-    const token = storage.getToken()
-    if (!token) {
-      return protectedSubsidyPath
-    }
-
-    const [pathname, query = ''] = protectedSubsidyPath.split('?', 2)
-    const searchParams = new URLSearchParams(query)
-    searchParams.set('token', token)
-    return `${pathname}?${searchParams.toString()}`
-  }
-
   // 开发环境：使用相对路径，通过 Vite 代理处理
   if (import.meta.env.DEV) {
     return protectedSubsidyPath

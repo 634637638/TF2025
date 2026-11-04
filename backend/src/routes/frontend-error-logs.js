@@ -3,6 +3,7 @@
 const express = require('express')
 const { getDatabase } = require('../config/database')
 const { unifiedAuth } = require('../middleware/unified-auth')
+const { frontendErrorLogRateLimit } = require('../middleware/rate-limit')
 const log = require('../utils/log')
 const {
   redactString,
@@ -49,7 +50,7 @@ const normalizeError = (entry, index) => {
   }
 }
 
-router.post('/errors', unifiedAuth, async (req, res) => {
+router.post('/errors', unifiedAuth, frontendErrorLogRateLimit, async (req, res) => {
   try {
     const userId = Number(req.user?.id)
     if (!Number.isInteger(userId) || userId <= 0) {

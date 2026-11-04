@@ -23,7 +23,7 @@ AI 协作从根目录 [AGENTS.md](../AGENTS.md) 开始；[CLAUDE.md](../CLAUDE.m
 | 安全 | [安全文档索引](security/INDEX.md) | 密钥管理、公开接口风险与审计记录 |
 | 开发进展 | [开发记录索引](development/INDEX.md) | 有日期的实施、审计与进度快照 |
 | 全站逐页审计 | [前后端逐页与路由模块审计](development/full-stack-page-audit-2026-11-02.md) | 2026-11-02 的逐页审计快照；不代表此后代码或线上状态 |
-| 兼容接口清理 | [兼容接口与弃用路由台账](guides/compatibility-route-retirement-ledger.md) | 旧接口迁移、权限差异、日志观察和逐项删除条件 |
+| 兼容接口清理 | [兼容接口与弃用路由台账](guides/compatibility-route-retirement-ledger.md) | 旧接口迁移、权限差异、日志观察和逐项删除条件；删除前资料存放在 `archive/compatibility-routes/` |
 | 组件专题 | [组件专题索引](components/INDEX.md) | 组件指南和旧资料迁移入口 |
 | 示例 | [代码示例索引](examples/INDEX.md) | 组件示例；实际要求以现行规范为准 |
 | 数据优化 | [数据优化与导入索引](数据优化/INDEX.md) | 智能导入与匹配专题 |

@@ -87,6 +87,7 @@ export class AnalyticsApi {
     period: 'daily' | 'weekly' | 'monthly' | 'quarterly'
     start_date?: string
     end_date?: string
+    store_id?: number
   }): Promise<AnalyticsApiResponse<AnalyticsRecord[]>> {
     return await unifiedApi.get('/analytics/sales/trends', { params })
   }
@@ -164,6 +165,7 @@ export class AnalyticsApi {
 
   async getCustomerSegments(params?: {
     type?: 'rfm' | 'value' | 'behavior'
+    store_id?: number
   }): Promise<AnalyticsApiResponse<CustomerSegment[]>> {
     return await unifiedApi.get('/analytics/customers/segments', { params })
   }
@@ -171,6 +173,7 @@ export class AnalyticsApi {
   async getCustomerRetention(params?: {
     period?: 'monthly' | 'quarterly' | 'yearly',
     cohort?: 'monthly' | 'quarterly' | 'yearly'
+    store_id?: number
   }): Promise<AnalyticsApiResponse<AnalyticsRecord>> {
     return await unifiedApi.get('/analytics/customers/retention', { params })
   }
@@ -178,12 +181,14 @@ export class AnalyticsApi {
   async getCustomerLifetimeValue(params?: {
     segment?: string
     period?: string
+    store_id?: number
   }): Promise<AnalyticsApiResponse<AnalyticsRecord>> {
     return await unifiedApi.get('/analytics/customers/lifetime-value', { params })
   }
 
   async getCustomerGrowth(params?: {
     period: '7d' | '30d' | '90d'
+    store_id?: number
   }): Promise<AnalyticsApiResponse<AnalyticsRecord>> {
     return await unifiedApi.get('/analytics/customers/growth', { params })
   }
@@ -199,15 +204,19 @@ export class AnalyticsApi {
     return await unifiedApi.get('/analytics/customers/high-value', { params })
   }
 
-  async getCustomerDetail(customerId: number): Promise<AnalyticsApiResponse<{
+  async getCustomerDetail(customerId: number, params?: {
+    store_id?: number
+  }): Promise<AnalyticsApiResponse<{
     trends: Array<{ period: string; amount: number }>
     preferences: Array<{ name: string; value: number }>
   }>> {
-    return await unifiedApi.get(`/analytics/customers/${customerId}/detail`)
+    return await unifiedApi.get(`/analytics/customers/${customerId}/detail`, { params })
   }
 
-  async getCustomerActivity(): Promise<AnalyticsApiResponse<AnalyticsRecord>> {
-    return await unifiedApi.get('/analytics/customers/activity')
+  async getCustomerActivity(params?: {
+    store_id?: number
+  }): Promise<AnalyticsApiResponse<AnalyticsRecord>> {
+    return await unifiedApi.get('/analytics/customers/activity', { params })
   }
 
   // 财务分析
@@ -432,22 +441,28 @@ export class AnalyticsApi {
   async getEmployeePerformance(params?: {
     metric?: string
     page_size?: number
+    store_id?: number | string
   }): Promise<AnalyticsApiResponse<AnalyticsRecord[]>> {
     return await unifiedApi.get('/analytics/employees/performance', { params })
   }
 
-  async getEmployeeRoles(): Promise<AnalyticsApiResponse<AnalyticsRecord[]>> {
-    return await unifiedApi.get('/analytics/employees/roles')
+  async getEmployeeRoles(params?: {
+    store_id?: number | string
+  }): Promise<AnalyticsApiResponse<AnalyticsRecord[]>> {
+    return await unifiedApi.get('/analytics/employees/roles', { params })
   }
 
   async getEmployeeSalaryTrend(params?: {
     months?: number
+    store_id?: number | string
   }): Promise<AnalyticsApiResponse<SalaryTrendApiData>> {
     return await unifiedApi.get('/analytics/employees/salary-trend', { params })
   }
 
-  async getEmployeeAttendance(): Promise<AnalyticsApiResponse<AnalyticsRecord[]>> {
-    return await unifiedApi.get('/analytics/employees/attendance')
+  async getEmployeeAttendance(params?: {
+    store_id?: number | string
+  }): Promise<AnalyticsApiResponse<AnalyticsRecord[]>> {
+    return await unifiedApi.get('/analytics/employees/attendance', { params })
   }
 
   async getAttendanceSummary(params?: {

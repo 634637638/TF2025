@@ -35,7 +35,10 @@ npm run build
 sudo nginx -t && sudo systemctl reload nginx
 
 # 后端服务器：从本机确认 Node 健康检查
+curl http://127.0.0.1:3000/live
 curl http://127.0.0.1:3000/health
 ```
+
+发布包含数据库结构变更时，先备份数据库和上传目录，再在后端目录使用服务器本机 `.env.production` 运行 `npm run migrate:schema` 预览；确认目标库后才运行 `npm run migrate:schema -- --apply`。`/live` 只用于进程存活检查，`/health` 用于数据库就绪和发布验证，生产监控必须主动请求 `/health`。
 
 生产密钥不得写入部署文档、命令历史、前端 `.env.production` 或发布包。后端 `.env.production` 留在后端服务器本机，并由 `backend/ecosystem.production.config.js` 加载。

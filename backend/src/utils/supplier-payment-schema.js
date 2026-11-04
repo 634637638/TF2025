@@ -1,4 +1,5 @@
 const { getDatabase } = require('../config/database')
+const { schemaChangesAllowed } = require('./schema-change-policy')
 
 let ensurePromise = null
 
@@ -7,6 +8,7 @@ let ensurePromise = null
  * The check is idempotent so existing installations receive the column safely.
  */
 async function ensureSupplierPaymentSchema() {
+  if (!schemaChangesAllowed()) return
   if (!ensurePromise) {
     ensurePromise = (async () => {
       const db = getDatabase()
