@@ -9,7 +9,7 @@
   />
   <ProductDetail
     v-else-if="isUsedProduct"
-    :product-id="productId"
+    :product-id="productId ?? undefined"
   />
   <AggregatedProductDetail v-else />
 </template>

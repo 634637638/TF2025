@@ -163,6 +163,7 @@ import type { TableColumn } from '@/types'
 
 type TableRow = Record<string, unknown>
 type SortOrder = 'ascending' | 'descending' | null
+type TableSortOrder = Exclude<SortOrder, null>
 
 interface PaginatedTableColumn extends Omit<TableColumn, 'key' | 'formatter'> {
   key: string
@@ -194,7 +195,7 @@ interface Props {
   border?: boolean
   size?: 'large' | 'default' | 'small'
   rowKey?: string | ((_row: TableRow) => string | number)
-  defaultSort?: { prop: string; order: SortOrder }
+  defaultSort?: { prop: string; order: TableSortOrder }
 
   // 功能开关
   searchable?: boolean

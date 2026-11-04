@@ -343,17 +343,15 @@ import { getActionColumnMinWidth, getTextColumnMinWidth } from '@/utils/table-la
 import { formatSalaryNumber } from '../salary-formatters'
 import type { SalaryTemplate } from '@/types/salary'
 
-type SalaryTemplateRow = Partial<SalaryTemplate> & { id: number, name: string }
-
 interface SalaryTemplateTableInstance {
-  toggleRowExpansion: (_row: SalaryTemplateRow, _expanded: boolean) => void
+  toggleRowExpansion: (_row: SalaryTemplate, _expanded: boolean) => void
 }
 
 const props = defineProps<{
   canDelete: boolean
   canEdit: boolean
   canViewField: (_moduleKey: string, _fieldName: string) => boolean
-  filteredTemplates: SalaryTemplateRow[]
+  filteredTemplates: SalaryTemplate[]
   getEmployeeCount: (_templateId: number) => number
   isMobile: boolean
   loading: boolean
@@ -362,18 +360,18 @@ const props = defineProps<{
   searchExpanded: boolean
   searchText: string
   statusFilter?: boolean
-  templates: SalaryTemplateRow[]
+  templates: SalaryTemplate[]
 }>()
 
 const emit = defineEmits<{
-  delete: [row: SalaryTemplateRow]
-  edit: [row: SalaryTemplateRow]
+  delete: [row: SalaryTemplate]
+  edit: [row: SalaryTemplate]
   paginationChange: [page: number, pageSize: number]
   reset: []
   search: []
-  setDefault: [row: SalaryTemplateRow]
+  setDefault: [row: SalaryTemplate]
   statusChange: []
-  toggleStatus: [row: SalaryTemplateRow]
+  toggleStatus: [row: SalaryTemplate]
   'update:page': [value: number]
   'update:pageSize': [value: number]
   'update:searchExpanded': [value: boolean]
@@ -459,7 +457,7 @@ const resetInteraction = () => {
   lastTapTimestamp.value = 0
 }
 
-const handleRowTap = (row: SalaryTemplateRow) => {
+const handleRowTap = (row: SalaryTemplate) => {
   if (!props.isMobile) return
 
   const now = Date.now()

@@ -169,7 +169,7 @@
               </template>
             </el-table-column>
             <el-table-column
-              v-if="['customers', 'suppliers'].includes(currentCheck?.key)"
+              v-if="currentCheck?.key && ['customers', 'suppliers'].includes(currentCheck.key)"
               prop="phone"
               label="电话"
               width="130"
@@ -600,7 +600,7 @@ const handleViewItem = async (key: DataCheckKey) => {
   }
 
   loading.value = true
-  currentCheck.value = checkItems.find(item => item.key === key)
+  currentCheck.value = checkItems.find(item => item.key === key) || null
   viewMode.value = 'all'
 
   try {
@@ -794,7 +794,7 @@ const handleCheckItem = async (key: DataCheckKey) => {
   }
 
   loading.value = true
-  currentCheck.value = checkItems.find(item => item.key === key)
+  currentCheck.value = checkItems.find(item => item.key === key) || null
   viewMode.value = 'duplicates'
   try {
     const checkMethods: Record<DataCheckKey, () => Promise<Awaited<ReturnType<typeof dataCheckApi.checkBrands>>>> = {
@@ -948,6 +948,12 @@ const handleMergeGroup = async (group: DataDuplicateGroup) => {
     return
   }
 
+  const currentCheckItem = currentCheck.value
+  if (!currentCheckItem) {
+    ElMessage.warning('请先选择检查项')
+    return
+  }
+
   try {
     // 检查是否有重复记录
     if (!group.duplicates || group.duplicates.length === 0) {
@@ -974,13 +980,13 @@ const handleMergeGroup = async (group: DataDuplicateGroup) => {
     }
 
     await dataCheckApi.mergeDuplicates({
-      type: currentCheck.value.key,
+      type: currentCheckItem.key,
       primary_id: group.primary.id,
       duplicate_ids: duplicate_ids
     })
 
     ElMessage.success('合并成功')
-    handleCheckItem(currentCheck.value.key)
+    handleCheckItem(currentCheckItem.key)
   } catch (error: unknown) {
     if (error !== 'cancel') {
       ElMessage.error('合并失败: ' + (error instanceof Error ? error.message : '未知错误'))
@@ -990,6 +996,12 @@ const handleMergeGroup = async (group: DataDuplicateGroup) => {
 
 const handleDeleteGroup = async (group: DataDuplicateGroup) => {
   if (!ensureDeletePermission()) {
+    return
+  }
+
+  const currentCheckItem = currentCheck.value
+  if (!currentCheckItem) {
+    ElMessage.warning('请先选择检查项')
     return
   }
 
@@ -1026,12 +1038,12 @@ const handleDeleteGroup = async (group: DataDuplicateGroup) => {
         // 提取该组的ID（从key中解析，格式为 "ID:123"）
         const targetId = parseInt(group.key.replace('ID:', ''))
 
-        const response = await dataCheckApi.cleanupData(currentCheck.value.key, [targetId])
+        const response = await dataCheckApi.cleanupData(currentCheckItem.key, [targetId])
         const result = response.data
 
         if (result && result.cleaned > 0) {
           ElMessage.success(result.message || '清理成功')
-          handleCheckItem(currentCheck.value.key)
+          handleCheckItem(currentCheckItem.key)
         } else {
           ElMessage.info(result?.message || '该ID没有重复记录需要清理')
         }
@@ -1052,13 +1064,13 @@ const handleDeleteGroup = async (group: DataDuplicateGroup) => {
     }
 
     await dataCheckApi.batchDeleteDuplicates({
-      type: currentCheck.value.key,
+      type: currentCheckItem.key,
       ids: duplicate_ids
     })
 
     ElMessage.success('删除成功')
     selectedDuplicates.value = []
-    handleCheckItem(currentCheck.value.key)
+    handleCheckItem(currentCheckItem.key)
   } catch (error: unknown) {
     if (error !== 'cancel') {
       ElMessage.error('删除失败: ' + (error instanceof Error ? error.message : '未知错误'))
@@ -1073,6 +1085,12 @@ const handleMergeSelected = async () => {
 
   if (selectedDuplicates.value.length === 0) {
     ElMessage.warning('请先选择要合并的记录')
+    return
+  }
+
+  const currentCheckItem = currentCheck.value
+  if (!currentCheckItem) {
+    ElMessage.warning('请先选择检查项')
     return
   }
 
@@ -1153,13 +1171,13 @@ const handleMergeSelected = async () => {
       }))
 
       await dataCheckApi.batchMergeMultipleGroups({
-        type: currentCheck.value.key,
+        type: currentCheckItem.key,
         merge_groups: merge_groups
       })
 
       ElMessage.success(`成功合并 ${groupsToMerge.length} 个重复组，共 ${totalToMerge} 条记录`)
       selectedDuplicates.value = []
-      handleCheckItem(currentCheck.value.key)
+      handleCheckItem(currentCheckItem.key)
     } finally {
       globalLoading.stopLoading(loadingTaskId)
     }
@@ -1172,6 +1190,12 @@ const handleMergeSelected = async () => {
 
 const handleDeleteSelected = async () => {
   if (!ensureDeletePermission()) {
+    return
+  }
+
+  const currentCheckItem = currentCheck.value
+  if (!currentCheckItem) {
+    ElMessage.warning('请先选择检查项')
     return
   }
 
@@ -1233,7 +1257,7 @@ const handleDeleteSelected = async () => {
 
       try {
         const idsToCleanup = groupsToCleanup.map(g => g.id)
-        const response = await dataCheckApi.cleanupData(currentCheck.value.key, idsToCleanup)
+        const response = await dataCheckApi.cleanupData(currentCheckItem.key, idsToCleanup)
         const result = response.data
 
         if (result && result.cleaned > 0) {
@@ -1243,7 +1267,7 @@ const handleDeleteSelected = async () => {
         }
 
         selectedDuplicates.value = []
-        handleCheckItem(currentCheck.value.key)
+        handleCheckItem(currentCheckItem.key)
       } finally {
         globalLoading.stopLoading(loadingTaskId)
       }
@@ -1286,13 +1310,13 @@ const handleDeleteSelected = async () => {
 
     try {
       await dataCheckApi.batchDeleteDuplicates({
-        type: currentCheck.value.key,
+        type: currentCheckItem.key,
         ids: deletableIds
       })
 
       ElMessage.success('删除成功')
       selectedDuplicates.value = []
-      handleCheckItem(currentCheck.value.key)
+      handleCheckItem(currentCheckItem.key)
     } finally {
       globalLoading.stopLoading(loadingTaskId)
     }
@@ -1306,6 +1330,12 @@ const handleDeleteSelected = async () => {
 // 一键清理所有重复行
 const handleCleanupAllDuplicates = async () => {
   if (!ensureDeletePermission()) {
+    return
+  }
+
+  const currentCheckItem = currentCheck.value
+  if (!currentCheckItem) {
+    ElMessage.warning('请先选择检查项')
     return
   }
 
@@ -1334,7 +1364,7 @@ const handleCleanupAllDuplicates = async () => {
         )
 
         // 重新加载数据
-        await handleCheckItem(currentCheck.value.key)
+        await handleCheckItem(currentCheckItem.key)
       } else {
         throw new Error(response.data?.message || '清理失败')
       }
@@ -1365,16 +1395,24 @@ const handleSaveEdit = async () => {
     return
   }
 
+
+  const currentCheckItem = currentCheck.value
+  const itemId = editingItemId.value
+  if (!currentCheckItem || itemId === null) {
+    ElMessage.warning('请选择要编辑的数据')
+    return
+  }
+
   try {
     await dataCheckApi.editData(
-      currentCheck.value.key,
-      editingItemId.value!,
+      currentCheckItem.key,
+      itemId,
       editForm
     )
 
     ElMessage.success('保存成功')
     showEditDialog.value = false
-    handleCheckItem(currentCheck.value.key)
+    handleCheckItem(currentCheckItem.key)
   } catch (error: unknown) {
     ElMessage.error('保存失败: ' + (error instanceof Error ? error.message : '未知错误'))
   }
@@ -1382,6 +1420,13 @@ const handleSaveEdit = async () => {
 
 const handleDeleteItem = async (item: DataCheckRecord, _itemIndex: number, group: DataDuplicateGroup) => {
   if (!ensureDeletePermission()) {
+    return
+  }
+
+
+  const currentCheckItem = currentCheck.value
+  if (!currentCheckItem) {
+    ElMessage.warning('请先选择检查项')
     return
   }
 
@@ -1399,7 +1444,7 @@ const handleDeleteItem = async (item: DataCheckRecord, _itemIndex: number, group
       )
 
       // 使用 cleanupData API 删除该ID的重复行
-      const response = await dataCheckApi.cleanupData(currentCheck.value.key, [group.primary.id])
+      const response = await dataCheckApi.cleanupData(currentCheckItem.key, [group.primary.id])
       const result = response.data
 
       if (result && result.cleaned > 0) {
@@ -1408,7 +1453,7 @@ const handleDeleteItem = async (item: DataCheckRecord, _itemIndex: number, group
         ElMessage.info(result?.message || '没有需要删除的数据')
       }
 
-      handleCheckItem(currentCheck.value.key)
+      handleCheckItem(currentCheckItem.key)
       return
     }
 
@@ -1423,9 +1468,9 @@ const handleDeleteItem = async (item: DataCheckRecord, _itemIndex: number, group
       }
     )
 
-    await dataCheckApi.deleteData(currentCheck.value.key, item.id)
+    await dataCheckApi.deleteData(currentCheckItem.key, item.id)
     ElMessage.success('删除成功')
-    handleCheckItem(currentCheck.value.key)
+    handleCheckItem(currentCheckItem.key)
   } catch (error: unknown) {
     if (error !== 'cancel') {
       ElMessage.error('删除失败: ' + (error instanceof Error ? error.message : '未知错误'))

@@ -104,7 +104,8 @@ class UnifiedStorageService {
       try {
         return JSON.parse(raw) as T
       } catch {
-        return raw as unknown as T
+        const legacyValue: unknown = raw
+        return legacyValue as T
       }
     }
   }

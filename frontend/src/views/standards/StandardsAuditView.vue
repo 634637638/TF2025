@@ -226,6 +226,7 @@
       max-width="calc(100vw - 32px)"
       dialog-class="standards-detail-dialog"
       :show-default-footer="false"
+      @close="stopPreviewLoading"
     >
       <template v-if="selectedStandard">
         <div class="standard-detail">
@@ -554,7 +555,7 @@
                     <i class="fas fa-play" />
                     {{ previewLoadingActive ? '演示中...' : '演示 Loading' }}
                   </el-button>
-                  <span class="preview-loading-demo__hint">点击后显示全局遮罩，约 2 秒自动结束</span>
+                  <span class="preview-loading-demo__hint">等待全局显示延迟后展示遮罩，约 2 秒后结束</span>
                 </div>
                 <template v-else-if="selectedStandard.document === 'empty-state-standard.md'">
                   <DataEmptyState
@@ -737,6 +738,7 @@ import { usePagePermissions } from '@/composables/usePagePermissions'
 import { getAdaptiveActionColumnWidth } from '@/utils/table-layout'
 import { TIME_FORMATS, TimeUtil } from '@/utils/time'
 import { useLoadingStore } from '@/stores/loading'
+import { GLOBAL_LOADING_SHOW_DELAY_MS } from '@/constants/loading'
 import { useMobile } from '@/composables/mobile'
 import IconRenderer from '@/components/IconRenderer.vue'
 import menuBarsIcon from '@/assets/icons/menu-bars.svg?raw'
@@ -858,7 +860,7 @@ const runPreviewLoading = () => {
     loadingStore.stopLoading(previewLoadingOperationId)
     previewLoadingTimer = undefined
     previewLoadingActive.value = false
-  }, 2200)
+  }, GLOBAL_LOADING_SHOW_DELAY_MS + 2200)
 }
 
 const resetPreviewState = () => {

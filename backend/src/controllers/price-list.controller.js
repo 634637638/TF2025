@@ -351,9 +351,7 @@ class PriceListController {
     try {
       initDb()
       const priceListService = getPriceListService()
-      // 支持 hidePassword 参数，默认为 true（隐藏密码）
-      const hidePassword = req.query.hidePassword !== 'false' && req.query.hidePassword !== false
-      const result = await priceListService.getSyncConfig(hidePassword)
+      const result = await priceListService.getSyncConfig()
       if (result.success) {
         return ApiResponse.success(res, result.data, result.message)
       }

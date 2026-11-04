@@ -3,7 +3,8 @@
  * 解决多个API实例冲突问题
  */
 
-import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, AxiosError, InternalAxiosRequestConfig } from 'axios'
+import axios, { AxiosHeaders, AxiosInstance, AxiosRequestConfig, AxiosResponse, AxiosError, InternalAxiosRequestConfig } from 'axios'
+import type { RawAxiosHeaders } from 'axios'
 import { PermissionMapper } from './permissionMapper'
 import { globalErrorLogger } from './error-logger'
 import { ErrorLevel, ErrorType } from './error-boundary'
@@ -180,7 +181,13 @@ class UnifiedApiManager {
    */
   private handleResponse(response: AxiosResponse): AxiosResponse {
     const requestConfig = response.config as RequestConfig
-    const metadata = requestConfig.metadata
+    const metadata = requestConfig.metadata || {
+      requestId: 'unknown',
+      startTime: Date.now(),
+      url: requestConfig.url,
+      method: requestConfig.method?.toUpperCase(),
+      cacheGeneration: this.cacheGeneration
+    }
 
     // 如果是缓存响应，直接返回
     if (requestConfig.cachedResponse) {
@@ -515,7 +522,7 @@ class UnifiedApiManager {
       type = ErrorType.PERMISSION
     } else if (status === 422) {
       type = ErrorType.VALIDATION
-    } else if (status >= 500) {
+    } else if (typeof status === 'number' && status >= 500) {
       type = ErrorType.JAVASCRIPT
     }
 
@@ -607,6 +614,8 @@ class UnifiedApiManager {
    * 添加认证头信息
    */
   private addAuthHeaders(config: RequestConfig): void {
+    const headers = AxiosHeaders.from(config.headers as RawAxiosHeaders | AxiosHeaders | undefined)
+    config.headers = headers
     const urlPath = config.url || ''
     const isH5AuthApi = urlPath.startsWith('/public/auth/')
     const isH5AuthAnonymousApi = isH5AuthApi && (
@@ -625,19 +634,19 @@ class UnifiedApiManager {
     }
 
     if (token) {
-      config.headers.Authorization = `Bearer ${token}`
-    } else if (config.headers.Authorization) {
-      delete config.headers.Authorization
+      headers.set('Authorization', `Bearer ${token}`)
+    } else {
+      headers.delete('Authorization')
     }
 
     // 添加设备信息
-    config.headers['X-Device-Info'] = JSON.stringify({
+    headers.set('X-Device-Info', JSON.stringify({
       userAgent: navigator.userAgent,
       platform: navigator.platform,
       language: navigator.language,
       screenResolution: `${screen.width}x${screen.height}`,
       timestamp: Date.now()
-    })
+    }))
 
     // 添加权限映射转换头信息
     // 将前端的详细权限代码转换为后端期望的简单格式
@@ -646,7 +655,7 @@ class UnifiedApiManager {
     // 根据URL路径和HTTP方法确定需要的权限
     const requiredPermission = this.convertPermissionForAPI(urlPath, method)
     if (requiredPermission) {
-      config.headers['X-Required-Permission'] = requiredPermission
+      headers.set('X-Required-Permission', requiredPermission)
     }
   }
 
@@ -866,8 +875,10 @@ class UnifiedApiManager {
     }
 
     const token = await this.getCSRFToken()
+    const headers = AxiosHeaders.from(config.headers as RawAxiosHeaders | AxiosHeaders | undefined)
+    config.headers = headers
     if (token) {
-      config.headers['X-CSRF-Token'] = token
+      headers.set('X-CSRF-Token', token)
       return
     }
 
@@ -876,7 +887,7 @@ class UnifiedApiManager {
       .querySelector('meta[name="csrf-token"]') as HTMLMetaElement | null
     const csrfToken = csrfMeta?.content
     if (csrfToken) {
-      config.headers['X-CSRF-Token'] = csrfToken
+      headers.set('X-CSRF-Token', csrfToken)
     }
   }
 

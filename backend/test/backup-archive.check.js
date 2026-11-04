@@ -15,9 +15,12 @@ test('backup compression supports the current archiver module export', async t =
 
   t.after(() => fs.rmSync(root, { recursive: true, force: true }))
 
-  await backupService.compressBackup(source, output)
+  const result = await backupService.compressBackup(source, output)
 
   const signature = fs.readFileSync(output).subarray(0, 4)
   assert.deepEqual([...signature], [0x50, 0x4b, 0x03, 0x04])
   assert.ok(fs.statSync(output).size > 20)
+  assert.equal(result.file_count, 1)
+  assert.equal(result.size_bytes, fs.statSync(output).size)
+  assert.ok(result.duration_ms >= 0)
 })

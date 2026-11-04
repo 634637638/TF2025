@@ -1,27 +1,42 @@
 const crypto = require('crypto')
-const jwt = require('jsonwebtoken')
-const config = require('../config')
+const { signJwt, verifyJwt } = require('./security-keyring')
 
 const TOKEN_TYPE = 'inventory-query'
 const TOKEN_ISSUER = 'tf2025-backend'
 const TOKEN_AUDIENCE = 'tf2025-inventory-query'
 
-function createInventoryQueryToken(user) {
-  return jwt.sign(
+function createInventoryQueryToken(user, options = {}) {
+  return signJwt(
+    'INVENTORY_QUERY',
     {
       sub: String(user.id),
       name: user.name,
       type: TOKEN_TYPE,
       jti: crypto.randomUUID()
     },
-    config.jwt.secret,
     {
-      algorithm: 'HS256',
       expiresIn: '10m',
       issuer: TOKEN_ISSUER,
       audience: TOKEN_AUDIENCE
-    }
+    },
+    options.sourceKey
   )
+}
+
+function verifyInventoryQueryToken(token, options = {}) {
+  const payload = verifyJwt('INVENTORY_QUERY', token, {
+    issuer: TOKEN_ISSUER,
+    audience: TOKEN_AUDIENCE
+  }, {
+    current: options.sourceKey,
+    previous: options.previousSourceKey
+  })
+
+  if (payload.type !== TOKEN_TYPE) {
+    throw new Error('Invalid inventory query token type')
+  }
+
+  return payload
 }
 
 function requireInventoryQueryToken(req, res, next) {
@@ -36,15 +51,7 @@ function requireInventoryQueryToken(req, res, next) {
   }
 
   try {
-    const payload = jwt.verify(token, config.jwt.secret, {
-      algorithms: ['HS256'],
-      issuer: TOKEN_ISSUER,
-      audience: TOKEN_AUDIENCE
-    })
-
-    if (payload.type !== TOKEN_TYPE) {
-      throw new Error('Invalid inventory query token type')
-    }
+    const payload = verifyInventoryQueryToken(token)
 
     req.inventoryQueryUser = payload
     next()
@@ -59,5 +66,6 @@ function requireInventoryQueryToken(req, res, next) {
 
 module.exports = {
   createInventoryQueryToken,
-  requireInventoryQueryToken
+  requireInventoryQueryToken,
+  verifyInventoryQueryToken
 }

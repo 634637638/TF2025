@@ -46,6 +46,7 @@ const iconsRoutes = require('./icons')
 const stockInRoutes = require('./stock-in')
 const queryRoutes = require('./query')
 const rentalRoutes = require('./rentals')
+const frontendErrorLogRoutes = require('./frontend-error-logs')
 
 // 新的权限管理路由
 const moduleManagementRoutes = require('./module-management')
@@ -208,6 +209,7 @@ router.use('/icons', iconsRoutes)
 router.use('/stock-in', stockInRoutes)
 router.use('/query', queryRoutes)
 router.use('/rentals', rentalRoutes)
+router.use('/logs', frontendErrorLogRoutes)
 // router.use('/sales-orders', salesOrdersRoutes);
 // router.use('/operator-assignments', operatorAssignmentsRoutes);
 
@@ -337,7 +339,22 @@ router.use('/sales-management', salesManagementRoutes)
 const enableDevTempRoutes = process.env.NODE_ENV === 'development' && process.env.ENABLE_DEV_TEMP_ROUTES === 'true'
 
 if (enableDevTempRoutes) {
-  router.post('/temp/make-admin', unifiedAuth, requirePermission('permissions:admin'), async (req, res) => {
+  const auditDevTempRoute = action => (req, _res, next) => {
+    log.warn('开发临时接口访问', {
+      action,
+      method: req.method,
+      path: req.path,
+      user_id: req.user?.id || null,
+      request_id: req.requestId || null
+    })
+    next()
+  }
+
+  log.warn('开发临时接口已启用', {
+    routes: ['/temp/make-admin', '/temp/migrate-home-sections']
+  })
+
+  router.post('/temp/make-admin', unifiedAuth, requirePermission('permissions:admin'), auditDevTempRoute('make_admin'), async (req, res) => {
     try {
       const db = require('../config/database')
       const { username } = req.body
@@ -356,7 +373,7 @@ if (enableDevTempRoutes) {
         message: `用户 ${username} 已设置为管理员，请重新登录`
       })
     } catch (error) {
-      log.debug('设置管理员失败:', error)
+      log.error('开发临时接口设置管理员失败:', error)
       res.status(500).json({
         success: false,
         message: '设置失败'
@@ -365,7 +382,7 @@ if (enableDevTempRoutes) {
   })
 
   // 临时端点：执行首页推荐表迁移
-  router.post('/temp/migrate-home-sections', unifiedAuth, requirePermission('permissions:admin'), async (req, res) => {
+  router.post('/temp/migrate-home-sections', unifiedAuth, requirePermission('permissions:admin'), auditDevTempRoute('migrate_home_sections'), async (req, res) => {
     try {
       const db = require('../config/database')
       const fs = require('fs')
@@ -389,10 +406,10 @@ if (enableDevTempRoutes) {
         }
       })
     } catch (error) {
-      log.debug('迁移失败:', error)
+      log.error('开发临时接口迁移首页推荐失败:', error)
       res.status(500).json({
         success: false,
-        message: error.message
+        message: '迁移失败'
       })
     }
   })

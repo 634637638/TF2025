@@ -477,7 +477,7 @@ const loadProductByTemplateId = async (templateId: number, sequence = loadSequen
         memories: templateData.price_options?.map(po => ({
           id: po.memory_id,
           name: po.memory_name,
-          price: po.display_price || po.sale_price,
+          price: Number(po.display_price || po.sale_price || 0),
           // 使用模板的库存数量，如果没有则使用聚合数据的总库存
           stock: Number(po.stock || aggregatedData.total_stock || 0)
         })) || aggregatedData.memories || []
@@ -509,7 +509,7 @@ const loadProductByTemplateId = async (templateId: number, sequence = loadSequen
         brand_name: templateData.brand_name,
         model_id: templateData.model_id,
         model_name: templateData.model_name,
-        color_id: templateData.color_id,
+        color_id: Number(templateData.color_id || 0),
         color_name: templateData.color_name,
         is_new: 1,
         min_price: calculatedMinPrice,
@@ -522,7 +522,7 @@ const loadProductByTemplateId = async (templateId: number, sequence = loadSequen
         memories: templateData.price_options?.map(po => ({
           id: po.memory_id,
           name: po.memory_name,
-          price: po.display_price || po.sale_price,
+          price: Number(po.display_price || po.sale_price || 0),
           // 使用模板的库存数量，如果没有则使用总库存
           stock: Number(po.stock || templateData.stock_count || 0)
         })) || []

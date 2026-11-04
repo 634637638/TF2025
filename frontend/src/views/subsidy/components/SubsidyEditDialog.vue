@@ -255,7 +255,7 @@
                 v-for="store in stores"
                 :key="store.id"
                 :label="store.name"
-                :value="store.id"
+                :value="store.id ?? ''"
               />
             </el-select>
             <div class="form-tip">
@@ -590,7 +590,8 @@ const loadBaseData = async (item: NationalSubsidyRecord | null = null) => {
 const handleBrandChange = async () => {
   if (!editForm.value) return
   editForm.value.phone_model = ''
-  const brand = brands.value.find(value => value.name === editForm.value.phone_brand)
+  const phoneBrand = editForm.value.phone_brand
+  const brand = brands.value.find(value => value.name === phoneBrand)
   if (brand) await loadModelsForBrand(brand.id)
 }
 

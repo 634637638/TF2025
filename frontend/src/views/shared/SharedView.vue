@@ -738,11 +738,20 @@ const renderRichText = (content:string) => {
 const formatSize = (bytes:number) => { if(!bytes)return '0 B'; const units=['B','KB','MB','GB']; const index=Math.min(Math.floor(Math.log(bytes)/Math.log(1024)),units.length-1); return `${(bytes/Math.pow(1024,index)).toFixed(index?1:0)} ${units[index]}` }
 const formatDateTime = (value:string) => value ? formatGlobalDateTime(value, 'YYYY-MM-DD HH:mm') : '-'
 const fileUrl = (url:string) => {
-  if (!url.startsWith('/uploads/shared/')) return url.startsWith('http') ? url : url.startsWith('/') ? url : `/${url}`
-  const filename=url.split('/').pop()||''
-  const token=String(authStore.token||'')
-  return `/api/shared/files/${encodeURIComponent(filename)}${token?`?token=${encodeURIComponent(token)}`:''}`
+  return url.startsWith('http') ? url : url.startsWith('/') ? url : `/${url}`
 }
+const storageUrl = (file:SharedAttachment) => {
+  if (file.storage_url?.startsWith('/uploads/shared/')) return file.storage_url
+  const match=String(file.url||'').match(/\/api\/shared\/files\/([^?#/]+)/)
+  if(match){try{return `/uploads/shared/${decodeURIComponent(match[1])}`}catch{return ''}}
+  return file.url.startsWith('/uploads/shared/') ? file.url : ''
+}
+const persistableAttachment = (file:SharedAttachment):SharedAttachment => ({
+  url: storageUrl(file),
+  name: file.name,
+  type: file.type,
+  size: file.size
+})
 const normalizeRichTextForStorage = (content:string) => {
   const container=document.createElement('div')
   container.innerHTML=content
@@ -913,7 +922,7 @@ const uploadInlineDocument = async (event:Event) => {
   }
 }
 const cleanupUnsavedInlineUploads = async () => {
-  const urls = inlineUploaded.value.map(file => file.url)
+  const urls = inlineUploaded.value.map(storageUrl).filter(Boolean)
   inlineUploaded.value = []
   if (urls.length) await deleteTempFiles(urls)
 }
@@ -965,7 +974,7 @@ const openEdit = async (id: number) => {
   form.attachments = [...post.attachments]
   inlineUploaded.value = []
   originalInlineUrls.value = new Set(
-    post.attachments.filter(file => post.content.includes(file.url)).map(file => file.url)
+    post.attachments.filter(file => post.content.includes(file.url)).map(storageUrl).filter(Boolean)
   )
   detailVisible.value = false
   editorVisible.value = true
@@ -984,23 +993,23 @@ const savePost = async () => {
   saving.value = true
   try {
     const retainedExisting = form.attachments.filter(
-      file => !originalInlineUrls.value.has(file.url) || storageContent.includes(file.url)
+      file => !originalInlineUrls.value.has(storageUrl(file)) || storageContent.includes(storageUrl(file))
     )
-    const retainedInline = inlineUploaded.value.filter(file => storageContent.includes(file.url))
-    const removedInline = inlineUploaded.value.filter(file => !storageContent.includes(file.url))
+    const retainedInline = inlineUploaded.value.filter(file => storageContent.includes(storageUrl(file)))
+    const removedInline = inlineUploaded.value.filter(file => !storageContent.includes(storageUrl(file)))
     const payload = pickVisibleSharedFields({
       ...form,
       content: storageContent,
       visibility: canChooseVisibility.value ? form.visibility : 'public',
       category: form.category.trim(),
-      attachments: [...retainedExisting, ...retainedInline]
+      attachments: [...retainedExisting, ...retainedInline].map(persistableAttachment)
     }, sharedPayloadFieldMap)
     const response = editingId.value
       ? await api.put<SharedPost>(`/shared/${editingId.value}`, payload)
       : await api.post<SharedPost>('/shared', payload)
 
     if (removedInline.length) {
-      await deleteTempFiles(removedInline.map(file => file.url))
+      await deleteTempFiles(removedInline.map(storageUrl).filter(Boolean))
     }
     if (response.success) {
       ElMessage.success(editingId.value ? '经验分享已更新' : '经验分享已发布')

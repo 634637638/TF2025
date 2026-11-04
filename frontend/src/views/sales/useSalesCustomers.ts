@@ -30,6 +30,28 @@ interface UseSalesCustomersOptions {
 
 type InputValue = string | Event | { target?: EventTarget | null } | null | undefined
 
+interface SalesCustomerCreatePayload {
+  name: string
+  phone: string
+  apple_id: string | null
+  email: string | null
+  gender: string | null
+  birthday: string | null
+  id_card: string | null
+  address: string | null
+  city: string | null
+  province: string | null
+  postal_code: string | null
+  customer_type: 'individual'
+  vip_level: 'normal'
+  notes: string
+  tags: string[] | null
+  blacklist: 0
+  credit_rating: 'good'
+  preferred_contact: 'phone'
+  source: 'sales'
+}
+
 const getApiErrorMessage = (error: unknown, fallback: string) => {
   const candidate = error as { response?: { data?: { message?: unknown } } }
   return typeof candidate?.response?.data?.message === 'string'
@@ -46,7 +68,7 @@ const readInputValue = (valueOrEvent: InputValue) => {
   return target instanceof HTMLInputElement ? target.value : ''
 }
 
-const buildCustomerPayload = (name: string, phone: string, appleId: string) => ({
+const buildCustomerPayload = (name: string, phone: string, appleId: string): SalesCustomerCreatePayload => ({
   name,
   phone,
   apple_id: appleId || null,

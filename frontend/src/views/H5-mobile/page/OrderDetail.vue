@@ -458,7 +458,8 @@ const paymentStep = ref<'select' | 'pay'>('select')
 // 计算订单是否已过期
 const isOrderExpired = computed(() => {
   if (!orderData.value || !orderData.value.expires_at) return false
-  return TimeUtil.parse(orderData.value.expires_at).isBefore(TimeUtil.now())
+  const expiresAt = TimeUtil.parse(orderData.value.expires_at)
+  return expiresAt ? expiresAt.isBefore(TimeUtil.now()) : false
 })
 
 // 获取订单详情
@@ -526,8 +527,8 @@ const getStatusText = (status: string) => {
 }
 
 // 获取支付方式文本
-const getPaymentText = (method: string) => {
-  return getPaymentMethodLabel(method, shopConfig.value)
+const getPaymentText = (method?: string) => {
+  return getPaymentMethodLabel(method || '', shopConfig.value)
 }
 
 // 计算剩余时间（秒）
@@ -536,13 +537,14 @@ const calculateRemainingTime = () => {
     return 0
   }
   const now = TimeUtil.now().valueOf()
-  const expiresAt = TimeUtil.parse(orderData.value.expires_at).valueOf()
-  const remaining = Math.max(0, Math.floor((expiresAt - now) / 1000))
+  const expiresAt = TimeUtil.parse(orderData.value.expires_at)
+  if (!expiresAt) return 0
+  const remaining = Math.max(0, Math.floor((expiresAt.valueOf() - now) / 1000))
   return remaining
 }
 
 // 格式化时间（支持日期字符串和秒数）
-const formatTime = (time: string | number) => {
+const formatTime = (time?: string | number | null) => {
   // 如果是数字，作为秒数处理
   if (typeof time === 'number') {
     if (time <= 0) return '00:00:00'
@@ -576,7 +578,7 @@ const startCountdown = () => {
       remainingTime.value = remaining
 
       if (remaining <= 0) {
-        clearInterval(countdownTimer)
+        if (countdownTimer) clearInterval(countdownTimer)
         // 重新加载订单状态
         loadOrder()
       }
@@ -658,8 +660,11 @@ const handleCancelOrder = async () => {
       }
     )
 
+    const order = orderData.value
+    if (!order) return
+
     cancelling.value = true
-    const orderId = Number(orderData.value.id)
+    const orderId = Number(order.id)
     if (!Number.isInteger(orderId) || orderId <= 0) {
       throw new Error('订单标识无效，无法取消订单')
     }

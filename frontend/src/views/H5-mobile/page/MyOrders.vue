@@ -278,7 +278,7 @@ const loadMore = async () => {
 }
 
 // 获取状态文本
-const getStatusText = (status: string) => {
+const getStatusText = (status?: string) => {
   const texts: Record<string, string> = {
     pending: '待支付',
     paid: '已支付',
@@ -286,16 +286,16 @@ const getStatusText = (status: string) => {
     completed: '已完成',
     cancelled: '已取消'
   }
-  return texts[status] || '未知'
+  return texts[status || ''] || '未知'
 }
 
 // 获取支付方式文本
-const getPaymentText = (method: string) => {
-  return getPaymentMethodLabel(method)
+const getPaymentText = (method?: string) => {
+  return getPaymentMethodLabel(method || '')
 }
 
 // 格式化时间
-const formatTime = (time: string) => {
+const formatTime = (time?: string) => {
   if (!time) return ''
   return formatGlobalDateTime(time, 'YYYY-MM-DD HH:mm')
 }

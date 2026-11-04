@@ -3,6 +3,11 @@ const log = require('../utils/log')
 const { DEFAULT_CORS_ORIGINS } = require('../config/constants')
 
 const allowedOrigins = DEFAULT_CORS_ORIGINS
+const isProduction = process.env.NODE_ENV === 'production'
+
+if (isProduction && allowedOrigins.includes('*')) {
+  throw new Error('生产环境 ALLOWED_ORIGINS 不能包含 *，请配置明确来源列表')
+}
 
 // CORS配置选项
 const corsOptions = {
@@ -40,14 +45,16 @@ const corsOptions = {
     'X-Device-Info',
     'X-Required-Permission',
     'X-CSRF-Token',
-    'X-Inventory-Query-Token'
+    'X-Inventory-Query-Token',
+    'X-Request-ID'
   ],
 
   // 暴露给客户端的响应头
   exposedHeaders: [
     'X-Total-Count',
     'X-Page-Count',
-    'X-Login-Attempts-Remaining'
+    'X-Login-Attempts-Remaining',
+    'X-Request-ID'
   ],
 
   // 是否允许发送凭据（cookies, authorization headers等）
@@ -74,7 +81,7 @@ const developmentCorsOptions = {
 }
 
 // 根据环境选择CORS配置
-const corsMiddleware = process.env.NODE_ENV === 'production'
+const corsMiddleware = isProduction
   ? cors(corsOptions)
   : cors(developmentCorsOptions)
 

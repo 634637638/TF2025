@@ -126,7 +126,8 @@ const cartId = ref('')
 
 // 是否全选
 const isAllSelected = computed(() => {
-  return cartData.value?.items.length > 0 && selectedItems.value.size === cartData.value?.items.length
+  const itemCount = cartData.value?.items.length || 0
+  return itemCount > 0 && selectedItems.value.size === itemCount
 })
 
 // 选中商品总价
@@ -240,7 +241,8 @@ const confirmDelete = (item: CartItem) => {
 // 侧滑删除
 const handleSwipe = (itemId: number) => {
   // 可以在这里实现侧滑删除逻辑
-  confirmDelete(cartData.value.items.find((item: CartItem) => item.id === itemId))
+  const item = cartData.value?.items.find((cartItem: CartItem) => cartItem.id === itemId)
+  if (item) confirmDelete(item)
 }
 
 // 去结算
@@ -250,7 +252,10 @@ const goCheckout = () => {
     return
   }
 
-  const selectedItemsList = cartData.value.items.filter((item: CartItem) => selectedItems.value.has(item.cart_id))
+  const cart = cartData.value
+  if (!cart) return
+
+  const selectedItemsList = cart.items.filter((item: CartItem) => selectedItems.value.has(item.cart_id))
 
   // 构建结算商品数据
   const checkoutItems = selectedItemsList.map((item: CartItem) => ({

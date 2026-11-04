@@ -43,7 +43,7 @@
 | 接口、日志、导出机器值 | `TimeUtil.toISOString()` |
 | 中文显示 | `TIME_FORMATS.DISPLAY`、`TIME_FORMATS.DISPLAY_DATE` |
 
-允许使用 `TimeUtil.format(value, '业务确有需要的自定义格式')`，但不允许在多个页面重复定义同一格式。可复用的格式必须先补充到 `TIME_FORMATS`。
+新增业务格式先补充到 `TIME_FORMATS`，调用方再引用其值，不能直接传自定义格式字面量。公共适配层确需接收动态格式时，应核对调用来源并经过专项审查，不在页面绕过格式审计。
 
 ## 日期输入和接口值
 
@@ -70,14 +70,16 @@
 
 ## 示例
 
-```ts
+```ts check
 import { TIME_FORMATS, TimeUtil } from '@/utils/time'
 
-const today = TimeUtil.nowFormatted('DATE')
-const localInput = TimeUtil.nowFormatted('DATETIME_LOCAL')
-const exportTime = TimeUtil.toISOString()
-const displayTime = TimeUtil.format(record.created_at, TIME_FORMATS.DATETIME)
-const monthStart = TimeUtil.format(TimeUtil.startOf(TimeUtil.now(), 'month'), TIME_FORMATS.DATE)
+export const today = TimeUtil.nowFormatted(TIME_FORMATS.DATE)
+export const localInput = TimeUtil.nowFormatted(TIME_FORMATS.DATETIME_LOCAL)
+export const exportTime = TimeUtil.toISOString()
+export function displayTime(createdAt: string): string {
+  return TimeUtil.format(createdAt, TIME_FORMATS.DATETIME)
+}
+export const monthStart = TimeUtil.format(TimeUtil.startOf(TimeUtil.now(), 'month'), TIME_FORMATS.DATE)
 ```
 
 ## 验证

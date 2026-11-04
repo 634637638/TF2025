@@ -53,12 +53,26 @@ export const findPhoneByRouteId = (
   routePhoneId: string
 ): Phone | undefined => records.find(phone => String(phone.id) === routePhoneId)
 
+const phoneStatuses: Phone['status'][] = [
+  'sold', 'reserved', 'maintenance', 'repair', 'rented', 'lost', 'damaged',
+  'returned', 'in_stock', 'peer_transfer', 'supplier_proxy'
+]
+
+const normalizePhoneStatus = (value: unknown): Phone['status'] => (
+  typeof value === 'string' && phoneStatuses.includes(value as Phone['status'])
+    ? value as Phone['status']
+    : 'in_stock'
+)
+
 export const normalizeSalesPhone = (record: Record<string, unknown>): Phone => ({
   ...record,
+  id: Number(record.id || 0),
+  imei: String(record.imei || ''),
+  status: normalizePhoneStatus(record.status),
   purchase_cost: record.purchase_cost === null || record.purchase_cost === undefined
     ? undefined
     : Number(record.purchase_cost)
-} as unknown as Phone)
+})
 
 export const detectEditNoImeiMode = (
   imei: string | undefined,

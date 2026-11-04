@@ -97,7 +97,7 @@
                 </span>
                 <!-- 购物车图标按钮 - 只有有价格时才显示 -->
                 <i
-                  v-if="config.cart_enabled && getDisplayPrice(product)"
+                  v-if="config?.cart_enabled && getDisplayPrice(product)"
                   class="fas fa-shopping-cart cart-icon"
                   :class="{ 'adding': addingToCart === getProductKey(product) }"
                   @click.stop="handleCartClick(product)"

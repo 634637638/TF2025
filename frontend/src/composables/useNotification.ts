@@ -16,7 +16,7 @@
  */
 import { ref, computed, inject } from 'vue'
 import { simpleNotification } from '@/services/notification-simple'
-import type { NotificationOptions, NotificationConfig } from '@/services/notification-simple'
+import type { NotificationOptions, NotificationConfig, SimpleConfirmOptions } from '@/services/notification-simple'
 import type { Notification } from '@/types'
 
 export interface UseNotificationOptions {
@@ -30,7 +30,7 @@ export interface UseNotificationOptions {
   maxHistory?: number
 }
 
-type DialogConfirmOptions = Omit<Parameters<typeof simpleNotification.confirm>[2], 'type'> & { type?: string }
+type DialogConfirmOptions = Omit<SimpleConfirmOptions, 'type'> & { type?: string }
 type DialogPromptOptions = Parameters<typeof simpleNotification.prompt>[2]
 type NotificationError = {
   message?: string

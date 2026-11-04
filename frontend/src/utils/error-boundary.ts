@@ -529,7 +529,8 @@ export const ErrorBoundaryPlugin = {
     app.provide('errorBoundary', errorBoundary)
 
     // Vue错误处理器
-    app.config.errorHandler = (error: Error, instance, info) => {
+    app.config.errorHandler = (error: unknown, instance, info) => {
+      const normalizedError = error instanceof Error ? error : new Error(String(error))
       const componentOptions = instance?.$options as {
         name?: string
         __name?: string
@@ -538,8 +539,8 @@ export const ErrorBoundaryPlugin = {
 
       errorBoundary.handleError({
         type: ErrorType.VUE,
-        message: error.message,
-        stack: error.stack,
+        message: normalizedError.message,
+        stack: normalizedError.stack,
         context: {
           component: componentOptions?.name || componentOptions?.__name || 'Unknown',
           componentFile: componentOptions?.__file || 'Unknown',

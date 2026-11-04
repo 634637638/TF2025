@@ -1683,6 +1683,7 @@ import Pagination from '../../components/Pagination.vue'
 import CitySelector from '../../components/CitySelector.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import DateRangePicker from '@/components/DateRangePicker.vue'
+import type { DateRangeValue } from '@/types/date-range'
 import ImportExportActions from '@/components/business/ImportExportActions.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import { PermissionGate, PageHeader } from '@/components/base'
@@ -1691,6 +1692,7 @@ import { formatDate as formatGlobalDate } from '@/utils/format'
 import { getActionColumnMinWidth, getIdentifierColumnMinWidth, getTextColumnMinWidth } from '@/utils/table-layout'
 import { isValidAppleAccount, isValidIdCard, isValidMobilePhone, normalizeAppleId, normalizeIdCard, normalizePersonName, normalizePhoneDigits } from '@/utils/security'
 import { logger } from '@/utils/logger'
+import { getRequestErrorMessage } from '@/utils/api-response'
 
 interface CustomerListItem {
   id: number
@@ -2016,17 +2018,17 @@ const handleSelectionChange = (rows: CustomerListItem[]) => {
   selectedRows.value = rows
 }
 
-const setPagination = (page, page_size, total) => {
+const setPagination = (page: number, page_size: number, total: number): void => {
   pagination.page = page
   pagination.page_size = page_size
   pagination.total = total
 }
 
-const setDataLoading = (loading) => {
+const setDataLoading = (loading: boolean): void => {
   isLoading.value = loading
 }
 
-const setError = (message) => {
+const setError = (message: string): void => {
   errorMessage.value = message
 }
 
@@ -2034,13 +2036,14 @@ const clearError = () => {
   errorMessage.value = ''
 }
 
-const handlePageError = (err, defaultMessage) => {
+const handlePageError = (err: unknown, defaultMessage: string): void => {
   logger.error(defaultMessage, err)
-  setError(err.message || defaultMessage)
-  error(err.message || defaultMessage)
+  const message = getRequestErrorMessage(err, defaultMessage)
+  setError(message)
+  error(message)
 }
 
-const setSubmitLoading = (loading) => {
+const setSubmitLoading = (loading: boolean): void => {
   isSubmitting.value = loading
 }
 
@@ -2459,7 +2462,7 @@ const handleSearch = () => {
 }
 
 // 日期范围变化处理
-const handleDateRangeChange = (value: [string, string] | null) => {
+const handleDateRangeChange = (value: DateRangeValue) => {
   if (value && value.length === 2) {
     filterValues.register_date_start = value[0]
     filterValues.register_date_end = value[1]
@@ -2476,7 +2479,8 @@ const handleReset = () => {
   // 清空日期范围
   register_date_range.value = null
   // 清空筛选条件
-  Object.keys(filterValues).forEach(key => {
+  const filterKeys = Object.keys(filterValues) as Array<keyof typeof filterValues>
+  filterKeys.forEach(key => {
     filterValues[key] = ''
   })
   // 重置到第一页
@@ -2782,9 +2786,9 @@ const saveCustomer = async () => {
     setSubmitLoading(true)
 
     // 准备提交数据
-    const submitData = { ...customerForm.value }
+    const submitData: Partial<CustomerFormState> = { ...customerForm.value }
 
-    if (!ALLOWED_VIP_LEVELS.has(submitData.vip_level)) {
+    if (!submitData.vip_level || !ALLOWED_VIP_LEVELS.has(submitData.vip_level)) {
       error('VIP等级无效，请重新选择')
       return
     }
@@ -2856,18 +2860,15 @@ const closeDetailModal = () => {
 }
 
 // 加载客户消费记录
-const loadCustomerPurchases = async (customerId: number, page: number = 1) => {
+const loadCustomerPurchases = async (customerId?: number, page: number = 1) => {
   if (!canView.value) {
     customerPurchases.value = []
     return
   }
 
   // 如果没有传入 customerId，尝试从 selectedCustomer 获取
-  if (!customerId) {
-    customerId = selectedCustomer.value?.id
-  }
-
-  if (!customerId) {
+  const resolvedCustomerId = customerId ?? selectedCustomer.value?.id
+  if (!resolvedCustomerId) {
     return
   }
 
@@ -2876,7 +2877,7 @@ const loadCustomerPurchases = async (customerId: number, page: number = 1) => {
 
   purchasesLoading.value = true
   try {
-    const response = await unifiedApi.get(`/customers/${customerId}/purchases`, {
+    const response = await unifiedApi.get(`/customers/${resolvedCustomerId}/purchases`, {
       params: {
         page,
         page_size: purchasesPagination.value.page_size
@@ -2992,19 +2993,19 @@ const formatDate = (dateString: string) => {
   return formatGlobalDate(dateString)
 }
 
-const getCustomerTypeTagType = (type: string): 'success' | 'warning' | 'info' | 'primary' | 'danger' => {
+const getCustomerTypeTagType = (type?: string): 'success' | 'warning' | 'info' | 'primary' | 'danger' => {
   const typeMap: Record<string, 'success' | 'warning' | 'info' | 'primary' | 'danger'> = {
     individual: 'info',       // 个人客户 - 蓝色
     enterprise: 'success',    // 企业客户 - 绿色
     wholesale: 'warning',     // 同行调货 - 橙色
     allocate: 'primary'       // 同行划拨 - 蓝色
   }
-  return typeMap[type] || 'info'
+  return typeMap[type || ''] || 'info'
 }
 
-const getCustomerTypeLabel = (type: string) => {
+const getCustomerTypeLabel = (type?: string) => {
   const customerType = CUSTOMER_TYPES.find(t => t.value === type)
-  return customerType?.label || type
+  return customerType?.label || type || '未知'
 }
 
 const getStatusTagType = (status: string): 'success' | 'warning' | 'info' | 'primary' | 'danger' => {
@@ -3030,17 +3031,17 @@ const getStatusLabel = (status: string) => {
 }
 
 // VIP等级相关函数
-const getVipLevelType = (level: string): 'success' | 'warning' | 'info' | 'primary' | 'danger' => {
+const getVipLevelType = (level?: string): 'success' | 'warning' | 'info' | 'primary' | 'danger' => {
   const vipLevel = VIP_LEVELS.find(v => v.value === level)
   return (vipLevel?.color as 'success' | 'warning' | 'info' | 'primary' | 'danger') || 'info'
 }
 
-const getVipLevelLabel = (level: string) => {
+const getVipLevelLabel = (level?: string) => {
   const vipLevel = VIP_LEVELS.find(v => v.value === level)
   return vipLevel?.label || '普通'
 }
 
-const getVipLevelIcon = (level: string) => {
+const getVipLevelIcon = (level?: string) => {
   const vipLevel = VIP_LEVELS.find(v => v.value === level)
   return vipLevel?.icon || 'fas fa-user'
 }
@@ -3071,7 +3072,7 @@ const _getGenderIcon = (gender: string) => {
   return iconMap[gender] || 'fas fa-user text-muted'
 }
 
-const getGenderLabel = (gender: string) => {
+const getGenderLabel = (gender?: string) => {
   const labelMap: Record<string, string> = {
     1: '男',
     2: '女',
@@ -3079,7 +3080,7 @@ const getGenderLabel = (gender: string) => {
     female: '女',
     unknown: '未知'
   }
-  return labelMap[gender] || '未知'
+  return labelMap[gender || ''] || '未知'
 }
 
 const getProvinceDisplayName = (province?: string) => {
@@ -3382,6 +3383,9 @@ onUnmounted(() => {
 
 // 注意：不再使用的通用按钮样式已删除，改用 el-button
 
+</style>
+
+<style lang="scss" scoped>
 // 统一表单控件样式
 .form-control {
   width: 100%;
@@ -3505,6 +3509,9 @@ onUnmounted(() => {
   }
 }
 
+</style>
+
+<style lang="scss" scoped>
 // 客户详情视图样式 - 简洁设计
 .customer-detail-view {
   padding: 0;
@@ -3697,6 +3704,11 @@ onUnmounted(() => {
     }
   }
 
+}
+</style>
+
+<style lang="scss" scoped>
+.customer-detail-view {
   // 右侧面板
   .panel-right {
     .stats-card {
@@ -3827,6 +3839,9 @@ onUnmounted(() => {
   }
 }
 
+</style>
+
+<style lang="scss" scoped>
 // 保留旧的详情样式（向后兼容）
 .detail-section {
   margin-bottom: 24px;
@@ -3899,6 +3914,9 @@ onUnmounted(() => {
   overflow-x: auto;
 }
 
+</style>
+
+<style lang="scss" scoped>
 // 移动端响应式样式
 @media (max-width: 767px) {
   .customers-dialog-form {

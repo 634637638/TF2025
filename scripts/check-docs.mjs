@@ -41,10 +41,18 @@ const stripCode = (source) => {
 }
 
 walk(docsRoot)
+// 工具自动读取的根入口也必须接受链接和导航检查。
+for (const name of ['AGENTS.md', 'CLAUDE.md']) {
+  markdownFiles.push(path.join(repoRoot, name))
+}
 const brokenLinks = []
 const documentationGraph = new Map()
 
 for (const markdownFile of markdownFiles) {
+  if (!fs.existsSync(markdownFile)) {
+    brokenLinks.push(`${path.relative(repoRoot, markdownFile)} -> 缺少 AI 指令入口`)
+    continue
+  }
   const source = stripCode(fs.readFileSync(markdownFile, 'utf8'))
   const links = source.matchAll(/!?\[[^\]]*\]\(([^)\s]+)(?:\s+[^)]*)?\)/g)
   const linkedMarkdown = []
@@ -110,5 +118,5 @@ if (brokenLinks.length > 0 || orphanDocuments.length > 0) {
   }
   process.exitCode = 1
 } else {
-  console.log(`文档链接与导航检查通过：已检查 ${markdownFiles.length} 份 Markdown 文档，均可从 docs/00-INDEX.md 到达。`)
+  console.log(`文档链接与导航检查通过：已检查 ${markdownFiles.length} 份 Markdown（含根指令入口），均可从 docs/00-INDEX.md 到达；不检查锚点及未标记示例。`)
 }

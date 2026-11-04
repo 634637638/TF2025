@@ -8,7 +8,6 @@ const router = express.Router()
 const ApiResponse = require('../utils/response')
 const ShopPublicService = require('../services/shop-public.service')
 const bcrypt = require('bcryptjs')
-const { randomUUID } = require('crypto')
 const db = require('../config/database')
 const { generateMemberNumber } = require('../utils/member-number')
 const { unifiedAuth, requirePermission } = require('../middleware/unified-auth')
@@ -23,6 +22,11 @@ const { createOrderAccessToken, verifyOrderAccessToken } = require('../utils/ord
 const log = require('../utils/log')
 const SystemSettingsService = require('../services/system-settings.service')
 const { isValidIdCard } = require('../utils/security-enhanced')
+const {
+  createCustomerToken,
+  extractBearerToken,
+  hashCustomerToken
+} = require('../utils/customer-token')
 
 const shopPublicService = new ShopPublicService()
 const normalizeCartId = value => {
@@ -33,6 +37,12 @@ const normalizeCartId = value => {
 const normalizePublicPagination = query => {
   const page = Math.max(1, Number.parseInt(String(query?.page ?? 1), 10) || 1)
   const page_size = Math.min(100, Math.max(1, Number.parseInt(String(query?.page_size ?? 20), 10) || 20))
+  return { page, page_size }
+}
+
+const normalizeAuthenticatedHistoryPagination = query => {
+  const page = Math.max(1, Number.parseInt(String(query?.page ?? 1), 10) || 1)
+  const page_size = Math.min(50, Math.max(1, Number.parseInt(String(query?.page_size ?? 20), 10) || 20))
   return { page, page_size }
 }
 
@@ -50,6 +60,22 @@ const sendPublicPaginated = (res, result, message) => res.status(200).json({
   },
   timestamp: new Date().toISOString()
 })
+
+const resolveCustomerSession = async req => {
+  const token = extractBearerToken(req.headers.authorization)
+  if (!token) return { token: '', tokenHash: '', customer: null }
+
+  const tokenHash = hashCustomerToken(token)
+  const [rows] = await db.getDatabase().query(
+    `SELECT ct.customer_id, c.phone
+     FROM customer_tokens ct
+     INNER JOIN customers c ON c.id = ct.customer_id
+     WHERE ct.token_hash = ? AND ct.expires_at > NOW()
+     LIMIT 1`,
+    [tokenHash]
+  )
+  return { token, tokenHash, customer: rows[0] || null }
+}
 
 // ============================================================================
 // 商城配置公开 API
@@ -924,51 +950,80 @@ router.put('/orders/:id/status', unifiedAuth, requirePermission('permissions:adm
  * 用户可以取消自己的待支付订单
  */
 router.put('/orders/:id/cancel', publicOrderRateLimit, async (req, res) => {
+  let connection
+  let transactionStarted = false
+
   try {
     const { id } = req.params
     const { reason, access_token: accessToken } = req.body // 可选：取消原因
+    connection = await db.getDatabase().getConnection()
+    await connection.beginTransaction()
+    transactionStarted = true
 
-    // 获取订单信息
-    const [orders] = await db.getDatabase().query(
-      'SELECT id, order_number, customer_phone, status, expires_at FROM H5_orders WHERE id = ?',
+    const [orders] = await connection.query(
+      'SELECT id, order_number, customer_phone, status, expires_at FROM H5_orders WHERE id = ? FOR UPDATE',
       [id]
     )
 
     if (orders.length === 0) {
+      await connection.rollback()
+      transactionStarted = false
       return ApiResponse.notFound(res, '订单不存在')
     }
 
     const order = orders[0]
 
     if (!verifyOrderAccessToken(accessToken, order)) {
+      await connection.rollback()
+      transactionStarted = false
       return ApiResponse.unauthorized(res, '订单访问凭证无效或已过期')
     }
 
     // 检查订单状态：只有待支付订单可以取消
     if (order.status !== 'pending') {
+      await connection.rollback()
+      transactionStarted = false
       return ApiResponse.badRequest(res, `订单状态为 ${order.status}，无法取消`)
     }
 
     // 检查订单是否已过期
     if (order.expires_at && new Date(order.expires_at) < new Date()) {
+      await connection.rollback()
+      transactionStarted = false
       return ApiResponse.badRequest(res, '订单已过期，系统将自动取消')
     }
 
-    // 取消订单
-    await db.getDatabase().query(
+    const [updateResult] = await connection.query(
       `UPDATE H5_orders
        SET status = 'cancelled',
            cancelled_at = NOW(),
            cancel_reason = ?,
            updated_at = NOW()
-       WHERE id = ?`,
+       WHERE id = ? AND status = 'pending'`,
       [reason || '用户主动取消', id]
     )
 
+    if (updateResult.affectedRows !== 1) {
+      await connection.rollback()
+      transactionStarted = false
+      return ApiResponse.badRequest(res, '订单状态已变化，请刷新后重试')
+    }
+
+    await connection.commit()
+    transactionStarted = false
     ApiResponse.success(res, { id, orderNumber: order.order_number }, '订单已取消')
   } catch (error) {
+    if (transactionStarted) {
+      try {
+        await connection.rollback()
+      } catch (rollbackError) {
+        log.error('取消订单事务回滚失败:', rollbackError)
+      }
+    }
     log.error('取消订单失败:', error)
     ApiResponse.error(res, error.message || '取消订单失败', 500)
+  } finally {
+    connection?.release()
   }
 })
 
@@ -981,6 +1036,9 @@ router.put('/orders/:id/cancel', publicOrderRateLimit, async (req, res) => {
  * POST /api/public/auth/register
  */
 router.post('/auth/register', publicAuthRateLimit, async (req, res) => {
+  let connection
+  let transactionStarted = false
+
   try {
     const name = String(req.body?.name || '').trim()
     const phone = String(req.body?.phone || '').trim()
@@ -1001,14 +1059,19 @@ router.post('/auth/register', publicAuthRateLimit, async (req, res) => {
       return ApiResponse.badRequest(res, '密码长度应为6至128位')
     }
 
-    // 检查手机号是否已注册
-    const [existingUsers] = await db.getDatabase().query(
-      'SELECT id FROM customers WHERE phone = ?',
+    connection = await db.getDatabase().getConnection()
+    await connection.beginTransaction()
+    transactionStarted = true
+
+    const [existingUsers] = await connection.query(
+      'SELECT id FROM customers WHERE phone = ? FOR UPDATE',
       [phone]
     )
 
     if (existingUsers.length > 0) {
-      return ApiResponse.error(res, '该手机号已注册', 400)
+      await connection.rollback()
+      transactionStarted = false
+      return ApiResponse.error(res, '该手机号已注册', 409)
     }
 
     // 加密密码
@@ -1017,42 +1080,58 @@ router.post('/auth/register', publicAuthRateLimit, async (req, res) => {
     // 生成会员号
     let memberNumber
     try {
-      memberNumber = await generateMemberNumber({ db })
+      memberNumber = await generateMemberNumber({ connection })
     } catch (error) {
       log.error('生成会员号失败:', error)
       memberNumber = `TF${String(Date.now() % 1000000).padStart(6, '0')}`
     }
 
     // 创建用户（标记为H5用户）
-    const [result] = await db.getDatabase().query(
+    const [result] = await connection.query(
       `INSERT INTO customers (name, phone, password, member_number, source, status, created_at)
        VALUES (?, ?, ?, ?, 'H5用户', 1, NOW())`,
       [name, phone, hashedPassword, memberNumber]
     )
 
     // 生成 Token
-    const token = randomUUID()
+    const token = createCustomerToken()
+    const tokenHash = hashCustomerToken(token)
     const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30天
 
-    await db.getDatabase().query(
-      `INSERT INTO customer_tokens (customer_id, token, expires_at)
+    await connection.query(
+      `INSERT INTO customer_tokens (customer_id, token_hash, expires_at)
        VALUES (?, ?, ?)`,
-      [result.insertId, token, expiresAt]
+      [result.insertId, tokenHash, expiresAt]
     )
 
     // 返回用户信息和 Token
-    const [users] = await db.getDatabase().query(
+    const [users] = await connection.query(
       'SELECT id, name, phone, avatar, member_number FROM customers WHERE id = ?',
       [result.insertId]
     )
+
+    await connection.commit()
+    transactionStarted = false
 
     ApiResponse.success(res, {
       token,
       user: users[0]
     }, '注册成功')
   } catch (error) {
+    if (transactionStarted) {
+      try {
+        await connection.rollback()
+      } catch (rollbackError) {
+        log.error('注册事务回滚失败:', rollbackError)
+      }
+    }
+    if (error.code === 'ER_DUP_ENTRY') {
+      return ApiResponse.error(res, '该手机号已注册', 409)
+    }
     log.error('注册失败:', error)
     ApiResponse.error(res, error.message || '注册失败', 500)
+  } finally {
+    connection?.release()
   }
 })
 
@@ -1061,6 +1140,8 @@ router.post('/auth/register', publicAuthRateLimit, async (req, res) => {
  * POST /api/public/auth/login
  */
 router.post('/auth/login', publicAuthRateLimit, async (req, res) => {
+  let connection
+  let transactionStarted = false
   try {
     const phone = String(req.body?.phone || '').trim()
     const password = String(req.body?.password || '')
@@ -1098,29 +1179,48 @@ router.post('/auth/login', publicAuthRateLimit, async (req, res) => {
     }
 
     // 生成 Token
-    const token = randomUUID()
+    const token = createCustomerToken()
+    const tokenHash = hashCustomerToken(token)
     const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30天
 
-    await db.getDatabase().query(
-      `INSERT INTO customer_tokens (customer_id, token, expires_at)
-       VALUES (?, ?, ?)
-       ON DUPLICATE KEY UPDATE token = ?, expires_at = ?`,
-      [user.id, token, expiresAt, token, expiresAt]
+    connection = await db.getDatabase().getConnection()
+    await connection.beginTransaction()
+    transactionStarted = true
+    await connection.query(
+      'DELETE FROM customer_tokens WHERE customer_id = ? OR expires_at <= NOW()',
+      [user.id]
+    )
+    await connection.query(
+      `INSERT INTO customer_tokens (customer_id, token_hash, expires_at)
+       VALUES (?, ?, ?)`,
+      [user.id, tokenHash, expiresAt]
     )
 
     // 返回用户信息和 Token
-    const [userInfos] = await db.getDatabase().query(
+    const [userInfos] = await connection.query(
       'SELECT id, name, phone, avatar, member_number FROM customers WHERE id = ?',
       [user.id]
     )
+
+    await connection.commit()
+    transactionStarted = false
 
     ApiResponse.success(res, {
       token,
       user: userInfos[0]
     }, '登录成功')
   } catch (error) {
+    if (transactionStarted) {
+      try {
+        await connection.rollback()
+      } catch (rollbackError) {
+        log.error('登录 Token 轮换事务回滚失败:', rollbackError)
+      }
+    }
     log.error('登录失败:', error)
     ApiResponse.error(res, error.message || '登录失败', 500)
+  } finally {
+    connection?.release()
   }
 })
 
@@ -1130,24 +1230,17 @@ router.post('/auth/login', publicAuthRateLimit, async (req, res) => {
  */
 router.get('/auth/me', async (req, res) => {
   try {
-    const token = req.headers.authorization?.replace('Bearer ', '')
+    const { token, customer } = await resolveCustomerSession(req)
 
     if (!token) {
       return ApiResponse.unauthorized(res, '请先登录')
     }
 
-    // 验证 Token
-    const [tokens] = await db.getDatabase().query(
-      `SELECT customer_id, expires_at FROM customer_tokens
-       WHERE token = ? AND expires_at > NOW()`,
-      [token]
-    )
-
-    if (tokens.length === 0) {
+    if (!customer) {
       return ApiResponse.unauthorized(res, 'Token无效或已过期')
     }
 
-    const customerId = tokens[0].customer_id
+    const customerId = customer.customer_id
 
     // 获取用户信息（包含会员号）
     const [users] = await db.getDatabase().query(
@@ -1172,104 +1265,19 @@ router.get('/auth/me', async (req, res) => {
  */
 router.get('/auth/orders', async (req, res) => {
   try {
-    const token = req.headers.authorization?.replace('Bearer ', '')
+    const { token, customer } = await resolveCustomerSession(req)
 
     if (!token) {
       return ApiResponse.unauthorized(res, '请先登录')
     }
 
-    // 验证 Token 并获取用户信息
-    const [tokens] = await db.getDatabase().query(
-      `SELECT ct.customer_id, c.phone FROM customer_tokens ct
-       INNER JOIN customers c ON ct.customer_id = c.id
-       WHERE ct.token = ? AND ct.expires_at > NOW()`,
-      [token]
-    )
-
-    if (tokens.length === 0) {
+    if (!customer) {
       return ApiResponse.unauthorized(res, 'Token无效或已过期')
     }
 
-    const userPhone = tokens[0].phone
-
-    // 获取订单（H5_orders 表）
-    const [orders] = await db.getDatabase().query(
-      `SELECT * FROM H5_orders
-       WHERE customer_phone = ?
-       ORDER BY created_at DESC`,
-      [userPhone]
-    )
-
-    // 如果没有订单，直接返回空数组
-    if (orders.length === 0) {
-      return ApiResponse.success(res, [], '获取订单成功')
-    }
-
-    // 提取所有订单ID
-    const orderIds = orders.map(o => o.id)
-
-    // 批量获取所有订单的商品信息（一次查询，避免 N+1）
-    const [allItems] = await db.getDatabase().query(`
-      SELECT
-        oi.*,
-        CASE
-          WHEN p.is_new = 1 THEN (
-            SELECT image_url FROM H5_newimages ni
-            INNER JOIN H5_newtemplates nt ON ni.template_id = nt.id
-            WHERE nt.brand_id = p.brand_id AND nt.model_id = p.model_id AND nt.color_id = p.color_id
-            ORDER BY ni.is_primary DESC, ni.sort_order ASC
-            LIMIT 1
-          )
-          ELSE (
-            SELECT image_url FROM H5_images WHERE phone_id = oi.phone_id AND is_primary = TRUE LIMIT 1
-          )
-        END as image_url
-      FROM H5_order_items oi
-      LEFT JOIN phones p ON oi.phone_id = p.id
-      WHERE oi.order_id IN (?)
-    `, [orderIds])
-
-    // 在内存中按订单ID分组商品
-    const itemsByOrder = {}
-    allItems.forEach(item => {
-      if (!itemsByOrder[item.order_id]) {
-        itemsByOrder[item.order_id] = []
-      }
-      itemsByOrder[item.order_id].push(item)
-    })
-
-    // 组装订单和商品信息
-    const ordersWithItems = orders.map(order => {
-      const items = itemsByOrder[order.id] || []
-
-      // 解析 phone_info JSON 并添加到每个商品项
-      const processedItems = items.map(item => {
-        let phoneInfo = {}
-        try {
-          phoneInfo = typeof item.phone_info === 'string' ? JSON.parse(item.phone_info) : item.phone_info
-        } catch (e) {
-          log.error('解析 phone_info 失败:', e)
-        }
-
-        // 生成商品名称
-        const productName = `${phoneInfo.brand || ''} ${phoneInfo.model || ''} ${phoneInfo.color || ''} ${phoneInfo.memory || ''}`.trim()
-
-        return {
-          ...item,
-          phone_info: phoneInfo,
-          product_name: productName,
-          specs: `${phoneInfo.color || ''} ${phoneInfo.memory || ''}`.trim()
-        }
-      })
-
-      return {
-        ...order,
-        access_token: createOrderAccessToken(order),
-        items: processedItems
-      }
-    })
-
-    ApiResponse.success(res, ordersWithItems, '获取订单成功')
+    const pagination = normalizeAuthenticatedHistoryPagination(req.query)
+    const result = await shopPublicService.getOrdersByPhone(customer.phone, pagination)
+    sendPublicPaginated(res, result, '获取订单成功')
   } catch (error) {
     log.error('获取用户订单失败:', error)
     ApiResponse.error(res, error.message || '获取用户订单失败', 500)
@@ -1282,75 +1290,19 @@ router.get('/auth/orders', async (req, res) => {
  */
 router.get('/auth/sales', async (req, res) => {
   try {
-    const token = req.headers.authorization?.replace('Bearer ', '')
+    const { token, customer } = await resolveCustomerSession(req)
 
     if (!token) {
       return ApiResponse.unauthorized(res, '请先登录')
     }
 
-    // 验证 Token 并获取用户信息
-    const [tokens] = await db.getDatabase().query(
-      `SELECT ct.customer_id, c.id as customer_id, c.phone FROM customer_tokens ct
-       INNER JOIN customers c ON ct.customer_id = c.id
-       WHERE ct.token = ? AND ct.expires_at > NOW()`,
-      [token]
-    )
-
-    if (tokens.length === 0) {
+    if (!customer) {
       return ApiResponse.unauthorized(res, 'Token无效或已过期')
     }
 
-    const customerId = tokens[0].customer_id
-
-    // 获取销售记录（通过 customer_id 关联）
-    // 使用与客户管理页面相同的查询逻辑，确保数据一致性
-    const [sales] = await db.getDatabase().query(
-      `SELECT
-        s.id,
-        s.invoice_number,
-        COALESCE(s.sale_time, p.sale_time) as sale_time,
-        p.sale_price,
-        s.payment_method,
-        st.name as store_name,
-        u.name as operator_name,
-        p.imei,
-        p.serial_number,
-        b.name as brand_name,
-        m.name as model_name,
-        c.name as color_name,
-        NULLIF(TRIM(CONCAT_WS(' ', b.name, m.name, c.name)), '') as product_name,
-        p.is_new
-       FROM sales s
-       LEFT JOIN stores st ON s.store_id = st.id
-       LEFT JOIN users u ON s.operator_id = u.id
-       LEFT JOIN phones p ON s.phone_id = p.id
-       LEFT JOIN brands b ON p.brand_id = b.id
-       LEFT JOIN models m ON p.model_id = m.id
-       LEFT JOIN colors c ON p.color_id = c.id
-       WHERE s.customer_id = ?
-       ORDER BY COALESCE(s.sale_time, p.sale_time) DESC`,
-      [customerId]
-    )
-
-    // 保持缺失值为 null，避免把固定展示值当成真实业务数据返回。
-    const formattedSales = sales.map(sale => ({
-      id: sale.id,
-      invoice_number: sale.invoice_number ?? null,
-      sale_time: sale.sale_time ?? null,
-      sale_price: sale.sale_price === null || sale.sale_price === undefined ? null : Number(sale.sale_price),
-      payment_method: sale.payment_method ?? null,
-      store_name: sale.store_name ?? null,
-      operator_name: sale.operator_name ?? null,
-      imei: sale.imei ?? null,
-      serial_number: sale.serial_number ?? null,
-      product_name: sale.product_name ?? null,
-      brand_name: sale.brand_name ?? null,
-      model_name: sale.model_name ?? null,
-      color_name: sale.color_name ?? null,
-      is_new: sale.is_new === null || sale.is_new === undefined ? null : Number(sale.is_new)
-    }))
-
-    ApiResponse.success(res, formattedSales, '获取销售记录成功')
+    const pagination = normalizeAuthenticatedHistoryPagination(req.query)
+    const result = await shopPublicService.getSalesByCustomerId(customer.customer_id, pagination)
+    sendPublicPaginated(res, result, '获取销售记录成功')
   } catch (error) {
     log.error('获取用户销售记录失败:', error)
     ApiResponse.serverError(res, '获取用户销售记录失败', error)
@@ -1363,24 +1315,17 @@ router.get('/auth/sales', async (req, res) => {
  */
 router.get('/auth/profile', async (req, res) => {
   try {
-    const token = req.headers.authorization?.replace('Bearer ', '')
+    const { token, customer } = await resolveCustomerSession(req)
 
     if (!token) {
       return ApiResponse.unauthorized(res, '请先登录')
     }
 
-    // 验证 Token 并获取用户信息
-    const [tokens] = await db.getDatabase().query(
-      `SELECT customer_id FROM customer_tokens
-       WHERE token = ? AND expires_at > NOW()`,
-      [token]
-    )
-
-    if (tokens.length === 0) {
+    if (!customer) {
       return ApiResponse.unauthorized(res, 'Token无效或已过期')
     }
 
-    const customerId = tokens[0].customer_id
+    const customerId = customer.customer_id
 
     // 获取用户完整信息
     const [users] = await db.getDatabase().query(
@@ -1405,24 +1350,17 @@ router.get('/auth/profile', async (req, res) => {
  */
 router.put('/auth/profile', publicAuthRateLimit, async (req, res) => {
   try {
-    const token = req.headers.authorization?.replace('Bearer ', '')
+    const { token, customer } = await resolveCustomerSession(req)
 
     if (!token) {
       return ApiResponse.unauthorized(res, '请先登录')
     }
 
-    // 验证 Token 并获取用户信息
-    const [tokens] = await db.getDatabase().query(
-      `SELECT customer_id FROM customer_tokens
-       WHERE token = ? AND expires_at > NOW()`,
-      [token]
-    )
-
-    if (tokens.length === 0) {
+    if (!customer) {
       return ApiResponse.unauthorized(res, 'Token无效或已过期')
     }
 
-    const customerId = tokens[0].customer_id
+    const customerId = customer.customer_id
     const { name, gender, idCard, appleId, address } = req.body || {}
 
     // 构建更新数据
@@ -1501,13 +1439,13 @@ router.put('/auth/profile', publicAuthRateLimit, async (req, res) => {
  */
 router.post('/auth/logout', publicAuthRateLimit, async (req, res) => {
   try {
-    const token = req.headers.authorization?.replace('Bearer ', '')
+    const token = extractBearerToken(req.headers.authorization)
 
     if (token) {
-      // 删除 Token
+      const tokenHash = hashCustomerToken(token)
       await db.getDatabase().query(
-        'DELETE FROM customer_tokens WHERE token = ?',
-        [token]
+        'DELETE FROM customer_tokens WHERE token_hash = ?',
+        [tokenHash]
       )
     }
 

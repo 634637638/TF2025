@@ -1,0 +1,131 @@
+/* ===== 页面布局样式 ===== */
+.menu-management {
+  padding: 20px;
+  min-height: 100vh;
+  background: var(--tf-color-surface-muted);
+}
+
+.menu-header-actions {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+  justify-content: flex-end;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.menu-width-form {
+  padding: 4px 0 0;
+}
+
+.menu-width-form__hint {
+  margin: 0 0 var(--tf-space-4);
+  color: var(--tf-color-slate-500);
+  font-size: var(--tf-type-scale-13);
+  line-height: var(--tf-line-height-body);
+}
+
+.menu-width-form__input {
+  width: 100%;
+}
+
+.menu-width-form :deep(.el-input-number .el-input__wrapper) {
+  width: 100%;
+}
+
+/* 表单组 */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-group.full-width {
+  width: 100%;
+  flex: 1 1 100%;
+}
+
+.form-label {
+  display: block;
+  font-size: var(--tf-type-scale-14);
+  font-weight: 500;
+  color: var(--tf-color-gray-bootstrap-700);
+  margin-bottom: 8px;
+}
+
+.required {
+  color: var(--danger-color);
+}
+
+.input-group {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-icon {
+  position: absolute;
+  left: 12px;
+  color: var(--tf-color-muted);
+  font-size: var(--tf-type-scale-14);
+  z-index: 2;
+}
+
+.form-control {
+  width: 100%;
+  padding: 10px 12px 10px 40px;
+  border: 2px solid var(--tf-color-border-muted);
+  border-radius: 8px;
+  font-size: var(--tf-type-scale-14);
+  transition: all 0.3s ease;
+  background: white;
+}
+
+.form-control:focus {
+  outline: none;
+  border-color: var(--tf-color-indigo-brand);
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.form-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+/* ===== 加载和错误状态样式 ===== */
+.loading-container,
+.error-container {
+  background: white;
+  border-radius: 12px;
+  padding: 40px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  border: 1px solid var(--tf-color-border-muted);
+  margin-bottom: 24px;
+}
+
+.loading-content,
+.error-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.loading-icon {
+  font-size: var(--tf-type-scale-32);
+  color: var(--tf-color-indigo-brand);
+}
+
+.loading-text,
+.error-text {
+  font-size: var(--tf-type-scale-16);
+  color: var(--tf-color-muted);
+  margin: 0;
+}
+
+.error-icon {
+  font-size: var(--tf-type-scale-32);
+  color: var(--danger-color);
+}

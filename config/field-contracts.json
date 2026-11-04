@@ -76,7 +76,8 @@
       "frontend/src/views/inventory/page/InventorySearchFilters.vue",
       "frontend/src/views/inventory/page/InventoryEditDialog.vue",
       "frontend/src/components/InventoryDetailModal.vue",
-      "frontend/src/views/price-list/PriceListView.vue"
+      "frontend/src/views/price-list/PriceListView.vue",
+      "frontend/src/views/price-list/price-list-row.ts"
     ],
     "stock-in": [
       "backend/src/routes/stock-in.js",

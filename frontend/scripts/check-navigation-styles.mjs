@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs'
-import { join, resolve } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
 
 const root = resolve(import.meta.dirname, '..')
 const files = {
@@ -12,7 +12,25 @@ const files = {
   mobileMenu: join(root, 'src/components/mobile/MobileSlideMenu.vue'),
   buttonStyles: join(root, 'src/styles/components/_buttons.scss')
 }
-const sources = Object.fromEntries(Object.entries(files).map(([key, file]) => [key, readFileSync(file, 'utf8')]))
+const readSourceWithLocalStyles = (file) => {
+  const source = readFileSync(file, 'utf8')
+  if (!file.endsWith('.vue')) return source
+
+  const referencedStyles = [...source.matchAll(/<style\b[^>]*\bsrc=["']([^"']+)["'][^>]*>/gi)]
+    .map((match) => match[1])
+    .filter((reference) => reference.startsWith('.'))
+    .map((reference) => {
+      const stylePath = resolve(dirname(file), reference)
+      if (!stylePath.startsWith(root)) {
+        throw new Error(`Style source escapes frontend root: ${reference}`)
+      }
+      return readFileSync(stylePath, 'utf8')
+    })
+
+  return [source, ...referencedStyles].join('\n')
+}
+
+const sources = Object.fromEntries(Object.entries(files).map(([key, file]) => [key, readSourceWithLocalStyles(file)]))
 const findings = []
 
 const requireText = (key, text, message) => {

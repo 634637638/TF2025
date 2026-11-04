@@ -12,6 +12,7 @@ import {
   getCachedStores,
   getCachedSuppliers
 } from '@/services/reference-options'
+import type { ReferenceRecord } from '@/services/reference-options'
 
 type NamedOption = { id: number; name?: string; username?: string; sort_order?: number }
 type ModelOption = { id: number; name: string; sort_order?: number }
@@ -104,11 +105,11 @@ export const useInventoryBaseOptions = ({
       if (response.success && response.data) {
         const brandList = Array.isArray(response.data) ? response.data : []
         brands.value = sortOptionsByOrder(brandList
-          .filter((item: NamedOption) => item?.name)
-          .map((item: NamedOption) => ({
+          .filter((item: ReferenceRecord) => Boolean(item.name))
+          .map((item: ReferenceRecord) => ({
             id: Number(item.id || 0),
-            name: item.name as string,
-            sort_order: item.sort_order || 0
+            name: String(item.name || ''),
+            sort_order: Number(item.sort_order || 0)
           })))
       } else {
         brands.value = []
@@ -127,11 +128,11 @@ export const useInventoryBaseOptions = ({
           ? response.data
           : []
         models.value = sortOptionsByOrder(modelList
-          .filter((item: ModelOption) => item?.name)
-          .map((item: ModelOption) => ({
+          .filter((item: ReferenceRecord) => Boolean(item.name))
+          .map((item: ReferenceRecord) => ({
             id: Number(item.id || 0),
-            name: item.name,
-            sort_order: item.sort_order || 0
+            name: String(item.name || ''),
+            sort_order: Number(item.sort_order || 0)
           })))
       } else {
         models.value = []
@@ -160,11 +161,11 @@ export const useInventoryBaseOptions = ({
         if (response.success && response.data) {
           const modelList = Array.isArray(response.data) ? response.data : []
           brandModels.value = sortOptionsByOrder(modelList
-            .filter((item: ModelOption) => item?.name)
-            .map((item: ModelOption) => ({
-              id: item.id,
-              name: item.name,
-              sort_order: item.sort_order
+            .filter((item: ReferenceRecord) => Boolean(item.name))
+            .map((item: ReferenceRecord) => ({
+              id: Number(item.id || 0),
+              name: String(item.name || ''),
+              sort_order: Number(item.sort_order || 0)
             })))
         } else {
           brandModels.value = []
@@ -190,7 +191,7 @@ export const useInventoryBaseOptions = ({
         inventory.value
           .filter(item => item.brand === brandName)
           .map(item => item.model)
-          .filter(Boolean)
+          .filter((name): name is string => typeof name === 'string' && name.length > 0)
       )
       brandModels.value = sortOptionsByOrder(
         Array.from(brandModelSet).map(name => ({ id: 0, name }))

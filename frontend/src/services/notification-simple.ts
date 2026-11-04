@@ -50,6 +50,12 @@ export interface NotificationOptions {
   dangerouslyUseHTMLString?: boolean
 }
 
+export interface SimpleConfirmOptions {
+  confirmButtonText?: string
+  cancelButtonText?: string
+  type?: 'success' | 'warning' | 'info' | 'error'
+}
+
 const DEFAULT_MESSAGE_Z_INDEX = 6000
 const DEFAULT_MESSAGE_CLASS = 'tf-global-message'
 
@@ -208,11 +214,7 @@ class SimpleNotificationService {
   public async confirm(
     message: string,
     title: string = '确认',
-    options: {
-      confirmButtonText?: string
-      cancelButtonText?: string
-      type?: 'success' | 'warning' | 'info' | 'error'
-    } = {}
+    options: SimpleConfirmOptions = {}
   ): Promise<boolean> {
     // 添加 class 和动态样式来隐藏表格
     document.body.classList.add('el-message-box-open')
@@ -231,7 +233,7 @@ class SimpleNotificationService {
         this.removeHideTablesStyle()
         return true
       })
-      .catch(() => {
+      .catch((): boolean => {
         document.body.classList.remove('el-message-box-open')
         this.removeHideTablesStyle()
         return false
@@ -260,7 +262,7 @@ class SimpleNotificationService {
         document.body.classList.remove('el-message-box-open')
         this.removeHideTablesStyle()
       })
-      .catch(() => {
+      .catch((): void => {
         document.body.classList.remove('el-message-box-open')
         this.removeHideTablesStyle()
       })
@@ -303,7 +305,7 @@ class SimpleNotificationService {
         this.removeHideTablesStyle()
         return { value }
       })
-      .catch(() => {
+      .catch((): null => {
         document.body.classList.remove('el-message-box-open')
         this.removeHideTablesStyle()
         return null

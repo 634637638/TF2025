@@ -18,6 +18,9 @@ function cleanupExpiredCache() {
   }
 }
 
+const cleanupTimer = setInterval(cleanupExpiredCache, 60000)
+cleanupTimer.unref?.()
+
 // 如果缓存过大，删除最旧的条目
 function evictOldestEntries() {
   if (cache.size > defaultOptions.maxSize) {
@@ -32,9 +35,6 @@ function evictOldestEntries() {
 // 缓存中间件
 function cacheMiddleware(options = {}) {
   const opts = { ...defaultOptions, ...options }
-
-  // 定期清理过期缓存
-  setInterval(cleanupExpiredCache, 60000) // 每分钟清理一次
 
   return (req, res, next) => {
     if (opts.ttl <= 0) {

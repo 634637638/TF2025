@@ -6,6 +6,8 @@
 import publicApi from './shop-public'
 import { storage } from '@/services/storage'
 import { H5_STORAGE_KEYS } from '@/constants/storage'
+import { extractPaginatedData } from '@/utils/api-response'
+import type { PaginatedData } from '@/types'
 
 const unwrapData = <T>(response: unknown): T => {
   if (response && typeof response === 'object' && 'data' in response) {
@@ -85,18 +87,18 @@ export function getCurrentUser() {
  * 获取用户订单列表
  * GET /api/public/auth/orders
  */
-export function getUserOrders(): Promise<import('@/api/shop-public').PublicOrder[]> {
-  return publicApi.get<import('@/api/shop-public').PublicOrder[]>('/public/auth/orders')
-    .then((response) => unwrapData<import('@/api/shop-public').PublicOrder[]>(response))
+export function getUserOrders(params?: { page?: number; page_size?: number }): Promise<PaginatedData<import('@/api/shop-public').PublicOrder>> {
+  return publicApi.get<import('@/api/shop-public').PublicOrder[]>('/public/auth/orders', { params })
+    .then((response) => extractPaginatedData<import('@/api/shop-public').PublicOrder>(response))
 }
 
 /**
  * 获取用户销售记录
  * GET /api/public/auth/sales
  */
-export function getUserSales(): Promise<H5CustomerSale[]> {
-  return publicApi.get<H5CustomerSale[]>('/public/auth/sales')
-    .then((response) => unwrapData<H5CustomerSale[]>(response))
+export function getUserSales(params?: { page?: number; page_size?: number }): Promise<PaginatedData<H5CustomerSale>> {
+  return publicApi.get<H5CustomerSale[]>('/public/auth/sales', { params })
+    .then((response) => extractPaginatedData<H5CustomerSale>(response))
 }
 
 /**

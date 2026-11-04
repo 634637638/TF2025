@@ -186,7 +186,7 @@ import { logger } from '@/utils/logger'
 import { formatImageUrl } from '@/utils/format'
 import type { MediaPreviewItem } from '@/utils/media'
 import { convertPdfToImage, isPdfFile } from '@/utils/upload-media'
-import type { UploadRequestOptions } from 'element-plus'
+import type { CheckboxValueType, UploadRequestOptions } from 'element-plus'
 import type { NationalSubsidyRecord, NationalSubsidyUploadResponse } from '@/types'
 
 const AsyncImage = defineAsyncComponent(() => import('@/components/Image.vue'))
@@ -302,7 +302,7 @@ const preloadPhoto = async (photo?: string) => {
 
     image.onload = () => {
       if (typeof image.decode === 'function') {
-        image.decode().catch(() => undefined).finally(finalize)
+        image.decode().catch((): undefined => undefined).finally(finalize)
         return
       }
 
@@ -360,7 +360,7 @@ const queuePhotoWarmup = () => {
   }
 
   if (browserWindow) {
-    browserWindow.setTimeout(warmup, 240)
+    globalThis.setTimeout(warmup, 240)
     return
   }
 
@@ -530,8 +530,8 @@ const endDragSelect = () => {
   isDragging.value = false
 }
 
-const handlePhotoSelectAll = (checked: boolean) => {
-  selectedPhotos.value = checked ? previewPhotos.value.map((_, index) => index) : []
+const handlePhotoSelectAll = (checked: CheckboxValueType) => {
+  selectedPhotos.value = Boolean(checked) ? previewPhotos.value.map((_, index) => index) : []
 }
 
 const downloadToolbarPhotos = async () => {

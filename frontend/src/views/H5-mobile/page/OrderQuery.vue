@@ -336,11 +336,10 @@ watch(() => router.currentRoute.value,
 const loadUserOrders = async () => {
   loading.value = true
   try {
-    const result = await getUserOrders()
-    orders.value = result || []
-    // H5_orders 表可能没有 total 字段，使用数据长度
-    total.value = result.length || 0
     current_page.value = 1
+    const result = await getUserOrders({ page: current_page.value, page_size })
+    orders.value = result.data
+    total.value = result.total
   } catch (error: unknown) {
     logger.error('加载用户订单失败:', error)
     ElMessage.error(getRequestErrorMessage(error, '加载订单失败'))
@@ -425,8 +424,9 @@ const loadMore = async () => {
 
   try {
     if (isAuthenticated.value) {
-      // 已登录用户加载更多（暂时不支持分页）
-      ElMessage.info('没有更多订单了')
+      const result = await getUserOrders({ page: current_page.value, page_size })
+      orders.value.push(...result.data)
+      total.value = result.total
     } else {
       const normalizedPhone = normalizePhoneDigits(form.values.customer_phone)
       // 未登录用户加载更多
@@ -460,7 +460,7 @@ const formatPhone = (phone: string) => {
 }
 
 // 获取状态文本
-const getStatusText = (status: string) => {
+const getStatusText = (status?: string) => {
   const texts: Record<string, string> = {
     pending: '待支付',
     paid: '已支付',
@@ -468,16 +468,16 @@ const getStatusText = (status: string) => {
     completed: '已完成',
     cancelled: '已取消'
   }
-  return texts[status] || '未知'
+  return texts[status || ''] || '未知'
 }
 
 // 获取支付方式文本
-const getPaymentText = (method: string) => {
-  return getPaymentMethodLabel(method)
+const getPaymentText = (method?: string) => {
+  return getPaymentMethodLabel(method || '')
 }
 
 // 格式化时间
-const formatTime = (time: string) => {
+const formatTime = (time?: string) => {
   if (!time) return ''
   return formatGlobalDateTime(time, 'YYYY-MM-DD HH:mm')
 }

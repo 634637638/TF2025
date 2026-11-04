@@ -280,7 +280,7 @@ const errorDetails = computed(() => {
   if (!isDevelopment.value || !errorInfo.value) return null
 
   return {
-    error: errorInfo.value.error?.toString(),
+    error: String(errorInfo.value.error || ''),
     errorInfo: errorInfo.value.errorInfo,
     vmInstance: errorInfo.value.vm,
     componentStack: errorInfo.value.componentStack
@@ -339,11 +339,7 @@ const captureError = (capturedError: unknown, instance: unknown, info: string) =
 
   // 记录到性能监控系统
   if (window.__TF2025__?.performance) {
-    window.__TF2025__.performance.recordMetric('componentError', {
-      type: errorReportType.value,
-      message: errorLike?.message,
-      component: (instance as { $options?: { name?: string } } | null)?.$options?.name
-    })
+    window.__TF2025__.performance.recordMetric('componentError', 1, 'count')
   }
 
   // 阻止错误继续向上传播

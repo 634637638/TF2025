@@ -87,7 +87,7 @@ export class ErrorLogger {
 
   constructor(config: Partial<ErrorReportingConfig> = {}) {
     this.config = {
-      enabled: false, // 临时禁用错误上报，避免 404 错误
+      enabled: true,
       endpoint: '/api/logs/errors',
       batchSize: 10,
       reportInterval: 30000, // 30秒

@@ -857,7 +857,7 @@
               :value-format="TIME_FORMATS.DATETIME"
               :clearable="true"
               class="w-full"
-              @clear="() => editForm.last_sync_time = null"
+              @clear="clearLastSyncTime"
             />
           </el-form-item>
           <el-row :gutter="16">
@@ -1079,7 +1079,7 @@
                     <el-input
                       v-model="syncConfig.login_password"
                       type="password"
-                      placeholder="请输入登录密码"
+                      :placeholder="syncConfig.id ? '留空则保留原密码' : '请输入登录密码'"
                       show-password
                     />
                   </el-form-item>
@@ -1441,7 +1441,7 @@
               >
                 <template #default="{ $index }">
                   <span
-                    v-if="$index === 0"
+                    v-if="inventoryPagination.page === 1 && $index === 0"
                     class="priority-badge"
                   >
                     <i class="fas fa-star" />
@@ -1449,7 +1449,7 @@
                   <span
                     v-else
                     class="priority-rank"
-                  >{{ $index + 1 }}</span>
+                  >{{ (inventoryPagination.page - 1) * inventoryPagination.page_size + $index + 1 }}</span>
                 </template>
               </el-table-column>
               <el-table-column
@@ -1507,6 +1507,15 @@
               v-if="inventoryData.length === 0"
               description="暂无库存数据"
             />
+            <Pagination
+              v-if="inventoryTotal > inventoryPagination.page_size"
+              v-model:current="inventoryPagination.page"
+              v-model:page-size="inventoryPagination.page_size"
+              :total="inventoryTotal"
+              :page-sizes="[20, 50, 100]"
+              :show-range="true"
+              @change="handleInventoryPaginationChange"
+            />
           </template>
         </div>
       </MobileDialog>
@@ -1515,7 +1524,7 @@
       <PriceMarkupConfig
         v-if="showMarkupConfigDialog"
         v-model="showMarkupConfigDialog"
-        :config="markupConfig"
+        :config="markupConfig || undefined"
         @save="handleMarkupConfigSave"
       />
     </PermissionGate>
@@ -1552,6 +1561,7 @@ import {
 import { useAuthStore } from '@/stores/auth'
 import api from '@/utils/unified-api'
 import { extractResponseData } from '@/utils/api-response'
+import { normalizePriceListRow } from './price-list-row'
 import { useImportExport } from '@/composables/useImportExport'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
@@ -1694,6 +1704,10 @@ const editForm = reactive({
   is_manual_edit: false
 })
 
+const clearLastSyncTime = (): void => {
+  editForm.last_sync_time = null
+}
+
 // 编辑对话框的选项数据（从数据库加载，确保一致性）
 const editOptions = reactive({
   brands: [] as Array<{id: number, name: string}>,
@@ -1772,6 +1786,10 @@ const normalizePriceListInventory = (item: PriceInventoryRow): PriceInventoryRow
   inventory_time: item.inventory_time ?? null
 })
 const inventoryTotal = ref(0)
+const inventoryPagination = reactive({
+  page: 1,
+  page_size: 20
+})
 const currentInventoryItem = ref<PriceListRow | null>(null)
 const isMobile = ref(false)
 const mobileActionRowId = ref<string | null>(null)
@@ -1993,36 +2011,7 @@ const fetchPriceList = async () => {
       const data = res.data
       const list = Array.isArray(data.list) ? data.list : []
 
-      if (list.length > 0) {
-      }
-
-      // 转换数据格式，保持原始的大小写格式用于显示
-      const formattedList: PriceListRow[] = list.map((item: PriceListRow) => ({
-        brand_name: item.brand_name || '',
-        model_number: item.model_number || '',
-        external_model: item.external_model || '',
-        color_name: item.color_name || '',
-        memory: item.memory || '',
-        // 修复：0 也应该被保留，不应该被转换为 null
-        wholesale_price: item.wholesale_price !== null && item.wholesale_price !== undefined ? Number(item.wholesale_price) : null,
-        retail_price: item.retail_price !== null && item.retail_price !== undefined ? Number(item.retail_price) : null,
-        // 保留后端按全局规则计算的渠道展示价，表格列使用这两个字段渲染。
-        sales_display_price: item.sales_display_price !== null && item.sales_display_price !== undefined ? Number(item.sales_display_price) : null,
-        wholesale_display_price: item.wholesale_display_price !== null && item.wholesale_display_price !== undefined ? Number(item.wholesale_display_price) : null,
-        stock_quantity: Number(item.stock_quantity) || 0,
-        last_sync_time: item.last_sync_time || null,
-        is_collect: item.is_collect !== undefined ? Number(item.is_collect) : 1,
-        status: item.status !== undefined ? Number(item.status) : 1,
-        show_price: item.show_price !== undefined && item.show_price !== null ? Number(item.show_price) : 0,
-        source_config_id: item.source_config_id !== null && item.source_config_id !== undefined
-          ? Number(item.source_config_id)
-          : null,
-        source_name: item.source_name || '默认来源',
-        source_type: item.source_type === 'public' ? 'public' : 'account',
-        source_login_username: item.source_login_username || '',
-        id: item.price_list_id || item.id || null,
-        price_list_id: item.price_list_id || item.id || null
-      }))
+      const formattedList = list.map(normalizePriceListRow)
 
 
       priceList.value = formattedList
@@ -2316,7 +2305,7 @@ const handleEdit = async (row: PriceListRow) => {
   if (!Array.isArray(editOptions.memories)) editOptions.memories = []
 
   // 转换时间为北京时间格式
-  const formatDateTimeForEdit = (dateStr: string) => {
+  const formatDateTimeForEdit = (dateStr?: string | null) => {
     if (!dateStr) return ''
     return TimeUtil.format(dateStr, TIME_FORMATS.DATETIME)
   }
@@ -2394,6 +2383,11 @@ const handleSave = async () => {
       return
     }
 
+    const rawWholesalePrice = editForm.wholesale_price
+    const normalizedWholesalePrice = rawWholesalePrice === null || rawWholesalePrice === undefined
+      ? null
+      : Number.isFinite(Number(rawWholesalePrice)) ? Number(rawWholesalePrice) : null
+
     const data = {
       id: editForm.id,
       // 后端需要名称，从选项中获取
@@ -2404,7 +2398,7 @@ const handleSave = async () => {
       // 因为后端 getMemories 使用了 "size as name"
       memory: memory?.name || memory?.size || null,
       external_model: editForm.external_model,
-      wholesale_price: editForm.wholesale_price,
+      wholesale_price: normalizedWholesalePrice,
       last_sync_time: editForm.last_sync_time,
       is_collect: Number(editForm.is_collect) === 1 ? 1 : 0,
       status: Number(editForm.status) === 1 ? 1 : 0,
@@ -2413,22 +2407,6 @@ const handleSave = async () => {
       source_config_id: editForm.source_config_id,
       is_manual_edit: true
     }
-
-    // 处理价格字段：将 undefined、null、空字符串转换为 null
-    const priceFields = ['wholesale_price']
-    priceFields.forEach(field => {
-      const value = data[field]
-      if (value === undefined || value === null || value === '' || (typeof value === 'string' && value.trim() === '')) {
-        data[field] = null
-      } else if (typeof value === 'string') {
-        const num = parseFloat(value)
-        data[field] = isNaN(num) ? null : num
-      } else if (typeof value === 'number') {
-        data[field] = isNaN(value) ? null : value
-      } else {
-        data[field] = null
-      }
-    })
 
     // 零售价字段：不发送，让后端自动计算
     // 零售价字段未包含在提交载荷中，由后端统一计算。
@@ -2461,11 +2439,17 @@ const handleDelete = async (row: PriceListRow) => {
     return
   }
 
+  const priceItemId = row.id ?? row.price_list_id
+  if (priceItemId === null || priceItemId === undefined) {
+    ElMessage.warning('价格记录缺少有效ID')
+    return
+  }
+
   try {
     await confirmAction('确定要删除这条价格记录吗？', '提示', {
       type: 'warning'
     })
-    const res = await deletePriceItem(row.id)
+    const res = await deletePriceItem(priceItemId)
     if (res.success) {
       ElMessage.success('删除成功')
       fetchPriceList()
@@ -2649,7 +2633,7 @@ const handleSaveConfig = async () => {
 
   savingConfig.value = true
   try {
-    const dataToSend = { ...syncConfig }
+    const dataToSend: Partial<typeof syncConfig> = { ...syncConfig }
 
     // 如果是更新操作且密码为空，不发送密码字段（保持原有密码）
     if (dataToSend.id && (!dataToSend.login_password || dataToSend.login_password === '')) {
@@ -2778,7 +2762,7 @@ const handleEditConfig = async (row: PriceSyncConfig) => {
     return
   }
 
-  // 获取该配置的完整信息（包括密码）
+  // 获取配置详情；后端只返回密码存在状态，明文永不回显。
   try {
     const res = await getSyncConfigById(row.id)
     if (res.success && res.data) {
@@ -2790,8 +2774,7 @@ const handleEditConfig = async (row: PriceSyncConfig) => {
         source_url: res.data.source_url || '',
         login_url: res.data.login_url || '',
         login_username: res.data.login_username || '',
-        // 如果密码是占位符，显示为空；否则显示真实密码（用于编辑）
-        login_password: (res.data.login_password && res.data.login_password !== '••••••••') ? res.data.login_password : '',
+        login_password: '',
         sync_interval: res.data.sync_interval || 60
       })
     } else {
@@ -2853,9 +2836,15 @@ const handleViewHistory = async (row: PriceListRow) => {
     return
   }
 
+  const priceListId = row.id ?? row.price_list_id
+  if (priceListId === null || priceListId === undefined) {
+    ElMessage.warning('价格记录缺少有效ID')
+    return
+  }
+
   currentProduct.value = row
   try {
-    const res = await getPriceHistory(row.id || row.price_list_id, undefined, { useCache: false })
+    const res = await getPriceHistory(priceListId, undefined, { useCache: false })
     if (res.success) {
       priceHistory.value = res.data || []
       showHistoryDialog.value = true
@@ -2877,18 +2866,24 @@ const handleDeleteHistoryItem = async (row: PriceHistoryRecord) => {
     return
   }
 
+  const product = currentProduct.value
+  const priceListId = product?.price_list_id ?? product?.id
+  if (!product || priceListId === null || priceListId === undefined) {
+    ElMessage.warning('请先选择价格记录')
+    return
+  }
+
   try {
     await confirmAction('确定要删除这条历史记录吗？', '提示', {
       type: 'warning'
     })
 
-    const priceListId = currentProduct.value?.price_list_id || currentProduct.value?.id
     const res = await deletePriceHistory(priceListId, row.id)
 
     if (res.success) {
       ElMessage.success('删除成功')
       // 重新加载历史记录
-      await handleViewHistory(currentProduct.value)
+      await handleViewHistory(product)
     }
   } catch (error) {
     if (error !== 'cancel') {
@@ -2909,13 +2904,19 @@ const handleBatchDeleteHistory = async () => {
     return
   }
 
+  const product = currentProduct.value
+  const priceListId = product?.price_list_id ?? product?.id
+  if (!product || priceListId === null || priceListId === undefined) {
+    ElMessage.warning('请先选择价格记录')
+    return
+  }
+
   try {
     await confirmAction(`确定要删除选中的 ${selectedHistoryItems.value.length} 条历史记录吗？`, '提示', {
       type: 'warning',
       customClass: 'message-box-unified'
     })
 
-    const priceListId = currentProduct.value?.price_list_id || currentProduct.value?.id
     const historyIds = selectedHistoryItems.value.map(item => item.id)
 
     const res = await batchDeletePriceHistory(priceListId, historyIds)
@@ -2924,7 +2925,7 @@ const handleBatchDeleteHistory = async () => {
       ElMessage.success(`成功删除 ${selectedHistoryItems.value.length} 条记录`)
       selectedHistoryItems.value = []
       // 重新加载历史记录
-      await handleViewHistory(currentProduct.value)
+      await handleViewHistory(product)
     }
   } catch (error) {
     if (error !== 'cancel') {
@@ -2940,6 +2941,12 @@ const handleClearHistory = async () => {
     return
   }
 
+  const priceListId = currentProduct.value?.price_list_id ?? currentProduct.value?.id
+  if (priceListId === null || priceListId === undefined) {
+    ElMessage.warning('请先选择价格记录')
+    return
+  }
+
   try {
     await confirmAction('确定要清空所有历史记录吗？此操作不可恢复！', '警告', {
       type: 'error',
@@ -2947,7 +2954,6 @@ const handleClearHistory = async () => {
       cancelButtonText: '取消'
     })
 
-    const priceListId = currentProduct.value?.price_list_id || currentProduct.value?.id
     const res = await clearPriceHistory(priceListId)
 
     if (res.success) {
@@ -2962,29 +2968,29 @@ const handleClearHistory = async () => {
   }
 }
 
-// 查看库存详情（在库最长时间的数据）
-const handleViewInventory = async (row: PriceListRow) => {
-  if (!canView.value) {
-    handleNoPermission('view')
+const fetchInventoryDetails = async (row: PriceListRow) => {
+  const brandId = Number(row.brand_id)
+  const modelId = Number(row.model_id)
+  const colorId = Number(row.color_id)
+  const memoryId = Number(row.memory_id)
+  if (![brandId, modelId, colorId, memoryId].every(id => Number.isInteger(id) && id > 0)) {
+    ElMessage.warning('价格记录缺少完整的基础资料ID，无法查询库存详情')
     return
   }
 
-  currentInventoryItem.value = row
-  showInventoryDialog.value = true
   inventoryLoading.value = true
   inventoryData.value = []
-  inventoryTotal.value = 0
 
   try {
     const res = await getStockPhones({
-      brand: row.brand_name,
-      model: row.model_number,
-      model_exact: 1,
-      color: row.color_name,
-      memory: row.memory,
+      brand_id: brandId,
+      model_id: modelId,
+      color_id: colorId,
+      memory_id: memoryId,
       status: 'in_stock',
       is_new: 1,
-      limit: 100
+      page: inventoryPagination.page,
+      page_size: inventoryPagination.page_size
     })
 
     if (res.success && res.data && res.data.list) {
@@ -3014,8 +3020,30 @@ const handleViewInventory = async (row: PriceListRow) => {
   }
 }
 
+// 查看库存详情（按在库时间从早到晚分页展示）
+const handleViewInventory = async (row: PriceListRow) => {
+  if (!canView.value) {
+    handleNoPermission('view')
+    return
+  }
+
+  currentInventoryItem.value = row
+  inventoryPagination.page = 1
+  inventoryTotal.value = 0
+  showInventoryDialog.value = true
+  await fetchInventoryDetails(row)
+}
+
+const handleInventoryPaginationChange = async (page: number, pageSize: number) => {
+  const row = currentInventoryItem.value
+  if (!row) return
+  inventoryPagination.page = page
+  inventoryPagination.page_size = pageSize
+  await fetchInventoryDetails(row)
+}
+
 // 计算在库天数
-const calculateInventoryDays = (inventoryTime: string) => {
+const calculateInventoryDays = (inventoryTime?: string | null) => {
   if (!inventoryTime) return 0
   const inventoryDate = TimeUtil.parse(inventoryTime)
   if (!inventoryDate || !inventoryDate.isValid()) return 0
@@ -3026,7 +3054,9 @@ const calculateInventoryDays = (inventoryTime: string) => {
 // 加载价格趋势数据
 const loadPriceTrends = async (list: PriceListRow[], seq: number) => {
   if (seq !== trendLoadSeq) return
-  const itemsWithId = list.filter(item => item.price_list_id)
+  const itemsWithId = list.filter(
+    (item): item is PriceListRow & { price_list_id: number } => typeof item.price_list_id === 'number'
+  )
 
   if (itemsWithId.length === 0) {
     return
@@ -3081,10 +3111,10 @@ const getPriceChangeClass = (priceType: string, index: number) => {
   const current = priceHistory.value[index]
   const previous = priceHistory.value[index + 1]
 
-  const currentPrice = current[`${priceType}_price`]
-  const previousPrice = previous[`${priceType}_price`]
+  const currentPrice = Number(current[`${priceType}_price`])
+  const previousPrice = Number(previous[`${priceType}_price`])
 
-  if (!hasPriceValue(currentPrice) || !hasPriceValue(previousPrice)) return ''
+  if (!Number.isFinite(currentPrice) || !Number.isFinite(previousPrice)) return ''
 
   if (currentPrice > previousPrice) return 'price-up'
   if (currentPrice < previousPrice) return 'price-down'
@@ -3294,9 +3324,6 @@ const handleBrandChange = async () => {
       .filter((model: PriceModelOption) => {
         // 尝试匹配 brand_name 字段
         if (model.brand_name === searchForm.brand_name) return true
-        // 尝试匹配 brand 对象的 name 字段
-        const relatedBrand = (model as unknown as Record<string, unknown>).brand
-        if (relatedBrand && typeof relatedBrand === 'object' && (relatedBrand as { name?: string }).name === searchForm.brand_name) return true
         // 尝试包含匹配（处理可能的大小写或空格问题）
         if (model.brand_name && model.brand_name.includes(searchForm.brand_name)) return true
         return false

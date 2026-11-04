@@ -1,0 +1,99 @@
+.data-import-tab {
+  .import-wizard {
+    .strategy-step {
+      .analysis-result {
+background: var(--tf-color-surface);
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 24px;
+
+.result-summary {
+          display: flex;
+          justify-content: space-around;
+          margin-bottom: 20px;
+
+          .summary-item {
+            text-align: center;
+
+            .label {
+              display: block;
+              font-size: var(--tf-type-scale-14);
+              color: var(--color-info);
+              margin-bottom: 8px;
+            }
+
+            .value {
+              display: block;
+              font-size: var(--tf-type-scale-24);
+              font-weight: 600;
+              color: var(--color-text-primary);
+            }
+
+            &.success .value {
+              color: var(--color-success);
+            }
+
+            &.warning .value {
+              color: var(--color-warning);
+            }
+          }
+        }
+
+.data-summary {
+          margin-bottom: 24px;
+
+          h3 {
+            font-size: var(--tf-type-scale-16);
+            font-weight: 600;
+            color: var(--color-text-primary);
+            margin: 0 0 16px 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+          }
+
+          .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 16px;
+
+            .summary-stat {
+              display: flex;
+              align-items: center;
+              gap: 12px;
+              padding: 16px;
+              background: white;
+              border-radius: 8px;
+              border: 1px solid var(--tf-color-border-element);
+
+              i {
+                font-size: var(--tf-type-scale-24);
+                color: var(--color-primary);
+                width: 32px;
+                text-align: center;
+              }
+
+              .stat-content {
+                display: flex;
+                flex-direction: column;
+
+                .stat-value {
+                  font-size: var(--tf-type-scale-20);
+                  font-weight: 600;
+                  color: var(--color-text-primary);
+                  line-height: 1.2;
+                }
+
+                .stat-label {
+                  font-size: var(--tf-type-scale-12);
+                  color: var(--color-info);
+                  margin-top: 4px;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

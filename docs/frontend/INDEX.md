@@ -50,7 +50,7 @@
 - [前端埋点](telemetry-standards.md)
 - [主题切换](theme-standards.md)
 - [全局交互反馈](interaction-standards.md)
-- [统一页面结构](unified-page-structure.md)
+- [统一页面结构旧入口](unified-page-structure.md) — 迁移导航，正文及模板统一到“页面结构”
 - [前端页面与功能单元台账](page-audit-inventory.md)
 
 ## 专项指南与记录

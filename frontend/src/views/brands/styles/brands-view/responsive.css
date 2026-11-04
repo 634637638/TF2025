@@ -1,0 +1,195 @@
+/* 响应式设计 */
+@media (max-width: 767px) {
+  .brands-view {
+    padding: 16px;
+  }
+
+  
+  .action-buttons {
+    order: 1;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .user-meta {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+  .form-actions {
+    flex-direction: column;
+  }
+
+  .table-section {
+    padding: 16px;
+  }
+
+  .pagination-section {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .brand-info {
+    max-width: 150px;
+  }
+
+  .brands-dialog-form :deep(.el-form-item) {
+    margin-bottom: 14px;
+  }
+}
+
+.pagination-info {
+  color: var(--tf-color-muted);
+  font-size: var(--tf-type-scale-14);
+}
+
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.btn-page {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--tf-button-neutral-border);
+  background: var(--tf-button-neutral-bg);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: var(--tf-button-tool-color);
+}
+
+.btn-page:hover:not(:disabled) {
+  background: var(--tf-button-neutral-hover-bg);
+  border-color: var(--tf-button-neutral-hover-border);
+}
+
+.btn-page:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.page-numbers {
+  display: flex;
+  gap: 4px;
+}
+
+/* 移动端响应式优化 */
+@media (max-width: 767px) {
+  .brands-view {
+    padding: 8px;
+  }
+
+  .form-group {
+    width: 100%;
+  }
+
+  .form-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  /* 表格区域优化 */
+  .table-section {
+    overflow: hidden;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  .table-responsive {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 12px;
+  }
+
+  /* 操作按钮优化 */
+  .actions {
+    vertical-align: middle;
+    text-align: center;
+    min-width: 80px;
+  }
+
+  .actions .action-buttons {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .brand-info {
+    max-width: none;
+    width: 100%;
+  }
+
+  .brand-name {
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    line-height: 1.35;
+  }
+
+  .status-badge {
+    white-space: normal;
+    line-height: 1.35;
+    justify-content: center;
+    max-width: 82px;
+    width: 100%;
+    margin: 0 auto;
+  }
+/* 分页优化 */
+  .pagination-section {
+    flex-direction: column;
+    gap: 12px;
+    margin: 16px -12px 0 -12px;
+    padding: 16px 12px;
+  }
+
+  .pagination-controls {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .btn-page {
+    width: 36px;
+    height: 36px;
+    font-size: var(--tf-type-scale-12);
+  }
+
+  .brands-dialog-form :deep(.el-form-item) {
+    margin-bottom: 12px;
+  }
+
+  .brands-dialog-form :deep(.el-form-item__label) {
+    font-size: var(--tf-type-scale-13);
+    line-height: 1.4;
+    padding-bottom: 4px;
+  }
+
+  .brands-dialog-form :deep(.el-input__wrapper),
+  .brands-dialog-form :deep(.el-input-number .el-input__wrapper) {
+    padding: 1px 12px;
+  }
+
+  .brands-dialog-form :deep(.el-radio-group) {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .brands-dialog-form :deep(.el-radio) {
+    margin-right: 0;
+    min-height: 40px;
+    padding: 0 12px;
+    border: 1px solid var(--tf-color-border-blue);
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+  }
+
+}

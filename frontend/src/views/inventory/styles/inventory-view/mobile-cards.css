@@ -1,0 +1,180 @@
+/* 响应式设计 */
+@media (max-width: 767px) {
+  .inventory-view {
+    padding: 4px 0;
+  }
+
+  .header-content {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .header-left {
+    flex: 1;
+    min-width: 120px;
+  }
+
+  .form-actions {
+    flex-direction: column;
+  }
+
+  .detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+}
+
+/* ===== 移动端卡片样式 ===== */
+.mobile-cards-container {
+  padding: 0;
+}
+
+.inventory-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+}
+
+.inventory-card {
+  background: var(--admin-data-table-bg);
+  border-radius: 12px;
+  box-shadow: var(--admin-stat-card-shadow);
+  border: 1px solid var(--admin-table-panel-border);
+  overflow: hidden;
+  transition: all 0.3s ease;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--admin-stat-card-hover-shadow);
+  }
+
+  .card-header {
+    background: var(--admin-table-panel-bg);
+    padding: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--admin-table-panel-border);
+
+    .phone-info {
+      flex: 1;
+
+      .brand-model {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 8px;
+
+        .brand {
+          font-weight: 700;
+          font-size: var(--tf-type-scale-16);
+          color: var(--tf-button-primary-soft-color);
+        }
+
+        .model {
+          font-weight: 600;
+          font-size: var(--tf-type-scale-14);
+          color: var(--admin-data-table-cell-color);
+        }
+      }
+    }
+
+    .card-actions {
+      display: flex;
+      gap: 8px;
+    }
+  }
+
+  .card-content {
+    padding: 16px;
+
+    .info-row {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 12px;
+      align-items: flex-start;
+
+      &:last-child {
+        margin-bottom: 0;
+      }
+
+      .info-item {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+
+        &.full-width {
+          flex: 1 1 100%;
+        }
+
+        .info-label {
+          font-size: var(--tf-type-scale-12);
+          font-weight: 500;
+          color: var(--admin-record-count-color);
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+
+        .info-value {
+          font-size: var(--tf-type-scale-14);
+          font-weight: 500;
+          color: var(--admin-data-table-cell-color);
+          word-break: break-all;
+
+          &.price {
+            color: var(--tf-button-success-soft-color);
+            font-weight: 600;
+            font-size: var(--tf-type-scale-16);
+          }
+
+          &.serial-number,
+          &.imei {
+            font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Consolas', monospace;
+            font-size: var(--tf-type-scale-12);
+            background: var(--admin-table-panel-bg);
+            padding: 4px 8px;
+            border-radius: 4px;
+            border: 1px solid var(--admin-table-panel-border);
+          }
+        }
+      }
+    }
+  }
+}
+
+/* 卡片进入动画 */
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 移动端卡片动画 */
+.inventory-card {
+  animation: slideInUp 0.5s ease-out;
+
+  &:nth-child(2) {
+    animation-delay: 0.1s;
+  }
+
+  &:nth-child(3) {
+    animation-delay: 0.2s;
+  }
+
+  &:nth-child(4) {
+    animation-delay: 0.3s;
+  }
+
+  &:nth-child(5) {
+    animation-delay: 0.4s;
+  }
+}

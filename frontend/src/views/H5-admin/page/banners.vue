@@ -733,34 +733,41 @@ const handleSave = async () => {
       form.value.end_time = undefined
     }
 
-    const payload = { ...form.value } as Record<string, unknown>
-    const fieldPayloadMap: Record<string, string> = {
-      title: 'banner.title',
-      image_url: 'banner.image',
-      images: 'banner.image',
-      link_type: 'banner.link_type',
-      link_url: 'banner.link_url',
-      sort_order: 'banner.sort_order',
-      interval: 'banner.interval',
-      status: 'banner.status',
-      start_time: 'banner.display_time',
-      end_time: 'banner.display_time'
-    }
-    Object.entries(fieldPayloadMap).forEach(([key, fieldKey]) => {
+    const payload: Partial<ShopBanner> = { ...form.value }
+    const fieldPayloadMap: Array<[keyof ShopBanner, string]> = [
+      ['title', 'banner.title'],
+      ['image_url', 'banner.image'],
+      ['images', 'banner.image'],
+      ['link_type', 'banner.link_type'],
+      ['link_url', 'banner.link_url'],
+      ['sort_order', 'banner.sort_order'],
+      ['interval', 'banner.interval'],
+      ['status', 'banner.status'],
+      ['start_time', 'banner.display_time'],
+      ['end_time', 'banner.display_time']
+    ]
+    fieldPayloadMap.forEach(([key, fieldKey]) => {
       if (!canViewField(fieldKey)) {
         delete payload[key]
       }
     })
 
     if (dialogMode.value === 'add') {
-      await createBanner(payload as unknown as ShopBanner)
+      if (!payload.title || !payload.image_url) {
+        throw new Error('创建轮播图缺少标题或图片')
+      }
+      await createBanner({
+        ...payload,
+        title: payload.title,
+        image_url: payload.image_url
+      })
       ElMessage.success('创建成功')
     } else {
       if (form.value.id === undefined || form.value.id === null) {
         ElMessage.error('轮播图信息已失效，请重新打开')
         return
       }
-      await updateBanner(form.value.id, payload as unknown as ShopBanner)
+      await updateBanner(form.value.id, payload)
       ElMessage.success('更新成功')
     }
 
@@ -841,12 +848,11 @@ const handleDragEnd = async () => {
   }
 
   try {
-    const orders = banners.value.map((banner, index) => ({
-      id: banner.id,
-      sort_order: index
-    }))
+    const orders = banners.value
+      .map((banner, index) => ({ id: banner.id, sort_order: index }))
+      .filter((order): order is { id: number, sort_order: number } => typeof order.id === 'number')
 
-    if (orders.some(order => order.id === undefined || order.id === null)) {
+    if (orders.length !== banners.value.length) {
       ElMessage.error('存在无效轮播图，请刷新后重试')
       await loadBanners()
       return

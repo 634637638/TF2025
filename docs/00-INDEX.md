@@ -4,13 +4,15 @@
 
 ## 常用入口
 
+AI 协作从根目录 [AGENTS.md](../AGENTS.md) 开始；[CLAUDE.md](../CLAUDE.md) 是另一工具入口。两者指向本索引和同一套权威正文，完成检查见 [任务检查矩阵](guides/CODE_REVIEW_STANDARDS.md#任务检查矩阵)。
+
 | 主题 | 入口 | 内容 |
 | --- | --- | --- |
 | 开发与代码规范 | [开发指南](guides/INDEX.md) | API、类型、日志、错误处理、移动端及文档写作规范 |
 | 前端强制规范 | [前端规范索引](frontend/INDEX.md) | 唯一权威前端规范；审计清单见 `frontend/standards-manifest.json` |
 | 规范与审计可视化 | 登录后台访问 `/standards` | 按类型查看规范要求、效果预览、公共实现和审计命令 |
 | 页面与功能单元台账 | [前端页面与功能单元台账](frontend/page-audit-inventory.md) | 路由、Tab、弹窗、表格和公共组件清单；新增、删除、迁移必须同步维护 |
-| 后端 | [后端文档索引](backend/INDEX.md) | 后端接口、上传存储和数据迁移说明 |
+| 后端 | [后端文档索引](backend/INDEX.md) | 后端接口、备份、上传存储和数据迁移说明 |
 | 权限 | [权限文档索引](permissions/INDEX.md) | RBAC、页面能力、字段权限及审计要求 |
 | 部署 | [部署文档索引](deployment/INDEX.md) | 环境变量、服务器部署、Nginx 与上传发布 |
 | 数据库 | [数据库文档索引](database/INDEX.md) | 表结构、模块映射与字段契约 |
@@ -20,7 +22,7 @@
 | 性能 | [性能文档索引](performance/INDEX.md) | 仍有效的实现说明；历史评估不作为当前基准 |
 | 安全 | [安全文档索引](security/INDEX.md) | 密钥管理、公开接口风险与审计记录 |
 | 开发进展 | [开发记录索引](development/INDEX.md) | 有日期的实施、审计与进度快照 |
-| 全站逐页审计 | [前后端逐页与路由模块审计](development/full-stack-page-audit-2026-11-02.md) | 62 个叶子路由、页面功能单元、公共组件和后端路由模块的当前审计结论 |
+| 全站逐页审计 | [前后端逐页与路由模块审计](development/full-stack-page-audit-2026-11-02.md) | 2026-11-02 的逐页审计快照；不代表此后代码或线上状态 |
 | 兼容接口清理 | [兼容接口与弃用路由台账](guides/compatibility-route-retirement-ledger.md) | 旧接口迁移、权限差异、日志观察和逐项删除条件 |
 | 组件专题 | [组件专题索引](components/INDEX.md) | 组件指南和旧资料迁移入口 |
 | 示例 | [代码示例索引](examples/INDEX.md) | 组件示例；实际要求以现行规范为准 |

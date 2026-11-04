@@ -428,19 +428,14 @@ const getEnabledSummary = (module: DialogModule) => {
   return `菜单${menuEnabled ? '已开' : '已关'} · 动作 ${selectedCount}/${permissionCount}`
 }
 
-const createSwitchEvent = (checked: boolean) => {
-  const event = { target: { checked } } as unknown as Event
-  return event
-}
-
 const toggleActionPermission = (moduleKey: string, permissionType: string) => {
   const checked = !ctx.isDialogPermissionSelected(moduleKey, permissionType)
-  return ctx.handleDialogPermissionChange(moduleKey, permissionType, createSwitchEvent(checked))
+  return ctx.handleDialogPermissionChange(moduleKey, permissionType, checked)
 }
 
 const toggleMenuPermission = (moduleKey: string) => {
   const checked = !ctx.isDialogMenuPermissionSelected(moduleKey)
-  return ctx.handleDialogMenuPermissionChange(moduleKey, createSwitchEvent(checked))
+  return ctx.handleDialogMenuPermissionChange(moduleKey, checked)
 }
 
 const getModuleStatus = (module: DialogModule): ModuleStatus => {

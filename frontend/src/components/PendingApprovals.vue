@@ -429,6 +429,7 @@ const isInvalidDate = (dateStr: string) => {
 const formatTime = (dateStr: string) => {
   if (!dateStr) return ''
   const date = TimeUtil.parse(dateStr)
+  if (!date) return dateStr
   const now = TimeUtil.now()
   const hours = TimeUtil.diff(date, now, 'hour')
 

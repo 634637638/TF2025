@@ -1,0 +1,83 @@
+@media (max-width: 390px) {
+  .mobile-dialog-sheet-panel.inventory-result-dialog .product-header {
+    padding: 10px;
+
+    .product-info {
+      gap: 4px;
+    }
+
+    .product-main {
+      gap: 3px;
+      font-size: var(--tf-type-scale-12);
+    }
+
+    .brand {
+      font-size: var(--tf-type-scale-13);
+    }
+
+    .model {
+      font-size: var(--tf-type-scale-12);
+    }
+
+    .product-specs {
+      gap: 3px;
+    }
+
+    .color,
+    .memory,
+    .total-count {
+      font-size: var(--tf-type-scale-10);
+      padding: 2px 6px;
+    }
+  }
+
+  .mobile-dialog-sheet-panel.inventory-result-dialog .inventory-list {
+    .inventory-item {
+      grid-template-columns: 30px minmax(0, 1fr);
+      gap: 8px;
+      padding: 10px;
+
+      .item-rank {
+        width: 30px;
+        height: 30px;
+        font-size: var(--tf-type-scale-11);
+      }
+
+      .item-header {
+        .store-name {
+          font-size: var(--tf-type-scale-12);
+        }
+
+        .date {
+          font-size: var(--tf-type-scale-10);
+        }
+      }
+
+      .item-details {
+        .identifier-label {
+          font-size: var(--mobile-text-label);
+        }
+
+        .identifier-value {
+          width: max-content;
+          max-width: none;
+          font-size: var(--mobile-text-label);
+          white-space: nowrap;
+        }
+
+        .inventory-age {
+          min-width: 42px;
+          padding: 3px 7px;
+
+          .number {
+            font-size: var(--tf-type-scale-14);
+          }
+
+          .label {
+            font-size: var(--tf-type-scale-9);
+          }
+        }
+      }
+    }
+  }
+}

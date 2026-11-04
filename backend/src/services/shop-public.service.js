@@ -1401,21 +1401,26 @@ class ShopPublicService {
    */
   async getOrdersByPhone(customer_phone, { page, page_size, customer_name }) {
     const offset = (page - 1) * page_size
+    const normalizedName = String(customer_name || '').trim()
+    const whereClause = normalizedName
+      ? 'customer_phone = ? AND customer_name = ?'
+      : 'customer_phone = ?'
+    const filterParams = normalizedName ? [customer_phone, normalizedName] : [customer_phone]
 
     // 查询总数
     const [countResult] = await db.getDatabase().query(
-      'SELECT COUNT(*) as total FROM H5_orders WHERE customer_phone = ? AND customer_name = ?',
-      [customer_phone, customer_name]
+      `SELECT COUNT(*) as total FROM H5_orders WHERE ${whereClause}`,
+      filterParams
     )
-    const total = countResult[0].total
+    const total = Number(countResult[0].total || 0)
 
     // 查询数据
     const [orders] = await db.getDatabase().query(
       `SELECT ${selectFields(H5_ORDER_FIELDS)} FROM H5_orders
-       WHERE customer_phone = ? AND customer_name = ?
+       WHERE ${whereClause}
        ORDER BY created_at DESC
        LIMIT ? OFFSET ?`,
-      [customer_phone, customer_name, page_size, offset]
+      [...filterParams, page_size, offset]
     )
 
     const total_pages = Math.ceil(total / page_size)
@@ -1509,6 +1514,73 @@ class ShopPublicService {
   }
 
   /**
+   * 获取 H5 客户的销售历史
+   */
+  async getSalesByCustomerId(customerId, { page, page_size }) {
+    const offset = (page - 1) * page_size
+    const [countResult] = await db.getDatabase().query(
+      'SELECT COUNT(*) as total FROM sales WHERE customer_id = ?',
+      [customerId]
+    )
+    const total = Number(countResult[0].total || 0)
+    const total_pages = Math.ceil(total / page_size)
+
+    const [sales] = await db.getDatabase().query(
+      `SELECT
+        s.id,
+        s.invoice_number,
+        COALESCE(s.sale_time, p.sale_time) as sale_time,
+        p.sale_price,
+        s.payment_method,
+        st.name as store_name,
+        u.name as operator_name,
+        p.imei,
+        p.serial_number,
+        b.name as brand_name,
+        m.name as model_name,
+        c.name as color_name,
+        NULLIF(TRIM(CONCAT_WS(' ', b.name, m.name, c.name)), '') as product_name,
+        p.is_new
+       FROM sales s
+       LEFT JOIN stores st ON s.store_id = st.id
+       LEFT JOIN users u ON s.operator_id = u.id
+       LEFT JOIN phones p ON s.phone_id = p.id
+       LEFT JOIN brands b ON p.brand_id = b.id
+       LEFT JOIN models m ON p.model_id = m.id
+       LEFT JOIN colors c ON p.color_id = c.id
+       WHERE s.customer_id = ?
+       ORDER BY COALESCE(s.sale_time, p.sale_time) DESC
+       LIMIT ? OFFSET ?`,
+      [customerId, page_size, offset]
+    )
+
+    return {
+      data: sales.map(sale => ({
+        id: sale.id,
+        invoice_number: sale.invoice_number ?? null,
+        sale_time: sale.sale_time ?? null,
+        sale_price: sale.sale_price === null || sale.sale_price === undefined ? null : Number(sale.sale_price),
+        payment_method: sale.payment_method ?? null,
+        store_name: sale.store_name ?? null,
+        operator_name: sale.operator_name ?? null,
+        imei: sale.imei ?? null,
+        serial_number: sale.serial_number ?? null,
+        product_name: sale.product_name ?? null,
+        brand_name: sale.brand_name ?? null,
+        model_name: sale.model_name ?? null,
+        color_name: sale.color_name ?? null,
+        is_new: sale.is_new === null || sale.is_new === undefined ? null : Number(sale.is_new)
+      })),
+      page,
+      page_size,
+      total,
+      total_pages,
+      has_next: page < total_pages,
+      has_prev: page > 1
+    }
+  }
+
+  /**
    * 修改订单状态
    */
   async updateOrderStatus(orderId, status) {
@@ -1548,7 +1620,7 @@ class ShopPublicService {
 
       // 查询订单信息
       const [orders] = await connection.query(
-        'SELECT * FROM H5_orders WHERE order_number = ? AND status = "pending"',
+        'SELECT * FROM H5_orders WHERE order_number = ? AND status = "pending" FOR UPDATE',
         [orderNumber]
       )
 
@@ -1566,10 +1638,15 @@ class ShopPublicService {
       }
 
       // 更新订单状态为已付款（待审核），不锁定库存
-      await connection.query(
-        'UPDATE H5_orders SET status = "paid", updated_at = NOW() WHERE id = ?',
+      const [updateResult] = await connection.query(
+        'UPDATE H5_orders SET status = "paid", updated_at = NOW() WHERE id = ? AND status = "pending"',
         [order.id]
       )
+
+      if (updateResult.affectedRows !== 1) {
+        await connection.rollback()
+        return null
+      }
 
       await connection.commit()
 
@@ -3308,7 +3385,7 @@ class ShopPublicService {
 
       // 查询订单信息
       const [orders] = await connection.query(
-        `SELECT ${selectFields(H5_ORDER_FIELDS)} FROM H5_orders WHERE id = ?`,
+        `SELECT ${selectFields(H5_ORDER_FIELDS)} FROM H5_orders WHERE id = ? FOR UPDATE`,
         [orderId]
       )
 
@@ -3326,10 +3403,15 @@ class ShopPublicService {
       }
 
       // 更新订单状态
-      await connection.query(
-        'UPDATE H5_orders SET status = "cancelled", cancel_reason = ?, cancelled_at = NOW(), remarks = ?, updated_at = NOW() WHERE id = ?',
-        [reason, reason, orderId]
+      const [updateResult] = await connection.query(
+        'UPDATE H5_orders SET status = "cancelled", cancel_reason = ?, cancelled_at = NOW(), remarks = ?, updated_at = NOW() WHERE id = ? AND status = ?',
+        [reason, reason, orderId, order.status]
       )
+
+      if (updateResult.affectedRows !== 1) {
+        await connection.rollback()
+        throw new Error('订单状态已变化，无法取消')
+      }
 
       // 如果订单已支付（paid状态），释放库存
       if (order.status === 'paid') {

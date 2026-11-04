@@ -226,7 +226,7 @@ const userRoleText = computed(() => {
 
 
 // 更新北京时间
-let timeInterval = null
+let timeInterval: ReturnType<typeof setInterval> | null = null
 const updateBeijingTime = () => {
   const now = TimeUtil.now()
   beijingTime.value = TimeUtil.format(now, TIME_FORMATS.TIME)

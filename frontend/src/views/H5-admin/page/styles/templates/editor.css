@@ -1,0 +1,137 @@
+.child-template-selector {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.7fr) minmax(0, 1.3fr);
+  align-items: center;
+  gap: var(--tf-space-4);
+  margin-bottom: var(--admin-panel-gap);
+  min-width: 0;
+  max-width: 100%;
+}
+
+.add-child-box {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 96px;
+  gap: var(--tf-space-2);
+  min-width: 0;
+  margin: 0;
+}
+
+.child-template-tabs {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.editor-panel {
+  min-height: 0;
+  min-width: 0;
+}
+
+.editor-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.editor-title-row h3 {
+  margin: 0 0 6px;
+  font-size: var(--tf-type-scale-18);
+  color: var(--tf-color-neutral-900);
+}
+
+.editor-title-row p {
+  margin: 0;
+  color: var(--tf-color-neutral-500);
+  font-size: var(--tf-type-scale-13);
+}
+
+.editor-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.editor-block {
+  border: 1px solid var(--tf-color-surface-cool);
+  border-radius: 16px;
+  padding: 16px;
+  background: var(--tf-color-surface-blue-alt);
+}
+
+.markup-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+  align-items: stretch;
+}
+
+.markup-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  width: 100%;
+  min-width: 0;
+}
+
+.markup-type-select,
+.markup-input {
+  width: 100%;
+  min-width: 0;
+}
+
+:deep(.markup-type-select.el-select),
+:deep(.markup-input.el-input-number) {
+  width: 100%;
+  min-width: 0;
+}
+
+.markup-input-with-unit {
+  position: relative;
+}
+
+.markup-input-frame {
+  width: 100%;
+  min-width: 0;
+}
+
+.markup-input-frame .markup-input {
+  width: 100%;
+}
+
+.markup-input-with-unit :deep(.markup-input.el-input-number) {
+  width: 100%;
+  min-width: 0;
+}
+
+.markup-unit {
+  position: absolute;
+  top: 50%;
+  right: 42px;
+  z-index: 2;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: var(--tf-color-neutral-600);
+  font-size: var(--tf-type-scale-14);
+  font-weight: 700;
+  line-height: 1;
+}
+
+.markup-input-with-unit :deep(.el-input__inner) {
+  padding-right: 22px;
+}
+
+.block-title {
+  font-size: var(--tf-type-scale-15);
+  font-weight: 700;
+  color: var(--tf-color-neutral-900);
+  margin-bottom: 14px;
+}
+
+.stock-line {
+  font-size: var(--tf-type-scale-13);
+  color: var(--tf-color-neutral-500);
+}

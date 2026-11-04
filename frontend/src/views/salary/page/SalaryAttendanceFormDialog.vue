@@ -282,8 +282,10 @@ const leaveDateRange = computed<[string, string] | null>({
   set: (value) => {
     const start = value?.[0] || ''
     const end = value?.[1] || ''
-    const days = start && end
-      ? Math.abs(TimeUtil.parse(end).diff(TimeUtil.parse(start), 'day')) + 1
+    const startDate = start ? TimeUtil.parse(start) : null
+    const endDate = end ? TimeUtil.parse(end) : null
+    const days = startDate?.isValid() && endDate?.isValid()
+      ? Math.abs(endDate.diff(startDate, 'day')) + 1
       : 1
     emit('update:form', {
       ...props.form,
@@ -299,7 +301,10 @@ const leaveDateRange = computed<[string, string] | null>({
 const calculatedLeaveDays = computed(() => {
   if (!recordDate.value) return 1
   const end = recordEndDate.value || recordDate.value
-  return Math.abs(TimeUtil.parse(end).diff(TimeUtil.parse(recordDate.value), 'day')) + 1
+  const startDate = TimeUtil.parse(recordDate.value)
+  const endDate = TimeUtil.parse(end)
+  if (!startDate?.isValid() || !endDate?.isValid()) return 1
+  return Math.abs(endDate.diff(startDate, 'day')) + 1
 })
 </script>
 

@@ -445,7 +445,7 @@ export function useForm<T extends Record<string, unknown>>(
   watch(
     () => form.errors,
     (errors) => {
-      form.isValid = Object.keys(errors).length === 0
+      form.isValid = Object.keys(errors || {}).length === 0
     },
     { deep: true, immediate: true }
   )

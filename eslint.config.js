@@ -103,6 +103,9 @@ module.exports = [
   ...vue.configs['flat/recommended'],
   {
     files: ['**/*.vue'],
+    plugins: {
+      '@typescript-eslint': tseslint
+    },
     languageOptions: {
       parser: vueParser,
       parserOptions: {
@@ -112,6 +115,14 @@ module.exports = [
       }
     },
     rules: {
+      // Vue 的 TS 签名参数由类型规则判断，基础规则会把函数类型参数误判为未使用。
+      'no-unused-vars': 'off',
+      '@typescript-eslint/no-unused-vars': ['warn', {
+        argsIgnorePattern: '^_',
+        varsIgnorePattern: '^_',
+        caughtErrors: 'none',
+        ignoreRestSiblings: true
+      }],
       'vue/multi-word-component-names': 'off',
       // 表单分区组件接收同一个 reactive 模型；允许修改模型字段，但仍禁止替换整个 prop。
       'vue/no-mutating-props': ['error', { shallowOnly: true }],

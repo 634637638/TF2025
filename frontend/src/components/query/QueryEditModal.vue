@@ -540,7 +540,7 @@ import {
 } from '@/services/reference-options'
 import { PHONE_STATUS_OPTIONS } from '@/constants/phoneStatuses'
 import type { OrderCustomer as Customer } from '@/types/order'
-import type { IdNameOption, MemoryOption, ModelOption, ModelValueProps, SuccessEmits, UpdateModelValueEmits, UserOption } from '@/types'
+import type { IdNameOption, ModelOption, ModelValueProps, QueryOperationOptions, SuccessEmits, UpdateModelValueEmits, UserOption } from '@/types'
 
 // ==================== 本地类型定义 ====================
 
@@ -554,16 +554,6 @@ interface EditModalOptions {
   colorItems: IdNameOption[]
   memories: string[]
   memoryItems: IdNameOption[]
-  users: UserOption[]
-}
-
-interface SharedEditModalOptions {
-  suppliers: IdNameOption[]
-  stores: IdNameOption[]
-  brands: Array<{ id: number; name: string; sort_order?: number }>
-  models: ModelOption[]
-  colors: Array<{ id: number; name: string; sort_order?: number }>
-  memories: MemoryOption[]
   users: UserOption[]
 }
 
@@ -595,13 +585,13 @@ interface CustomerOption extends Pick<Customer, 'id' | 'name' | 'phone'> {
 
 const { success: showSuccess, error: showError, warning: showWarning, info: showInfo } = useNotification()
 
-const normalizeCustomerOption = (customer?: Partial<CustomerOption> | null): CustomerOption => ({
+const normalizeCustomerOption = (customer?: CustomerOption | Record<string, unknown> | null): CustomerOption => ({
   id: Number(customer?.id || 0),
   name: normalizePersonName(customer?.name || '', 20),
   phone: normalizeCustomerPhone(customer?.phone || ''),
   apple_id: normalizeAppleId(customer?.apple_id || ''),
-  member_number: customer?.member_number || '',
-  vip_level: customer?.vip_level || 'normal'
+  member_number: String(customer?.member_number || ''),
+  vip_level: String(customer?.vip_level || 'normal')
 })
 
 interface NormalizedPhoneData {
@@ -770,7 +760,7 @@ const normalizeNameList = (data: unknown, keyCandidates: string[] = ['name']) =>
         const name = keyCandidates.map((key) => rawItem?.[key as keyof RawLookupItem]).find(Boolean)
         return name ? { id: Number(rawItem?.id || 0), name: String(name), sort_order: Number(rawItem?.sort_order || 0) } : null
       })
-      .filter(Boolean)
+      .filter((item): item is { id: number; name: string; sort_order: number } => item !== null)
   ).map(item => item.name)
 }
 
@@ -1086,7 +1076,7 @@ const ensureHistoricalUserOption = (userId: unknown, userName: unknown) => {
 
 const props = defineProps<ModelValueProps & {
   phoneId: number | null
-  sharedOptions?: SharedEditModalOptions
+  sharedOptions?: QueryOperationOptions
 }>()
 
 const emit = defineEmits<UpdateModelValueEmits & SuccessEmits>()
@@ -1335,7 +1325,7 @@ const resetFormState = () => {
   editShowCustomerSearchResults.value = false
 }
 
-const normalizeSharedOptions = (source: SharedEditModalOptions): EditModalOptions => ({
+const normalizeSharedOptions = (source: QueryOperationOptions): EditModalOptions => ({
   suppliers: [...source.suppliers],
   stores: [...source.stores],
   brands: source.brands.map(item => item.name),

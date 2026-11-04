@@ -176,14 +176,14 @@
               class="detail-item"
             >
               <label>创建时间：</label>
-              <span>{{ formatDateTime(accessory.created_at) }}</span>
+              <span>{{ formatDateTime(accessory.created_at ?? null) }}</span>
             </div>
             <div
               v-if="canViewAccessoryField('updated_at')"
               class="detail-item"
             >
               <label>更新时间：</label>
-              <span>{{ formatDateTime(accessory.updated_at) }}</span>
+              <span>{{ formatDateTime(accessory.updated_at ?? null) }}</span>
             </div>
           </div>
         </div>
@@ -266,11 +266,11 @@ const props = defineProps({
   },
   categories: {
     type: Array as PropType<AccessoryOptionItem[]>,
-    default: () => []
+    default: (): AccessoryOptionItem[] => []
   },
   brands: {
     type: Array as PropType<AccessoryOptionItem[]>,
-    default: () => []
+    default: (): AccessoryOptionItem[] => []
   },
   hasEditPermission: {
     type: Boolean,

@@ -75,7 +75,7 @@ export const usePagePermissions = (module: string) => {
 
   // 统一的无操作权限处理
   const handleNoPermission = (action: string) => {
-    const actionNames = {
+    const actionNames: Record<string, string> = {
       create: '创建',
       'return-to-stock': '退库',
       wholesale: '调货',

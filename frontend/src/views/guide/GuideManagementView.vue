@@ -686,13 +686,19 @@ const linkForm = reactive<GuideLinkForm>({ category_id: null, title: '', descrip
 const settingsForm = reactive<GuideSettings>({ site_title: '导航中心', site_eyebrow: 'DH NAVIGATION', footer_text: 'DH Navigation', contact_wechat: '', contact_phone: '' })
 const activeCategoryTabs = reactive<Record<number, string>>({})
 const categoryTreeProps = { value: 'id', label: 'label', children: 'children' }
-const linkCategoryTree = computed(() => categories.value.map(category => ({
+interface GuideCategoryTreeOption {
+  id: number
+  label: string
+  children: GuideCategoryTreeOption[]
+}
+
+const linkCategoryTree = computed<GuideCategoryTreeOption[]>(() => categories.value.map(category => ({
   id: category.id,
   label: category.name,
   children: (category.children || []).map(child => ({
     id: child.id,
     label: child.name,
-    children: []
+    children: [] as GuideCategoryTreeOption[]
   }))
 })))
 const parentCategoryOptions = computed(() => categories.value.filter(category => category.id !== editingCategory.value?.id))

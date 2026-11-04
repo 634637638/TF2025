@@ -385,7 +385,7 @@
                 v-for="store in stores"
                 :key="store.id"
                 :label="store.name"
-                :value="store.id"
+                :value="store.id ?? ''"
               />
             </el-select>
           </div>
@@ -654,6 +654,7 @@ import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import { isCurrentMobileViewport } from '@/utils/device-detection'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import DateRangePicker from '@/components/DateRangePicker.vue'
+import type { DateRangeValue } from '@/types/date-range'
 import ImportExportActions from '@/components/business/ImportExportActions.vue'
 import InlineLoading from '@/components/InlineLoading.vue'
 import { PageHeader, PermissionGate } from '@/components/base'
@@ -1061,7 +1062,7 @@ const normalizeHandlerInfo = (handler_info?: NationalSubsidyRecord['handler_info
 
 const normalizeSubsidyRecord = (item?: NationalSubsidyRecord | null): NationalSubsidyRecord | null => {
   if (!item || typeof item !== 'object') {
-    return item
+    return item ?? null
   }
 
   return {
@@ -1186,7 +1187,7 @@ const fetchStats = async (options: FetchRequestOptions = {}) => {
       return
     }
 
-    if (response.success) {
+    if (response.success && response.data) {
       stats.value = response.data
     }
   } catch (error: unknown) {
@@ -1632,7 +1633,7 @@ const handleSearch = () => {
 }
 
 // 销售日期范围变化
-const handleSaleDateChange = (value: [string, string] | null) => {
+const handleSaleDateChange = (value: DateRangeValue) => {
   if (value && value.length === 2) {
     filters.sale_date_start = value[0]
     filters.sale_date_end = value[1]
@@ -1644,7 +1645,7 @@ const handleSaleDateChange = (value: [string, string] | null) => {
 }
 
 // 提交日期范围变化
-const handleSubmitDateChange = (value: [string, string] | null) => {
+const handleSubmitDateChange = (value: DateRangeValue) => {
   if (value && value.length === 2) {
     filters.submit_date_start = value[0]
     filters.submit_date_end = value[1]
@@ -1656,7 +1657,7 @@ const handleSubmitDateChange = (value: [string, string] | null) => {
 }
 
 // 到账日期范围变化
-const handleArriveDateChange = (value: [string, string] | null) => {
+const handleArriveDateChange = (value: DateRangeValue) => {
   if (value && value.length === 2) {
     filters.arrive_date_start = value[0]
     filters.arrive_date_end = value[1]

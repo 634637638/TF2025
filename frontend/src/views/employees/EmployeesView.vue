@@ -1206,7 +1206,7 @@ const paginatedEmployees = computed(() => {
   return employees.value
 })
 
-const handlePaginationChange = (current_page, page_size_value) => {
+const handlePaginationChange = (current_page: number, page_size_value: number): void => {
   page.value = current_page
   page_size.value = page_size_value
   loadEmployees()
@@ -1404,11 +1404,11 @@ const saveEmployee = async () => {
     const data: EmployeeForm = {
       username: employeeForm.value.username,
       name: employeeForm.value.name,
-      phone: employeeForm.value.phone || null,
-      email: employeeForm.value.email || null,
+      phone: employeeForm.value.phone || undefined,
+      email: employeeForm.value.email || undefined,
       role_ids: employeeForm.value.role_ids,
       status: employeeForm.value.status,
-      hire_date: employeeForm.value.hire_date || null
+      hire_date: employeeForm.value.hire_date || undefined
     }
 
     // 处理密码
@@ -2027,6 +2027,9 @@ onMounted(async () => {
   border-bottom-color: var(--tf-color-border-subtle);
 }
 
+</style>
+
+<style scoped>
 /* 表格内容样式 */
 .id-badge {
   background: linear-gradient(135deg, var(--tf-color-indigo-brand), var(--tf-color-purple-brand));
@@ -2252,6 +2255,9 @@ onMounted(async () => {
   border: 1px solid rgba(220, 53, 69, 0.4);
 }
 
+</style>
+
+<style scoped>
 /* 员工状态行背景 */
 .status-active-row {
   background-color: white !important;
@@ -2348,6 +2354,9 @@ onMounted(async () => {
 
 
 
+</style>
+
+<style scoped>
 /* 密码管理区域样式 */
 .password-section {
   margin: 20px 0;
@@ -2557,6 +2566,9 @@ onMounted(async () => {
   opacity: 0.5;
 }
 
+</style>
+
+<style scoped>
 /* 角色管理样式 */
 .role-management-section {
   padding: 20px;
@@ -2768,6 +2780,9 @@ onMounted(async () => {
   border-top: 1px solid var(--tf-color-gray-200-alt);
 }
 
+</style>
+
+<style scoped>
 /* 响应式设计 */
 @media (max-width: 767px) {
   .employees-view {

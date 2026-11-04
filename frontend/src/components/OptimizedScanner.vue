@@ -141,10 +141,13 @@ interface NativeBarcodeDetectorConstructor {
   getSupportedFormats?: () => Promise<string[]>
 }
 
-interface CropBarcodeReader {
-  setHints(_hints: Map<unknown, unknown>): void
+interface CropBarcodeReaderCore {
   decodeWithState(_bitmap: unknown): { getText?: () => string }
   reset(): void
+}
+
+interface CropBarcodeReader<Hints> extends CropBarcodeReaderCore {
+  setHints(_hints?: Hints | null): void
 }
 
 interface ScanCropRect {
@@ -264,7 +267,7 @@ const videoStyle = computed(() => {
 let stream: MediaStream | null = null
 let closeTimer: ReturnType<typeof setTimeout> | null = null
 let cropScanTimer: ReturnType<typeof setTimeout> | null = null
-let cropReader: CropBarcodeReader | null = null
+let cropReader: CropBarcodeReaderCore | null = null
 let cropCanvas: HTMLCanvasElement | null = null
 let nativeDetector: NativeBarcodeDetector | null = null
 let wasmDecodeBusy = false
@@ -273,7 +276,7 @@ let closing = false
 
 prepareZXingModule({
   overrides: {
-    locateFile: path => path.endsWith('.wasm') ? zxingReaderWasmUrl : path
+    locateFile: (path: string): string => path.endsWith('.wasm') ? zxingReaderWasmUrl : path
   }
 })
 
@@ -344,7 +347,7 @@ const configureActiveVideoTrack = async () => {
     advanced.push({ focusMode: 'continuous' })
   }
   if (advanced.length > 0) {
-    await videoTrack.applyConstraints({ advanced }).catch(() => undefined)
+    await videoTrack.applyConstraints({ advanced }).catch((): undefined => undefined)
   }
 
   if (deviceInfo.value.isAndroid && props.enableAndroidOptimization) {
@@ -472,7 +475,7 @@ const confirmScanResult = (value: string) => {
   lastScannedText.value = value
   candidateText.value = ''
 
-  if ('vibrate' in navigator) navigator.vibrate(120)
+  navigator.vibrate?.(120)
   emit('success', value)
   ElMessage.success(`${props.scanType === 'imei' ? 'IMEI' : '序列号'}识别成功：${value}`)
 
@@ -519,7 +522,7 @@ const requestCameraFocus = async (showFeedback: boolean) => {
       : undefined
   if (!focusMode) return
 
-  await track.applyConstraints({ advanced: [{ focusMode }] }).catch(() => undefined)
+  await track.applyConstraints({ advanced: [{ focusMode }] }).catch((): undefined => undefined)
   if (showFeedback) {
     ElMessage.info('已重新对焦，请将条码放大后保持稳定')
   }
@@ -606,20 +609,20 @@ const getGuideCropRect = (video: HTMLVideoElement): ScanCropRect => {
   }
 }
 
-const startCropDecoding = (
+const startCropDecoding = <Hints, LuminanceSource, Binarizer>(
   session: number,
-  hints: Map<unknown, unknown>,
-  MultiFormatReader: new () => CropBarcodeReader,
-  CanvasLuminanceSource: new (_canvas: HTMLCanvasElement, _doAutoInvert?: boolean) => unknown,
-  HybridBinarizer: new (_source: unknown) => unknown,
-  BinaryBitmap: new (_binarizer: unknown) => unknown
+  hints: Hints,
+  MultiFormatReader: new () => CropBarcodeReader<Hints>,
+  CanvasLuminanceSource: new (_canvas: HTMLCanvasElement, _doAutoInvert?: boolean) => LuminanceSource,
+  HybridBinarizer: new (_source: LuminanceSource) => Binarizer,
+  BinaryBitmap: new (_binarizer: Binarizer) => unknown
 ) => {
   if (!videoRef.value || !props.visible) return
 
-  cropReader = new MultiFormatReader()
-  cropReader.setHints(hints)
+  const reader = new MultiFormatReader()
+  reader.setHints(hints)
+  cropReader = reader
   cropCanvas = document.createElement('canvas')
-  const reader = cropReader
   const canvas = cropCanvas
   const wasmFormats = props.scanType === 'imei'
     ? ['Code128'] as const
@@ -640,9 +643,7 @@ const startCropDecoding = (
     dw: number,
     dh: number
   ) => {
-    // 某些项目依赖的 DOM 类型只暴露了简化的 drawImage 重载，运行时仍使用浏览器标准 9 参数签名。
-    ;(context as unknown as { drawImage: (..._args: [CanvasImageSource, number, number, number, number, number, number, number, number]) => void })
-      .drawImage(source, sx, sy, sw, sh, dx, dy, dw, dh)
+    Reflect.apply(context.drawImage, context, [source, sx, sy, sw, sh, dx, dy, dw, dh])
   }
 
   const decodeFrame = async () => {

@@ -39,7 +39,7 @@
           <el-option
             v-for="employee in employees"
             :key="employee.id"
-            :label="employee.name || employee.username"
+            :label="employee.name || employee.username || '-'"
             :value="employee.id"
           >
             <span class="float-left">{{ employee.name || employee.username }}</span>
@@ -59,7 +59,7 @@
           end-placeholder="结束月份"
           picker-type="month"
           :value-format="TIME_FORMATS.YEAR_MONTH"
-          @update:model-value="emit('update:periodRange', $event)"
+          @update:model-value="handlePeriodRangeUpdate"
           @change="emit('periodChange')"
         />
       </div>
@@ -332,6 +332,7 @@ import Pagination from '@/components/Pagination.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import DateRangePicker from '@/components/DateRangePicker.vue'
+import type { DateRangeValue } from '@/types/date-range'
 import {
   formatSalaryAmount,
   formatSalaryLeaveDays,
@@ -394,6 +395,10 @@ const lastTapTimestamp = ref(0)
 
 const handlePaginationChange = (page: number, pageSize: number) => {
   emit('paginationChange', page, pageSize)
+}
+
+const handlePeriodRangeUpdate = (value: DateRangeValue) => {
+  emit('update:periodRange', value ?? null)
 }
 
 const handleRowTap = (row: SalaryRecordRow) => {

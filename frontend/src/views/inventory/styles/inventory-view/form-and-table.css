@@ -1,0 +1,276 @@
+/* 基础表单组样式 */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.input-group {
+  position: relative;
+}
+
+.input-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--admin-record-count-color);
+  font-size: var(--tf-type-scale-14);
+  z-index: 1;
+}
+
+.form-control {
+  width: 100%;
+  padding: 10px 12px;
+  border: 2px solid var(--tf-button-neutral-border);
+  border-radius: 8px;
+  font-size: var(--tf-type-scale-14);
+  transition: all 0.3s ease;
+  background: var(--tf-button-neutral-hover-bg);
+}
+
+.form-control:focus {
+  outline: none;
+  border-color: var(--tf-button-primary-border);
+  background: var(--tf-button-neutral-bg);
+  box-shadow: 0 0 0 3px var(--tf-button-primary-soft-bg);
+}
+
+.form-actions {
+  display: flex;
+  gap: 12px;
+  grid-column: 1 / -1;
+}
+
+.imei {
+  font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Consolas', monospace;
+  font-size: inherit;
+  font-weight: 600;
+  color: var(--admin-data-table-cell-color);
+  letter-spacing: 0;
+  background: transparent;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  display: inline;
+  min-width: 0;
+  text-align: center;
+}
+
+.imei:hover {
+  background: transparent;
+  transform: none;
+}
+
+/* 成色状态样式 */
+.condition-badge {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: var(--tf-type-scale-12);
+  font-weight: 500;
+  display: inline-block;
+}
+
+.condition-new {
+  background-color: var(--tf-button-success-soft-bg);
+  color: var(--tf-button-success-soft-color);
+  border: 1px solid var(--tf-button-success-soft-border);
+}
+
+.condition-used {
+  background-color: var(--tf-button-warning-soft-bg);
+  color: var(--tf-button-warning-soft-color);
+  border: 1px solid var(--tf-button-warning-soft-border);
+}
+
+/* 状态样式 - 参考综合查询页面 */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 12px;
+  border-radius: 12px;
+  font-size: var(--tf-type-scale-12);
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+
+.status-badge.in-stock {
+  background: var(--tf-status-sale-available-bg);
+  color: var(--tf-status-sale-available-color);
+  border-color: var(--tf-status-sale-available-border);
+}
+
+.status-badge.sold {
+  background: var(--tf-status-sold-bg);
+  color: var(--tf-status-sold-color);
+  border-color: var(--tf-status-sold-border);
+}
+
+.status-badge.reserved {
+  background: var(--tf-status-reserved-bg);
+  color: var(--tf-status-reserved-color);
+  border-color: var(--tf-status-reserved-border);
+}
+
+.status-badge.repair {
+  background: var(--tf-status-repair-bg);
+  color: var(--tf-status-repair-color);
+  border-color: var(--tf-status-repair-border);
+}
+
+.status-badge.rented {
+  background: var(--tf-status-rented-bg);
+  color: var(--tf-status-rented-color);
+  border-color: var(--tf-status-rented-border);
+}
+
+.status-badge.lost {
+  background: var(--tf-status-lost-bg);
+  color: var(--tf-status-lost-color);
+  border-color: var(--tf-status-lost-border);
+}
+
+/* 价格样式 */
+.price {
+  font-weight: 600;
+  color: var(--admin-data-table-cell-color);
+}
+
+.price.positive {
+  color: var(--tf-button-success-soft-color);
+}
+
+.price.negative {
+  color: var(--tf-button-danger-soft-color);
+}
+
+/* 权限禁用样式 */
+.permission-disabled {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: var(--tf-button-disabled-bg);
+  border: 1px solid var(--tf-button-disabled-border);
+  border-radius: 6px;
+  color: var(--tf-button-disabled-color);
+  cursor: not-allowed;
+  font-size: var(--tf-type-scale-14);
+}
+
+.permission-disabled:hover {
+  background: var(--tf-button-neutral-hover-bg);
+  border-color: var(--tf-button-neutral-border);
+}
+
+/* 空状态样式 */
+
+/* 分页样式 */
+.pagination-wrapper {
+  margin-top: 8px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  padding: 6px 0;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.py-8 {
+  padding: 32px 0;
+}
+
+/* 可编辑下拉框样式 */
+.editable-select {
+  position: relative;
+  width: 100%;
+}
+
+.editable-select .form-control {
+  padding-right: 60px;
+}
+
+.clear-icon {
+  position: absolute;
+  right: 36px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--tf-color-muted);
+  cursor: pointer;
+  font-size: var(--tf-type-scale-12);
+  z-index: 2;
+}
+
+.clear-icon:hover {
+  color: var(--danger-color);
+}
+
+.dropdown-icon {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--tf-color-muted);
+  cursor: pointer;
+  font-size: var(--tf-type-scale-12);
+  z-index: 2;
+}
+
+.dropdown-icon:hover {
+  color: var(--tf-color-gray-bootstrap-700);
+}
+
+.dropdown-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid var(--tf-color-border-subtle);
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 1000;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.dropdown-item {
+  padding: 10px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--tf-color-surface-muted);
+  font-size: var(--tf-type-scale-14);
+  color: var(--tf-color-gray-bootstrap-700);
+  transition: all 0.2s ease;
+}
+
+.dropdown-item:last-child {
+  border-bottom: none;
+}
+
+.dropdown-item:hover,
+.dropdown-item.highlighted {
+  background: var(--tf-color-indigo-brand);
+  color: white;
+}
+
+.dropdown-item.new-item {
+  background: var(--tf-color-surface-muted);
+  color: var(--tf-color-indigo-brand);
+  font-weight: 500;
+}
+
+.dropdown-item.new-item:hover {
+  background: var(--tf-color-blue-pale);
+}
+
+.dropdown-item i {
+  margin-right: 6px;
+}

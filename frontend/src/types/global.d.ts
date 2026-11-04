@@ -7,6 +7,7 @@ import type { ActionColumnInput, ActionColumnWidthOptions } from '@/utils/table-
 import type { Component } from 'vue'
 import type { ComponentConfig } from '@/components'
 import type { CSRFToken } from '@/utils/csrf'
+import type { PerformanceMonitor } from '@/utils/performanceMonitor'
 import type {
   AppConfig,
   DeviceInfo,
@@ -38,13 +39,7 @@ declare global {
     __TF2025__: {
       store: unknown
       router: unknown
-      performance?: {
-        recordMetric: (name: string, value: unknown) => void
-        startMonitoring: () => void
-        stopMonitoring: () => void
-        generateReport: () => unknown
-        getMetrics?: () => unknown
-      }
+      performance?: PerformanceMonitor
       components?: {
         configs: ComponentConfig[]
         usage: Record<string, number>

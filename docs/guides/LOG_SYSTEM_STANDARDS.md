@@ -315,6 +315,8 @@ if (process.env.NODE_ENV !== 'production') {
 - 后端业务代码统一使用 `backend/src/utils/log.js`。
 - 前端业务代码统一使用 `frontend/src/utils/logger.ts`。
 
+业务页面、组件、路由和服务不得直接调用 `console.*`，包括 `console.error`。底层日志适配器为实现输出可以调用原生 console，CLI/审计脚本可以输出检查结果；这些例外不得扩展为业务层捷径。清理临时调试输出不等于删除必要业务日志或统一入口中的有效 `debug` 记录。
+
 ### 7.1 从 console.log 迁移
 
 ```javascript

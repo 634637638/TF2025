@@ -1,0 +1,240 @@
+.inventory-list {
+  max-height: none;
+  overflow: visible;
+  background: transparent;
+  border-radius: 8px;
+  box-shadow: none;
+  padding: 8px 0 0;
+
+  // 自定义滚动条
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+    border-radius: 3px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: rgba(193, 193, 193, 0.5);
+    border-radius: 3px;
+
+    &:hover {
+      background: rgba(168, 168, 168, 0.8);
+    }
+  }
+
+  .inventory-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    border: 1px solid var(--tf-color-gray-ant-300);
+    border-radius: 10px;
+    margin-bottom: 12px;
+    transition: all 0.3s ease;
+    background: var(--color-bg-white);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+
+    &:hover {
+      border-color: var(--tf-color-indigo-brand);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+    }
+
+    &.priority-item {
+      background: linear-gradient(135deg, var(--tf-color-orange-ant-surface) 0%, var(--tf-color-warning-legacy) 100%);
+      border-color: var(--tf-color-orange);
+
+      .item-rank {
+        background: linear-gradient(135deg, var(--tf-color-orange) 0%, var(--tf-color-coral) 100%);
+        color: white;
+        box-shadow: 0 2px 8px rgba(255, 107, 107, 0.4);
+      }
+    }
+
+    .item-rank {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: var(--tf-type-scale-14);
+      background: var(--tf-color-gray-200);
+      color: var(--text-muted);
+      flex-shrink: 0;
+
+      &.rank-1 {
+        background: linear-gradient(135deg, var(--tf-color-gold) 0%, var(--tf-color-yellow-bright) 100%);
+        color: var(--tf-color-dark-goldenrod);
+      }
+
+      &.rank-2 {
+        background: linear-gradient(135deg, var(--tf-color-silver) 0%, var(--tf-color-gray-ant-300) 100%);
+        color: var(--text-secondary);
+      }
+
+      &.rank-3 {
+        background: linear-gradient(135deg, var(--tf-color-bronze) 0%, var(--tf-color-amber-muted) 100%);
+        color: var(--tf-color-brown);
+      }
+
+      i {
+        font-size: var(--tf-type-scale-16);
+      }
+    }
+
+    .item-content {
+      flex: 1;
+      min-width: 0;
+      display: grid;
+      --inventory-columns: minmax(58px, 0.85fr) minmax(max-content, 1.7fr) minmax(52px, 0.85fr);
+      grid-template-columns: var(--inventory-columns);
+      grid-template-rows: auto auto;
+      column-gap: 12px;
+      row-gap: 6px;
+      align-items: center;
+
+      .item-header {
+        display: grid;
+        grid-column: 1 / -1;
+        grid-row: 1;
+        grid-template-columns: var(--inventory-columns);
+        align-items: center;
+        min-width: 0;
+
+        .store-name {
+          grid-column: 1;
+          grid-row: 1;
+          justify-self: start;
+          font-weight: 600;
+          color: var(--tf-color-indigo-brand);
+          font-size: var(--tf-type-scale-14);
+          min-width: 0;
+          white-space: normal;
+          overflow-wrap: anywhere;
+        }
+
+        .supplier-name {
+          grid-column: 2;
+          grid-row: 1;
+          justify-self: center;
+          margin-inline: auto;
+          width: fit-content;
+          max-width: 100%;
+          min-width: 0;
+          padding: 3px 9px;
+          border-radius: 999px;
+          background: var(--tf-color-indigo-50);
+          color: var(--tf-color-indigo-700);
+          font-size: var(--tf-type-scale-12);
+          font-weight: 600;
+          white-space: normal;
+          overflow-wrap: anywhere;
+          text-align: center;
+        }
+
+        .date {
+          grid-column: 3;
+          grid-row: 1;
+          justify-self: end;
+          color: var(--tf-color-green-legacy);
+          font-size: var(--tf-type-scale-12);
+          display: flex;
+          align-items: center;
+          white-space: nowrap;
+          flex: 0 0 auto;
+          font-weight: 600;
+        }
+      }
+
+      .item-details {
+        display: grid;
+        grid-template-columns: var(--inventory-columns);
+        grid-column: 1 / -1;
+        grid-row: 2;
+        align-items: center;
+        min-height: 28px;
+        min-width: 0;
+
+        .identifier-label {
+          grid-column: 1;
+          justify-self: start;
+          font-size: var(--tf-type-scale-13);
+          white-space: nowrap;
+          color: var(--tf-color-slate-600);
+          font-weight: 600;
+        }
+
+        .identifier-value {
+          grid-column: 2;
+          justify-self: center;
+          min-width: max-content;
+          width: max-content;
+          max-width: none;
+          overflow: visible;
+          color: var(--tf-color-slate-900);
+          font-size: var(--tf-type-scale-13);
+          font-family: 'Courier New', monospace;
+          font-weight: 700;
+          white-space: nowrap;
+          text-align: center;
+        }
+
+        .inventory-age {
+          grid-column: 3;
+          justify-self: end;
+          display: inline-flex;
+          align-items: baseline;
+          justify-content: center;
+          gap: 1px;
+          text-align: center;
+          padding: 4px 10px;
+          border-radius: 999px;
+          min-width: 52px;
+          white-space: nowrap;
+
+          .number {
+            font-size: var(--tf-type-scale-18);
+            font-weight: 700;
+            line-height: 1;
+          }
+
+          .label {
+            font-size: var(--tf-type-scale-12);
+            font-weight: 600;
+            opacity: 0.9;
+          }
+
+          &.days-normal {
+            background: var(--tf-color-surface-green);
+            color: var(--tf-color-green-material-800);
+          }
+
+          &.days-caution {
+            background: var(--tf-color-orange-material-50);
+            color: var(--tf-color-orange-material-900);
+          }
+
+          &.days-warning {
+            background: var(--tf-color-amber-material-50);
+            color: var(--tf-color-amber-material-900);
+          }
+
+          &.days-critical {
+            background: var(--tf-color-red-50);
+            color: var(--tf-color-red-material-800);
+          }
+        }
+      }
+    }
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+}

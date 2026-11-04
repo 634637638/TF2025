@@ -303,13 +303,15 @@ const actionColumnWidth = computed(() => getAdaptiveActionColumnWidth(
 const isPhoneSelected = (phone: Phone) => selectedPhoneIdSet.value.has(String(phone.id))
 const getRowClassName = ({ row }: { row: Phone }) => isPhoneSelected(row) ? 'row-selected' : ''
 
-const getColumnWidth = (field: string, label: string, minWidth: number) => getTextColumnMinWidth(
+type SalesTableField = keyof Phone | 'status_label'
+
+const getColumnWidth = (field: SalesTableField, label: string, minWidth: number) => getTextColumnMinWidth(
   [label, ...props.phones.map(phone => {
-    if (field === 'condition') return getNewConditionLabel(phone.is_new)
+    if (field === 'condition') return getNewConditionLabel(Boolean(phone.is_new))
     if (field === 'status_label') return getSaleStatusLabel(phone)
     if (field === 'purchase_cost') return `¥${formatNumber(phone.purchase_cost || 0)}`
     if (field === 'inventory_time') return formatDate(phone.inventory_time)
-    return String((phone as unknown as Record<string, unknown>)[field] ?? '-')
+    return String(phone[field] ?? '-')
   })],
   { minWidth, horizontalPadding: 20, asciiCharacterWidth: 7, wideCharacterWidth: 12 }
 )

@@ -7,6 +7,7 @@
  */
 
 import { unifiedApi } from '@/utils/unified-api'
+import { extractPaginatedData } from '@/utils/api-response'
 
 // 为了向后兼容，保留 publicApi 别名
 export const publicApi = unifiedApi
@@ -23,31 +24,6 @@ const unwrapData = <T>(response: unknown): T => {
     return record.data as T
   }
   return response as T
-}
-
-const unwrapPaginated = <T>(response: unknown): {
-  data: T[]
-  page: number
-  page_size: number
-  total_pages: number
-  has_next: boolean
-  has_prev: boolean
-  total: number
-} => {
-  const record = asRecord(response) || {}
-  const pagination = asRecord(record.pagination) || {}
-  const page_size = Number(pagination.page_size ?? record.page_size ?? 20)
-  const total = Number(pagination.total ?? record.total ?? 0)
-  const page = Number(pagination.page ?? record.page ?? 1)
-  return {
-    data: Array.isArray(record.data) ? record.data as T[] : [],
-    page,
-    page_size,
-    total_pages: Number(pagination.total_pages ?? record.total_pages ?? Math.ceil(total / page_size)),
-    has_next: Boolean(pagination.has_next ?? record.has_next ?? page * page_size < total),
-    has_prev: Boolean(pagination.has_prev ?? record.has_prev ?? page > 1),
-    total
-  }
 }
 
 // ============================================================================
@@ -242,7 +218,7 @@ export function getProducts(params?: ProductListParams) {
     page_size: number
     total_pages: number
     total: number
-  }>('/public/products', { params }).then((response) => unwrapPaginated<Product>(response))
+  }>('/public/products', { params }).then((response) => extractPaginatedData<Product>(response))
 }
 
 /**
@@ -269,7 +245,7 @@ export function searchProducts(keyword: string, params?: { page?: number; page_s
     page_size: number
     total_pages: number
     total: number
-  }>(`/public/products/search/${encodeURIComponent(keyword)}`, { params }).then((response) => unwrapPaginated<Product>(response))
+  }>(`/public/products/search/${encodeURIComponent(keyword)}`, { params }).then((response) => extractPaginatedData<Product>(response))
 }
 
 
@@ -368,7 +344,7 @@ export function getOrdersByPhone(customer_phone: string, params?: { page?: numbe
     has_next: boolean
     has_prev: boolean
   }>(`/public/orders/phone/${customer_phone}`, { params })
-    .then((response) => unwrapPaginated<PublicOrder>(response))
+    .then((response) => extractPaginatedData<PublicOrder>(response))
 }
 
 /**
@@ -438,7 +414,7 @@ export function getAggregatedProducts(params?: AggregatedProductsParams) {
     page_size: number
     total_pages: number
     total: number
-  }>('/public/products/aggregate', { params }).then((response) => unwrapPaginated<AggregatedProduct>(response))
+  }>('/public/products/aggregate', { params }).then((response) => extractPaginatedData<AggregatedProduct>(response))
 }
 
 /**

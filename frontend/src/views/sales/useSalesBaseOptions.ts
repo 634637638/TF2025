@@ -104,7 +104,7 @@ export const useSalesBaseOptions = () => {
           .filter(item => item && item.name)
           .map(item => ({
             id: Number(item.id || 0),
-            name: item.name,
+            name: String(item.name || ''),
             sort_order: item.sort_order || 0
           })))
       }
@@ -124,7 +124,7 @@ export const useSalesBaseOptions = () => {
           .filter(item => item && item.name)
           .map(item => ({
             id: Number(item.id || 0),
-            name: item.name,
+            name: String(item.name || ''),
             brand_id: Number(item.brand_id || 0),
             status: Number(item.status || 1),
             sort_order: item.sort_order || 0
@@ -145,7 +145,7 @@ export const useSalesBaseOptions = () => {
           : []
         colors.value = sortOptionsByOrder(colorRecords)
           .filter(hasSalesOptionName)
-          .map(item => item.name)
+          .map(item => String(item.name || ''))
       }
     } catch (error) {
       logger.error('加载颜色数据失败:', error)
@@ -177,12 +177,12 @@ export const useSalesBaseOptions = () => {
     try {
       const response = await getCachedSuppliers()
       if (response.success) {
-        const supplierRecords = Array.isArray(response.data)
-          ? response.data.map(item => ({
+        const supplierRecords: Supplier[] = Array.isArray(response.data)
+          ? response.data.map((item): Supplier => ({
             id: Number(item.id || 0),
             name: String(item.name || ''),
             sort_order: Number(item.sort_order || 0),
-            status: Number(item.status || 1)
+            status: Number(item.status) === 0 ? 0 : 1
           }))
           : []
         suppliers.value = sortOptionsByOrder(supplierRecords)
@@ -232,7 +232,7 @@ export const useSalesBaseOptions = () => {
     try {
       const normalizedName = String(brandName).trim()
       const brandsResponse = await getCachedBrands()
-      if (!brandsResponse.success) {
+      if (!brandsResponse.success || !brandsResponse.data) {
         editBrandModels.value = []
         return
       }

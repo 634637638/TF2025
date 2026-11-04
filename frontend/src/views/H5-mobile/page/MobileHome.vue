@@ -60,11 +60,9 @@
       v-if="config.banner_enabled && allBannerImages.length > 0"
       class="banner-section"
     >
-      <Swiper
+      <TypedSwiper
+        v-bind="bannerSwiperOptions"
         :modules="[SwiperAutoplay, SwiperPagination]"
-        :autoplay="{ delay: currentBannerInterval, disableOnInteraction: false } as unknown as never"
-        :pagination="{ clickable: true } as unknown as never"
-        :loop="true"
         class="banner-swiper"
         @slide-change="handleSlideChange"
       >
@@ -80,7 +78,7 @@
             />
           </div>
         </SwiperSlide>
-      </Swiper>
+      </TypedSwiper>
     </div>
 
     <!-- 快速分类 -->
@@ -475,10 +473,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, onActivated, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, onActivated, nextTick, type Component } from 'vue'
 import { useRouter } from 'vue-router'
 import { Swiper, SwiperSlide } from 'swiper/vue'
 import type { Swiper as SwiperInstance } from 'swiper'
+import type { SwiperOptions } from 'swiper/types'
 import { Autoplay, Pagination } from 'swiper/modules'
 import { ElMessage } from 'element-plus'
 import 'swiper/css'
@@ -508,6 +507,7 @@ defineOptions({
 // 注册 Swiper 模块
 const SwiperAutoplay = Autoplay
 const SwiperPagination = Pagination
+const TypedSwiper: Component = Swiper
 
 const router = useRouter()
 
@@ -519,7 +519,7 @@ const { cartCount: _cartCount, getCartId: _getCartId, addCartItem, refreshCart }
 const addingToCart = ref<number | null>(null)
 
 // 获取图片 URL
-const getImageUrl = (imageUrl: string): string => formatSafeImageUrl(imageUrl)
+const getImageUrl = (imageUrl?: string): string => formatSafeImageUrl(imageUrl || '')
 
 const getConditionText = (product: HomeSectionProduct): string => {
   const conditionGrade = typeof product?.condition_grade === 'string' ? product.condition_grade.trim() : ''
@@ -627,6 +627,14 @@ const currentBannerInterval = computed(() => {
   }
   return 3000
 })
+const bannerSwiperOptions = computed<SwiperOptions>(() => ({
+  autoplay: {
+    delay: currentBannerInterval.value,
+    disableOnInteraction: false
+  },
+  pagination: { clickable: true },
+  loop: true
+}))
 
 // 计算所有轮播图片（支持每个 banner 多张图片）
 const allBannerImages = computed(() => {
@@ -850,11 +858,16 @@ const loadHomeSections = async () => {
 const handleCartClick = async (product: HomeSectionProduct) => {
   // 全新机需要找到对应的商品
   if (product.product_type === 'new' || !product.phone_id) {
-    addingToCart.value = product.template_id
+    const templateId = product.template_id
+    if (!templateId) {
+      ElMessage.warning('商品模板信息不完整')
+      return
+    }
+    addingToCart.value = templateId
     try {
       // 使用模板商品API获取详细信息
       const { getTemplatePhones } = await import('@/api/shop-public')
-      const phonesResponse = await getTemplatePhones(product.template_id)
+      const phonesResponse = await getTemplatePhones(templateId)
       const phones: PublicTemplatePhone[] = phonesResponse || []
 
       if (phones && phones.length > 0) {
@@ -1012,17 +1025,8 @@ const openExternalMap = () => {
 }
 
 // 地图相关
-interface TencentMapApi {
-  LatLng: new (_lat: number, _lng: number) => { lat: number, lng: number }
-  Map: new (_container: HTMLElement, _options: Record<string, unknown>) => { destroy: () => void }
-  MultiMarker: new (_options: Record<string, unknown>) => unknown
-  MarkerStyle: new (_options: Record<string, unknown>) => unknown
-  InfoWindow: new (_options: Record<string, unknown>) => unknown
-}
-
-type TencentWindow = Window & { TMap?: TencentMapApi }
-
-let mobileMap: { destroy: () => void } | null = null
+type TencentMapApi = NonNullable<Window['TMap']>
+let mobileMap: InstanceType<TencentMapApi['Map']> | null = null
 
 // 初始化地图
 const initMap = async () => {
@@ -1061,7 +1065,7 @@ const initMap = async () => {
     const lat = parseFloat(config.value.map_latitude)
     const lng = parseFloat(config.value.map_longitude)
 
-    const tMap = (window as TencentWindow).TMap
+    const tMap = window.TMap
     if (!tMap) throw new Error('腾讯地图 SDK 未加载')
     const center = new tMap.LatLng(lat, lng)
 

@@ -1,0 +1,262 @@
+.data-import-tab {
+  .import-wizard {
+    .strategy-step {
+      .analysis-result {
+.duplicates-preview {
+          h3 {
+            font-size: var(--tf-type-scale-16);
+            font-weight: 600;
+            color: var(--color-warning);
+            margin: 0 0 8px 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+          }
+
+          p {
+            font-size: var(--tf-type-scale-14);
+            color: var(--color-text-regular);
+            margin: 0 0 12px 0;
+          }
+
+          // 智能提示
+          .smart-tip {
+            background: linear-gradient(135deg, var(--tf-color-surface-green) 0%, var(--tf-color-orange-material-50) 100%);
+            border-left: 4px solid var(--tf-color-purple-material);
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+
+            i {
+              color: var(--tf-color-purple-material);
+              font-size: var(--tf-type-scale-16);
+              margin-top: 2px;
+            }
+
+            span {
+              font-weight: 600;
+              color: var(--tf-color-purple-material);
+            }
+
+            ul {
+              margin: 4px 0 0 0;
+              padding-left: 20px;
+              list-style: none;
+
+              li {
+                font-size: var(--tf-type-scale-13);
+                color: var(--color-text-regular);
+                margin-bottom: 4px;
+                line-height: 1.6;
+              }
+            }
+          }
+
+          .duplicates-list {
+            background: white;
+            border-radius: 8px;
+            padding: 16px;
+            max-height: 500px;
+            overflow-y: auto;
+            border: 1px solid var(--tf-color-red-50);
+
+            &.scrollable {
+              overflow-y: auto;
+
+              &::-webkit-scrollbar {
+                width: 8px;
+              }
+
+              &::-webkit-scrollbar-track {
+                background: var(--tf-color-gray-100);
+                border-radius: 4px;
+              }
+
+              &::-webkit-scrollbar-thumb {
+                background: var(--tf-color-gray-300);
+                border-radius: 4px;
+
+                &:hover {
+                  background: var(--tf-color-gray-400);
+                }
+              }
+            }
+
+            .duplicate-item {
+              padding: 12px;
+              margin-bottom: 12px;
+              border-radius: 6px;
+              background: var(--tf-color-orange-surface);
+              border: 1px solid var(--tf-color-orange-material-100);
+              transition: all 0.2s;
+
+              // 云端已售状态
+              &.dup-sold {
+                background: var(--tf-color-surface-green);
+                border-color: var(--tf-color-green-material-200);
+
+                .dup-imei {
+                  color: var(--tf-color-green-material-800);
+                }
+
+                &.expanded .duplicate-header {
+                  border-bottom-color: var(--tf-color-green-material-200);
+                }
+              }
+
+              // 云端库存状态
+              &.dup-stock {
+                background: var(--tf-color-orange-surface);
+                border-color: var(--tf-color-orange-material-100);
+              }
+
+              &:last-child {
+                margin-bottom: 0;
+              }
+
+              &:hover {
+                background: var(--tf-color-orange-material-50);
+                border-color: var(--tf-color-amber-pastel-dark);
+              }
+
+              &.expanded {
+                .duplicate-header {
+                  display: flex;
+                  justify-content: space-between;
+                  align-items: center;
+                  gap: 8px;
+                  margin-bottom: 12px;
+                  padding-bottom: 8px;
+                  border-bottom: 1px solid var(--tf-color-orange-material-100);
+
+                  .dup-imei {
+                    font-weight: 600;
+                    color: var(--tf-color-orange-material-900);
+                    font-size: var(--tf-type-scale-15);
+                    font-family: 'Courier New', monospace;
+                  }
+
+                  .dup-row {
+                    font-size: var(--tf-type-scale-12);
+                    color: var(--tf-color-orange-material-500);
+                    background: var(--tf-color-orange-material-50);
+                    padding: 4px 8px;
+                    border-radius: 4px;
+                    font-weight: 500;
+                  }
+
+                  .dup-cloud-status {
+                    font-size: var(--tf-type-scale-11);
+                    padding: 4px 8px;
+                    border-radius: 4px;
+                    font-weight: 600;
+
+                    &.status-sold {
+                      background: var(--tf-status-neutral-bg);
+                      color: var(--tf-status-neutral-color);
+                      border: 1px solid var(--tf-status-neutral-border);
+                    }
+
+                    &.status-stock {
+                      background: var(--tf-status-success-bg);
+                      color: var(--tf-status-success-color);
+                      border: 1px solid var(--tf-status-success-border);
+                    }
+                  }
+                }
+
+                .duplicate-details {
+                  display: grid;
+                  grid-template-columns: repeat(3, 1fr);
+                  gap: 8px 16px;
+
+                  .detail-row {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+
+                    .detail-label {
+                      font-size: var(--tf-type-scale-12);
+                      color: var(--color-info);
+                      font-weight: 500;
+                      min-width: 60px;
+                    }
+
+                    .detail-value {
+                      font-size: var(--tf-type-scale-13);
+                      color: var(--color-text-primary);
+                      font-weight: 500;
+                      word-break: break-all;
+                    }
+                  }
+
+                  // 差异显示样式
+                  &.diff-details {
+                    grid-template-columns: 1fr;
+                    gap: 8px;
+
+                    .diff-row {
+                      background: var(--tf-color-warning-pale);
+                      padding: 8px 12px;
+                      border-radius: 4px;
+                      border-left: 3px solid var(--warning-color);
+
+                      .detail-label {
+                        font-weight: 600;
+                        color: var(--tf-color-orange-material-700);
+                        min-width: 70px;
+                      }
+
+                      .diff-value {
+                        display: flex;
+                        align-items: center;
+                        gap: 12px;
+
+                        .cloud-value {
+                          color: var(--tf-color-gray-material-500);
+                          text-decoration: line-through;
+                          font-size: var(--tf-type-scale-12);
+                        }
+
+                        .diff-arrow {
+                          color: var(--warning-color);
+                          font-size: var(--tf-type-scale-12);
+                        }
+
+                        .excel-value {
+                          color: var(--tf-color-green-material-800);
+                          font-weight: 600;
+                          font-size: var(--tf-type-scale-13);
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+
+              .dup-imei {
+                font-weight: 600;
+                color: var(--color-text-primary);
+              }
+
+              .dup-info {
+                font-size: var(--tf-type-scale-12);
+                color: var(--color-info);
+              }
+            }
+
+            .more-duplicates {
+              text-align: center;
+              padding: 8px;
+              color: var(--color-info);
+              font-size: var(--tf-type-scale-14);
+            }
+          }
+        }
+      }
+    }
+  }
+}

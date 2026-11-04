@@ -573,7 +573,7 @@ const showStatsCards = computed(() => (
   canViewField('stats_related_brands')
 ))
 // 响应式数据
-const modelsTableRef = ref<unknown>(null)
+const modelsTableRef = ref<HTMLElement | { $el?: HTMLElement } | null>(null)
 const mobileActionRowId = ref<string | null>(null)
 const lastTappedRowId = ref<string | null>(null)
 const lastTapTimestamp = ref(0)
@@ -880,7 +880,7 @@ const _changePage = (page: number) => {
   loadModels()
 }
 
-const handlePaginationChange = (page, pageSize) => {
+const handlePaginationChange = (page: number, pageSize: number): void => {
   const oldPageSize = pagination.value.page_size
   pagination.value.page_size = pageSize
   pagination.value.page = pageSize !== oldPageSize ? 1 : page
@@ -909,9 +909,9 @@ const editModel = async (model: Model) => {
   currentEditingId.value = model.id
 
   formData.value = {
-    brand_id: model.brand_id,
+    brand_id: model.brand_id ?? null,
     name: model.name,
-    status: model.status,
+    status: model.status ?? 1,
     sort_order: model.sort_order || 0
   }
 
@@ -1189,10 +1189,12 @@ const updateSortOrdersByBrand = (modelsList: Model[]) => {
   // 按品牌分组
   const brandGroups: { [key: number]: Model[] } = {}
   modelsList.forEach(model => {
-    if (!brandGroups[model.brand_id]) {
-      brandGroups[model.brand_id] = []
+    const brandId = model.brand_id
+    if (brandId === undefined) return
+    if (!brandGroups[brandId]) {
+      brandGroups[brandId] = []
     }
-    brandGroups[model.brand_id].push(model)
+    brandGroups[brandId].push(model)
   })
 
   // 为每个品牌内的型号重新分配 sort_order
@@ -1258,7 +1260,7 @@ const handleSortOrderChange = async (index: number, value: number) => {
   // 按品牌和 sort_order 重新排序整个列表
   models.value.sort((a, b) => {
     if (a.brand_id !== b.brand_id) {
-      return a.brand_id - b.brand_id
+      return (a.brand_id || 0) - (b.brand_id || 0)
     }
     return (a.sort_order || 0) - (b.sort_order || 0)
   })

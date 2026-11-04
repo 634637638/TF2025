@@ -1576,6 +1576,9 @@ export default {
   color: var(--tf-button-primary-soft-hover-color);
 }
 
+</style>
+
+<style scoped>
 .module-table {
   width: 100%;
   border-collapse: collapse;
@@ -1717,6 +1720,9 @@ export default {
   border: 1px solid var(--tf-status-primary-border);
 }
 
+</style>
+
+<style scoped>
 .module-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
@@ -1975,6 +1981,9 @@ export default {
   min-width: 0;
 }
 
+</style>
+
+<style scoped>
 /* 编辑对话框样式 */
 .edit-form {
   display: grid;
@@ -2165,6 +2174,9 @@ export default {
 
 }
 
+</style>
+
+<style scoped>
 /* 主要内容区域 */
 .main-content {
   width: 100%;
@@ -2289,6 +2301,9 @@ export default {
   }
 }
 
+</style>
+
+<style scoped>
 /* 详情对话框样式 */
 .module-detail-view {
   .detail-section {

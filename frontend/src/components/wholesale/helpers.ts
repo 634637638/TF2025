@@ -30,7 +30,7 @@ export const createWholesaleFormData = (): WholesaleFormData => ({
 })
 
 export const normalizeWholesaleCustomerSearchItem = (
-  customer: Partial<WholesaleCustomerSearchItem> | null | undefined
+  customer: WholesaleCustomerSearchItem | Record<string, unknown> | null | undefined
 ): WholesaleCustomerSearchItem => ({
   id: Number(customer?.id || 0),
   name: normalizePersonName(customer?.name || '', 20),
@@ -324,13 +324,13 @@ export const loadWholesaleStores = async (): Promise<Store[]> => {
   const response = await getCachedStores()
 
   return response.success && Array.isArray(response.data)
-    ? sortOptionsByOrder(response.data.map(item => ({
+    ? sortOptionsByOrder(response.data.map((item): Store => ({
       id: Number(item.id || 0),
       name: String(item.name || ''),
       code: String(item.code || item.name || ''),
       sort_order: Number(item.sort_order || 0),
       status: Number(item.status || 1)
-    })) as unknown as Store[])
+    })))
     : []
 }
 
@@ -341,13 +341,12 @@ export const loadWholesaleUsers = async (): Promise<User[]> => {
   }
 
   return Array.isArray(response.data)
-    ? sortOptionsByOrder(response.data.map(item => ({
+    ? sortOptionsByOrder(response.data).map((item): User => ({
       id: Number(item.id || 0),
       username: String(item.username || ''),
       name: String(item.name || item.username || ''),
-      sort_order: Number(item.sort_order || 0),
       status: Number(item.status) === 1 ? 'active' : 'inactive'
-    })) as unknown as User[])
+    }))
     : []
 }
 

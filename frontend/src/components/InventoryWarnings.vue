@@ -176,7 +176,7 @@ const fetchWarnings = async () => {
       params: { phone_threshold: 3, page_size: 10 }
     })
 
-    if (response.success) {
+    if (response.success && response.data) {
       const data = response.data
       phoneWarnings.value = data.phones?.warnings || []
       accessoryWarnings.value = data.accessories?.warnings || []

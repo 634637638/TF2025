@@ -3,7 +3,7 @@
  * 统一管理数据刷新逻辑，减少代码重复
  */
 
-import { ref } from 'vue'
+import { ref, type Ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { useNotification } from './useNotification'
 import logger from '@/utils/logger'
@@ -33,7 +33,7 @@ export interface RefreshDataOptions {
 
 interface UseRefreshDataReturn {
   /** 是否正在刷新 */
-  refreshing: ReturnType<typeof ref<boolean>>
+  refreshing: Ref<boolean>
   /**
    * 刷新数据
    * @param fetchFn 获取数据的函数

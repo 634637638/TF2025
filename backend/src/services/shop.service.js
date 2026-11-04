@@ -4,10 +4,10 @@
  */
 
 const db = require('../config/database')
-const crypto = require('crypto')
 const fs = require('fs').promises
 const path = require('path')
 const log = require('../utils/log')
+const { decryptConfigSecret, encryptConfigSecret } = require('../utils/config-secret-crypto')
 const { getUploadsRoot, getRelativeUploadPathFromUrl, getUploadPathFromUrl } = require('../utils/upload-paths')
 const { archiveShopTemplateUpload, stageShopTemplateUpload, relocateShopTemplateMedia } = require('../utils/shop-media-storage')
 const { ensureShopTemplateMediaSchema } = require('../utils/shop-template-media-schema')
@@ -240,36 +240,13 @@ class ShopService {
     }
   }
 
-  getConfigEncryptionKey() {
-    const configuredKey = process.env.CONFIG_ENCRYPTION_KEY
-    const sourceKey = configuredKey || (process.env.NODE_ENV !== 'production'
-      ? process.env.JWT_SECRET || 'tf2025-development-config-encryption-key'
-      : '')
-    if (!sourceKey) {
-      throw new Error('生产环境必须配置 CONFIG_ENCRYPTION_KEY 后才能保存支付密钥')
-    }
-    return crypto.createHash('sha256')
-      .update(sourceKey)
-      .digest()
-  }
-
   encryptConfigSecret(value) {
-    const iv = crypto.randomBytes(12)
-    const cipher = crypto.createCipheriv('aes-256-gcm', this.getConfigEncryptionKey(), iv)
-    const encrypted = Buffer.concat([cipher.update(String(value), 'utf8'), cipher.final()])
-    return `enc:v1:${iv.toString('hex')}:${cipher.getAuthTag().toString('hex')}:${encrypted.toString('hex')}`
+    return encryptConfigSecret(value)
   }
 
   decryptConfigSecret(value) {
     if (!String(value || '').startsWith('enc:v1:')) return String(value || '')
-    try {
-      const [, , ivHex, tagHex, encryptedHex] = String(value).split(':')
-      const decipher = crypto.createDecipheriv('aes-256-gcm', this.getConfigEncryptionKey(), Buffer.from(ivHex, 'hex'))
-      decipher.setAuthTag(Buffer.from(tagHex, 'hex'))
-      return Buffer.concat([decipher.update(Buffer.from(encryptedHex, 'hex')), decipher.final()]).toString('utf8')
-    } catch (error) {
-      throw new Error(`配置密钥解密失败: ${error.message}`)
-    }
+    return decryptConfigSecret(value)
   }
 
   getConfigDisplayValue(config) {

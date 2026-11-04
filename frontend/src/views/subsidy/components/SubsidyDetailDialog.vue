@@ -316,7 +316,7 @@ const normalizeHandlerInfo = (handler_info?: NationalSubsidyHandlerInfo | null):
 }
 
 const normalizeSubsidyRecord = (item?: NationalSubsidyRecord | null): NationalSubsidyRecord | null => {
-  if (!item || typeof item !== 'object') return item
+  if (!item || typeof item !== 'object') return item ?? null
 
   return {
     ...item,
@@ -335,7 +335,7 @@ const toggleCustomerInfo = () => {
 
 const resolvePhotoUrl = (photo?: string) => formatImageUrl(photo || '')
 
-const formatDate = (date: string) => date ? TimeUtil.format(date, TIME_FORMATS.DATE) : '-'
+const formatDate = (date?: string | null) => date ? TimeUtil.format(date, TIME_FORMATS.DATE) : '-'
 
 const loadDetail = async (item: NationalSubsidyRecord) => {
   const requestSeq = ++detailRequestSeq

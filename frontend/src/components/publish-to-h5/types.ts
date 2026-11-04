@@ -32,12 +32,6 @@ export interface HeicConverterOptions {
 
 export type HeicConverter = (options: HeicConverterOptions) => Promise<Blob | Blob[]>
 
-export interface MediaUploadOptions {
-  file: File
-  onError: (error: Error) => void
-  onSuccess: (response: unknown) => void
-}
-
 export interface UploadResult {
   id?: number
   url?: string

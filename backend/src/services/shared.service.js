@@ -4,14 +4,18 @@ const cheerio = require('cheerio')
 const { getDatabase } = require('../config/database')
 const { ensureSharedSchema } = require('../utils/shared-schema')
 const { getRelativeUploadPathFromUrl, getUploadPathFromUrl } = require('../utils/upload-paths')
+const { storageUrlFromSharedFileUrl } = require('../utils/shared-file-access')
 
 const parseAttachments = value => {
   if (Array.isArray(value)) return value
   try { return JSON.parse(value || '[]') } catch (_) { return [] }
 }
 const isSharedAttachmentUrl = value => typeof value === 'string' && /^\/uploads\/shared\/[a-zA-Z0-9._-]+$/.test(value)
-const cleanAttachments = value => parseAttachments(value).filter(item => item && isSharedAttachmentUrl(item.url)).map(item => ({
-  url: item.url.trim(),
+const cleanAttachments = value => parseAttachments(value).map(item => ({
+  item,
+  storageUrl: storageUrlFromSharedFileUrl(item?.storage_url || item?.url)
+})).filter(({ item, storageUrl }) => item && isSharedAttachmentUrl(storageUrl)).map(({ item, storageUrl }) => ({
+  url: storageUrl,
   name: String(item.name || '附件').slice(0, 200),
   type: String(item.type || 'application/octet-stream').slice(0, 120),
   size: Math.max(0, Number(item.size || 0))

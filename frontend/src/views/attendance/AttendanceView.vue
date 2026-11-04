@@ -1591,7 +1591,7 @@
 <script setup lang="ts">
 import { confirmAction } from '@/utils/message-box'
 import { ref, reactive, computed, onMounted, watch } from 'vue'
-import { ElMessage, ElConfigProvider, type FormInstance, type FormRules } from 'element-plus'
+import { ElMessage, ElConfigProvider, type FormInstance, type FormRules, type TabPaneName } from 'element-plus'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import { attendanceApi } from '@/api/attendance'
 import type { AttendanceRecord } from '@/api/attendance'
@@ -2028,7 +2028,9 @@ const myFilters = reactive({
   end_date: undefined
 })
 
-const hasFilterValue = (value: unknown) => value !== undefined && value !== null && value !== ''
+const hasFilterValue = (value: unknown): value is string | number => (
+  (typeof value === 'string' && value !== '') || typeof value === 'number'
+)
 
 const buildAttendanceQueryParams = (
   moduleKey: 'attendance_attendanceview' | 'attendance_myattendanceview',
@@ -2732,12 +2734,13 @@ const handleApproveSubmit = async () => {
     return
   }
 
-  if (!currentRecord.value) return
+  const recordId = currentRecord.value?.id
+  if (!recordId) return
 
   approving.value = true
   try {
     await attendanceApi.approveAttendanceRecord(
-      currentRecord.value.id,
+      recordId,
       approveForm.status,
       approveForm.note
     )
@@ -2853,10 +2856,15 @@ const handleDelete = async (row: AttendanceTableRow) => {
     handleAttendanceNoPermission('delete')
     return
   }
+  const rowId = row.id
+  if (!rowId) {
+    ElMessage.warning('考勤记录缺少有效ID')
+    return
+  }
 
   try {
     await confirmAction('确认删除该考勤记录？', '删除确认')
-    await attendanceApi.deleteAttendanceRecord(row.id)
+    await attendanceApi.deleteAttendanceRecord(rowId)
     ElMessage.success('删除成功')
     detailDialogVisible.value = false
     await loadData()
@@ -2873,10 +2881,15 @@ const handleCancel = async (row: AttendanceTableRow) => {
     myAttendancePermissions.handleNoPermission('create')
     return
   }
+  const rowId = row.id
+  if (!rowId) {
+    ElMessage.warning('考勤记录缺少有效ID')
+    return
+  }
 
   try {
     await confirmAction('确定要撤销此申请吗？', '提示', { type: 'warning' })
-    await attendanceApi.cancelAttendanceRequest(row.id)
+    await attendanceApi.cancelAttendanceRequest(rowId)
     ElMessage.success('已撤销')
     detailDialogVisible.value = false
     loadMyData()
@@ -2917,37 +2930,41 @@ const handleView = (row: AttendanceTableRow) => {
 
 const handleMobileRowDblClick = (row: AttendanceTableRow, scope: 'all' | 'my') => {
   if (!isMobile.value) return
+  const rowId = row.id
+  if (!rowId) return
 
   if (scope === 'all') {
-    const shouldExpand = mobileExpandedAttendanceId.value !== row.id
-    if (mobileExpandedAttendanceId.value && mobileExpandedAttendanceId.value !== row.id) {
+    const shouldExpand = mobileExpandedAttendanceId.value !== rowId
+    if (mobileExpandedAttendanceId.value && mobileExpandedAttendanceId.value !== rowId) {
       const previous = displayAttendanceRows.value.find(item => item.id === mobileExpandedAttendanceId.value)
       if (previous) {
         attendanceTableRef.value?.toggleRowExpansion(previous, false)
       }
     }
     attendanceTableRef.value?.toggleRowExpansion(row, shouldExpand)
-    mobileExpandedAttendanceId.value = shouldExpand ? row.id : null
+    mobileExpandedAttendanceId.value = shouldExpand ? rowId : null
     return
   }
 
-  const shouldExpand = mobileExpandedMyAttendanceId.value !== row.id
-  if (mobileExpandedMyAttendanceId.value && mobileExpandedMyAttendanceId.value !== row.id) {
+  const shouldExpand = mobileExpandedMyAttendanceId.value !== rowId
+  if (mobileExpandedMyAttendanceId.value && mobileExpandedMyAttendanceId.value !== rowId) {
     const previous = displayMyAttendanceRows.value.find(item => item.id === mobileExpandedMyAttendanceId.value)
     if (previous) {
       myAttendanceTableRef.value?.toggleRowExpansion(previous, false)
     }
   }
   myAttendanceTableRef.value?.toggleRowExpansion(row, shouldExpand)
-  mobileExpandedMyAttendanceId.value = shouldExpand ? row.id : null
+  mobileExpandedMyAttendanceId.value = shouldExpand ? rowId : null
 }
 
 const handleMobileRowTap = (row: AttendanceTableRow, scope: 'all' | 'my') => {
   if (!isMobile.value) return
+  const rowId = row.id
+  if (!rowId) return
 
   const now = Date.now()
   if (
-    lastTappedAttendanceId.value === row.id &&
+    lastTappedAttendanceId.value === rowId &&
     lastTappedAttendanceScope.value === scope &&
     now - lastTapTimestamp.value <= 320
   ) {
@@ -2958,7 +2975,7 @@ const handleMobileRowTap = (row: AttendanceTableRow, scope: 'all' | 'my') => {
     return
   }
 
-  lastTappedAttendanceId.value = row.id
+  lastTappedAttendanceId.value = rowId
   lastTappedAttendanceScope.value = scope
   lastTapTimestamp.value = now
 }
@@ -2983,12 +3000,13 @@ const clearMobileActions = () => {
   lastTapTimestamp.value = 0
 }
 
-const handleTabChange = (tabName: string) => {
+const handleTabChange = (tabName: TabPaneName) => {
   clearMobileActions()
-  if (tabName === 'all') {
+  const normalizedTabName = String(tabName)
+  if (normalizedTabName === 'all') {
     if (!canViewAllAttendance.value) return
     loadData()
-  } else if (tabName === 'my') {
+  } else if (normalizedTabName === 'my') {
     if (!canViewOwnAttendance.value) return
     loadMyData()
   }

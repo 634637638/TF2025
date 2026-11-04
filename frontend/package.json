@@ -11,8 +11,9 @@
     "check:payment-methods": "node scripts/check-payment-methods.mjs",
     "check:fields": "node scripts/check-field-consistency.mjs",
     "check:field-permissions": "node scripts/check-field-permission-coverage.mjs",
-    "check:lint": "cd .. && npm run lint:strict",
+    "check:lint": "cd .. && npm run test:lint-config && npm run lint:strict",
     "check:coverage": "node scripts/check-standards-coverage.mjs",
+    "check:docs": "npm --prefix .. run check:docs",
     "check:standards-preview": "node scripts/check-standards-preview.mjs",
     "check:time": "node scripts/check-time-usage.mjs",
     "check:responsive": "node scripts/check-responsive-breakpoints.mjs",
@@ -50,7 +51,8 @@
     "check:bundle-size": "node scripts/check-bundle-size.mjs",
     "check:dependencies": "npm audit --audit-level=high && npm --prefix ../backend audit --audit-level=high && npm --prefix .. audit --audit-level=high",
     "type-check": "vue-tsc --noEmit",
-    "check:standards": "npm run check:coverage && npm run check:standards-preview && npm run check:time && npm run check:responsive && npm run check:typography && npm run check:design-tokens && npm run check:motion && npm run check:print && npm run check:icons && npm run check:basic-components && npm run check:drawers && npm run check:shortcuts && npm run check:telemetry && npm run check:theme && npm run check:interactions && npm run check:form-controls && npm run check:component-adoption && npm run check:reference-adoption && npm --prefix .. run check:reference-options && npm run check:dialogs && npm run check:dialog-actions && npm run type-check && npm run check:typescript-debt && npm run check:backend-security && npm run check:download-security && npm run check:error-management && npm run check:runtime-patterns && npm run check:style-debt && npm run check:fields && npm run check:lint && npm run check:permissions && npm run check:ui && npm run check:navigation && npm run check:tabs && npm run check:buttons && npm run check:tables && npm run check:badges && npm run check:loading && npm run check:empty-states && npm run check:data-freshness && npm run check:payment-methods",
+    "test:unit": "vitest run",
+    "check:standards": "npm run check:coverage && npm run check:docs && npm run check:standards-preview && npm run check:time && npm run check:responsive && npm run check:typography && npm run check:design-tokens && npm run check:motion && npm run check:print && npm run check:icons && npm run check:basic-components && npm run check:drawers && npm run check:shortcuts && npm run check:telemetry && npm run check:theme && npm run check:interactions && npm run check:form-controls && npm run check:component-adoption && npm run check:reference-adoption && npm --prefix .. run check:reference-options && npm run check:dialogs && npm run check:dialog-actions && npm run type-check && npm run test:unit && npm run check:typescript-debt && npm run check:backend-security && npm run check:download-security && npm run check:error-management && npm run check:runtime-patterns && npm run check:style-debt && npm run check:fields && npm run check:lint && npm run check:permissions && npm run check:ui && npm run check:navigation && npm run check:tabs && npm run check:buttons && npm run check:tables && npm run check:badges && npm run check:loading && npm run check:empty-states && npm run check:data-freshness && npm run check:payment-methods",
     "check:release": "npm run check:standards && npm run check:dependencies",
     "prebuild": "npm run check:standards",
     "build": "vite build && npm run check:bundle-size",
@@ -88,7 +90,9 @@
     "@types/node": "^20.0.0",
     "@types/vue": "^1.0.31",
     "@vitejs/plugin-vue": "^6.0.3",
+    "@vue/test-utils": "^2.4.11",
     "@vue/tsconfig": "^0.8.1",
+    "jsdom": "^26.1.0",
     "sass": "^1.97.3",
     "terser": "^5.46.1",
     "typescript": "^5.0.0",
@@ -96,6 +100,11 @@
     "unplugin-vue-components": "^31.0.0",
     "vite": "^7.3.1",
     "vite-plugin-compression": "^0.5.1",
+    "vitest": "^4.1.12",
     "vue-tsc": "^3.3.8"
+  },
+  "overrides": {
+    "glob": "14.0.3",
+    "minimatch": "11.0.4"
   }
 }

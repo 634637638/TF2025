@@ -26,6 +26,25 @@ export interface SiteSettings {
   copyright?: string
 }
 
+/** 站点 Store 和编辑界面的设置值；与 snake_case 的接口模型分开。 */
+export interface SiteSettingsValues {
+  logoUrl: string
+  siteName: string
+  siteSubtitle: string
+  siteDomain: string
+  icpNumber: string
+  companyName: string
+  contactPhone: string
+  contactEmail: string
+  companyAddress: string
+  publicPriceContacts: string
+  publicPriceDefaultContact: string
+  publicPriceWatermark: string
+  publicPriceWatermarkEnabled: string
+  publicPriceWatermarkTimeEnabled: string
+  publicPriceWatermarkColor: string
+}
+
 /**
  * 主题设置
  */

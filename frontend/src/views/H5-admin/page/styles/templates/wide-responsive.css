@@ -1,0 +1,23 @@
+@media (max-width: 1200px) {
+  .group-table-header {
+    display: none;
+  }
+
+  .group-row {
+    grid-template-columns: 1fr;
+  }
+
+  .group-stat,
+  .group-actions,
+  .center {
+    text-align: left;
+  }
+
+  .dialog-header-form {
+    grid-template-columns: 1fr;
+  }
+
+  .markup-row {
+    grid-template-columns: 1fr;
+  }
+}

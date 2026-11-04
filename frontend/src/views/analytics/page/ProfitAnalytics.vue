@@ -2272,7 +2272,7 @@ const updateProfitTrendChart = () => {
   const hasTrendData = seriesData.some(item => (item.totalRevenue || 0) !== 0 || (item.totalCost || 0) !== 0 || (item.totalProfit || 0) !== 0)
 
   if (!hasTrendData) {
-    const option = {
+    const option: EChartsOption = {
       title: {
         text: '暂无趋势数据',
         left: 'center',
@@ -2361,7 +2361,7 @@ const updateProductProfitChart = () => {
 
   // 如果没有数据，显示空状态
   if (!topModels || topModels.length === 0) {
-    const option = {
+    const option: EChartsOption = {
       title: {
         text: '暂无数据',
         left: 'center',
@@ -2473,7 +2473,7 @@ const updateStoreComparison = () => {
 
   // 如果没有数据，显示空状态
   if (!stores || stores.length === 0) {
-    const option = {
+    const option: EChartsOption = {
       title: {
         text: '暂无数据',
         left: 'center',
@@ -2643,7 +2643,7 @@ const updateForecastChart = () => {
   const historySeries = (historySource.length > 0 ? historySource : fallbackSeries).slice(-6)
 
   if (historySeries.length === 0) {
-    const option = {
+    const option: EChartsOption = {
       title: {
         text: '暂无数据，无法预测',
         left: 'center',
@@ -3307,6 +3307,11 @@ onBeforeUnmount(() => {
 
   }
 
+}
+</style>
+
+<style lang="scss" scoped>
+.profit-analytics {
   // 业务统计区域
   .business-stats {
     margin-bottom: 20px;
@@ -3392,6 +3397,11 @@ onBeforeUnmount(() => {
     }
   }
 
+}
+</style>
+
+<style lang="scss" scoped>
+.profit-analytics {
   // 排行区域
   .ranking-section {
     margin-bottom: 20px;
@@ -3520,6 +3530,11 @@ onBeforeUnmount(() => {
     }
   }
 
+}
+</style>
+
+<style lang="scss" scoped>
+.profit-analytics {
   // 业绩统计区域
   .performance-section {
     margin-bottom: 20px;
@@ -3781,6 +3796,11 @@ onBeforeUnmount(() => {
     }
   }
 
+}
+</style>
+
+<style lang="scss" scoped>
+.profit-analytics {
   .metric-card--margin {
     :deep(.el-card__body) {
       background:
@@ -3897,6 +3917,11 @@ onBeforeUnmount(() => {
     }
   }
 
+}
+</style>
+
+<style lang="scss" scoped>
+.profit-analytics {
   .charts-section {
     margin-bottom: 24px;
   }
@@ -4160,6 +4185,11 @@ onBeforeUnmount(() => {
     color: var(--el-text-color-regular);
   }
 
+}
+</style>
+
+<style lang="scss" scoped>
+.profit-analytics {
   // 员工业绩表格样式 - 合计列一行显示，不同类型用背景色区分
   .total-summary-inline {
     display: flex;

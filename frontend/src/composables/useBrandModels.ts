@@ -13,6 +13,7 @@ import {
   getCachedMemories,
   getModels
 } from '@/services/reference-options'
+import type { ReferenceRecord } from '@/services/reference-options'
 
 // 全局状态 - 使用响应式数据
 const brands = ref<Brand[]>([])
@@ -65,10 +66,10 @@ export function useBrandModels() {
       if (response.success) {
         const modelsData = Array.isArray(response.data) ? response.data : []
         const formattedModels = sortOptionsByOrder<Model>(modelsData
-          .map((model: Partial<Model>) => ({
-            id: model.id,
-            name: model.name,
-            brand_id: model.brand_id,
+          .map((model: ReferenceRecord) => ({
+            id: Number(model.id || 0),
+            name: String(model.name || ''),
+            brand_id: Number(model.brand_id || brandId),
             sort_order: model.sort_order || 0
           } as Model)))
 

@@ -1,0 +1,160 @@
+
+.subsidy-list-section {
+  .batch-actions-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
+    border-radius: 8px;
+    margin-bottom: 16px;
+    animation: slideDown 0.3s ease-out;
+  }
+
+  .batch-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: white;
+    font-size: var(--tf-type-scale-14);
+  }
+
+  .batch-info strong {
+    font-size: var(--tf-type-scale-16);
+    font-weight: 600;
+  }
+
+  .batch-actions-buttons {
+    display: flex;
+    gap: 8px;
+  }
+
+  .table-price {
+    display: inline-block;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+  }
+
+  .table-price.sale-price {
+    color: var(--tf-color-red-600);
+  }
+
+  .table-price.subsidy-price {
+    color: var(--tf-color-green-600);
+  }
+
+  .time-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 6px;
+    border-radius: 4px;
+    font-size: var(--tf-type-scale-13);
+    font-weight: 600;
+    box-shadow: none;
+  }
+
+  .time-badge.approval-time {
+    color: var(--admin-action-manage-color);
+    background: var(--admin-action-manage-bg);
+    border: 1px solid var(--admin-action-manage-border);
+  }
+
+  .time-badge.arrival-time {
+    color: var(--admin-action-finance-color);
+    background: var(--admin-action-finance-bg);
+    border: 1px solid var(--admin-action-finance-border);
+  }
+
+  .clickable-text {
+    cursor: pointer;
+    color: var(--tf-color-indigo-brand);
+    transition: all 0.2s;
+    padding: 2px 4px;
+    border-radius: 4px;
+    display: inline-block;
+  }
+
+  .clickable-text:hover {
+    background: var(--tf-color-indigo-100);
+    color: var(--tf-color-indigo-legacy);
+  }
+
+  .clickable-text.customer-info-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    font-weight: 500;
+  }
+
+  .clickable-text.customer-info-toggle.has-handler-but-showing-purchaser {
+    background: linear-gradient(135deg, var(--tf-color-blue-tailwind-100), var(--tf-color-blue-tailwind-200));
+    color: var(--tf-color-blue-tailwind-800);
+    border: 1px solid var(--tf-color-blue-500);
+  }
+
+  .clickable-text.customer-info-toggle.showing-handler {
+    background: linear-gradient(135deg, var(--tf-color-amber-100), var(--tf-color-amber-200));
+    color: var(--tf-color-amber-800);
+    border: 1px solid var(--tf-color-amber-400);
+  }
+
+  .text-muted {
+    color: var(--tf-color-gray-bootstrap-500) !important;
+  }
+
+  .remarks-tag {
+    display: inline-block;
+    padding: 2px 10px;
+    background-color: var(--warning-color);
+    color: var(--color-bg-white);
+    font-size: var(--tf-type-scale-12);
+    border-radius: 4px;
+    cursor: pointer;
+  }
+
+  .subsidy-photo-cell .photo-icon-wrapper {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    padding: 3px 7px;
+    background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+
+  .subsidy-photo-cell .photo-icon-wrapper:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  }
+
+  .photo-icon,
+  .photo-icon-empty {
+    font-size: var(--tf-type-scale-12);
+  }
+
+  .photo-icon,
+  .photo-icon-empty,
+  .upload-hint,
+  .photo-count {
+    color: var(--color-bg-white);
+  }
+
+  .upload-hint {
+    font-size: var(--tf-type-scale-11);
+  }
+
+  .photo-count {
+    min-width: 14px;
+    font-size: var(--tf-type-scale-10);
+    font-weight: 600;
+    background: rgba(255, 255, 255, 0.2);
+    padding: 1px 4px;
+    border-radius: 7px;
+    line-height: 1.2;
+  }
+
+}

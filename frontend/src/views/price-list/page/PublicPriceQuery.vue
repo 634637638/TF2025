@@ -1365,10 +1365,10 @@ const showInventoryResultDialog = (row: PriceQueryRow) => {
     model_id: Number(row.model_id),
     color_id: Number(row.color_id),
     memory_id: Number(row.memory_id),
-    brand: row.brand_name,
-    model: row.model_number,
-    color: row.color_name,
-    memory: row.memory
+    brand: row.brand_name || '',
+    model: row.model_number || '',
+    color: row.color_name || '',
+    memory: row.memory || ''
   }
   selectedProductIsUsed.value = showUsedPhonesOnly.value
   selectedProductPurchaseCost.value = showUsedPhonesOnly.value && row.inventory_price !== null

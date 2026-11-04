@@ -15,12 +15,20 @@
     "migrate:shop-template-media": "node scripts/migrate-shop-template-media.js",
     "migrate:price-sources": "node scripts/migrate-price-sources.js",
     "migrate:sale-invoice-constraints": "node scripts/migrate-sale-invoice-constraints.js",
+    "migrate:customer-phone-uniqueness": "node scripts/migrate-customer-phone-uniqueness.js",
+    "migrate:h5-order-history-index": "node scripts/migrate-h5-order-history-index.js",
+    "setup:security-keys": "node scripts/setup-security-keys.js",
+    "rotate:signing-key": "node scripts/rotate-signing-key.js",
+    "migrate:config-encryption-key": "node scripts/migrate-config-encryption-key.js",
+    "migrate:price-sync-encryption": "node scripts/migrate-price-sync-encryption.js",
+    "rotate:price-sync-encryption-key": "node scripts/rotate-price-sync-encryption-key.js",
+    "migrate:customer-token-hashes": "node scripts/migrate-customer-token-hashes.js",
     "repair:sale-invoice-integrity": "node scripts/repair-duplicate-sale-invoice-numbers.js",
     "backfill:phone-relations": "node scripts/backfill-phone-relations.js",
     "backfill:sale-invoice-numbers": "node scripts/backfill-sale-invoice-numbers.js",
     "dev": "nodemon server.js",
     "test": "node --test test/**/*.check.js",
-    "test:db": "RUN_DB_TESTS=true node --test test/**/*.check.js"
+    "test:db": "node scripts/run-db-tests.js"
   },
   "nodemonConfig": {
     "ignore": [
@@ -59,5 +67,8 @@
   },
   "devDependencies": {
     "nodemon": "^3.0.1"
+  },
+  "overrides": {
+    "minimatch": "11.0.4"
   }
 }

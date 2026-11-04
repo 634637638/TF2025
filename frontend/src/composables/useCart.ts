@@ -9,18 +9,20 @@ import { logger } from '@/utils/logger'
 
 // 获取或生成购物车ID
 export function getCartId(): string {
-  let cartId = storage.getH5CartId()
-  if (!/^cart_[a-f0-9]{32}$/.test(cartId || '')) {
-    const cryptoApi = globalThis.crypto
-    const randomPart = cryptoApi?.randomUUID
-      ? cryptoApi.randomUUID().replace(/-/g, '')
-      : cryptoApi
-        ? Array.from(cryptoApi.getRandomValues(new Uint8Array(16)), value => value.toString(16).padStart(2, '0')).join('')
-        : `${Date.now().toString(16)}${Math.random().toString(16).slice(2)}`.padEnd(32, '0').slice(0, 32)
-    cartId = `cart_${randomPart}`
-    storage.setH5CartId(cartId)
+  const cartId = storage.getH5CartId()
+  if (cartId && /^cart_[a-f0-9]{32}$/.test(cartId)) {
+    return cartId
   }
-  return cartId
+
+  const cryptoApi = globalThis.crypto
+  const randomPart = cryptoApi?.randomUUID
+    ? cryptoApi.randomUUID().replace(/-/g, '')
+    : cryptoApi
+      ? Array.from(cryptoApi.getRandomValues(new Uint8Array(16)), value => value.toString(16).padStart(2, '0')).join('')
+      : `${Date.now().toString(16)}${Math.random().toString(16).slice(2)}`.padEnd(32, '0').slice(0, 32)
+  const generatedCartId = `cart_${randomPart}`
+  storage.setH5CartId(generatedCartId)
+  return generatedCartId
 }
 
 // 购物车状态

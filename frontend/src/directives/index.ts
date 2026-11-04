@@ -106,7 +106,7 @@ export const vDebounce: Directive = {
     delay?: number
     immediate?: boolean
   }>) {
-    let timeout: ReturnType<typeof setTimeout>
+    let timeout: ReturnType<typeof setTimeout> | null = null
 
     const handler = (event: Event) => {
       const { fn, delay = 300, immediate = false } = binding.value
@@ -331,7 +331,9 @@ export const vNumber: Directive = {
   mounted(el: HTMLInputElement) {
     el.type = 'text'
 
-    const handler = (e: KeyboardEvent) => {
+    const handler: EventListener = (event) => {
+      if (!(event instanceof KeyboardEvent)) return
+      const e = event
       // 允许数字、小数点、退格键、删除键
       const allowedKeys = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '.', 'Backspace', 'Delete', 'Tab', 'Enter']
       const ctrlKey = e.ctrlKey || e.metaKey
@@ -370,7 +372,9 @@ export const vMobileOptimize: Directive = {
     }
 
     // 添加点击波纹效果
-    const addRippleEffect = (e: MouseEvent) => {
+    const addRippleEffect: EventListener = (event) => {
+      if (!(event instanceof MouseEvent)) return
+      const e = event
       const ripple = document.createElement('span')
       ripple.style.position = 'absolute'
       ripple.style.borderRadius = '50%'

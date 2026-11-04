@@ -16,8 +16,12 @@ const { ensureRateLimitLogTable } = require('./middleware/rate-limit')
 const { ensurePriceSourceSchema } = require('./utils/price-source-schema')
 const { ensureGuideSchema } = require('./utils/guide-schema')
 const { ensureAttendanceSchema } = require('./utils/attendance-schema')
+const { ensureFrontendErrorLogSchema } = require('./utils/frontend-error-log-schema')
 const { cleanupExpiredGuideDrafts } = require('./utils/guide-upload')
 const { uploadStaticAccess } = require('./middleware/upload-static-access')
+const requestContext = require('./middleware/request-context')
+const { redactUrl } = require('./utils/sensitive-data')
+const { assertCustomerTokenSchema } = require('./utils/customer-token')
 
 // 导入路由
 const routes = require('./routes')
@@ -39,28 +43,15 @@ const SLOW_REQUEST_THRESHOLD_MS = Number(process.env.SLOW_REQUEST_THRESHOLD_MS |
 
 const formatBeijingTime = () => new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })
 
-const redactSensitiveQuery = (requestUrl = '') => {
-  try {
-    const url = new URL(requestUrl, 'http://localhost')
-    for (const key of ['token', 'access_token', 'refresh_token', 'signature', 'expires', 'download_token', 'file_token']) {
-      if (url.searchParams.has(key)) {
-        url.searchParams.set(key, '[REDACTED]')
-      }
-    }
-    return `${url.pathname}${url.search}`
-  } catch {
-    return String(requestUrl).replace(/([?&](?:token|access_token|refresh_token|signature|expires|download_token|file_token)=)[^&]*/gi, '$1[REDACTED]')
-  }
-}
-
 const requestLogger = (req, res, next) => {
   const startedAt = process.hrtime.bigint()
   res.on('finish', () => {
     const durationMs = Number(process.hrtime.bigint() - startedAt) / 1e6
     if (durationMs >= SLOW_REQUEST_THRESHOLD_MS) {
       log.warn('慢请求', {
+        requestId: req.requestId,
         method: req.method,
-        url: redactSensitiveQuery(req.originalUrl),
+        url: redactUrl(req.originalUrl),
         status: res.statusCode,
         durationMs: Math.round(durationMs)
       })
@@ -68,7 +59,12 @@ const requestLogger = (req, res, next) => {
   })
 
   if (!IS_PRODUCTION) {
-    log.debug(`🌐 [${formatBeijingTime()}] ${req.method} ${redactSensitiveQuery(req.originalUrl)}`)
+    log.debug('请求', {
+      requestId: req.requestId,
+      time: formatBeijingTime(),
+      method: req.method,
+      url: redactUrl(req.originalUrl)
+    })
   }
   next()
 }
@@ -91,6 +87,8 @@ async function initializeApp() {
       }
 
       if (databaseConnected) {
+        await assertCustomerTokenSchema(getDatabase())
+
         try {
           await ensureRateLimitLogTable(getDatabase())
         } catch (rateLimitError) {
@@ -140,6 +138,12 @@ async function initializeApp() {
         }
 
         try {
+          await ensureFrontendErrorLogSchema()
+        } catch (frontendErrorLogSchemaError) {
+          log.warn('前端错误日志表启动检查失败:', frontendErrorLogSchemaError.message)
+        }
+
+        try {
           await ensureGuideSchema()
           await cleanupExpiredGuideDrafts()
           const guideUploadCleanupTimer = setInterval(() => {
@@ -151,6 +155,7 @@ async function initializeApp() {
         }
       }
     } catch (dbError) {
+      if (dbError?.fatalStartup) throw dbError
       log.warn('数据库连接失败，服务器将以降级模式启动')
       log.warn('某些功能可能无法正常使用')
       log.warn('错误:', dbError.message)
@@ -159,6 +164,7 @@ async function initializeApp() {
 
     // 先设置代理信任，安全中间件和限流才能读取真实客户端 IP。
     app.set('trust proxy', 1)
+    app.use(requestContext)
 
     // 安全头、CORS 与全局限流必须在请求体解析前执行。
     setupSecurityMiddleware(app)

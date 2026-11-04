@@ -466,13 +466,13 @@ export const loadStockInDropdownData = async (): Promise<StockInDropdownData> =>
 
   const storesSource = Array.isArray(storesRes.data) ? storesRes.data : []
   const stores = storesRes.success
-    ? sortBySortOrder(storesSource.map(item => ({
+    ? sortBySortOrder(storesSource.map((item): Store => ({
       id: Number(item.id || 0),
       name: String(item.name || ''),
       code: String(item.code || item.name || ''),
       status: Number(item.status || 1),
       sort_order: Number(item.sort_order || 0)
-    })) as unknown as Store[])
+    })))
     : []
 
   const brands = brandsRes.success

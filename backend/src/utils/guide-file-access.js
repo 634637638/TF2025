@@ -1,33 +1,41 @@
 'use strict'
 
-const crypto = require('crypto')
-const config = require('../config')
+const { createHmacSignature, verifyHmacSignature } = require('./security-keyring')
 
 const TOKEN_TTL_SECONDS = 10 * 60
 const IMAGE_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/bmp', 'image/avif'])
 
-function signGuideFile(fileId, expiresAt) {
-  const secret = config.jwt.secret
-  if (!secret) throw new Error('文件访问签名密钥未配置')
-  return crypto.createHmac('sha256', secret).update(`${fileId}:${expiresAt}`).digest('hex')
+function guideFilePayload(fileId, expiresAt) {
+  return `${fileId}:${expiresAt}`
 }
 
-function createGuideFileAccess(fileId) {
+function signGuideFile(fileId, expiresAt, sourceKey) {
+  return createHmacSignature('FILE_ACCESS', guideFilePayload(fileId, expiresAt), 'hex', sourceKey)
+}
+
+function createGuideFileAccess(fileId, options = {}) {
   const expiresAt = Math.floor(Date.now() / 1000) + TOKEN_TTL_SECONDS
-  const signature = signGuideFile(fileId, expiresAt)
+  const signature = signGuideFile(fileId, expiresAt, options.sourceKey)
   return { url: `/api/public/guide/files/${Number(fileId)}`, expires_at: expiresAt, signature }
 }
 
-function verifyGuideFileToken(fileId, expiresAtValue, signature) {
+function verifyGuideFileToken(fileId, expiresAtValue, signature, options = {}) {
   if (!Number.isSafeInteger(Number(fileId)) || Number(fileId) <= 0) return false
   const expiresAt = Number(expiresAtValue)
   if (!Number.isSafeInteger(expiresAt) || expiresAt < Math.floor(Date.now() / 1000)) return false
   if (expiresAt > Math.floor(Date.now() / 1000) + TOKEN_TTL_SECONDS + 30) return false
   if (typeof signature !== 'string' || !/^[a-f0-9]{64}$/i.test(signature)) return false
 
-  const expected = Buffer.from(signGuideFile(fileId, expiresAt), 'hex')
-  const received = Buffer.from(signature, 'hex')
-  return expected.length === received.length && crypto.timingSafeEqual(expected, received)
+  return verifyHmacSignature(
+    'FILE_ACCESS',
+    guideFilePayload(fileId, expiresAt),
+    signature,
+    'hex',
+    {
+      current: options.sourceKey,
+      previous: options.previousSourceKey
+    }
+  )
 }
 
 function getGuideFileDisposition(mimeType) {

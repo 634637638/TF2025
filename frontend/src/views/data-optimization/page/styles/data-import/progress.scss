@@ -1,0 +1,65 @@
+.data-import-tab {
+  .import-wizard {
+.progress-step {
+      .import-progress {
+        text-align: center;
+
+        .progress-message {
+          font-size: var(--tf-type-scale-16);
+          color: var(--color-text-regular);
+          margin: 20px 0;
+        }
+
+        .import-result {
+          background: var(--tf-color-surface);
+          border-radius: 8px;
+          padding: 20px;
+          margin-top: 20px;
+
+          .result-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 16px;
+
+            .stat-item {
+              text-align: center;
+
+              .label {
+                display: block;
+                font-size: var(--tf-type-scale-14);
+                color: var(--color-info);
+                margin-bottom: 8px;
+              }
+
+              .value {
+                display: block;
+                font-size: var(--tf-type-scale-24);
+                font-weight: 600;
+              }
+
+              &.success .value {
+                color: var(--color-success);
+              }
+
+              &.primary .value {
+                color: var(--color-primary);
+              }
+
+              &.info .value {
+                color: var(--color-info);
+              }
+
+              &.warning .value {
+                color: var(--color-warning);
+              }
+
+              &.danger .value {
+                color: var(--color-danger);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

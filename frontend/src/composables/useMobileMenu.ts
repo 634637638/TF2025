@@ -7,7 +7,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useMobile } from './mobile'
 import { useAuthStore } from '@/stores/auth'
 import { useMenuStore } from '@/stores/menu'
-import type { MenuItem } from '@/types/menu'
+import type { MenuAction, MenuItem } from '@/types/menu'
 import { useKeyboardShortcut } from '@/composables/useKeyboardShortcut'
 
 export interface MobileMenuConfig {
@@ -16,13 +16,7 @@ export interface MobileMenuConfig {
   // 是否启用手势
   enableGestures?: boolean
   // 快捷操作
-  quickActions?: Array<{
-    id: string
-    name: string
-    icon: string
-    badge?: string
-    handler: () => void
-  }>
+  quickActions?: MenuAction[]
 }
 
 export function useMobileMenu(config: MobileMenuConfig) {
@@ -129,7 +123,7 @@ export function useMobileMenu(config: MobileMenuConfig) {
   }
 
   // 处理快捷操作
-  const handleQuickAction = (action: NonNullable<MobileMenuConfig['quickActions']>[number]) => {
+  const handleQuickAction = (action: MenuAction) => {
     if (action.handler) {
       action.handler()
     }

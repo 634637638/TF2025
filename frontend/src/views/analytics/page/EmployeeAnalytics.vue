@@ -832,27 +832,28 @@ const loadEmployeeData = async (showLoadingState = true) => {
       useCachedRequest(cacheKeyAttendance, () => analyticsService.getAttendanceSummary(params), DEFAULT_CACHE_TTL.STATIC)
     ])
 
-    if (employeeRes.success) {
+    const analyticsData = employeeRes.data
+    if (employeeRes.success && analyticsData) {
       employeeData.value = {
-        totalCount: employeeRes.data.totalCount || 0,
-        activeCount: employeeRes.data.activeCount || 0,
-        totalSalary: employeeRes.data.totalSalary || 0,
-        baseSalaryTotal: employeeRes.data.baseSalaryTotal || 0,
-        commissionTotal: employeeRes.data.commissionTotal || 0,
-        overtimePayTotal: employeeRes.data.overtimePayTotal || 0,
-        deductionTotal: employeeRes.data.deductionTotal || 0,
-        avgAttendance: employeeRes.data.avgAttendance || 0,
-        storeCount: employeeRes.data.storeCount || 0,
-        totalTrend: employeeRes.data.totalTrend || 'stable',
-        totalChange: employeeRes.data.totalChange || 0,
-        salaryTrend: employeeRes.data.salaryTrend || 'stable',
-        salaryChange: employeeRes.data.salaryChange || 0
+        totalCount: analyticsData.totalCount || 0,
+        activeCount: analyticsData.activeCount || 0,
+        totalSalary: analyticsData.totalSalary || 0,
+        baseSalaryTotal: analyticsData.baseSalaryTotal || 0,
+        commissionTotal: analyticsData.commissionTotal || 0,
+        overtimePayTotal: analyticsData.overtimePayTotal || 0,
+        deductionTotal: analyticsData.deductionTotal || 0,
+        avgAttendance: analyticsData.avgAttendance || 0,
+        storeCount: analyticsData.storeCount || 0,
+        totalTrend: analyticsData.totalTrend || 'stable',
+        totalChange: analyticsData.totalChange || 0,
+        salaryTrend: analyticsData.salaryTrend || 'stable',
+        salaryChange: analyticsData.salaryChange || 0
       }
 
       salesData.value = {
-        newCount: employeeRes.data.newCount || 0,
-        usedCount: employeeRes.data.usedCount || 0,
-        avgSales: employeeRes.data.avgSales || 0,
+        newCount: analyticsData.newCount || 0,
+        usedCount: analyticsData.usedCount || 0,
+        avgSales: analyticsData.avgSales || 0,
         newTrend: 'up',
         newChange: 0,
         usedTrend: 'up',
@@ -924,7 +925,7 @@ const loadEmployeePerformance = async () => {
         page_size: 20
       }), DEFAULT_CACHE_TTL.DYNAMIC)
 
-    if (response.success) {
+    if (response.success && response.data) {
       employeePerformance.value = response.data.map(record => {
         const data = record as Record<string, unknown>
         const trend = data.trend === 'up' || data.trend === 'down' ? data.trend : 'stable'
@@ -1118,8 +1119,8 @@ const updateSalaryTrendChart = async () => {
         months: parseInt(salaryTrendPeriod.value)
       }), DEFAULT_CACHE_TTL.STATIC)
 
-    let months = []
-    let salaries = []
+    let months: string[] = []
+    let salaries: number[] = []
 
     if (response.success && response.data) {
       months = response.data.months || []
@@ -1128,7 +1129,7 @@ const updateSalaryTrendChart = async () => {
       logger.warn('工资趋势接口未返回数据，保持空图表')
     }
 
-    const option = {
+    const option: EChartsOption = {
       tooltip: {
         trigger: 'axis'
       },

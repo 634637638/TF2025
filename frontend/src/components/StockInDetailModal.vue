@@ -323,6 +323,8 @@ const operationHistory = ref<Array<{
   timestamp: string
 }>>([])
 
+type OperationHistoryItem = typeof operationHistory.value[number]
+
 // 计算属性
 const dialogVisible = computed({
   get: () => props.visible,
@@ -342,15 +344,15 @@ watch(
 
 // 方法定义
 const loadOperationHistory = (record: StockInRecord) => {
-  const history = []
+  const history: OperationHistoryItem[] = []
 
   // 创建记录
   history.push({
     type: 'primary',
     title: '创建入库记录',
     description: `创建了 ${record.product_name} 的入库记录，数量 ${record.quantity}`,
-    operator: record.operator_name,
-    timestamp: record.inventory_time
+    operator: record.operator_name || undefined,
+    timestamp: record.inventory_time || ''
   })
 
   // 如果已结算，添加结算记录

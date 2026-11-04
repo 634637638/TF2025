@@ -146,7 +146,7 @@
               popper-class="tf2025-form-popper"
               class="w-full"
               :disabled="!canEditField('inventory_time')"
-              :prefix-icon="null"
+              :prefix-icon="undefined"
               :clearable="false"
             />
           </div>

@@ -355,7 +355,7 @@ export function useMobileGestures(
         medium: 20,
         heavy: 50
       }
-      navigator.vibrate(pattern[type])
+      navigator.vibrate?.(pattern[type])
     }
   }
 
@@ -809,7 +809,7 @@ export function useMobilePerformance() {
       }
 
       updateNetworkStatus()
-      connection.addEventListener('change', updateNetworkStatus)
+      connection.addEventListener?.('change', updateNetworkStatus)
     }
 
     window.addEventListener('online', () => {

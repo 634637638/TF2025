@@ -711,7 +711,7 @@ import type {
 } from '@/types/analytics'
 import type { InventoryAnalyticsProps, LoadingChangeEmits } from '@/types/component'
 import { useAnalyticsFieldVisibility } from './useAnalyticsFieldVisibility'
-import echarts, { ECharts, type EChartsOption, type CallbackDataParams } from '@/utils/echarts'
+import echarts, { ECharts, type EChartsOption, type TopLevelFormatterParams } from '@/utils/echarts'
 import { buildCsvContent } from '@/utils/csv-export'
 import { logger } from '@/utils/logger'
 import { formatDate as formatGlobalDate } from '@/utils/format'
@@ -927,7 +927,7 @@ const loadInventoryData = async (showLoadingState = true) => {
       useCachedRequest(cacheKeyTurnover, () => analyticsService.getInventoryTurnover({ period: turnoverPeriod.value, ...params }), DEFAULT_CACHE_TTL.DYNAMIC)
     ])
 
-    if (inventoryResponse.success) {
+    if (inventoryResponse.success && inventoryResponse.data) {
       inventoryData.value = inventoryResponse.data
     }
 
@@ -1129,9 +1129,10 @@ const updateCategoryChart = () => {
     color: ['#205781', '#4F959D', '#98D2C0', '#F6B17A', '#E07A5F', '#3D405B'],
     tooltip: {
       trigger: 'item',
-      formatter: (params: CallbackDataParams) => {
-        const data = params.data && typeof params.data === 'object' ? params.data as { turnover_rate?: number } : {}
-        return `${params.name}<br/>库存价值: ¥${formatNumber(Number(params.value) || 0)}<br/>周转率: ${formatDecimal(Number(data.turnover_rate) || 0)}`
+      formatter: (params: TopLevelFormatterParams) => {
+        const item = Array.isArray(params) ? params[0] : params
+        const data = item.data && typeof item.data === 'object' ? item.data as { turnover_rate?: number } : {}
+        return `${item.name}<br/>库存价值: ¥${formatNumber(Number(item.value) || 0)}<br/>周转率: ${formatDecimal(Number(data.turnover_rate) || 0)}`
       }
     },
     grid: {

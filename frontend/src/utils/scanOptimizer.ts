@@ -106,7 +106,7 @@ export class ScanOptimizer {
       // 判断是否为低端设备
       isLowEnd = androidVersion < 8.0 ||
                  ['huawei', 'xiaomi', 'vivo', 'oppo', 'realme'].includes(manufacturer) ||
-                 navigator.hardwareConcurrency <= 4
+                 (navigator.hardwareConcurrency || 4) <= 4
     }
 
     return {

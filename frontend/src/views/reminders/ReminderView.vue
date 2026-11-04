@@ -138,7 +138,7 @@
               <el-option
                 v-for="item in activeTypes"
                 :key="item.id"
-                :label="item.name"
+                :label="item.name || ''"
                 :value="item.id"
               />
             </el-select>
@@ -400,7 +400,7 @@
               <el-option
                 v-for="item in activeTypes"
                 :key="item.id"
-                :label="item.name"
+                :label="item.name || ''"
                 :value="item.id"
               />
             </el-select>
@@ -1096,11 +1096,12 @@ const canSaveType = computed(() => {
   return typeForm.id > 0 || (canViewReminderField('type_name') && Boolean(typeForm.name.trim()))
 })
 const intervalUnit = computed(() => ({
+  once: '',
   daily: '天',
   weekly: '周',
   monthly: '月',
   yearly: '年'
-})[form.repeat_type] || '')
+} as Record<string, string>)[form.repeat_type] || '')
 const reminderActionColumnWidth = computed(() => {
   const buttonCount = 1 + (canEdit.value ? 1 : 0) + (canDelete.value ? 1 : 0)
   return getActionColumnMinWidth(buttonCount)

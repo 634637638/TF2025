@@ -200,8 +200,8 @@ export const useInventoryData = ({
 
       inventory.value = records.map(record => ({
         ...record,
-        purchase_cost: record.purchase_cost ?? null,
-        inventory_time: record.inventory_time ?? null,
+        purchase_cost: record.purchase_cost ?? undefined,
+        inventory_time: record.inventory_time ?? undefined,
         price: record.sale_price ?? 0
       }))
 

@@ -1271,7 +1271,10 @@ const loadConfigs = async () => {
   try {
     const response = await getAllConfigs()
     // unifiedApi 返回 ApiResponse 格式，需要取 data
-    const data = response.data || response
+    const responseData: unknown = response.data || response
+    const data = responseData && typeof responseData === 'object'
+      ? responseData as Record<string, unknown>
+      : {}
 
     // 将嵌套的配置转换为平铺的键值对
     configs.value = {} as ShopConfigForm
@@ -1420,13 +1423,9 @@ const handleSave = async () => {
 
 // 地图选择相关
 const selectedLocation = ref({ lat: '', lng: '' })
-interface TencentMapInstance {
-  on: (_event: string, _callback: (_event: unknown) => void) => void
-}
-
-interface TencentMarkerInstance {
-  setGeometries: (_geometries: Array<Record<string, unknown>>) => void
-}
+type TencentMapApi = NonNullable<Window['TMap']>
+type TencentMapInstance = InstanceType<TencentMapApi['Map']>
+type TencentMarkerInstance = InstanceType<TencentMapApi['MultiMarker']>
 
 let map: TencentMapInstance | null = null
 let marker: TencentMarkerInstance | null = null

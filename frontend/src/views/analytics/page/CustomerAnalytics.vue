@@ -451,7 +451,7 @@ import {
   Download,
   Refresh
 } from '@element-plus/icons-vue'
-import echarts, { ECharts, type CallbackDataParams } from '@/utils/echarts'
+import echarts, { ECharts, type CallbackDataParams, type TopLevelFormatterParams } from '@/utils/echarts'
 import { analyticsService } from '@/api/analytics'
 import type { CustomerSegment, CustomerInsight, CustomerDetail } from '@/types/analytics'
 import type { CustomerAnalyticsProps } from '@/types/component'
@@ -818,8 +818,8 @@ const initGrowthChart = async () => {
     const option = {
       tooltip: {
         trigger: 'axis',
-        formatter: (params: CallbackDataParams) => {
-          const param = params[0]
+        formatter: (params: TopLevelFormatterParams) => {
+          const param = Array.isArray(params) ? params[0] : params
           return `${param.name}<br/>新增客户: ${param.value}`
         }
       },
@@ -949,19 +949,8 @@ const initRetentionChart = async () => {
     const cacheKey = CACHE_KEYS.customerRetention(retentionCohort.value)
     const response = await useCachedRequest(cacheKey, () => analyticsService.getCustomerRetention({ cohort: retentionCohort.value }), DEFAULT_CACHE_TTL.DYNAMIC)
 
-    // 处理响应数据
-    let data
-    if (response?.data) {
-      data = response.data
-    } else if (response && typeof response === 'object' && 'periods' in response && 'cohorts' in response) {
-      // 如果 response 本身就有 periods 和 cohorts 属性（某些情况下的响应格式）
-      data = response
-    } else {
-      data = response
-    }
-
-    // 验证数据结构
-    if (!data || !Array.isArray(data.periods) || !Array.isArray(data.cohorts)) {
+    const data = parseRetentionData(response)
+    if (!data) {
       setRetentionChartOption(chart, { periods: [], cohorts: [] })
       return
     }
@@ -984,6 +973,20 @@ interface RetentionCohort {
 interface RetentionData {
   periods: string[]
   cohorts: RetentionCohort[]
+}
+
+const parseRetentionData = (value: unknown): RetentionData | null => {
+  if (!value || typeof value !== 'object') return null
+  const responseRecord = value as Record<string, unknown>
+  const candidate = responseRecord.data && typeof responseRecord.data === 'object'
+    ? responseRecord.data as Record<string, unknown>
+    : responseRecord
+
+  if (!Array.isArray(candidate.periods) || !Array.isArray(candidate.cohorts)) return null
+  return {
+    periods: candidate.periods.filter((period): period is string => typeof period === 'string'),
+    cohorts: candidate.cohorts as RetentionCohort[]
+  }
 }
 
 const setRetentionChartOption = (chart: ECharts, data: RetentionData) => {

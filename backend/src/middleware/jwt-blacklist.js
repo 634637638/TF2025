@@ -1,8 +1,8 @@
 const jwt = require('jsonwebtoken')
 const { getDatabase, isConnected } = require('../config/database')
-const config = require('../config')
 const crypto = require('crypto')
 const log = require('../utils/log')
+const { signJwt, verifyJwt } = require('../utils/security-keyring')
 
 // 内存存储JWT黑名单（作为缓存层）
 const blacklistedTokens = new Map()
@@ -15,7 +15,6 @@ const CONFIG = {
   REFRESH_TOKEN_EXPIRY: '30d', // 刷新令牌30天过期（延长到30天）
   ISSUER: 'tf2025-backend', // 发行者
   AUDIENCE: 'tf2025-users', // 受众
-  JWT_SECRET: config.jwt.secret, // 从配置获取JWT密钥
   // 🔒 默认启用持久化，除非显式关闭
   PERSIST_BLACKLIST: process.env.JWT_BLACKLIST_PERSIST !== 'false',
   // 新增：Token 轮换（每次刷新时生成新的刷新令牌）
@@ -99,13 +98,9 @@ function generateTokens(payload) {
     aud: CONFIG.AUDIENCE
   }
 
-  const accessToken = jwt.sign(accessTokenPayload, CONFIG.JWT_SECRET, {
-    algorithm: 'HS256'
-  })
+  const accessToken = signJwt('JWT_ACCESS', accessTokenPayload)
 
-  const refreshToken = jwt.sign(refreshTokenPayload, CONFIG.JWT_SECRET, {
-    algorithm: 'HS256'
-  })
+  const refreshToken = signJwt('JWT_REFRESH', refreshTokenPayload)
 
   return { accessToken, refreshToken, accessJti, refreshJti }
 }
@@ -119,8 +114,8 @@ async function verifyToken(token, type = 'access') {
       throw new Error('Token已被吊销')
     }
 
-    const decoded = jwt.verify(token, CONFIG.JWT_SECRET, {
-      algorithms: ['HS256'],
+    const scopeName = type === 'refresh' ? 'JWT_REFRESH' : 'JWT_ACCESS'
+    const decoded = verifyJwt(scopeName, token, {
       issuer: CONFIG.ISSUER,
       audience: CONFIG.AUDIENCE
     })

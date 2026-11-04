@@ -134,6 +134,16 @@ export interface PaginatedResponse<T = unknown> {
   timestamp?: string
 }
 
+export interface PaginatedData<T = unknown> {
+  data: T[]
+  page: number
+  page_size: number
+  total: number
+  total_pages: number
+  has_next: boolean
+  has_prev: boolean
+}
+
 // ===== 用户和权限相关类型 =====
 
 /**
@@ -459,7 +469,22 @@ export interface ModelOption {
   brand_id?: number | null
   brand_name?: string
   brand?: string
+  status?: number
   sort_order?: number
+}
+
+/**
+ * 综合查询编辑与快速出库共用的基础选项。
+ * 仅保留两个组件真实消费的字段，避免依赖完整业务实体。
+ */
+export interface QueryOperationOptions {
+  suppliers: IdNameOption[]
+  stores: IdNameOption[]
+  brands: IdNameOption[]
+  models: ModelOption[]
+  colors: IdNameOption[]
+  memories: MemoryOption[]
+  users: UserOption[]
 }
 
 /**

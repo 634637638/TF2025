@@ -1,11 +1,11 @@
 const BaseService = require('./base.service')
 const UserRepository = require('../repositories/user.repository')
 const bcrypt = require('bcryptjs')
-const jwt = require('jsonwebtoken')
 const { getDatabase } = require('../config/database')
 const { _hasGlobalAdminRole, _getRoleHierarchyFromDB } = require('./accessControl.service')
 const { hasColumn } = require('./schemaInspector.service')
 const log = require('../utils/log')
+const { signJwt, verifyJwt } = require('../utils/security-keyring')
 
 /**
  * 认证Service类
@@ -191,7 +191,7 @@ class AuthService extends BaseService {
       }
 
       // 验证刷新令牌
-      const decoded = jwt.verify(refreshToken, process.env.JWT_SECRET, {
+      const decoded = verifyJwt('JWT_REFRESH', refreshToken, {
         issuer: 'tf2025-backend',
         audience: 'tf2025-users'
       })
@@ -412,15 +412,15 @@ class AuthService extends BaseService {
       tokenExpiry = process.env.JWT_ACCESS_EXPIRES_SHORT || '2h'  // 普通用户2小时
     }
 
-    const accessToken = jwt.sign(payload, process.env.JWT_SECRET, {
+    const accessToken = signJwt('JWT_ACCESS', { ...payload, type: 'access' }, {
       expiresIn: tokenExpiry,
       issuer: 'tf2025-backend',
       audience: 'tf2025-users'
     })
 
-    const refreshToken = jwt.sign(
+    const refreshToken = signJwt(
+      'JWT_REFRESH',
       { sub: user.id, type: 'refresh' },
-      process.env.JWT_SECRET,
       {
         expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '30d', // 刷新令牌30天
         issuer: 'tf2025-backend',

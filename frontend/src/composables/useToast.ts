@@ -1,6 +1,6 @@
 import { ref } from 'vue'
 
-interface Toast {
+export interface Toast {
   id: number
   message: string
   type: 'success' | 'error' | 'warning' | 'info'

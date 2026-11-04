@@ -12,7 +12,6 @@ try {
 } catch (error) {
   log.warn('⚠️ cheerio 模块未安装，价格抓取功能将不可用')
 }
-const crypto = require('crypto')
 const CaptchaRecognizer = require('./captcha-recognizer')
 const PuppeteerLoginService = require('./puppeteer-login.service')
 const HttpLoginService = require('./http-login.service')
@@ -22,6 +21,10 @@ const { DEFAULT_BROWSER_USER_AGENT, EXTERNAL_PRICE, TIMEOUTS } = require('../con
 const { ensurePriceSourceSchema } = require('../utils/price-source-schema')
 const { normalizedModelSql } = require('../utils/search')
 const pricingService = require('./pricing.service')
+const {
+  decryptPriceSyncPassword,
+  encryptPriceSyncPassword
+} = require('../utils/price-sync-crypto')
 
 class PriceListService {
   constructor() {
@@ -460,6 +463,41 @@ class PriceListService {
    */
   setDatabase(db) {
     this.db = db
+  }
+
+  /**
+   * 使用一次性加载的型号列表解析外部型号，避免同步循环内重复查询 models。
+   * 保持原有顺序：数据库等值匹配优先，失败后再按去设备前缀的名称做包含匹配。
+   */
+  resolveExistingModelNumber(modelNames, externalModel) {
+    const normalizedExternalModel = String(externalModel || '').toLowerCase()
+    const hasExactMatch = modelNames.some(modelName =>
+      String(modelName || '').toLowerCase() === normalizedExternalModel
+    )
+
+    if (hasExactMatch) {
+      return externalModel
+    }
+
+    const modelNamePattern = String(externalModel || '').replace(/^iphone|ipad|macbook/im, '')
+    const normalizedPattern = modelNamePattern.toLowerCase()
+    const fuzzyMatch = modelNames.find(modelName =>
+      String(modelName || '').toLowerCase().includes(normalizedPattern)
+    )
+
+    return fuzzyMatch || externalModel
+  }
+
+  /**
+   * 为品牌、型号、颜色和内存组合生成不会混淆 null 与空字符串的稳定键。
+   */
+  buildPriceCombinationKey(item = {}) {
+    return JSON.stringify([
+      item.brand_name ?? null,
+      item.model_number ?? null,
+      item.color_name ?? null,
+      item.memory ?? null
+    ])
   }
 
   /**
@@ -1655,10 +1693,9 @@ class PriceListService {
   // ==================== 同步配置管理 ====================
 
   /**
-   * 获取同步配置
-   * @param {boolean} hidePassword 是否隐藏密码（默认true，用于前端显示；设为false返回真实密码用于编辑）
+   * 获取同步配置。密码只返回占位符，任何管理接口都不回显明文。
    */
-  async getSyncConfig(hidePassword = true) {
+  async getSyncConfig() {
     try {
       await ensurePriceSourceSchema()
       // 同步主链路统一只认默认配置
@@ -1670,22 +1707,8 @@ class PriceListService {
       }
 
       const config = rows[0]
-
-      // 处理密码字段
-      if (config.login_password) {
-        if (hidePassword) {
-          // 前端显示时使用占位符
-          config.login_password = '••••••••'
-        } else {
-          // 返回真实密码（解密后的）用于编辑
-          try {
-            config.login_password = this.decryptPassword(config.login_password)
-          } catch (e) {
-            // 解密失败，保持原样
-            config.login_password = '••••••••'
-          }
-        }
-      }
+      config.has_password = Boolean(config.login_password)
+      config.login_password = config.has_password ? '••••••••' : ''
 
       return this.createSuccessResponse('获取成功', config)
     } catch (error) {
@@ -1695,7 +1718,7 @@ class PriceListService {
   }
 
   /**
-   * 根据ID获取同步配置（用于编辑，返回真实密码）
+   * 根据ID获取同步配置。编辑时只说明是否已保存密码，不返回明文。
    */
   async getSyncConfigById(configId) {
     try {
@@ -1711,16 +1734,8 @@ class PriceListService {
 
       config.source_type = config.source_type === 'public' ? 'public' : 'account'
 
-      // 解密密码返回真实密码（用于编辑显示）
-      if (config.login_password) {
-        try {
-          config.login_password = this.decryptPassword(config.login_password)
-          log.debug('✅ 编辑配置：密码解密成功，密码长度:', config.login_password?.length)
-        } catch (e) {
-          log.error('❌ 解密密码失败:', e)
-          config.login_password = ''
-        }
-      }
+      config.has_password = Boolean(config.login_password)
+      config.login_password = config.has_password ? '••••••••' : ''
 
       return this.createSuccessResponse('获取成功', config)
     } catch (error) {
@@ -1732,11 +1747,13 @@ class PriceListService {
   /**
    * 根据ID获取同步配置的真实密码（用于同步时）
    */
-  async getSyncConfigWithPassword(configId) {
+  async getSyncConfigWithPassword(configId = null) {
     try {
       await ensurePriceSourceSchema()
-      const query = 'SELECT * FROM price_sync_config WHERE id = ?'
-      const [rows] = await this.db.query(query, [configId])
+      const query = configId
+        ? 'SELECT * FROM price_sync_config WHERE id = ?'
+        : 'SELECT * FROM price_sync_config WHERE is_default = 1 LIMIT 1'
+      const [rows] = await this.db.query(query, configId ? [configId] : [])
 
       if (rows.length === 0) {
         return this.createErrorResponse('未找到同步配置')
@@ -1746,14 +1763,8 @@ class PriceListService {
 
       config.source_type = config.source_type === 'public' ? 'public' : 'account'
 
-      // 解密密码返回真实密码
       if (config.login_password) {
-        try {
-          config.login_password = this.decryptPassword(config.login_password)
-        } catch (e) {
-          log.error('解密密码失败:', e)
-          config.login_password = null
-        }
+        config.login_password = this.decryptPassword(config.login_password)
       }
 
       return this.createSuccessResponse('获取成功', config)
@@ -1799,7 +1810,9 @@ class PriceListService {
       const configId = currentConfigs[0].id
 
       // 只有当密码不是占位符且有值时才更新密码
-      const shouldUpdatePassword = login_password && login_password !== '******'
+      const shouldUpdatePassword = Boolean(
+        login_password && login_password !== '••••••••' && login_password !== '******'
+      )
 
       // 加密密码
       let encryptedPassword = null
@@ -2073,8 +2086,8 @@ class PriceListService {
         }
         config = result
       } else {
-        // 如果没有指定 configId，获取默认激活的配置
-        config = await this.getSyncConfig()
+        // 如果没有指定 configId，获取默认配置并仅在内部解密密码
+        config = await this.getSyncConfigWithPassword()
         if (!config.success || !config.data) {
           throw new Error('未找到有效的同步配置')
         }
@@ -2214,12 +2227,7 @@ class PriceListService {
     try {
       log.debug(`🔐 开始登录: 用户名=${config.login_username}`)
 
-      // 检查密码是否已经解密（如果不是加密格式，说明已经是明文）
-      let password = config.login_password
-      if (password && password.includes(':')) {
-        // 是加密格式，需要解密
-        password = this.decryptPassword(password)
-      }
+      const password = config.login_password
 
       // 如果解密返回的是占位符或为空，说明密码无效
       if (!password || password === '••••••••') {
@@ -4012,36 +4020,25 @@ class PriceListService {
     // 🔍 调试：输出已匹配的唯一key
     log.debug('  🔍 已匹配key示例:', Array.from(matchedPrices).slice(0, 5))
 
+    let modelNames = []
+    try {
+      const [modelRows] = await this.db.query('SELECT name FROM models')
+      modelNames = (modelRows || []).map(row => row.name).filter(Boolean)
+    } catch (error) {
+      log.error(`    ❌ 批量加载型号失败: ${error.message}`)
+    }
+
     // 遍历所有外部价格，保存未匹配的
     for (const [extKey, priceList] of externalPrices.entries()) {
       const [extBrand, extModel] = extKey.split('-')
 
-      // 🔥 关键修复：查询数据库中是否存在该型号，如果不存在则尝试查找相似型号
-      // 因为外部数据的型号名称（如iphone17promax）可能与数据库中的名称（如17promax）不一致
-      let actualModelNumber = extModel
-      try {
-        // 首先尝试精确匹配
-        const [modelCheck] = await this.db.query(
-          'SELECT name FROM models WHERE name = ? LIMIT 1',
-          [extModel]
-        )
-        if (!modelCheck || modelCheck.length === 0) {
-          // 精确匹配失败，尝试模糊匹配（查找包含extModel去掉前缀的型号）
-          const modelNamePattern = extModel.replace(/^iphone|ipad|macbook/im, '')
-          const [modelByPattern] = await this.db.query(
-            'SELECT name FROM models WHERE name LIKE ? LIMIT 1',
-            [`%${modelNamePattern}%`]
-          )
-          if (modelByPattern && modelByPattern.length > 0) {
-            actualModelNumber = modelByPattern[0].name
-            log.debug(`    🔗 型号模糊匹配: ${extModel} -> ${actualModelNumber}`)
-          } else {
-            log.debug(`    ⚠️  型号未找到: ${extModel}, 尝试模式: ${modelNamePattern}`)
-          }
-        }
-      } catch (e) {
-        log.error(`    ❌ 型号查询失败: ${e.message}`)
-        // 查询失败，使用原始型号名称
+      // 外部型号可能带设备前缀（如 iphone17promax），数据库中则为 17promax。
+      const actualModelNumber = this.resolveExistingModelNumber(modelNames, extModel)
+      if (actualModelNumber !== extModel) {
+        log.debug(`    🔗 型号模糊匹配: ${extModel} -> ${actualModelNumber}`)
+      } else if (!modelNames.some(modelName => String(modelName).toLowerCase() === String(extModel).toLowerCase())) {
+        const modelNamePattern = extModel.replace(/^iphone|ipad|macbook/im, '')
+        log.debug(`    ⚠️  型号未找到: ${extModel}, 尝试模式: ${modelNamePattern}`)
       }
 
       for (const priceData of this.getEligiblePriceCandidates(priceList, { brand: extBrand, model: actualModelNumber })) {
@@ -4052,11 +4049,6 @@ class PriceListService {
 
         // 生成唯一标识（使用实际的型号名称）
         const uniqueKey = `${extBrand}-${actualModelNumber}-${colorKey}-${memoryKey}`
-
-        // 🔍 调试：输出每个外部价格的匹配key
-        if (extModel.includes('17') && (priceData.memory === '1TB')) {
-          log.debug('  🔍 检查key: ${uniqueKey}, 已匹配: ${matchedPrices.has(uniqueKey)}')
-        }
 
         // 跳过已匹配的
         if (matchedPrices.has(uniqueKey)) {
@@ -4205,25 +4197,29 @@ class PriceListService {
 
       log.debug(`  📦 检查 ${inventoryItems.length} 个在库商品...`)
 
+      const [existingPriceItems] = await this.db.query(`
+        SELECT
+          b.name as brand_name,
+          m.name as model_number,
+          c.name as color_name,
+          mem.size as memory
+        FROM price_list p
+        INNER JOIN brands b ON p.brand_id = b.id
+        INNER JOIN models m ON p.model_id = m.id
+        LEFT JOIN colors c ON p.color_id = c.id
+        LEFT JOIN memories mem ON p.memory_id = mem.id
+      `)
+      const existingPriceKeys = new Set(
+        (existingPriceItems || []).map(item => this.buildPriceCombinationKey(item))
+      )
+
       let createdCount = 0
       let skippedCount = 0
 
       for (const item of inventoryItems) {
-        // 检查 price_list 中是否已有对应的记录
-        const [existing] = await this.db.query(`
-          SELECT p.id FROM price_list p
-          INNER JOIN brands b ON p.brand_id = b.id
-          INNER JOIN models m ON p.model_id = m.id
-          LEFT JOIN colors c ON p.color_id = c.id
-          LEFT JOIN memories mem ON p.memory_id = mem.id
-          WHERE b.name = ?
-            AND m.name = ?
-            AND (c.name = ? OR (c.name IS NULL AND ? IS NULL))
-            AND (mem.size = ? OR (mem.size IS NULL AND ? IS NULL))
-          LIMIT 1
-        `, [item.brand_name, item.model_number, item.color_name, item.color_name, item.memory, item.memory])
+        const combinationKey = this.buildPriceCombinationKey(item)
 
-        if (existing.length === 0) {
+        if (!existingPriceKeys.has(combinationKey)) {
           // 不存在，创建新记录
           const priceData = {
             brand_name: item.brand_name,
@@ -4244,6 +4240,7 @@ class PriceListService {
           const result = await this.upsertPriceItem(priceData)
           if (result.success) {
             createdCount++
+            existingPriceKeys.add(combinationKey)
             log.debug(`  ✅ 创建: ${item.brand_name} ${item.model_number} ${item.color_name || ''} ${item.memory || ''}`)
           }
         } else {
@@ -4816,55 +4813,15 @@ class PriceListService {
    * 加密密码
    */
   encryptPassword(password) {
-    const algorithm = 'aes-256-cbc'
-    const key = crypto.scryptSync('tf2025-price-sync', 'salt', 32)
-    const iv = crypto.randomBytes(16)
-    const cipher = crypto.createCipheriv(algorithm, key, iv)
-    let encrypted = cipher.update(password, 'utf8', 'hex')
-    encrypted += cipher.final('hex')
-    return iv.toString('hex') + ':' + encrypted
+    return encryptPriceSyncPassword(password)
   }
 
   /**
    * 解密密码
-   * 如果解密失败或格式无法识别，返回占位符而不是原始值
+   * 仅接受 enc:v2 密文；旧密文必须先通过迁移脚本转换。
    */
   decryptPassword(encryptedPassword) {
-    try {
-      const algorithm = 'aes-256-cbc'
-      const key = crypto.scryptSync('tf2025-price-sync', 'salt', 32)
-
-      // 检查是否是加密格式（包含冒号分隔符）
-      if (!encryptedPassword || !encryptedPassword.includes(':')) {
-        log.debug('⚠️ 密码不是加密格式（缺少冒号分隔符），返回占位符')
-        return '••••••••'
-      }
-
-      const parts = encryptedPassword.split(':')
-      if (parts.length !== 2) {
-        log.debug('⚠️ 密码格式不正确（不是 iv:encrypted 格式），返回占位符')
-        return '••••••••'
-      }
-
-      const iv = Buffer.from(parts[0], 'hex')
-      const encrypted = parts[1]
-
-      // 验证 IV 长度（应该是 16 字节 = 32 个 hex 字符）
-      if (iv.length !== 16) {
-        log.debug('⚠️ IV 长度不正确（应该是16字节），返回占位符')
-        return '••••••••'
-      }
-
-      const decipher = crypto.createDecipheriv(algorithm, key, iv)
-      let decrypted = decipher.update(encrypted, 'hex', 'utf8')
-      decrypted += decipher.final('utf8')
-      log.debug('✅ 密码解密成功')
-      return decrypted
-    } catch (error) {
-      log.error('❌ 解密密码失败:', error.message)
-      // 解密失败时返回占位符，不返回原始加密数据
-      return '••••••••'
-    }
+    return decryptPriceSyncPassword(encryptedPassword)
   }
 
   /**

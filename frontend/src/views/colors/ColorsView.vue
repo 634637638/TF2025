@@ -573,7 +573,7 @@ const showStatsCards = computed(() => (
 const submitting = ref(false)
 const savingOrder = ref(false)
 const tableLoading = ref(true)
-const colorsTableRef = ref<unknown>(null)
+const colorsTableRef = ref<HTMLElement | { $el?: HTMLElement } | null>(null)
 const mobileActionRowId = ref<string | null>(null)
 const lastTappedRowId = ref<string | null>(null)
 const lastTapTimestamp = ref(0)
@@ -785,7 +785,7 @@ const _changePage = (page: number) => {
   loadColors()
 }
 
-const handlePaginationChange = (page, pageSize) => {
+const handlePaginationChange = (page: number, pageSize: number): void => {
   const oldPageSize = pagination.value.page_size
   pagination.value.page_size = pageSize
   pagination.value.page = pageSize !== oldPageSize ? 1 : page
@@ -936,11 +936,11 @@ const submitForm = async () => {
     if (showCreateModal.value) {
       response = await unifiedApi.post('/colors', submitData, { showError: false })
       if (response.success) {
-        success('操作成功', response.message || '颜色创建成功')
+        success(response.message || '颜色创建成功', { title: '操作成功' })
         closeModal()
         await loadColors(true, false, false)
       } else {
-        error('创建颜色失败', response.message || '未知错误')
+        error(response.message || '未知错误', { title: '创建颜色失败' })
       }
     } else {
       if (!currentEditingId.value) {
@@ -949,11 +949,11 @@ const submitForm = async () => {
       }
       response = await unifiedApi.put(`/colors/${currentEditingId.value}`, submitData, { showError: false })
       if (response.success) {
-        success('操作成功', response.message || '颜色更新成功')
+        success(response.message || '颜色更新成功', { title: '操作成功' })
         closeModal()
         await loadColors(true, false, false)
       } else {
-        error('更新颜色失败', response.message || '未知错误')
+        error(response.message || '未知错误', { title: '更新颜色失败' })
       }
     }
   } catch (err: unknown) {

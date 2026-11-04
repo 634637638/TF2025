@@ -7,7 +7,7 @@
 ## 接口要求
 
 - 每个私有文件接口必须校验记录存在、文件类型、启用状态、访问用户权限和业务归属。
-- 密码保护的导航文件使用 `guide-file-access.js` 生成 10 分钟 HMAC-SHA256 访问凭证；前端通过请求头发送凭证，不得放入 URL 查询串；签名使用 `timingSafeEqual` 校验。公开导航文件不要求签名，但仍必须验证数据库关联、启用状态和物理路径。
+- 密码保护的导航文件使用 `guide-file-access.js` 生成 10 分钟 HMAC-SHA256 访问凭证；分享附件使用同一文件访问签名域。前端通过请求头或受控短时 URL 发送凭证，不得放入登录 Token；签名统一使用 `FILE_ACCESS_SIGNING_KEY`，轮换期间验证 current 与 `FILE_ACCESS_PREVIOUS_SIGNING_KEY`。公开导航文件不要求签名，但仍必须验证数据库关联、启用状态和物理路径。
 - 文件真实路径必须通过 `upload-paths.js` 解析，并限制在对应业务目录内，禁止路径穿越。
 - 图片使用 `Content-Disposition: inline`，其他文件使用 `attachment`。
 - 响应设置 `X-Content-Type-Options: nosniff` 和 `Cache-Control: private, no-store`。

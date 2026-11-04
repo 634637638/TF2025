@@ -1,0 +1,122 @@
+.function-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  padding: 16px;
+  background: var(--color-bg-white);
+  margin: 12px;
+  border-radius: 12px;
+
+  .grid-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 16px 8px;
+    cursor: pointer;
+    transition: all 0.3s;
+    border-radius: 8px;
+
+    &:active {
+      background: var(--tf-color-surface-neutral-alt);
+      transform: scale(0.98);
+    }
+
+    .grid-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--color-bg-white);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+
+      i {
+        font-size: var(--tf-type-scale-24);
+      }
+    }
+
+    .grid-label {
+      font-size: var(--tf-type-scale-13);
+      color: var(--text-primary);
+      text-align: center;
+    }
+  }
+}
+
+// 订单类型
+.order-types {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+
+  .order-type {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 16px 8px;
+    background: var(--tf-color-surface-muted);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s;
+
+    &:active {
+      background: var(--tf-color-gray-ant-300);
+      transform: scale(0.98);
+    }
+
+    i {
+      font-size: var(--tf-type-scale-24);
+      color: var(--text-secondary);
+    }
+
+    span {
+      font-size: var(--tf-type-scale-12);
+      color: var(--text-secondary);
+    }
+  }
+}
+
+// 功能列表
+.function-list {
+  .function-item {
+    display: flex;
+    align-items: center;
+    padding: 16px 0;
+    border-bottom: 1px solid var(--tf-color-gray-200);
+    cursor: pointer;
+    transition: background 0.3s;
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    &:active {
+      background: var(--tf-color-surface-neutral-alt);
+    }
+
+    .item-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--color-bg-white);
+      margin-right: 12px;
+    }
+
+    .item-name {
+      flex: 1;
+      font-size: var(--tf-type-scale-15);
+      color: var(--text-primary);
+    }
+
+    .item-arrow {
+      color: var(--tf-color-gray-300-alt);
+      font-size: var(--tf-type-scale-14);
+    }
+  }
+}

@@ -57,14 +57,15 @@
     "auth.js|POST|/init-admin": ["ENABLE_DEV_INIT_ADMIN", "NODE_ENV !== 'development'"],
     "csrf.js|POST|/verify": ["verifyCSRFToken"],
     "screen-lock.js|POST|/verify-inventory-query": ["bcrypt.compare", "createInventoryQueryToken"],
+    "shared.js|GET|/files/:filename": ["verifySharedFileAccess", "canAccessAttachment"],
     "shop-public.js|POST|/orders/:orderNumber/confirm-payment": ["verifyOrderAccessToken"],
     "shop-public.js|GET|/orders/:orderNumber": ["verifyOrderAccessToken"],
     "shop-public.js|PUT|/orders/:id/cancel": ["verifyOrderAccessToken"],
-    "shop-public.js|GET|/auth/me": ["customer_tokens", "expires_at > NOW()"],
-    "shop-public.js|GET|/auth/orders": ["customer_tokens", "expires_at > NOW()"],
-    "shop-public.js|GET|/auth/sales": ["customer_tokens", "expires_at > NOW()"],
-    "shop-public.js|GET|/auth/profile": ["customer_tokens", "expires_at > NOW()"],
-    "shop-public.js|PUT|/auth/profile": ["customer_tokens", "expires_at > NOW()"],
+    "shop-public.js|GET|/auth/me": ["resolveCustomerSession", "ApiResponse.unauthorized"],
+    "shop-public.js|GET|/auth/orders": ["resolveCustomerSession", "ApiResponse.unauthorized"],
+    "shop-public.js|GET|/auth/sales": ["resolveCustomerSession", "ApiResponse.unauthorized"],
+    "shop-public.js|GET|/auth/profile": ["resolveCustomerSession", "ApiResponse.unauthorized"],
+    "shop-public.js|PUT|/auth/profile": ["resolveCustomerSession", "ApiResponse.unauthorized"],
     "shop-public.js|POST|/auth/logout": ["DELETE FROM customer_tokens"]
   }
 }

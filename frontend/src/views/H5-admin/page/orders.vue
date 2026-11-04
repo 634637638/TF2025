@@ -839,7 +839,10 @@
         </div>
 
         <template #footer>
-          <div class="tf-dialog-actions dialog-footer">
+          <div
+            v-if="currentOrder"
+            class="tf-dialog-actions dialog-footer"
+          >
             <!-- 待支付状态：无操作 -->
             <template v-if="currentOrder.status === 'pending'">
               <el-button

@@ -635,7 +635,7 @@ const syncPermissionSideEffects = async (roleId?: number | string | null) => {
   await menuStore.refreshMenus()
 
   const authStore = useAuthStore()
-  if (normalizedRoleId && Number((authStore.user as unknown as { role_id?: number }).role_id) === normalizedRoleId) {
+  if (normalizedRoleId && Number(authStore.user?.role_id) === normalizedRoleId) {
     await authStore.fetchUserInfo()
   }
 
@@ -690,14 +690,14 @@ const parseRoles = (roles: string | Role[] | null) => {
 }
 
 const parseUserRoleIds = (user: PermissionUser): number[] => {
-  const roleIds: unknown = (user as unknown as Record<string, unknown>).role_ids
+  const roleIds: unknown = user.role_ids
   if (Array.isArray(roleIds)) {
     return roleIds.map(Number).filter(id => Number.isInteger(id) && id > 0)
   }
   if (typeof roleIds === 'string' && roleIds.trim()) {
     return roleIds.split(',').map(Number).filter(id => Number.isInteger(id) && id > 0)
   }
-  return parseRoles(user.roles).ids
+  return parseRoles(user.roles ?? null).ids
 }
 
 const updatePaginationState = (
@@ -1543,12 +1543,11 @@ const persistDialogMenuPermissions = async () => {
 }
 
 // 页面权限点击后立即生效
-const handleDialogPermissionChange = async (moduleKey: string, permission_type: string, event: Event) => {
-  const target = event.target as HTMLInputElement
+const handleDialogPermissionChange = async (moduleKey: string, permission_type: string, checked: boolean) => {
   const permissionKey = `${moduleKey}:${permission_type}`
   const previousPermissions = [...selectedDialogPermissions.value]
 
-  if (target.checked) {
+  if (checked) {
     if (!selectedDialogPermissions.value.includes(permissionKey)) {
       selectedDialogPermissions.value.push(permissionKey)
     }
@@ -1562,7 +1561,7 @@ const handleDialogPermissionChange = async (moduleKey: string, permission_type: 
   try {
     savingDialogPermissions.value = true
     await persistDialogPermissions()
-    success(`${getPermissionNameEnhanced(permission_type)}已${target.checked ? '开启' : '关闭'}`)
+    success(`${getPermissionNameEnhanced(permission_type)}已${checked ? '开启' : '关闭'}`)
   } catch (err: unknown) {
     selectedDialogPermissions.value = previousPermissions
     const errorMessage = getRequestErrorMessage(err, '更新页面动作权限失败')
@@ -1574,25 +1573,24 @@ const handleDialogPermissionChange = async (moduleKey: string, permission_type: 
 }
 
 // 菜单显示点击后立即生效
-const handleDialogMenuPermissionChange = async (moduleKey: string, event: Event) => {
-  const target = event.target as HTMLInputElement
+const handleDialogMenuPermissionChange = async (moduleKey: string, checked: boolean) => {
   const previousMenuPermissions = selectedDialogMenuPermissions.value.map((perm) => ({ ...perm }))
 
   const existingIndex = selectedDialogMenuPermissions.value.findIndex(perm => perm.module_key === moduleKey)
 
   if (existingIndex > -1) {
-    selectedDialogMenuPermissions.value[existingIndex].menu_visible = target.checked ? 1 : 0
+    selectedDialogMenuPermissions.value[existingIndex].menu_visible = checked ? 1 : 0
   } else {
     selectedDialogMenuPermissions.value.push({
       module_key: moduleKey,
-      menu_visible: target.checked ? 1 : 0
+      menu_visible: checked ? 1 : 0
     })
   }
 
   try {
     savingDialogPermissions.value = true
     await persistDialogMenuPermissions()
-    success(`菜单显示已${target.checked ? '开启' : '关闭'}`)
+    success(`菜单显示已${checked ? '开启' : '关闭'}`)
   } catch (err: unknown) {
     selectedDialogMenuPermissions.value = previousMenuPermissions
     const errorMessage = getRequestErrorMessage(err, '更新菜单显示失败')
@@ -1730,7 +1728,7 @@ const loadRoleFieldModules = async () => {
       roleFieldModuleList.value = modules.map((module: RoleFieldModule) => ({
         ...module,
         name: module.name,
-        icon: module.icon || getDefaultIcon(module.key, module.category)
+        icon: module.icon || getDefaultIcon(module.key || '', module.category)
       }))
       roleFieldModuleListCache.value = roleFieldModuleList.value
     }
@@ -1751,11 +1749,15 @@ const selectRoleModuleForField = async (module: RoleFieldModule) => {
     loadingRoleFieldGroups.value = true
 
     // 使用与权限分配页面相同的字段定义获取方法
-    roleFieldGroups.value = await getFieldDefinitionsForModule(module.module_key || module.key)
+    const moduleKey = module.module_key || module.key
+    if (!moduleKey) {
+      error('模块标识缺失')
+      return
+    }
+    roleFieldGroups.value = await getFieldDefinitionsForModule(moduleKey)
     selectedRoleFieldGroupName.value = roleFieldGroups.value[0]?.name || ''
 
     // 加载该角色的字段权限配置
-    const moduleKey = module.module_key || module.key
     await loadRoleFieldPermissions(moduleKey)
   } catch (err: unknown) {
     logger.error('加载字段权限失败:', err)
@@ -1818,6 +1820,10 @@ const saveRoleFieldPermissions = async () => {
     savingRoleFieldPermissions.value = true
 
     const moduleKey = selectedRoleModule.value.module_key || selectedRoleModule.value.key
+    if (!moduleKey) {
+      error('模块标识缺失')
+      return
+    }
 
     const hiddenFieldKeys = selectedRoleFields.value
 
@@ -2197,7 +2203,11 @@ const saveFieldPermissions = async () => {
     savingFieldPermissions.value = true
 
     // 标准化 module key - 与加载逻辑保持一致
-    let normalizedModuleKey = selectedModule.value.module_key
+    let normalizedModuleKey = selectedModule.value.module_key || selectedModule.value.key
+    if (!normalizedModuleKey) {
+      error('模块标识缺失')
+      return
+    }
 
     // 去掉视图后缀（如 subsidy_subsidyview -> subsidy）
     // 但保留 query_queryview 这种格式
@@ -2294,7 +2304,7 @@ const getFieldDefinitionsForModule = async (moduleKey: string) => {
     const formattedFieldGroups = moduleFieldGroups.map(group => ({
       name: group.name,
       sensitivity: group.sensitivity || 'public',
-      fields: group.fields.map(field => ({
+      fields: group.fields.map((field: FieldDefinition & { currency?: unknown; options?: unknown }) => ({
         id: field.id,
         name: field.name,
         type: field.type,

@@ -1,0 +1,153 @@
+.service-info {
+  .info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--tf-color-gray-200);
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    i {
+      color: var(--color-primary);
+      margin-right: 8px;
+    }
+
+    span {
+      font-size: var(--tf-type-scale-14);
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      font-weight: 500;
+    }
+
+    .phone-link {
+      color: var(--color-primary);
+      text-decoration: none;
+      font-size: var(--tf-type-scale-16);
+    }
+
+    .address-text,
+    .hours-text {
+      font-size: var(--tf-type-scale-14);
+      color: var(--text-secondary);
+      line-height: 1.6;
+      margin: 0;
+    }
+  }
+}
+
+// 店铺信息
+.shop-info {
+  .info-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--tf-color-gray-200);
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    .label {
+      font-size: var(--tf-type-scale-14);
+      color: var(--text-secondary);
+    }
+
+    .value {
+      font-size: var(--tf-type-scale-14);
+      color: var(--text-primary);
+      text-align: right;
+
+      &.phone-value {
+        color: var(--color-primary);
+      }
+    }
+  }
+}
+
+// 购买记录
+.purchase-records {
+  max-height: 70vh;
+  overflow-y: auto;
+
+  .records-list {
+    .record-item {
+      background: var(--tf-color-surface-muted);
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 12px;
+
+      .record-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+
+        .invoice-number {
+          font-size: var(--tf-type-scale-13);
+          font-weight: 500;
+          color: var(--text-primary);
+        }
+
+        .sale-date {
+          font-size: var(--tf-type-scale-12);
+          color: var(--text-muted);
+        }
+      }
+
+      .record-content {
+        margin-bottom: 8px;
+
+        .product-name {
+          font-size: var(--tf-type-scale-15);
+          font-weight: 500;
+          color: var(--text-primary);
+          margin-bottom: 4px;
+        }
+
+        .record-details {
+          display: flex;
+          gap: 12px;
+          font-size: var(--tf-type-scale-12);
+          color: var(--text-secondary);
+
+          .imei {
+            color: var(--text-muted);
+          }
+        }
+      }
+
+      .record-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-top: 8px;
+        border-top: 1px solid var(--tf-color-border-muted);
+
+        .price {
+          font-size: var(--tf-type-scale-18);
+          font-weight: 500;
+          color: var(--tf-color-accent-pink);
+        }
+
+        .payment-method {
+          font-size: var(--tf-type-scale-12);
+          color: var(--text-secondary);
+          background: var(--tf-color-border-muted);
+          padding: 2px 8px;
+          border-radius: 4px;
+        }
+      }
+    }
+  }
+}
+
+// 个人资料表单样式
+.form-tip {
+  font-size: var(--tf-type-scale-12);
+  color: var(--text-muted);
+  margin-top: 4px;
+}

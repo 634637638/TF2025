@@ -40,7 +40,7 @@
                 @focus="showCustomerSearch = true"
               />
               <CustomerSearchDropdown
-                :items="customerSearchResults"
+                :items="customerDropdownItems"
                 :loading="customerSearching"
                 :visible="showCustomerSearch && !selectedCustomer"
                 :keyword="formData.customer_phone"
@@ -404,7 +404,7 @@ import { searchCustomerOptions } from '@/services/customer-options'
 import { sortOptionsByOrder } from '@/utils/option-sort'
 import { useAuthStore } from '@/stores/auth'
 import CustomerNameLockInput from '@/components/common/CustomerNameLockInput.vue'
-import CustomerSearchDropdown from '@/components/common/CustomerSearchDropdown.vue'
+import CustomerSearchDropdown, { type CustomerSearchDropdownItem } from '@/components/common/CustomerSearchDropdown.vue'
 import { logger } from '@/utils/logger'
 import { TIME_FORMATS, TimeUtil } from '@/utils/time'
 import { formatAmount } from '@/utils/format'
@@ -440,6 +440,15 @@ const customerSearching = ref(false)
 const showCustomerSearch = ref(false)
 
 const customerSearchResults = ref<CustomerOption[]>([])
+const customerDropdownItems = computed<CustomerSearchDropdownItem[]>(() => customerSearchResults.value.map(customer => ({
+  id: customer.id,
+  name: customer.name,
+  phone: customer.phone,
+  apple_id: customer.apple_id ?? undefined,
+  member_number: customer.member_number ?? undefined,
+  vip_level: customer.vip_level ?? undefined,
+  id_card: customer.id_card ?? undefined
+})))
 const selectedCustomer = ref<CustomerOption | null>(null)
 const customerNameEditing = ref(false)
 const customerNameLastTapAt = ref(0)
@@ -463,12 +472,17 @@ const handleWindowClick = (event: MouseEvent) => {
 }
 
 // 下拉数据
-const stores = ref<ReferenceRecord[]>([])
-const brands = ref<ReferenceRecord[]>([])
-const models = ref<ReferenceRecord[]>([])
-const colors = ref<ReferenceRecord[]>([])
-const memories = ref<ReferenceRecord[]>([])
-const operators = ref<ReferenceRecord[]>([])
+type PreorderReferenceOption = ReferenceRecord & { id: number }
+const normalizeReferenceOptions = (records: ReferenceRecord[]): PreorderReferenceOption[] => records
+  .map(record => ({ ...record, id: Number(record.id) }))
+  .filter((record): record is PreorderReferenceOption => Number.isInteger(record.id) && record.id > 0)
+
+const stores = ref<PreorderReferenceOption[]>([])
+const brands = ref<PreorderReferenceOption[]>([])
+const models = ref<PreorderReferenceOption[]>([])
+const colors = ref<PreorderReferenceOption[]>([])
+const memories = ref<PreorderReferenceOption[]>([])
+const operators = ref<PreorderReferenceOption[]>([])
 
 const formData = reactive<PreorderFormDraft>({
   customer_id: null,
@@ -510,44 +524,59 @@ const canShowRemainingAmount = computed(() => (
   canViewPreorderField('deposit_amount')
 ))
 
+type FormValidator = NonNullable<import('async-validator').RuleItem['validator']>
+
+const validateCustomerPhone: FormValidator = (_rule, value, callback) => {
+  const phone = String(value || '')
+  if (selectedCustomer.value) {
+    callback()
+    return
+  }
+  if (!phone) {
+    callback(new Error('请输入手机号'))
+  } else if (!isValidMobilePhone(phone)) {
+    callback(new Error('请输入有效的11位手机号'))
+  } else {
+    callback()
+  }
+}
+
+const validateCustomerName: FormValidator = (_rule, value, callback) => {
+  const name = String(value || '')
+  if (selectedCustomer.value && !isEditMode.value) {
+    callback()
+    return
+  }
+  if (!name || !name.trim()) {
+    callback(new Error('请输入客户姓名'))
+  } else if (!/^[\u4e00-\u9fa5a-zA-Z\s]{2,20}$/.test(name.trim())) {
+    callback(new Error('姓名只能包含中文、英文，长度2-20个字符'))
+  } else {
+    callback()
+  }
+}
+
+const validateDepositAmount: FormValidator = (_rule, value, callback) => {
+  const num = Number(value)
+  if (value && (isNaN(num) || num <= 0)) {
+    callback(new Error('定金金额必须大于0'))
+  } else {
+    callback()
+  }
+}
+
 const formRules: Record<string, FormItemRule[]> = {
   customer_phone: [
     ValidationRules.required('请输入手机号'),
     {
-      validator: (_rule: FormItemRule, value: unknown, callback: (_error?: Error) => void) => {
-        const phone = String(value || '')
-        if (selectedCustomer.value) {
-          callback()
-          return
-        }
-        if (!phone) {
-          callback(new Error('请输入手机号'))
-        } else if (!isValidMobilePhone(phone)) {
-          callback(new Error('请输入有效的11位手机号'))
-        } else {
-          callback()
-        }
-      },
+      validator: validateCustomerPhone,
       trigger: 'blur'
     }
   ],
   customer_name: [
     ValidationRules.required('请输入客户姓名'),
     {
-      validator: (_rule: FormItemRule, value: unknown, callback: (_error?: Error) => void) => {
-        const name = String(value || '')
-        if (selectedCustomer.value && !isEditMode.value) {
-          callback()
-          return
-        }
-        if (!name || !name.trim()) {
-          callback(new Error('请输入客户姓名'))
-        } else if (!/^[\u4e00-\u9fa5a-zA-Z\s]{2,20}$/.test(name.trim())) {
-          callback(new Error('姓名只能包含中文、英文，长度2-20个字符'))
-        } else {
-          callback()
-        }
-      },
+      validator: validateCustomerName,
       trigger: 'blur'
     }
   ],
@@ -559,14 +588,7 @@ const formRules: Record<string, FormItemRule[]> = {
   deposit_amount: [
     ValidationRules.required('请输入定金金额'),
     {
-      validator: (_rule: FormItemRule, value: unknown, callback: (_error?: Error) => void) => {
-        const num = Number(value)
-        if (value && (isNaN(num) || num <= 0)) {
-          callback(new Error('定金金额必须大于0'))
-        } else {
-          callback()
-        }
-      },
+      validator: validateDepositAmount,
       trigger: 'blur'
     }
   ]
@@ -626,12 +648,12 @@ const loadBaseData = async () => {
       })
     }
 
-    stores.value = sortOptionsByOrder(storesData)
-    brands.value = sortOptionsByOrder(brandsData)
-    models.value = sortOptionsByOrder(Array.isArray(modelsData) ? modelsData : [])
-    colors.value = sortOptionsByOrder(Array.isArray(colorsData) ? colorsData : [])
-    memories.value = sortOptionsByOrder(Array.isArray(memoriesData) ? memoriesData : [], { labelKeys: ['size', 'capacity', 'name'] })
-    operators.value = sortOptionsByOrder(operatorData)
+    stores.value = sortOptionsByOrder(normalizeReferenceOptions(storesData))
+    brands.value = sortOptionsByOrder(normalizeReferenceOptions(brandsData))
+    models.value = sortOptionsByOrder(normalizeReferenceOptions(Array.isArray(modelsData) ? modelsData : []))
+    colors.value = sortOptionsByOrder(normalizeReferenceOptions(Array.isArray(colorsData) ? colorsData : []))
+    memories.value = sortOptionsByOrder(normalizeReferenceOptions(Array.isArray(memoriesData) ? memoriesData : []), { labelKeys: ['size', 'capacity', 'name'] })
+    operators.value = sortOptionsByOrder(normalizeReferenceOptions(operatorData))
     baseDataLoaded.value = true
   } catch (err) {
     logger.error('加载基础数据失败:', err)
@@ -653,7 +675,7 @@ const searchOperatorOptions = async (keyword = '') => {
       page_size: 20
     })
     if (response.success && Array.isArray(response.data)) {
-      operators.value = sortOptionsByOrder(response.data)
+      operators.value = sortOptionsByOrder(normalizeReferenceOptions(response.data))
     }
   } catch (error) {
     logger.error('远程加载预定人失败:', error)
@@ -710,7 +732,7 @@ const handleNameInput = (value: string) => {
 const enableCustomerNameEdit = () => {
   if (!selectedCustomer.value) return
   customerNameEditing.value = true
-  nextTick(() => customerNameInputRef.value?.focus())
+  nextTick(() => customerNameInputRef.value?.focus?.())
 }
 
 const handleCustomerNameTouchEnd = () => {
@@ -789,11 +811,12 @@ const searchCustomers = async (keyword: string) => {
 }
 
 // 选择客户
-const selectCustomer = (customer: CustomerOption) => {
-  selectedCustomer.value = customer
-  formData.customer_id = customer.id
-  formData.customer_name = normalizePersonName(customer.name, 20)
-  formData.customer_phone = normalizeCustomerPhone(customer.phone)
+const selectCustomer = (customer: CustomerSearchDropdownItem) => {
+  const selected: CustomerOption = { ...customer }
+  selectedCustomer.value = selected
+  formData.customer_id = selected.id
+  formData.customer_name = normalizePersonName(selected.name, 20)
+  formData.customer_phone = normalizeCustomerPhone(selected.phone)
   showCustomerSearch.value = false
   customerSearchResults.value = []
   customerNameEditing.value = false
@@ -806,7 +829,7 @@ const selectCustomer = (customer: CustomerOption) => {
 
 const prepareNewCustomer = () => {
   showCustomerSearch.value = false
-  nextTick(() => customerNameInputRef.value?.focus())
+  nextTick(() => customerNameInputRef.value?.focus?.())
 }
 
 // 清除选择的客户
@@ -1007,16 +1030,16 @@ const handleEditSubmit = async () => {
 
   const editableValues = {
     customer_id: customerId,
-    store_id: formData.store_id,
-    created_by: formData.created_by,
-    brand_id: formData.brand_id,
-    model_id: formData.model_id,
-    color_id: formData.color_id,
-    memory_id: formData.memory_id,
+    store_id: formData.store_id ?? undefined,
+    created_by: formData.created_by ?? undefined,
+    brand_id: formData.brand_id ?? undefined,
+    model_id: formData.model_id ?? undefined,
+    color_id: formData.color_id ?? undefined,
+    memory_id: formData.memory_id ?? undefined,
     is_new: formData.is_new,
-    total_price: formData.total_price,
-    deposit_amount: formData.deposit_amount,
-    expected_arrival: formatDateOnly(formData.expected_arrival),
+    total_price: formData.total_price ?? undefined,
+    deposit_amount: formData.deposit_amount ?? undefined,
+    expected_arrival: formatDateOnly(formData.expected_arrival) ?? undefined,
     remarks: formData.remarks
   }
 

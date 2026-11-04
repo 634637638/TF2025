@@ -1050,21 +1050,29 @@ test('H5 sold products uses canonical fields without runtime aliases or fake val
 
 test('H5 customer sales exposes canonical sale_time', () => {
   const route = read('src/routes/shop-public.js');
+  const service = read('src/services/shop-public.service.js');
   const api = fs.readFileSync(path.join(root, '../frontend/src/api/auth.ts'), 'utf8');
   const view = fs.readFileSync(path.join(root, '../frontend/src/views/H5-mobile/page/MyCenter.vue'), 'utf8');
   const contract = JSON.parse(fs.readFileSync(path.join(root, '../config/field-contracts.json'), 'utf8')).contracts['h5-customer-sales'];
+  const salesStart = service.indexOf('async getSalesByCustomerId');
+  const salesEnd = service.indexOf('async updateOrderStatus', salesStart);
+  const salesMethod = service.slice(salesStart, salesEnd);
 
   assert.ok(contract.canonical.includes('sale_time'));
-  assert.match(route, /COALESCE\(s\.sale_time, p\.sale_time\) as sale_time/);
-  assert.doesNotMatch(route, /as profit|profit: sale\.profit|purchase_cost/);
-  assert.match(route, /sale_time: sale\.sale_time/);
-  assert.match(route, /sale_price: sale\.sale_price (?:== null \? null : Number\(sale\.sale_price\)|=== null \|\| sale\.sale_price === undefined \? null : Number\(sale\.sale_price\))/);
-  assert.doesNotMatch(route, /store_name: sale\.store_name \|\| '未知店铺'/);
-  assert.doesNotMatch(route, /CASE WHEN p\.is_new = 1 THEN '全新' ELSE '二手' END as is_new/);
+  assert.ok(salesStart >= 0 && salesEnd > salesStart, 'H5 客户销售历史服务方法不存在');
+  assert.match(salesMethod, /COALESCE\(s\.sale_time, p\.sale_time\) as sale_time/);
+  assert.doesNotMatch(salesMethod, /as profit|profit: sale\.profit|purchase_cost/);
+  assert.match(salesMethod, /sale_time: sale\.sale_time/);
+  assert.match(salesMethod, /sale_price: sale\.sale_price (?:== null \? null : Number\(sale\.sale_price\)|=== null \|\| sale\.sale_price === undefined \? null : Number\(sale\.sale_price\))/);
+  assert.doesNotMatch(salesMethod, /store_name: sale\.store_name \|\| '未知店铺'/);
+  assert.doesNotMatch(salesMethod, /CASE WHEN p\.is_new = 1 THEN '全新' ELSE '二手' END as is_new/);
+  assert.match(route, /getSalesByCustomerId\(customer\.customer_id, pagination\)/);
+  assert.match(route, /sendPublicPaginated\(res, result, '获取销售记录成功'\)/);
   assert.match(api, /export interface H5CustomerSale/);
   assert.doesNotMatch(api, /profit:/);
-  assert.match(api, /getUserSales\(\): Promise<H5CustomerSale\[\]>/);
+  assert.match(api, /getUserSales\(params\?: \{ page\?: number; page_size\?: number \}\): Promise<PaginatedData<H5CustomerSale>>/);
   assert.match(view, /ref<H5CustomerSale\[\]>\(\[\]\)/);
+  assert.match(view, /purchaseRecords\.value\.push\(\.\.\.result\.data\)/);
   assert.match(view, /formatDate\(record\.sale_time\)/);
   assert.doesNotMatch(view, /record\.sale_date/);
   assert.doesNotMatch(view, /purchaseRecords = ref<any\[\]>/);
@@ -1248,7 +1256,7 @@ test('customer search forms share locked-name editing and customer replacement c
   assert.match(preorderForm, /unifiedApi\.put\(`\/customers\/\$\{selectedCustomer\.value\.id\}`/);
   assert.match(preorderForm, /selectedCustomer\.value\.name = normalizedName/);
   assert.match(preorderForm, /selectedCustomer\.value = null[\s\S]*formData\.customer_id = null[\s\S]*formData\.customer_phone = ''/);
-  assert.match(preorderForm, /selectedCustomer\.value = customer[\s\S]*formData\.customer_id = customer\.id/);
+  assert.match(preorderForm, /const selected: CustomerOption = \{ \.\.\.customer \}[\s\S]*selectedCustomer\.value = selected[\s\S]*formData\.customer_id = selected\.id/);
 
   const nameEditors = [
     '../frontend/src/views/sales/useSalesCustomers.ts',
@@ -1859,7 +1867,7 @@ test('subsidy uses canonical pagination and handler fields without runtime schem
   assert.match(page, /key: 'arrival_time',[\s\S]{0,180}shouldShowActionColumn\(fieldVisibility\.value\.arrival_time, \[canArrival\.value\]\)/);
   assert.match(page, /\{ key: 'actions', label: '操作', visible: canShowActions\.value \}/);
   assert.match(page, /\{ key: 'subsidy_photos', label: '国补照片', visible: fieldVisibility\.value\.subsidy_photos \|\| canUpload\.value \}/);
-  assert.match(page, /unifiedApi\.get\(`\/subsidy\/\$\{item\.id\}\/photos`\)/);
+  assert.match(page, /unifiedApi\.get(?:<[^>]+>)?\(`\/subsidy\/\$\{item\.id\}\/photos`\)/);
   const applyTimeColumn = list.slice(
     list.indexOf(`column.key === 'apply_time'`),
     list.indexOf(`column.key === 'arrival_time'`)

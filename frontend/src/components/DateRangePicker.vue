@@ -35,9 +35,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { TIME_FORMATS, TimeUtil } from '@/utils/time'
-
-type DateRange = [string, string]
-type DateRangeValue = DateRange | [] | null | undefined
+import type { DateRangeValue } from '@/types/date-range'
 
 interface Props {
   modelValue?: DateRangeValue

@@ -140,8 +140,8 @@
           :disabled="field.disabled"
           :active-text="field.activeText"
           :inactive-text="field.inactiveText"
-          :active-value="field.activeValue !== undefined ? field.activeValue : true"
-          :inactive-value="field.inactiveValue !== undefined ? field.inactiveValue : false"
+          :active-value="field.activeValue ?? true"
+          :inactive-value="field.inactiveValue ?? false"
           @update:model-value="setFieldValue(field, $event)"
         />
 
@@ -257,7 +257,7 @@
           :field="field"
           :value="formData[field.prop]"
           :disabled="field.disabled"
-          @update:value="val => formData[field.prop] = val"
+          @update:value="setFieldValue(field, $event)"
         />
 
         <!-- 提示信息 -->

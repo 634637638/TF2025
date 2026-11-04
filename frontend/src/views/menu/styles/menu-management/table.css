@@ -1,0 +1,111 @@
+/* ===== 表格样式 ===== */
+.menu-table-section {
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  border: 1px solid var(--tf-color-border-muted);
+}
+
+.menu-table {
+  width: 100%;
+  border-collapse: separate; /* 修复点击区域问题 */
+  border-spacing: 0;
+  margin: 0;
+  table-layout: auto;
+}
+
+.menu-table .column-name {
+  width: auto;
+}
+
+.menu-table .column-url {
+  width: auto;
+}
+
+.menu-table .column-icon {
+  width: auto;
+}
+
+.menu-table .column-sort {
+  width: 72px;
+}
+
+.menu-table .column-status {
+  width: 92px;
+}
+
+.menu-table .column-actions {
+  width: 240px;
+}
+
+.menu-table thead {
+  background: linear-gradient(135deg, var(--tf-color-surface-muted), var(--tf-color-border-muted));
+}
+
+.menu-table th {
+  padding: 12px 10px; /* 使用与全局样式一致的padding */
+  text-align: left;
+  font-weight: 600;
+  color: var(--tf-color-heading);
+  font-size: var(--tf-type-scale-14);
+  border-bottom: 2px solid var(--tf-color-border-subtle);
+  white-space: nowrap;
+  min-height: 48px; /* 确保一致的点击区域 */
+  height: auto;
+  position: relative;
+  box-sizing: border-box;
+  line-height: 1.4;
+  vertical-align: middle;
+}
+
+.menu-table .column-icon,
+.menu-table .column-sort,
+.menu-table .column-status,
+.menu-table .column-actions {
+  text-align: center;
+}
+
+.menu-table td {
+  padding: 12px 10px; /* 使用与全局样式一致的padding */
+  border-bottom: 1px solid var(--tf-color-border-muted);
+  vertical-align: middle;
+  min-height: 48px; /* 确保一致的点击区域 */
+  height: auto;
+  position: relative;
+  box-sizing: border-box;
+  line-height: 1.4;
+}
+
+.menu-row:hover {
+  background: rgba(102, 126, 234, 0.05);
+}
+
+.parent-row {
+  background: var(--tf-color-surface-indigo-pale);
+}
+
+.child-row {
+  background: var(--tf-color-surface-indigo-soft);
+}
+
+.menu-name-cell {
+  width: auto;
+  min-width: 180px;
+}
+
+.menu-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.menu-remarks-text {
+  display: block;
+  color: var(--tf-color-muted);
+  line-height: 1.5;
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}

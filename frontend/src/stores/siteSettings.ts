@@ -9,24 +9,7 @@ import { unifiedApi } from '@/utils/unified-api'
 import { buildLogoUrl } from '@/utils/logoUtils'
 import { logger } from '@/utils/logger'
 import { TimeUtil } from '@/utils/time'
-
-interface SiteSettings {
-  logoUrl: string
-  siteName: string
-  siteSubtitle: string
-  siteDomain: string
-  icpNumber: string
-  companyName: string
-  contactPhone: string
-  contactEmail: string
-  companyAddress: string
-  publicPriceContacts: string
-  publicPriceDefaultContact: string
-  publicPriceWatermark: string
-  publicPriceWatermarkEnabled: string
-  publicPriceWatermarkTimeEnabled: string
-  publicPriceWatermarkColor: string
-}
+import type { SiteSettingsValues } from '@/types/system'
 
 interface UpdateSiteSettingsResult {
   savedFields: string[]
@@ -122,7 +105,7 @@ const syncDocumentBranding = (siteName?: string, logoUrl?: string, syncTitle = t
 
 export const useSiteSettingsStore = defineStore('siteSettings', () => {
   // 状态
-  const settings = ref<SiteSettings>({
+  const settings = ref<SiteSettingsValues>({
     logoUrl: '',
     siteName: '',
     siteSubtitle: '',
@@ -211,7 +194,7 @@ export const useSiteSettingsStore = defineStore('siteSettings', () => {
     return loadPromise
   }
 
-  const updateSiteSettings = async (newSettings: Partial<SiteSettings>): Promise<UpdateSiteSettingsResult | null> => {
+  const updateSiteSettings = async (newSettings: Partial<SiteSettingsValues>): Promise<UpdateSiteSettingsResult | null> => {
     const previousSettings = { ...settings.value }
 
     try {
@@ -264,7 +247,7 @@ export const useSiteSettingsStore = defineStore('siteSettings', () => {
   }
 
   const resetSettings = () => {
-    const defaultSettings: SiteSettings = {
+    const defaultSettings: SiteSettingsValues = {
       logoUrl: '',
       siteName: '',
       siteSubtitle: '',

@@ -1,0 +1,202 @@
+/* 展开/折叠按钮样式 */
+.expand-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  color: var(--tf-button-tool-color);
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  padding: 0;
+}
+
+.expand-btn:hover {
+  background-color: var(--tf-button-primary-hover-bg);
+  color: var(--tf-button-primary-soft-hover-color);
+}
+
+.expand-btn i {
+  font-size: var(--tf-type-scale-12);
+  transition: transform 0.2s ease;
+}
+
+.expand-placeholder {
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+}
+
+.menu-text {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.menu-title {
+  font-weight: 600;
+  color: var(--tf-color-heading);
+  font-size: var(--tf-type-scale-16);
+  background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  padding: 4px 8px;
+  border-radius: 6px;
+  display: inline-block;
+  position: relative;
+}
+
+.menu-title::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, var(--tf-color-pink-gradient) 0%, var(--tf-color-coral-gradient) 100%);
+  opacity: 0.1;
+  border-radius: 6px;
+  z-index: -1;
+}
+
+.menu-type {
+  font-size: var(--tf-type-scale-11);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.type-menu {
+  background: var(--tf-color-blue-100);
+  color: var(--tf-color-blue-material-700);
+}
+
+.type-directory {
+  background: var(--tf-color-orange-material-50);
+  color: var(--tf-color-orange-material-700);
+}
+
+.type-button {
+  background: var(--tf-button-neutral-bg);
+  color: var(--tf-button-primary-soft-color);
+}
+
+.menu-remarks {
+  font-size: var(--tf-type-scale-12);
+  color: var(--tf-color-muted);
+  font-style: italic;
+}
+
+.child-prefix {
+  color: var(--tf-color-muted);
+  font-weight: 500;
+}
+
+.menu-url-cell {
+  width: auto;
+  min-width: 130px;
+}
+
+.url-text {
+  background: var(--tf-color-surface-muted);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: var(--tf-type-scale-12);
+  color: var(--tf-color-gray-bootstrap-700);
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.menu-icon-cell {
+  width: auto;
+  min-width: 120px;
+  text-align: center;
+}
+
+.icon-display {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.menu-icon {
+  font-size: var(--tf-type-scale-16);
+  color: var(--tf-color-indigo-brand);
+  width: 24px;
+  text-align: center;
+}
+
+.icon-text {
+  font-size: var(--tf-type-scale-12);
+  color: var(--tf-color-muted);
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.menu-sort-cell {
+  width: 72px;
+  text-align: center;
+}
+
+.sort-badge {
+  background: linear-gradient(135deg, var(--tf-color-blue-100), var(--tf-color-blue-material-100));
+  color: var(--tf-color-blue-material-700);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: var(--tf-type-scale-12);
+  font-weight: 600;
+}
+
+.menu-status-cell {
+  width: 92px;
+  text-align: center;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: var(--tf-type-scale-12);
+  font-weight: 500;
+}
+
+.status-active {
+  background: var(--tf-status-success-bg);
+  color: var(--tf-status-success-color);
+  border: 1px solid var(--tf-status-success-border);
+}
+
+.status-inactive {
+  background: var(--tf-status-danger-bg);
+  color: var(--tf-status-danger-color);
+  border: 1px solid var(--tf-status-danger-border);
+}
+
+.menu-actions-cell {
+  width: 240px;
+  text-align: center;
+}
+
+.action-buttons {
+  display: inline-flex;
+  justify-content: center;
+  flex-wrap: nowrap;
+  max-width: 100%;
+}

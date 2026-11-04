@@ -47,7 +47,7 @@
               class="condition-badge"
               :class="phone.is_new ? 'new' : 'used'"
             >
-              {{ getNewConditionLabel(phone.is_new) }}
+              {{ getNewConditionLabel(Boolean(phone.is_new)) }}
             </span>
           </div>
           <div

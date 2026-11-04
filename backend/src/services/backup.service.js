@@ -20,6 +20,7 @@ if (!fs.existsSync(BACKUP_DIR)) {
 }
 
 const BACKUP_FILENAME_PATTERN = /^backup_\d{8}_\d{6}\.zip$/
+const DATABASE_BACKUP_FILENAME_PATTERN = /^database_\d{8}_\d{6}\.sql$/
 
 const ensureBackupConfig = () => {
   const { DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME } = process.env
@@ -48,7 +49,7 @@ class BackupService {
 
   isValidBackupFilename(filename) {
     return typeof filename === 'string'
-      && BACKUP_FILENAME_PATTERN.test(filename)
+      && (BACKUP_FILENAME_PATTERN.test(filename) || DATABASE_BACKUP_FILENAME_PATTERN.test(filename))
       && path.basename(filename) === filename
   }
 
@@ -96,12 +97,39 @@ class BackupService {
   }
 
   /**
-   * 创建完整备份
+   * 创建完整备份或单独的数据库备份
    */
-  async createBackup() {
+  async createBackup(type = 'full') {
+    if (!['full', 'database'].includes(type)) {
+      throw new Error('备份类型无效')
+    }
+
     this.cleanStaleTempBackups()
 
     const timestamp = this.getTimestamp()
+    if (type === 'database') {
+      const filename = `database_${timestamp}.sql`
+      const filePath = path.join(BACKUP_DIR, filename)
+
+      try {
+        await this.backupDatabase(filePath)
+        const stats = fs.statSync(filePath)
+        return {
+          filename,
+          path: filePath,
+          type,
+          size: this.formatFileSize(stats.size),
+          size_bytes: stats.size,
+          created_at: new Date().toISOString()
+        }
+      } catch (error) {
+        if (fs.existsSync(filePath)) {
+          fs.rmSync(filePath, { force: true })
+        }
+        throw error
+      }
+    }
+
     const backupName = `backup_${timestamp}`
     const backupPath = path.join(BACKUP_DIR, backupName)
     const zipPath = path.join(BACKUP_DIR, `${backupName}.zip`)
@@ -131,7 +159,7 @@ class BackupService {
 
       // 6. 压缩成 ZIP（使用更快速度）
       log.debug('[Backup] 正在压缩...')
-      await this.compressBackup(backupPath, zipPath)
+      const compressionStats = await this.compressBackup(backupPath, zipPath)
 
       // 7. 计算备份大小
       const stats = fs.statSync(zipPath)
@@ -145,8 +173,10 @@ class BackupService {
       const result = {
         filename: `${backupName}.zip`,
         path: zipPath,
+        type,
         size: size,
         size_bytes: stats.size,
+        file_count: compressionStats.file_count,
         created_at: new Date().toISOString()
       }
 
@@ -453,13 +483,24 @@ class BackupService {
       // 使用较低的压缩级别，大幅提升速度
       const archive = new ZipArchive({ zlib: { level: 1 } }) // level 1 = 最快速度
 
-      const fileCount = 0
+      let fileCount = 0
       const startTime = Date.now()
 
+      archive.on('entry', entry => {
+        if (entry.type === 'file' || entry.stats?.isFile?.()) {
+          fileCount++
+        }
+      })
+
       output.on('close', () => {
-        const elapsed = ((Date.now() - startTime) / 1000).toFixed(1)
+        const durationMs = Date.now() - startTime
+        const elapsed = (durationMs / 1000).toFixed(1)
         log.debug(`[Backup] 压缩完成: ${fileCount} 个文件, ${archive.pointer()} bytes, 耗时 ${elapsed}秒`)
-        resolve()
+        resolve({
+          file_count: fileCount,
+          size_bytes: archive.pointer(),
+          duration_ms: durationMs
+        })
       })
 
       archive.on('error', (err) => {
@@ -483,12 +524,13 @@ class BackupService {
    */
   getBackupList() {
     const files = fs.readdirSync(BACKUP_DIR)
-      .filter(file => file.endsWith('.zip'))
+      .filter(file => BACKUP_FILENAME_PATTERN.test(file) || DATABASE_BACKUP_FILENAME_PATTERN.test(file))
       .map(file => {
         const filePath = path.join(BACKUP_DIR, file)
         const stats = fs.statSync(filePath)
         return {
           filename: file,
+          type: DATABASE_BACKUP_FILENAME_PATTERN.test(file) ? 'database' : 'full',
           size: this.formatFileSize(stats.size),
           size_bytes: stats.size,
           created_at: stats.mtime.toISOString()

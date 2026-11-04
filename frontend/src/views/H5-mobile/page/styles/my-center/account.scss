@@ -1,0 +1,201 @@
+.my-center-page {
+  min-height: 100vh;
+  background: var(--tf-color-surface-soft);
+  padding-bottom: 80px;
+}
+
+// 未登录状态
+.not-logged-in {
+  .auth-buttons {
+    padding: 0 16px;
+  }
+}
+
+// 用户卡片
+.user-card {
+  background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
+  color: var(--color-bg-white);
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  position: relative;
+
+  .user-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.2);
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    i {
+      font-size: var(--tf-type-scale-36);
+      opacity: 0.9;
+    }
+  }
+
+  .user-info {
+    flex: 1;
+
+    .user-title {
+      font-size: var(--tf-type-scale-22);
+      font-weight: 600;
+      margin: 0 0 4px;
+    }
+
+    .user-desc {
+      font-size: var(--tf-type-scale-14);
+      opacity: 0.9;
+      margin: 0;
+    }
+
+    .user-details-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      font-size: var(--tf-type-scale-13);
+      opacity: 0.95;
+
+      .user-name {
+        font-weight: 600;
+        font-size: var(--tf-type-scale-16);
+      }
+
+      .user-phone {
+        font-size: var(--tf-type-scale-13);
+        opacity: 0.9;
+      }
+
+      .member-number {
+        font-size: var(--tf-type-scale-11);
+        color: var(--color-bg-white);
+        background: rgba(255, 255, 255, 0.25);
+        padding: 2px 6px;
+        border-radius: 3px;
+        white-space: nowrap;
+      }
+    }
+  }
+
+  .logout-btn {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    color: var(--tf-button-on-color);
+
+    i {
+      font-size: var(--tf-type-scale-18);
+    }
+  }
+}
+
+// 区块
+.section {
+  background: var(--color-bg-white);
+  margin: 12px;
+  padding: 16px;
+  border-radius: 12px;
+
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    cursor: pointer;
+
+    .section-title {
+      font-size: var(--tf-type-scale-16);
+      font-weight: 500;
+      color: var(--text-primary);
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+
+      i {
+        color: var(--tf-color-accent-orange);
+      }
+    }
+
+    .section-more {
+      font-size: var(--tf-type-scale-13);
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+
+      i {
+        font-size: var(--tf-type-scale-12);
+      }
+    }
+  }
+
+  .section-title {
+    font-size: var(--tf-type-scale-16);
+    font-weight: 500;
+    color: var(--text-primary);
+    margin: 0 0 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    i {
+      color: var(--tf-color-accent-orange);
+    }
+  }
+}
+
+// 登录/注册按钮行
+.auth-buttons-row {
+  display: flex;
+  gap: 12px;
+  padding: 0 12px 12px;
+  margin-top: 12px;
+
+  .auth-btn {
+    flex: 1;
+    height: 56px;
+    border-radius: 12px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: var(--tf-button-on-color);
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: var(--tf-button-shadow);
+
+    i {
+      font-size: var(--tf-type-scale-20);
+    }
+
+    span {
+      font-size: var(--tf-type-scale-16);
+      font-weight: 500;
+    }
+
+    &:active {
+      transform: scale(0.98);
+      box-shadow: var(--tf-button-shadow-hover);
+    }
+
+    &.login-btn {
+      background: var(--tf-button-primary-bg);
+    }
+
+    &.register-btn {
+      background: var(--tf-button-primary-bg);
+    }
+  }
+}

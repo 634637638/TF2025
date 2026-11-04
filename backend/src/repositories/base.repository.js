@@ -5,6 +5,7 @@ const {
   sanitizeConditionFieldNames
 } = require('../utils/security-enhanced')
 const log = require('../utils/log')
+const { summarizeSqlParams } = require('../utils/sensitive-data')
 
 /**
  * 基础Repository类
@@ -128,9 +129,8 @@ class BaseRepository {
       log.error(`数据库查询失败 [${this.tableName}]:`, {
         message: error.message,
         code: error.code,
-        sql: sql,
-        params: params,
-        stack: error.stack
+        sqlPreview: String(sql || '').replace(/\s+/g, ' ').slice(0, 300),
+        params: summarizeSqlParams(params)
       })
 
       // 如果是连接问题，尝试重新获取连接

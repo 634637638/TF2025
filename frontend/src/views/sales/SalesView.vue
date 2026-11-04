@@ -530,16 +530,19 @@ const submitting = ref(false)
 const searchExpanded = ref(false) // 搜索区域展开状态（移动端默认折叠）
 
 // 防抖函数，避免快速重复点击
-const debounceSubmit = (fn, delay = 500) => {
-  let timeoutId = null
-  return (...args) => {
+const debounceSubmit = <Args extends unknown[]>(
+  fn: (..._args: Args) => void,
+  delay = 500
+): ((..._args: Args) => void) => {
+  let timeoutId: ReturnType<typeof setTimeout> | null = null
+  return (...args: Args): void => {
     if (timeoutId) clearTimeout(timeoutId)
     timeoutId = setTimeout(() => fn(...args), delay)
   }
 }
 
 // 全局键盘事件处理，防止提交过程中的Enter键重复提交
-const handleGlobalKeydown = (event) => {
+const handleGlobalKeydown = (event: KeyboardEvent): boolean | void => {
   // 如果正在提交，阻止Enter键触发表单提交
   if (submitting.value && event.key === 'Enter') {
     event.preventDefault()
@@ -1592,6 +1595,11 @@ const editPhone = async (phone: Phone) => {
 // 提交编辑
 const submitEdit = async () => {
   if (submitting.value) return
+  const selectedPhone = selectedPhoneForEdit.value
+  if (!selectedPhone) {
+    showError('请选择要编辑的设备')
+    return
+  }
   submitting.value = true
   try {
     // 验证必填字段
@@ -1614,14 +1622,14 @@ const submitEdit = async () => {
         model: editForm.model,
         color: editForm.color,
         memory: editForm.memory
-      }, selectedPhoneForEdit.value || {})
+      }, selectedPhone)
     } catch (referenceError) {
       showError(referenceError instanceof Error ? referenceError.message : '品牌、型号、颜色和内存必须选择有效数据')
       return
     }
 
     // 构建更新数据，包含所有可编辑字段（不包括销售价格）
-    const updateData = {
+    const updateData: Record<string, unknown> = {
       ...toCanonicalPhoneUpdatePayload({
         ...referenceIds,
         serial_number: editForm.serial_number,
@@ -1646,7 +1654,7 @@ const submitEdit = async () => {
 
 
     // 发送更新请求
-    const response = await api.put(`/phones/${selectedPhoneForEdit.value.id}`, updateData, { showError: false })
+    const response = await api.put(`/phones/${selectedPhone.id}`, updateData, { showError: false })
 
     if (response.success) {
       showSuccess('更新成功')

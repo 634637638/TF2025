@@ -1,0 +1,269 @@
+.service-info {
+  // 一行显示两个选项
+  .service-row {
+    display: flex;
+    gap: 12px;
+
+    .service-item {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      padding: 16px;
+      background: var(--tf-color-surface-muted);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s;
+
+      &:active {
+        background: var(--tf-color-border-muted);
+        transform: scale(0.98);
+      }
+
+      .service-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--color-bg-white);
+
+        &.phone-icon {
+          background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
+        }
+
+        &.wechat-icon {
+          background: linear-gradient(135deg, var(--tf-color-accent-green) 0%, var(--tf-color-green-accent) 100%);
+        }
+
+        i {
+          font-size: var(--tf-type-scale-20);
+        }
+      }
+
+      .service-content {
+        text-align: center;
+
+        .service-label {
+          font-size: var(--tf-type-scale-12);
+          color: var(--text-secondary);
+          margin-bottom: 4px;
+        }
+
+        .service-value {
+          font-size: var(--tf-type-scale-14);
+          font-weight: 500;
+          color: var(--text-primary);
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          max-width: 100px;
+        }
+      }
+    }
+  }
+
+  // 单个选项居中显示
+  .service-single {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    background: var(--tf-color-surface-muted);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s;
+
+    &:active {
+      background: var(--tf-color-border-muted);
+      transform: scale(0.98);
+    }
+
+    .info-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--color-bg-white);
+      flex-shrink: 0;
+
+      &.phone-icon {
+        background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
+      }
+
+      &.wechat-icon {
+        background: linear-gradient(135deg, var(--tf-color-accent-green) 0%, var(--tf-color-green-accent) 100%);
+      }
+
+      i {
+        font-size: var(--tf-type-scale-20);
+      }
+    }
+
+    .info-content {
+      flex: 1;
+      min-width: 0;
+
+      .info-label {
+        font-size: var(--tf-type-scale-12);
+        color: var(--text-secondary);
+        margin-bottom: 4px;
+      }
+
+      .info-value {
+        font-size: var(--tf-type-scale-15);
+        font-weight: 500;
+        color: var(--text-primary);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+    }
+
+    .info-arrow {
+      color: var(--tf-color-gray-300-alt);
+      font-size: var(--tf-type-scale-14);
+      flex-shrink: 0;
+    }
+  }
+
+  .info-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    background: var(--tf-color-surface-muted);
+    border-radius: 8px;
+    margin-bottom: 12px;
+    cursor: pointer;
+    transition: all 0.3s;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+
+    &:active {
+      background: var(--tf-color-border-muted);
+      transform: scale(0.98);
+    }
+
+    .info-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--color-bg-white);
+      flex-shrink: 0;
+
+      &.phone-icon {
+        background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
+      }
+
+      &.wechat-icon {
+        background: linear-gradient(135deg, var(--tf-color-accent-green) 0%, var(--tf-color-green-accent) 100%);
+      }
+
+      i {
+        font-size: var(--tf-type-scale-20);
+      }
+    }
+
+    .info-content {
+      flex: 1;
+      min-width: 0;
+
+      .info-label {
+        font-size: var(--tf-type-scale-12);
+        color: var(--text-secondary);
+        margin-bottom: 4px;
+      }
+
+      .info-value {
+        font-size: var(--tf-type-scale-15);
+        font-weight: 500;
+        color: var(--text-primary);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+    }
+
+    .info-arrow {
+      color: var(--tf-color-gray-300-alt);
+      font-size: var(--tf-type-scale-14);
+      flex-shrink: 0;
+    }
+  }
+
+  .no-service {
+    text-align: center;
+    padding: 32px 16px;
+    color: var(--text-muted);
+
+    i {
+      font-size: var(--tf-type-scale-40);
+      margin-bottom: 12px;
+      opacity: 0.5;
+    }
+
+    p {
+      font-size: var(--tf-type-scale-14);
+      margin: 0;
+    }
+  }
+}
+
+// 悬浮客服按钮
+.floating-service {
+  position: fixed;
+  bottom: 100px;
+  right: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  z-index: 1000;
+  animation: pulse 2s infinite;
+
+  @keyframes pulse {
+    0%, 100% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.05);
+    }
+  }
+
+  .service-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--tf-color-accent-green) 0%, var(--tf-color-green-accent) 100%);
+    box-shadow: 0 4px 16px rgba(0, 200, 83, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-bg-white);
+
+    i {
+      font-size: var(--tf-type-scale-24);
+    }
+  }
+
+  .service-text {
+    font-size: var(--tf-type-scale-12);
+    color: var(--tf-color-accent-green);
+    font-weight: 500;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 2px 8px;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+}

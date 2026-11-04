@@ -26,7 +26,7 @@
             class="detail-row"
           >
             <span class="label">月份</span>
-            <span class="value">{{ formatMonth(record.period_start) }}</span>
+            <span class="value">{{ formatMonth(record.period_start || '') }}</span>
           </div>
           <div
             v-if="canViewField('salary_mysalaryview', 'actual_work_days')"

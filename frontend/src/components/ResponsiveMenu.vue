@@ -44,20 +44,14 @@ import { isDrawerNavigationViewport } from '@/config/breakpoints'
 import IconRenderer from './IconRenderer.vue'
 import menuBarsIcon from '@/assets/icons/menu-bars.svg?raw'
 import MobileSlideMenu from './mobile/MobileSlideMenu.vue'
-import type { MenuItem } from '@/types/menu'
+import type { MenuAction, MenuItem } from '@/types/menu'
 
 // Props
 interface Props {
   menuItems?: MenuItem[]
   showMenuButton?: boolean
   enableGestures?: boolean
-  quickActions?: Array<{
-    id: string
-    name: string
-    icon: string
-    badge?: string
-    handler: () => void
-  }>
+  quickActions?: MenuAction[]
 }
 
 const props = withDefaults(defineProps<Props>(), {

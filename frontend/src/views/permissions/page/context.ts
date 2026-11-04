@@ -92,8 +92,8 @@ export interface PermissionsPageContext {
   closePermissionDialog: (nextTab?: string) => void | Promise<unknown>
   selectAllDialogPermissions: (select?: boolean) => void | Promise<void>
   toggleAllDialogMenuPermissions: (show?: boolean) => void | Promise<void>
-  handleDialogPermissionChange: (moduleKey: string, permissionType: string, event: Event) => void | Promise<void>
-  handleDialogMenuPermissionChange: (moduleKey: string, event: Event) => void | Promise<void>
+  handleDialogPermissionChange: (moduleKey: string, permissionType: string, checked: boolean) => void | Promise<void>
+  handleDialogMenuPermissionChange: (moduleKey: string, checked: boolean) => void | Promise<void>
   isDialogPermissionSelected: (moduleKey: string, permissionType: string) => boolean
   isDialogMenuPermissionSelected: (moduleKey: string) => boolean
   getPermissionIcon: (permissionType: string) => string

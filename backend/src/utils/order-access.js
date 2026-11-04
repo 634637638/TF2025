@@ -1,18 +1,12 @@
-const crypto = require('crypto')
-const config = require('../config')
+const { createHmacSignature, verifyHmacSignature } = require('./security-keyring')
 
 const TOKEN_TTL_SECONDS = 24 * 60 * 60
-// 生产环境由 config 强制要求 JWT_SECRET；开发环境无 .env 时使用进程级随机密钥，重启后旧访客凭证自然失效。
-const ACCESS_SECRET = config.jwt.secret || crypto.randomBytes(32).toString('hex')
 
 const encode = (value) => Buffer.from(JSON.stringify(value)).toString('base64url')
 
-const sign = (payload) => crypto
-  .createHmac('sha256', ACCESS_SECRET)
-  .update(payload)
-  .digest('base64url')
+const sign = (payload, sourceKey) => createHmacSignature('ORDER_ACCESS', payload, 'base64url', sourceKey)
 
-function createOrderAccessToken(order, ttlSeconds = TOKEN_TTL_SECONDS) {
+function createOrderAccessToken(order, ttlSeconds = TOKEN_TTL_SECONDS, options = {}) {
   const now = Math.floor(Date.now() / 1000)
   const payload = encode({
     orderId: Number(order.id || order.orderId),
@@ -22,19 +16,25 @@ function createOrderAccessToken(order, ttlSeconds = TOKEN_TTL_SECONDS) {
     exp: now + ttlSeconds
   })
 
-  return `${payload}.${sign(payload)}`
+  return `${payload}.${sign(payload, options.sourceKey)}`
 }
 
-function verifyOrderAccessToken(token, order) {
+function verifyOrderAccessToken(token, order, options = {}) {
   if (!token || typeof token !== 'string') return false
 
   const [payload, signature, extra] = token.split('.')
   if (!payload || !signature || extra) return false
 
-  const expectedSignature = sign(payload)
-  const providedBuffer = Buffer.from(signature)
-  const expectedBuffer = Buffer.from(expectedSignature)
-  if (providedBuffer.length !== expectedBuffer.length || !crypto.timingSafeEqual(providedBuffer, expectedBuffer)) {
+  if (!verifyHmacSignature(
+    'ORDER_ACCESS',
+    payload,
+    signature,
+    'base64url',
+    {
+      current: options.sourceKey,
+      previous: options.previousSourceKey
+    }
+  )) {
     return false
   }
 

@@ -592,7 +592,7 @@ export function useTime() {
     fromNow: (date: TimeInput) => TimeUtil.fromNow(date),
     diff: (date1: TimeInput, date2?: TimeInput, unit?: Parameters<typeof TimeUtil.diff>[2]) => TimeUtil.diff(date1, date2, unit),
     add: (date: TimeInput, amount: number, unit: TimeUnit) => TimeUtil.add(date, amount, unit),
-    subtract: (date: TimeInput, amount: number, unit?: TimeUnit) => TimeUtil.subtract(date, amount, unit),
+    subtract: (date: TimeInput, amount: number, unit: TimeUnit = 'day') => TimeUtil.subtract(date, amount, unit),
     startOf: (date: TimeInput, unit: Parameters<typeof TimeUtil.startOf>[1]) => TimeUtil.startOf(date, unit),
     endOf: (date: TimeInput, unit: Parameters<typeof TimeUtil.endOf>[1]) => TimeUtil.endOf(date, unit),
     isToday: (date: TimeInput) => TimeUtil.isToday(date),

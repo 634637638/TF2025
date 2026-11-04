@@ -644,8 +644,10 @@ const loadManagementSettings = async () => {
     const lexicon = unwrapSettingValue<MarketingLexicon>(lexiconResponse)
     if (lexicon && typeof lexicon === 'object') {
       if (lexicon.modeLexicon && typeof lexicon.modeLexicon === 'object') {
-        (['opening', 'sales'] as MarketingMode[]).forEach((mode) => {
-          const value = lexicon.modeLexicon[mode]
+        const modeLexicon = lexicon.modeLexicon
+        const marketingModes: MarketingMode[] = ['opening', 'sales']
+        marketingModes.forEach((mode) => {
+          const value = modeLexicon[mode]
           if (!value) return
           modeLexiconForm[mode].linesText = Array.isArray(value.lines) ? value.lines.join('\n') : modeLexiconForm[mode].linesText
           modeLexiconForm[mode].nightLinesText = Array.isArray(value.nightLines) ? value.nightLines.join('\n') : modeLexiconForm[mode].nightLinesText
@@ -655,8 +657,9 @@ const loadManagementSettings = async () => {
         })
       }
       if (lexicon.typeLexicon && typeof lexicon.typeLexicon === 'object') {
+        const typeLexicon = lexicon.typeLexicon
         MARKETING_COPY_TYPES.forEach((type) => {
-          const value = lexicon.typeLexicon[type]
+          const value = typeLexicon[type]
           if (!value) return
           typeLexiconForm[type].linesText = Array.isArray(value.lines) ? value.lines.join('\n') : typeLexiconForm[type].linesText
         })

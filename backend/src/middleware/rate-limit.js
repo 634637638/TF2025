@@ -51,7 +51,8 @@ const store = {
 }
 
 // 每5分钟清理一次过期记录
-setInterval(store.cleanup, 5 * 60 * 1000)
+const storeCleanupTimer = setInterval(store.cleanup, 5 * 60 * 1000)
+storeCleanupTimer.unref?.()
 
 // 基础限流配置
 const baseRateLimit = rateLimit({
@@ -206,6 +207,18 @@ const dbRateLimit = rateLimit({
   }
 })
 
+const highLoadRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  message: {
+    success: false,
+    message: '服务器负载较高，请稍后再试',
+    code: 'HIGH_LOAD_RATE_LIMIT'
+  },
+  standardHeaders: true,
+  legacyHeaders: false
+})
+
 // 自适应限流 - 根据系统负载调整限流
 const adaptiveRateLimit = (req, res, next) => {
   // 检查数据库连接状态
@@ -225,17 +238,7 @@ const adaptiveRateLimit = (req, res, next) => {
   if (memUsagePercent > 80) {
     log.warn(`内存使用率过高: ${memUsagePercent.toFixed(2)}%，启用严格限流`)
 
-    const strictLimit = rateLimit({
-      windowMs: 15 * 60 * 1000,
-      max: 20, // 大幅降低限制
-      message: {
-        success: false,
-        message: '服务器负载较高，请稍后再试',
-        code: 'HIGH_LOAD_RATE_LIMIT'
-      }
-    })
-
-    return strictLimit(req, res, next)
+    return highLoadRateLimit(req, res, next)
   }
 
   // 正常限流

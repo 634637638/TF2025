@@ -351,14 +351,14 @@
 
       <AccessoryDetailsModal
         v-if="showDetailsModal && selectedAccessory"
-        :accessory="selectedAccessory"
+        :accessory="selectedAccessory || undefined"
         @close="closeDetailsModal"
       />
 
       <AccessoryStockInModal
         v-if="showStockInModal"
         v-model="showStockInModal"
-        :accessory="selectedAccessory"
+        :accessory="selectedAccessory || undefined"
         @success="loadAccessories"
       />
     </PermissionGate>

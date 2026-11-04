@@ -1,0 +1,180 @@
+/* 移除旧的section-header样式，已不再使用 */
+
+/* 站点信息表格 */
+.site-settings-table {
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  padding: 24px;
+  max-width: 900px;
+}
+
+.site-settings-table :deep(.el-textarea__inner) {
+  border: 1px solid var(--border-light, var(--tf-color-border-muted));
+}
+
+.site-settings-table :deep(td.flat-edit-value-column .cell),
+.site-settings-table :deep(td.flat-edit-value-column .el-input),
+.site-settings-table :deep(td.flat-edit-value-column .el-textarea) {
+  width: 100%;
+}
+
+.text-muted {
+  color: var(--text-muted, var(--text-muted));
+  font-size: var(--tf-type-scale-13);
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.section-header h2 {
+  margin: 0;
+  font-size: var(--tf-type-scale-20);
+  color: var(--text-primary, var(--tf-color-heading));
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.section-header h2 i {
+  color: var(--primary-color, var(--tf-color-indigo-brand));
+}
+
+.section-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* 响应式设计 */
+@media (max-width: 767px) {
+  .system-management {
+    padding: 16px;
+  }
+
+  /* 站点信息卡片响应式 */
+  .site-logo-panel {
+    grid-template-columns: 1fr;
+    padding: 16px;
+    gap: 16px;
+  }
+
+  .site-logo-preview-card {
+    min-height: 160px;
+    padding: 16px;
+  }
+
+  .site-logo-preview img {
+    max-height: 88px;
+  }
+
+  .logo-editor-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .site-logo-actions {
+    width: 100%;
+  }
+
+  .site-logo-actions :deep(.el-button) {
+    flex: 1 1 calc(50% - 5px);
+    min-width: 0;
+  }
+
+  .settings-card-row {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .settings-card {
+    padding: 16px;
+  }
+
+  .settings-card .card-icon {
+    width: 40px;
+    height: 40px;
+  }
+
+  .settings-card .card-icon i {
+    font-size: var(--tf-type-scale-16);
+  }
+
+  .settings-card .card-content h4 {
+    font-size: var(--tf-type-scale-13);
+  }
+
+  .settings-card .card-content p {
+    font-size: var(--tf-type-scale-14);
+  }
+
+  /* 站点信息表格响应式 */
+  .site-settings-table {
+    padding: 16px;
+  }
+
+  .section-subtitle {
+    font-size: var(--tf-type-scale-14);
+  }
+}
+
+/* 报价配置：PC端联系人与报价查询并排，水印设置占满下一行；移动端自动单列。 */
+.price-config-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+.price-contact-card,
+.price-query-card,
+.price-config-grid > .price-watermark-settings {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 8px;
+  background: var(--el-bg-color);
+}
+
+.price-watermark-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 16px;
+}
+
+.price-watermark-form .el-form-item:first-child {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 479px) {
+  .price-watermark-form {
+    grid-template-columns: 1fr;
+  }
+
+  .price-watermark-form .el-form-item:first-child {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 900px) {
+  .price-config-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .price-config-grid > .price-watermark-settings {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 479px) {
+  .site-logo-actions :deep(.el-button) {
+    width: 100%;
+    flex-basis: 100%;
+  }
+}

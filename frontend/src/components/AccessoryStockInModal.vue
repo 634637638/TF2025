@@ -591,9 +591,10 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import type { FormInstance } from 'element-plus'
+import type { FormInstance, UploadRawFile } from 'element-plus'
 import { unifiedApi } from '@/utils/unified-api'
 import { getCachedPhoneOptions, getCachedSuppliers } from '@/services/reference-options'
+import type { ReferenceRecord } from '@/services/reference-options'
 import { deleteTempFiles } from '@/utils/temp-file-cleaner'
 import { formatImageUrl } from '@/utils/format'
 import { sortOptionsByOrder } from '@/utils/option-sort'
@@ -620,6 +621,26 @@ import {
 type AccessoryRecord = Omit<AccessoryPayloadSource, 'status'> & {
   id: number
   status?: number | string | boolean
+}
+
+interface AccessoryStoreDistribution {
+  id: number
+  name: string
+  checked: boolean
+  quantity: number
+}
+
+interface AccessoryOption {
+  id: number
+  name: string
+  brand_id?: number
+  status?: number
+  sort_order?: number
+}
+
+interface AccessoryImageUploadResponse {
+  success: boolean
+  data?: { url?: string }
 }
 
 interface Props extends ModelValueProps {
@@ -683,11 +704,18 @@ const formRules = {
 }
 
 // 下拉选项数据
-const brands = ref([])
-const models = ref([])
-const colors = ref([])
-const suppliers = ref([])
-const stores = ref([])
+const brands = ref<AccessoryOption[]>([])
+const models = ref<AccessoryOption[]>([])
+const colors = ref<AccessoryOption[]>([])
+const suppliers = ref<AccessoryOption[]>([])
+const stores = ref<AccessoryStoreDistribution[]>([])
+const normalizeAccessoryOption = (item: ReferenceRecord): AccessoryOption => ({
+  id: Number(item.id || 0),
+  name: String(item.name || ''),
+  brand_id: item.brand_id === null || item.brand_id === undefined ? undefined : Number(item.brand_id),
+  status: item.status,
+  sort_order: Number(item.sort_order || 0)
+})
 const accessoryPayloadFieldMap: Record<string, AccessoryFieldName> = {
   barcode: 'barcode', accessory_id: 'name', name: 'name', category: 'category',
   brand_id: 'brand_name', model_id: 'model_name', color_id: 'color_name', supplier_id: 'supplier_name',
@@ -700,7 +728,7 @@ const accessoryPayloadFieldMap: Record<string, AccessoryFieldName> = {
 const filteredModels = computed(() => {
   if (!canViewAccessoryField('brand_name')) return models.value
   if (!formData.value.brand_id) return []
-  return models.value.filter(m => m.brand_id === formData.value.brand_id)
+  return models.value.filter(m => Number(m.brand_id) === Number(formData.value.brand_id))
 })
 
 const distributedQuantity = computed(() => {
@@ -753,7 +781,7 @@ const uploadHeaders = computed(() => {
 })
 
 // 图片上传验证
-const beforeImageUpload = (file) => {
+const beforeImageUpload = (file: UploadRawFile): boolean => {
   const isImage = file.type.startsWith('image/')
   const isLt2M = file.size / 1024 / 1024 < 2
 
@@ -769,7 +797,7 @@ const beforeImageUpload = (file) => {
 }
 
 // 图片上传成功
-const handleImageSuccess = (response) => {
+const handleImageSuccess = (response: AccessoryImageUploadResponse): void => {
   if (response.success && response.data?.url) {
     formData.value.image_url = response.data.url
     if (!uploadedTempImages.value.includes(response.data.url)) {
@@ -787,9 +815,11 @@ const handleUploadError = () => {
 }
 
 // 图片加载错误处理
-const _handleImageError = (event) => {
+const _handleImageError = (event: Event): void => {
   logger.warn('图片加载失败:', formData.value.image_url)
-  event.target.style.display = 'none'
+  if (event.target instanceof HTMLElement) {
+    event.target.style.display = 'none'
+  }
 }
 
 // 触发上传
@@ -803,7 +833,7 @@ const loadBrands = async () => {
   if (!canViewAccessoryField('brand_name')) return
   try {
     const response = await getCachedPhoneOptions()
-    brands.value = sortOptionsByOrder(response.data?.brands || [])
+    brands.value = sortOptionsByOrder((response.data?.brands || []).map(normalizeAccessoryOption))
   } catch (err) {
     logger.error('加载品牌失败', err)
   }
@@ -813,7 +843,7 @@ const loadModels = async () => {
   if (!canViewAccessoryField('model_name')) return
   try {
     const response = await getCachedPhoneOptions()
-    models.value = sortOptionsByOrder(response.data?.models || [])
+    models.value = sortOptionsByOrder((response.data?.models || []).map(normalizeAccessoryOption))
   } catch (err) {
     logger.error('加载型号失败', err)
   }
@@ -823,7 +853,7 @@ const loadColors = async () => {
   if (!canViewAccessoryField('color_name')) return
   try {
     const response = await getCachedPhoneOptions()
-    colors.value = sortOptionsByOrder(response.data?.colors || [])
+    colors.value = sortOptionsByOrder((response.data?.colors || []).map(normalizeAccessoryOption))
   } catch (err) {
     logger.error('加载颜色失败', err)
   }
@@ -835,6 +865,7 @@ const loadSuppliers = async () => {
     const response = await getCachedSuppliers()
     suppliers.value = (response.data || [])
       .filter(s => s.status === 1)
+      .map(normalizeAccessoryOption)
     suppliers.value = sortOptionsByOrder(suppliers.value)
   } catch (err) {
     logger.error('加载供应商失败', err)
@@ -848,8 +879,9 @@ const loadStores = async () => {
     const storeOptions = (response.data?.stores || [])
 
     stores.value = sortOptionsByOrder(storeOptions)
-      .map(s => ({
-        ...(s as Record<string, unknown>),
+      .map((s): AccessoryStoreDistribution => ({
+        id: Number(s.id),
+        name: String(s.name || ''),
         checked: false,
         quantity: 0
       }))
@@ -857,7 +889,7 @@ const loadStores = async () => {
     if (stores.value.length > 0) {
       const userStoreId = authStore.user?.store_id
       const defaultStore = stores.value.find(s => s.id === userStoreId) || stores.value[0]
-      formData.value.store_id = defaultStore.id
+      if (defaultStore) formData.value.store_id = defaultStore.id
     }
   } catch (err) {
     logger.error('加载门店失败', err)
@@ -875,11 +907,12 @@ const handleBarcodeSearch = async () => {
   try {
     const encodedBarcode = encodeURIComponent(formData.value.barcode)
     const response = await unifiedApi.get<AccessoryRecord>(`/accessories/barcode/${encodedBarcode}`)
-    if (response.data) {
-      existingAccessory.value = response.data
-      const getters:Record<string,()=>unknown>={ accessory_id:()=>response.data.id,name:()=>response.data.name,category:()=>response.data.category,brand_id:()=>response.data.brand_id,model_id:()=>response.data.model_id,color_id:()=>response.data.color_id,supplier_id:()=>response.data.supplier_id,purchase_cost:()=>Number(response.data.purchase_cost||0),sale_price:()=>Number(response.data.sale_price||0),unit:()=>response.data.unit||'个',specifications:()=>response.data.specifications||'' }
+    const accessory = response.data
+    if (accessory) {
+      existingAccessory.value = accessory
+      const getters:Record<string,()=>unknown>={ accessory_id:()=>accessory.id,name:()=>accessory.name,category:()=>accessory.category,brand_id:()=>accessory.brand_id,model_id:()=>accessory.model_id,color_id:()=>accessory.color_id,supplier_id:()=>accessory.supplier_id,purchase_cost:()=>Number(accessory.purchase_cost||0),sale_price:()=>Number(accessory.sale_price||0),unit:()=>accessory.unit||'个',specifications:()=>accessory.specifications||'' }
       Object.entries(getters).forEach(([key,getter])=>{const field=accessoryPayloadFieldMap[key];if(field&&canViewAccessoryField(field))(formData.value as Record<string,unknown>)[key]=getter()})
-      ElMessage.success(canViewAccessoryField('name') ? `找到配件：${response.data.name}` : '找到对应配件')
+      ElMessage.success(canViewAccessoryField('name') ? `找到配件：${accessory.name}` : '找到对应配件')
     }
   } catch (err) {
     existingAccessory.value = null
@@ -897,7 +930,7 @@ const handleTotalQuantityChange = () => {
   })
 }
 
-const handleStoreCheck = (store) => {
+const handleStoreCheck = (store: AccessoryStoreDistribution): void => {
   if (!store.checked) {
     store.quantity = 0
   }
@@ -1003,7 +1036,7 @@ const resetFormData = () => {
   if (stores.value.length > 0) {
     const userStoreId = authStore.user?.store_id
     const defaultStore = stores.value.find(s => s.id === userStoreId) || stores.value[0]
-    formData.value.store_id = defaultStore.id
+    if (defaultStore) formData.value.store_id = defaultStore.id
   }
 
   stores.value.forEach(s => {
@@ -1022,11 +1055,12 @@ watch(
   () => props.modelValue,
   (isOpen) => {
     if (isOpen) {
-      if (props.accessory && props.accessory.id) {
+      const accessory = props.accessory
+      if (accessory?.id) {
         resetFormData()
-        formData.value.id=props.accessory.id
-        formData.value.accessory_id=props.accessory.id
-        const getters:Record<string,()=>unknown>={ barcode:()=>props.accessory.barcode||'',name:()=>props.accessory.name||'',category:()=>props.accessory.category||'',brand_id:()=>props.accessory.brand_id||null,model_id:()=>props.accessory.model_id||null,color_id:()=>props.accessory.color_id||null,supplier_id:()=>props.accessory.supplier_id||null,purchase_cost:()=>Number(props.accessory.purchase_cost)||0,sale_price:()=>Number(props.accessory.sale_price)||0,unit:()=>props.accessory.unit||'个',specifications:()=>props.accessory.specifications||'',status:()=>Number(props.accessory.status)===0?0:1,min_stock:()=>Number(props.accessory.min_stock)||5,image_url:()=>props.accessory.image_url||'',remarks:()=>props.accessory.remarks||'' }
+        formData.value.id=accessory.id
+        formData.value.accessory_id=accessory.id
+        const getters:Record<string,()=>unknown>={ barcode:()=>accessory.barcode||'',name:()=>accessory.name||'',category:()=>accessory.category||'',brand_id:()=>accessory.brand_id||null,model_id:()=>accessory.model_id||null,color_id:()=>accessory.color_id||null,supplier_id:()=>accessory.supplier_id||null,purchase_cost:()=>Number(accessory.purchase_cost)||0,sale_price:()=>Number(accessory.sale_price)||0,unit:()=>accessory.unit||'个',specifications:()=>accessory.specifications||'',status:()=>Number(accessory.status)===0?0:1,min_stock:()=>Number(accessory.min_stock)||5,image_url:()=>accessory.image_url||'',remarks:()=>accessory.remarks||'' }
         Object.entries(getters).forEach(([key,getter])=>{const field=accessoryPayloadFieldMap[key];if(field&&canViewAccessoryField(field))(formData.value as Record<string,unknown>)[key]=getter()})
       } else {
         resetFormData()

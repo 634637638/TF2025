@@ -1062,9 +1062,10 @@ const handleSourceTableSelect = async (row?: { table?: string }) => {
     return
   }
 
-  if (!row) return
-  selectedSourceTable.value = row.table
-  await loadSourceStructure(row.table)
+  const tableName = row?.table
+  if (!tableName) return
+  selectedSourceTable.value = tableName
+  await loadSourceStructure(tableName)
 }
 
 const handleTargetTableSelect = async (row?: { table?: string }) => {
@@ -1072,9 +1073,10 @@ const handleTargetTableSelect = async (row?: { table?: string }) => {
     return
   }
 
-  if (!row) return
-  selectedTargetTable.value = row.table
-  await loadTargetStructure(row.table)
+  const tableName = row?.table
+  if (!tableName) return
+  selectedTargetTable.value = tableName
+  await loadTargetStructure(tableName)
 }
 
 const loadSourceStructure = async (tableName: string) => {

@@ -193,7 +193,7 @@
                 class-name="complete-text-column"
               >
                 <template #default="{ row }">
-                  <div v-if="deviceFieldNames.some(canViewRentalField)">
+                  <div v-if="deviceFieldNames.some(field => canViewRentalField(field))">
                     {{ deviceName(row) }}
                   </div><small v-if="showDeviceIdentifier">{{ deviceIdentifier(row) }}</small>
                 </template>
@@ -588,7 +588,7 @@
                 <el-input-number
                   v-model="form.down_payment"
                   :min="0"
-                  :max="form.sale_price"
+                  :max="form.sale_price ?? undefined"
                   :precision="0"
                   :controls="false"
                 />
@@ -858,7 +858,7 @@
               {{ maskIdCard(selected.customer_id_card) }}
             </el-descriptions-item>
             <el-descriptions-item
-              v-if="deviceFieldNames.some(canViewRentalField)"
+              v-if="deviceFieldNames.some(field => canViewRentalField(field))"
               label="租赁设备"
             >
               {{ deviceName(selected) }}
@@ -1101,7 +1101,7 @@ import { confirmAction } from '@/utils/message-box'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, type UploadRequestOptions } from 'element-plus'
 import { unifiedApi } from '@/utils/unified-api'
-import { searchCustomerOptions } from '@/services/customer-options'
+import { searchCustomerOptions, type CustomerOption } from '@/services/customer-options'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { buildRentalPayload } from './rental-payload'
@@ -1125,7 +1125,6 @@ import { TIME_FORMATS, TimeUtil } from '@/utils/time'
 import { logger } from '@/utils/logger'
 
 type BillingMode = 'daily' | 'buyout'
-interface Customer { id:number; name:string; phone:string; id_card?:string }
 interface Device { id:number; imei?:string; serial_number?:string; brand?:string; model?:string; color?:string; memory?:string; purchase_cost?:number }
 interface ContractFile { id:number; file_url:string; file_name?:string }
 interface Rental extends Device { id:number; contract_number?:string; phone_id:number; customer_id:number; customer_name:string; customer_phone:string; customer_id_card?:string; billing_mode:BillingMode; unit_price:number; term_months?:number; sale_price?:number; sale_order_price?:number; down_payment?:number; principal_amount?:number; monthly_rent?:number; monthly_principal?:number; installment_amount?:number; monitoring_lock:number; start_date:string; end_date?:string; returned_at?:string; deposit:number; total_cost:number; status:string; sale_id?:number; sale_order_id?:number; sale_invoice_number?:string; sale_store_id?:number; sale_store_name?:string; sale_operator_id?:number; sale_operator_name?:string; sale_payment_method?:string; sale_payment_channel?:string; sale_remarks?:string; operator_name?:string; remarks?:string; rented_days:number; accrued_rent:number; paid_rent:number; payable_rent:number; remaining_periods?:number; next_due_date?:string; paid_period_numbers?:number[]; contract_files?:ContractFile[] }
@@ -1152,7 +1151,7 @@ const saving = ref(false)
 const customerLoading = ref(false)
 const customerSaving = ref(false)
 const deviceLoading = ref(false)
-const customerOptions = ref<Customer[]>([])
+const customerOptions = ref<CustomerOption[]>([])
 const deviceOptions = ref<Device[]>([])
 const salesOperators = ref<{ id:number; name?:string; username?:string }[]>([])
 const selectedSalesOperator = ref<{ id:number; name?:string; username?:string } | null>(null)
@@ -1173,7 +1172,8 @@ const paymentRemarks = ref('')
 const paymentSaving = ref(false)
 const summaryData = reactive({ active_count:0, device_count:0, receivable_amount:0, deposit_amount:0 })
 
-const deviceFieldNames: RentalFieldName[] = ['brand', 'model', 'color', 'memory']
+type DeviceDisplayField = Extract<keyof Device, RentalFieldName>
+const deviceFieldNames: DeviceDisplayField[] = ['brand', 'model', 'color', 'memory']
 const searchableRentalFields: RentalFieldName[] = ['contract_number', 'customer_name', 'customer_phone', 'imei', 'serial_number']
 const rentalPayloadFieldMapEntries: Array<[keyof RentalPayload, RentalFieldName]> = [
   ['billing_mode', 'billing_mode'],
@@ -1198,7 +1198,7 @@ const showCustomerColumn = computed(() => canViewRentalField('customer_name') ||
 const showCustomerSelector = computed(() => showCustomerColumn.value)
 const showCustomerProfileFields = computed(() => ['customer_name', 'customer_phone', 'customer_id_card'].some(field => canViewRentalField(field as RentalFieldName)))
 const canCreateCustomerProfile = computed(() => ['customer_name', 'customer_phone', 'customer_id_card'].every(field => canViewRentalField(field as RentalFieldName)))
-const showDeviceColumn = computed(() => deviceFieldNames.some(canViewRentalField) || canViewRentalField('imei') || canViewRentalField('serial_number'))
+const showDeviceColumn = computed(() => deviceFieldNames.some(field => canViewRentalField(field)) || canViewRentalField('imei') || canViewRentalField('serial_number'))
 const showDeviceSelector = computed(() => showDeviceColumn.value)
 const showDeviceIdentifier = computed(() => canViewRentalField('imei') || canViewRentalField('serial_number'))
 const showSearchField = computed(() => searchableRentalFields.some(canViewRentalField))
@@ -1241,12 +1241,12 @@ const summary = computed(() => ({
 const paidScheduleCount = computed(() => paymentSchedule.value.filter(item => item.paid).length)
 const selectedPaymentTotal = computed(() => paymentSchedule.value.filter(item => selectedPeriods.value.includes(item.period_number)).reduce((sum, item) => sum + Number(item.amount || 0), 0))
 const formatMoney = (value:unknown) => Number(value||0).toFixed(2).replace(/\.?(?:0)+$/,'') || '0'
-const deviceName = (row:Partial<Device>) => deviceFieldNames.filter(canViewRentalField).map(field => row[field]).filter(Boolean).join(' ') || '-'
+const deviceName = (row:Partial<Device>) => deviceFieldNames.filter(field => canViewRentalField(field)).map(field => row[field]).filter(Boolean).join(' ') || '-'
 const deviceIdentifier = (row:Partial<Device>) => canViewRentalField('imei')
   ? row.imei || (canViewRentalField('serial_number') ? row.serial_number : '') || '-'
   : canViewRentalField('serial_number') ? row.serial_number || '-' : '-'
 const deviceOptionLabel = (row:Partial<Device>) => [deviceName(row), showDeviceIdentifier.value ? deviceIdentifier(row) : ''].filter(value => value && value !== '-').join(' | ') || '可选设备'
-const customerOptionLabel = (row:Partial<Customer>) => [
+const customerOptionLabel = (row:Partial<CustomerOption>) => [
   canViewRentalField('customer_name') ? row.name : '',
   canViewRentalField('customer_phone') ? row.phone : ''
 ].filter(Boolean).join(' ') || '可选客户'
@@ -1276,15 +1276,14 @@ async function loadRentals(){
   loading.value=true
   try{
     const params={ page:pagination.page,page_size:pagination.page_size,keyword:showSearchField.value?filters.keyword:undefined,billing_mode:canViewRentalField('billing_mode')?filters.billing_mode:undefined,status:canViewRentalField('status')?filters.status:undefined }
-    const res=await unifiedApi.get<Rental[]>('/rentals',{ params,useCache:false })
+    const res=await unifiedApi.get<Rental[], NonNullable<RentalListResponseMeta['summary']>>('/rentals',{ params,useCache:false })
     rentals.value=Array.isArray(res.data)?res.data:[]
-    const metadata = res as unknown as RentalListResponseMeta
-    const responsePagination=metadata.pagination || {}
-    pagination.total=Number(responsePagination.total||0)
-    pagination.total_pages=Number(responsePagination.total_pages||0)
-    pagination.has_next=Boolean(responsePagination.has_next)
-    pagination.has_prev=Boolean(responsePagination.has_prev)
-    const responseSummary=metadata.summary || {}
+    const responsePagination=res.pagination
+    pagination.total=Number(responsePagination?.total||0)
+    pagination.total_pages=Number(responsePagination?.total_pages||0)
+    pagination.has_next=Boolean(responsePagination?.has_next)
+    pagination.has_prev=Boolean(responsePagination?.has_prev)
+    const responseSummary=res.summary || {}
     Object.assign(summaryData,{ active_count:Number(responseSummary.active_count||0),device_count:Number(responseSummary.device_count||0),receivable_amount:Number(responseSummary.receivable_amount||0),deposit_amount:Number(responseSummary.deposit_amount||0) })
   }finally{loading.value=false}
 }
@@ -1302,7 +1301,8 @@ function openEdit(row:Rental){
   editingId.value=row.id
   form.billing_mode=row.billing_mode==='daily'?'daily':'buyout'
   const sourceGetters:Partial<Record<keyof RentalFormState,()=>unknown>>={ unit_price:()=>Number(row.unit_price),term_months:()=>Number(row.term_months||1),sale_price:()=>Number(row.sale_price||0),purchase_cost:()=>Number(row.purchase_cost||0),down_payment:()=>Number(row.down_payment||0),monthly_rent:()=>Number(row.monthly_rent||0),sale_store_id:()=>row.sale_store_id||null,sale_operator_id:()=>row.sale_operator_id||null,sale_payment_method:()=>row.sale_payment_method||'cash',sale_payment_channel:()=>row.sale_payment_channel||'',sale_remarks:()=>row.sale_remarks||'',monitoring_lock:()=>Boolean(row.monitoring_lock),start_date:()=>row.start_date,deposit:()=>Number(row.deposit||0),remarks:()=>row.remarks||'' }
-  rentalPayloadFieldMapEntries.forEach(([key,field])=>{const getter=sourceGetters[key];if(canViewRentalField(field)&&getter)(form as unknown as Record<string,unknown>)[key]=getter()})
+  const visibleValues = Object.fromEntries(rentalPayloadFieldMapEntries.flatMap(([key,field])=>{const getter=sourceGetters[key];return canViewRentalField(field)&&getter?[[key,getter()]]:[]}))
+  Object.assign(form, visibleValues)
   selectedSalesOperator.value = row.sale_operator_id
     ? { id: row.sale_operator_id, name: row.sale_operator_name }
     : null
@@ -1314,7 +1314,7 @@ async function searchCustomers(keyword:string){customerKeyword.value=keyword.tri
 function selectCustomer(id:number|null){const item=customerOptions.value.find(c=>c.id===id);if(!item)return resetCustomerSelection();customerMode.value='selected';Object.assign(customerDraft,{ name:item.name,phone:item.phone,id_card:item.id_card||'' });Object.assign(customerOriginal,customerDraft)}
 function resetCustomerSelection(){form.customer_id=null;customerMode.value='search';Object.assign(customerDraft,{ name:'',phone:'',id_card:'' });Object.assign(customerOriginal,{ name:'',phone:'',id_card:'' })}
 function startManualCustomer(){if(!canCreateCustomerProfile.value)return;const keyword=customerKeyword.value;form.customer_id=null;customerMode.value='manual';Object.assign(customerDraft,{ name:/^1[3-9]\d{9}$/.test(keyword)?'':keyword,phone:/^1[3-9]\d{9}$/.test(keyword)?keyword:'',id_card:'' });Object.assign(customerOriginal,{ name:'',phone:'',id_card:'' })}
-async function persistCustomer(){if(customerMode.value==='search')throw new Error('请先检索并选择客户，或手动新增客户');if(form.customer_id&&!customerDirty.value)return form.customer_id;if(!canCreateCustomerProfile.value)throw new Error('客户资料字段权限不足');const payload=pickVisibleRentalFields(customerDraft,{ name:'customer_name',phone:'customer_phone',id_card:'customer_id_card' });customerSaving.value=true;try{const res=form.customer_id?await unifiedApi.put(`/rentals/customers/${form.customer_id}`,payload):await unifiedApi.post('/rentals/customers',payload);const item=res.data as Customer;form.customer_id=item.id;customerOptions.value=[item];customerMode.value='selected';Object.assign(customerDraft,item);Object.assign(customerOriginal,customerDraft);return item.id}finally{customerSaving.value=false}}
+async function persistCustomer(){if(customerMode.value==='search')throw new Error('请先检索并选择客户，或手动新增客户');if(form.customer_id&&!customerDirty.value)return form.customer_id;if(!canCreateCustomerProfile.value)throw new Error('客户资料字段权限不足');const payload=pickVisibleRentalFields(customerDraft,{ name:'customer_name',phone:'customer_phone',id_card:'customer_id_card' });customerSaving.value=true;try{const res=form.customer_id?await unifiedApi.put(`/rentals/customers/${form.customer_id}`,payload):await unifiedApi.post('/rentals/customers',payload);const item=res.data as CustomerOption;form.customer_id=item.id;customerOptions.value=[item];customerMode.value='selected';Object.assign(customerDraft,{ name:item.name,phone:item.phone,id_card:item.id_card||'' });Object.assign(customerOriginal,customerDraft);return item.id}finally{customerSaving.value=false}}
 async function saveCustomerProfile(){try{await persistCustomer();ElMessage.success('客户资料已保存并选择')}catch(error){ElMessage.error(error instanceof Error?error.message:'客户资料保存失败')}}
 async function searchDevices(keyword:string){if(!showDeviceSelector.value){deviceOptions.value=[];return}deviceLoading.value=true;try{const res=await unifiedApi.get('/rentals/devices',{ params:{ keyword:keyword.trim()||undefined } });const rows=Array.isArray(res.data)?res.data:[];const selectedIds=new Set([...(form.phone_ids||[]),form.phone_id].filter((id):id is number=>Boolean(id)));const selectedOptions=deviceOptions.value.filter(item=>selectedIds.has(item.id));deviceOptions.value=[...rows,...selectedOptions.filter(item=>!rows.some(row=>row.id===item.id))]}finally{deviceLoading.value=false}}
 function selectBuyoutDevice(id:number|null){const device=deviceOptions.value.find(item=>item.id===id);if(device&&canViewRentalField('purchase_cost'))form.purchase_cost=Number(device.purchase_cost||0)}
@@ -1390,7 +1390,7 @@ function printContract(row: Rental) {
     canViewRentalField('customer_name') ? ['承租方', row.customer_name] : null,
     canViewRentalField('customer_phone') ? ['联系电话', row.customer_phone] : null,
     canViewRentalField('customer_id_card') ? ['身份证号', row.customer_id_card || ''] : null,
-    deviceFieldNames.some(canViewRentalField) ? ['租赁设备', deviceName(row)] : null,
+    deviceFieldNames.some(field => canViewRentalField(field)) ? ['租赁设备', deviceName(row)] : null,
     showDeviceIdentifier.value ? ['设备识别码', deviceIdentifier(row)] : null,
     showBillingColumn.value ? ['合同类型', modeParts] : null,
     canViewRentalField('sale_invoice_number') ? ['销售订单', row.sale_invoice_number || '-'] : null,

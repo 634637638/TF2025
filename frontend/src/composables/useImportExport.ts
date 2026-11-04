@@ -2,6 +2,7 @@ import { unref, type Ref } from 'vue'
 import { unifiedApi, type RequestConfig } from '@/utils/unified-api'
 import { useNotification } from '@/composables/useNotification'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
+import { extractBlobResponse } from '@/utils/download-response'
 
 type MaybeRef<T> = T | Ref<T>
 
@@ -154,7 +155,7 @@ export const useImportExport = () => {
           ? await unifiedApi.post(url, data, requestConfig)
           : await unifiedApi.get(url, requestConfig)
 
-        saveBlobFile(response as unknown as BlobPart, { filename, mimeType })
+        saveBlobFile(extractBlobResponse(response), { filename, mimeType })
 
         if (successMessage) {
           success(successMessage)

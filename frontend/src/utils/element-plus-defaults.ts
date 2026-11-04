@@ -5,13 +5,20 @@ interface DatePickerPropDefaults {
   fallbackPlacements?: { default?: unknown }
 }
 
+const hasDatePickerProps = (value: unknown): value is { props: DatePickerPropDefaults } => {
+  if ((typeof value !== 'object' && typeof value !== 'function') || value === null || !('props' in value)) {
+    return false
+  }
+  return typeof value.props === 'object' && value.props !== null
+}
+
 /**
  * Keep all Element Plus date pickers anchored below their input.
  * This covers date, month and datetime pickers, including legacy pages.
  */
 export const configureElementPlusDatePicker = () => {
-  const props = (ElDatePicker as unknown as { props?: DatePickerPropDefaults }).props
-  if (!props) return
+  if (!hasDatePickerProps(ElDatePicker)) return
+  const props = ElDatePicker.props
 
   if (props.placement) {
     props.placement.default = 'bottom-start'

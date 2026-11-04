@@ -431,7 +431,7 @@ const loadDashboardData = async (showLoadingState = true) => {
       CACHE_KEYS.recentActivities,
       () => unifiedApi.get('/dashboard/activities', { params: { limit: 8 } }),
       DEFAULT_CACHE_TTL.STATIC
-    ).catch(error => {
+    ).catch((error): null => {
       handleApiError(error, '加载最近活动失败')
       return null
     })

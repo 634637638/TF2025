@@ -154,7 +154,7 @@ export function createBanner(data: ShopBanner) {
 /**
  * 更新轮播图
  */
-export function updateBanner(id: number, data: ShopBanner) {
+export function updateBanner(id: number, data: Partial<ShopBanner>) {
   return unifiedApi.put(`/shop/banners/${id}`, data)
 }
 
@@ -268,7 +268,7 @@ export async function createTemplate(data: NewTemplate): Promise<NewTemplate> {
 /**
  * 更新模板
  */
-export async function updateTemplate(templateId: number, data: NewTemplate): Promise<NewTemplate> {
+export async function updateTemplate(templateId: number, data: Partial<NewTemplate>): Promise<NewTemplate> {
   const response = await unifiedApi.put<NewTemplate>(`/shop/templates/${templateId}`, data)
   return response.data as NewTemplate
 }

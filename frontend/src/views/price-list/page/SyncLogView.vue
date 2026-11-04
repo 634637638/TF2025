@@ -484,7 +484,7 @@
             <el-descriptions-item label="失败数量">
               <span
                 class="stat-number"
-                :class="currentLog.failed_count > 0 ? 'error' : 'success'"
+                :class="(currentLog.failed_count || 0) > 0 ? 'error' : 'success'"
               >{{ currentLog.failed_count || 0 }}</span>
             </el-descriptions-item>
             <el-descriptions-item label="成功率">
@@ -958,7 +958,7 @@ const handleClearLogs = async () => {
 }
 
 // 格式化时间
-const formatDateTime = (dateStr: string) => {
+const formatDateTime = (dateStr?: string) => {
   if (!dateStr) return '-'
   const parsed = TimeUtil.parse(dateStr)
   return parsed?.isValid() ? TimeUtil.format(parsed, TIME_FORMATS.DATETIME) : '-'

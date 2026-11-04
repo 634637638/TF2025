@@ -23,7 +23,7 @@
             class="info-row"
           >
             <label>发放时间:</label>
-            <span>{{ formatPayoutTime(record.paid_at) }}</span>
+            <span>{{ formatPayoutTime(record.paid_at || '') }}</span>
           </div>
           <div
             v-if="canViewField('salary_mysalaryview', 'sales_count')"
@@ -171,8 +171,10 @@ import SectionLoading from '@/components/SectionLoading.vue'
 
 interface SalesRecord {
   commission_amount?: number | string | null
+  commission_detail?: string | null
   employee_id?: number
   paid_at?: string | null
+  sales_count?: number | null
   [key: string]: unknown
 }
 

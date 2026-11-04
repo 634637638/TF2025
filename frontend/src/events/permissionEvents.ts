@@ -105,8 +105,8 @@ class PermissionEventBus {
    * 检查是否有最近的权限变更
    */
   hasRecentChange(withinMs: number = 5000): boolean {
-    return this.lastEvent &&
-           (Date.now() - this.lastEvent.timestamp) < withinMs
+    return Boolean(this.lastEvent &&
+           (Date.now() - this.lastEvent.timestamp) < withinMs)
   }
 }
 

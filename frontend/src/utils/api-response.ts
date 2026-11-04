@@ -3,7 +3,7 @@
  * 解决 .data.data 分散处理问题
  */
 
-import type { ApiResponse } from '@/types'
+import type { ApiResponse, PaginatedData } from '@/types'
 
 /**
  * 从API响应中提取数据
@@ -61,6 +61,24 @@ export function extractResponseData<T = unknown>(response: unknown): T {
 
   // 直接数据
   return response as T
+}
+
+export function extractPaginatedData<T = unknown>(response: unknown): PaginatedData<T> {
+  const record = asRecord(response) || {}
+  const pagination = asRecord(record.pagination) || {}
+  const page_size = Number(pagination.page_size ?? record.page_size ?? 20)
+  const total = Number(pagination.total ?? record.total ?? 0)
+  const page = Number(pagination.page ?? record.page ?? 1)
+
+  return {
+    data: Array.isArray(record.data) ? record.data as T[] : [],
+    page,
+    page_size,
+    total,
+    total_pages: Number(pagination.total_pages ?? record.total_pages ?? Math.ceil(total / page_size)),
+    has_next: Boolean(pagination.has_next ?? record.has_next ?? page * page_size < total),
+    has_prev: Boolean(pagination.has_prev ?? record.has_prev ?? page > 1)
+  }
 }
 
 /**

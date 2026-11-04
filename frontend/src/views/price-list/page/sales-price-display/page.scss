@@ -1,0 +1,294 @@
+@use "../public-price-query-scoped/price-table" as price-table;
+.public-price-query {
+  min-height: 100vh;
+  background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
+}
+
+.header-section {
+  padding: 60px 20px 40px;
+  text-align: center;
+  color: white;
+
+  .container {
+    max-width: 800px;
+    margin: 0 auto;
+  }
+
+  .title {
+    font-size: var(--tf-type-scale-42);
+    font-weight: bold;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+
+    .title-icon {
+      font-size: var(--tf-type-scale-48);
+    }
+  }
+
+  .subtitle {
+    font-size: var(--tf-type-scale-18);
+    opacity: 0.9;
+    margin-bottom: 40px;
+  }
+
+  .search-box {
+    max-width: 600px;
+    margin: 0 auto 20px;
+
+    // 移动端适配
+    @media (max-width: 767px) {
+      max-width: 100%;
+      padding: 0 15px;
+      margin-bottom: 15px;
+    }
+
+  }
+
+  .search-hint {
+    text-align: center;
+    margin-top: 12px;
+    opacity: 0.85;
+    font-size: var(--tf-type-scale-13);
+
+    @media (max-width: 767px) {
+      font-size: var(--tf-type-scale-12);
+      padding: 0 15px;
+      line-height: 1.6;
+    }
+  }
+
+  .quick-brands {
+    .label {
+      margin-right: 10px;
+      opacity: 0.9;
+    }
+
+    .brand-tag {
+      margin: 5px;
+      cursor: pointer;
+      transition: all 0.3s;
+
+      &:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      }
+    }
+  }
+}
+
+.results-section {
+  padding: 10px 20px 40px;
+  min-height: 400px;
+
+  // 移动端去除边距
+  @media (max-width: 767px) {
+    padding: 4px 0 20px;
+  }
+
+  .container {
+    max-width: 1000px;
+    margin: 0 auto;
+
+    // 移动端全宽
+    @media (max-width: 767px) {
+      padding: 0;
+      max-width: 100%;
+    }
+  }
+
+  .loading-container {
+    text-align: center;
+    padding: 60px 20px;
+    color: white;
+
+    .el-icon {
+      font-size: var(--tf-type-scale-64);
+      margin-bottom: 20px;
+    }
+
+    p {
+      font-size: var(--tf-type-scale-18);
+      opacity: 0.8;
+    }
+  }
+
+  .results-list {
+    background: white;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+
+    // 移动端去除内边距和圆角
+    @media (max-width: 767px) {
+      padding: 0;
+      border-radius: 0;
+      box-shadow: none;
+    }
+
+  .results-header {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid var(--tf-color-gray-200-alt);
+    flex-wrap: wrap;
+
+    // 移动端头部样式
+    @media (max-width: 767px) {
+      margin: 0;
+      padding: 12px;
+      background: var(--tf-color-surface);
+      border-bottom: 1px solid var(--tf-color-gray-300-alt);
+      gap: 8px;
+    }
+
+    // 小尺寸响应式
+    @media (max-width: 479px) {
+      gap: 6px;
+      padding: 10px 8px;
+    }
+
+    @media (max-width: 380px) {
+      gap: 4px;
+      padding: 8px 6px;
+    }
+
+    h2 {
+      margin: 0;
+      font-size: var(--tf-type-scale-20);
+      color: var(--text-primary);
+
+      @media (max-width: 767px) {
+        font-size: var(--tf-type-scale-16);
+      }
+
+      @media (max-width: 479px) {
+        font-size: var(--tf-type-scale-14);
+      }
+
+      @media (max-width: 380px) {
+        font-size: var(--tf-type-scale-13);
+      }
+    }
+
+    .hot-badge {
+      font-size: var(--tf-type-scale-12);
+      font-weight: bold;
+      padding: 0 6px;
+      height: 20px;
+      line-height: 20px;
+      border-radius: 4px;
+      animation: pulse 2s infinite;
+
+      @media (max-width: 767px) {
+        font-size: var(--tf-type-scale-10);
+        height: 18px;
+        line-height: 18px;
+        padding: 0 4px;
+      }
+
+      @media (max-width: 479px) {
+        font-size: var(--tf-type-scale-9);
+        height: 16px;
+        line-height: 16px;
+        padding: 0 3px;
+      }
+
+      @media (max-width: 380px) {
+        font-size: var(--tf-type-scale-8);
+        height: 14px;
+        line-height: 14px;
+        padding: 0 2px;
+      }
+    }
+
+    .count {
+      color: var(--color-info);
+      font-size: var(--tf-type-scale-14);
+
+      @media (max-width: 767px) {
+        font-size: var(--tf-type-scale-12);
+      }
+
+      @media (max-width: 479px) {
+        font-size: var(--tf-type-scale-11);
+      }
+
+      @media (max-width: 380px) {
+        font-size: var(--tf-type-scale-10);
+      }
+    }
+  }
+
+  // 批发报价与销售报价共用同一套 360px 基准表格布局。
+  .table-wrapper {
+    @include price-table.responsive-price-table;
+  }
+
+  .price {
+    font-weight: bold;
+
+    &.wholesale {
+      color: var(--color-success);
+    }
+  }
+
+  :deep(.sales-price-column .cell),
+  :deep(.sales-price-value) {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: nowrap;
+  }
+
+  :deep(.sales-price-column .cell) {
+    min-width: 0;
+    padding-inline: 4px;
+  }
+
+  .sales-price-value {
+    display: inline-block;
+    min-width: max-content;
+    color: var(--color-primary);
+    font-size: var(--font-sm);
+    line-height: 1.3;
+  }
+}
+}
+
+.footer {
+  text-align: center;
+  padding: 30px 20px;
+  color: rgba(255, 255, 255, 0.8);
+
+  p {
+    margin: 5px 0;
+    font-size: var(--tf-type-scale-14);
+  }
+
+  .copyright {
+    opacity: 0.6;
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}

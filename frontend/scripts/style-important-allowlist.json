@@ -96,9 +96,14 @@
       "reason": "Shareable price canvas, Safari table rendering, and public mobile layout intentionally override global admin shells. Contact cards use the shared public contact styles."
     },
     {
-      "file": "src/views/query/QueryView.vue",
-      "max": 32,
-      "reason": "Mobile viewport lock and existing Element Plus table and dialog dimensions."
+      "file": "src/views/query/styles/query-view/responsive.css",
+      "max": 1,
+      "reason": "The mobile query table keeps momentum scrolling over the shared table overflow contract."
+    },
+    {
+      "file": "src/views/query/styles/query-view/image-preview.css",
+      "max": 8,
+      "reason": "Teleported image-preview controls retain fixed delete-button dimensions and dialog width over Element Plus defaults."
     },
     {
       "file": "src/views/H5-admin/page/SoldProductsView.vue",
@@ -226,7 +231,7 @@
       "reason": "Price-list split table hides structural columns and overrides shared table cell dimensions."
     },
     {
-      "file": "src/views/system/SystemView.vue",
+      "file": "src/views/system/styles/system-view/screen-lock-responsive.css",
       "max": 11,
       "reason": "System settings forms override Element Plus label width and content indentation on mobile."
     },
@@ -252,11 +257,11 @@
     },
     {
       "file": "src/views/salary/SalaryView.vue",
-      "max": 11,
-      "reason": "Salary detail tables and teleported dialogs override shared table widths and dialog surfaces."
+      "max": 2,
+      "reason": "Teleported salary mobile sheets keep the narrow-screen side gaps defined by the salary dialog contract."
     },
     {
-      "file": "src/views/subsidy/components/SubsidyListSection.vue",
+      "file": "src/views/subsidy/components/styles/subsidy-list/table-and-photos.scss",
       "max": 1,
       "reason": "Subsidy muted text intentionally overrides the global forced text utility."
     },
@@ -291,7 +296,7 @@
       "reason": "H5 configuration editor mobile form and safe-area footer override desktop dialog layout."
     },
     {
-      "file": "src/views/H5-admin/page/home-sections.vue",
+      "file": "src/views/H5-admin/page/styles/home-sections/responsive.scss",
       "max": 5,
       "reason": "H5 section editor mobile form, controls and safe-area footer override desktop dialog layout."
     },
@@ -301,7 +306,7 @@
       "reason": "Public product action buttons override the authenticated global button contract."
     },
     {
-      "file": "src/views/brands/BrandsView.vue",
+      "file": "src/views/brands/styles/brands-view/accessibility.css",
       "max": 3,
       "reason": "Drag row states and reduced-motion accessibility rules override shared table and animation contracts."
     },
@@ -319,11 +324,6 @@
       "file": "src/views/data-optimization/page/DataCheckTab.vue",
       "max": 2,
       "reason": "Duplicate-data row states must override shared table stripe and hover backgrounds."
-    },
-    {
-      "file": "src/views/data-optimization/page/DataImportTab.vue",
-      "max": 2,
-      "reason": "Successful import cells override shared table status color and border rules."
     },
     {
       "file": "src/views/memories/MemoriesView.vue",
@@ -359,11 +359,6 @@
       "file": "src/views/subsidy/components/SubsidyApplyDialog.vue",
       "max": 1,
       "reason": "Element Plus numeric inputs fill the subsidy form grid cell."
-    },
-    {
-      "file": "src/views/suppliers/SuppliersView.vue",
-      "max": 3,
-      "reason": "Drag row states override shared table hover backgrounds and cell padding."
     },
     {
       "file": "src/views/system/page/SimpleAdminView.vue",

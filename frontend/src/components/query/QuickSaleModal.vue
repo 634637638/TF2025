@@ -658,7 +658,7 @@ const customerSearchResultsStyle = ref<Record<string, string>>({})
 const customerSearchLayoutFrame = ref<number | null>(null)
 
 const normalizeCustomerOption = (
-  customer?: Partial<CustomerOption> & Record<string, unknown> | null
+  customer?: CustomerOption | Record<string, unknown> | null
 ): CustomerOption => normalizeQuickSaleCustomerOption(customer)
 
 const clearCustomerSearchTimeout = () => {

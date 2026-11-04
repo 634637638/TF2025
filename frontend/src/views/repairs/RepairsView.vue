@@ -1100,11 +1100,11 @@ const repairWriteFieldMap: Record<keyof RepairOrderForm, string> = {
   photos: 'photos'
 }
 
-const buildVisibleRepairPayload = () => Object.fromEntries(
+const buildVisibleRepairPayload = (): Partial<RepairOrderForm> => Object.fromEntries(
   Object.entries(formData).filter(([field]) => (
     canViewRepairField(repairWriteFieldMap[field as keyof RepairOrderForm])
   ))
-) as unknown as RepairOrderForm
+)
 
 const stats = ref({ pending: 0, processing: 0, completed: 0, monthly_revenue: '0' })
 
@@ -1381,7 +1381,18 @@ const ensureCustomerOption = (device: RepairDeviceSearchResult) => {
   })
 }
 
-const handleDeviceSelect = async (device: RepairDeviceSearchResult) => {
+const isRepairDeviceSearchResult = (item: unknown): item is RepairDeviceSearchResult => {
+  if (!item || typeof item !== 'object') return false
+  const phoneId = Number((item as { phone_id?: unknown }).phone_id)
+  return Number.isInteger(phoneId) && phoneId > 0
+}
+
+const handleDeviceSelect = async (item: unknown) => {
+  if (!isRepairDeviceSearchResult(item)) {
+    ElMessage.warning('设备数据无效，请重新检索')
+    return
+  }
+  const device = item
   applyingDevice.value = true
   ensureCustomerOption(device)
   if (device.customer_id && device.customer_name) {
@@ -1530,7 +1541,14 @@ const handleSubmit = async () => {
       await repairsApi.update(editingRepairId.value, payload)
       success('维修单更新成功')
     } else {
-      await repairsApi.create(payload)
+      if (!payload.phone_model || !payload.problem_description) {
+        throw new Error('创建维修单缺少机型或问题描述')
+      }
+      await repairsApi.create({
+        ...payload,
+        phone_model: payload.phone_model,
+        problem_description: payload.problem_description
+      })
       success('维修单创建成功')
     }
     pendingTempMediaUrls.value = []

@@ -61,6 +61,7 @@ export type SharedVisibility = 'public' | 'private'
 
 export interface SharedAttachment {
   url: string
+  storage_url?: string
   name: string
   type: string
   size: number

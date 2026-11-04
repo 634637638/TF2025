@@ -117,7 +117,7 @@ router.put('/sync/config/:configId/default', unifiedAuth, requirePermission('pri
 
 /**
  * @route   GET /api/price-list/sync/config/:configId
- * @desc    获取指定ID的同步配置详情（包含密码，用于编辑）
+ * @desc    获取指定ID的同步配置详情（密码永不回显）
  * @access  Private
  */
 router.get('/sync/config/:configId', unifiedAuth, requirePermission('price-list:view'), priceListController.getSyncConfigById)

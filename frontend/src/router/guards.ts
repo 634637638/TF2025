@@ -347,8 +347,9 @@ export class RouteGuards {
           const currentRoles = authStore.roles
 
           await authStore.fetchUserInfo().then(() => {
-            if (!authStore.user?.role && currentRole) {
-              authStore.user.role = currentRole
+            const refreshedUser = authStore.user
+            if (refreshedUser && !refreshedUser.role && currentRole) {
+              refreshedUser.role = currentRole
               authStore.roles = currentRoles
             }
           }).catch((error: unknown) => {

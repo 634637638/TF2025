@@ -11,6 +11,10 @@ const sharedService = require('../services/shared.service')
 const { getUploadSubdir, getUploadUrl } = require('../utils/upload-paths')
 const dataMaskingService = require('../services/dataMaskingService')
 const log = require('../utils/log')
+const {
+  createSharedFileUrl,
+  verifySharedFileAccess
+} = require('../utils/shared-file-access')
 
 const SHARED_FIELD_MODULE_KEY = 'shared_sharedview'
 const SHARED_WRITE_FIELD_IDS = {
@@ -180,12 +184,67 @@ const handleError = (res, error, fallback = '操作失败') => {
   return ApiResponse.error(res, message, status)
 }
 
-router.use('/files', (req, _res, next) => {
-  const rawToken = Array.isArray(req.query.token) ? req.query.token.at(-1) : req.query.token
-  if (!req.headers.authorization && typeof rawToken === 'string' && rawToken.trim()) {
-    req.headers.authorization = `Bearer ${rawToken.trim()}`
+const signSharedRichText = (content, userId, nowSeconds) => String(content || '').replace(
+  /\/uploads\/shared\/[a-zA-Z0-9._-]+/g,
+  storageUrl => createSharedFileUrl(storageUrl, userId, { nowSeconds })
+)
+
+const signSharedPayload = (value, userId) => {
+  const nowSeconds = Math.floor(Date.now() / 1000)
+  const transform = item => {
+    if (Array.isArray(item)) return item.map(transform)
+    if (!item || typeof item !== 'object') return item
+
+    const signed = { ...item }
+    if (typeof signed.content === 'string') {
+      signed.content = signSharedRichText(signed.content, userId, nowSeconds)
+    }
+    if (Array.isArray(signed.attachments)) {
+      signed.attachments = signed.attachments.map(attachment => {
+        const storageUrl = String(attachment?.storage_url || attachment?.url || '')
+        return {
+          ...attachment,
+          storage_url: storageUrl,
+          url: createSharedFileUrl(storageUrl, userId, { nowSeconds })
+        }
+      })
+    }
+    return signed
   }
-  next()
+  return transform(value)
+}
+
+router.get('/files/:filename', async (req, res) => {
+  try {
+    const filename = String(req.params.filename || '')
+    const userId = Number(req.query.user)
+    const validSignature = verifySharedFileAccess({
+      filename,
+      userId,
+      expires: req.query.expires,
+      signature: req.query.signature
+    })
+    if (!validSignature || path.basename(filename) !== filename) {
+      return ApiResponse.error(res, '附件链接无效或已过期', 403)
+    }
+
+    const rawUrl = getUploadUrl('shared', filename)
+    const access = await sharedService.canAccessAttachment(rawUrl, userId)
+    const belongsToUploader = filename.startsWith(`${userId}_`)
+    if (!access.referenced && !belongsToUploader) return ApiResponse.error(res, '附件不存在', 404)
+    if (access.referenced && !access.allowed) return ApiResponse.error(res, '无权访问该附件', 403)
+
+    const absolutePath = path.join(uploadDir, filename)
+    if (!absolutePath.startsWith(`${path.normalize(uploadDir)}${path.sep}`) || !fs.existsSync(absolutePath)) {
+      return ApiResponse.error(res, '附件不存在', 404)
+    }
+    res.setHeader('Cache-Control', 'private, no-store')
+    res.setHeader('X-Content-Type-Options', 'nosniff')
+    res.setHeader('Cross-Origin-Resource-Policy', 'same-origin')
+    return res.sendFile(absolutePath)
+  } catch (error) {
+    return handleError(res, error, '读取附件失败')
+  }
 })
 router.use(unifiedAuth)
 router.get('/', requirePermission('shared:view'), async (req, res) => {
@@ -198,7 +257,8 @@ router.get('/', requirePermission('shared:view'), async (req, res) => {
     const search_fields = [['post_info.title', 'title'], ['post_info.content', 'content']].filter(([fieldId]) => !hiddenFields.has(fieldId)).map(([, field]) => field)
     if (req.query.keyword && !search_fields.length) return res.status(403).json({ success: false, message: '没有可用的分享搜索字段', code: 'FIELD_PERMISSION_DENIED' })
     const result = await sharedService.list(req.user.id, { ...req.query, page_size: req.query.page_size, search_fields })
-    return ApiResponse.success(res, maskSharedPayloadWithPermissions(result.rows, permissions), '获取经验分享成功', 200, { pagination: result.pagination })
+    const masked = maskSharedPayloadWithPermissions(result.rows, permissions)
+    return ApiResponse.success(res, signSharedPayload(masked, req.user.id), '获取经验分享成功', 200, { pagination: result.pagination })
   } catch (error) {
     return handleError(res, error, '获取经验分享失败')
   }
@@ -232,31 +292,11 @@ router.delete('/categories/:id', requirePermission('shared:manage'), async (req,
     return handleError(res, error, '删除分类失败')
   }
 })
-router.get('/files/:filename', requirePermission('shared:view'), requireVisibleSharedField('post_info.attachments'), async (req, res) => {
-  try {
-    const filename = String(req.params.filename || '')
-    if (!/^[a-zA-Z0-9._-]+$/.test(filename) || path.basename(filename) !== filename) {
-      return ApiResponse.error(res, '无效的附件路径', 400)
-    }
-    const rawUrl = getUploadUrl('shared', filename)
-    const access = await sharedService.canAccessAttachment(rawUrl, req.user.id)
-    const belongsToUploader = filename.startsWith(`${Number(req.user.id)}_`)
-    if (!access.referenced && !belongsToUploader) return ApiResponse.error(res, '附件不存在', 404)
-    if (access.referenced && !access.allowed) return ApiResponse.error(res, '无权访问该附件', 403)
-    const absolutePath = path.join(uploadDir, filename)
-    if (!absolutePath.startsWith(`${path.normalize(uploadDir)}${path.sep}`) || !fs.existsSync(absolutePath)) {
-      return ApiResponse.error(res, '附件不存在', 404)
-    }
-    return res.sendFile(absolutePath)
-  } catch (error) {
-    return handleError(res, error, '读取附件失败')
-  }
-})
 router.get('/:id', requirePermission('shared:view'), async (req, res) => {
   try {
     const result = await sharedService.getById(Number(req.params.id), req.user.id)
     if (!result) return ApiResponse.error(res, '分享不存在', 404)
-    return ApiResponse.success(res, result, '获取分享详情成功')
+    return ApiResponse.success(res, signSharedPayload(result, req.user.id), '获取分享详情成功')
   } catch (error) {
     return handleError(res, error, '获取分享详情失败')
   }
@@ -264,12 +304,16 @@ router.get('/:id', requirePermission('shared:view'), async (req, res) => {
 router.post('/upload', requireAnyPermission(['shared:create', 'shared:edit', 'shared:manage']), requireVisibleSharedField('post_info.attachments'), uploadSharedFiles, async (req, res) => {
   try {
     await convertSharedHeicUploads(req.files)
-    const files = (req.files || []).map(file => ({
-      url: getUploadUrl('shared', file.filename),
-      name: file.originalname,
-      type: file.mimetype,
-      size: file.size
-    }))
+    const files = (req.files || []).map(file => {
+      const storageUrl = getUploadUrl('shared', file.filename)
+      return {
+        url: createSharedFileUrl(storageUrl, req.user.id),
+        storage_url: storageUrl,
+        name: file.originalname,
+        type: file.mimetype,
+        size: file.size
+      }
+    })
     return ApiResponse.success(res, files, '附件上传成功')
   } catch (error) {
     for (const file of req.files || []) {
@@ -294,7 +338,8 @@ router.post('/uploads/cleanup', requireAnyPermission(['shared:create', 'shared:e
 router.post('/', requirePermission('shared:create'), rejectHiddenSharedWrites(SHARED_WRITE_FIELD_IDS), async (req, res) => {
   try {
     const result = await sharedService.create(req.user.id, canManage(req), req.body)
-    return ApiResponse.created(res, '经验分享发布成功', await maskSharedPayload(result, req))
+    const masked = await maskSharedPayload(result, req)
+    return ApiResponse.created(res, '经验分享发布成功', signSharedPayload(masked, req.user.id))
   } catch (error) {
     return handleError(res, error, '经验分享发布失败')
   }
@@ -302,7 +347,8 @@ router.post('/', requirePermission('shared:create'), rejectHiddenSharedWrites(SH
 router.put('/:id', requireAnyPermission(['shared:edit', 'shared:manage']), rejectHiddenSharedWrites(SHARED_WRITE_FIELD_IDS), async (req, res) => {
   try {
     const result = await sharedService.update(Number(req.params.id), req.user.id, canManage(req), req.body)
-    return ApiResponse.success(res, await maskSharedPayload(result, req), '经骫分享更新成功')
+    const masked = await maskSharedPayload(result, req)
+    return ApiResponse.success(res, signSharedPayload(masked, req.user.id), '经验分享更新成功')
   } catch (error) {
     return handleError(res, error, '经验分享更新失败')
   }

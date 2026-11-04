@@ -3,7 +3,9 @@
   "version": "1.0.0",
   "description": "TF2025 Fullstack Project",
   "scripts": {
-    "check:docs": "node scripts/check-docs.mjs",
+    "check:docs": "node scripts/check-docs.mjs && node scripts/check-doc-examples.mjs",
+    "test:docs": "node --test scripts/test/doc-examples.check.mjs",
+    "test:lint-config": "node --test scripts/test/eslint-config.check.mjs",
     "check:reference-options": "node scripts/check-reference-options.mjs --strict",
     "dev": "node scripts/fix-ports.js",
     "dev:raw": "npm run check:standards && concurrently --names \"BACKEND,FRONTEND\" --prefix name \"npm run backend\" \"npm run frontend:raw\"",
@@ -33,5 +35,8 @@
     "eslint": "^9.39.5",
     "eslint-plugin-unused-imports": "^4.4.1",
     "eslint-plugin-vue": "^10.10.0"
+  },
+  "overrides": {
+    "minimatch": "11.0.4"
   }
 }

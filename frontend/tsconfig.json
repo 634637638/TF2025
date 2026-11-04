@@ -16,10 +16,10 @@
 
     /* Linting */
     "strict": true,
-    "noImplicitAny": false,
+    "noImplicitAny": true,
     "noImplicitThis": true,
-    "strictNullChecks": false,
-    "strictFunctionTypes": false,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
     "strictBindCallApply": true,
     "strictPropertyInitialization": false,
     "strictBuiltinIteratorReturn": true,

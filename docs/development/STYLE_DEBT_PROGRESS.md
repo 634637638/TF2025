@@ -1,6 +1,6 @@
 # 样式债务清理进度
 
-历史治理记录始于 2026-08-27；当前审计结果于 2026-10-01 复核。
+历史治理记录始于 2026-08-27；当前审计结果于 2026-11-04 复核。历史章节中的数字只代表对应日期，当前门禁以上方状态表和 `frontend/scripts/style-debt-baseline.json` 为准。
 
 ## 2026-10-01 令牌和断点治理
 
@@ -18,11 +18,21 @@
 
 | 项目 | 当前数量 | 状态 |
 | --- | ---: | --- |
-| `!important` 总数 | 2081 | 仍有存量，不代表已经消除 |
-| 已登记强制覆盖 | 2081 | 逐文件登记；总量门槛已收紧到当前值 |
+| `!important` 总数 | 1957 | 仍有存量，不代表已经消除 |
+| 已登记强制覆盖 | 1957 | 逐文件登记；总量门槛已收紧到当前值 |
 | 未批准 `!important` | 0 | 已完成；构建禁止新增 |
-| 颜色字面量 | 644 | 集中保留在 CSS 令牌定义中 |
+| 颜色字面量 | 637 | 集中保留在 CSS 令牌定义中 |
 | 非令牌颜色使用点 | 0 | 已完成；构建禁止新增 |
+| 超过 300 行的 Vue 样式块 | 34 | 继续按页面拆分；新增或增长由逐文件基线阻断 |
+
+## 2026-11-04 第三批页面样式治理
+
+- `SubsidyListSection.vue`、`InventoryResultDialog.vue`、`BrandsView.vue`、`SuppliersView.vue` 和 `SalesAnalytics.vue` 的内嵌超长样式已按表格、卡片、弹窗头部、响应式、无障碍和分析预测等职责拆成 15 个局部 CSS/SCSS 模块；每个模块不超过 300 行，Vue `scoped` 作用域和加载顺序保持不变。
+- 超长 Vue 样式块从 39 个降至 34 个；`style-debt-baseline.json` 删除上述 5 个旧块登记并把全局上限收紧到 34。
+- 供应商拖拽行状态通过相同或更高优先级的明确选择器替代 3 处 `!important`，全局总量从 1960 降至 1957。国补弱化文字的 1 处公共工具类覆盖和品牌页减少动态效果的 3 处无障碍覆盖继续保留，并迁移到对应外置样式文件的精确白名单。
+- 设计值、动效和品牌页打印例外只迁移文件归属，没有扩大额度。当前设计字面量实测为 radius=1172、shadow=377、typography=0、spacing=5192、layering=127；历史硬编码动效为 377 处。
+- `npm --prefix frontend run check:release`、生产 Vite 构建、38 项前端单测、严格 ESLint、类型检查、依赖安全审计、Bundle 体积检查和 `git diff --check` 均通过。首屏本地资源为 873.00 KiB，门槛为 878.91 KiB。
+- 本轮未执行浏览器截图、桌面/手机真机或云端业务数据回归；生产构建通过只证明样式可编译和静态门禁闭环，不替代视觉验收。
 
 ## 2026-10-07 启动审计基线同步
 
@@ -67,7 +77,7 @@
 - 样式审计会先移除 CSS/SCSS 注释再统计，避免把注释中的示例误算为债务；`style-debt-baseline.json` 已接入检查，新增强制声明或非令牌颜色会直接让 `check:standards` 失败。
 - 清理普通页面布局中的 242 个强制声明；保留的 Element Plus、Teleport、打印、表格状态、无障碍和移动安全区覆盖全部登记在 `scripts/style-important-allowlist.json`，包含文件上限与具体原因。2026-10-06 全局按钮迁移新增的移动端语义按钮覆盖已登记在 `_buttons.scss`，当前公共按钮入口为 264 处，不得将该登记扩展到业务页面。
 - 将 1932 个非令牌颜色使用点全部迁移到共享语义色板；高频状态色统一复用，19 个需要保持视觉身份的品牌色和图表色使用明确业务令牌。
-- 样式债务门禁基线当前为：`!important <= 1933`、未批准 `!important <= 0`、非令牌颜色使用点 `<= 0`。任何新增未登记存量都会让审计失败。
+- 该阶段的样式债务门禁基线为：`!important <= 1933`、未批准 `!important <= 0`、非令牌颜色使用点 `<= 0`；后续批次已继续收紧，当前值以上方状态表为准。任何新增未登记存量都会让审计失败。
 
 ## 清理规则
 
@@ -110,7 +120,7 @@
 | `SupplierPhonePaymentsView.vue` + `styles/supplier-phone-payments/` | 原 1463 行 scoped SCSS，已按列表、批次详情、编辑弹窗、控件、表格、移动布局拆为 6 个 partial | 44 | Vue scoped 边界和 partial 顺序保持不变；Sass 输出 39619 字节及 SHA-256 均与拆分前一致。强制声明分布在控件/移动布局 partial（35/9），总量未减少 |
 | `PublicPriceQuery.vue` + scoped/global SCSS entries | 原 1219 行 scoped 拆为 4 个 partial；416 行全局 SCSS 拆为 4 个 partial | 113 | 原 scoped/global partial 顺序保持不变；Teleport 通知弹窗规则移入非 scoped global partial。该页有 113 个强制声明：8 个仍内嵌、105 个全局覆盖（图片/iOS 弹窗/通知弹窗/Safari 为 77/12/1/15）；通知弹窗宽度规则匹配 `MobileDialog` 的 `.notice-dialog.el-dialog` 根节点并覆盖其行内宽度 |
 
-`PublicPriceQuery.vue` 的 1219 行 scoped 样式已按页面/页头、结果区、反馈与通知内容、结果列表拆为 4 个 partial；全局/Teleport 样式按图片生成、iOS 保存弹窗、通知弹窗、Safari 视口拆为 4 个 partial。`SupplierPhonePaymentsView.vue` 的 scoped 块按列表、详情、弹窗、控件、表格和移动端拆为 6 个 partial；`SubsidyView.vue` 的 2874 行 scoped 块按仪表板、表单、详情、移动布局、辅助样式和照片拆为 7 个 partial。拆分均保持原作用域与顺序；删除 Subsidy 父页一条对子组件内部无效的冗余覆盖后，早期阶段的 `!important` 总量曾从 2002 降到 2001，后续治理又继续下调至当前 1933。PublicPriceQuery 当前有 113 个 `!important`，其中通知弹窗规则位于非 scoped 样式，匹配 Teleport 后的 `.notice-dialog.el-dialog` 根节点，以覆盖移动端行内宽度。每次变更需比较构建前后的选择器作用域，并对对应桌面、窄屏和 Teleport 弹窗做视觉回归。当前不把“样式债务审计通过”解释为已完成存量清理。
+`PublicPriceQuery.vue` 的 1219 行 scoped 样式已按页面/页头、结果区、反馈与通知内容、结果列表拆为 4 个 partial；全局/Teleport 样式按图片生成、iOS 保存弹窗、通知弹窗、Safari 视口拆为 4 个 partial。`SupplierPhonePaymentsView.vue` 的 scoped 块按列表、详情、弹窗、控件、表格和移动端拆为 6 个 partial；`SubsidyView.vue` 的 2874 行 scoped 块按仪表板、表单、详情、移动布局、辅助样式和照片拆为 7 个 partial。拆分均保持原作用域与顺序；删除 Subsidy 父页一条对子组件内部无效的冗余覆盖后，早期阶段的 `!important` 总量曾从 2002 降到 2001，后续治理仍持续下调，当前值以上方状态表为准。PublicPriceQuery 在该阶段有 113 个 `!important`，其中通知弹窗规则位于非 scoped 样式，匹配 Teleport 后的 `.notice-dialog.el-dialog` 根节点，以覆盖移动端行内宽度。每次变更需比较构建前后的选择器作用域，并对对应桌面、窄屏和 Teleport 弹窗做视觉回归。当前不把“样式债务审计通过”解释为已完成存量清理。
 
 ### 2026-10-01 冗余强制覆盖清理
 

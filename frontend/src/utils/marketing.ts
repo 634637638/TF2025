@@ -152,7 +152,7 @@ export const DEFAULT_MARKETING_LEXICON: MarketingLexicon = {
     sales: { lines: [], nightLines: [] }
   },
   typeLexicon: Object.fromEntries(
-    MARKETING_COPY_TYPES.map((type) => [type, { lines: [] }])
+    MARKETING_COPY_TYPES.map((type): [MarketingCopyType, { lines: string[] }] => [type, { lines: [] }])
   ) as Record<MarketingCopyType, { lines: string[] }>,
   contextLexicon: { holiday: [], solarTerm: [], weather: [], timeSegment: {}, color: {}, subsidy: {} },
   eventLexicon: { solarTerms: {}, traditionalHolidays: {}, historicalDays: {} },
@@ -614,7 +614,8 @@ const getWeatherPhrases = (
     fog: ['fog', '雾天', '有雾'],
     normal: ['normal']
   }
-  const matchedKey = Object.keys(weatherLexicon).find(key => aliases[weatherType].includes(key))
+  const weatherKeys = Object.keys(weatherLexicon) as Array<MarketingWeatherType | 'all'>
+  const matchedKey = weatherKeys.find(key => aliases[weatherType].includes(key))
   return (matchedKey ? weatherLexicon[matchedKey] : undefined) || weatherLexicon[weatherType] || weatherLexicon.all || []
 }
 

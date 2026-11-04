@@ -1,0 +1,254 @@
+/* 响应式设计 */
+@media (max-width: 767px) {
+  .suppliers-view {
+    padding: 16px;
+  }
+
+  .header-content {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .action-buttons {
+    display: flex;
+    flex-direction: row;
+    width: auto;
+  }
+
+  .form-actions {
+    flex-direction: column;
+  }
+
+  .pagination-section {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .supplier-info {
+    max-width: 150px;
+  }
+
+}
+
+/* 使用上面已定义的form-group和form-control样式，避免重复 */
+
+/* ===== 详情视图样式 ===== */
+.supplier-detail-view {
+  padding: 0;
+}
+
+.detail-section {
+  margin-bottom: 24px;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+
+  h4 {
+    margin: 0 0 16px 0;
+    padding: 0;
+    font-size: var(--tf-type-scale-16);
+    font-weight: 600;
+    color: var(--tf-color-neutral-700);
+    border-bottom: 1px solid var(--tf-color-neutral-200);
+    padding-bottom: 8px;
+  }
+}
+
+.detail-row {
+  display: flex;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--tf-color-neutral-100);
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  .label {
+    font-weight: 500;
+    color: var(--tf-color-neutral-500);
+    min-width: 100px;
+    margin-right: 16px;
+    font-size: var(--tf-type-scale-14);
+  }
+
+  .value {
+    flex: 1;
+    color: var(--tf-color-neutral-800);
+    font-weight: 500;
+    font-size: var(--tf-type-scale-14);
+    word-break: break-word;
+  }
+}
+
+/* 统计网格样式 */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 16px;
+}
+
+.stat-item {
+  background: var(--tf-color-slate-50);
+  padding: 16px;
+  border-radius: 8px;
+  text-align: center;
+  border: 1px solid var(--tf-color-neutral-200);
+
+  .stat-number {
+    font-size: var(--tf-type-scale-24);
+    font-weight: 700;
+    color: var(--tf-color-neutral-800);
+    margin-bottom: 4px;
+  }
+
+  .stat-label {
+    font-size: var(--tf-type-scale-12);
+    color: var(--tf-color-neutral-500);
+    font-weight: 500;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  .stat-amount {
+    font-size: var(--tf-type-scale-14);
+    color: var(--tf-color-emerald-600);
+    font-weight: 600;
+  }
+}
+
+/* 加载内容样式 */
+.loading-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 40px 0;
+  color: var(--tf-color-neutral-500);
+  font-size: var(--tf-type-scale-14);
+
+  i {
+    font-size: var(--tf-type-scale-20);
+  }
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+.stat-value {
+  font-size: var(--tf-type-scale-24);
+  font-weight: bold;
+  color: var(--tf-color-blue-bootstrap);
+  margin-bottom: 5px;
+}
+
+.stat-label {
+  color: var(--text-secondary);
+  margin-bottom: 5px;
+}
+
+.stat-amount {
+  font-size: var(--tf-type-scale-14);
+  color: var(--success-color);
+  font-weight: 500;
+}
+
+.account-type {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: var(--tf-type-scale-12);
+  font-weight: 500;
+}
+
+.account-type.payment {
+  background: var(--tf-color-danger-legacy);
+  color: var(--tf-color-danger-text-legacy);
+}
+
+.account-type.refund {
+  background: var(--tf-color-success-legacy);
+  color: var(--tf-color-success-text-legacy);
+}
+
+.account-type.adjust {
+  background: var(--tf-color-warning-legacy);
+  color: var(--tf-color-warning-text-legacy);
+}
+
+.amount-negative {
+  color: var(--danger-color);
+  font-weight: 500;
+}
+
+.amount-positive {
+  color: var(--success-color);
+  font-weight: 500;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.text-muted {
+  color: var(--text-secondary);
+}
+
+.small {
+  font-size: var(--tf-type-scale-12);
+}
+
+/* 响应式设计 */
+@media (max-width: 767px) {
+  .suppliers-view {
+    padding: 10px;
+  }
+  
+  .search-form {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .search-form .form-control {
+    min-width: auto;
+  }
+  
+  .detail-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .pagination-section {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  /* 详情视图移动端适配 */
+  .detail-row {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 16px 0;
+
+    .label {
+      min-width: auto;
+      margin-right: 0;
+      margin-bottom: 8px;
+    }
+
+    .value {
+      width: 100%;
+    }
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+}

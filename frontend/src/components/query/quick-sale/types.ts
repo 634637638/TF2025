@@ -1,16 +1,7 @@
-import type { Supplier, Store } from '@/types/system'
-import type { Brand, Color, MemoryOption, Model, ModelValueProps, User } from '@/types'
+import type { ModelOption, ModelValueProps, QueryOperationOptions } from '@/types'
 
 export interface QuickSaleProps extends ModelValueProps {
-  options: {
-    suppliers: Supplier[]
-    stores: Store[]
-    brands: Brand[]
-    models: Model[]
-    colors: Color[]
-    memories: MemoryOption[]
-    users: User[]
-  }
+  options: QueryOperationOptions
   initialData?: {
     brand_id?: number
     model_id?: number
@@ -35,7 +26,7 @@ export interface QuickSaleCustomerOption {
   vip_level: string
 }
 
-export type BrandModelOption = Model
+export type BrandModelOption = ModelOption
 
 export interface QuickSaleFormState {
   brand_id: number | null

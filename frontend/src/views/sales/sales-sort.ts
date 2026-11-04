@@ -49,21 +49,25 @@ export const sortAvailableSalesPhones = (records: readonly Phone[]): Phone[] => 
       return rightInventoryTime - leftInventoryTime
     }
 
-    const brandWeightDifference = getBrandOrderWeight(left.brand) - getBrandOrderWeight(right.brand)
+    const leftBrand = left.brand || ''
+    const rightBrand = right.brand || ''
+    const brandWeightDifference = getBrandOrderWeight(leftBrand) - getBrandOrderWeight(rightBrand)
     if (brandWeightDifference !== 0) return brandWeightDifference
 
     const leftCondition = left.is_new ? '全新' : '二手'
     const rightCondition = right.is_new ? '全新' : '二手'
     if (leftCondition !== rightCondition) return leftCondition === '全新' ? -1 : 1
 
-    const seriesDifference = extractSeriesNumber(left.model) - extractSeriesNumber(right.model)
+    const leftModel = left.model || ''
+    const rightModel = right.model || ''
+    const seriesDifference = extractSeriesNumber(leftModel) - extractSeriesNumber(rightModel)
     if (seriesDifference !== 0) return seriesDifference
 
     if (left.model !== right.model) {
       return (left.model || '').localeCompare(right.model || '')
     }
 
-    const memoryDifference = getMemoryOrderWeight(left.memory) - getMemoryOrderWeight(right.memory)
+    const memoryDifference = getMemoryOrderWeight(left.memory || '') - getMemoryOrderWeight(right.memory || '')
     if (memoryDifference !== 0) return memoryDifference
 
     return (left.color || '').localeCompare(right.color || '')

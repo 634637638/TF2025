@@ -451,7 +451,7 @@
 import { TIME_FORMATS } from '@/utils/time'
 import { ref, computed, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import type { UploadFile, UploadFiles } from 'element-plus'
+import type { CheckboxValueType, UploadFile, UploadFiles, UploadRequestOptions } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import { unifiedApi as api } from '@/utils/unified-api'
 import { formatImageUrl } from '@/utils/format'
@@ -486,7 +486,6 @@ import {
 } from './publish-to-h5/helpers'
 import type {
   HeicConverter,
-  MediaUploadOptions,
   PendingUploadFile,
   PublishFormState,
   PublishInspectionResponse,
@@ -798,8 +797,8 @@ watch(
 )
 
 // 保修过期处理
-const handleWarrantyExpiredChange = (checked: boolean) => {
-  if (checked) {
+const handleWarrantyExpiredChange = (checked: CheckboxValueType): void => {
+  if (checked === true) {
     form.value.warranty_date = ''
   }
 }
@@ -840,6 +839,7 @@ const convertHeicToJpeg = async (file: File, index: number, total: number): Prom
     // 第三步：使用 Canvas 调整尺寸和压缩
     const canvas = document.createElement('canvas')
     const ctx = canvas.getContext('2d')
+    if (!ctx) throw new Error('浏览器不支持图片压缩')
 
     // 计算缩放比例（最大宽度 1920px）
     const maxWidth = 1920
@@ -944,7 +944,7 @@ const handleFileChange = async (_file: UploadFile, fileList: UploadFiles) => {
         conversionPromises.push(
           prepareMediaFile(f.raw)
             .then(converted => buildConvertedPublishFile(f, converted))
-            .catch(error => {
+            .catch((error): null => {
               logger.error(`[PDF 转换] 处理失败: ${f.name}`, error)
               ElMessage.error(`${f.name} PDF转换失败`)
               return null
@@ -957,7 +957,7 @@ const handleFileChange = async (_file: UploadFile, fileList: UploadFiles) => {
         conversionPromises.push(
           convertHeicToJpeg(f.raw, heicIndex, heicFiles.length)
             .then((converted) => buildConvertedPublishFile(f, converted))
-            .catch(error => {
+            .catch((error): null => {
               logger.error(`[HEIC 转换] 处理失败: ${f.name}`, error)
               // 转换失败不添加到列表，跳过该文件
               return null
@@ -1104,8 +1104,15 @@ const beforeMediaUpload = (file: File) => {
   return true
 }
 
+const createUploadError = (message: string) => Object.assign(new Error(message), {
+  name: 'UploadAjaxError',
+  status: 0,
+  method: 'POST',
+  url: ''
+})
+
 // 统一上传处理（使用自定义上传）
-const handleMediaUpload = async (options: MediaUploadOptions) => {
+const handleMediaUpload = async (options: UploadRequestOptions): Promise<void> => {
   const { file, onError, onSuccess } = options
   const isVideo = file.type.startsWith('video/')
 
@@ -1119,12 +1126,12 @@ const handleMediaUpload = async (options: MediaUploadOptions) => {
       await loadPhoneImages()
     } else {
       ElMessage.error(result.message || '上传失败')
-      onError(new Error(result.message || '上传失败'))
+      onError(createUploadError(result.message || '上传失败'))
     }
   } catch (error) {
     logger.error('上传失败:', error)
     ElMessage.error('上传失败，请重试')
-    onError(error instanceof Error ? error : new Error('上传失败，请重试'))
+    onError(createUploadError(error instanceof Error ? error.message : '上传失败，请重试'))
   } finally {
     uploading.value = false
   }

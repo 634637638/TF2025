@@ -36,11 +36,7 @@ test('H5 渠道只使用模板规则', () => {
 
 test('价目表页面保留后端计算的渠道展示价', () => {
   const view = fs.readFileSync(path.join(__dirname, '../../frontend/src/views/price-list/PriceListView.vue'), 'utf8')
-  const mappingStart = view.indexOf('const formattedList = list.map')
-  const mappingEnd = view.indexOf('priceList.value = formattedList', mappingStart)
-  const mapping = view.slice(mappingStart, mappingEnd)
-
-  assert.ok(mappingStart >= 0 && mappingEnd > mappingStart)
-  assert.match(mapping, /sales_display_price:\s*item\.sales_display_price/)
-  assert.match(mapping, /wholesale_display_price:\s*item\.wholesale_display_price/)
+  // 这里只检查页面接入正式归一化入口；渠道价格的输入输出由 Vitest 行为测试覆盖。
+  assert.match(view, /import\s*\{\s*normalizePriceListRow\s*\}\s*from\s*['"]\.\/price-list-row['"]/)
+  assert.match(view, /\.map\(normalizePriceListRow\)/)
 })

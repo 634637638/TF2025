@@ -73,7 +73,7 @@
           >
             <template #default="{ row }">
               <el-radio
-                :model-value="selectedPhoneId"
+                :model-value="selectedPhoneId ?? undefined"
                 :value="row.id"
                 aria-label="选择设备"
                 @change="selectPhone(row)"

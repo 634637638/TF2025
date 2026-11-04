@@ -544,7 +544,7 @@
             <div class="filter-bar">
               <el-radio-group
                 v-model="matchedStatus"
-                @change="loadMatchedPreorders"
+                @change="handleMatchedStatusChange"
               >
                 <el-radio-button value="all">
                   全部
@@ -1250,6 +1250,7 @@ import { TIME_FORMATS } from '@/utils/time'
 import { confirmAction } from '@/utils/message-box'
 import { ref, reactive, computed, onMounted, onBeforeUnmount, defineAsyncComponent } from 'vue'
 import { useRouter } from 'vue-router'
+import type { TabPaneName } from 'element-plus'
 import { useNotification } from '@/composables/useNotification'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
@@ -1646,14 +1647,19 @@ const handleDeliveredPaginationChange = (page: number, pageSize: number) => {
   void loadDeliveredPreorders()
 }
 
+const handleMatchedStatusChange = () => {
+  void loadMatchedPreorders()
+}
+
 // TAB切换
-const handleTabChange = async (tabName: string) => {
+const handleTabChange = async (tabName: TabPaneName) => {
   pagination.page = 1
-  if (tabName === 'new') {
+  const normalizedTabName = String(tabName)
+  if (normalizedTabName === 'new') {
     await loadPendingPreorders()
-  } else if (tabName === 'matched') {
+  } else if (normalizedTabName === 'matched') {
     await loadMatchedPreorders()
-  } else if (tabName === 'delivered') {
+  } else if (normalizedTabName === 'delivered') {
     await loadDeliveredPreorders()
   }
 }

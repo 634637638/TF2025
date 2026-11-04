@@ -17,7 +17,7 @@
             v-if="canCreate"
             type="primary"
             :loading="isCreating"
-            @click="createBackup"
+            @click="createDialogVisible = true"
           >
             <span v-if="isCreating">备份中...</span>
             <template v-else>
@@ -112,7 +112,7 @@
                 <el-button
                   v-if="canCreate"
                   type="primary"
-                  @click="createBackup"
+                  @click="createDialogVisible = true"
                 >
                   <i class="fas fa-plus" />
                   创建第一个备份
@@ -131,6 +131,20 @@
                   <i class="fas fa-file-archive" />
                   <span>{{ row.filename }}</span>
                 </div>
+              </template>
+            </el-table-column>
+            <el-table-column
+              label="备份类型"
+              width="130"
+              align="center"
+            >
+              <template #default="{ row }">
+                <el-tag
+                  :type="row.type === 'database' ? 'success' : 'primary'"
+                  size="small"
+                >
+                  {{ row.type === 'database' ? '仅数据库' : '完整备份' }}
+                </el-tag>
               </template>
             </el-table-column>
             <el-table-column
@@ -203,6 +217,51 @@
       </div>
     </PermissionGate>
 
+    <el-dialog
+      v-model="createDialogVisible"
+      title="创建备份"
+      width="min(520px, calc(100vw - 32px))"
+      class="backup-create-dialog"
+      :close-on-click-modal="false"
+    >
+      <el-radio-group
+        v-model="backupType"
+        class="backup-type-options"
+      >
+        <el-radio
+          value="database"
+          border
+          class="backup-type-option"
+        >
+          <span class="backup-type-title">仅备份数据库</span>
+          <span class="backup-type-description">导出当前配置连接的 MySQL 数据库，生成 SQL 文件。</span>
+        </el-radio>
+        <el-radio
+          value="full"
+          border
+          class="backup-type-option"
+        >
+          <span class="backup-type-title">完整备份</span>
+          <span class="backup-type-description">包含数据库、后端代码和上传文件，生成 ZIP 压缩包。</span>
+        </el-radio>
+      </el-radio-group>
+      <template #footer>
+        <el-button
+          :disabled="isCreating"
+          @click="createDialogVisible = false"
+        >
+          取消
+        </el-button>
+        <el-button
+          type="primary"
+          :loading="isCreating"
+          @click="createBackup"
+        >
+          {{ backupType === 'database' ? '创建数据库备份' : '创建完整备份' }}
+        </el-button>
+      </template>
+    </el-dialog>
+
     <!-- 清理对话框 -->
     <el-dialog
       v-model="cleanupDialogVisible"
@@ -270,6 +329,7 @@ const isCleaningUp = ref(false)
 const downloadingFilename = ref<string | null>(null)
 interface BackupRecord {
   filename: string
+  type?: 'database' | 'full'
   size?: string
   created_at?: string
 }
@@ -284,6 +344,8 @@ interface BackupStorageInfo {
 
 const backupList = ref<BackupRecord[]>([])
 const hasInitializedPageData = ref(false)
+const createDialogVisible = ref(false)
+const backupType = ref<'database' | 'full'>('database')
 const storageInfo = ref<BackupStorageInfo>({
   backup_dir: '',
   backend_root: '',
@@ -349,7 +411,9 @@ const createBackup = async () => {
 
   try {
     await confirmAction(
-      '确定要创建备份吗？备份过程可能需要几分钟时间。',
+      backupType.value === 'database'
+        ? '将导出当前配置连接的数据库，过程可能需要几分钟。'
+        : '将备份数据库、后端代码和上传文件，过程可能需要几分钟。',
       '创建备份',
       {
         confirmButtonText: '确定',
@@ -366,12 +430,13 @@ const createBackup = async () => {
 
   try {
     // 备份可能需要较长时间（特别是上传文件较大时），设置10分钟超时
-    const response = await unifiedApi.post('/backup/create', {}, {
+    const response = await unifiedApi.post('/backup/create', { type: backupType.value }, {
       timeout: 10 * 60 * 1000  // 10分钟超时
     })
     if (response.success) {
       const backupPath = response.data?.path ? `\n路径：${response.data.path}` : ''
-      success(`备份创建成功：${response.data.filename}${backupPath}`)
+      success(`${backupType.value === 'database' ? '数据库备份' : '完整备份'}创建成功：${response.data.filename}${backupPath}`)
+      createDialogVisible.value = false
       await loadBackupList()
     } else {
       throw new Error(response.message || '备份失败')
@@ -634,6 +699,39 @@ watch(canView, async (value) => {
   margin-left: 12px;
   font-size: var(--tf-type-scale-13);
   color: var(--text-secondary, var(--tf-color-muted));
+}
+
+.backup-type-options {
+  display: grid;
+  width: 100%;
+  gap: var(--tf-space-3);
+}
+
+.backup-type-option {
+  display: flex;
+  width: 100%;
+  height: auto;
+  min-height: 76px;
+  margin-right: 0;
+  padding: var(--tf-space-4);
+  white-space: normal;
+}
+
+.backup-type-title,
+.backup-type-description {
+  display: block;
+}
+
+.backup-type-title {
+  margin-bottom: var(--tf-space-1);
+  color: var(--text-primary, var(--tf-color-heading));
+  font-weight: 600;
+}
+
+.backup-type-description {
+  color: var(--text-secondary, var(--tf-color-muted));
+  font-size: var(--tf-type-scale-13);
+  line-height: 1.5;
 }
 
 /* 响应式 */

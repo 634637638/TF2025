@@ -639,7 +639,7 @@
             <h4>负责人信息</h4>
             <div class="detail-row">
               <span class="label">门店负责人：</span>
-              <span class="value">{{ selectedStore.manager || getManagerName(selectedStore.manager_id) }}</span>
+              <span class="value">{{ selectedStore.manager || getManagerName(selectedStore.manager_id ?? null) }}</span>
             </div>
           </div>
 
@@ -651,7 +651,7 @@
             <h4>时间信息</h4>
             <div class="detail-row">
               <span class="label">创建时间：</span>
-              <span class="value">{{ formatDate(selectedStore.created_at) }}</span>
+              <span class="value">{{ formatDate(selectedStore.created_at || '') }}</span>
             </div>
             <div
               v-if="selectedStore.updated_at"
@@ -800,7 +800,7 @@ const showEditModal = ref(false)
 const showViewModal = ref(false)
 const currentEditingId = ref<number | null>(null)
 const selectedStore = ref<Store | null>(null)
-const storesTableRef = ref<unknown>(null)
+const storesTableRef = ref<HTMLElement | { $el?: HTMLElement } | null>(null)
 const mobileActionRowId = ref<string | null>(null)
 const lastTappedRowId = ref<string | null>(null)
 const lastTapTimestamp = ref(0)

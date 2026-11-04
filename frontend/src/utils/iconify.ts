@@ -112,7 +112,7 @@ export function refreshIconifyIcons() {
     if (!Iconify) return 0
 
     // 扫描并渲染所有图标
-    const scanned = Iconify.scan()
+    const scanned = Iconify.scan?.() ?? 0
 
     // 额外：手动查找并刷新每个图标
     const elements = document.querySelectorAll<HTMLElement>('.iconify[data-icon]')

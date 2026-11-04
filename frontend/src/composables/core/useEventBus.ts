@@ -28,8 +28,11 @@ class EventBus {
    */
   on<T = unknown>(event: string, callback: (data: T) => void, once = false): () => void {
     const listeners = this.events.get(event) || []
-    const listener: EventBusListener<T> = { callback, once }
-    listeners.push(listener as EventBusListener<unknown>)
+    const listener: EventBusListener<unknown> = {
+      callback: (data: unknown) => callback(data as T),
+      once
+    }
+    listeners.push(listener)
     this.events.set(event, listeners)
 
     // 返回取消订阅函数
@@ -144,7 +147,7 @@ class EventBus {
    */
   hasListeners(event: string): boolean {
     const listeners = this.events.get(event)
-    return listeners && listeners.length > 0
+    return Boolean(listeners?.length)
   }
 }
 

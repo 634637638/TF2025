@@ -535,7 +535,7 @@ interface Memory {
   updated_at: string | null
 }
 
-const memoriesTableRef = ref<unknown>(null)
+const memoriesTableRef = ref<HTMLElement | { $el?: HTMLElement } | null>(null)
 const mobileActionRowId = ref<string | null>(null)
 const lastTappedRowId = ref<string | null>(null)
 const lastTapTimestamp = ref(0)
@@ -769,7 +769,7 @@ const _changePage = (page: number) => {
   loadMemories()
 }
 
-const handlePaginationChange = (page, pageSize) => {
+const handlePaginationChange = (page: number, pageSize: number): void => {
   const oldPageSize = pagination.value.page_size
   pagination.value.page_size = pageSize
   pagination.value.page = pageSize !== oldPageSize ? 1 : page
@@ -859,11 +859,11 @@ const submitForm = async () => {
     if (showCreateModal.value) {
       response = await unifiedApi.post('/memories', formData.value, { showError: false })
       if (response.success) {
-        success('操作成功', response.message || '内存规格创建成功')
+        success(response.message || '内存规格创建成功', { title: '操作成功' })
         closeModal()
         await loadMemories(true, false, false)
       } else {
-        error('创建内存规格失败', response.message || '未知错误')
+        error(response.message || '未知错误', { title: '创建内存规格失败' })
       }
     } else {
       if (!currentEditingId.value) {
@@ -873,11 +873,11 @@ const submitForm = async () => {
       }
       response = await unifiedApi.put(`/memories/${currentEditingId.value}`, formData.value, { showError: false })
       if (response.success) {
-        success('操作成功', response.message || '内存规格更新成功')
+        success(response.message || '内存规格更新成功', { title: '操作成功' })
         closeModal()
         await loadMemories(true, false, false)
       } else {
-        error('更新内存规格失败', response.message || '未知错误')
+        error(response.message || '未知错误', { title: '更新内存规格失败' })
       }
     }
   } catch (err: unknown) {

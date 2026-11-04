@@ -883,12 +883,40 @@
       "spacing": 25,
       "layering": 0
     },
+    "src/components/base/PageHeader.vue": {
+      "radius": 3,
+      "shadow": 1,
+      "typography": 11,
+      "spacing": 16,
+      "layering": 0
+    },
+    "src/components/base/PublicPriceHeader.vue": {
+      "radius": 1,
+      "shadow": 0,
+      "typography": 7,
+      "spacing": 25,
+      "layering": 0
+    },
     "src/components/CitySelector.vue": {
       "radius": 2,
       "shadow": 2,
       "typography": 4,
       "spacing": 6,
       "layering": 0
+    },
+    "src/components/common/CustomerNameLockInput.vue": {
+      "radius": 1,
+      "shadow": 0,
+      "typography": 2,
+      "spacing": 7,
+      "layering": 0
+    },
+    "src/components/common/CustomerSearchDropdown.vue": {
+      "radius": 1,
+      "shadow": 0,
+      "typography": 9,
+      "spacing": 12,
+      "layering": 2
     },
     "src/components/ComprehensiveWarnings.vue": {
       "radius": 4,
@@ -988,13 +1016,6 @@
       "spacing": 43,
       "layering": 0
     },
-    "src/components/InventoryResultDialog.vue": {
-      "radius": 16,
-      "shadow": 5,
-      "typography": 34,
-      "spacing": 50,
-      "layering": 1
-    },
     "src/components/InventoryWarnings.vue": {
       "radius": 5,
       "shadow": 2,
@@ -1022,6 +1043,13 @@
       "typography": 10,
       "spacing": 11,
       "layering": 0
+    },
+    "src/components/mobile/MobileSlideMenu.vue": {
+      "radius": 4,
+      "shadow": 3,
+      "typography": 11,
+      "spacing": 16,
+      "layering": 3
     },
     "src/components/MobileDialog.vue": {
       "radius": 3,
@@ -1100,139 +1128,6 @@
       "spacing": 32,
       "layering": 0
     },
-    "src/components/ReminderHost.vue": {
-      "radius": 2,
-      "shadow": 0,
-      "typography": 6,
-      "spacing": 17,
-      "layering": 0
-    },
-    "src/components/ResponsiveLayout.vue": {
-      "radius": 2,
-      "shadow": 1,
-      "typography": 5,
-      "spacing": 10,
-      "layering": 6
-    },
-    "src/components/ResponsiveMenu.vue": {
-      "radius": 5,
-      "shadow": 0,
-      "typography": 0,
-      "spacing": 1,
-      "layering": 2
-    },
-    "src/components/ScreenLock.vue": {
-      "radius": 3,
-      "shadow": 2,
-      "typography": 13,
-      "spacing": 15,
-      "layering": 2
-    },
-    "src/components/ScreenLockSettings.vue": {
-      "radius": 5,
-      "shadow": 1,
-      "typography": 12,
-      "spacing": 21,
-      "layering": 0
-    },
-    "src/components/SectionLoading.vue": {
-      "radius": 2,
-      "shadow": 1,
-      "typography": 0,
-      "spacing": 3,
-      "layering": 1
-    },
-    "src/components/SimpleSidebar.vue": {
-      "radius": 7,
-      "shadow": 2,
-      "typography": 19,
-      "spacing": 33,
-      "layering": 6
-    },
-    "src/components/SiteHeader.vue": {
-      "radius": 1,
-      "shadow": 0,
-      "typography": 4,
-      "spacing": 3,
-      "layering": 0
-    },
-    "src/components/StockInDetailModal.vue": {
-      "radius": 9,
-      "shadow": 1,
-      "typography": 18,
-      "spacing": 36,
-      "layering": 0
-    },
-    "src/components/StockInModal.vue": {
-      "radius": 2,
-      "shadow": 0,
-      "typography": 4,
-      "spacing": 10,
-      "layering": 0
-    },
-    "src/components/TabsBar.vue": {
-      "radius": 4,
-      "shadow": 1,
-      "typography": 4,
-      "spacing": 8,
-      "layering": 0
-    },
-    "src/components/Toast.vue": {
-      "radius": 2,
-      "shadow": 2,
-      "typography": 2,
-      "spacing": 4,
-      "layering": 1
-    },
-    "src/components/UserInfo.vue": {
-      "radius": 2,
-      "shadow": 0,
-      "typography": 3,
-      "spacing": 5,
-      "layering": 0
-    },
-    "src/components/WholesaleModal.vue": {
-      "radius": 3,
-      "shadow": 2,
-      "typography": 8,
-      "spacing": 19,
-      "layering": 0
-    },
-    "src/components/base/PageHeader.vue": {
-      "radius": 3,
-      "shadow": 1,
-      "typography": 11,
-      "spacing": 16,
-      "layering": 0
-    },
-    "src/components/base/PublicPriceHeader.vue": {
-      "radius": 1,
-      "shadow": 0,
-      "typography": 7,
-      "spacing": 25,
-      "layering": 0
-    },
-    "src/components/common/CustomerNameLockInput.vue": {
-      "radius": 1,
-      "shadow": 0,
-      "typography": 2,
-      "spacing": 7,
-      "layering": 0
-    },
-    "src/components/common/CustomerSearchDropdown.vue": {
-      "radius": 1,
-      "shadow": 0,
-      "typography": 9,
-      "spacing": 12,
-      "layering": 2
-    },
-    "src/components/mobile/MobileSlideMenu.vue": {
-      "radius": 4,
-      "shadow": 3,
-      "typography": 11,
-      "spacing": 16,
-      "layering": 3
-    },
     "src/components/query/QueryDetailContent.vue": {
       "radius": 9,
       "shadow": 1,
@@ -1275,11 +1170,39 @@
       "spacing": 54,
       "layering": 0
     },
-    "src/components/search/UnifiedSearchPanel.vue": {
+    "src/components/ReminderHost.vue": {
       "radius": 2,
-      "shadow": 2,
+      "shadow": 0,
+      "typography": 6,
+      "spacing": 17,
+      "layering": 0
+    },
+    "src/components/ResponsiveLayout.vue": {
+      "radius": 2,
+      "shadow": 1,
+      "typography": 5,
+      "spacing": 10,
+      "layering": 6
+    },
+    "src/components/ResponsiveMenu.vue": {
+      "radius": 5,
+      "shadow": 0,
       "typography": 0,
-      "spacing": 18,
+      "spacing": 1,
+      "layering": 2
+    },
+    "src/components/ScreenLock.vue": {
+      "radius": 3,
+      "shadow": 2,
+      "typography": 13,
+      "spacing": 15,
+      "layering": 2
+    },
+    "src/components/ScreenLockSettings.vue": {
+      "radius": 5,
+      "shadow": 1,
+      "typography": 12,
+      "spacing": 21,
       "layering": 0
     },
     "src/components/search/PublicSearchBox.vue": {
@@ -1287,6 +1210,27 @@
       "shadow": 3,
       "typography": 3,
       "spacing": 5,
+      "layering": 0
+    },
+    "src/components/search/UnifiedSearchPanel.vue": {
+      "radius": 2,
+      "shadow": 2,
+      "typography": 0,
+      "spacing": 18,
+      "layering": 0
+    },
+    "src/components/SectionLoading.vue": {
+      "radius": 2,
+      "shadow": 1,
+      "typography": 0,
+      "spacing": 3,
+      "layering": 1
+    },
+    "src/components/SiteHeader.vue": {
+      "radius": 1,
+      "shadow": 0,
+      "typography": 4,
+      "spacing": 3,
       "layering": 0
     },
     "src/components/stock-in/StockInBasicInfoSection.vue": {
@@ -1303,6 +1247,84 @@
       "spacing": 12,
       "layering": 0
     },
+    "src/components/StockInDetailModal.vue": {
+      "radius": 9,
+      "shadow": 1,
+      "typography": 18,
+      "spacing": 36,
+      "layering": 0
+    },
+    "src/components/StockInModal.vue": {
+      "radius": 2,
+      "shadow": 0,
+      "typography": 4,
+      "spacing": 10,
+      "layering": 0
+    },
+    "src/components/styles/inventory-result-dialog/compact.scss": {
+      "radius": 0,
+      "shadow": 0,
+      "typography": 0,
+      "spacing": 8,
+      "layering": 0
+    },
+    "src/components/styles/inventory-result-dialog/header.scss": {
+      "radius": 3,
+      "shadow": 0,
+      "typography": 0,
+      "spacing": 7,
+      "layering": 0
+    },
+    "src/components/styles/inventory-result-dialog/inventory-list.scss": {
+      "radius": 7,
+      "shadow": 3,
+      "typography": 0,
+      "spacing": 9,
+      "layering": 0
+    },
+    "src/components/styles/inventory-result-dialog/mobile.scss": {
+      "radius": 4,
+      "shadow": 1,
+      "typography": 0,
+      "spacing": 14,
+      "layering": 0
+    },
+    "src/components/styles/simple-sidebar/desktop.css": {
+      "radius": 4,
+      "shadow": 2,
+      "spacing": 15,
+      "layering": 3
+    },
+    "src/components/styles/simple-sidebar/mobile.css": {
+      "radius": 3,
+      "spacing": 11,
+      "layering": 2
+    },
+    "src/components/styles/simple-sidebar/responsive.css": {
+      "spacing": 7,
+      "layering": 1
+    },
+    "src/components/TabsBar.vue": {
+      "radius": 4,
+      "shadow": 1,
+      "typography": 4,
+      "spacing": 8,
+      "layering": 0
+    },
+    "src/components/Toast.vue": {
+      "radius": 2,
+      "shadow": 2,
+      "typography": 2,
+      "spacing": 4,
+      "layering": 1
+    },
+    "src/components/UserInfo.vue": {
+      "radius": 2,
+      "shadow": 0,
+      "typography": 3,
+      "spacing": 5,
+      "layering": 0
+    },
     "src/components/wholesale/WholesalePartySection.vue": {
       "radius": 3,
       "shadow": 2,
@@ -1316,6 +1338,20 @@
       "typography": 5,
       "spacing": 9,
       "layering": 0
+    },
+    "src/components/WholesaleModal.vue": {
+      "radius": 3,
+      "shadow": 2,
+      "typography": 8,
+      "spacing": 19,
+      "layering": 0
+    },
+    "src/styles.scss": {
+      "radius": 10,
+      "shadow": 5,
+      "typography": 12,
+      "spacing": 26,
+      "layering": 2
     },
     "src/styles/_variables.scss": {
       "radius": 1,
@@ -1415,25 +1451,205 @@
       "spacing": 56,
       "layering": 7
     },
-    "src/styles.scss": {
-      "radius": 10,
+    "src/views/accessories/AccessoriesView.vue": {
+      "radius": 0,
+      "shadow": 0,
+      "typography": 0,
+      "spacing": 1,
+      "layering": 0
+    },
+    "src/views/analytics/AnalyticsView.vue": {
+      "radius": 0,
+      "shadow": 0,
+      "typography": 0,
+      "spacing": 2,
+      "layering": 0
+    },
+    "src/views/analytics/page/CustomerAnalytics.vue": {
+      "radius": 2,
+      "shadow": 0,
+      "typography": 9,
+      "spacing": 20,
+      "layering": 0
+    },
+    "src/views/analytics/page/EmployeeAnalytics.vue": {
+      "radius": 4,
+      "shadow": 3,
+      "typography": 21,
+      "spacing": 28,
+      "layering": 0
+    },
+    "src/views/analytics/page/InventoryAnalytics.vue": {
+      "radius": 7,
+      "shadow": 4,
+      "typography": 19,
+      "spacing": 28,
+      "layering": 1
+    },
+    "src/views/analytics/page/ProfitAnalytics.vue": {
+      "radius": 17,
+      "shadow": 4,
+      "typography": 52,
+      "spacing": 86,
+      "layering": 0
+    },
+    "src/views/analytics/page/styles/sales-analytics/forecast.scss": {
+      "radius": 4,
+      "shadow": 2,
+      "typography": 0,
+      "spacing": 21,
+      "layering": 0
+    },
+    "src/views/analytics/page/styles/sales-analytics/mobile.scss": {
+      "radius": 3,
+      "shadow": 2,
+      "typography": 0,
+      "spacing": 8,
+      "layering": 0
+    },
+    "src/views/analytics/page/styles/sales-analytics/overview.scss": {
+      "radius": 2,
+      "shadow": 1,
+      "typography": 0,
+      "spacing": 14,
+      "layering": 0
+    },
+    "src/views/analytics/page/TransferAnalytics.vue": {
+      "radius": 1,
+      "shadow": 0,
+      "typography": 15,
+      "spacing": 18,
+      "layering": 0
+    },
+    "src/views/attendance/AttendanceView.vue": {
+      "radius": 8,
+      "shadow": 1,
+      "typography": 22,
+      "spacing": 46,
+      "layering": 0
+    },
+    "src/views/auth/index.vue": {
+      "radius": 0,
+      "shadow": 0,
+      "typography": 0,
+      "spacing": 1,
+      "layering": 0
+    },
+    "src/views/auth/LoginViewSimple.vue": {
+      "radius": 4,
+      "shadow": 2,
+      "typography": 5,
+      "spacing": 10,
+      "layering": 0
+    },
+    "src/views/backup/BackupView.vue": {
+      "radius": 3,
+      "shadow": 2,
+      "typography": 7,
+      "spacing": 16,
+      "layering": 0
+    },
+    "src/views/brands/styles/brands-view/accessibility.css": {
+      "radius": 0,
+      "shadow": 0,
+      "typography": 0,
+      "spacing": 1,
+      "layering": 0
+    },
+    "src/views/brands/styles/brands-view/base.css": {
+      "radius": 8,
+      "shadow": 2,
+      "typography": 0,
+      "spacing": 24,
+      "layering": 1
+    },
+    "src/views/brands/styles/brands-view/responsive.css": {
+      "radius": 3,
+      "shadow": 0,
+      "typography": 0,
+      "spacing": 18,
+      "layering": 0
+    },
+    "src/views/colors/ColorsView.vue": {
+      "radius": 16,
       "shadow": 5,
-      "typography": 12,
-      "spacing": 26,
-      "layering": 2
+      "typography": 22,
+      "spacing": 48,
+      "layering": 0
+    },
+    "src/views/customers/CustomersView.vue": {
+      "radius": 16,
+      "shadow": 3,
+      "typography": 40,
+      "spacing": 88,
+      "layering": 0
+    },
+    "src/views/dashboard/DashboardView.vue": {
+      "radius": 10,
+      "shadow": 3,
+      "typography": 27,
+      "spacing": 40,
+      "layering": 0
+    },
+    "src/views/data-optimization/DataOptimizationView.vue": {
+      "radius": 1,
+      "shadow": 1,
+      "typography": 0,
+      "spacing": 2,
+      "layering": 0
+    },
+    "src/views/data-optimization/page/DatabaseSyncTab.vue": {
+      "radius": 6,
+      "shadow": 4,
+      "typography": 8,
+      "spacing": 29,
+      "layering": 1
+    },
+    "src/views/data-optimization/page/DataCheckTab.vue": {
+      "radius": 9,
+      "shadow": 3,
+      "typography": 10,
+      "spacing": 40,
+      "layering": 0
+    },
+    "src/views/data-optimization/page/styles/data-import/analysis-summary.scss": {
+      "radius": 2,
+      "spacing": 11
+    },
+    "src/views/data-optimization/page/styles/data-import/duplicates.scss": {
+      "radius": 8,
+      "spacing": 24
+    },
+    "src/views/data-optimization/page/styles/data-import/history.scss": {
+      "radius": 1,
+      "spacing": 6
+    },
+    "src/views/data-optimization/page/styles/data-import/progress.scss": {
+      "radius": 1,
+      "spacing": 5
+    },
+    "src/views/data-optimization/page/styles/data-import/strategies.scss": {
+      "radius": 2,
+      "shadow": 2,
+      "spacing": 9
+    },
+    "src/views/data-optimization/page/styles/data-import/upload.scss": {
+      "radius": 5,
+      "shadow": 1,
+      "spacing": 19
+    },
+    "src/views/employees/EmployeesView.vue": {
+      "radius": 29,
+      "shadow": 13,
+      "typography": 42,
+      "spacing": 117,
+      "layering": 0
     },
     "src/views/H5-admin/H5-adminView.vue": {
       "radius": 0,
       "shadow": 0,
       "typography": 0,
       "spacing": 3,
-      "layering": 0
-    },
-    "src/views/H5-admin/page/SoldProductsView.vue": {
-      "radius": 6,
-      "shadow": 2,
-      "typography": 20,
-      "spacing": 41,
       "layering": 0
     },
     "src/views/H5-admin/page/banners.vue": {
@@ -1450,13 +1666,6 @@
       "spacing": 36,
       "layering": 1
     },
-    "src/views/H5-admin/page/home-sections.vue": {
-      "radius": 19,
-      "shadow": 3,
-      "typography": 31,
-      "spacing": 63,
-      "layering": 2
-    },
     "src/views/H5-admin/page/orders.vue": {
       "radius": 6,
       "shadow": 3,
@@ -1464,12 +1673,56 @@
       "spacing": 49,
       "layering": 0
     },
-    "src/views/H5-admin/page/templates.vue": {
-      "radius": 27,
-      "shadow": 3,
-      "typography": 40,
-      "spacing": 112,
-      "layering": 2
+    "src/views/H5-admin/page/SoldProductsView.vue": {
+      "radius": 6,
+      "shadow": 2,
+      "typography": 20,
+      "spacing": 41,
+      "layering": 0
+    },
+    "src/views/H5-admin/page/styles/home-sections/product-picker.scss": {
+      "radius": 5,
+      "spacing": 8,
+      "layering": 1
+    },
+    "src/views/H5-admin/page/styles/home-sections/products.scss": {
+      "radius": 6,
+      "shadow": 1,
+      "spacing": 8,
+      "layering": 1
+    },
+    "src/views/H5-admin/page/styles/home-sections/responsive.scss": {
+      "radius": 4,
+      "shadow": 1,
+      "spacing": 26
+    },
+    "src/views/H5-admin/page/styles/home-sections/sections.scss": {
+      "radius": 4,
+      "shadow": 1,
+      "spacing": 19
+    },
+    "src/views/H5-admin/page/styles/templates/editor.css": {
+      "radius": 1,
+      "spacing": 9,
+      "layering": 1
+    },
+    "src/views/H5-admin/page/styles/templates/media.css": {
+      "radius": 4,
+      "spacing": 10,
+      "layering": 1
+    },
+    "src/views/H5-admin/page/styles/templates/mobile.css": {
+      "radius": 9,
+      "shadow": 2,
+      "spacing": 33
+    },
+    "src/views/H5-admin/page/styles/templates/overview.css": {
+      "radius": 5,
+      "spacing": 19
+    },
+    "src/views/H5-admin/page/styles/templates/tablet.css": {
+      "radius": 1,
+      "spacing": 15
     },
     "src/views/H5-mobile/H5-mobileView.vue": {
       "radius": 13,
@@ -1512,13 +1765,6 @@
       "typography": 28,
       "spacing": 48,
       "layering": 2
-    },
-    "src/views/H5-mobile/page/MyCenter.vue": {
-      "radius": 19,
-      "shadow": 3,
-      "typography": 47,
-      "spacing": 57,
-      "layering": 1
     },
     "src/views/H5-mobile/page/MyOrders.vue": {
       "radius": 4,
@@ -1576,159 +1822,47 @@
       "spacing": 1,
       "layering": 0
     },
-    "src/views/accessories/AccessoriesView.vue": {
-      "radius": 0,
-      "shadow": 0,
-      "typography": 0,
-      "spacing": 1,
-      "layering": 0
+    "src/views/H5-mobile/page/styles/my-center/account.scss": {
+      "radius": 4,
+      "spacing": 18
     },
-    "src/views/analytics/AnalyticsView.vue": {
-      "radius": 0,
-      "shadow": 0,
-      "typography": 0,
-      "spacing": 2,
-      "layering": 0
+    "src/views/H5-mobile/page/styles/my-center/functions.scss": {
+      "radius": 5,
+      "shadow": 1,
+      "spacing": 10
     },
-    "src/views/analytics/page/CustomerAnalytics.vue": {
+    "src/views/H5-mobile/page/styles/my-center/records.scss": {
       "radius": 2,
-      "shadow": 0,
-      "typography": 9,
-      "spacing": 20,
-      "layering": 0
+      "spacing": 13
     },
-    "src/views/analytics/page/EmployeeAnalytics.vue": {
-      "radius": 4,
-      "shadow": 3,
-      "typography": 21,
-      "spacing": 28,
-      "layering": 0
-    },
-    "src/views/analytics/page/InventoryAnalytics.vue": {
-      "radius": 7,
-      "shadow": 4,
-      "typography": 19,
-      "spacing": 28,
-      "layering": 1
-    },
-    "src/views/analytics/page/ProfitAnalytics.vue": {
-      "radius": 17,
-      "shadow": 4,
-      "typography": 52,
-      "spacing": 86,
-      "layering": 0
-    },
-    "src/views/analytics/page/SalesAnalytics.vue": {
-      "radius": 9,
-      "shadow": 5,
-      "typography": 23,
-      "spacing": 43,
-      "layering": 0
-    },
-    "src/views/analytics/page/TransferAnalytics.vue": {
-      "radius": 1,
-      "shadow": 0,
-      "typography": 15,
-      "spacing": 18,
-      "layering": 0
-    },
-    "src/views/attendance/AttendanceView.vue": {
+    "src/views/H5-mobile/page/styles/my-center/service.scss": {
       "radius": 8,
-      "shadow": 1,
-      "typography": 22,
-      "spacing": 46,
-      "layering": 0
-    },
-    "src/views/auth/LoginViewSimple.vue": {
-      "radius": 4,
       "shadow": 2,
-      "typography": 5,
-      "spacing": 10,
-      "layering": 0
-    },
-    "src/views/auth/index.vue": {
-      "radius": 0,
-      "shadow": 0,
-      "typography": 0,
-      "spacing": 1,
-      "layering": 0
-    },
-    "src/views/backup/BackupView.vue": {
-      "radius": 3,
-      "shadow": 2,
-      "typography": 7,
-      "spacing": 16,
-      "layering": 0
-    },
-    "src/views/brands/BrandsView.vue": {
-      "radius": 15,
-      "shadow": 3,
-      "typography": 28,
-      "spacing": 52,
+      "spacing": 15,
       "layering": 1
-    },
-    "src/views/colors/ColorsView.vue": {
-      "radius": 16,
-      "shadow": 5,
-      "typography": 22,
-      "spacing": 48,
-      "layering": 0
-    },
-    "src/views/customers/CustomersView.vue": {
-      "radius": 16,
-      "shadow": 3,
-      "typography": 40,
-      "spacing": 88,
-      "layering": 0
-    },
-    "src/views/dashboard/DashboardView.vue": {
-      "radius": 10,
-      "shadow": 3,
-      "typography": 27,
-      "spacing": 40,
-      "layering": 0
-    },
-    "src/views/data-optimization/DataOptimizationView.vue": {
-      "radius": 1,
-      "shadow": 1,
-      "typography": 0,
-      "spacing": 2,
-      "layering": 0
-    },
-    "src/views/data-optimization/page/DataCheckTab.vue": {
-      "radius": 9,
-      "shadow": 3,
-      "typography": 10,
-      "spacing": 40,
-      "layering": 0
-    },
-    "src/views/data-optimization/page/DataImportTab.vue": {
-      "radius": 19,
-      "shadow": 3,
-      "typography": 40,
-      "spacing": 74,
-      "layering": 0
-    },
-    "src/views/data-optimization/page/DatabaseSyncTab.vue": {
-      "radius": 6,
-      "shadow": 4,
-      "typography": 8,
-      "spacing": 29,
-      "layering": 1
-    },
-    "src/views/employees/EmployeesView.vue": {
-      "radius": 29,
-      "shadow": 13,
-      "typography": 42,
-      "spacing": 117,
-      "layering": 0
     },
     "src/views/inventory/InventoryView.vue": {
-      "radius": 22,
-      "shadow": 5,
-      "typography": 34,
-      "spacing": 88,
+      "radius": 5,
+      "spacing": 29
+    },
+    "src/views/inventory/styles/inventory-view/detail-grid.css": {
+      "radius": 4,
+      "spacing": 14
+    },
+    "src/views/inventory/styles/inventory-view/detail-shell.css": {
+      "radius": 4,
+      "shadow": 1,
+      "spacing": 10
+    },
+    "src/views/inventory/styles/inventory-view/form-and-table.css": {
+      "radius": 5,
+      "shadow": 2,
+      "spacing": 11,
       "layering": 4
+    },
+    "src/views/inventory/styles/inventory-view/mobile-cards.css": {
+      "radius": 2,
+      "spacing": 13
     },
     "src/views/marketing/MarketingManagementView.vue": {
       "radius": 6,
@@ -1751,25 +1885,36 @@
       "spacing": 29,
       "layering": 0
     },
-    "src/views/menu/MenuManagementView.vue": {
-      "radius": 24,
-      "shadow": 12,
-      "typography": 43,
-      "spacing": 79,
-      "layering": 2
+    "src/views/menu/styles/menu-management/editor.css": {
+      "radius": 7,
+      "shadow": 5,
+      "spacing": 21
+    },
+    "src/views/menu/styles/menu-management/layout-and-form.css": {
+      "radius": 2,
+      "shadow": 2,
+      "spacing": 10,
+      "layering": 1
+    },
+    "src/views/menu/styles/menu-management/menu-cells.css": {
+      "radius": 7,
+      "spacing": 8,
+      "layering": 1
+    },
+    "src/views/menu/styles/menu-management/responsive.css": {
+      "radius": 2,
+      "spacing": 10
+    },
+    "src/views/menu/styles/menu-management/table.css": {
+      "radius": 1,
+      "shadow": 1,
+      "spacing": 3
     },
     "src/views/models/ModelsView.vue": {
       "radius": 11,
       "shadow": 2,
       "typography": 13,
       "spacing": 27,
-      "layering": 0
-    },
-    "src/views/payments/SupplierPhonePaymentsView.vue": {
-      "radius": 1,
-      "shadow": 0,
-      "typography": 1,
-      "spacing": 10,
       "layering": 0
     },
     "src/views/payments/styles/supplier-phone-payments/_batch-details.scss": {
@@ -1814,6 +1959,13 @@
       "spacing": 2,
       "layering": 0
     },
+    "src/views/payments/SupplierPhonePaymentsView.vue": {
+      "radius": 1,
+      "shadow": 0,
+      "typography": 1,
+      "spacing": 10,
+      "layering": 0
+    },
     "src/views/permissions/page/LogsPage.vue": {
       "radius": 3,
       "shadow": 0,
@@ -1849,13 +2001,6 @@
       "spacing": 327,
       "layering": 4
     },
-    "src/views/preorders/PreordersView.vue": {
-      "radius": 0,
-      "shadow": 1,
-      "typography": 0,
-      "spacing": 4,
-      "layering": 1
-    },
     "src/views/preorders/page/DeliverConfirmModal.vue": {
       "radius": 0,
       "shadow": 0,
@@ -1877,40 +2022,12 @@
       "spacing": 17,
       "layering": 1
     },
-    "src/views/price-list/PriceListView.vue": {
-      "radius": 13,
-      "shadow": 1,
-      "typography": 18,
-      "spacing": 31,
-      "layering": 0
-    },
-    "src/views/price-list/page/SalesPriceDisplay.vue": {
-      "radius": 15,
-      "shadow": 6,
-      "typography": 60,
-      "spacing": 102,
-      "layering": 3
-    },
-    "src/views/price-list/page/SyncLogView.vue": {
-      "radius": 6,
-      "shadow": 0,
-      "typography": 12,
-      "spacing": 26,
-      "layering": 0
-    },
-    "src/views/price-list/page/public-price-query/_image-capture.scss": {
+    "src/views/preorders/PreordersView.vue": {
       "radius": 0,
       "shadow": 1,
-      "typography": 6,
-      "spacing": 8,
-      "layering": 3
-    },
-    "src/views/price-list/page/public-price-query/_ios-save-dialog.scss": {
-      "radius": 3,
-      "shadow": 0,
-      "typography": 5,
-      "spacing": 9,
-      "layering": 0
+      "typography": 0,
+      "spacing": 4,
+      "layering": 1
     },
     "src/views/price-list/page/public-price-query-scoped/_feedback-and-notices.scss": {
       "radius": 5,
@@ -1940,12 +2057,72 @@
       "spacing": 28,
       "layering": 0
     },
-    "src/views/query/QueryView.vue": {
-      "radius": 19,
-      "shadow": 4,
-      "typography": 45,
-      "spacing": 85,
-      "layering": 4
+    "src/views/price-list/page/public-price-query/_image-capture.scss": {
+      "radius": 0,
+      "shadow": 1,
+      "typography": 6,
+      "spacing": 8,
+      "layering": 3
+    },
+    "src/views/price-list/page/public-price-query/_ios-save-dialog.scss": {
+      "radius": 3,
+      "shadow": 0,
+      "typography": 5,
+      "spacing": 9,
+      "layering": 0
+    },
+    "src/views/price-list/page/sales-price-display/contact-card.scss": {
+      "radius": 7,
+      "spacing": 28
+    },
+    "src/views/price-list/page/sales-price-display/page.scss": {
+      "radius": 2,
+      "shadow": 2,
+      "spacing": 32
+    },
+    "src/views/price-list/page/SalesPriceDisplay.vue": {
+      "radius": 1,
+      "shadow": 1,
+      "spacing": 7,
+      "layering": 3
+    },
+    "src/views/price-list/page/SyncLogView.vue": {
+      "radius": 6,
+      "shadow": 0,
+      "typography": 12,
+      "spacing": 26,
+      "layering": 0
+    },
+    "src/views/price-list/PriceListView.vue": {
+      "radius": 13,
+      "shadow": 1,
+      "typography": 18,
+      "spacing": 31,
+      "layering": 0
+    },
+    "src/views/query/styles/query-view/base.css": {
+      "radius": 2,
+      "shadow": 2,
+      "spacing": 22,
+      "layering": 1
+    },
+    "src/views/query/styles/query-view/image-preview.css": {
+      "radius": 5,
+      "spacing": 11,
+      "layering": 3
+    },
+    "src/views/query/styles/query-view/mobile-layout.css": {
+      "radius": 1,
+      "spacing": 4
+    },
+    "src/views/query/styles/query-view/responsive.css": {
+      "radius": 2,
+      "spacing": 23
+    },
+    "src/views/query/styles/query-view/return-dialog.css": {
+      "radius": 4,
+      "shadow": 1,
+      "spacing": 16
     },
     "src/views/reminders/ReminderView.vue": {
       "radius": 2,
@@ -1966,13 +2143,6 @@
       "shadow": 0,
       "typography": 4,
       "spacing": 7,
-      "layering": 0
-    },
-    "src/views/salary/SalaryView.vue": {
-      "radius": 16,
-      "shadow": 4,
-      "typography": 54,
-      "spacing": 105,
       "layering": 0
     },
     "src/views/salary/page/SalaryAttendanceFormDialog.vue": {
@@ -2010,18 +2180,18 @@
       "spacing": 9,
       "layering": 0
     },
-    "src/views/salary/page/SalaryEmployeeTemplateDialog.vue": {
-      "radius": 2,
-      "shadow": 1,
-      "typography": 7,
-      "spacing": 14,
-      "layering": 0
-    },
     "src/views/salary/page/SalaryEmployeesTab.vue": {
       "radius": 0,
       "shadow": 0,
       "typography": 2,
       "spacing": 4,
+      "layering": 0
+    },
+    "src/views/salary/page/SalaryEmployeeTemplateDialog.vue": {
+      "radius": 2,
+      "shadow": 1,
+      "typography": 7,
+      "spacing": 14,
       "layering": 0
     },
     "src/views/salary/page/SalaryMyRecordsTab.vue": {
@@ -2071,6 +2241,13 @@
       "shadow": 0,
       "typography": 1,
       "spacing": 3,
+      "layering": 0
+    },
+    "src/views/salary/SalaryView.vue": {
+      "radius": 16,
+      "shadow": 4,
+      "typography": 54,
+      "spacing": 105,
       "layering": 0
     },
     "src/views/sales/page/SalesSearchFilters.vue": {
@@ -2171,11 +2348,25 @@
       "spacing": 33,
       "layering": 1
     },
-    "src/views/subsidy/SubsidyView.vue": {
+    "src/views/subsidy/components/styles/subsidy-list/mobile-actions.scss": {
+      "radius": 7,
+      "shadow": 1,
+      "typography": 0,
+      "spacing": 17,
+      "layering": 1
+    },
+    "src/views/subsidy/components/styles/subsidy-list/mobile-card.scss": {
       "radius": 5,
-      "shadow": 0,
-      "typography": 10,
-      "spacing": 30,
+      "shadow": 8,
+      "typography": 0,
+      "spacing": 16,
+      "layering": 0
+    },
+    "src/views/subsidy/components/styles/subsidy-list/table-and-photos.scss": {
+      "radius": 6,
+      "shadow": 1,
+      "typography": 0,
+      "spacing": 13,
       "layering": 0
     },
     "src/views/subsidy/components/SubsidyApplyDialog.vue": {
@@ -2198,13 +2389,6 @@
       "typography": 4,
       "spacing": 13,
       "layering": 0
-    },
-    "src/views/subsidy/components/SubsidyListSection.vue": {
-      "radius": 18,
-      "shadow": 10,
-      "typography": 21,
-      "spacing": 46,
-      "layering": 1
     },
     "src/views/subsidy/components/SubsidyPhotoManageDialog.vue": {
       "radius": 7,
@@ -2262,18 +2446,25 @@
       "spacing": 26,
       "layering": 3
     },
-    "src/views/suppliers/SuppliersView.vue": {
-      "radius": 9,
-      "shadow": 2,
-      "typography": 26,
-      "spacing": 46,
+    "src/views/subsidy/SubsidyView.vue": {
+      "radius": 5,
+      "shadow": 0,
+      "typography": 10,
+      "spacing": 30,
       "layering": 0
     },
-    "src/views/system/SystemView.vue": {
-      "radius": 22,
-      "shadow": 9,
-      "typography": 35,
-      "spacing": 78,
+    "src/views/suppliers/styles/suppliers-view/responsive.css": {
+      "radius": 2,
+      "shadow": 0,
+      "typography": 0,
+      "spacing": 22,
+      "layering": 0
+    },
+    "src/views/suppliers/styles/suppliers-view/table.css": {
+      "radius": 7,
+      "shadow": 2,
+      "typography": 0,
+      "spacing": 24,
       "layering": 0
     },
     "src/views/system/page/404.vue": {
@@ -2310,6 +2501,26 @@
       "typography": 9,
       "spacing": 28,
       "layering": 0
+    },
+    "src/views/system/styles/system-view/price-settings.css": {
+      "radius": 2,
+      "shadow": 1,
+      "spacing": 14
+    },
+    "src/views/system/styles/system-view/screen-lock-responsive.css": {
+      "radius": 6,
+      "shadow": 1,
+      "spacing": 25
+    },
+    "src/views/system/styles/system-view/screen-lock.css": {
+      "radius": 6,
+      "shadow": 3,
+      "spacing": 14
+    },
+    "src/views/system/styles/system-view/site-settings.css": {
+      "radius": 5,
+      "shadow": 4,
+      "spacing": 21
     }
   }
 }

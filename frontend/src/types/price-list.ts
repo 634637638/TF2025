@@ -5,6 +5,10 @@ export type PriceValue = number | string | null
 export interface PriceListRow {
   id: number | null
   price_list_id?: number | null
+  brand_id?: number | null
+  model_id?: number | null
+  color_id?: number | null
+  memory_id?: number | null
   brand_name: string
   model_number: string
   external_model?: string
@@ -61,6 +65,7 @@ export interface PriceSyncConfig {
   login_url?: string
   login_username?: string
   login_password?: string
+  has_password?: boolean
   sync_interval?: number
   [key: string]: unknown
 }

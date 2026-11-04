@@ -451,7 +451,7 @@ const startDecoding = async () => {
   }
 
   try {
-    await codeReader.decodeFromVideoDevice(cameraId.value, videoRef.value, scanCallback)
+    await codeReader.decodeFromVideoDevice(cameraId.value || null, videoRef.value, scanCallback)
   } catch (error) {
     logger.error('解码失败:', error)
     // 尝试使用默认摄像头
@@ -494,9 +494,7 @@ const handleScanSuccess = async (scannedText: string) => {
   updateStatus('扫描成功', 'status-success', 'fas fa-check-circle')
 
   // 震动反馈（如果支持）
-  if ('vibrate' in navigator) {
-    navigator.vibrate(200)
-  }
+  navigator.vibrate?.(200)
 
   // 播放成功音效
   playSuccessSound()
@@ -587,7 +585,7 @@ const createFocusIndicator = (x: number, y: number) => {
     z-index: 1000;
   `
 
-  videoRef.value?.parentElement.appendChild(indicator)
+  videoRef.value?.parentElement?.appendChild(indicator)
   setTimeout(() => {
     indicator.remove()
   }, 800)
@@ -613,7 +611,7 @@ const createCancelIndicator = () => {
     animation: fadeInOut 0.6s ease-out;
   `
 
-  videoRef.value?.parentElement.appendChild(indicator)
+  videoRef.value?.parentElement?.appendChild(indicator)
   setTimeout(() => {
     indicator.remove()
   }, 600)

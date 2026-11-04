@@ -122,7 +122,7 @@ export function setDefaultSyncConfig(configId: number) {
 }
 
 /**
- * 获取指定ID的同步配置详情（包含密码）
+ * 获取指定ID的同步配置详情（密码永不回显）
  */
 export function getSyncConfigById(configId: number) {
   return unifiedApi.get(`/price-list/sync/config/${configId}`)
@@ -143,11 +143,10 @@ export function updateSyncConfigById(configId: number, data: unknown) {
 }
 
 /**
- * 获取同步配置
- * @param hidePassword 是否隐藏密码（默认true）
+ * 获取默认同步配置（密码永不回显）
  */
-export function getSyncConfig(hidePassword: boolean = true) {
-  return unifiedApi.get('/price-list/sync/config', { params: { hidePassword } })
+export function getSyncConfig() {
+  return unifiedApi.get('/price-list/sync/config')
 }
 
 /**

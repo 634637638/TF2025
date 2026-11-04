@@ -85,7 +85,7 @@ const titles: Record<string, string> = {
   'shared-standards.md': '经验分享',
   'tab-standards.md': '标签页',
   'time-standards.md': '时间与日期',
-  'unified-page-structure.md': '统一页面结构',
+  'unified-page-structure.md': '页面结构迁移入口',
   'standards-audit-guide.md': '规范审计接入'
 }
 
@@ -240,7 +240,7 @@ const summaryByDocument: Record<string, string> = {
   'download-security-standard.md': '业务文件通过受控后端接口下载，校验登录、权限、归属和文件状态。',
   'tab-standards.md': '页面标签导航统一使用公共 Tab 结构，超出宽度时在标签区域内横向滑动。',
   'time-standards.md': '业务时间统一按北京时间处理，使用 TimeUtil、TIME_FORMATS 和公共格式化入口。',
-  'unified-page-structure.md': '新页面遵循后台统一布局、页面头部、内容区域和移动端适配结构。',
+  'unified-page-structure.md': '旧路径仅保留导航，正文及可编译模板统一见 page-structure-standards.md。',
   'standards-audit-guide.md': '规范正文、公共实现和自动审计必须同时登记并纳入启动与构建检查。'
 }
 

@@ -644,7 +644,7 @@ const normalizeHandlerInfo = (handler_info?: NationalSubsidyHandlerInfo | null):
 }
 
 const normalizeSubsidyRecord = <T extends NationalSubsidyDevice | NationalSubsidyPhoneDetail>(item?: T | null): T | null => {
-  if (!item || typeof item !== 'object') return item
+  if (!item || typeof item !== 'object') return item ?? null
   return {
     ...item,
     customer_name: normalizePersonName(item.customer_name || '', 20),
@@ -686,7 +686,7 @@ const isEligibleForSubsidy = computed(() => {
   return applyForm.subsidy_calc_price <= 6000
 })
 
-const formatDate = (date: string) => date ? TimeUtil.format(date, TIME_FORMATS.DATE) : '-'
+const formatDate = (date?: string | null) => date ? TimeUtil.format(date, TIME_FORMATS.DATE) : '-'
 
 const getStatusText = (status: string) => {
   const statusMap: Record<string, string> = {

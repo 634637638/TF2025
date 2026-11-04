@@ -1,14 +1,15 @@
 const path = require('path')
 const fs = require('fs')
 const log = require('../utils/log')
+const { assertSecret, validateSecurityKeyring } = require('../utils/security-keyring')
 
 const env = process.env.NODE_ENV || 'development'
 const explicitEnvFile = process.env.ENV_FILE
 const candidateEnvFiles = explicitEnvFile
   ? [explicitEnvFile]
   : env === 'production'
-    ? ['.env.production', '.env']
-    : ['.env', '.env.production']
+    ? ['.env.production']
+    : ['.env']
 
 const envPath = candidateEnvFiles
   .map((file) => path.resolve(process.cwd(), file))
@@ -24,6 +25,9 @@ if (envPath) {
 
 // 验证必需的环境变量
 const requiredEnvVars = ['DB_HOST', 'DB_USER', 'DB_PASSWORD', 'DB_NAME', 'JWT_SECRET']
+if (process.env.NODE_ENV === 'production') {
+  requiredEnvVars.push('CONFIG_ENCRYPTION_KEY', 'PRICE_SYNC_ENCRYPTION_KEY')
+}
 const missingVars = requiredEnvVars.filter(varName => !process.env[varName])
 
 if (missingVars.length > 0) {
@@ -37,6 +41,29 @@ if (missingVars.length > 0) {
 // 验证JWT密钥长度
 if (process.env.JWT_SECRET && process.env.JWT_SECRET.length < 32) {
   log.warn('JWT_SECRET 长度应至少为32个字符')
+}
+
+try {
+  validateSecurityKeyring({ production: process.env.NODE_ENV === 'production' })
+} catch (error) {
+  if (process.env.NODE_ENV === 'production') throw error
+  log.warn(error.message)
+}
+
+for (const envName of ['CONFIG_ENCRYPTION_KEY', 'CONFIG_ENCRYPTION_PREVIOUS_KEY']) {
+  if (!process.env[envName]) continue
+  try {
+    assertSecret(process.env[envName], envName)
+  } catch (error) {
+    if (process.env.NODE_ENV === 'production') throw error
+    log.warn(error.message)
+  }
+}
+
+if (process.env.PRICE_SYNC_ENCRYPTION_KEY && process.env.PRICE_SYNC_ENCRYPTION_KEY.length < 32) {
+  const message = 'PRICE_SYNC_ENCRYPTION_KEY 长度必须至少为32个字符'
+  if (process.env.NODE_ENV === 'production') throw new Error(message)
+  log.warn(message)
 }
 
 function parseEnvInt(value, fallback) {
@@ -76,8 +103,12 @@ const config = {
     }
   },
   jwt: {
-    secret: process.env.JWT_SECRET,
-    expiresIn: process.env.JWT_EXPIRES_IN || '24h'
+    accessSecret: process.env.JWT_SECRET,
+    accessPreviousSecret: process.env.JWT_PREVIOUS_SECRET || '',
+    refreshSecret: process.env.JWT_REFRESH_SECRET,
+    refreshPreviousSecret: process.env.JWT_REFRESH_PREVIOUS_SECRET || '',
+    expiresIn: process.env.JWT_EXPIRES_IN || '24h',
+    refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '30d'
   },
   server: {
     port: parseEnvInt(process.env.PORT || '3000', 3000), // 默认端口3000，可通过环境变量覆盖

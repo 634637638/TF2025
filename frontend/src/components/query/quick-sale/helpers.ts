@@ -42,7 +42,7 @@ export const normalizeQuickSaleCustomerPhone = (phone: unknown) =>
   normalizePhoneDigits(phone)
 
 export const normalizeQuickSaleCustomerOption = (
-  customer?: (Partial<CustomerOption> & Record<string, unknown>) | CustomerOption | null
+  customer?: Record<string, unknown> | CustomerOption | null
 ): CustomerOption => ({
   id: Number(customer?.id || 0),
   name: normalizePersonName(customer?.name || '', 20),
@@ -80,7 +80,25 @@ export const formatQuickSaleSerialNumber = (serialNumber: string) =>
 export const sanitizeQuickSalePriceInput = (value: string) =>
   String(value || '').replace(/[^\d]/g, '')
 
-export const buildQuickSaleCustomerPayload = (formData: QuickSaleFormState) => {
+interface QuickSaleCustomerPayload {
+  name: string
+  phone: string
+  apple_id: string | null
+  email: string | null
+  gender: string | null
+  birthday: string | null
+  id_card: string | null
+  address: string | null
+  city: string | null
+  province: string | null
+  postal_code: string | null
+  customer_type: 'individual'
+  vip_level: 'normal'
+  notes: string
+  source: 'quick_sale'
+}
+
+export const buildQuickSaleCustomerPayload = (formData: QuickSaleFormState): QuickSaleCustomerPayload => {
   const normalizedAppleId = normalizeAppleId(formData.apple_id)
 
   return {

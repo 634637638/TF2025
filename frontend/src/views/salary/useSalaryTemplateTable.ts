@@ -1,10 +1,8 @@
 import { computed, reactive, ref, type Ref } from 'vue'
 import type { SalaryTemplate } from '@/types/salary'
 
-type SalaryTemplateListItem = Partial<SalaryTemplate> & { id: number, name: string }
-
 interface UseSalaryTemplateTableOptions {
-  templates: Ref<SalaryTemplateListItem[]>
+  templates: Ref<SalaryTemplate[]>
 }
 
 export const useSalaryTemplateTable = ({ templates }: UseSalaryTemplateTableOptions) => {

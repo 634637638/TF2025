@@ -301,7 +301,7 @@
 <script setup lang="ts">
 import { confirmAction } from '@/utils/message-box'
 import { ref, computed, onMounted, watch } from 'vue'
-import { ElMessage, ElConfigProvider } from 'element-plus'
+import { ElMessage, ElConfigProvider, type TabPaneName } from 'element-plus'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import { salaryTemplateApi } from '@/api/salary-template'
 import { salaryApi } from '@/api/salary'
@@ -1180,6 +1180,10 @@ const loadMyStats = async () => {
 // 更新统计数据
 const updateStats = () => {
   const currentUserId = authStore.user?.id
+  if (!currentUserId) {
+    resetMyStats()
+    return
+  }
   const now = TimeUtil.now()
   const periodDays = TimeUtil.endOf(now, 'month').date()
 
@@ -1202,7 +1206,7 @@ const updateStats = () => {
       const empId = employee.id
       const attendanceData = employeeAttendanceData.value.get(empId)
       const salesData = employeeSalesData.value.get(empId)
-      const employeeName = employee.name || employee.username
+      const employeeName = employee.name || employee.username || '未命名员工'
 
       // 计算该员工的待发工资：底薪 + 提成 + 加班费 - 请假扣除
       const baseSalary = Number(employee.current_salary || employee.base_salary || 0)
@@ -1463,9 +1467,9 @@ const calculateEstimatedSalary = (employeeId: number) => {
 }
 
 // 获取员工模板ID
-const getEmployeeTemplateId = (employeeId: number) => {
+const getEmployeeTemplateId = (employeeId: number): number | undefined => {
   const employee = employees.value.find(e => e.id === employeeId)
-  return employee?.salary_template_id
+  return employee?.salary_template_id ?? undefined
 }
 
 // 获取员工考勤统计
@@ -1589,10 +1593,9 @@ const handleRefreshEmployeeData = async () => {
 }
 
 // 获取模板相关信息的辅助方法
-const getTemplateById = (id: number | undefined) => {
-  if (!id) return null
-  const template = templates.value.find(t => t.id === id)
-  return template
+const getTemplateById = (id: number | null | undefined): SalaryTemplate | undefined => {
+  if (!id) return undefined
+  return templates.value.find(t => t.id === id)
 }
 
 const getTemplateName = (id: number | undefined) => {
@@ -1634,9 +1637,10 @@ const getSalaryRecalculationNotice = (employeeId: number) => {
   }
 
   const leaveDateText = stats.latest_leave_record_date ? `请假日期：${stats.latest_leave_record_date}` : '存在后补请假'
-  const activityText = TimeUtil.isValid(stats.latest_leave_activity_at)
-    ? TimeUtil.format(stats.latest_leave_activity_at, TIME_FORMATS.DATETIME_MINUTE)
-    : stats.latest_leave_activity_at
+  const latestLeaveActivityAt = stats.latest_leave_activity_at
+  const activityText = latestLeaveActivityAt && TimeUtil.isValid(latestLeaveActivityAt)
+    ? TimeUtil.format(latestLeaveActivityAt, TIME_FORMATS.DATETIME_MINUTE)
+    : latestLeaveActivityAt || '未知时间'
 
   return {
     message: `${leaveDateText}，审批时间晚于工资结算时间（${activityText}），建议重新结算`
@@ -1761,6 +1765,9 @@ const handlePayoutByEmployee = async (employee: SalaryEmployeeRow) => {
     let calculatedData: SalaryRecordInput
     try {
       const response = await salaryApi.calculateSalary(employee.id, startDate, endDate)
+      if (!response.data) {
+        throw new Error('工资计算接口未返回数据')
+      }
       calculatedData = response.data
     } catch (err: unknown) {
       logger.error('计算工资失败:', err)
@@ -1781,7 +1788,7 @@ const handlePayoutByEmployee = async (employee: SalaryEmployeeRow) => {
     // 临时存储计算的数据和员工信息，等待确认后保存
     pendingSalaryData.value = {
       employeeId: employee.id,
-      employeeName: employee.name || employee.username,
+      employeeName: employee.name || employee.username || '未命名员工',
       calculatedData: calculatedData,
       existingRecord: record,
       startDate: startDate,
@@ -1792,7 +1799,7 @@ const handlePayoutByEmployee = async (employee: SalaryEmployeeRow) => {
     settleForm.value = {
       recordId: null, // 还没有保存，所以没有 recordId
       employeeId: employee.id,
-      employeeName: employee.name || employee.username,
+      employeeName: employee.name || employee.username || '未命名员工',
       netSalary: Number(calculatedData.net_salary || 0).toFixed(2),
       payment_method: record?.payment_method || '' // 预填充之前的支付方式
     }
@@ -2097,6 +2104,10 @@ const handleDeletePayout = async (employee: SalaryEmployeeRow) => {
       type: 'warning',
       customClass: 'message-box-unified'
     })
+    if (!record.id) {
+      ElMessage.warning('工资记录缺少有效ID')
+      return
+    }
     await salaryApi.records.deleteSalaryRecord(record.id)
     ElMessage.success('删除成功')
     loadPayoutList()
@@ -2308,7 +2319,7 @@ const handleEditAttendance = (row: AttendanceRecord & { reason?: string }) => {
     return
   }
 
-  editingAttendanceId.value = row.id // 设置编辑ID
+  editingAttendanceId.value = row.id ?? null // 设置编辑ID
   attendanceDialogTitle.value = '编辑考勤记录'
   attendanceForm.value = {
     record_date: row.record_date,
@@ -2376,6 +2387,10 @@ const handleSaveAttendance = async () => {
           { start_date: recordDate, end_date: recordEndDate }
         )
         const balance = balanceResponse.data
+        if (!balance) {
+          ElMessage.error('未获取到休假额度，请稍后重试')
+          return
+        }
         const allocation = buildAttendanceLeaveAllocation({
           requestedDays: recordDates.length,
           range: [recordDate, recordEndDate],
@@ -2812,14 +2827,15 @@ const loadPayoutList = async () => {
 }
 
 // TAB 切换
-const handleTabChange = async (tabName: string) => {
+const handleTabChange = async (tabName: TabPaneName) => {
   salaryTemplatesTabRef.value?.resetInteraction()
   salaryEmployeesTabRef.value?.resetInteraction()
 
-  if (tabName === 'templates') {
+  const normalizedTabName = String(tabName)
+  if (normalizedTabName === 'templates') {
     if (!canViewSalaryTemplates.value) return
     loadTemplates()
-  } else if (tabName === 'employees') {
+  } else if (normalizedTabName === 'employees') {
     if (!canViewSalaryRecords.value) return
     // 员工薪资：加载用户选择的月份的实时数据
     await loadEmployeeList(employeeSalaryMonth.value)
@@ -2827,7 +2843,7 @@ const handleTabChange = async (tabName: string) => {
     // 根据选择的月份加载考勤和销售数据（实时数据）
     await loadAllEmployeesAttendance(employeeSalaryMonth.value)
     await loadAllEmployeesSales(employeeSalaryMonth.value)
-  } else if (tabName === 'payout') {
+  } else if (normalizedTabName === 'payout') {
     if (!canViewSalaryRecords.value) return
     // 工资发放：根据用户选择的月份加载数据
     await loadEmployeeList(payoutMonth.value)
@@ -2922,1136 +2938,7 @@ watch(activeTab, async (newTab, oldTab) => {
 })
 </script>
 
-<style lang="scss" scoped>
-:global(:root) {
-  --salary-mobile-commission-color: #f07a2f;
-  --salary-mobile-overtime-color: #2f7d76;
-  --salary-mobile-deduction-color: #cf3732;
-  --salary-mobile-net-color: #3568df;
-}
-
-/* 筛选区域 */
-.filter-section {
-  margin-bottom: 20px;
-  padding: 20px;
-  background: var(--tf-color-surface-muted);
-  border-radius: 8px;
-}
-
-.filter-form {
-  width: 100%;
-}
-
-.filter-row {
-  display: flex;
-  flex-wrap: nowrap;
-  gap: 12px;
-  align-items: center;
-}
-
-.filter-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
-}
-
-.filter-item label {
-  font-size: var(--tf-type-scale-13);
-  font-weight: 500;
-  color: var(--color-text-regular);
-  white-space: nowrap;
-}
-
-.filter-item .el-select,
-.filter-item .el-date-picker,
-.filter-item .el-input {
-  min-width: 140px;
-}
-
-.filter-item.actions {
-  margin-left: auto;
-  display: inline-flex;
-  gap: 8px;
-  align-items: center;
-  flex-shrink: 0;
-}
-
-
-/* 操作按钮容器 - 确保按钮在一行内并排显示 */
-.operation-buttons {
-  display: flex;
-  gap: 8px;
-  justify-content: center;
-  align-items: center;
-  flex-wrap: nowrap;
-}
-
-.net-salary {
-  color: var(--color-success);
-  font-weight: 700;
-  font-size: var(--tf-type-scale-16);
-}
-
-.amount {
-  color: var(--color-success);
-  font-weight: 500;
-}
-
-.amount-deduct {
-  color: var(--color-danger);
-  font-weight: 500;
-}
-
-.income-detail,
-.deduction-detail {
-  font-size: var(--tf-type-scale-12);
-  line-height: 1.6;
-}
-
-.rate-info {
-  font-size: var(--tf-type-scale-12);
-  line-height: 1.5;
-}
-
-.rate-label {
-  color: var(--color-info);
-  margin-right: 4px;
-}
-
-.period-text,
-.work-days {
-  color: var(--color-text-regular);
-  font-size: var(--tf-type-scale-13);
-}
-
-/* 分页 */
-.pagination-wrapper {
-  display: flex;
-  justify-content: center;
-  margin-top: 24px;
-  padding: 16px;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-}
-
-:deep(.salary-dialog) {
-  --tf-dialog-surface: var(--color-bg-white);
-  --tf-dialog-body-text: var(--color-text-primary);
-  --tf-dialog-body-padding-inline: var(--tf-space-6);
-  --tf-dialog-body-padding-block: var(--tf-space-6);
-  --tf-dialog-footer-bg: var(--tf-color-neutral-25);
-  --tf-dialog-footer-padding-inline: var(--tf-space-6);
-  --tf-dialog-footer-padding-block-start: var(--tf-space-4);
-  --tf-dialog-footer-padding-block-end: var(--tf-space-4);
-}
-
-:deep(.salary-dialog-large .el-dialog) {
-  max-width: min(1180px, calc(100vw - 32px)) !important;
-}
-
-.employee-template-form {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.form-item {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.form-label {
-  font-size: var(--tf-type-scale-14);
-  font-weight: 500;
-  color: var(--color-text-regular);
-}
-
-.form-value {
-  font-size: var(--tf-type-scale-14);
-  color: var(--color-text-primary);
-  font-weight: 500;
-}
-
-.template-option {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.template-name {
-  font-size: var(--tf-type-scale-14);
-  font-weight: 500;
-  color: var(--color-text-primary);
-}
-
-.template-detail {
-  font-size: var(--tf-type-scale-12);
-  color: var(--color-info);
-}
-
-.template-preview {
-  margin-top: 10px;
-  padding: 16px;
-  background: var(--tf-color-surface-muted);
-  border-radius: 8px;
-  border: 1px solid var(--tf-color-border-element);
-}
-
-.preview-title {
-  font-size: var(--tf-type-scale-14);
-  font-weight: 600;
-  color: var(--color-text-primary);
-  margin-bottom: 12px;
-}
-
-.preview-content {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.preview-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: var(--tf-type-scale-13);
-}
-
-.preview-label {
-  color: var(--color-text-regular);
-}
-
-.preview-value {
-  color: var(--color-text-primary);
-  font-weight: 500;
-}
-
-/* 员工信息单元格样式 */
-.employee-info-cell {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.employee-username {
-  font-size: var(--tf-type-scale-12);
-  color: var(--color-info);
-}
-
-/* 员工信息单行显示 */
-.employee-info-inline {
-  font-size: var(--tf-type-scale-14);
-  font-weight: 500;
-  color: var(--color-text-primary);
-}
-
-.commission-info {
-  font-size: var(--tf-type-scale-12);
-  line-height: 1.5;
-}
-
-.commission-label,
-.commission-value {
-  display: inline-block;
-}
-
-.commission-label {
-  color: var(--color-info);
-  margin-right: 4px;
-}
-
-.commission-value {
-  color: var(--color-text-primary);
-  font-weight: 500;
-}
-
-.text-muted {
-  color: var(--color-text-placeholder);
-}
-
-/* 员工信息样式 */
-.employee-info {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.employee-name {
-  font-weight: 500;
-  color: var(--color-text-primary);
-}
-
-.template-name {
-  font-size: var(--tf-type-scale-12);
-  color: var(--color-info);
-}
-
-.attendance-actions {
-  margin-bottom: 16px;
-  display: flex;
-  gap: 12px;
-}
-
-/* 考勤单元格样式 */
-.attendance-cell {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-}
-
-.rest-info {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-}
-
-.amount-deduction {
-  font-size: var(--tf-type-scale-11);
-  color: var(--color-danger);
-  font-weight: 500;
-}
-
-.amount-overtime {
-  font-size: var(--tf-type-scale-11);
-  color: var(--color-success);
-  font-weight: 500;
-}
-
-/* 表单样式 */
-.form-section {
-  margin-bottom: 24px;
-}
-
-.form-section:last-child {
-  margin-bottom: 0;
-}
-
-.form-section h4 {
-  margin: 0 0 16px 0;
-  font-size: var(--tf-type-scale-15);
-  font-weight: 600;
-  color: var(--color-text-primary);
-  padding-bottom: 8px;
-  border-bottom: 2px solid var(--tf-color-border-element);
-}
-
-.form-row {
-  display: flex;
-  gap: 16px;
-}
-
-.form-row .form-group {
-  flex: 1;
-  margin-bottom: 0;
-}
-
-.form-group {
-  margin-bottom: 20px;
-}
-
-.form-group:last-child {
-  margin-bottom: 0;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 8px;
-  font-weight: 500;
-  color: var(--tf-color-gray-ant-600);
-  font-size: var(--tf-type-scale-14);
-}
-
-.required {
-  color: var(--tf-color-red-ant);
-}
-
-.form-control {
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid var(--tf-color-gray-ant-400);
-  border-radius: 6px;
-  font-size: var(--tf-type-scale-14);
-  transition: all 0.2s;
-  background: white;
-}
-
-.form-control:focus {
-  outline: none;
-  border-color: var(--tf-color-blue-ant-light);
-  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
-}
-
-.form-control::placeholder {
-  color: var(--tf-color-silver);
-}
-
-/* 单选框组样式 */
-.radio-group {
-  display: flex;
-  gap: 24px;
-}
-
-.radio-label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  cursor: pointer;
-  font-size: var(--tf-type-scale-14);
-  color: var(--tf-color-gray-ant-600);
-}
-
-.radio-label input[type="radio"] {
-  width: 16px;
-  height: 16px;
-  cursor: pointer;
-}
-
-.radio-label input[type="radio"]:checked {
-  accent-color: var(--tf-color-blue-ant);
-}
-
-/* 开关样式 */
-.switch-label {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.switch {
-  position: relative;
-  display: inline-block;
-  width: 44px;
-  height: 22px;
-}
-
-.switch input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-
-.slider {
-  position: absolute;
-  cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: var(--tf-color-gray-300-solid);
-  transition: 0.3s;
-  border-radius: 22px;
-}
-
-.slider:before {
-  position: absolute;
-  content: "";
-  height: 18px;
-  width: 18px;
-  left: 2px;
-  bottom: 2px;
-  background-color: white;
-  transition: 0.3s;
-  border-radius: 50%;
-}
-
-input:checked + .slider {
-  background-color: var(--tf-color-blue-ant);
-}
-
-input:checked + .slider:before {
-  transform: translateX(22px);
-}
-
-/* 分隔线样式 */
-.divider {
-  margin: 24px 0;
-  padding: 12px 0;
-  border-top: 1px solid var(--tf-color-gray-200);
-  text-align: left;
-}
-
-.divider span {
-  color: var(--tf-color-gray-ant-500);
-  font-size: var(--tf-type-scale-13);
-  font-weight: 500;
-}
-
-.divider i {
-  margin-right: 6px;
-}
-
-/* 表单提示文字 */
-.form-tip {
-  display: block;
-  margin-top: 6px;
-  font-size: var(--tf-type-scale-12);
-  color: var(--tf-color-gray-ant-500);
-  line-height: 1.5;
-}
-
-.tag-success {
-  background: linear-gradient(135deg, var(--tf-color-salary-chart-green) 0%, var(--tf-color-salary-chart-lime) 100%);
-  color: white;
-  border: none;
-
-  &::before {
-    content: '✓';
-    margin-right: 6px;
-    font-size: var(--tf-type-scale-12);
-    font-weight: 700;
-  }
-}
-
-/* 模板预览样式 */
-.template-preview-box {
-  background: var(--tf-color-indigo-surface);
-  border: 1px solid var(--tf-color-blue-element-border);
-  border-radius: 8px;
-  padding: 16px;
-  margin-top: 12px;
-}
-
-.template-preview-box h4 {
-  margin: 0 0 12px 0;
-  font-size: var(--tf-type-scale-14);
-  font-weight: 600;
-  color: var(--tf-color-blue-600);
-}
-
-.template-preview-box .preview-row {
-  display: flex;
-  justify-content: space-between;
-  padding: 6px 0;
-}
-
-.template-preview-box .preview-label {
-  color: var(--tf-color-gray-ant-600);
-  font-size: var(--tf-type-scale-14);
-}
-
-.template-preview-box .preview-value {
-  color: var(--tf-color-neutral-ant);
-  font-weight: 500;
-  font-size: var(--tf-type-scale-14);
-}
-
-/* 考勤操作栏 */
-.attendance-actions {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 20px;
-  flex-wrap: wrap;
-}
-
-/* 预计工资样式 */
-.estimated-salary {
-  font-size: var(--tf-type-scale-14);
-  font-weight: 600;
-  color: var(--color-primary);
-}
-
-/* 响应式 */
-@media (max-width: 767px) {
-  .salary-tabs .table-section > .section-header {
-    display: none;
-  }
-
-  .salary-mobile-deduction {
-    color: var(--salary-mobile-deduction-color);
-    font-variant-numeric: tabular-nums;
-  }
-
-  .header-content {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .stat-desc {
-    margin-top: 4px;
-    line-height: 1.35;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-
-  .filter-row {
-    flex-direction: column;
-  }
-
-  .filter-item {
-    width: 100%;
-  }
-
-  .filter-item .el-select,
-  .filter-item .el-date-picker {
-    width: 100% !important;
-  }
-
-  .filter-item.actions {
-    margin-left: 0;
-  }
-
-  .filter-item.actions .btn {
-    flex: 1;
-    justify-content: center;
-  }
-}
-
-/* Element Plus 组件样式已移除 - 所有模态框已使用自定义样式 */
-
-/* 销售明细样式 */
-.sales-detail-view {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.detail-info-section {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-  padding: 16px;
-  background: var(--tf-color-surface-muted);
-  border-radius: 8px;
-}
-
-.detail-info-item {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.detail-info-item .label {
-  font-size: var(--tf-type-scale-13);
-  color: var(--color-info);
-}
-
-.detail-info-item .value {
-  font-size: var(--tf-type-scale-16);
-  font-weight: 600;
-  color: var(--color-text-primary);
-}
-
-.detail-info-item .value.highlight {
-  color: var(--color-success);
-}
-
-.detail-info-item .value.highlight-blue {
-  color: var(--color-primary);
-}
-
-.detail-info-item .value.highlight-green {
-  color: var(--color-success);
-}
-
-.sales-table-wrapper {
-  border: 1px solid var(--color-border-light);
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.sales-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: var(--tf-type-scale-14);
-}
-
-.sales-table thead {
-  background: var(--tf-color-neutral-25);
-}
-
-.sales-table th {
-  padding: 12px 8px;
-  text-align: center;
-  font-weight: 600;
-  color: var(--color-text-regular);
-  border-bottom: 1px solid var(--color-border-light);
-  white-space: nowrap;
-}
-
-.sales-table td {
-  padding: 12px 8px;
-  text-align: center;
-  border-bottom: 1px solid var(--color-border-light);
-  color: var(--color-text-regular);
-}
-
-.sales-table tbody tr:last-child td {
-  border-bottom: none;
-}
-
-.sales-table tbody tr:hover {
-  background: var(--tf-color-surface);
-}
-
-.sales-table .imei {
-  color: var(--color-text-regular);
-}
-
-.sales-table .price {
-  font-weight: 600;
-  color: var(--color-text-primary);
-}
-
-.sales-table-footer {
-  display: flex;
-  justify-content: flex-end;
-  padding: 12px 16px;
-  background: var(--tf-color-neutral-25);
-  border-top: 1px solid var(--color-border-light);
-  gap: 24px;
-}
-
-/* 工资详情表格样式 */
-.salary-detail-table-section {
-  margin: 20px 0;
-}
-
-.salary-detail-table-section > .section-title {
-  font-size: var(--tf-type-scale-15);
-  font-weight: 600;
-  color: var(--color-text-primary);
-  margin: 20px 0 12px 0;
-  padding-bottom: 8px;
-  border-bottom: 2px solid var(--tf-color-border-element);
-}
-
-.salary-detail-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: var(--tf-type-scale-14);
-  background: var(--color-bg-white);
-  border: 1px solid var(--color-border-light);
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.salary-detail-table tbody tr {
-  border-bottom: 1px solid var(--color-border-light);
-}
-
-.salary-detail-table tbody tr:last-child {
-  border-bottom: none;
-}
-
-.salary-detail-table tbody tr:hover {
-  background: var(--tf-color-surface-muted);
-}
-
-.salary-detail-table td.label {
-  padding: 12px 16px;
-  font-weight: 500;
-  color: var(--color-text-regular);
-  background: var(--tf-color-neutral-25);
-  width: 120px;
-  border-right: 1px solid var(--color-border-light);
-}
-
-.salary-detail-table td.value {
-  padding: 12px 16px;
-  color: var(--color-text-primary);
-  font-weight: 500;
-}
-
-.salary-detail-table td.value.highlight {
-  color: var(--color-success);
-  font-weight: 600;
-}
-
-.salary-detail-table td.value.net-salary {
-  color: var(--color-danger);
-  font-weight: 600;
-  font-size: var(--tf-type-scale-16);
-}
-
-.sales-summary-item {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  font-size: var(--tf-type-scale-14);
-}
-
-.sales-summary-item .label {
-  color: var(--color-info);
-}
-
-.sales-summary-item .value {
-  font-size: var(--tf-type-scale-16);
-  font-weight: 600;
-  color: var(--color-text-primary);
-}
-
-.sales-summary-item .value.highlight {
-  color: var(--color-success);
-}
-
-/* ==================== 销售明细对话框样式（参考供应商打款页面） ==================== */
-
-.sales-details {
-  // 汇总信息区域
-  .details-info {
-    background: linear-gradient(135deg, var(--tf-color-surface) 0%, var(--tf-color-border-cool-alt) 100%);
-    border-radius: 12px;
-    padding: 12px 16px;
-    margin-bottom: 24px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-    border: 1px solid var(--tf-color-border-element);
-
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    flex-wrap: nowrap;
-
-    .info-row {
-      display: flex;
-      flex-direction: row;
-      align-items: baseline;
-      gap: 6px;
-      padding: 6px 12px;
-      background: white;
-      border-radius: 8px;
-      border: 1px solid var(--color-border-light);
-      transition: all 0.3s ease;
-      flex-shrink: 0;
-      min-width: fit-content;
-
-      &:hover {
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-        transform: translateY(-2px);
-      }
-
-      label {
-        font-size: var(--tf-type-scale-12);
-        color: var(--color-info);
-        font-weight: 500;
-        white-space: nowrap;
-      }
-
-      span {
-        font-size: var(--tf-type-scale-14);
-        color: var(--color-text-primary);
-        font-weight: 600;
-        white-space: nowrap;
-
-        &.amount {
-          color: var(--color-warning);
-          font-family: 'Monaco', 'Consolas', monospace;
-        }
-
-        &.profit {
-          color: var(--color-success);
-          font-family: 'Monaco', 'Consolas', monospace;
-        }
-
-        &.highlight {
-          color: var(--color-primary);
-          font-size: var(--tf-type-scale-16);
-        }
-      }
-    }
-  }
-
-  // 工资详情区域
-  .salary-info-section {
-    margin-bottom: 24px;
-    padding: 20px;
-    background: var(--tf-color-surface-neutral);
-    border-radius: 8px;
-    border: 1px solid var(--tf-color-border-element);
-
-    .section-title {
-      font-size: var(--tf-type-scale-15);
-      font-weight: 600;
-      color: var(--color-text-primary);
-      margin: 0 0 16px 0;
-      padding-bottom: 10px;
-      border-bottom: 2px solid var(--tf-color-border-element);
-    }
-
-    .info-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 10px 0;
-      border-bottom: 1px solid var(--tf-color-surface-ant);
-
-      &:last-child {
-        border-bottom: none;
-      }
-
-      label {
-        font-size: var(--tf-type-scale-14);
-        color: var(--color-text-regular);
-        font-weight: 500;
-      }
-
-      span {
-        font-size: var(--tf-type-scale-16);
-        color: var(--color-text-primary);
-        font-weight: 600;
-
-        &.amount {
-          color: var(--color-success);
-          font-family: 'Monaco', 'Consolas', monospace;
-        }
-
-        &.net-salary {
-          color: var(--color-warning);
-          font-size: var(--tf-type-scale-18);
-          font-weight: 700;
-        }
-
-        &.deduction {
-          color: var(--color-danger);
-        }
-      }
-    }
-  }
-
-  // 销售明细表格区域
-  .sales-details-table {
-    .section-title {
-      font-size: var(--tf-type-scale-15);
-      font-weight: 600;
-      color: var(--color-text-primary);
-      margin: 0 0 16px 0;
-      padding-bottom: 10px;
-      border-bottom: 2px solid var(--tf-color-border-element);
-    }
-
-    // 价格单元格
-    .price {
-      font-family: 'Monaco', 'Consolas', monospace;
-      font-weight: 600;
-      color: var(--color-success);
-    }
-
-    // 时间单元格
-    .time-cell {
-      font-family: 'Monaco', 'Consolas', monospace;
-      color: var(--color-text-regular);
-    }
-
-    // 提成显示样式
-    .commission-display {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      align-items: center;
-    }
-
-    .commission-item {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
-
-    .commission-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: var(--tf-type-scale-12);
-    }
-
-    .commission-label {
-      color: var(--color-info);
-      font-size: var(--tf-type-scale-12);
-    }
-
-    .commission-value {
-      color: var(--color-text-primary);
-      font-weight: 600;
-      font-size: var(--tf-type-scale-12);
-    }
-  }
-}
-
-.sales-details.admin-page .salary-detail-table-wrap {
-  width: min(100%, var(--salary-detail-table-width)) !important;
-  max-width: 100% !important;
-  overflow-x: auto !important;
-  overflow-y: hidden !important;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior-x: contain;
-  touch-action: pan-x pan-y;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .sales-details.admin-page .salary-detail-table-wrap {
-    cursor: grab;
-  }
-
-  .sales-details.admin-page .salary-detail-table-wrap.is-dragging {
-    cursor: grabbing;
-    user-select: none;
-  }
-}
-
-.sales-details.admin-page .salary-sales-detail-table {
-  width: var(--salary-detail-table-width) !important;
-  min-width: var(--salary-detail-table-width) !important;
-  max-width: none !important;
-
-  .imei-text,
-  .price,
-  .time-cell {
-    font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Consolas', monospace;
-    font-variant-numeric: tabular-nums;
-  }
-
-  .imei-text {
-    display: inline;
-    padding: 0;
-    border: 0;
-    border-radius: 0;
-    background: transparent;
-    box-shadow: none;
-    color: var(--el-text-color-primary);
-    font-weight: 600;
-    white-space: nowrap;
-  }
-
-  .price,
-  .profit-positive,
-  .profit-negative {
-    font-weight: 600;
-  }
-
-  .profit-positive {
-    color: var(--el-color-success);
-  }
-
-  .profit-negative {
-    color: var(--el-color-danger);
-  }
-}
-
-.employee-action-buttons .employee-action-item {
-  display: contents;
-}
-
-// ==================== 模态框响应式优化 ====================
-
-@media (max-width: 767px) {
-  // 表单响应式
-  .form-row {
-    flex-direction: column;
-    gap: 12px;
-  }
-
-  .form-group {
-    margin-bottom: 16px;
-  }
-
-  .form-group label {
-    font-size: var(--tf-type-scale-13);
-  }
-
-  .form-control {
-    padding: 8px 10px;
-    font-size: var(--tf-type-scale-13);
-  }
-
-  // 单选框组响应式
-  .radio-group {
-    gap: 16px;
-  }
-
-  .radio-label {
-    font-size: var(--tf-type-scale-13);
-  }
-
-  // 模板预览框响应式
-  .template-preview-box {
-    padding: 12px;
-  }
-
-  .preview-row {
-    font-size: var(--tf-type-scale-13);
-    padding: 6px 0;
-  }
-}
-
-@media (min-width: 768px) and (max-width: 1024px) {
-  .form-row {
-    gap: 12px;
-  }
-
-  .form-control {
-    padding: 9px 11px;
-  }
-}
-
-// ==================== 模态框增强样式 ====================
-
-// 模板预览框样式
-.template-preview-box {
-  background: linear-gradient(135deg, var(--tf-color-surface-muted) 0%, var(--tf-color-border-muted) 100%);
-  border-radius: 8px;
-  padding: 16px;
-  margin-top: 12px;
-  border-left: 4px solid var(--tf-color-indigo-brand);
-
-  h4 {
-    margin: 0 0 12px 0;
-    font-size: var(--tf-type-scale-14);
-    font-weight: 600;
-    color: var(--tf-color-gray-bootstrap-700);
-    display: flex;
-    align-items: center;
-    gap: 6px;
-
-    &::before {
-      content: '\f05a';
-      font-family: 'Font Awesome 6 Free';
-      font-weight: 900;
-      color: var(--tf-color-indigo-brand);
-    }
-  }
-
-  .preview-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 8px 0;
-    border-bottom: 1px dashed var(--tf-color-border-subtle);
-    font-size: var(--tf-type-scale-14);
-
-    &:last-child {
-      border-bottom: none;
-    }
-
-    .preview-label {
-      color: var(--tf-color-muted);
-      font-weight: 500;
-    }
-
-    .preview-value {
-      color: var(--tf-color-gray-bootstrap-900);
-      font-weight: 600;
-      font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
-    }
-  }
-}
-
-// 表单提示文字
-.form-tip {
-  display: block;
-  margin-top: 6px;
-  font-size: var(--tf-type-scale-12);
-  color: var(--tf-color-gray-ant-500);
-  line-height: 1.4;
-}
-
-</style>
+<style lang="scss" scoped src="./styles/salary-view.scss"></style>
 <style>
 .salary-dialog,
 .salary-dialog-large {

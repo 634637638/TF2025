@@ -1,0 +1,44 @@
+/* 超小屏幕优化（375px及以下 - iPhone SE） */
+@media (max-width: 375px) {
+  .query-view {
+    padding: 4px 0;
+  }
+
+  .stat-value {
+    font-size: var(--tf-type-scale-16);
+  }
+
+  .stat-label {
+    font-size: var(--tf-type-scale-10);
+  }
+
+  .form-group {
+    min-width: calc(50% - 4px);
+  }
+
+  .form-group input,
+  .form-group select {
+    font-size: var(--tf-type-scale-13);
+    padding: 6px 8px;
+  }
+
+  /* 表格优化 */
+  .table-container {
+    border-radius: 8px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  table {
+    font-size: var(--tf-type-scale-11);
+  }
+
+  th, td {
+    padding: 6px 4px;
+  }
+
+  /* 分页组件优化 */
+  .pagination {
+    padding: 10px;
+  }
+}

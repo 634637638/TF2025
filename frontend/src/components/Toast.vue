@@ -32,6 +32,7 @@
 
 <script setup lang="ts">
 import { useToast } from '../composables/useToast'
+import type { Toast } from '../composables/useToast'
 
 defineOptions({
   inheritAttrs: false
@@ -39,8 +40,8 @@ defineOptions({
 
 const { toasts, removeToast } = useToast()
 
-const getIconClass = (type: string) => {
-  const iconMap = {
+const getIconClass = (type: Toast['type']): string => {
+  const iconMap: Record<Toast['type'], string> = {
     success: 'fas fa-check-circle',
     error: 'fas fa-exclamation-circle',
     warning: 'fas fa-exclamation-triangle',

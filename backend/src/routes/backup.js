@@ -76,11 +76,19 @@ const authenticateBackupDownload = (req, res, next) => {
 // 创建备份、列表、删除、清理 - 使用标准认证
 router.post('/create', unifiedAuth, requirePermission('backup:create'), async (req, res) => {
   try {
-    const result = await backupService.createBackup()
+    const type = req.body?.type || 'full'
+    if (!['full', 'database'].includes(type)) {
+      return res.status(400).json({
+        success: false,
+        message: '备份类型无效，请选择 database 或 full'
+      })
+    }
+
+    const result = await backupService.createBackup(type)
 
     res.json({
       success: true,
-      message: '备份创建成功',
+      message: type === 'database' ? '数据库备份创建成功' : '完整备份创建成功',
       data: result
     })
   } catch (error) {

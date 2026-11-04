@@ -15,25 +15,25 @@
  */
 
 const logger = require('./logger')
+const { redactString, redactValue } = require('./sensitive-data')
 
 /**
  * 格式化参数
  */
 const formatValue = (arg) => {
   if (arg instanceof Error) {
-    const details = [arg.message, arg.code ? `code=${arg.code}` : '', arg.stack || ''].filter(Boolean)
-    return details.join('\n')
+    return JSON.stringify(redactValue(arg), null, 2)
   }
 
   if (typeof arg === 'object' && arg !== null) {
     try {
-      return JSON.stringify(arg, null, 2)
+      return JSON.stringify(redactValue(arg), null, 2)
     } catch (e) {
       return String(arg)
     }
   }
 
-  return String(arg)
+  return redactString(arg)
 }
 
 const formatArgs = (args) => {

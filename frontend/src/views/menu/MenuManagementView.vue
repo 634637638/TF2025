@@ -856,6 +856,13 @@ interface VisibleMenuRow extends MenuItem {
   depth: number
 }
 
+interface ParentMenuOption {
+  id: string | number
+  name: string
+}
+
+type MenuType = NonNullable<MenuItem['menu_type']>
+
 const modules = ref<MenuModule[]>([])
 
 // 搜索表单
@@ -978,11 +985,11 @@ const {
 
 // 父级菜单选项
 const parentMenuOptions = computed(() => {
-  const options = []
+  const options: ParentMenuOption[] = []
   const excludeId = isEdit.value ? currentEditId.value : null
 
-  const addMenuOptions = (menus, prefix = '') => {
-    menus.forEach(menu => {
+  const addMenuOptions = (menus: MenuItem[], prefix = ''): void => {
+    menus.forEach((menu: MenuItem) => {
       // 排除当前编辑的菜单及其子菜单
       if (menu.id !== excludeId) {
         options.push({
@@ -1369,7 +1376,7 @@ const showAddModal = (parentId = 0) => {
   showModal.value = true
 }
 
-const normalizeMenuActiveState = (menu) => {
+const normalizeMenuActiveState = (menu: MenuItem): boolean => {
   const activeValue = menu.status ?? menu.is_active
 
   if (activeValue === undefined || activeValue === null) {
@@ -1383,7 +1390,7 @@ const normalizeMenuActiveState = (menu) => {
   return Number(activeValue) === 1
 }
 
-const showEditModal = (menu) => {
+const showEditModal = (menu: MenuItem): void => {
   if (!canEdit.value) {
     error('权限不足：您没有编辑菜单的权限')
     return
@@ -1396,7 +1403,7 @@ const showEditModal = (menu) => {
     url: menu.path || menu.url || '',
     icon: menu.icon || '',
     icon_svg: menu.icon_svg || '',
-    parent_id: menu.parent_id || 0,
+    parent_id: Number(menu.parent_id) || 0,
     sort_order: menu.sort_order || 0,
     target: menu.target || '_self',
     is_active: normalizeMenuActiveState(menu),
@@ -1569,7 +1576,7 @@ const handleSubmit = async () => {
   }
 }
 
-const executeDelete = async (menu) => {
+const executeDelete = async (menu: MenuItem): Promise<void> => {
   const menuName = menu.title || menu.name || '未知菜单'
   const hasChildren = menu.children && menu.children.length > 0
 
@@ -1618,7 +1625,7 @@ const executeDelete = async (menu) => {
   }
 }
 
-const handleDelete = (menu) => {
+const handleDelete = (menu: MenuItem): void => {
   if (!canDelete.value) {
     error('权限不足：您没有删除菜单的权限')
     return
@@ -1628,10 +1635,10 @@ const handleDelete = (menu) => {
 }
 
 // 统计方法
-const getMenuCount = () => {
-  const countMenus = (menus) => {
+const getMenuCount = (): number => {
+  const countMenus = (menus: MenuItem[]): number => {
     let count = 0
-    menus.forEach(menu => {
+    menus.forEach((menu: MenuItem) => {
       count++
       if (menu.children && menu.children.length > 0) {
         count += countMenus(menu.children)
@@ -1642,10 +1649,10 @@ const getMenuCount = () => {
   return countMenus(menuTree.value)
 }
 
-const getActiveMenuCount = () => {
-  const countActiveMenus = (menus) => {
+const getActiveMenuCount = (): number => {
+  const countActiveMenus = (menus: MenuItem[]): number => {
     let count = 0
-    menus.forEach(menu => {
+    menus.forEach((menu: MenuItem) => {
       if (menu.is_active) count++
       if (menu.children && menu.children.length > 0) {
         count += countActiveMenus(menu.children)
@@ -1664,22 +1671,22 @@ const getRootMenuCount = () => {
   return menuTree.value.length
 }
 
-const getMenuTypeLabel = (type) => {
-  const types = {
+const getMenuTypeLabel = (type?: MenuType): string => {
+  const types: Record<MenuType, string> = {
     'menu': '菜单',
     'directory': '目录',
     'button': '按钮'
   }
-  return types[type] || '菜单'
+  return types[type || 'menu'] || '菜单'
 }
 
 // 前端过滤函数
-const filterMenusByName = (menus, name) => {
-  const filtered = []
+const filterMenusByName = (menus: MenuItem[], name: string): MenuItem[] => {
+  const filtered: MenuItem[] = []
   const lowerName = name.toLowerCase()
 
-  const filterRecursive = (menuList) => {
-    menuList.forEach(menu => {
+  const filterRecursive = (menuList: MenuItem[]): void => {
+    menuList.forEach((menu: MenuItem) => {
       if ((menu.title && menu.title.toLowerCase().includes(lowerName)) ||
           (menu.name && menu.name.toLowerCase().includes(lowerName))) {
         filtered.push(menu)
@@ -1695,11 +1702,11 @@ const filterMenusByName = (menus, name) => {
   return filtered
 }
 
-const filterMenusByType = (menus, type) => {
-  const filtered = []
+const filterMenusByType = (menus: MenuItem[], type: string): MenuItem[] => {
+  const filtered: MenuItem[] = []
 
-  const filterRecursive = (menuList) => {
-    menuList.forEach(menu => {
+  const filterRecursive = (menuList: MenuItem[]): void => {
+    menuList.forEach((menu: MenuItem) => {
       if (menu.menu_type === type) {
         filtered.push(menu)
       }
@@ -1714,11 +1721,11 @@ const filterMenusByType = (menus, type) => {
   return filtered
 }
 
-const filterMenusByStatus = (menus, status) => {
-  const filtered = []
+const filterMenusByStatus = (menus: MenuItem[], status: number): MenuItem[] => {
+  const filtered: MenuItem[] = []
 
-  const filterRecursive = (menuList) => {
-    menuList.forEach(menu => {
+  const filterRecursive = (menuList: MenuItem[]): void => {
+    menuList.forEach((menu: MenuItem) => {
       if (menu.status === status) {
         filtered.push(menu)
       }
@@ -1751,896 +1758,8 @@ onMounted(async () => {
 })
 </script>
 
-<style scoped>
-/* ===== 页面布局样式 ===== */
-.menu-management {
-  padding: 20px;
-  min-height: 100vh;
-  background: var(--tf-color-surface-muted);
-}
-
-.menu-header-actions {
-  display: flex;
-  gap: 12px;
-  width: 100%;
-  justify-content: flex-end;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.menu-width-form {
-  padding: 4px 0 0;
-}
-
-.menu-width-form__hint {
-  margin: 0 0 var(--tf-space-4);
-  color: var(--tf-color-slate-500);
-  font-size: var(--tf-type-scale-13);
-  line-height: var(--tf-line-height-body);
-}
-
-.menu-width-form__input {
-  width: 100%;
-}
-
-.menu-width-form :deep(.el-input-number .el-input__wrapper) {
-  width: 100%;
-}
-
-/* 表单组 */
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.form-group.full-width {
-  width: 100%;
-  flex: 1 1 100%;
-}
-
-.form-label {
-  display: block;
-  font-size: var(--tf-type-scale-14);
-  font-weight: 500;
-  color: var(--tf-color-gray-bootstrap-700);
-  margin-bottom: 8px;
-}
-
-.required {
-  color: var(--danger-color);
-}
-
-.input-group {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.input-icon {
-  position: absolute;
-  left: 12px;
-  color: var(--tf-color-muted);
-  font-size: var(--tf-type-scale-14);
-  z-index: 2;
-}
-
-.form-control {
-  width: 100%;
-  padding: 10px 12px 10px 40px;
-  border: 2px solid var(--tf-color-border-muted);
-  border-radius: 8px;
-  font-size: var(--tf-type-scale-14);
-  transition: all 0.3s ease;
-  background: white;
-}
-
-.form-control:focus {
-  outline: none;
-  border-color: var(--tf-color-indigo-brand);
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-}
-
-.form-actions {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-}
-
-/* ===== 加载和错误状态样式 ===== */
-.loading-container,
-.error-container {
-  background: white;
-  border-radius: 12px;
-  padding: 40px;
-  text-align: center;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  border: 1px solid var(--tf-color-border-muted);
-  margin-bottom: 24px;
-}
-
-.loading-content,
-.error-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-}
-
-.loading-icon {
-  font-size: var(--tf-type-scale-32);
-  color: var(--tf-color-indigo-brand);
-}
-
-.loading-text,
-.error-text {
-  font-size: var(--tf-type-scale-16);
-  color: var(--tf-color-muted);
-  margin: 0;
-}
-
-.error-icon {
-  font-size: var(--tf-type-scale-32);
-  color: var(--danger-color);
-}
-
-/* ===== 表格样式 ===== */
-.menu-table-section {
-  background: white;
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  border: 1px solid var(--tf-color-border-muted);
-}
-
-.menu-table {
-  width: 100%;
-  border-collapse: separate; /* 修复点击区域问题 */
-  border-spacing: 0;
-  margin: 0;
-  table-layout: auto;
-}
-
-.menu-table .column-name {
-  width: auto;
-}
-
-.menu-table .column-url {
-  width: auto;
-}
-
-.menu-table .column-icon {
-  width: auto;
-}
-
-.menu-table .column-sort {
-  width: 72px;
-}
-
-.menu-table .column-status {
-  width: 92px;
-}
-
-.menu-table .column-actions {
-  width: 240px;
-}
-
-.menu-table thead {
-  background: linear-gradient(135deg, var(--tf-color-surface-muted), var(--tf-color-border-muted));
-}
-
-.menu-table th {
-  padding: 12px 10px; /* 使用与全局样式一致的padding */
-  text-align: left;
-  font-weight: 600;
-  color: var(--tf-color-heading);
-  font-size: var(--tf-type-scale-14);
-  border-bottom: 2px solid var(--tf-color-border-subtle);
-  white-space: nowrap;
-  min-height: 48px; /* 确保一致的点击区域 */
-  height: auto;
-  position: relative;
-  box-sizing: border-box;
-  line-height: 1.4;
-  vertical-align: middle;
-}
-
-.menu-table .column-icon,
-.menu-table .column-sort,
-.menu-table .column-status,
-.menu-table .column-actions {
-  text-align: center;
-}
-
-.menu-table td {
-  padding: 12px 10px; /* 使用与全局样式一致的padding */
-  border-bottom: 1px solid var(--tf-color-border-muted);
-  vertical-align: middle;
-  min-height: 48px; /* 确保一致的点击区域 */
-  height: auto;
-  position: relative;
-  box-sizing: border-box;
-  line-height: 1.4;
-}
-
-.menu-row:hover {
-  background: rgba(102, 126, 234, 0.05);
-}
-
-.parent-row {
-  background: var(--tf-color-surface-indigo-pale);
-}
-
-.child-row {
-  background: var(--tf-color-surface-indigo-soft);
-}
-
-.menu-name-cell {
-  width: auto;
-  min-width: 180px;
-}
-
-.menu-info {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.menu-remarks-text {
-  display: block;
-  color: var(--tf-color-muted);
-  line-height: 1.5;
-  text-align: left;
-  white-space: normal;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-}
-
-/* 展开/折叠按钮样式 */
-.expand-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  border: none;
-  background: transparent;
-  color: var(--tf-button-tool-color);
-  cursor: pointer;
-  border-radius: 4px;
-  transition: all 0.2s ease;
-  padding: 0;
-}
-
-.expand-btn:hover {
-  background-color: var(--tf-button-primary-hover-bg);
-  color: var(--tf-button-primary-soft-hover-color);
-}
-
-.expand-btn i {
-  font-size: var(--tf-type-scale-12);
-  transition: transform 0.2s ease;
-}
-
-.expand-placeholder {
-  display: inline-block;
-  width: 24px;
-  height: 24px;
-}
-
-.menu-text {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.menu-title {
-  font-weight: 600;
-  color: var(--tf-color-heading);
-  font-size: var(--tf-type-scale-16);
-  background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
-  background-clip: text;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  padding: 4px 8px;
-  border-radius: 6px;
-  display: inline-block;
-  position: relative;
-}
-
-.menu-title::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(135deg, var(--tf-color-pink-gradient) 0%, var(--tf-color-coral-gradient) 100%);
-  opacity: 0.1;
-  border-radius: 6px;
-  z-index: -1;
-}
-
-.menu-type {
-  font-size: var(--tf-type-scale-11);
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-weight: 500;
-}
-
-.type-menu {
-  background: var(--tf-color-blue-100);
-  color: var(--tf-color-blue-material-700);
-}
-
-.type-directory {
-  background: var(--tf-color-orange-material-50);
-  color: var(--tf-color-orange-material-700);
-}
-
-.type-button {
-  background: var(--tf-button-neutral-bg);
-  color: var(--tf-button-primary-soft-color);
-}
-
-.menu-remarks {
-  font-size: var(--tf-type-scale-12);
-  color: var(--tf-color-muted);
-  font-style: italic;
-}
-
-.child-prefix {
-  color: var(--tf-color-muted);
-  font-weight: 500;
-}
-
-.menu-url-cell {
-  width: auto;
-  min-width: 130px;
-}
-
-.url-text {
-  background: var(--tf-color-surface-muted);
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: var(--tf-type-scale-12);
-  color: var(--tf-color-gray-bootstrap-700);
-  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-  display: inline-block;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  vertical-align: middle;
-  white-space: nowrap;
-}
-
-.menu-icon-cell {
-  width: auto;
-  min-width: 120px;
-  text-align: center;
-}
-
-.icon-display {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  max-width: 100%;
-  min-width: 0;
-}
-
-.menu-icon {
-  font-size: var(--tf-type-scale-16);
-  color: var(--tf-color-indigo-brand);
-  width: 24px;
-  text-align: center;
-}
-
-.icon-text {
-  font-size: var(--tf-type-scale-12);
-  color: var(--tf-color-muted);
-  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.menu-sort-cell {
-  width: 72px;
-  text-align: center;
-}
-
-.sort-badge {
-  background: linear-gradient(135deg, var(--tf-color-blue-100), var(--tf-color-blue-material-100));
-  color: var(--tf-color-blue-material-700);
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: var(--tf-type-scale-12);
-  font-weight: 600;
-}
-
-.menu-status-cell {
-  width: 92px;
-  text-align: center;
-}
-
-.status-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: var(--tf-type-scale-12);
-  font-weight: 500;
-}
-
-.status-active {
-  background: var(--tf-status-success-bg);
-  color: var(--tf-status-success-color);
-  border: 1px solid var(--tf-status-success-border);
-}
-
-.status-inactive {
-  background: var(--tf-status-danger-bg);
-  color: var(--tf-status-danger-color);
-  border: 1px solid var(--tf-status-danger-border);
-}
-
-.menu-actions-cell {
-  width: 240px;
-  text-align: center;
-}
-
-.action-buttons {
-  display: inline-flex;
-  justify-content: center;
-  flex-wrap: nowrap;
-  max-width: 100%;
-}
-
-/* ==================== 现代化菜单编辑弹窗 ==================== */
-.menu-editor-body {
-  padding: 0;
-  color: var(--tf-color-slate-sidebar);
-}
-
-.menu-editor-form {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-}
-
-.menu-editor-hero {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 18px;
-  padding: 18px;
-  border-radius: 20px;
-  background:
-    radial-gradient(circle at 12% 20%, rgba(45, 212, 191, 0.28), transparent 30%),
-    linear-gradient(135deg, var(--tf-color-slate-ink) 0%, var(--tf-color-cyan-legacy-text) 52%, var(--tf-color-menu-gradient-teal) 100%);
-  color: var(--color-bg-white);
-  box-shadow: 0 18px 42px rgba(16, 42, 67, 0.2);
-}
-
-.menu-editor-preview {
-  display: flex;
-  align-items: center;
-  min-width: 0;
-  gap: 14px;
-}
-
-.preview-icon {
-  width: 56px;
-  height: 56px;
-  border-radius: 18px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: var(--tf-type-scale-24);
-  color: var(--tf-color-slate-ink);
-  background: rgba(255, 255, 255, 0.9);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 12px 26px rgba(0, 0, 0, 0.18);
-}
-
-.preview-copy {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  gap: 3px;
-}
-
-.preview-copy strong {
-  font-size: var(--tf-type-scale-20);
-  line-height: 1.25;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.preview-copy small,
-.preview-eyebrow {
-  color: rgba(255, 255, 255, 0.74);
-}
-
-.preview-eyebrow {
-  font-size: var(--tf-type-scale-12);
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.status-switch {
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 12px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  font-size: var(--tf-type-scale-13);
-  font-weight: 700;
-}
-
-.status-switch-label {
-  color: rgba(255, 255, 255, 0.9);
-}
-
-.status-switch :deep(.el-switch__core) {
-  border-color: rgba(255, 255, 255, 0.28);
-  background: rgba(255, 255, 255, 0.22);
-}
-
-.status-switch :deep(.el-switch.is-checked .el-switch__core) {
-  border-color: var(--tf-color-teal-300);
-  background: var(--tf-color-teal-300);
-}
-
-.menu-editor-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(300px, 0.85fr);
-  gap: 18px;
-  align-items: start;
-}
-
-.editor-card {
-  padding: 18px;
-  border-radius: 20px;
-  background: rgba(255, 255, 255, 0.96);
-  border: 1px solid rgba(210, 219, 229, 0.9);
-  box-shadow: 0 14px 36px rgba(15, 23, 42, 0.08);
-}
-
-.editor-card--side {
-  position: sticky;
-  top: 12px;
-}
-
-.editor-card-head {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  margin-bottom: 18px;
-}
-
-.editor-card-icon {
-  width: 40px;
-  height: 40px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 14px;
-  color: var(--tf-color-teal-700);
-  background: linear-gradient(135deg, var(--tf-color-emerald-100), var(--tf-color-sky-100));
-}
-
-.editor-card-head h6 {
-  margin: 0;
-  font-size: var(--tf-type-scale-16);
-  color: var(--tf-color-slate-custom);
-}
-
-.editor-card-head p {
-  margin: 3px 0 0;
-  color: var(--tf-color-gray-ui-550);
-  font-size: var(--tf-type-scale-12);
-}
-
-/* Element Plus 统一表单控件 */
-.menu-form-row {
-  margin-bottom: 2px;
-}
-
-.menu-editor-form :deep(.el-form-item) {
-  margin-bottom: 18px;
-}
-
-.menu-editor-form :deep(.el-form-item__label) {
-  min-height: 22px;
-  margin-bottom: 7px;
-  color: var(--tf-color-slate-700);
-  font-size: var(--tf-type-scale-14);
-  font-weight: 700;
-  line-height: 1.35;
-}
-
-.menu-editor-form :deep(.el-input__wrapper),
-.menu-editor-form :deep(.el-select__wrapper),
-.menu-editor-form :deep(.el-textarea__inner) {
-  background: var(--tf-color-slate-50);
-  box-shadow: 0 0 0 1px var(--tf-color-border-blue-light) inset;
-  transition: box-shadow 0.2s ease, background 0.2s ease;
-}
-
-.menu-editor-form :deep(.el-input__wrapper:hover),
-.menu-editor-form :deep(.el-select__wrapper:hover),
-.menu-editor-form :deep(.el-textarea__inner:hover) {
-  box-shadow: 0 0 0 1px var(--color-text-placeholder) inset;
-}
-
-.menu-editor-form :deep(.el-input__prefix) {
-  color: var(--tf-color-gray-ui-550);
-}
-
-.menu-editor-form :deep(.el-input-number .el-input__wrapper) {
-  width: 100%;
-}
-
-/* 图标预览 */
-.icon-preview {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px;
-  background: linear-gradient(135deg, var(--tf-color-surface-muted) 0%, var(--tf-color-surface-ant) 100%);
-  border-radius: 8px;
-  margin-top: 12px;
-  border: 1px solid var(--tf-color-border-muted);
-}
-
-.preview-icon {
-  font-size: var(--tf-type-scale-24);
-  color: var(--tf-color-indigo-brand);
-}
-
-.preview-text {
-  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-  font-size: var(--tf-type-scale-13);
-  color: var(--color-info);
-  background: var(--color-bg-white);
-  padding: 4px 8px;
-  border-radius: 4px;
-}
-
-/* 辅助文本 */
-.text-muted {
-  font-size: var(--tf-type-scale-12);
-  color: var(--color-info);
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  margin-top: 6px;
-}
-
-.text-muted i {
-  font-size: var(--tf-type-scale-13);
-}
-
-/* ===== 响应式设计 ===== */
-@media (max-width: 767px) {
-  .menu-editor-body,
-  .modal-footer {
-    padding: 0;
-  }
-
-  .menu-editor-hero {
-    align-items: flex-start;
-    flex-direction: column;
-    border-radius: 16px;
-  }
-
-  .menu-editor-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .editor-card {
-    padding: 14px;
-    border-radius: 16px;
-  }
-
-  .editor-card--side {
-    position: static;
-  }
-
-  .menu-management {
-    padding: 12px;
-  }
-
-  .menu-page-header {
-    margin-bottom: 16px;
-  }
-
-  .menu-header-actions {
-    width: 100%;
-    flex-wrap: wrap;
-    gap: 8px;
-    justify-content: flex-end;
-  }
-
-  .menu-header-actions > * {
-    flex: 0 0 auto;
-    min-width: 0;
-  }
-
-  :deep(.menu-data-table .el-table__body td),
-  :deep(.menu-data-table .el-table__header th) {
-    font-size: var(--tf-type-scale-12);
-  }
-
-  :deep(.menu-data-table .menu-name-column .cell),
-  :deep(.menu-data-table .menu-remarks-column .cell),
-  :deep(.menu-data-table .menu-path-column .cell) {
-    text-align: left;
-  }
-
-  :deep(.menu-data-table .menu-name-column .cell) {
-    min-width: 0;
-  }
-
-  :deep(.menu-data-table .menu-remarks-column .cell) {
-    min-width: 0;
-    white-space: normal;
-  }
-
-  :deep(.menu-data-table .menu-path-column .cell) {
-    min-width: 0;
-  }
-
-  .menu-text {
-    gap: 4px;
-    min-width: 0;
-  }
-
-  .menu-title {
-    display: block;
-    min-width: 0;
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-    font-size: var(--tf-type-scale-13);
-    font-weight: 700;
-  }
-
-  .menu-remarks-text {
-    display: -webkit-box;
-    overflow: hidden;
-    line-height: 1.45;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
-    text-overflow: ellipsis;
-    white-space: normal;
-  }
-
-  .url-text {
-    display: block;
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-    font-size: var(--tf-type-scale-11);
-  }
-
-  .icon-display {
-    justify-content: center;
-    gap: 0;
-  }
-
-  .icon-text {
-    display: none;
-  }
-
-  .menu-icon {
-    font-size: var(--tf-type-scale-15);
-  }
-
-  .child-row .child-prefix {
-    margin-right: 2px;
-  }
-
-}
-
-@media (max-width: 479px) {
-  .stats-card {
-    padding: 16px;
-  }
-
-  .stats-number {
-    font-size: var(--tf-type-scale-24);
-  }
-
-  .stats-label {
-    font-size: var(--tf-type-scale-13);
-  }
-
-  .menu-editor-body {
-    padding: 0;
-  }
-
-  /* 表格在移动端的优化 */
-  .menu-table {
-    font-size: var(--tf-type-scale-14);
-  }
-
-  /* 确保触摸滚动顺畅 */
-  * {
-    -webkit-tap-highlight-color: transparent;
-  }
-
-  .form-actions {
-    flex-direction: column;
-    width: 100%;
-  }
-
-  /* 响应式优化：改善触摸体验 */
-  .tree-node-content {
-    padding: 12px 8px;
-    min-height: 48px;
-    touch-action: manipulation;
-  }
-
-  .tree-node-content:hover {
-    background-color: rgba(24, 144, 255, 0.1);
-  }
-
-  /* 改善移动端滚动体验 */
-  .tree-container {
-    -webkit-overflow-scrolling: touch;
-    scroll-behavior: smooth;
-  }
-
-  /* 移动端表格优化 */
-  .menu-table th,
-  .menu-table td {
-    padding: 8px;
-    font-size: var(--tf-type-scale-13);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .menu-table .column-sort,
-  .menu-table .column-status,
-  .menu-table .column-actions,
-  .menu-table .menu-sort-cell,
-  .menu-table .menu-status-cell,
-  .menu-table .menu-actions-cell {
-    display: none;
-  }
-
-
-  /* 移动端操作按钮 */
-  .action-buttons {
-    display: flex;
-    flex-direction: column;
-    min-width: 120px;
-  }
-
-  .menu-header-actions {
-    display: flex;
-    flex-direction: row;
-    flex-wrap: wrap;
-    gap: 8px;
-    width: 100%;
-    justify-content: flex-end;
-  }
-
-  .menu-header-actions :deep(.el-button) {
-    justify-content: center;
-    width: auto;
-  }
-}
-
-</style>
+<style scoped src="./styles/menu-management/layout-and-form.css"></style>
+<style scoped src="./styles/menu-management/table.css"></style>
+<style scoped src="./styles/menu-management/menu-cells.css"></style>
+<style scoped src="./styles/menu-management/editor.css"></style>
+<style scoped src="./styles/menu-management/responsive.css"></style>

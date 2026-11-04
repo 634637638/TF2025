@@ -2812,6 +2812,9 @@ const handleSinglePaymentSubmit = async () => {
     return
   }
 
+  const phone = currentPhone.value
+  if (!phone) return
+
   try {
     // 验证必填字段
     if (canViewPaymentField('payment_method') && !paymentForm.payment_method) {
@@ -2825,7 +2828,7 @@ const handleSinglePaymentSubmit = async () => {
 
     submitting.value = true
 
-    const response = await unifiedApi.post(`/supplier-payments/${currentPhone.value.id}/payment`, {
+    const response = await unifiedApi.post(`/supplier-payments/${phone.id}/payment`, {
       ...paymentForm,
       payment_time: normalizePaymentDateTime(paymentForm.payment_time),
       payment_remarks: paymentForm.payment_remarks
@@ -2872,10 +2875,13 @@ const handleEditPaymentSubmit = async () => {
     return
   }
 
+  const phone = editingPhone.value
+  if (!phone) return
+
   try {
     submitting.value = true
 
-    const response = await unifiedApi.put(`/supplier-payments/${editingPhone.value.id}`, {
+    const response = await unifiedApi.put(`/supplier-payments/${phone.id}`, {
       ...editPaymentForm,
       payment_time: normalizePaymentDateTime(editPaymentForm.payment_time),
       payment_remarks: editPaymentForm.payment_remarks
@@ -3147,8 +3153,8 @@ const handleShowPaymentDetails = async (phone: SupplierPaymentPhone) => {
       const totalProfit = totalSale - totalCost
 
       paymentDetails.value = {
-        supplier_name: phone.supplier_name,
-        payment_time: phone.payment_time,
+        supplier_name: phone.supplier_name || '',
+        payment_time: phone.payment_time ?? null,
         payment_method: phone.payment_method || '',
         payment_operator: phone.payment_operator_name || '',
         payment_remarks: detailPhones[0]?.payment_remarks || phone.payment_remarks || '',
@@ -3217,7 +3223,7 @@ const resetFilters = () => {
   handleFilterChange()
 }
 
-const formatDate = (dateString: string | null) => {
+const formatDate = (dateString?: string | null) => {
   if (!dateString) return '-'
   return TimeUtil.toDateInputValue(dateString) || '-'
 }
