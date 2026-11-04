@@ -3,6 +3,9 @@
  * 提供预定单的增删改查、匹配、交付等功能
  */
 import { unifiedApi } from '@/utils/unified-api'
+import { PreorderStatus } from '@/types/order'
+
+export { PreorderStatus } from '@/types/order'
 
 export const PREORDER_STATUS_LABELS = {
   pending: '待匹配',
@@ -10,13 +13,6 @@ export const PREORDER_STATUS_LABELS = {
   completed: '已交付',
   cancelled: '已取消'
 } as const
-
-export enum PreorderStatus {
-  PENDING = 'pending',
-  MATCHED = 'arrived',
-  DELIVERED = 'completed',
-  CANCELLED = 'cancelled'
-}
 
 // 预定单接口定义
 export interface Preorder {

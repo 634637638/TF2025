@@ -1546,7 +1546,8 @@ import {
   batchDeletePriceHistory,
   clearPriceHistory,
   clearAllPriceHistory,
-  clearPrices
+  clearPrices,
+  type PriceMarkupConfig
 } from '@/api/price-list'
 import { useAuthStore } from '@/stores/auth'
 import api from '@/utils/unified-api'
@@ -1568,6 +1569,17 @@ import { isCurrentMobileViewport } from '@/utils/device-detection'
 import { sortOptionsByOrder } from '@/utils/option-sort'
 import { formatAmount } from '@/utils/format'
 import { getCachedBrands, getCachedColors, getCachedMemories, getModels } from '@/services/reference-options'
+import type {
+  PriceHistoryRecord,
+  PriceInventoryRow,
+  PriceListRow,
+  PriceSyncConfig,
+  PriceTrendRecord
+} from '@/types/price-list'
+import type { Brand, Color, MemoryOption, Model } from '@/types'
+
+type PriceModelOption = Model
+type PriceMemoryOption = MemoryOption & { size: string }
 
 const PriceMarkupConfig = defineAsyncComponent(() => import('@/components/PriceMarkupConfig.vue'))
 
@@ -1602,9 +1614,9 @@ const exportingPriceList = ref(false)
 const priceListImportInputRef = ref<HTMLInputElement | null>(null)
 const loadingOptions = ref(false)
 const loadingModels = ref(false)
-const priceList = ref<any[]>([])
-const selectedPriceRows = ref<any[]>([])
-const priceHistoryMap = ref<Map<number, any[]>>(new Map())
+const priceList = ref<PriceListRow[]>([])
+const selectedPriceRows = ref<PriceListRow[]>([])
+const priceHistoryMap = ref<Map<number, PriceHistoryRecord[]>>(new Map())
 let trendLoadSeq = 0
 const hasInitializedPageData = ref(false)
 const pagination = reactive({
@@ -1620,7 +1632,7 @@ const searchExpanded = ref(false) // 搜索区域展开状态（移动端默认�
 const options = reactive({
   brands: [] as string[],
   models: [] as string[],
-  allModels: [] as any[], // 存储所有型号数据（包含品牌关联）
+  allModels: [] as PriceModelOption[], // 存储所有型号数据（包含品牌关联）
   colors: [] as string[],
   memories: [] as string[]
 })
@@ -1637,7 +1649,7 @@ const searchForm = reactive({
 })
 
 const buildPriceListParams = (includePagination = true) => {
-  const params: Record<string, any> = {}
+  const params: Record<string, string | number> = {}
 
   if (includePagination) {
     params.page = pagination.page
@@ -1687,7 +1699,7 @@ const editOptions = reactive({
   brands: [] as Array<{id: number, name: string}>,
   models: [] as Array<{id: number, name: string}>,
   colors: [] as Array<{id: number, name: string}>,
-  memories: [] as Array<{id: number, size: string, name?: string}>,
+  memories: [] as PriceMemoryOption[],
   // 当前组合的库存数量
   stockCount: 0
 })
@@ -1718,7 +1730,7 @@ const showConfigDialog = ref(false)
 const savingConfig = ref(false)
 const syncing = ref(false)
 const clearingPrices = ref(false)
-const syncConfigsList = ref<any[]>([])
+const syncConfigsList = ref<PriceSyncConfig[]>([])
 const showBatchSourceDialog = ref(false)
 const batchSourceSaving = ref(false)
 const DEFAULT_SOURCE_CONFIG_VALUE = '__default_source__'
@@ -1745,22 +1757,22 @@ const syncConfig = reactive({
 
 // 价格历史
 const showHistoryDialog = ref(false)
-const priceHistory = ref<any[]>([])
-const currentProduct = ref<any>(null)
-const selectedHistoryItems = ref<any[]>([])
+const priceHistory = ref<PriceHistoryRecord[]>([])
+const currentProduct = ref<PriceListRow | null>(null)
+const selectedHistoryItems = ref<PriceHistoryRecord[]>([])
 
 // 库存详情
 const showInventoryDialog = ref(false)
 const inventoryLoading = ref(false)
-const inventoryData = ref<any[]>([])
+const inventoryData = ref<PriceInventoryRow[]>([])
 
 // 价目表库存详情只向页面内部暴露规范入库时间。
-const normalizePriceListInventory = (item: any) => ({
+const normalizePriceListInventory = (item: PriceInventoryRow): PriceInventoryRow => ({
   ...item,
   inventory_time: item.inventory_time ?? null
 })
 const inventoryTotal = ref(0)
-const currentInventoryItem = ref<any>(null)
+const currentInventoryItem = ref<PriceListRow | null>(null)
 const isMobile = ref(false)
 const mobileActionRowId = ref<string | null>(null)
 const lastTappedRowId = ref<string | null>(null)
@@ -1830,11 +1842,11 @@ const getPriceListColumnWidth = (field: PriceListAdaptiveField) => {
   })
 }
 
-const getPriceListRowKey = (row: any) => {
+const getPriceListRowKey = (row: PriceListRow) => {
   return String(row.price_list_id || row.id || `${row.model_number}-${row.color_name}-${row.memory}`)
 }
 
-const handlePriceSelectionChange = (rows: any[]) => {
+const handlePriceSelectionChange = (rows: PriceListRow[]) => {
   selectedPriceRows.value = rows
 }
 
@@ -1903,7 +1915,7 @@ const handleBatchSourceSave = async () => {
   }
 }
 
-const getSourceNameClass = (row: any) => {
+const getSourceNameClass = (row: PriceListRow) => {
   const sourceNameClasses = [
     'source-name--purple',
     'source-name--blue'
@@ -1939,7 +1951,7 @@ const toggleMobileActions = (id: number | string | null) => {
   mobileActionRowId.value = mobileActionRowId.value === rowKey ? null : rowKey
 }
 
-const handleMobileExpandChange = (row: any, expandedRows: any[]) => {
+const handleMobileExpandChange = (row: PriceListRow, expandedRows: PriceListRow[]) => {
   if (!isMobile.value) return
   const rowKey = getPriceListRowKey(row)
 
@@ -1985,7 +1997,7 @@ const fetchPriceList = async () => {
       }
 
       // 转换数据格式，保持原始的大小写格式用于显示
-      const formattedList = list.map((item: any) => ({
+      const formattedList: PriceListRow[] = list.map((item: PriceListRow) => ({
         brand_name: item.brand_name || '',
         model_number: item.model_number || '',
         external_model: item.external_model || '',
@@ -2196,11 +2208,11 @@ const loadEditOptions = async () => {
     ])
 
     // 新增/编辑弹窗与检索共用同一套基础选项排序，兼容数组和包装响应。
-    editOptions.brands = sortOptionsByOrder(extractResponseData<any[]>(brandsRes))
-    editOptions.models = sortOptionsByOrder(extractResponseData<any[]>(modelsRes))
-    editOptions.colors = sortOptionsByOrder(extractResponseData<any[]>(colorsRes))
+    editOptions.brands = sortOptionsByOrder(extractResponseData<Brand[]>(brandsRes))
+    editOptions.models = sortOptionsByOrder(extractResponseData<PriceModelOption[]>(modelsRes))
+    editOptions.colors = sortOptionsByOrder(extractResponseData<Color[]>(colorsRes))
     editOptions.memories = sortOptionsByOrder(
-      extractResponseData<any[]>(memoriesRes),
+      extractResponseData<PriceMemoryOption[]>(memoriesRes),
       { labelKeys: ['size', 'capacity', 'name'] }
     )
   } catch (error) {
@@ -2226,7 +2238,7 @@ const handleBrandChangeInEdit = async (brandId: number) => {
       const modelsRes = await api.get('/public/models', {
         params: { brand_id: brandId, include_empty: 'true' }
       })
-      editOptions.models = sortOptionsByOrder(extractResponseData<any[]>(modelsRes))
+      editOptions.models = sortOptionsByOrder(extractResponseData<PriceModelOption[]>(modelsRes))
     } catch (error) {
       logger.error('加载型号失败:', error)
       editOptions.models = []
@@ -2286,7 +2298,7 @@ watch([() => editForm.brand_id, () => editForm.model_id, () => editForm.color_id
 )
 
 // 编辑
-const handleEdit = async (row: any) => {
+const handleEdit = async (row: PriceListRow) => {
   if (!canSync.value) {
     handleNoPermission('sync')
     return
@@ -2419,7 +2431,7 @@ const handleSave = async () => {
     })
 
     // 零售价字段：不发送，让后端自动计算
-    delete (data as any).retail_price
+    // 零售价字段未包含在提交载荷中，由后端统一计算。
 
     // 处理同步时间
     if (!data.last_sync_time || data.last_sync_time === '' || data.last_sync_time.trim() === '') {
@@ -2443,7 +2455,7 @@ const handleSave = async () => {
 }
 
 // 删除
-const handleDelete = async (row: any) => {
+const handleDelete = async (row: PriceListRow) => {
   if (!canDelete.value) {
     handleNoPermission('delete')
     return
@@ -2466,7 +2478,7 @@ const handleDelete = async (row: any) => {
 }
 
 // 切换报价显示状态
-const handleToggleShowPrice = async (row: any) => {
+const handleToggleShowPrice = async (row: PriceListRow) => {
   if (!canEdit.value) {
     row.show_price = row.show_price ? 0 : 1
     handleNoPermission('edit')
@@ -2614,7 +2626,7 @@ const openConfigDialog = () => {
 
 // ============ 价格加价配置 ============
 const showMarkupConfigDialog = ref(false)
-const markupConfig = ref<any>(null)
+const markupConfig = ref<PriceMarkupConfig | null>(null)
 
 // 保存同步配置（支持添加新配置和更新现有配置）
 const handleSaveConfig = async () => {
@@ -2690,7 +2702,7 @@ const fetchSyncConfigsList = async () => {
   try {
     const res = await getAllSyncConfigs()
     if (res.success) {
-      syncConfigsList.value = (Array.isArray(res.data) ? res.data : []).map((source: any) => ({
+      syncConfigsList.value = (Array.isArray(res.data) ? res.data : []).map((source: PriceSyncConfig) => ({
         ...source,
         id: Number(source.id),
         source_type: source.source_type === 'public' ? 'public' : 'account'
@@ -2701,7 +2713,7 @@ const fetchSyncConfigsList = async () => {
   }
 }
 
-const formatPriceSourceLabel = (source: any) => {
+const formatPriceSourceLabel = (source: PriceSyncConfig) => {
   if (source?.source_type === 'public') {
     return `${source.config_name || '公开来源'}（公开未登录）`
   }
@@ -2760,7 +2772,7 @@ const handleDeleteConfig = async (configId: number) => {
 }
 
 // 编辑同步配置
-const handleEditConfig = async (row: any) => {
+const handleEditConfig = async (row: PriceSyncConfig) => {
   if (!canEdit.value) {
     handleNoPermission('edit')
     return
@@ -2829,13 +2841,13 @@ const openMarkupConfigDialog = () => {
 }
 
 // 处理价格加价配置保存
-const handleMarkupConfigSave = (config: any) => {
+const handleMarkupConfigSave = (config: PriceMarkupConfig) => {
   markupConfig.value = config
   ElMessage.success('价格加价配置已更新')
 }
 
 // 查看历史
-const handleViewHistory = async (row: any) => {
+const handleViewHistory = async (row: PriceListRow) => {
   if (!canView.value) {
     handleNoPermission('view')
     return
@@ -2854,12 +2866,12 @@ const handleViewHistory = async (row: any) => {
 }
 
 // 历史记录选择变化
-const handleHistorySelectionChange = (selection: any[]) => {
+const handleHistorySelectionChange = (selection: PriceHistoryRecord[]) => {
   selectedHistoryItems.value = selection
 }
 
 // 删除单条历史记录
-const handleDeleteHistoryItem = async (row: any) => {
+const handleDeleteHistoryItem = async (row: PriceHistoryRecord) => {
   if (!canDelete.value) {
     handleNoPermission('delete')
     return
@@ -2951,7 +2963,7 @@ const handleClearHistory = async () => {
 }
 
 // 查看库存详情（在库最长时间的数据）
-const handleViewInventory = async (row: any) => {
+const handleViewInventory = async (row: PriceListRow) => {
   if (!canView.value) {
     handleNoPermission('view')
     return
@@ -2977,7 +2989,7 @@ const handleViewInventory = async (row: any) => {
 
     if (res.success && res.data && res.data.list) {
       // 计算在库天数并按在库天数排序
-      inventoryData.value = (res.data.list as any[])
+      inventoryData.value = (res.data.list as PriceInventoryRow[])
         .map(item => ({
           ...normalizePriceListInventory(item),
           inventory_days: calculateInventoryDays(item.inventory_time)
@@ -2986,7 +2998,7 @@ const handleViewInventory = async (row: any) => {
       inventoryTotal.value = Number(res.pagination?.total) || inventoryData.value.length
     } else if (res.success && res.data) {
       // 处理直接返回数组的情况
-      inventoryData.value = (res.data as any[])
+      inventoryData.value = (res.data as PriceInventoryRow[])
         .map(item => ({
           ...normalizePriceListInventory(item),
           inventory_days: calculateInventoryDays(item.inventory_time)
@@ -3012,7 +3024,7 @@ const calculateInventoryDays = (inventoryTime: string) => {
 }
 
 // 加载价格趋势数据
-const loadPriceTrends = async (list: any[], seq: number) => {
+const loadPriceTrends = async (list: PriceListRow[], seq: number) => {
   if (seq !== trendLoadSeq) return
   const itemsWithId = list.filter(item => item.price_list_id)
 
@@ -3029,7 +3041,7 @@ const loadPriceTrends = async (list: any[], seq: number) => {
 
     const trendByPriceListId = new Map(
       (res.success && Array.isArray(res.data) ? res.data : [])
-        .map((item: any) => [Number(item.price_list_id), item])
+        .map((item: PriceTrendRecord) => [Number(item.price_list_id), item] as const)
     )
 
     itemsWithId.forEach(item => {
@@ -3091,7 +3103,7 @@ const formatPriceAmount = (amount: number) => {
   return formatAmount(Math.abs(amount))
 }
 
-const getHistoryChangeItems = (row: any, index: number) => {
+const getHistoryChangeItems = (row: PriceHistoryRecord, index: number) => {
   if (index >= priceHistory.value.length - 1) return []
 
   const previous = priceHistory.value[index + 1]
@@ -3228,25 +3240,25 @@ const loadFilterOptions = async () => {
 
     // 处理品牌数据
     if (brandsRes.success) {
-      options.brands = sortOptionsByOrder(extractResponseData<any[]>(brandsRes))
-        .map((brand: any) => brand.name)
+      options.brands = sortOptionsByOrder(extractResponseData<Brand[]>(brandsRes))
+        .map(brand => brand.name)
     }
 
     // 处理型号数据（存储完整数据用于品牌联动）
     if (modelsRes.success) {
-      options.allModels = sortOptionsByOrder(extractResponseData<any[]>(modelsRes))
+      options.allModels = sortOptionsByOrder(extractResponseData<PriceModelOption[]>(modelsRes))
     }
 
     // 处理颜色数据
     if (colorsRes.success) {
-      options.colors = sortOptionsByOrder(extractResponseData<any[]>(colorsRes))
-        .map((color: any) => color.name)
+      options.colors = sortOptionsByOrder(extractResponseData<Color[]>(colorsRes))
+        .map(color => color.name)
     }
 
     // 处理内存数据
     if (memoriesRes.success) {
-      options.memories = sortOptionsByOrder(extractResponseData<any[]>(memoriesRes), { labelKeys: ['size', 'capacity', 'name'] })
-        .map((memory: any) => memory.size)
+      options.memories = sortOptionsByOrder(extractResponseData<PriceMemoryOption[]>(memoriesRes), { labelKeys: ['size', 'capacity', 'name'] })
+        .map(memory => memory.size)
         .filter(Boolean)
     }
 
@@ -3279,17 +3291,18 @@ const handleBrandChange = async () => {
 
     // 根据选择的品牌筛选型号 - 尝试多种匹配方式
     const filteredModels = sortOptionsByOrder(options.allModels
-      .filter((model: any) => {
+      .filter((model: PriceModelOption) => {
         // 尝试匹配 brand_name 字段
         if (model.brand_name === searchForm.brand_name) return true
         // 尝试匹配 brand 对象的 name 字段
-        if (model.brand?.name === searchForm.brand_name) return true
+        const relatedBrand = (model as unknown as Record<string, unknown>).brand
+        if (relatedBrand && typeof relatedBrand === 'object' && (relatedBrand as { name?: string }).name === searchForm.brand_name) return true
         // 尝试包含匹配（处理可能的大小写或空格问题）
         if (model.brand_name && model.brand_name.includes(searchForm.brand_name)) return true
         return false
       }))
 
-    options.models = filteredModels.map((model: any) => model.name)
+    options.models = filteredModels.map(model => model.name)
 
   } catch (error) {
     logger.error('加载型号失败:', error)

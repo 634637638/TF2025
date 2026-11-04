@@ -981,8 +981,10 @@ import { useCachedRequest, DEFAULT_CACHE_TTL } from '@/composables/usePageCache'
 import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { useAuthStore } from '@/stores/auth'
 import { logger } from '@/utils/logger'
+import { getRequestErrorMessage, getRequestErrorName, getRequestErrorPayload } from '@/utils/api-response'
 import { TIME_FORMATS, TimeUtil } from '@/utils/time'
 import type { Employee, EmployeeForm, Role } from '@/types/employee'
+import type { QueryParams } from '@/types/shared'
 import Pagination from '../../components/Pagination.vue'
 import InlineLoading from '@/components/InlineLoading.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
@@ -1026,7 +1028,7 @@ loading.value = true
 const { loading: submitting } = useLoadingState()
 const { loading: exporting } = useLoadingState()
 const { exportFile, buildDateFilename, sanitizeParams } = useImportExport()
-const employeesTableRef = ref<any>(null)
+const employeesTableRef = ref<unknown>(null)
 const mobileActionRowId = ref<string | null>(null)
 const lastTappedRowId = ref<string | null>(null)
 const lastTapTimestamp = ref(0)
@@ -1243,7 +1245,7 @@ const loadEmployees = async (bustCache: boolean = false, silentError: boolean = 
     loading.value = true
   }
   try {
-    const params: any = { page: page.value, page_size: page_size.value }
+    const params: QueryParams = { page: page.value, page_size: page_size.value }
     if (searchQuery.value.trim()) params.search = searchQuery.value.trim()
     if (statusFilter.value !== '') params.status = statusFilter.value
     if (bustCache) {
@@ -1258,13 +1260,13 @@ const loadEmployees = async (bustCache: boolean = false, silentError: boolean = 
       employeeTotal.value = Number(apiPagination.total) || 0
       await loadEmployeeStats()
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('加载员工列表失败:', error)
     employees.value = []
     employeeTotal.value = 0
 
     // 静默处理页面卸载导致的取消错误
-    if (error.name === 'CanceledError') {
+    if (getRequestErrorName(error) === 'CanceledError') {
       return
     }
 
@@ -1399,7 +1401,7 @@ const saveEmployee = async () => {
 
   submitting.value = true
   try {
-    const data: any = {
+    const data: EmployeeForm = {
       username: employeeForm.value.username,
       name: employeeForm.value.name,
       phone: employeeForm.value.phone || null,
@@ -1443,9 +1445,9 @@ const saveEmployee = async () => {
     closeModal()
     await loadEmployees()
     success(showAddModal.value ? '员工添加成功' : '员工信息更新成功')
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('保存员工失败:', error)
-    logger.error('错误详情:', error.response?.data)
+    logger.error('错误详情:', getRequestErrorPayload(error))
 
     handleApiError(error, showAddModal.value ? '添加员工失败' : '更新员工失败')
   } finally {
@@ -1602,7 +1604,7 @@ const toggleStatus = async (employee: Employee) => {
   try {
     await unifiedApi.put(`/employees/${employee.id}`, { status: currentStatus ? 0 : 1 })
     await loadEmployees()
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('更新状态失败:', error)
     handleApiError(error, '更新员工状态失败')
   }
@@ -1633,7 +1635,7 @@ const deleteEmployee = async (employee: Employee) => {
     await unifiedApi.delete(`/employees/${employee.id}`)
     success(`员工 "${employee.name}" 删除成功`)
     await loadEmployees()
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('删除员工失败:', error)
     handleApiError(error, '删除员工失败')
   }
@@ -1790,12 +1792,12 @@ const saveRole = async () => {
 
     closeRoleModal()
     await loadRoles()
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('保存角色失败:', error)
 
     // 处理特定错误消息
-    if (error.response?.data?.message) {
-      const errorMessage = error.response.data.message
+    const errorMessage = getRequestErrorMessage(error, '')
+    if (errorMessage) {
       if (errorMessage.includes('角色名称已存在')) {
         roleFormError.value = '该角色名称已存在，请使用其他名称'
       } else if (errorMessage.includes('角色不能为空')) {

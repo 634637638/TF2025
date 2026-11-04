@@ -16,8 +16,20 @@ const { clearRefreshCookie, getCookie, setRefreshCookie } = require('../utils/ht
 const log = require('../utils/log')
 
 // 登录失败处理辅助函数
-const handleLoginFailure = (req, res, message) => {
+const handleLoginFailure = (req, res, message, reason = 'invalid_credentials') => {
   const identifier = getClientIdentifier(req)
+  req.loginFailureReason = reason
+
+  // 账户状态异常不是凭证失败，不进入密码错误限流计数。
+  if (reason !== 'invalid_credentials') {
+    req.loginAttemptHandled = true
+    return res.status(403).json({
+      success: false,
+      message,
+      code: 'ACCOUNT_DISABLED'
+    })
+  }
+
   const result = recordFailedLogin(identifier)
   req.loginAttemptHandled = true
 
@@ -319,7 +331,7 @@ router.post('/login', validateBody({
 
     // 检查用户状态
     if (user.status !== 1 && user.status !== 'active') {
-      return handleLoginFailure(req, res, '账户已被禁用，请联系管理员启用账户')
+      return handleLoginFailure(req, res, '账户已被禁用，请联系管理员启用账户', 'account_disabled')
     }
 
     // 验证密码 (数据库中的密码是bcrypt加密的)

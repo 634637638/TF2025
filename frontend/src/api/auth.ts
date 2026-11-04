@@ -85,8 +85,9 @@ export function getCurrentUser() {
  * 获取用户订单列表
  * GET /api/public/auth/orders
  */
-export function getUserOrders() {
-  return publicApi.get('/public/auth/orders').then((response) => unwrapData(response))
+export function getUserOrders(): Promise<import('@/api/shop-public').PublicOrder[]> {
+  return publicApi.get<import('@/api/shop-public').PublicOrder[]>('/public/auth/orders')
+    .then((response) => unwrapData<import('@/api/shop-public').PublicOrder[]>(response))
 }
 
 /**

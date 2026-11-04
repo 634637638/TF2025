@@ -519,6 +519,7 @@ import { unifiedApi } from '@/utils/unified-api'
 import { useAuthStore } from '@/stores/auth'
 import { canAccessRoutePath } from '@/constants/routePermissions'
 import { formatDate as formatGlobalDate } from '@/utils/format'
+import type { ComprehensiveWarningsData, PhoneStockWarning } from '@/types'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -526,12 +527,18 @@ const authStore = useAuthStore()
 // 响应式数据
 const loading = ref(false)
 const activeTab = ref('phones')
-const warningsData = ref<any>({
+const createEmptyWarningsData = (): ComprehensiveWarningsData => ({
   phones: { warnings: [], count: 0, threshold: 3 },
   accessories: { warnings: [], count: 0 },
-  sales: { today: {}, trend: [], avg_daily_sales: 0, is_below_average: false },
+  sales: {
+    today: { sales_count: 0, total_amount: 0, total_profit: 0, operator_count: 0 },
+    trend: [],
+    avg_daily_sales: 0,
+    is_below_average: false
+  },
   purchases: { recent: [], no_recent: [] }
 })
+const warningsData = ref<ComprehensiveWarningsData>(createEmptyWarningsData())
 let warningTimer: ReturnType<typeof setInterval> | null = null
 
 // 计算属性
@@ -557,12 +564,7 @@ const phoneWarnings = computed(() => {
 })
 
 const resetWarnings = () => {
-  warningsData.value = {
-    phones: { warnings: [], count: 0, threshold: 3 },
-    accessories: { warnings: [], count: 0 },
-    sales: { today: {}, trend: [], avg_daily_sales: 0, is_below_average: false },
-    purchases: { recent: [], no_recent: [] }
-  }
+  warningsData.value = createEmptyWarningsData()
 }
 
 // 获取预警数据
@@ -574,15 +576,13 @@ const fetchWarnings = async () => {
 
   loading.value = true
   try {
-    const response = await unifiedApi.get('/dashboard/warnings/comprehensive', {
+    const response = await unifiedApi.get<ComprehensiveWarningsData>('/dashboard/warnings/comprehensive', {
       params: { phone_threshold: 3, page_size: 20 }
     })
 
     if (response.success) {
       warningsData.value = {
-        accessories: { warnings: [], count: 0 },
-        sales: { today: {}, trend: [], avg_daily_sales: 0, is_below_average: false },
-        purchases: { recent: [], no_recent: [] },
+        ...createEmptyWarningsData(),
         ...response.data
       }
     }
@@ -624,7 +624,7 @@ const getDaysTagType = (days: number) => {
 // 获取趋势宽度百分比
 const getTrendWidth = (count: number) => {
   const maxCount = Math.max(
-    ...(warningsData.value.sales?.trend?.map((t: any) => t.sales_count) || [1])
+    ...(warningsData.value.sales?.trend?.map(trend => trend.sales_count) || [1])
   )
   return maxCount > 0 ? (count / maxCount) * 100 : 0
 }
@@ -652,7 +652,7 @@ const guardedPush = (target: string | { path: string; query?: Record<string, str
 }
 
 // 查看手机详情
-const viewPhoneDetail = (row: any) => {
+const viewPhoneDetail = (row: PhoneStockWarning) => {
   guardedPush({
     path: '/inventory',
     query: {

@@ -145,18 +145,8 @@ import { useMenuWidth } from '@/composables/useMenuWidth'
 import IconRenderer from '@/components/IconRenderer.vue'
 import InlineLoading from '@/components/InlineLoading.vue'
 import type { CloseEmits } from '@/types/component'
+import type { MenuAction, MenuItem } from '@/types/menu'
 import { logger } from '@/utils/logger'
-
-// MenuItem 接口定义
-interface MenuItem {
-  id: string | number
-  name: string
-  url?: string
-  path?: string
-  icon?: string
-  children?: MenuItem[]
-  [key: string]: any
-}
 
 // Props
 interface Props {
@@ -165,13 +155,7 @@ interface Props {
   menuList?: MenuItem[] | null
   userName?: string
   userRole?: string
-  quickActions?: Array<{
-    id: string
-    name: string
-    icon: string
-    badge?: string
-    handler: () => void
-  }>
+  quickActions?: MenuAction[]
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -185,7 +169,7 @@ const props = withDefaults(defineProps<Props>(), {
 // Emits
 interface Emits extends CloseEmits {
   'menu-click': [menu: MenuItem]
-  'quick-action': [action: any]
+  'quick-action': [action: MenuAction]
 }
 
 const emit = defineEmits<Emits>()
@@ -287,7 +271,7 @@ const navigateToMenu = (menu: MenuItem) => {
   closeMenu()
 }
 
-const _handleQuickAction = (action: any) => {
+const _handleQuickAction = (action: MenuAction) => {
   emit('quick-action', action)
   closeMenu()
 }

@@ -62,8 +62,8 @@
     >
       <Swiper
         :modules="[SwiperAutoplay, SwiperPagination]"
-        :autoplay="{ delay: currentBannerInterval, disableOnInteraction: false } as any"
-        :pagination="{ clickable: true } as any"
+        :autoplay="{ delay: currentBannerInterval, disableOnInteraction: false } as unknown as never"
+        :pagination="{ clickable: true } as unknown as never"
         :loop="true"
         class="banner-swiper"
         @slide-change="handleSlideChange"
@@ -87,7 +87,7 @@
     <div class="category-section">
       <div
         class="category-item"
-        @click="goProducts({ is_new: true })"
+        @click="goProducts({ is_new: 'true' })"
       >
         <div class="category-icon new">
           <i class="fas fa-star" />
@@ -96,7 +96,7 @@
       </div>
       <div
         class="category-item"
-        @click="goProducts({ is_new: false })"
+        @click="goProducts({ is_new: 'false' })"
       >
         <div class="category-icon used">
           <i class="fas fa-recycle" />
@@ -478,6 +478,7 @@
 import { ref, computed, onMounted, onUnmounted, onActivated, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { Swiper, SwiperSlide } from 'swiper/vue'
+import type { Swiper as SwiperInstance } from 'swiper'
 import { Autoplay, Pagination } from 'swiper/modules'
 import { ElMessage } from 'element-plus'
 import 'swiper/css'
@@ -487,8 +488,10 @@ import { baseDataApi } from '@/api/base-data'
 import { getActiveHomeSections } from '@/api/home-sections'
 import { useCart, useLoadingState } from '@/composables'
 import Image from '@/components/Image.vue'
-import type { Banner } from '@/api/shop-public'
+import type { PublicShopBanner as Banner, PublicTemplatePhone, ShopConfig } from '@/api/shop-public'
 import type { HomeSection } from '@/api/home-sections'
+import type { HomeSectionProduct } from '@/api/home-sections'
+import type { Brand, Color, MemoryOption, Model } from '@/types'
 import { formatSafeImageUrl, generateProductPlaceholder } from '@/utils/format'
 import { storage } from '@/services/storage'
 import { logger } from '@/utils/logger'
@@ -518,7 +521,7 @@ const addingToCart = ref<number | null>(null)
 // 获取图片 URL
 const getImageUrl = (imageUrl: string): string => formatSafeImageUrl(imageUrl)
 
-const getConditionText = (product: any): string => {
+const getConditionText = (product: HomeSectionProduct): string => {
   const conditionGrade = typeof product?.condition_grade === 'string' ? product.condition_grade.trim() : ''
   if (conditionGrade) {
     return conditionGrade
@@ -532,7 +535,7 @@ const getConditionText = (product: any): string => {
   return ''
 }
 
-const getProductTitle = (product: any, sectionName = ''): string => {
+const getProductTitle = (product: HomeSectionProduct, sectionName = ''): string => {
   if (!product) return ''
 
   const hideBrand = typeof sectionName === 'string' && sectionName.includes('靓机')
@@ -550,30 +553,30 @@ const getProductTitle = (product: any, sectionName = ''): string => {
     .join(' ')
 }
 
-const getProductImage = (product: any): string => {
+const getProductImage = (product: HomeSectionProduct): string => {
   const imageUrl = getImageUrl(product?.main_image || '')
   return imageUrl || generatePlaceholderImage(product)
 }
 
 // 生成默认占位图（使用品牌、型号、颜色、内存生成SVG占位图 - 横向布局）
-const generatePlaceholderImage = (product: any): string => {
+const generatePlaceholderImage = (product: HomeSectionProduct): string => {
   return generateProductPlaceholder({
     brand: product.brand_name || '',
     model: product.model_name || '',
     color: product.color_name || '',
-    memory: product.memory_size || '',
+    memory: product.memory_name || '',
     size: 200,
     layout: 'horizontal'
   })
 }
 
 // 数据
-const config = ref<any>({})
+const config = ref<Partial<ShopConfig>>({})
 const banners = ref<Banner[]>([])
-const brands = ref<any[]>([])
-const colors = ref<any[]>([])
-const memories = ref<any[]>([])
-const brandModels = ref<any[]>([])
+const brands = ref<Brand[]>([])
+const colors = ref<Color[]>([])
+const memories = ref<MemoryOption[]>([])
+const brandModels = ref<Model[]>([])
 const homeSections = ref<HomeSection[]>([])
 const { loading } = useLoadingState()
 const currentSlideIndex = ref(0)
@@ -586,13 +589,13 @@ const modelKeyword = ref('')
 const colorKeyword = ref('')
 const memoryKeyword = ref('')
 const activeSearchField = ref<'model' | 'color' | 'memory' | null>(null)
-const modelCache = new Map<number, any[]>()
+const modelCache = new Map<number, Model[]>()
 const selectedBrandName = computed(() => {
   const currentBrand = brands.value.find((brand) => brand.id === selectedBrandId.value)
   return currentBrand?.name || '当前品牌'
 })
 const normalizeKeyword = (value: string) => value.trim().toLowerCase()
-const getMemoryLabel = (memory: any) => memory?.size || memory?.name || ''
+const getMemoryLabel = (memory: MemoryOption) => memory.size || memory.name || ''
 const filteredBrandModels = computed(() => {
   const keyword = normalizeKeyword(modelKeyword.value)
   if (!keyword) {
@@ -657,8 +660,7 @@ const allBannerImages = computed(() => {
 // 获取商城配置
 const loadConfig = async () => {
   try {
-    const response: any = await getPublicConfig()
-    config.value = response?.data || response || {}
+    config.value = await getPublicConfig()
   } catch (error) {
     logger.error('获取配置失败:', error)
   }
@@ -668,7 +670,7 @@ const loadConfig = async () => {
 const loadBanners = async () => {
   try {
     const response = await getActiveBanners()
-    banners.value = (response as any).data || response || []
+    banners.value = Array.isArray(response) ? response : []
   } catch (error) {
     logger.error('获取轮播图失败:', error)
   }
@@ -744,19 +746,19 @@ const toggleSearchField = (field: 'model' | 'color' | 'memory') => {
   activeSearchField.value = activeSearchField.value === field ? null : field
 }
 
-const selectModelOption = (model: any | null) => {
+const selectModelOption = (model: Model | null) => {
   selectedModelId.value = model ? String(model.id) : ''
   modelKeyword.value = model?.name || ''
   activeSearchField.value = null
 }
 
-const selectColorOption = (color: any | null) => {
+const selectColorOption = (color: Color | null) => {
   selectedColorId.value = color ? String(color.id) : ''
   colorKeyword.value = color?.name || ''
   activeSearchField.value = null
 }
 
-const selectMemoryOption = (memory: any | null) => {
+const selectMemoryOption = (memory: MemoryOption | null) => {
   selectedMemoryId.value = memory ? String(memory.id) : ''
   memoryKeyword.value = memory ? getMemoryLabel(memory) : ''
   activeSearchField.value = null
@@ -835,7 +837,7 @@ const loadHomeSections = async () => {
   try {
     const response = await getActiveHomeSections()
     // response 格式: { success: true, data: [...] }
-    const data = response.data || response || []
+    const data = response.data || []
     homeSections.value = Array.isArray(data) ? data : []
   } catch (error) {
     logger.error('获取推荐区域失败:', error)
@@ -845,7 +847,7 @@ const loadHomeSections = async () => {
 }
 
 // 处理购物车图标点击
-const handleCartClick = async (product: any) => {
+const handleCartClick = async (product: HomeSectionProduct) => {
   // 全新机需要找到对应的商品
   if (product.product_type === 'new' || !product.phone_id) {
     addingToCart.value = product.template_id
@@ -853,11 +855,11 @@ const handleCartClick = async (product: any) => {
       // 使用模板商品API获取详细信息
       const { getTemplatePhones } = await import('@/api/shop-public')
       const phonesResponse = await getTemplatePhones(product.template_id)
-      const phones: any = phonesResponse || []
+      const phones: PublicTemplatePhone[] = phonesResponse || []
 
       if (phones && phones.length > 0) {
         // 获取第一个有库存的商品
-        const availablePhone = phones.find((p: any) => p.status === 'in_stock')
+        const availablePhone = phones.find(p => p.status === 'in_stock')
 
         if (availablePhone) {
           await addCartItem(availablePhone.id, 1)
@@ -893,7 +895,7 @@ const handleCartClick = async (product: any) => {
 }
 
 // 跳转商品列表
-const goProducts = (params: any) => {
+const goProducts = (params: Record<string, string | number | null>) => {
   router.push({
     path: '/m/products',
     query: params
@@ -901,8 +903,8 @@ const goProducts = (params: any) => {
 }
 
 // 根据专区类型跳转商品列表
-const goProductsFromSection = (section: any) => {
-  const params: any = {}
+const goProductsFromSection = (section: HomeSection) => {
+  const params: Record<string, string | number | null> = {}
 
   // 根据专区名称或 key 判断筛选条件
   const sectionName = section.section_name || ''
@@ -911,7 +913,7 @@ const goProductsFromSection = (section: any) => {
   // 靓机专区：筛选成色为"靓机"的二手商品
   if (sectionName.includes('靓机') || sectionKey.includes('liangji') || sectionKey.includes('quality')) {
     params.condition_grade = '靓机'
-    params.is_new = false
+    params.is_new = 'false'
   }
 
   router.push({
@@ -921,7 +923,7 @@ const goProductsFromSection = (section: any) => {
 }
 
 // 跳转商品详情
-const goDetail = (product: any) => {
+const goDetail = (product: HomeSectionProduct) => {
   if (product.product_type === 'new' || product.template_id) {
     // 全新机使用 AggregatedProductDetail
     const templateId = product.template_id
@@ -951,7 +953,7 @@ const _handleBannerClick = (banner: Banner) => {
 }
 
 // 幻灯片切换事件
-const handleSlideChange = (swiper: any) => {
+const handleSlideChange = (swiper: SwiperInstance) => {
   currentSlideIndex.value = swiper.activeIndex
 }
 
@@ -978,7 +980,7 @@ const handleShare = () => {
   if (navigator.share) {
     navigator.share({
       title: config.value.shop_name || '未配置店铺名称',
-      text: config.value.shop_subtitle || '欢迎光临',
+      text: '欢迎光临',
       url: pageUrl
     }).catch(() => {
       ElMessage.info('请使用浏览器分享功能')
@@ -1010,7 +1012,17 @@ const openExternalMap = () => {
 }
 
 // 地图相关
-let mobileMap: any = null
+interface TencentMapApi {
+  LatLng: new (_lat: number, _lng: number) => { lat: number, lng: number }
+  Map: new (_container: HTMLElement, _options: Record<string, unknown>) => { destroy: () => void }
+  MultiMarker: new (_options: Record<string, unknown>) => unknown
+  MarkerStyle: new (_options: Record<string, unknown>) => unknown
+  InfoWindow: new (_options: Record<string, unknown>) => unknown
+}
+
+type TencentWindow = Window & { TMap?: TencentMapApi }
+
+let mobileMap: { destroy: () => void } | null = null
 
 // 初始化地图
 const initMap = async () => {
@@ -1049,23 +1061,25 @@ const initMap = async () => {
     const lat = parseFloat(config.value.map_latitude)
     const lng = parseFloat(config.value.map_longitude)
 
-    const center = new (window as any).TMap.LatLng(lat, lng)
+    const tMap = (window as TencentWindow).TMap
+    if (!tMap) throw new Error('腾讯地图 SDK 未加载')
+    const center = new tMap.LatLng(lat, lng)
 
-    mobileMap = new (window as any).TMap.Map(container, {
+    mobileMap = new tMap.Map(container, {
       center: center,
       zoom: 15,
       viewMode: '2D'
     })
 
     // 添加标记
-    new (window as any).TMap.MultiMarker({
+    new tMap.MultiMarker({
       map: mobileMap,
       geometries: [{
         id: 'shop',
         position: center
       }],
       styles: {
-        'shop': new (window as any).TMap.MarkerStyle({
+        'shop': new tMap.MarkerStyle({
           width: 24,
           height: 34,
           anchor: { x: 12, y: 34 }
@@ -1074,7 +1088,7 @@ const initMap = async () => {
     })
 
     // 添加信息窗口
-    const _info = new (window as any).TMap.InfoWindow({
+    new tMap.InfoWindow({
       map: mobileMap,
       position: center,
       content: `<div style="padding:10px;font-size:var(--tf-type-scale-14);"><strong>${config.value.shop_name || '店铺'}</strong><br>${config.value.shop_address || ''}</div>`
@@ -1086,7 +1100,7 @@ const initMap = async () => {
 }
 
 // 获取商品显示价格
-const getDisplayPrice = (product: any) => {
+const getDisplayPrice = (product: HomeSectionProduct) => {
   if (!product) return null
 
   // 首页商品统一使用 min_price 字段

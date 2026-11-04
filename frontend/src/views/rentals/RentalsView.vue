@@ -1122,6 +1122,7 @@ import { PaymentChannelSelect, PaymentMethodSelect, PaymentMethodText } from '@/
 import { getPaymentMethodLabel } from '@/constants/paymentMethods'
 import { escapeHtml } from '@/utils/security'
 import { TIME_FORMATS, TimeUtil } from '@/utils/time'
+import { logger } from '@/utils/logger'
 
 type BillingMode = 'daily' | 'buyout'
 interface Customer { id:number; name:string; phone:string; id_card?:string }
@@ -1129,6 +1130,11 @@ interface Device { id:number; imei?:string; serial_number?:string; brand?:string
 interface ContractFile { id:number; file_url:string; file_name?:string }
 interface Rental extends Device { id:number; contract_number?:string; phone_id:number; customer_id:number; customer_name:string; customer_phone:string; customer_id_card?:string; billing_mode:BillingMode; unit_price:number; term_months?:number; sale_price?:number; sale_order_price?:number; down_payment?:number; principal_amount?:number; monthly_rent?:number; monthly_principal?:number; installment_amount?:number; monitoring_lock:number; start_date:string; end_date?:string; returned_at?:string; deposit:number; total_cost:number; status:string; sale_id?:number; sale_order_id?:number; sale_invoice_number?:string; sale_store_id?:number; sale_store_name?:string; sale_operator_id?:number; sale_operator_name?:string; sale_payment_method?:string; sale_payment_channel?:string; sale_remarks?:string; operator_name?:string; remarks?:string; rented_days:number; accrued_rent:number; paid_rent:number; payable_rent:number; remaining_periods?:number; next_due_date?:string; paid_period_numbers?:number[]; contract_files?:ContractFile[] }
 interface ScheduleItem { period_number:number; due_date:string; amount:number; principal_amount?:number; monthly_rent?:number; paid:boolean; paid_at?:string }
+interface RentalListResponseMeta {
+  pagination?: { total?: number; total_pages?: number; has_next?: boolean; has_prev?: boolean }
+  summary?: { active_count?: number; device_count?: number; receivable_amount?: number; deposit_amount?: number }
+}
+interface RentalPaymentScheduleResponse { schedule?: ScheduleItem[] }
 
 const { canView, canCreate, canEdit, handleNoPermission } = usePagePermissions('rentals')
 const { loading } = useLoadingState()
@@ -1249,7 +1255,9 @@ const contractNumber = (row:Partial<Rental>) => canViewRentalField('contract_num
   ? row.contract_number || '-'
   : '当前合同'
 const statusLabel = (status:string) => ({ active:'进行中',returned:'已归还',overdue:'已逾期',damaged:'设备损坏',bought_out:'已买断' }[status] || status)
-const statusType = (status:string):'success'|'info'|'warning'|'danger' => ({ active:'success',returned:'info',overdue:'warning',damaged:'danger',bought_out:'success' }[status] as any || 'info')
+const RENTAL_STATUS_TYPES = { active:'success', returned:'info', overdue:'warning', damaged:'danger', bought_out:'success' } as const
+type RentalStatusType = typeof RENTAL_STATUS_TYPES[keyof typeof RENTAL_STATUS_TYPES] | 'info'
+const statusType = (status:string):RentalStatusType => RENTAL_STATUS_TYPES[status as keyof typeof RENTAL_STATUS_TYPES] || 'info'
 const maskIdCard = (value?:string) => value ? `${value.slice(0,6)}********${value.slice(-4)}` : '-'
 const principalAmount = computed(() => canViewRentalField('sale_price') && canViewRentalField('down_payment')
   ? Math.max(Number(form.sale_price || 0) - Number(form.down_payment || 0), 0)
@@ -1263,12 +1271,28 @@ const installmentAmount = computed(() => canViewRentalField('monthly_principal')
 const customerDirty = computed(() => customerMode.value !== 'selected' || customerDraft.name !== customerOriginal.name || customerDraft.phone !== customerOriginal.phone || customerDraft.id_card !== customerOriginal.id_card)
 const selectedDailyDevices = computed(() => form.phone_ids.map(id => deviceOptions.value.find(item => item.id === id)).filter((item): item is Device => Boolean(item)))
 
-async function loadRentals(){ if(!canView.value)return; loading.value=true; try{const params={ page:pagination.page,page_size:pagination.page_size,keyword:showSearchField.value?filters.keyword:undefined,billing_mode:canViewRentalField('billing_mode')?filters.billing_mode:undefined,status:canViewRentalField('status')?filters.status:undefined };const res=await unifiedApi.get('/rentals',{ params,useCache:false }); rentals.value=Array.isArray(res.data)?res.data:[];const responsePagination=(res as any).pagination||{};pagination.total=Number(responsePagination.total||0);pagination.total_pages=Number(responsePagination.total_pages||0);pagination.has_next=Boolean(responsePagination.has_next);pagination.has_prev=Boolean(responsePagination.has_prev);const responseSummary=(res as any).summary||{};Object.assign(summaryData,{ active_count:Number(responseSummary.active_count||0),device_count:Number(responseSummary.device_count||0),receivable_amount:Number(responseSummary.receivable_amount||0),deposit_amount:Number(responseSummary.deposit_amount||0) })}finally{loading.value=false} }
+async function loadRentals(){
+  if(!canView.value)return
+  loading.value=true
+  try{
+    const params={ page:pagination.page,page_size:pagination.page_size,keyword:showSearchField.value?filters.keyword:undefined,billing_mode:canViewRentalField('billing_mode')?filters.billing_mode:undefined,status:canViewRentalField('status')?filters.status:undefined }
+    const res=await unifiedApi.get<Rental[]>('/rentals',{ params,useCache:false })
+    rentals.value=Array.isArray(res.data)?res.data:[]
+    const metadata = res as unknown as RentalListResponseMeta
+    const responsePagination=metadata.pagination || {}
+    pagination.total=Number(responsePagination.total||0)
+    pagination.total_pages=Number(responsePagination.total_pages||0)
+    pagination.has_next=Boolean(responsePagination.has_next)
+    pagination.has_prev=Boolean(responsePagination.has_prev)
+    const responseSummary=metadata.summary || {}
+    Object.assign(summaryData,{ active_count:Number(responseSummary.active_count||0),device_count:Number(responseSummary.device_count||0),receivable_amount:Number(responseSummary.receivable_amount||0),deposit_amount:Number(responseSummary.deposit_amount||0) })
+  }finally{loading.value=false}
+}
 function handleSearch(){pagination.page=1;loadRentals()}
 function resetSearch(){Object.assign(filters,{ keyword:'',billing_mode:'',status:'' });handleSearch()}
 function resetForm(){editingId.value=null;selectedSalesOperator.value=null;Object.keys(dailySalePrices).forEach(key=>delete dailySalePrices[Number(key)]);bulkDailySalePrice.value=null;Object.assign(form,{ customer_id:null,phone_id:null,phone_ids:[],billing_mode:'buyout',unit_price:null,term_months:1,sale_price:null,purchase_cost:null,down_payment:null,monthly_rent:null,sale_store_id:null,sale_operator_id:defaultSaleOperatorId(),sale_payment_method:'cash',sale_payment_channel:'',sale_remarks:'',monitoring_lock:true,start_date:TimeUtil.nowFormatted(TIME_FORMATS.DATE),deposit:null,remarks:'' });Object.assign(customerDraft,{ name:'',phone:'',id_card:'' });Object.assign(customerOriginal,{ name:'',phone:'',id_card:'' });customerKeyword.value='';customerMode.value='search';customerOptions.value=[];deviceOptions.value=[]}
 function defaultSaleOperatorId(){return salesOperators.value[0]?.id || null}
-async function loadSalesOptions(keyword=''){if(!['sale_store_name','sale_operator_name'].some(field=>canViewRentalField(field as RentalFieldName)))return;try{const res=await unifiedApi.get('/rentals/sales-options',{ params:{ keyword:keyword.trim()||undefined,page:1,page_size:20 },useCache:false });const data=(res.data||{}) as any;const results=canViewRentalField('sale_operator_name')&&Array.isArray(data.operators)?data.operators:[];const selected=selectedSalesOperator.value || salesOperators.value.find(item=>Number(item.id)===Number(form.sale_operator_id));salesOperators.value=selected&&!results.some((item:{id:number})=>Number(item.id)===Number(selected.id))?[...results,selected]:results;salesStores.value=canViewRentalField('sale_store_name')&&Array.isArray(data.stores)?data.stores:[];if(canViewRentalField('sale_operator_name')&&!form.sale_operator_id)form.sale_operator_id=defaultSaleOperatorId()}catch(error){console.warn('加载销售选项失败',error)}}
+async function loadSalesOptions(keyword=''){if(!['sale_store_name','sale_operator_name'].some(field=>canViewRentalField(field as RentalFieldName)))return;try{const res=await unifiedApi.get('/rentals/sales-options',{ params:{ keyword:keyword.trim()||undefined,page:1,page_size:20 },useCache:false });const data=(res.data||{}) as { operators?:Array<{id:number;name?:string;username?:string}>;stores?:Array<{id:number;name:string}> };const results=canViewRentalField('sale_operator_name')&&Array.isArray(data.operators)?data.operators:[];const selected=selectedSalesOperator.value || salesOperators.value.find(item=>Number(item.id)===Number(form.sale_operator_id));salesOperators.value=selected&&!results.some((item:{id:number})=>Number(item.id)===Number(selected.id))?[...results,selected]:results;salesStores.value=canViewRentalField('sale_store_name')&&Array.isArray(data.stores)?data.stores:[];if(canViewRentalField('sale_operator_name')&&!form.sale_operator_id)form.sale_operator_id=defaultSaleOperatorId()}catch(error){logger.warn('加载租赁销售选项失败',error)}}
 function searchSalesOperators(keyword:string){void loadSalesOptions(keyword)}
 function rememberSaleOperator(id:number|null){selectedSalesOperator.value=salesOperators.value.find(item=>Number(item.id)===Number(id))||null}
 function openCreateDialog(){if(!canCreate.value)return handleNoPermission('create');if(!canCreateRentalBase.value)return ElMessage.warning('创建合同所需字段已被隐藏');resetForm();formVisible.value=true;searchDevices('');loadSalesOptions()}
@@ -1338,7 +1362,7 @@ async function saveRental(){
   }catch(error){ElMessage.error(error instanceof Error?error.message:'合同保存失败')}finally{saving.value=false}
 }
 async function finishRental(row:Rental){await confirmAction(`确认设备已归还？合同 ${contractNumber(row)} 将结束，设备恢复为可售。`,'归还设备',{ type:'warning' });await unifiedApi.post(`/rentals/${row.id}/finish`);ElMessage.success('设备已归还并恢复可售');await loadRentals()}
-async function openPayment(row:Rental){if(!canEdit.value)return handleNoPermission('edit');paymentRental.value=row;selectedPeriods.value=[];dailyPaymentAmount.value=Number(row.payable_rent||0);paymentRemarks.value='';const res=await unifiedApi.get(`/rentals/${row.id}/payment-schedule`);paymentSchedule.value=(res.data as any)?.schedule||[];paymentVisible.value=true}
+async function openPayment(row:Rental){if(!canEdit.value)return handleNoPermission('edit');paymentRental.value=row;selectedPeriods.value=[];dailyPaymentAmount.value=Number(row.payable_rent||0);paymentRemarks.value='';const res=await unifiedApi.get<RentalPaymentScheduleResponse>(`/rentals/${row.id}/payment-schedule`);paymentSchedule.value=res.data?.schedule||[];paymentVisible.value=true}
 async function savePayment(){if(!paymentRental.value)return;if(paymentRental.value.billing_mode!=='daily'&&!selectedPeriods.value.length)return ElMessage.warning('请选择月供期次');paymentSaving.value=true;try{const payload=paymentRental.value.billing_mode!=='daily'?{ period_numbers:selectedPeriods.value }:{ amount:dailyPaymentAmount.value };if(canViewRentalField('remarks'))Object.assign(payload,{ remarks:paymentRemarks.value });await unifiedApi.post(`/rentals/${paymentRental.value.id}/payments`,payload);ElMessage.success(paymentRental.value.billing_mode==='daily'?'租金已登记':'月供已登记，销售订单收款已同步');paymentVisible.value=false;await loadRentals()}finally{paymentSaving.value=false}}
 async function uploadContractFile(options:UploadRequestOptions){if(!selected.value)return;const data=new FormData();data.append('files',options.file);try{await unifiedApi.upload(`/rentals/${selected.value.id}/files`,data);options.onSuccess?.({});ElMessage.success('签字合同已上传');await loadRentals();selected.value=rentals.value.find(i=>i.id===selected.value?.id)||selected.value}catch(error){ElMessage.error(error instanceof Error?error.message:'合同上传失败')}}
 async function downloadContractFile(file:ContractFile){if(!selected.value)return;try{await unifiedApi.download(`/rentals/${selected.value.id}/files/${file.id}/download`,file.file_name||'合同附件')}catch(error){ElMessage.error(error instanceof Error?error.message:'合同下载失败')}}

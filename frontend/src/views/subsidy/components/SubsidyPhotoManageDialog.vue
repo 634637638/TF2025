@@ -178,22 +178,22 @@
 <script setup lang="ts">
 import { confirmAction } from '@/utils/message-box'
 import { computed, defineAsyncComponent, nextTick, ref, watch } from 'vue'
-import InlineLoading from '@/components/InlineLoading.vue'
 import { ElMessage } from 'element-plus'
 import { storage } from '@/composables/core/useLocalStorage'
 import { deleteTempFiles } from '@/utils/temp-file-cleaner'
-import { useImportExport } from '@/composables/useImportExport'
 import { unifiedApi } from '@/utils/unified-api'
 import { logger } from '@/utils/logger'
 import { formatImageUrl } from '@/utils/format'
 import type { MediaPreviewItem } from '@/utils/media'
 import { convertPdfToImage, isPdfFile } from '@/utils/upload-media'
+import type { UploadRequestOptions } from 'element-plus'
+import type { NationalSubsidyRecord, NationalSubsidyUploadResponse } from '@/types'
 
 const AsyncImage = defineAsyncComponent(() => import('@/components/Image.vue'))
 
 const props = defineProps<{
   modelValue: boolean
-  item: any | null
+  item: NationalSubsidyRecord | null
   canUpload: boolean
 }>()
 
@@ -201,8 +201,6 @@ const emit = defineEmits<{
   'update:modelValue': [boolean]
   saved: []
 }>()
-
-const { saveBlobFile } = useImportExport()
 
 const previewPhotos = ref<string[]>([])
 const currentPhotoIndex = ref(0)
@@ -383,10 +381,17 @@ watch(
   { immediate: true }
 )
 
-const customUploadRequest = async (options: any) => {
+type UploadError = Parameters<UploadRequestOptions['onError']>[0]
+
+const toUploadError = (error: unknown, fallback: string): UploadError => Object.assign(
+  new Error(error instanceof Error ? error.message : fallback),
+  { name: 'UploadError', status: 0, method: 'POST', url: '/subsidy/upload/photo' }
+) as UploadError
+
+const customUploadRequest = async (options: UploadRequestOptions) => {
   if (!canUpload.value) {
     ElMessage.warning('您没有图片上传权限')
-    options.onError?.(new Error('没有图片上传权限'))
+    options.onError?.(toUploadError(new Error('没有图片上传权限'), '没有图片上传权限'))
     return
   }
 
@@ -396,11 +401,11 @@ const customUploadRequest = async (options: any) => {
 
   if (!isLt10M) {
     ElMessage.error('文件大小不能超过10MB')
-    onError?.(new Error('文件大小超过10MB'))
+    onError?.(toUploadError(new Error('文件大小超过10MB'), '文件大小超过10MB'))
     return
   }
 
-  let uploadFile = file
+  let uploadFile: File = file
   if (isPdf) {
     try {
       ElMessage.info('正在将PDF转换为图片...')
@@ -408,7 +413,7 @@ const customUploadRequest = async (options: any) => {
       ElMessage.success('PDF转换成功，正在上传...')
     } catch (error) {
       ElMessage.error('PDF转换图片失败')
-      onError?.(error)
+      onError?.(toUploadError(error, 'PDF转换图片失败'))
       return
     }
   }
@@ -424,7 +429,7 @@ const customUploadRequest = async (options: any) => {
   formData.append('inventory_time', props.item?.inventory_time || '')
 
   try {
-    const result = await unifiedApi.upload('/subsidy/upload/photo', formData, {
+    const result = await unifiedApi.upload<NationalSubsidyUploadResponse>('/subsidy/upload/photo', formData, {
       headers: uploadHeaders.value
     })
 
@@ -438,22 +443,19 @@ const customUploadRequest = async (options: any) => {
 
     const errorMessage = result?.message || '照片上传失败'
     ElMessage.error(errorMessage)
-    onError?.(new Error(errorMessage))
+    onError?.(toUploadError(new Error(errorMessage), errorMessage))
   } catch (error) {
     logger.error('上传请求失败:', error)
     ElMessage.error('照片上传失败，请重试')
-    onError?.(error)
+    onError?.(toUploadError(error, '照片上传失败'))
   }
 }
 
 const downloadPhotoBlob = async (photoUrl: string, filename: string) => {
-  const { formatImageUrl } = await import('@/utils/format')
-  const response = await fetch(formatImageUrl(photoUrl))
-  const blob = await response.blob()
-
-  saveBlobFile(blob, {
-    filename,
-    mimeType: blob.type || 'image/jpeg'
+  await unifiedApi.download(photoUrl, filename, {
+    showLoading: false,
+    showError: false,
+    useCache: false
   })
 }
 
@@ -708,9 +710,9 @@ const savePhotoChanges = async () => {
     } else {
       ElMessage.error(response.message || '照片保存失败')
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('保存照片失败:', error)
-    ElMessage.error(error.message || '照片保存失败')
+    ElMessage.error(error instanceof Error ? error.message : '照片保存失败')
   } finally {
     savingPhotos.value = false
   }

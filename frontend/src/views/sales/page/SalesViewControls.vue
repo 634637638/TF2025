@@ -13,7 +13,10 @@
       >
         <i class="fas fa-boxes" />
         <span>调货</span>
-        <span v-if="selectedCount > 0" class="badge">({{ selectedCount }})</span>
+        <span
+          v-if="selectedCount > 0"
+          class="badge"
+        >({{ selectedCount }})</span>
       </el-button>
       <el-button
         v-if="canProxyTransferPermission"
@@ -24,7 +27,10 @@
       >
         <i class="fas fa-exchange-alt" />
         <span>划拨</span>
-        <span v-if="selectedCount > 0" class="badge">({{ selectedCount }})</span>
+        <span
+          v-if="selectedCount > 0"
+          class="badge"
+        >({{ selectedCount }})</span>
       </el-button>
     </div>
 
@@ -103,7 +109,10 @@
         class="operation-info"
         :class="operationMode === 'wholesale' ? 'wholesale-mode' : 'proxy-mode'"
       >
-        <i class="fas" :class="operationMode === 'wholesale' ? 'fa-boxes' : 'fa-exchange-alt'" />
+        <i
+          class="fas"
+          :class="operationMode === 'wholesale' ? 'fa-boxes' : 'fa-exchange-alt'"
+        />
         <span v-if="selectedCount === 0">请勾选需要{{ operationMode === 'wholesale' ? '调货' : '划拨' }}的设备</span>
         <span v-else>{{ operationMode === 'wholesale' ? '调货' : '划拨' }} {{ selectedCount }} 台</span>
       </span>

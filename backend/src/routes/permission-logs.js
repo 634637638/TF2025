@@ -183,10 +183,10 @@ router.get('/logs', unifiedAuth, requirePermission('permissions:admin'), async (
     )
     const total = countResult[0].total
 
-    // 获取日志列表 - 将 LIMIT 和 OFFSET 直接嵌入 SQL
+    // 分页值使用参数绑定，避免把请求派生值拼接进 SQL。
     const limitSql = `SELECT id, user_id, username, action, target_type, target_id, target_name, description, details, ip_address, status, created_at
-      FROM permission_operation_logs ${whereClause} ORDER BY created_at DESC LIMIT ${sizeNum} OFFSET ${offset}`
-    const [logs] = await db.execute(limitSql, params)
+      FROM permission_operation_logs ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`
+    const [logs] = await db.execute(limitSql, [...params, sizeNum, offset])
 
     res.json({
       success: true,

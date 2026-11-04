@@ -403,7 +403,8 @@ import { confirmAction } from '@/utils/message-box'
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { getOrderByNumber, getPublicConfig, cancelOrder, confirmPayment } from '@/api/shop-public'
+import { getOrderByNumber, getPublicConfig, cancelOrder, confirmPayment, type ShopConfig, type PublicOrder } from '@/api/shop-public'
+import { getRequestErrorMessage } from '@/utils/api-response'
 import { TimeUtil } from '@/utils/time'
 import { formatAmount, formatDateTime as formatGlobalDateTime } from '@/utils/format'
 import Image from '@/components/Image.vue'
@@ -416,14 +417,38 @@ import { getShopPaymentOptions, getPaymentMethodLabel } from '@/utils/shop-payme
 const router = useRouter()
 const route = useRoute()
 
-const orderData = ref<any>(null)
+interface OrderDetailItem {
+  id?: number | string
+  image_url?: string
+  product_name?: string
+  specs?: string
+  sale_price?: number | string
+  quantity?: number
+}
+
+interface OrderDetailRecord {
+  id?: number | string
+  order_number: string
+  status: string
+  expires_at?: string
+  created_at?: string
+  payment_method?: string
+  customer_name?: string
+  customer_phone?: string
+  customer_address?: string
+  items: OrderDetailItem[]
+  total_amount?: number | string
+  remarks?: string
+}
+
+const orderData = ref<OrderDetailRecord | null>(null)
 const orderAccessToken = ref('')
 const loading = ref(true)
-const shopConfig = ref<any>({})
+const shopConfig = ref<Partial<ShopConfig>>({})
 const paymentMethodOptions = computed(() => getShopPaymentOptions(shopConfig.value))
 const cancelling = ref(false)
 const remainingTime = ref(0)
-let countdownTimer: any = null
+let countdownTimer: ReturnType<typeof setInterval> | null = null
 
 // 支付相关
 const showPaymentDialog = ref(false)
@@ -455,10 +480,10 @@ const loadOrder = async () => {
       ? String(storedOrder.accessToken || '')
       : ''
     const data = await getOrderByNumber(orderNumber as string, orderAccessToken.value)
-    orderData.value = data
-  } catch (error: any) {
+    orderData.value = data as PublicOrder as OrderDetailRecord
+  } catch (error: unknown) {
     logger.error('获取订单详情失败:', error)
-    ElMessage.error(error.message || '获取订单详情失败')
+    ElMessage.error(getRequestErrorMessage(error, '获取订单详情失败'))
     router.push('/m')
   } finally {
     loading.value = false
@@ -614,9 +639,9 @@ const completePayment = async () => {
 
     // 重新加载订单状态
     await loadOrder()
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('支付确认失败:', error)
-    ElMessage.error(error.message || '支付确认失败，请重试')
+    ElMessage.error(getRequestErrorMessage(error, '支付确认失败，请重试'))
   }
 }
 
@@ -634,15 +659,19 @@ const handleCancelOrder = async () => {
     )
 
     cancelling.value = true
-    await cancelOrder(orderData.value.id, orderAccessToken.value, '用户主动取消')
+    const orderId = Number(orderData.value.id)
+    if (!Number.isInteger(orderId) || orderId <= 0) {
+      throw new Error('订单标识无效，无法取消订单')
+    }
+    await cancelOrder(orderId, orderAccessToken.value, '用户主动取消')
     ElMessage.success('订单已取消')
 
     // 重新加载订单信息
     await loadOrder()
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error !== 'cancel') {
       logger.error('取消订单失败:', error)
-      ElMessage.error(error.message || '取消订单失败')
+      ElMessage.error(getRequestErrorMessage(error, '取消订单失败'))
     }
   } finally {
     cancelling.value = false

@@ -946,6 +946,55 @@ const ensureEditPermission = () => {
   return false
 }
 
+type ShopConfigValue = string | number | boolean | null
+interface ShopConfigForm {
+  shop_name: string
+  shop_logo: string
+  shop_subtitle: string
+  shop_phone: string
+  wechat_id: string
+  shop_address: string
+  shop_hours: string
+  map_latitude: string
+  map_longitude: string
+  map_provider: string
+  tencent_map_key: string
+  amap_map_key: string
+  baidu_map_key: string
+  payment_provider: string
+  payment_default_method: string
+  payment_qr_wechat_enabled: boolean
+  payment_qr_alipay_enabled: boolean
+  payment_qr_other_enabled: boolean
+  payment_qr_other_name: string
+  payment_bank_enabled: boolean
+  payment_merchant_other_enabled: boolean
+  wechat_pay_enabled: boolean
+  alipay_pay_enabled: boolean
+  wechat_pay_app_id: string
+  wechat_pay_mch_id: string
+  wechat_pay_api_v3_key: string
+  wechat_pay_private_key: string
+  wechat_pay_serial_no: string
+  wechat_pay_notify_url: string
+  alipay_app_id: string
+  alipay_private_key: string
+  alipay_public_key: string
+  alipay_notify_url: string
+  payment_provider_name: string
+  other_payment_api_url: string
+  other_payment_merchant_id: string
+  other_payment_secret: string
+  wechat_qrcode: string
+  alipay_qrcode: string
+  other_qrcode: string
+  bank_info: string
+  banner_enabled: boolean
+  cart_enabled: boolean
+  direct_buy_enabled: boolean
+  [key: string]: ShopConfigValue
+}
+
 // 刷新配置
 const handleRefresh = async () => {
   unifiedApi.clearCache('/shop')
@@ -954,7 +1003,7 @@ const handleRefresh = async () => {
 }
 
 // 配置数据
-const configs = ref<any>({
+const configs = ref<ShopConfigForm>({
   shop_name: '',
   shop_logo: '',
   shop_subtitle: '',
@@ -994,6 +1043,7 @@ const configs = ref<any>({
   other_payment_secret: '',
   wechat_qrcode: '',
   alipay_qrcode: '',
+  other_qrcode: '',
   bank_info: '',
   banner_enabled: true,
   cart_enabled: true,
@@ -1108,7 +1158,7 @@ const syncOriginalImageConfigs = () => {
 }
 
 // 上传成功回调
-const handleUploadSuccess = async (response: any, field: string) => {
+const handleUploadSuccess = async (response: unknown, field: string) => {
   const fieldMap: Record<string, string> = {
     shop_logo: 'shop.shop_logo',
     wechat_qrcode: 'payment.wechat_qrcode',
@@ -1124,7 +1174,13 @@ const handleUploadSuccess = async (response: any, field: string) => {
 
   // el-upload 使用 raw axios，响应格式与 unified-api 不同
   // 成功时直接返回文件信息，或通过 response.data 包装
-  const fileUrl = response.data?.files?.[0]?.url || response.data?.url || response.url
+  const responseRecord = response && typeof response === 'object' ? response as Record<string, unknown> : {}
+  const responseData = responseRecord.data && typeof responseRecord.data === 'object' ? responseRecord.data as Record<string, unknown> : {}
+  const responseFiles = Array.isArray(responseData.files) ? responseData.files : []
+  const firstFile = responseFiles[0] && typeof responseFiles[0] === 'object' ? responseFiles[0] as Record<string, unknown> : {}
+  const fileUrl = (typeof firstFile.url === 'string' ? firstFile.url : undefined)
+    || (typeof responseData.url === 'string' ? responseData.url : undefined)
+    || (typeof responseRecord.url === 'string' ? responseRecord.url : undefined)
 
   if (fileUrl) {
     const imageField = field as ImageField
@@ -1218,18 +1274,22 @@ const loadConfigs = async () => {
     const data = response.data || response
 
     // 将嵌套的配置转换为平铺的键值对
-    configs.value = {}
+    configs.value = {} as ShopConfigForm
     const booleanFields = ['banner_enabled', 'cart_enabled', 'direct_buy_enabled', 'wechat_pay_enabled', 'alipay_pay_enabled', 'payment_qr_wechat_enabled', 'payment_qr_alipay_enabled', 'payment_qr_other_enabled', 'payment_bank_enabled', 'payment_merchant_other_enabled']
     Object.keys(data).forEach(category => {
       const categoryData = data[category]
       // 确保是数组才进行 forEach
       if (Array.isArray(categoryData)) {
-        categoryData.forEach((item: any) => {
+        categoryData.forEach(item => {
+          if (!item || typeof item !== 'object') return
+          const configItem = item as Record<string, unknown>
+          const itemKey = String(configItem.key || '')
+          const itemValue = configItem.value as ShopConfigValue
           // 布尔类型字段转换为布尔值
-          if (booleanFields.includes(item.key)) {
-            configs.value[item.key] = item.value === true || item.value === 1 || item.value === '1' || item.value === 'true'
+          if (booleanFields.includes(itemKey)) {
+            configs.value[itemKey] = itemValue === true || itemValue === 1 || itemValue === '1' || itemValue === 'true'
           } else {
-            configs.value[item.key] = item.value
+            configs.value[itemKey] = itemValue
           }
         })
       }
@@ -1349,9 +1409,9 @@ const handleSave = async () => {
     uploadedTempImages.value = []
     ElMessage.success('配置保存成功')
     return true
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('保存配置失败:', error)
-    ElMessage.error(error.message || '保存配置失败')
+    ElMessage.error(error instanceof Error ? error.message : '保存配置失败')
     return false
   } finally {
     saving.value = false
@@ -1360,8 +1420,16 @@ const handleSave = async () => {
 
 // 地图选择相关
 const selectedLocation = ref({ lat: '', lng: '' })
-let map: any = null
-let marker: any = null
+interface TencentMapInstance {
+  on: (_event: string, _callback: (_event: unknown) => void) => void
+}
+
+interface TencentMarkerInstance {
+  setGeometries: (_geometries: Array<Record<string, unknown>>) => void
+}
+
+let map: TencentMapInstance | null = null
+let marker: TencentMarkerInstance | null = null
 
 const openMapPicker = async () => {
   if (!ensureEditPermission()) {
@@ -1409,7 +1477,8 @@ const initMap = () => {
   if (!container) return
 
   // 检查 TMap 是否已加载
-  if (!(window as any).TMap) {
+  const tMap = window.TMap
+  if (!tMap) {
     container.innerHTML = '<div class="map-loading-container">地图加载中...</div>'
     loadTencentMapScript(configs.value.tencent_map_key).then(() => {
       initMap()
@@ -1424,17 +1493,17 @@ const initMap = () => {
 
   try {
     // 创建地图实例
-    map = new (window as any).TMap.Map(container, {
-      center: new (window as any).TMap.LatLng(lat, lng),
+    map = new tMap.Map(container, {
+      center: new tMap.LatLng(lat, lng),
       zoom: 15,
       viewMode: '2D'
     })
 
     // 创建标记
-    marker = new (window as any).TMap.MultiMarker({
+    marker = new tMap.MultiMarker({
       map: map,
       styles: {
-        'marker': new (window as any).TMap.MarkerStyle({
+        'marker': new tMap.MarkerStyle({
           width: 25,
           height: 35,
           anchor: { x: 12, y: 35 }
@@ -1443,14 +1512,16 @@ const initMap = () => {
       geometries: [{
         id: 'marker',
         styleId: 'marker',
-        position: new (window as any).TMap.LatLng(lat, lng),
+        position: new tMap.LatLng(lat, lng),
         properties: { title: '店铺位置' }
       }]
     })
 
     // 监听地图点击事件
-    map.on('click', (evt: any) => {
-      const latLng = evt.latLng
+    map.on('click', (evt: unknown) => {
+      const eventRecord = evt && typeof evt === 'object' ? evt as { latLng?: { lat: number; lng: number } } : {}
+      const latLng = eventRecord.latLng
+      if (!latLng || !marker) return
       selectedLocation.value = {
         lat: latLng.lat.toFixed(6),
         lng: latLng.lng.toFixed(6)
@@ -1460,7 +1531,7 @@ const initMap = () => {
       marker.setGeometries([{
         id: 'marker',
         styleId: 'marker',
-        position: new (window as any).TMap.LatLng(latLng.lat, latLng.lng),
+        position: new tMap.LatLng(latLng.lat, latLng.lng),
         properties: { title: '店铺位置' }
       }])
     })
@@ -1470,7 +1541,7 @@ const initMap = () => {
   }
 }
 
-const _handleMapLocationSelect = (location: any) => {
+const _handleMapLocationSelect = (location: { lat: string; lng: string }) => {
   selectedLocation.value = location
 }
 

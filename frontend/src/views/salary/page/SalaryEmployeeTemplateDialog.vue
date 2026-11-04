@@ -107,19 +107,9 @@
 
 <script setup lang="ts">
 import MobileDialog from '@/components/MobileDialog.vue'
+import type { SalaryEmployeeOption, SalaryTemplateOption } from '@/types/salary'
 
-interface EmployeeOption {
-  name?: string | null
-  username?: string | null
-}
-
-interface SalaryTemplateOption {
-  base_salary?: number | string | null
-  id: number
-  name: string
-  rest_days?: number | null
-  [key: string]: unknown
-}
+type EmployeeOption = Pick<SalaryEmployeeOption, 'name' | 'username'>
 
 defineProps<{
   canEditField: (_moduleKey: string, _fieldName: string) => boolean

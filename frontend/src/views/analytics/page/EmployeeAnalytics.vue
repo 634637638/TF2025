@@ -627,11 +627,12 @@ import { useLoadingState } from '@/composables'
 import { useCachedRequest, DEFAULT_CACHE_TTL } from '@/composables/usePageCache'
 import { useImportExport } from '@/composables/useImportExport'
 import { analyticsService } from '@/api/analytics'
-import echarts, { ECharts } from '@/utils/echarts'
+import echarts, { ECharts, type EChartsOption } from '@/utils/echarts'
 import { buildCsvContent } from '@/utils/csv-export'
 import { useAnalyticsFieldVisibility } from './useAnalyticsFieldVisibility'
 import type { EmployeeAnalyticsProps, LoadingChangeEmits } from '@/types/component'
 import { logger } from '@/utils/logger'
+import type { EmployeePerformance } from '@/types/analytics'
 
 const props = withDefaults(defineProps<EmployeeAnalyticsProps>(), {
   loading: false,
@@ -682,9 +683,19 @@ const salesComparePeriod = ref('month')
 const salaryTrendPeriod = ref('6')
 const performanceMetric = ref('totalSales')
 
-const employeePerformance = ref([])
+interface EmployeeAttendanceRecord {
+  date: string
+  employee_name: string
+  store_name?: string
+  type: string
+  detail?: string
+  status: string
+  approved_at?: string
+}
+
+const employeePerformance = ref<EmployeePerformance[]>([])
 const performanceSummary = computed(() => {
-  return employeePerformance.value.reduce((summary: any, item: any) => {
+  return employeePerformance.value.reduce((summary, item) => {
     summary.employeeCount += 1
     summary.totalSales += Number(item.total_sales || 0)
     summary.wholesaleCount += Number(item.wholesale_count || 0)
@@ -697,7 +708,7 @@ const performanceSummary = computed(() => {
     allocationCount: 0
   })
 })
-const attendanceRecords = ref<any[]>([])
+const attendanceRecords = ref<EmployeeAttendanceRecord[]>([])
 const attendanceSummary = ref({
   totalRecords: 0,
   employeeCount: 0,
@@ -783,8 +794,8 @@ const getAttendanceTagType = (type: string): 'success' | 'warning' | 'danger' | 
 
 // 缓存键
 const CACHE_KEYS = {
-  employeeAnalytics: (params: any) => `/analytics/employees/detail:${JSON.stringify(params)}`,
-  attendanceSummary: (params: any) => `/analytics/attendance/summary:${JSON.stringify(params)}`,
+  employeeAnalytics: (params: Record<string, unknown>) => `/analytics/employees/detail:${JSON.stringify(params)}`,
+  attendanceSummary: (params: Record<string, unknown>) => `/analytics/attendance/summary:${JSON.stringify(params)}`,
   employeePerformance: (metric: string) => `/analytics/employees/performance:${metric}`,
   employeeRoles: '/analytics/employees/roles',
   salaryTrend: (months: number) => `/analytics/employees/salary-trend:${months}`,
@@ -799,7 +810,7 @@ const loadEmployeeData = async (showLoadingState = true) => {
     }
 
     // 构建查询参数
-    const params: any = {}
+    const params: Record<string, unknown> = {}
 
     // 使用父组件传递的检索参数
     if (props.startDate) {
@@ -859,7 +870,20 @@ const loadEmployeeData = async (showLoadingState = true) => {
         leaveCount: attendanceRes.data.summary?.leaveCount || 0,
         overtimeCount: attendanceRes.data.summary?.overtimeCount || 0
       }
-      attendanceRecords.value = Array.isArray(attendanceRes.data.records) ? attendanceRes.data.records : []
+      attendanceRecords.value = Array.isArray(attendanceRes.data.records)
+        ? attendanceRes.data.records.map(record => {
+          const data = record as Record<string, unknown>
+          return {
+            date: String(data.date || ''),
+            employee_name: String(data.employee_name || ''),
+            store_name: typeof data.store_name === 'string' ? data.store_name : undefined,
+            type: String(data.type || ''),
+            detail: typeof data.detail === 'string' ? data.detail : undefined,
+            status: String(data.status || ''),
+            approved_at: typeof data.approved_at === 'string' ? data.approved_at : undefined
+          }
+        })
+        : []
     } else {
       attendanceRecords.value = []
       attendanceSummary.value = {
@@ -901,7 +925,25 @@ const loadEmployeePerformance = async () => {
       }), DEFAULT_CACHE_TTL.DYNAMIC)
 
     if (response.success) {
-      employeePerformance.value = response.data
+      employeePerformance.value = response.data.map(record => {
+        const data = record as Record<string, unknown>
+        const trend = data.trend === 'up' || data.trend === 'down' ? data.trend : 'stable'
+        return {
+          id: Number(data.id || 0),
+          name: String(data.name || ''),
+          store_id: data.store_id === null || data.store_id === undefined ? null : Number(data.store_id),
+          store_name: typeof data.store_name === 'string' ? data.store_name : null,
+          new_sales: Number(data.new_sales || 0),
+          used_sales: Number(data.used_sales || 0),
+          total_orders: Number(data.total_orders || 0),
+          total_sales: Number(data.total_sales || 0),
+          salary: Number(data.salary || 0),
+          attendance_rate: Number(data.attendance_rate || 0),
+          trend,
+          wholesale_count: Number(data.wholesale_count || 0),
+          allocation_count: Number(data.allocation_count || 0)
+        }
+      })
     } else {
       employeePerformance.value = []
     }
@@ -948,9 +990,14 @@ const updateRoleChart = async () => {
     // 从API获取真实数据（使用缓存）
     const response = await useCachedRequest(CACHE_KEYS.employeeRoles, () =>
       analyticsService.getEmployeeRoles(), DEFAULT_CACHE_TTL.STATIC)
-    const data = response.success && Array.isArray(response.data) ? response.data : []
+    const data = response.success && Array.isArray(response.data)
+      ? response.data.map(item => ({
+        name: String(item.name || ''),
+        value: Number(item.value || 0)
+      }))
+      : []
 
-    const option: any = {
+    const option: EChartsOption = {
       tooltip: {
         trigger: 'item',
         formatter: '{b}: {c} ({d}%)'
@@ -1214,7 +1261,7 @@ const exportAttendance = () => {
 
 const generatePerformanceCSV = () => {
   const headers = ['排名', '姓名', '绑定店铺', '全新销量', '二手销量', '总销售额', '批发', '划拨', '出勤率', '在途工资', '趋势']
-  const rows = employeePerformance.value.map((item: any, index: number) => [
+  const rows = employeePerformance.value.map((item, index: number) => [
     index + 1,
     item.name,
     item.store_name || '未绑定',
@@ -1233,7 +1280,7 @@ const generatePerformanceCSV = () => {
 
 const generateAttendanceCSV = () => {
   const headers = ['日期', '员工', '店铺', '类型', '明细', '状态', '处理时间']
-  const rows = attendanceRecords.value.map((item: any) => [
+  const rows = attendanceRecords.value.map(item => [
     item.date,
     item.employee_name,
     item.store_name || '-',

@@ -2,12 +2,15 @@ const express = require('express')
 const router = express.Router()
 const { unifiedAuth, requirePermission, requireAnyPermission } = require('../middleware/unified-auth')
 const ApiResponse = require('../utils/response')
-const { getDatabase, isConnected } = require('../config/database')
+const { isConnected } = require('../config/database')
+const ColorRepository = require('../repositories/color.repository')
 const { cacheMiddleware, clearCache } = require('../middleware/cache')
 const { CACHE_TTL, PAGINATION } = require('../config/constants')
 const log = require('../utils/log')
 const { parseStatusFilter } = require('../utils/status')
 const { normalizeReferencePagination, buildReferenceOrder, buildPagination } = require('../services/reference-options.service')
+
+const colorRepository = new ColorRepository()
 
 const COLOR_COLUMNS = 'id, name, status, sort_order, created_at, updated_at'
 
@@ -38,7 +41,6 @@ router.get('/', unifiedAuth, requireAnyPermission(['colors:view', 'inventory:vie
       return ApiResponse.error(res, '数据库未连接', 500)
     }
 
-    const pool = getDatabase()
     const {
       page = PAGINATION.DEFAULT_PAGE,
       page_size = PAGINATION.DEFAULT_LIMIT,
@@ -99,8 +101,8 @@ router.get('/', unifiedAuth, requireAnyPermission(['colors:view', 'inventory:vie
 
     // 执行查询
     const [[colors], [countResult]] = await Promise.all([
-      pool.execute(finalQuery, queryParams),
-      pool.execute(baseCountQuery, queryParams)
+      colorRepository.executePrepared(finalQuery, queryParams),
+      colorRepository.executePrepared(baseCountQuery, queryParams)
     ])
     const total = Number(countResult[0].total) || 0
     if (returnAll) {
@@ -133,8 +135,7 @@ router.get('/:id(\\d+)', unifiedAuth, requirePermission('colors:view'), async (r
     }
 
     const { id } = req.params
-    const pool = getDatabase()
-    const [colors] = await pool.execute(`SELECT ${COLOR_COLUMNS} FROM colors WHERE id = ?`, [parseInt(id)])
+    const [colors] = await colorRepository.executePrepared(`SELECT ${COLOR_COLUMNS} FROM colors WHERE id = ?`, [parseInt(id)])
 
     if (colors.length === 0) {
       return ApiResponse.notFound(res, '颜色不存在')
@@ -156,7 +157,6 @@ router.post('/', unifiedAuth, requirePermission('colors:create'), async (req, re
       return ApiResponse.error(res, '数据库未连接', 500)
     }
 
-    const pool = getDatabase()
     const {
       name,
       status,
@@ -170,7 +170,7 @@ router.post('/', unifiedAuth, requirePermission('colors:create'), async (req, re
 
     // 检查颜色名称是否重复
     const trimmedName = name.trim()
-    const [existingColors] = await pool.execute(
+    const [existingColors] = await colorRepository.executePrepared(
       'SELECT id FROM colors WHERE name = ?',
       [trimmedName]
     )
@@ -194,10 +194,10 @@ router.post('/', unifiedAuth, requirePermission('colors:create'), async (req, re
     log.debug('执行插入SQL:', insertQuery)
     log.debug('插入参数:', insertValues)
 
-    const [result] = await pool.execute(insertQuery, insertValues)
+    const [result] = await colorRepository.executePrepared(insertQuery, insertValues)
 
     // 获取新创建的颜色
-    const [newColors] = await pool.execute(`SELECT ${COLOR_COLUMNS} FROM colors WHERE id = ?`, [result.insertId])
+    const [newColors] = await colorRepository.executePrepared(`SELECT ${COLOR_COLUMNS} FROM colors WHERE id = ?`, [result.insertId])
     const newColor = formatColor(newColors[0])
 
     clearColorsRouteCache()
@@ -224,7 +224,6 @@ router.put('/:id', unifiedAuth, requirePermission('colors:edit'), async (req, re
       return ApiResponse.error(res, '数据库未连接', 500)
     }
 
-    const pool = getDatabase()
     const {
       name,
       status,
@@ -232,14 +231,14 @@ router.put('/:id', unifiedAuth, requirePermission('colors:edit'), async (req, re
     } = req.body
 
     // 检查颜色是否存在
-    const [existingColors] = await pool.execute('SELECT id FROM colors WHERE id = ?', [id])
+    const [existingColors] = await colorRepository.executePrepared('SELECT id FROM colors WHERE id = ?', [id])
     if (existingColors.length === 0) {
       return ApiResponse.notFound(res, '颜色不存在')
     }
 
     // 检查颜色名称是否重复（排除当前颜色）
     if (name) {
-      const [duplicateCheck] = await pool.execute(
+      const [duplicateCheck] = await colorRepository.executePrepared(
         'SELECT id FROM colors WHERE name = ? AND id != ?',
         [name.trim(), id]
       )
@@ -278,10 +277,10 @@ router.put('/:id', unifiedAuth, requirePermission('colors:edit'), async (req, re
 
     // 执行更新
     const updateQuery = `UPDATE colors SET ${updateFields.join(', ')} WHERE id = ?`
-    await pool.execute(updateQuery, updateValues)
+    await colorRepository.executePrepared(updateQuery, updateValues)
 
     // 获取更新后的颜色信息
-    const [updatedColor] = await pool.execute(`SELECT ${COLOR_COLUMNS} FROM colors WHERE id = ?`, [id])
+    const [updatedColor] = await colorRepository.executePrepared(`SELECT ${COLOR_COLUMNS} FROM colors WHERE id = ?`, [id])
 
     clearColorsRouteCache()
     ApiResponse.success(res, formatColor(updatedColor[0]), '颜色更新成功')
@@ -301,16 +300,15 @@ router.delete('/:id', unifiedAuth, requirePermission('colors:delete'), async (re
     }
 
     const { id } = req.params
-    const pool = getDatabase()
 
     // 检查颜色是否存在
-    const [existingColors] = await pool.execute(`SELECT ${COLOR_COLUMNS} FROM colors WHERE id = ?`, [parseInt(id)])
+    const [existingColors] = await colorRepository.executePrepared(`SELECT ${COLOR_COLUMNS} FROM colors WHERE id = ?`, [parseInt(id)])
     if (existingColors.length === 0) {
       return ApiResponse.notFound(res, '颜色不存在')
     }
 
     // 删除颜色
-    await pool.execute('DELETE FROM colors WHERE id = ?', [parseInt(id)])
+    await colorRepository.executePrepared('DELETE FROM colors WHERE id = ?', [parseInt(id)])
 
     clearColorsRouteCache()
     ApiResponse.success(res, formatColor(existingColors[0]), '颜色删除成功')
@@ -334,7 +332,6 @@ router.get('/stats/overview', unifiedAuth, requirePermission('colors:view'), asy
       return ApiResponse.error(res, '数据库未连接', 500)
     }
 
-    const pool = getDatabase()
     const conditions = []
     const params = []
     const name = String(req.query.name || '').trim()
@@ -349,7 +346,7 @@ router.get('/stats/overview', unifiedAuth, requirePermission('colors:view'), asy
     }
     const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''
     const [[colorStats], [phoneStats]] = await Promise.all([
-      pool.execute(`
+      colorRepository.executePrepared(`
         SELECT
           COUNT(*) AS total,
           SUM(CASE WHEN c.status = 1 THEN 1 ELSE 0 END) AS active,
@@ -357,7 +354,7 @@ router.get('/stats/overview', unifiedAuth, requirePermission('colors:view'), asy
         FROM colors c
         ${whereClause}
       `, params),
-      pool.execute(`
+      colorRepository.executePrepared(`
         SELECT COUNT(*) AS related_phones
         FROM phones p
         INNER JOIN colors c ON c.id = p.color_id
@@ -387,20 +384,19 @@ router.patch('/:id/toggle', unifiedAuth, requirePermission('colors:edit'), async
     }
 
     const { id } = req.params
-    const pool = getDatabase()
-    const [existingColors] = await pool.execute(`SELECT ${COLOR_COLUMNS} FROM colors WHERE id = ?`, [parseInt(id)])
+    const [existingColors] = await colorRepository.executePrepared(`SELECT ${COLOR_COLUMNS} FROM colors WHERE id = ?`, [parseInt(id)])
 
     if (existingColors.length === 0) {
       return ApiResponse.notFound(res, '颜色不存在')
     }
 
     const newStatus = existingColors[0].status === 1 ? 0 : 1
-    await pool.execute(
+    await colorRepository.executePrepared(
       'UPDATE colors SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
       [newStatus, parseInt(id)]
     )
 
-    const [updatedColors] = await pool.execute(`SELECT ${COLOR_COLUMNS} FROM colors WHERE id = ?`, [parseInt(id)])
+    const [updatedColors] = await colorRepository.executePrepared(`SELECT ${COLOR_COLUMNS} FROM colors WHERE id = ?`, [parseInt(id)])
     const statusText = newStatus === 1 ? '启用' : '禁用'
     clearColorsRouteCache()
     ApiResponse.success(res, formatColor(updatedColors[0]), `颜色${statusText}成功`)
@@ -423,8 +419,7 @@ router.put('/batch/reorder', unifiedAuth, requirePermission('colors:edit'), asyn
       return ApiResponse.error(res, '请提供有效的排序数据', 400)
     }
 
-    const pool = getDatabase()
-    const connection = await pool.getConnection()
+    const connection = await colorRepository.acquireConnection()
 
     try {
       await connection.beginTransaction()

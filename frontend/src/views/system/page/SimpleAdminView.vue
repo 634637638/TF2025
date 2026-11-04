@@ -204,7 +204,7 @@ const quickActions = ref<QuickAction[]>([
 ])
 
 // 计算属性
-const formatRoleLabel = (role: any) => {
+const formatRoleLabel = (role: string | { name?: string; code?: string } | null | undefined) => {
   if (!role) return ''
   if (typeof role === 'string') return role
   return role.name || role.code || ''

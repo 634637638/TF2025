@@ -5,7 +5,7 @@
 
 import { unifiedApi } from '@/utils/unified-api'
 
-export interface ShopConfig {
+export interface ShopConfigEntry {
   key: string
   value: unknown
   type: string
@@ -116,7 +116,7 @@ export function getAllConfigs() {
  * 获取指定分类的配置
  */
 export function getConfigsByCategory(category: string) {
-  return unifiedApi.get<ShopConfig[]>(`/shop/config/category/${category}`)
+  return unifiedApi.get<ShopConfigEntry[]>(`/shop/config/category/${category}`)
 }
 
 /**

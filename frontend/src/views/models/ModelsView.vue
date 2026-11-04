@@ -181,8 +181,8 @@
           <div class="table-responsive">
             <el-table
               ref="modelsTableRef"
-              class="data-table devices-table base-data-table models-data-table"
               v-tf-loading="tableLoading"
+              class="data-table devices-table base-data-table models-data-table"
               :data="models"
               border
               stripe
@@ -498,7 +498,6 @@ import { usePagePermissions } from '@/composables/usePagePermissions'
 import { useRefreshData } from '@/composables/useRefreshData'
 import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import Pagination from '../../components/Pagination.vue'
-import InlineLoading from '@/components/InlineLoading.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import { PermissionGate, PageHeader } from '@/components/base'
@@ -509,6 +508,8 @@ import { useMobile } from '@/composables/mobile'
 import { useLatestRequest } from '@/composables/useLatestRequest'
 import { sortOptionsByOrder } from '@/utils/option-sort'
 import { formatDateTime as formatGlobalDateTime } from '@/utils/format'
+import { getRequestErrorMessage, getRequestErrorStatus } from '@/utils/api-response'
+import type { QueryParams } from '@/types/shared'
 import { useElementTableSortable } from '@/composables/useElementTableSortable'
 import type { Brand, Model } from '@/types'
 
@@ -572,7 +573,7 @@ const showStatsCards = computed(() => (
   canViewField('stats_related_brands')
 ))
 // 响应式数据
-const modelsTableRef = ref<any>(null)
+const modelsTableRef = ref<unknown>(null)
 const mobileActionRowId = ref<string | null>(null)
 const lastTappedRowId = ref<string | null>(null)
 const lastTapTimestamp = ref(0)
@@ -728,7 +729,7 @@ const loadBrands = async () => {
 
     if (response.success) {
       // 使用统一的数据提取方法
-      brands.value = extractResponseData<any[]>(response.data)
+      brands.value = extractResponseData<Brand[]>(response.data)
     } else {
       logger.error('获取品牌列表失败:', response.message)
       brands.value = []
@@ -754,7 +755,7 @@ const loadModels = async (_bustCache = false, silentError = false, _showLoadingS
   }
 
   try {
-    const params: any = {
+    const params: QueryParams = {
       page: pagination.value.page,
       page_size: pagination.value.page_size,
       // sort_order 只在品牌范围内有意义；全部型号仅按品牌分组展示，不参与品牌内排序操作。
@@ -823,7 +824,7 @@ const loadModels = async (_bustCache = false, silentError = false, _showLoadingS
         error(response.message || '获取型号列表失败')
       }
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     if (modelListRequest.isCanceledError(err)) {
       return
     }
@@ -838,15 +839,16 @@ const loadModels = async (_bustCache = false, silentError = false, _showLoadingS
     }
 
     // 处理权限错误
-    if (err.response?.status === 403) {
+    if (getRequestErrorStatus(err) === 403) {
       showViewDenied('型号管理', 'models:view')
-    } else if (err.response?.status === 401) {
+    } else if (getRequestErrorStatus(err) === 401) {
       error('认证失败：您的登录状态已过期，请重新登录')
       // 可以在这里触发登出逻辑
     } else {
       // 简化错误处理
-      if (err.response?.data?.message) {
-        error(`获取型号列表失败：${err.response.data.message}`)
+      const message = getRequestErrorMessage(err, '')
+      if (message) {
+        error(`获取型号列表失败：${message}`)
       } else {
         error('获取型号列表失败：请检查网络连接或联系管理员')
       }
@@ -946,20 +948,20 @@ const deleteModel = async (model: Model) => {
     } else {
       error(`删除型号失败：${response.message || '未知错误'}`)
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     logger.error('删除型号失败:', err)
 
     // 处理权限错误
-    if (err.response?.status === 403) {
+    if (getRequestErrorStatus(err) === 403) {
       showDeleteDenied('型号管理', 'models:delete')
-    } else if (err.response?.status === 401) {
+    } else if (getRequestErrorStatus(err) === 401) {
       error('认证失败：您的登录状态已过期，请重新登录')
-    } else if (err.response?.status === 404) {
+    } else if (getRequestErrorStatus(err) === 404) {
       error('删除失败：型号不存在或已被删除')
     } else {
       // 避免重复显示错误信息
-      const errorMessage = err.response?.data?.message || err.message || '未知错误'
-      if (!errorMessage.includes('Network Error') || !err.response?.status) {
+      const errorMessage = getRequestErrorMessage(err, '未知错误')
+      if (!errorMessage.includes('Network Error') || !getRequestErrorStatus(err)) {
         error(`删除型号失败：${errorMessage}`)
       }
     }
@@ -1065,27 +1067,30 @@ const submitForm = async () => {
         error(`更新型号失败：${response.message || '未知错误'}`)
       }
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     logger.error('提交表单失败:', err)
 
     // 处理权限错误
-    if (err.response?.status === 403) {
+    if (getRequestErrorStatus(err) === 403) {
       if (showCreateModal.value) {
         showCreateDenied('型号管理', 'models:create')
       } else {
         showEditDenied('型号管理', 'models:edit')
       }
-    } else if (err.response?.status === 401) {
+    } else if (getRequestErrorStatus(err) === 401) {
       error('认证失败：您的登录状态已过期，请重新登录')
-    } else if (err.response?.status === 422) {
+    } else if (getRequestErrorStatus(err) === 422) {
       // 表单验证错误
-      const errors = err.response.data.errors || {}
-      const errorMessages = Object.values(errors).flat().join('；')
+      const errorPayload = err !== null && typeof err === 'object' ? err as Record<string, unknown> : {}
+      const response = errorPayload.response !== null && typeof errorPayload.response === 'object' ? errorPayload.response as Record<string, unknown> : {}
+      const responseData = response.data !== null && typeof response.data === 'object' ? response.data as Record<string, unknown> : {}
+      const errors = responseData.errors && typeof responseData.errors === 'object' ? responseData.errors as Record<string, unknown> : {}
+      const errorMessages = Object.values(errors).flatMap(value => Array.isArray(value) ? value : [value]).filter((value): value is string => typeof value === 'string').join('；')
       error(`表单验证失败：${errorMessages || '请检查输入数据是否正确'}`)
     } else {
       // 避免重复显示错误信息
-      const errorMessage = err.response?.data?.message || err.message || '未知错误'
-      if (!errorMessage.includes('Network Error') || !err.response?.status) {
+      const errorMessage = getRequestErrorMessage(err, '未知错误')
+      if (!errorMessage.includes('Network Error') || !getRequestErrorStatus(err)) {
         error(`操作失败：${errorMessage}`)
       }
     }

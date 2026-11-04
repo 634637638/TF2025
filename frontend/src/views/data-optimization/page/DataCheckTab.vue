@@ -123,8 +123,8 @@
 
         <div class="data-table-container">
           <el-table
-            class="data-table"
             v-tf-loading="loading"
+            class="data-table"
             :data="paginatedAllData"
             stripe
             border
@@ -480,6 +480,15 @@ import Pagination from '@/components/Pagination.vue'
 import InlineLoading from '@/components/InlineLoading.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import { logger } from '@/utils/logger'
+import type {
+  DataCheckAllResponse,
+  DataCheckItem,
+  DataCheckKey,
+  DataCheckRecord,
+  DataCheckResult,
+  DataCheckStatistics,
+  DataDuplicateGroup
+} from '@/types'
 
 const { canView, canEdit, canDelete, handleNoPermission } = usePagePermissions('data-optimization')
 const DATA_CHECK_MODULE_KEY = 'data_optimization_dataoptimizationview'
@@ -511,7 +520,7 @@ const ensureDeletePermission = () => {
 }
 
 // 检查项配置
-const checkItems = reactive([
+const checkItems = reactive<DataCheckItem[]>([
   { key: 'brands', label: '品牌', icon: 'fas fa-tags', total: 0, duplicate_count: 0 },
   { key: 'models', label: '型号', icon: 'fas fa-mobile-alt', total: 0, duplicate_count: 0 },
   { key: 'colors', label: '颜色', icon: 'fas fa-palette', total: 0, duplicate_count: 0 },
@@ -523,14 +532,14 @@ const checkItems = reactive([
 ])
 
 const { loading } = useLoadingState()
-const currentCheck = ref<any>(null)
-const checkResult = ref<any>(null)
+const currentCheck = ref<DataCheckItem | null>(null)
+const checkResult = ref<DataCheckResult | null>(null)
 
 // 视图模式: 'duplicates' (显示重复数据) 或 'all' (显示所有数据)
 const viewMode = ref<'duplicates' | 'all'>('duplicates')
 
 // 所有数据列表
-const allDataList = ref<any[]>([])
+const allDataList = ref<DataCheckRecord[]>([])
 
 // 所有数据分页
 const allDataPagination = reactive({
@@ -551,12 +560,12 @@ const paginatedAllData = computed(() => {
 })
 
 // 获取表格行类名（用于高亮重复数据）
-const getRowClassName = ({ row }: { row: any }) => {
+const getRowClassName = ({ row }: { row: DataCheckRecord }) => {
   return row.is_duplicate ? 'duplicate-row' : ''
 }
 
 // 获取行名称（根据不同数据类型使用不同字段）
-const getRowName = (row: any) => {
+const getRowName = (row: DataCheckRecord) => {
   if (!row) return ''
   const currentKey = currentCheck.value?.key
   switch (currentKey) {
@@ -571,10 +580,21 @@ const getRowName = (row: any) => {
 // 存储选中的记录的组合键 (格式: "组键-索引")
 const selectedDuplicates = ref<string[]>([])
 const showEditDialog = ref(false)
-const editForm = reactive<any>({})
+type DataCheckEditValue = string | number
+const editForm = reactive<Record<string, DataCheckEditValue>>({})
+const DATA_CHECK_EDITABLE_FIELDS: Record<DataCheckKey, readonly string[]> = {
+  brands: ['name', 'sort_order'],
+  models: ['name', 'brand_id'],
+  colors: ['name'],
+  memories: ['size'],
+  suppliers: ['name', 'contact', 'phone'],
+  stores: ['name', 'phone'],
+  customers: ['name', 'phone', 'member_number', 'customer_type', 'vip_level'],
+  users: ['username', 'name', 'phone', 'email']
+}
 
 // 查看所有数据
-const handleViewItem = async (key: string) => {
+const handleViewItem = async (key: DataCheckKey) => {
   if (!ensureViewPermission()) {
     return
   }
@@ -585,7 +605,7 @@ const handleViewItem = async (key: string) => {
 
   try {
     const response = await dataCheckApi.getAllData(key)
-    const responseData = extractResponseData<any>(response)
+    const responseData = extractResponseData<DataCheckAllResponse>(response)
 
     // 检查是否为空数据
     if (responseData.is_empty || responseData.total === 0) {
@@ -624,18 +644,22 @@ const handleViewItem = async (key: string) => {
         : '，无重复数据'
       ElMessage.success(`获取数据成功：共 ${response.data.total} 条${duplicateInfo}`)
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('获取数据失败:', error)
 
     // 提供更友好的错误提示
     const itemName = currentCheck.value?.label || '数据'
 
-    if (error.response?.status === 500) {
+    const errorStatus = error && typeof error === 'object' && 'response' in error
+      ? (error.response as { status?: number } | undefined)?.status
+      : undefined
+    const errorMessage = error instanceof Error ? error.message : '未知错误'
+    if (errorStatus === 500) {
       ElMessage.error(`获取${itemName}失败：服务器内部错误，可能表不存在或数据库连接异常`)
-    } else if (error.response?.status === 404) {
+    } else if (errorStatus === 404) {
       ElMessage.error(`获取${itemName}失败：未找到相关数据`)
     } else {
-      ElMessage.error(`获取${itemName}失败：${error.message || '未知错误'}`)
+      ElMessage.error(`获取${itemName}失败：${errorMessage}`)
     }
 
     allDataList.value = []
@@ -757,14 +781,14 @@ const handleCheckAll = async () => {
     }
 
     ElMessage.success('综合检查完成')
-  } catch (error: any) {
-    ElMessage.error('检查失败: ' + (error.message || '未知错误'))
+  } catch (error: unknown) {
+    ElMessage.error('检查失败: ' + (error instanceof Error ? error.message : '未知错误'))
   } finally {
     loading.value = false
   }
 }
 
-const handleCheckItem = async (key: string) => {
+const handleCheckItem = async (key: DataCheckKey) => {
   if (!ensureViewPermission()) {
     return
   }
@@ -773,8 +797,17 @@ const handleCheckItem = async (key: string) => {
   currentCheck.value = checkItems.find(item => item.key === key)
   viewMode.value = 'duplicates'
   try {
-    const methodName = `check${key.charAt(0).toUpperCase() + key.slice(1)}`
-    const response = await (dataCheckApi as any)[methodName]()
+    const checkMethods: Record<DataCheckKey, () => Promise<Awaited<ReturnType<typeof dataCheckApi.checkBrands>>>> = {
+      brands: dataCheckApi.checkBrands,
+      models: dataCheckApi.checkModels,
+      colors: dataCheckApi.checkColors,
+      memories: dataCheckApi.checkMemories,
+      suppliers: dataCheckApi.checkSuppliers,
+      stores: dataCheckApi.checkStores,
+      customers: dataCheckApi.checkCustomers,
+      users: dataCheckApi.checkUsers
+    }
+    const response = await checkMethods[key]()
 
     if (!response || !response.data) {
       throw new Error('API响应格式错误')
@@ -791,9 +824,9 @@ const handleCheckItem = async (key: string) => {
     // 重置分页
     pagination.page = 1
     pagination.total = response.data.duplicate_groups || 0
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('检查失败:', error)
-    ElMessage.error('检查失败: ' + (error.message || '未知错误'))
+    ElMessage.error('检查失败: ' + (error instanceof Error ? error.message : '未知错误'))
     checkResult.value = null
   } finally {
     loading.value = false
@@ -831,28 +864,36 @@ const getStatistics = async () => {
 
   try {
     const response = await dataCheckApi.getStatistics()
-    const stats = response.data
+    const stats = response.data as DataCheckStatistics
 
     checkItems.forEach(item => {
       // 统计 API 返回的是字符串，需要转换为数字
-      item.total = parseInt(stats[item.key]) || 0
+      item.total = Number.parseInt(String(stats[item.key] ?? 0), 10) || 0
       // 重置重复数量，稍后用户点击卡片时会更新
       item.duplicate_count = 0
     })
 
     ElMessage.success('统计数据已更新')
-  } catch (error: any) {
-    ElMessage.error('获取统计失败: ' + (error.message || '未知错误'))
+  } catch (error: unknown) {
+    ElMessage.error('获取统计失败: ' + (error instanceof Error ? error.message : '未知错误'))
   }
 }
 
-const getItemFields = (item: any) => {
-  const fields: any = {}
-  const excludeFields = ['id', 'created_at', 'updated_at']
+const getItemFields = (item: DataCheckRecord) => {
+  const fields: Record<string, DataCheckEditValue> = {}
+  const currentKey = currentCheck.value?.key
+  if (!currentKey) {
+    return fields
+  }
 
-  Object.keys(item).forEach(key => {
-    if (!excludeFields.includes(key) && item[key] !== null) {
-      fields[key] = item[key]
+  DATA_CHECK_EDITABLE_FIELDS[currentKey].forEach(field => {
+    if (item[field] !== null && item[field] !== undefined) {
+      const value = item[field]
+      if (typeof value === 'string' || typeof value === 'number') {
+        fields[field] = value
+      } else if (typeof value === 'boolean') {
+        fields[field] = String(value)
+      }
     }
   })
 
@@ -883,10 +924,10 @@ const getCurrentPageDuplicateIds = () => {
 
   const keys: string[] = []
 
-  currentGroups.forEach((group: any) => {
+  currentGroups.forEach((group: DataDuplicateGroup) => {
     // 只添加重复记录的键（从索引1开始，跳过主记录索引0）
     if (Array.isArray(group.duplicates)) {
-      group.duplicates.forEach((_: any, index: number) => {
+      group.duplicates.forEach((_, index: number) => {
         keys.push(`${group.key}-${index + 1}`)
       })
     }
@@ -896,13 +937,13 @@ const getCurrentPageDuplicateIds = () => {
 }
 
 // 检查某个记录是否被选中
-const isItemSelected = (item: any, itemIndex: number, group: any) => {
+const isItemSelected = (_item: DataCheckRecord, itemIndex: number, group: DataDuplicateGroup) => {
   // 使用组合键来判断是否选中
   const selectKey = `${group.key}-${itemIndex}`
   return selectedDuplicates.value.includes(selectKey)
 }
 
-const handleMergeGroup = async (group: any) => {
+const handleMergeGroup = async (group: DataDuplicateGroup) => {
   if (!ensureEditPermission()) {
     return
   }
@@ -924,7 +965,7 @@ const handleMergeGroup = async (group: any) => {
       }
     )
 
-    const duplicate_ids = group.duplicates.map((d: any) => d.id)
+    const duplicate_ids = group.duplicates.map(d => d.id)
 
     // 安全检查：确保主记录ID不在duplicate_ids中
     if (duplicate_ids.includes(group.primary.id)) {
@@ -940,14 +981,14 @@ const handleMergeGroup = async (group: any) => {
 
     ElMessage.success('合并成功')
     handleCheckItem(currentCheck.value.key)
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error !== 'cancel') {
-      ElMessage.error('合并失败: ' + (error.message || '未知错误'))
+      ElMessage.error('合并失败: ' + (error instanceof Error ? error.message : '未知错误'))
     }
   }
 }
 
-const handleDeleteGroup = async (group: any) => {
+const handleDeleteGroup = async (group: DataDuplicateGroup) => {
   if (!ensureDeletePermission()) {
     return
   }
@@ -994,8 +1035,8 @@ const handleDeleteGroup = async (group: any) => {
         } else {
           ElMessage.info(result?.message || '该ID没有重复记录需要清理')
         }
-      } catch (error: any) {
-        ElMessage.error('清理失败: ' + (error.message || '未知错误'))
+      } catch (error: unknown) {
+        ElMessage.error('清理失败: ' + (error instanceof Error ? error.message : '未知错误'))
       } finally {
         globalLoading.stopLoading(loadingTaskId)
       }
@@ -1003,7 +1044,7 @@ const handleDeleteGroup = async (group: any) => {
     }
 
     // 对于重复客户记录，正常删除
-    const duplicate_ids = group.duplicates.map((d: any) => d.id)
+    const duplicate_ids = group.duplicates.map(d => d.id)
 
     if (duplicate_ids.length === 0) {
       ElMessage.warning('没有选择要删除的记录')
@@ -1018,9 +1059,9 @@ const handleDeleteGroup = async (group: any) => {
     ElMessage.success('删除成功')
     selectedDuplicates.value = []
     handleCheckItem(currentCheck.value.key)
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error !== 'cancel') {
-      ElMessage.error('删除失败: ' + (error.message || '未知错误'))
+      ElMessage.error('删除失败: ' + (error instanceof Error ? error.message : '未知错误'))
     }
   }
 }
@@ -1039,14 +1080,19 @@ const handleMergeSelected = async () => {
     const selectedKeys = selectedDuplicates.value
 
     // 按组处理选中的记录
-    const groupsToMerge: any[] = []
+    const groupsToMerge: Array<{
+      primary_id: number
+      duplicate_ids: number[]
+      primary_name: string
+      count: number
+    }> = []
 
     for (const group of duplicatesList.value) {
       // 获取该组重复记录中被选中的记录
-      const selectedDuplicatesInGroup: any[] = []
+      const selectedDuplicatesInGroup: DataCheckRecord[] = []
 
       if (Array.isArray(group.duplicates)) {
-        group.duplicates.forEach((d: any, index: number) => {
+        group.duplicates.forEach((d, index: number) => {
           const key = `${group.key}-${index + 1}`
           if (selectedKeys.includes(key)) {
             selectedDuplicatesInGroup.push(d)
@@ -1056,7 +1102,7 @@ const handleMergeSelected = async () => {
 
       // 如果该组有选中的重复记录，则合并到主记录
       if (selectedDuplicatesInGroup.length > 0) {
-        const duplicate_ids = selectedDuplicatesInGroup.map((d: any) => d.id)
+        const duplicate_ids = selectedDuplicatesInGroup.map(d => d.id)
         const primaryRecord = group.primary
 
         groupsToMerge.push({
@@ -1117,9 +1163,9 @@ const handleMergeSelected = async () => {
     } finally {
       globalLoading.stopLoading(loadingTaskId)
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error !== 'cancel') {
-      ElMessage.error('合并失败: ' + (error.message || '未知错误'))
+      ElMessage.error('合并失败: ' + (error instanceof Error ? error.message : '未知错误'))
     }
   }
 }
@@ -1138,11 +1184,11 @@ const handleDeleteSelected = async () => {
     }
 
     // 检查是否是重复数据行类型（duplicate_rows）
-    const isDuplicateRowsType = duplicatesList.value.some((g: any) => g.field === 'duplicate_rows')
+    const isDuplicateRowsType = duplicatesList.value.some(g => g.field === 'duplicate_rows')
 
     if (isDuplicateRowsType) {
       // 对于重复数据行（同一个ID的多条记录），使用 cleanupData API
-      const groupsToCleanup: any[] = []
+      const groupsToCleanup: Array<{ id: number, deleteCount: number, totalCount: number }> = []
 
       for (const group of duplicatesList.value) {
         if (group.is_duplicate_rows && group.primary) {
@@ -1211,7 +1257,7 @@ const handleDeleteSelected = async () => {
     for (const group of duplicatesList.value) {
       if (Array.isArray(group.duplicates)) {
         // 检查该组的每个重复记录是否被选中
-        group.duplicates.forEach((d: any, index: number) => {
+        group.duplicates.forEach((d, index: number) => {
           const key = `${group.key}-${index + 1}` // +1 因为索引0是主记录
           if (selectedKeys.includes(key)) {
             deletableIds.push(d.id)
@@ -1250,9 +1296,9 @@ const handleDeleteSelected = async () => {
     } finally {
       globalLoading.stopLoading(loadingTaskId)
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error !== 'cancel') {
-      ElMessage.error('删除失败: ' + (error.message || '未知错误'))
+      ElMessage.error('删除失败: ' + (error instanceof Error ? error.message : '未知错误'))
     }
   }
 }
@@ -1295,16 +1341,16 @@ const handleCleanupAllDuplicates = async () => {
     } finally {
       globalLoading.stopLoading(loadingTaskId)
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error !== 'cancel') {
-      ElMessage.error('清理失败: ' + (error.message || '未知错误'))
+      ElMessage.error('清理失败: ' + (error instanceof Error ? error.message : '未知错误'))
     }
   } finally {
     loading.value = false
   }
 }
 
-const handleEditItem = (item: any) => {
+const handleEditItem = (item: DataCheckRecord) => {
   if (!ensureEditPermission()) {
     return
   }
@@ -1329,12 +1375,12 @@ const handleSaveEdit = async () => {
     ElMessage.success('保存成功')
     showEditDialog.value = false
     handleCheckItem(currentCheck.value.key)
-  } catch (error: any) {
-    ElMessage.error('保存失败: ' + (error.message || '未知错误'))
+  } catch (error: unknown) {
+    ElMessage.error('保存失败: ' + (error instanceof Error ? error.message : '未知错误'))
   }
 }
 
-const handleDeleteItem = async (item: any, itemIndex: number, group: any) => {
+const handleDeleteItem = async (item: DataCheckRecord, _itemIndex: number, group: DataDuplicateGroup) => {
   if (!ensureDeletePermission()) {
     return
   }
@@ -1380,9 +1426,9 @@ const handleDeleteItem = async (item: any, itemIndex: number, group: any) => {
     await dataCheckApi.deleteData(currentCheck.value.key, item.id)
     ElMessage.success('删除成功')
     handleCheckItem(currentCheck.value.key)
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error !== 'cancel') {
-      ElMessage.error('删除失败: ' + (error.message || '未知错误'))
+      ElMessage.error('删除失败: ' + (error instanceof Error ? error.message : '未知错误'))
     }
   }
 }

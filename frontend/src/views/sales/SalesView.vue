@@ -978,7 +978,7 @@ const loadFiltersFromStorage = () => {
   try {
     const userId = authStore.user?.id || 'anonymous'
     const key = `${STORAGE_KEY}_${userId}`
-    const data = storage.get<any>(key, 'local')
+    const data = storage.get<Partial<typeof filters> & { saved_at?: string }>(key, 'local')
 
     if (data) {
       // 只加载7天内的数据
@@ -1003,7 +1003,7 @@ const loadFiltersFromStorage = () => {
 
 
 // 防抖加载可销售手机列表（用于搜索输入框）
-let loadPhonesDebounceTimer: any = null
+let loadPhonesDebounceTimer: ReturnType<typeof setTimeout> | null = null
 const debounceLoadAvailablePhones = () => {
   if (loadPhonesDebounceTimer) {
     clearTimeout(loadPhonesDebounceTimer)
@@ -1032,7 +1032,7 @@ const loadSalesStats = async () => {
 }
 
 const buildAvailablePhoneParams = (includePagination = true) => {
-  const params: Record<string, any> = {}
+  const params: Record<string, string | number | boolean> = {}
 
   if (includePagination) {
     params.page = pagination.page || 1
@@ -1166,8 +1166,9 @@ const handleRouteAutoOpenSale = async (records: Phone[] = []) => {
       })
 
       if (response.success) {
-        const responseData = extractResponseData<any>(response)
-        const routeRecords = (Array.isArray(responseData) ? responseData : (responseData.records || [])).map(normalizeSalesPhone)
+        const responseData = extractResponseData<unknown>(response)
+        const payload = responseData && typeof responseData === 'object' && !Array.isArray(responseData) ? responseData as { records?: unknown[] } : null
+        const routeRecords = (Array.isArray(responseData) ? responseData : (payload?.records || [])).map(normalizeSalesPhone)
         matchedPhone = findPhoneByRouteId(routeRecords, routePhoneId)
         logger.info('自动出库商品ID请求完成:', {
           phoneId: routePhoneId,
@@ -1423,7 +1424,7 @@ const loadAvailablePhones = async (_bustCache = false, silentError = false, show
     loading.value = true
   }
   try {
-    const params: any = buildAvailablePhoneParams(true)
+    const params = buildAvailablePhoneParams(true)
 
     const response = await api.get('/sales/phones/available', {
       params,
@@ -1435,8 +1436,9 @@ const loadAvailablePhones = async (_bustCache = false, silentError = false, show
     if (requestVersion !== availablePhonesRequestVersion) return
 
     if (response.success) {
-      const responseData = extractResponseData<any>(response)
-      const records = (Array.isArray(responseData) ? responseData : (responseData.records || [])).map(normalizeSalesPhone)
+      const responseData = extractResponseData<unknown>(response)
+      const payload = responseData && typeof responseData === 'object' && !Array.isArray(responseData) ? responseData as { records?: unknown[] } : null
+      const records = (Array.isArray(responseData) ? responseData : (payload?.records || [])).map(normalizeSalesPhone)
       const responseTotal = Number(response.pagination?.total) || records.length || 0
 
       availablePhones.value = records
@@ -1452,7 +1454,7 @@ const loadAvailablePhones = async (_bustCache = false, silentError = false, show
       }
 
       // 从后端获取全新和二手库存金额统计
-      const stats = (response as any)?.stats || {}
+      const stats = response.stats || {}
       const newValue = parseFloat(String(stats.new_value || 0))
       const usedValue = parseFloat(String(stats.used_value || 0))
 
@@ -1557,7 +1559,7 @@ const debouncedSubmitSale = debounceSubmit(handleSale, 500)
 const debouncedSubmitBatchSale = debounceSubmit(submitBatchSale, 500)
 
 // 编辑手机信息
-const editPhone = async (phone: any) => {
+const editPhone = async (phone: Phone) => {
 
   // 权限检查：验证用户是否有编辑权限
   if (!canEdit.value) {
@@ -1573,7 +1575,7 @@ const editPhone = async (phone: any) => {
       useCache: false
     })
     if (detailResponse.success) {
-      const detail = extractResponseData<any>(detailResponse)
+      const detail = extractResponseData<Partial<Phone>>(detailResponse)
       if (detail && typeof detail === 'object' && !Array.isArray(detail)) {
         editRecord = { ...phone, ...detail }
       }
@@ -1870,7 +1872,7 @@ watch(showEditModal, async (newVal) => {
 })
 
 // 删除手机记录
-const deletePhone = async (phone: any) => {
+const deletePhone = async (phone: Phone) => {
   // 权限检查：验证用户是否有删除权限
   if (!canDelete.value) {
     showError('您没有删除权限')

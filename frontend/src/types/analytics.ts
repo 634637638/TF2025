@@ -67,6 +67,44 @@ export interface RevenueForecastData {
   factors: string[]
 }
 
+export interface SalesConditionBreakdown {
+  sales_count?: number
+  sales_amount?: number
+  profit?: number
+}
+
+export interface SalesForecastTimeSeries {
+  dates: string[]
+  actual: Array<number | null>
+  predicted: Array<number | null>
+  upper_bound: Array<number | null>
+  lower_bound: Array<number | null>
+}
+
+export interface SalesForecastCombination {
+  brand_name: string
+  model_name: string
+  color_name: string
+  memory: string
+  display_name?: string
+  actual_sales: number
+  actual_revenue: number
+  actual_profit: number
+  predicted_sales: number
+  predicted_revenue: number
+  predicted_profit: number
+  trend: number
+  confidence: string
+  time_series: SalesForecastTimeSeries
+}
+
+export interface SalesForecastResponse {
+  combinations: SalesForecastCombination[]
+  period?: string
+  historicalDays?: number
+  forecastDays?: number
+}
+
 // 库存分析数据
 export interface InventoryAnalytics {
   total_products: number
@@ -414,7 +452,7 @@ export interface DashboardConfig {
   name: string
   layout: DashboardLayout
   widgets: WidgetConfig[]
-  filters: FilterConfig[]
+  filters: AnalyticsFilterConfig[]
   refreshInterval: number
 }
 
@@ -433,7 +471,7 @@ export interface WidgetConfig {
   config: Record<string, unknown>
 }
 
-export interface FilterConfig {
+export interface AnalyticsFilterConfig {
   key: string
   label: string
   type: 'date' | 'select' | 'multiselect' | 'range'
@@ -459,7 +497,7 @@ export interface RealTimeAlert {
 }
 
 // 数据导出配置
-export interface ExportConfig {
+export interface AnalyticsExportConfig {
   format: 'excel' | 'csv' | 'pdf' | 'json'
   dateRange: {
     start: string
@@ -567,6 +605,8 @@ export interface EmployeePerformance {
   salary: number
   attendance_rate: number
   trend: 'up' | 'down' | 'stable'
+  wholesale_count?: number
+  allocation_count?: number
 }
 
 // 员工角色分布

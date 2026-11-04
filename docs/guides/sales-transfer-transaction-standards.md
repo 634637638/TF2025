@@ -4,9 +4,9 @@
 
 ## 规则
 
-- `invoice_sequences` 只允许在业务事务开始前通过 `ensureInvoiceSequenceTable` 完成初始化。
+- `invoice_sequences` 只允许在业务事务开始前初始化。业务入口统一先调用 `prepareInvoiceNumberTransaction(connection)`，再调用 `beginTransaction()`；前者复用内部建表预检，同时建立当前事务的号码预留作用域。
 - MySQL 的 `CREATE TABLE` 可能隐式提交当前事务并清除 `SAVEPOINT`；禁止在销售、批发或划拨事务内部首次初始化序列表。
-- 销售（单台和批量）、批发、划拨以及租赁买断使用发票号时，必须先完成序列表预检，再调用 `beginTransaction()`。
+- 销售（单台和批量）、综合查询编辑/快速出库、批发、划拨、租赁买断、兼容销售服务和历史缺号回填均遵守同一入口；禁止在业务事务中再次调用预检来重置预留。
 - 批发和划拨按设备使用保存点；单台失败应记录失败设备并继续处理，不能因为回滚保存点失败而把请求升级为 500。
 - 综合查询快速出库使用独立的 `POST /inventory/quick-sale` 事务，按交易类型生成统一单据号；失败时统一回滚并释放连接。
 - 统计查询必须复用销售库存筛选条件所需的品牌、型号、颜色和内存关联，不能只查询 `phones` 表却引用 `b`、`m`、`co` 或 `mem` 别名。
@@ -22,16 +22,37 @@
 | `peer_transfer` | `PF` | 调货，与批发共用序列空间 |
 | `supplier_proxy` | `HB` | 供应商划拨 |
 
-公共工具 `backend/src/utils/invoice-number.js` 是唯一的新单号规则入口。历史已经生成的 `DH` 调货单号不改写，解析工具继续识别 `DH`，但任何新建或补生成单号都不得再使用 `DH`。
+公共工具 `backend/src/utils/invoice-number.js` 是唯一的新单号规则入口。解析工具继续识别 `DH`，用于处理导入或旧备份中的历史值；云端现有 `DH` 和三位单号已统一迁移为四位 `XS/PF/HB`，任何新建、补生成或完整性修复都不得再生成 `DH`。
+
+### 空号自动补齐
+
+最后核实日期：2026-11-02。
+
+- 新建销售、改期、转换类型或补生成缺失单号时，按业务日期和后缀查找**从 `0001` 开始的最小未使用序号**。有空号先补空号，无空号才继续增加；禁止用 `COUNT + 1` 分配号码。
+- 例如 `202611020001XS～202611020010XS` 中 `0003`、`0007` 的记录改到其他日期，后续在 11 月 2 日新增销售依次使用 `0003`、`0007`，填满后再使用 `0011`。改到 11 月 1 日的记录按 11 月 1 日的空号规则分配。
+- 只给需要新号的记录分配号码；其他已存在的单据不重新排列，销售记录 ID 和原收款关联不变。同日只改备注、时分秒等信息不换号。
+- 每个日期、每种后缀独立分配；`wholesale` 与 `peer_transfer` 共用 `PF`，`batch_item` 与 `retail` 共用 `XS`。四位正序号全部占满时拒绝新增，不能悄悄生成无法正确解析的五位号。
+- 分配时先写锁定 `invoice_sequences` 对应的日期/类型行，再以 `FOR UPDATE` 当前读检查销售单号，避免事务旧快照漏读刚提交的记录。并发分配使用同一数据库连接和业务事务，失败按原业务入口回滚，不吞掉数据库错误。
+- 同一事务还维护内存预留，同连接并行调用也依次分配；允许先生成多号再写销售记录。**提交前必须把成功使用的单号写入同一连接的 `sales`**；单纯预览或生成号码不作为永久占号。
+- 完整回滚不占号。批量单台回滚保存点时，其内存预留保留到本批结束，避免批内重复返回同号；未落库的空号可在下一次操作重新使用。连接复用前由事务预检清除上次预留；禁止修改或拦截连接的 `commit`/`rollback` 方法实现隐式清理。
+- `invoice_sequences.current_sequence` 仅保留历史高水位，不再决定下一个号码。历史空号会随后续新增逐个补齐，无需批量重排已有单据。
+- 日期选择器及数据库日期字符串保留原业务日期；`Date`、带时区时间点和默认当前时间通过公共 `formatBeijingDate` 按北京时间取日，不依赖主机时区。
+
+**数量统计仍以实际销售记录为准，不能读取最大单号尾数当台数。** 多个空号尚未补满、单据删除、历史不规则编号等情况下，最大尾数和实际台数仍可能不一致；单张凭证总数量继续按其实际商品行计算。
 
 ## 当前实现
 
-- `backend/src/utils/invoice-number.js` 暴露 `ensureInvoiceSequenceTable` 作为统一预检入口。
+- `backend/src/utils/invoice-number.js` 暴露 `prepareInvoiceNumberTransaction` 作为业务事务统一预检及预留入口；`ensureInvoiceSequenceTable` 仅保留独立建表预检能力，不用于分配号码。
 - `backend/src/routes/sales.js` 在销售事务前预检，统计接口补齐参考资料关联。
 - `backend/src/services/transfer.service.js` 在批发、划拨事务前预检。
 - `backend/src/routes/rentals.js` 在租赁买断事务前预检。
 - `backend/src/routes/inventory.js` 的快速出库保持独立事务回滚，不属于弃用接口。
+- `backend/src/services/sale.service.js` 的兼容销售入口将分配号码、写销售记录、更新设备放在同一连接和事务中，禁止分配后释放连接再通过连接池写记录。
+- `backend/src/services/data-import.service.js` 的每一行导入使用独立事务；新增销售、补号和改期统一调用公共生成器，单行失败时设备、客户、销售记录和单号一起回滚。
 - 调货和批发的新单号均由公共工具生成 `PF`；手机编辑接口的历史补生成分支也遵循该规则。
+- 批发页面不再接受手工覆盖内部单据号；批发多台按设备逐号生成，避免同一输入值写入多条销售记录。
+- `npm run repair:sale-invoice-integrity` 默认预览规范单号重复、日期/后缀错位及旧三位/`DH` 格式；确认后使用 `-- --apply` 在同一事务内统一改为四位规范单号。2026-11-02 云端复核：15,749 条销售记录全部为规范格式，空值、旧格式、其他格式和重复均为 0。
+- `npm run migrate:sale-invoice-constraints` 默认检查所有非空单号重复及数据库结构；确认后使用 `-- --apply`。数据库同时保留规范单号条件索引，并对 `sales.invoice_number` 建立全字段唯一索引，任何格式的非空重复值都会由数据库拒绝。
 
 ## 交易类型转换
 
@@ -46,17 +67,36 @@
 
 快速出库也支持上述三种类型。销售要求支付方式；批发/调货使用批发价格；划拨金额归零并生成 `HB` 单据，不伪造销售收款。快速出库销售会以新建的 `sales.id` 写入成功收款流水，批发/调货和划拨不自动写销售收款流水。
 
+## 综合查询编辑日期
+
+最后核实日期：2026-11-02；适用于综合查询 `QueryEditModal` 调用的 `PUT /phones/:id`。
+
+- 销售日期变更时，按新销售日期及当前交易类型，调用唯一公共单号生成器重新分配该日的四位流水号。销售仍用 `XS`、批发/调货用 `PF`、划拨用 `HB`；不能只替换旧单号中的日期。
+- 仅修改入库日期、备注、金额等其他信息时，不重新生成单据号。同一天从日期时间格式变为 `YYYY-MM-DD`、只调整时分秒或重复保存，不重新消耗流水号；日期比较统一使用公共时间工具的日期格式入口。
+- 销售、批发与调货使用相同编辑接口；销售日期同步到设备及其关联的最新销售记录。联动更新 `sales WHERE id = ?` 必须绑定已查询到的 `existingSale.id`，禁止绑定手机 ID，避免两个表主键不同时漏更新或误改其他单据。
+- 关联销售记录的 `updated_at` 使用数据库 `NOW()` 记录本次保存时间；`created_at` 不改写。销售日期是业务发生日期，与记录修改时间不是同一字段。
+- 当前编辑框是日期选择器，提交 `YYYY-MM-DD`，不会自动拼接保存时的时分秒，也不能视作保留原销售时分秒。
+- 转换交易类型时，按目标类型和提交的销售日期生成新单号；日期和类型同时修改也只生成一次。没有单号的历史销售记录复用同一公共生成器补号，禁止在编辑路由内维护另一套查最大序号逻辑。
+
+单号、设备日期和关联销售记录在原有事务中一起提交，失败时回滚；原收款流水保持原关联关系，不因重新编号创建新销售记录。编号更新日志记录设备 ID、销售记录 ID、旧号和新号，便于追溯。
+
+`test/transaction-conversion-contract.check.js` 用手机 ID 与销售记录 ID 不同的模拟记录，执行实际销售更新分支和公共单号生成器，覆盖销售、批发、历史调货、划拨的日期修改、同日保存不换号、缺号补号及日期/类型同时改变；不连接或修改云端数据库。
+
 ## 验证
 
 ```bash
 cd backend
-node --test test/sales-filters-contract.check.js test/transaction-contract.check.js
+node --test test/invoice-number.check.js test/sales-filters-contract.check.js test/transaction-conversion-contract.check.js test/sales-remarks-sync-contract.check.js
+TZ=UTC node --test test/invoice-number.check.js test/transaction-conversion-contract.check.js
+node --check src/utils/invoice-number.js
 node --check src/routes/sales.js
 node --check src/services/transfer.service.js
 node --check src/routes/rentals.js
 ```
 
 线上验证应分别执行：销售单台、批量销售、批发多台、划拨多台，并检查接口返回 2xx、设备状态、销售记录、发票号和失败设备明细。若仍出现 500，优先查看 `TransferController`、销售路由及数据库错误码，不要按弃用接口处理。
+
+自动补号专项使用模拟事务验证空号优先、改期释放原号、类型隔离、批量预留、并发提交/等待、回滚与连接复用、四位号耗尽及北京日期边界。2026-11-02 另在云端 MySQL 使用 8 个并发事务、每个事务 20 次预留完成回滚验收，未出现重复或死锁。数据库回归测试默认跳过，只有明确设置 `RUN_DB_TESTS=true` 才连接云端；测试预留全部回滚，不写入销售记录。
 
 ## 相关资料
 

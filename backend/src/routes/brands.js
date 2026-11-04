@@ -1,6 +1,7 @@
 const express = require('express')
 const router = express.Router()
-const { getDatabase, isConnected } = require('../config/database')
+const { isConnected } = require('../config/database')
+const BrandRepository = require('../repositories/brand.repository')
 const ApiResponse = require('../utils/response')
 const { cacheMiddleware, clearCache } = require('../middleware/cache')
 const { validateBody, validateQuery } = require('../middleware/validation')
@@ -10,6 +11,8 @@ const log = require('../utils/log')
 const compatibilityRoute = require('../middleware/compatibility-route')
 const deprecatedRoute = require('../middleware/deprecated-route')
 const { listModelsByBrand } = require('../services/reference-options.service')
+
+const brandRepository = new BrandRepository()
 
 const clearBrandsRouteCache = () => {
   try {
@@ -23,7 +26,6 @@ const clearBrandsRouteCache = () => {
 router.get('/stats/overview', unifiedAuth, requirePermission('brands:view'), async (req, res) => {
   try {
     if (!isConnected()) return ApiResponse.error(res, '数据库未连接', 500)
-    const pool = getDatabase()
     const conditions = []
     const params = []
     const name = String(req.query.name || '').trim()
@@ -37,7 +39,7 @@ router.get('/stats/overview', unifiedAuth, requirePermission('brands:view'), asy
       params.push(Number(status) === 1 ? 1 : 0)
     }
     const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''
-    const [[stats]] = await pool.execute(`
+    const [[stats]] = await brandRepository.executePrepared(`
       SELECT
         COUNT(*) AS total,
         SUM(CASE WHEN b.status = 1 THEN 1 ELSE 0 END) AS active,
@@ -74,7 +76,6 @@ router.get('/', unifiedAuth, requireAnyPermission(['brands:view', 'inventory:vie
       return ApiResponse.error(res, '数据库未连接', 500)
     }
 
-    const pool = getDatabase()
     const {
       name,
       status,
@@ -143,7 +144,7 @@ router.get('/', unifiedAuth, requireAnyPermission(['brands:view', 'inventory:vie
       query += ' ORDER BY sort_order ASC, name ASC, id ASC'
     }
 
-    // 使用pool.format来处理参数，避免LIMIT/OFFSET参数问题
+    // 使用 repository.formatSql 处理参数，避免 LIMIT/OFFSET 参数问题
     // 获取总数
     let countQuery = 'SELECT COUNT(*) as total FROM brands'
     const countParams = []
@@ -185,10 +186,10 @@ router.get('/', unifiedAuth, requireAnyPermission(['brands:view', 'inventory:vie
       countParams.push(parseInt(status))
     }
 
-    const formattedQuery = pool.format(query, params)
+    const formattedQuery = brandRepository.formatSql(query, params)
     const [[brands], [countResult]] = await Promise.all([
-      pool.execute(formattedQuery),
-      pool.execute(countQuery, countParams)
+      brandRepository.executePrepared(formattedQuery),
+      brandRepository.executePrepared(countQuery, countParams)
     ])
 
     const formattedBrands = brands.map(row => ({
@@ -225,7 +226,7 @@ router.get('/', unifiedAuth, requireAnyPermission(['brands:view', 'inventory:vie
 
       // 如果是搜索建议，添加额外的搜索建议信息
       if (suggest === 'true') {
-        const [suggestions] = await pool.execute(`
+        const [suggestions] = await brandRepository.executePrepared(`
           SELECT name
           FROM brands
           WHERE (name LIKE ? OR LOWER(name) LIKE LOWER(?))
@@ -259,10 +260,8 @@ router.post('/', unifiedAuth, requirePermission('brands:create'), validateBody({
 
     const { name, status = 1, sort_order = 0 } = req.body
 
-    const pool = getDatabase()
-
     // 检查品牌名称是否已存在
-    const [existingBrands] = await pool.execute(
+    const [existingBrands] = await brandRepository.executePrepared(
       'SELECT id FROM brands WHERE name = ?',
       [name.trim()]
     )
@@ -271,7 +270,7 @@ router.post('/', unifiedAuth, requirePermission('brands:create'), validateBody({
       return ApiResponse.error(res, '品牌名称已存在', 400)
     }
 
-    const [result] = await pool.execute(
+    const [result] = await brandRepository.executePrepared(
       'INSERT INTO brands (name, status, sort_order, created_at) VALUES (?, ?, ?, NOW())',
       [name.trim(), parseInt(status), parseInt(sort_order)]
     )
@@ -311,10 +310,8 @@ router.put('/:id', unifiedAuth, requirePermission('brands:edit'), async (req, re
       return ApiResponse.error(res, '品牌名称不能为空', 400)
     }
 
-    const pool = getDatabase()
-
     // 检查品牌名称是否已被其他品牌使用
-    const [existingBrands] = await pool.execute(
+    const [existingBrands] = await brandRepository.executePrepared(
       'SELECT id FROM brands WHERE name = ? AND id != ?',
       [name.trim(), id]
     )
@@ -332,7 +329,7 @@ router.put('/:id', unifiedAuth, requirePermission('brands:edit'), async (req, re
 
     log.debug('💾 执行SQL更新, 数据:', updateData)
 
-    const [result] = await pool.execute(
+    const [result] = await brandRepository.executePrepared(
       'UPDATE brands SET name = ?, status = ?, sort_order = ?, updated_at = NOW() WHERE id = ?',
       [updateData.name, updateData.status, updateData.sort_order, id]
     )
@@ -374,8 +371,7 @@ router.put('/batch/reorder', unifiedAuth, requirePermission('brands:edit'), asyn
       return ApiResponse.error(res, '请提供有效的排序数据', 400)
     }
 
-    const pool = getDatabase()
-    const connection = await pool.getConnection()
+    const connection = await brandRepository.acquireConnection()
 
     try {
       await connection.beginTransaction()
@@ -414,16 +410,15 @@ router.delete('/:id', unifiedAuth, requirePermission('brands:delete'), async (re
     }
 
     const { id } = req.params
-    const pool = getDatabase()
 
     // 检查是否有关联的型号
-    const [models] = await pool.execute('SELECT COUNT(*) as count FROM models WHERE brand_id = ?', [id])
+    const [models] = await brandRepository.executePrepared('SELECT COUNT(*) as count FROM models WHERE brand_id = ?', [id])
 
     if (models[0].count > 0) {
       return ApiResponse.error(res, '该品牌下还有关联的型号，无法删除', 400)
     }
 
-    const [result] = await pool.execute('DELETE FROM brands WHERE id = ?', [id])
+    const [result] = await brandRepository.executePrepared('DELETE FROM brands WHERE id = ?', [id])
 
     if (result.affectedRows === 0) {
       return ApiResponse.error(res, '品牌不存在', 404)
@@ -450,8 +445,7 @@ router.get('/suggest', unifiedAuth, requirePermission('brands:view'), async (req
       return ApiResponse.success(res, [])
     }
 
-    const pool = getDatabase()
-    const [suggestions] = await pool.execute(`
+    const [suggestions] = await brandRepository.executePrepared(`
       SELECT DISTINCT name,
         CASE
           WHEN name LIKE ? THEN 1

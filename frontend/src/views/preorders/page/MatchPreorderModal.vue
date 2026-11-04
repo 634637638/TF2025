@@ -46,8 +46,8 @@
 
       <div class="table-responsive matchable-table-wrap">
         <el-table
-          class="data-table base-data-table matchable-table"
           v-tf-loading="loading"
+          class="data-table base-data-table matchable-table"
           :data="phones"
           border
           stripe
@@ -144,7 +144,6 @@
           </el-table-column>
         </el-table>
       </div>
-
     </div>
 
     <template #footer>

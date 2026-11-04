@@ -6,7 +6,7 @@
 import { ref } from 'vue'
 import ModuleManagementView from './ModuleManagementView.vue'
 
-const moduleManagementRef = ref<any>(null)
+const moduleManagementRef = ref<{ loadModules: () => Promise<void> } | null>(null)
 
 const refreshModules = async () => {
   await moduleManagementRef.value?.loadModules?.()

@@ -268,9 +268,11 @@ class SaleRepository extends BaseRepository {
    * @param {number} saleOperatorId - 销售操作员ID
    * @param {number} salePrice - 销售价格
    * @param {number} saleCost - 入库成本
+   * @param {object|null} connection - 可选的业务事务连接
+   * @param {string|null} saleTime - 与销售记录保持一致的业务时间
    * @returns {boolean} 是否成功
    */
-  async updatePhoneStatusToSold(phoneId, saleId, customerId, saleOperatorId = null, salePrice = null, saleCost = null) {
+  async updatePhoneStatusToSold(phoneId, saleId, customerId, saleOperatorId = null, salePrice = null, saleCost = null, connection = null, saleTime = null) {
     try {
       // Note: customer_id and sold_at columns don't exist in phones table
       // Only update columns that actually exist in the schema
@@ -282,7 +284,7 @@ class SaleRepository extends BaseRepository {
             sale_operator_id = ?,
             sale_price = ?,
             purchase_cost = ?,
-            sale_time = CURRENT_TIMESTAMP
+            sale_time = COALESCE(?, CURRENT_TIMESTAMP)
         WHERE id = ?
       `
 
@@ -292,10 +294,13 @@ class SaleRepository extends BaseRepository {
         saleOperatorId || null,
         salePrice !== null ? parseFloat(salePrice) : null,
         saleCost !== null ? parseFloat(saleCost) : null,
+        saleTime,
         phoneId
       ]
 
-      const result = await this.executeQuery(query, params)
+      const result = connection
+        ? (await connection.execute(query, params))[0]
+        : await this.executeQuery(query, params)
       return result.affectedRows > 0
     } catch (error) {
       log.error('更新手机状态失败:', error)
@@ -394,9 +399,10 @@ class SaleRepository extends BaseRepository {
   /**
    * 创建销售记录
    * @param {Object} saleData - 销售数据
+   * @param {object|null} connection - 可选的业务事务连接，补号流程必须传入
    * @returns {number} 销售记录ID
    */
-  async createSale(saleData) {
+  async createSale(saleData, connection = null) {
     try {
       const query = `
         INSERT INTO sales (
@@ -420,7 +426,7 @@ class SaleRepository extends BaseRepository {
       ]
 
       // Use direct database connection for INSERT to get insertId
-      const db = this.getConnection()
+      const db = connection || this.getConnection()
       const [result] = await db.execute(query, params)
 
       return result.insertId

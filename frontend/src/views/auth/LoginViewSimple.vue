@@ -71,6 +71,12 @@ import { useSiteSettingsStore } from '@/stores/siteSettings'
 import { storage } from '@/services/storage'
 import { AUTH_STORAGE_KEYS } from '@/constants/storage'
 import logger from '@/utils/logger'
+import {
+  getRequestErrorHeader,
+  getRequestErrorMessage,
+  getRequestErrorPayload,
+  getRequestErrorStatus
+} from '@/utils/api-response'
 
 const router = useRouter()
 const route = useRoute()
@@ -116,7 +122,7 @@ const initializeAuth = () => {
 
   if (!sessionToken && localAuth) {
     try {
-      const authData = localAuth as any
+      const authData = localAuth
       if (authData.token && isValidToken(authData.token)) {
         storage.setToken(authData.token)
       } else {
@@ -202,7 +208,7 @@ const handleLogin = async () => {
       window.location.replace(redirectPath)
     }
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     // 提取友好的错误消息
     let friendlyMessage = '登录失败，请稍后重试'
 
@@ -213,11 +219,17 @@ const handleLogin = async () => {
     }
 
     // 处理登录尝试次数限制
-    if (error?.response?.status === 429) {
+    const status = getRequestErrorStatus(error)
+    const errorPayload = getRequestErrorPayload(error)
+
+    if (status === 429) {
       // 账户被锁定
-      const lockData = error.response.data?.details
+      const lockData = errorPayload?.details && typeof errorPayload.details === 'object'
+        ? errorPayload.details as Record<string, unknown>
+        : null
       isLocked.value = true
-      const minutes = lockData?.lockDuration || 15
+      const lockDuration = Number(lockData?.lockDuration)
+      const minutes = Number.isFinite(lockDuration) && lockDuration > 0 ? lockDuration : 15
       lockTime.value = `${minutes} 分钟后`
 
       friendlyMessage = '登录尝试次数过多，账户已被临时锁定'
@@ -226,19 +238,26 @@ const handleLogin = async () => {
       return
     }
 
-    // 检查响应头中的剩余尝试次数
-    const attemptsHeader = error?.response?.headers?.['x-login-attempts-remaining']
-    if (attemptsHeader) {
-      remainingAttempts.value = parseInt(attemptsHeader)
+    // 服务端不可用时不应显示密码错误，也不应读取登录限流响应头。
+    if (status && status >= 500) {
+      remainingAttempts.value = 5
+      friendlyMessage = '登录服务暂时不可用，请稍后重试'
+    } else if (status === 401) {
+      const attemptsHeader = getRequestErrorHeader(error, 'x-login-attempts-remaining')
+      remainingAttempts.value = Number.parseInt(attemptsHeader || '', 10)
 
-      if (remainingAttempts.value <= 1) {
-        friendlyMessage = '用户名或密码错误（还有 1 次机会）'
+      if (Number.isFinite(remainingAttempts.value)) {
+        if (remainingAttempts.value <= 1) {
+          friendlyMessage = '用户名或密码错误（还有 1 次机会）'
+        } else {
+          friendlyMessage = `用户名或密码错误（还有 ${remainingAttempts.value} 次机会）`
+        }
       } else {
-        friendlyMessage = `用户名或密码错误（还有 ${remainingAttempts.value} 次机会）`
+        friendlyMessage = '用户名或密码错误'
       }
-    } else if (error?.response?.data?.message) {
+    } else if (typeof errorPayload?.message === 'string') {
       // 使用后端返回的友好消息
-      const backendMessage = error.response.data.message
+      const backendMessage = errorPayload.message
 
       // 根据后端消息类型提供更简洁的提示
       if (backendMessage.includes('禁用') || backendMessage.includes('disabled')) {
@@ -250,9 +269,9 @@ const handleLogin = async () => {
       }
 
       cleanupAuthData() // 清理无效认证数据
-    } else if (error?.message) {
+    } else {
       // 使用前端错误消息，但进行友好的转换
-      const errorMsg = error.message
+      const errorMsg = getRequestErrorMessage(error, '')
 
       if (errorMsg.includes('401') || errorMsg.includes('Unauthorized')) {
         friendlyMessage = '密码或账户错误'
@@ -267,7 +286,7 @@ const handleLogin = async () => {
       } else if (errorMsg.includes('存储验证失败') || errorMsg.includes('存储数据损坏')) {
         friendlyMessage = '浏览器存储数据异常，请清理浏览器缓存后重试'
         cleanupAuthData() // 清理损坏的存储数据
-      } else {
+      } else if (errorMsg) {
         friendlyMessage = '登录失败，请稍后重试'
         // 对于未知错误，也清理认证数据以防状态不一致
         cleanupAuthData()

@@ -1,24 +1,12 @@
 import { computed, reactive, ref, watch, type Ref } from 'vue'
+import type {
+  SalaryPayoutEmployee,
+  SalaryPayoutRecord,
+  SalaryPayoutRow,
+  SalaryPayoutStatus
+} from '@/types/salary'
 
-type SalaryPayoutStatus = 'paid' | 'unpaid'
-
-export interface SalaryPayoutRecord {
-  employee_id: number
-  status?: string | null
-  net_salary?: number | string | null
-  paid_at?: string | null
-  payment_method?: string | null
-}
-
-export interface SalaryPayoutEmployee {
-  id: number
-  name?: string | null
-  username?: string | null
-}
-
-export interface SalaryPayoutRow extends SalaryPayoutEmployee {
-  payoutRecord: SalaryPayoutRecord | null
-}
+export type { SalaryPayoutRow } from '@/types/salary'
 
 interface UseSalaryPayoutTableOptions {
   getEmployees: () => SalaryPayoutEmployee[]

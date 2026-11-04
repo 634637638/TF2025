@@ -3,6 +3,8 @@
  */
 import { unifiedApi } from '@/utils/unified-api'
 import type { RequestConfig } from '@/utils/unified-api'
+import type { PriceMarkupConfig } from '@/types/price-list'
+export type { PriceMarkupConfig } from '@/types/price-list'
 
 /**
  * 获取在库手机列表（价目表用）- 参考销售管理的逻辑
@@ -254,26 +256,6 @@ export function getPricesByBrand(brand: string) {
 /**
  * 加价配置接口
  */
-export interface PriceMarkupConfig {
-  mode: 'fixed' | 'percentage'
-  lowFixed: number
-  highFixed: number
-  lowPercent: number
-  highPercent: number
-  threshold: number
-  enabled: boolean
-  wholesale: {
-    enabled: boolean
-    adjustment: number
-    /** 按同步来源覆盖默认批发加价，键为 price_sync_config.id */
-    sourceAdjustments: Record<string, number>
-  }
-  used: {
-    /** 二手机在库展示价在入库价基础上的固定加价 */
-    adjustment: number
-  }
-}
-
 /**
  * 获取加价配置
  */

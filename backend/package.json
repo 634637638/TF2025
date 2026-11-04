@@ -14,6 +14,8 @@
     "migrate:shop-media": "node scripts/migrate-shop-media.js",
     "migrate:shop-template-media": "node scripts/migrate-shop-template-media.js",
     "migrate:price-sources": "node scripts/migrate-price-sources.js",
+    "migrate:sale-invoice-constraints": "node scripts/migrate-sale-invoice-constraints.js",
+    "repair:sale-invoice-integrity": "node scripts/repair-duplicate-sale-invoice-numbers.js",
     "backfill:phone-relations": "node scripts/backfill-phone-relations.js",
     "backfill:sale-invoice-numbers": "node scripts/backfill-sale-invoice-numbers.js",
     "dev": "nodemon server.js",
@@ -27,7 +29,7 @@
     ]
   },
   "dependencies": {
-    "archiver": "^7.0.1",
+    "archiver": "^8.0.0",
     "axios": "^1.13.2",
     "bcryptjs": "^3.0.3",
     "canvas": "^3.2.1",

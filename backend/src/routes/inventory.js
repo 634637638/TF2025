@@ -6,7 +6,7 @@ const { getDatabase, isConnected } = require('../config/database')
 const { validateImei } = require('../utils/imei')
 const { normalizeDateTime } = require('../utils/time')
 const { generateMemberNumber } = require('../utils/member-number')
-const { ensureInvoiceSequenceTable, generateInvoiceNumber } = require('../utils/invoice-number')
+const { prepareInvoiceNumberTransaction, generateInvoiceNumber } = require('../utils/invoice-number')
 const log = require('../utils/log')
 const deprecatedRoute = require('../middleware/deprecated-route')
 const {
@@ -585,62 +585,58 @@ router.get('/:id', unifiedAuth, requirePermission('inventory:view'), async (req,
   }
 })
 
-// 历史库存变动接口暂未连接真实流水表，禁止返回伪造数据。
+const retiredInventoryEndpoint = message => (_req, res) => (
+  ApiResponse.error(res, message, 410)
+)
+
+// 历史库存变动接口已退役，禁止返回伪造数据。
 router.get('/:id/movements', unifiedAuth,
   deprecatedRoute({ migrationId: 'inventory-movements-unimplemented' }),
-  requirePermission('inventory:view'), (req, res) => {
-  return ApiResponse.error(res, '库存变动记录暂未实现', 501)
-})
+  requirePermission('inventory:view'),
+  retiredInventoryEndpoint('库存变动记录接口已退役')
+)
 
-// 历史按库存记录入库接口曾使用内存数组，统一改由真实入库事务处理。
+// 历史按库存记录入库接口已退役，统一改由真实入库事务处理。
 router.post('/:id/stock-in', unifiedAuth,
   deprecatedRoute({ replacement: '/api/stock-in', migrationId: 'inventory-item-stock-in-to-stock-in' }),
-  requirePermission('inventory:create'), (req, res) => {
-  return ApiResponse.error(res, '请使用 /stock-in 真实入库接口', 501)
-})
+  requirePermission('inventory:create'),
+  retiredInventoryEndpoint('该入库接口已退役，请使用 /stock-in')
+)
 
-
-
-// 历史库存出库接口没有真实库存流水事务，禁止返回伪造成功。
+// 历史库存出库接口已退役，禁止返回伪造成功。
 router.post('/:id/stock-out', unifiedAuth,
   deprecatedRoute({ migrationId: 'inventory-item-stock-out-unimplemented' }),
-  requirePermission('inventory:edit'), (req, res) => {
-  return ApiResponse.error(res, '库存出库真实流程暂未实现', 501)
-})
+  requirePermission('inventory:edit'),
+  retiredInventoryEndpoint('库存出库接口已退役')
+)
 
-
-
-// 历史库存预留接口没有真实库存流水事务，禁止返回伪造成功。
+// 历史库存预留接口已退役，禁止返回伪造成功。
 router.post('/:id/reserve', unifiedAuth,
   deprecatedRoute({ migrationId: 'inventory-item-reserve-unimplemented' }),
-  requirePermission('inventory:edit'), (req, res) => {
-  return ApiResponse.error(res, '库存预留真实流程暂未实现', 501)
-})
+  requirePermission('inventory:edit'),
+  retiredInventoryEndpoint('库存预留接口已退役')
+)
 
-
-
-// 历史取消预留接口没有真实库存流水事务，禁止返回伪造成功。
+// 历史取消预留接口已退役，禁止返回伪造成功。
 router.post('/:id/unreserve', unifiedAuth,
   deprecatedRoute({ migrationId: 'inventory-item-unreserve-unimplemented' }),
-  requirePermission('inventory:edit'), (req, res) => {
-  return ApiResponse.error(res, '取消库存预留真实流程暂未实现', 501)
-})
+  requirePermission('inventory:edit'),
+  retiredInventoryEndpoint('取消库存预留接口已退役')
+)
 
-
-
-// 历史库存调整接口没有真实库存流水事务，禁止返回伪造成功。
+// 历史库存调整接口已退役，禁止返回伪造成功。
 router.put('/:id/adjust', unifiedAuth,
   deprecatedRoute({ migrationId: 'inventory-item-adjust-unimplemented' }),
-  requirePermission('inventory:edit'), (req, res) => {
-  return ApiResponse.error(res, '库存调整真实流程暂未实现', 501)
-})
+  requirePermission('inventory:edit'),
+  retiredInventoryEndpoint('库存调整接口已退役')
+)
 
 // 旧库存入库入口已停用，统一使用 /stock-in 真实事务接口。
 router.post('/stock-in', unifiedAuth,
   deprecatedRoute({ replacement: '/api/stock-in', migrationId: 'inventory-stock-in-to-stock-in' }),
-  requirePermission('inventory:create'), (req, res) => {
-  return ApiResponse.error(res, '请使用 /stock-in 真实入库接口', 501)
-})
+  requirePermission('inventory:create'),
+  retiredInventoryEndpoint('该入库接口已退役，请使用 /stock-in')
+)
 
 
 
@@ -1022,7 +1018,7 @@ router.post('/quick-sale', unifiedAuth, requireQuickSalePermission, async (req, 
     const pool = getDatabase()
     connection = await pool.getConnection()
 
-    await ensureInvoiceSequenceTable(connection)
+    await prepareInvoiceNumberTransaction(connection)
     await connection.beginTransaction()
 
     const {

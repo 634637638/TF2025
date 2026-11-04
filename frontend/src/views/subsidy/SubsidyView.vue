@@ -660,6 +660,9 @@ import { PageHeader, PermissionGate } from '@/components/base'
 import { normalizeIdCard, normalizePersonName, normalizePhoneDigits } from '@/utils/security'
 import { logger } from '@/utils/logger'
 import { formatAmount } from '@/utils/format'
+import { isAxiosError } from 'axios'
+import type { QueryParams, NationalSubsidyRecord, NationalSubsidyStats } from '@/types'
+import type { ReferenceRecord } from '@/services/reference-options'
 const SubsidyApplyDialog = defineAsyncComponent(() => import('./components/SubsidyApplyDialog.vue'))
 const SubsidyEditDialog = defineAsyncComponent(() => import('./components/SubsidyEditDialog.vue'))
 const SubsidyDetailDialog = defineAsyncComponent(() => import('./components/SubsidyDetailDialog.vue'))
@@ -824,12 +827,12 @@ const tableColumns = computed(() => {
     {
       key: 'apply_time',
       label: '国补提交',
-      visible: fieldVisibility.value.apply_time
+      visible: shouldShowActionColumn(fieldVisibility.value.apply_time, [canApprove.value])
     },
     {
       key: 'arrival_time',
       label: '国补到账',
-      visible: fieldVisibility.value.arrival_time
+      visible: shouldShowActionColumn(fieldVisibility.value.arrival_time, [canArrival.value])
     },
     { key: 'actions', label: '操作', visible: canShowActions.value }
   ].filter(col => col.visible)
@@ -838,9 +841,9 @@ const tableColumns = computed(() => {
 // 响应式数据
 const { loading } = useLoadingState()
 const { exportFile, buildDateFilename } = useImportExport()
-const subsidyList = ref<any[]>([])
+const subsidyList = ref<NationalSubsidyRecord[]>([])
 const exportingSubsidy = ref(false)
-const pinnedItems = ref<any[]>([]) // 固定在顶部的选中项
+const pinnedItems = ref<NationalSubsidyRecord[]>([]) // 固定在顶部的选中项
 const selectedItems = ref<number[]>([]) // 批量选中的ID列表
 const showBatchDialog = ref(false) // 批量操作对话框
 const batchForm = reactive({
@@ -849,7 +852,7 @@ const batchForm = reactive({
 }) // 批量修改表单
 
 const showPhotoPreviewDialog = ref(false)
-const currentManagingItem = shallowRef<any>(null) // 当前正在管理照片的记录
+const currentManagingItem = shallowRef<NationalSubsidyRecord | null>(null) // 当前正在管理照片的记录
 
 const selectedItemIdSet = computed(() => new Set(selectedItems.value))
 const pinnedItemIdSet = computed(() => new Set(pinnedItems.value.map(item => item.id)))
@@ -869,7 +872,7 @@ const selectedPreviewItems = computed(() => {
   if (selectedItems.value.length === 0) return []
   return displayList.value.filter(item => selectedItemIdSet.value.has(item.id)).slice(0, 5)
 })
-const stats = ref({
+const stats = ref<NationalSubsidyStats>({
   total_count: 0,
   pending_count: 0,
   completed_count: 0,
@@ -877,12 +880,7 @@ const stats = ref({
   total_arrived_amount: 0,
   total_subsidy_amount: 0,
   handler_count: 0,
-  store_stats: [] as Array<{
-    store_id: number;
-    store_name: string;
-    count: number;
-    total_count: number;
-  }>
+  store_stats: []
 })
 
 const approvalRate = computed(() => {
@@ -939,7 +937,7 @@ const filters = reactive({
 })
 
 // 店铺列表
-const stores = ref<any[]>([])
+const stores = ref<ReferenceRecord[]>([])
 
 // 日期范围变量
 const saleDateRange = ref<[string, string] | null>(null)
@@ -967,11 +965,9 @@ interface FetchRequestOptions {
   setLoading?: boolean
 }
 
-const isCanceledRequest = (error: any) => {
-  return error?.code === 'ERR_CANCELED' ||
-    error?.message === 'canceled' ||
-    error?.name === 'CanceledError' ||
-    error?.name === 'AbortError'
+const isCanceledRequest = (error: unknown) => {
+  return (isAxiosError(error) && error.code === 'ERR_CANCELED') ||
+    (error instanceof Error && (error.message === 'canceled' || error.name === 'CanceledError' || error.name === 'AbortError'))
 }
 
 const isStaleRequest = (requestSeq?: number) => {
@@ -1007,7 +1003,7 @@ const debounceSearch = () => {
 }
 
 // 处理行双击事件
-const handleRowDoubleClick = (item: any) => {
+const handleRowDoubleClick = (item: NationalSubsidyRecord) => {
   // 移动端和PC端都打开详情模态框
   handleViewDetail(item)
 }
@@ -1030,8 +1026,8 @@ const subsidyPagination: SubsidyPagination = reactive({
 const showApplyDialog = ref(false)
 const showDetailDialog = ref(false)
 const showEditDialog = ref(false)
-const currentDetailItem = shallowRef<any>(null)
-const currentEditItem = shallowRef<any>(null)
+const currentDetailItem = shallowRef<NationalSubsidyRecord | null>(null)
+const currentEditItem = shallowRef<NationalSubsidyRecord | null>(null)
 
 // 批量操作相关
 const batchUpdating = ref(false)
@@ -1050,7 +1046,7 @@ const isIndeterminate = computed(() => {
   return selectedCount > 0 && selectedCount < currentDisplayIds.value.length
 })
 
-const normalizeHandlerInfo = (handler_info?: Record<string, any> | null) => {
+const normalizeHandlerInfo = (handler_info?: NationalSubsidyRecord['handler_info']): NationalSubsidyRecord['handler_info'] => {
   if (!handler_info || typeof handler_info !== 'object') {
     return null
   }
@@ -1063,7 +1059,7 @@ const normalizeHandlerInfo = (handler_info?: Record<string, any> | null) => {
   }
 }
 
-const normalizeSubsidyRecord = (item?: Record<string, any> | null) => {
+const normalizeSubsidyRecord = (item?: NationalSubsidyRecord | null): NationalSubsidyRecord | null => {
   if (!item || typeof item !== 'object') {
     return item
   }
@@ -1077,8 +1073,8 @@ const normalizeSubsidyRecord = (item?: Record<string, any> | null) => {
   }
 }
 
-const buildQueryParams = (includePagination: boolean) => {
-  const params: any = {}
+const buildQueryParams = (includePagination: boolean): QueryParams => {
+  const params: QueryParams = {}
 
   if (includePagination) {
     params.page = subsidyPagination.page
@@ -1137,7 +1133,7 @@ const fetchSubsidyList = async (options: FetchRequestOptions = {}) => {
 
     const params = buildQueryParams(true)
 
-    const response = await unifiedApi.get('/subsidy', {
+    const response = await unifiedApi.get<NationalSubsidyRecord[]>('/subsidy', {
       params,
       signal: options.signal
     })
@@ -1148,7 +1144,7 @@ const fetchSubsidyList = async (options: FetchRequestOptions = {}) => {
 
     if (response.success) {
       subsidyList.value = Array.isArray(response.data)
-        ? response.data.map(item => normalizeSubsidyRecord(item))
+        ? response.data.map(item => normalizeSubsidyRecord(item)).filter((item): item is NationalSubsidyRecord => item !== null)
         : []
       subsidyPagination.page = Number(response.pagination?.page) || 1
       subsidyPagination.page_size = Number(response.pagination?.page_size) || 20
@@ -1157,7 +1153,7 @@ const fetchSubsidyList = async (options: FetchRequestOptions = {}) => {
     } else {
       ElMessage.error(response.message || '获取国补列表失败')
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (isCanceledRequest(error)) {
       return
     }
@@ -1181,7 +1177,7 @@ const fetchStats = async (options: FetchRequestOptions = {}) => {
       ...buildQueryParams(false),
       include_store_stats: canViewField('stats_store_overview') ? '1' : '0'
     }
-    const response = await unifiedApi.get('/subsidy/stats/summary', {
+    const response = await unifiedApi.get<NationalSubsidyStats>('/subsidy/stats/summary', {
       params,
       signal: options.signal
     })
@@ -1193,7 +1189,7 @@ const fetchStats = async (options: FetchRequestOptions = {}) => {
     if (response.success) {
       stats.value = response.data
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (isCanceledRequest(error)) {
       return
     }
@@ -1285,12 +1281,12 @@ const handleApplySubmitted = async () => {
   await fetchLatestSubsidyData()
 }
 
-const handleViewDetail = (item: any) => {
+const handleViewDetail = (item: NationalSubsidyRecord) => {
   currentDetailItem.value = item
   showDetailDialog.value = true
 }
 
-const handleEdit = (item: any) => {
+const handleEdit = (item: NationalSubsidyRecord) => {
   if (!canEdit.value) {
     handleNoPermission('edit')
     return
@@ -1304,14 +1300,14 @@ const handleEditSubmitted = async () => {
   await fetchLatestSubsidyData()
 }
 
-const openPhotoManageDialog = async (item: any) => {
+const openPhotoManageDialog = async (item: NationalSubsidyRecord) => {
   if (!fieldVisibility.value.subsidy_photos && !canUpload.value) {
     return
   }
 
   if (canUpload.value) {
     try {
-      const response = await unifiedApi.get(`/subsidy/${item.id}/photos`)
+      const response = await unifiedApi.get<{ subsidy_photos?: string[] }>(`/subsidy/${item.id}/photos`)
       if (!response.success) {
         ElMessage.error(response.message || '读取国补照片失败')
         return
@@ -1338,7 +1334,7 @@ const handlePhotoSaved = async () => {
 }
 
 // 删除国补记录
-const handleDelete = async (item: any) => {
+const handleDelete = async (item: NationalSubsidyRecord) => {
   if (!canDelete.value) {
     handleNoPermission('delete')
     return
@@ -1363,7 +1359,7 @@ const handleDelete = async (item: any) => {
     } else {
       ElMessage.error(response.message || '删除失败')
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error !== 'cancel') {
       logger.error('删除失败:', error)
       ElMessage.error('删除失败')
@@ -1372,7 +1368,7 @@ const handleDelete = async (item: any) => {
 }
 
 const getTodayDateStr = () => TimeUtil.nowFormatted(TIME_FORMATS.DATE)
-const getActionRecordDescription = (item: any) => {
+const getActionRecordDescription = (item: NationalSubsidyRecord) => {
   const parts: string[] = []
   if (fieldVisibility.value.customer_name && item?.customer_name) {
     parts.push(`客户：${item.customer_name}`)
@@ -1384,7 +1380,7 @@ const getActionRecordDescription = (item: any) => {
 }
 
 // 审批国补申请（记录审批时间）
-const handleAudit = async (item: any) => {
+const handleAudit = async (item: NationalSubsidyRecord) => {
   if (!canApprove.value) {
     handleNoPermission('approve')
     return
@@ -1410,7 +1406,7 @@ const handleAudit = async (item: any) => {
     } else {
       ElMessage.error(response.message || '审批失败')
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error !== 'cancel') {
       logger.error('审批失败:', error)
       ElMessage.error('审批失败')
@@ -1544,7 +1540,7 @@ const submitBatchUpdate = async () => {
 
     batchUpdating.value = true
 
-    const updateData: any = {}
+    const updateData: Partial<Pick<NationalSubsidyRecord, 'apply_time' | 'arrival_time'>> = {}
     if (batchForm.apply_time) {
       updateData.apply_time = batchForm.apply_time
     }
@@ -1560,7 +1556,7 @@ const submitBatchUpdate = async () => {
     const results = await Promise.allSettled(updatePromises)
     const successIds: number[] = []
     results.forEach((result, index) => {
-      if (result.status === 'fulfilled' && (result.value as any).success) {
+      if (result.status === 'fulfilled' && result.value.success) {
         successIds.push(selectedItems.value[index])
       }
     })
@@ -1568,7 +1564,7 @@ const submitBatchUpdate = async () => {
     const failCount = results.length - successCount
 
     if (successCount > 0) {
-      const updateLocalList = (list: any[]) => {
+      const updateLocalList = (list: NationalSubsidyRecord[]) => {
         const idSet = new Set(successIds)
         list.forEach(item => {
           if (!idSet.has(item.id)) return
@@ -1585,7 +1581,7 @@ const submitBatchUpdate = async () => {
     } else {
       ElMessage.error('批量修改失败')
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error !== 'cancel') {
       logger.error('批量修改失败:', error)
       ElMessage.error('批量修改失败')
@@ -1596,7 +1592,7 @@ const submitBatchUpdate = async () => {
 }
 
 // 确认到账
-const handleConfirmArrival = async (item: any) => {
+const handleConfirmArrival = async (item: NationalSubsidyRecord) => {
   if (!canArrival.value) {
     handleNoPermission('arrival')
     return
@@ -1622,7 +1618,7 @@ const handleConfirmArrival = async (item: any) => {
     } else {
       ElMessage.error(response.message || '确认失败')
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error !== 'cancel') {
       logger.error('确认到账失败:', error)
       ElMessage.error('确认到账失败')

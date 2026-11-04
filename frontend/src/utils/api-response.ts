@@ -82,6 +82,52 @@ export function getResponseMessage(response: unknown, defaultMessage = ''): stri
 }
 
 /**
+ * 从统一 Axios 错误、普通 Error 或未知异常中提取用户可读消息。
+ */
+export function getRequestErrorMessage(error: unknown, defaultMessage = '请求失败'): string {
+  const errorRecord = asRecord(error)
+  const responseRecord = asRecord(errorRecord?.response)
+  const dataRecord = asRecord(responseRecord?.data)
+  const candidates = [dataRecord?.message, errorRecord?.message]
+  const message = candidates.find(value => typeof value === 'string' && value.trim())
+  return typeof message === 'string' ? message : defaultMessage
+}
+
+export function getRequestErrorStatus(error: unknown): number | undefined {
+  const errorRecord = asRecord(error)
+  const responseRecord = asRecord(errorRecord?.response)
+  const status = responseRecord?.status
+  return typeof status === 'number' ? status : undefined
+}
+
+export function getRequestErrorHeader(error: unknown, headerName: string): string | undefined {
+  const errorRecord = asRecord(error)
+  const responseRecord = asRecord(errorRecord?.response)
+  const headersRecord = asRecord(responseRecord?.headers)
+  const headerValue = headersRecord?.[headerName.toLowerCase()] ?? headersRecord?.[headerName]
+  return typeof headerValue === 'string' || typeof headerValue === 'number'
+    ? String(headerValue)
+    : undefined
+}
+
+export function getRequestErrorCode(error: unknown): string | undefined {
+  const errorRecord = asRecord(error)
+  const code = errorRecord?.code
+  return typeof code === 'string' ? code : undefined
+}
+
+export function getRequestErrorName(error: unknown): string | undefined {
+  const errorRecord = asRecord(error)
+  const name = errorRecord?.name
+  return typeof name === 'string' ? name : undefined
+}
+
+export function getRequestErrorPayload(error: unknown): ResponseRecord | null {
+  const errorRecord = asRecord(error)
+  return asRecord(errorRecord?.responseData) || asRecord(asRecord(errorRecord?.response)?.data)
+}
+
+/**
  * 创建响应提取函数
  * 用于在API调用后统一处理响应
  * @param fallback 空数据时的默认值

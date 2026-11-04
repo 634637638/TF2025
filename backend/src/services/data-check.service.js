@@ -5,6 +5,24 @@
 const { getDatabase } = require('../config/database')
 const log = require('../utils/log')
 
+const EDITABLE_DATA_CONFIG = Object.freeze({
+  brands: { table: 'brands', fields: ['name', 'sort_order'] },
+  models: { table: 'models', fields: ['name', 'brand_id'] },
+  colors: { table: 'colors', fields: ['name'] },
+  memories: { table: 'memories', fields: ['size'] },
+  suppliers: { table: 'suppliers', fields: ['name', 'contact', 'phone'] },
+  stores: { table: 'stores', fields: ['name', 'phone'] },
+  customers: { table: 'customers', fields: ['name', 'phone', 'member_number', 'customer_type', 'vip_level'] },
+  users: { table: 'users', fields: ['username', 'name', 'phone', 'email'] }
+})
+
+const createEditValidationError = (message) => {
+  const error = new Error(message)
+  error.statusCode = 400
+  error.code = 'INVALID_EDIT_FIELDS'
+  return error
+}
+
 class DataCheckService {
   constructor() {
     // 不要在构造函数中获取数据库连接
@@ -1139,33 +1157,40 @@ class DataCheckService {
    * 编辑数据
    */
   async editData(type, id, data, _user = null) {
+    const config = EDITABLE_DATA_CONFIG[type]
+    if (!config) {
+      throw createEditValidationError('不支持的数据类型')
+    }
+
+    const recordId = Number.parseInt(id, 10)
+    if (!Number.isInteger(recordId) || recordId <= 0) {
+      throw createEditValidationError('无效的记录ID')
+    }
+
+    if (!data || typeof data !== 'object' || Array.isArray(data)) {
+      throw createEditValidationError('编辑数据必须是对象')
+    }
+
+    const fields = Object.keys(data)
+    if (fields.length === 0) {
+      throw createEditValidationError('至少提供一个可编辑字段')
+    }
+
+    const invalidFields = fields.filter(field => !config.fields.includes(field))
+    if (invalidFields.length > 0) {
+      throw createEditValidationError(`包含不可编辑字段: ${invalidFields.join(', ')}`)
+    }
+
     const connection = await this.getPool().getConnection()
 
     try {
-      const tableMap = {
-        brands: 'brands',
-        models: 'models',
-        colors: 'colors',
-        memories: 'memories',
-        suppliers: 'suppliers',
-        stores: 'stores',
-        customers: 'customers',
-        users: 'users'
-      }
-
-      const table = tableMap[type]
-      if (!table) {
-        throw new Error('不支持的数据类型')
-      }
-
-      // 构建更新SQL
-      const fields = Object.keys(data).filter(key => key !== 'id')
-      const setClause = fields.map(field => `${field} = ?`).join(', ')
+      const { table } = config
+      const setClause = fields.map(field => `\`${field}\` = ?`).join(', ')
       const values = fields.map(field => data[field])
 
       const [result] = await connection.execute(
-        `UPDATE ${table} SET ${setClause} WHERE id = ?`,
-        [...values, id]
+        `UPDATE \`${table}\` SET ${setClause} WHERE \`id\` = ?`,
+        [...values, recordId]
       )
 
       if (result.affectedRows === 0) {
@@ -1173,14 +1198,17 @@ class DataCheckService {
       }
 
       // 获取更新后的数据
+      const selectFields = ['id', ...config.fields]
+        .map(field => `\`${field}\``)
+        .join(', ')
       const [updated] = await connection.execute(
-        `SELECT * FROM ${table} WHERE id = ?`,
-        [id]
+        `SELECT ${selectFields} FROM \`${table}\` WHERE \`id\` = ?`,
+        [recordId]
       )
 
       return {
         type,
-        id,
+        id: recordId,
         data: updated[0]
       }
     } finally {

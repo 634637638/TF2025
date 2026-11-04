@@ -2,44 +2,12 @@
  * 工资模板 API 服务
  */
 import { unifiedApi } from '@/utils/unified-api'
+import type { SalaryTemplateInput, TemplateFilters } from '@/types/salary'
 
-// ============================================================================
-// 类型定义
-// ============================================================================
+// API 边界显式保留分页字段，实际业务类型仍集中在 types/salary.ts。
+type SalaryTemplateFilters = TemplateFilters & { page_size?: number }
 
-export interface SalaryTemplate {
-  id?: number
-  name: string
-  description?: string
-  base_salary: number
-  // 自动涨薪规则
-  auto_raise_rule?: {
-    enabled?: boolean
-    years?: number
-    months?: number
-    amount?: number
-    max_salary?: number
-  } | string | null
-  commission_type: 'fixed' | 'percentage'
-  commission_fixed?: number
-  commission_new_fixed?: number
-  commission_used_fixed?: number
-  commission_percentage?: number
-  overtime_hourly_rate: number
-  rest_days: number
-  is_active: boolean
-  is_default: boolean
-  employee_count?: number
-  created_at?: string
-  updated_at?: string
-}
-
-export interface TemplateFilters {
-  page?: number
-  page_size?: number
-  is_active?: boolean
-  is_default?: boolean
-}
+export type { SalaryTemplate, SalaryTemplateInput, TemplateFilters } from '@/types/salary'
 
 // ============================================================================
 // 工资模板 API 对象
@@ -49,7 +17,7 @@ export const salaryTemplateApi = {
   /**
    * 获取工资模板列表
    */
-  getTemplates: (filters: TemplateFilters = {}) => {
+  getTemplates: (filters: SalaryTemplateFilters = {}) => {
     return unifiedApi.get('/salary-templates', { params: filters })
   },
 
@@ -70,14 +38,14 @@ export const salaryTemplateApi = {
   /**
    * 创建工资模板
    */
-  createTemplate: (data: SalaryTemplate) => {
+  createTemplate: (data: Partial<SalaryTemplateInput>) => {
     return unifiedApi.post('/salary-templates', data)
   },
 
   /**
    * 更新工资模板
    */
-  updateTemplate: (id: number, data: Partial<SalaryTemplate>) => {
+  updateTemplate: (id: number, data: Partial<SalaryTemplateInput>) => {
     return unifiedApi.put(`/salary-templates/${id}`, data)
   },
 

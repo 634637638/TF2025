@@ -65,17 +65,19 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { ElMessage, type FormInstance } from 'element-plus'
+import { ElMessage, type FormInstance, type FormItemRule } from 'element-plus'
 import { useForm, ValidationRules } from '@/composables'
 import { unifiedApi } from '@/utils/unified-api'
 import { extractResponseData } from '@/utils/api-response'
 import { normalizePersonName, normalizePhoneDigits } from '@/utils/security'
 import type { ModalProps } from '@/types'
+import type { Customer } from '@/types'
+import { getRequestErrorMessage } from '@/utils/api-response'
 
 const props = defineProps<ModalProps>()
 const emit = defineEmits<{
   'update:visible': [value: boolean]
-  success: [customer: any]
+  success: [customer: Customer]
 }>()
 
 const dialogVisible = computed({
@@ -106,7 +108,7 @@ const { form, validate, setFieldValue, reset } = useForm({
 
 // 转换为 el-form 格式的 rules
 const formRules = computed(() => {
-  const rules: Record<string, any[]> = {}
+  const rules: Record<string, FormItemRule[]> = {}
   if (form.errors.name) {
     rules.name = [{ required: true, message: form.errors.name, trigger: 'blur' }]
   }
@@ -133,11 +135,11 @@ const handleSubmit = async () => {
       phone: normalizedPhone
     })
     ElMessage.success('客户创建成功')
-    emit('success', extractResponseData(response))
+    emit('success', extractResponseData<Customer>(response))
     dialogVisible.value = false
     reset()
-  } catch (err: any) {
-    ElMessage.error(err.message || '创建客户失败')
+  } catch (err: unknown) {
+    ElMessage.error(getRequestErrorMessage(err, '创建客户失败'))
   } finally {
     submitting.value = false
   }

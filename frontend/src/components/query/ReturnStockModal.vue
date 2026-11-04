@@ -262,6 +262,7 @@ import MobileDialog from '@/components/MobileDialog.vue'
 import { PaymentMethodSelect } from '@/components/payment'
 import { useMobile } from '@/composables/mobile'
 import { logger } from '@/utils/logger'
+import { getRequestErrorMessage } from '@/utils/api-response'
 import type { ModelValueProps, ReturnDeviceInfo as DeviceInfo, SuccessEmits, UpdateModelValueEmits } from '@/types'
 
 interface Props extends ModelValueProps {
@@ -343,9 +344,9 @@ const handleSubmit = async () => {
     ElMessage.success('退库成功！')
     emit('success')
     handleCancel()
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('退库失败:', error)
-    ElMessage.error(error?.response?.data?.message || error?.message || '退库失败，请重试')
+    ElMessage.error(getRequestErrorMessage(error, '退库失败，请重试'))
   } finally {
     submitting.value = false
   }

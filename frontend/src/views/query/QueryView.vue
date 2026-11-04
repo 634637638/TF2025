@@ -716,10 +716,10 @@ import { usePagePermissions } from '@/composables/usePagePermissions'
 import { useRefreshData } from '@/composables/useRefreshData'
 import { useLoadingState } from '@/composables'
 import unifiedApi from '@/utils/unified-api'
-import { extractResponseData } from '@/utils/api-response'
+import { extractResponseData, getRequestErrorCode, getRequestErrorName } from '@/utils/api-response'
 import { formatImageUrl } from '@/utils/format'
 import { getOptionLabel, sortOptionsByOrder } from '@/utils/option-sort'
-import { searchEmployees, getModels, getCachedQueryOptions } from '@/services/reference-options'
+import { searchEmployees, getModels, getCachedQueryOptions, type ReferenceRecord } from '@/services/reference-options'
 import {
   getAdaptiveActionColumnWidth,
   getIdentifierColumnMinWidth,
@@ -751,12 +751,13 @@ const QuickSaleModal = defineAsyncComponent(() => import('@/components/query/Qui
 const QueryEditModal = defineAsyncComponent(() => import('@/components/query/QueryEditModal.vue'))
 const QueryDetailDialog = defineAsyncComponent(() => import('@/components/query/QueryDetailDialog.vue'))
 const ReturnStockModal = defineAsyncComponent(() => import('@/components/query/ReturnStockModal.vue'))
+import type { ReceiptItem, SearchPhoneResult } from '@/components/query/SalesReceipt.vue'
 
 // 字段权限相关
 import { fieldPermissions, shouldShowActionColumn } from '../../composables/useFieldPermissions'
 // 时间处理工具
 import { TimeUtil, TIME_FORMATS } from '../../utils/time'
-import type { Brand, Color, MemoryOption, Model, QueryItem, ReturnDeviceInfo, QueryStatistics as Statistics, QueryOptions as Options } from '@/types'
+import type { Brand, Color, MemoryOption, Model, QueryItem, QueryParams, ReturnDeviceInfo, QueryStatistics as Statistics, QueryOptions as Options, SoldProductImage, UserOption } from '@/types'
 
 // 使用 stores 和 composables
 const router = useRouter()
@@ -792,7 +793,7 @@ const isIndeterminate = ref(false)
 
 // 销售单相关状态
 const showReceipt = ref(false)
-const receiptItems = ref<any[]>([])
+const receiptItems = ref<ReceiptItem[]>([])
 const receiptStatus = ref('sold')
 const receiptCustomerName = ref('')
 const receiptCustomerPhone = ref('')
@@ -805,7 +806,7 @@ const receiptSaleDate = ref('')
 // 图片预览相关状态
 const showImageModal = ref(false)
 const { loading: loadingImages } = useLoadingState()
-const productImages = ref<any[]>([])
+const productImages = ref<SoldProductImage[]>([])
 const selectedPhoneId = ref<number | null>(null)
 const selectedPhoneInfo = ref<{ brand: string; model: string; color: string; memory: string; imei: string } | null>(null)
 const showImageViewer = ref(false)
@@ -905,7 +906,7 @@ const options = ref<Options>({
 })
 
 // 保存完整的型号列表，用于品牌筛选
-const allModelsList = ref<Array<any>>([])
+const allModelsList = ref<ReferenceRecord[]>([])
 const queryBrandIds = new Map<string, number>()
 let queryModelSearchSequence = 0
 const queryDataCache = new Map<string, QueryDataCacheEntry>()
@@ -914,17 +915,17 @@ let latestQueryRequestId = 0
 
 // 编辑模态框选项数据
 const editModalOptions = reactive({
-  suppliers: [] as any[],
-  stores: [] as any[],
+  suppliers: [],
+  stores: [],
   brands: [] as Brand[],
   models: [] as Model[],
   colors: [] as Color[],
   memories: [] as MemoryOption[],
-  users: [] as any[]
+  users: []
 })
 const editModalOptionsLoaded = ref(false)
 const editModalOptionsLoading = ref(false)
-const employeesPromise = ref<Promise<any[]> | null>(null)
+const employeesPromise = ref<Promise<UserOption[]> | null>(null)
 
 // 筛选条件
 const filters = reactive({
@@ -974,18 +975,43 @@ const { setTotal, goToPage } = paginationData
 // ==================== 数据排序辅助函数 ====================
 
 // 对查询数据进行排序（接收映射后的数据）
-const sortQueryData = (data: any[]): any[] => {
+const sortQueryData = (data: QueryItem[]): QueryItem[] => {
   if (!data || data.length === 0) return []
   return [...data]
 }
 
-const isGroupedQueryItem = (item: any): item is QueryItem => {
+type RawQueryRecord = Record<string, unknown> & {
+  基本信息?: QueryItem['基本信息']
+  basic_info?: QueryItem['基本信息']
+  供应商信息?: QueryItem['供应商信息']
+  supplier_info?: QueryItem['供应商信息']
+  店铺信息?: QueryItem['店铺信息']
+  store_info?: QueryItem['店铺信息']
+  价格信息?: QueryItem['价格信息']
+  price_info?: QueryItem['价格信息']
+  时间信息?: QueryItem['时间信息']
+  time_info?: QueryItem['时间信息']
+  客户信息?: QueryItem['客户信息']
+  customer_info?: QueryItem['客户信息']
+  操作员信息?: QueryItem['操作员信息']
+  operator_info?: QueryItem['操作员信息']
+  销售信息?: QueryItem['销售信息']
+  sale_info?: QueryItem['销售信息']
+  purchase_cost?: number | string | null
+  sale_price?: number | string | null
+  status_code?: string
+  status?: string
+  is_new?: number
+  [key: string]: unknown
+}
+
+const isGroupedQueryItem = (item: unknown): item is RawQueryRecord => {
+  const record = item && typeof item === 'object' ? item as RawQueryRecord : null
   return Boolean(
-    item &&
-    typeof item === 'object' &&
-    (item.基本信息 || item.basic_info) &&
-    (item.价格信息 || item.price_info) &&
-    (item.时间信息 || item.time_info)
+    record &&
+    (record.基本信息 || record.basic_info) &&
+    (record.价格信息 || record.price_info) &&
+    (record.时间信息 || record.time_info)
   )
 }
 
@@ -996,9 +1022,9 @@ const normalizeCustomerInfo = (customerInfo?: Partial<QueryItem['客户信息']>
   apple_id: normalizeAppleId(customerInfo?.apple_id || '')
 })
 
-const normalizeQueryItem = (item: any): QueryItem => {
+const normalizeQueryItem = (item: unknown): QueryItem => {
   if (isGroupedQueryItem(item)) {
-    const rawGrouped: any = item
+    const rawGrouped = item
     const rawPriceInfo = rawGrouped.价格信息 || rawGrouped.price_info || {}
     const rawTimeInfo = rawGrouped.时间信息 || rawGrouped.time_info || {}
     const canonicalPriceInfo = rawPriceInfo
@@ -1066,45 +1092,46 @@ const normalizeQueryItem = (item: any): QueryItem => {
     }
   }
 
-  const purchasePrice = item.purchase_cost === null || item.purchase_cost === undefined ? null : Number(item.purchase_cost)
-  const salePrice = item.sale_price === null || item.sale_price === undefined ? null : Number(item.sale_price)
-  const rawStatusCode = item.status_code || item.status || ''
+  const rawItem = item && typeof item === 'object' ? item as RawQueryRecord : {}
+  const purchasePrice = rawItem.purchase_cost === null || rawItem.purchase_cost === undefined ? null : Number(rawItem.purchase_cost)
+  const salePrice = rawItem.sale_price === null || rawItem.sale_price === undefined ? null : Number(rawItem.sale_price)
+  const rawStatusCode = rawItem.status_code || rawItem.status || ''
 
   return {
     基本信息: {
-      phone_id: item.phone_id,
-      imei: item.imei,
-      serial_number: item.serial_number,
-      brand: item.brand,
-      model: item.model,
-      color: item.color,
-      memory: item.memory,
-      condition_type: item.is_new === 1 ? '全新' : '二手',
-      status: item.status,
+      phone_id: Number(rawItem.phone_id || 0),
+      imei: String(rawItem.imei || ''),
+      serial_number: String(rawItem.serial_number || ''),
+      brand: String(rawItem.brand || ''),
+      model: String(rawItem.model || ''),
+      color: String(rawItem.color || ''),
+      memory: String(rawItem.memory || ''),
+      condition_type: rawItem.is_new === 1 ? '全新' : '二手',
+      status: String(rawItem.status || ''),
       status_code: rawStatusCode,
-      quality_grade: item.quality_grade,
-      is_new: item.is_new,
-      remarks: item.remarks
+      quality_grade: String(rawItem.quality_grade || ''),
+      is_new: Number(rawItem.is_new || 0),
+      remarks: String(rawItem.remarks || '')
     },
     销售信息: {
-      sale_id: item.sale_id,
-      sale_type: item.sale_type || '',
-      payment_method: item.payment_method || '',
-      payment_channel: item.payment_channel || '',
-      invoice_number: item.invoice_number || '',
-      sale_remarks: item.sale_remarks || '',
-      sale_time: item.sale_time || ''
+      sale_id: Number(rawItem.sale_id || 0),
+      sale_type: String(rawItem.sale_type || ''),
+      payment_method: String(rawItem.payment_method || ''),
+      payment_channel: String(rawItem.payment_channel || ''),
+      invoice_number: String(rawItem.invoice_number || ''),
+      sale_remarks: String(rawItem.sale_remarks || ''),
+      sale_time: String(rawItem.sale_time || '')
     },
     供应商信息: {
-      supplier_id: item.supplier_id ?? null,
-      supplier_name: item.supplier_name,
-      supplier_contact: item.supplier_contact,
-      supplier_phone: item.supplier_phone
+      supplier_id: rawItem.supplier_id === null || rawItem.supplier_id === undefined ? null : Number(rawItem.supplier_id),
+      supplier_name: String(rawItem.supplier_name || ''),
+      supplier_contact: String(rawItem.supplier_contact || ''),
+      supplier_phone: String(rawItem.supplier_phone || '')
     },
     店铺信息: {
-      store_id: item.store_id ?? null,
-      store_name: item.store_name,
-      store_address: item.store_address
+      store_id: rawItem.store_id === null || rawItem.store_id === undefined ? null : Number(rawItem.store_id),
+      store_name: String(rawItem.store_name || ''),
+      store_address: String(rawItem.store_address || '')
     },
     价格信息: {
       purchase_cost: purchasePrice,
@@ -1112,28 +1139,28 @@ const normalizeQueryItem = (item: any): QueryItem => {
       profit: salePrice === null || purchasePrice === null ? null : salePrice - purchasePrice
     },
     时间信息: {
-      inventory_time: item.inventory_time || item.created_at,
-      sale_time: item.sale_time,
-      created_at: item.created_at
+      inventory_time: String(rawItem.inventory_time || rawItem.created_at || ''),
+      sale_time: String(rawItem.sale_time || ''),
+      created_at: String(rawItem.created_at || '')
     },
     客户信息: normalizeCustomerInfo({
-      customer_id: item.customer_id ?? null,
-      customer_name: item.customer_name,
-      customer_phone: item.customer_phone,
-      apple_id: item.apple_id || item.customer_apple_id
+      customer_id: rawItem.customer_id === null || rawItem.customer_id === undefined ? null : Number(rawItem.customer_id),
+      customer_name: String(rawItem.customer_name || ''),
+      customer_phone: String(rawItem.customer_phone || ''),
+      apple_id: String(rawItem.apple_id || rawItem.customer_apple_id || '')
     }),
     操作员信息: {
-      operator_id: item.sale_operator_id ?? item.operator_id ?? null,
-      sale_operator_id: item.sale_operator_id ?? item.operator_id ?? null,
-      inventory_operator_id: item.inventory_operator_id ?? null,
-      inventory_operator_name: item.inventory_operator_name,
-      sale_operator_name: item.salesperson_name || item.sale_operator_name
+      operator_id: rawItem.sale_operator_id === null || rawItem.sale_operator_id === undefined ? (rawItem.operator_id === null || rawItem.operator_id === undefined ? null : Number(rawItem.operator_id)) : Number(rawItem.sale_operator_id),
+      sale_operator_id: rawItem.sale_operator_id === null || rawItem.sale_operator_id === undefined ? (rawItem.operator_id === null || rawItem.operator_id === undefined ? null : Number(rawItem.operator_id)) : Number(rawItem.sale_operator_id),
+      inventory_operator_id: rawItem.inventory_operator_id === null || rawItem.inventory_operator_id === undefined ? null : Number(rawItem.inventory_operator_id),
+      inventory_operator_name: String(rawItem.inventory_operator_name || ''),
+      sale_operator_name: String(rawItem.salesperson_name || rawItem.sale_operator_name || '')
     }
   }
 }
 
 const buildQueryParams = () => {
-  const params: Record<string, any> = { ...filters }
+  const params: QueryParams = { ...filters }
 
   Object.keys(params).forEach(key => {
     if (params[key] === '' || params[key] === null || params[key] === undefined) {
@@ -1144,14 +1171,14 @@ const buildQueryParams = () => {
   return params
 }
 
-const getQueryCacheKey = (params: Record<string, any>) => {
+const getQueryCacheKey = (params: QueryParams) => {
   return JSON.stringify(
     Object.keys(params)
       .sort()
       .reduce((acc, key) => {
         acc[key] = params[key]
         return acc
-      }, {} as Record<string, any>)
+      }, {} as QueryParams)
   )
 }
 
@@ -1272,7 +1299,7 @@ const triggerLoadQueryData = () => {
 
 // 加载查询数据
 const loadQueryStatistics = async (
-  params: Record<string, any>,
+  params: QueryParams,
   options: {
     force?: boolean
     cacheKey?: string
@@ -1310,8 +1337,8 @@ const loadQueryStatistics = async (
 
       return statsData
     }
-  } catch (err: any) {
-    if (err?.name === 'CanceledError' || err?.code === 'ERR_CANCELED') {
+  } catch (err: unknown) {
+    if (getRequestErrorName(err) === 'CanceledError' || getRequestErrorCode(err) === 'ERR_CANCELED') {
       return
     }
     logger.warn('加载综合查询统计失败:', err)
@@ -1349,11 +1376,14 @@ const loadQueryData = async (force = false, showLoadingState = true) => {
     }
 
     if (queryResponse.success) {
-      const rawData = extractResponseData<any[]>(queryResponse)
-      const normalizedData = sortQueryData(rawData.map((item: any) => normalizeQueryItem(item)))
+      const rawData = extractResponseData<unknown[]>(queryResponse)
+      const normalizedData = sortQueryData(rawData.map(item => normalizeQueryItem(item)))
 
       // 修复分页数据获取：分页信息在 queryResponse.pagination 中
-      const paginationData = (queryResponse as any).pagination || { total: 0 }
+      const responseRecord = queryResponse as unknown as Record<string, unknown>
+      const paginationData = responseRecord.pagination && typeof responseRecord.pagination === 'object'
+        ? responseRecord.pagination as Record<string, unknown>
+        : { total: 0 }
       // 确保total是数字类型
       const total = Number(paginationData.total) || 0
       applyQueryDataResult(normalizedData, total)
@@ -1370,9 +1400,9 @@ const loadQueryData = async (force = false, showLoadingState = true) => {
     }
     void statisticsPromise
 
-  } catch (err: any) {
+  } catch (err: unknown) {
     // 如果是请求被取消的错误，不显示错误提示
-    if (err.name === 'CanceledError' || err.code === 'ERR_CANCELED') {
+    if (getRequestErrorName(err) === 'CanceledError' || getRequestErrorCode(err) === 'ERR_CANCELED') {
       return
     }
 
@@ -1402,8 +1432,13 @@ const loadQueryOptions = async () => {
 
     // 基础选项统一使用公共排序：sort_order、名称自然顺序、ID
     const suppliersRaw = Array.isArray(data.suppliers) ? data.suppliers : []
-    const sortedSuppliers = sortOptionsByOrder<any>(suppliersRaw
-      .filter((item: any) => item.status === 1 || item.status === undefined))
+    const sortedSuppliers = sortOptionsByOrder<ReferenceRecord>(suppliersRaw
+      .filter(item => item.status === 1 || item.status === undefined))
+      .map(item => ({
+        id: item.id ?? '',
+        name: String(item.name || ''),
+        sort_order: item.sort_order
+      }))
 
     // 店铺（根据用户门店权限过滤）- 按 sort_order 排序，相同时按 id 排序确保一致性
     const storesRaw = Array.isArray(data.stores) ? data.stores : []
@@ -1411,40 +1446,48 @@ const loadQueryOptions = async () => {
     const userStoreId = authStore.user?.store_id
     let filteredStores = storesRaw
     if (userStoreIds.length > 0) {
-      filteredStores = storesRaw.filter((store: any) => userStoreIds.includes(store.id))
+      filteredStores = storesRaw.filter(store => userStoreIds.includes(Number(store.id)))
     } else if (userStoreId) {
-      filteredStores = storesRaw.filter((store: any) => store.id === userStoreId)
+      filteredStores = storesRaw.filter(store => Number(store.id) === userStoreId)
     }
-    const stores = sortOptionsByOrder<any>(filteredStores)
+    const stores = sortOptionsByOrder<ReferenceRecord>(filteredStores)
+      .map(item => ({
+        id: item.id ?? '',
+        name: String(item.name || ''),
+        sort_order: item.sort_order
+      }))
 
     // 品牌 - 按 sort_order 排序，相同时按 id 排序确保一致性
     const brandsRaw = Array.isArray(data.brands) ? data.brands : []
     queryBrandIds.clear()
-    const brands = sortOptionsByOrder(brandsRaw.map((brand: any) =>
+    const brands = sortOptionsByOrder(brandsRaw.map(brand =>
       typeof brand === 'string' ? { name: brand, sort_order: 0, id: 0 } : brand
     ))
-      .filter((item: any) => {
+      .filter(item => {
         if (item.name && Number(item.id) > 0) queryBrandIds.set(item.name, Number(item.id))
         return Boolean(item.name)
       })
-      .map((item: any) => getOptionLabel(item, ['name']))
+      .map(item => getOptionLabel(item, ['name']))
       .filter(Boolean)
 
     // 型号 - 保留完整信息包括 brand_name 用于联动筛选，按 sort_order 排序，相同时按 id 排序确保一致性
-    const modelsRaw = Array.isArray(data.models) ? data.models : []
-    const models = modelsRaw
-      .map((model: any) => {
-        if (typeof model === 'string') return { id: 0, name: model, brand_name: '', sort_order: 0 }
-        const name = model?.name || model?.model || model?.model_name
-        return name ? {
-          id: model.id || 0,
-          name,
-          brand_id: model.brand_id,
-          brand_name: model.brand_name || model.brand || '',
-          sort_order: model.sort_order || 0
-        } : null
-      })
-      .filter(Boolean) as Array<any>
+    const modelsRaw: Array<ReferenceRecord | string> = Array.isArray(data.models)
+      ? data.models as Array<ReferenceRecord | string>
+      : []
+    const models: ReferenceRecord[] = modelsRaw.flatMap<ReferenceRecord>(model => {
+      if (typeof model === 'string') {
+        return [{ id: 0, name: model, brand_name: '', sort_order: 0 }]
+      }
+      const name = model?.name || model?.model || model?.model_name
+      if (!name) return []
+      return [{
+        id: model.id || 0,
+        name: String(name),
+        brand_id: model.brand_id,
+        brand_name: String(model.brand_name || model.brand || ''),
+        sort_order: Number(model.sort_order || 0)
+      }]
+    })
     const sortedModels = sortOptionsByOrder(models)
 
     // 保存完整型号列表用于筛选
@@ -1452,18 +1495,18 @@ const loadQueryOptions = async () => {
 
     // 颜色 - 按 sort_order 排序，相同时按 id 排序确保一致性
     const colorsRaw = Array.isArray(data.colors) ? data.colors : []
-    const colors = sortOptionsByOrder(colorsRaw.map((color: any) =>
+    const colors = sortOptionsByOrder(colorsRaw.map(color =>
       typeof color === 'string' ? { name: color, sort_order: 0, id: 0 } : color
     ))
-      .map((item: any) => getOptionLabel(item, ['name']))
+      .map(item => getOptionLabel(item, ['name']))
       .filter(Boolean)
 
     // 内存 - 按 sort_order 排序，相同时按 id 排序确保一致性
     const memoriesRaw = Array.isArray(data.memories) ? data.memories : []
-    const memories = sortOptionsByOrder(memoriesRaw.map((memory: any) =>
+    const memories = sortOptionsByOrder(memoriesRaw.map(memory =>
       typeof memory === 'string' ? { name: memory, sort_order: 0, id: 0 } : memory
     ), { labelKeys: ['size', 'capacity', 'name'] })
-      .map((item: any) => getOptionLabel(item, ['size', 'capacity', 'name']))
+      .map(item => getOptionLabel(item, ['size', 'capacity', 'name']))
       .filter(Boolean)
 
     // 使用后端返回的状态选项，如果为空则使用默认值
@@ -1501,7 +1544,7 @@ const loadQueryOptions = async () => {
 
   } catch (error) {
     // 如果是请求被取消的错误，不显示错误提示
-    if (error.name === 'CanceledError' || error.code === 'ERR_CANCELED') {
+    if (getRequestErrorName(error) === 'CanceledError' || getRequestErrorCode(error) === 'ERR_CANCELED') {
       return
     }
 
@@ -1545,7 +1588,13 @@ const loadSalesUsers = async () => {
         page_size: 20,
         strict_scope: true
       })
-      return usersRes.success && usersRes.data?.employees ? sortOptionsByOrder(usersRes.data.employees) : []
+      return usersRes.success && usersRes.data?.employees
+        ? sortOptionsByOrder(usersRes.data.employees.map(item => ({
+          id: Number(item.id || 0),
+          name: String(item.name || ''),
+          status: item.status
+        })))
+        : []
     })()
 
     options.value.users = await employeesPromise.value
@@ -1639,7 +1688,11 @@ const loadEditModalOptions = async () => {
       sort_order: Number(item.sort_order || 0)
     })), { labelKeys: ['size', 'capacity', 'name'] })
     editModalOptions.users = usersRes.success && usersRes.data?.employees
-      ? sortOptionsByOrder(usersRes.data.employees)
+      ? sortOptionsByOrder(usersRes.data.employees.map(item => ({
+        id: Number(item.id || 0),
+        name: String(item.name || ''),
+        status: item.status
+      })))
       : []
 
     if (options.value.users.length === 0) {
@@ -1749,13 +1802,16 @@ const handleFilterBrandChange = async () => {
         const response = await getModels({ brandId, activeOnly: true })
         if (sequence === queryModelSearchSequence) {
           options.value.models = sortOptionsByOrder(
-            (Array.isArray(response.data) ? response.data : []).map((model: any) => ({
-              id: Number(model.id || 0),
-              name: String(model.name || ''),
-              brand_id: model.brand_id === null || model.brand_id === undefined ? undefined : Number(model.brand_id),
-              brand_name: String(model.brand_name || ''),
-              sort_order: Number(model.sort_order || 0)
-            })).filter(model => model.name)
+            (Array.isArray(response.data) ? response.data : []).map(model => {
+              const modelRecord = model && typeof model === 'object' ? model as Record<string, unknown> : {}
+              return {
+                id: Number(modelRecord.id || 0),
+                name: String(modelRecord.name || ''),
+                brand_id: modelRecord.brand_id === null || modelRecord.brand_id === undefined ? undefined : Number(modelRecord.brand_id),
+                brand_name: String(modelRecord.brand_name || ''),
+                sort_order: Number(modelRecord.sort_order || 0)
+              }
+            }).filter(model => model.name)
           )
         }
       } catch (error) {
@@ -1820,7 +1876,7 @@ const formatPrice = (price?: number | null) => {
 }
 
 // 图片预览相关函数
-const previewImage = (image: any) => {
+const previewImage = (image: SoldProductImage) => {
   const index = productImages.value.findIndex(img => img.id === image.id)
   previewMediaIndex.value = index >= 0 ? index : 0
   showImageViewer.value = true
@@ -1891,7 +1947,7 @@ const handleUploadImage = async (event: Event) => {
 }
 
 // 删除单张图片
-const deleteSingleImage = async (image: any) => {
+const deleteSingleImage = async (image: SoldProductImage) => {
   try {
     await confirmAction(
       '确定要删除这张图片吗？',
@@ -1914,7 +1970,7 @@ const deleteSingleImage = async (image: any) => {
       // 刷新查询数据以更新图标显示
       await triggerLoadQueryData()
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error !== 'cancel') {
       logger.error('删除图片失败:', error)
       ElMessage.error('删除图片失败')
@@ -1923,7 +1979,7 @@ const deleteSingleImage = async (image: any) => {
 }
 
 // 设置主图
-const setPrimaryImage = async (image: any) => {
+const setPrimaryImage = async (image: SoldProductImage) => {
   if (!selectedPhoneId.value) return
 
   try {
@@ -1978,7 +2034,7 @@ const deleteAllImages = async () => {
 
     // 刷新查询数据以更新图标显示
     await triggerLoadQueryData()
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error !== 'cancel') {
       logger.error('删除图片失败:', error)
       ElMessage.error('删除图片失败')
@@ -2003,7 +2059,14 @@ const getStatusBadgeClass = (basicInfo?: QueryItem['基本信息']) => {
 }
 
 // 获取单元格内容
-const getCellValue = (item: QueryItem, column: any) => {
+type QueryColumn = {
+  key: string
+  label: string
+  field: string
+  prop: string
+}
+
+const getCellValue = (item: QueryItem, column: QueryColumn) => {
   const { key } = column
 
   switch (key) {
@@ -2037,7 +2100,7 @@ const getCellValue = (item: QueryItem, column: any) => {
     return item.基本信息?.imei || '-'
   case 'other_info.remarks':
     // 优先显示手机备注，如果没有则显示销售备注
-    return item.基本信息?.remarks || (item as any).销售信息?.sale_remarks || '-'
+    return item.基本信息?.remarks || item.销售信息?.sale_remarks || '-'
   case 'customer_info.apple_id':
     return item.客户信息?.apple_id || '-'
   case 'operator_info.inventory_operator':
@@ -2058,7 +2121,7 @@ const handleRemarkDoubleClick = (event: MouseEvent, item: QueryItem) => {
   event.stopPropagation()
 
   const remarks = String(
-    item.基本信息?.remarks || (item as any).销售信息?.sale_remarks || ''
+    item.基本信息?.remarks || item.销售信息?.sale_remarks || ''
   ).trim()
   if (!remarks) {
     ElMessage.info('暂无备注')
@@ -2078,8 +2141,8 @@ const confirmReturnToStock = (item: QueryItem) => {
     return
   }
 
-  const basicInfo = item.基本信息 || {} as any
-  const supplierInfo = item.供应商信息 || {} as any
+  const basicInfo = item.基本信息
+  const supplierInfo = item.供应商信息
   selectedReturnDevice.value = {
     id: Number(basicInfo.phone_id || 0),
     supplier_name: supplierInfo.supplier_name || '',
@@ -2376,10 +2439,10 @@ const performDelete = async (item: QueryItem) => {
 }
 
 // 添加商品到销售单
-const handleAddItemToReceipt = (item: any) => {
+const handleAddItemToReceipt = (item: SearchPhoneResult) => {
   // 转换 API 返回的数据为 ReceiptItem 格式
   const receiptItem = {
-    phone_id: item.id || item.phone_id,
+    phone_id: item.id || item.phone_id || 0,
     brand: item.brand || item.brand_name || '',
     model: item.model || item.model_name || '',
     color: item.color || item.color_name || '',
@@ -2547,7 +2610,7 @@ const queryColumnWidths: Record<string, number> = {
   'basic_info.status': 50
 }
 
-const getQueryColumnMinWidth = (column: any) => {
+const getQueryColumnMinWidth = (column: QueryColumn) => {
   if (column.key === 'system_info.operations') {
     return undefined
   }
@@ -2602,11 +2665,11 @@ const queryActionColumnWidth = computed(() => getAdaptiveActionColumnWidth(
   [canEdit.value, canDelete.value, canReturnToStock.value]
 ))
 
-const getQueryActionColumnWidth = (column: any) => (
+const getQueryActionColumnWidth = (column: QueryColumn) => (
   column.key === 'system_info.operations' ? queryActionColumnWidth.value : undefined
 )
 
-const getQueryColumnClass = (column: any) => {
+const getQueryColumnClass = (column: QueryColumn) => {
   if (column.key === 'basic_info.serial_number' || column.key === 'basic_info.imei') {
     return 'identifier-column serial-imei-column'
   }

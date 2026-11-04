@@ -3,7 +3,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { connectToDatabase, getDatabase, closeDatabase } = require('../src/config/database');
-const { generateInvoiceNumber } = require('../src/utils/invoice-number');
+const { generateInvoiceNumber, prepareInvoiceNumberTransaction } = require('../src/utils/invoice-number');
 const UserRepository = require('../src/repositories/user.repository');
 const SupplierRepository = require('../src/repositories/supplier.repository');
 const AttendanceRepository = require('../src/repositories/attendance.repository');
@@ -13,38 +13,39 @@ const supplierPaymentService = require('../src/services/supplier-payment.service
 // 运行方式：RUN_DB_TESTS=true npm --prefix backend test
 const enabled = process.env.RUN_DB_TESTS === 'true';
 
-test('invoice numbers remain unique under concurrent transactions', { skip: !enabled }, async () => {
+test('invoice reservations remain unique within each transaction and rollback releases them', { skip: !enabled }, async () => {
   const connected = await connectToDatabase(1, 0);
   assert.equal(connected, true, '数据库连接失败');
 
   const pool = getDatabase();
   const testDate = '2099-12-31';
-  const sequenceDate = '20991231';
   const connections = await Promise.all(
     Array.from({ length: 8 }, () => pool.getConnection())
   );
 
   try {
-    const numbers = await Promise.all(connections.map(async connection => {
+    const batches = await Promise.all(connections.map(async connection => {
+      await prepareInvoiceNumberTransaction(connection);
       await connection.beginTransaction();
       try {
-        const number = await generateInvoiceNumber('retail', connection, testDate);
-        await connection.commit();
-        return number;
-      } catch (error) {
+        const numbers = [];
+        for (let index = 0; index < 20; index += 1) {
+          numbers.push(await generateInvoiceNumber('retail', connection, testDate));
+        }
+        return numbers;
+      } finally {
+        // 未写入销售记录的预留不能作为永久占号；后续事务应重新使用空位。
         await connection.rollback();
-        throw error;
       }
     }));
 
-    assert.equal(new Set(numbers).size, numbers.length);
-    assert.ok(numbers.every(number => /^20991231\d{4}XS$/.test(number)));
+    for (const numbers of batches) {
+      assert.equal(new Set(numbers).size, 20);
+      assert.ok(numbers.every(number => /^20991231\d{4}XS$/.test(number)));
+      assert.deepEqual(numbers, batches[0], '上一事务回滚后，应可重用同一批空号');
+    }
   } finally {
     for (const connection of connections) connection.release();
-    await pool.execute(
-      'DELETE FROM invoice_sequences WHERE sequence_date = ? AND type_suffix = ?',
-      [sequenceDate, 'XS']
-    );
     await closeDatabase();
   }
 });

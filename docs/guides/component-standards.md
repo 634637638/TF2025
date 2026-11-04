@@ -699,7 +699,7 @@ import { useCounter } from '@/composables/useCounter'
 import { useApi } from '@/composables/useApi'
 
 const { count, increment, decrement } = useCounter()
-const { data, loading, error } = useApi('/api/data')
+const { data, loading, error } = useApi('/api/example-resource')
 ```
 
 ### 3. 类型安全

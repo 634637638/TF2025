@@ -98,10 +98,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { ElMessage, type FormInstance } from 'element-plus'
+import { ElMessage, type FormInstance, type FormItemRule } from 'element-plus'
 import { useForm, ValidationRules, useLoadingState } from '@/composables'
 import { login, tokenManager, userManager } from '@/api/auth'
-import { getPublicConfig } from '@/api/shop-public'
+import { getPublicConfig, type ShopConfig } from '@/api/shop-public'
+import { getRequestErrorMessage, extractResponseData } from '@/utils/api-response'
 import { normalizePhoneDigits } from '@/utils/security'
 import { logger } from '@/utils/logger'
 const router = useRouter()
@@ -109,7 +110,7 @@ const route = useRoute()
 
 const loginFormRef = ref<FormInstance>()
 const { loading } = useLoadingState()
-const shopConfig = ref<any>({})
+const shopConfig = ref<Partial<ShopConfig>>({})
 const setPhoneFieldValue = (value: string) => setFieldValue('phone', normalizePhoneDigits(value))
 
 // 使用 useForm 管理表单
@@ -132,7 +133,7 @@ const { form, validate, setFieldValue } = useForm({
 
 // 转换为 el-form 格式的 rules
 const loginRules = computed(() => {
-  const rules: Record<string, any[]> = {}
+  const rules: Record<string, FormItemRule[]> = {}
   if (form.errors.phone) {
     rules.phone = [{ required: true, message: form.errors.phone, trigger: 'blur' }]
   }
@@ -146,7 +147,7 @@ const loginRules = computed(() => {
 const loadConfig = async () => {
   try {
     const response = await getPublicConfig()
-    shopConfig.value = (response as any).data || response
+    shopConfig.value = extractResponseData<Partial<ShopConfig>>(response)
   } catch (error) {
     logger.error('获取配置失败:', error)
   }
@@ -162,7 +163,7 @@ const handleLogin = async () => {
 
     loading.value = true
 
-    const response: any = await login({
+    const response = await login({
       phone: normalizePhoneDigits(form.values.phone),
       password: form.values.password
     })
@@ -176,10 +177,9 @@ const handleLogin = async () => {
     // 跳转到原来的页面或"我的"页面
     const redirect = (route.query.redirect as string) || '/m/my'
     router.push(redirect)
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('登录失败:', error)
-    const errorMessage = error?.response?.data?.message || error?.message || '登录失败'
-    ElMessage.error(errorMessage)
+    ElMessage.error(getRequestErrorMessage(error, '登录失败'))
   } finally {
     loading.value = false
   }

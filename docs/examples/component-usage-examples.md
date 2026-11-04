@@ -125,7 +125,7 @@ const handleDelete = async () => {
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { unifiedApi } from '@/services/unified-api'
+import { unifiedApi } from '@/utils/unified-api'
 import MobileDialog from '@/components/MobileDialog.vue'
 import MobileForm from '@/components/MobileForm.vue'
 import type { FormField, FormRule } from '@/types'
@@ -1320,7 +1320,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import ResponsiveLayout from '@/components/ResponsiveLayout.vue'
 import MobileForm from '@/components/MobileForm.vue'
-import { unifiedApi } from '@/services/unified-api'
+import { unifiedApi } from '@/utils/unified-api'
 import type { FormField } from '@/types'
 
 const route = useRoute()

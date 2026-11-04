@@ -38,6 +38,10 @@ const TITLE_ALIAS_PATTERNS = [
 
 let isEnhanced = false
 
+export const isMessageBoxCanceled = (reason: unknown): boolean => (
+  reason === 'cancel' || reason === 'close'
+)
+
 const normalizeText = (value: unknown): string => {
   return typeof value === 'string' ? value.trim() : ''
 }

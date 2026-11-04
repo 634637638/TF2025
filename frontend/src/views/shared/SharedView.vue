@@ -438,7 +438,7 @@
             width="72"
           />
           <el-table-column
-              v-if="canManage"
+            v-if="canManage"
             label="操作"
             align="center"
             :width="$getActionColumnWidth(2)"
@@ -615,9 +615,11 @@
 </template>
 
 <script setup lang="ts">
-import { confirmAction } from '@/utils/message-box'
+import { getRequestErrorMessage } from '@/utils/api-response'
+import { confirmAction, isMessageBoxCanceled } from '@/utils/message-box'
 import { reactive, ref, computed, shallowRef, nextTick, onMounted, onBeforeUnmount, defineAsyncComponent } from 'vue'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
+import type { IDomEditor, IEditorConfig, IToolbarConfig } from '@wangeditor/editor'
 import DOMPurify from 'dompurify'
 import 'element-plus/theme-chalk/el-image-viewer.css'
 import '@wangeditor/editor/dist/css/style.css'
@@ -631,15 +633,15 @@ import { usePagePermissions } from '@/composables/usePagePermissions'
 import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { canViewSharedField, pickVisibleSharedFields, type SharedFieldName } from './shared-field-permissions'
 import { formatDateTime as formatGlobalDateTime } from '@/utils/format'
+import type {
+  SharedAttachment,
+  SharedCategory,
+  SharedPost,
+  SharedPostForm
+} from '@/types/shared'
 
 const WangEditor = defineAsyncComponent(() => import('@wangeditor/editor-for-vue').then(module => module.Editor))
 const WangToolbar = defineAsyncComponent(() => import('@wangeditor/editor-for-vue').then(module => module.Toolbar))
-
-interface SharedAttachment { url:string; name:string; type:string; size:number }
-interface SharedAuthor { id:number; name:string; username:string }
-type SharedVisibility = 'public' | 'private'
-interface SharedPost { id:number; title:string; content:string; category:string; visibility:SharedVisibility; attachments:SharedAttachment[]; is_pinned:boolean; author_id:number; author:SharedAuthor; created_at:string; updated_at:string }
-interface SharedCategory { id:number; name:string; sort_order:number; total:number }
 
 const authStore = useAuthStore()
 const { canView, canCreate, canEdit, canDelete, canManage } = usePagePermissions('shared')
@@ -656,7 +658,7 @@ const editingCategoryId = ref<number|null>(null)
 const editingCategoryName = ref('')
 const editingAuthorId = ref<number|null>(null)
 const formRef = ref<FormInstance>()
-const editorInstance = shallowRef<any>()
+const editorInstance = shallowRef<IDomEditor | null>(null)
 const editorReady = ref(false)
 const editorFocusPending = ref(false)
 const inlineUploaded = ref<SharedAttachment[]>([])
@@ -668,14 +670,14 @@ const imagePreviewVisible = ref(false)
 const imagePreviewUrls = ref<string[]>([])
 const imagePreviewIndex = ref(0)
 const pagination = reactive({ page:1, page_size:12, total:0 })
-const form = reactive<{title:string;content:string;category:string;visibility:SharedVisibility;attachments:SharedAttachment[]}>({ title:'', content:'', category:'未分类', visibility:'public', attachments:[] })
+const form = reactive<SharedPostForm>({ title:'', content:'', category:'未分类', visibility:'public', attachments:[] })
 const rules:FormRules = { title:[{ required:true,message:'请输入经验标题',trigger:'blur' }], category:[{ required:true,message:'请选择或输入分类',trigger:'change' }], content:[{ required:true,message:'请输入内容',trigger:'blur' }] }
 const acceptedDocuments = '.pdf,.ofd,.doc,.docx,.xls,.xlsx,.csv,.ppt,.pptx,.wps,.et,.dps,.txt,.md,.rtf,.log,.json,.xml,.zip,.rar,.7z,.tar,.gz,.tgz,.bz2,.epub,.mp3,.wav,.m4a,.aac,.flac'
-const sharedPayloadFieldMap: Record<string, SharedFieldName> = { title:'title', content:'content', category:'category', visibility:'visibility', attachments:'attachments' }
+const sharedPayloadFieldMap: Partial<Record<keyof SharedPostForm, SharedFieldName>> = { title:'title', content:'content', category:'category', visibility:'visibility', attachments:'attachments' }
 const showPostActionColumn = computed(() => shouldShowActionColumn(canViewSharedField('operations'), [canEdit.value, canDelete.value, canManage.value]))
 const canSavePost = computed(() => Object.values(sharedPayloadFieldMap).some(canViewSharedField) && canViewSharedField('title') && canViewSharedField('content') && canViewSharedField('category'))
 
-const currentUserId = computed(() => Number((authStore.user as any)?.id || 0))
+const currentUserId = computed(() => Number(authStore.user?.id || 0))
 const canChooseVisibility = computed(() => canManage.value && (editingId.value === null || editingAuthorId.value === currentUserId.value))
 const isOwnPost = (post:SharedPost) => Number(post.author_id) === currentUserId.value
 const canEditPost = (post:SharedPost) => canManage.value || (canEdit.value && isOwnPost(post))
@@ -738,7 +740,7 @@ const formatDateTime = (value:string) => value ? formatGlobalDateTime(value, 'YY
 const fileUrl = (url:string) => {
   if (!url.startsWith('/uploads/shared/')) return url.startsWith('http') ? url : url.startsWith('/') ? url : `/${url}`
   const filename=url.split('/').pop()||''
-  const token=String((authStore as any).token||'')
+  const token=String(authStore.token||'')
   return `/api/shared/files/${encodeURIComponent(filename)}${token?`?token=${encodeURIComponent(token)}`:''}`
 }
 const normalizeRichTextForStorage = (content:string) => {
@@ -793,17 +795,47 @@ const applyCustomFontSize = () => {
   editor.addMark?.('fontSize', `${size}px`)
 }
 
-const loadPosts = async () => { loading.value=true; try{ const params:Record<string,unknown>={ page:pagination.page,page_size:pagination.page_size };if((canViewSharedField('title')||canViewSharedField('content'))&&keyword.value)params.keyword=keyword.value;if(canViewSharedField('category')&&categoryFilter.value)params.category=categoryFilter.value;if(canViewSharedField('visibility')&&visibilityFilter.value)params.visibility=visibilityFilter.value; const response:any=await api.get('/shared',{ params }); if(response.success){posts.value=Array.isArray(response.data)?response.data:[];pagination.total=Number(response.pagination?.total||0)} }catch{ElMessage.error('加载经验分享失败')}finally{loading.value=false} }
-const loadCategories = async () => { try{const response:any=await api.get('/shared/categories');categories.value=response.success&&Array.isArray(response.data)?response.data:[]}catch{categories.value=[]} }
+const loadPosts = async () => {
+  loading.value = true
+  try {
+    const params: Record<string, unknown> = {
+      page: pagination.page,
+      page_size: pagination.page_size
+    }
+    if ((canViewSharedField('title') || canViewSharedField('content')) && keyword.value) {
+      params.keyword = keyword.value
+    }
+    if (canViewSharedField('category') && categoryFilter.value) params.category = categoryFilter.value
+    if (canViewSharedField('visibility') && visibilityFilter.value) params.visibility = visibilityFilter.value
+
+    const response = await api.get<SharedPost[]>('/shared', { params })
+    if (response.success) {
+      posts.value = Array.isArray(response.data) ? response.data : []
+      pagination.total = Number(response.pagination?.total || 0)
+    }
+  } catch {
+    ElMessage.error('加载经验分享失败')
+  } finally {
+    loading.value = false
+  }
+}
+const loadCategories = async () => {
+  try {
+    const response = await api.get<SharedCategory[]>('/shared/categories')
+    categories.value = response.success && Array.isArray(response.data) ? response.data : []
+  } catch {
+    categories.value = []
+  }
+}
 const openCategoryManager = async () => { cancelCategoryEdit();newCategoryName.value='';categoryManagerVisible.value=true;await loadCategories() }
 const createCategory = async () => {
   const name = newCategoryName.value.trim()
   if (!name) { ElMessage.warning('请输入分类名称'); return }
   categorySaving.value = true
   try {
-    const response:any = await api.post('/shared/categories', { name })
+    const response = await api.post<SharedCategory>('/shared/categories', { name })
     if (response.success) { ElMessage.success('分类已新增');newCategoryName.value='';await loadCategories() }
-  } catch (error:any) { ElMessage.error(error?.response?.data?.message || error?.message || '新增分类失败') }
+  } catch (error) { ElMessage.error(getRequestErrorMessage(error, '新增分类失败')) }
   finally { categorySaving.value=false }
 }
 const startCategoryEdit = (category:SharedCategory) => { editingCategoryId.value=category.id;editingCategoryName.value=category.name }
@@ -813,17 +845,17 @@ const saveCategory = async (category:SharedCategory) => {
   if (!name) { ElMessage.warning('请输入分类名称'); return }
   categorySaving.value=true
   try {
-    const response:any=await api.put(`/shared/categories/${category.id}`,{ name })
+    const response = await api.put<SharedCategory>(`/shared/categories/${category.id}`, { name })
     if(response.success){ElMessage.success('分类已更新');if(categoryFilter.value===category.name)categoryFilter.value=name;if(form.category===category.name)form.category=name;cancelCategoryEdit();await Promise.all([loadCategories(),loadPosts()])}
-  } catch(error:any){ElMessage.error(error?.response?.data?.message||error?.message||'更新分类失败')}
+  } catch(error){ElMessage.error(getRequestErrorMessage(error, '更新分类失败'))}
   finally{categorySaving.value=false}
 }
 const deleteCategory = async (category:SharedCategory) => {
   try {
     await confirmAction(`确定删除分类“${category.name}”吗？该分类下的内容将归入“未分类”。`,'删除分类',{ type:'warning' })
-    const response:any=await api.delete(`/shared/categories/${category.id}`)
+    const response = await api.delete<null>(`/shared/categories/${category.id}`)
     if(response.success){ElMessage.success('分类已删除');if(categoryFilter.value===category.name)categoryFilter.value='';if(form.category===category.name)form.category='未分类';await Promise.all([loadCategories(),loadPosts()])}
-  } catch(error:any){if(error!=='cancel'&&error!=='close')ElMessage.error(error?.response?.data?.message||error?.message||'删除分类失败')}
+  } catch(error){if(!isMessageBoxCanceled(error))ElMessage.error(getRequestErrorMessage(error, '删除分类失败'))}
 }
 const search = () => { pagination.page=1;loadPosts() }
 const resetSearch = () => { keyword.value='';categoryFilter.value='';visibilityFilter.value='';pagination.page=1;loadPosts() }
@@ -834,19 +866,19 @@ const uploadInlineMedia = async (file:File, insert:(_url:string, _alt?:string, _
   try {
     const uploadFile = isVideo ? file : await toUploadableImageFile(file)
     const data = new FormData(); data.append('files', uploadFile)
-    const response:any = await api.upload('/shared/upload', data)
+    const response = await api.upload<SharedAttachment[]>('/shared/upload', data)
     if (!response.success || !Array.isArray(response.data) || !response.data[0]) throw new Error(response.message || '媒体上传失败')
-    const uploaded = response.data[0] as SharedAttachment
+    const uploaded = response.data[0]
     inlineUploaded.value.push(uploaded)
     const url = fileUrl(uploaded.url)
     if (isVideo) insert(url, '')
     else insert(url, uploaded.name, url)
-  } catch (error:any) {
-    ElMessage.error(error?.response?.data?.message || error?.message || '媒体上传失败')
+  } catch (error) {
+    ElMessage.error(getRequestErrorMessage(error, '媒体上传失败'))
   }
 }
-const toolbarConfig:any = {}
-const editorConfig:any = { placeholder: '请输入文章内容', maxLength: 100000, MENU_CONF: {
+const toolbarConfig: Partial<IToolbarConfig> = {}
+const editorConfig: Partial<IEditorConfig> = { placeholder: '请输入文章内容', maxLength: 100000, MENU_CONF: {
   fontSize: { fontSizeList: ['10px', '12px', '14px', '16px', '18px', '20px', '24px', '28px', '32px'] },
   uploadImage: { customUpload: (file:File, insert:(_url:string, _alt?:string, _href?:string)=>void) => uploadInlineMedia(file, insert) },
   uploadVideo: { customUpload: (file:File, insert:(_url:string, _poster?:string)=>void) => uploadInlineMedia(file, insert, true) }
@@ -854,7 +886,7 @@ const editorConfig:any = { placeholder: '请输入文章内容', maxLength: 1000
 const focusEditor = () => { if(!editorInstance.value)return; editorInstance.value.focus(false); editorFocusPending.value=false }
 const requestEditorFocus = () => { if(!editorReady.value)editorFocusPending.value=true }
 const handleEditorDialogOpened = () => { if(editorFocusPending.value&&editorReady.value)nextTick(focusEditor) }
-const handleEditorCreated = (editor:any) => { editorInstance.value=editor; nextTick(()=>{ editorReady.value=true; if(editorFocusPending.value)focusEditor() }) }
+const handleEditorCreated = (editor: IDomEditor) => { editorInstance.value=editor; nextTick(()=>{ editorReady.value=true; if(editorFocusPending.value)focusEditor() }) }
 const escapeHtml = (value:string) => value.replace(/[&<>"']/g, char => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[char] || char))
 const uploadInlineDocument = async (event:Event) => {
   const input = event.target as HTMLInputElement
@@ -866,16 +898,16 @@ const uploadInlineDocument = async (event:Event) => {
   uploadingFile.value = true
   try {
     const data = new FormData(); data.append('files', file)
-    const response:any = await api.upload('/shared/upload', data)
+    const response = await api.upload<SharedAttachment[]>('/shared/upload', data)
     if (!response.success || !Array.isArray(response.data) || !response.data[0]) throw new Error(response.message || '文件上传失败')
-    const uploaded = response.data[0] as SharedAttachment
+    const uploaded = response.data[0]
     inlineUploaded.value.push(uploaded)
     const url = fileUrl(uploaded.url)
     editorInstance.value?.focus()
     if (isAudio(uploaded)) editorInstance.value?.dangerouslyInsertHtml(`<p><a href="${url}" target="_blank">音频：${escapeHtml(uploaded.name)}</a></p>`)
     else editorInstance.value?.dangerouslyInsertHtml(`<p><a href="${url}" target="_blank">文件：${escapeHtml(uploaded.name)}（${formatSize(uploaded.size)}）</a></p>`)
-  } catch (error:any) {
-    ElMessage.error(error?.response?.data?.message || error?.message || '文件上传失败')
+  } catch (error) {
+    ElMessage.error(getRequestErrorMessage(error, '文件上传失败'))
   } finally {
     uploadingFile.value = false
   }
@@ -906,8 +938,8 @@ const openCreate = async () => {
 }
 
 const fetchPost = async (id: number) => {
-  const response: any = await api.get(`/shared/${id}`)
-  return response.success ? response.data as SharedPost : null
+  const response = await api.get<SharedPost>(`/shared/${id}`)
+  return response.success && response.data ? response.data : null
 }
 
 const openDetail = async (id: number) => {
@@ -963,9 +995,9 @@ const savePost = async () => {
       category: form.category.trim(),
       attachments: [...retainedExisting, ...retainedInline]
     }, sharedPayloadFieldMap)
-    const response: any = editingId.value
-      ? await api.put(`/shared/${editingId.value}`, payload)
-      : await api.post('/shared', payload)
+    const response = editingId.value
+      ? await api.put<SharedPost>(`/shared/${editingId.value}`, payload)
+      : await api.post<SharedPost>('/shared', payload)
 
     if (removedInline.length) {
       await deleteTempFiles(removedInline.map(file => file.url))
@@ -977,15 +1009,15 @@ const savePost = async () => {
       editorVisible.value = false
       await Promise.all([loadPosts(), loadCategories()])
     }
-  } catch (error: any) {
-    ElMessage.error(error?.response?.data?.message || error?.message || '保存失败')
+  } catch (error) {
+    ElMessage.error(getRequestErrorMessage(error, '保存失败'))
   } finally {
     saving.value = false
   }
 }
 
 const togglePin = async (post: SharedPost) => {
-  const response: any = await api.patch(`/shared/${post.id}/pin`, { pinned: !post.is_pinned })
+  const response = await api.patch<SharedPost>(`/shared/${post.id}/pin`, { pinned: !post.is_pinned })
   if (response.success) {
     ElMessage.success(post.is_pinned ? '已取消置顶' : '已置顶')
     loadPosts()
@@ -995,14 +1027,14 @@ const togglePin = async (post: SharedPost) => {
 const removePost = async (post: SharedPost) => {
   try {
     await confirmAction(`确定删除“${post.title}”吗？附件也会一并删除。`, '删除确认', { type: 'warning' })
-    const response: any = await api.delete(`/shared/${post.id}`)
+    const response = await api.delete<null>(`/shared/${post.id}`)
     if (response.success) {
       ElMessage.success('经验分享已删除')
       if (detail.value?.id === post.id) detailVisible.value = false
       loadPosts()
     }
   } catch (error) {
-    if (error !== 'cancel' && error !== 'close') ElMessage.error('删除失败')
+    if (!isMessageBoxCanceled(error)) ElMessage.error('删除失败')
   }
 }
 

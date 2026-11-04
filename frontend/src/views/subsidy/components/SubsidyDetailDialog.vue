@@ -238,13 +238,14 @@ import { normalizeIdCard, normalizePersonName, normalizePhoneDigits } from '@/ut
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import { logger } from '@/utils/logger'
 import { ElMessage } from 'element-plus'
+import type { NationalSubsidyHandlerInfo, NationalSubsidyRecord } from '@/types'
 
 const DETAIL_CACHE_TTL_MS = 90 * 1000
-const detailCache = new Map<string | number, { timestamp: number, data: any }>()
+const detailCache = new Map<string | number, { timestamp: number, data: NationalSubsidyRecord }>()
 
 const props = defineProps<{
   modelValue: boolean
-  item: any | null
+  item: NationalSubsidyRecord | null
   fieldVisibility: Record<string, boolean>
 }>()
 
@@ -252,7 +253,7 @@ const emit = defineEmits<{
   'update:modelValue': [boolean]
 }>()
 
-const currentDetail = ref<any>(null)
+const currentDetail = ref<NationalSubsidyRecord | null>(null)
 const detailLoading = ref(false)
 const showHandlerInfo = ref(false)
 let detailRequestSeq = 0
@@ -294,15 +295,16 @@ const getCachedDetail = (id: string | number | undefined) => {
   return cacheEntry ? cacheEntry.data : null
 }
 
-const setCachedDetail = (id: string | number | undefined, data: any) => {
+const setCachedDetail = (id: string | number | undefined, data: NationalSubsidyRecord | null) => {
   if (id === undefined || id === null) return
+  if (!data) return
   detailCache.set(id, {
     timestamp: Date.now(),
     data
   })
 }
 
-const normalizeHandlerInfo = (handler_info?: Record<string, any> | null) => {
+const normalizeHandlerInfo = (handler_info?: NationalSubsidyHandlerInfo | null): NationalSubsidyHandlerInfo | null => {
   if (!handler_info || typeof handler_info !== 'object') return null
 
   return {
@@ -313,7 +315,7 @@ const normalizeHandlerInfo = (handler_info?: Record<string, any> | null) => {
   }
 }
 
-const normalizeSubsidyRecord = (item?: Record<string, any> | null) => {
+const normalizeSubsidyRecord = (item?: NationalSubsidyRecord | null): NationalSubsidyRecord | null => {
   if (!item || typeof item !== 'object') return item
 
   return {
@@ -335,7 +337,7 @@ const resolvePhotoUrl = (photo?: string) => formatImageUrl(photo || '')
 
 const formatDate = (date: string) => date ? TimeUtil.format(date, TIME_FORMATS.DATE) : '-'
 
-const loadDetail = async (item: any) => {
+const loadDetail = async (item: NationalSubsidyRecord) => {
   const requestSeq = ++detailRequestSeq
   detailLoading.value = true
   currentDetail.value = normalizeSubsidyRecord(item)
@@ -348,7 +350,7 @@ const loadDetail = async (item: any) => {
 
   try {
     // 弹窗使用自己的区块 Loading，避免详情请求同时触发全屏 Loading。
-    const response = await unifiedApi.get(`/subsidy/${item.id}`, { showLoading: false })
+    const response = await unifiedApi.get<NationalSubsidyRecord>(`/subsidy/${item.id}`, { showLoading: false })
     if (requestSeq !== detailRequestSeq) return
 
     if (response.success) {
@@ -358,7 +360,7 @@ const loadDetail = async (item: any) => {
     } else {
       ElMessage.warning('获取详细信息失败，显示基本数据')
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (requestSeq !== detailRequestSeq) return
     logger.error('获取详情失败:', error)
     ElMessage.warning('获取详细信息失败，显示基本数据')
@@ -370,7 +372,7 @@ const loadDetail = async (item: any) => {
 }
 
 watch(
-  () => [props.modelValue, props.item],
+  () => [props.modelValue, props.item] as const,
   async ([visible, item]) => {
     if (!visible || !item) {
       if (!visible) {

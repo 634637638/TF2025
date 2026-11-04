@@ -9,6 +9,7 @@ import {
 import { unifiedApi as api } from '@/utils/unified-api'
 import { logger } from '@/utils/logger'
 import { searchCustomerOptions } from '@/services/customer-options'
+import { resolveNativeTextInput, type NativeInputInstance } from '@/utils/native-input'
 import type {
   BatchCustomer,
   BatchSaleFormData,
@@ -16,15 +17,11 @@ import type {
   SalesCustomer
 } from './types'
 
-interface CustomerNameInputExpose {
-  input?: HTMLInputElement | null
-}
-
 interface UseSalesCustomersOptions {
   saleForm: SalesCheckoutFormData
   batchSaleForm: BatchSaleFormData
-  saleCustomerNameInputRef: Ref<CustomerNameInputExpose | null>
-  batchCustomerNameInputRef: Ref<CustomerNameInputExpose | null>
+  saleCustomerNameInputRef: Ref<NativeInputInstance | null>
+  batchCustomerNameInputRef: Ref<NativeInputInstance | null>
   isIOS: () => boolean
   showError: (_message: string) => unknown
   showWarning: (_message: string) => unknown
@@ -158,44 +155,7 @@ export const useSalesCustomers = ({
     }, 300)
   }
 
-  const resolveNativeCustomerInput = (source: unknown): HTMLInputElement | null => {
-    if (!source) {
-      return null
-    }
-
-    if (source instanceof HTMLInputElement) {
-      return source
-    }
-
-    if (source instanceof HTMLElement) {
-      const nestedInput = source.querySelector('input, textarea')
-      return nestedInput instanceof HTMLInputElement ? nestedInput : null
-    }
-
-    const candidate = source as {
-      target?: EventTarget | null
-      input?: HTMLInputElement | null
-      $el?: HTMLElement
-    }
-
-    if (candidate.target instanceof HTMLInputElement) {
-      return candidate.target
-    }
-
-    if (candidate.target instanceof HTMLElement) {
-      const nestedInput = candidate.target.querySelector('input, textarea')
-      if (nestedInput instanceof HTMLInputElement) {
-        return nestedInput
-      }
-    }
-
-    if (candidate.input instanceof HTMLInputElement) {
-      return candidate.input
-    }
-
-    const nestedInput = candidate.$el?.querySelector('input')
-    return nestedInput instanceof HTMLInputElement ? nestedInput : null
-  }
+  const resolveNativeCustomerInput = resolveNativeTextInput
 
   const focusCustomerNameInput = (input: HTMLInputElement | null) => {
     if (!input) {

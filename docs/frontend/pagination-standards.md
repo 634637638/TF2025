@@ -597,7 +597,7 @@ export function usePagination(
 // composables/useServerPagination.ts
 import { ref, computed, watch } from 'vue'
 import { usePagination } from './usePagination'
-import { unifiedApi } from '@/services/unified-api'
+import { unifiedApi } from '@/utils/unified-api'
 import { useErrorHandler } from '@/composables/useErrorHandler'
 import { useLoading } from '@/composables/useLoading'
 

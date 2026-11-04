@@ -133,6 +133,14 @@ export interface OrderData {
 }
 
 export interface PublicOrder {
+  id?: number
+  order_number?: string
+  customer_name?: string
+  status?: string
+  payment_method?: string
+  created_at?: string
+  items: Array<{ image_url?: string, product_name?: string, [key: string]: unknown }>
+  access_token?: string
   total_amount?: number | string
   [key: string]: unknown
 }
@@ -170,13 +178,15 @@ export interface ShopConfig {
   other_qrcode?: string
   wechat_qrcode: string
   alipay_qrcode: string
+  wechat_id?: string
   bank_info: string
   banner_enabled: boolean
   cart_enabled: boolean
   direct_buy_enabled: boolean
+  shop_subtitle?: string
 }
 
-export interface Banner {
+export interface PublicShopBanner {
   id: number
   title: string
   image_url: string
@@ -201,7 +211,8 @@ export function getPublicConfig() {
  * 获取启用的轮播图
  */
 export function getActiveBanners() {
-  return publicApi.get<Banner[]>('/public/shop/banners').then((response) => unwrapData<Banner[]>(response))
+  return publicApi.get<PublicShopBanner[]>('/public/shop/banners')
+    .then((response) => unwrapData<PublicShopBanner[]>(response))
 }
 
 // ============================================================================
@@ -485,6 +496,7 @@ export function getTemplatePhones(templateId: number) {
 
 export interface PublicTemplatePhone {
   id: number
+  status?: string
   imei?: string
   is_new?: number
   sale_price?: number

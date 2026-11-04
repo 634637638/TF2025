@@ -2,7 +2,8 @@ const express = require('express')
 const router = express.Router()
 const { unifiedAuth, requirePermission, requireAnyPermission } = require('../middleware/unified-auth')
 const ApiResponse = require('../utils/response')
-const { getDatabase, isConnected } = require('../config/database')
+const { isConnected } = require('../config/database')
+const ModelRepository = require('../repositories/model.repository')
 const { cacheMiddleware, clearCache } = require('../middleware/cache')
 const { CACHE_TTL, PAGINATION } = require('../config/constants')
 const log = require('../utils/log')
@@ -13,6 +14,8 @@ const {
   buildPagination,
   listModelsByBrand
 } = require('../services/reference-options.service')
+
+const modelRepository = new ModelRepository()
 
 const MODEL_COLUMNS = 'm.id, m.brand_id, m.name, m.status, m.sort_order, m.created_at, m.updated_at'
 const MODEL_COLUMNS_WITH_BRAND = `${MODEL_COLUMNS}, b.name AS brand_name`
@@ -43,7 +46,6 @@ router.get('/', unifiedAuth, requireAnyPermission(['models:view', 'brands:view',
       return ApiResponse.error(res, '数据库未连接', 500)
     }
 
-    const pool = getDatabase()
     const {
       page = PAGINATION.DEFAULT_PAGE,
       page_size = PAGINATION.DEFAULT_LIMIT,
@@ -94,7 +96,7 @@ router.get('/', unifiedAuth, requireAnyPermission(['models:view', 'brands:view',
     if (brand_id) {
       let modelBrandId = brand_id
       if (!/^\d+$/.test(String(brand_id))) {
-        const [brands] = await pool.execute('SELECT id FROM brands WHERE name = ? LIMIT 1', [String(brand_id)])
+        const [brands] = await modelRepository.executePrepared('SELECT id FROM brands WHERE name = ? LIMIT 1', [String(brand_id)])
         modelBrandId = brands[0]?.id || 0
       }
       conditions.push('m.brand_id = ?')
@@ -135,8 +137,8 @@ router.get('/', unifiedAuth, requireAnyPermission(['models:view', 'brands:view',
 
     // 执行查询
     const [[models], [countResult]] = await Promise.all([
-      pool.execute(finalQuery, queryParams),
-      pool.execute(baseCountQuery, queryParams)
+      modelRepository.executePrepared(finalQuery, queryParams),
+      modelRepository.executePrepared(baseCountQuery, queryParams)
     ])
     const total = Number(countResult[0].total) || 0
     if (returnAll) {
@@ -167,7 +169,6 @@ router.get('/brand/:brandId', unifiedAuth, requirePermission('models:view'), cac
     }
 
     const { brandId } = req.params
-    const pool = getDatabase()
     const {
       page = 1,
       page_size = PAGINATION.DEFAULT_LIMIT,
@@ -222,8 +223,8 @@ router.get('/brand/:brandId', unifiedAuth, requirePermission('models:view'), cac
 
     // 执行查询
     const [[models], [countResult]] = await Promise.all([
-      pool.execute(finalQuery, queryParams),
-      pool.execute(baseCountQuery, queryParams)
+      modelRepository.executePrepared(finalQuery, queryParams),
+      modelRepository.executePrepared(baseCountQuery, queryParams)
     ])
     const total = Number(countResult[0].total) || 0
     const total_pages = Math.ceil(total / pageSizeNum)
@@ -260,7 +261,6 @@ router.get('/stats/overview', unifiedAuth, requirePermission('models:view'), asy
     }
 
     const { brand_id, name, status } = req.query
-    const pool = getDatabase()
     const conditions = []
     const queryParams = []
 
@@ -279,7 +279,7 @@ router.get('/stats/overview', unifiedAuth, requirePermission('models:view'), asy
     }
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
-    const [models] = await pool.execute(`
+    const [models] = await modelRepository.executePrepared(`
       SELECT ${MODEL_COLUMNS_WITH_BRAND}
       FROM models m
       LEFT JOIN brands b ON b.id = m.brand_id
@@ -315,9 +315,8 @@ router.get('/:id', unifiedAuth, requirePermission('models:view'), async (req, re
     }
 
     const { id } = req.params
-    const pool = getDatabase()
 
-    const [models] = await pool.execute(`
+    const [models] = await modelRepository.executePrepared(`
       SELECT ${MODEL_COLUMNS_WITH_BRAND}
       FROM models m
       LEFT JOIN brands b ON b.id = m.brand_id
@@ -349,7 +348,6 @@ router.post('/', unifiedAuth, requirePermission('models:create'), async (req, re
       return ApiResponse.error(res, '数据库未连接', 500)
     }
 
-    const pool = getDatabase()
     const {
       brand_id,
       name,
@@ -363,7 +361,7 @@ router.post('/', unifiedAuth, requirePermission('models:create'), async (req, re
     }
 
     // 检查型号名称是否重复
-    const [existingModels] = await pool.execute(
+    const [existingModels] = await modelRepository.executePrepared(
       'SELECT id FROM models WHERE name = ? AND brand_id = ?',
       [name, parseInt(brand_id)]
     )
@@ -385,10 +383,10 @@ router.post('/', unifiedAuth, requirePermission('models:create'), async (req, re
       sort_order !== undefined ? parseInt(sort_order) : 0
     ]
 
-    const [result] = await pool.execute(insertQuery, insertValues)
+    const [result] = await modelRepository.executePrepared(insertQuery, insertValues)
 
     // 获取新创建的型号
-    const [newModels] = await pool.execute(`
+    const [newModels] = await modelRepository.executePrepared(`
       SELECT ${MODEL_COLUMNS_WITH_BRAND}
       FROM models m
       LEFT JOIN brands b ON b.id = m.brand_id
@@ -419,10 +417,9 @@ router.put('/:id', unifiedAuth, requirePermission('models:edit'), async (req, re
     }
 
     const { id } = req.params
-    const pool = getDatabase()
 
     // 检查型号是否存在
-    const [existingModels] = await pool.execute(`
+    const [existingModels] = await modelRepository.executePrepared(`
       SELECT ${MODEL_COLUMNS}
       FROM models m
       WHERE m.id = ?
@@ -442,7 +439,7 @@ router.put('/:id', unifiedAuth, requirePermission('models:edit'), async (req, re
     if (name !== undefined || brand_id !== undefined) {
       const nextName = name !== undefined ? name : existingModels[0].name
       const nextBrandId = brand_id !== undefined ? parseInt(brand_id) : Number(existingModels[0].brand_id)
-      const [duplicateModels] = await pool.execute(
+      const [duplicateModels] = await modelRepository.executePrepared(
         'SELECT id FROM models WHERE name = ? AND brand_id = ? AND id != ?',
         [nextName, nextBrandId, parseInt(id)]
       )
@@ -484,10 +481,10 @@ router.put('/:id', unifiedAuth, requirePermission('models:edit'), async (req, re
 
     const updateQuery = `UPDATE models SET ${updateFields.join(', ')} WHERE id = ?`
 
-    await pool.execute(updateQuery, updateValues)
+    await modelRepository.executePrepared(updateQuery, updateValues)
 
     // 获取更新后的数据
-    const [updatedModels] = await pool.execute(`
+    const [updatedModels] = await modelRepository.executePrepared(`
       SELECT ${MODEL_COLUMNS_WITH_BRAND}
       FROM models m
       LEFT JOIN brands b ON b.id = m.brand_id
@@ -518,10 +515,9 @@ router.delete('/:id', unifiedAuth, requirePermission('models:delete'), async (re
     }
 
     const { id } = req.params
-    const pool = getDatabase()
 
     // 检查型号是否存在
-    const [existingModels] = await pool.execute(`
+    const [existingModels] = await modelRepository.executePrepared(`
       SELECT ${MODEL_COLUMNS}
       FROM models m
       WHERE m.id = ?
@@ -531,7 +527,7 @@ router.delete('/:id', unifiedAuth, requirePermission('models:delete'), async (re
     }
 
     // 删除型号
-    await pool.execute('DELETE FROM models WHERE id = ?', [parseInt(id)])
+    await modelRepository.executePrepared('DELETE FROM models WHERE id = ?', [parseInt(id)])
 
     clearModelsRouteCache()
     ApiResponse.success(res, formatModel(existingModels[0]), '型号删除成功')
@@ -556,10 +552,9 @@ router.patch('/:id/toggle', unifiedAuth, requirePermission('models:edit'), async
     }
 
     const { id } = req.params
-    const pool = getDatabase()
 
     // 检查型号是否存在
-    const [existingModels] = await pool.execute(`
+    const [existingModels] = await modelRepository.executePrepared(`
       SELECT ${MODEL_COLUMNS}
       FROM models m
       WHERE m.id = ?
@@ -572,13 +567,13 @@ router.patch('/:id/toggle', unifiedAuth, requirePermission('models:edit'), async
     const newStatus = currentModel.status === 1 ? 0 : 1
 
     // 更新状态
-    await pool.execute(
+    await modelRepository.executePrepared(
       'UPDATE models SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
       [newStatus, parseInt(id)]
     )
 
     // 获取更新后的数据
-    const [updatedModels] = await pool.execute(`
+    const [updatedModels] = await modelRepository.executePrepared(`
       SELECT ${MODEL_COLUMNS_WITH_BRAND}
       FROM models m
       LEFT JOIN brands b ON b.id = m.brand_id
@@ -615,8 +610,7 @@ router.put('/batch/reorder', unifiedAuth, requirePermission('models:edit'), asyn
       return ApiResponse.error(res, '请提供有效的排序数据', 400)
     }
 
-    const pool = getDatabase()
-    const connection = await pool.getConnection()
+    const connection = await modelRepository.acquireConnection()
 
     try {
       await connection.beginTransaction()

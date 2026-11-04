@@ -115,8 +115,8 @@
         class="table-wrapper table-responsive"
       >
         <el-table
-          class="data-table devices-table compact-fit-table base-data-table returngoods-data-table"
           v-tf-loading="loading"
+          class="data-table devices-table compact-fit-table base-data-table returngoods-data-table"
           :data="records"
           border
           stripe
@@ -512,6 +512,7 @@ import Pagination from '@/components/Pagination.vue'
 import DateRangePicker from '@/components/DateRangePicker.vue'
 import { PHONE_STATUS_OPTIONS, getPhoneStatusLabel, normalizePhoneStatus } from '@/constants/phoneStatuses'
 import { formatDateTime as formatGlobalDateTime } from '@/utils/format'
+import { getRequestErrorMessage } from '@/utils/api-response'
 
 interface ReturnGoodsRecord {
   id: number
@@ -537,6 +538,8 @@ interface OperatorOption {
   id: number
   name: string
 }
+
+interface OperatorSearchRecord { id?: number | string; name?: string; username?: string }
 
 const { success, error } = useNotification()
 const { isMobile } = useMobile()
@@ -635,13 +638,13 @@ const loadRecords = async () => {
     stats.total_records = Number(meta.stats?.total_records || 0)
     stats.total_phones = Number(meta.stats?.total_phones || 0)
     stats.total_days = Number(meta.stats?.total_days || 0)
-  } catch (err: any) {
+  } catch (err: unknown) {
     records.value = []
     pagination.total = 0
     stats.total_records = 0
     stats.total_phones = 0
     stats.total_days = 0
-    error(err?.response?.data?.message || err?.message || '退库记录加载失败')
+    error(getRequestErrorMessage(err, '退库记录加载失败'))
   } finally {
     loading.value = false
   }
@@ -651,7 +654,7 @@ const loadOperators = async () => {
   try {
     const response = await searchOperators({ page: 1, page_size: 20 })
     if (response?.success && Array.isArray(response.data)) {
-      operatorOptions.value = response.data.map((item: any) => ({
+      operatorOptions.value = response.data.map((item: OperatorSearchRecord) => ({
         id: Number(item.id),
         name: item.name || item.username || `用户${item.id}`
       }))
@@ -669,7 +672,7 @@ const searchOperatorOptions = async (keyword = '') => {
       page_size: 20
     })
     if (response?.success && Array.isArray(response.data)) {
-      operatorOptions.value = response.data.map((item: any) => ({
+      operatorOptions.value = response.data.map((item: OperatorSearchRecord) => ({
         id: Number(item.id),
         name: item.name || item.username || `用户${item.id}`
       }))
@@ -728,8 +731,8 @@ const handleSave = async () => {
     editDialogVisible.value = false
     success('退库记录已更新')
     await loadRecords()
-  } catch (err: any) {
-    error(err?.response?.data?.message || err?.message || '退库记录更新失败')
+  } catch (err: unknown) {
+    error(getRequestErrorMessage(err, '退库记录更新失败'))
   } finally {
     submitting.value = false
   }
@@ -761,8 +764,8 @@ const handleDelete = async (record: ReturnGoodsRecord) => {
     }
     success('退库记录已删除')
     await loadRecords()
-  } catch (err: any) {
-    error(err?.response?.data?.message || err?.message || '退库记录删除失败')
+  } catch (err: unknown) {
+    error(getRequestErrorMessage(err, '退库记录删除失败'))
   }
 }
 

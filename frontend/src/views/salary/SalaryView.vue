@@ -336,6 +336,17 @@ import {
   groupAttendanceLeaveAssignments
 } from '@/utils/attendance-leave-allocation'
 import { logger } from '@/utils/logger'
+import { getRequestErrorMessage, getRequestErrorStatus } from '@/utils/api-response'
+import type { QueryParams } from '@/types'
+import type {
+  SalaryEmployeeOption,
+  SalaryPayoutRecord,
+  SalaryRecord,
+  SalaryRecordInput,
+  SalaryRecordStatus,
+  SalarySalesDetail,
+  SalaryTemplate
+} from '@/types/salary'
 import { getActionColumnMinWidth, getIdentifierColumnMinWidth, getTextColumnMinWidth } from '@/utils/table-layout'
 import { getSalaryFieldKey } from './salary-field-permissions'
 import {
@@ -344,9 +355,11 @@ import {
   buildEmptyEmployeeSalesStats,
   getSalaryMonthRange,
   mergeEmployeeSalaryDetails,
+  type SalaryEmployeeAttendanceStats,
   type SalaryEmployeeDataItem,
   type SalaryEmployeeSalaryDetail,
-  type SalaryEmployeeSalesSource
+  type SalaryEmployeeSalesSource,
+  type SalaryEmployeeSalesStats
 } from './salary-employee-data'
 import { useSalaryEmployeeTable } from './useSalaryEmployeeTable'
 import { useSalaryMyRecordsTable } from './useSalaryMyRecordsTable'
@@ -426,7 +439,33 @@ const requireSalaryRecordPermission = (action: 'view' | 'create' | 'edit' | 'del
   return allowed
 }
 
-const canViewOwnSalarySalesDetail = (row: any) => (
+type SalaryEmployeeRow = SalaryEmployeeOption & {
+  current_salary?: number | string | null
+  base_salary?: number | string | null
+  salary_adjustment?: number | string | null
+  salary_note?: string | null
+}
+
+type PendingSalaryData = {
+  employeeId: number
+  employeeName: string
+  calculatedData: SalaryRecordInput
+  existingRecord: SalaryPayoutRecord | undefined
+  startDate: string
+  endDate: string
+}
+
+type SalaryEmployeeSalesDetail = Omit<SalarySalesDetail, 'is_new' | 'profit'> & {
+  is_new?: boolean
+  profit: number
+}
+
+const normalizeSalaryStatus = (value: string | null | undefined): SalaryRecordStatus => {
+  const allowed: SalaryRecordStatus[] = ['draft', 'pending', 'approved', 'paid', 'cancelled']
+  return value && allowed.includes(value as SalaryRecordStatus) ? value as SalaryRecordStatus : 'approved'
+}
+
+const canViewOwnSalarySalesDetail = (row: { employee_id?: number | null }) => (
   canViewOwnSalary.value &&
   Number(row?.employee_id) === Number(authStore.user?.id)
 )
@@ -500,7 +539,7 @@ const resetMyStats = () => {
   stats.value.myOvertimePay = 0
 }
 
-const getMonthDateRange = (date?: any) => {
+const getMonthDateRange = (date?: string | Date | number | null) => {
   const parsedDate = date ? TimeUtil.parse(String(date)) : null
   const d = parsedDate?.isValid() ? parsedDate : TimeUtil.now()
   const year = d.year()
@@ -514,7 +553,7 @@ const getMonthDateRange = (date?: any) => {
 }
 
 // 模板数据
-const templates = ref<any[]>([])
+const templates = ref<SalaryTemplate[]>([])
 const templatesLoading = ref(false)
 const salaryTemplatesTabRef = ref<InstanceType<typeof SalaryTemplatesTab>>()
 const {
@@ -548,7 +587,7 @@ const syncVisibleSalaryFilters = () => {
 }
 
 const payoutActionColumnWidth = computed(() => {
-  const hasPayoutRecord = paginatedPayoutData.value.some((item: any) => Boolean(item.payoutRecord))
+  const hasPayoutRecord = paginatedPayoutData.value.some(item => Boolean(item.payoutRecord))
   const buttonCount = Number(canCreateSalaryRecord.value) + (hasPayoutRecord
     ? Number(canEditSalaryRecord.value) + Number(canDeleteSalaryRecord.value)
     : 0)
@@ -561,12 +600,12 @@ watch(() => templateFilters.is_active, () => {
 })
 
 // 我的工资数据
-const myRecords = ref<any[]>([])
+const myRecords = ref<SalaryRecord[]>([])
 const myLoading = ref(false)
 
 // 工资发放数据
-const employees = ref<any[]>([])
-const payoutList = ref<any[]>([])
+const employees = ref<SalaryEmployeeRow[]>([])
+const payoutList = ref<SalaryPayoutRecord[]>([])
 const payoutLoading = ref(false)
 const {
   getSelectedEmployeeName,
@@ -660,8 +699,8 @@ const salaryEmployeesTabRef = ref<InstanceType<typeof SalaryEmployeesTab>>()
 const employeeSalaryActionColumnWidth = computed(() => getActionColumnMinWidth(
   Number(canEditSalaryTemplate.value) + Number(canViewSalaryRecords.value) + 1
 ))
-const employeeAttendanceData = ref<Map<number, any>>(new Map())
-const employeeSalesData = ref<Map<number, any>>(new Map()) // 员工销售数据
+const employeeAttendanceData = ref<Map<number, SalaryEmployeeAttendanceStats>>(new Map())
+const employeeSalesData = ref<Map<number, SalaryEmployeeSalesStats>>(new Map()) // 员工销售数据
 
 watch([templateSearch, () => templateFilters.is_active], () => {
   templatePage.value = 1
@@ -669,34 +708,34 @@ watch([templateSearch, () => templateFilters.is_active], () => {
 
 // 详情对话框
 const detailDialogVisible = ref(false)
-const currentRecord = ref<any>(null)
+const currentRecord = ref<SalaryRecord | null>(null)
 
 // 销售明细对话框
 const salesDetailDialogVisible = ref(false)
-const currentSalesRecord = ref<any>(null)
-const salesDetailList = ref<any[]>([])
+const currentSalesRecord = ref<SalaryRecord | null>(null)
+const salesDetailList = ref<SalarySalesDetail[]>([])
 const salesDetailImeiColumnWidth = computed(() => getIdentifierColumnMinWidth(
-  ['IMEI', ...salesDetailList.value.map((item: any) => item.imei)],
+  ['IMEI', ...salesDetailList.value.map(item => item.imei)],
   { minWidth: 146, horizontalPadding: 30 }
 ))
 const salesDetailModelColumnWidth = computed(() => getTextColumnMinWidth(
-  ['型号', ...salesDetailList.value.map((item: any) => item.model_name)],
+  ['型号', ...salesDetailList.value.map(item => item.model_name)],
   { minWidth: 104, horizontalPadding: 28 }
 ))
 const salesDetailCustomerColumnWidth = computed(() => getTextColumnMinWidth(
-  ['客户', ...salesDetailList.value.map((item: any) => item.customer_name)],
+  ['客户', ...salesDetailList.value.map(item => item.customer_name)],
   { minWidth: 92, horizontalPadding: 28 }
 ))
 const employeeSalesDetailImeiColumnWidth = computed(() => getIdentifierColumnMinWidth(
-  ['IMEI', ...employeeSalesDetailList.value.map((item: any) => item.imei)],
+  ['IMEI', ...employeeSalesDetailList.value.map(item => item.imei)],
   { minWidth: 146, horizontalPadding: 30 }
 ))
 const employeeSalesDetailModelColumnWidth = computed(() => getTextColumnMinWidth(
-  ['型号', ...employeeSalesDetailList.value.map((item: any) => item.model)],
+  ['型号', ...employeeSalesDetailList.value.map(item => item.model)],
   { minWidth: 104, horizontalPadding: 28 }
 ))
 const employeeSalesDetailCustomerColumnWidth = computed(() => getTextColumnMinWidth(
-  ['客户', ...employeeSalesDetailList.value.map((item: any) => item.customer_name)],
+  ['客户', ...employeeSalesDetailList.value.map(item => item.customer_name)],
   { minWidth: 92, horizontalPadding: 28 }
 ))
 const salesDetailTableWidth = computed(() => {
@@ -728,7 +767,7 @@ const salesSummary = computed(() => {
 })
 
 // 查看销售明细
-const handleViewSalesDetail = async (row: any) => {
+const handleViewSalesDetail = async (row: SalaryRecord) => {
   if (!canViewOwnSalarySalesDetail(row) && !requireSalaryRecordPermission('view')) {
     return
   }
@@ -742,18 +781,20 @@ const handleViewSalesDetail = async (row: any) => {
     // 尝试从 commission_detail 解析
     if (row.commission_detail) {
       try {
-        let details = JSON.parse(row.commission_detail)
-        if (Array.isArray(details) && details.length > 0) {
+        const parsedDetails: unknown = JSON.parse(row.commission_detail)
+        if (Array.isArray(parsedDetails) && parsedDetails.length > 0) {
           // 获取员工工资模板，确定哪些机型需要显示
           const template = getTemplateById(row.salary_template_id)
           const newRate = template?.commission_new_fixed || template?.commission_fixed || 0
           const usedRate = template?.commission_used_fixed || 0
 
           // 只保留有提成的机型
-          details = details.filter((item: any) => {
+          const details = parsedDetails.filter((item): item is SalarySalesDetail => {
+            if (!item || typeof item !== 'object') return false
+            const detail = item as SalarySalesDetail
             // 如果数据中有 is_new 字段
-            if (item.is_new !== undefined) {
-              const isNew = item.is_new === 1 || item.is_new === '1' || item.is_new === true
+            if (detail.is_new !== undefined) {
+              const isNew = detail.is_new === 1 || detail.is_new === '1' || detail.is_new === true
               if (isNew && newRate > 0) return true  // 全新机有提成
               if (!isNew && usedRate > 0) return true  // 二手机有提成
               return false
@@ -780,7 +821,7 @@ const handleViewSalesDetail = async (row: any) => {
         row.period_end
       )
       if (response.data && Array.isArray(response.data)) {
-        salesDetailList.value = response.data
+        salesDetailList.value = response.data as SalarySalesDetail[]
       }
     }
   } catch (error) {
@@ -793,8 +834,8 @@ const handleViewSalesDetail = async (row: any) => {
 
 // 员工销售明细对话框
 const employeeSalesDetailDialogVisible = ref(false)
-const currentEmployeeSales = ref<any>(null)
-const employeeSalesDetailList = ref<any[]>([])
+const currentEmployeeSales = ref<SalaryEmployeeRow | null>(null)
+const employeeSalesDetailList = ref<SalaryEmployeeSalesDetail[]>([])
 const employeeSalesDetailLoading = ref(false)
 
 // 员工销售汇总数据
@@ -808,7 +849,7 @@ const employeeSalesSummary = computed(() => {
 })
 
 // 查看员工销售明细（双击销售数量列触发）
-const handleViewEmployeeSalesDetail = async (row: any) => {
+const handleViewEmployeeSalesDetail = async (row: SalaryEmployeeRow) => {
   if (!requireSalaryRecordPermission('view')) {
     return
   }
@@ -851,18 +892,20 @@ const handleViewEmployeeSalesDetail = async (row: any) => {
       const usedRate = template?.commission_used_fixed || 0
 
       // 前端过滤：只显示有提成的机型
-      const filteredData = detailData.filter((item: any) => {
+      const filteredData = detailData.filter((item): item is SalarySalesDetail => {
+        if (!item || typeof item !== 'object') return false
+        const detail = item as SalarySalesDetail
         // 只显示有提成的机型
-        const isNew = item.is_new === true || item.is_new === 1
+        const isNew = detail.is_new === true || detail.is_new === 1 || detail.is_new === '1'
         if (isNew && newRate > 0) return true  // 全新机有提成
         if (!isNew && usedRate > 0) return true  // 二手机有提成
         return false  // 没有提成的机型不显示
       })
 
-      employeeSalesDetailList.value = filteredData.map((item: any) => {
+      employeeSalesDetailList.value = filteredData.map(item => {
         // 新API返回的是扁平化结构，直接使用item的字段
-        const purchaseCost = parseFloat(item.purchase_cost || 0)
-        const salePrice = parseFloat(item.sale_price || 0)
+        const purchaseCost = Number(item.purchase_cost || 0)
+        const salePrice = Number(item.sale_price || 0)
         const isNew = item.is_new === true || item.is_new === 1
 
         return {
@@ -877,7 +920,7 @@ const handleViewEmployeeSalesDetail = async (row: any) => {
           condition_type: isNew ? '全新' : '二手',
           purchase_cost: purchaseCost,
           sale_price: salePrice,
-          profit: item.profit || (salePrice - purchaseCost),
+          profit: Number(item.profit) || (salePrice - purchaseCost),
           sale_time: item.sale_time,
           customer_name: item.customer_name || '-',
           customer_phone: item.customer_phone || '-'
@@ -895,7 +938,7 @@ const handleViewEmployeeSalesDetail = async (row: any) => {
 
 // 员工模板编辑对话框
 const templateDialogVisible = ref(false)
-const currentEmployee = ref<any>(null)
+const currentEmployee = ref<SalaryEmployeeRow | null>(null)
 const selectedTemplateId = ref<number | undefined>(undefined)
 
 // 工资模板表单
@@ -941,9 +984,9 @@ const loadTemplates = async () => {
         ? response.data
         : (response.data.records || [])
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     templates.value = []
-    if (error?.response?.status === 403) {
+    if (getRequestErrorStatus(error) === 403) {
       ElMessage.warning('当前账号没有工资模板查看权限')
       return
     }
@@ -965,7 +1008,7 @@ const loadMyRecords = async () => {
 
   myLoading.value = true
   try {
-    const params: any = {
+    const params: QueryParams = {
       status: 'paid', // 只查询已发放的记录
       page: myPagination.page,
       page_size: myPagination.page_size
@@ -1047,9 +1090,9 @@ const loadMyStats = async () => {
       ? (currentSalaryResult.value.data?.employees || [])
       : []
 
-    const myEmployee = employeesData.find((employee: any) => Number(employee.id) === userId)
-    const mySalaryInfo = currentSalaryData.find((employee: any) => Number(employee.id) === userId)
-    const myTemplate = mySalaryInfo || templates.value.find((template: any) => Number(template.id) === Number(myEmployee?.salary_template_id))
+    const myEmployee = employeesData.find((employee: SalaryEmployeeRow) => Number(employee.id) === userId)
+    const mySalaryInfo = currentSalaryData.find((employee: SalaryEmployeeRow) => Number(employee.id) === userId)
+    const myTemplate = mySalaryInfo || templates.value.find(template => Number(template.id) === Number(myEmployee?.salary_template_id))
 
     if (attendanceResult.status === 'fulfilled') {
       const attendanceRecords = attendanceResult.value.data?.records || []
@@ -1057,17 +1100,17 @@ const loadMyStats = async () => {
       let myOvertimeHours = 0
       let myRestDays = 0
 
-      attendanceRecords.forEach((record: any) => {
+      attendanceRecords.forEach((record: AttendanceRecord) => {
         if (Number(record.employee_id) !== userId) {
           return
         }
 
         if (record.record_type === 'leave') {
-          myLeaveDays += parseFloat(record.leave_days || 0)
+          myLeaveDays += Number(record.leave_days || 0)
         } else if (record.record_type === 'overtime') {
-          myOvertimeHours += parseFloat(record.overtime_hours || 0)
+          myOvertimeHours += Number(record.overtime_hours || 0)
         } else if (record.record_type === 'monthly_leave') {
-          myRestDays += parseFloat(record.monthly_leave_days || 0)
+          myRestDays += Number(record.monthly_leave_days || 0)
         }
       })
 
@@ -1093,20 +1136,20 @@ const loadMyStats = async () => {
       ? (Array.isArray(salesDetailResult.value.data) ? salesDetailResult.value.data : [])
       : []
 
-    const baseSalary = parseFloat(mySalaryInfo?.current_salary || mySalaryInfo?.base_salary || 0) || 0
+    const baseSalary = Number(mySalaryInfo?.current_salary || mySalaryInfo?.base_salary || 0) || 0
     const daysInMonth = TimeUtil.daysInMonth(currentYear, currentMonth)
     const dailySalary = daysInMonth > 0 ? baseSalary / daysInMonth : 0
     const leaveDeduction = dailySalary * (stats.value.myLeaveDays || 0)
-    const overtimeRate = parseFloat(myTemplate?.overtime_hourly_rate || 0) || 0
+    const overtimeRate = Number(myTemplate?.overtime_hourly_rate || 0) || 0
     const overtimePay = (stats.value.myOvertimeHours || 0) * overtimeRate
 
     let commissionAmount = 0
     if (myTemplate) {
       if (myTemplate.commission_type === 'fixed') {
-        const newRate = parseFloat(myTemplate.commission_new_fixed || myTemplate.commission_fixed || 0) || 0
-        const usedRate = parseFloat(myTemplate.commission_used_fixed || 0) || 0
+        const newRate = Number(myTemplate.commission_new_fixed || myTemplate.commission_fixed || 0) || 0
+        const usedRate = Number(myTemplate.commission_used_fixed || 0) || 0
 
-        salesDetails.forEach((item: any) => {
+        salesDetails.forEach((item: SalarySalesDetail) => {
           const isNew = item.is_new === true || item.is_new === 1 || item.is_new === '1'
           if (isNew) {
             commissionAmount += newRate
@@ -1115,10 +1158,10 @@ const loadMyStats = async () => {
           }
         })
       } else {
-        const percentage = parseFloat(myTemplate.commission_percentage || 0) || 0
-        const totalProfit = salesDetails.reduce((sum: number, item: any) => {
-          const salePrice = parseFloat(item.sale_price || 0) || 0
-          const purchaseCost = parseFloat(item.purchase_cost || 0) || 0
+        const percentage = Number(myTemplate.commission_percentage || 0) || 0
+        const totalProfit = salesDetails.reduce((sum: number, item: SalarySalesDetail) => {
+          const salePrice = Number(item.sale_price || 0) || 0
+          const purchaseCost = Number(item.purchase_cost || 0) || 0
           return sum + (salePrice - purchaseCost)
         }, 0)
         commissionAmount = totalProfit * percentage / 100
@@ -1152,7 +1195,7 @@ const updateStats = () => {
     const overtimeEmployees: string[] = []
 
     // 统计所有关联工资模板的员工的待发工资
-    employees.value.forEach((employee: any) => {
+    employees.value.forEach(employee => {
       // 只统计有工资模板的员工
       if (!employee.salary_template_id) return
 
@@ -1162,9 +1205,9 @@ const updateStats = () => {
       const employeeName = employee.name || employee.username
 
       // 计算该员工的待发工资：底薪 + 提成 + 加班费 - 请假扣除
-      const baseSalary = parseFloat(employee.current_salary || employee.base_salary || 0)
-      const overtimePay = parseFloat(salesData?.overtime_pay || 0)
-      const commission = parseFloat(salesData?.commission_amount || 0)
+      const baseSalary = Number(employee.current_salary || employee.base_salary || 0)
+      const overtimePay = Number(salesData?.overtime_pay || 0)
+      const commission = Number(salesData?.commission_amount || 0)
 
       // 动态计算请假扣除
       const leaveDays = attendanceData?.leave_days || 0
@@ -1208,13 +1251,13 @@ const updateStats = () => {
     // 普通用户统计数据 - 只显示自己的待发工资
     const myAttendanceData = employeeAttendanceData.value.get(currentUserId)
     const mySalesData = employeeSalesData.value.get(currentUserId)
-    const employee = employees.value.find((e: any) => e.id === currentUserId)
+    const employee = employees.value.find(e => e.id === currentUserId)
 
     if (employee) {
       // 计算自己的待发工资：底薪 + 提成 + 加班费 - 请假扣除
-      const baseSalary = parseFloat(employee.current_salary || employee.base_salary || 0)
-      const overtimePay = parseFloat(mySalesData?.overtime_pay || 0)
-      const commission = parseFloat(mySalesData?.commission_amount || 0)
+      const baseSalary = Number(employee.current_salary || employee.base_salary || 0)
+      const overtimePay = Number(mySalesData?.overtime_pay || 0)
+      const commission = Number(mySalesData?.commission_amount || 0)
 
       // 动态计算请假扣除
       const leaveDays = myAttendanceData?.leave_days || 0
@@ -1379,7 +1422,7 @@ const calculateLeaveDeduction = (employeeId: number, leaveDays: number) => {
   const daysInMonth = TimeUtil.daysInMonth(year, month)
 
   // 使用员工当前底薪（包含工龄涨薪）计算日薪
-  const baseSalary = parseFloat(getEmployeeBaseSalary(employeeId)) || 0
+  const baseSalary = Number(getEmployeeBaseSalary(employeeId)) || 0
   if (!baseSalary) return 0
 
   const dailySalary = baseSalary / daysInMonth
@@ -1403,7 +1446,7 @@ const calculateEstimatedSalary = (employeeId: number) => {
 
   const stats = getEmployeeAttendanceStats(employeeId)
   // 使用当前底薪（包含工龄涨薪）而不是模板的原始底薪
-  const baseSalary = parseFloat(getEmployeeBaseSalary(employeeId)) || 0
+  const baseSalary = Number(getEmployeeBaseSalary(employeeId)) || 0
   const overtimePay = parseFloat(String(calculateOvertimePay(employeeId, stats.overtime_hours))) || 0
   const leaveDeduction = parseFloat(String(calculateLeaveDeduction(employeeId, stats.leave_days))) || 0
   // 超出的休假天数已在 loadAllEmployeesAttendance 中转为请假天数，这里不再扣款
@@ -1438,7 +1481,7 @@ const getEmployeeAttendanceStats = (employeeId: number) => {
 }
 
 // 获取员工销售统计
-const getEmployeeSalesStats = (employeeId: number) => {
+const getEmployeeSalesStats = (employeeId: number): SalaryEmployeeSalesStats => {
   return employeeSalesData.value.get(employeeId) || {
     sales_count: 0,
     sales_amount: 0,
@@ -1448,7 +1491,10 @@ const getEmployeeSalesStats = (employeeId: number) => {
     new_profit: 0,
     used_count: 0,
     used_amount: 0,
-    used_profit: 0
+    used_profit: 0,
+    commission_amount: 0,
+    overtime_hours: 0,
+    overtime_pay: 0
   }
 }
 
@@ -1508,8 +1554,8 @@ const getEmployeeCommissionCount = (employeeId: number) => {
   let count = 0
 
   if (commissionType === 'fixed') {
-    const newRate = parseFloat(template.commission_new_fixed || template.commission_fixed || 0)
-    const usedRate = parseFloat(template.commission_used_fixed || 0)
+    const newRate = Number(template.commission_new_fixed || template.commission_fixed || 0)
+    const usedRate = Number(template.commission_used_fixed || 0)
 
     // 只统计有提成的机型
     if (newRate > 0) count += (salesStats.new_count || 0)
@@ -1556,22 +1602,22 @@ const getTemplateName = (id: number | undefined) => {
 
 // 获取员工底薪（使用实时计算的当前底薪，包含工龄涨薪）
 const getEmployeeBaseSalary = (employeeId: number) => {
-  const employee = employees.value.find((e: any) => e.id === employeeId)
+  const employee = employees.value.find(e => e.id === employeeId)
   return employee?.current_salary || employee?.base_salary || '0'
 }
 
 // 获取员工工资记录
 const getEmployeePayoutRecord = (employeeId: number) => {
-  return payoutList.value.find((r: any) => r.employee_id === employeeId)
+  return payoutList.value.find(r => r.employee_id === employeeId)
 }
 
-const parseTimestamp = (value: any) => {
+const parseTimestamp = (value: unknown) => {
   if (!value) return null
   const parsed = TimeUtil.parse(String(value))
   return parsed?.isValid() ? parsed.valueOf() : null
 }
 
-const getPayoutSettledTimestamp = (record: any) => {
+const getPayoutSettledTimestamp = (record: SalaryPayoutRecord) => {
   return parseTimestamp(record?.paid_at || record?.updated_at || record?.created_at)
 }
 
@@ -1598,7 +1644,7 @@ const getSalaryRecalculationNotice = (employeeId: number) => {
 }
 
 // 获取销售数量（优先使用 sales_count 字段）
-const getSalesCount = (row: any) => {
+const getSalesCount = (row: { sales_count?: number | null, commission_detail?: string | null }) => {
   // 优先使用 sales_count 字段（新增字段）
   if (row.sales_count !== undefined && row.sales_count !== null) {
     return row.sales_count
@@ -1682,7 +1728,7 @@ const handleFilterChange = () => {
 }
 
 // 临时存储计算数据，等待确认后保存
-const pendingSalaryData = ref<any>(null)
+const pendingSalaryData = ref<PendingSalaryData | null>(null)
 
 // 关闭结算对话框并清空临时数据
 const closeSettleDialog = () => {
@@ -1698,7 +1744,7 @@ const normalizePaidAtDateTime = (value: string | null | undefined) => {
 }
 
 // 按员工结算工资
-const handlePayoutByEmployee = async (employee: any) => {
+const handlePayoutByEmployee = async (employee: SalaryEmployeeRow) => {
   const existingRecord = getEmployeePayoutRecord(employee.id)
   if (!requireSalaryRecordPermission(existingRecord ? 'edit' : 'create')) {
     return
@@ -1712,15 +1758,15 @@ const handlePayoutByEmployee = async (employee: any) => {
     const endDate = `${year}-${month}-${daysInMonth}`
 
     // 使用后端计算 API（支持自动涨薪）
-    let calculatedData: any
+    let calculatedData: SalaryRecordInput
     try {
       const response = await salaryApi.calculateSalary(employee.id, startDate, endDate)
       calculatedData = response.data
-    } catch (err: any) {
+    } catch (err: unknown) {
       logger.error('计算工资失败:', err)
 
       // 检查是否是模板错误（处理多种错误响应格式）
-      const errorMessage = err.response?.data?.message || err.data?.message || err.message || ''
+      const errorMessage = getRequestErrorMessage(err, '')
       if (errorMessage.includes('工资模板') || errorMessage.includes('template') || errorMessage.includes('关联')) {
         ElMessage.error(`无法结算：${employee.name || employee.username} 没有关联薪资模板，请先设置`)
       } else {
@@ -1786,7 +1832,7 @@ const confirmSettle = async () => {
       const paymentMethod = settleForm.value.payment_method || existingRecord?.payment_method || null
 
       // 准备保存的数据
-      const saveData = {
+      const saveData: Partial<SalaryRecordInput> = {
         ...calculatedData,
         status: existingRecord?.status === 'paid' ? 'paid' : 'approved',
         payment_method: paymentMethod
@@ -1842,7 +1888,7 @@ const confirmSettle = async () => {
 }
 
 // 重新结算工资（使用最新的销售和考勤数据）
-const handleRecalculatePayout = async (employee: any) => {
+const handleRecalculatePayout = async (employee: SalaryEmployeeRow) => {
   if (!requireSalaryRecordPermission('edit')) {
     return
   }
@@ -1875,14 +1921,14 @@ const handleRecalculatePayout = async (employee: any) => {
     await salaryApi.saveCalculatedSalary(saveData)
     await loadPayoutList()
     ElMessage.success('重新结算成功，工资数据和结算时间已更新')
-  } catch (err: any) {
+  } catch (err: unknown) {
     logger.error('重新结算失败:', err)
-    ElMessage.error(err.response?.data?.message || '重新结算失败')
+    ElMessage.error(getRequestErrorMessage(err, '重新结算失败'))
   }
 }
 
 // 按员工编辑工资
-const handleEditPayoutByEmployee = (employee: any) => {
+const handleEditPayoutByEmployee = (employee: SalaryEmployeeRow) => {
   const record = getEmployeePayoutRecord(employee.id)
   if (!requireSalaryRecordPermission(record ? 'edit' : 'create')) {
     return
@@ -1897,13 +1943,13 @@ const handleEditPayoutByEmployee = (employee: any) => {
     }
 
     editPayoutForm.value = {
-      id: record.id,
+      id: record.id || 0,
       employee_id: record.employee_id,
       salary_template_id: record.salary_template_id || employee.salary_template_id || null,
-      base_salary: record.base_salary || 0,
-      commission_amount: record.commission_amount || 0,
-      overtime_pay: record.overtime_pay || 0,
-      leave_deduction: record.leave_deduction || 0,
+      base_salary: Number(record.base_salary) || 0,
+      commission_amount: Number(record.commission_amount) || 0,
+      overtime_pay: Number(record.overtime_pay) || 0,
+      leave_deduction: Number(record.leave_deduction) || 0,
       status: record.status || 'approved',
       paid_at: paidAtDate,
       payment_method: record.payment_method || null
@@ -1919,8 +1965,8 @@ const handleEditPayoutByEmployee = (employee: any) => {
       id: null,
       employee_id: employee.id,
       salary_template_id: employee.salary_template_id || null,
-      base_salary: parseFloat(baseSalary) || 0,
-      commission_amount: parseFloat(commissionAmount) || 0,
+      base_salary: Number(baseSalary) || 0,
+      commission_amount: Number(commissionAmount) || 0,
       overtime_pay: parseFloat(String(overtimePay)) || 0,
       leave_deduction: parseFloat(String(leaveDeduction)) || 0,
       status: 'approved',
@@ -1955,52 +2001,52 @@ const handleSaveEditPayout = async () => {
       ? getEmployeePayoutRecord(editPayoutForm.value.employee_id)
       : null
 
-    const saveData: any = {
+    const saveData: Partial<SalaryRecordInput> = {
       employee_id: editPayoutForm.value.employee_id,
       salary_template_id: editPayoutForm.value.salary_template_id || existingRecord?.salary_template_id || null,
       period_start: startDate,
       period_end: endDate,
-      base_salary_adjustment: existingRecord?.base_salary_adjustment || 0,
-      performance_bonus: existingRecord?.performance_bonus || 0,
-      other_bonus: existingRecord?.other_bonus || 0,
-      other_deduction: existingRecord?.other_deduction || 0
+      base_salary_adjustment: Number(existingRecord?.base_salary_adjustment) || 0,
+      performance_bonus: Number(existingRecord?.performance_bonus) || 0,
+      other_bonus: Number(existingRecord?.other_bonus) || 0,
+      other_deduction: Number(existingRecord?.other_deduction) || 0
     }
 
     if (canUseSalaryField('salary_salaryrecordsview', 'base_salary')) {
       saveData.base_salary = editPayoutForm.value.base_salary
     } else if (existingRecord) {
-      saveData.base_salary = existingRecord.base_salary || 0
+      saveData.base_salary = Number(existingRecord.base_salary) || 0
     } else {
       saveData.base_salary = editPayoutForm.value.base_salary
     }
     if (canUseSalaryField('salary_salaryrecordsview', 'commission_amount')) {
       saveData.commission_amount = editPayoutForm.value.commission_amount
     } else if (existingRecord) {
-      saveData.commission_amount = existingRecord.commission_amount || 0
+      saveData.commission_amount = Number(existingRecord.commission_amount) || 0
     } else {
       saveData.commission_amount = editPayoutForm.value.commission_amount
     }
     if (canUseSalaryField('salary_salaryrecordsview', 'overtime_pay')) {
       saveData.overtime_pay = editPayoutForm.value.overtime_pay
     } else if (existingRecord) {
-      saveData.overtime_pay = existingRecord.overtime_pay || 0
+      saveData.overtime_pay = Number(existingRecord.overtime_pay) || 0
     } else {
       saveData.overtime_pay = editPayoutForm.value.overtime_pay
     }
-    saveData.overtime_hours = attendanceStats.overtime_hours ?? existingRecord?.overtime_hours ?? 0
+    saveData.overtime_hours = attendanceStats.overtime_hours ?? (Number(existingRecord?.overtime_hours) || 0)
     if (canUseSalaryField('salary_salaryrecordsview', 'leave_deduction')) {
       saveData.leave_deduction = editPayoutForm.value.leave_deduction
     } else if (existingRecord) {
-      saveData.leave_deduction = existingRecord.leave_deduction || 0
+      saveData.leave_deduction = Number(existingRecord.leave_deduction) || 0
     } else {
       saveData.leave_deduction = editPayoutForm.value.leave_deduction
     }
-    saveData.leave_days = attendanceStats.leave_days ?? existingRecord?.leave_days ?? 0
-    saveData.net_salary = netSalary
+    saveData.leave_days = attendanceStats.leave_days ?? (Number(existingRecord?.leave_days) || 0)
+    saveData.net_salary = Number(netSalary)
     if (canUseSalaryField('salary_salaryrecordsview', 'salary_status')) {
-      saveData.status = editPayoutForm.value.status
+      saveData.status = normalizeSalaryStatus(editPayoutForm.value.status)
     } else {
-      saveData.status = existingRecord?.status || editPayoutForm.value.status || 'approved'
+      saveData.status = normalizeSalaryStatus(existingRecord?.status || editPayoutForm.value.status)
     }
 
     const isPaidStatus = saveData.status === 'paid'
@@ -2038,7 +2084,7 @@ const handleSaveEditPayout = async () => {
 }
 
 // 删除工资记录
-const handleDeletePayout = async (employee: any) => {
+const handleDeletePayout = async (employee: SalaryEmployeeRow) => {
   if (!requireSalaryRecordPermission('delete')) {
     return
   }
@@ -2093,7 +2139,7 @@ const getTemplateOvertimeRate = (id: number | undefined) => {
 }
 
 // 编辑员工工资模板
-const handleEditEmployeeTemplate = (row: any) => {
+const handleEditEmployeeTemplate = (row: SalaryEmployeeRow) => {
   if (!requireSalaryTemplatePermission('edit')) {
     return
   }
@@ -2137,7 +2183,7 @@ const handleSaveEmployeeTemplate = async () => {
 const attendanceDialogVisible = ref(false)
 const attendanceRecords = ref<Array<AttendanceRecord & { reason?: string }>>([])
 const attendanceLoading = ref(false)
-const currentAttendanceEmployee = ref<any>(null)
+const currentAttendanceEmployee = ref<SalaryEmployeeRow | null>(null)
 const attendanceFormVisible = ref(false)
 const attendanceSaving = ref(false)
 const attendanceDialogTitle = ref('新增考勤记录')
@@ -2188,7 +2234,7 @@ const buildAttendanceDateRange = (startDate: string, endDate: string) => {
 }
 
 // 打开员工考勤记录对话框
-const handleViewAttendance = async (row: any) => {
+const handleViewAttendance = async (row: SalaryEmployeeRow) => {
   if (!requireSalaryRecordPermission('view')) {
     return
   }
@@ -2257,7 +2303,7 @@ const handleAddAttendance = () => {
 }
 
 // 打开编辑考勤记录对话框
-const handleEditAttendance = (row: any) => {
+const handleEditAttendance = (row: AttendanceRecord & { reason?: string }) => {
   if (!requireSalaryRecordPermission('edit')) {
     return
   }
@@ -2309,7 +2355,7 @@ const handleSaveAttendance = async () => {
     const isEdit = !!editingAttendanceId.value
 
     // 根据记录类型构建提交数据
-    const submitData: any = {
+    const submitData: Partial<AttendanceRecord> & { employee_id: number } = {
       employee_id: currentAttendanceEmployee.value.id,
       record_type: recordType,
       record_date: recordDate,
@@ -2437,8 +2483,9 @@ const handleSaveAttendance = async () => {
       ? createAttendanceBatchId()
       : undefined
     for (const [index, date] of recordDates.entries()) {
-      const dailyData = {
+      const dailyData: AttendanceRecord = {
         ...submitData,
+        record_type: recordType,
         ...(attendanceBatchId ? { attendance_batch_id: attendanceBatchId } : {}),
         record_date: date,
         ...(recordType === 'monthly_leave' ? { monthly_leave_days: 1 } : {}),
@@ -2528,7 +2575,7 @@ const handleAddTemplate = () => {
 }
 
 // 编辑工资模板
-const handleEditTemplate = (row: any) => {
+const handleEditTemplate = (row: SalaryTemplate) => {
   if (!requireSalaryTemplatePermission('edit')) {
     return
   }
@@ -2584,7 +2631,7 @@ const handleSaveTemplate = async () => {
     templateSaving.value = true
 
     // 构建保存数据
-    const saveData: any = {}
+    const saveData: Partial<SalaryTemplate> = {}
 
     if (canUseSalaryField('salary_salarytemplatesview', 'template_name')) {
       saveData.name = templateForm.value.name
@@ -2641,15 +2688,15 @@ const handleSaveTemplate = async () => {
 
     templateFormDialogVisible.value = false
     loadTemplates()
-  } catch (err: any) {
+  } catch (err: unknown) {
     logger.error('保存模板失败:', err)
-    ElMessage.error(err.message || '保存失败')
+    ElMessage.error(getRequestErrorMessage(err, '保存失败'))
   } finally {
     templateSaving.value = false
   }
 }
 
-const handleSetDefault = async (row: any) => {
+const handleSetDefault = async (row: SalaryTemplate) => {
   if (!requireSalaryTemplatePermission('edit')) {
     return
   }
@@ -2668,7 +2715,7 @@ const handleSetDefault = async (row: any) => {
   }
 }
 
-const handleToggleTemplateStatus = async (row: any) => {
+const handleToggleTemplateStatus = async (row: SalaryTemplate) => {
   if (!requireSalaryTemplatePermission('edit')) {
     return
   }
@@ -2692,10 +2739,10 @@ const handleToggleTemplateStatus = async (row: any) => {
 // 获取使用指定模板的员工数量
 const getEmployeeCountByTemplate = (templateId: number): number => {
   if (!employees.value || employees.value.length === 0) return 0
-  return employees.value.filter((emp: any) => emp.salary_template_id === templateId).length
+  return employees.value.filter(emp => emp.salary_template_id === templateId).length
 }
 
-const handleDeleteTemplate = async (row: any) => {
+const handleDeleteTemplate = async (row: SalaryTemplate) => {
   if (!requireSalaryTemplatePermission('delete')) {
     return
   }
@@ -2716,7 +2763,7 @@ const handleDeleteTemplate = async (row: any) => {
 }
 
 // 工资记录操作
-const handleViewMyRecord = (row: any) => {
+const handleViewMyRecord = (row: SalaryRecord) => {
   if (!canViewPayoutRecords.value) {
     error('您没有查看工资发放记录的权限')
     return

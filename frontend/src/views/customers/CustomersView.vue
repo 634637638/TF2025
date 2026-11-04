@@ -1065,10 +1065,10 @@
                   <el-input-number
                     v-model="customerForm.balance"
                     :precision="2"
-                  :step="0.01"
-                  :min="0"
-                  placeholder="请输入余额"
-                  :controls="false"
+                    :step="0.01"
+                    :min="0"
+                    placeholder="请输入余额"
+                    :controls="false"
                     class="w-full"
                     :disabled="!canEditField('balance')"
                   />

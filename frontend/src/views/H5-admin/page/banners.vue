@@ -349,7 +349,8 @@ import { TIME_FORMATS } from '@/utils/time'
 import { confirmAction } from '@/utils/message-box'
 import { ref, computed, onMounted, onUnmounted, onActivated, inject, watch } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
-import { ElMessage, FormInstance } from 'element-plus'
+import { ElMessage, FormInstance, type UploadFile, type UploadFiles, type UploadRawFile, type UploadRequestOptions } from 'element-plus'
+import { UploadAjaxError } from 'element-plus/es/components/upload/src/ajax'
 import { ValidationRules } from '@/composables'
 import { Refresh, Plus } from '@element-plus/icons-vue'
 import draggable from 'vuedraggable'
@@ -417,7 +418,7 @@ const getBannerImageUrl = (url: string): string => {
 }
 
 // 上传成功回调 - 支持多图，立即预览
-const handleBannerUploadSuccess = (response: any, _file: any, _uploadFiles: any) => {
+const handleBannerUploadSuccess = (response: unknown, _file: UploadRawFile | UploadFile, _uploadFiles: UploadFiles) => {
   if (!canSaveCurrentBanner.value) {
     handleNoPermission(dialogMode.value === 'add' ? 'create' : 'edit')
     return
@@ -425,21 +426,26 @@ const handleBannerUploadSuccess = (response: any, _file: any, _uploadFiles: any)
 
   // el-upload 组件直接使用 axios，不会经过 unified-api 拦截器
   // 所以响应格式是完整的 ApiResponse: { success, message, data }
+  const payload = response && typeof response === 'object' ? response as Record<string, unknown> : {}
+  const nestedData = payload.data && typeof payload.data === 'object' ? payload.data as Record<string, unknown> : {}
   let newImages: string[] = []
 
   // 处理不同的响应格式
-  if (response && response.success && response.data && response.data.files) {
+  if (payload.success && Array.isArray(nestedData.files)) {
     // ApiResponse 多文件格式: { success: true, data: { files: [{ url: ... }] } }
-    const filesData = response.data.files
-    if (Array.isArray(filesData) && filesData.length > 0) {
-      newImages = filesData.map(f => f.url)
+    const filesData = nestedData.files
+    if (filesData.length > 0) {
+      newImages = filesData.flatMap(file => {
+        const record = file && typeof file === 'object' ? file as Record<string, unknown> : {}
+        return typeof record.url === 'string' ? [record.url] : []
+      })
     }
-  } else if (response && response.data && response.data.url) {
+  } else if (typeof nestedData.url === 'string') {
     // ApiResponse 单文件格式: { success: true, data: { url: ... } }
-    newImages.push(response.data.url)
-  } else if (response && response.url) {
+    newImages.push(nestedData.url)
+  } else if (typeof payload.url === 'string') {
     // 直接格式: { url: ... }
-    newImages.push(response.url)
+    newImages.push(payload.url)
   }
 
   // 立即添加到当前图片列表（实现即时预览）
@@ -467,7 +473,7 @@ const handleBannerUploadSuccess = (response: any, _file: any, _uploadFiles: any)
   }
 }
 
-const handleBannerUpload = async (options: any) => {
+const handleBannerUpload = async (options: UploadRequestOptions) => {
   try {
     const file = await prepareMediaFile(options.file as File, {
       allowVideo: false,
@@ -482,18 +488,21 @@ const handleBannerUpload = async (options: any) => {
     options.onSuccess?.(response)
   } catch (error) {
     handleUploadError(error, options.file, [])
-    options.onError?.(error instanceof Error ? error : new Error('上传失败'))
+    const uploadError = error instanceof Error
+      ? new UploadAjaxError(error.message, 500, options.method, options.action)
+      : new UploadAjaxError('上传失败', 500, options.method, options.action)
+    options.onError?.(uploadError)
   }
 }
 
 // 上传错误处理
-const handleUploadError = (error: any, file: any, _uploadFiles: any) => {
+const handleUploadError = (error: unknown, file: UploadRawFile | UploadFile, _uploadFiles: UploadFiles) => {
   logger.error('[上传失败] 错误信息:', error)
   logger.error('[上传失败] 文件信息:', file)
 
   // 尝试解析错误信息
   let errorMsg = '上传失败'
-  if (error.message) {
+  if (error instanceof Error && error.message) {
     errorMsg += ': ' + error.message
   } else if (typeof error === 'string') {
     errorMsg += ': ' + error
@@ -759,9 +768,9 @@ const handleSave = async () => {
     await loadBanners()
     // 保存成功后清空临时图片记录
     uploadedTempImages.value = []
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('保存失败:', error)
-    if (error.message) {
+    if (error instanceof Error && error.message) {
       ElMessage.error(error.message)
     }
   } finally {
@@ -792,9 +801,9 @@ const handleDelete = (banner: ShopBanner) => {
       await deleteBanner(banner.id)
       ElMessage.success('删除成功')
       await loadBanners()
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error('删除失败:', error)
-      ElMessage.error(error.message || '删除失败')
+      ElMessage.error(error instanceof Error ? error.message : '删除失败')
     }
   }).catch(() => {
     // 取消删除
@@ -817,10 +826,10 @@ const handleStatusChange = async (banner: ShopBanner) => {
   try {
     await updateBanner(banner.id, banner)
     ElMessage.success('状态更新成功')
-  } catch (error: any) {
+  } catch (error: unknown) {
     // 恢复原状态
     banner.status = banner.status === 'active' ? 'inactive' : 'active'
-    ElMessage.error(error.message || '更新失败')
+    ElMessage.error(error instanceof Error ? error.message : '更新失败')
   }
 }
 
@@ -845,9 +854,9 @@ const handleDragEnd = async () => {
 
     await reorderBanners(orders)
     ElMessage.success('排序更新成功')
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('排序失败:', error)
-    ElMessage.error(error.message || '排序失败')
+    ElMessage.error(error instanceof Error ? error.message : '排序失败')
     await loadBanners() // 重新加载恢复原序
   }
 }

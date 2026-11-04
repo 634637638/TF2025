@@ -294,24 +294,9 @@
 import { computed } from 'vue'
 import InlineLoading from '@/components/InlineLoading.vue'
 import MobileDialog from '@/components/MobileDialog.vue'
+import type { SalaryTemplateForm } from '@/types/salary'
 
-export interface SalaryTemplateForm {
-  id?: number
-  name: string
-  description: string
-  base_salary: number
-  commission_type: string
-  commission_fixed: number
-  commission_new_fixed: number
-  commission_used_fixed: number
-  commission_percentage: number
-  overtime_hourly_rate: number
-  rest_days: number
-  auto_raise_enabled: boolean
-  auto_raise_months: number
-  auto_raise_amount: number
-  auto_raise_max_salary: number
-}
+export type { SalaryTemplateForm } from '@/types/salary'
 
 const moduleKey = 'salary_salarytemplatesview'
 const props = defineProps<{

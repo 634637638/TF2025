@@ -52,7 +52,6 @@ export interface TransferSubmitPayload {
   store_id?: number | null
   salesperson_name?: string
   payment_method?: string
-  invoice_number?: string
   sale_time?: string
 }
 
@@ -66,7 +65,6 @@ export interface WholesaleFormData {
   wholesale_price: number | null
   payment_method: string
   payment_channel: string
-  invoice_number: string
   sale_time: string
   remarks: string
 }

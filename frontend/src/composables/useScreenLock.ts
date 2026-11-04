@@ -126,6 +126,6 @@ export const useScreenLock = () => {
     unlockScreen,
     verifyPassword,
     checkLockStatus,
-    initializeLock,
+    initializeLock
   }
 }

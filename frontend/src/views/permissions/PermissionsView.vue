@@ -381,7 +381,6 @@ import { TIME_FORMATS, TimeUtil } from '@/utils/time'
 import { useMenuStore } from '@/stores/menu'
 import { getModuleFieldGroups } from '@/config/moduleFields.js'
 import { PermissionGate, PageHeader } from '@/components/base'
-import InlineLoading from '@/components/InlineLoading.vue'
 import { permissionsPageContextKey } from './page/context'
 import { getActionMeta, getPermissionMeta, getRoleVisualMeta } from './page/permissionMeta'
 import RolesPage from './page/RolesPage.vue'
@@ -398,13 +397,20 @@ import RoleFieldPermissionDialog from './page/RoleFieldPermissionDialog.vue'
 import StoreBindingDialog from './page/StoreBindingDialog.vue'
 import type { PermissionLog } from '@/types/system'
 import { logger } from '@/utils/logger'
+import {
+  getRequestErrorMessage,
+  getRequestErrorName,
+  getRequestErrorPayload,
+  getRequestErrorStatus
+} from '@/utils/api-response'
 import type {
   FieldGroup,
-  Role,
+  FieldDefinition,
+  PermissionRole as Role,
   RoleFieldModule,
   StoreBindingUser,
   StoreOption,
-  User as PermissionUser,
+  PermissionUser,
   Module,
   StatsPayload
 } from './types'
@@ -419,7 +425,7 @@ const { refreshing, refresh } = useRefreshData()
 const { exportTextFile, buildDateFilename } = useImportExport()
 const activeTab = ref('roles')
 const modulesPageRef = ref<{ refreshModules: () => Promise<void> } | null>(null)
-const permissionsPageContext = reactive<Record<string, any>>({})
+const permissionsPageContext = reactive<Record<string, unknown>>({})
 provide(permissionsPageContextKey, permissionsPageContext)
 
 // 使用统一通知服务
@@ -473,7 +479,7 @@ const savingUserRoles = ref(false)
 
 // 门店绑定相关状态
 const storeBindingsLoading = ref(false)
-const storeBindingsData = ref<any[]>([])
+const storeBindingsData = ref<StoreBindingUser[]>([])
 const storeList = ref<StoreOption[]>([])
 const storeBindingDialogVisible = ref(false)
 const currentUserForBinding = ref<StoreBindingUser | null>(null)
@@ -612,12 +618,12 @@ const applyStatsState = (payload: StatsPayload = {}) => {
   stats.unregistered_modules = parseInt(String(payload.unregistered_modules ?? 0)) || 0
 }
 
-const buildPermissionEventDetail = (detail: Record<string, any>) => ({
+const buildPermissionEventDetail = (detail: Record<string, unknown>) => ({
   ...detail,
   timestamp: Date.now()
 })
 
-const emitPermissionUpdated = (detail: Record<string, any>) => {
+const emitPermissionUpdated = (detail: Record<string, unknown>) => {
   window.dispatchEvent(new CustomEvent('tf2025:permissions:updated', {
     detail: buildPermissionEventDetail(detail)
   }))
@@ -629,7 +635,7 @@ const syncPermissionSideEffects = async (roleId?: number | string | null) => {
   await menuStore.refreshMenus()
 
   const authStore = useAuthStore()
-  if (normalizedRoleId && (authStore.user as any)?.role_id === normalizedRoleId) {
+  if (normalizedRoleId && Number((authStore.user as unknown as { role_id?: number }).role_id) === normalizedRoleId) {
     await authStore.fetchUserInfo()
   }
 
@@ -709,8 +715,8 @@ const updatePaginationState = (
 
 // 字段权限相关状态
 const showFieldPermissionDialog = ref(false)
-const selectedModule = ref<any>(null)
-const fieldGroups = ref<any[]>([])
+const selectedModule = ref<RoleFieldModule | null>(null)
+const fieldGroups = ref<FieldGroup[]>([])
 const selectedFields = ref<string[]>([])
 const savingFieldPermissions = ref(false)
 
@@ -963,7 +969,8 @@ const loadRoles = async (showLoading = true, showSuccess = false) => {
     }
   } catch (err) {
     // 检查是否是认证错误
-    if (err.response?.status === 401 || err.response?.status === 403) {
+    const status = getRequestErrorStatus(err)
+    if (status === 401 || status === 403) {
       error('认证失败，请重新登录')
       // 可以在这里添加跳转到登录页的逻辑
       // 例如: router.push('/login')
@@ -1019,11 +1026,14 @@ const loadUsers = async (showLoading = true, showSuccess = false) => {
       }
 
       // 数据已经在后端处理完成，只需要预处理显示文本
-      const processedUsers = users.map((user: any) => {
+      const processedUsers = users.map((user: PermissionUser & { rolesText?: string, hasRoles?: boolean }) => {
         // 预处理用户角色显示文本
         // 后端返回的 roles 是字符串，需要处理
-        user.rolesText = user.roles ? user.roles : '无角色'
-        user.hasRoles = !!user.roles && user.roles.trim() !== ''
+        const roleText = Array.isArray(user.roles)
+          ? user.roles.map(role => role.name).filter(Boolean).join(', ')
+          : String(user.roles || '')
+        user.rolesText = roleText || '无角色'
+        user.hasRoles = Boolean(roleText)
 
         return user
       })
@@ -1036,8 +1046,8 @@ const loadUsers = async (showLoading = true, showSuccess = false) => {
       usersPagination.total = 0
       usersPagination.page = 1
     }
-  } catch (err: any) {
-    error('获取用户列表失败: ' + (err.message || err))
+  } catch (err: unknown) {
+    error(`获取用户列表失败: ${getRequestErrorMessage(err)}`)
     usersData.value = []
     usersPagination.total = 0
     usersPagination.page = 1
@@ -1063,7 +1073,7 @@ const loadPermissionMatrix = async (_showLoading = true, showSuccess = false) =>
 
     if (permissionResponse.success) {
       const modules = permissionResponse.data || []
-      const meta = (permissionResponse.data as any)?.meta || {}
+      const meta = (permissionResponse.data as { meta?: Record<string, number | boolean> } | undefined)?.meta || {}
 
       // 静默刷新时不显示提示
       if (showSuccess) {
@@ -1111,13 +1121,13 @@ const loadPermissionMatrix = async (_showLoading = true, showSuccess = false) =>
       selectedPermissions.value = []
       selectedMenuPermissions.value = []
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     // 忽略请求被取消的错误
-    if (err.name === 'CanceledError' || err.message === 'canceled') {
+    if (getRequestErrorName(err) === 'CanceledError' || getRequestErrorMessage(err, '') === 'canceled') {
       return
     }
 
-    const errorMessage = err.response?.data?.message || err.message || '加载权限矩阵失败'
+    const errorMessage = getRequestErrorMessage(err, '加载权限矩阵失败')
     error(errorMessage)
     permissionMatrix.value = []
     selectedPermissions.value = []
@@ -1284,12 +1294,9 @@ const saveRole = async () => {
       description: roleForm.description.trim()
     }
 
-    let response: any
-    if (isEditRole.value && roleForm.id) {
-      response = await unifiedApi.put(`/permissions/roles/${roleForm.id}`, roleData)
-    } else {
-      response = await unifiedApi.post('/permissions/roles', roleData)
-    }
+    const response = isEditRole.value && roleForm.id
+      ? await unifiedApi.put(`/permissions/roles/${roleForm.id}`, roleData)
+      : await unifiedApi.post('/permissions/roles', roleData)
 
     if (response.success) {
       success(isEditRole.value ? '角色更新成功' : '角色创建成功')
@@ -1309,10 +1316,10 @@ const saveRole = async () => {
     } else {
       error(response.message || (isEditRole.value ? '更新角色失败' : '创建角色失败'))
     }
-  } catch (err: any) {
-    const errorMessage = err.response?.data?.message || err.message || (isEditRole.value ? '更新角色失败' : '创建角色失败')
+  } catch (err: unknown) {
+    const errorMessage = getRequestErrorMessage(err, isEditRole.value ? '更新角色失败' : '创建角色失败')
     error(errorMessage)
-    logger.error(err)
+    logger.error('角色保存失败:', err)
   } finally {
     savingRole.value = false
   }
@@ -1356,11 +1363,11 @@ const handleDeleteRole = async (role: Role) => {
     } else {
       error(response.message || '删除角色失败')
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     if (err !== 'cancel') {
-      const errorMessage = err.response?.data?.message || err.message || '删除角色失败'
+      const errorMessage = getRequestErrorMessage(err, '删除角色失败')
       error(errorMessage)
-      logger.error(err)
+      logger.error('角色删除失败:', err)
     }
   }
 }
@@ -1422,10 +1429,10 @@ const toggleRoleStatus = async (role: Role) => {
     } else {
       error(response.message || `${action}角色失败`)
     }
-  } catch (err: any) {
-    const errorMessage = err.response?.data?.message || err.message || `${action}角色失败`
+  } catch (err: unknown) {
+    const errorMessage = getRequestErrorMessage(err, `${action}角色失败`)
     error(errorMessage)
-    logger.error(err)
+    logger.error('角色状态更新失败:', err)
   }
 }
 
@@ -1493,7 +1500,7 @@ const loadPermissionDialog = async () => {
         })) : []
       }
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     logger.error('加载权限弹窗数据失败:', err)
     error('加载权限数据失败')
   } finally {
@@ -1556,9 +1563,9 @@ const handleDialogPermissionChange = async (moduleKey: string, permission_type: 
     savingDialogPermissions.value = true
     await persistDialogPermissions()
     success(`${getPermissionNameEnhanced(permission_type)}已${target.checked ? '开启' : '关闭'}`)
-  } catch (err: any) {
+  } catch (err: unknown) {
     selectedDialogPermissions.value = previousPermissions
-    const errorMessage = err.response?.data?.message || err.message || '更新页面动作权限失败'
+    const errorMessage = getRequestErrorMessage(err, '更新页面动作权限失败')
     error(errorMessage)
     logger.error('更新页面动作权限失败:', err)
   } finally {
@@ -1586,9 +1593,9 @@ const handleDialogMenuPermissionChange = async (moduleKey: string, event: Event)
     savingDialogPermissions.value = true
     await persistDialogMenuPermissions()
     success(`菜单显示已${target.checked ? '开启' : '关闭'}`)
-  } catch (err: any) {
+  } catch (err: unknown) {
     selectedDialogMenuPermissions.value = previousMenuPermissions
-    const errorMessage = err.response?.data?.message || err.message || '更新菜单显示失败'
+    const errorMessage = getRequestErrorMessage(err, '更新菜单显示失败')
     error(errorMessage)
     logger.error('更新菜单显示失败:', err)
   } finally {
@@ -1672,16 +1679,16 @@ const toggleDialogActionAcrossModules = async (actionType: string, enabled: bool
 
     selectedDialogPermissions.value = enabled
       ? Array.from(new Set([
-          ...selectedDialogPermissions.value,
-          ...targetPermissionKeys
-        ]))
+        ...selectedDialogPermissions.value,
+        ...targetPermissionKeys
+      ]))
       : selectedDialogPermissions.value.filter(permission => !targetPermissionKeys.has(permission))
 
     await persistDialogPermissions()
     success(`当前角色已${enabled ? '开启' : '关闭'}全部相关模块的${getPermissionNameEnhanced(actionType)}权限`)
-  } catch (err: any) {
+  } catch (err: unknown) {
     selectedDialogPermissions.value = previousPermissions
-    const errorMessage = err.response?.data?.message || err.message || '批量更新页面动作权限失败'
+    const errorMessage = getRequestErrorMessage(err, '批量更新页面动作权限失败')
     error(errorMessage)
     logger.error('批量更新页面动作权限失败:', err)
   } finally {
@@ -1720,14 +1727,14 @@ const loadRoleFieldModules = async () => {
     if (response.success) {
       const modules = response.data || []
 
-      roleFieldModuleList.value = modules.map((module: any) => ({
+      roleFieldModuleList.value = modules.map((module: RoleFieldModule) => ({
         ...module,
         name: module.name,
         icon: module.icon || getDefaultIcon(module.key, module.category)
       }))
       roleFieldModuleListCache.value = roleFieldModuleList.value
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     logger.error('加载模块列表失败:', err)
     error('加载模块列表失败')
   } finally {
@@ -1750,7 +1757,7 @@ const selectRoleModuleForField = async (module: RoleFieldModule) => {
     // 加载该角色的字段权限配置
     const moduleKey = module.module_key || module.key
     await loadRoleFieldPermissions(moduleKey)
-  } catch (err: any) {
+  } catch (err: unknown) {
     logger.error('加载字段权限失败:', err)
     error('加载字段权限失败')
     selectedRoleFieldGroupName.value = ''
@@ -1786,11 +1793,11 @@ const loadRoleFieldPermissions = async (moduleKey: string) => {
     } else {
       selectedRoleFields.value = []
     }
-  } catch (err: any) {
-    const errorMessage = err.response?.data?.message || err.message || '加载字段权限配置失败'
+  } catch (err: unknown) {
+    const errorMessage = getRequestErrorMessage(err, '加载字段权限配置失败')
     selectedRoleFields.value = []
 
-    if (err.response?.status === 404 && errorMessage.includes('角色不存在')) {
+    if (getRequestErrorStatus(err) === 404 && errorMessage.includes('角色不存在')) {
       warning('当前角色已不存在，已关闭字段权限弹窗并刷新角色列表')
       closeRoleFieldPermissionDialog()
       await loadRoles(false)
@@ -1833,8 +1840,8 @@ const saveRoleFieldPermissions = async () => {
     } else {
       throw new Error(response.message || '保存失败')
     }
-  } catch (err: any) {
-    const errorMessage = err.response?.data?.message || err.message || '保存字段权限配置失败'
+  } catch (err: unknown) {
+    const errorMessage = getRequestErrorMessage(err, '保存字段权限配置失败')
     error(errorMessage)
     logger.error('保存字段权限配置失败:', err)
   } finally {
@@ -1875,9 +1882,9 @@ const selectAllDialogPermissions = async (select = true) => {
 
     await persistDialogPermissions()
     success(select ? '已开启全部页面动作权限' : '已清空全部页面动作权限')
-  } catch (err: any) {
+  } catch (err: unknown) {
     selectedDialogPermissions.value = previousPermissions
-    const errorMessage = err.response?.data?.message || err.message || '批量更新页面动作权限失败'
+    const errorMessage = getRequestErrorMessage(err, '批量更新页面动作权限失败')
     error(errorMessage)
     logger.error('批量更新页面动作权限失败:', err)
   } finally {
@@ -1897,9 +1904,9 @@ const toggleAllDialogMenuPermissions = async (show = true) => {
     }))
     await persistDialogMenuPermissions()
     success(show ? '已开启全部菜单显示' : '已隐藏全部菜单显示')
-  } catch (err: any) {
+  } catch (err: unknown) {
     selectedDialogMenuPermissions.value = previousMenuPermissions
-    const errorMessage = err.response?.data?.message || err.message || '批量更新菜单显示失败'
+    const errorMessage = getRequestErrorMessage(err, '批量更新菜单显示失败')
     error(errorMessage)
     logger.error('批量更新菜单显示失败:', err)
   } finally {
@@ -1939,10 +1946,10 @@ const saveUserRoles = async () => {
     } else {
       error(response.message || '分配用户角色失败')
     }
-  } catch (err: any) {
-    const errorMessage = err.response?.data?.message || err.message || '分配用户角色失败'
+  } catch (err: unknown) {
+    const errorMessage = getRequestErrorMessage(err, '分配用户角色失败')
     error(errorMessage)
-    logger.error(err)
+    logger.error('用户角色分配失败:', err)
   } finally {
     savingUserRoles.value = false
   }
@@ -1971,11 +1978,11 @@ const handleDeleteUser = async (user: PermissionUser) => {
     } else {
       error(response.message || '删除用户失败')
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     if (err !== 'cancel') {
-      const errorMessage = err.response?.data?.message || err.message || '删除用户失败'
+      const errorMessage = getRequestErrorMessage(err, '删除用户失败')
       error(errorMessage)
-      logger.error(err)
+      logger.error('用户删除失败:', err)
     }
   }
 }
@@ -2248,11 +2255,11 @@ const saveFieldPermissions = async () => {
       throw new Error(response.message || '保存失败')
     }
 
-  } catch (err: any) {
-    const errorMessage = err.response?.data?.message || err.message || '保存字段权限配置失败'
+  } catch (err: unknown) {
+    const errorMessage = getRequestErrorMessage(err, '保存字段权限配置失败')
     error(errorMessage)
     logger.error('❌ 保存字段权限配置失败:', err)
-    logger.error('  错误详情:', err.response?.data)
+    logger.error('  错误详情:', getRequestErrorPayload(err))
   } finally {
     savingFieldPermissions.value = false
   }
@@ -2330,7 +2337,7 @@ const getFieldTypeLabel = (type: string) => {
 }
 
 // 检查字段是否为敏感字段
-const isFieldSensitive = (field: any) => {
+const isFieldSensitive = (field: FieldDefinition) => {
   return field.sensitivity === 'sensitive' || field.sensitivity === 'confidential'
 }
 
@@ -2371,7 +2378,7 @@ const loadStoreBindings = async () => {
 
     if (response.success && response.data?.users) {
       // 后端已批量返回门店绑定，避免按用户逐条请求造成 N+1。
-      const usersWithStores = response.data.users.map((user: any) => ({
+      const usersWithStores = response.data.users.map((user: StoreBindingUser & { full_name?: string }) => ({
         ...user,
         name: user.full_name || user.name,
         stores: Array.isArray(user.stores) ? user.stores : []
@@ -2411,10 +2418,10 @@ const resetStoreBindingSearch = () => {
 }
 
 // 打开门店绑定对话框
-const openStoreBindingDialog = (user: any) => {
+const openStoreBindingDialog = (user: StoreBindingUser) => {
   currentUserForBinding.value = { ...user }
   // 初始化已选中的门店ID
-  selectedStoreIds.value = user.stores?.map((s: any) => s.store_id) || []
+  selectedStoreIds.value = user.stores?.map(s => s.store_id) || []
   storeBindingDialogVisible.value = true
 }
 
@@ -2456,7 +2463,7 @@ const saveStoreBinding = async () => {
 }
 
 // 解绑所有门店
-const unbindStore = async (user: any) => {
+const unbindStore = async (user: StoreBindingUser) => {
   try {
     await confirmAction(
       `确定要解绑用户 "${user.username}" 的所有门店吗？解绑后该用户将可以查看所有门店的数据。`,

@@ -264,6 +264,7 @@ import { logger } from '@/utils/logger'
 import { sortOptionsByOrder } from '@/utils/option-sort'
 import { extractResponseData } from '@/utils/api-response'
 import { getCachedStores, getCachedSuppliers } from '@/services/reference-options'
+import type { Store, Supplier } from '@/types'
 
 const SalesAnalytics = defineAsyncComponent(() => import('./page/SalesAnalytics.vue'))
 const InventoryAnalytics = defineAsyncComponent(() => import('./page/InventoryAnalytics.vue'))
@@ -295,8 +296,8 @@ const filterDateRange = computed<[string, string] | [] | null>({
 const filterQuickSelect = ref('')
 const filterStoreId = ref('')
 const filterSupplierId = ref('')
-const storeList = ref<any[]>([])
-const supplierList = ref<any[]>([])
+const storeList = ref<Store[]>([])
+const supplierList = ref<Supplier[]>([])
 const searchTrigger = ref(0)
 
 interface AnalyticsSearchParams {
@@ -318,7 +319,8 @@ const searchParams = computed<AnalyticsSearchParams>(() => ({
 const activeTab = ref('sales')
 const { loading } = useLoadingState()
 const { loading: refreshing } = useLoadingState()
-const activeAnalyticsRef = ref<any>(null)
+interface AnalyticsTabExpose { refreshSilently?: () => void | Promise<void> }
+const activeAnalyticsRef = ref<AnalyticsTabExpose | null>(null)
 
 const analyticsTabs = [
   {
@@ -585,7 +587,7 @@ const loadStoreList = async () => {
   try {
     const response = await getCachedStores()
     if (response.success) {
-      const stores = extractResponseData<any[]>(response)
+      const stores = extractResponseData<Store[]>(response)
       storeList.value = Array.isArray(stores) ? sortOptionsByOrder(stores) : []
     } else {
       storeList.value = []
@@ -601,7 +603,7 @@ const loadSupplierList = async () => {
   try {
     const response = await getCachedSuppliers()
     if (response.success) {
-      const suppliers = extractResponseData<any[]>(response)
+      const suppliers = extractResponseData<Supplier[]>(response)
       supplierList.value = Array.isArray(suppliers) ? sortOptionsByOrder(suppliers) : []
     } else {
       supplierList.value = []

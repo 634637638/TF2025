@@ -1,10 +1,5 @@
 import { reactive, ref, type Ref } from 'vue'
-
-interface SalaryEmployeeOption {
-  id: number
-  name?: string | null
-  username?: string | null
-}
+import type { SalaryEmployeeOption } from '@/types/salary'
 
 interface UseSalaryMyRecordsTableOptions {
   employees: Ref<SalaryEmployeeOption[]>

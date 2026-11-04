@@ -219,7 +219,6 @@ class AttendanceService {
       const start = requestedStart <= requestedEnd ? requestedStart : requestedEnd
       const end = requestedStart <= requestedEnd ? requestedEnd : requestedStart
       const targetStartKey = monthKey(start)
-      const targetEndKey = monthKey(end)
       const usageEnd = new Date(end.getFullYear(), end.getMonth() + 1, 0)
 
       // 从员工工资模板获取每月休假天数配置

@@ -375,7 +375,6 @@ import { fieldPermissions, shouldShowActionColumn } from '@/composables/useField
 import { useRefreshData } from '@/composables/useRefreshData'
 import { useNotification } from '@/composables/useNotification'
 import { PageHeader, PermissionGate } from '@/components/base'
-import InlineLoading from '@/components/InlineLoading.vue'
 import Pagination from '@/components/Pagination.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'

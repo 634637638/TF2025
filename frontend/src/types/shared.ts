@@ -29,6 +29,10 @@ export interface User {
   updated_at?: string
 }
 
+/** 统一的查询参数类型，避免页面使用显式 any。 */
+export type QueryParamValue = string | number | boolean | null | undefined
+export type QueryParams = Record<string, QueryParamValue>
+
 export interface Store {
   id: number
   name: string
@@ -51,4 +55,48 @@ export interface Store {
   description?: string
   created_at?: string
   updated_at?: string
+}
+
+export type SharedVisibility = 'public' | 'private'
+
+export interface SharedAttachment {
+  url: string
+  name: string
+  type: string
+  size: number
+}
+
+export interface SharedAuthor {
+  id: number
+  name: string
+  username: string
+}
+
+export interface SharedPost {
+  id: number
+  title: string
+  content: string
+  category: string
+  visibility: SharedVisibility
+  attachments: SharedAttachment[]
+  is_pinned: boolean
+  author_id: number
+  author: SharedAuthor
+  created_at: string
+  updated_at: string
+}
+
+export interface SharedCategory {
+  id: number
+  name: string
+  sort_order: number
+  total: number
+}
+
+export interface SharedPostForm {
+  title: string
+  content: string
+  category: string
+  visibility: SharedVisibility
+  attachments: SharedAttachment[]
 }

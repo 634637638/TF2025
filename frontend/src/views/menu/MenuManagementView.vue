@@ -609,7 +609,6 @@
                       @select="handleIconSelect"
                     />
                   </el-form-item>
-
                 </aside>
               </div>
             </el-form>
@@ -666,7 +665,10 @@
               分别设置桌面端和手机端侧边菜单的显示宽度，范围 100-500px。
             </p>
             <el-row :gutter="16">
-              <el-col :xs="24" :sm="12">
+              <el-col
+                :xs="24"
+                :sm="12"
+              >
                 <el-form-item label="PC端">
                   <el-input-number
                     v-model.number="pcMenuWidth"
@@ -675,11 +677,16 @@
                     :controls="false"
                     class="menu-width-form__input"
                   >
-                    <template #suffix>px</template>
+                    <template #suffix>
+                      px
+                    </template>
                   </el-input-number>
                 </el-form-item>
               </el-col>
-              <el-col :xs="24" :sm="12">
+              <el-col
+                :xs="24"
+                :sm="12"
+              >
                 <el-form-item label="手机端">
                   <el-input-number
                     v-model.number="mobileMenuWidth"
@@ -688,7 +695,9 @@
                     :controls="false"
                     class="menu-width-form__input"
                   >
-                    <template #suffix>px</template>
+                    <template #suffix>
+                      px
+                    </template>
                   </el-input-number>
                 </el-form-item>
               </el-col>
@@ -752,8 +761,15 @@ import IconRenderer from '@/components/IconRenderer.vue'
 import { useEventBus } from '@/composables/core/useEventBus'
 import { PageHeader, PermissionGate } from '@/components/base'
 import { logger } from '@/utils/logger'
+import {
+  getRequestErrorMessage,
+  getRequestErrorPayload,
+  getRequestErrorStatus
+} from '@/utils/api-response'
 import { getRoutePermissions } from '@/constants/routePermissions'
 import { MODULE_KEY_MAP } from '@/utils/permissionMapper'
+import type { MenuItem } from '@/types/menu'
+import type { QueryParams } from '@/types/shared'
 
 const IconPicker = defineAsyncComponent(() => import('@/components/IconPicker.vue'))
 
@@ -795,7 +811,7 @@ const { isMobile } = useMobile()
 const { emit } = useEventBus()
 
 // 响应式数据
-const menuTree = ref([])
+const menuTree = ref<MenuItem[]>([])
 const { loading } = useLoadingState()
 const menuImportInputRef = ref<HTMLInputElement | null>(null)
 const exportingMenus = ref(false)
@@ -804,11 +820,11 @@ const showModal = ref(false)
 const showMenuWidthModal = ref(false)
 const submitting = ref(false)
 const isEdit = ref(false)
-const currentEditId = ref(null)
+const currentEditId = ref<string | number | null>(null)
 const errorMessage = ref('')  // 重命名以避免与通知服务的 error 冲突
 
 // 展开/折叠状态管理
-const expandedMenus = ref(new Set()) // 存储展开的菜单ID
+const expandedMenus = ref<Set<string | number>>(new Set()) // 存储展开的菜单ID
 
 // 表单数据
 const formData = ref({
@@ -826,7 +842,21 @@ const formData = ref({
 })
 
 // 模块列表
-const modules = ref<any[]>([])
+interface MenuModule {
+  id: number
+  key: string
+  name?: string
+  module_key?: string
+  [key: string]: unknown
+}
+
+interface VisibleMenuRow extends MenuItem {
+  children?: MenuItem[]
+  hasChildren: boolean
+  depth: number
+}
+
+const modules = ref<MenuModule[]>([])
 
 // 搜索表单
 const searchForm = ref({
@@ -836,7 +866,7 @@ const searchForm = ref({
 })
 
 const buildMenuExportParams = () => {
-  const params: Record<string, any> = {}
+  const params: QueryParams = {}
 
   if (searchForm.value.name) {
     params.keyword = searchForm.value.name
@@ -902,27 +932,31 @@ const handleMenuImportChange = async (event: Event) => {
   }
 }
 const menuSearchExpanded = ref(false)
-const activeMobileMenuId = ref<number | null>(null)
-const lastTappedMenuId = ref<number | null>(null)
+const activeMobileMenuId = ref<string | number | null>(null)
+const lastTappedMenuId = ref<string | number | null>(null)
 const lastMenuTapTimestamp = ref(0)
-let sharedPublicMenuPromise: Promise<any[]> | null = null
+let sharedPublicMenuPromise: Promise<MenuItem[]> | null = null
 
-const extractMenuTreeData = (response: any) => {
-  if (!response?.success) {
-    return []
-  }
+const asRecord = (value: unknown): Record<string, unknown> | null => (
+  value !== null && typeof value === 'object' ? value as Record<string, unknown> : null
+)
 
-  const data = response.data
+const extractMenuTreeData = (response: unknown): MenuItem[] => {
+  const responseRecord = asRecord(response)
+  if (responseRecord?.success !== true) return []
+
+  const data = responseRecord.data
   if (Array.isArray(data)) {
-    return data
+    return data as MenuItem[]
   }
 
-  if (Array.isArray(data?.records)) {
-    return data.records
+  const dataRecord = asRecord(data)
+  if (Array.isArray(dataRecord?.records)) {
+    return dataRecord.records as MenuItem[]
   }
 
-  if (Array.isArray(data?.menuPermissions)) {
-    return data.menuPermissions
+  if (Array.isArray(dataRecord?.menuPermissions)) {
+    return dataRecord.menuPermissions as MenuItem[]
   }
 
   return []
@@ -1009,7 +1043,7 @@ const loadMenus = async (_bustCache: boolean = false, silentError: boolean = fal
     }
   } catch (err) {
     // 检查是否是权限错误
-    if (err.response?.status === 403) {
+    if (getRequestErrorStatus(err) === 403) {
       errorMessage.value = '您没有菜单管理权限，请联系管理员分配权限'
       // unified-api 已经处理了权限错误提示，这里不再重复显示
     } else {
@@ -1031,11 +1065,11 @@ const loadMenus = async (_bustCache: boolean = false, silentError: boolean = fal
   }
 }
 
-const toggleMobileMenuActions = (menuId: number) => {
+const toggleMobileMenuActions = (menuId: string | number) => {
   activeMobileMenuId.value = activeMobileMenuId.value === menuId ? null : menuId
 }
 
-const handleMenuRowTap = (menu: any) => {
+const handleMenuRowTap = (menu: MenuItem) => {
   if (!isMobile.value) return
 
   const now = Date.now()
@@ -1074,7 +1108,7 @@ const searchMenus = async () => {
       throw new Error(response?.message || '搜索菜单失败')
     }
   } catch (err) {
-    logger.warn('搜索接口失败，使用公开接口:', err.message)
+    logger.warn('搜索接口失败，使用公开接口:', getRequestErrorMessage(err))
 
     // 如果搜索接口失败，回退到公开接口并应用前端过滤
     try {
@@ -1142,13 +1176,14 @@ const loadModules = async () => {
   try {
     const response = await unifiedApi.get('/modules')
     if (response && response.success) {
+      const responseData = asRecord(response.data)
       const moduleList = Array.isArray(response.data)
         ? response.data
-        : Array.isArray((response.data as any)?.records)
-          ? (response.data as any).records
+        : Array.isArray(responseData?.records)
+          ? responseData.records
           : []
 
-      modules.value = moduleList
+      modules.value = moduleList as MenuModule[]
     } else {
       modules.value = []
     }
@@ -1210,13 +1245,13 @@ watch(() => formData.value.module_key, (newModuleKey) => {
   }
 })
 
-const handleIconSelect = (iconName, icon) => {
+const handleIconSelect = (iconName: string, icon?: { svg?: string }) => {
   formData.value.icon = iconName || ''
   formData.value.icon_svg = icon?.svg || ''
 }
 
 // 切换菜单展开状态
-const toggleMenuExpansion = (menuId) => {
+const toggleMenuExpansion = (menuId: string | number) => {
   if (expandedMenus.value.has(menuId)) {
     expandedMenus.value.delete(menuId)
   } else {
@@ -1225,12 +1260,12 @@ const toggleMenuExpansion = (menuId) => {
 }
 
 // 检查菜单是否展开
-const isMenuExpanded = (menuId) => {
+const isMenuExpanded = (menuId: string | number) => {
   return expandedMenus.value.has(menuId)
 }
 
 // 递归显示子菜单
-const _displayChildren = (children, parentId) => {
+const _displayChildren = (children: MenuItem[] | undefined, parentId: string | number) => {
   if (!children || children.length === 0 || !isMenuExpanded(parentId)) {
     return []
   }
@@ -1240,8 +1275,8 @@ const _displayChildren = (children, parentId) => {
 // 表格使用扁平可见行，由本页统一维护展开状态。
 // 去掉行上的 children 字段，避免 Element Plus 再生成一枚未接入本页状态的树形箭头。
 const visibleMenuRows = computed(() => {
-  const rows: any[] = []
-  const append = (menus: any[], depth = 0) => {
+  const rows: VisibleMenuRow[] = []
+  const append = (menus: MenuItem[], depth = 0) => {
     menus.forEach(menu => {
       rows.push({
         ...menu,
@@ -1304,7 +1339,7 @@ const applyBothMenuWidths = async () => {
     showMenuWidthModal.value = false
   } catch (err) {
     logger.error('应用菜单宽度失败:', err)
-    error('设置失败', err.message || '应用菜单宽度时发生错误')
+    error(`设置失败：${getRequestErrorMessage(err, '应用菜单宽度时发生错误')}`)
   } finally {
     isWidthLoading.value = false
   }
@@ -1503,31 +1538,29 @@ const handleSubmit = async () => {
     let errorTitle = '保存菜单时发生错误'
     let errorDetails = ''
 
-    if (err.response) {
-      const status = err.response.status
-      // 优先使用responseData，如果不存在则使用原始response.data
-      const responseData = err.responseData || err.response.data
+    const status = getRequestErrorStatus(err)
+    const responseData = getRequestErrorPayload(err)
 
-      if (status === 422 && responseData) {
-        // 验证错误，显示具体的错误信息
-        if (responseData.errors && Array.isArray(responseData.errors)) {
-          errorDetails = responseData.errors.join('；')
-        } else if (responseData.message) {
-          errorDetails = responseData.message
-        }
-        errorTitle = '数据验证失败'
-      } else if (status === 400 && responseData) {
-        // 400错误
-        if (responseData.message) {
-          errorDetails = responseData.message
-        }
-        errorTitle = '请求错误'
-      } else if (responseData && responseData.message) {
-        // 其他错误
+    if (status === 422 && responseData) {
+      // 验证错误，显示具体的错误信息
+      if (Array.isArray(responseData.errors)) {
+        errorDetails = responseData.errors.filter((item): item is string => typeof item === 'string').join('；')
+      } else if (typeof responseData.message === 'string') {
         errorDetails = responseData.message
       }
-    } else if (err.message) {
-      errorDetails = err.message
+      errorTitle = '数据验证失败'
+    } else if (status === 400 && responseData) {
+      // 400错误
+      if (typeof responseData.message === 'string') {
+        errorDetails = responseData.message
+      }
+      errorTitle = '请求错误'
+    } else if (responseData && typeof responseData.message === 'string') {
+      // 其他错误
+      errorDetails = responseData.message
+    }
+    if (!errorDetails) {
+      errorDetails = getRequestErrorMessage(err, '')
     }
 
     error(`${errorTitle}: ${errorDetails || '未知错误'}`)

@@ -1,18 +1,12 @@
 import { computed, ref, watch, type Ref } from 'vue'
-
-interface SalaryEmployeeListItem {
-  id: number
-  name?: string | null
-  username?: string | null
-  salary_template_id?: number | null
-}
+import type { SalaryEmployeeOption } from '@/types/salary'
 
 interface SalaryEmployeeTableInstance {
-  toggleRowExpansion: (row: SalaryEmployeeListItem, expanded: boolean) => void
+  toggleRowExpansion: (row: SalaryEmployeeOption, expanded: boolean) => void
 }
 
 interface UseSalaryEmployeeTableOptions {
-  employees: Ref<SalaryEmployeeListItem[]>
+  employees: Ref<SalaryEmployeeOption[]>
   initialMonth: string
   isMobile: Ref<boolean>
 }
@@ -61,7 +55,7 @@ export const useSalaryEmployeeTable = ({
     collapseExpandedEmployee()
   }
 
-  const handleEmployeeRowDblClick = (row: SalaryEmployeeListItem) => {
+  const handleEmployeeRowDblClick = (row: SalaryEmployeeOption) => {
     if (!isMobile.value) return
 
     const shouldExpand = mobileExpandedEmployeeId.value !== row.id
@@ -74,7 +68,7 @@ export const useSalaryEmployeeTable = ({
     mobileExpandedEmployeeId.value = shouldExpand ? row.id : null
   }
 
-  const handleEmployeeRowTap = (row: SalaryEmployeeListItem) => {
+  const handleEmployeeRowTap = (row: SalaryEmployeeOption) => {
     if (!isMobile.value) return
 
     const now = Date.now()

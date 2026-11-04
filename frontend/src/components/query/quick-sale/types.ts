@@ -26,7 +26,7 @@ export interface QuickSaleProps extends ModelValueProps {
   } | null
 }
 
-export interface CustomerOption {
+export interface QuickSaleCustomerOption {
   id: number
   name: string
   phone: string

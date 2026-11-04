@@ -648,7 +648,7 @@
             <span>类型</span><strong>{{ detail.type_name || '未分类' }}</strong>
           </div>
           <div v-if="canViewReminderField('target_mode') || canViewReminderField('target_users')">
-            <span>接收人</span><strong>{{ canViewReminderField('target_mode') && detail.target_mode === 'all' ? '全体员工' : canViewReminderField('target_users') ? detail.targets?.map((item:any) => item.name || item.username).join('、') : '指定员工' }}</strong>
+            <span>接收人</span><strong>{{ formatReminderTargets(detail) }}</strong>
           </div>
           <div v-if="canViewReminderField('repeat_type')">
             <span>规则</span><strong>{{ repeatLabel(detail) }}</strong>
@@ -862,9 +862,9 @@
         >
           <el-input-number
             v-model="typeForm.default_remind_days"
-          :min="0"
-          :max="365"
-          :controls="false"
+            :min="0"
+            :max="365"
+            :controls="false"
           /><span class="input-suffix">天</span>
         </el-form-item>
         <el-form-item
@@ -890,9 +890,9 @@
           label="排序"
         >
           <el-input-number
-          v-model="typeForm.sort_order"
-          :min="0"
-          :controls="false"
+            v-model="typeForm.sort_order"
+            :min="0"
+            :controls="false"
           />
         </el-form-item>
       </el-form>
@@ -916,8 +916,7 @@
 </template>
 
 <script setup lang="ts">
-import { confirmAction } from '@/utils/message-box'
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, type CSSProperties } from 'vue'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { PageHeader, PermissionGate } from '@/components/base'
 import Pagination from '@/components/Pagination.vue'
@@ -925,54 +924,170 @@ import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { usePagePermissions } from '@/composables/usePagePermissions'
-import { unifiedApi as api } from '@/utils/unified-api'
 import { logger } from '@/utils/logger'
+import { getRequestErrorMessage } from '@/utils/api-response'
+import { confirmAction, isMessageBoxCanceled } from '@/utils/message-box'
 import { getActionColumnMinWidth, getTextColumnMinWidth } from '@/utils/table-layout'
-import { canViewReminderField, pickVisibleReminderFields, type ReminderFieldName } from './reminder-field-permissions'
 import { TIME_FORMATS, TimeUtil } from '@/utils/time'
-
-interface ReminderType { id:number; code:string; name:string; default_remind_days:number; color:string; icon:string; sort_order:number; is_active:number|boolean }
-interface ReminderUser { id:number; username:string; name?:string; phone?:string; email?:string; status?:number|string }
-interface ReminderRow { id:number; title:string; content?:string; type_id?:number; type_name?:string; type_color?:string; priority:string; target_mode:string; repeat_type:string; interval_value:number; weekdays_json?:string; year_month?:number; month_day?:number; missing_day_policy?:string; start_at:string; remind_before_days:number; end_type:string; end_at?:string; occurrence_limit?:number; target_count?:number; completed_count?:number; ignored_count?:number; next_occurrence_at?:string; status:string }
+import { unifiedApi as api } from '@/utils/unified-api'
+import {
+  canViewReminderField,
+  pickVisibleReminderFields,
+  type ReminderFieldName
+} from './reminder-field-permissions'
+import type {
+  ReminderDetail,
+  ReminderFormState,
+  ReminderOccurrence,
+  ReminderRow,
+  ReminderSummary,
+  ReminderTargetMode,
+  ReminderType,
+  ReminderTypeFormState,
+  ReminderUser
+} from './types'
 
 const { canView, canCreate, canEdit, canDelete, canManage } = usePagePermissions('reminders')
-const loading = ref(false), saving = ref(false), typeSaving = ref(false), searchExpanded = ref(false)
-const reminders = ref<ReminderRow[]>([]), types = ref<ReminderType[]>([]), users = ref<ReminderUser[]>([])
-const reminderSummary = reactive({ total: 0, active_count: 0, completed_count: 0, ignored_count: 0 })
-const formVisible = ref(false), detailVisible = ref(false), typeManagerVisible = ref(false), typeFormVisible = ref(false)
-const editingId = ref<number|null>(null), detail = ref<any>(null), formRef = ref<FormInstance>()
-const filters = reactive({ keyword:'', type_id:'' as string|number, status:'' })
-const pagination = reactive({ page:1, page_size:20, total:0 })
-const weekdayOptions = [{ value:1,label:'周一' },{ value:2,label:'周二' },{ value:3,label:'周三' },{ value:4,label:'周四' },{ value:5,label:'周五' },{ value:6,label:'周六' },{ value:7,label:'周日' }]
-const targetModeOptions = [{ label:'指定员工',value:'specific' },{ label:'全体员工',value:'all' }]
-const defaultForm = () => ({ type_id:'' as string|number, title:'', content:'', priority:'normal', target_mode:'specific', target_user_ids:[] as number[], repeat_type:'once', interval_value:1, weekdays:[1] as number[], year_month:TimeUtil.now().month()+1, month_day:TimeUtil.now().date(), missing_day_policy:'last-day', start_at:'', remind_before_days:7, end_type:'never', end_at:'', occurrence_limit:10 })
-const form = reactive(defaultForm())
-const typeForm = reactive({ id:0, name:'', default_remind_days:7, color:'#409EFF', sort_order:0 })
-const reminderPayloadFieldMap: Record<string, ReminderFieldName> = {
-  type_id:'type_name', title:'title', content:'content', priority:'priority', target_mode:'target_mode', target_user_ids:'target_users',
-  repeat_type:'repeat_type', interval_value:'interval_value', weekdays:'weekdays', year_month:'repeat_type', month_day:'repeat_type',
-  missing_day_policy:'repeat_type', start_at:'start_at', remind_before_days:'remind_before_days', end_type:'end_type',
-  end_at:'end_at', occurrence_limit:'occurrence_limit'
-}
-const typePayloadFieldMap: Record<string, ReminderFieldName> = {
-  name:'type_name', default_remind_days:'type_default_remind_days', color:'type_color', sort_order:'type_sort_order'
-}
-const formRules: FormRules = { title:[{ required:true,message:'请输入事项标题',trigger:'blur' }], type_id:[{ required:true,message:'请选择事项类型',trigger:'change' }], start_at:[{ required:true,message:'请选择执行日期',trigger:'change' }], target_user_ids:[{ validator:(_r,_v,callback)=> form.target_mode==='specific' && form.target_user_ids.length===0 ? callback(new Error('请选择接收员工')) : callback(),trigger:'change' }], weekdays:[{ validator:(_r,_v,callback)=> form.repeat_type==='weekly' && form.weekdays.length===0 ? callback(new Error('请选择每周执行日期')) : callback(),trigger:'change' }] }
+const loading = ref(false)
+const saving = ref(false)
+const typeSaving = ref(false)
+const searchExpanded = ref(false)
+const reminders = ref<ReminderRow[]>([])
+const types = ref<ReminderType[]>([])
+const users = ref<ReminderUser[]>([])
+const reminderSummary = reactive<ReminderSummary>({
+  total: 0,
+  active_count: 0,
+  completed_count: 0,
+  ignored_count: 0
+})
+const formVisible = ref(false)
+const detailVisible = ref(false)
+const typeManagerVisible = ref(false)
+const typeFormVisible = ref(false)
+const editingId = ref<number | null>(null)
+const detail = ref<ReminderDetail | null>(null)
+const formRef = ref<FormInstance>()
+const filters = reactive({ keyword: '', type_id: '' as string | number, status: '' })
+const pagination = reactive({ page: 1, page_size: 20, total: 0 })
+const weekdayOptions = [
+  { value: 1, label: '周一' },
+  { value: 2, label: '周二' },
+  { value: 3, label: '周三' },
+  { value: 4, label: '周四' },
+  { value: 5, label: '周五' },
+  { value: 6, label: '周六' },
+  { value: 7, label: '周日' }
+]
+const targetModeOptions: Array<{ label: string, value: ReminderTargetMode }> = [
+  { label: '指定员工', value: 'specific' },
+  { label: '全体员工', value: 'all' }
+]
 
-const activeTypes = computed(() => types.value.filter(item => !canViewReminderField('type_is_active') || Boolean(item.is_active)))
-const activeUsers = computed(() => users.value.filter(user => user.status === undefined || user.status === 1 || user.status === '1' || user.status === 'active'))
+const defaultForm = (): ReminderFormState => ({
+  type_id: '',
+  title: '',
+  content: '',
+  priority: 'normal',
+  target_mode: 'specific',
+  target_user_ids: [],
+  repeat_type: 'once',
+  interval_value: 1,
+  weekdays: [1],
+  year_month: TimeUtil.now().month() + 1,
+  month_day: TimeUtil.now().date(),
+  missing_day_policy: 'last-day',
+  start_at: '',
+  remind_before_days: 7,
+  end_type: 'never',
+  end_at: '',
+  occurrence_limit: 10
+})
+const form = reactive<ReminderFormState>(defaultForm())
+const typeForm = reactive<ReminderTypeFormState>({
+  id: 0,
+  name: '',
+  default_remind_days: 7,
+  color: '#409EFF',
+  sort_order: 0
+})
+const reminderPayloadFieldMap: Partial<Record<keyof ReminderFormState, ReminderFieldName>> = {
+  type_id: 'type_name',
+  title: 'title',
+  content: 'content',
+  priority: 'priority',
+  target_mode: 'target_mode',
+  target_user_ids: 'target_users',
+  repeat_type: 'repeat_type',
+  interval_value: 'interval_value',
+  weekdays: 'weekdays',
+  year_month: 'repeat_type',
+  month_day: 'repeat_type',
+  missing_day_policy: 'repeat_type',
+  start_at: 'start_at',
+  remind_before_days: 'remind_before_days',
+  end_type: 'end_type',
+  end_at: 'end_at',
+  occurrence_limit: 'occurrence_limit'
+}
+const typePayloadFieldMap: Partial<Record<keyof ReminderTypeFormState, ReminderFieldName>> = {
+  name: 'type_name',
+  default_remind_days: 'type_default_remind_days',
+  color: 'type_color',
+  sort_order: 'type_sort_order'
+}
+const formRules: FormRules<ReminderFormState> = {
+  title: [{ required: true, message: '请输入事项标题', trigger: 'blur' }],
+  type_id: [{ required: true, message: '请选择事项类型', trigger: 'change' }],
+  start_at: [{ required: true, message: '请选择执行日期', trigger: 'change' }],
+  target_user_ids: [{
+    validator: (_rule, _value, callback) => form.target_mode === 'specific' && form.target_user_ids.length === 0
+      ? callback(new Error('请选择接收员工'))
+      : callback(),
+    trigger: 'change'
+  }],
+  weekdays: [{
+    validator: (_rule, _value, callback) => form.repeat_type === 'weekly' && form.weekdays.length === 0
+      ? callback(new Error('请选择每周执行日期'))
+      : callback(),
+    trigger: 'change'
+  }]
+}
+
+const activeTypes = computed(() => types.value.filter(item => (
+  !canViewReminderField('type_is_active') || Boolean(item.is_active)
+)))
+const activeUsers = computed(() => users.value.filter(user => (
+  user.status === undefined ||
+  user.status === null ||
+  user.status === 1 ||
+  user.status === '1' ||
+  user.status === 'active'
+)))
 let reminderUserSearchSequence = 0
 const activeCount = computed(() => canViewReminderField('status') ? reminderSummary.active_count : 0)
 const completedCount = computed(() => canViewReminderField('completed_count') ? reminderSummary.completed_count : 0)
 const ignoredCount = computed(() => canViewReminderField('ignored_count') ? reminderSummary.ignored_count : 0)
-const showStats = computed(() => ['stats_total','stats_active_count','stats_completed_count','stats_ignored_count'].some(field => canViewReminderField(field as ReminderFieldName)))
-const showSearch = computed(() => ['title','content','type_name','status'].some(field => canViewReminderField(field as ReminderFieldName)))
-const showExecutionSummary = computed(() => canViewReminderField('completed_count') || canViewReminderField('ignored_count'))
-const showActionColumn = computed(() => shouldShowActionColumn(canViewReminderField('operations'), [canEdit.value, canDelete.value]))
-const showTypeActionColumn = computed(() => shouldShowActionColumn(canViewReminderField('type_operations'), [canManage.value]))
+const showStats = computed(() => (
+  ['stats_total', 'stats_active_count', 'stats_completed_count', 'stats_ignored_count'] as ReminderFieldName[]
+).some(canViewReminderField))
+const showSearch = computed(() => (
+  ['title', 'content', 'type_name', 'status'] as ReminderFieldName[]
+).some(canViewReminderField))
+const showExecutionSummary = computed(() => (
+  canViewReminderField('completed_count') || canViewReminderField('ignored_count')
+))
+const showActionColumn = computed(() => shouldShowActionColumn(
+  canViewReminderField('operations'),
+  [canEdit.value, canDelete.value]
+))
+const showTypeActionColumn = computed(() => shouldShowActionColumn(
+  canViewReminderField('type_operations'),
+  [canManage.value]
+))
 const canSaveReminder = computed(() => {
   if (editingId.value) return Object.values(reminderPayloadFieldMap).some(canViewReminderField)
-  const required: ReminderFieldName[] = ['type_name','title','target_mode','repeat_type','start_at']
+  const required: ReminderFieldName[] = ['type_name', 'title', 'target_mode', 'repeat_type', 'start_at']
   if (!required.every(canViewReminderField)) return false
   return form.target_mode !== 'specific' || canViewReminderField('target_users')
 })
@@ -980,36 +1095,95 @@ const canSaveType = computed(() => {
   if (!Object.values(typePayloadFieldMap).some(canViewReminderField)) return false
   return typeForm.id > 0 || (canViewReminderField('type_name') && Boolean(typeForm.name.trim()))
 })
-const intervalUnit = computed(() => ({ daily:'天',weekly:'周',monthly:'月',yearly:'年' } as Record<string,string>)[form.repeat_type] || '')
+const intervalUnit = computed(() => ({
+  daily: '天',
+  weekly: '周',
+  monthly: '月',
+  yearly: '年'
+})[form.repeat_type] || '')
 const reminderActionColumnWidth = computed(() => {
   const buttonCount = 1 + (canEdit.value ? 1 : 0) + (canDelete.value ? 1 : 0)
   return getActionColumnMinWidth(buttonCount)
 })
 const typeNameColumnWidth = computed(() => getTextColumnMinWidth(
-  ['类型', ...(canViewReminderField('type_name') ? types.value.map(item => item.name) : [])],
+  ['类型', ...(canViewReminderField('type_name') ? types.value.map(item => item.name || '') : [])],
   { minWidth: 150, horizontalPadding: 58 }
 ))
 const typeRemindDaysColumnWidth = computed(() => getTextColumnMinWidth(
-  ['默认提前', ...(canViewReminderField('type_default_remind_days') ? types.value.map(item => `${item.default_remind_days} 天`) : [])],
+  [
+    '默认提前',
+    ...(canViewReminderField('type_default_remind_days')
+      ? types.value.map(item => `${Number(item.default_remind_days || 0)} 天`)
+      : [])
+  ],
   { minWidth: 100, horizontalPadding: 28 }
 ))
 const typeSortColumnWidth = computed(() => getTextColumnMinWidth(
-  ['排序', ...(canViewReminderField('type_sort_order') ? types.value.map(item => item.sort_order) : [])],
+  ['排序', ...(canViewReminderField('type_sort_order') ? types.value.map(item => item.sort_order || 0) : [])],
   { minWidth: 72, horizontalPadding: 28 }
 ))
 
-const localDate = (date:ReturnType<typeof TimeUtil.now>) => TimeUtil.format(date, TIME_FORMATS.DATE)
-const localDateTime = (date:ReturnType<typeof TimeUtil.now>) => TimeUtil.format(date, TIME_FORMATS.DATETIME)
-const parseDate = (value:any) => value ? TimeUtil.parse(String(value)) : null
-const formatDate = (value:any) => { const date=parseDate(value); return date ? localDate(date) : '-' }
-const formatDateTime = (value:any) => { const date=parseDate(value); return date ? localDateTime(date) : '' }
-
-const repeatLabel = (row:any) => { if(row.repeat_type==='once') return '不重复'; if(row.repeat_type==='daily') return `每 ${row.interval_value||1} 天`; if(row.repeat_type==='monthly') return `每 ${row.interval_value||1} 月第 ${row.month_day} 日`; if(row.repeat_type==='yearly')return `${Number(row.interval_value||1)===1?'每年':`每 ${row.interval_value} 年`} ${row.year_month||1} 月 ${row.month_day||1} 日`; let days:number[]=[]; try{days=JSON.parse(row.weekdays_json||'[]')}catch{} return `每 ${row.interval_value||1} 周 ${days.map(day=>weekdayOptions.find(item=>item.value===day)?.label).filter(Boolean).join('、')}` }
-const typeBadgeStyle = (row:any) => { const color=canViewReminderField('type_color')?(row.type_color||row.color||'#409EFF'):'#409EFF';return { color,borderColor:`${color}66`,backgroundColor:`${color}14` } }
-const typeFormBadgeStyle = computed(() => typeBadgeStyle({ color:typeForm.color }))
-const recipientStatusLabel = (status:string) => ({ pending:'待处理',read:'已读',snoozed:'稍后提醒',ignored:'已忽略',completed:'已完成' } as Record<string,string>)[status]||status||'-'
-const recipientActionDate = (row:any) => formatDate(row.action_at)
-const detailOccurrences = computed<any[]>(() => Array.isArray(detail.value?.occurrences) ? detail.value.occurrences : [])
+const localDate = (date: ReturnType<typeof TimeUtil.now>) => TimeUtil.format(date, TIME_FORMATS.DATE)
+const localDateTime = (date: ReturnType<typeof TimeUtil.now>) => TimeUtil.format(date, TIME_FORMATS.DATETIME)
+const parseDate = (value: unknown) => value ? TimeUtil.parse(String(value)) : null
+const formatDate = (value: unknown) => {
+  const date = parseDate(value)
+  return date ? localDate(date) : '-'
+}
+const formatDateTime = (value: unknown) => {
+  const date = parseDate(value)
+  return date ? localDateTime(date) : ''
+}
+const parseWeekdays = (value?: string | null): number[] => {
+  try {
+    const parsed: unknown = JSON.parse(value || '[]')
+    if (!Array.isArray(parsed)) return []
+    return parsed
+      .map(item => Number(item))
+      .filter(day => Number.isInteger(day) && day >= 1 && day <= 7)
+  } catch {
+    return []
+  }
+}
+const repeatLabel = (row: ReminderRow) => {
+  const interval = Number(row.interval_value || 1)
+  if (row.repeat_type === 'once') return '不重复'
+  if (row.repeat_type === 'daily') return `每 ${interval} 天`
+  if (row.repeat_type === 'monthly') return `每 ${interval} 月第 ${row.month_day || 1} 日`
+  if (row.repeat_type === 'yearly') {
+    const yearLabel = interval === 1 ? '每年' : `每 ${interval} 年`
+    return `${yearLabel} ${row.year_month || 1} 月 ${row.month_day || 1} 日`
+  }
+  const weekdayLabels = parseWeekdays(row.weekdays_json)
+    .map(day => weekdayOptions.find(item => item.value === day)?.label)
+    .filter((label): label is string => Boolean(label))
+  return `每 ${interval} 周 ${weekdayLabels.join('、')}`
+}
+const typeBadgeStyle = (row: { type_color?: string | null, color?: string | null }): CSSProperties => {
+  const color = canViewReminderField('type_color')
+    ? row.type_color || row.color || '#409EFF'
+    : '#409EFF'
+  return {
+    color,
+    borderColor: `${color}66`,
+    backgroundColor: `${color}14`
+  }
+}
+const typeFormBadgeStyle = computed(() => typeBadgeStyle({ color: typeForm.color }))
+const recipientStatusLabel = (status?: string | null) => ({
+  pending: '待处理',
+  read: '已读',
+  snoozed: '稍后提醒',
+  ignored: '已忽略',
+  completed: '已完成'
+})[status || ''] || status || '-'
+const recipientActionDate = (row: ReminderOccurrence) => formatDate(row.action_at)
+const formatReminderTargets = (row: ReminderDetail) => {
+  if (canViewReminderField('target_mode') && row.target_mode === 'all') return '全体员工'
+  if (!canViewReminderField('target_users')) return '指定员工'
+  return row.targets?.map(item => item.name || item.username).filter(Boolean).join('、') || '-'
+}
+const detailOccurrences = computed<ReminderOccurrence[]>(() => detail.value?.occurrences || [])
 const detailScheduledAtColumnWidth = computed(() => getTextColumnMinWidth(
   ['执行日期', ...detailOccurrences.value.map(item => formatDate(item.scheduled_at))],
   { minWidth: 92, horizontalPadding: 16 }
@@ -1027,7 +1201,11 @@ const detailActionAtColumnWidth = computed(() => getTextColumnMinWidth(
   { minWidth: 92, horizontalPadding: 16 }
 ))
 
-const loadTypes = async () => { if(!canViewReminderField('type_name')&&!canManage.value)return;const response:any=await api.get('/reminders/types'); if(response.success) types.value=Array.isArray(response.data)?response.data:[] }
+const loadTypes = async () => {
+  if (!canViewReminderField('type_name') && !canManage.value) return
+  const response = await api.get<ReminderType[]>('/reminders/types')
+  if (response.success) types.value = Array.isArray(response.data) ? response.data : []
+}
 const loadUsers = async (keyword = '') => {
   if (!canViewReminderField('target_users') || (!canCreate.value && !canManage.value)) return
 
@@ -1035,40 +1213,262 @@ const loadUsers = async (keyword = '') => {
   const selectedIds = new Set(form.target_user_ids)
   const selected = users.value.filter(user => selectedIds.has(user.id))
   try {
-    const response: any = await api.get('/reminders/users', {
+    const response = await api.get<ReminderUser[]>('/reminders/users', {
       params: { keyword: keyword.trim() || undefined, page: 1, page_size: 20 }
     })
     if (sequence !== reminderUserSearchSequence) return
     if (response.success) {
       const results = Array.isArray(response.data) ? response.data : []
-      users.value = [...results, ...selected.filter(user => !results.some((item: ReminderUser) => item.id === user.id))]
+      users.value = [
+        ...results,
+        ...selected.filter(user => !results.some(item => item.id === user.id))
+      ]
     }
   } catch (error) {
     logger.error('加载提醒接收人失败', error)
     ElMessage.error('加载提醒接收人失败')
   }
 }
+const searchReminderUsers = (keyword: string) => {
+  void loadUsers(keyword)
+}
+const loadReminders = async () => {
+  loading.value = true
+  try {
+    const params: Record<string, unknown> = {
+      page: pagination.page,
+      page_size: pagination.page_size
+    }
+    if ((canViewReminderField('title') || canViewReminderField('content')) && filters.keyword) {
+      params.keyword = filters.keyword
+    }
+    if (canViewReminderField('type_name') && filters.type_id) params.type_id = filters.type_id
+    if (canViewReminderField('status') && filters.status) params.status = filters.status
 
-const searchReminderUsers = (keyword: string) => { void loadUsers(keyword) }
-const loadReminders = async () => { loading.value=true; try{ const params:Record<string,unknown>={ page:pagination.page,page_size:pagination.page_size };if((canViewReminderField('title')||canViewReminderField('content'))&&filters.keyword)params.keyword=filters.keyword;if(canViewReminderField('type_name')&&filters.type_id)params.type_id=filters.type_id;if(canViewReminderField('status')&&filters.status)params.status=filters.status;const response:any=await api.get('/reminders',{ params }); if(response.success){reminders.value=Array.isArray(response.data)?response.data:[];pagination.total=Number(response.pagination?.total||0);Object.assign(reminderSummary,{ total:Number(response.summary?.total||0),active_count:Number(response.summary?.active_count||0),completed_count:Number(response.summary?.completed_count||0),ignored_count:Number(response.summary?.ignored_count||0) })} }catch(error){logger.error('加载待办失败',error);ElMessage.error('加载待办失败')}finally{loading.value=false} }
-const handleSearch=()=>{pagination.page=1;loadReminders()}; const resetSearch=()=>{filters.keyword='';filters.type_id='';filters.status='';handleSearch()}; const handlePageChange=(page:number,size:number)=>{pagination.page=page;pagination.page_size=size;loadReminders()}
-const resetForm=()=>Object.assign(form,defaultForm())
-const openCreateDialog=()=>{editingId.value=null;resetForm();form.start_at=localDateTime(TimeUtil.now());formVisible.value=true}
-const openEditDialog=async(row:ReminderRow)=>{const response:any=await api.get(`/reminders/${row.id}`);if(!response.success)return;const data=response.data;editingId.value=row.id;const getters:Record<string,()=>unknown>={ type_id:()=>data.type_id||'',title:()=>data.title||'',content:()=>data.content||'',priority:()=>data.priority||'normal',target_mode:()=>data.target_mode||'specific',target_user_ids:()=>Array.isArray(data.targets)?data.targets.map((item:any)=>item.id):[],repeat_type:()=>data.repeat_type||'once',interval_value:()=>Number(data.interval_value||1),weekdays:()=>{try{return JSON.parse(data.weekdays_json||'[]')}catch{return[1]}},year_month:()=>Number(data.year_month||1),month_day:()=>Number(data.month_day||1),missing_day_policy:()=>data.missing_day_policy||'last-day',start_at:()=>formatDateTime(data.start_at),remind_before_days:()=>Number(data.remind_before_days||0),end_type:()=>data.end_type||'never',end_at:()=>data.end_at?formatDate(data.end_at):'',occurrence_limit:()=>Number(data.occurrence_limit||10) };Object.entries(getters).forEach(([key,getter])=>{const field=reminderPayloadFieldMap[key];if(field&&canViewReminderField(field))(form as Record<string,unknown>)[key]=getter()});if(Array.isArray(data.targets)){users.value=[...data.targets,...users.value.filter(user=>!data.targets.some((target:any)=>target.id===user.id))]}formVisible.value=true}
-const handleTypeChange=(id:any)=>{if(editingId.value)return;const type=types.value.find(item=>item.id===id);if(type)form.remind_before_days=Number(type.default_remind_days||0)}
-const syncRepeatRuleFromStart=()=>{if(!['monthly','yearly'].includes(form.repeat_type))return;const start=parseDate(form.start_at);if(!start?.isValid())return;form.month_day=start.date();form.missing_day_policy='last-day';if(form.repeat_type==='yearly')form.year_month=start.month()+1}
-const normalizeRepeatFields=()=>{if(form.repeat_type==='once')form.end_type='never';if(['daily','weekly'].includes(form.repeat_type))form.start_at=localDateTime(TimeUtil.now());if(form.repeat_type==='weekly'&&!form.weekdays.length)form.weekdays=[1];syncRepeatRuleFromStart()}
-const saveReminder=async()=>{if(!formRef.value||!canSaveReminder.value)return;if(canViewReminderField('repeat_type')&&canViewReminderField('start_at'))syncRepeatRuleFromStart();await formRef.value.validate();saving.value=true;try{const source={ ...form,target_user_ids:form.target_mode==='all'?[]:form.target_user_ids,end_at:form.end_type==='date'?form.end_at:null,occurrence_limit:form.end_type==='count'?form.occurrence_limit:null };const payload=pickVisibleReminderFields(source,reminderPayloadFieldMap);const response:any=editingId.value?await api.put(`/reminders/${editingId.value}`,payload):await api.post('/reminders',payload);if(response.success){ElMessage.success(editingId.value?'待办已更新':'待办已创建');formVisible.value=false;pagination.page=1;await loadReminders()}}catch(error:any){logger.error('保存待办失败',error);ElMessage.error(error?.response?.data?.message||'保存待办失败')}finally{saving.value=false}}
-const deleteReminder=async(row:ReminderRow)=>{try{const target=canViewReminderField('title')?`“${row.title}”`:'';await confirmAction(`确定删除待办${target}吗？历史执行记录将保留。`,'删除确认',{ type:'warning' });const response:any=await api.delete(`/reminders/${row.id}`);if(response.success){ElMessage.success('待办已删除');loadReminders()}}catch(error){if(error!=='cancel')logger.error('删除待办失败',error)}}
-const openDetail=async(row:ReminderRow)=>{const response:any=await api.get(`/reminders/${row.id}`);if(response.success){detail.value=response.data;detailVisible.value=true}}
-const openTypeManager=async()=>{await loadTypes();typeManagerVisible.value=true}
-const handleTypeColorPreview=(color:string|null)=>{if(color&&/^#[0-9a-f]{6}$/i.test(color))typeForm.color=color}
-const openTypeForm=(row?:ReminderType)=>{const base={ id:row?.id||0,name:'',default_remind_days:7,color:'#409EFF',sort_order:0 };Object.assign(typeForm,base);if(row){const values:Record<string,unknown>={ name:row.name,default_remind_days:row.default_remind_days,color:row.color||'#409EFF',sort_order:row.sort_order };Object.entries(values).forEach(([key,value])=>{const field=typePayloadFieldMap[key];if(field&&canViewReminderField(field))(typeForm as Record<string,unknown>)[key]=value})}typeFormVisible.value=true}
-const saveType=async()=>{if(canViewReminderField('type_name')&&!typeForm.name.trim()){ElMessage.warning('请输入类型名称');return}typeSaving.value=true;try{const payload=pickVisibleReminderFields(typeForm,typePayloadFieldMap);const response:any=typeForm.id?await api.put(`/reminders/types/${typeForm.id}`,payload):await api.post('/reminders/types',payload);if(response.success){ElMessage.success('事项类型已保存');typeFormVisible.value=false;loadTypes()}}catch(error:any){ElMessage.error(error?.response?.data?.message||'事项类型保存失败')}finally{typeSaving.value=false}}
-const toggleType=async(row:ReminderType,value:any)=>{try{const response:any=await api.patch(`/reminders/types/${row.id}/toggle`,{ is_active:Boolean(value) });if(response.success){row.is_active=Boolean(value);ElMessage.success('类型状态已更新')}}catch{ElMessage.error('类型状态更新失败')}}
-const deleteType=async(row:ReminderType)=>{try{await confirmAction(`确定删除事项类型“${row.name}”吗？`,'删除确认',{ type:'warning' });const response:any=await api.delete(`/reminders/types/${row.id}`);if(response.success){ElMessage.success('事项类型已删除');await loadTypes()}}catch(error:any){if(error==='cancel'||error==='close')return;ElMessage.error(error?.response?.data?.message||'事项类型删除失败')}}
+    const response = await api.get<ReminderRow[], ReminderSummary>('/reminders', { params })
+    if (response.success) {
+      reminders.value = Array.isArray(response.data) ? response.data : []
+      pagination.total = Number(response.pagination?.total || 0)
+      Object.assign(reminderSummary, {
+        total: Number(response.summary?.total || 0),
+        active_count: Number(response.summary?.active_count || 0),
+        completed_count: Number(response.summary?.completed_count || 0),
+        ignored_count: Number(response.summary?.ignored_count || 0)
+      })
+    }
+  } catch (error) {
+    logger.error('加载待办失败', error)
+    ElMessage.error('加载待办失败')
+  } finally {
+    loading.value = false
+  }
+}
+const handleSearch = () => {
+  pagination.page = 1
+  void loadReminders()
+}
+const resetSearch = () => {
+  filters.keyword = ''
+  filters.type_id = ''
+  filters.status = ''
+  handleSearch()
+}
+const handlePageChange = (page: number, size: number) => {
+  pagination.page = page
+  pagination.page_size = size
+  void loadReminders()
+}
+const resetForm = () => Object.assign(form, defaultForm())
+const openCreateDialog = () => {
+  editingId.value = null
+  resetForm()
+  form.start_at = localDateTime(TimeUtil.now())
+  formVisible.value = true
+}
+const openEditDialog = async (row: ReminderRow) => {
+  const response = await api.get<ReminderDetail>(`/reminders/${row.id}`)
+  if (!response.success || !response.data) return
 
-onMounted(async()=>{await fieldPermissions.init();await Promise.all([loadTypes(),loadUsers()]);await loadReminders()})
+  const data = response.data
+  editingId.value = row.id
+  const values: ReminderFormState = {
+    type_id: data.type_id || '',
+    title: data.title || '',
+    content: data.content || '',
+    priority: data.priority || 'normal',
+    target_mode: data.target_mode || 'specific',
+    target_user_ids: data.targets?.map(item => item.id) || [],
+    repeat_type: data.repeat_type || 'once',
+    interval_value: Number(data.interval_value || 1),
+    weekdays: parseWeekdays(data.weekdays_json).length ? parseWeekdays(data.weekdays_json) : [1],
+    year_month: Number(data.year_month || 1),
+    month_day: Number(data.month_day || 1),
+    missing_day_policy: data.missing_day_policy || 'last-day',
+    start_at: formatDateTime(data.start_at),
+    remind_before_days: Number(data.remind_before_days || 0),
+    end_type: data.end_type || 'never',
+    end_at: data.end_at ? formatDate(data.end_at) : '',
+    occurrence_limit: Number(data.occurrence_limit || 10)
+  }
+  Object.assign(form, pickVisibleReminderFields(values, reminderPayloadFieldMap))
+  if (data.targets) {
+    users.value = [
+      ...data.targets,
+      ...users.value.filter(user => !data.targets?.some(target => target.id === user.id))
+    ]
+  }
+  formVisible.value = true
+}
+const handleTypeChange = (id: string | number) => {
+  if (editingId.value) return
+  const type = types.value.find(item => item.id === Number(id))
+  if (type) form.remind_before_days = Number(type.default_remind_days || 0)
+}
+const syncRepeatRuleFromStart = () => {
+  if (!['monthly', 'yearly'].includes(form.repeat_type)) return
+  const start = parseDate(form.start_at)
+  if (!start?.isValid()) return
+  form.month_day = start.date()
+  form.missing_day_policy = 'last-day'
+  if (form.repeat_type === 'yearly') form.year_month = start.month() + 1
+}
+const normalizeRepeatFields = () => {
+  if (form.repeat_type === 'once') form.end_type = 'never'
+  if (['daily', 'weekly'].includes(form.repeat_type)) form.start_at = localDateTime(TimeUtil.now())
+  if (form.repeat_type === 'weekly' && !form.weekdays.length) form.weekdays = [1]
+  syncRepeatRuleFromStart()
+}
+const saveReminder = async () => {
+  if (!formRef.value || !canSaveReminder.value) return
+  if (canViewReminderField('repeat_type') && canViewReminderField('start_at')) syncRepeatRuleFromStart()
+  await formRef.value.validate()
+  saving.value = true
+  try {
+    const source = {
+      ...form,
+      target_user_ids: form.target_mode === 'all' ? [] : form.target_user_ids,
+      end_at: form.end_type === 'date' ? form.end_at : null,
+      occurrence_limit: form.end_type === 'count' ? form.occurrence_limit : null
+    }
+    const payload = pickVisibleReminderFields(source, reminderPayloadFieldMap)
+    const response = editingId.value
+      ? await api.put<ReminderDetail>(`/reminders/${editingId.value}`, payload)
+      : await api.post<ReminderDetail>('/reminders', payload)
+    if (response.success) {
+      ElMessage.success(editingId.value ? '待办已更新' : '待办已创建')
+      formVisible.value = false
+      pagination.page = 1
+      await loadReminders()
+    }
+  } catch (error) {
+    logger.error('保存待办失败', error)
+    ElMessage.error(getRequestErrorMessage(error, '保存待办失败'))
+  } finally {
+    saving.value = false
+  }
+}
+const deleteReminder = async (row: ReminderRow) => {
+  try {
+    const target = canViewReminderField('title') && row.title ? `“${row.title}”` : ''
+    await confirmAction(`确定删除待办${target}吗？历史执行记录将保留。`, '删除确认', { type: 'warning' })
+    const response = await api.delete<null>(`/reminders/${row.id}`)
+    if (response.success) {
+      ElMessage.success('待办已删除')
+      await loadReminders()
+    }
+  } catch (error) {
+    if (!isMessageBoxCanceled(error)) logger.error('删除待办失败', error)
+  }
+}
+const openDetail = async (row: ReminderRow) => {
+  const response = await api.get<ReminderDetail>(`/reminders/${row.id}`)
+  if (response.success && response.data) {
+    detail.value = response.data
+    detailVisible.value = true
+  }
+}
+const openTypeManager = async () => {
+  await loadTypes()
+  typeManagerVisible.value = true
+}
+const handleTypeColorPreview = (color: string | null) => {
+  if (color && /^#[0-9a-f]{6}$/i.test(color)) typeForm.color = color
+}
+const openTypeForm = (row?: ReminderType) => {
+  const base: ReminderTypeFormState = {
+    id: row?.id || 0,
+    name: '',
+    default_remind_days: 7,
+    color: '#409EFF',
+    sort_order: 0
+  }
+  Object.assign(typeForm, base)
+  if (row) {
+    const values: ReminderTypeFormState = {
+      id: row.id,
+      name: row.name || '',
+      default_remind_days: Number(row.default_remind_days || 0),
+      color: row.color || '#409EFF',
+      sort_order: Number(row.sort_order || 0)
+    }
+    Object.assign(typeForm, pickVisibleReminderFields(values, typePayloadFieldMap))
+  }
+  typeFormVisible.value = true
+}
+const saveType = async () => {
+  if (canViewReminderField('type_name') && !typeForm.name.trim()) {
+    ElMessage.warning('请输入类型名称')
+    return
+  }
+  typeSaving.value = true
+  try {
+    const payload = pickVisibleReminderFields(typeForm, typePayloadFieldMap)
+    const response = typeForm.id
+      ? await api.put<ReminderType>(`/reminders/types/${typeForm.id}`, payload)
+      : await api.post<ReminderType>('/reminders/types', payload)
+    if (response.success) {
+      ElMessage.success('事项类型已保存')
+      typeFormVisible.value = false
+      await loadTypes()
+    }
+  } catch (error) {
+    ElMessage.error(getRequestErrorMessage(error, '事项类型保存失败'))
+  } finally {
+    typeSaving.value = false
+  }
+}
+const toggleType = async (row: ReminderType, value: string | number | boolean) => {
+  try {
+    const response = await api.patch<null>(`/reminders/types/${row.id}/toggle`, {
+      is_active: Boolean(value)
+    })
+    if (response.success) {
+      row.is_active = Boolean(value)
+      ElMessage.success('类型状态已更新')
+    }
+  } catch {
+    ElMessage.error('类型状态更新失败')
+  }
+}
+const deleteType = async (row: ReminderType) => {
+  try {
+    await confirmAction(`确定删除事项类型“${row.name || ''}”吗？`, '删除确认', { type: 'warning' })
+    const response = await api.delete<null>(`/reminders/types/${row.id}`)
+    if (response.success) {
+      ElMessage.success('事项类型已删除')
+      await loadTypes()
+    }
+  } catch (error) {
+    if (isMessageBoxCanceled(error)) return
+    ElMessage.error(getRequestErrorMessage(error, '事项类型删除失败'))
+  }
+}
+
+onMounted(async () => {
+  await fieldPermissions.init()
+  await Promise.all([loadTypes(), loadUsers()])
+  await loadReminders()
+})
 </script>
 
 <style scoped lang="scss">

@@ -1,25 +1,9 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { storage } from '@/services/storage'
 import { logger } from '@/utils/logger'
+import type { ThemeConfig, ThemeMode } from '@/types'
 
-export type ThemeMode = 'light' | 'dark' | 'auto'
 const THEME_MODES: ThemeMode[] = ['light', 'dark', 'auto']
-
-export interface ThemeConfig {
-  mode: ThemeMode
-  primaryColor: string
-  accentColor: string
-  backgroundColor: string
-  textColor: string
-  borderColor: string
-  shadowColor: string
-  sidebarBg: string
-  sidebarText: string
-  headerBg: string
-  cardBg: string
-  inputBg: string
-  hoverBg: string
-}
 
 /**
  * 主题管理 Composable

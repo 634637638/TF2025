@@ -199,7 +199,7 @@
 import { ref, computed, onBeforeUnmount, watch, type CSSProperties } from 'vue'
 import { ElMessage } from 'element-plus'
 import InlineLoading from '@/components/InlineLoading.vue'
-import { scanOptimizer, type DeviceInfo } from '@/utils/scanOptimizer'
+import { scanOptimizer, type ScannerDeviceInfo } from '@/utils/scanOptimizer'
 import type { CancelEmits, UpdateVisibleEmits, VisibleProps } from '@/types/component'
 import { logger } from '@/utils/logger'
 
@@ -265,7 +265,7 @@ const emit = defineEmits<Emits>()
 
 // 响应式数据
 const videoRef = ref<HTMLVideoElement>()
-const deviceInfo = ref<DeviceInfo>({} as DeviceInfo)
+const deviceInfo = ref<ScannerDeviceInfo>({} as ScannerDeviceInfo)
 const statusText = ref('初始化摄像头...')
 const statusClass = ref('status-waiting')
 const statusIcon = ref('fas fa-clock')

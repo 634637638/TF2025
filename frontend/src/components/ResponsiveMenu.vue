@@ -27,10 +27,11 @@
       aria-label="菜单"
       @click.stop.prevent="handleMenuButtonClick"
     >
-      <IconRenderer :svg="menuBarsIcon" aria-hidden="true" />
+      <IconRenderer
+        :svg="menuBarsIcon"
+        aria-hidden="true"
+      />
     </el-button>
-
-
   </div>
 </template>
 

@@ -10,6 +10,7 @@ const ApiResponse = require('../utils/response')
 const sharedService = require('../services/shared.service')
 const { getUploadSubdir, getUploadUrl } = require('../utils/upload-paths')
 const dataMaskingService = require('../services/dataMaskingService')
+const log = require('../utils/log')
 
 const SHARED_FIELD_MODULE_KEY = 'shared_sharedview'
 const SHARED_WRITE_FIELD_IDS = {
@@ -139,8 +140,12 @@ const convertSharedHeicUploads = async files => {
       file.mimetype = 'image/jpeg'
       file.size = fs.statSync(jpgPath).size
     } catch (error) {
-      try { if (fs.existsSync(file.path)) fs.unlinkSync(file.path) } catch (_) {}
-      try { if (fs.existsSync(jpgPath)) fs.unlinkSync(jpgPath) } catch (_) {}
+      try { if (fs.existsSync(file.path)) fs.unlinkSync(file.path) } catch (cleanupError) {
+        log.warn('清理共享 HEIC 源文件失败:', cleanupError)
+      }
+      try { if (fs.existsSync(jpgPath)) fs.unlinkSync(jpgPath) } catch (cleanupError) {
+        log.warn('清理共享 HEIC 转换文件失败:', cleanupError)
+      }
       const uploadError = new Error('HEIC图片转换失败，请换一张图片或先转成JPG后上传')
       uploadError.cause = error
       throw uploadError
@@ -152,7 +157,9 @@ const uploadSharedFiles = (req, res, next) => {
   upload.array('files', 10)(req, res, error => {
     if (!error) return next()
     for (const file of req.files || []) {
-      try { fs.unlinkSync(file.path) } catch (_) {}
+      try { fs.unlinkSync(file.path) } catch (cleanupError) {
+        log.warn('清理共享上传临时文件失败:', cleanupError)
+      }
     }
     if (error instanceof multer.MulterError) {
       if (error.code === 'LIMIT_FILE_SIZE') return ApiResponse.error(res, '单个文件不能超过100MB', 400)
@@ -268,7 +275,9 @@ router.post('/upload', requireAnyPermission(['shared:create', 'shared:edit', 'sh
     for (const file of req.files || []) {
       try {
         if (fs.existsSync(file.path)) fs.unlinkSync(file.path)
-      } catch (_) {}
+      } catch (cleanupError) {
+        log.warn('清理共享上传文件失败:', cleanupError)
+      }
     }
     return handleError(res, error, '附件上传失败')
   }

@@ -38,7 +38,7 @@ const CSRF_CONFIG = {
 
 // ============ 类型定义 ============
 
-interface CSRFToken {
+export interface CSRFToken {
   value: string
   expires: number
   signature: string

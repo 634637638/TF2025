@@ -1843,7 +1843,10 @@ const showAttendanceDetailColumn = computed(() => (
   canViewAttendanceField('attendance_attendanceview', 'overtime_hours')
 ))
 const showAttendanceReasonColumn = computed(() => canViewAttendanceField('attendance_attendanceview', 'reason') && !isMobile.value)
-const showAttendanceStatusColumn = computed(() => canViewAttendanceField('attendance_attendanceview', 'status'))
+const showAttendanceStatusColumn = computed(() => shouldShowActionColumn(
+  canViewAttendanceField('attendance_attendanceview', 'status'),
+  [canApprove.value]
+))
 const showAttendanceApprovalColumn = computed(() => canViewAttendanceField('attendance_attendanceview', 'approval_note') && !isMobile.value)
 const showAttendanceActionField = computed(() => (
   shouldShowActionColumn(

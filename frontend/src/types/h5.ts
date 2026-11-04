@@ -114,7 +114,7 @@ export type SectionStyle = 'default' | 'card' | 'list' | 'grid' | 'carousel' | '
 /**
  * 首页区块
  */
-export interface HomeSection {
+export interface H5HomeSection {
   id: number
   name: string
   type: SectionType
@@ -182,7 +182,7 @@ export interface HomeSectionFilters {
  * 首页区块列表响应
  */
 export interface HomeSectionListResponse {
-  sections: HomeSection[]
+  sections: H5HomeSection[]
   pagination: {
     page: number
     limit: number
@@ -338,7 +338,7 @@ export interface H5HomeConfig {
   version: string
   is_published: boolean
   published_at?: string
-  sections: HomeSection[]
+  sections: H5HomeSection[]
   created_at: string
   updated_at: string
 }

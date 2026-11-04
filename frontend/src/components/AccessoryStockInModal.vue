@@ -599,11 +599,16 @@ import { formatImageUrl } from '@/utils/format'
 import { sortOptionsByOrder } from '@/utils/option-sort'
 import { useAuthStore } from '@/stores/auth'
 import { logger } from '@/utils/logger'
+import { getRequestErrorMessage } from '@/utils/api-response'
 import { isCurrentMobileViewport } from '@/utils/device-detection'
 import type { ModelValueProps, UpdateModelValueEmits, SuccessEmits, CloseEmits } from '@/types/component'
 import Image from './Image.vue'
 import { storage } from '@/services/storage'
-import { buildAccessoryStockInPayload, buildAccessoryUpdatePayload } from './accessory-payload'
+import {
+  buildAccessoryStockInPayload,
+  buildAccessoryUpdatePayload,
+  type AccessoryPayloadSource
+} from './accessory-payload'
 import { fieldPermissions } from '@/composables/useFieldPermissions'
 import {
   canViewAccessoryField,
@@ -612,8 +617,13 @@ import {
 } from './accessory-field-permissions'
 
 // Props
+type AccessoryRecord = Omit<AccessoryPayloadSource, 'status'> & {
+  id: number
+  status?: number | string | boolean
+}
+
 interface Props extends ModelValueProps {
-  accessory?: any
+  accessory?: AccessoryRecord
 }
 
 type Emits = UpdateModelValueEmits & SuccessEmits & CloseEmits
@@ -637,7 +647,7 @@ const visible = computed({
 
 const searching = ref(false)
 const submitting = ref(false)
-const existingAccessory = ref(null)
+const existingAccessory = ref<AccessoryRecord | null>(null)
 const uploadedTempImages = ref<string[]>([])
 
 // 表单数据
@@ -660,7 +670,7 @@ const formData = ref({
   image_url: '',
   total_quantity: 1,
   store_id: null as number | null,
-  distribution: [] as any[],
+  distribution: [] as NonNullable<AccessoryPayloadSource['distribution']>,
   remarks: ''
 })
 
@@ -864,7 +874,7 @@ const handleBarcodeSearch = async () => {
   searching.value = true
   try {
     const encodedBarcode = encodeURIComponent(formData.value.barcode)
-    const response = await unifiedApi.get(`/accessories/barcode/${encodedBarcode}`)
+    const response = await unifiedApi.get<AccessoryRecord>(`/accessories/barcode/${encodedBarcode}`)
     if (response.data) {
       existingAccessory.value = response.data
       const getters:Record<string,()=>unknown>={ accessory_id:()=>response.data.id,name:()=>response.data.name,category:()=>response.data.category,brand_id:()=>response.data.brand_id,model_id:()=>response.data.model_id,color_id:()=>response.data.color_id,supplier_id:()=>response.data.supplier_id,purchase_cost:()=>Number(response.data.purchase_cost||0),sale_price:()=>Number(response.data.sale_price||0),unit:()=>response.data.unit||'个',specifications:()=>response.data.specifications||'' }
@@ -940,7 +950,7 @@ const handleSubmit = async () => {
     emit('success')
   } catch (err) {
     logger.error(isEditMode.value ? '更新失败' : '入库失败', err)
-    ElMessage.error(err.response?.data?.message || (isEditMode.value ? '更新失败' : '入库失败') + '，请重试')
+    ElMessage.error(getRequestErrorMessage(err, `${isEditMode.value ? '更新失败' : '入库失败'}，请重试`))
   } finally {
     submitting.value = false
   }
@@ -1016,7 +1026,7 @@ watch(
         resetFormData()
         formData.value.id=props.accessory.id
         formData.value.accessory_id=props.accessory.id
-        const getters:Record<string,()=>unknown>={ barcode:()=>props.accessory.barcode||'',name:()=>props.accessory.name||'',category:()=>props.accessory.category||'',brand_id:()=>props.accessory.brand_id||null,model_id:()=>props.accessory.model_id||null,color_id:()=>props.accessory.color_id||null,supplier_id:()=>props.accessory.supplier_id||null,purchase_cost:()=>Number(props.accessory.purchase_cost)||0,sale_price:()=>Number(props.accessory.sale_price)||0,unit:()=>props.accessory.unit||'个',specifications:()=>props.accessory.specifications||'',status:()=>props.accessory.status!==undefined?props.accessory.status:1,min_stock:()=>Number(props.accessory.min_stock)||5,image_url:()=>props.accessory.image_url||'',remarks:()=>props.accessory.remarks||'' }
+        const getters:Record<string,()=>unknown>={ barcode:()=>props.accessory.barcode||'',name:()=>props.accessory.name||'',category:()=>props.accessory.category||'',brand_id:()=>props.accessory.brand_id||null,model_id:()=>props.accessory.model_id||null,color_id:()=>props.accessory.color_id||null,supplier_id:()=>props.accessory.supplier_id||null,purchase_cost:()=>Number(props.accessory.purchase_cost)||0,sale_price:()=>Number(props.accessory.sale_price)||0,unit:()=>props.accessory.unit||'个',specifications:()=>props.accessory.specifications||'',status:()=>Number(props.accessory.status)===0?0:1,min_stock:()=>Number(props.accessory.min_stock)||5,image_url:()=>props.accessory.image_url||'',remarks:()=>props.accessory.remarks||'' }
         Object.entries(getters).forEach(([key,getter])=>{const field=accessoryPayloadFieldMap[key];if(field&&canViewAccessoryField(field))(formData.value as Record<string,unknown>)[key]=getter()})
       } else {
         resetFormData()

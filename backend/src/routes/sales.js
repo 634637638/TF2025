@@ -2,7 +2,7 @@ const express = require('express')
 const router = express.Router()
 const { unifiedAuth, requirePermission, requireAnyPermission } = require('../middleware/unified-auth')
 const { getDatabase } = require('../config/database')
-const { generateInvoiceNumber, ensureInvoiceSequenceTable } = require('../utils/invoice-number')
+const { generateInvoiceNumber, prepareInvoiceNumberTransaction } = require('../utils/invoice-number')
 const { normalizeDateTime } = require('../utils/time')
 const { hasColumn } = require('../services/schemaInspector.service')
 const { generateMemberNumber } = require('../utils/member-number')
@@ -741,7 +741,7 @@ router.post('/phone', unifiedAuth, requireAnyPermission(['sales:sell', 'inventor
 
     try {
       // 发票序列表初始化必须在销售事务之前完成，避免建表隐式提交清除事务状态。
-      await ensureInvoiceSequenceTable(conn)
+      await prepareInvoiceNumberTransaction(conn)
       await conn.beginTransaction()
       const supportsSalesPaymentChannel = await hasColumn('sales', 'payment_channel', conn)
 

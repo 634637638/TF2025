@@ -512,7 +512,7 @@ import type {
   SalaryEmployeeAttendanceStats,
   SalaryEmployeeSalesStats
 } from '../salary-employee-data'
-import type { SalaryPayoutRow } from '../useSalaryPayoutTable'
+import type { SalaryPayoutRow } from '@/types/salary'
 import { formatAmount } from '@/utils/format'
 
 type PayoutStatus = 'paid' | 'unpaid'
@@ -559,7 +559,10 @@ const showActionColumn = computed(() => shouldShowActionColumn(
   props.canViewField('salary_salaryrecordsview', 'actions'),
   [props.canCreate, props.canEdit, props.canDelete]
 ))
-const showStatusColumn = computed(() => props.canViewField('salary_salaryrecordsview', 'salary_status'))
+const showStatusColumn = computed(() => shouldShowActionColumn(
+  props.canViewField('salary_salaryrecordsview', 'salary_status'),
+  []
+))
 
 const emit = defineEmits<{
   delete: [row: SalaryPayoutRow]

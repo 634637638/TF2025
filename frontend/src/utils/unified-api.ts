@@ -3,7 +3,7 @@
  * 解决多个API实例冲突问题
  */
 
-import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, AxiosError } from 'axios'
+import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, AxiosError, InternalAxiosRequestConfig } from 'axios'
 import { PermissionMapper } from './permissionMapper'
 import { globalErrorLogger } from './error-logger'
 import { ErrorLevel, ErrorType } from './error-boundary'
@@ -11,11 +11,12 @@ import { clearPersistedAuthData, setBackendDisconnectedState } from './auth-sess
 import { showElementError, showElementNotification, showElementSuccess, showElementWarning } from './element-feedback'
 import { storage } from '@/services/storage'
 import { AUTH_STORAGE_KEYS, CACHE_STORAGE_KEYS, ROUTER_STORAGE_KEYS, SECURITY_STORAGE_KEYS } from '@/constants/storage'
-import type { ApiResponse as GlobalApiResponse } from '@/types'
+import type { ApiResponse } from '@/types'
 import logger from '@/utils/logger'
 import { clearCache as clearPageCache } from '@/composables/usePageCache'
 import type { CacheScope } from '@/composables/page-cache-store'
 import { useLoadingStore } from '@/stores/loading'
+import { extractBlobResponse } from './download-response'
 
 // API基础配置
 const DEFAULT_READ_TIMEOUT = 30000
@@ -54,24 +55,18 @@ export interface RequestConfig extends AxiosRequestConfig {
   transientRetryCount?: number
 }
 
+type InternalRequestConfig = InternalAxiosRequestConfig & RequestConfig
+
 // API响应接口 - 使用全局类型定义
 // 第三方/旧接口响应结构在运行时动态变化；以 JSON.parse 的运行时结果作为单一动态边界。
 type DynamicResponse = ReturnType<typeof JSON.parse>
-export type ApiResponse<T = DynamicResponse> = GlobalApiResponse<T>
+type UnifiedApiResponse<T = DynamicResponse, TSummary = Record<string, unknown>> = ApiResponse<T, TSummary>
 
 /**
  * Axios 响应拦截器会返回响应体本身，文件请求因此可能得到 Blob，也可能得到带 data 的原始响应。
  * 下载和媒体预览统一通过这里解包，避免把 undefined 传给 URL.createObjectURL。
  */
-export function extractBlobResponse(response: unknown): Blob {
-  const payload = response instanceof Blob
-    ? response
-    : (response as { data?: unknown } | null)?.data
-  if (!(payload instanceof Blob)) {
-    throw new Error('下载响应不是有效文件')
-  }
-  return payload
-}
+export { extractBlobResponse } from './download-response'
 
 /**
  * 统一API管理器
@@ -125,9 +120,8 @@ class UnifiedApiManager {
   /**
    * 处理请求
    */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Axios interceptor config is adapter-owned and mutated in place.
-  private async handleRequest(config: any): Promise<any> {
-    const requestConfig = config as RequestConfig
+  private async handleRequest(config: InternalRequestConfig): Promise<InternalRequestConfig> {
+    const requestConfig = config
 
     // 统一 API 默认反馈请求加载状态：首次进入页面由 GlobalLoading 承担。
     // 手动刷新由 v-tf-loading/useRefreshData 抑制全局层；明确不需要反馈的请求仍可传 showLoading: false。
@@ -1408,42 +1402,42 @@ class UnifiedApiManager {
   /**
    * GET请求
    */
-  get<T = DynamicResponse>(url: string, config?: RequestConfig): Promise<ApiResponse<T>> {
+  get<T = DynamicResponse, TSummary = Record<string, unknown>>(url: string, config?: RequestConfig): Promise<UnifiedApiResponse<T, TSummary>> {
     return this.instance.get(url, config)
   }
 
   /**
    * POST请求
    */
-  post<T = DynamicResponse>(url: string, data?: unknown, config?: RequestConfig): Promise<ApiResponse<T>> {
+  post<T = DynamicResponse, TSummary = Record<string, unknown>>(url: string, data?: unknown, config?: RequestConfig): Promise<UnifiedApiResponse<T, TSummary>> {
     return this.instance.post(url, data, config)
   }
 
   /**
    * PUT请求
    */
-  put<T = DynamicResponse>(url: string, data?: unknown, config?: RequestConfig): Promise<ApiResponse<T>> {
+  put<T = DynamicResponse, TSummary = Record<string, unknown>>(url: string, data?: unknown, config?: RequestConfig): Promise<UnifiedApiResponse<T, TSummary>> {
     return this.instance.put(url, data, config)
   }
 
   /**
    * DELETE请求
    */
-  delete<T = DynamicResponse>(url: string, config?: RequestConfig): Promise<ApiResponse<T>> {
+  delete<T = DynamicResponse, TSummary = Record<string, unknown>>(url: string, config?: RequestConfig): Promise<UnifiedApiResponse<T, TSummary>> {
     return this.instance.delete(url, config)
   }
 
   /**
    * PATCH请求
    */
-  patch<T = DynamicResponse>(url: string, data?: unknown, config?: RequestConfig): Promise<ApiResponse<T>> {
+  patch<T = DynamicResponse, TSummary = Record<string, unknown>>(url: string, data?: unknown, config?: RequestConfig): Promise<UnifiedApiResponse<T, TSummary>> {
     return this.instance.patch(url, data, config)
   }
 
   /**
    * 上传文件
    */
-  upload<T = DynamicResponse>(url: string, formData: FormData, config?: RequestConfig): Promise<ApiResponse<T>> {
+  upload<T = DynamicResponse, TSummary = Record<string, unknown>>(url: string, formData: FormData, config?: RequestConfig): Promise<UnifiedApiResponse<T, TSummary>> {
     return this.instance.post(url, formData, {
       ...config,
       headers: {

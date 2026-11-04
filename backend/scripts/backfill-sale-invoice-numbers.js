@@ -4,7 +4,7 @@ const path = require('node:path')
 const dotenv = require('dotenv')
 const mysql = require('mysql2/promise')
 const {
-  ensureInvoiceSequenceTable,
+  prepareInvoiceNumberTransaction,
   generateInvoiceNumber
 } = require('../src/utils/invoice-number')
 
@@ -33,7 +33,7 @@ function getSaleDate(value) {
     throw new Error(`销售记录缺少有效销售日期: ${value}`)
   }
 
-  return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]))
+  return `${match[1]}-${match[2]}-${match[3]}`
 }
 
 async function main() {
@@ -73,7 +73,7 @@ async function main() {
       return
     }
 
-    await ensureInvoiceSequenceTable(db)
+    await prepareInvoiceNumberTransaction(db)
     await db.beginTransaction()
     try {
       const [sales] = await db.execute(`

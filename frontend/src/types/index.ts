@@ -5,13 +5,51 @@
 
 import type { Ref } from 'vue'
 import type { Store, User } from './shared'
+import type { Supplier } from './system'
+export type { QueryParamValue, QueryParams } from './shared'
+export type {
+  DataCheckAllResponse,
+  DataCheckItem,
+  DataCheckKey,
+  DataCheckRecord,
+  DataCheckResult,
+  DataCheckStatistics,
+  DataCleanupResult,
+  DataDuplicateGroup
+} from './data-check'
+export type { PreorderFormDraft } from './order'
+export type {
+  SalesConditionBreakdown,
+  SalesForecastCombination,
+  SalesForecastResponse,
+  SalesForecastTimeSeries
+} from './analytics'
+export type {
+  NationalSubsidyApplyPayload,
+  NationalSubsidyDevice,
+  NationalSubsidyExistingRecord,
+  NationalSubsidyEditForm,
+  NationalSubsidyHandlerInfo,
+  NationalSubsidyPhoneDetail,
+  NationalSubsidyRecord,
+  NationalSubsidyStats,
+  NationalSubsidyStoreStats,
+  NationalSubsidyUploadResponse
+} from './subsidy'
+export type {
+  AccessoryStockWarning,
+  ComprehensiveWarningsData,
+  PhoneStockWarning,
+  PurchaseWarning,
+  SalesWarningSummary
+} from './warnings'
 
 // ===== 基础类型定义 =====
 
 /**
  * API响应基础接口
  */
-export interface ApiResponse<T = unknown> {
+export interface ApiResponse<T = unknown, TSummary = Record<string, unknown>> {
   success: boolean
   message: string
   data?: T
@@ -44,6 +82,9 @@ export interface ApiResponse<T = unknown> {
     }
     [key: string]: unknown
   }
+  summary?: TSummary
+  /** 部分旧接口将汇总数据放在顶层 stats，统一保留兼容字段。 */
+  stats?: TSummary
 }
 
 /**
@@ -110,81 +151,7 @@ export interface Operator {
   sort_order?: number
 }
 
-/**
- * 权限定义
- */
-export interface Permission {
-  id: number
-  name: string
-  code: string
-  description?: string
-  module: string
-  action: string
-  resource?: string
-}
-
-/**
- * 角色定义
- */
-export interface Role {
-  id: number
-  name: string
-  code: string
-  description?: string
-  permissions: Permission[]
-  status: number
-}
-
-// ===== 菜单相关类型 =====
-
-/**
- * 菜单项接口
- */
-export interface MenuItem {
-  id: number
-  name: string
-  url: string | null
-  icon: string | null
-  icon_svg?: string | null
-  icon_source?: string | null
-  icon_is_valid?: number | boolean | null
-  parent_id: number
-  sort_order: number
-  is_active: boolean
-  target: string
-  remarks: string | null
-  created_at: string
-  updated_at: string
-  children?: MenuItem[]
-  expanded?: boolean
-  // 兼容字段
-  key?: string
-  title?: string
-  path?: string
-  enabled?: boolean
-  order?: number
-  status?: number
-  menu_type?: 'menu' | 'directory' | 'button'
-  permission?: string
-}
-
 // ===== 业务相关类型 =====
-
-/**
- * 供应商信息接口
- */
-export interface Supplier {
-  id: number
-  name: string
-  code?: string
-  contact_person?: string
-  contact_phone?: string
-  contact_email?: string
-  address?: string
-  status: number
-  created_at?: string
-  updated_at?: string
-}
 
 /**
  * 手机品牌接口
@@ -833,6 +800,8 @@ export interface Notification {
   title: string
   message?: string
   duration?: number
+  persistent?: boolean
+  timestamp: number
   closable?: boolean
   showClose?: boolean
   position?: 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left' | 'top-center' | 'bottom-center'
@@ -1539,7 +1508,7 @@ export interface PerformanceReport {
 /**
  * 表单验证规则类型
  */
-export interface ValidationRule<T = unknown> {
+export interface FieldValidationRule<T = unknown> {
   required?: boolean
   pattern?: RegExp
   min?: number
@@ -1848,26 +1817,54 @@ export type {
   EmployeeStatus,
   EmployeeFilters,
   EmployeeListResponse,
+  Role,
   RoleForm,
   RoleListResponse,
+  Permission,
   PermissionGroup,
   PermissionTreeNode,
-  SalaryTemplate,
-  DeductionRule,
-  SalaryRecord,
-  SalaryFilters,
-  SalaryListResponse,
-  AttendanceRecordType,
-  AttendanceStatus,
-  AttendanceRecord,
-  AttendanceFilters,
-  AttendanceListResponse,
-  AttendanceStats,
   SubsidyType,
   SubsidyRecord,
   SubsidyFilters,
   SubsidyListResponse
 } from './employee'
+
+export type {
+  DeductionRule,
+  SalaryCommissionType,
+  SalaryEmployeeOption,
+  SalaryFilters,
+  SalaryListResponse,
+  SalaryNumericValue,
+  SalaryPayoutEmployee,
+  SalaryPayoutRecord,
+  SalaryPayoutRow,
+  SalaryPayoutStatus,
+  SalaryRecord,
+  SalaryRecordInput,
+  SalaryRecordStatus,
+  SalarySalesDetail,
+  SalaryTemplate,
+  SalaryTemplateAutoRaiseRule,
+  SalaryTemplateForm,
+  SalaryTemplateInput,
+  SalaryTemplateOption,
+  TemplateFilters
+} from './salary'
+
+export type {
+  AttendanceDashboardStats,
+  AttendanceFilters,
+  AttendanceLeaveBalance,
+  AttendanceLeaveConfig,
+  AttendanceLeaveHistory,
+  AttendanceListResult,
+  AttendancePagination,
+  AttendanceRecord,
+  AttendanceRecordType,
+  AttendanceStats,
+  AttendanceStatus
+} from './attendance'
 
 /**
  * 订单相关类型
@@ -1878,9 +1875,8 @@ export type {
   PaymentMethod,
   OrderType,
   ProductQuality,
-  PreorderStatus,
   PreorderSource,
-  Preorder,
+  PreorderRecord,
   PreorderForm,
   PreorderFilters,
   PreorderListResponse,
@@ -1903,6 +1899,8 @@ export type {
   WholesaleOrderFilters,
   WholesaleOrderListResponse
 } from './order'
+
+export { PreorderStatus } from './order'
 
 /**
  * 维修相关类型
@@ -1935,6 +1933,7 @@ export type {
  * 系统设置相关类型
  */
 export type { Store, User } from './shared'
+export type { Supplier } from './system'
 
 export type {
   SiteSettings,
@@ -1951,7 +1950,7 @@ export type {
   OperationLogListResponse,
   LogStats,
   PermissionLog,
-  ErrorLevel,
+  ErrorLogLevel,
   ErrorLog,
   ErrorLogFilters,
   ErrorLogListResponse,
@@ -1987,7 +1986,7 @@ export type {
   BannerListResponse,
   SectionType,
   SectionStyle,
-  HomeSection,
+  H5HomeSection,
   HomeSectionForm,
   HomeSectionFilters,
   HomeSectionListResponse,
@@ -2037,7 +2036,7 @@ export type {
   MemoryInfo,
   UserInfo,
   SearchSuggestion,
-  ExportConfig,
+  InventoryExportConfig,
   BatchOperation,
   StockAdjustment,
   StockAlert,
@@ -2048,9 +2047,9 @@ export type {
   StockInDetailModalProps,
   StockInEvents,
   UseStockInReturn,
-  PerformanceMetrics as InventoryPerformanceMetrics,
-  ErrorInfo as InventoryErrorInfo,
-  Permission as InventoryPermission,
+  InventoryPerformanceMetrics,
+  InventoryErrorInfo,
+  InventoryPermission,
   UserPermissions
 } from './inventory'
 
@@ -2100,10 +2099,10 @@ export type {
   DashboardConfig,
   DashboardLayout,
   WidgetConfig,
-  FilterConfig as AnalyticsFilterConfig,
+  AnalyticsFilterConfig,
   RealTimeData,
   RealTimeAlert,
-  ExportConfig as AnalyticsExportConfig,
+  AnalyticsExportConfig,
   AnalyticsApiResponse,
   AnalyticsListResponse,
   PerformanceAlert,
@@ -2123,6 +2122,7 @@ export type {
  * 菜单相关类型
  */
 export type {
+  MenuItem,
   MenuConfig,
   MenuState,
   MenuAction,
@@ -2189,3 +2189,15 @@ export type {
   AdvancedFilterProps,
   DateRangePickerProps
 } from './component'
+
+export type {
+  PriceValue,
+  PriceListRow,
+  PriceHistoryRecord,
+  PriceTrendRecord,
+  PriceSyncConfig,
+  PriceMarkupConfig,
+  PriceInventoryRow,
+  PriceReferenceOptions,
+  PriceListEditPayload
+} from './price-list'

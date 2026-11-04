@@ -159,6 +159,11 @@ interface Category {
   count: number
 }
 
+interface IconCategoryCount {
+  category: string
+  count: number | string
+}
+
 defineProps<StringModelValueProps>()
 
 const emit = defineEmits<UpdateStringModelValueEmits>()
@@ -193,7 +198,7 @@ const defaultCategories = [
 const loadIcons = async () => {
   loading.value = true
   try {
-    const response = await unifiedApi.get('/icons', { 
+    const response = await unifiedApi.get<Icon[]>('/icons', {
       params: { 
         limit: 500 
       } 
@@ -212,17 +217,17 @@ const loadIcons = async () => {
 // 加载分类数据
 const loadCategories = async () => {
   try {
-    const response = await unifiedApi.get('/icons/categories')
+    const response = await unifiedApi.get<IconCategoryCount[]>('/icons/categories')
     
     if (response && response.success) {
       const dbCategories = response.data || []
       
       // 合并默认分类和数据库分类
       categories.value = defaultCategories.map(cat => {
-        const dbCat = dbCategories.find((c: any) => c.category === cat.key)
+        const dbCat = dbCategories.find(category => category.category === cat.key)
         return {
           ...cat,
-          count: dbCat ? parseInt(dbCat.count) : 0
+          count: dbCat ? Number.parseInt(String(dbCat.count), 10) : 0
         }
       })
       

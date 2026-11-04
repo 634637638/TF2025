@@ -3,7 +3,10 @@
     class="public-search-box"
     :class="{ 'is-verified': verified, 'is-disabled': disabled }"
   >
-    <el-icon class="public-search-box__icon" aria-hidden="true">
+    <el-icon
+      class="public-search-box__icon"
+      aria-hidden="true"
+    >
       <Search />
     </el-icon>
     <el-input
@@ -26,7 +29,9 @@
       :disabled="disabled"
       @click="emit('clear')"
     >
-      <el-icon aria-hidden="true"><Close /></el-icon>
+      <el-icon aria-hidden="true">
+        <Close />
+      </el-icon>
     </el-button>
     <el-button
       type="primary"

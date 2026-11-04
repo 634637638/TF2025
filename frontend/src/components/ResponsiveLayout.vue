@@ -36,7 +36,10 @@
               aria-label="菜单"
               @click="toggleMobileMenu"
             >
-              <IconRenderer :svg="menuBarsIcon" aria-hidden="true" />
+              <IconRenderer
+                :svg="menuBarsIcon"
+                aria-hidden="true"
+              />
             </el-button>
           </div>
         </div>
@@ -108,8 +111,8 @@
         >
           <el-button
             v-for="(action, index) in fabActions"
-            native-type="button"
             :key="action.id"
+            native-type="button"
             class="fab-button tf-button--fab"
             :class="[`fab-${action.type || 'primary'}`, { 'fab-mini tf-button--fab-mini': index > 0 }]"
             :style="fabButtonStyles(index)"

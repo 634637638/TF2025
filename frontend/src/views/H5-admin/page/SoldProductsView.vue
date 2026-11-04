@@ -460,7 +460,7 @@ const deleteProductImages = async (product: SoldProduct) => {
     await api.delete(`/shop/products/${product.id}/images`)
     ElMessage.success('删除成功')
     await loadSoldProducts()
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error !== 'cancel') {
       logger.error('删除图片失败:', error)
       ElMessage.error('删除图片失败')
@@ -493,7 +493,7 @@ const deleteSingleImage = async (image: SoldProductImage) => {
       await viewImages(selectedProduct.value)
       await loadSoldProducts()
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error !== 'cancel') {
       logger.error('删除图片失败:', error)
       ElMessage.error('删除图片失败')
@@ -535,7 +535,7 @@ const deleteCurrentMedia = async (mediaItem: MediaPreviewItem) => {
       await viewImages(selectedProduct.value)
       await loadSoldProducts()
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error !== 'cancel') {
       ElMessage.error('删除图片失败')
     }
@@ -570,7 +570,7 @@ const deleteAllImages = async () => {
 
     // 重新加载数据
     await loadSoldProducts()
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error !== 'cancel') {
       logger.error('删除图片失败:', error)
       ElMessage.error('删除图片失败')

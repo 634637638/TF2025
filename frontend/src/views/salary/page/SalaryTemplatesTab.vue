@@ -341,24 +341,9 @@ import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import { getActionColumnMinWidth, getTextColumnMinWidth } from '@/utils/table-layout'
 import { formatSalaryNumber } from '../salary-formatters'
+import type { SalaryTemplate } from '@/types/salary'
 
-type NumericValue = string | number | null | undefined
-
-interface SalaryTemplateRow {
-  id: number
-  name?: string | null
-  description?: string | null
-  is_active?: boolean | number | null
-  is_default?: boolean | number | null
-  base_salary?: NumericValue
-  commission_type?: string | null
-  commission_fixed?: NumericValue
-  commission_new_fixed?: NumericValue
-  commission_used_fixed?: NumericValue
-  commission_percentage?: NumericValue
-  overtime_hourly_rate?: NumericValue
-  rest_days?: NumericValue
-}
+type SalaryTemplateRow = Partial<SalaryTemplate> & { id: number, name: string }
 
 interface SalaryTemplateTableInstance {
   toggleRowExpansion: (_row: SalaryTemplateRow, _expanded: boolean) => void

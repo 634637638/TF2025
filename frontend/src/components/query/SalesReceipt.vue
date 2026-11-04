@@ -202,7 +202,9 @@
                 width="72"
                 align="center"
               >
-                <template #default>1</template>
+                <template #default>
+                  1
+                </template>
               </el-table-column>
               <el-table-column
                 label="金额"
@@ -285,7 +287,7 @@ import { loadHtml2Canvas } from '@/utils/html2canvas'
 import { useSiteSettingsStore } from '@/stores/siteSettings'
 import { formatRmbUppercase } from '@/utils/format'
 
-interface ReceiptItem {
+export interface ReceiptItem {
   phone_id: number
   brand: string
   model: string
@@ -297,14 +299,22 @@ interface ReceiptItem {
   isNew: number
 }
 
-interface SearchPhoneResult {
+export interface SearchPhoneResult {
   id: number
+  phone_id?: number
+  brand?: string
   brand_name?: string
+  model?: string
   model_name?: string
+  color?: string
   color_name?: string
+  memory?: string
   memory_size?: string
   imei?: string
+  serial_number?: string
   sale_price?: number | string
+  price?: number | string
+  is_new?: number
 }
 
 interface Props extends VisibleProps {

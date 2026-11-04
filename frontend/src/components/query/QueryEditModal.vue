@@ -491,7 +491,6 @@
               @change="handlePaymentChannelChange"
             />
           </el-form-item>
-
         </div>
 
         <el-form-item label="备注">
@@ -518,6 +517,7 @@ import { ValidationRules } from '@/composables'
 import { useNotification } from '@/composables/useNotification'
 import MobileDialog from '@/components/MobileDialog.vue'
 import CustomerNameLockInput from '@/components/common/CustomerNameLockInput.vue'
+import { resolveNativeTextInput, type NativeInputInstance } from '@/utils/native-input'
 import CustomerSearchDropdown from '@/components/common/CustomerSearchDropdown.vue'
 import { PaymentChannelSelect, PaymentMethodSelect } from '@/components/payment'
 import SectionLoading from '@/components/SectionLoading.vue'
@@ -539,7 +539,7 @@ import {
   searchEmployees
 } from '@/services/reference-options'
 import { PHONE_STATUS_OPTIONS } from '@/constants/phoneStatuses'
-import type { Customer } from '@/types/order'
+import type { OrderCustomer as Customer } from '@/types/order'
 import type { IdNameOption, MemoryOption, ModelOption, ModelValueProps, SuccessEmits, UpdateModelValueEmits, UserOption } from '@/types'
 
 // ==================== 本地类型定义 ====================
@@ -1146,7 +1146,7 @@ const customerNameEditing = ref(false)
 const customerCreating = ref(false)
 const editShowCustomerSearchResults = ref(false)
 const editCustomerSearchTimeout = ref<ReturnType<typeof setTimeout> | null>(null)
-const customerNameInputRef = ref<any>(null)
+const customerNameInputRef = ref<NativeInputInstance | null>(null)
 const customerNameLastTapAt = ref(0)
 const modelOptionsLoading = ref(false)
 let lastLoadToken = 0
@@ -1539,16 +1539,7 @@ const formatCustomerName = () => {
   formData.customer_name = normalizePersonName(formData.customer_name, 20)
 }
 
-const resolveNativeCustomerInput = (source: any): HTMLInputElement | null => {
-  if (!source) return null
-  if (source instanceof HTMLInputElement) return source
-  if (source?.target instanceof HTMLInputElement) return source.target
-  if (source?.input instanceof HTMLInputElement) return source.input
-  if (source?.$el && typeof source.$el.querySelector === 'function') {
-    return source.$el.querySelector('input')
-  }
-  return null
-}
+const resolveNativeCustomerInput = resolveNativeTextInput
 
 const focusCustomerNameInput = (input: HTMLInputElement | null) => {
   if (!input) return

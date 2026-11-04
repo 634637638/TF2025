@@ -1763,7 +1763,7 @@ const cancelPreorder = async (preorder: Preorder) => {
     success('预定单已取消')
     loadPendingPreorders()
     loadStats()
-  } catch (err: any) {
+  } catch (err: unknown) {
     if (err !== 'cancel') {
       error('取消预定单失败')
     }
@@ -1831,7 +1831,7 @@ const cancelMatchedPreorder = async (preorder: Preorder) => {
     success('预定单已取消')
     loadMatchedPreorders()
     loadStats()
-  } catch (err: any) {
+  } catch (err: unknown) {
     if (err !== 'cancel') {
       error('取消预定单失败')
     }
@@ -1859,7 +1859,7 @@ const restorePreorder = async (preorder: Preorder) => {
       : '预定单已恢复，当前无库存，后续入库后将自动匹配')
     loadMatchedPreorders()
     loadStats()
-  } catch (err: any) {
+  } catch (err: unknown) {
     if (err !== 'cancel') {
       error('恢复预定单失败')
     }
@@ -1892,7 +1892,7 @@ const deletePreorder = async (preorder: Preorder) => {
     }
 
     loadStats()
-  } catch (err: any) {
+  } catch (err: unknown) {
     if (err !== 'cancel') {
       error('删除预定单失败')
     }
@@ -1934,14 +1934,14 @@ const formatDateTime = (dateStr: string) => {
 }
 
 // 获取状态标签类型
-const getStatusTagType = (status: PreorderStatus) => {
-  const typeMap: Record<PreorderStatus, any> = {
+const getStatusTagType = (status: PreorderStatus): 'warning' | 'primary' | 'success' | 'danger' | 'info' => {
+  const typeMap: Record<PreorderStatus, 'warning' | 'primary' | 'success' | 'danger'> = {
     [PreorderStatus.PENDING]: 'warning',
     [PreorderStatus.MATCHED]: 'primary',
     [PreorderStatus.DELIVERED]: 'success',
     [PreorderStatus.CANCELLED]: 'danger'
   }
-  return typeMap[status] || ''
+  return typeMap[status] || 'info'
 }
 
 // 获取状态对应的CSS类名

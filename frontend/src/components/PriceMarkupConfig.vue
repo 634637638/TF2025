@@ -379,6 +379,7 @@ import {
 } from '@/api/price-list'
 import type { ModelValueProps, UpdateModelValueEmits } from '@/types/component'
 import { logger } from '@/utils/logger'
+import { getRequestErrorMessage } from '@/utils/api-response'
 
 interface Props extends ModelValueProps {
   config?: PriceMarkupConfig
@@ -426,9 +427,14 @@ const defaultConfig: PriceMarkupConfig = {
   }
 }
 
-function normalizeConfig(raw: any): PriceMarkupConfig {
-  const config = raw?.value && typeof raw.value === 'object' ? raw.value : raw
-  if (!config || typeof config !== 'object') {
+const asRecord = (value: unknown): Record<string, unknown> | null => (
+  value !== null && typeof value === 'object' ? value as Record<string, unknown> : null
+)
+
+function normalizeConfig(raw: unknown): PriceMarkupConfig {
+  const rawConfig = asRecord(raw)
+  const config = asRecord(rawConfig?.value) || rawConfig
+  if (!config) {
     return {
       mode: defaultConfig.mode,
       lowFixed: defaultConfig.lowFixed,
@@ -446,9 +452,8 @@ function normalizeConfig(raw: any): PriceMarkupConfig {
     }
   }
 
-  const wholesaleConfig = config.wholesale && typeof config.wholesale === 'object'
-    ? config.wholesale
-    : {}
+  const wholesaleConfig = asRecord(config.wholesale) || {}
+  const usedConfig = asRecord(config.used) || {}
   const sourceAdjustments = wholesaleConfig.sourceAdjustments
     && typeof wholesaleConfig.sourceAdjustments === 'object'
     ? Object.entries(wholesaleConfig.sourceAdjustments).reduce<Record<string, number>>(
@@ -479,7 +484,7 @@ function normalizeConfig(raw: any): PriceMarkupConfig {
       sourceAdjustments
     },
     used: {
-      adjustment: Math.max(0, Number(config.used?.adjustment ?? defaultConfig.used.adjustment) || 0)
+      adjustment: Math.max(0, Number(usedConfig.adjustment ?? defaultConfig.used.adjustment) || 0)
     }
   }
 }
@@ -652,15 +657,9 @@ const handleSave = async () => {
     } else {
       ElMessage.error(response.message || '保存失败')
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('保存配置失败:', error)
-    if (error.response?.data?.message) {
-      ElMessage.error(error.response.data.message)
-    } else if (error.message) {
-      ElMessage.error(error.message)
-    } else {
-      ElMessage.error('保存配置失败')
-    }
+    ElMessage.error(getRequestErrorMessage(error, '保存配置失败'))
   } finally {
     saving.value = false
   }

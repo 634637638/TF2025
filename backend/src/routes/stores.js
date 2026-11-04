@@ -2,7 +2,10 @@ const express = require('express')
 const router = express.Router()
 const ApiResponse = require('../utils/response')
 const { unifiedAuth, requirePermission, requireAnyPermission, isSuperAdmin } = require('../middleware/unified-auth')
-const { getDatabase, isConnected } = require('../config/database')
+const { isConnected } = require('../config/database')
+const StoreRepository = require('../repositories/store.repository')
+
+const storeRepository = new StoreRepository()
 const { cacheMiddleware, clearCache } = require('../middleware/cache')
 const XLSX = require('xlsx')
 const { CACHE_TTL, PAGINATION } = require('../config/constants')
@@ -22,8 +25,8 @@ const formatStore = row => ({
   updated_at: row.updated_at ? new Date(row.updated_at).toISOString() : null
 })
 
-const selectStoreById = async (connection, id) => {
-  const [stores] = await connection.execute(
+const selectStoreById = async (id) => {
+  const [stores] = await storeRepository.executePrepared(
     `SELECT ${STORE_PUBLIC_COLUMNS}, u.name AS manager_name
        FROM stores s
        LEFT JOIN users u ON u.id = s.manager_id
@@ -33,7 +36,7 @@ const selectStoreById = async (connection, id) => {
   return stores.length > 0 ? formatStore(stores[0]) : null
 }
 
-const resolveManagerAssignment = async (pool, rawManagerId, fallbackPhone = '') => {
+const resolveManagerAssignment = async (rawManagerId, fallbackPhone = '') => {
   const phone = String(fallbackPhone || '').trim()
   if (rawManagerId === undefined || rawManagerId === null || rawManagerId === '') {
     return { manager_id: null, phone }
@@ -44,7 +47,7 @@ const resolveManagerAssignment = async (pool, rawManagerId, fallbackPhone = '') 
     return { error: '请选择有效的门店负责人' }
   }
 
-  const [employees] = await pool.execute(
+  const [employees] = await storeRepository.executePrepared(
     'SELECT id, phone FROM users WHERE id = ? AND status = 1 LIMIT 1',
     [managerId]
   )
@@ -69,7 +72,6 @@ router.get('/', unifiedAuth, requireAnyPermission(['stores:view', 'inventory:vie
       return ApiResponse.error(res, '数据库未连接', 500)
     }
 
-    const pool = getDatabase()
 
     // 如果请求所有数据，用于下拉选择
     if (all === 'true' || all === true) {
@@ -94,7 +96,7 @@ router.get('/', unifiedAuth, requireAnyPermission(['stores:view', 'inventory:vie
         params.push(`%${name}%`)
       }
 
-      const [stores] = await pool.execute(
+      const [stores] = await storeRepository.executePrepared(
         `SELECT s.id, s.name, s.sort_order
            FROM stores s
           WHERE ${conditions.join(' AND ')}
@@ -147,7 +149,7 @@ router.get('/', unifiedAuth, requireAnyPermission(['stores:view', 'inventory:vie
     // 按照 sort_order 排序，如果没有则按 id 降序
     query += ` ORDER BY s.sort_order ASC, s.id DESC LIMIT ${pageSize} OFFSET ${finalOffset}`
 
-    const [stores] = await pool.execute(query, params)
+    const [stores] = await storeRepository.executePrepared(query, params)
 
     // 获取总数 - 修复：添加表别名 s
     let countQuery = 'SELECT COUNT(*) as total FROM stores s'
@@ -158,7 +160,7 @@ router.get('/', unifiedAuth, requireAnyPermission(['stores:view', 'inventory:vie
       countQuery += ' WHERE' + conditions.join(' AND')
     }
 
-    const [countResult] = await pool.execute(countQuery, countParams)
+    const [countResult] = await storeRepository.executePrepared(countQuery, countParams)
     const total = countResult[0].total
 
     const formattedStores = stores.map(formatStore)
@@ -191,7 +193,6 @@ router.get('/export', unifiedAuth, requirePermission('stores:export'), async (re
       return ApiResponse.error(res, '数据库未连接', 500)
     }
 
-    const pool = getDatabase()
     let query = `
       SELECT
         s.id,
@@ -225,7 +226,7 @@ router.get('/export', unifiedAuth, requirePermission('stores:export'), async (re
 
     query += ' ORDER BY s.sort_order ASC, s.id DESC'
 
-    const [stores] = await pool.execute(query, params)
+    const [stores] = await storeRepository.executePrepared(query, params)
     const rows = stores.map(row => ({
       ID: row.id,
       门店名称: row.name || '',
@@ -277,15 +278,14 @@ router.post('/', unifiedAuth, requirePermission('stores:create'), async (req, re
       return ApiResponse.error(res, '数据库未连接', 500)
     }
 
-    const pool = getDatabase()
 
-    const managerAssignment = await resolveManagerAssignment(pool, manager_id, phone)
+    const managerAssignment = await resolveManagerAssignment(manager_id, phone)
     if (managerAssignment.error) {
       return ApiResponse.error(res, managerAssignment.error, 400)
     }
 
     // 检查店铺名称是否已存在
-    const [existingStores] = await pool.execute(
+    const [existingStores] = await storeRepository.executePrepared(
       'SELECT id FROM stores WHERE name = ?',
       [name.trim()]
     )
@@ -294,13 +294,13 @@ router.post('/', unifiedAuth, requirePermission('stores:create'), async (req, re
       return ApiResponse.error(res, `店铺名称"${name}"已存在，请使用其他名称`, 409)
     }
 
-    const [result] = await pool.execute(
+    const [result] = await storeRepository.executePrepared(
       'INSERT INTO stores (name, location, phone, manager_id, status, sort_order) VALUES (?, ?, ?, ?, ?, ?)',
       [name.trim(), address || '', managerAssignment.phone, managerAssignment.manager_id, parseInt(status), parseInt(sort_order)]
     )
 
     if (result.insertId) {
-      const formattedStore = await selectStoreById(pool, result.insertId)
+      const formattedStore = await selectStoreById(result.insertId)
 
       // 清除缓存
       clearCache('/stores')
@@ -334,20 +334,19 @@ router.put('/:id(\\d+)', unifiedAuth, requirePermission('stores:edit'), async (r
       return ApiResponse.error(res, '数据库未连接', 500)
     }
 
-    const pool = getDatabase()
 
-    const managerAssignment = await resolveManagerAssignment(pool, manager_id, phone)
+    const managerAssignment = await resolveManagerAssignment(manager_id, phone)
     if (managerAssignment.error) {
       return ApiResponse.error(res, managerAssignment.error, 400)
     }
 
     // 获取当前店铺的name值
-    const [currentStore] = await pool.execute('SELECT name FROM stores WHERE id = ?', [parseInt(id)])
+    const [currentStore] = await storeRepository.executePrepared('SELECT name FROM stores WHERE id = ?', [parseInt(id)])
     const currentName = currentStore[0]?.name
 
     // 如果name有变化，检查是否与其他记录重复
     if (name && name !== currentName) {
-      const [duplicateCheck] = await pool.execute(
+      const [duplicateCheck] = await storeRepository.executePrepared(
         'SELECT id FROM stores WHERE name = ? AND id != ?',
         [name.trim(), parseInt(id)]
       )
@@ -357,13 +356,13 @@ router.put('/:id(\\d+)', unifiedAuth, requirePermission('stores:edit'), async (r
       }
     }
 
-    const [result] = await pool.execute(
+    const [result] = await storeRepository.executePrepared(
       'UPDATE stores SET name = ?, location = ?, phone = ?, manager_id = ?, status = ?, sort_order = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
       [name.trim(), address || '', managerAssignment.phone, managerAssignment.manager_id, parseInt(status), parseInt(sort_order) || 0, parseInt(id)]
     )
 
     if (result.affectedRows > 0) {
-      const formattedStore = await selectStoreById(pool, Number.parseInt(id, 10))
+      const formattedStore = await selectStoreById(Number.parseInt(id, 10))
 
       // 清除缓存
       clearCache('/stores')
@@ -392,8 +391,7 @@ router.delete('/:id', unifiedAuth, requirePermission('stores:delete'), async (re
       return ApiResponse.error(res, '数据库未连接', 500)
     }
 
-    const pool = getDatabase()
-    const [result] = await pool.execute('DELETE FROM stores WHERE id = ?', [parseInt(id)])
+    const [result] = await storeRepository.executePrepared('DELETE FROM stores WHERE id = ?', [parseInt(id)])
 
     if (result.affectedRows > 0) {
       // 清除缓存
@@ -417,8 +415,7 @@ router.get('/managers', unifiedAuth, requirePermission('stores:view'), async (re
       return ApiResponse.error(res, '数据库未连接', 500)
     }
 
-    const pool = getDatabase()
-    const [managers] = await pool.execute(`
+    const [managers] = await storeRepository.executePrepared(`
       SELECT
         u.id,
         u.name,
@@ -456,7 +453,6 @@ router.get('/stats', unifiedAuth, requirePermission('stores:view'), async (req, 
       return ApiResponse.error(res, '数据库未连接', 500)
     }
 
-    const pool = getDatabase()
     const conditions = []
     const params = []
     const name = String(req.query.name || '').trim()
@@ -471,7 +467,7 @@ router.get('/stats', unifiedAuth, requirePermission('stores:view'), async (req, 
     }
     const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''
 
-    const [result] = await pool.execute(`
+    const [result] = await storeRepository.executePrepared(`
       SELECT COUNT(*) AS total,
         SUM(s.status = 1) AS active,
         SUM(s.status = 0) AS inactive,
@@ -513,8 +509,7 @@ router.put('/batch/reorder', unifiedAuth, requirePermission('stores:edit'), asyn
       return ApiResponse.error(res, '数据库未连接', 500)
     }
 
-    const pool = getDatabase()
-    const connection = await pool.getConnection()
+    const connection = await storeRepository.acquireConnection()
 
     try {
       await connection.beginTransaction()
@@ -562,8 +557,7 @@ router.get('/:id', unifiedAuth, requirePermission('stores:view'), async (req, re
       return ApiResponse.error(res, '数据库未连接', 500)
     }
 
-    const pool = getDatabase()
-    const store = await selectStoreById(pool, Number.parseInt(id, 10))
+    const store = await selectStoreById(Number.parseInt(id, 10))
 
     if (!store) {
       return ApiResponse.notFound(res, '店铺不存在')

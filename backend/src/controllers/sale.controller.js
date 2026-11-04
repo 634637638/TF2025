@@ -253,19 +253,6 @@ class SaleController {
     }
   };
 
-  /**
-   * 生成销售发票号
-   */
-  async generateInvoiceNumber(req, res) {
-    try {
-      const invoiceNumber = this.saleService.generateInvoiceNumber()
-
-      return ApiResponse.success(res, '生成发票号成功', { invoice_number: invoiceNumber })
-    } catch (error) {
-      log.error('生成发票号失败:', error)
-      return ApiResponse.error(res, error.message || '生成发票号失败', 500)
-    }
-  };
 }
 
 module.exports = SaleController

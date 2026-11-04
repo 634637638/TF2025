@@ -137,7 +137,7 @@
               <el-option
                 v-for="operator in operators"
                 :key="operator.id"
-                :label="operator.name || operator.username"
+                :label="String(operator.name || operator.username || '')"
                 :value="operator.id"
               />
             </el-select>
@@ -388,7 +388,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { ElMessage } from 'element-plus'
-import type { FormInstance } from 'element-plus'
+import type { FormInstance, FormItemRule } from 'element-plus'
 import { ValidationRules } from '@/composables'
 import { isValidMobilePhone, normalizePersonName, normalizePhoneDigits } from '@/utils/security'
 import { preorderApi, Preorder } from '@/api/preorder'
@@ -408,7 +408,9 @@ import CustomerSearchDropdown from '@/components/common/CustomerSearchDropdown.v
 import { logger } from '@/utils/logger'
 import { TIME_FORMATS, TimeUtil } from '@/utils/time'
 import { formatAmount } from '@/utils/format'
-import type { ModalProps, SuccessEmits, UpdateVisibleEmits } from '@/types'
+import type { CustomerOption } from '@/services/customer-options'
+import type { ReferenceRecord } from '@/services/reference-options'
+import type { ModalProps, PreorderFormDraft, SuccessEmits, UpdateVisibleEmits } from '@/types'
 
 interface Props extends ModalProps {
   mode?: 'create' | 'edit'
@@ -437,16 +439,20 @@ const submitting = ref(false)
 const customerSearching = ref(false)
 const showCustomerSearch = ref(false)
 
-const customerSearchResults = ref<any[]>([])
-const selectedCustomer = ref<any>(null)
+const customerSearchResults = ref<CustomerOption[]>([])
+const selectedCustomer = ref<CustomerOption | null>(null)
 const customerNameEditing = ref(false)
 const customerNameLastTapAt = ref(0)
 const customerSearchTimeout = ref<number | null>(null)
 const latestSearchKeyword = ref('')
 const baseDataLoaded = ref(false)
 
-const extractCustomerId = (payload: any) => {
-  return payload?.id ?? payload?.data?.id ?? payload?.customer?.id ?? null
+const extractCustomerId = (payload: unknown): number | null => {
+  if (!payload || typeof payload !== 'object') return null
+  const record = payload as { id?: unknown, data?: { id?: unknown }, customer?: { id?: unknown } }
+  const id = record.id ?? record.data?.id ?? record.customer?.id
+  const numericId = Number(id)
+  return Number.isInteger(numericId) && numericId > 0 ? numericId : null
 }
 
 const handleWindowClick = (event: MouseEvent) => {
@@ -457,14 +463,14 @@ const handleWindowClick = (event: MouseEvent) => {
 }
 
 // 下拉数据
-const stores = ref<any[]>([])
-const brands = ref<any[]>([])
-const models = ref<any[]>([])
-const colors = ref<any[]>([])
-const memories = ref<any[]>([])
-const operators = ref<any[]>([])
+const stores = ref<ReferenceRecord[]>([])
+const brands = ref<ReferenceRecord[]>([])
+const models = ref<ReferenceRecord[]>([])
+const colors = ref<ReferenceRecord[]>([])
+const memories = ref<ReferenceRecord[]>([])
+const operators = ref<ReferenceRecord[]>([])
 
-const formData = reactive<any>({
+const formData = reactive<PreorderFormDraft>({
   customer_id: null,
   customer_phone: '',
   customer_name: '',
@@ -504,18 +510,19 @@ const canShowRemainingAmount = computed(() => (
   canViewPreorderField('deposit_amount')
 ))
 
-const formRules = {
+const formRules: Record<string, FormItemRule[]> = {
   customer_phone: [
     ValidationRules.required('请输入手机号'),
     {
-      validator: (_rule: any, value: string, callback: any) => {
+      validator: (_rule: FormItemRule, value: unknown, callback: (_error?: Error) => void) => {
+        const phone = String(value || '')
         if (selectedCustomer.value) {
           callback()
           return
         }
-        if (!value) {
+        if (!phone) {
           callback(new Error('请输入手机号'))
-        } else if (!isValidMobilePhone(value)) {
+        } else if (!isValidMobilePhone(phone)) {
           callback(new Error('请输入有效的11位手机号'))
         } else {
           callback()
@@ -527,14 +534,15 @@ const formRules = {
   customer_name: [
     ValidationRules.required('请输入客户姓名'),
     {
-      validator: (_rule: any, value: string, callback: any) => {
+      validator: (_rule: FormItemRule, value: unknown, callback: (_error?: Error) => void) => {
+        const name = String(value || '')
         if (selectedCustomer.value && !isEditMode.value) {
           callback()
           return
         }
-        if (!value || !value.trim()) {
+        if (!name || !name.trim()) {
           callback(new Error('请输入客户姓名'))
-        } else if (!/^[\u4e00-\u9fa5a-zA-Z\s]{2,20}$/.test(value.trim())) {
+        } else if (!/^[\u4e00-\u9fa5a-zA-Z\s]{2,20}$/.test(name.trim())) {
           callback(new Error('姓名只能包含中文、英文，长度2-20个字符'))
         } else {
           callback()
@@ -551,7 +559,7 @@ const formRules = {
   deposit_amount: [
     ValidationRules.required('请输入定金金额'),
     {
-      validator: (_rule: any, value: any, callback: any) => {
+      validator: (_rule: FormItemRule, value: unknown, callback: (_error?: Error) => void) => {
         const num = Number(value)
         if (value && (isNaN(num) || num <= 0)) {
           callback(new Error('定金金额必须大于0'))
@@ -610,7 +618,7 @@ const loadBaseData = async () => {
     const operatorResponse = await searchOperators({ page: 1, page_size: 20 })
     const operatorData = Array.isArray(operatorResponse.data) ? operatorResponse.data : []
     const currentUser = authStore.user
-    if (currentUser?.id && !operatorData.some((operator: any) => Number(operator.id) === Number(currentUser.id))) {
+    if (currentUser?.id && !operatorData.some(operator => Number(operator.id) === Number(currentUser.id))) {
       operatorData.push({
         id: currentUser.id,
         name: currentUser.name || currentUser.username,
@@ -743,8 +751,8 @@ const saveCustomerNameEdit = async () => {
     formData.customer_name = normalizedName
     selectedCustomer.value.name = normalizedName
     ElMessage.success('客户姓名更新成功')
-  } catch (error: any) {
-    ElMessage.error(error?.response?.data?.message || error?.message || '更新客户失败')
+  } catch (error: unknown) {
+    ElMessage.error(error instanceof Error ? error.message : '更新客户失败')
   } finally {
     customerNameEditing.value = false
   }
@@ -781,7 +789,7 @@ const searchCustomers = async (keyword: string) => {
 }
 
 // 选择客户
-const selectCustomer = (customer: any) => {
+const selectCustomer = (customer: CustomerOption) => {
   selectedCustomer.value = customer
   formData.customer_id = customer.id
   formData.customer_name = normalizePersonName(customer.name, 20)
@@ -892,9 +900,9 @@ const handleSubmit = async () => {
     }
     emit('success')
     handleClose()
-  } catch (err: any) {
+  } catch (err: unknown) {
     logger.error('提交失败:', err)
-    ElMessage.error(err.response?.data?.message || err.message || '操作失败')
+    ElMessage.error(err instanceof Error ? err.message : '操作失败')
   } finally {
     submitting.value = false
   }
@@ -976,7 +984,7 @@ const handleEditSubmit = async () => {
       }
 
       const customers = await searchCustomerOptions(normalizedCustomerPhone, 'generic')
-      const existingCustomer = customers.find((c: any) => normalizeCustomerPhone(c.phone) === normalizedCustomerPhone)
+      const existingCustomer = customers.find(c => normalizeCustomerPhone(c.phone) === normalizedCustomerPhone)
 
       if (existingCustomer) {
         customerId = existingCustomer.id

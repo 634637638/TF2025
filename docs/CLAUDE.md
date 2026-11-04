@@ -45,7 +45,7 @@ TF2025 是一个基于 Vue 3 + Node.js 的手机销售管理综合系统，集�
 - **语言**: TypeScript 5.x
 - **构建**: Vite 7.x
 - **UI**: Element Plus 2.x
-- **状态**: Pinia 2.x
+- **状态**: Pinia 3.x
 - **路由**: Vue Router 4.x
 - **HTTP**: Axios (封装在 unifiedApi)
 - **样式**: SCSS + CSS Variables
@@ -97,7 +97,7 @@ const API_BASE_URL = '/api/v1'
 #### 4.1 统一 API 调用
 ```javascript
 // ✅ 正确：使用 unifiedApi
-import { unifiedApi } from '@/services/unified-api'
+import { unifiedApi } from '@/utils/unified-api'
 
 const getSalesOrders = async (params) => {
   return await unifiedApi.get('/sales/orders', { params })

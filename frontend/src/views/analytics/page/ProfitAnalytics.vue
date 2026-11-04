@@ -1261,12 +1261,49 @@ import { useLoadingState } from '@/composables'
 import { useImportExport } from '@/composables/useImportExport'
 import { unifiedApi } from '@/utils/unified-api'
 import echarts, { ECharts } from '@/utils/echarts'
+import type { CallbackDataParams, EChartsOption, TopLevelFormatterParams } from '@/utils/echarts'
 import { buildCsvContent } from '@/utils/csv-export'
 import { TIME_FORMATS, TimeUtil } from '@/utils/time'
 import { useAnalyticsFieldVisibility } from './useAnalyticsFieldVisibility'
 import type { ProfitAnalyticsProps, LoadingChangeEmits } from '@/types/component'
 import { storage } from '@/composables/core/useLocalStorage'
 import { logger } from '@/utils/logger'
+import { getRequestErrorPayload } from '@/utils/api-response'
+import type { QueryParams } from '@/types'
+
+interface ProfitStoreRow {
+  id?: number | string
+  name?: string | null
+  store_name?: string | null
+  total_revenue?: number | string | null
+  revenue?: number | string | null
+  total_cost?: number | string | null
+  cost?: number | string | null
+  profit?: number | string | null
+  sales_count?: number | string | null
+  count?: number | string | null
+}
+
+interface ProfitEmployeePerformanceRow {
+  id?: number
+  name?: string | null
+  store?: string | null
+  newCount?: number | string | null
+  newAmount?: number | string | null
+  newProfit?: number | string | null
+  usedCount?: number | string | null
+  usedAmount?: number | string | null
+  usedProfit?: number | string | null
+  totalCount?: number | string | null
+  totalAmount?: number | string | null
+  totalProfit?: number | string | null
+}
+
+type ProfitTooltipParam = Pick<CallbackDataParams, 'name' | 'marker' | 'seriesName' | 'value' | 'dataIndex'>
+
+const normalizeTooltipParams = (params: TopLevelFormatterParams): ProfitTooltipParam[] => (
+  (Array.isArray(params) ? params : [params]) as ProfitTooltipParam[]
+)
 
 const props = withDefaults(defineProps<ProfitAnalyticsProps>(), {
   loading: false,
@@ -1367,7 +1404,16 @@ const forecastPeriod = ref('month')
 const forecastScenario = ref('neutral')
 const costViewType = ref('category')
 
-const costAnalysisData = ref([])
+interface CostAnalysisRow {
+  category: string
+  amount: number
+  percentage: number
+  yoy: number
+  mom: number
+  trend: 'up' | 'down' | 'stable'
+}
+
+const costAnalysisData = ref<CostAnalysisRow[]>([])
 const profitTrendSeries = ref<Array<{
   key: string
   label: string
@@ -1560,7 +1606,7 @@ const loadDataWithDates = async (start: string, end: string, showLoadingState = 
       emit('loading-change', true)
     }
 
-    const params: any = {
+    const params: QueryParams = {
       start_date: start,
       end_date: end
     }
@@ -1613,7 +1659,7 @@ const loadDataWithDates = async (start: string, end: string, showLoadingState = 
 }
 
 // 使用指定参数加载全新/二手销售数据
-const loadSalesByConditionWithDates = async (params: any) => {
+const loadSalesByConditionWithDates = async (params: QueryParams) => {
   try {
     const response = await unifiedApi.get('/analytics/sales-by-condition', { params })
     if (response.success && response.data) {
@@ -1637,13 +1683,13 @@ const loadSalesByConditionWithDates = async (params: any) => {
         avgPrice: parseFloat(String(usedResp.avg_price || 0)) || 0
       }
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     logger.error('获取全新/二手销售数据失败:', err)
   }
 }
 
 // 使用指定参数加载调货-划拨数据
-const loadTransferDataWithDates = async (params: any) => {
+const loadTransferDataWithDates = async (params: QueryParams) => {
   try {
     // 转换参数名称：startDate -> start_date, endDate -> end_date
     const transferParams = {
@@ -1667,25 +1713,25 @@ const loadTransferDataWithDates = async (params: any) => {
         allocationProfit: parseFloat(String(response.data.supplier_proxy?.total_profit || 0)) || 0
       }
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     logger.error('获取调货-划拨数据失败:', err)
   }
 }
 
 // 使用指定参数加载品牌销量排行
-const loadBrandRankingsWithDates = async (params: any) => {
+const loadBrandRankingsWithDates = async (params: QueryParams) => {
   try {
     const response = await unifiedApi.get('/analytics/ranking/brands', { params })
     if (response.success && response.data) {
       brandRankings.value = response.data
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     logger.error('获取品牌销量排行失败:', err)
   }
 }
 
 // 使用指定参数加载型号销量排行
-const loadModelRankingsWithDates = async (params: any) => {
+const loadModelRankingsWithDates = async (params: QueryParams) => {
   try {
     const requestParams = {
       ...params,
@@ -1695,12 +1741,12 @@ const loadModelRankingsWithDates = async (params: any) => {
     if (response.success && response.data) {
       modelRankings.value = response.data
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     logger.error('获取型号销量排行失败:', err)
   }
 }
 
-const loadProductProfitRankingsWithDates = async (params: any) => {
+const loadProductProfitRankingsWithDates = async (params: QueryParams) => {
   try {
     const requestParams = {
       ...params,
@@ -1712,7 +1758,7 @@ const loadProductProfitRankingsWithDates = async (params: any) => {
     } else {
       productProfitRankings.value = []
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     logger.error('获取产品利润贡献排行失败:', err)
     productProfitRankings.value = []
   }
@@ -1721,7 +1767,7 @@ const loadProductProfitRankingsWithDates = async (params: any) => {
 // 加载全新/二手销售数据
 const _loadSalesByCondition = async () => {
   try {
-    const params: any = {}
+    const params: QueryParams = {}
     // 处理日期格式 - 确保是 YYYY-MM-DD 格式
     if (startDate.value) {
       // 如果是 YYYY-MM 格式（月份），转换为月初和月末
@@ -1770,10 +1816,9 @@ const _loadSalesByCondition = async () => {
       // 根据全新机和二手机数据计算总盈利数据
       calculateProfitData()
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     logger.error('获取全新/二手销售数据失败:', err)
-    logger.error('错误响应数据:', err.response?.data)
-    logger.error('错误状态:', err.response?.status)
+    logger.error('错误响应数据:', getRequestErrorPayload(err))
   }
 }
 
@@ -1819,7 +1864,7 @@ const brandRankings = ref<Array<{name: string, count: number, amount: number, pe
 // 加载品牌销量排行
 const _loadBrandRankings = async () => {
   try {
-    const params: any = { page_size: 10 }
+    const params: QueryParams = { page_size: 10 }
     // 处理日期格式
     if (startDate.value) {
       if (startDate.value.match(/^\d{4}-\d{2}$/)) {
@@ -1843,10 +1888,9 @@ const _loadBrandRankings = async () => {
     if (response.success && response.data) {
       brandRankings.value = response.data
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     logger.error('获取品牌销量排行失败:', err)
-    logger.error('错误响应数据:', err.response?.data)
-    logger.error('错误状态:', err.response?.status)
+    logger.error('错误响应数据:', getRequestErrorPayload(err))
   }
 }
 
@@ -1856,7 +1900,7 @@ const modelRankings = ref<Array<{name: string, count: number, amount: number, co
 const productProfitRankings = ref<Array<{name: string, count: number, amount: number, cost?: number, profit?: number, percent: number}>>([])
 
 const buildRankingParams = () => {
-  const params: any = { page_size: 10 }
+  const params: QueryParams = { page_size: 10 }
 
   if (startDate.value) {
     if (startDate.value.match(/^\d{4}-\d{2}$/)) {
@@ -1889,10 +1933,9 @@ const _loadModelRankings = async () => {
     if (response.success && response.data) {
       modelRankings.value = response.data
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     logger.error('获取型号销量排行失败:', err)
-    logger.error('错误响应数据:', err.response?.data)
-    logger.error('错误状态:', err.response?.status)
+    logger.error('错误响应数据:', getRequestErrorPayload(err))
   }
 }
 
@@ -1907,7 +1950,7 @@ const _loadProductProfitRankings = async () => {
     } else {
       productProfitRankings.value = []
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     logger.error('获取产品利润贡献排行失败:', err)
     productProfitRankings.value = []
   }
@@ -1916,13 +1959,13 @@ const _loadProductProfitRankings = async () => {
 // 员工业绩数据
 const performanceTimeType = ref('month')
 const performanceViewType = ref('sales')
-const employeePerformanceData = ref<any[]>([])
+const employeePerformanceData = ref<ProfitEmployeePerformanceRow[]>([])
 
 // 门店利润数据
-const storeProfitList = ref<Array<{id: number, name: string, profit: number}>>([])
+const storeProfitList = ref<ProfitStoreRow[]>([])
 const rankedStoreProfits = computed(() => {
   return [...storeProfitList.value]
-    .map((store: any) => {
+    .map(store => {
       const revenue = parseFloat(String(store.total_revenue ?? store.revenue ?? 0)) || 0
       const cost = parseFloat(String(store.total_cost ?? store.cost ?? 0)) || 0
       const profit = parseFloat(String(store.profit ?? (revenue - cost))) || 0
@@ -1982,7 +2025,7 @@ const averageProductUnitProfit = computed(() => {
 })
 const storeComparisonData = computed(() => {
   return [...storeProfitList.value]
-    .map((store: any) => {
+    .map(store => {
       const revenue = parseFloat(String(store.total_revenue ?? store.revenue ?? 0)) || 0
       const cost = parseFloat(String(store.total_cost ?? store.cost ?? 0)) || 0
       const profit = parseFloat(String(store.profit ?? (revenue - cost))) || 0
@@ -2043,7 +2086,7 @@ const loadProfitData = async (showLoadingState = true) => {
     }
 
     // 构建查询参数 - 处理日期格式
-    const params: any = {}
+    const params: QueryParams = {}
     if (startDate.value) {
       // 如果是 YYYY-MM 格式（月份），转换为 YYYY-MM-DD
       if (startDate.value.match(/^\d{4}-\d{2}$/)) {
@@ -2253,10 +2296,11 @@ const updateProfitTrendChart = () => {
     tooltip: {
       trigger: 'axis',
       axisPointer: { type: 'cross' },
-      formatter: (params: any) => {
-        let result = `${params[0].name}<br/>`
-        params.forEach((item: any) => {
-          result += `${item.marker}${item.seriesName}: ¥${formatNumber(item.value)}<br/>`
+      formatter: (params: TopLevelFormatterParams) => {
+        const items = normalizeTooltipParams(params)
+        let result = `${items[0]?.name ?? ''}<br/>`
+        items.forEach(item => {
+          result += `${item.marker ?? ''}${item.seriesName ?? ''}: ¥${formatNumber(Number(item.value ?? 0))}<br/>`
         })
         return result
       }
@@ -2338,8 +2382,8 @@ const updateProductProfitChart = () => {
     tooltip: {
       trigger: 'axis',
       axisPointer: { type: 'cross' },
-      formatter: (params: any) => {
-        const dataIndex = params[0].dataIndex
+      formatter: (params: TopLevelFormatterParams) => {
+        const dataIndex = normalizeTooltipParams(params)[0]?.dataIndex ?? 0
         const item = data[dataIndex]
         return `
           <div class="p-2">
@@ -2381,7 +2425,7 @@ const updateProductProfitChart = () => {
       type: 'value',
       name: '金额(元)',
       axisLabel: {
-        formatter: (value: string) => {
+        formatter: (value: number) => {
           return (Number(value) / 10000).toFixed(1) + '万'
         }
       }
@@ -2450,12 +2494,12 @@ const updateStoreComparison = () => {
   const maxProfit = Math.max(...storeData.map(s => s.profit)) * 1.2 || 200000
   const maxMargin = Math.max(...storeData.map(s => s.margin)) * 1.2 || 40
 
-  const option: any = {
+  const option: EChartsOption = {
     tooltip: {
       trigger: 'item',
-      formatter: (params: any) => {
+      formatter: (params: TopLevelFormatterParams) => {
+        const dataIndex = normalizeTooltipParams(params)[0]?.dataIndex ?? 0
         if (storeComparisonType.value === 'bar') {
-          const dataIndex = params.dataIndex
           const item = storeData[dataIndex]
           return `
             <div class="p-2">
@@ -2468,7 +2512,6 @@ const updateStoreComparison = () => {
             </div>
           `
         } else {
-          const dataIndex = params.dataIndex
           const item = storeData[dataIndex]
           return `
             <div class="p-2">
@@ -2511,7 +2554,7 @@ const updateStoreComparison = () => {
       type: 'value',
       name: '金额(元)',
       axisLabel: {
-        formatter: (value: string) => {
+        formatter: (value: number) => {
           return (Number(value) / 10000).toFixed(1) + '万'
         }
       }
@@ -2687,10 +2730,11 @@ const updateForecastChart = () => {
   const option = {
     tooltip: {
       trigger: 'axis',
-      formatter: (params: any) => {
-        let result = `${params[0].name}<br/>`
-        params.forEach((item: any) => {
-          result += `${item.marker}${item.seriesName}: ¥${formatNumber(item.value)}<br/>`
+      formatter: (params: TopLevelFormatterParams) => {
+        const items = normalizeTooltipParams(params)
+        let result = `${items[0]?.name ?? ''}<br/>`
+        items.forEach(item => {
+          result += `${item.marker ?? ''}${item.seriesName ?? ''}: ¥${formatNumber(Number(item.value ?? 0))}<br/>`
         })
         return result
       }
@@ -2712,7 +2756,7 @@ const updateForecastChart = () => {
       type: 'value',
       name: '预测利润(元)',
       axisLabel: {
-        formatter: (value: string) => {
+        formatter: (value: number | string) => {
           return (Number(value) / 10000).toFixed(0) + '万'
         }
       }
@@ -2844,7 +2888,7 @@ const exportCostAnalysis = () => {
 
   const csvContent = buildCsvContent(
     ['成本类别', '金额', '占比(%)', '同比(%)', '环比(%)', '趋势', '视图类型'],
-    costAnalysisData.value.map((row: any) => ([
+    costAnalysisData.value.map(row => ([
       getCostLabel(row.category),
       row.amount ?? 0,
       row.percentage ?? 0,
@@ -2908,7 +2952,7 @@ const loadStoreProfit = async () => {
       return
     }
 
-    const params: any = {}
+    const params: QueryParams = {}
     if (startDate.value) {
       if (startDate.value.match(/^\d{4}-\d{2}$/)) {
         params.start_date = startDate.value + '-01'
@@ -2942,9 +2986,9 @@ const loadStoreProfit = async () => {
     } else {
       storeProfitList.value = []
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     logger.error('获取门店利润数据失败:', err)
-    logger.error('错误详情:', err.response?.data)
+    logger.error('错误详情:', getRequestErrorPayload(err))
     // 如果API不存在或失败，使用空数组
     storeProfitList.value = []
   }
@@ -2953,7 +2997,7 @@ const loadStoreProfit = async () => {
 // 加载员工业绩数据
 const loadEmployeePerformance = async () => {
   try {
-    const params: any = {}
+    const params: QueryParams = {}
     // 处理日期格式
     if (startDate.value) {
       if (startDate.value.match(/^\d{4}-\d{2}$/)) {
@@ -2977,7 +3021,7 @@ const loadEmployeePerformance = async () => {
     if (response.success && response.data) {
       employeePerformanceData.value = response.data
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     logger.error('获取员工业绩数据失败:', err)
   }
 }
@@ -2999,7 +3043,7 @@ const exportPerformance = () => {
 
   const csvContent = buildCsvContent(
     ['员工姓名', '所属店铺', '全新销量', '全新销售额', '全新利润', '二手销量', '二手销售额', '二手利润', '总销量', '总销售额', '总利润'],
-    employeePerformanceData.value.map((row: any) => ([
+    employeePerformanceData.value.map(row => ([
       row.name || '',
       row.store || '',
       row.newCount ?? 0,

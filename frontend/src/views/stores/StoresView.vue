@@ -685,7 +685,6 @@ import unifiedApi from '@/utils/unified-api'
 import { extractResponseData } from '@/utils/api-response'
 import Toast from '../../components/Toast.vue'
 import Pagination from '../../components/Pagination.vue'
-import InlineLoading from '@/components/InlineLoading.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import ImportExportActions from '@/components/business/ImportExportActions.vue'
@@ -703,7 +702,7 @@ import { handleApiErrorWithPermission } from '@/utils/apiPermissionError'
 import { useMobile } from '@/composables/mobile'
 import { useLatestRequest } from '@/composables/useLatestRequest'
 import type { Store, StoreFormData } from '@/types/system'
-import type { User } from '@/types'
+import type { QueryParams, User } from '@/types'
 import { logger } from '@/utils/logger'
 import { useElementTableSortable } from '@/composables/useElementTableSortable'
 
@@ -801,7 +800,7 @@ const showEditModal = ref(false)
 const showViewModal = ref(false)
 const currentEditingId = ref<number | null>(null)
 const selectedStore = ref<Store | null>(null)
-const storesTableRef = ref<any>(null)
+const storesTableRef = ref<unknown>(null)
 const mobileActionRowId = ref<string | null>(null)
 const lastTappedRowId = ref<string | null>(null)
 const lastTapTimestamp = ref(0)
@@ -817,8 +816,8 @@ const formatRoleLabel = (role: unknown) => {
   if (!role) return ''
   if (typeof role === 'string') return role
   if (typeof role === 'object') {
-    const roleRecord = role as Record<string, any>
-    return roleRecord.name || roleRecord.code || ''
+    const roleRecord = role as Record<string, unknown>
+    return String(roleRecord.name || roleRecord.code || '')
   }
   return ''
 }
@@ -932,7 +931,7 @@ const loadStores = async () => {
   const request = storeListRequest.nextRequest()
 
   try {
-    const params: any = {}
+    const params: QueryParams = {}
     if (searchForm.name) params.name = searchForm.name
     if (searchForm.status !== '') params.status = searchForm.status
     params.page = pagination.page
@@ -949,11 +948,16 @@ const loadStores = async () => {
 
     if (response.success) {
       // unifiedApi 已解包一层，直接使用 extractResponseData
-      const responseData = extractResponseData<any>(response)
-      const storesData = Array.isArray(responseData) ? responseData : (responseData.data || [])
+      const responseData = extractResponseData<unknown>(response)
+      const payload = responseData && typeof responseData === 'object' && !Array.isArray(responseData)
+        ? responseData as { data?: unknown; pagination?: { total?: number; total_pages?: number } }
+        : null
+      const storesData = Array.isArray(responseData)
+        ? responseData as Store[]
+        : Array.isArray(payload?.data) ? payload.data as Store[] : []
       stores.value = storesData
-      pagination.total = Number(responseData?.pagination?.total) || storesData.length
-      pagination.total_pages = Number(responseData?.pagination?.total_pages) || 1
+      pagination.total = Number(payload?.pagination?.total) || storesData.length
+      pagination.total_pages = Number(payload?.pagination?.total_pages) || 1
       await loadStats()
     } else {
       stores.value = []
@@ -961,7 +965,7 @@ const loadStores = async () => {
       pagination.total_pages = 1
       showError(response.message || '加载门店数据失败')
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     if (storeListRequest.isCanceledError(err)) {
       return
     }
@@ -986,15 +990,18 @@ const fetchManagerOptions = async (notifyOnError: boolean) => {
       throw new Error(response.message || '获取员工列表失败')
     }
 
-    const employees = extractResponseData<any[]>(response)
-    users.value = (Array.isArray(employees) ? employees : []).map(employee => ({
-      id: Number(employee.id),
-      username: String(employee.username || ''),
-      name: String(employee.name || employee.username || ''),
-      phone: String(employee.phone || ''),
-      role: String(employee.role || employee.roles || ''),
-      status: 'active' as const
-    }))
+    const employees = extractResponseData<unknown[]>(response)
+    users.value = (Array.isArray(employees) ? employees : []).map(employee => {
+      const data = employee && typeof employee === 'object' ? employee as Record<string, unknown> : {}
+      return {
+        id: Number(data.id || 0),
+        username: String(data.username || ''),
+        name: String(data.name || data.username || ''),
+        phone: String(data.phone || ''),
+        role: String(data.role || data.roles || ''),
+        status: 'active' as const
+      }
+    })
   } catch (error) {
     logger.error('获取门店负责人选项失败:', error)
     users.value = []
@@ -1020,7 +1027,7 @@ const loadStoresSilent = async () => {
   const request = storeListRequest.nextRequest()
 
   try {
-    const params: any = {}
+    const params: QueryParams = {}
     if (searchForm.name) params.name = searchForm.name
     if (searchForm.status !== '') params.status = searchForm.status
     params.page = pagination.page
@@ -1036,11 +1043,16 @@ const loadStoresSilent = async () => {
     }
 
     if (response.success) {
-      const responseData = extractResponseData<any>(response)
-      const storesData = Array.isArray(responseData) ? responseData : (responseData.data || [])
+      const responseData = extractResponseData<unknown>(response)
+      const payload = responseData && typeof responseData === 'object' && !Array.isArray(responseData)
+        ? responseData as { data?: unknown; pagination?: { total?: number; total_pages?: number } }
+        : null
+      const storesData = Array.isArray(responseData)
+        ? responseData as Store[]
+        : Array.isArray(payload?.data) ? payload.data as Store[] : []
       stores.value = storesData
-      pagination.total = Number(responseData?.pagination?.total) || storesData.length
-      pagination.total_pages = Number(responseData?.pagination?.total_pages) || 1
+      pagination.total = Number(payload?.pagination?.total) || storesData.length
+      pagination.total_pages = Number(payload?.pagination?.total_pages) || 1
       await loadStats()
     }
   } catch (error) {
@@ -1150,7 +1162,7 @@ const deleteStore = async (store: Store) => {
     } else {
       showError(result.message || '门店删除失败')
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     logger.error('删除门店失败:', err)
     // 使用统一的权限错误处理
     handleApiErrorWithPermission(err, '删除门店失败', '店铺管理', 'delete')
@@ -1245,7 +1257,7 @@ const saveStore = async () => {
         showError(result.message || '门店创建失败')
       }
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     // 使用统一的权限错误处理
     const operation = (showEditModal.value && currentEditingId.value) ? 'edit' : 'create'
     handleApiErrorWithPermission(err, '保存门店失败', '店铺管理', operation)
@@ -1415,7 +1427,7 @@ const saveSortOrder = async () => {
     if (response.success) {
       showSuccess('排序已保存')
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     // 使用统一的权限错误处理
     handleApiErrorWithPermission(err, '保存排序失败', '店铺管理', 'edit')
   } finally {

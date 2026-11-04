@@ -496,7 +496,6 @@ import { useRefreshData } from '@/composables/useRefreshData'
 import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { useAuthStore } from '@/stores/auth'
 import Pagination from '../../components/Pagination.vue'
-import InlineLoading from '@/components/InlineLoading.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import { PermissionGate, PageHeader } from '@/components/base'
@@ -507,7 +506,9 @@ import { useLatestRequest } from '@/composables/useLatestRequest'
 import { useElementTableSortable } from '@/composables/useElementTableSortable'
 import { logger } from '@/utils/logger'
 import { formatDateTime as formatGlobalDateTime } from '@/utils/format'
+import { getRequestErrorMessage, getRequestErrorPayload, getRequestErrorStatus } from '@/utils/api-response'
 import type { Color } from '@/types'
+import type { QueryParams } from '@/types/shared'
 
 // 获取路由实例
 const _router = useRouter()
@@ -572,7 +573,7 @@ const showStatsCards = computed(() => (
 const submitting = ref(false)
 const savingOrder = ref(false)
 const tableLoading = ref(true)
-const colorsTableRef = ref<any>(null)
+const colorsTableRef = ref<unknown>(null)
 const mobileActionRowId = ref<string | null>(null)
 const lastTappedRowId = ref<string | null>(null)
 const lastTapTimestamp = ref(0)
@@ -699,7 +700,7 @@ const loadColors = async (_bustCache = false, silentError = false, _showLoadingS
   }
 
   try {
-    const params: any = {
+    const params: QueryParams = {
       page: pagination.value.page,
       page_size: pagination.value.page_size,
       sort_by: 'sort_order',
@@ -742,7 +743,7 @@ const loadColors = async (_bustCache = false, silentError = false, _showLoadingS
         error(`获取颜色列表失败: ${response.message || '未知错误'}`)
       }
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     if (colorListRequest.isCanceledError(err)) {
       return
     }
@@ -847,21 +848,21 @@ const deleteColor = async (color: Color) => {
     } else {
       error(`删除颜色失败: ${response.message || '未知错误'}`)
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     logger.error('删除颜色失败:', err)
 
     // 处理权限错误 - 使用友好的权限提示
-    if (err.response?.status === 403) {
+    if (getRequestErrorStatus(err) === 403) {
       showDeleteDenied('颜色管理', 'colors:delete')
-    } else if (err.response?.status === 401) {
+    } else if (getRequestErrorStatus(err) === 401) {
       error('认证失败：您的登录状态已过期，请重新登录')
-    } else if (err.response?.status === 404) {
+    } else if (getRequestErrorStatus(err) === 404) {
       error('删除失败：颜色不存在或已被删除')
     } else {
       // 避免重复显示错误信息
-      const errorMessage = err.response?.data?.message || err.message || '未知错误'
-      if (!errorMessage.includes('Network Error') || !err.response?.status) {
-        error('删除颜色失败', errorMessage)
+      const errorMessage = getRequestErrorMessage(err, '未知错误')
+      if (!errorMessage.includes('Network Error') || !getRequestErrorStatus(err)) {
+        error(`删除颜色失败：${errorMessage}`)
       }
     }
   }
@@ -955,28 +956,33 @@ const submitForm = async () => {
         error('更新颜色失败', response.message || '未知错误')
       }
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     logger.error('提交表单失败:', err)
 
     // 处理权限错误
-    if (err.response?.status === 403) {
+    if (getRequestErrorStatus(err) === 403) {
       if (showCreateModal.value) {
         showCreateDenied('颜色管理', 'colors:create')
       } else {
         showEditDenied('颜色管理', 'colors:edit')
       }
-    } else if (err.response?.status === 401) {
+    } else if (getRequestErrorStatus(err) === 401) {
       error('认证失败：您的登录状态已过期，请重新登录')
-    } else if (err.response?.status === 422) {
+    } else if (getRequestErrorStatus(err) === 422) {
       // 表单验证错误
-      const errors = err.response.data.errors || {}
-      const errorMessages = Object.values(errors).flat().join('；')
+      const validationErrors = getRequestErrorPayload(err)?.errors
+      const errorMessages = validationErrors && typeof validationErrors === 'object'
+        ? Object.values(validationErrors as Record<string, unknown>)
+          .flatMap(value => Array.isArray(value) ? value : [value])
+          .filter((value): value is string => typeof value === 'string')
+          .join('；')
+        : ''
       error(`表单验证失败: ${errorMessages || '请检查输入数据是否正确'}`)
     } else {
       // 避免重复显示错误信息
-      const errorMessage = err.response?.data?.message || err.message || '未知错误'
-      if (!errorMessage.includes('Network Error') || !err.response?.status) {
-        error('操作失败', errorMessage)
+      const errorMessage = getRequestErrorMessage(err, '未知错误')
+      if (!errorMessage.includes('Network Error') || !getRequestErrorStatus(err)) {
+        error(`操作失败：${errorMessage}`)
       }
     }
   } finally {

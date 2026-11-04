@@ -462,6 +462,7 @@ import { useMobile } from '@/composables/mobile'
 import draggable from 'vuedraggable'
 import { logger } from '@/utils/logger'
 import { isVideoMedia, type MediaPreviewItem } from '@/utils/media'
+import type { ProductDetail } from '@/api/shop-public'
 import { MEDIA_UPLOAD_ACCEPT, isPdfFile, prepareMediaFile } from '@/utils/upload-media'
 import type { ModelValueProps, SuccessEmits, UpdateModelValueEmits } from '@/types'
 import {
@@ -609,7 +610,7 @@ const loadPublicProductFallback = async () => {
   if (!props.phoneId) return
 
   try {
-    const response = await api.get<any>(`/public/products/${props.phoneId}`)
+    const response = await api.get<ProductDetail>(`/public/products/${props.phoneId}`)
     if (!response.success || !response.data) {
       return
     }

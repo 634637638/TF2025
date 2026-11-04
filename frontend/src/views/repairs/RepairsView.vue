@@ -952,7 +952,6 @@ import { useMobile } from '@/composables/mobile'
 import { useNotification } from '@/composables/useNotification'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { PageHeader, PermissionGate } from '@/components/base'
-import InlineLoading from '@/components/InlineLoading.vue'
 import Pagination from '@/components/Pagination.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
@@ -970,6 +969,7 @@ import { formatDate as formatGlobalDate } from '@/utils/format'
 import { TIME_FORMATS, TimeUtil } from '@/utils/time'
 import { formatImageUrl } from '@/utils/format'
 import { isVideoMedia, type MediaPreviewItem } from '@/utils/media'
+import { getRequestErrorMessage } from '@/utils/api-response'
 
 interface CustomerOption { id: number; name: string; phone: string | null }
 interface BrandOption { id: number; name: string }
@@ -1212,9 +1212,9 @@ const saveRepairCustomer = async () => {
     customerMode.value = 'selected'
     customerSearchKeyword.value = customer.name
     success('客户已创建并选择')
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('新建维修客户失败:', error)
-    notifyError(error?.response?.data?.message || error?.message || '新建客户失败')
+    notifyError(getRequestErrorMessage(error, '新建客户失败'))
   } finally {
     customerSaving.value = false
   }
@@ -1629,10 +1629,10 @@ const deleteRepair = async (repair: RepairOrder) => {
     await repairsApi.cancel(repair.id)
     success('维修单已删除')
     await loadRepairs()
-  } catch (err: any) {
+  } catch (err: unknown) {
     if (err === 'cancel' || err === 'close') return
     logger.error('删除维修单失败:', err)
-    notifyError(err?.response?.data?.message || '删除维修单失败')
+    notifyError(getRequestErrorMessage(err, '删除维修单失败'))
   }
 }
 const updateStatus = async (repair: RepairOrder) => {

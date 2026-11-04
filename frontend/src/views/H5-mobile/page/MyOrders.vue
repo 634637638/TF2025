@@ -180,11 +180,13 @@ import { getPaymentMethodLabel } from '@/utils/shop-payment'
 import { storage } from '@/services/storage'
 import { H5_STORAGE_KEYS } from '@/constants/storage'
 import { formatAmount, formatDateTime as formatGlobalDateTime } from '@/utils/format'
+import { getRequestErrorMessage } from '@/utils/api-response'
+import type { PublicOrder } from '@/api/shop-public'
 const router = useRouter()
 
 const customer_phone = ref('')
 const customer_name = ref('')
-const orders = ref<any[]>([])
+const orders = ref<PublicOrder[]>([])
 const { loading } = useLoadingState()
 const searching = ref(false)
 const { loading: loadingMore } = useLoadingState()
@@ -229,7 +231,7 @@ const searchOrders = async () => {
   searched.value = true
 
   try {
-    const result: any = await getOrdersByPhone(customer_phone.value, {
+    const result = await getOrdersByPhone(customer_phone.value, {
       page: current_page.value,
       page_size,
       customer_name: customer_name.value
@@ -241,9 +243,9 @@ const searchOrders = async () => {
     if (orders.value.length === 0) {
       ElMessage.info('未找到相关订单')
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('查询订单失败:', error)
-    ElMessage.error(error.message || '查询订单失败')
+    ElMessage.error(getRequestErrorMessage(error, '查询订单失败'))
   } finally {
     loading.value = false
     searching.value = false
@@ -258,7 +260,7 @@ const loadMore = async () => {
   current_page.value++
 
   try {
-    const result: any = await getOrdersByPhone(customer_phone.value, {
+    const result = await getOrdersByPhone(customer_phone.value, {
       page: current_page.value,
       page_size,
       customer_name: customer_name.value
@@ -266,7 +268,7 @@ const loadMore = async () => {
 
     orders.value.push(...(result.data || []))
     total.value = result.total || 0
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('加载更多失败:', error)
     ElMessage.error('加载失败')
     current_page.value-- // 恢复页码
@@ -299,13 +301,13 @@ const formatTime = (time: string) => {
 }
 
 // 获取前几个商品预览
-const getFirstItems = (items: any[]) => {
+const getFirstItems = (items: PublicOrder['items'] = []) => {
   if (!items || items.length === 0) return []
   return items.slice(0, 2)
 }
 
 // 跳转到订单详情
-const goToDetail = (order: any) => {
+const goToDetail = (order: PublicOrder) => {
   storage.set(H5_STORAGE_KEYS.ORDER_SUCCESS, {
     orderNumber: order.order_number,
     totalAmount: order.total_amount,

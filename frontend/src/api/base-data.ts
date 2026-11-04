@@ -7,6 +7,7 @@
  */
 import { unifiedApi } from '@/utils/unified-api'
 import { sortOptionsByOrder } from '@/utils/option-sort'
+import type { Brand, Color, Model } from '@/types'
 import {
   getTemplateBrands,
   getTemplateColors,
@@ -275,28 +276,7 @@ export function getMemories(scope: 'public' | 'admin' | 'warning' = 'public') {
   }
 }
 
-// ============================================================================
-// 类型定义
-// ============================================================================
-
-export interface Brand {
-  id: number
-  name: string
-  sort_order?: number
-}
-
-export interface Model {
-  id: number
-  name: string
-  brand_id: number
-  sort_order?: number
-}
-
-export interface Color {
-  id: number
-  name: string
-  sort_order?: number
-}
+export type { Brand, Color, Model } from '@/types'
 
 export interface Memory {
   id: number

@@ -165,7 +165,7 @@ import { usePagePermissions } from '@/composables/usePagePermissions'
 import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { useRefreshData } from '@/composables/useRefreshData'
 import { unifiedApi as api } from '@/utils/unified-api'
-import { extractResponseData } from '@/utils/api-response'
+import { extractResponseData, getRequestErrorMessage, getRequestErrorStatus } from '@/utils/api-response'
 import { sortOptionsByOrder } from '@/utils/option-sort'
 import { normalizePermissionList } from '@/utils/permissionList'
 import { getAdaptiveActionColumnWidth, getIdentifierColumnMinWidth, getTextColumnMinWidth } from '@/utils/table-layout'
@@ -186,6 +186,7 @@ import { useInventoryBaseOptions } from './useInventoryBaseOptions'
 import { useInventoryData } from './useInventoryData'
 import { PHONE_EDIT_STATUS_OPTIONS, getPhoneStatusClass, getPhoneStatusLabel, normalizePhoneStatus, getEffectivePhoneStatus } from '@/constants/phoneStatuses'
 import type { InventoryItem } from '@/types'
+import type { ReferenceRecord } from '@/services/reference-options'
 
 const InventoryDetailModal = defineAsyncComponent(() => import('@/components/InventoryDetailModal.vue'))
 const StockInModal = defineAsyncComponent(() => import('@/components/StockInModal.vue'))
@@ -196,6 +197,18 @@ interface Stats {
   inStock: number
   sold: number
   totalValue: number
+}
+
+type InventoryOption = {
+  id: number
+  name: string
+  username?: string
+  sort_order?: number
+}
+
+type InventoryEditItem = InventoryItem & {
+  created_by_name?: string
+  is_published?: number
 }
 
 const router = useRouter()
@@ -467,7 +480,7 @@ const showStockInModal = ref(false)
 
 // 编辑弹窗相关
 const showEditModal = ref(false)
-const selectedPhoneForEdit = ref<any>(null)
+const selectedPhoneForEdit = ref<InventoryEditItem | null>(null)
 const submitting = ref(false)
 const editForm = reactive({
   brand_id: null as number | null,
@@ -525,7 +538,7 @@ const remoteSearchModel = async (query: string) => {
     modelSearchLoading.value = true
 
     const brand = editForm.brand
-      ? brands.value.find((item: any) => item.name === editForm.brand)
+      ? brands.value.find(item => item.name === editForm.brand)
       : undefined
     const response = await getModels({
       brandId: brand?.id,
@@ -533,15 +546,15 @@ const remoteSearchModel = async (query: string) => {
       status: 1
     })
     if (response.success) {
-      const modelsData = extractResponseData<any[]>(response)
+      const modelsData = extractResponseData<ReferenceRecord[]>(response)
 
       editBrandModels.value = sortOptionsByOrder(modelsData
-        .filter((m: any) => m && m.name))
-        .map((m: any) => String(m.name || '').trim())
+        .filter(m => m && m.name))
+        .map(m => String(m.name || '').trim())
       editModelIdsByName.value = Object.fromEntries(
         modelsData
-          .filter((m: any) => m && m.name && Number.isInteger(Number(m.id)))
-          .map((m: any) => [String(m.name).trim(), Number(m.id)])
+          .filter(m => m && m.name && Number.isInteger(Number(m.id)))
+          .map(m => [String(m.name).trim(), Number(m.id)])
       )
 
     } else {
@@ -555,9 +568,9 @@ const remoteSearchModel = async (query: string) => {
   }
 }
 
-const suppliers = ref<any[]>([])
-const stores = ref<any[]>([])
-const operators = ref<any[]>([])
+const suppliers = ref<InventoryOption[]>([])
+const stores = ref<InventoryOption[]>([])
+const operators = ref<InventoryOption[]>([])
 const brands = ref<Array<{id: number, name: string}>>([])
 const models = ref<Array<{id: number, name: string}>>([])
 const colors = ref<string[]>([])
@@ -898,7 +911,7 @@ const handleQuickSaleFromModal = () => {
 // 监听编辑弹窗打开，填充表单数据（与销售页面保持一致）
 watch([showEditModal, selectedPhoneForEdit], async ([newVal, selectedPhone]) => {
   if (newVal && selectedPhone) {
-    const phone = selectedPhone as any
+    const phone = selectedPhone
 
     // 打印原始数据用于调试
 
@@ -1037,7 +1050,7 @@ const fetchEditBrandModels = async (brandName: string) => {
 
   try {
     // 先找到品牌ID
-    const brand = brands.value.find((b: any) => b.name === brandNameStr)
+    const brand = brands.value.find(b => b.name === brandNameStr)
     if (!brand) {
       editBrandModels.value = []
       return
@@ -1046,15 +1059,15 @@ const fetchEditBrandModels = async (brandName: string) => {
     // 使用品牌ID获取型号列表
     const response = await getModels({ brandId: brand.id, status: 1 })
     if (response.success) {
-      const modelsData = extractResponseData<any[]>(response)
+      const modelsData = extractResponseData<ReferenceRecord[]>(response)
 
       editBrandModels.value = sortOptionsByOrder(modelsData
-        .filter((m: any) => m && m.name))
-        .map((m: any) => String(m.name || '').trim())
+        .filter(m => m && m.name))
+        .map(m => String(m.name || '').trim())
       editModelIdsByName.value = Object.fromEntries(
         modelsData
-          .filter((m: any) => m && m.name && Number.isInteger(Number(m.id)))
-          .map((m: any) => [String(m.name).trim(), Number(m.id)])
+          .filter(m => m && m.name && Number.isInteger(Number(m.id)))
+          .map(m => [String(m.name).trim(), Number(m.id)])
       )
 
     } else {
@@ -1134,12 +1147,9 @@ const submitEdit = async () => {
     } else {
       error(response.message || '更新失败')
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     logger.error('更新失败:', err)
-    const backendMessage = err?.response?.data?.message
-    error(typeof backendMessage === 'string' && backendMessage.trim()
-      ? backendMessage
-      : (err.message || '更新失败，请重试'))
+    error(getRequestErrorMessage(err, '更新失败，请重试'))
   } finally {
     submitting.value = false
   }
@@ -1197,9 +1207,9 @@ const handleQuickPublishChange = async (value: number) => {
     })
     const statusText = value === 1 ? '上架' : '下架'
     ElMessage.success(`已${statusText}`)
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('更新上架状态失败:', error)
-    ElMessage.error(error.message || '操作失败')
+    ElMessage.error(getRequestErrorMessage(error, '操作失败'))
     // 恢复开关状态
     editForm.is_published = editForm.is_published === 1 ? 0 : 1
   }
@@ -1397,17 +1407,18 @@ const deleteItem = async (item: InventoryItem) => {
     } else {
       error(response.message || '删除失败')
     }
-  } catch (caughtError: any) {
+  } catch (caughtError: unknown) {
     if (caughtError !== 'cancel') {
       logger.error('❌ 删除商品失败:', caughtError)
 
       // 权限相关错误处理
-      if (caughtError.response?.status === 403) {
+      const status = getRequestErrorStatus(caughtError)
+      if (status === 403) {
         error('权限不足，无法删除商品')
-      } else if (caughtError.response?.status === 401) {
+      } else if (status === 401) {
         error('登录已过期，请重新登录')
       } else {
-        error(caughtError.response?.data?.message || '删除失败')
+        error(getRequestErrorMessage(caughtError, '删除失败'))
       }
     }
   } finally {

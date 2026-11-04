@@ -14,11 +14,6 @@ const SUPPLIER_SORT_COLUMNS = new Set(['id', 'name', 'status', 'sort_order', 'cr
 const DEFAULT_PAGE_SIZE = 100
 const MAX_PAGE_SIZE = 10000
 
-const parsePositiveInteger = (value, fallback) => {
-  const parsed = Number.parseInt(value, 10)
-  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback
-}
-
 const parseSupplierId = value => {
   const parsed = Number.parseInt(value, 10)
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null

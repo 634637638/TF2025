@@ -779,6 +779,7 @@ import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import { useMobile } from '@/composables/mobile'
 import { useLatestRequest } from '@/composables/useLatestRequest'
 import type { Supplier } from '@/types/system'
+import type { QueryParams } from '@/types'
 import { logger } from '@/utils/logger'
 import { useElementTableSortable } from '@/composables/useElementTableSortable'
 import { formatAmount } from '@/utils/format'
@@ -934,7 +935,7 @@ const showCreateModal = ref(false)
 const showEditModal = ref(false)
 const showDetailModal = ref(false)
 const currentEditingId = ref<number | null>(null)
-const suppliersTableRef = ref<any>(null)
+const suppliersTableRef = ref<unknown>(null)
 const mobileActionRowId = ref<string | null>(null)
 const lastTappedRowId = ref<string | null>(null)
 const lastTapTimestamp = ref(0)
@@ -997,7 +998,7 @@ const loadSuppliers = async (bustCache: boolean = false, silentError: boolean = 
     loading.value = true
   }
   try {
-    const params: any = {
+    const params: QueryParams = {
       page: pagination.value.page,
       page_size: pagination.value.page_size
     }
@@ -1060,7 +1061,7 @@ const loadSuppliers = async (bustCache: boolean = false, silentError: boolean = 
         error(response.message || '获取供应商列表失败')
       }
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     if (supplierListRequest.isCanceledError(err)) {
       return
     }
@@ -1259,7 +1260,7 @@ const deleteSupplier = async (supplier: Supplier) => {
     } else {
       error(response.message || '删除供应商失败')
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     logger.error('删除供应商失败:', err)
     handleApiError(err, '删除供应商失败')
   }
@@ -1308,7 +1309,7 @@ const submitForm = async () => {
         error(response.message || '更新供应商失败')
       }
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     logger.error('提交表单失败:', err)
     handleApiError(err, showCreateModal.value ? '创建供应商失败' : '更新供应商失败')
   } finally {
@@ -1495,7 +1496,7 @@ const _deleteSupplierWithPermission = async (supplier: Supplier) => {
     } else {
       error(response.message || '删除供应商失败')
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     logger.error('删除供应商失败:', err)
     handleApiError(err, '删除供应商失败')
   }
@@ -1540,7 +1541,7 @@ const _submitFormWithPermission = async () => {
         error(response.message || '更新供应商失败')
       }
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     logger.error('提交表单失败:', err)
     handleApiError(err, `${action === 'create' ? '创建' : '更新'}供应商失败`)
   } finally {

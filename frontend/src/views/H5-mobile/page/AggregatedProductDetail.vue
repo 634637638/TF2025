@@ -11,8 +11,6 @@
     <div class="product-gallery-card">
       <Swiper
         :modules="[SwiperPagination, SwiperAutoplay]"
-        :pagination="paginationOptions as any"
-        :autoplay="{ delay: 3000, disableOnInteraction: false } as any"
         class="product-swiper"
       >
         <SwiperSlide
@@ -269,22 +267,19 @@ import { ElMessage } from 'element-plus'
 import SectionLoading from '@/components/SectionLoading.vue'
 import 'swiper/css'
 import 'swiper/css/pagination'
-import { getPublicConfig, getStockDistribution } from '@/api/shop-public'
+import { getPublicConfig, getStockDistribution, getProductDetail, getAggregatedProducts, type ProductDetail, type ShopConfig } from '@/api/shop-public'
 import type { AggregatedProduct, StockDistribution, StoreStock } from '@/api/shop-public'
 import { useCart } from '@/composables'
 import { formatAmount, formatImageUrl } from '@/utils/format'
 import { storage } from '@/services/storage'
 import { H5_STORAGE_KEYS } from '@/constants/storage'
 import { logger } from '@/utils/logger'
+import { getRequestErrorMessage } from '@/utils/api-response'
 // 注册 Swiper 模块
 const SwiperPagination = Pagination
 const SwiperAutoplay = Autoplay
 
 // Swiper 配置
-const paginationOptions = {
-  clickable: true
-}
-
 const router = useRouter()
 const route = useRoute()
 const { addCartItem, refreshCart } = useCart()
@@ -292,7 +287,7 @@ const { addCartItem, refreshCart } = useCart()
 // 数据
 const loading = ref(true)
 const loadSequence = ref(0)
-const config = ref<any>({ cart_enabled: true, direct_buy_enabled: true })
+const config = ref<Partial<ShopConfig>>({ cart_enabled: true, direct_buy_enabled: true })
 const productData = ref<AggregatedProduct | null>(null)
 const stockDistribution = ref<StockDistribution | null>(null)
 const selectedMemory = ref<AggregatedProduct['memories'][0] | null>(null)
@@ -374,7 +369,7 @@ const resetDetailState = () => {
 // 加载商城配置
 const loadConfig = async () => {
   try {
-    const shopConfig: any = await getPublicConfig()
+    const shopConfig = await getPublicConfig()
     // 设置默认值，防止后端没有返回配置项
     config.value = {
       ...shopConfig,
@@ -420,8 +415,7 @@ const loadProductByTemplateId = async (templateId: number, sequence = loadSequen
   loading.value = true
   try {
     // 直接通过模板 ID 获取模板详情
-    const { getProductDetail } = await import('@/api/shop-public')
-    const templateData: any = await getProductDetail(templateId)
+    const templateData = await getProductDetail(templateId) as ProductDetail & { template_name?: string, color_id?: number, memory_ids?: number[], price_options?: Array<{ memory_id: number, memory_name: string, display_price?: number, sale_price?: number, stock?: number }>, stock_count?: number, min_wholesale_price?: number }
     if (sequence !== loadSequence.value) {
       return
     }
@@ -435,8 +429,7 @@ const loadProductByTemplateId = async (templateId: number, sequence = loadSequen
     }
 
     // 获取聚合商品数据以获得完整的库存信息
-    const { getAggregatedProducts } = await import('@/api/shop-public')
-    const result: any = await getAggregatedProducts({
+    const result = await getAggregatedProducts({
       brand_id: templateData.brand_id,
       model_id: templateData.model_id,
       color_id: templateData.color_id,
@@ -454,8 +447,8 @@ const loadProductByTemplateId = async (templateId: number, sequence = loadSequen
 
       // 从 price_options 计算价格范围
       const prices = (templateData.price_options || [])
-        .map((po: any) => {
-          const price = parseFloat(po.display_price || po.sale_price || 0)
+        .map(po => {
+          const price = Number(po.display_price || po.sale_price || 0)
           return price
         })
         .filter((p: number) => p > 0)
@@ -469,7 +462,7 @@ const loadProductByTemplateId = async (templateId: number, sequence = loadSequen
         calculatedMaxPrice = Math.max(...prices)
       } else {
         // price_options 为空，使用模板数据的价格
-        const templatePrice = parseFloat(templateData.sale_price || templateData.min_wholesale_price || 0)
+        const templatePrice = Number(templateData.sale_price || templateData.min_wholesale_price || 0)
         calculatedMinPrice = templatePrice
         calculatedMaxPrice = templatePrice
       }
@@ -478,22 +471,22 @@ const loadProductByTemplateId = async (templateId: number, sequence = loadSequen
         ...aggregatedData,
         min_price: calculatedMinPrice,
         max_price: calculatedMaxPrice,
-        images: templateData.images || aggregatedData.images,
+        images: templateData.images?.map(image => typeof image === 'string' ? image : image.image_url) || aggregatedData.images,
         main_image: templateData.main_image || aggregatedData.main_image,
         // 如果模板有价格选项，使用模板的价格，否则使用聚合数据的价格
-        memories: templateData.price_options?.map((po: any) => ({
+        memories: templateData.price_options?.map(po => ({
           id: po.memory_id,
           name: po.memory_name,
           price: po.display_price || po.sale_price,
           // 使用模板的库存数量，如果没有则使用聚合数据的总库存
-          stock: parseInt(po.stock || aggregatedData.total_stock || aggregatedData.total_stock || 0)
+          stock: Number(po.stock || aggregatedData.total_stock || 0)
         })) || aggregatedData.memories || []
       }
     } else {
       // 如果没有聚合数据，使用模板数据（库存为0）
       // 从 price_options 计算价格范围
       const prices = (templateData.price_options || [])
-        .map((po: any) => parseFloat(po.display_price || po.sale_price || 0))
+        .map(po => Number(po.display_price || po.sale_price || 0))
         .filter((p: number) => p > 0)
 
       // 优先使用独立的 H5 价格选项，没有选项时使用模板计算结果。
@@ -505,7 +498,7 @@ const loadProductByTemplateId = async (templateId: number, sequence = loadSequen
         calculatedMaxPrice = Math.max(...prices)
       } else {
         // price_options 为空，使用模板数据的价格
-        const templatePrice = parseFloat(templateData.sale_price || templateData.min_wholesale_price || 0)
+        const templatePrice = Number(templateData.sale_price || templateData.min_wholesale_price || 0)
         calculatedMinPrice = templatePrice
         calculatedMaxPrice = templatePrice
       }
@@ -521,17 +514,17 @@ const loadProductByTemplateId = async (templateId: number, sequence = loadSequen
         is_new: 1,
         min_price: calculatedMinPrice,
         max_price: calculatedMaxPrice,
-        total_stock: parseInt(templateData.stock_count || 0),
+        total_stock: Number(templateData.stock_count || 0),
         main_image: templateData.main_image,
-        images: templateData.images || [],
+        images: templateData.images?.map(image => typeof image === 'string' ? image : image.image_url) || [],
         template_id: templateId,
         memory_ids: templateData.memory_ids,
-        memories: templateData.price_options?.map((po: any) => ({
+        memories: templateData.price_options?.map(po => ({
           id: po.memory_id,
           name: po.memory_name,
           price: po.display_price || po.sale_price,
           // 使用模板的库存数量，如果没有则使用总库存
-          stock: parseInt(po.stock || templateData.stock_count || 0)
+          stock: Number(po.stock || templateData.stock_count || 0)
         })) || []
       }
     }
@@ -553,7 +546,6 @@ const loadProductByTemplateId = async (templateId: number, sequence = loadSequen
 const loadProductByQuery = async (brandId: number, modelId: number, colorId: number, isNew: boolean, sequence = loadSequence.value) => {
   loading.value = true
   try {
-    const { getAggregatedProducts } = await import('@/api/shop-public')
     const result = await getAggregatedProducts({
       brand_id: brandId,
       model_id: modelId,
@@ -566,8 +558,8 @@ const loadProductByQuery = async (brandId: number, modelId: number, colorId: num
       return
     }
 
-    if (result.data && (result.data as any).length > 0) {
-      productData.value = (result.data as any)[0]
+    if (result.data.length > 0) {
+      productData.value = result.data[0]
     } else {
       ElMessage.error('商品不存在')
       router.push('/m')
@@ -598,7 +590,7 @@ const selectMemory = async (memory: AggregatedProduct['memories'][0]) => {
 
   // 加载该内存规格的库存分布
   try {
-    const result: any = await getStockDistribution({
+    const result = await getStockDistribution({
       brand_id: productData.value!.brand_id,
       model_id: productData.value!.model_id,
       color_id: productData.value!.color_id,
@@ -606,7 +598,7 @@ const selectMemory = async (memory: AggregatedProduct['memories'][0]) => {
       is_new: Number(productData.value!.is_new) === 1
     })
     // 如果返回的是 axios 响应对象，取 data 属性
-    stockDistribution.value = (result as any).data || result
+    stockDistribution.value = result
   } catch (error) {
     logger.error('获取库存分布失败:', error)
     ElMessage.error('获取库存信息失败')
@@ -642,9 +634,9 @@ const addToCart = async () => {
     } else {
       ElMessage.error(result.message || '加入购物车失败')
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('加入购物车失败:', error)
-    ElMessage.error(error.message || '加入购物车失败')
+    ElMessage.error(getRequestErrorMessage(error, '加入购物车失败'))
   }
 }
 

@@ -480,7 +480,8 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, FormInstance } from 'element-plus'
 import { ValidationRules } from '@/composables'
-import { getPublicConfig } from '@/api/shop-public'
+import { getPublicConfig, type ShopConfig } from '@/api/shop-public'
+import { getRequestErrorMessage } from '@/utils/api-response'
 import { userManager, getUserSales, logout as authLogout, updateProfile, getUserProfile, type AuthUser, type H5CustomerSale } from '@/api/auth'
 import { storage } from '@/services/storage'
 import { H5_STORAGE_KEYS } from '@/constants/storage'
@@ -491,7 +492,7 @@ import SectionLoading from '@/components/SectionLoading.vue'
 import { useNotification } from '@/composables/useNotification'
 const router = useRouter()
 const { confirm } = useNotification()
-const shopConfig = ref<any>({})
+const shopConfig = ref<Partial<ShopConfig>>({})
 const serviceVisible = ref(false)
 const shopVisible = ref(false)
 const purchaseVisible = ref(false)
@@ -530,7 +531,7 @@ const user = computed<AuthUser | null>(() => currentUser.value)
 const loadConfig = async () => {
   try {
     const response = await getPublicConfig()
-    shopConfig.value = (response as any).data || response
+    shopConfig.value = response
   } catch (error) {
     logger.error('获取配置失败:', error)
   }
@@ -675,9 +676,9 @@ const showPurchaseRecords = async () => {
 
   try {
     purchaseRecords.value = await getUserSales()
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('获取购买记录失败:', error)
-    ElMessage.error(error.message || '获取购买记录失败')
+    ElMessage.error(getRequestErrorMessage(error, '获取购买记录失败'))
   } finally {
     loadingPurchase.value = false
   }
@@ -688,27 +689,30 @@ const showProfileEdit = async () => {
   if (user.value) {
     try {
       // 从后端API获取完整用户资料
-      const profile: any = await getUserProfile()
+      const profileData = await getUserProfile()
+      const profile = profileData && typeof profileData === 'object' ? profileData as Record<string, unknown> : {}
+      const stringValue = (value: unknown, fallback = '') => typeof value === 'string' ? value : fallback
 
       profileForm.value = {
-        name: normalizePersonName(profile.name || user.value.name || '', 50),
-        phone: profile.phone || user.value.phone || '',
-        idCard: normalizeIdCard(profile.id_card || ''),
-        appleId: normalizeAppleId(profile.apple_id || ''),
-        address: profile.address || ''
+        name: normalizePersonName(stringValue(profile.name, user.value.name || ''), 50),
+        phone: stringValue(profile.phone, user.value.phone || ''),
+        idCard: normalizeIdCard(stringValue(profile.id_card)),
+        appleId: normalizeAppleId(stringValue(profile.apple_id)),
+        address: stringValue(profile.address)
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error('获取用户资料失败:', error)
       // 如果API调用失败，尝试从本地存储读取
-      const savedAddress = storage.get<any>(H5_STORAGE_KEYS.DEFAULT_ADDRESS, 'session')
+      const savedAddress = storage.get<Record<string, unknown>>(H5_STORAGE_KEYS.DEFAULT_ADDRESS, 'session')
       const addressData = savedAddress || {}
+      const stringValue = (value: unknown) => typeof value === 'string' ? value : ''
 
       profileForm.value = {
         name: normalizePersonName(user.value.name || '', 50),
         phone: user.value.phone || '',
-        idCard: normalizeIdCard(addressData.idCard || ''),
-        appleId: normalizeAppleId(addressData.appleId || ''),
-        address: addressData.address || ''
+        idCard: normalizeIdCard(stringValue(addressData.idCard)),
+        appleId: normalizeAppleId(stringValue(addressData.appleId)),
+        address: stringValue(addressData.address)
       }
     }
   }
@@ -727,7 +731,7 @@ const saveProfile = async () => {
     savingProfile.value = true
 
     // 调用后端 API 更新用户资料
-    const response: any = await updateProfile({
+    const response = await updateProfile({
       name: profileForm.value.name,
       idCard: profileForm.value.idCard,
       appleId: profileForm.value.appleId,
@@ -751,9 +755,9 @@ const saveProfile = async () => {
 
     ElMessage.success('个人资料保存成功')
     profileVisible.value = false
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('保存个人资料失败:', error)
-    ElMessage.error(error.message || '保存个人资料失败')
+    ElMessage.error(getRequestErrorMessage(error, '保存个人资料失败'))
   } finally {
     savingProfile.value = false
   }

@@ -805,7 +805,51 @@ const synced = ref(false)
 const syncProgress = ref(0)
 const syncMessage = ref('')
 const syncStatus = ref<'success' | 'exception' | undefined>(undefined)
-const syncStats = ref<any>(null)
+interface SyncConnection {
+  id: string
+  host: string
+  port: number
+  user: string
+  database: string
+  connectedAt?: string
+}
+
+interface TableColumn {
+  field: string
+  type: string
+  nullable?: boolean
+  [key: string]: unknown
+}
+
+interface TableStructure {
+  columns: TableColumn[]
+  [key: string]: unknown
+}
+
+interface FieldMapping {
+  sourceField: string
+  sourceType: string
+  targetField: string
+  targetType: string
+}
+
+interface SyncStats {
+  inserted?: number
+  updated?: number
+  skipped?: number
+  failed?: number
+  [key: string]: unknown
+}
+
+interface PreCheckResult {
+  total?: number
+  newRecords?: number
+  updateRecords?: number
+  sampleMatches?: Array<Record<string, unknown>>
+  [key: string]: unknown
+}
+
+const syncStats = ref<SyncStats | null>(null)
 const syncTimer = ref<number | null>(null)
 
 // 连接表单
@@ -826,7 +870,7 @@ const connectionRules = {
 }
 
 // 连接列表
-const connections = ref<any[]>([])
+const connections = ref<SyncConnection[]>([])
 const selectedConnectionId = ref('')
 
 // 表数据
@@ -838,11 +882,11 @@ const selectedSourceTable = ref('')
 const selectedTargetTable = ref('')
 
 // 表结构
-const sourceStructure = ref<any>(null)
-const targetStructure = ref<any>(null)
+const sourceStructure = ref<TableStructure | null>(null)
+const targetStructure = ref<TableStructure | null>(null)
 
 // 字段映射
-const mappingList = ref<any[]>([])
+const mappingList = ref<FieldMapping[]>([])
 const syncOptions = ref({
   mode: 'upsert',
   keyFields: [] as string[],
@@ -850,7 +894,7 @@ const syncOptions = ref({
 })
 
 // 预检查结果
-const preCheckResult = ref<any>(null)
+const preCheckResult = ref<PreCheckResult | null>(null)
 
 // 当前映射配置ID
 const currentMappingId = ref('')
@@ -980,7 +1024,7 @@ const handleCloseConnection = async (connectionId: string) => {
         selectedConnectionId.value = ''
       }
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error !== 'cancel') {
       ElMessage.error((error as Error).message || '断开连接失败')
     }
@@ -1013,7 +1057,7 @@ const loadTables = async () => {
   }
 }
 
-const handleSourceTableSelect = async (row?: any) => {
+const handleSourceTableSelect = async (row?: { table?: string }) => {
   if (!ensureViewPermission()) {
     return
   }
@@ -1023,7 +1067,7 @@ const handleSourceTableSelect = async (row?: any) => {
   await loadSourceStructure(row.table)
 }
 
-const handleTargetTableSelect = async (row?: any) => {
+const handleTargetTableSelect = async (row?: { table?: string }) => {
   if (!ensureViewPermission()) {
     return
   }
@@ -1091,7 +1135,7 @@ const resetSyncState = () => {
 }
 
 const initMappingList = () => {
-  mappingList.value = sourceFields.value.map((field: any) => ({
+  mappingList.value = sourceFields.value.map(field => ({
     sourceField: field.field,
     sourceType: field.type,
     targetField: '',
@@ -1117,7 +1161,7 @@ const handleSuggestMapping = async () => {
     if (res.success) {
       // 应用建议的映射
       const suggestions = res.data.suggestions || {}
-      mappingList.value.forEach((item: any) => {
+      mappingList.value.forEach(item => {
         item.targetField = suggestions[item.sourceField] || ''
       })
       ElMessage.success('智能匹配完成')
@@ -1130,7 +1174,7 @@ const handleSuggestMapping = async () => {
 }
 
 const getTargetFieldType = (field: string) => {
-  const f = targetFields.value.find((t: any) => t.field === field)
+  const f = targetFields.value.find(t => t.field === field)
   return f?.type || ''
 }
 
@@ -1172,7 +1216,7 @@ const saveMappingConfig = async () => {
   }
 
   const fieldMappings: Record<string, string> = {}
-  mappingList.value.forEach((item: any) => {
+  mappingList.value.forEach(item => {
     if (item.targetField) {
       fieldMappings[item.sourceField] = item.targetField
     }
@@ -1332,7 +1376,7 @@ const handleSmartSync = async () => {
     } else {
       ElMessage.error(res.message || '同步失败')
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error !== 'cancel') {
       ElMessage.error((error as Error).message || '同步失败')
     }

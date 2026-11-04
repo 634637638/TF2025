@@ -313,7 +313,7 @@ export interface SearchSuggestion {
 }
 
 // 导出配置接口
-export interface ExportConfig {
+export interface InventoryExportConfig {
   format: 'excel' | 'csv' | 'pdf'
   filters?: StockInFilters | InventoryFilters
   fields?: string[]
@@ -433,11 +433,11 @@ export interface UseStockInReturn {
   settleRecord: (id: number) => Promise<void>
   batchSettle: (ids: number[]) => Promise<void>
   batchDelete: (ids: number[]) => Promise<void>
-  exportData: (config?: ExportConfig) => Promise<void>
+  exportData: (config?: InventoryExportConfig) => Promise<void>
 }
 
 // 性能监控接口
-export interface PerformanceMetrics {
+export interface InventoryPerformanceMetrics {
   pageLoadTime: number
   apiCallTime: number
   renderTime: number
@@ -446,7 +446,7 @@ export interface PerformanceMetrics {
 }
 
 // 错误信息接口
-export interface ErrorInfo {
+export interface InventoryErrorInfo {
   code?: string
   message: string
   details?: unknown
@@ -457,7 +457,7 @@ export interface ErrorInfo {
 }
 
 // 权限接口
-export interface Permission {
+export interface InventoryPermission {
   resource: string
   actions: string[]
 }
@@ -466,6 +466,6 @@ export interface Permission {
 export interface UserPermissions {
   id: number
   userId: number
-  permissions: Permission[]
+  permissions: InventoryPermission[]
   roles: string[]
 }

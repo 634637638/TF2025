@@ -49,15 +49,36 @@ const allowlist = fs.existsSync(allowlistPath)
   ? JSON.parse(fs.readFileSync(allowlistPath, 'utf8'))
   : { entries: [] }
 const allowlistEntries = Array.isArray(allowlist.entries) ? allowlist.entries : []
+for (const entry of allowlistEntries) {
+  if (!entry.file || !entry.label || !entry.text || !entry.reason) {
+    throw new Error(`公共选项审计白名单条目缺少 file、label、text 或 reason: ${JSON.stringify(entry)}`)
+  }
+}
+
+// 行号会因无关代码增删频繁变化，不适合作为白名单身份。
+// 使用文件、规则类型和代码片段进行一对一匹配；相同代码出现多次时按条目数量闭环。
 const matchesAllowlist = (finding, entry) => (
   finding.file === entry.file &&
-  finding.line === entry.line &&
   finding.label === entry.label &&
   finding.text.includes(entry.text)
 )
-const allowedFindings = findings.filter(finding => allowlistEntries.some(entry => matchesAllowlist(finding, entry)))
-const unresolvedFindings = findings.filter(finding => !allowlistEntries.some(entry => matchesAllowlist(finding, entry)))
-const staleAllowlistEntries = allowlistEntries.filter(entry => !findings.some(finding => matchesAllowlist(finding, entry)))
+const unmatchedAllowlistIndexes = new Set(allowlistEntries.map((_, index) => index))
+const allowedFindings = []
+const unresolvedFindings = []
+
+for (const finding of findings) {
+  const matchedIndex = allowlistEntries.findIndex((entry, index) => (
+    unmatchedAllowlistIndexes.has(index) && matchesAllowlist(finding, entry)
+  ))
+  if (matchedIndex === -1) {
+    unresolvedFindings.push(finding)
+    continue
+  }
+  unmatchedAllowlistIndexes.delete(matchedIndex)
+  allowedFindings.push(finding)
+}
+
+const staleAllowlistEntries = [...unmatchedAllowlistIndexes].map(index => allowlistEntries[index])
 
 if (allowedFindings.length > 0) {
   console.log(`公共选项固定数量审计：${allowedFindings.length} 处已按白名单人工确认（业务分页、字段长度或本地历史保护）。`)
@@ -69,9 +90,9 @@ if (unresolvedFindings.length > 0) {
   }
 }
 if (staleAllowlistEntries.length > 0) {
-  console.log(`公共选项审计白名单存在 ${staleAllowlistEntries.length} 处漂移项（源码已变化，需要重新确认）：`)
+  console.log(`公共选项审计白名单存在 ${staleAllowlistEntries.length} 处失效项（源码已删除或代码片段已变化，需要重新确认）：`)
   for (const entry of staleAllowlistEntries) {
-    console.log(`- ${entry.file}:${entry.line} ${entry.label}: ${entry.text}`)
+    console.log(`- ${entry.file} ${entry.label}: ${entry.text}`)
   }
 }
 if (unresolvedFindings.length === 0 && staleAllowlistEntries.length === 0) {

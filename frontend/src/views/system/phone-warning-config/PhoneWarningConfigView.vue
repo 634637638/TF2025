@@ -43,8 +43,8 @@
         </template>
 
         <el-table
-            v-tf-loading="loading"
-            :data="filteredGroupedConfigs"
+          v-tf-loading="loading"
+          :data="filteredGroupedConfigs"
           stripe
           border
           row-key="groupKey"
@@ -772,6 +772,59 @@ import phoneStockWarningsApi from '@/api/phone-stock-warnings'
 import { baseDataApi } from '@/api/base-data'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
+import type { Brand, Color, MemoryOption, Model } from '@/types'
+
+interface PhoneWarningConfigRow {
+  id: number
+  brand_id: number | null
+  model_id: number | null
+  color_id: number | null
+  memory_id: number | null
+  is_new: number | null
+  min_stock: number
+  warning_enabled: number
+  config_name?: string | null
+  remarks?: string | null
+  brand_name?: string | null
+  model_name?: string | null
+  color_name?: string | null
+  memory_size?: string | null
+  status?: number
+  toggling?: boolean
+}
+
+interface WarningVariantDraft {
+  variantKey: string
+  existingId: number | null
+  color_id: number | null
+  memory_id: number | null
+  is_new: number | null
+  color_name: string
+  memory_size: string
+  condition_label: string
+  min_stock: number
+  warning_enabled: number
+}
+
+interface WarningGroup {
+  groupKey: string
+  brand_id: number | null
+  model_id: number | null
+  brand_name?: string | null
+  model_name?: string | null
+  config_name: string
+  remarks: string
+  children: PhoneWarningConfigRow[]
+  colorCount?: number
+  memoryCount?: number
+  enabledCount?: number
+  conditionSummary?: string
+  colorSummary?: string
+  memorySummary?: string
+  thresholdSummary?: string
+  thresholdTagType?: string
+  variantSummary?: string
+}
 
 const { success, error } = useNotification()
 const {
@@ -787,19 +840,19 @@ const showOperations = computed(() => shouldShowActionColumn(
 ))
 
 const { loading } = useLoadingState()
-const configList = ref<any[]>([])
+const configList = ref<PhoneWarningConfigRow[]>([])
 const dialogVisible = ref(false)
 const dialogMode = ref<'add' | 'edit'>('add')
 const submitting = ref(false)
 const searchKeyword = ref('')
 
-const brandList = ref<any[]>([])
-const modelList = ref<any[]>([])
-const colorList = ref<any[]>([])
-const memoryList = ref<any[]>([])
-const variantDrafts = ref<any[]>([])
+const brandList = ref<Brand[]>([])
+const modelList = ref<Model[]>([])
+const colorList = ref<Color[]>([])
+const memoryList = ref<MemoryOption[]>([])
+const variantDrafts = ref<WarningVariantDraft[]>([])
 const originalVariantIds = ref<number[]>([])
-const editingSeedRows = ref<any[]>([])
+const editingSeedRows = ref<PhoneWarningConfigRow[]>([])
 
 const conditionOptions = [
   { key: 'all', label: '全部库存', value: null },
@@ -837,7 +890,7 @@ const _enabledConfigCount = computed(() => {
 })
 
 const groupedConfigs = computed(() => {
-  const groupMap = new Map<string, any>()
+  const groupMap = new Map<string, WarningGroup>()
 
   configList.value.forEach((item) => {
     const groupKey = `${item.brand_id}-${item.model_id}`
@@ -876,11 +929,11 @@ const groupedConfigs = computed(() => {
         return `${colorA}-${memoryA}-${a.is_new ?? 2}`.localeCompare(`${colorB}-${memoryB}-${b.is_new ?? 2}`, 'zh-CN')
       })
 
-      const uniqueColors = [...new Set(children.map((item: any) => item.color_name).filter(Boolean))]
-      const uniqueMemories = [...new Set(children.map((item: any) => item.memory_size).filter(Boolean))]
-      const conditionLabels = [...new Set(children.map((item: any) => getConditionLabel(item.is_new)))]
-      const thresholds = [...new Set(children.map((item: any) => Number(item.min_stock) || 0))]
-      const enabledCount = children.filter((item: any) => item.warning_enabled === 1).length
+      const uniqueColors = [...new Set(children.map(item => item.color_name).filter(Boolean))]
+      const uniqueMemories = [...new Set(children.map(item => item.memory_size).filter(Boolean))]
+      const conditionLabels = [...new Set(children.map(item => getConditionLabel(item.is_new)))]
+      const thresholds = [...new Set(children.map(item => Number(item.min_stock) || 0))]
+      const enabledCount = children.filter(item => item.warning_enabled === 1).length
       const minThreshold = Math.min(...thresholds)
       const maxThreshold = Math.max(...thresholds)
 
@@ -914,7 +967,7 @@ const filteredGroupedConfigs = computed(() => {
       group.model_name,
       group.config_name,
       group.remarks,
-      ...group.children.flatMap((item: any) => [item.color_name, item.memory_size, item.config_name, item.remarks])
+      ...group.children.flatMap(item => [item.color_name, item.memory_size, item.config_name, item.remarks])
     ]
       .filter(Boolean)
       .join(' ')
@@ -936,7 +989,7 @@ const _filteredChildConfigCount = computed(() => {
   return filteredGroupedConfigs.value.reduce((total, group) => total + group.children.length, 0)
 })
 
-const getDisplayName = (row: any) => {
+const getDisplayName = (row: PhoneWarningConfigRow) => {
   if (row.brand_name && row.model_name) {
     return `${row.brand_name} ${row.model_name}`
   }
@@ -991,7 +1044,7 @@ const rebuildVariantDrafts = () => {
   const colorOptions = formData.color_ids.length > 0 ? formData.color_ids : [null]
   const memoryOptions = formData.memory_ids.length > 0 ? formData.memory_ids : [null]
   const conditionOptions = formData.condition_values.length > 0 ? formData.condition_values : [null]
-  const drafts: any[] = []
+  const drafts: WarningVariantDraft[] = []
   const seen = new Set<string>()
 
   colorOptions.forEach((colorId) => {
@@ -1009,7 +1062,9 @@ const rebuildVariantDrafts = () => {
 
         drafts.push({
           variantKey,
-          existingId: baseDraft?.id || baseDraft?.existingId || null,
+          existingId: baseDraft
+            ? ('existingId' in baseDraft ? baseDraft.existingId : baseDraft.id)
+            : null,
           color_id: colorId,
           memory_id: memoryId,
           is_new: conditionValue,
@@ -1038,7 +1093,7 @@ const loadConfigs = async () => {
   try {
     const response = await phoneStockWarningsApi.getAllConfigs()
     if (response.success) {
-      configList.value = response.data.map((item: any) => ({
+      configList.value = response.data.map((item: PhoneWarningConfigRow) => ({
         ...item,
         toggling: false
       }))
@@ -1117,7 +1172,7 @@ const openAddDialog = () => {
   dialogVisible.value = true
 }
 
-const openEditDialog = async (row: any) => {
+const openEditDialog = async (row: WarningGroup | PhoneWarningConfigRow) => {
   if (!canEditWarningConfig.value) {
     handleNoPermission('edit')
     return
@@ -1125,11 +1180,11 @@ const openEditDialog = async (row: any) => {
 
   dialogMode.value = 'edit'
 
-  const rows = row.children ? [...row.children] : [row]
+  const rows: PhoneWarningConfigRow[] = 'children' in row ? [...row.children] : [row]
   const firstRow = rows[0]
-  const colorIds = [...new Set(rows.map((item: any) => item.color_id).filter(Boolean))]
-  const memoryIds = [...new Set(rows.map((item: any) => item.memory_id).filter(Boolean))]
-  const conditionValues = [...new Set(rows.map((item: any) => item.is_new).filter((value: any) => value === 0 || value === 1))]
+  const colorIds = [...new Set(rows.map(item => item.color_id).filter((value): value is number => Boolean(value)))]
+  const memoryIds = [...new Set(rows.map(item => item.memory_id).filter((value): value is number => Boolean(value)))]
+  const conditionValues = [...new Set(rows.map(item => item.is_new).filter((value): value is number => value === 0 || value === 1))]
 
   Object.assign(formData, {
     brand_id: firstRow.brand_id,
@@ -1143,7 +1198,7 @@ const openEditDialog = async (row: any) => {
     remarks: row.remarks || firstRow.remarks || ''
   })
 
-  originalVariantIds.value = rows.map((item: any) => item.id)
+  originalVariantIds.value = rows.map(item => item.id)
   editingSeedRows.value = rows
 
   if (firstRow.brand_id) {
@@ -1236,15 +1291,15 @@ const handleSubmit = async () => {
       dialogVisible.value = false
       resetForm()
       loadConfigs()
-    } catch (err: any) {
-      error(err.message || (dialogMode.value === 'add' ? '新增失败' : '保存失败'))
+    } catch (err: unknown) {
+      error(err instanceof Error ? err.message : (dialogMode.value === 'add' ? '新增失败' : '保存失败'))
     } finally {
       submitting.value = false
     }
   })
 }
 
-const handleToggleWarning = async (row: any) => {
+const handleToggleWarning = async (row: PhoneWarningConfigRow) => {
   if (!canEditWarningConfig.value) {
     row.warning_enabled = row.warning_enabled === 1 ? 0 : 1
     handleNoPermission('edit')
@@ -1266,7 +1321,7 @@ const handleToggleWarning = async (row: any) => {
   }
 }
 
-const handleDelete = async (row: any) => {
+const handleDelete = async (row: PhoneWarningConfigRow) => {
   if (!canEditWarningConfig.value) {
     handleNoPermission('delete')
     return
@@ -1288,14 +1343,14 @@ const handleDelete = async (row: any) => {
       success('删除成功')
       loadConfigs()
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     if (err !== 'cancel') {
       error('删除失败')
     }
   }
 }
 
-const handleDeleteGroup = async (group: any) => {
+const handleDeleteGroup = async (group: WarningGroup) => {
   if (!canEditWarningConfig.value) {
     handleNoPermission('delete')
     return
@@ -1321,9 +1376,9 @@ const handleDeleteGroup = async (group: any) => {
 
     success('删除模板成功')
     loadConfigs()
-  } catch (err: any) {
+  } catch (err: unknown) {
     if (err !== 'cancel') {
-      error(err.message || '删除模板失败')
+      error(err instanceof Error ? err.message : '删除模板失败')
     }
   }
 }

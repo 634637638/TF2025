@@ -16,13 +16,24 @@ function pad2(value) {
 }
 
 function formatBeijingDateTime(date) {
-  const utcMs = date.getTime() + date.getTimezoneOffset() * 60 * 1000
-  const beijingMs = utcMs + BEIJING_OFFSET_HOURS * 60 * 60 * 1000
+  // getTime() 已是绝对时间点，不能再叠加主机时区，否则在北京时间主机会少 8 小时。
+  const beijingMs = date.getTime() + BEIJING_OFFSET_HOURS * 60 * 60 * 1000
   return new Date(beijingMs).toISOString().slice(0, 19).replace('T', ' ')
 }
 
 function getBeijingTimeString() {
   return formatBeijingDateTime(new Date())
+}
+
+// 时间点转北京时间日期；不依赖部署机器的时区，用于业务单号等日期键。
+function formatBeijingDate(input = new Date()) {
+  const date = input instanceof Date ? input : new Date(input)
+  if (isNaN(date.getTime())) return ''
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit'
+  }).formatToParts(date)
+  const values = Object.fromEntries(parts.map(part => [part.type, part.value]))
+  return `${values.year}-${values.month}-${values.day}`
 }
 
 function parseLocalDate(input) {
@@ -171,6 +182,7 @@ function normalizeDateTime(input, defaultToNow = true) {
 
 module.exports = {
   getBeijingTimeString,
+  formatBeijingDate,
   normalizeDateTime,
   parseLocalDate,
   formatLocalDate,

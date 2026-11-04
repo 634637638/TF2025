@@ -90,7 +90,8 @@ test('permission management role and user lists use bounded server-side search a
     assert.match(handler, /PERMISSION_LIST_MAX_PAGE_SIZE\)/);
     assert.doesNotMatch(handler, /Math\.min\(normalizedLimit, 10000\)|:\s*10000/);
     assert.match(handler, /COUNT\(\*\) as total/);
-    assert.match(handler, /LIMIT \$\{limit\} OFFSET \$\{offset\}/);
+    assert.match(handler, /LIMIT \? OFFSET \?/);
+    assert.match(handler, /\.\.\.\w+, limit, offset/);
   }
   assert.match(rolesHandler, /r\.name LIKE \?/);
   assert.match(usersHandler, /u\.username LIKE \?/);
@@ -560,7 +561,7 @@ test('transfer invoice sequence initialization happens before the transaction', 
     const transactionStart = service.indexOf('await connection.beginTransaction()', methodStart);
     const methodBody = service.slice(methodStart, transactionStart);
     assert.ok(methodStart >= 0 && transactionStart > methodStart, `${method} 缺少事务入口`);
-    assert.match(methodBody, /await ensureInvoiceSequenceTable\(connection\)/);
+    assert.match(methodBody, /await prepareInvoiceNumberTransaction\(connection\)/);
   }
 });
 
@@ -787,6 +788,16 @@ test('salary list pagination is bounded before reaching SQL LIMIT/OFFSET', () =>
   assert.match(listRepository, /has_next:/);
   assert.match(listRepository, /has_prev:/);
   assert.doesNotMatch(listRepository, /LIMIT \$\{parseInt\(limit\)\}/);
+});
+
+test('import history and repair pagination bind LIMIT/OFFSET values', () => {
+  const importRoute = read('src/routes/data-import.js');
+  const repairRoute = read('src/routes/repairs.js');
+
+  assert.match(importRoute, /LIMIT \? OFFSET \?`,\s*\[\.\.\.queryParams, pageSize, offset\]/);
+  assert.doesNotMatch(importRoute, /LIMIT \$\{pageSize\} OFFSET \$\{parseInt\(offset, 10\)\}/);
+  assert.match(repairRoute, /LIMIT \? OFFSET \?`, \[\.\.\.params, page_size, offset\]\)/);
+  assert.doesNotMatch(repairRoute, /LIMIT \$\{page_size\} OFFSET \$\{offset\}/);
 });
 
 test('inventory edit form uses canonical inventory_time internally', () => {
@@ -1933,7 +1944,7 @@ test('field-aware action columns use field-or-action visibility without hiding a
 
   const payment = read('../frontend/src/views/payments/SupplierPhonePaymentsView.vue');
   assert.doesNotMatch(payment, /can(?:Create|View|Edit|Delete)Payment && canViewPaymentField\('actions'\)/);
-  assert.match(payment, /const showPaymentStatusField = computed\(\(\) => \{[\s\S]{0,220}canViewPaymentField\('payment_status'\),\s*\[canCreatePayment\.value\]/);
+  assert.match(payment, /const showPaymentTimeColumn = computed\(\(\) => \{[\s\S]{0,260}shouldShowActionColumn\([\s\S]{0,120}canViewPaymentField\('payment_time'\),\s*\[canCreatePayment\.value\]/);
   assert.match(payment, /v-(?:else-)?if="canCreatePayment && row\.payment_status === 'unpaid'"[\s\S]{0,260}handleSinglePayment\(row\)/);
   const paymentOperationStart = payment.indexOf('v-if="showPaymentActionField"');
   const paymentOperation = payment.slice(paymentOperationStart, payment.indexOf('<template #empty>', paymentOperationStart));
@@ -2147,6 +2158,8 @@ test('permission management lists expose canonical pagination and log date field
   assert.match(management, /has_next:/);
   assert.match(management, /has_prev:/);
   assert.match(logs, /page_size/);
+  assert.match(logs, /LIMIT \? OFFSET \?/);
+  assert.match(logs, /\.\.\.params, sizeNum, offset/);
   assert.match(logs, /start_date/);
   assert.match(logs, /end_date/);
   assert.match(logs, /total_pages:/);
@@ -2275,8 +2288,15 @@ test('reminders contract uses canonical options and explicit response columns', 
   assert.match(service, /total_pages,/);
   assert.match(service, /has_next: page_number < total_pages/);
   assert.match(service, /has_prev: page_number > 1/);
-  assert.match(page, /page_size:pagination\.page_size/);
+  assert.match(page, /page_size:\s*pagination\.page_size/);
   assert.doesNotMatch(page, /params:\{[^}]*\blimit:/);
+  assert.match(page, /remote-method="searchReminderUsers"/);
+  assert.match(page, /const loadUsers = async \(keyword = ''\)/);
+  assert.match(page, /api\.get<ReminderUser\[]>\('\/reminders\/users'/);
+  assert.match(page, /keyword:\s*keyword\.trim\(\) \|\| undefined,\s*page:\s*1,\s*page_size:\s*20/);
+  assert.match(page, /const selectedIds = new Set\(form\.target_user_ids\)/);
+  assert.match(page, /\.\.\.selected\.filter\(user => !results\.some\(item => item\.id === user\.id\)\)/);
+  assert.doesNotMatch(page, /\bas any\b|:\s*any\b|<any>/);
   assert.match(route, /REMINDER_FIELD_MODULE_KEY = 'reminders_reminderview'/);
   assert.match(route, /maskReminderPayloadWithPermissions/);
   assert.match(route, /rejectHiddenReminderWrites/);

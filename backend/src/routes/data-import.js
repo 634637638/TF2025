@@ -419,7 +419,7 @@ router.get('/history', requirePermission('data-import:view'), async (req, res) =
 
     const total = countResult[0].total
 
-    // 查询历史记录 - 确保 LIMIT 和 OFFSET 是整数
+    // 分页值同样通过参数绑定，避免 SQL 字符串拼接。
     const [history] = await connection.execute(
       `SELECT
         id,
@@ -443,8 +443,8 @@ router.get('/history', requirePermission('data-import:view'), async (req, res) =
       FROM import_history
       ${whereClause}
       ORDER BY start_time DESC
-      LIMIT ${pageSize} OFFSET ${parseInt(offset, 10)}`,
-      queryParams
+      LIMIT ? OFFSET ?`,
+      [...queryParams, pageSize, offset]
     )
 
     res.json({

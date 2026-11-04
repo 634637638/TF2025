@@ -1,6 +1,6 @@
 import type { User as BaseUser } from '@/types'
 
-export type Role = {
+export type PermissionRole = {
   id: number
   name: string
   code?: string | null
@@ -18,11 +18,11 @@ export type Role = {
   updated_at: string
 }
 
-export type User = Omit<BaseUser, 'status' | 'roles'> & {
+export type PermissionUser = Omit<BaseUser, 'status' | 'roles'> & {
   full_name?: string
   role_id?: number
   status: number
-  roles?: Role[]
+  roles?: PermissionRole[]
 }
 
 export interface Module {
@@ -82,6 +82,7 @@ export interface StoreBinding {
 export interface StoreBindingUser {
   id: number
   name?: string
+  roles?: string | PermissionRole[] | null
   stores?: StoreBinding[]
   username: string
 }

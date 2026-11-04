@@ -447,7 +447,6 @@ import { fieldPermissions, shouldShowActionColumn } from '@/composables/useField
 import { useAuthStore } from '@/stores/auth'
 import { normalizePermissionList } from '@/utils/permissionList'
 import Pagination from '../../components/Pagination.vue'
-import InlineLoading from '@/components/InlineLoading.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import { PermissionGate, PageHeader } from '@/components/base'
@@ -459,6 +458,7 @@ import { formatDateTime as formatGlobalDateTime } from '@/utils/format'
 import { useElementTableSortable } from '@/composables/useElementTableSortable'
 import { logger } from '@/utils/logger'
 import type { Brand } from '@/types'
+import type { QueryParams } from '@/types/shared'
 
 // 获取路由实例和store
 const _router = useRouter()
@@ -532,7 +532,7 @@ const dialogVisible = computed({
   }
 })
 
-const brandsTableRef = ref<any>(null)
+const brandsTableRef = ref<unknown>(null)
 const mobileActionRowId = ref<string | null>(null)
 const lastTappedRowId = ref<string | null>(null)
 const lastTapTimestamp = ref(0)
@@ -616,7 +616,7 @@ const loadBrands = async (bustCache = false, silentError = false, _showLoadingSt
   }
 
   try {
-    const params: any = {
+    const params: QueryParams = {
       page: pagination.value.page,
       page_size: pagination.value.page_size
     }
@@ -642,7 +642,7 @@ const loadBrands = async (bustCache = false, silentError = false, _showLoadingSt
 
     if (response.success) {
       // 使用 extractResponseData 统一提取数据
-      const responseData = extractResponseData<any[]>(response)
+      const responseData = extractResponseData<Brand[]>(response)
       const brandData = Array.isArray(responseData) ? responseData : []
       // 按 sort_order 排序，确保序号和排序值一致
       const sortedData = brandData.sort((a: Brand, b: Brand) => (a.sort_order || 0) - (b.sort_order || 0))
@@ -673,7 +673,7 @@ const loadBrands = async (bustCache = false, silentError = false, _showLoadingSt
         error(`获取品牌列表失败: ${response.message || '未知错误'}`)
       }
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     if (brandListRequest.isCanceledError(err)) {
       return
     }
@@ -784,7 +784,7 @@ const deleteBrand = async (brand: Brand) => {
     } else {
       error(`删除品牌失败: ${response.message || '未知错误'}`)
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('删除品牌失败:', error)
 
     // 使用统一的错误处理
@@ -901,7 +901,7 @@ const submitForm = async () => {
         error(`更新品牌失败: ${response.message || '未知错误'}`)
       }
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('提交表单失败:', error)
 
     // 使用统一的错误处理

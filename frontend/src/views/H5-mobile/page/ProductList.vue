@@ -73,7 +73,7 @@
             <div class="product-info">
               <h4 class="product-title">
                 <template v-if="isProductUsed(product)">
-                  {{ product.model_name || '未知型号' }} {{ product.color_name || '' }}{{ (product as any).memory_name || '' }}
+                  {{ product.model_name || '未知型号' }} {{ product.color_name || '' }}{{ getProductMemoryName(product) }}
                 </template>
                 <template v-else>
                   {{ product.brand_name }} {{ product.model_name || '未知型号' }}
@@ -256,7 +256,8 @@ import { baseDataApi } from '@/api/base-data'
 import { useCart, useLoadingState } from '@/composables'
 import InlineLoading from '@/components/InlineLoading.vue'
 import SectionLoading from '@/components/SectionLoading.vue'
-import type { AggregatedProduct } from '@/api/shop-public'
+import type { AggregatedProduct, Product, ShopConfig } from '@/api/shop-public'
+import type { Brand, MemoryOption } from '@/types'
 import { storage } from '@/services/storage'
 import { formatImageUrl, generateProductPlaceholder } from '@/utils/format'
 import { logger } from '@/utils/logger'
@@ -273,9 +274,11 @@ const router = useRouter()
 const route = useRoute()
 
 // 数据
-const products = ref<AggregatedProduct[]>([])
-const brands = ref<any[]>([])
-const memories = ref<any[]>([])
+type ProductListItem = (Product & { first_phone_id?: number, memory_size?: string }) | AggregatedProduct
+
+const products = ref<ProductListItem[]>([])
+const brands = ref<Brand[]>([])
+const memories = ref<MemoryOption[]>([])
 const { loading } = useLoadingState()
 const showFilterPopup = ref(false)
 const hasMore = ref(true)
@@ -287,14 +290,14 @@ const reloadSequence = ref(0) // 用于终止旧的分批加载流程
 const isInitializing = ref(false) // 标记是否正在初始化
 const isSyncingRouteFilters = ref(false) // 标记是否正在同步路由筛选
 const suppressNextRouteReload = ref(false) // 本地更新 query 后，跳过下一次 route watcher 重载
-const config = ref<any>({}) // 商城配置
+const config = ref<ShopConfig | null>(null) // 商城配置
 
 // 购物车功能
 const { cartCount: _cartCount, getCartId: _getCartId, addCartItem, refreshCart } = useCart()
 const addingToCart = ref<string | null>(null)
 
 // 缓存管理
-const cache = ref<Map<string, any>>(new Map()) // 缓存品牌和内存数据
+const cache = ref<Map<string, unknown>>(new Map()) // 缓存品牌和内存数据
 
 const saveScrollPosition = () => {
   if (route.path !== '/m/products') {
@@ -417,7 +420,7 @@ const parseBooleanQuery = (value: unknown): boolean | null => {
   return null
 }
 
-const getFiltersFromRouteQuery = (query: Record<string, any>) => {
+const getFiltersFromRouteQuery = (query: Record<string, unknown>) => {
   const nextFilters = createDefaultFilters()
 
   nextFilters.brand_id = parseNumberQuery(query.brand_id)
@@ -437,7 +440,7 @@ const getFiltersFromRouteQuery = (query: Record<string, any>) => {
   return nextFilters
 }
 
-const syncFiltersFromRouteQuery = (query: Record<string, any>) => {
+const syncFiltersFromRouteQuery = (query: Record<string, unknown>) => {
   const nextFilters = getFiltersFromRouteQuery(query)
   const currentFilters = filters.value
   const hasChanged = Object.keys(nextFilters).some((key) => currentFilters[key as keyof typeof nextFilters] !== nextFilters[key as keyof typeof nextFilters])
@@ -523,7 +526,8 @@ const loadBrands = async () => {
   try {
     // 检查缓存
     if (cache.value.has('brands')) {
-      brands.value = cache.value.get('brands')
+      const cachedBrands = cache.value.get('brands')
+      if (Array.isArray(cachedBrands)) brands.value = cachedBrands as Brand[]
       return
     }
     const data = await baseDataApi.getPublicBrands()
@@ -549,7 +553,8 @@ const loadMemories = async () => {
   try {
     // 检查缓存
     if (cache.value.has('memories')) {
-      memories.value = cache.value.get('memories')
+      const cachedMemories = cache.value.get('memories')
+      if (Array.isArray(cachedMemories)) memories.value = cachedMemories as MemoryOption[]
       return
     }
     const data = await baseDataApi.getPublicMemories()
@@ -577,7 +582,7 @@ const loadProducts = async (page = 1, append = false, force = false) => {
 
     // 二手机：使用普通商品API（显示每个独立手机）
     if (filters.value.is_new === false) {
-      const requestParams: any = {
+      const requestParams: Record<string, number | string | boolean> = {
         page,
         page_size,
         is_new: false
@@ -611,7 +616,7 @@ const loadProducts = async (page = 1, append = false, force = false) => {
     }
     // 全新机或全部：使用聚合商品API
     else {
-      const requestParams: any = {
+      const requestParams: Record<string, number | string | boolean> = {
         page,
         page_size,
         sort: currentSort.value
@@ -712,12 +717,12 @@ const resetFilters = () => {
 }
 
 // 判断是否为聚合商品
-const isProductAggregated = (product: any): product is AggregatedProduct => {
-  return product && !!(product.product_key || product.template_id || product.template_name)
+const isProductAggregated = (product: ProductListItem): product is AggregatedProduct => {
+  return 'product_key' in product || 'template_id' in product || 'template_name' in product
 }
 
 // 获取商品唯一标识
-const getProductKey = (product: any) => {
+const getProductKey = (product: ProductListItem) => {
   if (isProductAggregated(product)) {
     return `agg_${product.product_key || product.template_id}`
   }
@@ -725,13 +730,18 @@ const getProductKey = (product: any) => {
 }
 
 // 默认占位图（使用品牌、型号、颜色、内存生成SVG占位图 - 横向布局）
-const generatePlaceholderImage = (product: any): string => {
+const getProductMemoryName = (product: ProductListItem): string => {
+  const record = product as ProductListItem & { memory_name?: unknown, memory_size?: unknown }
+  return String(record.memory_name || record.memory_size || '')
+}
+
+const generatePlaceholderImage = (product: ProductListItem): string => {
   if (!product) return DEFAULT_PLACEHOLDER
   return generateProductPlaceholder({
     brand: product.brand_name || '',
     model: product.model_name || '',
     color: product.color_name || '',
-    memory: (product as any).memory_name || product.memory_size || '',
+    memory: getProductMemoryName(product),
     size: 200,
     layout: 'horizontal'
   })
@@ -741,7 +751,7 @@ const generatePlaceholderImage = (product: any): string => {
 const DEFAULT_PLACEHOLDER = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"%3E%3Crect width="200" height="200" fill="%23f5f5f5"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%23999" font-size="16"%3E%E6%97%A0%E5%9B%BE%E7%89%87%3C/text%3E%3C/svg%3E'
 
 // 获取商品图片
-const getProductImage = (product: any) => {
+const getProductImage = (product: ProductListItem) => {
   if (!product) {
     return DEFAULT_PLACEHOLDER
   }
@@ -761,7 +771,7 @@ const handleImageError = (event: Event) => {
   const img = event.target as HTMLImageElement
   // 避免重复设置占位图
   if (!img.dataset.placeholderUsed) {
-    const product = (img as any)._product
+    const product = (img as HTMLImageElement & { _product?: ProductListItem })._product
     if (product) {
       img.src = generatePlaceholderImage(product)
       img.dataset.placeholderUsed = 'true'
@@ -772,23 +782,23 @@ const handleImageError = (event: Event) => {
 }
 
 // 判断是否为二手机
-const isProductUsed = (product: any) => {
+const isProductUsed = (product: ProductListItem) => {
   if (!product) return false
 
   // 聚合商品：检查 is_new 字段（可能是数字或字符串）
   if (isProductAggregated(product)) {
     const isNewVal = product.is_new
     const isNewNum = Number(isNewVal)
-    return isNewNum === 0 || isNewVal === '0'
+    return isNewNum === 0
   }
   // 普通商品：检查 is_new 字段
   const isNewVal = product.is_new
   const isNewNum = Number(isNewVal)
-  return isNewNum === 0 || isNewVal === '0'
+  return isNewNum === 0
 }
 
 // 获取商品显示价格
-const getDisplayPrice = (product: any) => {
+const getDisplayPrice = (product: ProductListItem) => {
   if (!product) return null
 
   if (isProductAggregated(product)) {
@@ -796,14 +806,14 @@ const getDisplayPrice = (product: any) => {
     return product.min_price || null
   } else {
     // 普通商品：检查 sale_price
-    return (product as any).sale_price || null
+    return (product as Product).sale_price || null
   }
 }
 
 // 处理购物车图标点击
-const handleCartClick = async (product: any) => {
+const handleCartClick = async (product: ProductListItem) => {
   // 全新机需要找到对应的商品
-  if (product.template_id) {
+  if (isProductAggregated(product) && product.template_id) {
     addingToCart.value = getProductKey(product)
     try {
       // 使用模板商品API获取详细信息
@@ -813,7 +823,7 @@ const handleCartClick = async (product: any) => {
 
       if (phones && phones.length > 0) {
         // 获取第一个有库存的商品
-        const availablePhone = phones.find((p: any) => p.status === 'in_stock')
+        const availablePhone = phones.find(p => p.status === 'in_stock')
 
         if (availablePhone) {
           await addCartItem(availablePhone.id, 1)
@@ -835,7 +845,8 @@ const handleCartClick = async (product: any) => {
   }
 
   // 二手机直接加入购物车
-  const phoneId = product.first_phone_id || product.id
+  const phoneId = isProductAggregated(product) ? undefined : (product.first_phone_id || product.id)
+  if (!phoneId) return
   addingToCart.value = getProductKey(product)
   try {
     await addCartItem(phoneId, 1)
@@ -850,16 +861,17 @@ const handleCartClick = async (product: any) => {
 }
 
 // 跳转详情
-const goDetail = (product: any) => {
+const goDetail = (product: ProductListItem) => {
   saveScrollPosition()
 
   // 判断是否为全新机聚合商品（有 template_id）
-  if (product.template_id) {
+  if (isProductAggregated(product) && product.template_id) {
     // 全新机：跳转到聚合商品详情页，使用新的路由 /m/product/new/:id
     router.push(`/m/product/new/${product.template_id}`)
   } else {
     // 二手机：跳转到普通商品详情页，使用 phone ID
-    const phoneId = product.first_phone_id || product.id
+    const phoneId = isProductAggregated(product) ? undefined : (product.first_phone_id || product.id)
+    if (!phoneId) return
     router.push(`/m/product/${phoneId}`)
   }
 }
@@ -914,7 +926,7 @@ onDeactivated(() => {
 // 当从详情页返回时恢复滚动位置
 onActivated(async () => {
   if (route.path === '/m/products') {
-    const routeChanged = syncFiltersFromRouteQuery(route.query as Record<string, any>)
+    const routeChanged = syncFiltersFromRouteQuery(route.query as Record<string, unknown>)
 
     if (routeChanged) {
       isInitializing.value = true
@@ -1006,15 +1018,15 @@ watch([
   }
 
   // 更新URL参数（不触发路由守卫）
-  const query: any = {}
-  if (filters.value.brand_id) query.brand_id = filters.value.brand_id
-  if (filters.value.model_id) query.model_id = filters.value.model_id
-  if (filters.value.color_id) query.color_id = filters.value.color_id
+  const query: Record<string, string> = {}
+  if (filters.value.brand_id) query.brand_id = String(filters.value.brand_id)
+  if (filters.value.model_id) query.model_id = String(filters.value.model_id)
+  if (filters.value.color_id) query.color_id = String(filters.value.color_id)
   // 只在二手机时保存内存筛选参数
   if (filters.value.is_new === false && filters.value.memory_id) {
-    query.memory_id = filters.value.memory_id
+    query.memory_id = String(filters.value.memory_id)
   }
-  if (filters.value.is_new !== null) query.is_new = filters.value.is_new
+  if (filters.value.is_new !== null) query.is_new = String(filters.value.is_new)
   if (filters.value.condition_grade) query.condition_grade = filters.value.condition_grade
   if (filters.value.search) query.search = filters.value.search
 
@@ -1046,7 +1058,7 @@ watch(
       return
     }
 
-    const routeChanged = syncFiltersFromRouteQuery(route.query as Record<string, any>)
+    const routeChanged = syncFiltersFromRouteQuery(route.query as Record<string, unknown>)
     if (!routeChanged && products.value.length > 0) {
       return
     }

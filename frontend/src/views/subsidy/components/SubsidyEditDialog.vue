@@ -502,11 +502,14 @@ import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import { logger } from '@/utils/logger'
 import { useBrandModels } from '@/composables/useBrandModels'
 import { formatAmount } from '@/utils/format'
+import { isAxiosError } from 'axios'
+import type { ReferenceRecord } from '@/services/reference-options'
+import type { MemoryOption, NationalSubsidyEditForm, NationalSubsidyRecord } from '@/types'
 
 const props = defineProps<{
   modelValue: boolean
-  item: any | null
-  stores: any[]
+  item: NationalSubsidyRecord | null
+  stores: ReferenceRecord[]
   canViewField: (_field: string) => boolean
   canEditField: (_field: string) => boolean
   canApprove: boolean
@@ -519,7 +522,7 @@ const emit = defineEmits<{
 }>()
 
 const editing = ref(false)
-const editForm = ref<any>(null)
+const editForm = ref<NationalSubsidyEditForm | null>(null)
 const {
   brands,
   brandModels,
@@ -557,17 +560,17 @@ const hasReadOnlyFields = computed(() => {
 
 const formatDateTime = (date: string) => date ? TimeUtil.format(date, TIME_FORMATS.DATETIME_SHORT) : '-'
 
-const calculateRemarks = (item: any) => {
+const calculateRemarks = (item: NationalSubsidyRecord) => {
   if (item.remarks && item.remarks.trim() !== '') return item.remarks
 
-  const salePrice = item.sale_price || 0
+  const salePrice = Number(item.sale_price || 0)
   if (!salePrice) return ''
 
   if (salePrice > 6000) {
     return `商品售价${salePrice}元（超过6000元，无法享受国补优惠）`
   }
 
-  const subsidyAmount = item.subsidy_amount || Math.min(salePrice * 0.15, 500)
+  const subsidyAmount = Number(item.subsidy_amount || Math.min(salePrice * 0.15, 500))
   const cardPayment = (salePrice - subsidyAmount).toFixed(2)
   const sn = item.serial_number || ''
   const st = item.sale_time ? TimeUtil.format(item.sale_time, TIME_FORMATS.DATE) : ''
@@ -575,9 +578,9 @@ const calculateRemarks = (item: any) => {
   return `序列号：${sn}\n购买时间：${st}\n商品售价：${salePrice}元 国补优惠${subsidyAmount}元 实际刷卡支付${cardPayment}元`
 }
 
-const memoryLabel = (memory: any) => String(memory?.size || memory?.capacity || memory?.name || '')
+const memoryLabel = (memory: MemoryOption) => String(memory.size || memory.capacity || memory.name || '')
 
-const loadBaseData = async (item: any = null) => {
+const loadBaseData = async (item: NationalSubsidyRecord | null = null) => {
   await Promise.all([loadBrands(), loadColors(), loadMemories()])
   const brandName = item?.phone_brand || editForm.value?.phone_brand
   const brand = brands.value.find(value => value.name === brandName)
@@ -597,7 +600,7 @@ const normalizeSalePrice = () => {
   editForm.value.sale_price = Number.isFinite(value) && value >= 0 ? Number(value.toFixed(2)) : null
 }
 
-const fillEditForm = (item: any) => {
+const fillEditForm = (item: NationalSubsidyRecord | null) => {
   if (!item) {
     editForm.value = null
     return
@@ -613,14 +616,14 @@ const fillEditForm = (item: any) => {
     phone_model: item.phone_model || '',
     phone_color: item.phone_color || '',
     phone_memory: item.phone_memory || '',
-    sale_price: item.sale_price ?? null,
+    sale_price: item.sale_price === null || item.sale_price === undefined ? null : Number(item.sale_price),
     store_id: item.store_id || null,
     imei1: item.imei1 || '',
     imei2: item.imei2 || '',
     apply_time: item.apply_time || '',
     arrival_time: item.arrival_time || '',
     remarks: calculateRemarks(item),
-    has_different_handler: item.has_different_handler || false,
+    has_different_handler: Boolean(item.has_different_handler),
     handler_name: normalizePersonName(item.handler_info?.handler_name || '', 20),
     handler_phone: normalizePhoneDigits(item.handler_info?.handler_phone || ''),
     handler_idcard: normalizeIdCard(item.handler_info?.handler_idcard || '')
@@ -628,7 +631,7 @@ const fillEditForm = (item: any) => {
 }
 
 watch(
-  () => [props.modelValue, props.item],
+  () => [props.modelValue, props.item] as const,
   ([visible, item]) => {
     if (visible && item) {
       fillEditForm(item)
@@ -717,9 +720,12 @@ const submitEdit = async () => {
     } else {
       ElMessage.error(response.message || '更新失败')
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('更新失败:', error)
-    ElMessage.error(error.response?.data?.message || '更新失败')
+    const message = isAxiosError<{ message?: string }>(error)
+      ? error.response?.data?.message || error.message
+      : error instanceof Error ? error.message : '更新失败'
+    ElMessage.error(message || '更新失败')
   } finally {
     editing.value = false
   }

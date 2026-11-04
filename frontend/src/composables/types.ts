@@ -47,7 +47,7 @@ export interface ListState<T = unknown> {
 /**
  * 表单状态
  */
-export interface FormState<T = Record<string, unknown>> {
+export interface ComposableFormState<T = Record<string, unknown>> {
   data: Ref<T>
   errors: Ref<Record<string, string[]>>
   touched: Ref<Record<string, boolean>>
@@ -78,7 +78,7 @@ export interface ConfirmDialogConfig {
 /**
  * 通知配置
  */
-export interface NotificationConfig {
+export interface ComposableNotificationConfig {
   title?: string
   message: string
   type?: 'success' | 'warning' | 'info' | 'error'

@@ -7,7 +7,7 @@
 
 import { DEFAULT_CACHE_TTL, useCachedRequest } from '@/composables/usePageCache'
 import { unifiedApi } from '@/utils/unified-api'
-import type { ApiResponse } from '@/utils/unified-api'
+import type { ApiResponse } from '@/types'
 import { useAuthStore } from '@/stores/auth'
 import { sortOptionsByOrder } from '@/utils/option-sort'
 

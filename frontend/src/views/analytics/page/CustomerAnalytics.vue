@@ -432,7 +432,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onUnmounted, nextTick, markRaw, watch } from 'vue'
+import { ref, shallowRef, computed, onUnmounted, nextTick, markRaw, watch } from 'vue'
 import { useNotification } from '@/composables/useNotification'
 import { useLoadingState } from '@/composables'
 import { useCachedRequest, DEFAULT_CACHE_TTL } from '@/composables/usePageCache'
@@ -451,12 +451,13 @@ import {
   Download,
   Refresh
 } from '@element-plus/icons-vue'
-import echarts, { ECharts } from '@/utils/echarts'
+import echarts, { ECharts, type CallbackDataParams } from '@/utils/echarts'
 import { analyticsService } from '@/api/analytics'
 import type { CustomerSegment, CustomerInsight, CustomerDetail } from '@/types/analytics'
 import type { CustomerAnalyticsProps } from '@/types/component'
 import { useAnalyticsFieldVisibility } from './useAnalyticsFieldVisibility'
 import { logger } from '@/utils/logger'
+import { getRequestErrorMessage } from '@/utils/api-response'
 import { formatDate as formatGlobalDate } from '@/utils/format'
 import { TimeUtil } from '@/utils/time'
 
@@ -526,7 +527,7 @@ const customerDetailVisible = ref(false)
 const selectedCustomer = ref<CustomerDetail | null>(null)
 
 // 图表实例
-const charts = ref<{
+const charts = shallowRef<{
   growth?: ECharts;
   segment?: ECharts;
   retention?: ECharts;
@@ -645,7 +646,7 @@ const getSegmentText = (segment: string): string => {
 
 // 缓存键
 const CACHE_KEYS = {
-  customerOverview: (params: any) => `/analytics/customers:${JSON.stringify(params)}`,
+  customerOverview: (params: Record<string, unknown>) => `/analytics/customers:${JSON.stringify(params)}`,
   customerList: (params: Record<string, unknown>) => `/analytics/customers/high-value:${JSON.stringify(params)}`,
   customerGrowth: (period: string) => `/analytics/customers/growth:${period}`,
   customerSegments: '/analytics/customers/segments',
@@ -743,7 +744,7 @@ const loadOverview = async (showLoadingState = true) => {
 
   } catch (err) {
     logger.error('加载客户概览失败:', err)
-    logger.error('错误详情:', err.response?.data || err.message)
+    logger.error('错误详情:', getRequestErrorMessage(err))
     showError('加载客户概览失败')
   } finally {
     if (showLoadingState) {
@@ -817,7 +818,7 @@ const initGrowthChart = async () => {
     const option = {
       tooltip: {
         trigger: 'axis',
-        formatter: (params: any) => {
+        formatter: (params: CallbackDataParams) => {
           const param = params[0]
           return `${param.name}<br/>新增客户: ${param.value}`
         }
@@ -952,9 +953,9 @@ const initRetentionChart = async () => {
     let data
     if (response?.data) {
       data = response.data
-    } else if ((response as any)?.periods && (response as any)?.cohorts) {
+    } else if (response && typeof response === 'object' && 'periods' in response && 'cohorts' in response) {
       // 如果 response 本身就有 periods 和 cohorts 属性（某些情况下的响应格式）
-      data = response as any
+      data = response
     } else {
       data = response
     }
@@ -975,16 +976,26 @@ const initRetentionChart = async () => {
 }
 
 
-const setRetentionChartOption = (chart: any, data: any) => {
+interface RetentionCohort {
+  cohort: string
+  data?: Array<number | null>
+}
+
+interface RetentionData {
+  periods: string[]
+  cohorts: RetentionCohort[]
+}
+
+const setRetentionChartOption = (chart: ECharts, data: RetentionData) => {
   const option = {
     tooltip: {
       trigger: 'axis',
       axisPointer: {
         type: 'shadow'
       },
-      formatter: (params: any) => {
+      formatter: (params: CallbackDataParams[]) => {
         let result = `${params[0].name}<br/>`
-        params.forEach((param: any) => {
+        params.forEach(param => {
           result += `${param.seriesName}: ${param.value}%<br/>`
         })
         return result
@@ -995,7 +1006,7 @@ const setRetentionChartOption = (chart: any, data: any) => {
     },
     xAxis: {
       type: 'category',
-      data: data.cohorts?.map((c: any) => c.cohort) || []
+      data: data.cohorts?.map(c => c.cohort) || []
     },
     yAxis: {
       type: 'value',
@@ -1008,7 +1019,7 @@ const setRetentionChartOption = (chart: any, data: any) => {
       name: period,
       type: 'bar',
       stack: 'retention',
-      data: (data.cohorts || []).map((cohort: any) => cohort.data?.[index] ?? 0),
+      data: (data.cohorts || []).map(cohort => cohort.data?.[index] ?? 0),
       itemStyle: {
         color: getRetentionColor(index)
       }

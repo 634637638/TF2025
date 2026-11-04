@@ -488,19 +488,10 @@ import { shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import Pagination from '@/components/Pagination.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
+import type { SalaryEmployeeOption, SalaryTemplate } from '@/types/salary'
 
-interface EmployeeRow {
-  id: number
-  name?: string | null
-  username?: string | null
-  phone?: string | null
-  salary_template_id?: number | null
-}
-
-interface TemplateOption {
-  id: number
-  name?: string | null
-}
+type EmployeeRow = SalaryEmployeeOption & { phone?: string | null }
+type TemplateOption = Pick<SalaryTemplate, 'id' | 'name'> & { id: number, name?: string | null }
 
 interface AttendanceStats {
   monthly_leave_days_available: number

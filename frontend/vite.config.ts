@@ -7,8 +7,8 @@ import Components from 'unplugin-vue-components/vite'
 import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
 import Compression from 'vite-plugin-compression'
 
-// HTTPS 已暂停：如需恢复，将下方 USE_HTTPS 改回 true 即可
-const USE_HTTPS = false
+// 日常开发默认使用 HTTP；真机扫码验收时通过 TF_USE_HTTPS=true 临时启用 HTTPS。
+const USE_HTTPS = process.env.TF_USE_HTTPS === 'true'
 const localHttpsKey = resolve(__dirname, 'ssl/local-dev-key.pem')
 const localHttpsCert = resolve(__dirname, 'ssl/local-dev-cert.pem')
 const localHttps = USE_HTTPS && existsSync(localHttpsKey) && existsSync(localHttpsCert)

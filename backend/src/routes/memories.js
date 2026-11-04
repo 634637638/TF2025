@@ -2,12 +2,15 @@ const express = require('express')
 const router = express.Router()
 const { unifiedAuth, requirePermission, requireAnyPermission } = require('../middleware/unified-auth')
 const ApiResponse = require('../utils/response')
-const { getDatabase, isConnected } = require('../config/database')
+const { isConnected } = require('../config/database')
+const MemoryRepository = require('../repositories/memory.repository')
 const { cacheMiddleware, clearCache } = require('../middleware/cache')
 const { CACHE_TTL, PAGINATION } = require('../config/constants')
 const log = require('../utils/log')
 const { parseStatusFilter } = require('../utils/status')
 const { normalizeReferencePagination, buildReferenceOrder, buildPagination } = require('../services/reference-options.service')
+
+const memoryRepository = new MemoryRepository()
 
 const MEMORY_COLUMNS = 'id, size, status, sort_order, created_at, updated_at'
 
@@ -47,7 +50,6 @@ router.get('/', unifiedAuth, requireAnyPermission(['memories:view', 'inventory:v
       return ApiResponse.error(res, '数据库未连接', 500)
     }
 
-    const pool = getDatabase()
     const {
       page = PAGINATION.DEFAULT_PAGE,
       page_size = PAGINATION.DEFAULT_LIMIT,
@@ -115,8 +117,8 @@ router.get('/', unifiedAuth, requireAnyPermission(['memories:view', 'inventory:v
 
     // 执行查询
     const [[memories], [countResult]] = await Promise.all([
-      pool.execute(finalQuery, queryParams),
-      pool.execute(baseCountQuery, queryParams)
+      memoryRepository.executePrepared(finalQuery, queryParams),
+      memoryRepository.executePrepared(baseCountQuery, queryParams)
     ])
     const total = Number(countResult[0].total) || 0
     if (returnAll) {
@@ -151,9 +153,8 @@ router.get('/:id(\\d+)', unifiedAuth, requirePermission('memories:view'), async 
     }
 
     const { id } = req.params
-    const pool = getDatabase()
 
-    const [memories] = await pool.execute(`SELECT ${MEMORY_COLUMNS} FROM memories WHERE id = ?`, [parseInt(id)])
+    const [memories] = await memoryRepository.executePrepared(`SELECT ${MEMORY_COLUMNS} FROM memories WHERE id = ?`, [parseInt(id)])
 
     if (memories.length === 0) {
       return ApiResponse.notFound(res, '内存规格不存在')
@@ -182,7 +183,6 @@ router.post('/', unifiedAuth, requirePermission('memories:create'), async (req, 
       return ApiResponse.error(res, '数据库未连接', 500)
     }
 
-    const pool = getDatabase()
     const {
       size, // 前端发送的字段，如 "6+128GB" 或 "64GB"
       sort_order,
@@ -220,7 +220,7 @@ router.post('/', unifiedAuth, requirePermission('memories:create'), async (req, 
     }
 
     // 检查规格是否重复
-    const [existingMemories] = await pool.execute(
+    const [existingMemories] = await memoryRepository.executePrepared(
       'SELECT id FROM memories WHERE size = ?',
       [trimmedSize]
     )
@@ -244,10 +244,10 @@ router.post('/', unifiedAuth, requirePermission('memories:create'), async (req, 
     log.debug('执行插入SQL:', insertQuery)
     log.debug('插入参数:', insertValues)
 
-    const [result] = await pool.execute(insertQuery, insertValues)
+    const [result] = await memoryRepository.executePrepared(insertQuery, insertValues)
 
     // 获取新创建的内存规格
-    const [newMemories] = await pool.execute(`SELECT ${MEMORY_COLUMNS} FROM memories WHERE id = ?`, [result.insertId])
+    const [newMemories] = await memoryRepository.executePrepared(`SELECT ${MEMORY_COLUMNS} FROM memories WHERE id = ?`, [result.insertId])
     const newMemory = formatMemory(newMemories[0])
 
     clearMemoriesRouteCache()
@@ -274,7 +274,6 @@ router.put('/:id', unifiedAuth, requirePermission('memories:edit'), async (req, 
       return ApiResponse.error(res, '数据库未连接', 500)
     }
 
-    const pool = getDatabase()
     const {
       size, // 前端发送的字段，如 "6+128GB" 或 "64GB"
       sort_order,
@@ -309,13 +308,13 @@ router.put('/:id', unifiedAuth, requirePermission('memories:edit'), async (req, 
     }
 
     // 检查内存是否存在
-    const [existingMemories] = await pool.execute('SELECT id FROM memories WHERE id = ?', [id])
+    const [existingMemories] = await memoryRepository.executePrepared('SELECT id FROM memories WHERE id = ?', [id])
     if (existingMemories.length === 0) {
       return ApiResponse.notFound(res, '内存规格不存在')
     }
 
     // 获取当前内存的size值，用于后续比较
-    const [currentMemory] = await pool.execute('SELECT size FROM memories WHERE id = ?', [id])
+    const [currentMemory] = await memoryRepository.executePrepared('SELECT size FROM memories WHERE id = ?', [id])
     const currentSize = currentMemory[0]?.size
 
     // 构建更新字段
@@ -324,7 +323,7 @@ router.put('/:id', unifiedAuth, requirePermission('memories:edit'), async (req, 
 
     // 如果size有变化，检查是否与其他记录重复
     if (size !== undefined && trimmedSize !== currentSize) {
-      const [duplicateCheck] = await pool.execute(
+      const [duplicateCheck] = await memoryRepository.executePrepared(
         'SELECT id FROM memories WHERE size = ? AND id != ?',
         [trimmedSize, id]
       )
@@ -357,10 +356,10 @@ router.put('/:id', unifiedAuth, requirePermission('memories:edit'), async (req, 
 
     // 执行更新
     const updateQuery = `UPDATE memories SET ${updateFields.join(', ')} WHERE id = ?`
-    await pool.execute(updateQuery, updateValues)
+    await memoryRepository.executePrepared(updateQuery, updateValues)
 
     // 获取更新后的内存规格信息
-    const [updatedMemory] = await pool.execute(`SELECT ${MEMORY_COLUMNS} FROM memories WHERE id = ?`, [id])
+    const [updatedMemory] = await memoryRepository.executePrepared(`SELECT ${MEMORY_COLUMNS} FROM memories WHERE id = ?`, [id])
 
     clearMemoriesRouteCache()
     return ApiResponse.success(res, formatMemory(updatedMemory[0]), '内存规格更新成功')
@@ -386,16 +385,15 @@ router.delete('/:id', unifiedAuth, requirePermission('memories:delete'), async (
     }
 
     const { id } = req.params
-    const pool = getDatabase()
 
     // 检查内存规格是否存在
-    const [existingMemories] = await pool.execute(`SELECT ${MEMORY_COLUMNS} FROM memories WHERE id = ?`, [parseInt(id)])
+    const [existingMemories] = await memoryRepository.executePrepared(`SELECT ${MEMORY_COLUMNS} FROM memories WHERE id = ?`, [parseInt(id)])
     if (existingMemories.length === 0) {
       return ApiResponse.notFound(res, '内存规格不存在')
     }
 
     // 删除内存规格
-    await pool.execute('DELETE FROM memories WHERE id = ?', [parseInt(id)])
+    await memoryRepository.executePrepared('DELETE FROM memories WHERE id = ?', [parseInt(id)])
 
     clearMemoriesRouteCache()
     ApiResponse.success(res, formatMemory(existingMemories[0]), '内存规格删除成功')
@@ -421,7 +419,6 @@ router.get('/stats/overview', unifiedAuth, requirePermission('memories:view'), a
       return ApiResponse.error(res, '数据库未连接', 500)
     }
 
-    const pool = getDatabase()
     const conditions = []
     const params = []
     const size = String(req.query.size || '').trim()
@@ -442,7 +439,7 @@ router.get('/stats/overview', unifiedAuth, requirePermission('memories:view'), a
     const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''
 
     const [[memoryStats], [phoneStats]] = await Promise.all([
-      pool.execute(`
+      memoryRepository.executePrepared(`
         SELECT
           COUNT(*) AS total,
           SUM(CASE WHEN m.status = 1 THEN 1 ELSE 0 END) AS active,
@@ -450,7 +447,7 @@ router.get('/stats/overview', unifiedAuth, requirePermission('memories:view'), a
         FROM memories m
         ${whereClause}
       `, params),
-      pool.execute(`
+      memoryRepository.executePrepared(`
         SELECT COUNT(*) AS related_phones
         FROM phones p
         INNER JOIN memories m ON m.id = p.memory_id
@@ -489,10 +486,9 @@ router.patch('/:id/toggle', unifiedAuth, requirePermission('memories:edit'), asy
     }
 
     const { id } = req.params
-    const pool = getDatabase()
 
     // 检查内存规格是否存在
-    const [existingMemories] = await pool.execute(`SELECT ${MEMORY_COLUMNS} FROM memories WHERE id = ?`, [parseInt(id)])
+    const [existingMemories] = await memoryRepository.executePrepared(`SELECT ${MEMORY_COLUMNS} FROM memories WHERE id = ?`, [parseInt(id)])
     if (existingMemories.length === 0) {
       return ApiResponse.notFound(res, '内存规格不存在')
     }
@@ -501,13 +497,13 @@ router.patch('/:id/toggle', unifiedAuth, requirePermission('memories:edit'), asy
     const newStatus = currentMemory.status === 1 ? 0 : 1
 
     // 更新状态
-    await pool.execute(
+    await memoryRepository.executePrepared(
       'UPDATE memories SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
       [newStatus, parseInt(id)]
     )
 
     // 获取更新后的数据
-    const [updatedMemories] = await pool.execute(`SELECT ${MEMORY_COLUMNS} FROM memories WHERE id = ?`, [parseInt(id)])
+    const [updatedMemories] = await memoryRepository.executePrepared(`SELECT ${MEMORY_COLUMNS} FROM memories WHERE id = ?`, [parseInt(id)])
     const updatedMemory = formatMemory(updatedMemories[0])
 
     const statusText = newStatus === 1 ? '启用' : '禁用'
@@ -539,8 +535,7 @@ router.put('/batch/reorder', unifiedAuth, requirePermission('memories:edit'), as
       return ApiResponse.error(res, '请提供有效的排序数据', 400)
     }
 
-    const pool = getDatabase()
-    const connection = await pool.getConnection()
+    const connection = await memoryRepository.acquireConnection()
 
     try {
       await connection.beginTransaction()

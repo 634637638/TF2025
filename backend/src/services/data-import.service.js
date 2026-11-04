@@ -6,6 +6,8 @@ const _fs = require('fs')
 const crypto = require('crypto')
 const { getDatabase } = require('../config/database')
 const log = require('../utils/log')
+const { prepareInvoiceNumberTransaction, generateInvoiceNumber } = require('../utils/invoice-number')
+const { normalizeDateTime, formatLocalDate } = require('../utils/time')
 const { getUploadSubdir } = require('../utils/upload-paths')
 const { validateSpreadsheetFile, readSpreadsheetFileSafe, sheetToJsonSafe } = require('../utils/spreadsheet-security')
 
@@ -568,18 +570,30 @@ class DataImportService {
       // 导入数据
       for (let i = 0; i < data.length; i++) {
         const row = data[i]
+        const mapSnapshot = this.cloneDataMaps(maps)
+        let transactionStarted = false
 
         try {
+          // 每行独立提交：单号、销售记录、设备和基础资料必须同时成功或同时回滚。
+          await prepareInvoiceNumberTransaction(connection)
+          await connection.beginTransaction()
+          transactionStarted = true
           const result = await this.importRow(connection, row, maps, strategy, user)
+          await connection.commit()
+          transactionStarted = false
 
           if (result.status === 'imported') {
             imported++
-          } else if (result.status === 'updated') {
+          } else if (['updated', 'overwritten', 'merged'].includes(result.status)) {
             updated++
           } else if (result.status === 'skipped') {
             skipped++
           }
         } catch (error) {
+          if (transactionStarted) {
+            await connection.rollback()
+          }
+          maps = mapSnapshot
           log.error(`导入第 ${i + 2} 行失败:`, error)
           errors++
         }
@@ -710,6 +724,66 @@ class DataImportService {
     return maps
   }
 
+  cloneDataMaps(maps) {
+    return Object.fromEntries(
+      Object.entries(maps).map(([key, value]) => [key, new Map(value)])
+    )
+  }
+
+  async syncImportedSale(connection, {
+    phoneId,
+    customerId,
+    saleDate,
+    operatorId
+  }) {
+    const saleTime = normalizeDateTime(saleDate, false)
+    if (!saleTime) {
+      throw new Error('销售日期无效，无法创建销售记录')
+    }
+
+    const [existingSales] = await connection.execute(
+      `SELECT id, sale_type, invoice_number, sale_time
+       FROM sales
+       WHERE phone_id = ?
+       ORDER BY created_at DESC, id DESC
+       LIMIT 1
+       FOR UPDATE`,
+      [phoneId]
+    )
+    const existingSale = existingSales[0]
+    const dateKey = formatLocalDate(saleTime).replaceAll('-', '')
+    const currentInvoice = String(existingSale?.invoice_number || '').trim()
+    const requiresNewInvoice = !currentInvoice ||
+      existingSale?.sale_type !== 'retail' ||
+      formatLocalDate(existingSale?.sale_time) !== formatLocalDate(saleTime) ||
+      !currentInvoice.startsWith(dateKey) ||
+      !currentInvoice.endsWith('XS')
+
+    const invoiceNumber = requiresNewInvoice
+      ? await generateInvoiceNumber('retail', connection, saleTime)
+      : currentInvoice
+
+    if (existingSale) {
+      await connection.execute(
+        `UPDATE sales
+         SET customer_id = ?, sale_time = ?, operator_id = ?, sale_type = 'retail', invoice_number = ?
+         WHERE id = ?`,
+        [customerId, saleTime, operatorId, invoiceNumber, existingSale.id]
+      )
+      log.debug(`  ✓ 更新销售记录: sale_id=${existingSale.id}, phone_id=${phoneId}, invoice_number=${invoiceNumber}`)
+      return existingSale.id
+    }
+
+    const [result] = await connection.execute(
+      `INSERT INTO sales
+        (phone_id, customer_id, sale_type, sale_time, operator_id, invoice_number, status)
+       VALUES (?, ?, 'retail', ?, ?, ?, 'completed')`,
+      [phoneId, customerId, saleTime, operatorId, invoiceNumber]
+    )
+    log.debug(`  ✓ 创建销售记录: sale_id=${result.insertId}, phone_id=${phoneId}, invoice_number=${invoiceNumber}`)
+    return result.insertId
+  }
+
   /**
    * 导入单行数据
    */
@@ -773,7 +847,7 @@ class DataImportService {
 
     if (duplicateRecord) {
       // 已存在记录 - 智能判断云端和Excel状态
-      const isCloudSold = !!duplicateRecord.saleId // 云端是否已售
+      const isCloudSold = !!duplicateRecord.sale_id // 云端是否已售
 
       // 解析Excel数据
       const statusStr = String(row['状态'] || '').trim()
@@ -949,28 +1023,12 @@ class DataImportService {
           // 如果已售出，处理销售记录
           if (status === 'sold' && saleDate) {
             if (customerId) {
-              // 检查是否已有销售记录
-              const [existingSales] = await connection.execute(
-                'SELECT id FROM sales WHERE phone_id = ?',
-                [duplicateRecord.id]
-              )
-
-              if (existingSales.length > 0) {
-                // 更新现有销售记录
-                await connection.execute(
-                  'UPDATE sales SET customer_id = ?, sale_time = ?, operator_id = ? WHERE phone_id = ?',
-                  [customerId, saleDate, saleOperatorId, duplicateRecord.id]
-                )
-                log.debug(`  ✓ 更新销售记录: phone_id=${duplicateRecord.id}, customer_id=${customerId}`)
-              } else {
-                // 创建新的销售记录
-                await connection.execute(
-                  `INSERT INTO sales (phone_id, customer_id, sale_time, operator_id)
-                   VALUES (?, ?, ?, ?)`,
-                  [duplicateRecord.id, customerId, saleDate, saleOperatorId]
-                )
-                log.debug(`  ✓ 创建销售记录: phone_id=${duplicateRecord.id}, customer_id=${customerId}`)
-              }
+              await this.syncImportedSale(connection, {
+                phoneId: duplicateRecord.id,
+                customerId,
+                saleDate,
+                operatorId: saleOperatorId
+              })
             }
           }
         }
@@ -1139,28 +1197,12 @@ class DataImportService {
           // 如果已售出，处理销售记录
           if (status === 'sold' && saleDate) {
             if (customerId) {
-              // 检查是否已有销售记录
-              const [existingSales] = await connection.execute(
-                'SELECT id FROM sales WHERE phone_id = ?',
-                [duplicateRecord.id]
-              )
-
-              if (existingSales.length > 0) {
-                // 更新现有销售记录
-                await connection.execute(
-                  'UPDATE sales SET customer_id = ?, sale_time = ?, operator_id = ? WHERE phone_id = ?',
-                  [customerId, saleDate, saleOperatorId, duplicateRecord.id]
-                )
-                log.debug(`  ✓ 更新销售记录: phone_id=${duplicateRecord.id}, customer_id=${customerId}`)
-              } else {
-                // 创建新的销售记录
-                await connection.execute(
-                  `INSERT INTO sales (phone_id, customer_id, sale_time, operator_id)
-                   VALUES (?, ?, ?, ?)`,
-                  [duplicateRecord.id, customerId, saleDate, saleOperatorId]
-                )
-                log.debug(`  ✓ 创建销售记录: phone_id=${duplicateRecord.id}, customer_id=${customerId}`)
-              }
+              await this.syncImportedSale(connection, {
+                phoneId: duplicateRecord.id,
+                customerId,
+                saleDate,
+                operatorId: saleOperatorId
+              })
             }
           }
         }
@@ -1276,12 +1318,12 @@ class DataImportService {
         log.debug(`⚠️ 手机 ${effectiveImei} 状态为已销售，但没有客户信息（phone: ${phone}），跳过创建销售记录`)
       } else {
         log.debug(`✓ 创建销售记录: phone_id=${result.insertId}, customer_id=${customerId}, sale_date=${saleDate}`)
-        const [saleResult] = await connection.execute(
-          `INSERT INTO sales (phone_id, customer_id, sale_time, operator_id, status)
-           VALUES (?, ?, ?, ?, 'completed')`,
-          [result.insertId, customerId, saleDate, saleOperatorId]
-        )
-        log.debug(`  ✓ 销售记录创建成功: sale_id=${saleResult.insertId}`)
+        await this.syncImportedSale(connection, {
+          phoneId: result.insertId,
+          customerId,
+          saleDate,
+          operatorId: saleOperatorId
+        })
       }
     }
 

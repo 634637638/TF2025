@@ -69,7 +69,13 @@ export type { ResponsiveState } from './mobile'
 
 // 类型导出
 export type { AsyncState } from './types'
-export type { ValidationRule, FormFieldConfig, UseFormOptions, UseFormReturn } from './forms/useForm'
+export type {
+  FormValidationRule,
+  FormFieldConfig,
+  UseFormOptions,
+  UseFormReturn,
+  UseFormState
+} from './forms/useForm'
 export type { UseMediaQueryOptions } from './ui/useMediaQuery'
 export type { UseWindowSizeOptions, WindowSize, ScrollPosition } from './ui/useWindowSize'
 export type { UseClipboardOptions, UseClipboardReturn } from './utils/useClipboard'

@@ -571,6 +571,11 @@ import { useImportExport } from '@/composables/useImportExport'
 import { analyticsService } from '@/api/analytics'
 import { unifiedApi } from '@/utils/unified-api'
 import type { SalesAnalytics } from '@/types/analytics'
+import type {
+  SalesConditionBreakdown,
+  SalesForecastCombination,
+  SalesForecastResponse
+} from '@/types'
 import type { SalesAnalyticsProps, LoadingChangeEmits } from '@/types/component'
 import { useAnalyticsFieldVisibility } from './useAnalyticsFieldVisibility'
 import echarts, { ECharts } from '@/utils/echarts'
@@ -578,7 +583,8 @@ import { buildCsvContent } from '@/utils/csv-export'
 import { sortOptionsByOrder } from '@/utils/option-sort'
 import { logger } from '@/utils/logger'
 import { TimeUtil } from '@/utils/time'
-import { getCachedStores } from '@/services/reference-options'
+import { getCachedStores, type ReferenceRecord } from '@/services/reference-options'
+import type { CallbackDataParams, EChartsOption, TopLevelFormatterParams } from '@/utils/echarts'
 
 const props = withDefaults(defineProps<SalesAnalyticsProps>(), {
   loading: false,
@@ -595,6 +601,16 @@ const emit = defineEmits<LoadingChangeEmits>()
 const { success, error, warning } = useNotification()
 const { canViewField: canViewSalesField, canViewAnyField: canViewAnySalesField } = useAnalyticsFieldVisibility('sales')
 const { exportTextFile, buildDateFilename } = useImportExport()
+
+interface SalesConditionResponse {
+  new?: SalesConditionBreakdown
+  used?: SalesConditionBreakdown
+}
+
+interface TransferStatisticsResponse {
+  wholesale?: { total_count?: number, total_profit?: number }
+  supplier_proxy?: { total_count?: number }
+}
 
 // 响应式数据
 const salesData = ref<SalesAnalytics>({
@@ -637,7 +653,7 @@ const selectedDate = ref<string | null>(null)
 
 // 预测数据
 const forecastData = ref<{
-  combinations: any[]
+  combinations: SalesForecastCombination[]
 }>({
   combinations: []
 })
@@ -713,9 +729,9 @@ const showSalesTableRow = computed(() => canViewAnySalesField(['top_products_tab
 
 // 缓存键
 const CACHE_KEYS = {
-  sales: (params: any) => `/analytics/sales:${JSON.stringify(params)}`,
-  salesCondition: (params: any) => `/analytics/sales-by-condition:${JSON.stringify(params)}`,
-  transfer: (params: any) => `/transfers/statistics:${JSON.stringify(params)}`
+  sales: (params: Record<string, number | string | undefined>) => `/analytics/sales:${JSON.stringify(params)}`,
+  salesCondition: (params: Record<string, number | string | undefined>) => `/analytics/sales-by-condition:${JSON.stringify(params)}`,
+  transfer: (params: Record<string, number | string | undefined>) => `/transfers/statistics:${JSON.stringify(params)}`
 }
 
 // 方法
@@ -754,8 +770,8 @@ const loadSalesData = async (showLoadingState = true) => {
     // 并行获取销售数据、全新/二手数据和调货-划拨数据（使用缓存）
     const [salesResponse, newUsedResponse, transferResponse] = await Promise.all([
       useCachedRequest(cacheKeySales, () => analyticsService.getSalesAnalytics(params), DEFAULT_CACHE_TTL.STATIC),
-      useCachedRequest(cacheKeyCondition, () => unifiedApi.get('/analytics/sales-by-condition', { params }), DEFAULT_CACHE_TTL.DYNAMIC),
-      useCachedRequest(cacheKeyTransfer, () => unifiedApi.get('/transfers/statistics', { params }).catch(err => {
+      useCachedRequest(cacheKeyCondition, () => unifiedApi.get<SalesConditionResponse>('/analytics/sales-by-condition', { params }), DEFAULT_CACHE_TTL.DYNAMIC),
+      useCachedRequest(cacheKeyTransfer, () => unifiedApi.get<TransferStatisticsResponse>('/transfers/statistics', { params }).catch(err => {
         logger.error('获取调货-划拨数据失败:', err)
         return { success: false, data: null }
       }), DEFAULT_CACHE_TTL.STATIC)
@@ -833,7 +849,7 @@ const loadMonthlyTrendData = async () => {
 
       const cacheKey = CACHE_KEYS.salesCondition({ start_date: startDate, end_date: endDate })
       const response = await useCachedRequest(cacheKey, () =>
-        unifiedApi.get('/analytics/sales-by-condition', {
+        unifiedApi.get<SalesConditionResponse>('/analytics/sales-by-condition', {
           params: { start_date: startDate, end_date: endDate }
         }), DEFAULT_CACHE_TTL.STATIC)
 
@@ -862,16 +878,22 @@ const loadStoreComparisonData = async () => {
     const storesResponse = await getCachedStores()
     if (!storesResponse.success || !storesResponse.data) return
 
-    const stores = sortOptionsByOrder<any>(Array.isArray(storesResponse.data)
+    const storeValues: unknown[] = Array.isArray(storesResponse.data)
       ? storesResponse.data
-      : ((storesResponse.data as { stores?: unknown[] }).stores || [])) as Array<{ id: number; name: string }>
+      : ((storesResponse.data as { stores?: unknown[] }).stores || [])
+    const stores = sortOptionsByOrder<ReferenceRecord>(
+      storeValues.filter((item): item is ReferenceRecord => Boolean(item && typeof item === 'object'))
+    ).map(item => ({
+      id: Number(item.id),
+      name: String(item.name || '')
+    })).filter(item => Number.isInteger(item.id) && item.id > 0)
     const comparisonData = []
 
     // 获取每个店铺的全新和二手销售数据（使用缓存）
     for (const store of stores) {
       const cacheKey = CACHE_KEYS.salesCondition({ store_id: store.id })
       const response = await useCachedRequest(cacheKey, () =>
-        unifiedApi.get('/analytics/sales-by-condition', {
+        unifiedApi.get<SalesConditionResponse>('/analytics/sales-by-condition', {
           params: { store_id: store.id }
         }), DEFAULT_CACHE_TTL.DYNAMIC)
 
@@ -976,6 +998,12 @@ const initCharts = () => {
   updateCharts()
 }
 
+type SalesTooltipParam = CallbackDataParams & { axisValue?: string | number }
+
+const normalizeTooltipParams = (params: TopLevelFormatterParams): SalesTooltipParam[] => (
+  (Array.isArray(params) ? params : [params]) as SalesTooltipParam[]
+)
+
 const updateTrendChart = () => {
   if (!trendChart) return
 
@@ -987,9 +1015,10 @@ const updateTrendChart = () => {
       axisPointer: {
         type: 'shadow'
       },
-      formatter: (params: any) => {
-        let result = `${params[0].axisValue}<br/>`
-        params.forEach((item: any) => {
+      formatter: (params: TopLevelFormatterParams) => {
+        const items = normalizeTooltipParams(params)
+        let result = `${items[0]?.axisValue || ''}<br/>`
+        items.forEach((item) => {
           result += `${item.marker}${item.seriesName}: ${item.value}台<br/>`
         })
         return result
@@ -1056,7 +1085,7 @@ const updateDistributionChart = () => {
     value: item.quantity
   }))
 
-  const option: any = {
+  const option: EChartsOption = {
     tooltip: {
       trigger: 'item',
       formatter: '{a} <br/>{b}: {c} ({d}%)'
@@ -1102,15 +1131,16 @@ const updateStoreComparison = () => {
   const newCounts = storeComparisonData.value.map(item => item.newCount)
   const usedCounts = storeComparisonData.value.map(item => item.usedCount)
 
-  const option: any = {
+  const option: EChartsOption = {
     tooltip: {
       trigger: 'axis',
       axisPointer: {
         type: 'shadow'
       },
-      formatter: (params: any) => {
-        let result = `${params[0].axisValue}<br/>`
-        params.forEach((item: any) => {
+      formatter: (params: TopLevelFormatterParams) => {
+        const items = normalizeTooltipParams(params)
+        let result = `${items[0]?.axisValue || ''}<br/>`
+        items.forEach((item) => {
           result += `${item.marker}${item.seriesName}: ${item.value}台<br/>`
         })
         return result
@@ -1232,7 +1262,7 @@ const generateForecast = async () => {
   try {
     forecastLoading.value = true
 
-    const response = await unifiedApi.get('/analytics/sales-forecast', {
+    const response = await unifiedApi.get<SalesForecastResponse>('/analytics/sales-forecast', {
       params: {
         period: forecastPeriod.value,
         page_size: 10
@@ -1297,7 +1327,7 @@ const updateForecastChart = () => {
       let hasActual = false
       let hasPredicted = false
 
-      forecastData.value.combinations.forEach((item: any) => {
+      forecastData.value.combinations.forEach((item: SalesForecastCombination) => {
         const ts = item.time_series
         if (ts && ts.dates[index] === date) {
           const actual = ts.actual[index]
@@ -1334,9 +1364,10 @@ const updateForecastChart = () => {
         axisPointer: {
           type: 'cross'
         },
-        formatter: (params: any) => {
-          let result = `${params[0].axisValue}<br/>`
-          params.forEach((item: any) => {
+        formatter: (params: TopLevelFormatterParams) => {
+          const items = normalizeTooltipParams(params)
+          let result = `${items[0]?.axisValue || ''}<br/>`
+          items.forEach((item) => {
             if (item.value !== null && item.value !== undefined && item.value !== 0) {
               result += `${item.marker}${item.seriesName}: ${item.value}台<br/>`
             }
@@ -1425,7 +1456,7 @@ const updateForecastChart = () => {
 
     // 添加点击事件
     forecastChart.off('click')
-    forecastChart.on('click', (params: any) => {
+    forecastChart.on('click', (params: CallbackDataParams) => {
       if (params.componentType === 'series') {
         const clickedDate = allDates[params.dataIndex]
         selectedDate.value = clickedDate
@@ -1455,7 +1486,11 @@ const getConfidenceLabel = (confidence: string) => {
 }
 
 // 获取某个日期某个产品的预测销量
-const getDailyPrediction = (item: any, date: string) => {
+interface ForecastCardItem extends SalesForecastCombination {
+  prediction: number
+}
+
+const getDailyPrediction = (item: SalesForecastCombination, date: string) => {
   if (!item || !item.time_series || !date) {
     return 0
   }
@@ -1473,7 +1508,7 @@ const getDailyPrediction = (item: any, date: string) => {
 }
 
 // 获取某个日期某个产品的实际销量
-const getActualSales = (item: any, date: string) => {
+const getActualSales = (item: SalesForecastCombination, date: string) => {
   if (!item || !item.time_series || !date) {
     return 0
   }
@@ -1494,7 +1529,7 @@ const getTotalPredictionForDate = (dateStr: string) => {
   }
 
   let total = 0
-  forecastData.value.combinations.forEach((item: any) => {
+  forecastData.value.combinations.forEach((item: SalesForecastCombination) => {
     const prediction = getDailyPrediction(item, dateStr)
     total += prediction
   })
@@ -1508,8 +1543,8 @@ const getProductsWithPrediction = (dateStr: string) => {
     return []
   }
 
-  const products: any[] = []
-  forecastData.value.combinations.forEach((item: any) => {
+  const products: ForecastCardItem[] = []
+  forecastData.value.combinations.forEach((item: SalesForecastCombination) => {
     const prediction = getDailyPrediction(item, dateStr)
     // 只显示预测值大于0的产品组合（算法预测会销售的）
     if (prediction > 0) {
@@ -1544,7 +1579,7 @@ const getHistoricalTotal = (dateStr: string) => {
   }
 
   let total = 0
-  forecastData.value.combinations.forEach((item: any) => {
+  forecastData.value.combinations.forEach((item: SalesForecastCombination) => {
     if (item.time_series) {
       const dateIndex = item.time_series.dates.findIndex((d: string) => d === dateStr)
       if (dateIndex !== -1) {
@@ -1587,7 +1622,7 @@ watch(trendPeriod, () => {
 })
 
 // 定期自动刷新预测（每5分钟）
-let forecastRefreshTimer: any = null
+let forecastRefreshTimer: ReturnType<typeof setInterval> | null = null
 
 const startForecastAutoRefresh = () => {
   // 清除旧的定时器

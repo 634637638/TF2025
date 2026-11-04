@@ -21,6 +21,10 @@ const config = JSON.parse(readFileSync(configPath, 'utf8'))
 const allowedVHtmlProducers = new Set(config.allowedVHtmlProducers || [])
 const permanentIntervals = new Set(config.permanentIntervalFiles || [])
 const sourceFiles = walk(sourceRoot)
+const marketingContextService = readFileSync(resolve(sourceRoot, 'services/marketing-context.ts'), 'utf8')
+const unifiedApiSource = readFileSync(resolve(sourceRoot, 'utils/unified-api.ts'), 'utf8')
+const apiResponseSource = readFileSync(resolve(sourceRoot, 'utils/api-response.ts'), 'utf8')
+const messageBoxSource = readFileSync(resolve(sourceRoot, 'utils/message-box.ts'), 'utf8')
 
 for (const file of sourceFiles) {
   const source = readFileSync(file, 'utf8')
@@ -53,6 +57,50 @@ for (const fileName of permanentIntervals) {
   if (!existsSync(path) || !readFileSync(path, 'utf8').includes('setInterval')) {
     findings.push(`永久定时器登记无效：${fileName}`)
   }
+}
+
+for (const page of [
+  'views/marketing/MarketingView.vue',
+  'views/marketing/MarketingManagementView.vue'
+]) {
+  const source = readFileSync(resolve(sourceRoot, page), 'utf8')
+  if (/open-meteo\.com|navigator\.geolocation/.test(source)) {
+    findings.push(`${page}: 营销定位和天气请求必须使用 services/marketing-context.ts`)
+  }
+  if (!source.includes('loadMarketingAutoContext')) {
+    findings.push(`${page}: 未接入统一营销上下文服务`)
+  }
+}
+
+if (!/AbortController/.test(marketingContextService) || !/response\.ok/.test(marketingContextService)) {
+  findings.push('services/marketing-context.ts 缺少外部请求超时取消或 HTTP 状态校验')
+}
+
+for (const page of [
+  'views/reminders/ReminderView.vue',
+  'views/reminders/types.ts',
+  'views/shared/SharedView.vue',
+  'types/shared.ts'
+]) {
+  const source = readFileSync(resolve(sourceRoot, page), 'utf8')
+  if (/:\s*any\b|\bas\s+any\b|<any>|\bany\[\]/.test(source)) {
+    findings.push(`${page}: 已完成强类型治理，禁止重新引入显式 any`)
+  }
+  if (/interface\s+RequestErrorLike|const\s+getRequestErrorMessage\s*=|const\s+isDialogCanceled\s*=/.test(source)) {
+    findings.push(`${page}: 请求错误解析和确认框取消判断必须复用全局工具`)
+  }
+}
+
+if (!/ApiResponse<T\s*=\s*DynamicResponse,\s*TSummary/.test(unifiedApiSource)) {
+  findings.push('utils/unified-api.ts: 统一 API 响应必须保留 summary 泛型，禁止页面使用 any 读取统计数据')
+}
+
+if (!/export function getRequestErrorMessage/.test(apiResponseSource)) {
+  findings.push('utils/api-response.ts: 缺少统一请求错误消息解析入口')
+}
+
+if (!/export const isMessageBoxCanceled/.test(messageBoxSource)) {
+  findings.push('utils/message-box.ts: 缺少统一确认框取消判断入口')
 }
 
 if (findings.length) {

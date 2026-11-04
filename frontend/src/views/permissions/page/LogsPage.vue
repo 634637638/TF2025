@@ -322,7 +322,7 @@ import type { PermissionLog } from '@/types/system'
 import { usePermissionsPageContext } from './context'
 import { getTextColumnMinWidth } from '@/utils/table-layout'
 
-type DetailRecord = Record<string, any>
+type DetailRecord = Record<string, unknown>
 
 const ctx = usePermissionsPageContext()
 const getLogColumnWidth = (
@@ -353,7 +353,7 @@ const isPermissionChangeAudit = computed(() => [
   'role_action_permissions',
   'role_menu_permissions',
   'role_field_permissions'
-].includes(currentDetails.value.audit_type))
+].includes(typeof currentDetails.value.audit_type === 'string' ? currentDetails.value.audit_type : ''))
 
 const openLogDetails = (row: PermissionLog) => {
   selectedLog.value = row
@@ -411,11 +411,16 @@ const storeChanges = computed(() => {
   if (Array.isArray(currentDetails.value.removed_stores) && currentDetails.value.removed_stores.length) {
     groups.push({ label: '移除门店', tone: 'is-removed', items: currentDetails.value.removed_stores })
   }
-  if (
-    currentDetails.value.primary_store &&
-    currentDetails.value.previous_primary_store?.store_id !== currentDetails.value.primary_store.store_id
-  ) {
-    groups.push({ label: '设置主门店', tone: 'is-added', items: [currentDetails.value.primary_store] })
+  const primaryStore = currentDetails.value.primary_store
+  const previousPrimaryStore = currentDetails.value.previous_primary_store
+  const primaryStoreRecord = primaryStore && typeof primaryStore === 'object'
+    ? primaryStore as DetailRecord
+    : null
+  const previousPrimaryStoreRecord = previousPrimaryStore && typeof previousPrimaryStore === 'object'
+    ? previousPrimaryStore as DetailRecord
+    : null
+  if (primaryStoreRecord && previousPrimaryStoreRecord?.store_id !== primaryStoreRecord.store_id) {
+    groups.push({ label: '设置主门店', tone: 'is-added', items: [primaryStoreRecord] })
   }
   return groups
 })

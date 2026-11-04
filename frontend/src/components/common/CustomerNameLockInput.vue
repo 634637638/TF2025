@@ -81,6 +81,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import type { InputInstance } from 'element-plus'
 
 defineOptions({ inheritAttrs: false })
 
@@ -114,7 +115,7 @@ const emit = defineEmits<{
   clear: []
 }>()
 
-const inputRef = ref<any>(null)
+const inputRef = ref<InputInstance | null>(null)
 const input = computed<HTMLInputElement | null>(() => inputRef.value?.input || null)
 
 const isReadonly = computed(() => {

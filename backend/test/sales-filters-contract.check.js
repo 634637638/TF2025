@@ -52,7 +52,7 @@ test('sales transaction initializes invoice sequence before beginTransaction', (
   const beforeTransaction = route.slice(saleStart, transactionStart)
 
   assert.ok(saleStart >= 0 && transactionStart > saleStart)
-  assert.match(beforeTransaction, /await ensureInvoiceSequenceTable\(conn\)/)
+  assert.match(beforeTransaction, /await prepareInvoiceNumberTransaction\(conn\)/)
 })
 
 test('sales inventory summary and detail share base scope and resolve model within brand', () => {

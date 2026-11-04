@@ -1,7 +1,7 @@
 # 前端页面与功能单元台账
 
 > 状态：强制登记，持续维护
-> 统计日期：2026-10-07
+> 统计日期：2026-11-02
 > 统计来源：`frontend/src/router/index.ts`、`frontend/src/views/**/*.vue`、`frontend/src/components/**/*.vue`
 
 > 导航审计记录：后台 PC 与手机入口均由 `views/system/page/SimpleAdminView.vue` 统一承载；菜单数据来自 `stores/menu.ts`，菜单点击统一派发 `menu-click`，权限预检统一由主布局执行。手机端不再将菜单分流到未渲染的底部导航；`DynamicSidebar` 已退役，`ResponsiveLayout` 仅作为通用内容布局保留。
@@ -20,16 +20,18 @@
 | --- | --- | ---: |
 | 懒加载路由入口 | `router/index.ts` 中的 `component: () => import(...)` | 65 |
 | 实际叶子路由 | 可直接访问的页面路由，排除 3 个布局容器 | 62 |
-| 页面源文件 | `frontend/src/views/**/*.vue`，包括 Tab、弹窗和页面内部单元 | 128 |
-| 非路由功能单元 | 页面源文件中未被路由直接加载的 Tab、弹窗或复用单元 | 68 |
+| 页面源文件 | `frontend/src/views/**/*.vue`，包括 Tab、弹窗和页面内部单元 | 130 |
+| 叶子路由唯一视图文件 | 62 个叶子 URL 对应的唯一 `views` 文件；两个文件各被两个 URL 复用，另有 1 个 URL 使用公共组件 | 59 |
+| 布局容器视图文件 | 后台、H5 管理和 H5 手机端布局 | 3 |
+| 非路由功能单元 | 未被路由直接加载的 Tab、弹窗、页面内部单元或复用单元 | 68 |
 | 公共组件源文件 | `frontend/src/components/**/*.vue` | 71 |
 | 涉及表格的页面源文件 | 页面中出现 Element/原生表格或公共表格入口 | 56 |
-| 涉及表格的公共组件 | 公共组件中出现表格或表格封装 | 5 |
-| 含按钮的页面/功能单元源文件 | `frontend/src/views/**/*.vue` 中出现 `el-button` | 110 |
-| 含按钮的公共组件源文件 | `frontend/src/components/**/*.vue` 中出现 `el-button` | 48 |
+| 涉及表格的公共组件 | 公共组件中出现表格或表格封装 | 6 |
+| 含按钮的页面/功能单元源文件 | `frontend/src/views/**/*.vue` 中出现 `el-button` | 112 |
+| 含按钮的公共组件源文件 | `frontend/src/components/**/*.vue` 中出现 `el-button` | 47 |
 | 原生按钮 | 所有 Vue 页面和公共组件中的 `<button>` | 0 |
 
-“实际叶子路由”与“页面源文件”不能相加作为页面总数：一个路由页通常由多个 Tab、弹窗和业务组件组成；同一个源文件也可能被多个 URL 复用。没有路由入口的 Tab、弹窗和组件仍然属于后续统一审计范围。
+“实际叶子路由”与“页面源文件”不能相加作为页面总数：62 个叶子 URL 实际映射到 59 个唯一 `views` 文件和 1 个公共组件；`AggregatedProductDetail.vue` 与 `OrderDetail.vue` 分别被两个 URL 复用。130 个 `views` 文件由 59 个叶子页面文件、3 个布局容器和 68 个非路由功能单元组成。没有独立 URL 的 Tab、弹窗和组件仍然属于后续统一审计范围。
 
 ### 下载安全专项登记
 
@@ -137,7 +139,7 @@
 | `/m/register` | `views/H5-mobile/page/RegisterView.vue` | 手机注册 | 否 | 已登记 |
 | `/m/my` | `views/H5-mobile/page/MyCenter.vue` | 个人中心 | 否 | 已登记 |
 
-### 2.5 布局容器（不计入 59 个叶子路由）
+### 2.5 布局容器（不计入 62 个叶子路由）
 
 | 挂载路径 | 容器文件 | 职责 |
 | --- | --- | --- |
@@ -145,9 +147,9 @@
 | `/H5-admin` | `views/H5-admin/H5-adminView.vue` | H5 商城管理布局 |
 | `/m` | `views/H5-mobile/H5-mobileView.vue` | H5 手机端布局 |
 
-## 3. 非路由页面功能单元
+## 3. 非路由页面功能单元（68 个）
 
-以下文件没有独立 URL，但会在功能修改时影响对应父页面，必须纳入同一轮检查。路由清单中已经登记的页面文件不在本节重复列出；一个源文件被多个路由复用时，以路由清单中的多个 URL 为准。
+以下 68 个文件没有独立 URL，但会在功能修改时影响对应父页面，必须纳入同一轮检查。路由清单中已经登记的 59 个唯一叶子 `views` 文件和第 2.5 节的 3 个布局容器不在本节重复列出；一个源文件被多个路由复用时，以路由清单中的多个 URL 为准。
 
 ### 3.1 数据分析、数据优化与库存
 
@@ -248,12 +250,13 @@
 - 工资、销售、分享与国补：`salary/page/SalaryAttendanceListDialog.vue`、`salary/page/SalaryEmployeeSalesDetailDialog.vue`、`salary/page/SalaryEmployeesTab.vue`、`salary/page/SalaryMyRecordsTab.vue`、`salary/page/SalaryPayoutTab.vue`、`salary/page/SalarySalesDetailDialog.vue`、`salary/page/SalaryTemplatesTab.vue`、`sales/page/SalesBatchForm.vue`、`sales/page/SalesInventoryDetailDialog.vue`、`sales/page/SalesSummaryView.vue`、`sales/page/SalesTableView.vue`、`shared/SharedView.vue`、`subsidy/components/SubsidyListSection.vue`
 - 供应商付款：`payments/SupplierPhonePaymentsView.vue`
 
-### 4.2 公共组件文件（5）
+### 4.2 公共组件文件（6）
 
 - `components/ComprehensiveWarnings.vue`
 - `components/ErrorManagement/ErrorDashboardSimple.vue`
 - `components/MobileTable.vue`
 - `components/PaginatedTable.vue`
+- `components/query/SalesReceipt.vue`
 - `components/stock-in/StockInPhoneListSection.vue`
 
 `components/common/CustomerSearchDropdown.vue` 使用部分公共数据表格令牌保持搜索下拉的视觉一致，但自身不渲染表格，因此归入客户搜索规范，不计入本节表格组件数量。
@@ -265,8 +268,8 @@
 | 维度 | 统一入口/规范 | 必查对象 |
 | --- | --- | --- |
 | 页面结构、标题、Tab | `page-structure-standards.md`、`tab-standards.md` | 所有后台页、H5 管理页、含 Tab 的子页 |
-| 表格、行高、字体、操作列 | `admin-table-standards.md`、`npm run check:tables` | 56 个页面承载单元、5 个表格组件 |
-| 全局文字与排版 | `typography-standards.md`、`npm run check:typography` | 128 个页面源文件、71 个公共组件、全局样式 |
+| 表格、行高、字体、操作列 | `admin-table-standards.md`、`npm run check:tables` | 56 个页面承载单元、6 个表格组件 |
+| 全局文字与排版 | `typography-standards.md`、`npm run check:typography` | 130 个页面源文件、71 个公共组件、全局样式 |
 | 按钮、底部操作区 | `button-standards.md`、`dialog-standards.md` | 所有列表、表单、弹窗和移动端 footer |
 | 权限、字段与操作列 | `permission-capability-standards.md`、`field-permission-guide.md` | 权限管理、库存、销售、综合查询及所有操作列 |
 | 搜索、选项和分页 | `search-standards.md`、`model-search-standard.md`、`pagination-standards.md` | 所有检索页、基础资料、库存/销售/综合查询 |
@@ -312,15 +315,15 @@
 
 ## 7. 当前审计结果与边界
 
-- 页面清单统计已完成：路由入口 63、叶子路由 60、视图源文件 128、公共组件 71。
-- 表格逐页审计已完成：台账范围为 56 个页面承载单元、5 个公共表格组件；当前 56 个页面模板直接渲染表格，库存 `InventoryView.vue` 与 `InventoryTable.vue` 按承载关系共同纳入范围。当前模板实际包含 90 个 Element 表格和 55 个操作列，`npm run check:tables` 已逐文件通过。
+- 页面清单统计已完成：懒加载路由入口 65、叶子路由 62、视图源文件 130、公共组件 71。
+- 表格逐页审计已完成：台账范围为 56 个页面承载单元、6 个公共表格组件；当前 56 个页面模板直接渲染表格，库存 `InventoryView.vue` 与 `InventoryTable.vue` 按承载关系共同纳入范围。当前模板实际包含 92 个 Element 表格和 56 个操作列，`npm run check:tables` 已逐文件通过。
 - “审计通过”仅表示静态规则通过；文字溢出、触摸滚动、按钮位置、真实权限和云端 API 行为仍需按本台账进行浏览器/云端回归。
 - 当前台账不把 `views` 目录下的每个文件都当作独立 URL；新增路由、Tab、弹窗和公共组件必须分别登记，防止重复计数或漏查。
-- 按钮专项已完成零容忍迁移：Vue 源码共扫描 `el-button=969`，原生 `<button>=0`；以后新增按钮必须使用 `el-button`，不得新增原生按钮例外。
-- Loading 已按本台账逐文件审计：128 个页面/功能单元、71 个公共组件和 1 个应用入口全部通过 `npm run check:loading`；扫描结果为 `GlobalLoading=1`、`v-tf-loading=48`、`TableLoadingRow=56`、`SectionLoading=32`、`InlineLoading=46`、登记 `v-loading` 例外 1 处。
+- 按钮专项已完成零容忍迁移：Vue 源码共扫描 `el-button=1006`（159 个文件）、原生 `<button>=0`；以后新增按钮必须使用 `el-button`，不得新增原生按钮例外。
+- Loading 已按本台账逐文件审计：130 个页面/功能单元、71 个公共组件和 1 个应用入口全部通过 `npm run check:loading`；扫描结果为 `GlobalLoading=1`、`v-tf-loading=48`、`TableLoadingRow=56`、`SectionLoading=32`、`InlineLoading=46`、登记 `v-loading` 例外 1 处。
 - Loading 触发边界已收口：页面切换和明确的全局长操作由 `App.vue` 唯一挂载的 `GlobalLoading` 承载；表格刷新由 `v-tf-loading` 锁定表格边界并显示“加载数据中...”；局部状态通过 `useLoadingStore.hasLocalLoading/isGlobalVisible` 互斥仲裁，同一次操作不得同时显示全屏与局部 Loading。
 - 徽章专项已按台账扫描全部页面和公共组件：徽章 hover 外包围线与过渡唯一由 `styles/components/_badges.scss` 控制；页面仅保留业务颜色、图标和文字，禁止私有 hover、阴影、位移和重复 `global.css` 状态入口。结果由 `npm run check:badges` 强制校验。
-- 统一 API 已补齐默认 Loading：128 个页面及其公共功能单元不再依赖逐页传入 `showLoading: true`；首次数据请求默认进入全局 Loading，只有明确的 `showLoading: false` 请求保持静默。
+- 统一 API 已补齐默认 Loading：130 个页面及其公共功能单元不再依赖逐页传入 `showLoading: true`；首次数据请求默认进入全局 Loading，只有明确的 `showLoading: false` 请求保持静默。
 - 全屏 Loading 例外仅保留 2 个已登记场景：规范页的真实演示，以及数据优化页的清理、批量合并和删除等明确长操作；数据优化页的表格查询仍使用局部 Loading，两类操作不能共用同一次反馈。
 - 逐页核对结论已同步至 `global-loading-standard.md`：无专属 Loading 标记的布局、父级和公共功能单元均已注明统一 API 或父子组件承载关系；详情弹窗使用 `SectionLoading`，首屏和表格刷新不再叠加两层反馈。
 - 仪表盘预警和待审批组件已接入根区域 `v-tf-loading`；提醒弹窗的后台轮询明确关闭 Loading，避免定时探测覆盖用户当前页面。
@@ -330,6 +333,7 @@
 
 | 日期 | 变更 | 结果 |
 | --- | --- | --- |
+| 2026-11-02 | 重新扫描路由、页面、公共组件、按钮、表格和 Loading 覆盖，补登记销售凭证公共表格组件 | 65 个懒加载路由入口、62 个叶子路由、130 个页面/功能单元、71 个公共组件；56 个表格页面、6 个表格公共组件、92 个 Element 表格和 56 个操作列通过现行审计 |
 | 2026-10-06 | 首次建立全局页面、功能单元和表格专项台账 | 已登记，后续新增/修改必须按第 6 节执行 |
 | 2026-10-06 | 新增 `/standards` 规范与审计管理页及独立权限模块 | 已接入，纳入页面、权限和规范审计流程 |
 | 2026-10-06 | 按台账逐页复核表格入口、操作列、行高、表头、滚动和私有覆盖；校正表格组件统计口径 | 56 个页面承载单元、5 个公共表格组件全部通过 `npm run check:tables`；90 个 Element 表格、55 个操作列已接入公共规则 |
@@ -351,3 +355,7 @@
 | 2026-11-01 | 综合查询与库存管理手机端行双击统一接入全局 `v-table-double-tap`，直接识别同一行两次轻触，移除两页重复的点击计时 Map；排除滑动、滚动、长按、多指和操作按钮，保留电脑端原生双击 | 17 项触摸事件逻辑模拟、完整 `check:standards`（含类型检查、Lint、表格及运行时模式）和文档检查通过；公共注册、参考页面接入及旧私有逻辑防回退已纳入 `check:tables`。未执行浏览器或 iOS/Android 真机验收 |
 | 2026-11-01 | 综合查询快速出库扫码补传所选品牌名称，统一复用 Apple 包装序列号 `S` 字段标识识别；采购入库原有品牌传递保留，所有扫码器使用点显式绑定 `phone` 纳入组件采用率审计 | 12 项品牌切换、序列号及 IMEI 逻辑回归和组件采用率审计通过；未选择品牌、其他品牌及明确 SN 标签不误删首字母，未执行摄像头真机验收 |
 | 2026-11-01 | 手机端双击弹窗防穿透：确认双击时取消兼容点击并拦截随后重复的原生双击；公共 `MobileDialog` 遮罩须完成同一次按下/抬起才可关闭，标题、正文、底部开始的操作及拖动不关闭 | 26 项触摸及遮罩事件逻辑回归通过，表格和弹窗防回退审计已补充；无临时测试文件，未执行浏览器或 iOS/Android 真机验收 |
+| 2026-11-02 | 综合查询共用手机编辑接口在销售日期变更时按新日期和交易类型重新生成单号；同日保存不换号，日期/类型同时变更只生成一次，历史缺号复用公共序列；修正销售联动更新误用手机 ID 的关联问题 | 16 项专项模拟测试在 `Asia/Shanghai` 与 `UTC` 环境均通过；扩展合同检查 115 项中 113 项通过，现有国补字段可见性、打款操作列两项权限断言失败，未修改对应页面或放宽断言；未连接或修改云端数据库 |
+| 2026-11-02 | 单据公共分配改为按日期/类型优先补最小空号，其他已有单据不重排；综合查询编辑/快速出库、销售单台/批量、批发、划拨、租赁买断和缺号回填统一接入事务预检及预留；兼容销售服务修正分配后提前释放连接的问题，日期键复用公共北京时间入口；实际台数继续按记录统计 | 44 项专项模拟检查在 `Asia/Shanghai`、`UTC`、`America/Los_Angeles` 均通过，覆盖补空号、改期、批量及并发预留、提交/回滚、保存点、连接复用和日期边界；扩展合同检查 143 项中 142 项通过，供应商打款操作列存在一项既有权限断言失败，未放宽断言；15 个 JS 文件语法、定向 ESLint、后端安全及文档链接检查通过；未连接或写入云端业务库，未执行真实 MySQL 并发验收 |
+| 2026-11-02 | 待办提醒页提取唯一领域类型，清除列表、详情、执行记录、接收人、表单和错误处理中的 26 处显式 `any`；统一 API 响应增加 `summary` 泛型 | 页面显式 `any` 为 0；TypeScript、定向 ESLint 和运行时模式防回退审计通过，页面权限、Loading、响应式与后端接口行为保持不变 |
+| 2026-11-02 | 经验分享页删除重复的附件、作者、文章、分类类型，统一迁移到 `types/shared.ts`；富文本编辑器、上传、分类及文章请求清除 23 处显式 `any` | 页面显式 `any` 为 0；TypeScript 与运行时模式防回退审计通过，私有附件鉴权、字段权限、响应式和富文本净化逻辑保持不变 |

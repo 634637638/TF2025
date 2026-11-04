@@ -220,7 +220,7 @@ import { computed } from 'vue'
 import DateRangePicker from '@/components/DateRangePicker.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 
-export interface InventoryFilters {
+interface InventorySearchFilterModel {
   brand: string
   color: string
   date_end: string
@@ -246,7 +246,7 @@ const props = defineProps<{
   canViewField: (_field: string) => boolean
   colors: string[]
   expanded: boolean
-  filters: InventoryFilters
+  filters: InventorySearchFilterModel
   loading: boolean
   memories: string[]
   modelCount: number

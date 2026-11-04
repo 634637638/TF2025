@@ -21,10 +21,13 @@ import { useAuthStore } from '@/stores/auth'
 
 // 从认证store中获取真实用户信息
 const authStore = useAuthStore()
-const formatRoleLabel = (role: any) => {
+const formatRoleLabel = (role: unknown) => {
   if (!role) return ''
   if (typeof role === 'string') return role
-  return role.name || role.code || ''
+  if (typeof role !== 'object') return ''
+  const roleRecord = role as Record<string, unknown>
+  if (typeof roleRecord.name === 'string') return roleRecord.name
+  return typeof roleRecord.code === 'string' ? roleRecord.code : ''
 }
 
 const currentUser = computed(() => {

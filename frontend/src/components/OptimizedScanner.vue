@@ -112,7 +112,7 @@
 <script setup lang="ts">
 import { ref, computed, onBeforeUnmount, watch, type CSSProperties } from 'vue'
 import { ElMessage } from 'element-plus'
-import { scanOptimizer, type DeviceInfo } from '@/utils/scanOptimizer'
+import { scanOptimizer, type ScannerDeviceInfo } from '@/utils/scanOptimizer'
 import { parseDeviceScanResult } from '@/utils/device-scan-result'
 import zxingReaderWasmUrl from 'zxing-wasm/reader/zxing_reader.wasm?url'
 import { prepareZXingModule, readBarcodes } from 'zxing-wasm/reader'
@@ -207,7 +207,7 @@ const { confirm } = useNotification()
 const videoRef = ref<HTMLVideoElement>()
 const scannerGuideRef = ref<HTMLElement>()
 const scannerLineRef = ref<HTMLElement>()
-const deviceInfo = ref<DeviceInfo>({} as DeviceInfo)
+const deviceInfo = ref<ScannerDeviceInfo>({} as ScannerDeviceInfo)
 const flashOn = ref(false)
 const hasFlash = ref(false)
 const scanCompleted = ref(false)

@@ -19,6 +19,10 @@ const requireText = (key, text, message) => {
   if (!sources[key].includes(text)) findings.push(`${key}: ${message}`)
 }
 
+const requirePattern = (key, pattern, message) => {
+  if (!pattern.test(sources[key])) findings.push(`${key}: ${message}`)
+}
+
 const forbid = (key, pattern, message) => {
   if (pattern.test(sources[key])) findings.push(`${key}: ${message}`)
 }
@@ -39,10 +43,10 @@ requireText('mobileMenu', 'font-size: var(--tf-nav-menu-text-size)', '手机一�
 requireText('mobileMenu', 'font-size: var(--tf-nav-submenu-text-size)', '手机二级菜单文字必须使用公共字号')
 requireText('adminShell', 'background: var(--tf-nav-topbar-bg)', '顶部栏必须使用白色背景令牌')
 requireText('responsiveMenu', 'class="mobile-menu-button tf-button--menu"', '手机端菜单入口必须使用统一按钮语义')
-requireText('responsiveMenu', '<IconRenderer :svg="menuBarsIcon" aria-hidden="true" />', '手机端菜单入口必须使用公共三条杠 SVG 图标')
+requirePattern('responsiveMenu', /<IconRenderer\s+:svg="menuBarsIcon"\s+aria-hidden="true"\s*\/>/, '手机端菜单入口必须使用公共三条杠 SVG 图标')
 requireText('responsiveMenu', '@/assets/icons/menu-bars.svg?raw', '菜单图标必须使用本地资源，不依赖外部图标服务')
 requireText('responsiveLayout', 'class="menu-button tf-button--menu"', '兼容布局菜单入口必须使用统一紫色菜单按钮语义')
-requireText('responsiveLayout', '<IconRenderer :svg="menuBarsIcon" aria-hidden="true" />', '兼容布局菜单入口必须使用公共三条杠 SVG 图标')
+requirePattern('responsiveLayout', /<IconRenderer\s+:svg="menuBarsIcon"\s+aria-hidden="true"\s*\/>/, '兼容布局菜单入口必须使用公共三条杠 SVG 图标')
 requireText('responsiveLayout', 'showBreadcrumb && (isMobile || isTablet)', '面包屑仅允许在手机端和 iPad/平板端展示')
 requireText('buttonStyles', 'body .el-button.el-button.tf-button--menu {\n  @include tf-filled-button(\n    var(--tf-color-indigo-brand), var(--tf-color-indigo-brand), var(--color-bg-white),\n    var(--tf-color-purple-brand), var(--tf-color-purple-brand)', '顶部菜单入口必须复用公共实心按钮实现，使用品牌靛蓝背景、白色图标和紫色悬停态')
 requireText('buttonStyles', 'color: var(--color-bg-white) !important', '顶部菜单入口图标必须使用白色对比色')

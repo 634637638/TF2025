@@ -557,6 +557,8 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, nextTick, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
+import type { UploadRequestOptions } from 'element-plus'
+import { isAxiosError } from 'axios'
 import MobileDialog from '@/components/MobileDialog.vue'
 import InlineLoading from '@/components/InlineLoading.vue'
 import { unifiedApi } from '@/utils/unified-api'
@@ -568,6 +570,13 @@ import { logger } from '@/utils/logger'
 import { formatAmount } from '@/utils/format'
 import type { MediaPreviewItem } from '@/utils/media'
 import { convertPdfToImage, isPdfFile } from '@/utils/upload-media'
+import type {
+  NationalSubsidyApplyPayload,
+  NationalSubsidyDevice,
+  NationalSubsidyHandlerInfo,
+  NationalSubsidyPhoneDetail,
+  NationalSubsidyUploadResponse
+} from '@/types'
 
 const AsyncImage = defineAsyncComponent(() => import('@/components/Image.vue'))
 
@@ -588,9 +597,9 @@ const searchIdentifier = ref('')
 const searching = ref(false)
 const searchCompleted = ref(false)
 const loadingDetail = ref(false)
-const deviceList = ref<any[]>([])
-const selectedDevice = ref<any>(null)
-const phoneDetail = ref<any>(null)
+const deviceList = ref<NationalSubsidyDevice[]>([])
+const selectedDevice = ref<NationalSubsidyDevice | null>(null)
+const phoneDetail = ref<NationalSubsidyPhoneDetail | null>(null)
 const submitting = ref(false)
 const applyFormTempPhotos = ref<string[]>([])
 const showPhotoViewer = ref(false)
@@ -600,7 +609,7 @@ const canViewField = (field: string) => props.canViewField(field)
 const showDeviceInfo = computed(() => [
   'brand', 'model', 'color', 'memory', 'imei1', 'imei2', 'serial_number'
 ].some(canViewField))
-const searchCache = new Map<string, any[]>()
+const searchCache = new Map<string, NationalSubsidyDevice[]>()
 
 let searchAbortController: AbortController | null = null
 let searchRequestSeq = 0
@@ -624,7 +633,7 @@ const uploadHeaders = computed(() => {
   }
 })
 
-const normalizeHandlerInfo = (handler_info?: Record<string, any> | null) => {
+const normalizeHandlerInfo = (handler_info?: NationalSubsidyHandlerInfo | null): NationalSubsidyHandlerInfo | null => {
   if (!handler_info || typeof handler_info !== 'object') return null
   return {
     ...handler_info,
@@ -634,15 +643,34 @@ const normalizeHandlerInfo = (handler_info?: Record<string, any> | null) => {
   }
 }
 
-const normalizeSubsidyRecord = (item?: Record<string, any> | null) => {
+const normalizeSubsidyRecord = <T extends NationalSubsidyDevice | NationalSubsidyPhoneDetail>(item?: T | null): T | null => {
   if (!item || typeof item !== 'object') return item
   return {
     ...item,
     customer_name: normalizePersonName(item.customer_name || '', 20),
     customer_phone: normalizePhoneDigits(item.customer_phone || ''),
-    customer_idcard: normalizeIdCard(item.customer_idcard || ''),
-    handler_info: normalizeHandlerInfo(item.handler_info)
+    customer_idcard: normalizeIdCard('customer_idcard' in item ? item.customer_idcard || '' : ''),
+    handler_info: normalizeHandlerInfo('handler_info' in item ? item.handler_info : null)
+  } as T
+}
+
+const getErrorMessage = (error: unknown, fallback: string): string => {
+  if (isAxiosError<{ message?: string }>(error)) {
+    return error.response?.data?.message || error.message || fallback
   }
+  return error instanceof Error ? error.message : fallback
+}
+
+type UploadError = Parameters<UploadRequestOptions['onError']>[0]
+
+const toUploadError = (error: unknown, fallback: string): UploadError => {
+  const message = error instanceof Error ? error.message : fallback
+  return Object.assign(new Error(message), {
+    name: 'UploadError',
+    status: 0,
+    method: 'POST',
+    url: '/subsidy/upload/photo'
+  }) as UploadError
 }
 
 const calculatedSubsidyAmount = computed(() => {
@@ -747,7 +775,7 @@ const searchPhones = async () => {
     searchAbortController = new AbortController()
     const currentController = searchAbortController
 
-    const response = await unifiedApi.get(`/subsidy/search-phones/${encodeURIComponent(normalizedIdentifier)}`, {
+    const response = await unifiedApi.get<NationalSubsidyDevice[]>(`/subsidy/search-phones/${encodeURIComponent(normalizedIdentifier)}`, {
       signal: currentController.signal
     })
 
@@ -757,7 +785,7 @@ const searchPhones = async () => {
 
     if (response.success) {
       const normalizedResults = Array.isArray(response.data)
-        ? response.data.map(item => normalizeSubsidyRecord(item))
+        ? response.data.map(item => normalizeSubsidyRecord(item)).filter((item): item is NationalSubsidyDevice => item !== null)
         : []
       deviceList.value = normalizedResults
       searchCache.set(normalizedIdentifier, normalizedResults)
@@ -765,18 +793,14 @@ const searchPhones = async () => {
       deviceList.value = []
       ElMessage.error(response.message || '未找到设备')
     }
-  } catch (error: any) {
-    if (
-      error?.code === 'ERR_CANCELED' ||
-      error?.message === 'canceled' ||
-      error?.name === 'CanceledError' ||
-      error?.name === 'AbortError'
-    ) {
+  } catch (error: unknown) {
+    if (isAxiosError(error) && error.code === 'ERR_CANCELED'
+      || error instanceof Error && (error.message === 'canceled' || error.name === 'CanceledError' || error.name === 'AbortError')) {
       return
     }
     deviceList.value = []
     logger.error('搜索设备失败:', error)
-    ElMessage.error(error.response?.data?.message || '搜索失败')
+    ElMessage.error(getErrorMessage(error, '搜索失败'))
   } finally {
     if (requestSeq === searchRequestSeq) {
       searching.value = false
@@ -786,7 +810,7 @@ const searchPhones = async () => {
   }
 }
 
-const selectDevice = (device: any) => {
+const selectDevice = (device: NationalSubsidyDevice) => {
   selectedDevice.value = device
 }
 
@@ -795,10 +819,13 @@ const loadPhoneDetail = async () => {
 
   try {
     loadingDetail.value = true
-    const response = await unifiedApi.get(`/subsidy/phone-detail/${selectedDevice.value.phone_id}`)
+    const response = await unifiedApi.get<NationalSubsidyPhoneDetail>(`/subsidy/phone-detail/${selectedDevice.value.phone_id}`)
 
     if (response.success) {
       const normalizedPhoneDetail = normalizeSubsidyRecord(response.data)
+      if (!normalizedPhoneDetail) {
+        throw new Error('获取详情响应为空')
+      }
       phoneDetail.value = normalizedPhoneDetail
       applyForm.customer_idcard = normalizedPhoneDetail.customer_idcard || ''
       applyForm.subsidy_calc_price = normalizedPhoneDetail.sale_price
@@ -821,18 +848,18 @@ const loadPhoneDetail = async () => {
     } else {
       ElMessage.error(response.message || '获取详情失败')
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('获取详情失败:', error)
-    ElMessage.error(error.response?.data?.message || '获取详情失败')
+    ElMessage.error(getErrorMessage(error, '获取详情失败'))
   } finally {
     loadingDetail.value = false
   }
 }
 
-const customUploadRequest = async (options: any) => {
+const customUploadRequest = async (options: UploadRequestOptions) => {
   if (!canUpload.value) {
     ElMessage.warning('您没有图片上传权限')
-    options.onError?.(new Error('没有图片上传权限'))
+    options.onError?.(toUploadError(new Error('没有图片上传权限'), '没有图片上传权限'))
     return
   }
 
@@ -842,11 +869,11 @@ const customUploadRequest = async (options: any) => {
 
   if (!isLt10M) {
     ElMessage.error('文件大小不能超过10MB')
-    onError?.(new Error('文件大小超过10MB'))
+    onError?.(toUploadError(new Error('文件大小超过10MB'), '文件大小超过10MB'))
     return
   }
 
-  let uploadFile = file
+  let uploadFile: File = file
   if (isPdf) {
     try {
       ElMessage.info('正在将PDF转换为图片...')
@@ -854,7 +881,7 @@ const customUploadRequest = async (options: any) => {
       ElMessage.success('PDF转换成功，正在上传...')
     } catch (error) {
       ElMessage.error('PDF转换图片失败')
-      onError?.(error)
+      onError?.(toUploadError(error, 'PDF转换图片失败'))
       return
     }
   }
@@ -870,7 +897,7 @@ const customUploadRequest = async (options: any) => {
   formData.append('inventory_time', phoneDetail.value?.inventory_time || '')
 
   try {
-    const result = await unifiedApi.upload('/subsidy/upload/photo', formData, {
+    const result = await unifiedApi.upload<NationalSubsidyUploadResponse>('/subsidy/upload/photo', formData, {
       headers: uploadHeaders.value
     })
 
@@ -884,11 +911,11 @@ const customUploadRequest = async (options: any) => {
 
     const errorMessage = result?.message || '照片上传失败'
     ElMessage.error(errorMessage)
-    onError?.(new Error(errorMessage))
+    onError?.(toUploadError(new Error(errorMessage), errorMessage))
   } catch (error) {
     logger.error('上传请求失败:', error)
     ElMessage.error('照片上传失败，请重试')
-    onError?.(error)
+    onError?.(toUploadError(error, '照片上传失败'))
   }
 }
 
@@ -959,7 +986,7 @@ const submitApply = async () => {
 
   try {
     submitting.value = true
-    const data = {
+    const data: NationalSubsidyApplyPayload = {
       ...phoneDetail.value,
       imei2: applyForm.imei2.trim(),
       customer_idcard: applyForm.customer_idcard,
@@ -985,9 +1012,9 @@ const submitApply = async () => {
     } else {
       ElMessage.error(response.message || '记录失败')
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('提交申请失败:', error)
-    ElMessage.error(error.response?.data?.message || '记录失败')
+    ElMessage.error(getErrorMessage(error, '记录失败'))
   } finally {
     submitting.value = false
   }

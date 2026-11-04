@@ -157,7 +157,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import type { Role } from '../types'
+import type { PermissionRole as Role } from '../types'
 
 const props = defineProps<{
   getRoleCardBadgeClass: (_roleName: string) => string

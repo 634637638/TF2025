@@ -6,7 +6,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed, watch, nextTick } from 'vue'
 import { unifiedApi as api } from '@/utils/unified-api'
-import { extractResponseData } from '@/utils/api-response'
+import { extractResponseData, getRequestErrorCode, getRequestErrorStatus } from '@/utils/api-response'
 import { clearPersistedAuthData, setBackendDisconnectedState } from '@/utils/auth-session'
 import { storage } from '@/services/storage'
 import { AUTH_STORAGE_KEYS, SESSION_STORAGE_KEYS } from '@/constants/storage'
@@ -445,11 +445,15 @@ export const useAuthStore = defineStore('auth', () => {
       }
 
     } catch (error: unknown) {
-      loginAttempts.value++
+      const status = getRequestErrorStatus(error)
 
-      // 检查是否需要锁定账户
-      if (loginAttempts.value >= 5) {
-        lockAccount('登录失败次数过多，请稍后再试')
+      // 只有真实凭证失败才更新前端计数；服务不可用不能导致本地锁定。
+      if (status === 401) {
+        loginAttempts.value++
+
+        if (loginAttempts.value >= 5) {
+          lockAccount('登录失败次数过多，请稍后再试')
+        }
       }
 
       throw error
@@ -893,7 +897,9 @@ export const useAuthStore = defineStore('auth', () => {
       return isHealthy
     } catch (error) {
       // 网络错误，标记后端失联
-      if (!error.response || error.code === 'ERR_NETWORK' || error.code === 'ECONNREFUSED') {
+      const status = getRequestErrorStatus(error)
+      const code = getRequestErrorCode(error)
+      if (!status || code === 'ERR_NETWORK' || code === 'ECONNREFUSED') {
         backendHealthFailureCount.value += 1
 
         if (!backendDisconnected.value && backendHealthFailureCount.value >= 2) {

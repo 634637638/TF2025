@@ -233,6 +233,10 @@ class DataCheckController {
       const result = await this.dataCheckService.editData(type, id, data, req.user)
       ApiResponse.success(res, '更新数据成功', result)
     } catch (error) {
+      if (error.statusCode === 400) {
+        log.warn('更新数据参数校验失败:', error.message)
+        return ApiResponse.badRequest(res, error.message)
+      }
       log.error('更新数据失败:', error)
       ApiResponse.serverError(res, '更新数据失败', error)
     }

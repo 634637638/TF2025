@@ -7,7 +7,7 @@
 
 import type { AxiosRequestConfig } from 'axios'
 
-export interface CacheConfig {
+export interface PageCacheConfig {
   ttl: number
   maxSize: number
   strategy: 'lru' | 'fifo' | 'lfu'
@@ -38,12 +38,12 @@ export class SmartCacheManager {
   private cache = new Map<string, RequestCacheEntry>()
   private accessOrder = new Map<string, number>()
   private accessCounter = new Map<string, number>()
-  private config: CacheConfig
+  private config: PageCacheConfig
   private cleanupTimer?: number
   private backgroundRefreshTimer?: number
   private accessTime = 0
 
-  constructor(config: Partial<CacheConfig> = {}) {
+  constructor(config: Partial<PageCacheConfig> = {}) {
     this.config = {
       ttl: 30000,
       maxSize: 100,

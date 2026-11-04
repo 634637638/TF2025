@@ -9,7 +9,7 @@ import { logger } from '@/utils/logger'
 /**
  * 事件监听器
  */
-export interface EventListener<T = unknown> {
+interface EventBusListener<T = unknown> {
   callback: (data: T) => void
   once?: boolean
 }
@@ -18,7 +18,7 @@ export interface EventListener<T = unknown> {
  * 事件总线实现
  */
 class EventBus {
-  private events = new Map<string, EventListener<unknown>[]>()
+  private events = new Map<string, EventBusListener<unknown>[]>()
 
   /**
    * 订阅事件
@@ -28,8 +28,8 @@ class EventBus {
    */
   on<T = unknown>(event: string, callback: (data: T) => void, once = false): () => void {
     const listeners = this.events.get(event) || []
-    const listener: EventListener<T> = { callback, once }
-    listeners.push(listener as EventListener<unknown>)
+    const listener: EventBusListener<T> = { callback, once }
+    listeners.push(listener as EventBusListener<unknown>)
     this.events.set(event, listeners)
 
     // 返回取消订阅函数

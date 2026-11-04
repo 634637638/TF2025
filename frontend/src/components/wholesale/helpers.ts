@@ -25,7 +25,6 @@ export const createWholesaleFormData = (): WholesaleFormData => ({
   wholesale_price: null,
   payment_method: '',
   payment_channel: '',
-  invoice_number: '',
   sale_time: TimeUtil.nowFormatted(TIME_FORMATS.DATE),
   remarks: ''
 })
@@ -387,7 +386,6 @@ export const buildTransferSubmitPayload = (
     payload.store_id = options.formData.store_id
     payload.salesperson_name = options.formData.salesperson_name
     payload.payment_method = options.formData.payment_method
-    payload.invoice_number = options.formData.invoice_number
     payload.sale_time = options.formData.sale_time
   } else {
     payload.supplier_id = options.formData.supplier_id

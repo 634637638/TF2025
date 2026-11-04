@@ -1244,7 +1244,9 @@ router.put('/:id/cancel', unifiedAuth, requirePermission('preorders:cancel'), as
 
   } catch (error) {
     if (connection) {
-      try { await connection.rollback() } catch (e) {}
+      try { await connection.rollback() } catch (rollbackError) {
+        log.error('取消预定单事务回滚失败:', rollbackError)
+      }
     }
     log.error('取消预定单失败:', error)
     ApiResponse.serverError(res, '取消预定单失败', error)
@@ -1444,7 +1446,9 @@ router.put('/:id', unifiedAuth, requirePermission('preorders:edit'), rejectHidde
     )
   } catch (error) {
     if (connection) {
-      try { await connection.rollback() } catch (rollbackError) {}
+      try { await connection.rollback() } catch (rollbackError) {
+        log.error('更新预定单事务回滚失败:', rollbackError)
+      }
     }
     log.error('更新预定单失败:', error)
     ApiResponse.serverError(res, '更新预定单失败', error)
@@ -1634,7 +1638,9 @@ router.put('/:id/restore', unifiedAuth, requirePermission('preorders:edit'), asy
     )
   } catch (error) {
     if (connection) {
-      try { await connection.rollback() } catch (rollbackError) {}
+      try { await connection.rollback() } catch (rollbackError) {
+        log.error('恢复预定单事务回滚失败:', rollbackError)
+      }
     }
     log.error('恢复预定单失败:', error)
     ApiResponse.serverError(res, '恢复预定单失败', error)

@@ -1679,7 +1679,6 @@ import DateRangePicker from '@/components/DateRangePicker.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import ImportExportActions from '@/components/business/ImportExportActions.vue'
 import { PaymentMethodSelect } from '@/components/payment'
-import InlineLoading from '@/components/InlineLoading.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import { PageHeader, PermissionGate } from '@/components/base'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
@@ -1896,7 +1895,10 @@ const showPaymentStatusField = computed(() => {
   return visible && (!isMobile.value || paymentMobileCoreFields.has('payment_status'))
 })
 const showPaymentTimeColumn = computed(() => {
-  const visible = canViewPaymentField('payment_time') || canCreatePayment.value
+  const visible = shouldShowActionColumn(
+    canViewPaymentField('payment_time'),
+    [canCreatePayment.value]
+  )
   return visible && (!isMobile.value || paymentMobileCoreFields.has('payment_time'))
 })
 const paymentMobileCoreFields = new Set([

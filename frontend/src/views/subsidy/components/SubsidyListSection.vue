@@ -545,6 +545,7 @@ import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import { logger } from '@/utils/logger'
 import { getActionColumnMinWidth, getIdentifierColumnMinWidth, getTextColumnMinWidth } from '@/utils/table-layout'
 import { formatAmount } from '@/utils/format'
+import type { NationalSubsidyRecord } from '@/types'
 
 interface TableColumn {
   key: string
@@ -560,13 +561,13 @@ interface PaginationState {
 
 const props = defineProps<{
   loading: boolean
-  subsidyList: any[]
-  displayList: any[]
+  subsidyList: NationalSubsidyRecord[]
+  displayList: NationalSubsidyRecord[]
   tableColumns: TableColumn[]
   fieldVisibility: Record<string, boolean>
   isMobile: boolean
   selectedItems: number[]
-  pinnedItems: any[]
+  pinnedItems: NationalSubsidyRecord[]
   subsidyPagination: PaginationState
   canApprove: boolean
   canArrival: boolean
@@ -582,16 +583,16 @@ const props = defineProps<{
 const emit = defineEmits<{
   'select-all': [boolean]
   'select-item': [{ id: number, checked: boolean }]
-  'row-double-click': [any]
+  'row-double-click': [NationalSubsidyRecord]
   'pin-selected-items': []
   'clear-pinned-items': []
   'open-batch-dialog': []
   'clear-selection': []
-  'open-photo-manage': [any]
-  'audit': [any]
-  'confirm-arrival': [any]
-  'edit': [any]
-  'delete': [any]
+  'open-photo-manage': [NationalSubsidyRecord]
+  'audit': [NationalSubsidyRecord]
+  'confirm-arrival': [NationalSubsidyRecord]
+  'edit': [NationalSubsidyRecord]
+  'delete': [NationalSubsidyRecord]
   'page-change': [number]
   'page-size-change': [number]
 }>()
@@ -634,7 +635,7 @@ const columnBaseWidths: Record<string, number> = {
   arrival_time: 76
 }
 
-const getColumnValue = (row: any, key: string) => {
+const getColumnValue = (row: NationalSubsidyRecord, key: string) => {
   const valueMap: Record<string, unknown> = {
     store_name: row.store_name,
     sale_time: formatDate(row.sale_time),
@@ -710,7 +711,7 @@ const getColumnClassName = (key: string) => {
   return 'complete-text-column'
 }
 
-const getTableRowClassName = ({ row }: { row: any }) => [
+const getTableRowClassName = ({ row }: { row: NationalSubsidyRecord }) => [
   isSelectedItem(row.id) ? 'row-selected' : '',
   isPinnedItem(row.id) ? 'pinned-row' : ''
 ].filter(Boolean).join(' ')
@@ -726,21 +727,21 @@ const formatMoney = (value: unknown) => {
   return formatAmount(value as number | string | null | undefined)
 }
 
-const getSubsidyFinalPrice = (item: any) => {
+const getSubsidyFinalPrice = (item: NationalSubsidyRecord) => {
   return Number(item?.sale_price || 0) - Number(item?.subsidy_amount || 0)
 }
 
-const hasApplyTime = (item: any) => Boolean(item?.apply_time && item.apply_time !== '')
-const hasArrivalTime = (item: any) => Boolean(item?.arrival_time && item.arrival_time !== '')
-const photoCount = (item: any) => Array.isArray(item?.subsidy_photos) ? item.subsidy_photos.length : 0
-const isHandlerSubsidy = (item: any) => Boolean(item?.has_different_handler)
+const hasApplyTime = (item: NationalSubsidyRecord) => Boolean(item.apply_time && item.apply_time !== '')
+const hasArrivalTime = (item: NationalSubsidyRecord) => Boolean(item.arrival_time && item.arrival_time !== '')
+const photoCount = (item: NationalSubsidyRecord) => item.subsidy_photos?.length || 0
+const isHandlerSubsidy = (item: NationalSubsidyRecord) => Boolean(item.has_different_handler)
 
 const toggleListItemCustomerInfo = (itemId: number) => {
   const currentState = handlerInfoVisibility.value.get(itemId) || false
   handlerInfoVisibility.value.set(itemId, !currentState)
 }
 
-const getDisplayInfo = (item: any, field: 'name' | 'phone' | 'idcard') => {
+const getDisplayInfo = (item: NationalSubsidyRecord, field: 'name' | 'phone' | 'idcard') => {
   const showHandler = handlerInfoVisibility.value.get(item.id) || false
   const handler_info = item?.handler_info
 
@@ -765,13 +766,13 @@ const getDisplayInfo = (item: any, field: 'name' | 'phone' | 'idcard') => {
   }
 }
 
-const hasHandlerInfo = (item: any) => (
+const hasHandlerInfo = (item: NationalSubsidyRecord) => (
   props.fieldVisibility.has_different_handler &&
   item.has_different_handler &&
   item.handler_info &&
   (props.fieldVisibility.handler_name || props.fieldVisibility.handler_phone || props.fieldVisibility.handler_idcard)
 )
-const isShowingHandlerInfo = (item: any) => handlerInfoVisibility.value.get(item.id) || false
+const isShowingHandlerInfo = (item: NationalSubsidyRecord) => handlerInfoVisibility.value.get(item.id) || false
 
 const copyToClipboard = async (text: string, label: string) => {
   const loadingMsg = ElMessage.info({

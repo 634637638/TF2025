@@ -11,7 +11,7 @@ const log = require('../utils/log')
 const { ensureRentalSchema } = require('../utils/rental-schema')
 const { getUploadSubdir, getUploadUrl, getUploadPathFromUrl } = require('../utils/upload-paths')
 const { isValidIdCard } = require('../utils/security-enhanced')
-const { generateInvoiceNumber, ensureInvoiceSequenceTable } = require('../utils/invoice-number')
+const { generateInvoiceNumber, prepareInvoiceNumberTransaction } = require('../utils/invoice-number')
 const { validateUploadedFileSignature, removeUploadedFiles } = require('../utils/upload-file-validation')
 const dataMaskingService = require('../services/dataMaskingService')
 const { searchCustomers: searchCustomerOptions } = require('../services/customer-search.service')
@@ -571,7 +571,7 @@ router.post('/', requirePermission('rentals:create'), rejectHiddenRentalWriteFie
 
     connection = await getDatabase().getConnection()
     // 买断销售会在事务中生成发票号，先完成序列表初始化，避免建表隐式提交事务。
-    await ensureInvoiceSequenceTable(connection)
+    await prepareInvoiceNumberTransaction(connection)
     await connection.beginTransaction()
     const [customers] = await connection.execute('SELECT id,id_card FROM customers WHERE id=? AND status=1 FOR UPDATE', [customerId])
     if (!customers.length || !isValidIdCard(String(customers[0].id_card || ''))) throw new Error('客户不存在、已停用或缺少正确身份证号')
@@ -954,7 +954,9 @@ router.delete('/:id/files/:fileId', requirePermission('rentals:edit'), async (re
     const [rows] = await db.execute('SELECT id,file_url FROM rental_contract_files WHERE id=? AND rental_id=?', [Number(req.params.fileId), Number(req.params.id)])
     if (!rows.length) return ApiResponse.notFound(res, '合同备份不存在')
     await db.execute('DELETE FROM rental_contract_files WHERE id=?', [rows[0].id])
-    try { fs.unlinkSync(getUploadPathFromUrl(rows[0].file_url)) } catch (_) {}
+    try { fs.unlinkSync(getUploadPathFromUrl(rows[0].file_url)) } catch (cleanupError) {
+      log.warn('清理租赁合同文件失败:', cleanupError)
+    }
     return ApiResponse.success(res, null, '合同备份已删除')
   } catch (error) {
     return ApiResponse.serverError(res, '删除合同备份失败', error)

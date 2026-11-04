@@ -170,7 +170,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { getPublicConfig, getOrderByNumber } from '@/api/shop-public'
+import { getPublicConfig, getOrderByNumber, type ShopConfig } from '@/api/shop-public'
 import { ElMessage } from 'element-plus'
 import { formatImageUrl } from '@/utils/format'
 import { storage } from '@/services/storage'
@@ -183,7 +183,7 @@ const route = useRoute()
 // 数据
 const orderNumber = ref('')
 const totalAmount = ref('')
-const shopConfig = ref<any>({})
+const shopConfig = ref<Partial<ShopConfig>>({})
 const selectedPaymentMethod = ref('pickup')
 const paymentMethodLabel = computed(() => getPaymentMethodLabel(selectedPaymentMethod.value, shopConfig.value))
 

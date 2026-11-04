@@ -91,6 +91,12 @@ winston-daily-rotate-file*
 docs/draft/
 docs/DRAFT/
 
+# 本地工具配置与文档归档
+/project.config.json
+/project.private.config.json
+/docs.zip
+/docs/*.zip
+
 # 归档
 .archive/
 本地备份/

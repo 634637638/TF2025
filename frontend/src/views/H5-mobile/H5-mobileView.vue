@@ -208,14 +208,14 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { getPublicConfig } from '@/api/shop-public'
+import { getPublicConfig, type ShopConfig } from '@/api/shop-public'
 import { storage } from '@/services/storage'
 import { logger } from '@/utils/logger'
 const route = useRoute()
 const router = useRouter()
 
 // 商城配置
-const shopConfig = ref<any>({})
+const shopConfig = ref<Partial<ShopConfig>>({})
 
 // 购物车数量
 const cartCount = ref(0)
@@ -305,8 +305,7 @@ const handleShare = () => {
 // 获取商城配置
 const loadConfig = async () => {
   try {
-    const response = await getPublicConfig()
-    const config = (response as any).data || response
+    const config = await getPublicConfig()
     shopConfig.value = config
     // 设置页面标题
     if (config && config.shop_name) {

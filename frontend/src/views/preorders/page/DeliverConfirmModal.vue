@@ -127,8 +127,8 @@ const handleSubmit = async () => {
     ElMessage.success('预定单交付成功')
     emit('success')
     dialogVisible.value = false
-  } catch (err: any) {
-    ElMessage.error(err.message || '交付失败')
+  } catch (err: unknown) {
+    ElMessage.error(err instanceof Error ? err.message : '交付失败')
   } finally {
     submitting.value = false
   }

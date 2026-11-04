@@ -17,17 +17,7 @@
 import { ref, computed, inject } from 'vue'
 import { simpleNotification } from '@/services/notification-simple'
 import type { NotificationOptions, NotificationConfig } from '@/services/notification-simple'
-
-// 类型定义
-export interface Notification {
-  id: string
-  type: 'success' | 'error' | 'warning' | 'info'
-  title: string
-  message?: string
-  duration?: number
-  persistent?: boolean
-  timestamp: number
-}
+import type { Notification } from '@/types'
 
 export interface UseNotificationOptions {
   /** 是否启用防抖 */

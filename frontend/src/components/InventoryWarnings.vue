@@ -145,15 +145,15 @@ import { unifiedApi } from '@/utils/unified-api'
 import { logger } from '@/utils/logger'
 import { useAuthStore } from '@/stores/auth'
 import { canAccessRoutePath } from '@/constants/routePermissions'
+import type { AccessoryStockWarning, ComprehensiveWarningsData, PhoneStockWarning } from '@/types'
 
 const router = useRouter()
 const authStore = useAuthStore()
 
 // 响应式数据
 const loading = ref(false)
-const phoneWarnings = ref<any[]>([])
-const accessoryWarnings = ref<any[]>([])
-const salesWarnings = ref<any>(null)
+const phoneWarnings = ref<PhoneStockWarning[]>([])
+const accessoryWarnings = ref<AccessoryStockWarning[]>([])
 
 // 计算属性
 const total_warnings = computed(() => {
@@ -167,13 +167,12 @@ const fetchWarnings = async () => {
   if (!canAccessInventory.value) {
     phoneWarnings.value = []
     accessoryWarnings.value = []
-    salesWarnings.value = null
     return
   }
 
   loading.value = true
   try {
-    const response = await unifiedApi.get('/dashboard/warnings/comprehensive', {
+    const response = await unifiedApi.get<ComprehensiveWarningsData>('/dashboard/warnings/comprehensive', {
       params: { phone_threshold: 3, page_size: 10 }
     })
 
@@ -181,8 +180,6 @@ const fetchWarnings = async () => {
       const data = response.data
       phoneWarnings.value = data.phones?.warnings || []
       accessoryWarnings.value = data.accessories?.warnings || []
-      salesWarnings.value = data.sales || null
-
       // 如果有预警，显示通知
       if (data.summary?.has_warnings && data.summary?.total_warnings > 0) {
         ElNotification.warning({

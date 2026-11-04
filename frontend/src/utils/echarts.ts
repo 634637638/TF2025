@@ -49,6 +49,6 @@ export default echarts
 // 导出常用类型供 TypeScript 使用
 export type { EChartsCoreOption } from 'echarts/core'
 export type { EChartsType as ECharts } from 'echarts/core'
+export type { CallbackDataParams, EChartsOption, TopLevelFormatterParams } from 'echarts/types/dist/shared'
 
 // 重新导出 echarts 的主要类型
-export type { EChartsOption } from 'echarts'

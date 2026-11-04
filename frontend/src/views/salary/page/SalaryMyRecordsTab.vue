@@ -340,16 +340,9 @@ import {
   formatSalaryPayoutTime,
   formatSalaryWorkDays
 } from '../salary-formatters'
+import type { SalaryEmployeeOption, SalaryRecord } from '@/types/salary'
 
-interface SalaryEmployeeOption {
-  id: number
-  name?: string | null
-  username?: string | null
-}
-
-interface SalaryRecordRow extends Record<string, unknown> {
-  id: number
-}
+type SalaryRecordRow = SalaryRecord & { id: number }
 
 interface SalaryRecordsTableInstance {
   toggleRowExpansion: (_row: SalaryRecordRow, _expanded: boolean) => void

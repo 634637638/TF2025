@@ -613,6 +613,7 @@ import { fieldPermissions, shouldShowActionColumn } from '@/composables/useField
 import { useLoadingState } from '@/composables'
 import { useNotification } from '@/composables/useNotification'
 import { logger } from '@/utils/logger'
+import { getRequestErrorMessage } from '@/utils/api-response'
 import type { HeaderAction } from '@/types'
 const homeSectionPermissions = usePagePermissions('h5-admin-home-sections')
 const { confirm } = useNotification()
@@ -710,7 +711,7 @@ const loadSections = async () => {
     // response 格式: { success: true, data: [...] }
     const data = response.data || response || []
     // 转换数据格式，确保布尔值正确
-    sections.value = (Array.isArray(data) ? data : []).map((section: any) => ({
+    sections.value = (Array.isArray(data) ? data as HomeSection[] : []).map((section: HomeSection) => ({
       id: section.id,
       section_key: section.section_key,
       section_name: section.section_name,
@@ -859,9 +860,9 @@ const saveSection = async () => {
     }
     showCreateDialog.value = false
     loadSections()
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('保存区域失败:', error)
-    ElMessage.error(error.response?.data?.message || '保存失败')
+    ElMessage.error(getRequestErrorMessage(error, '保存失败'))
   } finally {
     saving.value = false
   }
@@ -963,14 +964,14 @@ const addProductFromAvailable = async (product: SearchProduct) => {
     sectionProducts.value = Array.isArray(data) ? data : []
     searchKeyword.value = ''
     ElMessage.success('添加成功')
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('添加商品失败:', error)
-    ElMessage.error(error.response?.data?.message || '添加失败')
+    ElMessage.error(getRequestErrorMessage(error, '添加失败'))
   }
 }
 
 // 搜索商品
-const searchProducts = (queryString: string, cb: (_data: any[]) => void) => {
+const searchProducts = (queryString: string, cb: (_data: SearchProduct[]) => void) => {
   if (!canEdit.value) {
     handleNoPermission('edit')
     cb([])
@@ -1023,9 +1024,9 @@ const handleProductSelect = async (item: SearchProduct) => {
     sectionProducts.value = Array.isArray(data) ? data : []
     searchKeyword.value = ''
     ElMessage.success('添加成功')
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('添加商品失败:', error)
-    ElMessage.error(error.response?.data?.message || '添加失败')
+    ElMessage.error(getRequestErrorMessage(error, '添加失败'))
   }
 }
 

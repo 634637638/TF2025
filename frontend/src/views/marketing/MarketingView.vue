@@ -327,12 +327,12 @@ import { PublicPriceHeader } from '@/components/base'
 import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { getPublicBrands, getPublicColors, getPublicMarketingLexicon, getPublicMemories, getPublicModels, type Brand, type Color, type Memory, type Model } from '@/api/base-data'
 import { TimeUtil } from '@/utils/time'
+import { loadMarketingAutoContext } from '@/services/marketing-context'
 import {
   DEFAULT_MARKETING_LEXICON,
   buildMarketingAutoContext,
   generateMarketingCopySuggestions,
   getConfiguredMarketingCopyTypes,
-  getWeatherTextByCode,
   type MarketingAutoContext,
   type MarketingLexicon,
   type MarketingCondition,
@@ -468,106 +468,17 @@ const loadMemoryOptions = async () => {
   }
 }
 
-const getBrowserLocation = (): Promise<{ latitude: number; longitude: number }> => {
-  return new Promise((resolve, reject) => {
-    if (!navigator.geolocation) {
-      reject(new Error('浏览器不支持定位'))
-      return
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        resolve({
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude
-        })
-      },
-      reject,
-      {
-        enableHighAccuracy: true,
-        timeout: 8000,
-        maximumAge: 5 * 60 * 1000
-      }
-    )
-  })
-}
-
-const resolveLocationText = async (latitude: number, longitude: number) => {
-  try {
-    const response = await fetch(
-      `https://geocoding-api.open-meteo.com/v1/reverse?latitude=${latitude}&longitude=${longitude}&language=zh&count=1`
-    )
-    const data = await response.json()
-    const result = data?.results?.[0]
-    if (!result) return ''
-
-    const parts = [result.country, result.admin1, result.admin2, result.name]
-      .map((item: string) => String(item || '').trim())
-      .filter(Boolean)
-
-    return parts.length ? parts.join('') : ''
-  } catch {
-    return ''
-  }
-}
-
-const resolveWeather = async (latitude: number, longitude: number) => {
-  try {
-    const response = await fetch(
-      `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,apparent_temperature,weather_code&timezone=Asia%2FShanghai`
-    )
-    const data = await response.json()
-    const current = data?.current || {}
-    return {
-      weatherText: getWeatherTextByCode(current.weather_code),
-      weatherCode: current.weather_code ?? null,
-      temperature: Number.isFinite(Number(current.temperature_2m)) ? Number(current.temperature_2m) : null,
-      apparentTemperature: Number.isFinite(Number(current.apparent_temperature))
-        ? Number(current.apparent_temperature)
-        : null
-    }
-  } catch {
-    return {
-      weatherText: '',
-      weatherCode: null,
-      temperature: null,
-      apparentTemperature: null
-    }
-  }
-}
-
 const refreshAutoContext = async () => {
   locationLoading.value = true
   locationStatus.value = '正在自动获取定位...'
 
-  let browserLocation
   try {
-    browserLocation = await getBrowserLocation()
-  } catch {
-    autoContext.value = buildMarketingAutoContext({ date: TimeUtil.now().toDate() })
-    locationStatus.value = '定位不可用，未使用默认位置'
+    const result = await loadMarketingAutoContext()
+    autoContext.value = result.context
+    locationStatus.value = result.statusText
+  } finally {
     locationLoading.value = false
-    return
   }
-
-  const [locationName, weather] = await Promise.all([
-    resolveLocationText(browserLocation.latitude, browserLocation.longitude),
-    resolveWeather(browserLocation.latitude, browserLocation.longitude)
-  ])
-
-  autoContext.value = buildMarketingAutoContext({
-    date: TimeUtil.now().toDate(),
-    locationName,
-    weatherText: weather.weatherText,
-    weatherCode: weather.weatherCode,
-    temperature: weather.temperature,
-    apparentTemperature: weather.apparentTemperature
-  })
-
-  locationStatus.value = autoContext.value.locationName
-    ? `已自动识别：${autoContext.value.locationName}`
-    : '定位信息未获取'
-  locationLoading.value = false
 }
 
 const refreshVariants = async (bumpNonce = false) => {

@@ -20,7 +20,7 @@ import { useRoute } from 'vue-router'
 import SectionLoading from '@/components/SectionLoading.vue'
 import ProductDetail from './ProductDetail.vue'
 import AggregatedProductDetail from './AggregatedProductDetail.vue'
-import { getProductDetail } from '@/api/shop-public'
+import { getProductDetail, type ProductDetail as ShopProductDetail } from '@/api/shop-public'
 import { logger } from '@/utils/logger'
 const route = useRoute()
 const loading = ref(true)
@@ -46,7 +46,7 @@ const resolveProductType = async (id: number | null) => {
   loading.value = true
   try {
     // 尝试获取商品详情
-    const data: any = await getProductDetail(id)
+    const data = await getProductDetail(id) as ShopProductDetail & { template_name?: string }
     if (sequence !== resolveSequence.value) {
       return
     }

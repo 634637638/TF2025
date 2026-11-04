@@ -3,49 +3,9 @@
  */
 import { unifiedApi } from '@/utils/unified-api'
 import { salaryTemplateApi } from './salary-template'
+import type { SalaryFilters, SalaryRecordInput } from '@/types/salary'
 
-export interface SalaryRecord {
-  id?: number
-  employee_id: number
-  salary_template_id?: number
-  period_start: string
-  period_end: string
-  // 工作天数
-  actual_work_days?: number
-  // 底薪相关
-  base_salary: number
-  base_salary_adjustment: number
-  base_salary_note?: string
-  // 提成相关
-  commission_amount: number
-  commission_detail?: string // JSON字符串，包含提成详情
-  sales_count?: number // 销售数量（台）
-  // 加班费
-  overtime_hours: number
-  overtime_pay: number
-  // 奖励
-  performance_bonus: number
-  other_bonus: number
-  // 扣除
-  leave_days: number
-  leave_deduction: number
-  other_deduction: number
-  // 实发工资（最终结果）
-  net_salary: number
-  status?: 'draft' | 'pending' | 'approved' | 'paid' | 'cancelled'
-  paid_at?: string
-  payment_method?: string
-  created_by?: number
-}
-
-export interface SalaryFilters {
-  page?: number
-  page_size?: number
-  employee_id?: number
-  status?: string
-  period_start?: string
-  period_end?: string
-}
+export type { SalaryFilters, SalaryRecord, SalaryRecordInput } from '@/types/salary'
 
 export const salaryRecordApi = {
   /**
@@ -72,14 +32,14 @@ export const salaryRecordApi = {
   /**
    * 创建工资记录
    */
-  createSalaryRecord: (data: SalaryRecord) => {
+  createSalaryRecord: (data: SalaryRecordInput) => {
     return unifiedApi.post('/salary-records', data)
   },
 
   /**
    * 更新工资记录
    */
-  updateSalaryRecord: (id: number, data: Partial<SalaryRecord>) => {
+  updateSalaryRecord: (id: number, data: Partial<SalaryRecordInput>) => {
     return unifiedApi.put(`/salary-records/${id}`, data)
   },
 
@@ -104,7 +64,7 @@ export const salaryRecordApi = {
   /**
    * 保存计算的工资
    */
-  saveCalculatedSalary: (data: SalaryRecord) => {
+  saveCalculatedSalary: (data: Partial<SalaryRecordInput>) => {
     return unifiedApi.post('/salary-records/save', data)
   },
 

@@ -58,8 +58,8 @@ const searchCustomers = async ({
      FROM customers
      WHERE ${whereClause}
      ORDER BY ${sortField} ${sortDirection}, id DESC
-     LIMIT ${pageSize} OFFSET ${offset}`,
-    params
+     LIMIT ? OFFSET ?`,
+    [...params, pageSize, offset]
   )
   const [countRows] = await db.execute(
     `SELECT COUNT(*) AS total FROM customers WHERE ${whereClause}`,

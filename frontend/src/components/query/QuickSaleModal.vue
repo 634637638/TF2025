@@ -26,24 +26,24 @@
   >
     <template #footer>
       <div class="tf-dialog-actions quick-sale-footer">
-          <el-button
-            type="default"
-            :disabled="submitting"
-            @click="handleCancel"
-          >
-            取消
-          </el-button>
-          <el-button
-            type="primary"
-            :loading="submitting"
-            @click="handleSubmit"
-          >
-            <span v-if="submitting">处理中...</span>
-            <template v-else>
-              <i class="fas fa-bolt" />
-              确认出库
-            </template>
-          </el-button>
+        <el-button
+          type="default"
+          :disabled="submitting"
+          @click="handleCancel"
+        >
+          取消
+        </el-button>
+        <el-button
+          type="primary"
+          :loading="submitting"
+          @click="handleSubmit"
+        >
+          <span v-if="submitting">处理中...</span>
+          <template v-else>
+            <i class="fas fa-bolt" />
+            确认出库
+          </template>
+        </el-button>
       </div>
     </template>
 
@@ -136,7 +136,6 @@
               />
             </el-select>
           </el-form-item>
-
         </div>
 
         <div class="tf-query-modal-row tf-query-modal-row--4 quick-sale-device-row--identifier">
@@ -228,7 +227,10 @@
             </el-select>
           </el-form-item>
 
-          <el-form-item label="状态" prop="status">
+          <el-form-item
+            label="状态"
+            prop="status"
+          >
             <el-select
               v-model="formData.status"
               placeholder="请选择状态"
@@ -236,9 +238,18 @@
               popper-class="tf2025-form-popper"
               @change="handleTransactionTypeChange"
             >
-              <el-option label="已售" value="sold" />
-              <el-option label="调货" value="peer_transfer" />
-              <el-option label="划拨" value="supplier_proxy" />
+              <el-option
+                label="已售"
+                value="sold"
+              />
+              <el-option
+                label="调货"
+                value="peer_transfer"
+              />
+              <el-option
+                label="划拨"
+                value="supplier_proxy"
+              />
             </el-select>
           </el-form-item>
         </div>
@@ -381,11 +392,11 @@
               :creating="customerCreating"
               @unlock="enableCustomerNameEdit"
               @touchend="handleCustomerNameTouchEnd"
-            @input="formatCustomerName"
-            @blur="handleCustomerNameBlur"
-            @save="saveCustomerNameEdit"
-            @clear="clearSelectedCustomer"
-          />
+              @input="formatCustomerName"
+              @blur="handleCustomerNameBlur"
+              @save="saveCustomerNameEdit"
+              @clear="clearSelectedCustomer"
+            />
           </el-form-item>
 
           <el-form-item
@@ -553,6 +564,7 @@ import { getModels } from '@/services/reference-options'
 import { useAuthStore } from '@/stores/auth'
 import MobileDialog from '@/components/MobileDialog.vue'
 import CustomerNameLockInput from '@/components/common/CustomerNameLockInput.vue'
+import { resolveNativeTextInput, type NativeInputInstance } from '@/utils/native-input'
 import CustomerSearchDropdown from '@/components/common/CustomerSearchDropdown.vue'
 import { PaymentChannelSelect, PaymentMethodSelect } from '@/components/payment'
 import { useMobile } from '@/composables/mobile'
@@ -582,7 +594,7 @@ import {
 } from './quick-sale/helpers'
 import type {
   BrandModelOption,
-  CustomerOption,
+  QuickSaleCustomerOption as CustomerOption,
   PriceField,
   QuickSaleProps
 } from './quick-sale/types'
@@ -639,7 +651,7 @@ const customerCreating = ref(false)
 const showCustomerSearchResults = ref(false)
 const customerSearchTimeout = ref<ReturnType<typeof window.setTimeout> | null>(null)
 const customerSearchRequestId = ref(0)
-const customerNameInputRef = ref<any>(null)
+const customerNameInputRef = ref<NativeInputInstance | null>(null)
 const customerNameLastTapAt = ref(0)
 const customerSearchContainerRef = ref<HTMLElement | null>(null)
 const customerSearchResultsStyle = ref<Record<string, string>>({})
@@ -1044,24 +1056,7 @@ const formatCustomerName = () => {
   formData.customer_name = normalizePersonName(formData.customer_name, 20)
 }
 
-const resolveNativeCustomerInput = (source: any): HTMLInputElement | null => {
-  if (!source) return null
-  if (source instanceof HTMLInputElement) return source
-  if (source instanceof HTMLElement && typeof source.querySelector === 'function') {
-    const nestedInput = source.querySelector('input, textarea')
-    if (nestedInput instanceof HTMLInputElement) return nestedInput
-  }
-  if (source?.target instanceof HTMLInputElement) return source.target
-  if (source?.target instanceof HTMLElement && typeof source.target.querySelector === 'function') {
-    const nestedInput = source.target.querySelector('input, textarea')
-    if (nestedInput instanceof HTMLInputElement) return nestedInput
-  }
-  if (source?.input instanceof HTMLInputElement) return source.input
-  if (source?.$el && typeof source.$el.querySelector === 'function') {
-    return source.$el.querySelector('input')
-  }
-  return null
-}
+const resolveNativeCustomerInput = resolveNativeTextInput
 
 const focusCustomerNameInput = (input: HTMLInputElement | null) => {
   if (!input) return

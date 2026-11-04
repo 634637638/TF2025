@@ -35,7 +35,14 @@ export type ProductQuality = '全新' | '99新' | '95新' | '9新' | '8新' | '7
 /**
  * 预订单状态
  */
-export type PreorderStatus = 'pending' | 'arrived' | 'cancelled' | 'completed'
+export const PreorderStatus = {
+  PENDING: 'pending',
+  MATCHED: 'arrived',
+  DELIVERED: 'completed',
+  CANCELLED: 'cancelled'
+} as const
+
+export type PreorderStatus = typeof PreorderStatus[keyof typeof PreorderStatus]
 
 /**
  * 预订单来源
@@ -45,7 +52,7 @@ export type PreorderSource = 'store' | 'online' | 'phone' | 'referral'
 /**
  * 预订单记录
  */
-export interface Preorder {
+export interface PreorderRecord {
   id: number
   order_number: string
   customer_name: string
@@ -100,6 +107,24 @@ export interface PreorderForm {
   follow_up_record?: string
 }
 
+/** 预订单弹窗草稿，覆盖创建和编辑阶段的原始表单值。 */
+export interface PreorderFormDraft {
+  customer_id: number | null
+  customer_phone: string
+  customer_name: string
+  store_id: number | null
+  created_by: number | null
+  brand_id: number | null
+  model_id: number | null
+  color_id: number | null
+  memory_id: number | null
+  is_new: number
+  expected_arrival: string | null
+  total_price: number | null
+  deposit_amount: number | null
+  remarks: string
+}
+
 /**
  * 预订单筛选条件
  */
@@ -118,7 +143,7 @@ export interface PreorderFilters {
  * 预订单列表响应
  */
 export interface PreorderListResponse {
-  preorders: Preorder[]
+  preorders: PreorderRecord[]
   pagination: {
     page: number
     limit: number
@@ -302,7 +327,7 @@ export interface ReturnOrderFilters {
 /**
  * 客户信息
  */
-export interface Customer {
+export interface OrderCustomer {
   id: number
   name: string
   phone: string
@@ -353,7 +378,7 @@ export interface CustomerFilters {
  * 客户列表响应
  */
 export interface CustomerListResponse {
-  customers: Customer[]
+  customers: OrderCustomer[]
   pagination: {
     page: number
     limit: number

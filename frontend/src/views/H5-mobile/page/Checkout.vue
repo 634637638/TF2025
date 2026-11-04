@@ -342,8 +342,7 @@ import { ref, computed, onMounted, onActivated, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, FormInstance } from 'element-plus'
 import { ValidationRules } from '@/composables'
-import { createOrder, getProductDetail, getStockDistribution } from '@/api/shop-public'
-import { getPublicConfig } from '@/api/shop-public'
+import { createOrder, getProductDetail, getStockDistribution, getPublicConfig, type CartItem, type OrderData, type ProductDetail, type ShopConfig } from '@/api/shop-public'
 import { baseDataApi } from '@/api/base-data'
 import SectionLoading from '@/components/SectionLoading.vue'
 import { formatAmount, formatImageUrl } from '@/utils/format'
@@ -352,7 +351,27 @@ import { storage } from '@/services/storage'
 import { H5_STORAGE_KEYS } from '@/constants/storage'
 import { tokenManager, userManager, getUserProfile, type AuthUser } from '@/api/auth'
 import { logger } from '@/utils/logger'
+import { getRequestErrorMessage } from '@/utils/api-response'
 import { getShopPaymentOptions, isOnlinePaymentMethod } from '@/utils/shop-payment'
+
+type CheckoutItem = Partial<CartItem> & {
+  phoneId: number
+  salePrice: number | string
+  store_id?: number
+  store_name?: string
+  store_address?: string
+  store_phone?: string
+}
+type CheckoutStore = { id: number, name: string, address: string, phone: string, stock_count: number }
+type CheckoutProductDetail = ProductDetail & {
+  memory_id?: number
+  color_id?: number
+  store_id?: number
+  store_name?: string
+  store_address?: string
+  store_phone?: string
+}
+interface DeliveryAddress { name: string, phone: string, address: string }
 const router = useRouter()
 const route = useRoute()
 
@@ -393,10 +412,10 @@ const deliveryFormRules = {
 }
 
 // 可用店铺列表（从库存分布API获取）
-const availableStores = ref<any[]>([])
+const availableStores = ref<CheckoutStore[]>([])
 
 // 选中的店铺
-const selectedStore = ref<any>(null)
+const selectedStore = ref<CheckoutStore | null>(null)
 
 // 加载店铺列表
 const loadAvailableStores = async () => {
@@ -408,7 +427,7 @@ const loadAvailableStores = async () => {
   try {
     // 首先获取商品详情以获取brand_id, model_id等
     const productResponse = await getProductDetail(firstItem.phoneId)
-    const productDetail: any = productResponse
+    const productDetail = productResponse as CheckoutProductDetail
 
     // 获取内存ID
     let memoryId = null
@@ -417,7 +436,7 @@ const loadAvailableStores = async () => {
     } else {
       // 如果没有memory_id，尝试从内存名称查找
       const memories = await baseDataApi.getPublicMemories()
-      const memory = memories.find((m: any) => m.name === firstItem.memory_name)
+      const memory = memories.find(m => m.size === firstItem.memory_name)
       memoryId = memory?.id
     }
 
@@ -432,12 +451,12 @@ const loadAvailableStores = async () => {
       model_id: productDetail.model_id,
       color_id: productDetail.color_id,
       memory_id: memoryId,
-      is_new: productDetail.is_new === 1 || productDetail.is_new === '1'
+      is_new: Number(productDetail.is_new) === 1
     })
-    const stockData: any = stockResponse
+    const stockData = stockResponse
 
     // 提取店铺信息
-    availableStores.value = stockData.stores.map((store: any) => ({
+    availableStores.value = stockData.stores.map(store => ({
       id: store.store_id,
       name: store.store_name,
       address: store.store_address || '',
@@ -471,7 +490,7 @@ const loadAvailableStores = async () => {
 }
 
 // 用户默认地址
-const userDefaultAddress = ref<any>(null)
+const userDefaultAddress = ref<DeliveryAddress | null>(null)
 
 // 显示地址弹窗
 const showAddressModal = ref(false)
@@ -509,10 +528,10 @@ const _formRules = {
 }
 
 // 订单商品
-const orderItems = ref<any[]>([])
+const orderItems = ref<CheckoutItem[]>([])
 const loading = ref(true)
 const submitting = ref(false)
-const shopConfig = ref<any>({})
+const shopConfig = ref<Partial<ShopConfig>>({})
 const paymentMethodOptions = computed(() => getShopPaymentOptions(shopConfig.value))
 
 const syncCustomerFields = (payload: {
@@ -615,7 +634,7 @@ const selectPaymentMethod = async (method: string) => {
 }
 
 // 格式化价格
-const formatPrice = (price: any) => {
+const formatPrice = (price: number | string | null | undefined) => {
   if (!price && price !== 0) return '0'
   const numPrice = typeof price === 'string' ? parseFloat(price) : price
   return isNaN(numPrice) ? '0' : formatAmount(numPrice)
@@ -656,7 +675,7 @@ const loadOrderItems = async (force = false) => {
   }
 
   // 优先从 sessionStorage 获取（立即购买）
-  const sessionItems = storage.get<any[]>(H5_STORAGE_KEYS.CHECKOUT_ITEMS, 'session')
+  const sessionItems = storage.get<CheckoutItem | CheckoutItem[]>(H5_STORAGE_KEYS.CHECKOUT_ITEMS, 'session')
 
   if (sessionItems) {
     try {
@@ -668,14 +687,14 @@ const loadOrderItems = async (force = false) => {
       }
 
       // 检查是否已有完整的商品信息
-      const needsDetail = items.some((item: any) => !item.brand_name || !item.model_name)
+      const needsDetail = items.some(item => !item.brand_name || !item.model_name)
 
       if (needsDetail) {
         // 需要获取商品详情
-        orderItems.value = await Promise.all(items.map(async (item: any) => {
+        orderItems.value = await Promise.all(items.map(async (item: CheckoutItem): Promise<CheckoutItem> => {
           try {
             const productResponse = await getProductDetail(item.phoneId)
-            const productDetail: any = productResponse
+            const productDetail = productResponse as CheckoutProductDetail
             return {
               phoneId: item.phoneId,
               quantity: item.quantity || 1,
@@ -822,7 +841,7 @@ const handleSubmit = async () => {
 
     submitting.value = true
 
-    const orderData = {
+    const orderData: OrderData = {
       customerName: form.value.customerName,
       customerPhone: normalizeCustomerPhone(form.value.customerPhone),
       customerAddress: form.value.customerAddress,
@@ -855,9 +874,9 @@ const handleSubmit = async () => {
     router.push({
       path: '/m/order/success'
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('提交订单失败:', error)
-    ElMessage.error(error.message || '提交订单失败')
+    ElMessage.error(getRequestErrorMessage(error, '提交订单失败'))
   } finally {
     submitting.value = false
   }
@@ -896,11 +915,12 @@ onMounted(async () => {
   await initializeCheckout()
 })
 
-const buildDefaultAddress = (payload: any) => {
-  const name = payload?.name || currentUser.value?.name || ''
-  const phone = payload?.phone || currentUser.value?.phone || ''
+const buildDefaultAddress = (payload: unknown): DeliveryAddress | null => {
+  const data = payload && typeof payload === 'object' ? payload as Partial<DeliveryAddress> : {}
+  const name = data.name || currentUser.value?.name || ''
+  const phone = data.phone || currentUser.value?.phone || ''
   const normalizedPhone = normalizeCustomerPhone(phone)
-  const address = payload?.address || ''
+  const address = data.address || ''
 
   if (!name && !phone && !address) {
     return null
@@ -918,7 +938,7 @@ const loadUserDefaultAddress = async (forceRemote = false) => {
 
   try {
     const savedAddress = !forceRemote
-      ? storage.get<any>(H5_STORAGE_KEYS.DEFAULT_ADDRESS, 'session')
+      ? storage.get<DeliveryAddress>(H5_STORAGE_KEYS.DEFAULT_ADDRESS, 'session')
       : null
 
     const localAddress = buildDefaultAddress(savedAddress)
@@ -945,7 +965,7 @@ const loadUserDefaultAddress = async (forceRemote = false) => {
   } catch (error) {
     logger.error('获取用户地址失败:', error)
 
-    const fallbackAddress = buildDefaultAddress(storage.get<any>(H5_STORAGE_KEYS.DEFAULT_ADDRESS, 'session'))
+    const fallbackAddress = buildDefaultAddress(storage.get<DeliveryAddress>(H5_STORAGE_KEYS.DEFAULT_ADDRESS, 'session'))
     userDefaultAddress.value = fallbackAddress
     if (fallbackAddress) {
       syncDefaultAddressToOrder(true)

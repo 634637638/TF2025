@@ -59,7 +59,7 @@ interface UseRefreshDataReturn {
  * const { refreshing, refreshData } = useRefreshData()
  *
  * const fetchData = async () => {
- *   const response = await unifiedApi.get('/data')
+ *   const response = await unifiedApi.get('/example-resource')
  *   data.value = response.data
  * }
  *

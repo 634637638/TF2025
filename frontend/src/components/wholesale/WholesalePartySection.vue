@@ -135,7 +135,7 @@
       </el-row>
 
       <el-row :gutter="12">
-        <el-col :span="8">
+        <el-col :span="12">
           <el-form-item
             label="支付方式"
             prop="payment_method"
@@ -150,7 +150,7 @@
             />
           </el-form-item>
         </el-col>
-        <el-col :span="8">
+        <el-col :span="12">
           <el-form-item
             v-if="formData.payment_method === 'mobile' || formData.payment_method === 'bank_card' || formData.payment_method === 'subsidy_card'"
             label="支付渠道"
@@ -163,18 +163,6 @@
               clearable
               class="w-full"
               @change="handlePaymentChannelChange"
-            />
-          </el-form-item>
-        </el-col>
-        <el-col :span="8">
-          <el-form-item
-            label="发票号"
-            prop="invoice_number"
-          >
-            <el-input
-              v-model="formData.invoice_number"
-              placeholder="请输入发票号（可选）"
-              clearable
             />
           </el-form-item>
         </el-col>
@@ -337,6 +325,7 @@
 <script setup lang="ts">
 import { TIME_FORMATS } from '@/utils/time'
 import { ref, watch } from 'vue'
+import type { VNodeRef } from 'vue'
 import CustomerNameLockInput from '@/components/common/CustomerNameLockInput.vue'
 import CustomerSearchDropdown from '@/components/common/CustomerSearchDropdown.vue'
 import { PaymentChannelSelect, PaymentMethodSelect } from '@/components/payment'
@@ -365,7 +354,7 @@ interface Props {
   handleCustomerNameBlur: () => void
   saveCustomerNameEdit: () => void
   clearSelectedCustomer: () => void
-  customerNameInputRef?: any
+  customerNameInputRef?: VNodeRef
   selectCustomer: (_customer: WholesaleCustomerSearchItem) => void
   autoCreateCustomer: () => void | Promise<void>
   handlePaymentMethodChange: () => void

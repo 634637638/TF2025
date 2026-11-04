@@ -35,7 +35,6 @@
 </template>
 
 <script setup lang="ts">
-import InlineLoading from '@/components/InlineLoading.vue'
 import { PageHeader } from '@/components/base'
 
 defineProps<{

@@ -265,7 +265,7 @@ router.get('/', unifiedAuth, requirePermission('repairs:view'), async (req, res)
     const where = conditions.length ? ` WHERE ${conditions.join(' AND ')}` : ''
     const offset = (page - 1) * page_size
     const [rowsResult, countResult] = await Promise.all([
-      db.execute(`${listQuery}${where} ORDER BY COALESCE(r.repair_time, r.created_at) DESC, r.id DESC LIMIT ${page_size} OFFSET ${offset}`, params),
+      db.execute(`${listQuery}${where} ORDER BY COALESCE(r.repair_time, r.created_at) DESC, r.id DESC LIMIT ? OFFSET ?`, [...params, page_size, offset]),
       db.execute(`SELECT COUNT(*) AS total FROM repairs r LEFT JOIN customers c ON c.id = r.customer_id${where}`, params)
     ])
     const rows = rowsResult[0] || []
@@ -485,7 +485,9 @@ router.post('/upload/media', unifiedAuth, requireAnyPermission(['repairs:create'
   repairMediaUpload.array('files', 12)(req, res, error => {
     if (!error) return next()
     for (const file of req.files || []) {
-      try { fs.unlinkSync(file.path) } catch (_cleanupError) {}
+      try { fs.unlinkSync(file.path) } catch (cleanupError) {
+        log.warn('清理维修媒体临时文件失败:', cleanupError)
+      }
     }
     return ApiResponse.error(res, error.message || '媒体上传失败', error.status || 400)
   })

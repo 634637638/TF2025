@@ -246,12 +246,12 @@
                   </div>
                   <div class="table-responsive">
                     <el-table
-                    class="data-table devices-table compact-fit-table base-data-table"
-                    :data="isSiteSettingsLoading ? [] : visibleSiteSettingsList"
-                    border
-                    stripe
-                    table-layout="fixed"
-                    :fit="true"
+                      class="data-table devices-table compact-fit-table base-data-table"
+                      :data="isSiteSettingsLoading ? [] : visibleSiteSettingsList"
+                      border
+                      stripe
+                      table-layout="fixed"
+                      :fit="true"
                     >
                       <template #empty>
                         <TableLoadingRow
@@ -264,70 +264,70 @@
                           description="暂无站点设置"
                         />
                       </template>
-                    <el-table-column
-                      prop="category"
-                      label="分类"
-                      min-width="120"
-                      align="center"
-                    >
-                      <template #default="{ row }">
-                        <el-tag
-                          :type="row.category === 'basic' ? 'primary' : 'success'"
-                          size="small"
-                        >
-                          {{ row.categoryLabel }}
-                        </el-tag>
-                      </template>
-                    </el-table-column>
+                      <el-table-column
+                        prop="category"
+                        label="分类"
+                        min-width="120"
+                        align="center"
+                      >
+                        <template #default="{ row }">
+                          <el-tag
+                            :type="row.category === 'basic' ? 'primary' : 'success'"
+                            size="small"
+                          >
+                            {{ row.categoryLabel }}
+                          </el-tag>
+                        </template>
+                      </el-table-column>
 
-                    <el-table-column
-                      prop="label"
-                      label="设置项"
-                      min-width="150"
-                      class-name="flat-edit-label-column"
-                      label-class-name="flat-edit-label-column"
-                    >
-                      <template #default="{ row }">
-                        <i :class="row.icon" />
-                        {{ row.label }}
-                      </template>
-                    </el-table-column>
+                      <el-table-column
+                        prop="label"
+                        label="设置项"
+                        min-width="150"
+                        class-name="flat-edit-label-column"
+                        label-class-name="flat-edit-label-column"
+                      >
+                        <template #default="{ row }">
+                          <i :class="row.icon" />
+                          {{ row.label }}
+                        </template>
+                      </el-table-column>
 
-                    <el-table-column
-                      prop="value"
-                      label="当前值"
-                      min-width="160"
-                      class-name="flat-edit-value-column"
-                      label-class-name="flat-edit-value-column"
-                    >
-                      <template #default="{ row }">
-                        <el-input
-                          v-if="row.type === 'input'"
-                          v-model="siteSettings[row.key]"
-                          :placeholder="row.placeholder"
-                          :disabled="!canUpdateSettings"
-                          clearable
-                        />
-                        <el-input
-                          v-else-if="row.type === 'textarea'"
-                          v-model="siteSettings[row.key]"
-                          class="tf-textarea"
-                          type="textarea"
-                          :rows="2"
-                          :placeholder="row.placeholder"
-                          :disabled="!canUpdateSettings"
-                          clearable
-                        />
-                        <el-switch
-                          v-else-if="row.type === 'switch'"
-                          v-model="siteSettings[row.key]"
-                          active-value="1"
-                          inactive-value="0"
-                          :disabled="!canUpdateSettings"
-                        />
-                        <span v-else>{{ siteSettings[row.key] || row.defaultValue }}</span>
-                      </template>
-                    </el-table-column>
+                      <el-table-column
+                        prop="value"
+                        label="当前值"
+                        min-width="160"
+                        class-name="flat-edit-value-column"
+                        label-class-name="flat-edit-value-column"
+                      >
+                        <template #default="{ row }">
+                          <el-input
+                            v-if="row.type === 'input'"
+                            v-model="siteSettings[row.key]"
+                            :placeholder="row.placeholder"
+                            :disabled="!canUpdateSettings"
+                            clearable
+                          />
+                          <el-input
+                            v-else-if="row.type === 'textarea'"
+                            v-model="siteSettings[row.key]"
+                            class="tf-textarea"
+                            type="textarea"
+                            :rows="2"
+                            :placeholder="row.placeholder"
+                            :disabled="!canUpdateSettings"
+                            clearable
+                          />
+                          <el-switch
+                            v-else-if="row.type === 'switch'"
+                            v-model="siteSettings[row.key]"
+                            active-value="1"
+                            inactive-value="0"
+                            :disabled="!canUpdateSettings"
+                          />
+                          <span v-else>{{ siteSettings[row.key] || row.defaultValue }}</span>
+                        </template>
+                      </el-table-column>
                     </el-table>
                   </div>
                 </div>
@@ -362,12 +362,12 @@
                   </div>
                   <div class="table-responsive">
                     <el-table
-                    :data="isSiteSettingsLoading ? [] : priceContactsEditor"
-                    border
-                    stripe
-                    class="data-table devices-table compact-fit-table base-data-table"
-                    table-layout="fixed"
-                    :fit="true"
+                      :data="isSiteSettingsLoading ? [] : priceContactsEditor"
+                      border
+                      stripe
+                      class="data-table devices-table compact-fit-table base-data-table"
+                      table-layout="fixed"
+                      :fit="true"
                     >
                       <template #empty>
                         <TableLoadingRow
@@ -380,104 +380,104 @@
                           description="暂无报价联系人"
                         />
                       </template>
-                    <el-table-column
-                      v-if="canViewField('settings.price_watermark')"
-                      type="index"
-                      label="排序"
-                      width="72"
-                      align="center"
-                    />
-                    <el-table-column
-                      v-if="canViewField('settings.price_watermark')"
-                      prop="name"
-                      label="姓名"
-                      :min-width="priceContactNameWidth"
-                      align="center"
-                      class-name="complete-text-column"
-                    />
-                    <el-table-column
-                      v-if="canViewField('settings.price_watermark')"
-                      prop="phone"
-                      label="手机号码"
-                      :min-width="priceContactPhoneWidth"
-                      align="center"
-                      class-name="complete-text-column"
-                    />
-                    <el-table-column
-                      v-if="showOperations"
-                      label="默认"
-                      :width="priceContactDefaultWidth"
-                      align="center"
-                      class-name="actions-column"
-                    >
-                      <template #default="{ $index }">
-                        <div class="action-buttons">
-                          <el-button
-                            class="table-action"
-                            :class="isDefaultPriceContact($index) ? 'table-action--success' : 'table-action--pin'"
-                            size="small"
-                            plain
-                            :disabled="!canUpdateSettings || isDefaultPriceContact($index)"
-                            @click.stop="setDefaultPriceContact($index)"
-                          >
-                            <i :class="isDefaultPriceContact($index) ? 'fas fa-check' : 'fas fa-thumbtack'" />
-                            <span>{{ isDefaultPriceContact($index) ? '默认' : '设为默认' }}</span>
-                          </el-button>
-                        </div>
-                      </template>
-                    </el-table-column>
-                    <el-table-column
-                      v-if="showOperations"
-                      label="操作"
-                      :width="$getActionColumnWidth(['编辑', '删除', '上移', '下移'])"
-                      align="center"
-                      class-name="actions-column"
-                    >
-                      <template #default="{ $index, row }">
-                        <div class="action-buttons">
-                          <el-button
-                            class="table-action table-action--edit"
-                            size="small"
-                            plain
-                            :disabled="!canUpdateSettings"
-                            @click.stop="openPriceContactDialog(row, $index)"
-                          >
-                            <i class="fas fa-edit" />
-                            <span>编辑</span>
-                          </el-button>
-                          <el-button
-                            class="table-action table-action--delete"
-                            size="small"
-                            plain
-                            :disabled="!canUpdateSettings"
-                            @click.stop="removePriceContact($index)"
-                          >
-                            <i class="fas fa-trash-alt" />
-                            <span>删除</span>
-                          </el-button>
-                          <el-button
-                            class="table-action table-action--neutral"
-                            size="small"
-                            plain
-                            :disabled="!canUpdateSettings || $index === 0"
-                            @click.stop="movePriceContact($index, -1)"
-                          >
-                            <i class="fas fa-arrow-up" />
-                            <span>上移</span>
-                          </el-button>
-                          <el-button
-                            class="table-action table-action--neutral"
-                            size="small"
-                            plain
-                            :disabled="!canUpdateSettings || $index === priceContactsEditor.length - 1"
-                            @click.stop="movePriceContact($index, 1)"
-                          >
-                            <i class="fas fa-arrow-down" />
-                            <span>下移</span>
-                          </el-button>
-                        </div>
-                      </template>
-                    </el-table-column>
+                      <el-table-column
+                        v-if="canViewField('settings.price_watermark')"
+                        type="index"
+                        label="排序"
+                        width="72"
+                        align="center"
+                      />
+                      <el-table-column
+                        v-if="canViewField('settings.price_watermark')"
+                        prop="name"
+                        label="姓名"
+                        :min-width="priceContactNameWidth"
+                        align="center"
+                        class-name="complete-text-column"
+                      />
+                      <el-table-column
+                        v-if="canViewField('settings.price_watermark')"
+                        prop="phone"
+                        label="手机号码"
+                        :min-width="priceContactPhoneWidth"
+                        align="center"
+                        class-name="complete-text-column"
+                      />
+                      <el-table-column
+                        v-if="showOperations"
+                        label="默认"
+                        :width="priceContactDefaultWidth"
+                        align="center"
+                        class-name="actions-column"
+                      >
+                        <template #default="{ $index }">
+                          <div class="action-buttons">
+                            <el-button
+                              class="table-action"
+                              :class="isDefaultPriceContact($index) ? 'table-action--success' : 'table-action--pin'"
+                              size="small"
+                              plain
+                              :disabled="!canUpdateSettings || isDefaultPriceContact($index)"
+                              @click.stop="setDefaultPriceContact($index)"
+                            >
+                              <i :class="isDefaultPriceContact($index) ? 'fas fa-check' : 'fas fa-thumbtack'" />
+                              <span>{{ isDefaultPriceContact($index) ? '默认' : '设为默认' }}</span>
+                            </el-button>
+                          </div>
+                        </template>
+                      </el-table-column>
+                      <el-table-column
+                        v-if="showOperations"
+                        label="操作"
+                        :width="$getActionColumnWidth(['编辑', '删除', '上移', '下移'])"
+                        align="center"
+                        class-name="actions-column"
+                      >
+                        <template #default="{ $index, row }">
+                          <div class="action-buttons">
+                            <el-button
+                              class="table-action table-action--edit"
+                              size="small"
+                              plain
+                              :disabled="!canUpdateSettings"
+                              @click.stop="openPriceContactDialog(row, $index)"
+                            >
+                              <i class="fas fa-edit" />
+                              <span>编辑</span>
+                            </el-button>
+                            <el-button
+                              class="table-action table-action--delete"
+                              size="small"
+                              plain
+                              :disabled="!canUpdateSettings"
+                              @click.stop="removePriceContact($index)"
+                            >
+                              <i class="fas fa-trash-alt" />
+                              <span>删除</span>
+                            </el-button>
+                            <el-button
+                              class="table-action table-action--neutral"
+                              size="small"
+                              plain
+                              :disabled="!canUpdateSettings || $index === 0"
+                              @click.stop="movePriceContact($index, -1)"
+                            >
+                              <i class="fas fa-arrow-up" />
+                              <span>上移</span>
+                            </el-button>
+                            <el-button
+                              class="table-action table-action--neutral"
+                              size="small"
+                              plain
+                              :disabled="!canUpdateSettings || $index === priceContactsEditor.length - 1"
+                              @click.stop="movePriceContact($index, 1)"
+                            >
+                              <i class="fas fa-arrow-down" />
+                              <span>下移</span>
+                            </el-button>
+                          </div>
+                        </template>
+                      </el-table-column>
                     </el-table>
                   </div>
                 </div>
@@ -557,96 +557,96 @@
                     </div>
                     <div class="table-responsive">
                       <el-table
-                      v-tf-loading="loadingPasswords"
-                      :data="inventoryPasswords"
-                      border
-                      stripe
-                      class="data-table devices-table compact-fit-table base-data-table"
-                      table-layout="fixed"
-                      :fit="true"
+                        v-tf-loading="loadingPasswords"
+                        :data="inventoryPasswords"
+                        border
+                        stripe
+                        class="data-table devices-table compact-fit-table base-data-table"
+                        table-layout="fixed"
+                        :fit="true"
                       >
-                      <template #empty>
-                        <TableLoadingRow
-                          v-if="loadingPasswords"
-                          mode="block"
-                          text="加载中..."
+                        <template #empty>
+                          <TableLoadingRow
+                            v-if="loadingPasswords"
+                            mode="block"
+                            text="加载中..."
+                          />
+                          <DataEmptyState
+                            v-else
+                            description="暂无密码记录"
+                          />
+                        </template>
+                        <el-table-column
+                          v-if="canViewField('settings.passwords')"
+                          prop="name"
+                          label="用户名"
+                          min-width="100"
+                          class-name="complete-text-column"
                         />
-                        <DataEmptyState
-                          v-else
-                          description="暂无密码记录"
+                        <el-table-column
+                          v-if="canViewField('settings.passwords')"
+                          prop="password"
+                          label="密码"
+                          width="100"
+                          align="center"
+                        >
+                          <template #default>
+                            <span class="password-mask">******</span>
+                          </template>
+                        </el-table-column>
+                        <el-table-column
+                          v-if="canViewField('settings.passwords')"
+                          prop="remarks"
+                          label="备注"
+                          min-width="100"
+                          class-name="complete-text-column wrapped-text-column"
                         />
-                      </template>
-                      <el-table-column
-                        v-if="canViewField('settings.passwords')"
-                        prop="name"
-                        label="用户名"
-                        min-width="100"
-                        class-name="complete-text-column"
-                      />
-                      <el-table-column
-                        v-if="canViewField('settings.passwords')"
-                        prop="password"
-                        label="密码"
-                        width="100"
-                        align="center"
-                      >
-                        <template #default>
-                          <span class="password-mask">******</span>
-                        </template>
-                      </el-table-column>
-                      <el-table-column
-                        v-if="canViewField('settings.passwords')"
-                        prop="remarks"
-                        label="备注"
-                        min-width="100"
-                        class-name="complete-text-column wrapped-text-column"
-                      />
-                      <el-table-column
-                        v-if="canViewField('settings.passwords')"
-                        prop="is_active"
-                        label="状态"
-                        width="80"
-                        align="center"
-                      >
-                        <template #default="{ row }">
-                          <el-tag
-                            :type="row.is_active ? 'success' : 'info'"
-                            size="small"
-                          >
-                            {{ row.is_active ? '启用' : '禁用' }}
-                          </el-tag>
-                        </template>
-                      </el-table-column>
-                      <el-table-column
-                        v-if="showOperations"
-                        label="操作"
-                        :width="$getActionColumnWidth(1 + Number(canDeleteInventoryPasswords))"
-                        align="center"
-                        class-name="actions-column"
-                      >
-                        <template #default="{ row }">
-                          <div class="action-buttons">
-                            <el-button
-                              type="primary"
+                        <el-table-column
+                          v-if="canViewField('settings.passwords')"
+                          prop="is_active"
+                          label="状态"
+                          width="80"
+                          align="center"
+                        >
+                          <template #default="{ row }">
+                            <el-tag
+                              :type="row.is_active ? 'success' : 'info'"
                               size="small"
-                              link
-                              :icon="Edit"
-                              @click.stop="editPassword(row)"
                             >
-                              编辑
-                            </el-button><el-button
-                              v-if="canDeleteInventoryPasswords"
-                              type="danger"
-                              size="small"
-                              link
-                              :icon="Delete"
-                              @click.stop="deletePassword(row.id)"
-                            >
-                              删除
-                            </el-button>
-                          </div>
-                        </template>
-                      </el-table-column>
+                              {{ row.is_active ? '启用' : '禁用' }}
+                            </el-tag>
+                          </template>
+                        </el-table-column>
+                        <el-table-column
+                          v-if="showOperations"
+                          label="操作"
+                          :width="$getActionColumnWidth(1 + Number(canDeleteInventoryPasswords))"
+                          align="center"
+                          class-name="actions-column"
+                        >
+                          <template #default="{ row }">
+                            <div class="action-buttons">
+                              <el-button
+                                type="primary"
+                                size="small"
+                                link
+                                :icon="Edit"
+                                @click.stop="editPassword(row)"
+                              >
+                                编辑
+                              </el-button><el-button
+                                v-if="canDeleteInventoryPasswords"
+                                type="danger"
+                                size="small"
+                                link
+                                :icon="Delete"
+                                @click.stop="deletePassword(row.id)"
+                              >
+                                删除
+                              </el-button>
+                            </div>
+                          </template>
+                        </el-table-column>
                       </el-table>
                     </div>
                   </div>
@@ -973,14 +973,13 @@ import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Setting, Lock, Plus, Edit, Delete } from '@element-plus/icons-vue'
 import { unifiedApi } from '@/utils/unified-api'
-import { extractResponseData } from '@/utils/api-response'
+import { extractResponseData, getRequestErrorMessage } from '@/utils/api-response'
 import { useNotification } from '@/composables/useNotification'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { useSiteSettingsStore } from '@/stores/siteSettings'
 import { buildLogoUrl } from '@/utils/logoUtils'
 import { PermissionGate, PageHeader } from '@/components/base'
-import InlineLoading from '@/components/InlineLoading.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import Image from '@/components/Image.vue'
 import type { FormInstance } from 'element-plus'
@@ -1367,7 +1366,13 @@ const screenLockSettings = reactive({
 })
 
 // 在库查询密码管理
-const inventoryPasswords = ref<any[]>([])
+interface InventoryPasswordRecord {
+  id: number
+  name: string
+  remarks?: string
+  is_active: boolean | number
+}
+const inventoryPasswords = ref<InventoryPasswordRecord[]>([])
 const loadingPasswords = ref(false)
 const passwordDialogVisible = ref(false)
 const passwordDialogMode = ref<'add' | 'edit'>('add')
@@ -1424,9 +1429,9 @@ const saveSiteSettings = async () => {
     } else {
       throw new Error('保存失败')
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     logger.error('保存设置失败:', err)
-    error(`设置保存失败: ${err.message || '未知错误'}`)
+    error(`设置保存失败: ${getRequestErrorMessage(err, '未知错误')}`)
   } finally {
     closeLoading()
   }
@@ -1496,10 +1501,10 @@ const handleSiteLogoFileChange = async (event: Event) => {
     await siteSettingsStore.loadSiteSettings(true, true)
     clearLocalSiteLogoPreview()
     success('Logo上传成功')
-  } catch (err: any) {
+  } catch (err: unknown) {
     logger.error('上传站点Logo失败:', err)
     clearLocalSiteLogoPreview()
-    error(err?.message || 'Logo上传失败')
+    error(getRequestErrorMessage(err, 'Logo上传失败'))
   } finally {
     logoUploading.value = false
     resetSiteLogoInput()
@@ -1541,12 +1546,13 @@ const clearSiteLogo = async () => {
     } finally {
       closeLoading()
     }
-  } catch (err: any) {
-    if (err === 'cancel' || err === 'close' || err?.message === 'cancel') {
+  } catch (err: unknown) {
+    const errorMessage = getRequestErrorMessage(err, '')
+    if (err === 'cancel' || err === 'close' || errorMessage === 'cancel') {
       return
     }
     logger.error('清空站点Logo失败:', err)
-    error(err?.message || '清空Logo失败')
+    error(getRequestErrorMessage(err, '清空Logo失败'))
   }
 }
 
@@ -1582,7 +1588,7 @@ const saveScreenLockSettings = async () => {
     }
   } catch (err) {
     logger.error('保存锁屏设置失败:', err)
-    error(`保存失败：${err.message || '未知错误'}`)
+    error(`保存失败：${getRequestErrorMessage(err, '未知错误')}`)
   } finally {
     closeLoading()
   }
@@ -1600,7 +1606,7 @@ const loadInventoryPasswords = async () => {
     const response = await unifiedApi.get('/screen-lock/query-users')
     if (response.success) {
       // 后端返回 { success: true, data: { total: N, data: [...] } }
-      inventoryPasswords.value = extractResponseData<any[]>(response)
+      inventoryPasswords.value = extractResponseData<InventoryPasswordRecord[]>(response)
     } else {
       logger.warn('⚠️ 密码列表响应格式异常:', response)
     }
@@ -1630,7 +1636,7 @@ const showAddPasswordDialog = () => {
 }
 
 // 编辑密码
-const editPassword = (row: any) => {
+const editPassword = (row: InventoryPasswordRecord) => {
   if (!canManageInventoryPasswords.value) {
     error('您没有管理批发报价查询密码的权限')
     return
@@ -1673,7 +1679,7 @@ const savePassword = async () => {
       passwordDialogVisible.value = false
       await loadInventoryPasswords()
     } catch (err) {
-      error(`保存失败：${err.message || '未知错误'}`)
+      error(`保存失败：${getRequestErrorMessage(err, '未知错误')}`)
     } finally {
       savingPassword.value = false
     }
@@ -1699,7 +1705,7 @@ const deletePassword = async (id: number) => {
     await loadInventoryPasswords()
   } catch (err) {
     if (err !== 'cancel') {
-      error(`删除失败：${err.message || '未知错误'}`)
+      error(`删除失败：${getRequestErrorMessage(err, '未知错误')}`)
     }
   }
 }

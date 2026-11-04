@@ -87,7 +87,9 @@
           :disabled="isUnlocking || !password"
           @click="handleUnlock"
         >
-          <template v-if="isUnlocking">验证中...</template>
+          <template v-if="isUnlocking">
+            验证中...
+          </template>
           <template v-else>
             <i class="fas fa-unlock" />
             解锁

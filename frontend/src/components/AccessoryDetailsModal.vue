@@ -210,10 +210,10 @@
           关闭
         </el-button>
         <el-button
+          v-if="accessory && hasEditPermission"
           native-type="button"
           type="primary"
           size="small"
-          v-if="accessory && hasEditPermission"
           class="btn btn-primary"
           @click="editAccessory"
         >

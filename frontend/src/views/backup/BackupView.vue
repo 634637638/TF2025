@@ -69,7 +69,7 @@
           </div>
           <div class="info-actions">
             <el-button
-            v-if="showActionColumn"
+              v-if="showActionColumn"
               type="warning"
               size="small"
               plain
@@ -92,9 +92,9 @@
           </div>
 
           <el-table
+            v-tf-loading="isLoading"
             class="data-table"
-              v-tf-loading="isLoading"
-              :data="backupList"
+            :data="backupList"
             border
             stripe
             style="width: 100%"
@@ -251,6 +251,7 @@ import { fieldPermissions, shouldShowActionColumn } from '@/composables/useField
 import { PermissionGate, PageHeader } from '@/components/base'
 import { formatDateTime as formatGlobalDateTime } from '@/utils/format'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
+import { getRequestErrorMessage } from '@/utils/api-response'
 
 const { success, error, loading } = useNotification()
 
@@ -267,9 +268,23 @@ const isLoading = ref(false)
 const isCreating = ref(false)
 const isCleaningUp = ref(false)
 const downloadingFilename = ref<string | null>(null)
-const backupList = ref<any[]>([])
+interface BackupRecord {
+  filename: string
+  size?: string
+  created_at?: string
+}
+
+interface BackupStorageInfo {
+  backup_dir: string
+  backend_root: string
+  total_count: number
+  total_size: string
+  total_size_bytes: number
+}
+
+const backupList = ref<BackupRecord[]>([])
 const hasInitializedPageData = ref(false)
-const storageInfo = ref({
+const storageInfo = ref<BackupStorageInfo>({
   backup_dir: '',
   backend_root: '',
   total_count: 0,
@@ -303,13 +318,15 @@ const loadBackupList = async () => {
     ])
 
     if (listRes.success) {
-      backupList.value = listRes.data || []
+      backupList.value = Array.isArray(listRes.data) ? listRes.data as BackupRecord[] : []
     }
     if (storageRes.success) {
-      storageInfo.value = storageRes.data
+      if (storageRes.data && typeof storageRes.data === 'object') {
+        storageInfo.value = storageRes.data as BackupStorageInfo
+      }
     }
-  } catch (err: any) {
-    error('加载备份列表失败: ' + (err.message || '未知错误'))
+  } catch (err: unknown) {
+    error('加载备份列表失败: ' + getRequestErrorMessage(err, '未知错误'))
   } finally {
     isLoading.value = false
   }
@@ -359,8 +376,8 @@ const createBackup = async () => {
     } else {
       throw new Error(response.message || '备份失败')
     }
-  } catch (err: any) {
-    error('创建备份失败: ' + (err.message || '未知错误'))
+  } catch (err: unknown) {
+    error('创建备份失败: ' + getRequestErrorMessage(err, '未知错误'))
   } finally {
     isCreating.value = false
     closeLoading()
@@ -384,8 +401,8 @@ const downloadBackup = async (filename: string) => {
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
-  } catch (err: any) {
-    error('下载备份失败: ' + (err.message || '未知错误'))
+  } catch (err: unknown) {
+    error('下载备份失败: ' + getRequestErrorMessage(err, '未知错误'))
   } finally {
     downloadingFilename.value = null
   }
@@ -424,8 +441,8 @@ const deleteBackup = async (filename: string) => {
     } else {
       throw new Error(response.message || '删除失败')
     }
-  } catch (err: any) {
-    error('删除备份失败: ' + (err.message || '未知错误'))
+  } catch (err: unknown) {
+    error('删除备份失败: ' + getRequestErrorMessage(err, '未知错误'))
   }
 }
 
@@ -454,8 +471,8 @@ const cleanupBackups = async () => {
     } else {
       throw new Error(response.message || '清理失败')
     }
-  } catch (err: any) {
-    error('清理失败: ' + (err.message || '未知错误'))
+  } catch (err: unknown) {
+    error('清理失败: ' + getRequestErrorMessage(err, '未知错误'))
   } finally {
     isCleaningUp.value = false
   }

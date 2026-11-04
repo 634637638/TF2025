@@ -2,15 +2,14 @@ const express = require('express')
 const router = express.Router()
 const { unifiedAuth, requirePermission, requireAnyPermission, hasUnifiedPermission } = require('../middleware/unified-auth')
 const ApiResponse = require('../utils/response')
-const { cacheMiddleware, clearCache } = require('../middleware/cache')
+const { clearCache } = require('../middleware/cache')
 const { generateMemberNumber } = require('../utils/member-number')
 const { validateImei } = require('../utils/imei')
 const {
-  ensureInvoiceSequenceTable,
-  generateInvoiceNumber,
-  generateInvoiceNumberForDate,
-  getInvoiceTypeSuffix
+  prepareInvoiceNumberTransaction,
+  generateInvoiceNumber
 } = require('../utils/invoice-number')
+const { formatLocalDate } = require('../utils/time')
 const log = require('../utils/log')
 const { PAGINATION } = require('../config/constants')
 const { requireInventoryQueryToken } = require('../utils/inventory-query-token')
@@ -962,7 +961,7 @@ router.put('/:id', unifiedAuth, requireAnyPermission(['phones:edit', 'sales-edit
       updateFields.push('status = ?')
     }
 
-    let finalPurchaseCost = effectivePurchaseCost === null || effectivePurchaseCost === undefined || effectivePurchaseCost === ''
+    const finalPurchaseCost = effectivePurchaseCost === null || effectivePurchaseCost === undefined || effectivePurchaseCost === ''
       ? null
       : Number(effectivePurchaseCost)
     let finalSalePrice = effectiveSalePrice === null || effectiveSalePrice === undefined || effectiveSalePrice === ''
@@ -1051,7 +1050,7 @@ router.put('/:id', unifiedAuth, requireAnyPermission(['phones:edit', 'sales-edit
     updateValues.push(id)
 
     // 锁定并在单一事务内同步设备、销售记录和新类型单号。
-    await ensureInvoiceSequenceTable(connection)
+    await prepareInvoiceNumberTransaction(connection)
     await connection.beginTransaction()
     transactionStarted = true
     const [lockedPhones] = await connection.execute(
@@ -1287,64 +1286,35 @@ router.put('/:id', unifiedAuth, requireAnyPermission(['phones:edit', 'sales-edit
       const updateSalesFields = []
       const updateSalesValues = []
 
-      // 🔥 如果发票号为空，自动生成发票号（使用销售时间）。类型转换时直接按新类型生成，避免产生无效的旧类型序号。
-      if (!existingSale.invoice_number && !isTransactionTypeChange) {
-        const saleType = existingSale.sale_type || 'retail'
-        // 使用销售时间，优先使用 phones.sale_time，否则使用销售记录时间
-        const saleDate = effectiveSaleTime ?? existingSale.sale_time
-        let invoiceNumber
-
-        if (saleDate) {
-          // 根据销售日期查询当天该类型的最大序号
-          const targetDate = new Date(saleDate)
-          const year = targetDate.getFullYear()
-          const month = String(targetDate.getMonth() + 1).padStart(2, '0')
-          const day = String(targetDate.getDate()).padStart(2, '0')
-          const dateStr = `${year}${month}${day}`
-
-          const typeSuffix = getInvoiceTypeSuffix(saleType)
-
-          // 查询该日期该类型的最大序号
-          const prefixPattern = `${dateStr}%${typeSuffix}`
-          const [rows] = await connection.execute(
-            'SELECT invoice_number FROM sales WHERE invoice_number LIKE ? ORDER BY id DESC LIMIT 1',
-            [prefixPattern]
-          )
-
-          let sequence = 1
-          if (rows.length > 0 && rows[0].invoice_number) {
-            const currentInvoiceNumber = rows[0].invoice_number
-            const currentSequenceStr = currentInvoiceNumber.substring(8, 12)
-            const currentSequence = parseInt(currentSequenceStr, 10)
-            if (!isNaN(currentSequence)) {
-              sequence = currentSequence + 1
-            }
-          }
-
-          invoiceNumber = generateInvoiceNumberForDate(saleDate, sequence, saleType)
-        } else {
-          // 如果没有销售时间，使用当前时间
-          invoiceNumber = await generateInvoiceNumber(saleType, connection)
-        }
-
-        updateSalesFields.push('invoice_number = ?')
-        updateSalesValues.push(invoiceNumber)
-        log.debug(`✅ 自动生成发票号: ${invoiceNumber}, 类型: ${saleType}, 销售日期: ${saleDate || '当前时间'}`)
-      }
-
-      if (isTransactionTypeChange) {
-        const convertedInvoiceNumber = await generateInvoiceNumber(
-          targetSaleType,
+      // 只按业务日期比较，避免同一天的日期/日期时间格式差异触发重复换号。
+      const nextSaleDate = sale_time ? formatLocalDate(sale_time) : ''
+      const isSaleDateChange = Boolean(
+        nextSaleDate && nextSaleDate !== formatLocalDate(existingSale.sale_time)
+      )
+      if (!existingSale.invoice_number || isTransactionTypeChange || isSaleDateChange) {
+        const invoiceSaleType = isTransactionTypeChange
+          ? targetSaleType
+          : existingSale.sale_type || targetSaleType || 'retail'
+        const invoiceNumber = await generateInvoiceNumber(
+          invoiceSaleType,
           connection,
           effectiveSaleTime || existingSale.sale_time
         )
-        updateSalesFields.push('sale_type = ?', 'invoice_number = ?')
-        updateSalesValues.push(targetSaleType, convertedInvoiceNumber)
-        log.info('销售交易类型已转换', {
+        if (isTransactionTypeChange) {
+          updateSalesFields.push('sale_type = ?', 'invoice_number = ?')
+          updateSalesValues.push(invoiceSaleType, invoiceNumber)
+        } else {
+          updateSalesFields.push('invoice_number = ?')
+          updateSalesValues.push(invoiceNumber)
+        }
+        log.info('销售单据编号已更新', {
           phone_id: Number(id),
+          sale_id: existingSale.id,
           from: existingSale.sale_type,
-          to: targetSaleType,
-          invoice_number: convertedInvoiceNumber
+          to: invoiceSaleType,
+          sale_date_changed: isSaleDateChange,
+          previous_invoice_number: existingSale.invoice_number,
+          invoice_number: invoiceNumber
         })
       }
 
@@ -1396,7 +1366,7 @@ router.put('/:id', unifiedAuth, requireAnyPermission(['phones:edit', 'sales-edit
 
       if (updateSalesFields.length > 0) {
         updateSalesFields.push('updated_at = NOW()')
-        updateSalesValues.push(id)
+        updateSalesValues.push(existingSale.id)
 
         const [updateSalesResult] = await connection.execute(
           `UPDATE sales SET ${updateSalesFields.join(', ')} WHERE id = ?`,

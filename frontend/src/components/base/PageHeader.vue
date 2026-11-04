@@ -3,7 +3,8 @@
     class="page-header"
     :class="{
       'page-header--dense-actions': isDenseMobileHeader,
-      'page-header--dense-short': isDenseMobileHeader && isShortTitle
+      'page-header--dense-short': isDenseMobileHeader && isShortTitle,
+      'page-header--scrollable-actions': isScrollableMobileHeader
     }"
     :style="rootStyle"
   >
@@ -174,7 +175,7 @@ const findMenuIconByPath = (menus: MenuItem[], targetPath: string): { icon: stri
     if (menuPath && menuPath === targetPath && menu.icon) {
       return {
         icon: menu.icon,
-        svg: (menu as any).icon_svg || ''
+        svg: menu.icon_svg || ''
       }
     }
 
@@ -196,6 +197,7 @@ const resolvedIconSvg = computed(() => menuIcon.value.svg || '')
 const isSmallMobile = computed(() => screenWidth.value <= 480)
 const isTinyMobile = computed(() => screenWidth.value <= 375)
 const isDenseMobileHeader = computed(() => isMobile.value && actionCount.value >= 4)
+const isScrollableMobileHeader = computed(() => isMobile.value && actionCount.value >= 4)
 const isShortTitle = computed(() => props.title.trim().length <= 4 && !props.description)
 
 const rootStyle = computed<CSSProperties>(() => {
@@ -225,13 +227,13 @@ const rootStyle = computed<CSSProperties>(() => {
 const contentStyle = computed<CSSProperties>(() => ({
   flexDirection: 'row',
   flexWrap: 'nowrap',
-  alignItems: isMobile.value ? 'flex-start' : 'center',
+  alignItems: 'center',
   justifyContent: 'space-between',
   gap: isTinyMobile.value ? '8px' : isMobile.value ? '10px' : '12px'
 }))
 
 const leftStyle = computed<CSSProperties>(() => ({
-  flex: isMobile.value ? '0 1 auto' : '0 1 auto',
+  flex: '0 1 auto',
   minWidth: '0',
   maxWidth: isDenseMobileHeader.value
     ? isShortTitle.value
@@ -370,7 +372,12 @@ const actionsStyle = computed<CSSProperties>(() => ({
       ? 'none'
       : '65%',
   width: 'auto',
-  marginLeft: 'auto'
+  marginLeft: 'auto',
+  overflowX: isScrollableMobileHeader.value ? 'auto' : 'visible',
+  overflowY: 'hidden',
+  WebkitOverflowScrolling: isScrollableMobileHeader.value ? 'touch' : undefined,
+  overscrollBehaviorX: isScrollableMobileHeader.value ? 'contain' : undefined,
+  scrollbarWidth: isScrollableMobileHeader.value ? 'none' : undefined
 }))
 </script>
 
@@ -399,7 +406,7 @@ const actionsStyle = computed<CSSProperties>(() => ({
   gap: 12px;
 
   @media (max-width: 767px) {
-    align-items: flex-start;
+    align-items: center;
     gap: 10px;
   }
 
@@ -512,6 +519,19 @@ const actionsStyle = computed<CSSProperties>(() => ({
     flex-wrap: nowrap;
     gap: 3px;
 
+  }
+}
+
+.page-header--scrollable-actions .header-actions {
+  scroll-behavior: smooth;
+  touch-action: pan-x;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+
+  :deep(> *) {
+    flex: 0 0 auto;
   }
 }
 

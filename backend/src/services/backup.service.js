@@ -5,7 +5,6 @@
 const fs = require('fs')
 const path = require('path')
 const { spawn } = require('child_process')
-const archiver = require('archiver')
 const dbConfig = require('../config/database')
 const log = require('../utils/log')
 
@@ -447,11 +446,12 @@ class BackupService {
   /**
    * 压缩备份文件（优化速度）
    */
-  compressBackup(sourcePath, outputPath) {
+  async compressBackup(sourcePath, outputPath) {
+    const { ZipArchive } = await import('archiver')
     return new Promise((resolve, reject) => {
       const output = fs.createWriteStream(outputPath)
       // 使用较低的压缩级别，大幅提升速度
-      const archive = archiver('zip', { zlib: { level: 1 } }) // level 1 = 最快速度
+      const archive = new ZipArchive({ zlib: { level: 1 } }) // level 1 = 最快速度
 
       const fileCount = 0
       const startTime = Date.now()

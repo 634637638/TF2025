@@ -8,7 +8,7 @@ import {
 import { sortOptionsByOrder } from '@/utils/option-sort'
 import type {
   BrandModelOption,
-  CustomerOption,
+  QuickSaleCustomerOption as CustomerOption,
   QuickSaleFormState
 } from './types'
 

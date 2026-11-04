@@ -38,7 +38,7 @@
           :handle-customer-name-blur="handleCustomerNameBlur"
           :save-customer-name-edit="saveCustomerNameEdit"
           :clear-selected-customer="clearSelectedCustomer"
-          :customer-name-input-ref="customerNameInputRef"
+          :customer-name-input-ref="setCustomerNameInputRef"
           :select-customer="selectCustomer"
           :auto-create-customer="autoCreateCustomer"
           :handle-payment-method-change="handlePaymentMethodChange"
@@ -102,6 +102,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue'
+import type { VNodeRef } from 'vue'
 import type { FormInstance, FormRules } from 'element-plus'
 import { ValidationRules } from '@/composables'
 import { useNotification } from '@/composables/useNotification'
@@ -140,6 +141,7 @@ import type {
   WholesaleFormData,
   WholesalePhone
 } from './wholesale/types'
+import { resolveNativeTextInput, type NativeInputInstance } from '@/utils/native-input'
 
 interface Props extends VisibleProps {
   mode: 'wholesale' | 'proxy'
@@ -172,7 +174,11 @@ const customerSearchResults = ref<CustomerSearchItem[]>([])
 const customerSearchCache = ref(new Map<string, CustomerSearchItem[]>())
 const isSelectingCustomer = ref(false)
 const customerSearchRequestId = ref(0)
-const customerNameInputRef = ref<any>(null)
+const customerNameInputRef = ref<NativeInputInstance | null>(null)
+const setCustomerNameInputRef: VNodeRef = (instance) => {
+  const input = resolveNativeTextInput(instance)
+  customerNameInputRef.value = input ? { input } : null
+}
 const customerNameLastTapAt = ref(0)
 
 // 表单数据
@@ -352,16 +358,7 @@ const handleCustomerNameInput = (value: string) => {
   formData.value.customer_name = normalizePersonName(value, 20)
 }
 
-const resolveNativeCustomerInput = (source: any): HTMLInputElement | null => {
-  if (!source) return null
-  if (source instanceof HTMLInputElement) return source
-  if (source?.target instanceof HTMLInputElement) return source.target
-  if (source?.input instanceof HTMLInputElement) return source.input
-  if (source?.$el && typeof source.$el.querySelector === 'function') {
-    return source.$el.querySelector('input')
-  }
-  return null
-}
+const resolveNativeCustomerInput = resolveNativeTextInput
 
 const focusCustomerNameInput = (input: HTMLInputElement | null) => {
   if (!input) return

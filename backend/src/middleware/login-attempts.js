@@ -26,7 +26,9 @@ function cleanupExpiredRecords() {
 }
 
 // 定期清理
-setInterval(cleanupExpiredRecords, CONFIG.CLEANUP_INTERVAL)
+const cleanupTimer = setInterval(cleanupExpiredRecords, CONFIG.CLEANUP_INTERVAL)
+// 清理任务不应阻止测试进程或服务优雅退出。
+cleanupTimer.unref?.()
 
 // 获取客户端标识符
 function getClientIdentifier(req) {
@@ -154,6 +156,10 @@ async function logSuccessfulLogin(identifier) {
 
 // 记录失败登录到数据库
 async function logFailedLogin(identifier, reason = 'invalid_credentials') {
+  if (!isConnected()) {
+    return
+  }
+
   try {
     const database = getDatabase()
     const [ip, username] = identifier.split(':')
@@ -209,14 +215,21 @@ const loginFailureHandler = (req, res, next) => {
   const originalJson = res.json
 
   res.json = function(data) {
-    // 检查是否是登录失败的响应
+    // 只有凭证校验失败（401）才计入登录失败次数。
+    // 数据库不可用等 5xx 不应锁定用户，也不能暴露剩余尝试次数。
     const isLoginPath = req.path === '/api/auth/login'
     const isPostMethod = req.method === 'POST'
-    const hasFailedFlag = req.loginFailed
     const isErrorResponse = data?.success === false
     const alreadyHandled = req.loginAttemptHandled === true
+    const isCredentialFailure = res.statusCode === 401 &&
+      isErrorResponse &&
+      req.loginFailureReason !== 'account_disabled'
 
-    if (isLoginPath && isPostMethod && !alreadyHandled && (hasFailedFlag || isErrorResponse)) {
+    if (res.statusCode >= 500) {
+      res.removeHeader('X-Login-Attempts-Remaining')
+    }
+
+    if (isLoginPath && isPostMethod && !alreadyHandled && isCredentialFailure) {
 
       const identifier = getClientIdentifier(req)
       const result = recordFailedLogin(identifier)
@@ -242,7 +255,7 @@ const loginFailureHandler = (req, res, next) => {
     return originalJson.call(this, data)
   }
 
-  next()
+  return next()
 }
 
 // 获取登录尝试统计信息

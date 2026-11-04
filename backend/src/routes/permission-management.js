@@ -1322,7 +1322,7 @@ router.get('/roles', requirePermission('permissions:admin'), async (req, res) =>
     )
     const total = countResult[0].total
 
-    // LIMIT/OFFSET 经过严格整数校验后直接内联，规避部分 MySQL 环境下预处理分页参数异常
+    // 分页值使用参数绑定，避免把请求派生值拼接进 SQL。
     const rolesQuery = `
       SELECT
         r.id,
@@ -1338,9 +1338,9 @@ router.get('/roles', requirePermission('permissions:admin'), async (req, res) =>
       ${roleWhere}
       GROUP BY ${groupByColumns}
       ORDER BY r.created_at DESC
-      LIMIT ${limit} OFFSET ${offset}
+      LIMIT ? OFFSET ?
     `
-    const [roles] = await pool.query(rolesQuery, roleParams)
+    const [roles] = await pool.query(rolesQuery, [...roleParams, limit, offset])
 
     res.json({
       success: true,
@@ -1437,7 +1437,7 @@ router.get('/users-with-roles', requirePermission('permissions:admin'), async (r
     )
     const total = countResult[0].total
 
-    // LIMIT/OFFSET 经过严格整数校验后直接内联，规避部分 MySQL 环境下预处理分页参数异常
+    // 分页值使用参数绑定，避免把请求派生值拼接进 SQL。
     const usersQuery = `
       SELECT
         u.id,
@@ -1456,9 +1456,9 @@ router.get('/users-with-roles', requirePermission('permissions:admin'), async (r
       ${userWhere}
       GROUP BY ${groupByColumns}
       ORDER BY u.created_at DESC
-      LIMIT ${limit} OFFSET ${offset}
+      LIMIT ? OFFSET ?
     `
-    const [users] = await pool.query(usersQuery, userParams)
+    const [users] = await pool.query(usersQuery, [...userParams, limit, offset])
 
     // 仅门店绑定页面需要关联数据；其他权限页面保持轻量用户列表响应。
     if (req.query.include_stores === 'true' && users.length > 0) {

@@ -168,9 +168,10 @@ import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import { usePermissionsPageContext } from './context'
 import { computed } from 'vue'
 import { getAdaptiveActionColumnWidth, getTextColumnMinWidth } from '@/utils/table-layout'
+import type { StoreBindingUser } from '../types'
 
 const ctx = usePermissionsPageContext()
-const getStoreNames = (row: any) => (
+const getStoreNames = (row: StoreBindingUser) => (
   row.stores?.length
     ? row.stores.map(store => `${store.store_name}${store.is_primary ? ' (主)' : ''}`).join(' ')
     : '未绑定'
@@ -185,12 +186,12 @@ const getStoreColumnWidth = (
 const storeBindingActionColumnWidth = computed(() => (
   getAdaptiveActionColumnWidth(ctx.paginatedStoreBindings, [
     {
-      label: (row: any) => row.stores?.length ? '管理门店' : '绑定门店',
+      label: (row: StoreBindingUser) => row.stores?.length ? '管理门店' : '绑定门店',
       visible: true
     },
     {
       label: '解绑',
-      visible: (row: any) => Boolean(row.stores?.length)
+      visible: (row: StoreBindingUser) => Boolean(row.stores?.length)
     }
   ])
 ))

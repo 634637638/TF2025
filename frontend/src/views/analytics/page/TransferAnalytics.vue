@@ -428,6 +428,54 @@ import type { TransferAnalyticsProps, LoadingChangeEmits } from '@/types/compone
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import { logger } from '@/utils/logger'
 
+interface TransferQueryParams {
+  start_date: string
+  end_date: string
+  store_id?: string | number
+}
+
+interface TransferTrendPoint {
+  date: string
+  wholesale?: number
+  allocation?: number
+}
+
+interface TransferRankItem {
+  name: string
+  count: number
+  amount: number
+}
+
+interface TransferStoreDistribution {
+  store_name: string
+  wholesale_count: number
+  allocation_count: number
+  amount: number
+}
+
+interface TransferOperationRecord {
+  order_no?: string
+  type: string
+  supplier_name?: string
+  from_store_name?: string
+  brand_name?: string
+  model_name?: string
+  to_store_name?: string
+  amount?: number | null
+  profit?: number | null
+  status: string
+  created_at?: string
+  operator_name?: string
+}
+
+interface TransferRawData {
+  trends: TransferTrendPoint[]
+  wholesaleProductRanks: TransferRankItem[]
+  allocationProductRanks: TransferRankItem[]
+  storeDistribution: TransferStoreDistribution[]
+  records: TransferOperationRecord[]
+}
+
 const props = withDefaults(defineProps<TransferAnalyticsProps>(), {
   loading: false,
   isActive: false,
@@ -534,7 +582,7 @@ const disposeCharts = () => {
 }
 
 // 原始数据
-const rawData = ref({
+const rawData = ref<TransferRawData>({
   trends: [],
   wholesaleProductRanks: [],
   allocationProductRanks: [],
@@ -660,7 +708,7 @@ const loadData = async (showLoadingState = true) => {
     const lastRange = getLastMonthRange()
 
     // 构建本月查询参数
-    const currentParams: any = {
+    const currentParams: TransferQueryParams = {
       start_date: currentRange.start,
       end_date: currentRange.end
     }
@@ -677,7 +725,7 @@ const loadData = async (showLoadingState = true) => {
     }
 
     // 构建上月查询参数
-    const lastParams: any = {
+    const lastParams: TransferQueryParams = {
       start_date: lastRange.start,
       end_date: lastRange.end
     }
@@ -741,7 +789,7 @@ const loadData = async (showLoadingState = true) => {
 
     // 更新图表
     updateCharts()
-  } catch (err: any) {
+  } catch (err: unknown) {
     logger.error('❌ [TransferAnalytics] 获取数据失败:', err)
   } finally {
     if (showLoadingState) {
@@ -787,12 +835,12 @@ const updateTrendChart = () => {
   if (!trendChart) return
 
   const trends = rawData.value.trends || []
-  const dates = trends.map((t: any) => {
+  const dates = trends.map(t => {
     const date = TimeUtil.toBeijing(t.date)
     return `${date.month() + 1}/${date.date()}`
   })
-  const wholesaleData = trends.map((t: any) => t.wholesale || 0)
-  const allocationData = trends.map((t: any) => t.allocation || 0)
+  const wholesaleData = trends.map(t => t.wholesale || 0)
+  const allocationData = trends.map(t => t.allocation || 0)
 
   const option = {
     tooltip: {
@@ -864,8 +912,8 @@ const updateWholesaleProductRank = () => {
     return
   }
 
-  const names = products.map((p: any) => p.name)
-  const counts = products.map((p: any) => p.count)
+  const names = products.map(p => p.name)
+  const counts = products.map(p => p.count)
 
   const option = {
     tooltip: {
@@ -873,7 +921,7 @@ const updateWholesaleProductRank = () => {
       axisPointer: {
         type: 'shadow'
       },
-      formatter: (params: any) => {
+      formatter: (params: Array<{ dataIndex: number }>) => {
         const idx = params[0].dataIndex
         const p = products[idx]
         return `
@@ -929,8 +977,8 @@ const updateAllocationProductRank = () => {
     return
   }
 
-  const names = products.map((p: any) => p.name)
-  const counts = products.map((p: any) => p.count)
+  const names = products.map(p => p.name)
+  const counts = products.map(p => p.count)
 
   const option = {
     tooltip: {
@@ -938,7 +986,7 @@ const updateAllocationProductRank = () => {
       axisPointer: {
         type: 'shadow'
       },
-      formatter: (params: any) => {
+      formatter: (params: Array<{ dataIndex: number }>) => {
         const idx = params[0].dataIndex
         const p = products[idx]
         return `
@@ -994,9 +1042,9 @@ const updateStoreDistribution = () => {
     return
   }
 
-  const storeNames = stores.map((s: any) => s.store_name)
-  const wholesaleData = stores.map((s: any) => s.wholesale_count || 0)
-  const allocationData = stores.map((s: any) => s.allocation_count || 0)
+  const storeNames = stores.map(s => s.store_name)
+  const wholesaleData = stores.map(s => s.wholesale_count || 0)
+  const allocationData = stores.map(s => s.allocation_count || 0)
 
   const option = {
     tooltip: {
@@ -1004,7 +1052,7 @@ const updateStoreDistribution = () => {
       axisPointer: {
         type: 'shadow'
       },
-      formatter: (params: any) => {
+      formatter: (params: Array<{ dataIndex: number }>) => {
         const idx = params[0].dataIndex
         const s = stores[idx]
         return `
@@ -1132,7 +1180,7 @@ const exportData = () => {
 
     const csvContent = buildCsvContent(
       ['单号', '类型', '供应商', '店铺', '品牌', '型号', '客户', '金额', '利润', '状态', '时间', '操作人'],
-      displayRecords.value.map((row: any) => ([
+      displayRecords.value.map(row => ([
         row.order_no || '',
         getTypeLabel(row.type),
         row.supplier_name || '',

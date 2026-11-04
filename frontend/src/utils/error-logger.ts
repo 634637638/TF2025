@@ -571,6 +571,13 @@ export class ErrorLogger {
   }
 
   /**
+   * 删除单条错误日志
+   */
+  public removeError(errorId: string): boolean {
+    return this.logs.delete(errorId)
+  }
+
+  /**
    * 清理旧日志
    */
   public cleanup(maxAge: number = 7 * 24 * 60 * 60 * 1000): void {
@@ -673,6 +680,12 @@ export function useErrorLogger() {
     logs.value = globalErrorLogger.getLogs()
   }
 
+  const removeError = (errorId: string) => {
+    const removed = globalErrorLogger.removeError(errorId)
+    logs.value = globalErrorLogger.getLogs()
+    return removed
+  }
+
   const getLogs = (filters?: Parameters<typeof globalErrorLogger.filterLogs>[0]) => {
     if (filters) {
       return globalErrorLogger.filterLogs(filters)
@@ -698,6 +711,7 @@ export function useErrorLogger() {
     statistics,
     logError,
     resolveError,
+    removeError,
     getLogs,
     exportLogs,
     clearLogs,

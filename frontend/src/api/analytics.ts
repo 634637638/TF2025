@@ -21,7 +21,7 @@ import type {
   RealTimeData,
   DashboardConfig,
   AnalyticsReport,
-  ExportConfig
+  AnalyticsExportConfig
 } from '@/types/analytics'
 
 type AnalyticsRecord = Record<string, unknown>
@@ -361,7 +361,7 @@ export class AnalyticsApi {
   }
 
   // 导出
-  async exportData(config: ExportConfig): Promise<unknown> {
+  async exportData(config: AnalyticsExportConfig): Promise<unknown> {
     return await unifiedApi.post('/analytics/export', config, {
       responseType: 'blob'
     })

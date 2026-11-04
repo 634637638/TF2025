@@ -294,7 +294,9 @@
             >
               HOT
             </el-tag>
-            <h2 v-if="!showUsedPhonesOnly">{{ primaryPriceContact?.phone || '' }}</h2>
+            <h2 v-if="!showUsedPhonesOnly">
+              {{ primaryPriceContact?.phone || '' }}
+            </h2>
             <span class="count">共 {{ displayedRows.length }} 条</span>
           </div>
 
@@ -484,6 +486,7 @@ import { loadHtml2Canvas } from '@/utils/html2canvas'
 import { createShareImageFile } from '@/utils/share-image'
 import { useSiteSettingsStore } from '@/stores/siteSettings'
 import { parsePublicPriceContacts, getDefaultPublicPriceContact, formatPublicPriceWatermark } from '@/utils/publicPriceSettings'
+import { getRequestErrorStatus } from '@/utils/api-response'
 
 const InventoryResultDialog = defineAsyncComponent(() => import('@/components/InventoryResultDialog.vue'))
 const IMAGE_CAPTURE_WIDTH = 430
@@ -505,8 +508,26 @@ const watermarkColor = computed(() => siteSettingsStore.settings.publicPriceWate
 const phoneHref = (phone: string) => String(phone || '').replace(/[^\d+]/g, '')
 const searchKeyword = ref('')
 const searchSubmitting = ref(false)
-const allResults = ref<any[]>([])
-const searchResults = ref<any[]>([])
+interface PublicPriceRow {
+  brand_id?: number | string
+  model_id?: number | string
+  color_id?: number | string
+  memory_id?: number | string
+  brand_name?: string
+  model_number?: string
+  color_name?: string
+  memory?: string
+  stock_quantity?: number | string
+  wholesale_price?: number | string | null
+  display_wholesale_price?: number | string | null
+  inventory_price?: number | string | null
+  [key: string]: unknown
+}
+
+type PriceQueryRow = PublicPriceRow | UsedPhoneModel
+
+const allResults = ref<PublicPriceRow[]>([])
+const searchResults = ref<PublicPriceRow[]>([])
 const hasSearched = ref(false)
 const showNoticeDialog = ref(false)
 const isGenerating = ref(false)
@@ -565,24 +586,26 @@ const applyInventoryFilter = () => {
   const source = Array.isArray(allResults.value) ? allResults.value : []
 
   if (passwordVerified.value && showInStockOnly.value) {
-    searchResults.value = source.filter((item: any) => Number(item?.stock_quantity || 0) > 0)
+    searchResults.value = source.filter(item => Number(item.stock_quantity || 0) > 0)
     return
   }
 
   searchResults.value = [...source]
 }
 
-const normalizePriceRows = (rows: unknown): any[] => {
+const normalizePriceRows = (rows: unknown): PublicPriceRow[] => {
   if (!Array.isArray(rows)) return []
 
-  const uniqueRows = new Map<string, any>()
+  const uniqueRows = new Map<string, PublicPriceRow>()
   for (const row of rows) {
-    const key = [row?.brand_id, row?.model_id, row?.color_id, row?.memory_id].join(':')
+    if (!row || typeof row !== 'object') continue
+    const normalized = row as PublicPriceRow
+    const key = [normalized.brand_id, normalized.model_id, normalized.color_id, normalized.memory_id].join(':')
     if (uniqueRows.has(key)) {
       logger.warn('公开报价存在重复规格，已忽略重复行', { key })
       continue
     }
-    uniqueRows.set(key, row)
+    uniqueRows.set(key, normalized)
   }
   return [...uniqueRows.values()]
 }
@@ -609,9 +632,9 @@ const loadUsedPhoneModels = async (keyword = '') => {
       usedPhoneModels.value = []
       ElMessage.error(response.message || '二手机库存加载失败')
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     usedPhoneModels.value = []
-    const status = Number(error?.status || error?.response?.status || error?.response?.data?.status)
+    const status = getRequestErrorStatus(error) || Number((error as { status?: number })?.status || 0)
     if (status === 401) {
       resetInventoryAccess(true)
     } else {
@@ -647,7 +670,7 @@ let lastOpenedAt = 0
 
 const isTouchInteraction = computed(() => isMobile.value || isTablet.value || isTouchDevice.value)
 
-const getProductRowKey = (row: any) => (
+const getProductRowKey = (row: PriceQueryRow) => (
   [row?.brand_id, row?.model_id, row?.color_id, row?.memory_id,
     row?.brand_name, row?.model_number, row?.color_name, row?.memory]
     .map(value => String(value ?? '').trim())
@@ -826,10 +849,17 @@ const verifyInventoryPassword = async (password: string): Promise<boolean | null
       // 静默失败，作为搜索关键词
       return false
     }
-  } catch (error: any) {
-    const status = Number(error?.status || error?.response?.status || error?.response?.data?.status)
+  } catch (error: unknown) {
+    const errorRecord = error !== null && typeof error === 'object' ? error as Record<string, unknown> : {}
+    const responseRecord = errorRecord.response !== null && typeof errorRecord.response === 'object'
+      ? errorRecord.response as Record<string, unknown>
+      : {}
+    const responseData = responseRecord.data !== null && typeof responseRecord.data === 'object'
+      ? responseRecord.data as Record<string, unknown>
+      : {}
+    const status = getRequestErrorStatus(error) || Number(errorRecord.status || 0)
     if (status === 429) {
-      ElMessage.warning(error?.response?.data?.message || '密码验证尝试过多，请稍后再试')
+      ElMessage.warning(typeof responseData.message === 'string' ? responseData.message : '密码验证尝试过多，请稍后再试')
       return null
     }
 
@@ -848,12 +878,12 @@ const handleClear = () => {
   }
 }
 
-const hasWholesalePrice = (row: any) => {
+const hasWholesalePrice = (row: PublicPriceRow) => {
   const price = row?.display_wholesale_price ?? row?.wholesale_price
   return price !== null && price !== undefined && price !== '' && Number(price) > 0
 }
 
-const formatWholesalePrice = (row: any) => {
+const formatWholesalePrice = (row: PublicPriceRow) => {
   const price = Number(row?.display_wholesale_price ?? row?.wholesale_price ?? 0)
   return Math.round(price)
 }
@@ -1291,7 +1321,7 @@ const downloadAsImage = async () => {
 }
 
 // 表格行双击处理
-const handleRowDoubleClick = (row: any, _column?: any, event?: Event) => {
+const handleRowDoubleClick = (row: PriceQueryRow, _column?: unknown, event?: Event) => {
   if (isTouchInteraction.value) return
   if (passwordVerified.value) {
     showInventoryResultDialog(row)
@@ -1300,7 +1330,7 @@ const handleRowDoubleClick = (row: any, _column?: any, event?: Event) => {
 }
 
 // 表格行点击处理（支持手机、iPad 及其他触屏浏览器双击）
-const handleRowClick = (row: any, _column: any, event: Event) => {
+const handleRowClick = (row: PriceQueryRow, _column: unknown, event: Event) => {
   if (!isTouchInteraction.value) return
 
   const currentTime = Date.now()
@@ -1323,7 +1353,7 @@ const handleRowClick = (row: any, _column: any, event: Event) => {
 }
 
 // 显示在库查询结果弹窗
-const showInventoryResultDialog = (row: any) => {
+const showInventoryResultDialog = (row: PriceQueryRow) => {
   const rowKey = getProductRowKey(row)
   const now = Date.now()
   if (rowKey === lastOpenedRowKey && now - lastOpenedAt < 450) return

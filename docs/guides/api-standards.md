@@ -90,6 +90,9 @@ src/services/
 
 #### ❌ 禁止的做法
 
+- 禁止创建 `/api/data`、`/api/common-data` 等没有明确业务资源语义的通用 CRUD；必须按真实资源和权限边界命名接口。
+- 历史 `/api/data` 已永久删除并由 HTTP 契约测试保护，示例统一使用不存在于生产路由的 `/api/example-resource` 占位。
+
 ```typescript
 // ❌ 错误：API 文件中包含业务逻辑
 // src/api/bad-example.ts
@@ -99,7 +102,7 @@ export const badApi = {
     if (this.shouldRefresh()) {           // ← 禁止
       return this.processData(raw)        // ← 禁止
     }
-    return unifiedApi.get('/data')
+    return unifiedApi.get('/example-resource')
   }
 }
 
@@ -107,7 +110,7 @@ export const badApi = {
 // src/services/bad-example.ts
 export const badService = {
   async getData() {
-    return unifiedApi.get('/data')  // ← 这种应该放 api/ 目录
+    return unifiedApi.get('/example-resource')  // ← 这种应该放 api/ 目录
   }
 }
 ```
@@ -597,7 +600,7 @@ afterAll(() => server.close())
 ### 2. 单元测试
 
 ```typescript
-import { unifiedApi } from '@/services/unified-api'
+import { unifiedApi } from '@/utils/unified-api'
 
 describe('API 调用', () => {
   it('应该正确处理成功响应', async () => {

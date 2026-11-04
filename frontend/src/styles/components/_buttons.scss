@@ -865,7 +865,7 @@ body .el-button.el-button.tf-button--menu-action:focus {
   }
 
   /* Four common page commands share the available header width on mobile. */
-  .page-header .header-actions[data-action-count='4'] .el-button {
+  .page-header:not(.page-header--scrollable-actions) .header-actions[data-action-count='4'] .el-button {
     flex: 1 1 0;
     width: auto;
     min-width: 0;
@@ -873,12 +873,12 @@ body .el-button.el-button.tf-button--menu-action:focus {
     font-size: var(--tf-type-scale-11) !important;
   }
 
-  .page-header .header-actions[data-action-count='4'] .el-button i {
+  .page-header:not(.page-header--scrollable-actions) .header-actions[data-action-count='4'] .el-button i {
     flex: 0 0 auto;
     font-size: var(--tf-type-scale-11);
   }
 
-  .page-header .header-actions[data-action-count='4'] .el-button > span {
+  .page-header:not(.page-header--scrollable-actions) .header-actions[data-action-count='4'] .el-button > span {
     min-width: 0;
     gap: 3px;
   }

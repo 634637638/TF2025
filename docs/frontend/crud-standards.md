@@ -42,7 +42,7 @@ CRUD 操作架构
 
 ```typescript
 // services/base/CrudService.ts
-import { unifiedApi } from '@/services/unified-api'
+import { unifiedApi } from '@/utils/unified-api'
 import { useNotification } from '@/composables/useNotification'
 import { useErrorHandler } from '@/composables/useErrorHandler'
 import type { ApiResponse, PaginatedResponse, QueryParams } from '@/types/api'

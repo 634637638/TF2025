@@ -55,12 +55,8 @@ router.get('/', unifiedAuth, requirePermission('employee:view'), async (req, res
     const [countResult] = await db.execute(countQuery, queryParams)
     const total = countResult[0].total
 
-    // 确保参数是正确的整数类型
-    const page_size_int = page_size
-    const offsetInt = parseInt(offset) || 0
-
     // 查询员工列表，包含角色信息
-    // 使用模板字符串拼接 LIMIT 和 OFFSET（因为是整数，安全）
+    // 分页值使用参数绑定，避免把请求派生值拼接进 SQL。
     const query = `
       SELECT
         u.id,
@@ -100,11 +96,10 @@ router.get('/', unifiedAuth, requirePermission('employee:view'), async (req, res
       FROM users u
       ${whereClause}
       ORDER BY u.created_at DESC
-      LIMIT ${page_size_int} OFFSET ${offsetInt}
+      LIMIT ? OFFSET ?
     `
 
-    // 统一使用参数化查询（只包含过滤条件的参数）
-    const [employees] = await db.execute(query, queryParams)
+    const [employees] = await db.execute(query, [...queryParams, page_size, offset])
     const public_employees = employees.map(formatEmployeeRoles)
     const total_pages = Math.ceil(total / page_size)
 

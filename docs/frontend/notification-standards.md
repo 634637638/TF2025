@@ -424,7 +424,7 @@ const loadData = async (bustCache = false, silentError = false, showLoadingState
   }
 
   try {
-    const response = await api.get('/data', { params })
+    const response = await api.get('/example-resource', { params })
     data.value = response.data
 
     if (!silentError && !response.success) {

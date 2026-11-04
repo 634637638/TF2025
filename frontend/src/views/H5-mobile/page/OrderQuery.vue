@@ -216,6 +216,8 @@ import SectionLoading from '@/components/SectionLoading.vue'
 import { formatAmount, formatDateTime as formatGlobalDateTime, formatImageUrl } from '@/utils/format'
 import { normalizePhoneDigits } from '@/utils/security'
 import { logger } from '@/utils/logger'
+import { getRequestErrorMessage } from '@/utils/api-response'
+import type { PublicOrder } from '@/api/shop-public'
 import { getPaymentMethodLabel } from '@/utils/shop-payment'
 import { storage } from '@/services/storage'
 import { H5_STORAGE_KEYS } from '@/constants/storage'
@@ -270,7 +272,7 @@ const { form, validate, setFieldValue, reset } = useForm({
 
 // 转换为 el-form 格式的 rules
 const verifyRules = computed(() => {
-  const rules: Record<string, any[]> = {}
+  const rules: Record<string, Array<{ required: boolean, message: string, trigger: string }>> = {}
   if (form.errors.customer_phone) {
     rules.customer_phone = [{ required: true, message: form.errors.customer_phone, trigger: 'blur' }]
   }
@@ -281,7 +283,7 @@ const verifyRules = computed(() => {
 })
 
 // 订单数据
-const orders = ref<any[]>([])
+const orders = ref<PublicOrder[]>([])
 const current_page = ref(1)
 const page_size = 10
 const total = ref(0)
@@ -317,8 +319,8 @@ watch(() => router.currentRoute.value,
           page: 1,
           page_size,
           customer_name: form.values.customer_name
-        }).then((result: any) => {
-          const validOrders = (result.data || []).filter((order: any) =>
+        }).then((result) => {
+          const validOrders = result.data.filter((order) =>
             order.customer_name === form.values.customer_name
           )
           orders.value = validOrders
@@ -334,14 +336,14 @@ watch(() => router.currentRoute.value,
 const loadUserOrders = async () => {
   loading.value = true
   try {
-    const result: any = await getUserOrders()
+    const result = await getUserOrders()
     orders.value = result || []
     // H5_orders 表可能没有 total 字段，使用数据长度
     total.value = result.length || 0
     current_page.value = 1
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('加载用户订单失败:', error)
-    ElMessage.error(error.message || '加载订单失败')
+    ElMessage.error(getRequestErrorMessage(error, '加载订单失败'))
   } finally {
     loading.value = false
   }
@@ -358,14 +360,14 @@ const handleVerify = async () => {
     const normalizedPhone = normalizePhoneDigits(form.values.customer_phone)
 
     // 查询订单
-    const result: any = await getOrdersByPhone(normalizedPhone, {
+    const result = await getOrdersByPhone(normalizedPhone, {
       page: 1,
       page_size,
       customer_name: form.values.customer_name
     })
 
     // 验证姓名：检查订单中是否有匹配的姓名
-    const hasValidOrder = result.data && result.data.some((order: any) =>
+    const hasValidOrder = result.data.some(order =>
       order.customer_name === form.values.customer_name
     )
 
@@ -381,11 +383,9 @@ const handleVerify = async () => {
     current_page.value = 1
 
     ElMessage.success(`查询成功，找到 ${orders.value.length} 条订单记录`)
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('验证失败:', error)
-    if (error.message) {
-      ElMessage.error(error.message)
-    }
+    ElMessage.error(getRequestErrorMessage(error, '验证失败'))
   } finally {
     verifying.value = false
   }
@@ -430,21 +430,21 @@ const loadMore = async () => {
     } else {
       const normalizedPhone = normalizePhoneDigits(form.values.customer_phone)
       // 未登录用户加载更多
-      const result: any = await getOrdersByPhone(normalizedPhone, {
+      const result = await getOrdersByPhone(normalizedPhone, {
         page: current_page.value,
         page_size,
         customer_name: form.values.customer_name
       })
 
       // 过滤只显示匹配的订单
-      const validOrders = (result.data || []).filter((order: any) =>
+      const validOrders = result.data.filter(order =>
         order.customer_name === form.values.customer_name
       )
 
       orders.value.push(...validOrders)
       total.value = result.total || 0
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('加载更多失败:', error)
     ElMessage.error('加载失败')
     current_page.value--
@@ -483,13 +483,13 @@ const formatTime = (time: string) => {
 }
 
 // 获取订单商品预览（最多显示2个）
-const getFirstItems = (items: any[]) => {
+const getFirstItems = (items: PublicOrder['items'] = []) => {
   if (!items || items.length === 0) return []
   return items.slice(0, 2)
 }
 
 // 跳转到订单详情
-const goToDetail = (order: any) => {
+const goToDetail = (order: PublicOrder) => {
   storage.set(H5_STORAGE_KEYS.ORDER_SUCCESS, {
     orderNumber: order.order_number,
     totalAmount: order.total_amount,

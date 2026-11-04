@@ -33,7 +33,6 @@ class TransferController {
         store_id,          // 销售门店ID
         salesperson_name,  // 销售员姓名
         payment_method,    // 支付方式
-        invoice_number,    // 发票号
         sale_time,         // 销售时间
         remarks            // 备注
       } = req.body
@@ -60,7 +59,6 @@ class TransferController {
         store_id,
         salesperson_name,
         payment_method,
-        invoice_number,
         sale_time
       })
 

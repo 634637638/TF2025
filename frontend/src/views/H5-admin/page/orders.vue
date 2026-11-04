@@ -1082,6 +1082,8 @@ import { useNotification } from '@/composables/useNotification'
 const registerHeaderActions = inject<(_actions: HeaderAction[]) => void>('registerHeaderActions')
 const clearHeaderActions = inject<() => void>('clearHeaderActions')
 
+type AdminOrderStatus = 'pending' | 'paid' | 'confirmed' | 'shipped' | 'completed' | 'cancelled'
+
 interface OrderItem {
   id: string | number
   quantity: number
@@ -1093,7 +1095,7 @@ interface OrderItem {
 interface OrderRecord {
   id: string | number
   order_number: string
-  status: string
+  status: AdminOrderStatus
   customer_name?: string
   customer_phone?: string
   customer_address?: string
@@ -1113,7 +1115,7 @@ interface OrderRecord {
 
 interface OrderStatistics {
   total?: { total_orders?: number }
-  by_status?: Array<{ status: string; count: number }>
+  by_status?: Array<{ status: AdminOrderStatus; count: number }>
 }
 type OrderDateRange = [string, string] | [] | null
 
@@ -1259,7 +1261,7 @@ const loadOrders = async () => {
       pagination.page_size = Number(response.pagination.page_size) || 20
       pagination.total = Number(response.pagination.total) || 0
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('获取订单列表失败', error)
   } finally {
     loading.value = false
@@ -1278,7 +1280,7 @@ const loadStatistics = async () => {
 
     const response = await api.get('/sales-management/h5-orders/statistics', { params })
     statistics.value = response.data
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('获取统计数据失败', error)
   }
 }
@@ -1349,7 +1351,7 @@ const filterByStatus = (status: string) => {
 
 // 获取状态数量
 const getStatusCount = (status: string) => {
-  const stat = statistics.value.by_status?.find((s: any) => s.status === status)
+  const stat = statistics.value.by_status?.find(s => s.status === status)
   return stat?.count || 0
 }
 
@@ -1368,7 +1370,7 @@ const getStatusText = (status: string) => {
 
 // 状态类型
 const getStatusType = (status: string) => {
-  const types: Record<string, any> = {
+  const types: Record<string, 'warning' | 'primary' | 'info' | 'success' | 'danger'> = {
     pending: 'warning',
     paid: 'warning',
     confirmed: 'primary',
@@ -1380,7 +1382,7 @@ const getStatusType = (status: string) => {
 }
 
 // 获取状态时间线
-const getStatusTimeline = (order: any) => {
+const getStatusTimeline = (order: OrderRecord) => {
   const timeline = [
     { title: '创建订单', time: order.created_at, active: true },
     { title: '支付完成', time: order.paid_at, active: !!order.paid_at },
@@ -1424,7 +1426,7 @@ const formatTime = (time: string) => {
 }
 
 // 查看订单详情
-const viewOrder = async (order: any) => {
+const viewOrder = async (order: OrderRecord) => {
   if (!ensureOrderViewPermission()) {
     return
   }
@@ -1433,14 +1435,14 @@ const viewOrder = async (order: any) => {
     const response = await api.get(`/sales-management/h5-orders/${order.id}`)
     currentOrder.value = response.data
     showDetailDialog.value = true
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('获取订单详情失败', error)
     ElMessage.error('获取订单详情失败')
   }
 }
 
 // 审核通过
-const confirmOrder = async (order: any) => {
+const confirmOrder = async (order: OrderRecord) => {
   if (submitting.value) return
 
   if (!canEdit.value) {
@@ -1462,7 +1464,7 @@ const confirmOrder = async (order: any) => {
     await loadOrders()
     await loadStatistics()
     showDetailDialog.value = false
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error !== 'cancel') {
       logger.error('审核订单失败', error)
     }
@@ -1472,7 +1474,7 @@ const confirmOrder = async (order: any) => {
 }
 
 // 拒绝订单
-const rejectOrder = async (order: any) => {
+const rejectOrder = async (order: OrderRecord) => {
   if (submitting.value) return
 
   if (!canEdit.value) {
@@ -1503,7 +1505,7 @@ const rejectOrder = async (order: any) => {
     await loadOrders()
     await loadStatistics()
     showDetailDialog.value = false
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error !== 'cancel') {
       logger.error('拒绝订单失败', error)
     }
@@ -1513,7 +1515,7 @@ const rejectOrder = async (order: any) => {
 }
 
 // 发货
-const shipOrder = (order: any) => {
+const shipOrder = (order: OrderRecord) => {
   if (!canEdit.value) {
     handleNoPermission('edit')
     return
@@ -1557,7 +1559,7 @@ const confirmShip = async () => {
     if (showDetailDialog.value) {
       showDetailDialog.value = false
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('发货失败', error)
   } finally {
     submitting.value = false
@@ -1565,7 +1567,7 @@ const confirmShip = async () => {
 }
 
 // 完成订单
-const completeOrder = (order: any) => {
+const completeOrder = (order: OrderRecord) => {
   if (!canEdit.value) {
     handleNoPermission('edit')
     return
@@ -1604,7 +1606,7 @@ const confirmComplete = async () => {
     if (showDetailDialog.value) {
       showDetailDialog.value = false
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('完成订单失败', error)
   } finally {
     submitting.value = false
@@ -1612,7 +1614,7 @@ const confirmComplete = async () => {
 }
 
 // 取消订单
-const cancelOrder = (order: any) => {
+const cancelOrder = (order: OrderRecord) => {
   if (!canEdit.value) {
     handleNoPermission('edit')
     return
@@ -1656,7 +1658,7 @@ const confirmCancel = async () => {
     if (showDetailDialog.value) {
       showDetailDialog.value = false
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error !== 'cancel') {
       logger.error('取消订单失败', error)
     }

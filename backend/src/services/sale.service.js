@@ -1,6 +1,9 @@
 const SaleRepository = require('../repositories/sale.repository')
 const CustomerRepository = require('../repositories/customer.repository')
 const log = require('../utils/log')
+const { getDatabase } = require('../config/database')
+const { normalizeDateTime } = require('../utils/time')
+const { prepareInvoiceNumberTransaction, generateInvoiceNumber } = require('../utils/invoice-number')
 
 class SaleService {
   constructor() {
@@ -15,6 +18,8 @@ class SaleService {
    */
   async sellPhone(saleData) {
     const startTime = Date.now()
+    let connection
+    let transactionStarted = false
     try {
       log.debug('🛒 SaleService.sellPhone 开始执行，销售数据:', saleData)
 
@@ -30,7 +35,6 @@ class SaleService {
         sale_price,
         purchase_cost,
         payment_method,
-        invoice_number,
         operator_id,
         store_id,
         sale_time
@@ -122,25 +126,21 @@ class SaleService {
       const dbCost = phone.purchase_cost || 0
       log.debug('💰 步骤3完成: 成本:', dbCost, '售价:', sale_price, '利润将在前端实时计算')
 
-      // 3.5. 如果没有发票号，自动生成（使用销售时间）
-      let finalInvoiceNumber = invoice_number
-      if (!finalInvoiceNumber) {
-        const { generateInvoiceNumber } = require('../utils/invoice-number')
-        const pool = require('../config/database').getDatabase()
-        const connection = await new Promise((resolve, reject) => {
-          pool.getConnection((err, conn) => {
-            if (err) return reject(err)
-            resolve(conn)
-          })
-        })
-
-        // 使用销售时间生成发票号
-        const saleDateObj = sale_time ? new Date(sale_time + 'T00:00:00+08:00') : new Date()
-        finalInvoiceNumber = await generateInvoiceNumber(sale_type, connection, saleDateObj)
-
-        connection.release()
-        log.debug(`✅ 自动生成发票号: ${finalInvoiceNumber}, 销售日期: ${saleDateObj.toISOString().split('T')[0]}, 类型: ${sale_type}`)
+      // 兼容服务入口也必须将补号、销售记录和设备状态放在同一个事务内。
+      connection = await getDatabase().getConnection()
+      await prepareInvoiceNumberTransaction(connection)
+      await connection.beginTransaction()
+      transactionStarted = true
+      const [lockedPhones] = await connection.execute(
+        'SELECT status FROM phones WHERE id = ? FOR UPDATE', [phone.id]
+      )
+      if (!lockedPhones.length || lockedPhones[0].status !== 'in_stock') {
+        throw new Error('设备已不在库，请刷新后重试')
       }
+      const saleTime = normalizeDateTime(sale_time)
+
+      // 3.5. 单号只能由服务端按销售日期生成，禁止调用方传入手工单号绕过统一序列。
+      const finalInvoiceNumber = await generateInvoiceNumber(sale_type, connection, saleTime)
 
       // 4. 创建销售记录
       log.debug('📝 步骤4: 开始创建销售记录')
@@ -154,10 +154,10 @@ class SaleService {
         store_id: store_id,  // 直接使用前端选择的销售店铺
         payment_method: payment_method || null,
         invoice_number: finalInvoiceNumber,
-        sale_time: sale_time ? new Date(sale_time + 'T00:00:00+08:00') : new Date()  // 北京时间
+        sale_time: saleTime
       }
 
-      const saleId = await this.saleRepository.createSale(saleRecordData)
+      const saleId = await this.saleRepository.createSale(saleRecordData, connection)
       log.debug('📝 步骤4完成: 销售记录创建成功，ID:', saleId)
 
       // 5. 更新手机状态为已售出 - 包含销售员信息、销售价和入库成本
@@ -168,8 +168,12 @@ class SaleService {
         finalCustomerId,
         operator_id,  // 使用operator_id作为销售员ID
         parseFloat(sale_price),
-        parseFloat(purchase_cost ?? dbCost)
+        parseFloat(purchase_cost ?? dbCost),
+        connection,
+        saleTime
       )
+      await connection.commit()
+      transactionStarted = false
       log.debug('🔄 步骤5完成: 手机状态更新完成')
 
       // 6. 返回销售结果
@@ -195,9 +199,12 @@ class SaleService {
         }
       }
     } catch (error) {
+      if (transactionStarted) await connection.rollback()
       const duration = Date.now() - startTime
       log.error('❌ 手机销售失败，已耗时:', duration, 'ms, 错误:', error)
       throw error
+    } finally {
+      connection?.release()
     }
   }
 
@@ -420,20 +427,6 @@ class SaleService {
     }
   }
 
-  /**
-   * 生成销售发票号
-   * @returns {string} 发票号
-   */
-  generateInvoiceNumber() {
-    const crypto = require('crypto')
-    const now = new Date()
-    const year = now.getFullYear()
-    const month = String(now.getMonth() + 1).padStart(2, '0')
-    const day = String(now.getDate()).padStart(2, '0')
-    const random = crypto.randomInt(0, 10000).toString().padStart(4, '0')
-
-    return `INV${year}${month}${day}${random}`
-  }
 }
 
 module.exports = SaleService

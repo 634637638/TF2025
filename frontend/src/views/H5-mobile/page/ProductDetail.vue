@@ -22,8 +22,6 @@
       <div class="image-swiper-section">
         <swiper
           :modules="[SwiperPagination, SwiperZoom]"
-          :pagination="{ type: 'fraction' } as any"
-          :zoom="{ maxRatio: 2, minRatio: 1, toggle: true } as any"
           class="image-swiper"
           @slide-change="handleSlideChange"
         >
@@ -315,14 +313,15 @@ import { ElMessage } from 'element-plus'
 import SectionLoading from '@/components/SectionLoading.vue'
 import 'swiper/css'
 import 'swiper/css/pagination'
-import { getProductDetail, getPublicConfig, getProducts } from '@/api/shop-public'
+import { getProductDetail, getPublicConfig, getProducts, type Product } from '@/api/shop-public'
 import { useCart } from '@/composables'
 import { formatDate as formatGlobalDate, formatImageUrl } from '@/utils/format'
 import Image from '@/components/Image.vue'
-import type { ProductDetail } from '@/api/shop-public'
+import type { ProductDetail, ShopConfig } from '@/api/shop-public'
 import { storage } from '@/services/storage'
 import { H5_STORAGE_KEYS } from '@/constants/storage'
 import { logger } from '@/utils/logger'
+import { getRequestErrorMessage } from '@/utils/api-response'
 import { isVideoMedia } from '@/utils/media'
 const SwiperPagination = Pagination
 const SwiperZoom = Zoom
@@ -350,14 +349,15 @@ const product = ref<ProductDetail | null>(null)
 const loading = ref(true)
 const loadSequence = ref(0)
 const currentImageIndex = ref(0)
-const shopConfig = ref<any>({})
-const config = ref<any>({ cart_enabled: true, direct_buy_enabled: true })
+const shopConfig = ref<Partial<ShopConfig>>({})
+const config = ref({ cart_enabled: true, direct_buy_enabled: true })
 
 // 内存选择相关
 const showMemoryDialog = ref(false)
 const loadingMemories = ref(false)
-const memoryOptions = ref<any[]>([])
-const selectedPhone = ref<any>(null)
+type MemoryProduct = Product & { phone_id?: number, memory_name?: string, is_current?: boolean }
+const memoryOptions = ref<MemoryProduct[]>([])
+const selectedPhone = ref<MemoryProduct | null>(null)
 const pendingAction = ref<'cart' | 'buy' | null>(null)
 
 const normalizeText = (value: unknown): string => {
@@ -547,10 +547,10 @@ const formatDate = (dateStr: string) => {
 }
 
 // 格式化电池健康度
-const formatBattery = (battery: any) => {
+const formatBattery = (battery: unknown) => {
   if (!battery) return ''
   // 如果是纯数字，添加%符号
-  const numValue = typeof battery === 'number' ? battery : parseInt(battery)
+  const numValue = typeof battery === 'number' ? battery : Number.parseInt(String(battery), 10)
   if (!isNaN(numValue) && numValue > 0) {
     return `${numValue}%`
   }
@@ -567,7 +567,7 @@ const maskSerialNumber = (serial: string) => {
 }
 
 // 切换slide时暂停所有视频
-const handleSlideChange = (swiper: any) => {
+const handleSlideChange = (swiper: { activeIndex: number }) => {
   currentImageIndex.value = swiper.activeIndex
 
   // 暂停所有非当前slide的视频
@@ -633,12 +633,12 @@ const loadProduct = async (id = resolvedProductId.value) => {
 
   loading.value = true
   try {
-    const response: any = await getProductDetail(id)
+    const response = await getProductDetail(id)
     if (sequence !== loadSequence.value) {
       return
     }
 
-    const data: any = response?.data || response || null
+    const data = response
 
     // 确保 images 字段始终是数组
     if (data) {
@@ -646,7 +646,7 @@ const loadProduct = async (id = resolvedProductId.value) => {
         data.images = []
       }
       // 确保每个 image 对象有必要的字段
-      data.images = data.images.map((img: any, index: number) => {
+      data.images = data.images.map((img, index: number) => {
         if (typeof img === 'string') {
           // 如果是字符串（模板商品旧格式），转换为对象格式
           return {
@@ -686,8 +686,8 @@ const loadProduct = async (id = resolvedProductId.value) => {
 // 获取商城配置
 const loadConfig = async () => {
   try {
-    const response: any = await getPublicConfig()
-    shopConfig.value = response?.data || response || {}
+    const response = await getPublicConfig()
+    shopConfig.value = response || {}
     // 设置默认值，防止后端没有返回配置项
     config.value = {
       cart_enabled: shopConfig.value.cart_enabled !== false,
@@ -715,14 +715,14 @@ const loadMemoryOptions = async () => {
 
     // 过滤出当前商品并添加选中标记
     // result 是一个包含 data 属性的对象，data 属性是数组
-    const products = Array.isArray(result) ? result : ((result as any).data || [])
-    memoryOptions.value = products.map((p: any) => ({
+    const products = result.data || []
+    memoryOptions.value = products.map(p => ({
       ...p,
       is_current: p.id === product.value!.id
     }))
 
     // 默认选中当前商品
-    selectedPhone.value = memoryOptions.value.find((p: any) => p.is_current) || memoryOptions.value[0]
+    selectedPhone.value = memoryOptions.value.find(p => p.is_current) || memoryOptions.value[0]
   } catch (error) {
     logger.error('获取内存选项失败:', error)
   } finally {
@@ -731,7 +731,7 @@ const loadMemoryOptions = async () => {
 }
 
 // 选择内存规格
-const selectMemory = (option: any) => {
+const selectMemory = (option: MemoryProduct) => {
   selectedPhone.value = option
 }
 
@@ -783,9 +783,9 @@ const executeAddToCart = async (phoneId: number) => {
     } else {
       ElMessage.error(result.message || '加入购物车失败')
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('添加到购物车失败:', error)
-    ElMessage.error(error.message || '加入购物车失败')
+    ElMessage.error(getRequestErrorMessage(error, '加入购物车失败'))
   }
 }
 

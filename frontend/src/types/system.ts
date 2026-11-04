@@ -212,14 +212,14 @@ export interface PermissionLog {
 /**
  * 错误日志级别
  */
-export type ErrorLevel = 'debug' | 'info' | 'warning' | 'error' | 'critical'
+export type ErrorLogLevel = 'debug' | 'info' | 'warning' | 'error' | 'critical'
 
 /**
  * 错误日志
  */
 export interface ErrorLog {
   id: number
-  level: ErrorLevel
+  level: ErrorLogLevel
   type: 'vue' | 'javascript' | 'network' | 'api' | 'database' | 'server'
   message: string
   stack?: string
@@ -250,7 +250,7 @@ export interface ErrorLog {
  * 错误日志筛选条件
  */
 export interface ErrorLogFilters {
-  level?: ErrorLevel
+  level?: ErrorLogLevel
   type?: string
   is_resolved?: boolean
   start_date?: string
@@ -277,7 +277,7 @@ export interface ErrorLogListResponse {
 export interface ErrorStats {
   total_count: number
   unresolved_count: number
-  by_level: Record<ErrorLevel, number>
+  by_level: Record<ErrorLogLevel, number>
   by_type: Record<string, number>
   recent_errors: ErrorLog[]
 }

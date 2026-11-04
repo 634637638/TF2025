@@ -20,7 +20,6 @@ router.get('/health', (req, res) => {
 
 // 导入现有的旧版路由（保持向后兼容）
 const authRoutes = require('./auth')
-const dataRoutes = require('./data')
 const dashboardRoutes = require('./dashboard')
 const systemRoutes = require('./system')
 const menusRoutes = require('./menus')
@@ -131,7 +130,6 @@ const guidePublicRoutes = require('./guide-public')
 
 // 注册旧版路由（保持向后兼容，逐步迁移）
 router.use('/auth', authRoutes)
-router.use('/data', dataRoutes)
 router.use('/dashboard', dashboardRoutes)
 router.use('/system', systemRoutes)
 router.use('/menus', menusRoutes)

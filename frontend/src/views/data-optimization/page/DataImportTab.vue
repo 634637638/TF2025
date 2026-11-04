@@ -602,6 +602,7 @@ import { fieldPermissions, shouldShowActionColumn } from '@/composables/useField
 import InlineLoading from '@/components/InlineLoading.vue'
 import { logger } from '@/utils/logger'
 import { formatDate as formatGlobalDate } from '@/utils/format'
+import { getRequestErrorMessage, getRequestErrorStatus } from '@/utils/api-response'
 
 let importProgressTimer: ReturnType<typeof setInterval> | null = null
 
@@ -613,6 +614,7 @@ const clearImportProgressTimer = () => {
 }
 
 interface ImportHistoryRecord {
+  id: number
   import_id: string
   user_id?: number | null
   user_name?: string
@@ -861,9 +863,9 @@ const analyzeFile = async () => {
 
     currentStep.value = 2
     ElMessage.success('数据分析完成！')
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('❌ 分析失败:', error)
-    const errorMsg = error.response?.data?.message || error.message || '未知错误'
+    const errorMsg = getRequestErrorMessage(error, '未知错误')
     logger.error('错误详情:', errorMsg)
     ElMessage.error('分析失败: ' + errorMsg)
   } finally {
@@ -906,7 +908,7 @@ const startImport = async () => {
           distinguishCancelAndClose: false
         }
       )
-    } catch (action: any) {
+    } catch (action: unknown) {
       if (action === 'cancel') {
       } else if (action === 'close') {
       } else {
@@ -969,9 +971,9 @@ const startImport = async () => {
           importMessage.value = '导入失败: ' + (progress.message || '未知错误')
           ElMessage.error(importMessage.value)
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         // 检查是否是 404 错误（任务不存在）
-        if (error.response?.status === 404) {
+        if (getRequestErrorStatus(error) === 404) {
           clearImportProgressTimer()
 
           // 尝试从导入历史中获取结果
@@ -1007,12 +1009,11 @@ const startImport = async () => {
         }
       }
     }, 1000)
-  } catch (error: any) {
+  } catch (error: unknown) {
     clearImportProgressTimer()
     logger.error('❌ 导入过程出错:', error)
-    logger.error('错误详情:', error.response?.data)
     importStatus.value = 'exception'
-    importMessage.value = '导入失败: ' + (error.message || '未知错误')
+    importMessage.value = '导入失败: ' + getRequestErrorMessage(error, '未知错误')
     ElMessage.error(importMessage.value)
   } finally {
     importing.value = false
@@ -1047,8 +1048,8 @@ const getImportHistory = async () => {
     const response = await dataImportApi.getHistory()
     importHistory.value = response.data
     showHistoryDialog.value = true
-  } catch (error: any) {
-    ElMessage.error('获取历史失败: ' + (error.message || '未知错误'))
+  } catch (error: unknown) {
+    ElMessage.error('获取历史失败: ' + getRequestErrorMessage(error, '未知错误'))
   }
 }
 
@@ -1107,7 +1108,7 @@ const getStatusTagType = (status: string): ImportTagType => {
 /**
  * 删除导入历史记录
  */
-const handleDeleteHistory = async (row: any) => {
+const handleDeleteHistory = async (row: ImportHistoryRecord) => {
   if (!ensureDeletePermission()) {
     return
   }
@@ -1130,13 +1131,13 @@ const handleDeleteHistory = async (row: any) => {
     ElMessage.success('删除成功')
 
     // 从列表中移除该记录
-    const index = importHistory.value.findIndex((item: any) => item.id === row.id)
+    const index = importHistory.value.findIndex(item => item.import_id === row.import_id)
     if (index > -1) {
       importHistory.value.splice(index, 1)
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error !== 'cancel' && error !== 'close') {
-      ElMessage.error('删除失败: ' + (error.message || '未知错误'))
+      ElMessage.error('删除失败: ' + getRequestErrorMessage(error, '未知错误'))
     }
   }
 }

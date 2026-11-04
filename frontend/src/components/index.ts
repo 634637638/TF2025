@@ -4,6 +4,7 @@
  */
 
 import type { App, Component } from 'vue'
+import { getRequestErrorMessage } from '@/utils/api-response'
 
 /**
  * 组件配置接口
@@ -261,7 +262,7 @@ export class GlobalComponentManager {
 
       // 触发失败事件
       window.dispatchEvent(new CustomEvent('tf2025:component:register-failed', {
-        detail: { name: config.name, error: error.message }
+        detail: { name: config.name, error: getRequestErrorMessage(error, '组件注册失败') }
       }))
     }
   }

@@ -241,6 +241,7 @@ import { loadHtml2Canvas } from '@/utils/html2canvas'
 import { createShareImageFile } from '@/utils/share-image'
 import { useSiteSettingsStore } from '@/stores/siteSettings'
 import { parsePublicPriceContacts, getDefaultPublicPriceContact, formatPublicPriceWatermark } from '@/utils/publicPriceSettings'
+import type { SalesPriceDisplayRow } from '@/types/price-list'
 
 const IMAGE_CAPTURE_WIDTH = 430
 // 状态
@@ -259,7 +260,7 @@ const watermarkText = computed(() => formatPublicPriceWatermark(siteSettingsStor
 const watermarkColor = computed(() => siteSettingsStore.settings.publicPriceWatermarkColor || '#6b7280')
 const phoneHref = (phone: string) => String(phone || '').replace(/[^\d+]/g, '')
 const searchKeyword = ref('')
-const searchResults = ref<any[]>([])
+const searchResults = ref<SalesPriceDisplayRow[]>([])
 const hasSearched = ref(false)
 const isGenerating = ref(false)
 const showIOSImageModal = ref(false)
@@ -330,7 +331,7 @@ const handleSearch = async () => {
     if (res.success) {
       const rawData = Array.isArray(res.data) ? res.data : []
       searchResults.value = rawData
-        .filter((item: any) => hasDisplayRetailPrice(item))
+        .filter((item: SalesPriceDisplayRow) => hasDisplayRetailPrice(item))
       hasSearched.value = true
     }
   } catch (error) {
@@ -346,16 +347,16 @@ const handleClear = () => {
   loadAllData()
 }
 
-const getDisplayRetailPrice = (row: any) => {
+const getDisplayRetailPrice = (row: SalesPriceDisplayRow) => {
   return row?.display_retail_price ?? row?.retail_price
 }
 
-const hasDisplayRetailPrice = (row: any) => {
+const hasDisplayRetailPrice = (row: SalesPriceDisplayRow) => {
   const price = getDisplayRetailPrice(row)
   return price !== null && price !== undefined && price !== '' && Number(price) > 0
 }
 
-const formatDisplayRetailPrice = (row: any) => {
+const formatDisplayRetailPrice = (row: SalesPriceDisplayRow) => {
   return Math.round(Number(getDisplayRetailPrice(row) || 0))
 }
 
@@ -1298,6 +1299,8 @@ onBeforeUnmount(() => {
 
 </style>
 <style lang="scss">
+@use "../../../styles/components/price-contact";
+
 // 图片水印样式 - 表格内斜向随机位置
 .image-watermark {
   pointer-events: none;

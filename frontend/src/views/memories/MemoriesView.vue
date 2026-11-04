@@ -453,7 +453,6 @@ import { usePagePermissions } from '@/composables/usePagePermissions'
 import { useRefreshData } from '@/composables/useRefreshData'
 import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import Pagination from '../../components/Pagination.vue'
-import InlineLoading from '@/components/InlineLoading.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import { PageHeader, PermissionGate } from '@/components/base'
@@ -465,6 +464,8 @@ import { logger } from '@/utils/logger'
 import { useElementTableSortable } from '@/composables/useElementTableSortable'
 import { getTextColumnMinWidth } from '@/utils/table-layout'
 import { formatDateTime as formatGlobalDateTime } from '@/utils/format'
+import { getRequestErrorMessage, getRequestErrorStatus } from '@/utils/api-response'
+import type { QueryParams } from '@/types/shared'
 
 // 获取路由实例
 const _router = useRouter()
@@ -534,7 +535,7 @@ interface Memory {
   updated_at: string | null
 }
 
-const memoriesTableRef = ref<any>(null)
+const memoriesTableRef = ref<unknown>(null)
 const mobileActionRowId = ref<string | null>(null)
 const lastTappedRowId = ref<string | null>(null)
 const lastTapTimestamp = ref(0)
@@ -674,7 +675,7 @@ const loadMemories = async (bustCache: boolean = false, silentError: boolean = f
   }
 
   try {
-    const params: any = {
+    const params: QueryParams = {
       page: pagination.value.page,
       page_size: pagination.value.page_size,
       sort_by: 'sort_order',
@@ -722,7 +723,7 @@ const loadMemories = async (bustCache: boolean = false, silentError: boolean = f
         error(`获取内存规格列表失败: ${response.message || '未知错误'}`)
       }
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     if (memoryListRequest.isCanceledError(err)) {
       return
     }
@@ -733,13 +734,13 @@ const loadMemories = async (bustCache: boolean = false, silentError: boolean = f
 
     if (!silentError) {
       // 处理权限错误
-      if (err.response?.status === 403) {
+      if (getRequestErrorStatus(err) === 403) {
         error('权限不足：您没有权限查看内存规格列表，请联系管理员分配相应权限')
-      } else if (err.response?.status === 401) {
+      } else if (getRequestErrorStatus(err) === 401) {
         error('认证失败：您的登录状态已过期，请重新登录')
         // 可以在这里触发登出逻辑
       } else {
-        error('获取内存规格列表失败', err.response?.data?.message || err.message || '未知错误')
+        error(`获取内存规格列表失败：${getRequestErrorMessage(err, '未知错误')}`)
       }
     }
   } finally {
@@ -831,7 +832,7 @@ const deleteMemory = async (memory: Memory) => {
     } else {
       error(`删除内存规格失败: ${response.message || '未知错误'}`)
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     logger.error('删除内存规格失败:', err)
     handleApiError(err, '删除内存规格失败')
   }
@@ -879,7 +880,7 @@ const submitForm = async () => {
         error('更新内存规格失败', response.message || '未知错误')
       }
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     logger.error('提交表单失败:', err)
     // 这里 handleApiError 会显示统一的错误消息
     handleApiError(err, showCreateModal.value ? '创建内存规格失败' : '更新内存规格失败')

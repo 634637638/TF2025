@@ -138,17 +138,18 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage, type FormInstance } from 'element-plus'
+import { ElMessage, type FormInstance, type FormItemRule } from 'element-plus'
 import { useForm, ValidationRules, useLoadingState } from '@/composables'
 import { register, tokenManager, userManager } from '@/api/auth'
-import { getPublicConfig } from '@/api/shop-public'
+import { getPublicConfig, type ShopConfig } from '@/api/shop-public'
+import { getRequestErrorMessage, extractResponseData } from '@/utils/api-response'
 import { normalizePhoneDigits } from '@/utils/security'
 import { logger } from '@/utils/logger'
 const router = useRouter()
 
 const registerFormRef = ref<FormInstance>()
 const { loading } = useLoadingState()
-const shopConfig = ref<any>({})
+const shopConfig = ref<Partial<ShopConfig>>({})
 const setPhoneFieldValue = (value: string) => setFieldValue('phone', normalizePhoneDigits(value))
 const setAgreedField = (value: string | boolean | number) => setFieldValue('agreed', value === true)
 
@@ -186,7 +187,7 @@ const { form, validate, setFieldValue } = useForm({
 
 // 转换为 el-form 格式的 rules
 const registerRules = computed(() => {
-  const rules: Record<string, any[]> = {}
+  const rules: Record<string, FormItemRule[]> = {}
   if (form.errors.name) {
     rules.name = [{ required: true, message: form.errors.name, trigger: 'blur' }]
   }
@@ -209,7 +210,7 @@ const registerRules = computed(() => {
 const loadConfig = async () => {
   try {
     const response = await getPublicConfig()
-    shopConfig.value = (response as any).data || response
+    shopConfig.value = extractResponseData<Partial<ShopConfig>>(response)
   } catch (error) {
     logger.error('获取配置失败:', error)
   }
@@ -224,7 +225,7 @@ const handleRegister = async () => {
 
     loading.value = true
 
-    const response: any = await register({
+    const response = await register({
       name: form.values.name,
       phone: normalizePhoneDigits(form.values.phone),
       password: form.values.password
@@ -238,10 +239,9 @@ const handleRegister = async () => {
 
     // 跳转到"我的"页面
     router.push('/m/my')
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('注册失败:', error)
-    const errorMessage = error?.response?.data?.message || error?.message || '注册失败'
-    ElMessage.error(errorMessage)
+    ElMessage.error(getRequestErrorMessage(error, '注册失败'))
   } finally {
     loading.value = false
   }

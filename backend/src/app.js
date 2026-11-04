@@ -17,6 +17,7 @@ const { ensurePriceSourceSchema } = require('./utils/price-source-schema')
 const { ensureGuideSchema } = require('./utils/guide-schema')
 const { ensureAttendanceSchema } = require('./utils/attendance-schema')
 const { cleanupExpiredGuideDrafts } = require('./utils/guide-upload')
+const { uploadStaticAccess } = require('./middleware/upload-static-access')
 
 // 导入路由
 const routes = require('./routes')
@@ -69,38 +70,6 @@ const requestLogger = (req, res, next) => {
   if (!IS_PRODUCTION) {
     log.debug(`🌐 [${formatBeijingTime()}] ${req.method} ${redactSensitiveQuery(req.originalUrl)}`)
   }
-  next()
-}
-
-const uploadStaticMiddleware = (req, res, next) => {
-  try {
-    req.url = decodeURIComponent(req.url)
-  } catch (error) {
-    log.error('URL 解码失败:', error)
-  }
-
-  // 导入、分享、补贴和租赁文件只能通过各自的鉴权接口访问，
-  // 不能因为挂载了通用静态目录而被直接下载。
-  if (
-    req.path.startsWith('/import/') ||
-    req.path.startsWith('/temp/') ||
-    req.path.startsWith('/subsidy/') ||
-    req.path.startsWith('/shared/') ||
-    req.path.startsWith('/rentals/') ||
-    req.path.startsWith('/repairs/')
-    || req.path.startsWith('/guide/')
-  ) {
-    return res.status(404).json({
-      success: false,
-      message: '资源不存在'
-    })
-  }
-
-  res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
-  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin')
-
   next()
 }
 
@@ -206,8 +175,8 @@ async function initializeApp() {
     // 优先使用 UPLOAD_PATH；未配置时统一回退到 backend/uploads
     const uploadsPath = getUploadsRoot()
 
-    // 添加 URL 解码中间件和 CORS 头，处理中文文件名和跨域访问
-    app.use('/uploads', uploadStaticMiddleware)
+    // 统一拦截私有目录、父目录跳转和重复编码绕过，并设置公开静态资源 CORS 头。
+    app.use('/uploads', uploadStaticAccess)
 
     app.use('/uploads', express.static(uploadsPath, {
       // 媒体资源用于页面内联预览，明确覆盖可能导致下载管理器误判的响应头。

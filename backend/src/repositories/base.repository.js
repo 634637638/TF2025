@@ -27,6 +27,36 @@ class BaseRepository {
   }
 
   /**
+   * 以预编译方式执行 SQL（等价于 pool.execute）
+   * 返回 [rows, fields]，供路由层保留 SQL 构建、仅下沉连接与执行时使用。
+   * @param {string} sql - 带 ? 占位符的 SQL
+   * @param {Array} params - 参数
+   * @returns {Promise<Array>} [rows, fields]
+   */
+  async executePrepared(sql, params = []) {
+    const db = this.getConnection()
+    return db.execute(sql, params)
+  }
+
+  /**
+   * 使用连接池格式化 SQL（等价于 pool.format）
+   * @param {string} sql - SQL
+   * @param {Array} params - 参数
+   * @returns {string} 格式化后的 SQL
+   */
+  formatSql(sql, params = []) {
+    return this.getConnection().format(sql, params)
+  }
+
+  /**
+   * 获取一个独立连接（事务场景），与 pool.getConnection() 等价
+   * @returns {Promise<Object>} connection
+   */
+  async acquireConnection() {
+    return this.getConnection().getConnection()
+  }
+
+  /**
    * 执行查询（带超时）
    * @param {string} sql - SQL查询语句
    * @param {Array} params - 查询参数

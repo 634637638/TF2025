@@ -307,8 +307,8 @@
       </template>
 
       <el-table
-              v-tf-loading="loading"
-              :data="paginatedLogs"
+        v-tf-loading="loading"
+        :data="paginatedLogs"
         class="data-table compact-fit-table"
         border
         :fit="true"
@@ -639,6 +639,7 @@ const {
   logs,
   statistics,
   resolveError: resolveErrorLog,
+  removeError: removeErrorLog,
   getLogs,
   exportLogs: exportErrorLogs,
   clearLogs: clearErrorLogs
@@ -805,12 +806,21 @@ const resolveError = async (errorId: string) => {
   }
 }
 
-const deleteError = async (_errorId: string) => {
+const deleteError = async (errorId: string) => {
   try {
     if (!await confirm('确定要删除这条错误记录吗？', '确认删除', {
       type: 'warning'
     })) return
-    // TODO: 实现删除功能
+
+    if (!removeErrorLog(errorId)) {
+      ElMessage.warning('错误记录不存在或已删除')
+      return
+    }
+
+    if (selectedError.value?.id === errorId) {
+      selectedError.value = null
+      detailVisible.value = false
+    }
     ElMessage.success('删除成功')
   } catch (error) {
     // 用户取消

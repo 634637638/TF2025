@@ -17,6 +17,8 @@ export interface MenuItem {
   module_key?: string
   sort_order?: number
   is_active?: boolean
+  /** 兼容旧接口返回的数字/字符串状态字段。 */
+  status?: number | string | boolean
   target?: string
   remarks?: string
   created_at?: string

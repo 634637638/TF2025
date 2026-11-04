@@ -4,15 +4,22 @@
  */
 
 import type { ActionColumnInput, ActionColumnWidthOptions } from '@/utils/table-layout'
+import type { Component } from 'vue'
+import type { ComponentConfig } from '@/components'
+import type { CSRFToken } from '@/utils/csrf'
 import type {
   AppConfig,
   DeviceInfo,
   ThemeConfig,
   EventBus,
   LogItem,
+  ErrorInfo,
   WebSocketState,
   TaskQueue
 } from './index'
+
+type GlobalData = Record<string, unknown>
+type GlobalComponent = Component
 
 declare module 'vue' {
   interface ComponentCustomProperties {
@@ -29,69 +36,69 @@ declare global {
 
     // 全局状态管理
     __TF2025__: {
-      store: any
-      router: any
+      store: unknown
+      router: unknown
       performance?: {
-        recordMetric: (name: string, value: any) => void
+        recordMetric: (name: string, value: unknown) => void
         startMonitoring: () => void
         stopMonitoring: () => void
-        generateReport: () => any
-        getMetrics?: () => any
+        generateReport: () => unknown
+        getMetrics?: () => unknown
       }
       components?: {
-        configs: any[]
+        configs: ComponentConfig[]
         usage: Record<string, number>
-        list: any[]
-        byCategory: (category: string) => any[]
+        list: ComponentConfig[]
+        byCategory: (category: string) => ComponentConfig[]
       }
-      componentManager?: any
+      componentManager?: unknown
       analytics?: import('@/services/telemetry').TelemetryAdapter
       eventBus?: EventBus
       csrf?: {
-        token: any
+        token: CSRFToken | null
         isInitialized: boolean
         failures: number
         addCSRFHeader: (headers: Record<string, string>) => Record<string, string>
-        refreshToken: () => Promise<any>
-        getCurrentToken: () => Promise<any>
+        refreshToken: () => Promise<CSRFToken | null>
+        getCurrentToken: () => Promise<CSRFToken | null>
       }
-      composables?: any
+      composables?: unknown
       loading?: {
-        start: (text?: string, options?: any) => any
+        start: (text?: string, options?: GlobalData) => string
         stop: (id?: string) => void
         updateProgress: (id: string, progress: number) => void
         updateText: (text: string) => void
         stopAll: () => void
         isLoading?: boolean
       }
-      messageManager?: any
+      messageManager?: unknown
       notification?: {
-        success: (message: string, options?: any) => void
-        error: (message: string, options?: any) => void
-        warning: (message: string, options?: any) => void
-        info: (message: string, options?: any) => void
+        success: (message: string, options?: GlobalData) => void
+        error: (message: string, options?: GlobalData) => void
+        warning: (message: string, options?: GlobalData) => void
+        info: (message: string, options?: GlobalData) => void
       }
-      timeUtil?: any
+      timeUtil?: unknown
       errorBoundary?: {
-        captureError: (error: Error, context?: any) => void
-        getErrors: () => any[]
+        captureError: (error: Error, context?: GlobalData) => void
+        getErrors: () => ErrorInfo[]
         clearErrors: () => void
         autoRecovery: boolean
       }
-      errorLogger?: any
-      api?: any
-      analytics?: any
+      errorLogger?: unknown
+      api?: unknown
+      analytics?: unknown
       stores?: {
-        auth: any
-        app: any
-        loading: any
-        message: any
+        auth: unknown
+        app: unknown
+        loading: unknown
+        message: unknown
       }
     }
 
     // 性能监控
     __TF2025_PERFORMANCE__?: {
-      recordMetric: (name: string, value: any) => void
+      recordMetric: (name: string, value: unknown) => void
       startMonitoring: () => void
       stopMonitoring: () => void
       generateReport: () => PerformanceReport
@@ -102,10 +109,10 @@ declare global {
 
     // 组件调试
     __TF2025_COMPONENT_DEBUG__?: {
-      getManager: () => any
-      getStats: () => any
+      getManager: () => unknown
+      getStats: () => unknown
       getRegistered: () => string[]
-      getByCategory: (category: string) => any[]
+      getByCategory: (category: string) => ComponentConfig[]
       isRegistered: (name: string) => boolean
       usage: {
         recordUsage: (componentName: string) => void
@@ -116,18 +123,18 @@ declare global {
 
     // 错误边界
     __TF2025_ERROR_BOUNDARY__?: {
-      reportError: (error: any) => void
-      getErrors: () => any[]
+      reportError: (error: unknown) => void
+      getErrors: () => ErrorInfo[]
       clearErrors: () => void
     }
 
     // 日志系统
     __TF2025_LOGGER__?: {
-      debug: (message: string, data?: any) => void
-      info: (message: string, data?: any) => void
-      warn: (message: string, data?: any) => void
-      error: (message: string, error?: any) => void
-      fatal: (message: string, error?: any) => void
+      debug: (message: string, data?: unknown) => void
+      info: (message: string, data?: unknown) => void
+      warn: (message: string, data?: unknown) => void
+      error: (message: string, error?: unknown) => void
+      fatal: (message: string, error?: unknown) => void
       getLogs: () => LogItem[]
       clearLogs: () => void
     }
@@ -137,7 +144,7 @@ declare global {
       state: WebSocketState
       connect: () => void
       disconnect: () => void
-      send: (data: any) => void
+      send: (data: unknown) => void
       on: (event: string, callback: (...args: unknown[]) => void) => void
       off: (event: string, callback: (...args: unknown[]) => void) => void
     }
@@ -164,7 +171,7 @@ declare global {
 
     // 国际化
     __TF2025_I18N__?: {
-      t: (key: string, params?: Record<string, any>) => string
+      t: (key: string, params?: GlobalData) => string
       setLocale: (locale: string) => void
       getLocale: () => string
       loadLocale: (locale: string) => Promise<void>
@@ -215,16 +222,16 @@ declare global {
         url?: string
         files?: File[]
       }) => Promise<void>
-      canShare?: (data?: any) => boolean
+      canShare?: (data?: { title?: string; text?: string; url?: string; files?: File[] }) => boolean
     }
 
     // Payment Request API
-    PaymentRequest?: any
+    PaymentRequest?: typeof PaymentRequest
 
     // WebRTC API
-    RTCPeerConnection: any
-    RTCSessionDescription: any
-    RTCIceCandidate: any
+    RTCPeerConnection: typeof RTCPeerConnection
+    RTCSessionDescription: typeof RTCSessionDescription
+    RTCIceCandidate: typeof RTCIceCandidate
 
     // Service Worker API
     serviceWorker?: ServiceWorkerContainer
@@ -233,36 +240,45 @@ declare global {
     TMap?: {
       LatLng: new (lat: number, lng: number) => { lat: number; lng: number }
       Map: new (container: HTMLElement | string, options: {
-        center: any
+        center: { lat: number; lng: number }
         zoom?: number
         viewMode?: '2D' | '3D'
-        [key: string]: any
+        [key: string]: unknown
       }) => {
         destroy: () => void
         on: (event: string, callback: (...args: unknown[]) => void) => void
         off: (event: string, callback: (...args: unknown[]) => void) => void
-        [key: string]: any
+        [key: string]: unknown
       }
       MultiMarker: new (options: {
-        map: any
+        map: unknown
         geometries: Array<{
           id: string
-          position: any
+          styleId?: string
+          position: { lat: number; lng: number }
+          properties?: Record<string, unknown>
         }>
-        styles?: Record<string, any>
-      }) => any
+        styles?: Record<string, unknown>
+      }) => {
+        setGeometries: (geometries: Array<{
+          id: string
+          styleId?: string
+          position: { lat: number; lng: number }
+          properties?: Record<string, unknown>
+        }>) => void
+      }
       MarkerStyle: new (options: {
         width?: number
         height?: number
         anchor?: { x: number; y: number }
-        [key: string]: any
-      }) => any
+        [key: string]: unknown
+      }) => unknown
       InfoWindow: new (options: {
-        map: any
-        position: any
+        map: unknown
+        position: { lat: number; lng: number }
         content: string
-        [key: string]: any
-      }) => any
+        [key: string]: unknown
+      }) => unknown
     }
   }
 
@@ -279,7 +295,7 @@ declare global {
     msFullscreenEnabled?: boolean
 
     // 剪贴板API
-    execCommand(command: string, showUI?: boolean, value?: any): boolean
+    execCommand(command: string, showUI?: boolean, value?: string): boolean
 
     // 元素选择 - 通用字符串选择器优先
     querySelector: <E extends Element = Element>(
@@ -372,7 +388,7 @@ declare global {
     // 事件监听
     addEventListener: <K extends keyof HTMLElementEventMap>(
       type: K,
-      listener: (this: HTMLElement, ev: HTMLElementEventMap[K]) => any,
+      listener: (this: HTMLElement, ev: HTMLElementEventMap[K]) => unknown,
       options?: boolean | AddEventListenerOptions
     ) => void
     addEventListener: (
@@ -382,7 +398,7 @@ declare global {
     ) => void
     removeEventListener: <K extends keyof HTMLElementEventMap>(
       type: K,
-      listener: (this: HTMLElement, ev: HTMLElementEventMap[K]) => any,
+      listener: (this: HTMLElement, ev: HTMLElementEventMap[K]) => unknown,
       options?: boolean | EventListenerOptions
     ) => void
     removeEventListener: (
@@ -450,11 +466,11 @@ declare global {
 
   interface Console {
     // 日志级别
-    debug: (...data: any[]) => void
-    info: (...data: any[]) => void
-    warn: (...data: any[]) => void
-    error: (...data: any[]) => void
-    log: (...data: any[]) => void
+    debug: (...data: unknown[]) => void
+    info: (...data: unknown[]) => void
+    warn: (...data: unknown[]) => void
+    error: (...data: unknown[]) => void
+    log: (...data: unknown[]) => void
 
     // 分组
     group: (label?: string) => void
@@ -464,23 +480,23 @@ declare global {
     // 时间测量
     time: (label?: string) => void
     timeEnd: (label?: string) => void
-    timeLog: (label?: string, ...data: any[]) => void
+    timeLog: (label?: string, ...data: unknown[]) => void
 
     // 计数
     count: (label?: string) => void
     countReset: (label?: string) => void
 
     // 表格
-    table: (tabularData?: any, properties?: string[]) => void
+    table: (tabularData?: unknown, properties?: string[]) => void
 
     // 断言
-    assert: (condition?: boolean, ...data: any[]) => void
+    assert: (condition?: boolean, ...data: unknown[]) => void
 
     // 清除
     clear: () => void
 
     // 追踪
-    trace: (...data: any[]) => void
+    trace: (...data: unknown[]) => void
 
     // 样式化输出
     log: (message: string, ...styles: string[]) => void
@@ -557,8 +573,8 @@ declare module '@vue/runtime-core' {
     $downloadFile: (url: string, filename?: string) => void
 
     // 通知方法
-    $notify: (type: 'success' | 'error' | 'warning' | 'info', message: string, options?: any) => void
-    $toast: (message: string, options?: any) => void
+    $notify: (type: 'success' | 'error' | 'warning' | 'info', message: string, options?: GlobalData) => void
+    $toast: (message: string, options?: GlobalData) => void
 
     // 路由方法
     $goBack: () => void
@@ -574,21 +590,21 @@ declare module '@vue/runtime-core' {
     }
 
     // 国际化方法
-    $t: (key: string, params?: Record<string, any>) => string
+    $t: (key: string, params?: GlobalData) => string
 
     // 日志方法
     $log: {
-      debug: (message: string, data?: any) => void
-      info: (message: string, data?: any) => void
-      warn: (message: string, data?: any) => void
-      error: (message: string, error?: any) => void
+      debug: (message: string, data?: unknown) => void
+      info: (message: string, data?: unknown) => void
+      warn: (message: string, data?: unknown) => void
+      error: (message: string, error?: unknown) => void
     }
 
     // WebSocket 方法
     $websocket: {
       connect: () => void
       disconnect: () => void
-      send: (data: any) => void
+      send: (data: unknown) => void
       on: (event: string, callback: (...args: unknown[]) => void) => void
       off: (event: string, callback: (...args: unknown[]) => void) => void
       state: WebSocketState
@@ -597,134 +613,119 @@ declare module '@vue/runtime-core' {
 
   interface GlobalComponents {
     // Element Plus 组件自动注册
-    ElButton: any
-    ElInput: any
-    ElForm: any
-    ElFormItem: any
-    ElTable: any
-    ElTableColumn: any
-    ElPagination: any
-    ElDialog: any
-    ElDrawer: any
-    ElSelect: any
-    ElOption: any
-    ElRadio: any
-    ElRadioGroup: any
-    ElCheckbox: any
-    ElCheckboxGroup: any
-    ElSwitch: any
-    ElSlider: any
-    ElDatePicker: any
-    ElTimePicker: any
-    ElUpload: any
-    ElTree: any
-    ElTreeSelect: any
-    ElTransfer: any
-    ElSteps: any
-    ElStep: any
-    ElAlert: any
-    ElMessage: any
-    ElNotification: any
-    ElLoading: any
-    ElProgress: any
-    ElCard: any
-    ElCollapse: any
-    ElCollapseItem: any
-    ElTabs: any
-    ElTabPane: any
-    ElMenu: any
-    ElMenuItem: any
-    ElSubMenu: any
-    ElBreadcrumb: any
-    ElBreadcrumbItem: any
-    ElPageHeader: any
-    ElResult: any
-    ElSkeleton: any
-    ElEmpty: any
-    ElDescriptions: any
-    ElDescriptionsItem: any
-    ElStatistic: any
-    ElTimeline: any
-    ElTimelineItem: any
-    ElCalendar: any
-    ElImage: any
-    ElAvatar: any
-    ElRate: any
-    ElColorPicker: any
-    ElTransfer: any
-    ElForm: any
-    ElFormItem: any
-    ElInputNumber: any
-    ElAutocomplete: any
-    ElCascader: any
-    ElMention: any
-    ElPopconfirm: any
-    ElPopover: any
-    ElPopper: any
-    ElTooltip: any
-    ElDropdown: any
-    ElDropdownMenu: any
-    ElDropdownItem: any
-    ElCarousel: any
-    ElCarouselItem: any
-    ElBackTop: any
-    ElAffix: any
-    ElAnchor: any
-    ElAnchorLink: any
-    ElAnchorContainer: any
-    ElPageHeader: any
-    ElBreadcrumb: any
-    ElBreadcrumbItem: any
-    ElDescriptions: any
-    ElDescriptionsItem: any
-    ElResult: any
-    ElSkeleton: any
-    ElSkeletonItem: any
-    ElEmpty: any
-    ElStatistic: any
-    ElTimeline: any
-    ElTimelineItem: any
-    ElDivider: any
-    ElWatermark: any
-    ElConfigProvider: any
-    ElIcon: any
-    ElRow: any
-    ElCol: any
-    ElContainer: any
-    ElHeader: any
-    ElAside: any
-    ElMain: any
-    ElFooter: any
-    ElSpace: any
-    ElLayout: any
-    ElConfigProvider: any
+    ElButton: GlobalComponent
+    ElInput: GlobalComponent
+    ElForm: GlobalComponent
+    ElFormItem: GlobalComponent
+    ElTable: GlobalComponent
+    ElTableColumn: GlobalComponent
+    ElPagination: GlobalComponent
+    ElDialog: GlobalComponent
+    ElDrawer: GlobalComponent
+    ElSelect: GlobalComponent
+    ElOption: GlobalComponent
+    ElRadio: GlobalComponent
+    ElRadioGroup: GlobalComponent
+    ElCheckbox: GlobalComponent
+    ElCheckboxGroup: GlobalComponent
+    ElSwitch: GlobalComponent
+    ElSlider: GlobalComponent
+    ElDatePicker: GlobalComponent
+    ElTimePicker: GlobalComponent
+    ElUpload: GlobalComponent
+    ElTree: GlobalComponent
+    ElTreeSelect: GlobalComponent
+    ElTransfer: GlobalComponent
+    ElSteps: GlobalComponent
+    ElStep: GlobalComponent
+    ElAlert: GlobalComponent
+    ElMessage: GlobalComponent
+    ElNotification: GlobalComponent
+    ElLoading: GlobalComponent
+    ElProgress: GlobalComponent
+    ElCard: GlobalComponent
+    ElCollapse: GlobalComponent
+    ElCollapseItem: GlobalComponent
+    ElTabs: GlobalComponent
+    ElTabPane: GlobalComponent
+    ElMenu: GlobalComponent
+    ElMenuItem: GlobalComponent
+    ElSubMenu: GlobalComponent
+    ElBreadcrumb: GlobalComponent
+    ElBreadcrumbItem: GlobalComponent
+    ElPageHeader: GlobalComponent
+    ElResult: GlobalComponent
+    ElSkeleton: GlobalComponent
+    ElEmpty: GlobalComponent
+    ElDescriptions: GlobalComponent
+    ElDescriptionsItem: GlobalComponent
+    ElStatistic: GlobalComponent
+    ElTimeline: GlobalComponent
+    ElTimelineItem: GlobalComponent
+    ElCalendar: GlobalComponent
+    ElImage: GlobalComponent
+    ElAvatar: GlobalComponent
+    ElRate: GlobalComponent
+    ElColorPicker: GlobalComponent
+    ElInputNumber: GlobalComponent
+    ElAutocomplete: GlobalComponent
+    ElCascader: GlobalComponent
+    ElMention: GlobalComponent
+    ElPopconfirm: GlobalComponent
+    ElPopover: GlobalComponent
+    ElPopper: GlobalComponent
+    ElTooltip: GlobalComponent
+    ElDropdown: GlobalComponent
+    ElDropdownMenu: GlobalComponent
+    ElDropdownItem: GlobalComponent
+    ElCarousel: GlobalComponent
+    ElCarouselItem: GlobalComponent
+    ElBackTop: GlobalComponent
+    ElAffix: GlobalComponent
+    ElAnchor: GlobalComponent
+    ElAnchorLink: GlobalComponent
+    ElAnchorContainer: GlobalComponent
+    ElSkeletonItem: GlobalComponent
+    ElDivider: GlobalComponent
+    ElWatermark: GlobalComponent
+    ElConfigProvider: GlobalComponent
+    ElIcon: GlobalComponent
+    ElRow: GlobalComponent
+    ElCol: GlobalComponent
+    ElContainer: GlobalComponent
+    ElHeader: GlobalComponent
+    ElAside: GlobalComponent
+    ElMain: GlobalComponent
+    ElFooter: GlobalComponent
+    ElSpace: GlobalComponent
+    ElLayout: GlobalComponent
 
     // 自定义全局组件
-    LoadingSpinner: any
-    ErrorBoundary: any
-    NotificationContainer: any
-    SearchBox: any
-    FilterPanel: any
-    DataTable: any
-    StatusBadge: any
-    ActionButtons: any
-    PageHeader: any
-    PageContainer: any
-    SidePanel: any
-    UserSelector: any
-    StoreSelector: any
-    FileUpload: any
-    IconPicker: any
-    RichTextEditor: any
-    ColorPicker: any
-    TreeSelect: any
-    Transfer: any
-    VirtualList: any
-    DragDrop: any
-    SplitPane: any
-    Resizable: any
-    Draggable: any
-    Sortable: any
+    LoadingSpinner: GlobalComponent
+    ErrorBoundary: GlobalComponent
+    NotificationContainer: GlobalComponent
+    SearchBox: GlobalComponent
+    FilterPanel: GlobalComponent
+    DataTable: GlobalComponent
+    StatusBadge: GlobalComponent
+    ActionButtons: GlobalComponent
+    PageHeader: GlobalComponent
+    PageContainer: GlobalComponent
+    SidePanel: GlobalComponent
+    UserSelector: GlobalComponent
+    StoreSelector: GlobalComponent
+    FileUpload: GlobalComponent
+    IconPicker: GlobalComponent
+    RichTextEditor: GlobalComponent
+    ColorPicker: GlobalComponent
+    TreeSelect: GlobalComponent
+    Transfer: GlobalComponent
+    VirtualList: GlobalComponent
+    DragDrop: GlobalComponent
+    SplitPane: GlobalComponent
+    Resizable: GlobalComponent
+    Draggable: GlobalComponent
+    Sortable: GlobalComponent
   }
 }
 

@@ -1,6 +1,6 @@
 const { getDatabase } = require('../config/database')
 const { normalizeDateTime } = require('../utils/time')
-const { ensureInvoiceSequenceTable } = require('../utils/invoice-number')
+const { prepareInvoiceNumberTransaction, generateInvoiceNumber } = require('../utils/invoice-number')
 const log = require('../utils/log')
 
 /**
@@ -71,7 +71,6 @@ class TransferService {
     store_id,
     salesperson_name,
     payment_method,
-    invoice_number,
     sale_time
   }) {
     log.debug('=== TransferService.wholesaleToPeer 开始 ===')
@@ -88,7 +87,7 @@ class TransferService {
 
     try {
       // 发票序列表的建表预检必须发生在业务事务之前；CREATE TABLE 会隐式提交并清除事务保存点。
-      await ensureInvoiceSequenceTable(connection)
+      await prepareInvoiceNumberTransaction(connection)
       await connection.beginTransaction()
 
       if (!sale_time) {
@@ -253,14 +252,8 @@ class TransferService {
             [price, saleTimeStr, price, saleTimeStr, remarks || null, phone_id]
           )
 
-          // 🔥 如果没有发票号，自动生成（使用销售时间）
-          let finalInvoiceNumber = invoice_number
-          if (!finalInvoiceNumber) {
-            const { generateInvoiceNumber } = require('../utils/invoice-number')
-            const saleDateObj = new Date(saleTimeStr)
-            finalInvoiceNumber = await generateInvoiceNumber('wholesale', connection, saleDateObj)
-            log.debug(`✅ 自动生成批发发票号: ${finalInvoiceNumber}, 销售日期: ${saleTimeStr.split(' ')[0]}`)
-          }
+          const finalInvoiceNumber = await generateInvoiceNumber('wholesale', connection, saleTimeStr)
+          log.debug(`✅ 自动生成批发发票号: ${finalInvoiceNumber}, 销售日期: ${saleTimeStr.split(' ')[0]}`)
 
           // 创建销售记录（批发模式）
           // 注意：sales表不存储salesperson_name，通过operator_id关联users表获取
@@ -358,7 +351,7 @@ class TransferService {
 
     try {
       // 与批发相同，避免发票序列表初始化破坏划拨事务中的保存点。
-      await ensureInvoiceSequenceTable(connection)
+      await prepareInvoiceNumberTransaction(connection)
       await connection.beginTransaction()
 
       if (!sale_time) {
@@ -504,9 +497,7 @@ class TransferService {
           )
 
           // 🔥 自动生成划拨发票号（使用销售时间）
-          const { generateInvoiceNumber } = require('../utils/invoice-number')
-          const saleDateObj = new Date(saleTimeStr)
-          const invoiceNumber = await generateInvoiceNumber('supplier_proxy', connection, saleDateObj)
+          const invoiceNumber = await generateInvoiceNumber('supplier_proxy', connection, saleTimeStr)
           log.debug(`✅ 自动生成划拨发票号: ${invoiceNumber}, 销售日期: ${saleTimeStr.split(' ')[0]}`)
 
           // 创建销售记录（划拨模式也创建销售记录）

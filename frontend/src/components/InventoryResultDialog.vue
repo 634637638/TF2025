@@ -10,81 +10,81 @@
     :show-default-footer="false"
   >
     <div class="inventory-mobile-body">
-            <div class="product-header mobile-only">
-              <div class="product-info">
-                <div class="product-main">
-                  <span class="brand">{{ product.brand }}</span>
-                  <span class="model">{{ product.model }}</span>
-                </div>
-                <div
-                  v-if="product.color || product.memory"
-                  class="product-specs"
-                >
-                  <span
-                    v-if="product.color"
-                    class="color"
-                  >{{ product.color }}</span>
-                  <span
-                    v-if="product.memory"
-                    class="memory"
-                  >{{ product.memory }}</span>
-                </div>
-                <span
-                  v-if="!loading"
-                  class="total-count"
-                >共{{ totalCount }}台</span>
-              </div>
+      <div class="product-header mobile-only">
+        <div class="product-info">
+          <div class="product-main">
+            <span class="brand">{{ product.brand }}</span>
+            <span class="model">{{ product.model }}</span>
+          </div>
+          <div
+            v-if="product.color || product.memory"
+            class="product-specs"
+          >
+            <span
+              v-if="product.color"
+              class="color"
+            >{{ product.color }}</span>
+            <span
+              v-if="product.memory"
+              class="memory"
+            >{{ product.memory }}</span>
+          </div>
+          <span
+            v-if="!loading"
+            class="total-count"
+          >共{{ totalCount }}台</span>
+        </div>
+      </div>
+
+      <SectionLoading
+        v-if="loading"
+        text="加载中..."
+        size="compact"
+      />
+
+      <div
+        v-else
+        class="inventory-list mobile-only"
+      >
+        <div
+          v-for="(item, index) in inventoryData"
+          :key="item.id"
+          class="inventory-item"
+          :class="{ 'priority-item': index === 0 }"
+        >
+          <div
+            class="item-rank"
+            :class="`rank-${Math.min(index + 1, 3)}`"
+          >
+            <span v-if="index === 0"><i class="fas fa-star" /></span>
+            <span v-else>{{ index + 1 }}</span>
+          </div>
+
+          <div class="item-content">
+            <div class="item-header">
+              <span class="store-name">{{ item.store_name }}</span>
+              <span class="supplier-name">{{ item.supplier_name || '未关联' }}</span>
+              <span class="date">{{ item.inventory_date }}</span>
             </div>
-
-            <SectionLoading
-              v-if="loading"
-              text="加载中..."
-              size="compact"
-            />
-
-            <div
-              v-else
-              class="inventory-list mobile-only"
-            >
-              <div
-                v-for="(item, index) in inventoryData"
-                :key="item.id"
-                class="inventory-item"
-                :class="{ 'priority-item': index === 0 }"
+            <div class="item-details">
+              <span class="identifier-label">序列号</span>
+              <span class="identifier-value">{{ getDeviceIdentifier(item) }}</span>
+              <span
+                class="inventory-age"
+                :class="getDaysClass(item.inventory_days)"
               >
-                <div
-                  class="item-rank"
-                  :class="`rank-${Math.min(index + 1, 3)}`"
-                >
-                  <span v-if="index === 0"><i class="fas fa-star" /></span>
-                  <span v-else>{{ index + 1 }}</span>
-                </div>
-
-                <div class="item-content">
-                  <div class="item-header">
-                    <span class="store-name">{{ item.store_name }}</span>
-                    <span class="supplier-name">{{ item.supplier_name || '未关联' }}</span>
-                    <span class="date">{{ item.inventory_date }}</span>
-                  </div>
-                  <div class="item-details">
-                    <span class="identifier-label">序列号</span>
-                    <span class="identifier-value">{{ getDeviceIdentifier(item) }}</span>
-                    <span
-                      class="inventory-age"
-                      :class="getDaysClass(item.inventory_days)"
-                    >
-                      <span class="number">{{ item.inventory_days }}</span>
-                      <span class="label">天</span>
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <DataEmptyState
-                v-if="!loading && inventoryData.length === 0"
-                description="暂无在库明细"
-              />
+                <span class="number">{{ item.inventory_days }}</span>
+                <span class="label">天</span>
+              </span>
             </div>
+          </div>
+        </div>
+
+        <DataEmptyState
+          v-if="!loading && inventoryData.length === 0"
+          description="暂无在库明细"
+        />
+      </div>
     </div>
   </MobileDialog>
 
@@ -153,8 +153,8 @@
             <span class="store-name">{{ item.store_name }}</span>
             <span class="supplier-name">{{ item.supplier_name || '未关联' }}</span>
             <span class="date">{{ item.inventory_date }}</span>
-        </div>
-        <div class="item-details">
+          </div>
+          <div class="item-details">
             <span class="identifier-label">序列号</span>
             <span class="identifier-value">{{ getDeviceIdentifier(item) }}</span>
             <span

@@ -68,7 +68,7 @@
 import { computed } from 'vue'
 import InlineLoading from '@/components/InlineLoading.vue'
 import MobileDialog from '@/components/MobileDialog.vue'
-import type { Role, User } from '../types'
+import type { PermissionRole as Role, PermissionUser as User } from '../types'
 import UserRoleAssignmentBody from './UserRoleAssignmentBody.vue'
 import UserRoleAssignmentSummary from './UserRoleAssignmentSummary.vue'
 

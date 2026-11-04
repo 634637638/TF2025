@@ -165,8 +165,8 @@
       :show-default-footer="false"
     >
       <el-table
-        class="data-table"
         v-tf-loading="loading"
+        class="data-table"
         :data="filteredLowStockItems"
         stripe
         :table-layout="'auto'"
@@ -284,8 +284,8 @@
             </div>
           </template>
           <el-table
-            class="data-table"
             v-tf-loading="loading"
+            class="data-table"
             :data="recentSoldModels"
             stripe
             :table-layout="'auto'"
@@ -500,8 +500,8 @@
           </div>
 
           <el-table
-            class="data-table"
             v-tf-loading="loading"
+            class="data-table"
             :data="filteredLowStockItems"
             stripe
             style="width: 100%"
@@ -711,7 +711,7 @@ import type {
 } from '@/types/analytics'
 import type { InventoryAnalyticsProps, LoadingChangeEmits } from '@/types/component'
 import { useAnalyticsFieldVisibility } from './useAnalyticsFieldVisibility'
-import echarts, { ECharts } from '@/utils/echarts'
+import echarts, { ECharts, type EChartsOption, type CallbackDataParams } from '@/utils/echarts'
 import { buildCsvContent } from '@/utils/csv-export'
 import { logger } from '@/utils/logger'
 import { formatDate as formatGlobalDate } from '@/utils/format'
@@ -879,9 +879,9 @@ const supplierQualityAverage = computed(() => {
 
 // 缓存键
 const CACHE_KEYS = {
-  inventory: (params: any) => `/analytics/inventory:${JSON.stringify(params)}`,
-  lowStock: (params: any) => `/analytics/inventory/low-stock:${JSON.stringify(params)}`,
-  turnover: (params: any) => `/analytics/inventory/turnover:${JSON.stringify(params)}`,
+  inventory: (params: Record<string, unknown>) => `/analytics/inventory:${JSON.stringify(params)}`,
+  lowStock: (params: Record<string, unknown>) => `/analytics/inventory/low-stock:${JSON.stringify(params)}`,
+  turnover: (params: Record<string, unknown>) => `/analytics/inventory/turnover:${JSON.stringify(params)}`,
   supplierStats: (params: InventoryFilterParams) => `/analytics/inventory/supplier-stats:${JSON.stringify(params)}`,
   recentSold: (params: InventoryFilterParams) => `/analytics/inventory/recent-sold:${JSON.stringify(params)}`
 }
@@ -1036,7 +1036,7 @@ const getStockStatusText = (status?: string) => {
   return textMap[status || 'in_stock'] || '正常'
 }
 
-const handleReplenish = (row: any) => {
+const handleReplenish = (row: InventoryLowStockItem) => {
   // 当前页面没有写入补货单的后端接口，不能提示虚假的“创建成功”。
   warning(`请在库存管理中为 ${row.brand} ${row.model} 创建补货单`)
 }
@@ -1125,12 +1125,13 @@ const updateCategoryChart = () => {
     turnover_rate: item.turnover_rate || 0
   }))
 
-  const option: any = {
+  const option: EChartsOption = {
     color: ['#205781', '#4F959D', '#98D2C0', '#F6B17A', '#E07A5F', '#3D405B'],
     tooltip: {
       trigger: 'item',
-      formatter: (params: any) => {
-        return `${params.name}<br/>库存价值: ¥${formatNumber(params.value)}<br/>周转率: ${formatDecimal(params.data.turnover_rate)}`
+      formatter: (params: CallbackDataParams) => {
+        const data = params.data && typeof params.data === 'object' ? params.data as { turnover_rate?: number } : {}
+        return `${params.name}<br/>库存价值: ¥${formatNumber(Number(params.value) || 0)}<br/>周转率: ${formatDecimal(Number(data.turnover_rate) || 0)}`
       }
     },
     grid: {
@@ -1214,7 +1215,7 @@ const updateTurnoverChart = () => {
   const turnoverData = turnoverTrendData.value.map(item => item.actual_turnover)
   const targetData = turnoverTrendData.value.map(item => item.target_turnover)
 
-  const option: any = {
+  const option: EChartsOption = {
     color: ['#205781', '#F6B17A'],
     tooltip: {
       trigger: 'axis'
@@ -1290,7 +1291,7 @@ const updateSupplierChart = () => {
   // 使用实际的供应商分析数据
   const supplierData = inventoryData.value?.supplier_analysis || []
 
-  const option: any = {
+  const option: EChartsOption = {
     color: ['#4F959D', '#F6B17A', '#98D2C0', '#205781'],
     tooltip: {
       trigger: 'item'
@@ -1319,7 +1320,7 @@ const updateSupplierChart = () => {
   if (supplierChartType.value === 'bar') {
     option.xAxis = {
       type: 'category',
-      data: supplierData.map((item: any) => item.name),
+      data: supplierData.map(item => item.name),
       axisLine: { lineStyle: { color: '#d6dde5' } },
       axisLabel: { color: '#5b6572', interval: 0, rotate: supplierData.length > 4 ? 20 : 0 }
     }
@@ -1331,7 +1332,7 @@ const updateSupplierChart = () => {
     option.series = [{
       name: '库存价值',
       type: 'bar',
-      data: supplierData.map((item: any) => ({
+      data: supplierData.map(item => ({
         value: item.total_value,
         itemStyle: {
           color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [

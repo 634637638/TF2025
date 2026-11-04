@@ -3,7 +3,7 @@
  * 解决安卓扫码识别慢的问题
  */
 
-export interface DeviceInfo {
+export interface ScannerDeviceInfo {
   isAndroid: boolean
   isIOS: boolean
   androidVersion: number
@@ -85,7 +85,7 @@ export class ScanOptimizer {
   /**
    * 检测设备信息
    */
-  detectDevice(): DeviceInfo {
+  detectDevice(): ScannerDeviceInfo {
     const userAgent = navigator.userAgent
     const isAndroid = /Android/.test(userAgent)
     const isIOS = /iPhone|iPad|iPod/.test(userAgent)
@@ -121,7 +121,7 @@ export class ScanOptimizer {
   /**
    * 生成优化的摄像头配置 - 精准识别优化
    */
-  generateCameraConfig(deviceInfo: DeviceInfo): MediaStreamConstraints {
+  generateCameraConfig(deviceInfo: ScannerDeviceInfo): MediaStreamConstraints {
     const isMobile = deviceInfo.isAndroid || deviceInfo.isIOS
     const idealWidth = deviceInfo.isLowEnd ? 1280 : (isMobile ? 1920 : 1280)
     const idealHeight = deviceInfo.isLowEnd ? 720 : (isMobile ? 1080 : 720)
@@ -147,7 +147,7 @@ export class ScanOptimizer {
   /**
    * 获取安卓优化配置
    */
-  getAndroidOptimization(deviceInfo: DeviceInfo): Partial<AndroidOptimization> {
+  getAndroidOptimization(deviceInfo: ScannerDeviceInfo): Partial<AndroidOptimization> {
     if (!deviceInfo.isAndroid) return {}
 
     const optimizations: AndroidOptimization = {
@@ -180,7 +180,7 @@ export class ScanOptimizer {
   /**
    * 生成ZXing解码器提示 - 精准识别优化
    */
-  generateZXingHints(type: 'imei' | 'serial', deviceInfo: DeviceInfo): ZXingHints {
+  generateZXingHints(type: 'imei' | 'serial', deviceInfo: ScannerDeviceInfo): ZXingHints {
     // 生成浏览器兼容的配置对象
     const hints: ZXingHints = {
       tryHarder: true,
@@ -227,7 +227,7 @@ export class ScanOptimizer {
   /**
    * 获取优化的摄像头设备ID
    */
-  async getOptimalCameraId(codeReader: VideoInputDeviceReader, _deviceInfo: DeviceInfo): Promise<string | undefined> {
+  async getOptimalCameraId(codeReader: VideoInputDeviceReader, _deviceInfo: ScannerDeviceInfo): Promise<string | undefined> {
     try {
       const videoDevices = await codeReader.listVideoInputDevices()
 
@@ -260,7 +260,7 @@ export class ScanOptimizer {
   /**
    * 应用安卓特定的视频优化
    */
-  applyAndroidVideoOptimizations(video: HTMLVideoElement, deviceInfo: DeviceInfo): void {
+  applyAndroidVideoOptimizations(video: HTMLVideoElement, deviceInfo: ScannerDeviceInfo): void {
     if (!deviceInfo.isAndroid) return
 
     const optimization = this.getAndroidOptimization(deviceInfo)
@@ -349,7 +349,7 @@ export class ScanOptimizer {
   /**
    * 生成智能提示
    */
-  generateSmartTips(phone: ScannerPhoneInfo | undefined, type: 'imei' | 'serial', deviceInfo: DeviceInfo): string[] {
+  generateSmartTips(phone: ScannerPhoneInfo | undefined, type: 'imei' | 'serial', deviceInfo: ScannerDeviceInfo): string[] {
     const brand = phone?.brand?.toLowerCase() || ''
     const isApple = brand.includes('apple')
     const isAndroid = deviceInfo.isAndroid

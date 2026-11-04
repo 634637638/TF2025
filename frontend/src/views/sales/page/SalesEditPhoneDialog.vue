@@ -14,7 +14,7 @@
           class="bg-gradient-brand"
         >
           <div class="text-xs opacity-80 mb-1">
-              品牌
+            品牌
           </div>
           <div class="text-base font-semibold">
             {{ editForm.brand || '未设置' }}
@@ -26,7 +26,7 @@
           class="bg-gradient-model"
         >
           <div class="text-xs opacity-80 mb-1">
-              型号
+            型号
           </div>
           <div class="text-base font-semibold">
             {{ editForm.model || '未设置' }}
@@ -38,7 +38,7 @@
           class="bg-gradient-color"
         >
           <div class="text-xs opacity-80 mb-1">
-              颜色
+            颜色
           </div>
           <div class="text-base font-semibold">
             {{ editForm.color || '未设置' }}
@@ -50,7 +50,7 @@
           class="bg-gradient-memory"
         >
           <div class="text-xs opacity-80 mb-1">
-              内存
+            内存
           </div>
           <div class="text-base font-semibold">
             {{ editForm.memory || '未设置' }}
@@ -62,7 +62,7 @@
           class="bg-gradient-serial"
         >
           <div class="text-xs opacity-80 mb-1">
-              序列号
+            序列号
           </div>
           <div class="text-sm font-semibold">
             {{ editForm.serial_number || '未设置' }}
@@ -74,7 +74,7 @@
           class="bg-gradient-purchase"
         >
           <div class="text-xs opacity-80 mb-1">
-              入库价格
+            入库价格
           </div>
           <div class="text-base font-semibold">
             {{ editForm.purchase_cost ? `¥${Math.round(editForm.purchase_cost)}` : '未定价' }}

@@ -108,7 +108,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getCart, removeFromCart } from '@/api/shop-public'
-import type { CartItem } from '@/api/shop-public'
+import type { CartData, CartItem } from '@/api/shop-public'
 import { storage } from '@/services/storage'
 import { H5_STORAGE_KEYS } from '@/constants/storage'
 import Image from '@/components/Image.vue'
@@ -119,7 +119,7 @@ import { formatAmount } from '@/utils/format'
 const router = useRouter()
 
 // 数据
-const cartData = ref<any>(null)
+const cartData = ref<CartData | null>(null)
 const loading = ref(true)
 const selectedItems = ref<Set<number>>(new Set())
 const cartId = ref('')
@@ -159,9 +159,9 @@ const loadCart = async () => {
 
     // 确保数据是响应式的
     cartData.value = {
-      items: (data as any).items || [],
-      total: (data as any).total || 0,
-      count: (data as any).count || 0
+      items: data.items || [],
+      total: data.total || 0,
+      count: data.count || 0
     }
 
     // 过滤掉已删除的商品

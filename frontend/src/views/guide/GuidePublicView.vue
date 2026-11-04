@@ -2,17 +2,30 @@
   <main class="guide-public">
     <section class="guide-shell">
       <header class="guide-brand">
-        <div class="guide-brand__mark"><i class="fas fa-compass" /></div>
+        <div class="guide-brand__mark">
+          <i class="fas fa-compass" />
+        </div>
         <div class="guide-brand__text">
-          <p class="guide-brand__eyebrow">{{ settings.site_eyebrow || 'DH NAVIGATION' }}</p>
+          <p class="guide-brand__eyebrow">
+            {{ settings.site_eyebrow || 'DH NAVIGATION' }}
+          </p>
           <h1>{{ settings.site_title || '导航中心' }}</h1>
         </div>
       </header>
 
-      <section v-if="announcements.length" class="guide-notices" aria-label="公告">
+      <section
+        v-if="announcements.length"
+        class="guide-notices"
+        aria-label="公告"
+      >
         <div class="guide-notices__cards">
-          <article v-if="pinnedAnnouncement" class="guide-notice-card guide-notice-card--pinned">
-            <div class="guide-notice-card__label"><i class="fas fa-thumbtack" />置顶公告</div>
+          <article
+            v-if="pinnedAnnouncement"
+            class="guide-notice-card guide-notice-card--pinned"
+          >
+            <div class="guide-notice-card__label">
+              <i class="fas fa-thumbtack" />置顶公告
+            </div>
             <a
               :href="pinnedAnnouncement.link_url || undefined"
               :target="pinnedAnnouncement.link_url ? '_blank' : undefined"
@@ -23,8 +36,13 @@
               <span v-if="pinnedAnnouncement.content">{{ pinnedAnnouncement.content }}</span>
             </a>
           </article>
-          <article v-if="scrollingAnnouncements.length" class="guide-notice-card guide-notice-card--rotation">
-            <div class="guide-notice-card__label"><i class="fas fa-bullhorn" />公告</div>
+          <article
+            v-if="scrollingAnnouncements.length"
+            class="guide-notice-card guide-notice-card--rotation"
+          >
+            <div class="guide-notice-card__label">
+              <i class="fas fa-bullhorn" />公告
+            </div>
             <a
               v-if="currentScrollingAnnouncement"
               :key="currentScrollingAnnouncement.id"
@@ -40,19 +58,33 @@
         </div>
       </section>
 
-      <section v-if="categories.length" class="guide-categories">
-        <article v-for="category in categories" :key="category.id" class="guide-category">
+      <section
+        v-if="categories.length"
+        class="guide-categories"
+      >
+        <article
+          v-for="category in categories"
+          :key="category.id"
+          class="guide-category"
+        >
           <div class="guide-category__header">
-            <div class="guide-category__icon"><i :class="category.icon || 'fas fa-layer-group'" /></div>
+            <div class="guide-category__icon">
+              <i :class="category.icon || 'fas fa-layer-group'" />
+            </div>
             <div class="guide-category__heading">
               <h2>{{ category.name }}</h2>
-              <p v-if="category.description">{{ category.description }}</p>
+              <p v-if="category.description">
+                {{ category.description }}
+              </p>
             </div>
             <div
               v-if="!category.locked && category.children?.length"
               class="guide-category__tabs"
             >
-              <el-tabs v-model="activeCategoryTabs[category.id]" class="tf-page-tabs tf-page-tabs--compact">
+              <el-tabs
+                v-model="activeCategoryTabs[category.id]"
+                class="tf-page-tabs tf-page-tabs--compact"
+              >
                 <el-tab-pane
                   v-for="item in publicCategoryTabs(category)"
                   :key="item.id"
@@ -69,10 +101,15 @@
               title="解锁分类"
               aria-label="解锁分类"
               @click="openUnlock(publicActiveTarget(category))"
-            ><i class="fas fa-lock" /></el-button>
+            >
+              <i class="fas fa-lock" />
+            </el-button>
           </div>
 
-          <div v-if="!publicActiveTarget(category).locked && publicActiveTarget(category).links.length" class="guide-category__content">
+          <div
+            v-if="!publicActiveTarget(category).locked && publicActiveTarget(category).links.length"
+            class="guide-category__content"
+          >
             <div class="guide-links">
               <a
                 v-for="link in publicActiveTarget(category).links"
@@ -88,66 +125,149 @@
               </a>
             </div>
           </div>
-          <div v-else-if="publicActiveTarget(category).locked" class="guide-category__empty">仅会员可见</div>
-          <div v-else class="guide-category__empty">暂无导航</div>
+          <div
+            v-else-if="publicActiveTarget(category).locked"
+            class="guide-category__empty"
+          >
+            仅会员可见
+          </div>
+          <div
+            v-else
+            class="guide-category__empty"
+          >
+            暂无导航
+          </div>
         </article>
       </section>
 
-      <div v-else class="guide-empty">
+      <div
+        v-else
+        class="guide-empty"
+      >
         <i class="fas fa-compass" />
         <strong>暂无导航内容</strong>
         <span>请稍后再来查看</span>
       </div>
 
-      <footer class="guide-footer">{{ settings.footer_text || 'DH Navigation' }}</footer>
+      <footer class="guide-footer">
+        {{ settings.footer_text || 'DH Navigation' }}
+      </footer>
     </section>
 
     <div
       v-if="hasCustomerService"
       class="guide-floating-service"
     >
-      <el-button class="tf-button--service-float" aria-label="联系客服" title="联系客服" @click="serviceVisible = true">
+      <el-button
+        class="tf-button--service-float"
+        aria-label="联系客服"
+        title="联系客服"
+        @click="serviceVisible = true"
+      >
         <i class="fas fa-headset" />
       </el-button>
       <span class="guide-floating-service__label">客服</span>
     </div>
 
-    <MobileDialog v-model="serviceVisible" title="联系客服" width="320px" :show-close="true" :show-default-footer="false">
+    <MobileDialog
+      v-model="serviceVisible"
+      title="联系客服"
+      width="320px"
+      :show-close="true"
+      :show-default-footer="false"
+    >
       <div class="guide-service">
-        <div v-if="settings.contact_phone && settings.contact_wechat" class="guide-service__row">
-          <el-button tag="a" class="tf-button--service-card" :href="`tel:${settings.contact_phone}`">
+        <div
+          v-if="settings.contact_phone && settings.contact_wechat"
+          class="guide-service__row"
+        >
+          <el-button
+            tag="a"
+            class="tf-button--service-card"
+            :href="`tel:${settings.contact_phone}`"
+          >
             <span class="guide-service__icon guide-service__icon--phone"><i class="fas fa-phone" /></span>
             <span class="guide-service__content"><span>拨打</span><strong>{{ settings.contact_phone }}</strong></span>
           </el-button>
-          <el-button native-type="button" class="tf-button--service-card" @click="addWechat">
+          <el-button
+            native-type="button"
+            class="tf-button--service-card"
+            @click="addWechat"
+          >
             <span class="guide-service__icon guide-service__icon--wechat"><i class="fab fa-weixin" /></span>
             <span class="guide-service__content"><span>加微信</span><strong>{{ settings.contact_wechat }}</strong></span>
           </el-button>
         </div>
-        <el-button v-else-if="settings.contact_phone" tag="a" class="tf-button--service-card" :href="`tel:${settings.contact_phone}`">
+        <el-button
+          v-else-if="settings.contact_phone"
+          tag="a"
+          class="tf-button--service-card"
+          :href="`tel:${settings.contact_phone}`"
+        >
           <span class="guide-service__icon guide-service__icon--phone"><i class="fas fa-phone" /></span>
           <span class="guide-service__content"><span>客服电话</span><strong>{{ settings.contact_phone }}</strong></span>
         </el-button>
-        <el-button v-else-if="settings.contact_wechat" native-type="button" class="tf-button--service-card" @click="addWechat">
+        <el-button
+          v-else-if="settings.contact_wechat"
+          native-type="button"
+          class="tf-button--service-card"
+          @click="addWechat"
+        >
           <span class="guide-service__icon guide-service__icon--wechat"><i class="fab fa-weixin" /></span>
           <span class="guide-service__content"><span>微信号</span><strong>{{ settings.contact_wechat }}</strong></span>
         </el-button>
       </div>
     </MobileDialog>
 
-    <MobileDialog v-model="unlockVisible" title="访问受限分类" width="420px" :show-default-footer="false">
-      <form class="guide-dialog-form" @submit.prevent="submitUnlock">
-        <p class="guide-dialog-form__hint">请输入“{{ selectedCategory?.name }}”的访问密码</p>
-        <el-input v-model="password" type="password" show-password placeholder="访问密码" autocomplete="off" @keyup.enter="submitUnlock" />
+    <MobileDialog
+      v-model="unlockVisible"
+      title="访问受限分类"
+      width="420px"
+      :show-default-footer="false"
+    >
+      <form
+        class="guide-dialog-form"
+        @submit.prevent="submitUnlock"
+      >
+        <p class="guide-dialog-form__hint">
+          请输入“{{ selectedCategory?.name }}”的访问密码
+        </p>
+        <el-input
+          v-model="password"
+          type="password"
+          show-password
+          placeholder="访问密码"
+          autocomplete="off"
+          @keyup.enter="submitUnlock"
+        />
         <div class="guide-dialog-form__actions">
-          <el-button @click="unlockVisible = false">取消</el-button>
-          <el-button type="primary" :loading="unlocking" native-type="submit">确认访问</el-button>
+          <el-button @click="unlockVisible = false">
+            取消
+          </el-button>
+          <el-button
+            type="primary"
+            :loading="unlocking"
+            native-type="submit"
+          >
+            确认访问
+          </el-button>
         </div>
       </form>
     </MobileDialog>
 
-    <MobileDialog v-model="filePreviewVisible" title="图片预览" width="420px" :show-default-footer="false">
-      <div class="guide-qr-preview"><img v-if="previewImageUrl" :src="previewImageUrl" :alt="previewFile?.title || '图片预览'"></div>
+    <MobileDialog
+      v-model="filePreviewVisible"
+      title="图片预览"
+      width="420px"
+      :show-default-footer="false"
+    >
+      <div class="guide-qr-preview">
+        <img
+          v-if="previewImageUrl"
+          :src="previewImageUrl"
+          :alt="previewFile?.title || '图片预览'"
+        >
+      </div>
     </MobileDialog>
   </main>
 </template>
@@ -158,6 +278,8 @@ import { ElMessage } from 'element-plus'
 import MobileDialog from '@/components/MobileDialog.vue'
 import { guideApi } from '@/api/guide'
 import { extractBlobResponse, unifiedApi } from '@/utils/unified-api'
+import { getRequestErrorMessage } from '@/utils/api-response'
+import { logger } from '@/utils/logger'
 import type { GuideAnnouncement, GuideCategory, GuideLink, GuideSettings, GuideUnlockResponse } from '@/types/guide'
 
 const announcements = ref<GuideAnnouncement[]>([])
@@ -230,7 +352,8 @@ const addWechat = async () => {
     window.setTimeout(() => {
       window.location.href = `weixin://dl/chat?${encodeURIComponent(wechat)}`
     }, 1000)
-  } catch (_) {
+  } catch (error) {
+    logger.warn('复制客服微信失败:', error)
     ElMessage.info(`请添加客服微信：${wechat}`)
   }
 }
@@ -261,8 +384,8 @@ const submitUnlock = async () => {
     if (unlocked) replaceCategory(unlocked)
     unlockVisible.value = false
     ElMessage.success('分类已解锁')
-  } catch (_) {
-    // 统一 API 已负责错误提示，这里只收起按钮 loading。
+  } catch (error) {
+    ElMessage.error(getRequestErrorMessage(error, '分类解锁失败'))
   } finally {
     unlocking.value = false
   }
@@ -301,8 +424,8 @@ const openImagePreview = async (link: GuideLink) => {
     previewImageUrl.value = URL.createObjectURL(extractBlobResponse(response))
     previewFile.value = link
     filePreviewVisible.value = true
-  } catch (_) {
-    ElMessage.error('图片加载失败，请刷新页面后重试')
+  } catch (error) {
+    ElMessage.error(getRequestErrorMessage(error, '图片加载失败，请刷新页面后重试'))
   }
 }
 
@@ -313,6 +436,7 @@ const downloadGuideFile = (link: GuideLink) => {
     ? { 'X-Guide-File-Expires': String(link.file_expires_at), 'X-Guide-File-Signature': link.file_signature }
     : undefined
   void unifiedApi.download(downloadPath, link.file_name || link.title, headers ? { headers } : undefined)
+    .catch(error => ElMessage.error(getRequestErrorMessage(error, '文件下载失败，请稍后重试')))
 }
 
 const handleLinkClick = (event: MouseEvent, link: GuideLink) => {

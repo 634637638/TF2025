@@ -204,9 +204,9 @@
 
         <el-table
           v-else
+          v-tf-loading="loading"
           class="data-table"
-              v-tf-loading="loading"
-              :data="logList"
+          :data="logList"
           stripe
           border
           style="width: 100%"
@@ -700,7 +700,38 @@ const { loading } = useLoadingState()
 loading.value = true
 const clearLoading = ref(false)
 const deleteLoading = ref(false)
-const logList = ref<any[]>([])
+interface SyncDetailItem {
+  error?: string
+  reason?: string
+  message?: string
+  remark?: string
+  [key: string]: unknown
+}
+
+interface SyncDetails {
+  items?: {
+    success?: SyncDetailItem[]
+    failed?: SyncDetailItem[]
+  }
+  [key: string]: unknown
+}
+
+interface SyncLogRecord {
+  id: number
+  status?: string
+  start_time?: string
+  end_time?: string
+  duration?: number | string
+  config_name?: string
+  total_count?: number
+  success_count?: number
+  failed_count?: number
+  error_message?: string
+  sync_details?: string | SyncDetails | null
+  [key: string]: unknown
+}
+
+const logList = ref<SyncLogRecord[]>([])
 
 // 统计数据
 const stats = ref({
@@ -716,7 +747,7 @@ const lastTapTimestamp = ref(0)
 
 // 详情对话框
 const showDetailDialog = ref(false)
-const currentLog = ref<any>(null)
+const currentLog = ref<SyncLogRecord | null>(null)
 
 // 解析同步详情
 const parsedSyncDetails = computed(() => {
@@ -730,21 +761,22 @@ const parsedSyncDetails = computed(() => {
   }
 })
 
-const parseSyncDetails = (syncDetails: any) => {
+const parseSyncDetails = (syncDetails: unknown): SyncDetails | null => {
   if (!syncDetails) return null
   try {
-    return typeof syncDetails === 'string' ? JSON.parse(syncDetails) : syncDetails
+    const parsed = typeof syncDetails === 'string' ? JSON.parse(syncDetails) : syncDetails
+    return parsed && typeof parsed === 'object' ? parsed as SyncDetails : null
   } catch {
     return null
   }
 }
 
-const getFailedItemReason = (item: any) => {
+const getFailedItemReason = (item: SyncDetailItem | undefined) => {
   if (!item) return ''
   return item.error || item.reason || item.message || item.remark || ''
 }
 
-const getLogErrorSummary = (log: any) => {
+const getLogErrorSummary = (log: SyncLogRecord | null | undefined) => {
   if (!log) return ''
 
   if (log.error_message) {
@@ -839,7 +871,7 @@ const fetchLogStats = async () => {
 }
 
 // 查看详情
-const handleViewDetail = (row: any) => {
+const handleViewDetail = (row: SyncLogRecord) => {
   if (!canView.value) {
     handleNoPermission('view')
     return
@@ -850,7 +882,7 @@ const handleViewDetail = (row: any) => {
 }
 
 // 删除单条日志
-const handleDeleteLog = async (row: any) => {
+const handleDeleteLog = async (row: SyncLogRecord) => {
   if (!canDelete.value) {
     handleNoPermission('delete')
     return
@@ -877,7 +909,7 @@ const handleDeleteLog = async (row: any) => {
     } else {
       ElMessage.error(res.message || '删除失败')
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error !== 'cancel') {
       logger.error('删除日志失败:', error)
       ElMessage.error('删除失败')
@@ -915,7 +947,7 @@ const handleClearLogs = async () => {
     } else {
       ElMessage.error(res.message || '清空失败')
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error !== 'cancel') {
       logger.error('清空日志失败:', error)
       ElMessage.error('清空失败')
@@ -933,23 +965,23 @@ const formatDateTime = (dateStr: string) => {
 }
 
 // 格式化JSON
-const formatJson = (jsonStr: string) => {
+const formatJson = (jsonStr: unknown) => {
   try {
     const obj = typeof jsonStr === 'string' ? JSON.parse(jsonStr) : jsonStr
     return JSON.stringify(obj, null, 2)
   } catch {
-    return jsonStr
+    return typeof jsonStr === 'string' ? jsonStr : String(jsonStr ?? '')
   }
 }
 
 // 计算成功率
-const getSuccessRate = (log: any) => {
+const getSuccessRate = (log: SyncLogRecord) => {
   if (!log.total_count || log.total_count === 0) return 0
   return Math.round(((log.success_count || 0) / log.total_count) * 100)
 }
 
 // 获取成功率样式类
-const getSuccessRateClass = (log: any) => {
+const getSuccessRateClass = (log: SyncLogRecord) => {
   const rate = getSuccessRate(log)
   if (rate === 100) return 'success'
   if (rate >= 50) return 'warning'

@@ -16,7 +16,6 @@ const crypto = require('crypto')
 const CaptchaRecognizer = require('./captcha-recognizer')
 const PuppeteerLoginService = require('./puppeteer-login.service')
 const HttpLoginService = require('./http-login.service')
-const SystemSettingsService = require('./system-settings.service')
 const { matchProductName } = require('../config/product-name-mapping')
 const log = require('../utils/log')
 const { DEFAULT_BROWSER_USER_AGENT, EXTERNAL_PRICE, TIMEOUTS } = require('../config/constants')
@@ -1167,8 +1166,7 @@ class PriceListService {
         allowCreate = true,  // 默认允许创建新记录
         changeReason = null,
         sourceConfigId = null,
-        syncBatchId = null,
-        setSourceConfig = false
+        syncBatchId = null
       } = options
       let { isManualEdit = false } = options
 
@@ -2060,14 +2058,14 @@ class PriceListService {
     }
 
     const logId = await this.createSyncLog(configId, syncType, userId)
+    let syncConfigForError = null
 
     try {
       // 更新日志状态为运行中
       await this.updateSyncLog(logId, { status: 'running' })
 
       // 获取配置 - 优先使用 configId 获取完整配置
-    let config
-    let syncConfigForError = null
+      let config
       if (configId) {
         const result = await this.getSyncConfigWithPassword(configId)
         if (!result.success || !result.data) {
@@ -2329,10 +2327,10 @@ class PriceListService {
     const nameTerm = isDuoModel
       ? 'iPhone Duo'
       : normalizedKey === 'iphone16'
-      ? 'iPhone 16'
-      : (/^iphone\d/.test(normalizedKey)
-        ? `iPhone ${normalizedKey.slice(6).replace(/promax$/, ' Pro Max').replace(/pro$/, ' Pro').replace(/plus$/, ' Plus').replace(/duo$/, ' Duo').replace(/air$/, ' Air')}`
-        : formatModelSearchTerm())
+        ? 'iPhone 16'
+        : (/^iphone\d/.test(normalizedKey)
+          ? `iPhone ${normalizedKey.slice(6).replace(/promax$/, ' Pro Max').replace(/pro$/, ' Pro').replace(/plus$/, ' Plus').replace(/duo$/, ' Duo').replace(/air$/, ' Air')}`
+          : formatModelSearchTerm())
     const duoAliases = isDuoModel
       ? ['iPhone Duo', 'iPhone 18 Duo', '18 Duo', '18duo']
       : []
@@ -2654,17 +2652,6 @@ class PriceListService {
         // 步骤2: 找出缺失的型号，进行单独搜索
         // 对于iPhone 16及以上，即使通用数据中有型号代码，也要单独搜索以确保获取完整数据
         const alwaysSearchModels = ['iphone16', 'iphone16plus', 'iphone16pro', 'iphone16promax', 'iphone16e', 'iphone17air', 'iphone17', 'iphone17e', 'iphone17pro', 'iphone17promax', 'iphone18pro', 'iphone18promax', 'iphone18duo']
-
-        const formatModelSearchTerm = (modelNumber, modelKey) => {
-          if (modelNumber && /iphone/i.test(modelNumber)) return modelNumber
-          const suffix = modelKey.replace(/^iphone/, '')
-            .replace(/promax$/, ' Pro Max')
-            .replace(/pro$/, ' Pro')
-            .replace(/plus$/, ' Plus')
-            .replace(/duo$/, ' Duo')
-            .replace(/air$/, ' Air')
-          return modelKey.startsWith('iphone') ? `iPhone ${suffix}` : (modelNumber || modelKey)
-        }
 
         // 🔥 关键修复：如果是无库采集模式，强制搜索所有重要型号，即使库存中没有
         const missingModels = searchSourceModels

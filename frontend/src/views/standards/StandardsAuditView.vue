@@ -27,31 +27,55 @@
       <div class="standards-audit-content admin-page-content">
         <div class="stats-cards standards-stats">
           <div class="stat-card stat-card--primary">
-            <div class="stat-icon"><i class="fas fa-layer-group" /></div>
+            <div class="stat-icon">
+              <i class="fas fa-layer-group" />
+            </div>
             <div class="stat-content">
-              <div class="stat-value">{{ standardsCatalog.length }}</div>
-              <div class="stat-label">规范总数</div>
+              <div class="stat-value">
+                {{ standardsCatalog.length }}
+              </div>
+              <div class="stat-label">
+                规范总数
+              </div>
             </div>
           </div>
           <div class="stat-card stat-card--success">
-            <div class="stat-icon"><i class="fas fa-check-circle" /></div>
+            <div class="stat-icon">
+              <i class="fas fa-check-circle" />
+            </div>
             <div class="stat-content">
-              <div class="stat-value">{{ configuredCount }}</div>
-              <div class="stat-label">已配置审计</div>
+              <div class="stat-value">
+                {{ configuredCount }}
+              </div>
+              <div class="stat-label">
+                已配置审计
+              </div>
             </div>
           </div>
           <div class="stat-card stat-card--info">
-            <div class="stat-icon"><i class="fas fa-sitemap" /></div>
+            <div class="stat-icon">
+              <i class="fas fa-sitemap" />
+            </div>
             <div class="stat-content">
-              <div class="stat-value">{{ standardCategories.length }}</div>
-              <div class="stat-label">规范分类</div>
+              <div class="stat-value">
+                {{ standardCategories.length }}
+              </div>
+              <div class="stat-label">
+                规范分类
+              </div>
             </div>
           </div>
           <div class="stat-card stat-card--warning">
-            <div class="stat-icon"><i class="fas fa-file-alt" /></div>
+            <div class="stat-icon">
+              <i class="fas fa-file-alt" />
+            </div>
             <div class="stat-content">
-              <div class="stat-value">{{ sourceCount }}</div>
-              <div class="stat-label">公共实现入口</div>
+              <div class="stat-value">
+                {{ sourceCount }}
+              </div>
+              <div class="stat-label">
+                公共实现入口
+              </div>
             </div>
           </div>
         </div>
@@ -63,14 +87,22 @@
               clearable
               placeholder="搜索规范名称、文档或审计命令"
             >
-              <template #prefix><i class="fas fa-search" /></template>
+              <template #prefix>
+                <i class="fas fa-search" />
+              </template>
             </el-input>
           </div>
           <div class="standards-toolbar__status">
-            <el-tag type="success" effect="light">
+            <el-tag
+              type="success"
+              effect="light"
+            >
               权威来源：standards-manifest.json
             </el-tag>
-            <el-tag type="info" effect="plain">
+            <el-tag
+              type="info"
+              effect="plain"
+            >
               页面台账：page-audit-inventory.md
             </el-tag>
           </div>
@@ -78,7 +110,9 @@
 
         <div class="standards-layout">
           <aside class="standards-categories admin-panel">
-            <div class="standards-categories__title">规范分类</div>
+            <div class="standards-categories__title">
+              规范分类
+            </div>
             <el-button
               text
               class="standards-category"
@@ -89,9 +123,9 @@
               <strong>{{ standardsCatalog.length }}</strong>
             </el-button>
             <el-button
-              text
               v-for="category in standardCategories"
               :key="category"
+              text
               class="standards-category"
               :class="{ 'is-active': activeCategory === category }"
               @click="activeCategory = category"
@@ -126,17 +160,27 @@
                 class="standard-card"
               >
                 <div class="standard-card__head">
-                  <div class="standard-card__icon" :class="`standard-card__icon--${standard.previewKind}`">
+                  <div
+                    class="standard-card__icon"
+                    :class="`standard-card__icon--${standard.previewKind}`"
+                  >
                     <i :class="previewIcon(standard.previewKind)" />
                   </div>
                   <div class="standard-card__title-wrap">
                     <h2>{{ standard.title }}</h2>
                     <span>{{ standard.document }}</span>
                   </div>
-                  <el-tag size="small" type="success">{{ standard.status }}</el-tag>
+                  <el-tag
+                    size="small"
+                    type="success"
+                  >
+                    {{ standard.status }}
+                  </el-tag>
                 </div>
 
-                <p class="standard-card__summary">{{ standard.summary }}</p>
+                <p class="standard-card__summary">
+                  {{ standard.summary }}
+                </p>
 
                 <div class="standard-card__meta">
                   <span><i class="fas fa-tags" />{{ standard.category }}</span>
@@ -186,22 +230,49 @@
       <template v-if="selectedStandard">
         <div class="standard-detail">
           <div class="standard-detail__head">
-            <el-tag type="primary">{{ selectedStandard.category }}</el-tag>
+            <el-tag type="primary">
+              {{ selectedStandard.category }}
+            </el-tag>
             <code>{{ selectedStandard.document }}</code>
-            <el-tag type="success">{{ selectedStandard.status }}</el-tag>
+            <el-tag type="success">
+              {{ selectedStandard.status }}
+            </el-tag>
           </div>
 
           <div class="standard-detail__preview">
-            <div class="standard-detail__label">效果预览</div>
+            <div class="standard-detail__label">
+              效果预览
+            </div>
             <div class="preview-stage">
               <div class="preview-context">
                 <strong>{{ selectedStandard.title }} · 对应规范效果</strong>
                 <p>{{ selectedDocumentSummary || selectedStandard.summary }}</p>
               </div>
-              <div v-if="selectedStandard.previewKind === 'button'" class="preview-button-row">
-                <el-button type="primary" class="tf-button--save" @click="previewButtonAction('主要操作')">主要操作</el-button>
-                <el-button type="success" class="tf-button--complete" @click="previewButtonAction('完成')">完成</el-button>
-                <el-button type="danger" class="tf-button--delete" @click="previewButtonAction('删除')">删除</el-button>
+              <div
+                v-if="selectedStandard.previewKind === 'button'"
+                class="preview-button-row"
+              >
+                <el-button
+                  type="primary"
+                  class="tf-button--save"
+                  @click="previewButtonAction('主要操作')"
+                >
+                  主要操作
+                </el-button>
+                <el-button
+                  type="success"
+                  class="tf-button--complete"
+                  @click="previewButtonAction('完成')"
+                >
+                  完成
+                </el-button>
+                <el-button
+                  type="danger"
+                  class="tf-button--delete"
+                  @click="previewButtonAction('删除')"
+                >
+                  删除
+                </el-button>
                 <el-button
                   v-if="isMobile || isTablet"
                   native-type="button"
@@ -209,22 +280,59 @@
                   aria-label="菜单按钮演示"
                   @click="previewButtonAction('菜单按钮')"
                 >
-                  <IconRenderer :svg="menuBarsIcon" aria-hidden="true" />
+                  <IconRenderer
+                    :svg="menuBarsIcon"
+                    aria-hidden="true"
+                  />
                 </el-button>
-                <el-tag v-if="previewButtonResult" type="success">{{ previewButtonResult }}</el-tag>
+                <el-tag
+                  v-if="previewButtonResult"
+                  type="success"
+                >
+                  {{ previewButtonResult }}
+                </el-tag>
               </div>
-              <div v-else-if="selectedStandard.previewKind === 'dialog'" class="preview-dialog-box">
+              <div
+                v-else-if="selectedStandard.previewKind === 'dialog'"
+                class="preview-dialog-box"
+              >
                 <strong>统一模态框标题</strong>
                 <p>正文区域使用公共间距，底部操作区在手机端居中等分。</p>
                 <div class="tf-dialog-toolbar">
-                  <el-button type="primary" @click="previewDialogAction('上传图片')">上传图片</el-button>
-                  <el-button type="success" @click="previewDialogAction('下载选中')">下载选中</el-button>
+                  <el-button
+                    type="primary"
+                    @click="previewDialogAction('上传图片')"
+                  >
+                    上传图片
+                  </el-button>
+                  <el-button
+                    type="success"
+                    @click="previewDialogAction('下载选中')"
+                  >
+                    下载选中
+                  </el-button>
                 </div>
                 <div class="tf-dialog-actions preview-dialog-actions">
-                  <el-button class="tf-button--neutral" @click="previewDialogAction('取消')">取消</el-button>
-                  <el-button type="primary" class="tf-button--save" @click="previewDialogAction('确认')">确认</el-button>
+                  <el-button
+                    class="tf-button--neutral"
+                    @click="previewDialogAction('取消')"
+                  >
+                    取消
+                  </el-button>
+                  <el-button
+                    type="primary"
+                    class="tf-button--save"
+                    @click="previewDialogAction('确认')"
+                  >
+                    确认
+                  </el-button>
                 </div>
-                <el-tag v-if="previewDialogResult" type="success">{{ previewDialogResult }}</el-tag>
+                <el-tag
+                  v-if="previewDialogResult"
+                  type="success"
+                >
+                  {{ previewDialogResult }}
+                </el-tag>
               </div>
               <template v-else-if="selectedStandard.previewKind === 'table'">
                 <el-table
@@ -247,7 +355,12 @@
                     align="center"
                   >
                     <template #default="{ row }">
-                      <el-tag size="small" type="success">{{ row.status }}</el-tag>
+                      <el-tag
+                        size="small"
+                        type="success"
+                      >
+                        {{ row.status }}
+                      </el-tag>
                     </template>
                   </el-table-column>
                   <el-table-column
@@ -271,10 +384,18 @@
                     </template>
                   </el-table-column>
                 </el-table>
-                <div v-if="previewDetailVisible" class="preview-table-detail">
+                <div
+                  v-if="previewDetailVisible"
+                  class="preview-table-detail"
+                >
                   <div class="preview-table-detail__head">
                     <strong>设备详情（预览）</strong>
-                    <el-tag type="success" size="small">在库</el-tag>
+                    <el-tag
+                      type="success"
+                      size="small"
+                    >
+                      在库
+                    </el-tag>
                   </div>
                   <div class="preview-table-detail__grid">
                     <span>型号：iPhone 15 Pro</span>
@@ -284,25 +405,62 @@
                   </div>
                 </div>
               </template>
-              <div v-else-if="selectedStandard.previewKind === 'search'" class="preview-search">
+              <div
+                v-else-if="selectedStandard.previewKind === 'search'"
+                class="preview-search"
+              >
                 <el-input
                   v-model="previewSearchKeyword"
                   placeholder="统一搜索入口"
                   clearable
                   @keyup.enter="runSearchPreview"
                 />
-                <el-button type="primary" class="tf-button--save" @click="runSearchPreview">搜索</el-button>
-                <el-tag v-if="previewSearchResult" type="info">{{ previewSearchResult }}</el-tag>
+                <el-button
+                  type="primary"
+                  class="tf-button--save"
+                  @click="runSearchPreview"
+                >
+                  搜索
+                </el-button>
+                <el-tag
+                  v-if="previewSearchResult"
+                  type="info"
+                >
+                  {{ previewSearchResult }}
+                </el-tag>
               </div>
-              <div v-else-if="selectedStandard.previewKind === 'form'" class="preview-form">
+              <div
+                v-else-if="selectedStandard.previewKind === 'form'"
+                class="preview-form"
+              >
                 <label>字段名称<el-input v-model="previewFormName" /></label>
-                <label>选项<el-select v-model="previewFormOption"><el-option label="统一选项" value="统一选项" /><el-option label="备用选项" value="备用选项" /></el-select></label>
+                <label>选项<el-select v-model="previewFormOption"><el-option
+                  label="统一选项"
+                  value="统一选项"
+                /><el-option
+                  label="备用选项"
+                  value="备用选项"
+                /></el-select></label>
                 <div class="preview-form__actions">
-                  <el-button type="primary" class="tf-button--save" @click="submitFormPreview">提交演示</el-button>
-                  <el-tag v-if="previewFormSubmitted" type="success">表单校验通过</el-tag>
+                  <el-button
+                    type="primary"
+                    class="tf-button--save"
+                    @click="submitFormPreview"
+                  >
+                    提交演示
+                  </el-button>
+                  <el-tag
+                    v-if="previewFormSubmitted"
+                    type="success"
+                  >
+                    表单校验通过
+                  </el-tag>
                 </div>
               </div>
-              <div v-else-if="selectedStandard.previewKind === 'time'" class="preview-time">
+              <div
+                v-else-if="selectedStandard.previewKind === 'time'"
+                class="preview-time"
+              >
                 <div class="preview-time__timezone">
                   <i class="fas fa-location-dot" />
                   <span>业务时区</span>
@@ -321,35 +479,62 @@
                   </div>
                 </div>
                 <div class="preview-time__actions">
-                  <el-button type="primary" class="tf-button--save" @click="refreshTimePreview">
+                  <el-button
+                    type="primary"
+                    class="tf-button--save"
+                    @click="refreshTimePreview"
+                  >
                     <i class="fas fa-rotate-right" />刷新北京时间
                   </el-button>
-                  <el-tag type="info">统一入口：TimeUtil</el-tag>
+                  <el-tag type="info">
+                    统一入口：TimeUtil
+                  </el-tag>
                 </div>
               </div>
-              <div v-else-if="selectedStandard.previewKind === 'rules'" class="preview-rules">
+              <div
+                v-else-if="selectedStandard.previewKind === 'rules'"
+                class="preview-rules"
+              >
                 <div class="preview-rules__head">
                   <i class="fas fa-list-check" />
                   <strong>{{ selectedStandard.title }}关键规则</strong>
                 </div>
                 <ul>
-                  <li v-for="requirement in activeDocumentRequirements.slice(0, previewPolicyExpanded ? undefined : 3)" :key="requirement">
+                  <li
+                    v-for="requirement in activeDocumentRequirements.slice(0, previewPolicyExpanded ? undefined : 3)"
+                    :key="requirement"
+                  >
                     <i class="fas fa-check" />{{ requirement }}
                   </li>
                 </ul>
                 <div class="preview-rules__actions">
-                  <el-button class="tf-button--neutral" size="small" @click="togglePolicyRequirements">
+                  <el-button
+                    class="tf-button--neutral"
+                    size="small"
+                    @click="togglePolicyRequirements"
+                  >
                     <i :class="previewPolicyExpanded ? 'fas fa-chevron-up' : 'fas fa-chevron-down'" />
                     {{ previewPolicyExpanded ? '收起规则' : '查看全部规则' }}
                   </el-button>
-                  <el-tag type="info">{{ selectedStandard.checks.length }} 项审计 · {{ selectedStandard.publicSources.length }} 个公共入口</el-tag>
+                  <el-tag type="info">
+                    {{ selectedStandard.checks.length }} 项审计 · {{ selectedStandard.publicSources.length }} 个公共入口
+                  </el-tag>
                 </div>
               </div>
-              <div v-else-if="selectedStandard.previewKind === 'feedback'" class="preview-feedback">
+              <div
+                v-else-if="selectedStandard.previewKind === 'feedback'"
+                class="preview-feedback"
+              >
                 <div class="preview-feedback__states">
-                  <el-tag type="success">成功提示</el-tag>
-                  <el-tag type="warning">加载中</el-tag>
-                  <el-tag type="info">空状态</el-tag>
+                  <el-tag type="success">
+                    成功提示
+                  </el-tag>
+                  <el-tag type="warning">
+                    加载中
+                  </el-tag>
+                  <el-tag type="info">
+                    空状态
+                  </el-tag>
                 </div>
                 <div
                   v-if="selectedStandard.document === 'global-loading-standard.md'"
@@ -381,56 +566,162 @@
                     action-text="重新加载"
                     @action="loadEmptyPreview"
                   />
-                  <div v-else class="preview-result preview-result--success">
+                  <div
+                    v-else
+                    class="preview-result preview-result--success"
+                  >
                     <i class="fas fa-check-circle" />已加载演示数据
-                    <el-button class="tf-button--neutral" size="small" @click="previewEmptyLoaded = false">恢复空状态</el-button>
+                    <el-button
+                      class="tf-button--neutral"
+                      size="small"
+                      @click="previewEmptyLoaded = false"
+                    >
+                      恢复空状态
+                    </el-button>
                   </div>
                 </template>
-                <div v-else class="preview-feedback__actions">
-                  <el-button type="success" class="tf-button--complete" @click="showFeedbackPreview('success')">成功提示</el-button>
-                  <el-button type="warning" class="tf-button--warning" @click="showFeedbackPreview('warning')">警告提示</el-button>
-                  <el-tag v-if="previewFeedbackResult" type="success">{{ previewFeedbackResult }}</el-tag>
+                <div
+                  v-else
+                  class="preview-feedback__actions"
+                >
+                  <el-button
+                    type="success"
+                    class="tf-button--complete"
+                    @click="showFeedbackPreview('success')"
+                  >
+                    成功提示
+                  </el-button>
+                  <el-button
+                    type="warning"
+                    class="tf-button--warning"
+                    @click="showFeedbackPreview('warning')"
+                  >
+                    警告提示
+                  </el-button>
+                  <el-tag
+                    v-if="previewFeedbackResult"
+                    type="success"
+                  >
+                    {{ previewFeedbackResult }}
+                  </el-tag>
                 </div>
               </div>
-              <div v-else-if="selectedStandard.previewKind === 'security'" class="preview-security">
+              <div
+                v-else-if="selectedStandard.previewKind === 'security'"
+                class="preview-security"
+              >
                 <i class="fas fa-shield-halved" /><span>用户 → 角色 → 权限 → 页面能力</span>
-                <el-switch v-model="previewSecurityAllowed" active-text="已授权" inactive-text="未授权" />
-                <el-button type="primary" class="tf-button--manage" @click="verifySecurityPreview">验证权限</el-button>
-                <el-tag v-if="previewSecurityResult" :type="previewSecurityAllowed ? 'success' : 'danger'">{{ previewSecurityResult }}</el-tag>
+                <el-switch
+                  v-model="previewSecurityAllowed"
+                  active-text="已授权"
+                  inactive-text="未授权"
+                />
+                <el-button
+                  type="primary"
+                  class="tf-button--manage"
+                  @click="verifySecurityPreview"
+                >
+                  验证权限
+                </el-button>
+                <el-tag
+                  v-if="previewSecurityResult"
+                  :type="previewSecurityAllowed ? 'success' : 'danger'"
+                >
+                  {{ previewSecurityResult }}
+                </el-tag>
               </div>
-              <div v-else-if="selectedStandard.previewKind === 'runtime'" class="preview-runtime">
+              <div
+                v-else-if="selectedStandard.previewKind === 'runtime'"
+                class="preview-runtime"
+              >
                 <code>npm run {{ selectedStandard.checks[0] || 'check:standards' }}</code>
-                <el-button type="primary" class="tf-button--save" @click="runRuntimePreview">运行演示审计</el-button>
-                <el-tag :type="previewRuntimeResult ? 'success' : 'info'">{{ previewRuntimeResult || '审计入口已登记' }}</el-tag>
+                <el-button
+                  type="primary"
+                  class="tf-button--save"
+                  @click="runRuntimePreview"
+                >
+                  运行演示审计
+                </el-button>
+                <el-tag :type="previewRuntimeResult ? 'success' : 'info'">
+                  {{ previewRuntimeResult || '审计入口已登记' }}
+                </el-tag>
               </div>
-              <div v-else class="preview-page">
-                <PageHeader icon="fas fa-layer-group" title="统一页面结构" />
+              <div
+                v-else
+                class="preview-page"
+              >
+                <PageHeader
+                  icon="fas fa-layer-group"
+                  title="统一页面结构"
+                />
                 <div class="tf-page-tabs tab-navigation">
-                  <el-button type="primary" :class="{ 'is-active': previewPageTab === 'current' }" @click="previewPageTab = 'current'">当前页</el-button>
-                  <el-button :class="{ 'is-active': previewPageTab === 'other' }" @click="previewPageTab = 'other'">其他页</el-button>
+                  <el-button
+                    type="primary"
+                    :class="{ 'is-active': previewPageTab === 'current' }"
+                    @click="previewPageTab = 'current'"
+                  >
+                    当前页
+                  </el-button>
+                  <el-button
+                    :class="{ 'is-active': previewPageTab === 'other' }"
+                    @click="previewPageTab = 'other'"
+                  >
+                    其他页
+                  </el-button>
                 </div>
-                <el-tag type="info">当前展示：{{ previewPageTab === 'current' ? '当前页' : '其他页' }}</el-tag>
+                <el-tag type="info">
+                  当前展示：{{ previewPageTab === 'current' ? '当前页' : '其他页' }}
+                </el-tag>
               </div>
             </div>
           </div>
 
           <div class="standard-detail__columns">
             <section>
-              <div class="standard-detail__label">规范说明</div>
-              <InlineLoading v-if="documentLoading" text="正在读取规范正文" size="small" />
-              <p v-else>{{ selectedDocumentSummary || selectedStandard.summary }}</p>
-              <div class="standard-detail__label">规范要点</div>
+              <div class="standard-detail__label">
+                规范说明
+              </div>
+              <InlineLoading
+                v-if="documentLoading"
+                text="正在读取规范正文"
+                size="small"
+              />
+              <p v-else>
+                {{ selectedDocumentSummary || selectedStandard.summary }}
+              </p>
+              <div class="standard-detail__label">
+                规范要点
+              </div>
               <ul class="standard-requirement-list">
-                <li v-for="requirement in (selectedDocumentRequirements.length ? selectedDocumentRequirements : selectedStandard.requirements)" :key="requirement">
+                <li
+                  v-for="requirement in (selectedDocumentRequirements.length ? selectedDocumentRequirements : selectedStandard.requirements)"
+                  :key="requirement"
+                >
                   {{ requirement }}
                 </li>
               </ul>
-              <div class="standard-detail__label">审计命令</div>
-              <div class="standard-detail__chips"><code v-for="check in selectedStandard.checks" :key="check">npm run {{ check }}</code></div>
+              <div class="standard-detail__label">
+                审计命令
+              </div>
+              <div class="standard-detail__chips">
+                <code
+                  v-for="check in selectedStandard.checks"
+                  :key="check"
+                >npm run {{ check }}</code>
+              </div>
             </section>
             <section>
-              <div class="standard-detail__label">公共实现入口</div>
-              <ul class="standard-source-list"><li v-for="source in selectedStandard.publicSources" :key="source"><code>{{ source }}</code></li></ul>
+              <div class="standard-detail__label">
+                公共实现入口
+              </div>
+              <ul class="standard-source-list">
+                <li
+                  v-for="source in selectedStandard.publicSources"
+                  :key="source"
+                >
+                  <code>{{ source }}</code>
+                </li>
+              </ul>
             </section>
           </div>
         </div>
