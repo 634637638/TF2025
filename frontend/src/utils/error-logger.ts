@@ -88,7 +88,8 @@ export class ErrorLogger {
   constructor(config: Partial<ErrorReportingConfig> = {}) {
     this.config = {
       enabled: true,
-      endpoint: '/api/logs/errors',
+      // unifiedApi 已统一配置 /api，业务端点不重复携带前缀。
+      endpoint: '/logs/errors',
       batchSize: 10,
       reportInterval: 30000, // 30秒
       maxRetries: 3,

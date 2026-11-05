@@ -3,7 +3,6 @@
   "publicRoutes": {
     "auth.js|POST|/login": "公开登录入口；登录失败有专用限流和参数校验",
     "csrf.js|GET|/token": "公开 CSRF 引导接口，仅签发短期 CSRF token",
-    "csrf.js|GET|/csrf-token": "兼容接口，仅转发到 CSRF token 签发器",
     "home-sections.js|GET|/public/home/sections": "商城首页公开展示数据",
     "icons.js|GET|/": "图标目录公开读取",
     "icons.js|GET|/by-class": "图标目录公开读取",

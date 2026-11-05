@@ -94,7 +94,7 @@
               <AsyncImage
                 :src="resolvePhotoUrl(photo)"
                 alt="国补照片"
-                mode="eager"
+                mode="lazy"
                 class="photo-image"
               />
 

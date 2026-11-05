@@ -44,7 +44,8 @@ test('错误日志脱敏会移除令牌和密码', () => {
 test('前端错误上报配置已启用并指向统一接口', () => {
   const loggerSource = fs.readFileSync(path.join(frontendRoot, 'src/utils/error-logger.ts'), 'utf8')
   assert.match(loggerSource, /enabled: true/)
-  assert.match(loggerSource, /endpoint: '\/api\/logs\/errors'/)
+  assert.match(loggerSource, /endpoint: '\/logs\/errors'/)
+  assert.doesNotMatch(loggerSource, /endpoint: '\/api\/logs\/errors'/)
 })
 
 test('普通日志工具不维护私有服务端上报实现', () => {

@@ -105,10 +105,10 @@ test('permission management role and user lists use bounded server-side search a
   assert.match(view, /role_ids/);
 });
 
-test('sales trend route keeps both canonical and legacy paths', () => {
+test('sales trend route keeps only the canonical path', () => {
   const source = read('src/routes/analytics.js');
   assert.match(source, /router\.get\(['"]\/sales\/trends['"], unifiedAuth, requireBusinessUser, getSalesTrends\)/);
-  assert.match(source, /router\.get\(\s*['"]\/sales-trends['"][\s\S]*deprecatedRoute\([\s\S]*sales-trends-to-sales-trends-canonical/);
+  assert.doesNotMatch(source, /router\.get\(\s*['"]\/sales-trends['"]/);
   assert.match(source, /const getSalesTrends = async/);
   assert.match(source, /db\.execute\(\`[\s\S]*FROM sales s[\s\S]*INNER JOIN phones p/);
 });
@@ -1028,8 +1028,10 @@ test('H5 sold products uses canonical fields without runtime aliases or fake val
   assert.ok(contract.retired.includes('salestime'));
   assert.ok(contract.retired.includes('imageIds'));
   assert.match(route, /p\.sale_time AS sale_time/);
-  assert.match(route, /phoneMediaController\.list/);
-  assert.match(route, /phoneMediaController\.reorder/);
+  assert.match(route, /router\.delete\('\/products\/:id\/images'/);
+  assert.doesNotMatch(route, /router\.get\('\/products\/:id\/images'/);
+  assert.doesNotMatch(route, /router\.put\('\/products\/:id\/images\/reorder'/);
+  assert.doesNotMatch(route, /router\.post\('\/upload-phone-image'/);
   assert.match(service, /async deletePhoneImages\(phoneId\)/);
   assert.doesNotMatch(route, /SELECT id, phone_id, image_url, image_type, is_primary, sort_order, uploaded_by FROM H5_images/);
   assert.doesNotMatch(route, /COALESCE\(b\.name, '未知品牌'\)|COALESCE\(m\.name, '未知型号'\)/);
@@ -1871,7 +1873,13 @@ test('subsidy uses canonical pagination and handler fields without runtime schem
   assert.match(page, /key: 'arrival_time',[\s\S]{0,180}shouldShowActionColumn\(fieldVisibility\.value\.arrival_time, \[canArrival\.value\]\)/);
   assert.match(page, /\{ key: 'actions', label: '操作', visible: canShowActions\.value \}/);
   assert.match(page, /\{ key: 'subsidy_photos', label: '国补照片', visible: fieldVisibility\.value\.subsidy_photos \|\| canUpload\.value \}/);
-  assert.match(page, /unifiedApi\.get(?:<[^>]+>)?\(`\/subsidy\/\$\{item\.id\}\/photos`\)/);
+  assert.match(page, /const SUBSIDY_PHOTO_CACHE_TTL_MS = 5 \* 60 \* 1000/);
+  assert.match(page, /useCachedRequest\([\s\S]{0,300}unifiedApi\.get(?:<[^>]+>)?\(photoEndpoint, \{[\s\S]{0,160}useCache: false,[\s\S]{0,160}SUBSIDY_PHOTO_CACHE_TTL_MS[\s\S]{0,100}useStale: false/);
+  assert.match(page, /const preloadPhotoManageDialog = \(item: NationalSubsidyRecord\)/);
+  assert.match(page, /@preload-photo-manage="preloadPhotoManageDialog"/);
+  assert.match(list, /@pointerenter="emit\('preload-photo-manage', row\)"/);
+  assert.match(page, /showLoading,[\s\S]{0,40}showError: showLoading/);
+  assert.match(photoDialog, /<AsyncImage[\s\S]{0,180}mode="lazy"/);
   const applyTimeColumn = list.slice(
     list.indexOf(`column.key === 'apply_time'`),
     list.indexOf(`column.key === 'arrival_time'`)

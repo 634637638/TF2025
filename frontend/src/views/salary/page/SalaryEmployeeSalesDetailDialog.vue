@@ -415,16 +415,26 @@ const handleTableWheel = (event: WheelEvent) => {
   }
 }
 
-@media (max-width: 767px) {
+@media (max-width: 1024px) {
   .sales-details .details-info {
     display: grid;
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
     padding: 12px 10px;
   }
 
   .sales-details .info-row {
-    justify-content: space-between;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+    min-width: 0;
+    gap: var(--tf-space-1);
+  }
+
+  .sales-details .info-row span {
+    min-width: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
 }
 </style>

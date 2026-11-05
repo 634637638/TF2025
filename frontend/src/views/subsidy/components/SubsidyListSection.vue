@@ -223,6 +223,7 @@
                 v-else-if="column.key === 'subsidy_photos'"
                 class="photo-icon-wrapper clickable"
                 :title="canUpload ? (photoCount(row) > 0 ? '点击查看/管理国补照片' : '点击上传国补照片') : '点击查看国补照片'"
+                @pointerenter="emit('preload-photo-manage', row)"
                 @click.stop="emit('open-photo-manage', row)"
               >
                 <template v-if="photoCount(row) > 0">
@@ -469,6 +470,8 @@
                     class="mobile-action-mark mobile-photo-action"
                     :class="{ 'has-photos': photoCount(item) > 0 }"
                     :title="canUpload ? (photoCount(item) > 0 ? '查看/管理国补照片' : '上传国补照片') : '查看国补照片'"
+                    @pointerenter="emit('preload-photo-manage', item)"
+                    @focus="emit('preload-photo-manage', item)"
                     @click.stop="emit('open-photo-manage', item)"
                   >
                     <i :class="photoCount(item) > 0 ? 'fas fa-images' : 'far fa-image'" />
@@ -588,6 +591,7 @@ const emit = defineEmits<{
   'clear-pinned-items': []
   'open-batch-dialog': []
   'clear-selection': []
+  'preload-photo-manage': [NationalSubsidyRecord]
   'open-photo-manage': [NationalSubsidyRecord]
   'audit': [NationalSubsidyRecord]
   'confirm-arrival': [NationalSubsidyRecord]

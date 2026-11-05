@@ -120,9 +120,7 @@ const listActiveReferenceOptions = async (resource, { includeNullStatus = false 
 }
 
 /**
- * 模板管理基础选项的唯一 SQL 入口。
- * `/shop/base-data/*` 是历史兼容路由，仍保留原权限和响应格式，
- * 但不再在路由内重复维护品牌、型号、颜色、内存查询逻辑。
+ * 表单和模板场景的公共基础选项查询入口。
  */
 const listTemplateReferenceOptions = async (resource, { brand_id: brandId } = {}) => {
   const config = TEMPLATE_OPTION_CONFIG[resource]

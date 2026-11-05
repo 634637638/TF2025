@@ -548,9 +548,6 @@ class QueryService {
     }
   }
 
-  async getQueryModels(filters = {}) {
-    return this.queryRepository.getQueryModels(filters)
-  }
 }
 
 module.exports = QueryService

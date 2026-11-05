@@ -1,21 +1,32 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "verified_at": "2026-11-04",
   "source_of_truth": "backend/src/routes",
   "archive_location": "docs/archive/compatibility-routes",
-  "current_task": "docs/development/TECHNICAL_DEBT_PROGRESS.md#t6-兼容路由观察窗口",
+  "current_task": "docs/development/TECHNICAL_DEBT_PROGRESS.md#t6-兼容路由部署观察",
   "git_baseline": {
     "branch": "main",
-    "head": "0ad75ce9ac2fd150205250c0e5c08c65a9143294",
-    "complete_source_tag": null,
-    "note": "analytics.js 和 routes/index.js 仍有未提交修改；任何删除前必须先形成基线提交并创建批次标签。"
+    "head": "50fd1e4da338df439c1a1408fb90f89a5bc83508",
+    "complete_source_tag": "compat-routes-before-removal-20261104",
+    "note": "该标签覆盖 28 个接口删除前的完整源码；恢复时以标签和后续删除提交为准，不在归档目录复制运行时源码。"
   },
   "summary": {
-    "deprecated_routes": 28,
-    "compatibility_routes": 10,
-    "deprecated_only_routes": 18,
-    "retired_410_routes": 7,
-    "already_deleted_routes": 1
+    "active_deprecated_routes": 0,
+    "active_compatibility_routes": 0,
+    "removed_routes": 28,
+    "removed_compatibility_routes": 10,
+    "removed_deprecated_only_routes": 18,
+    "removed_retired_410_routes": 7,
+    "previously_removed_routes": 1,
+    "historical_removed_routes_total": 29
+  },
+  "removal": {
+    "removed_at": "2026-11-04",
+    "pre_removal_tag": "compat-routes-before-removal-20261104",
+    "removal_commit": null,
+    "repository_consumer_count": 0,
+    "deployment_status": "pending_verification",
+    "note": "28 个路由已从代码删除；本站仓库调用为 0，外部旧客户端不能仅凭源码排除。"
   },
   "entries": [
     {
@@ -26,7 +37,7 @@
       "replacement": null,
       "source": "backend/src/routes/inventory.js",
       "batch": 1,
-      "status": "retired_410",
+      "status": "removed",
       "permission": "inventory:view",
       "repository_consumer_status": "仓库前端无调用",
       "affected_area": "库存流水"
@@ -39,7 +50,7 @@
       "replacement": "/api/stock-in",
       "source": "backend/src/routes/inventory.js",
       "batch": 1,
-      "status": "retired_410",
+      "status": "removed",
       "permission": "inventory:create",
       "repository_consumer_status": "仓库前端无调用",
       "affected_area": "库存入库"
@@ -52,7 +63,7 @@
       "replacement": null,
       "source": "backend/src/routes/inventory.js",
       "batch": 1,
-      "status": "retired_410",
+      "status": "removed",
       "permission": "inventory:edit",
       "repository_consumer_status": "仓库前端无调用",
       "affected_area": "库存出库"
@@ -65,7 +76,7 @@
       "replacement": null,
       "source": "backend/src/routes/inventory.js",
       "batch": 1,
-      "status": "retired_410",
+      "status": "removed",
       "permission": "inventory:edit",
       "repository_consumer_status": "仓库前端无调用",
       "affected_area": "库存预留"
@@ -78,7 +89,7 @@
       "replacement": null,
       "source": "backend/src/routes/inventory.js",
       "batch": 1,
-      "status": "retired_410",
+      "status": "removed",
       "permission": "inventory:edit",
       "repository_consumer_status": "仓库前端无调用",
       "affected_area": "库存取消预留"
@@ -91,7 +102,7 @@
       "replacement": null,
       "source": "backend/src/routes/inventory.js",
       "batch": 1,
-      "status": "retired_410",
+      "status": "removed",
       "permission": "inventory:edit",
       "repository_consumer_status": "仓库前端无调用",
       "affected_area": "库存调整"
@@ -104,7 +115,7 @@
       "replacement": "/api/stock-in",
       "source": "backend/src/routes/inventory.js",
       "batch": 1,
-      "status": "retired_410",
+      "status": "removed",
       "permission": "inventory:create",
       "repository_consumer_status": "仓库前端无调用",
       "affected_area": "库存入库"
@@ -117,7 +128,7 @@
       "replacement": "/api/users/operators",
       "source": "backend/src/routes/operators.js",
       "batch": 2,
-      "status": "observing",
+      "status": "removed",
       "permission": "sales:view 或 inventory:view",
       "repository_consumer_status": "仓库前端已无旧路径调用",
       "affected_area": "操作员选项"
@@ -130,7 +141,7 @@
       "replacement": "/api/analytics/sales/trends",
       "source": "backend/src/routes/analytics.js",
       "batch": 2,
-      "status": "observing",
+      "status": "removed",
       "permission": "analytics:view、业务用户及门店范围",
       "repository_consumer_status": "仓库未发现旧路径调用",
       "affected_area": "销售趋势分析"
@@ -143,7 +154,7 @@
       "replacement": "/api/csrf/token",
       "source": "backend/src/routes/csrf.js",
       "batch": 2,
-      "status": "observing",
+      "status": "removed",
       "permission": "CSRF token 获取边界",
       "repository_consumer_status": "前端已迁移",
       "affected_area": "全局请求与 CSRF"
@@ -156,7 +167,7 @@
       "replacement": "/api/attendance",
       "source": "backend/src/routes/attendance.js",
       "batch": 2,
-      "status": "observing",
+      "status": "removed",
       "permission": "attendance:view:own",
       "repository_consumer_status": "前端已迁移",
       "affected_area": "个人考勤"
@@ -169,7 +180,7 @@
       "replacement": "/api/salary-records",
       "source": "backend/src/routes/salary-records.js",
       "batch": 2,
-      "status": "observing",
+      "status": "removed",
       "permission": "salary-records:view:own",
       "repository_consumer_status": "前端已迁移",
       "affected_area": "个人工资"
@@ -182,7 +193,7 @@
       "replacement": "/api/models?all=true&active_only=true",
       "source": "backend/src/routes/query.js",
       "batch": 3,
-      "status": "compatibility_observing",
+      "status": "removed",
       "permission": "query:view（business）",
       "repository_consumer_status": "前端已迁移",
       "affected_area": "综合查询型号选项"
@@ -195,7 +206,7 @@
       "replacement": "/api/models?all=true&brand_id=:brandId",
       "source": "backend/src/routes/brands.js",
       "batch": 3,
-      "status": "compatibility_observing",
+      "status": "removed",
       "permission": "brands:view",
       "repository_consumer_status": "页面已迁移",
       "affected_area": "品牌型号联动"
@@ -208,7 +219,7 @@
       "replacement": "/api/brands?all=true",
       "source": "backend/src/routes/index.js",
       "batch": 3,
-      "status": "compatibility_observing",
+      "status": "removed",
       "permission": "brands:view",
       "repository_consumer_status": "仓库前端已迁移",
       "affected_area": "手机品牌选项"
@@ -221,7 +232,7 @@
       "replacement": "/api/models?all=true",
       "source": "backend/src/routes/index.js",
       "batch": 3,
-      "status": "compatibility_observing",
+      "status": "removed",
       "permission": "models:view",
       "repository_consumer_status": "仓库前端已迁移",
       "affected_area": "手机型号选项"
@@ -234,7 +245,7 @@
       "replacement": "/api/colors?all=true",
       "source": "backend/src/routes/index.js",
       "batch": 3,
-      "status": "compatibility_observing",
+      "status": "removed",
       "permission": "colors:view",
       "repository_consumer_status": "仓库前端已迁移",
       "affected_area": "手机颜色选项"
@@ -247,7 +258,7 @@
       "replacement": "/api/memories?all=true",
       "source": "backend/src/routes/index.js",
       "batch": 3,
-      "status": "compatibility_observing",
+      "status": "removed",
       "permission": "memories:view",
       "repository_consumer_status": "仓库前端已迁移",
       "affected_area": "手机内存选项"
@@ -260,7 +271,7 @@
       "replacement": "/api/brands?all=true",
       "source": "backend/src/routes/shop.js",
       "batch": 3,
-      "status": "compatibility_observing",
+      "status": "removed",
       "permission": "inventory:view、h5-templates:view 或 h5-admin:view",
       "repository_consumer_status": "仓库调用已迁移",
       "affected_area": "商城品牌基础数据"
@@ -273,7 +284,7 @@
       "replacement": "/api/models?all=true",
       "source": "backend/src/routes/shop.js",
       "batch": 3,
-      "status": "compatibility_observing",
+      "status": "removed",
       "permission": "inventory:view、h5-templates:view 或 h5-admin:view",
       "repository_consumer_status": "仓库调用已迁移",
       "affected_area": "商城型号基础数据"
@@ -286,7 +297,7 @@
       "replacement": "/api/colors?all=true",
       "source": "backend/src/routes/shop.js",
       "batch": 3,
-      "status": "compatibility_observing",
+      "status": "removed",
       "permission": "inventory:view、h5-templates:view 或 h5-admin:view",
       "repository_consumer_status": "仓库调用已迁移",
       "affected_area": "商城颜色基础数据"
@@ -299,7 +310,7 @@
       "replacement": "/api/memories?all=true",
       "source": "backend/src/routes/shop.js",
       "batch": 3,
-      "status": "compatibility_observing",
+      "status": "removed",
       "permission": "inventory:view、h5-templates:view 或 h5-admin:view",
       "repository_consumer_status": "仓库调用已迁移",
       "affected_area": "商城内存基础数据"
@@ -312,7 +323,7 @@
       "replacement": "/api/phones/:id/images",
       "source": "backend/src/routes/shop.js",
       "batch": 4,
-      "status": "mapping_required",
+      "status": "removed",
       "permission": "inventory:view",
       "repository_consumer_status": "仓库调用待复核",
       "affected_area": "商城手机图片"
@@ -325,7 +336,7 @@
       "replacement": "/api/phones/:phoneId/images/:imageId/primary",
       "source": "backend/src/routes/shop.js",
       "batch": 4,
-      "status": "mapping_required",
+      "status": "removed",
       "permission": "inventory:edit",
       "repository_consumer_status": "仓库调用待复核",
       "affected_area": "商城主图设置"
@@ -338,7 +349,7 @@
       "replacement": "/api/phones/:phoneId/images/:imageId",
       "source": "backend/src/routes/shop.js",
       "batch": 4,
-      "status": "mapping_required",
+      "status": "removed",
       "permission": "H5_SOLD_PRODUCTS_DELETE_PERMISSIONS",
       "repository_consumer_status": "仓库调用待复核",
       "affected_area": "商城图片删除"
@@ -351,7 +362,7 @@
       "replacement": "/api/phones/:id/upload-image",
       "source": "backend/src/routes/shop.js",
       "batch": 4,
-      "status": "mapping_required",
+      "status": "removed",
       "permission": "PHONE_MEDIA_UPLOAD_PERMISSIONS",
       "repository_consumer_status": "仓库调用待复核",
       "affected_area": "商城媒体上传"
@@ -364,7 +375,7 @@
       "replacement": "/api/phones/:id/images",
       "source": "backend/src/routes/shop.js",
       "batch": 4,
-      "status": "mapping_required",
+      "status": "removed",
       "permission": "H5_SOLD_PRODUCTS_VIEW_PERMISSIONS",
       "repository_consumer_status": "仓库调用待复核",
       "affected_area": "已售商品图片"
@@ -377,7 +388,7 @@
       "replacement": "/api/phones/:id/images/reorder",
       "source": "backend/src/routes/shop.js",
       "batch": 4,
-      "status": "mapping_required",
+      "status": "removed",
       "permission": "H5_TEMPLATE_EDIT_PERMISSIONS",
       "repository_consumer_status": "仓库调用待复核",
       "affected_area": "商城图片排序"

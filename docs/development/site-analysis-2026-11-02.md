@@ -241,4 +241,4 @@
 - [下载安全规范](../frontend/download-security-standard.md)
 - [页面与功能单元台账](../frontend/page-audit-inventory.md)
 - [前后端逐页与路由模块审计报告](full-stack-page-audit-2026-11-02.md)
-- [兼容接口与弃用路由台账](../guides/compatibility-route-retirement-ledger.md)
+- [历史兼容接口退役台账](../guides/compatibility-route-retirement-ledger.md)

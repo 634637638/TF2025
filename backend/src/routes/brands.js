@@ -8,9 +8,6 @@ const { validateBody, validateQuery } = require('../middleware/validation')
 const { unifiedAuth, requirePermission, requireAnyPermission } = require('../middleware/unified-auth')
 const { CACHE_TTL, PAGINATION } = require('../config/constants')
 const log = require('../utils/log')
-const compatibilityRoute = require('../middleware/compatibility-route')
-const deprecatedRoute = require('../middleware/deprecated-route')
-const { listModelsByBrand } = require('../services/reference-options.service')
 
 const brandRepository = new BrandRepository()
 
@@ -465,27 +462,5 @@ router.get('/suggest', unifiedAuth, requirePermission('brands:view'), async (req
     ApiResponse.error(res, '获取品牌搜索建议失败', 500)
   }
 })
-
-// 获取品牌下的型号列表
-// 支持 brandId 为品牌ID（数字）或品牌名称（字符串）
-router.get('/:brandId/models', unifiedAuth,
-  compatibilityRoute({ compatibilityId: 'brands-models-by-brand', replacement: '/api/models?all=true&brand_id=:brandId', reason: '迁移期兼容入口' }),
-  deprecatedRoute({ replacement: '/api/models?all=true&brand_id=:brandId', migrationId: 'brand-models-to-models' }),
-  requirePermission('brands:view'),
-  async (req, res) => {
-    try {
-      const models = await listModelsByBrand({
-        brand_id: req.params.brandId,
-        name: req.query.name,
-        include_id: req.query.include_id,
-        activeOnly: false
-      })
-      return ApiResponse.success(res, models)
-    } catch (error) {
-      log.error('品牌型号兼容路由转发失败:', error)
-      return ApiResponse.serverError(res, '获取品牌型号列表失败', error)
-    }
-  }
-)
 
 module.exports = router

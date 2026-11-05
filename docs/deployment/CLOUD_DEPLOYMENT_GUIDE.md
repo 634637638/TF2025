@@ -59,7 +59,7 @@
 | 内存 | 2GB | 4GB+ |
 | 存储 | 20GB SSD | 50GB+ SSD |
 | 系统 | Ubuntu 20.04+ | Ubuntu 22.04 LTS |
-| Node.js | 16.x | 18.x+ |
+| Node.js | 22.x | 22.x LTS |
 | MySQL | 5.7 | 8.0+ |
 
 ### 需要安装的软件
@@ -68,8 +68,8 @@
 # 更新系统
 sudo apt update && sudo apt upgrade -y
 
-# 安装 Node.js 18.x
-curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+# 安装 Node.js 22.x；使用宝塔时在 Node 版本管理器选择 22.x LTS
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
 sudo apt install -y nodejs
 
 # 安装 MySQL 8.0
@@ -158,13 +158,78 @@ mysql -u tf2025_user -p tf2025_prod < database_backup.sql
 
 ## 后端部署
 
+### 0. 全新服务器文件清单
+
+首次部署不是增量覆盖，必须同时提供依赖锁、维护脚本、生产入口和上传数据。后端发布目录应整理为：
+
+```text
+backend/
+├── src/                              # 全部部署，包含配置、路由、服务和权限能力清单
+├── scripts/                          # 全部部署，包含资源检查、迁移和密钥维护脚本
+├── uploads/                          # 迁移旧服务时完整同步；全新空站至少创建可写目录
+├── package.json                      # 脚本和直接依赖声明
+├── package-lock.json                 # 精确依赖树，供 npm ci 使用
+├── server.js                         # 基础服务器入口，由生产入口内部调用
+├── start-production.js               # 宝塔和生产环境唯一直接启动文件
+├── ecosystem.production.config.js    # 命令行 PM2 配置
+├── .env.example                      # 不含真实秘密的变量模板
+└── .env.production                   # 只在服务器本机创建或从旧生产机安全迁移
+```
+
+`src/` 内的 `src/config/module-permission-capabilities.json` 属于强制运行时资源，不能只上传 JS 文件而漏掉 JSON。`src/lock/screen-lock-settings.json` 也随 `src/` 部署；运行用户需要能够更新屏幕锁配置。
+
+以下内容不进入生产发布包：
+
+```text
+backend/node_modules/     # 在目标服务器用 npm ci 重新安装
+backend/test/             # 正式测试保留在仓库和 CI，不作为生产运行依赖
+backend/logs/             # 服务器运行时生成
+backend/backups/          # 服务器运行时生成，不随代码覆盖
+backend/.env              # 仅用于本地开发
+backend/*.pid             # 临时进程文件
+backend/.DS_Store         # 本机系统文件
+backend/restart.sh        # 已退役，禁止绕过 PM2 直接启动 server.js
+```
+
+根目录的 `ecosystem.config.js`、后端目录的 `ecosystem.config.js` 和 `ecosystem.production.js` 都是旧入口，不应上传或重建。仓库唯一 PM2 配置是 `backend/ecosystem.production.config.js`。
+
+迁移现有站点时，数据库、`.env.production` 和 `uploads/` 必须作为同一业务版本迁移。不能重新生成正在使用的 JWT、文件签名或配置加密密钥，否则现有登录、私有文件链接和加密配置可能失效。`.env.production` 只能通过服务器间安全通道迁移，不得放进普通代码压缩包。
+
+上传完成后，在后端目录安装锁定依赖并检查运行时资源：
+
+```bash
+cd /www/wwwroot/api2025.com/backend
+npm ci --omit=dev
+NODE_ENV=production ENV_FILE=.env.production npm run check:runtime-assets
+```
+
+准备运行目录并允许宝塔的 `www` 用户写入上传、日志和备份数据：
+
+```bash
+cd /www/wwwroot/api2025.com/backend
+mkdir -p uploads logs backups
+chown -R www:www uploads logs backups
+chmod -R 750 uploads logs backups
+chown www:www .env.production
+chmod 600 .env.production
+```
+
+项目当前仍有需要写入 `src/lock/` 和 `src/config/product-name-mapping.js` 的管理功能。若启用屏幕锁配置或产品名称映射维护，还需执行：
+
+```bash
+chown -R www:www src/lock
+chown www:www src/config/product-name-mapping.js
+```
+
+若使用后台 Git 管理功能，运行用户还必须拥有整个项目工作区的 Git 读写权限；不使用该功能时不要为了方便把全部源码设为全员可写。
+
 ### 1. 构建后端
 
 ```bash
 cd /var/www/tf2025/backend
 
-# 使用生产环境配置启动
-NODE_ENV=production node server.js
+# 前台验证生产启动入口；确认后按 Ctrl+C 退出并交给 PM2
+npm run start:production
 ```
 
 ### 2. 使用 PM2 管理进程
@@ -182,6 +247,25 @@ pm2 startup
 # 按照输出的提示执行命令
 ```
 
+`ecosystem.production.config.js` 和宝塔 PM2 项目必须统一进入 `start-production.js`。该入口显式锁定 `NODE_ENV=production`、`ENV_FILE=.env.production` 和端口 `3000`，不会因为面板遗漏环境变量而回退读取开发 `.env`。
+
+在宝塔 PM2 管理器中新建后端项目时使用以下配置：
+
+```text
+项目名称：backend
+项目目录：/www/wwwroot/api2025.com/backend
+启动文件：start-production.js
+运行方式：fork
+文件监听：关闭
+环境变量（面板支持时填写）：NODE_ENV=production、ENV_FILE=.env.production、PORT=3000
+```
+
+不要把宝塔启动文件设为 `server.js`，也不要在生产服务器创建 `.env` 迁就错误配置。若面板曾用 `server.js` 创建进程，删除该 PM2 进程后按以上配置重新创建，并确认 `watch & reload` 为关闭。
+
+宝塔未提供环境变量输入时，`pm2 show backend` 的 `node env` 可能仍显示 `N/A`；这是 PM2 保存的父进程元数据，不代表应用内部未进入生产环境。生产入口会在加载任何业务模块前锁定环境，验收以最新应用日志出现 `环境配置加载: NODE_ENV=production, envFile=.../.env.production`，且 `/health` 返回 HTTP 200 与 `status=ready` 为准。
+
+仓库只保留 `ecosystem.production.config.js` 这一份 PM2 配置。服务器若仍有历史 `ecosystem.config.js` 或 `ecosystem.production.js`，确认当前进程未引用后删除，避免后续维护时选择错误配置。
+
 ### 3. 验证后端运行
 
 ```bash
@@ -189,10 +273,17 @@ pm2 startup
 pm2 status
 
 # 查看日志
-pm2 logs tf2025-backend
+pm2 logs backend
 
 # 测试 Node 后端健康检查
 curl http://127.0.0.1:3000/health
+```
+
+健康检查成功后保存 PM2 开机恢复清单：
+
+```bash
+pm2 reset backend
+pm2 save --force
 ```
 
 ---

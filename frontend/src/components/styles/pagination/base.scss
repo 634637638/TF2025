@@ -3,8 +3,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 0;
-  gap: 12px;
+  padding: 4px 0;
+  gap: 8px;
   flex-wrap: wrap;
   font-size: var(--tf-type-scale-14);
   color: var(--el-text-color-regular);
@@ -28,7 +28,7 @@
   &__controls {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     flex-wrap: wrap;
   }
 
@@ -100,7 +100,7 @@
     transition: all 0.2s;
     user-select: none;
 
-    &:hover:not(.is-current):not(.is-ellipsis) {
+    &:hover:not(.is-current) {
       background: var(--el-bg-color-page);
       border-color: var(--el-border-color-hover);
       color: var(--el-text-color-primary);
@@ -112,18 +112,16 @@
       color: var(--color-bg-white);
     }
 
-    &.is-ellipsis {
-      border: none;
-      background: none;
-      cursor: default;
-      color: var(--el-text-color-disabled);
-    }
   }
 
   &__jumper {
     display: flex;
     align-items: center;
     gap: 8px;
+
+    :deep(.el-input-number) {
+      width: 88px;
+    }
 
     &-text {
       color: var(--el-text-color-regular);
@@ -138,7 +136,7 @@
     justify-content: center;
     gap: 8px;
     align-items: center;
-    padding: 6px 0;
+    padding: 4px 0;
 
     &__info {
       justify-content: center;
@@ -200,7 +198,7 @@
       }
 
       .el-input-number {
-        width: 60px;
+        width: 56px;
       }
     }
   }
@@ -211,7 +209,7 @@
   .tf-pagination {
     justify-content: center;
     gap: 6px;
-    padding: 4px 0;
+    padding: 2px 0;
 
     &__info {
       flex-direction: row;
@@ -260,7 +258,7 @@
 
     &__jumper {
       .el-input-number {
-        width: 50px;
+        width: 48px;
       }
     }
   }

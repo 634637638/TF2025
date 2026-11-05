@@ -6,6 +6,7 @@ const fs = require('fs')
 const path = require('path')
 const { spawn } = require('child_process')
 const dbConfig = require('../config/database')
+const { PRODUCTION_RUNTIME_FILES } = require('../config/runtime-files')
 const log = require('../utils/log')
 
 // 后端根目录
@@ -329,7 +330,7 @@ class BackupService {
   async backupBackendCode(outputPath) {
     const backendDir = BACKEND_ROOT
     const dirsToBackup = ['src', 'config', 'routes', 'controllers', 'services', 'repositories', 'middleware', 'database', 'scripts']
-    const filesToBackup = ['package.json', 'server.js', 'ecosystem.config.js']
+    const filesToBackup = ['package.json', ...PRODUCTION_RUNTIME_FILES]
 
     log.debug('[Backup] 开始备份后端代码...')
 

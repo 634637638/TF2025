@@ -6,7 +6,7 @@
 
 - [设备识别计划](DEVICE_IDENTIFICATION_PLAN.md) - 已归档的功能规划文档
 - [开发历史归档](development/INDEX.md) - 已被当前台账或专项记录替代的旧审查、提交计划和项目总结
-- [兼容接口删除前归档](compatibility-routes/INDEX.md) - 存放位置为 `docs/archive/compatibility-routes/`；包含 28 个弃用路由的机器清单、四个删除批次和 Git 恢复说明
+- [历史兼容接口退役归档](compatibility-routes/INDEX.md) - 存放位置为 `docs/archive/compatibility-routes/`；包含 28 条已删除历史接口的机器清单、四个批次和 Git 恢复说明
 
 ## 归档说明
 
@@ -16,7 +16,7 @@
 |---------|---------|------|
 | 设备识别计划 | 移动端开发标准 | 功能已整合到移动端标准中 |
 | 2026 年旧开发审查与计划 | [全局技术债务进度](../development/TECHNICAL_DEBT_PROGRESS.md) | 当前待办只在全局台账维护；归档仅供追溯 |
-| 兼容接口删除前归档 | [兼容接口与弃用路由台账](../guides/compatibility-route-retirement-ledger.md) | 归档保存删除与恢复证据；当前状态仍以台账和 T6 为准 |
+| 历史兼容接口退役归档 | [历史兼容接口退役台账](../guides/compatibility-route-retirement-ledger.md) | 当前运行时兼容/弃用路由均为 0；归档保存删除与恢复证据，部署观察状态仍以台账和 T6 为准 |
 
 ## 注意事项
 

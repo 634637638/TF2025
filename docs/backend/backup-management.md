@@ -19,7 +19,7 @@
 mysql -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" -p "$DB_NAME" < database_YYYYMMDD_HHMMSS.sql
 ```
 
-完整 ZIP 包含数据库导出和代码/上传文件快照；它不会自动部署或覆盖运行中的服务。请先在隔离环境检查压缩包内容，再按部署流程恢复。
+完整 ZIP 包含数据库导出、代码和上传文件快照；后端代码部分会保留 `server.js`、唯一生产入口 `start-production.js` 及 `ecosystem.production.config.js`。它不会自动部署或覆盖运行中的服务。请先在隔离环境检查压缩包内容，再按部署流程恢复。
 
 ## 权限与验证
 

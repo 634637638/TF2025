@@ -32,7 +32,7 @@
         v-if="effectiveShowPageSizes"
         class="tf-pagination__sizes"
       >
-        <span class="tf-pagination__sizes-text">每页显示</span>
+        <span class="tf-pagination__sizes-text">每页</span>
         <el-select
           v-model="currentPageSize"
           :size="size"
@@ -68,11 +68,8 @@
             :key="page"
             native-type="button"
             class="tf-pagination__number"
-            :class="{
-              'is-current': page === currentPage,
-              'is-ellipsis': page === '...'
-            }"
-            :disabled="page === '...' || disabled"
+            :class="{ 'is-current': page === currentPage }"
+            :disabled="disabled"
             @click="handlePageClick(page)"
           >
             {{ page }}
@@ -199,7 +196,7 @@ const resetFromSearch = () => {
   emit('update:current', 1)
 }
 
-const visiblePages = computed(() => {
+const visiblePages = computed<number[]>(() => {
   const current = currentPage.value
   const total = totalPages.value
   const sideCount = isCompact.value ? 0 : isMobile.value ? 1 : isTablet.value ? 1 : 2
@@ -213,15 +210,10 @@ const visiblePages = computed(() => {
     return pages
   }
 
-  const pages = []
+  const pages: number[] = []
 
   // 总是显示第1页
   pages.push(1)
-
-  // 当前页距离第1页较远，显示省略号
-  if (current > 2 + sideCount) {
-    pages.push('...')
-  }
 
   // 显示当前页附近的页码
   const start = Math.max(2, current - sideCount)
@@ -231,11 +223,6 @@ const visiblePages = computed(() => {
     if (i !== 1 && i !== total) {
       pages.push(i)
     }
-  }
-
-  // 当前页距离最后一页较远，显示省略号
-  if (current < total - (1 + sideCount)) {
-    pages.push('...')
   }
 
   // 总是显示最后一页
@@ -273,7 +260,7 @@ const handleNextClick = () => {
   }
 }
 
-const handlePageClick = (page: number | string) => {
+const handlePageClick = (page: number) => {
   if (typeof page === 'number' && page >= 1 && page <= totalPages.value) {
     handleCurrentChange(page)
   }

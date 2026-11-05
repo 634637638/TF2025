@@ -7,11 +7,12 @@ const MAX_TTL_SECONDS = 10 * 60
 
 const normalizePrivatePath = value => {
   const normalized = String(value || '')
+    .normalize('NFC')
     .replace(/\\/g, '/')
     .replace(/^\/+/, '')
   if (!normalized || normalized.length > 512) return ''
   const segments = normalized.split('/')
-  return segments.every(segment => /^[a-zA-Z0-9._-]+$/.test(segment) && segment !== '.' && segment !== '..')
+  return segments.every(segment => /^[\p{L}\p{N}\p{M}._-]+$/u.test(segment) && segment !== '.' && segment !== '..')
     ? segments.join('/')
     : ''
 }

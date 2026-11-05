@@ -8,10 +8,7 @@ const {
   normalizePhoneStatus
 } = require('../utils/phone-status')
 const { normalizedModelSql } = require('../utils/search')
-const {
-  listActiveReferenceOptions,
-  listModelsByBrand
-} = require('../services/reference-options.service')
+const { listActiveReferenceOptions } = require('../services/reference-options.service')
 const QUERY_STATS_DEFAULT_STATUSES = Object.freeze([
   ...COMPLETED_TRANSACTION_STATUSES,
   'in_stock'
@@ -1162,12 +1159,6 @@ class QueryRepository extends BaseRepository {
       log.error('获取查询选项数据失败:', error)
       throw error
     }
-  }
-
-  // 型号下拉是品牌维度的参考数据，不使用列表分页；否则前端本地筛选
-  // 只能在截断后的结果中搜索，排在后面的合法型号会被错误隐藏。
-  async getQueryModels({ brand_id, name = '', include_id = null } = {}) {
-    return listModelsByBrand({ brand_id, name, include_id, activeOnly: true })
   }
 
   /**

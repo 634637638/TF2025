@@ -6,8 +6,8 @@
   "scripts": {
     "prestart": "node scripts/check-runtime-assets.js",
     "start": "node server.js",
+    "start:production": "node start-production.js",
     "check:runtime-assets": "node scripts/check-runtime-assets.js",
-    "audit:deprecated-routes": "node scripts/audit-deprecated-routes.js",
     "migrate:subsidy-photos": "node scripts/migrate-subsidy-photos.js",
     "migrate:schema": "node scripts/migrate-schema.js",
     "migrate:phone-media": "node scripts/migrate-phone-media.js",

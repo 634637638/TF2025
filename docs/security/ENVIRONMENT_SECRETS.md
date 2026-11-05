@@ -5,7 +5,7 @@
 后端环境文件可能包含数据库地址、用户名和密码、JWT 密钥、会话密钥及第三方服务凭据，均属于敏感信息。全局固定约定如下：
 
 - 本地开发环境只使用 `backend/.env`。
-- 云端生产环境只使用云端服务器本机的 `backend/.env.production`，并由 PM2 设置 `ENV_FILE=.env.production`。
+- 云端生产环境只使用云端服务器本机的 `backend/.env.production`，统一由 `backend/start-production.js` 固定设置 `NODE_ENV=production` 和 `ENV_FILE=.env.production`；PM2 ecosystem 与宝塔面板都必须进入该启动文件。
 - 测试环境使用忽略提交的专用文件（如 `backend/.env.test`），必须通过测试入口显式指定；不能回退读取开发或生产文件。
 
 本地 `.env` 与云端 `.env.production` 的数据库地址、密钥和运行模式可以不同，禁止把任一真实文件整份复制覆盖另一环境。需要同步新增变量时，只按 `backend/.env.example` 和本文件的变量清单逐项补充，并在目标环境生成独立密钥。这些文件只保存在对应运行环境的服务器或开发机上，不得提交到 Git、上传到前端静态目录、粘贴到工单或聊天记录，也不要在日志和终端记录中打印完整内容。仓库只保留 `backend/.env.example` 作为不含真实凭据的变量名模板。
@@ -27,7 +27,7 @@ cp .env.example .env.production
 chmod 600 .env.production
 ```
 
-之后只在服务器本机编辑 `.env.production` 并填入实际值。PM2 配置通过 `ENV_FILE=.env.production` 加载该文件；云端不得改用 `backend/.env`，也不要把真实配置复制进仓库中的 PM2 文件。
+之后只在服务器本机编辑 `.env.production` 并填入实际值。命令行 PM2 使用 `backend/ecosystem.production.config.js`，宝塔 PM2 项目使用 `backend/start-production.js`；两个入口都固定加载 `.env.production`。云端不得改用 `backend/.env`，也不要把真实配置复制进仓库中的 PM2 文件。
 
 ## 前端环境文件
 

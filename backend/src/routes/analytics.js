@@ -13,7 +13,6 @@ const { getBeijingTimeString } = require('../utils/time')
 const DashboardRepository = require('../repositories/dashboard.repository')
 const log = require('../utils/log')
 const os = require('os')
-const deprecatedRoute = require('../middleware/deprecated-route')
 const { isStoreScopeError, resolveStoreScope } = require('../utils/store-scope')
 
 const dashboardRepository = new DashboardRepository()
@@ -499,14 +498,6 @@ const getSalesTrends = async (req, res) => {
 }
 
 router.get('/sales/trends', unifiedAuth, requireBusinessUser, getSalesTrends)
-// 旧版前端兼容入口：仅保留适配和迁移提示，不再单独维护查询逻辑。
-router.get(
-  '/sales-trends',
-  unifiedAuth,
-  deprecatedRoute({ replacement: '/api/analytics/sales/trends', migrationId: 'sales-trends-to-sales-trends-canonical' }),
-  requireBusinessUser,
-  getSalesTrends
-)
 
 // 获取库存分析数据（使用 phones 表代替 inventory 表）
 router.get('/inventory', unifiedAuth, requireBusinessUser, async (req, res) => {

@@ -26,10 +26,6 @@ yarn-error.log*
 /backend/.env*
 !/backend/.env.example
 /.env.production*
-ecosystem.config.js
-ecosystem.production.js
-backend/ecosystem.config.js
-backend/ecosystem.production.js
 
 # 临时文件
 *.tmp

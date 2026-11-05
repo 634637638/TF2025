@@ -198,6 +198,12 @@ export function scanDocumentationConflicts(repoRoot) {
       const entries = Array.isArray(manifest.entries) ? manifest.entries : []
       const migrationIds = entries.map(entry => entry?.migration_id).filter(Boolean)
       const compatibilityIds = entries.map(entry => entry?.compatibility_id).filter(Boolean)
+      const activeEntries = entries.filter(entry => entry?.status !== 'removed')
+      const removedEntries = entries.filter(entry => entry?.status === 'removed')
+      const activeMigrationIds = activeEntries.map(entry => entry?.migration_id).filter(Boolean)
+      const activeCompatibilityIds = activeEntries.map(entry => entry?.compatibility_id).filter(Boolean)
+      const removedMigrationIds = removedEntries.map(entry => entry?.migration_id).filter(Boolean)
+      const removedCompatibilityIds = removedEntries.map(entry => entry?.compatibility_id).filter(Boolean)
       const duplicateMigrationIds = migrationIds.filter((id, index) => migrationIds.indexOf(id) !== index)
       const duplicateCompatibilityIds = compatibilityIds.filter((id, index) => compatibilityIds.indexOf(id) !== index)
 
@@ -223,15 +229,31 @@ export function scanDocumentationConflicts(repoRoot) {
 
       const summary = manifest.summary || {}
       if (
-        summary.deprecated_routes !== entries.length ||
-        summary.compatibility_routes !== compatibilityIds.length ||
-        summary.deprecated_only_routes !== entries.length - compatibilityIds.length
+        summary.active_deprecated_routes !== activeEntries.length ||
+        summary.active_compatibility_routes !== activeCompatibilityIds.length ||
+        summary.removed_routes !== removedEntries.length ||
+        summary.removed_compatibility_routes !== removedCompatibilityIds.length ||
+        summary.removed_deprecated_only_routes !== removedEntries.length - removedCompatibilityIds.length ||
+        summary.historical_removed_routes_total !== removedEntries.length + (summary.previously_removed_routes || 0)
       ) {
         issues.push({
           rule: 'compatibility-manifest-count',
           file: compatibilityManifestPath,
           line: 1,
-          message: '兼容接口归档汇总数量与实际条目不一致。'
+          message: '兼容接口归档的当前、已删除或历史汇总数量与实际条目不一致。'
+        })
+      }
+
+      if (removedEntries.length > 0 && (
+        !manifest.removal?.removed_at ||
+        !manifest.removal?.pre_removal_tag ||
+        manifest.removal?.repository_consumer_count !== 0
+      )) {
+        issues.push({
+          rule: 'compatibility-manifest-removal-metadata',
+          file: compatibilityManifestPath,
+          line: 1,
+          message: '存在已删除接口时必须记录删除日期、删除前标签和仓库调用方为 0 的结论。'
         })
       }
 
@@ -244,17 +266,29 @@ export function scanDocumentationConflicts(repoRoot) {
         const codeMigrationIds = [...routeSource.matchAll(/migrationId:\s*['"]([^'"]+)['"]/g)].map(match => match[1])
         const codeCompatibilityIds = [...routeSource.matchAll(/compatibilityId:\s*['"]([^'"]+)['"]/g)].map(match => match[1])
 
-        if (!sameStringSet(migrationIds, codeMigrationIds) || !sameStringSet(compatibilityIds, codeCompatibilityIds)) {
+        if (!sameStringSet(activeMigrationIds, codeMigrationIds) || !sameStringSet(activeCompatibilityIds, codeCompatibilityIds)) {
           issues.push({
             rule: 'compatibility-manifest-code-drift',
             file: compatibilityManifestPath,
             line: 1,
-            message: '归档清单中的 migration_id/compatibility_id 与 backend/src/routes 当前代码不一致。'
+            message: '归档清单中仍生效的 migration_id/compatibility_id 与 backend/src/routes 当前代码不一致。'
+          })
+        }
+
+        if (
+          removedMigrationIds.some(id => codeMigrationIds.includes(id)) ||
+          removedCompatibilityIds.some(id => codeCompatibilityIds.includes(id))
+        ) {
+          issues.push({
+            rule: 'compatibility-manifest-removed-code-drift',
+            file: compatibilityManifestPath,
+            line: 1,
+            message: '标记为 removed 的兼容接口 ID 不得重新出现在 backend/src/routes。'
           })
         }
       }
 
-      for (const entry of entries) {
+      for (const entry of activeEntries) {
         if (entry?.source && !fs.existsSync(path.join(repoRoot, entry.source))) {
           issues.push({
             rule: 'compatibility-manifest-source',
@@ -272,7 +306,7 @@ export function scanDocumentationConflicts(repoRoot) {
           rule: 'compatibility-archive-structure',
           file: relativePath,
           line: 1,
-          message: '兼容接口删除前归档缺少规定的索引、基线或批次文档。'
+          message: '历史兼容接口退役归档缺少规定的索引、基线或批次文档。'
         })
       }
     }

@@ -1,23 +1,17 @@
+const { PRODUCTION_RUNTIME_ENV } = require('./start-production')
+
 module.exports = {
   apps: [{
     name: 'backend',
-    script: './server.js',
+    script: './start-production.js',
     cwd: __dirname,
     instances: 1,
     exec_mode: 'fork',
     autorestart: true,
     watch: false,
     max_memory_restart: '1G',
-    env: {
-      NODE_ENV: 'production',
-      PORT: 3000,
-      ENV_FILE: '.env.production'
-    },
-    env_production: {
-      NODE_ENV: 'production',
-      PORT: 3000,
-      ENV_FILE: '.env.production'
-    },
+    env: { ...PRODUCTION_RUNTIME_ENV },
+    env_production: { ...PRODUCTION_RUNTIME_ENV },
     error_file: './logs/error.log',
     out_file: './logs/out.log',
     log_file: './logs/combined.log',

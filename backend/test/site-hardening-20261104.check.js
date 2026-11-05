@@ -33,6 +33,33 @@ test('私有文件签名统一绑定路径、用户和过期时间', () => {
   assert.equal(verifyPrivateFileAccess({ ...payload, userId: 8 }, { sourceKey, nowSeconds }), false)
 })
 
+test('私有文件签名支持国补中文路径并继续拒绝目录穿越', () => {
+  const { createPrivateFileUrl, verifyPrivateFileAccess } = require('../src/utils/private-file-access')
+  const sourceKey = 'private-file-access-test-key-at-least-32-characters'
+  const nowSeconds = 1_800_000_000
+  const relativePath = 'subsidy/罗玲FY9LHH20M9/罗玲-FY9LHH20M9-2026-09-12.jpg'
+  const url = createPrivateFileUrl({
+    routePrefix: '/api/subsidy/files',
+    relativePath,
+    userId: 7,
+    namespace: 'subsidy-file',
+    sourceKey,
+    nowSeconds
+  })
+  const parsed = new URL(url, 'https://example.test')
+  const payload = {
+    namespace: 'subsidy-file',
+    relativePath: decodeURIComponent(parsed.pathname.replace('/api/subsidy/files/', '')),
+    userId: parsed.searchParams.get('user'),
+    expires: parsed.searchParams.get('expires'),
+    signature: parsed.searchParams.get('signature')
+  }
+
+  assert.match(url, /^\/api\/subsidy\/files\/subsidy\/%E7%BD%97%E7%8E%B2/)
+  assert.equal(verifyPrivateFileAccess(payload, { sourceKey, nowSeconds }), true)
+  assert.equal(verifyPrivateFileAccess({ ...payload, relativePath: '../secret.jpg' }, { sourceKey, nowSeconds }), false)
+})
+
 test('国补和维修媒体不再把登录 JWT 放进 URL', () => {
   const subsidy = read('src/routes/subsidy.js')
   const repairs = read('src/routes/repairs.js')
@@ -53,7 +80,8 @@ test('国补和维修媒体不再把登录 JWT 放进 URL', () => {
   assert.doesNotMatch(subsidy, /for \(const photoUrl of deletedPhotos \|\| \[\]\)/)
   assert.match(subsidyMigration, /dbOnly: true/)
   assert.match(subsidyMigration, /if \(plan\.records\.length === 0\)/)
-  assert.match(subsidy, /Cache-Control', 'private, no-store'/)
+  assert.match(subsidy, /SUBSIDY_FILE_CACHE_SECONDS = 5 \* 60/)
+  assert.match(subsidy, /Cache-Control', `private, max-age=\$\{SUBSIDY_FILE_CACHE_SECONDS\}, must-revalidate`/)
   assert.match(repairs, /verifyPrivateFileAccess/)
   assert.match(repairs, /acceptRanges: true/)
   assert.match(repairs, /await connection\.beginTransaction\(\)/)

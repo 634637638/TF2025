@@ -69,18 +69,6 @@ class SalaryRecordController {
   }
 
   /**
-   * 获取个人工资记录
-   * 兼容旧端点，内部复用统一列表逻辑
-   */
-  async getMySalaryRecords(req, res) {
-    req.query = {
-      ...req.query,
-      employee_id: this.getUserId(req)
-    }
-    return this.getSalaryRecords(req, res)
-  }
-
-  /**
    * 获取工资记录详情
    */
   async getSalaryRecordById(req, res) {

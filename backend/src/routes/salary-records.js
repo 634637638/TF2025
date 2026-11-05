@@ -2,7 +2,6 @@ const express = require('express')
 const router = express.Router()
 const SalaryRecordController = require('../controllers/salary-record.controller')
 const { unifiedAuth, requirePermission, requireAnyPermission } = require('../middleware/unified-auth')
-const deprecatedRoute = require('../middleware/deprecated-route')
 
 // 工资记录相关路由（需要认证）
 router.use(unifiedAuth)
@@ -11,17 +10,6 @@ router.use(unifiedAuth)
 // 统一主端点：管理员返回全部，普通用户只返回自己的记录
 router.get('/', requireAnyPermission(['salary-records:view', 'salary-records:view:own']),
   SalaryRecordController.getSalaryRecords.bind(SalaryRecordController)
-)
-
-// 获取个人工资记录
-// 兼容旧端点，内部已复用统一主端点逻辑
-router.get('/my',
-  deprecatedRoute({
-    replacement: '/api/salary-records',
-    migrationId: 'salary-records-my-to-list'
-  }),
-  requirePermission('salary-records:view:own'),
-  SalaryRecordController.getMySalaryRecords.bind(SalaryRecordController)
 )
 
 // 获取工资统计（必须放在 /:id 之前）

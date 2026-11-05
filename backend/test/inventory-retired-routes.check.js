@@ -8,22 +8,21 @@ const inventoryRoute = fs.readFileSync(
   'utf8'
 )
 
-test('retired inventory placeholders return 410 instead of unimplemented 501 responses', () => {
-  const retiredRouteIds = [
-    'inventory-movements-unimplemented',
-    'inventory-item-stock-in-to-stock-in',
-    'inventory-item-stock-out-unimplemented',
-    'inventory-item-reserve-unimplemented',
-    'inventory-item-unreserve-unimplemented',
-    'inventory-item-adjust-unimplemented',
-    'inventory-stock-in-to-stock-in'
-  ]
-
-  assert.match(inventoryRoute, /const retiredInventoryEndpoint = message =>/)
-  assert.match(inventoryRoute, /ApiResponse\.error\(res, message, 410\)/)
-  assert.doesNotMatch(inventoryRoute, /暂未实现|真实流程暂未实现|, 501\)/)
-
-  for (const routeId of retiredRouteIds) {
-    assert.match(inventoryRoute, new RegExp(`migrationId: '${routeId}'`))
+test('retired inventory placeholders are removed instead of returning 410 or 501', () => {
+  for (const oldPath of [
+    '/:id/movements',
+    '/:id/stock-in',
+    '/:id/stock-out',
+    '/:id/reserve',
+    '/:id/unreserve',
+    '/:id/adjust',
+    '/stock-in'
+  ]) {
+    assert.doesNotMatch(
+      inventoryRoute,
+      new RegExp(`router\\.(?:get|post|put)\\(\\s*['"]${oldPath.replaceAll('/', '\\/')}['"]`)
+    )
   }
+
+  assert.doesNotMatch(inventoryRoute, /retiredInventoryEndpoint|migrationId|暂未实现|真实流程暂未实现|, 501\)/)
 })

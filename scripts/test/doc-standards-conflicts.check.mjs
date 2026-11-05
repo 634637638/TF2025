@@ -107,7 +107,15 @@ test('兼容接口归档清单与代码、批次和入口链接一致时通过',
   `)
   writeFixture(root, 'backend/src/routes/source.js', 'module.exports = true\n')
   writeFixture(root, 'docs/archive/compatibility-routes/route-retirement-manifest.json', JSON.stringify({
-    summary: { deprecated_routes: 1, compatibility_routes: 1, deprecated_only_routes: 0 },
+    summary: {
+      active_deprecated_routes: 1,
+      active_compatibility_routes: 1,
+      removed_routes: 0,
+      removed_compatibility_routes: 0,
+      removed_deprecated_only_routes: 0,
+      previously_removed_routes: 0,
+      historical_removed_routes_total: 0
+    },
     entries: [{
       migration_id: 'old-to-new',
       compatibility_id: 'old-options',
@@ -133,10 +141,68 @@ test('兼容接口归档清单与代码、批次和入口链接一致时通过',
   assert.deepEqual(scanDocumentationConflicts(root), [])
 }))
 
+test('已删除兼容接口保留历史清单且不得重新进入代码', () => withFixture(root => {
+  writeFixture(root, 'backend/src/routes/example.js', 'module.exports = true\n')
+  writeFixture(root, 'docs/archive/compatibility-routes/route-retirement-manifest.json', JSON.stringify({
+    summary: {
+      active_deprecated_routes: 0,
+      active_compatibility_routes: 0,
+      removed_routes: 1,
+      removed_compatibility_routes: 1,
+      removed_deprecated_only_routes: 0,
+      previously_removed_routes: 1,
+      historical_removed_routes_total: 2
+    },
+    removal: {
+      removed_at: '2026-11-04',
+      pre_removal_tag: 'compat-routes-before-removal-20261104',
+      repository_consumer_count: 0
+    },
+    entries: [{
+      migration_id: 'old-to-new',
+      compatibility_id: 'old-options',
+      method: 'GET',
+      path: '/api/old',
+      source: 'backend/src/routes/deleted.js',
+      batch: 1,
+      status: 'removed'
+    }]
+  }))
+  for (const file of [
+    'INDEX.md',
+    'SOURCE_BASELINE.md',
+    'batch-01-inventory-410.md',
+    'batch-02-canonical-replacements.md',
+    'batch-03-compatibility-adapters.md',
+    'batch-04-shop-media.md'
+  ]) writeFixture(root, `docs/archive/compatibility-routes/${file}`, '# 归档\n')
+  writeFixture(root, 'docs/guides/compatibility-route-retirement-ledger.md', '位置：docs/archive/compatibility-routes\n')
+  writeFixture(root, 'docs/development/TECHNICAL_DEBT_PROGRESS.md', '位置：../archive/compatibility-routes/INDEX.md\n')
+  writeFixture(root, 'docs/archive/INDEX.md', '位置：archive/compatibility-routes/INDEX.md\n')
+
+  assert.deepEqual(scanDocumentationConflicts(root), [])
+
+  writeFixture(root, 'backend/src/routes/example.js', `
+    deprecatedRoute({ migrationId: 'old-to-new' })
+    compatibilityRoute({ compatibilityId: 'old-options' })
+  `)
+  const rules = new Set(scanDocumentationConflicts(root).map(issue => issue.rule))
+  assert.ok(rules.has('compatibility-manifest-code-drift'))
+  assert.ok(rules.has('compatibility-manifest-removed-code-drift'))
+}))
+
 test('兼容接口归档清单漂移、缺批次或缺入口链接时必须失败', () => withFixture(root => {
   writeFixture(root, 'backend/src/routes/example.js', `deprecatedRoute({ migrationId: 'code-only' })\n`)
   writeFixture(root, 'docs/archive/compatibility-routes/route-retirement-manifest.json', JSON.stringify({
-    summary: { deprecated_routes: 2, compatibility_routes: 0, deprecated_only_routes: 2 },
+    summary: {
+      active_deprecated_routes: 2,
+      active_compatibility_routes: 0,
+      removed_routes: 0,
+      removed_compatibility_routes: 0,
+      removed_deprecated_only_routes: 0,
+      previously_removed_routes: 0,
+      historical_removed_routes_total: 0
+    },
     entries: [{
       migration_id: 'manifest-only',
       compatibility_id: null,

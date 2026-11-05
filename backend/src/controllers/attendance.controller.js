@@ -85,18 +85,6 @@ class AttendanceController {
   }
 
   /**
-   * 获取个人考勤记录
-   * 兼容旧端点，内部复用统一列表逻辑
-   */
-  async getMyAttendanceRecords(req, res) {
-    req.query = {
-      ...req.query,
-      employee_id: req.user.id
-    }
-    return this.getAttendanceRecords(req, res)
-  }
-
-  /**
    * 获取考勤记录详情
    * 只有“所有考勤查看”权限可查看全部，否则只能查看自己的记录
    */

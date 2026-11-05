@@ -2956,19 +2956,11 @@ watch(activeTab, async (newTab, oldTab) => {
     --mobile-dialog-footer-padding: 0 8px 8px;
   }
 
-  .sales-details .details-info,
   .sales-details .salary-info-section {
     padding: 12px 10px;
     border-radius: 14px;
   }
 
-  .sales-details .details-info {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 8px;
-  }
-
-  .sales-details .details-info .info-row,
   .sales-details .salary-info-section .info-row {
     flex-direction: column;
     align-items: flex-start;
@@ -2977,12 +2969,10 @@ watch(activeTab, async (newTab, oldTab) => {
     padding: 8px 10px;
   }
 
-  .sales-details .details-info .info-row label,
   .sales-details .salary-info-section .info-row label,
-  .sales-details .details-info .info-row span,
   .sales-details .salary-info-section .info-row span {
     white-space: normal;
-    word-break: break-word;
+    overflow-wrap: anywhere;
   }
 
   .attendance-actions {

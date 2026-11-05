@@ -7,6 +7,7 @@ const path = require('path')
 const PROJECT_ROOT = path.resolve(__dirname, '../../..')
 const log = require('../utils/log')
 const { TIMEOUTS } = require('../config/constants')
+const { PRODUCTION_RUNTIME_FILES } = require('../config/runtime-files')
 
 // 导入统一认证中间件
 const { unifiedAuth, requirePermission } = require('../middleware/unified-auth')
@@ -1318,11 +1319,7 @@ router.post('/backup/archive', requireGitCreate, async (req, res) => {
       'backend/src',
       'backend/package.json',
       'backend/package-lock.json',
-      'backend/server.js',
-      'backend/start-server.js',
-      'backend/restart.sh',
-      'backend/ecosystem.config.js',
-      'backend/ecosystem.production.js',
+      ...PRODUCTION_RUNTIME_FILES.map(file => `backend/${file}`),
       'backend/database',
       'backend/migrations',
       'backend/.env.example'
@@ -1334,7 +1331,7 @@ router.post('/backup/archive', requireGitCreate, async (req, res) => {
       }
     })
 
-    const optionalRootItems = ['package-lock.json', 'ecosystem.config.js', 'shared']
+    const optionalRootItems = ['package-lock.json', 'shared']
     optionalRootItems.forEach((item) => {
       if (fsSync.existsSync(path.join(projectRoot, item))) {
         archiveItems.push(item)

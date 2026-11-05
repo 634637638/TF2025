@@ -101,5 +101,5 @@ node --check src/routes/rentals.js
 ## 相关资料
 
 - [API 调用标准](api-standards.md)
-- [兼容接口与弃用路由台账](compatibility-route-retirement-ledger.md)
+- [历史兼容接口退役台账](compatibility-route-retirement-ledger.md)
 - [后端数据库回归测试](../backend/database-testing.md)

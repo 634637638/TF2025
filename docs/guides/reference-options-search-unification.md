@@ -85,8 +85,8 @@ GET /stores?all=true
 | --- | --- | --- | --- |
 | 基础选项公共前端入口 | 已完成 | `frontend/src/services/reference-options.ts` 已提供品牌、型号、颜色、内存、供应商、店铺等入口；型号页面已收敛到单一 `getModels` 参数化入口，默认 `all=true`，移除多套品牌/模板/全量型号包装器 | 新增调用必须显式声明品牌、关键词、状态与启停用规则；持续审计页面直接请求 |
 | 全局 `sort_order` 排序契约 | 已完成 | 前后端统一优先按 `sort_order`，名称自然排序，`id` 稳定兜底；入库、库存、销售等公共选项转换层保留排序字段 | 持续通过接口和页面审计拦截丢失排序字段 |
-| 型号按品牌完整加载 | 已完成（入口与实现） | 所有前端型号参考数据通过 `getModels` 调用 `/models`，不带分页时默认 `all=true`；后端 `/models`、旧 `/query/models`、旧 `/brands/:brandId/models` 共用 `listModelsByBrand` 完整查询及 `sort_order` 排序；调用方可显式控制停用型号过滤、关键词和旧型号回显 | 补充真实数据超过 200 个型号的云端回归；旧路径继续保留权限与响应兼容并观察日志 |
-| 品牌、颜色、内存全量参考模式 | 已完成 | 相关接口支持 `all=true`，公共调用已改用全量模式 | 审计剩余页面和旧入口 |
+| 型号按品牌完整加载 | 已完成（入口与实现） | 所有前端型号参考数据通过 `getModels` 调用 `/models`，不带分页时默认 `all=true`；后端规范 `/models` 复用 `listModelsByBrand` 完整查询及 `sort_order` 排序；调用方可显式控制停用型号过滤、关键词和旧型号回显 | 补充真实数据超过 200 个型号的云端回归；不得恢复已删除的 `/query/models`、`/brands/:brandId/models` 历史路径 |
+| 品牌、颜色、内存全量参考模式 | 已完成 | 相关接口支持 `all=true`，公共调用已改用全量模式 | 审计剩余页面并防止历史入口回归 |
 | 供应商全量参考模式 | 已完成 | 供应商接口支持 `all=true` | 验证大数量数据下的响应性能 |
 | 公开报价搜索结果完整性 | 已完成 | 销售报价全量和关键词搜索已移除固定 500/100 条截断 | 增加结果数量回归测试 |
 | 店铺服务端权限过滤 | 已完成（云端只读回归） | `/query/options` 和 `strict_scope=true` 请求按当前用户门店范围过滤；库存/销售默认请求保留完整商品门店访问；综合查询手动指定未绑定门店已统一返回 403 | 补充真实“无门店绑定”账号后再做一次生产数据回归 |
@@ -96,8 +96,8 @@ GET /stores?all=true
 | 员工/销售员/操作员查询 | 页面首屏加载已完成（用途接口保留） | `/users/employees`、`/users/operators` 已支持关键词、分页、状态和门店范围校验；销售、库存、综合查询、考勤、预订单、退库、批发页面，以及租赁销售员、提醒接收人选择器均改为远程查询，首屏最多 20 条并保留当前已选/历史人员。租赁和提醒保留业务专用权限入口，内部查询复用操作员服务或标准分页响应；公共前端只保留 `searchEmployees`、`searchOperators`，已删除无人使用的全量缓存包装和重复 API 包装。无分页参数的兼容请求由 `unpaginated-personnel-search.js` 记录路由和用户，并返回 `X-Reference-Search: legacy-unpaginated`；旧全量响应暂时保留 | 新增人员选择器必须远程分页并保留用途权限；观察旧调用日志后分批禁止无参数全量调用；继续做多账号权限回归和专用入口响应验证 |
 | 业务列表分页完整性 | 已完成（统一响应边界） | `ApiResponse.paginated` 统一输出 `page/page_size/total/total_pages/has_next/has_prev`；基础资料、客户远程检索和已审计业务列表均返回规范分页字段，仓储旧元数据仅在响应边界转换 | 新增业务列表必须使用规范分页字段，并补充契约测试 |
 | 固定数量截断自动审计 | 已完成（白名单闭环） | 移除预订单匹配设备、商城客户销售历史、国补设备检索和商城聚合商品的真实结果截断；当前30项已登记 `config/reference-options-audit-allowlist.json`，按文件、规则类型、代码片段和人工理由稳定匹配，不依赖易漂移行号；`npm run check:reference-options` 已接入前端全量规范门禁 | 候选代码片段变化、删除或新增时必须重新人工确认白名单 |
-| 后端重复查询逻辑收敛 | 部分完成（参考选项与库存、销售筛选） | 客户检索统一到 `customer-search.service.js`；品牌联动、综合查询及库存预警型号查询统一到 `reference-options.service.js:listModelsByBrand`；综合查询的品牌、颜色、内存和库存预警的品牌、颜色、内存统一到 `listActiveReferenceOptions`，可按调用契约选择是否将 `NULL status` 视为启用；预订单选项复用 `listTemplateReferenceOptions` 返回品牌、型号、颜色和内存，门店仍由预订单路由独立执行启用状态查询；库存预警保留专用 `system:view` 权限和原字段响应；商城模板和 `/phones` 历史基础选项路径复用规范资源查询；库存列表与 `/stats/overview` 共用 `buildInventoryFilters`，旧 `date` 参数仅由列表显式兼容；销售可售库存列表、导出和统计共用 `buildAvailablePhonesFilters`；库存汇总和明细共用 `buildSalesInventoryScope`，明细型号解析限定品牌 ID；可售列表与库存汇总共用品牌、颜色、内存精确名称解析；移除了精确解析失败后结果完全不影响过滤条件的颜色、内存冗余模糊查询；列表专属的预订单设备限制作为明确选项传入；资源管理路由仍保留管理字段、统计和写入逻辑 | 继续按路由模块审计相同业务过滤和写入逻辑，不跨权限边界合并业务列表 |
-| 旧接口清理 | 进行中（观察期未完成） | 本地弃用日志扫描覆盖 2026-09-19 至 2026-10-02 共 10 个 combined 日志文件，识别访问 0 次；但统一审计标记于 2026-10-02 接入，不能据此推定此前访问也为零 | 从审计标记发布后开始累计完整发布观察周期；归档超出 14 天保留范围的日志，核实调用用户与来源后再逐个评估删除 |
+| 后端重复查询逻辑收敛 | 部分完成（参考选项与库存、销售筛选） | 客户检索统一到 `customer-search.service.js`；品牌联动、综合查询及库存预警型号查询统一到 `reference-options.service.js:listModelsByBrand`；综合查询的品牌、颜色、内存和库存预警的品牌、颜色、内存统一到 `listActiveReferenceOptions`，可按调用契约选择是否将 `NULL status` 视为启用；预订单选项复用 `listTemplateReferenceOptions` 返回品牌、型号、颜色和内存，门店仍由预订单路由独立执行启用状态查询；库存预警保留专用 `system:view` 权限和原字段响应；已删除的商城模板和 `/phones` 历史基础选项路径不再构成运行时查询入口；库存列表与 `/stats/overview` 共用 `buildInventoryFilters`，旧 `date` 参数仅由列表显式兼容；销售可售库存列表、导出和统计共用 `buildAvailablePhonesFilters`；库存汇总和明细共用 `buildSalesInventoryScope`，明细型号解析限定品牌 ID；可售列表与库存汇总共用品牌、颜色、内存精确名称解析；移除了精确解析失败后结果完全不影响过滤条件的颜色、内存冗余模糊查询；列表专属的预订单设备限制作为明确选项传入；资源管理路由仍保留管理字段、统计和写入逻辑 | 继续按路由模块审计相同业务过滤和写入逻辑，不跨权限边界合并业务列表 |
+| 历史接口退役 | 代码已完成（待部署验证） | 当前运行时弃用/兼容路由均为 0；28 条历史接口已删除，本站仓库旧调用为 0，恢复资料位于 `docs/archive/compatibility-routes/` | 部署后观察旧路径 404、前端错误和外部客户端反馈；不得恢复兼容中间件或整批旧路由 |
 
 ## 六、验收标准
 
@@ -110,27 +110,23 @@ GET /stores?all=true
 - 相同关键词在综合查询、库存、销售等页面的字段匹配和型号标准化规则一致。
 - 文档台账、自动审计和代码实现状态一致。
 
-## 六（一）、旧基础选项入口核对清单
+## 六（一）、历史基础选项入口退役记录
 
-兼容/弃用接口的完整逐路由台账、权限/响应差异、日志观察起点和删除条件统一维护在[兼容接口与弃用路由台账](compatibility-route-retirement-ledger.md)。本节仅记录公共选项相关入口，不作为完整弃用路由清单。
+完整历史清单、恢复标签和部署观察要求统一维护在[历史兼容接口退役台账](compatibility-route-retirement-ledger.md)。本节仅记录公共选项相关入口的完成状态，不作为第二份当前待办。
 
 | 入口 | 当前调用方/用途 | 处理结论 |
 | --- | --- | --- |
-| `/shop/base-data/brands`、`models`、`colors`、`memories` | H5 管理端商城模板历史入口 | 前端已改用规范资源路由及统一 `reference-options.ts`；旧路径复用同一查询服务，返回弃用和兼容审计标记，保留一个发布周期后根据访问日志删除 |
-| `/phones/brands`、`/phones/models`、`/phones/colors`、`/phones/memories` | 手机模块历史基础选项接口 | 仓库内无调用；旧路径保留字符串/精简型号响应适配并转发到通用资源路由，已进入弃用观察期。原自动同步查询是自关联排除同一已关联值，无法补齐缺失引用，现已移除 |
-| `/query/models` | 综合查询按品牌联动型号 | 综合查询前端已迁移到 `/models?all=true&active_only=true`；规范资源路由增加 `query:view` 授权并复用品牌联动查询服务；旧路径保留权限、响应契约及弃用提示，观察期后确认无外部调用再删除 |
-| `/brands/:brandId/models` | 入库、库存、销售、快速销售等页面的历史型号入口 | 前端已迁移至 `/models?all=true&brand_id=...`；旧路径保留权限和弃用提示，调用 `reference-options.service.js` 并兼容品牌 ID/名称；避免在品牌路由器内将请求错误重放到品牌列表 |
+| `/shop/base-data/brands`、`models`、`colors`、`memories` | H5 管理端商城模板历史入口 | 前端已改用规范资源路由及统一 `reference-options.ts`；旧路径已删除 |
+| `/phones/brands`、`/phones/models`、`/phones/colors`、`/phones/memories` | 手机模块历史基础选项接口 | 仓库内调用为 0；旧字符串/精简型号响应适配和路由已删除 |
+| `/query/models` | 综合查询按品牌联动型号 | 综合查询使用 `/models?all=true&active_only=true`；规范资源路由保留 `query:view` 授权，旧路径已删除 |
+| `/brands/:brandId/models` | 入库、库存、销售、快速销售等页面的历史型号入口 | 页面使用 `/models?all=true&brand_id=...`；旧路径已删除 |
 | `/public/price/brands` | 未登录公开报价 | 保留公开契约，不能迁移到需要认证的后台基础资料接口 |
-| `/attendance/my` | 旧版“我的考勤”客户端 | 前端已迁移到 `/attendance`；旧入口保留本人权限校验、统一控制器逻辑和弃用访问日志，观察期后确认无外部调用再删除 |
-| `/salary-records/my` | 旧版“我的工资”客户端 | 前端已迁移到 `/salary-records`；主入口已允许 `salary-records:view:own`，旧入口保留本人权限校验、统一控制器逻辑和弃用访问日志，观察期后确认无外部调用再删除 |
-| `/inventory/:id/movements`、`/:id/stock-out`、`/:id/reserve`、`/:id/unreserve`、`/:id/adjust` | 历史库存流水接口，当前无前端调用且业务未实现 | 已接入弃用标识和访问日志并返回 410，明确表示接口已退役；观察期后无访问可删除，不新增虚假替代接口 |
-| `/inventory/:id/stock-in`、`/inventory/stock-in` | 历史入库入口，当前无前端调用 | 已接入弃用标识并返回 410，明确替代 `/api/stock-in`；观察期后无访问再删除 |
+| `/attendance/my` | 旧版“我的考勤”客户端 | 前端使用 `/attendance` 并保留本人权限范围；旧路径已删除 |
+| `/salary-records/my` | 旧版“我的工资”客户端 | 前端使用 `/salary-records`，主入口保留 `salary-records:view:own`；旧路径已删除 |
+| `/inventory/:id/movements`、`/:id/stock-out`、`/:id/reserve`、`/:id/unreserve`、`/:id/adjust` | 历史库存流水接口 | 仓库调用为 0，删除前返回 410；当前路由已删除，不新增虚假替代接口 |
+| `/inventory/:id/stock-in`、`/inventory/stock-in` | 历史入库入口 | 仓库调用为 0，规范入口为 `/api/stock-in`；旧路径已删除 |
 
-兼容审计中间件为 `backend/src/middleware/compatibility-route.js`，只用于仍有调用或可能被外部调用的入口；它返回 `X-Compatibility-Endpoint`、`X-Compatibility-Id`、`X-Reference-Route`，不会伪装成已经弃用。进入删除观察期的入口使用 `deprecated-route.js`，并提供明确替代地址；动态资源路径应在替代链接中使用当前请求参数。
-
-旧接口清理的完成条件：调用方扫描无命中、契约测试覆盖替代入口、至少一个发布周期无旧入口访问日志，再删除路由；在此之前只允许加兼容标记、统一服务和弃用记录。可运行 `cd backend && npm run audit:deprecated-routes` 按迁移 ID 汇总本地 `combined-*.log` 中的弃用访问；默认日志只保留 14 天，若发布观察期更长，必须先归档并检查完整周期的日志，不能把缺失日志当作零访问。模板及库存品牌型号选项新调用统一使用 `/brands`、`/models`、`/colors`、`/memories`，路由权限允许对应管理权限、库存查看或商城模板查看。
-
-本轮弃用适配实现：`backend/src/middleware/deprecated-route.js`。所有进入观察期的旧入口必须复用标准处理函数，不得再复制 SQL、权限或响应转换逻辑。
+历史兼容/弃用中间件和本地弃用日志审计脚本已随 28 个旧接口删除。模板及库存品牌型号选项继续统一使用 `/brands`、`/models`、`/colors`、`/memories`；部署后发现外部旧调用时，先记录真实路径、载荷和权限，再修正规范调用或最小恢复单个接口，不得恢复整套兼容层。
 
 ## 七、每次变更后的记录要求
 

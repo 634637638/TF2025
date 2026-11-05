@@ -113,6 +113,7 @@ const createRouteTimer = (routeName, req) => {
 }
 
 const SUBSIDY_UPLOAD_PREFIX = 'subsidy/'
+const SUBSIDY_FILE_CACHE_SECONDS = 5 * 60
 
 const normalizeSubsidyPhotoPath = (photoUrl) => {
   const relativePath = getRelativeUploadPathFromUrl(photoUrl)
@@ -2585,7 +2586,7 @@ router.get('/files/*', authenticateSubsidyFileAccess, (req, res) => {
       })
     }
 
-    res.setHeader('Cache-Control', 'private, no-store')
+    res.setHeader('Cache-Control', `private, max-age=${SUBSIDY_FILE_CACHE_SECONDS}, must-revalidate`)
     res.setHeader('X-Content-Type-Options', 'nosniff')
     res.setHeader('Cross-Origin-Resource-Policy', 'same-origin')
     return res.sendFile(normalizedAbsolutePath)

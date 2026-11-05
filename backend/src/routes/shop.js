@@ -9,7 +9,7 @@ const multer = require('multer')
 const path = require('path')
 const fs = require('fs').promises
 const crypto = require('crypto')
-const { unifiedAuth, requirePermission, requireAnyPermission, requireAdmin } = require('../middleware/unified-auth')
+const { unifiedAuth, requireAnyPermission, requireAdmin } = require('../middleware/unified-auth')
 const ApiResponse = require('../utils/response')
 const ShopService = require('../services/shop.service')
 const log = require('../utils/log')
@@ -17,10 +17,6 @@ const { getUploadSubdir } = require('../utils/upload-paths')
 const { archiveShopAssetUpload } = require('../utils/shop-media-storage')
 const { ensureShopTemplateMediaSchema } = require('../utils/shop-template-media-schema')
 const { validateUploadedFileSignature, removeUploadedFiles } = require('../utils/upload-file-validation')
-const { listTemplateReferenceOptions } = require('../services/reference-options.service')
-const compatibilityRoute = require('../middleware/compatibility-route')
-const deprecatedRoute = require('../middleware/deprecated-route')
-const phoneMediaController = require('../controllers/phone-media.controller')
 
 const shopService = new ShopService()
 
@@ -41,10 +37,6 @@ const H5_TEMPLATE_CREATE_PERMISSIONS = [
   'h5-admin:create',
   'inventory:create',
   'inventory:edit'
-]
-const PHONE_MEDIA_UPLOAD_PERMISSIONS = [
-  ...H5_TEMPLATE_CREATE_PERMISSIONS,
-  'query:edit'
 ]
 const H5_TEMPLATE_EDIT_PERMISSIONS = [
   'h5-templates:edit',
@@ -174,30 +166,6 @@ const upload = multer({
   fileFilter: imageFileFilter,
   limits: {
     fileSize: 2 * 1024 * 1024 // 2MB
-  }
-})
-
-const phoneImageStorage = multer.diskStorage({
-  destination: async (req, file, cb) => {
-    const uploadDir = getUploadSubdir('phones')
-    try {
-      await fs.mkdir(uploadDir, { recursive: true })
-      cb(null, uploadDir)
-    } catch (error) {
-      cb(error, uploadDir)
-    }
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + crypto.randomBytes(8).toString('hex')
-    cb(null, `phone-${uniqueSuffix}${path.extname(file.originalname)}`)
-  }
-})
-
-const phoneMediaUpload = multer({
-  storage: phoneImageStorage,
-  fileFilter: templateMediaFileFilter,
-  limits: {
-    fileSize: 500 * 1024 * 1024
   }
 })
 
@@ -524,46 +492,6 @@ router.put('/banners/reorder',
       ApiResponse.error(res, error.message || '更新排序失败', 500)
     }
   }
-)
-
-// ============================================================================
-// 商品图片管理 API
-// ============================================================================
-
-/**
- * 获取商品图片列表
- * GET /api/shop/phones/:id/images
- * 权限：inventory:view
- */
-router.get('/phones/:id/images',
-  unifiedAuth,
-  deprecatedRoute({ replacement: '/api/phones/:id/images', migrationId: 'shop-phone-images-to-phones' }),
-  requirePermission('inventory:view'),
-  phoneMediaController.list
-)
-
-/**
- * 设置主图
- * PUT /api/shop/images/:id/primary
- * 权限：inventory:edit
- */
-router.put('/images/:id/primary',
-  unifiedAuth,
-  deprecatedRoute({ replacement: '/api/phones/:phoneId/images/:imageId/primary', migrationId: 'shop-phone-image-primary-to-phones' }),
-  requirePermission('inventory:edit'),
-  phoneMediaController.setPrimary
-)
-
-/**
- * 删除商品图片
- * DELETE /api/shop/images/:id
- * 权限：inventory:edit
- */
-router.delete('/images/:id',
-  unifiedAuth,
-  deprecatedRoute({ replacement: '/api/phones/:phoneId/images/:imageId', migrationId: 'shop-phone-image-delete-to-phones' }),
-  requireAnyPermission(H5_SOLD_PRODUCTS_DELETE_PERMISSIONS),
-  phoneMediaController.remove
 )
 
 // ============================================================================
@@ -967,140 +895,6 @@ router.put('/templates/:id/images/reorder',
   }
 )
 
-// ============================================================================
-// 基础数据API（用于模板管理）
-// ============================================================================
-
-/**
- * 获取所有品牌（用于模板管理）
- */
-router.get('/base-data/brands',
-  unifiedAuth,
-  compatibilityRoute({ compatibilityId: 'shop-base-data-brands', replacement: '/api/brands?all=true', reason: '迁移期基础数据兼容入口' }),
-  deprecatedRoute({ replacement: '/api/brands?all=true', migrationId: 'shop-base-data-brands-to-brands' }),
-  requireAnyPermission(['inventory:view', 'h5-templates:view', 'h5-admin:view']),
-  async (req, res) => {
-    try {
-      const brands = await listTemplateReferenceOptions('brands')
-      ApiResponse.success(res, brands, '获取品牌列表成功')
-    } catch (error) {
-      log.error('获取品牌失败:', error)
-      ApiResponse.error(res, error.message || '获取品牌失败', error.statusCode || 500)
-    }
-  }
-)
-
-/**
- * 获取所有型号（用于模板管理）
- */
-router.get('/base-data/models',
-  unifiedAuth,
-  compatibilityRoute({ compatibilityId: 'shop-base-data-models', replacement: '/api/models?all=true', reason: '迁移期基础数据兼容入口' }),
-  deprecatedRoute({ replacement: '/api/models?all=true', migrationId: 'shop-base-data-models-to-models' }),
-  requireAnyPermission(['inventory:view', 'h5-templates:view', 'h5-admin:view']),
-  async (req, res) => {
-    try {
-      const models = await listTemplateReferenceOptions('models', { brand_id: req.query.brand_id })
-      ApiResponse.success(res, models, '获取型号列表成功')
-    } catch (error) {
-      log.error('获取型号失败:', error)
-      ApiResponse.error(res, error.message || '获取型号失败', error.statusCode || 500)
-    }
-  }
-)
-
-/**
- * 获取所有颜色（用于模板管理）
- */
-router.get('/base-data/colors',
-  unifiedAuth,
-  compatibilityRoute({ compatibilityId: 'shop-base-data-colors', replacement: '/api/colors?all=true', reason: '迁移期基础数据兼容入口' }),
-  deprecatedRoute({ replacement: '/api/colors?all=true', migrationId: 'shop-base-data-colors-to-colors' }),
-  requireAnyPermission(['inventory:view', 'h5-templates:view', 'h5-admin:view']),
-  async (req, res) => {
-    try {
-      const colors = await listTemplateReferenceOptions('colors')
-      ApiResponse.success(res, colors, '获取颜色列表成功')
-    } catch (error) {
-      log.error('获取颜色失败:', error)
-      ApiResponse.error(res, error.message || '获取颜色失败', error.statusCode || 500)
-    }
-  }
-)
-
-/**
- * 获取所有内存
- */
-router.get('/base-data/memories', unifiedAuth,
-  compatibilityRoute({ compatibilityId: 'shop-base-data-memories', replacement: '/api/memories?all=true', reason: '迁移期基础数据兼容入口' }),
-  deprecatedRoute({ replacement: '/api/memories?all=true', migrationId: 'shop-base-data-memories-to-memories' }),
-  requireAnyPermission(['inventory:view', 'h5-templates:view', 'h5-admin:view']),
-  async (req, res) => {
-    try {
-      const memories = await listTemplateReferenceOptions('memories')
-      ApiResponse.success(res, memories, '获取内存列表成功')
-    } catch (error) {
-      log.error('获取内存失败:', error)
-      ApiResponse.error(res, error.message || '获取内存失败', error.statusCode || 500)
-    }
-  }
-)
-
-/**
- * 上传手机图片（简化版，用于综合查询）
- * POST /api/shop/upload-phone-image
- */
-router.post('/upload-phone-image',
-  unifiedAuth,
-  deprecatedRoute({ replacement: '/api/phones/:id/upload-image', migrationId: 'shop-phone-media-upload-to-phones' }),
-  requireAnyPermission(PHONE_MEDIA_UPLOAD_PERMISSIONS),
-  (req, res, next) => phoneMediaUpload.single('image')(req, res, next),
-  handleMulterError,
-  async (req, res) => {
-    try {
-      if (!req.file) {
-        return ApiResponse.error(res, '没有上传文件', 400)
-      }
-
-      const mediaType = req.file.mimetype.startsWith('video/') || /\.(mp4|webm|ogg|mov)$/i.test(req.file.originalname || '')
-        ? 'video'
-        : 'image'
-      const maxSize = mediaType === 'video' ? 500 * 1024 * 1024 : 30 * 1024 * 1024
-      if (req.file.size > maxSize) {
-        await removeUploadedFiles([req.file])
-        return ApiResponse.error(res, `${mediaType === 'video' ? '视频' : '图片'}文件大小不能超过${mediaType === 'video' ? '500MB' : '30MB'}`, 400)
-      }
-      if (!(await validateUploadedFileSignature(req.file, ['image', 'video']))) {
-        await removeUploadedFiles([req.file])
-        return ApiResponse.error(res, '文件内容与图片或视频格式不匹配', 400)
-      }
-
-      const { phone_id } = req.body
-      if (!phone_id) {
-        await removeUploadedFiles([req.file])
-        return ApiResponse.error(res, '缺少手机ID', 400)
-      }
-
-      const uploadedBy = req.user ? req.user.id : 0
-      const media = await phoneMediaController.saveUploadedMedia({
-        phoneId: phone_id,
-        file: req.file,
-        mediaType,
-        uploadedBy
-      })
-
-      ApiResponse.success(res, {
-        ...media,
-        filename: req.file.filename
-      }, mediaType === 'video' ? '视频上传成功' : '图片上传成功')
-    } catch (error) {
-      await removeUploadedFiles(req.file ? [req.file] : []).catch(() => {})
-      log.error('上传图片失败:', error)
-      ApiResponse.error(res, error.message || '上传失败', 500)
-    }
-  }
-)
-
 /**
  * 获取已售商品列表（带图片的二手机）
  * GET /api/shop/sold-products
@@ -1165,28 +959,6 @@ router.get('/sold-products',
       ApiResponse.serverError(res, '获取已售商品列表失败', error)
     }
   }
-)
-
-/**
- * 获取商品图片列表
- * GET /api/shop/products/:id/images
- */
-router.get('/products/:id/images',
-  unifiedAuth,
-  deprecatedRoute({ replacement: '/api/phones/:id/images', migrationId: 'shop-product-images-to-phones' }),
-  requireAnyPermission(H5_SOLD_PRODUCTS_VIEW_PERMISSIONS),
-  phoneMediaController.list
-)
-
-/**
- * 重排序商品图片
- * PUT /api/shop/products/:id/images/reorder
- */
-router.put('/products/:id/images/reorder',
-  unifiedAuth,
-  deprecatedRoute({ replacement: '/api/phones/:id/images/reorder', migrationId: 'shop-product-images-reorder-to-phones' }),
-  requireAnyPermission(H5_TEMPLATE_EDIT_PERMISSIONS),
-  phoneMediaController.reorder
 )
 
 /**

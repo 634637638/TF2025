@@ -2,7 +2,7 @@
 
 本文档区分仓库配置模板与服务器实际部署状态。服务器实际 Nginx、TLS 终止位置和 PM2 进程需在服务器核验；本地文件本身不能证明线上配置已生效。
 
-环境文件采用唯一约定：本地开发只使用 `backend/.env`，云端生产只使用服务器本机的 `backend/.env.production`。部署时仅逐项同步新增变量，不得把本地 `.env` 整份上传覆盖云端文件；生产 PM2 必须设置 `ENV_FILE=.env.production`。
+环境文件采用唯一约定：本地开发只使用 `backend/.env`，云端生产只使用服务器本机的 `backend/.env.production`。部署时仅逐项同步新增变量，不得把本地 `.env` 整份上传覆盖云端文件。生产统一通过 `backend/start-production.js` 启动；该入口在加载业务模块前固定设置 `NODE_ENV=production`、`ENV_FILE=.env.production` 和端口 `3000`，避免宝塔或其他 PM2 管理器遗漏环境变量。线上是否正确加载以应用日志和 `/health` 为准，不能只依据 PM2 的 `node env` 元数据显示。
 
 ## 当前拓扑约定
 
@@ -19,6 +19,8 @@
 - [跨域与反向代理说明](cross-domain-deployment.md) - 直连跨域和同源代理的区别；当前优先采用同源代理。
 - [上传文件存储与迁移规范](../backend/upload-storage-standard.md) - 上传目录、数据库 URL 与文件同步发布要求。
 - [环境配置与密钥管理](../security/ENVIRONMENT_SECRETS.md) - `.env*` 文件不得进入 Git 或前端构建产物。
+
+全新后端服务器的文件目录、`npm ci`、运行目录权限、宝塔 PM2 参数和验收命令统一维护在[全云端部署参考的后端部署章节](CLOUD_DEPLOYMENT_GUIDE.md#后端部署)，不另建重复教程。
 
 旧的单次故障记录、过期 IP/端口示例及依赖不存在脚本的排错文档已移除；环境变量配置方式见[云端部署指南](CLOUD_DEPLOYMENT_GUIDE.md)，新增部署步骤前应先验证配置或命令确实存在。
 
@@ -41,4 +43,4 @@ curl http://127.0.0.1:3000/health
 
 发布包含数据库结构变更时，先备份数据库和上传目录，再在后端目录使用服务器本机 `.env.production` 运行 `npm run migrate:schema` 预览；确认目标库后才运行 `npm run migrate:schema -- --apply`。`/live` 只用于进程存活检查，`/health` 用于数据库就绪和发布验证，生产监控必须主动请求 `/health`。
 
-生产密钥不得写入部署文档、命令历史、前端 `.env.production` 或发布包。后端 `.env.production` 留在后端服务器本机，并由 `backend/ecosystem.production.config.js` 加载。
+生产密钥不得写入部署文档、命令历史、前端 `.env.production` 或发布包。后端 `.env.production` 留在后端服务器本机；命令行 PM2 使用 `backend/ecosystem.production.config.js`，宝塔 PM2 项目的启动文件使用 `backend/start-production.js`。两者最终进入同一个生产启动入口。

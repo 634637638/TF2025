@@ -361,5 +361,5 @@ npm run lint:strict
 - [前端页面与功能单元台账](../frontend/page-audit-inventory.md)
 - [前端规范索引](../frontend/INDEX.md)
 - [权限文档索引](../permissions/INDEX.md)
-- [兼容接口与弃用路由台账](../guides/compatibility-route-retirement-ledger.md)
+- [历史兼容接口退役台账](../guides/compatibility-route-retirement-ledger.md)
 - [文档编写与维护规范](../guides/DOCUMENTATION_STANDARDS.md)

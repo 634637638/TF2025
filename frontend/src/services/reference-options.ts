@@ -201,7 +201,7 @@ export const getCachedMemories = () => sortResponseRecords(
   cachedGet<ReferenceRecord[]>('/memories?all=true', '/memories?all=true')
 )
 
-// 模板页面复用统一基础数据接口；shop/base-data 保留为后端迁移期兼容路由。
+// 模板页面复用统一基础数据接口，不再调用历史 shop/base-data 路由。
 export const getTemplateBrands = () => sortResponseRecords(cachedGet<ReferenceRecord[]>(
   '/brands?all=true',
   '/brands?all=true'

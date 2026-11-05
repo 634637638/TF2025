@@ -466,6 +466,7 @@
           @clear-pinned-items="clearPinnedItems"
           @open-batch-dialog="openBatchDialog"
           @clear-selection="clearSelection"
+          @preload-photo-manage="preloadPhotoManageDialog"
           @open-photo-manage="openPhotoManageDialog"
           @audit="handleAudit"
           @confirm-arrival="handleConfirmArrival"
@@ -648,6 +649,7 @@ import { fieldPermissions, shouldShowActionColumn } from '@/composables/useField
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { useRefreshData } from '@/composables/useRefreshData'
 import { useLoadingState } from '@/composables'
+import { useCachedRequest } from '@/composables/usePageCache'
 import { useImportExport } from '@/composables/useImportExport'
 import { getCachedStores } from '@/services/reference-options'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
@@ -660,7 +662,7 @@ import InlineLoading from '@/components/InlineLoading.vue'
 import { PageHeader, PermissionGate } from '@/components/base'
 import { normalizeIdCard, normalizePersonName, normalizePhoneDigits } from '@/utils/security'
 import { logger } from '@/utils/logger'
-import { formatAmount } from '@/utils/format'
+import { formatAmount, formatImageUrl } from '@/utils/format'
 import { isAxiosError } from 'axios'
 import type { QueryParams, NationalSubsidyRecord, NationalSubsidyStats } from '@/types'
 import type { ReferenceRecord } from '@/services/reference-options'
@@ -669,6 +671,7 @@ const SubsidyEditDialog = defineAsyncComponent(() => import('./components/Subsid
 const SubsidyDetailDialog = defineAsyncComponent(() => import('./components/SubsidyDetailDialog.vue'))
 const SubsidyPhotoManageDialog = defineAsyncComponent(() => import('./components/SubsidyPhotoManageDialog.vue'))
 const SubsidyListSection = defineAsyncComponent(() => import('./components/SubsidyListSection.vue'))
+const SUBSIDY_PHOTO_CACHE_TTL_MS = 5 * 60 * 1000
 
 // 权限检查
 const {
@@ -1301,6 +1304,52 @@ const handleEditSubmitted = async () => {
   await fetchLatestSubsidyData()
 }
 
+type SubsidyPhotoResponse = { subsidy_photos?: string[] }
+
+const prefetchedPhotoUrls = new Set<string>()
+
+const getSubsidyPhotos = (itemId: number, showLoading: boolean) => {
+  const photoEndpoint = `/subsidy/${itemId}/photos`
+  return useCachedRequest(
+    photoEndpoint,
+    () => unifiedApi.get<SubsidyPhotoResponse>(photoEndpoint, {
+      useCache: false,
+      showLoading,
+      showError: showLoading
+    }),
+    SUBSIDY_PHOTO_CACHE_TTL_MS,
+    { useStale: false }
+  )
+}
+
+const preloadPhotoUrl = (photoUrl?: string) => {
+  const resolvedUrl = formatImageUrl(photoUrl || '')
+  if (!resolvedUrl || prefetchedPhotoUrls.has(resolvedUrl)) return
+
+  prefetchedPhotoUrls.add(resolvedUrl)
+  const image = new window.Image()
+  image.decoding = 'async'
+  image.onerror = () => prefetchedPhotoUrls.delete(resolvedUrl)
+  image.src = resolvedUrl
+}
+
+const preloadPhotoManageDialog = (item: NationalSubsidyRecord) => {
+  if (!item.id || !item.subsidy_photos?.length) return
+
+  if (!canUpload.value) {
+    preloadPhotoUrl(item.subsidy_photos[0])
+    return
+  }
+
+  void getSubsidyPhotos(item.id, false)
+    .then(response => {
+      if (response.success) {
+        preloadPhotoUrl(response.data?.subsidy_photos?.[0])
+      }
+    })
+    .catch(() => undefined)
+}
+
 const openPhotoManageDialog = async (item: NationalSubsidyRecord) => {
   if (!fieldVisibility.value.subsidy_photos && !canUpload.value) {
     return
@@ -1308,7 +1357,7 @@ const openPhotoManageDialog = async (item: NationalSubsidyRecord) => {
 
   if (canUpload.value) {
     try {
-      const response = await unifiedApi.get<{ subsidy_photos?: string[] }>(`/subsidy/${item.id}/photos`)
+      const response = await getSubsidyPhotos(item.id, true)
       if (!response.success) {
         ElMessage.error(response.message || '读取国补照片失败')
         return
