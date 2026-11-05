@@ -58,19 +58,8 @@
         v-tf-loading="loading"
         class="table-container table-responsive"
       >
-        <TableLoadingRow
-          v-if="loading"
-          mode="block"
-          text="加载中..."
-        />
-
-        <DataEmptyState
-          v-else-if="subsidyList.length === 0"
-          description="暂无国补申请记录"
-        />
-
         <el-table
-          v-else-if="!isMobile"
+          v-if="!isMobile"
           :data="displayList"
           border
           stripe
@@ -81,6 +70,18 @@
           :row-class-name="getTableRowClassName"
           @row-dblclick="(row) => emit('row-double-click', row)"
         >
+          <template #empty>
+            <TableLoadingRow
+              v-if="loading && subsidyList.length === 0"
+              mode="block"
+              text="加载中..."
+            />
+            <DataEmptyState
+              v-else-if="displayList.length === 0"
+              :state="subsidyList.length > 0 ? 'filtered' : 'empty'"
+              :description="subsidyList.length > 0 ? '暂无匹配的国补申请记录' : '暂无国补申请记录'"
+            />
+          </template>
           <el-table-column
             width="54"
             align="center"
@@ -311,6 +312,15 @@
           </el-table-column>
         </el-table>
 
+        <TableLoadingRow
+          v-else-if="loading && subsidyList.length === 0"
+          mode="block"
+          text="加载中..."
+        />
+        <DataEmptyState
+          v-else-if="subsidyList.length === 0"
+          description="暂无国补申请记录"
+        />
         <div
           v-else
           class="mobile-card-list"
@@ -541,7 +551,7 @@
 
 <script setup lang="ts">
 import { computed, onUnmounted, ref, watch } from 'vue'
-import { ElMessage } from 'element-plus'
+
 import PaginationComponent from '@/components/Pagination.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
@@ -549,6 +559,9 @@ import { logger } from '@/utils/logger'
 import { getActionColumnMinWidth, getIdentifierColumnMinWidth, getTextColumnMinWidth } from '@/utils/table-layout'
 import { formatAmount } from '@/utils/format'
 import type { NationalSubsidyRecord } from '@/types'
+import { useNotification } from '@/composables/useNotification'
+const globalNotifications = useNotification()
+
 
 interface TableColumn {
   key: string
@@ -781,19 +794,16 @@ const isShowingHandlerInfo = (item: NationalSubsidyRecord) => handlerInfoVisibil
 const copyToClipboard = async (text: string | null | undefined, label: string) => {
   const copyText = text || ''
   if (!copyText) {
-    ElMessage.warning(`暂无可复制的${label}`)
+    globalNotifications.warning(`暂无可复制的${label}`)
     return
   }
-  const loadingMsg = ElMessage.info({
-    message: '正在复制...',
-    duration: 0
-  })
+  const closeLoading = globalNotifications.loading('正在复制...')
 
   try {
     if (navigator.clipboard && navigator.clipboard.writeText) {
       await navigator.clipboard.writeText(copyText)
-      loadingMsg.close()
-      ElMessage.success(`${label}已复制`)
+      closeLoading()
+      globalNotifications.success(`${label}已复制`)
       return
     }
 
@@ -809,29 +819,29 @@ const copyToClipboard = async (text: string | null | undefined, label: string) =
 
     try {
       const successful = document.execCommand('copy')
-      loadingMsg.close()
+      closeLoading()
       if (successful) {
-        ElMessage.success(`${label}已复制`)
+        globalNotifications.success(`${label}已复制`)
       } else {
-        ElMessage.error('复制失败')
+        globalNotifications.error('复制失败')
       }
     } catch {
-      loadingMsg.close()
-      ElMessage.error('复制失败')
+      closeLoading()
+      globalNotifications.error('复制失败')
     } finally {
       document.body.removeChild(textarea)
     }
   } catch (error) {
-    loadingMsg.close()
+    closeLoading()
     logger.error('复制失败:', error)
-    ElMessage.error('复制失败')
+    globalNotifications.error('复制失败')
   }
 }
 
 const copyRemarks = async (remarks: string) => {
   try {
     await navigator.clipboard.writeText(remarks)
-    ElMessage.success('备注已复制')
+    globalNotifications.success('备注已复制')
   } catch {
     const textarea = document.createElement('textarea')
     textarea.value = remarks
@@ -841,9 +851,9 @@ const copyRemarks = async (remarks: string) => {
     textarea.select()
     try {
       document.execCommand('copy')
-      ElMessage.success('备注已复制')
+      globalNotifications.success('备注已复制')
     } catch {
-      ElMessage.error('复制失败')
+      globalNotifications.error('复制失败')
     }
     document.body.removeChild(textarea)
   }

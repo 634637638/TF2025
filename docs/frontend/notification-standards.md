@@ -98,8 +98,10 @@ import { simpleNotification } from '@/services/notification-simple'
 // ✅ 可选：使用全局属性（模板中）
 // $success, $error, $warning, $info, $confirm
 
-// ❌ 禁止：直接使用 Element Plus
-import { ElMessage } from 'element-plus' // 禁止
+// ❌ 禁止：业务页面/组件直接调用 Element Plus 通知
+import { ElMessage, ElNotification } from 'element-plus' // 禁止
+ElMessage.success('操作成功')
+ElNotification.warning({ title: '提醒', message: '请检查' })
 
 // ❌ 禁止：新建第二套通知 composable 或从旧路径复制实现
 // 唯一组合式入口是 @/composables/useNotification
@@ -577,13 +579,16 @@ import { useNotification } from '@/composables/useNotification'
 // 基础使用
 const { success, error, warning, info, confirm } = useNotification()
 
+// 兼容通知配置对象，保留 duration、offset、showClose 等视觉行为
+success({ message: '图片已生成，请长按保存到相册', duration: 3000 })
+
 // 需要防抖功能
 const { success, error } = useNotification({ debounce: true })
 ```
 
 ## 🔧 统一规范迁移示例
 
-### 从 ElMessage 迁移
+### 从 Element Plus 通知迁移
 
 ```typescript
 // ❌ 旧代码
@@ -616,6 +621,9 @@ success('操作成功')
 error('操作失败')
 warning('请检查输入')
 info('系统提示')
+
+// 原通知使用配置对象时，继续通过全局入口传入，不直接调用 Element Plus
+success({ message: '操作完成', duration: 2000, offset: 60 })
 
 // 确认对话框
 const confirmed = await confirm(

@@ -590,7 +590,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
+
 import type { FormInstance, UploadRawFile } from 'element-plus'
 import { unifiedApi } from '@/utils/unified-api'
 import { getCachedPhoneOptions, getCachedSuppliers } from '@/services/reference-options'
@@ -616,6 +616,9 @@ import {
   pickVisibleAccessoryFields,
   type AccessoryFieldName
 } from './accessory-field-permissions'
+import { useNotification } from '@/composables/useNotification'
+const globalNotifications = useNotification()
+
 
 // Props
 type AccessoryRecord = Omit<AccessoryPayloadSource, 'status'> & {
@@ -786,11 +789,11 @@ const beforeImageUpload = (file: UploadRawFile): boolean => {
   const isLt2M = file.size / 1024 / 1024 < 2
 
   if (!isImage) {
-    ElMessage.error('只能上传图片文件！')
+    globalNotifications.error('只能上传图片文件！')
     return false
   }
   if (!isLt2M) {
-    ElMessage.error('图片大小不能超过 2MB！')
+    globalNotifications.error('图片大小不能超过 2MB！')
     return false
   }
   return true
@@ -803,15 +806,15 @@ const handleImageSuccess = (response: AccessoryImageUploadResponse): void => {
     if (!uploadedTempImages.value.includes(response.data.url)) {
       uploadedTempImages.value.push(response.data.url)
     }
-    ElMessage.success('图片上传成功')
+    globalNotifications.success('图片上传成功')
   } else {
-    ElMessage.error('图片上传失败')
+    globalNotifications.error('图片上传失败')
   }
 }
 
 // 图片上传失败
 const handleUploadError = () => {
-  ElMessage.error('图片上传失败，请重试')
+  globalNotifications.error('图片上传失败，请重试')
 }
 
 // 图片加载错误处理
@@ -899,7 +902,7 @@ const loadStores = async () => {
 // 条码搜索
 const handleBarcodeSearch = async () => {
   if (!formData.value.barcode) {
-    ElMessage.warning('请输入或扫描条形码')
+    globalNotifications.warning('请输入或扫描条形码')
     return
   }
 
@@ -912,12 +915,12 @@ const handleBarcodeSearch = async () => {
       existingAccessory.value = accessory
       const getters:Record<string,()=>unknown>={ accessory_id:()=>accessory.id,name:()=>accessory.name,category:()=>accessory.category,brand_id:()=>accessory.brand_id,model_id:()=>accessory.model_id,color_id:()=>accessory.color_id,supplier_id:()=>accessory.supplier_id,purchase_cost:()=>Number(accessory.purchase_cost||0),sale_price:()=>Number(accessory.sale_price||0),unit:()=>accessory.unit||'个',specifications:()=>accessory.specifications||'' }
       Object.entries(getters).forEach(([key,getter])=>{const field=accessoryPayloadFieldMap[key];if(field&&canViewAccessoryField(field))(formData.value as Record<string,unknown>)[key]=getter()})
-      ElMessage.success(canViewAccessoryField('name') ? `找到配件：${accessory.name}` : '找到对应配件')
+      globalNotifications.success(canViewAccessoryField('name') ? `找到配件：${accessory.name}` : '找到对应配件')
     }
   } catch (err) {
     existingAccessory.value = null
     formData.value.accessory_id = null
-    ElMessage.info('未找到该配件，将创建新配件')
+    globalNotifications.info('未找到该配件，将创建新配件')
   } finally {
     searching.value = false
   }
@@ -944,7 +947,7 @@ const handleDistributionChange = () => {
 const handleSubmit = async () => {
   if (submitting.value) return
   if (!canSubmit.value) {
-    ElMessage.warning(isEditMode.value ? '请完善配件信息' : '请完善入库信息')
+    globalNotifications.warning(isEditMode.value ? '请完善配件信息' : '请完善入库信息')
     return
   }
 
@@ -957,7 +960,7 @@ const handleSubmit = async () => {
         sale_price: formData.value.sale_price
       }), accessoryPayloadFieldMap)
       await unifiedApi.put(`/accessories/${formData.value.id}`, updateData)
-      ElMessage.success('更新成功！')
+      globalNotifications.success('更新成功！')
     } else {
       const distribution = stores.value
         .filter(s => s.checked && s.quantity > 0)
@@ -976,14 +979,14 @@ const handleSubmit = async () => {
       }), accessoryPayloadFieldMap)
 
       await unifiedApi.post('/accessories/stock-in', data)
-      ElMessage.success('入库成功！')
+      globalNotifications.success('入库成功！')
     }
     uploadedTempImages.value = []
     handleClose()
     emit('success')
   } catch (err) {
     logger.error(isEditMode.value ? '更新失败' : '入库失败', err)
-    ElMessage.error(getRequestErrorMessage(err, `${isEditMode.value ? '更新失败' : '入库失败'}，请重试`))
+    globalNotifications.error(getRequestErrorMessage(err, `${isEditMode.value ? '更新失败' : '入库失败'}，请重试`))
   } finally {
     submitting.value = false
   }

@@ -81,15 +81,34 @@ const simulateExistingSaleUpdate = async (saleType, options = {}) => {
     formatLocalDate,
     isTransactionTypeChange: Boolean(options.convert),
     targetSaleType: 'wholesale',
+    transactionTypeByStatus: {
+      sold: 'retail',
+      peer_transfer: 'wholesale',
+      supplier_proxy: 'supplier_proxy'
+    },
+    effectiveStatus: options.convert
+      ? 'peer_transfer'
+      : saleType === 'retail'
+        ? 'sold'
+        : saleType === 'supplier_proxy'
+          ? 'supplier_proxy'
+          : 'peer_transfer',
+    nextIsNew: 1,
     finalCustomerId: null,
     saleOperatorId: null,
     effectiveStoreId: null,
     effectiveSalePrice: null,
+    finalSalePrice: null,
     effectivePurchaseCost: null,
     finalNotes: '保留备注',
     generateInvoiceNumber: async (...args) => {
       generated.push(args)
       return generateInvoiceNumber(...args)
+    },
+    reconcileCustomerPointsForSale: async ({ executor, saleId }) => {
+      assert.equal(executor, connection)
+      assert.equal(saleId, 901)
+      return { points: 0 }
     },
     log: { debug: () => {}, info: () => {} }
   }

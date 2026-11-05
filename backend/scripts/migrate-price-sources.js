@@ -1,5 +1,7 @@
 'use strict'
 
+process.env.SCHEMA_MIGRATION_MODE = 'true'
+
 const { connectToDatabase, closeDatabase } = require('../src/config/database')
 const { ensurePriceSourceSchema } = require('../src/utils/price-source-schema')
 const log = require('../src/utils/log')

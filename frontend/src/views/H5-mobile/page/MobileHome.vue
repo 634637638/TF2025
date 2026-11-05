@@ -479,7 +479,7 @@ import { Swiper, SwiperSlide } from 'swiper/vue'
 import type { Swiper as SwiperInstance } from 'swiper'
 import type { SwiperOptions } from 'swiper/types'
 import { Autoplay, Pagination } from 'swiper/modules'
-import { ElMessage } from 'element-plus'
+
 import 'swiper/css'
 import 'swiper/css/pagination'
 import { getPublicConfig, getActiveBanners } from '@/api/shop-public'
@@ -496,6 +496,9 @@ import { storage } from '@/services/storage'
 import { logger } from '@/utils/logger'
 import { sortOptionsByOrder } from '@/utils/option-sort'
 import { ensureTencentMapKey, loadTencentMapScript } from '@/utils/tencent-map'
+import { useNotification } from '@/composables/useNotification'
+const globalNotifications = useNotification()
+
 // 滚动位置存储键前缀
 const SCROLL_POSITION_PREFIX = 'scroll-pos_'
 
@@ -860,7 +863,7 @@ const handleCartClick = async (product: HomeSectionProduct) => {
   if (product.product_type === 'new' || !product.phone_id) {
     const templateId = product.template_id
     if (!templateId) {
-      ElMessage.warning('商品模板信息不完整')
+      globalNotifications.warning('商品模板信息不完整')
       return
     }
     addingToCart.value = templateId
@@ -877,16 +880,16 @@ const handleCartClick = async (product: HomeSectionProduct) => {
         if (availablePhone) {
           await addCartItem(availablePhone.id, 1)
           await refreshCart()
-          ElMessage.success('已加入购物车')
+          globalNotifications.success('已加入购物车')
         } else {
-          ElMessage.warning('该商品暂无库存')
+          globalNotifications.warning('该商品暂无库存')
         }
       } else {
-        ElMessage.warning('该商品暂无库存')
+        globalNotifications.warning('该商品暂无库存')
       }
     } catch (error) {
       logger.error('加入购物车失败:', error)
-      ElMessage.error('加入购物车失败')
+      globalNotifications.error('加入购物车失败')
     } finally {
       addingToCart.value = null
     }
@@ -898,10 +901,10 @@ const handleCartClick = async (product: HomeSectionProduct) => {
   try {
     await addCartItem(product.phone_id, 1)
     await refreshCart()
-    ElMessage.success('已加入购物车')
+    globalNotifications.success('已加入购物车')
   } catch (error) {
     logger.error('加入购物车失败:', error)
-    ElMessage.error('加入购物车失败')
+    globalNotifications.error('加入购物车失败')
   } finally {
     addingToCart.value = null
   }
@@ -975,7 +978,7 @@ const showMerchantDetail = () => {
   if (config.value.map_latitude && config.value.map_longitude) {
     showMapDialog.value = true
   } else {
-    ElMessage.info('暂未设置地图位置')
+    globalNotifications.info('暂未设置地图位置')
   }
 }
 
@@ -996,14 +999,14 @@ const handleShare = () => {
       text: '欢迎光临',
       url: pageUrl
     }).catch(() => {
-      ElMessage.info('请使用浏览器分享功能')
+      globalNotifications.info('请使用浏览器分享功能')
     })
   } else {
     // 复制链接
     navigator.clipboard.writeText(pageUrl).then(() => {
-      ElMessage.success('链接已复制，快去分享吧')
+      globalNotifications.success('链接已复制，快去分享吧')
     }).catch(() => {
-      ElMessage.error('复制失败，请手动复制链接')
+      globalNotifications.error('复制失败，请手动复制链接')
     })
   }
 }

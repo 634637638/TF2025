@@ -118,7 +118,7 @@ import { useAuthStore } from '@/stores/auth'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { PageHeader, PermissionGate } from '@/components/base'
 import { canAccessRoutePath } from '@/constants/routePermissions'
-import { ElMessage } from 'element-plus'
+
 import type { HeaderAction } from '@/types'
 import {
   Box,
@@ -128,6 +128,9 @@ import {
   HomeFilled,
   List
 } from '@element-plus/icons-vue'
+import { useNotification } from '@/composables/useNotification'
+const globalNotifications = useNotification()
+
 
 const route = useRoute()
 const router = useRouter()
@@ -175,7 +178,7 @@ const canAccessTab = (path: string) => canAccessRoutePath(path, authStore)
 // 导航到指定路径
 const navigateTo = (path: string) => {
   if (!canAccessTab(path)) {
-    ElMessage.warning('您没有访问此页面的权限')
+    globalNotifications.warning('您没有访问此页面的权限')
     return
   }
 

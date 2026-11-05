@@ -101,8 +101,6 @@
 
 /* 拖拽手柄 */
 :deep(.el-table__cell.drag-handle-cell) {
-  --admin-data-table-cell-padding-y: 8px;
-  --admin-data-table-cell-padding-x: 4px;
   text-align: center;
   cursor: move;
   user-select: none;

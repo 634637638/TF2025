@@ -917,7 +917,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, type CSSProperties } from 'vue'
-import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
+import { type FormInstance, type FormRules } from 'element-plus'
 import { PageHeader, PermissionGate } from '@/components/base'
 import Pagination from '@/components/Pagination.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
@@ -946,6 +946,9 @@ import type {
   ReminderTypeFormState,
   ReminderUser
 } from './types'
+import { useNotification } from '@/composables/useNotification'
+const globalNotifications = useNotification()
+
 
 const { canView, canCreate, canEdit, canDelete, canManage } = usePagePermissions('reminders')
 const loading = ref(false)
@@ -1227,7 +1230,7 @@ const loadUsers = async (keyword = '') => {
     }
   } catch (error) {
     logger.error('加载提醒接收人失败', error)
-    ElMessage.error('加载提醒接收人失败')
+    globalNotifications.error('加载提醒接收人失败')
   }
 }
 const searchReminderUsers = (keyword: string) => {
@@ -1259,7 +1262,7 @@ const loadReminders = async () => {
     }
   } catch (error) {
     logger.error('加载待办失败', error)
-    ElMessage.error('加载待办失败')
+    globalNotifications.error('加载待办失败')
   } finally {
     loading.value = false
   }
@@ -1356,14 +1359,14 @@ const saveReminder = async () => {
       ? await api.put<ReminderDetail>(`/reminders/${editingId.value}`, payload)
       : await api.post<ReminderDetail>('/reminders', payload)
     if (response.success) {
-      ElMessage.success(editingId.value ? '待办已更新' : '待办已创建')
+      globalNotifications.success(editingId.value ? '待办已更新' : '待办已创建')
       formVisible.value = false
       pagination.page = 1
       await loadReminders()
     }
   } catch (error) {
     logger.error('保存待办失败', error)
-    ElMessage.error(getRequestErrorMessage(error, '保存待办失败'))
+    globalNotifications.error(getRequestErrorMessage(error, '保存待办失败'))
   } finally {
     saving.value = false
   }
@@ -1374,7 +1377,7 @@ const deleteReminder = async (row: ReminderRow) => {
     await confirmAction(`确定删除待办${target}吗？历史执行记录将保留。`, '删除确认', { type: 'warning' })
     const response = await api.delete<null>(`/reminders/${row.id}`)
     if (response.success) {
-      ElMessage.success('待办已删除')
+      globalNotifications.success('待办已删除')
       await loadReminders()
     }
   } catch (error) {
@@ -1418,7 +1421,7 @@ const openTypeForm = (row?: ReminderType) => {
 }
 const saveType = async () => {
   if (canViewReminderField('type_name') && !typeForm.name.trim()) {
-    ElMessage.warning('请输入类型名称')
+    globalNotifications.warning('请输入类型名称')
     return
   }
   typeSaving.value = true
@@ -1428,12 +1431,12 @@ const saveType = async () => {
       ? await api.put<ReminderType>(`/reminders/types/${typeForm.id}`, payload)
       : await api.post<ReminderType>('/reminders/types', payload)
     if (response.success) {
-      ElMessage.success('事项类型已保存')
+      globalNotifications.success('事项类型已保存')
       typeFormVisible.value = false
       await loadTypes()
     }
   } catch (error) {
-    ElMessage.error(getRequestErrorMessage(error, '事项类型保存失败'))
+    globalNotifications.error(getRequestErrorMessage(error, '事项类型保存失败'))
   } finally {
     typeSaving.value = false
   }
@@ -1445,10 +1448,10 @@ const toggleType = async (row: ReminderType, value: string | number | boolean) =
     })
     if (response.success) {
       row.is_active = Boolean(value)
-      ElMessage.success('类型状态已更新')
+      globalNotifications.success('类型状态已更新')
     }
   } catch {
-    ElMessage.error('类型状态更新失败')
+    globalNotifications.error('类型状态更新失败')
   }
 }
 const deleteType = async (row: ReminderType) => {
@@ -1456,12 +1459,12 @@ const deleteType = async (row: ReminderType) => {
     await confirmAction(`确定删除事项类型“${row.name || ''}”吗？`, '删除确认', { type: 'warning' })
     const response = await api.delete<null>(`/reminders/types/${row.id}`)
     if (response.success) {
-      ElMessage.success('事项类型已删除')
+      globalNotifications.success('事项类型已删除')
       await loadTypes()
     }
   } catch (error) {
     if (isMessageBoxCanceled(error)) return
-    ElMessage.error(getRequestErrorMessage(error, '事项类型删除失败'))
+    globalNotifications.error(getRequestErrorMessage(error, '事项类型删除失败'))
   }
 }
 

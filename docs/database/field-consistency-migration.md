@@ -2,6 +2,12 @@
 
 > 本文记录历史迁移；当前模块进度和 API/数据库字段映射请以 [字段统一迁移进度](field-consistency-progress.md) 为准。项目采用“先统一 API，再按模块核验并迁移数据库物理列”的分阶段策略。
 
+## 2026-11-05 客户销售积分凭据迁移方案
+
+已新增预览优先的 `backend/scripts/migrate-customer-sale-points.js`，用于为 `sales` 增加 `points_awarded` 和 `points_accounted_at`。当前代码与规范已就绪，但本记录不代表目标云端数据库已经执行 `--apply`；未获得本次明确数据库写入授权前不得执行 DDL。
+
+迁移不按当前积分规则反算历史销售，也不改写历史客户积分。执行、回滚、历史无凭据边界及验证要求见[客户销售积分统一规范](../guides/customer-points-standard.md)。
+
 ## 2026-08-27 全库物理字段审计
 
 已对云端 `TF2025` 数据库逐表执行只读字段审计：已知历史候选物理列和大写/驼峰列均未发现。当前没有剩余可安全执行的物理改名项。`price_history.cost_price` 属于独立价格历史契约，保留原名；审计脚本为 `backend/scripts/check-physical-field-contract.js`。
@@ -78,7 +84,7 @@
 - 金额：`total_price`、`deposit_amount`、`deposit_paid`、`actual_price`
 - 业务：`customer_id`、`store_id`、`is_new`、`expected_arrival`、`remarks`
 
-迁移脚本 `backend/src/utils/preorder-schema.js` 会在首次访问预定接口时幂等执行：
+以下内容记录当时预定字段迁移方案。当前 `backend/src/utils/preorder-schema.js` 仅在请求时只读检查规范列，不执行字段迁移或 DDL；生产结构变更须由显式迁移入口完成：
 
 1. 将 `expected_price`、`advance_payment`、`deposit` 的历史值合并到规范金额字段。
 2. 将可匹配的 `phone_model`、`color`、`storage` 文本映射到基础数据 ID，并把客户快照统一为 `customer_id` 关联。

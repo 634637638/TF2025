@@ -6,6 +6,7 @@
   <SectionLoading
     v-if="loading"
     text="加载中..."
+    size="page"
   />
   <ProductDetail
     v-else-if="isUsedProduct"
@@ -77,20 +78,3 @@ watch(productId, (id) => {
   void resolveProductType(id)
 }, { immediate: true })
 </script>
-
-<style scoped lang="scss">
-.loading-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 100vh;
-  gap: 12px;
-  color: var(--text-muted);
-
-  .el-icon {
-    font-size: var(--tf-type-scale-32);
-    color: var(--tf-color-indigo-brand);
-  }
-}
-</style>

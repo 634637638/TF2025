@@ -143,6 +143,7 @@ test('Git 压缩备份不阻塞事件循环且拒绝并发创建', () => {
 })
 
 test('生产结构变更只允许显式迁移模式并记录校验和', () => {
+  const { isSchemaChangeAllowed } = require('../src/utils/schema-change-policy')
   const policy = read('src/utils/schema-change-policy.js')
   const migration = read('scripts/migrate-schema.js')
   const dataBackup = read('src/services/data-backup.service.js')
@@ -150,7 +151,12 @@ test('生产结构变更只允许显式迁移模式并记录校验和', () => {
   const dataImport = read('src/services/data-import.service.js')
   const packageJson = JSON.parse(read('package.json'))
 
-  assert.match(policy, /SCHEMA_MIGRATION_MODE === 'true'/)
+  assert.match(policy, /migrationMode === 'true'/)
+  const migrationEntrypoint = path.join(root, 'scripts/migrate-schema.js')
+  const applicationEntrypoint = path.join(root, 'src/app.js')
+  assert.equal(isSchemaChangeAllowed({ nodeEnv: 'production', migrationMode: 'true', entrypoint: migrationEntrypoint }), true)
+  assert.equal(isSchemaChangeAllowed({ nodeEnv: 'production', migrationMode: 'true', entrypoint: applicationEntrypoint }), false)
+  assert.equal(isSchemaChangeAllowed({ nodeEnv: 'production', migrationMode: 'false', entrypoint: migrationEntrypoint }), false)
   assert.match(migration, /CREATE TABLE IF NOT EXISTS schema_migrations/)
   assert.match(migration, /checksum CHAR\(64\)/)
   assert.match(migration, /校验和不一致，禁止自动覆盖/)
@@ -167,6 +173,16 @@ test('生产结构变更只允许显式迁移模式并记录校验和', () => {
   assert.match(dataImport, /if \(replaceAllTransactionStarted\) \{\s*await connection\.commit\(\)/)
   assert.match(dataImport, /完全替换在第 \$\{i \+ 2\} 行失败，已回滚全部数据/)
   assert.equal(packageJson.scripts['migrate:schema'], 'node scripts/migrate-schema.js')
+})
+
+test('production request handlers do not own DDL and migration entrypoints are explicit', () => {
+  const policy = read('src/utils/schema-change-policy.js')
+  const priceSourceMigration = read('scripts/migrate-price-sources.js')
+  const stockIn = read('src/routes/stock-in.js')
+  assert.match(policy, /isMigrationEntrypoint/)
+  assert.match(priceSourceMigration, /process\.env\.SCHEMA_MIGRATION_MODE = 'true'/)
+  assert.doesNotMatch(stockIn, /CREATE TABLE|ALTER TABLE|DROP INDEX/)
+  assert.match(stockIn, /await prepareInvoiceNumberTransaction\(connection\)\s+await connection\.beginTransaction\(\)[\s\S]{0,180}await generatePurchaseNumber\(connection\)/)
 })
 
 test('入库自动匹配和退库状态转换使用锁与条件更新', () => {

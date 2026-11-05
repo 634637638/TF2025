@@ -192,7 +192,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+
 import { useNotification } from '@/composables/useNotification'
 import { unifiedApi } from '@/utils/unified-api'
 import { TIME_FORMATS, TimeUtil } from '@/utils/time'
@@ -202,6 +202,8 @@ import { logger } from '@/utils/logger'
 import { useAuthStore } from '@/stores/auth'
 import { canAccessRoutePath } from '@/constants/routePermissions'
 import { PermissionMapper } from '@/utils/permissionMapper'
+const globalNotifications = useNotification()
+
 
 interface PendingApprovalStats {
   total?: number
@@ -352,7 +354,7 @@ const showPendingNotification = () => {
 // 跳转到考勤页面
 const goToAttendance = (type?: string) => {
   if (!canAccessAttendance.value) {
-    ElMessage.warning('您没有访问此页面的权限')
+    globalNotifications.warning('您没有访问此页面的权限')
     return
   }
 
@@ -379,7 +381,7 @@ const goToAttendance = (type?: string) => {
 // 查看详情
 const viewDetail = (item: PendingApprovalItem) => {
   if (!canAccessAttendance.value) {
-    ElMessage.warning('您没有访问此页面的权限')
+    globalNotifications.warning('您没有访问此页面的权限')
     return
   }
 

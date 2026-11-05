@@ -7,8 +7,7 @@ const router = express.Router()
 const { unifiedAuth, requirePermission, requireAnyPermission } = require('../middleware/unified-auth')
 const ApiResponse = require('../utils/response')
 const { validateImei } = require('../utils/imei')
-const { randomBytes } = require('crypto')
-const { getBeijingTimeString } = require('../utils/time')
+const { prepareInvoiceNumberTransaction, generatePurchaseNumber } = require('../utils/invoice-number')
 const {
   appendStoreScopeCondition,
   assertStoreInScope,
@@ -23,13 +22,6 @@ const sendStoreScopeError = (res, error) => {
   if (!isStoreScopeError(error)) return false
   ApiResponse.error(res, error.message, error.statusCode)
   return true
-}
-
-const createPurchaseNumber = () => {
-  const compactTime = getBeijingTimeString()
-    .replace(/[-:\s]/g, '')
-    .replace(/\.\d+$/, '')
-  return `PO${compactTime}${randomBytes(3).toString('hex').toUpperCase()}`
 }
 
 const formatStockInRecord = (record) => ({
@@ -532,13 +524,13 @@ router.post('/', unifiedAuth, requireAnyPermission(['stock-in:create', 'inventor
       }
     }
 
-    // 完整北京时间 + 随机后缀，避免跨日期和并发请求生成相同单号。
-    const purchase_number = createPurchaseNumber()
-
+    // 先完成序列表结构预检，再在入库事务内锁定并分配北京时间日序号。
     // 开始事务
+    await prepareInvoiceNumberTransaction(connection)
     await connection.beginTransaction()
 
     try {
+      const purchase_number = await generatePurchaseNumber(connection)
       const insertedProducts = []
 
       const loadReferenceMap = async (table, valueColumn, ids) => {
@@ -788,16 +780,19 @@ router.post('/', unifiedAuth, requireAnyPermission(['stock-in:create', 'inventor
 // 更新入库记录
 router.put('/:id', unifiedAuth, requirePermission('stock-in:edit'), async (req, res) => {
   let connection
+  let transactionStarted = false
   try {
     const { id } = req.params
-    const storeScope = resolveStoreScope(req.user, req.body?.store_id)
+    const storeScope = resolveStoreScope(req.user, null)
 
     // 获取数据库连接
     const pool = require('../config/database').getDatabase()
     connection = await pool.getConnection()
+    await connection.beginTransaction()
+    transactionStarted = true
 
     // 检查记录是否存在
-    const [existingRecords] = await connection.execute('SELECT id, store_id FROM phones WHERE id = ?', [id])
+    const [existingRecords] = await connection.execute('SELECT id, store_id FROM phones WHERE id = ? FOR UPDATE', [id])
     if (existingRecords.length === 0) {
       return ApiResponse.notFound(res, '入库记录不存在')
     }
@@ -891,13 +886,16 @@ router.put('/:id', unifiedAuth, requirePermission('stock-in:edit'), async (req, 
       return ApiResponse.badRequest(res, '没有提供要更新的字段')
     }
 
-    updateValues.push(id)
+    const scopeConditions = ['id = ?']
+    const scopeParams = [id]
+    appendStoreScopeCondition(storeScope, 'store_id', scopeConditions, scopeParams)
+    updateValues.push(...scopeParams)
 
     // 执行更新
     const updateQuery = `
       UPDATE phones
       SET ${updateFields.join(', ')}
-      WHERE id = ?
+      WHERE ${scopeConditions.join(' AND ')}
     `
 
     await connection.execute(updateQuery, updateValues)
@@ -928,12 +926,19 @@ router.put('/:id', unifiedAuth, requirePermission('stock-in:edit'), async (req, 
       WHERE id = ?
     `, [id])
 
+    await connection.commit()
+    transactionStarted = false
     ApiResponse.success(res, updatedRecords[0], '入库记录更新成功')
   } catch (error) {
+    if (transactionStarted && connection) {
+      await connection.rollback().catch(rollbackError => log.error('回滚入库记录更新失败:', rollbackError))
+      transactionStarted = false
+    }
     if (sendStoreScopeError(res, error)) return
     log.error('更新入库记录失败:', error)
     ApiResponse.serverError(res, '更新入库记录失败', error)
   } finally {
+    if (transactionStarted && connection) await connection.rollback().catch(() => {})
     if (connection) {
       connection.release()
     }
@@ -943,6 +948,7 @@ router.put('/:id', unifiedAuth, requirePermission('stock-in:edit'), async (req, 
 // 删除入库记录
 router.delete('/:id', unifiedAuth, requirePermission('stock-in:delete'), async (req, res) => {
   let connection
+  let transactionStarted = false
   try {
     const { id } = req.params
     const storeScope = resolveStoreScope(req.user, req.query.store_id)
@@ -950,26 +956,45 @@ router.delete('/:id', unifiedAuth, requirePermission('stock-in:delete'), async (
     // 获取数据库连接
     const pool = require('../config/database').getDatabase()
     connection = await pool.getConnection()
+    await connection.beginTransaction()
+    transactionStarted = true
 
     // 检查记录是否存在
-    const [existingRecords] = await connection.execute('SELECT id, store_id FROM phones WHERE id = ?', [id])
+    const [existingRecords] = await connection.execute('SELECT id, store_id FROM phones WHERE id = ? FOR UPDATE', [id])
     if (existingRecords.length === 0) {
       return ApiResponse.notFound(res, '入库记录不存在')
     }
     assertStoreInScope(storeScope, existingRecords[0].store_id)
 
-    // 删除记录
-    await connection.execute('DELETE FROM phones WHERE id = ?', [id])
+    // 删除记录时再次应用门店范围，避免检查后发生范围变化。
+    const scopeConditions = ['id = ?']
+    const scopeParams = [id]
+    appendStoreScopeCondition(storeScope, 'store_id', scopeConditions, scopeParams)
+    const [deleteResult] = await connection.execute(
+      `DELETE FROM phones WHERE ${scopeConditions.join(' AND ')}`,
+      scopeParams
+    )
+    if (deleteResult.affectedRows !== 1) {
+      throw new Error('入库记录已变化或不在授权门店范围内，请刷新后重试')
+    }
+
+    await connection.commit()
+    transactionStarted = false
 
     ApiResponse.success(res, {
       id: parseInt(id),
       deleted: true
     }, '入库记录删除成功')
   } catch (error) {
+    if (transactionStarted && connection) {
+      await connection.rollback().catch(rollbackError => log.error('回滚入库记录删除失败:', rollbackError))
+      transactionStarted = false
+    }
     if (sendStoreScopeError(res, error)) return
     log.error('删除入库记录失败:', error)
     ApiResponse.serverError(res, '删除入库记录失败', error)
   } finally {
+    if (transactionStarted && connection) await connection.rollback().catch(() => {})
     if (connection) {
       connection.release()
     }

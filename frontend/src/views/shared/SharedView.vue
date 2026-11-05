@@ -107,7 +107,7 @@
             v-if="loading && posts.length === 0"
             class="shared-loading"
           >
-            正在加载经验分享...
+            <SectionLoading text="正在加载经验分享..." />
           </div>
           <DataEmptyState
             v-else-if="posts.length === 0"
@@ -342,7 +342,7 @@
                 v-if="!editorReady"
                 class="rich-editor-loading"
               >
-                编辑器加载中...
+                <InlineLoading text="编辑器加载中..." />
               </div>
               <div class="rich-editor-filebar">
                 <input
@@ -618,7 +618,7 @@
 import { getRequestErrorMessage } from '@/utils/api-response'
 import { confirmAction, isMessageBoxCanceled } from '@/utils/message-box'
 import { reactive, ref, computed, shallowRef, nextTick, onMounted, onBeforeUnmount, defineAsyncComponent } from 'vue'
-import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
+import { type FormInstance, type FormRules } from 'element-plus'
 import type { IDomEditor, IEditorConfig, IToolbarConfig } from '@wangeditor/editor'
 import DOMPurify from 'dompurify'
 import 'element-plus/theme-chalk/el-image-viewer.css'
@@ -639,6 +639,11 @@ import type {
   SharedPost,
   SharedPostForm
 } from '@/types/shared'
+import { useNotification } from '@/composables/useNotification'
+import SectionLoading from '@/components/SectionLoading.vue'
+import InlineLoading from '@/components/InlineLoading.vue'
+const globalNotifications = useNotification()
+
 
 const WangEditor = defineAsyncComponent(() => import('@wangeditor/editor-for-vue').then(module => module.Editor))
 const WangToolbar = defineAsyncComponent(() => import('@wangeditor/editor-for-vue').then(module => module.Toolbar))
@@ -771,7 +776,7 @@ const toUploadableImageFile = async (file:File) => {
   if (!isHeicImage(file)) return file
 
   try {
-    ElMessage.info('正在转换 HEIC 图片，请稍候')
+    globalNotifications.info('正在转换 HEIC 图片，请稍候')
     const { default: heic2any } = await import('heic2any')
     const converted = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.92 })
     const blob = Array.isArray(converted) ? converted[0] : converted
@@ -781,7 +786,7 @@ const toUploadableImageFile = async (file:File) => {
       lastModified: file.lastModified
     })
   } catch {
-    ElMessage.warning('图片正在转化中....')
+    globalNotifications.warning('图片正在转化中....')
     return file
   }
 }
@@ -791,12 +796,12 @@ const applyCustomFontSize = () => {
   const size = Number(customFontSize.value)
 
   if (!editor) {
-    ElMessage.warning('编辑器还在加载中')
+    globalNotifications.warning('编辑器还在加载中')
     return
   }
 
   if (!Number.isFinite(size) || size < 8 || size > 72) {
-    ElMessage.warning('字号请输入 8 到 72 之间的数字')
+    globalNotifications.warning('字号请输入 8 到 72 之间的数字')
     return
   }
 
@@ -823,7 +828,7 @@ const loadPosts = async () => {
       pagination.total = Number(response.pagination?.total || 0)
     }
   } catch {
-    ElMessage.error('加载经验分享失败')
+    globalNotifications.error('加载经验分享失败')
   } finally {
     loading.value = false
   }
@@ -839,39 +844,39 @@ const loadCategories = async () => {
 const openCategoryManager = async () => { cancelCategoryEdit();newCategoryName.value='';categoryManagerVisible.value=true;await loadCategories() }
 const createCategory = async () => {
   const name = newCategoryName.value.trim()
-  if (!name) { ElMessage.warning('请输入分类名称'); return }
+  if (!name) { globalNotifications.warning('请输入分类名称'); return }
   categorySaving.value = true
   try {
     const response = await api.post<SharedCategory>('/shared/categories', { name })
-    if (response.success) { ElMessage.success('分类已新增');newCategoryName.value='';await loadCategories() }
-  } catch (error) { ElMessage.error(getRequestErrorMessage(error, '新增分类失败')) }
+    if (response.success) { globalNotifications.success('分类已新增');newCategoryName.value='';await loadCategories() }
+  } catch (error) { globalNotifications.error(getRequestErrorMessage(error, '新增分类失败')) }
   finally { categorySaving.value=false }
 }
 const startCategoryEdit = (category:SharedCategory) => { editingCategoryId.value=category.id;editingCategoryName.value=category.name }
 const cancelCategoryEdit = () => { editingCategoryId.value=null;editingCategoryName.value='' }
 const saveCategory = async (category:SharedCategory) => {
   const name = editingCategoryName.value.trim()
-  if (!name) { ElMessage.warning('请输入分类名称'); return }
+  if (!name) { globalNotifications.warning('请输入分类名称'); return }
   categorySaving.value=true
   try {
     const response = await api.put<SharedCategory>(`/shared/categories/${category.id}`, { name })
-    if(response.success){ElMessage.success('分类已更新');if(categoryFilter.value===category.name)categoryFilter.value=name;if(form.category===category.name)form.category=name;cancelCategoryEdit();await Promise.all([loadCategories(),loadPosts()])}
-  } catch(error){ElMessage.error(getRequestErrorMessage(error, '更新分类失败'))}
+    if(response.success){globalNotifications.success('分类已更新');if(categoryFilter.value===category.name)categoryFilter.value=name;if(form.category===category.name)form.category=name;cancelCategoryEdit();await Promise.all([loadCategories(),loadPosts()])}
+  } catch(error){globalNotifications.error(getRequestErrorMessage(error, '更新分类失败'))}
   finally{categorySaving.value=false}
 }
 const deleteCategory = async (category:SharedCategory) => {
   try {
     await confirmAction(`确定删除分类“${category.name}”吗？该分类下的内容将归入“未分类”。`,'删除分类',{ type:'warning' })
     const response = await api.delete<null>(`/shared/categories/${category.id}`)
-    if(response.success){ElMessage.success('分类已删除');if(categoryFilter.value===category.name)categoryFilter.value='';if(form.category===category.name)form.category='未分类';await Promise.all([loadCategories(),loadPosts()])}
-  } catch(error){if(!isMessageBoxCanceled(error))ElMessage.error(getRequestErrorMessage(error, '删除分类失败'))}
+    if(response.success){globalNotifications.success('分类已删除');if(categoryFilter.value===category.name)categoryFilter.value='';if(form.category===category.name)form.category='未分类';await Promise.all([loadCategories(),loadPosts()])}
+  } catch(error){if(!isMessageBoxCanceled(error))globalNotifications.error(getRequestErrorMessage(error, '删除分类失败'))}
 }
 const search = () => { pagination.page=1;loadPosts() }
 const resetSearch = () => { keyword.value='';categoryFilter.value='';visibilityFilter.value='';pagination.page=1;loadPosts() }
 const pageChanged = (page:number,size:number) => { pagination.page=page;pagination.page_size=size;loadPosts() }
 const uploadInlineMedia = async (file:File, insert:(_url:string, _alt?:string, _href?:string)=>void, isVideo = false) => {
-  if (file.size > 100 * 1024 * 1024) { ElMessage.error(`${file.name} 超过100MB`); return }
-  if (form.attachments.length + inlineUploaded.value.length >= 10) { ElMessage.error('正文图片和视频最多上传10个'); return }
+  if (file.size > 100 * 1024 * 1024) { globalNotifications.error(`${file.name} 超过100MB`); return }
+  if (form.attachments.length + inlineUploaded.value.length >= 10) { globalNotifications.error('正文图片和视频最多上传10个'); return }
   try {
     const uploadFile = isVideo ? file : await toUploadableImageFile(file)
     const data = new FormData(); data.append('files', uploadFile)
@@ -883,7 +888,7 @@ const uploadInlineMedia = async (file:File, insert:(_url:string, _alt?:string, _
     if (isVideo) insert(url, '')
     else insert(url, uploaded.name, url)
   } catch (error) {
-    ElMessage.error(getRequestErrorMessage(error, '媒体上传失败'))
+    globalNotifications.error(getRequestErrorMessage(error, '媒体上传失败'))
   }
 }
 const toolbarConfig: Partial<IToolbarConfig> = {}
@@ -902,8 +907,8 @@ const uploadInlineDocument = async (event:Event) => {
   const file = input.files?.[0]
   input.value = ''
   if (!file) return
-  if (file.size > 100 * 1024 * 1024) { ElMessage.error(`${file.name} 超过100MB`); return }
-  if (form.attachments.length + inlineUploaded.value.length >= 10) { ElMessage.error('正文媒体和文件最多上传10个'); return }
+  if (file.size > 100 * 1024 * 1024) { globalNotifications.error(`${file.name} 超过100MB`); return }
+  if (form.attachments.length + inlineUploaded.value.length >= 10) { globalNotifications.error('正文媒体和文件最多上传10个'); return }
   uploadingFile.value = true
   try {
     const data = new FormData(); data.append('files', file)
@@ -916,7 +921,7 @@ const uploadInlineDocument = async (event:Event) => {
     if (isAudio(uploaded)) editorInstance.value?.dangerouslyInsertHtml(`<p><a href="${url}" target="_blank">音频：${escapeHtml(uploaded.name)}</a></p>`)
     else editorInstance.value?.dangerouslyInsertHtml(`<p><a href="${url}" target="_blank">文件：${escapeHtml(uploaded.name)}（${formatSize(uploaded.size)}）</a></p>`)
   } catch (error) {
-    ElMessage.error(getRequestErrorMessage(error, '文件上传失败'))
+    globalNotifications.error(getRequestErrorMessage(error, '文件上传失败'))
   } finally {
     uploadingFile.value = false
   }
@@ -985,7 +990,7 @@ const savePost = async () => {
   await formRef.value.validate()
 
   if (!hasRichContent(form.content)) {
-    ElMessage.error('请输入内容')
+    globalNotifications.error('请输入内容')
     return
   }
 
@@ -1012,14 +1017,14 @@ const savePost = async () => {
       await deleteTempFiles(removedInline.map(storageUrl).filter(Boolean))
     }
     if (response.success) {
-      ElMessage.success(editingId.value ? '经验分享已更新' : '经验分享已发布')
+      globalNotifications.success(editingId.value ? '经验分享已更新' : '经验分享已发布')
       inlineUploaded.value = []
       originalInlineUrls.value = new Set()
       editorVisible.value = false
       await Promise.all([loadPosts(), loadCategories()])
     }
   } catch (error) {
-    ElMessage.error(getRequestErrorMessage(error, '保存失败'))
+    globalNotifications.error(getRequestErrorMessage(error, '保存失败'))
   } finally {
     saving.value = false
   }
@@ -1028,7 +1033,7 @@ const savePost = async () => {
 const togglePin = async (post: SharedPost) => {
   const response = await api.patch<SharedPost>(`/shared/${post.id}/pin`, { pinned: !post.is_pinned })
   if (response.success) {
-    ElMessage.success(post.is_pinned ? '已取消置顶' : '已置顶')
+    globalNotifications.success(post.is_pinned ? '已取消置顶' : '已置顶')
     loadPosts()
   }
 }
@@ -1038,12 +1043,12 @@ const removePost = async (post: SharedPost) => {
     await confirmAction(`确定删除“${post.title}”吗？附件也会一并删除。`, '删除确认', { type: 'warning' })
     const response = await api.delete<null>(`/shared/${post.id}`)
     if (response.success) {
-      ElMessage.success('经验分享已删除')
+      globalNotifications.success('经验分享已删除')
       if (detail.value?.id === post.id) detailVisible.value = false
       loadPosts()
     }
   } catch (error) {
-    if (!isMessageBoxCanceled(error)) ElMessage.error('删除失败')
+    if (!isMessageBoxCanceled(error)) globalNotifications.error('删除失败')
   }
 }
 
@@ -1059,9 +1064,9 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped lang="scss">
-.shared-view{min-height:100%}.shared-content{display:flex;flex-direction:column;gap:14px}.shared-search{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;padding:var(--admin-search-panel-padding-y) var(--admin-search-panel-padding-x)}.shared-feed{display:grid;gap:10px;opacity:1;transition:opacity .2s}.shared-feed.is-loading{opacity:.65}.shared-loading{padding:48px;text-align:center;color:var(--tf-color-slate-500)}.shared-post{position:relative;display:grid;grid-template-columns:4px minmax(0,1fr) 24px;gap:14px;align-items:center;padding:16px;background:var(--color-bg-white);border:1px solid var(--tf-color-slate-200);border-radius:8px;cursor:pointer;overflow:hidden;transition:border-color .18s,box-shadow .18s}.shared-post:hover{border-color:var(--admin-interactive-hover-border,var(--tf-color-slate-400));box-shadow:var(--admin-interactive-hover-shadow,0 5px 16px rgba(15,23,42,.08))}.post-accent{align-self:stretch;background:var(--tf-color-teal-tailwind-500);border-radius:4px}.post-heading{display:flex;justify-content:space-between;gap:12px}.post-labels{display:flex;align-items:center;gap:8px;min-width:0;flex-wrap:wrap}.post-title{margin:8px 0 0;color:var(--tf-color-slate-custom);font-size:var(--tf-type-scale-17);line-height:1.4;letter-spacing:0;overflow-wrap:anywhere}.pin-badge{display:inline-flex;align-items:center;gap:5px;flex:none;padding:3px 7px;border-radius:4px;color:var(--tf-color-amber-700);background:var(--tf-color-amber-50);border:1px solid var(--tf-color-amber-200);font-size:var(--tf-type-scale-12);font-weight:700}.post-actions{display:flex;flex:none}.post-excerpt{margin:8px 0;color:var(--tf-color-slate-600);line-height:1.65;display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.post-attachment-summary,.post-meta{display:flex;align-items:center;flex-wrap:wrap;gap:12px;color:var(--tf-color-slate-500);font-size:var(--tf-type-scale-12)}.post-attachment-summary{margin-bottom:10px}.post-attachment-summary span{display:inline-flex;align-items:center;gap:5px}.post-meta{gap:8px}.author-avatar{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:var(--tf-color-sky-100);color:var(--tf-color-sky-700);font-weight:800}.post-meta strong{color:var(--tf-color-slate-700)}.post-open-icon{color:var(--tf-color-slate-400)}.rich-editor,.attachment-editor{width:100%;min-width:0}.rich-editor{overflow:hidden;border:1px solid var(--color-border);border-radius:6px;background:var(--color-bg-white);transition:border-color .18s,box-shadow .18s}.rich-editor:focus-within{border-color:var(--color-primary);box-shadow:0 0 0 1px var(--color-primary) inset}.rich-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:3px;padding:6px;border-bottom:1px solid var(--tf-color-neutral-200);background:var(--tf-color-slate-50)}.rich-toolbar .el-button{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;padding:0;border:1px solid transparent;border-radius:4px;background:transparent;color:var(--tf-button-tool-color);font-size:var(--tf-type-scale-14);cursor:pointer}.rich-toolbar .el-button:hover{border-color:var(--tf-button-neutral-hover-border);background:var(--tf-button-neutral-bg);color:var(--tf-button-view-soft-hover-color)}.rich-editor-input{min-height:260px;max-height:50vh;padding:12px 14px;overflow:auto;color:var(--tf-color-neutral-800);line-height:1.7;outline:0;overflow-wrap:anywhere}.rich-editor-input:empty::before{color:var(--tf-color-gray-element-400);content:attr(data-placeholder);pointer-events:none}.rich-editor-input :deep(h3){margin:16px 0 8px;font-size:var(--tf-type-scale-18);line-height:1.5}.rich-editor-input :deep(p){margin:8px 0}.rich-editor-input :deep(blockquote){margin:10px 0;padding:8px 12px;border-left:3px solid var(--tf-color-teal-tailwind-500);background:var(--tf-color-teal-50);color:var(--tf-color-slate-600)}.rich-editor-input :deep(ul),.rich-editor-input :deep(ol){padding-left:24px}.rich-editor-meta{padding:5px 10px;border-top:1px solid var(--tf-color-surface-cool);background:var(--tf-color-neutral-25);color:var(--tf-color-gray-ui-alt);font-size:var(--tf-type-scale-12)}.upload-tip{display:block;margin-top:7px;color:var(--tf-color-slate-500)}.existing-attachments{display:grid;gap:6px;margin-top:10px}.existing-attachment{display:grid;grid-template-columns:20px minmax(0,1fr) auto 28px;align-items:center;gap:8px;padding:8px 10px;background:var(--tf-color-slate-50);border:1px solid var(--tf-color-slate-200);border-radius:6px}.existing-attachment span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.existing-attachment small{color:var(--tf-color-slate-500)}.existing-attachment .el-button{width:28px;height:28px;border:0;background:transparent;color:var(--tf-button-danger-soft-color);cursor:pointer}.detail-heading{padding-bottom:16px;border-bottom:1px solid var(--tf-color-slate-200)}.detail-heading h2{margin:10px 0 14px;font-size:var(--tf-type-scale-24);color:var(--tf-color-slate-custom);letter-spacing:0;overflow-wrap:anywhere}.detail-author{display:flex;align-items:center;gap:10px}.detail-author div{display:flex;flex-direction:column}.detail-author small{margin-top:3px;color:var(--tf-color-slate-500)}.detail-content{padding:20px 0;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--tf-color-slate-700);line-height:1.8}.detail-content :deep(h2),.detail-content :deep(h3),.detail-content :deep(h4){margin:20px 0 8px;color:var(--tf-color-slate-custom);line-height:1.45}.detail-content :deep(p){margin:8px 0}.detail-content :deep(ul),.detail-content :deep(ol){margin:10px 0;padding-left:26px}.detail-content :deep(blockquote){margin:14px 0;padding:10px 14px;border-left:4px solid var(--tf-color-teal-tailwind-500);background:var(--tf-color-teal-50);color:var(--tf-color-slate-600)}.detail-content :deep(a){color:var(--tf-color-emerald-700);text-decoration:underline}.detail-content :deep(pre){max-width:100%;padding:12px;overflow:auto;border-radius:6px;background:var(--tf-color-slate-custom);color:var(--tf-color-slate-50)}.detail-attachments{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.media-image{display:block;aspect-ratio:4/3;overflow:hidden;border:1px solid var(--tf-color-slate-200);border-radius:6px;background:var(--tf-color-slate-50)}.media-image img{width:100%;height:100%;object-fit:contain}.media-video{grid-column:1/-1;width:100%;max-height:480px;background:var(--tf-color-neutral-900);border-radius:6px}.document-file{display:grid;grid-template-columns:28px minmax(0,1fr) 20px;align-items:center;gap:10px;padding:12px;color:var(--tf-color-slate-700);text-decoration:none;border:1px solid var(--tf-color-slate-200);border-radius:6px;background:var(--tf-color-slate-50)}.document-file>i:first-child{font-size:var(--tf-type-scale-22);color:var(--tf-color-teal-700)}.document-file span{display:flex;min-width:0;flex-direction:column}.document-file strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.document-file small{margin-top:3px;color:var(--tf-color-slate-500)}
+.shared-view{min-height:100%}.shared-content{display:flex;flex-direction:column;gap:14px}.shared-search{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;padding:var(--admin-search-panel-padding-y) var(--admin-search-panel-padding-x)}.shared-feed{display:grid;gap:10px;opacity:1;transition:opacity .2s}.shared-feed.is-loading{opacity:.65}.shared-loading{padding:0;text-align:center;color:var(--tf-color-slate-500)}.shared-post{position:relative;display:grid;grid-template-columns:4px minmax(0,1fr) 24px;gap:14px;align-items:center;padding:16px;background:var(--color-bg-white);border:1px solid var(--tf-color-slate-200);border-radius:8px;cursor:pointer;overflow:hidden;transition:border-color .18s,box-shadow .18s}.shared-post:hover{border-color:var(--admin-interactive-hover-border,var(--tf-color-slate-400));box-shadow:var(--admin-interactive-hover-shadow,0 5px 16px rgba(15,23,42,.08))}.post-accent{align-self:stretch;background:var(--tf-color-teal-tailwind-500);border-radius:4px}.post-heading{display:flex;justify-content:space-between;gap:12px}.post-labels{display:flex;align-items:center;gap:8px;min-width:0;flex-wrap:wrap}.post-title{margin:8px 0 0;color:var(--tf-color-slate-custom);font-size:var(--tf-type-scale-17);line-height:1.4;letter-spacing:0;overflow-wrap:anywhere}.pin-badge{display:inline-flex;align-items:center;gap:5px;flex:none;padding:3px 7px;border-radius:4px;color:var(--tf-color-amber-700);background:var(--tf-color-amber-50);border:1px solid var(--tf-color-amber-200);font-size:var(--tf-type-scale-12);font-weight:700}.post-actions{display:flex;flex:none}.post-excerpt{margin:8px 0;color:var(--tf-color-slate-600);line-height:1.65;display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.post-attachment-summary,.post-meta{display:flex;align-items:center;flex-wrap:wrap;gap:12px;color:var(--tf-color-slate-500);font-size:var(--tf-type-scale-12)}.post-attachment-summary{margin-bottom:10px}.post-attachment-summary span{display:inline-flex;align-items:center;gap:5px}.post-meta{gap:8px}.author-avatar{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:var(--tf-color-sky-100);color:var(--tf-color-sky-700);font-weight:800}.post-meta strong{color:var(--tf-color-slate-700)}.post-open-icon{color:var(--tf-color-slate-400)}.rich-editor,.attachment-editor{width:100%;min-width:0}.rich-editor{overflow:hidden;border:1px solid var(--color-border);border-radius:6px;background:var(--color-bg-white);transition:border-color .18s,box-shadow .18s}.rich-editor:focus-within{border-color:var(--color-primary);box-shadow:0 0 0 1px var(--color-primary) inset}.rich-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:3px;padding:6px;border-bottom:1px solid var(--tf-color-neutral-200);background:var(--tf-color-slate-50)}.rich-toolbar .el-button{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;padding:0;border:1px solid transparent;border-radius:4px;background:transparent;color:var(--tf-button-tool-color);font-size:var(--tf-type-scale-14);cursor:pointer}.rich-toolbar .el-button:hover{border-color:var(--tf-button-neutral-hover-border);background:var(--tf-button-neutral-bg);color:var(--tf-button-view-soft-hover-color)}.rich-editor-input{min-height:260px;max-height:50vh;padding:12px 14px;overflow:auto;color:var(--tf-color-neutral-800);line-height:1.7;outline:0;overflow-wrap:anywhere}.rich-editor-input:empty::before{color:var(--tf-color-gray-element-400);content:attr(data-placeholder);pointer-events:none}.rich-editor-input :deep(h3){margin:16px 0 8px;font-size:var(--tf-type-scale-18);line-height:1.5}.rich-editor-input :deep(p){margin:8px 0}.rich-editor-input :deep(blockquote){margin:10px 0;padding:8px 12px;border-left:3px solid var(--tf-color-teal-tailwind-500);background:var(--tf-color-teal-50);color:var(--tf-color-slate-600)}.rich-editor-input :deep(ul),.rich-editor-input :deep(ol){padding-left:24px}.rich-editor-meta{padding:5px 10px;border-top:1px solid var(--tf-color-surface-cool);background:var(--tf-color-neutral-25);color:var(--tf-color-gray-ui-alt);font-size:var(--tf-type-scale-12)}.upload-tip{display:block;margin-top:7px;color:var(--tf-color-slate-500)}.existing-attachments{display:grid;gap:6px;margin-top:10px}.existing-attachment{display:grid;grid-template-columns:20px minmax(0,1fr) auto 28px;align-items:center;gap:8px;padding:8px 10px;background:var(--tf-color-slate-50);border:1px solid var(--tf-color-slate-200);border-radius:6px}.existing-attachment span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.existing-attachment small{color:var(--tf-color-slate-500)}.existing-attachment .el-button{width:28px;height:28px;border:0;background:transparent;color:var(--tf-button-danger-soft-color);cursor:pointer}.detail-heading{padding-bottom:16px;border-bottom:1px solid var(--tf-color-slate-200)}.detail-heading h2{margin:10px 0 14px;font-size:var(--tf-type-scale-24);color:var(--tf-color-slate-custom);letter-spacing:0;overflow-wrap:anywhere}.detail-author{display:flex;align-items:center;gap:10px}.detail-author div{display:flex;flex-direction:column}.detail-author small{margin-top:3px;color:var(--tf-color-slate-500)}.detail-content{padding:20px 0;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--tf-color-slate-700);line-height:1.8}.detail-content :deep(h2),.detail-content :deep(h3),.detail-content :deep(h4){margin:20px 0 8px;color:var(--tf-color-slate-custom);line-height:1.45}.detail-content :deep(p){margin:8px 0}.detail-content :deep(ul),.detail-content :deep(ol){margin:10px 0;padding-left:26px}.detail-content :deep(blockquote){margin:14px 0;padding:10px 14px;border-left:4px solid var(--tf-color-teal-tailwind-500);background:var(--tf-color-teal-50);color:var(--tf-color-slate-600)}.detail-content :deep(a){color:var(--tf-color-emerald-700);text-decoration:underline}.detail-content :deep(pre){max-width:100%;padding:12px;overflow:auto;border-radius:6px;background:var(--tf-color-slate-custom);color:var(--tf-color-slate-50)}.detail-attachments{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.media-image{display:block;aspect-ratio:4/3;overflow:hidden;border:1px solid var(--tf-color-slate-200);border-radius:6px;background:var(--tf-color-slate-50)}.media-image img{width:100%;height:100%;object-fit:contain}.media-video{grid-column:1/-1;width:100%;max-height:480px;background:var(--tf-color-neutral-900);border-radius:6px}.document-file{display:grid;grid-template-columns:28px minmax(0,1fr) 20px;align-items:center;gap:10px;padding:12px;color:var(--tf-color-slate-700);text-decoration:none;border:1px solid var(--tf-color-slate-200);border-radius:6px;background:var(--tf-color-slate-50)}.document-file>i:first-child{font-size:var(--tf-type-scale-22);color:var(--tf-color-teal-700)}.document-file span{display:flex;min-width:0;flex-direction:column}.document-file strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.document-file small{margin-top:3px;color:var(--tf-color-slate-500)}
 .rich-editor :deep(.w-e-toolbar){flex-wrap:wrap;border-bottom:1px solid var(--color-border)}.rich-editor :deep(.w-e-text-container){min-height:320px}.rich-editor :deep(.w-e-text){min-height:300px;max-height:50vh;overflow-y:auto}.rich-editor :deep(.w-e-text-placeholder){color:var(--tf-color-gray-element-400)}
-.rich-editor{position:relative}.rich-editor-loading{position:absolute;inset:0;z-index:3;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.9);color:var(--tf-color-slate-500);font-size:var(--tf-type-scale-13);cursor:progress}
+.rich-editor{position:relative}.rich-editor-loading{position:absolute;inset:0;z-index:3;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.9);cursor:progress}
 .shared-meta-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.shared-meta-fields--single{grid-template-columns:minmax(0,1fr)}.shared-meta-fields :deep(.el-form-item){min-width:0}.shared-meta-fields :deep(.el-select),.visibility-control{width:100%}.visibility-control{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));overflow:hidden;border:1px solid var(--tf-button-neutral-border);border-radius:6px}.visibility-control :deep(.el-radio-button){min-width:0}.visibility-control :deep(.el-radio-button__inner){display:flex;width:100%;height:42px;align-items:center;justify-content:center;padding:0 16px;border:0!important;border-radius:0!important;box-shadow:none!important;font-size:var(--tf-type-scale-15);font-weight:700;line-height:1;white-space:nowrap}.visibility-control :deep(.el-radio-button + .el-radio-button .el-radio-button__inner){border-left:1px solid var(--tf-button-neutral-border)!important}.visibility-control :deep(.el-radio-button__original-radio:checked + .el-radio-button__inner){border-color:var(--tf-button-primary-border)!important;background:var(--tf-button-primary-bg);color:var(--tf-button-primary-color)}.visibility-option{display:inline-flex;min-width:0;align-items:center;justify-content:center;gap:10px}.visibility-option i{flex:none;font-size:var(--tf-type-scale-17)}.category-badge,.private-badge,.public-badge{display:inline-flex;flex:none;align-items:center;gap:5px;padding:3px 7px;border:1px solid;border-radius:4px;font-size:var(--tf-type-scale-12);font-weight:700;line-height:1.3}.category-badge{border-color:var(--tf-color-cyan-200);background:var(--tf-color-cyan-50);color:var(--tf-color-cyan-700)}.private-badge{border-color:var(--tf-color-rose-200);background:var(--tf-color-rose-50);color:var(--tf-color-rose-700)}.public-badge{border-color:var(--tf-color-green-200);background:var(--tf-color-green-50);color:var(--tf-color-green-700)}.detail-labels{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:7px}.category-create-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;margin-bottom:12px}.category-create-row :deep(.el-button){min-width:80px;margin:0}.category-name{color:var(--tf-color-slate-700);font-weight:600}.category-manager-dialog :deep(.el-dialog__body){overflow-x:hidden}
 .shared-feed{grid-template-columns:repeat(3,minmax(0,1fr));align-items:stretch}.shared-loading,.shared-feed>.el-empty{grid-column:1/-1}.shared-post{grid-template-columns:3px minmax(0,1fr);gap:12px;min-width:0;min-height:188px;height:100%;padding:14px}.shared-post>.post-open-icon{display:none}.post-main{display:flex;min-width:0;height:100%;flex-direction:column}.post-heading{min-width:0;align-items:flex-start;flex-wrap:wrap}.post-labels{min-width:0;flex:1}.post-title{display:-webkit-box;min-width:0;overflow:hidden;text-overflow:ellipsis;-webkit-box-orient:vertical;-webkit-line-clamp:1;line-clamp:1}.post-actions{max-width:100%;flex-wrap:wrap;justify-content:flex-end;gap:5px}.post-actions :deep(.el-button i){margin-right:4px}.post-excerpt{display:-webkit-box;min-height:42px;overflow:hidden;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2}.post-attachment-summary{min-height:18px;margin-bottom:8px;overflow:hidden;white-space:nowrap}.post-attachment-summary span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.post-meta{margin-top:auto;min-width:0;flex-wrap:nowrap;overflow:hidden;white-space:nowrap}.post-meta strong,.post-meta>span:not(.author-avatar){min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 @media(max-width:1200px) and (min-width: 768px){.shared-feed{grid-template-columns:repeat(2,minmax(0,1fr))}}

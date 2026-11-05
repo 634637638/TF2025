@@ -16,6 +16,7 @@ const { validateUploadedFileSignature, removeUploadedFiles } = require('../utils
 const dataMaskingService = require('../services/dataMaskingService')
 const { searchCustomers: searchCustomerOptions } = require('../services/customer-search.service')
 const { searchOperators } = require('../services/operator-search.service')
+const { reconcileCustomerPointsForSale } = require('../services/customer-points.service')
 const auditUnpaginatedPersonnelSearch = require('../middleware/unpaginated-personnel-search')
 
 router.use(unifiedAuth)
@@ -575,7 +576,7 @@ router.post('/', requirePermission('rentals:create'), rejectHiddenRentalWriteFie
     await connection.beginTransaction()
     const [customers] = await connection.execute('SELECT id,id_card FROM customers WHERE id=? AND status=1 FOR UPDATE', [customerId])
     if (!customers.length || !isValidIdCard(String(customers[0].id_card || ''))) throw new Error('客户不存在、已停用或缺少正确身份证号')
-    const [phones] = await connection.execute('SELECT id,status,purchase_cost,store_id FROM phones WHERE id=? FOR UPDATE', [phoneId])
+    const [phones] = await connection.execute('SELECT id,status,purchase_cost,store_id,is_new FROM phones WHERE id=? FOR UPDATE', [phoneId])
     if (!phones.length || phones[0].status !== 'in_stock') throw new Error('设备已不在库，请重新选择')
     const purchaseCost = req.body?.purchase_cost === undefined
       ? Number(phones[0].purchase_cost || 0)
@@ -607,6 +608,15 @@ router.post('/', requirePermission('rentals:create'), rejectHiddenRentalWriteFie
          VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
         [phoneId, customerId, 'retail', saleOperatorId, saleStoreId || phones[0].store_id || null, totalPrice, purchaseCost, salePaymentMethod, invoiceNumber, saleRemarks || `租赁买断合同 ${contractNumber}`, saleDate]
       )
+      await reconcileCustomerPointsForSale({
+        executor: connection,
+        saleId: saleResult.insertId,
+        customerId,
+        saleType: 'retail',
+        salePrice: totalPrice,
+        isNew: phones[0].is_new,
+        initialize: true
+      })
       await connection.execute('UPDATE rentals SET sale_id=? WHERE id=?', [saleResult.insertId, result.insertId])
       await connection.execute(
         'UPDATE phones SET status=\'sold\',sale_price=?,sale_time=?,sale_operator_id=?,remarks=CONCAT(COALESCE(remarks,\'\'), ?) WHERE id=?',
@@ -655,9 +665,10 @@ router.put('/:id', requirePermission('rentals:edit'), rejectHiddenRentalWriteFie
     connection = await getDatabase().getConnection()
     await connection.beginTransaction()
     const [rows] = await connection.execute(
-      `SELECT status,billing_mode,start_date,sale_id,phone_id,unit_price,term_months,sale_price,
+      `SELECT status,billing_mode,start_date,sale_id,phone_id,customer_id,unit_price,term_months,sale_price,
               down_payment,principal_amount,monthly_rent,monitoring_lock,deposit,remarks,
-              (SELECT purchase_cost FROM phones WHERE id=rentals.phone_id) AS purchase_cost
+              (SELECT purchase_cost FROM phones WHERE id=rentals.phone_id) AS purchase_cost,
+              (SELECT is_new FROM phones WHERE id=rentals.phone_id) AS is_new
        FROM rentals WHERE id=? FOR UPDATE`,
       [id]
     )
@@ -747,6 +758,16 @@ router.put('/:id', requirePermission('rentals:edit'), rejectHiddenRentalWriteFie
       if (req.body?.sale_payment_method !== undefined) addSaleUpdate('payment_method', String(req.body.sale_payment_method || '') || null)
       if (req.body?.sale_payment_channel !== undefined) addSaleUpdate('payment_channel', String(req.body.sale_payment_channel || '').trim() || null)
       if (req.body?.sale_remarks !== undefined) addSaleUpdate('remarks', String(req.body.sale_remarks || '').trim() || null)
+      if (req.body?.sale_price !== undefined) {
+        await reconcileCustomerPointsForSale({
+          executor: connection,
+          saleId: current.sale_id,
+          customerId: current.customer_id,
+          saleType: 'retail',
+          salePrice,
+          isNew: current.is_new
+        })
+      }
       if (saleUpdates.length) await connection.execute(`UPDATE sales SET ${saleUpdates.join(',')} WHERE id=?`, [...saleParams, current.sale_id])
       if (req.body?.sale_price !== undefined) {
         await connection.execute('UPDATE phones SET sale_price=? WHERE id=? AND status=?', [Number(salePrice.toFixed(2)), current.phone_id, 'sold'])

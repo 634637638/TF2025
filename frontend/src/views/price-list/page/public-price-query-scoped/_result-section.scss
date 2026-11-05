@@ -25,22 +25,6 @@
     }
   }
 
-  .loading-container {
-    text-align: center;
-    padding: 60px 20px;
-    color: white;
-
-    .el-icon {
-      font-size: var(--tf-type-scale-64);
-      margin-bottom: 20px;
-    }
-
-    p {
-      font-size: var(--tf-type-scale-18);
-      opacity: 0.8;
-    }
-  }
-
   .results-list {
     background: white;
     border-radius: 16px;
@@ -222,14 +206,6 @@
       }
     }
 
-    @keyframes spin {
-      from {
-        transform: rotate(0deg);
-      }
-      to {
-        transform: rotate(360deg);
-      }
-    }
   }
 
   // 批发报价与销售报价共用同一套 360px 基准表格布局。

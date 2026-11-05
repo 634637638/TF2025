@@ -84,11 +84,14 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { ElMessage } from 'element-plus'
+
 import Image from './Image.vue'
 import type { ModelValueProps, UpdateModelValueEmits } from '@/types/component'
 import { logger } from '@/utils/logger'
 import { unifiedApi } from '@/utils/unified-api'
+import { useNotification } from '@/composables/useNotification'
+const globalNotifications = useNotification()
+
 
 interface MemoryTemplate {
   id: number
@@ -219,7 +222,7 @@ const loadMemoryOptions = async () => {
     }
   } catch (error) {
     logger.error('加载内存选项失败:', error)
-    ElMessage.error('加载规格失败')
+    globalNotifications.error('加载规格失败')
   }
 }
 
@@ -231,7 +234,7 @@ const selectMemory = (option: MemoryOption) => {
 // 确认
 const handleConfirm = () => {
   if (!selectedPhoneId.value) {
-    ElMessage.warning('请选择内存规格')
+    globalNotifications.warning('请选择内存规格')
     return
   }
 

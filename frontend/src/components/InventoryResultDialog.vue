@@ -178,7 +178,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { ElMessage } from 'element-plus'
+
 import { unifiedApi } from '@/utils/unified-api'
 import { extractResponseData } from '@/utils/api-response'
 import { useMobile } from '@/composables/mobile'
@@ -186,6 +186,9 @@ import SectionLoading from '@/components/SectionLoading.vue'
 import { logger } from '@/utils/logger'
 import type { InventoryItem } from '@/types'
 import type { ModelValueProps } from '@/types/component'
+import { useNotification } from '@/composables/useNotification'
+const globalNotifications = useNotification()
+
 
 interface Product {
   brand_id?: number
@@ -278,7 +281,7 @@ const loadData = async () => {
     const requiredSpecIds = [params.brand_id, params.model_id, params.color_id, params.memory_id]
     if (requiredSpecIds.some(id => !Number.isSafeInteger(Number(id)) || Number(id) <= 0)) {
       inventoryData.value = []
-      ElMessage.error('当前报价缺少完整规格，无法查询在库明细')
+      globalNotifications.error('当前报价缺少完整规格，无法查询在库明细')
       return
     }
 
@@ -293,7 +296,7 @@ const loadData = async () => {
       inventoryData.value = extractResponseData<InventoryItem[]>(response)
     } else {
       inventoryData.value = []
-      ElMessage.error(response.message || '加载在库数据失败')
+      globalNotifications.error(response.message || '加载在库数据失败')
     }
   } catch (error: unknown) {
     inventoryData.value = []
@@ -303,7 +306,7 @@ const loadData = async () => {
       emit('authorizationExpired')
     } else {
       logger.error('加载在库数据失败:', error)
-      ElMessage.error('在库明细加载失败，请稍后重试')
+      globalNotifications.error('在库明细加载失败，请稍后重试')
     }
   } finally {
     loading.value = false

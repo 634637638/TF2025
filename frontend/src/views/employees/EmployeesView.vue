@@ -446,10 +446,10 @@
             :model="employeeForm"
             label-width="100px"
           >
-            <el-row :gutter="20">
+            <el-row :gutter="isMobile ? 0 : 20">
               <el-col
                 v-if="canViewField('name')"
-                :span="12"
+                :span="isMobile ? 24 : 12"
               >
                 <el-form-item
                   label="姓名"
@@ -467,7 +467,7 @@
               </el-col>
               <el-col
                 v-if="canViewField('username')"
-                :span="12"
+                :span="isMobile ? 24 : 12"
               >
                 <el-form-item
                   label="用户名"
@@ -485,10 +485,10 @@
               </el-col>
             </el-row>
 
-            <el-row :gutter="20">
+            <el-row :gutter="isMobile ? 0 : 20">
               <el-col
                 v-if="canViewField('phone')"
-                :span="12"
+                :span="isMobile ? 24 : 12"
               >
                 <el-form-item label="手机号">
                   <el-input
@@ -503,7 +503,7 @@
               </el-col>
               <el-col
                 v-if="canViewField('email')"
-                :span="12"
+                :span="isMobile ? 24 : 12"
               >
                 <el-form-item label="邮箱">
                   <el-input
@@ -587,8 +587,8 @@
 
             <!-- 新增员工时的密码设置 -->
             <template v-if="showAddModal">
-              <el-row :gutter="20">
-                <el-col :span="12">
+              <el-row :gutter="isMobile ? 0 : 20">
+                <el-col :span="isMobile ? 24 : 12">
                   <el-form-item
                     label="初始密码"
                     required
@@ -603,7 +603,7 @@
                     />
                   </el-form-item>
                 </el-col>
-                <el-col :span="12">
+                <el-col :span="isMobile ? 24 : 12">
                   <el-form-item
                     label="确认密码"
                     required
@@ -638,8 +638,8 @@
               </el-divider>
 
               <div v-if="showPasswordFields">
-                <el-row :gutter="20">
-                  <el-col :span="12">
+                <el-row :gutter="isMobile ? 0 : 20">
+                  <el-col :span="isMobile ? 24 : 12">
                     <el-form-item label="新密码">
                       <el-input
                         v-model="employeeForm.password"
@@ -654,7 +654,7 @@
                       </div>
                     </el-form-item>
                   </el-col>
-                  <el-col :span="12">
+                  <el-col :span="isMobile ? 24 : 12">
                     <el-form-item label="确认新密码">
                       <el-input
                         v-model="employeeForm.confirm_password"
@@ -2325,19 +2325,6 @@ onMounted(async () => {
 
 /* 注意：不再使用的通用按钮样式已删除，改用 el-button */
 
-/* 自定义状态按钮样式 */
-.btn[style*="var(--tf-color-orange-coral)"]:hover {
-  background: var(--tf-button-neutral-hover-bg) !important;
-  transform: translateY(-1px);
-  box-shadow: var(--tf-button-shadow-hover);
-}
-
-.btn[style*="var(--tf-color-muted)"]:hover {
-  background: var(--tf-button-neutral-hover-bg) !important;
-  transform: translateY(-1px);
-  box-shadow: var(--tf-button-shadow-hover);
-}
-
 /* 操作按钮容器样式 */
 .actions {
   display: flex;
@@ -2971,19 +2958,6 @@ onMounted(async () => {
     font-size: var(--tf-type-scale-13);
     line-height: 1.4;
     padding-bottom: 4px;
-  }
-
-  .employees-form-dialog .el-row {
-    margin-left: 0 !important;
-    margin-right: 0 !important;
-    display: block;
-  }
-
-  .employees-form-dialog .el-row > .el-col {
-    max-width: 100% !important;
-    flex: 0 0 100% !important;
-    padding-left: 0 !important;
-    padding-right: 0 !important;
   }
 
   .employees-form-dialog .el-checkbox-group {

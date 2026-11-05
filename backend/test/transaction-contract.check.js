@@ -1903,7 +1903,7 @@ test('subsidy uses canonical pagination and handler fields without runtime schem
   assert.doesNotMatch(sources, /fieldVisibility\.(?:storeName|salesmanName|saleTime|customerName|customerPhone|customerIdcard|serialNumber|salePrice|subsidyAmount|subsidyRate|subsidyCalcPrice|applyTime|arrivalTime|subsidyPhotos)/);
   assert.match(photoDialog, /@click="downloadToolbarPhotos"/);
   assert.match(photoDialog, /v-if="canUpload"[\s\S]{0,180}@click="deleteToolbarPhotos"/);
-  assert.match(photoDialog, /if \(!canUpload\.value\) \{\s+ElMessage\.warning\('您没有图片上传权限'\)/);
+  assert.match(photoDialog, /if \(!canUpload\.value\) \{\s+globalNotifications\.warning\('您没有图片上传权限'\)/);
   assert.match(editDialog, /v-if="canViewField\('apply_time'\) \|\| canApprove \|\| canViewField\('arrival_time'\) \|\| canArrival"/);
   assert.match(editDialog, /v-if="canApprove"\s+label="提交时间"/);
   assert.match(editDialog, /v-if="canArrival"\s+label="到账时间"/);

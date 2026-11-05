@@ -759,7 +759,7 @@ import { confirmAction } from '@/utils/message-box'
 import { computed, onMounted, onUnmounted, onActivated, ref, inject, watch } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
 import { Refresh, Plus } from '@element-plus/icons-vue'
-import { ElMessage, type UploadRequestOptions } from 'element-plus'
+import { type UploadRequestOptions } from 'element-plus'
 import { UploadAjaxError } from 'element-plus/es/components/upload/src/ajax'
 import draggable from 'vuedraggable'
 import { PermissionGate } from '@/components/base/index'
@@ -789,6 +789,9 @@ import { baseDataApi, type Brand, type Model, type Color, type Memory } from '@/
 import { logger } from '@/utils/logger'
 import { MEDIA_UPLOAD_ACCEPT, prepareMediaFile, validateMediaFile } from '@/utils/upload-media'
 import type { HeaderAction } from '@/types'
+import { useNotification } from '@/composables/useNotification'
+const globalNotifications = useNotification()
+
 interface EditableChildTemplate extends Omit<NewTemplate, 'memory_ids' | 'images'> {
   localKey: string
   isNew: boolean
@@ -1139,7 +1142,7 @@ const loadPageData = async () => {
     groupedTemplates.value = buildTemplateGroups(templates.value)
   } catch (error: unknown) {
     logger.error('loadPageData error:', error)
-    ElMessage.error(error instanceof Error ? error.message : '加载模板数据失败')
+    globalNotifications.error(error instanceof Error ? error.message : '加载模板数据失败')
   } finally {
     loading.value = false
   }
@@ -1173,7 +1176,7 @@ const prepareDialog = async () => {
     return true
   } catch (error: unknown) {
     logger.error('清理上次未保存模板媒体失败:', error)
-    ElMessage.error(error instanceof Error ? error.message : '清理上次未保存媒体失败')
+    globalNotifications.error(error instanceof Error ? error.message : '清理上次未保存媒体失败')
     return false
   }
 }
@@ -1226,7 +1229,7 @@ const handleCancelDialog = async () => {
     showDialog.value = false
   } catch (error: unknown) {
     logger.error('清理未保存模板媒体失败:', error)
-    ElMessage.error(error instanceof Error ? error.message : '未保存媒体清理失败，请重试')
+    globalNotifications.error(error instanceof Error ? error.message : '未保存媒体清理失败，请重试')
   }
 }
 
@@ -1247,12 +1250,12 @@ const handleAddChild = () => {
   }
 
   if (!groupForm.value.brand_id || !groupForm.value.model_id) {
-    ElMessage.warning('请先选择品牌和型号')
+    globalNotifications.warning('请先选择品牌和型号')
     return
   }
 
   if (!pendingColorId.value) {
-    ElMessage.warning('请选择颜色')
+    globalNotifications.warning('请选择颜色')
     return
   }
 
@@ -1290,9 +1293,9 @@ const handleRemoveChild = async (child: EditableChildTemplate) => {
     try {
       await cleanupPendingMediaUploads(child.id)
       await deleteTemplate(child.id)
-      ElMessage.success('颜色子模板已删除')
+      globalNotifications.success('颜色子模板已删除')
     } catch (error: unknown) {
-      ElMessage.error(error instanceof Error ? error.message : '删除颜色子模板失败')
+      globalNotifications.error(error instanceof Error ? error.message : '删除颜色子模板失败')
       return
     }
   }
@@ -1334,10 +1337,10 @@ const handleDeleteGroup = async (group: TemplateGroup) => {
         await deleteTemplate(child.id)
       }
     }
-    ElMessage.success('母模板已删除')
+    globalNotifications.success('母模板已删除')
     await loadPageData()
   } catch (error: unknown) {
-    ElMessage.error(error instanceof Error ? error.message : '删除母模板失败')
+    globalNotifications.error(error instanceof Error ? error.message : '删除母模板失败')
   }
 }
 
@@ -1384,9 +1387,9 @@ const handleGroupDragEnd = async () => {
       sort_order: template.id ? (nextSortMap.get(template.id) ?? template.sort_order) : template.sort_order
     }))
     groupedTemplates.value = buildTemplateGroups(templates.value)
-    ElMessage.success('母模板排序已更新')
+    globalNotifications.success('母模板排序已更新')
   } catch (error: unknown) {
-    ElMessage.error(error instanceof Error ? error.message : '更新模板排序失败')
+    globalNotifications.error(error instanceof Error ? error.message : '更新模板排序失败')
     await loadPageData()
   } finally {
     sortingGroups.value = false
@@ -1395,24 +1398,24 @@ const handleGroupDragEnd = async () => {
 
 const validateGroupBeforeSave = () => {
   if (!groupForm.value.brand_id || !groupForm.value.model_id) {
-    ElMessage.warning('请先选择品牌和型号')
+    globalNotifications.warning('请先选择品牌和型号')
     return false
   }
 
   if (childDrafts.value.length === 0) {
-    ElMessage.warning('请至少新增一个颜色子模板')
+    globalNotifications.warning('请至少新增一个颜色子模板')
     return false
   }
 
   const missingColor = childDrafts.value.find(item => !item.color_id)
   if (missingColor) {
-    ElMessage.warning('存在未设置颜色的子模板')
+    globalNotifications.warning('存在未设置颜色的子模板')
     return false
   }
 
   const colorIds = childDrafts.value.map(item => item.color_id)
   if (new Set(colorIds).size !== colorIds.length) {
-    ElMessage.warning('同一母模板下颜色不能重复')
+    globalNotifications.warning('同一母模板下颜色不能重复')
     return false
   }
 
@@ -1520,12 +1523,12 @@ const handleSaveGroup = async () => {
     pendingMediaUploads.clear()
     pendingPrimaryMedia.clear()
 
-    ElMessage.success('母模板已保存')
+    globalNotifications.success('母模板已保存')
     showDialog.value = false
     await loadPageData()
   } catch (error: unknown) {
     logger.error('handleSaveGroup error:', error)
-    ElMessage.error(error instanceof Error ? error.message : '保存母模板失败')
+    globalNotifications.error(error instanceof Error ? error.message : '保存母模板失败')
   } finally {
     saving.value = false
   }
@@ -1542,7 +1545,7 @@ const beforeImageUpload = async (file: File) => {
     maxPdfSizeMb: 10
   })
   if (validationMessage) {
-    ElMessage.error(validationMessage)
+    globalNotifications.error(validationMessage)
     return false
   }
 
@@ -1550,7 +1553,7 @@ const beforeImageUpload = async (file: File) => {
     return await prepareMediaFile(file, { maxImageSizeMb: 10, maxVideoSizeMb: 50, maxPdfSizeMb: 10 })
   } catch (error) {
     logger.error('文件处理失败:', error)
-    ElMessage.error(error instanceof Error ? error.message : '文件处理失败')
+    globalNotifications.error(error instanceof Error ? error.message : '文件处理失败')
     return false
   }
 }
@@ -1571,7 +1574,7 @@ const handleImageUpload = async (options: UploadRequestOptions) => {
 
   const child = currentChild.value
   if (!child?.id) {
-    ElMessage.warning('请先保存当前颜色子模板')
+    globalNotifications.warning('请先保存当前颜色子模板')
     options.onError?.(new UploadAjaxError('template_not_saved', 400, options.method, options.action))
     return
   }
@@ -1598,10 +1601,10 @@ const handleImageUpload = async (options: UploadRequestOptions) => {
     const pendingIds = pendingMediaUploads.get(child.id) || []
     pendingIds.push(Number(image.id))
     pendingMediaUploads.set(child.id, pendingIds)
-    ElMessage.success(isVideoMedia(image) ? '视频上传成功' : '图片上传成功')
+    globalNotifications.success(isVideoMedia(image) ? '视频上传成功' : '图片上传成功')
     options.onSuccess?.(image)
   } catch (error: unknown) {
-    ElMessage.error(error instanceof Error ? error.message : '媒体上传失败')
+    globalNotifications.error(error instanceof Error ? error.message : '媒体上传失败')
     const uploadError = error instanceof Error ? error : new Error('媒体上传失败')
     options.onError?.(new UploadAjaxError(uploadError.message, 500, options.method, options.action))
   } finally {
@@ -1643,9 +1646,9 @@ const handleDeleteImage = async (child: EditableChildTemplate, image: TemplateIm
       await deleteTemplateImage(child.id, image.id)
     }
     syncChildImageState(child, child.images.filter(item => item.id !== image.id))
-    ElMessage.success(isVideoMedia(image) ? '视频已删除' : '图片已删除')
+    globalNotifications.success(isVideoMedia(image) ? '视频已删除' : '图片已删除')
   } catch (error: unknown) {
-    ElMessage.error(error instanceof Error ? error.message : '删除媒体失败')
+    globalNotifications.error(error instanceof Error ? error.message : '删除媒体失败')
   }
 }
 
@@ -1673,9 +1676,9 @@ const handleSetPrimaryImage = async (child: EditableChildTemplate, image: Templa
         is_primary: item.id === image.id
       }))
     )
-    ElMessage.success('主图已更新')
+    globalNotifications.success('主图已更新')
   } catch (error: unknown) {
-    ElMessage.error(error instanceof Error ? error.message : '设置主图失败')
+    globalNotifications.error(error instanceof Error ? error.message : '设置主图失败')
   }
 }
 
@@ -1705,7 +1708,7 @@ const handleImageDragEnd = async (child: EditableChildTemplate) => {
     if (orders.length > 0) await reorderTemplateImages(child.id, orders)
     syncChildImageState(child, reordered)
   } catch (error: unknown) {
-    ElMessage.error(error instanceof Error ? error.message : '媒体排序更新失败')
+    globalNotifications.error(error instanceof Error ? error.message : '媒体排序更新失败')
     await loadPageData()
     const reloadedGroup = groupedTemplates.value.find(group => group.brand_id === child.brand_id && group.model_id === child.model_id)
     if (reloadedGroup) {
@@ -1777,7 +1780,7 @@ onBeforeRouteLeave(async () => {
     return true
   } catch (error: unknown) {
     logger.error('离开模板编辑页时清理未保存媒体失败:', error)
-    ElMessage.error(error instanceof Error ? error.message : '未保存媒体清理失败，请重试')
+    globalNotifications.error(error instanceof Error ? error.message : '未保存媒体清理失败，请重试')
     return false
   }
 })

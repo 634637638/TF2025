@@ -37,6 +37,8 @@
 | `province` | VARCHAR(50) | 否 | NULL | 省份 |
 | `postal_code` | VARCHAR(10) | 否 | NULL | 邮政编码 |
 
+当前客户表没有独立的县/区、乡镇或村字段。客户编辑界面的县/区选择在完成独立字段迁移前，会与详细地址组合写入 `address`，格式为“县/区 详细地址”；历史无法识别的地址文本必须原样保留。业务验收要求完整选择省级、地级、县级、乡级（乡镇/街道）和村级（村委会/社区），因此当前 `address` 兼容方案仅是过渡状态，并不代表行政区划数据完整。新增地址层级字段必须通过显式迁移、唯一共享类型/API 契约、字段权限和回滚评估，不能在业务请求中临时改表；迁移前需验证数据来源、许可、覆盖口径及历史地址映射，且不得丢弃原始地址文本。
+
 ### 4. 社交账号字段
 
 | 字段名 | 类型 | 是否必填 | 默认值 | 备注 |
@@ -170,12 +172,19 @@ const memberNumber = 'TF' + Date.now().toString().slice(-5)
 
 ### 3. 积分与消费统计
 ```javascript
-// 每次销售成功后更新
+// 每条零售销售记录成功后按参与类型独立更新；批发、划拨不累计积分
 customer.purchase_count += 1          // 订单数+1
 customer.total_spent += orderAmount   // 累计消费
-customer.points += Math.floor(orderAmount) // 消费1元=1积分
+const pointsAwarded = Math.floor(
+  sale.sale_price * getPointsRate(phone.is_new) / 100
+)
+customer.points += pointsAwarded
+sale.points_awarded = pointsAwarded
+sale.points_accounted_at = new Date()
 customer.last_purchase_date = new Date()
 ```
+
+积分参与类型可选择全新、二手或两者，并可分别设置每消费 100 元累计的积分数，默认均为 1 分。只有选中的类型参与累计；批量订单按每台设备对应的 `sales` 记录分别取整，批发与划拨交易均无积分。售价、成色、客户、交易类型、退库和删除的积分差额统一通过 `backend/src/services/customer-points.service.js` 处理，完整规则见[客户销售积分统一规范](../guides/customer-points-standard.md)。
 
 ### 4. 黑名单管理
 ```javascript

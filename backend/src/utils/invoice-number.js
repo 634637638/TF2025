@@ -90,6 +90,52 @@ async function generateInvoiceNumber(saleType = 'retail', connection, saleDate) 
   return allocation
 }
 
+async function generatePurchaseNumber(connection, purchaseDate = new Date()) {
+  if (!connection) throw new Error('生成入库单号需要数据库连接')
+  const scope = transactionReservations.get(connection)
+  if (!scope) throw new Error('请在开始入库事务前调用 prepareInvoiceNumberTransaction')
+
+  const dateStr = getInvoiceDateKey(purchaseDate)
+  const allocation = scope.pending.then(() => allocatePurchaseNumber(connection, dateStr, scope.numbers))
+  scope.pending = allocation.then(() => {}, () => {})
+  return allocation
+}
+
+async function allocatePurchaseNumber(connection, dateStr, reservations) {
+  const key = `${dateStr}PO`
+  const reserved = reservations.get(key) || new Set()
+  if (!reservations.has(key)) await ensureSequenceRow(connection, dateStr, 'PO')
+
+  const [[sequenceRow]] = await connection.execute(
+    `SELECT current_sequence
+     FROM invoice_sequences
+     WHERE sequence_date = ? AND type_suffix = ?
+     FOR UPDATE`,
+    [dateStr, 'PO']
+  )
+  if (!sequenceRow) throw new Error('入库单号序列表不存在，请先运行数据库结构迁移')
+
+  let sequence = Number(sequenceRow.current_sequence) || 0
+  for (const value of reserved) sequence = Math.max(sequence, value)
+  sequence += 1
+  if (!Number.isSafeInteger(sequence) || sequence > 0xffffffff) {
+    throw new Error('当日入库单号序列已用尽')
+  }
+
+  const [updateResult] = await connection.execute(
+    `UPDATE invoice_sequences
+     SET current_sequence = ?
+     WHERE sequence_date = ? AND type_suffix = ?`,
+    [sequence, dateStr, 'PO']
+  )
+  if (updateResult.affectedRows !== 1) {
+    throw new Error('入库单号序列表更新失败')
+  }
+  reserved.add(sequence)
+  reservations.set(key, reserved)
+  return `PO${dateStr}${String(sequence).padStart(6, '0')}`
+}
+
 async function allocateInvoiceNumber(connection, dateStr, typeSuffix, reservations) {
   const prefixPattern = `${dateStr}%${typeSuffix}`
   const key = `${dateStr}${typeSuffix}`
@@ -241,6 +287,7 @@ module.exports = {
   prepareInvoiceNumberTransaction,
   getInvoiceTypeSuffix,
   generateInvoiceNumber,
+  generatePurchaseNumber,
   generateInvoiceNumberForDate,
   parseInvoiceNumber
 }

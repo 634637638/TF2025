@@ -324,8 +324,13 @@
               @row-click="(row) => handleMobileRowTap(row.price_list_id || row.id)"
             >
               <template #empty>
+                <TableLoadingRow
+                  v-if="loading"
+                  mode="block"
+                  text="正在加载批发价格数据中..."
+                />
                 <DataEmptyState
-                  v-if="!loading"
+                  v-else
                   description="暂无价目表数据"
                 />
               </template>
@@ -1535,7 +1540,7 @@
 import { confirmAction } from '@/utils/message-box'
 import { ref, reactive, onMounted, onUnmounted, watch, computed, defineAsyncComponent } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+
 import {
   getStockPhones,
   getPriceList,
@@ -1568,6 +1573,7 @@ import { fieldPermissions, shouldShowActionColumn } from '@/composables/useField
 import { PageHeader, PermissionGate } from '@/components/base'
 import Pagination from '@/components/Pagination.vue'
 import SectionLoading from '@/components/SectionLoading.vue'
+import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import ImportExportActions from '@/components/business/ImportExportActions.vue'
 import { canAccessRoutePath } from '@/constants/routePermissions'
@@ -1587,6 +1593,9 @@ import type {
   PriceTrendRecord
 } from '@/types/price-list'
 import type { Brand, Color, MemoryOption, Model } from '@/types'
+import { useNotification } from '@/composables/useNotification'
+const globalNotifications = useNotification()
+
 
 type PriceModelOption = Model
 type PriceMemoryOption = MemoryOption & { size: string }
@@ -1874,7 +1883,7 @@ const openBatchSourceDialog = async () => {
     return
   }
   if (selectedPriceRows.value.length === 0) {
-    ElMessage.warning('请先选择价格记录')
+    globalNotifications.warning('请先选择价格记录')
     return
   }
 
@@ -1895,7 +1904,7 @@ const handleBatchSourceSave = async () => {
     .filter(id => Number.isInteger(id) && id > 0)
 
   if (ids.length === 0) {
-    ElMessage.warning('选中的记录无有效 ID，请刷新后重试')
+    globalNotifications.warning('选中的记录无有效 ID，请刷新后重试')
     return
   }
 
@@ -1915,18 +1924,18 @@ const handleBatchSourceSave = async () => {
       : Number(batchSourceConfigId.value)
     const res = await batchUpdatePriceSource(ids, sourceConfigId)
     if (!res.success) {
-      ElMessage.error(res.message || '批量设置采集来源失败')
+      globalNotifications.error(res.message || '批量设置采集来源失败')
       return
     }
 
-    ElMessage.success(res.message || '采集来源设置成功')
+    globalNotifications.success(res.message || '采集来源设置成功')
     showBatchSourceDialog.value = false
     selectedPriceRows.value = []
     await fetchPriceList()
   } catch (error) {
     if (error !== 'cancel') {
       logger.error('批量设置采集来源失败', error)
-      ElMessage.error('批量设置采集来源失败')
+      globalNotifications.error('批量设置采集来源失败')
     }
   } finally {
     batchSourceSaving.value = false
@@ -2027,7 +2036,7 @@ const fetchPriceList = async () => {
     }
   } catch (error) {
     logger.error('获取价格列表失败:', error)
-    ElMessage.error('获取价格列表失败')
+    globalNotifications.error('获取价格列表失败')
   } finally {
     loading.value = false
   }
@@ -2124,7 +2133,7 @@ const handleReset = () => {
 
 const guardedPush = (target: string) => {
   if (!canAccessRoutePath(target, authStore)) {
-    ElMessage.warning('您没有访问此页面的权限')
+    globalNotifications.warning('您没有访问此页面的权限')
     return false
   }
 
@@ -2366,7 +2375,7 @@ const handleSave = async () => {
   }
 
   if (!editForm.brand_id || !editForm.model_id || !editForm.color_id || !editForm.memory_id) {
-    ElMessage.warning('请选择品牌、型号、颜色和内存')
+    globalNotifications.warning('请选择品牌、型号、颜色和内存')
     return
   }
 
@@ -2379,7 +2388,7 @@ const handleSave = async () => {
     const memory = editOptions.memories.find(m => m.id === editForm.memory_id)
 
     if (!brand || !model) {
-      ElMessage.error('品牌或型号不存在')
+      globalNotifications.error('品牌或型号不存在')
       return
     }
 
@@ -2418,15 +2427,15 @@ const handleSave = async () => {
 
     const res = await upsertPriceItem(data)
     if (res.success) {
-      ElMessage.success('保存成功')
+      globalNotifications.success('保存成功')
       showEditDialog.value = false
       fetchPriceList()
     } else {
-      ElMessage.error(res.message || '保存失败，请重试')
+      globalNotifications.error(res.message || '保存失败，请重试')
     }
   } catch (error) {
     logger.error('保存失败:', error)
-    ElMessage.error('保存失败')
+    globalNotifications.error('保存失败')
   } finally {
     saving.value = false
   }
@@ -2441,7 +2450,7 @@ const handleDelete = async (row: PriceListRow) => {
 
   const priceItemId = row.id ?? row.price_list_id
   if (priceItemId === null || priceItemId === undefined) {
-    ElMessage.warning('价格记录缺少有效ID')
+    globalNotifications.warning('价格记录缺少有效ID')
     return
   }
 
@@ -2451,12 +2460,12 @@ const handleDelete = async (row: PriceListRow) => {
     })
     const res = await deletePriceItem(priceItemId)
     if (res.success) {
-      ElMessage.success('删除成功')
+      globalNotifications.success('删除成功')
       fetchPriceList()
     }
   } catch (error) {
     if (error !== 'cancel') {
-      ElMessage.error('删除失败')
+      globalNotifications.error('删除失败')
     }
   }
 }
@@ -2480,17 +2489,17 @@ const handleToggleShowPrice = async (row: PriceListRow) => {
       is_manual_edit: true
     })
     if (res.success) {
-      ElMessage.success(row.show_price ? '已开启报价显示' : '已关闭报价显示')
+      globalNotifications.success(row.show_price ? '已开启报价显示' : '已关闭报价显示')
       // 不重新获取数据，保持用户操作的状态
     } else {
       // 如果保存失败，恢复原值
       row.show_price = row.show_price ? 0 : 1
-      ElMessage.error('操作失败')
+      globalNotifications.error('操作失败')
     }
   } catch (error) {
     // 如果出错，恢复原值
     row.show_price = row.show_price ? 0 : 1
-    ElMessage.error('操作失败')
+    globalNotifications.error('操作失败')
   }
 }
 
@@ -2507,11 +2516,11 @@ const handleSync = async () => {
   try {
     const res = await triggerSync('all')
     if (res.success) {
-      ElMessage.success(`全部来源同步完成：共${res.data.total}条，成功${res.data.success}条`)
+      globalNotifications.success(`全部来源同步完成：共${res.data.total}条，成功${res.data.success}条`)
       fetchPriceList()
     }
   } catch (error) {
-    ElMessage.error('同步失败')
+    globalNotifications.error('同步失败')
   } finally {
     syncing.value = false
   }
@@ -2546,11 +2555,11 @@ const handleClearPrices = async () => {
   try {
     const res = await clearPrices()
     if (res.success) {
-      ElMessage.success(res.message || `已清零 ${res.data.updatedCount} 条价格记录`)
+      globalNotifications.success(res.message || `已清零 ${res.data.updatedCount} 条价格记录`)
       fetchPriceList()
     }
   } catch (error) {
-    ElMessage.error('清零价格失败')
+    globalNotifications.error('清零价格失败')
   } finally {
     clearingPrices.value = false
   }
@@ -2586,11 +2595,11 @@ const handleClearAllPriceHistory = async () => {
     if (res.success) {
       priceHistory.value = []
       priceHistoryMap.value.clear()
-      ElMessage.success(res.message || `已清理 ${res.data?.deletedCount || 0} 条历史记录`)
+      globalNotifications.success(res.message || `已清理 ${res.data?.deletedCount || 0} 条历史记录`)
     }
   } catch (error) {
     logger.error('清理全部历史价格失败:', error)
-    ElMessage.error('清理失败')
+    globalNotifications.error('清理失败')
   } finally {
     clearingAllHistory.value = false
   }
@@ -2623,11 +2632,11 @@ const handleSaveConfig = async () => {
 
   // 验证必填字段
   if (!syncConfig.config_name || !syncConfig.source_url) {
-    ElMessage.warning('请填写配置名称和数据源URL')
+    globalNotifications.warning('请填写配置名称和数据源URL')
     return
   }
   if (syncConfig.source_type === 'account' && !syncConfig.login_username) {
-    ElMessage.warning('登录来源请填写用户名')
+    globalNotifications.warning('登录来源请填写用户名')
     return
   }
 
@@ -2642,7 +2651,7 @@ const handleSaveConfig = async () => {
 
     // 如果是添加新配置，必须有密码
     if (dataToSend.source_type === 'account' && !dataToSend.id && !dataToSend.login_password) {
-      ElMessage.warning('请填写登录密码')
+      globalNotifications.warning('请填写登录密码')
       savingConfig.value = false
       return
     }
@@ -2662,7 +2671,7 @@ const handleSaveConfig = async () => {
     }
 
     if (res.success) {
-      ElMessage.success(dataToSend.id ? '配置更新成功' : '配置添加成功')
+      globalNotifications.success(dataToSend.id ? '配置更新成功' : '配置添加成功')
       // 清空表单
       resetConfigForm()
       // 刷新列表
@@ -2670,7 +2679,7 @@ const handleSaveConfig = async () => {
     }
   } catch (error) {
     logger.error('保存配置失败', error)
-    ElMessage.error('保存配置失败')
+    globalNotifications.error('保存配置失败')
   } finally {
     savingConfig.value = false
   }
@@ -2718,14 +2727,14 @@ const handleSetDefaultConfig = async (configId: number) => {
 
     const res = await setDefaultSyncConfig(configId)
     if (res.success) {
-      ElMessage.success('已设置为默认采集源')
+      globalNotifications.success('已设置为默认采集源')
       // 刷新列表
       await fetchSyncConfigsList()
     }
   } catch (error) {
     if (error !== 'cancel') {
       logger.error('设置默认配置失败', error)
-      ElMessage.error('设置失败')
+      globalNotifications.error('设置失败')
     }
   }
 }
@@ -2744,13 +2753,13 @@ const handleDeleteConfig = async (configId: number) => {
 
     const res = await deleteSyncConfig(configId)
     if (res.success) {
-      ElMessage.success('删除成功')
+      globalNotifications.success('删除成功')
       await fetchSyncConfigsList()
     }
   } catch (error) {
     if (error !== 'cancel') {
       logger.error('删除配置失败', error)
-      ElMessage.error('删除失败')
+      globalNotifications.error('删除失败')
     }
   }
 }
@@ -2793,7 +2802,7 @@ const handleEditConfig = async (row: PriceSyncConfig) => {
     }
   } catch (error) {
     logger.error('获取配置详情失败', error)
-    ElMessage.error('获取配置详情失败')
+    globalNotifications.error('获取配置详情失败')
   }
 }
 
@@ -2826,7 +2835,7 @@ const openMarkupConfigDialog = () => {
 // 处理价格加价配置保存
 const handleMarkupConfigSave = (config: PriceMarkupConfig) => {
   markupConfig.value = config
-  ElMessage.success('价格加价配置已更新')
+  globalNotifications.success('价格加价配置已更新')
 }
 
 // 查看历史
@@ -2838,7 +2847,7 @@ const handleViewHistory = async (row: PriceListRow) => {
 
   const priceListId = row.id ?? row.price_list_id
   if (priceListId === null || priceListId === undefined) {
-    ElMessage.warning('价格记录缺少有效ID')
+    globalNotifications.warning('价格记录缺少有效ID')
     return
   }
 
@@ -2850,7 +2859,7 @@ const handleViewHistory = async (row: PriceListRow) => {
       showHistoryDialog.value = true
     }
   } catch (error) {
-    ElMessage.error('获取历史记录失败')
+    globalNotifications.error('获取历史记录失败')
   }
 }
 
@@ -2869,7 +2878,7 @@ const handleDeleteHistoryItem = async (row: PriceHistoryRecord) => {
   const product = currentProduct.value
   const priceListId = product?.price_list_id ?? product?.id
   if (!product || priceListId === null || priceListId === undefined) {
-    ElMessage.warning('请先选择价格记录')
+    globalNotifications.warning('请先选择价格记录')
     return
   }
 
@@ -2881,13 +2890,13 @@ const handleDeleteHistoryItem = async (row: PriceHistoryRecord) => {
     const res = await deletePriceHistory(priceListId, row.id)
 
     if (res.success) {
-      ElMessage.success('删除成功')
+      globalNotifications.success('删除成功')
       // 重新加载历史记录
       await handleViewHistory(product)
     }
   } catch (error) {
     if (error !== 'cancel') {
-      ElMessage.error('删除失败')
+      globalNotifications.error('删除失败')
     }
   }
 }
@@ -2900,14 +2909,14 @@ const handleBatchDeleteHistory = async () => {
   }
 
   if (selectedHistoryItems.value.length === 0) {
-    ElMessage.warning('请选择要删除的记录')
+    globalNotifications.warning('请选择要删除的记录')
     return
   }
 
   const product = currentProduct.value
   const priceListId = product?.price_list_id ?? product?.id
   if (!product || priceListId === null || priceListId === undefined) {
-    ElMessage.warning('请先选择价格记录')
+    globalNotifications.warning('请先选择价格记录')
     return
   }
 
@@ -2922,14 +2931,14 @@ const handleBatchDeleteHistory = async () => {
     const res = await batchDeletePriceHistory(priceListId, historyIds)
 
     if (res.success) {
-      ElMessage.success(`成功删除 ${selectedHistoryItems.value.length} 条记录`)
+      globalNotifications.success(`成功删除 ${selectedHistoryItems.value.length} 条记录`)
       selectedHistoryItems.value = []
       // 重新加载历史记录
       await handleViewHistory(product)
     }
   } catch (error) {
     if (error !== 'cancel') {
-      ElMessage.error('批量删除失败')
+      globalNotifications.error('批量删除失败')
     }
   }
 }
@@ -2943,7 +2952,7 @@ const handleClearHistory = async () => {
 
   const priceListId = currentProduct.value?.price_list_id ?? currentProduct.value?.id
   if (priceListId === null || priceListId === undefined) {
-    ElMessage.warning('请先选择价格记录')
+    globalNotifications.warning('请先选择价格记录')
     return
   }
 
@@ -2957,13 +2966,13 @@ const handleClearHistory = async () => {
     const res = await clearPriceHistory(priceListId)
 
     if (res.success) {
-      ElMessage.success('已清空所有历史记录')
+      globalNotifications.success('已清空所有历史记录')
       priceHistory.value = []
       selectedHistoryItems.value = []
     }
   } catch (error) {
     if (error !== 'cancel') {
-      ElMessage.error('清空失败')
+      globalNotifications.error('清空失败')
     }
   }
 }
@@ -2974,7 +2983,7 @@ const fetchInventoryDetails = async (row: PriceListRow) => {
   const colorId = Number(row.color_id)
   const memoryId = Number(row.memory_id)
   if (![brandId, modelId, colorId, memoryId].every(id => Number.isInteger(id) && id > 0)) {
-    ElMessage.warning('价格记录缺少完整的基础资料ID，无法查询库存详情')
+    globalNotifications.warning('价格记录缺少完整的基础资料ID，无法查询库存详情')
     return
   }
 
@@ -3014,7 +3023,7 @@ const fetchInventoryDetails = async (row: PriceListRow) => {
     }
   } catch (error) {
     logger.error('获取库存详情失败:', error)
-    ElMessage.error('获取库存详情失败')
+    globalNotifications.error('获取库存详情失败')
   } finally {
     inventoryLoading.value = false
   }

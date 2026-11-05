@@ -139,13 +139,16 @@ import { useSiteSettingsStore } from '@/stores/siteSettings'
 import { useMenuStore } from '@/stores/menu'
 import { useTabsStore } from '@/stores/tabs'
 import { storeToRefs } from 'pinia'
-import { ElMessage } from 'element-plus'
+
 import type { MenuItem } from '@/types/menu'
 import { isDesktopNavigationViewport } from '@/config/breakpoints'
 import { TIME_FORMATS, TimeUtil } from '@/utils/time'
 import { storage } from '@/services/storage'
 import { canAccessRoutePath } from '@/constants/routePermissions'
 import { logger } from '@/utils/logger'
+import { useNotification } from '@/composables/useNotification'
+const globalNotifications = useNotification()
+
 
 // 路由
 const router = useRouter()
@@ -237,7 +240,7 @@ const updateBeijingTime = () => {
 const navigateIfAllowed = async (targetPath: string) => {
   if (!canAccessRoutePath(targetPath, authStore)) {
     tabsStore.closeTab(targetPath)
-    ElMessage.warning('您没有访问此页面的权限')
+    globalNotifications.warning('您没有访问此页面的权限')
     return
   }
 

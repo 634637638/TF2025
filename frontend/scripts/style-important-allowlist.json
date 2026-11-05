@@ -8,7 +8,7 @@
     },
     {
       "file": "src/styles.scss",
-      "max": 131,
+      "max": 126,
       "category": "shared-contract",
       "reason": "Global Element Plus poppers, teleported dialogs, loading states and mobile safe-area contracts."
     },
@@ -200,9 +200,9 @@
     },
     {
       "file": "src/views/employees/EmployeesView.vue",
-      "max": 12,
-      "category": "teleport-layer",
-      "reason": "Employee table state rows and mobile dialog grid override the shared table and dialog contracts."
+      "max": 4,
+      "category": "state-precedence",
+      "reason": "Employee status row backgrounds override the shared striped and hover table states."
     },
     {
       "file": "src/components/query/styles/query-edit-modal/base.scss",

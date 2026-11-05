@@ -263,7 +263,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { Swiper, SwiperSlide } from 'swiper/vue'
 import { Pagination, Autoplay } from 'swiper/modules'
-import { ElMessage } from 'element-plus'
+
 import SectionLoading from '@/components/SectionLoading.vue'
 import 'swiper/css'
 import 'swiper/css/pagination'
@@ -275,6 +275,9 @@ import { storage } from '@/services/storage'
 import { H5_STORAGE_KEYS } from '@/constants/storage'
 import { logger } from '@/utils/logger'
 import { getRequestErrorMessage } from '@/utils/api-response'
+import { useNotification } from '@/composables/useNotification'
+const globalNotifications = useNotification()
+
 // 注册 Swiper 模块
 const SwiperPagination = Pagination
 const SwiperAutoplay = Autoplay
@@ -404,7 +407,7 @@ const loadProductFromRoute = async () => {
     )
   } else {
     if (sequence === loadSequence.value) {
-      ElMessage.error('商品信息不完整')
+      globalNotifications.error('商品信息不完整')
       router.push('/m')
     }
   }
@@ -422,7 +425,7 @@ const loadProductByTemplateId = async (templateId: number, sequence = loadSequen
 
     if (!templateData || !templateData.template_name) {
       if (sequence === loadSequence.value) {
-        ElMessage.error('模板商品不存在')
+        globalNotifications.error('模板商品不存在')
         router.push('/m')
       }
       return
@@ -533,7 +536,7 @@ const loadProductByTemplateId = async (templateId: number, sequence = loadSequen
       return
     }
     logger.error('获取模板商品信息失败:', error)
-    ElMessage.error('获取商品信息失败')
+    globalNotifications.error('获取商品信息失败')
     router.push('/m')
   } finally {
     if (sequence === loadSequence.value) {
@@ -561,7 +564,7 @@ const loadProductByQuery = async (brandId: number, modelId: number, colorId: num
     if (result.data.length > 0) {
       productData.value = result.data[0]
     } else {
-      ElMessage.error('商品不存在')
+      globalNotifications.error('商品不存在')
       router.push('/m')
     }
   } catch (error) {
@@ -569,7 +572,7 @@ const loadProductByQuery = async (brandId: number, modelId: number, colorId: num
       return
     }
     logger.error('获取商品信息失败:', error)
-    ElMessage.error('获取商品信息失败')
+    globalNotifications.error('获取商品信息失败')
     router.push('/m')
   } finally {
     if (sequence === loadSequence.value) {
@@ -581,7 +584,7 @@ const loadProductByQuery = async (brandId: number, modelId: number, colorId: num
 // 选择内存规格
 const selectMemory = async (memory: AggregatedProduct['memories'][0]) => {
   if (memory.stock === 0) {
-    ElMessage.warning('该规格暂时缺货')
+    globalNotifications.warning('该规格暂时缺货')
     return
   }
 
@@ -601,7 +604,7 @@ const selectMemory = async (memory: AggregatedProduct['memories'][0]) => {
     stockDistribution.value = result
   } catch (error) {
     logger.error('获取库存分布失败:', error)
-    ElMessage.error('获取库存信息失败')
+    globalNotifications.error('获取库存信息失败')
   }
 }
 
@@ -613,13 +616,13 @@ const selectStore = (store: StoreStock) => {
 // 加入购物车
 const addToCart = async () => {
   if (!canAddToCart.value || !selectedStore.value) {
-    ElMessage.warning('请先选择内存规格和店铺')
+    globalNotifications.warning('请先选择内存规格和店铺')
     return
   }
 
   // 检查 items 是否存在
   if (!selectedStore.value.items || selectedStore.value.items.length === 0) {
-    ElMessage.error('该店铺暂时没有库存')
+    globalNotifications.error('该店铺暂时没有库存')
     return
   }
 
@@ -629,21 +632,21 @@ const addToCart = async () => {
   try {
     const result = await addCartItem(firstItem.phone_id)
     if (result.success) {
-      ElMessage.success('已加入购物车')
+      globalNotifications.success('已加入购物车')
       await refreshCart()
     } else {
-      ElMessage.error(result.message || '加入购物车失败')
+      globalNotifications.error(result.message || '加入购物车失败')
     }
   } catch (error: unknown) {
     logger.error('加入购物车失败:', error)
-    ElMessage.error(getRequestErrorMessage(error, '加入购物车失败'))
+    globalNotifications.error(getRequestErrorMessage(error, '加入购物车失败'))
   }
 }
 
 // 立即购买
 const buyNow = async () => {
   if (!canPurchase.value || !selectedStore.value) {
-    ElMessage.warning('请先选择内存规格和店铺')
+    globalNotifications.warning('请先选择内存规格和店铺')
     return
   }
 

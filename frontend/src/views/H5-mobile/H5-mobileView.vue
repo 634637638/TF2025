@@ -207,10 +207,13 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+
 import { getPublicConfig, type ShopConfig } from '@/api/shop-public'
 import { storage } from '@/services/storage'
 import { logger } from '@/utils/logger'
+import { useNotification } from '@/composables/useNotification'
+const globalNotifications = useNotification()
+
 const route = useRoute()
 const router = useRouter()
 
@@ -298,7 +301,7 @@ const handleShare = () => {
   } else {
     // 复制链接
     navigator.clipboard.writeText(window.location.href)
-    ElMessage.success('链接已复制到剪贴板')
+    globalNotifications.success('链接已复制到剪贴板')
   }
 }
 
@@ -344,16 +347,16 @@ const copyWechat = () => {
     // 复制微信号到剪贴板
     if (navigator.clipboard) {
       navigator.clipboard.writeText(shopConfig.value.wechat_id).then(() => {
-        ElMessage.success('微信号已复制，正在打开微信...')
+        globalNotifications.success('微信号已复制，正在打开微信...')
         // 延迟跳转，让用户看到提示
         setTimeout(() => {
           window.location.href = `weixin://dl/chat?${shopConfig.value.wechat_id}`
         }, 1000)
       }).catch(() => {
-        ElMessage.info(`请添加微信号: ${shopConfig.value.wechat_id}`)
+        globalNotifications.info(`请添加微信号: ${shopConfig.value.wechat_id}`)
       })
     } else {
-      ElMessage.info(`请添加微信号: ${shopConfig.value.wechat_id}`)
+      globalNotifications.info(`请添加微信号: ${shopConfig.value.wechat_id}`)
     }
   }
 }

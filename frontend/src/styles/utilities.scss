@@ -475,33 +475,6 @@
   transition: all 0.2s;
 }
 
-// ==================== 地图容器 ====================
-.map-loading-container,
-.map-error-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  color: var(--text-muted);
-}
-
-.map-loading-container i,
-.map-error-container i {
-  font-size: var(--tf-type-scale-32);
-  margin-bottom: 12px;
-}
-
-.map-error-container div:first-of-type {
-  font-size: var(--tf-type-scale-14);
-  margin-top: 8px;
-}
-
-.map-error-tip {
-  font-size: var(--tf-type-scale-12);
-  margin-top: 8px;
-}
-
 // ==================== 产品缩略图 ====================
 .product-thumb {
   width: 100px;

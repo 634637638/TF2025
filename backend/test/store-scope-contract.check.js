@@ -28,6 +28,11 @@ test('stock-in and return-goods mutations share the canonical store scope guard'
 
   assert.match(stockIn, /resolveStoreScope\(req\.user, store_id\)/)
   assert.match(stockIn, /assertStoreInScope\(storeScope, existingRecords\[0\]\.store_id\)/)
+  assert.match(stockIn, /SELECT id, store_id FROM phones WHERE id = \? FOR UPDATE/)
+  assert.match(stockIn, /UPDATE phones[\s\S]{0,180}WHERE \$\{scopeConditions\.join\(' AND '\)\}/)
+  assert.match(stockIn, /DELETE FROM phones WHERE \$\{scopeConditions\.join\(' AND '\)\}/)
+  assert.match(stockIn, /appendStoreScopeCondition\(storeScope, 'store_id', scopeConditions, scopeParams\)/)
+  assert.match(stockIn, /await connection\.beginTransaction\(\)[\s\S]{0,300}SELECT id, store_id FROM phones WHERE id = \? FOR UPDATE/)
   assert.match(controller, /returnToStock\(id, operatorId, returnInfo, storeScope\)/)
   assert.match(repository, /SELECT status, store_id FROM phones WHERE id = \? FOR UPDATE/)
   assert.match(repository, /WHERE id = \? AND status IN \('sold', 'peer_transfer', 'supplier_proxy'\)/)

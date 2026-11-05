@@ -469,7 +469,7 @@
 <script setup lang="ts">
 import { confirmAction } from '@/utils/message-box'
 import { ref, reactive, computed, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
+
 import { dataCheckApi } from '@/api/data-optimization'
 import { extractResponseData } from '@/utils/api-response'
 import { usePagePermissions } from '@/composables/usePagePermissions'
@@ -489,6 +489,9 @@ import type {
   DataCheckStatistics,
   DataDuplicateGroup
 } from '@/types'
+import { useNotification } from '@/composables/useNotification'
+const globalNotifications = useNotification()
+
 
 const { canView, canEdit, canDelete, handleNoPermission } = usePagePermissions('data-optimization')
 const DATA_CHECK_MODULE_KEY = 'data_optimization_dataoptimizationview'
@@ -610,7 +613,7 @@ const handleViewItem = async (key: DataCheckKey) => {
     // 检查是否为空数据
     if (responseData.is_empty || responseData.total === 0) {
       const itemName = currentCheck.value?.label || '数据'
-      ElMessage.info(`${itemName}表暂无数据，请先添加数据后再查看`)
+      globalNotifications.info(`${itemName}表暂无数据，请先添加数据后再查看`)
       allDataList.value = []
 
       // 更新统计信息
@@ -642,7 +645,7 @@ const handleViewItem = async (key: DataCheckKey) => {
       const duplicateInfo = response.data.duplicate_count > 0
         ? `，发现 ${response.data.duplicate_count} 条重复数据`
         : '，无重复数据'
-      ElMessage.success(`获取数据成功：共 ${response.data.total} 条${duplicateInfo}`)
+      globalNotifications.success(`获取数据成功：共 ${response.data.total} 条${duplicateInfo}`)
     }
   } catch (error: unknown) {
     logger.error('获取数据失败:', error)
@@ -655,11 +658,11 @@ const handleViewItem = async (key: DataCheckKey) => {
       : undefined
     const errorMessage = error instanceof Error ? error.message : '未知错误'
     if (errorStatus === 500) {
-      ElMessage.error(`获取${itemName}失败：服务器内部错误，可能表不存在或数据库连接异常`)
+      globalNotifications.error(`获取${itemName}失败：服务器内部错误，可能表不存在或数据库连接异常`)
     } else if (errorStatus === 404) {
-      ElMessage.error(`获取${itemName}失败：未找到相关数据`)
+      globalNotifications.error(`获取${itemName}失败：未找到相关数据`)
     } else {
-      ElMessage.error(`获取${itemName}失败：${errorMessage}`)
+      globalNotifications.error(`获取${itemName}失败：${errorMessage}`)
     }
 
     allDataList.value = []
@@ -780,9 +783,9 @@ const handleCheckAll = async () => {
       checkResult.value = null
     }
 
-    ElMessage.success('综合检查完成')
+    globalNotifications.success('综合检查完成')
   } catch (error: unknown) {
-    ElMessage.error('检查失败: ' + (error instanceof Error ? error.message : '未知错误'))
+    globalNotifications.error('检查失败: ' + (error instanceof Error ? error.message : '未知错误'))
   } finally {
     loading.value = false
   }
@@ -826,7 +829,7 @@ const handleCheckItem = async (key: DataCheckKey) => {
     pagination.total = response.data.duplicate_groups || 0
   } catch (error: unknown) {
     logger.error('检查失败:', error)
-    ElMessage.error('检查失败: ' + (error instanceof Error ? error.message : '未知错误'))
+    globalNotifications.error('检查失败: ' + (error instanceof Error ? error.message : '未知错误'))
     checkResult.value = null
   } finally {
     loading.value = false
@@ -873,9 +876,9 @@ const getStatistics = async () => {
       item.duplicate_count = 0
     })
 
-    ElMessage.success('统计数据已更新')
+    globalNotifications.success('统计数据已更新')
   } catch (error: unknown) {
-    ElMessage.error('获取统计失败: ' + (error instanceof Error ? error.message : '未知错误'))
+    globalNotifications.error('获取统计失败: ' + (error instanceof Error ? error.message : '未知错误'))
   }
 }
 
@@ -950,14 +953,14 @@ const handleMergeGroup = async (group: DataDuplicateGroup) => {
 
   const currentCheckItem = currentCheck.value
   if (!currentCheckItem) {
-    ElMessage.warning('请先选择检查项')
+    globalNotifications.warning('请先选择检查项')
     return
   }
 
   try {
     // 检查是否有重复记录
     if (!group.duplicates || group.duplicates.length === 0) {
-      ElMessage.warning('该组没有重复记录需要合并')
+      globalNotifications.warning('该组没有重复记录需要合并')
       return
     }
 
@@ -975,7 +978,7 @@ const handleMergeGroup = async (group: DataDuplicateGroup) => {
 
     // 安全检查：确保主记录ID不在duplicate_ids中
     if (duplicate_ids.includes(group.primary.id)) {
-      ElMessage.error('数据错误：主记录ID不能在待删除列表中')
+      globalNotifications.error('数据错误：主记录ID不能在待删除列表中')
       return
     }
 
@@ -985,11 +988,11 @@ const handleMergeGroup = async (group: DataDuplicateGroup) => {
       duplicate_ids: duplicate_ids
     })
 
-    ElMessage.success('合并成功')
+    globalNotifications.success('合并成功')
     handleCheckItem(currentCheckItem.key)
   } catch (error: unknown) {
     if (error !== 'cancel') {
-      ElMessage.error('合并失败: ' + (error instanceof Error ? error.message : '未知错误'))
+      globalNotifications.error('合并失败: ' + (error instanceof Error ? error.message : '未知错误'))
     }
   }
 }
@@ -1001,7 +1004,7 @@ const handleDeleteGroup = async (group: DataDuplicateGroup) => {
 
   const currentCheckItem = currentCheck.value
   if (!currentCheckItem) {
-    ElMessage.warning('请先选择检查项')
+    globalNotifications.warning('请先选择检查项')
     return
   }
 
@@ -1010,7 +1013,7 @@ const handleDeleteGroup = async (group: DataDuplicateGroup) => {
     const hasDuplicates = group.duplicates && group.duplicates.length > 0
 
     if (!hasDuplicates && !group.is_duplicate_rows) {
-      ElMessage.warning('该组没有重复记录可以删除')
+      globalNotifications.warning('该组没有重复记录可以删除')
       return
     }
 
@@ -1042,13 +1045,13 @@ const handleDeleteGroup = async (group: DataDuplicateGroup) => {
         const result = response.data
 
         if (result && result.cleaned > 0) {
-          ElMessage.success(result.message || '清理成功')
+          globalNotifications.success(result.message || '清理成功')
           handleCheckItem(currentCheckItem.key)
         } else {
-          ElMessage.info(result?.message || '该ID没有重复记录需要清理')
+          globalNotifications.info(result?.message || '该ID没有重复记录需要清理')
         }
       } catch (error: unknown) {
-        ElMessage.error('清理失败: ' + (error instanceof Error ? error.message : '未知错误'))
+        globalNotifications.error('清理失败: ' + (error instanceof Error ? error.message : '未知错误'))
       } finally {
         globalLoading.stopLoading(loadingTaskId)
       }
@@ -1059,7 +1062,7 @@ const handleDeleteGroup = async (group: DataDuplicateGroup) => {
     const duplicate_ids = group.duplicates.map(d => d.id)
 
     if (duplicate_ids.length === 0) {
-      ElMessage.warning('没有选择要删除的记录')
+      globalNotifications.warning('没有选择要删除的记录')
       return
     }
 
@@ -1068,12 +1071,12 @@ const handleDeleteGroup = async (group: DataDuplicateGroup) => {
       ids: duplicate_ids
     })
 
-    ElMessage.success('删除成功')
+    globalNotifications.success('删除成功')
     selectedDuplicates.value = []
     handleCheckItem(currentCheckItem.key)
   } catch (error: unknown) {
     if (error !== 'cancel') {
-      ElMessage.error('删除失败: ' + (error instanceof Error ? error.message : '未知错误'))
+      globalNotifications.error('删除失败: ' + (error instanceof Error ? error.message : '未知错误'))
     }
   }
 }
@@ -1084,13 +1087,13 @@ const handleMergeSelected = async () => {
   }
 
   if (selectedDuplicates.value.length === 0) {
-    ElMessage.warning('请先选择要合并的记录')
+    globalNotifications.warning('请先选择要合并的记录')
     return
   }
 
   const currentCheckItem = currentCheck.value
   if (!currentCheckItem) {
-    ElMessage.warning('请先选择检查项')
+    globalNotifications.warning('请先选择检查项')
     return
   }
 
@@ -1133,7 +1136,7 @@ const handleMergeSelected = async () => {
     }
 
     if (groupsToMerge.length === 0) {
-      ElMessage.info('请选择要合并的重复记录')
+      globalNotifications.info('请选择要合并的重复记录')
       return
     }
 
@@ -1175,7 +1178,7 @@ const handleMergeSelected = async () => {
         merge_groups: merge_groups
       })
 
-      ElMessage.success(`成功合并 ${groupsToMerge.length} 个重复组，共 ${totalToMerge} 条记录`)
+      globalNotifications.success(`成功合并 ${groupsToMerge.length} 个重复组，共 ${totalToMerge} 条记录`)
       selectedDuplicates.value = []
       handleCheckItem(currentCheckItem.key)
     } finally {
@@ -1183,7 +1186,7 @@ const handleMergeSelected = async () => {
     }
   } catch (error: unknown) {
     if (error !== 'cancel') {
-      ElMessage.error('合并失败: ' + (error instanceof Error ? error.message : '未知错误'))
+      globalNotifications.error('合并失败: ' + (error instanceof Error ? error.message : '未知错误'))
     }
   }
 }
@@ -1195,7 +1198,7 @@ const handleDeleteSelected = async () => {
 
   const currentCheckItem = currentCheck.value
   if (!currentCheckItem) {
-    ElMessage.warning('请先选择检查项')
+    globalNotifications.warning('请先选择检查项')
     return
   }
 
@@ -1203,7 +1206,7 @@ const handleDeleteSelected = async () => {
     const selectedKeys = selectedDuplicates.value
 
     if (selectedKeys.length === 0) {
-      ElMessage.warning('请先选择要删除的记录')
+      globalNotifications.warning('请先选择要删除的记录')
       return
     }
 
@@ -1236,7 +1239,7 @@ const handleDeleteSelected = async () => {
       }
 
       if (groupsToCleanup.length === 0) {
-        ElMessage.info('请选择要删除的重复记录')
+        globalNotifications.info('请选择要删除的重复记录')
         return
       }
 
@@ -1261,9 +1264,9 @@ const handleDeleteSelected = async () => {
         const result = response.data
 
         if (result && result.cleaned > 0) {
-          ElMessage.success(result.message || `清理成功，删除了 ${result.cleaned} 条重复记录`)
+          globalNotifications.success(result.message || `清理成功，删除了 ${result.cleaned} 条重复记录`)
         } else {
-          ElMessage.info(result?.message || '没有需要清理的重复数据')
+          globalNotifications.info(result?.message || '没有需要清理的重复数据')
         }
 
         selectedDuplicates.value = []
@@ -1291,7 +1294,7 @@ const handleDeleteSelected = async () => {
     }
 
     if (deletableIds.length === 0) {
-      ElMessage.info('请选择要删除的重复记录（不能删除主记录）')
+      globalNotifications.info('请选择要删除的重复记录（不能删除主记录）')
       return
     }
 
@@ -1314,7 +1317,7 @@ const handleDeleteSelected = async () => {
         ids: deletableIds
       })
 
-      ElMessage.success('删除成功')
+      globalNotifications.success('删除成功')
       selectedDuplicates.value = []
       handleCheckItem(currentCheckItem.key)
     } finally {
@@ -1322,7 +1325,7 @@ const handleDeleteSelected = async () => {
     }
   } catch (error: unknown) {
     if (error !== 'cancel') {
-      ElMessage.error('删除失败: ' + (error instanceof Error ? error.message : '未知错误'))
+      globalNotifications.error('删除失败: ' + (error instanceof Error ? error.message : '未知错误'))
     }
   }
 }
@@ -1335,7 +1338,7 @@ const handleCleanupAllDuplicates = async () => {
 
   const currentCheckItem = currentCheck.value
   if (!currentCheckItem) {
-    ElMessage.warning('请先选择检查项')
+    globalNotifications.warning('请先选择检查项')
     return
   }
 
@@ -1359,7 +1362,7 @@ const handleCleanupAllDuplicates = async () => {
 
       if (response.data && response.data.success !== false) {
         const result = response.data
-        ElMessage.success(
+        globalNotifications.success(
           `清理完成！已清理 ${result.cleaned || 0} 条重复记录，剩余 ${result.remainingGroups || 0} 个重复组`
         )
 
@@ -1373,7 +1376,7 @@ const handleCleanupAllDuplicates = async () => {
     }
   } catch (error: unknown) {
     if (error !== 'cancel') {
-      ElMessage.error('清理失败: ' + (error instanceof Error ? error.message : '未知错误'))
+      globalNotifications.error('清理失败: ' + (error instanceof Error ? error.message : '未知错误'))
     }
   } finally {
     loading.value = false
@@ -1399,7 +1402,7 @@ const handleSaveEdit = async () => {
   const currentCheckItem = currentCheck.value
   const itemId = editingItemId.value
   if (!currentCheckItem || itemId === null) {
-    ElMessage.warning('请选择要编辑的数据')
+    globalNotifications.warning('请选择要编辑的数据')
     return
   }
 
@@ -1410,11 +1413,11 @@ const handleSaveEdit = async () => {
       editForm
     )
 
-    ElMessage.success('保存成功')
+    globalNotifications.success('保存成功')
     showEditDialog.value = false
     handleCheckItem(currentCheckItem.key)
   } catch (error: unknown) {
-    ElMessage.error('保存失败: ' + (error instanceof Error ? error.message : '未知错误'))
+    globalNotifications.error('保存失败: ' + (error instanceof Error ? error.message : '未知错误'))
   }
 }
 
@@ -1426,7 +1429,7 @@ const handleDeleteItem = async (item: DataCheckRecord, _itemIndex: number, group
 
   const currentCheckItem = currentCheck.value
   if (!currentCheckItem) {
-    ElMessage.warning('请先选择检查项')
+    globalNotifications.warning('请先选择检查项')
     return
   }
 
@@ -1448,9 +1451,9 @@ const handleDeleteItem = async (item: DataCheckRecord, _itemIndex: number, group
       const result = response.data
 
       if (result && result.cleaned > 0) {
-        ElMessage.success(result.message || '删除成功')
+        globalNotifications.success(result.message || '删除成功')
       } else {
-        ElMessage.info(result?.message || '没有需要删除的数据')
+        globalNotifications.info(result?.message || '没有需要删除的数据')
       }
 
       handleCheckItem(currentCheckItem.key)
@@ -1469,11 +1472,11 @@ const handleDeleteItem = async (item: DataCheckRecord, _itemIndex: number, group
     )
 
     await dataCheckApi.deleteData(currentCheckItem.key, item.id)
-    ElMessage.success('删除成功')
+    globalNotifications.success('删除成功')
     handleCheckItem(currentCheckItem.key)
   } catch (error: unknown) {
     if (error !== 'cancel') {
-      ElMessage.error('删除失败: ' + (error instanceof Error ? error.message : '未知错误'))
+      globalNotifications.error('删除失败: ' + (error instanceof Error ? error.message : '未知错误'))
     }
   }
 }

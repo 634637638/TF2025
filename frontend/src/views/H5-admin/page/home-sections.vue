@@ -12,15 +12,11 @@
   >
     <div class="home-sections-config-page">
       <!-- 加载状态 -->
-      <div
+      <SectionLoading
         v-if="loading"
-        class="loading-state"
-      >
-        <SectionLoading
-          text="加载首页推荐中..."
-          size="large"
-        />
-      </div>
+        text="加载首页推荐中..."
+        size="large"
+      />
 
       <!-- 推荐区域列表 -->
       <div
@@ -588,7 +584,7 @@
 <script setup lang="ts">
 import { confirmAction } from '@/utils/message-box'
 import { ref, onMounted, onUnmounted, onActivated, computed, inject, watch } from 'vue'
-import { ElMessage } from 'element-plus'
+
 import { Refresh, Plus } from '@element-plus/icons-vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import SectionLoading from '@/components/SectionLoading.vue'
@@ -615,6 +611,8 @@ import { useNotification } from '@/composables/useNotification'
 import { logger } from '@/utils/logger'
 import { getRequestErrorMessage } from '@/utils/api-response'
 import type { HeaderAction } from '@/types'
+const globalNotifications = useNotification()
+
 const homeSectionPermissions = usePagePermissions('h5-admin-home-sections')
 const { confirm } = useNotification()
 const { handleNoPermission } = homeSectionPermissions
@@ -739,7 +737,7 @@ const loadSections = async () => {
     }
   } catch (error) {
     logger.error('加载推荐区域失败:', error)
-    ElMessage.error('加载推荐区域失败')
+    globalNotifications.error('加载推荐区域失败')
   } finally {
     loading.value = false
   }
@@ -763,10 +761,10 @@ const toggleSection = async (section: HomeSection) => {
       return
     }
     await updateHomeSection(section.id, { id: section.id, is_enabled: section.is_enabled })
-    ElMessage.success(section.is_enabled ? '已启用' : '已禁用')
+    globalNotifications.success(section.is_enabled ? '已启用' : '已禁用')
   } catch (error) {
     logger.error('更新区域状态失败:', error)
-    ElMessage.error('操作失败')
+    globalNotifications.error('操作失败')
     // 恢复原状态
     if (section) {
       section.is_enabled = !section.is_enabled
@@ -812,11 +810,11 @@ const deleteSection = (section: HomeSection) => {
   ).then(async () => {
     try {
       await deleteHomeSection(section.id)
-      ElMessage.success('删除成功')
+      globalNotifications.success('删除成功')
       loadSections()
     } catch (error) {
       logger.error('删除区域失败:', error)
-      ElMessage.error('删除失败')
+      globalNotifications.error('删除失败')
     }
   })
 }
@@ -833,7 +831,7 @@ const saveSection = async () => {
   }
 
   if (!sectionForm.value.section_key || !sectionForm.value.section_name) {
-    ElMessage.warning('请填写完整信息')
+    globalNotifications.warning('请填写完整信息')
     return
   }
 
@@ -853,16 +851,16 @@ const saveSection = async () => {
     )))
     if (editingSection.value) {
       await updateHomeSection(editingSection.value.id, payload)
-      ElMessage.success('更新成功')
+      globalNotifications.success('更新成功')
     } else {
       await createHomeSection(payload)
-      ElMessage.success('创建成功')
+      globalNotifications.success('创建成功')
     }
     showCreateDialog.value = false
     loadSections()
   } catch (error: unknown) {
     logger.error('保存区域失败:', error)
-    ElMessage.error(getRequestErrorMessage(error, '保存失败'))
+    globalNotifications.error(getRequestErrorMessage(error, '保存失败'))
   } finally {
     saving.value = false
   }
@@ -888,7 +886,7 @@ const manageProducts = async (section: HomeSection) => {
     await loadAvailableProducts()
   } catch (error) {
     logger.error('加载商品失败:', error)
-    ElMessage.error('加载商品失败')
+    globalNotifications.error('加载商品失败')
     sectionProducts.value = []
   } finally {
     loading.value = false
@@ -942,13 +940,13 @@ const addProductFromAvailable = async (product: SearchProduct) => {
   }
 
   if (isProductAdded(product)) {
-    ElMessage.info('商品已添加')
+    globalNotifications.info('商品已添加')
     return
   }
 
   const section = currentSection.value
   if (!section) {
-    ElMessage.warning('推荐区域信息已失效，请重新打开')
+    globalNotifications.warning('推荐区域信息已失效，请重新打开')
     return
   }
 
@@ -963,10 +961,10 @@ const addProductFromAvailable = async (product: SearchProduct) => {
     const data = response.data || response || []
     sectionProducts.value = Array.isArray(data) ? data : []
     searchKeyword.value = ''
-    ElMessage.success('添加成功')
+    globalNotifications.success('添加成功')
   } catch (error: unknown) {
     logger.error('添加商品失败:', error)
-    ElMessage.error(getRequestErrorMessage(error, '添加失败'))
+    globalNotifications.error(getRequestErrorMessage(error, '添加失败'))
   }
 }
 
@@ -1020,13 +1018,13 @@ const handleProductSelect = async (item: unknown) => {
 
   const selectedProduct = getSelectedProductIdentity(item)
   if (!selectedProduct) {
-    ElMessage.warning('商品数据无效，请重新搜索')
+    globalNotifications.warning('商品数据无效，请重新搜索')
     return
   }
 
   const section = currentSection.value
   if (!section) {
-    ElMessage.warning('推荐区域信息已失效，请重新打开')
+    globalNotifications.warning('推荐区域信息已失效，请重新打开')
     return
   }
 
@@ -1041,10 +1039,10 @@ const handleProductSelect = async (item: unknown) => {
     const data = response.data || response || []
     sectionProducts.value = Array.isArray(data) ? data : []
     searchKeyword.value = ''
-    ElMessage.success('添加成功')
+    globalNotifications.success('添加成功')
   } catch (error: unknown) {
     logger.error('添加商品失败:', error)
-    ElMessage.error(getRequestErrorMessage(error, '添加失败'))
+    globalNotifications.error(getRequestErrorMessage(error, '添加失败'))
   }
 }
 
@@ -1066,17 +1064,17 @@ const removeProduct = (product: HomeSectionProduct) => {
   ).then(async () => {
     const section = currentSection.value
     if (!section) {
-      ElMessage.warning('推荐区域信息已失效，请重新打开')
+      globalNotifications.warning('推荐区域信息已失效，请重新打开')
       return
     }
 
     try {
       await removeProductFromSection(section.id, product.id)
       sectionProducts.value = sectionProducts.value.filter(p => p.id !== product.id)
-      ElMessage.success('移除成功')
+      globalNotifications.success('移除成功')
     } catch (error) {
       logger.error('移除商品失败:', error)
-      ElMessage.error('移除失败')
+      globalNotifications.error('移除失败')
     }
   })
 }
@@ -1099,17 +1097,17 @@ const clearAllProducts = () => {
   ).then(async () => {
     const section = currentSection.value
     if (!section) {
-      ElMessage.warning('推荐区域信息已失效，请重新打开')
+      globalNotifications.warning('推荐区域信息已失效，请重新打开')
       return
     }
 
     try {
       await clearSectionProducts(section.id)
       sectionProducts.value = []
-      ElMessage.success('清空成功')
+      globalNotifications.success('清空成功')
     } catch (error) {
       logger.error('清空失败:', error)
-      ElMessage.error('清空失败')
+      globalNotifications.error('清空失败')
     }
   })
 }
@@ -1123,7 +1121,7 @@ const handleDragEnd = async () => {
 
   const section = currentSection.value
   if (!section) {
-    ElMessage.warning('推荐区域信息已失效，请重新打开')
+    globalNotifications.warning('推荐区域信息已失效，请重新打开')
     return
   }
 
@@ -1173,7 +1171,7 @@ const applyTemplate = () => {
     sectionForm.value.section_key = template.key
     sectionForm.value.section_name = template.name
     sectionForm.value.icon = template.icon
-    ElMessage.success(`已应用模板：${template.name}`)
+    globalNotifications.success(`已应用模板：${template.name}`)
   }
 }
 
@@ -1185,7 +1183,7 @@ const generateSectionKey = async () => {
   }
 
   if (!sectionForm.value.section_name.trim()) {
-    ElMessage.warning('请先输入区域名称')
+    globalNotifications.warning('请先输入区域名称')
     return
   }
 

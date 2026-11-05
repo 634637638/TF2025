@@ -4,15 +4,11 @@
 -->
 <template>
   <div class="checkout-page">
-    <div
+    <SectionLoading
       v-if="loading"
-      class="loading-state"
-    >
-      <SectionLoading
-        text="加载结算信息中..."
-        size="large"
-      />
-    </div>
+      text="加载结算信息中..."
+      size="large"
+    />
 
     <div
       v-else
@@ -340,7 +336,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onActivated, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { ElMessage, FormInstance } from 'element-plus'
+import { FormInstance } from 'element-plus'
 import { ValidationRules } from '@/composables'
 import { createOrder, getProductDetail, getStockDistribution, getPublicConfig, type CartItem, type OrderData, type ProductDetail, type ShopConfig } from '@/api/shop-public'
 import { baseDataApi } from '@/api/base-data'
@@ -353,6 +349,9 @@ import { tokenManager, userManager, getUserProfile, type AuthUser } from '@/api/
 import { logger } from '@/utils/logger'
 import { getRequestErrorMessage } from '@/utils/api-response'
 import { getShopPaymentOptions, isOnlinePaymentMethod } from '@/utils/shop-payment'
+import { useNotification } from '@/composables/useNotification'
+const globalNotifications = useNotification()
+
 
 type CheckoutItem = Partial<CartItem> & {
   phoneId: number
@@ -485,7 +484,7 @@ const loadAvailableStores = async () => {
     }
   } catch (error) {
     logger.error('[loadAvailableStores] 加载店铺列表失败:', error)
-    ElMessage.warning('获取店铺信息失败，请稍后重试')
+    globalNotifications.warning('获取店铺信息失败，请稍后重试')
   }
 }
 
@@ -739,7 +738,7 @@ const loadOrderItems = async (force = false) => {
   }
 
   // 如果没有商品数据，返回首页
-  ElMessage.warning('请先选择商品')
+  globalNotifications.warning('请先选择商品')
   router.push('/m')
   loading.value = false
 }
@@ -803,7 +802,7 @@ const handleSubmit = async () => {
     form.value.customerPhone = normalizeCustomerPhone(form.value.customerPhone)
 
     if (orderItems.value.length === 0) {
-      ElMessage.warning('请先选择商品')
+      globalNotifications.warning('请先选择商品')
       return
     }
 
@@ -812,12 +811,12 @@ const handleSubmit = async () => {
       form.value.customerAddress = ''
 
       if (!selectedStore.value) {
-        ElMessage.warning('请选择自提店铺')
+        globalNotifications.warning('请选择自提店铺')
         return
       }
 
       if (!form.value.customerName || !form.value.customerPhone) {
-        ElMessage.warning('缺少联系人信息，请先登录或填写收货信息')
+        globalNotifications.warning('缺少联系人信息，请先登录或填写收货信息')
         return
       }
     } else if (isLoggedIn.value) {
@@ -825,13 +824,13 @@ const handleSubmit = async () => {
       syncDefaultAddressToOrder(true)
 
       if (!form.value.customerName || !form.value.customerPhone || !form.value.customerAddress) {
-        ElMessage.warning('请先完善收货信息')
+        globalNotifications.warning('请先完善收货信息')
         showAddressModal.value = true
         return
       }
     } else {
       if (!deliveryFormRef.value) {
-        ElMessage.warning('请填写收货信息')
+        globalNotifications.warning('请填写收货信息')
         return
       }
 
@@ -876,7 +875,7 @@ const handleSubmit = async () => {
     })
   } catch (error: unknown) {
     logger.error('提交订单失败:', error)
-    ElMessage.error(getRequestErrorMessage(error, '提交订单失败'))
+    globalNotifications.error(getRequestErrorMessage(error, '提交订单失败'))
   } finally {
     submitting.value = false
   }
@@ -993,7 +992,7 @@ const saveAddress = async () => {
     userDefaultAddress.value = addressData
     syncDefaultAddressToOrder(true)
 
-    ElMessage.success('地址保存成功')
+    globalNotifications.success('地址保存成功')
     showAddressModal.value = false
   } catch (error) {
     logger.error('保存地址失败:', error)

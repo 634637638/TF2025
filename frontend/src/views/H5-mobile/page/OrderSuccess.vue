@@ -171,12 +171,15 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { getPublicConfig, getOrderByNumber, type ShopConfig } from '@/api/shop-public'
-import { ElMessage } from 'element-plus'
+
 import { formatImageUrl } from '@/utils/format'
 import { storage } from '@/services/storage'
 import { H5_STORAGE_KEYS } from '@/constants/storage'
 import { logger } from '@/utils/logger'
 import { getPaymentMethodLabel } from '@/utils/shop-payment'
+import { useNotification } from '@/composables/useNotification'
+const globalNotifications = useNotification()
+
 const router = useRouter()
 const route = useRoute()
 
@@ -207,7 +210,7 @@ const loadOrder = async () => {
     const isExpired = sessionOrder.timestamp && (now - sessionOrder.timestamp) > 30 * 60 * 1000
 
     if (isExpired) {
-      ElMessage.warning('订单信息已过期，请重新下单')
+      globalNotifications.warning('订单信息已过期，请重新下单')
       storage.remove(H5_STORAGE_KEYS.ORDER_SUCCESS, 'session')
       router.push('/m')
       return
@@ -258,7 +261,7 @@ const loadOrder = async () => {
   }
 
   // 3. 没有任何订单信息，跳转首页
-  ElMessage.error('订单信息不存在')
+  globalNotifications.error('订单信息不存在')
   router.push('/m')
 }
 
@@ -283,7 +286,7 @@ const contactService = () => {
   if (phone) {
     window.location.href = `tel:${phone}`
   } else {
-    ElMessage.warning('暂无客服电话')
+    globalNotifications.warning('暂无客服电话')
   }
 }
 

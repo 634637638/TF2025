@@ -237,8 +237,11 @@ import { unifiedApi } from '@/utils/unified-api'
 import { normalizeIdCard, normalizePersonName, normalizePhoneDigits } from '@/utils/security'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import { logger } from '@/utils/logger'
-import { ElMessage } from 'element-plus'
+
 import type { NationalSubsidyHandlerInfo, NationalSubsidyRecord } from '@/types'
+import { useNotification } from '@/composables/useNotification'
+const globalNotifications = useNotification()
+
 
 const DETAIL_CACHE_TTL_MS = 90 * 1000
 const detailCache = new Map<string | number, { timestamp: number, data: NationalSubsidyRecord }>()
@@ -358,12 +361,12 @@ const loadDetail = async (item: NationalSubsidyRecord) => {
       setCachedDetail(item.id, normalizedDetail)
       currentDetail.value = normalizedDetail
     } else {
-      ElMessage.warning('获取详细信息失败，显示基本数据')
+      globalNotifications.warning('获取详细信息失败，显示基本数据')
     }
   } catch (error: unknown) {
     if (requestSeq !== detailRequestSeq) return
     logger.error('获取详情失败:', error)
-    ElMessage.warning('获取详细信息失败，显示基本数据')
+    globalNotifications.warning('获取详细信息失败，显示基本数据')
   } finally {
     if (requestSeq === detailRequestSeq) {
       detailLoading.value = false

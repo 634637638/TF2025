@@ -9,6 +9,7 @@ const {
 } = require('../utils/phone-status')
 const { normalizedModelSql } = require('../utils/search')
 const { listActiveReferenceOptions } = require('../services/reference-options.service')
+const { reverseCustomerPointsForSale } = require('../services/customer-points.service')
 const QUERY_STATS_DEFAULT_STATUSES = Object.freeze([
   ...COMPLETED_TRANSACTION_STATUSES,
   'in_stock'
@@ -941,6 +942,10 @@ class QueryRepository extends BaseRepository {
       })
 
       // 3. 删除销售记录
+      await reverseCustomerPointsForSale({
+        executor: connection,
+        saleId: originalSaleId
+      })
       const [deleteSaleResult] = await connection.execute(
         'DELETE FROM sales WHERE id = ?',
         [originalSaleId]
@@ -1016,6 +1021,16 @@ class QueryRepository extends BaseRepository {
       }
 
       // 1. 删除关联的销售记录
+      const [saleRows] = await connection.execute(
+        'SELECT id FROM sales WHERE phone_id = ? ORDER BY id FOR UPDATE',
+        [phoneId]
+      )
+      for (const sale of saleRows) {
+        await reverseCustomerPointsForSale({
+          executor: connection,
+          saleId: sale.id
+        })
+      }
       await connection.execute(
         'DELETE FROM sales WHERE phone_id = ?',
         [phoneId]

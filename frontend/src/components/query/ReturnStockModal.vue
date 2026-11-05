@@ -253,7 +253,7 @@
 <script setup lang="ts">
 import { TIME_FORMATS } from '@/utils/time'
 import { computed, reactive, ref, watch } from 'vue'
-import { ElMessage } from 'element-plus'
+
 import type { FormInstance } from 'element-plus'
 import { ValidationRules } from '@/composables'
 import { unifiedApi } from '@/utils/unified-api'
@@ -264,6 +264,9 @@ import { useMobile } from '@/composables/mobile'
 import { logger } from '@/utils/logger'
 import { getRequestErrorMessage } from '@/utils/api-response'
 import type { ModelValueProps, ReturnDeviceInfo as DeviceInfo, SuccessEmits, UpdateModelValueEmits } from '@/types'
+import { useNotification } from '@/composables/useNotification'
+const globalNotifications = useNotification()
+
 
 interface Props extends ModelValueProps {
   deviceInfo?: DeviceInfo | null
@@ -341,12 +344,12 @@ const handleSubmit = async () => {
       throw new Error(response.message || '退库失败，请重试')
     }
 
-    ElMessage.success('退库成功！')
+    globalNotifications.success('退库成功！')
     emit('success')
     handleCancel()
   } catch (error: unknown) {
     logger.error('退库失败:', error)
-    ElMessage.error(getRequestErrorMessage(error, '退库失败，请重试'))
+    globalNotifications.error(getRequestErrorMessage(error, '退库失败，请重试'))
   } finally {
     submitting.value = false
   }

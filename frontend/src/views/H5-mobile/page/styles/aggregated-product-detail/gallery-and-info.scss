@@ -4,26 +4,6 @@
   padding-bottom: calc(80px + env(safe-area-inset-bottom));
 }
 
-.loading-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 100vh;
-  background: var(--tf-color-surface-soft);
-
-  .el-icon {
-    font-size: var(--tf-type-scale-48);
-    color: var(--tf-color-indigo-brand);
-    margin-bottom: 16px;
-  }
-
-  p {
-    color: var(--text-muted);
-    font-size: var(--tf-type-scale-14);
-  }
-}
-
 // ========== 商品图片轮播卡片 ==========
 .product-gallery-card {
   position: relative;

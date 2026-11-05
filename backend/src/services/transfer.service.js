@@ -1,6 +1,7 @@
 const { getDatabase } = require('../config/database')
 const { normalizeDateTime } = require('../utils/time')
 const { prepareInvoiceNumberTransaction, generateInvoiceNumber } = require('../utils/invoice-number')
+const { reconcileCustomerPointsForSale } = require('./customer-points.service')
 const log = require('../utils/log')
 
 /**
@@ -277,6 +278,15 @@ class TransferService {
           )
 
           const sale_id = saleInsertResult[0].insertId
+          await reconcileCustomerPointsForSale({
+            executor: connection,
+            saleId: sale_id,
+            customerId: final_customer_id,
+            saleType: 'wholesale',
+            salePrice: price,
+            isNew: null,
+            initialize: true
+          })
 
           // 更新手机的销售记录ID和销售员ID（保持数据一致性）
           await connection.query(
@@ -521,6 +531,15 @@ class TransferService {
           )
 
           const sale_id = saleInsertResult[0].insertId
+          await reconcileCustomerPointsForSale({
+            executor: connection,
+            saleId: sale_id,
+            customerId: final_customer_id,
+            saleType: 'supplier_proxy',
+            salePrice: proxy_price,
+            isNew: null,
+            initialize: true
+          })
 
           // 更新手机的销售记录ID和销售员ID（保持数据一致性）
           await connection.query(

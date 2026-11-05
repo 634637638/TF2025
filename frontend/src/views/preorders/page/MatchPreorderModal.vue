@@ -169,10 +169,13 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { ElMessage } from 'element-plus'
+
 import MobileDialog from '@/components/MobileDialog.vue'
 import { preorderApi, type MatchablePhone, type Preorder } from '@/api/preorder'
 import { canViewPreorderField } from '../preorder-field-permissions'
+import { useNotification } from '@/composables/useNotification'
+const globalNotifications = useNotification()
+
 
 const props = defineProps<{
   visible: boolean
@@ -225,7 +228,7 @@ const loadPhones = async () => {
     phones.value = await preorderApi.getMatchablePhones(props.preorder.id)
   } catch (error) {
     phones.value = []
-    ElMessage.error('获取可匹配库存失败')
+    globalNotifications.error('获取可匹配库存失败')
   } finally {
     loading.value = false
   }
@@ -237,11 +240,11 @@ const submitMatch = async () => {
   submitting.value = true
   try {
     await preorderApi.matchPreorder(props.preorder.id, { phone_id: selectedPhoneId.value })
-    ElMessage.success(isRematch.value ? '匹配设备更换成功' : '预定单匹配成功，库存已预留，尚未出库')
+    globalNotifications.success(isRematch.value ? '匹配设备更换成功' : '预定单匹配成功，库存已预留，尚未出库')
     emit('success')
     dialogVisible.value = false
   } catch (error) {
-    ElMessage.error('匹配失败，请刷新库存后重试')
+    globalNotifications.error('匹配失败，请刷新库存后重试')
     await loadPhones()
   } finally {
     submitting.value = false

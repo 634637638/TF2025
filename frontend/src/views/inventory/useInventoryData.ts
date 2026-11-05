@@ -1,5 +1,4 @@
 import { ref, type Ref } from 'vue'
-import { ElMessage } from 'element-plus'
 import { extractResponseData } from '@/utils/api-response'
 import { unifiedApi as api } from '@/utils/unified-api'
 import { logger } from '@/utils/logger'
@@ -40,6 +39,7 @@ interface UseInventoryDataOptions {
   stats: StatsState
   statsAvailable: Ref<boolean>
   onError: (message: string) => void
+  onWarning: (message: string) => void
 }
 
 interface LoadOptions {
@@ -72,7 +72,8 @@ export const useInventoryData = ({
   pagination,
   stats,
   statsAvailable,
-  onError
+  onError,
+  onWarning
 }: UseInventoryDataOptions) => {
   let statsRequestId = 0
   // 列表刷新只锁定库存表格，不能使用全局 LoadingStore 遮罩整个页面。
@@ -224,9 +225,9 @@ export const useInventoryData = ({
           Boolean(value) && key !== 'search'
         ))
         if (hasFilters) {
-          ElMessage.warning('您筛选的条件无数据')
+          onWarning('您筛选的条件无数据')
         } else if (!filters.search?.trim()) {
-          ElMessage.info('暂无库存数据')
+          onWarning('暂无库存数据')
         }
       }
 

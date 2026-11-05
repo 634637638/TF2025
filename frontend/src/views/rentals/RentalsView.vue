@@ -1099,7 +1099,7 @@
 <script setup lang="ts">
 import { confirmAction } from '@/utils/message-box'
 import { computed, onMounted, reactive, ref } from 'vue'
-import { ElMessage, type UploadRequestOptions } from 'element-plus'
+import { type UploadRequestOptions } from 'element-plus'
 import { unifiedApi } from '@/utils/unified-api'
 import { searchCustomerOptions, type CustomerOption } from '@/services/customer-options'
 import { usePagePermissions } from '@/composables/usePagePermissions'
@@ -1123,6 +1123,9 @@ import { getPaymentMethodLabel } from '@/constants/paymentMethods'
 import { escapeHtml } from '@/utils/security'
 import { TIME_FORMATS, TimeUtil } from '@/utils/time'
 import { logger } from '@/utils/logger'
+import { useNotification } from '@/composables/useNotification'
+const globalNotifications = useNotification()
+
 
 type BillingMode = 'daily' | 'buyout'
 interface Device { id:number; imei?:string; serial_number?:string; brand?:string; model?:string; color?:string; memory?:string; purchase_cost?:number }
@@ -1294,7 +1297,7 @@ function defaultSaleOperatorId(){return salesOperators.value[0]?.id || null}
 async function loadSalesOptions(keyword=''){if(!['sale_store_name','sale_operator_name'].some(field=>canViewRentalField(field as RentalFieldName)))return;try{const res=await unifiedApi.get('/rentals/sales-options',{ params:{ keyword:keyword.trim()||undefined,page:1,page_size:20 },useCache:false });const data=(res.data||{}) as { operators?:Array<{id:number;name?:string;username?:string}>;stores?:Array<{id:number;name:string}> };const results=canViewRentalField('sale_operator_name')&&Array.isArray(data.operators)?data.operators:[];const selected=selectedSalesOperator.value || salesOperators.value.find(item=>Number(item.id)===Number(form.sale_operator_id));salesOperators.value=selected&&!results.some((item:{id:number})=>Number(item.id)===Number(selected.id))?[...results,selected]:results;salesStores.value=canViewRentalField('sale_store_name')&&Array.isArray(data.stores)?data.stores:[];if(canViewRentalField('sale_operator_name')&&!form.sale_operator_id)form.sale_operator_id=defaultSaleOperatorId()}catch(error){logger.warn('加载租赁销售选项失败',error)}}
 function searchSalesOperators(keyword:string){void loadSalesOptions(keyword)}
 function rememberSaleOperator(id:number|null){selectedSalesOperator.value=salesOperators.value.find(item=>Number(item.id)===Number(id))||null}
-function openCreateDialog(){if(!canCreate.value)return handleNoPermission('create');if(!canCreateRentalBase.value)return ElMessage.warning('创建合同所需字段已被隐藏');resetForm();formVisible.value=true;searchDevices('');loadSalesOptions()}
+function openCreateDialog(){if(!canCreate.value)return handleNoPermission('create');if(!canCreateRentalBase.value)return globalNotifications.warning('创建合同所需字段已被隐藏');resetForm();formVisible.value=true;searchDevices('');loadSalesOptions()}
 function openEdit(row:Rental){
   if(!canEdit.value)return handleNoPermission('edit')
   resetForm()
@@ -1315,7 +1318,7 @@ function selectCustomer(id:number|null){const item=customerOptions.value.find(c=
 function resetCustomerSelection(){form.customer_id=null;customerMode.value='search';Object.assign(customerDraft,{ name:'',phone:'',id_card:'' });Object.assign(customerOriginal,{ name:'',phone:'',id_card:'' })}
 function startManualCustomer(){if(!canCreateCustomerProfile.value)return;const keyword=customerKeyword.value;form.customer_id=null;customerMode.value='manual';Object.assign(customerDraft,{ name:/^1[3-9]\d{9}$/.test(keyword)?'':keyword,phone:/^1[3-9]\d{9}$/.test(keyword)?keyword:'',id_card:'' });Object.assign(customerOriginal,{ name:'',phone:'',id_card:'' })}
 async function persistCustomer(){if(customerMode.value==='search')throw new Error('请先检索并选择客户，或手动新增客户');if(form.customer_id&&!customerDirty.value)return form.customer_id;if(!canCreateCustomerProfile.value)throw new Error('客户资料字段权限不足');const payload=pickVisibleRentalFields(customerDraft,{ name:'customer_name',phone:'customer_phone',id_card:'customer_id_card' });customerSaving.value=true;try{const res=form.customer_id?await unifiedApi.put(`/rentals/customers/${form.customer_id}`,payload):await unifiedApi.post('/rentals/customers',payload);const item=res.data as CustomerOption;form.customer_id=item.id;customerOptions.value=[item];customerMode.value='selected';Object.assign(customerDraft,{ name:item.name,phone:item.phone,id_card:item.id_card||'' });Object.assign(customerOriginal,customerDraft);return item.id}finally{customerSaving.value=false}}
-async function saveCustomerProfile(){try{await persistCustomer();ElMessage.success('客户资料已保存并选择')}catch(error){ElMessage.error(error instanceof Error?error.message:'客户资料保存失败')}}
+async function saveCustomerProfile(){try{await persistCustomer();globalNotifications.success('客户资料已保存并选择')}catch(error){globalNotifications.error(error instanceof Error?error.message:'客户资料保存失败')}}
 async function searchDevices(keyword:string){if(!showDeviceSelector.value){deviceOptions.value=[];return}deviceLoading.value=true;try{const res=await unifiedApi.get('/rentals/devices',{ params:{ keyword:keyword.trim()||undefined } });const rows=Array.isArray(res.data)?res.data:[];const selectedIds=new Set([...(form.phone_ids||[]),form.phone_id].filter((id):id is number=>Boolean(id)));const selectedOptions=deviceOptions.value.filter(item=>selectedIds.has(item.id));deviceOptions.value=[...rows,...selectedOptions.filter(item=>!rows.some(row=>row.id===item.id))]}finally{deviceLoading.value=false}}
 function selectBuyoutDevice(id:number|null){const device=deviceOptions.value.find(item=>item.id===id);if(device&&canViewRentalField('purchase_cost'))form.purchase_cost=Number(device.purchase_cost||0)}
 function handleBillingModeChange(mode:BillingMode){if(mode==='buyout'){form.deposit=0;form.monitoring_lock=true;if(!form.phone_id&&form.phone_ids.length)form.phone_id=form.phone_ids[0]}else if(form.phone_id&&!form.phone_ids.length){form.phone_ids=[form.phone_id]}}
@@ -1323,18 +1326,18 @@ function syncDailySalePrices(ids:number[]){ids.forEach(id=>{if(!(id in dailySale
 function applyBulkDailySalePrice(){if(Number(bulkDailySalePrice.value)<=0)return;form.phone_ids.forEach(id=>{dailySalePrices[id]=Number(bulkDailySalePrice.value)})}
 async function saveRental(){
   const phoneIds=editingId.value?[0]:form.billing_mode==='daily'?form.phone_ids:[form.phone_id].filter((id):id is number=>Boolean(id))
-  if(!canSubmitRental.value)return ElMessage.warning('保存合同所需字段已被隐藏')
-  if(!editingId.value&&!phoneIds.length)return ElMessage.warning('请选择在库设备')
-  if(canViewRentalField('unit_price')&&form.billing_mode==='daily'&&Number(form.unit_price)<=0)return ElMessage.warning('请输入每日租金')
-  if(!editingId.value&&canViewRentalField('sale_price')&&form.billing_mode==='daily'&&phoneIds.some(id=>Number(dailySalePrices[id])<=0))return ElMessage.warning('请为每台设备填写销售价格')
+  if(!canSubmitRental.value)return globalNotifications.warning('保存合同所需字段已被隐藏')
+  if(!editingId.value&&!phoneIds.length)return globalNotifications.warning('请选择在库设备')
+  if(canViewRentalField('unit_price')&&form.billing_mode==='daily'&&Number(form.unit_price)<=0)return globalNotifications.warning('请输入每日租金')
+  if(!editingId.value&&canViewRentalField('sale_price')&&form.billing_mode==='daily'&&phoneIds.some(id=>Number(dailySalePrices[id])<=0))return globalNotifications.warning('请为每台设备填写销售价格')
   if(form.billing_mode!=='daily'){
-    if(canViewRentalField('sale_price')&&Number(form.sale_price)<=0)return ElMessage.warning('请输入销售价格')
-    if(canViewRentalField('purchase_cost')&&Number(form.purchase_cost)<0)return ElMessage.warning('入库价格不能小于0')
-    if(canViewRentalField('down_payment')&&(Number(form.down_payment)<0||Number(form.down_payment)>Number(form.sale_price)))return ElMessage.warning('首付不能大于销售总价')
-    if(canViewRentalField('monthly_rent')&&Number(form.monthly_rent)<0)return ElMessage.warning('每月租金不能小于0')
-    if(canViewRentalField('sale_operator_name')&&!form.sale_operator_id)return ElMessage.warning('请选择销售员')
-    if(canViewRentalField('sale_store_name')&&!form.sale_store_id)return ElMessage.warning('请选择销售店铺')
-    if(canViewRentalField('sale_payment_method')&&!form.sale_payment_method)return ElMessage.warning('请选择支付方式')
+    if(canViewRentalField('sale_price')&&Number(form.sale_price)<=0)return globalNotifications.warning('请输入销售价格')
+    if(canViewRentalField('purchase_cost')&&Number(form.purchase_cost)<0)return globalNotifications.warning('入库价格不能小于0')
+    if(canViewRentalField('down_payment')&&(Number(form.down_payment)<0||Number(form.down_payment)>Number(form.sale_price)))return globalNotifications.warning('首付不能大于销售总价')
+    if(canViewRentalField('monthly_rent')&&Number(form.monthly_rent)<0)return globalNotifications.warning('每月租金不能小于0')
+    if(canViewRentalField('sale_operator_name')&&!form.sale_operator_id)return globalNotifications.warning('请选择销售员')
+    if(canViewRentalField('sale_store_name')&&!form.sale_store_id)return globalNotifications.warning('请选择销售店铺')
+    if(canViewRentalField('sale_payment_method')&&!form.sale_payment_method)return globalNotifications.warning('请选择支付方式')
   }
   saving.value=true
   try{
@@ -1356,21 +1359,21 @@ async function saveRental(){
         await unifiedApi.post('/rentals',payload)
       }
     }
-    ElMessage.success(editingId.value?'合同已保存':form.billing_mode==='daily'?`已创建${phoneIds.length}份按天租赁合同`:'买断合同及销售订单已创建')
+    globalNotifications.success(editingId.value?'合同已保存':form.billing_mode==='daily'?`已创建${phoneIds.length}份按天租赁合同`:'买断合同及销售订单已创建')
     formVisible.value=false
     await loadRentals()
-  }catch(error){ElMessage.error(error instanceof Error?error.message:'合同保存失败')}finally{saving.value=false}
+  }catch(error){globalNotifications.error(error instanceof Error?error.message:'合同保存失败')}finally{saving.value=false}
 }
-async function finishRental(row:Rental){await confirmAction(`确认设备已归还？合同 ${contractNumber(row)} 将结束，设备恢复为可售。`,'归还设备',{ type:'warning' });await unifiedApi.post(`/rentals/${row.id}/finish`);ElMessage.success('设备已归还并恢复可售');await loadRentals()}
+async function finishRental(row:Rental){await confirmAction(`确认设备已归还？合同 ${contractNumber(row)} 将结束，设备恢复为可售。`,'归还设备',{ type:'warning' });await unifiedApi.post(`/rentals/${row.id}/finish`);globalNotifications.success('设备已归还并恢复可售');await loadRentals()}
 async function openPayment(row:Rental){if(!canEdit.value)return handleNoPermission('edit');paymentRental.value=row;selectedPeriods.value=[];dailyPaymentAmount.value=Number(row.payable_rent||0);paymentRemarks.value='';const res=await unifiedApi.get<RentalPaymentScheduleResponse>(`/rentals/${row.id}/payment-schedule`);paymentSchedule.value=res.data?.schedule||[];paymentVisible.value=true}
-async function savePayment(){if(!paymentRental.value)return;if(paymentRental.value.billing_mode!=='daily'&&!selectedPeriods.value.length)return ElMessage.warning('请选择月供期次');paymentSaving.value=true;try{const payload=paymentRental.value.billing_mode!=='daily'?{ period_numbers:selectedPeriods.value }:{ amount:dailyPaymentAmount.value };if(canViewRentalField('remarks'))Object.assign(payload,{ remarks:paymentRemarks.value });await unifiedApi.post(`/rentals/${paymentRental.value.id}/payments`,payload);ElMessage.success(paymentRental.value.billing_mode==='daily'?'租金已登记':'月供已登记，销售订单收款已同步');paymentVisible.value=false;await loadRentals()}finally{paymentSaving.value=false}}
-async function uploadContractFile(options:UploadRequestOptions){if(!selected.value)return;const data=new FormData();data.append('files',options.file);try{await unifiedApi.upload(`/rentals/${selected.value.id}/files`,data);options.onSuccess?.({});ElMessage.success('签字合同已上传');await loadRentals();selected.value=rentals.value.find(i=>i.id===selected.value?.id)||selected.value}catch(error){ElMessage.error(error instanceof Error?error.message:'合同上传失败')}}
-async function downloadContractFile(file:ContractFile){if(!selected.value)return;try{await unifiedApi.download(`/rentals/${selected.value.id}/files/${file.id}/download`,file.file_name||'合同附件')}catch(error){ElMessage.error(error instanceof Error?error.message:'合同下载失败')}}
+async function savePayment(){if(!paymentRental.value)return;if(paymentRental.value.billing_mode!=='daily'&&!selectedPeriods.value.length)return globalNotifications.warning('请选择月供期次');paymentSaving.value=true;try{const payload=paymentRental.value.billing_mode!=='daily'?{ period_numbers:selectedPeriods.value }:{ amount:dailyPaymentAmount.value };if(canViewRentalField('remarks'))Object.assign(payload,{ remarks:paymentRemarks.value });await unifiedApi.post(`/rentals/${paymentRental.value.id}/payments`,payload);globalNotifications.success(paymentRental.value.billing_mode==='daily'?'租金已登记':'月供已登记，销售订单收款已同步');paymentVisible.value=false;await loadRentals()}finally{paymentSaving.value=false}}
+async function uploadContractFile(options:UploadRequestOptions){if(!selected.value)return;const data=new FormData();data.append('files',options.file);try{await unifiedApi.upload(`/rentals/${selected.value.id}/files`,data);options.onSuccess?.({});globalNotifications.success('签字合同已上传');await loadRentals();selected.value=rentals.value.find(i=>i.id===selected.value?.id)||selected.value}catch(error){globalNotifications.error(error instanceof Error?error.message:'合同上传失败')}}
+async function downloadContractFile(file:ContractFile){if(!selected.value)return;try{await unifiedApi.download(`/rentals/${selected.value.id}/files/${file.id}/download`,file.file_name||'合同附件')}catch(error){globalNotifications.error(error instanceof Error?error.message:'合同下载失败')}}
 async function deleteContractFile(file:ContractFile){if(!selected.value)return;await confirmAction('删除这份合同备份？','删除确认',{ type:'warning' });await unifiedApi.delete(`/rentals/${selected.value.id}/files/${file.id}`);selected.value.contract_files=selected.value.contract_files?.filter(i=>i.id!==file.id)}
 function printContract(row: Rental) {
   const win = window.open('', '_blank', 'width=900,height=900')
   if (!win) {
-    ElMessage.error('浏览器阻止了打印窗口')
+    globalNotifications.error('浏览器阻止了打印窗口')
     return
   }
 

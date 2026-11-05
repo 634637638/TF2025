@@ -31,5 +31,6 @@
 - [公共选项与检索统一实施方案](reference-options-search-unification.md)
 - [历史兼容接口退役台账](compatibility-route-retirement-ledger.md)
 - [销售与调货事务标准](sales-transfer-transaction-standards.md)
+- [客户销售积分统一规范](customer-points-standard.md)
 
 权限系统的实现与权限动作清单见[权限文档索引](../permissions/INDEX.md)。历史测试说明不作为当前规范。

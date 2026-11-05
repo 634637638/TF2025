@@ -68,7 +68,10 @@ import { useRouter, useRoute } from 'vue-router'
 import { useTabsStore } from '@/stores/tabs'
 import { useAuthStore } from '@/stores/auth'
 import { canAccessRoutePath } from '@/constants/routePermissions'
-import { ElMessage } from 'element-plus'
+
+import { useNotification } from '@/composables/useNotification'
+const globalNotifications = useNotification()
+
 
 const router = useRouter()
 const route = useRoute()
@@ -87,7 +90,7 @@ const switchTab = (path: string) => {
 
   if (!canAccessRoutePath(path, authStore)) {
     tabsStore.closeTab(path)
-    ElMessage.warning('您没有访问此页面的权限')
+    globalNotifications.warning('您没有访问此页面的权限')
     return
   }
 

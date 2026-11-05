@@ -205,7 +205,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+
 import { useNotification } from '@/composables/useNotification'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
@@ -220,6 +220,8 @@ import SectionLoading from '@/components/SectionLoading.vue'
 import ComprehensiveWarnings from '@/components/ComprehensiveWarnings.vue'
 import PendingApprovals from '@/components/PendingApprovals.vue'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
+const globalNotifications = useNotification()
+
 
 // 使用通知服务
 const {
@@ -319,7 +321,7 @@ const _hasWarning = computed(() => {
 
 const guardedPush = (target: string) => {
   if (!canAccessRoutePath(target, authStore)) {
-    ElMessage.warning('您没有访问此页面的权限')
+    globalNotifications.warning('您没有访问此页面的权限')
     return false
   }
 

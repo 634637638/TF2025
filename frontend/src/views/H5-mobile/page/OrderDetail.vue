@@ -4,15 +4,11 @@
 -->
 <template>
   <div class="order-detail-page">
-    <div
+    <SectionLoading
       v-if="loading"
-      class="loading-state"
-    >
-      <SectionLoading
-        text="加载订单详情中..."
-        size="large"
-      />
-    </div>
+      text="加载订单详情中..."
+      size="large"
+    />
 
     <div
       v-else-if="orderData"
@@ -402,7 +398,7 @@
 import { confirmAction } from '@/utils/message-box'
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { ElMessage } from 'element-plus'
+
 import { getOrderByNumber, getPublicConfig, cancelOrder, confirmPayment, type ShopConfig, type PublicOrder } from '@/api/shop-public'
 import { getRequestErrorMessage } from '@/utils/api-response'
 import { TimeUtil } from '@/utils/time'
@@ -414,6 +410,9 @@ import { logger } from '@/utils/logger'
 import { storage } from '@/services/storage'
 import { H5_STORAGE_KEYS } from '@/constants/storage'
 import { getShopPaymentOptions, getPaymentMethodLabel } from '@/utils/shop-payment'
+import { useNotification } from '@/composables/useNotification'
+const globalNotifications = useNotification()
+
 const router = useRouter()
 const route = useRoute()
 
@@ -468,7 +467,7 @@ const loadOrder = async () => {
   const orderNumber = route.query.order_number || route.params.orderNumber || route.query.orderNumber
 
   if (!orderNumber) {
-    ElMessage.error('订单号不能为空')
+    globalNotifications.error('订单号不能为空')
     logger.error('订单号获取失败', { query: route.query, params: route.params })
     router.push('/m')
     return
@@ -484,7 +483,7 @@ const loadOrder = async () => {
     orderData.value = data as PublicOrder as OrderDetailRecord
   } catch (error: unknown) {
     logger.error('获取订单详情失败:', error)
-    ElMessage.error(getRequestErrorMessage(error, '获取订单详情失败'))
+    globalNotifications.error(getRequestErrorMessage(error, '获取订单详情失败'))
     router.push('/m')
   } finally {
     loading.value = false
@@ -603,7 +602,7 @@ const selectPaymentMethod = (method: string) => {
 // 确认支付方式，进入下一步
 const confirmPaymentMethod = () => {
   if (!selectedPaymentMethod.value) {
-    ElMessage.warning('请选择支付方式')
+    globalNotifications.warning('请选择支付方式')
     return
   }
   paymentStep.value = 'pay'
@@ -624,26 +623,25 @@ const handlePaymentDialogClose = () => {
 const completePayment = async () => {
   if (!orderData.value) return
 
+  let closeLoading: (() => void) | undefined
   try {
-    const loading = ElMessage({
-      message: '正在确认支付...',
-      type: 'info',
-      duration: 0
-    })
+    closeLoading = globalNotifications.loading('正在确认支付...')
 
     // 调用确认支付API
     await confirmPayment(orderData.value.order_number, orderAccessToken.value)
 
-    loading.close()
-    ElMessage.success('支付确认成功！订单已提交审核，请耐心等待后台确认')
+    closeLoading()
+    closeLoading = undefined
+    globalNotifications.success('支付确认成功！订单已提交审核，请耐心等待后台确认')
 
     showPaymentDialog.value = false
 
     // 重新加载订单状态
     await loadOrder()
   } catch (error: unknown) {
+    closeLoading?.()
     logger.error('支付确认失败:', error)
-    ElMessage.error(getRequestErrorMessage(error, '支付确认失败，请重试'))
+    globalNotifications.error(getRequestErrorMessage(error, '支付确认失败，请重试'))
   }
 }
 
@@ -669,14 +667,14 @@ const handleCancelOrder = async () => {
       throw new Error('订单标识无效，无法取消订单')
     }
     await cancelOrder(orderId, orderAccessToken.value, '用户主动取消')
-    ElMessage.success('订单已取消')
+    globalNotifications.success('订单已取消')
 
     // 重新加载订单信息
     await loadOrder()
   } catch (error: unknown) {
     if (error !== 'cancel') {
       logger.error('取消订单失败:', error)
-      ElMessage.error(getRequestErrorMessage(error, '取消订单失败'))
+      globalNotifications.error(getRequestErrorMessage(error, '取消订单失败'))
     }
   } finally {
     cancelling.value = false

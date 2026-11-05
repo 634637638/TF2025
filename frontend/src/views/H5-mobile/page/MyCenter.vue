@@ -489,7 +489,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage, FormInstance } from 'element-plus'
+import { FormInstance } from 'element-plus'
 import { ValidationRules } from '@/composables'
 import { getPublicConfig, type ShopConfig } from '@/api/shop-public'
 import { getRequestErrorMessage } from '@/utils/api-response'
@@ -501,6 +501,8 @@ import { formatAmount, formatDate as formatGlobalDate, formatImageUrl } from '@/
 import { logger } from '@/utils/logger'
 import SectionLoading from '@/components/SectionLoading.vue'
 import { useNotification } from '@/composables/useNotification'
+const globalNotifications = useNotification()
+
 const router = useRouter()
 const { confirm } = useNotification()
 const shopConfig = ref<Partial<ShopConfig>>({})
@@ -584,10 +586,10 @@ const handleLogout = async () => {
     userManager.clearAuth()
     currentUser.value = null
 
-    ElMessage.success('已退出登录')
+    globalNotifications.success('已退出登录')
   } catch (error) {
     logger.error('登出失败:', error)
-    ElMessage.error('登出失败')
+    globalNotifications.error('登出失败')
   }
 }
 
@@ -656,16 +658,16 @@ const copyWechat = () => {
     // 复制微信号到剪贴板
     if (navigator.clipboard) {
       navigator.clipboard.writeText(shopConfig.value.wechat_id).then(() => {
-        ElMessage.success('微信号已复制，正在打开微信...')
+        globalNotifications.success('微信号已复制，正在打开微信...')
         // 延迟跳转，让用户看到提示
         setTimeout(() => {
           window.location.href = `weixin://dl/chat?${shopConfig.value.wechat_id}`
         }, 1000)
       }).catch(() => {
-        ElMessage.info(`请添加微信号: ${shopConfig.value.wechat_id}`)
+        globalNotifications.info(`请添加微信号: ${shopConfig.value.wechat_id}`)
       })
     } else {
-      ElMessage.info(`请添加微信号: ${shopConfig.value.wechat_id}`)
+      globalNotifications.info(`请添加微信号: ${shopConfig.value.wechat_id}`)
     }
   }
 }
@@ -697,7 +699,7 @@ const showPurchaseRecords = async () => {
     purchaseTotal.value = result.total
   } catch (error: unknown) {
     logger.error('获取购买记录失败:', error)
-    ElMessage.error(getRequestErrorMessage(error, '获取购买记录失败'))
+    globalNotifications.error(getRequestErrorMessage(error, '获取购买记录失败'))
   } finally {
     loadingPurchase.value = false
   }
@@ -715,7 +717,7 @@ const loadMorePurchaseRecords = async () => {
   } catch (error: unknown) {
     purchasePage.value -= 1
     logger.error('加载更多购买记录失败:', error)
-    ElMessage.error(getRequestErrorMessage(error, '加载失败'))
+    globalNotifications.error(getRequestErrorMessage(error, '加载失败'))
   } finally {
     loadingPurchaseMore.value = false
   }
@@ -790,11 +792,11 @@ const saveProfile = async () => {
       address: profileForm.value.address
     }, 'session')
 
-    ElMessage.success('个人资料保存成功')
+    globalNotifications.success('个人资料保存成功')
     profileVisible.value = false
   } catch (error: unknown) {
     logger.error('保存个人资料失败:', error)
-    ElMessage.error(getRequestErrorMessage(error, '保存个人资料失败'))
+    globalNotifications.error(getRequestErrorMessage(error, '保存个人资料失败'))
   } finally {
     savingProfile.value = false
   }

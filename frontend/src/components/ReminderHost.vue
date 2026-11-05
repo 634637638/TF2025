@@ -157,7 +157,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
-import { ElMessage } from 'element-plus'
+
 import { storeToRefs } from 'pinia'
 import { useAuthStore } from '@/stores/auth'
 import { useAppStore } from '@/stores/app'
@@ -166,6 +166,9 @@ import { logger } from '@/utils/logger'
 import { fieldPermissions } from '@/composables/useFieldPermissions'
 import { canViewReminderField } from '@/views/reminders/reminder-field-permissions'
 import { TIME_FORMATS, TimeUtil } from '@/utils/time'
+import { useNotification } from '@/composables/useNotification'
+const globalNotifications = useNotification()
+
 
 interface ReminderAlert {
   kind: 'reminder'
@@ -362,7 +365,7 @@ const finishCurrent = async (action: 'complete' | 'snooze', body: Record<string,
     // 完成后只结束当前 occurrence；稍后提醒到点后仍需再次进入队列。
     removeCurrent(action === 'complete')
   } catch (error) {
-    ElMessage.error('更新待办状态失败')
+    globalNotifications.error('更新待办状态失败')
     logger.error('更新待办状态失败', error)
   } finally {
     processingOccurrence.value = null
@@ -378,7 +381,7 @@ const handleAcknowledgeCompletion = async () => {
     await api.post(`/reminders/completed/${item.occurrence_id}/acknowledge`)
     removeCurrent(true)
   } catch (error) {
-    ElMessage.error('确认完成提醒失败')
+    globalNotifications.error('确认完成提醒失败')
     logger.error('确认完成提醒失败', error)
   } finally {
     processingOccurrence.value = null
@@ -407,11 +410,11 @@ const confirmCustomSnooze = () => {
   const deadline = snoozeDeadline.value
   if (!customDate || !deadline) return
   if (customDate.valueOf() <= TimeUtil.now().valueOf() + SNOOZE_MIN_LEAD_MS) {
-    ElMessage.warning('再次提醒时间必须晚于当前时间')
+    globalNotifications.warning('再次提醒时间必须晚于当前时间')
     return
   }
   if (customDate.valueOf() > deadline.valueOf()) {
-    ElMessage.warning('再次提醒时间必须至少早于执行时间1天')
+    globalNotifications.warning('再次提醒时间必须至少早于执行时间1天')
     return
   }
   void finishCurrent('snooze', { snoozed_until: toLocalDateTime(customDate) })

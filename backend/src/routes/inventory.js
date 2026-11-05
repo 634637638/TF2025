@@ -7,6 +7,7 @@ const { validateImei } = require('../utils/imei')
 const { normalizeDateTime } = require('../utils/time')
 const { generateMemberNumber } = require('../utils/member-number')
 const { prepareInvoiceNumberTransaction, generateInvoiceNumber } = require('../utils/invoice-number')
+const { reconcileCustomerPointsForSale } = require('../services/customer-points.service')
 const log = require('../utils/log')
 const {
   COMPLETED_TRANSACTION_STATUSES,
@@ -1224,6 +1225,16 @@ router.post('/quick-sale', unifiedAuth, requireQuickSalePermission, async (req, 
       )
     }
 
+    const pointsResult = await reconcileCustomerPointsForSale({
+      executor: connection,
+      saleId: sale_id,
+      customerId: customer_id,
+      saleType: transactionConfig.saleType,
+      salePrice,
+      isNew: is_new !== undefined ? is_new : 1,
+      initialize: true
+    })
+
     await connection.commit()
 
     log.debug('✅ 快速出库成功，phone_id:', phone_id, 'sale_id:', sale_id)
@@ -1242,7 +1253,8 @@ router.post('/quick-sale', unifiedAuth, requireQuickSalePermission, async (req, 
       payment_method,
       payment_channel: normalizedPaymentChannel,
       status: transactionConfig.phoneStatus,
-      sale_type: transactionConfig.saleType
+      sale_type: transactionConfig.saleType,
+      points_earned: pointsResult.points
     })
 
   } catch (error) {

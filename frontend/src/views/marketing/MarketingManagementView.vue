@@ -355,7 +355,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
-import { ElMessage } from 'element-plus'
+
 import {
   Link,
   LocationFilled,
@@ -382,6 +382,9 @@ import {
   type MarketingLexicon,
   type MarketingMode
 } from '@/utils/marketing'
+import { useNotification } from '@/composables/useNotification'
+const globalNotifications = useNotification()
+
 
 const { canView, canCreate, canEdit, canDelete, handleNoPermission } = usePagePermissions('marketing')
 const MARKETING_MODULE_KEY = 'marketing'
@@ -793,7 +796,7 @@ const saveLexicon = async () => {
       },
       updatedAt: TimeUtil.toISOString()
     })
-    ElMessage.success('词库已保存到数据库')
+    globalNotifications.success('词库已保存到数据库')
     await refreshAllPreviews()
   } finally {
     settingsSaving.value = false

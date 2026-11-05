@@ -466,13 +466,16 @@
 <script setup>
 import { confirmAction, alertAction } from '@/utils/message-box'
 import { ref, reactive, computed, onMounted, watch } from 'vue'
-import { ElMessage } from 'element-plus'
+
 import { unifiedApi } from '@/utils/unified-api'
 import { PageHeader, PermissionGate } from '@/components/base'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { fieldPermissions } from '@/composables/useFieldPermissions'
 import { useLoadingState } from '@/composables'
 import logger from '@/utils/logger'
+import { useNotification } from '@/composables/useNotification'
+const globalNotifications = useNotification()
+
 
 const {
   canView,
@@ -714,11 +717,11 @@ const fetchGitStatus = async () => {
     if (response.success) {
       gitStatus.value = response.data
     } else {
-      ElMessage.error(response.error || '获取 Git 状态失败')
+      globalNotifications.error(response.error || '获取 Git 状态失败')
     }
   } catch (error) {
     logger.error('获取 Git 状态失败:', error)
-    ElMessage.error(getApiErrorMessage(error, '获取 Git 状态失败'))
+    globalNotifications.error(getApiErrorMessage(error, '获取 Git 状态失败'))
   } finally {
     loading.value = false
   }
@@ -736,11 +739,11 @@ const fetchCommitHistory = async () => {
     if (response.success) {
       commitHistory.value = response.data.commits
     } else {
-      ElMessage.error(response.error || '获取提交历史失败')
+      globalNotifications.error(response.error || '获取提交历史失败')
     }
   } catch (error) {
     logger.error('获取提交历史失败:', error)
-    ElMessage.error(getApiErrorMessage(error, '获取提交历史失败'))
+    globalNotifications.error(getApiErrorMessage(error, '获取提交历史失败'))
   } finally {
     loadingHistory.value = false
   }
@@ -761,7 +764,7 @@ const handleCommit = async () => {
   }
 
   if (!commitForm.message.trim()) {
-    ElMessage.warning('请输入提交信息')
+    globalNotifications.warning('请输入提交信息')
     return
   }
 
@@ -784,13 +787,13 @@ const handleCommit = async () => {
       const syncStatusText = formatSyncStatusText(response.data?.syncStatus)
       const pushHint = response.data?.hint || ''
       if (commitForm.autoPush && response.data?.pushed === false) {
-        ElMessage.warning(
+        globalNotifications.warning(
           [response.data.message || response.data.error || '提交成功，但推送失败', syncStatusText, pushHint]
             .filter(Boolean)
             .join('；')
         )
       } else {
-        ElMessage.success(
+        globalNotifications.success(
           [response.data.message || '提交成功', commitForm.autoPush ? syncStatusText : '']
             .filter(Boolean)
             .join('；')
@@ -802,11 +805,11 @@ const handleCommit = async () => {
       await fetchGitStatus()
       await fetchCommitHistory()
     } else {
-      ElMessage.error(response.error || '提交失败')
+      globalNotifications.error(response.error || '提交失败')
     }
   } catch (error) {
     logger.error('提交失败:', error)
-    ElMessage.error(getApiErrorMessage(error, '提交失败'))
+    globalNotifications.error(getApiErrorMessage(error, '提交失败'))
   } finally {
     committing.value = false
   }
@@ -826,7 +829,7 @@ const handlePush = async () => {
     const response = await unifiedApi.post('/git/push')
     if (response.success) {
       const syncStatusText = formatSyncStatusText(response.data?.syncStatus)
-      ElMessage.success(
+      globalNotifications.success(
         [response.data?.message || '推送成功', syncStatusText]
           .filter(Boolean)
           .join('；')
@@ -834,11 +837,11 @@ const handlePush = async () => {
       await fetchGitStatus()
       await fetchCommitHistory()
     } else {
-      ElMessage.error(response.error || '推送失败')
+      globalNotifications.error(response.error || '推送失败')
     }
   } catch (error) {
     logger.error('推送失败:', error)
-    ElMessage.error(getApiErrorMessage(error, '推送失败'))
+    globalNotifications.error(getApiErrorMessage(error, '推送失败'))
   } finally {
     pushing.value = false
   }
@@ -857,14 +860,14 @@ const handlePull = async () => {
   try {
     const response = await unifiedApi.post('/git/pull')
     if (response.success) {
-      ElMessage.success('拉取成功')
+      globalNotifications.success('拉取成功')
       await fetchGitStatus()
     } else {
-      ElMessage.error(response.error || '拉取失败')
+      globalNotifications.error(response.error || '拉取失败')
     }
   } catch (error) {
     logger.error('拉取失败:', error)
-    ElMessage.error(getApiErrorMessage(error, '拉取失败'))
+    globalNotifications.error(getApiErrorMessage(error, '拉取失败'))
   } finally {
     pulling.value = false
   }
@@ -893,15 +896,15 @@ const handleDiscard = async () => {
     discarding.value = true
     const response = await unifiedApi.post('/git/discard')
     if (response.success) {
-      ElMessage.success('已丢弃所有未提交的更改')
+      globalNotifications.success('已丢弃所有未提交的更改')
       await fetchGitStatus()
     } else {
-      ElMessage.error(response.error || '丢弃更改失败')
+      globalNotifications.error(response.error || '丢弃更改失败')
     }
   } catch (error) {
     if (error !== 'cancel') {
       logger.error('丢弃更改失败:', error)
-      ElMessage.error(getApiErrorMessage(error, '丢弃更改失败'))
+      globalNotifications.error(getApiErrorMessage(error, '丢弃更改失败'))
     }
   } finally {
     discarding.value = false
@@ -935,16 +938,16 @@ const handleCheckoutCommit = async (commitHash, mode) => {
     checkingOut.value = true
     const response = await unifiedApi.post('/git/checkout', { commit: commitHash, mode })
     if (response.success) {
-      ElMessage.success(response.data.message || '切换成功')
+      globalNotifications.success(response.data.message || '切换成功')
       await fetchGitStatus()
       await fetchCommitHistory()
     } else {
-      ElMessage.error(response.error || '切换版本失败')
+      globalNotifications.error(response.error || '切换版本失败')
     }
   } catch (error) {
     if (error !== 'cancel') {
       logger.error('切换版本失败:', error)
-      ElMessage.error(getApiErrorMessage(error, '切换版本失败'))
+      globalNotifications.error(getApiErrorMessage(error, '切换版本失败'))
     }
   } finally {
     checkingOut.value = false
@@ -974,16 +977,16 @@ const handleDeleteCommit = async (commitHash, commitMessage) => {
 
     const response = await unifiedApi.post('/git/delete-commit', { hash: commitHash })
     if (response.success) {
-      ElMessage.success(response.data.message || '历史记录已隐藏')
+      globalNotifications.success(response.data.message || '历史记录已隐藏')
       await fetchCommitHistory()
       await fetchGitStatus()
     } else {
-      ElMessage.error(response.error || '隐藏历史记录失败')
+      globalNotifications.error(response.error || '隐藏历史记录失败')
     }
   } catch (error) {
     if (error !== 'cancel') {
       logger.error('隐藏历史记录失败:', error)
-      ElMessage.error(getApiErrorMessage(error, '隐藏历史记录失败'))
+      globalNotifications.error(getApiErrorMessage(error, '隐藏历史记录失败'))
     }
   }
 }
@@ -1031,12 +1034,12 @@ const handleCreateArchiveBackup = async () => {
       await fetchGitStatus()
       await fetchCommitHistory()
     } else {
-      ElMessage.error(response.error || '创建本地压缩包备份失败')
+      globalNotifications.error(response.error || '创建本地压缩包备份失败')
     }
   } catch (error) {
     if (error !== 'cancel') {
       logger.error('创建本地压缩包备份失败:', error)
-      ElMessage.error(getApiErrorMessage(error, '创建本地压缩包备份失败'))
+      globalNotifications.error(getApiErrorMessage(error, '创建本地压缩包备份失败'))
     }
   } finally {
     backingUpArchive.value = false
@@ -1067,16 +1070,16 @@ const handleRestoreMain = async () => {
     restoringMain.value = true
     const response = await unifiedApi.post('/git/restore-main')
     if (response.success) {
-      ElMessage.success(response.data.message || '已恢复到 main')
+      globalNotifications.success(response.data.message || '已恢复到 main')
       await fetchGitStatus()
       await fetchCommitHistory()
     } else {
-      ElMessage.error(response.error || '恢复到 main 失败')
+      globalNotifications.error(response.error || '恢复到 main 失败')
     }
   } catch (error) {
     if (error !== 'cancel') {
       logger.error('恢复到 main 失败:', error)
-      ElMessage.error(getApiErrorMessage(error, '恢复到 main 失败'))
+      globalNotifications.error(getApiErrorMessage(error, '恢复到 main 失败'))
     }
   } finally {
     restoringMain.value = false

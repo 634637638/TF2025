@@ -28,9 +28,6 @@ const buttonInlineLoadingExceptions = new Map(Object.entries({
   'views/subsidy/components/SubsidyEditDialog.vue': 1,
   'views/system/page/Returngoods.vue': 1
 }))
-const loadingDirectiveExceptions = new Map([
-  ['components/PriceMarkupConfig.vue', { count: 1, reason: '配置弹窗需保留表单字段并在加载期间覆盖内容' }]
-])
 const globalLoadingTriggerExceptions = new Map([
   ['views/standards/StandardsAuditView.vue', { count: 1, reason: '规范页演示必须调用统一全局 Loading Store' }],
   ['views/data-optimization/page/DataCheckTab.vue', { count: 5, reason: '数据清理、批量合并和删除是明确的全局长操作；与表格查询属于不同操作，不能共用同一 Loading 反馈' }]
@@ -52,9 +49,25 @@ const collectVueFiles = async (directory) => {
   return files.flat()
 }
 
+const collectSourceFiles = async (directory, extensions) => {
+  const entries = await readdir(directory, { withFileTypes: true })
+  const files = await Promise.all(entries.map(async (entry) => {
+    const path = join(directory, entry.name)
+    if (entry.isDirectory()) return collectSourceFiles(path, extensions)
+    return extensions.has(extname(entry.name)) ? [path] : []
+  }))
+  return files.flat()
+}
+
 const getLineNumber = (source, index) => source.slice(0, index).split('\n').length
 const countMatches = (source, pattern) => [...source.matchAll(pattern)].length
+const removeNonLoadingCopy = (template) => template
+  .replace(/<(?:SectionLoading|InlineLoading|TableLoadingRow|LoadingOverlay)\b[^>]*\/?\s*>/gi, '')
+  .replace(/<el-button\b[\s\S]*?<\/el-button>/gi, '')
+  .replace(/<el-tag\b[\s\S]*?<\/el-tag>/gi, '')
 const files = await collectVueFiles(sourceRoot)
+const stylesheetFiles = await collectSourceFiles(sourceRoot, new Set(['.css', '.scss', '.sass']))
+const scriptFiles = await collectSourceFiles(sourceRoot, new Set(['.ts', '.js']))
 const violations = []
 let tableLoadingRowCount = 0
 let sectionLoadingCount = 0
@@ -82,6 +95,7 @@ const globalLoadingSource = await readFile(join(sourceRoot, 'components/GlobalLo
 const loadingConstantsSource = await readFile(join(sourceRoot, 'constants/loading.ts'), 'utf8')
 const refreshDataSource = await readFile(join(sourceRoot, 'composables/useRefreshData.ts'), 'utf8')
 const unifiedApiSource = await readFile(join(sourceRoot, 'utils/unified-api.ts'), 'utf8')
+const loadingOverlaySource = await readFile(join(sourceRoot, 'components/LoadingOverlay.vue'), 'utf8')
 for (const [source, token, message] of [
   [loadingStoreSource, 'isGlobalVisible', 'Loading Store 必须提供全局/局部互斥可见状态'],
   [loadingStoreSource, 'if (hasLocalLoading.value) return', '局部 Loading 期间不得启动全屏 Loading'],
@@ -91,6 +105,8 @@ for (const [source, token, message] of [
   [loadingConstantsSource, 'GLOBAL_LOADING_SHOW_DELAY_MS = 5000', '全屏 GlobalLoading 延迟必须统一为 5 秒'],
   [await readFile(join(sourceRoot, 'directives/index.ts'), 'utf8'), '_tfLoadingInitialPending', '表格指令必须区分首次加载和后续刷新'],
   [await readFile(join(sourceRoot, 'components/TableLoadingRow.vue'), 'utf8'), "'加载中...' ? '加载数据中...'", '表格兜底文案必须统一为“加载数据中...”'],
+  [loadingOverlaySource, 'loadingStore.startLocalLoading()', '区块覆盖 Loading 必须登记为局部加载并抑制全屏层'],
+  [loadingOverlaySource, '<SectionLoading', '区块覆盖 Loading 必须复用 SectionLoading 视觉入口'],
   [unifiedApiSource, 'requestConfig.showLoading === undefined', '统一 API 必须默认启用首次请求的全局 Loading，showLoading: false 才允许静默'],
   [refreshDataSource, 'loadingStore.startLocalLoading()', '公共刷新入口必须登记局部 Loading']
 ]) {
@@ -111,6 +127,12 @@ for (const file of files) {
   const template = descriptor.template?.content || ''
   const templateStartLine = descriptor.template?.loc.start.line || 1
   const styleBlocks = descriptor.styles.map(style => style.content)
+  const visibleLoadingCopy = removeNonLoadingCopy(template)
+  if (filePath !== 'components/GlobalLoading.vue') {
+    for (const match of visibleLoadingCopy.matchAll(/>([^<>]*(?:加载中|正在加载)[^<>]*)</g)) {
+      violations.push(`${filePath}:${getLineNumber(template, match.index)} 存在未使用公共加载组件的纯文本 Loading 反馈`)
+    }
+  }
   const hasTableMarkup = /<el-table\b|<table\b/i.test(template)
   const hasTableDirective = /\bv-tf-loading(?:\s*=|(?=[\s/>]))/.test(template)
   const hasTableFallback = /<TableLoadingRow\b/.test(template)
@@ -185,12 +207,7 @@ for (const file of files) {
   const directiveCount = countMatches(template, /\bv-loading(?:\s*=|(?=[\s/>]))/g)
   loadingDirectiveCount += directiveCount
   if (directiveCount > 0) {
-    const exception = loadingDirectiveExceptions.get(filePath)
-    if (!exception) {
-      violations.push(`${filePath} 新增 v-loading，优先改用 TableLoadingRow/SectionLoading 或登记原因`)
-    } else if (directiveCount > exception.count) {
-      violations.push(`${filePath} v-loading 从 ${exception.count} 增加到 ${directiveCount}，不得扩大局部遮罩例外`)
-    }
+    violations.push(`${filePath} 使用 Element Plus v-loading；区块覆盖改用 LoadingOverlay，其他场景使用相应公共入口`)
   }
 
   const loadingServiceCount = countMatches(source, /\bElLoading\.service\s*\(/g)
@@ -204,8 +221,12 @@ for (const file of files) {
 
   for (const style of styleBlocks) {
     const css = style.replace(/\/\*[\s\S]*?\*\//g, '')
-    const spinner = /\.loading-spinner\b/g
-    if (spinner.test(css)) violations.push(`${filePath} 禁止新增自绘 .loading-spinner 样式`)
+    if (/\.loading-spinner\b|\.tf2025-loading-spinner\b/.test(css)) {
+      violations.push(`${filePath} 禁止在业务 SFC 内维护 Loading spinner 样式`)
+    }
+    if (/@keyframes\s+[\w-]*(?:loading|spinner)[\w-]*/i.test(css) && !['components/GlobalLoading.vue', 'components/InlineLoading.vue', 'components/SectionLoading.vue'].includes(filePath)) {
+      violations.push(`${filePath} 禁止在业务 SFC 内维护 Loading 动画关键帧`)
+    }
   }
 }
 
@@ -213,6 +234,37 @@ for (const requiredFile of ['components/PaginatedTable.vue', 'components/MobileT
   const source = await readFile(join(sourceRoot, requiredFile), 'utf8')
   if (!/<TableLoadingRow\b/.test(source)) {
     violations.push(`${requiredFile} 必须使用公共 TableLoadingRow 作为表格加载入口`)
+  }
+}
+
+const publicLoadingStyles = new Set([
+  'styles.scss',
+  'components/GlobalLoading.vue',
+  'components/InlineLoading.vue',
+  'components/SectionLoading.vue'
+])
+for (const file of stylesheetFiles) {
+  const filePath = relative(sourceRoot, file)
+  if (publicLoadingStyles.has(filePath)) continue
+  const source = (await readFile(file, 'utf8')).replace(/\/\*[\s\S]*?\*\//g, '')
+  if (/\.loading-spinner\b|\.tf2025-loading-spinner\b|\.el-loading-spinner\b/i.test(source)) {
+    violations.push(`${filePath} 存在公共 Loading 组件之外的 spinner 样式`)
+  }
+  if (/@keyframes\s+[\w-]*(?:loading|spinner|spin)[\w-]*/i.test(source)) {
+    violations.push(`${filePath} 存在公共 Loading 组件之外的旋转/加载动画关键帧`)
+  }
+  if (/animation(?:-name)?\s*:[^;]*(?:\bspin\b|[\w-]*loading[\w-]*|[\w-]*spinner[\w-]*)/i.test(source)) {
+    violations.push(`${filePath} 存在公共 Loading 组件之外的加载动画声明`)
+  }
+}
+
+for (const file of scriptFiles) {
+  const filePath = relative(sourceRoot, file)
+  if (filePath === 'directives/index.ts') continue
+  const source = await readFile(file, 'utf8')
+  if (/(?:innerHTML|insertAdjacentHTML)\s*(?:=|\()[^;]{0,240}(?:加载中|正在加载|Loading)/i.test(source)
+    || /textContent\s*=\s*['"`][^'"`]*(?:加载中|正在加载|Loading)/i.test(source)) {
+    violations.push(`${filePath} 禁止用脚本字符串生成私有加载反馈`)
   }
 }
 
@@ -229,19 +281,6 @@ for (const [filePath, limit] of buttonInlineLoadingExceptions) {
     if (!buttonExceptionReason) violations.push(`${filePath} 按钮 loading 例外必须记录迁移原因`)
   } catch {
     violations.push(`按钮 loading 例外登记指向不存在的文件：${filePath}`)
-  }
-}
-
-for (const [filePath, exception] of loadingDirectiveExceptions) {
-  if (!exception.reason) violations.push(`${filePath} 的 v-loading 例外必须记录原因`)
-  try {
-    const source = await readFile(join(sourceRoot, filePath), 'utf8')
-    const { descriptor, errors } = parse(source, { filename: filePath })
-    if (errors.length > 0) throw new Error('无法解析 Vue SFC')
-    const count = countMatches(descriptor.template?.content || '', /\bv-loading(?:\s*=|(?=[\s/>]))/g)
-    if (count === 0) violations.push(`${filePath} v-loading 例外已无实际用量，请删除过期登记`)
-  } catch {
-    violations.push(`v-loading 例外登记指向不存在或无法解析的文件：${filePath}`)
   }
 }
 

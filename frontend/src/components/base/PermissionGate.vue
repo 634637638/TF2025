@@ -5,7 +5,10 @@
 <script setup lang="ts">
 import { onBeforeUnmount, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+
+import { useNotification } from '@/composables/useNotification'
+const globalNotifications = useNotification()
+
 
 type PermissionGateMode = 'notice' | 'denied'
 
@@ -52,7 +55,7 @@ watch(() => props.canView, (canView) => {
     }
 
     hasShownDeniedMessage = true
-    ElMessage.warning({
+    globalNotifications.warning({
       message: '您没有访问此页面的权限',
       duration: 3000,
       showClose: true

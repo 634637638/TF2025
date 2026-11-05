@@ -4,15 +4,11 @@
 -->
 <template>
   <div class="cart-page">
-    <div
+    <SectionLoading
       v-if="loading"
-      class="loading-state"
-    >
-      <SectionLoading
-        text="加载购物车中..."
-        size="large"
-      />
-    </div>
+      text="加载购物车中..."
+      size="large"
+    />
 
     <div
       v-else-if="cartData && cartData.items.length > 0"
@@ -106,7 +102,7 @@
 import { confirmAction } from '@/utils/message-box'
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+
 import { getCart, removeFromCart } from '@/api/shop-public'
 import type { CartData, CartItem } from '@/api/shop-public'
 import { storage } from '@/services/storage'
@@ -116,6 +112,9 @@ import SectionLoading from '@/components/SectionLoading.vue'
 import { logger } from '@/utils/logger'
 import { getCartId as ensureCartId } from '@/composables/useCart'
 import { formatAmount } from '@/utils/format'
+import { useNotification } from '@/composables/useNotification'
+const globalNotifications = useNotification()
+
 const router = useRouter()
 
 // 数据
@@ -226,10 +225,10 @@ const confirmDelete = (item: CartItem) => {
       selectedItems.value = new Set(selectedItems.value)
       // 重新加载购物车
       await loadCart()
-      ElMessage.success('删除成功')
+      globalNotifications.success('删除成功')
     } catch (error) {
       logger.error('删除失败:', error)
-      ElMessage.error('删除失败')
+      globalNotifications.error('删除失败')
       // 删除失败时重新加载，确保数据一致性
       await loadCart()
     }
@@ -248,7 +247,7 @@ const handleSwipe = (itemId: number) => {
 // 去结算
 const goCheckout = () => {
   if (selectedItems.value.size === 0) {
-    ElMessage.warning('请选择要结算的商品')
+    globalNotifications.warning('请选择要结算的商品')
     return
   }
 
@@ -294,11 +293,6 @@ onMounted(() => {
   min-height: 100vh;
   background: var(--tf-color-surface-soft);
   padding-bottom: calc(132px + env(safe-area-inset-bottom));
-}
-
-// 加载状态
-.loading-state {
-  padding: 20px;
 }
 
 // 商品列表

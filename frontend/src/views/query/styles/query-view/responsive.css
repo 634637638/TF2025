@@ -115,6 +115,14 @@
 
 /* 手机端优化 (≤768px) */
 @media (max-width: 767px) {
+  :deep(.btn-text-desktop) {
+    display: none;
+  }
+
+  :deep(.btn-text-mobile) {
+    display: inline;
+  }
+
   .query-view.admin-page .stats-cards .stat-card[data-stat-key='in_stock_count'] {
     display: none !important;
   }

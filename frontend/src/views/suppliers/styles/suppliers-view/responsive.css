@@ -120,21 +120,6 @@
   }
 }
 
-/* 加载内容样式 */
-.loading-content {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  padding: 40px 0;
-  color: var(--tf-color-neutral-500);
-  font-size: var(--tf-type-scale-14);
-
-  i {
-    font-size: var(--tf-type-scale-20);
-  }
-}
-
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

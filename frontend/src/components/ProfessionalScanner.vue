@@ -197,11 +197,14 @@
 
 <script setup lang="ts">
 import { ref, computed, onBeforeUnmount, watch, type CSSProperties } from 'vue'
-import { ElMessage } from 'element-plus'
+
 import InlineLoading from '@/components/InlineLoading.vue'
 import { scanOptimizer, type ScannerDeviceInfo } from '@/utils/scanOptimizer'
 import type { CancelEmits, UpdateVisibleEmits, VisibleProps } from '@/types/component'
 import { logger } from '@/utils/logger'
+import { useNotification } from '@/composables/useNotification'
+const globalNotifications = useNotification()
+
 
 interface ScannerPhone {
   brand?: string
@@ -664,7 +667,7 @@ const takeSnapshot = () => {
         a.download = `scan-${Date.now()}.jpg`
         a.click()
         URL.revokeObjectURL(url)
-        ElMessage.success('截图已保存')
+        globalNotifications.success('截图已保存')
       }
     }, 'image/jpeg', 0.9)
   }
@@ -686,7 +689,7 @@ const toggleFlash = async () => {
     }
   } catch (error) {
     logger.error('闪光灯切换失败:', error)
-    ElMessage.error('闪光灯切换失败')
+    globalNotifications.error('闪光灯切换失败')
   }
 }
 

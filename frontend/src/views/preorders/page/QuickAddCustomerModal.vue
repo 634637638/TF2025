@@ -65,7 +65,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { ElMessage, type FormInstance, type FormItemRule } from 'element-plus'
+import { type FormInstance, type FormItemRule } from 'element-plus'
 import { useForm, ValidationRules } from '@/composables'
 import { unifiedApi } from '@/utils/unified-api'
 import { extractResponseData } from '@/utils/api-response'
@@ -73,6 +73,9 @@ import { normalizePersonName, normalizePhoneDigits } from '@/utils/security'
 import type { ModalProps } from '@/types'
 import type { Customer } from '@/types'
 import { getRequestErrorMessage } from '@/utils/api-response'
+import { useNotification } from '@/composables/useNotification'
+const globalNotifications = useNotification()
+
 
 const props = defineProps<ModalProps>()
 const emit = defineEmits<{
@@ -134,12 +137,12 @@ const handleSubmit = async () => {
       name: normalizedName,
       phone: normalizedPhone
     })
-    ElMessage.success('客户创建成功')
+    globalNotifications.success('客户创建成功')
     emit('success', extractResponseData<Customer>(response))
     dialogVisible.value = false
     reset()
   } catch (err: unknown) {
-    ElMessage.error(getRequestErrorMessage(err, '创建客户失败'))
+    globalNotifications.error(getRequestErrorMessage(err, '创建客户失败'))
   } finally {
     submitting.value = false
   }

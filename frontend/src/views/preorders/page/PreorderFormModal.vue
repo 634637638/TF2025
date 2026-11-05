@@ -387,7 +387,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
-import { ElMessage } from 'element-plus'
+
 import type { FormInstance, FormItemRule } from 'element-plus'
 import { ValidationRules } from '@/composables'
 import { isValidMobilePhone, normalizePersonName, normalizePhoneDigits } from '@/utils/security'
@@ -411,6 +411,9 @@ import { formatAmount } from '@/utils/format'
 import type { CustomerOption } from '@/services/customer-options'
 import type { ReferenceRecord } from '@/services/reference-options'
 import type { ModalProps, PreorderFormDraft, SuccessEmits, UpdateVisibleEmits } from '@/types'
+import { useNotification } from '@/composables/useNotification'
+const globalNotifications = useNotification()
+
 
 interface Props extends ModalProps {
   mode?: 'create' | 'edit'
@@ -663,7 +666,7 @@ const loadBaseData = async () => {
     colors.value = []
     memories.value = []
     operators.value = []
-    ElMessage.error('预订单选项加载失败，请刷新后重试')
+    globalNotifications.error('预订单选项加载失败，请刷新后重试')
   }
 }
 
@@ -756,7 +759,7 @@ const saveCustomerNameEdit = async () => {
 
   const normalizedName = normalizePersonName(formData.customer_name, 20)
   if (!normalizedName) {
-    ElMessage.warning('客户姓名不能为空')
+    globalNotifications.warning('客户姓名不能为空')
     return
   }
 
@@ -772,9 +775,9 @@ const saveCustomerNameEdit = async () => {
     if (!response.success) throw new Error(response.message || '更新客户失败')
     formData.customer_name = normalizedName
     selectedCustomer.value.name = normalizedName
-    ElMessage.success('客户姓名更新成功')
+    globalNotifications.success('客户姓名更新成功')
   } catch (error: unknown) {
-    ElMessage.error(error instanceof Error ? error.message : '更新客户失败')
+    globalNotifications.error(error instanceof Error ? error.message : '更新客户失败')
   } finally {
     customerNameEditing.value = false
   }
@@ -904,7 +907,7 @@ const handleSubmit = async () => {
   if (submitting.value) return
   if (!formRef.value) return
   if (!canSubmitVisibleFields.value) {
-    ElMessage.error('当前字段权限不足，无法提交预定所需字段')
+    globalNotifications.error('当前字段权限不足，无法提交预定所需字段')
     return
   }
 
@@ -925,7 +928,7 @@ const handleSubmit = async () => {
     handleClose()
   } catch (err: unknown) {
     logger.error('提交失败:', err)
-    ElMessage.error(err instanceof Error ? err.message : '操作失败')
+    globalNotifications.error(err instanceof Error ? err.message : '操作失败')
   } finally {
     submitting.value = false
   }

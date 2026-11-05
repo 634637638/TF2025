@@ -493,7 +493,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { ElMessage } from 'element-plus'
+
 import MobileDialog from '@/components/MobileDialog.vue'
 import InlineLoading from '@/components/InlineLoading.vue'
 import { unifiedApi } from '@/utils/unified-api'
@@ -505,6 +505,9 @@ import { formatAmount } from '@/utils/format'
 import { isAxiosError } from 'axios'
 import type { ReferenceRecord } from '@/services/reference-options'
 import type { MemoryOption, NationalSubsidyEditForm, NationalSubsidyRecord } from '@/types'
+import { useNotification } from '@/composables/useNotification'
+const globalNotifications = useNotification()
+
 
 const props = defineProps<{
   modelValue: boolean
@@ -715,18 +718,18 @@ const submitEdit = async () => {
     const response = await unifiedApi.put(`/subsidy/${props.item.id}`, payload)
 
     if (response.success) {
-      ElMessage.success('更新成功')
+      globalNotifications.success('更新成功')
       emit('update:modelValue', false)
       emit('updated')
     } else {
-      ElMessage.error(response.message || '更新失败')
+      globalNotifications.error(response.message || '更新失败')
     }
   } catch (error: unknown) {
     logger.error('更新失败:', error)
     const message = isAxiosError<{ message?: string }>(error)
       ? error.response?.data?.message || error.message
       : error instanceof Error ? error.message : '更新失败'
-    ElMessage.error(message || '更新失败')
+    globalNotifications.error(message || '更新失败')
   } finally {
     editing.value = false
   }

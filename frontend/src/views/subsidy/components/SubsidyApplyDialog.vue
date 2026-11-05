@@ -556,7 +556,7 @@
 
 <script setup lang="ts">
 import { computed, defineAsyncComponent, nextTick, reactive, ref, watch } from 'vue'
-import { ElMessage } from 'element-plus'
+
 import type { UploadRequestOptions } from 'element-plus'
 import { isAxiosError } from 'axios'
 import MobileDialog from '@/components/MobileDialog.vue'
@@ -577,6 +577,9 @@ import type {
   NationalSubsidyPhoneDetail,
   NationalSubsidyUploadResponse
 } from '@/types'
+import { useNotification } from '@/composables/useNotification'
+const globalNotifications = useNotification()
+
 
 const AsyncImage = defineAsyncComponent(() => import('@/components/Image.vue'))
 
@@ -751,7 +754,7 @@ const handleDialogChange = async (visible: boolean) => {
 const searchPhones = async () => {
   const normalizedIdentifier = searchIdentifier.value.trim()
   if (!normalizedIdentifier) {
-    ElMessage.warning('请输入IMEI或序列号')
+    globalNotifications.warning('请输入IMEI或序列号')
     return
   }
 
@@ -791,7 +794,7 @@ const searchPhones = async () => {
       searchCache.set(normalizedIdentifier, normalizedResults)
     } else {
       deviceList.value = []
-      ElMessage.error(response.message || '未找到设备')
+      globalNotifications.error(response.message || '未找到设备')
     }
   } catch (error: unknown) {
     if (isAxiosError(error) && error.code === 'ERR_CANCELED'
@@ -800,7 +803,7 @@ const searchPhones = async () => {
     }
     deviceList.value = []
     logger.error('搜索设备失败:', error)
-    ElMessage.error(getErrorMessage(error, '搜索失败'))
+    globalNotifications.error(getErrorMessage(error, '搜索失败'))
   } finally {
     if (requestSeq === searchRequestSeq) {
       searching.value = false
@@ -846,11 +849,11 @@ const loadPhoneDetail = async () => {
 
       applyStep.value = 2
     } else {
-      ElMessage.error(response.message || '获取详情失败')
+      globalNotifications.error(response.message || '获取详情失败')
     }
   } catch (error: unknown) {
     logger.error('获取详情失败:', error)
-    ElMessage.error(getErrorMessage(error, '获取详情失败'))
+    globalNotifications.error(getErrorMessage(error, '获取详情失败'))
   } finally {
     loadingDetail.value = false
   }
@@ -858,7 +861,7 @@ const loadPhoneDetail = async () => {
 
 const customUploadRequest = async (options: UploadRequestOptions) => {
   if (!canUpload.value) {
-    ElMessage.warning('您没有图片上传权限')
+    globalNotifications.warning('您没有图片上传权限')
     options.onError?.(toUploadError(new Error('没有图片上传权限'), '没有图片上传权限'))
     return
   }
@@ -868,7 +871,7 @@ const customUploadRequest = async (options: UploadRequestOptions) => {
   const isLt10M = file.size / 1024 / 1024 < 10
 
   if (!isLt10M) {
-    ElMessage.error('文件大小不能超过10MB')
+    globalNotifications.error('文件大小不能超过10MB')
     onError?.(toUploadError(new Error('文件大小超过10MB'), '文件大小超过10MB'))
     return
   }
@@ -876,11 +879,11 @@ const customUploadRequest = async (options: UploadRequestOptions) => {
   let uploadFile: File = file
   if (isPdf) {
     try {
-      ElMessage.info('正在将PDF转换为图片...')
+      globalNotifications.info('正在将PDF转换为图片...')
       uploadFile = await convertPdfToImage(file)
-      ElMessage.success('PDF转换成功，正在上传...')
+      globalNotifications.success('PDF转换成功，正在上传...')
     } catch (error) {
-      ElMessage.error('PDF转换图片失败')
+      globalNotifications.error('PDF转换图片失败')
       onError?.(toUploadError(error, 'PDF转换图片失败'))
       return
     }
@@ -904,17 +907,17 @@ const customUploadRequest = async (options: UploadRequestOptions) => {
     if (result?.success && result.data?.url) {
       applyForm.subsidy_photos.push(result.data.url)
       applyFormTempPhotos.value.push(result.data.url)
-      ElMessage.success('照片上传成功')
+      globalNotifications.success('照片上传成功')
       onSuccess?.(result)
       return
     }
 
     const errorMessage = result?.message || '照片上传失败'
-    ElMessage.error(errorMessage)
+    globalNotifications.error(errorMessage)
     onError?.(toUploadError(new Error(errorMessage), errorMessage))
   } catch (error) {
     logger.error('上传请求失败:', error)
-    ElMessage.error('照片上传失败，请重试')
+    globalNotifications.error('照片上传失败，请重试')
     onError?.(toUploadError(error, '照片上传失败'))
   }
 }
@@ -969,7 +972,7 @@ const submitApply = async () => {
   applyForm.handler_idcard = normalizeIdCard(applyForm.handler_idcard || '')
 
   if (!applyForm.imei2 || applyForm.imei2.trim() === '') {
-    ElMessage.warning('请输入IMEI2')
+    globalNotifications.warning('请输入IMEI2')
     return
   }
 
@@ -979,7 +982,7 @@ const submitApply = async () => {
       (canViewField('handler_phone') && !applyForm.handler_phone.trim()) ||
       (canViewField('handler_idcard') && !applyForm.handler_idcard.trim())
     if (missingHandlerField) {
-      ElMessage.warning('请完整填写实际办理人信息')
+      globalNotifications.warning('请完整填写实际办理人信息')
       return
     }
   }
@@ -1004,17 +1007,17 @@ const submitApply = async () => {
 
     const response = await unifiedApi.post('/subsidy/apply', data)
     if (response.success) {
-      ElMessage.success('国补资料记录成功')
+      globalNotifications.success('国补资料记录成功')
       applyFormTempPhotos.value = []
       emit('submitted')
       resetApplyForm()
       emit('update:modelValue', false)
     } else {
-      ElMessage.error(response.message || '记录失败')
+      globalNotifications.error(response.message || '记录失败')
     }
   } catch (error: unknown) {
     logger.error('提交申请失败:', error)
-    ElMessage.error(getErrorMessage(error, '记录失败'))
+    globalNotifications.error(getErrorMessage(error, '记录失败'))
   } finally {
     submitting.value = false
   }

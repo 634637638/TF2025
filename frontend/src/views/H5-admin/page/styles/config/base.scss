@@ -6,11 +6,6 @@
   min-width: 0;
 }
 
-// 加载状态
-.loading-state {
-  padding: 40px;
-}
-
 // 配置内容
 .config-content {
   max-width: 800px;
@@ -157,4 +152,30 @@
     border-radius: 8px;
     overflow: hidden;
   }
+}
+
+.map-frame-error-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: var(--tf-z-loading-overlay);
+  display: grid;
+  place-items: center;
+  padding: var(--tf-space-4);
+  background: var(--tf-loading-overlay-bg, rgba(255, 255, 255, 0.82));
+}
+
+.map-frame {
+  position: relative;
+}
+
+.map-frame-error {
+  display: grid;
+  gap: var(--tf-space-2);
+  text-align: center;
+  color: var(--tf-color-danger-700);
+}
+
+.map-frame-error span {
+  color: var(--tf-color-slate-600);
+  font-size: var(--tf-type-scale-13);
 }

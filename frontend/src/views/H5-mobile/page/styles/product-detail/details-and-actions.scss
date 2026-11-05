@@ -90,27 +90,7 @@
   }
 }
 
-// 内存选择弹窗样式
 .memory-dialog {
-  .loading-memories {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 40px 0;
-    gap: 12px;
-
-    .el-icon {
-      font-size: var(--tf-type-scale-32);
-      color: var(--tf-color-accent-orange);
-    }
-
-    span {
-      color: var(--text-secondary);
-      font-size: var(--tf-type-scale-14);
-    }
-  }
-
   .memory-options {
     max-height: 400px;
     overflow-y: auto;

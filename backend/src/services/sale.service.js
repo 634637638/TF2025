@@ -4,6 +4,7 @@ const log = require('../utils/log')
 const { getDatabase } = require('../config/database')
 const { normalizeDateTime } = require('../utils/time')
 const { prepareInvoiceNumberTransaction, generateInvoiceNumber } = require('../utils/invoice-number')
+const { reconcileCustomerPointsForSale } = require('./customer-points.service')
 
 class SaleService {
   constructor() {
@@ -158,6 +159,15 @@ class SaleService {
       }
 
       const saleId = await this.saleRepository.createSale(saleRecordData, connection)
+      await reconcileCustomerPointsForSale({
+        executor: connection,
+        saleId,
+        customerId: finalCustomerId,
+        saleType: sale_type,
+        salePrice: parseFloat(sale_price),
+        isNew: phone.is_new,
+        initialize: true
+      })
       log.debug('📝 步骤4完成: 销售记录创建成功，ID:', saleId)
 
       // 5. 更新手机状态为已售出 - 包含销售员信息、销售价和入库成本

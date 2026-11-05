@@ -40,12 +40,10 @@
     <div class="results-section">
       <div class="container">
         <!-- 加载状态 -->
-        <div
+        <SectionLoading
           v-if="loading"
-          class="loading-container"
-        >
-          <InlineLoading text="正在查询价格..." />
-        </div>
+          text="正在查询价格..."
+        />
 
         <!-- 空状态 -->
         <DataEmptyState
@@ -232,16 +230,19 @@ import { Download } from '@element-plus/icons-vue'
 import { getAllSalesPrices, searchSalesPrices } from '@/api/price-list'
 import { PublicPriceHeader } from '@/components/base'
 import PublicSearchBox from '@/components/search/PublicSearchBox.vue'
-import InlineLoading from '@/components/InlineLoading.vue'
+import SectionLoading from '@/components/SectionLoading.vue'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import { useLoadingState } from '@/composables'
 import { logger } from '@/utils/logger'
-import { ElMessage } from 'element-plus'
+
 import { loadHtml2Canvas } from '@/utils/html2canvas'
 import { createShareImageFile } from '@/utils/share-image'
 import { useSiteSettingsStore } from '@/stores/siteSettings'
 import { parsePublicPriceContacts, getDefaultPublicPriceContact, formatPublicPriceWatermark } from '@/utils/publicPriceSettings'
 import type { SalesPriceDisplayRow } from '@/types/price-list'
+import { useNotification } from '@/composables/useNotification'
+const globalNotifications = useNotification()
+
 
 const IMAGE_CAPTURE_WIDTH = 430
 // 状态
@@ -296,7 +297,7 @@ const syncIOSImageUrl = () => {
 const toggleIOSImageMode = () => {
   iosUseDataImage.value = !iosUseDataImage.value
   syncIOSImageUrl()
-  ElMessage.info(iosUseDataImage.value ? '已切换为兼容模式，请长按图片保存' : '已切换为新系统模式，请长按图片保存')
+  globalNotifications.info(iosUseDataImage.value ? '已切换为兼容模式，请长按图片保存' : '已切换为新系统模式，请长按图片保存')
 }
 
 // 加载所有数据
@@ -403,7 +404,7 @@ const shareIOSImage = async () => {
   if (isSharingImage.value) return
   const file = iosImageFile.value
   if (!file || !navigator.share) {
-    ElMessage.warning('当前浏览器不支持系统分享，请长按图片保存')
+    globalNotifications.warning('当前浏览器不支持系统分享，请长按图片保存')
     return
   }
 
@@ -411,13 +412,13 @@ const shareIOSImage = async () => {
   try {
     const shareData = { files: [file] }
     if (navigator.canShare && !navigator.canShare(shareData)) {
-      ElMessage.warning('当前浏览器不支持系统分享，请长按图片保存')
+      globalNotifications.warning('当前浏览器不支持系统分享，请长按图片保存')
       return
     }
     await navigator.share(shareData)
   } catch (error) {
     if ((error as Error).name !== 'AbortError') {
-      ElMessage.warning('系统分享未成功，请长按图片保存')
+      globalNotifications.warning('系统分享未成功，请长按图片保存')
     }
   } finally {
     isSharingImage.value = false
@@ -446,7 +447,7 @@ const saveImageToGallery = async (canvas: HTMLCanvasElement) => {
           iosUseDataImage.value = shouldUseDataImageForIOS()
           syncIOSImageUrl()
           showIOSImageModal.value = true
-          ElMessage.success({
+          globalNotifications.success({
             message: '图片已生成，请长按保存到相册',
             duration: 3000
           })
@@ -466,7 +467,7 @@ const saveImageToGallery = async (canvas: HTMLCanvasElement) => {
       link.click()
       document.body.removeChild(link)
       URL.revokeObjectURL(url)
-      ElMessage.success({
+      globalNotifications.success({
         message: '图片已下载',
         duration: 2000
       })
@@ -755,7 +756,7 @@ const downloadAsImage = async () => {
     await saveImageToGallery(canvas)
   } catch (error) {
     logger.error('生成图片失败', error)
-    ElMessage.error('生成图片失败，请重试')
+    globalNotifications.error('生成图片失败，请重试')
   } finally {
     isGenerating.value = false
   }

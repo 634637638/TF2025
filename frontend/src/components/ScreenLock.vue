@@ -26,7 +26,7 @@
         />
         <!-- 默认背景 -->
         <div
-          v-else
+          v-else-if="settingsReady"
           class="default-background"
         >
           <div class="pattern-bg" />
@@ -49,24 +49,22 @@
       <!-- 密码输入区域 -->
       <div class="lock-form">
         <div class="password-input-group">
-          <i class="fas fa-key input-icon" />
           <el-input
             ref="passwordInput"
             v-model="password"
-            :type="showPassword ? 'text' : 'password'"
-            :placeholder="lockSettings.placeholder || '请输入解锁密码'"
+            type="password"
+            placeholder="请输入解锁密码"
+            show-password
+            autocomplete="current-password"
+            autocapitalize="off"
+            :spellcheck="false"
             class="password-input"
             @keyup.enter="handleUnlock"
-          />
-          <el-button
-            native-type="button"
-            class="toggle-password tf-button--overlay-tool"
-            :aria-label="showPassword ? '隐藏密码' : '显示密码'"
-            :title="showPassword ? '隐藏密码' : '显示密码'"
-            @click="showPassword = !showPassword"
           >
-            <i :class="showPassword ? 'fas fa-eye-slash' : 'fas fa-eye'" />
-          </el-button>
+            <template #prefix>
+              <i class="fas fa-key password-key-icon" />
+            </template>
+          </el-input>
         </div>
 
         <!-- 错误提示 -->
@@ -96,20 +94,6 @@
           </template>
         </el-button>
       </div>
-
-      <!-- 底部信息 -->
-      <div class="lock-footer">
-        <p
-          v-if="lockTime"
-          class="lock-time"
-        >
-          锁定时间：{{ formatTime(lockTime) }}
-        </p>
-        <p class="lock-tips">
-          <i class="fas fa-info-circle" />
-          如忘记密码，请联系有权限的角色维护人员
-        </p>
-      </div>
     </div>
   </div>
 </template>
@@ -119,10 +103,12 @@ import { ref, reactive, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { unifiedApi } from '@/utils/unified-api'
 import { useNotification } from '@/composables/useNotification'
 import Image from './Image.vue'
-import { formatDateTime as formatGlobalDateTime, formatImageUrl } from '@/utils/format'
-import { TimeUtil } from '@/utils/time'
+import { formatImageUrl } from '@/utils/format'
+import { storage } from '@/services/storage'
+import { normalizeScreenLockSettings } from '@/utils/screen-lock-settings'
+import type { ScreenLockSettings } from '@/types/screen-lock'
 
-const { success, error: _error } = useNotification({ debounce: true })
+const { success } = useNotification({ debounce: true })
 
 // Props
 interface Props {
@@ -141,34 +127,26 @@ const emit = defineEmits<Emits>()
 
 // 响应式数据
 const password = ref('')
-const showPassword = ref(false)
 const isUnlocking = ref(false)
 const errorMessage = ref('')
 const passwordInput = ref<{ focus: () => void } | null>(null)
-const lockTime = ref<Date | null>(null)
 
 // 锁定设置
-const lockSettings = reactive({
-  backgroundType: 'default',
-  title: '',
-  message: '',
-  placeholder: '',
-  imageUrl: '',
-  videoUrl: '',
-  password: ''
-})
-
-// 格式化时间
-const formatTime = (date: Date) => {
-  return formatGlobalDateTime(date)
-}
+const cachedLockSettings = storage.getScreenLockSettings<unknown>()
+const settingsReady = ref(Boolean(cachedLockSettings && typeof cachedLockSettings === 'object'))
+const lockSettings = reactive<ScreenLockSettings>(
+  normalizeScreenLockSettings(cachedLockSettings)
+)
 
 // 加载锁定设置
 const loadLockSettings = async () => {
   try {
     const response = await unifiedApi.get('/screen-lock')
     if (response.success && response.data) {
-      Object.assign(lockSettings, response.data)
+      const settings = normalizeScreenLockSettings(response.data)
+      Object.assign(lockSettings, settings)
+      storage.setScreenLockSettings(settings)
+      settingsReady.value = true
     }
   } catch (err) {
     // 加载锁定设置失败，忽略
@@ -197,7 +175,6 @@ const handleUnlock = async () => {
       success('解锁成功')
       password.value = ''
       errorMessage.value = ''
-      showPassword.value = false
       emit('update:isLocked', false)
     } else {
       // 优先使用error字段中的message，然后是message字段，最后是默认消息
@@ -220,20 +197,17 @@ const handleUnlock = async () => {
 watch(() => props.isLocked, (newVal) => {
   if (newVal) {
     // 进入锁定状态
-    lockTime.value = TimeUtil.now().toDate()
-    loadLockSettings()
+    void loadLockSettings()
     // 自动聚焦到密码输入框
     nextTick(() => {
       passwordInput.value?.focus()
     })
   } else {
     // 解锁状态
-    lockTime.value = null
     password.value = ''
     errorMessage.value = ''
-    showPassword.value = false
   }
-})
+}, { immediate: true })
 
 // 键盘事件处理
 const handleGlobalKeydown = (event: KeyboardEvent) => {
@@ -280,21 +254,29 @@ onUnmounted(() => {
 
 .screen-lock-content {
   width: 100%;
-  max-width: 500px;
-  padding: 40px;
+  height: 100%;
+  min-height: 100%;
+  box-sizing: border-box;
+  padding: var(--tf-space-8);
+  padding-top: max(var(--tf-space-8), env(safe-area-inset-top));
+  padding-right: max(var(--tf-space-8), env(safe-area-inset-right));
+  padding-bottom: max(var(--tf-space-8), env(safe-area-inset-bottom));
+  padding-left: max(var(--tf-space-8), env(safe-area-inset-left));
   text-align: center;
   position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow-y: auto;
+  isolation: isolate;
 }
 
 .lock-background {
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   z-index: -1;
   overflow: hidden;
-  border-radius: 20px;
 
   .lock-video,
   .lock-image {
@@ -320,6 +302,12 @@ onUnmounted(() => {
       animation: float 20s ease-in-out infinite;
     }
   }
+}
+
+.lock-info,
+.lock-form {
+  width: 100%;
+  max-width: 500px;
 }
 
 .lock-info {
@@ -348,23 +336,32 @@ onUnmounted(() => {
 }
 
 .lock-form {
-  .password-input-group {
-    position: relative;
-    margin-bottom: 20px;
+  width: calc(100% - (var(--tf-space-8) + var(--tf-space-8)));
+  position: absolute;
+  left: 50%;
+  bottom: max(var(--tf-space-8), env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "error error"
+    "input action";
+  align-items: center;
+  gap: var(--tf-space-3);
 
-    .input-icon {
-      position: absolute;
-      left: 16px;
-      top: 50%;
-      transform: translateY(-50%);
+  .password-input-group {
+    grid-area: input;
+    min-width: 0;
+
+    .password-key-icon {
       color: rgba(255, 255, 255, 0.6);
-      z-index: 1;
     }
 
     .password-input {
       width: 100%;
+
       .el-input__wrapper {
-        padding: var(--tf-space-4) var(--tf-space-8);
+        padding: var(--tf-space-1) var(--tf-space-2);
         background: rgba(255, 255, 255, 0.1);
         border: 2px solid rgba(255, 255, 255, 0.2);
         box-shadow: none;
@@ -381,25 +378,12 @@ onUnmounted(() => {
       }
 
     }
-
-    .toggle-password {
-      position: absolute;
-      right: 16px;
-      top: 50%;
-      transform: translateY(-50%);
-      cursor: pointer;
-      transition: color 0.3s ease;
-
-      &:hover {
-        transform: translateY(-50%);
-      }
-    }
   }
 
   .error-message {
+    grid-area: error;
     color: var(--tf-color-coral);
     font-size: var(--tf-type-scale-14);
-    margin-bottom: 20px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -411,31 +395,8 @@ onUnmounted(() => {
   }
 
   .unlock-button {
-    width: 100%;
-  }
-}
-
-.lock-footer {
-  margin-top: 40px;
-
-  .lock-time {
-    font-size: var(--tf-type-scale-14);
-    color: rgba(255, 255, 255, 0.7);
-    margin: 0 0 12px 0;
-  }
-
-  .lock-tips {
-    font-size: var(--tf-type-scale-13);
-    color: rgba(255, 255, 255, 0.6);
-    margin: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-
-    i {
-      font-size: var(--tf-type-scale-12);
-    }
+    grid-area: action;
+    width: auto;
   }
 }
 
@@ -455,7 +416,11 @@ onUnmounted(() => {
 // 响应式
 @media (max-width: 767px) {
   .screen-lock-content {
-    padding: 30px 20px;
+    padding: var(--tf-space-6) var(--tf-space-5);
+    padding-top: max(var(--tf-space-6), env(safe-area-inset-top));
+    padding-right: max(var(--tf-space-5), env(safe-area-inset-right));
+    padding-bottom: max(var(--tf-space-6), env(safe-area-inset-bottom));
+    padding-left: max(var(--tf-space-5), env(safe-area-inset-left));
   }
 
   .lock-info {
@@ -465,6 +430,13 @@ onUnmounted(() => {
   }
 
   .lock-form {
+    width: calc(100% - (var(--tf-space-5) + var(--tf-space-5)));
+    bottom: max(var(--tf-space-6), env(safe-area-inset-bottom));
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "error error"
+      "input action";
+
     .password-input-group {
       .password-input {
         font-size: var(--tf-type-scale-16);

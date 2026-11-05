@@ -15,22 +15,6 @@
   }
 }
 
-.loading-state {
-  text-align: center;
-  padding: 60px 20px;
-  color: var(--text-muted);
-
-  i {
-    font-size: var(--tf-type-scale-48);
-    margin-bottom: 16px;
-    display: block;
-  }
-
-  p {
-    font-size: var(--tf-type-scale-16);
-  }
-}
-
 .products-list {
   display: flex;
   flex-direction: column;
@@ -161,7 +145,6 @@
     }
   }
 
-  .loading-images,
   .no-images {
     text-align: center;
     padding: 40px;

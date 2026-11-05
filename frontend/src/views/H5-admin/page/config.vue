@@ -12,15 +12,11 @@
   >
     <div class="shop-config-page">
       <!-- 加载状态 -->
-      <div
+      <SectionLoading
         v-if="loading"
-        class="loading-state"
-      >
-        <SectionLoading
-          text="加载商城配置中..."
-          size="large"
-        />
-      </div>
+        text="加载商城配置中..."
+        size="large"
+      />
 
       <!-- 配置表单 -->
       <div
@@ -877,10 +873,27 @@
               <span v-else>请点击地图选择位置</span>
             </div>
           </div>
-          <div
-            id="map-container"
-            class="map-frame"
-          />
+          <LoadingOverlay
+            :loading="mapLoading"
+            text="地图加载中..."
+            size="compact"
+          >
+            <div
+              id="map-container"
+              class="map-frame"
+            />
+            <div
+              v-if="mapError"
+              class="map-frame-error-overlay"
+              role="status"
+              aria-live="polite"
+            >
+              <div class="map-frame-error">
+                <strong>{{ mapError }}</strong>
+                <span>请检查网络或地图 Key 配置后重试</span>
+              </div>
+            </div>
+          </LoadingOverlay>
         </div>
         <template #footer>
           <el-button
@@ -907,10 +920,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onActivated, nextTick, inject, onUnmounted, watch } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
-import { ElMessage } from 'element-plus'
+
 import { Refresh, Check } from '@element-plus/icons-vue'
 import { getAllConfigs, batchUpdateConfigs } from '@/api/shop'
 import SectionLoading from '@/components/SectionLoading.vue'
+import LoadingOverlay from '@/components/LoadingOverlay.vue'
 import { PermissionGate } from '@/components/base/index'
 import { useAuthStore } from '@/stores/auth'
 import { usePagePermissions } from '@/composables/usePagePermissions'
@@ -921,9 +935,14 @@ import { deleteTempFiles } from '@/utils/temp-file-cleaner'
 import { logger } from '@/utils/logger'
 import { ensureTencentMapKey, loadTencentMapScript } from '@/utils/tencent-map'
 import type { HeaderAction } from '@/types'
+import { useNotification } from '@/composables/useNotification'
+const globalNotifications = useNotification()
+
 
 const authStore = useAuthStore()
 const configPermissions = usePagePermissions('h5-admin-config')
+const mapLoading = ref(false)
+const mapError = ref('')
 const { handleNoPermission } = configPermissions
 const canView = computed(() => configPermissions.canView.value)
 const canEdit = computed(() => configPermissions.canEdit.value)
@@ -1196,9 +1215,9 @@ const handleUploadSuccess = async (response: unknown, field: string) => {
       trackTempImage(fileUrl)
     }
 
-    ElMessage.success('上传成功，请点击保存生效')
+    globalNotifications.success('上传成功，请点击保存生效')
   } else {
-    ElMessage.error('上传失败：响应格式错误')
+    globalNotifications.error('上传失败：响应格式错误')
   }
 }
 
@@ -1214,11 +1233,11 @@ const beforeUpload = (file: File) => {
 
   if (!isImage) {
     logger.error('[beforeUpload] 不支持的文件类型:', file.type)
-    ElMessage.error(`只支持上传图片文件（jpeg, png, gif, webp），当前文件类型: ${file.type}`)
+    globalNotifications.error(`只支持上传图片文件（jpeg, png, gif, webp），当前文件类型: ${file.type}`)
     return false
   }
   if (!isLt2M) {
-    ElMessage.error('图片大小不能超过 2MB!')
+    globalNotifications.error('图片大小不能超过 2MB!')
     return false
   }
 
@@ -1247,16 +1266,16 @@ const handleDeleteImage = async (field: string) => {
   try {
     if (isTempImage(currentImageUrl)) {
       await cleanupTempImages([currentImageUrl])
-      ElMessage.success('临时图片已删除')
+      globalNotifications.success('临时图片已删除')
     } else {
-      ElMessage.success('已移除图片，请点击保存生效')
+      globalNotifications.success('已移除图片，请点击保存生效')
     }
 
     configs.value[imageField] = ''
   } catch (error) {
     logger.error('删除图片失败:', error)
     configs.value[imageField] = ''
-    ElMessage.warning('图片预览已移除，请保存后确认')
+    globalNotifications.warning('图片预览已移除，请保存后确认')
   }
 }
 
@@ -1322,7 +1341,7 @@ const loadConfigs = async () => {
     uploadedTempImages.value = []
   } catch (error) {
     logger.error('获取配置失败:', error)
-    ElMessage.error('获取配置失败')
+    globalNotifications.error('获取配置失败')
   } finally {
     loading.value = false
   }
@@ -1410,11 +1429,11 @@ const handleSave = async () => {
 
     syncOriginalImageConfigs()
     uploadedTempImages.value = []
-    ElMessage.success('配置保存成功')
+    globalNotifications.success('配置保存成功')
     return true
   } catch (error: unknown) {
     logger.error('保存配置失败:', error)
-    ElMessage.error(error instanceof Error ? error.message : '保存配置失败')
+    globalNotifications.error(error instanceof Error ? error.message : '保存配置失败')
     return false
   } finally {
     saving.value = false
@@ -1436,7 +1455,7 @@ const openMapPicker = async () => {
   }
 
   if (configs.value.map_provider !== 'tencent') {
-    ElMessage.info('当前地图服务商尚未接入地图选点')
+    globalNotifications.info('当前地图服务商尚未接入地图选点')
     return
   }
 
@@ -1467,7 +1486,7 @@ const openMapPicker = async () => {
     }, 300) // 额外延迟确保 DOM 完全渲染
   } catch (error) {
     logger.error('地图脚本加载失败:', error)
-    ElMessage.error('地图加载失败，请检查网络连接')
+    globalNotifications.error('地图加载失败，请检查网络连接')
   }
 }
 
@@ -1478,11 +1497,13 @@ const initMap = () => {
   // 检查 TMap 是否已加载
   const tMap = window.TMap
   if (!tMap) {
-    container.innerHTML = '<div class="map-loading-container">地图加载中...</div>'
+    mapLoading.value = true
+    mapError.value = ''
     loadTencentMapScript(configs.value.tencent_map_key).then(() => {
       initMap()
     }).catch(() => {
-      container.innerHTML = '<div class="map-error-container"><i class="fas fa-exclamation-circle"></i><div>地图加载失败</div><div class="map-error-tip">请检查网络或稍后重试</div></div>'
+      mapLoading.value = false
+      mapError.value = '地图加载失败'
     })
     return
   }
@@ -1497,6 +1518,8 @@ const initMap = () => {
       zoom: 15,
       viewMode: '2D'
     })
+    mapLoading.value = false
+    mapError.value = ''
 
     // 创建标记
     marker = new tMap.MultiMarker({
@@ -1536,7 +1559,8 @@ const initMap = () => {
     })
   } catch (error) {
     logger.error('地图初始化失败:', error)
-    container.innerHTML = '<div class="map-error-container"><i class="fas fa-exclamation-circle"></i><div>地图初始化失败</div><div class="map-error-tip">请检查API Key配置</div></div>'
+    mapLoading.value = false
+    mapError.value = '地图初始化失败'
   }
 }
 
@@ -1552,7 +1576,7 @@ const confirmMapLocation = () => {
   configs.value.map_latitude = selectedLocation.value.lat
   configs.value.map_longitude = selectedLocation.value.lng
   showMapDialog.value = false
-  ElMessage.success('地图位置已设置')
+  globalNotifications.success('地图位置已设置')
 }
 
 const cancelMapLocation = () => {

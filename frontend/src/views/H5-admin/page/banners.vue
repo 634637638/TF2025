@@ -12,15 +12,11 @@
   >
     <div class="banner-management-page">
       <!-- 加载状态 -->
-      <div
+      <SectionLoading
         v-if="loading"
-        class="loading-state"
-      >
-        <SectionLoading
-          text="加载轮播图中..."
-          size="large"
-        />
-      </div>
+        text="加载轮播图中..."
+        size="large"
+      />
 
       <!-- 轮播图列表 -->
       <div
@@ -349,7 +345,7 @@ import { TIME_FORMATS } from '@/utils/time'
 import { confirmAction } from '@/utils/message-box'
 import { ref, computed, onMounted, onUnmounted, onActivated, inject, watch } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
-import { ElMessage, FormInstance, type UploadFile, type UploadFiles, type UploadRawFile, type UploadRequestOptions } from 'element-plus'
+import { FormInstance, type UploadFile, type UploadFiles, type UploadRawFile, type UploadRequestOptions } from 'element-plus'
 import { UploadAjaxError } from 'element-plus/es/components/upload/src/ajax'
 import { ValidationRules } from '@/composables'
 import { Refresh, Plus } from '@element-plus/icons-vue'
@@ -367,6 +363,9 @@ import { isPdfFile, prepareMediaFile, validateMediaFile } from '@/utils/upload-m
 import { unifiedApi } from '@/utils/unified-api'
 import DateRangePicker from '@/components/DateRangePicker.vue'
 import type { HeaderAction } from '@/types'
+import { useNotification } from '@/composables/useNotification'
+const globalNotifications = useNotification()
+
 const bannerPermissions = usePagePermissions('h5-admin-banners')
 const { handleNoPermission } = bannerPermissions
 const canView = computed(() => bannerPermissions.canView.value)
@@ -466,10 +465,10 @@ const handleBannerUploadSuccess = (response: unknown, _file: UploadRawFile | Upl
       form.value.image_url = bannerImages.value[0].url
     }
 
-    ElMessage.success(`成功上传 ${newImages.length} 张图片`)
+    globalNotifications.success(`成功上传 ${newImages.length} 张图片`)
   } else {
     logger.error('[上传失败] 响应格式错误:', response)
-    ElMessage.error('上传失败: 响应格式错误')
+    globalNotifications.error('上传失败: 响应格式错误')
   }
 }
 
@@ -508,7 +507,7 @@ const handleUploadError = (error: unknown, file: UploadRawFile | UploadFile, _up
     errorMsg += ': ' + error
   }
 
-  ElMessage.error(errorMsg)
+  globalNotifications.error(errorMsg)
 }
 
 // 移除图片
@@ -550,17 +549,17 @@ const beforeUpload = async (file: File) => {
     maxPdfSizeMb: 10
   })
   if (validationMessage) {
-    ElMessage.error(validationMessage)
+    globalNotifications.error(validationMessage)
     return false
   }
 
   if (isPdfFile(file)) {
     try {
-      ElMessage.info('正在转换PDF...')
+      globalNotifications.info('正在转换PDF...')
       return await prepareMediaFile(file, { allowVideo: false, maxImageSizeMb: 10, maxPdfSizeMb: 10 })
     } catch (error) {
       logger.error('PDF转换失败:', error)
-      ElMessage.error(error instanceof Error ? error.message : 'PDF转换失败，请重试')
+      globalNotifications.error(error instanceof Error ? error.message : 'PDF转换失败，请重试')
       return false
     }
   }
@@ -639,7 +638,7 @@ const loadBanners = async () => {
     banners.value = data as ShopBanner[]
   } catch (error) {
     logger.error('获取轮播图失败:', error)
-    ElMessage.error('获取轮播图失败')
+    globalNotifications.error('获取轮播图失败')
     banners.value = [] // 确保错误时也是数组
   } finally {
     loading.value = false
@@ -761,14 +760,14 @@ const handleSave = async () => {
         title: payload.title,
         image_url: payload.image_url
       })
-      ElMessage.success('创建成功')
+      globalNotifications.success('创建成功')
     } else {
       if (form.value.id === undefined || form.value.id === null) {
-        ElMessage.error('轮播图信息已失效，请重新打开')
+        globalNotifications.error('轮播图信息已失效，请重新打开')
         return
       }
       await updateBanner(form.value.id, payload)
-      ElMessage.success('更新成功')
+      globalNotifications.success('更新成功')
     }
 
     showDialog.value = false
@@ -778,7 +777,7 @@ const handleSave = async () => {
   } catch (error: unknown) {
     logger.error('保存失败:', error)
     if (error instanceof Error && error.message) {
-      ElMessage.error(error.message)
+      globalNotifications.error(error.message)
     }
   } finally {
     saving.value = false
@@ -802,15 +801,15 @@ const handleDelete = (banner: ShopBanner) => {
   ).then(async () => {
     try {
       if (banner.id === undefined || banner.id === null) {
-        ElMessage.error('轮播图信息已失效，请刷新后重试')
+        globalNotifications.error('轮播图信息已失效，请刷新后重试')
         return
       }
       await deleteBanner(banner.id)
-      ElMessage.success('删除成功')
+      globalNotifications.success('删除成功')
       await loadBanners()
     } catch (error: unknown) {
       logger.error('删除失败:', error)
-      ElMessage.error(error instanceof Error ? error.message : '删除失败')
+      globalNotifications.error(error instanceof Error ? error.message : '删除失败')
     }
   }).catch(() => {
     // 取消删除
@@ -826,17 +825,17 @@ const handleStatusChange = async (banner: ShopBanner) => {
 
   if (banner.id === undefined || banner.id === null) {
     banner.status = banner.status === 'active' ? 'inactive' : 'active'
-    ElMessage.error('轮播图信息已失效，请刷新后重试')
+    globalNotifications.error('轮播图信息已失效，请刷新后重试')
     return
   }
 
   try {
     await updateBanner(banner.id, banner)
-    ElMessage.success('状态更新成功')
+    globalNotifications.success('状态更新成功')
   } catch (error: unknown) {
     // 恢复原状态
     banner.status = banner.status === 'active' ? 'inactive' : 'active'
-    ElMessage.error(error instanceof Error ? error.message : '更新失败')
+    globalNotifications.error(error instanceof Error ? error.message : '更新失败')
   }
 }
 
@@ -853,16 +852,16 @@ const handleDragEnd = async () => {
       .filter((order): order is { id: number, sort_order: number } => typeof order.id === 'number')
 
     if (orders.length !== banners.value.length) {
-      ElMessage.error('存在无效轮播图，请刷新后重试')
+      globalNotifications.error('存在无效轮播图，请刷新后重试')
       await loadBanners()
       return
     }
 
     await reorderBanners(orders)
-    ElMessage.success('排序更新成功')
+    globalNotifications.success('排序更新成功')
   } catch (error: unknown) {
     logger.error('排序失败:', error)
-    ElMessage.error(error instanceof Error ? error.message : '排序失败')
+    globalNotifications.error(error instanceof Error ? error.message : '排序失败')
     await loadBanners() // 重新加载恢复原序
   }
 }

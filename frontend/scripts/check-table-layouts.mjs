@@ -22,6 +22,21 @@ function walk(directory, files = []) {
   return files
 }
 
+function walkStyleFiles(directory, files = []) {
+  for (const entry of readdirSync(directory)) {
+    const path = join(directory, entry)
+    const stat = statSync(path)
+    if (stat.isDirectory()) walkStyleFiles(path, files)
+    else if (['.vue', '.css', '.scss'].includes(extname(path))) files.push(path)
+  }
+  return files
+}
+
+function styleSources(filePath, source) {
+  if (extname(filePath) !== '.vue') return [source]
+  return [...source.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi)].map(match => match[1])
+}
+
 function lineNumber(source, index) {
   return source.slice(0, index).split('\n').length
 }
@@ -31,6 +46,18 @@ const auditedViewTableFiles = new Set()
 const auditedComponentTableFiles = new Set()
 let auditedTableCount = 0
 let auditedOperationColumnCount = 0
+
+for (const file of walkStyleFiles(viewsRoot)) {
+  const source = readFileSync(file, 'utf8')
+  const relativeFile = relative(root, file).split('\\').join('/')
+  for (const styleSource of styleSources(file, source)) {
+    const uncommentedStyle = styleSource.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
+    for (const customVariable of uncommentedStyle.matchAll(/--(?:admin-data-table|el-table)-[\w-]+\s*:/gi)) {
+      const line = lineNumber(source, source.indexOf(styleSource) + customVariable.index)
+      findings.push(`${relativeFile}:${line} 页面样式不得重定义 --admin-data-table-* 或 --el-table-*；表格视觉变量只能由公共样式控制`)
+    }
+  }
+}
 
 if (!/app\.directive\(['"]table-double-tap['"],\s*vTableDoubleTap\)/.test(directivesSource)
   || !/import\s*\{\s*vTableDoubleTap\s*\}\s*from\s*['"]\.\/table-double-tap['"]/.test(directivesSource)) {
@@ -188,11 +215,6 @@ for (const file of [...walk(viewsRoot), ...walk(componentsRoot)]) {
 
   for (const style of source.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi)) {
     const styleSource = style[1]
-
-    for (const customVariable of styleSource.matchAll(/--admin-data-table-[\w-]+\s*:/gi)) {
-      const line = lineNumber(source, style.index + customVariable.index)
-      findings.push(`${relativeFile}:${line} 页面不得重定义 --admin-data-table-*；表格颜色、字体、行高、间距和宽度策略只能由公共方案控制`)
-    }
 
     for (const rule of styleSource.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
       const selector = rule[1]

@@ -709,41 +709,67 @@
             </el-form-item>
 
             <el-form-item
-              label="积分比例"
-              required
+              label="参与类型"
+              :required="pointsConfigForm.enabled"
             >
-              <div class="points-ratio-control">
-                <span>消费</span>
-                <el-input-number
-                  v-model="pointsConfigForm.amount_per_point"
-                  :min="1"
-                  :precision="2"
-                  :step="100"
-                  :controls="false"
-                  class="points-ratio-input"
-                />
-                <span>元 = 1 积分</span>
-              </div>
+              <el-checkbox-group
+                v-model="pointsIncludedConditions"
+                class="points-type-buttons"
+                :disabled="!pointsConfigForm.enabled"
+              >
+                <el-checkbox-button value="new">
+                  全新
+                </el-checkbox-button>
+                <el-checkbox-button value="used">
+                  二手
+                </el-checkbox-button>
+              </el-checkbox-group>
             </el-form-item>
 
             <el-form-item
-              label="参与成色"
-              required
+              v-if="pointsConfigForm.enabled && pointsIncludedConditions.length > 0"
+              label="积分设置"
             >
-              <el-checkbox-group v-model="pointsIncludedConditions">
-                <el-checkbox label="new">
-                  全新
-                </el-checkbox>
-                <el-checkbox label="used">
-                  二手
-                </el-checkbox>
-              </el-checkbox-group>
+              <div class="points-type-rates">
+                <div
+                  v-if="pointsConfigForm.include_new"
+                  class="points-type-rate-row"
+                >
+                  <span class="points-type-rate-label">全新</span>
+                  <span>每消费 100 元累计</span>
+                  <el-input-number
+                    v-model="pointsConfigForm.new_points_per_100"
+                    :min="1"
+                    :max="100"
+                    :precision="0"
+                    :step="1"
+                    :controls="false"
+                  />
+                  <span>积分</span>
+                </div>
+                <div
+                  v-if="pointsConfigForm.include_used"
+                  class="points-type-rate-row"
+                >
+                  <span class="points-type-rate-label">二手</span>
+                  <span>每消费 100 元累计</span>
+                  <el-input-number
+                    v-model="pointsConfigForm.used_points_per_100"
+                    :min="1"
+                    :max="100"
+                    :precision="0"
+                    :step="1"
+                    :controls="false"
+                  />
+                  <span>积分</span>
+                </div>
+              </div>
             </el-form-item>
 
             <div class="points-settings-preview">
               <div class="preview-title">
                 <i class="fas fa-calculator" />
-                当前规则
+                积分规则
               </div>
               <div class="preview-content">
                 {{ pointsConfigPreview }}
@@ -862,20 +888,6 @@
               </el-col>
             </el-row>
 
-            <el-form-item
-              v-if="canViewField('address')"
-              label="地址"
-            >
-              <el-input
-                v-model="customerForm.address"
-                placeholder="请输入详细地址"
-                clearable
-                maxlength="200"
-                show-word-limit
-                :disabled="!canEditField('address')"
-              />
-            </el-form-item>
-
             <!-- 客户属性 -->
             <el-divider content-position="left">
               <i class="fas fa-tag" /> 客户属性
@@ -976,11 +988,33 @@
 
             <el-form-item
               v-if="canViewField('city') || canViewField('province')"
-              label="城市省份"
+              label="所在地区"
             >
               <CitySelector
-                v-model="cityLocation"
+                :model-value="cityLocation"
+                :show-district="canViewField('address')"
+                :hide-province="!canViewField('province')"
+                :hide-city="!canViewField('city')"
+                :province-disabled="!canEditField('province')"
+                :city-disabled="!canEditField('city')"
+                :district-disabled="!canEditField('address')"
                 @change="handleLocationChange"
+              />
+            </el-form-item>
+
+            <el-form-item
+              v-if="canViewField('address')"
+              label="详细地址"
+            >
+              <el-input
+                v-model="addressDetail"
+                type="textarea"
+                class="tf-textarea"
+                :rows="2"
+                placeholder="请输入乡镇/街道、村/社区及门牌号"
+                :maxlength="addressDetailLimit"
+                show-word-limit
+                :disabled="!canEditField('address')"
               />
             </el-form-item>
 
@@ -1043,12 +1077,6 @@
               >
                 {{ errors.apple_id }}
               </div>
-              <div
-                v-else
-                class="el-form-item__tip"
-              >
-                请输入有效的 Apple ID 手机号或邮箱
-              </div>
             </el-form-item>
 
             <!-- 账户信息 -->
@@ -1109,7 +1137,7 @@
               v-if="modalMode === 'edit'"
               content-position="left"
             >
-              <i class="fas fa-key" /> 密码设置
+              <i class="fas fa-key" /> H5密码设置
             </el-divider>
 
             <el-row
@@ -1121,9 +1149,6 @@
                   <el-checkbox v-model="customerForm.changePassword">
                     启用密码修改
                   </el-checkbox>
-                  <span class="text-secondary text-xs ml-3">
-                    勾选后可为H5商城用户设置或修改登录密码
-                  </span>
                 </el-form-item>
               </el-col>
             </el-row>
@@ -1497,12 +1522,18 @@
               </el-tag>
             </el-divider>
 
+            <TableLoadingRow
+              v-if="purchasesLoading && customerPurchases.length === 0"
+              mode="block"
+              text="加载购买记录中..."
+            />
             <div
-              v-if="customerPurchases.length > 0"
+              v-else-if="customerPurchases.length > 0"
               class="purchases-section"
             >
               <div class="table-responsive">
                 <el-table
+                  v-tf-loading="purchasesLoading"
                   :data="customerPurchases"
                   border
                   stripe
@@ -1640,7 +1671,7 @@
               />
             </div>
             <DataEmptyState
-              v-else
+              v-else-if="!purchasesLoading"
               description="暂无购买记录"
               :image-size="200"
             >
@@ -1693,6 +1724,7 @@ import { getActionColumnMinWidth, getIdentifierColumnMinWidth, getTextColumnMinW
 import { isValidAppleAccount, isValidIdCard, isValidMobilePhone, normalizeAppleId, normalizeIdCard, normalizePersonName, normalizePhoneDigits } from '@/utils/security'
 import { logger } from '@/utils/logger'
 import { getRequestErrorMessage } from '@/utils/api-response'
+import { getProvinceName, joinCustomerAddress, normalizeRegion, splitCustomerAddress, type RegionSelection } from '@/services/region-options'
 
 interface CustomerListItem {
   id: number
@@ -1813,6 +1845,8 @@ interface CustomerPointsConfig {
   amount_per_point: number
   include_new: boolean
   include_used: boolean
+  new_points_per_100: number
+  used_points_per_100: number
 }
 
 // 权限管理
@@ -2121,43 +2155,6 @@ const VIP_LEVELS = [
 
 const ALLOWED_VIP_LEVELS = new Set<string>(VIP_LEVELS.map(vip => vip.value))
 
-const PROVINCE_NAME_BY_CODE: Record<string, string> = {
-  '11': '北京市',
-  '12': '天津市',
-  '13': '河北省',
-  '14': '山西省',
-  '15': '内蒙古自治区',
-  '21': '辽宁省',
-  '22': '吉林省',
-  '23': '黑龙江省',
-  '31': '上海市',
-  '32': '江苏省',
-  '33': '浙江省',
-  '34': '安徽省',
-  '35': '福建省',
-  '36': '江西省',
-  '37': '山东省',
-  '41': '河南省',
-  '42': '湖北省',
-  '43': '湖南省',
-  '44': '广东省',
-  '45': '广西壮族自治区',
-  '46': '海南省',
-  '50': '重庆市',
-  '51': '四川省',
-  '52': '贵州省',
-  '53': '云南省',
-  '54': '西藏自治区',
-  '61': '陕西省',
-  '62': '甘肃省',
-  '63': '青海省',
-  '64': '宁夏回族自治区',
-  '65': '新疆维吾尔自治区',
-  '71': '台湾省',
-  '81': '香港特别行政区',
-  '82': '澳门特别行政区'
-}
-
 // 筛选器配置
 const _filterConfigs = [
   {
@@ -2265,11 +2262,14 @@ const customerForm = ref<CustomerFormState>({
 const selectedCustomer = ref<CustomerListItem | null>(null)
 const pointsConfigLoading = ref(false)
 const pointsConfigSaving = ref(false)
+const CUSTOMER_POINTS_AMOUNT_PER_POINT = 100
 const pointsConfigForm = ref<CustomerPointsConfig>({
   enabled: true,
-  amount_per_point: 100,
+  amount_per_point: CUSTOMER_POINTS_AMOUNT_PER_POINT,
   include_new: true,
-  include_used: true
+  include_used: true,
+  new_points_per_100: 1,
+  used_points_per_100: 1
 })
 
 const pointsIncludedConditions = computed<string[]>({
@@ -2286,22 +2286,36 @@ const pointsIncludedConditions = computed<string[]>({
 })
 
 const pointsConfigValid = computed(() => (
-  Number(pointsConfigForm.value.amount_per_point) > 0 &&
-  (pointsConfigForm.value.include_new || pointsConfigForm.value.include_used)
+  !pointsConfigForm.value.enabled || (
+    (pointsConfigForm.value.include_new || pointsConfigForm.value.include_used) &&
+    (!pointsConfigForm.value.include_new || (
+      Number.isInteger(Number(pointsConfigForm.value.new_points_per_100)) &&
+      Number(pointsConfigForm.value.new_points_per_100) >= 1 &&
+      Number(pointsConfigForm.value.new_points_per_100) <= 100
+    )) &&
+    (!pointsConfigForm.value.include_used || (
+      Number.isInteger(Number(pointsConfigForm.value.used_points_per_100)) &&
+      Number(pointsConfigForm.value.used_points_per_100) >= 1 &&
+      Number(pointsConfigForm.value.used_points_per_100) <= 100
+    ))
+  )
 ))
 
 const pointsConfigPreview = computed(() => {
-  const amount = Number(pointsConfigForm.value.amount_per_point) || 0
-  const conditions = [
-    pointsConfigForm.value.include_new ? '全新' : '',
-    pointsConfigForm.value.include_used ? '二手' : ''
-  ].filter(Boolean).join('、') || '未选择成色'
-
   if (!pointsConfigForm.value.enabled) {
     return '自动积分已停用；销售出库暂不累计积分。'
   }
 
-  return `${conditions}参与积分，销售出库按消费 ${amount} 元累计 1 积分；批发、划拨不计积分。`
+  const typeRules = [
+    pointsConfigForm.value.include_new
+      ? `全新每消费 ${CUSTOMER_POINTS_AMOUNT_PER_POINT} 元累计 ${pointsConfigForm.value.new_points_per_100} 积分`
+      : '',
+    pointsConfigForm.value.include_used
+      ? `二手每消费 ${CUSTOMER_POINTS_AMOUNT_PER_POINT} 元累计 ${pointsConfigForm.value.used_points_per_100} 积分`
+      : ''
+  ].filter(Boolean)
+
+  return `${typeRules.join('；') || '未选择参与类型'}；批发、划拨无积分。`
 })
 
 // 表单验证错误
@@ -2327,16 +2341,35 @@ const purchasesPagination = ref<CustomerPurchasesPagination>({
 })
 const { loading: purchasesLoading } = useLoadingState()
 
-// 城市省份选择器数据
-const cityLocation = ref({
+// 县区与详细地址共用现有 address 存储字段，不依赖生产库新增列。
+const cityLocation = ref<RegionSelection>({
   province: '',
-  city: ''
+  city: '',
+  district: ''
 })
 
-// 处理城市省份变化
-const handleLocationChange = (location: { province: string; city: string }) => {
-  customerForm.value.province = location.province
-  customerForm.value.city = location.city
+const addressDetail = computed({
+  get: () => splitCustomerAddress(cityLocation.value, customerForm.value.address).detail,
+  set: (detail: string) => {
+    customerForm.value.address = joinCustomerAddress(cityLocation.value.district, detail)
+  }
+})
+const addressDetailLimit = computed(() => Math.max(0, 200 - (
+  cityLocation.value.district ? cityLocation.value.district.length + 1 : 0
+)))
+
+const handleLocationChange = (location: RegionSelection) => {
+  const detail = addressDetail.value
+  if (canEditField('province') && location.province !== cityLocation.value.province) {
+    customerForm.value.province = location.province
+  }
+  if (canEditField('city') && location.city !== cityLocation.value.city) {
+    customerForm.value.city = location.city
+  }
+  if (canEditField('address')) {
+    customerForm.value.address = joinCustomerAddress(location.district, detail)
+  }
+  cityLocation.value = location
 }
 
 const handleCustomerNameInput = (value: string) => {
@@ -2375,9 +2408,17 @@ const handleAppleIdInput = (value: string) => {
 const applyPointsConfig = (config?: Partial<CustomerPointsConfig>) => {
   pointsConfigForm.value = {
     enabled: config?.enabled ?? true,
-    amount_per_point: Number(config?.amount_per_point) > 0 ? Number(config?.amount_per_point) : 100,
+    amount_per_point: CUSTOMER_POINTS_AMOUNT_PER_POINT,
     include_new: config?.include_new ?? true,
-    include_used: config?.include_used ?? true
+    include_used: config?.include_used ?? true,
+    new_points_per_100: Number.isInteger(Number(config?.new_points_per_100)) &&
+      Number(config?.new_points_per_100) >= 1 && Number(config?.new_points_per_100) <= 100
+      ? Number(config?.new_points_per_100)
+      : 1,
+    used_points_per_100: Number.isInteger(Number(config?.used_points_per_100)) &&
+      Number(config?.used_points_per_100) >= 1 && Number(config?.used_points_per_100) <= 100
+      ? Number(config?.used_points_per_100)
+      : 1
   }
 }
 
@@ -2406,7 +2447,7 @@ const closePointsSettings = () => {
 
 const savePointsSettings = async () => {
   if (!pointsConfigValid.value) {
-    warning('请设置有效的积分比例，并至少选择一种参与成色')
+    warning('启用积分时，请至少选择一种参与类型并设置有效积分')
     return
   }
 
@@ -2414,9 +2455,10 @@ const savePointsSettings = async () => {
   try {
     const response = await unifiedApi.put('/customers/points-config', {
       enabled: pointsConfigForm.value.enabled,
-      amount_per_point: Number(pointsConfigForm.value.amount_per_point),
       include_new: pointsConfigForm.value.include_new,
-      include_used: pointsConfigForm.value.include_used
+      include_used: pointsConfigForm.value.include_used,
+      new_points_per_100: Number(pointsConfigForm.value.new_points_per_100),
+      used_points_per_100: Number(pointsConfigForm.value.used_points_per_100)
     })
 
     if (response.success) {
@@ -2677,10 +2719,13 @@ const openEditModal = (customer: CustomerListItem) => {
   })
 
   // 设置城市省份选择器的值
-  cityLocation.value = {
+  const region = normalizeRegion({
     province: customer.province || '',
-    city: customer.city || ''
-  }
+    city: customer.city || '',
+    district: ''
+  })
+  const address = splitCustomerAddress(region, customer.address || '')
+  cityLocation.value = { ...region, district: address.district || region.district }
   errors.value = {} // 重置错误信息
   showCustomerModal.value = true
 }
@@ -2720,7 +2765,8 @@ const resetCustomerForm = () => {
   // 重置城市省份选择器
   cityLocation.value = {
     province: '',
-    city: ''
+    city: '',
+    district: ''
   }
 }
 
@@ -2753,6 +2799,11 @@ const saveCustomer = async () => {
     }
     if (!isValidMobilePhone(customerForm.value.phone)) {
       error('请输入正确的手机号码')
+      return
+    }
+
+    if (customerForm.value.address.length > 200) {
+      error('县/区与详细地址合计不能超过200字，请缩短详细地址')
       return
     }
 
@@ -3085,7 +3136,7 @@ const getGenderLabel = (gender?: string) => {
 
 const getProvinceDisplayName = (province?: string) => {
   const rawProvince = String(province || '').trim()
-  return PROVINCE_NAME_BY_CODE[rawProvince] || rawProvince
+  return getProvinceName(rawProvince)
 }
 
 const formatCustomerRegion = (
@@ -3150,16 +3201,6 @@ onUnmounted(() => {
   flex: 1;
   display: flex;
   flex-direction: column;
-}
-
-// 旋转动画
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
 }
 
 .page-body {
@@ -3408,17 +3449,39 @@ onUnmounted(() => {
 }
 
 .points-settings-form {
-  .points-ratio-control {
-    display: flex;
+  .points-type-buttons {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+
+    :deep(.el-checkbox-button) {
+      min-width: 0;
+    }
+
+    :deep(.el-checkbox-button__inner) {
+      width: 100%;
+      text-align: center;
+    }
+  }
+
+  .points-type-rates {
+    display: grid;
+    width: 100%;
+    gap: var(--tf-space-2);
+  }
+
+  .points-type-rate-row {
+    display: grid;
+    grid-template-columns: 48px minmax(132px, 1fr) 110px 32px;
     align-items: center;
-    flex-wrap: wrap;
     gap: 8px;
     color: var(--el-text-color-regular);
     font-size: var(--tf-type-scale-14);
   }
 
-  .points-ratio-input {
-    width: 180px;
+  .points-type-rate-label {
+    color: var(--el-text-color-primary);
+    font-weight: 600;
   }
 }
 
@@ -3459,14 +3522,13 @@ onUnmounted(() => {
     font-size: var(--tf-type-scale-14);
   }
 
-  .points-settings-form {
-    .points-ratio-input {
-      width: 150px;
-    }
-  }
-
   .points-settings-preview {
     margin-left: 0;
+  }
+
+  .points-settings-form .points-type-rate-row {
+    grid-template-columns: 42px minmax(0, 1fr) 96px 28px;
+    gap: var(--tf-space-1);
   }
 
 }

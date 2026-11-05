@@ -147,12 +147,10 @@
             </div>
 
             <!-- 加载状态 -->
-            <div
+            <SectionLoading
               v-if="isLoading"
-              class="loading-container"
-            >
-              <InlineLoading text="加载模块数据中..." />
-            </div>
+              text="加载模块数据中..."
+            />
 
             <!-- 空状态 -->
             <DataEmptyState
@@ -905,6 +903,7 @@ import unifiedApi from '@/utils/unified-api'
 import Pagination from '@/components/Pagination.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import InlineLoading from '@/components/InlineLoading.vue'
+import SectionLoading from '@/components/SectionLoading.vue'
 import { PermissionGate } from '@/components/base'
 
 export default {
@@ -913,6 +912,7 @@ export default {
     Pagination,
     UnifiedSearchPanel,
     InlineLoading,
+    SectionLoading,
     PermissionGate
   },
   setup() {
@@ -1555,11 +1555,6 @@ export default {
 .view-toggles {
   display: flex;
   gap: 5px;
-}
-
-.loading-container {
-  text-align: center;
-  padding: 40px;
 }
 
 .btn-link {

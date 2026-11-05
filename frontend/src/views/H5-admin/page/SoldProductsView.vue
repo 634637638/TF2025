@@ -193,12 +193,11 @@
             </p>
           </div>
 
-          <div
+          <SectionLoading
             v-if="loadingImages"
-            class="loading-images"
-          >
-            <InlineLoading text="加载素材中..." />
-          </div>
+            text="加载素材中..."
+            size="compact"
+          />
 
           <div
             v-else-if="productImages.length === 0"
@@ -302,12 +301,12 @@
 <script setup lang="ts">
 import { confirmAction } from '@/utils/message-box'
 import { ref, reactive, computed, onMounted, onUnmounted, onActivated, inject, watch } from 'vue'
-import { ElMessage } from 'element-plus'
+
 import { Refresh } from '@element-plus/icons-vue'
 import { unifiedApi as api } from '@/utils/unified-api'
 import { formatDate as formatGlobalDate, formatImageUrl } from '@/utils/format'
 import { useLoadingState } from '@/composables'
-import InlineLoading from '@/components/InlineLoading.vue'
+import SectionLoading from '@/components/SectionLoading.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import MediaPreviewViewer from '@/components/MediaPreviewViewer.vue'
 import { PermissionGate } from '@/components/base'
@@ -317,6 +316,9 @@ import { logger } from '@/utils/logger'
 import { isVideoMedia, type MediaPreviewItem } from '@/utils/media'
 import type { HeaderAction } from '@/types'
 import type { SoldProduct, SoldProductImage } from '@/types/h5'
+import { useNotification } from '@/composables/useNotification'
+const globalNotifications = useNotification()
+
 // 注入父组件提供的注册方法
 const registerHeaderActions = inject<(_actions: HeaderAction[]) => void>('registerHeaderActions')
 const clearHeaderActions = inject<() => void>('clearHeaderActions')
@@ -395,7 +397,7 @@ const loadSoldProducts = async () => {
     products.value = response.data
   } catch (error) {
     logger.error('加载已售商品失败:', error)
-    ElMessage.error('加载已售商品失败')
+    globalNotifications.error('加载已售商品失败')
   } finally {
     loading.value = false
   }
@@ -434,7 +436,7 @@ const viewImages = async (product: SoldProduct) => {
     productImages.value = response.data
   } catch (error) {
     logger.error('加载图片失败:', error)
-    ElMessage.error('加载图片失败')
+    globalNotifications.error('加载图片失败')
   } finally {
     loadingImages.value = false
   }
@@ -458,12 +460,12 @@ const deleteProductImages = async (product: SoldProduct) => {
     )
 
     await api.delete(`/shop/products/${product.id}/images`)
-    ElMessage.success('删除成功')
+    globalNotifications.success('删除成功')
     await loadSoldProducts()
   } catch (error: unknown) {
     if (error !== 'cancel') {
       logger.error('删除图片失败:', error)
-      ElMessage.error('删除图片失败')
+      globalNotifications.error('删除图片失败')
     }
   }
 }
@@ -486,7 +488,7 @@ const deleteSingleImage = async (image: SoldProductImage) => {
     )
 
     await api.delete(`/phones/${image.phone_id}/images/${image.id}`)
-    ElMessage.success('删除成功')
+    globalNotifications.success('删除成功')
 
     // 重新加载图片列表
     if (selectedProduct.value) {
@@ -496,7 +498,7 @@ const deleteSingleImage = async (image: SoldProductImage) => {
   } catch (error: unknown) {
     if (error !== 'cancel') {
       logger.error('删除图片失败:', error)
-      ElMessage.error('删除图片失败')
+      globalNotifications.error('删除图片失败')
     }
   }
 }
@@ -525,7 +527,7 @@ const deleteCurrentMedia = async (mediaItem: MediaPreviewItem) => {
     })
 
     await api.delete(`/phones/${image.phone_id}/images/${image.id}`)
-    ElMessage.success('删除成功')
+    globalNotifications.success('删除成功')
 
     // 关闭预览
     showImageViewer.value = false
@@ -537,7 +539,7 @@ const deleteCurrentMedia = async (mediaItem: MediaPreviewItem) => {
     }
   } catch (error: unknown) {
     if (error !== 'cancel') {
-      ElMessage.error('删除图片失败')
+      globalNotifications.error('删除图片失败')
     }
   }
 }
@@ -562,7 +564,7 @@ const deleteAllImages = async () => {
     )
 
     await api.delete(`/shop/products/${selectedProduct.value.id}/images`)
-    ElMessage.success('删除成功')
+    globalNotifications.success('删除成功')
 
     // 关闭预览和模态框
     showImageViewer.value = false
@@ -573,7 +575,7 @@ const deleteAllImages = async () => {
   } catch (error: unknown) {
     if (error !== 'cancel') {
       logger.error('删除图片失败:', error)
-      ElMessage.error('删除图片失败')
+      globalNotifications.error('删除图片失败')
     }
   }
 }

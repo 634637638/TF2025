@@ -319,7 +319,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
-import { ElMessage } from 'element-plus'
+
 import {
   CopyDocument
 } from '@element-plus/icons-vue'
@@ -339,6 +339,9 @@ import {
   type MarketingCopySuggestion,
   type MarketingMode
 } from '@/utils/marketing'
+import { useNotification } from '@/composables/useNotification'
+const globalNotifications = useNotification()
+
 
 interface MarketingFormState {
   mode: MarketingMode
@@ -537,9 +540,9 @@ const refreshVariants = async (bumpNonce = false) => {
 const copyText = async (text: string) => {
   try {
     await navigator.clipboard.writeText(text)
-    ElMessage.success('已复制到剪贴板')
+    globalNotifications.success('已复制到剪贴板')
   } catch {
-    ElMessage.warning('复制失败，请手动复制')
+    globalNotifications.warning('复制失败，请手动复制')
   }
 }
 
@@ -553,7 +556,7 @@ const copyAllVariants = async () => {
     .join('\n\n')
 
   if (!text.trim()) {
-    ElMessage.warning('还没有可复制的内容')
+    globalNotifications.warning('还没有可复制的内容')
     return
   }
 

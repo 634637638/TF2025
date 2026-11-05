@@ -3,11 +3,12 @@
  * 提供移动端优化和常用功能指令
  */
 
-import type { App, Directive, DirectiveBinding } from 'vue'
+import { h, render, type App, type Directive, type DirectiveBinding } from 'vue'
 import { installPermissionDirective } from './permission'
 import { isCurrentMobileViewport } from '@/utils/device-detection'
 import { useLoadingStore } from '@/stores/loading'
 import { vTableDoubleTap } from './table-double-tap'
+import InlineLoading from '@/components/InlineLoading.vue'
 
 type DirectiveHandler = (...args: unknown[]) => unknown
 
@@ -284,7 +285,9 @@ export const vLazy: Directive = {
     placeholder.style.display = 'flex'
     placeholder.style.alignItems = 'center'
     placeholder.style.justifyContent = 'center'
-    placeholder.innerHTML = '<span style="color: #999;">加载中...</span>'
+    placeholder.setAttribute('role', 'status')
+    placeholder.setAttribute('aria-live', 'polite')
+    render(h(InlineLoading, { text: '加载中...', size: 'small' }), placeholder)
 
     el.parentNode?.insertBefore(placeholder, el)
     el.style.display = 'none'
@@ -294,11 +297,13 @@ export const vLazy: Directive = {
     img.onload = () => {
       el.src = src
       el.style.display = ''
+      render(null, placeholder)
       placeholder.remove()
     }
 
     img.onerror = () => {
-      placeholder.innerHTML = '<span style="color: #ff4444;">加载失败</span>'
+      render(null, placeholder)
+      placeholder.textContent = '加载失败'
     }
 
     img.src = src
@@ -307,6 +312,7 @@ export const vLazy: Directive = {
   unmounted(el: HTMLImageElement) {
     const placeholder = (el as DirectiveElement)._lazyPlaceholder
     if (placeholder && placeholder.parentNode) {
+      render(null, placeholder)
       placeholder.remove()
     }
   }

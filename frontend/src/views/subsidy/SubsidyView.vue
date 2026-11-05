@@ -642,7 +642,7 @@
 <script setup lang="ts">
 import { confirmAction } from '@/utils/message-box'
 import { ref, reactive, computed, onMounted, onUnmounted, defineAsyncComponent, shallowRef, watch } from 'vue'
-import { ElMessage } from 'element-plus'
+
 import { unifiedApi } from '@/utils/unified-api'
 import { sortOptionsByOrder } from '@/utils/option-sort'
 import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
@@ -666,6 +666,9 @@ import { formatAmount, formatImageUrl } from '@/utils/format'
 import { isAxiosError } from 'axios'
 import type { QueryParams, NationalSubsidyRecord, NationalSubsidyStats } from '@/types'
 import type { ReferenceRecord } from '@/services/reference-options'
+import { useNotification } from '@/composables/useNotification'
+const globalNotifications = useNotification()
+
 const SubsidyApplyDialog = defineAsyncComponent(() => import('./components/SubsidyApplyDialog.vue'))
 const SubsidyEditDialog = defineAsyncComponent(() => import('./components/SubsidyEditDialog.vue'))
 const SubsidyDetailDialog = defineAsyncComponent(() => import('./components/SubsidyDetailDialog.vue'))
@@ -1155,14 +1158,14 @@ const fetchSubsidyList = async (options: FetchRequestOptions = {}) => {
       subsidyPagination.total = Number(response.pagination?.total) || 0
       subsidyPagination.total_pages = Number(response.pagination?.total_pages) || 0
     } else {
-      ElMessage.error(response.message || '获取国补列表失败')
+      globalNotifications.error(response.message || '获取国补列表失败')
     }
   } catch (error: unknown) {
     if (isCanceledRequest(error)) {
       return
     }
     logger.error('获取国补列表失败:', error)
-    ElMessage.error('获取国补列表失败')
+    globalNotifications.error('获取国补列表失败')
   } finally {
     if (shouldSetLoading && !isStaleRequest(options.requestSeq)) {
       loading.value = false
@@ -1359,7 +1362,7 @@ const openPhotoManageDialog = async (item: NationalSubsidyRecord) => {
     try {
       const response = await getSubsidyPhotos(item.id, true)
       if (!response.success) {
-        ElMessage.error(response.message || '读取国补照片失败')
+        globalNotifications.error(response.message || '读取国补照片失败')
         return
       }
       currentManagingItem.value = {
@@ -1370,7 +1373,7 @@ const openPhotoManageDialog = async (item: NationalSubsidyRecord) => {
       }
     } catch (error) {
       logger.error('读取国补照片失败:', error)
-      ElMessage.error('读取国补照片失败')
+      globalNotifications.error('读取国补照片失败')
       return
     }
   } else {
@@ -1404,15 +1407,15 @@ const handleDelete = async (item: NationalSubsidyRecord) => {
     const response = await unifiedApi.delete(`/subsidy/${item.id}`)
 
     if (response.success) {
-      ElMessage.success('删除成功')
+      globalNotifications.success('删除成功')
       await fetchLatestSubsidyData()
     } else {
-      ElMessage.error(response.message || '删除失败')
+      globalNotifications.error(response.message || '删除失败')
     }
   } catch (error: unknown) {
     if (error !== 'cancel') {
       logger.error('删除失败:', error)
-      ElMessage.error('删除失败')
+      globalNotifications.error('删除失败')
     }
   }
 }
@@ -1451,15 +1454,15 @@ const handleAudit = async (item: NationalSubsidyRecord) => {
 
     if (response.success) {
       item.apply_time = getTodayDateStr()
-      ElMessage.success('审批成功')
+      globalNotifications.success('审批成功')
       await fetchLatestSubsidyData()
     } else {
-      ElMessage.error(response.message || '审批失败')
+      globalNotifications.error(response.message || '审批失败')
     }
   } catch (error: unknown) {
     if (error !== 'cancel') {
       logger.error('审批失败:', error)
-      ElMessage.error('审批失败')
+      globalNotifications.error('审批失败')
     }
   }
 }
@@ -1493,7 +1496,7 @@ const clearSelection = () => {
 // 固定选中项到顶部
 const pinSelectedItems = () => {
   if (selectedItems.value.length === 0) {
-    ElMessage.warning('请先选择要固定的记录')
+    globalNotifications.warning('请先选择要固定的记录')
     return
   }
 
@@ -1507,14 +1510,14 @@ const pinSelectedItems = () => {
   const newItems = itemsToPin.filter(item => !pinnedIds.has(item.id))
 
   if (newItems.length === 0) {
-    ElMessage.info('这些记录已经固定了')
+    globalNotifications.info('这些记录已经固定了')
     return
   }
 
   // 添加到固定列表
   pinnedItems.value.push(...newItems)
 
-  ElMessage.success(`已固定 ${newItems.length} 条记录到顶部`)
+  globalNotifications.success(`已固定 ${newItems.length} 条记录到顶部`)
 
   // 清空当前选择
   selectedItems.value = []
@@ -1534,7 +1537,7 @@ const clearPinnedItems = async () => {
     )
 
     pinnedItems.value = []
-    ElMessage.success('已清除所有固定项')
+    globalNotifications.success('已清除所有固定项')
   } catch {
     // 用户取消
   }
@@ -1568,12 +1571,12 @@ const submitBatchUpdate = async () => {
     return
   }
   if (!batchForm.apply_time && !batchForm.arrival_time) {
-    ElMessage.warning('请至少选择一个字段进行修改')
+    globalNotifications.warning('请至少选择一个字段进行修改')
     return
   }
 
   if (selectedItems.value.length === 0) {
-    ElMessage.warning('没有选中项可修改')
+    globalNotifications.warning('没有选中项可修改')
     return
   }
 
@@ -1624,17 +1627,17 @@ const submitBatchUpdate = async () => {
       }
       updateLocalList(subsidyList.value)
       updateLocalList(pinnedItems.value)
-      ElMessage.success(`成功修改 ${successCount} 条记录${failCount > 0 ? `，失败 ${failCount} 条` : ''}`)
+      globalNotifications.success(`成功修改 ${successCount} 条记录${failCount > 0 ? `，失败 ${failCount} 条` : ''}`)
       await fetchLatestSubsidyData()
       closeBatchDialog()
       selectedItems.value = []
     } else {
-      ElMessage.error('批量修改失败')
+      globalNotifications.error('批量修改失败')
     }
   } catch (error: unknown) {
     if (error !== 'cancel') {
       logger.error('批量修改失败:', error)
-      ElMessage.error('批量修改失败')
+      globalNotifications.error('批量修改失败')
     }
   } finally {
     batchUpdating.value = false
@@ -1663,15 +1666,15 @@ const handleConfirmArrival = async (item: NationalSubsidyRecord) => {
 
     if (response.success) {
       item.arrival_time = getTodayDateStr()
-      ElMessage.success('确认到账成功')
+      globalNotifications.success('确认到账成功')
       await fetchLatestSubsidyData()
     } else {
-      ElMessage.error(response.message || '确认失败')
+      globalNotifications.error(response.message || '确认失败')
     }
   } catch (error: unknown) {
     if (error !== 'cancel') {
       logger.error('确认到账失败:', error)
-      ElMessage.error('确认到账失败')
+      globalNotifications.error('确认到账失败')
     }
   }
 }

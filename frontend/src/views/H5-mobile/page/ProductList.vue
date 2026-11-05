@@ -24,15 +24,11 @@
 
     <!-- 商品列表 -->
     <div class="product-list">
-      <div
+      <SectionLoading
         v-if="loading && products.length === 0"
-        class="loading-state"
-      >
-        <SectionLoading
-          text="加载商品中..."
-          size="large"
-        />
-      </div>
+        text="加载商品中..."
+        size="large"
+      />
 
       <DataEmptyState
         v-else-if="products.length === 0"
@@ -250,7 +246,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch, onActivated, onDeactivated, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { ElMessage } from 'element-plus'
+
 import { getAggregatedProducts, getProducts, getPublicConfig } from '@/api/shop-public'
 import { baseDataApi } from '@/api/base-data'
 import { useCart, useLoadingState } from '@/composables'
@@ -261,6 +257,9 @@ import type { Brand, MemoryOption } from '@/types'
 import { storage } from '@/services/storage'
 import { formatImageUrl, generateProductPlaceholder } from '@/utils/format'
 import { logger } from '@/utils/logger'
+import { useNotification } from '@/composables/useNotification'
+const globalNotifications = useNotification()
+
 // 滚动位置存储键前缀
 const SCROLL_POSITION_PREFIX = 'scroll-pos_'
 const PRODUCT_LIST_SCROLL_KEY = `${SCROLL_POSITION_PREFIX}/m/products`
@@ -828,16 +827,16 @@ const handleCartClick = async (product: ProductListItem) => {
         if (availablePhone) {
           await addCartItem(availablePhone.id, 1)
           await refreshCart()
-          ElMessage.success('已加入购物车')
+          globalNotifications.success('已加入购物车')
         } else {
-          ElMessage.warning('该商品暂无库存')
+          globalNotifications.warning('该商品暂无库存')
         }
       } else {
-        ElMessage.warning('该商品暂无库存')
+        globalNotifications.warning('该商品暂无库存')
       }
     } catch (error) {
       logger.error('加入购物车失败:', error)
-      ElMessage.error('加入购物车失败')
+      globalNotifications.error('加入购物车失败')
     } finally {
       addingToCart.value = null
     }
@@ -851,10 +850,10 @@ const handleCartClick = async (product: ProductListItem) => {
   try {
     await addCartItem(phoneId, 1)
     await refreshCart()
-    ElMessage.success('已加入购物车')
+    globalNotifications.success('已加入购物车')
   } catch (error) {
     logger.error('加入购物车失败:', error)
-    ElMessage.error('加入购物车失败')
+    globalNotifications.error('加入购物车失败')
   } finally {
     addingToCart.value = null
   }
@@ -1364,9 +1363,4 @@ watch(
   padding: 0;
 }
 
-// 加载状态
-.loading-state {
-  padding: 40px 16px;
-  text-align: center;
-}
 </style>

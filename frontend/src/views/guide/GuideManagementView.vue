@@ -603,7 +603,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
-import { ElMessage } from 'element-plus'
+
 import { PageHeader, PermissionGate } from '@/components/base'
 import DataEmptyState from '@/components/DataEmptyState.vue'
 import { usePagePermissions } from '@/composables/usePagePermissions'
@@ -622,6 +622,8 @@ import type {
   GuidePasswordPolicy,
   GuideSettings
 } from '@/types/guide'
+const globalNotifications = useNotification()
+
 
 interface GuideAnnouncementForm {
   title: string
@@ -726,7 +728,7 @@ const loadData = async () => {
       if (!activeCategoryTabs[category.id]) activeCategoryTabs[category.id] = categoryTabName(category)
     })
   } catch (error) {
-    ElMessage.error(getRequestErrorMessage(error, '导航管理数据加载失败'))
+    globalNotifications.error(getRequestErrorMessage(error, '导航管理数据加载失败'))
   } finally { loading.value = false }
 }
 
@@ -742,9 +744,9 @@ const openSettingsForm = () => {
 }
 
 const saveSettings = async () => {
-  if (!settingsForm.site_eyebrow.trim()) return ElMessage.warning('请输入顶部副标题')
-  if (!String(settingsForm.site_title || '').trim()) return ElMessage.warning('请输入导航标题')
-  if (!settingsForm.footer_text.trim()) return ElMessage.warning('请输入底部信息')
+  if (!settingsForm.site_eyebrow.trim()) return globalNotifications.warning('请输入顶部副标题')
+  if (!String(settingsForm.site_title || '').trim()) return globalNotifications.warning('请输入导航标题')
+  if (!settingsForm.footer_text.trim()) return globalNotifications.warning('请输入底部信息')
   saving.value = true
   try {
     const response = await guideApi.updateSettings({
@@ -757,9 +759,9 @@ const saveSettings = async () => {
     if (response.data) savedGuideSettings.value = response.data
     settingsVisible.value = false
     await loadData()
-    ElMessage.success('导航设置已保存')
+    globalNotifications.success('导航设置已保存')
   } catch (error) {
-    ElMessage.error(getRequestErrorMessage(error, '保存导航设置失败'))
+    globalNotifications.error(getRequestErrorMessage(error, '保存导航设置失败'))
   } finally {
     saving.value = false
   }
@@ -789,22 +791,22 @@ const openLinkForm = (category: GuideCategory, item?: GuideLink) => {
 }
 
 const saveAnnouncement = async () => {
-  if (!announcementForm.title.trim()) return ElMessage.warning('请输入公告标题')
+  if (!announcementForm.title.trim()) return globalNotifications.warning('请输入公告标题')
   saving.value = true
   try {
     if (editingAnnouncement.value) await guideApi.updateAnnouncement(editingAnnouncement.value.id, announcementForm)
     else await guideApi.createAnnouncement(announcementForm)
     announcementVisible.value = false
     await loadData()
-    ElMessage.success('公告已保存')
+    globalNotifications.success('公告已保存')
   } catch (error) {
-    ElMessage.error(getRequestErrorMessage(error, '保存公告失败'))
+    globalNotifications.error(getRequestErrorMessage(error, '保存公告失败'))
   } finally {
     saving.value = false
   }
 }
 const saveCategory = async () => {
-  if (!categoryForm.name.trim()) return ElMessage.warning('请输入分类名称')
+  if (!categoryForm.name.trim()) return globalNotifications.warning('请输入分类名称')
   saving.value = true
   const payload = { ...categoryForm }
   try {
@@ -812,15 +814,15 @@ const saveCategory = async () => {
     else await guideApi.createCategory(payload)
     categoryVisible.value = false
     await loadData()
-    ElMessage.success('分类已保存')
+    globalNotifications.success('分类已保存')
   } catch (error) {
-    ElMessage.error(getRequestErrorMessage(error, '保存分类失败'))
+    globalNotifications.error(getRequestErrorMessage(error, '保存分类失败'))
   } finally {
     saving.value = false
   }
 }
 const saveLink = async () => {
-  if (!selectedCategory.value || !linkForm.title.trim()) return ElMessage.warning('请输入导航名称')
+  if (!selectedCategory.value || !linkForm.title.trim()) return globalNotifications.warning('请输入导航名称')
   saving.value = true
   try {
     if (editingLink.value) await guideApi.updateLink(editingLink.value.id, { ...linkForm })
@@ -828,9 +830,9 @@ const saveLink = async () => {
     pendingGuideUploadUrls.value = []
     linkVisible.value = false
     await loadData()
-    ElMessage.success('导航已保存')
+    globalNotifications.success('导航已保存')
   } catch (error) {
-    ElMessage.error(getRequestErrorMessage(error, '保存导航失败'))
+    globalNotifications.error(getRequestErrorMessage(error, '保存导航失败'))
   } finally {
     saving.value = false
   }
@@ -843,7 +845,7 @@ const loadExistingPreview = async (id: number) => {
     const response = await unifiedApi.getInstance().get<Blob>(`/guide/links/${id}/preview`, { responseType: 'blob' })
     linkForm.preview_url = URL.createObjectURL(extractBlobResponse(response))
   } catch (error) {
-    ElMessage.error(getRequestErrorMessage(error, '加载文件预览失败'))
+    globalNotifications.error(getRequestErrorMessage(error, '加载文件预览失败'))
     linkForm.preview_url = ''
   }
 }
@@ -853,7 +855,7 @@ const downloadExistingFile = async () => {
   try {
     await unifiedApi.download(`/guide/links/${editingLink.value.id}/download`, linkForm.file_name || '导航文件')
   } catch (error) {
-    ElMessage.error(getRequestErrorMessage(error, '下载导航文件失败'))
+    globalNotifications.error(getRequestErrorMessage(error, '下载导航文件失败'))
   }
 }
 
@@ -871,9 +873,9 @@ const handleFileChange = async (event: Event) => {
     linkForm.file_mime = response.data?.mime || file.type || 'application/octet-stream'
     if (response.data?.url) pendingGuideUploadUrls.value.push(response.data.url)
     linkForm.preview_url = isImageFile(linkForm.file_mime) ? URL.createObjectURL(file) : ''
-    ElMessage.success('文件上传成功')
+    globalNotifications.success('文件上传成功')
   } catch (error) {
-    ElMessage.error(getRequestErrorMessage(error, '上传导航文件失败'))
+    globalNotifications.error(getRequestErrorMessage(error, '上传导航文件失败'))
   }
 }
 
@@ -888,7 +890,7 @@ const removeAnnouncement = async (item: GuideAnnouncement) => {
     await guideApi.deleteAnnouncement(item.id)
     await loadData()
   } catch (error) {
-    ElMessage.error(getRequestErrorMessage(error, '删除公告失败'))
+    globalNotifications.error(getRequestErrorMessage(error, '删除公告失败'))
   }
 }
 const removeCategory = async (item: GuideCategory) => {
@@ -897,7 +899,7 @@ const removeCategory = async (item: GuideCategory) => {
     await guideApi.deleteCategory(item.id)
     await loadData()
   } catch (error) {
-    ElMessage.error(getRequestErrorMessage(error, '删除分类失败'))
+    globalNotifications.error(getRequestErrorMessage(error, '删除分类失败'))
   }
 }
 const removeLink = async (item: GuideLink) => {
@@ -906,7 +908,7 @@ const removeLink = async (item: GuideLink) => {
     await guideApi.deleteLink(item.id)
     await loadData()
   } catch (error) {
-    ElMessage.error(getRequestErrorMessage(error, '删除导航失败'))
+    globalNotifications.error(getRequestErrorMessage(error, '删除导航失败'))
   }
 }
 

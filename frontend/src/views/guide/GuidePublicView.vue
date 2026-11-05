@@ -274,13 +274,16 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import { ElMessage } from 'element-plus'
+
 import MobileDialog from '@/components/MobileDialog.vue'
 import { guideApi } from '@/api/guide'
 import { extractBlobResponse, unifiedApi } from '@/utils/unified-api'
 import { getRequestErrorMessage } from '@/utils/api-response'
 import { logger } from '@/utils/logger'
 import type { GuideAnnouncement, GuideCategory, GuideLink, GuideSettings, GuideUnlockResponse } from '@/types/guide'
+import { useNotification } from '@/composables/useNotification'
+const globalNotifications = useNotification()
+
 
 const announcements = ref<GuideAnnouncement[]>([])
 const categories = ref<GuideCategory[]>([])
@@ -348,13 +351,13 @@ const addWechat = async () => {
   if (!wechat) return
   try {
     await navigator.clipboard.writeText(wechat)
-    ElMessage.success('微信号已复制，正在打开微信...')
+    globalNotifications.success('微信号已复制，正在打开微信...')
     window.setTimeout(() => {
       window.location.href = `weixin://dl/chat?${encodeURIComponent(wechat)}`
     }, 1000)
   } catch (error) {
     logger.warn('复制客服微信失败:', error)
-    ElMessage.info(`请添加客服微信：${wechat}`)
+    globalNotifications.info(`请添加客服微信：${wechat}`)
   }
 }
 
@@ -368,7 +371,7 @@ const openUnlock = (category: GuideCategory) => {
 
 const submitUnlock = async () => {
   if (!selectedCategory.value || !password.value.trim()) {
-    ElMessage.warning('请输入访问密码')
+    globalNotifications.warning('请输入访问密码')
     return
   }
   unlocking.value = true
@@ -383,9 +386,9 @@ const submitUnlock = async () => {
       : (unlockedResponse.data as GuideUnlockResponse | undefined)?.category
     if (unlocked) replaceCategory(unlocked)
     unlockVisible.value = false
-    ElMessage.success('分类已解锁')
+    globalNotifications.success('分类已解锁')
   } catch (error) {
-    ElMessage.error(getRequestErrorMessage(error, '分类解锁失败'))
+    globalNotifications.error(getRequestErrorMessage(error, '分类解锁失败'))
   } finally {
     unlocking.value = false
   }
@@ -425,7 +428,7 @@ const openImagePreview = async (link: GuideLink) => {
     previewFile.value = link
     filePreviewVisible.value = true
   } catch (error) {
-    ElMessage.error(getRequestErrorMessage(error, '图片加载失败，请刷新页面后重试'))
+    globalNotifications.error(getRequestErrorMessage(error, '图片加载失败，请刷新页面后重试'))
   }
 }
 
@@ -436,7 +439,7 @@ const downloadGuideFile = (link: GuideLink) => {
     ? { 'X-Guide-File-Expires': String(link.file_expires_at), 'X-Guide-File-Signature': link.file_signature }
     : undefined
   void unifiedApi.download(downloadPath, link.file_name || link.title, headers ? { headers } : undefined)
-    .catch(error => ElMessage.error(getRequestErrorMessage(error, '文件下载失败，请稍后重试')))
+    .catch(error => globalNotifications.error(getRequestErrorMessage(error, '文件下载失败，请稍后重试')))
 }
 
 const handleLinkClick = (event: MouseEvent, link: GuideLink) => {
@@ -450,7 +453,7 @@ const handleLinkClick = (event: MouseEvent, link: GuideLink) => {
 }
 
 onMounted(() => {
-  loadGuide().catch(() => ElMessage.error('导航数据加载失败'))
+  loadGuide().catch(() => globalNotifications.error('导航数据加载失败'))
 })
 
 onBeforeUnmount(() => {

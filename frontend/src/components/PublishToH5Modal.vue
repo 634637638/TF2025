@@ -450,7 +450,7 @@
 <script setup lang="ts">
 import { TIME_FORMATS } from '@/utils/time'
 import { ref, computed, watch } from 'vue'
-import { ElMessage } from 'element-plus'
+
 import type { CheckboxValueType, UploadFile, UploadFiles, UploadRequestOptions } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import { unifiedApi as api } from '@/utils/unified-api'
@@ -492,6 +492,9 @@ import type {
   UploadResult,
   UploadedMediaItem
 } from './publish-to-h5/types'
+import { useNotification } from '@/composables/useNotification'
+const globalNotifications = useNotification()
+
 
 interface Props extends ModelValueProps {
   phoneId: number | null
@@ -723,7 +726,7 @@ const loadPhoneData = async () => {
     }
 
     if (isNewPhone.value) {
-      ElMessage.info('全新机使用模板配置，只需设置销售价格和上传商品图片')
+      globalNotifications.info('全新机使用模板配置，只需设置销售价格和上传商品图片')
     }
 
     // 加载验机信息（仅二手商品）
@@ -816,7 +819,7 @@ const convertHeicToJpeg = async (file: File, index: number, total: number): Prom
   try {
     // 只在第一张时显示提示
     if (index === 0) {
-      ElMessage.info(`${total}张照片处理中...`)
+      globalNotifications.info(`${total}张照片处理中...`)
     }
 
     // 第一步：使用 heic2any 将 HEIC 转换为 JPEG Blob
@@ -875,13 +878,13 @@ const convertHeicToJpeg = async (file: File, index: number, total: number): Prom
 
     // 最后一张时显示完成
     if (index === total - 1) {
-      ElMessage.success(`${total}张照片预览完成`)
+      globalNotifications.success(`${total}张照片预览完成`)
     }
 
     return convertedFile
   } catch (error) {
     logger.error(`[HEIC 转换] 转换失败: ${file.name}`, error)
-    ElMessage.error(`${file.name} 处理失败`)
+    globalNotifications.error(`${file.name} 处理失败`)
     throw error
   }
 }
@@ -920,7 +923,7 @@ const handleFileChange = async (_file: UploadFile, fileList: UploadFiles) => {
       if (f.raw) {
         const validationMessage = validatePublishMediaFile(f.raw)
         if (validationMessage) {
-          ElMessage.error(validationMessage)
+          globalNotifications.error(validationMessage)
           return false
         }
       }
@@ -946,7 +949,7 @@ const handleFileChange = async (_file: UploadFile, fileList: UploadFiles) => {
             .then(converted => buildConvertedPublishFile(f, converted))
             .catch((error): null => {
               logger.error(`[PDF 转换] 处理失败: ${f.name}`, error)
-              ElMessage.error(`${f.name} PDF转换失败`)
+              globalNotifications.error(`${f.name} PDF转换失败`)
               return null
             })
         )
@@ -1074,11 +1077,11 @@ const uploadPendingFiles = async () => {
           pendingFiles.value.splice(index, 1)
         }
       } else {
-        ElMessage.error(result.message || '上传失败')
+        globalNotifications.error(result.message || '上传失败')
       }
     } catch (error) {
       logger.error('上传失败:', error)
-      ElMessage.error('上传失败，请重试')
+      globalNotifications.error('上传失败，请重试')
     }
   }
 
@@ -1088,7 +1091,7 @@ const uploadPendingFiles = async () => {
   await loadPhoneImages()
 
   if (pendingFiles.value.length === 0) {
-    ElMessage.success('所有文件上传成功')
+    globalNotifications.success('所有文件上传成功')
   }
 }
 
@@ -1096,7 +1099,7 @@ const uploadPendingFiles = async () => {
 const beforeMediaUpload = (file: File) => {
   const validationMessage = validatePublishMediaFile(file)
   if (validationMessage) {
-    ElMessage.error(validationMessage)
+    globalNotifications.error(validationMessage)
     return false
   }
 
@@ -1121,16 +1124,16 @@ const handleMediaUpload = async (options: UploadRequestOptions): Promise<void> =
 
     if (result.success) {
       trackUploadedMedia(result)
-      ElMessage.success(isVideo ? '视频上传成功' : '图片上传成功')
+      globalNotifications.success(isVideo ? '视频上传成功' : '图片上传成功')
       onSuccess(result)
       await loadPhoneImages()
     } else {
-      ElMessage.error(result.message || '上传失败')
+      globalNotifications.error(result.message || '上传失败')
       onError(createUploadError(result.message || '上传失败'))
     }
   } catch (error) {
     logger.error('上传失败:', error)
-    ElMessage.error('上传失败，请重试')
+    globalNotifications.error('上传失败，请重试')
     onError(createUploadError(error instanceof Error ? error.message : '上传失败，请重试'))
   } finally {
     uploading.value = false
@@ -1156,10 +1159,10 @@ const setPrimaryImage = async (image: UploadedMediaItem) => {
   try {
     await api.put(`/phones/${props.phoneId}/images/${image.id}/primary`)
     await loadPhoneImages()
-    ElMessage.success('已设置为主图')
+    globalNotifications.success('已设置为主图')
   } catch (error) {
     logger.error('设置主图失败:', error)
-    ElMessage.error('设置失败')
+    globalNotifications.error('设置失败')
   }
 }
 
@@ -1169,10 +1172,10 @@ const deleteImage = async (image: UploadedMediaItem) => {
     await api.delete(`/phones/${props.phoneId}/images/${image.id}`)
     uploadedMediaIds.value = uploadedMediaIds.value.filter(id => id !== image.id)
     await loadPhoneImages()
-    ElMessage.success('删除成功')
+    globalNotifications.success('删除成功')
   } catch (error) {
     logger.error('删除图片失败:', error)
-    ElMessage.error('删除失败')
+    globalNotifications.error('删除失败')
   }
 }
 
@@ -1185,11 +1188,11 @@ const deleteVideo = async () => {
       await api.delete(`/phones/${props.phoneId}/images/${video.id}`)
       productVideo.value = ''
       await loadPhoneImages()
-      ElMessage.success('视频删除成功')
+      globalNotifications.success('视频删除成功')
     }
   } catch (error) {
     logger.error('删除视频失败:', error)
-    ElMessage.error('删除失败')
+    globalNotifications.error('删除失败')
   }
 }
 
@@ -1204,10 +1207,10 @@ const handleImageDragEnd = async () => {
     // 调用后端API更新排序
     await api.put(`/phones/${props.phoneId}/images/reorder`, { imageIds })
 
-    ElMessage.success('图片排序已更新')
+    globalNotifications.success('图片排序已更新')
   } catch (error) {
     logger.error('更新图片排序失败:', error)
-    ElMessage.error('排序更新失败')
+    globalNotifications.error('排序更新失败')
     // 重新加载以恢复原顺序
     await loadPhoneImages()
   }
@@ -1219,7 +1222,7 @@ const handleSave = async () => {
   if (!props.phoneId) return
 
   if (!hasPublishMediaFiles(images.value, pendingFiles.value)) {
-    ElMessage.warning('请至少上传一张商品图片或视频')
+    globalNotifications.warning('请至少上传一张商品图片或视频')
     return
   }
 
@@ -1227,12 +1230,12 @@ const handleSave = async () => {
   try {
     // 先上传待上传的文件
     if (pendingFiles.value.length > 0) {
-      ElMessage.info('正在上传文件...')
+      globalNotifications.info('正在上传文件...')
       await uploadPendingFiles()
 
       // 如果上传后还有失败的文件，提示用户
       if (pendingFiles.value.length > 0) {
-        ElMessage.error('部分文件上传失败，请重试')
+        globalNotifications.error('部分文件上传失败，请重试')
         saving.value = false
         return
       }
@@ -1243,12 +1246,12 @@ const handleSave = async () => {
       await api.post(`/phones/${props.phoneId}/inspection`, form.value)
     }
     uploadedMediaIds.value = []
-    ElMessage.success('保存成功')
+    globalNotifications.success('保存成功')
     emit('success')
     handleClose()
   } catch (error) {
     logger.error('保存失败:', error)
-    ElMessage.error('保存失败，请重试')
+    globalNotifications.error('保存失败，请重试')
   } finally {
     saving.value = false
   }

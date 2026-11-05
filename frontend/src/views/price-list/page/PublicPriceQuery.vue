@@ -255,12 +255,10 @@
     <div class="results-section">
       <div class="container">
         <!-- 加载状态 -->
-        <div
+        <SectionLoading
           v-if="loading || (showUsedPhonesOnly && usedModelsLoading)"
-          class="loading-container"
-        >
-          <InlineLoading :text="showUsedPhonesOnly ? '正在查询二手机库存...' : '正在查询价格...'" />
-        </div>
+          :text="showUsedPhonesOnly ? '正在查询二手机库存...' : '正在查询价格...'"
+        />
 
         <!-- 空状态 -->
         <DataEmptyState
@@ -475,9 +473,9 @@ import { WarningFilled, Box, Grid, Download } from '@element-plus/icons-vue'
 import { getAllPrices, getInventoryUsedModels, searchPrices } from '@/api/price-list'
 import { PublicPriceHeader } from '@/components/base'
 import PublicSearchBox from '@/components/search/PublicSearchBox.vue'
-import InlineLoading from '@/components/InlineLoading.vue'
+import SectionLoading from '@/components/SectionLoading.vue'
 import { unifiedApi } from '@/utils/unified-api'
-import { ElMessage } from 'element-plus'
+
 import { TimeUtil } from '@/utils/time'
 import { useLoadingState } from '@/composables'
 import { useMobile } from '@/composables/mobile'
@@ -487,6 +485,9 @@ import { createShareImageFile } from '@/utils/share-image'
 import { useSiteSettingsStore } from '@/stores/siteSettings'
 import { parsePublicPriceContacts, getDefaultPublicPriceContact, formatPublicPriceWatermark } from '@/utils/publicPriceSettings'
 import { getRequestErrorStatus } from '@/utils/api-response'
+import { useNotification } from '@/composables/useNotification'
+const globalNotifications = useNotification()
+
 
 const InventoryResultDialog = defineAsyncComponent(() => import('@/components/InventoryResultDialog.vue'))
 const IMAGE_CAPTURE_WIDTH = 430
@@ -630,7 +631,7 @@ const loadUsedPhoneModels = async (keyword = '') => {
       }))
     } else {
       usedPhoneModels.value = []
-      ElMessage.error(response.message || '二手机库存加载失败')
+      globalNotifications.error(response.message || '二手机库存加载失败')
     }
   } catch (error: unknown) {
     usedPhoneModels.value = []
@@ -639,7 +640,7 @@ const loadUsedPhoneModels = async (keyword = '') => {
       resetInventoryAccess(true)
     } else {
       logger.error('加载在库二手机型号失败', error)
-      ElMessage.error('二手机库存加载失败，请稍后重试')
+      globalNotifications.error('二手机库存加载失败，请稍后重试')
     }
   } finally {
     usedModelsLoading.value = false
@@ -692,7 +693,7 @@ const loadAllData = async () => {
       allResults.value = []
       applyInventoryFilter()
       hasSearched.value = true
-      ElMessage.error(res.message || '报价数据加载失败')
+      globalNotifications.error(res.message || '报价数据加载失败')
     }
   } catch (error) {
     if (requestId !== activePriceRequestId) return
@@ -700,7 +701,7 @@ const loadAllData = async () => {
     allResults.value = []
     applyInventoryFilter()
     hasSearched.value = true
-    ElMessage.error('报价数据加载失败，请稍后重试')
+    globalNotifications.error('报价数据加载失败，请稍后重试')
   } finally {
     if (requestId === activePriceRequestId) loading.value = false
   }
@@ -732,7 +733,7 @@ const handleSearchInput = async () => {
 
     if (verified === null) return
 
-    ElMessage.warning({
+    globalNotifications.warning({
       message: keyword.length < 2 ? '搜索关键词至少需要 2 个字符' : '未检索到相关数据',
       duration: 2000,
       offset: 60
@@ -747,7 +748,7 @@ const handleSearch = async (notifyNoResults = true): Promise<boolean | null> => 
   const keyword = searchKeyword.value.trim()
   if (showUsedPhonesOnly.value) {
     if (keyword.length === 1) {
-      if (notifyNoResults) ElMessage.warning('搜索关键词至少需要 2 个字符')
+      if (notifyNoResults) globalNotifications.warning('搜索关键词至少需要 2 个字符')
       return false
     }
     await loadUsedPhoneModels(keyword)
@@ -760,7 +761,7 @@ const handleSearch = async (notifyNoResults = true): Promise<boolean | null> => 
   }
 
   if (keyword.length < 2) {
-    if (notifyNoResults) ElMessage.warning('搜索关键词至少需要 2 个字符')
+    if (notifyNoResults) globalNotifications.warning('搜索关键词至少需要 2 个字符')
     return false
   }
 
@@ -778,7 +779,7 @@ const handleSearch = async (notifyNoResults = true): Promise<boolean | null> => 
       // 如果没有搜索结果，显示友好提示（和正常搜索行为一致）
       if (searchResults.value.length === 0) {
         if (notifyNoResults) {
-          ElMessage.warning({
+          globalNotifications.warning({
             message: '未检索到相关数据',
             duration: 2000,
             offset: 60
@@ -791,7 +792,7 @@ const handleSearch = async (notifyNoResults = true): Promise<boolean | null> => 
       allResults.value = []
       applyInventoryFilter()
       hasSearched.value = true
-      ElMessage.error(res.message || '搜索失败')
+      globalNotifications.error(res.message || '搜索失败')
       return null
     }
   } catch (error) {
@@ -800,7 +801,7 @@ const handleSearch = async (notifyNoResults = true): Promise<boolean | null> => 
     allResults.value = []
     applyInventoryFilter()
     hasSearched.value = true
-    ElMessage.error('搜索失败，请稍后重试')
+    globalNotifications.error('搜索失败，请稍后重试')
     return null
   } finally {
     if (requestId === activePriceRequestId) loading.value = false
@@ -820,7 +821,7 @@ const resetInventoryAccess = (showExpiredMessage = false) => {
   usedPhoneModels.value = []
   showInventoryResult.value = false
   applyInventoryFilter()
-  if (showExpiredMessage) ElMessage.info('在库查询验证已失效，请重新验证')
+  if (showExpiredMessage) globalNotifications.info('在库查询验证已失效，请重新验证')
 }
 
 // 验证在库查询密码（仅使用后端验证）
@@ -859,7 +860,7 @@ const verifyInventoryPassword = async (password: string): Promise<boolean | null
       : {}
     const status = getRequestErrorStatus(error) || Number(errorRecord.status || 0)
     if (status === 429) {
-      ElMessage.warning(typeof responseData.message === 'string' ? responseData.message : '密码验证尝试过多，请稍后再试')
+      globalNotifications.warning(typeof responseData.message === 'string' ? responseData.message : '密码验证尝试过多，请稍后再试')
       return null
     }
 
@@ -955,7 +956,7 @@ const syncIOSImageUrl = () => {
 const toggleIOSImageMode = () => {
   iosUseDataImage.value = !iosUseDataImage.value
   syncIOSImageUrl()
-  ElMessage.info(iosUseDataImage.value ? '已切换为兼容模式，请长按图片保存' : '已切换为新系统模式，请长按图片保存')
+  globalNotifications.info(iosUseDataImage.value ? '已切换为兼容模式，请长按图片保存' : '已切换为新系统模式，请长按图片保存')
 }
 
 // 关闭 iOS 图片弹窗
@@ -974,7 +975,7 @@ const shareIOSImage = async () => {
   if (isSharingImage.value) return
   const file = iosImageFile.value
   if (!file || !navigator.share) {
-    ElMessage.warning('当前浏览器不支持系统分享，请长按图片保存')
+    globalNotifications.warning('当前浏览器不支持系统分享，请长按图片保存')
     return
   }
 
@@ -982,13 +983,13 @@ const shareIOSImage = async () => {
   try {
     const shareData = { files: [file] }
     if (navigator.canShare && !navigator.canShare(shareData)) {
-      ElMessage.warning('当前浏览器不支持系统分享，请长按图片保存')
+      globalNotifications.warning('当前浏览器不支持系统分享，请长按图片保存')
       return
     }
     await navigator.share(shareData)
   } catch (error) {
     if ((error as Error).name !== 'AbortError') {
-      ElMessage.warning('系统分享未成功，请长按图片保存')
+      globalNotifications.warning('系统分享未成功，请长按图片保存')
     }
   } finally {
     isSharingImage.value = false
@@ -1019,7 +1020,7 @@ const saveImageToGallery = async (canvas: HTMLCanvasElement) => {
           iosUseDataImage.value = shouldUseDataImageForIOS()
           syncIOSImageUrl()
           showIOSImageModal.value = true
-          ElMessage.success({
+          globalNotifications.success({
             message: '图片已生成，请长按保存到相册',
             duration: 3000
           })
@@ -1040,7 +1041,7 @@ const saveImageToGallery = async (canvas: HTMLCanvasElement) => {
       document.body.removeChild(link)
       URL.revokeObjectURL(url)
       // 下载成功提示
-      ElMessage.success({
+      globalNotifications.success({
         message: '图片已下载',
         duration: 2000
       })
@@ -1210,7 +1211,7 @@ const downloadAsImage = async () => {
 
   const element = document.getElementById('price-results')
   if (!element) {
-    ElMessage.error('当前没有可生成的报价内容')
+    globalNotifications.error('当前没有可生成的报价内容')
     return
   }
 
@@ -1312,7 +1313,7 @@ const downloadAsImage = async () => {
     await saveImageToGallery(canvas)
   } catch (error) {
     logger.error('生成图片失败', error)
-    ElMessage.error('生成图片失败，请重试')
+    globalNotifications.error('生成图片失败，请重试')
   } finally {
     if (watermarkEl) watermarkEl.style.display = 'none'
     element.classList.remove('generating-image')

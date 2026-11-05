@@ -82,14 +82,10 @@
       </div>
 
       <!-- 加载状态 -->
-      <div
+      <SectionLoading
         v-if="loading"
-        class="loading-state"
-      >
-        <div class="loading-content">
-          <InlineLoading text="正在加载图标..." />
-        </div>
-      </div>
+        text="正在加载图标..."
+      />
 
       <!-- 图标网格 -->
       <div
@@ -171,11 +167,13 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { unifiedApi } from '@/utils/unified-api'
-import { ElMessage } from 'element-plus'
-import InlineLoading from '@/components/InlineLoading.vue'
+
+import SectionLoading from '@/components/SectionLoading.vue'
 import IconRenderer from '@/components/IconRenderer.vue'
 import { extractIconifyName, isIconifyIcon } from '@/utils/iconify'
 import { useNotification } from '@/composables/useNotification'
+const globalNotifications = useNotification()
+
 
 const ICON_PICKER_FALLBACK_DELAY = 1500
 
@@ -601,11 +599,11 @@ const deleteLocalIcon = async (icon) => {
     const response = await unifiedApi.delete(`/icons/${icon.id}`)
     if (response?.success) {
       removeIconFromCache(icon.id)
-      ElMessage.success(response.message || '图标已删除')
+      globalNotifications.success(response.message || '图标已删除')
     }
   } catch (error) {
     const message = error?.response?.data?.message || error?.message || '删除图标失败'
-    ElMessage.warning(message)
+    globalNotifications.warning(message)
   }
 }
 
@@ -1037,25 +1035,6 @@ watch([searchQuery, selectedCategory], () => {
   color: var(--tf-color-gray-bootstrap-700);
   min-width: 60px;
   text-align: center;
-}
-
-/* 加载状态样式 */
-.loading-state {
-  padding: 40px;
-  text-align: center;
-  color: var(--tf-color-muted);
-}
-
-.loading-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-}
-
-.loading-content i {
-  font-size: var(--tf-type-scale-32);
-  color: var(--tf-color-indigo-brand);
 }
 
 /* 滚动条样式 */

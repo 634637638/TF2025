@@ -55,7 +55,7 @@
               >
                 <i class="fas fa-shopping-cart" />
                 <span class="btn-text-desktop">销售出库</span>
-                <span class="btn-text-mobile">库存</span>
+                <span class="btn-text-mobile">销售</span>
               </el-button>
               <el-button
                 type="info"
@@ -64,7 +64,7 @@
                 @click="handleRefresh"
               >
                 <i class="fas fa-sync-alt" />
-                <span>{{ refreshing ? '刷新中...' : '刷新' }}</span>
+                <span>刷新</span>
               </el-button>
             </template>
           </PageHeader>
@@ -567,12 +567,11 @@
           <p>{{ selectedPhoneInfo?.color }} | {{ selectedPhoneInfo?.memory }} | IMEI: {{ selectedPhoneInfo?.imei }}</p>
         </div>
 
-        <div
+        <SectionLoading
           v-if="loadingImages"
-          class="loading-images"
-        >
-          <InlineLoading text="加载素材中..." />
-        </div>
+          text="加载素材中..."
+          size="compact"
+        />
 
         <div
           v-else-if="productImages.length === 0"
@@ -707,7 +706,7 @@
 import { confirmAction, alertAction } from '@/utils/message-box'
 import { ref, reactive, computed, onMounted, onUnmounted, watch, nextTick, defineAsyncComponent } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+
 import { useAuthStore } from '@/stores/auth'
 import { useNotification } from '@/composables/useNotification'
 import { useImportExport } from '@/composables/useImportExport'
@@ -728,7 +727,7 @@ import {
 import { canAccessRoutePath } from '@/constants/routePermissions'
 import draggable from 'vuedraggable'
 import Pagination from '../../components/Pagination.vue'
-import InlineLoading from '@/components/InlineLoading.vue'
+import SectionLoading from '@/components/SectionLoading.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import DateRangePicker from '@/components/DateRangePicker.vue'
 import { PageHeader, PermissionGate } from '@/components/base'
@@ -746,7 +745,6 @@ import { MEDIA_UPLOAD_ACCEPT, prepareMediaFile, validateMediaFile } from '@/util
 import { useMobile } from '@/composables/mobile'
 
 // 定义消息提示函数
-const message = ElMessage
 const QuickSaleModal = defineAsyncComponent(() => import('@/components/query/QuickSaleModal.vue'))
 const QueryEditModal = defineAsyncComponent(() => import('@/components/query/QueryEditModal.vue'))
 const QueryDetailDialog = defineAsyncComponent(() => import('@/components/query/QueryDetailDialog.vue'))
@@ -758,6 +756,8 @@ import { fieldPermissions, shouldShowActionColumn } from '../../composables/useF
 // 时间处理工具
 import { TimeUtil, TIME_FORMATS } from '../../utils/time'
 import type { QueryItem, QueryOperationOptions, QueryParams, ReturnDeviceInfo, QueryStatistics as Statistics, QueryOptions as Options, SoldProductImage, UserOption } from '@/types'
+const globalNotifications = useNotification()
+
 
 // 使用 stores 和 composables
 const router = useRouter()
@@ -770,7 +770,7 @@ const { exportFile, buildDateFilename, sanitizeParams } = useImportExport()
 
 const guardedPush = (target: string) => {
   if (!canAccessRoutePath(target, authStore)) {
-    message.warning('您没有访问此页面的权限')
+    globalNotifications.warning('您没有访问此页面的权限')
     return
   }
 
@@ -1398,7 +1398,7 @@ const loadQueryData = async (force = false, showLoadingState = true) => {
       })
 
     } else {
-      ElMessage.error(queryResponse.message || '加载数据失败')
+      globalNotifications.error(queryResponse.message || '加载数据失败')
       queryData.value = []
       setTotal(0)
     }
@@ -1414,7 +1414,7 @@ const loadQueryData = async (force = false, showLoadingState = true) => {
       return
     }
 
-    ElMessage.error('加载数据失败')
+    globalNotifications.error('加载数据失败')
     queryData.value = []
     setTotal(0)
   } finally {
@@ -1735,7 +1735,7 @@ const exportToExcel = async () => {
     errorMessage: '导出失败',
     onError: (error) => {
       logger.error('导出Excel失败:', error)
-      message.error('导出失败')
+      globalNotifications.error('导出失败')
     }
   })
 }
@@ -1747,7 +1747,7 @@ const goToStockIn = () => {
     guardedPush('/inventory?openStockIn=true')
   } catch (error) {
     logger.error('跳转到采购入库页面失败:', error)
-    message.error('跳转失败，请手动访问采购入库页面')
+    globalNotifications.error('跳转失败，请手动访问采购入库页面')
   }
 }
 
@@ -1758,7 +1758,7 @@ const goToSales = () => {
     guardedPush('/sales')
   } catch (error) {
     logger.error('跳转到销售页面失败:', error)
-    message.error('跳转失败，请手动访问销售页面')
+    globalNotifications.error('跳转失败，请手动访问销售页面')
   }
 }
 
@@ -1903,7 +1903,7 @@ const handleUploadImage = async (event: Event) => {
   if (!files || files.length === 0) return
 
   if (!selectedPhoneId.value) {
-    ElMessage.error('无法获取手机ID')
+    globalNotifications.error('无法获取手机ID')
     return
   }
 
@@ -1913,7 +1913,7 @@ const handleUploadImage = async (event: Event) => {
     for (const file of Array.from(files)) {
       const validationMessage = validateMediaFile(file)
       if (validationMessage) {
-        ElMessage.warning(`${file.name}：${validationMessage}`)
+        globalNotifications.warning(`${file.name}：${validationMessage}`)
         continue
       }
 
@@ -1932,7 +1932,7 @@ const handleUploadImage = async (event: Event) => {
       // 上传接口已立即写入图片记录，不作为未保存的临时文件清理。
     }
 
-    ElMessage.success('图片/视频上传成功，已保存')
+    globalNotifications.success('图片/视频上传成功，已保存')
 
     // 重新加载图片列表
     const response = await unifiedApi.get(`/phones/${selectedPhoneId.value}/images`)
@@ -1942,7 +1942,7 @@ const handleUploadImage = async (event: Event) => {
     await triggerLoadQueryData()
   } catch (error) {
     logger.error('上传图片失败:', error)
-    ElMessage.error('上传图片失败')
+    globalNotifications.error('上传图片失败')
   } finally {
     uploadingImage.value = false
     // 清空input，允许重复上传同一文件
@@ -1964,7 +1964,7 @@ const deleteSingleImage = async (image: SoldProductImage) => {
     )
 
     await unifiedApi.delete(`/phones/${selectedPhoneId.value}/images/${image.id}`)
-    ElMessage.success('删除成功')
+    globalNotifications.success('删除成功')
 
     // 重新加载图片列表
     if (selectedPhoneId.value) {
@@ -1977,7 +1977,7 @@ const deleteSingleImage = async (image: SoldProductImage) => {
   } catch (error: unknown) {
     if (error !== 'cancel') {
       logger.error('删除图片失败:', error)
-      ElMessage.error('删除图片失败')
+      globalNotifications.error('删除图片失败')
     }
   }
 }
@@ -1988,14 +1988,14 @@ const setPrimaryImage = async (image: SoldProductImage) => {
 
   try {
     await unifiedApi.put(`/phones/${selectedPhoneId.value}/images/${image.id}/primary`)
-    ElMessage.success('设置主图成功')
+    globalNotifications.success('设置主图成功')
 
     // 重新加载图片列表
     const response = await unifiedApi.get(`/phones/${selectedPhoneId.value}/images`)
     productImages.value = response.data || []
   } catch (error) {
     logger.error('设置主图失败:', error)
-    ElMessage.error('设置主图失败')
+    globalNotifications.error('设置主图失败')
   }
 }
 
@@ -2008,7 +2008,7 @@ const handleImageDragEnd = async () => {
     await unifiedApi.put(`/phones/${selectedPhoneId.value}/images/reorder`, { imageIds: image_ids })
   } catch (error) {
     logger.error('保存图片排序失败:', error)
-    ElMessage.error('保存排序失败')
+    globalNotifications.error('保存排序失败')
     // 重新加载以恢复正确顺序
     const response = await unifiedApi.get(`/phones/${selectedPhoneId.value}/images`)
     productImages.value = response.data || []
@@ -2031,7 +2031,7 @@ const deleteAllImages = async () => {
     )
 
     await unifiedApi.delete(`/shop/products/${selectedPhoneId.value}/images`)
-    ElMessage.success('删除成功')
+    globalNotifications.success('删除成功')
 
     // 清空图片列表
     productImages.value = []
@@ -2041,7 +2041,7 @@ const deleteAllImages = async () => {
   } catch (error: unknown) {
     if (error !== 'cancel') {
       logger.error('删除图片失败:', error)
-      ElMessage.error('删除图片失败')
+      globalNotifications.error('删除图片失败')
     }
   }
 }
@@ -2128,7 +2128,7 @@ const handleRemarkDoubleClick = (event: MouseEvent, item: QueryItem) => {
     item.基本信息?.remarks || item.销售信息?.sale_remarks || ''
   ).trim()
   if (!remarks) {
-    ElMessage.info('暂无备注')
+    globalNotifications.info('暂无备注')
     return
   }
 
@@ -2172,7 +2172,7 @@ const openEditModal = (item: QueryItem) => {
 
   const phoneId = Number(item.基本信息?.phone_id || 0)
   if (!phoneId) {
-    message.error('无效的手机ID')
+    globalNotifications.error('无效的手机ID')
     return
   }
 
@@ -2253,7 +2253,7 @@ const handleMediaDoubleClick = async (item: QueryItem) => {
 
   const phoneId = basicInfo.phone_id
   if (!phoneId) {
-    ElMessage.error('无法获取手机ID')
+    globalNotifications.error('无法获取手机ID')
     return
   }
 
@@ -2273,7 +2273,7 @@ const handleMediaDoubleClick = async (item: QueryItem) => {
     productImages.value = response.data || []
   } catch (error) {
     logger.error('加载图片失败:', error)
-    ElMessage.error('加载图片失败')
+    globalNotifications.error('加载图片失败')
   } finally {
     loadingImages.value = false
   }
@@ -2434,11 +2434,11 @@ const performDelete = async (item: QueryItem) => {
       removeQueryItemLocally(phoneId)
       refreshQueryAfterDelete()
     } else {
-      message.error(response.message || '删除失败')
+      globalNotifications.error(response.message || '删除失败')
     }
   } catch (err) {
     logger.error('删除失败:', err)
-    message.error('删除失败')
+    globalNotifications.error('删除失败')
   }
 }
 
@@ -2461,12 +2461,12 @@ const handleAddItemToReceipt = (item: SearchPhoneResult) => {
   // 检查是否已存在
   const exists = receiptItems.value.some(i => i.phone_id === receiptItem.phone_id)
   if (exists) {
-    message.warning('该商品已在单据中')
+    globalNotifications.warning('该商品已在单据中')
     return
   }
 
   receiptItems.value.push(receiptItem)
-  message.success('商品已添加到单据')
+  globalNotifications.success('商品已添加到单据')
 }
 
 // 页面挂载

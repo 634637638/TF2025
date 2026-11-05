@@ -1064,7 +1064,7 @@
 import { TIME_FORMATS } from '@/utils/time'
 import { confirmAction } from '@/utils/message-box'
 import { computed, ref, reactive, onMounted, onUnmounted, onActivated, inject, watch } from 'vue'
-import { ElMessage } from 'element-plus'
+
 import { Refresh } from '@element-plus/icons-vue'
 import { PermissionGate } from '@/components/base'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
@@ -1080,6 +1080,8 @@ import { getAdaptiveActionColumnWidth } from '@/utils/table-layout'
 import type { HeaderAction } from '@/types'
 import { formatAmount, formatDateTime as formatGlobalDateTime } from '@/utils/format'
 import { useNotification } from '@/composables/useNotification'
+const globalNotifications = useNotification()
+
 
 // 注入父组件提供的注册方法
 const registerHeaderActions = inject<(_actions: HeaderAction[]) => void>('registerHeaderActions')
@@ -1440,7 +1442,7 @@ const viewOrder = async (order: OrderRecord) => {
     showDetailDialog.value = true
   } catch (error: unknown) {
     logger.error('获取订单详情失败', error)
-    ElMessage.error('获取订单详情失败')
+    globalNotifications.error('获取订单详情失败')
   }
 }
 
@@ -1463,7 +1465,7 @@ const confirmOrder = async (order: OrderRecord) => {
       remarks: '后台审核通过'
     })
 
-    ElMessage.success('订单审核通过')
+    globalNotifications.success('订单审核通过')
     await loadOrders()
     await loadStatistics()
     showDetailDialog.value = false
@@ -1504,7 +1506,7 @@ const rejectOrder = async (order: OrderRecord) => {
       reason: value
     })
 
-    ElMessage.success('订单已拒绝')
+    globalNotifications.success('订单已拒绝')
     await loadOrders()
     await loadStatistics()
     showDetailDialog.value = false
@@ -1541,13 +1543,13 @@ const confirmShip = async () => {
 
   const order = currentOrder.value
   if (!order) {
-    ElMessage.warning('订单信息已失效，请重新打开')
+    globalNotifications.warning('订单信息已失效，请重新打开')
     showShipDialog.value = false
     return
   }
 
   if (!shipForm.shipping_company || !shipForm.tracking_number) {
-    ElMessage.warning('请填写物流公司和物流单号')
+    globalNotifications.warning('请填写物流公司和物流单号')
     return
   }
 
@@ -1555,7 +1557,7 @@ const confirmShip = async () => {
     submitting.value = true
     await api.put(`/sales-management/h5-orders/${order.id}/ship`, shipForm)
 
-    ElMessage.success('订单发货成功')
+    globalNotifications.success('订单发货成功')
     showShipDialog.value = false
     await loadOrders()
     await loadStatistics()
@@ -1591,7 +1593,7 @@ const confirmComplete = async () => {
 
   const order = currentOrder.value
   if (!order) {
-    ElMessage.warning('订单信息已失效，请重新打开')
+    globalNotifications.warning('订单信息已失效，请重新打开')
     showCompleteDialog.value = false
     return
   }
@@ -1602,7 +1604,7 @@ const confirmComplete = async () => {
       remarks: completeForm.remarks
     })
 
-    ElMessage.success('订单已完成')
+    globalNotifications.success('订单已完成')
     showCompleteDialog.value = false
     await loadOrders()
     await loadStatistics()
@@ -1638,13 +1640,13 @@ const confirmCancel = async () => {
 
   const order = currentOrder.value
   if (!order) {
-    ElMessage.warning('订单信息已失效，请重新打开')
+    globalNotifications.warning('订单信息已失效，请重新打开')
     showCancelDialog.value = false
     return
   }
 
   if (!cancelForm.reason) {
-    ElMessage.warning('请输入取消原因')
+    globalNotifications.warning('请输入取消原因')
     return
   }
 
@@ -1654,7 +1656,7 @@ const confirmCancel = async () => {
       reason: cancelForm.reason
     })
 
-    ElMessage.success('订单已取消')
+    globalNotifications.success('订单已取消')
     showCancelDialog.value = false
     await loadOrders()
     await loadStatistics()

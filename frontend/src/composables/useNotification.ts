@@ -153,25 +153,45 @@ export const useNotification = (options: UseNotificationOptions = {}) => {
   const notificationHistory = ref<Notification[]>([])
 
   // 便捷方法 - 内部实现
-  const baseSuccess = (message: string, options?: NotificationOptions) => {
+  const normalizeMessage = (value: string | NotificationOptions, options?: NotificationOptions) => {
+    if (typeof value === 'string') return { message: value, options }
+    return {
+      message: value.message || '',
+      options: { ...value, ...options }
+    }
+  }
+
+  const baseSuccess = (value: string | NotificationOptions, options?: NotificationOptions) => {
+    const normalized = normalizeMessage(value, options)
+    const message = normalized.message
+    options = normalized.options
     if (debounce && shouldIgnoreNotification(message, 'success')) return
     simpleNotification.success(message, options)
     if (history) addToHistory('success', '操作成功', message)
   }
 
-  const baseError = (message: string, options?: NotificationOptions) => {
+  const baseError = (value: string | NotificationOptions, options?: NotificationOptions) => {
+    const normalized = normalizeMessage(value, options)
+    const message = normalized.message
+    options = normalized.options
     if (debounce && shouldIgnoreNotification(message, 'error')) return
     simpleNotification.error(message, options)
     if (history) addToHistory('error', '操作失败', message)
   }
 
-  const baseWarning = (message: string, options?: NotificationOptions) => {
+  const baseWarning = (value: string | NotificationOptions, options?: NotificationOptions) => {
+    const normalized = normalizeMessage(value, options)
+    const message = normalized.message
+    options = normalized.options
     if (debounce && shouldIgnoreNotification(message, 'warning')) return
     simpleNotification.warning(message, options)
     if (history) addToHistory('warning', '警告', message)
   }
 
-  const baseInfo = (message: string, options?: NotificationOptions) => {
+  const baseInfo = (value: string | NotificationOptions, options?: NotificationOptions) => {
+    const normalized = normalizeMessage(value, options)
+    const message = normalized.message
+    options = normalized.options
     if (debounce && shouldIgnoreNotification(message, 'info')) return
     simpleNotification.info(message, options)
     if (history) addToHistory('info', '提示', message)

@@ -27,7 +27,6 @@
     }
   }
 
-  .loading-images,
   .no-images {
     display: flex;
     flex-direction: column;

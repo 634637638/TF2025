@@ -9,7 +9,7 @@ const { generateMemberNumber } = require('../utils/member-number')
 const ApiResponse = require('../utils/response')
 const {
   getCustomerPointsConfig,
-  calculateCustomerPointsForSale
+  reconcileCustomerPointsForSale
 } = require('../services/customer-points.service')
 const XLSX = require('xlsx')
 const log = require('../utils/log')
@@ -938,6 +938,7 @@ router.post('/phone', unifiedAuth, requireAnyPermission(['sales:sell', 'inventor
       // 3. 创建销售记录
       const totalAmount = finalizedPhonesToSell.reduce((sum, phone) => sum + (parseFloat(phone.sale_price) || 0), 0)
       let saleId = null
+      const createdSales = []
 
       // 单个销售时创建销售记录
       if (!isBatchSale) {
@@ -974,6 +975,7 @@ router.post('/phone', unifiedAuth, requireAnyPermission(['sales:sell', 'inventor
           salesInsertValues
         )
         saleId = salesResult.insertId
+        createdSales.push({ saleId, phone: finalizedPhonesToSell[0] })
       }
 
       // 4. 批量模式下为每个设备创建单独的销售记录
@@ -1005,12 +1007,13 @@ router.post('/phone', unifiedAuth, requireAnyPermission(['sales:sell', 'inventor
           salesInsertColumns.push('invoice_number', 'remarks', 'sale_time')
           salesInsertValues.push(invoiceNumber, phone.final_remarks, saleTimeStr)
 
-          await conn.execute(
+          const [salesResult] = await conn.execute(
             `INSERT INTO sales (
               ${salesInsertColumns.join(', ')}
             ) VALUES (${salesInsertColumns.map(() => '?').join(', ')})`,
             salesInsertValues
           )
+          createdSales.push({ saleId: salesResult.insertId, phone })
         }
       }
 
@@ -1133,20 +1136,21 @@ router.post('/phone', unifiedAuth, requireAnyPermission(['sales:sell', 'inventor
       }
 
       const pointsConfig = await getCustomerPointsConfig(conn)
-      const pointsAward = calculateCustomerPointsForSale({
-        phones: finalizedPhonesToSell,
-        saleType: isBatchSale ? 'batch' : sale_type,
-        config: pointsConfig
-      })
-
-      if (customerId && pointsAward.points > 0) {
-        await conn.execute(
-          `UPDATE customers
-           SET points = COALESCE(points, 0) + ?,
-               updated_at = NOW()
-           WHERE id = ?`,
-          [pointsAward.points, customerId]
-        )
+      let pointsEarned = 0
+      let pointsEligibleAmount = 0
+      for (const createdSale of createdSales) {
+        const pointsResult = await reconcileCustomerPointsForSale({
+          executor: conn,
+          saleId: createdSale.saleId,
+          customerId,
+          saleType: isBatchSale ? 'batch_item' : (sale_type || 'retail'),
+          salePrice: createdSale.phone.sale_price,
+          isNew: createdSale.phone.is_new,
+          config: pointsConfig,
+          initialize: true
+        })
+        pointsEarned += pointsResult.points
+        pointsEligibleAmount += pointsResult.eligibleAmount
       }
 
       await conn.commit()
@@ -1161,8 +1165,8 @@ router.post('/phone', unifiedAuth, requireAnyPermission(['sales:sell', 'inventor
           customer_phone: customer_info.phone,
           phones_sold: finalizedPhonesToSell.length,
           total_amount: totalAmount,
-          points_earned: pointsAward.points,
-          points_eligible_amount: pointsAward.eligibleAmount,
+          points_earned: pointsEarned,
+          points_eligible_amount: pointsEligibleAmount,
           phone_details: finalizedPhonesToSell.map(p => ({
             phone_id: p.phone_id,
             sale_price: parseFloat(p.sale_price),

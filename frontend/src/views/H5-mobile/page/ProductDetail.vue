@@ -4,15 +4,11 @@
 -->
 <template>
   <div class="product-detail-page">
-    <div
+    <SectionLoading
       v-if="loading"
-      class="loading-state"
-    >
-      <SectionLoading
-        text="加载商品详情中..."
-        size="large"
-      />
-    </div>
+      text="加载商品详情中..."
+      size="large"
+    />
 
     <div
       v-else-if="product"
@@ -309,7 +305,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { Swiper, SwiperSlide } from 'swiper/vue'
 import { Pagination, Zoom } from 'swiper/modules'
-import { ElMessage } from 'element-plus'
+
 import SectionLoading from '@/components/SectionLoading.vue'
 import 'swiper/css'
 import 'swiper/css/pagination'
@@ -323,6 +319,9 @@ import { H5_STORAGE_KEYS } from '@/constants/storage'
 import { logger } from '@/utils/logger'
 import { getRequestErrorMessage } from '@/utils/api-response'
 import { isVideoMedia } from '@/utils/media'
+import { useNotification } from '@/composables/useNotification'
+const globalNotifications = useNotification()
+
 const SwiperPagination = Pagination
 const SwiperZoom = Zoom
 
@@ -626,7 +625,7 @@ const loadProduct = async (id = resolvedProductId.value) => {
     resetDetailState()
     if (sequence === loadSequence.value) {
       loading.value = false
-      ElMessage.error('商品参数错误')
+      globalNotifications.error('商品参数错误')
     }
     return
   }
@@ -675,7 +674,7 @@ const loadProduct = async (id = resolvedProductId.value) => {
       return
     }
     logger.error('获取商品详情失败:', error)
-    ElMessage.error('获取商品详情失败')
+    globalNotifications.error('获取商品详情失败')
   } finally {
     if (sequence === loadSequence.value) {
       loading.value = false
@@ -778,14 +777,14 @@ const executeAddToCart = async (phoneId: number) => {
   try {
     const result = await addCartItem(phoneId)
     if (result.success) {
-      ElMessage.success('已加入购物车')
+      globalNotifications.success('已加入购物车')
       await refreshCart()
     } else {
-      ElMessage.error(result.message || '加入购物车失败')
+      globalNotifications.error(result.message || '加入购物车失败')
     }
   } catch (error: unknown) {
     logger.error('添加到购物车失败:', error)
-    ElMessage.error(getRequestErrorMessage(error, '加入购物车失败'))
+    globalNotifications.error(getRequestErrorMessage(error, '加入购物车失败'))
   }
 }
 

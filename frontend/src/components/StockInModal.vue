@@ -176,7 +176,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed, watch, defineAsyncComponent } from 'vue'
 import { unifiedApi } from '@/utils/unified-api'
-import { ElMessage } from 'element-plus'
+
 import type { FormInstance } from 'element-plus'
 import { ValidationRules } from '@/composables'
 import { useAuthStore } from '@/stores/auth'
@@ -215,6 +215,8 @@ import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import { logger } from '@/utils/logger'
 import { useNotification } from '@/composables/useNotification'
 import type { StockInFormModel as StockInForm, StockInPhoneItem as PhoneItem } from './stock-in/types'
+const globalNotifications = useNotification()
+
 
 // ==================== Props & Emits ====================
 
@@ -337,7 +339,7 @@ const initializeData = async () => {
     }
   } catch (error) {
     logger.error('加载编辑数据失败:', error)
-    ElMessage.error('加载编辑数据失败')
+    globalNotifications.error('加载编辑数据失败')
   }
 }
 
@@ -370,7 +372,7 @@ const loadDropdownData = async () => {
     memories.value = dropdownData.memories
   } catch (error) {
     logger.error('加载下拉数据失败:', error)
-    ElMessage.error('加载数据失败，请刷新页面重试')
+    globalNotifications.error('加载数据失败，请刷新页面重试')
   }
 }
 
@@ -384,10 +386,10 @@ const confirmBatchAdd = () => {
   const count = batchCount.value
   if (count && count > 0 && count <= 100) {
     stockInForm.phones.push(...createStockInPhoneBatch(count))
-    ElMessage.success(`已添加 ${count} 条商品`)
+    globalNotifications.success(`已添加 ${count} 条商品`)
     showBatchCountDialog.value = false
   } else {
-    ElMessage.warning('请输入有效的数量（1-100）')
+    globalNotifications.warning('请输入有效的数量（1-100）')
   }
 }
 
@@ -405,7 +407,7 @@ const clearAllPhones = async () => {
     )) return
     stockInForm.phones = []
     addPhone()
-    ElMessage.info('已清空所有商品')
+    globalNotifications.info('已清空所有商品')
   } catch {
     // 用户取消操作
   }
@@ -520,7 +522,7 @@ const getFilteredBrandsForPhone = (phoneIndex: number) => {
 // 启用无IMEI模式（双击IMEI输入框触发）
 const enableNoIMEIMode = (phone: PhoneItem) => {
   const toggleResult = toggleNoIMEIModeState(phone)
-  ElMessage[toggleResult.messageType](toggleResult.message)
+  globalNotifications[toggleResult.messageType](toggleResult.message)
 }
 
 // 格式化IMEI - 根据模式决定格式化规则
@@ -647,7 +649,7 @@ const handleSubmit = async () => {
 
     const phoneValidationError = validateStockInPhones(props.mode, stockInForm.phones)
     if (phoneValidationError) {
-      ElMessage.error(phoneValidationError)
+      globalNotifications.error(phoneValidationError)
       return
     }
 
@@ -661,12 +663,12 @@ const handleSubmit = async () => {
 
     await unifiedApi[method](apiUrl, submitData)
 
-    ElMessage.success(props.mode === 'create' ? '入库成功' : '更新成功')
+    globalNotifications.success(props.mode === 'create' ? '入库成功' : '更新成功')
     emit('success')
     handleDialogClose()
   } catch (error) {
     logger.error('提交失败:', error)
-    ElMessage.error('提交失败，请重试')
+    globalNotifications.error('提交失败，请重试')
   } finally {
     submitting.value = false
   }

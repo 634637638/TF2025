@@ -48,15 +48,11 @@
     </UnifiedSearchPanel>
 
     <!-- 订单列表 -->
-    <div
+    <SectionLoading
       v-if="loading && orders.length === 0"
-      class="loading-state"
-    >
-      <SectionLoading
-        text="加载订单中..."
-        size="large"
-      />
-    </div>
+      text="加载订单中..."
+      size="large"
+    />
 
     <div
       v-else-if="orders.length > 0"
@@ -169,7 +165,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+
 import { getOrdersByPhone } from '@/api/shop-public'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import Image from '@/components/Image.vue'
@@ -182,6 +178,9 @@ import { H5_STORAGE_KEYS } from '@/constants/storage'
 import { formatAmount, formatDateTime as formatGlobalDateTime } from '@/utils/format'
 import { getRequestErrorMessage } from '@/utils/api-response'
 import type { PublicOrder } from '@/api/shop-public'
+import { useNotification } from '@/composables/useNotification'
+const globalNotifications = useNotification()
+
 const router = useRouter()
 
 const customer_phone = ref('')
@@ -220,7 +219,7 @@ const clearPhone = () => {
 // 查询订单
 const searchOrders = async () => {
   if (!isValidIdentity.value) {
-    ElMessage.warning('请输入正确的手机号和下单姓名')
+    globalNotifications.warning('请输入正确的手机号和下单姓名')
     return
   }
 
@@ -241,11 +240,11 @@ const searchOrders = async () => {
     total.value = result.total || 0
 
     if (orders.value.length === 0) {
-      ElMessage.info('未找到相关订单')
+      globalNotifications.info('未找到相关订单')
     }
   } catch (error: unknown) {
     logger.error('查询订单失败:', error)
-    ElMessage.error(getRequestErrorMessage(error, '查询订单失败'))
+    globalNotifications.error(getRequestErrorMessage(error, '查询订单失败'))
   } finally {
     loading.value = false
     searching.value = false
@@ -270,7 +269,7 @@ const loadMore = async () => {
     total.value = result.total || 0
   } catch (error: unknown) {
     logger.error('加载更多失败:', error)
-    ElMessage.error('加载失败')
+    globalNotifications.error('加载失败')
     current_page.value-- // 恢复页码
   } finally {
     loadingMore.value = false
@@ -333,11 +332,6 @@ const goHome = () => {
   min-height: 100vh;
   background: var(--tf-color-surface-soft);
   padding-bottom: 20px;
-}
-
-// 加载状态
-.loading-state {
-  padding: 20px;
 }
 
 // 订单列表

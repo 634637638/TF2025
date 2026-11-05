@@ -10,6 +10,7 @@ const { prepareInvoiceNumberTransaction, generateInvoiceNumber } = require('../u
 const { normalizeDateTime, formatLocalDate } = require('../utils/time')
 const { getUploadSubdir } = require('../utils/upload-paths')
 const { validateSpreadsheetFile, readSpreadsheetFileSafe, sheetToJsonSafe } = require('../utils/spreadsheet-security')
+const { reconcileCustomerPointsForSale } = require('./customer-points.service')
 
 const IMPORT_UPLOAD_DIR = getUploadSubdir('import')
 
@@ -767,6 +768,15 @@ class DataImportService {
       : currentInvoice
 
     if (existingSale) {
+      await reconcileCustomerPointsForSale({
+        executor: connection,
+        saleId: existingSale.id,
+        customerId,
+        saleType: 'retail',
+        salePrice: 0,
+        isNew: null,
+        awardPoints: false
+      })
       await connection.execute(
         `UPDATE sales
          SET customer_id = ?, sale_time = ?, operator_id = ?, sale_type = 'retail', invoice_number = ?
@@ -783,6 +793,16 @@ class DataImportService {
        VALUES (?, ?, 'retail', ?, ?, ?, 'completed')`,
       [phoneId, customerId, saleTime, operatorId, invoiceNumber]
     )
+    await reconcileCustomerPointsForSale({
+      executor: connection,
+      saleId: result.insertId,
+      customerId,
+      saleType: 'retail',
+      salePrice: 0,
+      isNew: null,
+      awardPoints: false,
+      initialize: true
+    })
     log.debug(`  ✓ 创建销售记录: sale_id=${result.insertId}, phone_id=${phoneId}, invoice_number=${invoiceNumber}`)
     return result.insertId
   }

@@ -613,7 +613,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, nextTick } from 'vue'
-import { ElMessage } from 'element-plus'
+
 import type { TagProps } from 'element-plus'
 import {
   WarningFilled,
@@ -633,6 +633,8 @@ import Pagination from '@/components/Pagination.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import { useImportExport } from '@/composables/useImportExport'
 import { useNotification } from '@/composables/useNotification'
+const globalNotifications = useNotification()
+
 
 // 错误日志
 const {
@@ -784,9 +786,9 @@ const refreshLogs = async () => {
     await nextTick()
     // 触发响应式更新
     logs.value = getLogs()
-    ElMessage.success('刷新成功')
+    globalNotifications.success('刷新成功')
   } catch (error) {
-    ElMessage.error('刷新失败')
+    globalNotifications.error('刷新失败')
   } finally {
     loading.value = false
   }
@@ -800,9 +802,9 @@ const showErrorDetail = (error: ErrorLogEntry) => {
 const resolveError = async (errorId: string) => {
   try {
     resolveErrorLog(errorId)
-    ElMessage.success('已标记为已解决')
+    globalNotifications.success('已标记为已解决')
   } catch (error) {
-    ElMessage.error('操作失败')
+    globalNotifications.error('操作失败')
   }
 }
 
@@ -813,7 +815,7 @@ const deleteError = async (errorId: string) => {
     })) return
 
     if (!removeErrorLog(errorId)) {
-      ElMessage.warning('错误记录不存在或已删除')
+      globalNotifications.warning('错误记录不存在或已删除')
       return
     }
 
@@ -821,7 +823,7 @@ const deleteError = async (errorId: string) => {
       selectedError.value = null
       detailVisible.value = false
     }
-    ElMessage.success('删除成功')
+    globalNotifications.success('删除成功')
   } catch (error) {
     // 用户取消
   }
@@ -837,7 +839,7 @@ const exportLogs = async () => {
       errorMessage: '导出失败'
     })
   } catch (error) {
-    ElMessage.error('导出失败')
+    globalNotifications.error('导出失败')
   }
 }
 
@@ -848,7 +850,7 @@ const clearLogs = async () => {
       confirmButtonText: '确定清空'
     })) return
     clearErrorLogs()
-    ElMessage.success('清空成功')
+    globalNotifications.success('清空成功')
   } catch (error) {
     // 用户取消
   }

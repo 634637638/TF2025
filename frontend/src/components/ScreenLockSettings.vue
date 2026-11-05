@@ -215,7 +215,7 @@
 
 <script setup lang="ts">
 import { ref, computed, reactive, onMounted, onUnmounted, watch } from 'vue'
-import { ElMessage } from 'element-plus'
+
 import type { FormInstance, UploadProps } from 'element-plus'
 import { unifiedApi } from '@/utils/unified-api'
 import { useAuthStore } from '@/stores/auth'
@@ -226,16 +226,12 @@ import { storage } from '@/services/storage'
 import { logger } from '@/utils/logger'
 import { deleteTempFiles } from '@/utils/temp-file-cleaner'
 import { useNotification } from '@/composables/useNotification'
+import { DEFAULT_SCREEN_LOCK_SETTINGS, normalizeScreenLockSettings } from '@/utils/screen-lock-settings'
+import type { ScreenLockSettings } from '@/types/screen-lock'
+const globalNotifications = useNotification()
+
 
 // 接口定义
-interface ScreenLockSettings {
-  backgroundType: 'default' | 'image' | 'video'
-  imageUrl?: string
-  videoUrl?: string
-  title?: string
-  message?: string
-}
-
 interface UploadResponse {
   success: boolean
   data?: {
@@ -277,13 +273,7 @@ const lastSavedTime = ref('')
 const activeTab = ref('screen-lock')
 
 // 屏幕保护表单数据
-const screenLockForm = reactive({
-  backgroundType: 'default' as 'default' | 'image' | 'video',
-  imageUrl: '',
-  videoUrl: '',
-  title: '屏幕已锁定',
-  message: '请输入密码解锁'
-})
+const screenLockForm = reactive<ScreenLockSettings>({ ...DEFAULT_SCREEN_LOCK_SETTINGS })
 
 // 原始数据备份
 const originalData = ref<ScreenLockSettings>({ ...screenLockForm })
@@ -318,13 +308,9 @@ const loadSettings = async () => {
   try {
     const response = await unifiedApi.get('/screen-lock')
     if (response.success && response.data) {
-      Object.assign(screenLockForm, {
-        backgroundType: response.data.backgroundType || 'default',
-        imageUrl: response.data.imageUrl || '',
-        videoUrl: response.data.videoUrl || '',
-        title: response.data.title || '屏幕已锁定',
-        message: response.data.message || '请输入密码解锁'
-      })
+      const settings = normalizeScreenLockSettings(response.data)
+      Object.assign(screenLockForm, settings)
+      storage.setScreenLockSettings(settings)
       originalData.value = { ...screenLockForm }
     }
   } catch (error: unknown) {
@@ -335,13 +321,7 @@ const loadSettings = async () => {
       try {
         const localSettings = storage.getScreenLockSettings<ScreenLockSettings>()
         if (localSettings) {
-          Object.assign(screenLockForm, {
-            backgroundType: localSettings.backgroundType || 'default',
-            imageUrl: localSettings.imageUrl || '',
-            videoUrl: localSettings.videoUrl || '',
-            title: localSettings.title || '屏幕已锁定',
-            message: localSettings.message || '请输入密码解锁'
-          })
+          Object.assign(screenLockForm, normalizeScreenLockSettings(localSettings))
           originalData.value = { ...screenLockForm }
         }
       } catch (localError) {
@@ -357,7 +337,7 @@ const saveSettings = async () => {
   saving.value = true
 
   try {
-    const data = { ...screenLockForm }
+    const data = normalizeScreenLockSettings(screenLockForm)
 
     // 先保存到 localStorage（作为本地缓存，解决后端404问题）
     storage.setScreenLockSettings(data)
@@ -368,7 +348,7 @@ const saveSettings = async () => {
       originalData.value = { ...screenLockForm }
       uploadedTempFiles.value = []
       lastSavedTime.value = TimeUtil.nowFormatted(TIME_FORMATS.DATETIME)
-      ElMessage.success('设置保存成功')
+      globalNotifications.success('设置保存成功')
       emit('change', data)
     } else {
       throw new Error(response.message || '保存失败')
@@ -381,10 +361,10 @@ const saveSettings = async () => {
       originalData.value = { ...screenLockForm }
       uploadedTempFiles.value = []
       lastSavedTime.value = TimeUtil.nowFormatted(TIME_FORMATS.DATETIME)
-      ElMessage.warning('设置已保存到本地（后端未连接）')
+      globalNotifications.warning('设置已保存到本地（后端未连接）')
       emit('change', { ...screenLockForm })
     } else {
-      ElMessage.error(`保存失败：${(isApiLikeError(error) && error.message) || '未知错误'}`)
+      globalNotifications.error(`保存失败：${(isApiLikeError(error) && error.message) || '未知错误'}`)
     }
   } finally {
     saving.value = false
@@ -406,7 +386,7 @@ const resetForm = async () => {
       message: originalData.value.message || '请输入密码解锁'
     })
     screenLockFormRef.value?.clearValidate()
-    ElMessage.success('已重置为上次保存的设置')
+    globalNotifications.success('已重置为上次保存的设置')
   } catch {
     // 用户取消
   }
@@ -418,11 +398,11 @@ const beforeImageUpload: UploadProps['beforeUpload'] = (file) => {
   const isLt5M = file.size / 1024 / 1024 < 5
 
   if (!isImage) {
-    ElMessage.error('只能上传图片文件！')
+    globalNotifications.error('只能上传图片文件！')
     return false
   }
   if (!isLt5M) {
-    ElMessage.error('图片大小不能超过 5MB！')
+    globalNotifications.error('图片大小不能超过 5MB！')
     return false
   }
   return true
@@ -433,11 +413,11 @@ const beforeVideoUpload: UploadProps['beforeUpload'] = (file) => {
   const isLt50M = file.size / 1024 / 1024 < 50
 
   if (!isVideo) {
-    ElMessage.error('只能上传视频文件！')
+    globalNotifications.error('只能上传视频文件！')
     return false
   }
   if (!isLt50M) {
-    ElMessage.error('视频大小不能超过 50MB！')
+    globalNotifications.error('视频大小不能超过 50MB！')
     return false
   }
   return true
@@ -449,9 +429,9 @@ const handleImageSuccess = (response: UploadResponse) => {
       uploadedTempFiles.value.push(response.data.url)
     }
     screenLockForm.imageUrl = response.data.url
-    ElMessage.success('图片上传成功')
+    globalNotifications.success('图片上传成功')
   } else {
-    ElMessage.error('图片上传失败')
+    globalNotifications.error('图片上传失败')
   }
 }
 
@@ -461,15 +441,15 @@ const handleVideoSuccess = (response: UploadResponse) => {
       uploadedTempFiles.value.push(response.data.url)
     }
     screenLockForm.videoUrl = response.data.url
-    ElMessage.success('视频上传成功')
+    globalNotifications.success('视频上传成功')
   } else {
-    ElMessage.error('视频上传失败')
+    globalNotifications.error('视频上传失败')
   }
 }
 
 const handleUploadError = (error: unknown) => {
   logger.error('文件上传失败:', error)
-  ElMessage.error('文件上传失败')
+  globalNotifications.error('文件上传失败')
 }
 
 const cleanupTempFiles = async () => {

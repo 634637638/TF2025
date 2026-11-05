@@ -8,6 +8,7 @@ const { runInNewContext } = require('node:vm')
 const {
   prepareInvoiceNumberTransaction,
   generateInvoiceNumber,
+  generatePurchaseNumber,
   generateInvoiceNumberForDate
 } = require('../src/utils/invoice-number')
 const { formatBeijingDate } = require('../src/utils/time')
@@ -18,12 +19,14 @@ const number = (sequence, date = '20261102', suffix = 'XS') =>
 // 模拟数据库的事务、日期/类型行锁和当前读；绝不连接或写入云端业务库。
 function createDatabase(initial = [], highWater = 0) {
   const committed = new Set(initial)
+  const committedPurchases = new Set()
   const lockTails = new Map()
   const sequences = new Map()
   function connect() {
     let active = false
     let added = new Set()
     let removed = new Set()
+    let addedPurchases = new Set()
     const releases = new Map()
     const sequenceWrites = new Map()
     const view = () => new Set([...committed, ...added].filter(value => !removed.has(value)))
@@ -38,6 +41,7 @@ function createDatabase(initial = [], highWater = 0) {
         active = true
         added = new Set()
         removed = new Set()
+        addedPurchases = new Set()
         sequenceWrites.clear()
       },
       async execute(sql, params = []) {
@@ -84,6 +88,12 @@ function createDatabase(initial = [], highWater = 0) {
         removed.delete(invoice)
         added.add(invoice)
       },
+      insertPurchase(purchaseNumber) {
+        assert.equal(active, true)
+        assert.equal(committedPurchases.has(purchaseNumber), false, '不能插入重复入库单号')
+        assert.equal(addedPurchases.has(purchaseNumber), false, '同一事务不能插入重复入库单号')
+        addedPurchases.add(purchaseNumber)
+      },
       moveSale(from, to) {
         assert.ok(view().has(from))
         removed.add(from)
@@ -98,13 +108,14 @@ function createDatabase(initial = [], highWater = 0) {
       async commit() {
         for (const value of removed) committed.delete(value)
         for (const value of added) committed.add(value)
+        for (const value of addedPurchases) committedPurchases.add(value)
         for (const [key, value] of sequenceWrites) sequences.set(key, value)
         finish()
       },
       async rollback() { finish() }
     }
   }
-  return { committed, sequences, connect }
+  return { committed, committedPurchases, sequences, connect }
 }
 
 async function begin(database) {
@@ -189,6 +200,36 @@ test('concurrent committed sales do not receive duplicate gap numbers', async ()
   assert.equal(new Set(invoices).size, 8)
   assert.deepEqual(new Set(invoices), new Set([2, 4, 5, 6, 7, 8, 9, 11].map(value => number(value))))
   assert.equal(database.committed.size, 11)
+})
+
+test('purchase numbers use the locked transactional daily sequence', async () => {
+  const database = createDatabase([], 3)
+  const connection = await begin(database)
+  const number = await generatePurchaseNumber(connection, '2026-11-05')
+  assert.equal(number, 'PO20261105000004')
+  connection.insertPurchase(number)
+  await connection.commit()
+  assert.equal(database.sequences.get('20261105:PO'), 4)
+  assert.equal(database.committedPurchases.size, 1)
+})
+
+test('concurrent purchase number allocations serialize on the daily sequence row', async () => {
+  const database = createDatabase()
+  const allocate = async () => {
+    const connection = await begin(database)
+    try {
+      const number = await generatePurchaseNumber(connection, '2026-11-05')
+      connection.insertPurchase(number)
+      await connection.commit()
+      return number
+    } catch (error) {
+      await connection.rollback()
+      throw error
+    }
+  }
+  const numbers = await Promise.all(Array.from({ length: 8 }, allocate))
+  assert.equal(new Set(numbers).size, 8)
+  assert.deepEqual(numbers.sort(), Array.from({ length: 8 }, (_, index) => `PO20261105${String(index + 1).padStart(6, '0')}`))
 })
 
 test('parallel allocations on the same connection reserve distinct numbers', async () => {
@@ -362,6 +403,7 @@ for (const failUpdate of [false, true]) {
       ? [[{ status: 'in_stock' }]]
       : execute(sql, params)
     let released = false
+    let pointsReconciled = false
     connection.release = () => { released = true }
     let saved
     class SaleRepository {
@@ -389,7 +431,16 @@ for (const failUpdate of [false, true]) {
       '../utils/log': { debug() {}, error() {} },
       '../config/database': { getDatabase: () => ({ getConnection: async () => connection }) },
       '../utils/time': require('../src/utils/time'),
-      '../utils/invoice-number': require('../src/utils/invoice-number')
+      '../utils/invoice-number': require('../src/utils/invoice-number'),
+      './customer-points.service': {
+        reconcileCustomerPointsForSale: async ({ executor, saleId, initialize }) => {
+          assert.equal(executor, connection)
+          assert.equal(saleId, 901)
+          assert.equal(initialize, true)
+          pointsReconciled = true
+          return { points: 0 }
+        }
+      }
     }
     const source = fs.readFileSync(path.join(__dirname, '../src/services/sale.service.js'), 'utf8')
     runInNewContext(source, {
@@ -413,6 +464,7 @@ for (const failUpdate of [false, true]) {
       assert.equal((await result).data.sale.invoice_number, number(2))
       assert.equal(database.committed.has(number(2)), true)
     }
+    assert.equal(pointsReconciled, true)
     assert.equal(released, true)
   })
 }

@@ -111,13 +111,15 @@
 
 <script setup lang="ts">
 import { ref, computed, onBeforeUnmount, watch, type CSSProperties } from 'vue'
-import { ElMessage } from 'element-plus'
+
 import { scanOptimizer, type ScannerDeviceInfo } from '@/utils/scanOptimizer'
 import { parseDeviceScanResult } from '@/utils/device-scan-result'
 import zxingReaderWasmUrl from 'zxing-wasm/reader/zxing_reader.wasm?url'
 import { prepareZXingModule, readBarcodes } from 'zxing-wasm/reader'
 import type { CancelEmits, UpdateVisibleEmits, VisibleProps } from '@/types/component'
 import { useNotification } from '@/composables/useNotification'
+const globalNotifications = useNotification()
+
 
 interface ScannerPhone {
   brand?: string
@@ -477,7 +479,7 @@ const confirmScanResult = (value: string) => {
 
   navigator.vibrate?.(120)
   emit('success', value)
-  ElMessage.success(`${props.scanType === 'imei' ? 'IMEI' : '序列号'}识别成功：${value}`)
+  globalNotifications.success(`${props.scanType === 'imei' ? 'IMEI' : '序列号'}识别成功：${value}`)
 
   closeTimer = setTimeout(() => {
     emit('update:visible', false)
@@ -524,7 +526,7 @@ const requestCameraFocus = async (showFeedback: boolean) => {
 
   await track.applyConstraints({ advanced: [{ focusMode }] }).catch((): undefined => undefined)
   if (showFeedback) {
-    ElMessage.info('已重新对焦，请将条码放大后保持稳定')
+    globalNotifications.info('已重新对焦，请将条码放大后保持稳定')
   }
 }
 
@@ -819,10 +821,10 @@ const toggleFlash = async () => {
         advanced: [{ torch: flashOn.value }]
       })
 
-      ElMessage.info(flashOn.value ? '闪光灯已开启' : '闪光灯已关闭')
+      globalNotifications.info(flashOn.value ? '闪光灯已开启' : '闪光灯已关闭')
     }
   } catch (error) {
-    ElMessage.error('闪光灯切换失败')
+    globalNotifications.error('闪光灯切换失败')
   }
 }
 

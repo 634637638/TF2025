@@ -138,13 +138,16 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage, type FormInstance, type FormItemRule } from 'element-plus'
+import { type FormInstance, type FormItemRule } from 'element-plus'
 import { useForm, ValidationRules, useLoadingState } from '@/composables'
 import { register, tokenManager, userManager } from '@/api/auth'
 import { getPublicConfig, type ShopConfig } from '@/api/shop-public'
 import { getRequestErrorMessage, extractResponseData } from '@/utils/api-response'
 import { normalizePhoneDigits } from '@/utils/security'
 import { logger } from '@/utils/logger'
+import { useNotification } from '@/composables/useNotification'
+const globalNotifications = useNotification()
+
 const router = useRouter()
 
 const registerFormRef = ref<FormInstance>()
@@ -235,13 +238,13 @@ const handleRegister = async () => {
     tokenManager.setToken(response.token)
     userManager.setUser(response.user)
 
-    ElMessage.success('注册成功')
+    globalNotifications.success('注册成功')
 
     // 跳转到"我的"页面
     router.push('/m/my')
   } catch (error: unknown) {
     logger.error('注册失败:', error)
-    ElMessage.error(getRequestErrorMessage(error, '注册失败'))
+    globalNotifications.error(getRequestErrorMessage(error, '注册失败'))
   } finally {
     loading.value = false
   }

@@ -98,13 +98,16 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { ElMessage, type FormInstance, type FormItemRule } from 'element-plus'
+import { type FormInstance, type FormItemRule } from 'element-plus'
 import { useForm, ValidationRules, useLoadingState } from '@/composables'
 import { login, tokenManager, userManager } from '@/api/auth'
 import { getPublicConfig, type ShopConfig } from '@/api/shop-public'
 import { getRequestErrorMessage, extractResponseData } from '@/utils/api-response'
 import { normalizePhoneDigits } from '@/utils/security'
 import { logger } from '@/utils/logger'
+import { useNotification } from '@/composables/useNotification'
+const globalNotifications = useNotification()
+
 const router = useRouter()
 const route = useRoute()
 
@@ -172,14 +175,14 @@ const handleLogin = async () => {
     tokenManager.setToken(response.token)
     userManager.setUser(response.user)
 
-    ElMessage.success('登录成功')
+    globalNotifications.success('登录成功')
 
     // 跳转到原来的页面或"我的"页面
     const redirect = (route.query.redirect as string) || '/m/my'
     router.push(redirect)
   } catch (error: unknown) {
     logger.error('登录失败:', error)
-    ElMessage.error(getRequestErrorMessage(error, '登录失败'))
+    globalNotifications.error(getRequestErrorMessage(error, '登录失败'))
   } finally {
     loading.value = false
   }

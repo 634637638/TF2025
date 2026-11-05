@@ -178,7 +178,7 @@
 <script setup lang="ts">
 import { confirmAction } from '@/utils/message-box'
 import { computed, defineAsyncComponent, nextTick, ref, watch } from 'vue'
-import { ElMessage } from 'element-plus'
+
 import { storage } from '@/composables/core/useLocalStorage'
 import { deleteTempFiles } from '@/utils/temp-file-cleaner'
 import { unifiedApi } from '@/utils/unified-api'
@@ -188,6 +188,9 @@ import type { MediaPreviewItem } from '@/utils/media'
 import { convertPdfToImage, isPdfFile } from '@/utils/upload-media'
 import type { CheckboxValueType, UploadRequestOptions } from 'element-plus'
 import type { NationalSubsidyRecord, NationalSubsidyUploadResponse } from '@/types'
+import { useNotification } from '@/composables/useNotification'
+const globalNotifications = useNotification()
+
 
 const AsyncImage = defineAsyncComponent(() => import('@/components/Image.vue'))
 
@@ -390,7 +393,7 @@ const toUploadError = (error: unknown, fallback: string): UploadError => Object.
 
 const customUploadRequest = async (options: UploadRequestOptions) => {
   if (!canUpload.value) {
-    ElMessage.warning('您没有图片上传权限')
+    globalNotifications.warning('您没有图片上传权限')
     options.onError?.(toUploadError(new Error('没有图片上传权限'), '没有图片上传权限'))
     return
   }
@@ -400,7 +403,7 @@ const customUploadRequest = async (options: UploadRequestOptions) => {
   const isLt10M = file.size / 1024 / 1024 < 10
 
   if (!isLt10M) {
-    ElMessage.error('文件大小不能超过10MB')
+    globalNotifications.error('文件大小不能超过10MB')
     onError?.(toUploadError(new Error('文件大小超过10MB'), '文件大小超过10MB'))
     return
   }
@@ -408,11 +411,11 @@ const customUploadRequest = async (options: UploadRequestOptions) => {
   let uploadFile: File = file
   if (isPdf) {
     try {
-      ElMessage.info('正在将PDF转换为图片...')
+      globalNotifications.info('正在将PDF转换为图片...')
       uploadFile = await convertPdfToImage(file)
-      ElMessage.success('PDF转换成功，正在上传...')
+      globalNotifications.success('PDF转换成功，正在上传...')
     } catch (error) {
-      ElMessage.error('PDF转换图片失败')
+      globalNotifications.error('PDF转换图片失败')
       onError?.(toUploadError(error, 'PDF转换图片失败'))
       return
     }
@@ -436,17 +439,17 @@ const customUploadRequest = async (options: UploadRequestOptions) => {
     if (result?.success && result.data?.url) {
       previewPhotos.value.push(result.data.url)
       uploadedPhotos.value.push(result.data.url)
-      ElMessage.success('照片上传成功')
+      globalNotifications.success('照片上传成功')
       onSuccess?.(result)
       return
     }
 
     const errorMessage = result?.message || '照片上传失败'
-    ElMessage.error(errorMessage)
+    globalNotifications.error(errorMessage)
     onError?.(toUploadError(new Error(errorMessage), errorMessage))
   } catch (error) {
     logger.error('上传请求失败:', error)
-    ElMessage.error('照片上传失败，请重试')
+    globalNotifications.error('照片上传失败，请重试')
     onError?.(toUploadError(error, '照片上传失败'))
   }
 }
@@ -557,16 +560,16 @@ const downloadSelectedPhotos = async () => {
       )
       await new Promise(resolve => setTimeout(resolve, 300))
     }
-    ElMessage.success(`已下载 ${selectedPhotos.value.length} 张照片`)
+    globalNotifications.success(`已下载 ${selectedPhotos.value.length} 张照片`)
   } catch (error) {
     logger.error('下载照片失败:', error)
-    ElMessage.error('下载照片失败')
+    globalNotifications.error('下载照片失败')
   }
 }
 
 const applyPhotoDeletion = (indexes: number[], successMessage: string) => {
   if (!canUpload.value) {
-    ElMessage.warning('您没有图片上传权限')
+    globalNotifications.warning('您没有图片上传权限')
     return
   }
 
@@ -584,7 +587,7 @@ const applyPhotoDeletion = (indexes: number[], successMessage: string) => {
     currentPhotoIndex.value = 0
   }
 
-  ElMessage.success(successMessage)
+  globalNotifications.success(successMessage)
 }
 
 const deleteSelectedPhotos = () => {
@@ -630,7 +633,7 @@ const openPhotoViewer = (index: number) => {
 
 const removePhotoFromPreview = (index: number) => {
   if (!canUpload.value) {
-    ElMessage.warning('您没有图片上传权限')
+    globalNotifications.warning('您没有图片上传权限')
     return
   }
 
@@ -649,7 +652,7 @@ const removePhotoFromPreview = (index: number) => {
     if (previewPhotos.value.length === 0) {
       showPhotoViewer.value = false
     }
-    ElMessage.success('照片已删除')
+    globalNotifications.success('照片已删除')
   }).catch(() => {})
 }
 
@@ -662,9 +665,9 @@ const downloadCurrentPhoto = async (index: number) => {
       photoUrl,
       getPhotoDownloadFilename(index, photoUrl)
     )
-    ElMessage.success('照片下载成功')
+    globalNotifications.success('照片下载成功')
   } catch {
-    ElMessage.error('照片下载失败')
+    globalNotifications.error('照片下载失败')
   }
 }
 
@@ -680,18 +683,18 @@ const downloadAllPhotos = async () => {
       logger.error(`下载第${i + 1}张照片失败:`, error)
     }
   }
-  ElMessage.success(`已下载${previewPhotos.value.length}张照片`)
+  globalNotifications.success(`已下载${previewPhotos.value.length}张照片`)
 }
 
 const savePhotoChanges = async () => {
   if (savingPhotos.value) return
   if (!canUpload.value) {
-    ElMessage.warning('您没有图片上传权限')
+    globalNotifications.warning('您没有图片上传权限')
     return
   }
 
   if (!props.item?.id) {
-    ElMessage.error('未找到要更新的记录')
+    globalNotifications.error('未找到要更新的记录')
     return
   }
 
@@ -703,16 +706,16 @@ const savePhotoChanges = async () => {
     })
 
     if (response.success) {
-      ElMessage.success('照片保存成功')
+      globalNotifications.success('照片保存成功')
       uploadedPhotos.value = []
       emit('saved')
       emit('update:modelValue', false)
     } else {
-      ElMessage.error(response.message || '照片保存失败')
+      globalNotifications.error(response.message || '照片保存失败')
     }
   } catch (error: unknown) {
     logger.error('保存照片失败:', error)
-    ElMessage.error(error instanceof Error ? error.message : '照片保存失败')
+    globalNotifications.error(error instanceof Error ? error.message : '照片保存失败')
   } finally {
     savingPhotos.value = false
   }

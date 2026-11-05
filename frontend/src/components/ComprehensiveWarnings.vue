@@ -514,12 +514,15 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+
 import { unifiedApi } from '@/utils/unified-api'
 import { useAuthStore } from '@/stores/auth'
 import { canAccessRoutePath } from '@/constants/routePermissions'
 import { formatDate as formatGlobalDate } from '@/utils/format'
 import type { ComprehensiveWarningsData, PhoneStockWarning } from '@/types'
+import { useNotification } from '@/composables/useNotification'
+const globalNotifications = useNotification()
+
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -644,7 +647,7 @@ const guardedPush = (target: string | { path: string; query?: Record<string, str
   const path = typeof target === 'string' ? target : target.path
 
   if (!canAccessRoutePath(path, authStore)) {
-    ElMessage.warning('您没有访问此页面的权限')
+    globalNotifications.warning('您没有访问此页面的权限')
     return
   }
 

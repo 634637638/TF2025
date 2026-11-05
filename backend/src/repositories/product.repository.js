@@ -4,6 +4,7 @@
  */
 const BaseRepository = require('./base.repository')
 const log = require('../utils/log')
+const { reconcileCustomerPointsForSale } = require('../services/customer-points.service')
 
 class ProductRepository extends BaseRepository {
   constructor() {
@@ -300,7 +301,13 @@ class ProductRepository extends BaseRepository {
 
         // 获取当前销售记录信息
         const [salesRecords] = await connection.query(
-          'SELECT id, customer_id FROM sales WHERE phone_id = ? ORDER BY created_at DESC LIMIT 1',
+          `SELECT s.id, s.customer_id, s.sale_type, s.sale_price, p.is_new
+           FROM sales s
+           JOIN phones p ON p.id = s.phone_id
+           WHERE s.phone_id = ?
+           ORDER BY s.created_at DESC
+           LIMIT 1
+           FOR UPDATE`,
           [id]
         )
 
@@ -339,6 +346,14 @@ class ProductRepository extends BaseRepository {
               log.debug(`场景一：更换客户，从 ${currentCustomerId} 到 ${finalCustomerId}`)
 
               // 同步更新 sales 表的 customer_id
+              await reconcileCustomerPointsForSale({
+                executor: connection,
+                saleId: currentSale.id,
+                customerId: finalCustomerId,
+                saleType: currentSale.sale_type,
+                salePrice: canonicalPhoneData.sale_price ?? currentSale.sale_price,
+                isNew: currentSale.is_new
+              })
               await connection.query(
                 'UPDATE sales SET customer_id = ? WHERE phone_id = ?',
                 [finalCustomerId, id]
@@ -357,6 +372,14 @@ class ProductRepository extends BaseRepository {
 
             // 场景一：更换客户（新客户）
             // 同步更新 sales 表的 customer_id
+            await reconcileCustomerPointsForSale({
+              executor: connection,
+              saleId: currentSale.id,
+              customerId: finalCustomerId,
+              saleType: currentSale.sale_type,
+              salePrice: canonicalPhoneData.sale_price ?? currentSale.sale_price,
+              isNew: currentSale.is_new
+            })
             await connection.query(
               'UPDATE sales SET customer_id = ? WHERE phone_id = ?',
               [finalCustomerId, id]
@@ -370,7 +393,11 @@ class ProductRepository extends BaseRepository {
 
       // 🔥 同步更新 sales 表的其他字段（价格、时间等）
       const [phoneInfo] = await connection.query(
-        'SELECT id, sale_id, status FROM phones WHERE id = ?',
+        `SELECT p.id, p.sale_id, p.status, p.is_new,
+                s.customer_id, s.sale_type, s.sale_price AS recorded_sale_price
+         FROM phones p
+         LEFT JOIN sales s ON s.id = p.sale_id
+         WHERE p.id = ?`,
         [id]
       )
 
@@ -449,6 +476,16 @@ class ProductRepository extends BaseRepository {
 
         // 如果有需要同步的字段，执行更新
         if (salesFields.length > 0) {
+          if (canonicalPhoneData.sale_price !== undefined || canonicalPhoneData.is_new !== undefined) {
+            await reconcileCustomerPointsForSale({
+              executor: connection,
+              saleId,
+              customerId: phoneInfo[0].customer_id,
+              saleType: phoneInfo[0].sale_type,
+              salePrice: canonicalPhoneData.sale_price ?? phoneInfo[0].recorded_sale_price,
+              isNew: phoneInfo[0].is_new
+            })
+          }
           salesParams.push(saleId)
           const salesQuery = `UPDATE sales SET ${salesFields.join(', ')} WHERE id = ?`
           log.debug('执行同步SQL:', salesQuery)

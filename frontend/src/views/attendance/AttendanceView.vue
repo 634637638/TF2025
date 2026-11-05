@@ -1591,7 +1591,7 @@
 <script setup lang="ts">
 import { confirmAction } from '@/utils/message-box'
 import { ref, reactive, computed, onMounted, watch } from 'vue'
-import { ElMessage, ElConfigProvider, type FormInstance, type FormRules, type TabPaneName } from 'element-plus'
+import { ElConfigProvider, type FormInstance, type FormRules, type TabPaneName } from 'element-plus'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import { attendanceApi } from '@/api/attendance'
 import type { AttendanceRecord } from '@/api/attendance'
@@ -1621,6 +1621,8 @@ import {
   groupAttendanceLeaveAssignments,
   type AttendanceLeaveAllocation
 } from '@/utils/attendance-leave-allocation'
+const globalNotifications = useNotification()
+
 
 interface AttendanceTableRow extends Omit<
   AttendanceRecord,
@@ -2177,7 +2179,7 @@ const loadData = async (showLoadingState = true) => {
       await loadDashboardStats()
     }
   } catch (error) {
-    ElMessage.error('加载数据失败')
+    globalNotifications.error('加载数据失败')
   } finally {
     if (showLoadingState) {
       loading.value = false
@@ -2222,7 +2224,7 @@ const loadMyData = async (showLoadingState = true) => {
       await loadDashboardStats()
     }
   } catch (error) {
-    ElMessage.error('加载数据失败')
+    globalNotifications.error('加载数据失败')
   } finally {
     if (showLoadingState) {
       myLoading.value = false
@@ -2658,7 +2660,7 @@ const handleSubmit = async () => {
       }
 
       if ((formData.record_type === 'monthly_leave' || formData.record_type === 'leave') && (!leaveStartDate.value || !leaveEndDate.value)) {
-        ElMessage.warning('请选择开始日期和结束日期')
+        globalNotifications.warning('请选择开始日期和结束日期')
         submitting.value = false
         return
       }
@@ -2690,23 +2692,23 @@ const handleSubmit = async () => {
 
         }
         await createSplitAttendanceRecords(submitData, allocation)
-        ElMessage.success(buildAttendanceSubmitSuccessMessage(
+        globalNotifications.success(buildAttendanceSubmitSuccessMessage(
           allocation.monthlyLeaveDaysCount,
           allocation.regularLeaveDaysCount
         ))
       } else if (formData.id) {
         await attendanceApi.updateAttendanceRecord(formData.id, submitData)
-        ElMessage.success('更新成功')
+        globalNotifications.success('更新成功')
       } else {
         await attendanceApi.createAttendanceRecord(submitData)
-        ElMessage.success('提交成功')
+        globalNotifications.success('提交成功')
       }
 
       closeAttendanceDialog()
       await refreshActiveAttendanceData()
     } catch (error) {
       if (!isAttendanceDialogCancelled(error)) {
-        ElMessage.error(formData.id ? '更新失败' : '提交失败')
+        globalNotifications.error(formData.id ? '更新失败' : '提交失败')
       }
     } finally {
       submitting.value = false
@@ -2744,12 +2746,12 @@ const handleApproveSubmit = async () => {
       approveForm.status,
       approveForm.note
     )
-    ElMessage.success(approveForm.status === 'approved' ? '审批通过' : '已拒绝')
+    globalNotifications.success(approveForm.status === 'approved' ? '审批通过' : '已拒绝')
     approveDialogVisible.value = false
     loadData()
   } catch (error) {
     logger.error('❌ 审批失败:', error)
-    ElMessage.error('审批失败')
+    globalNotifications.error('审批失败')
   } finally {
     approving.value = false
   }
@@ -2858,20 +2860,20 @@ const handleDelete = async (row: AttendanceTableRow) => {
   }
   const rowId = row.id
   if (!rowId) {
-    ElMessage.warning('考勤记录缺少有效ID')
+    globalNotifications.warning('考勤记录缺少有效ID')
     return
   }
 
   try {
     await confirmAction('确认删除该考勤记录？', '删除确认')
     await attendanceApi.deleteAttendanceRecord(rowId)
-    ElMessage.success('删除成功')
+    globalNotifications.success('删除成功')
     detailDialogVisible.value = false
     await loadData()
   } catch (error) {
     if (error !== 'cancel') {
       logger.error('❌ 删除失败:', error)
-      ElMessage.error('删除失败')
+      globalNotifications.error('删除失败')
     }
   }
 }
@@ -2883,20 +2885,20 @@ const handleCancel = async (row: AttendanceTableRow) => {
   }
   const rowId = row.id
   if (!rowId) {
-    ElMessage.warning('考勤记录缺少有效ID')
+    globalNotifications.warning('考勤记录缺少有效ID')
     return
   }
 
   try {
     await confirmAction('确定要撤销此申请吗？', '提示', { type: 'warning' })
     await attendanceApi.cancelAttendanceRequest(rowId)
-    ElMessage.success('已撤销')
+    globalNotifications.success('已撤销')
     detailDialogVisible.value = false
     loadMyData()
   } catch (error) {
     if (!isAttendanceDialogCancelled(error)) {
       logger.error('撤销申请失败:', error)
-      ElMessage.error('撤销失败')
+      globalNotifications.error('撤销失败')
     }
   }
 }

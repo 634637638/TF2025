@@ -103,15 +103,11 @@
       </div>
 
       <!-- 订单列表 -->
-      <div
+      <SectionLoading
         v-if="loading"
-        class="loading-state"
-      >
-        <SectionLoading
-          text="加载订单中..."
-          size="large"
-        />
-      </div>
+        text="加载订单中..."
+        size="large"
+      />
 
       <div
         v-else-if="orders.length > 0"
@@ -208,7 +204,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage, type FormInstance } from 'element-plus'
+import { type FormInstance } from 'element-plus'
 import { useForm, ValidationRules, useLoadingState } from '@/composables'
 import { getOrdersByPhone } from '@/api/shop-public'
 import { getUserOrders, userManager, tokenManager, type AuthUser } from '@/api/auth'
@@ -221,6 +217,9 @@ import type { PublicOrder } from '@/api/shop-public'
 import { getPaymentMethodLabel } from '@/utils/shop-payment'
 import { storage } from '@/services/storage'
 import { H5_STORAGE_KEYS } from '@/constants/storage'
+import { useNotification } from '@/composables/useNotification'
+const globalNotifications = useNotification()
+
 const router = useRouter()
 
 // 认证状态
@@ -342,7 +341,7 @@ const loadUserOrders = async () => {
     total.value = result.total
   } catch (error: unknown) {
     logger.error('加载用户订单失败:', error)
-    ElMessage.error(getRequestErrorMessage(error, '加载订单失败'))
+    globalNotifications.error(getRequestErrorMessage(error, '加载订单失败'))
   } finally {
     loading.value = false
   }
@@ -371,7 +370,7 @@ const handleVerify = async () => {
     )
 
     if (!hasValidOrder) {
-      ElMessage.warning('未找到匹配的订单，请检查手机号和姓名是否正确')
+      globalNotifications.warning('未找到匹配的订单，请检查手机号和姓名是否正确')
       return
     }
 
@@ -381,10 +380,10 @@ const handleVerify = async () => {
     total.value = result.total || 0
     current_page.value = 1
 
-    ElMessage.success(`查询成功，找到 ${orders.value.length} 条订单记录`)
+    globalNotifications.success(`查询成功，找到 ${orders.value.length} 条订单记录`)
   } catch (error: unknown) {
     logger.error('验证失败:', error)
-    ElMessage.error(getRequestErrorMessage(error, '验证失败'))
+    globalNotifications.error(getRequestErrorMessage(error, '验证失败'))
   } finally {
     verifying.value = false
   }
@@ -446,7 +445,7 @@ const loadMore = async () => {
     }
   } catch (error: unknown) {
     logger.error('加载更多失败:', error)
-    ElMessage.error('加载失败')
+    globalNotifications.error('加载失败')
     current_page.value--
   } finally {
     loadingMore.value = false
@@ -609,11 +608,6 @@ const goHome = () => {
       }
     }
   }
-}
-
-// 加载状态
-.loading-state {
-  padding: 20px;
 }
 
 // 订单列表

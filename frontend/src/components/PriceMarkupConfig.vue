@@ -8,9 +8,10 @@
     :show-default-footer="false"
     @close="handleClose"
   >
-    <div
-      v-loading="loading"
+    <LoadingOverlay
+      :loading="loading"
       class="markup-layout"
+      text="加载加价配置中..."
     >
       <section class="overview-panel">
         <div class="overview-item">
@@ -346,7 +347,7 @@
           </div>
         </div>
       </section>
-    </div>
+    </LoadingOverlay>
 
     <template #footer>
       <el-button
@@ -369,7 +370,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { ElMessage, FormInstance } from 'element-plus'
+import { FormInstance } from 'element-plus'
 import { ValidationRules } from '@/composables'
 import {
   getAllSyncConfigs,
@@ -380,6 +381,10 @@ import {
 import type { ModelValueProps, UpdateModelValueEmits } from '@/types/component'
 import { logger } from '@/utils/logger'
 import { getRequestErrorMessage } from '@/utils/api-response'
+import { useNotification } from '@/composables/useNotification'
+import LoadingOverlay from '@/components/LoadingOverlay.vue'
+const globalNotifications = useNotification()
+
 
 interface Props extends ModelValueProps {
   config?: PriceMarkupConfig
@@ -652,14 +657,14 @@ const handleSave = async () => {
     if (response.success) {
       // 触发保存事件
       emit('save', normalizeConfig(form.value))
-      ElMessage.success('加价配置保存成功')
+      globalNotifications.success('加价配置保存成功')
       visible.value = false
     } else {
-      ElMessage.error(response.message || '保存失败')
+      globalNotifications.error(response.message || '保存失败')
     }
   } catch (error: unknown) {
     logger.error('保存配置失败:', error)
-    ElMessage.error(getRequestErrorMessage(error, '保存配置失败'))
+    globalNotifications.error(getRequestErrorMessage(error, '保存配置失败'))
   } finally {
     saving.value = false
   }

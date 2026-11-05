@@ -4,6 +4,7 @@ const { unifiedAuth, requirePermission, requireAnyPermission, hasUnifiedPermissi
 const ApiResponse = require('../utils/response')
 const { clearCache } = require('../middleware/cache')
 const { generateMemberNumber } = require('../utils/member-number')
+const { reconcileCustomerPointsForSale } = require('../services/customer-points.service')
 const { validateImei } = require('../utils/imei')
 const {
   prepareInvoiceNumberTransaction,
@@ -1278,6 +1279,16 @@ router.put('/:id', unifiedAuth, requireAnyPermission(['phones:edit', 'sales-edit
       )
       synchronizedSaleId = insertResult.insertId
 
+      await reconcileCustomerPointsForSale({
+        executor: connection,
+        saleId: synchronizedSaleId,
+        customerId: finalCustomerId || null,
+        saleType,
+        salePrice: finalSalePrice,
+        isNew: nextIsNew,
+        initialize: true
+      })
+
       log.debug(`✅ 创建销售记录成功, ID: ${insertResult.insertId}, customer_id: ${finalCustomerId}, invoice_number: ${invoiceNumber}`)
     } else if (existingSales.length > 0) {
       const existingSale = existingSales[0]
@@ -1363,6 +1374,18 @@ router.put('/:id', unifiedAuth, requireAnyPermission(['phones:edit', 'sales-edit
       // 同步 remarks
       updateSalesFields.push('remarks = ?')
       updateSalesValues.push(finalNotes)
+
+      const pointsCustomerId = finalCustomerId !== null && finalCustomerId !== undefined && finalCustomerId !== ''
+        ? finalCustomerId
+        : existingSale.customer_id
+      await reconcileCustomerPointsForSale({
+        executor: connection,
+        saleId: existingSale.id,
+        customerId: pointsCustomerId,
+        saleType: transactionTypeByStatus[effectiveStatus] || 'non_retail',
+        salePrice: finalSalePrice,
+        isNew: nextIsNew
+      })
 
       if (updateSalesFields.length > 0) {
         updateSalesFields.push('updated_at = NOW()')

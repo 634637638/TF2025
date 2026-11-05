@@ -157,7 +157,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, computed, watch, onUnmounted, onActivated, defineAsyncComponent } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { ElMessage } from 'element-plus'
+
 import { useMobileDetection } from '@/composables/mobile'
 import { useNotification } from '@/composables/useNotification'
 import { useImportExport } from '@/composables/useImportExport'
@@ -187,6 +187,8 @@ import { useInventoryData } from './useInventoryData'
 import { PHONE_EDIT_STATUS_OPTIONS, getPhoneStatusClass, getPhoneStatusLabel, normalizePhoneStatus, getEffectivePhoneStatus } from '@/constants/phoneStatuses'
 import type { InventoryItem } from '@/types'
 import type { ReferenceRecord } from '@/services/reference-options'
+const globalNotifications = useNotification()
+
 
 const InventoryDetailModal = defineAsyncComponent(() => import('@/components/InventoryDetailModal.vue'))
 const StockInModal = defineAsyncComponent(() => import('@/components/StockInModal.vue'))
@@ -821,7 +823,8 @@ const {
   pagination,
   stats,
   statsAvailable,
-  onError: message => error(message)
+  onError: message => error(message),
+  onWarning: message => globalNotifications.warning(message)
 })
 
 // 分页处理
@@ -871,7 +874,7 @@ const editItem = async (item: InventoryItem) => {
 
 // 上架商品成功回调
 const handlePublishSuccess = () => {
-  ElMessage.success('商品已上架到H5商城')
+  globalNotifications.success('商品已上架到H5商城')
 }
 
 // 从详情模态框触发编辑
@@ -991,11 +994,11 @@ const toggleEditNoIMEIMode = () => {
     if (editForm.serial_number) {
       editForm.imei = editForm.serial_number
     }
-    ElMessage.success('已启用无IMEI模式，IMEI将支持字母+数字')
+    globalNotifications.success('已启用无IMEI模式，IMEI将支持字母+数字')
   } else {
     // 切换回标准模式：清空IMEI，重新输入15位纯数字
     editForm.imei = ''
-    ElMessage.info('已切换回标准IMEI模式，需要输入15位纯数字')
+    globalNotifications.info('已切换回标准IMEI模式，需要输入15位纯数字')
   }
 }
 
@@ -1211,10 +1214,10 @@ const handleQuickPublishChange = async (value: number) => {
       is_published: value
     })
     const statusText = value === 1 ? '上架' : '下架'
-    ElMessage.success(`已${statusText}`)
+    globalNotifications.success(`已${statusText}`)
   } catch (error: unknown) {
     logger.error('更新上架状态失败:', error)
-    ElMessage.error(getRequestErrorMessage(error, '操作失败'))
+    globalNotifications.error(getRequestErrorMessage(error, '操作失败'))
     // 恢复开关状态
     editForm.is_published = editForm.is_published === 1 ? 0 : 1
   }
@@ -1443,7 +1446,7 @@ const exportInventory = async () => {
     errorMessage: '导出失败',
     onError: (error) => {
       logger.error('导出失败:', error)
-      ElMessage.error('导出失败')
+      globalNotifications.error('导出失败')
     }
   })
 }

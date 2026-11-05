@@ -367,7 +367,7 @@
 
 <script setup lang="ts">
 import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue'
-import { ElMessage } from 'element-plus'
+
 import { useLoadingState } from '@/composables'
 import { useMobile } from '@/composables/mobile'
 import { usePagePermissions } from '@/composables/usePagePermissions'
@@ -383,6 +383,8 @@ import { logger } from '@/utils/logger'
 import { getTextColumnMinWidth } from '@/utils/table-layout'
 import { unifiedApi as api } from '@/utils/unified-api'
 import { canViewAccessoryField } from '@/components/accessory-field-permissions'
+const globalNotifications = useNotification()
+
 
 interface AccessoryItem {
   id: number
@@ -514,7 +516,7 @@ const loadAccessories = async (showLoadingState = true) => {
 
 const handleRefresh = async () => {
   await refresh(() => loadAccessories(false))
-  if (!error.value) ElMessage.success('数据刷新成功')
+  if (!error.value) globalNotifications.success('数据刷新成功')
 }
 
 const openStockInModal = () => {
@@ -561,10 +563,10 @@ const deleteAccessory = async (accessory: AccessoryItem) => {
     await api.delete(`/accessories/${accessory.id}`)
     accessories.value = accessories.value.filter(item => item.id !== accessory.id)
     if (currentPage.value > totalPages.value) currentPage.value = totalPages.value
-    ElMessage.success('删除成功')
+    globalNotifications.success('删除成功')
   } catch (err) {
     logger.error('删除配件失败', err)
-    ElMessage.error('删除失败，请重试')
+    globalNotifications.error('删除失败，请重试')
   }
 }
 

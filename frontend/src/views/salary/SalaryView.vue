@@ -301,7 +301,7 @@
 <script setup lang="ts">
 import { confirmAction } from '@/utils/message-box'
 import { ref, computed, onMounted, watch } from 'vue'
-import { ElMessage, ElConfigProvider, type TabPaneName } from 'element-plus'
+import { ElConfigProvider, type TabPaneName } from 'element-plus'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import { salaryTemplateApi } from '@/api/salary-template'
 import { salaryApi } from '@/api/salary'
@@ -376,6 +376,8 @@ import {
   getAttendanceTypeText,
   getSalaryPaymentMethodName as getPaymentMethodName
 } from './salary-formatters'
+const globalNotifications = useNotification()
+
 
 // 配置中文语言环境
 const locale = zhCn
@@ -826,7 +828,7 @@ const handleViewSalesDetail = async (row: SalaryRecord) => {
     }
   } catch (error) {
     logger.error('加载销售明细失败:', error)
-    ElMessage.error('加载销售明细失败')
+    globalNotifications.error('加载销售明细失败')
   } finally {
     salesDetailLoading.value = false
   }
@@ -856,7 +858,7 @@ const handleViewEmployeeSalesDetail = async (row: SalaryEmployeeRow) => {
 
   const stats = getEmployeeSalesStats(row.id)
   if (stats.sales_count === 0) {
-    ElMessage.info('该员工暂无销售记录')
+    globalNotifications.info('该员工暂无销售记录')
     return
   }
 
@@ -868,7 +870,7 @@ const handleViewEmployeeSalesDetail = async (row: SalaryEmployeeRow) => {
     // 根据当前选择的月份计算时间范围
     const monthStr = employeeSalaryMonth.value
     if (!monthStr) {
-      ElMessage.warning('请先选择月份')
+      globalNotifications.warning('请先选择月份')
       employeeSalesDetailLoading.value = false
       return
     }
@@ -929,7 +931,7 @@ const handleViewEmployeeSalesDetail = async (row: SalaryEmployeeRow) => {
     }
   } catch (error) {
     logger.error('加载员工销售明细失败:', error)
-    ElMessage.error('加载员工销售明细失败')
+    globalNotifications.error('加载员工销售明细失败')
     employeeSalesDetailList.value = []
   } finally {
     employeeSalesDetailLoading.value = false
@@ -987,10 +989,10 @@ const loadTemplates = async () => {
   } catch (error: unknown) {
     templates.value = []
     if (getRequestErrorStatus(error) === 403) {
-      ElMessage.warning('当前账号没有工资模板查看权限')
+      globalNotifications.warning('当前账号没有工资模板查看权限')
       return
     }
-    ElMessage.error('加载模板失败')
+    globalNotifications.error('加载模板失败')
   } finally {
     templatesLoading.value = false
   }
@@ -1047,7 +1049,7 @@ const loadMyRecords = async () => {
       myPagination.total = Number(response.data.pagination?.total || 0)
     }
   } catch {
-    ElMessage.error('加载工资记录失败')
+    globalNotifications.error('加载工资记录失败')
   } finally {
     myLoading.value = false
   }
@@ -1345,7 +1347,7 @@ const loadEmployeeList = async (dateParam?: string) => {
     await loadAllEmployeesSales(dateParam)
   } catch (err) {
     logger.error('加载员工列表失败:', err)
-    ElMessage.error('加载员工列表失败')
+    globalNotifications.error('加载员工列表失败')
   } finally {
     employeesLoading.value = false
   }
@@ -1693,7 +1695,7 @@ const handleBulkRecalculatePayout = async () => {
   }
 
   if (!payoutMonth.value) {
-    ElMessage.warning('请先选择月份')
+    globalNotifications.warning('请先选择月份')
     return
   }
 
@@ -1712,14 +1714,14 @@ const handleBulkRecalculatePayout = async () => {
     payoutLoading.value = true
     const response = await salaryApi.records.recalculateMonth(startDate, endDate)
     const result = response.data
-    ElMessage.success(`批量重算完成：成功 ${result.recalculated}/${result.total}`)
+    globalNotifications.success(`批量重算完成：成功 ${result.recalculated}/${result.total}`)
 
     await loadPayoutList()
     await loadAllEmployeesAttendance(payoutMonth.value)
     await loadAllEmployeesSales(payoutMonth.value)
   } catch (error) {
     if (error !== 'cancel') {
-      ElMessage.error('批量重算失败')
+      globalNotifications.error('批量重算失败')
     }
   } finally {
     payoutLoading.value = false
@@ -1775,9 +1777,9 @@ const handlePayoutByEmployee = async (employee: SalaryEmployeeRow) => {
       // 检查是否是模板错误（处理多种错误响应格式）
       const errorMessage = getRequestErrorMessage(err, '')
       if (errorMessage.includes('工资模板') || errorMessage.includes('template') || errorMessage.includes('关联')) {
-        ElMessage.error(`无法结算：${employee.name || employee.username} 没有关联薪资模板，请先设置`)
+        globalNotifications.error(`无法结算：${employee.name || employee.username} 没有关联薪资模板，请先设置`)
       } else {
-        ElMessage.error(`计算工资失败：${errorMessage}`)
+        globalNotifications.error(`计算工资失败：${errorMessage}`)
       }
       return
     }
@@ -1807,7 +1809,7 @@ const handlePayoutByEmployee = async (employee: SalaryEmployeeRow) => {
 
   } catch (error) {
     logger.error('结算失败:', error)
-    ElMessage.error('操作失败')
+    globalNotifications.error('操作失败')
   }
 }
 
@@ -1820,13 +1822,13 @@ const confirmSettle = async () => {
   }
 
   if (canViewSalaryField('salary_salaryrecordsview', 'payment_method') && !settleForm.value.payment_method) {
-    ElMessage.warning('请选择支付方式')
+    globalNotifications.warning('请选择支付方式')
     return
   }
 
   // 如果没有待处理的数据，说明是已存在记录的结算（使用 recordId）
   if (!pendingSalaryData.value && !settleForm.value.recordId) {
-    ElMessage.error('结算数据丢失，请重新操作')
+    globalNotifications.error('结算数据丢失，请重新操作')
     return
   }
 
@@ -1850,14 +1852,14 @@ const confirmSettle = async () => {
       const savedRecord = saveResponse.data?.data
 
       if (!savedRecord) {
-        ElMessage.error('保存工资记录失败')
+        globalNotifications.error('保存工资记录失败')
         return
       }
 
       // 调用 markAsPaid 确保 paid_at 时间正确
       await salaryApi.records.markAsPaid(savedRecord.id, paymentMethod || undefined)
 
-      ElMessage.success('结算成功')
+      globalNotifications.success('结算成功')
       settleDialogVisible.value = false
       pendingSalaryData.value = null // 清空临时数据
       await loadPayoutList() // 等待列表刷新完成
@@ -1882,13 +1884,13 @@ const confirmSettle = async () => {
 
       await salaryApi.saveCalculatedSalary(saveData)
       await salaryApi.records.markAsPaid(settleForm.value.recordId, paymentMethod || undefined)
-      ElMessage.success('结算成功')
+      globalNotifications.success('结算成功')
       settleDialogVisible.value = false
       await loadPayoutList() // 等待列表刷新完成
     }
   } catch (error) {
     logger.error('结算失败:', error)
-    ElMessage.error('结算失败')
+    globalNotifications.error('结算失败')
   } finally {
     settleSaving.value = false
   }
@@ -1902,7 +1904,7 @@ const handleRecalculatePayout = async (employee: SalaryEmployeeRow) => {
 
   const record = getEmployeePayoutRecord(employee.id)
   if (!record) {
-    ElMessage.error('未找到工资记录')
+    globalNotifications.error('未找到工资记录')
     return
   }
 
@@ -1927,10 +1929,10 @@ const handleRecalculatePayout = async (employee: SalaryEmployeeRow) => {
 
     await salaryApi.saveCalculatedSalary(saveData)
     await loadPayoutList()
-    ElMessage.success('重新结算成功，工资数据和结算时间已更新')
+    globalNotifications.success('重新结算成功，工资数据和结算时间已更新')
   } catch (err: unknown) {
     logger.error('重新结算失败:', err)
-    ElMessage.error(getRequestErrorMessage(err, '重新结算失败'))
+    globalNotifications.error(getRequestErrorMessage(err, '重新结算失败'))
   }
 }
 
@@ -2079,12 +2081,12 @@ const handleSaveEditPayout = async () => {
     // 使用 UPSERT 接口保存
     await salaryApi.saveCalculatedSalary(saveData)
 
-    ElMessage.success(editPayoutForm.value.id ? '工资记录修改成功' : '工资记录创建成功')
+    globalNotifications.success(editPayoutForm.value.id ? '工资记录修改成功' : '工资记录创建成功')
 
     editPayoutDialogVisible.value = false
     loadPayoutList()
   } catch {
-    ElMessage.error('保存失败')
+    globalNotifications.error('保存失败')
   } finally {
     editPayoutSaving.value = false
   }
@@ -2105,15 +2107,15 @@ const handleDeletePayout = async (employee: SalaryEmployeeRow) => {
       customClass: 'message-box-unified'
     })
     if (!record.id) {
-      ElMessage.warning('工资记录缺少有效ID')
+      globalNotifications.warning('工资记录缺少有效ID')
       return
     }
     await salaryApi.records.deleteSalaryRecord(record.id)
-    ElMessage.success('删除成功')
+    globalNotifications.success('删除成功')
     loadPayoutList()
   } catch (error) {
     if (error !== 'cancel') {
-      ElMessage.error('删除失败')
+      globalNotifications.error('删除失败')
     }
   }
 }
@@ -2179,13 +2181,13 @@ const handleSaveEmployeeTemplate = async () => {
       currentEmployee.value.id,
       selectedTemplateId.value || null
     )
-    ElMessage.success('工资模板设置成功')
+    globalNotifications.success('工资模板设置成功')
     templateDialogVisible.value = false
     // 根据当前标签页传递正确的月份参数
     const monthParam = activeTab.value === 'employees' ? employeeSalaryMonth.value : payoutMonth.value
     await loadEmployeeList(monthParam)
   } catch {
-    ElMessage.error('设置失败')
+    globalNotifications.error('设置失败')
   }
 }
 
@@ -2285,7 +2287,7 @@ const loadEmployeeAttendance = async (employeeId: number) => {
     }
   } catch (error) {
     logger.error('[员工考勤] 加载失败:', error)
-    ElMessage.error('加载考勤记录失败')
+    globalNotifications.error('加载考勤记录失败')
   } finally {
     attendanceLoading.value = false
   }
@@ -2345,7 +2347,7 @@ const handleSaveAttendance = async () => {
 
   // 验证必填字段
   if (!attendanceForm.value.record_date) {
-    ElMessage.warning('请选择记录日期')
+    globalNotifications.warning('请选择记录日期')
     return
   }
 
@@ -2360,7 +2362,7 @@ const handleSaveAttendance = async () => {
       : [recordDate]
 
     if (recordDates.length === 0) {
-      ElMessage.warning('请选择有效的开始日期和结束日期')
+      globalNotifications.warning('请选择有效的开始日期和结束日期')
       return
     }
     const isEdit = !!editingAttendanceId.value
@@ -2377,7 +2379,7 @@ const handleSaveAttendance = async () => {
     case 'monthly_leave':
       submitData.monthly_leave_days = recordDates.length
       if (!submitData.monthly_leave_days || submitData.monthly_leave_days <= 0) {
-        ElMessage.warning('请输入休假天数')
+        globalNotifications.warning('请输入休假天数')
         return
       }
 
@@ -2388,7 +2390,7 @@ const handleSaveAttendance = async () => {
         )
         const balance = balanceResponse.data
         if (!balance) {
-          ElMessage.error('未获取到休假额度，请稍后重试')
+          globalNotifications.error('未获取到休假额度，请稍后重试')
           return
         }
         const allocation = buildAttendanceLeaveAllocation({
@@ -2400,7 +2402,7 @@ const handleSaveAttendance = async () => {
         })
 
         if (allocation.assignments.length !== recordDates.length) {
-          ElMessage.error('休假额度计算失败，请检查日期后重试')
+          globalNotifications.error('休假额度计算失败，请检查日期后重试')
           return
         }
         const groups = groupAttendanceLeaveAssignments(allocation.assignments)
@@ -2456,7 +2458,7 @@ const handleSaveAttendance = async () => {
           }
         }
 
-        ElMessage.success(allocation.regularLeaveDaysCount > 0
+        globalNotifications.success(allocation.regularLeaveDaysCount > 0
           ? `添加成功：带薪休假 ${allocation.monthlyLeaveDaysCount} 天，无薪请假 ${allocation.regularLeaveDaysCount} 天`
           : `添加成功：带薪休假 ${allocation.monthlyLeaveDaysCount} 天`)
         attendanceFormVisible.value = false
@@ -2473,11 +2475,11 @@ const handleSaveAttendance = async () => {
         submitData.leave_reason = attendanceForm.value.reason.trim()
       }
       if (!submitData.leave_type) {
-        ElMessage.warning('请选择请假类型')
+        globalNotifications.warning('请选择请假类型')
         return
       }
       if (!submitData.leave_days || submitData.leave_days <= 0) {
-        ElMessage.warning('请输入请假天数')
+        globalNotifications.warning('请输入请假天数')
         return
       }
       break
@@ -2487,7 +2489,7 @@ const handleSaveAttendance = async () => {
         submitData.overtime_reason = attendanceForm.value.reason.trim()
       }
       if (!submitData.overtime_hours || submitData.overtime_hours <= 0) {
-        ElMessage.warning('请输入加班时长')
+        globalNotifications.warning('请输入加班时长')
         return
       }
       break
@@ -2519,7 +2521,7 @@ const handleSaveAttendance = async () => {
       leave: '请假',
       overtime: '加班'
     }
-    ElMessage.success(`${typeLabels[attendanceForm.value.record_type]}记录${isEdit ? '修改' : '添加'}成功`)
+    globalNotifications.success(`${typeLabels[attendanceForm.value.record_type]}记录${isEdit ? '修改' : '添加'}成功`)
 
     // 关闭对话框并清除编辑ID
     attendanceFormVisible.value = false
@@ -2535,7 +2537,7 @@ const handleSaveAttendance = async () => {
     await loadAllEmployeesSales(employeeSalaryMonth.value)
   } catch (error) {
     if (error === 'cancel' || error === 'close') return
-    ElMessage.error(`${editingAttendanceId.value ? '修改' : '添加'}失败`)
+    globalNotifications.error(`${editingAttendanceId.value ? '修改' : '添加'}失败`)
   } finally {
     attendanceSaving.value = false
   }
@@ -2550,13 +2552,13 @@ const handleDeleteAttendance = async (id: number) => {
   try {
     await confirmAction('确认删除此考勤记录？', '警告')
     await attendanceApi.deleteAttendanceRecord(id)
-    ElMessage.success('删除成功')
+    globalNotifications.success('删除成功')
     if (currentAttendanceEmployee.value) {
       loadEmployeeAttendance(currentAttendanceEmployee.value.id)
     }
   } catch (error) {
     if (error !== 'cancel') {
-      ElMessage.error('删除失败')
+      globalNotifications.error('删除失败')
     }
   }
 }
@@ -2694,18 +2696,18 @@ const handleSaveTemplate = async () => {
     if (templateForm.value.id) {
       // 更新
       await salaryTemplateApi.updateTemplate(templateForm.value.id, saveData)
-      ElMessage.success('模板更新成功')
+      globalNotifications.success('模板更新成功')
     } else {
       // 新增
       await salaryTemplateApi.createTemplate(saveData)
-      ElMessage.success('模板创建成功')
+      globalNotifications.success('模板创建成功')
     }
 
     templateFormDialogVisible.value = false
     loadTemplates()
   } catch (err: unknown) {
     logger.error('保存模板失败:', err)
-    ElMessage.error(getRequestErrorMessage(err, '保存失败'))
+    globalNotifications.error(getRequestErrorMessage(err, '保存失败'))
   } finally {
     templateSaving.value = false
   }
@@ -2721,11 +2723,11 @@ const handleSetDefault = async (row: SalaryTemplate) => {
       customClass: 'message-box-unified'
     })
     await salaryTemplateApi.setAsDefault(row.id)
-    ElMessage.success('设置成功')
+    globalNotifications.success('设置成功')
     loadTemplates()
   } catch (error) {
     if (error !== 'cancel') {
-      ElMessage.error('设置失败')
+      globalNotifications.error('设置失败')
     }
   }
 }
@@ -2742,11 +2744,11 @@ const handleToggleTemplateStatus = async (row: SalaryTemplate) => {
       customClass: 'message-box-unified'
     })
     await salaryTemplateApi.updateTemplate(row.id, { is_active: newStatus })
-    ElMessage.success(`${actionText}成功`)
+    globalNotifications.success(`${actionText}成功`)
     loadTemplates()
   } catch (error) {
     if (error !== 'cancel') {
-      ElMessage.error('操作失败')
+      globalNotifications.error('操作失败')
     }
   }
 }
@@ -2768,11 +2770,11 @@ const handleDeleteTemplate = async (row: SalaryTemplate) => {
       customClass: 'message-box-unified'
     })
     await salaryTemplateApi.deleteTemplate(row.id)
-    ElMessage.success('删除成功')
+    globalNotifications.success('删除成功')
     loadTemplates()
   } catch (error) {
     if (error !== 'cancel') {
-      ElMessage.error('删除失败')
+      globalNotifications.error('删除失败')
     }
   }
 }
@@ -2820,7 +2822,7 @@ const loadPayoutList = async () => {
     }
   } catch (error) {
     logger.error('加载工资发放列表失败:', error)
-    ElMessage.error('加载工资发放列表失败')
+    globalNotifications.error('加载工资发放列表失败')
   } finally {
     payoutLoading.value = false
   }

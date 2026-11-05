@@ -994,6 +994,9 @@ import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import { logger } from '@/utils/logger'
 import { getPublicPriceContactKey, parsePublicPriceContacts } from '@/utils/publicPriceSettings'
 import { getAdaptiveActionColumnWidth, getTextColumnMinWidth } from '@/utils/table-layout'
+import { storage } from '@/services/storage'
+import { DEFAULT_SCREEN_LOCK_SETTINGS, normalizeScreenLockSettings } from '@/utils/screen-lock-settings'
+import type { ScreenLockSettings } from '@/types/screen-lock'
 
 const SITE_LOGO_ALLOWED_MIME_TYPES = {
   '.jpg': ['image/jpeg'],
@@ -1375,13 +1378,7 @@ const movePriceContact = async (index: number, offset: number) => {
 }
 
 // 锁屏设置
-const screenLockSettings = reactive({
-  backgroundType: 'default',
-  imageUrl: '',
-  videoUrl: '',
-  title: '屏幕已锁定',
-  message: '请输入密码解锁'
-})
+const screenLockSettings = reactive<ScreenLockSettings>({ ...DEFAULT_SCREEN_LOCK_SETTINGS })
 
 // 在库查询密码管理
 interface InventoryPasswordRecord {
@@ -1579,7 +1576,9 @@ const loadScreenLockSettings = async () => {
   try {
     const response = await unifiedApi.get('/screen-lock')
     if (response.success && response.data) {
-      Object.assign(screenLockSettings, response.data)
+      const settings = normalizeScreenLockSettings(response.data)
+      Object.assign(screenLockSettings, settings)
+      storage.setScreenLockSettings(settings)
     }
   } catch (error) {
     logger.error('加载锁屏设置失败:', error)
@@ -1599,6 +1598,9 @@ const saveScreenLockSettings = async () => {
     const response = await unifiedApi.post('/screen-lock', screenLockSettings)
 
     if (response.success) {
+      const settings = normalizeScreenLockSettings(response.data || screenLockSettings)
+      Object.assign(screenLockSettings, settings)
+      storage.setScreenLockSettings(settings)
       lastSavedTime.value = TimeUtil.nowFormatted(TIME_FORMATS.DATETIME)
       success('锁屏设置保存成功')
     } else {

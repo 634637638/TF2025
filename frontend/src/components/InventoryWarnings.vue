@@ -140,12 +140,15 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage, ElNotification } from 'element-plus'
+
 import { unifiedApi } from '@/utils/unified-api'
 import { logger } from '@/utils/logger'
 import { useAuthStore } from '@/stores/auth'
 import { canAccessRoutePath } from '@/constants/routePermissions'
 import type { AccessoryStockWarning, ComprehensiveWarningsData, PhoneStockWarning } from '@/types'
+import { useNotification } from '@/composables/useNotification'
+const globalNotifications = useNotification()
+
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -182,7 +185,8 @@ const fetchWarnings = async () => {
       accessoryWarnings.value = data.accessories?.warnings || []
       // 如果有预警，显示通知
       if (data.summary?.has_warnings && data.summary?.total_warnings > 0) {
-        ElNotification.warning({
+        globalNotifications.notify({
+          type: 'warning',
           title: '库存预警',
           message: `发现 ${data.summary.total_warnings} 项库存预警，请及时处理`,
           duration: 5000,
@@ -200,7 +204,8 @@ const fetchWarnings = async () => {
 // 刷新预警
 const refreshWarnings = () => {
   fetchWarnings()
-  ElNotification.success({
+  globalNotifications.notify({
+    type: 'success',
     title: '刷新成功',
     message: '预警数据已更新',
     duration: 2000
@@ -210,7 +215,7 @@ const refreshWarnings = () => {
 // 跳转到库存页面
 const goToInventory = () => {
   if (!canAccessInventory.value) {
-    ElMessage.warning('您没有访问此页面的权限')
+    globalNotifications.warning('您没有访问此页面的权限')
     return
   }
 

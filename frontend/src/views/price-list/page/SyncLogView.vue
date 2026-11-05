@@ -635,7 +635,7 @@
 import { confirmAction } from '@/utils/message-box'
 import { ref, reactive, onMounted, onUnmounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+
 import { getSyncLogs, getSyncLogStatistics, deleteSyncLog, clearSyncLogs } from '@/api/price-list'
 import { usePagination } from '@/composables'
 import { usePagePermissions } from '@/composables/usePagePermissions'
@@ -649,6 +649,9 @@ import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import { logger } from '@/utils/logger'
 import { isCurrentMobileViewport } from '@/utils/device-detection'
 import { TIME_FORMATS, TimeUtil } from '@/utils/time'
+import { useNotification } from '@/composables/useNotification'
+const globalNotifications = useNotification()
+
 const router = useRouter()
 const { canView, canDelete, handleNoPermission } = usePagePermissions('price-list-sync-logs')
 
@@ -824,7 +827,7 @@ const fetchLogs = async () => {
     }
   } catch (error) {
     logger.error('获取日志失败:', error)
-    ElMessage.error('获取日志失败')
+    globalNotifications.error('获取日志失败')
   } finally {
     loading.value = false
   }
@@ -903,16 +906,16 @@ const handleDeleteLog = async (row: SyncLogRecord) => {
     const res = await deleteSyncLog(row.id)
 
     if (res.success !== false) {
-      ElMessage.success('删除成功')
+      globalNotifications.success('删除成功')
       fetchLogs()
       fetchLogStats() // 重新获取统计数据
     } else {
-      ElMessage.error(res.message || '删除失败')
+      globalNotifications.error(res.message || '删除失败')
     }
   } catch (error: unknown) {
     if (error !== 'cancel') {
       logger.error('删除日志失败:', error)
-      ElMessage.error('删除失败')
+      globalNotifications.error('删除失败')
     }
   } finally {
     deleteLoading.value = false
@@ -941,16 +944,16 @@ const handleClearLogs = async () => {
     const res = await clearSyncLogs()
 
     if (res.success !== false) {
-      ElMessage.success('清空成功')
+      globalNotifications.success('清空成功')
       fetchLogs()
       fetchLogStats() // 重新获取统计数据
     } else {
-      ElMessage.error(res.message || '清空失败')
+      globalNotifications.error(res.message || '清空失败')
     }
   } catch (error: unknown) {
     if (error !== 'cancel') {
       logger.error('清空日志失败:', error)
-      ElMessage.error('清空失败')
+      globalNotifications.error('清空失败')
     }
   } finally {
     clearLoading.value = false

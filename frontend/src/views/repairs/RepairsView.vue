@@ -970,6 +970,8 @@ import { TIME_FORMATS, TimeUtil } from '@/utils/time'
 import { formatImageUrl } from '@/utils/format'
 import { isVideoMedia, type MediaPreviewItem } from '@/utils/media'
 import { getRequestErrorMessage } from '@/utils/api-response'
+const globalNotifications = useNotification()
+
 
 interface CustomerOption { id: number; name: string; phone: string | null }
 interface BrandOption { id: number; name: string }
@@ -1389,7 +1391,7 @@ const isRepairDeviceSearchResult = (item: unknown): item is RepairDeviceSearchRe
 
 const handleDeviceSelect = async (item: unknown) => {
   if (!isRepairDeviceSearchResult(item)) {
-    ElMessage.warning('设备数据无效，请重新检索')
+    globalNotifications.warning('设备数据无效，请重新检索')
     return
   }
   const device = item

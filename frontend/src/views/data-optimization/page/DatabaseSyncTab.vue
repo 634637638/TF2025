@@ -746,13 +746,16 @@
 <script setup lang="ts">
 import { confirmAction, alertAction } from '@/utils/message-box'
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
-import { ElMessage } from 'element-plus'
+
 import { unifiedApi } from '@/utils/unified-api'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { ValidationRules } from '@/composables'
 import { logger } from '@/utils/logger'
 import { formatDateTime as formatGlobalDateTime } from '@/utils/format'
+import { useNotification } from '@/composables/useNotification'
+const globalNotifications = useNotification()
+
 
 const { canView, canCreate, canEdit, canDelete, handleNoPermission } = usePagePermissions('data-optimization')
 const showActionColumn = computed(() => shouldShowActionColumn(
@@ -961,7 +964,7 @@ const handleCreateConnection = async () => {
   try {
     const res = await unifiedApi.post('/database-sync/connections', connectionForm.value)
     if (res.success) {
-      ElMessage.success('数据库连接成功')
+      globalNotifications.success('数据库连接成功')
       await loadConnections()
       // 清空表单
       connectionForm.value = {
@@ -972,10 +975,10 @@ const handleCreateConnection = async () => {
         database: ''
       }
     } else {
-      ElMessage.error(res.message || '连接失败')
+      globalNotifications.error(res.message || '连接失败')
     }
   } catch (error) {
-    ElMessage.error((error as Error).message || '连接失败')
+    globalNotifications.error((error as Error).message || '连接失败')
   } finally {
     connecting.value = false
   }
@@ -1018,7 +1021,7 @@ const handleCloseConnection = async (connectionId: string) => {
     })
     const res = await unifiedApi.delete(`/database-sync/connections/${connectionId}`)
     if (res.success) {
-      ElMessage.success('连接已断开')
+      globalNotifications.success('连接已断开')
       await loadConnections()
       if (selectedConnectionId.value === connectionId) {
         selectedConnectionId.value = ''
@@ -1026,7 +1029,7 @@ const handleCloseConnection = async (connectionId: string) => {
     }
   } catch (error: unknown) {
     if (error !== 'cancel') {
-      ElMessage.error((error as Error).message || '断开连接失败')
+      globalNotifications.error((error as Error).message || '断开连接失败')
     }
   }
 }
@@ -1053,7 +1056,7 @@ const loadTables = async () => {
       targetTables.value = localRes.data.tables || []
     }
   } catch (error) {
-    ElMessage.error('加载表列表失败')
+    globalNotifications.error('加载表列表失败')
   }
 }
 
@@ -1096,7 +1099,7 @@ const loadSourceStructure = async (tableName: string) => {
       }
     }
   } catch (error) {
-    ElMessage.error('加载表结构失败')
+    globalNotifications.error('加载表结构失败')
   }
 }
 
@@ -1115,7 +1118,7 @@ const loadTargetStructure = async (tableName: string) => {
       }
     }
   } catch (error) {
-    ElMessage.error('加载表结构失败')
+    globalNotifications.error('加载表结构失败')
   }
 }
 
@@ -1166,10 +1169,10 @@ const handleSuggestMapping = async () => {
       mappingList.value.forEach(item => {
         item.targetField = suggestions[item.sourceField] || ''
       })
-      ElMessage.success('智能匹配完成')
+      globalNotifications.success('智能匹配完成')
     }
   } catch (error) {
-    ElMessage.error('智能匹配失败')
+    globalNotifications.error('智能匹配失败')
   } finally {
     suggesting.value = false
   }
@@ -1188,7 +1191,7 @@ const handlePreCheck = async () => {
   try {
     await saveMappingConfig()
   } catch (error) {
-    ElMessage.error((error as Error).message || '保存映射配置失败')
+    globalNotifications.error((error as Error).message || '保存映射配置失败')
     return
   }
 
@@ -1201,12 +1204,12 @@ const handlePreCheck = async () => {
 
     if (res.success) {
       preCheckResult.value = res.data.analysis
-      ElMessage.success('预检查完成')
+      globalNotifications.success('预检查完成')
     } else {
-      ElMessage.error(res.message || '预检查失败')
+      globalNotifications.error(res.message || '预检查失败')
     }
   } catch (error) {
-    ElMessage.error((error as Error).message || '预检查失败')
+    globalNotifications.error((error as Error).message || '预检查失败')
   } finally {
     preChecking.value = false
   }
@@ -1255,11 +1258,11 @@ const handleExecuteSync = async () => {
       // 轮询进度
       pollProgress(syncId)
     } else {
-      ElMessage.error(res.message || '同步失败')
+      globalNotifications.error(res.message || '同步失败')
       syncing.value = false
     }
   } catch (error) {
-    ElMessage.error((error as Error).message || '同步失败')
+    globalNotifications.error((error as Error).message || '同步失败')
     syncing.value = false
   }
 }
@@ -1285,20 +1288,20 @@ const pollProgress = (syncId: string) => {
         synced.value = true
         syncStatus.value = 'success'
         syncStats.value = progress.stats || null
-        ElMessage.success('同步完成！')
+        globalNotifications.success('同步完成！')
       } else if (progress.status === 'failed') {
         clearSyncTimer()
         syncing.value = false
         syncStatus.value = 'exception'
         syncMessage.value = progress.message || '同步失败'
-        ElMessage.error(progress.message || '同步失败')
+        globalNotifications.error(progress.message || '同步失败')
       }
     } catch (error) {
       clearSyncTimer()
       syncing.value = false
       syncStatus.value = 'exception'
       syncMessage.value = (error as Error).message || '获取进度失败'
-      ElMessage.error((error as Error).message || '获取进度失败')
+      globalNotifications.error((error as Error).message || '获取进度失败')
     }
   }, 1000)
 }
@@ -1326,7 +1329,7 @@ const handleSmartSync = async () => {
   }
 
   if (connections.value.length === 0) {
-    ElMessage.warning('请先连接云端数据库')
+    globalNotifications.warning('请先连接云端数据库')
     return
   }
 
@@ -1348,7 +1351,7 @@ const handleSmartSync = async () => {
       }
     )
 
-    ElMessage.info('正在同步本地数据到云端，请稍候...')
+    globalNotifications.info('正在同步本地数据到云端，请稍候...')
 
     const res = await unifiedApi.post('/database-sync/local-to-cloud/sync', {
       connectionId,
@@ -1356,7 +1359,7 @@ const handleSmartSync = async () => {
     })
 
     if (res.success) {
-      ElMessage.success('同步完成！')
+      globalNotifications.success('同步完成！')
 
       // 显示详细结果
       const summary = res.data.summary
@@ -1376,11 +1379,11 @@ const handleSmartSync = async () => {
       // 刷新连接列表
       await loadConnections()
     } else {
-      ElMessage.error(res.message || '同步失败')
+      globalNotifications.error(res.message || '同步失败')
     }
   } catch (error: unknown) {
     if (error !== 'cancel') {
-      ElMessage.error((error as Error).message || '同步失败')
+      globalNotifications.error((error as Error).message || '同步失败')
     }
   } finally {
     smartSyncLoading.value = false

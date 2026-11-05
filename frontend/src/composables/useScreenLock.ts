@@ -6,18 +6,17 @@ import { storage } from '@/services/storage'
 import { logger } from '@/utils/logger'
 import { unifiedApi } from '@/utils/unified-api'
 import { useKeyboardShortcut } from '@/composables/useKeyboardShortcut'
+import { normalizeScreenLockSettings } from '@/utils/screen-lock-settings'
+import type { ScreenLockSettings } from '@/types/screen-lock'
 
 let sharedLockSettingsPromise: Promise<void> | null = null
 
 export const useScreenLock = () => {
-  const isLocked = ref(false)
-  const lockSettings = ref({
-    backgroundType: 'default',
-    imageUrl: '',
-    videoUrl: '',
-    title: '屏幕已锁定',
-    message: '请输入密码解锁'
-  })
+  // 在首屏渲染前同步恢复锁定状态，避免刷新时短暂暴露业务页面。
+  const isLocked = ref(storage.isScreenLocked())
+  const lockSettings = ref<ScreenLockSettings>(
+    normalizeScreenLockSettings(storage.getScreenLockSettings<unknown>())
+  )
 
   // 检查是否被锁定
   const checkLockStatus = () => {
@@ -39,14 +38,9 @@ export const useScreenLock = () => {
           cacheTTL: 60000
         })
         if (response.success && response.data) {
-          // 只加载背景设置，不加载密码
-          lockSettings.value = {
-            backgroundType: response.data.backgroundType || 'default',
-            imageUrl: response.data.imageUrl || '',
-            videoUrl: response.data.videoUrl || '',
-            title: response.data.title || '屏幕已锁定',
-            message: response.data.message || '请输入解锁密码'
-          }
+          const settings = normalizeScreenLockSettings(response.data)
+          lockSettings.value = settings
+          storage.setScreenLockSettings(settings)
         }
       } catch (error) {
         logger.error('加载屏幕锁定设置失败:', error)
@@ -60,15 +54,11 @@ export const useScreenLock = () => {
 
   // 锁定屏幕 - 点击按钮立即锁定
   const lockScreen = async () => {
-    // 加载背景设置
-    await loadLockSettings()
-
-    // 立即锁定
+    // 先锁定，再异步加载背景设置，避免网络请求延迟暴露页面。
     isLocked.value = true
     storage.setScreenLocked(true)
 
-    // 禁用页面滚动
-    document.body.style.overflow = 'hidden'
+    await loadLockSettings()
   }
 
   // 解锁屏幕
@@ -100,20 +90,15 @@ export const useScreenLock = () => {
 
   // 初始化锁定状态
   const initializeLock = async () => {
-    // 加载设置
+    // 本地状态必须先于接口读取，首屏不能等待网络请求。
+    isLocked.value = checkLockStatus()
     await loadLockSettings()
-
-    // 检查是否已锁定
-    if (checkLockStatus()) {
-      isLocked.value = true
-      document.body.style.overflow = 'hidden'
-    }
   }
 
   // 监听锁定状态变化
   watch(isLocked, (newValue) => {
     document.body.style.overflow = newValue ? 'hidden' : ''
-  })
+  }, { immediate: true })
 
   useKeyboardShortcut({ key: 'l', alt: true }, () => {
     void lockScreen()

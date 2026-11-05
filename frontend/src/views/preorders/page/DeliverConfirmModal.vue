@@ -86,10 +86,13 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, watch } from 'vue'
-import { ElMessage } from 'element-plus'
+
 import { preorderApi, Preorder } from '@/api/preorder'
 import { formatAmount } from '@/utils/format'
 import type { ModalProps, SuccessEmits, UpdateVisibleEmits } from '@/types'
+import { useNotification } from '@/composables/useNotification'
+const globalNotifications = useNotification()
+
 
 interface Props extends ModalProps {
   preorder: Preorder | null
@@ -124,11 +127,11 @@ const handleSubmit = async () => {
   submitting.value = true
   try {
     await preorderApi.deliverPreorder(props.preorder.id, formData)
-    ElMessage.success('预定单交付成功')
+    globalNotifications.success('预定单交付成功')
     emit('success')
     dialogVisible.value = false
   } catch (err: unknown) {
-    ElMessage.error(err instanceof Error ? err.message : '交付失败')
+    globalNotifications.error(err instanceof Error ? err.message : '交付失败')
   } finally {
     submitting.value = false
   }

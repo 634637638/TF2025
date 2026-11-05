@@ -476,25 +476,31 @@ router.put('/points-config', unifiedAuth, requirePermission('customers:manage'),
   try {
     const {
       enabled,
-      amount_per_point,
       include_new,
-      include_used
+      include_used,
+      new_points_per_100,
+      used_points_per_100
     } = req.body || {}
 
-    const amountPerPoint = Number(amount_per_point)
-    if (!Number.isFinite(amountPerPoint) || amountPerPoint <= 0) {
-      return ApiResponse.badRequest(res, '请输入有效的积分比例金额')
+    if (enabled && !include_new && !include_used) {
+      return ApiResponse.badRequest(res, '全新和二手至少需要选择一种参与积分统计')
     }
 
-    if (!include_new && !include_used) {
-      return ApiResponse.badRequest(res, '全新和二手至少需要选择一种参与积分统计')
+    const newPointsPer100 = Number(new_points_per_100 ?? 1)
+    const usedPointsPer100 = Number(used_points_per_100 ?? 1)
+    if (include_new && (!Number.isInteger(newPointsPer100) || newPointsPer100 < 1 || newPointsPer100 > 100)) {
+      return ApiResponse.badRequest(res, '全新积分必须是1到100之间的整数')
+    }
+    if (include_used && (!Number.isInteger(usedPointsPer100) || usedPointsPer100 < 1 || usedPointsPer100 > 100)) {
+      return ApiResponse.badRequest(res, '二手积分必须是1到100之间的整数')
     }
 
     const config = await saveCustomerPointsConfig({
       enabled,
-      amount_per_point: amountPerPoint,
       include_new,
-      include_used
+      include_used,
+      new_points_per_100: newPointsPer100,
+      used_points_per_100: usedPointsPer100
     })
 
     ApiResponse.success(res, config, '积分设置保存成功')

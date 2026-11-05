@@ -16,7 +16,7 @@ import InlineLoading from '@/components/InlineLoading.vue'
 
 interface Props {
   text?: string
-  size?: 'compact' | 'normal' | 'large'
+  size?: 'compact' | 'normal' | 'large' | 'page'
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -72,6 +72,11 @@ const loadingSize = computed(() => {
 .section-loading--large {
   min-height: 220px;
   padding: 32px;
+}
+
+.section-loading--page {
+  min-height: 100vh;
+  background: var(--tf-color-surface-soft);
 }
 
 @keyframes section-loading-aura {
