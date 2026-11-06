@@ -6,7 +6,6 @@ import type {
   AttendanceDashboardStats,
   AttendanceFilters,
   AttendanceLeaveBalance,
-  AttendanceLeaveConfig,
   AttendanceListResult,
   AttendanceRecord
 } from '@/types/attendance'
@@ -15,7 +14,6 @@ export type {
   AttendanceDashboardStats,
   AttendanceFilters,
   AttendanceLeaveBalance,
-  AttendanceLeaveConfig,
   AttendanceLeaveHistory,
   AttendanceListResult,
   AttendancePagination,
@@ -98,13 +96,6 @@ export const attendanceApi = {
     return unifiedApi.get<AttendanceLeaveBalance>('/attendance/leave-balance', {
       params: { ...(employee_id ? { employee_id } : {}), ...(range || {}) }
     })
-  },
-
-  /**
-   * 获取休假配置（每月休假天数等）
-   */
-  getLeaveConfig: () => {
-    return unifiedApi.get<AttendanceLeaveConfig>('/attendance/leave-config')
   },
 
   /**

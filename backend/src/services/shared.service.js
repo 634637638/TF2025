@@ -1,10 +1,10 @@
 const fs = require('fs')
 const _path = require('path')
-const cheerio = require('cheerio')
 const { getDatabase } = require('../config/database')
 const { ensureSharedSchema } = require('../utils/shared-schema')
 const { getRelativeUploadPathFromUrl, getUploadPathFromUrl } = require('../utils/upload-paths')
 const { storageUrlFromSharedFileUrl } = require('../utils/shared-file-access')
+const { sanitizeRichContent } = require('../utils/sanitize-rich-content')
 
 const parseAttachments = value => {
   if (Array.isArray(value)) return value
@@ -49,65 +49,6 @@ const normalizeCategory = value => {
   return category
 }
 const normalizeVisibility = value => value === 'private' ? 'private' : 'public'
-const allowedRichTextTags = new Set([
-  'p', 'div', 'span', 'br', 'hr', 'h1', 'h2', 'h3', 'h4', 'h5',
-  'strong', 'b', 'em', 'i', 'u', 's', 'sub', 'sup', 'ul', 'ol', 'li',
-  'blockquote', 'a', 'pre', 'code', 'img', 'video', 'audio', 'source',
-  'table', 'thead', 'tbody', 'tr', 'th', 'td', 'input'
-])
-const safeMediaUrl = value => /^https?:\/\//i.test(value) || isSharedAttachmentUrl(value)
-const sanitizeRichStyle = value => String(value || '').split(';').map(rule => rule.trim()).filter(Boolean).filter(rule => {
-  const [property, ...parts] = rule.split(':')
-  const name = String(property || '').trim().toLowerCase()
-  const content = parts.join(':').trim()
-  if (['text-align'].includes(name)) return /^(left|center|right|justify)$/.test(content)
-  if (name === 'line-height') return /^\d+(\.\d+)?$/.test(content)
-  if (name === 'padding-left') return /^\d+(\.\d+)?em$/.test(content)
-  if (name === 'font-size') return /^\d+(\.\d+)?(px|em|rem|%)$/.test(content)
-  if (name === 'font-family') return /^[\w\s,'"\-\u4e00-\u9fa5]+$/.test(content)
-  if (['color', 'background-color'].includes(name)) return /^(#[0-9a-f]{3,8}|rgba?\([\d\s,.%]+\)|[a-z]+)$/i.test(content)
-  if (['width', 'height'].includes(name)) return /^(auto|\d+(\.\d+)?(px|%))$/.test(content)
-  return false
-}).join('; ')
-const sanitizeRichText = value => {
-  const source = String(value || '').trim()
-  if (source.length > 100000) throw new Error('内容不能超过100000个字符')
-  const $ = cheerio.load(source, null, false)
-  $('*').each((_index, element) => {
-    const node = $(element)
-    const tag = String(element.tagName || '').toLowerCase()
-    if (!allowedRichTextTags.has(tag)) {
-      node.replaceWith(node.contents())
-      return
-    }
-    const attributes = { ...(element.attribs || {}) }
-    const href = tag === 'a' ? String(attributes.href || '').trim() : ''
-    const src = ['img', 'video', 'audio', 'source'].includes(tag) ? String(attributes.src || '').trim() : ''
-    const poster = tag === 'video' ? String(attributes.poster || '').trim() : ''
-    const style = sanitizeRichStyle(attributes.style)
-    for (const attribute of Object.keys(element.attribs || {})) node.removeAttr(attribute)
-    if (tag === 'a' && safeMediaUrl(href)) node.attr({ href, target: '_blank', rel: 'noopener noreferrer' })
-    if (style) node.attr('style', style)
-    if (tag === 'img' && safeMediaUrl(src)) node.attr({ src, alt: String(attributes.alt || '').slice(0, 200) })
-    if (tag === 'video') node.attr('controls', 'controls')
-    if (tag === 'video' && safeMediaUrl(src)) node.attr('src', src)
-    if (tag === 'audio') node.attr('controls', 'controls')
-    if (tag === 'audio' && safeMediaUrl(src)) node.attr('src', src)
-    if (tag === 'video' && safeMediaUrl(poster)) node.attr('poster', poster)
-    if (tag === 'source' && safeMediaUrl(src)) node.attr({ src, type: String(attributes.type || '').slice(0, 100) })
-    if (['td', 'th'].includes(tag)) {
-      if (/^\d{1,2}$/.test(attributes.rowspan || '')) node.attr('rowspan', attributes.rowspan)
-      if (/^\d{1,2}$/.test(attributes.colspan || '')) node.attr('colspan', attributes.colspan)
-    }
-    if (tag === 'input' && attributes.type === 'checkbox') node.attr({ type: 'checkbox', disabled: 'disabled', ...(attributes.checked !== undefined ? { checked: 'checked' } : {}) })
-    if (tag === 'code' && /^language-[a-z0-9_-]+$/i.test(attributes.class || '')) node.attr('class', attributes.class)
-    if (['div', 'span'].includes(tag) && /^\w[\w-]{0,40}$/.test(attributes['data-w-e-type'] || '')) node.attr('data-w-e-type', attributes['data-w-e-type'])
-    if (tag === 'div' && attributes['data-w-e-is-void'] !== undefined) node.attr('data-w-e-is-void', 'true')
-  })
-  const html = $.html().trim()
-  if (!$.root().text().replace(/\u00a0/g, ' ').trim() && !$('img,video,audio,table').length) throw new Error('请输入内容')
-  return html
-}
 
 class SharedService {
   async ensure() { await ensureSharedSchema() }
@@ -276,7 +217,7 @@ class SharedService {
   async create(userId, canManage, payload) {
     await this.ensure()
     const title = String(payload.title || '').trim()
-    const content = sanitizeRichText(payload.content)
+    const content = sanitizeRichContent(payload.content)
     if (!title) throw new Error('请输入经验标题')
     if (title.length > 200) throw new Error('标题不能超过200个字符')
     const category = normalizeCategory(payload.category)
@@ -294,7 +235,7 @@ class SharedService {
     if (!existing) throw new Error('分享不存在')
     if (!canManage && Number(existing.author_id) !== Number(userId)) throw new Error('只能编辑自己发布的分享')
     const title = String(payload.title || '').trim()
-    const content = sanitizeRichText(payload.content)
+    const content = sanitizeRichContent(payload.content)
     if (!title) throw new Error('标题和内容不能为空')
     if (title.length > 200) throw new Error('标题不能超过200个字符')
     const category = normalizeCategory(payload.category)

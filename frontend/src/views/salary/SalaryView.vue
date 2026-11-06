@@ -286,6 +286,7 @@
           v-model="attendanceFormVisible"
           :can-edit-field="canEditSalaryField"
           :can-view-field="canViewSalaryField"
+          :has-salary-template="Boolean(currentAttendanceEmployee?.salary_template_id)"
           :form="attendanceForm"
           :saving="attendanceSaving"
           :title="attendanceDialogTitle"
@@ -2298,6 +2299,10 @@ const handleAddAttendance = () => {
   if (!requireSalaryRecordPermission('create')) {
     return
   }
+  if (!currentAttendanceEmployee.value?.salary_template_id) {
+    globalNotifications.warning('请先为员工绑定工资模板，再登记休假、请假或加班')
+    return
+  }
 
   editingAttendanceId.value = null // 清空编辑ID，表示新增模式
   attendanceDialogTitle.value = '新增考勤记录'
@@ -2344,6 +2349,10 @@ const handleSaveAttendance = async () => {
   }
 
   if (!currentAttendanceEmployee.value) return
+  if (!currentAttendanceEmployee.value.salary_template_id) {
+    globalNotifications.warning('请先为员工绑定工资模板，再登记休假、请假或加班')
+    return
+  }
 
   // 验证必填字段
   if (!attendanceForm.value.record_date) {

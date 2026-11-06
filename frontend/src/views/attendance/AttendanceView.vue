@@ -993,10 +993,17 @@
                   :key="emp.id"
                   :label="emp.name || emp.username"
                   :value="emp.id"
+                  :disabled="emp.has_salary_template !== true"
                 >
                   <span>{{ emp.name || emp.username }}</span>
                   <span class="text-secondary text-xs ml-2">
                     {{ emp.username }}
+                  </span>
+                  <span
+                    v-if="emp.has_salary_template !== true"
+                    class="text-secondary text-xs ml-2"
+                  >
+                    未绑定工资模板
                   </span>
                 </el-option>
               </el-select>
@@ -1013,9 +1020,16 @@
               label="记录类型"
               prop="record_type"
             >
+              <el-alert
+                v-if="salaryTemplateBound === false"
+                title="该员工未绑定工资模板，不能申请或登记休假、请假、加班。请先在工资管理中绑定模板。"
+                type="warning"
+                :closable="false"
+                class="mb-4"
+              />
               <el-radio-group
                 v-model="formData.record_type"
-                :disabled="!canEditAttendanceField('attendance_attendanceview', 'record_type')"
+                :disabled="!canEditAttendanceField('attendance_attendanceview', 'record_type') || salaryTemplateBound !== true"
                 @change="handleRecordTypeChange"
               >
                 <el-radio value="monthly_leave">
@@ -1037,7 +1051,7 @@
             <template v-if="formData.record_type === 'monthly_leave'">
               <el-form-item label="休假说明">
                 <el-alert
-                  :title="`您的月休假有${leaveBalance?.monthly_limit ?? monthly_leave_days}天${canViewAllAttendance ? '（所有额度）' : ''}`"
+                  :title="`该员工月休假额度为${leaveBalance?.monthly_limit ?? 0}天${canViewAllAttendance ? '（所有额度）' : ''}`"
                   :type="leaveBalance?.last_month_remaining && leaveBalance.last_month_remaining > 0 ? 'success' : 'info'"
                   :closable="false"
                 />
@@ -1594,7 +1608,7 @@ import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { ElConfigProvider, type FormInstance, type FormRules, type TabPaneName } from 'element-plus'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import { attendanceApi } from '@/api/attendance'
-import type { AttendanceRecord } from '@/api/attendance'
+import type { AttendanceLeaveBalance, AttendanceRecord } from '@/api/attendance'
 import { useAuthStore } from '@/stores/auth'
 import { useNotification } from '@/composables/useNotification'
 import { usePagePermissions } from '@/composables/usePagePermissions'
@@ -1640,31 +1654,7 @@ interface EmployeeOption {
   id: number
   name?: string
   username?: string
-}
-
-interface LeaveHistoryItem {
-  has_regular_leave?: boolean
-  used?: number
-  regular_leave_days?: number
-}
-
-interface LeaveBalanceInfo {
-  available?: number
-  used?: number
-  monthly_limit?: number
-  total_quota?: number
-  last_month_remaining?: number
-  monthly_history?: LeaveHistoryItem[]
-  monthly_balances?: Array<{
-    month: string
-    monthly_limit: number
-    carry_in: number
-    paid_used: number
-    unpaid_used: number
-    available: number
-    carry_out: number
-    quota: number
-  }>
+  has_salary_template?: boolean
 }
 
 interface ExpandableAttendanceTableRef {
@@ -1744,8 +1734,8 @@ const activeTab = ref<AttendanceTab>('my')
 const searchExpanded = ref(false)
 const mySearchExpanded = ref(false)
 const currentRecord = ref<AttendanceTableRow | null>(null)
-const leaveBalance = ref<LeaveBalanceInfo | null>(null)
-const monthly_leave_days = ref(0)
+const leaveBalance = ref<AttendanceLeaveBalance | null>(null)
+const salaryTemplateBound = ref<boolean | null>(null)
 
 // 统计数据
 const stats = ref({
@@ -2246,7 +2236,7 @@ const loadDashboardStats = async () => {
       }
 
       // 更新本月统计
-      const monthly_limit = Number(leaveBalance.value?.monthly_limit ?? monthly_leave_days.value)
+      const monthly_limit = Number(leaveBalance.value?.monthly_limit ?? 0)
       const usedDays = dashboardData.current_month?.leave_days || 0
       const totalAvailable = Number(leaveBalance.value?.available ?? monthly_limit)
       const availableLeaveDays = Math.max(0, totalAvailable - usedDays)
@@ -2357,7 +2347,7 @@ const _updateStats = (data: AttendanceTableRow[]) => {
   })
 
   // 优先使用后端按工资模板和累计规则算出的额度
-  const monthly_limit = Number(leaveBalance.value?.monthly_limit ?? monthly_leave_days.value)
+  const monthly_limit = Number(leaveBalance.value?.monthly_limit ?? 0)
 
   // 上月已使用的休假天数（只统计 monthly_leave 类型）
   const lastMonthUsedLeaveDays = lastMonthData
@@ -2434,6 +2424,7 @@ const loadLeaveBalance = async (
   employeeId?: number | string,
   range?: [string, string] | null
 ) => {
+  salaryTemplateBound.value = null
   try {
     const normalizedEmployeeId = employeeId === '' || employeeId === null || employeeId === undefined
       ? undefined
@@ -2446,9 +2437,11 @@ const loadLeaveBalance = async (
     )
     // unifiedApi 返回的是 response.data
     if (response.data) {
-      leaveBalance.value = response.data as LeaveBalanceInfo
+      leaveBalance.value = response.data
+      salaryTemplateBound.value = response.data.template_bound === true
     }
   } catch (error) {
+    leaveBalance.value = null
     logger.error('加载休假余额失败:', error)
   }
 }
@@ -2463,17 +2456,6 @@ const formatAttendanceQuantity = (value: unknown) => {
   return Number.isInteger(parsed) ? String(parsed) : String(Number(parsed.toFixed(2)))
 }
 
-const loadLeaveConfig = async () => {
-  try {
-    const response = await attendanceApi.getLeaveConfig()
-    if (response.data && Number.isFinite(Number(response.data.monthly_leave_days))) {
-      monthly_leave_days.value = Number(response.data.monthly_leave_days)
-    }
-  } catch (error) {
-    logger.error('加载休假配置失败:', error)
-  }
-}
-
 const isAttendanceDialogCancelled = (error: unknown) =>
   error === 'cancel' || error === 'close'
 
@@ -2481,7 +2463,7 @@ const buildLeaveAllocation = (requestedDays: number, range: [string, string] | n
   buildAttendanceLeaveAllocation({
     requestedDays,
     range,
-    monthlyLimit: Number(leaveBalance.value?.monthly_limit ?? monthly_leave_days.value),
+    monthlyLimit: Number(leaveBalance.value?.monthly_limit ?? 0),
     available: Number(leaveBalance.value?.available) || 0,
     monthlyBalances: leaveBalance.value?.monthly_balances || []
   })
@@ -2657,6 +2639,11 @@ const handleSubmit = async () => {
     try {
       if (!formData.employee_id) {
         formData.employee_id = authStore.user?.id
+      }
+
+      if (salaryTemplateBound.value !== true) {
+        globalNotifications.warning('请先为员工绑定工资模板，再申请或登记休假、请假、加班')
+        return
       }
 
       if ((formData.record_type === 'monthly_leave' || formData.record_type === 'leave') && (!leaveStartDate.value || !leaveEndDate.value)) {
@@ -3086,6 +3073,7 @@ const loadEmployees = async () => {
         id: Number(item.id || 0),
         name: String(item.name || item.username || ''),
         username: item.username ? String(item.username) : undefined,
+        has_salary_template: item.has_salary_template === true,
         sort_order: Number(item.sort_order || 0)
       })))
     }
@@ -3112,6 +3100,7 @@ const searchAttendanceEmployeesRemote = async (keyword = '') => {
       id: Number(item.id || 0),
       name: String(item.name || item.username || ''),
       username: item.username ? String(item.username) : undefined,
+      has_salary_template: item.has_salary_template === true,
       sort_order: item.sort_order
     }))
     employees.value = sortOptionsByOrder(
@@ -3153,7 +3142,6 @@ onMounted(async () => {
 
   await initFieldPermissions()
   syncVisibleAttendanceFilters()
-  await loadLeaveConfig()
   // 加载休假余额（所有用户都需要）
   await loadLeaveBalance()
 

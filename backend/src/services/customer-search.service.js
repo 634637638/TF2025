@@ -7,7 +7,12 @@ const CUSTOMER_FIELDS = new Set([
   'vip_level', 'customer_type', 'status', 'remarks', 'created_at', 'updated_at'
 ])
 
-const normalizePage = value => Math.max(1, Number.parseInt(String(value ?? 1), 10) || 1)
+const MAX_PAGE_NUMBER = 1_000_000
+const normalizePage = value => {
+  const parsed = Number.parseInt(String(value ?? 1), 10)
+  if (!Number.isSafeInteger(parsed)) return 1
+  return Math.min(MAX_PAGE_NUMBER, Math.max(1, parsed))
+}
 const normalizePageSize = value => Math.min(100, Math.max(1, Number.parseInt(String(value ?? 20), 10) || 20))
 
 const normalizeFields = fields => {
@@ -58,8 +63,8 @@ const searchCustomers = async ({
      FROM customers
      WHERE ${whereClause}
      ORDER BY ${sortField} ${sortDirection}, id DESC
-     LIMIT ? OFFSET ?`,
-    [...params, pageSize, offset]
+     LIMIT ${pageSize} OFFSET ${offset}`,
+    params
   )
   const [countRows] = await db.execute(
     `SELECT COUNT(*) AS total FROM customers WHERE ${whereClause}`,
@@ -83,6 +88,7 @@ const searchCustomers = async ({
 
 module.exports = {
   searchCustomers,
+  MAX_PAGE_NUMBER,
   normalizePage,
   normalizePageSize
 }

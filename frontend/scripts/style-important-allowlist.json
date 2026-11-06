@@ -8,7 +8,7 @@
     },
     {
       "file": "src/styles.scss",
-      "max": 126,
+      "max": 116,
       "category": "shared-contract",
       "reason": "Global Element Plus poppers, teleported dialogs, loading states and mobile safe-area contracts."
     },

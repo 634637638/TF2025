@@ -45,7 +45,7 @@ CREATE TABLE salary_templates (
   id INT PRIMARY KEY AUTO_INCREMENT,
   name VARCHAR(100),
   base_salary DECIMAL(10, 2),
-  rest_days INT DEFAULT 2,  -- 每月带薪休假天数；2 是系统兜底值，实际以模板配置为准
+  rest_days INT,  -- 每月带薪休假天数；考勤额度只读取员工关联模板此字段
   -- 其他字段...
 );
 ```
@@ -93,36 +93,11 @@ CREATE TABLE users (
   1月8日：申请1天 → 请假1天（超过可用天数）
 ```
 
-## 容错机制
+## 工资模板前置条件
 
-代码实现了多层容错：
+休假额度只使用员工关联工资模板中的 `rest_days`。没有有效模板时，余额接口返回 `template_bound: false`、`is_leave_disabled: true` 和 0 额度；创建、编辑和审批通过请求由后端以 HTTP 422 和 `SALARY_TEMPLATE_REQUIRED` 拒绝。查询失败会作为服务错误返回，不回退到系统设置。
 
-```javascript
-async getEmployeeMonthlyLeaveDays(employeeId) {
-  try {
-    // 1. 优先从员工工资模板获取
-    const result = await db.execute(query, [employeeId]);
-    if (result && result[0]?.rest_days) {
-      return result[0].rest_days;
-    }
-
-    // 2. 如果员工没有工资模板，使用系统默认值
-    return await SystemSettingsService.getMonthlyLeaveDays();
-  } catch (error) {
-    // 3. 如果查询出错，使用系统默认值
-    return await SystemSettingsService.getMonthlyLeaveDays();
-  }
-}
-```
-
-### 容错场景
-
-| 场景 | 处理方式 |
-|------|----------|
-| 员工有工资模板，配置了休假天数 | 使用工资模板的配置 ✅ |
-| 员工有工资模板，但未配置休假天数 | 使用系统配置的默认额度 |
-| 员工没有分配工资模板 | 使用系统配置的默认额度 |
-| 数据库查询出错 | 使用系统配置的默认额度 |
+模板已关联但 `rest_days` 为空时按 0 天计算；请假扣款和加班费仍从该工资模板读取各自的薪资配置。
 
 ## 工资模板管理
 
@@ -183,4 +158,4 @@ const unpaidLeaveDeduction = dailySalary * actualUnpaidLeaveDays;
 1. **灵活性**：不同员工可以有不同的休假天数
 2. **统一管理**：通过工资模板统一配置和管理
 3. **一致性**：休假申请和工资计算使用相同的配置
-4. **容错性**：多层容错机制确保系统稳定运行
+4. **计算依据明确**：无模板时停止操作，不用默认额度掩盖缺失配置

@@ -58,6 +58,71 @@
   cursor: pointer;
 }
 
+.dashboard-announcements {
+  min-width: 0;
+}
+
+.dashboard-announcements__navigation {
+  display: flex;
+  flex: none;
+  gap: var(--tf-space-1);
+}
+
+.dashboard-announcement-featured {
+  min-width: 0;
+  padding: var(--tf-space-4);
+  border: 1px solid var(--tf-color-orange-material-100);
+  border-radius: var(--tf-radius-panel);
+  background: var(--tf-color-orange-surface);
+}
+
+.dashboard-announcement__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--tf-space-3);
+}
+
+.dashboard-announcement-featured h3 {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--tf-color-heading);
+  margin: var(--tf-space-3) 0 0;
+  font-size: var(--tf-font-body-lg);
+}
+
+.dashboard-announcement__meta time {
+  flex: 0 0 auto;
+  color: var(--tf-color-muted);
+  font-size: var(--tf-font-caption);
+}
+
+.dashboard-announcement__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--tf-space-2);
+}
+
+.dashboard-announcement__content {
+  max-height: 240px;
+  overflow: hidden;
+  margin-top: var(--tf-space-3);
+  color: var(--tf-color-muted);
+  font-size: var(--tf-font-body);
+  line-height: 1.6;
+  transition: max-height var(--tf-motion-standard) var(--tf-motion-ease-standard);
+}
+
+.dashboard-announcement__content.is-expanded {
+  max-height: none;
+}
+
+.dashboard-announcement-featured > .el-button {
+  min-height: var(--tf-space-7);
+  margin-top: var(--tf-space-1);
+  padding-inline: 0;
+}
+
 .stat-change {
   font-size: var(--tf-type-scale-12);
   font-weight: 500;
@@ -94,52 +159,6 @@
 .urgent-repairs {
   background: var(--tf-color-danger-legacy);
   color: var(--tf-color-danger-text-legacy);
-}
-
-/* 快速操作 */
-.quick-actions {
-  background: white;
-  padding: 25px;
-  border-radius: 12px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-}
-
-.quick-actions h2 {
-  font-size: var(--tf-type-scale-18);
-  color: var(--tf-color-heading);
-  margin-bottom: 20px;
-}
-
-.actions-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 15px;
-}
-
-.action-btn {
-  background: var(--tf-button-neutral-bg);
-  border: 2px solid var(--tf-button-neutral-border);
-  padding: 20px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  font-size: var(--tf-type-scale-14);
-  color: var(--tf-button-tool-color);
-}
-
-.action-btn:hover {
-  background: var(--tf-button-primary-hover-bg);
-  border-color: var(--tf-button-primary-soft-hover-border);
-  color: var(--tf-button-on-color);
-  transform: translateY(-2px);
-}
-
-.action-btn i {
-  font-size: var(--tf-type-scale-24);
 }
 
 /* 最近活动 */
@@ -264,13 +283,4 @@
 .activity-action:hover {
   background: var(--tf-color-gray-flat-200);
   color: var(--tf-color-heading);
-}
-
-/* ===== 响应式设计 ===== */
-
-/* 平板优化 */
-@media (max-width: 1200px) {
-  .actions-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
 }

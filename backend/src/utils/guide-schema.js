@@ -42,7 +42,7 @@ async function ensureGuideSchema() {
       CREATE TABLE IF NOT EXISTS guide_announcements (
         id INT UNSIGNED NOT NULL AUTO_INCREMENT,
         title VARCHAR(120) NOT NULL,
-        content VARCHAR(500) NULL,
+        content MEDIUMTEXT NULL,
         link_url VARCHAR(500) NULL,
         is_pinned TINYINT(1) NOT NULL DEFAULT 0,
         is_enabled TINYINT(1) NOT NULL DEFAULT 1,
@@ -84,6 +84,10 @@ async function ensureGuideSchema() {
 
     if (!(await hasColumn(db, 'guide_announcements', 'is_pinned'))) {
       await db.query('ALTER TABLE guide_announcements ADD COLUMN is_pinned TINYINT(1) NOT NULL DEFAULT 0 AFTER link_url')
+    }
+    const [announcementContentColumn] = await db.query("SHOW COLUMNS FROM guide_announcements LIKE 'content'")
+    if (announcementContentColumn[0] && !String(announcementContentColumn[0].Type).toLowerCase().includes('mediumtext')) {
+      await db.query('ALTER TABLE guide_announcements MODIFY content MEDIUMTEXT NULL')
     }
 
     await db.query(`

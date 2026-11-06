@@ -26,6 +26,7 @@ export type StandardPreviewKind =
   | 'security'
   | 'runtime'
   | 'time'
+  | 'rich-content'
   | 'rules'
 
 export interface StandardCatalogItem {
@@ -83,6 +84,7 @@ const titles: Record<string, string> = {
   'search-standards.md': '搜索与筛选',
   'security-runtime-standards.md': '安全与运行时',
   'shared-standards.md': '经验分享',
+  'rich-content-standards.md': '富文本内容',
   'tab-standards.md': '标签页',
   'time-standards.md': '时间与日期',
   'unified-page-structure.md': '页面结构迁移入口',
@@ -134,6 +136,7 @@ const categoryByDocument: Partial<Record<string, StandardCategory>> = {
   'standards-audit-guide.md': '运行时与性能',
   'standards-exemptions.md': '运行时与性能',
   'shared-standards.md': '反馈与交互',
+  'rich-content-standards.md': '视觉与组件',
   'price-contact-standard.md': '视觉与组件'
 }
 
@@ -180,6 +183,7 @@ const previewByDocument: Partial<Record<string, StandardPreviewKind>> = {
   'reminder-standards.md': 'rules',
   'responsive-breakpoint-standard.md': 'page',
   'shared-standards.md': 'rules',
+  'rich-content-standards.md': 'rich-content',
   'tab-standards.md': 'page',
   'unified-page-structure.md': 'page',
   'standards-audit-guide.md': 'runtime'
@@ -236,6 +240,7 @@ const summaryByDocument: Record<string, string> = {
   'search-standards.md': '后台列表统一使用公共搜索面板，选项排序与远程检索遵循共享数据契约。',
   'security-runtime-standards.md': '后端路由、SQL、文件访问和运行时代码必须通过安全审计边界。',
   'shared-standards.md': '经验分享内容的公开、私有和管理权限由服务端规则统一约束。',
+  'rich-content-standards.md': '经验分享、站内公告和 DH 公告共用富文本编辑器、安全净化展示及媒体插入契约。',
   'guide-navigation-standard.md': 'DH 导航支持分类、链接、密码访问和受控文件预览/下载。',
   'download-security-standard.md': '业务文件通过受控后端接口下载，校验登录、权限、归属和文件状态。',
   'tab-standards.md': '页面标签导航统一使用公共 Tab 结构，超出宽度时在标签区域内横向滑动。',

@@ -493,6 +493,77 @@
                 </div>
               </div>
               <div
+                v-else-if="selectedStandard.previewKind === 'rich-content'"
+                class="preview-rich-content"
+              >
+                <div
+                  class="preview-rich-content__toolbar"
+                  aria-label="富文本编辑工具栏预览"
+                >
+                  <el-button
+                    circle
+                    text
+                    aria-label="标题"
+                  >
+                    <i class="fas fa-heading" />
+                  </el-button>
+                  <el-button
+                    circle
+                    text
+                    aria-label="加粗"
+                  >
+                    <i class="fas fa-bold" />
+                  </el-button>
+                  <el-button
+                    circle
+                    text
+                    aria-label="插入图片"
+                  >
+                    <i class="fas fa-image" />
+                  </el-button>
+                  <el-button
+                    circle
+                    text
+                    aria-label="插入视频"
+                  >
+                    <i class="fas fa-video" />
+                  </el-button>
+                  <el-button
+                    circle
+                    text
+                    aria-label="插入表格"
+                  >
+                    <i class="fas fa-table" />
+                  </el-button>
+                </div>
+                <article class="preview-rich-content__body">
+                  <div>
+                    <el-tag
+                      type="warning"
+                      size="small"
+                    >
+                      置顶公告
+                    </el-tag>
+                    <el-tag
+                      type="success"
+                      size="small"
+                    >
+                      安全净化
+                    </el-tag>
+                  </div>
+                  <h3>活动安排与图片说明</h3>
+                  <p>正文由统一 RichContent 组件展示，图片、视频和排版内容在手机端自适应。</p>
+                  <div class="preview-rich-content__media">
+                    <i class="fas fa-photo-film" />
+                    <span>图片 / 视频媒体区域</span>
+                  </div>
+                </article>
+                <div class="preview-rich-content__footer">
+                  <span><i class="fas fa-shield-halved" /> 服务端与前端双重净化</span>
+                  <span><i class="fas fa-mobile-screen" /> 响应式展示</span>
+                </div>
+              </div>
+              <div
                 v-else-if="selectedStandard.previewKind === 'rules'"
                 class="preview-rules"
               >
@@ -970,6 +1041,7 @@ const previewIcon = (kind: StandardPreviewKind) => {
     security: 'fas fa-shield-halved',
     runtime: 'fas fa-terminal',
     time: 'fas fa-clock',
+    'rich-content': 'fas fa-file-pen',
     rules: 'fas fa-list-check'
   }
   return icons[kind]
@@ -1032,6 +1104,14 @@ const previewIcon = (kind: StandardPreviewKind) => {
 .preview-time__values strong { color: var(--tf-color-slate-800); font-size: var(--tf-font-body); font-variant-numeric: tabular-nums; }
 .preview-time__values code { color: var(--tf-color-sky-700); font-size: var(--tf-font-caption); }
 .preview-rules { display: grid; gap: var(--tf-space-3); }
+.preview-rich-content { display: grid; gap: var(--tf-space-3); min-width: 0; }
+.preview-rich-content__toolbar { display: flex; flex-wrap: wrap; gap: var(--tf-space-1); padding: var(--tf-space-2); border: 1px solid var(--tf-color-border-muted); border-radius: var(--tf-radius-control); background: var(--tf-color-slate-50); }
+.preview-rich-content__body { display: grid; gap: var(--tf-space-2); padding: var(--tf-space-4); border: 1px solid var(--tf-color-border-muted); border-radius: var(--tf-radius-control); background: var(--tf-color-white); }
+.preview-rich-content__body > div:first-child { display: flex; flex-wrap: wrap; gap: var(--tf-space-2); }
+.preview-rich-content__body h3 { margin: 0; color: var(--tf-color-heading); font-size: var(--tf-font-body-lg); }
+.preview-rich-content__body p { margin: 0; color: var(--tf-color-muted); line-height: var(--tf-line-height-body); }
+.preview-rich-content__media { display: flex; min-height: 76px; align-items: center; justify-content: center; gap: var(--tf-space-2); border: 1px dashed var(--tf-color-slate-300); border-radius: var(--tf-radius-control); color: var(--tf-color-slate-500); }
+.preview-rich-content__footer { display: flex; flex-wrap: wrap; gap: var(--tf-space-4); color: var(--tf-color-muted); font-size: var(--tf-font-caption); }
 .preview-rules__head, .preview-rules__actions { display: flex; align-items: center; flex-wrap: wrap; gap: var(--tf-space-2); }
 .preview-rules__head { color: var(--tf-button-primary-soft-color); font-size: var(--tf-font-body); }
 .preview-rules__head i { font-size: var(--tf-type-scale-16); }

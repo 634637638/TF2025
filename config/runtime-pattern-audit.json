@@ -4,7 +4,7 @@
     "safeSvg",
     "highlightText",
     "getMatchSnippet",
-    "renderRichText"
+    "safeHtml"
   ],
   "permanentIntervalFiles": [
     "frontend/src/composables/useNotification.ts",

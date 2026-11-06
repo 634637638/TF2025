@@ -5,6 +5,7 @@ const bcrypt = require('bcryptjs')
 const { getDatabase } = require('../config/database')
 const { createGuideFileAccess } = require('../utils/guide-file-access')
 const { getRelativeUploadPathFromUrl, getUploadUrl } = require('../utils/upload-paths')
+const { sanitizeRichContent } = require('../utils/sanitize-rich-content')
 
 const ACCESS_POLICIES = new Set(['once', 'day', 'days', 'month', 'quarter', 'year', 'permanent'])
 
@@ -298,7 +299,7 @@ async function getProtectedCategory(id, token) {
 async function createAnnouncement(userId, payload) {
   const db = getDatabase()
   const title = normalizeName(payload.title, '公告标题')
-  const content = toNullableText(payload.content)
+  const content = toNullableText(payload.content) ? sanitizeRichContent(payload.content) : null
   const linkUrl = normalizeUrl(payload.link_url)
   const isPinned = toBooleanInt(payload.is_pinned)
   if (isPinned) await db.query('UPDATE guide_announcements SET is_pinned=0')
@@ -318,7 +319,8 @@ async function updateAnnouncement(id, payload) {
   const db = getDatabase()
   const isPinned = toBooleanInt(payload.is_pinned ?? current.is_pinned)
   if (isPinned) await db.query('UPDATE guide_announcements SET is_pinned=0 WHERE id<>?', [id])
-  await db.query('UPDATE guide_announcements SET title=?, content=?, link_url=?, is_pinned=?, is_enabled=?, sort_order=?, starts_at=?, ends_at=? WHERE id=?', [normalizeName(payload.title ?? current.title, '公告标题'), toNullableText(payload.content), normalizeUrl(payload.link_url), isPinned, toBooleanInt(payload.is_enabled), Number(payload.sort_order || 0), toNullableText(payload.starts_at), toNullableText(payload.ends_at), id])
+  const content = payload.content === undefined ? current.content : (toNullableText(payload.content) ? sanitizeRichContent(payload.content) : null)
+  await db.query('UPDATE guide_announcements SET title=?, content=?, link_url=?, is_pinned=?, is_enabled=?, sort_order=?, starts_at=?, ends_at=? WHERE id=?', [normalizeName(payload.title ?? current.title, '公告标题'), content, normalizeUrl(payload.link_url), isPinned, toBooleanInt(payload.is_enabled), Number(payload.sort_order || 0), toNullableText(payload.starts_at), toNullableText(payload.ends_at), id])
   return getAnnouncement(id)
 }
 

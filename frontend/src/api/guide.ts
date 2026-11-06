@@ -23,7 +23,8 @@ export const guideApi = {
   createLink: (categoryId: number, data: Record<string, unknown>) => unifiedApi.post<GuideLink>(`/guide/categories/${categoryId}/links`, data),
   updateLink: (id: number, data: Record<string, unknown>) => unifiedApi.put<GuideLink>(`/guide/links/${id}`, data),
   deleteLink: (id: number) => unifiedApi.delete(`/guide/links/${id}`),
-  uploadFile: (formData: FormData) => unifiedApi.upload<{ url: string; preview_url: string; name: string; mime: string }>('/guide/upload/file', formData, { showLoading: false })
+  uploadFile: (formData: FormData) => unifiedApi.upload<{ url: string; preview_url: string; name: string; mime: string }>('/guide/upload/file', formData, { showLoading: false }),
+  uploadContentMedia: (formData: FormData) => unifiedApi.upload<{ url: string; name: string; mime: string }>('/content-media', formData, { showLoading: false, showError: false })
 }
 
 export type GuideApiResponse<T> = ApiResponse<T>

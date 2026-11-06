@@ -51,9 +51,9 @@
   --admin-stat-icon-bg: var(--admin-stat-color-primary);
   --admin-stat-icon-color: #ffffff;
   --admin-stat-icon-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  --admin-stat-value-size: 22px;
+  --admin-stat-value-size: var(--tf-font-stat-value);
   --admin-stat-value-color: #2c3e50;
-  --admin-stat-label-size: 12px;
+  --admin-stat-label-size: var(--tf-font-stat-label);
   --admin-stat-label-color: #6c757d;
   --admin-section-title-gap: 20px;
   --admin-section-title-padding-bottom: 12px;
@@ -207,8 +207,6 @@
     --admin-stat-card-gap: 10px;
     --admin-stat-icon-size: 40px;
     --admin-stat-icon-font-size: var(--tf-type-scale-18);
-    --admin-stat-value-size: 22px;
-    --admin-stat-label-size: 12px;
     --admin-section-title-gap: 16px;
     --admin-section-title-padding-bottom: 8px;
     --admin-section-title-font-size: var(--mobile-text-section-title);
@@ -510,6 +508,12 @@
   font-size: var(--admin-stat-value-size) !important;
   font-weight: 700;
   line-height: 1.2 !important;
+}
+
+.admin-page .stat-card .stat-value-unit,
+.admin-page .module-stat-card .stat-value-unit {
+  font-size: var(--tf-font-caption);
+  font-weight: 600;
 }
 
 .admin-page .stat-card .stat-label,

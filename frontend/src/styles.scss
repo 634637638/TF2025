@@ -1117,11 +1117,7 @@ html {
 /* 顶部居中定位 */
 body .el-message {
   position: fixed !important;
-  top: 20px !important;
-  left: 50% !important;
-  transform: translateX(-50%) !important;
   z-index: var(--tf-z-toast) !important;
-  margin: 0 !important;
   border-radius: 6px !important;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
   padding: 10px 14px !important;
@@ -1140,18 +1136,16 @@ body .el-message {
   gap: 8px !important;
 }
 
-/* 覆盖所有可能的位置类，确保居中 */
-.el-message.is-left,
-.el-message.is-right,
-.el-message.is-center,
-.el-message.is-top,
-.el-message.is-bottom {
-  top: 20px !important;
-  left: 50% !important;
-  right: auto !important;
-  bottom: auto !important;
-  transform: translateX(-50%) !important;
-  margin: 0 !important;
+/* 保持消息以视口宽度居中，不受侧边菜单布局影响。 */
+body .el-message.is-center {
+  left: 0;
+  right: 0;
+  margin: 0 auto;
+}
+
+/* 离场时整条向上移出，后续消息通过 top 过渡接替位置。 */
+body .el-message-fade-leave-to {
+  opacity: 1;
 }
 
 /* 成功消息样式 */

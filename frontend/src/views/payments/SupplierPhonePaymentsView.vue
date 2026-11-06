@@ -51,7 +51,7 @@
                   待打款
                 </div>
                 <div class="stat-value-primary">
-                  {{ currentUnpaidCount || 0 }}台
+                  {{ currentUnpaidCount || 0 }}<span class="stat-value-unit">台</span>
                 </div>
               </div>
               <div
@@ -76,7 +76,7 @@
                   已打款
                 </div>
                 <div class="stat-value-primary">
-                  {{ currentPaidCount || 0 }}台
+                  {{ currentPaidCount || 0 }}<span class="stat-value-unit">台</span>
                 </div>
               </div>
               <div
@@ -98,10 +98,10 @@
             <div class="stat-content">
               <div class="stat-main-line">
                 <div class="stat-label">
-                  手机总数
+                  总数量
                 </div>
                 <div class="stat-value-primary">
-                  {{ currentTotalCount || 0 }}台
+                  {{ currentTotalCount || 0 }}<span class="stat-value-unit">台</span>
                 </div>
               </div>
               <div
@@ -126,7 +126,7 @@
                   供应商
                 </div>
                 <div class="stat-value-primary">
-                  {{ currentSupplierCount || 0 }}家
+                  {{ currentSupplierCount || 0 }}<span class="stat-value-unit">家</span>
                 </div>
               </div>
               <div class="stat-sub">

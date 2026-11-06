@@ -114,6 +114,74 @@
             </div>
           </div>
 
+          <section
+            v-if="announcements.length > 0"
+            class="dashboard-announcements"
+          >
+            <article
+              v-if="currentAnnouncement"
+              :key="currentAnnouncement.id"
+              class="dashboard-announcement-featured"
+            >
+              <div class="dashboard-announcement__meta">
+                <el-tag
+                  v-if="currentAnnouncement.isPinned"
+                  type="warning"
+                  size="small"
+                >
+                  置顶公告
+                </el-tag>
+                <el-tag
+                  v-else
+                  type="info"
+                  size="small"
+                >
+                  最新公告
+                </el-tag>
+                <div class="dashboard-announcement__actions">
+                  <time>{{ formatAnnouncementDate(currentAnnouncement.publishedAt) }}</time>
+                  <div
+                    v-if="announcements.length > 1"
+                    class="dashboard-announcements__navigation"
+                  >
+                    <el-button
+                      circle
+                      text
+                      aria-label="上一条公告"
+                      title="上一条公告"
+                      @click="moveAnnouncement(-1)"
+                    >
+                      <i class="fas fa-chevron-left" />
+                    </el-button>
+                    <el-button
+                      circle
+                      text
+                      aria-label="下一条公告"
+                      title="下一条公告"
+                      @click="moveAnnouncement(1)"
+                    >
+                      <i class="fas fa-chevron-right" />
+                    </el-button>
+                  </div>
+                </div>
+              </div>
+              <h3>{{ currentAnnouncement.title }}</h3>
+              <RichContent
+                class="dashboard-announcement__content"
+                :class="{ 'is-expanded': expandedAnnouncementId === currentAnnouncement.id }"
+                :content="currentAnnouncement.content"
+              />
+              <el-button
+                v-if="currentAnnouncement.content.length > 500"
+                text
+                type="primary"
+                @click="toggleAnnouncement(currentAnnouncement.id)"
+              >
+                {{ expandedAnnouncementId === currentAnnouncement.id ? '收起' : '展开全文' }}
+              </el-button>
+            </article>
+          </section>
+
           <!-- 综合预警 -->
           <ComprehensiveWarnings v-if="canViewField('warnings.comprehensive')" />
 
@@ -122,48 +190,6 @@
             v-if="canViewField('warnings.pending_approvals')"
             ref="pendingApprovementsRef"
           />
-
-          <!-- 快速操作 -->
-          <div
-            v-if="canViewField('actions.quick_actions')"
-            class="quick-actions dashboard-card"
-          >
-            <h2>快速操作</h2>
-            <div class="actions-grid">
-              <el-button
-                type="default"
-                class="action-btn"
-                @click="goToSales"
-              >
-                <i class="fas fa-plus" />
-                新建销售
-              </el-button>
-              <el-button
-                type="default"
-                class="action-btn"
-                @click="addCustomer"
-              >
-                <i class="fas fa-user-plus" />
-                添加客户
-              </el-button>
-              <el-button
-                type="default"
-                class="action-btn"
-                @click="goToInventory"
-              >
-                <i class="fas fa-box" />
-                库存管理
-              </el-button>
-              <el-button
-                type="default"
-                class="action-btn"
-                @click="goToRepairs"
-              >
-                <i class="fas fa-wrench" />
-                维修管理
-              </el-button>
-            </div>
-          </div>
 
           <!-- 最近活动 -->
           <div
@@ -203,8 +229,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 
 import { useNotification } from '@/composables/useNotification'
 import { usePagePermissions } from '@/composables/usePagePermissions'
@@ -212,16 +237,15 @@ import { fieldPermissions, shouldShowActionColumn } from '@/composables/useField
 import { useLoadingState } from '@/composables'
 import { useCachedRequest, DEFAULT_CACHE_TTL } from '@/composables/usePageCache'
 import { useSiteSettingsStore } from '@/stores/siteSettings'
-import { useAuthStore } from '@/stores/auth'
 import { unifiedApi } from '@/utils/unified-api'
-import { canAccessRoutePath } from '@/constants/routePermissions'
 import { PageHeader, PermissionGate } from '@/components/base'
 import SectionLoading from '@/components/SectionLoading.vue'
 import ComprehensiveWarnings from '@/components/ComprehensiveWarnings.vue'
 import PendingApprovals from '@/components/PendingApprovals.vue'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
-const globalNotifications = useNotification()
-
+import { announcementsApi } from '@/api/announcements'
+import type { SiteAnnouncement } from '@/types'
+import RichContent from '@/components/RichContent.vue'
 
 // 使用通知服务
 const {
@@ -229,13 +253,10 @@ const {
   error,
   warning,
   info,
-  confirm,
   handleApiError,
   handleApiSuccess: _handleApiSuccess
 } = useNotification()
 
-const router = useRouter()
-const authStore = useAuthStore()
 const { canView } = usePagePermissions('dashboard')
 const DASHBOARD_MODULE_KEY = 'dashboard'
 const canViewField = (fieldKey: string) => fieldPermissions.isFieldVisible(DASHBOARD_MODULE_KEY, fieldKey)
@@ -283,6 +304,24 @@ interface DashboardActivityApiRecord {
 }
 
 const recentActivities = ref<DashboardActivity[]>([])
+const announcements = ref<SiteAnnouncement[]>([])
+const announcementIndex = ref(0)
+const expandedAnnouncementId = ref<number | null>(null)
+const currentAnnouncement = computed(() => announcements.value[announcementIndex.value] || null)
+
+const formatAnnouncementDate = (value: string | null) => (
+  value ? TimeUtil.format(value, TIME_FORMATS.DATETIME_MINUTE) : ''
+)
+
+const toggleAnnouncement = (id: number) => {
+  expandedAnnouncementId.value = expandedAnnouncementId.value === id ? null : id
+}
+
+const moveAnnouncement = (offset: number) => {
+  if (!announcements.value.length) return
+  announcementIndex.value = (announcementIndex.value + offset + announcements.value.length) % announcements.value.length
+  expandedAnnouncementId.value = null
+}
 
 const normalizeRecentActivities = (payload: unknown): DashboardActivity[] => {
   if (!Array.isArray(payload)) return []
@@ -314,56 +353,6 @@ const normalizeRecentActivities = (payload: unknown): DashboardActivity[] => {
     })
 }
 
-// 计算属性
-const _hasWarning = computed(() => {
-  return inventoryAlert.value || urgentRepairs.value > 0
-})
-
-const guardedPush = (target: string) => {
-  if (!canAccessRoutePath(target, authStore)) {
-    globalNotifications.warning('您没有访问此页面的权限')
-    return false
-  }
-
-  router.push(target)
-  return true
-}
-
-// 方法
-const goToSales = async () => {
-  if (await confirm('确定要创建新的销售订单吗？')) {
-    if (guardedPush('/sales')) {
-      success('已跳转到销售页面')
-    }
-  }
-}
-
-const addCustomer = async () => {
-  const result = await confirm(
-    '快速添加客户需要填写基本信息，确定继续吗？',
-    '添加客户',
-    { type: 'info' }
-  )
-
-  if (result) {
-    guardedPush('/customers?action=add')
-  }
-}
-
-const goToInventory = () => {
-  if (inventoryAlert.value) {
-    warning('检测到库存预警，请及时处理')
-  }
-  guardedPush('/inventory')
-}
-
-const goToRepairs = () => {
-  if (urgentRepairs.value > 0) {
-    warning(`您有 ${urgentRepairs.value} 项紧急维修待处理`)
-  }
-  guardedPush('/repairs')
-}
-
 // 刷新数据
 const refreshData = async () => {
   if (!canView.value) {
@@ -374,6 +363,7 @@ const refreshData = async () => {
 
   try {
     unifiedApi.clearCache('/dashboard')
+    unifiedApi.clearCache('/system/announcements')
     await loadDashboardData(false)
     // 刷新待审批提醒
     if (pendingApprovementsRef.value?.refresh) {
@@ -437,11 +427,20 @@ const loadDashboardData = async (showLoadingState = true) => {
       handleApiError(error, '加载最近活动失败')
       return null
     })
+    const announcementRequest = useCachedRequest(
+      '/system/announcements',
+      () => announcementsApi.listPublished(),
+      DEFAULT_CACHE_TTL.STATIC
+    ).catch((error): null => {
+      handleApiError(error, '加载站内公告失败')
+      return null
+    })
 
-    const [response, activityResponse] = await Promise.all([
+    const [response, activityResponse, announcementResponse] = await Promise.all([
       useCachedRequest(CACHE_KEYS.dashboard, () =>
         unifiedApi.get('/dashboard'), DEFAULT_CACHE_TTL.STATIC),
-      activityRequest
+      activityRequest,
+      announcementRequest
     ])
 
     if (response.success && response.data) {
@@ -466,6 +465,13 @@ const loadDashboardData = async (showLoadingState = true) => {
     recentActivities.value = activityResponse?.success
       ? normalizeRecentActivities(activityResponse.data)
       : []
+    announcements.value = announcementResponse?.success && Array.isArray(announcementResponse.data)
+      ? announcementResponse.data.slice(0, 5)
+      : []
+    announcementIndex.value = 0
+    if (!announcements.value.some(item => item.id === expandedAnnouncementId.value)) {
+      expandedAnnouncementId.value = null
+    }
 
   } catch (error) {
     handleApiError(error, '加载仪表盘数据失败')

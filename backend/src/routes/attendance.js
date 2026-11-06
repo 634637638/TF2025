@@ -37,12 +37,6 @@ router.get('/leave-balance',
   AttendanceController.getUserLeaveBalance.bind(AttendanceController)
 )
 
-// 获取休假配置 - 所有认证用户
-router.get('/leave-config',
-  requireAnyPermission(['attendance:view', 'attendance:view:own', 'attendance:view:all']),
-  AttendanceController.getLeaveConfig.bind(AttendanceController)
-)
-
 // 获取考勤记录详情
 router.get('/:id',
   requireAnyPermission(['attendance:view', 'attendance:view:own', 'attendance:view:all']),

@@ -3,6 +3,8 @@ type MessageConfig = {
   type?: 'success' | 'warning' | 'info' | 'error'
   duration?: number
   showClose?: boolean
+  placement?: 'top' | 'top-left' | 'top-right' | 'bottom' | 'bottom-left' | 'bottom-right'
+  onClose?: () => void
   [key: string]: unknown
 }
 
@@ -33,6 +35,29 @@ export type LoadingInstance = {
 }
 
 let elementPlusLoader: Promise<typeof import('element-plus')> | null = null
+const autoDismissMessages = new Set<symbol>()
+const MESSAGE_DISMISS_STAGGER_MS = 400
+
+const trackAutoDismissMessage = (
+  options: MessageConfig
+): MessageConfig => {
+  const centeredOptions: MessageConfig = { ...options, placement: 'top' }
+  const duration = options.duration ?? 3000
+  if (duration <= 0) return centeredOptions
+
+  const token = Symbol('global-message')
+  const originalOnClose = options.onClose
+  const staggeredOptions: MessageConfig = {
+    ...centeredOptions,
+    duration: duration + autoDismissMessages.size * MESSAGE_DISMISS_STAGGER_MS,
+    onClose: () => {
+      autoDismissMessages.delete(token)
+      originalOnClose?.()
+    }
+  }
+  autoDismissMessages.add(token)
+  return staggeredOptions
+}
 
 export const loadElementPlus = () => {
   if (!elementPlusLoader) {
@@ -44,7 +69,17 @@ export const loadElementPlus = () => {
 
 export const showElementMessage = async (options: MessageOptions) => {
   const { ElMessage } = await loadElementPlus()
-  return ElMessage(options as Parameters<typeof ElMessage>[0])
+  const messageOptions = typeof options === 'string' ? { message: options } : options
+  const trackedOptions = trackAutoDismissMessage(messageOptions)
+
+  try {
+    return ElMessage(trackedOptions as Parameters<typeof ElMessage>[0])
+  } catch (error) {
+    if (trackedOptions.onClose !== messageOptions.onClose) {
+      trackedOptions.onClose?.()
+    }
+    throw error
+  }
 }
 
 export const showElementSuccess = (options: string | Omit<MessageConfig, 'type'>) => {

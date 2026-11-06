@@ -24,7 +24,7 @@
 | 辅助说明 | `--tf-font-caption` | 12px | 12px | 11px |
 | 表头 | `--tf-font-table-header` | 13px | 13px | 11px |
 | 表格内容 | `--tf-font-table-body` | 13px | 13px | 11px |
-| 统计数值 | `--tf-font-stat-value` | 22px | 22px | 20px |
+| 统计数值 | `--tf-font-stat-value` | 22px | 18px | 16px |
 | 统计标签 | `--tf-font-stat-label` | 12px | 12px | 11px |
 
 `--tf-type-scale-*` 是历史组件中无法直接归类的精确字号兼容层。新代码优先使用语义令牌；只有图标、特殊媒体标识、导出模板或确实独立的展示层才使用精确比例令牌，并在组件注释中说明用途。
@@ -56,6 +56,8 @@ font-size: var(--some-token, 14px);
 响应式字号只使用公共断点令牌。页面不得按 `320px`、`360px`、`390px`、`430px` 单独复制一套字号，也不得使用 `vw` 或 `clamp()` 让同一文字在不同设备连续缩放。
 
 表格、按钮、表单控件、弹窗标题、Tab、分页、通知、空状态、Loading 和媒体预览都属于公共文字使用范围。它们可以使用各自组件令牌，但组件令牌必须在公共样式文件中定义，页面不能重复维护。
+
+后台统计卡片数值统一读取 `--tf-font-stat-value`；移动端和窄屏字号分别为 18px、16px。数值单位使用公共 `.stat-value-unit` 样式并读取辅助文字令牌。
 
 ## 页面与功能单元审计
 

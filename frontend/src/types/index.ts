@@ -96,6 +96,18 @@ export interface ApiError {
   details?: Record<string, unknown>
 }
 
+export interface SiteAnnouncement {
+  id: number
+  title: string
+  content: string
+  isPublished: boolean
+  isPinned: boolean
+  publishedAt: string | null
+  expiresAt: string | null
+  createdAt: string
+  updatedAt: string
+}
+
 /**
  * 应用状态类型
  */
@@ -1881,7 +1893,6 @@ export type {
   AttendanceDashboardStats,
   AttendanceFilters,
   AttendanceLeaveBalance,
-  AttendanceLeaveConfig,
   AttendanceLeaveHistory,
   AttendanceListResult,
   AttendancePagination,

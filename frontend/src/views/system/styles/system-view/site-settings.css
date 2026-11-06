@@ -22,18 +22,12 @@
 /* 站点设置行容器 - PC端一行展示 */
 .site-settings-row {
   display: grid;
-  grid-template-columns: 400px 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 24px;
   margin-bottom: 24px;
 }
 
-/* 响应式：当屏幕较小时改为单列 */
-@media (max-width: 1400px) {
-  .site-settings-row {
-    grid-template-columns: 350px 1fr;
-  }
-}
-
+/* 窄屏时垂直堆叠，桌面端保持三个并列卡片。 */
 @media (max-width: 1200px) {
   .site-settings-row {
     grid-template-columns: 1fr;

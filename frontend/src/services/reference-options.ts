@@ -20,6 +20,7 @@ export interface ReferenceRecord {
   brand_name?: string
   sort_order?: number
   status?: number
+  has_salary_template?: boolean
   [key: string]: unknown
 }
 

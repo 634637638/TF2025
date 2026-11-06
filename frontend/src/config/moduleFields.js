@@ -3681,7 +3681,6 @@ export const MODULE_FIELDS = {
       { id: 'stats.urgent_repairs', name: '紧急维修', group: '统计概览', type: FIELD_TYPES.NUMBER, sensitivity: SENSITIVITY_LEVELS.INTERNAL, description: '紧急维修数量提示' },
       { id: 'warnings.comprehensive', name: '综合预警', group: '业务提醒', type: FIELD_TYPES.TEXT, sensitivity: SENSITIVITY_LEVELS.INTERNAL, description: '综合库存预警区域' },
       { id: 'warnings.pending_approvals', name: '待审批提醒', group: '业务提醒', type: FIELD_TYPES.TEXT, sensitivity: SENSITIVITY_LEVELS.SENSITIVE, description: '待审批提醒区域' },
-      { id: 'actions.quick_actions', name: '快速操作', group: '快捷入口', type: FIELD_TYPES.TEXT, sensitivity: SENSITIVITY_LEVELS.INTERNAL, description: '仪表盘快捷操作区域' },
       { id: 'activities.recent', name: '最近活动', group: '活动记录', type: FIELD_TYPES.TEXT, sensitivity: SENSITIVITY_LEVELS.INTERNAL, description: '最近活动列表' },
       { id: 'system_info.operations', name: '操作', group: '系统信息', type: FIELD_TYPES.TEXT, sensitivity: SENSITIVITY_LEVELS.INTERNAL, description: '刷新、跳转和详情操作' }
     ]

@@ -139,7 +139,7 @@ class AttendanceController {
       ApiResponse.success(res, '创建考勤记录成功', result, 201)
     } catch (error) {
       log.error('创建考勤记录失败:', error)
-      ApiResponse.error(res, error.message, 500)
+      ApiResponse.error(res, error.message, error.statusCode || 500, error.code)
     }
   }
 
@@ -154,7 +154,7 @@ class AttendanceController {
       ApiResponse.success(res, '更新考勤记录成功', result, 200)
     } catch (error) {
       log.error('更新考勤记录失败:', error)
-      ApiResponse.error(res, error.message, 500)
+      ApiResponse.error(res, error.message, error.statusCode || 500, error.code)
     }
   }
 
@@ -200,7 +200,7 @@ class AttendanceController {
       ApiResponse.success(res, '审批考勤记录成功', result, 200)
     } catch (error) {
       log.error('审批考勤记录失败:', error)
-      ApiResponse.error(res, error.message, 500)
+      ApiResponse.error(res, error.message, error.statusCode || 500, error.code)
     }
   }
 
@@ -263,24 +263,7 @@ class AttendanceController {
       ApiResponse.success(res, '获取休假余额成功', result, 200)
     } catch (error) {
       log.error('获取休假余额失败:', error)
-      ApiResponse.error(res, error.message, 500)
-    }
-  }
-
-  /**
-   * 获取休假配置（每月休假天数等）
-   */
-  async getLeaveConfig(req, res) {
-    try {
-      const SystemSettingsService = require('../services/system-settings.service')
-      const monthlyLeaveDays = await SystemSettingsService.getMonthlyLeaveDays()
-
-      ApiResponse.success(res, '获取休假配置成功', {
-        monthly_leave_days: monthlyLeaveDays
-      }, 200)
-    } catch (error) {
-      log.error('获取休假配置失败:', error)
-      ApiResponse.error(res, error.message, 500)
+      ApiResponse.error(res, error.message, error.statusCode || 500, error.code)
     }
   }
 

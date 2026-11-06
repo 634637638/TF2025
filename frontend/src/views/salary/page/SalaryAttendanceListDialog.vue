@@ -8,10 +8,17 @@
     @update:model-value="emit('update:modelValue', $event)"
   >
     <div class="attendance-actions">
+      <el-alert
+        v-if="!employee?.salary_template_id"
+        title="该员工未绑定工资模板，不能登记休假、请假或加班。"
+        type="warning"
+        :closable="false"
+      />
       <el-button
         v-if="canCreate"
         v-permission="'salary-records:create'"
         type="primary"
+        :disabled="!employee?.salary_template_id"
         @click="emit('add')"
       >
         <i class="fas fa-plus" />
@@ -186,6 +193,7 @@ type AttendanceListRecord = AttendanceRecord & { reason?: string }
 interface EmployeeSummary {
   name?: string | null
   username?: string | null
+  salary_template_id?: number | null
 }
 
 const moduleKey = 'salary_salaryrecordsview'

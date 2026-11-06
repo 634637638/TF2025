@@ -1184,11 +1184,15 @@ router.post('/phone', unifiedAuth, requireAnyPermission(['sales:sell', 'inventor
     }
 
   } catch (error) {
-    log.error('❌ 手机销售失败:', error)
+    log.error('手机销售失败:', {
+      requestId: req.requestId,
+      error
+    })
     res.status(500).json({
       success: false,
-      message: '销售失败',
-      error: error.message
+      message: '服务器内部错误，请稍后重试',
+      code: 'INTERNAL_ERROR',
+      request_id: req.requestId || null
     })
   }
 })

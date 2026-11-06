@@ -104,27 +104,23 @@ function generateTokenId() {
 async function storeCSRFToken(userId, tokenId, token) {
   const expiresAt = Date.now() + CSRF_CONFIG.TOKEN_TTL
 
-  // 存储到内存
+  // 如果启用了持久化，存储到数据库
+  if (CSRF_CONFIG.ENABLE_PERSISTENCE) {
+    const db = getDatabase()
+    await db.execute(
+      `INSERT INTO csrf_tokens (token_id, user_id, token, created_at, expires_at)
+       VALUES (?, ?, ?, NOW(), FROM_UNIXTIME(?))`,
+      [tokenId, userId, token, expiresAt / 1000]
+    )
+  }
+
+  // 只缓存已成功持久化的 Token，避免把无法跨进程验证的凭据发给客户端。
   csrfTokens.set(tokenId, {
     userId,
     token,
     createdAt: Date.now(),
     expiresAt
   })
-
-  // 如果启用了持久化，存储到数据库
-  if (CSRF_CONFIG.ENABLE_PERSISTENCE) {
-    try {
-      const db = getDatabase()
-      await db.execute(
-        `INSERT INTO csrf_tokens (token_id, user_id, token, created_at, expires_at)
-         VALUES (?, ?, ?, NOW(), FROM_UNIXTIME(?))`,
-        [tokenId, userId, token, expiresAt / 1000]
-      )
-    } catch (error) {
-      log.error('存储 CSRF Token 到数据库失败:', error)
-    }
-  }
 }
 
 /**
@@ -206,6 +202,7 @@ async function verifyCSRFToken(userId, token) {
       }
     } catch (error) {
       log.error('从数据库验证 CSRF Token 失败:', error)
+      throw error
     }
   }
 
@@ -359,8 +356,9 @@ function validateCSRFToken(req, res, next) {
     log.error('CSRF 验证中间件错误:', error)
     res.status(500).json({
       success: false,
-      message: 'CSRF 验证失败',
-      code: 'CSRF_VALIDATION_ERROR'
+      message: '安全校验暂时不可用，请稍后重试',
+      code: 'CSRF_VALIDATION_ERROR',
+      request_id: req.requestId || null
     })
   })
 }

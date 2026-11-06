@@ -5,6 +5,10 @@ const { getDatabase, isConnected, connectToDatabase, setConnected } = require('.
 const ApiResponse = require('../utils/response')
 const log = require('../utils/log')
 const { schemaChangesAllowed } = require('../utils/schema-change-policy')
+const {
+  AnnouncementValidationError,
+  normalizeAnnouncementInput
+} = require('../services/site-announcement.service')
 const _mysql = require('mysql2/promise')
 const multer = require('multer')
 const path = require('path')
@@ -924,6 +928,138 @@ router.get('/site-settings/admin', unifiedAuth, requirePermission('system:view')
   } catch (error) {
     log.warn('读取完整站点设置失败:', error.message)
     return ApiResponse.error(res, '读取完整站点设置失败', 500)
+  }
+})
+
+const getAnnouncement = (row) => ({
+  id: Number(row.id),
+  title: row.title,
+  content: row.content,
+  isPublished: Boolean(row.is_published),
+  isPinned: Boolean(row.is_pinned),
+  publishedAt: row.published_at,
+  expiresAt: row.expires_at,
+  createdAt: row.created_at,
+  updatedAt: row.updated_at
+})
+
+router.get('/announcements', unifiedAuth, async (req, res) => {
+  try {
+    const db = getDatabase()
+    const [rows] = await db.execute(
+      `SELECT id, title, content, is_published, is_pinned, published_at, expires_at, created_at, updated_at
+       FROM site_announcements
+       WHERE is_published = 1
+         AND (expires_at IS NULL OR expires_at > DATE_ADD(UTC_TIMESTAMP(), INTERVAL 8 HOUR))
+       ORDER BY is_pinned DESC, published_at DESC, id DESC LIMIT 20`
+    )
+    return ApiResponse.success(res, rows.map(getAnnouncement))
+  } catch (error) {
+    log.warn('获取站内公告失败:', error.message)
+    return ApiResponse.error(res, '获取站内公告失败', 500)
+  }
+})
+
+router.get('/announcements/admin', unifiedAuth, requirePermission('system:view'), async (req, res) => {
+  try {
+    const [rows] = await getDatabase().execute(
+      `SELECT id, title, content, is_published, is_pinned, published_at, expires_at, created_at, updated_at
+       FROM site_announcements ORDER BY updated_at DESC, id DESC LIMIT 100`
+    )
+    return ApiResponse.success(res, rows.map(getAnnouncement))
+  } catch (error) {
+    log.warn('读取公告管理列表失败:', error.message)
+    return ApiResponse.error(res, '读取公告管理列表失败', 500)
+  }
+})
+
+router.post('/announcements', unifiedAuth, requirePermission('system:edit'), async (req, res) => {
+  let connection
+  try {
+    const announcement = normalizeAnnouncementInput(req.body)
+    connection = await getDatabase().getConnection()
+    await connection.beginTransaction()
+    if (announcement.isPinned) await connection.execute('UPDATE site_announcements SET is_pinned = 0')
+    const [result] = await connection.execute(
+      `INSERT INTO site_announcements (title, content, is_published, is_pinned, published_at, expires_at, created_at, updated_at)
+       VALUES (?, ?, ?, ?, IF(? = 1, DATE_ADD(UTC_TIMESTAMP(), INTERVAL 8 HOUR), NULL), ?,
+               DATE_ADD(UTC_TIMESTAMP(), INTERVAL 8 HOUR), DATE_ADD(UTC_TIMESTAMP(), INTERVAL 8 HOUR))`,
+      [announcement.title, announcement.content, announcement.isPublished ? 1 : 0, announcement.isPinned ? 1 : 0, announcement.isPublished ? 1 : 0, announcement.expiresAt]
+    )
+    const [rows] = await connection.execute(
+      `SELECT id, title, content, is_published, is_pinned, published_at, expires_at, created_at, updated_at
+       FROM site_announcements WHERE id = ?`,
+      [result.insertId]
+    )
+    await connection.commit()
+    return ApiResponse.created(
+      res,
+      announcement.isPublished ? '公告发布成功' : '公告草稿保存成功',
+      getAnnouncement(rows[0])
+    )
+  } catch (error) {
+    if (connection) await connection.rollback()
+    if (error instanceof AnnouncementValidationError) {
+      return ApiResponse.error(res, error.message, 400)
+    }
+    log.error('创建站内公告失败:', error)
+    return ApiResponse.error(res, '创建站内公告失败', 500)
+  } finally {
+    connection?.release()
+  }
+})
+
+router.put('/announcements/:id', unifiedAuth, requirePermission('system:edit'), async (req, res) => {
+  let connection
+  try {
+    const id = Number(req.params.id)
+    if (!Number.isSafeInteger(id) || id <= 0) return ApiResponse.error(res, '公告编号无效', 400)
+    const announcement = normalizeAnnouncementInput(req.body)
+    connection = await getDatabase().getConnection()
+    await connection.beginTransaction()
+    const [existingRows] = await connection.execute('SELECT id FROM site_announcements WHERE id = ? FOR UPDATE', [id])
+    if (!existingRows.length) {
+      await connection.rollback()
+      return ApiResponse.error(res, '公告不存在', 404)
+    }
+    if (announcement.isPinned) await connection.execute('UPDATE site_announcements SET is_pinned = 0 WHERE id <> ?', [id])
+    await connection.execute(
+      `UPDATE site_announcements
+       SET title = ?, content = ?, is_published = ?, is_pinned = ?,
+           published_at = IF(? = 1, COALESCE(published_at, DATE_ADD(UTC_TIMESTAMP(), INTERVAL 8 HOUR)), NULL),
+           expires_at = ?, updated_at = DATE_ADD(UTC_TIMESTAMP(), INTERVAL 8 HOUR)
+       WHERE id = ?`,
+      [announcement.title, announcement.content, announcement.isPublished ? 1 : 0, announcement.isPinned ? 1 : 0, announcement.isPublished ? 1 : 0, announcement.expiresAt, id]
+    )
+    const [rows] = await connection.execute(
+      `SELECT id, title, content, is_published, is_pinned, published_at, expires_at, created_at, updated_at
+       FROM site_announcements WHERE id = ?`,
+      [id]
+    )
+    await connection.commit()
+    return ApiResponse.success(res, getAnnouncement(rows[0]), '公告更新成功')
+  } catch (error) {
+    if (connection) await connection.rollback()
+    if (error instanceof AnnouncementValidationError) {
+      return ApiResponse.error(res, error.message, 400)
+    }
+    log.error('更新站内公告失败:', error)
+    return ApiResponse.error(res, '更新站内公告失败', 500)
+  } finally {
+    connection?.release()
+  }
+})
+
+router.delete('/announcements/:id', unifiedAuth, requirePermission('system:delete'), async (req, res) => {
+  try {
+    const id = Number(req.params.id)
+    if (!Number.isSafeInteger(id) || id <= 0) return ApiResponse.error(res, '公告编号无效', 400)
+    const [result] = await getDatabase().execute('DELETE FROM site_announcements WHERE id = ?', [id])
+    if (!result.affectedRows) return ApiResponse.error(res, '公告不存在', 404)
+    return ApiResponse.success(res, null, '公告删除成功')
+  } catch (error) {
+    log.error('删除站内公告失败:', error)
+    return ApiResponse.error(res, '删除站内公告失败', 500)
   }
 })
 

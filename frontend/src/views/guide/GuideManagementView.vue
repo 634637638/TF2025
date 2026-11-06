@@ -62,7 +62,12 @@
             >
               <span class="drag-handle"><i class="fas fa-grip-vertical" /></span>
               <div class="announcement-row__content">
-                <strong>{{ item.title }}</strong><span v-if="item.content">{{ item.content }}</span>
+                <strong>{{ item.title }}</strong>
+                <RichContent
+                  v-if="item.content"
+                  class="announcement-row__rich-content"
+                  :content="item.content"
+                />
               </div>
               <el-tag
                 size="small"
@@ -310,7 +315,7 @@
     <MobileDialog
       v-model="announcementVisible"
       :title="editingAnnouncement ? '编辑公告' : '新增公告'"
-      width="560px"
+      width="880px"
       :show-default-footer="false"
     >
       <form
@@ -325,13 +330,10 @@
           />
         </el-form-item>
         <el-form-item label="内容">
-          <el-input
+          <RichTextEditor
             v-model="announcementForm.content"
-            class="tf-textarea"
-            type="textarea"
-            :rows="3"
-            maxlength="500"
-            show-word-limit
+            :upload-media="uploadAnnouncementMedia"
+            placeholder="编辑公告内容，可插入图片和视频"
           />
         </el-form-item>
         <el-form-item label="跳转链接">
@@ -610,6 +612,8 @@ import { usePagePermissions } from '@/composables/usePagePermissions'
 import { useNotification } from '@/composables/useNotification'
 import { getRequestErrorMessage } from '@/utils/api-response'
 import MobileDialog from '@/components/MobileDialog.vue'
+import RichTextEditor, { type RichTextMediaResult } from '@/components/RichTextEditor.vue'
+import RichContent from '@/components/RichContent.vue'
 import { guideApi } from '@/api/guide'
 import { extractBlobResponse, unifiedApi } from '@/utils/unified-api'
 import { deleteTempFiles } from '@/utils/temp-file-cleaner'
@@ -840,6 +844,15 @@ const saveLink = async () => {
 
 const isImageFile = (mime: string | null | undefined) => String(mime || '').toLowerCase().startsWith('image/')
 
+const uploadAnnouncementMedia = async (file: File, kind: 'image' | 'video'): Promise<RichTextMediaResult> => {
+  if (file.size > 100 * 1024 * 1024) throw new Error('文件不能超过100MB')
+  const formData = new FormData()
+  formData.append('file', file)
+  const response = await guideApi.uploadContentMedia(formData)
+  if (!response.success || !response.data?.url) throw new Error(response.message || '媒体上传失败')
+  return kind === 'video' ? { url: response.data.url } : { url: response.data.url, alt: response.data.name, href: response.data.url }
+}
+
 const loadExistingPreview = async (id: number) => {
   try {
     const response = await unifiedApi.getInstance().get<Blob>(`/guide/links/${id}/preview`, { responseType: 'blob' })
@@ -928,6 +941,7 @@ onMounted(() => { loadData() })
 .announcement-row__content, .link-admin-row__body { display: grid; min-width: 0; flex: 1; gap: var(--tf-space-1); }
 .announcement-row__content strong, .announcement-row__content span, .link-admin-row__body strong, .link-admin-row__body small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .announcement-row__content span, .link-admin-row__body small { color: var(--tf-color-slate-500); font-size: var(--tf-type-scale-12); }
+.announcement-row__rich-content { max-height: 48px; color: var(--tf-color-slate-500); font-size: var(--tf-type-scale-12); overflow: hidden; }
 .row-actions { display: inline-flex; flex: none; align-items: center; gap: var(--tf-space-1); }
 .category-admin-card { min-width: 0; overflow: hidden; border: 1px solid var(--tf-color-slate-200); border-radius: var(--tf-radius-panel); }
 .category-admin-card__header { display: flex; min-width: 0; align-items: center; gap: var(--tf-space-3); padding: var(--tf-space-3) var(--tf-space-4); background: var(--tf-color-slate-50); }

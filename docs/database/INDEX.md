@@ -6,6 +6,7 @@
 - schema baseline 和独立数据库验收分别见[后端索引](../backend/INDEX.md)及[后端数据库回归测试](../backend/database-testing.md)。
 
 - [数据库结构与模块资料入口](DATABASE_MODULE_MAPPING.md)
+- 站内公告数据库结构和迁移边界见[站内公告接口说明](../backend/site-announcements.md)。
 - [字段统一迁移进度](field-consistency-progress.md)
 - [字段一致性迁移记录](field-consistency-migration.md) - 按日期记录的历史核验
 - [字段兼容清单](field-compatibility-inventory.md) - 契约迁移与退役字段记录

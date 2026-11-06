@@ -3,12 +3,12 @@
  */
 const AttendanceRepository = require('../repositories/attendance.repository')
 const _ApiResponse = require('../utils/response')
-const SystemSettingsService = require('./system-settings.service')
 const SalaryRecordService = require('./salary-record.service')
 const SalaryCalculatorService = require('./salary-calculator.service')
 const { getMonthDateRange, getBeijingTimeString, parseLocalDate, formatLocalDate } = require('../utils/time')
 const { buildMonthlyLeaveBalances, monthKey, shiftMonth } = require('../utils/leave-balance')
 const log = require('../utils/log')
+const ERROR_CODES = require('../constants/errorCodes')
 
 class AttendanceService {
   constructor() {
@@ -55,35 +55,45 @@ class AttendanceService {
     }
   }
 
-  /**
-   * 获取员工工资模板中的休假天数配置
-   * @param {number} employeeId - 员工ID
-   * @returns {Promise<number>} 休假天数
-   */
+  async getEmployeeSalaryTemplate(employeeId) {
+    const db = this.repository.getConnection()
+    const [rows] = await db.execute(`
+      SELECT st.id, st.rest_days
+      FROM users u
+      INNER JOIN salary_templates st ON u.salary_template_id = st.id
+      WHERE u.id = ?
+    `, [employeeId])
+    return rows[0] || null
+  }
+
+  createSalaryTemplateRequiredError() {
+    const error = new Error('请先为员工绑定有效的工资模板，再申请或登记休假、请假、加班')
+    error.statusCode = 422
+    error.code = ERROR_CODES.SALARY_TEMPLATE_REQUIRED
+    return error
+  }
+
+  async requireEmployeeSalaryTemplate(employeeId) {
+    const template = await this.getEmployeeSalaryTemplate(employeeId)
+    if (!template) {
+      throw this.createSalaryTemplateRequiredError()
+    }
+    return template
+  }
+
   async getEmployeeMonthlyLeaveDays(employeeId) {
-    try {
-      // 从员工的工资模板中获取休假天数
-      const query = `
-        SELECT st.rest_days
-        FROM users u
-        INNER JOIN salary_templates st ON u.salary_template_id = st.id
-        WHERE u.id = ?
-      `
-      const db = this.repository.getConnection()
-      const [result] = await db.execute(query, [employeeId])
+    const template = await this.getEmployeeSalaryTemplate(employeeId)
+    if (!template) return null
 
-      if (result && result.length > 0 && result[0].rest_days !== null) {
-        const configuredRestDays = Number(result[0].rest_days)
-        if (Number.isFinite(configuredRestDays) && configuredRestDays >= 0) {
-          return configuredRestDays
-        }
-      }
+    const configuredRestDays = Number(template.rest_days)
+    return Number.isFinite(configuredRestDays) && configuredRestDays >= 0
+      ? configuredRestDays
+      : 0
+  }
 
-      // 未绑定员工模板时，读取系统中真实配置的休假额度。
-      return await SystemSettingsService.getMonthlyLeaveDays()
-    } catch (error) {
-      log.error('获取员工休假天数配置失败:', error)
-      throw error
+  async requireAttendanceSalaryTemplate(record) {
+    if (this.isSalaryAffectingAttendance(record)) {
+      await this.requireEmployeeSalaryTemplate(record.employee_id)
     }
   }
 
@@ -105,6 +115,7 @@ class AttendanceService {
 
   async createAttendanceRecord(data, userId) {
     try {
+      await this.requireAttendanceSalaryTemplate(data)
       data.created_by = userId
       return await this.repository.createAttendanceRecord(data)
     } catch (error) {
@@ -115,6 +126,17 @@ class AttendanceService {
   async updateAttendanceRecord(id, data, operatorId = null) {
     try {
       const before = await this.repository.getAttendanceRecordById(id)
+      if (!before) {
+        const error = new Error('考勤记录不存在')
+        error.statusCode = 404
+        error.code = 'NOT_FOUND'
+        throw error
+      }
+      await this.requireAttendanceSalaryTemplate({
+        ...before,
+        ...data,
+        employee_id: data.employee_id ?? before.employee_id
+      })
       const result = await this.repository.updateAttendanceRecord(id, data)
       const after = await this.repository.getAttendanceRecordById(id)
 
@@ -173,6 +195,15 @@ class AttendanceService {
   async approveAttendanceRecord(id, approverId, status, approval_note) {
     try {
       const before = await this.repository.getAttendanceRecordById(id)
+      if (!before) {
+        const error = new Error('考勤记录不存在')
+        error.statusCode = 404
+        error.code = 'NOT_FOUND'
+        throw error
+      }
+      if (status === 'approved') {
+        await this.requireAttendanceSalaryTemplate(before)
+      }
       const result = await this.repository.approveAttendanceRecord(id, approverId, status, approval_note)
       const after = await this.repository.getAttendanceRecordById(id)
 
@@ -221,8 +252,24 @@ class AttendanceService {
       const targetStartKey = monthKey(start)
       const usageEnd = new Date(end.getFullYear(), end.getMonth() + 1, 0)
 
-      // 从员工工资模板获取每月休假天数配置
+      // 额度只来自员工有效工资模板，不使用系统默认额度。
       const monthlyLeaveDays = await this.getEmployeeMonthlyLeaveDays(employeeId)
+
+      if (monthlyLeaveDays === null) {
+        return {
+          monthly_limit: 0,
+          used: 0,
+          available: 0,
+          total_quota: 0,
+          is_leave_disabled: true,
+          template_bound: false,
+          consecutive_full_months: 0,
+          monthly_history: [],
+          last_month_remaining: 0,
+          monthly_balances: [],
+          message: '请先绑定工资模板，休假额度将按模板中的设置计算'
+        }
+      }
 
       const monthlyUsage = await this.repository.getUserLeaveMonthlyUsage(
         employeeId,
@@ -254,6 +301,7 @@ class AttendanceService {
         available: availableDays,
         total_quota: selectedBalance.carry_in + monthlyLeaveDays,
         is_leave_disabled: false,
+        template_bound: true,
         consecutive_full_months: 0,
         monthly_history: previousBalance ? [{
           year: Number(previousBalance.month.slice(0, 4)),

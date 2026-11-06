@@ -36,6 +36,7 @@
 - [搜索与筛选](search-standards.md)
 - [安全与运行时审计](security-runtime-standards.md)
 - [Shared 经验分享](shared-standards.md)
+- [富文本内容统一规范](rich-content-standards.md)
 - [导航站 `/DH` 与 `/guide`](guide-navigation-standard.md)
 - [全局下载与文件预览安全](download-security-standard.md)
 - [规范审计接入](standards-audit-guide.md)

@@ -334,6 +334,11 @@
                     </el-table>
                   </div>
                 </div>
+                <AnnouncementManagementCard
+                  v-if="canView"
+                  :can-edit="canUpdateSettings"
+                  :can-delete="canDelete"
+                />
               </div>
             </div>
           </div>
@@ -990,6 +995,7 @@ import type { FormInstance } from 'element-plus'
 import { ValidationRules } from '@/composables'
 import PhoneWarningConfigView from '@/views/system/phone-warning-config/PhoneWarningConfigView.vue'
 import Returngoods from '@/views/system/page/Returngoods.vue'
+import AnnouncementManagementCard from '@/views/system/page/AnnouncementManagementCard.vue'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import { logger } from '@/utils/logger'
 import { getPublicPriceContactKey, parsePublicPriceContacts } from '@/utils/publicPriceSettings'

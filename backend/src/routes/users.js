@@ -182,7 +182,8 @@ router.get('/employees', unifiedAuth, requireAnyPermission(['attendance:view', '
       total = Number(countResult[0][0]?.total || 0)
       const paginationSql = usePagination ? ` LIMIT ${pageSizeInt} OFFSET ${(pageInt - 1) * pageSizeInt}` : '';
       [users] = await db.execute(
-        `SELECT u.id, u.username, u.name, u.status
+        `SELECT u.id, u.username, u.name, u.status,
+                EXISTS (SELECT 1 FROM salary_templates st WHERE st.id = u.salary_template_id) AS has_salary_template
          FROM users u
          WHERE ${whereSql}
          ORDER BY COALESCE(NULLIF(u.name, ''), u.username) ASC, u.id ASC${paginationSql}`,
@@ -191,7 +192,8 @@ router.get('/employees', unifiedAuth, requireAnyPermission(['attendance:view', '
     } else {
       // 普通用户：只能看到自己
       [users] = await db.execute(
-        `SELECT u.id, u.username, u.name, u.status
+        `SELECT u.id, u.username, u.name, u.status,
+                EXISTS (SELECT 1 FROM salary_templates st WHERE st.id = u.salary_template_id) AS has_salary_template
          FROM users u
          WHERE u.id = ? AND ${whereSql}`,
         [userId, ...whereParams]
@@ -203,7 +205,8 @@ router.get('/employees', unifiedAuth, requireAnyPermission(['attendance:view', '
       id: user.id,
       name: user.name || user.username,
       username: user.username,
-      status: user.status
+      status: user.status,
+      has_salary_template: Boolean(user.has_salary_template)
     }))
 
     return ApiResponse.success(res, {

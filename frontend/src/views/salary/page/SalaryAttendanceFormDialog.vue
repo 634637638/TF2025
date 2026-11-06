@@ -15,6 +15,12 @@
         v-if="canViewField(moduleKey, 'attendance_record_type')"
         class="form-group"
       >
+        <el-alert
+          v-if="!hasSalaryTemplate"
+          title="该员工未绑定工资模板，不能登记休假、请假或加班。请先在工资管理中绑定模板。"
+          type="warning"
+          :closable="false"
+        />
         <label>记录类型</label>
         <div class="radio-group">
           <label class="radio-label">
@@ -22,7 +28,7 @@
               v-model="recordType"
               type="radio"
               value="monthly_leave"
-              :disabled="!canEditField(moduleKey, 'attendance_record_type')"
+              :disabled="!hasSalaryTemplate || !canEditField(moduleKey, 'attendance_record_type')"
               @change="emit('type-change')"
             >
             <span><i class="fas fa-umbrella-beach text-success mr-1" />休假</span>
@@ -32,7 +38,7 @@
               v-model="recordType"
               type="radio"
               value="leave"
-              :disabled="!canEditField(moduleKey, 'attendance_record_type')"
+              :disabled="!hasSalaryTemplate || !canEditField(moduleKey, 'attendance_record_type')"
               @change="emit('type-change')"
             >
             <span><i class="fas fa-user-clock text-warning mr-1" />请假</span>
@@ -42,7 +48,7 @@
               v-model="recordType"
               type="radio"
               value="overtime"
-              :disabled="!canEditField(moduleKey, 'attendance_record_type')"
+              :disabled="!hasSalaryTemplate || !canEditField(moduleKey, 'attendance_record_type')"
               @change="emit('type-change')"
             >
             <span><i class="fas fa-business-time text-blue mr-1" />加班</span>
@@ -218,7 +224,7 @@
         type="primary"
         native-type="submit"
         form="attendance-form"
-        :disabled="saving"
+        :disabled="saving || !hasSalaryTemplate"
       >
         <InlineLoading
           v-if="saving"
@@ -250,6 +256,7 @@ const props = defineProps<{
   canEditField: (_moduleKey: string, _fieldName: string) => boolean
   canViewField: (_moduleKey: string, _fieldName: string) => boolean
   form: AttendanceForm
+  hasSalaryTemplate: boolean
   modelValue: boolean
   saving: boolean
   title: string

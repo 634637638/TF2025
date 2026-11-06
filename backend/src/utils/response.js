@@ -81,7 +81,9 @@ class ApiResponse {
       timestamp: new Date().toISOString()
     }
 
-    if (!isServerError && error !== null && error !== undefined) {
+    if (!isServerError && typeof error === 'string') {
+      response.code = error
+    } else if (!isServerError && error !== null && error !== undefined) {
       response.error = error
     }
 

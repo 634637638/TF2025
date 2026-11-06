@@ -48,38 +48,35 @@
     padding: 2px 6px;
   }
 
-  /* 快速操作 - 2列网格 */
-  .quick-actions {
-    width: 100%;
-    padding: var(--admin-panel-padding);
-    border-radius: var(--mobile-card-radius);
-  }
-
-  .quick-actions h2 {
-    font-size: var(--tf-type-scale-16);
-    margin-bottom: 12px;
-  }
-
-  .actions-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 10px;
-  }
-
-  .action-btn {
-    padding: 14px 12px;
-    font-size: var(--tf-type-scale-12);
-    gap: 8px;
-  }
-
-  .action-btn i {
-    font-size: var(--tf-type-scale-18);
-  }
-
   /* 最近活动 */
   .recent-activity {
     width: 100%;
     padding: var(--admin-panel-padding);
     border-radius: var(--mobile-card-radius);
+  }
+
+  .dashboard-announcements {
+    width: 100%;
+    border-radius: var(--mobile-card-radius);
+  }
+
+  .dashboard-announcement-featured {
+    padding: var(--tf-space-3);
+  }
+
+  .dashboard-announcement__meta {
+    align-items: flex-start;
+    gap: var(--tf-space-2);
+  }
+
+  .dashboard-announcement__actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .dashboard-announcement__meta time {
+    white-space: normal;
+    text-align: end;
   }
 
   .activity-header h2 {
@@ -112,48 +109,5 @@
 
   .activity-action {
     padding: 6px;
-  }
-}
-
-/* 小屏手机 */
-@media (max-width: 479px) {
-  .dashboard {
-    padding: 0;
-  }
-
-  .welcome-banner {
-    padding: 14px 10px;
-  }
-
-  .welcome-content h2 {
-    font-size: var(--tf-type-scale-16);
-  }
-
-  .action-btn {
-    padding: 12px 10px;
-    font-size: var(--tf-type-scale-11);
-  }
-
-  .action-btn i {
-    font-size: var(--tf-type-scale-16);
-  }
-}
-
-/* 超小屏幕 */
-@media (max-width: 375px) {
-  .actions-grid {
-    gap: 8px;
-  }
-
-  .action-btn {
-    padding: 10px 8px;
-  }
-
-}
-
-/* 横屏优化 */
-@media (max-width: 767px) and (orientation: landscape) {
-  .actions-grid {
-    grid-template-columns: repeat(3, 1fr);
   }
 }

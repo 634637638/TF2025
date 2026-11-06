@@ -41,6 +41,6 @@ curl http://127.0.0.1:3000/live
 curl http://127.0.0.1:3000/health
 ```
 
-发布包含数据库结构变更时，先备份数据库和上传目录，再在后端目录使用服务器本机 `.env.production` 运行 `npm run migrate:schema` 预览；确认目标库后才运行 `npm run migrate:schema -- --apply`。`/live` 只用于进程存活检查，`/health` 用于数据库就绪和发布验证，生产监控必须主动请求 `/health`。
+销售出库依赖 `invoice_sequences`；生产环境不会在请求中自动建表。该表可通过 `npm run migrate:invoice-sequences` 预览并用 `npm run migrate:invoice-sequences -- --apply` 独立补齐，不依赖统一迁移台账。发布包含其他数据库结构变更时，先备份数据库和上传目录，再在后端目录使用服务器本机 `.env.production` 运行 `npm run migrate:schema` 预览；确认目标库后才运行 `npm run migrate:schema -- --apply`。CSRF token 表使用独立的 `npm run migrate:csrf-tokens` 预览和 `npm run migrate:csrf-tokens -- --apply` 迁移。`/live` 只用于进程存活检查，`/health` 用于数据库就绪和发布验证，生产监控必须主动请求 `/health`。
 
 生产密钥不得写入部署文档、命令历史、前端 `.env.production` 或发布包。后端 `.env.production` 留在后端服务器本机；命令行 PM2 使用 `backend/ecosystem.production.config.js`，宝塔 PM2 项目的启动文件使用 `backend/start-production.js`。两者最终进入同一个生产启动入口。

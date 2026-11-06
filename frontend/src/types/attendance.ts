@@ -67,6 +67,7 @@ export interface AttendanceLeaveBalance {
   available: number
   total_quota: number
   is_leave_disabled: boolean
+  template_bound: boolean
   consecutive_full_months: number
   monthly_history: AttendanceLeaveHistory[]
   last_month_remaining: number
@@ -98,10 +99,6 @@ export interface AttendanceDashboardStats {
     leave_deduction: number
     count: number
   }
-}
-
-export interface AttendanceLeaveConfig {
-  monthly_leave_days: number
 }
 
 export interface AttendanceStats {

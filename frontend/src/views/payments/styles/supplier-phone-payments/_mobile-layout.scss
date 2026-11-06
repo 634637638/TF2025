@@ -11,6 +11,19 @@
   }
 
   .supplier-phone-payments-view {
+    .stat-main-line {
+      gap: var(--tf-space-1);
+    }
+
+    .stat-label {
+      flex-shrink: 0;
+      white-space: nowrap;
+    }
+
+    .stat-value-primary {
+      white-space: nowrap;
+    }
+
     .table-section {
       .section-title {
         justify-content: space-between;

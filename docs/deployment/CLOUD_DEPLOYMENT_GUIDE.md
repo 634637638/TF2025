@@ -681,11 +681,23 @@ mysqldump -u tf2025_user -p tf2025_prod > backup_$(date +%Y%m%d_%H%M%S).sql
 cd /var/www/tf2025/backend
 NODE_ENV=production ENV_FILE=.env.production npm run migrate:schema
 
+# 预览 CSRF Token 持久化表迁移
+NODE_ENV=production ENV_FILE=.env.production npm run migrate:csrf-tokens
+
+# 预览销售出库单号序列表迁移
+NODE_ENV=production ENV_FILE=.env.production npm run migrate:invoice-sequences
+
 # 核对目标库、备份和预览后显式执行
 NODE_ENV=production ENV_FILE=.env.production npm run migrate:schema -- --apply
+
+# 备份后确认目标库，再应用 CSRF Token 表迁移
+NODE_ENV=production ENV_FILE=.env.production npm run migrate:csrf-tokens -- --apply
+
+# 应用销售出库单号序列表迁移
+NODE_ENV=production ENV_FILE=.env.production npm run migrate:invoice-sequences -- --apply
 ```
 
-统一结构迁移会登记 `schema_migrations(id, name, checksum, applied_at, execution_time)`，并使用数据库命名锁阻止并发执行。历史独立迁移脚本不会被自动重跑；checksum 不一致时必须停止部署并人工核对，禁止删除台账或修改 checksum 绕过。推荐发布顺序：数据库及上传目录备份 → 结构迁移预览 → `--apply` → 核验迁移台账 → 启动新版 → 验证健康检查。
+统一结构迁移会登记 `schema_migrations(id, name, checksum, applied_at, execution_time)`，并使用数据库命名锁阻止并发执行。出库单号序列表和 CSRF Token 表均提供独立、可重复预览的迁移，不依赖旧的已登记基线。历史独立迁移脚本不会被自动重跑；checksum 不一致时必须停止部署并人工核对，禁止删除台账或修改 checksum 绕过。推荐发布顺序：数据库及上传目录备份 → 结构迁移预览 → 核对目标库后 `--apply` → 启动新版 → 验证健康检查。
 
 ### 上传目录与数据库 URL 同步
 

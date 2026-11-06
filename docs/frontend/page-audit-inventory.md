@@ -20,18 +20,18 @@
 | --- | --- | ---: |
 | 懒加载路由入口 | `router/index.ts` 中的 `component: () => import(...)` | 65 |
 | 实际叶子路由 | 可直接访问的页面路由，排除 3 个布局容器 | 62 |
-| 页面源文件 | `frontend/src/views/**/*.vue`，包括 Tab、弹窗和页面内部单元 | 130 |
+| 页面源文件 | `frontend/src/views/**/*.vue`，包括 Tab、弹窗和页面内部单元 | 131 |
 | 叶子路由唯一视图文件 | 62 个叶子 URL 对应的唯一 `views` 文件；两个文件各被两个 URL 复用，另有 1 个 URL 使用公共组件 | 59 |
 | 布局容器视图文件 | 后台、H5 管理和 H5 手机端布局 | 3 |
-| 非路由功能单元 | 未被路由直接加载的 Tab、弹窗、页面内部单元或复用单元 | 68 |
-| 公共组件源文件 | `frontend/src/components/**/*.vue` | 71 |
+| 非路由功能单元 | 未被路由直接加载的 Tab、弹窗、页面内部单元或复用单元 | 69 |
+| 公共组件源文件 | `frontend/src/components/**/*.vue` | 74 |
 | 涉及表格的页面源文件 | 页面中出现 Element/原生表格或公共表格入口 | 56 |
 | 涉及表格的公共组件 | 公共组件中出现表格或表格封装 | 6 |
 | 含按钮的页面/功能单元源文件 | `frontend/src/views/**/*.vue` 中出现 `el-button` | 112 |
 | 含按钮的公共组件源文件 | `frontend/src/components/**/*.vue` 中出现 `el-button` | 47 |
 | 原生按钮 | 所有 Vue 页面和公共组件中的 `<button>` | 0 |
 
-“实际叶子路由”与“页面源文件”不能相加作为页面总数：62 个叶子 URL 实际映射到 59 个唯一 `views` 文件和 1 个公共组件；`AggregatedProductDetail.vue` 与 `OrderDetail.vue` 分别被两个 URL 复用。130 个 `views` 文件由 59 个叶子页面文件、3 个布局容器和 68 个非路由功能单元组成。没有独立 URL 的 Tab、弹窗和组件仍然属于后续统一审计范围。
+“实际叶子路由”与“页面源文件”不能相加作为页面总数：62 个叶子 URL 实际映射到 59 个唯一 `views` 文件和 1 个公共组件；`AggregatedProductDetail.vue` 与 `OrderDetail.vue` 分别被两个 URL 复用。131 个 `views` 文件由 59 个叶子页面文件、3 个布局容器和 69 个非路由功能单元组成。没有独立 URL 的 Tab、弹窗和组件仍然属于后续统一审计范围。
 
 ### 下载安全专项登记
 
@@ -147,9 +147,9 @@
 | `/H5-admin` | `views/H5-admin/H5-adminView.vue` | H5 商城管理布局 |
 | `/m` | `views/H5-mobile/H5-mobileView.vue` | H5 手机端布局 |
 
-## 3. 非路由页面功能单元（68 个）
+## 3. 非路由页面功能单元（69 个）
 
-以下 68 个文件没有独立 URL，但会在功能修改时影响对应父页面，必须纳入同一轮检查。路由清单中已经登记的 59 个唯一叶子 `views` 文件和第 2.5 节的 3 个布局容器不在本节重复列出；一个源文件被多个路由复用时，以路由清单中的多个 URL 为准。
+以下 69 个文件没有独立 URL，但会在功能修改时影响对应父页面，必须纳入同一轮检查。路由清单中已经登记的 59 个唯一叶子 `views` 文件和第 2.5 节的 3 个布局容器不在本节重复列出；一个源文件被多个路由复用时，以路由清单中的多个 URL 为准。
 
 ### 3.1 数据分析、数据优化与库存
 
@@ -227,6 +227,7 @@
 - `views/subsidy/components/SubsidyListSection.vue`
 - `views/subsidy/components/SubsidyPhotoManageDialog.vue`
 - `views/system/page/Returngoods.vue`
+- `views/system/page/AnnouncementManagementCard.vue`
 - `views/system/phone-warning-config/PhoneWarningConfigView.vue`
 
 ### 3.5 H5 管理和手机端内部页面
@@ -269,7 +270,7 @@
 | --- | --- | --- |
 | 页面结构、标题、Tab | `page-structure-standards.md`、`tab-standards.md` | 所有后台页、H5 管理页、含 Tab 的子页 |
 | 表格、行高、字体、操作列 | `admin-table-standards.md`、`npm run check:tables` | 56 个页面承载单元、6 个表格组件 |
-| 全局文字与排版 | `typography-standards.md`、`npm run check:typography` | 130 个页面源文件、71 个公共组件、全局样式 |
+| 全局文字与排版 | `typography-standards.md`、`npm run check:typography` | 131 个页面源文件、74 个公共组件、全局样式 |
 | 按钮、底部操作区 | `button-standards.md`、`dialog-standards.md` | 所有列表、表单、弹窗和移动端 footer |
 | 权限、字段与操作列 | `permission-capability-standards.md`、`field-permission-guide.md` | 权限管理、库存、销售、综合查询及所有操作列 |
 | 搜索、选项和分页 | `search-standards.md`、`model-search-standard.md`、`pagination-standards.md` | 所有检索页、基础资料、库存/销售/综合查询 |
@@ -315,15 +316,15 @@
 
 ## 7. 当前审计结果与边界
 
-- 页面清单统计已完成：懒加载路由入口 65、叶子路由 62、视图源文件 130、公共组件 71。
+- 页面清单统计：懒加载路由入口 65、叶子路由 62、视图源文件 131（含新增公告管理卡片）、公共组件 72。
 - 表格逐页审计已完成：台账范围为 56 个页面承载单元、6 个公共表格组件；当前 56 个页面模板直接渲染表格，库存 `InventoryView.vue` 与 `InventoryTable.vue` 按承载关系共同纳入范围。当前模板实际包含 92 个 Element 表格和 56 个操作列，`npm run check:tables` 已逐文件通过。
 - “审计通过”仅表示静态规则通过；文字溢出、触摸滚动、按钮位置、真实权限和云端 API 行为仍需按本台账进行浏览器/云端回归。
 - 当前台账不把 `views` 目录下的每个文件都当作独立 URL；新增路由、Tab、弹窗和公共组件必须分别登记，防止重复计数或漏查。
 - 按钮专项已完成零容忍迁移：Vue 源码共扫描 `el-button=1006`（159 个文件）、原生 `<button>=0`；以后新增按钮必须使用 `el-button`，不得新增原生按钮例外。
-- Loading 已按本台账逐文件审计：130 个页面/功能单元、71 个公共组件和 1 个应用入口全部通过 `npm run check:loading`；扫描结果为 `GlobalLoading=1`、`v-tf-loading=48`、`TableLoadingRow=56`、`SectionLoading=32`、`InlineLoading=46`、登记 `v-loading` 例外 1 处。
+- Loading 已按本台账逐文件审计：131 个页面/功能单元、74 个公共组件和 1 个应用入口全部通过 `npm run check:loading`；扫描结果为 `GlobalLoading=1`、`v-tf-loading=48`、`TableLoadingRow=59`、`SectionLoading=41`、`InlineLoading=41`、登记 `v-loading` 例外 0 处。
 - Loading 触发边界已收口：页面切换和明确的全局长操作由 `App.vue` 唯一挂载的 `GlobalLoading` 承载；表格刷新由 `v-tf-loading` 锁定表格边界并显示“加载数据中...”；局部状态通过 `useLoadingStore.hasLocalLoading/isGlobalVisible` 互斥仲裁，同一次操作不得同时显示全屏与局部 Loading。
 - 徽章专项已按台账扫描全部页面和公共组件：徽章 hover 外包围线与过渡唯一由 `styles/components/_badges.scss` 控制；页面仅保留业务颜色、图标和文字，禁止私有 hover、阴影、位移和重复 `global.css` 状态入口。结果由 `npm run check:badges` 强制校验。
-- 统一 API 已补齐默认 Loading：130 个页面及其公共功能单元不再依赖逐页传入 `showLoading: true`；首次数据请求默认进入全局 Loading，只有明确的 `showLoading: false` 请求保持静默。
+- 统一 API 已补齐默认 Loading：131 个页面及其公共功能单元不再依赖逐页传入 `showLoading: true`；首次数据请求默认进入全局 Loading，只有明确的 `showLoading: false` 请求保持静默。
 - 全屏 Loading 例外仅保留 2 个已登记场景：规范页的真实演示，以及数据优化页的清理、批量合并和删除等明确长操作；数据优化页的表格查询仍使用局部 Loading，两类操作不能共用同一次反馈。
 - 逐页核对结论已同步至 `global-loading-standard.md`：无专属 Loading 标记的布局、父级和公共功能单元均已注明统一 API 或父子组件承载关系；详情弹窗使用 `SectionLoading`，首屏和表格刷新不再叠加两层反馈。
 - 仪表盘预警和待审批组件已接入根区域 `v-tf-loading`；提醒弹窗的后台轮询明确关闭 Loading，避免定时探测覆盖用户当前页面。
@@ -333,6 +334,8 @@
 
 | 日期 | 变更 | 结果 |
 | --- | --- | --- |
+| 2026-11-06 | 仪表盘公告默认按置顶优先、最新优先展示并支持前后切换；站内公告和 DH 公告支持图片/视频富文本，经验分享、公告编辑和展示统一复用 RichTextEditor/RichContent | 公共组件更新为 74；定向 ESLint、类型、UI、组件采用、权限、响应式、文字、令牌、动效、后端 413 项契约和文档审计通过；未执行浏览器/真机视觉验收，公告表结构迁移未执行 |
+| 2026-11-06 | 系统设置站点信息 Tab 增加站内公告管理卡片，与 Logo/站点信息并列；仪表盘及手机端展示已发布公告 | `type-check`、定向 ESLint、权限、Loading、响应式、按钮、弹窗、字段、文字、令牌和文档审计通过；未执行浏览器/真机视觉验收，数据库迁移未执行 |
 | 2026-11-04 | 完成剩余 29 个超长 Vue 样式块模块化；外置样式全部保持 `scoped`，并将重复按钮尺寸、表格结构、校验边框、搜索控件高度和 MobileDialog 安全区 padding 收敛到公共契约 | 超长 Vue 样式块从 29 个降至 0；29/29 编译后 CSS AST 等价；`!important` 从 1957 降至 1897，剩余项按 7 类运行时契约逐文件登记，未批准覆盖和非令牌颜色使用点均为 0。`check:release`、生产构建、38 项单测和 Bundle 门禁通过；未执行浏览器截图、真机或云端业务回归 |
 | 2026-11-04 | 第四批样式模块化：后台管理壳、H5 商城首页、结算页、聚合商品详情和快速销售弹窗的 5 个超长内嵌样式按职责拆为 15 个局部 CSS/SCSS 模块；11 处跨契约强制覆盖迁移到精确外置文件登记 | 超长 Vue 样式块从 34 个降至 29 个；`!important` 保持 1957，未批准覆盖和非令牌颜色使用点均为 0。独立 Sass、完整 `check:release`、生产构建、38 项单测、严格 ESLint、类型、依赖安全、Bundle 和差异检查通过；未执行浏览器截图、真机或云端商城业务回归 |
 | 2026-11-04 | 国补列表、库存结果弹窗、品牌、供应商和销售分析的超长内嵌样式按职责拆为 15 个局部 CSS/SCSS 模块；供应商拖拽状态改用明确级联，移除 3 处强制覆盖；同步迁移设计值、动效、打印和强制覆盖登记 | 超长 Vue 样式块从 39 个降至 34 个，`!important` 从 1960 降至 1957，未批准覆盖和非令牌颜色使用点均为 0；完整 `check:release`、生产构建、38 项单测、严格 ESLint、类型、依赖安全、Bundle 和差异检查通过。未执行浏览器截图、真机或云端业务回归 |

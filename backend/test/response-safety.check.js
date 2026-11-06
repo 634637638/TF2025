@@ -33,3 +33,12 @@ test('legacy 500 error responses are sanitized as well', () => {
   assert.equal(res.statusCode, 500);
   assert.equal(res.body.message, '服务器内部错误，请稍后重试');
 });
+
+test('client errors expose a stable code without duplicating it as error details', () => {
+  const res = responseDouble();
+  ApiResponse.error(res, '请先绑定工资模板', 422, 'SALARY_TEMPLATE_REQUIRED');
+
+  assert.equal(res.statusCode, 422);
+  assert.equal(res.body.code, 'SALARY_TEMPLATE_REQUIRED');
+  assert.equal('error' in res.body, false);
+});

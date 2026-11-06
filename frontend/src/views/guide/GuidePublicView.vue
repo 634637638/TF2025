@@ -26,15 +26,20 @@
             <div class="guide-notice-card__label">
               <i class="fas fa-thumbtack" />置顶公告
             </div>
-            <a
-              :href="pinnedAnnouncement.link_url || undefined"
-              :target="pinnedAnnouncement.link_url ? '_blank' : undefined"
-              rel="noreferrer"
-              class="guide-notice"
-            >
-              <strong>{{ pinnedAnnouncement.title }}</strong>
-              <span v-if="pinnedAnnouncement.content">{{ pinnedAnnouncement.content }}</span>
-            </a>
+            <div class="guide-notice">
+              <a
+                v-if="pinnedAnnouncement.link_url"
+                :href="pinnedAnnouncement.link_url"
+                target="_blank"
+                rel="noopener noreferrer"
+              ><strong>{{ pinnedAnnouncement.title }}</strong></a>
+              <strong v-else>{{ pinnedAnnouncement.title }}</strong>
+              <RichContent
+                v-if="pinnedAnnouncement.content"
+                class="guide-notice__content"
+                :content="pinnedAnnouncement.content"
+              />
+            </div>
           </article>
           <article
             v-if="scrollingAnnouncements.length"
@@ -43,17 +48,24 @@
             <div class="guide-notice-card__label">
               <i class="fas fa-bullhorn" />公告
             </div>
-            <a
+            <div
               v-if="currentScrollingAnnouncement"
               :key="currentScrollingAnnouncement.id"
-              :href="currentScrollingAnnouncement.link_url || undefined"
-              :target="currentScrollingAnnouncement.link_url ? '_blank' : undefined"
-              rel="noreferrer"
               class="guide-notice"
             >
-              <strong>{{ currentScrollingAnnouncement.title }}</strong>
-              <span v-if="currentScrollingAnnouncement.content">{{ currentScrollingAnnouncement.content }}</span>
-            </a>
+              <a
+                v-if="currentScrollingAnnouncement.link_url"
+                :href="currentScrollingAnnouncement.link_url"
+                target="_blank"
+                rel="noopener noreferrer"
+              ><strong>{{ currentScrollingAnnouncement.title }}</strong></a>
+              <strong v-else>{{ currentScrollingAnnouncement.title }}</strong>
+              <RichContent
+                v-if="currentScrollingAnnouncement.content"
+                class="guide-notice__content"
+                :content="currentScrollingAnnouncement.content"
+              />
+            </div>
           </article>
         </div>
       </section>
@@ -277,6 +289,7 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 
 import MobileDialog from '@/components/MobileDialog.vue'
 import { guideApi } from '@/api/guide'
+import RichContent from '@/components/RichContent.vue'
 import { extractBlobResponse, unifiedApi } from '@/utils/unified-api'
 import { getRequestErrorMessage } from '@/utils/api-response'
 import { logger } from '@/utils/logger'
@@ -477,7 +490,7 @@ onBeforeUnmount(() => {
 .guide-notice-card__label { display: flex; align-items: center; gap: var(--tf-space-2); padding: 0 var(--tf-space-2); color: var(--tf-color-amber-700); font-size: var(--tf-type-scale-13); font-weight: 700; }
 .guide-notice { display: grid; min-width: 0; justify-items: center; gap: var(--tf-space-1); padding: var(--tf-space-2) var(--tf-space-3); color: var(--tf-color-slate-700); text-align: center; text-decoration: none; overflow-wrap: anywhere; }
 .guide-notice strong { color: var(--tf-color-slate-900); font-size: var(--tf-type-scale-15); text-align: center; }
-.guide-notice span { width: 100%; text-align: left; text-indent: 2em; }
+.guide-notice__content { width: 100%; text-align: left; }
 .guide-categories { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--tf-space-4); margin-top: var(--tf-space-5); }
 .guide-category { min-width: 0; padding: var(--tf-space-4); border: 1px solid var(--tf-color-slate-200); border-radius: var(--tf-radius-panel); background: var(--tf-color-white); box-shadow: var(--tf-shadow-card); }
 .guide-category__header { display: flex; flex-wrap: wrap; align-items: center; gap: var(--tf-space-2); min-width: 0; }
