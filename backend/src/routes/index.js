@@ -112,16 +112,7 @@ const backupRoutes = require('./backup')
 const { adminRouter: guideRoutes } = require('./guide')
 const guidePublicRoutes = require('./guide-public')
 
-// 注册版本化路由（新的架构）
-// TODO: v1 路由待开发，暂时注释掉
-// router.use('/v1', v1Routes);
-
-// 注册 v1 版本的路由（已废弃，使用标准路由替代）
-// router.use('/v1', screenLockRoutes); // 已废弃，使用 /screen-lock
-// router.use('/v1/colors', colorsRoutes); // 已废弃，使用 /colors
-// router.use('/v1/memories', memoriesRoutes); // 已废弃，使用 /memories
-
-// 注册旧版路由（保持向后兼容，逐步迁移）
+// 注册标准业务路由
 router.use('/auth', authRoutes)
 router.use('/dashboard', dashboardRoutes)
 router.use('/system', systemRoutes)

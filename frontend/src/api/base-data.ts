@@ -216,21 +216,6 @@ export interface BaseDataParams {
 }
 
 /**
- * 获取品牌列表
- * @param scope - 数据来源：public=公开接口，admin=管理端，warning=预警配置
- */
-export function getBrands(scope: 'public' | 'admin' | 'warning' = 'public') {
-  switch (scope) {
-  case 'admin':
-    return getAdminBrands()
-  case 'warning':
-    return getWarningBrands()
-  default:
-    return getPublicBrands()
-  }
-}
-
-/**
  * 获取型号列表
  * @param brandId - 品牌ID（可选）
  * @param scope - 数据来源
@@ -243,21 +228,6 @@ export function getModels(brandId?: number, scope: 'public' | 'admin' | 'warning
     return getWarningModels(brandId!)
   default:
     return getPublicModels(brandId)
-  }
-}
-
-/**
- * 获取颜色列表
- * @param scope - 数据来源
- */
-export function getColors(scope: 'public' | 'admin' | 'warning' = 'public') {
-  switch (scope) {
-  case 'admin':
-    return getAdminColors()
-  case 'warning':
-    return getWarningColors()
-  default:
-    return getPublicColors()
   }
 }
 
@@ -302,10 +272,8 @@ export const baseDataApi = {
   getWarningModels,
   getWarningColors,
   getWarningMemories,
-  // 统一接口（根据 scope 自动选择）
-  getBrands,
+  // 按 scope 选择的在用入口
   getModels,
-  getColors,
   getMemories
 }
 

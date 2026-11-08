@@ -21,11 +21,11 @@ class EmployeeDirectoryRepository {
     }
     const whereClause = whereConditions.length ? `WHERE ${whereConditions.join(' AND ')}` : ''
     const database = this.database()
-    const [countRows] = await database.execute(
+    const [countRows] = await database.query(
       `SELECT COUNT(*) as total FROM users u ${whereClause}`,
       queryParams
     )
-    const [employees] = await database.execute(`
+    const [employees] = await database.query(`
       SELECT
         u.id,
         u.username,
@@ -70,7 +70,7 @@ class EmployeeDirectoryRepository {
   }
 
   async getEmployeeById(id) {
-    const [employees] = await this.database().execute(`
+    const [employees] = await this.database().query(`
       SELECT
         id,
         username,

@@ -218,6 +218,3 @@ export function useBrandModels() {
     clearCache
   }
 }
-
-// 导出单例
-export const brandModelsStore = useBrandModels()

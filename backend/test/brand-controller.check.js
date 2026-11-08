@@ -115,7 +115,7 @@ test('品牌 repository parameterizes management queries and keeps one connectio
     release() { statements.push(['release']) }
   }
   const database = {
-    async execute(sql, params) {
+    async query(sql, params) {
       statements.push([sql, params])
       if (sql.includes('SELECT id FROM brands')) return [[{ id: 1 }], []]
       return [{ insertId: 4, affectedRows: 1 }, []]
@@ -135,11 +135,14 @@ test('品牌 repository binds search, status, LIMIT and OFFSET values in query o
   const BrandRepository = require('../src/repositories/brand.repository')
   const repository = new BrandRepository()
   const calls = []
-  repository.executePrepared = async (sql, params) => {
-    calls.push({ sql, params })
-    if (sql.includes('COUNT(*)')) return [[{ total: 12 }]]
-    return [[{ id: 4, name: '测试品牌' }]]
-  }
+  repository.getConnection = () => ({
+    async query(sql, params) {
+      calls.push({ sql, params })
+      if (sql.includes('COUNT(*)')) return [[{ total: 12 }]]
+      return [[{ id: 4, name: '测试品牌' }]]
+    },
+    async execute() { assert.fail('品牌查询应走参数化 query 兼容路径') }
+  })
 
   await repository.listManagement({ name: '品牌', status: '1', pageSize: 10, offset: 20, returnAll: false })
 

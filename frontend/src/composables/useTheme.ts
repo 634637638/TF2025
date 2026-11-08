@@ -241,40 +241,4 @@ export function useTheme() {
   }
 }
 
-/**
- * 主题过渡动画 Composable
- */
-export function useThemeTransition() {
-  const isTransitioning = ref(false)
-  let transitionTimeout: NodeJS.Timeout
-
-  /**
-   * 执行主题切换动画
-   */
-  const startThemeTransition = (duration: number = 300) => {
-    if (typeof document === 'undefined') return
-
-    isTransitioning.value = true
-
-    // 添加过渡效果
-    const root = document.documentElement
-    root.style.transition = `background-color ${duration}ms ease, color ${duration}ms ease`
-
-    // 清理过渡效果
-    if (transitionTimeout) {
-      clearTimeout(transitionTimeout)
-    }
-
-    transitionTimeout = setTimeout(() => {
-      root.style.transition = ''
-      isTransitioning.value = false
-    }, duration)
-  }
-
-  return {
-    isTransitioning,
-    startThemeTransition
-  }
-}
-
 export default useTheme

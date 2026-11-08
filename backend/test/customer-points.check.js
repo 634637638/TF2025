@@ -340,6 +340,42 @@ test('历史无逐单凭据销售首次编辑只建立零基线，不按当前�
   assert.ok(sales.get(4).points_accounted_at)
 })
 
+test('无凭据批发转零售时按当前全新二手设置首次发分', async () => {
+  clearSchemaInspectorCache()
+  const sales = new Map([[6, {
+    id: 6,
+    customer_id: 60,
+    sale_type: 'wholesale',
+    sale_price: 350,
+    is_new: 0,
+    points_awarded: 0,
+    points_accounted_at: null
+  }]])
+  const customers = new Map([[60, 4]])
+  const executor = createPointsExecutor({ sales, customers })
+
+  const result = await reconcileCustomerPointsForSale({
+    executor,
+    saleId: 6,
+    customerId: 60,
+    saleType: 'retail',
+    salePrice: 350,
+    isNew: 0,
+    config: {
+      ...DEFAULT_POINTS_CONFIG,
+      include_new: false,
+      include_used: true,
+      used_points_per_100: 2
+    },
+    initialize: true
+  })
+
+  assert.equal(result.points, 7)
+  assert.equal(customers.get(60), 11)
+  assert.equal(sales.get(6).points_awarded, 7)
+  assert.ok(sales.get(6).points_accounted_at)
+})
+
 test('所有销售写入、转换和退库入口统一调用客户积分服务', () => {
   const reconciledEntries = [
     'src/services/sales-phone.service.js',

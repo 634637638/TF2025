@@ -44,7 +44,7 @@
     "src/components/styles/simple-sidebar/responsive.css": 1,
     "src/components/TabsBar.vue": 3,
     "src/components/wholesale/WholesalePartySection.vue": 2,
-    "src/styles.scss": 20,
+    "src/styles.scss": 9,
     "src/styles/admin-layout.css": 1,
     "src/styles/analytics-cards.css": 1,
     "src/styles/components/_pagination.scss": 1,

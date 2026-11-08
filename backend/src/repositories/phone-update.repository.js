@@ -106,7 +106,8 @@ class PhoneUpdateRepository {
   async findLatestSaleByPhone(connection, phoneId) {
     const [rows] = await connection.execute(
       `SELECT id, customer_id, operator_id, sale_time, store_id, remarks,
-              invoice_number, sale_price, purchase_cost, sale_type
+              invoice_number, sale_price, purchase_cost, sale_type,
+              payment_method, payment_channel
        FROM sales WHERE phone_id = ? ORDER BY created_at DESC LIMIT 1`,
       [phoneId]
     )
@@ -125,10 +126,12 @@ class PhoneUpdateRepository {
     const [result] = await connection.execute(`
       INSERT INTO sales (
         phone_id, customer_id, sale_type, operator_id, store_id,
-        sale_price, purchase_cost, sale_time, invoice_number, remarks, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+        sale_price, purchase_cost, payment_method, payment_channel,
+        sale_time, invoice_number, remarks, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
     `, [values.phoneId, values.customerId, values.saleType, values.operatorId,
-      values.storeId, values.salePrice, values.purchaseCost, values.saleTime,
+      values.storeId, values.salePrice, values.purchaseCost, values.paymentMethod,
+      values.paymentChannel, values.saleTime,
       values.invoiceNumber, values.remarks])
     return result.insertId
   }

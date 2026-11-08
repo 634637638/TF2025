@@ -3,7 +3,6 @@
  * 提供全局事件通信功能
  */
 
-import { onUnmounted } from 'vue'
 import { logger } from '@/utils/logger'
 
 /**
@@ -161,12 +160,6 @@ const globalEventBus = new EventBus()
 export function useEventBus(eventBus?: EventBus) {
   const bus = eventBus || globalEventBus
 
-  // 组件卸载时清理事件
-  onUnmounted(() => {
-    // 这里可以添加清理逻辑，但由于我们使用全局实例，
-    // 通常不需要在组件卸载时清理
-  })
-
   return {
     on: bus.on.bind(bus),
     once: bus.once.bind(bus),
@@ -185,68 +178,3 @@ export function useEventBus(eventBus?: EventBus) {
 export function createEventBus(): EventBus {
   return new EventBus()
 }
-
-/**
- * 等待事件
- * @param event 事件名
- * @param eventBus 可选的事件总线实例
- * @param timeout 超时时间（毫秒）
- */
-export function waitForEvent<T = unknown>(
-  event: string,
-  eventBus?: EventBus,
-  timeout = 5000
-): Promise<T> {
-  const bus = eventBus || globalEventBus
-
-  return new Promise((resolve, reject) => {
-    let timeoutId: NodeJS.Timeout
-
-    const unsubscribe = bus.once<T>(event, (data: T) => {
-      if (timeoutId) {
-        clearTimeout(timeoutId)
-      }
-      resolve(data)
-    })
-
-    // 设置超时
-    if (timeout > 0) {
-      timeoutId = setTimeout(() => {
-        unsubscribe()
-        reject(new Error(`Event "${event}" timeout after ${timeout}ms`))
-      }, timeout)
-    }
-  })
-}
-
-/**
- * 等待多个事件
- * @param events 事件名数组
- * @param eventBus 可选的事件总线实例
- */
-export function waitForEvents<T = Record<string, unknown>>(
-  events: string[],
-  eventBus?: EventBus
-): Promise<T> {
-  const bus = eventBus || globalEventBus
-  const results: Partial<T> = {}
-  const completedEvents = new Set<string>()
-
-  return new Promise((resolve, _reject) => {
-    const unsubscribers = events.map(event => {
-      return bus.on(event, (data: unknown) => {
-        results[event as keyof T] = data as T[keyof T]
-        completedEvents.add(event)
-
-        // 检查是否所有事件都已完成
-        if (completedEvents.size === events.length) {
-          unsubscribers.forEach(unsub => unsub())
-          resolve(results as T)
-        }
-      })
-    })
-  })
-}
-
-// 导出全局事件总线
-export { globalEventBus }

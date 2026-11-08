@@ -229,13 +229,6 @@ export function getProductDetail(id: number) {
 }
 
 /**
- * 获取商品图片
- */
-export function getProductImages(id: number) {
-  return publicApi.get<ProductImage[]>(`/public/products/${id}/images`).then((response) => unwrapData<ProductImage[]>(response))
-}
-
-/**
  * 搜索商品
  */
 export function searchProducts(keyword: string, params?: { page?: number; page_size?: number }) {
@@ -268,24 +261,10 @@ export function addToCart(cartId: string, phoneId: number, quantity: number = 1)
 }
 
 /**
- * 更新购物车商品数量
- */
-export function updateCartItem(cartId: string, id: number, quantity: number) {
-  return publicApi.put(`/public/cart/${id}`, { cartId, quantity })
-}
-
-/**
  * 删除购物车商品
  */
 export function removeFromCart(cartId: string, id: number) {
   return publicApi.delete(`/public/cart/${id}`, { params: { cartId } })
-}
-
-/**
- * 清空购物车
- */
-export function clearCart(cartId: string) {
-  return publicApi.delete(`/public/cart/${cartId}/clear`)
 }
 
 // ============================================================================

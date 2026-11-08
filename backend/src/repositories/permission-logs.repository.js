@@ -19,7 +19,7 @@ class PermissionLogsRepository {
     ipAddress,
     status
   }) {
-    await this.databaseProvider().execute(
+    await this.databaseProvider().query(
       `INSERT INTO permission_operation_logs
        (user_id, username, action, target_type, target_id, target_name, description, details, ip_address, status)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -30,7 +30,7 @@ class PermissionLogsRepository {
   async getRolesByIds(roleIds) {
     const db = this.databaseProvider()
     const placeholders = roleIds.map(() => '?').join(',')
-    const [roles] = await db.execute(
+    const [roles] = await db.query(
       `SELECT id, name FROM roles WHERE id IN (${placeholders})`,
       roleIds
     )
@@ -39,11 +39,11 @@ class PermissionLogsRepository {
 
   async listLogs({ whereClause, params, pageSize, offset }) {
     const db = this.databaseProvider()
-    const [countResult] = await db.execute(
+    const [countResult] = await db.query(
       `SELECT COUNT(*) as total FROM permission_operation_logs ${whereClause}`,
       params
     )
-    const [logs] = await db.execute(
+    const [logs] = await db.query(
       `SELECT id, user_id, username, action, target_type, target_id, target_name, description, details, ip_address, status, created_at
        FROM permission_operation_logs ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
       [...params, pageSize, offset]
@@ -52,7 +52,7 @@ class PermissionLogsRepository {
   }
 
   async getStats() {
-    const [stats] = await this.databaseProvider().execute(`
+    const [stats] = await this.databaseProvider().query(`
       SELECT
         COUNT(*) as total_logs,
         COUNT(CASE WHEN action = 'create' THEN 1 END) as create_count,
@@ -69,7 +69,7 @@ class PermissionLogsRepository {
   }
 
   async deleteLog(id) {
-    await this.databaseProvider().execute(
+    await this.databaseProvider().query(
       'DELETE FROM permission_operation_logs WHERE id = ?',
       [id]
     )

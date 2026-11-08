@@ -103,59 +103,6 @@ export function useAsync<T = unknown>(
 }
 
 /**
- * 创建可重用的异步状态
- * @param initialData 初始数据
- */
-export function createAsyncState<T = unknown>(initialData: T | null = null): AsyncState<T> {
-  const data = ref<T | null>(initialData) as Ref<T | null>
-  const loading = ref(false)
-  const error = ref<string | null>(null)
-  const success = ref(false)
-
-  const execute = async (asyncFunction: (...args: never[]) => Promise<T>): Promise<T | null> => {
-    try {
-      loading.value = true
-      error.value = null
-      success.value = false
-
-      const result = await asyncFunction()
-
-      data.value = result
-      success.value = true
-      loading.value = false
-
-      return result
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error'
-
-      error.value = errorMessage
-      loading.value = false
-      success.value = false
-
-      logger.error('异步操作失败', err)
-
-      return null
-    }
-  }
-
-  const reset = (): void => {
-    data.value = initialData
-    loading.value = false
-    error.value = null
-    success.value = false
-  }
-
-  return {
-    data,
-    loading,
-    error,
-    success,
-    execute,
-    reset
-  }
-}
-
-/**
  * 创建加载状态
  */
 export function useLoading(initialState = false): Ref<boolean> {

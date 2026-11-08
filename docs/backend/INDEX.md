@@ -25,6 +25,8 @@
 
 公共实现复用：颜色/内存管理共享 `backend/src/services/reference-management.service.js` 与固定业务域白名单仓储；分页、排序纯函数的唯一实现位于 `backend/src/utils/reference-options.js`，既有 `reference-options.service.js` 保留重导出；仓储不得反向依赖 service。同步动态表名统一复用 `backend/src/utils/database-identifier.js`。综合查询的选项组合由 `QueryService` 编排，退库/删除的事务与积分冲回由 `QueryMutationService` 编排，SQL 留在 `QueryRepository`。各批实测与验收结果只登记在 T17。
 
+提醒/分享字段权限共同使用 `backend/src/services/field-access.service.js`（权限读取、递归脱敏、隐藏写入判定）及 `backend/src/middleware/field-access.js`（HTTP 拒绝和异常转交），业务域保留字段映射与特殊别名规则；边界和回归入口见[字段权限指南](../frontend/field-permission-guide.md)。公共逻辑去重证据登记在 T19。
+
 OCR 公共入口为 `backend/src/utils/ocr-image.js`：图片 Buffer 由 sharp 预处理，Tesseract 7 的 Node worker/WASM 使用英文 traineddata，后端不依赖 Node canvas。语言缓存相对进程工作目录解析，不能把语言资源当作无引用 JS 包随意删除；依赖四维核查、真实合成图片回读和包清理证据见唯一任务台账 T18。
 
 ## 契约测试

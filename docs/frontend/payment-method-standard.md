@@ -47,6 +47,10 @@
 <PaymentMethodText :value="row.payment_method" />
 ```
 
+## 记录闭环
+
+销售、批量销售、快速销售和批发/调货分别将 `payment_method` 与 `payment_channel` 保存到对应的 `sales` 销售记录。综合查询编辑也必须提交并更新这两个字段；`mobile` 顶层方式下，微信或支付宝保存为 `wechat` 或 `alipay` 渠道。支付渠道不应替代顶层支付方式。
+
 ## 兼容规则
 
 销售类顶层支付方式只有四种：`cash`（现金支付）、`mobile`（移动支付）、`bank_card`（银行卡）、`subsidy_card`（国补刷卡）。银行卡的具体支付渠道统一使用 `PaymentChannelSelect`，包含“刷卡消费”和“银行转账”；“银行转账”不能作为销售类顶层支付方式单独出现。

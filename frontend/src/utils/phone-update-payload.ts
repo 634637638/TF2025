@@ -14,6 +14,8 @@ export interface CanonicalPhoneUpdatePayload {
   sale_time: string | null
   status?: string
   remarks: string
+  payment_method?: string | null
+  payment_channel?: string | null
   customer_id?: number | null
   customer_name?: string | null
   customer_phone?: string | null
@@ -44,6 +46,12 @@ export const toCanonicalPhoneUpdatePayload = (source: Record<string, unknown>): 
   sale_time: source.sale_time ? String(source.sale_time) : null,
   ...(source.status ? { status: String(source.status) } : {}),
   remarks: String(source.remarks || ''),
+  ...(source.payment_method !== undefined
+    ? { payment_method: source.payment_method ? String(source.payment_method) : null }
+    : {}),
+  ...(source.payment_channel !== undefined
+    ? { payment_channel: source.payment_channel ? String(source.payment_channel) : null }
+    : {}),
   ...(source.customer_id !== undefined ? { customer_id: nullableNumber(source.customer_id) } : {}),
   ...(source.customer_name !== undefined ? { customer_name: source.customer_name ? String(source.customer_name) : null } : {}),
   ...(source.customer_phone !== undefined ? { customer_phone: source.customer_phone ? String(source.customer_phone) : null } : {}),

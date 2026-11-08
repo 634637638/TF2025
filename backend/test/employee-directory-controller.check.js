@@ -87,7 +87,7 @@ test('employee directory repository parameterizes filters and IDs and selects pu
     [[{ id: 7, role_names: '店长', role_ids: '4' }]]
   ]
   const repository = new EmployeeDirectoryRepository({
-    database: () => ({ async execute(query, params) {
+    database: () => ({ async query(query, params) {
       calls.push({ query, params })
       return results.shift()
     } })

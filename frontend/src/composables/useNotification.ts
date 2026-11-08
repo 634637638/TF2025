@@ -1,6 +1,6 @@
 /**
  * 统一通知服务 Composable
- * 合并了 useNotification、useNotificationService、useNotificationWithDebounce 的功能
+ * 统一通知入口；防抖通过 useNotification 的 debounce 选项配置
  *
  * 功能：
  * - 基础通知（success/error/warning/info）
@@ -375,12 +375,6 @@ export const useNotification = (options: UseNotificationOptions = {}) => {
 
 // 导出通知列表供组件使用
 export { notifications }
-
-// 别名导出，兼容旧代码
-export const useNotificationService = useNotification
-export const useNotificationWithDebounce = (options: UseNotificationOptions = {}) => {
-  return useNotification({ ...options, debounce: true })
-}
 
 // 默认导出
 export default useNotification

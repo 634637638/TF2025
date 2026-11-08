@@ -173,28 +173,35 @@ PREORDERS: {
 
 ### 1. 创建预定单
 
-```typescript
+```ts check
 import { preorderApi } from '@/api/preorder'
 
-const preorder = await preorderApi.createPreorder({
+export const preorder = await preorderApi.createPreorder({
   customer_id: 1,
-  phone_model: 'iPhone 15 Pro',
-  color: '原色钛金属',
-  storage: '256GB',
-  expected_arrival: '2025-02-01',
-  expected_price: 8999,
-  advance_payment: 1000,
+  brand_id: 1,
+  model_id: 2,
+  color_id: 3,
+  memory_id: 4,
+  total_price: 8999,
+  deposit_amount: 1000,
   remarks: '客户要求到货后通知'
 })
 ```
 
-### 2. 查找可匹配预定单
+### 2. 按型号筛选待匹配预定单
 
-```typescript
-const matchable = await preorderApi.getMatchablePreorders({
-  phone_model: 'iPhone 15 Pro',
-  color: '原色钛金属',
-  storage: '256GB'
+页面通过在用列表接口分页筛选，未使用的 getMatchablePreorders 包装已删除；不要复制旧方法。示例中的业务 ID 需要取自当前用户有权访问的数据。文档检查只编译示例，不执行请求。
+
+```ts check
+import { preorderApi, PreorderStatus } from '@/api/preorder'
+
+export const pendingPreorders = await preorderApi.getPreorders({
+  status: PreorderStatus.PENDING,
+  model_id: 2,
+  color_id: 3,
+  memory_id: 4,
+  page: 1,
+  page_size: 20
 })
 ```
 
@@ -213,7 +220,7 @@ await preorderApi.matchPreorder(preorderId, {
 ```typescript
 await preorderApi.deliverPreorder(preorderId, {
   actual_price: 8999,
-  notes: '尾款已付清'
+  remarks: '尾款已付清'
 })
 ```
 

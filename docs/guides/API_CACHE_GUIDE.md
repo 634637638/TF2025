@@ -149,29 +149,19 @@ clearCache('/brands:all')
 clearCache()
 ```
 
-### 检查待处理请求
+### 请求合并与预加载
 
-```typescript
-import { hasPendingRequest } from '@/composables/usePageCache'
+页面请求统一使用 `useCachedRequest`，相同 key 的并发请求会在内部合并；调用方不再依赖单独的请求状态查询方法。确需预加载时，对同一个公共入口使用 `Promise.allSettled`，不另建预加载封装：
 
-// 检查是否有正在进行的请求
-if (hasPendingRequest('/dashboard')) {
-  logger.debug('请求正在进行中...')
-}
-```
+```ts
+import { useCachedRequest } from '@/composables/usePageCache'
 
-### 批量预加载
-
-```typescript
-import { preloadCache } from '@/composables/usePageCache'
-
-// 页面初始化时预加载常用数据
-await preloadCache([
-  { key: '/brands', fetcher: () => api.get('/brands'), ttl: DEFAULT_CACHE_TTL.STATIC },
-  { key: '/stores', fetcher: () => api.get('/stores'), ttl: DEFAULT_CACHE_TTL.STATIC },
-  { key: '/operators', fetcher: () => api.get('/operators'), ttl: DEFAULT_CACHE_TTL.STATIC }
+await Promise.allSettled([
+  useCachedRequest('dashboard:summary', () => loadDashboardSummary())
 ])
 ```
+
+这是用法片段，`loadDashboardSummary` 代表调用页已有业务 API；认证、权限、缓存 key 与 TTL 继续遵循本文规则，不应复制示例名称作为新接口。
 
 ---
 

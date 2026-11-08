@@ -83,7 +83,7 @@ test('inventory overview repository binds optional filters in query order', asyn
   const calls = []
   const repository = new AnalyticsInventoryRepository({
     database: () => ({
-      async execute(query, params) {
+      async query(query, params) {
         calls.push({ query, params })
         return calls.length === 1 ? [[{}]] : calls.length === 4 ? [[{}]] : [[]]
       }
@@ -195,7 +195,7 @@ test('inventory turnover repository binds range and optional filters to both que
   const calls = []
   const repository = new AnalyticsInventoryRepository({
     database: () => ({
-      async execute(query, params) {
+      async query(query, params) {
         calls.push({ query, params })
         return calls.length === 1
           ? [[{ date: '2026-11-01', soldCount: '2' }]]
@@ -231,7 +231,7 @@ test('supplier stats repository binds optional filters and service normalizes th
   let call
   const repository = new AnalyticsInventoryRepository({
     database: () => ({
-      async execute(query, params) {
+      async query(query, params) {
         call = { query, params }
         return [[{ supplierCount: '3' }]]
       }
@@ -268,7 +268,7 @@ test('inventory value repository binds store scope and service normalizes databa
   let params
   const repository = new AnalyticsInventoryRepository({
     database: () => ({
-      async execute(query, values) {
+      async query(query, values) {
         params = values
         assert.match(query, /WHERE store_id = \?/)
         return [[{
@@ -314,7 +314,7 @@ test('recent sold service maps nullable labels and repository binds filters and 
   let call
   const repository = new AnalyticsInventoryRepository({
     database: () => ({
-      async execute(query, params) {
+      async query(query, params) {
         call = { query, params }
         return [[{ brand: null, model: '型号', color: null, salePrice: '25.5', saleDate: new Date('2026-11-07T02:00:00Z'), store: null }]]
       }

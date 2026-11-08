@@ -61,12 +61,8 @@
         <div
           v-else-if="details.length > 0"
           class="table-responsive salary-detail-table-wrap"
+          data-table-drag-scroll
           :style="{ '--salary-detail-table-width': `${tableWidth}px` }"
-          @pointerdown="startTableDrag"
-          @pointermove="moveTableDrag"
-          @pointerup="stopTableDrag"
-          @pointercancel="stopTableDrag"
-          @wheel="handleTableWheel"
         >
           <el-table
             :data="details"
@@ -247,48 +243,6 @@ const emit = defineEmits<{
   'update:modelValue': [value: boolean]
 }>()
 
-const dragState = {
-  element: null as HTMLElement | null,
-  pointerId: null as number | null,
-  startX: 0,
-  startScrollLeft: 0
-}
-
-const startTableDrag = (event: PointerEvent) => {
-  if (event.pointerType !== 'mouse' || event.button !== 0) return
-  const element = event.currentTarget as HTMLElement
-  if (element.scrollWidth <= element.clientWidth) return
-  dragState.element = element
-  dragState.pointerId = event.pointerId
-  dragState.startX = event.clientX
-  dragState.startScrollLeft = element.scrollLeft
-  element.setPointerCapture(event.pointerId)
-  element.classList.add('is-dragging')
-}
-
-const moveTableDrag = (event: PointerEvent) => {
-  if (!dragState.element || dragState.pointerId !== event.pointerId) return
-  event.preventDefault()
-  dragState.element.scrollLeft = dragState.startScrollLeft - (event.clientX - dragState.startX)
-}
-
-const stopTableDrag = (event: PointerEvent) => {
-  if (!dragState.element || dragState.pointerId !== event.pointerId) return
-  if (dragState.element.hasPointerCapture(event.pointerId)) {
-    dragState.element.releasePointerCapture(event.pointerId)
-  }
-  dragState.element.classList.remove('is-dragging')
-  dragState.element = null
-  dragState.pointerId = null
-}
-
-const handleTableWheel = (event: WheelEvent) => {
-  if (!event.shiftKey) return
-  const element = event.currentTarget as HTMLElement
-  if (element.scrollWidth <= element.clientWidth) return
-  event.preventDefault()
-  element.scrollLeft += event.deltaY || event.deltaX
-}
 </script>
 
 <style lang="scss" scoped>
@@ -410,7 +364,7 @@ const handleTableWheel = (event: WheelEvent) => {
   .salary-detail-table-wrap {
     cursor: grab;
 
-    &.is-dragging {
+    &.is-admin-table-dragging {
       cursor: grabbing;
       user-select: none;
     }

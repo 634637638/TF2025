@@ -14,10 +14,6 @@ import {
   applyDeviceRootClass
 } from '@/utils/device-detection'
 import logger from '@/utils/logger'
-import type {
-  DeviceInfo,
-  MobileOptimizeConfig
-} from '@/types'
 
 type BatteryManagerLike = {
   level: number
@@ -1082,61 +1078,6 @@ export function useMobileForm() {
   }
 }
 
-// ============ 移动端工具函数 ============
-
-/**
- * 检测是否为移动端浏览器
- */
-export function isMobileBrowser(): boolean {
-  if (typeof window === 'undefined') return false
-  return isMobileViewport(getViewportDimensions().width)
-}
-
-/**
- * 检测是否为微信浏览器
- */
-export function isWeChatBrowser(): boolean {
-  return /MicroMessenger/.test(navigator.userAgent)
-}
-
-/**
- * 获取移动端设备信息
- */
-export function getMobileDeviceInfo(): Partial<DeviceInfo> {
-  const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : ''
-  const platform = typeof navigator !== 'undefined' ? navigator.platform : ''
-  const { width, height } = getViewportDimensions()
-
-  return {
-    userAgent,
-    platform,
-    isMobile: isMobileViewport(width),
-    isIOS: isIOSDevice(userAgent, platform),
-    isAndroid: /Android/.test(userAgent),
-    isSafari: /Safari/.test(userAgent) && !/Chrome/.test(userAgent),
-    isChrome: /Chrome/.test(userAgent),
-    isTablet: isTabletViewport(width),
-    isDesktop: !isMobileViewport(width) && !isTabletViewport(width),
-    screenSize: {
-      width,
-      height
-    },
-    orientation: (width > height ? 'landscape' : 'portrait') as 'portrait' | 'landscape',
-    isTouchDevice: typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0)
-  }
-}
-
-/**
- * 移动端优化的配置获取
- */
-export function getMobileOptimizeConfig(): MobileOptimizeConfig {
-  return {
-    enableRipple: MOBILE_CONFIG.feedback.enableVisual,
-    enableTouchFeedback: MOBILE_CONFIG.feedback.enableVisual,
-    enableHapticFeedback: MOBILE_CONFIG.feedback.enableHaptic
-  }
-}
-
 // ============ 统一响应式系统 ============
 
 /**
@@ -1367,7 +1308,6 @@ export function getGlobalResponsiveState() {
 
 // 导出别名以保持兼容性
 export const useMobileDetection = useMobileDevice
-export const useMobileGesturesCompat = useMobileGestures
 
 
 export default {
@@ -1380,12 +1320,6 @@ export default {
   useMobileGestures,
   useMobileViewport,
   useMobilePerformance,
-
-  // 工具函数
-  isMobileBrowser,
-  isWeChatBrowser,
-  getMobileDeviceInfo,
-  getMobileOptimizeConfig,
 
   // 响应式状态
   getGlobalResponsiveState

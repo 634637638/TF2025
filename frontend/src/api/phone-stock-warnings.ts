@@ -10,13 +10,6 @@ export const getAllConfigs = () => {
   return unifiedApi.get('/phone-stock-warnings/configs')
 }
 
-// 获取预警阈值
-export const getWarningThreshold = (brandId: number, modelId?: number) => {
-  return unifiedApi.get('/phone-stock-warnings/threshold', {
-    params: { brand_id: brandId, model_id: modelId }
-  })
-}
-
 // 创建预警配置
 export const createConfig = (data: unknown) => {
   return unifiedApi.post('/phone-stock-warnings/configs', data)
@@ -39,7 +32,6 @@ export const toggleWarning = (id: number, enabled: boolean) => {
 
 export default {
   getAllConfigs,
-  getWarningThreshold,
   createConfig,
   updateConfig,
   deleteConfig,

@@ -62,10 +62,10 @@ class AnalyticsInventoryRepository {
       LIMIT 10
     `
     const [[summaryRows], [brandRows], [turnoverRows], [supplierRows]] = await Promise.all([
-      db.execute(summaryQuery, phoneFilters),
-      db.execute(brandsQuery, phoneFilters),
-      db.execute(turnoverQuery, phoneFilters),
-      db.execute(suppliersQuery, phoneFilters)
+      db.query(summaryQuery, phoneFilters),
+      db.query(brandsQuery, phoneFilters),
+      db.query(turnoverQuery, phoneFilters),
+      db.query(suppliersQuery, phoneFilters)
     ])
     return { summary: summaryRows[0], brands: brandRows, turnover: turnoverRows[0], suppliers: supplierRows }
   }
@@ -97,8 +97,8 @@ class AnalyticsInventoryRepository {
     `
 
     const [[sales], [stockRows]] = await Promise.all([
-      db.execute(turnoverTrendQuery, [days, ...filters]),
-      db.execute(currentStockQuery, filters)
+      db.query(turnoverTrendQuery, [days, ...filters]),
+      db.query(currentStockQuery, filters)
     ])
 
     return { sales, availableCount: stockRows[0]?.availableCount }
@@ -109,7 +109,7 @@ class AnalyticsInventoryRepository {
     const storeFilter = storeId !== null ? 'AND p.store_id = ?' : ''
     const supplierFilter = supplierId !== null ? 'AND p.supplier_id = ?' : ''
     const params = [storeId, supplierId].filter(value => value !== null)
-    const [rows] = await db.execute(`
+    const [rows] = await db.query(`
       SELECT COUNT(DISTINCT s.id) as supplierCount
       FROM suppliers s
       INNER JOIN phones p ON s.id = p.supplier_id
@@ -124,7 +124,7 @@ class AnalyticsInventoryRepository {
 
   async getInventoryValue(storeId) {
     const db = this.database()
-    const [rows] = await db.execute(`
+    const [rows] = await db.query(`
       SELECT
         COALESCE(SUM(purchase_cost), 0) as totalValue,
         COUNT(CASE WHEN status = 'in_stock' THEN 1 END) as availableCount,
@@ -145,7 +145,7 @@ class AnalyticsInventoryRepository {
     const storeFilter = storeId !== null ? 'AND p.store_id = ?' : ''
     const supplierFilter = supplierId !== null ? 'AND p.supplier_id = ?' : ''
     const params = [storeId, supplierId].filter(value => value !== null)
-    const [rows] = await db.execute(`
+    const [rows] = await db.query(`
       SELECT
         b.name as brand,
         m.name as model,

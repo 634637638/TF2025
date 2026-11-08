@@ -39,6 +39,7 @@ const simulateExistingSaleUpdate = async (saleType, options = {}) => {
   const untouched = { ...records[1] }
   const generated = []
   const statements = []
+  const pointsCalls = []
   const connection = {
     execute: async (sql, values) => {
       if (/CREATE TABLE IF NOT EXISTS invoice_sequences/.test(sql)) return [{}]
@@ -74,6 +75,12 @@ const simulateExistingSaleUpdate = async (saleType, options = {}) => {
   const requestedSaleTime = options.omitSaleTime
     ? undefined
     : options.saleTime || '2026-11-01'
+  const targetSaleType = options.targetSaleType || 'wholesale'
+  const statusBySaleType = {
+    retail: 'sold',
+    wholesale: 'peer_transfer',
+    supplier_proxy: 'supplier_proxy'
+  }
   const context = {
     id: 61,
     existingSale: { ...records[0] },
@@ -81,17 +88,19 @@ const simulateExistingSaleUpdate = async (saleType, options = {}) => {
     updateSalesValues: [],
     connection,
     sale_time: requestedSaleTime,
+    payment_method: options.paymentMethod,
+    payment_channel: options.paymentChannel,
     effectiveSaleTime: requestedSaleTime || records[0].sale_time,
     formatLocalDate,
     isTransactionTypeChange: Boolean(options.convert),
-    targetSaleType: 'wholesale',
+    targetSaleType,
     transactionTypeByStatus: {
       sold: 'retail',
       peer_transfer: 'wholesale',
       supplier_proxy: 'supplier_proxy'
     },
     effectiveStatus: options.convert
-      ? 'peer_transfer'
+      ? statusBySaleType[targetSaleType]
       : saleType === 'retail'
         ? 'sold'
         : saleType === 'supplier_proxy'
@@ -121,15 +130,17 @@ const simulateExistingSaleUpdate = async (saleType, options = {}) => {
         return { affectedRows: 1 }
       }
     },
-    reconcileCustomerPointsForSale: async ({ executor, saleId }) => {
+    reconcileCustomerPointsForSale: async args => {
+      const { executor, saleId } = args
       assert.equal(executor, connection)
       assert.equal(saleId, 901)
+      pointsCalls.push(args)
       return { points: 0 }
     },
     log: { debug: () => {}, info: () => {} }
   }
   await runInNewContext(`(async function () { ${existingSaleUpdate} }).call(this)`, context)
-  return { records, untouched, generated, statements, originalNumber }
+  return { records, untouched, generated, statements, pointsCalls, originalNumber }
 }
 
 for (const saleType of ['retail', 'wholesale', 'peer_transfer', 'supplier_proxy']) {
@@ -177,6 +188,17 @@ test('a date edit fills a vacant target-date invoice instead of appending after 
   assert.deepEqual(result.records[1], result.untouched)
 })
 
+test('payment edits update the linked sale record without changing another phone sale', async () => {
+  const result = await simulateExistingSaleUpdate('retail', {
+    paymentMethod: 'mobile',
+    paymentChannel: 'wechat'
+  })
+  assert.equal(result.records[0].payment_method, 'mobile')
+  assert.equal(result.records[0].payment_channel, 'wechat')
+  assert.equal(result.statements[0].saleId, 901)
+  assert.deepEqual(result.records[1], result.untouched)
+})
+
 test('changing transaction type regenerates the linked sale invoice using the selected sale date', async () => {
   const result = await simulateExistingSaleUpdate('retail', { convert: true })
   assert.equal(result.records[0].sale_type, 'wholesale')
@@ -185,7 +207,28 @@ test('changing transaction type regenerates the linked sale invoice using the se
   assert.equal(result.generated[0][0], 'wholesale')
   assert.equal(result.generated[0][2], '2026-11-01')
   assert.deepEqual(result.records[1], result.untouched)
+  assert.equal(result.pointsCalls[0].initialize, true)
 })
+
+test('legacy wholesale converted to retail initializes points under current settings', async () => {
+  const result = await simulateExistingSaleUpdate('wholesale', {
+    convert: true,
+    targetSaleType: 'retail'
+  })
+  assert.equal(result.pointsCalls[0].saleType, 'retail')
+  assert.equal(result.pointsCalls[0].initialize, true)
+})
+
+for (const targetSaleType of ['wholesale', 'supplier_proxy']) {
+  test(`retail converted to ${targetSaleType} reconciles points against the zero-point transaction type`, async () => {
+    const result = await simulateExistingSaleUpdate('retail', {
+      convert: true,
+      targetSaleType
+    })
+    assert.equal(result.pointsCalls[0].saleType, targetSaleType)
+    assert.equal(result.pointsCalls[0].initialize, true)
+  })
+}
 
 test('phone edits convert transaction types atomically and regenerate the type suffix', () => {
   const handler = phonesRoute

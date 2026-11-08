@@ -73,6 +73,7 @@ class TransferService {
     store_id,
     salesperson_name,
     payment_method,
+    payment_channel,
     sale_time
   }) {
     log.debug('=== TransferService.wholesaleToPeer 开始 ===')
@@ -261,8 +262,8 @@ class TransferService {
             const saleInsertResult = await connection.query(
               `INSERT INTO sales
                 (phone_id, customer_id, sale_type, sale_price, purchase_cost, operator_id,
-                 payment_method, invoice_number, remarks, sale_time, store_id)
-              VALUES (?, ?, 'wholesale', ?, ?, ?, ?, ?, ?, ?, ?)`,
+                 payment_method, payment_channel, invoice_number, remarks, sale_time, store_id)
+              VALUES (?, ?, 'wholesale', ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
               [
                 phone_id,
                 final_customer_id,
@@ -270,6 +271,7 @@ class TransferService {
                 final_purchase_cost,
                 final_operator_id,
                 payment_method || null,
+                payment_channel || null,
                 finalInvoiceNumber,
                 remarks || null,
                 saleTimeStr,

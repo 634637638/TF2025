@@ -33,15 +33,16 @@ class BaseRepository {
   }
 
   /**
-   * 以预编译方式执行 SQL（等价于 pool.execute）
-   * 返回 [rows, fields]，供路由层保留 SQL 构建、仅下沉连接与执行时使用。
+   * 以参数化方式执行 SQL。
+   * 使用 pool.query 保留参数转义，同时兼容云端 MySQL 托管环境。
+   * 返回 [rows, fields]，供调用方复用 mysql2 的查询结果结构。
    * @param {string} sql - 带 ? 占位符的 SQL
    * @param {Array} params - 参数
    * @returns {Promise<Array>} [rows, fields]
    */
   async executePrepared(sql, params = []) {
     const db = this.getConnection()
-    return db.execute(sql, params)
+    return db.query(sql, params)
   }
 
   /**

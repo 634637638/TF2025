@@ -113,13 +113,6 @@ export function getAllConfigs() {
 }
 
 /**
- * 获取指定分类的配置
- */
-export function getConfigsByCategory(category: string) {
-  return unifiedApi.get<ShopConfigEntry[]>(`/shop/config/category/${category}`)
-}
-
-/**
  * 更新单个配置
  */
 export function updateConfig(key: string, value: unknown) {
@@ -172,17 +165,6 @@ export function reorderBanners(orders: Array<{ id: number; sort_order: number }>
   return unifiedApi.put('/shop/banners/reorder', { orders })
 }
 
-// ============================================================================
-// 商品图片管理 API
-// ============================================================================
-
-/**
- * 获取商品图片列表
- */
-export function getPhoneImages(phoneId: number) {
-  return unifiedApi.get<PhoneImage[]>(`/phones/${phoneId}/images`)
-}
-
 /**
  * 设置主图
  */
@@ -195,39 +177,6 @@ export function setPrimaryImage(phoneId: number, imageId: number) {
  */
 export function deleteImage(phoneId: number, imageId: number) {
   return unifiedApi.delete(`/phones/${phoneId}/images/${imageId}`)
-}
-
-// ============================================================================
-// 订单管理 API
-// ============================================================================
-
-interface OrderListParams {
-  page?: number
-  page_size?: number
-  status?: string
-  start_date?: string
-  end_date?: string
-  search?: string
-}
-
-/**
- * 获取订单列表
- */
-export function getOrders(params?: OrderListParams) {
-  return unifiedApi.get<{
-    data: ShopOrder[]
-    page: number
-    page_size: number
-    total_pages: number
-    total: number
-  }>('/shop/orders', { params })
-}
-
-/**
- * 获取订单详情
- */
-export function getOrderDetail(orderId: number) {
-  return unifiedApi.get<ShopOrder & { items: Record<string, unknown>[] }>(`/shop/orders/${orderId}`)
 }
 
 /**
@@ -247,14 +196,6 @@ export function updateOrderStatus(orderId: number, status: string) {
 export async function getTemplates(): Promise<NewTemplate[]> {
   const response = await unifiedApi.get<NewTemplate[]>('/shop/templates')
   return response.data as NewTemplate[]
-}
-
-/**
- * 获取模板详情
- */
-export async function getTemplateDetail(templateId: number): Promise<NewTemplate> {
-  const response = await unifiedApi.get<NewTemplate>(`/shop/templates/${templateId}`)
-  return response.data as NewTemplate
 }
 
 /**

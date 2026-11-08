@@ -7,13 +7,6 @@ import { PreorderStatus } from '@/types/order'
 
 export { PreorderStatus } from '@/types/order'
 
-export const PREORDER_STATUS_LABELS = {
-  pending: '待匹配',
-  arrived: '已匹配',
-  completed: '已交付',
-  cancelled: '已取消'
-} as const
-
 // 预定单接口定义
 export interface Preorder {
   id: number
@@ -175,32 +168,11 @@ export async function getPreorderOptions(): Promise<PreorderOptions> {
 }
 
 /**
- * 查找可匹配的预定单
- */
-export async function getMatchablePreorders(params: {
-  brand_id: number
-  model_id: number
-  color_id: number
-  memory_id: number
-}): Promise<Preorder[]> {
-  const response = await unifiedApi.get<Preorder[]>('/preorders/matchable', { params })
-  return response.data as Preorder[]
-}
-
-/**
  * 获取某待匹配预定单可选的在库设备
  */
 export async function getMatchablePhones(id: number): Promise<MatchablePhone[]> {
   const response = await unifiedApi.get<MatchablePhone[]>(`/preorders/${id}/matchable-phones`)
   return response.data as MatchablePhone[]
-}
-
-/**
- * 获取预定单详情
- */
-export async function getPreorderDetail(id: number): Promise<Preorder> {
-  const response = await unifiedApi.get<Preorder>(`/preorders/${id}`)
-  return response.data as Preorder
 }
 
 /**
@@ -263,9 +235,7 @@ export const preorderApi = {
   getPreorders,
   getPreorderStats,
   getPreorderOptions,
-  getMatchablePreorders,
   getMatchablePhones,
-  getPreorderDetail,
   createPreorder,
   matchPreorder,
   deliverPreorder,

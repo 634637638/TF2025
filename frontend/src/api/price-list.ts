@@ -143,20 +143,6 @@ export function updateSyncConfigById(configId: number, data: unknown) {
 }
 
 /**
- * 获取默认同步配置（密码永不回显）
- */
-export function getSyncConfig() {
-  return unifiedApi.get('/price-list/sync/config')
-}
-
-/**
- * 更新同步配置
- */
-export function updateSyncConfig(data: unknown) {
-  return unifiedApi.put('/price-list/sync/config', data)
-}
-
-/**
  * 手动触发同步
  */
 export function triggerSync(configId?: number | 'all') {
@@ -235,16 +221,6 @@ export function getPublicBrands() {
  */
 export function searchPrices(keyword: string) {
   return unifiedApi.get(`/public/price/search/${encodeURIComponent(keyword)}`, {
-    params: { _t: Date.now() },
-    useCache: false
-  })
-}
-
-/**
- * 根据品牌获取价格（公开）
- */
-export function getPricesByBrand(brand: string) {
-  return unifiedApi.get(`/public/price/brand/${encodeURIComponent(brand)}`, {
     params: { _t: Date.now() },
     useCache: false
   })

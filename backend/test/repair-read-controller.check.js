@@ -157,7 +157,7 @@ test('repair list service preserves bounded pagination, visible search fields, n
 test('repair read repository uses schema-checked database and parameterizes stats and detail values', async () => {
   const calls = []
   const repository = new RepairReadRepository({
-    getDatabase: async () => ({ async execute(sql, params) {
+    getDatabase: async () => ({ async query(sql, params) {
       calls.push({ sql, params })
       return [[{ id: 9 }]]
     } }),
@@ -175,7 +175,7 @@ test('repair read repository uses schema-checked database and parameterizes stat
 test('repair list repository binds filters and pagination in both row and count queries', async () => {
   const calls = []
   const repository = new RepairReadRepository({
-    getDatabase: async () => ({ async execute(sql, params) {
+    getDatabase: async () => ({ async query(sql, params) {
       calls.push({ sql, params })
       return calls.length === 1 ? [[{ id: 3 }]] : [[{ total: '7' }]]
     } }),

@@ -23,6 +23,8 @@
 - 复杂业务动画应尊重 `prefers-reduced-motion`，不能只覆盖普通 transition。
 - 页面切换由 Vue Router transition 壳负责；业务页面不得各自添加路由级切换动画。
 
+公共样式不预置无调用的装饰类。`styles.scss` 中无消费者的 page/scale/slide 过渡、四方向 fadeIn 装饰、hover-card 与 btn-click-effect 已清理；仍有调用的 fade 过渡、Loading 和各组件专属动效继续使用现有入口。不要为减小首屏体积将同一套闲置样式移入另一份文件，或调整构建体积上限；清理依据与实测结果见[技术债务台账 T20](../development/TECHNICAL_DEBT_PROGRESS.md)。
+
 ## 历史迁移与审计
 
 现存硬编码动效按文件保存在 `frontend/scripts/motion-adoption-baseline.json`。这只是迁移门禁，不代表历史声明已经统一；迁移后必须减少对应文件计数，不能提高基线掩盖新增。

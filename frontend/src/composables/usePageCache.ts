@@ -120,34 +120,8 @@ export function clearCache(key?: CacheScope | CacheScope[]): void {
   }
 }
 
-/**
- * 检查是否有待处理的请求
- */
-export function hasPendingRequest(key: string): boolean {
-  return pendingRequests.has(key)
-}
-
-/**
- * 批量预加载数据
- */
-export async function preloadCache(
-  items: Array<{
-    key: string
-    fetcher: () => Promise<unknown>
-    ttl?: number
-  }>
-): Promise<void> {
-  await Promise.allSettled(
-    items.map(item =>
-      useCachedRequest(item.key, item.fetcher, item.ttl)
-    )
-  )
-}
-
 export default {
   useCachedRequest,
   clearCache,
-  hasPendingRequest,
-  preloadCache,
   DEFAULT_CACHE_TTL
 }

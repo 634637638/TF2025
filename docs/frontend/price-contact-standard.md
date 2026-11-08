@@ -17,6 +17,8 @@
 
 全局样式位于 `frontend/src/styles/components/_price-contact.scss`，由 `frontend/src/main.ts` 注册，适用于销售报价和批发报价。页面私有样式只能处理业务状态或图片生成临时样式，不得重新定义联系方式的字号、网格和对齐方式。
 
+两个报价页的画布保存与 iOS 分享统一复用 `frontend/src/composables/useImageGallery.ts`，页面只提供北京时间文件名、生成画布及预览弹窗。桌面/Android 下载 PNG；iOS 预览保留 blob/data URL 切换，系统分享继续使用 `share-image.ts` 生成受限尺寸 JPEG。关闭、重新生成和卸载均释放旧 URL，过期的异步转换不得重新打开预览；用户取消分享不弹失败提示。行为回归为 `frontend/tests/image-gallery.spec.ts`，不能代替 iOS 真机验收。页面各自的查询、水印及截图列宽规则保持在原业务域。
+
 ## 默认联系人
 
 - 系统管理 -> 报价信息 -> 报价联系人中，每行可点击“设为默认”。

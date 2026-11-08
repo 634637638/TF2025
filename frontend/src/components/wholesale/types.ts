@@ -52,6 +52,7 @@ export interface TransferSubmitPayload {
   store_id?: number | null
   salesperson_name?: string
   payment_method?: string
+  payment_channel?: string | null
   sale_time?: string
 }
 

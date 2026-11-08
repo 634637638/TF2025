@@ -254,45 +254,4 @@ export function useMobileMenu(config: MobileMenuConfig) {
   }
 }
 
-/**
- * 简化版的移动端菜单 Hook
- * 仅提供基本的菜单控制功能
- */
-export function useSimpleMobileMenu() {
-  const isMenuOpen = ref(false)
-  const { isMobile } = useMobile()
-
-  const toggleMenu = () => {
-    isMenuOpen.value = !isMenuOpen.value
-
-    if (isMenuOpen.value) {
-      document.body.style.overflow = 'hidden'
-    } else {
-      document.body.style.overflow = ''
-    }
-  }
-
-  const closeMenu = () => {
-    isMenuOpen.value = false
-    document.body.style.overflow = ''
-  }
-
-  const openMenu = () => {
-    isMenuOpen.value = true
-    document.body.style.overflow = 'hidden'
-  }
-
-  onUnmounted(() => {
-    document.body.style.overflow = ''
-  })
-
-  return {
-    isMobile,
-    isMenuOpen,
-    toggleMenu,
-    closeMenu,
-    openMenu
-  }
-}
-
 export default useMobileMenu

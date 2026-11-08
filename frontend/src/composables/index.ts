@@ -28,7 +28,7 @@ import {
 
 // UI 功能
 export { useConfirm } from './ui/useConfirm'
-export { useMediaQuery, useBreakpoints, useDevice, useThemePreference, useCustomMediaQuery } from './ui/useMediaQuery'
+export { useMediaQuery, useBreakpoints, useDevice, useThemePreference } from './ui/useMediaQuery'
 export { useWindowSize, useScroll, useViewport } from './ui/useWindowSize'
 export { useLoading, createLoading, useLoadingState } from './useLoading'
 export { useImportExport } from './useImportExport'

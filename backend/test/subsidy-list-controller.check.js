@@ -101,7 +101,7 @@ test('subsidy list service preserves pagination, sorting, formatting, signed pho
 
 test('subsidy list repository binds filters and pagination while keeping sort input controlled upstream', async () => {
   const calls = []
-  const repository = new Repository({ getDb: () => ({ async execute(sql, params) {
+  const repository = new Repository({ getDb: () => ({ async query(sql, params) {
     calls.push({ sql, params })
     return sql.includes('COUNT(*)') ? [[{ total: 3 }]] : [[{ id: 4 }]]
   } }) })

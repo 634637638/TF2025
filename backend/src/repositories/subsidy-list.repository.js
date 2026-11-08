@@ -32,12 +32,12 @@ class SubsidyListRepository {
     const [listResult, countResult] = await Promise.all([
       (async () => {
         const startedAt = process.hrtime.bigint()
-        const result = await database.execute(listQuery, [...queryParams, pageSize, offset])
+        const result = await database.query(listQuery, [...queryParams, pageSize, offset])
         return { rows: result[0], elapsedMs: Number(process.hrtime.bigint() - startedAt) / 1e6 }
       })(),
       (async () => {
         const startedAt = process.hrtime.bigint()
-        const result = await database.execute(countQuery, queryParams)
+        const result = await database.query(countQuery, queryParams)
         return { rows: result[0], elapsedMs: Number(process.hrtime.bigint() - startedAt) / 1e6 }
       })()
     ])

@@ -242,7 +242,7 @@ test('employee overview service defaults to Beijing month and combines payroll a
 test('employee summary repository binds optional store filters and salary range', async () => {
   const calls = []
   const repository = new AnalyticsEmployeeSummaryRepository(() => ({
-    async execute(query, params) {
+    async query(query, params) {
       calls.push({ query, params })
       return [[]]
     }
@@ -267,7 +267,7 @@ test('employee overview repository binds store and date filters across summary q
     [[{ count: 2 }]], [[{ total: '10001' }]], [[{ id: 7 }]], [[{ approved: 3, total: 4 }]]
   ]
   const repository = new AnalyticsEmployeeSummaryRepository(() => ({
-    async execute(query, params) {
+    async query(query, params) {
       calls.push({ query, params })
       return responses[calls.length - 1]
     }
@@ -277,6 +277,7 @@ test('employee overview repository binds store and date filters across summary q
   assert.ok(calls.every(call => call.params.includes(5)))
   assert.deepEqual(calls[3].params, ['2026-11-01', '2026-11-30', 5])
   assert.deepEqual(calls[7].params, ['2026-11-01', '2026-11-30', 5])
+  assert.match(calls[7].query, /ar\.status = 'approved'/)
   assert.deepEqual(result.payrollEmployeeIds, [7])
   assert.deepEqual(result.attendance, { approved: 3, total: 4 })
 })
@@ -349,7 +350,7 @@ test('attendance summary service validates dates and formats summary, records an
 test('attendance summary repository binds dates and store scope across all reads', async () => {
   const calls = []
   const repository = new AnalyticsEmployeeSummaryRepository(() => ({
-    async execute(query, params) {
+    async query(query, params) {
       calls.push({ query, params })
       return [[]]
     }
@@ -375,7 +376,7 @@ test('employee performance repository uses allowlisted sorting and binds store, 
       calls.push({ query, params })
       return [[]]
     },
-    async execute(query, params) {
+    async query(query, params) {
       calls.push({ query, params })
       return [[]]
     }

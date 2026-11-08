@@ -45,6 +45,10 @@ await init()
 
 后端必须针对具体业务接口执行字段过滤和写入校验。前端 `v-if`、本地权限缓存或只读样式都不是数据安全边界。新增字段权限时，应同步更新字段登记、后端响应/写入处理和契约测试。
 
+提醒与经验分享通过 `backend/src/services/field-access.service.js` 统一字段权限读取、递归响应脱敏和隐藏字段写入判定，复用 `data-masking.service.js`；HTTP 403 与异常转交由 `backend/src/middleware/field-access.js` 负责。各业务 controller 保留自己的模块键、响应键/请求字段映射和特殊别名转换，不能将不同模块的同名字段混用。请求显式提交 `null`、空字符串、`false` 或 `0` 仍算写入；未提交的字段才不参加拒写判定。提醒类型隐藏名称时仍遮蔽类型对象的 `name`，分享隐藏作者时仍遮蔽 `author` 与 `author_id`。
+
+定向回归：`node --test backend/test/field-access.check.js backend/test/reminder-controller.check.js backend/test/shared-controller.check.js`。租赁的“多个字段全部隐藏才拒写”和动作权限例外仍由原模块处理，不能直接套用单字段拒写规则。
+
 相关入口：
 
 - 字段登记：`frontend/src/config/moduleFields.js`

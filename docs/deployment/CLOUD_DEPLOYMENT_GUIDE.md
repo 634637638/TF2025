@@ -249,6 +249,16 @@ pm2 startup
 
 `ecosystem.production.config.js` 和宝塔 PM2 项目必须统一进入 `start-production.js`。该入口显式锁定 `NODE_ENV=production`、`ENV_FILE=.env.production` 和端口 `3000`，不会因为面板遗漏环境变量而回退读取开发 `.env`。
 
+PM2 进程使用的 Node 解释器可能与 SSH 当前 `node` 命令不同。Puppeteer 及 Puppeteer Core 的锁定版本要求 Node.js `>=22.12.0`；仅在 SSH 中切换到 Node 22 并不会更新已经创建的 PM2 进程。部署或切换 Node 版本后，分别核对 shell 与正在运行的应用进程：
+
+```bash
+node -p "process.version + ' ' + process.execPath"
+pm2 pid backend
+readlink -f /proc/$(pm2 pid backend)/exe
+```
+
+最后一条必须指向受支持的 Node 22 解释器。若仍指向旧版本，应在宝塔 Node 项目中修改现有 `backend` 项目的运行时，或停止旧项目后按上面的生产入口重新创建；不要同时保留两个监听 `3000` 端口的 backend。Node 18/20 运行 Puppeteer 25 时可能在 `price-list.service.js` 加载浏览器服务处报 `ERR_REQUIRE_ESM`，即使同一终端中 `node -v` 和 Puppeteer 浏览器启动测试正常。
+
 在宝塔 PM2 管理器中新建后端项目时使用以下配置：
 
 ```text
@@ -285,6 +295,8 @@ curl http://127.0.0.1:3000/health
 pm2 reset backend
 pm2 save --force
 ```
+
+每次新建或重建 PM2 应用、修改应用解释器后，都要再次运行 `pm2 save --force`，使开机恢复清单记录当前进程及其解释器。若服务器尚未配置 PM2 开机启动，再运行 `pm2 startup` 并执行它输出的系统命令；若由宝塔项目管理器负责开机启动，则确认项目的开机启动选项已启用，避免同时创建重复的启动服务。
 
 ---
 

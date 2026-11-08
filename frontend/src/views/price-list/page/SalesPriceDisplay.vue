@@ -238,7 +238,7 @@ import { useLoadingState } from '@/composables'
 import { logger } from '@/utils/logger'
 
 import { loadHtml2Canvas } from '@/utils/html2canvas'
-import { createShareImageFile } from '@/utils/share-image'
+import { useImageGallery } from '@/composables/useImageGallery'
 import { useSiteSettingsStore } from '@/stores/siteSettings'
 import { parsePublicPriceContacts, getDefaultPublicPriceContact, formatPublicPriceWatermark } from '@/utils/publicPriceSettings'
 import type { SalesPriceDisplayRow } from '@/types/price-list'
@@ -250,6 +250,17 @@ const IMAGE_CAPTURE_WIDTH = 430
 // 状态
 const { loading } = useLoadingState()
 const siteSettingsStore = useSiteSettingsStore()
+const {
+  showIOSImageModal, iosImageUrl, isSharingImage,
+  closeIOSImageModal, toggleIOSImageMode, shareIOSImage, saveImageToGallery
+} = useImageGallery(() => {
+  const now = TimeUtil.now()
+  const dateStr = TimeUtil.format(now, 'DATE_COMPACT')
+  const timeStr = TimeUtil.format(now, 'TIME_COMPACT')
+  const siteName = siteSettingsStore.settings.siteName || '销售报价'
+  return `${siteName}销售报价_${dateStr}_${timeStr}.png`
+})
+
 const priceContacts = computed(() => {
   const configured = parsePublicPriceContacts(siteSettingsStore.settings.publicPriceContacts)
   return configured
@@ -266,41 +277,6 @@ const searchKeyword = ref('')
 const searchResults = ref<SalesPriceDisplayRow[]>([])
 const hasSearched = ref(false)
 const isGenerating = ref(false)
-const showIOSImageModal = ref(false)
-const EMPTY_IMAGE_SRC = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=='
-const iosImageUrl = ref('')
-const iosImageFile = ref<File | null>(null)
-const iosBlobImageUrl = ref('')
-const iosDataImageUrl = ref('')
-const iosUseDataImage = ref(false)
-const isSharingImage = ref(false)
-
-const blobToDataUrl = (blob: Blob) => new Promise<string>((resolve, reject) => {
-  const reader = new FileReader()
-  reader.onload = () => resolve(String(reader.result || ''))
-  reader.onerror = () => reject(reader.error || new Error('图片读取失败'))
-  reader.readAsDataURL(blob)
-})
-
-const getIOSMajorVersion = () => {
-  const match = navigator.userAgent.match(/(?:iPhone OS|CPU OS|CPU iPhone OS)\s(\d+)[_\d]*/i)
-  return match ? Number(match[1]) : null
-}
-
-const shouldUseDataImageForIOS = () => {
-  const major = getIOSMajorVersion()
-  return major !== null && major < 15
-}
-
-const syncIOSImageUrl = () => {
-  iosImageUrl.value = iosUseDataImage.value ? iosDataImageUrl.value : iosBlobImageUrl.value
-}
-
-const toggleIOSImageMode = () => {
-  iosUseDataImage.value = !iosUseDataImage.value
-  syncIOSImageUrl()
-  globalNotifications.info(iosUseDataImage.value ? '已切换为兼容模式，请长按图片保存' : '已切换为新系统模式，请长按图片保存')
-}
 
 // 加载所有数据
 const loadAllData = async () => {
@@ -384,98 +360,6 @@ const generateRandomWatermarkPositions = (): WatermarkPosition[] => {
     right: 8,
     rotation: -8
   }))
-}
-
-const isIOS = () => {
-  return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-         (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
-}
-
-const closeIOSImageModal = () => {
-  showIOSImageModal.value = false
-  if (iosBlobImageUrl.value) {
-    URL.revokeObjectURL(iosBlobImageUrl.value)
-  }
-  iosImageUrl.value = EMPTY_IMAGE_SRC
-  iosBlobImageUrl.value = ''
-  iosDataImageUrl.value = ''
-  iosImageFile.value = null
-}
-
-const shareIOSImage = async () => {
-  if (isSharingImage.value) return
-  const file = iosImageFile.value
-  if (!file || !navigator.share) {
-    globalNotifications.warning('当前浏览器不支持系统分享，请长按图片保存')
-    return
-  }
-
-  isSharingImage.value = true
-  try {
-    const shareData = { files: [file] }
-    if (navigator.canShare && !navigator.canShare(shareData)) {
-      globalNotifications.warning('当前浏览器不支持系统分享，请长按图片保存')
-      return
-    }
-    await navigator.share(shareData)
-  } catch (error) {
-    if ((error as Error).name !== 'AbortError') {
-      globalNotifications.warning('系统分享未成功，请长按图片保存')
-    }
-  } finally {
-    isSharingImage.value = false
-  }
-}
-
-const saveImageToGallery = async (canvas: HTMLCanvasElement) => {
-  const now = TimeUtil.now()
-  const dateStr = TimeUtil.format(now, 'DATE_COMPACT')
-  const timeStr = TimeUtil.format(now, 'TIME_COMPACT')
-  const siteName = siteSettingsStore.settings.siteName || '销售报价'
-  const fileName = `${siteName}销售报价_${dateStr}_${timeStr}.png`
-
-  return new Promise<void>((resolve, reject) => {
-    canvas.toBlob(async (blob) => {
-      if (!blob) {
-        reject(new Error('生成图片失败'))
-        return
-      }
-
-      if (isIOS()) {
-        try {
-          iosImageFile.value = await createShareImageFile(canvas, fileName)
-          iosBlobImageUrl.value = URL.createObjectURL(blob)
-          iosDataImageUrl.value = await blobToDataUrl(blob)
-          iosUseDataImage.value = shouldUseDataImageForIOS()
-          syncIOSImageUrl()
-          showIOSImageModal.value = true
-          globalNotifications.success({
-            message: '图片已生成，请长按保存到相册',
-            duration: 3000
-          })
-          resolve()
-        } catch (error) {
-          reject(error)
-        }
-        return
-      }
-
-      // Android 和 PC：直接触发浏览器下载。
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.download = fileName
-      link.href = url
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      URL.revokeObjectURL(url)
-      globalNotifications.success({
-        message: '图片已下载',
-        duration: 2000
-      })
-      resolve()
-    }, 'image/png', 0.95)
-  })
 }
 
 // Safari 对 html2canvas 克隆后的表格布局会重新计算，显式固定生成图宽度和五列宽度，避免价格列被裁切。
@@ -792,7 +676,6 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   document.removeEventListener('visibilitychange', handlePublicPriceVisibility)
   window.removeEventListener('storage', handlePublicPriceSettingsStorage)
-  closeIOSImageModal()
 })
 </script>
 

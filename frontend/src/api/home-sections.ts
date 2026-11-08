@@ -123,13 +123,6 @@ export function addProductToSection(sectionId: number, data: { phone_id?: number
 }
 
 /**
- * 批量添加商品到推荐区域
- */
-export function addProductsToSection(sectionId: number, products: Array<{ phone_id?: number; template_id?: number; sort_order?: number }>) {
-  return unifiedApi.post(`/home/sections/${sectionId}/products/batch`, { products })
-}
-
-/**
  * 移除推荐商品
  */
 export function removeProductFromSection(sectionId: number, productId: number) {

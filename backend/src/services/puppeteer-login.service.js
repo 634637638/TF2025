@@ -9,6 +9,21 @@ const log = require('../utils/log')
 const { ensureLogDir } = require('../utils/log-paths')
 const { DEFAULT_BROWSER_USER_AGENT, TIMEOUTS } = require('../config/constants')
 
+const CHROME_PATHS = [
+  '/usr/bin/google-chrome-stable',
+  '/usr/bin/google-chrome',
+  '/usr/bin/chromium',
+  '/usr/bin/chromium-browser',
+  '/snap/bin/chromium',
+  '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+  'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+  'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe'
+]
+
+function findChromePath(fileSystem = fs) {
+  return CHROME_PATHS.find(chromePath => fileSystem.existsSync(chromePath)) || null
+}
+
 class PuppeteerLoginService {
   constructor() {
     this.browser = null
@@ -26,23 +41,12 @@ class PuppeteerLoginService {
       return this.chromeAvailable
     }
 
-    const chromePaths = [
-      '/usr/bin/google-chrome-stable',
-      '/usr/bin/google-chrome',
-      '/usr/bin/chromium',
-      '/usr/bin/chromium-browser',
-      '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-      'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-      'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe'
-    ]
-
-    for (const chromePath of chromePaths) {
-      if (fs.existsSync(chromePath)) {
-        log.debug(`✅ 找到 Chrome: ${chromePath}`)
-        this.chromePath = chromePath
-        this.chromeAvailable = true
-        return true
-      }
+    const chromePath = findChromePath()
+    if (chromePath) {
+      log.debug(`✅ 找到 Chrome: ${chromePath}`)
+      this.chromePath = chromePath
+      this.chromeAvailable = true
+      return true
     }
 
     log.debug('⚠️ 未找到系统 Chrome，将使用 Puppeteer 内置 Chromium')
@@ -322,3 +326,4 @@ class PuppeteerLoginService {
 }
 
 module.exports = PuppeteerLoginService
+module.exports.findChromePath = findChromePath

@@ -3,6 +3,8 @@
 const ApiResponse = require('../utils/response')
 const reminderService = require('../services/reminder.service')
 const dataMaskingService = require('../services/data-masking.service')
+const FieldAccessService = require('../services/field-access.service')
+const createFieldAccessMiddleware = require('../middleware/field-access')
 const log = require('../utils/log')
 
 const REMINDER_FIELD_MODULE_KEY = 'reminders_reminderview'
@@ -41,27 +43,24 @@ const REMINDER_RESPONSE_KEYS = {
 class ReminderController {
   constructor({ service = reminderService, masking = dataMaskingService, logger = log } = {}) {
     this.service = service
-    this.masking = masking
+    this.fieldAccess = new FieldAccessService({
+      masking, moduleKey: REMINDER_FIELD_MODULE_KEY, responseKeys: REMINDER_RESPONSE_KEYS,
+      transform(masked, permissions) {
+        if ((permissions.hiddenFields || []).includes('type_info.type_name') && Object.prototype.hasOwnProperty.call(masked, 'default_remind_days')) {
+          masked.name = null
+        }
+      }
+    })
+    this.fieldMiddleware = createFieldAccessMiddleware(this.fieldAccess)
     this.logger = logger
   }
 
   getFieldPermissions(req) {
-    return this.masking.getUserFieldPermissions(req.user.id, REMINDER_FIELD_MODULE_KEY)
+    return this.fieldAccess.getPermissions(req.user.id)
   }
 
   maskPayloadWithPermissions(value, permissions) {
-    if (Array.isArray(value)) return value.map(item => this.maskPayloadWithPermissions(item, permissions))
-    if (!value || typeof value !== 'object') return value
-    const masked = Object.fromEntries(Object.entries(value).map(([key, child]) => [key, this.maskPayloadWithPermissions(child, permissions)]))
-    for (const fieldId of permissions.hiddenFields || []) {
-      for (const responseKey of REMINDER_RESPONSE_KEYS[fieldId] || []) {
-        if (Object.prototype.hasOwnProperty.call(masked, responseKey)) masked[responseKey] = null
-      }
-    }
-    if ((permissions.hiddenFields || []).includes('type_info.type_name') && Object.prototype.hasOwnProperty.call(masked, 'default_remind_days')) {
-      masked.name = null
-    }
-    return this.masking.filterSensitiveFields([masked], permissions)[0]
+    return this.fieldAccess.maskPayload(value, permissions)
   }
 
   async maskPayload(value, req) {
@@ -69,25 +68,11 @@ class ReminderController {
   }
 
   rejectHiddenWrites(fieldMap) {
-    return async (req, res, next) => {
-      try {
-        const permissions = await this.getFieldPermissions(req)
-        const hiddenFields = new Set(permissions.hiddenFields || [])
-        const denied = Object.entries(fieldMap).find(([bodyField, fieldId]) => req.body?.[bodyField] !== undefined && hiddenFields.has(fieldId))
-        if (!denied) return next()
-        return res.status(403).json({ success: false, message: '不能修改已隐藏的字段', code: 'FIELD_PERMISSION_DENIED', field: denied[1] })
-      } catch (error) { return next(error) }
-    }
+    return this.fieldMiddleware.rejectHiddenWrites(fieldMap)
   }
 
   requireVisibleField(fieldId) {
-    return async (req, res, next) => {
-      try {
-        const permissions = await this.getFieldPermissions(req)
-        if (!(permissions.hiddenFields || []).includes(fieldId)) return next()
-        return res.status(403).json({ success: false, message: '无权访问已隐藏的字段', code: 'FIELD_PERMISSION_DENIED', field: fieldId })
-      } catch (error) { return next(error) }
-    }
+    return this.fieldMiddleware.requireVisibleField(fieldId)
   }
 
   handleError(res, error, fallback = '操作失败') {

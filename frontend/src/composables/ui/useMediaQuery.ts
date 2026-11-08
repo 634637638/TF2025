@@ -245,16 +245,3 @@ export function useThemePreference() {
     theme
   }
 }
-
-/**
- * 自定义媒体查询Hook
- */
-export function useCustomMediaQuery(queries: Record<string, string>) {
-  const result: Record<string, Ref<boolean>> = {}
-
-  for (const [key, query] of Object.entries(queries)) {
-    result[key] = useMediaQuery(query)
-  }
-
-  return result
-}

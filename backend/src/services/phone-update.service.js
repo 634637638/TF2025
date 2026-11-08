@@ -42,6 +42,8 @@ class PhoneUpdateService {
         sale_operator_id,
         inventory_time,
         sale_time,
+        payment_method,
+        payment_channel,
         // 客户信息字段 - 使用customer_id关联customers表
         customer_id,
         customer_name,       // 客户姓名
@@ -85,6 +87,23 @@ class PhoneUpdateService {
           const effectiveSaleTime = valueOrCurrent(sale_time, currentPhone.sale_time)
           const effectiveStatus = normalizePhoneStatus(valueOrCurrent(status, currentPhone.status))
           const finalNotes = valueOrCurrent(remarks, currentPhone.remarks) ?? ''
+
+          if (payment_method !== undefined && ['sold', 'peer_transfer'].includes(effectiveStatus)) {
+            const allowedChannels = {
+              cash: [null],
+              mobile: ['wechat', 'alipay'],
+              bank_card: ['card_consumption', 'bank_transfer'],
+              subsidy_card: ['subsidy_card']
+            }
+            const normalizedMethod = payment_method || null
+            const normalizedChannel = payment_channel || null
+            if (!normalizedMethod || !allowedChannels[normalizedMethod]) {
+              throw new Error('请选择有效的支付方式')
+            }
+            if (!allowedChannels[normalizedMethod].includes(normalizedChannel)) {
+              throw new Error('请选择有效的支付渠道')
+            }
+          }
   
           if (status && effectiveStatus !== normalizePhoneStatus(currentPhone.status)) {
             if (effectiveStatus === 'rented') {
@@ -489,6 +508,8 @@ class PhoneUpdateService {
               storeId,
               salePrice: finalSalePrice,
               purchaseCost: finalTransactionCost || null,
+              paymentMethod: payment_method || null,
+              paymentChannel: payment_channel || null,
               saleTime: saleDate || null,
               invoiceNumber,
               remarks: finalNotes || null
@@ -549,6 +570,15 @@ class PhoneUpdateService {
               updateSalesValues.push(finalCustomerId)
               log.debug(`✅ 同步customer_id到sales表: ${finalCustomerId}`)
             }
+
+            if (payment_method !== undefined) {
+              updateSalesFields.push('payment_method = ?')
+              updateSalesValues.push(payment_method || null)
+            }
+            if (payment_channel !== undefined) {
+              updateSalesFields.push('payment_channel = ?')
+              updateSalesValues.push(payment_channel || null)
+            }
   
             // 同步 operator_id（如果前端提供了）
             if (saleOperatorId !== null && saleOperatorId !== undefined) {
@@ -598,7 +628,8 @@ class PhoneUpdateService {
               customerId: pointsCustomerId,
               saleType: transactionTypeByStatus[effectiveStatus] || 'non_retail',
               salePrice: finalSalePrice,
-              isNew: nextIsNew
+              isNew: nextIsNew,
+              initialize: isTransactionTypeChange
             })
   
             if (updateSalesFields.length > 0) {

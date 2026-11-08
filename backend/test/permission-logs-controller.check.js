@@ -157,7 +157,7 @@ test('权限日志 repository 参数化筛选、分页和删除标识', async ()
   const PermissionLogsRepository = require('../src/repositories/permission-logs.repository')
   const calls = []
   const repository = new PermissionLogsRepository(() => ({
-    async execute(sql, values) {
+    async query(sql, values) {
       calls.push({ sql, values })
       if (sql.startsWith('SELECT COUNT(*)')) return [[{ total: 1 }], []]
       if (sql.startsWith('SELECT id, user_id')) return [[{ id: 5 }], []]

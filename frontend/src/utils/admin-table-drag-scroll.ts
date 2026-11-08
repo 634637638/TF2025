@@ -3,6 +3,7 @@ const TABLE_BODY_WRAPPER_SELECTOR = '.el-table__body-wrapper'
 const TABLE_ROW_SELECTOR = '.el-table__body tr.el-table__row'
 const MANAGED_HOVER_ROW_CLASS = 'is-admin-table-row-hover'
 const SCROLLER_SELECTOR = '.el-scrollbar__wrap'
+const EXPLICIT_SCROLLER_SELECTOR = '[data-table-drag-scroll]'
 const INTERACTIVE_SELECTOR = [
   'button',
   'a',
@@ -32,6 +33,12 @@ let lastPointerPosition: { x: number; y: number } | null = null
 
 const findTableScroller = (target: EventTarget | null): HTMLElement | null => {
   if (!(target instanceof Element) || target.closest(INTERACTIVE_SELECTOR)) return null
+
+  // 宽表在外层容器横向滚动时，仍走同一个全局交互入口。
+  const explicitScroller = target.closest<HTMLElement>(EXPLICIT_SCROLLER_SELECTOR)
+  if (explicitScroller && explicitScroller.scrollWidth > explicitScroller.clientWidth + 1) {
+    return explicitScroller
+  }
 
   const table = target.closest<HTMLElement>(TABLE_SELECTOR)
   if (!table) return null
@@ -251,6 +258,15 @@ export const initAdminTableDragScroll = () => {
 
   document.addEventListener('pointerup', finishDrag)
   document.addEventListener('pointercancel', finishDrag)
+  window.addEventListener('blur', finishDrag)
+
+  document.addEventListener('wheel', (event) => {
+    if (!event.shiftKey || !(event.target instanceof Element)) return
+    const scroller = event.target.closest<HTMLElement>(EXPLICIT_SCROLLER_SELECTOR)
+    if (!scroller || scroller.scrollWidth <= scroller.clientWidth + 1) return
+    event.preventDefault()
+    scroller.scrollLeft += event.deltaY || event.deltaX
+  }, { passive: false })
 
   document.addEventListener('click', (event) => {
     if (!suppressClickScroller || !(event.target instanceof Node)) return

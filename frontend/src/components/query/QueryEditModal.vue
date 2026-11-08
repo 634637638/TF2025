@@ -1896,6 +1896,15 @@ const handleSubmit = async () => {
   const valid = await formRef.value.validate().catch(() => false)
   if (!valid) return
 
+  if (formData.status === 'sold' && !formData.payment_method) {
+    showError('请选择支付方式')
+    return
+  }
+  if (formData.status === 'sold' && ['mobile', 'bank_card', 'subsidy_card'].includes(formData.payment_method) && !formData.payment_channel) {
+    showError('请选择支付渠道')
+    return
+  }
+
   const resolvedImei = formData.isNoIMEIMode
     ? (formData.imei || formData.serial_number)
     : formData.imei
@@ -1951,6 +1960,8 @@ const handleSubmit = async () => {
       inventory_time: formData.inventory_time,
       sale_time: formData.sale_time,
       status: formData.status,
+      payment_method: formData.payment_method || null,
+      payment_channel: formData.payment_channel || null,
       remarks: formData.remarks || ''
     }) as PhoneUpdateRequest
 

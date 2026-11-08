@@ -8,7 +8,7 @@ class AnalyticsEmployeeSummaryRepository {
   }
 
   async getSalaryTotals(monthCount, storeId) {
-    const [rows] = await this.database().execute(`
+    const [rows] = await this.database().query(`
       SELECT
         DATE_FORMAT(sr.period_start, '%Y-%m') as month,
         COALESCE(SUM(sr.net_salary), 0) as total
@@ -24,7 +24,7 @@ class AnalyticsEmployeeSummaryRepository {
   }
 
   async getAttendanceCounts(storeId) {
-    const [rows] = await this.database().execute(`
+    const [rows] = await this.database().query(`
       SELECT
         ar.record_type,
         ar.status,
@@ -109,9 +109,9 @@ class AnalyticsEmployeeSummaryRepository {
       LIMIT 20
     `
     const [summaryRows, recordRows, alertRows] = await Promise.all([
-      database.execute(summaryQuery, filters),
-      database.execute(recordsQuery, filters),
-      database.execute(alertsQuery, filters)
+      database.query(summaryQuery, filters),
+      database.query(recordsQuery, filters),
+      database.query(alertsQuery, filters)
     ])
 
     return {
@@ -155,7 +155,7 @@ class AnalyticsEmployeeSummaryRepository {
   async getAttendanceRates(employeeIds) {
     if (!employeeIds.length) return []
     const placeholders = employeeIds.map(() => '?').join(', ')
-    const [rows] = await this.database().execute(`
+    const [rows] = await this.database().query(`
       SELECT
         u.id as employee_id,
         COUNT(CASE WHEN ar.status = 'approved' THEN 1 END) as approved,
@@ -177,29 +177,29 @@ class AnalyticsEmployeeSummaryRepository {
     const rangeParams = [startDate, endDate, ...storeParams]
     const database = this.database()
     const [totalEmployees, activeEmployees, stores, newPhoneSales, usedPhoneSales, totalSalesAmount, payrollEmployees] = await Promise.all([
-      database.execute(`SELECT COUNT(*) as count FROM users WHERE 1=1 ${storeFilter}`, storeParams),
-      database.execute(`SELECT COUNT(*) as count FROM users WHERE status = 1 ${storeFilter}`, storeParams),
-      database.execute(`SELECT COUNT(DISTINCT store_id) as count FROM users WHERE store_id IS NOT NULL ${storeFilter}`, storeParams),
-      database.execute(`
+      database.query(`SELECT COUNT(*) as count FROM users WHERE 1=1 ${storeFilter}`, storeParams),
+      database.query(`SELECT COUNT(*) as count FROM users WHERE status = 1 ${storeFilter}`, storeParams),
+      database.query(`SELECT COUNT(DISTINCT store_id) as count FROM users WHERE store_id IS NOT NULL ${storeFilter}`, storeParams),
+      database.query(`
         SELECT COUNT(*) as count FROM phones
         WHERE status = 'sold' AND is_new = 1 AND DATE(sale_time) >= ? AND DATE(sale_time) <= ? ${phoneFilter}
       `, rangeParams),
-      database.execute(`
+      database.query(`
         SELECT COUNT(*) as count FROM phones
         WHERE status = 'sold' AND is_new = 0 AND DATE(sale_time) >= ? AND DATE(sale_time) <= ? ${phoneFilter}
       `, rangeParams),
-      database.execute(`
+      database.query(`
         SELECT COALESCE(SUM(sale_price), 0) as total FROM phones
         WHERE status = 'sold' AND DATE(sale_time) >= ? AND DATE(sale_time) <= ? ${phoneFilter}
       `, rangeParams),
-      database.execute(`
+      database.query(`
         SELECT id FROM users
         WHERE status = 1 AND salary_template_id IS NOT NULL ${storeFilter}
       `, storeParams)
     ])
     const attendanceQuery = `
       SELECT
-        COUNT(CASE WHEN status = 'approved' THEN 1 END) as approved,
+        COUNT(CASE WHEN ar.status = 'approved' THEN 1 END) as approved,
         COUNT(*) as total
       FROM attendance_records ar
       INNER JOIN users u ON u.id = ar.employee_id
@@ -207,7 +207,7 @@ class AnalyticsEmployeeSummaryRepository {
         AND ar.status != 'cancelled'
         ${storeId !== null ? 'AND u.store_id = ?' : ''}
     `
-    const [attendanceRows] = await database.execute(attendanceQuery, rangeParams)
+    const [attendanceRows] = await database.query(attendanceQuery, rangeParams)
 
     return {
       totalEmployees: totalEmployees[0][0],

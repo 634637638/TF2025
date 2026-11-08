@@ -1,10 +1,10 @@
 # 全局技术债务进度
 
-本页包含历史进度和 2026-11-04 当前工作区复核结果。下方“当前待完善清单”是项目剩余技术任务的唯一汇总；其他带日期的审计、同事清单和聊天结论只能作为证据来源，不能建立第二份当前待办。
+本页包含历史进度与分批工作区复核结果。下方“当前待完善清单”是项目剩余技术任务的唯一汇总；其他带日期的审计、同事清单和聊天结论只能作为证据来源，不能建立第二份当前待办。
 
 本文件是全局进度的唯一汇总入口。专项数据和处理细节仍记录在各自文档中；汇总状态必须以可重复执行的检查结果为依据。
 
-## 2026-11-04 当前待完善清单（唯一汇总）
+## 当前待完善清单（唯一汇总）
 
 状态使用[代码审查标准](../guides/CODE_REVIEW_STANDARDS.md#完成状态分级)中的“阻断发布 / 本轮必须 / 观察期 / 后续债务 / 明确延期”。仓库数量、文件行数和测试数量会变化，执行任务时必须重新运行证据命令，不得复制旧快照。
 
@@ -27,12 +27,139 @@
 | T14 Loading 存量例外收口 | P2 / 后续债务 | 2026-11-04 `check:loading` 通过：公共分层入口均已接入，仍有 1 个 `v-loading` 例外和 2 个全局长操作例外 | 逐项核对操作范围和可见反馈；只有公共局部 Loading 能保持相同行为时才迁移，并同步删除对应例外登记 | `check:loading`、相关交互测试和桌面/手机回归通过；不得造成全局与局部 Loading 叠加，回滚时恢复原行为及精确例外登记 |
 | T15 入库范围、单号序列与生产 DDL 边界 | P1 / 代码已完成，待独立测试库验证 | 2026-11-05：入库编辑/删除改为事务锁定并将授权门店范围带入最终写语句；入库单号改为 `invoice_sequences` 按北京时间日期和 `PO` 类型锁定递增；生产 schema 变更只允许显式 `backend/scripts/migrate-*.js` 入口，普通应用进程即使误配迁移环境变量也无权执行 DDL | 在已迁移的独立测试库验证入库创建、跨门店拒绝、编辑/删除事务及多连接并发单号；生产发布前确认 `invoice_sequences` 已存在并保持 `SCHEMA_MIGRATION_MODE` 未配置 | 契约测试、并发分配单元测试及后端全量测试通过；真实数据库测试仅在独立测试库执行并记录清理回读。回滚应用版本不删除已分配序列；如需恢复旧单号生成逻辑，先评估已生成编号格式及重复风险 |
 | T16 地址层级与地区数据契约 | P2 / 后续债务，未满足强制业务要求 | 客户编辑已完成省、市、县/区三级联动；现有 customers 契约只有 `province`、`city`、`address`，县/区暂与详细地址组合保存；业务要求必须提供完整省级、地级、县级、乡级（乡镇/街道）、村级（村委会/社区）选择数据，当前尚未满足 | 先确定可验证且获准使用的现行全量数据来源及更新责任，再设计唯一共享 `province/city/district/town/village` 类型、权限、API、独立字段和迁移回滚；数据量评估后选择按需加载或服务端查询，避免把完整村级全集塞入首屏包；在独立测试库验证历史地址回显及跨层级变更，不直接修改云端业务库 | 五级数据必须有明确覆盖口径、可追溯来源、版本/截止日期、许可及更新校验；省市县乡村均通过覆盖完整性测试；新增字段前完成前后端契约、权限审计、历史数据迁移、搜索/导出/隐私评估及浏览器回归；当前三级选择不得标记为完成 |
-| T17 后端分层收敛 | P2 / 本轮四维代码治理完成，待环境验收 | 2026-11-08 提交后起点为 SQL 149、仓储直连 9、反向依赖 2、租借计数 73；本轮分批迁移后 AST 四项均为 0，route/事务/孤立 controller 仍为 0。租借分别登记：真实收编 73→13；独立语义修正 13→7（6 处池/已有连接误计）；6 处真实租借接共享 helper 并删除 1 处无调用旧入口后 7→0。全部归零台账键删除，max=0，历史锚点只追加 | 保持 controller→service→repository 与共享 withConnection；新业务继续受目标分支锚点和 AST 增长检查保护。当前本地 HEAD 已启用目标锚点比较，远程 PR 仍须按真实目标引用执行；本轮修改待一起提交 | 执行行为/权限/事务回归、后端全测、安全/分层及下载审计、严格 ESLint、字段/公共选项审计、类型/文档检查和 git diff --check；当前结果见本节末尾收口记录。未连接云端数据库，静态与替身测试不能替代数据库/浏览器验收 |
-| T18 闲置 API、组件与依赖治理 | P1 / 本轮代码与检查已闭环，待提交 | forecast 真实调用、analytics 63 方法、16 个组件候选和依赖四维矩阵见 T18 专节；保留 dts 证据不一致的公共组件 | 按删/修/留依据执行，删除双零局部组件与确认无用途依赖，保留 OCR、权限与有效契约 | 预测路径回归、重生成 dts diff、动态引用检索、依赖用途矩阵及代码/config/锁文件/脚本/文档一起验收；不替代数据库或浏览器验收 |
+| T17 后端分层收敛 | P2 / 四维代码治理已入库，待环境验收 | 2026-11-08 提交后起点为 SQL 149、仓储直连 9、反向依赖 2、租借计数 73；本轮分批迁移后 AST 四项均为 0，route/事务/孤立 controller 仍为 0。租借分别登记：真实收编 73→13；独立语义修正 13→7（6 处池/已有连接误计）；6 处真实租借接共享 helper 并删除 1 处无调用旧入口后 7→0。全部归零台账键删除，max=0，历史锚点只追加 | 保持 controller→service→repository 与共享 withConnection；新业务继续受目标分支锚点和 AST 增长检查保护。当前本地 HEAD 已启用目标锚点比较，远程 PR 仍须按真实目标引用执行；既有实现已在当前提交历史，本轮持续守门 | 执行行为/权限/事务回归、后端全测、安全/分层及下载审计、严格 ESLint、字段/公共选项审计、类型/文档检查和 git diff --check；当前结果见本节末尾收口记录。未连接云端数据库，静态与替身测试不能替代数据库/浏览器验收 |
+| T18 闲置 API、组件与依赖治理 | P1 / 已提交 `ee05c43`；组件保留边界见 T19 | forecast 真实调用、analytics 63 方法、16 个组件候选和依赖四维矩阵见 T18 专节；保留 dts 证据不一致的公共组件 | 按删/修/留依据执行，删除双零局部组件与确认无用途依赖，保留 OCR、权限与有效契约 | 预测路径回归、重生成 dts diff、动态引用检索、依赖用途矩阵及代码/config/锁文件/脚本/文档一起验收；不替代数据库或浏览器验收 |
+| T19 闲置导出与重复实现续项 | P1 / 本批已闭环，未提交；后续候选见 T19.4 | 起点 `ee05c43`，工作区干净；API、Composable、字段权限、图片保存与薪资表格交互复用见下文 | 清理确证闲置导出，统一权限与图片/表格公共行为；补齐剩余 14 项决定表及销售客户链路复核 | 类型、严格 lint、前端规范、后端全测、文档与 diff 检查；不降低基线，不把静态/模拟测试等同浏览器或云库验收 |
+| T20 首屏 CSS 构建体积 | P1 / 本批已完成，未提交 | 删除公共 styles.scss 中 21 条无消费者的旧装饰/过渡规则；生产首屏 CSS 281157→279580 bytes，减少 1577 bytes，低于原 280000 bytes 上限 420 bytes | 保留在用 fade、组件动效和原体积阈值；动效登记仅收紧 styles.scss 至实测 9 | 原 build 与体积门禁 rc=0，97 项前端测试通过；生产 CSS 保留规则 AST 一致；18 组浏览器样式/布局一致，截图差异和验收边界见下文 |
+
+### T20 首屏 CSS 闲置样式清理（2026-11-08）
+
+本批承接 T19 已实证的体积问题：首屏 CSS 为 281157 bytes，比既有 280000 bytes 上限多 1157 bytes。只修改 `frontend/src/styles.scss` 的无消费者规则，保留现有全局导入、构建分块、压缩算法及原体积阈值，未把首屏样式挪入懒加载文件。
+
+清理前先查模板、动态 class、完整动画字符串、Vue transition 的静态/动态 name，以及前后端源码、审计登记和文档。21 条规则由 17 个选择器块与 4 个 keyframes 组成：
+
+| 删除范围 | 证据与边界 |
+| --- | --- |
+| page/scale/slide enter/leave 过渡（8 个选择器块） | App 路由壳未使用这些 transition；全站实际 transition name 为 fade、fab-scale、slide-down、sub-menu 及各组件专属名称，无动态映射到本批名称 |
+| 四方向 fadeInUp/Down/Left/Right keyframes 和 animate-fade-in-*（4+4） | 原名与 class 的非定义调用为 0；现有 AOS 使用自己的 data-aos 效果，组件专属动画不受影响 |
+| hover-card 两个规则 | 非定义调用为 0；现行后台卡片读取 admin-layout 公共视觉，不使用旧的浮起 8px 装饰 |
+| btn-click-effect 三个规则 | 非定义调用为 0；保留现行公共按钮控件与反馈入口 |
+
+复验命令：`rg -n 'animate-fade-in|hover-card|btn-click-effect|fadeInUp|fadeInDown|fadeInLeft|fadeInRight' frontend/src backend/src`，以及 `rg -n '<transition|<Transition|transitionName|enter-active-class|leave-active-class' frontend/src --glob '*.{ts,vue}'`；手工核对 page/scale/slide 与有不同前后缀的现行名称。删后对全部移除 class/keyframes 做精确边界扫描，前后端源码均 0 命中。正式审计和历史说明中的名称属于规则登记，不当作运行时消费者。
+
+公共 SCSS 使用现有 Sass + esbuild 依赖编译，删前 184684、删后 183107 bytes，减少 1577 bytes。PostCSS AST 对照确认只删除上述 21 条顶层规则，其余规则内容与顺序完全一致；保留 fade 与 pulse/bounce、各组件状态和动画。没有删除任何共享视觉令牌，也没有改控件尺寸、主题或响应式断点。
+
+`motion-adoption-baseline.json` 只降低 `src/styles.scss` 一项：登记上限 20→9；本批开始时实测已有 18 处，删除闲置规则后实测 9 处。未全量重建动效基线，其他文件与构建体积基线不变。动效权威规范同步说明退役的闲置样式入口。
+
+#### T20 验证与打包
+
+原 `npm --prefix frontend run build` 已完成，rc=0：包含全部 `check:standards`、类型检查、严格 ESLint、19 个测试文件 / 97 项前端测试、Terser 生产压缩及原 `check:bundle-size`。首屏 CSS 从 `index-C3vj9eln.css`（281157 bytes）降至 `index-B-ei0PZB.css`（279580 bytes），减少 1577 bytes；原上限 280000 bytes 不变，剩余 420 bytes。首屏 JS 为 604.14 KiB，总量 877.16 KiB，均低于原阈值。对真实生产首屏 CSS 再做 PostCSS AST 对照，除本批删除的 21 条规则外，其余内容与顺序完全一致。
+
+`frontend/dist` 和 `frontend/dist.zip` 已更新。ZIP 内直接包含 `index.html`，共 798 个文件，入口 5 个静态资源均存在，CRC 校验通过；未打入环境文件、源码映射或 `.DS_Store`。压缩包 9666262 bytes，SHA-256：`a617b31707ef83e90c9175be0ac12db954fe053dd71d1fe9f063061430feaccd`。产物不入库，本轮未提交、未部署。
+
+浏览器对照采用本机 Chrome 150、3 个真实公开路由（`/login`、`/price-query`、`/sales-price-display`）、375/768/1440 CSS px 和浅/深主题，共 18 组。接口由临时探针提供固定演示数据，冻结时间、使用北京时间与减少动态效果设置，不访问云端，不执行登录/写入。18 组 DOM 标准计算样式、布局矩形和文字均严格一致，均无页面脚本异常或横向溢出。生产 CSS 对照保留的 1070 个顶层 AST 节点逐项相同。
+
+截图采样边界：最初的全页截屏存在取帧不稳定，最终统一使用关闭 GPU 的 Chrome、页面前置及 900px 高视口截屏，重新采集全部前后对照。最终 17/18 组逐像素相同；销售报价 375px 浅色组有 11 个像素差异，位于 `(141,158)` 至 `(234,159)`，单通道最大差值为 1/255，计算样式和布局相同。未将此结果登记为全部截图零差异；不等同真实账号、真实数据、后台受保护页面、全部交互或 iOS/Android 真机回归。
+
+收口执行 `npm run check:docs` 和 `git diff --check`；一次性浏览器探针、依赖、截图与旧产物对照均清理，正式生产目录及压缩包保留。本轮只清理前端闲置 CSS，未修改后端业务，未重复执行后端全量测试。
+
+### T19 闲置导出、公共行为去重与未完事项（2026-11-08）
+
+起点为用户已提交的 `ee05c43`。本节承接 T18 后未处理的事项；T18 的 analytics、依赖/OCR 与已删除 3 个局部组件不重复实施。当前改动不自动提交。
+
+#### T19.1 未使用导出
+
+证据命令：对下表方法逐个运行 `rg -n '\b(方法名)\b' frontend/src --glob '*.{ts,vue}'`，核查所有命中、default 对象、barrel 重导出、别名与调用点；再查 `docs config scripts frontend/tests frontend/scripts backend/test` 的登记。删除前下列候选除定义文件与自身导出对象外，运行时调用均为 0。API 包装的删除不等于后端端点退役，后端有效能力保留。
+
+| 文件（frontend/src/） | 本批处置 | 非自身用途与依据 |
+| --- | --- | --- |
+| `api/base-data.ts` | 删 `getBrands/getColors` | 0；保留各 scope 的真实公共入口与在用 getModels/getMemories |
+| `api/price-list.ts` | 删 `getSyncConfig/updateSyncConfig/getPricesByBrand` | 0；在用 ById/多配置与公开搜索接口保留 |
+| `api/shop.ts` | 删 `getConfigsByCategory/getPhoneImages/getOrders/getOrderDetail/getTemplateDetail` | 0；同步清唯一支撑 OrderListParams，保留在用写操作与公共订单 API |
+| `api/shop-public.ts` | 删 `getProductImages/updateCartItem/clearCart` | 0；购物车现有 get/add 调用保留 |
+| `api/preorder.ts` | 删 `getMatchablePreorders/getPreorderDetail/PREORDER_STATUS_LABELS` | 0；同步清 preorderApi 的自身登记；PREORDER_FEATURE_SUMMARY 中旧方法示例改为在用分页筛选，连带修正示例字段并纳入编译 |
+| `api/home-sections.ts` | 删 `addProductsToSection` | 0；保留在用逐项添加与排序 |
+| `api/phone-stock-warnings.ts` | 删 `getWarningThreshold` | 0；同步清 default 对象 |
+| `composables/ui/useConfirm.ts` | 删 `confirmSuccess/confirmError/confirmInfo/confirmWarning` | 0；保留 confirm/confirmDelete，统一 notification-simple 不变 |
+| `composables/mobile.ts` | 删 `isMobileBrowser/isWeChatBrowser/getMobileDeviceInfo/getMobileOptimizeConfig/useMobileGesturesCompat` | 0；清理失效 default 对象项及类型 import，保留公共设备检测与响应式能力 |
+| `composables/useNotification.ts` | 删 `useNotificationService/useNotificationWithDebounce` | 0；防抖继续由唯一 useNotification 的选项提供 |
+| `composables/usePageCache.ts` | 删 `hasPendingRequest/preloadCache` | 业务 0；旧 API_CACHE_GUIDE 两段示例同步替换，不保留失效文档入口 |
+| `composables/core/useEventBus.ts` | 删 `waitForEvent/waitForEvents` 与多余 globalEventBus export | 外部 0；**实例内部在用必须保留**，一并清空的卸载回调 |
+| `composables/core/useAsync.ts` | 删 `createAsyncState` | 0；在用 useAsync 保留 |
+| `composables/useTheme.ts` | 删 `useThemeTransition` | 0；主题公共入口保留 |
+| `composables/useMobileMenu.ts` | 删 `useSimpleMobileMenu` | 0；真实 useMobileMenu 保留 |
+| `composables/useBrandModels.ts` | 删 `brandModelsStore` | 0；去掉未使用的模块加载时实例化，保留 useBrandModels |
+| `composables/usePagePermissions.ts` | 删 `useBatchPermissions` 及独有 PermissionConfig | 0；权限公共入口 usePagePermissions 不变 |
+| `composables/ui/useMediaQuery.ts` | 删 `useCustomMediaQuery` | 仅 barrel 重导出，无消费者；同步清 composables/index.ts |
+
+隔离 HEAD 构建复核另外发现 4 个直接使用却未直接登记的前端依赖。`qrcode` 原先实际解析到仓库外的 `/Users/imac/node_modules`；其他 3 个依赖偶然通过间接依赖存在。前端 package.json/lock 已按原实际版本登记，未改变任何保留包的锁定版本；async-validator 仅用于类型，登记为 devDependency。以下是本轮新增声明的用途矩阵，不与 T18 已完成的删包矩阵混算：
+
+| 依赖 / 版本 | 运行时 | 构建 / 类型 | 脚本 | 测试 | 处置 |
+| --- | --- | --- | --- | --- | --- |
+| qrcode 1.5.4 | SubsidyListSection.vue 的实际动态 import，用浏览器 Canvas 生成补贴二维码 | Vite 按需打包；现有 external-modules.d.ts 供调用方类型检查 | 无直接调用 | 无二维码专项行为测试，构建验证真实 import 可解析 | 补运行依赖，移除父目录偶然提供的前提；未引入 Node canvas |
+| dayjs 1.11.19 | 唯一 TimeUtil 的时间解析、时区与插件 | 编译/打包统一时间工具 | 无直接调用 | 无本轮新增时间专项测试，沿用全套门禁 | 将在用间接依赖登记为直接运行依赖，不换版本 |
+| @vueuse/core 10.11.1 | useLocalStorage.ts 调用 tryOnScopeDispose | 编译/打包公共存储 composable | 无直接调用 | 无本轮新增专项断言 | 补直接运行依赖，不换版本 |
+| async-validator 4.2.5 | 此直接引用无运行时代码，Element Plus 自身另有间接运行依赖 | PreorderFormModal.vue 从 RuleItem 获取 validator 类型 | 无直接调用 | 无本轮新增专项断言 | 补直接开发依赖，保留唯一现有类型来源 |
+
+复验：从 frontend 路径执行 require.resolve 后四者均解析到 frontend/node_modules；对比 HEAD 与当前 lock 的所有原有 packages 条目，保留版本变化为 0；新增 26 条 qrcode 所需包记录。`npm --prefix frontend audit --audit-level=high --json` 实测 info/low/moderate/high/critical 均为 0。缺失声明修正后重新运行整套前端规范和原配置构建；后端依赖未改，不重复 T18 的 OCR 删包实验。
+
+#### T19.2 剩余 14 项三态决定表
+
+三态为“删 / 留（明确理由） / 待验证（方法）”。2026-11-08 本轮再次检索原名、kebab-case、模板、import 与完整动态组件字符串；动态机制检索 `rg -n 'defineAsyncComponent|resolveComponent|import\.meta\.glob|<component\b' frontend/src --glob '*.{ts,js,vue}'` 为 63 行，逐一检查来源，未发现这 13 个组件的运行时引用。`mobile-form`、`mobile-table`、`user-info` 等 CSS class，以及同名 UserInfo 业务类型均不能算作组件调用。
+
+重生成证据承接 T18.2 在原 Vite 配置下的完整构建：13 个公共组件在重生成 dts 中均仍有声明，构建图均为 0；自动发现插件扫描组件目录并生成声明，不能把这个声明当成有效使用，也不能手改扫描范围制造删除条件。本轮重新构建结果在收口处登记。
+
+| 剩余项（frontend/src/） | 运行时引用 / dts | 三态决定 | 理由与后续验证方法 |
+| --- | --- | --- | --- |
+| `components/MobileForm.vue` | 0 / 有 | 留 | 不满足此前“双零”约束；mobile-form 为 CSS，不是调用；按 T18.2 重生成+动态链复验 |
+| `components/MobileTable.vue` | 0 / 有 | 留 | 不满足“双零”；SyncLogView 的 mobile-table-* 为 CSS；同上 |
+| `components/PaginatedTable.vue` | 0 / 有 | 留 | 不满足“双零”；同上 |
+| `components/ResponsiveLayout.vue` | 0 / 有 | 留 | 不满足“双零”；同上 |
+| `components/DraggableList.vue` | 0 / 有 | 留 | 自动发现声明仍存在，非手写旧登记；不单独删 dts；同上 |
+| `components/DraggableRow.vue` | 0 / 有 | 留 | 不满足“双零”；同上 |
+| `components/IconSelector.vue` | 0 / 有 | 留 | 不满足“双零”；同上 |
+| `components/InventoryWarnings.vue` | 0 / 有 | 留 | 不满足“双零”；同上 |
+| `components/MemorySelector.vue` | 0 / 有 | 留 | 不满足“双零”；同上 |
+| `components/ProfessionalScanner.vue` | 0 / 有 | 留 | 不满足“双零”；同上 |
+| `components/SiteHeader.vue` | 0 / 有 | 留 | 不满足“双零”；同上 |
+| `components/StockInDetailModal.vue` | 0 / 有 | 留 | 不满足“双零”；同上 |
+| `components/UserInfo.vue` | 0 / 有 | 留 | 不满足“双零”；UserInfo 业务类型与 user-info CSS 排除后仍零调用；同上 |
+| `constants/saleTypes.ts` | 0 / 不适用 | 删 | 属常量文件，无模板/组件 dts；全库查文件名和四个运行时导出均仅自身引用；复用现有 phoneStatuses，不删除有效状态定义 |
+
+因此原 17 项累计删除 4 项（上批 3 个局部组件+本批 1 个常量文件），13 个有明确保留依据；不声称“17 个孤儿全部清零”。若未来要改变删除验收规则，应明确改用何种证据，而非用删除后 dts 消失来循环证明删除前无用途。
+
+#### T19.3 SalesView ↔ useSalesCustomers 复核
+
+结论：**未发现“保留了第二套 132 行客户业务逻辑”**，不建立虚假迁移任务。`SalesView.vue` 只 import 并调用一次 useSalesCustomers，把返回的 handleCustomerSearch/createNewCustomer 等接到模板事件，卸载时调用 disposeSalesCustomers；客户搜索、创建 payload、选择和重置实现均在 useSalesCustomers.ts，页面没有第二份定义。
+
+可复验：`rg -n 'useSalesCustomers|handleCustomerSearch|createNewCustomer|disposeSalesCustomers|searchCustomerOptions|buildCustomerPayload' frontend/src/views/sales/{SalesView.vue,useSalesCustomers.ts}`。前者的命中为导入、解构、事件绑定与清理，后者才包含函数定义与 API 调用。
+
+对两文件完整文本运行 Python difflib.SequenceMatcher(autojunk=False)，相同行实测 92 行，其中空行 42 行、仅闭合标点 29 行，最长连续相同块 4 行。原“132 行整块残留”不符合当前提交；相同名称和解构列表不等于重复业务实现。
+
+#### T19.4 本批公共行为去重与后续边界
+
+- 提醒/分享：FieldAccessService 收口权限读取、递归脱敏及单字段拒写判定，field-access 中间件统一 HTTP 拒绝与异常转交；保留业务模块键、响应键映射、提醒类型 name 特例与分享作者脱敏。租赁多字段组合/动作权限例外不能直接套用这一规则，保留原逻辑。
+- 两个报价页：useImageGallery 收口 PNG 下载、iOS 预览切换、JPEG 系统分享、防重复分享与 URL 清理；补齐重新生成/关闭/卸载后的异步结果失效处理。查询、截图列宽、水印和联系人样式保留各自边界。
+- 两个薪资弹窗：删除页面私有 pointer/滚轮状态机，宽表外层通过 data-table-drag-scroll 接入现有 admin-table-drag-scroll；同一公共入口处理鼠标、Shift 滚轮、交互控件与触摸边界。
+- routes/index.js 删除未接线 v1 路由整段注释和过时“旧版路由”标签，不修改活路由。
+
+其余原报告 clone 候选按后续批次处理：基础数据 CRUD 模板、库存/销售筛选器、H5 订单/登录注册布局、薪资明细剩余模板和样式，以及报价截图克隆/水印布局。相同行需先区分业务与空白/框架壳，不为减少行数把权限键、筛选事件或请求身份强行合并。database-sync 后端及 data-backup.service 维持原有功能决策边界，本批不退役。
+
+#### T19.5 验证结果
+
+- `npm --prefix backend test`：1404 项，1390 通过、14 项真实数据库测试跳过、0 失败。新增 7 项字段权限回归已接入正式全测；最终 controller 清理后再跑 `node --test backend/test/field-access.check.js backend/test/reminder-controller.check.js backend/test/shared-controller.check.js`：16/16 通过。
+- `npm --prefix frontend run check:standards`：rc=0，包含 type-check、严格 lint、所有规范/安全/分层/下载/字段/公共选项审计与 19 个文件的 97 项前端测试。新增图片保存/分享 9 项、全局表格交互 4 项；不使用 any，不新增豁免。
+- 分层门禁：HEAD 锚点历史与逐文件 AST 比较均通过，route/SQL/事务/仓储直连/反向依赖/连接租借/孤立 controller 均为 0；本批没有修改架构台账或上限。
+- 原 Vite 生产配置（Terser、gzip、Brotli）构建 rc=0，产物写入临时目录；重新删除并生成 components.d.ts：123→121，仅去 RouterLink/RouterView 两条第三方生成声明，13 个候选声明无变化，构建模块图逐项均为 0。未改变插件扫描范围；生成文件受 gitignore 管理，不手写删除条目。
+- `npm run check:docs`：205 份 Markdown、8 个已标记 TS/Vue 示例、规范冲突检查通过；预定示例新增 2 段编译保护。`node frontend/scripts/check-standards-coverage.mjs`：新增公共入口登记后通过。
+- 构建体积门禁使用原脚本、原阈值和本次临时构建：首屏 JS 604.14 KiB 通过、CSS 274.57 KiB（281157 bytes）超过 280000 bytes 上限，首屏总量 878.70 KiB 通过。已用独立 HEAD 源码树、同一已安装依赖和 Vite 配置复核，HEAD CSS 同为 281157 bytes，文件名均为 index-C3vj9eln.css，字节完全相同，SHA-256 均为 c6f1cd29bf104ebb1f7cf66898bdebb28ad9b83c72f5fe651fdb5720fedc5eb3；两次原体积门禁均只因 CSS 失败。此对照复用安装目录，不等同全新 npm ci。当时的失败登记 T20，后续关闭结果见 T20；T19 当次未调整阈值，不把当时检查记为全绿。
+- `git diff --check` 通过。未访问云端数据库、未做浏览器/iOS 真机视觉、真实分享或补贴二维码扫码验收；事件与平台能力的模拟测试不能替代这些验收。临时构建、对照源树、探针和日志在完成后清理，正式测试保留。
+
+已同步权威入口：后端 INDEX、字段权限指南、后台表格规范、报价公共实现规范与 manifest、缓存指南、预定 API 用法；当前决定和后续候选只保存在本任务台账。
 
 ### T18 前端闲置契约、组件与依赖治理（2026-11-08）
 
-- 状态：本轮代码与检查已闭环，待提交；起点提交 `c9aa410`，开始时工作区干净。本任务与 T17 已完成的四维分层治理分开登记，不调整架构基线。
+- 状态：已提交 `ee05c43`；起点提交 `c9aa410`，开始时工作区干净。本任务与 T17 已完成的四维分层治理分开登记，不调整架构基线。
 - 顺序：先核对 `getSalesForecast` 调用与真实路由，再对 analytics 全部方法逐项登记删/修/留；组件必须经全新 dts 构建和动态引用双证据核对，证据不一致时保留；依赖逐项检查运行时/构建/脚本/测试用途，优先核查 canvas 与 OCR/traineddata。
 - 验收：保留前端正常分析功能和真实后端接口；新增必要的路径契约回归。删除组件同步审计脚本、基线、字段契约、页面台账和当前文档。每项依赖删除同步 package.json/锁文件并以全量后端 0 fail 兜底。完成后记录实测类型、严格 ESLint、规范、构建、测试和文档结果；未执行的数据库/浏览器验收单独说明。
 
