@@ -573,8 +573,7 @@ import { unifiedApi } from '@/utils/unified-api'
 import type { SalesAnalytics } from '@/types/analytics'
 import type {
   SalesConditionBreakdown,
-  SalesForecastCombination,
-  SalesForecastResponse
+  SalesForecastCombination
 } from '@/types'
 import type { SalesAnalyticsProps, LoadingChangeEmits } from '@/types/component'
 import { useAnalyticsFieldVisibility } from './useAnalyticsFieldVisibility'
@@ -646,7 +645,7 @@ const trendPeriod = ref('monthly')
 const chartType = ref<'pie' | 'bar'>('pie')
 const comparisonType = ref<'bar' | 'radar'>('bar')
 const productFilter = ref('')
-const forecastPeriod = ref('week') // 默认未来7天
+const forecastPeriod = ref<'week' | 'month' | 'quarter'>('week') // 默认未来7天
 const { loading: forecastLoading } = useLoadingState()
 const selectedProduct = ref(0)
 const selectedDate = ref<string | null>(null)
@@ -1269,12 +1268,10 @@ const generateForecast = async () => {
   try {
     forecastLoading.value = true
 
-    const response = await unifiedApi.get<SalesForecastResponse>('/analytics/sales-forecast', {
-      params: {
-        period: forecastPeriod.value,
-        page_size: 10,
-        ...getStoreParams()
-      }
+    const response = await analyticsService.getSalesForecast({
+      period: forecastPeriod.value,
+      page_size: 10,
+      ...getStoreParams()
     })
 
     if (response.success && response.data) {

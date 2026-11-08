@@ -1,7 +1,7 @@
 # 前端页面与功能单元台账
 
 > 状态：强制登记，持续维护
-> 统计日期：2026-11-02
+> 统计日期：2026-11-08
 > 统计来源：`frontend/src/router/index.ts`、`frontend/src/views/**/*.vue`、`frontend/src/components/**/*.vue`
 
 > 导航审计记录：后台 PC 与手机入口均由 `views/system/page/SimpleAdminView.vue` 统一承载；菜单数据来自 `stores/menu.ts`，菜单点击统一派发 `menu-click`，权限预检统一由主布局执行。手机端不再将菜单分流到未渲染的底部导航；`DynamicSidebar` 已退役，`ResponsiveLayout` 仅作为通用内容布局保留。
@@ -20,18 +20,18 @@
 | --- | --- | ---: |
 | 懒加载路由入口 | `router/index.ts` 中的 `component: () => import(...)` | 65 |
 | 实际叶子路由 | 可直接访问的页面路由，排除 3 个布局容器 | 62 |
-| 页面源文件 | `frontend/src/views/**/*.vue`，包括 Tab、弹窗和页面内部单元 | 131 |
+| 页面源文件 | `frontend/src/views/**/*.vue`，包括 Tab、弹窗和页面内部单元 | 128 |
 | 叶子路由唯一视图文件 | 62 个叶子 URL 对应的唯一 `views` 文件；两个文件各被两个 URL 复用，另有 1 个 URL 使用公共组件 | 59 |
 | 布局容器视图文件 | 后台、H5 管理和 H5 手机端布局 | 3 |
-| 非路由功能单元 | 未被路由直接加载的 Tab、弹窗、页面内部单元或复用单元 | 69 |
-| 公共组件源文件 | `frontend/src/components/**/*.vue` | 74 |
-| 涉及表格的页面源文件 | 页面中出现 Element/原生表格或公共表格入口 | 56 |
+| 非路由功能单元 | 未被路由直接加载的 Tab、弹窗、页面内部单元或复用单元 | 66 |
+| 公共组件源文件 | `frontend/src/components/**/*.vue` | 73 |
+| 涉及表格的页面源文件 | 页面中出现 Element/原生表格或公共表格入口 | 55 |
 | 涉及表格的公共组件 | 公共组件中出现表格或表格封装 | 6 |
-| 含按钮的页面/功能单元源文件 | `frontend/src/views/**/*.vue` 中出现 `el-button` | 112 |
-| 含按钮的公共组件源文件 | `frontend/src/components/**/*.vue` 中出现 `el-button` | 47 |
+| 含按钮的页面/功能单元源文件 | `frontend/src/views/**/*.vue` 中出现 `el-button` | 110 |
+| 含按钮的公共组件源文件 | `frontend/src/components/**/*.vue` 中出现 `el-button` | 46 |
 | 原生按钮 | 所有 Vue 页面和公共组件中的 `<button>` | 0 |
 
-“实际叶子路由”与“页面源文件”不能相加作为页面总数：62 个叶子 URL 实际映射到 59 个唯一 `views` 文件和 1 个公共组件；`AggregatedProductDetail.vue` 与 `OrderDetail.vue` 分别被两个 URL 复用。131 个 `views` 文件由 59 个叶子页面文件、3 个布局容器和 69 个非路由功能单元组成。没有独立 URL 的 Tab、弹窗和组件仍然属于后续统一审计范围。
+“实际叶子路由”与“页面源文件”不能相加作为页面总数：62 个叶子 URL 实际映射到 59 个唯一 `views` 文件和 1 个公共组件；`AggregatedProductDetail.vue` 与 `OrderDetail.vue` 分别被两个 URL 复用。128 个 `views` 文件由 59 个叶子页面文件、3 个布局容器和 66 个非路由功能单元组成。没有独立 URL 的 Tab、弹窗和组件仍然属于后续统一审计范围。
 
 ### 下载安全专项登记
 
@@ -161,7 +161,6 @@
 - `views/analytics/page/TransferAnalytics.vue`
 - `views/data-optimization/page/DataCheckTab.vue`
 - `views/data-optimization/page/DataImportTab.vue`
-- `views/data-optimization/page/DatabaseSyncTab.vue`
 - `views/inventory/page/InventoryEditDialog.vue`
 - `views/inventory/page/InventorySearchFilters.vue`
 - `views/inventory/page/InventoryStatsCards.vue`
@@ -187,10 +186,8 @@
 
 ### 3.3 预定、销售与工资
 
-- `views/preorders/page/DeliverConfirmModal.vue`
 - `views/preorders/page/MatchPreorderModal.vue`
 - `views/preorders/page/PreorderFormModal.vue`
-- `views/preorders/page/QuickAddCustomerModal.vue`
 - `views/sales/page/SalesBatchForm.vue`
 - `views/sales/page/SalesCheckoutForm.vue`
 - `views/sales/page/SalesDeviceInfoPanel.vue`
@@ -246,7 +243,7 @@
 - H5 管理：`views/H5-admin/page/orders.vue`
 - 基础资料与业务：`accessories/AccessoriesView.vue`、`brands/BrandsView.vue`、`colors/ColorsView.vue`、`customers/CustomersView.vue`、`employees/EmployeesView.vue`、`memories/MemoriesView.vue`、`models/ModelsView.vue`、`stores/StoresView.vue`、`suppliers/SuppliersView.vue`
 - 分析、考勤与系统：`analytics/page/CustomerAnalytics.vue`、`analytics/page/EmployeeAnalytics.vue`、`analytics/page/InventoryAnalytics.vue`、`analytics/page/ProfitAnalytics.vue`、`analytics/page/SalesAnalytics.vue`、`analytics/page/TransferAnalytics.vue`、`attendance/AttendanceView.vue`、`backup/BackupView.vue`、`system/SystemView.vue`、`system/page/Returngoods.vue`、`system/phone-warning-config/PhoneWarningConfigView.vue`
-- 数据、权限与预定：`data-optimization/page/DataCheckTab.vue`、`data-optimization/page/DataImportTab.vue`、`data-optimization/page/DatabaseSyncTab.vue`、`menu/MenuManagementView.vue`、`permissions/page/LogsPage.vue`、`permissions/page/ModuleManagementView.vue`、`permissions/page/RolesPage.vue`、`permissions/page/StoreBindingsPage.vue`、`permissions/page/UserRolesPage.vue`、`preorders/PreordersView.vue`、`preorders/page/MatchPreorderModal.vue`
+- 数据、权限与预定：`data-optimization/page/DataCheckTab.vue`、`data-optimization/page/DataImportTab.vue`、`menu/MenuManagementView.vue`、`permissions/page/LogsPage.vue`、`permissions/page/ModuleManagementView.vue`、`permissions/page/RolesPage.vue`、`permissions/page/StoreBindingsPage.vue`、`permissions/page/UserRolesPage.vue`、`preorders/PreordersView.vue`、`preorders/page/MatchPreorderModal.vue`
 - 库存、报价与综合查询：`inventory/InventoryView.vue`、`inventory/page/InventoryTable.vue`、`price-list/PriceListView.vue`、`price-list/page/PublicPriceQuery.vue`、`price-list/page/SalesPriceDisplay.vue`、`price-list/page/SyncLogView.vue`、`query/QueryView.vue`、`reminders/ReminderView.vue`、`rentals/RentalsView.vue`、`repairs/RepairsView.vue`
 - 工资、销售、分享与国补：`salary/page/SalaryAttendanceListDialog.vue`、`salary/page/SalaryEmployeeSalesDetailDialog.vue`、`salary/page/SalaryEmployeesTab.vue`、`salary/page/SalaryMyRecordsTab.vue`、`salary/page/SalaryPayoutTab.vue`、`salary/page/SalarySalesDetailDialog.vue`、`salary/page/SalaryTemplatesTab.vue`、`sales/page/SalesBatchForm.vue`、`sales/page/SalesInventoryDetailDialog.vue`、`sales/page/SalesSummaryView.vue`、`sales/page/SalesTableView.vue`、`shared/SharedView.vue`、`subsidy/components/SubsidyListSection.vue`
 - 供应商付款：`payments/SupplierPhonePaymentsView.vue`
@@ -334,6 +331,7 @@
 
 | 日期 | 变更 | 结果 |
 | --- | --- | --- |
+| 2026-11-08 | T18 按全新构建 dts 与动态引用双零证据删除三个未接入局部组件，同步字段契约、动效/令牌基线与页面清单；公共组件候选因 dts 仍有声明而保留；所有数量按当前源码重新实测 | 页面源文件 131→128、非路由单元 69→66；公共组件本批未删除，实测 73 个。Vite 构建、完整 `check:standards`（含类型、84 项前端行为测试、严格 ESLint 与相关审计）通过；未执行浏览器/真机验收 |
 | 2026-11-06 | 仪表盘公告默认按置顶优先、最新优先展示并支持前后切换；站内公告和 DH 公告支持图片/视频富文本，经验分享、公告编辑和展示统一复用 RichTextEditor/RichContent | 公共组件更新为 74；定向 ESLint、类型、UI、组件采用、权限、响应式、文字、令牌、动效、后端 413 项契约和文档审计通过；未执行浏览器/真机视觉验收，公告表结构迁移未执行 |
 | 2026-11-06 | 系统设置站点信息 Tab 增加站内公告管理卡片，与 Logo/站点信息并列；仪表盘及手机端展示已发布公告 | `type-check`、定向 ESLint、权限、Loading、响应式、按钮、弹窗、字段、文字、令牌和文档审计通过；未执行浏览器/真机视觉验收，数据库迁移未执行 |
 | 2026-11-04 | 完成剩余 29 个超长 Vue 样式块模块化；外置样式全部保持 `scoped`，并将重复按钮尺寸、表格结构、校验边框、搜索控件高度和 MobileDialog 安全区 padding 收敛到公共契约 | 超长 Vue 样式块从 29 个降至 0；29/29 编译后 CSS AST 等价；`!important` 从 1957 降至 1897，剩余项按 7 类运行时契约逐文件登记，未批准覆盖和非令牌颜色使用点均为 0。`check:release`、生产构建、38 项单测和 Bundle 门禁通过；未执行浏览器截图、真机或云端业务回归 |

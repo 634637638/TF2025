@@ -28,6 +28,158 @@
 | T15 入库范围、单号序列与生产 DDL 边界 | P1 / 代码已完成，待独立测试库验证 | 2026-11-05：入库编辑/删除改为事务锁定并将授权门店范围带入最终写语句；入库单号改为 `invoice_sequences` 按北京时间日期和 `PO` 类型锁定递增；生产 schema 变更只允许显式 `backend/scripts/migrate-*.js` 入口，普通应用进程即使误配迁移环境变量也无权执行 DDL | 在已迁移的独立测试库验证入库创建、跨门店拒绝、编辑/删除事务及多连接并发单号；生产发布前确认 `invoice_sequences` 已存在并保持 `SCHEMA_MIGRATION_MODE` 未配置 | 契约测试、并发分配单元测试及后端全量测试通过；真实数据库测试仅在独立测试库执行并记录清理回读。回滚应用版本不删除已分配序列；如需恢复旧单号生成逻辑，先评估已生成编号格式及重复风险 |
 | T16 地址层级与地区数据契约 | P2 / 后续债务，未满足强制业务要求 | 客户编辑已完成省、市、县/区三级联动；现有 customers 契约只有 `province`、`city`、`address`，县/区暂与详细地址组合保存；业务要求必须提供完整省级、地级、县级、乡级（乡镇/街道）、村级（村委会/社区）选择数据，当前尚未满足 | 先确定可验证且获准使用的现行全量数据来源及更新责任，再设计唯一共享 `province/city/district/town/village` 类型、权限、API、独立字段和迁移回滚；数据量评估后选择按需加载或服务端查询，避免把完整村级全集塞入首屏包；在独立测试库验证历史地址回显及跨层级变更，不直接修改云端业务库 | 五级数据必须有明确覆盖口径、可追溯来源、版本/截止日期、许可及更新校验；省市县乡村均通过覆盖完整性测试；新增字段前完成前后端契约、权限审计、历史数据迁移、搜索/导出/隐私评估及浏览器回归；当前三级选择不得标记为完成 |
 | T17 后端分层收敛 | P2 / 本轮四维代码治理完成，待环境验收 | 2026-11-08 提交后起点为 SQL 149、仓储直连 9、反向依赖 2、租借计数 73；本轮分批迁移后 AST 四项均为 0，route/事务/孤立 controller 仍为 0。租借分别登记：真实收编 73→13；独立语义修正 13→7（6 处池/已有连接误计）；6 处真实租借接共享 helper 并删除 1 处无调用旧入口后 7→0。全部归零台账键删除，max=0，历史锚点只追加 | 保持 controller→service→repository 与共享 withConnection；新业务继续受目标分支锚点和 AST 增长检查保护。当前本地 HEAD 已启用目标锚点比较，远程 PR 仍须按真实目标引用执行；本轮修改待一起提交 | 执行行为/权限/事务回归、后端全测、安全/分层及下载审计、严格 ESLint、字段/公共选项审计、类型/文档检查和 git diff --check；当前结果见本节末尾收口记录。未连接云端数据库，静态与替身测试不能替代数据库/浏览器验收 |
+| T18 闲置 API、组件与依赖治理 | P1 / 本轮代码与检查已闭环，待提交 | forecast 真实调用、analytics 63 方法、16 个组件候选和依赖四维矩阵见 T18 专节；保留 dts 证据不一致的公共组件 | 按删/修/留依据执行，删除双零局部组件与确认无用途依赖，保留 OCR、权限与有效契约 | 预测路径回归、重生成 dts diff、动态引用检索、依赖用途矩阵及代码/config/锁文件/脚本/文档一起验收；不替代数据库或浏览器验收 |
+
+### T18 前端闲置契约、组件与依赖治理（2026-11-08）
+
+- 状态：本轮代码与检查已闭环，待提交；起点提交 `c9aa410`，开始时工作区干净。本任务与 T17 已完成的四维分层治理分开登记，不调整架构基线。
+- 顺序：先核对 `getSalesForecast` 调用与真实路由，再对 analytics 全部方法逐项登记删/修/留；组件必须经全新 dts 构建和动态引用双证据核对，证据不一致时保留；依赖逐项检查运行时/构建/脚本/测试用途，优先核查 canvas 与 OCR/traineddata。
+- 验收：保留前端正常分析功能和真实后端接口；新增必要的路径契约回归。删除组件同步审计脚本、基线、字段契约、页面台账和当前文档。每项依赖删除同步 package.json/锁文件并以全量后端 0 fail 兜底。完成后记录实测类型、严格 ESLint、规范、构建、测试和文档结果；未执行的数据库/浏览器验收单独说明。
+
+#### T18.1 forecast 调用面与逐方法分类
+
+核查基准：`c9aa410`。旧 `getSalesForecast` 属于**零调用方法**：视图 0、composable 0；但在用的 `SalesAnalytics.vue:1272` 直接请求 `GET /analytics/sales-forecast`，后端 `routes/index.js:137` 挂载 `/analytics`，`routes/analytics.js:281` 声明 `GET /sales-forecast`。旧方法为 `/analytics/sales/forecast`，响应误标为数组，缺少 page_size 且多出后端未实现的 year 周期。本批修正公共方法的路径、周期、分页与唯一 `SalesForecastResponse` 类型，并把该在用页面接入公共方法，保持门店范围参数。
+
+以下覆盖原文件全部 **63 个 HTTP 方法**（40 删、1 修、22 留）；另列 getInstance。此前“42 个不存在方法”的数量不准确，实测为 41，其中 forecast 修复，剩余 40 个满足删除双条件。有效的 realtime、inventory/value 即使当前页面零调用也保留，避免把“没用”与“后端不存在”混为一谈。
+
+逐行证据口径与命令：
+
+- E1：`git grep -n -E '(analyticsService|analyticsApi)\.getSalesForecast\b' c9aa410 -- frontend/src` 无输出（rc=1）；`git grep -n -F '/analytics/sales-forecast' c9aa410 -- frontend/src backend/src/routes` 找到在用页面与真实路由。下面方法表的“前端原路径”来自该提交 analytics.ts 的 AST，后端按 HTTP 方法+挂载路径匹配；动态客户 ID 按路由参数匹配。
+- E2：`git show c9aa410:frontend/src/api/analytics.ts` 核对每个方法；`rg -n '^router\.(get|post|put|patch|delete)' backend/src/routes/analytics.js` 输出 31 条真实路由；对每行执行 `git grep -n -E '(analyticsService|analyticsApi)\.<方法名>\b' c9aa410 -- frontend/src`，调用点或无输出结果逐项记在表中。别名 analyticsService 与 analyticsApi 同时核对；静态/动态 import、重导出和字符串检索未发现另一条方法消费链。
+- E3：`npm --prefix frontend run test:unit -- tests/analytics-api-contract.spec.ts` 对保留/修复后的 23 个方法实际调用 mock unifiedApi，并与后端 AST 路由比较；另验证预测周期、门店、分页及返回值。原删除方法不再提供调用入口。
+
+| 方法 | 前端原路径（GET，除非另标） | 后端真实路径 / 不存在 | 原视图调用点（frontend/src/） | 处置与命令输出依据 |
+| --- | --- | --- | --- | --- |
+| `getSalesAnalytics` | `/analytics/sales` | `/analytics/sales` | `views/analytics/page/SalesAnalytics.vue:777` | **留**；E2：匹配路由=1，调用=1；保留在用契约 |
+| `getSalesTrends` | `/analytics/sales/trends` | `/analytics/sales/trends` | `views/analytics/page/EmployeeAnalytics.vue:1062` | **留**；E2：匹配路由=1，调用=1；保留在用契约 |
+| `getTopProducts` | `/analytics/sales/top-products` | 不存在 | 视图 0 / composable 0 | **删**；E2：匹配路由=0，调用=0；删除 |
+| `getSalesForecast` | `/analytics/sales/forecast` | 旧路径不存在 → `/analytics/sales-forecast` | 视图 0 / composable 0 | **修**；E1：旧方法调用=0，直接页面调用=1；修复并接线 |
+| `getInventoryAnalytics` | `/analytics/inventory` | `/analytics/inventory` | `views/analytics/page/InventoryAnalytics.vue:925` | **留**；E2：匹配路由=1，调用=1；保留在用契约 |
+| `getLowStockItems` | `/analytics/inventory/low-stock` | `/analytics/inventory/low-stock` | `views/analytics/page/InventoryAnalytics.vue:926` | **留**；E2：匹配路由=1，调用=1；保留在用契约 |
+| `getInventoryTurnover` | `/analytics/inventory/turnover` | `/analytics/inventory/turnover` | `views/analytics/page/InventoryAnalytics.vue:927` | **留**；E2：匹配路由=1，调用=1；保留在用契约 |
+| `getInventoryValue` | `/analytics/inventory/value` | `/analytics/inventory/value` | 视图 0 / composable 0 | **留**；E2：匹配路由=1，调用=0；保留真实后端契约 |
+| `getInventorySupplierStats` | `/analytics/inventory/supplier-stats` | `/analytics/inventory/supplier-stats` | `views/analytics/page/InventoryAnalytics.vue:971` | **留**；E2：匹配路由=1，调用=1；保留在用契约 |
+| `getRecentSoldInventory` | `/analytics/inventory/recent-sold` | `/analytics/inventory/recent-sold` | `views/analytics/page/InventoryAnalytics.vue:989` | **留**；E2：匹配路由=1，调用=1；保留在用契约 |
+| `getCustomerAnalytics` | `/analytics/customers` | `/analytics/customers` | `views/analytics/page/CustomerAnalytics.vue:687` | **留**；E2：匹配路由=1，调用=1；保留在用契约 |
+| `getCustomerSegments` | `/analytics/customers/segments` | `/analytics/customers/segments` | `views/analytics/page/CustomerAnalytics.vue:892` | **留**；E2：匹配路由=1，调用=1；保留在用契约 |
+| `getCustomerRetention` | `/analytics/customers/retention` | `/analytics/customers/retention` | `views/analytics/page/CustomerAnalytics.vue:954` | **留**；E2：匹配路由=1，调用=1；保留在用契约 |
+| `getCustomerLifetimeValue` | `/analytics/customers/lifetime-value` | 不存在 | 视图 0 / composable 0 | **删**；E2：匹配路由=0，调用=0；删除 |
+| `getCustomerGrowth` | `/analytics/customers/growth` | `/analytics/customers/growth` | `views/analytics/page/CustomerAnalytics.vue:817` | **留**；E2：匹配路由=1，调用=1；保留在用契约 |
+| `getHighValueCustomers` | `/analytics/customers/high-value` | `/analytics/customers/high-value` | `views/analytics/page/CustomerAnalytics.vue:782` | **留**；E2：匹配路由=1，调用=1；保留在用契约 |
+| `getCustomerDetail` | `/analytics/customers/:param/detail` | `/analytics/customers/:id/detail` | `views/analytics/page/CustomerAnalytics.vue:1192` | **留**；E2：匹配路由=1，调用=1；保留在用契约 |
+| `getCustomerActivity` | `/analytics/customers/activity` | `/analytics/customers/activity` | `views/analytics/page/CustomerAnalytics.vue:1057` | **留**；E2：匹配路由=1，调用=1；保留在用契约 |
+| `getFinancialAnalytics` | `/analytics/financial` | 不存在 | 视图 0 / composable 0 | **删**；E2：匹配路由=0，调用=0；删除 |
+| `getRevenueByPeriod` | `/analytics/financial/revenue` | 不存在 | 视图 0 / composable 0 | **删**；E2：匹配路由=0，调用=0；删除 |
+| `getProfitAnalysis` | `/analytics/financial/profit` | 不存在 | 视图 0 / composable 0 | **删**；E2：匹配路由=0，调用=0；删除 |
+| `getExpenseAnalysis` | `/analytics/financial/expenses` | 不存在 | 视图 0 / composable 0 | **删**；E2：匹配路由=0，调用=0；删除 |
+| `getFinancialHealth` | `/analytics/financial/health` | 不存在 | 视图 0 / composable 0 | **删**；E2：匹配路由=0，调用=0；删除 |
+| `getPerformanceMetrics` | `/analytics/performance` | 不存在 | 视图 0 / composable 0 | **删**；E2：匹配路由=0，调用=0；删除 |
+| `getPerformanceAnalytics` | `/analytics/performance` | 不存在 | 视图 0 / composable 0 | **删**；E2：匹配路由=0，调用=0；删除 |
+| `getPagePerformance` | `/analytics/performance/pages` | 不存在 | 视图 0 / composable 0 | **删**；E2：匹配路由=0，调用=0；删除 |
+| `getApiPerformance` | `/analytics/performance/api` | 不存在 | 视图 0 / composable 0 | **删**；E2：匹配路由=0，调用=0；删除 |
+| `getSystemHealth` | `/analytics/performance/health` | 不存在 | 视图 0 / composable 0 | **删**；E2：匹配路由=0，调用=0；删除 |
+| `getRealTimePerformance` | `/analytics/performance/realtime` | 不存在 | 视图 0 / composable 0 | **删**；E2：匹配路由=0，调用=0；删除 |
+| `getApiMetrics` | `/analytics/performance/api-metrics` | 不存在 | 视图 0 / composable 0 | **删**；E2：匹配路由=0，调用=0；删除 |
+| `getDatabaseMetrics` | `/analytics/performance/database-metrics` | 不存在 | 视图 0 / composable 0 | **删**；E2：匹配路由=0，调用=0；删除 |
+| `getPerformanceRecommendations` | `/analytics/performance/recommendations` | 不存在 | 视图 0 / composable 0 | **删**；E2：匹配路由=0，调用=0；删除 |
+| `getRealTimeData` | `/analytics/realtime` | `/analytics/realtime` | 视图 0 / composable 0 | **留**；E2：匹配路由=1，调用=0；保留真实后端契约 |
+| `getActiveUsers` | `/analytics/realtime/users` | 不存在 | 视图 0 / composable 0 | **删**；E2：匹配路由=0，调用=0；删除 |
+| `getCurrentSales` | `/analytics/realtime/sales` | 不存在 | 视图 0 / composable 0 | **删**；E2：匹配路由=0，调用=0；删除 |
+| `getSystemLoad` | `/analytics/realtime/system` | 不存在 | 视图 0 / composable 0 | **删**；E2：匹配路由=0，调用=0；删除 |
+| `getDashboardConfigs` | `/analytics/dashboards` | 不存在 | 视图 0 / composable 0 | **删**；E2：匹配路由=0，调用=0；删除 |
+| `getDashboardConfig` | `/analytics/dashboards/:param` | 不存在 | 视图 0 / composable 0 | **删**；E2：匹配路由=0，调用=0；删除 |
+| `createDashboardConfig` | `POST /analytics/dashboards` | 不存在 | 视图 0 / composable 0 | **删**；E2：匹配路由=0，调用=0；删除 |
+| `updateDashboardConfig` | `PUT /analytics/dashboards/:param` | 不存在 | 视图 0 / composable 0 | **删**；E2：匹配路由=0，调用=0；删除 |
+| `deleteDashboardConfig` | `DELETE /analytics/dashboards/:param` | 不存在 | 视图 0 / composable 0 | **删**；E2：匹配路由=0，调用=0；删除 |
+| `getReports` | `/analytics/reports` | 不存在 | 视图 0 / composable 0 | **删**；E2：匹配路由=0，调用=0；删除 |
+| `getReport` | `/analytics/reports/:param` | 不存在 | 视图 0 / composable 0 | **删**；E2：匹配路由=0，调用=0；删除 |
+| `generateReport` | `POST /analytics/reports/generate` | 不存在 | 视图 0 / composable 0 | **删**；E2：匹配路由=0，调用=0；删除 |
+| `deleteReport` | `DELETE /analytics/reports/:param` | 不存在 | 视图 0 / composable 0 | **删**；E2：匹配路由=0，调用=0；删除 |
+| `exportData` | `POST /analytics/export` | 不存在 | 视图 0 / composable 0 | **删**；E2：匹配路由=0，调用=0；删除 |
+| `getExportHistory` | `/analytics/export/history` | 不存在 | 视图 0 / composable 0 | **删**；E2：匹配路由=0，调用=0；删除 |
+| `downloadExport` | `/analytics/export/:param/download` | 不存在 | 视图 0 / composable 0 | **删**；E2：匹配路由=0，调用=0；删除 |
+| `getAnalyticsSettings` | `/analytics/settings` | 不存在 | 视图 0 / composable 0 | **删**；E2：匹配路由=0，调用=0；删除 |
+| `updateAnalyticsSettings` | `PUT /analytics/settings` | 不存在 | 视图 0 / composable 0 | **删**；E2：匹配路由=0，调用=0；删除 |
+| `getMetricsConfig` | `/analytics/settings/metrics` | 不存在 | 视图 0 / composable 0 | **删**；E2：匹配路由=0，调用=0；删除 |
+| `updateMetricsConfig` | `PUT /analytics/settings/metrics` | 不存在 | 视图 0 / composable 0 | **删**；E2：匹配路由=0，调用=0；删除 |
+| `getAlerts` | `/analytics/alerts` | 不存在 | 视图 0 / composable 0 | **删**；E2：匹配路由=0，调用=0；删除 |
+| `acknowledgeAlert` | `POST /analytics/alerts/:param/acknowledge` | 不存在 | 视图 0 / composable 0 | **删**；E2：匹配路由=0，调用=0；删除 |
+| `createAlertRule` | `POST /analytics/alerts/rules` | 不存在 | 视图 0 / composable 0 | **删**；E2：匹配路由=0，调用=0；删除 |
+| `updateAlertRule` | `PUT /analytics/alerts/rules/:param` | 不存在 | 视图 0 / composable 0 | **删**；E2：匹配路由=0，调用=0；删除 |
+| `deleteAlertRule` | `DELETE /analytics/alerts/rules/:param` | 不存在 | 视图 0 / composable 0 | **删**；E2：匹配路由=0，调用=0；删除 |
+| `getEmployeeAnalytics` | `/analytics/employees/detail` | `/analytics/employees/detail` | `views/analytics/page/EmployeeAnalytics.vue:834` | **留**；E2：匹配路由=1，调用=1；保留在用契约 |
+| `getEmployeePerformance` | `/analytics/employees/performance` | `/analytics/employees/performance` | `views/analytics/page/EmployeeAnalytics.vue:931` | **留**；E2：匹配路由=1，调用=1；保留在用契约 |
+| `getEmployeeRoles` | `/analytics/employees/roles` | `/analytics/employees/roles` | `views/analytics/page/EmployeeAnalytics.vue:999` | **留**；E2：匹配路由=1，调用=1；保留在用契约 |
+| `getEmployeeSalaryTrend` | `/analytics/employees/salary-trend` | `/analytics/employees/salary-trend` | `views/analytics/page/EmployeeAnalytics.vue:1129` | **留**；E2：匹配路由=1，调用=1；保留在用契约 |
+| `getEmployeeAttendance` | `/analytics/employees/attendance` | `/analytics/employees/attendance` | `views/analytics/page/EmployeeAnalytics.vue:1186` | **留**；E2：匹配路由=1，调用=1；保留在用契约 |
+| `getAttendanceSummary` | `/analytics/attendance/summary` | `/analytics/attendance/summary` | `views/analytics/page/EmployeeAnalytics.vue:835` | **留**；E2：匹配路由=1，调用=1；保留在用契约 |
+| `getInstance` | 非 HTTP 方法 | 不适用 | 文件内单例与两个导出别名 | **留**；同一实例，无重复 API 实现 |
+
+#### T18.2 孤儿组件双证据复验
+
+先删除生成的 components.d.ts 并通过现有 Vite 配置重新完整构建，再与起点生成文件比较；没有改插件扫描范围、关闭自动发现或手工删除声明来制造零引用。构建模块图同时检查这些组件是否实际进入打包链。Vite 构建从独立 .mjs 执行，临时输出位于 /tmp，完成后清理。
+
+重生成 diff 的真实结果为 123→121 个 GlobalComponents：仅移除 RouterLink、RouterView 两条旧生成声明，未移除任何本批候选组件声明。这两个路由组件由 vue-router 自己的类型扩展与运行时注册提供，仍有模板调用，不能据 dts diff 认定为孤儿。本批不删除路由组件。
+
+```diff
+-    RouterLink: typeof import('vue-router')['RouterLink']
+-    RouterView: typeof import('vue-router')['RouterView']
+```
+
+动态复验命令为 `rg -n 'defineAsyncComponent|resolveComponent|import\.meta\.glob|<component\b' frontend/src --glob '*.{ts,js,vue}'`（63 行机制候选），以及对下表每个 PascalCase/kebab-case 名检索 import 路径、模板标签、完整字符串名。逐一核对组件注册器、异步组件与动态 :is 的数据来源：自动管理器的 initializeAutoDiscovery 目前直接 return；数据优化 tabs 只包含 DataCheckTab/DataImportTab；预定异步组件仅 PreorderFormModal/MatchPreorderModal。
+
+| 候选组件（frontend/src/） | 重生成 dts | 构建模块图 | 模板/import/动态引用 | 处置与原因 |
+| --- | --- | --- | --- | --- |
+| `components/MobileForm.vue` | 仍有声明 | 0 | 0；1 个 mobile-form CSS class，非动态组件 | **留**：dts 与无调用结果不一致，自动扫描声明不代表采用；本批不越过双零条件 |
+| `components/MobileTable.vue` | 仍有声明 | 0 | 0 | **留**：dts 与无调用结果不一致，自动扫描声明不代表采用；本批不越过双零条件 |
+| `components/PaginatedTable.vue` | 仍有声明 | 0 | 0 | **留**：dts 与无调用结果不一致，自动扫描声明不代表采用；本批不越过双零条件 |
+| `components/ResponsiveLayout.vue` | 仍有声明 | 0 | 0 | **留**：dts 与无调用结果不一致，自动扫描声明不代表采用；本批不越过双零条件 |
+| `components/DraggableList.vue` | 仍有声明 | 0 | 0 | **留**：dts 与无调用结果不一致，自动扫描声明不代表采用；本批不越过双零条件 |
+| `components/DraggableRow.vue` | 仍有声明 | 0 | 0 | **留**：dts 与无调用结果不一致，自动扫描声明不代表采用；本批不越过双零条件 |
+| `components/IconSelector.vue` | 仍有声明 | 0 | 0 | **留**：dts 与无调用结果不一致，自动扫描声明不代表采用；本批不越过双零条件 |
+| `components/InventoryWarnings.vue` | 仍有声明 | 0 | 0 | **留**：dts 与无调用结果不一致，自动扫描声明不代表采用；本批不越过双零条件 |
+| `components/MemorySelector.vue` | 仍有声明 | 0 | 0 | **留**：dts 与无调用结果不一致，自动扫描声明不代表采用；本批不越过双零条件 |
+| `components/ProfessionalScanner.vue` | 仍有声明 | 0 | 0 | **留**：dts 与无调用结果不一致，自动扫描声明不代表采用；本批不越过双零条件 |
+| `components/SiteHeader.vue` | 仍有声明 | 0 | 0 | **留**：dts 与无调用结果不一致，自动扫描声明不代表采用；本批不越过双零条件 |
+| `components/StockInDetailModal.vue` | 仍有声明 | 0 | 0 | **留**：dts 与无调用结果不一致，自动扫描声明不代表采用；本批不越过双零条件 |
+| `components/UserInfo.vue` | 仍有声明 | 0 | 0；4 个 user-info CSS class，非动态组件 | **留**：dts 与无调用结果不一致，自动扫描声明不代表采用；本批不越过双零条件 |
+| `views/data-optimization/page/DatabaseSyncTab.vue` | 前后均无声明 | 0 | 0 | **删**：dts 与动态引用双零，构建模块图亦为零 |
+| `views/preorders/page/DeliverConfirmModal.vue` | 前后均无声明 | 0 | 0 | **删**：dts 与动态引用双零，构建模块图亦为零 |
+| `views/preorders/page/QuickAddCustomerModal.vue` | 前后均无声明 | 0 | 0 | **删**：dts 与动态引用双零，构建模块图亦为零 |
+
+本批删除三个局部组件，同时删除字段契约 preorders 的失效源码路径、动效基线 1 项、设计令牌基线 2 项以及页面台账登记，更新预定与同步当前文档；没有提高任何审计上限，也没有删除正式测试断言。其余 13 个公共组件的登记全部保留。Database-sync 后端路由依然受认证与 data-check:edit 控制，本批没有退役后端接口，也不再把当前不存在的“远程同步”页签写成可用入口。
+
+#### T18.3 依赖四维用途矩阵与 OCR 证据
+
+D1：通过 `rg --files --hidden` 枚举源码、配置、构建、脚本、正式测试、CI/部署文件（排除 .git、node_modules、日志、备份与锁文件），核对 import/require/dynamic import、完整包名字符串、包名拼接、运行脚本与 CLI；不能把 DOM 的 document.createElement('canvas') 计作 Node canvas 包依赖。D2：核查各包 package.json、两个锁文件的 dependencies/optionalDependencies/peerDependencies，以及 `npm --prefix backend ls canvas pg json5 pdf-lib pdfjs-dist tesseract.js sharp --all`。D3：删除后真实 OCR 和后端全测。下表“0”指应用直接用途检索为零，不能泛指 npm 生态中从无该依赖。
+
+| 依赖（目录） | 运行时 | 构建 | 脚本 / 运维 | 测试 | 处置与依据 |
+| --- | --- | --- | --- | --- | --- |
+| canvas（backend，3.2.1） | 0；Tesseract Node 输入直接读 Buffer/Uint8Array，sharp 负责预处理，WASM 负责识别 | 后端无 canvas 构建入口；浏览器 canvas 与此包无关 | 0；无 CLI/启动加载 | 原测试 0；本轮真实 OCR 在阻止该包加载时仍为 1234 | **删**；D1/D2/D3；package.json 与 lock 同步删除 |
+| pg（backend，8.16.3） | 0；数据库使用 mysql2 | 0 | 0 | 0 直接引用 | **删**；pg-pool 的 peer 仅在该无用依赖树内，不是应用消费方 |
+| json5（backend，2.2.3） | 0 | 后端无构建用途 | 0；没有 JSON5 CLI 或配置解析入口 | 0 | **删**；前端工具链的同名传递依赖不动 |
+| pdf-lib（backend，1.17.1） | 0 | 0 | 0 | 0 | **删**；没有 PDF 文档生成入口 |
+| pdfjs-dist（backend，5.5.207） | 0 | 0 | 0 | 0 | **删**；与正在使用的前端包分开核查 |
+| v3-infinite-loading（frontend，1.3.2） | 0；无 import、标签、字符串组件注册 | 0 | 0 | 0 | **删**；前端构建/类型/行为测试验证 |
+| pdfjs-dist（frontend，5.5.207） | upload-media.ts 动态转 PDF 图片 | public/pdf/pdf.worker.min.js 资源继续保留 | 上传资源部署用途存在 | 由上传契约覆盖；未用删除后端包冒充端到端 PDF 验证 | **留**；真实前端功能依赖 |
+| tesseract.js / tesseract.js-core（backend，7.0.0 / 7.0.0） | ocr-image、http-login、captcha-recognizer、puppeteer-login 正在使用 | Node worker + WASM；包依赖没有 canvas，Node 图片 adapter 也未 require canvas | 价格采集登录 OCR；traineddata 缓存由 worker 按语言读取 | 本轮真实识别与 3 项正式预处理/释放回归 | **留**；不能因删除 canvas 而删除 OCR 引擎或语言资源 |
+| sharp（backend，0.35.5） | OCR 放大/灰度/归一化及图片处理在用 | 原生图片依赖保留 | 媒体转换链在用 | 正式预处理测试实际使用 sharp | **留**；与 canvas 无替代包关系 |
+
+traineddata 归属：ocr-image 使用 createWorker('eng', 1)，puppeteer-login 使用 recognize(..., 'eng')；Tesseract 7 Node worker 默认从工作目录读取 eng.traineddata（未显式设置 cachePath 时为 '.'），随后加载到 WASM 文件系统。backend/eng.traineddata 是当前英文 OCR 使用的缓存。backend/chi_sim.traineddata 没有发现当前调用，但属语言资源，可能承担外部/历史用途，本批保留，不以 Node 包清理为由删除。OCR 检查仅使用合成图片与本地英文缓存，不访问第三方登录，不写业务数据库。
+
+删除前后各实际识别一次合成 1234 图片；删除后给主线程与 worker 注入 require 守卫，任何 canvas/pg/json5/pdf-lib/pdfjs-dist 加载尝试都会记录并拒绝。结果均为 1234，未发生被删包加载尝试，eng.traineddata 校验和未改变。隐性依赖检查没有留下 canvas 疑因，因此可以删除。同步发现 OCR helper 默认 logger 未提供时会造成 worker TypeError，已补可调用默认值，并保留正式成功/异常释放回归。
+
+package.json 的实际 diff 为 backend 删除 canvas/json5/pdf-lib/pdfjs-dist/pg 五行，frontend 删除 v3-infinite-loading 一行；两个锁文件由 npm uninstall --ignore-scripts --no-audit --no-fund 更新。锁文件对比：backend 删除 60 个包记录、frontend 删除 1 个，无新增包、无保留包版本或 integrity 变化。最终全测和构建结果见本节收口记录。
+
+#### T18.4 最终收口（2026-11-08）
+
+- `npm --prefix backend test`：1,397 项，1,383 通过、14 跳过、0 失败。14 项真实数据库用例默认跳过，不能算云端数据库验证通过；本批未连接或写入业务库。
+- `npm --prefix frontend run check:standards`：rc=0，完整规范链通过，包含类型检查、17 个测试文件 / 84 项前端行为测试、严格 ESLint、安全/分层、下载安全、字段、公共选项、动效/令牌/样式、页面台账、权限、Loading/空状态等。预测专项为 25 项，已包含在 84 项中，不重复累加。新增/修改的正式测试另经零警告 ESLint 核验。
+- 现有 Vite 生产配置完整构建 rc=0（Terser 与 gzip/Brotli 保持启用），清理前 dts 重生成与删除后最终构建均通过；存在原有体积提示，不等于浏览器或发布性能验收。本次临时构建使用 /tmp 输出，未覆盖仓库现有 dist。
+- 原交易契约测试要求出现 category_id，但该字段只属于已删除且无后端实现的财务占位 API。本批将该断言替换为 category_id 退役检查，并增加正确预测路径与旧路径/无效财务接口不得回归的断言；其余规范字段检查保留。没有通过恢复死方法、删除正式测试或跳过失败来让全测通过。
+- 三个组件删除后，config/规范脚本/正式测试/当前页面与同步文档中均无失效路径；字段与样式基线仅删除对应项。13 个声明与采用结果不一致的公共组件保留，不宣称全部孤儿清零。
+- `npm run check:docs` 与 `git diff --check` 通过。逐方法表覆盖原 63 个 HTTP 方法加 getInstance；逐方法历史 git grep 结果与表格逐行一致，代码实际为 40 删 / 1 修 / 22 留。依赖 manifest 与锁文件一致；OCR 真实回读与 worker 释放测试通过；临时脚本、生成包与日志完成后清理，正式回归保留。
+- 已同步权威入口：API 规范、组件采用/复验规范、前端页面台账、后端索引、预定文件说明和同步指南/索引。未执行浏览器/真机、第三方真实登录、远程 PR 或生产环境验收；本轮不自动提交或部署。
 
 ### T17 后端内联路由分批迁移
 

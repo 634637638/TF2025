@@ -57,8 +57,7 @@
       "frontend/src/api/preorder.ts",
       "frontend/src/views/preorders/PreordersView.vue",
       "frontend/src/views/preorders/page/PreorderFormModal.vue",
-      "frontend/src/views/preorders/page/MatchPreorderModal.vue",
-      "frontend/src/views/preorders/page/DeliverConfirmModal.vue"
+      "frontend/src/views/preorders/page/MatchPreorderModal.vue"
     ],
     "repairs": [
       "backend/src/routes/repairs.js",

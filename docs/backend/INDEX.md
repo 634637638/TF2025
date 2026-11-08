@@ -25,6 +25,8 @@
 
 公共实现复用：颜色/内存管理共享 `backend/src/services/reference-management.service.js` 与固定业务域白名单仓储；分页、排序纯函数的唯一实现位于 `backend/src/utils/reference-options.js`，既有 `reference-options.service.js` 保留重导出；仓储不得反向依赖 service。同步动态表名统一复用 `backend/src/utils/database-identifier.js`。综合查询的选项组合由 `QueryService` 编排，退库/删除的事务与积分冲回由 `QueryMutationService` 编排，SQL 留在 `QueryRepository`。各批实测与验收结果只登记在 T17。
 
+OCR 公共入口为 `backend/src/utils/ocr-image.js`：图片 Buffer 由 sharp 预处理，Tesseract 7 的 Node worker/WASM 使用英文 traineddata，后端不依赖 Node canvas。语言缓存相对进程工作目录解析，不能把语言资源当作无引用 JS 包随意删除；依赖四维核查、真实合成图片回读和包清理证据见唯一任务台账 T18。
+
 ## 契约测试
 
 运行 `npm test`（工作目录 `backend`）执行后端契约测试。测试集中在 `backend/test/*.check.js`，其中契约检查覆盖 API 字段、分页、安全校验、权限和事务行为。修改业务实现时应更新对应断言，描述当前要求而非已淘汰的实现细节；涉及销售/预定状态和权限时，需断言事务锁、服务端状态校验及操作权限。

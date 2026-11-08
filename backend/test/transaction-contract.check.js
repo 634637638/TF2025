@@ -1677,12 +1677,16 @@ test('customer stats expose canonical snake_case response fields', () => {
 
 test('analytics API client declarations use canonical snake_case parameters', () => {
   const api = fs.readFileSync(path.join(root, '../frontend/src/api/analytics.ts'), 'utf8')
-  for (const field of ['start_date', 'end_date', 'store_id', 'category_id', 'product_id', 'page_size']) {
+  for (const field of ['start_date', 'end_date', 'store_id', 'product_id', 'page_size']) {
     assert.match(api, new RegExp(`${field}`), `analytics API 缺少 ${field}`)
   }
   for (const field of ['startDate', 'endDate', 'storeId', 'categoryId', 'productId']) {
     assert.doesNotMatch(api, new RegExp(`\\b${field}\\b`), `analytics API 仍声明旧字段 ${field}`)
   }
+  // category_id only belonged to the retired, unsupported financial API.
+  assert.doesNotMatch(api, /\bcategory_id\b/)
+  assert.match(api, /unifiedApi\.get\('\/analytics\/sales-forecast', \{ params \}\)/)
+  assert.doesNotMatch(api, /['"]\/analytics\/sales\/forecast['"]|['"]\/analytics\/financial(?:\/|['"])/)
 })
 
 test('brand list removes legacy pagination and wildcard response queries', () => {

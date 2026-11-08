@@ -66,7 +66,6 @@
     "src/views/colors/styles/colors-view/desktop.css": 1,
     "src/views/customers/CustomersView.vue": 3,
     "src/views/dashboard/styles/dashboard-view/desktop.css": 5,
-    "src/views/data-optimization/page/DatabaseSyncTab.vue": 1,
     "src/views/data-optimization/page/styles/data-check-tab/summary.scss": 1,
     "src/views/data-optimization/page/styles/data-import/duplicates.scss": 1,
     "src/views/data-optimization/page/styles/data-import/strategies.scss": 1,

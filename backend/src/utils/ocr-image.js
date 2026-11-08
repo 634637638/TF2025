@@ -100,7 +100,7 @@ async function preprocessImageForOcr(imageBuffer) {
   }
 }
 
-async function recognizeTextWithTesseract(imageBuffer, { logger, params = {} } = {}) {
+async function recognizeTextWithTesseract(imageBuffer, { logger = () => {}, params = {} } = {}) {
   const worker = await Tesseract.createWorker('eng', 1, { logger })
 
   try {

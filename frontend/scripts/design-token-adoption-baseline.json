@@ -1731,13 +1731,6 @@
       "spacing": 2,
       "layering": 0
     },
-    "src/views/data-optimization/page/DatabaseSyncTab.vue": {
-      "radius": 6,
-      "shadow": 4,
-      "typography": 8,
-      "spacing": 29,
-      "layering": 1
-    },
     "src/views/data-optimization/page/styles/data-check-tab/data-table.scss": {
       "radius": 3,
       "shadow": 0,
@@ -2266,13 +2259,6 @@
       "typography": 132,
       "spacing": 327,
       "layering": 4
-    },
-    "src/views/preorders/page/DeliverConfirmModal.vue": {
-      "radius": 0,
-      "shadow": 0,
-      "typography": 0,
-      "spacing": 1,
-      "layering": 0
     },
     "src/views/preorders/page/MatchPreorderModal.vue": {
       "radius": 1,

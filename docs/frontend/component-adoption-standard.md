@@ -24,7 +24,7 @@
 
 `frontend/scripts/check-component-adoption.mjs` 对所有 Vue 页面和公共组件执行零容忍扫描：发现任意 `<button>` 立即失败，不接受注释、文件登记或数量基线绕过。迁移后的按钮必须继续通过 `check:buttons`、`check:dialog-actions` 和类型检查。
 
-2026-10-06 已按页面与功能单元台账迁移原生按钮，并将组件采用审计改为零容忍。当前 Vue 源码统计为 `el-button=969`、原生 `<button>=0`（具体数量以审计脚本输出为准）。
+2026-10-06 已按页面与功能单元台账迁移原生按钮，并将组件采用审计改为零容忍。2026-11-08 Vue 源码实测为 `el-button=1005`、原生 `<button>=0`（具体数量以审计脚本输出为准）。
 
 ## 搜索和分页边界
 
@@ -37,6 +37,14 @@
 新增业务弹窗优先使用 `MobileDialog`。由于 Element Plus 插槽、Teleport 或已有服务逻辑必须使用 `el-dialog` 时，只能复用全局 Dialog 样式；不得新增第二套遮罩、标题栏、圆角、阴影或 footer 按钮布局。
 
 ## 审计
+
+### 删除未采用组件的复验
+
+不能只凭旧的 `components.d.ts`、文件名检索或打包未包含就删除组件。先用项目 Vite 配置重新构建生成声明并保存前后 diff，再核对模板标签、静态/动态 import、`defineAsyncComponent`、`resolveComponent`、字符串组件名、动态 `:is` 数据来源、全局注册与 glob 扫描。
+
+当前自动组件插件会把目录内可发现的组件也写入声明，所以 dts 中存在声明不等于页面采用；dts 缺少声明也不代表局部显式 import 没有使用。证据不一致的候选单独登记并保留，不能通过缩小扫描目录、手工删声明或改构建配置制造“零引用”。按双零协议删除时，只有重新生成 dts 无声明且所有运行时引用也为零的组件进入删除批次。
+
+删除时同步清理字段契约、源码审计中的直接读取路径、各类逐文件基线、页面台账及仍作为当前说明的文档。保留其他文件的检查规则和上限，不能用忽略 ENOENT 或重建全量基线替代收口。删除批次至少执行 `type-check`、根目录 `lint:strict` 和相关规范审计；涉及契约的正式测试应检查保留的公共实现。
 
 ```bash
 cd frontend
@@ -51,4 +59,4 @@ npm run check:component-adoption
 
 它与 `check:ui`、`check:buttons`、`check:tables`、`check:empty-states`、`check:loading` 配合使用；采用率审计通过不代表详情弹窗或业务专用控件必须强行改成同一种实现。
 
-最后核实日期：2026-11-01
+最后核实日期：2026-11-08

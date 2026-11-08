@@ -31,12 +31,10 @@ frontend/
 ├── src/config/modules.ts                      # 已添加 PREORDERS 模块
 ├── src/router/index.ts                       # 已添加预定路由
 └── src/views/preorders/
-    ├── PreordersView.vue                      # 主页面（3个TAB）
-    └── components/
-        ├── CreatePreorderModal.vue            # 新增预定模态框
-        ├── QuickAddCustomerModal.vue          # 快速新增客户
-        ├── EditPreorderModal.vue              # 编辑预定模态框
-        └── DeliverConfirmModal.vue            # 交付确认模态框
+    ├── PreordersView.vue                      # 主页面，内含交付与客户处理
+    └── page/
+        ├── PreorderFormModal.vue              # 新增、编辑预定共用表单
+        └── MatchPreorderModal.vue             # 匹配设备
 ```
 
 ## 数据库表结构

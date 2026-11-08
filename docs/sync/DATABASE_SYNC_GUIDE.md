@@ -228,7 +228,7 @@ POST /api/database-sync/local-to-cloud/execute
 POST /api/database-sync/local-to-cloud/sync
 ```
 
-路由挂载前缀及参数如有改动，以 `backend/src/routes/database-sync.js` 和前端 `DatabaseSyncTab.vue` 为准。不要把外部数据库密码写入文档、命令历史或截图。
+路由挂载前缀及参数如有改动，以 `backend/src/routes/database-sync.js` 和 `backend/src/services/database-sync-management.service.js` 为准。2026-11-08 已核实当前数据优化页仅接入数据检查与导入，未接入远程同步页签；本批删除未引用的前端同步组件，后端受控接口保留，不能据此宣称同步功能已退役。不要把外部数据库密码写入文档、命令历史或截图。
 
 ## 故障排除
 

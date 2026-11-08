@@ -73,6 +73,12 @@ export function invalidateStoreReads(): void {
 
 不修改统一 API 的认证规则来迁就某个外部服务。优先通过已有后端 provider/service 管理需要保密的第三方密钥。
 
+## 分析 API 契约
+
+`src/api/analytics.ts` 只提供已有后端路由支持的契约。销售预测统一调用 `analyticsService.getSalesForecast`，真实路径为 `GET /analytics/sales-forecast`，周期为 `week/month/quarter`，可传 `store_id` 与 `page_size`，响应复用 `SalesForecastResponse`；销售分析页面不得另留一份请求路径。`analyticsService` 与 `analyticsApi` 指向同一实例，不是两套实现。
+
+清理 API 方法前同时核对 HTTP 方法、路由挂载前缀、动态参数和所有导出别名的调用点。只有“后端无对应接口且前端零调用”才能按闲置占位方法删除；已有真实后端契约不能只因视图暂时没用就自动删除。`frontend/tests/analytics-api-contract.spec.ts` 实际调用保留方法并与后端路由 AST 比较，避免路径再次漂移。2026-11-08 的逐方法删/修/留证据登记于唯一技术债务台账 T18。
+
 ## 上传、下载与表单
 
 - 上传复用 `unifiedApi.upload` 或现有领域上传方法，不手工维护重复 token 或边界头；后端验证文件类型、大小及资源权限。
