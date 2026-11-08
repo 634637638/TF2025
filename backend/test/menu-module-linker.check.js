@@ -1,9 +1,9 @@
 const test = require('node:test')
 const assert = require('node:assert/strict')
 
-const MenuModuleLinker = require('../src/services/menuModuleLinker')
-const ModuleScanner = require('../src/services/moduleScanner_simple')
-const menuService = require('../src/services/unifiedMenu.service')
+const MenuModuleLinker = require('../src/services/menu-module-linker.service')
+const ModuleScanner = require('../src/services/module-scanner.service')
+const menuService = require('../src/services/unified-menu.service')
 
 test('a visible child retains its hidden parent without granting access to hidden siblings', () => {
   const flatMenus = [
@@ -75,7 +75,7 @@ test('automatic binding uses registered page modules and never creates guessed m
       return [modules]
     }
   }))
-  const binderPath = require.resolve('../src/services/menuModuleAutoBinder')
+  const binderPath = require.resolve('../src/services/menu-module-auto-binder.service')
   delete require.cache[binderPath]
   const binder = require(binderPath)
   try {
@@ -85,6 +85,37 @@ test('automatic binding uses registered page modules and never creates guessed m
     assert.equal((await binder.autoBindModule({ name: '工资管理', url: '/Salary' })).success, false)
     assert.equal((await binder.autoBindModule({ name: '考勤工资', url: '#' })).success, false)
     assert.ok(calls.every(sql => /^SELECT /i.test(sql)))
+  } finally {
+    delete require.cache[binderPath]
+  }
+})
+
+test('single menu binding loads only the requested menu and reports missing IDs', async (t) => {
+  const database = require('../src/config/database')
+  const calls = []
+  let menuRows = [{ id: 12, name: '工资管理', url: '/Salary' }]
+  t.mock.method(database, 'getDatabase', () => ({
+    async execute(sql, values) {
+      calls.push({ sql, values })
+      if (sql.startsWith('SELECT id, name, url FROM menus')) return [menuRows]
+      if (sql.startsWith('SELECT id, `key`, name FROM modules')) {
+        return [[{ id: 497, key: 'salary_salaryview', name: '工资管理' }]]
+      }
+      return [{ affectedRows: 1 }]
+    }
+  }))
+  const binderPath = require.resolve('../src/services/menu-module-auto-binder.service')
+  delete require.cache[binderPath]
+  const binder = require(binderPath)
+  try {
+    const bound = await binder.bindModuleForMenuId(12)
+    assert.equal(bound.success, true)
+    assert.deepEqual(calls[0].values, [12])
+    assert.match(calls[0].sql, /WHERE id = \?$/)
+    assert.equal(calls.some(call => call.sql.startsWith('UPDATE menus')), true)
+
+    menuRows = []
+    assert.deepEqual(await binder.bindModuleForMenuId(404), { notFound: true })
   } finally {
     delete require.cache[binderPath]
   }

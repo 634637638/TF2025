@@ -1,6 +1,7 @@
 const QueryService = require('../services/query.service')
 const ApiResponse = require('../utils/response')
-const dataMaskingService = require('../services/dataMaskingService')
+const { clearCache } = require('../middleware/cache')
+const dataMaskingService = require('../services/data-masking.service')
 const { PAGINATION } = require('../config/constants')
 const {
   isStoreScopeError,
@@ -373,6 +374,19 @@ class QueryController {
     } catch (error) {
       log.error('QueryController: 获取手机详情失败:', error)
       return ApiResponse.serverError(res, '获取手机详情失败', error)
+    }
+  }
+
+  clearQueryCache(req, res) {
+    try {
+      clearCache('comprehensive')
+      return res.json({ success: true, message: '查询缓存已清除' })
+    } catch (error) {
+      return res.status(500).json({
+        success: false,
+        message: '清除缓存失败',
+        error: error.message
+      })
     }
   }
 }

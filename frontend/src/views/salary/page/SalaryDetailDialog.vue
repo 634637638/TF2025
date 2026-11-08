@@ -2,8 +2,7 @@
   <MobileDialog
     :model-value="modelValue"
     title="工资详情"
-    width="720px"
-    dialog-class="salary-dialog"
+    dialog-class="salary-dialog crud-dialog-md-lg"
     :show-default-footer="false"
     @update:model-value="emit('update:modelValue', $event)"
   >
@@ -105,12 +104,14 @@
     </div>
 
     <template #footer>
-      <el-button
-        type="info"
-        @click="emit('update:modelValue', false)"
-      >
-        <i class="fas fa-times" />关闭
-      </el-button>
+      <div class="tf-dialog-actions">
+        <el-button
+          type="info"
+          @click="emit('update:modelValue', false)"
+        >
+          <i class="fas fa-times" />关闭
+        </el-button>
+      </div>
     </template>
   </MobileDialog>
 </template>

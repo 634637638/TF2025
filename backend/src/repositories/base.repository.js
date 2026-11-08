@@ -6,6 +6,7 @@ const {
 } = require('../utils/security-enhanced')
 const log = require('../utils/log')
 const { summarizeSqlParams } = require('../utils/sensitive-data')
+const { withConnection } = require('../core/db/connection')
 
 /**
  * 基础Repository类
@@ -14,6 +15,10 @@ const { summarizeSqlParams } = require('../utils/sensitive-data')
 class BaseRepository {
   constructor(tableName) {
     this.tableName = tableName
+  }
+
+  withConnection(operation) {
+    return withConnection(() => this.getConnection(), operation)
   }
 
   /**

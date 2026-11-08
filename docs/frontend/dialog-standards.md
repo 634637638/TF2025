@@ -105,7 +105,22 @@ MessageBox 的默认宽度由 `--tf-dialog-message-width` 统一控制，当前�
 
 退出登录确认使用 `message-box-logout` 语义 class 隐藏标题前的警示状态图标；删除、清空等具有风险提示意义的确认框继续保留公共状态图标。页面不得通过全局选择器统一隐藏所有 MessageBox 图标。
 
-历史页面使用的 `--dialog-*` 变量仍保留为兼容别名，新增代码应使用 `--tf-dialog-*` 变量。`crud-dialog-sm/md/lg` 只改变弹窗宽度，不改变标题、圆角和底部按钮。
+历史页面使用的 `--dialog-*` 变量仍保留为兼容别名，新增代码应使用 `--tf-dialog-*` 变量。`crud-dialog-sm/md/md-lg/lg` 只改变弹窗宽度，不改变标题、圆角和底部按钮。
+
+### 宽度档位
+
+标准 CRUD 表单/详情弹窗宽度由 `_dialog.scss` 定义的档位 class 统一控制，通过 `dialog-class="... crud-dialog-*"` 应用；页面不再写独立 `width` 像素：
+
+| 档位 class | 桌面宽度 | 适用 |
+| --- | ---: | --- |
+| `crud-dialog-sm` | 500px | 单列表单、结算/模板设置等窄弹窗 |
+| `crud-dialog-md` | 600px | 常规新增/编辑 |
+| `crud-dialog-md-lg` | 700px | 需要稍宽空间的表单/详情（如员工表单、H5 商品配置、工资详情/考勤表单） |
+| `crud-dialog-lg` | 800px | 多列表单、宽详情（如客户、考勤表单、工资模板） |
+
+每档同时在手机端复用 `_dialog.scss` 的 `<=767px`、`<=479px` 边界，不得在页面重复声明 `--dialog-max-width` 或手机端弹窗变量。选择就近档位：期望宽度四舍五入到最近档位，偏差控制在 20~40px 内。
+
+超过 `800px` 的宽数据视图（如库存 900/800 编辑/详情、销售 1000/900/1200 交易与明细、工资 960/1100 及列数自适应的销售明细）属于宽表/自适应例外：它们可保留自身 `width`/`:width` 声明或不依赖档位的 `.el-dialog` 宽度，不强制压入 `lg`；但只能声明宽度，不得用私有 CSS 覆盖弹窗外壳、标题栏或手机端边界。`InventoryView.vue` 的非 scoped 全局块已完成治理：清除了位于所有 `</style>` 之后、不被 SFC 产出的孤儿私色/私有卡片样式（旧 `device-card`/`grid-container`/`table-cell` 等，其现由 `sales-grid-view.scss`、`sales-device-info-panel.scss` 等各自 scoped 样式承载），并将编辑弹窗私有卡片外壳 `inventory-edit-form-shell` 的圆角、内边距与栅格间距回归 `--tf-radius-panel`、`--tf-space-*` 公共令牌；弹窗宽度仍按本条例外保留。`npm run check:dialogs` 校验档位定义、已归一页面引用档位且不再声明页面级 `--dialog-max-width`；`npm run check:design-tokens` 以棘轮约束非 scoped 全局块不得新增硬编码设计值。
 
 ## 标准结构
 

@@ -5,6 +5,7 @@ const ShopService = require('../services/shop.service')
 const log = require('../utils/log')
 const { archivePhoneMediaUpload } = require('../utils/phone-media-storage')
 const database = require('../config/database')
+const { validateUploadedFileSignature, removeUploadedFiles } = require('../utils/upload-file-validation')
 
 const shopService = new ShopService()
 
@@ -66,10 +67,56 @@ async function saveUploadedMedia({ phoneId, file, mediaType, uploadedBy }) {
   return { id, url: fileUrl }
 }
 
+function createUploadHandler({
+  mediaType,
+  mediaLabel,
+  validateSignature = validateUploadedFileSignature,
+  removeFiles = removeUploadedFiles,
+  saveMedia = saveUploadedMedia,
+  logger = log
+}) {
+  return async function upload(req, res) {
+    try {
+      if (!req.file) {
+        return ApiResponse.error(res, '没有上传文件', 400)
+      }
+
+      if (!(await validateSignature(req.file, [mediaType]))) {
+        await removeFiles([req.file])
+        return ApiResponse.error(res, `文件内容与${mediaLabel}格式不匹配`, 400)
+      }
+
+      const media = await saveMedia({
+        phoneId: req.params.id,
+        file: req.file,
+        mediaType: mediaType === 'video' ? 'video' : 'inventory',
+        uploadedBy: req.user ? req.user.id : 0
+      })
+
+      return ApiResponse.success(res, {
+        ...media,
+        filename: req.file.filename,
+        originalname: req.file.originalname,
+        size: req.file.size
+      }, `${mediaLabel}上传成功`)
+    } catch (error) {
+      await removeFiles(req.file ? [req.file] : []).catch(() => {})
+      logger.error(`上传${mediaLabel}失败:`, error)
+      return ApiResponse.error(res, error.message || '上传失败', 500)
+    }
+  }
+}
+
+const uploadImage = createUploadHandler({ mediaType: 'image', mediaLabel: '图片' })
+const uploadVideo = createUploadHandler({ mediaType: 'video', mediaLabel: '视频' })
+
 module.exports = {
   list,
   setPrimary,
   remove,
   reorder,
-  saveUploadedMedia
+  saveUploadedMedia,
+  uploadImage,
+  uploadVideo,
+  createUploadHandler
 }

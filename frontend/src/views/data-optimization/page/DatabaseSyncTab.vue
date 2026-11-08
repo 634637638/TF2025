@@ -752,7 +752,7 @@ import { usePagePermissions } from '@/composables/usePagePermissions'
 import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { ValidationRules } from '@/composables'
 import { logger } from '@/utils/logger'
-import { formatDateTime as formatGlobalDateTime } from '@/utils/format'
+import { formatDateTime } from '@/utils/format'
 import { useNotification } from '@/composables/useNotification'
 const globalNotifications = useNotification()
 
@@ -948,10 +948,6 @@ const syncModeText = computed(() => {
 })
 
 // 方法
-const formatDateTime = (date: string) => {
-  return formatGlobalDateTime(date)
-}
-
 const handleCreateConnection = async () => {
   if (!ensureCreatePermission()) {
     return

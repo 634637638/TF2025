@@ -55,7 +55,9 @@ for (const filePath of walk(sourceRoot)) {
     for (const rule of styleSource.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
       const selector = rule[1].trim()
       const declarations = rule[2]
-      if (!/(?:badge|tag)/i.test(selector)) continue
+      // tf-button--* 是 _buttons.scss 拥有的按钮语义（如图标删除角标 tf-button--icon-badge），
+      // 其 hover 配色与显现由按钮公共入口和页面容器负责，不属于徽章域，故跳过避免命名重叠误判。
+      if (!/(?:badge|tag)/i.test(selector) || /tf-button--/i.test(selector)) continue
       hasBadgeReference = true
 
       const isHoverRule = /:hover\b/i.test(selector)

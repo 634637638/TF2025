@@ -2,8 +2,7 @@
   <MobileDialog
     :model-value="modelValue"
     title="设置工资模板"
-    width="520px"
-    dialog-class="salary-dialog"
+    dialog-class="salary-dialog crud-dialog-sm"
     :show-default-footer="false"
     @update:model-value="emit('update:modelValue', $event)"
   >
@@ -86,21 +85,23 @@
     </div>
 
     <template #footer>
-      <el-button
-        type="info"
-        @click="emit('update:modelValue', false)"
-      >
-        <i class="fas fa-times" />
-        取消
-      </el-button>
-      <el-button
-        type="primary"
-        :disabled="!canEditField('salary_salaryrecordsview', 'salary_template_name')"
-        @click="emit('save')"
-      >
-        <i class="fas fa-save" />
-        保存
-      </el-button>
+      <div class="tf-dialog-actions">
+        <el-button
+          type="info"
+          @click="emit('update:modelValue', false)"
+        >
+          <i class="fas fa-times" />
+          取消
+        </el-button>
+        <el-button
+          type="primary"
+          :disabled="!canEditField('salary_salaryrecordsview', 'salary_template_name')"
+          @click="emit('save')"
+        >
+          <i class="fas fa-save" />
+          保存
+        </el-button>
+      </div>
     </template>
   </MobileDialog>
 </template>

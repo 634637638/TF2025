@@ -4,6 +4,8 @@
 
 本文档总结了 TF2025 项目的安全性优化措施和实施结果。
 
+> **2026-11-06 现状收口**：下文提到的 `backend/src/middleware/upload-security.js`，以及同期的 `database-security.js`、`dev-permission.js`、`mock-route-guard.js` 和 `utils/securityUtils.js`，实际从未在 `app.js`/路由中接线，长期为无引用死代码，现已删除；本文对它们的“在用”描述仅作当时记录，不代表当前实现。当前的等效防护为：上传由各业务路由自带的 multer `fileFilter`/`limits` 加 `utils/upload-file-validation.js` 的文件头签名校验；SQL 注入由参数化查询与 `utils/security-enhanced.js` 的列名白名单覆盖。
+
 ---
 
 ## 1. SQL 注入防护 ✅

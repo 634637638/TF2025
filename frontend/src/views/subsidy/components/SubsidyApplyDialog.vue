@@ -567,7 +567,7 @@ import { deleteTempFiles } from '@/utils/temp-file-cleaner'
 import { normalizeIdCard, normalizePersonName, normalizePhoneDigits } from '@/utils/security'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import { logger } from '@/utils/logger'
-import { formatAmount } from '@/utils/format'
+import { formatAmount, formatDate } from '@/utils/format'
 import type { MediaPreviewItem } from '@/utils/media'
 import { convertPdfToImage, isPdfFile } from '@/utils/upload-media'
 import type {
@@ -688,8 +688,6 @@ const isEligibleForSubsidy = computed(() => {
   if (!applyForm.subsidy_calc_price) return false
   return applyForm.subsidy_calc_price <= 6000
 })
-
-const formatDate = (date?: string | null) => date ? TimeUtil.format(date, TIME_FORMATS.DATE) : '-'
 
 const getStatusText = (status: string) => {
   const statusMap: Record<string, string> = {

@@ -16,81 +16,47 @@ router.use(unifiedAuth)
 /**
  * 数据检查接口
  */
-router.get('/check/brands', requirePermission('data-check:view'), (req, res) => {
-  dataCheckController.checkBrands(req, res)
-})
+router.get('/check/brands', requirePermission('data-check:view'), dataCheckController.checkBrands.bind(dataCheckController))
 
-router.get('/check/models', requirePermission('data-check:view'), (req, res) => {
-  dataCheckController.checkModels(req, res)
-})
+router.get('/check/models', requirePermission('data-check:view'), dataCheckController.checkModels.bind(dataCheckController))
 
-router.get('/check/colors', requirePermission('data-check:view'), (req, res) => {
-  dataCheckController.checkColors(req, res)
-})
+router.get('/check/colors', requirePermission('data-check:view'), dataCheckController.checkColors.bind(dataCheckController))
 
-router.get('/check/memories', requirePermission('data-check:view'), (req, res) => {
-  dataCheckController.checkMemories(req, res)
-})
+router.get('/check/memories', requirePermission('data-check:view'), dataCheckController.checkMemories.bind(dataCheckController))
 
-router.get('/check/suppliers', requirePermission('data-check:view'), (req, res) => {
-  dataCheckController.checkSuppliers(req, res)
-})
+router.get('/check/suppliers', requirePermission('data-check:view'), dataCheckController.checkSuppliers.bind(dataCheckController))
 
-router.get('/check/stores', requirePermission('data-check:view'), (req, res) => {
-  dataCheckController.checkStores(req, res)
-})
+router.get('/check/stores', requirePermission('data-check:view'), dataCheckController.checkStores.bind(dataCheckController))
 
-router.get('/check/customers', requirePermission('data-check:view'), (req, res) => {
-  dataCheckController.checkCustomers(req, res)
-})
+router.get('/check/customers', requirePermission('data-check:view'), dataCheckController.checkCustomers.bind(dataCheckController))
 
-router.get('/check/users', requirePermission('data-check:view'), (req, res) => {
-  dataCheckController.checkUsers(req, res)
-})
+router.get('/check/users', requirePermission('data-check:view'), dataCheckController.checkUsers.bind(dataCheckController))
 
-router.get('/check/all', requirePermission('data-check:view'), (req, res) => {
-  dataCheckController.checkAll(req, res)
-})
+router.get('/check/all', requirePermission('data-check:view'), dataCheckController.checkAll.bind(dataCheckController))
 
 /**
  * 数据操作接口
  */
-router.post('/merge', requirePermission('data-check:edit'), (req, res) => {
-  dataCheckController.mergeDuplicates(req, res)
-})
+router.post('/merge', requirePermission('data-check:edit'), dataCheckController.mergeDuplicates.bind(dataCheckController))
 
-router.post('/batch-merge', requirePermission('data-check:edit'), (req, res) => {
-  dataCheckController.batchMergeMultipleGroups(req, res)
-})
+router.post('/batch-merge', requirePermission('data-check:edit'), dataCheckController.batchMergeMultipleGroups.bind(dataCheckController))
 
-router.post('/batch-delete', requirePermission('data-check:delete'), (req, res) => {
-  dataCheckController.batchDeleteDuplicates(req, res)
-})
+router.post('/batch-delete', requirePermission('data-check:delete'), dataCheckController.batchDeleteDuplicates.bind(dataCheckController))
 
-router.put('/edit/:type/:id', requirePermission('data-check:edit'), (req, res) => {
-  dataCheckController.editData(req, res)
-})
+router.put('/edit/:type/:id', requirePermission('data-check:edit'), dataCheckController.editData.bind(dataCheckController))
 
-router.delete('/delete/:type/:id', requirePermission('data-check:delete'), (req, res) => {
-  dataCheckController.deleteData(req, res)
-})
+router.delete('/delete/:type/:id', requirePermission('data-check:delete'), dataCheckController.deleteData.bind(dataCheckController))
 
 /**
  * 数据统计和清理
  */
-router.get('/statistics', requirePermission('data-check:view'), (req, res) => {
-  dataCheckController.getStatistics(req, res)
-})
+router.get('/statistics', requirePermission('data-check:view'), dataCheckController.getStatistics.bind(dataCheckController))
 
-router.post('/cleanup', requirePermission('data-check:edit'), (req, res) => {
-  dataCheckController.cleanupData(req, res)
-})
+router.post('/cleanup', requirePermission('data-check:edit'), dataCheckController.cleanupData.bind(dataCheckController))
 
 /**
  * 获取所有数据（含重复状态标记）
  */
-router.get('/all/:type', requirePermission('data-check:view'), (req, res) => {
-  dataCheckController.getAllData(req, res)
-})
+router.get('/all/:type', requirePermission('data-check:view'), dataCheckController.getAllData.bind(dataCheckController))
 
 module.exports = router

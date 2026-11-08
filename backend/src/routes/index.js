@@ -1,12 +1,14 @@
 const express = require('express')
 const router = express.Router()
 const log = require('../utils/log')
-const { livenessHandler, readinessHandler } = require('../utils/health')
+const HealthController = require('../controllers/health.controller')
+const DevTempController = require('../controllers/dev-temp.controller')
 const { unifiedAuth, requirePermission } = require('../middleware/unified-auth')
+const healthController = new HealthController()
 
 // 健康检查端点（无需认证）
-router.get('/live', livenessHandler)
-router.get('/health', readinessHandler)
+router.get('/live', healthController.liveness.bind(healthController))
+router.get('/health', healthController.readiness.bind(healthController))
 
 // 导入现有的旧版路由（保持向后兼容）
 const authRoutes = require('./auth')
@@ -276,6 +278,7 @@ router.use('/sales-management', salesManagementRoutes)
 const enableDevTempRoutes = process.env.NODE_ENV === 'development' && process.env.ENABLE_DEV_TEMP_ROUTES === 'true'
 
 if (enableDevTempRoutes) {
+  const devTempController = new DevTempController()
   const auditDevTempRoute = action => (req, _res, next) => {
     log.warn('开发临时接口访问', {
       action,
@@ -291,65 +294,10 @@ if (enableDevTempRoutes) {
     routes: ['/temp/make-admin', '/temp/migrate-home-sections']
   })
 
-  router.post('/temp/make-admin', unifiedAuth, requirePermission('permissions:admin'), auditDevTempRoute('make_admin'), async (req, res) => {
-    try {
-      const db = require('../config/database')
-      const { username } = req.body
-
-      if (!username) {
-        return res.status(400).json({ success: false, message: '请提供用户名' })
-      }
-
-      await db.getDatabase().query(
-        "UPDATE users SET role = 'admin' WHERE username = ?",
-        [username]
-      )
-
-      res.json({
-        success: true,
-        message: `用户 ${username} 已设置为管理员，请重新登录`
-      })
-    } catch (error) {
-      log.error('开发临时接口设置管理员失败:', error)
-      res.status(500).json({
-        success: false,
-        message: '设置失败'
-      })
-    }
-  })
+  router.post('/temp/make-admin', unifiedAuth, requirePermission('permissions:admin'), auditDevTempRoute('make_admin'), devTempController.makeAdmin.bind(devTempController))
 
   // 临时端点：执行首页推荐表迁移
-  router.post('/temp/migrate-home-sections', unifiedAuth, requirePermission('permissions:admin'), auditDevTempRoute('migrate_home_sections'), async (req, res) => {
-    try {
-      const db = require('../config/database')
-      const fs = require('fs')
-      const path = require('path')
-
-      const sql = fs.readFileSync(
-        path.join(__dirname, '../../migrations/create_home_sections.sql'),
-        'utf8'
-      )
-
-      await db.getDatabase().query(sql)
-
-      const [sections] = await db.getDatabase().query('SELECT * FROM H5_home_sections')
-
-      res.json({
-        success: true,
-        message: '首页推荐表创建成功',
-        data: {
-          sections: sections,
-          count: sections.length
-        }
-      })
-    } catch (error) {
-      log.error('开发临时接口迁移首页推荐失败:', error)
-      res.status(500).json({
-        success: false,
-        message: '迁移失败'
-      })
-    }
-  })
+  router.post('/temp/migrate-home-sections', unifiedAuth, requirePermission('permissions:admin'), auditDevTempRoute('migrate_home_sections'), devTempController.migrateHomeSections.bind(devTempController))
 }
 
 // 注意：以下路由待拆分（stores, employees, models, colors, memories, icons, salary）

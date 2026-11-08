@@ -294,6 +294,41 @@
                 </el-tag>
               </div>
               <div
+                v-if="selectedStandard.previewKind === 'button'"
+                class="preview-button-row"
+              >
+                <el-button
+                  native-type="button"
+                  class="tf-button--h5-action tf-button--h5-action-neutral"
+                  @click="previewButtonAction('手机端取消')"
+                >
+                  手机端取消
+                </el-button>
+                <el-button
+                  native-type="button"
+                  class="tf-button--h5-action tf-button--h5-action-primary"
+                  @click="previewButtonAction('手机端确认')"
+                >
+                  手机端确认
+                </el-button>
+                <el-button
+                  native-type="button"
+                  :class="['tf-button--pill-filter', { 'is-active': previewPillActive }]"
+                  @click="previewPillActive = !previewPillActive"
+                >
+                  筛选胶囊
+                </el-button>
+                <el-button
+                  native-type="button"
+                  class="tf-button--icon-badge"
+                  title="图标角标删除演示"
+                  aria-label="图标角标删除演示"
+                  @click="previewButtonAction('图标角标')"
+                >
+                  <i class="fas fa-xmark" />
+                </el-button>
+              </div>
+              <div
                 v-else-if="selectedStandard.previewKind === 'dialog'"
                 class="preview-dialog-box"
               >
@@ -442,6 +477,19 @@
                   label="备用选项"
                   value="备用选项"
                 /></el-select></label>
+                <label>可见范围
+                  <el-radio-group
+                    v-model="previewFormSegment"
+                    class="tf-segment"
+                  >
+                    <el-radio-button value="public">
+                      公开
+                    </el-radio-button>
+                    <el-radio-button value="private">
+                      私有
+                    </el-radio-button>
+                  </el-radio-group>
+                </label>
                 <div class="preview-form__actions">
                   <el-button
                     type="primary"
@@ -842,12 +890,14 @@ const previewLoadingActive = ref(false)
 const previewLoadingOperationId = 'standards-preview-loading'
 let previewLoadingTimer: ReturnType<typeof setTimeout> | undefined
 const previewButtonResult = ref('')
+const previewPillActive = ref(true)
 const previewDialogResult = ref('')
 const previewSearchKeyword = ref('')
 const previewSearchResult = ref('')
 const previewFormName = ref('示例内容')
 const previewFormOption = ref('统一选项')
 const previewFormSubmitted = ref(false)
+const previewFormSegment = ref('public')
 const previewEmptyLoaded = ref(false)
 const previewFeedbackResult = ref('')
 const previewSecurityAllowed = ref(true)
@@ -944,6 +994,7 @@ const resetPreviewState = () => {
   previewFormName.value = '示例内容'
   previewFormOption.value = '统一选项'
   previewFormSubmitted.value = false
+  previewFormSegment.value = 'public'
   previewEmptyLoaded.value = false
   previewFeedbackResult.value = ''
   previewSecurityAllowed.value = true

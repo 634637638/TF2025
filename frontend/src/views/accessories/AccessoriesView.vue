@@ -370,6 +370,7 @@ import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue'
 
 import { useLoadingState } from '@/composables'
 import { useMobile } from '@/composables/mobile'
+import { useMobileRowDoubleTap } from '@/composables/useMobileRowDoubleTap'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { useRefreshData } from '@/composables/useRefreshData'
@@ -427,8 +428,7 @@ const searchKeyword = ref('')
 const currentPage = ref(1)
 const itemsPerPage = ref(16)
 const mobileActionRowId = ref<string | null>(null)
-const lastTappedRowId = ref<string | null>(null)
-const lastTapTimestamp = ref(0)
+const { isDoubleTap } = useMobileRowDoubleTap()
 
 const filteredAccessories = computed(() => {
   const keyword = searchKeyword.value.trim().toLocaleLowerCase()
@@ -586,16 +586,7 @@ const handleAccessoryRowClick = (row: AccessoryItem, _column: unknown, event: Ev
   if (target?.closest('button, a, input, textarea, select, .el-button, .el-input, .el-select')) return
 
   const rowId = getAccessoryRowKey(row)
-  const now = Date.now()
-  if (lastTappedRowId.value === rowId && now - lastTapTimestamp.value <= 320) {
-    toggleMobileActions(rowId)
-    lastTappedRowId.value = null
-    lastTapTimestamp.value = 0
-    return
-  }
-
-  lastTappedRowId.value = rowId
-  lastTapTimestamp.value = now
+  if (isDoubleTap(rowId)) toggleMobileActions(rowId)
 }
 
 const handlePaginationChange = (page: number, pageSize: number) => {

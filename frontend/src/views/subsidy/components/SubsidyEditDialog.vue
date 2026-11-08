@@ -501,7 +501,7 @@ import { normalizeIdCard, normalizePersonName, normalizePhoneDigits } from '@/ut
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import { logger } from '@/utils/logger'
 import { useBrandModels } from '@/composables/useBrandModels'
-import { formatAmount } from '@/utils/format'
+import { formatAmount, formatDateTime as formatGlobalDateTime } from '@/utils/format'
 import { isAxiosError } from 'axios'
 import type { ReferenceRecord } from '@/services/reference-options'
 import type { MemoryOption, NationalSubsidyEditForm, NationalSubsidyRecord } from '@/types'
@@ -561,7 +561,7 @@ const hasReadOnlyFields = computed(() => {
   return allFields.some(field => canViewField(field) && !canEditField(field))
 })
 
-const formatDateTime = (date: string) => date ? TimeUtil.format(date, TIME_FORMATS.DATETIME_SHORT) : '-'
+const formatDateTime = (date?: string | null) => formatGlobalDateTime(date, TIME_FORMATS.DATETIME_SHORT)
 
 const calculateRemarks = (item: NationalSubsidyRecord) => {
   if (item.remarks && item.remarks.trim() !== '') return item.remarks

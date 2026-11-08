@@ -59,7 +59,7 @@
           <el-button
             v-for="category in categories" 
             :key="category.key"
-            :class="['category-btn', { active: selectedCategory === category.key }]"
+            :class="['tf-button--pill-filter', { 'is-active': selectedCategory === category.key }]"
             @click="selectedCategory = category.key; filterIcons()"
           >
             {{ category.name }} ({{ category.count }})
@@ -373,26 +373,6 @@ onMounted(async () => {
   flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 20px;
-}
-
-.category-btn {
-  padding: 8px 16px;
-  border: 1px solid var(--tf-button-neutral-border);
-  background: var(--tf-button-neutral-bg);
-  border-radius: 20px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  font-size: var(--tf-type-scale-14);
-}
-
-.category-btn:hover {
-  background: var(--tf-button-neutral-hover-bg);
-}
-
-.category-btn.active {
-  background: var(--tf-button-primary-hover-bg);
-  color: var(--tf-button-on-color);
-  border-color: var(--tf-button-primary-soft-hover-border);
 }
 
 .loading {

@@ -86,6 +86,13 @@ router.get('/export/excel', requirePermission('query:export', 'business'), query
  */
 router.get('/phone/:id', requirePermission('query:view', 'business'), queryController.getPhoneDetail.bind(queryController))
 
+/**
+ * @route DELETE /api/query/cache
+ * @desc 清除查询缓存
+ * @access Private
+ */
+router.delete('/cache', requirePermission('query:view', 'business'), queryController.clearQueryCache.bind(queryController))
+
 
 /**
  * @route POST /api/query/:id/return-to-stock
@@ -102,20 +109,5 @@ router.post('/:id/return-to-stock', requirePermission('query:return-to-stock', '
  * @param {string} params.id - 手机ID
  */
 router.delete('/:id', requirePermission('inventory:delete', 'business'), queryController.deletePhoneRecord.bind(queryController))
-
-/**
- * @route DELETE /api/query/cache
- * @desc 清除查询缓存
- * @access Private
- */
-router.delete('/cache', requirePermission('query:view', 'business'), (req, res) => {
-  try {
-    const { clearCache } = require('../middleware/cache')
-    clearCache('comprehensive')
-    res.json({ success: true, message: '查询缓存已清除' })
-  } catch (error) {
-    res.status(500).json({ success: false, message: '清除缓存失败', error: error.message })
-  }
-})
 
 module.exports = router

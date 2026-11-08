@@ -1,66 +1,20 @@
+'use strict'
+
 const express = require('express')
 const multer = require('multer')
 const path = require('path')
 const fs = require('fs')
 const crypto = require('crypto')
-const convert = require('heic-convert')
-const router = express.Router()
 const { unifiedAuth, requirePermission, requireAnyPermission } = require('../middleware/unified-auth')
 const ApiResponse = require('../utils/response')
-const sharedService = require('../services/shared.service')
-const { getUploadSubdir, getUploadUrl } = require('../utils/upload-paths')
-const dataMaskingService = require('../services/dataMaskingService')
+const { getUploadSubdir } = require('../utils/upload-paths')
 const log = require('../utils/log')
-const {
-  createSharedFileUrl,
-  verifySharedFileAccess
-} = require('../utils/shared-file-access')
+const SharedController = require('../controllers/shared.controller')
 
-const SHARED_FIELD_MODULE_KEY = 'shared_sharedview'
-const SHARED_WRITE_FIELD_IDS = {
-  title: 'post_info.title', content: 'post_info.content', category: 'post_info.category',
-  visibility: 'post_info.visibility', attachments: 'post_info.attachments'
-}
-const SHARED_CATEGORY_WRITE_FIELD_IDS = { name: 'category_info.name' }
-const SHARED_RESPONSE_KEYS = {
-  'post_info.title': ['title'], 'post_info.content': ['content'], 'post_info.category': ['category'],
-  'post_info.visibility': ['visibility'], 'post_info.attachments': ['attachments'], 'post_info.is_pinned': ['is_pinned'],
-  'author_info.author': ['author', 'author_id'], 'time_info.created_at': ['created_at'], 'time_info.updated_at': ['updated_at'],
-  'category_info.name': ['name'], 'category_info.total': ['total'], 'category_info.sort_order': ['sort_order']
-}
-const getSharedFieldPermissions = req => dataMaskingService.getUserFieldPermissions(req.user.id, SHARED_FIELD_MODULE_KEY)
-const maskSharedPayloadWithPermissions = (value, permissions) => {
-  if (Array.isArray(value)) return value.map(item => maskSharedPayloadWithPermissions(item, permissions))
-  if (!value || typeof value !== 'object') return value
-  const masked = Object.fromEntries(Object.entries(value).map(([key, child]) => [key, maskSharedPayloadWithPermissions(child, permissions)]))
-  for (const fieldId of permissions.hiddenFields || []) {
-    for (const responseKey of SHARED_RESPONSE_KEYS[fieldId] || []) {
-      if (Object.prototype.hasOwnProperty.call(masked, responseKey)) masked[responseKey] = null
-    }
-  }
-  if ((permissions.hiddenFields || []).includes('author_info.author') && masked.author) masked.author = null
-  return dataMaskingService.filterSensitiveFields([masked], permissions)[0]
-}
-const maskSharedPayload = async (value, req) => maskSharedPayloadWithPermissions(value, await getSharedFieldPermissions(req))
-const rejectHiddenSharedWrites = fieldMap => async (req, res, next) => {
-  try {
-    const permissions = await getSharedFieldPermissions(req)
-    const hiddenFields = new Set(permissions.hiddenFields || [])
-    const denied = Object.entries(fieldMap).find(([bodyField, fieldId]) => req.body?.[bodyField] !== undefined && hiddenFields.has(fieldId))
-    if (!denied) return next()
-    return res.status(403).json({ success: false, message: '不能修改已隐藏的字段', code: 'FIELD_PERMISSION_DENIED', field: denied[1] })
-  } catch (error) { return next(error) }
-}
-const requireVisibleSharedField = fieldId => async (req, res, next) => {
-  try {
-    const permissions = await getSharedFieldPermissions(req)
-    if (!(permissions.hiddenFields || []).includes(fieldId)) return next()
-    return res.status(403).json({ success: false, message: '无权访问已隐藏的字段', code: 'FIELD_PERMISSION_DENIED', field: fieldId })
-  } catch (error) { return next(error) }
-}
-
+const router = express.Router()
 const uploadDir = getUploadSubdir('shared')
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true })
+
 const imageExtensions = new Set([
   '.jpg', '.jpeg', '.jfif', '.png', '.gif', '.webp', '.bmp', '.avif',
   '.heic', '.heif', '.tif', '.tiff'
@@ -88,10 +42,10 @@ const allowedMimes = new Set([
   'application/octet-stream'
 ])
 const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, uploadDir),
-  filename: (req, file, cb) => {
+  destination: (_req, _file, callback) => callback(null, uploadDir),
+  filename: (req, file, callback) => {
     const ext = path.extname(file.originalname).toLowerCase()
-    cb(null, `${Number(req.user?.id) || 0}_${Date.now()}_${crypto.randomBytes(8).toString('hex')}${ext}`)
+    callback(null, `${Number(req.user?.id) || 0}_${Date.now()}_${crypto.randomBytes(8).toString('hex')}${ext}`)
   }
 })
 const isAllowedUpload = file => {
@@ -104,58 +58,14 @@ const isAllowedUpload = file => {
 const upload = multer({
   storage,
   limits: { fileSize: 100 * 1024 * 1024, files: 10 },
-  fileFilter: (_req, file, cb) => {
-    if (isAllowedUpload(file)) return cb(null, true)
+  fileFilter: (_req, file, callback) => {
+    if (isAllowedUpload(file)) return callback(null, true)
     const error = new Error('不支持该文件格式，请上传常用图片、视频、音频或文档文件')
     error.status = 400
     error.code = 'UNSUPPORTED_UPLOAD_TYPE'
-    return cb(error)
+    return callback(error)
   }
 })
-
-const isHeicUpload = file => {
-  const ext = path.extname(file.originalname || file.filename || '').toLowerCase()
-  const mime = String(file.mimetype || '').toLowerCase()
-  return ext === '.heic' || ext === '.heif' || mime.includes('heic') || mime.includes('heif')
-}
-
-const convertSharedHeicUploads = async files => {
-  for (const file of files || []) {
-    if (!isHeicUpload(file)) continue
-
-    const ext = path.extname(file.filename).toLowerCase()
-    const jpgFilename = file.filename.replace(new RegExp(`${ext}$`, 'i'), '.jpg')
-    const jpgPath = path.join(uploadDir, jpgFilename)
-
-    try {
-      const inputBuffer = fs.readFileSync(file.path)
-      const outputBuffer = await convert({
-        buffer: inputBuffer,
-        format: 'JPEG',
-        quality: 0.92
-      })
-
-      fs.writeFileSync(jpgPath, outputBuffer)
-      fs.unlinkSync(file.path)
-
-      file.filename = jpgFilename
-      file.path = jpgPath
-      file.originalname = String(file.originalname || 'image.heic').replace(/\.(heic|heif)$/i, '.jpg')
-      file.mimetype = 'image/jpeg'
-      file.size = fs.statSync(jpgPath).size
-    } catch (error) {
-      try { if (fs.existsSync(file.path)) fs.unlinkSync(file.path) } catch (cleanupError) {
-        log.warn('清理共享 HEIC 源文件失败:', cleanupError)
-      }
-      try { if (fs.existsSync(jpgPath)) fs.unlinkSync(jpgPath) } catch (cleanupError) {
-        log.warn('清理共享 HEIC 转换文件失败:', cleanupError)
-      }
-      const uploadError = new Error('HEIC图片转换失败，请换一张图片或先转成JPG后上传')
-      uploadError.cause = error
-      throw uploadError
-    }
-  }
-}
 
 const uploadSharedFiles = (req, res, next) => {
   upload.array('files', 10)(req, res, error => {
@@ -174,200 +84,26 @@ const uploadSharedFiles = (req, res, next) => {
   })
 }
 
-const canManage = req => {
-  const permissions = Array.isArray(req.user?.permissions) ? req.user.permissions : []
-  return permissions.includes('shared:manage') || permissions.includes('shared_sharedview:manage')
-}
-const handleError = (res, error, fallback = '操作失败') => {
-  const message = error?.message || fallback
-  const status = /请输入|不能为空|不能超过|只能|不存在|仅支持|已存在|不能修改|不能删除/.test(message) ? 400 : 500
-  return ApiResponse.error(res, message, status)
-}
+const sharedController = new SharedController({ uploadDir })
 
-const signSharedRichText = (content, userId, nowSeconds) => String(content || '').replace(
-  /\/uploads\/shared\/[a-zA-Z0-9._-]+/g,
-  storageUrl => createSharedFileUrl(storageUrl, userId, { nowSeconds })
+router.get(
+  '/files/:filename',
+  sharedController.verifySharedFileAccess.bind(sharedController),
+  sharedController.canAccessAttachment.bind(sharedController),
+  sharedController.readAttachment.bind(sharedController)
 )
-
-const signSharedPayload = (value, userId) => {
-  const nowSeconds = Math.floor(Date.now() / 1000)
-  const transform = item => {
-    if (Array.isArray(item)) return item.map(transform)
-    if (!item || typeof item !== 'object') return item
-
-    const signed = { ...item }
-    if (typeof signed.content === 'string') {
-      signed.content = signSharedRichText(signed.content, userId, nowSeconds)
-    }
-    if (Array.isArray(signed.attachments)) {
-      signed.attachments = signed.attachments.map(attachment => {
-        const storageUrl = String(attachment?.storage_url || attachment?.url || '')
-        return {
-          ...attachment,
-          storage_url: storageUrl,
-          url: createSharedFileUrl(storageUrl, userId, { nowSeconds })
-        }
-      })
-    }
-    return signed
-  }
-  return transform(value)
-}
-
-router.get('/files/:filename', async (req, res) => {
-  try {
-    const filename = String(req.params.filename || '')
-    const userId = Number(req.query.user)
-    const validSignature = verifySharedFileAccess({
-      filename,
-      userId,
-      expires: req.query.expires,
-      signature: req.query.signature
-    })
-    if (!validSignature || path.basename(filename) !== filename) {
-      return ApiResponse.error(res, '附件链接无效或已过期', 403)
-    }
-
-    const rawUrl = getUploadUrl('shared', filename)
-    const access = await sharedService.canAccessAttachment(rawUrl, userId)
-    const belongsToUploader = filename.startsWith(`${userId}_`)
-    if (!access.referenced && !belongsToUploader) return ApiResponse.error(res, '附件不存在', 404)
-    if (access.referenced && !access.allowed) return ApiResponse.error(res, '无权访问该附件', 403)
-
-    const absolutePath = path.join(uploadDir, filename)
-    if (!absolutePath.startsWith(`${path.normalize(uploadDir)}${path.sep}`) || !fs.existsSync(absolutePath)) {
-      return ApiResponse.error(res, '附件不存在', 404)
-    }
-    res.setHeader('Cache-Control', 'private, no-store')
-    res.setHeader('X-Content-Type-Options', 'nosniff')
-    res.setHeader('Cross-Origin-Resource-Policy', 'same-origin')
-    return res.sendFile(absolutePath)
-  } catch (error) {
-    return handleError(res, error, '读取附件失败')
-  }
-})
 router.use(unifiedAuth)
-router.get('/', requirePermission('shared:view'), async (req, res) => {
-  try {
-    const permissions = await getSharedFieldPermissions(req)
-    const hiddenFields = new Set(permissions.hiddenFields || [])
-    const filterFields = { category: 'post_info.category', visibility: 'post_info.visibility' }
-    const denied = Object.entries(filterFields).find(([queryField, fieldId]) => req.query[queryField] !== undefined && hiddenFields.has(fieldId))
-    if (denied) return res.status(403).json({ success: false, message: '不能使用已隐藏的筛选字段', code: 'FIELD_PERMISSION_DENIED', field: denied[1] })
-    const search_fields = [['post_info.title', 'title'], ['post_info.content', 'content']].filter(([fieldId]) => !hiddenFields.has(fieldId)).map(([, field]) => field)
-    if (req.query.keyword && !search_fields.length) return res.status(403).json({ success: false, message: '没有可用的分享搜索字段', code: 'FIELD_PERMISSION_DENIED' })
-    const result = await sharedService.list(req.user.id, { ...req.query, page_size: req.query.page_size, search_fields })
-    const masked = maskSharedPayloadWithPermissions(result.rows, permissions)
-    return ApiResponse.success(res, signSharedPayload(masked, req.user.id), '获取经验分享成功', 200, { pagination: result.pagination })
-  } catch (error) {
-    return handleError(res, error, '获取经验分享失败')
-  }
-})
-router.get('/categories', requirePermission('shared:view'), async (req, res) => {
-  try {
-    return ApiResponse.success(res, await maskSharedPayload(await sharedService.listCategories(req.user.id), req), '获取分享分类成功')
-  } catch (error) {
-    return handleError(res, error, '获取分享分类失败')
-  }
-})
-router.post('/categories', requirePermission('shared:manage'), rejectHiddenSharedWrites(SHARED_CATEGORY_WRITE_FIELD_IDS), async (req, res) => {
-  try {
-    return ApiResponse.created(res, '分类新增成功', await maskSharedPayload(await sharedService.createCategory(req.body), req))
-  } catch (error) {
-    return handleError(res, error, '新增分类失败')
-  }
-})
-router.put('/categories/:id', requirePermission('shared:manage'), rejectHiddenSharedWrites(SHARED_CATEGORY_WRITE_FIELD_IDS), async (req, res) => {
-  try {
-    return ApiResponse.success(res, await maskSharedPayload(await sharedService.updateCategory(Number(req.params.id), req.body), req), '分类更新成功')
-  } catch (error) {
-    return handleError(res, error, '更新分类失败')
-  }
-})
-router.delete('/categories/:id', requirePermission('shared:manage'), async (req, res) => {
-  try {
-    await sharedService.removeCategory(Number(req.params.id))
-    return ApiResponse.success(res, null, '分类删除成功')
-  } catch (error) {
-    return handleError(res, error, '删除分类失败')
-  }
-})
-router.get('/:id', requirePermission('shared:view'), async (req, res) => {
-  try {
-    const result = await sharedService.getById(Number(req.params.id), req.user.id)
-    if (!result) return ApiResponse.error(res, '分享不存在', 404)
-    return ApiResponse.success(res, signSharedPayload(result, req.user.id), '获取分享详情成功')
-  } catch (error) {
-    return handleError(res, error, '获取分享详情失败')
-  }
-})
-router.post('/upload', requireAnyPermission(['shared:create', 'shared:edit', 'shared:manage']), requireVisibleSharedField('post_info.attachments'), uploadSharedFiles, async (req, res) => {
-  try {
-    await convertSharedHeicUploads(req.files)
-    const files = (req.files || []).map(file => {
-      const storageUrl = getUploadUrl('shared', file.filename)
-      return {
-        url: createSharedFileUrl(storageUrl, req.user.id),
-        storage_url: storageUrl,
-        name: file.originalname,
-        type: file.mimetype,
-        size: file.size
-      }
-    })
-    return ApiResponse.success(res, files, '附件上传成功')
-  } catch (error) {
-    for (const file of req.files || []) {
-      try {
-        if (fs.existsSync(file.path)) fs.unlinkSync(file.path)
-      } catch (cleanupError) {
-        log.warn('清理共享上传文件失败:', cleanupError)
-      }
-    }
-    return handleError(res, error, '附件上传失败')
-  }
-})
-router.post('/uploads/cleanup', requireAnyPermission(['shared:create', 'shared:edit', 'shared:delete', 'shared:manage']), async (req, res) => {
-  try {
-    const urls = Array.isArray(req.body?.urls) ? req.body.urls : []
-    await sharedService.cleanupUploads(urls, req.user.id)
-    return ApiResponse.success(res, null, '未使用附件已清理')
-  } catch (error) {
-    return handleError(res, error, '附件清理失败')
-  }
-})
-router.post('/', requirePermission('shared:create'), rejectHiddenSharedWrites(SHARED_WRITE_FIELD_IDS), async (req, res) => {
-  try {
-    const result = await sharedService.create(req.user.id, canManage(req), req.body)
-    const masked = await maskSharedPayload(result, req)
-    return ApiResponse.created(res, '经验分享发布成功', signSharedPayload(masked, req.user.id))
-  } catch (error) {
-    return handleError(res, error, '经验分享发布失败')
-  }
-})
-router.put('/:id', requireAnyPermission(['shared:edit', 'shared:manage']), rejectHiddenSharedWrites(SHARED_WRITE_FIELD_IDS), async (req, res) => {
-  try {
-    const result = await sharedService.update(Number(req.params.id), req.user.id, canManage(req), req.body)
-    const masked = await maskSharedPayload(result, req)
-    return ApiResponse.success(res, signSharedPayload(masked, req.user.id), '经验分享更新成功')
-  } catch (error) {
-    return handleError(res, error, '经验分享更新失败')
-  }
-})
-router.delete('/:id', requireAnyPermission(['shared:delete', 'shared:manage']), async (req, res) => {
-  try {
-    await sharedService.remove(Number(req.params.id), req.user.id, canManage(req))
-    return ApiResponse.success(res, null, '经验分享已删除')
-  } catch (error) {
-    return handleError(res, error, '经验分享删除失败')
-  }
-})
-router.patch('/:id/pin', requirePermission('shared:manage'), rejectHiddenSharedWrites({ pinned: 'post_info.is_pinned' }), async (req, res) => {
-  try {
-    await sharedService.pin(Number(req.params.id), Boolean(req.body?.pinned), req.user.id)
-    return ApiResponse.success(res, null, '置顶状态已更新')
-  } catch (error) {
-    return handleError(res, error, '置顶操作失败')
-  }
-})
+router.get('/', requirePermission('shared:view'), sharedController.list.bind(sharedController))
+router.get('/categories', requirePermission('shared:view'), sharedController.listCategories.bind(sharedController))
+router.post('/categories', requirePermission('shared:manage'), sharedController.rejectHiddenWrites(SharedController.CATEGORY_WRITE_IDS), sharedController.createCategory.bind(sharedController))
+router.put('/categories/:id', requirePermission('shared:manage'), sharedController.rejectHiddenWrites(SharedController.CATEGORY_WRITE_IDS), sharedController.updateCategory.bind(sharedController))
+router.delete('/categories/:id', requirePermission('shared:manage'), sharedController.removeCategory.bind(sharedController))
+router.get('/:id', requirePermission('shared:view'), sharedController.getById.bind(sharedController))
+router.post('/upload', requireAnyPermission(['shared:create', 'shared:edit', 'shared:manage']), sharedController.requireVisibleField('post_info.attachments'), uploadSharedFiles, sharedController.upload.bind(sharedController))
+router.post('/uploads/cleanup', requireAnyPermission(['shared:create', 'shared:edit', 'shared:delete', 'shared:manage']), sharedController.cleanupUploads.bind(sharedController))
+router.post('/', requirePermission('shared:create'), sharedController.rejectHiddenWrites(SharedController.FIELD_WRITE_IDS), sharedController.create.bind(sharedController))
+router.put('/:id', requireAnyPermission(['shared:edit', 'shared:manage']), sharedController.rejectHiddenWrites(SharedController.FIELD_WRITE_IDS), sharedController.update.bind(sharedController))
+router.delete('/:id', requireAnyPermission(['shared:delete', 'shared:manage']), sharedController.remove.bind(sharedController))
+router.patch('/:id/pin', requirePermission('shared:manage'), sharedController.rejectHiddenWrites({ pinned: 'post_info.is_pinned' }), sharedController.pin.bind(sharedController))
 
 module.exports = router

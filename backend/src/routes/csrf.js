@@ -1,53 +1,14 @@
 const express = require('express')
 const router = express.Router()
-const crypto = require('crypto')
-const { getDatabase, isConnected } = require('../config/database')
-const { verifyToken } = require('../middleware/jwt-blacklist')
+const CsrfController = require('../controllers/csrf.controller')
+const csrfTokenService = require('../services/csrf-token.service')
 const log = require('../utils/log')
+const csrfController = new CsrfController(csrfTokenService)
 
-/**
- * 🔒 增强的 CSRF 配置
- */
-const CSRF_CONFIG = {
-  TOKEN_LENGTH: 32,           // Token 长度（字节）
-  TOKEN_EXPIRY: 3600,         // Token 过期时间（秒，1小时）
-  TOKEN_TTL: 3600000,         // Token 保留时间（毫秒，1小时）
-  MAX_TOKENS_PER_USER: 10,    // 每个用户最多持有的 Token 数量
-  ENABLE_PERSISTENCE: true,   // 是否启用数据库持久化
-  ENABLE_RATE_LIMIT: true,    // 是否启用速率限制
-  CLEANUP_INTERVAL: 30 * 60 * 1000 // 清理过期 Token 的间隔（30分钟）
-}
-
-// 内存存储 CSRF Token（作为缓存）
-const csrfTokens = new Map()
-
-const getBearerToken = (req) => {
-  const authHeader = req.headers.authorization || ''
-  if (!authHeader.startsWith('Bearer ')) {
-    return ''
-  }
-
-  return authHeader.slice(7).trim()
-}
-
-async function resolveCSRFUserId(req) {
-  if (req.user && req.user.id) {
-    return req.user.id
-  }
-
-  const token = getBearerToken(req)
-  if (!token) {
-    return null
-  }
-
-  try {
-    const decoded = await verifyToken(token, 'access')
-    return decoded?.sub || decoded?.id || null
-  } catch (error) {
-    log.warn('CSRF 用户解析失败:', error.message)
-    return null
-  }
-}
+const CSRF_CONFIG = csrfTokenService.CSRF_CONFIG
+const resolveCSRFUserId = req => csrfTokenService.resolveCSRFUserId(req)
+const verifyCSRFToken = (userId, token) => csrfTokenService.verifyCSRFToken(userId, token)
+const generateSecureCSRFToken = () => csrfTokenService.generateSecureCSRFToken()
 
 function isCSRFExemptRequest(req) {
   const method = String(req.method || 'GET').toUpperCase()
@@ -85,229 +46,18 @@ function isCSRFExemptRequest(req) {
 }
 
 /**
- * 🔒 生成加密安全的 CSRF Token
- */
-function generateSecureCSRFToken() {
-  return crypto.randomBytes(CSRF_CONFIG.TOKEN_LENGTH).toString('hex')
-}
-
-/**
- * 🔒 生成 Token ID
- */
-function generateTokenId() {
-  return 'csrf_' + crypto.randomBytes(16).toString('hex') + '_' + Date.now()
-}
-
-/**
- * 🔒 存储 CSRF Token
- */
-async function storeCSRFToken(userId, tokenId, token) {
-  const expiresAt = Date.now() + CSRF_CONFIG.TOKEN_TTL
-
-  // 如果启用了持久化，存储到数据库
-  if (CSRF_CONFIG.ENABLE_PERSISTENCE) {
-    const db = getDatabase()
-    await db.execute(
-      `INSERT INTO csrf_tokens (token_id, user_id, token, created_at, expires_at)
-       VALUES (?, ?, ?, NOW(), FROM_UNIXTIME(?))`,
-      [tokenId, userId, token, expiresAt / 1000]
-    )
-  }
-
-  // 只缓存已成功持久化的 Token，避免把无法跨进程验证的凭据发给客户端。
-  csrfTokens.set(tokenId, {
-    userId,
-    token,
-    createdAt: Date.now(),
-    expiresAt
-  })
-}
-
-/**
- * 🔒 清理过期的 CSRF Token
- */
-async function cleanupExpiredTokens(userId) {
-  const now = Date.now()
-
-  // 清理内存中的过期 Token
-  for (const [tokenId, data] of csrfTokens.entries()) {
-    if (data.userId === userId && now > data.expiresAt) {
-      csrfTokens.delete(tokenId)
-    }
-  }
-
-  // 限制每个用户的 Token 数量
-  const userTokens = []
-  for (const [tokenId, data] of csrfTokens.entries()) {
-    if (data.userId === userId && now <= data.expiresAt) {
-      userTokens.push({ tokenId, createdAt: data.createdAt })
-    }
-  }
-
-  // 按创建时间排序，删除最旧的
-  if (userTokens.length > CSRF_CONFIG.MAX_TOKENS_PER_USER) {
-    userTokens.sort((a, b) => a.createdAt - b.createdAt)
-    const toDelete = userTokens.slice(0, userTokens.length - CSRF_CONFIG.MAX_TOKENS_PER_USER)
-
-    for (const item of toDelete) {
-      csrfTokens.delete(item.tokenId)
-
-      // 从数据库删除
-      if (CSRF_CONFIG.ENABLE_PERSISTENCE) {
-        try {
-          const db = getDatabase()
-          await db.execute('DELETE FROM csrf_tokens WHERE token_id = ?', [item.tokenId])
-        } catch (error) {
-          log.error('删除过期 CSRF Token 失败:', error)
-        }
-      }
-    }
-  }
-}
-
-/**
- * 🔒 验证 CSRF Token
- */
-async function verifyCSRFToken(userId, token) {
-  const now = Date.now()
-
-  // 首先检查内存
-  for (const [_tokenId, data] of csrfTokens.entries()) {
-    if (data.userId === userId && data.token === token && now <= data.expiresAt) {
-      return true
-    }
-  }
-
-  // 如果内存中没有，检查数据库
-  if (CSRF_CONFIG.ENABLE_PERSISTENCE) {
-    try {
-      const db = getDatabase()
-      const [rows] = await db.execute(
-        `SELECT token_id FROM csrf_tokens
-         WHERE user_id = ? AND token = ? AND expires_at > NOW()
-         LIMIT 1`,
-        [userId, token]
-      )
-
-      if (rows.length > 0) {
-        // 找到有效 Token，添加到内存缓存
-        const tokenId = rows[0].token_id
-        csrfTokens.set(tokenId, {
-          userId,
-          token,
-          createdAt: Date.now(),
-          expiresAt: now + CSRF_CONFIG.TOKEN_TTL
-        })
-        return true
-      }
-    } catch (error) {
-      log.error('从数据库验证 CSRF Token 失败:', error)
-      throw error
-    }
-  }
-
-  return false
-}
-
-/**
  * 生成CSRF Token
  * 前端可以通过 GET /api/csrf/token 获取Token
  * 注意：此端点允许未登录用户获取临时 Token（用于初始会话）
  */
-router.get('/token', async (req, res) => {
-  try {
-    // 获取用户 ID（如果已登录）或生成临时 ID（未登录）
-    let userId = await resolveCSRFUserId(req)
-    let isTemporary = false
-
-    if (!userId) {
-      // 未登录用户使用 session ID 或生成临时 ID
-      const sessionId = req.sessionID || req.ip || 'anonymous_' + Date.now()
-      userId = 'temp_' + sessionId
-      isTemporary = true
-    }
-
-    // 清理过期 Token
-    await cleanupExpiredTokens(userId)
-
-    // 生成新的 CSRF Token
-    const token = generateSecureCSRFToken()
-    const tokenId = generateTokenId()
-
-    // 存储 Token
-    await storeCSRFToken(userId, tokenId, token)
-
-    // 设置 CSRF 相关的 HTTP 头
-    res.setHeader('X-CSRF-Token', token)
-    res.setHeader('X-CSRF-Token-Id', tokenId)
-
-    res.json({
-      success: true,
-      message: isTemporary ? '临时 CSRF Token 生成成功' : 'CSRF Token 生成成功',
-      data: {
-        csrfToken: token,
-        tokenId: tokenId,
-        expiresIn: CSRF_CONFIG.TOKEN_EXPIRY, // 1小时过期
-        isTemporary: isTemporary
-      }
-    })
-  } catch (error) {
-    log.error('生成 CSRF Token 失败:', error)
-    res.status(500).json({
-      success: false,
-      message: '生成 CSRF Token 失败',
-      error: error.message
-    })
-  }
-})
+router.get('/token', csrfController.generateToken.bind(csrfController))
 
 /**
  * 验证CSRF Token
  * 前端通过 POST /api/csrf/verify 验证Token
  * 注意：未登录用户也可以验证临时 Token
  */
-router.post('/verify', async (req, res) => {
-  try {
-    const { token } = req.body
-
-    if (!token) {
-      return res.status(400).json({
-        success: false,
-        message: '缺少 CSRF Token'
-      })
-    }
-
-    // 获取用户 ID（如果已登录）或临时 ID（未登录）
-    let userId = await resolveCSRFUserId(req)
-    if (!userId) {
-      // 未登录用户使用 session ID 或临时 ID
-      const sessionId = req.sessionID || req.ip || 'anonymous_' + Date.now()
-      userId = 'temp_' + sessionId
-    }
-
-    const isValid = await verifyCSRFToken(userId, token)
-
-    if (!isValid) {
-      return res.status(403).json({
-        success: false,
-        message: 'CSRF Token 无效或已过期'
-      })
-    }
-
-    // 验证通过
-    res.json({
-      success: true,
-      message: 'CSRF Token 验证成功'
-    })
-  } catch (error) {
-    log.error('验证 CSRF Token 失败:', error)
-    res.status(500).json({
-      success: false,
-      message: '验证 CSRF Token 失败',
-      error: error.message
-    })
-  }
-})
+router.post('/verify', csrfController.verifyToken.bind(csrfController))
 
 /**
  * 🔒 验证 CSRF Token 的中间件（增强版）
@@ -417,22 +167,7 @@ function optionalCSRFValidation(req, res, next) {
  * 清理数据库中的所有过期 Token
  */
 async function cleanupAllExpiredTokens() {
-  if (!isConnected()) {
-    log.debug('数据库尚未连接，跳过本轮 CSRF Token 清理')
-    return
-  }
-
-  try {
-    const db = getDatabase()
-    const [result] = await db.execute(
-      'DELETE FROM csrf_tokens WHERE expires_at < NOW()'
-    )
-    if (result.affectedRows > 0) {
-      log.debug(`🧹 清理了 ${result.affectedRows} 个过期的 CSRF Token`)
-    }
-  } catch (error) {
-    log.error('清理过期 CSRF Token 失败:', error)
-  }
+  return csrfTokenService.cleanupAllExpiredTokens()
 }
 
 // 启动定期清理任务（每30分钟清理一次）

@@ -716,7 +716,7 @@ import { useRefreshData } from '@/composables/useRefreshData'
 import { useLoadingState } from '@/composables'
 import unifiedApi from '@/utils/unified-api'
 import { extractResponseData, getRequestErrorCode, getRequestErrorName } from '@/utils/api-response'
-import { formatImageUrl } from '@/utils/format'
+import { formatDate, formatImageUrl } from '@/utils/format'
 import { getOptionLabel, sortOptionsByOrder } from '@/utils/option-sort'
 import { searchEmployees, getModels, getCachedQueryOptions, type ReferenceRecord } from '@/services/reference-options'
 import {
@@ -754,7 +754,7 @@ import type { ReceiptItem, SearchPhoneResult } from '@/components/query/SalesRec
 // 字段权限相关
 import { fieldPermissions, shouldShowActionColumn } from '../../composables/useFieldPermissions'
 // 时间处理工具
-import { TimeUtil, TIME_FORMATS } from '../../utils/time'
+import { TIME_FORMATS } from '../../utils/time'
 import type { QueryItem, QueryOperationOptions, QueryParams, ReturnDeviceInfo, QueryStatistics as Statistics, QueryOptions as Options, SoldProductImage, UserOption } from '@/types'
 const globalNotifications = useNotification()
 
@@ -1865,12 +1865,6 @@ const handleRefresh = async () => {
     ])
   })
   success('数据刷新成功')
-}
-
-// 格式化日期 - 使用项目标准时间工具
-const formatDate = (dateString?: string) => {
-  if (!dateString) return '-'
-  return TimeUtil.format(dateString, TIME_FORMATS.DATE)
 }
 
 // 格式化价格 - 始终显示价格，包括 0

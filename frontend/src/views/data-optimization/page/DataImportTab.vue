@@ -580,12 +580,14 @@
         </el-table>
       </div>
       <template #footer>
-        <el-button
-          type="default"
-          @click="showHistoryDialog = false"
-        >
-          关闭
-        </el-button>
+        <div class="tf-dialog-actions">
+          <el-button
+            type="default"
+            @click="showHistoryDialog = false"
+          >
+            关闭
+          </el-button>
+        </div>
       </template>
     </MobileDialog>
   </div>
@@ -601,7 +603,7 @@ import { usePagePermissions } from '@/composables/usePagePermissions'
 import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import InlineLoading from '@/components/InlineLoading.vue'
 import { logger } from '@/utils/logger'
-import { formatDate as formatGlobalDate } from '@/utils/format'
+import { formatDate as formatDateTime } from '@/utils/format'
 import { getRequestErrorMessage, getRequestErrorStatus } from '@/utils/api-response'
 import { useNotification } from '@/composables/useNotification'
 const globalNotifications = useNotification()
@@ -1053,16 +1055,6 @@ const getImportHistory = async () => {
     showHistoryDialog.value = true
   } catch (error: unknown) {
     globalNotifications.error('获取历史失败: ' + getRequestErrorMessage(error, '未知错误'))
-  }
-}
-
-const formatDateTime = (timestamp: string) => {
-  if (!timestamp) return '-'
-  try {
-    return formatGlobalDate(timestamp)
-  } catch (error) {
-    logger.error('日期格式化失败', { error, timestamp })
-    return '-'
   }
 }
 

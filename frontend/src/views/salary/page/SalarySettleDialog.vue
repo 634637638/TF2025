@@ -2,8 +2,7 @@
   <MobileDialog
     :model-value="modelValue"
     title="结算工资"
-    width="520px"
-    dialog-class="salary-dialog"
+    dialog-class="salary-dialog crud-dialog-sm"
     :show-default-footer="false"
     @close="emit('close')"
     @update:model-value="emit('update:modelValue', $event)"
@@ -46,29 +45,31 @@
     </form>
 
     <template #footer>
-      <el-button
-        type="info"
-        @click="emit('close')"
-      >
-        取消
-      </el-button>
-      <el-button
-        type="success"
-        native-type="submit"
-        form="settle-form"
-        :disabled="saving"
-      >
-        <InlineLoading
-          v-if="saving"
-          text="结算中..."
-          size="small"
-          variant="inherit"
-        />
-        <template v-else>
-          <i class="fas fa-check" />
-          确认结算
-        </template>
-      </el-button>
+      <div class="tf-dialog-actions">
+        <el-button
+          type="info"
+          @click="emit('close')"
+        >
+          取消
+        </el-button>
+        <el-button
+          type="success"
+          native-type="submit"
+          form="settle-form"
+          :disabled="saving"
+        >
+          <InlineLoading
+            v-if="saving"
+            text="结算中..."
+            size="small"
+            variant="inherit"
+          />
+          <template v-else>
+            <i class="fas fa-check" />
+            确认结算
+          </template>
+        </el-button>
+      </div>
     </template>
   </MobileDialog>
 </template>

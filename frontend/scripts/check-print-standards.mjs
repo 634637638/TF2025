@@ -7,8 +7,7 @@ const printStylesPath = path.join(sourceRoot, 'styles/components/_print.scss')
 const findings = []
 const printExceptions = {
   'src/views/brands/styles/brands-view/accessibility.css': { count: 1, reason: '品牌目录的专用纸张排版' },
-  'src/components/StockInDetailModal.vue': { count: 2, reason: '独立打印入库单窗口及详情打印视图' },
-  'src/views/rentals/RentalsView.vue': { count: 1, reason: '生成后独立打开的租赁合同 HTML' }
+  'src/components/StockInDetailModal.vue': { count: 2, reason: '独立打印入库单窗口及详情打印视图' }
 }
 
 function collectFiles(directory, files = []) {

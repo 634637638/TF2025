@@ -210,6 +210,7 @@ import { getOrdersByPhone } from '@/api/shop-public'
 import { getUserOrders, userManager, tokenManager, type AuthUser } from '@/api/auth'
 import SectionLoading from '@/components/SectionLoading.vue'
 import { formatAmount, formatDateTime as formatGlobalDateTime, formatImageUrl } from '@/utils/format'
+import { TIME_FORMATS } from '@/utils/time'
 import { normalizePhoneDigits } from '@/utils/security'
 import { logger } from '@/utils/logger'
 import { getRequestErrorMessage } from '@/utils/api-response'
@@ -476,10 +477,7 @@ const getPaymentText = (method?: string) => {
 }
 
 // 格式化时间
-const formatTime = (time?: string) => {
-  if (!time) return ''
-  return formatGlobalDateTime(time, 'YYYY-MM-DD HH:mm')
-}
+const formatTime = (time?: string) => formatGlobalDateTime(time, TIME_FORMATS.DATETIME_MINUTE, '')
 
 // 获取订单商品预览（最多显示2个）
 const getFirstItems = (items: PublicOrder['items'] = []) => {

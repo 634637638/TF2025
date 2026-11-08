@@ -753,6 +753,7 @@ import { fieldPermissions, shouldShowActionColumn } from '@/composables/useField
 import { useMenuStore } from '@/stores/menu'
 import { useMenuWidth } from '@/composables/useMenuWidth'
 import { useMobile } from '@/composables/mobile'
+import { useMobileRowDoubleTap } from '@/composables/useMobileRowDoubleTap'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import ImportExportActions from '@/components/business/ImportExportActions.vue'
 import InlineLoading from '@/components/InlineLoading.vue'
@@ -940,8 +941,7 @@ const handleMenuImportChange = async (event: Event) => {
 }
 const menuSearchExpanded = ref(false)
 const activeMobileMenuId = ref<string | number | null>(null)
-const lastTappedMenuId = ref<string | number | null>(null)
-const lastMenuTapTimestamp = ref(0)
+const { isDoubleTap } = useMobileRowDoubleTap()
 let sharedPublicMenuPromise: Promise<MenuItem[]> | null = null
 
 const asRecord = (value: unknown): Record<string, unknown> | null => (
@@ -1079,16 +1079,7 @@ const toggleMobileMenuActions = (menuId: string | number) => {
 const handleMenuRowTap = (menu: MenuItem) => {
   if (!isMobile.value) return
 
-  const now = Date.now()
-  if (lastTappedMenuId.value === menu.id && now - lastMenuTapTimestamp.value <= 320) {
-    toggleMobileMenuActions(menu.id)
-    lastTappedMenuId.value = null
-    lastMenuTapTimestamp.value = 0
-    return
-  }
-
-  lastTappedMenuId.value = menu.id
-  lastMenuTapTimestamp.value = now
+  if (isDoubleTap(menu.id)) toggleMobileMenuActions(menu.id)
 }
 
 const searchMenus = async () => {

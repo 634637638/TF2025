@@ -13,7 +13,7 @@
 
 const { getDatabase } = require('../config/database')
 const { verifyToken } = require('./jwt-blacklist')
-const { getRoleHierarchyFromDB } = require('../services/accessControl.service')
+const { getRoleHierarchyFromDB } = require('../services/access-control.service')
 const { normalizePermissionType } = require('../config/module-permission-actions')
 const { normalizeModuleKey } = require('../utils/moduleKeyNormalizer')
 const { CACHE_TTL } = require('../config/constants')

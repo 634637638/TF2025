@@ -129,7 +129,7 @@
 import { computed } from 'vue'
 import { fieldPermissions } from '@/composables/useFieldPermissions'
 import { getEffectivePhoneStatusClass } from '@/constants/phoneStatuses'
-import { TimeUtil, TIME_FORMATS } from '@/utils/time'
+import { formatDate } from '@/utils/format'
 import type { QueryItem } from '@/types'
 
 interface Props {
@@ -163,11 +163,6 @@ const productMeta = computed(() => {
 
   return parts.length ? parts.join(' ') : '-'
 })
-
-const formatDate = (dateString?: string) => {
-  if (!dateString) return '-'
-  return TimeUtil.format(dateString, TIME_FORMATS.DATE)
-}
 
 const formatPrice = (price?: number | null) => price === null || price === undefined ? '-' : `¥${price}`
 

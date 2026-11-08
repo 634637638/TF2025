@@ -28,7 +28,7 @@
         @command="handleCommand"
       >
         <el-button
-          class="tabs-action-btn tf-button--tab-action"
+          class="tf-button--tab-action"
           native-type="button"
           title="标签页操作"
         >
@@ -197,16 +197,7 @@ const handleCommand = (command: string) => {
   flex-shrink: 0;
 }
 
-.tabs-action-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.tabs-action-btn i {
-  font-size: var(--tf-type-scale-12);
-}
+/* 标签操作按钮的收缩与图标字号由公共 tf-button--tab-action 维护 */
 
 /* 响应式 - 移动端隐藏 */
 @media (max-width: 767px) {

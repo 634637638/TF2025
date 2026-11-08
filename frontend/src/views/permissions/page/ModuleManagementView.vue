@@ -1498,24 +1498,10 @@ export default {
   box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
 }
 
+/* 搜索清除按钮仅作输入框内定位，视觉规格由公共 el-button text 基线维护 */
 .btn-clear {
   position: absolute;
   right: 8px;
-  background: transparent;
-  border: none;
-  color: var(--tf-button-tool-color);
-  cursor: pointer;
-  padding: 0;
-  width: 24px;
-  height: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 4px;
-}
-
-.btn-clear:hover {
-  background: var(--tf-button-neutral-hover-bg);
 }
 
 .modules-section {
@@ -1555,20 +1541,6 @@ export default {
 .view-toggles {
   display: flex;
   gap: 5px;
-}
-
-.btn-link {
-  background: transparent;
-  border: none;
-  color: var(--tf-button-primary-soft-color);
-  text-decoration: underline;
-  cursor: pointer;
-  font-size: var(--tf-type-scale-14);
-  padding: 0;
-}
-
-.btn-link:hover {
-  color: var(--tf-button-primary-soft-hover-color);
 }
 
 </style>

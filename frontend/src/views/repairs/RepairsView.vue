@@ -331,7 +331,7 @@
                 align="center"
               >
                 <template #default="{ row }">
-                  <span class="time-value">{{ formatDate(row.repair_time) }}</span>
+                  <span class="time-value">{{ formatGlobalDate(row.repair_time) }}</span>
                 </template>
               </el-table-column>
               <el-table-column
@@ -949,6 +949,7 @@ import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { useLoadingState } from '@/composables'
 import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { useMobile } from '@/composables/mobile'
+import { useMobileRowDoubleTap } from '@/composables/useMobileRowDoubleTap'
 import { useNotification } from '@/composables/useNotification'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { PageHeader, PermissionGate } from '@/components/base'
@@ -1018,8 +1019,7 @@ const pagination = reactive({
   has_prev: false
 })
 const mobileActionRowId = ref<string | null>(null)
-const lastTappedRowId = ref<string | null>(null)
-const lastTapTimestamp = ref(0)
+const { isDoubleTap } = useMobileRowDoubleTap()
 const deviceSearchKeyword = ref('')
 const deviceSearching = ref(false)
 const selectedDevice = ref<RepairDeviceSearchResult | null>(null)
@@ -1718,22 +1718,13 @@ const handleRepairRowClick = (repair: RepairOrder, _column: unknown, event: Even
   const target = event.target as HTMLElement | null
   if (target?.closest('button, a, input, textarea, select, .el-button, .el-input, .el-select')) return
   const rowId = getRepairRowKey(repair)
-  const now = Date.now()
-  if (lastTappedRowId.value === rowId && now - lastTapTimestamp.value <= 320) {
-    toggleMobileActions(rowId)
-    lastTappedRowId.value = null
-    lastTapTimestamp.value = 0
-    return
-  }
-  lastTappedRowId.value = rowId
-  lastTapTimestamp.value = now
+  if (isDoubleTap(rowId)) toggleMobileActions(rowId)
 }
 
 const formatAmount = (amount?: number) => Number(amount || 0).toLocaleString('zh-CN', { maximumFractionDigits: 2 })
 const getCustomerOptionLabel = (customer: CustomerOption) => (
   customer.name
 )
-const formatDate = (date: string) => formatGlobalDate(date)
 
 onMounted(async () => {
   if (!canView.value) return

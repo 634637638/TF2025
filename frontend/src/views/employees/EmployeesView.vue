@@ -436,8 +436,7 @@
         <MobileDialog
           v-model="dialogVisible"
           :title="isEditMode ? '编辑员工' : '新增员工'"
-          width="700px"
-          dialog-class="employees-form-dialog"
+          dialog-class="employees-form-dialog crud-dialog-md-lg"
           :close-on-click-modal="false"
           :show-default-footer="false"
           @close="attemptCloseModal"
@@ -720,29 +719,31 @@
           </el-form>
 
           <template #footer>
-            <el-button
-              type="default"
-              :icon="Close"
-              @click="attemptCloseModal"
-            >
-              取消
-            </el-button>
-            <el-button
-              type="primary"
-              :disabled="submitting"
-              @click="saveEmployee"
-            >
-              <InlineLoading
-                v-if="submitting"
-                :text="isEditMode ? '保存中...' : '添加中...'"
-                size="small"
-                variant="inherit"
-              />
-              <template v-else>
-                <el-icon><component :is="isEditMode ? Check : Plus" /></el-icon>
-                {{ isEditMode ? '保存' : '添加' }}
-              </template>
-            </el-button>
+            <div class="tf-dialog-actions">
+              <el-button
+                type="default"
+                :icon="Close"
+                @click="attemptCloseModal"
+              >
+                取消
+              </el-button>
+              <el-button
+                type="primary"
+                :disabled="submitting"
+                @click="saveEmployee"
+              >
+                <InlineLoading
+                  v-if="submitting"
+                  :text="isEditMode ? '保存中...' : '添加中...'"
+                  size="small"
+                  variant="inherit"
+                />
+                <template v-else>
+                  <el-icon><component :is="isEditMode ? Check : Plus" /></el-icon>
+                  {{ isEditMode ? '保存' : '添加' }}
+                </template>
+              </el-button>
+            </div>
           </template>
         </MobileDialog>
 
@@ -937,29 +938,31 @@
           </el-form>
 
           <template #footer>
-            <el-button
-              type="default"
-              :icon="Close"
-              @click="closeRoleModal"
-            >
-              取消
-            </el-button>
-            <el-button
-              type="primary"
-              :disabled="savingRole"
-              @click="saveRole"
-            >
-              <InlineLoading
-                v-if="savingRole"
-                :text="showAddRoleModal ? '添加中...' : '保存中...'"
-                size="small"
-                variant="inherit"
-              />
-              <template v-else>
-                <el-icon><Check /></el-icon>
-                {{ showAddRoleModal ? '添加' : '保存' }}
-              </template>
-            </el-button>
+            <div class="tf-dialog-actions">
+              <el-button
+                type="default"
+                :icon="Close"
+                @click="closeRoleModal"
+              >
+                取消
+              </el-button>
+              <el-button
+                type="primary"
+                :disabled="savingRole"
+                @click="saveRole"
+              >
+                <InlineLoading
+                  v-if="savingRole"
+                  :text="showAddRoleModal ? '添加中...' : '保存中...'"
+                  size="small"
+                  variant="inherit"
+                />
+                <template v-else>
+                  <el-icon><Check /></el-icon>
+                  {{ showAddRoleModal ? '添加' : '保存' }}
+                </template>
+              </el-button>
+            </div>
           </template>
         </MobileDialog>
       </div>
@@ -992,6 +995,7 @@ import ImportExportActions from '@/components/business/ImportExportActions.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import { PageHeader, PermissionGate } from '@/components/base'
 import { useMobile } from '@/composables/mobile'
+import { useMobileRowDoubleTap } from '@/composables/useMobileRowDoubleTap'
 import {
   Plus,
   Refresh,
@@ -1030,8 +1034,7 @@ const { loading: exporting } = useLoadingState()
 const { exportFile, buildDateFilename, sanitizeParams } = useImportExport()
 const employeesTableRef = ref<unknown>(null)
 const mobileActionRowId = ref<string | null>(null)
-const lastTappedRowId = ref<string | null>(null)
-const lastTapTimestamp = ref(0)
+const { isDoubleTap } = useMobileRowDoubleTap()
 const getEmployeeRowKey = (employee: Employee) => String(employee.id)
 const isEmployeeActive = (status: Employee['status'] | string) => status === 1 || status === 'active'
 const getEmployeeRowClass = ({ row }: { row: Employee }) => isEmployeeActive(row.status) ? 'status-active-row' : 'status-inactive-row'
@@ -1111,18 +1114,7 @@ const toggleMobileActions = (id: number) => {
 
 const handleMobileRowTap = (id: number) => {
   if (!isMobile.value) return
-  const rowKey = String(id)
-
-  const now = Date.now()
-  if (lastTappedRowId.value === rowKey && now - lastTapTimestamp.value <= 320) {
-    toggleMobileActions(id)
-    lastTappedRowId.value = null
-    lastTapTimestamp.value = 0
-    return
-  }
-
-  lastTappedRowId.value = rowKey
-  lastTapTimestamp.value = now
+  if (isDoubleTap(String(id))) toggleMobileActions(id)
 }
 
 // 模态框状态
@@ -2890,66 +2882,10 @@ onMounted(async () => {
   margin-right: 8px;
 }
 
-/* 状态按钮样式 */
-.status-buttons {
-  display: flex;
-  gap: 10px;
-}
-
-.status-btn {
-  flex: 1;
-  padding: 10px 16px;
-  border: 2px solid var(--tf-button-neutral-border);
-  background: var(--tf-button-neutral-bg);
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  font-weight: 500;
-  color: var(--tf-button-tool-color);
-}
-
-.status-btn:hover {
-  border-color: var(--tf-button-neutral-hover-border);
-  background: var(--tf-button-neutral-hover-bg);
-}
-
-.status-btn.active {
-  border-color: var(--tf-status-success-border);
-  background: var(--tf-status-success-bg);
-  color: var(--tf-status-success-color);
-}
-
-.status-btn.inactive {
-  border-color: var(--tf-status-danger-border);
-  background: var(--tf-status-danger-bg);
-  color: var(--tf-status-danger-color);
-}
-
-.status-btn i {
-  font-size: var(--tf-type-scale-14);
-}
-
 </style>
 
 <style>
-.employees-form-dialog {
-  --dialog-max-width: 700px;
-}
-
 @media (max-width: 767px) {
-  .employees-form-dialog {
-    --dialog-side-gap: 6px;
-    --dialog-vertical-gap: 12px;
-    --dialog-max-width: calc(100vw - 12px);
-    --mobile-dialog-overlay-padding: 12px 6px;
-    --mobile-dialog-body-padding: 10px 8px 8px;
-    --mobile-dialog-footer-padding: 0 8px 8px;
-  }
-
   .employees-form-dialog .el-form-item {
     margin-bottom: 12px;
   }
@@ -3015,17 +2951,6 @@ onMounted(async () => {
     border-radius: 12px;
     display: inline-flex;
     align-items: center;
-  }
-}
-
-@media (max-width: 479px) {
-  .employees-form-dialog {
-    --dialog-side-gap: 4px;
-    --dialog-vertical-gap: 12px;
-    --dialog-max-width: calc(100vw - 8px);
-    --mobile-dialog-overlay-padding: 12px 4px;
-    --mobile-dialog-body-padding: 8px 6px 6px;
-    --mobile-dialog-footer-padding: 0 6px 6px;
   }
 }
 </style>

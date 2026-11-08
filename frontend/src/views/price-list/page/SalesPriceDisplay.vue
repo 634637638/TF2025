@@ -203,22 +203,24 @@
         </div>
       </div>
       <template #footer>
-        <el-button @click="toggleIOSImageMode">
-          长按保存
-        </el-button>
-        <el-button
-          :loading="isSharingImage"
-          type="primary"
-          @click="shareIOSImage"
-        >
-          我要分享
-        </el-button>
-        <el-button
-          type="primary"
-          @click="closeIOSImageModal"
-        >
-          关闭
-        </el-button>
+        <div class="tf-dialog-actions">
+          <el-button @click="toggleIOSImageMode">
+            长按保存
+          </el-button>
+          <el-button
+            :loading="isSharingImage"
+            type="primary"
+            @click="shareIOSImage"
+          >
+            我要分享
+          </el-button>
+          <el-button
+            type="primary"
+            @click="closeIOSImageModal"
+          >
+            关闭
+          </el-button>
+        </div>
       </template>
     </MobileDialog>
   </div>

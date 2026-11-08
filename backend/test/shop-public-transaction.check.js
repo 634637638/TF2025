@@ -5,6 +5,8 @@ const fs = require('node:fs')
 const path = require('node:path')
 const test = require('node:test')
 const Module = require('node:module')
+const bcrypt = require('bcryptjs')
+const RealShopPublicService = require('../src/services/shop-public.service')
 
 const backendRoot = path.resolve(__dirname, '..')
 
@@ -25,7 +27,26 @@ function loadShopPublicRouter(database) {
     return res
   }]))
 
-  class MockShopPublicService {}
+  class MockShopPublicService {
+    constructor() {
+      this.delegate = new RealShopPublicService({
+        database,
+        generateMemberNumberFn: async () => 'TF000001'
+      })
+    }
+
+    registerCustomer(...args) {
+      return this.delegate.registerCustomer(...args)
+    }
+
+    loginCustomer(...args) {
+      return this.delegate.loginCustomer(...args)
+    }
+
+    cancelCustomerOrder(...args) {
+      return this.delegate.cancelCustomerOrder(...args)
+    }
+  }
   class MockSystemSettingsService {}
   const pass = (_req, _res, next) => next?.()
   const originalLoad = Module._load
@@ -62,10 +83,10 @@ function loadShopPublicRouter(database) {
   return routes
 }
 
-function createTransactionalDatabase({ order, failTokenInsert = false } = {}) {
+function createTransactionalDatabase({ order, customers = [], failTokenInsert = false } = {}) {
   const state = {
     order: order ? { ...order } : null,
-    customers: [],
+    customers: customers.map(customer => ({ ...customer })),
     tokens: [],
     nextCustomerId: 1
   }
@@ -83,6 +104,9 @@ function createTransactionalDatabase({ order, failTokenInsert = false } = {}) {
         transaction = { customers: [], tokens: [], order: state.order && { ...state.order } }
       },
       async query(sql, params = []) {
+        if (/SELECT id, name, phone, password FROM customers WHERE phone = \?/.test(sql)) {
+          return [state.customers.filter(customer => customer.phone === params[0]).map(customer => ({ ...customer })), []]
+        }
         if (/SELECT id, order_number, customer_phone, status, expires_at FROM H5_orders/.test(sql)) {
           return [transaction?.order?.id === Number(params[0]) ? [{ ...transaction.order }] : [], []]
         }
@@ -106,6 +130,9 @@ function createTransactionalDatabase({ order, failTokenInsert = false } = {}) {
           if (failTokenInsert) throw new Error('token insert failed')
           transaction.tokens.push({ customer_id: params[0], token: params[1], expires_at: params[2] })
           return [{ affectedRows: 1 }, []]
+        }
+        if (/DELETE FROM customer_tokens WHERE customer_id = \? OR expires_at <= NOW\(\)/.test(sql)) {
+          return [{ affectedRows: 0 }, []]
         }
         if (/SELECT id, name, phone, avatar, member_number FROM customers WHERE id = \?/.test(sql)) {
           const customer = [...state.customers, ...(transaction?.customers || [])].find(item => item.id === Number(params[0]))
@@ -140,7 +167,7 @@ function createTransactionalDatabase({ order, failTokenInsert = false } = {}) {
 
   return {
     state,
-    database: { getDatabase: () => ({ getConnection }) }
+    database: { getDatabase: () => ({ getConnection, query: (...args) => getConnection().query(...args) }) }
   }
 }
 
@@ -179,6 +206,72 @@ test('注册写入 Token 失败时回滚客户记录并释放事务', async () =
   assert.deepEqual(fixture.state.tokens, [])
 })
 
+test('客户注册由 controller 委托 service 并在事务提交后返回用户与 Token', async () => {
+  const fixture = createTransactionalDatabase()
+  const routes = loadShopPublicRouter(fixture.database)
+  const result = await invoke(routes, 'POST', '/auth/register', {
+    body: { name: '测试客户', phone: '13800000000', password: 'test-password' }
+  })
+
+  assert.equal(result.statusCode, 200)
+  assert.equal(result.body.method, 'success')
+  assert.equal(result.body.args[1], '注册成功')
+  assert.equal(result.body.args[0].user.phone, '13800000000')
+  assert.equal(result.body.args[0].user.member_number, 'TF000001')
+  assert.equal(typeof result.body.args[0].token, 'string')
+  assert.equal(fixture.state.customers.length, 1)
+  assert.equal(fixture.state.tokens.length, 1)
+})
+
+test('客户登录委托 controller/service，成功时轮换 Token 并返回用户资料', async () => {
+  const passwordHash = await bcrypt.hash('test-password', 4)
+  const fixture = createTransactionalDatabase({ customers: [
+    { id: 9, name: '登录客户', phone: '13800000000', password: passwordHash, avatar: null, member_number: 'TF000009' }
+  ] })
+  const routes = loadShopPublicRouter(fixture.database)
+  const result = await invoke(routes, 'POST', '/auth/login', {
+    body: { phone: ' 13800000000 ', password: 'test-password' }
+  })
+
+  assert.equal(result.statusCode, 200)
+  assert.equal(result.body.args[1], '登录成功')
+  assert.equal(result.body.args[0].user.phone, '13800000000')
+  assert.equal(typeof result.body.args[0].token, 'string')
+  assert.equal(fixture.state.tokens.length, 1)
+})
+
+test('客户登录保留不存在用户、未设密码和密码错误的响应状态', async () => {
+  const passwordHash = await bcrypt.hash('test-password', 4)
+  const fixture = createTransactionalDatabase({ customers: [
+    { id: 9, name: '登录客户', phone: '13800000000', password: passwordHash },
+    { id: 10, name: '无密码客户', phone: '13900000000', password: null }
+  ] })
+  const routes = loadShopPublicRouter(fixture.database)
+  const missing = await invoke(routes, 'POST', '/auth/login', { body: { phone: '13700000000', password: 'test-password' } })
+  const unset = await invoke(routes, 'POST', '/auth/login', { body: { phone: '13900000000', password: 'test-password' } })
+  const invalid = await invoke(routes, 'POST', '/auth/login', { body: { phone: '13800000000', password: 'wrong-password' } })
+
+  assert.equal(missing.statusCode, 404)
+  assert.equal(unset.statusCode, 403)
+  assert.equal(invalid.statusCode, 401)
+  assert.equal(fixture.state.tokens.length, 0)
+})
+
+test('客户登录写入 Token 失败时回滚并返回 500', async () => {
+  const passwordHash = await bcrypt.hash('test-password', 4)
+  const fixture = createTransactionalDatabase({
+    customers: [{ id: 9, name: '登录客户', phone: '13800000000', password: passwordHash }],
+    failTokenInsert: true
+  })
+  const routes = loadShopPublicRouter(fixture.database)
+  const result = await invoke(routes, 'POST', '/auth/login', {
+    body: { phone: '13800000000', password: 'test-password' }
+  })
+
+  assert.equal(result.statusCode, 500)
+  assert.deepEqual(fixture.state.tokens, [])
+})
+
 test('价格支付确认与后台取消均锁定订单并带状态条件更新', () => {
   const source = fs.readFileSync(path.join(backendRoot, 'src/services/shop-public.service.js'), 'utf8')
   const payStart = source.indexOf('async confirmUserPayment(orderNumber)')
@@ -212,6 +305,7 @@ test('客户手机号唯一约束迁移覆盖全体客户并可回滚到 H5 约�
 
 test('H5 登录后的订单和销售历史使用最大 50 条的统一分页契约', () => {
   const route = fs.readFileSync(path.join(backendRoot, 'src/routes/shop-public.js'), 'utf8')
+  const controller = fs.readFileSync(path.join(backendRoot, 'src/controllers/shop-public-auth.controller.js'), 'utf8')
   const service = fs.readFileSync(path.join(backendRoot, 'src/services/shop-public.service.js'), 'utf8')
   const authApi = fs.readFileSync(path.join(backendRoot, '../frontend/src/api/auth.ts'), 'utf8')
   const orderQuery = fs.readFileSync(path.join(backendRoot, '../frontend/src/views/H5-mobile/page/OrderQuery.vue'), 'utf8')
@@ -227,11 +321,11 @@ test('H5 登录后的订单和销售历史使用最大 50 条的统一分页契�
   const orderMethod = service.slice(orderServiceStart, salesServiceStart)
   const salesMethod = service.slice(salesServiceStart, statusServiceStart)
 
-  assert.match(route, /Math\.min\(50, Math\.max\(1,/)
-  assert.match(ordersHandler, /normalizeAuthenticatedHistoryPagination\(req\.query\)/)
-  assert.match(ordersHandler, /sendPublicPaginated\(res, result, '获取订单成功'\)/)
-  assert.match(salesHandler, /normalizeAuthenticatedHistoryPagination\(req\.query\)/)
-  assert.match(salesHandler, /sendPublicPaginated\(res, result, '获取销售记录成功'\)/)
+  assert.match(controller, /Math\.min\(50, Math\.max\(1,/)
+  assert.match(ordersHandler, /shopPublicAuthController\.getOrders\.bind\(shopPublicAuthController\)/)
+  assert.match(controller, /getOrders\(req, res\)[\s\S]*normalizeHistoryPagination\(req\.query\)[\s\S]*this\.sendPaginated\(res, result, '获取订单成功'\)/)
+  assert.match(salesHandler, /shopPublicAuthController\.getSales\.bind\(shopPublicAuthController\)/)
+  assert.match(controller, /getSales\(req, res\)[\s\S]*normalizeHistoryPagination\(req\.query\)[\s\S]*this\.sendPaginated\(res, result, '获取销售记录成功'\)/)
   assert.match(orderMethod, /LIMIT \? OFFSET \?/)
   assert.match(orderMethod, /customer_name = \?/)
   assert.match(salesMethod, /SELECT COUNT\(\*\) as total FROM sales WHERE customer_id = \?/)

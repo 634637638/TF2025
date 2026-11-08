@@ -1,5 +1,6 @@
 import { computed, ref, watch, type Ref } from 'vue'
 import type { SalaryEmployeeOption } from '@/types/salary'
+import { useMobileRowDoubleTap } from '@/composables/useMobileRowDoubleTap'
 
 interface SalaryEmployeeTableInstance {
   toggleRowExpansion: (row: SalaryEmployeeOption, expanded: boolean) => void
@@ -24,8 +25,7 @@ export const useSalaryEmployeeTable = ({
   const employeePageSize = ref(20)
   const employeeTableRef = ref<SalaryEmployeeTableInstance>()
   const mobileExpandedEmployeeId = ref<number | null>(null)
-  const lastTappedEmployeeId = ref<number | null>(null)
-  const lastEmployeeTapTimestamp = ref(0)
+  const { isDoubleTap } = useMobileRowDoubleTap()
 
   const filteredEmployees = computed(() => {
     const search = employeeSearch.value.trim().toLowerCase()
@@ -71,16 +71,9 @@ export const useSalaryEmployeeTable = ({
   const handleEmployeeRowTap = (row: SalaryEmployeeOption) => {
     if (!isMobile.value) return
 
-    const now = Date.now()
-    if (lastTappedEmployeeId.value === row.id && now - lastEmployeeTapTimestamp.value <= 320) {
+    if (isDoubleTap(row.id)) {
       handleEmployeeRowDblClick(row)
-      lastTappedEmployeeId.value = null
-      lastEmployeeTapTimestamp.value = 0
-      return
     }
-
-    lastTappedEmployeeId.value = row.id
-    lastEmployeeTapTimestamp.value = now
   }
 
   const resetEmployeeTableFilters = () => {

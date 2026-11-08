@@ -4,10 +4,141 @@
  */
 const { _executeQuery } = require('../config/database')
 const BaseRepository = require('./base.repository')
+const { withConnection } = require('../core/db/connection')
 
 class BrandRepository extends BaseRepository {
   constructor() {
     super('brands')
+  }
+
+  withConnection(operation) {
+    return withConnection(() => this.getConnection(), operation)
+  }
+
+  async getManagementStats({ name, status } = {}) {
+    const conditions = []
+    const params = []
+    if (name) {
+      conditions.push('b.name LIKE ?')
+      params.push(`%${name}%`)
+    }
+    if (status !== undefined && status !== '') {
+      conditions.push('b.status = ?')
+      params.push(Number(status) === 1 ? 1 : 0)
+    }
+    const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''
+    const [rows] = await this.executePrepared(`
+      SELECT
+        COUNT(*) AS total,
+        SUM(CASE WHEN b.status = 1 THEN 1 ELSE 0 END) AS active,
+        SUM(CASE WHEN b.status <> 1 OR b.status IS NULL THEN 1 ELSE 0 END) AS inactive,
+        COALESCE(SUM((SELECT COUNT(*) FROM phones p WHERE p.brand_id = b.id)), 0) AS related_phones
+      FROM brands b
+      ${whereClause}
+    `, params)
+    return rows[0]
+  }
+
+  async listManagement({ name, status, pageSize, offset, returnAll, suggest }) {
+    const conditions = []
+    const params = []
+    if (name) {
+      const searchTerms = name.trim()
+      if (suggest === 'true') {
+        conditions.push('(name LIKE ? OR name LIKE ? OR name LIKE ? OR LOWER(name) LIKE LOWER(?))')
+        params.push(`${searchTerms}%`, `%${searchTerms}%`, `%${searchTerms}`, `%${searchTerms}%`)
+      } else {
+        conditions.push('(name LIKE ? OR LOWER(name) LIKE LOWER(?))')
+        params.push(`%${searchTerms}%`, `%${searchTerms}%`)
+      }
+    }
+    if (status !== undefined && status !== null && status !== '') {
+      conditions.push('status = ?')
+      params.push(parseInt(status))
+    }
+    const whereClause = conditions.length ? ` WHERE ${conditions.join(' AND ')}` : ''
+    let query = `SELECT id, name, status, sort_order, created_at, updated_at FROM brands${whereClause}`
+    query += ' ORDER BY sort_order ASC, name ASC, id ASC'
+    if (!returnAll) query += ' LIMIT ? OFFSET ?'
+    const listParams = returnAll ? params : [...params, pageSize, offset]
+    const countQuery = `SELECT COUNT(*) as total FROM brands${whereClause}`
+    const [[brands], [countRows]] = await Promise.all([
+      this.executePrepared(query, listParams),
+      this.executePrepared(countQuery, params)
+    ])
+    let suggestions = []
+    if (suggest === 'true') {
+      const [rows] = await this.executePrepared(`
+        SELECT name
+        FROM brands
+        WHERE (name LIKE ? OR LOWER(name) LIKE LOWER(?))
+        GROUP BY name
+        ORDER BY MIN(sort_order) ASC, name ASC, MIN(id) ASC
+        LIMIT 5
+      `, [`%${name}%`, `%${name}%`])
+      suggestions = rows.map(item => item.name)
+    }
+    return { brands, total: countRows[0].total, suggestions }
+  }
+
+  async createManagementBrand({ name, status, sortOrder }) {
+    const [existing] = await this.executePrepared('SELECT id FROM brands WHERE name = ?', [name])
+    if (existing.length) return { type: 'duplicate' }
+    const [result] = await this.executePrepared(
+      'INSERT INTO brands (name, status, sort_order, created_at) VALUES (?, ?, ?, NOW())',
+      [name, status, sortOrder]
+    )
+    return { type: 'created', id: result.insertId }
+  }
+
+  async updateManagementBrand({ id, name, status, sortOrder }) {
+    const [existing] = await this.executePrepared(
+      'SELECT id FROM brands WHERE name = ? AND id != ?', [name, id]
+    )
+    if (existing.length) return { type: 'duplicate' }
+    const [result] = await this.executePrepared(
+      'UPDATE brands SET name = ?, status = ?, sort_order = ?, updated_at = NOW() WHERE id = ?',
+      [name, status, sortOrder, id]
+    )
+    return { type: result.affectedRows === 0 ? 'missing' : 'updated' }
+  }
+
+  async reorderManagementBrands(items) {
+    return this.withConnection(async connection => {
+      try {
+        await connection.beginTransaction()
+        for (const item of items) {
+          if (item.id !== undefined && item.sort_order !== undefined) {
+            await connection.execute('UPDATE brands SET sort_order = ? WHERE id = ?', [item.sort_order, item.id])
+          }
+        }
+        await connection.commit()
+      } catch (error) {
+        await connection.rollback()
+        throw error
+      }
+    })
+  }
+
+  async deleteManagementBrand(id) {
+    const [models] = await this.executePrepared(
+      'SELECT COUNT(*) as count FROM models WHERE brand_id = ?', [id]
+    )
+    if (models[0].count > 0) return { type: 'has-models' }
+    const [result] = await this.executePrepared('DELETE FROM brands WHERE id = ?', [id])
+    return { type: result.affectedRows === 0 ? 'missing' : 'deleted' }
+  }
+
+  async getManagementSuggestions(name) {
+    const [rows] = await this.executePrepared(`
+      SELECT DISTINCT name,
+        CASE WHEN name LIKE ? THEN 1 WHEN LOWER(name) LIKE LOWER(?) THEN 2 ELSE 3 END as relevance_score
+      FROM brands
+      WHERE (name LIKE ? OR LOWER(name) LIKE LOWER(?))
+      ORDER BY relevance_score, sort_order ASC
+      LIMIT 10
+    `, [`${name}%`, `%${name}%`, `%${name}%`, `%${name}%`])
+    return rows.map(item => item.name)
   }
 
   /**

@@ -176,6 +176,7 @@ import { getPaymentMethodLabel } from '@/utils/shop-payment'
 import { storage } from '@/services/storage'
 import { H5_STORAGE_KEYS } from '@/constants/storage'
 import { formatAmount, formatDateTime as formatGlobalDateTime } from '@/utils/format'
+import { TIME_FORMATS } from '@/utils/time'
 import { getRequestErrorMessage } from '@/utils/api-response'
 import type { PublicOrder } from '@/api/shop-public'
 import { useNotification } from '@/composables/useNotification'
@@ -294,10 +295,7 @@ const getPaymentText = (method?: string) => {
 }
 
 // 格式化时间
-const formatTime = (time?: string) => {
-  if (!time) return ''
-  return formatGlobalDateTime(time, 'YYYY-MM-DD HH:mm')
-}
+const formatTime = (time?: string) => formatGlobalDateTime(time, TIME_FORMATS.DATETIME_MINUTE, '')
 
 // 获取前几个商品预览
 const getFirstItems = (items: PublicOrder['items'] = []) => {

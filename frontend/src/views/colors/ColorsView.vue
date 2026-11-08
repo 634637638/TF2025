@@ -462,23 +462,25 @@
             </el-form-item>
           </el-form>
           <template #footer>
-            <el-button
-              type="default"
-              @click="attemptCloseModal"
-            >
-              取消
-            </el-button>
-            <el-button
-              type="primary"
-              :disabled="submitting"
-              :loading="submitting"
-              @click="submitForm"
-            >
-              <span v-if="submitting">{{ isEditMode ? '更新中...' : '创建中...' }}</span>
-              <template v-else>
-                {{ isEditMode ? '更新' : '创建' }}
-              </template>
-            </el-button>
+            <div class="tf-dialog-actions">
+              <el-button
+                type="default"
+                @click="attemptCloseModal"
+              >
+                取消
+              </el-button>
+              <el-button
+                type="primary"
+                :disabled="submitting"
+                :loading="submitting"
+                @click="submitForm"
+              >
+                <span v-if="submitting">{{ isEditMode ? '更新中...' : '创建中...' }}</span>
+                <template v-else>
+                  {{ isEditMode ? '更新' : '创建' }}
+                </template>
+              </el-button>
+            </div>
           </template>
         </MobileDialog>
       </div>
@@ -502,10 +504,11 @@ import { PermissionGate, PageHeader } from '@/components/base'
 import { usePermissionToast } from '@/utils/permissionToastSimple'
 import { handleApiErrorWithPermission } from '@/utils/apiPermissionError'
 import { useMobile } from '@/composables/mobile'
+import { useMobileRowDoubleTap } from '@/composables/useMobileRowDoubleTap'
 import { useLatestRequest } from '@/composables/useLatestRequest'
 import { useElementTableSortable } from '@/composables/useElementTableSortable'
 import { logger } from '@/utils/logger'
-import { formatDateTime as formatGlobalDateTime } from '@/utils/format'
+import { formatDateTime as formatDate } from '@/utils/format'
 import { getRequestErrorMessage, getRequestErrorPayload, getRequestErrorStatus } from '@/utils/api-response'
 import type { Color } from '@/types'
 import type { QueryParams } from '@/types/shared'
@@ -575,8 +578,7 @@ const savingOrder = ref(false)
 const tableLoading = ref(true)
 const colorsTableRef = ref<HTMLElement | { $el?: HTMLElement } | null>(null)
 const mobileActionRowId = ref<string | null>(null)
-const lastTappedRowId = ref<string | null>(null)
-const lastTapTimestamp = ref(0)
+const { isDoubleTap } = useMobileRowDoubleTap()
 const colors = ref<Color[]>([])
 const stats = ref({ total: 0, active: 0, inactive: 0, related_phones: 0 })
 
@@ -590,18 +592,7 @@ const toggleMobileActions = (id: number) => {
 
 const handleMobileRowTap = (id: number) => {
   if (!isMobile.value) return
-  const rowKey = String(id)
-
-  const now = Date.now()
-  if (lastTappedRowId.value === rowKey && now - lastTapTimestamp.value <= 320) {
-    toggleMobileActions(id)
-    lastTappedRowId.value = null
-    lastTapTimestamp.value = 0
-    return
-  }
-
-  lastTappedRowId.value = rowKey
-  lastTapTimestamp.value = now
+  if (isDoubleTap(String(id))) toggleMobileActions(id)
 }
 const showCreateModal = ref(false)
 const showEditModal = ref(false)
@@ -1052,11 +1043,6 @@ const closeModal = () => {
     status: 1,
     sort_order: 0
   }
-}
-
-const formatDate = (dateString: string) => {
-  if (!dateString) return '-'
-  return formatGlobalDateTime(dateString)
 }
 
 const loadStats = async () => {

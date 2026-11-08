@@ -141,7 +141,7 @@
           <!-- 卡片底部操作 -->
           <div
             v-if="actions && actions.length > 0"
-            class="mobile-table__card-actions"
+            class="mobile-table__card-actions card-actions tf-actions--fit-row"
           >
             <el-button
               v-for="action in getMobileActions()"
@@ -150,7 +150,6 @@
               :size="action.size || 'small'"
               :icon="action.icon"
               :disabled="action.disabled ? action.disabled(row) : false"
-              class="mobile-table__mobile-action-btn"
               @click.stop="handleAction(action, row, index)"
             >
               {{ action.label }}
@@ -472,17 +471,9 @@ defineExpose({
 }
 
 .mobile-table__card-actions {
-  display: flex;
-  gap: 8px;
   margin-top: 12px;
   padding-top: 12px;
   border-top: 1px solid var(--el-border-color-lighter);
-  justify-content: flex-end;
-}
-
-.mobile-table__mobile-action-btn {
-  flex: 1;
-  min-width: 80px;
 }
 
 .mobile-table__empty {
@@ -504,24 +495,7 @@ defineExpose({
   .mobile-table__field-value {
     font-size: var(--tf-type-scale-13);
   }
-
-  .mobile-table__mobile-action-btn {
-    font-size: var(--tf-type-scale-13);
-    padding: 6px 12px;
-  }
 }
 
-/* 超小屏优化 */
-@media (max-width: 479px) {
-  .mobile-table__card-actions {
-    flex-wrap: wrap;
-  }
-
-  .mobile-table__mobile-action-btn {
-    flex: 1;
-    min-width: 0;
-    font-size: var(--tf-type-scale-12);
-    padding: 6px 8px;
-  }
-}
+/* 卡片操作等分与收缩由公共 .card-actions.tf-actions--fit-row 维护，页面不得私定尺寸 */
 </style>

@@ -9,8 +9,10 @@ const { formatLocalDate } = require('../src/utils/time')
 const { generateInvoiceNumber, prepareInvoiceNumberTransaction } = require('../src/utils/invoice-number')
 
 const root = path.resolve(__dirname, '..')
-const phonesRoute = fs.readFileSync(path.join(root, 'src/routes/phones.js'), 'utf8')
+const phonesRoute = fs.readFileSync(path.join(root, 'src/services/phone-update.service.js'), 'utf8')
 const inventoryRoute = fs.readFileSync(path.join(root, 'src/routes/inventory.js'), 'utf8')
+const inventoryService = fs.readFileSync(path.join(root, 'src/services/inventory.service.js'), 'utf8')
+const inventoryRepository = fs.readFileSync(path.join(root, 'src/repositories/inventory.repository.js'), 'utf8')
 const quickSale = fs.readFileSync(
   path.join(root, '../frontend/src/components/query/QuickSaleModal.vue'),
   'utf8'
@@ -21,7 +23,7 @@ const quickSaleHelpers = fs.readFileSync(
 )
 
 // 运行实际销售联动分支，以不同的手机/销售记录 ID 验证 SQL 归属，不连接数据库。
-const existingSaleUpdateStart = phonesRoute.indexOf('const existingSale = existingSales[0]')
+const existingSaleUpdateStart = phonesRoute.indexOf('const nextSaleDate = sale_time')
 const existingSaleUpdateEnd = phonesRoute.indexOf('    if (synchronizedSaleId)', existingSaleUpdateStart)
 const existingSaleUpdate = phonesRoute
   .slice(existingSaleUpdateStart, existingSaleUpdateEnd)
@@ -74,7 +76,9 @@ const simulateExistingSaleUpdate = async (saleType, options = {}) => {
     : options.saleTime || '2026-11-01'
   const context = {
     id: 61,
-    existingSales: [{ ...records[0] }],
+    existingSale: { ...records[0] },
+    updateSalesFields: [],
+    updateSalesValues: [],
     connection,
     sale_time: requestedSaleTime,
     effectiveSaleTime: requestedSaleTime || records[0].sale_time,
@@ -105,6 +109,18 @@ const simulateExistingSaleUpdate = async (saleType, options = {}) => {
       generated.push(args)
       return generateInvoiceNumber(...args)
     },
+    repository: {
+      updateSale: async (_connection, fields, values, saleId) => {
+        const record = records.find(item => item.id === saleId)
+        assert.ok(record, '更新目标必须为已查询到的销售记录')
+        fields.forEach((field, index) => {
+          const column = field.split(' = ')[0]
+          record[column] = column === 'updated_at' ? '模拟数据库保存时间' : values[index]
+        })
+        statements.push({ fields: [...fields], values: [...values], saleId })
+        return { affectedRows: 1 }
+      }
+    },
     reconcileCustomerPointsForSale: async ({ executor, saleId }) => {
       assert.equal(executor, connection)
       assert.equal(saleId, 901)
@@ -112,7 +128,7 @@ const simulateExistingSaleUpdate = async (saleType, options = {}) => {
     },
     log: { debug: () => {}, info: () => {} }
   }
-  await runInNewContext(`(async () => { ${existingSaleUpdate} })()`, context)
+  await runInNewContext(`(async function () { ${existingSaleUpdate} }).call(this)`, context)
   return { records, untouched, generated, statements, originalNumber }
 }
 
@@ -126,7 +142,7 @@ for (const saleType of ['retail', 'wholesale', 'peer_transfer', 'supplier_proxy'
     assert.equal(result.records[0].created_at, '2026-10-27 10:52:35')
     assert.equal(result.records[0].updated_at, '模拟数据库保存时间')
     assert.deepEqual(result.records[1], result.untouched, '不能把手机 ID 当作销售记录 ID 修改其他单据')
-    assert.equal(result.statements[0].values.at(-1), 901)
+    assert.equal(result.statements[0].saleId, 901)
   })
 }
 
@@ -172,25 +188,23 @@ test('changing transaction type regenerates the linked sale invoice using the se
 })
 
 test('phone edits convert transaction types atomically and regenerate the type suffix', () => {
-  const start = phonesRoute.indexOf("router.put('/:id'")
-  const handler = phonesRoute.slice(start)
+  const handler = phonesRoute
 
   assert.match(handler, /prepareInvoiceNumberTransaction\(connection\)/)
   assert.match(handler, /beginTransaction\(\)/)
-  assert.match(handler, /SELECT status FROM phones WHERE id = \? FOR UPDATE/)
+  assert.match(handler, /this\.repository\.lockPhoneStatus\(connection, id\)/)
   assert.match(handler, /sold:\s*'retail'/)
   assert.match(handler, /peer_transfer:\s*'wholesale'/)
   assert.match(handler, /supplier_proxy:\s*'supplier_proxy'/)
   assert.match(handler, /generateInvoiceNumber\(\s*invoiceSaleType/)
   assert.ok(handler.includes("updateSalesFields.push('sale_type = ?', 'invoice_number = ?')"))
-  assert.match(handler, /WHERE id = \?/)
+  assert.match(handler, /this\.repository\.updateSale\(/)
   assert.match(handler, /await connection\.commit\(\)/)
   assert.match(handler, /await connection\.rollback\(\)/)
 })
 
 test('conversion keeps payment history untouched', () => {
-  const start = phonesRoute.indexOf("router.put('/:id'")
-  const handler = phonesRoute.slice(start)
+  const handler = phonesRoute
 
   assert.doesNotMatch(handler, /先完成退款或冲正后再转为划拨/)
   assert.doesNotMatch(handler, /DELETE FROM payment_records/)
@@ -198,26 +212,25 @@ test('conversion keeps payment history untouched', () => {
 })
 
 test('transaction conversion and quick sale require permissions for the target type', () => {
-  const phoneEditHandler = phonesRoute.slice(phonesRoute.indexOf("router.put('/:id'"))
+  const phoneEditHandler = phonesRoute
 
   assert.match(phoneEditHandler, /sales:sell/)
   assert.match(phoneEditHandler, /sales:wholesale/)
   assert.match(phoneEditHandler, /sales:proxy-transfer/)
-  assert.match(phoneEditHandler, /hasUnifiedPermission\(req\.user, requiredPermission\[0\], requiredPermission\[1\]\)/)
+  assert.match(phoneEditHandler, /this\.permissionCheck\(req\.user, requiredPermission\[0\], requiredPermission\[1\]\)/)
   assert.match(inventoryRoute, /sold: \['inventory:sell', 'system'\]/)
   assert.match(inventoryRoute, /peer_transfer: \['sales:wholesale', 'business'\]/)
   assert.match(inventoryRoute, /supplier_proxy: \['sales:proxy-transfer', 'business'\]/)
 })
 
 test('quick sale supports retail, wholesale and supplier proxy with canonical invoice types', () => {
-  const start = inventoryRoute.indexOf("router.post('/quick-sale'")
-  const handler = inventoryRoute.slice(start)
+  const handler = inventoryService.slice(inventoryService.indexOf('  async quickSale('))
 
   assert.match(handler, /status = 'sold'/)
-  assert.match(handler, /peer_transfer: \{ saleType: 'wholesale', phoneStatus: 'peer_transfer', invoiceType: 'wholesale' \}/)
-  assert.match(handler, /supplier_proxy: \{ saleType: 'supplier_proxy', phoneStatus: 'supplier_proxy', invoiceType: 'supplier_proxy' \}/)
+  assert.match(inventoryService, /peer_transfer: \{ saleType: 'wholesale', phoneStatus: 'peer_transfer', invoiceType: 'wholesale' \}/)
+  assert.match(inventoryService, /supplier_proxy: \{ saleType: 'supplier_proxy', phoneStatus: 'supplier_proxy', invoiceType: 'supplier_proxy' \}/)
   assert.match(handler, /generateInvoiceNumber\(transactionConfig\.invoiceType/)
-  assert.match(handler, /UPDATE phones SET sale_id = \?,/)
+  assert.match(inventoryRepository, /UPDATE phones SET sale_id = \?,/)
 
   assert.match(quickSale, /<el-form-item\s+label="状态"\s+prop="status"\s*>/)
   for (const label of ['已售', '调货', '划拨']) assert.match(quickSale, new RegExp(`label="${label}"`))

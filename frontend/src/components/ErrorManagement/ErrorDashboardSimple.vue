@@ -593,19 +593,21 @@
       </div>
 
       <template #footer>
-        <el-button
-          type="default"
-          @click="detailVisible = false"
-        >
-          关闭
-        </el-button>
-        <el-button
-          v-if="selectedError && !selectedError.resolved"
-          type="success"
-          @click="resolveError(selectedError.id); detailVisible = false"
-        >
-          标记为已解决
-        </el-button>
+        <div class="tf-dialog-actions">
+          <el-button
+            type="default"
+            @click="detailVisible = false"
+          >
+            关闭
+          </el-button>
+          <el-button
+            v-if="selectedError && !selectedError.resolved"
+            type="success"
+            @click="resolveError(selectedError.id); detailVisible = false"
+          >
+            标记为已解决
+          </el-button>
+        </div>
       </template>
     </MobileDialog>
   </div>
@@ -628,7 +630,7 @@ import {
 } from '@element-plus/icons-vue'
 import { useErrorLogger, ErrorLevel, ErrorType } from '@/utils/error-logger'
 import type { ErrorLogEntry } from '@/utils/error-logger'
-import { TIME_FORMATS, TimeUtil } from '@/utils/time'
+import { formatDateTime as formatTime } from '@/utils/format'
 import Pagination from '@/components/Pagination.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import { useImportExport } from '@/composables/useImportExport'
@@ -683,10 +685,6 @@ const paginatedLogs = computed(() => {
 })
 
 // 方法
-const formatTime = (timestamp: number) => {
-  return TimeUtil.format(timestamp, TIME_FORMATS.DATETIME)
-}
-
 const getPercentage = (value: number, total: number) => {
   return total > 0 ? Math.round((value / total) * 100) : 0
 }

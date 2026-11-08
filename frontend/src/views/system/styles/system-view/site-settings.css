@@ -42,31 +42,7 @@
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
 }
 
-/* 卡片头部带操作按钮 */
-.card-header-with-action {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-  padding-bottom: 16px;
-  border-bottom: 2px solid var(--bg-tertiary, var(--tf-color-surface-muted));
-}
-
-.card-header-with-action .card-title,
-.card-header-with-action .section-subtitle {
-  margin: 0;
-  font-size: var(--tf-type-scale-16);
-  font-weight: 600;
-  color: var(--text-primary, var(--tf-color-heading));
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.card-header-with-action .card-title i,
-.card-header-with-action .section-subtitle i {
-  color: var(--primary-color, var(--tf-color-indigo-brand));
-}
+/* 卡片头部左标题右操作布局已提升为全局公共段，见 admin-layout.css 的 .card-header-with-action */
 
 .site-logo-preview-card {
   display: flex;

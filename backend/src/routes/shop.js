@@ -12,13 +12,12 @@ const crypto = require('crypto')
 const { unifiedAuth, requireAnyPermission, requireAdmin } = require('../middleware/unified-auth')
 const ApiResponse = require('../utils/response')
 const ShopService = require('../services/shop.service')
+const ShopManagementController = require('../controllers/shop-management.controller')
 const log = require('../utils/log')
 const { getUploadSubdir } = require('../utils/upload-paths')
-const { archiveShopAssetUpload } = require('../utils/shop-media-storage')
-const { ensureShopTemplateMediaSchema } = require('../utils/shop-template-media-schema')
-const { validateUploadedFileSignature, removeUploadedFiles } = require('../utils/upload-file-validation')
 
 const shopService = new ShopService()
+const shopManagementController = new ShopManagementController({ service: shopService })
 
 const H5_CONFIG_VIEW_PERMISSIONS = ['h5-config:view', 'h5-admin:view']
 const H5_CONFIG_EDIT_PERMISSIONS = ['h5-config:edit', 'h5-admin:edit']
@@ -216,46 +215,7 @@ router.post('/upload/image',
     upload.array('files', 10)(req, res, next)
   },
   handleMulterError,
-  async (req, res) => {
-    try {
-      const files = req.files
-
-      if (!files || files.length === 0) {
-        return ApiResponse.error(res, '没有上传文件', 400)
-      }
-
-      const signatureChecks = await Promise.all(
-        files.map(file => validateUploadedFileSignature(file, ['image']))
-      )
-      if (signatureChecks.some(isValid => !isValid)) {
-        await removeUploadedFiles(files)
-        return ApiResponse.error(res, '文件内容与图片格式不匹配', 400)
-      }
-
-      const moduleName = String(req.body?.module || '').trim()
-      const fileUrls = []
-      for (const file of files) {
-        fileUrls.push(await archiveShopAssetUpload({ file, moduleName }))
-      }
-
-      // 生成文件访问URL数组（返回相对路径，由前端负责拼接完整URL）
-      const uploadedFiles = files.map((file, index) => ({
-        url: fileUrls[index],
-        filename: file.filename,
-        originalname: file.originalname,
-        size: file.size
-      }))
-
-      ApiResponse.success(res, {
-        files: uploadedFiles,
-        count: uploadedFiles.length
-      }, `成功上传 ${uploadedFiles.length} 张图片`)
-    } catch (error) {
-      await removeUploadedFiles(Array.isArray(req.files) ? req.files : []).catch(() => {})
-      log.error('上传图片失败:', error)
-      ApiResponse.error(res, error.message || '上传失败', 500)
-    }
-  }
+  shopManagementController.uploadShopImages.bind(shopManagementController)
 )
 
 /**
@@ -266,40 +226,7 @@ router.post('/upload/image',
 router.post('/delete-image',
   unifiedAuth,
   requireAnyPermission(H5_ASSET_EDIT_PERMISSIONS),
-  async (req, res) => {
-    try {
-      const { image_url } = req.body
-
-      if (!image_url) {
-        return ApiResponse.error(res, '缺少图片URL', 400)
-      }
-
-      // 删除物理文件
-      if (image_url) {
-        try {
-          const fs = require('fs').promises
-          const { getRelativeUploadPathFromUrl, getUploadPathFromUrl } = require('../utils/upload-paths')
-          const relativePath = getRelativeUploadPathFromUrl(image_url)
-          if (!relativePath.startsWith('shop/')) {
-            return ApiResponse.error(res, '只能删除商城图片目录中的文件', 400)
-          }
-          const filePath = getUploadPathFromUrl(image_url)
-
-          // 检查文件是否存在并删除
-          await fs.unlink(filePath)
-          log.debug('✅ 已删除商城图片文件:', filePath)
-        } catch (error) {
-          // 文件不存在或删除失败，静默处理
-          log.warn('⚠️ 删除商城图片文件失败:', error.message)
-        }
-      }
-
-      ApiResponse.success(res, null, '删除成功')
-    } catch (error) {
-      log.error('删除图片失败:', error)
-      ApiResponse.error(res, error.message || '删除失败', 500)
-    }
-  }
+  shopManagementController.deleteShopImage.bind(shopManagementController)
 )
 
 // ============================================================================
@@ -311,82 +238,28 @@ router.post('/delete-image',
  * GET /api/shop/config
  * 权限：h5-admin:view
  */
-router.get('/config',
-  unifiedAuth,
-  requireAnyPermission(H5_CONFIG_VIEW_PERMISSIONS),
-  async (req, res) => {
-    try {
-      const configs = await shopService.getAllConfigs()
-      ApiResponse.success(res, configs, '获取配置成功')
-    } catch (error) {
-      log.error('获取商城配置失败:', error)
-      ApiResponse.error(res, error.message || '获取配置失败', 500)
-    }
-  }
-)
+router.get('/config', unifiedAuth, requireAnyPermission(H5_CONFIG_VIEW_PERMISSIONS), shopManagementController.getAllConfigs.bind(shopManagementController))
 
 /**
  * 获取指定分类的配置
  * GET /api/shop/config/category/:category
  * 权限：h5-admin:view
  */
-router.get('/config/category/:category',
-  unifiedAuth,
-  requireAnyPermission(H5_CONFIG_VIEW_PERMISSIONS),
-  async (req, res) => {
-    try {
-      const { category } = req.params
-      const configs = await shopService.getConfigsByCategory(category)
-      ApiResponse.success(res, configs, '获取配置成功')
-    } catch (error) {
-      log.error('获取商城配置失败:', error)
-      ApiResponse.error(res, error.message || '获取配置失败', 500)
-    }
-  }
-)
+router.get('/config/category/:category', unifiedAuth, requireAnyPermission(H5_CONFIG_VIEW_PERMISSIONS), shopManagementController.getConfigsByCategory.bind(shopManagementController))
 
 /**
  * 更新单个配置
  * PUT /api/shop/config/:key
  * 权限：h5-admin:edit
  */
-router.put('/config/:key',
-  unifiedAuth,
-  requireAnyPermission(H5_CONFIG_EDIT_PERMISSIONS),
-  async (req, res) => {
-    try {
-      const { key } = req.params
-      const { value } = req.body
-
-      await shopService.updateConfig(key, value)
-      ApiResponse.success(res, null, '更新配置成功')
-    } catch (error) {
-      log.error('更新商城配置失败:', error)
-      ApiResponse.error(res, error.message || '更新配置失败', 500)
-    }
-  }
-)
+router.put('/config/:key', unifiedAuth, requireAnyPermission(H5_CONFIG_EDIT_PERMISSIONS), shopManagementController.updateConfig.bind(shopManagementController))
 
 /**
  * 批量更新配置
  * POST /api/shop/config/batch
  * 权限：h5-admin:edit
  */
-router.post('/config/batch',
-  unifiedAuth,
-  requireAnyPermission(H5_CONFIG_EDIT_PERMISSIONS),
-  async (req, res) => {
-    try {
-      const { configs } = req.body // 格式: [{ key: 'shop_name', value: '新名称' }, ...]
-
-      await shopService.batchUpdateConfigs(configs)
-      ApiResponse.success(res, null, '批量更新配置成功')
-    } catch (error) {
-      log.error('批量更新商城配置失败:', error)
-      ApiResponse.error(res, error.message || '批量更新配置失败', 500)
-    }
-  }
-)
+router.post('/config/batch', unifiedAuth, requireAnyPermission(H5_CONFIG_EDIT_PERMISSIONS), shopManagementController.batchUpdateConfigs.bind(shopManagementController))
 
 // ============================================================================
 // 轮播图管理 API
@@ -397,102 +270,35 @@ router.post('/config/batch',
  * GET /api/shop/banners
  * 权限：shop:banners:view
  */
-router.get('/banners',
-  unifiedAuth,
-  requireAnyPermission(H5_BANNER_VIEW_PERMISSIONS),
-  async (req, res) => {
-    try {
-      const banners = await shopService.getAllBanners()
-      ApiResponse.success(res, banners, '获取轮播图成功')
-    } catch (error) {
-      log.error('获取轮播图失败:', error)
-      ApiResponse.error(res, error.message || '获取轮播图失败', 500)
-    }
-  }
-)
+router.get('/banners', unifiedAuth, requireAnyPermission(H5_BANNER_VIEW_PERMISSIONS), shopManagementController.getAllBanners.bind(shopManagementController))
 
 /**
  * 创建轮播图
  * POST /api/shop/banners
  * 权限：shop:banners:create
  */
-router.post('/banners',
-  unifiedAuth,
-  requireAnyPermission(H5_BANNER_CREATE_PERMISSIONS),
-  async (req, res) => {
-    try {
-      const bannerData = req.body
-      const banner = await shopService.createBanner(bannerData)
-      ApiResponse.created(res, '创建轮播图成功', banner)
-    } catch (error) {
-      log.error('创建轮播图失败:', error)
-      ApiResponse.error(res, error.message || '创建轮播图失败', 500)
-    }
-  }
-)
+router.post('/banners', unifiedAuth, requireAnyPermission(H5_BANNER_CREATE_PERMISSIONS), shopManagementController.createBanner.bind(shopManagementController))
 
 /**
  * 更新轮播图
  * PUT /api/shop/banners/:id
  * 权限：shop:banners:edit
  */
-router.put('/banners/:id',
-  unifiedAuth,
-  requireAnyPermission(H5_BANNER_EDIT_PERMISSIONS),
-  async (req, res) => {
-    try {
-      const { id } = req.params
-      const bannerData = req.body
-
-      await shopService.updateBanner(id, bannerData)
-      ApiResponse.success(res, null, '更新轮播图成功')
-    } catch (error) {
-      log.error('更新轮播图失败:', error)
-      ApiResponse.error(res, error.message || '更新轮播图失败', 500)
-    }
-  }
-)
+router.put('/banners/:id', unifiedAuth, requireAnyPermission(H5_BANNER_EDIT_PERMISSIONS), shopManagementController.updateBanner.bind(shopManagementController))
 
 /**
  * 删除轮播图
  * DELETE /api/shop/banners/:id
  * 权限：shop:banners:delete
  */
-router.delete('/banners/:id',
-  unifiedAuth,
-  requireAnyPermission(H5_BANNER_DELETE_PERMISSIONS),
-  async (req, res) => {
-    try {
-      const { id } = req.params
-      await shopService.deleteBanner(id)
-      ApiResponse.success(res, null, '删除轮播图成功')
-    } catch (error) {
-      log.error('删除轮播图失败:', error)
-      ApiResponse.error(res, error.message || '删除轮播图失败', 500)
-    }
-  }
-)
+router.delete('/banners/:id', unifiedAuth, requireAnyPermission(H5_BANNER_DELETE_PERMISSIONS), shopManagementController.deleteBanner.bind(shopManagementController))
 
 /**
  * 批量更新轮播图排序
  * PUT /api/shop/banners/reorder
  * 权限：shop:banners:edit
  */
-router.put('/banners/reorder',
-  unifiedAuth,
-  requireAnyPermission(H5_BANNER_EDIT_PERMISSIONS),
-  async (req, res) => {
-    try {
-      const { orders } = req.body // 格式: [{ id: 1, sort_order: 1 }, ...]
-
-      await shopService.reorderBanners(orders)
-      ApiResponse.success(res, null, '更新排序成功')
-    } catch (error) {
-      log.error('更新轮播图排序失败:', error)
-      ApiResponse.error(res, error.message || '更新排序失败', 500)
-    }
-  }
-)
+router.put('/banners/reorder', unifiedAuth, requireAnyPermission(H5_BANNER_EDIT_PERMISSIONS), shopManagementController.reorderBanners.bind(shopManagementController))
 
 // ============================================================================
 // 订单管理 API（员工端）
@@ -506,45 +312,7 @@ router.put('/banners/reorder',
 router.get('/orders',
   unifiedAuth,
   requireAnyPermission(H5_ORDER_VIEW_PERMISSIONS),
-  async (req, res) => {
-    try {
-      const page = Math.max(1, Number.parseInt(String(req.query.page ?? 1), 10) || 1)
-      const page_size = Math.min(100, Math.max(1, Number.parseInt(String(req.query.page_size ?? 20), 10) || 20))
-      const {
-        status,
-        start_date,
-        end_date,
-        search
-      } = req.query
-
-      const result = await shopService.getOrders({
-        page,
-        page_size,
-        status,
-        start_date,
-        end_date,
-        search
-      })
-
-      res.status(200).json({
-        success: true,
-        message: '获取订单成功',
-        data: result.data,
-        pagination: {
-          page: result.page,
-          page_size: result.page_size,
-          total: result.total,
-          total_pages: result.total_pages,
-          has_next: result.has_next,
-          has_prev: result.has_prev
-        },
-        timestamp: new Date().toISOString()
-      })
-    } catch (error) {
-      log.error('获取订单列表失败:', error)
-      ApiResponse.error(res, error.message || '获取订单列表失败', 500)
-    }
-  }
+  shopManagementController.getOrders.bind(shopManagementController)
 )
 
 /**
@@ -555,16 +323,7 @@ router.get('/orders',
 router.get('/orders/:id',
   unifiedAuth,
   requireAnyPermission(H5_ORDER_VIEW_PERMISSIONS),
-  async (req, res) => {
-    try {
-      const { id } = req.params
-      const order = await shopService.getOrderDetail(id)
-      ApiResponse.success(res, order, '获取订单详情成功')
-    } catch (error) {
-      log.error('获取订单详情失败:', error)
-      ApiResponse.error(res, error.message || '获取订单详情失败', 500)
-    }
-  }
+  shopManagementController.getOrderDetail.bind(shopManagementController)
 )
 
 /**
@@ -575,19 +334,7 @@ router.get('/orders/:id',
 router.put('/orders/:id/status',
   unifiedAuth,
   requireAnyPermission(H5_ORDER_EDIT_PERMISSIONS),
-  async (req, res) => {
-    try {
-      const { id } = req.params
-      const { status } = req.body
-      const userId = req.user.id
-
-      await shopService.updateOrderStatus(id, status, userId)
-      ApiResponse.success(res, null, '更新订单状态成功')
-    } catch (error) {
-      log.error('更新订单状态失败:', error)
-      ApiResponse.error(res, error.message || '更新订单状态失败', 500)
-    }
-  }
+  shopManagementController.updateOrderStatus.bind(shopManagementController)
 )
 
 // ============================================================================
@@ -601,29 +348,13 @@ router.put('/orders/:id/status',
 router.post('/migrate/condition-grade',
   unifiedAuth,
   requireAdmin,
-  async (req, res) => {
-    try {
-      await shopService.migrateConditionGrade()
-      ApiResponse.success(res, null, '成色字段迁移成功')
-    } catch (error) {
-      log.error('成色字段迁移失败:', error)
-      ApiResponse.error(res, error.message || '迁移失败', 500)
-    }
-  }
+  shopManagementController.migrateConditionGrade.bind(shopManagementController)
 )
 
 router.post('/migrate/sale-price',
   unifiedAuth,
   requireAdmin,
-  async (req, res) => {
-    try {
-      await shopService.migrateSalePrice()
-      ApiResponse.success(res, null, '销售价格字段迁移成功')
-    } catch (error) {
-      log.error('销售价格字段迁移失败:', error)
-      ApiResponse.error(res, error.message || '迁移失败', 500)
-    }
-  }
+  shopManagementController.migrateSalePrice.bind(shopManagementController)
 )
 
 // ============================================================================
@@ -637,22 +368,7 @@ router.post('/migrate/sale-price',
 router.get('/templates',
   unifiedAuth,
   requireAnyPermission(H5_TEMPLATE_VIEW_PERMISSIONS),
-  async (req, res) => {
-    try {
-      const templates = await shopService.getTemplates()
-      log.debug('[获取模板列表] 返回数量:', templates.length)
-      log.debug('[获取模板列表] 模板数据:', templates.map(t => ({
-        id: t.id,
-        name: t.template_name || `${t.brand_name} ${t.model_name} ${t.color_name}`,
-        is_active: t.is_active,
-        is_active_type: typeof t.is_active
-      })))
-      ApiResponse.success(res, templates, '获取模板列表成功')
-    } catch (error) {
-      log.error('获取模板列表失败:', error)
-      ApiResponse.error(res, error.message || '获取失败', 500)
-    }
-  }
+  shopManagementController.getTemplates.bind(shopManagementController)
 )
 
 /**
@@ -663,23 +379,7 @@ router.get('/templates',
 router.put('/templates/reorder',
   unifiedAuth,
   requireAnyPermission(H5_TEMPLATE_EDIT_PERMISSIONS),
-  async (req, res) => {
-    try {
-      const { orders } = req.body
-
-      if (!Array.isArray(orders) || orders.length === 0) {
-        return ApiResponse.error(res, '排序数据不能为空', 400)
-      }
-
-      log.debug('[模板排序] 更新排序:', orders)
-
-      await shopService.reorderTemplates(orders)
-      ApiResponse.success(res, null, '排序更新成功')
-    } catch (error) {
-      log.error('更新排序失败:', error)
-      ApiResponse.error(res, error.message || '更新失败', 500)
-    }
-  }
+  shopManagementController.reorderTemplates.bind(shopManagementController)
 )
 
 /**
@@ -689,18 +389,7 @@ router.put('/templates/reorder',
 router.get('/templates/:id',
   unifiedAuth,
   requireAnyPermission(H5_TEMPLATE_VIEW_PERMISSIONS),
-  async (req, res) => {
-    try {
-      const template = await shopService.getTemplateById(req.params.id)
-      if (!template) {
-        return ApiResponse.error(res, '模板不存在', 404)
-      }
-      ApiResponse.success(res, template, '获取模板详情成功')
-    } catch (error) {
-      log.error('获取模板详情失败:', error)
-      ApiResponse.error(res, error.message || '获取失败', 500)
-    }
-  }
+  shopManagementController.getTemplateById.bind(shopManagementController)
 )
 
 /**
@@ -710,17 +399,7 @@ router.get('/templates/:id',
 router.post('/templates',
   unifiedAuth,
   requireAnyPermission(H5_TEMPLATE_CREATE_PERMISSIONS),
-  async (req, res) => {
-    try {
-      log.debug('[创建模板] 请求体:', req.body)
-      const template = await shopService.createTemplate(req.body)
-      log.debug('[创建模板] 服务返回:', template)
-      ApiResponse.success(res, template, '创建模板成功')
-    } catch (error) {
-      log.error('创建模板失败:', error)
-      ApiResponse.error(res, error.message || '创建失败', 500)
-    }
-  }
+  shopManagementController.createTemplate.bind(shopManagementController)
 )
 
 /**
@@ -730,18 +409,7 @@ router.post('/templates',
 router.put('/templates/:id',
   unifiedAuth,
   requireAnyPermission(H5_TEMPLATE_EDIT_PERMISSIONS),
-  async (req, res) => {
-    try {
-      log.debug('[更新模板] 模板ID:', req.params.id)
-      log.debug('[更新模板] 请求体:', req.body)
-      log.debug('[更新模板] 请求体字段:', Object.keys(req.body))
-      const template = await shopService.updateTemplate(req.params.id, req.body)
-      ApiResponse.success(res, template, '更新模板成功')
-    } catch (error) {
-      log.error('更新模板失败:', error)
-      ApiResponse.error(res, error.message || '更新失败', 500)
-    }
-  }
+  shopManagementController.updateTemplate.bind(shopManagementController)
 )
 
 /**
@@ -751,15 +419,7 @@ router.put('/templates/:id',
 router.delete('/templates/:id',
   unifiedAuth,
   requireAnyPermission(H5_TEMPLATE_DELETE_PERMISSIONS),
-  async (req, res) => {
-    try {
-      await shopService.deleteTemplate(req.params.id)
-      ApiResponse.success(res, null, '删除模板成功')
-    } catch (error) {
-      log.error('删除模板失败:', error)
-      ApiResponse.error(res, error.message || '删除失败', 500)
-    }
-  }
+  shopManagementController.deleteTemplate.bind(shopManagementController)
 )
 
 /**
@@ -773,37 +433,7 @@ router.post('/templates/:id/images',
     templateMediaUpload.single('image')(req, res, next)
   },
   handleMulterError,
-  async (req, res) => {
-    try {
-      await ensureShopTemplateMediaSchema()
-      log.debug('[上传模板图片] 模板ID:', req.params.id)
-      log.debug('[上传模板图片] 用户ID:', req.user?.id)
-      log.debug('[上传模板图片] 文件信息:', req.file ? {
-        filename: req.file.filename,
-        originalname: req.file.originalname,
-        size: req.file.size,
-        mimetype: req.file.mimetype
-      } : '无文件')
-
-      if (!req.file) {
-        log.error('[上传模板图片] 错误: 没有接收到文件')
-        return ApiResponse.error(res, '没有上传文件', 400)
-      }
-
-      if (!(await validateUploadedFileSignature(req.file, ['image', 'video']))) {
-        await removeUploadedFiles([req.file])
-        return ApiResponse.error(res, '文件内容与图片或视频格式不匹配', 400)
-      }
-
-      const image = await shopService.uploadTemplateImage(req.params.id, req.file, req.user?.id)
-      log.debug('[上传模板图片] 服务返回:', image)
-      ApiResponse.success(res, image, '上传图片成功')
-    } catch (error) {
-      await removeUploadedFiles(req.file ? [req.file] : []).catch(() => {})
-      log.error('上传图片失败:', error)
-      ApiResponse.error(res, error.message || '上传失败', 500)
-    }
-  }
+  shopManagementController.uploadTemplateImage.bind(shopManagementController)
 )
 
 /**
@@ -813,43 +443,19 @@ router.post('/templates/:id/images',
 router.delete('/templates/:id/images/:imageId',
   unifiedAuth,
   requireAnyPermission(H5_TEMPLATE_EDIT_PERMISSIONS),
-  async (req, res) => {
-    try {
-      await shopService.deleteTemplateImage(req.params.id, req.params.imageId)
-      ApiResponse.success(res, null, '删除图片成功')
-    } catch (error) {
-      log.error('删除图片失败:', error)
-      ApiResponse.error(res, error.message || '删除失败', 500)
-    }
-  }
+  shopManagementController.deleteTemplateImage.bind(shopManagementController)
 )
 
 router.post('/templates/media/commit-drafts',
   unifiedAuth,
   requireAnyPermission(H5_TEMPLATE_EDIT_PERMISSIONS),
-  async (req, res) => {
-    try {
-      const result = await shopService.commitTemplateImageUploads(req.body?.entries, req.user?.id)
-      ApiResponse.success(res, result, '模板媒体已保存')
-    } catch (error) {
-      log.error('保存模板媒体失败:', error)
-      ApiResponse.error(res, error.message || '保存模板媒体失败', 500)
-    }
-  }
+  shopManagementController.commitTemplateImageUploads.bind(shopManagementController)
 )
 
 router.post('/templates/media/discard-drafts',
   unifiedAuth,
   requireAnyPermission(H5_TEMPLATE_EDIT_PERMISSIONS),
-  async (req, res) => {
-    try {
-      const deletedCount = await shopService.discardTemplateImageUploads(req.body?.entries, req.user?.id)
-      ApiResponse.success(res, { deleted_count: deletedCount }, '未保存媒体已清理')
-    } catch (error) {
-      log.error('清理未保存模板媒体失败:', error)
-      ApiResponse.error(res, error.message || '清理未保存媒体失败', 500)
-    }
-  }
+  shopManagementController.discardTemplateImageUploads.bind(shopManagementController)
 )
 
 /**
@@ -859,15 +465,7 @@ router.post('/templates/media/discard-drafts',
 router.put('/templates/:id/images/:imageId/primary',
   unifiedAuth,
   requireAnyPermission(H5_TEMPLATE_EDIT_PERMISSIONS),
-  async (req, res) => {
-    try {
-      await shopService.setPrimaryTemplateImage(req.params.id, req.params.imageId)
-      ApiResponse.success(res, null, '设置主图成功')
-    } catch (error) {
-      log.error('设置主图失败:', error)
-      ApiResponse.error(res, error.message || '设置失败', 500)
-    }
-  }
+  shopManagementController.setPrimaryTemplateImage.bind(shopManagementController)
 )
 
 /**
@@ -877,22 +475,7 @@ router.put('/templates/:id/images/:imageId/primary',
 router.put('/templates/:id/images/reorder',
   unifiedAuth,
   requireAnyPermission(H5_TEMPLATE_EDIT_PERMISSIONS),
-  async (req, res) => {
-    try {
-      const { id } = req.params
-      const { orders } = req.body
-
-      if (!Array.isArray(orders)) {
-        return ApiResponse.error(res, '排序数据格式错误', 400)
-      }
-
-      await shopService.reorderTemplateImages(id, orders)
-      ApiResponse.success(res, null, '图片排序更新成功')
-    } catch (error) {
-      log.error('更新图片排序失败:', error)
-      ApiResponse.error(res, error.message || '更新排序失败', 500)
-    }
-  }
+  shopManagementController.reorderTemplateImages.bind(shopManagementController)
 )
 
 /**
@@ -902,63 +485,7 @@ router.put('/templates/:id/images/reorder',
 router.get('/sold-products',
   unifiedAuth,
   requireAnyPermission(H5_SOLD_PRODUCTS_VIEW_PERMISSIONS),
-  async (req, res) => {
-    try {
-      const db = require('../config/database')
-      const pool = db.getDatabase()
-
-      // 查询已售出且有图片的二手机
-      const [products] = await pool.query(`
-        SELECT
-          p.id,
-          p.imei,
-          b.name AS brand,
-          m.name AS model,
-          c.name AS color,
-          mem.size AS memory,
-          p.sale_time AS sale_time,
-          COUNT(hi.id) AS image_count
-        FROM phones p
-        INNER JOIN H5_images hi ON p.id = hi.phone_id
-        LEFT JOIN brands b ON p.brand_id = b.id
-        LEFT JOIN models m ON p.model_id = m.id
-        LEFT JOIN colors c ON p.color_id = c.id
-        LEFT JOIN memories mem ON p.memory_id = mem.id
-        WHERE p.status = 'sold' AND p.is_new = 0
-        GROUP BY p.id
-        HAVING image_count > 0
-        ORDER BY p.sale_time DESC
-      `)
-
-      // HTML 转义函数，防止 XSS 攻击
-      const escapeHtml = (str) => {
-        if (!str || typeof str !== 'string') return str
-        return str
-          .replace(/&/g, '&amp;')
-          .replace(/</g, '&lt;')
-          .replace(/>/g, '&gt;')
-          .replace(/"/g, '&quot;')
-          .replace(/'/g, '&#039;')
-      }
-
-      // 清理返回的数据
-      const cleanProducts = products.map(product => ({
-        id: product.id,
-        imei: escapeHtml(product.imei),
-        brand: escapeHtml(product.brand),
-        model: escapeHtml(product.model),
-        color: escapeHtml(product.color),
-        memory: escapeHtml(product.memory),
-        sale_time: product.sale_time,
-        image_count: Number(product.image_count)
-      }))
-
-      ApiResponse.success(res, cleanProducts, '获取已售商品列表成功')
-    } catch (error) {
-      log.error('获取已售商品列表失败:', error)
-      ApiResponse.serverError(res, '获取已售商品列表失败', error)
-    }
-  }
+  shopManagementController.getSoldProducts.bind(shopManagementController)
 )
 
 /**
@@ -968,16 +495,7 @@ router.get('/sold-products',
 router.delete('/products/:id/images',
   unifiedAuth,
   requireAnyPermission(H5_SOLD_PRODUCTS_DELETE_PERMISSIONS),
-  async (req, res) => {
-    try {
-      await shopService.deletePhoneImages(req.params.id)
-
-      ApiResponse.success(res, null, '删除图片成功')
-    } catch (error) {
-      log.error('删除图片失败:', error)
-      ApiResponse.error(res, error.message || '删除图片失败', 500)
-    }
-  }
+  shopManagementController.deletePhoneImages.bind(shopManagementController)
 )
 
 module.exports = router

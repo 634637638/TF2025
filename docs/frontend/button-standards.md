@@ -10,7 +10,9 @@
 
 提交或打包前必须通过 `npm run check:component-adoption`，该审计对 Vue 页面和公共组件中的原生 `<button>` 零容忍。按钮视觉统一由本文和 `frontend/src/styles/components/_buttons.scss` 控制，页面只使用 Element Plus 类型和公共语义 class。
 
-手机端公共控件使用以下全局语义 class：`tf-button--menu`（顶部菜单入口）、`tf-button--mobile-nav`（返回/菜单）、`tf-button--dialog-close`（模态框关闭）、`tf-button--fab`（浮动操作）、`tf-button--overlay-tool`（媒体/扫码器工具）、`tf-button--dismiss`（通知关闭）、`tf-button--tab-action`（标签栏操作）和 `tf-button--menu-action`（侧滑菜单展开/收起）。这些 class 的尺寸、背景、边框、焦点和响应式行为只在 `_buttons.scss` 维护，页面组件不得重复定义。
+手机端公共控件使用以下全局语义 class：`tf-button--menu`（顶部菜单入口）、`tf-button--mobile-nav`（返回/菜单）、`tf-button--dialog-close`（模态框关闭）、`tf-button--fab`（浮动操作）、`tf-button--overlay-tool`（媒体/扫码器工具）、`tf-button--dismiss`（通知关闭）、`tf-button--tab-action`（标签栏操作，含图标字号）和 `tf-button--menu-action`（侧滑菜单展开/收起）。H5 商城和筛选场景使用 `tf-button--h5-action`（带 `-neutral/-warning/-primary/-success` 变体，胶囊主操作）、`tf-button--h5-action-icon`（图标操作）、`tf-button--pill-filter`（筛选胶囊，选中态加 `is-active`）和 `tf-button--icon-badge`（图标删除角标）。这些 class 的尺寸、背景、边框、焦点和响应式行为只在 `_buttons.scss` 维护，页面组件不得重复定义。
+
+H5 手机端操作按钮和筛选语义的规格由公共令牌控制：主操作高度 `--tf-h5-action-height`（44px）、图标按钮边长 `--tf-h5-action-icon-size`（32px）、胶囊内边距 `--tf-button-pill-padding-*`、角标直径 `--tf-button-badge-size`（18px）。变体颜色全部映射 `--tf-button-*` 公共变量，必须先在同一公共段定义默认、悬停和选中状态再开放给页面；页面只负责内容与布局（如整行容器的 width:100%），不得再写高度、圆角、字号或背景。`tf-button--h5-action`、`tf-button--h5-action-icon` 和 `tf-button--pill-filter` 已加入普通按钮基线的 `:where()` 排除列表，由 `check:buttons` 断言。
 
 手机端图标按钮专项约束：菜单入口使用本地 `menu-bars.svg` 三条横杠，经 `IconRenderer` 渲染，背景为品牌靛蓝、图标为白色，悬停/聚焦使用深紫色，PC 端不显示手机菜单入口，顶部栏容器仍保持白色。入口按钮统一为 `40px × 40px`、圆角 `12px`、图标 `20px`、内边距 `0`，由 `--tf-button-menu-*` 令牌控制；不得使用 Element Plus `Menu` 图标代替三条横杠，该图标实际为四格图案。展开菜单后入口降到遮罩层后方隐藏，点击遮罩关闭菜单；侧滑菜单展开按钮为透明背景、白色箭头、`32px` 方形触控区域，不能增加圆形背景遮挡名称，也不得增加菜单内部关闭按钮。通知关闭、标签栏关闭等按钮必须保留公共定义的触控区域；媒体预览、扫码器工具和密码显示切换统一使用遮罩工具语义，预览导航支持触摸滑动时不得让页面滚动层抢走手势。360px 窄屏下，提示框、菜单头部和预览工具栏必须使用 `min-width: 0`、省略或自适应宽度，不得产生横向溢出。
 
@@ -43,11 +45,12 @@ PC 默认值：
 
 纯图标圆形 `el-button` 使用同一组全局高度变量作为直径：默认 `36px`、小号 `28px`、大号 `44px`；手机端随对应高度变量一起自适应。公共规则统一保证等宽、等高、无额外内边距和 `50%` 圆角，业务页面不得再修正圆形按钮的宽高或背景形状。破坏性图标操作仍使用删除语义 class，并必须提供 `title`、tooltip 或 `aria-label`。
 
-手机端 `768px` 及以下：
+手机端 `768px` 及以下（以下自适应值全部由 `_buttons.scss` 的 `767px` 断点内公共令牌切换，页面不得感知或复制具体像素值）：
 
-- 普通按钮高度在 `34px` 至 `36px` 范围内随可用屏宽自适应；
-- 小按钮高度在 `30px` 至 `32px` 范围内自适应；
-- 横向内边距随屏宽在规定范围内自动收缩，字号使用移动端统一值，避免窄屏按钮挤压、移位或溢出；
+- 普通按钮高度在 `34px` 至 `36px` 范围内随可用屏宽自适应（`--tf-button-height: clamp(34px, 9.6vw, 36px)`），水平内边距 `--tf-button-padding-x` 同步收缩，字号切换为移动端统一值 `--tf-type-scale-13`，避免窄屏按钮挤压、移位或溢出；
+- 小按钮高度在 `30px` 至 `32px` 范围内自适应（`--tf-button-height-small: clamp(30px, 8.54vw, 32px)`），字号固定 `12px`，水平内边距 `clamp(6px, 2.14vw, 8px)`；
+- 页头操作按钮使用 `--tf-toolbar-button-height`，在手机端 `28px` 至 `30px` 范围内自适应；检索区控件高度切换为 `--input-height-default`，与搜索框保持等高；
+- 尺寸一致性验收必须标注视口档位：同一个 `size="small"` 或默认档按钮在 PC 与手机端渲染出不同像素高度（如 `28px` 对 `32px`）是公共令牌自适应的正常表现，不得据此判定页面违规，也不得把 PC 固定值搬进手机端；
 - 普通页面按钮宽度按内容自适应，搜索区等公共容器可让输入区自动占用按钮之外的剩余空间；
 - 模态框底部按钮保持一行；PC 端按文字内容自适应并靠右，手机端居中等分且受最大宽度约束，空间不足时允许等比例收缩，其触控高度由模态框公共规则单独保证；
 - 页面不得另设按钮高度、字体或固定宽度。

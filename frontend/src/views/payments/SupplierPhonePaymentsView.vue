@@ -1672,6 +1672,7 @@ import { useImportExport } from '@/composables/useImportExport'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { useMobile } from '@/composables/mobile'
+import { useMobileRowDoubleTap } from '@/composables/useMobileRowDoubleTap'
 import { useLoadingState } from '@/composables'
 import { useAuthStore } from '@/stores/auth'
 import Pagination from '@/components/Pagination.vue'
@@ -2290,8 +2291,7 @@ const isCurrentPagePartiallySelected = computed(() => {
 })
 const exportingPaymentPhones = ref(false)
 const mobileActionRowId = ref<number | null>(null)
-const lastTappedRowId = ref<number | null>(null)
-const lastTapTimestamp = ref(0)
+const { isDoubleTap } = useMobileRowDoubleTap()
 
 const filters = reactive({
   keyword: '',
@@ -2456,16 +2456,7 @@ const togglePaymentMobileActions = (phoneId: number) => {
 const handlePaymentMobileRowTap = (phoneId: number) => {
   if (!isMobile.value) return
 
-  const now = Date.now()
-  if (lastTappedRowId.value === phoneId && now - lastTapTimestamp.value <= 320) {
-    togglePaymentMobileActions(phoneId)
-    lastTappedRowId.value = null
-    lastTapTimestamp.value = 0
-    return
-  }
-
-  lastTappedRowId.value = phoneId
-  lastTapTimestamp.value = now
+  if (isDoubleTap(phoneId)) togglePaymentMobileActions(phoneId)
 }
 
 const getPaymentRowClassName = ({ row }: { row: SupplierPaymentPhone }) => {

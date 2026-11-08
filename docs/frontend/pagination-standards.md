@@ -600,6 +600,7 @@ import { usePagination } from './usePagination'
 import { unifiedApi } from '@/utils/unified-api'
 import { useErrorHandler } from '@/composables/useErrorHandler'
 import { useLoading } from '@/composables/useLoading'
+import { useDebounce } from '@/composables/useDebounce'
 
 export interface UseServerPaginationOptions {
   endpoint: string
@@ -650,14 +651,8 @@ export function useServerPagination<T = any>(
     }
   }
 
-  // 防抖加载
-  let debounceTimer: NodeJS.Timeout | null = null
-  const debouncedLoadData = () => {
-    if (debounceTimer) {
-      clearTimeout(debounceTimer)
-    }
-    debounceTimer = setTimeout(loadData, debounceTime)
-  }
+  // 防抖加载 - 复用公共 useDebounce，不得在页面/组合式函数手写 setTimeout/clearTimeout
+  const { debouncedFn: debouncedLoadData } = useDebounce(loadData, debounceTime)
 
   // 刷新数据
   const refresh = () => {

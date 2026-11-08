@@ -596,10 +596,7 @@ const editForm = reactive({
   remarks: ''
 })
 
-const formatDateTime = (value?: string | null) => {
-  if (!value) return '-'
-  return formatGlobalDateTime(value, 'YYYY-MM-DD HH:mm')
-}
+const formatDateTime = (value?: string | null) => formatGlobalDateTime(value, TIME_FORMATS.DATETIME_MINUTE)
 
 const getSaleTypeText = (value?: string | null) => getPhoneStatusLabel(value)
 

@@ -304,7 +304,7 @@ import { ref, reactive, computed, onMounted, onUnmounted, onActivated, inject, w
 
 import { Refresh } from '@element-plus/icons-vue'
 import { unifiedApi as api } from '@/utils/unified-api'
-import { formatDate as formatGlobalDate, formatImageUrl } from '@/utils/format'
+import { formatDate, formatImageUrl } from '@/utils/format'
 import { useLoadingState } from '@/composables'
 import SectionLoading from '@/components/SectionLoading.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
@@ -583,12 +583,6 @@ const deleteAllImages = async () => {
 // 获取图片完整URL - 使用统一的图片URL处理函数
 const getImageUrl = (url: string) => {
   return formatImageUrl(url)
-}
-
-// 格式化日期
-const formatDate = (date: string | null) => {
-  if (!date) return '-'
-  return formatGlobalDate(date)
 }
 
 const initializePageData = async () => {

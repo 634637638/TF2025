@@ -282,19 +282,21 @@
       />
 
       <template #footer>
-        <el-button
-          type="default"
-          @click="showMemoryDialog = false"
-        >
-          取消
-        </el-button>
-        <el-button
-          type="primary"
-          :disabled="!selectedPhone"
-          @click="confirmMemorySelection"
-        >
-          确认选择
-        </el-button>
+        <div class="tf-dialog-actions">
+          <el-button
+            type="default"
+            @click="showMemoryDialog = false"
+          >
+            取消
+          </el-button>
+          <el-button
+            type="primary"
+            :disabled="!selectedPhone"
+            @click="confirmMemorySelection"
+          >
+            确认选择
+          </el-button>
+        </div>
       </template>
     </MobileDialog>
   </div>
@@ -311,7 +313,7 @@ import 'swiper/css'
 import 'swiper/css/pagination'
 import { getProductDetail, getPublicConfig, getProducts, type Product } from '@/api/shop-public'
 import { useCart } from '@/composables'
-import { formatDate as formatGlobalDate, formatImageUrl } from '@/utils/format'
+import { formatDate, formatImageUrl } from '@/utils/format'
 import Image from '@/components/Image.vue'
 import type { ProductDetail, ShopConfig } from '@/api/shop-public'
 import { storage } from '@/services/storage'
@@ -539,11 +541,6 @@ const inspectionEmptyText = computed(() => {
     ? '暂未上传完整验机报告，其余项目待补充。'
     : '暂未上传验机报告。'
 })
-
-// 格式化日期
-const formatDate = (dateStr: string) => {
-  return formatGlobalDate(dateStr)
-}
 
 // 格式化电池健康度
 const formatBattery = (battery: unknown) => {

@@ -315,19 +315,21 @@
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button
-          type="default"
-          @click="showAddressModal = false"
-        >
-          取消
-        </el-button>
-        <el-button
-          type="primary"
-          :loading="savingAddress"
-          @click="saveAddress"
-        >
-          保存
-        </el-button>
+        <div class="tf-dialog-actions">
+          <el-button
+            type="default"
+            @click="showAddressModal = false"
+          >
+            取消
+          </el-button>
+          <el-button
+            type="primary"
+            :loading="savingAddress"
+            @click="saveAddress"
+          >
+            保存
+          </el-button>
+        </div>
       </template>
     </MobileDialog>
   </div>

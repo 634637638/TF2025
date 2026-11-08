@@ -186,6 +186,25 @@ for (const semantic of ['service-card', 'service-float']) {
     findings.push(`src/styles/components/_buttons.scss 客服 ${semantic} 必须排除普通按钮基线，避免固定高度和默认白底`)
   }
 }
+
+// 手机端操作、筛选胶囊和图标角标语义必须排除普通基线，并先在公共入口定义完整状态。
+for (const semantic of ['h5-action', 'h5-action-icon', 'pill-filter']) {
+  if (!buttonStyleSource.includes(`:not(.tf-button--${semantic})`)) {
+    findings.push(`src/styles/components/_buttons.scss 手机端 ${semantic} 必须排除普通按钮基线，避免固定高度和字号覆盖公共规格`)
+  }
+}
+if (!/\.el-button\.tf-button--h5-action\s*\{[^}]*height:\s*var\(--tf-h5-action-height\)/.test(buttonStyleSource)) {
+  findings.push('src/styles/components/_buttons.scss 手机端操作按钮必须使用公共 --tf-h5-action-height 规格令牌')
+}
+if (!/\.el-button\.tf-button--pill-filter\.is-active/.test(buttonStyleSource)) {
+  findings.push('src/styles/components/_buttons.scss 筛选胶囊必须先定义选中状态再开放给页面使用')
+}
+if (!/\.el-button\.tf-button--icon-badge\s*\{[^}]*width:\s*var\(--tf-button-badge-size\)/.test(buttonStyleSource)) {
+  findings.push('src/styles/components/_buttons.scss 图标删除角标必须使用公共 --tf-button-badge-size 规格')
+}
+if (!/body \.el-button\.el-button\.tf-button--tab-action i\s*\{[^}]*font-size:\s*var\(--tf-type-scale-12\)/.test(buttonStyleSource)) {
+  findings.push('src/styles/components/_buttons.scss 标签栏操作按钮图标字号必须由公共段维护，页面不得私自定义')
+}
 if (!/\.el-button\.tf-button--service-card\s*\{[^}]*height:\s*auto\s*;[^}]*min-height:\s*var\(--tf-service-card-min-height\)/.test(buttonStyleSource)) {
   findings.push('src/styles/components/_buttons.scss 客服卡片必须按内容自适应高度并使用公共最小高度')
 }
@@ -198,7 +217,10 @@ const standardsButtonRequirements = [
   [/class=["'][^"']*tf-button--view/, '规范与审计标杆页查看按钮必须声明 tf-button--view 语义'],
   [/class=["'][^"']*tf-button--save/, '规范与审计标杆页主操作预览必须声明 tf-button--save 语义'],
   [/class=["'][^"']*tf-button--complete/, '规范与审计标杆页完成预览必须声明 tf-button--complete 语义'],
-  [/class=["'][^"']*tf-button--delete/, '规范与审计标杆页删除预览必须声明 tf-button--delete 语义']
+  [/class=["'][^"']*tf-button--delete/, '规范与审计标杆页删除预览必须声明 tf-button--delete 语义'],
+  [/tf-button--h5-action/, '规范与审计标杆页手机端操作按钮预览必须声明 tf-button--h5-action 语义'],
+  [/tf-button--pill-filter/, '规范与审计标杆页筛选胶囊预览必须声明 tf-button--pill-filter 语义'],
+  [/tf-button--icon-badge/, '规范与审计标杆页图标角标预览必须声明 tf-button--icon-badge 语义']
 ]
 for (const [pattern, message] of standardsButtonRequirements) {
   if (!pattern.test(standardsViewSource)) findings.push(`src/views/standards/StandardsAuditView.vue ${message}`)

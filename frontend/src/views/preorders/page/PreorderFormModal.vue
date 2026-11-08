@@ -367,20 +367,22 @@
     </el-form>
 
     <template #footer>
-      <el-button
-        type="default"
-        @click="handleClose"
-      >
-        取消
-      </el-button>
-      <el-button
-        type="primary"
-        :loading="submitting"
-        :disabled="!canSubmitVisibleFields"
-        @click="handleSubmit"
-      >
-        {{ isEditMode ? '保存' : '创建预定单' }}
-      </el-button>
+      <div class="tf-dialog-actions">
+        <el-button
+          type="default"
+          @click="handleClose"
+        >
+          取消
+        </el-button>
+        <el-button
+          type="primary"
+          :loading="submitting"
+          :disabled="!canSubmitVisibleFields"
+          @click="handleSubmit"
+        >
+          {{ isEditMode ? '保存' : '创建预定单' }}
+        </el-button>
+      </div>
     </template>
   </MobileDialog>
 </template>

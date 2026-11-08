@@ -1421,7 +1421,7 @@ h1{text-align:center;font-size:var(--tf-type-scale-24)}
 table{width:100%;border-collapse:collapse;margin:20px 0}
 td{border:1px solid var(--tf-color-gray-500-solid);padding:8px}
 .term{margin:12px 0}.sign{display:grid;grid-template-columns:1fr 1fr;gap:60px;margin-top:60px}
-.line{border-bottom:1px solid var(--text-primary);height:40px}@media print{.el-button{display:none}}
+.line{border-bottom:1px solid var(--text-primary);height:40px}
 </style></head><body>
 	<h1>设备租赁合同</h1>
 	<table>

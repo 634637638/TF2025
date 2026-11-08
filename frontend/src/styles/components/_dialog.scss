@@ -82,6 +82,12 @@
   --dialog-max-width: 600px;
 }
 
+/* Intermediate tier between md and lg for dialogs that need slightly more room. */
+.crud-dialog-md-lg {
+  --el-dialog-width: 700px;
+  --dialog-max-width: 700px;
+}
+
 .crud-dialog-lg {
   --el-dialog-width: 800px;
   --dialog-max-width: 800px;
@@ -502,6 +508,7 @@ body .mobile-dialog-sheet-close svg {
 @media (max-width: 767px) {
   .crud-dialog-sm,
   .crud-dialog-md,
+  .crud-dialog-md-lg,
   .crud-dialog-lg {
     --dialog-side-gap: 4px;
     --dialog-vertical-gap: 12px;
@@ -513,6 +520,7 @@ body .mobile-dialog-sheet-close svg {
 
   .mobile-dialog-sheet-panel.crud-dialog-sm,
   .mobile-dialog-sheet-panel.crud-dialog-md,
+  .mobile-dialog-sheet-panel.crud-dialog-md-lg,
   .mobile-dialog-sheet-panel.crud-dialog-lg {
     width: calc(100vw - 8px) !important;
     max-width: calc(100vw - 8px) !important;
@@ -524,6 +532,7 @@ body .mobile-dialog-sheet-close svg {
 @media (max-width: 479px) {
   .crud-dialog-sm,
   .crud-dialog-md,
+  .crud-dialog-md-lg,
   .crud-dialog-lg {
     --mobile-dialog-body-padding: 8px 6px 6px;
     --mobile-dialog-footer-padding: 0 6px 6px;

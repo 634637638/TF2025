@@ -9,10 +9,12 @@ const read = file => fs.readFileSync(path.join(root, file), 'utf8')
 test('报价页在库密码接口不使用应用层限流，前端只阻止并发重复提交', () => {
   const limiter = read('backend/src/middleware/rate-limit.js')
   const route = read('backend/src/routes/screen-lock.js')
+  const controller = read('backend/src/controllers/screen-lock.controller.js')
   const frontend = read('frontend/src/views/price-list/page/PublicPriceQuery.vue')
 
   assert.doesNotMatch(limiter, /inventoryQueryPasswordRateLimit/)
-  assert.match(route, /router\.post\('\/verify-inventory-query', async \(req, res\) =>/)
+  assert.match(route, /router\.post\('\/verify-inventory-query', screenLockController\.verifyInventoryQueryPassword\.bind/)
+  assert.match(controller, /async verifyInventoryQueryPassword\(req, res\)/)
   assert.doesNotMatch(route, /verify-inventory-query',\s*(?:authRateLimit|\w*RateLimit)/)
   assert.match(frontend, /if \(searchSubmitting\.value \|\| loading\.value\) return/)
 })

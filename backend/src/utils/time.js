@@ -36,6 +36,11 @@ function formatBeijingDate(input = new Date()) {
   return `${values.year}-${values.month}-${values.day}`
 }
 
+function getBeijingDayStart(input = new Date()) {
+  const date = formatBeijingDate(input)
+  return date ? `${date} 00:00:00` : null
+}
+
 function parseLocalDate(input) {
   if (input instanceof Date) {
     return new Date(input.getFullYear(), input.getMonth(), input.getDate())
@@ -183,6 +188,7 @@ function normalizeDateTime(input, defaultToNow = true) {
 module.exports = {
   getBeijingTimeString,
   formatBeijingDate,
+  getBeijingDayStart,
   normalizeDateTime,
   parseLocalDate,
   formatLocalDate,

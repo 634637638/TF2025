@@ -1,6 +1,7 @@
 'use strict'
 
 const { sanitizeRichContent } = require('../utils/sanitize-rich-content')
+const SiteAnnouncementRepository = require('../repositories/site-announcement.repository')
 
 class AnnouncementValidationError extends Error {
   constructor(message) {
@@ -43,4 +44,48 @@ const normalizeAnnouncementInput = (body = {}) => {
   return { title, content, isPublished, isPinned, expiresAt }
 }
 
-module.exports = { AnnouncementValidationError, normalizeAnnouncementInput }
+const toAnnouncementResponse = row => ({
+  id: Number(row.id),
+  title: row.title,
+  content: row.content,
+  isPublished: Boolean(row.is_published),
+  isPinned: Boolean(row.is_pinned),
+  publishedAt: row.published_at,
+  expiresAt: row.expires_at,
+  createdAt: row.created_at,
+  updatedAt: row.updated_at
+})
+
+class SiteAnnouncementService {
+  constructor({ repository = new SiteAnnouncementRepository() } = {}) {
+    this.repository = repository
+  }
+
+  async listPublished() {
+    return (await this.repository.listPublished()).map(toAnnouncementResponse)
+  }
+
+  async listAdmin() {
+    return (await this.repository.listAdmin()).map(toAnnouncementResponse)
+  }
+
+  async create(body) {
+    const announcement = normalizeAnnouncementInput(body)
+    const row = await this.repository.create(announcement)
+    return { announcement: toAnnouncementResponse(row), isPublished: announcement.isPublished }
+  }
+
+  async update(id, body) {
+    const announcement = normalizeAnnouncementInput(body)
+    const row = await this.repository.update(id, announcement)
+    return row ? toAnnouncementResponse(row) : null
+  }
+
+  async remove(id) {
+    return this.repository.delete(id)
+  }
+}
+
+module.exports = SiteAnnouncementService
+module.exports.AnnouncementValidationError = AnnouncementValidationError
+module.exports.normalizeAnnouncementInput = normalizeAnnouncementInput

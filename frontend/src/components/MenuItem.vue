@@ -69,7 +69,7 @@
           native-type="button"
           type="success"
           size="small"
-          class="btn-action btn-add"
+          class="btn-action"
           title="添加子菜单"
           @click="addChild"
         >
@@ -317,34 +317,6 @@ const addChild = () => {
 .menu-content:hover .menu-actions {
   opacity: 1;
 }
-.btn-add {
-  background: var(--tf-button-success-bg);
-  color: var(--tf-button-on-color);
-}
-
-.btn-add:hover {
-  background: var(--tf-button-success-hover-bg);
-  box-shadow: var(--tf-button-success-shadow);
-}
-/* 保留原有的 btn-icon 样式以防其他地方使用 */
-.btn-icon {
-  width: 32px;
-  height: 32px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: bold;
-  font-size: var(--tf-type-scale-14);
-  transition: all 0.2s;
-}
-
-.btn-icon:hover {
-  transform: scale(1.1);
-}
-
 .menu-children {
   background: var(--tf-color-neutral-25);
 }

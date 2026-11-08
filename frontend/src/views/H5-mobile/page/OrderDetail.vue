@@ -401,7 +401,7 @@ import { useRouter, useRoute } from 'vue-router'
 
 import { getOrderByNumber, getPublicConfig, cancelOrder, confirmPayment, type ShopConfig, type PublicOrder } from '@/api/shop-public'
 import { getRequestErrorMessage } from '@/utils/api-response'
-import { TimeUtil } from '@/utils/time'
+import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import { formatAmount, formatDateTime as formatGlobalDateTime } from '@/utils/format'
 import Image from '@/components/Image.vue'
 import SectionLoading from '@/components/SectionLoading.vue'
@@ -555,7 +555,7 @@ const formatTime = (time?: string | number | null) => {
 
   // 如果是字符串，作为日期时间处理
   if (!time) return ''
-  return formatGlobalDateTime(time, 'YYYY-MM-DD HH:mm')
+  return formatGlobalDateTime(time, TIME_FORMATS.DATETIME_MINUTE, '')
 }
 
 // 返回

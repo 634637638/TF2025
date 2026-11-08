@@ -155,12 +155,14 @@
     </div>
 
     <template #footer>
-      <el-button
-        type="default"
-        @click="emit('update:modelValue', false)"
-      >
-        关闭
-      </el-button>
+      <div class="tf-dialog-actions">
+        <el-button
+          type="default"
+          @click="emit('update:modelValue', false)"
+        >
+          关闭
+        </el-button>
+      </div>
     </template>
   </MobileDialog>
 </template>

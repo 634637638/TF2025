@@ -47,16 +47,21 @@ class UserRepository extends BaseRepository {
     const sql = `
       SELECT u.id, u.username, u.name, u.phone, u.email, u.status,
              u.store_id, u.salary_template_id, u.created_at, u.updated_at,
-             (SELECT GROUP_CONCAT(r.name ORDER BY r.id SEPARATOR ', ')
-                FROM user_roles ur
-                JOIN roles r ON r.id = ur.role_id
-               WHERE ur.user_id = u.id) as role,
-             '默认店铺' as store_name
+             GROUP_CONCAT(DISTINCT r.name ORDER BY r.id SEPARATOR ', ') AS role,
+             GROUP_CONCAT(DISTINCT r.id ORDER BY r.id SEPARATOR ',') AS role_ids
       FROM users u
+      LEFT JOIN user_roles ur ON ur.user_id = u.id
+      LEFT JOIN roles r ON r.id = ur.role_id
       WHERE u.username = ?
+      GROUP BY u.id
     `
     const results = await this.executeQuery(sql, [username])
-    return results.length > 0 ? results[0] : null
+    if (results.length === 0) return null
+    const user = results[0]
+    return {
+      ...user,
+      role_ids: user.role_ids ? String(user.role_ids).split(',').map(Number) : []
+    }
   }
 
   /**

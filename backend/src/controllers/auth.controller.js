@@ -1,386 +1,222 @@
-const log = require('../utils/log')
-const AuthService = require('../services/auth.service')
-const ApiResponse = require('../utils/response')
-const { hasGlobalAdminRole } = require('../services/accessControl.service')
-const { clearRefreshCookie, getCookie, setRefreshCookie } = require('../utils/http-cookie')
+'use strict'
 
-/**
- * 认证控制器类
- * 处理认证相关的HTTP请求
- */
+const { getDatabase, isConnected } = require('../config/database')
+const bcrypt = require('bcryptjs')
+const { generateTokens, addToBlacklist, verifyToken } = require('../middleware/jwt-blacklist')
+const {
+  recordSuccessfulLogin,
+  recordFailedLogin,
+  getClientIdentifier
+} = require('../middleware/login-attempts')
+const { getCookie, setRefreshCookie } = require('../utils/http-cookie')
+const AuthInitializationService = require('../services/auth-initialization.service')
+const ApiResponse = require('../utils/response')
+const log = require('../utils/log')
+
 class AuthController {
-  constructor() {
-    this.authService = new AuthService()
+  constructor({
+    database = getDatabase,
+    connected = isConnected,
+    buildUserPayload,
+    verifyRefreshToken = token => verifyToken(token, 'refresh'),
+    revokeRefreshToken = token => addToBlacklist(token, 'refresh_used'),
+    issueTokenPair = generateTokens,
+    readCookie = getCookie,
+    writeRefreshCookie = setRefreshCookie,
+    initializationService = new AuthInitializationService(),
+    comparePassword = bcrypt.compare,
+    issueTokens = generateTokens,
+    recordLoginSuccess = recordSuccessfulLogin,
+    recordLoginFailure = recordFailedLogin,
+    resolveClientIdentifier = getClientIdentifier,
+    response = ApiResponse,
+    logger = log
+  } = {}) {
+    this.database = database
+    this.connected = connected
+    this.buildUserPayload = buildUserPayload
+    this.verifyRefreshToken = verifyRefreshToken
+    this.revokeRefreshToken = revokeRefreshToken
+    this.issueTokenPair = issueTokenPair
+    this.readCookie = readCookie
+    this.writeRefreshCookie = writeRefreshCookie
+    this.initializationService = initializationService
+    this.comparePassword = comparePassword
+    this.issueTokens = issueTokens
+    this.recordLoginSuccess = recordLoginSuccess
+    this.recordLoginFailure = recordLoginFailure
+    this.resolveClientIdentifier = resolveClientIdentifier
+    this.response = response
+    this.logger = logger
   }
 
-  /**
-   * 检查用户是否为管理员（异步方法，从数据库动态判断）
-   * @param {Object} user - 用户对象
-   * @returns {Promise<boolean>} 是否为管理员
-   */
-  async isAdminUser(user) {
-    if (!user) {
-      return false
+  async getCurrentUser(req, res) {
+    try {
+      if (!this.connected()) {
+        this.logger.error('数据库未连接，无法获取用户信息')
+        return this.response.error(res, '服务暂时不可用，请稍后再试', 503)
+      }
+
+      const database = this.database()
+      const [users] = await database.execute(
+        'SELECT id, username, name, phone, email, status, last_login FROM users WHERE id = ?',
+        [req.user.id]
+      )
+      if (users.length === 0) return this.response.error(res, '用户不存在', 404)
+
+      const { userPayload } = await this.buildUserPayload(database, users[0])
+      return this.response.success(res, {
+        ...userPayload,
+        last_login: users[0].last_login ? new Date(users[0].last_login).toISOString() : null
+      })
+    } catch (error) {
+      this.logger.error('获取用户信息失败:', error)
+      return this.response.error(res, '获取用户信息失败', 500)
+    }
+  }
+
+  handleLoginFailure(req, res, message, reason = 'invalid_credentials') {
+    const identifier = this.resolveClientIdentifier(req)
+    req.loginFailureReason = reason
+
+    if (reason !== 'invalid_credentials') {
+      req.loginAttemptHandled = true
+      return res.status(403).json({ success: false, message, code: 'ACCOUNT_DISABLED' })
     }
 
-    return await hasGlobalAdminRole([
-      user.role,
-      ...(Array.isArray(user.roles) ? user.roles : []),
-      ...(Array.isArray(user.role_codes) ? user.role_codes.map((code) => ({ roleCode: code })) : [])
-    ])
+    const result = this.recordLoginFailure(identifier)
+    req.loginAttemptHandled = true
+    if (result.attempts >= 3 || result.blocked) {
+      this.logger.warn(`登录失败记录 - 标识符: ${identifier}, 尝试次数: ${result.attempts}`)
+    }
+    res.setHeader('X-Login-Attempts-Remaining', result.remainingAttempts)
+
+    if (result.blocked) {
+      const remainingMinutes = Math.ceil((result.lockUntil - Date.now()) / 60000)
+      this.logger.warn(`账户已被锁定 - 标识符: ${identifier}, 锁定时长: ${remainingMinutes} 分钟`)
+      return res.status(429).json({
+        success: false,
+        message: '登录尝试次数过多，账户已被临时锁定',
+        code: 'LOGIN_RATE_LIMITED',
+        details: { lockDuration: remainingMinutes }
+      })
+    }
+    return res.status(401).json({ success: false, message })
   }
 
-  /**
-   * 用户登录
-   * @param {Object} req - Express请求对象
-   * @param {Object} res - Express响应对象
-   */
   async login(req, res) {
     try {
       const { username, password } = req.body
-
-      // 获取客户端信息
-      const clientInfo = {
-        ip: req.ip || req.connection.remoteAddress,
-        userAgent: req.headers['user-agent'],
-        timestamp: new Date().toISOString()
+      if (!this.connected()) {
+        this.logger.error('数据库未连接，无法进行用户验证')
+        return this.response.error(res, '服务暂时不可用，请稍后再试', 503)
       }
 
-      const result = await this.authService.login(username, password, clientInfo)
-
-      if (!result.success) {
-        return ApiResponse.error(res, result.message, 401)
-      }
-
-      // 设置HTTP Only Cookie来存储刷新令牌（增强安全性）
-      if (result.data.refreshToken) {
-        setRefreshCookie(res, result.data.refreshToken)
-      }
-
-      // 返回访问令牌和用户信息
-      const response = {
-        user: result.data.user,
-        accessToken: result.data.accessToken,
-        expiresIn: result.data.expiresIn
-      }
-
-      ApiResponse.success(res, result.message, response, 200)
-    } catch (error) {
-      log.error('登录控制器错误:', error)
-      ApiResponse.error(res, '服务器内部错误', 500)
-    }
-  }
-
-  /**
-   * 用户注册
-   * @param {Object} req - Express请求对象
-   * @param {Object} res - Express响应对象
-   */
-  async register(req, res) {
-    try {
-      const userData = req.body
-      const result = await this.authService.register(userData)
-
-      if (!result.success) {
-        return ApiResponse.error(res, result.message, 400)
-      }
-
-      ApiResponse.success(res, result.message, result.data, 201)
-    } catch (error) {
-      log.error('注册控制器错误:', error)
-      ApiResponse.error(res, '服务器内部错误', 500)
-    }
-  }
-
-  /**
-   * 刷新令牌
-   * @param {Object} req - Express请求对象
-   * @param {Object} res - Express响应对象
-   */
-  async refreshToken(req, res) {
-    try {
-      // 从请求体或Cookie中获取刷新令牌
-      const { refreshToken } = req.body
-      const tokenFromCookie = getCookie(req, 'refreshToken')
-
-      const token = refreshToken || tokenFromCookie
-
-      if (!token) {
-        return ApiResponse.error(res, '刷新令牌不能为空', 400)
-      }
-
-      const result = await this.authService.refreshToken(token)
-
-      if (!result.success) {
-        return ApiResponse.error(res, result.message, 401)
-      }
-
-      // 设置新的刷新令牌到Cookie
-      if (result.data.refreshToken) {
-        setRefreshCookie(res, result.data.refreshToken)
-      }
-
-      const response = {
-        accessToken: result.data.accessToken,
-        expiresIn: result.data.expiresIn
-      }
-
-      ApiResponse.success(res, result.message, response, 200)
-    } catch (error) {
-      log.error('刷新令牌控制器错误:', error)
-      ApiResponse.error(res, '服务器内部错误', 500)
-    }
-  }
-
-  /**
-   * 用户登出
-   * @param {Object} req - Express请求对象
-   * @param {Object} res - Express响应对象
-   */
-  async logout(req, res) {
-    try {
-      const { refreshToken } = req.body
-      const tokenFromCookie = getCookie(req, 'refreshToken')
-      const token = refreshToken || tokenFromCookie
-
-      // 清除Cookie中的刷新令牌
-      clearRefreshCookie(res)
-
-      const result = await this.authService.logout(
-        req.headers.authorization?.replace('Bearer ', ''),
-        token,
-        req.user
+      const database = this.database()
+      const [users] = await database.execute(
+        'SELECT id, username, password, name, status FROM users WHERE username = ?',
+        [username]
       )
+      if (users.length === 0) return this.handleLoginFailure(req, res, '用户名或密码错误')
 
-      if (!result.success) {
-        return ApiResponse.error(res, result.message, 400)
+      const user = users[0]
+      if (user.status !== 1 && user.status !== 'active') {
+        return this.handleLoginFailure(req, res, '账户已被禁用，请联系管理员启用账户', 'account_disabled')
+      }
+      if (!(await this.comparePassword(password, user.password))) {
+        return this.handleLoginFailure(req, res, '用户名或密码错误')
       }
 
-      ApiResponse.success(res, result.message, null, 200)
-    } catch (error) {
-      log.error('登出控制器错误:', error)
-      ApiResponse.error(res, '服务器内部错误', 500)
-    }
-  }
-
-  /**
-   * 获取当前用户信息
-   * @param {Object} req - Express请求对象
-   * @param {Object} res - Express响应对象
-   */
-  async getCurrentUser(req, res) {
-    try {
-      const userId = req.user.id
-      const result = await this.authService.getUserInfo(userId)
-
-      if (!result.success) {
-        return ApiResponse.error(res, result.message, 404)
-      }
-
-      ApiResponse.success(res, result.message, result.data, 200)
-    } catch (error) {
-      log.error('获取用户信息控制器错误:', error)
-      ApiResponse.error(res, '服务器内部错误', 500)
-    }
-  }
-
-  /**
-   * 更新用户信息
-   * @param {Object} req - Express请求对象
-   * @param {Object} res - Express响应对象
-   */
-  async updateProfile(req, res) {
-    try {
-      const userId = req.user.id
-      const updateData = req.body
-
-      // 不允许更新密码、角色等敏感字段
-      const allowedFields = ['username', 'email', 'phone']
-      const filteredData = {}
-
-      Object.keys(updateData).forEach(key => {
-        if (allowedFields.includes(key)) {
-          filteredData[key] = updateData[key]
-        }
+      await database.execute('UPDATE users SET last_login = NOW() WHERE id = ?', [user.id])
+      const clientIdentifier = req.ip || req.connection.remoteAddress || 'unknown'
+      this.recordLoginSuccess(`${clientIdentifier}:${username}`)
+      const { userPayload, accessProfile, tokenPayload } = await this.buildUserPayload(database, user)
+      const { accessToken, refreshToken } = this.issueTokens(tokenPayload)
+      this.writeRefreshCookie(res, refreshToken)
+      return res.json({
+        success: true,
+        message: '登录成功',
+        token: accessToken,
+        user: userPayload,
+        accessProfile
       })
-
-      const result = await this.authService.updateUserInfo(userId, filteredData)
-
-      if (!result.success) {
-        return ApiResponse.error(res, result.message, 400)
-      }
-
-      ApiResponse.success(res, result.message, result.data, 200)
     } catch (error) {
-      log.error('更新用户信息控制器错误:', error)
-      ApiResponse.error(res, '服务器内部错误', 500)
+      this.logger.error('登录失败:', error)
+      return this.response.error(res, '登录失败', 500)
     }
   }
 
-  /**
-   * 修改密码
-   * @param {Object} req - Express请求对象
-   * @param {Object} res - Express响应对象
-   */
-  async changePassword(req, res) {
+  async refresh(req, res, verifyRefreshToken = this.verifyRefreshToken) {
     try {
-      const userId = req.user.id
-      const { oldPassword, newPassword } = req.body
-
-      const result = await this.authService.changePassword(userId, oldPassword, newPassword)
-
-      if (!result.success) {
-        return ApiResponse.error(res, result.message, 400)
+      const refreshToken = this.readCookie(req, 'refreshToken') || req.body?.refreshToken
+      if (!refreshToken) return this.response.error(res, '刷新令牌不能为空', 401)
+      if (!this.connected()) {
+        return this.response.error(res, '服务暂时不可用，请稍后再试', 503)
       }
 
-      ApiResponse.success(res, result.message, null, 200)
-    } catch (error) {
-      log.error('修改密码控制器错误:', error)
-      ApiResponse.error(res, '服务器内部错误', 500)
-    }
-  }
-
-  /**
-   * 检查用户名可用性
-   * @param {Object} req - Express请求对象
-   * @param {Object} res - Express响应对象
-   */
-  async checkUsername(req, res) {
-    try {
-      const { username } = req.params
-      const { excludeUserId } = req.query
-
-      const result = await this.authService.checkUsernameAvailability(
-        username,
-        excludeUserId ? parseInt(excludeUserId, 10) : null
+      const database = this.database()
+      const decoded = await verifyRefreshToken(refreshToken)
+      const [users] = await database.execute(
+        `SELECT id, username, name, status
+         FROM users
+         WHERE id = ?
+           AND (status = 1 OR status = 'active')`,
+        [decoded.sub]
       )
-
-      if (!result.success) {
-        return ApiResponse.error(res, result.message, 400)
+      if (users.length === 0) {
+        return this.response.error(res, '用户不存在或已被禁用', 401)
       }
 
-      ApiResponse.success(res, result.message, result.data, 200)
+      const { userPayload, accessProfile, tokenPayload } = await this.buildUserPayload(database, users[0])
+      await this.revokeRefreshToken(refreshToken)
+      const { accessToken, refreshToken: newRefreshToken } = this.issueTokenPair(tokenPayload)
+      this.writeRefreshCookie(res, newRefreshToken)
+
+      return this.response.success(res, {
+        token: accessToken,
+        user: userPayload,
+        accessProfile
+      }, '令牌刷新成功')
     } catch (error) {
-      log.error('检查用户名控制器错误:', error)
-      ApiResponse.error(res, '服务器内部错误', 500)
+      this.logger.error('令牌刷新失败:', error)
+      if (error.message === '令牌已过期') {
+        return this.response.error(res, '刷新令牌已过期，请重新登录', 401)
+      }
+      if (error.message === '无效的令牌' || error.message === 'Token已被吊销') {
+        return this.response.error(res, '无效的刷新令牌', 401)
+      }
+      return this.response.error(res, '令牌刷新失败', 500)
     }
   }
 
-  /**
-   * 验证令牌有效性
-   * @param {Object} req - Express请求对象
-   * @param {Object} res - Express响应对象
-   */
-  async verifyToken(req, res) {
-    try {
-      // 如果能到达这里，说明令牌已经通过中间件验证
-      const user = req.user
+  getRefreshHandler(verifyRefreshToken = this.verifyRefreshToken) {
+    return (req, res) => this.refresh(req, res, verifyRefreshToken)
+  }
 
-      ApiResponse.success(res, '令牌有效', {
-        user: {
-          id: user.id,
-          username: user.username,
-          role: user.role,
-          store_id: user.store_id
-        },
-        tokenValid: true
-      }, 200)
+  async initializeAdmin(_req, res, nodeEnv = process.env.NODE_ENV, enabled = process.env.ENABLE_DEV_INIT_ADMIN) {
+    if (nodeEnv !== 'development' || enabled !== 'true') {
+      return this.response.error(res, '管理员初始化接口未启用', 403)
+    }
+
+    try {
+      const result = await this.initializationService.initializeAdmin()
+      if (result.exists) return this.response.error(res, '管理员用户已存在', 400)
+      return this.response.success(res, {
+        id: result.id,
+        username: 'admin',
+        password: result.password,
+        password_source: result.passwordSource,
+        role_id: result.roleId,
+        message: '请保存此密码并在登录后立即修改'
+      }, '管理员用户初始化成功')
     } catch (error) {
-      log.error('验证令牌控制器错误:', error)
-      ApiResponse.error(res, '令牌验证失败', 401)
+      this.logger.error('初始化管理员失败:', error)
+      return this.response.error(res, '初始化管理员失败', 500)
     }
   }
 
-  /**
-   * 获取用户统计信息（管理员功能）
-   * @param {Object} req - Express请求对象
-   * @param {Object} res - Express响应对象
-   */
-  async getUserStats(req, res) {
-    try {
-      // 检查管理员权限（异步检查）
-      if (!await this.isAdminUser(req.user)) {
-        return ApiResponse.error(res, '权限不足', 403)
-      }
-
-      const { store_id } = req.query
-      const filters = {}
-
-      if (store_id) {
-        filters.store_id = parseInt(store_id, 10)
-      }
-
-      const result = await this.authService.getUserStats(filters)
-
-      if (!result.success) {
-        return ApiResponse.error(res, result.message, 500)
-      }
-
-      ApiResponse.success(res, result.message, result.data, 200)
-    } catch (error) {
-      log.error('获取用户统计控制器错误:', error)
-      ApiResponse.error(res, '服务器内部错误', 500)
-    }
-  }
-
-  /**
-   * 踢出用户（管理员功能）
-   * @param {Object} req - Express请求对象
-   * @param {Object} res - Express响应对象
-   */
-  async kickUser(req, res) {
-    try {
-      // 检查管理员权限（异步检查）
-      if (!await this.isAdminUser(req.user)) {
-        return ApiResponse.error(res, '权限不足', 403)
-      }
-
-      const { userId } = req.params
-
-      if (!userId || parseInt(userId, 10) === req.user.id) {
-        return ApiResponse.error(res, '无效的用户ID或不能踢出自己', 400)
-      }
-
-      // 这里可以实现将用户的令牌加入黑名单的逻辑
-      // 可以使用 Redis 或数据库来存储被踢出的用户列表
-
-      ApiResponse.success(res, '用户已被踢出', { userId }, 200)
-    } catch (error) {
-      log.error('踢出用户控制器错误:', error)
-      ApiResponse.error(res, '服务器内部错误', 500)
-    }
-  }
-
-  /**
-   * 禁用/启用用户（管理员功能）
-   * @param {Object} req - Express请求对象
-   * @param {Object} res - Express响应对象
-   */
-  async toggleUserStatus(req, res) {
-    try {
-      // 检查管理员权限（异步检查）
-      if (!await this.isAdminUser(req.user)) {
-        return ApiResponse.error(res, '权限不足', 403)
-      }
-
-      const { userId } = req.params
-      const { status } = req.body
-
-      if (!['active', 'inactive'].includes(status)) {
-        return ApiResponse.error(res, '无效的状态值', 400)
-      }
-
-      const result = await this.authService.updateUserInfo(parseInt(userId, 10), { status })
-
-      if (!result.success) {
-        return ApiResponse.error(res, result.message, 400)
-      }
-
-      ApiResponse.success(res, `用户已${status === 'active' ? '启用' : '禁用'}`, result.data, 200)
-    } catch (error) {
-      log.error('切换用户状态控制器错误:', error)
-      ApiResponse.error(res, '服务器内部错误', 500)
-    }
+  getAdminInitializationHandler(nodeEnv, enabled) {
+    return (req, res) => this.initializeAdmin(req, res, nodeEnv, enabled)
   }
 }
 

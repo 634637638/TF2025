@@ -9,7 +9,8 @@ const backendRoot = path.resolve(__dirname, '..')
 const read = relativePath => fs.readFileSync(path.join(backendRoot, relativePath), 'utf8')
 
 test('CSRF Token 只有数据库持久化成功后才进入内存缓存', () => {
-  const source = read('src/routes/csrf.js')
+  const source = read('src/services/csrf-token.service.js')
+  const routeSource = read('src/routes/csrf.js')
   const insertIndex = source.indexOf('INSERT INTO csrf_tokens')
   const cacheIndex = source.indexOf('csrfTokens.set(tokenId', insertIndex)
 
@@ -17,7 +18,9 @@ test('CSRF Token 只有数据库持久化成功后才进入内存缓存', () => 
   assert.ok(cacheIndex > insertIndex)
   assert.doesNotMatch(source.slice(insertIndex, cacheIndex), /catch\s*\(error\)/)
   assert.match(source, /从数据库验证 CSRF Token 失败:[\s\S]{0,100}throw error/)
-  assert.match(source, /CSRF_VALIDATION_ERROR[\s\S]{0,100}request_id: req\.requestId/)
+  assert.match(routeSource, /CSRF_VALIDATION_ERROR[\s\S]{0,100}request_id: req\.requestId/)
+  assert.match(routeSource, /router\.get\('\/token', csrfController\.generateToken\.bind\(csrfController\)\)/)
+  assert.match(routeSource, /router\.post\('\/verify', csrfController\.verifyToken\.bind\(csrfController\)\)/)
 })
 
 test('CSRF 生产表迁移默认预览并支持旧 user_id 结构升级', () => {
@@ -47,14 +50,12 @@ test('单号序列表可独立预览和修复，不依赖已登记的统一迁�
 })
 
 test('销售出库 500 响应提供可关联日志的请求 ID，且不返回内部异常', () => {
-  const source = read('src/routes/sales.js')
-  const routeStart = source.indexOf('router.post(\'/phone\'')
-  const routeEnd = source.indexOf('// 获取销售统计', routeStart)
-  const route = source.slice(routeStart, routeEnd)
-  const errorHandler = route.slice(route.lastIndexOf('log.error(\'手机销售失败:\''))
+  const route = read('src/routes/sales.js')
+  const controller = read('src/controllers/sales-phone.controller.js')
 
-  assert.match(errorHandler, /requestId: req\.requestId/)
-  assert.match(errorHandler, /code: 'INTERNAL_ERROR'/)
-  assert.match(errorHandler, /request_id: req\.requestId \|\| null/)
-  assert.doesNotMatch(errorHandler, /error: error\.message/)
+  assert.match(route, /router\.post\('\/phone',[\s\S]*salesPhoneController\.sell\.bind/)
+  assert.match(controller, /requestId: req\.requestId/)
+  assert.match(controller, /code: 'INTERNAL_ERROR'/)
+  assert.match(controller, /request_id: req\.requestId \|\| null/)
+  assert.doesNotMatch(controller, /error: error\.message/)
 })

@@ -336,6 +336,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { shouldShowActionColumn } from '@/composables/useFieldPermissions'
+import { useMobileRowDoubleTap } from '@/composables/useMobileRowDoubleTap'
 import Pagination from '@/components/Pagination.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
@@ -381,8 +382,7 @@ const emit = defineEmits<{
 
 const tableRef = ref<SalaryTemplateTableInstance>()
 const mobileExpandedTemplateId = ref<number | null>(null)
-const lastTappedTemplateId = ref<number | null>(null)
-const lastTapTimestamp = ref(0)
+const { isDoubleTap, resetDoubleTap } = useMobileRowDoubleTap()
 
 const showNameColumn = computed(() => props.canViewField('salary_salarytemplatesview', 'template_name'))
 const showDescriptionColumn = computed(() => props.canViewField('salary_salarytemplatesview', 'template_description'))
@@ -453,15 +453,13 @@ const resetInteraction = () => {
     if (previous) tableRef.value?.toggleRowExpansion(previous, false)
   }
   mobileExpandedTemplateId.value = null
-  lastTappedTemplateId.value = null
-  lastTapTimestamp.value = 0
+  resetDoubleTap()
 }
 
 const handleRowTap = (row: SalaryTemplate) => {
   if (!props.isMobile) return
 
-  const now = Date.now()
-  if (lastTappedTemplateId.value === row.id && now - lastTapTimestamp.value <= 320) {
+  if (isDoubleTap(row.id)) {
     const shouldExpand = mobileExpandedTemplateId.value !== row.id
     if (mobileExpandedTemplateId.value && mobileExpandedTemplateId.value !== row.id) {
       const previous = props.filteredTemplates.find(item => item.id === mobileExpandedTemplateId.value)
@@ -469,13 +467,7 @@ const handleRowTap = (row: SalaryTemplate) => {
     }
     tableRef.value?.toggleRowExpansion(row, shouldExpand)
     mobileExpandedTemplateId.value = shouldExpand ? row.id : null
-    lastTappedTemplateId.value = null
-    lastTapTimestamp.value = 0
-    return
   }
-
-  lastTappedTemplateId.value = row.id
-  lastTapTimestamp.value = now
 }
 
 const handlePaginationChange = (page: number, pageSize: number) => {

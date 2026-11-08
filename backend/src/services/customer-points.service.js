@@ -1,5 +1,5 @@
 const { getDatabase } = require('../config/database')
-const { hasColumn, hasTable } = require('./schemaInspector.service')
+const { hasColumn, hasTable } = require('./schema-inspector.service')
 const log = require('../utils/log')
 
 const POINTS_CONFIG_KEY = 'customer_points_config'

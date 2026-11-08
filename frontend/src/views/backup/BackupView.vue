@@ -246,19 +246,21 @@
         </el-radio>
       </el-radio-group>
       <template #footer>
-        <el-button
-          :disabled="isCreating"
-          @click="createDialogVisible = false"
-        >
-          取消
-        </el-button>
-        <el-button
-          type="primary"
-          :loading="isCreating"
-          @click="createBackup"
-        >
-          {{ backupType === 'database' ? '创建数据库备份' : '创建完整备份' }}
-        </el-button>
+        <div class="tf-dialog-actions">
+          <el-button
+            :disabled="isCreating"
+            @click="createDialogVisible = false"
+          >
+            取消
+          </el-button>
+          <el-button
+            type="primary"
+            :loading="isCreating"
+            @click="createBackup"
+          >
+            {{ backupType === 'database' ? '创建数据库备份' : '创建完整备份' }}
+          </el-button>
+        </div>
       </template>
     </el-dialog>
 
@@ -285,16 +287,18 @@
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="cleanupDialogVisible = false">
-          取消
-        </el-button>
-        <el-button
-          type="warning"
-          :loading="isCleaningUp"
-          @click="cleanupBackups"
-        >
-          确认清理
-        </el-button>
+        <div class="tf-dialog-actions">
+          <el-button @click="cleanupDialogVisible = false">
+            取消
+          </el-button>
+          <el-button
+            type="warning"
+            :loading="isCleaningUp"
+            @click="cleanupBackups"
+          >
+            确认清理
+          </el-button>
+        </div>
       </template>
     </el-dialog>
   </div>
@@ -309,6 +313,7 @@ import { usePagePermissions } from '@/composables/usePagePermissions'
 import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { PermissionGate, PageHeader } from '@/components/base'
 import { formatDateTime as formatGlobalDateTime } from '@/utils/format'
+import { TIME_FORMATS } from '@/utils/time'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import { getRequestErrorMessage } from '@/utils/api-response'
 
@@ -544,10 +549,7 @@ const cleanupBackups = async () => {
 }
 
 // 格式化时间
-const formatDateTime = (dateStr: string) => {
-  if (!dateStr) return '-'
-  return formatGlobalDateTime(dateStr, 'YYYY-MM-DD HH:mm')
-}
+const formatDateTime = (dateStr?: string | null) => formatGlobalDateTime(dateStr, TIME_FORMATS.DATETIME_MINUTE)
 
 // 初始化
 onMounted(async () => {

@@ -732,22 +732,24 @@
         </div>
 
         <template #footer>
-          <el-button
-            type="default"
-            :disabled="saving || imageUploading"
-            @click="handleCancelDialog"
-          >
-            取消
-          </el-button>
-          <el-button
-            v-if="canWriteDialog"
-            type="primary"
-            :loading="saving"
-            :disabled="imageUploading"
-            @click="handleSaveGroup"
-          >
-            保存母模板
-          </el-button>
+          <div class="tf-dialog-actions">
+            <el-button
+              type="default"
+              :disabled="saving || imageUploading"
+              @click="handleCancelDialog"
+            >
+              取消
+            </el-button>
+            <el-button
+              v-if="canWriteDialog"
+              type="primary"
+              :loading="saving"
+              :disabled="imageUploading"
+              @click="handleSaveGroup"
+            >
+              保存母模板
+            </el-button>
+          </div>
         </template>
       </MobileDialog>
     </div>

@@ -2951,22 +2951,7 @@ watch(activeTab, async (newTab, oldTab) => {
 
 <style lang="scss" scoped src="./styles/salary-view.scss"></style>
 <style>
-.salary-dialog,
-.salary-dialog-large {
-  --dialog-max-width: 760px;
-}
-
 @media (max-width: 767px) {
-  .salary-dialog,
-  .salary-dialog-large {
-    --dialog-side-gap: 6px;
-    --dialog-vertical-gap: 12px;
-    --dialog-max-width: calc(100vw - 12px);
-    --mobile-dialog-overlay-padding: 12px 6px;
-    --mobile-dialog-body-padding: 10px 8px 8px;
-    --mobile-dialog-footer-padding: 0 8px 8px;
-  }
-
   .sales-details .salary-info-section {
     padding: 12px 10px;
     border-radius: 14px;
@@ -3001,18 +2986,5 @@ watch(activeTab, async (newTab, oldTab) => {
   .template-preview-box {
     gap: 12px;
   }
-}
-
-@media (max-width: 479px) {
-  .salary-dialog,
-  .salary-dialog-large {
-    --dialog-side-gap: 4px;
-    --dialog-vertical-gap: 12px;
-    --dialog-max-width: calc(100vw - 8px);
-    --mobile-dialog-overlay-padding: 12px 4px;
-    --mobile-dialog-body-padding: 8px 6px 6px;
-    --mobile-dialog-footer-padding: 0 6px 6px;
-  }
-
 }
 </style>

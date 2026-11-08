@@ -778,21 +778,23 @@
           </el-form>
 
           <template #footer>
-            <el-button
-              type="default"
-              :disabled="pointsConfigSaving"
-              @click="closePointsSettings"
-            >
-              取消
-            </el-button>
-            <el-button
-              type="primary"
-              :disabled="pointsConfigSaving || !pointsConfigValid"
-              :loading="pointsConfigSaving"
-              @click="savePointsSettings"
-            >
-              保存设置
-            </el-button>
+            <div class="tf-dialog-actions">
+              <el-button
+                type="default"
+                :disabled="pointsConfigSaving"
+                @click="closePointsSettings"
+              >
+                取消
+              </el-button>
+              <el-button
+                type="primary"
+                :disabled="pointsConfigSaving || !pointsConfigValid"
+                :loading="pointsConfigSaving"
+                @click="savePointsSettings"
+              >
+                保存设置
+              </el-button>
+            </div>
           </template>
         </MobileDialog>
 
@@ -800,8 +802,7 @@
         <MobileDialog
           v-model="showCustomerModal"
           :title="modalMode === 'add' ? '新增客户' : '编辑客户'"
-          width="800px"
-          dialog-class="customers-form-dialog"
+          dialog-class="customers-form-dialog crud-dialog-lg"
           :close-on-click-modal="false"
           :show-default-footer="false"
           @close="closeCustomerModal"
@@ -1212,24 +1213,26 @@
           </el-form>
 
           <template #footer>
-            <el-button
-              type="default"
-              :disabled="isSubmitting"
-              @click="closeCustomerModal"
-            >
-              取消
-            </el-button>
-            <el-button
-              type="primary"
-              :disabled="isSubmitting"
-              :loading="isSubmitting"
-              @click="saveCustomer"
-            >
-              <span v-if="isSubmitting">保存中...</span>
-              <template v-else>
-                {{ modalMode === 'add' ? '新增' : '保存' }}
-              </template>
-            </el-button>
+            <div class="tf-dialog-actions">
+              <el-button
+                type="default"
+                :disabled="isSubmitting"
+                @click="closeCustomerModal"
+              >
+                取消
+              </el-button>
+              <el-button
+                type="primary"
+                :disabled="isSubmitting"
+                :loading="isSubmitting"
+                @click="saveCustomer"
+              >
+                <span v-if="isSubmitting">保存中...</span>
+                <template v-else>
+                  {{ modalMode === 'add' ? '新增' : '保存' }}
+                </template>
+              </el-button>
+            </div>
           </template>
         </MobileDialog>
 
@@ -1237,8 +1240,7 @@
         <MobileDialog
           v-model="showDetailModal"
           title="客户详情"
-          width="1000px"
-          dialog-class="customers-detail-dialog"
+          dialog-class="customers-detail-dialog crud-dialog-lg"
           :close-on-click-modal="false"
           :show-default-footer="false"
           @close="closeDetailModal"
@@ -1684,12 +1686,14 @@
           </div>
 
           <template #footer>
-            <el-button
-              type="default"
-              @click="closeDetailModal"
-            >
-              关闭
-            </el-button>
+            <div class="tf-dialog-actions">
+              <el-button
+                type="default"
+                @click="closeDetailModal"
+              >
+                关闭
+              </el-button>
+            </div>
           </template>
         </MobileDialog>
       </div>
@@ -1702,13 +1706,14 @@ import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useNotification } from '@/composables/useNotification'
 import { usePagePermissions } from '@/composables/usePagePermissions'
-import { useLoadingState } from '@/composables'
+import { useLoadingState, useDebounce } from '@/composables'
 import { useImportExport } from '@/composables/useImportExport'
 import { useRefreshData } from '@/composables/useRefreshData'
 import { useSearchHighlight } from '@/composables/useSearchHighlight'
 import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { unifiedApi } from '@/utils/unified-api'
 import { useMobile } from '@/composables/mobile'
+import { useMobileRowDoubleTap } from '@/composables/useMobileRowDoubleTap'
 import { ElButton, ElTable } from 'element-plus'
 import Pagination from '../../components/Pagination.vue'
 import CitySelector from '../../components/CitySelector.vue'
@@ -1719,7 +1724,7 @@ import ImportExportActions from '@/components/business/ImportExportActions.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import { PermissionGate, PageHeader } from '@/components/base'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
-import { formatDate as formatGlobalDate } from '@/utils/format'
+import { formatDate } from '@/utils/format'
 import { getActionColumnMinWidth, getIdentifierColumnMinWidth, getTextColumnMinWidth } from '@/utils/table-layout'
 import { isValidAppleAccount, isValidIdCard, isValidMobilePhone, normalizeAppleId, normalizeIdCard, normalizePersonName, normalizePhoneDigits } from '@/utils/security'
 import { logger } from '@/utils/logger'
@@ -1891,8 +1896,7 @@ const searchKeyword = ref('')
 const hasSelection = computed(() => selectedRows.value.length > 0)
 const selectedCount = computed(() => selectedRows.value.length)
 const mobileActionRowId = ref<string | null>(null)
-const lastTappedRowId = ref<string | null>(null)
-const lastTapTimestamp = ref(0)
+const { isDoubleTap } = useMobileRowDoubleTap()
 
 const customerFieldMap: Record<string, string> = {
   stats_total_customers: 'stats.total_customers',
@@ -2021,17 +2025,7 @@ const toggleMobileActions = (id: number) => {
 const handleMobileRowTap = (id: number) => {
   if (!isMobile.value) return
 
-  const rowId = String(id)
-  const now = Date.now()
-  if (lastTappedRowId.value === rowId && now - lastTapTimestamp.value <= 320) {
-    toggleMobileActions(id)
-    lastTappedRowId.value = null
-    lastTapTimestamp.value = 0
-    return
-  }
-
-  lastTappedRowId.value = rowId
-  lastTapTimestamp.value = now
+  if (isDoubleTap(String(id))) toggleMobileActions(id)
 }
 
 const handleCustomerRowClick = (row: CustomerListItem, _column: unknown, event: Event) => {
@@ -2483,19 +2477,10 @@ const _performSearch = (_keyword: string) => {
 }
 
 // 防抖搜索 - 输入框输入时延迟搜索
-let debounceSearchTimeoutId: NodeJS.Timeout | null = null
-
-const debounceSearch = () => {
-  // 取消之前的搜索
-  if (debounceSearchTimeoutId) {
-    clearTimeout(debounceSearchTimeoutId)
-  }
-  // 设置延迟搜索
-  debounceSearchTimeoutId = setTimeout(() => {
-    pagination.page = 1
-    loadCustomers()
-  }, 500) // 500ms 防抖
-}
+const { debouncedFn: debounceSearch } = useDebounce(() => {
+  pagination.page = 1
+  loadCustomers()
+}, 500) // 500ms 防抖
 
 const handleSearch = () => {
   // 重置到第一页
@@ -3039,11 +3024,6 @@ const handleExport = async () => {
 }
 
 // 工具方法
-const formatDate = (dateString: string) => {
-  if (!dateString) return '-'
-  return formatGlobalDate(dateString)
-}
-
 const getCustomerTypeTagType = (type?: string): 'success' | 'warning' | 'info' | 'primary' | 'danger' => {
   const typeMap: Record<string, 'success' | 'warning' | 'info' | 'primary' | 'danger'> = {
     individual: 'info',       // 个人客户 - 蓝色
@@ -4179,35 +4159,7 @@ onUnmounted(() => {
 </style>
 
 <style>
-.customers-form-dialog,
-.customers-detail-dialog {
-  --dialog-max-width: 800px;
-}
-
-@media (max-width: 767px) {
-  .customers-form-dialog,
-  .customers-detail-dialog {
-    --dialog-side-gap: 6px;
-    --dialog-vertical-gap: 12px;
-    --dialog-max-width: calc(100vw - 12px);
-    --mobile-dialog-overlay-padding: 12px 6px;
-    --mobile-dialog-body-padding: 10px 8px 8px;
-    --mobile-dialog-footer-padding: 0 8px 8px;
-  }
-
-}
-
 @media (max-width: 479px) {
-  .customers-form-dialog,
-  .customers-detail-dialog {
-    --dialog-side-gap: 4px;
-    --dialog-vertical-gap: 12px;
-    --dialog-max-width: calc(100vw - 8px);
-    --mobile-dialog-overlay-padding: 12px 4px;
-    --mobile-dialog-body-padding: 8px 6px 6px;
-    --mobile-dialog-footer-padding: 0 6px 6px;
-  }
-
   .customers-dialog-form :deep(.el-form-item) {
     margin-bottom: 10px;
   }

@@ -670,6 +670,51 @@ class ShopService {
     return images.length
   }
 
+  async getSoldProducts(database = db.getDatabase()) {
+    const [products] = await database.query(`
+      SELECT
+        p.id,
+        p.imei,
+        b.name AS brand,
+        m.name AS model,
+        c.name AS color,
+        mem.size AS memory,
+        p.sale_time AS sale_time,
+        COUNT(hi.id) AS image_count
+      FROM phones p
+      INNER JOIN H5_images hi ON p.id = hi.phone_id
+      LEFT JOIN brands b ON p.brand_id = b.id
+      LEFT JOIN models m ON p.model_id = m.id
+      LEFT JOIN colors c ON p.color_id = c.id
+      LEFT JOIN memories mem ON p.memory_id = mem.id
+      WHERE p.status = 'sold' AND p.is_new = 0
+      GROUP BY p.id
+      HAVING image_count > 0
+      ORDER BY p.sale_time DESC
+    `)
+
+    const escapeHtml = value => {
+      if (!value || typeof value !== 'string') return value
+      return value
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;')
+    }
+
+    return products.map(product => ({
+      id: product.id,
+      imei: escapeHtml(product.imei),
+      brand: escapeHtml(product.brand),
+      model: escapeHtml(product.model),
+      color: escapeHtml(product.color),
+      memory: escapeHtml(product.memory),
+      sale_time: product.sale_time,
+      image_count: Number(product.image_count)
+    }))
+  }
+
   /**
    * 删除物理文件
    * @param {string} imageUrl - 图片URL路径

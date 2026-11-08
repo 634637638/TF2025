@@ -558,19 +558,21 @@
         </el-form>
 
         <template #footer>
-          <el-button
-            type="default"
-            @click="attemptCloseModal"
-          >
-            取消
-          </el-button>
-          <el-button
-            type="primary"
-            :loading="saving"
-            @click="saveStore"
-          >
-            {{ isEditMode ? '更新' : '创建' }}
-          </el-button>
+          <div class="tf-dialog-actions">
+            <el-button
+              type="default"
+              @click="attemptCloseModal"
+            >
+              取消
+            </el-button>
+            <el-button
+              type="primary"
+              :loading="saving"
+              @click="saveStore"
+            >
+              {{ isEditMode ? '更新' : '创建' }}
+            </el-button>
+          </div>
         </template>
       </MobileDialog>
 
@@ -664,17 +666,16 @@
         </div>
 
         <template #footer>
-          <el-button
-            type="default"
-            @click="attemptCloseModal"
-          >
-            关闭
-          </el-button>
+          <div class="tf-dialog-actions">
+            <el-button
+              type="default"
+              @click="attemptCloseModal"
+            >
+              关闭
+            </el-button>
+          </div>
         </template>
       </MobileDialog>
-
-      <!-- Toast 通知组件 -->
-      <Toast />
     </PermissionGate>
   </div>
 </template>
@@ -683,7 +684,6 @@
 import { ref, reactive, onMounted, onUnmounted, computed } from 'vue'
 import unifiedApi from '@/utils/unified-api'
 import { extractResponseData } from '@/utils/api-response'
-import Toast from '../../components/Toast.vue'
 import Pagination from '../../components/Pagination.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
@@ -692,14 +692,16 @@ import { useImportExport } from '@/composables/useImportExport'
 import { useNotification } from '@/composables/useNotification'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { useRefreshData } from '@/composables/useRefreshData'
+import { useDebounce } from '@/composables/useDebounce'
 import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { useAuthStore } from '@/stores/auth'
 import { usePageState } from '@/composables/usePageState'
-import { formatDateTime as formatGlobalDateTime } from '@/utils/format'
+import { formatDateTime as formatDate } from '@/utils/format'
 import { PageHeader, PermissionGate } from '@/components/base'
 import { usePermissionToast } from '@/utils/permissionToastSimple'
 import { handleApiErrorWithPermission } from '@/utils/apiPermissionError'
 import { useMobile } from '@/composables/mobile'
+import { useMobileRowDoubleTap } from '@/composables/useMobileRowDoubleTap'
 import { useLatestRequest } from '@/composables/useLatestRequest'
 import type { Store, StoreFormData } from '@/types/system'
 import type { QueryParams, User } from '@/types'
@@ -802,8 +804,7 @@ const currentEditingId = ref<number | null>(null)
 const selectedStore = ref<Store | null>(null)
 const storesTableRef = ref<HTMLElement | { $el?: HTMLElement } | null>(null)
 const mobileActionRowId = ref<string | null>(null)
-const lastTappedRowId = ref<string | null>(null)
-const lastTapTimestamp = ref(0)
+const { isDoubleTap } = useMobileRowDoubleTap()
 const getStoreRowKey = (store: Store) => String(store.id)
 
 // 表单验证
@@ -890,19 +891,10 @@ const isEditMode = computed(() => showEditModal.value && currentEditingId.value 
 const searchExpanded = ref(false)
 
 // 防抖搜索 - 输入框输入时延迟搜索
-let debounceSearchTimeoutId: NodeJS.Timeout | null = null
-
-const debounceSearch = () => {
-  // 取消之前的搜索
-  if (debounceSearchTimeoutId) {
-    clearTimeout(debounceSearchTimeoutId)
-  }
-  // 设置延迟搜索
-  debounceSearchTimeoutId = setTimeout(() => {
-    pagination.page = 1
-    loadStores()
-  }, 500) // 500ms 防抖
-}
+const { debouncedFn: debounceSearch } = useDebounce(() => {
+  pagination.page = 1
+  loadStores()
+}, 500) // 500ms 防抖
 
 const searchForm = reactive<SearchForm>({
   name: '',
@@ -1346,11 +1338,6 @@ const getManagerName = (managerId: string | number | null) => {
   return user ? user.name : '-'
 }
 
-const formatDate = (dateString: string) => {
-  if (!dateString) return '-'
-  return formatGlobalDateTime(dateString)
-}
-
 const _changePage = (page: number) => {
   if (page < 1 || page > pagination.total_pages) return
   pagination.page = page
@@ -1378,18 +1365,7 @@ const toggleMobileActions = (id: number) => {
 
 const handleMobileRowTap = (id: number) => {
   if (!isMobile.value) return
-  const rowKey = String(id)
-
-  const now = Date.now()
-  if (lastTappedRowId.value === rowKey && now - lastTapTimestamp.value <= 320) {
-    toggleMobileActions(id)
-    lastTappedRowId.value = null
-    lastTapTimestamp.value = 0
-    return
-  }
-
-  lastTappedRowId.value = rowKey
-  lastTapTimestamp.value = now
+  if (isDoubleTap(String(id))) toggleMobileActions(id)
 }
 
 const handleExport = async () => {
@@ -1481,10 +1457,6 @@ onMounted(async () => {
 
 onUnmounted(() => {
   window.removeEventListener('tf2025:permissions:updated', handlePermissionsUpdated)
-  if (debounceSearchTimeoutId) {
-    clearTimeout(debounceSearchTimeoutId)
-    debounceSearchTimeoutId = null
-  }
 })
 </script>
 

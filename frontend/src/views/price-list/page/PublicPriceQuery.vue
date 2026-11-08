@@ -443,25 +443,27 @@
         </div>
       </div>
       <template #footer>
-        <el-button
-          class="tf-button--neutral"
-          @click="toggleIOSImageMode"
-        >
-          长按保存
-        </el-button>
-        <el-button
-          class="tf-button--manage"
-          :loading="isSharingImage"
-          @click="shareIOSImage"
-        >
-          我要分享
-        </el-button>
-        <el-button
-          class="tf-button--neutral"
-          @click="closeIOSImageModal"
-        >
-          关闭
-        </el-button>
+        <div class="tf-dialog-actions">
+          <el-button
+            class="tf-button--neutral"
+            @click="toggleIOSImageMode"
+          >
+            长按保存
+          </el-button>
+          <el-button
+            class="tf-button--manage"
+            :loading="isSharingImage"
+            @click="shareIOSImage"
+          >
+            我要分享
+          </el-button>
+          <el-button
+            class="tf-button--neutral"
+            @click="closeIOSImageModal"
+          >
+            关闭
+          </el-button>
+        </div>
       </template>
     </MobileDialog>
   </div>

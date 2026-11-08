@@ -344,20 +344,22 @@
           </el-form-item>
         </el-form>
         <template #footer>
-          <el-button
-            type="default"
-            @click="showCreateDialog = false"
-          >
-            取消
-          </el-button>
-          <el-button
-            v-if="canEditSectionForm"
-            type="primary"
-            :loading="saving"
-            @click="saveSection"
-          >
-            保存
-          </el-button>
+          <div class="tf-dialog-actions">
+            <el-button
+              type="default"
+              @click="showCreateDialog = false"
+            >
+              取消
+            </el-button>
+            <el-button
+              v-if="canEditSectionForm"
+              type="primary"
+              :loading="saving"
+              @click="saveSection"
+            >
+              保存
+            </el-button>
+          </div>
         </template>
       </MobileDialog>
 
@@ -561,20 +563,22 @@
           </div>
         </div>
         <template #footer>
-          <el-button
-            type="default"
-            @click="showProductsDialog = false"
-          >
-            取消
-          </el-button>
-          <el-button
-            v-if="canEdit"
-            type="primary"
-            :loading="savingProducts"
-            @click="saveProducts"
-          >
-            保存
-          </el-button>
+          <div class="tf-dialog-actions">
+            <el-button
+              type="default"
+              @click="showProductsDialog = false"
+            >
+              取消
+            </el-button>
+            <el-button
+              v-if="canEdit"
+              type="primary"
+              :loading="savingProducts"
+              @click="saveProducts"
+            >
+              保存
+            </el-button>
+          </div>
         </template>
       </MobileDialog>
     </div>

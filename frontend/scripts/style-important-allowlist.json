@@ -218,7 +218,7 @@
     },
     {
       "file": "src/components/styles/mobile-dialog/base.scss",
-      "max": 28,
+      "max": 27,
       "category": "shared-contract",
       "reason": "Core dialog component must control Element Plus teleported dimensions, safe areas, transition state and the shared sheet close control."
     },
@@ -278,7 +278,7 @@
     },
     {
       "file": "src/views/shared/SharedView.vue",
-      "max": 7,
+      "max": 2,
       "category": "teleport-layer",
       "reason": "Rich-content tables and mobile teleported editor dialogs override embedded content and vendor dimensions."
     },

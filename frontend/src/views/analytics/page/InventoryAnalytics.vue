@@ -245,7 +245,7 @@
           width="140"
         >
           <template #default="scope">
-            {{ scope.row.last_sale_time ? formatDate(scope.row.last_sale_time) : '-' }}
+            {{ formatDate(scope.row.last_sale_time) }}
           </template>
         </el-table-column>
       </el-table>
@@ -714,7 +714,7 @@ import { useAnalyticsFieldVisibility } from './useAnalyticsFieldVisibility'
 import echarts, { ECharts, type EChartsOption, type TopLevelFormatterParams } from '@/utils/echarts'
 import { buildCsvContent } from '@/utils/csv-export'
 import { logger } from '@/utils/logger'
-import { formatDate as formatGlobalDate } from '@/utils/format'
+import { formatDate } from '@/utils/format'
 
 const props = withDefaults(defineProps<InventoryAnalyticsProps>(), {
   loading: false,
@@ -1003,11 +1003,6 @@ const formatNumber = (num?: number | null) => {
 const formatDecimal = (num?: number | null) => {
   if (num === undefined || num === null || Number.isNaN(num)) return '0.0'
   return Number(num).toFixed(1)
-}
-
-const formatDate = (date: string | null) => {
-  if (!date) return '-'
-  return formatGlobalDate(date)
 }
 
 const getStockTagType = (stock: number, reorderPoint: number) => {

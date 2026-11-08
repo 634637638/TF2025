@@ -421,22 +421,24 @@
           </p>
         </el-form>
         <template #footer>
-          <el-button
-            class="btn-sm"
-            @click="showMapSettingsDialog = false"
-          >
-            关闭
-          </el-button>
-          <el-button
-            v-if="canEdit"
-            class="btn-sm"
-            plain
-            type="primary"
-            :loading="saving"
-            @click="saveMapSettings"
-          >
-            保存
-          </el-button>
+          <div class="tf-dialog-actions">
+            <el-button
+              class="btn-sm"
+              @click="showMapSettingsDialog = false"
+            >
+              关闭
+            </el-button>
+            <el-button
+              v-if="canEdit"
+              class="btn-sm"
+              plain
+              type="primary"
+              :loading="saving"
+              @click="saveMapSettings"
+            >
+              保存
+            </el-button>
+          </div>
         </template>
       </MobileDialog>
 
@@ -827,22 +829,24 @@
           只有启用开关和必要资料都完整的收款方式才会进入商城；商家接口还必须完成真实下单与回调验签适配。
         </p>
         <template #footer>
-          <el-button
-            class="btn-sm"
-            @click="showPaymentSettingsDialog = false"
-          >
-            关闭
-          </el-button>
-          <el-button
-            v-if="canEdit"
-            class="btn-sm"
-            plain
-            type="primary"
-            :loading="saving"
-            @click="savePaymentSettings"
-          >
-            保存
-          </el-button>
+          <div class="tf-dialog-actions">
+            <el-button
+              class="btn-sm"
+              @click="showPaymentSettingsDialog = false"
+            >
+              关闭
+            </el-button>
+            <el-button
+              v-if="canEdit"
+              class="btn-sm"
+              plain
+              type="primary"
+              :loading="saving"
+              @click="savePaymentSettings"
+            >
+              保存
+            </el-button>
+          </div>
         </template>
       </MobileDialog>
 
@@ -896,21 +900,23 @@
           </LoadingOverlay>
         </div>
         <template #footer>
-          <el-button
-            class="btn-sm"
-            @click="cancelMapLocation"
-          >
-            取消
-          </el-button>
-          <el-button
-            v-if="canEdit"
-            plain
-            type="primary"
-            class="btn-sm"
-            @click="confirmMapLocation"
-          >
-            确定
-          </el-button>
+          <div class="tf-dialog-actions">
+            <el-button
+              class="btn-sm"
+              @click="cancelMapLocation"
+            >
+              取消
+            </el-button>
+            <el-button
+              v-if="canEdit"
+              plain
+              type="primary"
+              class="btn-sm"
+              @click="confirmMapLocation"
+            >
+              确定
+            </el-button>
+          </div>
         </template>
       </MobileDialog>
     </div>

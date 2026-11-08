@@ -156,29 +156,31 @@
     </form>
 
     <template #footer>
-      <el-button
-        type="info"
-        @click="emit('update:modelValue', false)"
-      >
-        取消
-      </el-button>
-      <el-button
-        type="primary"
-        native-type="submit"
-        form="edit-payout-form"
-        :disabled="saving"
-      >
-        <InlineLoading
-          v-if="saving"
-          text="保存中..."
-          size="small"
-          variant="inherit"
-        />
-        <template v-else>
-          <i class="fas fa-save" />
-          保存
-        </template>
-      </el-button>
+      <div class="tf-dialog-actions">
+        <el-button
+          type="info"
+          @click="emit('update:modelValue', false)"
+        >
+          取消
+        </el-button>
+        <el-button
+          type="primary"
+          native-type="submit"
+          form="edit-payout-form"
+          :disabled="saving"
+        >
+          <InlineLoading
+            v-if="saving"
+            text="保存中..."
+            size="small"
+            variant="inherit"
+          />
+          <template v-else>
+            <i class="fas fa-save" />
+            保存
+          </template>
+        </el-button>
+      </div>
     </template>
   </MobileDialog>
 </template>

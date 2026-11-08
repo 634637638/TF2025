@@ -554,10 +554,9 @@ import { computed, onUnmounted, ref, watch } from 'vue'
 
 import PaginationComponent from '@/components/Pagination.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
-import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import { logger } from '@/utils/logger'
 import { getActionColumnMinWidth, getIdentifierColumnMinWidth, getTextColumnMinWidth } from '@/utils/table-layout'
-import { formatAmount } from '@/utils/format'
+import { formatAmount, formatDate } from '@/utils/format'
 import type { NationalSubsidyRecord } from '@/types'
 import { useNotification } from '@/composables/useNotification'
 const globalNotifications = useNotification()
@@ -857,11 +856,6 @@ const copyRemarks = async (remarks: string) => {
     }
     document.body.removeChild(textarea)
   }
-}
-
-const formatDate = (date?: string | null) => {
-  if (!date) return '-'
-  return TimeUtil.format(date, TIME_FORMATS.DATE)
 }
 
 const clearQrTimers = () => {

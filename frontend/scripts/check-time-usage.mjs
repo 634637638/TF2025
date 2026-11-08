@@ -103,6 +103,24 @@ function inspect(filePath) {
         }
       }
 
+      // 通用断言：向“格式化函数”（名称含 format，含公共 format.ts 的 formatDateTime/formatDate
+      // 及 formatGlobal* 别名）的参数位传入含年标记的硬编码日期格式串，必须改用 TIME_FORMATS，
+      // 避免绕过 TimeUtil.format 检测；不限定属性访问，故 ref('YYYY-MM-DD') 等配置初始值不误报。
+      if (ts.isCallExpression(node)) {
+        const callee = node.expression
+        const calleeName = ts.isPropertyAccessExpression(callee)
+          ? callee.name.text
+          : ts.isIdentifier(callee) ? callee.text : ''
+        if (/format/i.test(calleeName)) {
+          for (const argument of node.arguments) {
+            if (!ts.isStringLiteralLike(argument)) continue
+            if (argument.text.includes('YYYY') && dateFormatPattern.test(argument.text)) {
+              report(node, `向格式化调用传入硬编码日期格式 "${argument.text}"，请引用 TIME_FORMATS`)
+            }
+          }
+        }
+      }
+
       if (ts.isNewExpression(node) && node.expression.getText(sourceFile) === 'Date' && node.arguments?.length) {
         const argument = node.arguments[0]
         const dateField = ts.isPropertyAccessExpression(argument) ? argument.name.text : ''

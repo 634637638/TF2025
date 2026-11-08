@@ -19,6 +19,24 @@ test('遗留 /api/data 通用 CRUD 不再注册', () => {
   assert.match(routeIndex, /router\.use\(['"]\/data-import['"]/)
 })
 
+test('data-check routes directly bind controller methods and preserve inherited auth plus per-operation permissions', () => {
+  const route = fs.readFileSync(path.join(root, 'backend/src/routes/data-check.js'), 'utf8')
+  const methods = [
+    'checkBrands', 'checkModels', 'checkColors', 'checkMemories', 'checkSuppliers', 'checkStores',
+    'checkCustomers', 'checkUsers', 'checkAll', 'mergeDuplicates', 'batchMergeMultipleGroups',
+    'batchDeleteDuplicates', 'editData', 'deleteData', 'getStatistics', 'cleanupData', 'getAllData'
+  ]
+
+  assert.match(route, /router\.use\(unifiedAuth\)/)
+  for (const method of methods) {
+    assert.match(route, new RegExp(`dataCheckController\\.${method}\\.bind\\(dataCheckController\\)`))
+  }
+  assert.match(route, /requirePermission\('data-check:view'\)/)
+  assert.match(route, /requirePermission\('data-check:edit'\)/)
+  assert.match(route, /requirePermission\('data-check:delete'\)/)
+  assert.doesNotMatch(route, /router\.(?:get|post|put|patch|delete)\([^\n]*\(req,\s*res\)\s*=>/)
+})
+
 test('遗留 /api/data 返回 404，数据检查和导入接口仍正常挂载', async () => {
   const childScript = String.raw`
     const express = require('./backend/node_modules/express')

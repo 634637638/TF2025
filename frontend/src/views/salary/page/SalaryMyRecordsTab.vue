@@ -327,6 +327,7 @@
 import { TIME_FORMATS } from '@/utils/time'
 import { computed, ref } from 'vue'
 import { shouldShowActionColumn } from '@/composables/useFieldPermissions'
+import { useMobileRowDoubleTap } from '@/composables/useMobileRowDoubleTap'
 import { getPaymentMethodLabel } from '@/constants/paymentMethods'
 import Pagination from '@/components/Pagination.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
@@ -390,8 +391,7 @@ const emit = defineEmits<{
 
 const tableRef = ref<SalaryRecordsTableInstance>()
 const mobileExpandedRecordId = ref<number | null>(null)
-const lastTappedRecordId = ref<number | null>(null)
-const lastTapTimestamp = ref(0)
+const { isDoubleTap } = useMobileRowDoubleTap()
 
 const handlePaginationChange = (page: number, pageSize: number) => {
   emit('paginationChange', page, pageSize)
@@ -404,8 +404,7 @@ const handlePeriodRangeUpdate = (value: DateRangeValue) => {
 const handleRowTap = (row: SalaryRecordRow) => {
   if (!props.isMobile) return
 
-  const now = Date.now()
-  if (lastTappedRecordId.value === row.id && now - lastTapTimestamp.value <= 320) {
+  if (isDoubleTap(row.id)) {
     const shouldExpand = mobileExpandedRecordId.value !== row.id
     if (mobileExpandedRecordId.value && mobileExpandedRecordId.value !== row.id) {
       const previous = props.records.find(record => record.id === mobileExpandedRecordId.value)
@@ -414,13 +413,7 @@ const handleRowTap = (row: SalaryRecordRow) => {
 
     tableRef.value?.toggleRowExpansion(row, shouldExpand)
     mobileExpandedRecordId.value = shouldExpand ? row.id : null
-    lastTappedRecordId.value = null
-    lastTapTimestamp.value = 0
-    return
   }
-
-  lastTappedRecordId.value = row.id
-  lastTapTimestamp.value = now
 }
 </script>
 

@@ -72,7 +72,7 @@
                 </div>
                 <el-radio-group
                   v-model="form.condition"
-                  class="condition-buttons"
+                  class="condition-buttons tf-segment"
                 >
                   <el-radio-button label="new">
                     全新

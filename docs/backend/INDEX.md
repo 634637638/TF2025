@@ -3,6 +3,8 @@
 ## 📚 核心文档
 
 - [Claude 指令](CLAUDE.md) - AI 开发指令
+- [后端分层约束](../CLAUDE.md#统一实现与清理范围) - route/controller/service/repository 边界、Actor/BaseService/共享连接入口和 ARCH 棘轮
+- [分层任务 T17](../development/TECHNICAL_DEBT_PROGRESS.md) - 唯一当前进度与实测债务
 - [迁移计划](MIGRATION_PLAN.md) - 系统迁移方案
 - [迁移报告](MIGRATION_REPORT.md) - 迁移执行记录
 - [菜单 API 规范](menu-api-specification.md) - 菜单接口说明
@@ -16,6 +18,10 @@
 - [商城地图与支付服务配置](shop-provider-config-standard.md) - provider 配置、密钥加密、公开字段白名单与支付接入边界
 - [站内公告](site-announcements.md) - 管理/员工 API、权限及数据库迁移
 - [备份管理](backup-management.md) - 数据库单独备份、完整备份、下载与恢复边界
+
+## 架构审计入口
+
+基础实现位于 `backend/src/types/actor.js`、`backend/src/core/base/base.service.js`、`backend/src/core/db/connection.js`。分层配置与锚点在 `config/backend-route-architecture.json`；运行 `node frontend/scripts/check-route-architecture.mjs` 单独核验，或运行 `npm --prefix frontend run check:backend-security` 联合安全审计。规则以开发指南正文为准，迁移后同步 T17、逐文件台账和历史锚点。
 
 ## 契约测试
 

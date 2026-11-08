@@ -22,6 +22,18 @@ const lineNumber = (source, offset) => source.slice(0, offset).split(/\r?\n/).le
 function inspect(filePath) {
   const relativePath = path.relative(path.resolve(frontendRoot, '..'), filePath)
   const source = fs.readFileSync(filePath, 'utf8')
+
+  // 移动端表格行双击防护必须复用 useMobileRowDoubleTap，禁止页面重新手写时间戳 + 时间窗判定。
+  const isRowDoubleTapImplementation = filePath.endsWith(path.join('composables', 'useMobileRowDoubleTap.ts'))
+  if (!isRowDoubleTapImplementation) {
+    for (const match of source.matchAll(/\b\w*[Tt]ap\w*Timestamp\b/g)) {
+      findings.push(`${relativePath}:${lineNumber(source, match.index)} 禁止手写移动端行双击时间戳 ${match[0]}，必须复用 useMobileRowDoubleTap()`)
+    }
+    for (const match of source.matchAll(/now\s*-\s*\w*[Tt]imestamp\w*\.value\s*<=\s*\d+/g)) {
+      findings.push(`${relativePath}:${lineNumber(source, match.index)} 禁止手写移动端行双击时间窗判定，必须复用 useMobileRowDoubleTap()`)
+    }
+  }
+
   const isNotificationImplementation = [
     path.join('services', 'notification-simple.ts'),
     path.join('utils', 'message-box.ts'),

@@ -12,7 +12,7 @@ try {
 } catch (error) {
   log.warn('⚠️ cheerio 模块未安装，价格抓取功能将不可用')
 }
-const CaptchaRecognizer = require('./captcha-recognizer')
+const CaptchaRecognizer = require('./captcha-recognizer.service')
 const PuppeteerLoginService = require('./puppeteer-login.service')
 const HttpLoginService = require('./http-login.service')
 const { matchProductName } = require('../config/product-name-mapping')

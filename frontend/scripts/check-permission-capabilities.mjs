@@ -11,7 +11,7 @@ const pagePermissionsPath = resolve(frontendRoot, 'src/composables/usePagePermis
 const routerPath = resolve(frontendRoot, 'src/router/index.ts')
 const backendConfigPath = resolve(projectRoot, 'backend/src/config/module-permission-actions.js')
 const backendPermissionMappingPath = resolve(projectRoot, 'backend/src/config/permission-mapping.js')
-const scannerPath = resolve(projectRoot, 'backend/src/services/moduleScanner_simple.js')
+const scannerPath = resolve(projectRoot, 'backend/src/services/module-scanner.service.js')
 const findings = []
 
 const readJson = path => JSON.parse(readFileSync(path, 'utf8'))

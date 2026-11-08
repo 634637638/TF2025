@@ -4,6 +4,7 @@ const log = require('../utils/log')
  * 处理所有菜单相关的HTTP请求
  */
 const MenuService = require('../services/menu.service')
+const menuModuleAutoBinder = require('../services/menu-module-auto-binder.service')
 const ApiResponse = require('../utils/response')
 const { clearAllMenuCache } = require('../utils/menuCacheManager')
 
@@ -356,6 +357,27 @@ class MenuController {
     } catch (error) {
       log.error('获取菜单统计信息失败:', error)
       ApiResponse.serverError(res, '获取菜单统计信息失败', error)
+    }
+  }
+
+  async autoBindModules(req, res) {
+    try {
+      const { single, menuId } = req.body
+      const result = single && menuId
+        ? await menuModuleAutoBinder.bindModuleForMenuId(menuId)
+        : await menuModuleAutoBinder.batchFixMenuModuleBindings()
+
+      if (result.notFound) {
+        return res.status(404).json({ success: false, message: '菜单不存在' })
+      }
+
+      return res.json(result)
+    } catch (error) {
+      log.error('自动绑定菜单模块失败:', error)
+      return res.status(500).json({
+        success: false,
+        message: '自动绑定失败: ' + error.message
+      })
     }
   }
 

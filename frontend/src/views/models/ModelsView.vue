@@ -463,23 +463,25 @@
             </el-form-item>
           </el-form>
           <template #footer>
-            <el-button
-              type="default"
-              @click="attemptCloseModal"
-            >
-              取消
-            </el-button>
-            <el-button
-              type="primary"
-              :disabled="submitting"
-              :loading="submitting"
-              @click="submitForm"
-            >
-              <span v-if="submitting">{{ isEditMode ? '更新中...' : '创建中...' }}</span>
-              <template v-else>
-                {{ isEditMode ? '更新' : '创建' }}
-              </template>
-            </el-button>
+            <div class="tf-dialog-actions">
+              <el-button
+                type="default"
+                @click="attemptCloseModal"
+              >
+                取消
+              </el-button>
+              <el-button
+                type="primary"
+                :disabled="submitting"
+                :loading="submitting"
+                @click="submitForm"
+              >
+                <span v-if="submitting">{{ isEditMode ? '更新中...' : '创建中...' }}</span>
+                <template v-else>
+                  {{ isEditMode ? '更新' : '创建' }}
+                </template>
+              </el-button>
+            </div>
           </template>
         </MobileDialog>
       </div>
@@ -505,9 +507,10 @@ import { usePermissionToast } from '@/utils/permissionToastSimple'
 import { handleApiErrorWithPermission } from '@/utils/apiPermissionError'
 import { logger } from '@/utils/logger'
 import { useMobile } from '@/composables/mobile'
+import { useMobileRowDoubleTap } from '@/composables/useMobileRowDoubleTap'
 import { useLatestRequest } from '@/composables/useLatestRequest'
 import { sortOptionsByOrder } from '@/utils/option-sort'
-import { formatDateTime as formatGlobalDateTime } from '@/utils/format'
+import { formatDateTime as formatDate } from '@/utils/format'
 import { getRequestErrorMessage, getRequestErrorStatus } from '@/utils/api-response'
 import type { QueryParams } from '@/types/shared'
 import { useElementTableSortable } from '@/composables/useElementTableSortable'
@@ -575,8 +578,7 @@ const showStatsCards = computed(() => (
 // 响应式数据
 const modelsTableRef = ref<HTMLElement | { $el?: HTMLElement } | null>(null)
 const mobileActionRowId = ref<string | null>(null)
-const lastTappedRowId = ref<string | null>(null)
-const lastTapTimestamp = ref(0)
+const { isDoubleTap } = useMobileRowDoubleTap()
 
 const toggleMobileActions = (id: number) => {
   if (!isMobile.value) return
@@ -586,18 +588,7 @@ const toggleMobileActions = (id: number) => {
 
 const handleMobileRowTap = (id: number) => {
   if (!isMobile.value) return
-  const rowKey = String(id)
-
-  const now = Date.now()
-  if (lastTappedRowId.value === rowKey && now - lastTapTimestamp.value <= 320) {
-    toggleMobileActions(id)
-    lastTappedRowId.value = null
-    lastTapTimestamp.value = 0
-    return
-  }
-
-  lastTappedRowId.value = rowKey
-  lastTapTimestamp.value = now
+  if (isDoubleTap(String(id))) toggleMobileActions(id)
 }
 
 // 搜索相关状态
@@ -1166,11 +1157,6 @@ const closeModal = () => {
     status: 1,
     sort_order: 0
   }
-}
-
-const formatDate = (dateString: string) => {
-  if (!dateString) return '-'
-  return formatGlobalDateTime(dateString)
 }
 
 // 处理新增型号

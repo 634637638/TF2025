@@ -60,6 +60,18 @@ Element Plus 的 `el-select`、`el-date-picker`、`el-input`、`el-input-number`
 - 自定义业务下拉的实际滚动容器必须添加公共语义 class `tf-dropdown-scroll`，复用同一原生滚动条隐藏规则，不在页面复制 CSS。商城首页型号、颜色、内存三个筛选列表已接入；保留各自的最大高度和滚动行为。
 - `check:form-controls` 检查公共样式导入、下拉类型覆盖、原生和组件滚动条隐藏规则及滚动能力边界。
 
+## 分段单选控件（tf-segment）
+
+互斥的短选项切换（如可见范围“公开/私有”、状态或条件类型）使用 `el-radio-group` + `el-radio-button` 的分段控件，属于表单控件语义，必须与同行输入框等高，不作为命令按钮或 TAB 另行维护。
+
+- 分段控件的唯一规格入口是 `frontend/src/styles/components/_form-controls.scss` 中的 `.tf-segment` 语义段；业务页面在 `el-radio-group` 上挂 `tf-segment` class，复用统一高度、圆角、字号、边框和选中配色。
+- 高度与输入框一致：PC 使用 `--input-height-default`，手机端使用 `--mobile-control-height`，两者由公共段按断点自动赋值；页面不得为 `.el-radio-button__inner` 再设 `height`、`min-height` 或 `border-radius`。
+- 选中态统一使用主操作色 `--tf-button-primary-bg` / `--tf-button-primary-color`，未选中使用中性边框 `--tf-button-neutral-border` 和文字 `--tf-button-neutral-color`；悬停使用 `--tf-button-primary-border` 描边。相邻段通过 `border-left-width: 0` 消除双边框，禁止页面用负 `margin`、`z-index` 或私有配色复制。
+- Element Plus 选中背景由 `.el-radio-button.is-active .el-radio-button__original-radio:not(:disabled) + .el-radio-button__inner`（特异性 0,5,0）提供；公共段的选中规则必须同时包含 `.is-active` 和 `:checked`，使特异性高于 Element Plus 默认，否则选中态会退回默认蓝 `#409eff` 而不是主操作色。
+- 页面只维护布局：分段数量对应的列数、宽度、是否撑满（`width: 100%`）以及选项内部图标/文字排版；不得复制 `__inner` 的高度、圆角、字号或选中配色。
+- 当前已接入 `tf-segment` 的页面：分享可见范围（SharedView）、营销条件（MarketingView）、预订单匹配状态（PreordersView）。分析、报表等历史 `size="small"` 分段控件尚未统一，按后续任务迁移。
+- `check:form-controls` 断言 `.tf-segment` 公共段存在、高度来自输入框令牌且选中态使用主操作色，页面私自复制分段规格时审计失败。
+
 ## 原生业务输入盘点
 
 普通搜索、名称、手机号、Apple ID、交易流水号、密码、数字字段，以及只读的员工/金额展示全部使用 `el-input` 或 `el-input-number`。当前业务模板中的原生普通文本和数字输入数量均为 0，由 `check:form-controls` 持续守护；迁移后的组件事件必须使用 Element Plus 发出的值，不得再依赖 `$event.target.value`。
@@ -165,4 +177,4 @@ npm run check:form-controls
 - 已将普通控件的圆角和高度收口到 `_form-controls.scss`，移除销售、综合查询、库存、国补、权限、付款、H5 和基础资料页面的私有控件圆角/高度覆盖；`check:form-controls` 现在会阻止新增私有控件圆角或高度。
 - 已将普通输入、选择、日期和数字控件的聚焦状态收口到 `_form-controls.scss`，统一为报价在库卡片同款橙色 1px 完整外圈，并移除销售、库存、综合查询、权限、国补、付款、城市选择、菜单和屏幕锁定页面的私有聚焦覆盖；公共检索容器仍保留自身外层聚焦反馈，内部输入不重复绘制。
 
-最后更新：2026-11-01
+最后更新：2026-11-06

@@ -648,7 +648,7 @@ import { sortOptionsByOrder } from '@/utils/option-sort'
 import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { useRefreshData } from '@/composables/useRefreshData'
-import { useLoadingState } from '@/composables'
+import { useLoadingState, useDebounce } from '@/composables'
 import { useCachedRequest } from '@/composables/usePageCache'
 import { useImportExport } from '@/composables/useImportExport'
 import { getCachedStores } from '@/services/reference-options'
@@ -959,8 +959,6 @@ const isMobile = computed(() => {
 // 搜索展开状态 - 统一管理
 const searchExpanded = ref(false)
 
-// 防抖搜索 - 输入框输入时延迟搜索
-let debounceSearchTimeoutId: ReturnType<typeof setTimeout> | null = null
 let subsidyRequestSeq = 0
 let listAbortController: AbortController | null = null
 let statsAbortController: AbortController | null = null
@@ -998,16 +996,10 @@ const clearStatsRefreshTimer = () => {
   }
 }
 
-const debounceSearch = () => {
-  // 取消之前的搜索
-  if (debounceSearchTimeoutId) {
-    clearTimeout(debounceSearchTimeoutId)
-  }
-  // 设置延迟搜索
-  debounceSearchTimeoutId = setTimeout(() => {
-    handleSearch()
-  }, 300) // 300ms 防抖
-}
+// 防抖搜索 - 输入框输入时延迟搜索
+const { debouncedFn: debounceSearch } = useDebounce(() => {
+  handleSearch()
+}, 300) // 300ms 防抖
 
 // 处理行双击事件
 const handleRowDoubleClick = (item: NationalSubsidyRecord) => {
@@ -1822,10 +1814,6 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
-  if (debounceSearchTimeoutId) {
-    clearTimeout(debounceSearchTimeoutId)
-  }
-
   abortListRequest()
   abortStatsRequest()
   clearStatsRefreshTimer()

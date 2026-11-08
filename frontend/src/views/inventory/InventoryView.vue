@@ -115,9 +115,6 @@
     @cancel="handleStockInCancel"
   />
 
-  <!-- Toast 通知组件 -->
-  <Toast />
-
   <InventoryEditDialog
     v-model="showEditModal"
     :brand-models="editBrandModels"
@@ -175,7 +172,6 @@ import { getModels } from '@/services/reference-options'
 import { useAuthStore } from '@/stores/auth'
 import { logger } from '@/utils/logger'
 import { TimeUtil } from '@/utils/time'
-import Toast from '../../components/Toast.vue'
 import ImportExportActions from '@/components/business/ImportExportActions.vue'
 import { PageHeader, PermissionGate } from '@/components/base'
 import InventoryStatsCards from './page/InventoryStatsCards.vue'
@@ -1533,20 +1529,20 @@ const _handleSelect = (item: InventoryItem) => {
 .inventory-edit-summary-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
-  margin-bottom: 20px;
+  gap: var(--tf-space-4);
+  margin-bottom: var(--tf-space-5);
 }
 
 .inventory-edit-form-shell {
   background: var(--tf-color-surface-muted);
-  border-radius: 12px;
-  padding: 20px;
+  border-radius: var(--tf-radius-panel);
+  padding: var(--tf-space-5);
 }
 
 .inventory-edit-form-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
+  gap: var(--tf-space-4);
 }
 
 /* 序列号和IMEI行容器 */
@@ -1565,7 +1561,7 @@ const _handleSelect = (item: InventoryItem) => {
 .inventory-edit-price-row {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--tf-space-3);
 }
 
 .inventory-edit-price-input {
@@ -1576,7 +1572,7 @@ const _handleSelect = (item: InventoryItem) => {
 .inventory-edit-publish-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--tf-space-2);
 }
 
 .inventory-edit-dialog .el-select,
@@ -1669,12 +1665,12 @@ const _handleSelect = (item: InventoryItem) => {
   .inventory-edit-summary-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--tf-space-2);
-    margin-bottom: 12px;
+    margin-bottom: var(--tf-space-3);
   }
 
   .inventory-edit-form-shell {
     padding: var(--tf-space-3) var(--tf-space-2);
-    border-radius: 12px;
+    border-radius: var(--tf-radius-panel);
   }
 
   .inventory-edit-form-grid {
@@ -1711,7 +1707,7 @@ const _handleSelect = (item: InventoryItem) => {
   .inventory-edit-price-row {
     flex-direction: row;
     align-items: center;
-    gap: 8px;
+    gap: var(--tf-space-2);
   }
 
   .inventory-edit-publish-actions {
@@ -1726,7 +1722,7 @@ const _handleSelect = (item: InventoryItem) => {
 @media (max-width: 479px) {
   .inventory-edit-summary-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
+    gap: var(--tf-space-2);
   }
 
   .inventory-edit-form-shell {
@@ -1798,700 +1794,3 @@ const _handleSelect = (item: InventoryItem) => {
 <style scoped src="./styles/inventory-view/detail-grid.css"></style>
 <style scoped src="./styles/inventory-view/form-and-table.css"></style>
 <style scoped src="./styles/inventory-view/mobile-cards.css"></style>
-/* ===== 手机端卡片网格布局 ===== */
-.grid-container {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 16px;
-  width: 100%;
-  padding: 16px;
-  box-sizing: border-box;
-}
-
-@media (max-width: 767px) {
-  /* 仅在移动端确保占据全宽 */
-  .grid-container {
-    width: 100vw;
-    margin-left: calc(-50vw + 50%);
-    margin-right: calc(-50vw + 50%);
-    padding-left: 16px;
-    padding-right: 16px;
-    box-sizing: border-box;
-  }
-}
-
-/* 小屏幕优化 */
-@media (max-width: 479px) {
-  .grid-container {
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-    gap: 12px;
-    padding-left: 12px;
-    padding-right: 12px;
-  }
-}
-
-/* 超小屏幕优化 */
-@media (max-width: 375px) {
-  .grid-container {
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 8px;
-    padding-left: 8px;
-    padding-right: 8px;
-  }
-}
-
-.device-card {
-  background: white;
-  border: 1px solid #e9ecef;
-  border-radius: 12px;
-  padding: 16px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.device-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
-  border-color: #28a745;
-}
-
-/* 小屏幕优化 */
-@media (max-width: 479px) {
-  .device-card {
-    padding: 12px;
-    gap: 8px;
-  }
-}
-
-/* 超小屏幕优化 */
-@media (max-width: 375px) {
-  .device-card {
-    padding: 10px;
-    gap: 6px;
-    border-radius: 8px;
-  }
-}
-
-.device-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.device-header .device-brand {
-  font-weight: 600;
-  font-size: var(--tf-type-scale-16);
-  color: #2c3e50;
-  flex: 1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.device-header .device-model {
-  font-weight: 500;
-  font-size: var(--tf-type-scale-14);
-  color: #6c757d;
-  flex: 1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* 小屏幕优化 */
-@media (max-width: 479px) {
-  .device-header .device-brand {
-    font-size: var(--tf-type-scale-14);
-  }
-
-  .device-header .device-model {
-    font-size: var(--tf-type-scale-12);
-  }
-}
-
-.device-info {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  flex: 1;
-}
-
-.device-info .info-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-  font-size: var(--tf-type-scale-13);
-}
-
-.device-info .info-row .label {
-  color: #6c757d;
-  font-weight: 500;
-  min-width: 60px;
-  flex-shrink: 0;
-}
-
-.device-info .info-row .value {
-  color: #495057;
-  font-weight: 500;
-  text-align: right;
-  flex: 1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.device-info .info-row .value.price {
-  color: #28a745;
-  font-weight: 600;
-}
-
-.device-info .info-row .value.remark {
-  font-size: var(--tf-type-scale-12);
-  color: #6c757d;
-  text-align: left;
-  line-height: 1.4;
-}
-
-/* 小屏幕优化 */
-@media (max-width: 479px) {
-  .device-info .info-row {
-    font-size: var(--tf-type-scale-12);
-  }
-
-  .device-info .info-row .label {
-    min-width: 50px;
-    font-size: var(--tf-type-scale-11);
-  }
-
-  .device-info .info-row .value {
-    font-size: var(--tf-type-scale-11);
-  }
-
-  .device-info .info-row .value.remark {
-    font-size: var(--tf-type-scale-10);
-  }
-}
-
-.device-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  padding-top: 8px;
-  border-top: 1px solid #f0f0f0;
-  margin-top: auto;
-}
-
-/* 小屏幕优化 */
-@media (max-width: 479px) {
-  .device-actions {
-    gap: 6px;
-    padding-top: 6px;
-  }
-}
-
-/* 桌面端分页样式优化 */
-.pagination-wrapper {
-  padding: 20px 0;
-}
-
-.pagination-wrapper {
-  display: flex;
-  justify-content: center;
-  padding: 6px 0;
-  margin-top: 8px;
-}
-
-/* iPhone SE (390x844) 适配 - 最低适配尺寸 */
-@media (max-width: 390px) and (min-height: 800px) {
-  .modal-header-content {
-    padding: 12px 16px;
-    background: var(--tf-button-primary-bg);
-    position: sticky;
-    top: 0;
-    z-index: 10;
-  }
-
-  .modal-title-group {
-    padding-right: 45px;
-  }
-
-  .modal-title {
-    font-size: var(--tf-type-scale-18);
-    line-height: 1.3;
-  }
-
-  .modal-subtitle {
-    font-size: var(--tf-type-scale-12);
-    margin-top: 2px;
-  }
-
-  .modal-icon {
-    width: 32px;
-    height: 32px;
-    font-size: var(--tf-type-scale-14);
-  }
-
-  .modal-close-btn {
-    width: 32px;
-    height: 32px;
-    top: 50%;
-    transform: translateY(-50%);
-  }
-
-  .details-container {
-    padding: 12px 16px;
-    flex: 1;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .detail-card {
-    margin-bottom: 16px;
-    border-radius: 8px;
-  }
-
-  .card-header {
-    padding: 10px 12px;
-  }
-
-  .card-icon {
-    width: 32px;
-    height: 32px;
-    font-size: var(--tf-type-scale-14);
-  }
-
-  .card-title {
-    font-size: var(--tf-type-scale-14);
-  }
-
-  .card-content {
-    padding: 12px;
-  }
-
-  .info-table {
-    font-size: var(--tf-type-scale-13);
-  }
-
-  .table-cell {
-    padding: 8px 12px;
-    min-height: 36px;
-    font-size: var(--tf-type-scale-13);
-  }
-
-  .table-cell.label-cell {
-    font-size: var(--tf-type-scale-11);
-    min-width: 80px;
-    max-width: 80px;
-  }
-
-}
-
-/* 编辑弹窗样式已使用内联样式，此处保留旧样式以备后用 */
-
-/* ===== 移动端适配 ===== */
-
-/* 小屏手机优化 (≤480px) */
-@media (max-width: 479px) {
-  .inventory-view {
-    padding: 4px 0;
-    overflow-x: hidden;
-    width: 100%;
-    max-width: 100vw;
-  }
-
-  body,
-  html {
-    overflow-x: hidden;
-    width: 100%;
-  }
-
-  /* 分页 */
-  .pagination-wrapper {
-    flex-wrap: wrap;
-    justify-content: center;
-  }
-
-  .pagination .el-button,
-  .pagination select {
-    font-size: var(--tf-type-scale-12);
-    padding: 6px 10px;
-  }
-
-  /* 移动端数据行可点击样式 */
-  .data-row {
-    cursor: pointer;
-    transition: background-color 0.2s;
-  }
-
-  .data-row:active {
-    background-color: #f0f0f0;
-  }
-
-  .inventory-modal-header {
-    padding: 16px;
-  }
-
-  .modal-title {
-    font-size: var(--tf-type-scale-18);
-  }
-
-  .modal-subtitle {
-    font-size: var(--tf-type-scale-14);
-  }
-
-  .inventory-modal-body {
-    padding: 16px;
-    max-height: calc(90vh - 140px);
-    overflow-y: auto;
-  }
-
-  .detail-card {
-    margin-bottom: 12px;
-  }
-
-  .card-header {
-    padding: 12px;
-  }
-
-  .card-content {
-    padding: 12px;
-  }
-
-  .info-table {
-    font-size: var(--tf-type-scale-13);
-  }
-
-  .table-cell {
-    padding: 8px 6px;
-    font-size: var(--tf-type-scale-12);
-  }
-
-  .table-cell.label-cell {
-    font-size: var(--tf-type-scale-11);
-    min-width: 70px;
-    max-width: 70px;
-  }
-
-}
-
-/* 第二个480px断点 - 全局滚动和触摸优化 */
-@media (max-width: 479px) {
-  * {
-    -webkit-overflow-scrolling: touch !important;
-  }
-
-  body {
-    overflow-x: hidden !important;
-    width: 100% !important;
-    max-width: 100vw !important;
-    position: fixed !important;
-    touch-action: pan-y pinch-zoom !important;
-  }
-
-  html {
-    overflow-x: hidden !important;
-    width: 100% !important;
-    position: fixed !important;
-  }
-
-  #app {
-    overflow-x: hidden !important;
-    width: 100% !important;
-    max-width: 100vw !important;
-    overflow-y: auto !important;
-    -webkit-overflow-scrolling: touch !important;
-    height: 100vh !important;
-    position: relative !important;
-  }
-
-  .inventory-view {
-    overflow-x: hidden !important;
-    width: 100% !important;
-    max-width: 100vw !important;
-    position: relative !important;
-  }
-
-  /* 按钮文字显示控制 */
-  .btn-text-desktop {
-    display: none !important;
-  }
-
-  .btn-text-mobile {
-    display: inline !important;
-  }
-}
-
-/* 超小屏幕优化（375px及以下 - iPhone SE） */
-@media (max-width: 375px) {
-  .inventory-view {
-    padding: 4px 0;
-  }
-
-  .header-actions .el-button span {
-    font-size: var(--tf-type-scale-9);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: clip;
-    flex-shrink: 0;
-  }
-
-  /* 分页组件优化 */
-  .pagination-wrapper {
-    padding: 10px;
-  }
-}
-
-/* ===== 商品详情模态框移动端优化 ===== */
-@media (max-width: 767px) {
-  .modal-header-content {
-    padding: 14px 16px;
-    position: sticky;
-    top: 0;
-    background: var(--tf-button-primary-bg);
-    z-index: 10;
-    border-radius: 16px 16px 0 0;
-  }
-
-  .modal-title-group {
-    gap: 10px;
-  }
-
-  .modal-icon {
-    width: 36px;
-    height: 36px;
-    font-size: var(--tf-type-scale-16);
-  }
-
-  .modal-title {
-    font-size: var(--tf-type-scale-16);
-  }
-
-  .modal-subtitle {
-    font-size: var(--tf-type-scale-12);
-  }
-
-  .modal-close-btn {
-    width: 32px;
-    height: 32px;
-    font-size: var(--tf-type-scale-14);
-  }
-
-  .inventory-modal-body {
-    padding: 0;
-    max-height: calc(90vh - 120px);
-  }
-
-  .details-container {
-    padding: 14px 16px;
-    gap: 14px;
-  }
-
-  /* 详情卡片优化 */
-  .detail-card {
-    border-radius: 10px;
-    overflow: hidden;
-  }
-
-  .card-header {
-    padding: 12px 14px;
-  }
-
-  .card-icon {
-    width: 28px;
-    height: 28px;
-    font-size: var(--tf-type-scale-13);
-  }
-
-  .card-title {
-    font-size: var(--tf-type-scale-14);
-  }
-
-  .card-content {
-    padding: 12px;
-  }
-
-  /* 信息表格优化 */
-  .info-table {
-    border-radius: 8px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .table-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0;
-    background: transparent;
-    border: none;
-    margin-bottom: 0;
-  }
-
-  .table-row:last-child {
-    margin-bottom: 0;
-  }
-
-  .table-row.full-width-row {
-    flex-wrap: nowrap;
-  }
-
-  /* 每个label-cell和value-cell组合成一个字段单元 */
-  .table-cell {
-    width: 50%;
-    padding: 10px;
-    min-height: auto;
-    box-sizing: border-box;
-  }
-
-  /* 重新组织:每两个单元格组成一个完整字段 */
-  .table-cell.label-cell {
-    width: 35%;
-    padding-right: 4px;
-    text-align: left;
-    font-weight: 600;
-    color: #64748b;
-    font-size: var(--tf-type-scale-11);
-    display: flex;
-    align-items: center;
-    background: #f8fafc;
-    border-top: 1px solid #e2e8f0;
-    border-left: 1px solid #e2e8f0;
-  }
-
-  .table-cell.value-cell {
-    width: 15%;
-    padding-left: 4px;
-    text-align: left;
-    font-weight: 500;
-    color: #1e293b;
-    font-size: var(--tf-type-scale-11);
-    word-break: break-word;
-    display: flex;
-    align-items: center;
-    background: white;
-    border-top: 1px solid #e2e8f0;
-    border-right: 1px solid #e2e8f0;
-  }
-
-  /* 调整边框,让每两个字段形成一行 */
-  .table-cell:nth-child(4n+1),
-  .table-cell:nth-child(4n+2) {
-    border-bottom: 1px solid #e2e8f0;
-  }
-
-  .table-cell:nth-child(4n+2),
-  .table-cell:nth-child(4n+4) {
-    border-right: none;
-  }
-
-  /* 全宽行的特殊处理 */
-  .table-row.full-width-row .table-cell {
-    width: 50%;
-  }
-
-  .table-row.full-width-row .table-cell:first-child {
-    border-left: 1px solid #e2e8f0;
-  }
-
-  .table-row.full-width-row .table-cell:last-child {
-    border-right: none;
-    background: white;
-  }
-
-  /* 成色徽章 */
-  .condition-badge {
-    font-size: var(--tf-type-scale-11);
-    padding: 3px 8px;
-  }
-
-  /* 价格单元格 */
-  .price-cell {
-    font-size: var(--tf-type-scale-14);
-  }
-
-  /* 备注卡片 */
-  .remarks-card .remarks-text {
-    font-size: var(--tf-type-scale-13);
-    line-height: 1.5;
-  }
-
-}
-
-/* 超小屏幕优化 */
-@media (max-width: 375px) {
-  .modal-header-content {
-    padding: 12px 14px;
-  }
-
-  .modal-title {
-    font-size: var(--tf-type-scale-15);
-  }
-
-  .modal-subtitle {
-    font-size: var(--tf-type-scale-11);
-  }
-
-  .modal-icon {
-    width: 32px;
-    height: 32px;
-    font-size: var(--tf-type-scale-14);
-  }
-
-  .details-container {
-    padding: 12px 14px;
-    gap: 12px;
-  }
-
-  .card-header {
-    padding: 10px 12px;
-  }
-
-  .card-icon {
-    width: 26px;
-    height: 26px;
-    font-size: var(--tf-type-scale-12);
-  }
-
-  .card-title {
-    font-size: var(--tf-type-scale-13);
-  }
-
-  .card-content {
-    padding: 10px;
-  }
-
-  /* 超小屏幕改为单列显示 */
-  .table-cell {
-    width: 100%;
-    border-right: none;
-    padding: 8px 10px;
-    min-height: 40px;
-  }
-
-  .table-cell.label-cell {
-    font-size: var(--tf-type-scale-10);
-    min-width: 45px;
-  }
-
-  .table-cell.value-cell {
-    font-size: var(--tf-type-scale-11);
-  }
-
-  .condition-badge {
-    font-size: var(--tf-type-scale-10);
-    padding: 2px 6px;
-  }
-
-  .price-cell {
-    font-size: var(--tf-type-scale-13);
-  }
-
-}

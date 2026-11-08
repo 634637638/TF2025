@@ -51,20 +51,20 @@
   },
   "manualAuthRoutes": {
     "auth.js|POST|/refresh": ["verifyToken"],
-    "auth.js|POST|/init-admin": ["ENABLE_DEV_INIT_ADMIN", "NODE_ENV !== 'development'"],
-    "csrf.js|POST|/verify": ["verifyCSRFToken"],
-    "repairs.js|GET|/media/*": ["verifyPrivateFileAccess"],
-    "screen-lock.js|POST|/verify-inventory-query": ["bcrypt.compare", "createInventoryQueryToken"],
+    "auth.js|POST|/init-admin": ["process.env.NODE_ENV", "process.env.ENABLE_DEV_INIT_ADMIN"],
+    "csrf.js|POST|/verify": ["csrfController.verifyToken"],
+    "repairs.js|GET|/media/*": ["this.service.resolve"],
+    "screen-lock.js|POST|/verify-inventory-query": ["screenLockController.verifyInventoryQueryPassword"],
     "shared.js|GET|/files/:filename": ["verifySharedFileAccess", "canAccessAttachment"],
     "subsidy.js|GET|/files/*": ["authenticateSubsidyFileAccess"],
-    "shop-public.js|POST|/orders/:orderNumber/confirm-payment": ["verifyOrderAccessToken"],
-    "shop-public.js|GET|/orders/:orderNumber": ["verifyOrderAccessToken"],
-    "shop-public.js|PUT|/orders/:id/cancel": ["verifyOrderAccessToken"],
-    "shop-public.js|GET|/auth/me": ["resolveCustomerSession", "ApiResponse.unauthorized"],
-    "shop-public.js|GET|/auth/orders": ["resolveCustomerSession", "ApiResponse.unauthorized"],
-    "shop-public.js|GET|/auth/sales": ["resolveCustomerSession", "ApiResponse.unauthorized"],
-    "shop-public.js|GET|/auth/profile": ["resolveCustomerSession", "ApiResponse.unauthorized"],
-    "shop-public.js|PUT|/auth/profile": ["resolveCustomerSession", "ApiResponse.unauthorized"],
-    "shop-public.js|POST|/auth/logout": ["DELETE FROM customer_tokens"]
+    "shop-public.js|POST|/orders/:orderNumber/confirm-payment": ["this.verifyOrderToken"],
+    "shop-public.js|GET|/orders/:orderNumber": ["this.verifyOrderToken"],
+    "shop-public.js|PUT|/orders/:id/cancel": ["this.verifyOrderToken"],
+    "shop-public.js|GET|/auth/me": ["this.requireCustomerSession", "this.service.getCustomerSummary"],
+    "shop-public.js|GET|/auth/orders": ["this.requireCustomerSession", "this.service.getOrdersByPhone"],
+    "shop-public.js|GET|/auth/sales": ["this.requireCustomerSession", "this.service.getSalesByCustomerId"],
+    "shop-public.js|GET|/auth/profile": ["this.requireCustomerSession", "this.service.getCustomerProfile"],
+    "shop-public.js|PUT|/auth/profile": ["this.requireCustomerSession", "this.service.updateCustomerProfile"],
+    "shop-public.js|POST|/auth/logout": ["extractBearerToken", "hashCustomerToken"]
   }
 }

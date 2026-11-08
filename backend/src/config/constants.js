@@ -35,11 +35,6 @@ const TIMEOUTS = Object.freeze({
   ICON_FETCH: 10 * ONE_SECOND_MS
 })
 
-const FEATURE_FLAGS = Object.freeze({
-  // 模拟接口必须显式开启，开发环境也不能把演示数据混入业务页面。
-  MOCK_ROUTES_ENABLED: process.env.ENABLE_MOCK_ROUTES === 'true'
-})
-
 const DEFAULT_BROWSER_USER_AGENT = process.env.DEFAULT_BROWSER_USER_AGENT ||
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 
@@ -76,7 +71,6 @@ module.exports = Object.freeze({
   DEFAULT_CORS_ORIGINS,
   DEFAULT_CSP_CONNECT_SRC,
   EXTERNAL_PRICE,
-  FEATURE_FLAGS,
   PAGINATION,
   TIMEOUTS
 })

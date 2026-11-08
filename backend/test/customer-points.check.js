@@ -11,7 +11,7 @@ const {
   reconcileCustomerPointsForSale,
   reverseCustomerPointsForSale
 } = require('../src/services/customer-points.service')
-const { clearSchemaInspectorCache } = require('../src/services/schemaInspector.service')
+const { clearSchemaInspectorCache } = require('../src/services/schema-inspector.service')
 
 const backendRoot = path.resolve(__dirname, '..')
 
@@ -342,14 +342,12 @@ test('历史无逐单凭据销售首次编辑只建立零基线，不按当前�
 
 test('所有销售写入、转换和退库入口统一调用客户积分服务', () => {
   const reconciledEntries = [
-    'src/routes/sales.js',
-    'src/routes/inventory.js',
-    'src/routes/phones.js',
-    'src/routes/rentals.js',
+    'src/services/sales-phone.service.js',
+    'src/controllers/inventory.controller.js',
+    'src/services/phone-update.service.js',
+    'src/services/rental-create.service.js',
     'src/services/transfer.service.js',
-    'src/services/sale.service.js',
-    'src/services/data-import.service.js',
-    'src/repositories/product.repository.js'
+    'src/services/data-import.service.js'
   ]
   for (const relativePath of reconciledEntries) {
     const source = fs.readFileSync(path.join(backendRoot, relativePath), 'utf8')

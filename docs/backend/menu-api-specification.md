@@ -6,7 +6,7 @@
 
 前端统一通过 `frontend/src/stores/menu.ts` 的 `useMenuStore` 获取菜单，使用公共 Axios 封装调用 `GET /api/permissions/user-menu`。实际路由处理器为 `backend/src/permissions/menuPermissionFilter.js`。
 
-处理器和 `backend/src/services/unifiedMenu.service.js` 均复用 `accessControl.service.js` 的 `getUserMenuVisibility`。不能声称所有路由都由统一菜单服务直接处理，也不能在页面或布局内另写角色名判断。
+处理器和 `backend/src/services/unified-menu.service.js` 均复用 `access-control.service.js` 的 `getUserMenuVisibility`。不能声称所有路由都由统一菜单服务直接处理，也不能在页面或布局内另写角色名判断。
 
 `/api/menus/*` 用于菜单管理 CRUD，不承担当前用户可见菜单查询。用户菜单接口需要 JWT 认证，返回如下结构：
 
@@ -53,7 +53,7 @@
 
 ## 模块扫描与关联
 
-`backend/src/services/menuModuleLinker.js` 是菜单自动关联的公共实现。模块扫描器的增量注册和全量修复均复用该服务，不另维护名称映射或 URL 匹配逻辑。
+`backend/src/services/menu-module-linker.service.js` 是菜单自动关联的公共实现。模块扫描器的增量注册和全量修复均复用该服务，不另维护名称映射或 URL 匹配逻辑。
 
 菜单编辑表单按公共路由查看权限和 `MODULE_KEY_MAP` 精确选择主页面模块，未识别路径由用户手动关联，不使用模糊包含判断。后台 `/api/menus/auto-bind-modules` 的适配服务也委托公共关联实现，只选择已注册的有效模块，不根据 URL 自行创建另一套模块；纯导航 `#` 不参与业务模块自动绑定。
 

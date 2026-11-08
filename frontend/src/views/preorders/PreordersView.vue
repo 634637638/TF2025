@@ -544,6 +544,7 @@
             <div class="filter-bar">
               <el-radio-group
                 v-model="matchedStatus"
+                class="tf-segment"
                 @change="handleMatchedStatusChange"
               >
                 <el-radio-button value="all">
@@ -1253,6 +1254,7 @@ import { useRouter } from 'vue-router'
 import type { TabPaneName } from 'element-plus'
 import { useNotification } from '@/composables/useNotification'
 import { usePagePermissions } from '@/composables/usePagePermissions'
+import { useMobileRowDoubleTap } from '@/composables/useMobileRowDoubleTap'
 import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { canViewPreorderField } from './preorder-field-permissions'
 import { useLoadingState } from '@/composables'
@@ -1266,7 +1268,7 @@ import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import { logger } from '@/utils/logger'
 import { getAdaptiveActionColumnWidth, getIdentifierColumnMinWidth } from '@/utils/table-layout'
 import { isCurrentMobileViewport } from '@/utils/device-detection'
-import { formatDate as formatGlobalDate } from '@/utils/format'
+import { formatDate as formatDateTime } from '@/utils/format'
 
 const PreorderFormModal = defineAsyncComponent(() => import('./page/PreorderFormModal.vue'))
 const MatchPreorderModal = defineAsyncComponent(() => import('./page/MatchPreorderModal.vue'))
@@ -1291,8 +1293,7 @@ const deliveredTableRef = ref()
 
 // 当前展开的行
 const expandedRows = ref<string[]>([])
-const lastTappedRowId = ref<string | null>(null)
-const lastTapTimestamp = ref(0)
+const { isDoubleTap } = useMobileRowDoubleTap()
 
 const showStatsCards = computed(() => (
   canViewPreorderField('stats_pending_count') ||
@@ -1723,17 +1724,9 @@ const handleRefresh = async () => {
 const handleRowTap = (row: Preorder) => {
   if (!isMobile.value) return
   const rowKey = String(row.id)
-  const now = Date.now()
-
-  if (lastTappedRowId.value === rowKey && now - lastTapTimestamp.value <= 320) {
+  if (isDoubleTap(rowKey)) {
     expandedRows.value = expandedRows.value.includes(rowKey) ? [] : [rowKey]
-    lastTappedRowId.value = null
-    lastTapTimestamp.value = 0
-    return
   }
-
-  lastTappedRowId.value = rowKey
-  lastTapTimestamp.value = now
 }
 
 // 编辑预定单
@@ -1931,12 +1924,6 @@ const formatNumber = (num: number | string | null | undefined) => {
   const number = typeof num === 'string' ? parseFloat(num) : num
   if (isNaN(number)) return '0'
   return number.toFixed(2).replace(/\.?(?:0)+$/, '') || '0'
-}
-
-// 格式化日期时间（只显示年月日）
-const formatDateTime = (dateStr: string) => {
-  if (!dateStr) return '-'
-  return formatGlobalDate(dateStr)
 }
 
 // 获取状态标签类型

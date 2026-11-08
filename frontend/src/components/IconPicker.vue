@@ -113,10 +113,7 @@
             v-if="canDeleteIcon(icon)"
             native-type="button"
             type="danger"
-            text
-            circle
-            size="small"
-            class="icon-delete-btn"
+            class="tf-button--icon-badge"
             title="删除本地图标"
             aria-label="删除本地图标"
             @click.stop="deleteLocalIcon(icon)"
@@ -993,25 +990,14 @@ watch([searchQuery, selectedCategory], () => {
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
 }
 
-.icon-delete-btn {
+.tf-button--icon-badge {
   position: absolute;
   top: -6px;
   right: -6px;
-  width: 18px;
-  height: 18px;
-  border: 0;
-  border-radius: 999px;
-  background: var(--tf-button-danger-bg);
-  color: var(--tf-button-on-color);
-  cursor: pointer;
   display: none;
-  align-items: center;
-  justify-content: center;
-  font-size: var(--tf-type-scale-10);
-  box-shadow: var(--tf-button-danger-shadow);
 }
 
-.icon-item:hover .icon-delete-btn {
+.icon-item:hover .tf-button--icon-badge {
   display: inline-flex;
 }
 

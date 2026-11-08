@@ -2,8 +2,7 @@
   <MobileDialog
     :model-value="modelValue"
     :title="title"
-    width="680px"
-    dialog-class="salary-dialog"
+    dialog-class="salary-dialog crud-dialog-md-lg"
     :show-default-footer="false"
     @update:model-value="emit('update:modelValue', $event)"
   >
@@ -213,30 +212,32 @@
     </form>
 
     <template #footer>
-      <el-button
-        type="info"
-        @click="emit('update:modelValue', false)"
-      >
-        <i class="fas fa-times" />
-        取消
-      </el-button>
-      <el-button
-        type="primary"
-        native-type="submit"
-        form="attendance-form"
-        :disabled="saving || !hasSalaryTemplate"
-      >
-        <InlineLoading
-          v-if="saving"
-          text="保存中..."
-          size="small"
-          variant="inherit"
-        />
-        <template v-else>
-          <i class="fas fa-save" />
-          保存
-        </template>
-      </el-button>
+      <div class="tf-dialog-actions">
+        <el-button
+          type="info"
+          @click="emit('update:modelValue', false)"
+        >
+          <i class="fas fa-times" />
+          取消
+        </el-button>
+        <el-button
+          type="primary"
+          native-type="submit"
+          form="attendance-form"
+          :disabled="saving || !hasSalaryTemplate"
+        >
+          <InlineLoading
+            v-if="saving"
+            text="保存中..."
+            size="small"
+            variant="inherit"
+          />
+          <template v-else>
+            <i class="fas fa-save" />
+            保存
+          </template>
+        </el-button>
+      </div>
     </template>
   </MobileDialog>
 </template>

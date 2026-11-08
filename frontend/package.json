@@ -42,7 +42,7 @@
     "check:reference-adoption": "node scripts/check-reference-adoption.mjs",
     "check:dialogs": "node scripts/check-dialog-adoption.mjs",
     "check:dialog-actions": "node scripts/check-dialog-actions.mjs",
-    "check:backend-security": "node --test scripts/check-backend-security.test.mjs && node scripts/check-backend-security.mjs",
+    "check:backend-security": "node --test scripts/check-backend-security.test.mjs scripts/check-route-architecture.test.mjs && node scripts/check-backend-security.mjs && node scripts/check-route-architecture.mjs",
     "check:download-security": "node --test scripts/check-download-security.test.mjs && node scripts/check-download-security.mjs",
     "check:error-management": "node scripts/check-error-management.mjs",
     "check:typescript-debt": "node scripts/check-typescript-debt.mjs",

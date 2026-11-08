@@ -1402,13 +1402,6 @@
       "spacing": 8,
       "layering": 0
     },
-    "src/components/Toast.vue": {
-      "radius": 2,
-      "shadow": 2,
-      "typography": 2,
-      "spacing": 4,
-      "layering": 1
-    },
     "src/components/UserInfo.vue": {
       "radius": 2,
       "shadow": 0,

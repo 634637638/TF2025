@@ -639,6 +639,7 @@ import { useRouter } from 'vue-router'
 import { getSyncLogs, getSyncLogStatistics, deleteSyncLog, clearSyncLogs } from '@/api/price-list'
 import { usePagination } from '@/composables'
 import { usePagePermissions } from '@/composables/usePagePermissions'
+import { useMobileRowDoubleTap } from '@/composables/useMobileRowDoubleTap'
 import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { useLoadingState } from '@/composables'
 import { PageHeader, PermissionGate } from '@/components/base'
@@ -648,7 +649,7 @@ import SectionLoading from '@/components/SectionLoading.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import { logger } from '@/utils/logger'
 import { isCurrentMobileViewport } from '@/utils/device-detection'
-import { TIME_FORMATS, TimeUtil } from '@/utils/time'
+import { formatDateTime } from '@/utils/format'
 import { useNotification } from '@/composables/useNotification'
 const globalNotifications = useNotification()
 
@@ -745,8 +746,7 @@ const stats = ref({
 })
 const isMobile = ref(false)
 const mobileActionRowId = ref<number | null>(null)
-const lastTappedRowId = ref<number | null>(null)
-const lastTapTimestamp = ref(0)
+const { isDoubleTap, resetDoubleTap } = useMobileRowDoubleTap()
 
 // 详情对话框
 const showDetailDialog = ref(false)
@@ -960,13 +960,6 @@ const handleClearLogs = async () => {
   }
 }
 
-// 格式化时间
-const formatDateTime = (dateStr?: string) => {
-  if (!dateStr) return '-'
-  const parsed = TimeUtil.parse(dateStr)
-  return parsed?.isValid() ? TimeUtil.format(parsed, TIME_FORMATS.DATETIME) : '-'
-}
-
 // 格式化JSON
 const formatJson = (jsonStr: unknown) => {
   try {
@@ -996,8 +989,7 @@ const updateMobileState = () => {
   isMobile.value = isCurrentMobileViewport()
   if (!isMobile.value) {
     mobileActionRowId.value = null
-    lastTappedRowId.value = null
-    lastTapTimestamp.value = 0
+    resetDoubleTap()
   }
 }
 
@@ -1009,16 +1001,7 @@ const toggleMobileActions = (id: number | null) => {
 const handleMobileRowTap = (id: number | null) => {
   if (!isMobile.value || !id) return
 
-  const now = Date.now()
-  if (lastTappedRowId.value === id && now - lastTapTimestamp.value <= 320) {
-    toggleMobileActions(id)
-    lastTappedRowId.value = null
-    lastTapTimestamp.value = 0
-    return
-  }
-
-  lastTappedRowId.value = id
-  lastTapTimestamp.value = now
+  if (isDoubleTap(id)) toggleMobileActions(id)
 }
 
 onMounted(async () => {

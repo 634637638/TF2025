@@ -679,6 +679,8 @@ sed -i '' 's/messageStore\.info(/info(/g' *.vue
 
 截至 2026-10-01，以下页面已完成统一通知系统迁移；新增页面必须直接使用统一通知入口：
 
+> 2026-11-06 收口：早期遗留的自建通知实现 `src/composables/useToast.ts` 与 `src/components/Toast.vue` 已删除。此前 `StoresView.vue`、`InventoryView.vue` 虽已迁至 `useNotification`，但仍挂载空的 `<Toast />` 且无任何代码向其 `addToast` 推送，组件全程空转；现已移除这两处挂载，通知入口统一收敛到 `useNotification`，不再存在并行的自定义 Toast 体系。
+
 1. **品牌管理** (`src/views/brands/BrandsView.vue`)
    - 完全迁移到 useNotification
    - 实现了静默刷新，避免页面抖动

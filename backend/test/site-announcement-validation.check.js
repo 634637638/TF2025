@@ -44,13 +44,14 @@ test('拒绝空标题、超长内容和无效日期', () => {
 
 test('公告路由保护员工只读范围并要求管理动作权限', () => {
   const routeSource = fs.readFileSync(path.join(__dirname, '../src/routes/system.js'), 'utf8')
-  assert.match(routeSource, /router\.get\('\/announcements', unifiedAuth,/)
-  assert.match(routeSource, /router\.get\('\/announcements\/admin', unifiedAuth, requirePermission\('system:view'\)/)
-  assert.match(routeSource, /router\.post\('\/announcements', unifiedAuth, requirePermission\('system:edit'\)/)
-  assert.match(routeSource, /router\.put\('\/announcements\/:id', unifiedAuth, requirePermission\('system:edit'\)/)
-  assert.match(routeSource, /router\.delete\('\/announcements\/:id', unifiedAuth, requirePermission\('system:delete'\)/)
-  assert.match(routeSource, /WHERE is_published = 1[\s\S]*expires_at > DATE_ADD\(UTC_TIMESTAMP\(\), INTERVAL 8 HOUR\)/)
-  assert.match(routeSource, /ORDER BY is_pinned DESC, published_at DESC, id DESC/)
+  const repositorySource = fs.readFileSync(path.join(__dirname, '../src/repositories/site-announcement.repository.js'), 'utf8')
+  assert.match(routeSource, /router\.get\('\/announcements', unifiedAuth, siteAnnouncementController\.listPublished\.bind\(siteAnnouncementController\)\)/)
+  assert.match(routeSource, /router\.get\('\/announcements\/admin', unifiedAuth, requirePermission\('system:view'\), siteAnnouncementController\.listAdmin\.bind\(siteAnnouncementController\)\)/)
+  assert.match(routeSource, /router\.post\('\/announcements', unifiedAuth, requirePermission\('system:edit'\), siteAnnouncementController\.create\.bind\(siteAnnouncementController\)\)/)
+  assert.match(routeSource, /router\.put\('\/announcements\/:id', unifiedAuth, requirePermission\('system:edit'\), siteAnnouncementController\.update\.bind\(siteAnnouncementController\)\)/)
+  assert.match(routeSource, /router\.delete\('\/announcements\/:id', unifiedAuth, requirePermission\('system:delete'\), siteAnnouncementController\.remove\.bind\(siteAnnouncementController\)\)/)
+  assert.match(repositorySource, /WHERE is_published = 1[\s\S]*expires_at > DATE_ADD\(UTC_TIMESTAMP\(\), INTERVAL 8 HOUR\)/)
+  assert.match(repositorySource, /ORDER BY is_pinned DESC, published_at DESC, id DESC/)
 })
 
 test('富文本净化保留图片并移除脚本和危险链接', () => {
@@ -67,7 +68,11 @@ test('富文本净化保留图片并移除脚本和危险链接', () => {
 
 test('内容媒体上传接口限制于可管理内容的用户并校验文件签名', () => {
   const routeSource = fs.readFileSync(path.join(__dirname, '../src/routes/content-media.js'), 'utf8')
+  const controllerSource = fs.readFileSync(path.join(__dirname, '../src/controllers/content-media.controller.js'), 'utf8')
+  const uploadMiddlewareSource = fs.readFileSync(path.join(__dirname, '../src/middleware/content-media-upload.js'), 'utf8')
   assert.match(routeSource, /requireAnyPermission\(\['system:edit', 'guide:edit'\]\)/)
-  assert.match(routeSource, /validateUploadedFileSignature\(req\.file, \['image', 'video'\]\)/)
-  assert.match(routeSource, /fileSize: 100 \* 1024 \* 1024/)
+  assert.match(routeSource, /contentMediaController\.upload\.bind\(contentMediaController\)/)
+  assert.match(controllerSource, /validateFileSignature\(req\.file, \['image', 'video'\]\)/)
+  assert.match(uploadMiddlewareSource, /fileSize: 100 \* 1024 \* 1024/)
+  assert.match(uploadMiddlewareSource, /files: 1/)
 })

@@ -89,7 +89,6 @@
   --el-button-hover-border-color: transparent;
   --el-button-hover-text-color: var(--tf-dialog-header-text, var(--color-bg-white));
   background: var(--tf-dialog-close-bg, rgba(255, 255, 255, 0.16)) !important;
-  background-color: var(--tf-dialog-close-bg, rgba(255, 255, 255, 0.16)) !important;
   color: var(--tf-dialog-header-text, var(--color-bg-white)) !important;
   box-shadow: none;
 }

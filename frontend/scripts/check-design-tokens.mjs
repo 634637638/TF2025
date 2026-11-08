@@ -36,7 +36,6 @@ const requiredPublicReferences = {
   'src/components/mobile/MobileSlideMenu.vue': ['--tf-z-drawer-overlay'],
   'src/components/GlobalLoading.vue': ['--tf-z-loading'],
   'src/components/NotificationContainer.vue': ['--tf-z-toast'],
-  'src/components/Toast.vue': ['--tf-z-toast'],
   'src/components/GlobalMessage.vue': ['--tf-z-message'],
   'src/components/MediaPreviewViewer.vue': ['--tf-z-viewer']
 }

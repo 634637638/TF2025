@@ -1,0 +1,266 @@
+{
+  "version": 1,
+  "maxLegacyNonControllerRoutes": 0,
+  "legacyNonControllerRoutes": {},
+  "controllerDatabaseCalls": {
+    "auth-session.controller.js": {
+      "sql": 1,
+      "transaction": 0
+    },
+    "auth.controller.js": {
+      "sql": 4,
+      "transaction": 0
+    },
+    "color.controller.js": {
+      "sql": 17,
+      "transaction": 0
+    },
+    "dashboard.controller.js": {
+      "sql": 16,
+      "transaction": 0
+    },
+    "data-import.controller.js": {
+      "sql": 4,
+      "transaction": 0
+    },
+    "database-connection.controller.js": {
+      "sql": 1,
+      "transaction": 0
+    },
+    "database-sync.controller.js": {
+      "sql": 13,
+      "transaction": 0
+    },
+    "icon.controller.js": {
+      "sql": 5,
+      "transaction": 0
+    },
+    "memory.controller.js": {
+      "sql": 18,
+      "transaction": 0
+    },
+    "model.controller.js": {
+      "sql": 19,
+      "transaction": 0
+    },
+    "price-list.controller.js": {
+      "sql": 16,
+      "transaction": 0
+    },
+    "store.controller.js": {
+      "sql": 14,
+      "transaction": 0
+    },
+    "supplier.controller.js": {
+      "sql": 15,
+      "transaction": 0
+    },
+    "user-store.controller.js": {
+      "sql": 1,
+      "transaction": 0
+    },
+    "user.controller.js": {
+      "sql": 5,
+      "transaction": 0
+    }
+  },
+  "maxControllerSqlCalls": 149,
+  "maxControllerTransactionCalls": 0,
+  "controllerRepositoryDependencies": {
+    "color.controller.js": [
+      "../repositories/color.repository"
+    ],
+    "customer.controller.js": [
+      "../repositories/customer.repository"
+    ],
+    "employee-role.controller.js": [
+      "../repositories/employee-role.repository"
+    ],
+    "icon.controller.js": [
+      "../repositories/icon.repository"
+    ],
+    "memory.controller.js": [
+      "../repositories/memory.repository"
+    ],
+    "model.controller.js": [
+      "../repositories/model.repository"
+    ],
+    "store.controller.js": [
+      "../repositories/store.repository"
+    ],
+    "user-store.controller.js": [
+      "../repositories/user-store.repository"
+    ],
+    "user.controller.js": [
+      "../repositories/user.repository"
+    ]
+  },
+  "maxControllerRepositoryDependencies": 9,
+  "forbiddenLayerDependencies": {
+    "repositories/query.repository.js": [
+      {
+        "layer": "services",
+        "path": "../services/reference-options.service"
+      },
+      {
+        "layer": "services",
+        "path": "../services/customer-points.service"
+      }
+    ]
+  },
+  "maxForbiddenLayerDependencies": 2,
+  "maxDirectDatabaseConnectionLeases": 73,
+  "directDatabaseConnectionLeases": {
+    "controllers/database-sync.controller.js": 7,
+    "services/attendance.service.js": 3,
+    "services/backup.service.js": 1,
+    "services/data-backup.service.js": 4,
+    "services/data-check.service.js": 12,
+    "services/data-import.service.js": 2,
+    "services/guide.service.js": 2,
+    "services/local-to-cloud-sync.service.js": 2,
+    "services/menu.service.js": 1,
+    "services/reminder.service.js": 4,
+    "services/salary-calculator.service.js": 3,
+    "services/salary-record.service.js": 3,
+    "services/settings.service.js": 1,
+    "services/shared.service.js": 2,
+    "services/shop.service.js": 13,
+    "services/smart-sync.service.js": 2,
+    "services/supplier-payment.service.js": 4,
+    "services/transfer.service.js": 2,
+    "services/user-preferences.service.js": 1,
+    "repositories/base.repository.js": 1,
+    "repositories/salary-template.repository.js": 1,
+    "repositories/user.repository.js": 2
+  },
+  "baselineHistory": {
+    "maxLegacyNonControllerRoutes": [
+      {
+        "value": 0,
+        "date": "2026-11-08",
+        "reason": "初始登记：当前全局 AST 实测 route handler 已清零"
+      }
+    ],
+    "maxControllerSqlCalls": [
+      {
+        "value": 233,
+        "date": "2026-11-08",
+        "reason": "初始登记：当前逐文件 controller SQL AST 基线总和"
+      },
+      {
+        "value": 199,
+        "date": "2026-11-08",
+        "reason": "inventory controller SQL 全部迁入 repository"
+      },
+      {
+        "value": 187,
+        "date": "2026-11-08",
+        "reason": "品牌管理 SQL 全部迁入 BrandManagementService 与 BrandRepository"
+      },
+      {
+        "value": 153,
+        "date": "2026-11-08",
+        "reason": "入库、用户写入、系统管理与供应商排序 SQL 下沉 repository，controller 实测 187→153"
+      },
+      {
+        "value": 149,
+        "date": "2026-11-08",
+        "reason": "颜色、内存、型号、门店四类排序事务统一迁入 ReferenceOrderingService 与仓储，共用连接 helper"
+      }
+    ],
+    "maxControllerTransactionCalls": [
+      {
+        "value": 59,
+        "date": "2026-11-08",
+        "reason": "初始登记：当前逐文件 controller 事务 AST 基线总和"
+      },
+      {
+        "value": 41,
+        "date": "2026-11-08",
+        "reason": "inventory controller 事务编排迁入 service"
+      },
+      {
+        "value": 38,
+        "date": "2026-11-08",
+        "reason": "品牌排序事务迁入 BrandRepository 并通过共享 withConnection 管理释放"
+      },
+      {
+        "value": 12,
+        "date": "2026-11-08",
+        "reason": "入库、用户写入与供应商排序事务迁入 service，controller 实测 38→12"
+      },
+      {
+        "value": 0,
+        "date": "2026-11-08",
+        "reason": "颜色、内存、型号、门店四类排序事务统一迁入 ReferenceOrderingService 与仓储，共用连接 helper"
+      }
+    ],
+    "maxControllerRepositoryDependencies": [
+      {
+        "value": 14,
+        "date": "2026-11-08",
+        "reason": "初始登记：当前 controller repository 依赖 AST 基线总和"
+      },
+      {
+        "value": 13,
+        "date": "2026-11-08",
+        "reason": "前端错误日志持久化委托给 FrontendErrorLogService"
+      },
+      {
+        "value": 12,
+        "date": "2026-11-08",
+        "reason": "权限诊断业务整形委托给 DebugPermissionsService"
+      },
+      {
+        "value": 11,
+        "date": "2026-11-08",
+        "reason": "公告业务编排与响应整形委托给 SiteAnnouncementService"
+      },
+      {
+        "value": 10,
+        "date": "2026-11-08",
+        "reason": "品牌管理 controller 改为委托 BrandManagementService"
+      },
+      {
+        "value": 9,
+        "date": "2026-11-08",
+        "reason": "屏幕锁密码与查询用户业务迁入 ScreenLockService，删除 controller 仓储直连"
+      }
+    ],
+    "maxForbiddenLayerDependencies": [
+      {
+        "value": 4,
+        "date": "2026-11-08",
+        "reason": "初始登记：当前反向分层依赖 AST 基线总和"
+      },
+      {
+        "value": 2,
+        "date": "2026-11-08",
+        "reason": "schema-inspector.service 与 access-control.service 依赖迁出 repository，按 AST 删除已清除项"
+      }
+    ],
+    "maxDirectDatabaseConnectionLeases": [
+      {
+        "value": 125,
+        "date": "2026-11-08",
+        "reason": "初始登记：修正 pool accessor 误计后按全局 AST 实测登记"
+      },
+      {
+        "value": 123,
+        "date": "2026-11-08",
+        "reason": "ARCH-004：query.repository 两处事务连接租借改用共享 withConnection"
+      },
+      {
+        "value": 118,
+        "date": "2026-11-08",
+        "reason": "inventory route 全部连接获取改由 service repository 共享 withConnection 托管"
+      },
+      {
+        "value": 73,
+        "date": "2026-11-08",
+        "reason": "ARCH-004：真实租借收编减少 39 处；读取已有连接的 6 处误计另作口径校正，同一最终源码对照 79/73，全局实测 118→73；详见 T17"
+      }
+    ]
+  }
+}

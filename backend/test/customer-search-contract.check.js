@@ -16,11 +16,28 @@ test('customer remote search uses the shared service across business contexts', 
   assert.match(service, /has_prev/)
   assert.match(service, /CUSTOMER_FIELDS/)
 
-  for (const route of ['src/routes/customers.js', 'src/routes/sales.js', 'src/routes/rentals.js', 'src/routes/repairs.js']) {
-    const source = read(route)
-    assert.match(source, /customer-search\.service/)
-    assert.match(source, /searchCustomerOptions\(/)
-  }
+  const customerController = read('src/controllers/customer.controller.js')
+  assert.match(customerController, /customer-search\.service/)
+  assert.match(customerController, /this\.searchCustomers\(/)
+  assert.match(read('src/routes/customers.js'), /customerController\.search\.bind\(customerController\)/)
+
+  const salesRoute = read('src/routes/sales.js')
+  const salesController = read('src/controllers/sales-customer-search.controller.js')
+  assert.match(salesRoute, /salesCustomerSearchController\.search\.bind\(salesCustomerSearchController\)/)
+  assert.match(salesController, /customer-search\.service/)
+  assert.match(salesController, /this\.searchCustomers\(/)
+
+  const rentalService = read('src/services/rental-customer.service.js')
+  assert.match(rentalService, /customer-search\.service/)
+  assert.match(rentalService, /customerSearch = searchCustomers/)
+  assert.match(read('src/controllers/rental-customer.controller.js'), /this\.service\.search\(/)
+  assert.match(read('src/routes/rentals.js'), /rentalCustomerController\.search\.bind\(rentalCustomerController\)/)
+
+  const repairRoute = read('src/routes/repairs.js')
+  const repairService = read('src/services/repair-lookup.service.js')
+  assert.match(repairRoute, /customer-search\.service/)
+  assert.match(repairRoute, /searchCustomers: searchCustomerOptions/)
+  assert.match(repairService, /this\.searchCustomers\(/)
 })
 
 test('customer search enforces bounded server pagination and never exposes arbitrary SQL fields', () => {
@@ -84,8 +101,13 @@ test('reference option routes share pagination, stable ordering and sort_order f
   assert.match(service, /normalizeReferencePagination/)
   assert.match(service, /buildReferenceOrder/)
   assert.match(service, /buildPagination/)
-  for (const route of ['src/routes/colors.js', 'src/routes/memories.js', 'src/routes/models.js', 'src/routes/suppliers.js']) {
-    const source = read(route)
+  for (const modulePath of [
+    'src/controllers/color.controller.js',
+    'src/controllers/memory.controller.js',
+    'src/controllers/model.controller.js',
+    'src/controllers/supplier.controller.js'
+  ]) {
+    const source = read(modulePath)
     assert.match(source, /reference-options\.service/)
     assert.match(source, /buildReferenceOrder/)
     assert.match(source, /buildPagination/)

@@ -232,7 +232,6 @@
         <div class="filter-footer">
           <el-button
             type="primary"
-            style="width: 100%"
             @click="applyFilters"
           >
             确定
@@ -453,19 +452,6 @@ const syncFiltersFromRouteQuery = (query: Record<string, unknown>) => {
   filters.value = nextFilters
   draftFilters.value = { ...nextFilters }
   return true
-}
-
-// 防抖定时器
-let debounceTimer: ReturnType<typeof setTimeout> | null = null
-
-// 应用防抖的筛选条件更新
-const _debouncedLoadProducts = () => {
-  if (debounceTimer) {
-    clearTimeout(debounceTimer)
-  }
-  debounceTimer = setTimeout(() => {
-    loadProducts(1)
-  }, 300) // 300ms 防抖延迟
 }
 
 const loadInitialPages = async (sequence: number) => {
@@ -1356,6 +1342,10 @@ watch(
   .filter-footer {
     padding: 16px;
     border-top: 1px solid var(--tf-color-gray-200-alt);
+
+    .el-button {
+      width: 100%;
+    }
   }
 }
 

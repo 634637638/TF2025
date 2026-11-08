@@ -10,7 +10,7 @@
       <div class="git-page-content admin-page-content">
         <PageHeader title="Git 仓库管理">
           <template #actions>
-            <div class="action-buttons">
+            <div>
               <el-button
                 v-if="canCreate"
                 type="success"
@@ -190,8 +190,6 @@
                     提交历史
                   </h3>
                   <el-button
-                    class="btn-icon"
-                    type="default"
                     :loading="loadingHistory"
                     :disabled="loadingHistory"
                     @click="fetchCommitHistory"
@@ -369,7 +367,6 @@
                     <el-button
                       native-type="submit"
                       type="primary"
-                      class="btn-block"
                       :loading="committing"
                       :disabled="!canEdit || committing || shouldShowRestoreMain || (!gitStatus?.hasChanges && !canPushExistingCommits)"
                     >
@@ -388,10 +385,9 @@
                   </h3>
                 </div>
                 <div class="card-body">
-                  <div class="action-buttons">
+                  <div class="git-quick-actions">
                     <el-button
                       type="success"
-                      class="btn-block"
                       :loading="pulling"
                       :disabled="!canEdit || pulling || shouldShowRestoreMain"
                       @click="handlePull"
@@ -401,7 +397,6 @@
                     </el-button>
                     <el-button
                       type="warning"
-                      class="btn-block"
                       :loading="pushing"
                       :disabled="!canEdit || pushing || shouldShowRestoreMain"
                       @click="handlePush"
@@ -411,7 +406,6 @@
                     </el-button>
                     <el-button
                       type="danger"
-                      class="btn-block"
                       :loading="discarding"
                       :disabled="!canEdit || discarding || !gitStatus?.hasChanges"
                       @click="handleDiscard"
@@ -1303,10 +1297,6 @@ watch(canView, async (value) => {
   user-select: none;
 }
 
-.action-buttons {
-  display: flex;
-}
-
 .recent-item {
   padding: 10px 0;
   border-bottom: 1px solid var(--tf-color-surface-soft);
@@ -1350,18 +1340,19 @@ watch(canView, async (value) => {
   user-select: none;
 }
 
-.btn-block {
-  width: 100%;
+.git-quick-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
-.btn-icon {
-  width: 32px;
-  height: 32px;
-  border: none;
-  background: var(--tf-button-neutral-bg);
-  color: var(--tf-button-primary-soft-color);
-  border-radius: 8px;
-  cursor: pointer;
+.git-quick-actions .el-button {
+  width: 100%;
+  margin-left: 0;
+}
+
+.commit-form .el-button {
+  width: 100%;
 }
 
 @media (max-width: 1024px) {

@@ -1,364 +1,112 @@
-const log = require('../utils/log')
-/**
- * 品牌控制器
- * 处理所有品牌相关的HTTP请求
- */
-const BrandService = require('../services/brand.service')
+'use strict'
+
+const BrandManagementService = require('../services/brand-management.service')
 const ApiResponse = require('../utils/response')
+const log = require('../utils/log')
 
 class BrandController {
-  constructor() {
-    this.brandService = new BrandService()
+  constructor({ service = new BrandManagementService(), clearCache = () => {} } = {}) {
+    this.service = service
+    this.clearCache = clearCache
   }
 
-  /**
-   * 测试品牌模块
-   */
-  async testBrands(req, res) {
+  clearBrandCache() {
     try {
-      const result = await this.brandService.testBrands()
-      ApiResponse.success(res, result.message, result.data)
+      this.clearCache()
     } catch (error) {
-      log.error('测试品牌模块失败:', error)
-      ApiResponse.serverError(res, '测试品牌模块失败', error)
+      log.warn('清理品牌缓存失败:', error.message)
     }
   }
 
-  /**
-   * 获取品牌列表
-   */
-  async getBrands(req, res) {
+  unavailable(res) {
+    return ApiResponse.error(res, '数据库未连接', 500)
+  }
+
+  async getStats(req, res) {
     try {
-      const {
-        page = 1,
-        page_size = 10,
-        name,
-        status
-      } = req.query
+      const result = await this.service.getStats(req.query)
+      if (result.type === 'unavailable') return this.unavailable(res)
+      return ApiResponse.success(res, result.data)
+    } catch (error) {
+      log.error('获取品牌统计失败:', error)
+      return ApiResponse.serverError(res, '获取品牌统计失败', error)
+    }
+  }
 
-      const filters = {
-        page: parseInt(page) || 1,
-        page_size: parseInt(page_size) || 10,
-        name,
-        status: status !== undefined ? parseInt(status) : undefined
-      }
-
-      const result = await this.brandService.getBrands(filters)
-
-      if (result.success) {
-        ApiResponse.success(
-          res,
-          result.message,
-          result.data.brands,
-          200,
-          { pagination: result.data.pagination }
-        )
-      } else {
-        ApiResponse.error(res, result.message, 400, result.code)
-      }
+  async list(req, res) {
+    try {
+      const result = await this.service.list(req.query)
+      if (result.type === 'unavailable') return this.unavailable(res)
+      return ApiResponse.success(res, result.data)
     } catch (error) {
       log.error('获取品牌列表失败:', error)
-      ApiResponse.serverError(res, '获取品牌列表失败', error)
+      return ApiResponse.error(res, '获取品牌列表失败', 500)
     }
   }
 
-  /**
-   * 获取品牌统计信息
-   */
-  async getBrandStats(req, res) {
+  async create(req, res) {
     try {
-      const result = await this.brandService.getBrandStats()
-
-      if (result.success) {
-        ApiResponse.success(res, result.message, result.data)
-      } else {
-        ApiResponse.error(res, result.message, 400, result.code)
-      }
-    } catch (error) {
-      log.error('获取品牌统计信息失败:', error)
-      ApiResponse.serverError(res, '获取品牌统计信息失败', error)
-    }
-  }
-
-  /**
-   * 获取活跃品牌
-   */
-  async getActiveBrands(req, res) {
-    try {
-      const result = await this.brandService.getActiveBrands()
-
-      if (result.success) {
-        ApiResponse.success(res, result.message, result.data)
-      } else {
-        ApiResponse.error(res, result.message, 400, result.code)
-      }
-    } catch (error) {
-      log.error('获取活跃品牌失败:', error)
-      ApiResponse.serverError(res, '获取活跃品牌失败', error)
-    }
-  }
-
-  /**
-   * 搜索品牌
-   */
-  async searchBrands(req, res) {
-    try {
-      const { keyword, page, page_size, status } = req.query
-
-      if (!keyword) {
-        return ApiResponse.validationError(res, '搜索关键词不能为空')
-      }
-
-      const filters = {
-        keyword: keyword.trim(),
-        page: page ? parseInt(page) : undefined,
-        page_size: page_size ? parseInt(page_size) : undefined,
-        status: status !== undefined ? parseInt(status) : undefined
-      }
-
-      const result = await this.brandService.searchBrands(filters.keyword, filters)
-
-      if (result.success) {
-        ApiResponse.success(
-          res,
-          result.message,
-          result.data.brands,
-          200,
-          { pagination: result.data.pagination }
-        )
-      } else {
-        ApiResponse.error(res, result.message, 400, result.code)
-      }
-    } catch (error) {
-      log.error('搜索品牌失败:', error)
-      ApiResponse.serverError(res, '搜索品牌失败', error)
-    }
-  }
-
-  /**
-   * 检查品牌名称可用性
-   */
-  async checkNameAvailability(req, res) {
-    try {
-      const { name, excludeId } = req.query
-
-      if (!name) {
-        return ApiResponse.validationError(res, '品牌名称不能为空')
-      }
-
-      const result = await this.brandService.checkNameAvailability(name.trim(), excludeId)
-
-      if (result.success) {
-        ApiResponse.success(res, result.message, result.data)
-      } else {
-        ApiResponse.error(res, result.message, 400, result.code)
-      }
-    } catch (error) {
-      log.error('检查名称可用性失败:', error)
-      ApiResponse.serverError(res, '检查名称可用性失败', error)
-    }
-  }
-
-  /**
-   * 根据ID获取品牌详情
-   */
-  async getBrandById(req, res) {
-    try {
-      const { id } = req.params
-
-      const result = await this.brandService.getBrandById(id)
-
-      if (result.success) {
-        ApiResponse.success(res, result.message, result.data)
-      } else {
-        if (result.code === 'NOT_FOUND') {
-          ApiResponse.notFound(res, result.message)
-        } else {
-          ApiResponse.error(res, result.message, 400, result.code)
-        }
-      }
-    } catch (error) {
-      log.error('获取品牌详情失败:', error)
-      ApiResponse.serverError(res, '获取品牌详情失败', error)
-    }
-  }
-
-  /**
-   * 创建品牌
-   */
-  async createBrand(req, res) {
-    try {
-      const brandData = req.body
-
-      const result = await this.brandService.createBrand(brandData, req.user)
-
-      if (result.success) {
-        ApiResponse.created(res, result.message, result.data)
-      } else {
-        if (result.code === 'VALIDATION_ERROR') {
-          ApiResponse.validationError(res, result.message)
-        } else if (result.code === 'DUPLICATE_NAME') {
-          ApiResponse.conflict(res, result.message)
-        } else {
-          ApiResponse.error(res, result.message, 400, result.code)
-        }
-      }
+      const result = await this.service.create(req.body)
+      if (result.type === 'unavailable') return this.unavailable(res)
+      if (result.type === 'duplicate') return ApiResponse.error(res, '品牌名称已存在', 400)
+      ApiResponse.success(res, result.data, '品牌创建成功')
+      this.clearBrandCache()
     } catch (error) {
       log.error('创建品牌失败:', error)
-      ApiResponse.serverError(res, '创建品牌失败', error)
+      ApiResponse.error(res, '创建品牌失败', 500)
     }
   }
 
-  /**
-   * 更新品牌
-   */
-  async updateBrand(req, res) {
+  async update(req, res) {
     try {
-      const { id } = req.params
-      const brandData = req.body
-
-      const result = await this.brandService.updateBrand(id, brandData, req.user)
-
-      if (result.success) {
-        ApiResponse.success(res, result.message, result.data)
-      } else {
-        if (result.code === 'NOT_FOUND') {
-          ApiResponse.notFound(res, result.message)
-        } else if (result.code === 'VALIDATION_ERROR') {
-          ApiResponse.validationError(res, result.message)
-        } else if (result.code === 'DUPLICATE_NAME') {
-          ApiResponse.conflict(res, result.message)
-        } else {
-          ApiResponse.error(res, result.message, 400, result.code)
-        }
-      }
+      const result = await this.service.update(req.params.id, req.body)
+      if (result.type === 'unavailable') return this.unavailable(res)
+      if (result.type === 'empty-name') return ApiResponse.error(res, '品牌名称不能为空', 400)
+      if (result.type === 'duplicate') return ApiResponse.error(res, '品牌名称已存在', 400)
+      if (result.type === 'missing') return ApiResponse.error(res, '品牌不存在', 404)
+      ApiResponse.success(res, result.data, '品牌更新成功')
+      this.clearBrandCache()
     } catch (error) {
       log.error('更新品牌失败:', error)
-      ApiResponse.serverError(res, '更新品牌失败', error)
+      ApiResponse.error(res, `更新品牌失败: ${error.message}`, 500)
     }
   }
 
-  /**
-   * 批量更新品牌状态
-   */
-  async batchUpdateStatus(req, res) {
+  async reorder(req, res) {
     try {
-      const { ids, status } = req.body
-
-      const result = await this.brandService.batchUpdateStatus(ids, status, req.user)
-
-      if (result.success) {
-        ApiResponse.success(res, result.message, result.data)
-      } else {
-        if (result.code === 'VALIDATION_ERROR') {
-          ApiResponse.validationError(res, result.message)
-        } else {
-          ApiResponse.error(res, result.message, 400, result.code)
-        }
-      }
+      const result = await this.service.reorder(req.body.items)
+      if (result.type === 'unavailable') return this.unavailable(res)
+      if (result.type === 'invalid-items') return ApiResponse.error(res, '请提供有效的排序数据', 400)
+      this.clearBrandCache()
+      return ApiResponse.success(res, null, '排序更新成功')
     } catch (error) {
-      log.error('批量更新状态失败:', error)
-      ApiResponse.serverError(res, '批量更新状态失败', error)
+      log.error('批量更新排序失败:', error)
+      return ApiResponse.error(res, '批量更新排序失败', 500)
     }
   }
 
-  /**
-   * 删除品牌
-   */
-  async deleteBrand(req, res) {
+  async remove(req, res) {
     try {
-      const { id } = req.params
-
-      const result = await this.brandService.deleteBrand(id, req.user)
-
-      if (result.success) {
-        ApiResponse.success(res, result.message, result.data)
-      } else {
-        if (result.code === 'NOT_FOUND') {
-          ApiResponse.notFound(res, result.message)
-        } else if (result.code === 'HAS_RELATIONSHIPS') {
-          ApiResponse.error(res, result.message, 409, result.code)
-        } else {
-          ApiResponse.error(res, result.message, 400, result.code)
-        }
-      }
+      const result = await this.service.remove(req.params.id)
+      if (result.type === 'unavailable') return this.unavailable(res)
+      if (result.type === 'has-models') return ApiResponse.error(res, '该品牌下还有关联的型号，无法删除', 400)
+      if (result.type === 'missing') return ApiResponse.error(res, '品牌不存在', 404)
+      this.clearBrandCache()
+      return ApiResponse.success(res, null, '品牌删除成功')
     } catch (error) {
       log.error('删除品牌失败:', error)
-      ApiResponse.serverError(res, '删除品牌失败', error)
+      return ApiResponse.error(res, '删除品牌失败', 500)
     }
   }
 
-  /**
-   * 获取品牌下的所有型号
-   */
-  async getBrandModels(req, res) {
+  async suggest(req, res) {
     try {
-      const { brandId } = req.params
-      const { status = 1 } = req.query
-
-      const result = await this.brandService.getBrandModels(brandId, parseInt(status))
-
-      if (result.success) {
-        ApiResponse.success(res, result.message, result.data)
-      } else {
-        if (result.code === 'INVALID_ID') {
-          ApiResponse.validationError(res, result.message)
-        } else {
-          ApiResponse.error(res, result.message, 400, result.code)
-        }
-      }
+      const result = await this.service.suggest(req.query)
+      if (result.type === 'unavailable') return this.unavailable(res)
+      return ApiResponse.success(res, result.data)
     } catch (error) {
-      log.error('获取品牌型号失败:', error)
-      ApiResponse.serverError(res, '获取品牌型号失败', error)
-    }
-  }
-
-  /**
-   * 品牌搜索建议
-   */
-  async getBrandSuggestions(req, res) {
-    try {
-      const { q: keyword, page_size = 5 } = req.query
-
-      if (!keyword || keyword.length < 2) {
-        return ApiResponse.success(res, '获取搜索建议成功', [])
-      }
-
-      const result = await this.brandService.getBrandSuggestions(keyword.trim(), parseInt(page_size))
-
-      if (result.success) {
-        ApiResponse.success(res, result.message, result.data)
-      } else {
-        ApiResponse.error(res, result.message, 400, result.code)
-      }
-    } catch (error) {
-      log.error('获取搜索建议失败:', error)
-      ApiResponse.serverError(res, '获取搜索建议失败', error)
-    }
-  }
-
-  /**
-   * 导出品牌数据
-   */
-  async exportBrands(req, res) {
-    try {
-      const { name, status } = req.query
-
-      const filters = {
-        name,
-        status: status !== undefined ? parseInt(status) : undefined
-      }
-
-      const result = await this.brandService.exportBrands(filters)
-
-      if (result.success) {
-        ApiResponse.success(res, result.message, result.data)
-      } else {
-        ApiResponse.error(res, result.message, 400, result.code)
-      }
-    } catch (error) {
-      log.error('导出品牌数据失败:', error)
-      ApiResponse.serverError(res, '导出品牌数据失败', error)
+      log.error('获取品牌搜索建议失败:', error)
+      return ApiResponse.error(res, '获取品牌搜索建议失败', 500)
     }
   }
 }

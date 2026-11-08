@@ -4,7 +4,7 @@ const ApiResponse = require('../utils/response')
 const {
   getAttendanceAccessScope,
   canAccessScopedTarget
-} = require('../services/accessControl.service')
+} = require('../services/access-control.service')
 
 const ATTENDANCE_WRITE_FIELDS = new Set([
   'employee_id',

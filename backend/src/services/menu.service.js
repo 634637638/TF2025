@@ -14,7 +14,7 @@ const {
   iconJoinSelect,
   iconLeftJoin
 } = require('../utils/iconStore')
-const { hasColumn } = require('./schemaInspector.service')
+const { hasColumn } = require('./schema-inspector.service')
 
 class MenuService {
   constructor() {
@@ -130,7 +130,7 @@ class MenuService {
    */
   async getUserMenus(user) {
     try {
-      const UnifiedMenuService = require('./unifiedMenu.service')
+      const UnifiedMenuService = require('./unified-menu.service')
       const result = await UnifiedMenuService.getUserMenus({ user })
       return result
     } catch (error) {

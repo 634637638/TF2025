@@ -1,295 +1,120 @@
-const log = require('../utils/log')
-/**
- * 库存控制器
- * 处理所有库存相关的HTTP请求
- */
-const InventoryService = require('../services/inventory.service')
+'use strict'
+
+const { getDatabase, isConnected } = require('../config/database')
 const ApiResponse = require('../utils/response')
+const log = require('../utils/log')
+const InventoryService = require('../services/inventory.service')
+const { validateImei: defaultValidateImei } = require('../utils/imei')
+const { normalizeDateTime: defaultNormalizeDateTime } = require('../utils/time')
+const { generateMemberNumber: defaultGenerateMemberNumber } = require('../utils/member-number')
+const {
+  prepareInvoiceNumberTransaction: defaultPrepareInvoiceNumberTransaction,
+  generateInvoiceNumber: defaultGenerateInvoiceNumber
+} = require('../utils/invoice-number')
+const { reconcileCustomerPointsForSale: defaultReconcileCustomerPointsForSale } = require('../services/customer-points.service')
 
 class InventoryController {
-  constructor() {
-    this.inventoryService = new InventoryService()
+  constructor({
+    service,
+    database = getDatabase,
+    connected = isConnected,
+    logger = log,
+    validateImei = defaultValidateImei,
+    normalizeDateTime = defaultNormalizeDateTime,
+    generateMemberNumber = defaultGenerateMemberNumber,
+    prepareInvoiceNumberTransaction = defaultPrepareInvoiceNumberTransaction,
+    generateInvoiceNumber = defaultGenerateInvoiceNumber,
+    reconcileCustomerPointsForSale = defaultReconcileCustomerPointsForSale
+  } = {}) {
+    this.logger = logger
+    this.service = service || new InventoryService({
+      database,
+      connected,
+      logger,
+      validateImei,
+      normalizeDateTime,
+      generateMemberNumber,
+      prepareInvoiceNumberTransaction,
+      generateInvoiceNumber,
+      reconcileCustomerPointsForSale
+    })
   }
 
-  /**
-   * 测试库存模块
-   */
-  async testInventory(req, res) {
+  index(_req, res) {
+    return res.redirect(301, '/list')
+  }
+
+  async list(req, res) {
     try {
-      const result = await this.inventoryService.testInventory()
-      ApiResponse.success(res, result.message, result.data)
+      return ApiResponse.success(res, await this.service.list(req.query))
     } catch (error) {
-      log.error('测试库存模块失败:', error)
-      ApiResponse.serverError(res, '测试库存模块失败', error)
+      this.logger.error('获取库存列表失败:', error)
+      return ApiResponse.serverError(res, '获取库存列表失败', error)
     }
   }
 
-  /**
-   * 获取库存记录列表
-   */
-  async getInventoryRecords(req, res) {
+  async detail(req, res) {
     try {
-      const {
-        page = 1,
-        limit = 10,
-        type,
-        operation_type,
-        store_id,
-        operator_id,
-        product_type,
-        is_settled,
-        start_date,
-        end_date
-      } = req.query
-
-      const filters = {
-        page: parseInt(page) || 1,
-        limit: parseInt(limit) || 10,
-        type,
-        operation_type,
-        store_id: store_id ? parseInt(store_id) : undefined,
-        operator_id: operator_id ? parseInt(operator_id) : undefined,
-        product_type,
-        is_settled: is_settled !== undefined ? parseInt(is_settled) : undefined,
-        start_date,
-        end_date
-      }
-
-      const result = await this.inventoryService.getInventoryRecords(filters)
-
-      if (result.success) {
-        ApiResponse.paginated(
-          res,
-          result.message,
-          result.data.records,
-          result.data.pagination
-        )
-      } else {
-        ApiResponse.error(res, result.message, 400, result.code)
-      }
+      return ApiResponse.success(res, await this.service.detail(req.params.id))
     } catch (error) {
-      log.error('获取库存记录列表失败:', error)
-      ApiResponse.serverError(res, '获取库存记录列表失败', error)
+      if (error.statusCode === 400) return ApiResponse.badRequest(res, error.message)
+      if (error.statusCode === 404) return ApiResponse.notFound(res, error.message)
+      this.logger.error('获取商品详情失败:', error)
+      return ApiResponse.serverError(res, '获取商品详情失败', error)
     }
   }
 
-  /**
-   * 获取库存记录详情
-   */
-  async getInventoryRecordById(req, res) {
+  async remove(req, res) {
     try {
-      const { id } = req.params
-
-      const result = await this.inventoryService.getInventoryRecordById(id)
-
-      if (result.success) {
-        ApiResponse.success(res, result.message, result.data)
-      } else {
-        if (result.code === 'NOT_FOUND') {
-          ApiResponse.notFound(res, result.message)
-        } else {
-          ApiResponse.error(res, result.message, 400, result.code)
-        }
-      }
+      const result = await this.service.remove(req.params.id)
+      return ApiResponse.success(res, result, '商品删除成功')
     } catch (error) {
-      log.error('获取库存记录详情失败:', error)
-      ApiResponse.serverError(res, '获取库存记录详情失败', error)
+      if (error.statusCode === 400) return ApiResponse.badRequest(res, error.message)
+      if (error.statusCode === 404) return ApiResponse.notFound(res, error.message)
+      this.logger.error('删除库存商品失败:', error)
+      return ApiResponse.serverError(res, error.statusCode === 500 ? error.message : '删除商品失败', error)
     }
   }
 
-  /**
-   * 创建库存记录
-   */
-  async createInventoryRecord(req, res) {
+  async update(req, res) {
     try {
-      const inventoryData = req.body
-
-      const result = await this.inventoryService.createInventoryRecord(inventoryData, req.user)
-
-      if (result.success) {
-        ApiResponse.created(res, result.message, result.data)
-      } else {
-        if (result.code === 'VALIDATION_ERROR') {
-          ApiResponse.validationError(res, result.message)
-        } else {
-          ApiResponse.error(res, result.message, 400, result.code)
-        }
-      }
+      const result = await this.service.update(req.params.id, req.body)
+      return ApiResponse.success(res, result, '商品信息更新成功')
     } catch (error) {
-      log.error('创建库存记录失败:', error)
-      ApiResponse.serverError(res, '创建库存记录失败', error)
+      if (error.statusCode === 400) return ApiResponse.badRequest(res, error.message)
+      if (error.statusCode === 404) return ApiResponse.notFound(res, error.message)
+      this.logger.error('更新库存商品失败:', error)
+      return ApiResponse.serverError(res, error.statusCode === 500 ? error.message : '更新商品失败', error)
     }
   }
 
-  /**
-   * 更新库存记录
-   */
-  async updateInventoryRecord(req, res) {
+  async quickSale(req, res) {
     try {
-      const { id } = req.params
-      const inventoryData = req.body
-
-      const result = await this.inventoryService.updateInventoryRecord(id, inventoryData, req.user)
-
-      if (result.success) {
-        ApiResponse.success(res, result.message, result.data)
-      } else {
-        if (result.code === 'NOT_FOUND') {
-          ApiResponse.notFound(res, result.message)
-        } else if (result.code === 'VALIDATION_ERROR') {
-          ApiResponse.validationError(res, result.message)
-        } else {
-          ApiResponse.error(res, result.message, 400, result.code)
-        }
-      }
+      const result = await this.service.quickSale(req.body, req.user)
+      return ApiResponse.success(res, '快速出库成功', result)
     } catch (error) {
-      log.error('更新库存记录失败:', error)
-      ApiResponse.serverError(res, '更新库存记录失败', error)
+      this.logger.error('快速出库失败:', { message: error?.message || '未知错误', stack: error?.stack })
+      if (error.statusCode) return ApiResponse.error(res, error.message, error.statusCode)
+      if (error instanceof Error && !error.code) return ApiResponse.badRequest(res, error.message || '快速出库失败')
+      return ApiResponse.serverError(res, '快速出库失败', error)
     }
   }
 
-  /**
-   * 删除库存记录
-   */
-  async deleteInventoryRecord(req, res) {
+  async overview(req, res) {
     try {
-      const { id } = req.params
-
-      const result = await this.inventoryService.deleteInventoryRecord(id, req.user)
-
-      if (result.success) {
-        ApiResponse.success(res, result.message, result.data)
-      } else {
-        if (result.code === 'NOT_FOUND') {
-          ApiResponse.notFound(res, result.message)
-        } else if (result.code === 'HAS_RELATIONSHIPS') {
-          ApiResponse.error(res, result.message, 409, result.code)
-        } else {
-          ApiResponse.error(res, result.message, 400, result.code)
-        }
-      }
+      return ApiResponse.success(res, await this.service.overview(req.query))
     } catch (error) {
-      log.error('删除库存记录失败:', error)
-      ApiResponse.serverError(res, '删除库存记录失败', error)
+      this.logger.error('获取库存统计失败:', error)
+      return ApiResponse.serverError(res, '获取库存统计失败', error)
     }
   }
 
-  /**
-   * 批量更新库存记录结算状态
-   */
-  async batchUpdateSettledStatus(req, res) {
+  async stats(_req, res) {
     try {
-      const { ids, is_settled } = req.body
-
-      const result = await this.inventoryService.batchUpdateSettledStatus(ids, is_settled, req.user)
-
-      if (result.success) {
-        ApiResponse.success(res, result.message, result.data)
-      } else {
-        if (result.code === 'VALIDATION_ERROR') {
-          ApiResponse.validationError(res, result.message)
-        } else {
-          ApiResponse.error(res, result.message, 400, result.code)
-        }
-      }
+      return ApiResponse.success(res, await this.service.stats(), '获取统计数据成功')
     } catch (error) {
-      log.error('批量更新结算状态失败:', error)
-      ApiResponse.serverError(res, '批量更新结算状态失败', error)
-    }
-  }
-
-  /**
-   * 搜索库存记录
-   */
-  async searchInventoryRecords(req, res) {
-    try {
-      const { keyword, page, limit, type, operation_type, store_id, is_settled } = req.query
-
-      if (!keyword) {
-        return ApiResponse.validationError(res, '搜索关键词不能为空')
-      }
-
-      const filters = {
-        keyword: keyword.trim(),
-        page: page ? parseInt(page) : undefined,
-        limit: limit ? parseInt(limit) : undefined,
-        type,
-        operation_type,
-        store_id: store_id ? parseInt(store_id) : undefined,
-        is_settled: is_settled !== undefined ? parseInt(is_settled) : undefined
-      }
-
-      const result = await this.inventoryService.searchInventoryRecords(filters.keyword, filters)
-
-      if (result.success) {
-        ApiResponse.paginated(
-          res,
-          result.message,
-          result.data.records,
-          result.data.pagination
-        )
-      } else {
-        ApiResponse.error(res, result.message, 400, result.code)
-      }
-    } catch (error) {
-      log.error('搜索库存记录失败:', error)
-      ApiResponse.serverError(res, '搜索库存记录失败', error)
-    }
-  }
-
-  /**
-   * 获取库存统计信息
-   */
-  async getInventoryStats(req, res) {
-    try {
-      const { store_id, product_type, start_date, end_date } = req.query
-
-      const filters = {
-        store_id: store_id ? parseInt(store_id) : undefined,
-        product_type,
-        start_date,
-        end_date
-      }
-
-      const result = await this.inventoryService.getInventoryStats(filters)
-
-      if (result.success) {
-        ApiResponse.success(res, result.message, result.data)
-      } else {
-        ApiResponse.error(res, result.message, 400, result.code)
-      }
-    } catch (error) {
-      log.error('获取库存统计信息失败:', error)
-      ApiResponse.serverError(res, '获取库存统计信息失败', error)
-    }
-  }
-
-  /**
-   * 导出库存数据
-   */
-  async exportInventoryRecords(req, res) {
-    try {
-      const { type, operation_type, store_id, is_settled, start_date, end_date } = req.query
-
-      const filters = {
-        type,
-        operation_type,
-        store_id: store_id ? parseInt(store_id) : undefined,
-        is_settled: is_settled !== undefined ? parseInt(is_settled) : undefined,
-        start_date,
-        end_date
-      }
-
-      const result = await this.inventoryService.exportInventoryRecords(filters)
-
-      if (result.success) {
-        ApiResponse.success(res, result.message, result.data)
-      } else {
-        ApiResponse.error(res, result.message, 400, result.code)
-      }
-    } catch (error) {
-      log.error('导出库存数据失败:', error)
-      ApiResponse.serverError(res, '导出库存数据失败', error)
+      this.logger.error('获取库存统计数据失败:', error)
+      return ApiResponse.serverError(res, '获取统计数据失败', error)
     }
   }
 }

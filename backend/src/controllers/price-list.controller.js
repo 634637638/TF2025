@@ -853,6 +853,92 @@ class PriceListController {
       return ApiResponse.error(res, '清零失败', 500)
     }
   }
+
+  async acknowledgeMigration(req, res) {
+    return res.json({
+      success: true,
+      message: '表已是新结构，无需迁移',
+      data: { results: [] }
+    })
+  }
+
+  async checkIphone16(req, res) {
+    try {
+      const db = req.app.get('db')
+      const [records] = await db.query(`
+        SELECT
+          b.name as brand_name,
+          m.name as model_number,
+          c.name as color_name,
+          mem.size as memory,
+          COALESCE(pl.is_collect, 1) as is_collect,
+          pl.id,
+          pl.wholesale_price,
+          pl.last_sync_time
+        FROM price_list pl
+        JOIN brands b ON pl.brand_id = b.id
+        JOIN models m ON pl.model_id = m.id
+        LEFT JOIN colors c ON pl.color_id = c.id
+        LEFT JOIN memories mem ON pl.memory_id = mem.id
+        WHERE m.name = 'iPhone 16'
+        ORDER BY c.name, mem.size
+      `)
+
+      return res.json({
+        success: true,
+        message: `找到 ${records.length} 条iPhone 16记录`,
+        data: records
+      })
+    } catch (error) {
+      log.error('检查失败:', error)
+      return res.status(500).json({
+        success: false,
+        message: error.message
+      })
+    }
+  }
+
+  async updateIphone16Collection(req, res) {
+    try {
+      const db = req.app.get('db')
+      const { is_collect = 1 } = req.body
+      const [result] = await db.query(`
+        UPDATE price_list pl
+        JOIN models m ON pl.model_id = m.id
+        SET pl.is_collect = ?
+        WHERE m.name = 'iPhone 16'
+      `, [is_collect])
+      const [records] = await db.query(`
+        SELECT
+          b.name as brand_name,
+          m.name as model_number,
+          c.name as color_name,
+          mem.size as memory,
+          COALESCE(pl.is_collect, 1) as is_collect,
+          pl.id,
+          pl.wholesale_price
+        FROM price_list pl
+        JOIN brands b ON pl.brand_id = b.id
+        JOIN models m ON pl.model_id = m.id
+        LEFT JOIN colors c ON pl.color_id = c.id
+        LEFT JOIN memories mem ON pl.memory_id = mem.id
+        WHERE m.name = 'iPhone 16'
+        ORDER BY c.name, mem.size
+      `)
+
+      return res.json({
+        success: true,
+        message: `已更新 ${result.affectedRows} 条iPhone 16记录的采集状态为 ${is_collect}`,
+        data: records
+      })
+    } catch (error) {
+      log.error('更新失败:', error)
+      return res.status(500).json({
+        success: false,
+        message: error.message
+      })
+    }
+  }
 }
 
 module.exports = new PriceListController()

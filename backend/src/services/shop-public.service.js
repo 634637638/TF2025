@@ -1,12 +1,18 @@
+const { withConnection } = require('../core/db/connection')
 /**
  * H5商城公开服务 - 用户端（无需认证）
  * 功能：商品展示、购物车、下单
  */
 
 const db = require('../config/database')
+const bcrypt = require('bcryptjs')
 const { createOrderAccessToken } = require('../utils/order-access')
+const { createCustomerToken, hashCustomerToken } = require('../utils/customer-token')
+const { generateMemberNumber } = require('../utils/member-number')
+const ShopPublicOrderRepository = require('../repositories/shop-public-order.repository')
 const log = require('../utils/log')
 const pricingService = require('./pricing.service')
+const SystemSettingsService = require('./system-settings.service')
 
 const PUBLIC_SHOP_CONFIG_KEYS = [
   'shop_name', 'shop_logo', 'shop_subtitle', 'shop_phone', 'wechat_id',
@@ -48,6 +54,400 @@ const buildPaginationResult = (data, page, page_size, total) => {
 }
 
 class ShopPublicService {
+  constructor({
+    database = db,
+    orderRepository = new ShopPublicOrderRepository(),
+    systemSettingsService = SystemSettingsService,
+    generateMemberNumberFn = generateMemberNumber,
+    fetcher = (...args) => fetch(...args),
+    logger = log,
+    now = () => new Date()
+  } = {}) {
+    this.database = database
+    this.orderRepository = orderRepository
+    this.systemSettingsService = systemSettingsService
+    this.generateMemberNumber = generateMemberNumberFn
+    this.fetcher = fetcher
+    this.logger = logger
+    this.now = now
+  }
+
+  createEmptyMarketingLexicon() {
+    return {
+      modeLexicon: {},
+      subsidyEnabled: false,
+      colorEnabled: false,
+      weatherEnabled: false,
+      solarTermEnabled: false,
+      typeLexicon: {},
+      contextLexicon: { holiday: [], solarTerm: [], weather: [], timeSegment: {}, color: {}, subsidy: {} },
+      eventLexicon: { solarTerms: {}, traditionalHolidays: {}, historicalDays: {} },
+      updatedAt: this.now().toISOString(),
+      source: 'empty'
+    }
+  }
+
+  normalizeMarketingLines(value, limit) {
+    return Array.isArray(value) ? value.map(item => String(item).trim()).filter(Boolean).slice(0, limit) : []
+  }
+
+  normalizeMarketingContextCategory(value) {
+    if (Array.isArray(value)) return { all: this.normalizeMarketingLines(value, 100) }
+    if (!value || typeof value !== 'object') return {}
+    return Object.fromEntries(Object.entries(value).map(([key, values]) => [
+      key,
+      this.normalizeMarketingLines(values, 100)
+    ]))
+  }
+
+  async getMarketingLexicon() {
+    const fallback = this.createEmptyMarketingLexicon()
+    try {
+      const databaseSetting = await this.systemSettingsService.getSettingByKey('marketing_lexicon')
+      const databaseLexicon = databaseSetting?.value
+      if (databaseLexicon && typeof databaseLexicon === 'object') {
+        const typeLexicon = databaseLexicon.typeLexicon && typeof databaseLexicon.typeLexicon === 'object'
+          ? Object.fromEntries(Object.entries(databaseLexicon.typeLexicon).map(([key, value]) => [
+            key,
+            { lines: this.normalizeMarketingLines(value?.lines, 200) }
+          ]))
+          : undefined
+        const contextLexicon = databaseLexicon.contextLexicon && typeof databaseLexicon.contextLexicon === 'object'
+          ? {
+            holiday: this.normalizeMarketingContextCategory(databaseLexicon.contextLexicon.holiday),
+            solarTerm: this.normalizeMarketingContextCategory(databaseLexicon.contextLexicon.solarTerm),
+            weather: this.normalizeMarketingContextCategory(databaseLexicon.contextLexicon.weather),
+            timeSegment: databaseLexicon.contextLexicon.timeSegment && typeof databaseLexicon.contextLexicon.timeSegment === 'object'
+              ? Object.fromEntries(Object.entries(databaseLexicon.contextLexicon.timeSegment).map(([key, values]) => [
+                key,
+                this.normalizeMarketingLines(values, 100)
+              ]))
+              : {},
+            color: this.normalizeMarketingContextCategory(databaseLexicon.contextLexicon.color),
+            subsidy: this.normalizeMarketingContextCategory(databaseLexicon.contextLexicon.subsidy)
+          }
+          : undefined
+        const eventLexicon = databaseLexicon.eventLexicon && typeof databaseLexicon.eventLexicon === 'object'
+          ? Object.fromEntries(['solarTerms', 'traditionalHolidays', 'historicalDays'].map(category => [
+            category,
+            databaseLexicon.eventLexicon[category] && typeof databaseLexicon.eventLexicon[category] === 'object'
+              ? Object.fromEntries(Object.entries(databaseLexicon.eventLexicon[category]).map(([key, values]) => [
+                key,
+                this.normalizeMarketingLines(values, 100)
+              ]))
+              : {}
+          ]))
+          : undefined
+
+        return {
+          data: {
+            subsidyEnabled: databaseLexicon.subsidyEnabled === true,
+            colorEnabled: databaseLexicon.colorEnabled === true,
+            weatherEnabled: databaseLexicon.weatherEnabled === true,
+            solarTermEnabled: databaseLexicon.solarTermEnabled === true,
+            modeLexicon: databaseLexicon.modeLexicon && typeof databaseLexicon.modeLexicon === 'object'
+              ? Object.fromEntries(Object.entries(databaseLexicon.modeLexicon).map(([mode, value]) => [
+                mode,
+                {
+                  lines: this.normalizeMarketingLines(value?.lines, 200),
+                  nightLines: this.normalizeMarketingLines(value?.nightLines, 100),
+                  salesTalks: this.normalizeMarketingLines(value?.salesTalks, 200)
+                }
+              ]))
+              : {},
+            ...(typeLexicon ? { typeLexicon } : {}),
+            ...(contextLexicon ? { contextLexicon } : {}),
+            ...(eventLexicon ? { eventLexicon } : {}),
+            updatedAt: databaseLexicon.updatedAt || this.now().toISOString(),
+            source: 'database'
+          },
+          message: '获取营销词库成功'
+        }
+      }
+
+      return { data: fallback, message: '营销词库为空，请先在后台配置' }
+    } catch (error) {
+      this.logger.warn('营销词库读取失败，返回空词库:', error.message)
+      return { data: fallback, message: '获取营销词库成功' }
+    }
+  }
+
+  async generateMarketingCopy(input = {}) {
+    const fallback = { suggestions: [], source: 'local-fallback' }
+    try {
+      const setting = await this.systemSettingsService.getSettingByKey('marketing_generation_config')
+      const config = setting?.value || {}
+      const localProvider = ['ollama', 'localai'].includes(String(config.provider || '').toLowerCase())
+      if (!config.enabled || !config.endpoint || (!localProvider && !config.apiKey)) {
+        return { data: fallback, message: '在线生成未启用' }
+      }
+
+      const mode = String(input?.mode || 'opening')
+      const count = Math.max(1, Math.min(8, Number(input?.count) || 4))
+      const controller = new AbortController()
+      const timeoutMs = Math.max(3000, Math.min(20000, Number(config.timeoutMs) || 10000))
+      const timer = setTimeout(() => controller.abort(), timeoutMs)
+      try {
+        const systemPrompt = String(config.systemPrompt || [
+          '你是手机门店朋友圈文案编辑。',
+          '必须严格围绕当前模式和文案类型写作。',
+          '文案简洁、大气、自然，不堆地点、节气名称、标签或无关参数。',
+          '不要把“可爱、高冷、抒情”等类型词生硬贴到商品上，要通过句式和语气体现。',
+          '只返回 JSON 数组，每项包含 title、text、tone；不要 Markdown，不要解释。'
+        ].join('\n'))
+        const userPrompt = JSON.stringify({
+          mode,
+          condition: input?.condition,
+          product: input?.product || {},
+          context: input?.context || {},
+          types: input?.types || [],
+          count
+        }, null, 2)
+        const response = await this.fetcher(String(config.endpoint), {
+          method: 'POST',
+          signal: controller.signal,
+          headers: {
+            'Content-Type': 'application/json',
+            ...(config.apiKey ? { Authorization: `Bearer ${config.apiKey}` } : {}),
+            ...(config.headers && typeof config.headers === 'object' ? config.headers : {})
+          },
+          body: JSON.stringify({
+            model: String(config.model || ''),
+            temperature: Number(config.temperature) || 0.8,
+            max_tokens: Number(config.maxTokens) || 1200,
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: userPrompt }
+            ]
+          })
+        })
+
+        if (!response.ok) throw new Error(`在线生成接口响应异常: ${response.status}`)
+
+        const payload = await response.json()
+        const content = payload?.choices?.[0]?.message?.content
+          || payload?.choices?.[0]?.text
+          || payload?.output_text
+          || payload?.data?.content
+          || ''
+        let parsed = content
+        if (typeof content === 'string') {
+          const normalized = content.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim()
+          try {
+            parsed = JSON.parse(normalized)
+          } catch {
+            parsed = normalized.split(/\n+/).map(text => text.replace(/^\s*\d+[.、)]\s*/, '').trim()).filter(Boolean)
+          }
+        }
+
+        const items = Array.isArray(parsed)
+          ? parsed
+          : Array.isArray(parsed?.suggestions)
+            ? parsed.suggestions
+            : []
+        const suggestions = items
+          .map((item, index) => {
+            if (typeof item === 'string') {
+              return {
+                id: `online-${index}`,
+                title: '🌐在线灵感',
+                tone: '在线生成',
+                text: item.trim(),
+                tags: ['在线生成']
+              }
+            }
+            return {
+              id: `online-${index}`,
+              title: String(item?.title || '🌐在线灵感').trim(),
+              tone: String(item?.tone || '在线生成').trim(),
+              text: String(item?.text || item?.content || '').trim(),
+              tags: Array.isArray(item?.tags) ? item.tags.map(tag => String(tag)) : ['在线生成']
+            }
+          })
+          .filter(item => item.text)
+          .slice(0, count)
+
+        return {
+          data: { suggestions, source: 'online' },
+          message: '在线文案生成成功'
+        }
+      } finally {
+        clearTimeout(timer)
+      }
+    } catch (error) {
+      this.logger.warn('在线营销文案生成失败，回退本地生成:', error.message)
+      return { data: fallback, message: '在线生成不可用，已使用本地文案' }
+    }
+  }
+
+  async logoutCustomer(tokenHash) {
+    await this.database.getDatabase().query(
+      'DELETE FROM customer_tokens WHERE token_hash = ?',
+      [tokenHash]
+    )
+  }
+
+  async registerCustomer({ name, phone, password }) {
+    return withConnection(this.database.getDatabase(), async connection => {
+      let transactionStarted = false
+      try {
+        await connection.beginTransaction()
+        transactionStarted = true
+
+        const [existingUsers] = await connection.query(
+          'SELECT id FROM customers WHERE phone = ? FOR UPDATE',
+          [phone]
+        )
+        if (existingUsers.length > 0) {
+          await connection.rollback()
+          transactionStarted = false
+          return { conflict: true }
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 10)
+        let memberNumber
+        try {
+          memberNumber = await this.generateMemberNumber({ connection })
+        } catch (error) {
+          this.logger.error('生成会员号失败:', error)
+          memberNumber = `TF${String(Date.now() % 1000000).padStart(6, '0')}`
+        }
+
+        const [result] = await connection.query(
+          `INSERT INTO customers (name, phone, password, member_number, source, status, created_at)
+           VALUES (?, ?, ?, ?, 'H5用户', 1, NOW())`,
+          [name, phone, hashedPassword, memberNumber]
+        )
+        const token = createCustomerToken()
+        const tokenHash = hashCustomerToken(token)
+        const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+        await connection.query(
+          `INSERT INTO customer_tokens (customer_id, token_hash, expires_at)
+           VALUES (?, ?, ?)`,
+          [result.insertId, tokenHash, expiresAt]
+        )
+        const [users] = await connection.query(
+          'SELECT id, name, phone, avatar, member_number FROM customers WHERE id = ?',
+          [result.insertId]
+        )
+
+        await connection.commit()
+        transactionStarted = false
+        return { conflict: false, token, user: users[0] }
+      } catch (error) {
+        if (transactionStarted) {
+          try {
+            await connection.rollback()
+          } catch (rollbackError) {
+            this.logger.error('注册事务回滚失败:', rollbackError)
+          }
+        }
+        if (error.code === 'ER_DUP_ENTRY') return { conflict: true }
+        throw error
+      }
+
+    })
+  }
+
+  async loginCustomer({ phone, password }) {
+    const database = this.database.getDatabase()
+    const [users] = await database.query(
+      'SELECT id, name, phone, password FROM customers WHERE phone = ?',
+      [phone]
+    )
+    if (!users.length) return { reason: 'not-found' }
+
+    const user = users[0]
+    if (!user.password) return { reason: 'password-unset' }
+    if (!await bcrypt.compare(password, user.password)) return { reason: 'invalid-password' }
+
+    return withConnection(database, async connection => {
+      let transactionStarted = false
+      try {
+        const token = createCustomerToken()
+        const tokenHash = hashCustomerToken(token)
+        const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+        await connection.beginTransaction()
+        transactionStarted = true
+        await connection.query(
+          'DELETE FROM customer_tokens WHERE customer_id = ? OR expires_at <= NOW()',
+          [user.id]
+        )
+        await connection.query(
+          `INSERT INTO customer_tokens (customer_id, token_hash, expires_at)
+           VALUES (?, ?, ?)`,
+          [user.id, tokenHash, expiresAt]
+        )
+        const [userInfos] = await connection.query(
+          'SELECT id, name, phone, avatar, member_number FROM customers WHERE id = ?',
+          [user.id]
+        )
+        await connection.commit()
+        transactionStarted = false
+        return { token, user: userInfos[0] }
+      } catch (error) {
+        if (transactionStarted) {
+          try {
+            await connection.rollback()
+          } catch (rollbackError) {
+            this.logger.error('登录 Token 轮换事务回滚失败:', rollbackError)
+          }
+        }
+        throw error
+      }
+
+    })
+  }
+
+  async getCustomerSession(tokenHash) {
+    const [rows] = await this.database.getDatabase().query(
+      `SELECT ct.customer_id, c.phone
+       FROM customer_tokens ct
+       INNER JOIN customers c ON c.id = ct.customer_id
+       WHERE ct.token_hash = ? AND ct.expires_at > NOW()
+       LIMIT 1`,
+      [tokenHash]
+    )
+    return rows[0] || null
+  }
+
+  async getCustomerSummary(customerId) {
+    const [rows] = await this.database.getDatabase().query(
+      'SELECT id, name, phone, avatar, member_number FROM customers WHERE id = ?',
+      [customerId]
+    )
+    return rows[0] || null
+  }
+
+  async getCustomerProfile(customerId) {
+    const [rows] = await this.database.getDatabase().query(
+      'SELECT id, name, phone, gender, id_card, apple_id, address FROM customers WHERE id = ?',
+      [customerId]
+    )
+    return rows[0] || null
+  }
+
+  async updateCustomerProfile(customerId, profile) {
+    const fields = [
+      ['name', 'name'],
+      ['gender', 'gender'],
+      ['idCard', 'id_card'],
+      ['appleId', 'apple_id'],
+      ['address', 'address']
+    ].filter(([key]) => profile[key] !== undefined)
+
+    if (fields.length === 0) return null
+
+    const assignments = fields.map(([, column]) => `${column} = ?`).join(', ')
+    const values = fields.map(([key]) => profile[key])
+    values.push(customerId)
+    await this.database.getDatabase().query(
+      `UPDATE customers SET ${assignments} WHERE id = ?`,
+      values
+    )
+    return this.getCustomerProfile(customerId)
+  }
+
   /**
    * 批量加载商城模板及其采集基准价。
    * 商城只使用批发采集价作为基准，销售报价字段不得参与商城计算。
@@ -1216,125 +1616,124 @@ class ShopPublicService {
 
     const paymentMethod = String(requestedPaymentMethod || 'pickup')
     await this.validatePaymentMethod(paymentMethod)
-    const connection = await db.getDatabase().getConnection()
+    return withConnection(db.getDatabase(), async connection => {
+      try {
+        await connection.beginTransaction()
 
-    try {
-      await connection.beginTransaction()
+        // 计算订单金额
+        let totalAmount = 0
+        const orderItems = []
 
-      // 计算订单金额
-      let totalAmount = 0
-      const orderItems = []
+        for (const item of items) {
+          const phoneId = Number(item.phoneId)
+          const quantity = Number(item.quantity)
+          if (!Number.isInteger(phoneId) || phoneId <= 0 || quantity !== 1) {
+            throw new Error('商品或购买数量不正确')
+          }
 
-      for (const item of items) {
-        const phoneId = Number(item.phoneId)
-        const quantity = Number(item.quantity)
-        if (!Number.isInteger(phoneId) || phoneId <= 0 || quantity !== 1) {
-          throw new Error('商品或购买数量不正确')
+          // 获取商品信息
+          const [products] = await connection.query(
+            `SELECT p.id,
+                    p.brand_id, p.model_id, p.color_id, p.memory_id, p.is_new,
+                    CASE
+                      WHEN p.is_new = 1 THEN COALESCE(pl.wholesale_price, 0)
+                      ELSE COALESCE(h5.sale_price, 0)
+                    END as sale_price,
+                    b.name as brand_name, m.name as model_name,
+                    c.name as color_name, mem.size as memory_name
+             FROM phones p
+             LEFT JOIN H5_product h5 ON h5.phone_id = p.id
+             LEFT JOIN brands b ON p.brand_id = b.id
+             LEFT JOIN models m ON p.model_id = m.id
+             LEFT JOIN colors c ON p.color_id = c.id
+             LEFT JOIN memories mem ON p.memory_id = mem.id
+             LEFT JOIN price_list pl ON pl.brand_id = p.brand_id
+               AND pl.model_id = p.model_id
+               AND pl.color_id = p.color_id
+               AND pl.memory_id = p.memory_id
+             WHERE p.id = ? AND p.status = 'in_stock'`,
+            [phoneId]
+          )
+
+          if (products.length === 0) {
+            throw new Error(`商品ID ${phoneId} 不存在或已下架`)
+          }
+
+          const product = products[0]
+
+          if (Number(product.is_new) === 1) {
+            await this.applyH5TemplatePricing([product], connection)
+            product.sale_price = Number(product.min_price || 0)
+          }
+
+          // 验证价格
+          const salePrice = parseFloat(product.sale_price) || 0
+          if (salePrice <= 0) {
+            throw new Error(`商品ID ${phoneId} 价格无效，无法下单`)
+          }
+
+          const subtotal = salePrice * quantity
+          totalAmount += subtotal
+
+          orderItems.push({
+            phoneId: product.id,
+            phoneInfo: {
+              brand: product.brand_name,
+              model: product.model_name,
+              color: product.color_name,
+              memory: product.memory_name
+            },
+            salePrice,
+            quantity,
+            subtotal
+          })
         }
 
-        // 获取商品信息
-        const [products] = await connection.query(
-          `SELECT p.id,
-                  p.brand_id, p.model_id, p.color_id, p.memory_id, p.is_new,
-                  CASE
-                    WHEN p.is_new = 1 THEN COALESCE(pl.wholesale_price, 0)
-                    ELSE COALESCE(h5.sale_price, 0)
-                  END as sale_price,
-                  b.name as brand_name, m.name as model_name,
-                  c.name as color_name, mem.size as memory_name
-           FROM phones p
-           LEFT JOIN H5_product h5 ON h5.phone_id = p.id
-           LEFT JOIN brands b ON p.brand_id = b.id
-           LEFT JOIN models m ON p.model_id = m.id
-           LEFT JOIN colors c ON p.color_id = c.id
-           LEFT JOIN memories mem ON p.memory_id = mem.id
-           LEFT JOIN price_list pl ON pl.brand_id = p.brand_id
-             AND pl.model_id = p.model_id
-             AND pl.color_id = p.color_id
-             AND pl.memory_id = p.memory_id
-           WHERE p.id = ? AND p.status = 'in_stock'`,
-          [phoneId]
+        // 生成订单号
+        const orderNumber = await this.generateOrderNumber(connection)
+
+        // 创建订单（24小时后过期）
+        const [orderResult] = await connection.query(
+          `INSERT INTO H5_orders (order_number, customer_name, customer_phone, customer_address, total_amount, payment_method, remarks, status, expires_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', DATE_ADD(NOW(), INTERVAL 24 HOUR))`,
+          [orderNumber, customerName, customerPhone, customerAddress, totalAmount, paymentMethod, remarks || null]
         )
 
-        if (products.length === 0) {
-          throw new Error(`商品ID ${phoneId} 不存在或已下架`)
+        const orderId = orderResult.insertId
+
+        // 创建订单商品明细
+        for (const item of orderItems) {
+          await connection.query(
+            `INSERT INTO H5_order_items (order_id, phone_id, phone_info, sale_price, quantity, subtotal)
+             VALUES (?, ?, ?, ?, ?, ?)`,
+            [orderId, item.phoneId, JSON.stringify(item.phoneInfo), item.salePrice, item.quantity, item.subtotal]
+          )
         }
 
-        const product = products[0]
-
-        if (Number(product.is_new) === 1) {
-          await this.applyH5TemplatePricing([product], connection)
-          product.sale_price = Number(product.min_price || 0)
+        // 如果是从购物车下单，清空购物车
+        if (orderData.cartId) {
+          const phoneIds = orderItems.map(item => item.phoneId)
+          await connection.query(
+            `DELETE FROM H5_cart WHERE cart_id = ? AND phone_id IN (${phoneIds.map(() => '?').join(',')})`,
+            [orderData.cartId, ...phoneIds]
+          )
         }
 
-        // 验证价格
-        const salePrice = parseFloat(product.sale_price) || 0
-        if (salePrice <= 0) {
-          throw new Error(`商品ID ${phoneId} 价格无效，无法下单`)
+        await connection.commit()
+
+        return {
+          orderId,
+          orderNumber,
+          totalAmount,
+          status: 'pending'
         }
 
-        const subtotal = salePrice * quantity
-        totalAmount += subtotal
-
-        orderItems.push({
-          phoneId: product.id,
-          phoneInfo: {
-            brand: product.brand_name,
-            model: product.model_name,
-            color: product.color_name,
-            memory: product.memory_name
-          },
-          salePrice,
-          quantity,
-          subtotal
-        })
+      } catch (error) {
+        await connection.rollback()
+        throw error
       }
 
-      // 生成订单号
-      const orderNumber = await this.generateOrderNumber(connection)
-
-      // 创建订单（24小时后过期）
-      const [orderResult] = await connection.query(
-        `INSERT INTO H5_orders (order_number, customer_name, customer_phone, customer_address, total_amount, payment_method, remarks, status, expires_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', DATE_ADD(NOW(), INTERVAL 24 HOUR))`,
-        [orderNumber, customerName, customerPhone, customerAddress, totalAmount, paymentMethod, remarks || null]
-      )
-
-      const orderId = orderResult.insertId
-
-      // 创建订单商品明细
-      for (const item of orderItems) {
-        await connection.query(
-          `INSERT INTO H5_order_items (order_id, phone_id, phone_info, sale_price, quantity, subtotal)
-           VALUES (?, ?, ?, ?, ?, ?)`,
-          [orderId, item.phoneId, JSON.stringify(item.phoneInfo), item.salePrice, item.quantity, item.subtotal]
-        )
-      }
-
-      // 如果是从购物车下单，清空购物车
-      if (orderData.cartId) {
-        const phoneIds = orderItems.map(item => item.phoneId)
-        await connection.query(
-          `DELETE FROM H5_cart WHERE cart_id = ? AND phone_id IN (${phoneIds.map(() => '?').join(',')})`,
-          [orderData.cartId, ...phoneIds]
-        )
-      }
-
-      await connection.commit()
-
-      return {
-        orderId,
-        orderNumber,
-        totalAmount,
-        status: 'pending'
-      }
-
-    } catch (error) {
-      await connection.rollback()
-      throw error
-    } finally {
-      connection.release()
-    }
+    })
   }
 
   /**
@@ -1613,56 +2012,55 @@ class ShopPublicService {
    * 库存将在后台审核通过后才锁定
    */
   async confirmUserPayment(orderNumber) {
-    const connection = await db.getDatabase().getConnection()
+    return withConnection(db.getDatabase(), async connection => {
+      try {
+        await connection.beginTransaction()
 
-    try {
-      await connection.beginTransaction()
+        // 查询订单信息
+        const [orders] = await connection.query(
+          'SELECT * FROM H5_orders WHERE order_number = ? AND status = "pending" FOR UPDATE',
+          [orderNumber]
+        )
 
-      // 查询订单信息
-      const [orders] = await connection.query(
-        'SELECT * FROM H5_orders WHERE order_number = ? AND status = "pending" FOR UPDATE',
-        [orderNumber]
-      )
+        if (orders.length === 0) {
+          await connection.rollback()
+          return null
+        }
 
-      if (orders.length === 0) {
+        const order = orders[0]
+
+        // 检查订单是否过期
+        if (order.expires_at && new Date(order.expires_at) < new Date()) {
+          await connection.rollback()
+          throw new Error('订单已过期，无法确认支付')
+        }
+
+        // 更新订单状态为已付款（待审核），不锁定库存
+        const [updateResult] = await connection.query(
+          'UPDATE H5_orders SET status = "paid", updated_at = NOW() WHERE id = ? AND status = "pending"',
+          [order.id]
+        )
+
+        if (updateResult.affectedRows !== 1) {
+          await connection.rollback()
+          return null
+        }
+
+        await connection.commit()
+
+        // 返回更新后的订单
+        const [updatedOrders] = await db.getDatabase().query(
+          'SELECT * FROM H5_orders WHERE id = ?',
+          [order.id]
+        )
+
+        return updatedOrders[0]
+      } catch (error) {
         await connection.rollback()
-        return null
+        throw error
       }
 
-      const order = orders[0]
-
-      // 检查订单是否过期
-      if (order.expires_at && new Date(order.expires_at) < new Date()) {
-        await connection.rollback()
-        throw new Error('订单已过期，无法确认支付')
-      }
-
-      // 更新订单状态为已付款（待审核），不锁定库存
-      const [updateResult] = await connection.query(
-        'UPDATE H5_orders SET status = "paid", updated_at = NOW() WHERE id = ? AND status = "pending"',
-        [order.id]
-      )
-
-      if (updateResult.affectedRows !== 1) {
-        await connection.rollback()
-        return null
-      }
-
-      await connection.commit()
-
-      // 返回更新后的订单
-      const [updatedOrders] = await db.getDatabase().query(
-        'SELECT * FROM H5_orders WHERE id = ?',
-        [order.id]
-      )
-
-      return updatedOrders[0]
-    } catch (error) {
-      await connection.rollback()
-      throw error
-    } finally {
-      connection.release()
-    }
+    })
   }
 
   /**
@@ -3217,60 +3615,59 @@ class ShopPublicService {
    * 将订单状态从 paid 改为 confirmed，并锁定库存
    */
   async confirmH5Order(orderId, _adminId, _remarks) {
-    const connection = await db.getDatabase().getConnection()
+    return withConnection(db.getDatabase(), async connection => {
+      try {
+        await connection.beginTransaction()
 
-    try {
-      await connection.beginTransaction()
+        // 查询订单信息
+        const [orders] = await connection.query(
+          `SELECT ${selectFields(H5_ORDER_FIELDS)} FROM H5_orders WHERE id = ? AND status = "paid"`,
+          [orderId]
+        )
 
-      // 查询订单信息
-      const [orders] = await connection.query(
-        `SELECT ${selectFields(H5_ORDER_FIELDS)} FROM H5_orders WHERE id = ? AND status = "paid"`,
-        [orderId]
-      )
+        if (orders.length === 0) {
+          await connection.rollback()
+          throw new Error('订单不存在或状态不正确')
+        }
 
-      if (orders.length === 0) {
+        // 更新订单状态为已确认
+        await connection.query(
+          'UPDATE H5_orders SET status = "confirmed", updated_at = NOW() WHERE id = ?',
+          [orderId]
+        )
+
+        // 锁定库存：只允许仍在库的设备被本次订单占用，防止并发审核重复售出。
+        const [stockResult] = await connection.query(
+          `UPDATE phones p
+           INNER JOIN H5_order_items oi ON p.id = oi.phone_id
+           SET p.status = 'sold', p.is_preordered = 0
+           WHERE oi.order_id = ? AND p.status = 'in_stock'`,
+          [orderId]
+        )
+        const [itemCountRows] = await connection.query(
+          'SELECT COUNT(DISTINCT phone_id) AS total FROM H5_order_items WHERE order_id = ?',
+          [orderId]
+        )
+        const expectedItems = Number(itemCountRows[0]?.total || 0)
+        if (expectedItems === 0 || Number(stockResult.affectedRows || 0) !== expectedItems) {
+          throw new Error('订单中有商品已被其他订单占用，请刷新后处理')
+        }
+
+        await connection.commit()
+
+        // 返回更新后的订单
+        const [updatedOrders] = await db.getDatabase().query(
+          `SELECT ${selectFields(H5_ORDER_FIELDS)} FROM H5_orders WHERE id = ?`,
+          [orderId]
+        )
+
+        return updatedOrders[0]
+      } catch (error) {
         await connection.rollback()
-        throw new Error('订单不存在或状态不正确')
+        throw error
       }
 
-      // 更新订单状态为已确认
-      await connection.query(
-        'UPDATE H5_orders SET status = "confirmed", updated_at = NOW() WHERE id = ?',
-        [orderId]
-      )
-
-      // 锁定库存：只允许仍在库的设备被本次订单占用，防止并发审核重复售出。
-      const [stockResult] = await connection.query(
-        `UPDATE phones p
-         INNER JOIN H5_order_items oi ON p.id = oi.phone_id
-         SET p.status = 'sold', p.is_preordered = 0
-         WHERE oi.order_id = ? AND p.status = 'in_stock'`,
-        [orderId]
-      )
-      const [itemCountRows] = await connection.query(
-        'SELECT COUNT(DISTINCT phone_id) AS total FROM H5_order_items WHERE order_id = ?',
-        [orderId]
-      )
-      const expectedItems = Number(itemCountRows[0]?.total || 0)
-      if (expectedItems === 0 || Number(stockResult.affectedRows || 0) !== expectedItems) {
-        throw new Error('订单中有商品已被其他订单占用，请刷新后处理')
-      }
-
-      await connection.commit()
-
-      // 返回更新后的订单
-      const [updatedOrders] = await db.getDatabase().query(
-        `SELECT ${selectFields(H5_ORDER_FIELDS)} FROM H5_orders WHERE id = ?`,
-        [orderId]
-      )
-
-      return updatedOrders[0]
-    } catch (error) {
-      await connection.rollback()
-      throw error
-    } finally {
-      connection.release()
-    }
+    })
   }
 
   /**
@@ -3278,43 +3675,42 @@ class ShopPublicService {
    * 将订单状态从 paid 改回 pending
    */
   async rejectH5Order(orderId, _adminId, reason) {
-    const connection = await db.getDatabase().getConnection()
+    return withConnection(db.getDatabase(), async connection => {
+      try {
+        await connection.beginTransaction()
 
-    try {
-      await connection.beginTransaction()
+        // 查询订单信息
+        const [orders] = await connection.query(
+          `SELECT ${selectFields(H5_ORDER_FIELDS)} FROM H5_orders WHERE id = ? AND status = "paid"`,
+          [orderId]
+        )
 
-      // 查询订单信息
-      const [orders] = await connection.query(
-        `SELECT ${selectFields(H5_ORDER_FIELDS)} FROM H5_orders WHERE id = ? AND status = "paid"`,
-        [orderId]
-      )
+        if (orders.length === 0) {
+          await connection.rollback()
+          throw new Error('订单不存在或状态不正确')
+        }
 
-      if (orders.length === 0) {
+        // 更新订单状态为待支付（可以重新支付）
+        await connection.query(
+          'UPDATE H5_orders SET status = "pending", remarks = ?, updated_at = NOW() WHERE id = ?',
+          [reason || '支付审核未通过', orderId]
+        )
+
+        await connection.commit()
+
+        // 返回更新后的订单
+        const [updatedOrders] = await db.getDatabase().query(
+          `SELECT ${selectFields(H5_ORDER_FIELDS)} FROM H5_orders WHERE id = ?`,
+          [orderId]
+        )
+
+        return updatedOrders[0]
+      } catch (error) {
         await connection.rollback()
-        throw new Error('订单不存在或状态不正确')
+        throw error
       }
 
-      // 更新订单状态为待支付（可以重新支付）
-      await connection.query(
-        'UPDATE H5_orders SET status = "pending", remarks = ?, updated_at = NOW() WHERE id = ?',
-        [reason || '支付审核未通过', orderId]
-      )
-
-      await connection.commit()
-
-      // 返回更新后的订单
-      const [updatedOrders] = await db.getDatabase().query(
-        `SELECT ${selectFields(H5_ORDER_FIELDS)} FROM H5_orders WHERE id = ?`,
-        [orderId]
-      )
-
-      return updatedOrders[0]
-    } catch (error) {
-      await connection.rollback()
-      throw error
-    } finally {
-      connection.release()
-    }
+    })
   }
 
   /**
@@ -3377,68 +3773,128 @@ class ShopPublicService {
   /**
    * 取消订单
    */
+  async cancelCustomerOrder({ id, accessToken, reason }, verifyOrderToken) {
+    return withConnection(this.database.getDatabase(), async connection => {
+      let transactionStarted = false
+
+      try {
+        await connection.beginTransaction()
+        transactionStarted = true
+
+        const order = await this.orderRepository.getForUpdate(connection, id)
+        if (!order) {
+          await connection.rollback()
+          transactionStarted = false
+          return { status: 'not_found' }
+        }
+
+        if (!verifyOrderToken(accessToken, order)) {
+          await connection.rollback()
+          transactionStarted = false
+          return { status: 'unauthorized' }
+        }
+
+        if (order.status !== 'pending') {
+          await connection.rollback()
+          transactionStarted = false
+          return { status: 'invalid_status', orderStatus: order.status }
+        }
+
+        if (order.expires_at && new Date(order.expires_at) < this.now()) {
+          await connection.rollback()
+          transactionStarted = false
+          return { status: 'expired' }
+        }
+
+        const affectedRows = await this.orderRepository.cancelPending(
+          connection,
+          id,
+          reason || '用户主动取消'
+        )
+        if (affectedRows !== 1) {
+          await connection.rollback()
+          transactionStarted = false
+          return { status: 'changed' }
+        }
+
+        await connection.commit()
+        transactionStarted = false
+        return { status: 'cancelled', orderNumber: order.order_number }
+      } catch (error) {
+        if (transactionStarted) {
+          try {
+            await connection.rollback()
+          } catch (rollbackError) {
+            log.error('取消订单事务回滚失败:', rollbackError)
+          }
+        }
+        throw error
+      }
+
+    })
+  }
+
   async cancelH5Order(orderId, _adminId, reason) {
-    const connection = await db.getDatabase().getConnection()
+    return withConnection(db.getDatabase(), async connection => {
+      try {
+        await connection.beginTransaction()
 
-    try {
-      await connection.beginTransaction()
-
-      // 查询订单信息
-      const [orders] = await connection.query(
-        `SELECT ${selectFields(H5_ORDER_FIELDS)} FROM H5_orders WHERE id = ? FOR UPDATE`,
-        [orderId]
-      )
-
-      if (orders.length === 0) {
-        await connection.rollback()
-        throw new Error('订单不存在')
-      }
-
-      const order = orders[0]
-
-      // 只有待支付、已支付（未审核）状态的订单可以取消
-      if (!['pending', 'paid'].includes(order.status)) {
-        await connection.rollback()
-        throw new Error('订单状态不允许取消')
-      }
-
-      // 更新订单状态
-      const [updateResult] = await connection.query(
-        'UPDATE H5_orders SET status = "cancelled", cancel_reason = ?, cancelled_at = NOW(), remarks = ?, updated_at = NOW() WHERE id = ? AND status = ?',
-        [reason, reason, orderId, order.status]
-      )
-
-      if (updateResult.affectedRows !== 1) {
-        await connection.rollback()
-        throw new Error('订单状态已变化，无法取消')
-      }
-
-      // 如果订单已支付（paid状态），释放库存
-      if (order.status === 'paid') {
-        await connection.query(
-          `UPDATE phones p
-           INNER JOIN H5_order_items oi ON p.id = oi.phone_id
-           SET p.status = 'in_stock'
-           WHERE oi.order_id = ?`,
+        // 查询订单信息
+        const [orders] = await connection.query(
+          `SELECT ${selectFields(H5_ORDER_FIELDS)} FROM H5_orders WHERE id = ? FOR UPDATE`,
           [orderId]
         )
+
+        if (orders.length === 0) {
+          await connection.rollback()
+          throw new Error('订单不存在')
+        }
+
+        const order = orders[0]
+
+        // 只有待支付、已支付（未审核）状态的订单可以取消
+        if (!['pending', 'paid'].includes(order.status)) {
+          await connection.rollback()
+          throw new Error('订单状态不允许取消')
+        }
+
+        // 更新订单状态
+        const [updateResult] = await connection.query(
+          'UPDATE H5_orders SET status = "cancelled", cancel_reason = ?, cancelled_at = NOW(), remarks = ?, updated_at = NOW() WHERE id = ? AND status = ?',
+          [reason, reason, orderId, order.status]
+        )
+
+        if (updateResult.affectedRows !== 1) {
+          await connection.rollback()
+          throw new Error('订单状态已变化，无法取消')
+        }
+
+        // 如果订单已支付（paid状态），释放库存
+        if (order.status === 'paid') {
+          await connection.query(
+            `UPDATE phones p
+             INNER JOIN H5_order_items oi ON p.id = oi.phone_id
+             SET p.status = 'in_stock'
+             WHERE oi.order_id = ?`,
+            [orderId]
+          )
+        }
+
+        await connection.commit()
+
+        // 返回更新后的订单
+        const [updatedOrders] = await db.getDatabase().query(
+          `SELECT ${selectFields(H5_ORDER_FIELDS)} FROM H5_orders WHERE id = ?`,
+          [orderId]
+        )
+
+        return updatedOrders[0]
+      } catch (error) {
+        await connection.rollback()
+        throw error
       }
 
-      await connection.commit()
-
-      // 返回更新后的订单
-      const [updatedOrders] = await db.getDatabase().query(
-        `SELECT ${selectFields(H5_ORDER_FIELDS)} FROM H5_orders WHERE id = ?`,
-        [orderId]
-      )
-
-      return updatedOrders[0]
-    } catch (error) {
-      await connection.rollback()
-      throw error
-    } finally {
-      connection.release()
-    }
+    })
   }
 
   /**

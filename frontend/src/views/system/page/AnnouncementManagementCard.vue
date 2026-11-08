@@ -1,5 +1,5 @@
 <template>
-  <section class="announcement-management admin-panel">
+  <section class="announcement-management table-section admin-panel admin-table-panel">
     <div class="card-header-with-action">
       <h3 class="section-subtitle">
         <i class="fas fa-bullhorn" />
@@ -19,6 +19,7 @@
         <el-button
           v-if="canEdit"
           type="primary"
+          size="small"
           @click="openCreateDialog"
         >
           <i class="fas fa-plus" />
@@ -181,6 +182,7 @@ import { useNotification } from '@/composables/useNotification'
 import { confirmAction } from '@/utils/message-box'
 import { getRequestErrorMessage } from '@/utils/api-response'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
+import { formatDateTime as formatDate } from '@/utils/format'
 import MobileDialog from '@/components/MobileDialog.vue'
 import SectionLoading from '@/components/SectionLoading.vue'
 import RichTextEditor, { type RichTextMediaResult } from '@/components/RichTextEditor.vue'
@@ -218,8 +220,6 @@ const rules: FormRules<SiteAnnouncementInput> = {
   title: [{ required: true, message: '请输入公告标题', trigger: 'blur' }],
   content: [{ required: true, message: '请输入公告内容', trigger: 'blur' }]
 }
-
-const formatDate = (value: string) => TimeUtil.format(value, TIME_FORMATS.DATETIME)
 
 const loadAnnouncements = async () => {
   loading.value = true
@@ -317,7 +317,6 @@ onMounted(loadAnnouncements)
 <style scoped>
 .announcement-management {
   min-width: 0;
-  padding: var(--admin-panel-padding);
 }
 
 .announcement-card-actions,
@@ -330,6 +329,7 @@ onMounted(loadAnnouncements)
 
 .announcement-card-actions {
   gap: var(--tf-space-2);
+  flex-shrink: 0;
 }
 
 .announcement-management-list {
@@ -371,10 +371,6 @@ onMounted(loadAnnouncements)
 .announcement-management-item__actions {
   gap: var(--tf-space-2);
   flex-shrink: 0;
-}
-
-.announcement-management :deep(.card-header-with-action) {
-  gap: var(--tf-space-2);
 }
 
 .announcement-management :deep(.el-date-editor) {

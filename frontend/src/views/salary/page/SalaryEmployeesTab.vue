@@ -485,6 +485,7 @@
 import { TIME_FORMATS } from '@/utils/time'
 import { computed, ref } from 'vue'
 import { shouldShowActionColumn } from '@/composables/useFieldPermissions'
+import { useMobileRowDoubleTap } from '@/composables/useMobileRowDoubleTap'
 import Pagination from '@/components/Pagination.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
@@ -565,8 +566,7 @@ const emit = defineEmits<{
 
 const tableRef = ref<EmployeeTableInstance>()
 const expandedEmployeeId = ref<number | null>(null)
-const lastTappedEmployeeId = ref<number | null>(null)
-const lastTapTimestamp = ref(0)
+const { isDoubleTap, resetDoubleTap } = useMobileRowDoubleTap()
 
 const resetInteraction = () => {
   if (expandedEmployeeId.value) {
@@ -574,14 +574,12 @@ const resetInteraction = () => {
     if (previous) tableRef.value?.toggleRowExpansion(previous, false)
   }
   expandedEmployeeId.value = null
-  lastTappedEmployeeId.value = null
-  lastTapTimestamp.value = 0
+  resetDoubleTap()
 }
 
 const handleRowTap = (row: EmployeeRow) => {
   if (!props.isMobile) return
-  const now = Date.now()
-  if (lastTappedEmployeeId.value === row.id && now - lastTapTimestamp.value <= 320) {
+  if (isDoubleTap(row.id)) {
     const shouldExpand = expandedEmployeeId.value !== row.id
     if (expandedEmployeeId.value && expandedEmployeeId.value !== row.id) {
       const previous = props.filteredEmployees.find(item => item.id === expandedEmployeeId.value)
@@ -589,12 +587,7 @@ const handleRowTap = (row: EmployeeRow) => {
     }
     tableRef.value?.toggleRowExpansion(row, shouldExpand)
     expandedEmployeeId.value = shouldExpand ? row.id : null
-    lastTappedEmployeeId.value = null
-    lastTapTimestamp.value = 0
-    return
   }
-  lastTappedEmployeeId.value = row.id
-  lastTapTimestamp.value = now
 }
 
 const handlePaginationChange = (page: number, pageSize: number) => {

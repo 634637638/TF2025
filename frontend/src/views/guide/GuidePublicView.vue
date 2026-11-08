@@ -108,7 +108,6 @@
             </div>
             <el-button
               v-if="publicActiveTarget(category).locked"
-              text
               class="guide-icon-button tf-button--view"
               title="解锁分类"
               aria-label="解锁分类"
@@ -505,9 +504,8 @@ onBeforeUnmount(() => {
   max-width: 100%;
   flex: 0 1 auto;
 }
-.guide-icon-button, .guide-text-button { border: 0; background: transparent; color: var(--tf-color-indigo-600); cursor: pointer; }
-.guide-icon-button { display: grid; flex: none; width: 34px; height: 34px; place-items: center; border-radius: var(--tf-radius-card); font-size: var(--tf-type-scale-15); }
-.guide-icon-button:hover, .guide-text-button:hover { background: var(--tf-color-indigo-50); }
+/* 解锁按钮颜色与规格由公共 tf-button--view 维护，此处仅防胶囊容器挤压 */
+.guide-icon-button { flex: none; }
 .guide-links { display: flex; flex-wrap: wrap; align-content: flex-start; align-items: flex-start; gap: var(--tf-space-2); max-height: calc(6 * (var(--tf-button-height) + var(--tf-space-2))); margin-top: var(--tf-space-4); overflow-x: hidden; overflow-y: auto; overscroll-behavior-y: contain; scrollbar-width: none; }
 .guide-links::-webkit-scrollbar { display: none; }
 .guide-category__content { display: grid; gap: var(--tf-space-4); }

@@ -67,19 +67,21 @@
     </div>
 
     <template #footer>
-      <el-button
-        type="default"
-        @click="dialogVisible = false"
-      >
-        取消
-      </el-button>
-      <el-button
-        type="primary"
-        :loading="submitting"
-        @click="handleSubmit"
-      >
-        确认交付
-      </el-button>
+      <div class="tf-dialog-actions">
+        <el-button
+          type="default"
+          @click="dialogVisible = false"
+        >
+          取消
+        </el-button>
+        <el-button
+          type="primary"
+          :loading="submitting"
+          @click="handleSubmit"
+        >
+          确认交付
+        </el-button>
+      </div>
     </template>
   </MobileDialog>
 </template>

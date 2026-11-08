@@ -1,8 +1,8 @@
 # 客户销售积分统一规范
 
-本文规定客户积分的唯一计算、入账、冲减和迁移边界。适用于正常销售、批量销售、快速出库、综合查询交易转换与编辑、退库、设备删除、租赁买断、批发、划拨、兼容销售服务和历史数据导入。
+本文规定客户积分的唯一计算、入账、冲减和迁移边界。适用于正常销售、批量销售、快速出库、综合查询交易转换与编辑、退库、设备删除、租赁买断、批发、划拨和历史数据导入。
 
-最后核实日期：2026-11-05。
+最后核实日期：2026-11-06。
 
 ## 积分规则
 
@@ -40,13 +40,11 @@
 | 场景 | 当前入口 | 必须行为 |
 | --- | --- | --- |
 | 正常单台、批量销售 | `backend/src/routes/sales.js` | 每条销售记录独立初始化积分凭据 |
-| 快速出库 | `backend/src/routes/inventory.js` | 零售累计；批发、划拨登记 0 积分凭据 |
+| 快速出库 | `backend/src/controllers/inventory.controller.js` | 零售累计；批发、划拨登记 0 积分凭据 |
 | 综合查询编辑与类型转换 | `backend/src/routes/phones.js` | 售价、全新/二手、客户或交易类型变化时同步差额 |
 | 综合查询退库、设备删除 | `backend/src/repositories/query.repository.js` | 删除销售记录前按 `points_awarded` 冲减 |
 | 租赁买断及买断价格编辑 | `backend/src/routes/rentals.js` | 按零售销售初始化，改价时更新差额 |
 | 批发、供应商划拨 | `backend/src/services/transfer.service.js` | 强制登记 0 积分凭据 |
-| 兼容销售服务 | `backend/src/services/sale.service.js` | 与正常零售相同初始化积分 |
-| 旧产品编辑入口 | `backend/src/repositories/product.repository.js` | 客户、售价或成色变化时调用公共服务 |
 | 历史数据导入 | `backend/src/services/data-import.service.js` | 明确禁止重放积分；已有可核算销售转为 0 时先冲减 |
 
 新增任何会创建、更新或删除 `sales` 的入口时，必须同步加入本表、行为测试和入口审计。只更新 `phones` 状态而不处理销售积分属于事务不完整。

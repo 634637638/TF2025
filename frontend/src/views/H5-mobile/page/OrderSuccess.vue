@@ -146,19 +146,19 @@
     <!-- 操作按钮 -->
     <div class="actions">
       <el-button
-        class="action-btn home"
+        class="tf-button--h5-action tf-button--h5-action-neutral"
         @click="goHome"
       >
         <i class="fas fa-home" /> 返回首页
       </el-button>
       <el-button
-        class="action-btn primary"
+        class="tf-button--h5-action tf-button--h5-action-warning"
         @click="viewOrder"
       >
         <i class="fas fa-receipt" /> 查看订单
       </el-button>
       <el-button
-        class="action-btn success"
+        class="tf-button--h5-action tf-button--h5-action-success"
         @click="contactService"
       >
         <i class="fas fa-phone" /> 联系客服
@@ -496,55 +496,5 @@ onMounted(() => {
   background: linear-gradient(to top, var(--tf-color-surface-soft) 80%, transparent);
   margin: 0 -16px -24px;
   padding: 24px 16px 32px;
-
-  .action-btn {
-    flex: 1;
-    min-width: 0;
-    height: 44px;
-    border-radius: 22px;
-    font-size: var(--tf-type-scale-14);
-    padding: 0 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
-
-    i {
-      font-size: var(--tf-type-scale-13);
-    }
-
-    &.home {
-      background: var(--tf-button-neutral-bg);
-      border: 1px solid var(--tf-button-neutral-border);
-      color: var(--tf-button-tool-color);
-
-      &:hover {
-        background: var(--tf-button-neutral-hover-bg);
-        border-color: var(--tf-button-neutral-hover-border);
-      }
-    }
-
-    &.primary {
-      background: var(--tf-button-warning-bg);
-      border: none;
-      color: var(--tf-button-on-color);
-      box-shadow: var(--tf-button-warning-shadow);
-
-      &:hover {
-        opacity: 0.9;
-      }
-    }
-
-    &.success {
-      background: var(--tf-button-success-bg);
-      border: none;
-      color: var(--tf-button-on-color);
-      box-shadow: var(--tf-button-shadow);
-
-      &:hover {
-        opacity: 0.9;
-      }
-    }
-  }
 }
 </style>

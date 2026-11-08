@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { relative, resolve } from 'node:path'
-import { collectRouteRegistrations, routePolicyKey } from './lib/route-security-analysis.mjs'
+import { collectRouteRegistrations, resolveDelegatedControllerMethodSource, routePolicyKey } from './lib/route-security-analysis.mjs'
 
 const frontendRoot = resolve(import.meta.dirname, '..')
 const projectRoot = resolve(frontendRoot, '..')
@@ -80,10 +80,14 @@ for (const file of routeFiles) {
     if (Object.hasOwn(manualAuthRoutes, key)) {
       reviewedRouteKeys.add(key)
       const requiredMarkers = manualAuthRoutes[key]
+      const delegatedHandlerSource = resolveDelegatedControllerMethodSource(file, source, route)
       if (
         !Array.isArray(requiredMarkers)
         || requiredMarkers.length === 0
-        || requiredMarkers.some((marker) => typeof marker !== 'string' || !route.source.includes(marker))
+        || requiredMarkers.some((marker) => (
+          typeof marker !== 'string'
+          || (!route.source.includes(marker) && !delegatedHandlerSource.includes(marker))
+        ))
       ) {
         findings.push(`${key}: 手动认证路由缺少配置要求的认证校验标记`)
       }

@@ -41,6 +41,7 @@ PC 端数据行使用 `48px`，手机端数据行使用 `40px`；手机端表头
 | `frontend/src/utils/table-layout.ts` | 普通文本、标识字段，以及按权限和行状态自动伸缩的操作列宽度计算 | 否 |
 | `frontend/src/utils/admin-table-drag-scroll.ts` | 统一表格 PC 鼠标拖动横向浏览，手机端保留原生触摸滑动 | 否 |
 | `frontend/src/directives/table-double-tap.ts` | 普通平面表格同一行的手机端双击识别，由全局指令入口注册 | 否 |
+| `frontend/src/composables/useMobileRowDoubleTap.ts` | `el-table` 通过 `@row-click` 记录同一行两次轻触的时间窗检测原语，供行操作菜单、展开行、打开详情复用 | 否 |
 | `frontend/src/utils/format.ts` | 统一金额与货币格式 | 否 |
 | 业务页面 `<style scoped>` | 业务字段、状态徽章、金额、IMEI、特殊交互 | 是，但不得覆盖通用视觉 |
 
@@ -417,6 +418,27 @@ const clearSelection = () => {
 指令由 `src/directives/index.ts` 全局注册，页面提供 `enabled`、`getRowKey(rowIndex)` 和 `onDoubleTap(rowIndex)`。`getRowKey` 必须使用稳定的业务主键，回调读取与表格当前显示顺序完全一致的数据列表；卸载时由指令统一移除监听器。页面不得复制点击计时器或按行维护双击计时 Map。`check:tables` 校验公共注册及两个参考页面的接入，并阻止旧私有计时逻辑回退。
 
 该指令适用于普通平面 Element Plus 表格。树表、虚拟表或由 Element 在前端另行排序/过滤的表格，必须先建立可靠的可见行与业务记录映射，不能直接以原始数组索引接入。电脑端继续使用原生 `row-dblclick` 和已有单元格双击行为；不得将手机端双击扩展为隐式选择或修改操作。
+
+### 手机端行轻触时间窗（`@row-click` 形态）
+
+基础资料、销售、工资等页面依赖 `el-table` 的 `@row-click` 回调，在移动端用“同一行两次轻触”切换行操作菜单、展开行或打开详情。这类形态必须复用公共原语 `useMobileRowDoubleTap()`（`frontend/src/composables/useMobileRowDoubleTap.ts`），由它统一维护“时间窗 + 同一行”检测并在命中后自动重置，默认间隔 `320ms`：
+
+```ts
+import { useMobileRowDoubleTap } from '@/composables/useMobileRowDoubleTap'
+
+const { isDoubleTap, resetDoubleTap } = useMobileRowDoubleTap()
+
+const handleMobileRowTap = (id: number) => {
+  if (!isMobile.value) return
+  // 双击后的具体行为仍由页面决定：切换操作菜单 / 展开行 / 打开详情
+  if (isDoubleTap(String(id))) toggleMobileActions(id)
+}
+```
+
+- 检测键必须使用稳定业务主键；同一表格内存在多个视图（如考勤“全部/我的”两个 scope）时，用 `${scope}:${id}` 之类的组合键区分，避免跨视图误判双击。
+- 该 composable 只做检测，不固化某一类交互；切换视图、离开移动端或关闭行操作时调用 `resetDoubleTap()` 清空记录。
+- 页面不得再手写 `lastTapTimestamp` 之类的时间戳 `ref`、`Date.now() - ... <= 320` 时间窗或私有计时 Map。`check:interactions` 校验此约束并阻止回退。
+- 与 `v-table-double-tap` 指令的分工：指令直接监听 `touchend`/`dblclick` 用于“双击打开详情”的平面表格；本 composable 用于已经以 `@row-click` 驱动、需要按行为族（菜单/展开/详情）自定义的页面。两者都不得扩展为隐式选择。
 
 ### 弹窗表格自适应规则
 

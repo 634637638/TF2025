@@ -31,6 +31,13 @@ class SupplierRepository extends BaseRepository {
     super('suppliers')
   }
 
+  updateSortOrder(connection, item) {
+    return connection.execute(
+      'UPDATE suppliers SET sort_order = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      [item.sort_order, item.id]
+    )
+  }
+
   async getSuppliersWithPagination(filters = {}, options = {}) {
     const { page = 1, page_size = 100, name, status } = filters
     const validPage = Math.max(Number.parseInt(page, 10) || 1, 1)

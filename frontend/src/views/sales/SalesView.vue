@@ -379,7 +379,7 @@ import { useNotification } from '@/composables/useNotification'
 import { useImportExport } from '@/composables/useImportExport'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { useRefreshData } from '@/composables/useRefreshData'
-import { useLoadingState } from '@/composables'
+import { useLoadingState, useDebounce } from '@/composables'
 import { fieldPermissions } from '@/composables/useFieldPermissions'
 import { useAuthStore } from '@/stores/auth'
 import SalesStatsCards from './page/SalesStatsCards.vue'
@@ -528,18 +528,6 @@ const submitting = ref(false)
 
 // 搜索相关状态
 const searchExpanded = ref(false) // 搜索区域展开状态（移动端默认折叠）
-
-// 防抖函数，避免快速重复点击
-const debounceSubmit = <Args extends unknown[]>(
-  fn: (..._args: Args) => void,
-  delay = 500
-): ((..._args: Args) => void) => {
-  let timeoutId: ReturnType<typeof setTimeout> | null = null
-  return (...args: Args): void => {
-    if (timeoutId) clearTimeout(timeoutId)
-    timeoutId = setTimeout(() => fn(...args), delay)
-  }
-}
 
 // 全局键盘事件处理，防止提交过程中的Enter键重复提交
 const handleGlobalKeydown = (event: KeyboardEvent): boolean | void => {
@@ -1006,15 +994,9 @@ const loadFiltersFromStorage = () => {
 
 
 // 防抖加载可销售手机列表（用于搜索输入框）
-let loadPhonesDebounceTimer: ReturnType<typeof setTimeout> | null = null
-const debounceLoadAvailablePhones = () => {
-  if (loadPhonesDebounceTimer) {
-    clearTimeout(loadPhonesDebounceTimer)
-  }
-  loadPhonesDebounceTimer = setTimeout(() => {
-    loadAvailablePhones(false, true, false)
-  }, 500) // 500ms 防抖延迟
-}
+const { debouncedFn: debounceLoadAvailablePhones } = useDebounce(() => {
+  loadAvailablePhones(false, true, false)
+}, 500) // 500ms 防抖延迟
 
 // 加载统计数据（今日出库、平均利润率等）
 const loadSalesStats = async () => {
@@ -1558,8 +1540,8 @@ const calculateProfit = () => {
 
 
 // 防抖包装的提交函数
-const debouncedSubmitSale = debounceSubmit(handleSale, 500)
-const debouncedSubmitBatchSale = debounceSubmit(submitBatchSale, 500)
+const { debouncedFn: debouncedSubmitSale } = useDebounce(handleSale, 500)
+const { debouncedFn: debouncedSubmitBatchSale } = useDebounce(submitBatchSale, 500)
 
 // 编辑手机信息
 const editPhone = async (phone: Phone) => {
@@ -2055,7 +2037,6 @@ onUnmounted(() => {
   // 清理防抖定时器
   disposeSalesCustomers()
   disposeInventorySummary()
-  if (loadPhonesDebounceTimer) clearTimeout(loadPhonesDebounceTimer)
   if (salesBaseDataWarmupTimer) clearTimeout(salesBaseDataWarmupTimer)
 })
 </script>

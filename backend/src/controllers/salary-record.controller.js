@@ -5,7 +5,7 @@ const {
   getSalaryAccessScope,
   resolveScopedTargetId,
   canAccessScopedTarget
-} = require('../services/accessControl.service')
+} = require('../services/access-control.service')
 
 /**
  * 工资记录控制器

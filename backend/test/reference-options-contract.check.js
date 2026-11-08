@@ -12,10 +12,12 @@ test('表单基础选项由公共服务提供且商城兼容入口已删除', ()
   assert.equal(typeof service.listTemplateReferenceOptions, 'function')
 
   const preordersRoute = fs.readFileSync(path.join(root, 'src/routes/preorders.js'), 'utf8')
+  const preorderReadService = fs.readFileSync(path.join(root, 'src/services/preorder-read.service.js'), 'utf8')
   const shopRoute = fs.readFileSync(path.join(root, 'src/routes/shop.js'), 'utf8')
   for (const resource of ['brands', 'models', 'colors', 'memories']) {
-    assert.match(preordersRoute, new RegExp(`listTemplateReferenceOptions\\('${resource}'`))
+    assert.match(preorderReadService, new RegExp(`listReferenceOptions\\('${resource}'`))
   }
+  assert.match(preordersRoute, /preorderReadController\.options\.bind\(preorderReadController\)/)
   assert.doesNotMatch(shopRoute, /\/base-data\/(?:brands|models|colors|memories)/)
   assert.doesNotMatch(shopRoute, /listTemplateReferenceOptions/)
 })
@@ -35,6 +37,7 @@ test('商城模板基础选项调用统一资源路由', () => {
 test('品牌型号联动只使用规范型号资源接口', () => {
   const referenceOptions = fs.readFileSync(path.join(repoRoot, 'frontend/src/services/reference-options.ts'), 'utf8')
   const modelsRoute = fs.readFileSync(path.join(root, 'src/routes/models.js'), 'utf8')
+  const modelsController = fs.readFileSync(path.join(root, 'src/controllers/model.controller.js'), 'utf8')
   const queryRoute = fs.readFileSync(path.join(root, 'src/routes/query.js'), 'utf8')
   const brandsRoute = fs.readFileSync(path.join(root, 'src/routes/brands.js'), 'utf8')
   const routesIndex = fs.readFileSync(path.join(root, 'src/routes/index.js'), 'utf8')
@@ -47,7 +50,8 @@ test('品牌型号联动只使用规范型号资源接口', () => {
 
   assert.match(modelsRoute, /requireAnyPermission\(\['models:view', 'brands:view'/)
   assert.match(modelsRoute, /'query:view'/)
-  assert.match(modelsRoute, /active_only === 'true'[\s\S]{0,220}listModelsByBrand\(/)
+  assert.match(modelsRoute, /modelController\.list\.bind\(modelController\)/)
+  assert.match(modelsController, /active_only === 'true'[\s\S]{0,220}this\.modelsByBrand\(/)
   assert.doesNotMatch(queryRoute, /router\.get\(\s*['"]\/models['"]/)
   assert.doesNotMatch(brandsRoute, /router\.get\(\s*['"]\/:brandId\/models['"]/)
   assert.doesNotMatch(routesIndex, /router\.get\(\s*['"]\/phones\/(?:brands|models|colors|memories)['"]/)

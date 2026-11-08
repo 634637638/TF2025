@@ -229,6 +229,7 @@ import { computed, type PropType } from 'vue'
 import MobileDialog from '@/components/MobileDialog.vue'
 import { canViewAccessoryField, type AccessoryFieldName } from './accessory-field-permissions'
 import { formatDateTime as formatGlobalDateTime } from '@/utils/format'
+import { TIME_FORMATS } from '@/utils/time'
 
 interface AccessoryDetailItem {
   id?: number
@@ -313,14 +314,7 @@ const getStockStatusClass = () => {
 }
 
 // 格式化日期时间
-const formatDateTime = (dateTime: string | null) => {
-  if (!dateTime) return '-'
-  try {
-    return formatGlobalDateTime(dateTime, 'YYYY-MM-DD HH:mm')
-  } catch (error) {
-    return '-'
-  }
-}
+const formatDateTime = (dateTime: string | null) => formatGlobalDateTime(dateTime, TIME_FORMATS.DATETIME_MINUTE)
 
 // 关闭模态框
 const closeModal = () => {

@@ -98,6 +98,56 @@ for (const relativeFile of requiredMediaPreviewFiles) {
 if (/class="mobile-dialog-footer"/.test(mobileDialogSource)) {
   findings.push('src/components/MobileDialog.vue 自定义 footer 不得自动包裹 .mobile-dialog-footer；底部只能保留一个 .el-dialog__footer 外壳')
 }
+
+// P0-B: 弹窗宽度档位必须由 _dialog.scss 统一定义，页面只能引用档位 class。
+const dialogWidthTiers = [
+  ['crud-dialog-sm', '500'],
+  ['crud-dialog-md', '600'],
+  ['crud-dialog-md-lg', '700'],
+  ['crud-dialog-lg', '800'],
+]
+for (const [cls, px] of dialogWidthTiers) {
+  const tierRule = new RegExp(`\\.${cls}\\s*\\{[^}]*--el-dialog-width:\\s*${px}px[^}]*--dialog-max-width:\\s*${px}px`, 's')
+  if (!tierRule.test(dialogStyleSource)) {
+    findings.push(`styles/components/_dialog.scss 必须定义 .${cls} 同时设置 --el-dialog-width 与 --dialog-max-width 为 ${px}px，弹窗档位宽度只能在公共样式维护`)
+  }
+}
+
+// 已归一的表单/详情弹窗必须引用档位 class，且不得再声明页面级 --dialog-max-width 补丁。
+const tierNormalizedDialogFiles = [
+  'src/views/attendance/AttendanceView.vue',
+  'src/views/customers/CustomersView.vue',
+  'src/views/employees/EmployeesView.vue',
+  'src/components/PublishToH5Modal.vue',
+]
+for (const relativeFile of tierNormalizedDialogFiles) {
+  const source = readFileSync(join(root, relativeFile), 'utf8')
+  if (!/\bcrud-dialog-(?:sm|md|md-lg|lg)\b/.test(source)) {
+    findings.push(`${relativeFile} 的标准弹窗宽度必须使用 crud-dialog-* 档位 class`)
+  }
+  if (/--dialog-max-width\s*:/.test(source)) {
+    findings.push(`${relativeFile} 不得再声明页面级 --dialog-max-width，档位宽度由 _dialog.scss 统一管理`)
+  }
+}
+
+// salary 常规表单/详情弹窗必须归一到就近档位并移除独立 width；宽表/自适应弹窗保留自身宽度。
+const salaryNormalizedDialogs = {
+  'src/views/salary/page/SalaryEmployeeTemplateDialog.vue': 'crud-dialog-sm',
+  'src/views/salary/page/SalarySettleDialog.vue': 'crud-dialog-sm',
+  'src/views/salary/page/SalaryAttendanceFormDialog.vue': 'crud-dialog-md-lg',
+  'src/views/salary/page/SalaryDetailDialog.vue': 'crud-dialog-md-lg',
+  'src/views/salary/page/SalaryTemplateFormDialog.vue': 'crud-dialog-lg',
+}
+for (const [relativeFile, tier] of Object.entries(salaryNormalizedDialogs)) {
+  const source = readFileSync(join(root, relativeFile), 'utf8')
+  const dialogTag = source.match(/<MobileDialog\b[^>]*>/)?.[0] || ''
+  if (!dialogTag.includes(tier)) {
+    findings.push(`${relativeFile} 必须使用 ${tier} 档位 class 归一弹窗宽度`)
+  }
+  if (/\bwidth\s*=/.test(dialogTag)) {
+    findings.push(`${relativeFile} 归一档位后不得保留页面独立 width`)
+  }
+}
 if (!/@pointerdown="handleOverlayPointerDown"/.test(mobileDialogSource)
   || !/@pointerup="handleOverlayPointerUp"/.test(mobileDialogSource)
   || !/@pointercancel="resetOverlayPointer"/.test(mobileDialogSource)

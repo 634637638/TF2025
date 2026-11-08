@@ -36,11 +36,13 @@ test('无分页人员请求有审计标记，分页或关键词查询不告警',
 
 test('提醒接收人保留用途授权并支持关键词分页', () => {
   const route = readBackend('src/routes/reminders.js')
+  const controller = readBackend('src/controllers/reminder.controller.js')
   const service = readBackend('src/services/reminder.service.js')
   const page = readFrontend('views/reminders/ReminderView.vue')
 
-  assert.match(route, /router\.get\('\/users',[\s\S]{0,500}requireAnyPermission\(\['reminders:create', 'reminders:manage'\]\)[\s\S]{0,220}getUsers\(req\.query\)/)
-  assert.match(route, /result\.pagination \? \{ pagination: result\.pagination \} : \{\}/)
+  assert.match(route, /router\.get\('\/users', requireAnyPermission\(\['reminders:create', 'reminders:manage'\]\), reminderController\.requireVisibleField\('target_info\.target_users'\), auditUnpaginatedPersonnelSearch\('reminders-users'\), reminderController\.getUsers\.bind/)
+  assert.match(controller, /this\.service\.getUsers\(req\.query\)/)
+  assert.match(controller, /result\.pagination \? \{ pagination: result\.pagination \} : \{\}/)
   assert.match(service, /\(name LIKE \? OR username LIKE \? OR phone LIKE \?\)/)
   assert.match(service, /LIMIT \? OFFSET \?/)
   assert.match(service, /total_pages:[\s\S]{0,100}has_next:[\s\S]{0,100}has_prev:/)
@@ -51,14 +53,18 @@ test('提醒接收人保留用途授权并支持关键词分页', () => {
 
 test('租赁销售员远程查询复用公共操作员服务并保持租赁字段权限', () => {
   const route = readBackend('src/routes/rentals.js')
+  const controller = readBackend('src/controllers/rental-customer.controller.js')
+  const service = readBackend('src/services/rental-customer.service.js')
   const page = readFrontend('views/rentals/RentalsView.vue')
   const employeeRoute = readBackend('src/routes/users.js')
   const reminderRoute = readBackend('src/routes/reminders.js')
 
-  assert.match(route, /requireAnyPermission\(\['rentals:view', 'rentals:create'\]\)[\s\S]{0,180}getRentalHiddenFields\(req\)/)
-  assert.match(route, /require\('\.\.\/services\/operator-search\.service'\)/)
-  assert.match(route, /searchOperators\(\{[\s\S]{0,240}keyword: req\.query\.keyword[\s\S]{0,160}page_size: req\.query\.page_size/)
-  assert.match(route, /operatorResult\.pagination \? \{ pagination: operatorResult\.pagination \} : \{\}/)
+  assert.match(route, /router\.get\('\/sales-options', requireAnyPermission\(\['rentals:view', 'rentals:create'\]\), auditUnpaginatedPersonnelSearch\('rentals-sales-options'\), rentalCustomerController\.getSalesOptions\.bind/)
+  assert.match(controller, /this\.service\.getSalesOptions\(\{ user: req\.user, query: req\.query \}\)/)
+  assert.match(controller, /result\.pagination \? \{ pagination: result\.pagination \} : \{\}/)
+  assert.match(service, /require\('\.\/operator-search\.service'\)/)
+  assert.match(service, /operatorSearch\(\{[\s\S]{0,240}keyword: query\.keyword[\s\S]{0,160}page_size: query\.page_size/)
+  assert.match(service, /getUserFieldPermissions\(userId, MODULE_KEY\)/)
   assert.match(page, /remote[\s\S]{0,100}reserve-keyword[\s\S]{0,100}remote-method="searchSalesOperators"/)
   assert.match(page, /page:1,page_size:20/)
   assert.match(page, /selectedSalesOperator\.value\s*=\s*row\.sale_operator_id/)

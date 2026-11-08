@@ -13,6 +13,42 @@ class CustomerRepository extends BaseRepository {
     super('customers')
   }
 
+  async createCustomerProfile(customerData, memberNumber) {
+    const [result] = await this.executePrepared(`
+      INSERT INTO customers (
+        name, gender, phone, email, birthday, id_card,
+        address, city, province, customer_type,
+        remarks, wechat, qq, apple_id, status, member_number, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, NOW(), NOW())
+    `, [
+      customerData.name,
+      customerData.gender,
+      customerData.phone,
+      customerData.email,
+      customerData.birthday,
+      customerData.id_card,
+      customerData.address,
+      customerData.city,
+      customerData.province,
+      customerData.customer_type,
+      customerData.remarks,
+      customerData.wechat,
+      customerData.qq,
+      customerData.apple_id,
+      memberNumber
+    ])
+    const [rows] = await this.executePrepared(
+      'SELECT id, name, gender, phone, email, birthday, id_card, address, city, province, customer_type, remarks, wechat, qq, apple_id, member_number FROM customers WHERE id = ?',
+      [result.insertId]
+    )
+    return rows[0]
+  }
+
+  async getCustomerColumns() {
+    const columns = await this.executeQuery('SHOW COLUMNS FROM customers')
+    return new Set(columns.map(column => column.Field).filter(Boolean))
+  }
+
   /**
    * 创建客户
    * @param {Object} customerData - 客户数据
@@ -205,6 +241,153 @@ class CustomerRepository extends BaseRepository {
     }
   }
 
+  async getCustomerPurchases(customerId, { start_date, end_date, page_size, offset }) {
+    const conditions = ['s.customer_id = ?']
+    const params = [customerId]
+    if (start_date) {
+      conditions.push('s.sale_time >= ?')
+      params.push(`${start_date} 00:00:00`)
+    }
+    if (end_date) {
+      conditions.push('s.sale_time <= ?')
+      params.push(`${end_date} 23:59:59`)
+    }
+
+    const whereClause = `WHERE ${conditions.join(' AND ')}`
+    const purchases = await this.executeQuery(`
+      SELECT
+        p.id as phone_id,
+        p.imei,
+        p.serial_number,
+        p.memory_id,
+        b.name as brand,
+        m.name as model,
+        c.name as color,
+        COALESCE(mem.size, '-') as memory,
+        s.purchase_cost,
+        s.sale_price,
+        s.sale_time,
+        p.is_new,
+        p.status,
+        s.id as sale_id,
+        s.sale_type,
+        s.payment_method,
+        s.created_at as sale_created_at,
+        u.name as salesperson_name
+      FROM sales s
+      INNER JOIN phones p ON s.phone_id = p.id
+      LEFT JOIN brands b ON p.brand_id = b.id
+      LEFT JOIN models m ON p.model_id = m.id
+      LEFT JOIN colors c ON p.color_id = c.id
+      LEFT JOIN memories mem ON p.memory_id = mem.id
+      LEFT JOIN users u ON s.operator_id = u.id
+      ${whereClause}
+      ORDER BY s.sale_time DESC, s.id DESC
+      LIMIT ? OFFSET ?
+    `, [...params, page_size, offset])
+    const [countResult] = await this.executeQuery(`
+      SELECT COUNT(*) as total
+      FROM sales s
+      INNER JOIN phones p ON s.phone_id = p.id
+      ${whereClause}
+    `, params)
+
+    return { purchases, total: countResult.total }
+  }
+
+  async listCustomers({ page, page_size, sort_by, sort_order, filters }) {
+    const conditions = []
+    const params = []
+    const exactFilters = ['customer_type', 'vip_level', 'gender']
+    for (const field of exactFilters) {
+      if (filters[field]) {
+        conditions.push(`c.${field} = ?`)
+        params.push(filters[field])
+      }
+    }
+    for (const field of ['city', 'province']) {
+      if (filters[field]) {
+        conditions.push(`c.${field} LIKE ?`)
+        params.push(`%${filters[field]}%`)
+      }
+    }
+    if (filters.register_date_start) {
+      conditions.push('c.register_date >= ?')
+      params.push(`${filters.register_date_start} 00:00:00`)
+    }
+    if (filters.register_date_end) {
+      conditions.push('c.register_date <= ?')
+      params.push(`${filters.register_date_end} 23:59:59`)
+    }
+    if (filters.status === '') {
+      // An empty status explicitly requests all records, including disabled customers.
+    } else if (filters.status !== undefined) {
+      conditions.push('c.status = ?')
+      params.push(parseInt(filters.status) === 0 ? 0 : 1)
+    } else {
+      conditions.push('c.status = ?')
+      params.push(1)
+    }
+
+    if (filters.search) {
+      const requestedFields = filters.search_fields
+        ? String(filters.search_fields).split(',').map(field => field.trim())
+        : ['name', 'phone', 'email', 'id_card', 'member_number', 'company_name', 'contact_person', 'address', 'remarks']
+      const fieldMap = {
+        name: 'c.name',
+        phone: 'c.phone',
+        email: 'c.email',
+        id_card: 'c.id_card',
+        member_number: 'c.member_number',
+        company_name: 'c.name',
+        contact_person: 'c.name',
+        address: 'c.address',
+        remark: 'c.remarks',
+        remarks: 'c.remarks'
+      }
+      const selectedFields = requestedFields.filter(field => Object.prototype.hasOwnProperty.call(fieldMap, field))
+      if (selectedFields.length > 0) {
+        conditions.push(`(${selectedFields.map(field => `${fieldMap[field]} LIKE ?`).join(' OR ')})`)
+        params.push(...selectedFields.map(() => `%${filters.search}%`))
+      }
+    }
+
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
+    const sortableFields = new Set(['id', 'name', 'created_at', 'register_date', 'last_purchase_date'])
+    const orderField = sortableFields.has(String(sort_by)) ? String(sort_by) : 'id'
+    const orderDirection = String(sort_order).toLowerCase() === 'asc' ? 'ASC' : 'DESC'
+    const offset = (page - 1) * page_size
+    const customers = await this.executeQuery(`
+      SELECT c.id, c.name, c.phone, c.email, c.customer_type, c.vip_level, c.gender,
+             c.city, c.province, c.balance, c.points, c.status, c.remarks, c.created_at, c.updated_at,
+             c.member_number, c.wechat, c.qq, c.apple_id, c.id_card, c.address,
+             COALESCE(sales_total.total_amount, 0) as total_spent,
+             COALESCE(sales_count.purchase_count, 0) as purchase_count,
+             c.last_purchase_date
+      FROM customers c
+      LEFT JOIN (
+        SELECT customer_id, COUNT(*) as purchase_count
+        FROM sales
+        GROUP BY customer_id
+      ) sales_count ON c.id = sales_count.customer_id
+      LEFT JOIN (
+        SELECT s.customer_id, SUM(s.sale_price) as total_amount
+        FROM sales s
+        GROUP BY s.customer_id
+      ) sales_total ON c.id = sales_total.customer_id
+      ${whereClause}
+      ORDER BY c.${orderField} ${orderDirection}
+      LIMIT ? OFFSET ?
+    `, [...params, page_size, offset])
+    const [countResult] = await this.executeQuery(`
+      SELECT COUNT(*) as total
+      FROM customers c
+      ${whereClause}
+    `, params)
+
+    return { customers, total: countResult.total }
+  }
+
   /**
    * 更新客户信息
    * @param {number} id - 客户ID
@@ -336,6 +519,169 @@ class CustomerRepository extends BaseRepository {
    */
   async findByPhone(phone) {
     return await this.findCustomerByPhone(phone)
+  }
+
+  async updateVipLevel(id, vipLevel) {
+    const [result] = await this.executeQuery(
+      'UPDATE customers SET vip_level = ?, updated_at = NOW() WHERE id = ? AND status = 1',
+      [vipLevel, id]
+    )
+    if (!result?.affectedRows) return null
+
+    const rows = await this.executeQuery(
+      'SELECT id, name, phone, customer_type, vip_level, status, updated_at FROM customers WHERE id = ?',
+      [id]
+    )
+    return rows[0] || null
+  }
+
+  async getStatistics({
+    customer_type,
+    vip_level,
+    search,
+    search_fields,
+    register_date_start,
+    register_date_end,
+    status
+  } = {}) {
+    const conditions = []
+    const params = []
+
+    if (customer_type) {
+      conditions.push('c.customer_type = ?')
+      params.push(customer_type)
+    }
+    if (vip_level) {
+      conditions.push('c.vip_level = ?')
+      params.push(vip_level)
+    }
+    if (register_date_start) {
+      conditions.push('c.register_date >= ?')
+      params.push(`${register_date_start} 00:00:00`)
+    }
+    if (register_date_end) {
+      conditions.push('c.register_date <= ?')
+      params.push(`${register_date_end} 23:59:59`)
+    }
+    if (status !== '') {
+      if (status !== undefined) {
+        conditions.push('c.status = ?')
+        params.push(parseInt(status) === 0 ? 0 : 1)
+      } else {
+        conditions.push('c.status = ?')
+        params.push(1)
+      }
+    }
+    if (search) {
+      const fieldMap = {
+        name: 'c.name', phone: 'c.phone', email: 'c.email', id_card: 'c.id_card',
+        member_number: 'c.member_number', company_name: 'c.name',
+        contact_person: 'c.name', address: 'c.address', remark: 'c.remarks', remarks: 'c.remarks'
+      }
+      const fields = String(search_fields || 'name,phone,email,id_card,member_number,company_name,contact_person,address,remarks')
+        .split(',')
+        .map(field => fieldMap[field.trim()])
+        .filter(Boolean)
+      if (fields.length) {
+        conditions.push(`(${fields.map(field => `${field} LIKE ?`).join(' OR ')})`)
+        params.push(...fields.map(() => `%${search}%`))
+      }
+    }
+
+    const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''
+    const [totalRows, activeRows, newRows, premiumRows] = await Promise.all([
+      this.executeQuery(`SELECT COUNT(*) AS total FROM customers c ${whereClause}`, params),
+      this.executeQuery(`
+        SELECT COUNT(DISTINCT CASE WHEN s.id IS NOT NULL THEN c.id END) AS active
+        FROM customers c LEFT JOIN sales s ON c.id = s.customer_id ${whereClause}
+      `, params),
+      this.executeQuery(`
+        SELECT COUNT(*) AS new_customers FROM customers c
+        ${whereClause} ${whereClause ? 'AND' : 'WHERE'} c.created_at >= DATE_FORMAT(CURDATE(), '%Y-%m-01')
+      `, params),
+      this.executeQuery(`
+        SELECT COUNT(*) AS premium FROM customers c
+        ${whereClause} ${whereClause ? 'AND' : 'WHERE'} c.vip_level IN ('silver', 'gold', 'platinum')
+      `, params)
+    ])
+
+    return {
+      total_customers: Number(totalRows[0]?.total) || 0,
+      active_customers: Number(activeRows[0]?.active) || 0,
+      new_customers: Number(newRows[0]?.new_customers) || 0,
+      premium_customers: Number(premiumRows[0]?.premium) || 0
+    }
+  }
+
+  async getStatisticsOverview({ start_date, end_date } = {}) {
+    const conditions = ['c.status = 1']
+    const params = []
+    const startDate = typeof start_date === 'string' ? start_date.trim() : ''
+    const endDate = typeof end_date === 'string' ? end_date.trim() : ''
+    if (startDate) {
+      conditions.push('c.created_at >= ?')
+      params.push(`${startDate} 00:00:00`)
+    }
+    if (endDate) {
+      conditions.push('c.created_at <= ?')
+      params.push(`${endDate} 23:59:59`)
+    }
+    const whereClause = conditions.join(' AND ')
+    const rows = await this.executeQuery(`
+      SELECT
+        COUNT(*) AS total,
+        SUM(c.customer_type = 'individual') AS individuals,
+        SUM(c.customer_type = 'business') AS business,
+        SUM(c.vip_level = 'normal') AS normal_vip,
+        SUM(c.vip_level = 'silver') AS silver_vip,
+        SUM(c.vip_level = 'gold') AS gold_vip,
+        SUM(c.vip_level = 'platinum') AS platinum_vip,
+        SUM(c.gender = 'male') AS male,
+        SUM(c.gender = 'female') AS female,
+        SUM(c.gender IS NULL OR c.gender = '') AS unknown_gender,
+        SUM(c.blacklist = 1) AS blacklisted,
+        COALESCE(SUM(c.total_spent), 0) AS total_revenue,
+        COALESCE(AVG(c.total_spent), 0) AS avg_revenue,
+        SUM(c.created_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)) AS new_customers
+      FROM customers c
+      WHERE ${whereClause}
+    `, params)
+    const cityRows = await this.executeQuery(`
+      SELECT COALESCE(NULLIF(c.city, ''), 'unknown') AS city, COUNT(*) AS count
+      FROM customers c
+      WHERE ${whereClause}
+      GROUP BY COALESCE(NULLIF(c.city, ''), 'unknown')
+    `, params)
+    const provinceRows = await this.executeQuery(`
+      SELECT COALESCE(NULLIF(c.province, ''), 'unknown') AS province, COUNT(*) AS count
+      FROM customers c
+      WHERE ${whereClause}
+      GROUP BY COALESCE(NULLIF(c.province, ''), 'unknown')
+    `, params)
+    const row = rows[0] || {}
+
+    return {
+      total: Number(row.total) || 0,
+      individuals: Number(row.individuals) || 0,
+      business: Number(row.business) || 0,
+      by_vip_level: {
+        normal: Number(row.normal_vip) || 0,
+        silver: Number(row.silver_vip) || 0,
+        gold: Number(row.gold_vip) || 0,
+        platinum: Number(row.platinum_vip) || 0
+      },
+      by_gender: {
+        male: Number(row.male) || 0,
+        female: Number(row.female) || 0,
+        unknown: Number(row.unknown_gender) || 0
+      },
+      blacklisted: Number(row.blacklisted) || 0,
+      total_revenue: Number(row.total_revenue) || 0,
+      avg_revenue: Number(row.avg_revenue) || 0,
+      new_customers: Number(row.new_customers) || 0,
+      by_city: Object.fromEntries(cityRows.map(item => [item.city, Number(item.count) || 0])),
+      by_province: Object.fromEntries(provinceRows.map(item => [item.province, Number(item.count) || 0]))
+    }
   }
 
   /**

@@ -21,7 +21,7 @@ if (/fetch\s*\(\s*formatImageUrl/.test(read('frontend/src/views/subsidy/componen
 }
 mustContain('frontend/src/views/guide/GuidePublicView.vue', /file_mime/, '导航文件类型未使用服务端 MIME 字段')
 mustContain('backend/src/utils/guide-file-access.js', /createGuideFileAccess/, '导航文件未生成短时签名访问地址')
-mustContain('backend/src/routes/guide-public.js', /verifyGuideFileToken/, '导航文件公开接口缺少签名校验')
+mustContain('backend/src/controllers/guide-public.controller.js', /record\.requires_token\s*&&\s*!this\.verifyFileToken\(id,\s*expires,\s*signature\)/, '导航文件 controller 未对密码分类文件执行短时签名校验')
 mustContain('backend/src/app.js', /app\.use\('\/uploads',\s*uploadStaticAccess\)/, '静态 uploads 未挂载统一私有目录访问控制')
 mustContain('backend/src/middleware/upload-static-access.js', /PRIVATE_UPLOAD_ROOTS[\s\S]*['"]guide['"]/, '静态 uploads 私有目录清单未包含 guide')
 mustContain('docs/frontend/download-security-standard.md', /页面台账/, '下载规范未要求页面台账登记')

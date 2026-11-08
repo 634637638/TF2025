@@ -458,7 +458,7 @@ import type { CustomerAnalyticsProps } from '@/types/component'
 import { useAnalyticsFieldVisibility } from './useAnalyticsFieldVisibility'
 import { logger } from '@/utils/logger'
 import { getRequestErrorMessage } from '@/utils/api-response'
-import { formatDate as formatGlobalDate } from '@/utils/format'
+import { formatDate } from '@/utils/format'
 import { TimeUtil } from '@/utils/time'
 
 const props = withDefaults(defineProps<CustomerAnalyticsProps>(), {
@@ -618,10 +618,6 @@ const formatMoney = (amount: number): string => {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
   })
-}
-
-const formatDate = (date: string): string => {
-  return formatGlobalDate(date)
 }
 
 const getSegmentTagType = (segment: string): 'success' | 'warning' | 'info' | 'primary' | 'danger' => {

@@ -162,13 +162,15 @@
     </el-table>
 
     <template #footer>
-      <el-button
-        type="info"
-        @click="emit('update:modelValue', false)"
-      >
-        <i class="fas fa-times" />
-        关闭
-      </el-button>
+      <div class="tf-dialog-actions">
+        <el-button
+          type="info"
+          @click="emit('update:modelValue', false)"
+        >
+          <i class="fas fa-times" />
+          关闭
+        </el-button>
+      </div>
     </template>
   </MobileDialog>
 </template>

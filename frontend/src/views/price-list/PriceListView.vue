@@ -923,19 +923,21 @@
           </el-form-item>
         </el-form>
         <template #footer>
-          <el-button
-            type="default"
-            @click="showEditDialog = false"
-          >
-            取消
-          </el-button>
-          <el-button
-            type="primary"
-            :loading="saving"
-            @click="handleSave"
-          >
-            保存
-          </el-button>
+          <div class="tf-dialog-actions">
+            <el-button
+              type="default"
+              @click="showEditDialog = false"
+            >
+              取消
+            </el-button>
+            <el-button
+              type="primary"
+              :loading="saving"
+              @click="handleSave"
+            >
+              保存
+            </el-button>
+          </div>
         </template>
       </MobileDialog>
 
@@ -973,16 +975,18 @@
           </el-form-item>
         </el-form>
         <template #footer>
-          <el-button @click="showBatchSourceDialog = false">
-            取消
-          </el-button>
-          <el-button
-            type="primary"
-            :loading="batchSourceSaving"
-            @click="handleBatchSourceSave"
-          >
-            保存
-          </el-button>
+          <div class="tf-dialog-actions">
+            <el-button @click="showBatchSourceDialog = false">
+              取消
+            </el-button>
+            <el-button
+              type="primary"
+              :loading="batchSourceSaving"
+              @click="handleBatchSourceSave"
+            >
+              保存
+            </el-button>
+          </div>
         </template>
       </MobileDialog>
 
@@ -1224,12 +1228,14 @@
         </div>
 
         <template #footer>
-          <el-button
-            type="default"
-            @click="showConfigDialog = false"
-          >
-            关闭
-          </el-button>
+          <div class="tf-dialog-actions">
+            <el-button
+              type="default"
+              @click="showConfigDialog = false"
+            >
+              关闭
+            </el-button>
+          </div>
         </template>
       </MobileDialog>
 
@@ -1569,6 +1575,7 @@ import { extractResponseData } from '@/utils/api-response'
 import { normalizePriceListRow } from './price-list-row'
 import { useImportExport } from '@/composables/useImportExport'
 import { usePagePermissions } from '@/composables/usePagePermissions'
+import { useMobileRowDoubleTap } from '@/composables/useMobileRowDoubleTap'
 import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { PageHeader, PermissionGate } from '@/components/base'
 import Pagination from '@/components/Pagination.vue'
@@ -1579,11 +1586,11 @@ import ImportExportActions from '@/components/business/ImportExportActions.vue'
 import { canAccessRoutePath } from '@/constants/routePermissions'
 import { TIME_FORMATS, TimeUtil } from '@/utils/time'
 import { logger } from '@/utils/logger'
-import { useLoadingState } from '@/composables'
+import { useLoadingState, useDebounce } from '@/composables'
 import { getAdaptiveActionColumnWidth, getTextColumnMinWidth } from '@/utils/table-layout'
 import { isCurrentMobileViewport } from '@/utils/device-detection'
 import { sortOptionsByOrder } from '@/utils/option-sort'
-import { formatAmount } from '@/utils/format'
+import { formatAmount, formatDateTime } from '@/utils/format'
 import { getCachedBrands, getCachedColors, getCachedMemories, getModels } from '@/services/reference-options'
 import type {
   PriceHistoryRecord,
@@ -1802,8 +1809,7 @@ const inventoryPagination = reactive({
 const currentInventoryItem = ref<PriceListRow | null>(null)
 const isMobile = ref(false)
 const mobileActionRowId = ref<string | null>(null)
-const lastTappedRowId = ref<string | null>(null)
-const lastTapTimestamp = ref(0)
+const { isDoubleTap, resetDoubleTap } = useMobileRowDoubleTap()
 
 type PriceListAdaptiveField =
   | 'brand_name'
@@ -1967,8 +1973,7 @@ const updateMobileState = () => {
   isMobile.value = isCurrentMobileViewport()
   if (!isMobile.value) {
     mobileActionRowId.value = null
-    lastTappedRowId.value = null
-    lastTapTimestamp.value = 0
+    resetDoubleTap()
   }
 }
 
@@ -1990,17 +1995,7 @@ const handleMobileExpandChange = (row: PriceListRow, expandedRows: PriceListRow[
 const handleMobileRowTap = (id: number | string | null) => {
   if (!isMobile.value || !id) return
   const rowKey = String(id)
-
-  const now = Date.now()
-  if (lastTappedRowId.value === rowKey && now - lastTapTimestamp.value <= 320) {
-    toggleMobileActions(rowKey)
-    lastTappedRowId.value = null
-    lastTapTimestamp.value = 0
-    return
-  }
-
-  lastTappedRowId.value = rowKey
-  lastTapTimestamp.value = now
+  if (isDoubleTap(rowKey)) toggleMobileActions(rowKey)
 }
 
 // 获取价格列表（从在库商品中获取，只要全新机器）
@@ -2103,15 +2098,9 @@ const handlePriceListImportChange = async (event: Event) => {
 }
 
 // 防抖搜索
-let debounceTimer: ReturnType<typeof setTimeout> | null = null
-const debounceSearch = () => {
-  if (debounceTimer) {
-    clearTimeout(debounceTimer)
-  }
-  debounceTimer = setTimeout(() => {
-    handleSearch()
-  }, 300)
-}
+const { debouncedFn: debounceSearch } = useDebounce(() => {
+  handleSearch()
+}, 300)
 
 // 搜索
 const handleSearch = () => {
@@ -3220,13 +3209,6 @@ const getChangeReasonTagType = (reason: string): 'success' | 'warning' | 'info' 
     sync: 'info'
   }
   return tagTypes[reason] || 'info'
-}
-
-// 格式化时间
-const formatDateTime = (dateStr: string) => {
-  if (!dateStr) return '-'
-  const parsed = TimeUtil.parse(dateStr)
-  return parsed?.isValid() ? TimeUtil.format(parsed, TIME_FORMATS.DATETIME) : '-'
 }
 
 // 格式化数据源URL - 精简显示

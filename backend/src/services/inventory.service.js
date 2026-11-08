@@ -1,456 +1,372 @@
-/**
- * 库存业务逻辑层
- * 处理所有库存相关的业务逻辑和数据验证
- */
+'use strict'
+
+const BaseService = require('../core/base/base.service')
 const InventoryRepository = require('../repositories/inventory.repository')
-const _ApiResponse = require('../utils/response')
+const { getDatabase, isConnected } = require('../config/database')
+const { validateImei: defaultValidateImei } = require('../utils/imei')
+const { normalizeDateTime: defaultNormalizeDateTime } = require('../utils/time')
+const { generateMemberNumber: defaultGenerateMemberNumber } = require('../utils/member-number')
+const {
+  prepareInvoiceNumberTransaction: defaultPrepareInvoiceNumberTransaction,
+  generateInvoiceNumber: defaultGenerateInvoiceNumber
+} = require('../utils/invoice-number')
+const { reconcileCustomerPointsForSale: defaultReconcileCustomerPointsForSale } = require('./customer-points.service')
+const { COMPLETED_TRANSACTION_STATUSES } = require('../utils/phone-status')
 const log = require('../utils/log')
 
-class InventoryService {
-  constructor() {
-    this.inventoryRepository = new InventoryRepository()
+class InventoryError extends Error {
+  constructor(message, statusCode) {
+    super(message)
+    this.name = 'InventoryError'
+    this.statusCode = statusCode
+  }
+}
+
+const TRANSACTION_CONFIG = Object.freeze({
+  sold: { saleType: 'retail', phoneStatus: 'sold', invoiceType: 'retail' },
+  peer_transfer: { saleType: 'wholesale', phoneStatus: 'peer_transfer', invoiceType: 'wholesale' },
+  supplier_proxy: { saleType: 'supplier_proxy', phoneStatus: 'supplier_proxy', invoiceType: 'supplier_proxy' }
+})
+
+class InventoryService extends BaseService {
+  constructor({
+    repository,
+    database = getDatabase,
+    connected = isConnected,
+    logger = log,
+    validateImei = defaultValidateImei,
+    normalizeDateTime = defaultNormalizeDateTime,
+    generateMemberNumber = defaultGenerateMemberNumber,
+    prepareInvoiceNumberTransaction = defaultPrepareInvoiceNumberTransaction,
+    generateInvoiceNumber = defaultGenerateInvoiceNumber,
+    reconcileCustomerPointsForSale = defaultReconcileCustomerPointsForSale
+  } = {}) {
+    super()
+    this.repository = repository || new InventoryRepository({ database })
+    this.database = database
+    this.connected = connected
+    this.logger = logger
+    this.validateImei = validateImei
+    this.normalizeDateTime = normalizeDateTime
+    this.generateMemberNumber = generateMemberNumber
+    this.prepareInvoiceNumberTransaction = prepareInvoiceNumberTransaction
+    this.generateInvoiceNumber = generateInvoiceNumber
+    this.reconcileCustomerPointsForSale = reconcileCustomerPointsForSale
   }
 
-  /**
-   * 创建成功的响应格式
-   */
-  createSuccessResponse(message, data = null) {
+  async list(query = {}) {
+    const pageSize = Math.min(Math.max(parseInt(query.page_size ?? query.limit) || 10, 1), 100)
+    const page = Math.max(parseInt(query.page) || 1, 1)
+    const { whereConditions, whereClause, queryParams } = this.repository.listFilters(query, { includeLegacyDate: true })
+    this.logger.debug('库存查询条件:', whereConditions)
+    this.logger.debug('库存查询参数:', queryParams)
+    const { rows, total } = await this.repository.withConnection(connection => this.repository.list(connection, {
+      whereClause,
+      queryParams,
+      limit: pageSize,
+      offset: (page - 1) * pageSize
+    }))
+    const data = rows.map(item => ({
+      id: item.id,
+      imei: item.imei || '',
+      serial_number: item.serial_number || '',
+      model: item.model || '',
+      brand: item.brand || '',
+      color: item.color || '',
+      memory: item.memory || '',
+      phone_condition: item.phone_condition || '',
+      condition: Number(item.is_new) === 1 ? 'new' : 'used',
+      purchase_cost: parseFloat(item.purchase_cost) || 0,
+      sale_price: parseFloat(item.sale_price) || 0,
+      inventory_time: item.inventory_time || null,
+      sale_time: item.sale_time || null,
+      supplier_id: item.supplier_id,
+      supplier_name: item.supplier_name || '未知供应商',
+      store_id: item.store_id,
+      store_name: item.store_name || '未知店铺',
+      purchase_number: item.purchase_number || '',
+      inventory_operator_id: item.inventory_operator_id,
+      inventory_operator_name: item.inventory_operator_name || '未设置',
+      remarks: item.remarks || '',
+      status: item.status,
+      is_preordered: item.is_preordered === 1,
+      preorder_id: item.preorder_id || null,
+      preorder_customer_id: item.preorder_customer_id || null,
+      preorder_customer_name: item.preorder_customer_name || '',
+      preorder_customer_phone: item.preorder_customer_phone || '',
+      preorder_deposit_amount: item.preorder_deposit_amount === null || item.preorder_deposit_amount === undefined ? null : Number(item.preorder_deposit_amount),
+      preorder_total_price: item.preorder_total_price === null || item.preorder_total_price === undefined ? null : Number(item.preorder_total_price),
+      preorder_actual_price: item.preorder_actual_price === null || item.preorder_actual_price === undefined ? null : Number(item.preorder_actual_price),
+      is_new: item.is_new,
+      created_at: item.inventory_time
+    }))
+    const totalPages = Math.ceil(total / pageSize)
     return {
       success: true,
-      message,
-      data
+      data,
+      pagination: {
+        page,
+        page_size: pageSize,
+        total,
+        total_pages: totalPages,
+        has_next: page < totalPages,
+        has_prev: page > 1
+      }
     }
   }
 
-  /**
-   * 创建错误的响应格式
-   */
-  createErrorResponse(message, code = null) {
+  async detail(id) {
+    if (!id || isNaN(id)) throw new InventoryError('无效的商品ID', 400)
+    const item = await this.repository.withConnection(connection => this.repository.detail(connection, parseInt(id)))
+    if (!item) throw new InventoryError('商品不存在', 404)
     return {
-      success: false,
-      message,
-      code
+      id: item.id,
+      brand_id: item.brand_id || null,
+      model_id: item.model_id || null,
+      color_id: item.color_id || null,
+      memory_id: item.memory_id || null,
+      brand: item.brand || '',
+      model: item.model || '',
+      color: item.color || '',
+      memory: item.memory || '',
+      imei: item.imei || '',
+      serial_number: item.serial_number || '',
+      purchase_cost: item.purchase_cost ?? null,
+      sale_price: item.sale_price ?? null,
+      price: item.sale_price ?? 0,
+      supplier_id: item.supplier_id || null,
+      store_id: item.store_id || null,
+      inventory_time: item.inventory_time,
+      condition: Number(item.is_new) === 1 ? 'new' : 'used',
+      quality_grade: item.quality_grade,
+      purchase_remarks: item.purchase_remarks || '',
+      remarks: item.purchase_remarks || '',
+      is_new: item.is_new,
+      status: item.status === 'in_stock' && Number(item.is_preordered) === 1 ? 'reserved' : item.status,
+      is_preordered: Number(item.is_preordered) === 1,
+      sale_time: item.sale_time,
+      supplier_name: item.supplier_name || '',
+      store_name: item.store_name || '',
+      operator_name: item.operator_name || ''
     }
   }
 
-  /**
-   * 验证必填字段
-   */
-  validateRequiredFields(data, requiredFields) {
-    const missingFields = requiredFields.filter(field =>
-      !data[field] || String(data[field]).trim() === ''
-    )
-
-    if (missingFields.length > 0) {
-      return {
-        isValid: false,
-        message: `缺少必填字段: ${missingFields.join(', ')}`
-      }
-    }
-
-    return { isValid: true }
-  }
-
-  /**
-   * 验证库存记录数据
-   */
-  validateInventoryData(inventoryData, isUpdate = false) {
-    const {
-      quantity,
-      type,
-      operation_type,
-      reason,
-      store_id,
-      operator_id,
-      _note,
-      is_settled,
-      phone_id,
-      accessory_id
-    } = inventoryData
-
-    // 数量验证
-    if (quantity !== undefined) {
-      const qty = parseInt(quantity)
-      if (isNaN(qty) || qty <= 0) {
-        return {
-          isValid: false,
-          message: '数量必须是正整数'
+  async remove(id) {
+    if (!id || isNaN(id)) throw new InventoryError('无效的商品ID', 400)
+    return this.repository.withConnection(async connection => {
+      try {
+        await connection.beginTransaction()
+        const item = await this.repository.findForRemoval(connection, id)
+        if (!item) throw new InventoryError('商品不存在', 404)
+        if (COMPLETED_TRANSACTION_STATUSES.includes(item.status) || Number(item.is_preordered) === 1) {
+          throw new InventoryError(Number(item.is_preordered) === 1
+            ? '预订设备不能直接删除，请先取消或重新匹配预定单'
+            : '已完成交易的商品不能从库存台账删除', 400)
         }
-      }
-    } else if (!isUpdate) {
-      return {
-        isValid: false,
-        message: '数量不能为空'
-      }
-    }
-
-    // 类型验证
-    if (type !== undefined) {
-      const validTypes = ['in', 'out', 'adjustment', 'sale']
-      if (!validTypes.includes(type)) {
-        return {
-          isValid: false,
-          message: '库存类型无效，必须是 in、out、adjustment 或 sale'
+        const related = await this.repository.relatedCounts(connection, id)
+        const labels = [
+          ['rental', '租借记录'], ['sale', '销售记录'], ['repair', '维修记录']
+        ].filter(([key]) => related[key] > 0).map(([key, label]) => `${label}(${related[key]}条)`)
+        if (labels.length) {
+          throw new InventoryError(`无法删除商品：存在关联的${labels.join('、')}。请先处理这些关联记录后再删除商品。`, 400)
         }
-      }
-    }
-
-    // 操作类型验证
-    if (operation_type !== undefined) {
-      const validOperationTypes = ['in', 'out', 'adjust']
-      if (!validOperationTypes.includes(operation_type)) {
-        return {
-          isValid: false,
-          message: '操作类型无效，必须是 in、out 或 adjust'
+        if (!await this.repository.deletePhone(connection, id)) {
+          throw new InventoryError('删除失败，商品可能已被删除', 500)
         }
+        await connection.commit()
+        return { id: parseInt(id), deleted: true, item: { id: item.id, imei: item.imei } }
+      } catch (error) {
+        await connection.rollback()
+        throw error
       }
-    }
-
-    // 原因验证
-    if (reason !== undefined) {
-      if (reason && reason.length > 500) {
-        return {
-          isValid: false,
-          message: '原因长度不能超过500个字符'
-        }
-      }
-    } else if (!isUpdate && ['in', 'out'].includes(type)) {
-      return {
-        isValid: false,
-        message: '入库和出库操作必须填写原因'
-      }
-    }
-
-    // 商店ID验证
-    if (store_id !== undefined && store_id !== null) {
-      const storeId = parseInt(store_id)
-      if (isNaN(storeId) || storeId <= 0) {
-        return {
-          isValid: false,
-          message: '商店ID必须是正整数'
-        }
-      }
-    }
-
-    // 操作员ID验证
-    if (operator_id !== undefined && operator_id !== null) {
-      const operatorId = parseInt(operator_id)
-      if (isNaN(operatorId) || operatorId <= 0) {
-        return {
-          isValid: false,
-          message: '操作员ID必须是正整数'
-        }
-      }
-    }
-
-    // 结算状态验证
-    if (is_settled !== undefined && ![0, 1].includes(parseInt(is_settled))) {
-      return {
-        isValid: false,
-        message: '结算状态只能是0(未结算)或1(已结算)'
-      }
-    }
-
-    // 产品ID验证（必须是手机或配件其中一个）
-    if (!isUpdate) {
-      if (!phone_id && !accessory_id) {
-        return {
-          isValid: false,
-          message: '必须指定手机ID或配件ID中的一个'
-        }
-      }
-      if (phone_id && accessory_id) {
-        return {
-          isValid: false,
-          message: '不能同时指定手机ID和配件ID'
-        }
-      }
-    }
-
-    return { isValid: true }
-  }
-
-  /**
-   * 获取库存记录列表
-   */
-  async getInventoryRecords(filters = {}, options = {}) {
-    try {
-      const {
-        page = 1,
-        limit = 10,
-        type,
-        operation_type,
-        store_id,
-        operator_id,
-        product_type,
-        is_settled,
-        start_date,
-        end_date
-      } = filters
-
-      // 验证分页参数
-      const validPage = Math.max(parseInt(page) || 1, 1)
-      const validLimit = Math.min(Math.max(parseInt(limit) || 10, 1), 100)
-
-      const result = await this.inventoryRepository.getInventoryRecordsWithPagination(
-        {
-          page: validPage,
-          limit: validLimit,
-          type,
-          operation_type,
-          store_id: store_id ? parseInt(store_id) : undefined,
-          operator_id: operator_id ? parseInt(operator_id) : undefined,
-          product_type,
-          is_settled: is_settled !== undefined ? parseInt(is_settled) : undefined,
-          start_date,
-          end_date
-        },
-        options
-      )
-
-      return this.createSuccessResponse('获取库存记录成功', result)
-    } catch (error) {
-      log.error('获取库存记录失败:', error)
-      return this.createErrorResponse('获取库存记录失败', 'DATABASE_ERROR')
-    }
-  }
-
-  /**
-   * 根据ID获取库存记录详情
-   */
-  async getInventoryRecordById(id) {
-    try {
-      const recordId = parseInt(id)
-      if (isNaN(recordId) || recordId <= 0) {
-        return this.createErrorResponse('无效的库存记录ID', 'INVALID_ID')
-      }
-
-      const record = await this.inventoryRepository.getInventoryRecordById(recordId)
-      if (!record) {
-        return this.createErrorResponse('库存记录不存在', 'NOT_FOUND')
-      }
-
-      return this.createSuccessResponse('获取库存记录详情成功', record)
-    } catch (error) {
-      log.error('获取库存记录详情失败:', error)
-      return this.createErrorResponse('获取库存记录详情失败', 'DATABASE_ERROR')
-    }
-  }
-
-  /**
-   * 创建库存记录
-   */
-  async createInventoryRecord(inventoryData, _user = null) {
-    try {
-      // 验证数据
-      const validation = this.validateInventoryData(inventoryData)
-      if (!validation.isValid) {
-        return this.createErrorResponse(validation.message, 'VALIDATION_ERROR')
-      }
-
-      // 创建库存记录
-      const recordId = await this.inventoryRepository.createInventoryRecord(inventoryData)
-      if (!recordId) {
-        return this.createErrorResponse('创建库存记录失败', 'CREATE_FAILED')
-      }
-
-      // 获取创建的库存记录信息
-      const newRecord = await this.inventoryRepository.getInventoryRecordById(recordId)
-
-      return this.createSuccessResponse('库存记录创建成功', newRecord)
-    } catch (error) {
-      log.error('创建库存记录失败:', error)
-      return this.createErrorResponse('创建库存记录失败', 'DATABASE_ERROR')
-    }
-  }
-
-  /**
-   * 更新库存记录
-   */
-  async updateInventoryRecord(id, inventoryData, _user = null) {
-    try {
-      const recordId = parseInt(id)
-      if (isNaN(recordId) || recordId <= 0) {
-        return this.createErrorResponse('无效的库存记录ID', 'INVALID_ID')
-      }
-
-      // 检查库存记录是否存在
-      const existingRecord = await this.inventoryRepository.getInventoryRecordById(recordId)
-      if (!existingRecord) {
-        return this.createErrorResponse('库存记录不存在', 'NOT_FOUND')
-      }
-
-      // 验证数据
-      const validation = this.validateInventoryData(inventoryData, true)
-      if (!validation.isValid) {
-        return this.createErrorResponse(validation.message, 'VALIDATION_ERROR')
-      }
-
-      // 更新库存记录
-      const updated = await this.inventoryRepository.updateInventoryRecord(recordId, inventoryData)
-      if (!updated) {
-        return this.createErrorResponse('更新库存记录失败', 'UPDATE_FAILED')
-      }
-
-      // 获取更新后的库存记录信息
-      const updatedRecord = await this.inventoryRepository.getInventoryRecordById(recordId)
-
-      return this.createSuccessResponse('库存记录更新成功', updatedRecord)
-    } catch (error) {
-      log.error('更新库存记录失败:', error)
-      return this.createErrorResponse('更新库存记录失败', 'DATABASE_ERROR')
-    }
-  }
-
-  /**
-   * 删除库存记录
-   */
-  async deleteInventoryRecord(id, _user = null) {
-    try {
-      const recordId = parseInt(id)
-      if (isNaN(recordId) || recordId <= 0) {
-        return this.createErrorResponse('无效的库存记录ID', 'INVALID_ID')
-      }
-
-      // 检查库存记录是否存在
-      const existingRecord = await this.inventoryRepository.getInventoryRecordById(recordId)
-      if (!existingRecord) {
-        return this.createErrorResponse('库存记录不存在', 'NOT_FOUND')
-      }
-
-      // 检查是否可以删除
-      if (existingRecord.related_records && existingRecord.related_records.length > 0) {
-        return this.createErrorResponse(
-          `该库存记录还有 ${existingRecord.related_records.length} 个相关记录，无法删除`,
-          'HAS_RELATIONSHIPS'
-        )
-      }
-
-      // 删除库存记录
-      const deleteResult = await this.inventoryRepository.deleteInventoryRecord(recordId)
-      if (!deleteResult.deleted) {
-        return this.createErrorResponse('删除库存记录失败', 'DELETE_FAILED')
-      }
-
-      return this.createSuccessResponse('库存记录删除成功', {
-        id: recordId,
-        type: existingRecord.type
-      })
-    } catch (error) {
-      log.error('删除库存记录失败:', error)
-      return this.createErrorResponse('删除库存记录失败', 'DATABASE_ERROR')
-    }
-  }
-
-  /**
-   * 批量更新库存记录结算状态
-   */
-  async batchUpdateSettledStatus(ids, is_settled, _user = null) {
-    try {
-      if (!Array.isArray(ids) || ids.length === 0) {
-        return this.createErrorResponse('请选择要操作的库存记录', 'INVALID_IDS')
-      }
-
-      if (![0, 1].includes(parseInt(is_settled))) {
-        return this.createErrorResponse('结算状态只能是0(未结算)或1(已结算)', 'INVALID_SETTLED_STATUS')
-      }
-
-      // 验证ID格式
-      const validIds = ids.filter(id => {
-        const numId = parseInt(id)
-        return !isNaN(numId) && numId > 0
-      })
-
-      if (validIds.length === 0) {
-        return this.createErrorResponse('无效的库存记录ID列表', 'INVALID_IDS')
-      }
-
-      // 批量更新
-      const affectedRows = await this.inventoryRepository.batchUpdateSettledStatus(validIds, is_settled)
-
-      return this.createSuccessResponse('批量更新结算状态成功', {
-        updated_count: affectedRows,
-        is_settled: parseInt(is_settled),
-        status_text: Number(is_settled) === 1 ? '已结算' : '未结算'
-      })
-    } catch (error) {
-      log.error('批量更新结算状态失败:', error)
-      return this.createErrorResponse('批量更新结算状态失败', 'DATABASE_ERROR')
-    }
-  }
-
-  /**
-   * 搜索库存记录
-   */
-  async searchInventoryRecords(keyword, filters = {}) {
-    try {
-      if (!keyword || String(keyword).trim() === '') {
-        return this.createErrorResponse('搜索关键词不能为空', 'INVALID_KEYWORD')
-      }
-
-      if (keyword.length < 2) {
-        return this.createErrorResponse('搜索关键词长度至少2个字符', 'KEYWORD_TOO_SHORT')
-      }
-
-      const result = await this.inventoryRepository.searchInventoryRecords(keyword.trim(), filters)
-
-      return this.createSuccessResponse('搜索库存记录成功', result)
-    } catch (error) {
-      log.error('搜索库存记录失败:', error)
-      return this.createErrorResponse('搜索库存记录失败', 'DATABASE_ERROR')
-    }
-  }
-
-  /**
-   * 获取库存统计信息
-   */
-  async getInventoryStats(filters = {}) {
-    try {
-      const stats = await this.inventoryRepository.getInventoryStats(filters)
-
-      return this.createSuccessResponse('获取库存统计信息成功', stats)
-    } catch (error) {
-      log.error('获取库存统计信息失败:', error)
-      return this.createErrorResponse('获取库存统计信息失败', 'DATABASE_ERROR')
-    }
-  }
-
-  /**
-   * 导出库存数据
-   */
-  async exportInventoryRecords(filters = {}) {
-    try {
-      const records = await this.inventoryRepository.exportInventoryRecords(filters)
-
-      return this.createSuccessResponse('导出库存数据成功', {
-        data: records,
-        total_count: records.length,
-        export_time: new Date().toISOString()
-      })
-    } catch (error) {
-      log.error('导出库存数据失败:', error)
-      return this.createErrorResponse('导出库存数据失败', 'DATABASE_ERROR')
-    }
-  }
-
-  /**
-   * 测试库存服务
-   */
-  async testInventory() {
-    return this.createSuccessResponse('库存管理模块工作正常', {
-      message: '新的库存管理系统已成功集成',
-      version: '1.0.0',
-      features: [
-        '库存记录CRUD操作',
-        '分页查询和过滤',
-        '搜索功能',
-        '批量操作支持',
-        '数据导出功能',
-        '统计分析功能',
-        '库存追踪管理',
-        '结算状态管理'
-      ]
     })
+  }
+
+  async update(id, body = {}) {
+    if (!id || isNaN(id)) throw new InventoryError('无效的商品ID', 400)
+    const { Inventorytime: legacyInventoryTime, ...requestData } = body
+    const updateData = { ...requestData, inventory_time: requestData.inventory_time ?? legacyInventoryTime }
+    return this.repository.withConnection(async connection => {
+      try {
+        await connection.beginTransaction()
+        const item = await this.repository.findForUpdate(connection, id)
+        if (!item) throw new InventoryError('商品不存在', 404)
+        if (updateData.imei && updateData.imei !== item.imei
+          && await this.repository.phoneImeiExists(connection, updateData.imei, id)) {
+          throw new InventoryError('该IMEI号已被其他商品使用', 400)
+        }
+        const includeSupplier = !updateData.supplier_id || await this.repository.referenceExists(connection, 'suppliers', updateData.supplier_id)
+        const includeStore = !updateData.store_id || await this.repository.referenceExists(connection, 'stores', updateData.store_id)
+        const fields = {
+          imei: updateData.imei,
+          serial_number: updateData.serial_number,
+          purchase_cost: updateData.price,
+          sale_price: updateData.price * 1.2,
+          ...(includeSupplier && { supplier_id: updateData.supplier_id }),
+          ...(includeStore && { store_id: updateData.store_id }),
+          inventory_time: updateData.inventory_time,
+          is_new: updateData.is_new
+        }
+        const result = await this.repository.updatePhone(connection, id, fields)
+        if (!result.query) throw new InventoryError('没有有效的更新字段', 400)
+        if (!result.affectedRows) throw new InventoryError('更新失败，商品可能已被删除', 500)
+        await connection.commit()
+        return await this.repository.updatedPhone(connection, id)
+      } catch (error) {
+        await connection.rollback()
+        throw error
+      }
+    })
+  }
+
+  async quickSale(body = {}, actor) {
+    const inventoryOperatorId = this.getActorId(actor)
+    const {
+      brand_id, model_id, color_id, memory_id, is_new, imei, serial_number,
+      supplier_id, store_id, purchase_cost, sale_price, customer_name,
+      customer_phone, apple_id, inventory_time, sale_time, sale_operator_id,
+      payment_method, payment_channel, status = 'sold', remarks
+    } = body
+    const transactionConfig = TRANSACTION_CONFIG[status]
+    if (!transactionConfig) throw new InventoryError('请选择销售、批发调货或划拨', 400)
+    if (![brand_id, model_id, color_id, memory_id].every(id => Number.isInteger(id) && id > 0)) {
+      throw new InventoryError('设备信息不完整，请选择有效的品牌、型号、颜色和内存', 400)
+    }
+    if (!serial_number) throw new InventoryError('序列号不能为空', 400)
+    if (!imei || typeof imei !== 'string') throw new InventoryError('IMEI不能为空', 400)
+    const imeiValidation = this.validateImei(imei, serial_number)
+    const { normalizedImei, normalizedSerialNumber } = imeiValidation
+    if (!imeiValidation.valid) throw new InventoryError(imeiValidation.reason, 400)
+    if (!supplier_id || !store_id) throw new InventoryError('供应商和店铺不能为空', 400)
+
+    const requestedPurchaseCost = purchase_cost === null || purchase_cost === undefined ? null : Number(purchase_cost)
+    const requestedSalePrice = sale_price === null || sale_price === undefined ? null : Number(sale_price)
+    const purchaseCost = status === 'supplier_proxy' ? 0 : requestedPurchaseCost
+    const salePrice = status === 'supplier_proxy' ? 0 : requestedSalePrice
+    if (purchaseCost !== null && (!Number.isFinite(purchaseCost) || purchaseCost < 0)) throw new InventoryError('入库价格不能为负数', 400)
+    if (status !== 'supplier_proxy' && (!Number.isFinite(salePrice) || salePrice <= 0)) {
+      throw new InventoryError(status === 'peer_transfer' ? '批发价格必须大于0' : '销售价格必须大于0', 400)
+    }
+    if (status === 'peer_transfer' && (!Number.isFinite(purchaseCost) || purchaseCost < 0)) {
+      throw new InventoryError('批发调货必须填写有效的入库成本', 400)
+    }
+    if (!customer_phone) throw new InventoryError('客户手机号不能为空', 400)
+    if (status === 'sold' && !['cash', 'mobile', 'bank_card', 'subsidy_card'].includes(payment_method)) {
+      throw new InventoryError('请选择有效的支付方式', 400)
+    }
+    const saleOperatorId = Number(sale_operator_id)
+    if (!Number.isInteger(saleOperatorId) || saleOperatorId <= 0) throw new InventoryError('请选择有效的销售员', 400)
+    const allowedPaymentChannels = {
+      cash: [null], mobile: ['wechat', 'alipay'],
+      bank_card: ['card_consumption', 'bank_transfer'], subsidy_card: ['subsidy_card']
+    }
+    const normalizedPaymentChannel = status !== 'sold' || payment_method === 'cash' ? null : String(payment_channel || '')
+    if (status === 'sold' && !allowedPaymentChannels[payment_method].includes(normalizedPaymentChannel)) {
+      throw new InventoryError('请选择有效的支付渠道', 400)
+    }
+    const normalizedAppleId = String(apple_id || '').trim() || null
+
+    return this.repository.withConnection(async connection => {
+      try {
+        await this.prepareInvoiceNumberTransaction(connection)
+        await connection.beginTransaction()
+        const validReferences = await this.repository.validateQuickSaleReferences(connection, {
+          brandId: brand_id, modelId: model_id, colorId: color_id, memoryId: memory_id
+        })
+        if (!validReferences) throw new InventoryError('品牌、型号、颜色或内存不存在或已停用', 400)
+        const existingCustomer = await this.repository.findCustomer(connection, customer_phone)
+        const customerId = existingCustomer
+          ? existingCustomer.id
+          : await this.repository.createCustomer(connection, {
+            name: customer_name || '',
+            phone: customer_phone,
+            appleId: normalizedAppleId,
+            memberNumber: await this.generateMemberNumber({ connection })
+          })
+        if (existingCustomer) {
+          await this.repository.updateCustomer(connection, {
+            name: customer_name || '', appleId: normalizedAppleId, customerId
+          })
+        }
+        if (await this.repository.hasCustomerPhoneDuplicate(connection, { imei: normalizedImei, customerId })) {
+          throw new InventoryError('该客户已存在相同IMEI的手机', 400)
+        }
+        if (await this.repository.quickSaleImeiExists(connection, normalizedImei)) {
+          this.logger.debug(`IMEI ${normalizedImei} 已存在于其他客户，允许当前客户使用相同IMEI`)
+        }
+
+        const purchaseNumber = `QS${Date.now()}`
+        const inventoryTime = this.normalizeDateTime(inventory_time, false)
+        const saleTime = this.normalizeDateTime(sale_time, false)
+        if (!inventoryTime || !saleTime) throw new InventoryError('请选择有效的入库日期和销售日期', 400)
+        const invoiceNumber = await this.generateInvoiceNumber(transactionConfig.invoiceType, connection, saleTime)
+        const effectiveIsNew = is_new !== undefined ? is_new : 1
+        const phoneId = await this.repository.createQuickSalePhone(connection, [
+          purchaseNumber, inventoryOperatorId, brand_id, model_id, color_id, memory_id,
+          normalizedImei, normalizedSerialNumber, purchaseCost, salePrice, effectiveIsNew,
+          supplier_id, store_id, transactionConfig.phoneStatus, is_new === 1 ? 'A' : 'B',
+          remarks || null, inventoryTime, saleTime, saleOperatorId, status === 'sold' ? payment_method : null
+        ])
+        const saleId = await this.repository.createQuickSale(connection, [
+          phoneId, customerId, transactionConfig.saleType, saleOperatorId, store_id,
+          salePrice, purchaseCost, status === 'sold' ? payment_method : null,
+          normalizedPaymentChannel, invoiceNumber, saleTime, remarks || null
+        ])
+        await this.repository.updateQuickSalePhone(connection, [
+          saleId, status === 'peer_transfer' ? saleTime : null,
+          status === 'peer_transfer' ? salePrice : 0, phoneId
+        ])
+        if (status === 'sold') {
+          await this.repository.createQuickSalePayment(connection, [
+            saleId, customerId, payment_method, normalizedPaymentChannel,
+            salePrice, saleTime, '快速出库销售收款'
+          ])
+        }
+        const points = await this.reconcileCustomerPointsForSale({
+          executor: connection, saleId, customerId,
+          saleType: transactionConfig.saleType, salePrice, isNew: effectiveIsNew, initialize: true
+        })
+        await connection.commit()
+        return {
+          phone_id: phoneId, sale_id: saleId, imei: normalizedImei, customer_name,
+          purchase_cost: purchaseCost, sale_price: salePrice, invoice_number: invoiceNumber,
+          inventory_time: inventoryTime, sale_time: saleTime, sale_operator_id: saleOperatorId,
+          payment_method, payment_channel: normalizedPaymentChannel,
+          status: transactionConfig.phoneStatus, sale_type: transactionConfig.saleType,
+          points_earned: points.points
+        }
+      } catch (error) {
+        await connection.rollback()
+        throw error
+      }
+    })
+  }
+
+  async overview(query = {}) {
+    if (!this.connected()) throw new InventoryError('数据库未连接', 500)
+    const filters = this.repository.listFilters(query)
+    const result = await this.repository.overview(this.database(), filters)
+    const stats = result.stats
+    return {
+      total: parseInt(stats.total) || 0,
+      new_count: parseInt(stats.new_count) || 0,
+      used_count: parseInt(stats.used_count) || 0,
+      total_value: parseFloat(stats.total_value) || 0,
+      by_store: result.stores.reduce((acc, row) => {
+        acc[row.store_name || '未知店铺'] = row.count
+        return acc
+      }, {}),
+      by_brand: result.brands.reduce((acc, row) => {
+        acc[row.brand_name || '未知品牌'] = row.count
+        return acc
+      }, {})
+    }
+  }
+
+  async stats() {
+    if (!this.connected()) throw new InventoryError('数据库未连接', 500)
+    const stats = await this.repository.stats(this.database())
+    return { ...stats, totalValue: parseFloat(stats.totalValue) || 0 }
   }
 }
 

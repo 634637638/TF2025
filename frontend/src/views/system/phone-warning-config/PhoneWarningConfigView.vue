@@ -740,20 +740,22 @@
       </el-form>
 
       <template #footer>
-        <el-button
-          type="default"
-          @click="dialogVisible = false"
-        >
-          取消
-        </el-button>
-        <el-button
-          type="primary"
-          :loading="submitting"
-          :disabled="!canEditWarningConfig"
-          @click="handleSubmit"
-        >
-          {{ dialogMode === 'add' ? '新增模板' : '保存模板' }}
-        </el-button>
+        <div class="tf-dialog-actions">
+          <el-button
+            type="default"
+            @click="dialogVisible = false"
+          >
+            取消
+          </el-button>
+          <el-button
+            type="primary"
+            :loading="submitting"
+            :disabled="!canEditWarningConfig"
+            @click="handleSubmit"
+          >
+            {{ dialogMode === 'add' ? '新增模板' : '保存模板' }}
+          </el-button>
+        </div>
       </template>
     </MobileDialog>
   </div>
@@ -1644,10 +1646,6 @@ defineExpose({
   :deep(.el-table .el-table__expanded-cell) {
     padding: 16px;
     background: var(--tf-color-surface-gray);
-  }
-
-  :deep(.el-button) {
-    border-radius: 12px;
   }
 
   :deep(.el-tag) {

@@ -1,5 +1,5 @@
 const BaseRepository = require('./base.repository')
-const { LEGACY_USER_ROLE_SQL_LIST } = require('../services/accessControl.service')
+const { LEGACY_USER_ROLE_SQL_LIST } = require('../config/legacy-role.constants')
 const log = require('../utils/log')
 
 /**

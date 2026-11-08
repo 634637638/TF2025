@@ -27,6 +27,10 @@ test('开发临时接口要求管理员权限并记录每次访问', () => {
 })
 
 test('开发迁移接口不向响应回显内部错误', () => {
-  assert.doesNotMatch(routeSource, /message: error\.message/)
-  assert.match(routeSource, /message: '迁移失败'/)
+  const controllerSource = fs.readFileSync(
+    path.join(__dirname, '../src/controllers/dev-temp.controller.js'),
+    'utf8'
+  )
+  assert.doesNotMatch(controllerSource, /message: error\.message/)
+  assert.match(controllerSource, /message: '迁移失败'/)
 })

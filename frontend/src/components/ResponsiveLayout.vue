@@ -16,7 +16,7 @@
           <el-button
             v-if="showBackButton"
             native-type="button"
-            class="back-button tf-button--mobile-nav"
+            class="tf-button--mobile-nav"
             aria-label="返回"
             @click="$emit('back')"
           >
@@ -32,7 +32,7 @@
             <el-button
               v-if="showMenuButton"
               native-type="button"
-              class="menu-button tf-button--menu"
+              class="tf-button--menu"
               aria-label="菜单"
               @click="toggleMobileMenu"
             >
@@ -393,14 +393,7 @@ defineExpose({
   min-height: 44px;
 }
 
-.back-button,
-.menu-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
+/* 返回与菜单按钮的规格由公共 tf-button--mobile-nav / tf-button--menu 维护 */
 
 .mobile-title {
   font-size: var(--tf-type-scale-18);
@@ -525,12 +518,9 @@ defineExpose({
   gap: 12px;
 }
 
+/* 浮动按钮规格由公共 tf-button--fab 维护，此处仅保留弹放动效 */
 .fab-button {
-  cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
 .fab-button:hover {

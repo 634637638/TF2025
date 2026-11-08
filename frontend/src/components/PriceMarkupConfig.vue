@@ -350,20 +350,22 @@
     </LoadingOverlay>
 
     <template #footer>
-      <el-button
-        type="default"
-        @click="visible = false"
-      >
-        取消
-      </el-button>
-      <el-button
-        type="primary"
-        :loading="saving"
-        @click="handleSave"
-      >
-        <i class="fas fa-save" />
-        保存配置
-      </el-button>
+      <div class="tf-dialog-actions">
+        <el-button
+          type="default"
+          @click="visible = false"
+        >
+          取消
+        </el-button>
+        <el-button
+          type="primary"
+          :loading="saving"
+          @click="handleSave"
+        >
+          <i class="fas fa-save" />
+          保存配置
+        </el-button>
+      </div>
     </template>
   </MobileDialog>
 </template>

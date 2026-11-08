@@ -16,6 +16,9 @@ test('手机媒体只保留 canonical phones 路由并复用唯一控制器实�
     assert.doesNotMatch(shop, new RegExp(`phoneMediaController\\.${handler}`))
   }
 
+  assert.match(phones, /router\.post\('\/:id\/upload-image',\s*unifiedAuth,\s*requireAnyPermission\(PHONE_MEDIA_UPLOAD_PERMISSIONS\),\s*upload\.single\('image'\),\s*phoneMediaController\.uploadImage\s*\)/)
+  assert.match(phones, /router\.post\('\/:id\/upload-video',\s*unifiedAuth,\s*requireAnyPermission\(PHONE_MEDIA_UPLOAD_PERMISSIONS\),\s*videoUpload\.single\('video'\),\s*phoneMediaController\.uploadVideo\s*\)/)
+
   assert.doesNotMatch(shop, /migrationId|compatibilityId/)
   assert.doesNotMatch(shop, /router\.get\(\s*['"]\/phones\/:id\/images['"]/)
   assert.doesNotMatch(shop, /router\.put\(\s*['"]\/images\/:id\/primary['"]/)
@@ -40,13 +43,12 @@ test('仓库内手机媒体读写调用使用 canonical phones 路由', () => {
 })
 
 test('canonical phones 上传入口复用同一媒体归档和数据库持久化函数', () => {
-  const phones = read('backend/src/routes/phones.js')
   const shop = read('backend/src/routes/shop.js')
   const controller = read('backend/src/controllers/phone-media.controller.js')
 
-  assert.equal((phones.match(/phoneMediaController\.saveUploadedMedia/g) || []).length, 2)
   assert.doesNotMatch(shop, /phoneMediaController\.saveUploadedMedia/)
   assert.doesNotMatch(shop, /router\.post\(\s*['"]\/upload-phone-image['"]/)
   assert.match(controller, /archivePhoneMediaUpload/)
   assert.match(controller, /shopService\.addPhoneImage/)
+  assert.match(controller, /saveMedia\(\{[\s\S]*phoneId: req\.params\.id/)
 })

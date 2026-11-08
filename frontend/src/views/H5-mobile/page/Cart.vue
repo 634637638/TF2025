@@ -47,7 +47,9 @@
               <div class="item-actions">
                 <span class="device-quantity">1 台</span>
                 <el-button
-                  class="delete-btn"
+                  class="tf-button--h5-action-icon"
+                  title="删除商品"
+                  aria-label="删除商品"
                   @click="confirmDelete(item)"
                 >
                   <i class="fas fa-trash" />
@@ -72,8 +74,7 @@
           <span class="total-price">¥{{ selectedTotal }}</span>
         </div>
         <el-button
-          type="primary"
-          class="checkout-btn"
+          class="tf-button--h5-action tf-button--h5-action-primary checkout-btn"
           :disabled="selectedItems.size === 0"
           @click="goCheckout"
         >
@@ -379,29 +380,6 @@ onMounted(() => {
             color: var(--el-text-color-secondary);
             white-space: nowrap;
           }
-
-          .delete-btn {
-            width: 32px;
-            height: 32px;
-            border: none;
-            background: var(--tf-button-neutral-bg);
-            border-radius: 4px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--tf-button-danger-soft-color);
-            cursor: pointer;
-            transition: all 0.3s;
-            border: 1px solid var(--tf-button-neutral-border);
-
-            &:active {
-              background: var(--tf-button-danger-soft-hover-bg);
-            }
-
-            i {
-              font-size: var(--tf-type-scale-14);
-            }
-          }
         }
       }
     }
@@ -489,10 +467,7 @@ onMounted(() => {
 
   .checkout-btn {
     margin-left: 16px;
-    height: 40px;
-    padding: 0 24px;
-    border-radius: 20px;
-    flex-shrink: 0;
+    flex: none;
   }
 }
 

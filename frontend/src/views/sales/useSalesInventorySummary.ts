@@ -1,6 +1,7 @@
 import { computed, ref } from 'vue'
 import { unifiedApi as api } from '@/utils/unified-api'
 import { logger } from '@/utils/logger'
+import { useDebounce } from '@/composables/useDebounce'
 import { sortInventorySummary } from './sales-sort'
 import type { InventoryDetailItem, InventorySummaryItem, SalesFilters } from './types'
 
@@ -25,7 +26,6 @@ export const useSalesInventorySummary = ({
   const inventoryDetailData = ref<InventoryDetailItem[]>([])
   const inventoryDetailLoading = ref(false)
   const sortedInventorySummary = computed(() => sortInventorySummary(inventorySummary.value))
-  let debounceTimer: ReturnType<typeof setTimeout> | null = null
 
   const loadInventorySummary = async () => {
     inventorySummaryLoading.value = true
@@ -55,16 +55,11 @@ export const useSalesInventorySummary = ({
     }
   }
 
-  const debounceLoadInventorySummary = () => {
-    if (debounceTimer) {
-      clearTimeout(debounceTimer)
+  const { debouncedFn: debounceLoadInventorySummary, cancel: cancelDebounceLoad } = useDebounce(() => {
+    if (isSummaryView()) {
+      void loadInventorySummary()
     }
-    debounceTimer = setTimeout(() => {
-      if (isSummaryView()) {
-        void loadInventorySummary()
-      }
-    }, 300)
-  }
+  }, 300)
 
   const showInventoryDetail = async (item: InventorySummaryItem) => {
     if (!item.brand) {
@@ -107,10 +102,7 @@ export const useSalesInventorySummary = ({
   }
 
   const disposeInventorySummary = () => {
-    if (debounceTimer) {
-      clearTimeout(debounceTimer)
-      debounceTimer = null
-    }
+    cancelDebounceLoad()
   }
 
   return {

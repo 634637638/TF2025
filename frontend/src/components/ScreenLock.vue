@@ -396,7 +396,6 @@ onUnmounted(() => {
 
   .unlock-button {
     grid-area: action;
-    width: auto;
   }
 }
 

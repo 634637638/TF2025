@@ -103,6 +103,12 @@ if (!sharedFormControls.includes('.el-input-number .el-input-number__increase')
   findings.push('公共表单控件样式必须统一维护数字步进按钮和文本域手动拉伸行为')
 }
 
+if (!sharedFormControls.includes('.tf-segment .el-radio-button__inner')
+  || !/\.tf-segment \.el-radio-button__inner\s*\{[^}]*height:\s*var\(--input-height-default\)/.test(sharedFormControls)
+  || !/\.tf-segment \.el-radio-button\.is-active \.el-radio-button__original-radio:checked \+ \.el-radio-button__inner\s*\{[^}]*background:\s*var\(--tf-button-primary-bg\)/.test(sharedFormControls)) {
+  findings.push('分段单选控件（tf-segment）必须由 _form-controls.scss 统一维护高度与选中态主色，页面不得复制 __inner 规格')
+}
+
 if (!/--input-height-default\s*:\s*30px\s*;/.test(variablesSource)
   || !/--mobile-control-height\s*:\s*30px\s*;/.test(globalStylesSource)
   || !/@media\s*\(max-width:\s*479px\)[\s\S]*?--mobile-control-height\s*:\s*30px\s*;/.test(globalStylesSource)) {

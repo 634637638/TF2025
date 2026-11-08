@@ -715,7 +715,6 @@ const {
 
   .phone-list-actions :deep(.el-button) {
     min-width: 0;
-    padding-inline: 8px;
   }
 
   .phone-list-body {

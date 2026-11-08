@@ -569,19 +569,21 @@
           </el-form>
 
           <template #footer>
-            <el-button
-              type="default"
-              @click="attemptCloseModal"
-            >
-              取消
-            </el-button>
-            <el-button
-              type="primary"
-              :loading="submitting"
-              @click="submitForm"
-            >
-              {{ isEditMode ? '更新' : '创建' }}
-            </el-button>
+            <div class="tf-dialog-actions">
+              <el-button
+                type="default"
+                @click="attemptCloseModal"
+              >
+                取消
+              </el-button>
+              <el-button
+                type="primary"
+                :loading="submitting"
+                @click="submitForm"
+              >
+                {{ isEditMode ? '更新' : '创建' }}
+              </el-button>
+            </div>
           </template>
         </MobileDialog>
 
@@ -729,23 +731,25 @@
           </div>
 
           <template #footer>
-            <el-button
-              v-if="canEdit && supplierDetail"
-              v-permission="'suppliers:edit'"
-              type="primary"
-              @click="editSupplier(supplierDetail!)"
-            >
-              <template #icon>
-                <i class="fas fa-edit" />
-              </template>
-              编辑
-            </el-button>
-            <el-button
-              type="default"
-              @click="closeDetailModal"
-            >
-              关闭
-            </el-button>
+            <div class="tf-dialog-actions">
+              <el-button
+                v-if="canEdit && supplierDetail"
+                v-permission="'suppliers:edit'"
+                type="primary"
+                @click="editSupplier(supplierDetail!)"
+              >
+                <template #icon>
+                  <i class="fas fa-edit" />
+                </template>
+                编辑
+              </el-button>
+              <el-button
+                type="default"
+                @click="closeDetailModal"
+              >
+                关闭
+              </el-button>
+            </div>
           </template>
         </MobileDialog>
       </div>
@@ -775,14 +779,14 @@ import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import ImportExportActions from '@/components/business/ImportExportActions.vue'
 import { usePermissionToast } from '@/utils/permissionToastSimple'
 import { handleApiErrorWithPermission } from '@/utils/apiPermissionError'
-import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import { useMobile } from '@/composables/mobile'
+import { useMobileRowDoubleTap } from '@/composables/useMobileRowDoubleTap'
 import { useLatestRequest } from '@/composables/useLatestRequest'
 import type { Supplier } from '@/types/system'
 import type { QueryParams } from '@/types'
 import { logger } from '@/utils/logger'
 import { useElementTableSortable } from '@/composables/useElementTableSortable'
-import { formatAmount } from '@/utils/format'
+import { formatAmount, formatDateTime as formatDate } from '@/utils/format'
 
 // 供应商详情扩展类型
 interface SupplierDetail extends Supplier {
@@ -937,8 +941,7 @@ const showDetailModal = ref(false)
 const currentEditingId = ref<number | null>(null)
 const suppliersTableRef = ref<HTMLElement | { $el?: HTMLElement } | null>(null)
 const mobileActionRowId = ref<string | null>(null)
-const lastTappedRowId = ref<string | null>(null)
-const lastTapTimestamp = ref(0)
+const { isDoubleTap } = useMobileRowDoubleTap()
 const getSupplierRowKey = (supplier: Supplier) => String(supplier.id)
 
 // 搜索表单
@@ -1186,18 +1189,7 @@ const toggleMobileActions = (id: number) => {
 
 const handleMobileRowTap = (id: number) => {
   if (!isMobile.value) return
-  const rowKey = String(id)
-
-  const now = Date.now()
-  if (lastTappedRowId.value === rowKey && now - lastTapTimestamp.value <= 320) {
-    toggleMobileActions(id)
-    lastTappedRowId.value = null
-    lastTapTimestamp.value = 0
-    return
-  }
-
-  lastTappedRowId.value = rowKey
-  lastTapTimestamp.value = now
+  if (isDoubleTap(String(id))) toggleMobileActions(id)
 }
 
 const editSupplier = (supplier: Supplier | SupplierDetail) => {
@@ -1386,11 +1378,6 @@ const closeModal = () => {
 const closeDetailModal = () => {
   showDetailModal.value = false
   supplierDetail.value = null
-}
-
-const formatDate = (dateString: string) => {
-  if (!dateString) return '-'
-  return TimeUtil.format(dateString, TIME_FORMATS.DATETIME)
 }
 
 // 保存排序到服务器

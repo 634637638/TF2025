@@ -137,38 +137,42 @@ export const formatPercentage = (value: number | string, decimals: number = 2): 
 
 /**
  * 格式化日期时间（北京时间）
- * @param date 日期时间字符串或Date对象
+ * @param date 日期时间字符串、Date、时间戳或空值
  * @param format 格式化模式，默认为'YYYY-MM-DD HH:mm:ss'
+ * @param fallback 空值或非法时间时的兜底文本，默认为'-'
  * @returns 格式化后的日期时间字符串
  */
 export const formatDateTime = (
-  date: string | Date,
-  format: string = TIME_FORMATS.DATETIME
+  date: string | Date | number | null | undefined,
+  format: string = TIME_FORMATS.DATETIME,
+  fallback: string = '-'
 ): string => {
   if (!date) {
-    return '-'
+    return fallback
   }
   const parsed = typeof date === 'string' ? TimeUtil.parse(date) : TimeUtil.toBeijing(date)
-  if (!parsed?.isValid()) return '-'
+  if (!parsed?.isValid()) return fallback
   return TimeUtil.format(parsed, format)
 }
 
 /**
  * 格式化日期（北京时间）
- * @param date 日期字符串或Date对象
+ * @param date 日期字符串、Date、时间戳或空值
+ * @param fallback 空值或非法时间时的兜底文本，默认为'-'
  * @returns 格式化后的日期字符串
  */
-export const formatDate = (date: string | Date): string => {
-  return formatDateTime(date, TIME_FORMATS.DATE)
+export const formatDate = (date: string | Date | number | null | undefined, fallback: string = '-'): string => {
+  return formatDateTime(date, TIME_FORMATS.DATE, fallback)
 }
 
 /**
  * 格式化时间（北京时间）
- * @param time 时间字符串或Date对象
+ * @param time 时间字符串、Date、时间戳或空值
+ * @param fallback 空值或非法时间时的兜底文本，默认为'-'
  * @returns 格式化后的时间字符串
  */
-export const formatTime = (time: string | Date): string => {
-  return formatDateTime(time, TIME_FORMATS.TIME)
+export const formatTime = (time: string | Date | number | null | undefined, fallback: string = '-'): string => {
+  return formatDateTime(time, TIME_FORMATS.TIME, fallback)
 }
 
 /**

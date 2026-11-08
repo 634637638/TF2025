@@ -11,6 +11,7 @@ const read = relativePath => fs.readFileSync(path.join(root, relativePath), 'utf
 test('template media uploads stay staged until explicit save and are owner-scoped on discard', () => {
   const service = read('src/services/shop.service.js')
   const routes = read('src/routes/shop.js')
+  const controller = read('src/controllers/shop-management.controller.js')
   const frontend = fs.readFileSync(path.join(root, '../frontend/src/views/H5-admin/page/templates.vue'), 'utf8')
 
   const uploadStart = service.indexOf('async uploadTemplateImage(')
@@ -23,8 +24,10 @@ test('template media uploads stay staged until explicit save and are owner-scope
   assert.match(service, /async commitTemplateImageUploads\(entries, userId\)/)
   assert.match(service, /INSERT INTO h5_newimages/)
   assert.match(service, /uploaded_by = \? AND id IN \(\?\)/)
-  assert.match(routes, /router\.post\('\/templates\/media\/commit-drafts'/)
-  assert.match(routes, /router\.post\('\/templates\/media\/discard-drafts'/)
+  assert.match(routes, /router\.post\('\/templates\/media\/commit-drafts',[\s\S]*?shopManagementController\.commitTemplateImageUploads\.bind/)
+  assert.match(routes, /router\.post\('\/templates\/media\/discard-drafts',[\s\S]*?shopManagementController\.discardTemplateImageUploads\.bind/)
+  assert.match(controller, /commitTemplateImageUploads\(req, res\)[\s\S]*?req\.user\?\.id/)
+  assert.match(controller, /discardTemplateImageUploads\(req, res\)[\s\S]*?req\.user\?\.id/)
   assert.match(frontend, /await cleanupPendingMediaUploads\(\)[\s\S]*showDialog\.value = false/)
   assert.match(frontend, /await commitTemplateImageUploads\(mediaCommitEntries\)/)
 })

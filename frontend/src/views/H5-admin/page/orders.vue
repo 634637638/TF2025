@@ -955,20 +955,22 @@
           </el-form-item>
         </el-form>
         <template #footer>
-          <el-button
-            type="default"
-            @click="showShipDialog = false"
-          >
-            取消
-          </el-button>
-          <el-button
-            v-if="canEdit"
-            type="primary"
-            :loading="submitting"
-            @click="confirmShip"
-          >
-            确认发货
-          </el-button>
+          <div class="tf-dialog-actions">
+            <el-button
+              type="default"
+              @click="showShipDialog = false"
+            >
+              取消
+            </el-button>
+            <el-button
+              v-if="canEdit"
+              type="primary"
+              :loading="submitting"
+              @click="confirmShip"
+            >
+              确认发货
+            </el-button>
+          </div>
         </template>
       </MobileDialog>
 
@@ -996,20 +998,22 @@
           </el-form-item>
         </el-form>
         <template #footer>
-          <el-button
-            type="default"
-            @click="showCompleteDialog = false"
-          >
-            取消
-          </el-button>
-          <el-button
-            v-if="canEdit"
-            type="success"
-            :loading="submitting"
-            @click="confirmComplete"
-          >
-            确认完成
-          </el-button>
+          <div class="tf-dialog-actions">
+            <el-button
+              type="default"
+              @click="showCompleteDialog = false"
+            >
+              取消
+            </el-button>
+            <el-button
+              v-if="canEdit"
+              type="success"
+              :loading="submitting"
+              @click="confirmComplete"
+            >
+              确认完成
+            </el-button>
+          </div>
         </template>
       </MobileDialog>
 
@@ -1040,20 +1044,22 @@
           </el-form-item>
         </el-form>
         <template #footer>
-          <el-button
-            type="default"
-            @click="showCancelDialog = false"
-          >
-            取消
-          </el-button>
-          <el-button
-            v-if="canEdit"
-            type="danger"
-            :loading="submitting"
-            @click="confirmCancel"
-          >
-            确认取消
-          </el-button>
+          <div class="tf-dialog-actions">
+            <el-button
+              type="default"
+              @click="showCancelDialog = false"
+            >
+              取消
+            </el-button>
+            <el-button
+              v-if="canEdit"
+              type="danger"
+              :loading="submitting"
+              @click="confirmCancel"
+            >
+              确认取消
+            </el-button>
+          </div>
         </template>
       </MobileDialog>
     </div>

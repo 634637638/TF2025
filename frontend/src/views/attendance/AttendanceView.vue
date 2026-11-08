@@ -958,8 +958,7 @@
         <MobileDialog
           v-model="dialogVisible"
           :title="dialogTitle"
-          width="800px"
-          dialog-class="attendance-form-dialog"
+          dialog-class="attendance-form-dialog crud-dialog-lg"
           :close-on-click-modal="false"
           :show-default-footer="false"
           @close="closeAttendanceDialog"
@@ -1290,25 +1289,27 @@
           </el-form>
 
           <template #footer>
-            <el-button
-              plain
-              type="default"
-              @click="closeAttendanceDialog"
-            >
-              <i class="fas fa-times mr-1" />取消
-            </el-button>
-            <el-button
-              plain
-              type="primary"
-              :disabled="submitting"
-              :loading="submitting"
-              @click="handleSubmit"
-            >
-              <span v-if="submitting">提交中...</span>
-              <template v-else>
-                <i class="fas fa-paper-plane mr-1" />提交申请
-              </template>
-            </el-button>
+            <div class="tf-dialog-actions">
+              <el-button
+                plain
+                type="default"
+                @click="closeAttendanceDialog"
+              >
+                <i class="fas fa-times mr-1" />取消
+              </el-button>
+              <el-button
+                plain
+                type="primary"
+                :disabled="submitting"
+                :loading="submitting"
+                @click="handleSubmit"
+              >
+                <span v-if="submitting">提交中...</span>
+                <template v-else>
+                  <i class="fas fa-paper-plane mr-1" />提交申请
+                </template>
+              </el-button>
+            </div>
           </template>
         </MobileDialog>
 
@@ -1316,8 +1317,7 @@
         <MobileDialog
           v-model="detailDialogVisible"
           title="考勤详情"
-          width="700px"
-          dialog-class="attendance-detail-dialog"
+          dialog-class="attendance-detail-dialog crud-dialog-md-lg"
           :close-on-click-modal="false"
           :show-default-footer="false"
           @close="detailDialogVisible = false"
@@ -1520,13 +1520,15 @@
           </el-table>
 
           <template #footer>
-            <el-button
-              plain
-              type="default"
-              @click="detailDialogVisible = false"
-            >
-              <i class="fas fa-times mr-1" />关闭
-            </el-button>
+            <div class="tf-dialog-actions">
+              <el-button
+                plain
+                type="default"
+                @click="detailDialogVisible = false"
+              >
+                <i class="fas fa-times mr-1" />关闭
+              </el-button>
+            </div>
           </template>
         </MobileDialog>
 
@@ -1534,8 +1536,7 @@
         <MobileDialog
           v-model="approveDialogVisible"
           title="审批考勤记录"
-          width="600px"
-          dialog-class="attendance-approve-dialog"
+          dialog-class="attendance-approve-dialog crud-dialog-md"
           :close-on-click-modal="false"
           :show-default-footer="false"
           @close="approveDialogVisible = false"
@@ -1576,25 +1577,27 @@
           </el-form>
 
           <template #footer>
-            <el-button
-              plain
-              type="default"
-              @click="approveDialogVisible = false"
-            >
-              <i class="fas fa-times mr-1" />取消
-            </el-button>
-            <el-button
-              plain
-              type="success"
-              :disabled="approving"
-              :loading="approving"
-              @click="handleApproveSubmit"
-            >
-              <span v-if="approving">处理中...</span>
-              <template v-else>
-                <i class="fas fa-check mr-1" />确认
-              </template>
-            </el-button>
+            <div class="tf-dialog-actions">
+              <el-button
+                plain
+                type="default"
+                @click="approveDialogVisible = false"
+              >
+                <i class="fas fa-times mr-1" />取消
+              </el-button>
+              <el-button
+                plain
+                type="success"
+                :disabled="approving"
+                :loading="approving"
+                @click="handleApproveSubmit"
+              >
+                <span v-if="approving">处理中...</span>
+                <template v-else>
+                  <i class="fas fa-check mr-1" />确认
+                </template>
+              </el-button>
+            </div>
           </template>
         </MobileDialog>
       </div>
@@ -1614,6 +1617,7 @@ import { useNotification } from '@/composables/useNotification'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { useMobile } from '@/composables/mobile'
+import { useMobileRowDoubleTap } from '@/composables/useMobileRowDoubleTap'
 import { useLoadingState } from '@/composables'
 import { unifiedApi } from '@/utils/unified-api'
 import { searchEmployees } from '@/services/reference-options'
@@ -1724,9 +1728,7 @@ const attendanceTableRef = ref<ExpandableAttendanceTableRef | null>(null)
 const myAttendanceTableRef = ref<ExpandableAttendanceTableRef | null>(null)
 const mobileExpandedAttendanceId = ref<number | null>(null)
 const mobileExpandedMyAttendanceId = ref<number | null>(null)
-const lastTappedAttendanceId = ref<number | null>(null)
-const lastTappedAttendanceScope = ref<'all' | 'my' | null>(null)
-const lastTapTimestamp = ref(0)
+const { isDoubleTap, resetDoubleTap } = useMobileRowDoubleTap()
 const formRef = ref<FormInstance>()
 const activeTab = ref<AttendanceTab>('my')
 
@@ -2951,22 +2953,7 @@ const handleMobileRowTap = (row: AttendanceTableRow, scope: 'all' | 'my') => {
   const rowId = row.id
   if (!rowId) return
 
-  const now = Date.now()
-  if (
-    lastTappedAttendanceId.value === rowId &&
-    lastTappedAttendanceScope.value === scope &&
-    now - lastTapTimestamp.value <= 320
-  ) {
-    handleMobileRowDblClick(row, scope)
-    lastTappedAttendanceId.value = null
-    lastTappedAttendanceScope.value = null
-    lastTapTimestamp.value = 0
-    return
-  }
-
-  lastTappedAttendanceId.value = rowId
-  lastTappedAttendanceScope.value = scope
-  lastTapTimestamp.value = now
+  if (isDoubleTap(`${scope}:${rowId}`)) handleMobileRowDblClick(row, scope)
 }
 
 const clearMobileActions = () => {
@@ -2984,9 +2971,7 @@ const clearMobileActions = () => {
   }
   mobileExpandedAttendanceId.value = null
   mobileExpandedMyAttendanceId.value = null
-  lastTappedAttendanceId.value = null
-  lastTappedAttendanceScope.value = null
-  lastTapTimestamp.value = 0
+  resetDoubleTap()
 }
 
 const handleTabChange = (tabName: TabPaneName) => {
@@ -3162,35 +3147,3 @@ onMounted(async () => {
 
 <style scoped src="./styles/attendance-view/desktop.css"></style>
 <style scoped src="./styles/attendance-view/responsive.css"></style>
-
-<style>
-.attendance-form-dialog,
-.attendance-detail-dialog {
-  --dialog-max-width: 800px;
-}
-
-@media (max-width: 767px) {
-  .attendance-form-dialog,
-  .attendance-detail-dialog {
-    --dialog-side-gap: 6px;
-    --dialog-vertical-gap: 12px;
-    --dialog-max-width: calc(100vw - 12px);
-    --mobile-dialog-overlay-padding: 12px 6px;
-    --mobile-dialog-body-padding: 10px 8px 8px;
-    --mobile-dialog-footer-padding: 0 8px 8px;
-  }
-
-}
-
-@media (max-width: 479px) {
-  .attendance-form-dialog,
-  .attendance-detail-dialog {
-    --dialog-side-gap: 4px;
-    --dialog-vertical-gap: 12px;
-    --dialog-max-width: calc(100vw - 8px);
-    --mobile-dialog-overlay-padding: 12px 4px;
-    --mobile-dialog-body-padding: 8px 6px 6px;
-    --mobile-dialog-footer-padding: 0 6px 6px;
-  }
-}
-</style>

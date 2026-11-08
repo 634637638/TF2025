@@ -320,20 +320,22 @@
         </el-form>
 
         <template #footer>
-          <el-button
-            type="default"
-            @click="handleCancelDialog"
-          >
-            取消
-          </el-button>
-          <el-button
-            v-if="canSaveCurrentBanner"
-            type="primary"
-            :loading="saving"
-            @click="handleSave"
-          >
-            确定
-          </el-button>
+          <div class="tf-dialog-actions">
+            <el-button
+              type="default"
+              @click="handleCancelDialog"
+            >
+              取消
+            </el-button>
+            <el-button
+              v-if="canSaveCurrentBanner"
+              type="primary"
+              :loading="saving"
+              @click="handleSave"
+            >
+              确定
+            </el-button>
+          </div>
         </template>
       </MobileDialog>
     </div>

@@ -6,9 +6,8 @@
   <MobileDialog
     v-model="visible"
     title="商品配置"
-    width="700px"
     :close-on-click-modal="false"
-    dialog-class="publish-to-h5-dialog"
+    dialog-class="publish-to-h5-dialog crud-dialog-md-lg"
     :show-default-footer="false"
     @close="handleClose"
   >
@@ -1272,11 +1271,6 @@ defineExpose({
 
 <style scoped>
 :global(.publish-to-h5-dialog) {
-  --dialog-max-width: 700px;
-  --dialog-vertical-gap: 24px;
-  --mobile-dialog-overlay-padding: 8px 4px;
-  --mobile-dialog-body-padding: 8px 4px 8px;
-  --mobile-dialog-footer-padding: 0 4px 4px;
   --tf-dialog-body-padding-inline: var(--tf-space-6);
   --tf-dialog-body-padding-block: var(--tf-space-5);
   --tf-dialog-footer-padding-inline: var(--tf-space-6);

@@ -267,7 +267,7 @@
                       <el-table-column
                         prop="category"
                         label="分类"
-                        min-width="120"
+                        min-width="96"
                         align="center"
                       >
                         <template #default="{ row }">
@@ -283,7 +283,7 @@
                       <el-table-column
                         prop="label"
                         label="设置项"
-                        min-width="150"
+                        min-width="140"
                         class-name="flat-edit-label-column"
                         label-class-name="flat-edit-label-column"
                       >
@@ -296,7 +296,7 @@
                       <el-table-column
                         prop="value"
                         label="当前值"
-                        min-width="160"
+                        min-width="240"
                         class-name="flat-edit-value-column"
                         label-class-name="flat-edit-value-column"
                       >
@@ -875,16 +875,18 @@
           </el-form-item>
         </el-form>
         <template #footer>
-          <el-button @click="priceContactDialogVisible = false">
-            取消
-          </el-button>
-          <el-button
-            type="primary"
-            :disabled="!canUpdateSettings"
-            @click="savePriceContact"
-          >
-            保存
-          </el-button>
+          <div class="tf-dialog-actions">
+            <el-button @click="priceContactDialogVisible = false">
+              取消
+            </el-button>
+            <el-button
+              type="primary"
+              :disabled="!canUpdateSettings"
+              @click="savePriceContact"
+            >
+              保存
+            </el-button>
+          </div>
         </template>
       </MobileDialog>
 
@@ -955,20 +957,22 @@
           </el-form-item>
         </el-form>
         <template #footer>
-          <el-button
-            type="default"
-            @click="passwordDialogVisible = false"
-          >
-            取消
-          </el-button>
-          <el-button
-            v-if="showOperations"
-            type="primary"
-            :loading="savingPassword"
-            @click="savePassword"
-          >
-            {{ passwordDialogMode === 'add' ? '添加' : '保存' }}
-          </el-button>
+          <div class="tf-dialog-actions">
+            <el-button
+              type="default"
+              @click="passwordDialogVisible = false"
+            >
+              取消
+            </el-button>
+            <el-button
+              v-if="showOperations"
+              type="primary"
+              :loading="savingPassword"
+              @click="savePassword"
+            >
+              {{ passwordDialogMode === 'add' ? '添加' : '保存' }}
+            </el-button>
+          </div>
         </template>
       </MobileDialog>
     </PermissionGate>
@@ -1133,15 +1137,6 @@ const setLocalSiteLogoPreview = (file: File) => {
 
 // 站点信息表格配置
 const siteSettingsList = [
-  {
-    key: 'logoUrl',
-    label: 'Logo 地址',
-    category: 'basic',
-    categoryLabel: '基本信息',
-    type: 'input',
-    icon: 'fas fa-image',
-    placeholder: '/uploads/brand/brand_xxx.png'
-  },
   // 基本信息
   {
     key: 'siteName',
@@ -1227,10 +1222,8 @@ const siteSettingsList = [
   defaultValue?: string
 }>
 
-const visibleSiteSettingsList = computed(() => siteSettingsList.filter((item) => (
-  item.key === 'logoUrl'
-    ? canViewField('settings.logo')
-    : canViewField('settings.site_info')
+const visibleSiteSettingsList = computed(() => siteSettingsList.filter(() => (
+  canViewField('settings.site_info')
 )))
 
 const _priceSettingsList = [

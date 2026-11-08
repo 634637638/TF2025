@@ -6,7 +6,6 @@ const router = express.Router()
 const multer = require('multer')
 const priceListController = require('../controllers/price-list.controller')
 const { unifiedAuth, requirePermission } = require('../middleware/unified-auth')
-const log = require('../utils/log')
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -74,9 +73,7 @@ router.delete('/:id', unifiedAuth, requirePermission('price-list:delete'), price
  * @desc    数据库迁移：已废弃，表已是新结构
  * @access  Private
  */
-router.post('/migrate', unifiedAuth, requirePermission('price-list:edit'), (req, res) => {
-  return res.json({ success: true, message: '表已是新结构，无需迁移', data: { results: [] } })
-})
+router.post('/migrate', unifiedAuth, requirePermission('price-list:edit'), priceListController.acknowledgeMigration)
 
 // ==================== 同步配置接口（必须在 /:id 之前定义）====================
 
@@ -148,94 +145,14 @@ router.post('/sync/trigger', unifiedAuth, requirePermission('price-list:sync'), 
  * @desc    检查iPhone 16的采集状态
  * @access  Private
  */
-router.get('/check-iphone16', unifiedAuth, requirePermission('price-list:view'), async (req, res) => {
-  try {
-    const db = req.app.get('db')
-
-    // 检查iPhone 16的状态
-    const [records] = await db.query(`
-      SELECT
-        b.name as brand_name,
-        m.name as model_number,
-        c.name as color_name,
-        mem.size as memory,
-        COALESCE(pl.is_collect, 1) as is_collect,
-        pl.id,
-        pl.wholesale_price,
-        pl.last_sync_time
-      FROM price_list pl
-      JOIN brands b ON pl.brand_id = b.id
-      JOIN models m ON pl.model_id = m.id
-      LEFT JOIN colors c ON pl.color_id = c.id
-      LEFT JOIN memories mem ON pl.memory_id = mem.id
-      WHERE m.name = 'iPhone 16'
-      ORDER BY c.name, mem.size
-    `)
-
-    return res.json({
-      success: true,
-      message: `找到 ${records.length} 条iPhone 16记录`,
-      data: records
-    })
-  } catch (error) {
-    log.error('检查失败:', error)
-    return res.status(500).json({
-      success: false,
-      message: error.message
-    })
-  }
-})
+router.get('/check-iphone16', unifiedAuth, requirePermission('price-list:view'), priceListController.checkIphone16)
 
 /**
  * @route   POST /api/price-list/update-iphone16-is-collect
  * @desc    批量更新iPhone 16的采集状态
  * @access  Private
  */
-router.post('/update-iphone16-is-collect', unifiedAuth, requirePermission('price-list:edit'), async (req, res) => {
-  try {
-    const db = req.app.get('db')
-    const { is_collect = 1 } = req.body
-
-    // 更新所有 iPhone 16 的 is_collect
-    const [result] = await db.query(`
-      UPDATE price_list pl
-      JOIN models m ON pl.model_id = m.id
-      SET pl.is_collect = ?
-      WHERE m.name = 'iPhone 16'
-    `, [is_collect])
-
-    // 查询更新后的记录
-    const [records] = await db.query(`
-      SELECT
-        b.name as brand_name,
-        m.name as model_number,
-        c.name as color_name,
-        mem.size as memory,
-        COALESCE(pl.is_collect, 1) as is_collect,
-        pl.id,
-        pl.wholesale_price
-      FROM price_list pl
-      JOIN brands b ON pl.brand_id = b.id
-      JOIN models m ON pl.model_id = m.id
-      LEFT JOIN colors c ON pl.color_id = c.id
-      LEFT JOIN memories mem ON pl.memory_id = mem.id
-      WHERE m.name = 'iPhone 16'
-      ORDER BY c.name, mem.size
-    `)
-
-    return res.json({
-      success: true,
-      message: `已更新 ${result.affectedRows} 条iPhone 16记录的采集状态为 ${is_collect}`,
-      data: records
-    })
-  } catch (error) {
-    log.error('更新失败:', error)
-    return res.status(500).json({
-      success: false,
-      message: error.message
-    })
-  }
-})
+router.post('/update-iphone16-is-collect', unifiedAuth, requirePermission('price-list:edit'), priceListController.updateIphone16Collection)
 
 /**
  * @route   GET /api/price-list/sync/logs

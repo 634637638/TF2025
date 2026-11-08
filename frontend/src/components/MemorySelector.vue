@@ -65,19 +65,21 @@
     </div>
 
     <template #footer>
-      <el-button
-        type="default"
-        @click="handleClose"
-      >
-        取消
-      </el-button>
-      <el-button
-        type="primary"
-        :disabled="!selectedPhoneId"
-        @click="handleConfirm"
-      >
-        确定
-      </el-button>
+      <div class="tf-dialog-actions">
+        <el-button
+          type="default"
+          @click="handleClose"
+        >
+          取消
+        </el-button>
+        <el-button
+          type="primary"
+          :disabled="!selectedPhoneId"
+          @click="handleConfirm"
+        >
+          确定
+        </el-button>
+      </div>
     </template>
   </MobileDialog>
 </template>

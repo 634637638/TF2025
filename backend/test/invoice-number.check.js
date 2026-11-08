@@ -4,7 +4,6 @@ const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
-const { runInNewContext } = require('node:vm')
 const {
   prepareInvoiceNumberTransaction,
   generateInvoiceNumber,
@@ -337,14 +336,17 @@ test('business dates and zoned instants use the common Beijing date tools', () =
 test('all shared-generator callers prepare the same transaction before allocating', () => {
   const root = path.resolve(__dirname, '..')
   for (const file of [
-    'src/routes/sales.js', 'src/routes/phones.js', 'src/routes/inventory.js',
-    'src/routes/rentals.js', 'src/services/transfer.service.js',
-    'src/services/sale.service.js', 'src/services/data-import.service.js',
+    'src/services/sales-phone.service.js', 'src/services/phone-update.service.js', 'src/services/inventory.service.js',
+    'src/services/rental-create.service.js', 'src/services/transfer.service.js',
+    'src/services/data-import.service.js',
     'scripts/backfill-sale-invoice-numbers.js'
   ]) {
     const source = fs.readFileSync(path.join(root, file), 'utf8')
-    assert.match(source, /await prepareInvoiceNumberTransaction\((\w+)\)\s+await \1\.beginTransaction\(\)/, file)
-    assert.match(source, /generateInvoiceNumber\(/, file)
+    const connectionSetup = ['src/services/rental-create.service.js', 'src/services/sales-phone.service.js'].includes(file)
+      ? /await this\.prepareInvoiceTransaction\(connection\)\s+await connection\.beginTransaction\(\)/
+      : /await (?:this\.)?prepareInvoiceNumberTransaction\((\w+)\)\s+await \1\.beginTransaction\(\)/
+    assert.match(source, connectionSetup, file)
+    assert.match(source, ['src/services/rental-create.service.js', 'src/services/sales-phone.service.js'].includes(file) ? /this\.generateInvoice\(/ : /generateInvoiceNumber\(/, file)
   }
 })
 
@@ -393,78 +395,3 @@ test('invoice integrity repair is preview-first, transactional and date-aware', 
   assert.match(source, /remaining_misaligned_rows: 0/)
   assert.match(source, /remaining_legacy_rows: 0/)
 })
-
-for (const failUpdate of [false, true]) {
-  test(`the compatibility sales service keeps numbering and sale writes in one transaction (failure=${failUpdate})`, async () => {
-    const database = createDatabase([number(1), number(3)])
-    const connection = database.connect()
-    const execute = connection.execute.bind(connection)
-    connection.execute = async (sql, params) => /SELECT status FROM phones/.test(sql)
-      ? [[{ status: 'in_stock' }]]
-      : execute(sql, params)
-    let released = false
-    let pointsReconciled = false
-    connection.release = () => { released = true }
-    let saved
-    class SaleRepository {
-      async findPhoneByImei() { return { id: 61, purchase_cost: 3000 } }
-      async createSale(data, transaction) {
-        assert.equal(transaction, connection)
-        saved = data
-        connection.insertSale(data.invoice_number)
-        return 901
-      }
-      async updatePhoneStatusToSold(phoneId, saleId, customerId, operatorId, price, cost, transaction, saleTime) {
-        assert.equal(transaction, connection)
-        assert.equal(phoneId, 61)
-        assert.equal(saleId, 901)
-        assert.equal(saleTime, '2026-11-02 00:00:00')
-        if (failUpdate) throw new Error('模拟设备更新失败')
-        return true
-      }
-      async getSaleRecordById() { return saved }
-    }
-    const module = { exports: {} }
-    const dependencies = {
-      '../repositories/sale.repository': SaleRepository,
-      '../repositories/customer.repository': class {},
-      '../utils/log': { debug() {}, error() {} },
-      '../config/database': { getDatabase: () => ({ getConnection: async () => connection }) },
-      '../utils/time': require('../src/utils/time'),
-      '../utils/invoice-number': require('../src/utils/invoice-number'),
-      './customer-points.service': {
-        reconcileCustomerPointsForSale: async ({ executor, saleId, initialize }) => {
-          assert.equal(executor, connection)
-          assert.equal(saleId, 901)
-          assert.equal(initialize, true)
-          pointsReconciled = true
-          return { points: 0 }
-        }
-      }
-    }
-    const source = fs.readFileSync(path.join(__dirname, '../src/services/sale.service.js'), 'utf8')
-    runInNewContext(source, {
-      module,
-      require: name => {
-        assert.ok(Object.hasOwn(dependencies, name), `禁止加载非测试依赖 ${name}`)
-        return dependencies[name]
-      }
-    })
-    const service = new module.exports()
-    const result = service.sellPhone({
-      phone_id: 61, customer_id: 1, operator_id: 1,
-      sale_price: 3500, sale_time: '2026-11-02',
-      invoice_number: 'MANUAL-INVOICE-MUST-BE-IGNORED'
-    })
-    if (failUpdate) {
-      await assert.rejects(result, /模拟设备更新失败/)
-      assert.equal(database.committed.has(number(2)), false)
-      assert.equal(await sell(database), number(2), '失败销售不能永久占用空号')
-    } else {
-      assert.equal((await result).data.sale.invoice_number, number(2))
-      assert.equal(database.committed.has(number(2)), true)
-    }
-    assert.equal(pointsReconciled, true)
-    assert.equal(released, true)
-  })
-}

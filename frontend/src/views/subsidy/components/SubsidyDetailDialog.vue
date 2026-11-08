@@ -232,10 +232,9 @@
 import { computed, ref, watch } from 'vue'
 import MobileDialog from '@/components/MobileDialog.vue'
 import SectionLoading from '@/components/SectionLoading.vue'
-import { formatAmount, formatImageUrl } from '@/utils/format'
+import { formatAmount, formatImageUrl, formatDate } from '@/utils/format'
 import { unifiedApi } from '@/utils/unified-api'
 import { normalizeIdCard, normalizePersonName, normalizePhoneDigits } from '@/utils/security'
-import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import { logger } from '@/utils/logger'
 
 import type { NationalSubsidyHandlerInfo, NationalSubsidyRecord } from '@/types'
@@ -337,8 +336,6 @@ const toggleCustomerInfo = () => {
 }
 
 const resolvePhotoUrl = (photo?: string) => formatImageUrl(photo || '')
-
-const formatDate = (date?: string | null) => date ? TimeUtil.format(date, TIME_FORMATS.DATE) : '-'
 
 const loadDetail = async (item: NationalSubsidyRecord) => {
   const requestSeq = ++detailRequestSeq

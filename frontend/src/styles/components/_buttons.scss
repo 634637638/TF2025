@@ -162,6 +162,14 @@
   --tf-button-success-shadow: 0 4px 12px rgba(22, 163, 74, 0.3);
   --tf-button-warning-shadow: 0 4px 12px rgba(217, 119, 6, 0.3);
   --tf-button-danger-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+
+  /* H5 手机端操作按钮规格（见 button-standards.md） */
+  --tf-h5-action-height: 44px;
+  --tf-h5-action-icon-size: 32px;
+  /* 筛选胶囊与图标删除角标规格 */
+  --tf-button-pill-padding-block: var(--tf-space-2);
+  --tf-button-pill-padding-inline: var(--tf-space-4);
+  --tf-button-badge-size: 18px;
 }
 
 @mixin tf-filled-button($bg, $border, $color, $hover-bg, $hover-border) {
@@ -184,8 +192,8 @@
 }
 
 /* 默认基线保持低优先级，公共语义按钮可覆盖尺寸与表面。 */
-.el-button:where(:not([class*='el-button--']):not(.is-text):not(.is-link):not([link])):where(:not(.customer-search-dropdown__item):not(.customer-name-lock-input__status):not(.customer-name-lock-input__change):not(.tf-button--service-card):not(.tf-button--service-float)),
-.el-button:where(:not(.is-circle):not(.is-text):not(.is-link)):where(:not(.customer-search-dropdown__item):not(.customer-name-lock-input__status):not(.customer-name-lock-input__change):not(.tf-button--service-card):not(.tf-button--service-float)),
+.el-button:where(:not([class*='el-button--']):not(.is-text):not(.is-link):not([link])):where(:not(.customer-search-dropdown__item):not(.customer-name-lock-input__status):not(.customer-name-lock-input__change):not(.tf-button--service-card):not(.tf-button--service-float):not(.tf-button--h5-action):not(.tf-button--h5-action-icon):not(.tf-button--pill-filter)),
+.el-button:where(:not(.is-circle):not(.is-text):not(.is-link)):where(:not(.customer-search-dropdown__item):not(.customer-name-lock-input__status):not(.customer-name-lock-input__change):not(.tf-button--service-card):not(.tf-button--service-float):not(.tf-button--h5-action):not(.tf-button--h5-action-icon):not(.tf-button--pill-filter)),
 :where(.el-button.btn),
 :where(.el-button[class*='btn-']:not(.btn-close)) {
   width: auto;
@@ -394,7 +402,7 @@
 .el-button.tf-button--neutral,
 .el-button.tf-button--cancel,
 .el-button.tf-button--close,
-.el-button:where(:not([class*='el-button--']):not(.is-text):not(.is-link):not([link])):where(:not(.tf-button--service-card):not(.tf-button--service-float)) {
+.el-button:where(:not([class*='el-button--']):not(.is-text):not(.is-link):not([link])):where(:not(.tf-button--service-card):not(.tf-button--service-float):not(.tf-button--h5-action):not(.tf-button--h5-action-icon):not(.tf-button--pill-filter)) {
   --el-button-bg-color: var(--tf-button-neutral-bg) !important;
   --el-button-border-color: var(--tf-button-neutral-border) !important;
   --el-button-text-color: var(--tf-button-neutral-color) !important;
@@ -467,6 +475,123 @@
   border: 0;
   border-radius: var(--tf-radius-full);
   box-shadow: var(--tf-shadow-floating);
+}
+
+/* H5 手机端操作按钮：胶囊动作条与卡片删除图标按钮，规格与颜色只在此处维护 */
+.el-button.tf-button--h5-action {
+  flex: 1;
+  min-width: 0;
+  height: var(--tf-h5-action-height);
+  padding: 0 var(--tf-space-2);
+  border-radius: var(--tf-radius-full);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--tf-space-1);
+}
+
+.el-button.tf-button--h5-action i {
+  font-size: var(--tf-type-scale-13);
+}
+
+.el-button.tf-button--h5-action-neutral {
+  --el-button-bg-color: var(--tf-button-neutral-bg);
+  --el-button-border-color: var(--tf-button-neutral-border);
+  --el-button-text-color: var(--tf-button-tool-color);
+  --el-button-hover-bg-color: var(--tf-button-neutral-hover-bg);
+  --el-button-hover-border-color: var(--tf-button-neutral-hover-border);
+  --el-button-hover-text-color: var(--tf-button-tool-color);
+  --el-button-active-bg-color: var(--tf-button-neutral-hover-bg);
+  --el-button-active-border-color: var(--tf-button-neutral-hover-border);
+}
+
+.el-button.tf-button--h5-action-warning {
+  --el-button-bg-color: var(--tf-button-warning-bg);
+  --el-button-border-color: var(--tf-button-warning-border);
+  --el-button-text-color: var(--tf-button-on-color);
+  --el-button-hover-bg-color: var(--tf-button-warning-hover-bg);
+  --el-button-hover-border-color: var(--tf-button-warning-hover-bg);
+  --el-button-hover-text-color: var(--tf-button-on-color);
+  --el-button-active-bg-color: var(--tf-button-warning-hover-bg);
+  box-shadow: var(--tf-button-warning-shadow);
+}
+
+.el-button.tf-button--h5-action-primary {
+  --el-button-bg-color: var(--tf-button-primary-bg);
+  --el-button-border-color: var(--tf-button-primary-border);
+  --el-button-text-color: var(--tf-button-on-color);
+  --el-button-hover-bg-color: var(--tf-button-primary-hover-bg);
+  --el-button-hover-border-color: var(--tf-button-primary-hover-bg);
+  --el-button-hover-text-color: var(--tf-button-on-color);
+  --el-button-active-bg-color: var(--tf-button-primary-hover-bg);
+  box-shadow: var(--tf-button-primary-shadow);
+}
+
+.el-button.tf-button--h5-action-success {
+  --el-button-bg-color: var(--tf-button-success-bg);
+  --el-button-border-color: var(--tf-button-success-border);
+  --el-button-text-color: var(--tf-button-on-color);
+  --el-button-hover-bg-color: var(--tf-button-success-hover-bg);
+  --el-button-hover-border-color: var(--tf-button-success-hover-bg);
+  --el-button-hover-text-color: var(--tf-button-on-color);
+  --el-button-active-bg-color: var(--tf-button-success-hover-bg);
+  box-shadow: var(--tf-button-shadow);
+}
+
+.el-button.tf-button--h5-action-icon {
+  --el-button-bg-color: var(--tf-button-neutral-bg);
+  --el-button-border-color: var(--tf-button-neutral-border);
+  --el-button-text-color: var(--tf-button-danger-soft-color);
+  --el-button-hover-bg-color: var(--tf-button-danger-soft-hover-bg);
+  --el-button-hover-border-color: var(--tf-button-neutral-hover-border);
+  --el-button-hover-text-color: var(--tf-button-danger-soft-color);
+  --el-button-active-bg-color: var(--tf-button-danger-soft-hover-bg);
+  --el-button-active-border-color: var(--tf-button-neutral-hover-border);
+  flex: none;
+  width: var(--tf-h5-action-icon-size);
+  min-width: var(--tf-h5-action-icon-size);
+  height: var(--tf-h5-action-icon-size);
+  padding: 0;
+  border-radius: var(--tf-radius-control);
+}
+
+/* 筛选胶囊按钮：选中态统一用 is-active，颜色全部读取公共语义变量 */
+.el-button.tf-button--pill-filter {
+  --el-button-bg-color: var(--tf-button-neutral-bg);
+  --el-button-border-color: var(--tf-button-neutral-border);
+  --el-button-text-color: var(--tf-button-neutral-color);
+  --el-button-hover-bg-color: var(--tf-button-neutral-hover-bg);
+  --el-button-hover-border-color: var(--tf-button-neutral-hover-border);
+  --el-button-hover-text-color: var(--tf-button-neutral-color);
+  padding: var(--tf-button-pill-padding-block) var(--tf-button-pill-padding-inline);
+  border-radius: var(--tf-radius-full);
+}
+
+.el-button.tf-button--pill-filter.is-active {
+  --el-button-bg-color: var(--tf-button-primary-hover-bg);
+  --el-button-border-color: var(--tf-button-primary-soft-hover-border);
+  --el-button-text-color: var(--tf-button-on-color);
+  --el-button-hover-bg-color: var(--tf-button-primary-hover-bg);
+  --el-button-hover-text-color: var(--tf-button-on-color);
+}
+
+/* 图标删除角标：悬停显现的小型圆形危险按钮，定位由页面容器控制 */
+.el-button.tf-button--icon-badge {
+  --el-button-bg-color: var(--tf-button-danger-bg);
+  --el-button-border-color: transparent;
+  --el-button-text-color: var(--tf-button-on-color);
+  --el-button-hover-bg-color: var(--tf-button-danger-hover-bg);
+  --el-button-hover-border-color: transparent;
+  --el-button-hover-text-color: var(--tf-button-on-color);
+  flex: none;
+  width: var(--tf-button-badge-size);
+  min-width: var(--tf-button-badge-size);
+  height: var(--tf-button-badge-size);
+  padding: 0;
+  border: 0;
+  border-radius: var(--tf-radius-full);
+  font-size: var(--tf-type-scale-10);
+  box-shadow: var(--tf-button-danger-shadow);
 }
 
 body .el-button.el-button.tf-button--dialog-close {
@@ -672,6 +797,14 @@ body .el-button.el-button.tf-button--tab-action:hover,
 body .el-button.el-button.tf-button--tab-action:focus {
   background: var(--tf-button-tool-hover-bg) !important;
   color: var(--tf-button-neutral-color) !important;
+}
+
+body .el-button.el-button.tf-button--tab-action {
+  flex-shrink: 0;
+}
+
+body .el-button.el-button.tf-button--tab-action i {
+  font-size: var(--tf-type-scale-12);
 }
 
 body .el-button.el-button.tf-button--menu-action {

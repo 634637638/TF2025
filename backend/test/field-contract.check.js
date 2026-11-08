@@ -221,7 +221,7 @@ test('subsidy contract retires pagination and handler aliases after read-only ve
   assert.deepEqual(registry.legacyBoundarySources.subsidy, undefined)
   for (const source of [
     'backend/src/routes/subsidy.js',
-    'backend/src/services/dataMaskingService.js',
+    'backend/src/services/data-masking.service.js',
     'frontend/src/composables/useFieldPermissions.ts',
     'frontend/src/config/moduleFields.js',
     'frontend/src/views/subsidy/SubsidyView.vue',
@@ -516,10 +516,11 @@ test('inventory analytics contract covers canonical filters and response fields'
     assert.ok(contract.responseFields.includes(field), `analytics 缺少 ${field} 响应字段`)
   }
 
-  const source = fs.readFileSync(path.join(root, 'backend/src/routes/analytics.js'), 'utf8')
-  assert.match(source, /req\.query\.store_id/)
-  assert.match(source, /req\.query\.supplier_id/)
-  assert.match(source, /getModelStockWarnings\(undefined, limitValue, \{ storeId, supplierId \}\)/)
+  const controller = fs.readFileSync(path.join(root, 'backend/src/controllers/analytics-inventory.controller.js'), 'utf8')
+  const service = fs.readFileSync(path.join(root, 'backend/src/services/analytics-inventory.service.js'), 'utf8')
+  assert.match(controller, /req\.query\.store_id/)
+  assert.match(controller, /req\.query\.supplier_id/)
+  assert.match(service, /getModelStockWarnings\(undefined, limit, \{ storeId, supplierId \}\)/)
 })
 
 test('accessories contract uses canonical money, pagination and filter fields', () => {
@@ -540,16 +541,16 @@ test('accessories contract uses canonical money, pagination and filter fields', 
     assert.ok(contract.responseFields.includes(field), `accessories 缺少 ${field} 响应字段`)
   }
 
-  const route = fs.readFileSync(path.join(root, 'backend/src/routes/accessories.js'), 'utf8')
+  const controller = fs.readFileSync(path.join(root, 'backend/src/controllers/accessory.controller.js'), 'utf8')
   const repository = fs.readFileSync(path.join(root, 'backend/src/repositories/accessory.repository.js'), 'utf8')
   const view = fs.readFileSync(path.join(root, 'frontend/src/views/accessories/AccessoriesView.vue'), 'utf8')
   const modal = fs.readFileSync(path.join(root, 'frontend/src/components/AccessoryStockInModal.vue'), 'utf8')
 
-  assert.match(route, /purchase_cost: body\.purchase_cost,/)
-  assert.match(route, /sale_price: body\.sale_price,/)
-  assert.match(route, /page_size: req\.query\.page_size,/)
-  assert.match(route, /start_date: req\.query\.start_date,/)
-  assert.doesNotMatch(route, /purchase_price|selling_price|pageSize|startDate|endDate|lowStockOnly/)
+  assert.match(controller, /purchase_cost: body\.purchase_cost,/)
+  assert.match(controller, /sale_price: body\.sale_price,/)
+  assert.match(controller, /page_size: req\.query\.page_size,/)
+  assert.match(controller, /start_date: req\.query\.start_date,/)
+  assert.doesNotMatch(controller, /purchase_price|selling_price|pageSize|startDate|endDate|lowStockOnly/)
   assert.match(repository, /a\.purchase_cost/)
   assert.match(repository, /a\.sale_price/)
   assert.doesNotMatch(repository, /SELECT\s+a\.\*/)
@@ -696,13 +697,18 @@ test('sales analytics uses canonical filters and snake_case response groups', ()
     assert.ok(contract.responseFields.includes(field), `analytics 缺少 ${field} 销售响应字段`)
   }
   const route = fs.readFileSync(path.join(root, 'backend/src/routes/analytics.js'), 'utf8')
-  assert.match(route, /req\.query\.start_date/)
-  assert.match(route, /req\.query\.end_date/)
+  const salesService = fs.readFileSync(path.join(root, 'backend/src/services/analytics-sales.service.js'), 'utf8')
+  const salesController = fs.readFileSync(path.join(root, 'backend/src/controllers/analytics-sales.controller.js'), 'utf8')
+  assert.match(route, /router\.get\('\/sales', unifiedAuth, requireBusinessUser, analyticsSalesController\.getSales\.bind\(analyticsSalesController\)\)/)
+  assert.match(salesController, /req\.query\.start_date/)
+  assert.match(salesController, /req\.query\.end_date/)
   assert.doesNotMatch(route, /req\.query\.startDate|req\.query\.endDate/)
-  assert.match(route, /top_products:/)
-  assert.match(route, /sales_by_store:/)
-  assert.match(route, /sales_by_period:/)
-  assert.match(route, /sales_count:/)
+  assert.match(salesService, /top_products:/)
+  assert.match(salesService, /sales_by_store:/)
+  assert.match(salesService, /sales_by_period:/)
+  const conditionService = fs.readFileSync(path.join(root, 'backend/src/services/analytics-sales-by-condition.service.js'), 'utf8')
+  assert.match(conditionService, /sales_count:/)
+  assert.match(conditionService, /margin_rate:/)
   assert.doesNotMatch(route, /topProducts:\s*topProducts\[0\]/)
 })
 
@@ -712,8 +718,9 @@ test('profit analytics routes and page use canonical filter names', () => {
     assert.ok(contract.responseFields.includes(field), `analytics 缺少 ${field} 利润响应字段`)
   }
   const route = fs.readFileSync(path.join(root, 'backend/src/routes/analytics.js'), 'utf8')
-  assert.match(route, /const startDate = req\.query\.start_date/)
-  assert.match(route, /const storeId = req\.query\.store_id/)
+  const controller = fs.readFileSync(path.join(root, 'backend/src/controllers/analytics-profit.controller.js'), 'utf8')
+  assert.match(controller, /req\.query\.start_date/)
+  assert.match(controller, /req\.query\.store_id/)
   assert.doesNotMatch(route, /req\.query\.startDate|req\.query\.endDate|req\.query\.storeId/)
   const page = fs.readFileSync(path.join(root, 'frontend/src/views/analytics/page/ProfitAnalytics.vue'), 'utf8')
   assert.doesNotMatch(page, /params\.startDate\s*=/)
@@ -725,11 +732,12 @@ test('profit analytics routes and page use canonical filter names', () => {
 
 test('employee analytics applies canonical date/store filters and avoids fake fallback data', () => {
   const route = fs.readFileSync(path.join(root, 'backend/src/routes/analytics.js'), 'utf8')
+  const controller = fs.readFileSync(path.join(root, 'backend/src/controllers/analytics-employee-summary.controller.js'), 'utf8')
   const page = fs.readFileSync(path.join(root, 'frontend/src/views/analytics/page/EmployeeAnalytics.vue'), 'utf8')
   assert.match(route, /router\.get\('\/employees\/detail'/)
-  assert.match(route, /const startDate = req\.query\.start_date/)
+  assert.match(controller, /req\.query\.start_date/)
   assert.match(route, /router\.get\('\/attendance\/summary'/)
-  assert.match(route, /req\.query\.store_id/)
+  assert.match(controller, /req\.query\.store_id/)
   assert.doesNotMatch(route, /req\.query\.startDate|req\.query\.endDate|req\.query\.storeId/)
   assert.doesNotMatch(page, /\{ value: 5, name: '管理员' \}/)
   assert.doesNotMatch(page, /\{ value: 8, name: '销售主管' \}/)
@@ -744,11 +752,11 @@ test('transfer analytics sends the same canonical filters for current and compar
   assert.doesNotMatch(page, /currentParams\.startDate/)
   assert.doesNotMatch(page, /currentParams\.endDate/)
   assert.doesNotMatch(page, /currentParams\.storeId/)
-  const route = fs.readFileSync(path.join(root, 'backend/src/routes/analytics.js'), 'utf8')
-  assert.match(route, /transfer_count:/)
-  assert.match(route, /wholesale_product_ranks:/)
-  assert.match(route, /store_distribution:/)
-  assert.doesNotMatch(route, /transfer:\s*\{\s*transferCount/)
+  const service = fs.readFileSync(path.join(root, 'backend/src/services/analytics-transfers.service.js'), 'utf8')
+  assert.match(service, /transfer_count:/)
+  assert.match(service, /wholesale_product_ranks:/)
+  assert.match(service, /store_distribution:/)
+  assert.doesNotMatch(service, /transfer:\s*\{\s*transferCount/)
 })
 
 test('analytics overview keeps canonical filters and normalizes option responses', () => {
@@ -771,15 +779,20 @@ test('analytics overview keeps canonical filters and normalizes option responses
 test('customer analytics list carries canonical filters without duplicate pagination fields', () => {
   const page = fs.readFileSync(path.join(root, 'frontend/src/views/analytics/page/CustomerAnalytics.vue'), 'utf8')
   const route = fs.readFileSync(path.join(root, 'backend/src/routes/analytics.js'), 'utf8')
+  const controller = fs.readFileSync(path.join(root, 'backend/src/controllers/analytics-high-value-customers.controller.js'), 'utf8')
+  const repository = fs.readFileSync(path.join(root, 'backend/src/repositories/analytics-high-value-customers.repository.js'), 'utf8')
+  const service = fs.readFileSync(path.join(root, 'backend/src/services/analytics-high-value-customers.service.js'), 'utf8')
   assert.match(page, /customerParams\.start_date/)
   assert.match(page, /customerParams\.end_date/)
   assert.match(page, /customerParams\.store_id/)
   assert.doesNotMatch(page, /page_size:\s*customerPageSize\.value,\s*page_size:/)
   assert.match(route, /router\.get\('\/customers\/high-value'/)
-  assert.match(route, /req\.query\.start_date/)
-  assert.match(route, /req\.query\.store_id/)
+  assert.match(controller, /req\.query\.start_date/)
+  assert.match(controller, /req\.query\.store_id/)
   assert.doesNotMatch(route, /req\.query\.startDate|req\.query\.endDate|req\.query\.storeId/)
-  assert.match(route, /db\.query\(customersQuery, \[\.\.\.saleParams, \.\.\.searchParams\]\)/)
+  assert.match(repository, /db\.query\(customersQuery, params\)/)
+  assert.match(repository, /db\.query\(countQuery, params\)/)
+  assert.match(service, /total_pages: totalPages/)
 })
 
 test('query sorting exposes canonical time and price fields at the API boundary', () => {
@@ -832,6 +845,7 @@ test('customers uses canonical filters, statistics and purchase history fields',
 
   const route = fs.readFileSync(path.join(root, 'backend/src/routes/customers.js'), 'utf8')
   const repository = fs.readFileSync(path.join(root, 'backend/src/repositories/customer.repository.js'), 'utf8')
+  const controller = fs.readFileSync(path.join(root, 'backend/src/controllers/customer.controller.js'), 'utf8')
   const page = fs.readFileSync(path.join(root, 'frontend/src/views/customers/CustomersView.vue'), 'utf8')
 
   assert.equal(contract.legacy.length, 0)
@@ -839,19 +853,20 @@ test('customers uses canonical filters, statistics and purchase history fields',
     assert.ok(contract.retired.includes(field), `customers 未登记已退役字段 ${field}`)
   }
   assert.doesNotMatch(route, /req\.query\.limit/)
-  assert.match(route, /register_date_start/)
-  assert.match(route, /register_date_end/)
-  assert.match(route, /total_customers/)
-  assert.match(route, /active_customers/)
-  assert.match(route, /new_customers/)
-  assert.match(route, /premium_customers/)
-  assert.match(route, /s\.purchase_cost/)
-  assert.match(route, /s\.sale_price/)
-  assert.match(route, /s\.sale_time/)
-  assert.match(route, /ORDER BY s\.sale_time DESC, s\.id DESC/)
-  assert.match(route, /LIMIT \? OFFSET \?/)
-  assert.match(route, /p\.sale_price === null \? null : Number\(p\.sale_price\)/)
-  assert.doesNotMatch(route, /purchase_cost: parseFloat\(p\.purchase_cost\) \|\| 0/)
+  assert.match(controller, /register_date_start/)
+  assert.match(controller, /register_date_end/)
+  assert.match(route, /customerController\.list\.bind\(customerController\)/)
+  assert.match(repository, /total_customers/)
+  assert.match(repository, /active_customers/)
+  assert.match(repository, /new_customers/)
+  assert.match(repository, /premium_customers/)
+  assert.match(repository, /s\.purchase_cost/)
+  assert.match(repository, /s\.sale_price/)
+  assert.match(repository, /s\.sale_time/)
+  assert.match(repository, /ORDER BY s\.sale_time DESC, s\.id DESC/)
+  assert.match(repository, /LIMIT \? OFFSET \?/)
+  assert.match(controller, /purchase\.sale_price === null \? null : Number\(purchase\.sale_price\)/)
+  assert.doesNotMatch(controller, /purchase_cost: parseFloat\(purchase\.purchase_cost\) \|\| 0/)
   assert.match(repository, /page_size/)
   assert.match(repository, /register_date_start/)
   assert.match(repository, /register_date_end/)
