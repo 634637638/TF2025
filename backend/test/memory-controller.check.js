@@ -1,3 +1,4 @@
+const MemoryRepository = require('../src/repositories/memory.repository')
 const { withConnection } = require('../src/core/db/connection')
 const test = require('node:test')
 const assert = require('node:assert/strict')
@@ -18,7 +19,7 @@ test('内存列表 controller 保留筛选绑定、白名单排序和标准分�
   const calls = []
   const controller = new MemoryController({
     databaseConnected: () => true,
-    repository: {
+    repository: Object.assign(new MemoryRepository(), {
       async executePrepared(sql, params) {
         calls.push({ sql, params })
         if (calls.length === 1) {
@@ -33,7 +34,7 @@ test('内存列表 controller 保留筛选绑定、白名单排序和标准分�
         }
         return [[{ total: 23 }]]
       }
-    }
+    })
   })
   const response = createResponse()
 
@@ -79,12 +80,12 @@ test('内存列表 controller 在 all=true 时返回完整数组且数据库离�
   let queryCount = 0
   const controller = new MemoryController({
     databaseConnected: () => true,
-    repository: {
+    repository: Object.assign(new MemoryRepository(), {
       async executePrepared() {
         queryCount += 1
         return queryCount === 1 ? [[{ id: 1, size: '64GB' }]] : [[{ total: 1 }]]
       }
-    }
+    })
   })
   const allResponse = createResponse()
 
@@ -94,7 +95,7 @@ test('内存列表 controller 在 all=true 时返回完整数组且数据库离�
 
   const offlineController = new MemoryController({
     databaseConnected: () => false,
-    repository: { async executePrepared() { assert.fail('offline request must not query') } }
+    repository: Object.assign(new MemoryRepository(), { async executePrepared() { assert.fail('offline request must not query') } })
   })
   const offlineResponse = createResponse()
   await offlineController.list({ query: {} }, offlineResponse)
@@ -105,14 +106,14 @@ test('内存规格创建校验格式和重复项，成功后返回格式化记�
   const calls = []
   const controller = new MemoryController({
     databaseConnected: () => true,
-    repository: {
+    repository: Object.assign(new MemoryRepository(), {
       async executePrepared(sql, params) {
         calls.push({ sql, params })
         if (calls.length === 1) return [[]]
         if (calls.length === 2) return [{ insertId: 9 }]
         return [[{ id: 9, size: '128GB', status: 1, sort_order: 0 }]]
       }
-    }
+    })
   })
   const invalid = createResponse()
   await controller.create({ body: { size: '128GB!' } }, invalid)
@@ -128,7 +129,7 @@ test('内存规格创建校验格式和重复项，成功后返回格式化记�
 
   const duplicateController = new MemoryController({
     databaseConnected: () => true,
-    repository: { async executePrepared() { return [[{ id: 1 }]] } }
+    repository: Object.assign(new MemoryRepository(), { async executePrepared() { return [[{ id: 1 }]] } })
   })
   const duplicate = createResponse()
   await duplicateController.create({ body: { size: '128GB' } }, duplicate)
@@ -140,7 +141,7 @@ test('内存规格详情与删除保留不存在响应和删除后返回原记�
   let deleted = false
   const controller = new MemoryController({
     databaseConnected: () => true,
-    repository: {
+    repository: Object.assign(new MemoryRepository(), {
       async executePrepared(sql) {
         if (sql.startsWith('SELECT id, size')) {
           return deleted ? [[]] : [[{ id: 3, size: '256GB', status: 1, sort_order: 1 }]]
@@ -151,7 +152,7 @@ test('内存规格详情与删除保留不存在响应和删除后返回原记�
         }
         assert.fail(`unexpected SQL: ${sql}`)
       }
-    }
+    })
   })
   const detail = createResponse()
   await controller.getById({ params: { id: '3' } }, detail)
@@ -171,7 +172,7 @@ test('内存规格更新阻止重复值，统计与状态切换保留响应字�
   let updateExecuted = false
   const updateController = new MemoryController({
     databaseConnected: () => true,
-    repository: {
+    repository: Object.assign(new MemoryRepository(), {
       async executePrepared(sql) {
         if (sql === 'SELECT id FROM memories WHERE id = ?') return [[{ id: 2 }]]
         if (sql === 'SELECT size FROM memories WHERE id = ?') return [[{ size: '64GB' }]]
@@ -179,7 +180,7 @@ test('内存规格更新阻止重复值，统计与状态切换保留响应字�
         updateExecuted = true
         return [[]]
       }
-    }
+    })
   })
   const duplicate = createResponse()
   await updateController.update({ params: { id: '2' }, body: { size: '128GB' } }, duplicate)
@@ -190,7 +191,7 @@ test('内存规格更新阻止重复值，统计与状态切换保留响应字�
   let memorySelectCalls = 0
   const controller = new MemoryController({
     databaseConnected: () => true,
-    repository: {
+    repository: Object.assign(new MemoryRepository(), {
       async executePrepared(sql, params) {
         if (sql.includes('UPDATE memories SET status')) return [[]]
         if (sql.includes('SELECT COUNT(*) AS related_phones')) {
@@ -208,7 +209,7 @@ test('内存规格更新阻止重复值，统计与状态切换保留响应字�
         }
         assert.fail(`unexpected SQL: ${sql}`)
       }
-    }
+    })
   })
   const stats = createResponse()
   await controller.getStats({ query: { size: '128', storage_unit: 'GB', status: '1' } }, stats)
@@ -232,7 +233,7 @@ test('内存批量排序按原事务提交，失败回滚且始终释放连接',
   }
   const controller = new MemoryController({
     databaseConnected: () => true,
-    repository: { withConnection(operation) { return withConnection({ getConnection: async () => connection }, operation) } }
+    repository: Object.assign(new MemoryRepository(), { withConnection(operation) { return withConnection({ getConnection: async () => connection }, operation) } })
   })
   const success = createResponse()
   await controller.reorder({ body: { items: [{ id: 1, sort_order: 3 }, { id: 2 }] } }, success)

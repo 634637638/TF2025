@@ -1,4 +1,5 @@
 'use strict'
+const { withConnection } = require('../core/db/connection')
 
 const crypto = require('crypto')
 const bcrypt = require('bcryptjs')
@@ -243,30 +244,29 @@ async function createAccessToken(categoryId, policy, expiresDays, database = get
 
 async function unlockCategory(id, password) {
   const db = getDatabase()
-  const connection = await db.getConnection()
-  try {
-    await connection.beginTransaction()
-    const [rows] = await connection.query('SELECT * FROM guide_categories WHERE id = ? AND is_enabled = 1 LIMIT 1 FOR UPDATE', [id])
-    if (!rows.length) throw new Error('分类不存在')
-    const category = rows[0]
-    if (category.access_mode !== 'password') {
+  return await withConnection(db, async connection => {
+    try {
+      await connection.beginTransaction()
+      const [rows] = await connection.query('SELECT * FROM guide_categories WHERE id = ? AND is_enabled = 1 LIMIT 1 FOR UPDATE', [id])
+      if (!rows.length) throw new Error('分类不存在')
+      const category = rows[0]
+      if (category.access_mode !== 'password') {
+        await connection.commit()
+        return { category: await getCategory(id), access_token: null }
+      }
+      if (!password || !(await bcrypt.compare(String(password), category.password_hash || ''))) throw new Error('密码错误')
+      if (category.password_policy === 'once' && category.password_used_at) throw new Error('一次性访问密码已使用')
+      if (category.password_policy === 'once') {
+        await connection.query('UPDATE guide_categories SET password_used_at = NOW() WHERE id = ?', [id])
+      }
+      const accessToken = await createAccessToken(id, category.password_policy || 'permanent', category.password_expires_days, connection)
       await connection.commit()
-      return { category: await getCategory(id), access_token: null }
+      return { access_token: accessToken }
+    } catch (error) {
+      await connection.rollback()
+      throw error
     }
-    if (!password || !(await bcrypt.compare(String(password), category.password_hash || ''))) throw new Error('密码错误')
-    if (category.password_policy === 'once' && category.password_used_at) throw new Error('一次性访问密码已使用')
-    if (category.password_policy === 'once') {
-      await connection.query('UPDATE guide_categories SET password_used_at = NOW() WHERE id = ?', [id])
-    }
-    const accessToken = await createAccessToken(id, category.password_policy || 'permanent', category.password_expires_days, connection)
-    await connection.commit()
-    return { access_token: accessToken }
-  } catch (error) {
-    await connection.rollback()
-    throw error
-  } finally {
-    connection.release()
-  }
+  })
 }
 
 async function getProtectedCategory(id, token) {
@@ -276,24 +276,24 @@ async function getProtectedCategory(id, token) {
   if (categoryRows[0].access_mode === 'public') return getCategory(id)
   if (!token) throw new Error('请输入分类访问密码')
   const hash = crypto.createHash('sha256').update(String(token)).digest('hex')
-  const connection = await db.getConnection()
-  try {
-    await connection.beginTransaction()
-    const [rows] = await connection.query('SELECT * FROM guide_access_tokens WHERE token_hash = ? AND category_id = ? AND (expires_at IS NULL OR expires_at > NOW()) FOR UPDATE', [hash, id])
-    if (!rows.length) throw new Error('分类访问权限已失效，请重新输入密码')
-    const session = rows[0]
-    if (session.remaining_uses !== null && Number(session.remaining_uses) <= 0) throw new Error('分类访问权限已使用')
-    if (session.remaining_uses !== null) {
-      await connection.query('UPDATE guide_access_tokens SET remaining_uses = remaining_uses - 1 WHERE id = ?', [session.id])
+  await withConnection(db, async connection => {
+    try {
+      await connection.beginTransaction()
+      const [rows] = await connection.query('SELECT * FROM guide_access_tokens WHERE token_hash = ? AND category_id = ? AND (expires_at IS NULL OR expires_at > NOW()) FOR UPDATE', [hash, id])
+      if (!rows.length) throw new Error('分类访问权限已失效，请重新输入密码')
+      const session = rows[0]
+      if (session.remaining_uses !== null && Number(session.remaining_uses) <= 0) throw new Error('分类访问权限已使用')
+      if (session.remaining_uses !== null) {
+        await connection.query('UPDATE guide_access_tokens SET remaining_uses = remaining_uses - 1 WHERE id = ?', [session.id])
+      }
+      await connection.commit()
+
+    } catch (error) {
+      await connection.rollback()
+      throw error
     }
-    await connection.commit()
-    return getCategory(id, { unlocked: true })
-  } catch (error) {
-    await connection.rollback()
-    throw error
-  } finally {
-    connection.release()
-  }
+  })
+  return getCategory(id, { unlocked: true })
 }
 
 async function createAnnouncement(userId, payload) {

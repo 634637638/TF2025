@@ -55,14 +55,6 @@ class BaseRepository {
   }
 
   /**
-   * 获取一个独立连接（事务场景），与 pool.getConnection() 等价
-   * @returns {Promise<Object>} connection
-   */
-  async acquireConnection() {
-    return this.getConnection().getConnection()
-  }
-
-  /**
    * 执行查询（带超时）
    * @param {string} sql - SQL查询语句
    * @param {Array} params - 查询参数

@@ -1,3 +1,4 @@
+const { withConnection } = require('../core/db/connection')
 const BaseRepository = require('./base.repository')
 const log = require('../utils/log')
 
@@ -211,43 +212,42 @@ class UserRepository extends BaseRepository {
     }
 
     const db = this.getConnection()
-    const connection = await db.getConnection()
-    try {
-      await connection.beginTransaction()
-      const normalizedStatus = status === 'active' ? 1 : status === 'inactive' ? 0 : Number(status)
-      const [result] = await connection.execute(
-        `INSERT INTO users (username, password, store_id, status, created_at, updated_at)
-         VALUES (?, ?, ?, ?, NOW(), NOW())`,
-        [username, password, store_id, Number.isFinite(normalizedStatus) ? normalizedStatus : 1]
-      )
-
-      if (role) {
-        const [roles] = await connection.execute(
-          'SELECT id, name FROM roles WHERE code = ? OR name = ? LIMIT 1',
-          [role, role]
+    return await withConnection(db, async connection => {
+      try {
+        await connection.beginTransaction()
+        const normalizedStatus = status === 'active' ? 1 : status === 'inactive' ? 0 : Number(status)
+        const [result] = await connection.execute(
+          `INSERT INTO users (username, password, store_id, status, created_at, updated_at)
+           VALUES (?, ?, ?, ?, NOW(), NOW())`,
+          [username, password, store_id, Number.isFinite(normalizedStatus) ? normalizedStatus : 1]
         )
-        if (roles.length === 0) {
-          throw new Error('用户角色不存在')
+
+        if (role) {
+          const [roles] = await connection.execute(
+            'SELECT id, name FROM roles WHERE code = ? OR name = ? LIMIT 1',
+            [role, role]
+          )
+          if (roles.length === 0) {
+            throw new Error('用户角色不存在')
+          }
+          await connection.execute(
+            'INSERT INTO user_roles (user_id, role_id, assigned_at, created_at) VALUES (?, ?, NOW(), NOW())',
+            [result.insertId, roles[0].id]
+          )
         }
-        await connection.execute(
-          'INSERT INTO user_roles (user_id, role_id, assigned_at, created_at) VALUES (?, ?, NOW(), NOW())',
-          [result.insertId, roles[0].id]
-        )
-      }
 
-      await connection.commit()
-      return {
-        id: result.insertId,
-        affectedRows: result.affectedRows,
-        data: { id: result.insertId, username, role, store_id, status }
+        await connection.commit()
+        return {
+          id: result.insertId,
+          affectedRows: result.affectedRows,
+          data: { id: result.insertId, username, role, store_id, status }
+        }
+      } catch (error) {
+        await connection.rollback().catch(() => {})
+        log.error('创建用户失败:', error)
+        throw error
       }
-    } catch (error) {
-      await connection.rollback().catch(() => {})
-      log.error('创建用户失败:', error)
-      throw error
-    } finally {
-      connection.release()
-    }
+    })
   }
 
   /**
@@ -294,44 +294,43 @@ class UserRepository extends BaseRepository {
     }
 
     const db = this.getConnection()
-    const connection = await db.getConnection()
-    try {
-      await connection.beginTransaction()
-      let result = { affectedRows: 0, changedRows: 0 }
-      if (updates.length > 0) {
-        updates.push('updated_at = NOW()')
-        params.push(id)
-        ;[result] = await connection.execute(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`, params)
-      }
-
-      if (role !== undefined) {
-        const [roles] = await connection.execute(
-          'SELECT id FROM roles WHERE code = ? OR name = ? LIMIT 1',
-          [role, role]
-        )
-        if (roles.length === 0) {
-          throw new Error('用户角色不存在')
+    return await withConnection(db, async connection => {
+      try {
+        await connection.beginTransaction()
+        let result = { affectedRows: 0, changedRows: 0 }
+        if (updates.length > 0) {
+          updates.push('updated_at = NOW()')
+          params.push(id)
+          ;[result] = await connection.execute(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`, params)
         }
-        await connection.execute('DELETE FROM user_roles WHERE user_id = ?', [id])
-        await connection.execute(
-          'INSERT INTO user_roles (user_id, role_id, assigned_at, created_at) VALUES (?, ?, NOW(), NOW())',
-          [id, roles[0].id]
-        )
-      }
 
-      await connection.commit()
-      return {
-        affectedRows: result.affectedRows,
-        changedRows: result.changedRows,
-        data: { id, ...userData }
+        if (role !== undefined) {
+          const [roles] = await connection.execute(
+            'SELECT id FROM roles WHERE code = ? OR name = ? LIMIT 1',
+            [role, role]
+          )
+          if (roles.length === 0) {
+            throw new Error('用户角色不存在')
+          }
+          await connection.execute('DELETE FROM user_roles WHERE user_id = ?', [id])
+          await connection.execute(
+            'INSERT INTO user_roles (user_id, role_id, assigned_at, created_at) VALUES (?, ?, NOW(), NOW())',
+            [id, roles[0].id]
+          )
+        }
+
+        await connection.commit()
+        return {
+          affectedRows: result.affectedRows,
+          changedRows: result.changedRows,
+          data: { id, ...userData }
+        }
+      } catch (error) {
+        await connection.rollback().catch(() => {})
+        log.error('更新用户失败:', error)
+        throw error
       }
-    } catch (error) {
-      await connection.rollback().catch(() => {})
-      log.error('更新用户失败:', error)
-      throw error
-    } finally {
-      connection.release()
-    }
+    })
   }
 
   /**

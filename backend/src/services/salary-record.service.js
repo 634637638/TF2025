@@ -1,3 +1,4 @@
+const { withConnection } = require('../core/db/connection')
 /**
  * 工资记录服务
  */
@@ -209,9 +210,7 @@ class SalaryRecordService {
    */
   async bulkRecalculateByPeriod(periodStart, periodEnd, operatorId) {
     const db = getDatabase()
-    const conn = await db.getConnection()
-
-    try {
+    return await withConnection(db, async conn => {
       const [employees] = await conn.execute(
         'SELECT id FROM users WHERE status = 1 AND salary_template_id IS NOT NULL'
       )
@@ -244,9 +243,7 @@ class SalaryRecordService {
       }
 
       return results
-    } finally {
-      conn.release()
-    }
+    })
   }
 
   /**
@@ -256,9 +253,7 @@ class SalaryRecordService {
    */
   async getEmployeesSalesData(periodStart, periodEnd) {
     const db = getDatabase()
-    const conn = await db.getConnection()
-
-    try {
+    return await withConnection(db, async conn => {
       // 首先获取所有员工在周期内的请假记录
       const leaveQuery = `
         SELECT employee_id, record_date, leave_days, leave_type, leave_reason
@@ -427,9 +422,7 @@ class SalaryRecordService {
       })
 
       return result
-    } finally {
-      conn.release()
-    }
+    })
   }
 
   /**
@@ -440,9 +433,7 @@ class SalaryRecordService {
    */
   async getEmployeeSalesDetails(employeeId, periodStart, periodEnd) {
     const db = getDatabase()
-    const conn = await db.getConnection()
-
-    try {
+    return await withConnection(db, async conn => {
       // 首先获取该员工在周期内的请假记录
       const leaveQuery = `
         SELECT record_date, leave_days, leave_type, leave_reason
@@ -563,9 +554,7 @@ class SalaryRecordService {
         customer_name: row.customer_name || '-',
         customer_phone: row.customer_phone || '-'
       }))
-    } finally {
-      conn.release()
-    }
+    })
   }
 }
 

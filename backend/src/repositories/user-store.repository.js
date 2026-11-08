@@ -6,8 +6,13 @@ const log = require('../utils/log')
  * 处理用户和门店的多对多关联关系
  */
 class UserStoreRepository {
-  constructor() {
+  constructor({ database = getDatabase } = {}) {
+    this.database = database
     this.tableName = 'user_stores'
+  }
+
+  findAuditUser(userId) {
+    return this.database().execute('SELECT id, username, name FROM users WHERE id = ?', [userId])
   }
 
   /**

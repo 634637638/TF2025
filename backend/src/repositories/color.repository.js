@@ -1,10 +1,8 @@
-/**
- * 颜色数据访问层
- * 复用 BaseRepository 的执行封装，供路由层下沉数据库连接与执行时使用。
- */
-const BaseRepository = require('./base.repository')
+'use strict'
 
-class ColorRepository extends BaseRepository {
+const ReferenceManagementRepository = require('./reference-management.repository')
+
+class ColorRepository extends ReferenceManagementRepository {
   constructor() {
     super('colors')
   }

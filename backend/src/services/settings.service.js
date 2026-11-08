@@ -1,3 +1,4 @@
+const { withConnection } = require('../core/db/connection')
 /**
  * 系统设置服务
  */
@@ -162,52 +163,50 @@ class SettingsService {
    */
   async setMultipleSettings(settingsObj) {
     try {
-      const connection = await this.getDb().getConnection()
-      await connection.beginTransaction()
+      return await withConnection(this.getDb(), async connection => {
+        await connection.beginTransaction()
+        try {
+          for (const [key, value] of Object.entries(settingsObj)) {
+            let settingType = 'string'
 
-      try {
-        for (const [key, value] of Object.entries(settingsObj)) {
-          let settingType = 'string'
+            // 自动推断类型
+            if (typeof value === 'number') {
+              settingType = 'number'
+            } else if (typeof value === 'boolean') {
+              settingType = 'boolean'
+            } else if (typeof value === 'object') {
+              settingType = 'json'
+            }
 
-          // 自动推断类型
-          if (typeof value === 'number') {
-            settingType = 'number'
-          } else if (typeof value === 'boolean') {
-            settingType = 'boolean'
-          } else if (typeof value === 'object') {
-            settingType = 'json'
+            let valueStr = value.toString()
+            if (settingType === 'json') {
+              valueStr = JSON.stringify(value)
+            }
+
+            const query = `
+              INSERT INTO settings (setting_key, setting_value, setting_type)
+              VALUES (?, ?, ?)
+              ON DUPLICATE KEY UPDATE
+              setting_value = VALUES(setting_value),
+              setting_type = VALUES(setting_type),
+              updated_at = CURRENT_TIMESTAMP
+            `
+
+            await connection.execute(query, [key, valueStr, settingType])
           }
 
-          let valueStr = value.toString()
-          if (settingType === 'json') {
-            valueStr = JSON.stringify(value)
+          await connection.commit()
+
+          return {
+            success: true,
+            message: '批量设置保存成功',
+            data: settingsObj
           }
-
-          const query = `
-            INSERT INTO settings (setting_key, setting_value, setting_type)
-            VALUES (?, ?, ?)
-            ON DUPLICATE KEY UPDATE
-            setting_value = VALUES(setting_value),
-            setting_type = VALUES(setting_type),
-            updated_at = CURRENT_TIMESTAMP
-          `
-
-          await connection.execute(query, [key, valueStr, settingType])
+        } catch (error) {
+          await connection.rollback()
+          throw error
         }
-
-        await connection.commit()
-
-        return {
-          success: true,
-          message: '批量设置保存成功',
-          data: settingsObj
-        }
-      } catch (error) {
-        await connection.rollback()
-        throw error
-      } finally {
-        connection.release()
-      }
+      })
     } catch (error) {
       log.error('批量设置失败:', error)
       return {

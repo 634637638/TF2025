@@ -1,3 +1,4 @@
+const { withConnection } = require('../core/db/connection')
 /**
  * 供应商打款服务层
  */
@@ -366,47 +367,46 @@ class SupplierPaymentService {
     const db = getDatabase()
 
     // 验证手机ID - 查找未打款的手机（payment_status IS NULL 或 != 'paid'）
-    const connection = await db.getConnection()
-    try {
-      await connection.beginTransaction()
-      const [phones] = await connection.execute(`
-        SELECT id, imei, purchase_cost, supplier_id
-        FROM phones
-        WHERE id IN (${phone_ids.map(() => '?').join(',')})
-          AND supplier_id IS NOT NULL
-          AND status != 'supplier_proxy'
-          AND (payment_status IS NULL OR payment_status != 'paid')
-        FOR UPDATE
-      `, phone_ids)
+    return await withConnection(db, async connection => {
+      try {
+        await connection.beginTransaction()
+        const [phones] = await connection.execute(`
+          SELECT id, imei, purchase_cost, supplier_id
+          FROM phones
+          WHERE id IN (${phone_ids.map(() => '?').join(',')})
+            AND supplier_id IS NOT NULL
+            AND status != 'supplier_proxy'
+            AND (payment_status IS NULL OR payment_status != 'paid')
+          FOR UPDATE
+        `, phone_ids)
 
-      if (phones.length === 0) throw new Error('没有找到可打款的手机')
+        if (phones.length === 0) throw new Error('没有找到可打款的手机')
 
-      const paymentTime = normalizeDateTime(payment_time, false)
-      if (!paymentTime) throw new Error('打款时间无效')
-      const paymentBatchId = randomUUID()
+        const paymentTime = normalizeDateTime(payment_time, false)
+        if (!paymentTime) throw new Error('打款时间无效')
+        const paymentBatchId = randomUUID()
 
-      for (const phone of phones) {
-        await connection.execute(`
-          UPDATE phones
-          SET payment_status = 'paid', payment_method = ?, payment_time = ?, payment_remarks = ?, payment_batch_id = ?, payment_operator_id = ?
-          WHERE id = ?
-        `, [payment_method, paymentTime, payment_remarks?.trim() || null, paymentBatchId, operator_id, phone.id])
+        for (const phone of phones) {
+          await connection.execute(`
+            UPDATE phones
+            SET payment_status = 'paid', payment_method = ?, payment_time = ?, payment_remarks = ?, payment_batch_id = ?, payment_operator_id = ?
+            WHERE id = ?
+          `, [payment_method, paymentTime, payment_remarks?.trim() || null, paymentBatchId, operator_id, phone.id])
+        }
+        await connection.commit()
+
+        return {
+          count: phones.length,
+          total_amount: phones.reduce((sum, p) => sum + Number(p.purchase_cost || 0), 0),
+          payment_method,
+          payment_time: paymentTime,
+          payment_batch_id: paymentBatchId
+        }
+      } catch (error) {
+        await connection.rollback()
+        throw error
       }
-      await connection.commit()
-
-      return {
-        count: phones.length,
-        total_amount: phones.reduce((sum, p) => sum + Number(p.purchase_cost || 0), 0),
-        payment_method,
-        payment_time: paymentTime,
-        payment_batch_id: paymentBatchId
-      }
-    } catch (error) {
-      await connection.rollback()
-      throw error
-    } finally {
-      connection.release()
-    }
+    })
   }
 
   /**
@@ -417,47 +417,46 @@ class SupplierPaymentService {
     const db = getDatabase()
 
     // 获取手机信息
-    const connection = await db.getConnection()
-    try {
-      await connection.beginTransaction()
-      const [phones] = await connection.execute(`
-        SELECT id, imei, purchase_cost, supplier_id, payment_status, status
-        FROM phones
-        WHERE id = ?
-        FOR UPDATE
-      `, [phone_id])
+    return await withConnection(db, async connection => {
+      try {
+        await connection.beginTransaction()
+        const [phones] = await connection.execute(`
+          SELECT id, imei, purchase_cost, supplier_id, payment_status, status
+          FROM phones
+          WHERE id = ?
+          FOR UPDATE
+        `, [phone_id])
 
-      if (!phones || phones.length === 0) throw new Error('手机不存在')
+        if (!phones || phones.length === 0) throw new Error('手机不存在')
 
-      const phone = phones[0]
+        const phone = phones[0]
 
-      if (phone.supplier_id === null || phone.supplier_id === undefined) throw new Error('该手机没有供应商')
-      if (phone.status === 'supplier_proxy') throw new Error('划拨手机不可打款')
-      if (phone.payment_status === 'paid') throw new Error('该手机已打款')
+        if (phone.supplier_id === null || phone.supplier_id === undefined) throw new Error('该手机没有供应商')
+        if (phone.status === 'supplier_proxy') throw new Error('划拨手机不可打款')
+        if (phone.payment_status === 'paid') throw new Error('该手机已打款')
 
-      const paymentTime = normalizeDateTime(payment_time, false)
-      if (!paymentTime) throw new Error('打款时间无效')
+        const paymentTime = normalizeDateTime(payment_time, false)
+        if (!paymentTime) throw new Error('打款时间无效')
 
-      await connection.execute(`
-        UPDATE phones
-        SET payment_status = 'paid', payment_method = ?, payment_time = ?, payment_remarks = ?, payment_batch_id = NULL, payment_operator_id = ?
-        WHERE id = ?
-      `, [payment_method, paymentTime, payment_remarks?.trim() || null, operator_id, phone_id])
-      await connection.commit()
+        await connection.execute(`
+          UPDATE phones
+          SET payment_status = 'paid', payment_method = ?, payment_time = ?, payment_remarks = ?, payment_batch_id = NULL, payment_operator_id = ?
+          WHERE id = ?
+        `, [payment_method, paymentTime, payment_remarks?.trim() || null, operator_id, phone_id])
+        await connection.commit()
 
-      return {
-        phone_id,
-        imei: phone.imei,
-        amount: Number(phone.purchase_cost || 0),
-        payment_method,
-        payment_time: paymentTime
+        return {
+          phone_id,
+          imei: phone.imei,
+          amount: Number(phone.purchase_cost || 0),
+          payment_method,
+          payment_time: paymentTime
+        }
+      } catch (error) {
+        await connection.rollback()
+        throw error
       }
-    } catch (error) {
-      await connection.rollback()
-      throw error
-    } finally {
-      connection.release()
-    }
+    })
   }
 
   /**
@@ -467,40 +466,39 @@ class SupplierPaymentService {
     await ensureSupplierPaymentSchema()
     const db = getDatabase()
 
-    const connection = await db.getConnection()
-    try {
-      await connection.beginTransaction()
-      const [phones] = await connection.execute(`
-        SELECT id, imei, purchase_cost, supplier_id
-        FROM phones
-        WHERE id IN (${phone_ids.map(() => '?').join(',')})
-          AND supplier_id IS NOT NULL
-          AND status != 'supplier_proxy'
-          AND payment_status = 'paid'
-        FOR UPDATE
-      `, phone_ids)
-      if (phones.length === 0) throw new Error('没有找到可取消打款的手机')
+    return await withConnection(db, async connection => {
+      try {
+        await connection.beginTransaction()
+        const [phones] = await connection.execute(`
+          SELECT id, imei, purchase_cost, supplier_id
+          FROM phones
+          WHERE id IN (${phone_ids.map(() => '?').join(',')})
+            AND supplier_id IS NOT NULL
+            AND status != 'supplier_proxy'
+            AND payment_status = 'paid'
+          FOR UPDATE
+        `, phone_ids)
+        if (phones.length === 0) throw new Error('没有找到可取消打款的手机')
 
-      for (const phone of phones) {
-        await connection.execute(`
-          UPDATE phones
-          SET payment_status = NULL, payment_method = NULL,
-              payment_time = NULL, payment_remarks = NULL, payment_batch_id = NULL, payment_operator_id = NULL
-          WHERE id = ?
-        `, [phone.id])
+        for (const phone of phones) {
+          await connection.execute(`
+            UPDATE phones
+            SET payment_status = NULL, payment_method = NULL,
+                payment_time = NULL, payment_remarks = NULL, payment_batch_id = NULL, payment_operator_id = NULL
+            WHERE id = ?
+          `, [phone.id])
+        }
+        await connection.commit()
+        return {
+          count: phones.length,
+          total_amount: phones.reduce((sum, p) => sum + Number(p.purchase_cost || 0), 0),
+          message: `成功取消 ${phones.length} 台手机的打款`
+        }
+      } catch (error) {
+        await connection.rollback()
+        throw error
       }
-      await connection.commit()
-      return {
-        count: phones.length,
-        total_amount: phones.reduce((sum, p) => sum + Number(p.purchase_cost || 0), 0),
-        message: `成功取消 ${phones.length} 台手机的打款`
-      }
-    } catch (error) {
-      await connection.rollback()
-      throw error
-    } finally {
-      connection.release()
-    }
+    })
   }
 
   /**
@@ -510,126 +508,125 @@ class SupplierPaymentService {
     await ensureSupplierPaymentSchema()
     const db = getDatabase()
 
-    const connection = await db.getConnection()
-    try {
-      await connection.beginTransaction()
+    return await withConnection(db, async connection => {
+      try {
+        await connection.beginTransaction()
 
-      // 先锁定被编辑记录，使用原始打款时间确定批次，避免编辑时被当前时间拆批。
-      const [phones] = await connection.execute(`
-        SELECT
-          id,
-          imei,
-          supplier_id,
-          payment_status,
-          payment_method,
-          payment_remarks,
-          payment_batch_id,
-          DATE_FORMAT(payment_time, '%Y-%m-%d %H:%i:%s') AS batch_payment_time
-        FROM phones
-        WHERE id = ?
-        FOR UPDATE
-      `, [phone_id])
+        // 先锁定被编辑记录，使用原始打款时间确定批次，避免编辑时被当前时间拆批。
+        const [phones] = await connection.execute(`
+          SELECT
+            id,
+            imei,
+            supplier_id,
+            payment_status,
+            payment_method,
+            payment_remarks,
+            payment_batch_id,
+            DATE_FORMAT(payment_time, '%Y-%m-%d %H:%i:%s') AS batch_payment_time
+          FROM phones
+          WHERE id = ?
+          FOR UPDATE
+        `, [phone_id])
 
-      if (!phones || phones.length === 0) {
-        throw new Error('手机不存在')
-      }
+        if (!phones || phones.length === 0) {
+          throw new Error('手机不存在')
+        }
 
-      const phone = phones[0]
+        const phone = phones[0]
 
-      // 如果 payment_method 和 payment_time 都为 null，则是取消打款操作。
-      if (payment_method === null && payment_time === null) {
+        // 如果 payment_method 和 payment_time 都为 null，则是取消打款操作。
+        if (payment_method === null && payment_time === null) {
+          await connection.execute(`
+            UPDATE phones
+            SET payment_status = NULL,
+                payment_method = NULL,
+                payment_time = NULL,
+                payment_remarks = NULL,
+                payment_batch_id = NULL,
+                payment_operator_id = NULL
+            WHERE id = ?
+          `, [phone_id])
+          await connection.commit()
+
+          return {
+            phone_id,
+            imei: phone.imei,
+            payment_status: 'unpaid',
+            payment_method: null,
+            payment_time: null
+          }
+        }
+
+        if (phone.payment_status !== 'paid') {
+          throw new Error('该手机未打款，无法编辑')
+        }
+
+        const paymentTime = payment_time === undefined
+          ? phone.batch_payment_time
+          : normalizeDateTime(payment_time, false)
+        if (!paymentTime) throw new Error('打款时间无效')
+
+        const nextPaymentMethod = payment_method === undefined
+          ? phone.payment_method
+          : payment_method
+        const nextPaymentRemarks = payment_remarks === undefined
+          ? (phone.payment_remarks?.trim() || null)
+          : (payment_remarks?.trim() || null)
+
+        let batchPhones
+        if (phone.payment_batch_id) {
+          [batchPhones] = await connection.execute(`
+            SELECT id
+            FROM phones
+            WHERE payment_batch_id = ?
+              AND supplier_id = ?
+              AND payment_status = 'paid'
+            FOR UPDATE
+          `, [phone.payment_batch_id, phone.supplier_id])
+        } else if (phone.batch_payment_time) {
+          // 兼容历史数据：没有批次编号时，回退到供应商和原始秒级时间。
+          [batchPhones] = await connection.execute(`
+            SELECT id
+            FROM phones
+            WHERE supplier_id = ?
+              AND payment_status = 'paid'
+              AND DATE_FORMAT(payment_time, '%Y-%m-%d %H:%i:%s') = ?
+            FOR UPDATE
+          `, [phone.supplier_id, phone.batch_payment_time])
+        } else {
+          // 历史脏数据没有打款时间时，仅更新当前记录，避免误合并其他批次。
+          batchPhones = [{ id: phone_id }]
+        }
+
+        const batchIds = batchPhones.map(item => item.id)
+        if (batchIds.length === 0) {
+          throw new Error('未找到可编辑的打款批次')
+        }
+
         await connection.execute(`
           UPDATE phones
-          SET payment_status = NULL,
-              payment_method = NULL,
-              payment_time = NULL,
-              payment_remarks = NULL,
-              payment_batch_id = NULL,
-              payment_operator_id = NULL
-          WHERE id = ?
-        `, [phone_id])
+          SET payment_method = ?,
+              payment_time = ?,
+              payment_remarks = ?
+          WHERE id IN (${batchIds.map(() => '?').join(',')})
+        `, [nextPaymentMethod, paymentTime, nextPaymentRemarks, ...batchIds])
+
         await connection.commit()
 
         return {
           phone_id,
           imei: phone.imei,
-          payment_status: 'unpaid',
-          payment_method: null,
-          payment_time: null
+          batch_count: batchIds.length,
+          payment_method: nextPaymentMethod,
+          payment_time: paymentTime,
+          payment_remarks: nextPaymentRemarks,
+          payment_batch_id: phone.payment_batch_id || null
         }
+      } catch (error) {
+        await connection.rollback()
+        throw error
       }
-
-      if (phone.payment_status !== 'paid') {
-        throw new Error('该手机未打款，无法编辑')
-      }
-
-      const paymentTime = payment_time === undefined
-        ? phone.batch_payment_time
-        : normalizeDateTime(payment_time, false)
-      if (!paymentTime) throw new Error('打款时间无效')
-
-      const nextPaymentMethod = payment_method === undefined
-        ? phone.payment_method
-        : payment_method
-      const nextPaymentRemarks = payment_remarks === undefined
-        ? (phone.payment_remarks?.trim() || null)
-        : (payment_remarks?.trim() || null)
-
-      let batchPhones
-      if (phone.payment_batch_id) {
-        [batchPhones] = await connection.execute(`
-          SELECT id
-          FROM phones
-          WHERE payment_batch_id = ?
-            AND supplier_id = ?
-            AND payment_status = 'paid'
-          FOR UPDATE
-        `, [phone.payment_batch_id, phone.supplier_id])
-      } else if (phone.batch_payment_time) {
-        // 兼容历史数据：没有批次编号时，回退到供应商和原始秒级时间。
-        [batchPhones] = await connection.execute(`
-          SELECT id
-          FROM phones
-          WHERE supplier_id = ?
-            AND payment_status = 'paid'
-            AND DATE_FORMAT(payment_time, '%Y-%m-%d %H:%i:%s') = ?
-          FOR UPDATE
-        `, [phone.supplier_id, phone.batch_payment_time])
-      } else {
-        // 历史脏数据没有打款时间时，仅更新当前记录，避免误合并其他批次。
-        batchPhones = [{ id: phone_id }]
-      }
-
-      const batchIds = batchPhones.map(item => item.id)
-      if (batchIds.length === 0) {
-        throw new Error('未找到可编辑的打款批次')
-      }
-
-      await connection.execute(`
-        UPDATE phones
-        SET payment_method = ?,
-            payment_time = ?,
-            payment_remarks = ?
-        WHERE id IN (${batchIds.map(() => '?').join(',')})
-      `, [nextPaymentMethod, paymentTime, nextPaymentRemarks, ...batchIds])
-
-      await connection.commit()
-
-      return {
-        phone_id,
-        imei: phone.imei,
-        batch_count: batchIds.length,
-        payment_method: nextPaymentMethod,
-        payment_time: paymentTime,
-        payment_remarks: nextPaymentRemarks,
-        payment_batch_id: phone.payment_batch_id || null
-      }
-    } catch (error) {
-      await connection.rollback()
-      throw error
-    } finally {
-      connection.release()
-    }
+    })
   }
 
   /**

@@ -3,6 +3,7 @@
 const crypto = require('crypto')
 const fs = require('fs')
 const path = require('path')
+const DataImportHistoryService = require('../services/data-import-history.service')
 const DataImportService = require('../services/data-import.service')
 const DataImportFileService = require('../services/data-import-file.service')
 const { readSpreadsheetFileSafe, sheetToJsonSafe } = require('../utils/spreadsheet-security')
@@ -48,6 +49,7 @@ class DataImportController {
     createImportId = crypto.randomUUID,
     logger = log
   } = {}) {
+    this.historyService = new DataImportHistoryService({ logger })
     this.service = service
     this.fileService = fileService
     this.readSpreadsheet = readSpreadsheet
@@ -253,109 +255,22 @@ class DataImportController {
   }
 
   async history(req, res) {
-    const connection = req.app.get('db')
-    if (!connection) {
-      return res.status(500).json({ success: false, message: '数据库连接不可用' })
-    }
-
     try {
-      const page = Math.max(parseInt(req.query.page, 10) || 1, 1)
-      const pageSize = Math.min(Math.max(parseInt(req.query.page_size, 10) || 20, 1), 100)
-      const status = req.query.status || null
-      const strategy = req.query.strategy || null
-      const userId = req.query.user_id || null
-      const offset = (page - 1) * pageSize
-      const conditions = []
-      const queryParams = []
-
-      if (status) {
-        conditions.push('status = ?')
-        queryParams.push(status)
-      }
-      if (strategy) {
-        conditions.push('strategy = ?')
-        queryParams.push(strategy)
-      }
-      if (userId) {
-        conditions.push('user_id = ?')
-        queryParams.push(userId)
-      }
-
-      const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
-      const [countResult] = await connection.execute(
-        `SELECT COUNT(*) as total FROM import_history ${whereClause}`,
-        queryParams
-      )
-      const total = countResult[0].total
-      const [history] = await connection.execute(`
-        SELECT
-          id,
-          import_id,
-          user_id,
-          user_name,
-          strategy,
-          file_name,
-          total_records,
-          imported,
-          updated,
-          skipped,
-          error_count,
-          status,
-          error_message,
-          start_time,
-          end_time,
-          duration_ms,
-          created_at,
-          updated_at
-        FROM import_history
-        ${whereClause}
-        ORDER BY start_time DESC
-        LIMIT ? OFFSET ?`,
-      [...queryParams, pageSize, offset])
-
-      return res.json({
-        success: true,
-        message: '获取导入历史成功',
-        data: history,
-        pagination: {
-          page,
-          page_size: pageSize,
-          total,
-          total_pages: Math.ceil(total / pageSize),
-          has_next: page * pageSize < total,
-          has_prev: page > 1
-        }
-      })
+      return res.json(await this.historyService.history(req.query, req.app.get('db')))
     } catch (error) {
+      if (error.statusCode) return res.status(error.statusCode).json({ success: false, message: error.message })
+
       this.logger.error('获取导入历史失败:', error)
       return res.status(500).json({ success: false, message: '获取导入历史失败，请稍后重试' })
     }
   }
 
   async removeHistory(req, res) {
-    const connection = req.app.get('db')
-    if (!connection) {
-      return res.status(500).json({ success: false, message: '数据库连接不可用' })
-    }
-
     try {
-      const { id } = req.params
-      if (!id || isNaN(id)) {
-        return res.status(400).json({ success: false, message: '无效的记录ID' })
-      }
-
-      const [records] = await connection.execute(
-        'SELECT * FROM import_history WHERE id = ?',
-        [id]
-      )
-      if (records.length === 0) {
-        return res.status(404).json({ success: false, message: '记录不存在' })
-      }
-
-      await connection.execute('DELETE FROM import_history WHERE id = ?', [id])
-      this.logger.debug(`✅ 导入历史记录已删除: id=${id}`)
-      return res.json({ success: true, message: '删除成功', data: { id } })
+      return res.json(await this.historyService.removeHistory(req.params, req.app.get('db')))
     } catch (error) {
+      if (error.statusCode) return res.status(error.statusCode).json({ success: false, message: error.message })
+
       this.logger.error('删除导入历史失败:', error)
       return res.status(500).json({ success: false, message: '删除失败，请稍后重试' })
     }

@@ -37,7 +37,7 @@ test('商城模板基础选项调用统一资源路由', () => {
 test('品牌型号联动只使用规范型号资源接口', () => {
   const referenceOptions = fs.readFileSync(path.join(repoRoot, 'frontend/src/services/reference-options.ts'), 'utf8')
   const modelsRoute = fs.readFileSync(path.join(root, 'src/routes/models.js'), 'utf8')
-  const modelsController = fs.readFileSync(path.join(root, 'src/controllers/model.controller.js'), 'utf8')
+  const modelsController = fs.readFileSync(path.join(root, 'src/services/model-management.service.js'), 'utf8')
   const queryRoute = fs.readFileSync(path.join(root, 'src/routes/query.js'), 'utf8')
   const brandsRoute = fs.readFileSync(path.join(root, 'src/routes/brands.js'), 'utf8')
   const routesIndex = fs.readFileSync(path.join(root, 'src/routes/index.js'), 'utf8')
@@ -67,9 +67,9 @@ test('型号和基础选项查询没有重复 SQL 实现', () => {
   assert.match(serviceSource, /includeNullStatus = false/)
   assert.match(serviceSource, /\(status = 1 OR status IS NULL\)/)
   assert.doesNotMatch(queryRepository, /listModelsByBrand/)
-  assert.match(queryRepository, /listActiveReferenceOptions\('brands', \{ includeNullStatus: true \}\)/)
-  assert.match(queryRepository, /listActiveReferenceOptions\('colors', \{ includeNullStatus: true \}\)/)
-  assert.match(queryRepository, /listActiveReferenceOptions\('memories', \{ includeNullStatus: true \}\)/)
+  assert.match(fs.readFileSync(path.join(root, 'src/services/query.service.js'), 'utf8'), /listActiveReferenceOptions\('brands', \{ includeNullStatus: true \}\)/)
+  assert.match(fs.readFileSync(path.join(root, 'src/services/query.service.js'), 'utf8'), /listActiveReferenceOptions\('colors', \{ includeNullStatus: true \}\)/)
+  assert.match(fs.readFileSync(path.join(root, 'src/services/query.service.js'), 'utf8'), /listActiveReferenceOptions\('memories', \{ includeNullStatus: true \}\)/)
 })
 
 test('库存预警保留专用权限和响应契约并复用公共查询', () => {

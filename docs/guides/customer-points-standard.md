@@ -42,7 +42,7 @@
 | 正常单台、批量销售 | `backend/src/routes/sales.js` | 每条销售记录独立初始化积分凭据 |
 | 快速出库 | `backend/src/controllers/inventory.controller.js` | 零售累计；批发、划拨登记 0 积分凭据 |
 | 综合查询编辑与类型转换 | `backend/src/routes/phones.js` | 售价、全新/二手、客户或交易类型变化时同步差额 |
-| 综合查询退库、设备删除 | `backend/src/repositories/query.repository.js` | 删除销售记录前按 `points_awarded` 冲减 |
+| 综合查询退库、设备删除 | `backend/src/services/query-mutation.service.js` | 同一事务连接内，删除销售记录前按 `points_awarded` 冲减 |
 | 租赁买断及买断价格编辑 | `backend/src/routes/rentals.js` | 按零售销售初始化，改价时更新差额 |
 | 批发、供应商划拨 | `backend/src/services/transfer.service.js` | 强制登记 0 积分凭据 |
 | 历史数据导入 | `backend/src/services/data-import.service.js` | 明确禁止重放积分；已有可核算销售转为 0 时先冲减 |

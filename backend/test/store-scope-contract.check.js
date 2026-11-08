@@ -68,12 +68,12 @@ test('analytics requires backend permission and an authorized store scope', () =
 })
 
 test('strict store options remain separate from inventory and sales store access', () => {
-  const storesController = read('src/controllers/store.controller.js')
+  const storesController = read('src/services/store-management.service.js')
   const referenceOptions = read('../frontend/src/services/reference-options.ts')
   const queryController = read('src/controllers/query.controller.js')
 
   assert.match(storesController, /strict_scope/)
-  assert.match(storesController, /if \(strictStoreScope && !this\.superAdminCheck\(req\.user\)\)/)
+  assert.match(storesController, /if \(strictStoreScope && !this\.superAdminCheck\(actor\)\)/)
   assert.match(referenceOptions, /strictScope \? '\/stores\?all=true&strict_scope=true' : '\/stores\?all=true'/)
   assert.match(queryController, /storeIds: storeScope\.storeIds/)
   assert.match(queryController, /allStores: storeScope\.allStores/)

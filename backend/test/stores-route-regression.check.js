@@ -1,6 +1,7 @@
 const assert = require('node:assert/strict')
 const test = require('node:test')
 const Module = require('node:module')
+const StoreRepository = require('../src/repositories/store.repository')
 
 const loadStoresRouter = () => {
   const routes = []
@@ -40,7 +41,7 @@ const loadStoresRouter = () => {
       }
       throw new Error(`未覆盖的门店测试 SQL: ${sql}`)
     },
-    async acquireConnection() {
+    async withConnection() {
       throw new Error('本测试不应进入批量排序事务')
     }
   }
@@ -106,7 +107,7 @@ const loadStoresRouter = () => {
     if (request === '../repositories/store.repository') {
       return class MockStoreRepository {
         constructor() {
-          return repository
+          return Object.assign(new StoreRepository(), repository)
         }
       }
     }

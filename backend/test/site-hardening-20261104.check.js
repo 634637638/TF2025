@@ -214,6 +214,6 @@ test('入库自动匹配和退库状态转换使用锁与条件更新', () => {
   assert.match(stockInRepository, /WHERE id = \? AND status = 'pending' AND matched_phone_id IS NULL/)
   assert.match(stockInService, /await connection\.commit\(\)[\s\S]*构建响应数据/)
   assert.match(repository, /SELECT status, store_id FROM phones WHERE id = \? FOR UPDATE/)
-  assert.match(repository, /deleteSaleResult\.affectedRows !== 1/)
-  assert.match(repository, /phoneUpdateResult\.affectedRows !== 1/)
+  assert.match(read('src/services/query-mutation.service.js'), /deleteSaleResult\.affectedRows !== 1/)
+  assert.match(read('src/services/query-mutation.service.js'), /phoneUpdateResult\.affectedRows !== 1/)
 })

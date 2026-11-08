@@ -1,3 +1,4 @@
+const { withConnection } = require('../core/db/connection')
 /**
  * 备份服务
  * 功能：备份数据库、后端代码、上传文件
@@ -260,9 +261,7 @@ class BackupService {
     log.debug('[Backup] 开始程序化导出数据库...')
 
     const pool = dbConfig.getDatabase()
-    const connection = await pool.getConnection()
-
-    try {
+    await withConnection(pool, async connection => {
       // 获取所有表
       const [tables] = await connection.execute('SHOW TABLES')
       const tableNames = tables.map(t => Object.values(t)[0])
@@ -318,10 +317,7 @@ class BackupService {
       // 写入文件
       fs.writeFileSync(outputPath, sqlContent, 'utf8')
       log.debug(`[Backup] 程序化导出完成，共 ${tableNames.length} 张表`)
-
-    } finally {
-      connection.release()
-    }
+    })
   }
 
   /**

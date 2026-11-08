@@ -1,3 +1,5 @@
+const QueryMutationService = require('./query-mutation.service')
+const { listActiveReferenceOptions } = require('./reference-options.service')
 const QueryRepository = require('../repositories/query.repository')
 const _ApiResponse = require('../utils/response')
 const XLSX = require('xlsx')
@@ -7,6 +9,7 @@ const { isStoreScopeError } = require('../utils/store-scope')
 class QueryService {
   constructor() {
     this.queryRepository = new QueryRepository()
+    this.mutationService = new QueryMutationService({ repository: this.queryRepository })
   }
 
   normalizeReturnGoodsType(value) {
@@ -332,7 +335,7 @@ class QueryService {
         throw new Error('手机ID和操作员ID不能为空')
       }
 
-      const result = await this.queryRepository.returnToStock(phoneId, operatorId, returnInfo, storeScope)
+      const result = await this.mutationService.returnToStock(phoneId, operatorId, returnInfo, storeScope)
 
       return {
         success: true,
@@ -354,7 +357,7 @@ class QueryService {
         throw new Error('手机ID不能为空')
       }
 
-      const result = await this.queryRepository.deletePhoneRecord(phoneId, storeScope)
+      const result = await this.mutationService.deletePhoneRecord(phoneId, storeScope)
 
       return {
         success: true,
@@ -539,10 +542,19 @@ class QueryService {
    */
   async getQueryOptions(scope = {}) {
     try {
-      // 通过查询repository获取各种选项数据
-      const options = await this.queryRepository.getQueryOptionsData(scope)
-
-      return options
+      const [options, brands, colors, memories] = await Promise.all([
+        this.queryRepository.getQueryOptionsData(scope),
+        listActiveReferenceOptions('brands', { includeNullStatus: true }),
+        listActiveReferenceOptions('colors', { includeNullStatus: true }),
+        listActiveReferenceOptions('memories', { includeNullStatus: true })
+      ])
+      return {
+        ...options,
+        brands: brands || [],
+        models: [],
+        colors: colors || [],
+        memories: (memories || []).map(memory => ({ id: memory.id, name: memory.size, sort_order: memory.sort_order }))
+      }
     } catch (error) {
       throw new Error('获取查询选项失败: ' + error.message)
     }

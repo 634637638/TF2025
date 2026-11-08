@@ -9,6 +9,7 @@ const {
   getClientIdentifier
 } = require('../middleware/login-attempts')
 const { getCookie, setRefreshCookie } = require('../utils/http-cookie')
+const AuthUserService = require('../services/auth-user.service')
 const AuthInitializationService = require('../services/auth-initialization.service')
 const ApiResponse = require('../utils/response')
 const log = require('../utils/log')
@@ -32,17 +33,11 @@ class AuthController {
     response = ApiResponse,
     logger = log
   } = {}) {
-    this.database = database
-    this.connected = connected
-    this.buildUserPayload = buildUserPayload
+    this.service = new AuthUserService({ database, connected, buildUserPayload, comparePassword, issueTokens, issueTokenPair, verifyRefreshToken, revokeRefreshToken })
     this.verifyRefreshToken = verifyRefreshToken
-    this.revokeRefreshToken = revokeRefreshToken
-    this.issueTokenPair = issueTokenPair
     this.readCookie = readCookie
     this.writeRefreshCookie = writeRefreshCookie
     this.initializationService = initializationService
-    this.comparePassword = comparePassword
-    this.issueTokens = issueTokens
     this.recordLoginSuccess = recordLoginSuccess
     this.recordLoginFailure = recordLoginFailure
     this.resolveClientIdentifier = resolveClientIdentifier
@@ -52,24 +47,9 @@ class AuthController {
 
   async getCurrentUser(req, res) {
     try {
-      if (!this.connected()) {
-        this.logger.error('数据库未连接，无法获取用户信息')
-        return this.response.error(res, '服务暂时不可用，请稍后再试', 503)
-      }
-
-      const database = this.database()
-      const [users] = await database.execute(
-        'SELECT id, username, name, phone, email, status, last_login FROM users WHERE id = ?',
-        [req.user.id]
-      )
-      if (users.length === 0) return this.response.error(res, '用户不存在', 404)
-
-      const { userPayload } = await this.buildUserPayload(database, users[0])
-      return this.response.success(res, {
-        ...userPayload,
-        last_login: users[0].last_login ? new Date(users[0].last_login).toISOString() : null
-      })
+      return this.response.success(res, await this.service.getCurrentUser(req.user))
     } catch (error) {
+      if (error.statusCode) return this.response.error(res, error.message, error.statusCode)
       this.logger.error('获取用户信息失败:', error)
       return this.response.error(res, '获取用户信息失败', 500)
     }
@@ -106,41 +86,16 @@ class AuthController {
 
   async login(req, res) {
     try {
-      const { username, password } = req.body
-      if (!this.connected()) {
-        this.logger.error('数据库未连接，无法进行用户验证')
-        return this.response.error(res, '服务暂时不可用，请稍后再试', 503)
-      }
-
-      const database = this.database()
-      const [users] = await database.execute(
-        'SELECT id, username, password, name, status FROM users WHERE username = ?',
-        [username]
-      )
-      if (users.length === 0) return this.handleLoginFailure(req, res, '用户名或密码错误')
-
-      const user = users[0]
-      if (user.status !== 1 && user.status !== 'active') {
-        return this.handleLoginFailure(req, res, '账户已被禁用，请联系管理员启用账户', 'account_disabled')
-      }
-      if (!(await this.comparePassword(password, user.password))) {
-        return this.handleLoginFailure(req, res, '用户名或密码错误')
-      }
-
-      await database.execute('UPDATE users SET last_login = NOW() WHERE id = ?', [user.id])
-      const clientIdentifier = req.ip || req.connection.remoteAddress || 'unknown'
-      this.recordLoginSuccess(`${clientIdentifier}:${username}`)
-      const { userPayload, accessProfile, tokenPayload } = await this.buildUserPayload(database, user)
-      const { accessToken, refreshToken } = this.issueTokens(tokenPayload)
-      this.writeRefreshCookie(res, refreshToken)
-      return res.json({
-        success: true,
-        message: '登录成功',
-        token: accessToken,
-        user: userPayload,
-        accessProfile
+      const { username } = req.body
+      const result = await this.service.login(req.body, () => {
+        const clientIdentifier = req.ip || req.connection.remoteAddress || 'unknown'
+        this.recordLoginSuccess(`${clientIdentifier}:${username}`)
       })
+      if (result.failure) return this.handleLoginFailure(req, res, result.failure.message, result.failure.reason)
+      this.writeRefreshCookie(res, result.refreshToken)
+      return res.json({ success: true, message: '登录成功', token: result.accessToken, user: result.userPayload, accessProfile: result.accessProfile })
     } catch (error) {
+      if (error.statusCode) return this.response.error(res, error.message, error.statusCode)
       this.logger.error('登录失败:', error)
       return this.response.error(res, '登录失败', 500)
     }
@@ -149,35 +104,12 @@ class AuthController {
   async refresh(req, res, verifyRefreshToken = this.verifyRefreshToken) {
     try {
       const refreshToken = this.readCookie(req, 'refreshToken') || req.body?.refreshToken
-      if (!refreshToken) return this.response.error(res, '刷新令牌不能为空', 401)
-      if (!this.connected()) {
-        return this.response.error(res, '服务暂时不可用，请稍后再试', 503)
-      }
-
-      const database = this.database()
-      const decoded = await verifyRefreshToken(refreshToken)
-      const [users] = await database.execute(
-        `SELECT id, username, name, status
-         FROM users
-         WHERE id = ?
-           AND (status = 1 OR status = 'active')`,
-        [decoded.sub]
-      )
-      if (users.length === 0) {
-        return this.response.error(res, '用户不存在或已被禁用', 401)
-      }
-
-      const { userPayload, accessProfile, tokenPayload } = await this.buildUserPayload(database, users[0])
-      await this.revokeRefreshToken(refreshToken)
-      const { accessToken, refreshToken: newRefreshToken } = this.issueTokenPair(tokenPayload)
-      this.writeRefreshCookie(res, newRefreshToken)
-
-      return this.response.success(res, {
-        token: accessToken,
-        user: userPayload,
-        accessProfile
-      }, '令牌刷新成功')
+      const result = await this.service.refresh(refreshToken, verifyRefreshToken)
+      this.writeRefreshCookie(res, result.refreshToken)
+      const { token, user, accessProfile } = result
+      return this.response.success(res, { token, user, accessProfile }, '令牌刷新成功')
     } catch (error) {
+      if (error.statusCode) return this.response.error(res, error.message, error.statusCode)
       this.logger.error('令牌刷新失败:', error)
       if (error.message === '令牌已过期') {
         return this.response.error(res, '刷新令牌已过期，请重新登录', 401)

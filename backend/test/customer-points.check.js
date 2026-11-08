@@ -354,7 +354,7 @@ test('所有销售写入、转换和退库入口统一调用客户积分服务',
     assert.match(source, /reconcileCustomerPointsForSale/, `${relativePath} 未接入统一积分服务`)
   }
 
-  const queryRepository = fs.readFileSync(path.join(backendRoot, 'src/repositories/query.repository.js'), 'utf8')
+  const queryRepository = fs.readFileSync(path.join(backendRoot, 'src/services/query-mutation.service.js'), 'utf8')
   assert.match(queryRepository, /reverseCustomerPointsForSale/)
 })
 

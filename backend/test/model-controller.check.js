@@ -1,3 +1,4 @@
+const ModelRepository = require('../src/repositories/model.repository')
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
@@ -37,14 +38,14 @@ test('型号列表保留品牌名解析、筛选绑定、白名单排序和分�
   const calls = []
   const controller = new ModelController({
     databaseConnected: () => true,
-    repository: {
+    repository: Object.assign(new ModelRepository(), {
       async executePrepared(sql, params) {
         calls.push({ sql, params })
         if (sql.startsWith('SELECT id FROM brands')) return [[{ id: 6 }]]
         if (sql.includes('COUNT(*)')) return [[{ total: 31 }]]
         return [[{ id: '4', brand_id: '6', brand_name: ' Apple ', name: ' iPhone ', status: 1, sort_order: 2 }]]
       }
-    }
+    })
   })
   const response = createResponse()
   await controller.list({
@@ -84,7 +85,7 @@ test('型号品牌列表和统计保留规范字段及筛选', async () => {
   const calls = []
   const controller = new ModelController({
     databaseConnected: () => true,
-    repository: {
+    repository: Object.assign(new ModelRepository(), {
       async executePrepared(sql, params) {
         calls.push({ sql, params })
         if (sql.includes('COUNT(*)')) return [[{ total: 2 }]]
@@ -93,7 +94,7 @@ test('型号品牌列表和统计保留规范字段及筛选', async () => {
           { id: 2, brand_id: 6, brand_name: 'Apple', name: 'iPhone 2', status: 0 }
         ]]
       }
-    }
+    })
   })
   const brandList = createResponse()
   await controller.listByBrand({ params: { brandId: '6' }, query: { page: '1', page_size: '5', status: '1', name: 'Phone', sort_by: 'name', sort_order: 'desc' } }, brandList)
@@ -120,7 +121,7 @@ test('型号创建和更新保持必填及重复校验，变更后清理缓存',
   const controller = new ModelController({
     databaseConnected: () => true,
     invalidateCache: () => { cacheClears += 1 },
-    repository: {
+    repository: Object.assign(new ModelRepository(), {
       async executePrepared(sql, params) {
         calls.push({ sql, params })
         if (sql.includes('AND id !=')) return [[{ id: 9 }]]
@@ -129,7 +130,7 @@ test('型号创建和更新保持必填及重复校验，变更后清理缓存',
         if (sql.includes('SELECT m.id, m.brand_id, m.name')) return [[{ id: 7, brand_id: 6, brand_name: 'Apple', name: 'iPhone', status: 1, sort_order: 0 }]]
         return [[]]
       }
-    }
+    })
   })
   const missing = createResponse()
   await controller.create({ body: {} }, missing)
@@ -155,7 +156,7 @@ test('型号详情、删除和状态切换维持原响应语义', async () => {
   const controller = new ModelController({
     databaseConnected: () => true,
     invalidateCache: () => { cacheClears += 1 },
-    repository: {
+    repository: Object.assign(new ModelRepository(), {
       async executePrepared(sql, params) {
         calls.push({ sql, params })
         if (sql.startsWith('DELETE FROM models')) {
@@ -172,7 +173,7 @@ test('型号详情、删除和状态切换维持原响应语义', async () => {
         }
         return [[{ id: 3, brand_id: 6, name: 'iPhone', status, sort_order: 0 }]]
       }
-    }
+    })
   })
   const detail = createResponse()
   await controller.get({ params: { id: '3' } }, detail)
@@ -205,7 +206,7 @@ test('型号排序事务提交或回滚后均释放连接', async () => {
   const controller = new ModelController({
     databaseConnected: () => true,
     invalidateCache: () => events.push('invalidate'),
-    repository: { withConnection(operation) { return withConnection({ getConnection: async () => connection }, operation) } }
+    repository: Object.assign(new ModelRepository(), { withConnection(operation) { return withConnection({ getConnection: async () => connection }, operation) } })
   })
   const success = createResponse()
   await controller.reorder({ body: { items: [{ id: 2, sort_order: 4 }, { id: 3 }] } }, success)

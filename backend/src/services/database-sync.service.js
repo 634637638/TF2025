@@ -3,6 +3,7 @@
  * 支持连接外部数据库，进行数据映射、匹配和同步
  */
 const mysql = require('mysql2/promise')
+const { normalizeDatabaseIdentifier } = require('../utils/database-identifier')
 const log = require('../utils/log')
 const { isSellablePhoneStatus, normalizePhoneStatus } = require('../utils/phone-status')
 
@@ -17,13 +18,7 @@ class DatabaseSyncService {
   }
 
   normalizeIdentifier(value, label = '标识符') {
-    const normalized = String(value || '').trim()
-    if (!/^[A-Za-z_][A-Za-z0-9_$]{0,63}$/.test(normalized)) {
-      const error = new Error(`${label}不合法`)
-      error.statusCode = 400
-      throw error
-    }
-    return normalized
+    return normalizeDatabaseIdentifier(value, label)
   }
 
   async assertTableExists(connection, tableName) {

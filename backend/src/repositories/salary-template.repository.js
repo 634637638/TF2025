@@ -1,3 +1,4 @@
+const { withConnection } = require('../core/db/connection')
 /**
  * 工资模板数据访问层
  * 处理所有工资模板相关的数据库操作
@@ -174,33 +175,31 @@ class SalaryTemplateRepository extends BaseRepository {
    */
   async setAsDefault(id) {
     const pool = this.getConnection()
-    const connection = await pool.getConnection()
+    return await withConnection(pool, async connection => {
+      try {
+        await connection.beginTransaction()
 
-    try {
-      await connection.beginTransaction()
+        const [templates] = await connection.execute(
+          `SELECT id FROM ${this.tableName} WHERE id = ? FOR UPDATE`,
+          [id]
+        )
+        if (templates.length === 0) {
+          throw new Error('工资模板不存在')
+        }
 
-      const [templates] = await connection.execute(
-        `SELECT id FROM ${this.tableName} WHERE id = ? FOR UPDATE`,
-        [id]
-      )
-      if (templates.length === 0) {
-        throw new Error('工资模板不存在')
+        await connection.execute(`UPDATE ${this.tableName} SET is_default = 0`)
+        await connection.execute(
+          `UPDATE ${this.tableName} SET is_default = 1 WHERE id = ?`,
+          [id]
+        )
+        await connection.commit()
+        return true
+      } catch (error) {
+        await connection.rollback()
+        log.error('设置默认模板失败:', error)
+        throw error
       }
-
-      await connection.execute(`UPDATE ${this.tableName} SET is_default = 0`)
-      await connection.execute(
-        `UPDATE ${this.tableName} SET is_default = 1 WHERE id = ?`,
-        [id]
-      )
-      await connection.commit()
-      return true
-    } catch (error) {
-      await connection.rollback()
-      log.error('设置默认模板失败:', error)
-      throw error
-    } finally {
-      connection.release()
-    }
+    })
   }
 
   /**

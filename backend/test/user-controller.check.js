@@ -541,3 +541,24 @@ test('员工 controller 普通用户只读本人，拒绝未绑定门店并校�
   assert.equal(invalidStore.body.message, 'store_id 参数无效')
   assert.equal(queries.length, 1)
 })
+
+test('用户写入提交释放后才读取公开信息，详情失败不会回滚已提交事务', async () => {
+  for (const operation of ['create', 'update']) {
+    const fixture = createTransactionalController({
+      execute: async query => {
+        if (query === 'SELECT id FROM users WHERE id = ?') return [[{ id: 12 }], []]
+        if (query.includes('SELECT id FROM users WHERE username')) return [[], []]
+        return [{ insertId: 12, affectedRows: 1 }, []]
+      },
+      poolExecute: async () => {
+        assert.equal(events.at(-1), 'release')
+        throw new Error('public user read failed')
+      }
+    })
+    const events = fixture.events
+    const response = createResponse()
+    await fixture.controller[operation]({ params: { id: '12' }, body: { username: 'new-user', password: 'test-password', name: '用户' } }, response)
+    assert.equal(response.statusCode, 500)
+    assert.deepEqual(events.filter(event => typeof event === 'string'), ['begin', 'commit', 'release'])
+  }
+})

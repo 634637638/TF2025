@@ -1,3 +1,4 @@
+const { withConnection } = require('../core/db/connection')
 /**
  * 本地到云端数据同步服务
  * 将本地最新的数据同步到云端数据库
@@ -27,148 +28,146 @@ class LocalToCloudSyncService {
 
     const ownerId = user?.id ?? user?.userId ?? user?.sub
     const cloudConnection = this.syncService.getConnection(connectionId, ownerId)
-    const localConnection = await require('../config/database').getDatabase().getConnection()
+    return await withConnection(require('../config/database').getDatabase(), async localConnection => {
+      try {
+        log.debug('🚀 开始本地到云端同步...\n')
 
-    try {
-      log.debug('🚀 开始本地到云端同步...\n')
+        const results = []
+        const stats = {
+          total: 0,
+          updated: 0,
+          inserted: 0,
+          skipped: 0,
+          failed: 0,
+          relationsCreated: 0
+        }
 
-      const results = []
-      const stats = {
-        total: 0,
-        updated: 0,
-        inserted: 0,
-        skipped: 0,
-        failed: 0,
-        relationsCreated: 0
+        // 1. 先获取云端的数据映射（品牌、型号、颜色、内存、客户）
+        log.debug('📊 构建云端数据映射...')
+        const cloudDataMaps = await this.buildCloudDataMaps(cloudConnection)
+
+        // 2. 同步基础数据表（品牌、型号、颜色、内存）
+        const baseTables = ['brands', 'models', 'colors', 'memories']
+        for (const tableName of baseTables) {
+          if (!tables.includes(tableName)) continue
+
+          log.debug(`\n【${tableName}】同步基础数据...`)
+          const result = await this.syncTableToCloud(
+            localConnection,
+            cloudConnection,
+            tableName,
+            {
+              ...options,
+              syncMode: 'upsert', // 基础数据使用 upsert
+              cloudDataMaps
+            }
+          )
+
+          results.push({ table: tableName, ...result })
+          stats.total += result.total
+          stats.updated += result.updated
+          stats.inserted += result.inserted
+          stats.skipped += result.skipped
+          stats.failed += result.failed
+        }
+
+        // 3. 同步客户数据
+        if (tables.includes('customers')) {
+          log.debug('\n【customers】同步客户数据...')
+          const result = await this.syncTableToCloud(
+            localConnection,
+            cloudConnection,
+            'customers',
+            {
+              ...options,
+              syncMode: 'upsert',
+              keyFields: ['phone'], // 根据手机号匹配
+              fieldMappings: this.getCustomerFieldMappings(),
+              cloudDataMaps
+            }
+          )
+
+          results.push({ table: 'customers', ...result })
+          stats.total += result.total
+          stats.updated += result.updated
+          stats.inserted += result.inserted
+          stats.skipped += result.skipped
+          stats.failed += result.failed
+        }
+
+        // 4. 同步手机数据（最重要）
+        if (tables.includes('phones')) {
+          log.debug('\n【phones】同步手机数据...')
+          const result = await this.syncPhonesToCloud(
+            localConnection,
+            cloudConnection,
+            {
+              ...options,
+              cloudDataMaps
+            }
+          )
+
+          results.push({ table: 'phones', ...result })
+          stats.total += result.total
+          stats.updated += result.updated
+          stats.inserted += result.inserted
+          stats.skipped += result.skipped
+          stats.failed += result.failed
+          stats.relationsCreated = result.relationsCreated || 0
+        }
+
+        // 5. 同步销售记录
+        if (tables.includes('sales')) {
+          log.debug('\n【sales】同步销售记录...')
+          const result = await this.syncTableToCloud(
+            localConnection,
+            cloudConnection,
+            'sales',
+            {
+              ...options,
+              syncMode: 'upsert',
+              keyFields: ['phone_id'], // 根据手机ID匹配
+              fieldMappings: this.getSalesFieldMappings(),
+              cloudDataMaps
+            }
+          )
+
+          results.push({ table: 'sales', ...result })
+          stats.total += result.total
+          stats.updated += result.updated
+          stats.inserted += result.inserted
+          stats.skipped += result.skipped
+          stats.failed += result.failed
+        }
+
+        // 6. 输出总结
+        log.debug('\n========================================')
+        log.debug('🎉 本地到云端同步完成！')
+        log.debug('========================================')
+        log.debug(`总处理: ${stats.total} 条`)
+        log.debug(`已更新: ${stats.updated} 条（云端状态已更新为本地状态）`)
+        log.debug(`新插入: ${stats.inserted} 条（云端新增）`)
+        log.debug(`跳过: ${stats.skipped} 条（云端已有相同数据）`)
+        if (stats.failed > 0) {
+          log.debug(`失败: ${stats.failed} 条`)
+        }
+        log.debug(`关联数据创建: ${stats.relationsCreated} 条`)
+        log.debug('========================================\n')
+
+        return {
+          success: true,
+          results,
+          summary: stats
+        }
+
+      } catch (error) {
+        log.error('❌ 同步失败:', error)
+        return {
+          success: false,
+          message: error.message
+        }
       }
-
-      // 1. 先获取云端的数据映射（品牌、型号、颜色、内存、客户）
-      log.debug('📊 构建云端数据映射...')
-      const cloudDataMaps = await this.buildCloudDataMaps(cloudConnection)
-
-      // 2. 同步基础数据表（品牌、型号、颜色、内存）
-      const baseTables = ['brands', 'models', 'colors', 'memories']
-      for (const tableName of baseTables) {
-        if (!tables.includes(tableName)) continue
-
-        log.debug(`\n【${tableName}】同步基础数据...`)
-        const result = await this.syncTableToCloud(
-          localConnection,
-          cloudConnection,
-          tableName,
-          {
-            ...options,
-            syncMode: 'upsert', // 基础数据使用 upsert
-            cloudDataMaps
-          }
-        )
-
-        results.push({ table: tableName, ...result })
-        stats.total += result.total
-        stats.updated += result.updated
-        stats.inserted += result.inserted
-        stats.skipped += result.skipped
-        stats.failed += result.failed
-      }
-
-      // 3. 同步客户数据
-      if (tables.includes('customers')) {
-        log.debug('\n【customers】同步客户数据...')
-        const result = await this.syncTableToCloud(
-          localConnection,
-          cloudConnection,
-          'customers',
-          {
-            ...options,
-            syncMode: 'upsert',
-            keyFields: ['phone'], // 根据手机号匹配
-            fieldMappings: this.getCustomerFieldMappings(),
-            cloudDataMaps
-          }
-        )
-
-        results.push({ table: 'customers', ...result })
-        stats.total += result.total
-        stats.updated += result.updated
-        stats.inserted += result.inserted
-        stats.skipped += result.skipped
-        stats.failed += result.failed
-      }
-
-      // 4. 同步手机数据（最重要）
-      if (tables.includes('phones')) {
-        log.debug('\n【phones】同步手机数据...')
-        const result = await this.syncPhonesToCloud(
-          localConnection,
-          cloudConnection,
-          {
-            ...options,
-            cloudDataMaps
-          }
-        )
-
-        results.push({ table: 'phones', ...result })
-        stats.total += result.total
-        stats.updated += result.updated
-        stats.inserted += result.inserted
-        stats.skipped += result.skipped
-        stats.failed += result.failed
-        stats.relationsCreated = result.relationsCreated || 0
-      }
-
-      // 5. 同步销售记录
-      if (tables.includes('sales')) {
-        log.debug('\n【sales】同步销售记录...')
-        const result = await this.syncTableToCloud(
-          localConnection,
-          cloudConnection,
-          'sales',
-          {
-            ...options,
-            syncMode: 'upsert',
-            keyFields: ['phone_id'], // 根据手机ID匹配
-            fieldMappings: this.getSalesFieldMappings(),
-            cloudDataMaps
-          }
-        )
-
-        results.push({ table: 'sales', ...result })
-        stats.total += result.total
-        stats.updated += result.updated
-        stats.inserted += result.inserted
-        stats.skipped += result.skipped
-        stats.failed += result.failed
-      }
-
-      // 6. 输出总结
-      log.debug('\n========================================')
-      log.debug('🎉 本地到云端同步完成！')
-      log.debug('========================================')
-      log.debug(`总处理: ${stats.total} 条`)
-      log.debug(`已更新: ${stats.updated} 条（云端状态已更新为本地状态）`)
-      log.debug(`新插入: ${stats.inserted} 条（云端新增）`)
-      log.debug(`跳过: ${stats.skipped} 条（云端已有相同数据）`)
-      if (stats.failed > 0) {
-        log.debug(`失败: ${stats.failed} 条`)
-      }
-      log.debug(`关联数据创建: ${stats.relationsCreated} 条`)
-      log.debug('========================================\n')
-
-      return {
-        success: true,
-        results,
-        summary: stats
-      }
-
-    } catch (error) {
-      log.error('❌ 同步失败:', error)
-      return {
-        success: false,
-        message: error.message
-      }
-    } finally {
-      localConnection.release()
-    }
+    })
   }
 
   /**

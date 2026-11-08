@@ -1,6 +1,7 @@
 'use strict'
 
 const crypto = require('crypto')
+const AuthSessionService = require('../services/auth-session.service')
 const { getDatabase } = require('../config/database')
 const { addToBlacklist } = require('../middleware/jwt-blacklist')
 const { clearRefreshCookie, getCookie } = require('../utils/http-cookie')
@@ -17,13 +18,11 @@ class AuthSessionController {
     logger = log,
     randomBytes = crypto.randomBytes
   } = {}) {
-    this.database = database
-    this.blacklistToken = blacklistToken
+    this.service = new AuthSessionService({ database, blacklistToken, randomBytes })
     this.clearCookie = clearCookie
     this.readCookie = readCookie
     this.response = response
     this.logger = logger
-    this.randomBytes = randomBytes
   }
 
   async logout(req, res) {
@@ -32,8 +31,7 @@ class AuthSessionController {
       const token = authHeader && authHeader.split(' ')[1]
       const refreshToken = this.readCookie(req, 'refreshToken')
 
-      if (token) await this.blacklistToken(token, 'logout')
-      if (refreshToken) await this.blacklistToken(refreshToken, 'logout')
+      await this.service.logout(token, refreshToken)
 
       this.clearCookie(res)
       return this.response.success(res, null, '退出成功')
@@ -45,15 +43,7 @@ class AuthSessionController {
 
   async logoutAll(req, res) {
     try {
-      const database = this.database()
-      const userId = req.user.id
-
-      await database.execute(
-        `INSERT INTO jwt_blacklist
-         (jti, user_id, token_type, reason, created_at, expires_at)
-         VALUES (?, ?, 'access', 'logout_all', NOW(), DATE_ADD(NOW(), INTERVAL 31 DAY))`,
-        [`jti_logout_all_${this.randomBytes(16).toString('hex')}`, userId]
-      )
+      await this.service.logoutAll(req.user)
 
       this.clearCookie(res)
       return this.response.success(res, null, '已退出所有设备')

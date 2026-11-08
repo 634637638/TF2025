@@ -44,7 +44,7 @@
 统一的重点是公共契约和公共实现，不是把所有资源合成一个大接口。
 
 - 前端基础选项统一通过 `frontend/src/services/reference-options.ts` 公共入口调用；型号唯一入口为 `getModels({ brandId, keyword, status, includeId, activeOnly })`。未显式指定分页时默认 `all=true`，完整返回匹配集合；是否包含停用型号由调用场景显式声明，不通过多个重复包装器隐式决定。
-- 后端优先保留资源路由，通过公共服务、仓储和类型规范消除重复查询逻辑。
+- 后端优先保留资源路由，通过公共服务、仓储和类型规范消除重复查询逻辑。管理业务由对应 service 编排；颜色/内存复用 `ReferenceManagementService` 与固定域仓储。分页与排序纯函数的唯一实现位于 `backend/src/utils/reference-options.js`，`reference-options.service.js` 重导出以兼容公共调用，仓储直接依赖纯工具。综合查询选项由 `QueryService` 组合公共品牌/颜色/内存服务与仓储的供应商/门店查询；内存继续映射为 `name`，空门店范围仍返回空候选。
 - 业务路由继续保持独立，避免权限和字段规则互相污染。
 - 返回范围、权限过滤、排序、完整性和缓存键必须与请求入口一起统一。
 - 所有基础选项和存在业务排序配置的列表必须优先按 `sort_order ASC` 返回；随后按名称自然排序，最后按 `id ASC` 稳定排序。前端转换层不得丢弃 `sort_order`，必须复用 `frontend/src/utils/option-sort.ts`。
@@ -95,8 +95,8 @@ GET /stores?all=true
 | 客户远程检索 | 已完成（按用途授权，含云端分页兼容修复） | 销售、综合查询、批发、预订单、租赁、维修统一使用前端 `searchCustomerOptions`；后端通过 `customer-search.service.js` 统一关键词、字段白名单、分页和排序。2026-10-04 修复云端 MySQL 对 `LIMIT ? OFFSET ?` 预处理参数的 `ER_WRONG_ARGUMENTS`，改为校验后的整数安全生成分页 SQL，避免接口 500 被前端显示为空白 | 新增客户业务场景复用服务并声明用途权限；部署后验证 `/api/sales/customers` 在销售、批发、划拨和快速出库中的真实云端响应 |
 | 员工/销售员/操作员查询 | 页面首屏加载已完成（用途接口保留） | `/users/employees`、`/users/operators` 已支持关键词、分页、状态和门店范围校验；销售、库存、综合查询、考勤、预订单、退库、批发页面，以及租赁销售员、提醒接收人选择器均改为远程查询，首屏最多 20 条并保留当前已选/历史人员。租赁和提醒保留业务专用权限入口，内部查询复用操作员服务或标准分页响应；公共前端只保留 `searchEmployees`、`searchOperators`，已删除无人使用的全量缓存包装和重复 API 包装。无分页参数的兼容请求由 `unpaginated-personnel-search.js` 记录路由和用户，并返回 `X-Reference-Search: legacy-unpaginated`；旧全量响应暂时保留 | 新增人员选择器必须远程分页并保留用途权限；观察旧调用日志后分批禁止无参数全量调用；继续做多账号权限回归和专用入口响应验证 |
 | 业务列表分页完整性 | 已完成（统一响应边界） | `ApiResponse.paginated` 统一输出 `page/page_size/total/total_pages/has_next/has_prev`；基础资料、客户远程检索和已审计业务列表均返回规范分页字段，仓储旧元数据仅在响应边界转换 | 新增业务列表必须使用规范分页字段，并补充契约测试 |
-| 固定数量截断自动审计 | 已完成（白名单闭环） | 移除预订单匹配设备、商城客户销售历史、国补设备检索和商城聚合商品的真实结果截断；当前30项已登记 `config/reference-options-audit-allowlist.json`，按文件、规则类型、代码片段和人工理由稳定匹配，不依赖易漂移行号；`npm run check:reference-options` 已接入前端全量规范门禁 | 候选代码片段变化、删除或新增时必须重新人工确认白名单 |
-| 后端重复查询逻辑收敛 | 部分完成（参考选项与库存、销售筛选） | 客户检索统一到 `customer-search.service.js`；品牌联动、综合查询及库存预警型号查询统一到 `reference-options.service.js:listModelsByBrand`；综合查询的品牌、颜色、内存和库存预警的品牌、颜色、内存统一到 `listActiveReferenceOptions`，可按调用契约选择是否将 `NULL status` 视为启用；预订单选项复用 `listTemplateReferenceOptions` 返回品牌、型号、颜色和内存，门店仍由预订单路由独立执行启用状态查询；库存预警保留专用 `system:view` 权限和原字段响应；已删除的商城模板和 `/phones` 历史基础选项路径不再构成运行时查询入口；库存列表与 `/stats/overview` 共用 `buildInventoryFilters`，旧 `date` 参数仅由列表显式兼容；销售可售库存列表、导出和统计共用 `buildAvailablePhonesFilters`；库存汇总和明细共用 `buildSalesInventoryScope`，明细型号解析限定品牌 ID；可售列表与库存汇总共用品牌、颜色、内存精确名称解析；移除了精确解析失败后结果完全不影响过滤条件的颜色、内存冗余模糊查询；列表专属的预订单设备限制作为明确选项传入；资源管理路由仍保留管理字段、统计和写入逻辑 | 继续按路由模块审计相同业务过滤和写入逻辑，不跨权限边界合并业务列表 |
+| 固定数量截断自动审计 | 已完成（白名单闭环） | 移除预订单匹配设备、商城客户销售历史、国补设备检索和商城聚合商品的真实结果截断；2026-11-08 严格审计实测 22 项有效登记于 `config/reference-options-audit-allowlist.json`，按文件、规则类型、代码片段和人工理由稳定匹配，不依赖易漂移行号；`npm run check:reference-options` 已接入前端全量规范门禁 | 候选代码片段变化、删除或新增时必须重新人工确认白名单 |
+| 后端重复查询逻辑收敛 | 部分完成（参考选项与库存、销售筛选） | 客户检索统一到 `customer-search.service.js`；品牌联动、综合查询及库存预警型号查询统一到 `reference-options.service.js:listModelsByBrand`；综合查询的品牌、颜色、内存和库存预警的品牌、颜色、内存统一到 `listActiveReferenceOptions`，可按调用契约选择是否将 `NULL status` 视为启用；预订单选项复用 `listTemplateReferenceOptions` 返回品牌、型号、颜色和内存，门店仍由预订单路由独立执行启用状态查询；库存预警保留专用 `system:view` 权限和原字段响应；已删除的商城模板和 `/phones` 历史基础选项路径不再构成运行时查询入口；库存列表与 `/stats/overview` 共用 `buildInventoryFilters`，旧 `date` 参数仅由列表显式兼容；销售可售库存列表、导出和统计共用 `buildAvailablePhonesFilters`；库存汇总和明细共用 `buildSalesInventoryScope`，明细型号解析限定品牌 ID；可售列表与库存汇总共用品牌、颜色、内存精确名称解析；移除了精确解析失败后结果完全不影响过滤条件的颜色、内存冗余模糊查询；列表专属的预订单设备限制作为明确选项传入；资源管理 service 保留各域管理字段、统计和写入规则，SQL 进入对应 repository | 继续按路由模块审计相同业务过滤和写入逻辑，不跨权限边界合并业务列表 |
 | 历史接口退役 | 代码已完成（待部署验证） | 当前运行时弃用/兼容路由均为 0；28 条历史接口已删除，本站仓库旧调用为 0，恢复资料位于 `docs/archive/compatibility-routes/` | 部署后观察旧路径 404、前端错误和外部客户端反馈；不得恢复兼容中间件或整批旧路由 |
 
 ## 六、验收标准

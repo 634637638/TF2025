@@ -1,3 +1,4 @@
+const StoreRepository = require('../src/repositories/store.repository')
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
@@ -38,12 +39,12 @@ test('门店全量选项保留 strict scope 隔离和空范围结果', async () 
   const controller = new StoreController({
     databaseConnected: () => true,
     superAdminCheck: () => false,
-    repository: {
+    repository: Object.assign(new StoreRepository(), {
       async executePrepared(sql, params) {
         calls.push({ sql, params })
         return [[{ id: '5', name: '总店', sort_order: '2' }]]
       }
-    }
+    })
   })
   const response = createResponse()
   await controller.list({
@@ -64,7 +65,7 @@ test('门店分页列表和统计保持规范字段、参数绑定及状态校�
   const calls = []
   const controller = new StoreController({
     databaseConnected: () => true,
-    repository: {
+    repository: Object.assign(new StoreRepository(), {
       async executePrepared(sql, params) {
         calls.push({ sql, params })
         if (sql.startsWith('SELECT COUNT(*)')) return [[{ total: 21 }]]
@@ -73,7 +74,7 @@ test('门店分页列表和统计保持规范字段、参数绑定及状态校�
         }]]
         return [[{ id: '4', name: '北区', location: '地址', phone: '123', manager_id: 2, manager_name: '店长', status: 1, sort_order: 3 }]]
       }
-    }
+    })
   })
   const page = createResponse()
   await controller.list({ query: { page: '2', page_size: '10', name: '北', status: '1' } }, page)
@@ -103,7 +104,7 @@ test('门店负责人必须为有效在职用户，负责人电话优先于表�
   let queryParams
   const controller = new StoreController({
     databaseConnected: () => true,
-    repository: {
+    repository: Object.assign(new StoreRepository(), {
       async executePrepared(sql, params) {
         if (sql.includes('SELECT id, phone FROM users')) {
           queryParams = params
@@ -114,7 +115,7 @@ test('门店负责人必须为有效在职用户，负责人电话优先于表�
         if (sql.startsWith('INSERT INTO stores')) return [{ insertId: 7 }]
         assert.fail(`unexpected SQL: ${sql}`)
       }
-    },
+    }),
     invalidateCache() {}
   })
   const invalidManager = createResponse()
@@ -142,7 +143,7 @@ test('门店批量排序提交或回滚后都释放事务连接', async () => {
   }
   const controller = new StoreController({
     databaseConnected: () => true,
-    repository: { withConnection(operation) { return withConnection({ getConnection: async () => connection }, operation) } },
+    repository: Object.assign(new StoreRepository(), { withConnection(operation) { return withConnection({ getConnection: async () => connection }, operation) } }),
     invalidateCache: () => events.push('invalidate')
   })
   const success = createResponse()

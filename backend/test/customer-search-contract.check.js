@@ -16,7 +16,7 @@ test('customer remote search uses the shared service across business contexts', 
   assert.match(service, /has_prev/)
   assert.match(service, /CUSTOMER_FIELDS/)
 
-  const customerController = read('src/controllers/customer.controller.js')
+  const customerController = read('src/services/customer-management.service.js')
   assert.match(customerController, /customer-search\.service/)
   assert.match(customerController, /this\.searchCustomers\(/)
   assert.match(read('src/routes/customers.js'), /customerController\.search\.bind\(customerController\)/)
@@ -102,14 +102,15 @@ test('reference option routes share pagination, stable ordering and sort_order f
   assert.match(service, /buildReferenceOrder/)
   assert.match(service, /buildPagination/)
   for (const modulePath of [
-    'src/controllers/color.controller.js',
-    'src/controllers/memory.controller.js',
-    'src/controllers/model.controller.js',
-    'src/controllers/supplier.controller.js'
+    'src/services/supplier-management.service.js'
   ]) {
     const source = read(modulePath)
-    assert.match(source, /reference-options\.service/)
-    assert.match(source, /buildReferenceOrder/)
+    assert.match(source, /utils\/reference-options/)
+    assert.match(read('src/repositories/supplier-management.repository.js'), /buildReferenceOrder/)
     assert.match(source, /buildPagination/)
   }
+  assert.match(read('src/services/model-management.service.js'), /normalizeReferencePagination[\s\S]*buildPagination/)
+  assert.match(read('src/repositories/model.repository.js'), /buildReferenceOrder\(/)
+  assert.match(read('src/services/reference-management.service.js'), /normalizeReferencePagination[\s\S]*buildPagination/)
+  assert.match(read('src/repositories/reference-management.repository.js'), /require\('..\/utils\/reference-options'\)[\s\S]*buildReferenceOrder\(/)
 })

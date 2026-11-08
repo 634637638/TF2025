@@ -71,7 +71,7 @@ class UserMutationService {
   async create(body) {
     if (!body.username || !body.password) throw invalidRoleRequest('用户名和密码不能为空')
     const pool = this.database()
-    return withConnection(pool, async connection => {
+    const userId = await withConnection(pool, async connection => {
       try {
         const {
           username,
@@ -106,19 +106,19 @@ class UserMutationService {
 
         await this.repository.replaceUserRoles(connection, result.insertId, roleIds)
         await connection.commit()
-        const newUser = await this.repository.selectPublicUser(pool, { id: result.insertId })
-        return { user: newUser }
+        return result.insertId
 
       } catch (error) {
         await connection.rollback().catch(() => {})
         throw error
       }
     })
+    return { user: await this.repository.selectPublicUser(pool, { id: userId }) }
   }
 
   async update(id, body) {
     const pool = this.database()
-    return withConnection(pool, async connection => {
+    const result = await withConnection(pool, async connection => {
       try {
         await connection.beginTransaction()
 
@@ -193,14 +193,15 @@ class UserMutationService {
 
         await this.repository.replaceUserRoles(connection, userId, roleIds)
         await connection.commit()
-        const updatedUser = await this.repository.selectPublicUser(pool, { id: userId })
-        return { user: updatedUser }
+        return { id: userId }
 
       } catch (error) {
         await connection.rollback().catch(() => {})
         throw error
       }
     })
+    if (result.notFound) return result
+    return { user: await this.repository.selectPublicUser(pool, { id: result.id }) }
   }
 }
 module.exports = UserMutationService

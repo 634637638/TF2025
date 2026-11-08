@@ -1,3 +1,4 @@
+const { withConnection } = require('../core/db/connection')
 /**
  * 数据导入服务
  * 支持从Excel导入销售记录，提供跳过、覆盖、合并等选项
@@ -75,9 +76,7 @@ class DataImportService {
    */
   async analyzeData(filePath, _options = {}) {
     const safeFilePath = validateSpreadsheetFile(filePath, { rootPath: IMPORT_UPLOAD_DIR })
-    const connection = await this.getPool().getConnection()
-
-    try {
+    return await withConnection(this.getPool(), async connection => {
       const _startTime = Date.now()
       log.debug('📊 开始分析数据...')
 
@@ -350,9 +349,7 @@ class DataImportService {
       }
 
       return this.toCanonicalAnalysis(analysis)
-    } finally {
-      connection.release()
-    }
+    })
   }
 
   // 服务内部仍使用便于算法处理的 camelCase；跨 API 边界统一输出 snake_case。
@@ -473,202 +470,200 @@ class DataImportService {
    */
   async importData(filePath, options = {}, user = null) {
     const safeFilePath = validateSpreadsheetFile(filePath, { rootPath: IMPORT_UPLOAD_DIR })
-    const connection = await this.getPool().getConnection()
-    const importId = options.import_id || crypto.randomUUID()
-    const startTime = Date.now()
-    let replaceAllTransactionStarted = false
+    return await withConnection(this.getPool(), async connection => {
+      const importId = options.import_id || crypto.randomUUID()
+      const startTime = Date.now()
+      let replaceAllTransactionStarted = false
 
-    // 从文件路径提取文件名
-    const fileName = safeFilePath.split('/').pop() || 'unknown.xlsx'
+      // 从文件路径提取文件名
+      const fileName = safeFilePath.split('/').pop() || 'unknown.xlsx'
 
-    log.debug('🔄 importData 开始 - importId:', importId, 'options:', options)
+      log.debug('🔄 importData 开始 - importId:', importId, 'options:', options)
+      try {
+        // 初始化进度
+        this.importProgress.set(importId, {
+          status: 'processing',
+          progress: 0,
+          message: '正在读取Excel文件...'
+        })
+        log.debug('✓ importData 进度初始化完成')
 
-    try {
-      // 初始化进度
-      this.importProgress.set(importId, {
-        status: 'processing',
-        progress: 0,
-        message: '正在读取Excel文件...'
-      })
-      log.debug('✓ importData 进度初始化完成')
+        // 读取Excel
+        const workbook = readSpreadsheetFileSafe(safeFilePath)
+        const worksheet = workbook.Sheets[workbook.SheetNames[0]]
+        const data = sheetToJsonSafe(worksheet, { defval: '' })
 
-      // 读取Excel
-      const workbook = readSpreadsheetFileSafe(safeFilePath)
-      const worksheet = workbook.Sheets[workbook.SheetNames[0]]
-      const data = sheetToJsonSafe(worksheet, { defval: '' })
+        this.updateProgress(importId, 10, `正在分析 ${data.length} 条数据...`)
 
-      this.updateProgress(importId, 10, `正在分析 ${data.length} 条数据...`)
+        // 策略：skip（跳过）、overwrite（覆盖）、merge（合并）、replace_all（完全替换）
+        const strategy = options.strategy || 'skip'
 
-      // 策略：skip（跳过）、overwrite（覆盖）、merge（合并）、replace_all（完全替换）
-      const strategy = options.strategy || 'skip'
+        let processed = 0
+        let skipped = 0
+        let imported = 0
+        let updated = 0
+        let errors = 0
+        let maps
 
-      let processed = 0
-      let skipped = 0
-      let imported = 0
-      let updated = 0
-      let errors = 0
-      let maps
-
-      // 如果是完全替换策略，先清空所有数据并重置ID
-      if (strategy === 'replace_all') {
-        try {
-          // 完全替换必须把“清空 + 全量导入”放在同一事务中。
-          // 任意一行失败都回滚旧数据，禁止留下清空后只导入一部分的状态。
-          await prepareInvoiceNumberTransaction(connection)
-          await connection.beginTransaction()
-          replaceAllTransactionStarted = true
-          this.updateProgress(importId, 15, '正在清空所有旧数据...')
-
-          // 1. 删除所有关联数据（从子表到主表的顺序）
-          await connection.execute('DELETE FROM sales')
-          await connection.execute('DELETE FROM phones')
-
-          // 2. 删除所有基础数据（按正确的依赖顺序）
-          await connection.execute('DELETE FROM customers')
-          await connection.execute('DELETE FROM stores')
-          await connection.execute('DELETE FROM suppliers')
-          await connection.execute('DELETE FROM memories')
-          await connection.execute('DELETE FROM colors')
-          await connection.execute('DELETE FROM models')
-          await connection.execute('DELETE FROM brands')
-
-          // 自增值不属于业务数据，事务内禁止通过 ALTER TABLE 重置，避免 DDL 隐式提交。
-          this.updateProgress(importId, 18, '旧数据清理完成，正在重建基础数据...')
-
-          // 删除后的基础表映射为空，但用户映射仍需从同一事务读取。
-          maps = await this.buildDataMaps(connection, data)
-        } catch (error) {
-          if (replaceAllTransactionStarted) {
-            await connection.rollback()
-            replaceAllTransactionStarted = false
-          }
-          throw new Error('清空数据失败: ' + error.message)
-        }
-      } else {
-        // 创建基础数据映射
-        maps = await this.buildDataMaps(connection, data)
-      }
-
-      this.updateProgress(importId, 20, '基础数据准备完成，开始导入...')
-
-      // 导入数据
-      for (let i = 0; i < data.length; i++) {
-        const row = data[i]
-        const mapSnapshot = this.cloneDataMaps(maps)
-        let transactionStarted = false
-
-        try {
-          // 普通策略每行独立提交；完全替换策略复用覆盖整个导入过程的事务。
-          if (strategy !== 'replace_all') {
+        // 如果是完全替换策略，先清空所有数据并重置ID
+        if (strategy === 'replace_all') {
+          try {
+            // 完全替换必须把“清空 + 全量导入”放在同一事务中。
+            // 任意一行失败都回滚旧数据，禁止留下清空后只导入一部分的状态。
             await prepareInvoiceNumberTransaction(connection)
             await connection.beginTransaction()
-            transactionStarted = true
+            replaceAllTransactionStarted = true
+            this.updateProgress(importId, 15, '正在清空所有旧数据...')
+
+            // 1. 删除所有关联数据（从子表到主表的顺序）
+            await connection.execute('DELETE FROM sales')
+            await connection.execute('DELETE FROM phones')
+
+            // 2. 删除所有基础数据（按正确的依赖顺序）
+            await connection.execute('DELETE FROM customers')
+            await connection.execute('DELETE FROM stores')
+            await connection.execute('DELETE FROM suppliers')
+            await connection.execute('DELETE FROM memories')
+            await connection.execute('DELETE FROM colors')
+            await connection.execute('DELETE FROM models')
+            await connection.execute('DELETE FROM brands')
+
+            // 自增值不属于业务数据，事务内禁止通过 ALTER TABLE 重置，避免 DDL 隐式提交。
+            this.updateProgress(importId, 18, '旧数据清理完成，正在重建基础数据...')
+
+            // 删除后的基础表映射为空，但用户映射仍需从同一事务读取。
+            maps = await this.buildDataMaps(connection, data)
+          } catch (error) {
+            if (replaceAllTransactionStarted) {
+              await connection.rollback()
+              replaceAllTransactionStarted = false
+            }
+            throw new Error('清空数据失败: ' + error.message)
           }
-          const result = await this.importRow(connection, row, maps, strategy, user)
-          if (strategy !== 'replace_all') {
-            await connection.commit()
-            transactionStarted = false
+        } else {
+          // 创建基础数据映射
+          maps = await this.buildDataMaps(connection, data)
+        }
+
+        this.updateProgress(importId, 20, '基础数据准备完成，开始导入...')
+
+        // 导入数据
+        for (let i = 0; i < data.length; i++) {
+          const row = data[i]
+          const mapSnapshot = this.cloneDataMaps(maps)
+          let transactionStarted = false
+
+          try {
+            // 普通策略每行独立提交；完全替换策略复用覆盖整个导入过程的事务。
+            if (strategy !== 'replace_all') {
+              await prepareInvoiceNumberTransaction(connection)
+              await connection.beginTransaction()
+              transactionStarted = true
+            }
+            const result = await this.importRow(connection, row, maps, strategy, user)
+            if (strategy !== 'replace_all') {
+              await connection.commit()
+              transactionStarted = false
+            }
+
+            if (result.status === 'imported') {
+              imported++
+            } else if (['updated', 'overwritten', 'merged'].includes(result.status)) {
+              updated++
+            } else if (result.status === 'skipped') {
+              skipped++
+            }
+          } catch (error) {
+            if (transactionStarted) {
+              await connection.rollback()
+            }
+            maps = mapSnapshot
+            log.error(`导入第 ${i + 2} 行失败:`, error)
+            errors++
+            if (strategy === 'replace_all') {
+              throw new Error(`完全替换在第 ${i + 2} 行失败，已回滚全部数据: ${error.message}`)
+            }
           }
 
-          if (result.status === 'imported') {
-            imported++
-          } else if (['updated', 'overwritten', 'merged'].includes(result.status)) {
-            updated++
-          } else if (result.status === 'skipped') {
-            skipped++
+          processed++
+
+          // 更新进度
+          if (processed % 100 === 0 || processed === data.length) {
+            const progress = 20 + Math.floor((processed / data.length) * 75)
+            this.updateProgress(importId, progress, `已处理 ${processed}/${data.length} 条数据`)
           }
-        } catch (error) {
-          if (transactionStarted) {
+        }
+
+        if (replaceAllTransactionStarted) {
+          await connection.commit()
+          replaceAllTransactionStarted = false
+        }
+
+        // 完成
+        this.updateProgress(importId, 100, '导入完成')
+
+        const endTime = Date.now()
+        const total = data.length
+
+        const result = {
+          status: 'completed',
+          total: total,
+          processed,
+          imported,
+          updated,
+          skipped,
+          errors,
+          strategy
+        }
+
+        // 记录历史
+        const historyRecord = {
+          import_id: importId,
+          ...result,
+          user: user?.name || 'system',
+          timestamp: new Date().toISOString()
+        }
+
+        this.importHistory.unshift(historyRecord)
+
+        // 只保留最近100条记录
+        if (this.importHistory.length > 100) {
+          this.importHistory = this.importHistory.slice(0, 100)
+        }
+
+        // 保存到数据库
+        await this.saveImportHistory(connection, {
+          import_id: importId,
+          user_id: user?.id || null,
+          user_name: user?.name || 'system',
+          strategy,
+          file_name: fileName,
+          total_records: total,
+          imported,
+          updated,
+          skipped,
+          error_count: errors,
+          status: errors > 0 ? (imported === 0 && updated === 0 ? 'failed' : 'completed') : 'completed',
+          error_message: errors > 0 ? `${errors}条记录处理失败` : null,
+          start_time: startTime,
+          end_time: endTime,
+          duration_ms: endTime - startTime
+        })
+
+        return result
+      } catch (error) {
+        if (replaceAllTransactionStarted) {
+          try {
             await connection.rollback()
+          } catch (rollbackError) {
+            log.error('完全替换导入回滚失败:', rollbackError)
           }
-          maps = mapSnapshot
-          log.error(`导入第 ${i + 2} 行失败:`, error)
-          errors++
-          if (strategy === 'replace_all') {
-            throw new Error(`完全替换在第 ${i + 2} 行失败，已回滚全部数据: ${error.message}`)
-          }
+          replaceAllTransactionStarted = false
         }
-
-        processed++
-
-        // 更新进度
-        if (processed % 100 === 0 || processed === data.length) {
-          const progress = 20 + Math.floor((processed / data.length) * 75)
-          this.updateProgress(importId, progress, `已处理 ${processed}/${data.length} 条数据`)
-        }
+        this.updateProgress(importId, -1, '导入失败: ' + error.message)
+        throw error
       }
-
-      if (replaceAllTransactionStarted) {
-        await connection.commit()
-        replaceAllTransactionStarted = false
-      }
-
-      // 完成
-      this.updateProgress(importId, 100, '导入完成')
-
-      const endTime = Date.now()
-      const total = data.length
-
-      const result = {
-        status: 'completed',
-        total: total,
-        processed,
-        imported,
-        updated,
-        skipped,
-        errors,
-        strategy
-      }
-
-      // 记录历史
-      const historyRecord = {
-        import_id: importId,
-        ...result,
-        user: user?.name || 'system',
-        timestamp: new Date().toISOString()
-      }
-
-      this.importHistory.unshift(historyRecord)
-
-      // 只保留最近100条记录
-      if (this.importHistory.length > 100) {
-        this.importHistory = this.importHistory.slice(0, 100)
-      }
-
-      // 保存到数据库
-      await this.saveImportHistory(connection, {
-        import_id: importId,
-        user_id: user?.id || null,
-        user_name: user?.name || 'system',
-        strategy,
-        file_name: fileName,
-        total_records: total,
-        imported,
-        updated,
-        skipped,
-        error_count: errors,
-        status: errors > 0 ? (imported === 0 && updated === 0 ? 'failed' : 'completed') : 'completed',
-        error_message: errors > 0 ? `${errors}条记录处理失败` : null,
-        start_time: startTime,
-        end_time: endTime,
-        duration_ms: endTime - startTime
-      })
-
-      return result
-    } catch (error) {
-      if (replaceAllTransactionStarted) {
-        try {
-          await connection.rollback()
-        } catch (rollbackError) {
-          log.error('完全替换导入回滚失败:', rollbackError)
-        }
-        replaceAllTransactionStarted = false
-      }
-      this.updateProgress(importId, -1, '导入失败: ' + error.message)
-      throw error
-    } finally {
-      connection.release()
-    }
+    })
   }
 
   /**

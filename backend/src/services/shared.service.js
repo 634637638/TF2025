@@ -1,3 +1,4 @@
+const { withConnection } = require('../core/db/connection')
 const fs = require('fs')
 const _path = require('path')
 const { getDatabase } = require('../config/database')
@@ -173,45 +174,43 @@ class SharedService {
     await this.ensure()
     const name = normalizeCategory(payload?.name)
     const db = getDatabase()
-    const connection = await db.getConnection()
-    try {
-      await connection.beginTransaction()
-      const [rows] = await connection.query('SELECT name FROM shared_categories WHERE id=? FOR UPDATE', [id])
-      if (!rows.length) throw new Error('分类不存在')
-      const previousName = rows[0].name
-      if (previousName === '未分类') throw new Error('默认分类不能修改')
-      await connection.query('UPDATE shared_categories SET name=? WHERE id=?', [name, id])
-      await connection.query('UPDATE shared_posts SET category=? WHERE category=?', [name, previousName])
-      await connection.commit()
-      return { id: Number(id), name }
-    } catch (error) {
-      await connection.rollback()
-      if (error?.code === 'ER_DUP_ENTRY') throw new Error('分类名称已存在')
-      throw error
-    } finally {
-      connection.release()
-    }
+    return await withConnection(db, async connection => {
+      try {
+        await connection.beginTransaction()
+        const [rows] = await connection.query('SELECT name FROM shared_categories WHERE id=? FOR UPDATE', [id])
+        if (!rows.length) throw new Error('分类不存在')
+        const previousName = rows[0].name
+        if (previousName === '未分类') throw new Error('默认分类不能修改')
+        await connection.query('UPDATE shared_categories SET name=? WHERE id=?', [name, id])
+        await connection.query('UPDATE shared_posts SET category=? WHERE category=?', [name, previousName])
+        await connection.commit()
+        return { id: Number(id), name }
+      } catch (error) {
+        await connection.rollback()
+        if (error?.code === 'ER_DUP_ENTRY') throw new Error('分类名称已存在')
+        throw error
+      }
+    })
   }
 
   async removeCategory(id) {
     await this.ensure()
     const db = getDatabase()
-    const connection = await db.getConnection()
-    try {
-      await connection.beginTransaction()
-      const [rows] = await connection.query('SELECT name FROM shared_categories WHERE id=? FOR UPDATE', [id])
-      if (!rows.length) throw new Error('分类不存在')
-      const name = rows[0].name
-      if (name === '未分类') throw new Error('默认分类不能删除')
-      await connection.query("UPDATE shared_posts SET category='未分类' WHERE category=?", [name])
-      await connection.query('DELETE FROM shared_categories WHERE id=?', [id])
-      await connection.commit()
-    } catch (error) {
-      await connection.rollback()
-      throw error
-    } finally {
-      connection.release()
-    }
+    await withConnection(db, async connection => {
+      try {
+        await connection.beginTransaction()
+        const [rows] = await connection.query('SELECT name FROM shared_categories WHERE id=? FOR UPDATE', [id])
+        if (!rows.length) throw new Error('分类不存在')
+        const name = rows[0].name
+        if (name === '未分类') throw new Error('默认分类不能删除')
+        await connection.query("UPDATE shared_posts SET category='未分类' WHERE category=?", [name])
+        await connection.query('DELETE FROM shared_categories WHERE id=?', [id])
+        await connection.commit()
+      } catch (error) {
+        await connection.rollback()
+        throw error
+      }
+    })
   }
 
   async create(userId, canManage, payload) {

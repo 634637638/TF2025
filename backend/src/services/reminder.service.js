@@ -1,3 +1,4 @@
+const { withConnection } = require('../core/db/connection')
 const { getDatabase } = require('../config/database')
 const { ensureReminderSchema } = require('../utils/reminder-schema')
 
@@ -207,91 +208,91 @@ class ReminderService {
   async create(userId, payload) {
     await this.ensure()
     const db = getDatabase()
-    const connection = await db.getConnection()
-    try {
-      await connection.beginTransaction()
-      const normalized = this.normalizePayload(payload)
-      if (normalized.type_id) {
-        const [typeRows] = await connection.query('SELECT id FROM reminder_types WHERE id=? AND is_active=1', [normalized.type_id])
-        if (!typeRows[0]) throw new Error('事项类型不存在或已停用')
+    const reminderId = await withConnection(db, async connection => {
+      try {
+        await connection.beginTransaction()
+        const normalized = this.normalizePayload(payload)
+        if (normalized.type_id) {
+          const [typeRows] = await connection.query('SELECT id FROM reminder_types WHERE id=? AND is_active=1', [normalized.type_id])
+          if (!typeRows[0]) throw new Error('事项类型不存在或已停用')
+        }
+        const targetIds = await this.validateTargets(connection, normalized.target_mode, normalized.target_user_ids)
+        const [result] = await connection.query(
+          `INSERT INTO reminders
+            (type_id,title,content,priority,target_mode,target_user_ids,repeat_rule,start_at,remind_before_days,created_by)
+           VALUES (?,?,?,?,?,?,?,?,?,?)`,
+          [
+            normalized.type_id,
+            normalized.title,
+            normalized.content,
+            normalized.priority,
+            normalized.target_mode,
+            JSON.stringify(targetIds),
+            JSON.stringify(normalized.repeat_rule),
+            normalized.start_at,
+            normalized.remind_before_days,
+            userId
+          ]
+        )
+        await this.materialize(connection, result.insertId)
+        await connection.commit()
+        return result.insertId
+      } catch (error) {
+        await connection.rollback()
+        throw error
       }
-      const targetIds = await this.validateTargets(connection, normalized.target_mode, normalized.target_user_ids)
-      const [result] = await connection.query(
-        `INSERT INTO reminders
-          (type_id,title,content,priority,target_mode,target_user_ids,repeat_rule,start_at,remind_before_days,created_by)
-         VALUES (?,?,?,?,?,?,?,?,?,?)`,
-        [
-          normalized.type_id,
-          normalized.title,
-          normalized.content,
-          normalized.priority,
-          normalized.target_mode,
-          JSON.stringify(targetIds),
-          JSON.stringify(normalized.repeat_rule),
-          normalized.start_at,
-          normalized.remind_before_days,
-          userId
-        ]
-      )
-      await this.materialize(connection, result.insertId)
-      await connection.commit()
-      return this.getById(result.insertId)
-    } catch (error) {
-      await connection.rollback()
-      throw error
-    } finally {
-      connection.release()
-    }
+    })
+    return this.getById(reminderId)
   }
 
   async update(id, userId, payload, canManage = false) {
     await this.ensure()
     const db = getDatabase()
-    const connection = await db.getConnection()
-    try {
-      await connection.beginTransaction()
-      const [rows] = await connection.query(`SELECT ${REMINDER_SELECT_COLUMNS} FROM reminders WHERE id=? AND status!='archived' FOR UPDATE`, [id])
-      const existing = rows[0]
-      if (!existing) throw new Error('待办不存在')
-      if (!canManage && asInt(existing.created_by) !== asInt(userId)) throw new Error('无权修改他人创建的待办')
-      const existingRule = parseJson(existing.repeat_rule, {})
-      const existingTargets = normalizeIds(parseJson(existing.target_user_ids, []))
-      const normalized = this.normalizePayload(payload, { ...existing, repeat_rule: existingRule, target_user_ids: existingTargets })
-      if (normalized.type_id) {
-        const [typeRows] = await connection.query('SELECT id FROM reminder_types WHERE id=? AND is_active=1', [normalized.type_id])
-        if (!typeRows[0]) throw new Error('事项类型不存在或已停用')
+    await withConnection(db, async connection => {
+      try {
+        await connection.beginTransaction()
+        const [rows] = await connection.query(`SELECT ${REMINDER_SELECT_COLUMNS} FROM reminders WHERE id=? AND status!='archived' FOR UPDATE`, [id])
+        const existing = rows[0]
+        if (!existing) throw new Error('待办不存在')
+        if (!canManage && asInt(existing.created_by) !== asInt(userId)) throw new Error('无权修改他人创建的待办')
+        const existingRule = parseJson(existing.repeat_rule, {})
+        const existingTargets = normalizeIds(parseJson(existing.target_user_ids, []))
+        const normalized = this.normalizePayload(payload, { ...existing, repeat_rule: existingRule, target_user_ids: existingTargets })
+        if (normalized.type_id) {
+          const [typeRows] = await connection.query('SELECT id FROM reminder_types WHERE id=? AND is_active=1', [normalized.type_id])
+          if (!typeRows[0]) throw new Error('事项类型不存在或已停用')
+        }
+        const targetMode = payload.target_mode || existing.target_mode
+        const targetIds = payload.target_mode === undefined && payload.target_user_ids === undefined
+          ? existingTargets
+          : await this.validateTargets(connection, targetMode, normalized.target_user_ids)
+        await connection.query(
+          `UPDATE reminders
+           SET type_id=?,title=?,content=?,priority=?,target_mode=?,target_user_ids=?,repeat_rule=?,start_at=?,remind_before_days=?,updated_at=NOW()
+           WHERE id=?`,
+          [
+            normalized.type_id,
+            normalized.title,
+            normalized.content,
+            normalized.priority,
+            targetMode,
+            JSON.stringify(targetIds),
+            JSON.stringify(normalized.repeat_rule),
+            normalized.start_at,
+            normalized.remind_before_days,
+            id
+          ]
+        )
+        await connection.query('DELETE FROM reminder_records WHERE reminder_id=? AND scheduled_at>=NOW()', [id])
+        await this.materialize(connection, id)
+        await connection.commit()
+
+      } catch (error) {
+        await connection.rollback()
+        throw error
       }
-      const targetMode = payload.target_mode || existing.target_mode
-      const targetIds = payload.target_mode === undefined && payload.target_user_ids === undefined
-        ? existingTargets
-        : await this.validateTargets(connection, targetMode, normalized.target_user_ids)
-      await connection.query(
-        `UPDATE reminders
-         SET type_id=?,title=?,content=?,priority=?,target_mode=?,target_user_ids=?,repeat_rule=?,start_at=?,remind_before_days=?,updated_at=NOW()
-         WHERE id=?`,
-        [
-          normalized.type_id,
-          normalized.title,
-          normalized.content,
-          normalized.priority,
-          targetMode,
-          JSON.stringify(targetIds),
-          JSON.stringify(normalized.repeat_rule),
-          normalized.start_at,
-          normalized.remind_before_days,
-          id
-        ]
-      )
-      await connection.query('DELETE FROM reminder_records WHERE reminder_id=? AND scheduled_at>=NOW()', [id])
-      await this.materialize(connection, id)
-      await connection.commit()
-      return this.getById(id)
-    } catch (error) {
-      await connection.rollback()
-      throw error
-    } finally {
-      connection.release()
-    }
+    })
+    return this.getById(id)
   }
 
   async archive(id, userId, canManage = false) {
@@ -353,21 +354,20 @@ class ReminderService {
   async deleteType(id) {
     await this.ensure()
     const db = getDatabase()
-    const connection = await db.getConnection()
-    try {
-      await connection.beginTransaction()
-      const [typeRows] = await connection.query('SELECT id,name FROM reminder_types WHERE id=? FOR UPDATE', [id])
-      if (!typeRows[0]) throw new Error('事项类型不存在')
-      const [usageRows] = await connection.query('SELECT COUNT(*) total FROM reminders WHERE type_id=?', [id])
-      if (Number(usageRows[0]?.total || 0) > 0) throw new Error('该事项类型已被待办使用，请停用而不是删除')
-      await connection.query('DELETE FROM reminder_types WHERE id=?', [id])
-      await connection.commit()
-    } catch (error) {
-      await connection.rollback()
-      throw error
-    } finally {
-      connection.release()
-    }
+    await withConnection(db, async connection => {
+      try {
+        await connection.beginTransaction()
+        const [typeRows] = await connection.query('SELECT id,name FROM reminder_types WHERE id=? FOR UPDATE', [id])
+        if (!typeRows[0]) throw new Error('事项类型不存在')
+        const [usageRows] = await connection.query('SELECT COUNT(*) total FROM reminders WHERE type_id=?', [id])
+        if (Number(usageRows[0]?.total || 0) > 0) throw new Error('该事项类型已被待办使用，请停用而不是删除')
+        await connection.query('DELETE FROM reminder_types WHERE id=?', [id])
+        await connection.commit()
+      } catch (error) {
+        await connection.rollback()
+        throw error
+      }
+    })
   }
   async getUsers({ keyword = '', page, page_size: pageSizeParam } = {}) {
     await this.ensure()
@@ -585,58 +585,57 @@ class ReminderService {
   async pending(userId) {
     await this.ensure()
     const db = getDatabase()
-    const connection = await db.getConnection()
-    try {
-      await connection.beginTransaction()
-      await this.refreshPendingOccurrences(connection)
-      const [rows] = await connection.query(
-        `SELECT rr.id occurrence_id,rr.scheduled_at,rr.remind_at,r.id reminder_id,
-          r.title,r.content,r.priority,rt.name type_name,rt.color type_color,
-          rr.status recipient_status,rr.action_at,rr.snoozed_until
-         FROM reminder_records rr
-         JOIN reminders r ON r.id=rr.reminder_id
-         LEFT JOIN reminder_types rt ON rt.id=r.type_id
-         WHERE rr.user_id=? AND r.status='active' AND rr.remind_at<=NOW()
-           AND (rr.status='pending' OR (rr.status='snoozed' AND (rr.snoozed_until IS NULL OR rr.snoozed_until<=NOW())))
-           AND NOT EXISTS (
-             SELECT 1 FROM reminder_records newer
-             WHERE newer.reminder_id=rr.reminder_id
-               AND newer.user_id=rr.user_id
-               AND newer.remind_at<=NOW()
-               AND newer.scheduled_at>rr.scheduled_at
-           )
-           AND (
-             rr.last_prompted_at IS NULL
-             OR (
-               rr.scheduled_at<=DATE_ADD(NOW(), INTERVAL 1 DAY)
-               AND rr.last_prompted_at<=DATE_SUB(NOW(), INTERVAL ${FINAL_DAY_PROMPT_INTERVAL_MINUTES} MINUTE)
+    return await withConnection(db, async connection => {
+      try {
+        await connection.beginTransaction()
+        await this.refreshPendingOccurrences(connection)
+        const [rows] = await connection.query(
+          `SELECT rr.id occurrence_id,rr.scheduled_at,rr.remind_at,r.id reminder_id,
+            r.title,r.content,r.priority,rt.name type_name,rt.color type_color,
+            rr.status recipient_status,rr.action_at,rr.snoozed_until
+           FROM reminder_records rr
+           JOIN reminders r ON r.id=rr.reminder_id
+           LEFT JOIN reminder_types rt ON rt.id=r.type_id
+           WHERE rr.user_id=? AND r.status='active' AND rr.remind_at<=NOW()
+             AND (rr.status='pending' OR (rr.status='snoozed' AND (rr.snoozed_until IS NULL OR rr.snoozed_until<=NOW())))
+             AND NOT EXISTS (
+               SELECT 1 FROM reminder_records newer
+               WHERE newer.reminder_id=rr.reminder_id
+                 AND newer.user_id=rr.user_id
+                 AND newer.remind_at<=NOW()
+                 AND newer.scheduled_at>rr.scheduled_at
              )
-             OR (
-               rr.scheduled_at>DATE_ADD(NOW(), INTERVAL 1 DAY)
-               AND rr.last_prompted_at<=DATE_SUB(NOW(), INTERVAL ${NORMAL_PROMPT_INTERVAL_MINUTES} MINUTE)
+             AND (
+               rr.last_prompted_at IS NULL
+               OR (
+                 rr.scheduled_at<=DATE_ADD(NOW(), INTERVAL 1 DAY)
+                 AND rr.last_prompted_at<=DATE_SUB(NOW(), INTERVAL ${FINAL_DAY_PROMPT_INTERVAL_MINUTES} MINUTE)
+               )
+               OR (
+                 rr.scheduled_at>DATE_ADD(NOW(), INTERVAL 1 DAY)
+                 AND rr.last_prompted_at<=DATE_SUB(NOW(), INTERVAL ${NORMAL_PROMPT_INTERVAL_MINUTES} MINUTE)
+               )
              )
-           )
-         ORDER BY r.priority='urgent' DESC,r.priority='high' DESC,rr.remind_at DESC
-         LIMIT ${MAX_PENDING_REMINDERS}
-         FOR UPDATE`,
-        [userId]
-      )
-      if (rows.length) {
-        const placeholders = rows.map(() => '?').join(',')
-        await connection.query(
-          `UPDATE reminder_records SET last_prompted_at=NOW()
-           WHERE id IN (${placeholders})`,
-          rows.map(row => row.occurrence_id)
+           ORDER BY r.priority='urgent' DESC,r.priority='high' DESC,rr.remind_at DESC
+           LIMIT ${MAX_PENDING_REMINDERS}
+           FOR UPDATE`,
+          [userId]
         )
+        if (rows.length) {
+          const placeholders = rows.map(() => '?').join(',')
+          await connection.query(
+            `UPDATE reminder_records SET last_prompted_at=NOW()
+             WHERE id IN (${placeholders})`,
+            rows.map(row => row.occurrence_id)
+          )
+        }
+        await connection.commit()
+        return rows
+      } catch (error) {
+        await connection.rollback()
+        throw error
       }
-      await connection.commit()
-      return rows
-    } catch (error) {
-      await connection.rollback()
-      throw error
-    } finally {
-      connection.release()
-    }
+    })
   }
 
   async pendingCompletions(adminUserId) {

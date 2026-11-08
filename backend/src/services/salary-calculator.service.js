@@ -1,3 +1,4 @@
+const { withConnection } = require('../core/db/connection')
 /**
  * 工资计算服务（核心）
  * 负责计算员工工资：底薪 + 提成 + 加班费 - 扣除
@@ -150,9 +151,7 @@ class SalaryCalculatorService {
    */
   async _getEmployeeWithTemplate(employeeId) {
     const db = getDatabase()
-    const conn = await db.getConnection()
-
-    try {
+    return await withConnection(db, async conn => {
       const query = `
         SELECT
           u.id,
@@ -176,9 +175,7 @@ class SalaryCalculatorService {
       }
 
       return employee
-    } finally {
-      conn.release()
-    }
+    })
   }
 
   /**
@@ -187,9 +184,7 @@ class SalaryCalculatorService {
    */
   async _getSalesData(employeeId, periodStart, periodEnd, employeeInfo = null) {
     const db = getDatabase()
-    const conn = await db.getConnection()
-
-    try {
+    return await withConnection(db, async conn => {
       // 首先获取该员工在周期内的请假日期
       const leaveQuery = `
         SELECT record_date, leave_days, leave_type, leave_reason
@@ -313,9 +308,7 @@ class SalaryCalculatorService {
         details,
         excludedCount: rows.length - filteredRows.length // 记录被排除的销售数量
       }
-    } finally {
-      conn.release()
-    }
+    })
   }
 
   /**
@@ -326,9 +319,7 @@ class SalaryCalculatorService {
    */
   async _getAttendanceData(employeeId, periodStart, periodEnd) {
     const db = getDatabase()
-    const conn = await db.getConnection()
-
-    try {
+    return await withConnection(db, async conn => {
       const currentMonthStartDate = parseLocalDate(periodStart)
       currentMonthStartDate.setDate(1)
       const currentMonthStart = formatLocalDate(currentMonthStartDate)
@@ -421,9 +412,7 @@ class SalaryCalculatorService {
       }
 
       return result
-    } finally {
-      conn.release()
-    }
+    })
   }
 
   /**

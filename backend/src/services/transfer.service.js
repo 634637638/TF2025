@@ -1,3 +1,4 @@
+const { withConnection } = require('../core/db/connection')
 const { getDatabase } = require('../config/database')
 const { normalizeDateTime } = require('../utils/time')
 const { prepareInvoiceNumberTransaction, generateInvoiceNumber } = require('../utils/invoice-number')
@@ -84,259 +85,257 @@ class TransferService {
     log.debug('salesperson_name:', salesperson_name)
 
     const pool = getDatabase()
-    const connection = await pool.getConnection()
+    return await withConnection(pool, async connection => {
+      try {
+        // 发票序列表的建表预检必须发生在业务事务之前；CREATE TABLE 会隐式提交并清除事务保存点。
+        await prepareInvoiceNumberTransaction(connection)
+        await connection.beginTransaction()
 
-    try {
-      // 发票序列表的建表预检必须发生在业务事务之前；CREATE TABLE 会隐式提交并清除事务保存点。
-      await prepareInvoiceNumberTransaction(connection)
-      await connection.beginTransaction()
-
-      if (!sale_time) {
-        throw new Error('销售时间不能为空')
-      }
-      const saleTimeStr = normalizeDateTime(sale_time, true)
-
-      let success_count = 0
-      const failed_phones = []
-      const results = []
-
-      // 如果没有客户ID，先检查或创建客户
-      let final_customer_id = customer_id
-      if (!final_customer_id && customer_name && customer_phone) {
-        // 🔥 先检查手机号是否已存在（确保唯一性）
-        const [existingCustomer] = await connection.query(
-          'SELECT id, name, member_number FROM customers WHERE phone = ? AND status = 1',
-          [customer_phone]
-        )
-
-        if (existingCustomer.length > 0) {
-          // 手机号已存在，直接使用已有客户
-          final_customer_id = existingCustomer[0].id
-          log.debug(`手机号 ${customer_phone} 已存在，使用已有客户 ID: ${final_customer_id}`)
-        } else {
-          // 生成会员号
-          const memberNumber = await this.generateMemberNumber(connection)
-          // 创建新客户
-          const [insertResult] = await connection.query(
-            `INSERT INTO customers (name, phone, customer_type, vip_level, member_number, created_at)
-             VALUES (?, ?, 'wholesale', 'normal', ?, NOW())`,
-            [customer_name, customer_phone, memberNumber]
-          )
-          final_customer_id = insertResult.insertId
-          log.debug(`创建新客户 ID: ${final_customer_id}, 手机号: ${customer_phone}`)
+        if (!sale_time) {
+          throw new Error('销售时间不能为空')
         }
-      }
+        const saleTimeStr = normalizeDateTime(sale_time, true)
 
-      if (!final_customer_id) {
-        throw new Error('客户信息不完整')
-      }
+        let success_count = 0
+        const failed_phones = []
+        const results = []
 
-      // 获取客户信息
-      const [customerData] = await connection.query(
-        'SELECT name, phone, customer_type FROM customers WHERE id = ?',
-        [final_customer_id]
-      )
-
-      if (customerData.length === 0) {
-        throw new Error('客户不存在')
-      }
-
-      const customer = customerData[0]
-
-      // 如果提供了销售员姓名，查找对应的销售员ID
-      let final_operator_id = operator_id
-      if (salesperson_name) {
-        const [salespersonData] = await connection.query(
-          'SELECT id, store_id FROM users WHERE name = ? OR username = ?',
-          [salesperson_name, salesperson_name]
-        )
-
-        if (salespersonData && salespersonData.length > 0) {
-          final_operator_id = salespersonData[0].id
-          log.debug(`使用指定销售员: ${salesperson_name}, ID: ${final_operator_id}`)
-        } else {
-          throw new Error(`未找到销售员: ${salesperson_name}`)
-        }
-      }
-
-      // 确定门店ID：优先使用前端传入的，否则使用操作员的默认门店
-      let final_store_id = store_id
-      if (!final_store_id) {
-        // 获取操作员的默认门店
-        const [operatorData] = await connection.query(
-          'SELECT store_id FROM users WHERE id = ?',
-          [operator_id]
-        )
-
-        if (!operatorData || operatorData.length === 0) {
-          throw new Error('操作员信息不存在')
-        }
-
-        final_store_id = operatorData[0].store_id
-        log.debug(`使用操作员的默认门店ID: ${final_store_id}`)
-      }
-
-      // 处理每台手机
-      for (const phone_id of phone_ids) {
-        await connection.query('SAVEPOINT wholesale_phone')
-        try {
-          log.debug(`处理手机 ID: ${phone_id}, phones 数组:`, JSON.stringify(phones))
-
-          // 从phones数组中找到对应手机的价格信息
-          const phoneData = phones?.find(p => p.phone_id === phone_id)
-          log.debug('找到的 phoneData:', JSON.stringify(phoneData))
-
-          const wholesale_price = Number(phoneData?.wholesale_price)
-          const hasPurchaseCost = phoneData?.purchase_cost !== null &&
-            phoneData?.purchase_cost !== undefined &&
-            phoneData?.purchase_cost !== ''
-          const purchase_cost = hasPurchaseCost ? Number(phoneData.purchase_cost) : null
-
-          if (!Number.isFinite(wholesale_price) || wholesale_price <= 0) {
-            log.error(`批发价格无效: phone_id=${phone_id}, wholesale_price=${wholesale_price}`)
-            failed_phones.push({ phone_id, error: `批发价格无效: ${wholesale_price}` })
-            continue
-          }
-
-          // 检查手机状态和信息
-          const [phoneRecords] = await connection.query(
-            'SELECT id, imei, status, purchase_cost, supplier_id FROM phones WHERE id = ? FOR UPDATE',
-            [phone_id]
+        // 如果没有客户ID，先检查或创建客户
+        let final_customer_id = customer_id
+        if (!final_customer_id && customer_name && customer_phone) {
+          // 🔥 先检查手机号是否已存在（确保唯一性）
+          const [existingCustomer] = await connection.query(
+            'SELECT id, name, member_number FROM customers WHERE phone = ? AND status = 1',
+            [customer_phone]
           )
 
-          if (phoneRecords.length === 0) {
-            failed_phones.push({ phone_id, error: '手机不存在' })
-            continue
+          if (existingCustomer.length > 0) {
+            // 手机号已存在，直接使用已有客户
+            final_customer_id = existingCustomer[0].id
+            log.debug(`手机号 ${customer_phone} 已存在，使用已有客户 ID: ${final_customer_id}`)
+          } else {
+            // 生成会员号
+            const memberNumber = await this.generateMemberNumber(connection)
+            // 创建新客户
+            const [insertResult] = await connection.query(
+              `INSERT INTO customers (name, phone, customer_type, vip_level, member_number, created_at)
+               VALUES (?, ?, 'wholesale', 'normal', ?, NOW())`,
+              [customer_name, customer_phone, memberNumber]
+            )
+            final_customer_id = insertResult.insertId
+            log.debug(`创建新客户 ID: ${final_customer_id}, 手机号: ${customer_phone}`)
+          }
+        }
+
+        if (!final_customer_id) {
+          throw new Error('客户信息不完整')
+        }
+
+        // 获取客户信息
+        const [customerData] = await connection.query(
+          'SELECT name, phone, customer_type FROM customers WHERE id = ?',
+          [final_customer_id]
+        )
+
+        if (customerData.length === 0) {
+          throw new Error('客户不存在')
+        }
+
+        const customer = customerData[0]
+
+        // 如果提供了销售员姓名，查找对应的销售员ID
+        let final_operator_id = operator_id
+        if (salesperson_name) {
+          const [salespersonData] = await connection.query(
+            'SELECT id, store_id FROM users WHERE name = ? OR username = ?',
+            [salesperson_name, salesperson_name]
+          )
+
+          if (salespersonData && salespersonData.length > 0) {
+            final_operator_id = salespersonData[0].id
+            log.debug(`使用指定销售员: ${salesperson_name}, ID: ${final_operator_id}`)
+          } else {
+            throw new Error(`未找到销售员: ${salesperson_name}`)
+          }
+        }
+
+        // 确定门店ID：优先使用前端传入的，否则使用操作员的默认门店
+        let final_store_id = store_id
+        if (!final_store_id) {
+          // 获取操作员的默认门店
+          const [operatorData] = await connection.query(
+            'SELECT store_id FROM users WHERE id = ?',
+            [operator_id]
+          )
+
+          if (!operatorData || operatorData.length === 0) {
+            throw new Error('操作员信息不存在')
           }
 
-          const phone = phoneRecords[0]
+          final_store_id = operatorData[0].store_id
+          log.debug(`使用操作员的默认门店ID: ${final_store_id}`)
+        }
 
-          // 只有在库状态才能批发
-          if (phone.status !== 'in_stock') {
-            failed_phones.push({
+        // 处理每台手机
+        for (const phone_id of phone_ids) {
+          await connection.query('SAVEPOINT wholesale_phone')
+          try {
+            log.debug(`处理手机 ID: ${phone_id}, phones 数组:`, JSON.stringify(phones))
+
+            // 从phones数组中找到对应手机的价格信息
+            const phoneData = phones?.find(p => p.phone_id === phone_id)
+            log.debug('找到的 phoneData:', JSON.stringify(phoneData))
+
+            const wholesale_price = Number(phoneData?.wholesale_price)
+            const hasPurchaseCost = phoneData?.purchase_cost !== null &&
+              phoneData?.purchase_cost !== undefined &&
+              phoneData?.purchase_cost !== ''
+            const purchase_cost = hasPurchaseCost ? Number(phoneData.purchase_cost) : null
+
+            if (!Number.isFinite(wholesale_price) || wholesale_price <= 0) {
+              log.error(`批发价格无效: phone_id=${phone_id}, wholesale_price=${wholesale_price}`)
+              failed_phones.push({ phone_id, error: `批发价格无效: ${wholesale_price}` })
+              continue
+            }
+
+            // 检查手机状态和信息
+            const [phoneRecords] = await connection.query(
+              'SELECT id, imei, status, purchase_cost, supplier_id FROM phones WHERE id = ? FOR UPDATE',
+              [phone_id]
+            )
+
+            if (phoneRecords.length === 0) {
+              failed_phones.push({ phone_id, error: '手机不存在' })
+              continue
+            }
+
+            const phone = phoneRecords[0]
+
+            // 只有在库状态才能批发
+            if (phone.status !== 'in_stock') {
+              failed_phones.push({
+                phone_id,
+                imei: phone.imei,
+                error: `手机状态不是在库，当前状态: ${phone.status}`
+              })
+              continue
+            }
+
+            // 使用传入的入库价或原始入库价
+            const final_purchase_cost = purchase_cost ?? (
+              phone.purchase_cost === null ? null : Number(phone.purchase_cost)
+            )
+            if (!Number.isFinite(final_purchase_cost) || final_purchase_cost < 0) {
+              failed_phones.push({ phone_id, imei: phone.imei, error: '入库成本缺失或无效' })
+              continue
+            }
+            const price = wholesale_price
+            const profit = price - final_purchase_cost
+
+            // 更新手机的入库价（如果传入）
+            if (purchase_cost !== null && purchase_cost !== Number(phone.purchase_cost)) {
+              await connection.query(
+                'UPDATE phones SET purchase_cost = ? WHERE id = ?',
+                [purchase_cost, phone_id]
+              )
+            }
+
+            // 更新手机状态
+            await connection.query(
+              `UPDATE phones SET
+                status = 'peer_transfer',
+                sale_price = ?,
+                wholesale_date = ?,
+                wholesale_price = ?,
+                sale_time = ?,
+                remarks = COALESCE(NULLIF(TRIM(?), ''), remarks)
+              WHERE id = ?`,
+              [price, saleTimeStr, price, saleTimeStr, remarks || null, phone_id]
+            )
+
+            const finalInvoiceNumber = await generateInvoiceNumber('wholesale', connection, saleTimeStr)
+            log.debug(`✅ 自动生成批发发票号: ${finalInvoiceNumber}, 销售日期: ${saleTimeStr.split(' ')[0]}`)
+
+            // 创建销售记录（批发模式）
+            // 注意：sales表不存储salesperson_name，通过operator_id关联users表获取
+            const saleInsertResult = await connection.query(
+              `INSERT INTO sales
+                (phone_id, customer_id, sale_type, sale_price, purchase_cost, operator_id,
+                 payment_method, invoice_number, remarks, sale_time, store_id)
+              VALUES (?, ?, 'wholesale', ?, ?, ?, ?, ?, ?, ?, ?)`,
+              [
+                phone_id,
+                final_customer_id,
+                price,
+                final_purchase_cost,
+                final_operator_id,
+                payment_method || null,
+                finalInvoiceNumber,
+                remarks || null,
+                saleTimeStr,
+                final_store_id
+              ]
+            )
+
+            const sale_id = saleInsertResult[0].insertId
+            await reconcileCustomerPointsForSale({
+              executor: connection,
+              saleId: sale_id,
+              customerId: final_customer_id,
+              saleType: 'wholesale',
+              salePrice: price,
+              isNew: null,
+              initialize: true
+            })
+
+            // 更新手机的销售记录ID和销售员ID（保持数据一致性）
+            await connection.query(
+              'UPDATE phones SET sale_id = ?, sale_operator_id = ? WHERE id = ?',
+              [sale_id, final_operator_id, phone_id]
+            )
+
+            log.debug(`批发手机 ${phone_id} 成功，准备添加到结果`)
+
+            results.push({
               phone_id,
               imei: phone.imei,
-              error: `手机状态不是在库，当前状态: ${phone.status}`
+              sale_id,
+              customer_name: customer.name,
+              wholesale_price: price,
+              purchase_cost: final_purchase_cost,
+              profit,
+              status: 'success'
             })
-            continue
+
+            success_count++
+            await connection.query('RELEASE SAVEPOINT wholesale_phone')
+            log.debug(`success_count 增加到: ${success_count}`)
+          } catch (error) {
+            await connection.query('ROLLBACK TO SAVEPOINT wholesale_phone')
+            log.error(`批发手机 ${phone_id} 失败:`, error)
+            failed_phones.push({ phone_id, error: error.message })
           }
-
-          // 使用传入的入库价或原始入库价
-          const final_purchase_cost = purchase_cost ?? (
-            phone.purchase_cost === null ? null : Number(phone.purchase_cost)
-          )
-          if (!Number.isFinite(final_purchase_cost) || final_purchase_cost < 0) {
-            failed_phones.push({ phone_id, imei: phone.imei, error: '入库成本缺失或无效' })
-            continue
-          }
-          const price = wholesale_price
-          const profit = price - final_purchase_cost
-
-          // 更新手机的入库价（如果传入）
-          if (purchase_cost !== null && purchase_cost !== Number(phone.purchase_cost)) {
-            await connection.query(
-              'UPDATE phones SET purchase_cost = ? WHERE id = ?',
-              [purchase_cost, phone_id]
-            )
-          }
-
-          // 更新手机状态
-          await connection.query(
-            `UPDATE phones SET
-              status = 'peer_transfer',
-              sale_price = ?,
-              wholesale_date = ?,
-              wholesale_price = ?,
-              sale_time = ?,
-              remarks = COALESCE(NULLIF(TRIM(?), ''), remarks)
-            WHERE id = ?`,
-            [price, saleTimeStr, price, saleTimeStr, remarks || null, phone_id]
-          )
-
-          const finalInvoiceNumber = await generateInvoiceNumber('wholesale', connection, saleTimeStr)
-          log.debug(`✅ 自动生成批发发票号: ${finalInvoiceNumber}, 销售日期: ${saleTimeStr.split(' ')[0]}`)
-
-          // 创建销售记录（批发模式）
-          // 注意：sales表不存储salesperson_name，通过operator_id关联users表获取
-          const saleInsertResult = await connection.query(
-            `INSERT INTO sales
-              (phone_id, customer_id, sale_type, sale_price, purchase_cost, operator_id,
-               payment_method, invoice_number, remarks, sale_time, store_id)
-            VALUES (?, ?, 'wholesale', ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [
-              phone_id,
-              final_customer_id,
-              price,
-              final_purchase_cost,
-              final_operator_id,
-              payment_method || null,
-              finalInvoiceNumber,
-              remarks || null,
-              saleTimeStr,
-              final_store_id
-            ]
-          )
-
-          const sale_id = saleInsertResult[0].insertId
-          await reconcileCustomerPointsForSale({
-            executor: connection,
-            saleId: sale_id,
-            customerId: final_customer_id,
-            saleType: 'wholesale',
-            salePrice: price,
-            isNew: null,
-            initialize: true
-          })
-
-          // 更新手机的销售记录ID和销售员ID（保持数据一致性）
-          await connection.query(
-            'UPDATE phones SET sale_id = ?, sale_operator_id = ? WHERE id = ?',
-            [sale_id, final_operator_id, phone_id]
-          )
-
-          log.debug(`批发手机 ${phone_id} 成功，准备添加到结果`)
-
-          results.push({
-            phone_id,
-            imei: phone.imei,
-            sale_id,
-            customer_name: customer.name,
-            wholesale_price: price,
-            purchase_cost: final_purchase_cost,
-            profit,
-            status: 'success'
-          })
-
-          success_count++
-          await connection.query('RELEASE SAVEPOINT wholesale_phone')
-          log.debug(`success_count 增加到: ${success_count}`)
-        } catch (error) {
-          await connection.query('ROLLBACK TO SAVEPOINT wholesale_phone')
-          log.error(`批发手机 ${phone_id} 失败:`, error)
-          failed_phones.push({ phone_id, error: error.message })
         }
+
+        await connection.commit()
+
+        log.debug('=== 批发完成 ===')
+        log.debug(`success_count: ${success_count}`)
+        log.debug(`total_count: ${phone_ids.length}`)
+        log.debug('failed_phones:', JSON.stringify(failed_phones))
+        log.debug('results:', JSON.stringify(results))
+
+        return {
+          success_count,
+          total_count: phone_ids.length,
+          results,
+          failed_phones
+        }
+      } catch (error) {
+        await connection.rollback()
+        throw error
       }
-
-      await connection.commit()
-
-      log.debug('=== 批发完成 ===')
-      log.debug(`success_count: ${success_count}`)
-      log.debug(`total_count: ${phone_ids.length}`)
-      log.debug('failed_phones:', JSON.stringify(failed_phones))
-      log.debug('results:', JSON.stringify(results))
-
-      return {
-        success_count,
-        total_count: phone_ids.length,
-        results,
-        failed_phones
-      }
-    } catch (error) {
-      await connection.rollback()
-      throw error
-    } finally {
-      connection.release()
-    }
+    })
   }
 
   /**
@@ -357,239 +356,237 @@ class TransferService {
     sale_time
   }) {
     const pool = getDatabase()
-    const connection = await pool.getConnection()
+    return await withConnection(pool, async connection => {
+      try {
+        // 与批发相同，避免发票序列表初始化破坏划拨事务中的保存点。
+        await prepareInvoiceNumberTransaction(connection)
+        await connection.beginTransaction()
 
-    try {
-      // 与批发相同，避免发票序列表初始化破坏划拨事务中的保存点。
-      await prepareInvoiceNumberTransaction(connection)
-      await connection.beginTransaction()
-
-      if (!sale_time) {
-        throw new Error('划拨时间不能为空')
-      }
-      const saleTimeStr = normalizeDateTime(sale_time, true)
-
-      let success_count = 0
-      const failed_phones = []
-      const results = []
-
-      // 如果传入了客户信息但没有ID，先检查或创建客户
-      let final_customer_id = customer_id
-      if (!final_customer_id && customer_name && customer_phone) {
-        // 🔥 先检查手机号是否已存在（确保唯一性）
-        const [existingCustomer] = await connection.query(
-          'SELECT id, name, member_number FROM customers WHERE phone = ? AND status = 1',
-          [customer_phone]
-        )
-
-        if (existingCustomer.length > 0) {
-          // 手机号已存在，直接使用已有客户
-          final_customer_id = existingCustomer[0].id
-          log.debug(`手机号 ${customer_phone} 已存在，使用已有客户 ID: ${final_customer_id}`)
-        } else {
-          // 生成会员号
-          const memberNumber = await this.generateMemberNumber(connection)
-          const [insertResult] = await connection.query(
-            `INSERT INTO customers (name, phone, customer_type, vip_level, member_number, created_at)
-             VALUES (?, ?, 'allocate', 'normal', ?, NOW())`,
-            [customer_name, customer_phone, memberNumber]
-          )
-          final_customer_id = insertResult.insertId
-          log.debug(`创建新客户 ID: ${final_customer_id}, 手机号: ${customer_phone}`)
+        if (!sale_time) {
+          throw new Error('划拨时间不能为空')
         }
-      }
+        const saleTimeStr = normalizeDateTime(sale_time, true)
 
-      if (!final_customer_id) {
-        throw new Error('客户信息不完整')
-      }
+        let success_count = 0
+        const failed_phones = []
+        const results = []
 
-      // 确定门店ID：优先使用前端传入的，否则使用操作员的默认门店
-      let final_store_id = store_id
-      if (!final_store_id) {
-        const [operatorData] = await connection.query(
-          'SELECT store_id FROM users WHERE id = ?',
-          [operator_id]
-        )
-
-        if (!operatorData || operatorData.length === 0) {
-          throw new Error('操作员信息不存在')
-        }
-
-        final_store_id = operatorData[0].store_id
-        log.debug(`使用操作员的默认门店ID: ${final_store_id}`)
-      }
-
-      // 获取供应商信息
-      const [supplierData] = await connection.query(
-        'SELECT name FROM suppliers WHERE id = ?',
-        [supplier_id]
-      )
-
-      if (supplierData.length === 0) {
-        throw new Error('供应商不存在')
-      }
-
-      const supplier_name = supplierData[0].name
-
-      // 如果提供了销售员姓名，查找对应的销售员ID
-      let final_operator_id = operator_id
-      if (salesperson_name) {
-        const [salespersonData] = await connection.query(
-          'SELECT id, store_id FROM users WHERE name = ? OR username = ?',
-          [salesperson_name, salesperson_name]
-        )
-
-        if (salespersonData && salespersonData.length > 0) {
-          final_operator_id = salespersonData[0].id
-          log.debug(`使用指定销售员: ${salesperson_name}, ID: ${final_operator_id}`)
-        } else {
-          throw new Error(`未找到销售员: ${salesperson_name}`)
-        }
-      }
-
-      // 获取客户信息
-      const [customerData] = await connection.query(
-        'SELECT name FROM customers WHERE id = ?',
-        [final_customer_id]
-      )
-      if (customerData.length === 0) {
-        throw new Error('客户不存在')
-      }
-      const final_customer_name = customerData[0].name
-
-      // 处理每台手机
-      for (const phone_id of phone_ids) {
-        await connection.query('SAVEPOINT proxy_phone')
-        try {
-          // 检查手机状态和信息
-          const [phoneRecords] = await connection.query(
-            'SELECT id, imei, status, supplier_id FROM phones WHERE id = ? FOR UPDATE',
-            [phone_id]
+        // 如果传入了客户信息但没有ID，先检查或创建客户
+        let final_customer_id = customer_id
+        if (!final_customer_id && customer_name && customer_phone) {
+          // 🔥 先检查手机号是否已存在（确保唯一性）
+          const [existingCustomer] = await connection.query(
+            'SELECT id, name, member_number FROM customers WHERE phone = ? AND status = 1',
+            [customer_phone]
           )
 
-          if (phoneRecords.length === 0) {
-            failed_phones.push({ phone_id, error: '手机不存在' })
-            continue
+          if (existingCustomer.length > 0) {
+            // 手机号已存在，直接使用已有客户
+            final_customer_id = existingCustomer[0].id
+            log.debug(`手机号 ${customer_phone} 已存在，使用已有客户 ID: ${final_customer_id}`)
+          } else {
+            // 生成会员号
+            const memberNumber = await this.generateMemberNumber(connection)
+            const [insertResult] = await connection.query(
+              `INSERT INTO customers (name, phone, customer_type, vip_level, member_number, created_at)
+               VALUES (?, ?, 'allocate', 'normal', ?, NOW())`,
+              [customer_name, customer_phone, memberNumber]
+            )
+            final_customer_id = insertResult.insertId
+            log.debug(`创建新客户 ID: ${final_customer_id}, 手机号: ${customer_phone}`)
+          }
+        }
+
+        if (!final_customer_id) {
+          throw new Error('客户信息不完整')
+        }
+
+        // 确定门店ID：优先使用前端传入的，否则使用操作员的默认门店
+        let final_store_id = store_id
+        if (!final_store_id) {
+          const [operatorData] = await connection.query(
+            'SELECT store_id FROM users WHERE id = ?',
+            [operator_id]
+          )
+
+          if (!operatorData || operatorData.length === 0) {
+            throw new Error('操作员信息不存在')
           }
 
-          const phone = phoneRecords[0]
+          final_store_id = operatorData[0].store_id
+          log.debug(`使用操作员的默认门店ID: ${final_store_id}`)
+        }
 
-          // 只有在库状态才能划拨
-          if (phone.status !== 'in_stock') {
-            failed_phones.push({
+        // 获取供应商信息
+        const [supplierData] = await connection.query(
+          'SELECT name FROM suppliers WHERE id = ?',
+          [supplier_id]
+        )
+
+        if (supplierData.length === 0) {
+          throw new Error('供应商不存在')
+        }
+
+        const supplier_name = supplierData[0].name
+
+        // 如果提供了销售员姓名，查找对应的销售员ID
+        let final_operator_id = operator_id
+        if (salesperson_name) {
+          const [salespersonData] = await connection.query(
+            'SELECT id, store_id FROM users WHERE name = ? OR username = ?',
+            [salesperson_name, salesperson_name]
+          )
+
+          if (salespersonData && salespersonData.length > 0) {
+            final_operator_id = salespersonData[0].id
+            log.debug(`使用指定销售员: ${salesperson_name}, ID: ${final_operator_id}`)
+          } else {
+            throw new Error(`未找到销售员: ${salesperson_name}`)
+          }
+        }
+
+        // 获取客户信息
+        const [customerData] = await connection.query(
+          'SELECT name FROM customers WHERE id = ?',
+          [final_customer_id]
+        )
+        if (customerData.length === 0) {
+          throw new Error('客户不存在')
+        }
+        const final_customer_name = customerData[0].name
+
+        // 处理每台手机
+        for (const phone_id of phone_ids) {
+          await connection.query('SAVEPOINT proxy_phone')
+          try {
+            // 检查手机状态和信息
+            const [phoneRecords] = await connection.query(
+              'SELECT id, imei, status, supplier_id FROM phones WHERE id = ? FOR UPDATE',
+              [phone_id]
+            )
+
+            if (phoneRecords.length === 0) {
+              failed_phones.push({ phone_id, error: '手机不存在' })
+              continue
+            }
+
+            const phone = phoneRecords[0]
+
+            // 只有在库状态才能划拨
+            if (phone.status !== 'in_stock') {
+              failed_phones.push({
+                phone_id,
+                imei: phone.imei,
+                error: `手机状态不是在库，当前状态: ${phone.status}`
+              })
+              continue
+            }
+
+            if (Number(phone.supplier_id) !== Number(supplier_id)) {
+              failed_phones.push({ phone_id, imei: phone.imei, error: '手机所属供应商与所选供应商不一致' })
+              continue
+            }
+
+            const proxy_price = 0
+            const final_purchase_cost = 0
+
+            // 代划拨不形成公司采购或销售金额，相关金额统一归零。
+            await connection.query(
+              `UPDATE phones SET
+                status = 'supplier_proxy',
+                purchase_cost = ?,
+                sale_price = ?,
+                wholesale_date = ?,
+                wholesale_price = ?,
+                sale_time = ?,
+                remarks = COALESCE(NULLIF(TRIM(?), ''), remarks)
+              WHERE id = ?`,
+              [final_purchase_cost, proxy_price, saleTimeStr, proxy_price, saleTimeStr, remarks || null, phone_id]
+            )
+
+            // 🔥 自动生成划拨发票号（使用销售时间）
+            const invoiceNumber = await generateInvoiceNumber('supplier_proxy', connection, saleTimeStr)
+            log.debug(`✅ 自动生成划拨发票号: ${invoiceNumber}, 销售日期: ${saleTimeStr.split(' ')[0]}`)
+
+            // 创建销售记录（划拨模式也创建销售记录）
+            // 注意：sales表不存储salesperson_name，通过operator_id关联users表获取
+            const saleInsertResult = await connection.query(
+              `INSERT INTO sales
+                (phone_id, customer_id, sale_type, sale_price, purchase_cost, operator_id,
+                 store_id, invoice_number, remarks, sale_time)
+              VALUES (?, ?, 'supplier_proxy', ?, ?, ?, ?, ?, ?, ?)`,
+              [
+                phone_id,
+                final_customer_id,
+                proxy_price,
+                final_purchase_cost,
+                final_operator_id,
+                final_store_id,
+                invoiceNumber,
+                remarks || null,
+                saleTimeStr
+              ]
+            )
+
+            const sale_id = saleInsertResult[0].insertId
+            await reconcileCustomerPointsForSale({
+              executor: connection,
+              saleId: sale_id,
+              customerId: final_customer_id,
+              saleType: 'supplier_proxy',
+              salePrice: proxy_price,
+              isNew: null,
+              initialize: true
+            })
+
+            // 更新手机的销售记录ID和销售员ID（保持数据一致性）
+            await connection.query(
+              'UPDATE phones SET sale_id = ?, sale_operator_id = ? WHERE id = ?',
+              [sale_id, final_operator_id, phone_id]
+            )
+
+            log.debug(`划拨手机 ${phone_id} 成功，准备添加到结果`)
+
+            results.push({
               phone_id,
               imei: phone.imei,
-              error: `手机状态不是在库，当前状态: ${phone.status}`
-            })
-            continue
-          }
-
-          if (Number(phone.supplier_id) !== Number(supplier_id)) {
-            failed_phones.push({ phone_id, imei: phone.imei, error: '手机所属供应商与所选供应商不一致' })
-            continue
-          }
-
-          const proxy_price = 0
-          const final_purchase_cost = 0
-
-          // 代划拨不形成公司采购或销售金额，相关金额统一归零。
-          await connection.query(
-            `UPDATE phones SET
-              status = 'supplier_proxy',
-              purchase_cost = ?,
-              sale_price = ?,
-              wholesale_date = ?,
-              wholesale_price = ?,
-              sale_time = ?,
-              remarks = COALESCE(NULLIF(TRIM(?), ''), remarks)
-            WHERE id = ?`,
-            [final_purchase_cost, proxy_price, saleTimeStr, proxy_price, saleTimeStr, remarks || null, phone_id]
-          )
-
-          // 🔥 自动生成划拨发票号（使用销售时间）
-          const invoiceNumber = await generateInvoiceNumber('supplier_proxy', connection, saleTimeStr)
-          log.debug(`✅ 自动生成划拨发票号: ${invoiceNumber}, 销售日期: ${saleTimeStr.split(' ')[0]}`)
-
-          // 创建销售记录（划拨模式也创建销售记录）
-          // 注意：sales表不存储salesperson_name，通过operator_id关联users表获取
-          const saleInsertResult = await connection.query(
-            `INSERT INTO sales
-              (phone_id, customer_id, sale_type, sale_price, purchase_cost, operator_id,
-               store_id, invoice_number, remarks, sale_time)
-            VALUES (?, ?, 'supplier_proxy', ?, ?, ?, ?, ?, ?, ?)`,
-            [
-              phone_id,
-              final_customer_id,
+              sale_id,
+              supplier_name,
+              customer_name: final_customer_name,
               proxy_price,
-              final_purchase_cost,
-              final_operator_id,
-              final_store_id,
-              invoiceNumber,
-              remarks || null,
-              saleTimeStr
-            ]
-          )
+              purchase_cost: final_purchase_cost,
+              status: 'success'
+            })
 
-          const sale_id = saleInsertResult[0].insertId
-          await reconcileCustomerPointsForSale({
-            executor: connection,
-            saleId: sale_id,
-            customerId: final_customer_id,
-            saleType: 'supplier_proxy',
-            salePrice: proxy_price,
-            isNew: null,
-            initialize: true
-          })
-
-          // 更新手机的销售记录ID和销售员ID（保持数据一致性）
-          await connection.query(
-            'UPDATE phones SET sale_id = ?, sale_operator_id = ? WHERE id = ?',
-            [sale_id, final_operator_id, phone_id]
-          )
-
-          log.debug(`划拨手机 ${phone_id} 成功，准备添加到结果`)
-
-          results.push({
-            phone_id,
-            imei: phone.imei,
-            sale_id,
-            supplier_name,
-            customer_name: final_customer_name,
-            proxy_price,
-            purchase_cost: final_purchase_cost,
-            status: 'success'
-          })
-
-          success_count++
-          await connection.query('RELEASE SAVEPOINT proxy_phone')
-          log.debug(`success_count 增加到: ${success_count}`)
-        } catch (error) {
-          await connection.query('ROLLBACK TO SAVEPOINT proxy_phone')
-          log.error(`划拨手机 ${phone_id} 失败:`, error)
-          failed_phones.push({ phone_id, error: error.message })
+            success_count++
+            await connection.query('RELEASE SAVEPOINT proxy_phone')
+            log.debug(`success_count 增加到: ${success_count}`)
+          } catch (error) {
+            await connection.query('ROLLBACK TO SAVEPOINT proxy_phone')
+            log.error(`划拨手机 ${phone_id} 失败:`, error)
+            failed_phones.push({ phone_id, error: error.message })
+          }
         }
+
+        await connection.commit()
+
+        log.debug('=== 划拨完成 ===')
+        log.debug(`success_count: ${success_count}`)
+        log.debug(`total_count: ${phone_ids.length}`)
+        log.debug('failed_phones:', JSON.stringify(failed_phones))
+        log.debug('results:', JSON.stringify(results))
+
+        return {
+          success_count,
+          total_count: phone_ids.length,
+          results,
+          failed_phones
+        }
+      } catch (error) {
+        await connection.rollback()
+        throw error
       }
-
-      await connection.commit()
-
-      log.debug('=== 划拨完成 ===')
-      log.debug(`success_count: ${success_count}`)
-      log.debug(`total_count: ${phone_ids.length}`)
-      log.debug('failed_phones:', JSON.stringify(failed_phones))
-      log.debug('results:', JSON.stringify(results))
-
-      return {
-        success_count,
-        total_count: phone_ids.length,
-        results,
-        failed_phones
-      }
-    } catch (error) {
-      await connection.rollback()
-      throw error
-    } finally {
-      connection.release()
-    }
+    })
   }
 
   /**

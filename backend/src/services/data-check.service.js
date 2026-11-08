@@ -1,3 +1,4 @@
+const { withConnection } = require('../core/db/connection')
 /**
  * 数据检查服务
  * 检查和管理基础数据的重复问题
@@ -62,9 +63,7 @@ class DataCheckService {
    * 通用重复数据检查方法
    */
   async checkDuplicates(table_name, field_name, extraFields = []) {
-    const connection = await this.getPool().getConnection()
-
-    try {
+    return await withConnection(this.getPool(), async connection => {
       // 构建查询SQL
       const selectFields = ['id', field_name, 'status', 'created_at', ...extraFields].join(', ')
       const sql = `
@@ -114,9 +113,7 @@ class DataCheckService {
         duplicate_groups: duplicates.length,
         duplicates: duplicates
       }
-    } finally {
-      connection.release()
-    }
+    })
   }
 
   /**
@@ -138,9 +135,7 @@ class DataCheckService {
    * 检查型号重复数据
    */
   async checkModels() {
-    const connection = await this.getPool().getConnection()
-
-    try {
+    return await withConnection(this.getPool(), async connection => {
       const sql = `
         SELECT m.id, m.name, m.brand_id, b.name as brand_name, m.status, m.created_at
         FROM models m
@@ -194,9 +189,7 @@ class DataCheckService {
         duplicate_groups: duplicates.length,
         duplicates: duplicates
       }
-    } finally {
-      connection.release()
-    }
+    })
   }
 
   /**
@@ -266,9 +259,7 @@ class DataCheckService {
    * 2. 重复客户（不同ID但相同手机号和姓名）
    */
   async checkCustomers() {
-    const connection = await this.getPool().getConnection()
-
-    try {
+    return await withConnection(this.getPool(), async connection => {
       const duplicates = []
 
       log.debug('========== 开始检查客户重复数据 ==========')
@@ -447,9 +438,7 @@ class DataCheckService {
         duplicates: duplicates,
         duplicate_groups: duplicates.length
       }
-    } finally {
-      connection.release()
-    }
+    })
   }
 
   /**
@@ -459,9 +448,7 @@ class DataCheckService {
    * 2. 重复员工（不同ID但相同用户名或手机号）
    */
   async checkUsers() {
-    const connection = await this.getPool().getConnection()
-
-    try {
+    return await withConnection(this.getPool(), async connection => {
       const allDuplicates = []
 
       // 1. 检测重复数据行（相同ID的多条记录）
@@ -580,9 +567,7 @@ class DataCheckService {
         duplicates: allDuplicates,
         duplicate_groups: allDuplicates.length
       }
-    } finally {
-      connection.release()
-    }
+    })
   }
 
   /**
@@ -662,205 +647,81 @@ class DataCheckService {
    * 合并重复数据
    */
   async mergeDuplicates(type, primary_id, duplicate_ids, _user = null) {
-    const connection = await this.getPool().getConnection()
-
-    try {
-      // ===== 安全检查 =====
-      // 1. 确保 primary_id 不在 duplicate_ids 中
-      if (!duplicate_ids || duplicate_ids.length === 0) {
-        throw new Error('没有指定要合并的重复记录')
-      }
-      if (duplicate_ids.includes(primary_id)) {
-        throw new Error('主记录ID不能在待删除列表中')
-      }
-
-      await connection.beginTransaction()
-
-      // 表配置映射，包含正确的字段名
-      const tableConfig = {
-        brands: {
-          table: 'brands',
-          relations: [
-            { table: 'models', field: 'brand_id' },
-            { table: 'phones', field: 'brand_id' }
-          ]
-        },
-        models: {
-          table: 'models',
-          relations: [
-            { table: 'phones', field: 'model_id' }
-          ]
-        },
-        colors: {
-          table: 'colors',
-          relations: [
-            { table: 'phones', field: 'color_id' }
-          ]
-        },
-        memories: {
-          table: 'memories',
-          relations: [
-            { table: 'phones', field: 'memory_id' }
-          ]
-        },
-        suppliers: {
-          table: 'suppliers',
-          relations: [
-            { table: 'phones', field: 'supplier_id' }
-          ]
-        },
-        stores: {
-          table: 'stores',
-          relations: [
-            { table: 'phones', field: 'store_id' },
-            { table: 'users', field: 'store_id' }
-          ]
-        },
-        customers: {
-          table: 'customers',
-          relations: [
-            { table: 'sales', field: 'customer_id' }
-          ]
-        },
-        users: {
-          table: 'users',
-          relations: [
-            { table: 'sales', field: 'user_id' },
-            { table: 'phones', field: 'inventory_operator_id' },
-            { table: 'phones', field: 'sale_operator_id' }
-          ]
+    return await withConnection(this.getPool(), async connection => {
+      try {
+        // ===== 安全检查 =====
+        // 1. 确保 primary_id 不在 duplicate_ids 中
+        if (!duplicate_ids || duplicate_ids.length === 0) {
+          throw new Error('没有指定要合并的重复记录')
         }
-      }
-
-      const config = tableConfig[type]
-      if (!config) {
-        throw new Error('不支持的数据类型')
-      }
-
-      const { table, relations } = config
-
-      // 验证主记录存在
-      const [primaryRecords] = await connection.execute(
-        `SELECT * FROM ${table} WHERE id = ?`,
-        [primary_id]
-      )
-
-      if (primaryRecords.length === 0) {
-        throw new Error('主记录不存在')
-      }
-
-      // 更新所有关联记录
-      for (const relation of relations) {
-        const placeholders = duplicate_ids.map(() => '?').join(',')
-        await connection.execute(
-          `UPDATE ${relation.table} SET ${relation.field} = ? WHERE ${relation.field} IN (${placeholders})`,
-          [primary_id, ...duplicate_ids]
-        )
-      }
-
-      // 删除重复记录
-      const placeholders = duplicate_ids.map(() => '?').join(',')
-      await connection.execute(
-        `DELETE FROM ${table} WHERE id IN (${placeholders})`,
-        duplicate_ids
-      )
-
-      await connection.commit()
-
-      return {
-        type,
-        primary_id,
-        merged_ids: duplicate_ids,
-        merged_count: duplicate_ids.length,
-        message: `成功合并 ${duplicate_ids.length} 条记录到 ${primary_id}`
-      }
-    } catch (error) {
-      await connection.rollback()
-      throw error
-    } finally {
-      connection.release()
-    }
-  }
-
-  /**
-   * 批量合并多组重复数据（优化版：一次事务处理所有组）
-   */
-  async batchMergeMultipleGroups(type, merge_groups, _user = null) {
-    const connection = await this.getPool().getConnection()
-
-    try {
-      await connection.beginTransaction()
-
-      // 表配置映射，包含正确的字段名
-      const tableConfig = {
-        brands: {
-          table: 'brands',
-          relations: [
-            { table: 'models', field: 'brand_id' },
-            { table: 'phones', field: 'brand_id' }
-          ]
-        },
-        models: {
-          table: 'models',
-          relations: [
-            { table: 'phones', field: 'model_id' }
-          ]
-        },
-        colors: {
-          table: 'colors',
-          relations: [
-            { table: 'phones', field: 'color_id' }
-          ]
-        },
-        memories: {
-          table: 'memories',
-          relations: [
-            { table: 'phones', field: 'memory_id' }
-          ]
-        },
-        suppliers: {
-          table: 'suppliers',
-          relations: [
-            { table: 'phones', field: 'supplier_id' }
-          ]
-        },
-        stores: {
-          table: 'stores',
-          relations: [
-            { table: 'phones', field: 'store_id' },
-            { table: 'users', field: 'store_id' }
-          ]
-        },
-        customers: {
-          table: 'customers',
-          relations: [
-            { table: 'sales', field: 'customer_id' }
-          ]
-        },
-        users: {
-          table: 'users',
-          relations: [
-            { table: 'sales', field: 'user_id' },
-            { table: 'phones', field: 'inventory_operator_id' },
-            { table: 'phones', field: 'sale_operator_id' }
-          ]
+        if (duplicate_ids.includes(primary_id)) {
+          throw new Error('主记录ID不能在待删除列表中')
         }
-      }
 
-      const config = tableConfig[type]
-      if (!config) {
-        throw new Error('不支持的数据类型')
-      }
+        await connection.beginTransaction()
 
-      const { table, relations } = config
-      let total_merged = 0
+        // 表配置映射，包含正确的字段名
+        const tableConfig = {
+          brands: {
+            table: 'brands',
+            relations: [
+              { table: 'models', field: 'brand_id' },
+              { table: 'phones', field: 'brand_id' }
+            ]
+          },
+          models: {
+            table: 'models',
+            relations: [
+              { table: 'phones', field: 'model_id' }
+            ]
+          },
+          colors: {
+            table: 'colors',
+            relations: [
+              { table: 'phones', field: 'color_id' }
+            ]
+          },
+          memories: {
+            table: 'memories',
+            relations: [
+              { table: 'phones', field: 'memory_id' }
+            ]
+          },
+          suppliers: {
+            table: 'suppliers',
+            relations: [
+              { table: 'phones', field: 'supplier_id' }
+            ]
+          },
+          stores: {
+            table: 'stores',
+            relations: [
+              { table: 'phones', field: 'store_id' },
+              { table: 'users', field: 'store_id' }
+            ]
+          },
+          customers: {
+            table: 'customers',
+            relations: [
+              { table: 'sales', field: 'customer_id' }
+            ]
+          },
+          users: {
+            table: 'users',
+            relations: [
+              { table: 'sales', field: 'user_id' },
+              { table: 'phones', field: 'inventory_operator_id' },
+              { table: 'phones', field: 'sale_operator_id' }
+            ]
+          }
+        }
 
-      // 收集所有需要更新的ID和需要删除的ID
-      const allUpdateIds = new Map() // Map<duplicateId, primary_id>
-      const allDeleteIds = []
+        const config = tableConfig[type]
+        if (!config) {
+          throw new Error('不支持的数据类型')
+        }
 
-      for (const group of merge_groups) {
-        const { primary_id, duplicate_ids } = group
+        const { table, relations } = config
 
         // 验证主记录存在
         const [primaryRecords] = await connection.execute(
@@ -869,288 +730,406 @@ class DataCheckService {
         )
 
         if (primaryRecords.length === 0) {
-          throw new Error(`主记录 ID ${primary_id} 不存在`)
+          throw new Error('主记录不存在')
         }
 
-        // 确保 primary_id 不在 duplicate_ids 中
-        if (duplicate_ids.includes(primary_id)) {
-          throw new Error('主记录ID不能在待删除列表中')
-        }
-
-        // 记录需要更新的ID映射
-        for (const dupId of duplicate_ids) {
-          allUpdateIds.set(dupId, primary_id)
-        }
-        allDeleteIds.push(...duplicate_ids)
-        total_merged += duplicate_ids.length
-      }
-
-      // 批量更新所有关联记录
-      for (const relation of relations) {
-        // 为每个关联表构建批量更新
-        for (const [duplicateId, primary_id] of allUpdateIds.entries()) {
+        // 更新所有关联记录
+        for (const relation of relations) {
+          const placeholders = duplicate_ids.map(() => '?').join(',')
           await connection.execute(
-            `UPDATE ${relation.table} SET ${relation.field} = ? WHERE ${relation.field} = ?`,
-            [primary_id, duplicateId]
+            `UPDATE ${relation.table} SET ${relation.field} = ? WHERE ${relation.field} IN (${placeholders})`,
+            [primary_id, ...duplicate_ids]
           )
         }
-      }
 
-      // 批量删除重复记录
-      if (allDeleteIds.length > 0) {
-        const placeholders = allDeleteIds.map(() => '?').join(',')
+        // 删除重复记录
+        const placeholders = duplicate_ids.map(() => '?').join(',')
         await connection.execute(
           `DELETE FROM ${table} WHERE id IN (${placeholders})`,
-          allDeleteIds
+          duplicate_ids
         )
-      }
 
-      await connection.commit()
+        await connection.commit()
 
-      return {
-        type,
-        merged_groups: merge_groups.length,
-        total_merged,
-        message: `成功合并 ${merge_groups.length} 个重复组，共 ${total_merged} 条记录`
+        return {
+          type,
+          primary_id,
+          merged_ids: duplicate_ids,
+          merged_count: duplicate_ids.length,
+          message: `成功合并 ${duplicate_ids.length} 条记录到 ${primary_id}`
+        }
+      } catch (error) {
+        await connection.rollback()
+        throw error
       }
-    } catch (error) {
-      await connection.rollback()
-      throw error
-    } finally {
-      connection.release()
-    }
+    })
+  }
+
+  /**
+   * 批量合并多组重复数据（优化版：一次事务处理所有组）
+   */
+  async batchMergeMultipleGroups(type, merge_groups, _user = null) {
+    return await withConnection(this.getPool(), async connection => {
+      try {
+        await connection.beginTransaction()
+
+        // 表配置映射，包含正确的字段名
+        const tableConfig = {
+          brands: {
+            table: 'brands',
+            relations: [
+              { table: 'models', field: 'brand_id' },
+              { table: 'phones', field: 'brand_id' }
+            ]
+          },
+          models: {
+            table: 'models',
+            relations: [
+              { table: 'phones', field: 'model_id' }
+            ]
+          },
+          colors: {
+            table: 'colors',
+            relations: [
+              { table: 'phones', field: 'color_id' }
+            ]
+          },
+          memories: {
+            table: 'memories',
+            relations: [
+              { table: 'phones', field: 'memory_id' }
+            ]
+          },
+          suppliers: {
+            table: 'suppliers',
+            relations: [
+              { table: 'phones', field: 'supplier_id' }
+            ]
+          },
+          stores: {
+            table: 'stores',
+            relations: [
+              { table: 'phones', field: 'store_id' },
+              { table: 'users', field: 'store_id' }
+            ]
+          },
+          customers: {
+            table: 'customers',
+            relations: [
+              { table: 'sales', field: 'customer_id' }
+            ]
+          },
+          users: {
+            table: 'users',
+            relations: [
+              { table: 'sales', field: 'user_id' },
+              { table: 'phones', field: 'inventory_operator_id' },
+              { table: 'phones', field: 'sale_operator_id' }
+            ]
+          }
+        }
+
+        const config = tableConfig[type]
+        if (!config) {
+          throw new Error('不支持的数据类型')
+        }
+
+        const { table, relations } = config
+        let total_merged = 0
+
+        // 收集所有需要更新的ID和需要删除的ID
+        const allUpdateIds = new Map() // Map<duplicateId, primary_id>
+        const allDeleteIds = []
+
+        for (const group of merge_groups) {
+          const { primary_id, duplicate_ids } = group
+
+          // 验证主记录存在
+          const [primaryRecords] = await connection.execute(
+            `SELECT * FROM ${table} WHERE id = ?`,
+            [primary_id]
+          )
+
+          if (primaryRecords.length === 0) {
+            throw new Error(`主记录 ID ${primary_id} 不存在`)
+          }
+
+          // 确保 primary_id 不在 duplicate_ids 中
+          if (duplicate_ids.includes(primary_id)) {
+            throw new Error('主记录ID不能在待删除列表中')
+          }
+
+          // 记录需要更新的ID映射
+          for (const dupId of duplicate_ids) {
+            allUpdateIds.set(dupId, primary_id)
+          }
+          allDeleteIds.push(...duplicate_ids)
+          total_merged += duplicate_ids.length
+        }
+
+        // 批量更新所有关联记录
+        for (const relation of relations) {
+          // 为每个关联表构建批量更新
+          for (const [duplicateId, primary_id] of allUpdateIds.entries()) {
+            await connection.execute(
+              `UPDATE ${relation.table} SET ${relation.field} = ? WHERE ${relation.field} = ?`,
+              [primary_id, duplicateId]
+            )
+          }
+        }
+
+        // 批量删除重复记录
+        if (allDeleteIds.length > 0) {
+          const placeholders = allDeleteIds.map(() => '?').join(',')
+          await connection.execute(
+            `DELETE FROM ${table} WHERE id IN (${placeholders})`,
+            allDeleteIds
+          )
+        }
+
+        await connection.commit()
+
+        return {
+          type,
+          merged_groups: merge_groups.length,
+          total_merged,
+          message: `成功合并 ${merge_groups.length} 个重复组，共 ${total_merged} 条记录`
+        }
+      } catch (error) {
+        await connection.rollback()
+        throw error
+      }
+    })
   }
 
   /**
    * 批量删除重复数据
    */
   async batchDeleteDuplicates(type, ids, _user = null) {
-    const connection = await this.getPool().getConnection()
+    return await withConnection(this.getPool(), async connection => {
+      try {
+        await connection.beginTransaction()
 
-    try {
-      await connection.beginTransaction()
+        const tableMap = {
+          brands: 'brands',
+          models: 'models',
+          colors: 'colors',
+          memories: 'memories',
+          suppliers: 'suppliers',
+          stores: 'stores',
+          customers: 'customers',
+          users: 'users'
+        }
 
-      const tableMap = {
-        brands: 'brands',
-        models: 'models',
-        colors: 'colors',
-        memories: 'memories',
-        suppliers: 'suppliers',
-        stores: 'stores',
-        customers: 'customers',
-        users: 'users'
-      }
+        const table = tableMap[type]
+        if (!table) {
+          throw new Error('不支持的数据类型')
+        }
 
-      const table = tableMap[type]
-      if (!table) {
-        throw new Error('不支持的数据类型')
-      }
+        // 对于客户表，额外检查是否尝试删除"主记录"（有其他重复记录存在的记录）
+        if (type === 'customers') {
+          for (const id of ids) {
+            // 检查该ID是否是某个重复组的主记录
+            // 主记录定义：存在其他记录具有相同的姓名和手机号，但ID更小或创建时间更早
+            const [primaryCheck] = await connection.execute(`
+              SELECT
+                c1.id,
+                c1.name,
+                c1.phone,
+                c1.created_at,
+                COUNT(c2.id) as duplicate_count,
+                MIN(c2.id) as other_id
+              FROM customers c1
+              INNER JOIN customers c2 ON c1.name = c2.name AND c1.phone = c2.phone AND c1.id != c2.id
+              WHERE c1.id = ?
+              GROUP BY c1.id, c1.name, c1.phone, c1.created_at
+            `, [id])
 
-      // 对于客户表，额外检查是否尝试删除"主记录"（有其他重复记录存在的记录）
-      if (type === 'customers') {
-        for (const id of ids) {
-          // 检查该ID是否是某个重复组的主记录
-          // 主记录定义：存在其他记录具有相同的姓名和手机号，但ID更小或创建时间更早
-          const [primaryCheck] = await connection.execute(`
-            SELECT
-              c1.id,
-              c1.name,
-              c1.phone,
-              c1.created_at,
-              COUNT(c2.id) as duplicate_count,
-              MIN(c2.id) as other_id
-            FROM customers c1
-            INNER JOIN customers c2 ON c1.name = c2.name AND c1.phone = c2.phone AND c1.id != c2.id
-            WHERE c1.id = ?
-            GROUP BY c1.id, c1.name, c1.phone, c1.created_at
-          `, [id])
+            if (primaryCheck.length > 0) {
+              // 这个ID存在重复记录，可能是主记录
+              const record = primaryCheck[0]
 
-          if (primaryCheck.length > 0) {
-            // 这个ID存在重复记录，可能是主记录
-            const record = primaryCheck[0]
+              // 检查是否是主记录（创建时间最早或ID最小）
+              const [isPrimary] = await connection.execute(`
+                SELECT c.id, c.created_at
+                FROM customers c
+                WHERE c.name = ? AND c.phone = ? AND c.id != ?
+                ORDER BY c.created_at ASC, c.id ASC
+                LIMIT 1
+              `, [record.name, record.phone, id])
 
-            // 检查是否是主记录（创建时间最早或ID最小）
-            const [isPrimary] = await connection.execute(`
-              SELECT c.id, c.created_at
-              FROM customers c
-              WHERE c.name = ? AND c.phone = ? AND c.id != ?
-              ORDER BY c.created_at ASC, c.id ASC
-              LIMIT 1
-            `, [record.name, record.phone, id])
+              if (isPrimary.length > 0) {
+                // 存在其他记录，检查当前记录是否是主记录
+                const [currentRecord] = await connection.execute(`
+                  SELECT created_at
+                  FROM customers
+                  WHERE id = ?
+                `, [id])
 
-            if (isPrimary.length > 0) {
-              // 存在其他记录，检查当前记录是否是主记录
-              const [currentRecord] = await connection.execute(`
-                SELECT created_at
-                FROM customers
-                WHERE id = ?
-              `, [id])
+                if (currentRecord.length > 0) {
+                  const currentCreatedAt = new Date(currentRecord[0].created_at)
+                  const otherCreatedAt = new Date(isPrimary[0].created_at)
 
-              if (currentRecord.length > 0) {
-                const currentCreatedAt = new Date(currentRecord[0].created_at)
-                const otherCreatedAt = new Date(isPrimary[0].created_at)
-
-                // 如果当前记录的创建时间早于或等于其他记录，则可能是主记录
-                if (currentCreatedAt <= otherCreatedAt) {
-                  throw new Error(
-                    `客户 "${record.name}"（电话：${record.phone}）存在重复记录。\n` +
-                    `ID ${id} 是主记录（创建时间：${currentCreatedAt.toLocaleString('zh-CN')}），不能删除。\n` +
-                    '建议操作：\n' +
-                    '1. 使用"合并"功能将重复记录合并到此主记录\n' +
-                    '2. 只选择并删除重复记录（非主记录）\n' +
-                    '这样可以保留最早创建的客户记录，确保历史数据完整性。'
-                  )
+                  // 如果当前记录的创建时间早于或等于其他记录，则可能是主记录
+                  if (currentCreatedAt <= otherCreatedAt) {
+                    throw new Error(
+                      `客户 "${record.name}"（电话：${record.phone}）存在重复记录。\n` +
+                      `ID ${id} 是主记录（创建时间：${currentCreatedAt.toLocaleString('zh-CN')}），不能删除。\n` +
+                      '建议操作：\n' +
+                      '1. 使用"合并"功能将重复记录合并到此主记录\n' +
+                      '2. 只选择并删除重复记录（非主记录）\n' +
+                      '这样可以保留最早创建的客户记录，确保历史数据完整性。'
+                    )
+                  }
                 }
               }
             }
           }
         }
-      }
 
-      // 对于员工表，同样检查主记录保护
-      if (type === 'users') {
-        for (const id of ids) {
-          const [primaryCheck] = await connection.execute(`
-            SELECT
-              u1.id,
-              u1.username,
-              u1.phone,
-              u1.created_at,
-              COUNT(u2.id) as duplicate_count
-            FROM users u1
-            INNER JOIN users u2 ON (u1.username = u2.username OR u1.phone = u2.phone) AND u1.id != u2.id
-            WHERE u1.id = ?
-            GROUP BY u1.id, u1.username, u1.phone, u1.created_at
-          `, [id])
+        // 对于员工表，同样检查主记录保护
+        if (type === 'users') {
+          for (const id of ids) {
+            const [primaryCheck] = await connection.execute(`
+              SELECT
+                u1.id,
+                u1.username,
+                u1.phone,
+                u1.created_at,
+                COUNT(u2.id) as duplicate_count
+              FROM users u1
+              INNER JOIN users u2 ON (u1.username = u2.username OR u1.phone = u2.phone) AND u1.id != u2.id
+              WHERE u1.id = ?
+              GROUP BY u1.id, u1.username, u1.phone, u1.created_at
+            `, [id])
 
-          if (primaryCheck.length > 0) {
-            const record = primaryCheck[0]
+            if (primaryCheck.length > 0) {
+              const record = primaryCheck[0]
 
-            const [isPrimary] = await connection.execute(`
-              SELECT u.id, u.created_at
-              FROM users u
-              WHERE (u.username = ? OR u.phone = ?) AND u.id != ?
-              ORDER BY u.created_at ASC, u.id ASC
-              LIMIT 1
-            `, [record.username, record.phone, id])
+              const [isPrimary] = await connection.execute(`
+                SELECT u.id, u.created_at
+                FROM users u
+                WHERE (u.username = ? OR u.phone = ?) AND u.id != ?
+                ORDER BY u.created_at ASC, u.id ASC
+                LIMIT 1
+              `, [record.username, record.phone, id])
 
-            if (isPrimary.length > 0) {
-              const [currentRecord] = await connection.execute(`
-                SELECT created_at
-                FROM users
-                WHERE id = ?
-              `, [id])
+              if (isPrimary.length > 0) {
+                const [currentRecord] = await connection.execute(`
+                  SELECT created_at
+                  FROM users
+                  WHERE id = ?
+                `, [id])
 
-              if (currentRecord.length > 0) {
-                const currentCreatedAt = new Date(currentRecord[0].created_at)
-                const otherCreatedAt = new Date(isPrimary[0].created_at)
+                if (currentRecord.length > 0) {
+                  const currentCreatedAt = new Date(currentRecord[0].created_at)
+                  const otherCreatedAt = new Date(isPrimary[0].created_at)
 
-                if (currentCreatedAt <= otherCreatedAt) {
-                  throw new Error(
-                    `员工 "${record.username}"（电话：${record.phone}）存在重复记录。\n` +
-                    `ID ${id} 是主记录（创建时间：${currentCreatedAt.toLocaleString('zh-CN')}），不能删除。\n` +
-                    '建议操作：\n' +
-                    '1. 使用"合并"功能将重复记录合并到此主记录\n' +
-                    '2. 只选择并删除重复记录（非主记录）'
-                  )
+                  if (currentCreatedAt <= otherCreatedAt) {
+                    throw new Error(
+                      `员工 "${record.username}"（电话：${record.phone}）存在重复记录。\n` +
+                      `ID ${id} 是主记录（创建时间：${currentCreatedAt.toLocaleString('zh-CN')}），不能删除。\n` +
+                      '建议操作：\n' +
+                      '1. 使用"合并"功能将重复记录合并到此主记录\n' +
+                      '2. 只选择并删除重复记录（非主记录）'
+                    )
+                  }
                 }
               }
             }
           }
         }
-      }
 
-      // 检查关联关系（表名 -> 字段名映射）
-      const relationMap = {
-        brands: [
-          { table: 'models', field: 'brand_id' },
-          { table: 'phones', field: 'brand_id' }
-        ],
-        models: [
-          { table: 'phones', field: 'model_id' }
-        ],
-        colors: [
-          { table: 'phones', field: 'color_id' }
-        ],
-        memories: [
-          { table: 'phones', field: 'memory_id' }
-        ],
-        suppliers: [
-          { table: 'phones', field: 'supplier_id' }
-        ],
-        stores: [
-          { table: 'phones', field: 'store_id' },
-          { table: 'users', field: 'store_id' }
-        ],
-        customers: [
-          { table: 'sales', field: 'customer_id' }
-        ],
-        users: [
-          { table: 'sales', field: 'user_id' },
-          { table: 'phones', field: 'inventory_operator_id' },
-          { table: 'phones', field: 'sale_operator_id' }
-        ]
-      }
+        // 检查关联关系（表名 -> 字段名映射）
+        const relationMap = {
+          brands: [
+            { table: 'models', field: 'brand_id' },
+            { table: 'phones', field: 'brand_id' }
+          ],
+          models: [
+            { table: 'phones', field: 'model_id' }
+          ],
+          colors: [
+            { table: 'phones', field: 'color_id' }
+          ],
+          memories: [
+            { table: 'phones', field: 'memory_id' }
+          ],
+          suppliers: [
+            { table: 'phones', field: 'supplier_id' }
+          ],
+          stores: [
+            { table: 'phones', field: 'store_id' },
+            { table: 'users', field: 'store_id' }
+          ],
+          customers: [
+            { table: 'sales', field: 'customer_id' }
+          ],
+          users: [
+            { table: 'sales', field: 'user_id' },
+            { table: 'phones', field: 'inventory_operator_id' },
+            { table: 'phones', field: 'sale_operator_id' }
+          ]
+        }
 
-      const relations = relationMap[type] || []
+        const relations = relationMap[type] || []
 
-      // 检查每个ID是否有关联数据
-      for (const id of ids) {
-        for (const relation of relations) {
-          const [related] = await connection.execute(
-            `SELECT COUNT(*) as count FROM ${relation.table} WHERE ${relation.field} = ?`,
-            [id]
-          )
-
-          if (related[0].count > 0) {
-            // 获取记录的名称以便提供更友好的提示
-            let recordName = `ID ${id}`
-            if (type === 'customers') {
-              const [customerInfo] = await connection.execute(
-                'SELECT name, phone FROM customers WHERE id = ?',
-                [id]
-              )
-              if (customerInfo.length > 0) {
-                recordName = `"${customerInfo[0].name}"（电话：${customerInfo[0].phone}）`
-              }
-            } else if (type === 'users') {
-              const [userInfo] = await connection.execute(
-                'SELECT username, phone FROM users WHERE id = ?',
-                [id]
-              )
-              if (userInfo.length > 0) {
-                recordName = `"${userInfo[0].username}"（电话：${userInfo[0].phone}）`
-              }
-            }
-
-            throw new Error(
-              `${type === 'customers' ? '客户' : type === 'users' ? '员工' : '记录'} ${recordName} 在 ${relation.table} 表中有关联数据（${related[0].count} 条），无法删除。\n` +
-              '请先处理关联数据后再删除。'
+        // 检查每个ID是否有关联数据
+        for (const id of ids) {
+          for (const relation of relations) {
+            const [related] = await connection.execute(
+              `SELECT COUNT(*) as count FROM ${relation.table} WHERE ${relation.field} = ?`,
+              [id]
             )
+
+            if (related[0].count > 0) {
+              // 获取记录的名称以便提供更友好的提示
+              let recordName = `ID ${id}`
+              if (type === 'customers') {
+                const [customerInfo] = await connection.execute(
+                  'SELECT name, phone FROM customers WHERE id = ?',
+                  [id]
+                )
+                if (customerInfo.length > 0) {
+                  recordName = `"${customerInfo[0].name}"（电话：${customerInfo[0].phone}）`
+                }
+              } else if (type === 'users') {
+                const [userInfo] = await connection.execute(
+                  'SELECT username, phone FROM users WHERE id = ?',
+                  [id]
+                )
+                if (userInfo.length > 0) {
+                  recordName = `"${userInfo[0].username}"（电话：${userInfo[0].phone}）`
+                }
+              }
+
+              throw new Error(
+                `${type === 'customers' ? '客户' : type === 'users' ? '员工' : '记录'} ${recordName} 在 ${relation.table} 表中有关联数据（${related[0].count} 条），无法删除。\n` +
+                '请先处理关联数据后再删除。'
+              )
+            }
           }
         }
+
+        // 执行删除
+        const placeholders = ids.map(() => '?').join(',')
+        const [result] = await connection.execute(
+          `DELETE FROM ${table} WHERE id IN (${placeholders})`,
+          ids
+        )
+
+        await connection.commit()
+
+        return {
+          type,
+          deletedIds: ids,
+          deletedCount: result.affectedRows
+        }
+      } catch (error) {
+        await connection.rollback()
+        throw error
       }
-
-      // 执行删除
-      const placeholders = ids.map(() => '?').join(',')
-      const [result] = await connection.execute(
-        `DELETE FROM ${table} WHERE id IN (${placeholders})`,
-        ids
-      )
-
-      await connection.commit()
-
-      return {
-        type,
-        deletedIds: ids,
-        deletedCount: result.affectedRows
-      }
-    } catch (error) {
-      await connection.rollback()
-      throw error
-    } finally {
-      connection.release()
-    }
+    })
   }
 
   /**
@@ -1181,9 +1160,7 @@ class DataCheckService {
       throw createEditValidationError(`包含不可编辑字段: ${invalidFields.join(', ')}`)
     }
 
-    const connection = await this.getPool().getConnection()
-
-    try {
+    return await withConnection(this.getPool(), async connection => {
       const { table } = config
       const setClause = fields.map(field => `\`${field}\` = ?`).join(', ')
       const values = fields.map(field => data[field])
@@ -1211,18 +1188,14 @@ class DataCheckService {
         id: recordId,
         data: updated[0]
       }
-    } finally {
-      connection.release()
-    }
+    })
   }
 
   /**
    * 删除单条数据
    */
   async deleteData(type, id, _user = null) {
-    const connection = await this.getPool().getConnection()
-
-    try {
+    return await withConnection(this.getPool(), async connection => {
       const tableMap = {
         brands: 'brands',
         models: 'models',
@@ -1347,18 +1320,14 @@ class DataCheckService {
         id,
         deleted: true
       }
-    } finally {
-      connection.release()
-    }
+    })
   }
 
   /**
    * 获取数据统计
    */
   async getStatistics() {
-    const connection = await this.getPool().getConnection()
-
-    try {
+    return await withConnection(this.getPool(), async connection => {
       const [stats] = await connection.query(`
         SELECT
           'brands' as table_name, COUNT(*) as total FROM brands
@@ -1377,9 +1346,7 @@ class DataCheckService {
       })
 
       return statsMap
-    } finally {
-      connection.release()
-    }
+    })
   }
 
   /**
@@ -1387,9 +1354,7 @@ class DataCheckService {
    * 用于前端显示所有数据并用颜色高亮重复项
    */
   async getAllData(type) {
-    const connection = await this.getPool().getConnection()
-
-    try {
+    return await withConnection(this.getPool(), async connection => {
       const tableMap = {
         brands: { table: 'brands', nameField: 'name', extraFields: [] },
         models: {
@@ -1504,9 +1469,7 @@ class DataCheckService {
         data: dataList,
         is_empty: false
       }
-    } finally {
-      connection.release()
-    }
+    })
   }
 
   /**
@@ -1514,158 +1477,156 @@ class DataCheckService {
    * 对于重复行（相同ID的多条记录），保留最早创建的那一条
    */
   async cleanupData(type, _user = null, specificIds = null) {
-    const connection = await this.getPool().getConnection()
+    return await withConnection(this.getPool(), async connection => {
+      try {
+        if (type === 'customers' || type === 'users') {
+          log.debug(`开始清理 ${type} 表的重复数据行...`)
 
-    try {
-      if (type === 'customers' || type === 'users') {
-        log.debug(`开始清理 ${type} 表的重复数据行...`)
+          const table_name = type
+          const field_name = type === 'customers' ? '客户' : '员工'
 
-        const table_name = type
-        const field_name = type === 'customers' ? '客户' : '员工'
+          let targetIds = specificIds
 
-        let targetIds = specificIds
-
-        // 如果没有指定ID，则获取所有有重复的ID
-        if (!targetIds) {
-          const [duplicate_ids] = await connection.execute(`
-            SELECT id, COUNT(*) as cnt
-            FROM ${table_name}
-            GROUP BY id
-            HAVING COUNT(*) > 1
-            ORDER BY id
-          `)
-          targetIds = duplicate_ids.map(r => r.id)
-          log.debug(`发现 ${targetIds.length} 个ID有重复记录`)
-        } else {
-          log.debug(`清理指定的 ${targetIds.length} 个ID:`, targetIds)
-        }
-
-        if (targetIds.length === 0) {
-          return {
-            type,
-            message: '没有需要清理的重复数据',
-            cleaned: 0,
-            remainingGroups: 0
+          // 如果没有指定ID，则获取所有有重复的ID
+          if (!targetIds) {
+            const [duplicate_ids] = await connection.execute(`
+              SELECT id, COUNT(*) as cnt
+              FROM ${table_name}
+              GROUP BY id
+              HAVING COUNT(*) > 1
+              ORDER BY id
+            `)
+            targetIds = duplicate_ids.map(r => r.id)
+            log.debug(`发现 ${targetIds.length} 个ID有重复记录`)
+          } else {
+            log.debug(`清理指定的 ${targetIds.length} 个ID:`, targetIds)
           }
-        }
 
-        let totalCleaned = 0
-        const skippedIds = []
-
-        // 逐个ID处理
-        for (let i = 0; i < targetIds.length; i++) {
-          const id = targetIds[i]
-          log.debug(`处理 ID ${id} (${i + 1}/${targetIds.length})`)
-
-          try {
-            // 步骤1：获取该ID的所有记录，按创建时间排序
-            const [records] = await connection.execute(`
-              SELECT * FROM ${table_name}
-              WHERE id = ?
-              ORDER BY created_at ASC
-            `, [id])
-
-            if (records.length <= 1) {
-              log.debug(`  ID ${id}: 只有 ${records.length} 条记录，无需清理`)
-              continue
+          if (targetIds.length === 0) {
+            return {
+              type,
+              message: '没有需要清理的重复数据',
+              cleaned: 0,
+              remainingGroups: 0
             }
+          }
 
-            log.debug(`  ID ${id}: 发现 ${records.length} 条记录`)
+          let totalCleaned = 0
+          const skippedIds = []
 
-            // 步骤2：保留第一条（最早创建），删除其余的
-            const keepRecord = records[0]
-            const deleteRecords = records.slice(1)
+          // 逐个ID处理
+          for (let i = 0; i < targetIds.length; i++) {
+            const id = targetIds[i]
+            log.debug(`处理 ID ${id} (${i + 1}/${targetIds.length})`)
 
-            // 步骤3：可选 - 检查数据是否一致
-            let hasDifference = false
-            const diffFields = []
+            try {
+              // 步骤1：获取该ID的所有记录，按创建时间排序
+              const [records] = await connection.execute(`
+                SELECT * FROM ${table_name}
+                WHERE id = ?
+                ORDER BY created_at ASC
+              `, [id])
 
-            // 根据不同表选择不同的比较字段
-            const fieldsToCompare = type === 'customers'
-              ? ['name', 'phone', 'member_number', 'customer_type', 'vip_level', 'status', 'register_date', 'total_spent']
-              : ['username', 'name', 'phone', 'email', 'status']
+              if (records.length <= 1) {
+                log.debug(`  ID ${id}: 只有 ${records.length} 条记录，无需清理`)
+                continue
+              }
 
-            for (let j = 1; j < records.length; j++) {
-              const record = records[j]
+              log.debug(`  ID ${id}: 发现 ${records.length} 条记录`)
 
-              for (const field of fieldsToCompare) {
-                if (String(keepRecord[field] ?? '') !== String(record[field] ?? '')) {
-                  hasDifference = true
-                  if (!diffFields.includes(field)) {
-                    diffFields.push(field)
+              // 步骤2：保留第一条（最早创建），删除其余的
+              const keepRecord = records[0]
+              const deleteRecords = records.slice(1)
+
+              // 步骤3：可选 - 检查数据是否一致
+              let hasDifference = false
+              const diffFields = []
+
+              // 根据不同表选择不同的比较字段
+              const fieldsToCompare = type === 'customers'
+                ? ['name', 'phone', 'member_number', 'customer_type', 'vip_level', 'status', 'register_date', 'total_spent']
+                : ['username', 'name', 'phone', 'email', 'status']
+
+              for (let j = 1; j < records.length; j++) {
+                const record = records[j]
+
+                for (const field of fieldsToCompare) {
+                  if (String(keepRecord[field] ?? '') !== String(record[field] ?? '')) {
+                    hasDifference = true
+                    if (!diffFields.includes(field)) {
+                      diffFields.push(field)
+                    }
                   }
                 }
               }
-            }
 
-            if (hasDifference) {
-              log.debug(`  ID ${id}: ⚠️  检测到数据差异，字段: ${diffFields.join(', ')}`)
-              log.debug('  保留记录:', JSON.stringify(keepRecord))
-              log.debug('  将删除记录中较早创建的...')
-            }
-
-            // 步骤4：删除除第一条外的所有记录
-            for (const deleteRecord of deleteRecords) {
-              const [deleteResult] = await connection.execute(`
-                DELETE FROM ${table_name}
-                WHERE id = ? AND created_at = ?
-              `, [id, deleteRecord.created_at])
-
-              if (deleteResult.affectedRows > 0) {
-                totalCleaned++
-                log.debug(`  ID ${id}: 删除创建时间为 ${deleteRecord.created_at} 的记录`)
+              if (hasDifference) {
+                log.debug(`  ID ${id}: ⚠️  检测到数据差异，字段: ${diffFields.join(', ')}`)
+                log.debug('  保留记录:', JSON.stringify(keepRecord))
+                log.debug('  将删除记录中较早创建的...')
               }
+
+              // 步骤4：删除除第一条外的所有记录
+              for (const deleteRecord of deleteRecords) {
+                const [deleteResult] = await connection.execute(`
+                  DELETE FROM ${table_name}
+                  WHERE id = ? AND created_at = ?
+                `, [id, deleteRecord.created_at])
+
+                if (deleteResult.affectedRows > 0) {
+                  totalCleaned++
+                  log.debug(`  ID ${id}: 删除创建时间为 ${deleteRecord.created_at} 的记录`)
+                }
+              }
+
+              if (hasDifference) {
+                log.debug(`  ID ${id}: ✅ 已保留最早记录，删除了 ${deleteRecords.length} 条记录（有数据差异）`)
+              } else {
+                log.debug(`  ID ${id}: ✅ 删除了 ${deleteRecords.length} 条完全相同的重复记录`)
+              }
+            } catch (err) {
+              log.error(`  ID ${id}: 处理失败 -`, err.message)
+              skippedIds.push(id)
+              // 继续处理下一个ID
             }
 
-            if (hasDifference) {
-              log.debug(`  ID ${id}: ✅ 已保留最早记录，删除了 ${deleteRecords.length} 条记录（有数据差异）`)
-            } else {
-              log.debug(`  ID ${id}: ✅ 删除了 ${deleteRecords.length} 条完全相同的重复记录`)
+            // 每处理50个ID暂停一下，释放锁
+            if ((i + 1) % 50 === 0) {
+              await new Promise(resolve => setTimeout(resolve, 100))
             }
-          } catch (err) {
-            log.error(`  ID ${id}: 处理失败 -`, err.message)
-            skippedIds.push(id)
-            // 继续处理下一个ID
           }
 
-          // 每处理50个ID暂停一下，释放锁
-          if ((i + 1) % 50 === 0) {
-            await new Promise(resolve => setTimeout(resolve, 100))
+          log.debug(`清理完成，共删除 ${totalCleaned} 条`)
+
+          // 检查还有多少重复
+          const [remainingDuplicates] = await connection.execute(`
+            SELECT COUNT(*) as count FROM (
+              SELECT id, COUNT(*) as cnt FROM ${table_name} GROUP BY id HAVING cnt > 1
+            ) as t
+          `)
+
+          log.debug(`剩余重复组: ${remainingDuplicates[0].count}`)
+
+          let message = `成功清理 ${totalCleaned} 条${field_name}重复数据行，还剩 ${remainingDuplicates[0].count} 个重复组`
+          if (skippedIds.length > 0) {
+            message += `（跳过 ${skippedIds.length} 个处理失败的ID: ${skippedIds.slice(0, 5).join(', ')}${skippedIds.length > 5 ? '...' : ''}）`
           }
+
+          return {
+            type,
+            message,
+            cleaned: totalCleaned,
+            remainingGroups: remainingDuplicates[0].count,
+            skippedIds
+          }
+        } else {
+          throw new Error('暂不支持清理该类型的数据')
         }
-
-        log.debug(`清理完成，共删除 ${totalCleaned} 条`)
-
-        // 检查还有多少重复
-        const [remainingDuplicates] = await connection.execute(`
-          SELECT COUNT(*) as count FROM (
-            SELECT id, COUNT(*) as cnt FROM ${table_name} GROUP BY id HAVING cnt > 1
-          ) as t
-        `)
-
-        log.debug(`剩余重复组: ${remainingDuplicates[0].count}`)
-
-        let message = `成功清理 ${totalCleaned} 条${field_name}重复数据行，还剩 ${remainingDuplicates[0].count} 个重复组`
-        if (skippedIds.length > 0) {
-          message += `（跳过 ${skippedIds.length} 个处理失败的ID: ${skippedIds.slice(0, 5).join(', ')}${skippedIds.length > 5 ? '...' : ''}）`
-        }
-
-        return {
-          type,
-          message,
-          cleaned: totalCleaned,
-          remainingGroups: remainingDuplicates[0].count,
-          skippedIds
-        }
-      } else {
-        throw new Error('暂不支持清理该类型的数据')
+      } catch (error) {
+        log.error('清理数据时出错:', error)
+        throw error
       }
-    } catch (error) {
-      log.error('清理数据时出错:', error)
-      throw error
-    } finally {
-      connection.release()
-    }
+    })
   }
 }
 

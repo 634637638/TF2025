@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
-import { basename, join, relative } from 'node:path'
+import { basename, dirname, join, relative, resolve } from 'node:path'
 import { createHash } from 'node:crypto'
 import ts from 'typescript'
 
@@ -447,16 +447,154 @@ function hasPoolAccessor(classNode, baseBindings) {
   return returns > 0 && allReturnsPool
 }
 
+// Resolve the receiver's declared construction, including imported classes and
+// constructor defaults. A pool/accessor call itself is not a lease; an outer
+// pool.getConnection() remains a lease even when its receiver is another call.
+function createAccessorReceiverResolver(sourceFile, filePath) {
+  const modules = new Map()
+  const loadModule = (specifier, fromFile) => {
+    if (!specifier?.startsWith('.')) return null
+    const base = resolve(dirname(fromFile), specifier)
+    const target = [base, `${base}.js`, join(base, 'index.js')].find(candidate => existsSync(candidate) && statSync(candidate).isFile())
+    if (!target) return null
+    if (!modules.has(target)) modules.set(target, ts.createSourceFile(target, readFileSync(target, 'utf8'), ts.ScriptTarget.Latest, true, ts.ScriptKind.JS))
+    return { source: modules.get(target), path: target }
+  }
+  const findClass = (name, context) => {
+    const local = context.source.statements.find(node => ts.isClassDeclaration(node) && node.name?.text === name)
+    if (local) return { ...context, classNode: local }
+    for (const statement of context.source.statements) {
+      let specifier
+      if (ts.isVariableStatement(statement)) {
+        const declaration = statement.declarationList.declarations.find(node => ts.isIdentifier(node.name) && node.name.text === name)
+        specifier = getRequirePath(declaration?.initializer)
+      }
+      if (ts.isImportDeclaration(statement) && statement.importClause?.name?.text === name) specifier = statement.moduleSpecifier.text
+      const imported = loadModule(specifier, context.path)
+      if (!imported) continue
+      const classes = imported.source.statements.filter(ts.isClassDeclaration)
+      const exported = imported.source.statements.find(node => ts.isExpressionStatement(node)
+        && ts.isBinaryExpression(node.expression) && node.expression.left.getText(imported.source) === 'module.exports'
+        && ts.isIdentifier(node.expression.right))?.expression.right.text
+      const classNode = classes.find(node => node.name?.text === exported) || (classes.length === 1 ? classes[0] : null)
+      if (classNode) return { ...imported, classNode }
+    }
+    // Lazy require declarations may live inside handlers. Resolve only when
+    // every declaration with that name identifies the same static module.
+    const declarations = []
+    const collect = node => {
+      if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.name.text === name) declarations.push(getRequirePath(node.initializer))
+      ts.forEachChild(node, collect)
+    }
+    collect(context.source)
+    if (declarations.length && declarations.every(value => value && value === declarations[0])) {
+      const imported = loadModule(declarations[0], context.path)
+      const classes = imported?.source.statements.filter(ts.isClassDeclaration) || []
+      if (classes.length === 1) return { ...imported, classNode: classes[0] }
+    }
+    return null
+  }
+  const instanceFor = (expression, context, depth = 0) => {
+    if (!expression || depth > 12) return null
+    if (ts.isParenthesizedExpression(expression)) return instanceFor(expression.expression, context, depth + 1)
+    if (ts.isNewExpression(expression) && ts.isIdentifier(expression.expression)) {
+      const type = findClass(expression.expression.text, context)
+      return type ? { ...type, arguments: expression.arguments || [], caller: context } : null
+    }
+    if (ts.isThis(expression)) return context.classNode ? context : null
+    if (ts.isIdentifier(expression)) {
+      const constructor = context.classNode?.members.find(ts.isConstructorDeclaration)
+      for (const [index, parameter] of (constructor?.parameters || []).entries()) {
+        if (ts.isIdentifier(parameter.name) && parameter.name.text === expression.text) {
+          const supplied = context.arguments?.[index]
+          return supplied ? instanceFor(supplied, context.caller, depth + 1) : instanceFor(parameter.initializer, context, depth + 1)
+        }
+        if (ts.isObjectBindingPattern(parameter.name)) {
+          const binding = parameter.name.elements.find(element => ts.isIdentifier(element.name) && element.name.text === expression.text)
+          if (binding) {
+            const supplied = context.arguments?.[index]
+            if (supplied && !ts.isObjectLiteralExpression(supplied)) return null
+            const property = supplied?.properties.find(property => property.name?.getText() === (binding.propertyName || binding.name).getText())
+            return property && ts.isPropertyAssignment(property)
+              ? instanceFor(property.initializer, context.caller, depth + 1)
+              : instanceFor(binding.initializer, context, depth + 1)
+          }
+        }
+      }
+      // Respect lexical scope: unrelated methods may use the same local name.
+      let scope = expression.parent
+      while (scope) {
+        if (ts.isBlock(scope) || ts.isSourceFile(scope)) {
+          const declarations = []
+          let reassigned = false
+          const collect = node => {
+            if (node !== scope && (ts.isFunctionLike(node) || ts.isClassLike(node))) return
+            if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.name.text === expression.text) declarations.push(node)
+            if (ts.isBinaryExpression(node) && ts.isIdentifier(node.left) && node.left.text === expression.text
+              && node.operatorToken.kind === ts.SyntaxKind.EqualsToken) reassigned = true
+            ts.forEachChild(node, collect)
+          }
+          collect(scope)
+          if (declarations.length) return declarations.length === 1 && !reassigned ? instanceFor(declarations[0].initializer, context, depth + 1) : null
+        }
+        scope = scope.parent
+      }
+      return null
+    }
+    if (ts.isPropertyAccessExpression(expression)) {
+      const owner = instanceFor(expression.expression, context, depth + 1)
+      if (!owner?.classNode) return null
+      const assignments = []
+      const collect = node => {
+        if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.EqualsToken
+          && ts.isPropertyAccessExpression(node.left) && ts.isThis(node.left.expression)
+          && node.left.name.text === expression.name.text) assignments.push(node.right)
+        if (ts.isCallExpression(node) && node.expression.getText() === 'Object.assign'
+          && node.arguments[0] && ts.isThis(node.arguments[0])) {
+          for (const argument of node.arguments.slice(1)) {
+            if (!ts.isObjectLiteralExpression(argument)) continue
+            for (const property of argument.properties) {
+              if (property.name?.getText() !== expression.name.text) continue
+              if (ts.isPropertyAssignment(property)) assignments.push(property.initializer)
+              if (ts.isShorthandPropertyAssignment(property)) assignments.push(property.name)
+            }
+          }
+        }
+        ts.forEachChild(node, collect)
+      }
+      collect(owner.classNode)
+      return assignments.length === 1 ? instanceFor(assignments[0], owner, depth + 1) : null
+    }
+    return null
+  }
+  const isAccessor = (type, depth = 0) => {
+    if (!type?.classNode || depth > 12) return false
+    const bindings = collectBaseRepositoryBindings(type.source)
+    if (hasPoolAccessor(type.classNode, bindings)) return true
+    // An explicit override returning an acquired connection must never inherit
+    // its parent's pool-accessor classification.
+    if (type.classNode.members.some(member => ts.isMethodDeclaration(member) && member.name?.getText() === 'getConnection')) return false
+    return type.classNode.heritageClauses?.some(clause => clause.types.some(parent =>
+      ts.isIdentifier(parent.expression) && isAccessor(findClass(parent.expression.text, type), depth + 1))) || false
+  }
+  return (receiver, classNode) => isAccessor(instanceFor(receiver, { source: sourceFile, path: filePath, classNode }))
+}
+
 export function analyzeDatabaseConnectionLeases(filePath, source) {
   const sourceFile = ts.createSourceFile(filePath, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS)
   const baseBindings = collectBaseRepositoryBindings(sourceFile)
+  const isAccessorReceiver = createAccessorReceiverResolver(sourceFile, filePath)
   let count = 0
-  const visit = (node, poolAccessor = false) => {
-    if (ts.isClassDeclaration(node) || ts.isClassExpression(node)) poolAccessor = hasPoolAccessor(node, baseBindings)
+  const visit = (node, poolAccessor = false, classNode = null) => {
+    if (ts.isClassDeclaration(node) || ts.isClassExpression(node)) {
+      classNode = node
+      poolAccessor = hasPoolAccessor(node, baseBindings)
+    }
     if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression)
       && node.expression.name.text === 'getConnection'
-      && !(poolAccessor && ts.isThis(node.expression.expression))) count += 1
-    ts.forEachChild(node, child => visit(child, poolAccessor))
+      && !(poolAccessor && ts.isThis(node.expression.expression))
+      && !isAccessorReceiver(node.expression.expression, classNode)) count += 1
+    ts.forEachChild(node, child => visit(child, poolAccessor, classNode))
   }
   visit(sourceFile)
   return count

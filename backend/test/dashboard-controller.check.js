@@ -48,8 +48,6 @@ test('仪表盘数据库统计保持手机库存、销售合计和最近销售�
   const results = [
     [{ count: 2 }], [{ count: 3 }], [{ count: 4 }], [{ count: 5 }],
     [{ amount: 10 }], [{ amount: 20 }], [{ amount: 30 }],
-    [{ id: 1, sale_price: 10, sale_time: '2026-11-01', status: 'sold' }],
-    [{ id: 2, phone_id: 3, sale_price: 30, sale_time: '2026-11-01', sale_type: 'wholesale' }],
     [{ count: 6 }], [{ id: 7, accessory_name: '配件' }]
   ]
   const controller = new DashboardController({
@@ -63,11 +61,12 @@ test('仪表盘数据库统计保持手机库存、销售合计和最近销售�
   })
   const response = createResponse()
   await controller.getDashboardData({ user: {} }, response)
-  assert.equal(calls.length, 11)
+  assert.equal(calls.length, 9)
   assert.equal(response.body.data.stats.todaySalesAmount, 60)
   assert.deepEqual(response.body.data.stats.phones, { in_stock: 5 })
   assert.equal(response.body.data.stats.todaySales, 6)
   assert.equal(response.body.data.recentSales[0].accessory_name, '配件')
+  assert.equal(calls.some(sql => /ORDER BY sale_time DESC/.test(sql)), false)
 })
 
 test('活动流合并销售、客户、入库和维修来源并按时间返回最新八条', async () => {

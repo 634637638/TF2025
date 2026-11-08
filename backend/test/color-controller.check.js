@@ -1,3 +1,4 @@
+const ColorRepository = require('../src/repositories/color.repository')
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
@@ -37,7 +38,7 @@ test('颜色列表保留筛选、安全排序、分页和格式化响应', async
   const ColorController = require('../src/controllers/color.controller')
   const queries = []
   const controller = new ColorController({
-    repository: {
+    repository: Object.assign(new ColorRepository(), {
       async executePrepared(sql, values) {
         queries.push({ sql, values })
         if (sql.includes('COUNT(*)')) return [[{ total: 12 }], []]
@@ -50,7 +51,7 @@ test('颜色列表保留筛选、安全排序、分页和格式化响应', async
           updated_at: null
         }], []]
       }
-    },
+    }),
     isDatabaseConnected: () => true
   })
   const response = createResponse()
@@ -79,14 +80,14 @@ test('颜色创建验证空值与重名，并按默认值插入后清缓存', as
   const queries = []
   let cacheClears = 0
   const controller = new ColorController({
-    repository: {
+    repository: Object.assign(new ColorRepository(), {
       async executePrepared(sql, values) {
         queries.push({ sql, values })
         if (sql.startsWith('SELECT id FROM colors')) return [[], []]
         if (sql.startsWith('INSERT INTO colors')) return [{ insertId: 7 }, []]
         return [[{ id: 7, name: 'Violet', status: 1, sort_order: 0 }], []]
       }
-    },
+    }),
     isDatabaseConnected: () => true,
     invalidateCache: () => { cacheClears += 1 }
   })
@@ -124,7 +125,7 @@ test('颜色更新、删除与状态切换保留校验、字段绑定和缓存�
     }
   }
   const controller = new ColorController({
-    repository,
+    repository: Object.assign(new ColorRepository(), repository),
     isDatabaseConnected: () => true,
     invalidateCache: () => { cacheClears += 1 }
   })
@@ -149,14 +150,14 @@ test('颜色统计与详情保留筛选条件和不存在响应', async () => {
   const ColorController = require('../src/controllers/color.controller')
   const queries = []
   const controller = new ColorController({
-    repository: {
+    repository: Object.assign(new ColorRepository(), {
       async executePrepared(sql, values) {
         queries.push({ sql, values })
         if (sql.includes('related_phones')) return [[{ related_phones: '6' }], []]
         if (sql.includes('COUNT(*) AS total')) return [[{ total: '8', active: '5', inactive: '3' }], []]
         return [[], []]
       }
-    },
+    }),
     isDatabaseConnected: () => true
   })
   const stats = createResponse()
@@ -181,7 +182,7 @@ test('颜色批量排序事务成功时仅更新有效项并提交、失效缓�
     release() { events.push('release') }
   }
   const controller = new ColorController({
-    repository: { withConnection(operation) { return withConnection({ getConnection: async () => connection }, operation) } },
+    repository: Object.assign(new ColorRepository(), { withConnection(operation) { return withConnection({ getConnection: async () => connection }, operation) } }),
     isDatabaseConnected: () => true,
     invalidateCache: () => events.push('invalidate')
   })
@@ -215,7 +216,7 @@ test('颜色批量排序失败时回滚并释放连接，未连接或空数据�
     release() { events.push('release') }
   }
   const controller = new ColorController({
-    repository: { withConnection(operation) { return withConnection({ getConnection: async () => { events.push('acquire'); return connection } }, operation) } },
+    repository: Object.assign(new ColorRepository(), { withConnection(operation) { return withConnection({ getConnection: async () => { events.push('acquire'); return connection } }, operation) } }),
     isDatabaseConnected: () => true,
     invalidateCache: () => events.push('invalidate')
   })
@@ -229,7 +230,7 @@ test('颜色批量排序失败时回滚并释放连接，未连接或空数据�
   assert.deepEqual(events, ['acquire', 'begin', 'rollback', 'release'])
 
   const unavailable = new ColorController({
-    repository: { async withConnection() { throw new Error('must not connect') } },
+    repository: Object.assign(new ColorRepository(), { async withConnection() { throw new Error('must not connect') } }),
     isDatabaseConnected: () => false
   })
   const unavailableResponse = createResponse()

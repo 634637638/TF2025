@@ -845,7 +845,7 @@ test('customers uses canonical filters, statistics and purchase history fields',
 
   const route = fs.readFileSync(path.join(root, 'backend/src/routes/customers.js'), 'utf8')
   const repository = fs.readFileSync(path.join(root, 'backend/src/repositories/customer.repository.js'), 'utf8')
-  const controller = fs.readFileSync(path.join(root, 'backend/src/controllers/customer.controller.js'), 'utf8')
+  const controller = fs.readFileSync(path.join(root, 'backend/src/services/customer-management.service.js'), 'utf8')
   const page = fs.readFileSync(path.join(root, 'frontend/src/views/customers/CustomersView.vue'), 'utf8')
 
   assert.equal(contract.legacy.length, 0)

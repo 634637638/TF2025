@@ -569,3 +569,84 @@ test('layer dependency audit freezes existing reverse dependencies and rejects g
   assert.ok(stale.findings.some(finding => finding.includes('必须删除空基线项')))
 })
 
+
+test('lease receivers resolve imported repository pools and stored connections without hiding nested leases', t => {
+  const { servicesRoot, repositoriesRoot } = createFixture(t)
+  writeFileSync(join(repositoriesRoot, 'base.repository.js'), `
+    class BaseRepository { getConnection() { return pool } }
+    module.exports = BaseRepository
+  `)
+  writeFileSync(join(repositoriesRoot, 'attendance.repository.js'), `
+    const BaseRepository = require('./base.repository')
+    class AttendanceRepository extends BaseRepository {}
+    module.exports = AttendanceRepository
+  `)
+  writeFileSync(join(servicesRoot, 'registry.service.js'), `
+    class Registry {
+      constructor() { this.entries = new Map() }
+      getConnection(id) { const entry = this.entries.get(id); return entry.connection }
+    }
+    module.exports = Registry
+  `)
+  writeFileSync(join(servicesRoot, 'bridge.service.js'), `
+    const Registry = require('./registry.service')
+    class Bridge { constructor(registry = new Registry()) { this.registry = registry } }
+    module.exports = Bridge
+  `)
+  const source = `
+    const AttendanceRepository = require('../repositories/attendance.repository')
+    const Registry = require('./registry.service')
+    class Sample {
+      constructor(registry = new Registry()) { this.repository = new AttendanceRepository(); Object.assign(this, { registry }) }
+      run() {
+        this.repository.getConnection()
+        this.registry.getConnection('external')
+        this.repository.getConnection().getConnection()
+        pool.getConnection()
+        unknown.getConnection()
+      }
+      first() {
+        const Bridge = require('./bridge.service')
+        const registry = new Registry()
+        const bridge = new Bridge(registry)
+        return bridge.registry.getConnection('external')
+      }
+      unrelated() { const registry = unknown; return registry }
+    }
+  `
+  assert.equal(analyzeDatabaseConnectionLeases(join(servicesRoot, 'sample.service.js'), source), 3)
+})
+
+test('lease receiver resolution counts acquisition overrides, unknown arguments and reassigned properties', t => {
+  const { servicesRoot, repositoriesRoot } = createFixture(t)
+  writeFileSync(join(repositoriesRoot, 'base.repository.js'), `
+    class BaseRepository { getConnection() { return pool } }
+    module.exports = BaseRepository
+  `)
+  writeFileSync(join(repositoriesRoot, 'acquire.repository.js'), `
+    const BaseRepository = require('./base.repository')
+    class AcquireRepository extends BaseRepository { getConnection() { return pool.getConnection() } }
+    module.exports = AcquireRepository
+  `)
+  writeFileSync(join(servicesRoot, 'bridge.service.js'), `
+    const BaseRepository = require('../repositories/base.repository')
+    class Bridge { constructor(repository = new BaseRepository()) { this.repository = repository } }
+    module.exports = Bridge
+  `)
+  const source = `
+    const AcquireRepository = require('../repositories/acquire.repository')
+    const BaseRepository = require('../repositories/base.repository')
+    const Bridge = require('./bridge.service')
+    class Sample {
+      constructor() { this.repository = new BaseRepository(); this.acquirer = new AcquireRepository() }
+      replace(value) { this.repository = value }
+      run() {
+        this.acquirer.getConnection()
+        this.repository.getConnection()
+        const bridge = new Bridge(unknown)
+        bridge.repository.getConnection()
+      }
+    }
+  `
+  assert.equal(analyzeDatabaseConnectionLeases(join(servicesRoot, 'sample.service.js'), source), 3)
+})

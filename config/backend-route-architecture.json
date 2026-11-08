@@ -2,138 +2,15 @@
   "version": 1,
   "maxLegacyNonControllerRoutes": 0,
   "legacyNonControllerRoutes": {},
-  "controllerDatabaseCalls": {
-    "auth-session.controller.js": {
-      "sql": 1,
-      "transaction": 0
-    },
-    "auth.controller.js": {
-      "sql": 4,
-      "transaction": 0
-    },
-    "color.controller.js": {
-      "sql": 17,
-      "transaction": 0
-    },
-    "dashboard.controller.js": {
-      "sql": 16,
-      "transaction": 0
-    },
-    "data-import.controller.js": {
-      "sql": 4,
-      "transaction": 0
-    },
-    "database-connection.controller.js": {
-      "sql": 1,
-      "transaction": 0
-    },
-    "database-sync.controller.js": {
-      "sql": 13,
-      "transaction": 0
-    },
-    "icon.controller.js": {
-      "sql": 5,
-      "transaction": 0
-    },
-    "memory.controller.js": {
-      "sql": 18,
-      "transaction": 0
-    },
-    "model.controller.js": {
-      "sql": 19,
-      "transaction": 0
-    },
-    "price-list.controller.js": {
-      "sql": 16,
-      "transaction": 0
-    },
-    "store.controller.js": {
-      "sql": 14,
-      "transaction": 0
-    },
-    "supplier.controller.js": {
-      "sql": 15,
-      "transaction": 0
-    },
-    "user-store.controller.js": {
-      "sql": 1,
-      "transaction": 0
-    },
-    "user.controller.js": {
-      "sql": 5,
-      "transaction": 0
-    }
-  },
-  "maxControllerSqlCalls": 149,
+  "controllerDatabaseCalls": {},
+  "maxControllerSqlCalls": 0,
   "maxControllerTransactionCalls": 0,
-  "controllerRepositoryDependencies": {
-    "color.controller.js": [
-      "../repositories/color.repository"
-    ],
-    "customer.controller.js": [
-      "../repositories/customer.repository"
-    ],
-    "employee-role.controller.js": [
-      "../repositories/employee-role.repository"
-    ],
-    "icon.controller.js": [
-      "../repositories/icon.repository"
-    ],
-    "memory.controller.js": [
-      "../repositories/memory.repository"
-    ],
-    "model.controller.js": [
-      "../repositories/model.repository"
-    ],
-    "store.controller.js": [
-      "../repositories/store.repository"
-    ],
-    "user-store.controller.js": [
-      "../repositories/user-store.repository"
-    ],
-    "user.controller.js": [
-      "../repositories/user.repository"
-    ]
-  },
-  "maxControllerRepositoryDependencies": 9,
-  "forbiddenLayerDependencies": {
-    "repositories/query.repository.js": [
-      {
-        "layer": "services",
-        "path": "../services/reference-options.service"
-      },
-      {
-        "layer": "services",
-        "path": "../services/customer-points.service"
-      }
-    ]
-  },
-  "maxForbiddenLayerDependencies": 2,
-  "maxDirectDatabaseConnectionLeases": 73,
-  "directDatabaseConnectionLeases": {
-    "controllers/database-sync.controller.js": 7,
-    "services/attendance.service.js": 3,
-    "services/backup.service.js": 1,
-    "services/data-backup.service.js": 4,
-    "services/data-check.service.js": 12,
-    "services/data-import.service.js": 2,
-    "services/guide.service.js": 2,
-    "services/local-to-cloud-sync.service.js": 2,
-    "services/menu.service.js": 1,
-    "services/reminder.service.js": 4,
-    "services/salary-calculator.service.js": 3,
-    "services/salary-record.service.js": 3,
-    "services/settings.service.js": 1,
-    "services/shared.service.js": 2,
-    "services/shop.service.js": 13,
-    "services/smart-sync.service.js": 2,
-    "services/supplier-payment.service.js": 4,
-    "services/transfer.service.js": 2,
-    "services/user-preferences.service.js": 1,
-    "repositories/base.repository.js": 1,
-    "repositories/salary-template.repository.js": 1,
-    "repositories/user.repository.js": 2
-  },
+  "controllerRepositoryDependencies": {},
+  "maxControllerRepositoryDependencies": 0,
+  "forbiddenLayerDependencies": {},
+  "maxForbiddenLayerDependencies": 0,
+  "maxDirectDatabaseConnectionLeases": 0,
+  "directDatabaseConnectionLeases": {},
   "baselineHistory": {
     "maxLegacyNonControllerRoutes": [
       {
@@ -167,6 +44,36 @@
         "value": 149,
         "date": "2026-11-08",
         "reason": "颜色、内存、型号、门店四类排序事务统一迁入 ReferenceOrderingService 与仓储，共用连接 helper"
+      },
+      {
+        "value": 114,
+        "date": "2026-11-08",
+        "reason": "B2a：颜色与内存业务共用 ReferenceManagementService，SQL 共用固定域白名单仓储；两个 controller 的 SQL 和仓储直连归零"
+      },
+      {
+        "value": 81,
+        "date": "2026-11-08",
+        "reason": "B2b：型号/门店业务迁入 ModelManagementService、StoreManagementService，SQL 进入对应仓储，两个 controller SQL 与仓储直连归零"
+      },
+      {
+        "value": 50,
+        "date": "2026-11-08",
+        "reason": "B3：仪表盘读取迁入 DashboardReadService/Repository，供应商查询与维护迁入 SupplierManagementService/Repository，SQL 实测 81→50"
+      },
+      {
+        "value": 39,
+        "date": "2026-11-08",
+        "reason": "B3b：用户读取/状态与用户门店审计/图标业务迁入 service，SQL 下沉对应仓储，实测 50→39"
+      },
+      {
+        "value": 13,
+        "date": "2026-11-08",
+        "reason": "B3c：认证/会话/连接诊断、导入历史和价目维护业务委托service，SQL进入专用仓储，实测39→13；令牌刷新和下载字段契约保持"
+      },
+      {
+        "value": 0,
+        "date": "2026-11-08",
+        "reason": "B5：数据库同步业务进入 DatabaseSyncManagementService，表结构/预检 SQL 进入专用仓储，最后13条 controller SQL 清零"
       }
     ],
     "maxControllerTransactionCalls": [
@@ -226,6 +133,21 @@
         "value": 9,
         "date": "2026-11-08",
         "reason": "屏幕锁密码与查询用户业务迁入 ScreenLockService，删除 controller 仓储直连"
+      },
+      {
+        "value": 7,
+        "date": "2026-11-08",
+        "reason": "B2a：颜色与内存业务共用 ReferenceManagementService，SQL 共用固定域白名单仓储；两个 controller 的 SQL 和仓储直连归零"
+      },
+      {
+        "value": 5,
+        "date": "2026-11-08",
+        "reason": "B2b：型号/门店业务迁入 ModelManagementService、StoreManagementService，SQL 进入对应仓储，两个 controller SQL 与仓储直连归零"
+      },
+      {
+        "value": 0,
+        "date": "2026-11-08",
+        "reason": "B3b：客户/员工角色/用户/用户门店/图标业务统一进入 service，最后五个 controller 仓储直连清零"
       }
     ],
     "maxForbiddenLayerDependencies": [
@@ -238,6 +160,11 @@
         "value": 2,
         "date": "2026-11-08",
         "reason": "schema-inspector.service 与 access-control.service 依赖迁出 repository，按 AST 删除已清除项"
+      },
+      {
+        "value": 0,
+        "date": "2026-11-08",
+        "reason": "B4：query 公共选项组合与退库/删除事务编排迁入 service，SQL 留在仓储，两条反向依赖清零"
       }
     ],
     "maxDirectDatabaseConnectionLeases": [
@@ -260,6 +187,21 @@
         "value": 73,
         "date": "2026-11-08",
         "reason": "ARCH-004：真实租借收编减少 39 处；读取已有连接的 6 处误计另作口径校正，同一最终源码对照 79/73，全局实测 118→73；详见 T17"
+      },
+      {
+        "value": 13,
+        "date": "2026-11-08",
+        "reason": "B1：19 个服务/仓储文件的 60 处真实手动租借接入共享 withConnection；保持事务/补偿与提交后释放顺序，未调整指标口径"
+      },
+      {
+        "value": 7,
+        "date": "2026-11-08",
+        "reason": "独立指标修正：按导入类、构造默认值和对象成员解析返回池/Map已有连接；考勤3处、同步service2处、同步controller1处为误计，未改业务代码，全局13→7，嵌套池真实租借仍计数"
+      },
+      {
+        "value": 0,
+        "date": "2026-11-08",
+        "reason": "B5 真实业务收编：同步controller六处真实池租借接共享withConnection；删除全域无调用的BaseRepository.acquireConnection入口一处，实测7→0；沿用前批已验证的对象语义口径"
       }
     ]
   }

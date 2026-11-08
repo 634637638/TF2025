@@ -1,22 +1,87 @@
 const BaseRepository = require('./base.repository')
 const { hasColumn, hasTable } = require('../utils/schema-inspector')
 const log = require('../utils/log')
-const { appendStoreScopeCondition, StoreScopeError } = require('../utils/store-scope')
+const { appendStoreScopeCondition } = require('../utils/store-scope')
 const {
   COMPLETED_TRANSACTION_STATUSES,
   getEffectivePhoneStatusSql,
   normalizePhoneStatus
 } = require('../utils/phone-status')
 const { normalizedModelSql } = require('../utils/search')
-const { listActiveReferenceOptions } = require('../services/reference-options.service')
-const { reverseCustomerPointsForSale } = require('../services/customer-points.service')
-const { withConnection } = require('../core/db/connection')
 const QUERY_STATS_DEFAULT_STATUSES = Object.freeze([
   ...COMPLETED_TRANSACTION_STATUSES,
   'in_stock'
 ])
 
 class QueryRepository extends BaseRepository {
+  lockPhoneForReturn(connection, phoneId) {
+    return connection.execute('SELECT status, store_id FROM phones WHERE id = ? FOR UPDATE', [phoneId])
+  }
+
+  lockLatestSaleForReturn(connection, phoneId) {
+    return connection.execute(`SELECT
+          s.id,
+          s.customer_id,
+          s.sale_type,
+          s.operator_id,
+          COALESCE(sale_user.name, phone_sale_user.name) AS sale_operator_name
+        FROM sales s
+        LEFT JOIN users sale_user ON s.operator_id = sale_user.id
+        LEFT JOIN phones p ON s.phone_id = p.id
+        LEFT JOIN users phone_sale_user ON p.sale_operator_id = phone_sale_user.id
+        WHERE s.phone_id = ?
+        ORDER BY s.id DESC
+        LIMIT 1
+        FOR UPDATE`, [phoneId])
+  }
+
+  deleteSaleById(connection, originalSaleId) {
+    return connection.execute('DELETE FROM sales WHERE id = ?', [originalSaleId])
+  }
+
+  restoreReturnedPhone(connection, phoneId) {
+    return connection.execute(`UPDATE phones SET
+          status = 'in_stock',
+          sale_time = NULL,
+          sale_price = NULL,
+          sale_operator_id = NULL
+        WHERE id = ? AND status IN ('sold', 'peer_transfer', 'supplier_proxy')`, [phoneId])
+  }
+
+  insertReversalLog(connection, phoneId, originalSaleId, saleType, originalCustomerId, originalSaleOperatorId, originalSaleOperatorName, operatorId, remarks) {
+    return connection.execute(`INSERT INTO sale_reversal_logs
+          (phone_id, original_sale_id, original_sale_type, original_customer_id, original_sale_operator_id, original_sale_operator_name, operator_id, reversal_date, remarks)
+        VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?)`, [phoneId, originalSaleId, saleType, originalCustomerId, originalSaleOperatorId, originalSaleOperatorName, operatorId, remarks])
+  }
+
+  lockPhoneForDelete(connection, phoneId) {
+    return connection.execute('SELECT store_id FROM phones WHERE id = ? FOR UPDATE', [phoneId])
+  }
+
+  lockSalesForDelete(connection, phoneId) {
+    return connection.execute('SELECT id FROM sales WHERE phone_id = ? ORDER BY id FOR UPDATE', [phoneId])
+  }
+
+  deletePhoneSales(connection, phoneId) {
+    return connection.execute('DELETE FROM sales WHERE phone_id = ?', [phoneId])
+  }
+
+  deletePhoneReversalLogs(connection, phoneId) {
+    return connection.execute('DELETE FROM sale_reversal_logs WHERE phone_id = ?', [phoneId])
+  }
+
+  deletePhoneOrderItems(connection, phoneId) {
+    return connection.execute('DELETE FROM sales_order_items WHERE phone_id = ?', [phoneId])
+  }
+
+  deletePhoneRentals(connection, phoneId) {
+    return connection.execute('DELETE FROM rentals WHERE phone_id = ?', [phoneId])
+  }
+
+  deletePhoneById(connection, phoneId) {
+    return connection.execute('DELETE FROM phones WHERE id = ?', [phoneId])
+  }
+
   constructor() {
     super('phones')
   }
@@ -863,235 +928,6 @@ class QueryRepository extends BaseRepository {
     return true
   }
 
-  
-  /**
-   * 退库操作 - 删除购买信息，恢复库存状态
-   */
-  async returnToStock(phoneId, operatorId, returnInfo = {}, storeScope = {}) {
-    const pool = this.getConnection()
-    return withConnection(pool, async connection => {
-      try {
-      // 开始事务
-        await connection.beginTransaction()
-
-        // 1. 获取手机当前信息
-        const [phoneRecords] = await connection.execute(
-          'SELECT status, store_id FROM phones WHERE id = ? FOR UPDATE',
-          [phoneId]
-        )
-
-        if (phoneRecords.length === 0) {
-          throw new Error('手机不存在')
-        }
-
-        const phone = phoneRecords[0]
-        if (!storeScope.allStores && !storeScope.storeIds?.includes(Number(phone.store_id))) {
-          throw new StoreScopeError('无权操作该门店数据')
-        }
-
-        // 只允许退库已售出、同行批发、代供应商划拨的手机
-        const allowedStatuses = ['sold', 'peer_transfer', 'supplier_proxy']
-        if (!allowedStatuses.includes(phone.status)) {
-          throw new Error('只能退库已售出、同行批发或划拨的手机')
-        }
-
-        // 2. 获取销售记录信息
-        const [saleRecords] = await connection.execute(
-          `SELECT
-          s.id,
-          s.customer_id,
-          s.sale_type,
-          s.operator_id,
-          COALESCE(sale_user.name, phone_sale_user.name) AS sale_operator_name
-        FROM sales s
-        LEFT JOIN users sale_user ON s.operator_id = sale_user.id
-        LEFT JOIN phones p ON s.phone_id = p.id
-        LEFT JOIN users phone_sale_user ON p.sale_operator_id = phone_sale_user.id
-        WHERE s.phone_id = ?
-        ORDER BY s.id DESC
-        LIMIT 1
-        FOR UPDATE`,
-          [phoneId]
-        )
-
-        log.debug('退库 - 查找销售记录:', {
-          phoneId,
-          foundRecords: saleRecords.length,
-          records: saleRecords
-        })
-
-        if (saleRecords.length === 0) {
-          throw new Error('未找到相关销售记录，无法退库。只有已创建销售记录的已售出/批发/划拨商品才能退库。')
-        }
-
-        const originalSaleId = saleRecords[0].id
-        const originalCustomerId = saleRecords[0].customer_id
-        const saleType = phone.status
-        const originalSaleOperatorId = saleRecords[0].operator_id || null
-        const originalSaleOperatorName = saleRecords[0].sale_operator_name || null
-
-        log.debug('退库 - 销售记录详情:', {
-          originalSaleId,
-          originalCustomerId,
-          originalSaleOperatorId,
-          saleType,
-          originalSaleOperatorName
-        })
-
-        // 3. 删除销售记录
-        await reverseCustomerPointsForSale({
-          executor: connection,
-          saleId: originalSaleId
-        })
-        const [deleteSaleResult] = await connection.execute(
-          'DELETE FROM sales WHERE id = ?',
-          [originalSaleId]
-        )
-        if (deleteSaleResult.affectedRows !== 1) {
-          throw new Error('销售记录状态已变化，请刷新后重试')
-        }
-
-        const [phoneUpdateResult] = await connection.execute(
-          `UPDATE phones SET
-          status = 'in_stock',
-          sale_time = NULL,
-          sale_price = NULL,
-          sale_operator_id = NULL
-        WHERE id = ? AND status IN ('sold', 'peer_transfer', 'supplier_proxy')`,
-          [phoneId]
-        )
-        if (phoneUpdateResult.affectedRows !== 1) {
-          throw new Error('手机状态已变化，请刷新后重试')
-        }
-
-        // 5. 记录退库日志
-        const remarks = returnInfo.remarks || `客户退库操作 - ${returnInfo.return_reason || '未指定原因'} (${returnInfo.handle_method || '未指定处理方式'})`
-        await connection.execute(
-          `INSERT INTO sale_reversal_logs
-          (phone_id, original_sale_id, original_sale_type, original_customer_id, original_sale_operator_id, original_sale_operator_name, operator_id, reversal_date, remarks)
-        VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?)`,
-          [phoneId, originalSaleId, saleType, originalCustomerId, originalSaleOperatorId, originalSaleOperatorName, operatorId, remarks]
-        )
-
-        await connection.commit()
-
-        return {
-          success: true,
-          message: '退库成功，手机已恢复到未销售状态'
-        }
-      } catch (error) {
-        await connection.rollback()
-        log.error('退库操作失败:', error)
-        throw error
-      }
-    })
-  }
-
-  /**
-   * 删除手机记录（包括关联的销售记录）
-   */
-  async deletePhoneRecord(phoneId, storeScope = {}) {
-    const pool = this.getConnection()
-    return withConnection(pool, async connection => {
-      try {
-      // 开始事务
-        await connection.beginTransaction()
-
-        const [phoneRows] = await connection.execute(
-          'SELECT store_id FROM phones WHERE id = ? FOR UPDATE',
-          [phoneId]
-        )
-        if (phoneRows.length === 0) {
-          throw new Error('手机记录不存在')
-        }
-        if (!storeScope.allStores && !storeScope.storeIds?.includes(Number(phoneRows[0].store_id))) {
-          throw new StoreScopeError('无权操作该门店数据')
-        }
-
-        // 1. 删除关联的销售记录
-        const [saleRows] = await connection.execute(
-          'SELECT id FROM sales WHERE phone_id = ? ORDER BY id FOR UPDATE',
-          [phoneId]
-        )
-        for (const sale of saleRows) {
-          await reverseCustomerPointsForSale({
-            executor: connection,
-            saleId: sale.id
-          })
-        }
-        await connection.execute(
-          'DELETE FROM sales WHERE phone_id = ?',
-          [phoneId]
-        )
-
-        // 2. 尝试删除返销日志记录（如果表存在）
-        try {
-          await connection.execute(
-            'DELETE FROM sale_reversal_logs WHERE phone_id = ?',
-            [phoneId]
-          )
-        } catch (logError) {
-        // 如果表不存在，忽略错误继续执行
-          if (!logError.message.includes('Table') || !logError.message.includes("doesn't exist")) {
-            throw logError // 如果是其他错误，重新抛出
-          }
-        }
-
-        // 3. 删除其他可能引用该手机的记录
-        try {
-          await connection.execute(
-            'DELETE FROM sales_order_items WHERE phone_id = ?',
-            [phoneId]
-          )
-        } catch (orderError) {
-        // 如果表不存在或约束问题，忽略错误继续执行
-          if (!orderError.message.includes('Table') || !orderError.message.includes("doesn't exist")) {
-            log.warn(`删除销售订单项记录时出现警告: ${orderError.message}`)
-          }
-        }
-
-        try {
-          await connection.execute(
-            'DELETE FROM rentals WHERE phone_id = ?',
-            [phoneId]
-          )
-        } catch (rentalError) {
-        // 如果表不存在或约束问题，忽略错误继续执行
-          if (!rentalError.message.includes('Table') || !rentalError.message.includes("doesn't exist")) {
-            log.warn(`删除租赁记录时出现警告: ${rentalError.message}`)
-          }
-        }
-
-        // 4. 删除手机记录
-        const [result] = await connection.execute(
-          'DELETE FROM phones WHERE id = ?',
-          [phoneId]
-        )
-
-        if (result.affectedRows === 0) {
-          throw new Error('手机记录不存在')
-        }
-
-        // 提交事务
-        await connection.commit()
-
-        return {
-          success: true,
-          message: '删除成功',
-          deletedRecords: {
-            sales: result.affectedRows,
-            phone: 1
-          }
-        }
-      } catch (error) {
-      // 回滚事务
-        await connection.rollback()
-        log.error('删除手机记录失败:', error)
-        throw error
-      }
-    })
-  }
-
   /**
    * 获取查询选项数据
    */
@@ -1102,10 +938,7 @@ class QueryRepository extends BaseRepository {
       // 并行查询所有选项数据
       const [
         suppliersResult,
-        storesResult,
-        brandsResult,
-        colorsResult,
-        memoriesResult
+        storesResult
       ] = await Promise.all([
         // 供应商：优先显示启用状态，但如果没有则显示全部
         db.query('SELECT id, name, sort_order FROM suppliers WHERE (status = 1 OR status IS NULL) ORDER BY sort_order ASC, name ASC, id ASC'),
@@ -1124,33 +957,12 @@ class QueryRepository extends BaseRepository {
              ORDER BY sort_order ASC, name ASC, id ASC`,
             normalizedStoreIds
           )
-        })(),
-        // 品牌
-        listActiveReferenceOptions('brands', { includeNullStatus: true }),
-        // 颜色
-        listActiveReferenceOptions('colors', { includeNullStatus: true }),
-        // 内存
-        listActiveReferenceOptions('memories', { includeNullStatus: true })
+        })()
       ])
 
       const suppliers = suppliersResult[0] || []
       const stores = storesResult[0] || []
-      const brands = brandsResult || []
-      const colors = colorsResult || []
-      const memories = (memoriesResult || []).map(memory => ({
-        id: memory.id,
-        name: memory.size,
-        sort_order: memory.sort_order
-      }))
-
-      return {
-        suppliers,
-        stores,
-        brands,
-        models: [],
-        colors,
-        memories
-      }
+      return { suppliers, stores }
 
     } catch (error) {
       log.error('获取查询选项数据失败:', error)

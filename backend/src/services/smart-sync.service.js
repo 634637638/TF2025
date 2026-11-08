@@ -1,7 +1,9 @@
+const { withConnection } = require('../core/db/connection')
 /**
  * 一键智能同步服务
  * 自动识别表结构，智能匹配数据，自动创建关联数据
  */
+const { getActorId } = require('../types/actor')
 const DatabaseSyncService = require('./database-sync.service')
 const log = require('../utils/log')
 const { isSellablePhoneStatus } = require('../utils/phone-status')
@@ -207,181 +209,179 @@ class SmartSyncService {
    * 一键智能同步
    */
   async smartSync(connectionId, user = null) {
-    const sourceConnection = this.syncService.getConnection(connectionId)
-    const targetConnection = await require('../config/database').getDatabase().getConnection()
+    const sourceConnection = this.syncService.getConnection(connectionId, getActorId(user))
+    return await withConnection(require('../config/database').getDatabase(), async targetConnection => {
+      try {
+        log.debug('🚀 开始一键智能同步...\n')
 
-    try {
-      log.debug('🚀 开始一键智能同步...\n')
+        // 1. 获取源数据库所有表
+        const [sourceTables] = await sourceConnection.query('SHOW TABLES')
+        const sourceTableNames = sourceTables.map(t => Object.values(t)[0])
 
-      // 1. 获取源数据库所有表
-      const [sourceTables] = await sourceConnection.query('SHOW TABLES')
-      const sourceTableNames = sourceTables.map(t => Object.values(t)[0])
+        log.debug(`📊 发现 ${sourceTableNames.length} 个源表\n`)
 
-      log.debug(`📊 发现 ${sourceTableNames.length} 个源表\n`)
+        // 2. 获取目标数据库所有表
+        const [targetTables] = await targetConnection.query('SHOW TABLES')
+        const targetTableNames = targetTables.map(t => Object.values(t)[0])
 
-      // 2. 获取目标数据库所有表
-      const [targetTables] = await targetConnection.query('SHOW TABLES')
-      const targetTableNames = targetTables.map(t => Object.values(t)[0])
-
-      // 3. 构建目标表结构缓存
-      const targetTableStructures = new Map()
-      for (const tableName of targetTableNames) {
-        const [columns] = await targetConnection.query(`
-          SELECT COLUMN_NAME as field, DATA_TYPE as type
-          FROM INFORMATION_SCHEMA.COLUMNS
-          WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?
-          ORDER BY ORDINAL_POSITION
-        `, [tableName])
-        targetTableStructures.set(tableName, columns)
-      }
-
-      // 4. 为每个源表生成智能映射
-      const syncTasks = []
-
-      for (const sourceTableName of sourceTableNames) {
-        // 获取源表结构
-        const [sourceColumns] = await sourceConnection.query(`
-          SELECT COLUMN_NAME as field, DATA_TYPE as type
-          FROM INFORMATION_SCHEMA.COLUMNS
-          WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?
-          ORDER BY ORDINAL_POSITION
-        `, [sourceConnection.config.database, sourceTableName])
-
-        // 识别表类型
-        const tableType = this.identifyTableType(sourceTableName, sourceColumns)
-
-        if (!tableType) {
-          log.debug(`⏭️  跳过表: ${sourceTableName} (无法识别类型)`)
-          continue
+        // 3. 构建目标表结构缓存
+        const targetTableStructures = new Map()
+        for (const tableName of targetTableNames) {
+          const [columns] = await targetConnection.query(`
+            SELECT COLUMN_NAME as field, DATA_TYPE as type
+            FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?
+            ORDER BY ORDINAL_POSITION
+          `, [tableName])
+          targetTableStructures.set(tableName, columns)
         }
 
-        // 查找匹配的目标表
-        const targetTableName = targetTableNames.find(t => t === tableType)
+        // 4. 为每个源表生成智能映射
+        const syncTasks = []
 
-        if (!targetTableName) {
-          log.debug(`⏭️  跳过表: ${sourceTableName} (目标表 ${tableType} 不存在)`)
-          continue
+        for (const sourceTableName of sourceTableNames) {
+          // 获取源表结构
+          const [sourceColumns] = await sourceConnection.query(`
+            SELECT COLUMN_NAME as field, DATA_TYPE as type
+            FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?
+            ORDER BY ORDINAL_POSITION
+          `, [sourceConnection.config.database, sourceTableName])
+
+          // 识别表类型
+          const tableType = this.identifyTableType(sourceTableName, sourceColumns)
+
+          if (!tableType) {
+            log.debug(`⏭️  跳过表: ${sourceTableName} (无法识别类型)`)
+            continue
+          }
+
+          // 查找匹配的目标表
+          const targetTableName = targetTableNames.find(t => t === tableType)
+
+          if (!targetTableName) {
+            log.debug(`⏭️  跳过表: ${sourceTableName} (目标表 ${tableType} 不存在)`)
+            continue
+          }
+
+          const targetColumns = targetTableStructures.get(targetTableName)
+
+          // 生成字段映射
+          const fieldMappings = this.generateSmartMapping(sourceColumns, targetColumns)
+
+          // 推断匹配字段
+          const keyFields = this.inferKeyFields(tableType, sourceColumns, targetColumns)
+
+          // 推断同步模式
+          const syncMode = this.inferSyncMode(tableType)
+
+          syncTasks.push({
+            name: `${sourceTableName} → ${targetTableName}`,
+            sourceTable: sourceTableName,
+            targetTable: targetTableName,
+            fieldMappings,
+            syncOptions: {
+              mode: syncMode,
+              keyFields,
+              batchSize: 100,
+              autoCreateRelated: true,
+              // 🔄 启用智能冲突保护（保护本地已售数据）
+              conflictResolution: 'protectLocal',
+              protectedFields: this.getDefaultProtectedFields(tableType)
+            }
+          })
+
+          log.debug(`✅ 识别成功: ${sourceTableName} → ${targetTableName}`)
+          log.debug(`   匹配字段: ${keyFields.join(', ')}`)
+          log.debug(`   同步模式: ${syncMode}\n`)
         }
 
-        const targetColumns = targetTableStructures.get(targetTableName)
+        // 5. 执行所有同步任务
+        log.debug(`\n📝 共生成 ${syncTasks.length} 个同步任务`)
+        log.debug('开始执行同步...\n')
 
-        // 生成字段映射
-        const fieldMappings = this.generateSmartMapping(sourceColumns, targetColumns)
+        const results = []
 
-        // 推断匹配字段
-        const keyFields = this.inferKeyFields(tableType, sourceColumns, targetColumns)
+        for (let i = 0; i < syncTasks.length; i++) {
+          const task = syncTasks[i]
+          log.debug(`【任务 ${i + 1}/${syncTasks.length}】${task.name}`)
 
-        // 推断同步模式
-        const syncMode = this.inferSyncMode(tableType)
+          // 保存映射配置
+          const configId = `smart_${task.sourceTable}_${Date.now()}`
+          this.syncService.saveMappingConfig({
+            id: configId,
+            ...task
+          })
 
-        syncTasks.push({
-          name: `${sourceTableName} → ${targetTableName}`,
-          sourceTable: sourceTableName,
-          targetTable: targetTableName,
-          fieldMappings,
-          syncOptions: {
-            mode: syncMode,
-            keyFields,
-            batchSize: 100,
-            autoCreateRelated: true,
-            // 🔄 启用智能冲突保护（保护本地已售数据）
-            conflictResolution: 'protectLocal',
-            protectedFields: this.getDefaultProtectedFields(tableType)
+          // 执行同步
+          const result = await this.syncService.executeSync(
+            connectionId,
+            configId,
+            targetConnection,
+            user
+          )
+
+          if (result.success) {
+            log.debug(`✅ ${task.name} 完成:`)
+            log.debug(`   插入: ${result.stats.inserted} 条`)
+            log.debug(`   更新: ${result.stats.updated} 条`)
+            log.debug(`   跳过: ${result.stats.skipped} 条`)
+            if (result.stats.failed > 0) {
+              log.debug(`   失败: ${result.stats.failed} 条`)
+            }
+          } else {
+            log.debug(`❌ ${task.name} 失败: ${result.message}`)
+          }
+
+          log.debug()
+          results.push({
+            task: task.name,
+            ...result
+          })
+        }
+
+        // 6. 输出总结
+        const totalStats = {
+          inserted: 0,
+          updated: 0,
+          skipped: 0,
+          failed: 0
+        }
+
+        results.forEach(r => {
+          if (r.stats) {
+            totalStats.inserted += r.stats.inserted
+            totalStats.updated += r.stats.updated
+            totalStats.skipped += r.stats.skipped
+            totalStats.failed += r.stats.failed
           }
         })
 
-        log.debug(`✅ 识别成功: ${sourceTableName} → ${targetTableName}`)
-        log.debug(`   匹配字段: ${keyFields.join(', ')}`)
-        log.debug(`   同步模式: ${syncMode}\n`)
-      }
+        log.debug('========================================')
+        log.debug('🎉 一键智能同步完成！')
+        log.debug('========================================')
+        log.debug(`总插入: ${totalStats.inserted} 条`)
+        log.debug(`总更新: ${totalStats.updated} 条`)
+        log.debug(`总跳过: ${totalStats.skipped} 条`)
+        if (totalStats.failed > 0) {
+          log.debug(`总失败: ${totalStats.failed} 条`)
+        }
+        log.debug('========================================\n')
 
-      // 5. 执行所有同步任务
-      log.debug(`\n📝 共生成 ${syncTasks.length} 个同步任务`)
-      log.debug('开始执行同步...\n')
-
-      const results = []
-
-      for (let i = 0; i < syncTasks.length; i++) {
-        const task = syncTasks[i]
-        log.debug(`【任务 ${i + 1}/${syncTasks.length}】${task.name}`)
-
-        // 保存映射配置
-        const configId = `smart_${task.sourceTable}_${Date.now()}`
-        this.syncService.saveMappingConfig({
-          id: configId,
-          ...task
-        })
-
-        // 执行同步
-        const result = await this.syncService.executeSync(
-          connectionId,
-          configId,
-          targetConnection,
-          user
-        )
-
-        if (result.success) {
-          log.debug(`✅ ${task.name} 完成:`)
-          log.debug(`   插入: ${result.stats.inserted} 条`)
-          log.debug(`   更新: ${result.stats.updated} 条`)
-          log.debug(`   跳过: ${result.stats.skipped} 条`)
-          if (result.stats.failed > 0) {
-            log.debug(`   失败: ${result.stats.failed} 条`)
-          }
-        } else {
-          log.debug(`❌ ${task.name} 失败: ${result.message}`)
+        return {
+          success: true,
+          results,
+          summary: totalStats
         }
 
-        log.debug()
-        results.push({
-          task: task.name,
-          ...result
-        })
-      }
-
-      // 6. 输出总结
-      const totalStats = {
-        inserted: 0,
-        updated: 0,
-        skipped: 0,
-        failed: 0
-      }
-
-      results.forEach(r => {
-        if (r.stats) {
-          totalStats.inserted += r.stats.inserted
-          totalStats.updated += r.stats.updated
-          totalStats.skipped += r.stats.skipped
-          totalStats.failed += r.stats.failed
+      } catch (error) {
+        log.error('❌ 智能同步失败:', error)
+        return {
+          success: false,
+          message: error.message
         }
-      })
-
-      log.debug('========================================')
-      log.debug('🎉 一键智能同步完成！')
-      log.debug('========================================')
-      log.debug(`总插入: ${totalStats.inserted} 条`)
-      log.debug(`总更新: ${totalStats.updated} 条`)
-      log.debug(`总跳过: ${totalStats.skipped} 条`)
-      if (totalStats.failed > 0) {
-        log.debug(`总失败: ${totalStats.failed} 条`)
       }
-      log.debug('========================================\n')
-
-      return {
-        success: true,
-        results,
-        summary: totalStats
-      }
-
-    } catch (error) {
-      log.error('❌ 智能同步失败:', error)
-      return {
-        success: false,
-        message: error.message
-      }
-    } finally {
-      targetConnection.release()
-    }
+    })
   }
 
   /**

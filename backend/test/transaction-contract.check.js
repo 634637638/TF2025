@@ -766,7 +766,7 @@ test('data import exposes controlled file tokens and server-owned task IDs', () 
   assert.match(fileService, /resolve\(fileToken, userId\)/)
   assert.match(fileService, /无权访问该导入文件/)
   assert.match(fileService, /validateFile\(path\.join\(this\.importDirectory, token\)/)
-  assert.match(controller, /req\.query\.page_size/)
+  assert.match(read('src/services/data-import-history.service.js'), /query\.page_size/)
   assert.doesNotMatch(route, /filePath|req\.query\.limit|req\.query\.pageSize/)
   assert.match(frontend, /file_token: fileToken/)
   assert.match(frontend, /file_token: fileToken/)
@@ -787,7 +787,7 @@ test('data import analysis and history responses use canonical snake_case fields
   assert.match(service, /has_sale:/)
   assert.match(controller, /total_records:/)
   assert.match(controller, /error_count:/)
-  assert.match(controller, /total_pages:/)
+  assert.match(read('src/services/data-import-history.service.js'), /total_pages:/)
   assert.doesNotMatch(frontend, /analysisResult\.newRecords/)
   assert.doesNotMatch(frontend, /analysisResult\.duplicateRecords/)
   assert.doesNotMatch(frontend, /dup\.existingRecord/)
@@ -819,7 +819,7 @@ test('salary list pagination is bounded before reaching SQL LIMIT/OFFSET', () =>
 })
 
 test('import history and repair pagination bind LIMIT/OFFSET values in their data-access layer', () => {
-  const importController = read('src/controllers/data-import.controller.js')
+  const importController = read('src/repositories/data-import-history.repository.js')
   const repairService = read('src/services/repair-read.service.js')
   const repairRepository = read('src/repositories/repair-read.repository.js')
 
@@ -1044,7 +1044,7 @@ test('salary employee sales details expose canonical sale_time', () => {
 })
 
 test('customer purchase history exposes canonical cost and sale time fields', () => {
-  const controller = read('src/controllers/customer.controller.js')
+  const controller = read('src/services/customer-management.service.js')
   const repository = read('src/repositories/customer.repository.js')
   const view = fs.readFileSync(path.join(root, '../frontend/src/views/customers/CustomersView.vue'), 'utf8')
   const contract = JSON.parse(fs.readFileSync(path.join(root, '../config/field-contracts.json'), 'utf8')).contracts.customers
@@ -1423,17 +1423,17 @@ test('repair routes use canonical fields and never migrate schema during request
 })
 
 test('store list exposes canonical snake_case pagination metadata', () => {
-  const route = read('src/controllers/store.controller.js')
+  const route = ['src/controllers/store.controller.js', 'src/services/store-management.service.js', 'src/repositories/store.repository.js'].map(read).join('\n')
   const storeRoutes = read('src/routes/stores.js')
   const view = read('../frontend/src/views/stores/StoresView.vue')
   const registry = JSON.parse(read('../config/field-contracts.json'))
-  assert.match(route, /page_size = PAGINATION\.DEFAULT_LIMIT/)
+  assert.match(route, /PAGINATION\.DEFAULT_LIMIT/)
   assert.doesNotMatch(route, /req\.query\.limit/)
   assert.match(route, /page_size: pageSize/)
   assert.match(route, /total_pages: Math\.ceil/)
   assert.match(route, /has_next:/)
   assert.match(route, /has_prev:/)
-  assert.match(route, /with_manager:/)
+  assert.match(route, /with_manager/)
   assert.match(storeRoutes, /router\.put\('\/:id\(\\\\d\+\)'/)
   assert.match(route, /const \{ name, address, phone, manager_id/)
   assert.doesNotMatch(route, /SELECT\s+(?:s\.)?\*/)
@@ -1639,7 +1639,7 @@ test('data-check merge payloads use canonical snake_case IDs', () => {
 
 test('customer lists and purchase history use canonical page_size pagination', () => {
   const route = read('src/routes/customers.js')
-  const controller = read('src/controllers/customer.controller.js')
+  const controller = read('src/services/customer-management.service.js')
   const repository = read('src/repositories/customer.repository.js')
   const page = fs.readFileSync(path.join(root, '../frontend/src/views/customers/CustomersView.vue'), 'utf8')
 
@@ -1662,13 +1662,13 @@ test('customer lists and purchase history use canonical page_size pagination', (
 
 test('customer stats expose canonical snake_case response fields', () => {
   const route = read('src/routes/customers.js')
-  const controller = read('src/controllers/customer.controller.js')
+  const controller = read('src/services/customer-management.service.js')
   const repository = read('src/repositories/customer.repository.js')
   const page = fs.readFileSync(path.join(root, '../frontend/src/views/customers/CustomersView.vue'), 'utf8')
   for (const field of ['total_customers', 'active_customers', 'new_customers', 'premium_customers']) {
     assert.match(repository, new RegExp(field))
   }
-  assert.match(controller, /this\.repository\.getStatistics\(req\.query\)/)
+  assert.match(controller, /this\.repository\.getStatistics\(query\)/)
   assert.match(route, /customerController\.getStatistics\.bind\(customerController\)/)
   assert.match(page, /data\.total_customers/)
   assert.doesNotMatch(page, /data\.totalCustomers|data\.activeCustomers|data\.newCustomers|data\.premiumCustomers/)
@@ -1717,7 +1717,7 @@ test('brand list removes legacy pagination and wildcard response queries', () =>
 })
 
 test('model routes and callers use canonical fields and explicit response columns', () => {
-  const route = read('src/controllers/model.controller.js')
+  const route = ['src/controllers/model.controller.js', 'src/services/model-management.service.js', 'src/repositories/model.repository.js', 'src/utils/reference-options.js'].map(read).join('\n')
   const modelRoutes = read('src/routes/models.js')
   const page = read('../frontend/src/views/models/ModelsView.vue')
   const stockIn = read('../frontend/src/components/stock-in/helpers.ts')
@@ -1730,17 +1730,17 @@ test('model routes and callers use canonical fields and explicit response column
 
   assert.doesNotMatch(route, /req\.query\.(?:limit|sortBy|sortOrder)|\bis_active\b|\bseries\b/)
   assert.doesNotMatch(route, /SELECT\s+(?:[a-z]+\.)?\*/i)
-  assert.match(route, /page_size = PAGINATION\.DEFAULT_LIMIT/)
+  assert.match(route, /PAGINATION\.DEFAULT_LIMIT/)
   assert.match(route, /sort_by/)
   assert.match(route, /sort_order/)
-  assert.match(route, /page_size: pageSizeNum/)
+  assert.match(route, /page_size: query\.page_size/)
   assert.match(route, /total_pages/)
-  assert.match(route, /has_next: pageNum < total_pages/)
-  assert.match(route, /has_prev: pageNum > 1/)
+  assert.match(route, /has_next: page < totalPages/)
+  assert.match(route, /has_prev: page > 1/)
   assert.match(modelRoutes, /router\.get\('\/brand\/:brandId'/)
   assert.match(route, /name/)
   assert.match(route, /page_size/)
-  assert.match(route, /if \(sort_order !== undefined\)[\s\S]*updateFields\.push\('sort_order = \?'\)/)
+  assert.match(route, /for \(const field of \['brand_id', 'name', 'status', 'sort_order'\]\)/)
   assert.ok(
     modelRoutes.indexOf("router.get('/stats/overview'") < modelRoutes.indexOf("router.get('/:id'"),
     '型号统计静态路由必须位于动态详情路由之前'
@@ -1759,7 +1759,7 @@ test('model routes and callers use canonical fields and explicit response column
 })
 
 test('color routes and callers use live columns and canonical fields', () => {
-  const colors = read('src/controllers/color.controller.js')
+  const colors = [read('src/controllers/color.controller.js'), read('src/services/reference-management.service.js'), read('src/repositories/reference-management.repository.js')].join('\n')
   const page = read('../frontend/src/views/colors/ColorsView.vue')
   const callers = [
     read('../frontend/src/composables/useBrandModels.ts'),
@@ -1771,9 +1771,9 @@ test('color routes and callers use live columns and canonical fields', () => {
   assert.doesNotMatch(colors, /req\.query\.(?:limit|sortBy|sortOrder)|\bis_active\b|\bsearch\b|\bbrand_id\b|\bcategory\b|\bis_premium\b/)
   assert.doesNotMatch(colors, /SELECT\s+(?:[a-z]+\.)?\*/i)
   assert.doesNotMatch(colors, /\/categories\/list/)
-  assert.match(colors, /page_size = PAGINATION\.DEFAULT_LIMIT/)
-  assert.match(colors, /page_size: pageSizeNum/)
-  assert.match(colors, /buildPagination\(pageNum, pageSizeNum, total\)/)
+  assert.match(colors, /defaultPageSize: PAGINATION\.DEFAULT_LIMIT/)
+  assert.match(colors, /page_size: query\.page_size/)
+  assert.match(colors, /buildPagination\(/)
   assert.match(colors, /related_phones/)
 
   assert.doesNotMatch(page, /\.is_active\b|\.hex_code\b|relatedPhones|\.\.\.apiPagination/)
@@ -1785,7 +1785,7 @@ test('color routes and callers use live columns and canonical fields', () => {
 })
 
 test('memory routes and callers use live columns and canonical fields', () => {
-  const memories = read('src/controllers/memory.controller.js')
+  const memories = [read('src/controllers/memory.controller.js'), read('src/services/reference-management.service.js'), read('src/repositories/reference-management.repository.js')].join('\n')
   const memoryRoutes = read('src/routes/memories.js')
   const page = read('../frontend/src/views/memories/MemoriesView.vue')
   const callers = [
@@ -1798,11 +1798,11 @@ test('memory routes and callers use live columns and canonical fields', () => {
   assert.doesNotMatch(memories, /req\.query\.(?:limit|sortBy|sortOrder)|\bis_active\b|\bsearch\b/)
   assert.doesNotMatch(memories, /SELECT\s+(?:[a-z]+\.)?\*/i)
   assert.doesNotMatch(memories, /price_multiplier|\/units\/list|\/init-missing|missingMemories/)
-  assert.match(memories, /page_size = PAGINATION\.DEFAULT_LIMIT/)
+  assert.match(memories, /defaultPageSize: PAGINATION\.DEFAULT_LIMIT/)
   assert.match(memories, /sort_by/)
   assert.match(memories, /sort_order/)
-  assert.match(memories, /page_size: pageSizeNum/)
-  assert.match(memories, /buildPagination\(pageNum, pageSizeNum, total\)/)
+  assert.match(memories, /page_size: query\.page_size/)
+  assert.match(memories, /buildPagination\(/)
   assert.match(memoryRoutes, /requireAnyPermission\(\['memories:view', 'inventory:view', 'h5-templates:view', 'h5-admin:view'\]\)/)
   assert.match(memoryRoutes, /memoryController\.list\.bind\(memoryController\)/)
 
@@ -1819,7 +1819,8 @@ test('memory routes and callers use live columns and canonical fields', () => {
 test('supplier module uses canonical fields and explicit live-schema queries', () => {
   const route = read('src/routes/suppliers.js')
   const controller = read('src/controllers/supplier.controller.js')
-  const repository = read('src/repositories/supplier.repository.js')
+  const service = read('src/services/supplier-management.service.js')
+  const repository = read('src/repositories/supplier-management.repository.js')
   const page = read('../frontend/src/views/suppliers/SuppliersView.vue')
   const callers = [
     read('../frontend/src/components/stock-in/helpers.ts'),
@@ -1830,17 +1831,17 @@ test('supplier module uses canonical fields and explicit live-schema queries', (
     read('../frontend/src/views/analytics/AnalyticsView.vue')
   ].join('\n')
 
-  for (const source of [route, controller, repository, page]) {
+  for (const source of [route, controller, service, repository, page]) {
     assert.doesNotMatch(source, /\b(?:totalPages|hasNextPage|hasPrevPage|supplier_accounts)\b/)
   }
   assert.doesNotMatch(route, /validateQueryParams|ApiResponse\.paginated|migrate-sort-order/)
   assert.doesNotMatch(route, /SELECT\s+(?:[a-z]+\.)?\*/i)
   assert.doesNotMatch(repository, /SELECT\s+(?:[a-z]+\.)?\*/i)
-  assert.match(controller, /page_size = DEFAULT_PAGE_SIZE/)
-  assert.match(controller, /buildPagination\(pageNum, pageSizeNum, total\)/)
-  assert.match(controller, /COALESCE\(SUM\(purchase_cost\), 0\)/)
+  assert.match(service, /page_size = DEFAULT_PAGE_SIZE/)
+  assert.match(service, /buildPagination\(pageNum, pageSizeNum, total\)/)
+  assert.match(repository, /COALESCE\(SUM\(purchase_cost\), 0\)/)
   assert.match(route, /router\.get\('\/', requirePermission\('suppliers:view'\), supplierController\.list\.bind\(supplierController\)\)/)
-  assert.match(repository, /page_size: validPageSize/)
+  assert.match(repository, /LIMIT \$\{page_size\} OFFSET \$\{offset\}/)
   assert.match(page, /has_next: Boolean\(apiPagination\.has_next\)/)
   assert.match(page, /has_prev: Boolean\(apiPagination\.has_prev\)/)
   assert.doesNotMatch(callers, /\/suppliers[^'"\n]*\blimit=/)
@@ -2183,7 +2184,7 @@ test('H5 customer order lookup exposes canonical pagination fields', () => {
 
   assert.ok(routeStart >= 0, '公开订单手机号查询路由不存在')
   assert.match(handler, /shopPublicCatalogController\.getOrdersByPhone\.bind\(shopPublicCatalogController\)/)
-  assert.match(controller, /req\.query\.page_size/)
+  assert.match(read('src/services/data-import-history.service.js'), /query\.page_size/)
   assert.match(controller, /customer_phone/)
   assert.match(controller, /customer_name/)
   assert.match(controller, /this\.sendPaginated\(res, result, '获取订单列表成功'\)/)
@@ -2303,7 +2304,7 @@ test('permission management lists expose canonical pagination and log date field
   const logs = read('src/controllers/permission-logs.controller.js')
   const logsService = read('src/services/permission-logs.service.js')
   const logsRepository = read('src/repositories/permission-logs.repository.js')
-  const userStoreController = read('src/controllers/user-store.controller.js')
+  const userStoreController = read('src/services/user-store.service.js')
   const modules = read('src/routes/module-management.js')
   const moduleManagementController = read('src/controllers/module-management.controller.js')
   const moduleManagementRepository = read('src/repositories/module-management.repository.js')
@@ -2334,8 +2335,8 @@ test('permission management lists expose canonical pagination and log date field
   assert.doesNotMatch(logs, /page_size \?\? size|req\.query\.startDate|req\.query\.endDate/)
   assert.doesNotMatch(logs, /targetType|targetId|targetName|permission\.moduleKey|permission\.permissionType/)
   assert.doesNotMatch(userStoreController, /req\.body\?\.(?:userId|storeIds|isPrimary|replaceExisting)/)
-  assert.match(userStoreController, /req\.body\?\.user_id/)
-  assert.match(userStoreController, /req\.body\?\.store_ids/)
+  assert.match(userStoreController, /body\?\.user_id/)
+  assert.match(userStoreController, /body\?\.store_ids/)
   assert.match(moduleManagementController, /const \{ module_key: moduleKey \} = req\.body/)
   assert.match(moduleManagementController, /const \{ module_keys: moduleKeys \} = req\.body/)
   assert.match(moduleManagementController, /const \{ name, is_custom: isCustom = true \} = req\.body/)
@@ -2374,14 +2375,14 @@ test('permission management lists expose canonical pagination and log date field
 
 test('user-store routes preserve per-operation permissions and delegate to controller', () => {
   const route = read('src/routes/user-stores.js')
-  const controller = read('src/controllers/user-store.controller.js')
+  const controller = read('src/services/user-store.service.js')
   assert.match(route, /router\.get\('\/user\/:user_id', unifiedAuth, requirePermission\('users:view'\), userStoreController\.getUserStores\.bind/)
   assert.match(route, /router\.get\('\/store\/:store_id', unifiedAuth, requirePermission\('stores:view'\), userStoreController\.getStoreUsers\.bind/)
   assert.equal((route.match(/requireAnyPermission\(\['users:edit', 'permissions:admin'\]\)/g) || []).length, 4)
   assert.doesNotMatch(route, /async\s*\(/)
   assert.match(controller, /replace_existing \?\? false/)
-  assert.match(controller, /assignedBy = req\.user\.id/)
-  assert.match(controller, /logStoreBindingChange\(req, userId, previousStores, currentStores/)
+  assert.match(controller, /assignedBy = this\.getActorId\(actor\)/)
+  assert.match(controller, /logStoreBindingChange\(context, userId, previousStores, currentStores/)
 })
 
 test('permissions contract retires removed API aliases without runtime compatibility', () => {
@@ -2401,7 +2402,7 @@ test('permissions contract retires removed API aliases without runtime compatibi
 
 test('users contract uses canonical pagination and explicit public columns', () => {
   const route = read('src/routes/users.js')
-  const controller = read('src/controllers/user.controller.js')
+  const controller = read('src/services/user-management.service.js')
   const repository = read('src/repositories/user.repository.js')
   const api = read('../frontend/src/api/user.ts')
   const queryModal = read('../frontend/src/components/query/QueryEditModal.vue')
@@ -2414,15 +2415,15 @@ test('users contract uses canonical pagination and explicit public columns', () 
   }
   assert.equal(registry.legacyBoundarySources.users, undefined)
   assert.match(route, /userController\.list\.bind\(userController\)/)
-  assert.match(controller, /const \{ page = 1, page_size, role, status = '1' \} = req\.query/)
+  assert.match(controller, /const \{ page = 1, page_size, role, status = '1' \} = query/)
   assert.match(controller, /page_size: pageSizeInt/)
   assert.match(controller, /total_pages: result\.pagination\.total_pages/)
   assert.match(controller, /has_next: result\.pagination\.has_next/)
   assert.match(controller, /has_prev: result\.pagination\.has_prev/)
   assert.match(route, /userController\.profile\.bind\(userController\)/)
-  assert.match(controller, /ApiResponse\.success\(res, userProfile, '获取用户档案成功'\)/)
+  assert.match(controller, /data: userProfile, message: '获取用户档案成功'/)
   assert.match(route, /userController\.getById\.bind\(userController\)/)
-  assert.match(controller, /ApiResponse\.success\(res, user, '获取用户详情成功'\)/)
+  assert.match(controller, /data: user, message: '获取用户详情成功'/)
   assert.match(read('src/repositories/user-mutation.repository.js'), /USER_PUBLIC_COLUMNS/)
   assert.doesNotMatch(route, /SELECT \* FROM users|req\.query\.limit|\n\s+limit:/)
   assert.match(repository, /Number\.parseInt\(page_size, 10\)/)

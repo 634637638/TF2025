@@ -188,7 +188,7 @@ test('权限日志辅助导出保留原名称并继续被业务路由引用', ()
   const management = fs.readFileSync(path.join(backendRoot, 'src/routes/permission-management.js'), 'utf8')
   const menuUpdateService = fs.readFileSync(path.join(backendRoot, 'src/services/permission-menu-update.service.js'), 'utf8')
   const modules = fs.readFileSync(path.join(backendRoot, 'src/routes/module-management.js'), 'utf8')
-  const userStores = fs.readFileSync(path.join(backendRoot, 'src/controllers/user-store.controller.js'), 'utf8')
+  const userStores = fs.readFileSync(path.join(backendRoot, 'src/services/user-store.service.js'), 'utf8')
 
   for (const helper of [
     'logPermissionOperation',

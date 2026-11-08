@@ -69,7 +69,9 @@
     "stores": [
       "backend/src/routes/stores.js",
       "backend/src/controllers/store.controller.js",
-      "frontend/src/views/stores/StoresView.vue"
+      "frontend/src/views/stores/StoresView.vue",
+      "backend/src/services/store-management.service.js",
+      "backend/src/repositories/store.repository.js"
     ],
     "reminders": [
       "backend/src/routes/reminders.js",
@@ -115,7 +117,9 @@
     "models": [
       "backend/src/routes/models.js",
       "backend/src/controllers/model.controller.js",
-      "frontend/src/views/models/ModelsView.vue"
+      "frontend/src/views/models/ModelsView.vue",
+      "backend/src/services/model-management.service.js",
+      "backend/src/repositories/model.repository.js"
     ],
     "colors": [
       "backend/src/routes/colors.js",
@@ -137,7 +141,9 @@
       "frontend/src/components/wholesale/helpers.ts",
       "frontend/src/views/analytics/AnalyticsView.vue",
       "backend/src/controllers/supplier.controller.js",
-      "backend/src/services/supplier-ordering.service.js"
+      "backend/src/services/supplier-ordering.service.js",
+      "backend/src/services/supplier-management.service.js",
+      "backend/src/repositories/supplier-management.repository.js"
     ],
     "supplier-payments": [
       "backend/src/routes/supplier-payments.js",
@@ -295,7 +301,8 @@
     "customers": [
       "backend/src/routes/customers.js",
       "backend/src/repositories/customer.repository.js",
-      "frontend/src/views/customers/CustomersView.vue"
+      "frontend/src/views/customers/CustomersView.vue",
+      "backend/src/services/customer-management.service.js"
     ],
     "h5-sold-products": [
       "backend/src/routes/shop.js",
@@ -418,7 +425,9 @@
       "backend/src/controllers/data-import.controller.js",
       "backend/src/services/data-import.service.js",
       "frontend/src/api/data-optimization.ts",
-      "frontend/src/views/data-optimization/page/DataImportTab.vue"
+      "frontend/src/views/data-optimization/page/DataImportTab.vue",
+      "backend/src/services/data-import-history.service.js",
+      "backend/src/repositories/data-import-history.repository.js"
     ],
     "data-check": [
       "backend/src/routes/data-check.js",
@@ -525,7 +534,8 @@
       "backend/src/controllers/permission-statistics.controller.js",
       "backend/src/services/permission-statistics.service.js",
       "backend/src/repositories/permission-statistics.repository.js",
-      "backend/src/services/permission-conflicts.service.js"
+      "backend/src/services/permission-conflicts.service.js",
+      "backend/src/services/user-store.service.js"
     ],
     "users": [
       "backend/src/routes/users.js",
@@ -534,7 +544,9 @@
       "frontend/src/api/user.ts",
       "frontend/src/components/query/QueryEditModal.vue",
       "backend/src/services/user-mutation.service.js",
-      "backend/src/repositories/user-mutation.repository.js"
+      "backend/src/repositories/user-mutation.repository.js",
+      "backend/src/services/user-management.service.js",
+      "backend/src/repositories/user-management.repository.js"
     ]
   },
   "legacyBoundarySources": {},

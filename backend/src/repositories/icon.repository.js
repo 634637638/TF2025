@@ -1,6 +1,82 @@
 'use strict'
 
+const ICON_COLUMNS = `
+  id,
+  class,
+  name,
+  category,
+  description,
+  tags,
+  svg,
+  iconify_name,
+  source,
+  is_valid,
+  last_checked_at,
+  created_at
+`
+
+
 class IconRepository {
+  readgetById(pool, id) {
+    return pool.execute(`
+        SELECT ${ICON_COLUMNS}
+        FROM icons
+        WHERE id = ?
+      `, [id])
+  }
+
+  readcategories(pool) {
+    return pool.execute(`
+        SELECT DISTINCT category
+        FROM icons
+        WHERE category IS NOT NULL AND category != '' AND (is_valid IS NULL OR is_valid = 1)
+        ORDER BY category
+      `, [])
+  }
+
+  readbyClass(pool, iconClass) {
+    return pool.execute(`
+        SELECT ${ICON_COLUMNS}
+        FROM icons
+        WHERE class = ? AND (is_valid IS NULL OR is_valid = 1)
+        LIMIT 1
+      `, [iconClass])
+  }
+
+  async list(pool, { category, search, includeInvalid, pageSize, parsedOffset }) {
+    let whereClause = 'WHERE 1=1'
+    const params = []
+    if (category) {
+      whereClause += ' AND category = ?'
+      params.push(category)
+    }
+    if (search) {
+      whereClause += ' AND (name LIKE ? OR class LIKE ? OR category LIKE ? OR description LIKE ? OR tags LIKE ?)'
+      const searchPattern = `%${search}%`
+      params.push(searchPattern, searchPattern, searchPattern, searchPattern, searchPattern)
+    }
+    if (String(includeInvalid) !== '1') {
+      whereClause += ' AND (is_valid IS NULL OR is_valid = 1)'
+    }
+
+    const query = `
+        SELECT ${ICON_COLUMNS}
+        FROM icons
+        ${whereClause}
+        ORDER BY category, name
+        LIMIT ? OFFSET ?
+      `
+    const countQuery = `SELECT COUNT(*) AS total FROM icons ${whereClause}`
+    const formattedQuery = pool.format(query, [...params, pageSize, parsedOffset])
+    const formattedCountQuery = pool.format(countQuery, params)
+    const [[countResult], [icons]] = await Promise.all([
+      pool.execute(formattedCountQuery),
+      pool.execute(formattedQuery)
+    ])
+
+    return { countResult, icons }
+  }
+
   async upsert(pool, icon) {
     await pool.execute(`
       INSERT INTO icons (

@@ -1,3 +1,4 @@
+const { withConnection } = require('../core/db/connection')
 /**
  * 菜单服务类
  * 处理所有菜单相关的业务逻辑
@@ -489,31 +490,29 @@ class MenuService {
    */
   async updateMenuSort(menuSorts, _user) {
     try {
-      const connection = await this.db.getConnection()
+      return await withConnection(this.db, async connection => {
+        try {
+          await connection.beginTransaction()
 
-      try {
-        await connection.beginTransaction()
+          for (const item of menuSorts) {
+            await connection.execute(
+              'UPDATE menus SET sort_order = ?, updated_at = NOW() WHERE id = ?',
+              [item.sort_order, item.id]
+            )
+          }
 
-        for (const item of menuSorts) {
-          await connection.execute(
-            'UPDATE menus SET sort_order = ?, updated_at = NOW() WHERE id = ?',
-            [item.sort_order, item.id]
-          )
+          await connection.commit()
+
+          return {
+            success: true,
+            message: '更新菜单排序成功',
+            data: { updatedCount: menuSorts.length }
+          }
+        } catch (error) {
+          await connection.rollback()
+          throw error
         }
-
-        await connection.commit()
-
-        return {
-          success: true,
-          message: '更新菜单排序成功',
-          data: { updatedCount: menuSorts.length }
-        }
-      } catch (error) {
-        await connection.rollback()
-        throw error
-      } finally {
-        connection.release()
-      }
+      })
     } catch (error) {
       log.error('更新菜单排序失败:', error)
       return { success: false, message: '更新菜单排序失败', code: 'DATABASE_ERROR' }
