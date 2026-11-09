@@ -333,7 +333,7 @@
                 class="preview-dialog-box"
               >
                 <strong>统一模态框标题</strong>
-                <p>正文区域使用公共间距，底部操作区在手机端居中等分。</p>
+                <p>正文区域使用公共间距；手机底部按钮等宽单行，高约 30～32px、字号 12px、间距 6px，每个最宽 150px，空间不足时等分收缩，整组居中。</p>
                 <div class="tf-dialog-toolbar">
                   <el-button
                     type="primary"

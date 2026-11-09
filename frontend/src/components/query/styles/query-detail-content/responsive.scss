@@ -50,16 +50,6 @@
   .operator-value {
     font-size: var(--tf-type-scale-14);
   }
-
-  .detail-actions {
-    gap: 8px;
-  }
-
-  .detail-actions :deep(.el-button) {
-    height: 42px;
-    border-radius: 12px;
-    font-size: var(--tf-type-scale-14);
-  }
 }
 
 @media (max-width: 420px) {
@@ -88,14 +78,5 @@
   .operator-row,
   .info-grid {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  }
-
-  .detail-actions {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 6px;
-  }
-
-  .detail-actions :deep(.el-button) {
-    font-size: var(--tf-type-scale-13);
   }
 }

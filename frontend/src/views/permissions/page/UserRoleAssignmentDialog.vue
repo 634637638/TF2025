@@ -2,8 +2,6 @@
   <MobileDialog
     :model-value="modelValue"
     title="分配用户角色"
-    width="1180px"
-    max-width="1180px"
     dialog-class="permissions-dialog user-role-modal"
     :show-default-footer="false"
     :close-on-click-modal="false"
@@ -34,31 +32,29 @@
     </div>
 
     <template #footer>
-      <div class="modal-footer user-role-footer">
-        <div class="tf-dialog-actions user-role-footer-actions">
-          <el-button
-            type="info"
-            :disabled="saving"
-            @click="emit('close')"
-          >
-            取消
-          </el-button>
-          <el-button
-            type="primary"
-            :disabled="saving"
-            @click="emit('save')"
-          >
-            <InlineLoading
-              v-if="saving"
-              text="保存中..."
-              size="small"
-              variant="inherit"
-            />
-            <template v-else>
-              确认分配
-            </template>
-          </el-button>
-        </div>
+      <div class="tf-dialog-actions">
+        <el-button
+          type="info"
+          :disabled="saving"
+          @click="emit('close')"
+        >
+          取消
+        </el-button>
+        <el-button
+          type="primary"
+          :disabled="saving"
+          @click="emit('save')"
+        >
+          <InlineLoading
+            v-if="saving"
+            text="保存中..."
+            size="small"
+            variant="inherit"
+          />
+          <template v-else>
+            确认分配
+          </template>
+        </el-button>
       </div>
     </template>
   </MobileDialog>

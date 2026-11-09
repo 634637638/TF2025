@@ -154,7 +154,7 @@
     <MobileDialog
       v-model="showSaleModal"
       :title="batchMode ? `批量销售出库 (${selectedPhones.length}台)` : '销售出库'"
-      width="1000px"
+      width="880px"
       dialog-class="sales-sale-dialog"
       :show-default-footer="false"
       :close-on-click-modal="false"
@@ -242,7 +242,7 @@
     <MobileDialog
       v-model="showBatchSaleModal"
       :title="`批量销售出库 (${selectedPhones.length}台)`"
-      width="1000px"
+      width="880px"
       dialog-class="sales-batch-sale-dialog tf-dialog-body-flush"
       :show-default-footer="false"
       :close-on-click-modal="false"

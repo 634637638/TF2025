@@ -5,7 +5,6 @@
   - 快速创建销售、批发调货或划拨出库记录，跳过入库流程
   - 完整的表单验证
   - 响应式设计，移动端友好
-  - 自动计算利润和利润率
 
   权限要求：
   - inventory:create
@@ -325,12 +324,6 @@
                 ¥
               </template>
             </el-input>
-            <div
-              v-if="showProfit"
-              class="profit-hint"
-            >
-              利润: <span class="profit-value">¥{{ profit }}</span>
-            </div>
           </el-form-item>
         </div>
       </div>
@@ -761,15 +754,6 @@ const resetSubsidyPaymentSelection = (message?: string) => {
 }
 
 // ==================== 计算属性 ====================
-
-const profit = computed(() => {
-  if (!formData.purchase_cost || !formData.sale_price) return 0
-  return formData.sale_price - formData.purchase_cost
-})
-
-const showProfit = computed(() => {
-  return (formData.purchase_cost || 0) > 0 && (formData.sale_price || 0) > 0
-})
 
 // 当前用户名（用于显示入库员）
 const currentUserName = computed(() => {

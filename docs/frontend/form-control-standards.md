@@ -24,12 +24,15 @@
 
 Element Plus 的 `el-select`、`el-date-picker`、`el-input`、`el-input-number`、`el-cascader` 和 `el-time-picker` 自带内部输入框边框。即使历史组件需要传递 `.form-control` 以保持宽度，也只能由公共 `_form-controls.scss` 清除控件根节点的外层边框，最终保留一层内部边框；页面不得再次给这些组件添加外层边框。
 
+权限管理的模块管理页已移除五处下拉框的旧 `form-control` 及其重复外框、内边距和聚焦样式；手动添加模块的分类、图标与页面筛选共用全局选择框外观，`module-standard-select` 只维护布局宽度。
+
 ## 圆角与高度唯一入口
 
 普通输入、选择、日期和数字控件的圆角与高度只允许由
 `frontend/src/styles/components/_form-controls.scss` 维护：
 
 - PC、平板、手机和超窄屏的普通输入、选择、日期和数字控件统一为 `30px`；PC 使用 `--input-height-default`，移动端使用 `--mobile-control-height`，两者由公共样式统一赋值。
+- 公共 wrapper 高度与最小高度使用 `html body :is(...)` 覆盖组件库默认规格，避免选择框被默认 `32px` 最小高度撑大；页面不得另加高度补丁。
 - 普通控件圆角统一为 `var(--tf-radius-control)`，当前值为 `6px`。
 - 控件聚焦时统一使用 `var(--tf-form-control-focus-color)` 和 `var(--tf-form-control-focus-ring)`，当前为报价在库卡片同款橙色 `1px` 完整外圈；禁止页面单独设置聚焦颜色、宽度或 `inset` 阴影。
 - 浏览器自动填充由 `_form-controls.scss` 统一处理：内部 input 使用公共自动填充背景和文字令牌；未聚焦时 wrapper 使用位于输入内容上层的 `::after` 绘制同为 `1px` 的连续边框，聚焦时隐藏该补边并只显示全局焦点环，避免边框加粗。页面不得单独复制 `:-webkit-autofill` 规则。

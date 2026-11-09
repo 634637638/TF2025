@@ -43,11 +43,6 @@ export const revokePendingFileUrls = (files: PendingUploadFile[]) => {
 export const findUploadedVideoUrl = (mediaItems: UploadedMediaItem[]) =>
   mediaItems.find(isVideoMedia)?.image_url || ''
 
-export const resolvePublishIsNewPhone = (
-  phoneValue: unknown,
-  propIsNew?: boolean
-) => propIsNew === true || phoneValue === 1 || phoneValue === '1' || phoneValue === true
-
 export const buildPublishInspectionForm = (
   inspectionData: PublishInspectionResponse | null | undefined
 ): {

@@ -27,6 +27,8 @@
 
 ## 权限与调用
 
+库存页的商城入口和新旧机配置范围见[库存商城商品配置](../business/inventory/shop-configuration.md)。`GET /api/phones/:id/h5-product` 在 `inventory:view` 下返回当前设备配置及新机模板只读预览，无需额外申请模板管理权限；新机上下架沿用 `PUT` 同地址，二手机验机和上下架由 `POST /api/phones/:id/inspection` 一次保存。开关切换时不立即写入，保存后才生效；旧验机请求省略 `is_published` 时保留既有状态。
+
 - 所有 canonical 媒体路由使用统一认证中间件，并按业务权限列表授权；不要在控制器内绕过权限中间件。
 - 前端统一使用 `unifiedApi`，媒体类型由图片/视频上传路由分别校验。
 - 批量清理、单个媒体删除、排序和主图更新不得直接从前端调用数据库或上传文件存储工具。

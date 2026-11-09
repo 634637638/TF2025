@@ -1,12 +1,15 @@
 :root {
   --tf-button-height: 36px;
-  --tf-button-height-small: 28px;
+  --tf-button-small-base-height: 28px;
+  --tf-button-small-base-padding-x: 10px;
+  --tf-button-small-base-font-size: var(--tf-type-scale-13);
+  --tf-button-height-small: var(--tf-button-small-base-height);
   --tf-button-height-large: 44px;
   --tf-button-padding-x: var(--tf-space-4);
-  --tf-button-padding-x-small: 10px;
+  --tf-button-padding-x-small: var(--tf-button-small-base-padding-x);
   --tf-button-radius: var(--tf-radius-control);
   --tf-button-font-size: var(--tf-font-body);
-  --tf-button-font-size-small: 13px;
+  --tf-button-font-size-small: var(--tf-button-small-base-font-size);
   --tf-button-font-weight: 600;
   --tf-toolbar-button-height: 34px;
   --tf-toolbar-button-padding-x: var(--tf-space-3);
@@ -65,6 +68,10 @@
   --tf-button-neutral-hover-bg: #f1f5f9;
   --tf-button-neutral-hover-border: #94a3b8;
   --tf-button-neutral-hover-color: #334155;
+
+  --tf-button-content-selected-bg: var(--tf-color-violet-surface);
+  --tf-button-content-selected-border: var(--tf-color-violet-500);
+  --tf-button-content-selected-color: var(--tf-color-violet-700);
 
   --tf-button-manage-bg: #4f46e5;
   --tf-button-manage-border: #4f46e5;
@@ -192,8 +199,8 @@
 }
 
 /* 默认基线保持低优先级，公共语义按钮可覆盖尺寸与表面。 */
-.el-button:where(:not([class*='el-button--']):not(.is-text):not(.is-link):not([link])):where(:not(.customer-search-dropdown__item):not(.customer-name-lock-input__status):not(.customer-name-lock-input__change):not(.tf-button--service-card):not(.tf-button--service-float):not(.tf-button--h5-action):not(.tf-button--h5-action-icon):not(.tf-button--pill-filter)),
-.el-button:where(:not(.is-circle):not(.is-text):not(.is-link)):where(:not(.customer-search-dropdown__item):not(.customer-name-lock-input__status):not(.customer-name-lock-input__change):not(.tf-button--service-card):not(.tf-button--service-float):not(.tf-button--h5-action):not(.tf-button--h5-action-icon):not(.tf-button--pill-filter)),
+.el-button:where(:not([class*='el-button--']):not(.is-text):not(.is-link):not([link])):where(:not(.customer-search-dropdown__item):not(.customer-name-lock-input__status):not(.customer-name-lock-input__change):not(.tf-button--content):not(.tf-button--service-card):not(.tf-button--service-float):not(.tf-button--h5-action):not(.tf-button--h5-action-icon):not(.tf-button--pill-filter)),
+.el-button:where(:not(.is-circle):not(.is-text):not(.is-link)):where(:not(.customer-search-dropdown__item):not(.customer-name-lock-input__status):not(.customer-name-lock-input__change):not(.tf-button--content):not(.tf-button--service-card):not(.tf-button--service-float):not(.tf-button--h5-action):not(.tf-button--h5-action-icon):not(.tf-button--pill-filter)),
 :where(.el-button.btn),
 :where(.el-button[class*='btn-']:not(.btn-close)) {
   width: auto;
@@ -416,6 +423,38 @@
     border-color: var(--tf-button-neutral-hover-border) !important;
     color: var(--tf-button-neutral-hover-color) !important;
   }
+}
+
+/* Multi-line navigation and content controls use the shared button appearance. */
+.el-button.tf-button--content {
+  height: auto;
+  min-height: 0;
+  min-width: 0;
+  padding: var(--tf-space-3);
+  border-radius: var(--tf-button-radius);
+  font-size: var(--tf-button-font-size);
+  font-weight: var(--tf-button-font-weight);
+  line-height: 1.5;
+  white-space: normal;
+}
+
+.el-button.tf-button--content > span {
+  width: 100%;
+  min-width: 0;
+  white-space: normal;
+}
+
+.el-button.tf-button--content + .el-button.tf-button--content {
+  margin-left: 0;
+}
+
+.el-button.tf-button--content[aria-pressed='true'] {
+  --tf-button-neutral-bg: var(--tf-button-content-selected-bg);
+  --tf-button-neutral-border: var(--tf-button-content-selected-border);
+  --tf-button-neutral-color: var(--tf-button-content-selected-color);
+  --tf-button-neutral-hover-bg: var(--tf-button-content-selected-bg);
+  --tf-button-neutral-hover-border: var(--tf-button-content-selected-border);
+  --tf-button-neutral-hover-color: var(--tf-button-content-selected-color);
 }
 
 /* Contact cards grow with their content instead of inheriting toolbar button height. */
@@ -957,11 +996,11 @@ body .el-button.el-button.tf-button--menu-action:focus {
 @media (max-width: 767px) {
   :root {
     --tf-button-height: clamp(34px, 9.6vw, 36px);
-    --tf-button-height-small: clamp(30px, 8.54vw, 32px);
+    --tf-button-small-base-height: clamp(30px, 8.54vw, 32px);
     --tf-button-padding-x: clamp(10px, 3.2vw, 12px);
-    --tf-button-padding-x-small: clamp(6px, 2.14vw, 8px);
+    --tf-button-small-base-padding-x: clamp(6px, 2.14vw, 8px);
     --tf-button-font-size: var(--tf-type-scale-13);
-    --tf-button-font-size-small: 12px;
+    --tf-button-small-base-font-size: var(--tf-type-scale-12);
     --tf-toolbar-button-height: clamp(28px, 7.5vw, 30px);
     --tf-toolbar-button-padding-x: clamp(5px, 1.6vw, 7px);
     --tf-toolbar-button-font-size: var(--tf-type-scale-12);

@@ -56,7 +56,7 @@
     },
     {
       "file": "src/styles/components/_dialog.scss",
-      "max": 157,
+      "max": 149,
       "category": "shared-contract",
       "reason": "Element Plus dialog structure, viewport boundary and shared MobileDialog close-control overrides."
     },
@@ -146,7 +146,7 @@
     },
     {
       "file": "src/views/inventory/InventoryView.vue",
-      "max": 26,
+      "max": 23,
       "category": "teleport-layer",
       "reason": "Inventory teleported dialogs and mobile full-screen stock-in layout override global dialog dimensions."
     },
@@ -158,7 +158,7 @@
     },
     {
       "file": "src/views/sales/styles/sales-view-dialogs.scss",
-      "max": 27,
+      "max": 26,
       "category": "teleport-layer",
       "reason": "Sales teleported dialogs override global dialog dimensions, safe-area spacing and surfaces."
     },
@@ -194,7 +194,7 @@
     },
     {
       "file": "src/views/permissions/styles/permissions-view.css",
-      "max": 12,
+      "max": 10,
       "category": "accessibility-security",
       "reason": "Teleported permission dialogs and controls override the unified dialog and button contracts."
     },
@@ -374,7 +374,7 @@
     },
     {
       "file": "src/views/permissions/page/ModuleManagementView.vue",
-      "max": 5,
+      "max": 3,
       "category": "accessibility-security",
       "reason": "Teleported module editor and confirmation dialogs override global dialog dimensions and surfaces."
     },

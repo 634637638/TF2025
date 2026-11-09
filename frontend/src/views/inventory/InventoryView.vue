@@ -84,6 +84,7 @@
           :pagination="pagination"
           @delete="deleteItem"
           @edit="editItem"
+          @open-config="openProductConfig"
           @pagination-change="handlePaginationChange"
           @quick-sale="quickSaleItem"
           @view="viewDetails"
@@ -96,6 +97,8 @@
           :can-sell="canSell"
           :can-edit="canEdit"
           :can-delete="canDelete"
+          :can-configure="canEdit"
+          @open-config="openConfigFromDetails"
           @close="handleCloseDetails"
           @edit="handleEditFromModal"
           @delete="handleDeleteFromModal"
@@ -135,8 +138,6 @@
     @close="closeEditModal"
     @format-imei="formatEditIMEI"
     @model-change="onEditModelChange"
-    @open-config="showPublishToH5Modal = true"
-    @publish-change="handleQuickPublishChange"
     @submit="submitEdit"
     @toggle-no-imei="toggleEditNoIMEIMode"
   />
@@ -145,9 +146,7 @@
   <PublishToH5Modal
     v-if="showPublishToH5Modal"
     v-model="showPublishToH5Modal"
-    :phone-id="selectedPhoneForEdit?.id || null"
-    :is-new="selectedPhoneForEdit ? isNewInventoryValue(selectedPhoneForEdit.is_new) : undefined"
-    @success="handlePublishSuccess"
+    :phone-id="selectedPhoneForConfig?.id || null"
   />
 </template>
 
@@ -206,7 +205,6 @@ type InventoryOption = {
 
 type InventoryEditItem = InventoryItem & {
   created_by_name?: string
-  is_published?: number
 }
 
 const router = useRouter()
@@ -258,6 +256,7 @@ const inventoryFieldMap: Record<string, string> = {
   inventory_time: 'time_info.inventory_time',
   purchase_number: 'purchase_info.purchase_number',
   remarks: 'other_info.remarks',
+  mall: 'system_info.operations',
   actions: 'system_info.operations'
 }
 
@@ -299,6 +298,7 @@ const tableColumns = computed(() => {
     { key: 'inventory_operator_name', label: '入库员' },
     { key: 'is_new', label: '成色' },
     { key: 'is_preordered', label: '状态' },
+    { key: 'mall', label: '商城' },
     { key: 'inventory_time', label: '入库时间' },
     { key: 'actions', label: '操作' }
   ]
@@ -316,6 +316,7 @@ const tableColumns = computed(() => {
   }
 
   const visibleColumns = allColumns.filter(column => {
+    if (column.key === 'mall') return shouldShowActionColumn(canViewField('mall'), [canEdit.value])
     if (column.key === 'actions') {
       return shouldShowActionColumn(
         canViewField('actions'),
@@ -372,6 +373,7 @@ const getInventoryColumnValue = (columnKey: string, item: InventoryItem) => {
 }
 
 const getInventoryColumnMinWidth = (column: { key: string; label: string }) => {
+  if (column.key === 'mall') return getAdaptiveActionColumnWidth(inventory.value, [{ visible: true, label: '商城' }])
   const useCompactMobileWidth = windowWidth.value <= 768
 
   if (useCompactMobileWidth && column.key === 'model') {
@@ -464,7 +466,7 @@ const getInventoryColumnClass = (column: { key: string }) => {
     return 'identifier-column serial-imei-column'
   }
   if (column.key === 'purchase_cost') return 'price-column'
-  if (column.key === 'actions') return 'actions-column'
+  if (column.key === 'actions' || column.key === 'mall') return 'actions-column'
   return ''
 }
 
@@ -498,7 +500,6 @@ const editForm = reactive({
   status: 'in_stock',
   inventory_time: null,
   remarks: '',
-  is_published: 1,  // H5上架状态，1=上架，0=下架
   // 图片上传相关
   imageHover: false
 })
@@ -514,6 +515,7 @@ const modelSearchLoading = ref(false)
 
 // 上架商品模态框
 const showPublishToH5Modal = ref(false)
+const selectedPhoneForConfig = ref<InventoryItem | null>(null)
 
 const AUTO_OPEN_SALE_PHONE_STORAGE_KEY = 'tf2025:auto-open-sale-phone'
 
@@ -868,9 +870,21 @@ const editItem = async (item: InventoryItem) => {
 
 }
 
-// 上架商品成功回调
-const handlePublishSuccess = () => {
-  globalNotifications.success('商品已上架到H5商城')
+// 商城配置与库存编辑使用独立选择状态，避免交叉回填。
+const openProductConfig = (item: InventoryItem) => {
+  if (!canEdit.value) {
+    handleNoPermission('edit')
+    return
+  }
+  selectedPhoneForConfig.value = item
+  showPublishToH5Modal.value = true
+}
+
+const openConfigFromDetails = () => {
+  const item = selectedItem.value
+  if (!item) return
+  showDetailsModal.value = false
+  openProductConfig(item)
 }
 
 // 从详情模态框触发编辑
@@ -942,12 +956,8 @@ watch([showEditModal, selectedPhoneForEdit], async ([newVal, selectedPhone]) => 
       condition: isNewInventoryValue(phone.is_new) ? '全新' : '二手',
       status: normalizePhoneStatus(phone.status) || 'in_stock',
       inventory_time: TimeUtil.toDateInputValue(phone.inventory_time),
-      remarks: phone.remarks || '',
-      is_published: phone.is_published ?? 1  // H5上架状态，默认1（上架）
+      remarks: phone.remarks || ''
     })
-
-    // 加载 H5_product 的 is_published 状态
-    await loadPhonePublishStatus(phone.id)
 
     // 检测是否为无IMEI模式
     editIsNoIMEIMode.value = detectEditNoIMEIMode(editForm.imei, editForm.serial_number)
@@ -1182,41 +1192,8 @@ const closeEditModal = () => {
     condition: '',
     status: 'in_stock',
     inventory_time: null,
-    remarks: '',
-    is_published: 1
+    remarks: ''
   })
-}
-
-// 加载商品的上架状态
-const loadPhonePublishStatus = async (phoneId: number) => {
-  try {
-    const response = await api.get(`/phones/${phoneId}/h5-product`)
-    if (response.success && response.data) {
-      editForm.is_published = response.data.is_published ?? 1
-    }
-  } catch (error) {
-    logger.error('加载上架状态失败:', error)
-    // 保持默认值1（上架）
-  }
-}
-
-// 快速切换上架状态（全新机和二手商品通用）
-const handleQuickPublishChange = async (value: number) => {
-  if (!selectedPhoneForEdit.value) return
-
-  try {
-    // 更新 H5_product 表
-    await api.put(`/phones/${selectedPhoneForEdit.value.id}/h5-product`, {
-      is_published: value
-    })
-    const statusText = value === 1 ? '上架' : '下架'
-    globalNotifications.success(`已${statusText}`)
-  } catch (error: unknown) {
-    logger.error('更新上架状态失败:', error)
-    globalNotifications.error(getRequestErrorMessage(error, '操作失败'))
-    // 恢复开关状态
-    editForm.is_published = editForm.is_published === 1 ? 0 : 1
-  }
 }
 
 // 关闭详情弹窗
@@ -1558,23 +1535,6 @@ const _handleSelect = (item: InventoryItem) => {
   grid-column: span 3;
 }
 
-.inventory-edit-price-row {
-  display: flex;
-  align-items: center;
-  gap: var(--tf-space-3);
-}
-
-.inventory-edit-price-input {
-  flex: 0 0 132px;
-  width: 132px !important;
-}
-
-.inventory-edit-publish-actions {
-  display: flex;
-  align-items: center;
-  gap: var(--tf-space-2);
-}
-
 .inventory-edit-dialog .el-select,
 .inventory-edit-dialog .el-date-editor.el-input,
 .inventory-edit-dialog .el-date-editor.el-input__wrapper,
@@ -1693,24 +1653,6 @@ const _handleSelect = (item: InventoryItem) => {
     order: 2;
   }
 
-  .inventory-edit-price-input {
-    flex: 0 0 82px;
-    width: 82px !important;
-  }
-
-  .inventory-edit-price-row {
-    flex-direction: row;
-    align-items: center;
-    gap: var(--tf-space-2);
-  }
-
-  .inventory-edit-publish-actions {
-    flex: 0 0 auto;
-    min-width: fit-content;
-    flex-shrink: 0;
-    justify-content: flex-start;
-  }
-
 }
 
 @media (max-width: 479px) {
@@ -1727,10 +1669,6 @@ const _handleSelect = (item: InventoryItem) => {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .inventory-edit-price-input {
-    flex: 0 0 74px;
-    width: 74px !important;
-  }
 }
 
 @media (max-width: 479px) {

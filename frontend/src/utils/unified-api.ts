@@ -1257,7 +1257,7 @@ class UnifiedApiManager {
       inventory: ['/inventory', '/phones', '/dashboard', '/analytics', '/query'],
       menus: ['/menus'],
       payments: ['/payments', '/dashboard', '/analytics'],
-      phones: ['/phones', '/inventory', '/dashboard', '/analytics', '/query'],
+      phones: ['/phones', '/inventory', '/dashboard', '/analytics', '/query', '/shop', '/public/products'],
       'price-list': ['/price-list', '/phones', '/inventory', '/sales', '/query'],
       preorders: ['/preorders', '/phones', '/dashboard', '/analytics'],
       repairs: ['/repairs', '/dashboard', '/analytics'],

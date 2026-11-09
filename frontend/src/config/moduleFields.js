@@ -463,7 +463,7 @@ export const MODULE_FIELDS = {
         group: '系统信息',
         type: FIELD_TYPES.TEXT,
         sensitivity: SENSITIVITY_LEVELS.PUBLIC,
-        description: '可执行的操作',
+        description: '库存查看、编辑、删除与商城商品配置操作（含商城列及详情入口）',
         filterable: false
       }
     ]

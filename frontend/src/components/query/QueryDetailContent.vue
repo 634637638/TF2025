@@ -93,11 +93,10 @@
       <span class="remark-value">{{ fieldPermissions.isFieldVisible('query_queryview', 'basic_info.remarks') ? (detailItem.基本信息?.remarks || '-') : '-' }}</span>
     </div>
 
-    <div class="detail-actions">
+    <div class="tf-dialog-actions">
       <el-button
         v-if="canEdit"
         type="primary"
-        size="small"
         @click="$emit('edit')"
       >
         <i class="fas fa-edit" />
@@ -106,7 +105,6 @@
       <el-button
         v-if="canDelete"
         type="danger"
-        size="small"
         @click="$emit('delete')"
       >
         <i class="fas fa-trash" />
@@ -115,7 +113,6 @@
       <el-button
         v-if="canReturnToStock"
         type="warning"
-        size="small"
         @click="$emit('return')"
       >
         <i class="fas fa-undo-alt" />

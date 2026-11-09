@@ -1,3 +1,5 @@
+import type { NewTemplate } from '@/api/shop'
+
 export interface PublishFormState {
   sale_price: number | null
   condition_grade: string
@@ -49,4 +51,10 @@ export interface PublishInspectionResponse {
   model_version?: string | null
   warranty_date?: string | null
   is_warranty_expired?: boolean | number | null
+}
+
+export interface PhoneH5Configuration extends PublishInspectionResponse {
+  is_new: number | boolean | string
+  is_published: 0 | 1
+  template: Pick<NewTemplate, 'id' | 'template_name' | 'description' | 'images' | 'is_published'> | null
 }

@@ -2,9 +2,11 @@
 
 const PermissionLogsRepository = require('../repositories/permission-logs.repository')
 const log = require('../utils/log')
+const BaseService = require('../core/base/base.service')
 
-class PermissionLogsService {
+class PermissionLogsService extends BaseService {
   constructor({ repository = new PermissionLogsRepository(), logger = log } = {}) {
+    super()
     this.repository = repository
     this.logger = logger
   }
@@ -141,6 +143,14 @@ class PermissionLogsService {
 
   async deleteLog(id) {
     return this.repository.deleteLog(id)
+  }
+
+  async clearLogs(actor) {
+    const actorId = this.getActorId(actor)
+    const deletedCount = await this.repository.clearLogs()
+    // 运维日志保留清理痕迹，不向刚清空的权限日志表重新插入记录。
+    this.logger.info('权限操作日志已清空', { actor_id: actorId, deleted_count: deletedCount })
+    return deletedCount
   }
 }
 

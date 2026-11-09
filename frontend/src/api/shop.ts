@@ -64,6 +64,7 @@ export interface NewTemplate {
   price_markup?: number
   price_markup_type?: 'fixed' | 'percentage'
   is_active?: boolean | number  // 数据库返回数字，前端使用布尔
+  is_published?: boolean | number
   sort_order?: number
   created_at?: string
   updated_at?: string

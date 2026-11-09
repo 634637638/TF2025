@@ -63,6 +63,17 @@
                 <i class="fas fa-download" />
                 导出日志
               </el-button>
+              <el-button
+                v-permission="'permissions:delete'"
+                type="danger"
+                plain
+                :loading="clearingLogs"
+                :disabled="clearingLogs || logsLoading || exportingLogs"
+                @click="clearLogs"
+              >
+                <i class="fas fa-trash-alt" />
+                清空日志
+              </el-button>
             </template>
 
             <template v-else-if="activeTab === 'pagePermissions'">
@@ -375,6 +386,7 @@ import { useLoadingState } from '@/composables'
 import { useImportExport } from '@/composables/useImportExport'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { useRefreshData } from '@/composables/useRefreshData'
+import { useLatestRequest } from '@/composables/useLatestRequest'
 import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { useAuthStore } from '@/stores/auth'
 import { TIME_FORMATS, TimeUtil } from '@/utils/time'
@@ -527,6 +539,9 @@ const roleSearchQuery = ref('')
 // 日志相关状态
 const logsLoading = ref(false)
 const exportingLogs = ref(false)
+const clearingLogs = ref(false)
+const logsRequest = useLatestRequest()
+let deletingLogs = false
 const logsData = ref<PermissionLog[]>([])
 const logsPagination = reactive({
   page: 1,
@@ -2005,6 +2020,46 @@ const refreshLogs = async () => {
   await loadLogs()
 }
 
+const clearLogs = async () => {
+  if (clearingLogs.value || logsLoading.value || exportingLogs.value) return
+  if (!canDelete.value) {
+    warning('您没有删除权限日志的权限')
+    return
+  }
+
+  clearingLogs.value = true
+  try {
+    const confirmed = await confirm(
+      '确定清空全部权限日志吗？包括当前筛选范围外的所有记录，清空后无法恢复。建议先导出需要保留的日志。',
+      '清空权限日志',
+      { type: 'warning', confirmButtonText: '确认清空', cancelButtonText: '取消' }
+    )
+    if (!confirmed) return
+    if (!canDelete.value) {
+      warning('您没有删除权限日志的权限')
+      return
+    }
+    // 确认期间可能发生筛选或翻页，撤销旧读取，避免删除完成后旧数据回填。
+    logsRequest.cancelLatest()
+    deletingLogs = true
+    logsLoading.value = true
+    const response = await unifiedApi.delete('/permission-logs/logs', { showError: false })
+    if (!response.success) throw new Error(response.message || '清空权限日志失败')
+    logsData.value = []
+    logsPagination.page = 1
+    logsPagination.total = 0
+    success('权限日志已清空')
+    deletingLogs = false
+    await loadLogs()
+  } catch (err: unknown) {
+    handleApiError(err, '清空权限日志失败')
+  } finally {
+    if (deletingLogs) logsLoading.value = false
+    deletingLogs = false
+    clearingLogs.value = false
+  }
+}
+
 const escapeCsvValue = (value: unknown) => {
   const normalized = value === null || value === undefined ? '' : String(value)
   const escaped = normalized.replace(/"/g, '""')
@@ -2102,11 +2157,16 @@ const resetLogSearch = () => {
 }
 
 const loadLogs = async () => {
+  if (deletingLogs) return
+  const request = logsRequest.nextRequest()
   try {
     logsLoading.value = true
 
     // 从真实 API 获取日志数据
     const response = await unifiedApi.get('/permission-logs/logs', {
+      signal: request.signal,
+      showError: false,
+      useCache: false,
       params: {
         page: logsPagination.page,
         page_size: logsPagination.page_size,
@@ -2119,6 +2179,7 @@ const loadLogs = async () => {
       }
     })
 
+    if (!request.isLatest()) return
     if (response.success && response.data) {
       logsData.value = response.data.logs || []
       logsPagination.total = Number(response.data.pagination?.total) || 0
@@ -2127,13 +2188,14 @@ const loadLogs = async () => {
       logsPagination.total = 0
     }
   } catch (err) {
+    if (!request.isLatest() || logsRequest.isCanceledError(err)) return
     error('加载日志数据失败')
     logger.error('加载权限日志失败:', err)
     logsData.value = []
     logsPagination.total = 0
     logsPagination.page = 1
   } finally {
-    logsLoading.value = false
+    if (request.isLatest()) logsLoading.value = false
   }
 }
 

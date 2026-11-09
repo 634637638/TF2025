@@ -78,6 +78,82 @@ test('权限日志列表保持筛选、分页边界及响应字段', async () =>
   })
 })
 
+test('全量清空路由保留统一认证并要求真实删除权限', () => {
+  const route = fs.readFileSync(path.join(backendRoot, 'src/routes/permission-logs.js'), 'utf8')
+  assert.match(route, /router\.delete\('\/logs', unifiedAuth, requirePermission\('permissions:delete'\), permissionLogsController\.clear\.bind\(permissionLogsController\)\)/)
+})
+
+test('清空权限日志拒绝未认证、只读和其他模块删除权限', async () => {
+  const { requirePermission } = require('../src/middleware/unified-auth')
+  for (const [user, status] of [
+    [undefined, 401],
+    [{ id: 1, permissions: ['permissions_permissionsview:view'] }, 403],
+    [{ id: 1, permissions: ['inventory_inventoryview:delete'] }, 403]
+  ]) {
+    const response = createResponse()
+    let reachedHandler = false
+    await requirePermission('permissions:delete')({ user }, response, () => { reachedHandler = true })
+    assert.equal(response.statusCode, status)
+    assert.equal(reachedHandler, false)
+  }
+})
+
+test('删除能力可清空全部权限日志，返回数量并在运维日志记录操作人', async () => {
+  const { requirePermission } = require('../src/middleware/unified-auth')
+  const PermissionLogsController = require('../src/controllers/permission-logs.controller')
+  const PermissionLogsService = require('../src/services/permission-logs.service')
+  const PermissionLogsRepository = require('../src/repositories/permission-logs.repository')
+  for (const count of [12, 0]) {
+    const queries = []
+    const operations = []
+    const repository = new PermissionLogsRepository(() => ({
+      async query(sql, params) { queries.push([sql, params]); return [{ affectedRows: count }] }
+    }))
+    const service = new PermissionLogsService({ repository, logger: { info: (...args) => operations.push(args) } })
+    const controller = new PermissionLogsController(service)
+    // 筛选或请求体不能把“全部清空”偷偷变成局部删除。
+    const request = { user: { id: 7, permissions: ['permissions_permissionsview:delete'] }, query: { username: 'x' }, body: { id: 4 } }
+    const response = createResponse()
+    let authorized = false
+    await requirePermission('permissions:delete')(request, response, () => { authorized = true })
+    assert.equal(authorized, true)
+    await controller.clear(request, response)
+    assert.deepEqual(queries, [['DELETE FROM permission_operation_logs', undefined]])
+    assert.deepEqual(response.body, { success: true, message: '权限日志已清空', data: { deleted_count: count } })
+    assert.deepEqual(operations, [['权限操作日志已清空', { actor_id: 7, deleted_count: count }]])
+  }
+})
+
+test('清空失败不返回成功、不记录成功审计、不暴露 SQL 详情', async (t) => {
+  const PermissionLogsController = require('../src/controllers/permission-logs.controller')
+  const PermissionLogsService = require('../src/services/permission-logs.service')
+  const log = require('../src/utils/log')
+  t.mock.method(log, 'error', () => {})
+  let audited = false
+  const controller = new PermissionLogsController(new PermissionLogsService({
+    repository: { async clearLogs() { throw new Error('private database details') } },
+    logger: { info() { audited = true } }
+  }))
+  const response = createResponse()
+  await controller.clear({ user: { id: 7 } }, response)
+  assert.equal(response.statusCode, 500)
+  assert.deepEqual(response.body, { success: false, message: '清空权限日志失败，请稍后重试' })
+  assert.equal(audited, false)
+})
+
+test('清空权限日志先校验公共 actor，身份无效时不执行删除', async () => {
+  const PermissionLogsController = require('../src/controllers/permission-logs.controller')
+  const PermissionLogsService = require('../src/services/permission-logs.service')
+  let deleted = false
+  const service = new PermissionLogsService({ repository: { async clearLogs() { deleted = true } } })
+  const controller = new PermissionLogsController(service)
+  const response = createResponse()
+  await controller.clear({ user: { id: 0 } }, response)
+  assert.equal(response.statusCode, 401)
+  assert.equal(response.body.code, 'INVALID_ACTOR')
+  assert.equal(deleted, false)
+})
+
 test('权限日志 service 记录操作者、请求 IP 和结构化详情', async () => {
   const PermissionLogsService = require('../src/services/permission-logs.service')
   const inserted = []

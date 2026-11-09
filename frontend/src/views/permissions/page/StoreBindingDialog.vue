@@ -10,16 +10,21 @@
     <div class="modal-body">
       <div class="user-info-summary">
         <p><strong>用户：</strong>{{ user?.username }} ({{ user?.name || '-' }})</p>
-        <p>
-          <strong>已绑定门店：</strong>
-          <span v-if="user?.stores?.length">
-            <span
+        <p class="store-binding-summary">
+          <strong>已绑定：</strong>
+          <span
+            v-if="user?.stores?.length"
+            class="stores-cell"
+          >
+            <el-tag
               v-for="store in user.stores"
               :key="store.store_id"
-              class="store-badge-small"
+              :type="store.is_primary ? 'primary' : 'info'"
+              size="small"
+              :class="['tf-tag--wrap', { 'tf-tag--neutral': !store.is_primary }]"
             >
-              {{ store.store_name }}{{ store.is_primary ? ' (主)' : '' }}
-            </span>
+              {{ store.store_name }}{{ store.is_primary ? ' · 主' : '' }}
+            </el-tag>
           </span>
           <span
             v-else
@@ -31,24 +36,28 @@
         <div class="form-group">
           <label>选择门店（可多选）<span class="required">*</span></label>
           <div class="store-selection">
-            <div
+            <el-button
               v-for="store in stores"
               :key="store.id"
-              class="store-checkbox"
+              native-type="button"
+              class="tf-button--content store-checkbox"
+              :aria-pressed="selected.includes(store.id)"
+              :disabled="saving"
+              @click="toggleStore(store.id)"
             >
-              <label>
-                <input
-                  v-model="selected"
-                  type="checkbox"
-                  :value="store.id"
-                >
-                <span>{{ store.name }}</span>
-                <span
-                  v-if="isPrimaryStore(store.id)"
-                  class="primary-badge"
-                >主</span>
-              </label>
-            </div>
+              <i
+                :class="selected.includes(store.id) ? 'fas fa-check-square' : 'far fa-square'"
+                aria-hidden="true"
+              />
+              <span>{{ store.name }}</span>
+              <el-tag
+                v-if="isPrimaryStore(store.id)"
+                type="primary"
+                size="small"
+              >
+                主
+              </el-tag>
+            </el-button>
           </div>
           <p class="help-text">
             提示：选中的第一个门店将自动设置为主门店
@@ -113,5 +122,11 @@ const selected = computed({
 
 const isPrimaryStore = (storeId: number) => {
   return props.user?.stores?.some(store => store.store_id === storeId && Boolean(store.is_primary))
+}
+
+const toggleStore = (storeId: number) => {
+  selected.value = selected.value.includes(storeId)
+    ? selected.value.filter(id => id !== storeId)
+    : [...selected.value, storeId]
 }
 </script>

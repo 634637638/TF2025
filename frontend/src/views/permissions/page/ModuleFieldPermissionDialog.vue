@@ -13,6 +13,9 @@
           <i class="fas fa-info-circle" />
           <span>配置该角色在{{ module?.name }}模块中可以查看的字段。</span>
         </div>
+        <p class="selection-summary">
+          已选择 {{ selected.length }} / {{ totalFieldCount }} 个字段
+        </p>
       </div>
 
       <div class="field-groups-container">
@@ -92,33 +95,28 @@
     </div>
 
     <template #footer>
-      <div class="modal-footer permission-summary-footer">
-        <div class="selection-summary">
-          <span>已选择 {{ selected.length }} / {{ totalFieldCount }} 个字段</span>
-        </div>
-        <div class="tf-dialog-actions footer-actions">
-          <el-button
-            type="info"
-            @click="emit('close')"
-          >
-            取消
-          </el-button>
-          <el-button
-            type="primary"
-            :disabled="saving"
-            @click="emit('save')"
-          >
-            <InlineLoading
-              v-if="saving"
-              text="保存中..."
-              size="small"
-              variant="inherit"
-            />
-            <template v-else>
-              保存配置
-            </template>
-          </el-button>
-        </div>
+      <div class="tf-dialog-actions">
+        <el-button
+          type="info"
+          @click="emit('close')"
+        >
+          取消
+        </el-button>
+        <el-button
+          type="primary"
+          :disabled="saving"
+          @click="emit('save')"
+        >
+          <InlineLoading
+            v-if="saving"
+            text="保存中..."
+            size="small"
+            variant="inherit"
+          />
+          <template v-else>
+            保存配置
+          </template>
+        </el-button>
       </div>
     </template>
   </MobileDialog>

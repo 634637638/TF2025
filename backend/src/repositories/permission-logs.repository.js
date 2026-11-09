@@ -74,6 +74,11 @@ class PermissionLogsRepository {
       [id]
     )
   }
+
+  async clearLogs() {
+    const [result] = await this.databaseProvider().query('DELETE FROM permission_operation_logs')
+    return result.affectedRows
+  }
 }
 
 module.exports = PermissionLogsRepository

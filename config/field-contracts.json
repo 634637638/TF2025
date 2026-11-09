@@ -223,6 +223,15 @@
       "frontend/src/views/H5-admin/page/orders.vue",
       "frontend/src/api/shop.ts"
     ],
+    "phone-h5-product": [
+      "backend/src/routes/phones.js",
+      "backend/src/controllers/phone-product.controller.js",
+      "backend/src/services/shop.service.js",
+      "backend/src/repositories/phone-product.repository.js",
+      "frontend/src/components/PublishToH5Modal.vue",
+      "frontend/src/components/publish-to-h5/types.ts",
+      "frontend/src/api/shop.ts"
+    ],
     "phones": [
       "backend/src/routes/phones.js",
       "frontend/src/utils/phone-update-payload.ts",
@@ -537,6 +546,8 @@
       "backend/src/repositories/role-field-permissions.repository.js",
       "backend/src/routes/permission-logs.js",
       "backend/src/controllers/permission-logs.controller.js",
+      "backend/src/services/permission-logs.service.js",
+      "backend/src/repositories/permission-logs.repository.js",
       "backend/src/routes/user-stores.js",
       "backend/src/routes/module-management.js",
       "backend/src/controllers/module-management.controller.js",
@@ -2014,6 +2025,18 @@
       ],
       "fieldPermissionModule": "h5_admin_templatesview",
       "database_verification": "pending_authenticated_workflow"
+    },
+    "phone-h5-product": {
+      "canonical": [
+        "is_published", "sale_price", "condition_grade", "battery_status",
+        "screen_condition", "system_version", "model_version", "warranty_date", "is_warranty_expired"
+      ],
+      "responseFields": [
+        "is_new", "template", "template_name", "description", "images",
+        "image_url", "image_type", "is_primary", "sort_order"
+      ],
+      "legacy": [],
+      "retired": []
     },
     "phones": {
       "canonical": [

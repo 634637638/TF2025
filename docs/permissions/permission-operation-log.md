@@ -19,6 +19,7 @@
 - 同一次保存涉及多个模块时只写一条日志，并在 `details.module_changes` 中按模块分组，禁止为每一个复选框额外制造多条重复日志。
 - 后端必须在修改前读取旧数据并计算差异，至少保存新增项、移除项、修改前集合和修改后集合；前端不得自行推测差异。
 - 日志写入失败不得回滚已经成功的业务操作，但必须写入后端错误日志便于排查。
+- 清空权限日志是例外：成功后只在后端运维日志记录操作人 ID 和删除数量，不向刚清空的 `permission_operation_logs` 再插入一条记录。
 
 ## 权限差异结构
 
@@ -58,9 +59,19 @@
 
 ## 保留时间
 
-当前没有自动清理任务或固定保留天数，权限日志默认长期保留。只有管理员删除单条日志、手动执行数据库清理或未来新增明确的日志归档策略时，数据才会被移除。
+当前没有自动清理任务或固定保留天数，权限日志默认长期保留。用户主动删除或清空、手动执行数据库清理或未来新增明确的日志归档策略时，数据才会被移除。
 
 统计接口中的“近 30 天”只限定统计范围，不会删除日志，也不会限制日志列表查询。
+
+## 清空全部日志
+
+- 权限日志 TAB 的公共页头在“导出日志”旁提供“清空日志”，沿用公共危险按钮、确认框和 Loading。按钮使用 `v-permission` 和 `usePagePermissions` 的 `permissions:delete` 能力；没有删除权限不能调用，后端独立鉴权。
+- 接口为 `DELETE /api/permission-logs/logs`，必须经过 `unifiedAuth` 和 `requirePermission('permissions:delete')`，复用已有删除能力，不增加新的管理员动作。原有单条删除接口及权限保持原契约。
+- 二次确认明确包含筛选范围外的全部记录且无法恢复，建议先导出；取消不发删除请求，处理中防重复提交。
+- route 委托 controller → service → repository，仓储以一条 `DELETE FROM permission_operation_logs` 删除该表全部记录，不重置自增值、不触碰其他日志或权限配置，无需数据库迁移。
+- 成功响应为 `{ success: true, message: '权限日志已清空', data: { deleted_count: 数量 } }`，空表返回数量 0。失败返回通用错误，不暴露数据库细节。
+- 成功后回到第一页并重新读取列表；清空期间撤销旧读取，使用公共 `useLatestRequest` 防止旧响应回填，删除期间不接受新的列表读取。清空后的新增权限操作仍正常记录，刷新后可以显示。
+- 回归入口：`node --test backend/test/permission-logs-controller.check.js` 与 `npm --prefix frontend run test:unit -- tests/permission-logs-clear.spec.ts`。测试使用模拟仓储和请求，不执行真实清库。
 
 ## 展示规则
 

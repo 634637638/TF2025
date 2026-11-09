@@ -368,32 +368,17 @@
             class="inventory-edit-price-field"
           >
             <label class="form-label">入库价格</label>
-            <div class="inventory-edit-price-row">
-              <el-input-number
-                v-model="editForm.purchase_cost"
-                placeholder="请输入入库价格"
-                :min="0"
-                :step="1"
-                :precision="0"
-                :controls="false"
-                class="inventory-edit-price-input"
-                :value-on-clear="null"
-                :disabled="!canEditField('purchase_cost')"
-              />
-
-              <!-- H5上架开关（全新机和二手商品通用） -->
-              <div class="inventory-edit-publish-actions">
-                <el-switch
-                  v-model="editForm.is_published"
-                  :active-value="1"
-                  :inactive-value="0"
-                  active-text="H5上架"
-                  inactive-text="已下架"
-                  inline-prompt
-                  @change="handlePublishChange"
-                />
-              </div>
-            </div>
+            <el-input-number
+              v-model="editForm.purchase_cost"
+              placeholder="请输入入库价格"
+              :min="0"
+              :step="1"
+              :precision="0"
+              :controls="false"
+              class="price-input-number w-full"
+              :value-on-clear="null"
+              :disabled="!canEditField('purchase_cost')"
+            />
           </div>
 
           <!-- 备注 -->
@@ -420,16 +405,7 @@
     <template #footer>
       <div
         class="tf-dialog-actions inventory-edit-footer"
-        :class="{ 'has-config': editForm.condition === '二手' }"
       >
-        <el-button
-          v-if="editForm.condition === '二手'"
-          type="success"
-          @click="emit('open-config')"
-        >
-          <i class="fas fa-mobile-alt" />
-          商品配置
-        </el-button>
         <el-button
           type="default"
           @click="emit('close')"
@@ -466,7 +442,6 @@ export interface InventoryEditForm {
   imageHover: boolean
   imei: string
   inventory_time: string | null
-  is_published: number
   memory_id: number | null
   memory: string
   model_id: number | null
@@ -512,16 +487,10 @@ const emit = defineEmits<{
   close: []
   'format-imei': []
   'model-change': [value: string]
-  'open-config': []
-  'publish-change': [value: number]
   submit: []
   'toggle-no-imei': []
   'update:modelValue': [value: boolean]
 }>()
-
-const handlePublishChange = (value: string | number | boolean) => {
-  emit('publish-change', Number(value))
-}
 
 const toggleNoImei = () => emit('toggle-no-imei')
 const {

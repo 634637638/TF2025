@@ -14,9 +14,7 @@ class PhoneProductController {
   async getH5Product(req, res) {
     try {
       const product = await this.service.getPhoneH5Product(req.params.id)
-      if (!product) {
-        return this.response.success(res, { is_published: 1 }, '未找到上架信息，默认上架')
-      }
+      if (!product) return this.response.error(res, '设备不存在', 404)
 
       return this.response.success(res, product, '获取成功')
     } catch (error) {
@@ -42,6 +40,10 @@ class PhoneProductController {
 
   async saveInspection(req, res) {
     try {
+      const { is_published } = req.body
+      if (is_published !== undefined && is_published !== 0 && is_published !== 1) {
+        return this.response.badRequest(res, 'is_published 必须是 0 或 1')
+      }
       const inspectionData = {
         condition_grade: req.body.condition_grade || null,
         battery_status: req.body.battery_status || '',
@@ -52,6 +54,8 @@ class PhoneProductController {
         is_warranty_expired: req.body.is_warranty_expired || false,
         sale_price: req.body.sale_price || null
       }
+
+      if (is_published !== undefined) inspectionData.is_published = is_published
 
       await this.service.saveProductInspection(req.params.id, inspectionData)
       return this.response.success(res, null, '验机信息保存成功')

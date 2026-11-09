@@ -1227,7 +1227,6 @@ onBeforeUnmount(() => {
     --tf-dialog-footer-padding-inline: var(--tf-space-4);
     --tf-dialog-footer-padding-block-start: var(--tf-space-3);
     --tf-dialog-footer-padding-block-end: var(--tf-space-3);
-    --tf-dialog-footer-gap: var(--tf-space-2);
   }
 
   .preorder-form {

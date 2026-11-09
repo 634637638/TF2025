@@ -189,6 +189,14 @@
           出库
         </el-button>
         <el-button
+          v-if="canConfigure"
+          v-permission="'inventory:edit'"
+          class="tf-button--manage"
+          @click="emit('open-config')"
+        >
+          商城
+        </el-button>
+        <el-button
           v-if="canEdit"
           type="primary"
           @click="emit('edit')"
@@ -222,11 +230,13 @@ interface Props extends ModelValueProps {
   item: InventoryItem | null
   canSell?: boolean
   canEdit?: boolean
+  canConfigure?: boolean
   canDelete?: boolean
 }
 
 interface Emits extends UpdateModelValueEmits, CloseEmits {
   'quick-sale': []
+  'open-config': []
   edit: []
   delete: []
 }

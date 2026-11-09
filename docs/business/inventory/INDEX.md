@@ -4,6 +4,7 @@
 
 - [设备序列号与 IMEI 扫码规则](DEVICE_SCANNING_RULES.md)
 - [入库操作与安全边界](stock-in-operations.md)
+- [库存商城商品配置](shop-configuration.md)
 - [退库与交易撤销](transaction-reversal.md)
 - [在库查询测试指南](inventory-query-testing-guide.md)
 

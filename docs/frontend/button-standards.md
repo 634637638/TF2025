@@ -22,6 +22,10 @@ H5 手机端操作按钮和筛选语义的规格由公共令牌控制：主操�
 
 客服卡片使用 `el-button.tf-button--service-card`，悬浮客服入口使用 `el-button.tf-button--service-float`，规格统一在 `_buttons.scss` 维护。这两种按钮排除普通按钮的固定高度与默认中性色基线：卡片最小高度读取 `--tf-service-card-min-height`，长内容自然增高；浮标宽高读取 `--tf-service-float-size` 并保持圆形。并列卡片使用布局容器的间距，公共按钮须清除 Element Plus 相邻按钮的额外左边距。页面只负责联系方式内容与布局，不得重复维护按钮尺寸或背景。
 
+多行导航及可切换内容选项使用 `el-button.tf-button--content`：公共入口按内容自适应高度，允许换行，清除相邻按钮的附加左边距，内边距、圆角和文字读取公共令牌；通过 `aria-pressed="true"` 使用 `--tf-button-content-selected-*` 的浅紫底、紫色边框和文字，悬停及聚焦保留选中配色。页面只维护内部内容排列和列表布局。权限管理的页面模块、子页面 / 分组、角色库、本次分配和绑定门店使用此入口；多选项再次点击取消，保存期间禁用。不能通过给内部卡片另设边框、渐变或选中背景覆盖公共按钮外壳。
+
+内容选项与顶层 TAB、数据表格使用各自的交互语义：顶层 TAB 选中读取 `_tabs.scss` 的主色实底；表格悬停、手机轻触和勾选读取 `admin-layout.css` 的行状态令牌；授权状态徽章继续使用成功、警示和中性色，不能把业务状态色当作当前导航选中色。
+
 富文本工具栏、颜色色板、关闭图标、拖动手柄等专用工具控件可以使用独立样式，但必须使用明确的专用 class，不能覆盖 `.el-button`、`.btn` 或已有语义 class。
 
 ## 唯一控制入口
@@ -118,7 +122,7 @@ PC 顶部登录时间使用 `--tf-type-scale-13`（13px），保证时间信息�
 
 ## 模态框和确认框
 
-Element Plus 模态框 footer 内使用 `.tf-dialog-actions`：
+Element Plus 模态框 footer 和详情正文末尾的业务操作区使用 `.tf-dialog-actions`：
 
 ```vue
 <template #footer>
@@ -129,14 +133,16 @@ Element Plus 模态框 footer 内使用 `.tf-dialog-actions`：
 </template>
 ```
 
-PC 端模态框 footer 按钮按内容自适应并靠右，单个按钮最小宽度 `64px`、高度 `32px`、左右内边距 `8px`、间距 `4px`；平板和手机（`<=1024px`）保持 `40px` 高，操作组占满可用宽度，按钮等分且保持同宽、左右内边距 `10px`、间距 `8px`，不得改成上下排列或产生单侧大留白。
+PC 端模态框 footer 按钮按内容自适应并靠右，单个按钮最小宽度 `64px`、高度 `32px`、左右内边距 `8px`、间距 `4px`；平板（`768–1024px`）保持 `40px` 高、左右内边距 `10px`、间距 `8px`。手机（`<=767px`）以综合查询设备销售信息的紧凑按钮为标准：高度 `clamp(30px, 8.54vw, 32px)`（375px 及以上为 32px）、字号 `12px`、圆角复用公共控件令牌（`6px`）、左右内边距 `clamp(6px, 2.14vw, 8px)`、间距统一 `6px`。手机和平板操作区占满可用宽度，按钮按实际可见数量等分，每个最大 `150px`；空间不足时等分收缩，空间充足时每个按钮为 `150px`，整组居中。例如手机两个按钮连同 6px 间距最多占 `306px`，三个最多占 `462px`。不得改成上下排列或产生单侧大留白。
 
 公共 footer、MessageBox 操作区和正文 `.tf-dialog-toolbar` 将 `small/default/large` 高度别名统一到弹窗高度令牌，避免遗留的 `size` 属性改变尺寸。正文上传/批量下载等命令按钮复用 `.tf-dialog-toolbar`，按内容宽度排列，空间不足时可换行；不允许页面重新维护按钮高度、内边距或字号。
+
+手机端公共操作尺寸引用 `_buttons.scss` 中独立的 `--tf-button-small-base-*` 基础令牌，再由 `_dialog-actions.scss` 统一映射尺寸别名，避免循环引用或页面重复定义。浏览器回归执行 `npm --prefix frontend run test:dialog-widths`，包含真实综合查询组件、默认/自定义/原生 footer、正文工具栏、1～4 个按钮和明暗主题。
 
 照片缩略图的查看/删除使用 `el-button` 的 `primary/danger` 语义、小号 `circle` 规格，并提供 `title` 和 `aria-label`。全屏图片预览统一接入 `MediaPreviewViewer`，其工具按钮由 `tf-button--overlay-tool` 维护，删除附加 `tf-button--overlay-danger`；这些图标工具遵循公共媒体工具规格，不与 footer 普通文字按钮混用。国补申请、国补照片管理均遵守此规则。
 
 所有模态框（包括销售出库、批量销售、入库、划拨、批发、综合查询、权限和 H5 管理弹窗）都必须遵守同一条规则：
-PC 端按钮按内容自适应并靠右，手机端按钮居中等分、保持同一行，按钮高度、最小宽度、最大宽度和间距只能由
+PC 端按钮按内容自适应并靠右，手机端按钮居中等分、保持同一行，按钮高度、最小宽度、最大宽度（手机/平板 `--tf-dialog-action-max-width`）和间距只能由
 `_dialog-actions.scss` 控制。业务页面不得用 `grid-template-columns`、`flex-direction: column` 或按钮固定宽度覆盖这套规则。
 
 删除、停用、完成等 MessageBox 必须通过 `frontend/src/utils/message-box.ts` 的统一增强调用，语义 class 为 `message-box-danger`、`message-box-warning`、`message-box-success` 或 `message-box-primary`。禁止页面传入颜色 class。

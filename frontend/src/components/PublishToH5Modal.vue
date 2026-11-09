@@ -1,33 +1,115 @@
 <!--
-  PublishToH5Modal - 商品配置
+  PublishToH5Modal - 商城
   功能：设置商品验机信息、上传图片
 -->
 <template>
   <MobileDialog
     v-model="visible"
-    title="商品配置"
+    title="商城"
     :close-on-click-modal="false"
+    :close-on-press-escape="!busy"
+    :show-close="!busy"
     dialog-class="publish-to-h5-dialog crud-dialog-md-lg"
     :show-default-footer="false"
     @close="handleClose"
   >
-    <div
+    <SectionLoading
       v-if="loadingPhoneData"
-      class="publish-to-h5-loading"
-    >
-      <InlineLoading
-        text="加载商品信息中..."
-        size="large"
+      text="加载商品信息中..."
+    />
+    <div v-else-if="loadError">
+      <el-alert
+        title="商品信息加载失败，请重试后再保存"
+        type="error"
+        :closable="false"
       />
+      <div class="tf-dialog-toolbar">
+        <el-button
+          class="tf-button--refresh"
+          @click="loadPhoneData"
+        >
+          重新加载
+        </el-button>
+      </div>
     </div>
     <el-form
       v-else
       :model="form"
+      :disabled="busy || !canEdit"
       class="publish-to-h5-form"
       :label-width="isCompactLayout ? 'auto' : '90px'"
       :label-position="isCompactLayout ? 'top' : 'right'"
     >
-      <div class="publish-to-h5-grid">
+      <template v-if="isNewPhone">
+        <el-descriptions
+          :column="1"
+          border
+        >
+          <el-descriptions-item
+            label="商城模板"
+            label-class-name="whitespace-nowrap"
+          >
+            {{ templatePreview ? templatePreview.template_name || '未命名模板' : '未匹配模板' }}
+          </el-descriptions-item>
+          <el-descriptions-item
+            label="商城状态"
+            label-class-name="whitespace-nowrap"
+          >
+            <el-switch
+              v-model="isPublished"
+              :active-value="1"
+              :inactive-value="0"
+              active-text="已上架"
+              inactive-text="已下架"
+              aria-label="商城上架"
+              inline-prompt
+            />
+          </el-descriptions-item>
+          <el-descriptions-item
+            v-if="templatePreview"
+            label="商品介绍"
+            label-class-name="whitespace-nowrap"
+          >
+            {{ templatePreview.description || '暂无介绍' }}
+          </el-descriptions-item>
+        </el-descriptions>
+        <el-alert
+          v-if="!templatePreview"
+          title="尚未匹配启用的商城模板，请到 H5 商城模板管理中维护。"
+          type="warning"
+          :closable="false"
+        />
+        <div
+          v-if="templatePreview?.images?.length"
+          class="publish-to-h5-media"
+        >
+          <div class="image-grid">
+            <div
+              v-for="media in templatePreview.images"
+              :key="media.id"
+              class="publish-to-h5-media-card"
+            >
+              <video
+                v-if="isVideoMedia(media)"
+                class="publish-to-h5-media-thumb"
+                :src="formatImageUrl(media.image_url)"
+                controls
+                preload="metadata"
+              />
+              <Image
+                v-else
+                class="publish-to-h5-media-thumb"
+                :src="formatImageUrl(media.image_url)"
+                alt="模板商品图片"
+              />
+            </div>
+          </div>
+        </div>
+      </template>
+      <div
+        v-else
+        class="publish-to-h5-grid"
+      >
         <!-- 左列 -->
         <div class="publish-to-h5-column">
           <!-- 销售价格 -->
@@ -230,31 +312,42 @@
 
       <!-- 商品素材（跨两列） -->
       <el-form-item
+        v-if="!isNewPhone"
         label="商品素材"
         class="publish-to-h5-media-field"
       >
         <div class="publish-to-h5-media">
-          <!-- 统一上传按钮 -->
-          <el-upload
-            :headers="uploadHeaders"
-            :show-file-list="false"
-            :before-upload="beforeMediaUpload"
-            :http-request="handleMediaUpload"
-            :accept="MEDIA_UPLOAD_ACCEPT"
-            :disabled="uploading"
-            multiple
-            :auto-upload="false"
-            :on-change="handleFileChange"
-          >
-            <el-button
-              type="primary"
-              :loading="uploading"
+          <div class="tf-dialog-toolbar">
+            <el-upload
+              class="flex items-center"
+              :show-file-list="false"
+              :before-upload="beforeMediaUpload"
+              :http-request="handleMediaUpload"
+              :accept="MEDIA_UPLOAD_ACCEPT"
               :disabled="uploading"
+              multiple
+              :auto-upload="false"
+              :on-change="handleFileChange"
             >
-              <i class="fas fa-upload" />
-              <span class="ml-2">上传图片</span>
-            </el-button>
-          </el-upload>
+              <el-button
+                type="primary"
+                :loading="uploading"
+                :disabled="uploading"
+              >
+                <i class="fas fa-upload" />
+                <span class="ml-2">上传图片</span>
+              </el-button>
+            </el-upload>
+            <el-switch
+              v-model="isPublished"
+              :active-value="1"
+              :inactive-value="0"
+              active-text="上架"
+              inactive-text="下架"
+              aria-label="商城上架"
+              inline-prompt
+            />
+          </div>
 
           <!-- 待上传文件预览 -->
           <div
@@ -424,13 +517,16 @@
       <div class="tf-dialog-actions publish-to-h5-footer">
         <el-button
           type="default"
+          :disabled="busy"
           @click="handleClose"
         >
           取消
         </el-button>
         <el-button
+          v-permission="'inventory:edit'"
           type="primary"
           :loading="saving"
+          :disabled="loadingPhoneData || loadError || uploading || isProcessingFiles || !canEdit"
           @click="handleSave"
         >
           保存
@@ -448,20 +544,19 @@
 
 <script setup lang="ts">
 import { TIME_FORMATS } from '@/utils/time'
+import MediaPreviewViewer from '@/components/MediaPreviewViewer.vue'
+import draggable from 'vuedraggable'
 import { ref, computed, watch } from 'vue'
 
 import type { CheckboxValueType, UploadFile, UploadFiles, UploadRequestOptions } from 'element-plus'
-import { useAuthStore } from '@/stores/auth'
 import { unifiedApi as api } from '@/utils/unified-api'
 import { formatImageUrl } from '@/utils/format'
 import Image from './Image.vue'
-import MediaPreviewViewer from '@/components/MediaPreviewViewer.vue'
-import InlineLoading from '@/components/InlineLoading.vue'
+import SectionLoading from '@/components/SectionLoading.vue'
+import { usePagePermissions } from '@/composables/usePagePermissions'
 import { useMobile } from '@/composables/mobile'
-import draggable from 'vuedraggable'
 import { logger } from '@/utils/logger'
 import { isVideoMedia, type MediaPreviewItem } from '@/utils/media'
-import type { ProductDetail } from '@/api/shop-public'
 import { MEDIA_UPLOAD_ACCEPT, isPdfFile, prepareMediaFile } from '@/utils/upload-media'
 import type { ModelValueProps, SuccessEmits, UpdateModelValueEmits } from '@/types'
 import {
@@ -479,7 +574,6 @@ import {
   hasPublishMediaFiles,
   isHeicFormat,
   normalizePublishSalePrice,
-  resolvePublishIsNewPhone,
   revokePendingFileUrls,
   validatePublishMediaFile
 } from './publish-to-h5/helpers'
@@ -488,6 +582,7 @@ import type {
   PendingUploadFile,
   PublishFormState,
   PublishInspectionResponse,
+  PhoneH5Configuration,
   UploadResult,
   UploadedMediaItem
 } from './publish-to-h5/types'
@@ -497,20 +592,22 @@ const globalNotifications = useNotification()
 
 interface Props extends ModelValueProps {
   phoneId: number | null
-  isNew?: boolean // 是否全新机，true=全新机不需要验机配置
 }
 
 const props = defineProps<Props>()
 const emit = defineEmits<UpdateModelValueEmits & SuccessEmits>()
 
-const authStore = useAuthStore()
+const { canEdit, handleNoPermission } = usePagePermissions('inventory')
 const { screenSize } = useMobile()
 const isCompactLayout = computed(() => screenSize.value.width > 0 && screenSize.value.width <= 768)
 
 // 对话框显示状态
 const visible = computed({
   get: () => props.modelValue,
-  set: (val) => emit('update:modelValue', val)
+  set: (val) => {
+    if (!val && busy.value) return
+    emit('update:modelValue', val)
+  }
 })
 
 // 表单数据
@@ -522,7 +619,10 @@ const uploadedMediaIds = ref<number[]>([])
 const uploading = ref(false)
 const saving = ref(false)
 const isNewPhone = ref(false) // 是否全新机
-const loadingPhoneData = ref(false) // 加载商品数据中
+const isPublished = ref<0 | 1>(1)
+const templatePreview = ref<PhoneH5Configuration['template']>(null)
+const loadError = ref(false)
+const loadingPhoneData = ref(true) // 加载商品数据中
 const showMediaPreview = ref(false)
 const previewMediaItems = ref<MediaPreviewItem[]>([])
 const previewMediaIndex = ref(0)
@@ -534,14 +634,10 @@ const productVideo = ref('')
 const pendingFiles = ref<PendingUploadFile[]>([])
 // 文件处理标志（防止重复触发）
 const isProcessingFiles = ref(false)
+const busy = computed(() => saving.value || uploading.value || isProcessingFiles.value)
 // 跟踪已处理的文件 UID（包括已删除的）
 const processedFileUids = ref<Set<string>>(new Set())
 let heicConverterLoader: Promise<HeicConverter> | null = null
-
-// 上传配置
-const uploadHeaders = computed(() => ({
-  'Authorization': `Bearer ${authStore.token || ''}`
-}))
 
 // 电池状况显示值
 const batteryDisplayValue = ref('')
@@ -564,83 +660,6 @@ const applyInspectionData = (inspectionData: PublishInspectionResponse | null | 
   const inspectionState = buildPublishInspectionForm(inspectionData)
   form.value = inspectionState.formData
   batteryDisplayValue.value = inspectionState.batteryDisplayValue
-}
-
-const normalizePublicProductImages = (rawImages: unknown[]): UploadedMediaItem[] => {
-  return rawImages
-    .map<UploadedMediaItem | null>((item, index) => {
-      if (typeof item === 'string') {
-        return {
-          id: -(index + 1),
-          image_type: 'other',
-          image_url: item,
-          is_primary: index === 0
-        } satisfies UploadedMediaItem
-      }
-
-      if (item && typeof item === 'object') {
-        const rawItem = item as Record<string, unknown>
-        const imageUrl = typeof rawItem.image_url === 'string'
-          ? rawItem.image_url
-          : typeof rawItem.url === 'string'
-            ? rawItem.url
-            : ''
-
-        if (!imageUrl) {
-          return null
-        }
-
-        return {
-          id: Number(rawItem.id ?? index + 1),
-          image_type: typeof rawItem.image_type === 'string' && rawItem.image_type
-            ? rawItem.image_type
-            : 'other',
-          image_url: imageUrl,
-          is_primary: typeof rawItem.is_primary === 'boolean' || typeof rawItem.is_primary === 'number'
-            ? rawItem.is_primary
-            : index === 0
-        } satisfies UploadedMediaItem
-      }
-
-      return null
-    })
-    .filter((item): item is UploadedMediaItem => Boolean(item?.image_url))
-}
-
-const loadPublicProductFallback = async () => {
-  if (!props.phoneId) return
-
-  try {
-    const response = await api.get<ProductDetail>(`/public/products/${props.phoneId}`)
-    if (!response.success || !response.data) {
-      return
-    }
-
-    const productData = response.data
-
-    if (typeof productData.is_new !== 'undefined') {
-      isNewPhone.value = resolvePublishIsNewPhone(productData.is_new, props.isNew)
-    }
-
-    if (!isNewPhone.value && productData.inspection) {
-      applyInspectionData(productData.inspection as PublishInspectionResponse)
-    }
-
-    const publicImages = normalizePublicProductImages(
-      Array.isArray(productData.images)
-        ? productData.images
-        : productData.main_image
-          ? [productData.main_image]
-          : []
-    )
-
-    if (publicImages.length > 0) {
-      images.value = publicImages
-      productVideo.value = findUploadedVideoUrl(publicImages)
-    }
-  } catch (error) {
-    logger.warn('读取H5公开商品数据失败:', error)
-  }
 }
 
 const resetUploadState = () => {
@@ -676,6 +695,9 @@ const resetPublishState = () => {
   form.value = createDefaultPublishForm()
   batteryDisplayValue.value = ''
   isNewPhone.value = false
+  isPublished.value = 1
+  templatePreview.value = null
+  loadError.value = false
   images.value = []
   productVideo.value = ''
   showMediaPreview.value = false
@@ -702,72 +724,32 @@ const handleBatteryInput = (value: string) => {
 const loadPhoneData = async () => {
   if (!props.phoneId) return
 
+  loadingPhoneData.value = true
   await cleanupUnsavedUploadedMedia()
   resetPublishState()
 
-  // 显示加载状态
-  loadingPhoneData.value = true
-
   try {
-    // 库存页已经知道当前商品的新旧机状态时，优先使用父组件传值，
-    // 避免额外依赖 /phones/:id（该接口权限更高，失败会阻断后续回填）
-    if (typeof props.isNew === 'boolean') {
-      isNewPhone.value = props.isNew
-    } else {
-      try {
-        const phoneRes = await api.get(`/phones/${props.phoneId}`)
-        if (phoneRes.success && phoneRes.data) {
-          isNewPhone.value = resolvePublishIsNewPhone(phoneRes.data.is_new, props.isNew)
-        }
-      } catch (error) {
-        logger.warn('获取商品基本信息失败，继续尝试加载图片与验机信息:', error)
-      }
-    }
+    const configuration = await api.get<PhoneH5Configuration>(`/phones/${props.phoneId}/h5-product`, {
+      useCache: false, showLoading: false, showError: false
+    })
+    if (!configuration.success || !configuration.data) throw new Error('无法读取商品配置')
+    const product = configuration.data
+    isNewPhone.value = Number(product.is_new) === 1
+    if (product.is_published !== 0 && product.is_published !== 1) throw new Error('商城上架状态无效')
+    isPublished.value = product.is_published
+    templatePreview.value = product.template
 
-    if (isNewPhone.value) {
-      globalNotifications.info('全新机使用模板配置，只需设置销售价格和上传商品图片')
-    }
-
-    // 加载验机信息（仅二手商品）
     if (!isNewPhone.value) {
-      try {
-        const inspectionRes = await api.get(`/phones/${props.phoneId}/inspection`)
-        if (inspectionRes.success && inspectionRes.data) {
-          applyInspectionData(inspectionRes.data)
-        }
-      } catch (error) {
-        logger.warn('加载验机信息失败:', error)
-      }
-    } else {
-      form.value = createDefaultPublishForm()
-      batteryDisplayValue.value = ''
-    }
-
-    // 加载图片
-    try {
-      const imagesRes = await api.get(`/phones/${props.phoneId}/images`)
-      if (imagesRes.success && imagesRes.data) {
-        images.value = normalizePublicProductImages(imagesRes.data as unknown[])
-        productVideo.value = findUploadedVideoUrl(images.value)
-      }
-    } catch (error) {
-      logger.warn('加载商品图片失败:', error)
-    }
-
-    const shouldUsePublicFallback =
-      images.value.length === 0 ||
-      (!isNewPhone.value &&
-        !form.value.condition_grade &&
-        !form.value.battery_status &&
-        !form.value.system_version &&
-        !form.value.model_version &&
-        !form.value.warranty_date &&
-        !form.value.sale_price)
-
-    if (shouldUsePublicFallback) {
-      await loadPublicProductFallback()
+      applyInspectionData(product)
+      const imagesRes = await api.get<UploadedMediaItem[]>(`/phones/${props.phoneId}/images`, {
+        useCache: false, showLoading: false, showError: false
+      })
+      if (!imagesRes.success || !Array.isArray(imagesRes.data)) throw new Error('无法读取商品素材')
+      images.value = imagesRes.data
+      productVideo.value = findUploadedVideoUrl(images.value)
     }
   } catch (error) {
+    loadError.value = true
     logger.error('加载数据失败:', error)
   } finally {
     loadingPhoneData.value = false
@@ -1217,10 +1199,14 @@ const handleImageDragEnd = async () => {
 
 // 保存
 const handleSave = async () => {
-  if (saving.value) return
+  if (busy.value || loadingPhoneData.value || loadError.value) return
+  if (!canEdit.value) {
+    handleNoPermission('edit')
+    return
+  }
   if (!props.phoneId) return
 
-  if (!hasPublishMediaFiles(images.value, pendingFiles.value)) {
+  if (!isNewPhone.value && isPublished.value === 1 && !hasPublishMediaFiles(images.value, pendingFiles.value)) {
     globalNotifications.warning('请至少上传一张商品图片或视频')
     return
   }
@@ -1241,13 +1227,15 @@ const handleSave = async () => {
     }
 
     // 上传完成后再保存验机信息（仅二手商品）
-    if (!isNewPhone.value) {
-      await api.post(`/phones/${props.phoneId}/inspection`, form.value)
-    }
+    const result = isNewPhone.value
+      ? await api.put(`/phones/${props.phoneId}/h5-product`, { is_published: isPublished.value }, { showLoading: false, showError: false })
+      : await api.post(`/phones/${props.phoneId}/inspection`, { ...form.value, is_published: isPublished.value }, { showLoading: false, showError: false })
+    if (!result.success) throw new Error(result.message || '保存失败')
     uploadedMediaIds.value = []
-    globalNotifications.success('保存成功')
+    globalNotifications.success('商城配置已保存')
     emit('success')
-    handleClose()
+    saving.value = false
+    await handleClose()
   } catch (error) {
     logger.error('保存失败:', error)
     globalNotifications.error('保存失败，请重试')
@@ -1258,6 +1246,7 @@ const handleSave = async () => {
 
 // 关闭对话框
 const handleClose = async () => {
+  if (busy.value) return
   await cleanupUnsavedUploadedMedia()
   visible.value = false
   resetPublishState()
@@ -1273,9 +1262,6 @@ defineExpose({
 :global(.publish-to-h5-dialog) {
   --tf-dialog-body-padding-inline: var(--tf-space-6);
   --tf-dialog-body-padding-block: var(--tf-space-5);
-  --tf-dialog-footer-padding-inline: var(--tf-space-6);
-  --tf-dialog-footer-padding-block-start: 0px;
-  --tf-dialog-footer-padding-block-end: var(--tf-space-6);
 }
 
 :global(.mobile-dialog-sheet-panel.publish-to-h5-dialog .mobile-dialog-sheet-title) {
@@ -1285,17 +1271,6 @@ defineExpose({
 :global(.mobile-dialog-sheet-panel.publish-to-h5-dialog .mobile-dialog-sheet-close) {
   right: 14px !important;
   transform: none !important;
-}
-
-.publish-to-h5-loading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 40px 16px;
-}
-
-.publish-to-h5-loading :deep(.inline-loading) {
-  color: var(--tf-color-blue-600);
 }
 
 .publish-to-h5-form {
@@ -1459,9 +1434,6 @@ defineExpose({
   :global(.publish-to-h5-dialog) {
     --tf-dialog-body-padding-inline: var(--tf-space-1);
     --tf-dialog-body-padding-block: var(--tf-space-2);
-    --tf-dialog-footer-padding-inline: var(--tf-space-1);
-    --tf-dialog-footer-padding-block-start: 0px;
-    --tf-dialog-footer-padding-block-end: var(--tf-space-1);
   }
 
   .publish-to-h5-grid {

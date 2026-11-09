@@ -168,12 +168,56 @@ export const initAdminTableDragScroll = () => {
 
   let dragState: DragState | null = null
   let suppressClickScroller: HTMLElement | null = null
+  let touchStart: { row: HTMLElement; pointerId: number; x: number; y: number; at: number } | null = null
+  let touchFeedbackTable: HTMLElement | null = null
+  const clearTouchFeedback = () => {
+    if (!touchFeedbackTable) return
+    clearManagedTableHoverRows(touchFeedbackTable)
+    clearActiveTableRowFrame(touchFeedbackTable)
+    touchFeedbackTable = null
+  }
+  const cancelTouchFeedback = () => {
+    touchStart = null
+    clearTouchFeedback()
+  }
   const lastScrollLeft = new WeakMap<HTMLElement, number>()
   const hasFinePointer = () => window.matchMedia?.('(hover: hover) and (pointer: fine)').matches ?? true
   const hasHoverPointer = (event: PointerEvent) =>
     (event.pointerType === 'mouse' || event.pointerType === 'pen') && hasFinePointer()
 
+  // 触摸只在完整轻触结束后绘制一次行反馈；滑动过程不测量布局。
+  document.addEventListener('pointerdown', (event) => {
+    if (event.pointerType !== 'touch') return
+    cancelTouchFeedback()
+    lastPointerPosition = null
+    if (event.isPrimary === false || !(event.target instanceof Element)
+      || event.target.closest(INTERACTIVE_SELECTOR)) return
+    const row = event.target.closest<HTMLElement>(TABLE_ROW_SELECTOR)
+    if (!row?.closest(TABLE_SELECTOR)) return
+    touchStart = { row, pointerId: event.pointerId, x: event.clientX, y: event.clientY, at: performance.now() }
+  }, { capture: true, passive: true })
+
+  document.addEventListener('pointerup', (event) => {
+    if (event.pointerType !== 'touch') return
+    const start = touchStart
+    touchStart = null
+    if (!start || event.pointerId !== start.pointerId || !start.row.isConnected
+      || performance.now() - start.at > 400
+      || Math.abs(event.clientX - start.x) > 10 || Math.abs(event.clientY - start.y) > 10
+      || !(event.target instanceof Element) || event.target.closest(INTERACTIVE_SELECTOR)
+      || event.target.closest(TABLE_ROW_SELECTOR) !== start.row) return
+    touchFeedbackTable = start.row.closest<HTMLElement>(TABLE_SELECTOR)
+    setManagedTableHoverRow(start.row)
+  }, { capture: true, passive: true })
+  document.addEventListener('pointercancel', cancelTouchFeedback, { capture: true, passive: true })
+  window.addEventListener('blur', cancelTouchFeedback)
+  window.addEventListener('resize', cancelTouchFeedback)
+
   document.addEventListener('pointermove', (event) => {
+    if (touchStart && event.pointerType === 'touch' && event.pointerId === touchStart.pointerId
+      && (Math.abs(event.clientX - touchStart.x) > 10 || Math.abs(event.clientY - touchStart.y) > 10)) {
+      touchStart = null
+    }
     if (!hasHoverPointer(event)) return
     lastPointerPosition = { x: event.clientX, y: event.clientY }
     if (!(event.target instanceof Element)) return
@@ -187,6 +231,7 @@ export const initAdminTableDragScroll = () => {
   // Element Plus fixed-layout tables render header and body in separate layers.
   // Keep them synchronized for native touch/trackpad scrolling as well as dragging.
   document.addEventListener('scroll', (event) => {
+    cancelTouchFeedback()
     const scroller = event.target
     if (!(scroller instanceof HTMLElement) || !scroller.matches(SCROLLER_SELECTOR)) return
     const table = scroller.closest<HTMLElement>(TABLE_SELECTOR)

@@ -12,6 +12,7 @@ const permissionLogsController = new PermissionLogsController(permissionLogsServ
 router.get('/logs', unifiedAuth, requirePermission('permissions:admin'), permissionLogsController.list.bind(permissionLogsController))
 router.get('/stats', unifiedAuth, requirePermission('permissions:admin'), permissionLogsController.stats.bind(permissionLogsController))
 router.post('/log', unifiedAuth, requirePermission('permissions:admin'), permissionLogsController.create.bind(permissionLogsController))
+router.delete('/logs', unifiedAuth, requirePermission('permissions:delete'), permissionLogsController.clear.bind(permissionLogsController))
 router.delete('/logs/:id', unifiedAuth, requirePermission('permissions:admin'), permissionLogsController.delete.bind(permissionLogsController))
 
 module.exports = {

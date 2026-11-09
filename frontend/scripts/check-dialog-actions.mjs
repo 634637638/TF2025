@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { readFileSync, readdirSync, statSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import { extname, join, relative, resolve } from 'node:path'
 
 const root = resolve(import.meta.dirname, '..')
@@ -97,7 +97,7 @@ for (const style of extractStyleSources(mobileDialogPath, mobileDialogSource)) {
   for (const block of blocks(style.source)) {
     if (!/mobile-dialog-sheet-footer/.test(block.selector) || !/:deep\(\.el-button/.test(block.selector)) continue
     if (/(?:^|[;\s])(?:min-)?height\s*:/i.test(directDeclarations(block.body))) {
-      findings.push('src/components/MobileDialog.vue 不得覆盖移动端 footer 按钮高度，统一固定为 40px')
+      findings.push('src/components/MobileDialog.vue 不得覆盖移动端 footer 按钮高度，统一使用公共响应式高度令牌')
     }
   }
 }

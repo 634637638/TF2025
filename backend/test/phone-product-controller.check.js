@@ -23,7 +23,7 @@ const responseHelper = {
 
 const makeResponse = () => ({})
 
-test('H5上架查询保留默认状态及既有响应', async () => {
+test('不存在的设备不返回可保存的默认上架配置', async () => {
   const calls = []
   const controller = new PhoneProductController({
     service: { async getPhoneH5Product(id) { calls.push(id); return null } },
@@ -34,11 +34,8 @@ test('H5上架查询保留默认状态及既有响应', async () => {
   await controller.getH5Product({ params: { id: '12' } }, response)
 
   assert.deepEqual(calls, ['12'])
-  assert.deepEqual(response.body, {
-    success: true,
-    data: { is_published: 1 },
-    message: '未找到上架信息，默认上架'
-  })
+  assert.equal(response.statusCode, 404)
+  assert.deepEqual(response.body, { success: false, message: '设备不存在' })
 })
 
 test('H5上架更新只接受数值 0 或 1，并调用既有服务契约', async () => {
@@ -111,4 +108,19 @@ test('验机信息查询保留空值响应和路由认证权限', async () => {
   assert.ok(route.includes("router.put('/:id/h5-product',\n  unifiedAuth,\n  requirePermission('inventory:edit'),\n  phoneProductController.updateH5Product.bind(phoneProductController)\n)"))
   assert.ok(route.includes("router.post('/:id/inspection',\n  unifiedAuth,\n  requirePermission('inventory:edit'),\n  phoneProductController.saveInspection.bind(phoneProductController)\n)"))
   assert.ok(route.includes("router.get('/:id/inspection',\n  unifiedAuth,\n  requirePermission('inventory:view'),\n  phoneProductController.getInspection.bind(phoneProductController)\n)"))
+})
+
+
+test('验机与上下架在同一次保存中传入 service，拒绝非法状态', async () => {
+  const calls = []
+  const controller = new PhoneProductController({
+    service: { async saveProductInspection(...args) { calls.push(args) } },
+    response: responseHelper
+  })
+  await controller.saveInspection({ params: { id: '12' }, body: { is_published: 0 } }, makeResponse())
+  assert.equal(calls[0][1].is_published, 0)
+  const invalid = makeResponse()
+  await controller.saveInspection({ params: { id: '12' }, body: { is_published: '0' } }, invalid)
+  assert.equal(invalid.statusCode, 400)
+  assert.equal(calls.length, 1)
 })

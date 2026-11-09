@@ -105,6 +105,23 @@ class PermissionLogsController {
     }
   }
 
+  async clear(req, res) {
+    try {
+      const deletedCount = await this.service.clearLogs(req.user)
+      return res.json({
+        success: true,
+        message: '权限日志已清空',
+        data: { deleted_count: deletedCount }
+      })
+    } catch (error) {
+      if (error.code === 'INVALID_ACTOR') {
+        return res.status(401).json({ success: false, message: '认证用户信息无效', code: error.code })
+      }
+      log.error('清空权限日志失败:', error)
+      return res.status(500).json({ success: false, message: '清空权限日志失败，请稍后重试' })
+    }
+  }
+
   async delete(req, res) {
     try {
       await this.service.deleteLog(req.params.id)

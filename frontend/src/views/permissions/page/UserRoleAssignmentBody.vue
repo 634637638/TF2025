@@ -64,19 +64,19 @@
         v-if="filteredRoles.length > 0"
         class="role-group assignment-role-grid"
       >
-        <label
+        <el-button
           v-for="role in filteredRoles"
           :key="role.id"
-          :class="['assignment-role-option', { selected: selectedIds.includes(role.id) }]"
+          native-type="button"
+          class="tf-button--content assignment-role-option"
+          :aria-pressed="selectedIds.includes(role.id)"
+          :disabled="isSaving"
+          @click="toggleRole(role.id)"
         >
-          <input
-            v-model="selectedIds"
-            type="checkbox"
-            class="form-check-input assignment-role-input"
-            :value="role.id"
-            :disabled="isSaving"
+          <span
+            class="assignment-role-check"
+            aria-hidden="true"
           >
-          <span class="assignment-role-check">
             <i :class="selectedIds.includes(role.id) ? 'fas fa-check' : 'fas fa-plus'" />
           </span>
           <div class="assignment-role-card">
@@ -106,7 +106,7 @@
               </span>
             </div>
           </div>
-        </label>
+        </el-button>
       </div>
 
       <DataEmptyState
@@ -128,19 +128,24 @@
 
       <div
         v-if="selectedIds.length > 0"
-        class="selected-roles-list assignment-selected-list"
+        class="assignment-selected-list"
       >
         <el-button
           v-for="roleId in selectedIds"
           :key="roleId"
           native-type="button"
-          class="selected-role-tag assignment-selected-tag"
+          class="tf-button--content assignment-selected-tag"
+          aria-pressed="true"
           title="点击移除"
+          :aria-label="`移除角色：${getRoleName(roleId)}`"
           :disabled="isSaving"
           @click="removeRole(roleId)"
         >
-          <span>{{ getRoleName(roleId) }}</span>
-          <i class="fas fa-times" />
+          <span class="selected-role-name">{{ getRoleName(roleId) }}</span>
+          <i
+            class="fas fa-times"
+            aria-hidden="true"
+          />
         </el-button>
       </div>
 
@@ -200,6 +205,12 @@ const filteredRoles = computed(() => {
 
 const removeRole = (roleId: number) => {
   selectedIds.value = selectedIds.value.filter(id => id !== roleId)
+}
+
+const toggleRole = (roleId: number) => {
+  selectedIds.value = selectedIds.value.includes(roleId)
+    ? selectedIds.value.filter(id => id !== roleId)
+    : [...selectedIds.value, roleId]
 }
 
 const getRoleName = (roleId: number) => {

@@ -2,7 +2,6 @@
   <MobileDialog
     :model-value="modelValue"
     :title="`${roleName || ''} - 字段权限配置`"
-    width="1200px"
     dialog-class="permissions-dialog role-field-permission-dialog tf-dialog-body-flush"
     :show-default-footer="false"
     @update:model-value="emit('update:modelValue', $event)"
@@ -22,10 +21,12 @@
           />
 
           <template v-else>
-            <div
+            <el-button
               v-for="module in modules"
               :key="module.module_key || module.key"
-              :class="['module-item-grid', { active: selectedModuleKey === getModuleKey(module) }]"
+              native-type="button"
+              class="tf-button--content module-item-grid"
+              :aria-pressed="selectedModuleKey === getModuleKey(module)"
               :title="module.name"
               @click="emit('selectModule', module)"
             >
@@ -35,7 +36,7 @@
               <div class="module-name">
                 {{ module.name }}
               </div>
-            </div>
+            </el-button>
           </template>
         </div>
       </div>
@@ -62,7 +63,8 @@
               v-for="group in fieldGroups"
               :key="group.name"
               native-type="button"
-              :class="['group-nav-item', { active: activeGroupName === group.name }]"
+              :aria-pressed="activeGroupName === group.name"
+              :class="['tf-button--content group-nav-item', { active: activeGroupName === group.name }]"
               @click="activeGroupName = group.name"
             >
               <div class="group-nav-main">
@@ -93,6 +95,9 @@
                 <h3 class="field-config-title">
                   {{ selectedModule.name }}
                 </h3>
+                <div class="selection-summary">
+                  已选择 {{ selectedFields.length }} 个字段隐藏
+                </div>
               </div>
             </div>
 
@@ -207,36 +212,28 @@
     </div>
 
     <template #footer>
-      <div class="dialog-footer permission-summary-footer">
-        <div
-          v-if="selectedModule"
-          class="selection-summary"
+      <div class="tf-dialog-actions">
+        <el-button
+          type="info"
+          @click="emit('close')"
         >
-          <span>已选择 {{ selectedFields.length }} 个字段隐藏</span>
-        </div>
-        <div class="tf-dialog-actions footer-actions">
-          <el-button
-            type="info"
-            @click="emit('close')"
-          >
-            取消
-          </el-button>
-          <el-button
-            type="primary"
-            :disabled="saving || !selectedModule"
-            @click="emit('save')"
-          >
-            <InlineLoading
-              v-if="saving"
-              text="保存中..."
-              size="small"
-              variant="inherit"
-            />
-            <template v-else>
-              保存配置
-            </template>
-          </el-button>
-        </div>
+          取消
+        </el-button>
+        <el-button
+          type="primary"
+          :disabled="saving || !selectedModule"
+          @click="emit('save')"
+        >
+          <InlineLoading
+            v-if="saving"
+            text="保存中..."
+            size="small"
+            variant="inherit"
+          />
+          <template v-else>
+            保存配置
+          </template>
+        </el-button>
       </div>
     </template>
   </MobileDialog>

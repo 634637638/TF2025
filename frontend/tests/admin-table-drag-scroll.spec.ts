@@ -26,6 +26,7 @@ describe('统一表格横向拖动', () => {
     initAdminTableDragScroll()
   })
   beforeEach(() => {
+    window.dispatchEvent(new Event('blur'))
     finePointer = true
     pointer(document, 'pointerup', 0)
     document.body.innerHTML = ''
@@ -126,5 +127,65 @@ describe('统一表格横向拖动', () => {
 
     expect(querySelectorAll).not.toHaveBeenCalled()
     querySelectorAll.mockRestore()
+  })
+
+  const touchTable = () => {
+    finePointer = false
+    document.body.innerHTML = '<div class="data-table"><div class="el-table__body-wrapper"><div class="el-scrollbar__wrap"><table class="el-table__body"><tbody><tr class="el-table__row"><td>报价一</td></tr><tr class="el-table__row row-selected"><td>报价二<button>编辑</button></td></tr></tbody></table></div></div></div>'
+    const rows = [...document.querySelectorAll<HTMLElement>('.el-table__row')]
+    const wrapper = document.querySelector<HTMLElement>('.el-table__body-wrapper')!
+    wrapper.getBoundingClientRect = () => new DOMRect(0, 0, 300, 80)
+    rows.forEach((row, index) => { row.getBoundingClientRect = () => new DOMRect(0, index * 40, 300, 40) })
+    return { rows, wrapper, scroller: document.querySelector<HTMLElement>('.el-scrollbar__wrap')! }
+  }
+
+  it('手机轻触整行恢复外包围，切换行不改变勾选或拦截点击', () => {
+    const { rows, wrapper } = touchTable()
+    expect(pointer(rows[0], 'pointerdown', 10, 'touch').defaultPrevented).toBe(false)
+    expect(pointer(rows[0], 'pointerup', 10, 'touch').defaultPrevented).toBe(false)
+    expect(rows[0].classList.contains('is-admin-table-row-hover')).toBe(true)
+    expect(wrapper.classList.contains('is-admin-table-row-framed')).toBe(true)
+    expect(rows[0].classList.contains('row-selected')).toBe(false)
+    pointer(rows[1], 'pointerdown', 10, 'touch')
+    pointer(rows[1], 'pointerup', 10, 'touch')
+    expect(rows[0].classList.contains('is-admin-table-row-hover')).toBe(false)
+    expect(rows[1].classList.contains('is-admin-table-row-hover')).toBe(true)
+    expect(rows[1].classList.contains('row-selected')).toBe(true)
+  })
+
+  it('手机滑动不画行外包围，滚动会清理轻触反馈且不测量行布局', () => {
+    const { rows, wrapper, scroller } = touchTable()
+    const measure = vi.spyOn(rows[0], 'getBoundingClientRect')
+    pointer(rows[0], 'pointerdown', 10, 'touch')
+    pointer(rows[0], 'pointermove', 40, 'touch')
+    pointer(rows[0], 'pointerup', 10, 'touch')
+    expect(rows[0].classList.contains('is-admin-table-row-hover')).toBe(false)
+    expect(measure).not.toHaveBeenCalled()
+    pointer(rows[0], 'pointerdown', 10, 'touch')
+    pointer(rows[0], 'pointerup', 10, 'touch')
+    expect(wrapper.classList.contains('is-admin-table-row-framed')).toBe(true)
+    measure.mockClear()
+    scroller.dispatchEvent(new Event('scroll'))
+    expect(wrapper.classList.contains('is-admin-table-row-framed')).toBe(false)
+    expect(rows[0].classList.contains('is-admin-table-row-hover')).toBe(false)
+    expect(measure).not.toHaveBeenCalled()
+    measure.mockRestore()
+  })
+
+  it('操作按钮、触摸取消和窗口失焦不会留下行外包围', () => {
+    const { rows, wrapper } = touchTable()
+    const button = rows[1].querySelector('button')!
+    pointer(button, 'pointerdown', 10, 'touch')
+    pointer(button, 'pointerup', 10, 'touch')
+    expect(wrapper.classList.contains('is-admin-table-row-framed')).toBe(false)
+    pointer(rows[0], 'pointerdown', 10, 'touch')
+    pointer(rows[0], 'pointercancel', 10, 'touch')
+    pointer(rows[0], 'pointerup', 10, 'touch')
+    expect(wrapper.classList.contains('is-admin-table-row-framed')).toBe(false)
+    pointer(rows[0], 'pointerdown', 10, 'touch')
+    pointer(rows[0], 'pointerup', 10, 'touch')
+    expect(wrapper.classList.contains('is-admin-table-row-framed')).toBe(true)
+    window.dispatchEvent(new Event('blur'))
+    expect(wrapper.classList.contains('is-admin-table-row-framed')).toBe(false)
   })
 })

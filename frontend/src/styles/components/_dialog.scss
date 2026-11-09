@@ -19,7 +19,7 @@
   --tf-dialog-close-bg: rgba(255, 255, 255, 0.16);
   --tf-dialog-close-bg-hover: rgba(255, 255, 255, 0.24);
   --tf-dialog-side-gap: 32px;
-  --tf-dialog-width: 700px;
+  --tf-dialog-width: 880px;
   --tf-dialog-max-width: 880px;
   /* Confirmation messages need room for product names and identifiers. */
   --tf-dialog-message-width: 560px;
@@ -43,7 +43,6 @@
   --tf-dialog-footer-padding-block-start: 16px;
   --tf-dialog-footer-padding-inline: 20px;
   --tf-dialog-footer-padding-block-end: 20px;
-  --tf-dialog-footer-gap: 12px;
   --tf-dialog-mobile-side-gap: 4px;
   --tf-dialog-mobile-footer-padding-block-start: 12px;
   --tf-dialog-mobile-footer-padding-inline: 12px;
@@ -318,11 +317,6 @@ body .mobile-dialog-sheet-close svg {
 
 .el-dialog__footer,
 .el-message-box__btns {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: flex-end !important;
-  gap: var(--tf-dialog-footer-gap) !important;
-  flex-wrap: nowrap !important;
   padding: var(--tf-dialog-footer-padding-block-start) var(--tf-dialog-footer-padding-inline) var(--tf-dialog-footer-padding-block-end) !important;
   border-top: 1px solid var(--tf-dialog-border) !important;
   background: var(--tf-dialog-footer-bg) !important;
@@ -454,7 +448,6 @@ body .mobile-dialog-sheet-close svg {
     --tf-dialog-footer-padding-block-start: 12px;
     --tf-dialog-footer-padding-inline: 12px;
     --tf-dialog-footer-padding-block-end: calc(12px + env(safe-area-inset-bottom, 0px));
-    --tf-dialog-footer-gap: 8px;
   }
 
   .el-overlay.el-overlay-dialog,
@@ -474,17 +467,6 @@ body .mobile-dialog-sheet-close svg {
       calc(100vw - (var(--mobile-dialog-effective-side-gap, var(--tf-dialog-mobile-side-gap)) * 2)),
       var(--tf-dialog-explicit-max-width, var(--dialog-max-width, var(--tf-dialog-max-width)))
     );
-  }
-
-  .el-dialog__footer,
-  .el-message-box__btns,
-  .mobile-dialog-footer,
-  .default-footer,
-  .dialog-footer,
-  .modal-footer {
-    align-items: stretch !important;
-    justify-content: stretch !important;
-    gap: var(--tf-dialog-footer-gap) !important;
   }
 
   .el-dialog__footer {

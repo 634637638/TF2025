@@ -77,11 +77,13 @@
             <span
               v-if="row.stores && row.stores.length > 0"
               class="stores-cell"
-            ><span
+            ><el-tag
               v-for="store in row.stores"
               :key="store.store_id"
-              class="store-badge-small"
-            >{{ store.store_name }}{{ store.is_primary ? ' (主)' : '' }}</span></span><span
+              :type="store.is_primary ? 'primary' : 'info'"
+              size="small"
+              :class="['tf-tag--wrap', { 'tf-tag--neutral': !store.is_primary }]"
+            >{{ store.store_name }}{{ store.is_primary ? ' · 主' : '' }}</el-tag></span><span
               v-else
               class="text-muted"
             >未绑定</span>
@@ -116,10 +118,10 @@
                 v-if="ctx.canEdit"
                 type="primary"
                 size="small"
-                title="管理门店"
+                :title="row.stores?.length ? '管理' : '绑定'"
                 @click.stop="ctx.openStoreBindingDialog(row)"
               >
-                <i class="fas fa-link" /><span>{{ row.stores && row.stores.length > 0 ? '管理门店' : '绑定门店' }}</span>
+                <i class="fas fa-link" /><span>{{ row.stores && row.stores.length > 0 ? '管理' : '绑定' }}</span>
               </el-button><el-button
                 v-if="ctx.canDelete && row.stores && row.stores.length > 0"
                 type="danger"
@@ -173,7 +175,7 @@ import type { StoreBindingUser } from '../types'
 const ctx = usePermissionsPageContext()
 const getStoreNames = (row: StoreBindingUser) => (
   row.stores?.length
-    ? row.stores.map(store => `${store.store_name}${store.is_primary ? ' (主)' : ''}`).join(' ')
+    ? row.stores.map(store => `${store.store_name}${store.is_primary ? ' · 主' : ''}`).join(' ')
     : '未绑定'
 )
 const getStoreColumnWidth = (
@@ -186,7 +188,7 @@ const getStoreColumnWidth = (
 const storeBindingActionColumnWidth = computed(() => (
   getAdaptiveActionColumnWidth(ctx.paginatedStoreBindings, [
     {
-      label: (row: StoreBindingUser) => row.stores?.length ? '管理门店' : '绑定门店',
+      label: (row: StoreBindingUser) => row.stores?.length ? '管理' : '绑定',
       visible: true
     },
     {

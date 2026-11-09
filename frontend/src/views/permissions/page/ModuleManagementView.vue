@@ -41,7 +41,7 @@
             <div class="form-group filter-item">
               <el-select
                 v-model="filterCategory"
-                class="form-control"
+                class="module-standard-select"
                 placeholder="全部分类"
                 @change="handleCategoryFilter"
               >
@@ -62,7 +62,7 @@
             <div class="form-group filter-item">
               <el-select
                 v-model="nameStatus"
-                class="form-control"
+                class="module-standard-select"
                 placeholder="全部名称状态"
                 @change="handleNameStatusFilter"
               >
@@ -79,7 +79,7 @@
             <div class="form-group filter-item">
               <el-select
                 v-model="activeStatus"
-                class="form-control"
+                class="module-standard-select"
                 placeholder="全部启用状态"
                 @change="handleActiveStatusFilter"
               >
@@ -96,7 +96,7 @@
           </UnifiedSearchPanel>
 
           <!-- 已注册模块列表 -->
-          <div class="modules-section admin-panel admin-table-panel">
+          <div class="table-section modules-section admin-panel admin-table-panel">
             <div class="section-title">
               <div class="section-title-left">
                 <i class="fas fa-list" />
@@ -159,7 +159,7 @@
               title="暂无模块数据"
               :description="searchText || filterCategory || nameStatus || activeStatus
                 ? '没有符合筛选条件的模块'
-                : '系统中还没有注册任何权限模块，请先进行模块扫描和注册'"
+                : '请先进行模块扫描！'"
             >
               <el-button
                 v-if="searchText || filterCategory || nameStatus || activeStatus"
@@ -327,10 +327,6 @@
                 v-for="module in paginatedModules"
                 :key="module.id"
                 class="module-card"
-                :class="{
-                  'custom-name': module.is_custom_name === 1,
-                  'inactive-module': !module.is_active
-                }"
               >
                 <div class="card-header">
                   <div class="module-header-main">
@@ -774,7 +770,7 @@
                   </label>
                   <el-select
                     v-model="newModule.category"
-                    class="form-control"
+                    class="module-standard-select"
                     placeholder="请选择分类"
                   >
                     <el-option
@@ -802,7 +798,7 @@
                   <label class="form-label">图标</label>
                   <el-select
                     v-model="newModule.icon"
-                    class="form-control"
+                    class="module-standard-select"
                     placeholder="请选择图标"
                   >
                     <el-option
@@ -1459,22 +1455,9 @@ export default {
   z-index: 1;
 }
 
-.form-control {
-  flex: 1;
-  padding: 8px 12px;
-  border: 1px solid var(--tf-color-gray-300-alt);
-  border-radius: 10px;
-  font-size: var(--tf-type-scale-14);
-  transition: border-color 0.2s, box-shadow 0.2s;
-  min-height: 34px;
-  background: var(--color-bg-white);
+.module-standard-select {
   width: 100%;
-  box-sizing: border-box;
-}
-
-.input-group .form-control {
-  padding-left: 36px;
-  padding-right: 36px;
+  min-width: 0;
 }
 
 .input-group .module-search-control {
@@ -1490,12 +1473,6 @@ export default {
 .module-search-control :deep(.el-input__inner),
 .module-standard-input :deep(.el-input__inner) {
   min-width: 0;
-}
-
-.form-control:focus {
-  outline: none;
-  border-color: var(--tf-color-blue-legacy);
-  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
 }
 
 /* 搜索清除按钮仅作输入框内定位，视觉规格由公共 el-button text 基线维护 */
@@ -1698,32 +1675,18 @@ export default {
 }
 
 .module-card {
-  background: var(--color-bg-white);
+  background: var(--admin-stat-card-bg);
   border-radius: var(--admin-panel-radius);
-  border: 1px solid var(--tf-color-border-blue-muted);
+  border: 1px solid var(--admin-table-panel-border);
   overflow: hidden;
-  transition: all 0.25s ease;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
   position: relative;
-  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
-}
-
-.module-card.custom-name {
-  border-color: rgba(245, 158, 11, 0.28);
-  box-shadow: 0 16px 34px rgba(245, 158, 11, 0.12);
-}
-
-.module-card.inactive-module {
-  border-color: rgba(100, 116, 139, 0.28);
-  box-shadow: 0 12px 28px rgba(100, 116, 139, 0.1);
-}
-
-.module-card.inactive-module .card-header {
-  background: var(--tf-color-slate-50);
+  box-shadow: var(--admin-table-panel-shadow);
 }
 
 .module-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.1);
+  border-color: var(--admin-interactive-hover-border);
+  box-shadow: var(--admin-interactive-hover-shadow);
 }
 
 .card-header {
@@ -2181,32 +2144,6 @@ export default {
       }
     }
 
-    .form-control {
-      width: 100%;
-      padding: 12px 16px;
-      border: 2px solid var(--tf-color-neutral-200);
-      border-radius: 8px;
-      font-size: var(--tf-type-scale-14);
-      transition: border-color 0.2s ease, box-shadow 0.2s ease;
-      background: white;
-      box-sizing: border-box;
-
-      &:focus {
-        outline: none;
-        border-color: var(--tf-color-blue-500);
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-      }
-
-      &::placeholder {
-        color: var(--tf-color-neutral-400);
-      }
-
-      &:read-only {
-        background: var(--tf-color-neutral-50);
-        color: var(--tf-color-neutral-500);
-      }
-    }
-
     .input-hint {
       margin-top: 4px;
       font-size: var(--tf-type-scale-12);
@@ -2445,15 +2382,6 @@ export default {
   color: var(--tf-color-red-500);
 }
 
-.form-control.is-invalid {
-  border-color: var(--tf-color-red-500);
-}
-
-.form-control.is-invalid:focus {
-  border-color: var(--tf-color-red-500);
-  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
-}
-
 .flex-checkbox {
   display: flex;
   align-items: center;
@@ -2512,28 +2440,6 @@ export default {
     cursor: not-allowed;
   }
 
-  .form-control {
-    background: var(--color-bg-white) !important;
-    border: 2px solid var(--tf-color-neutral-200);
-
-    &:focus {
-      outline: none;
-      border-color: var(--tf-color-blue-500);
-      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-    }
-
-    &:disabled,
-    &[readonly] {
-      background: var(--tf-color-neutral-50) !important;
-      color: var(--tf-color-neutral-500);
-      cursor: not-allowed;
-    }
-
-    &::placeholder {
-      color: var(--tf-color-neutral-400);
-    }
-  }
-
   /* Element Plus 复选框样式 */
   .el-checkbox {
     display: flex;
@@ -2553,10 +2459,6 @@ export default {
 
 <style lang="scss">
 .module-management {
-  --permission-bg: linear-gradient(180deg, #f5f7fb 0%, #eef3f9 100%);
-  --permission-card: rgba(255, 255, 255, 0.94);
-  --permission-border: rgba(15, 23, 42, 0.08);
-  --permission-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
   width: 100%;
   max-width: 100%;
   min-width: 0;
@@ -2570,32 +2472,8 @@ export default {
   gap: 20px;
 }
 
-.module-management .modules-section {
-  background: var(--permission-card);
-  border: 1px solid var(--permission-border);
-  box-shadow: var(--permission-shadow);
-}
-
-.module-management .modules-section {
-  border-radius: 24px;
-}
-
 .module-management .section-title {
   color: var(--tf-color-slate-900);
 }
 
-.module-management .module-table thead th {
-  background: var(--tf-color-surface-blue-muted);
-  color: var(--tf-color-slate-900);
-}
-
-.module-management .module-table tbody tr:hover {
-  background: rgba(36, 87, 245, 0.03);
-}
-
-@media (max-width: 767px) {
-  .module-management .modules-section {
-    border-radius: 20px;
-  }
-}
 </style>

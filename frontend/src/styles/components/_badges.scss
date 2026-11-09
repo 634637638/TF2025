@@ -288,6 +288,21 @@
   }
 }
 
+/* Long labels remain complete within narrow table cells and dialog summaries. */
+.el-tag.tf-tag--wrap {
+  max-width: 100%;
+  height: auto;
+  min-height: var(--admin-data-table-badge-height);
+  white-space: normal;
+}
+
+.el-tag.tf-tag--wrap .el-tag__content {
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: var(--tf-line-height-body);
+}
+
 /* Element Plus tags use the same semantic palette as native status badges. */
 .el-tag.el-tag--success {
   --el-tag-bg-color: var(--tf-status-success-bg);
@@ -317,4 +332,11 @@
   --el-tag-bg-color: var(--tf-status-primary-bg);
   --el-tag-border-color: var(--tf-status-primary-border);
   --el-tag-text-color: var(--tf-status-primary-color);
+}
+
+/* Neutral association labels carry no success, warning or action meaning. */
+.el-tag.tf-tag--neutral {
+  --el-tag-bg-color: var(--tf-status-neutral-bg);
+  --el-tag-border-color: var(--tf-status-neutral-border);
+  --el-tag-text-color: var(--tf-status-neutral-color);
 }

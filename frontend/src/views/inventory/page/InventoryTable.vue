@@ -54,6 +54,19 @@
             <span v-else-if="column.key === 'is_preordered'">
               <span :class="['status-badge', getSaleStatusClass(item)]">{{ getSaleStatusLabel(item) }}</span>
             </span>
+            <div
+              v-else-if="column.key === 'mall'"
+              class="action-buttons"
+            >
+              <el-button
+                v-if="canEdit"
+                v-permission="'inventory:edit'"
+                class="table-action table-action--manage"
+                @click.stop="emit('open-config', item)"
+              >
+                商城
+              </el-button>
+            </div>
             <span v-else-if="column.key === 'inventory_time'">{{ formatDate(item.inventory_time) }}</span>
             <div
               v-else-if="column.key === 'actions'"
@@ -175,6 +188,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   delete: [item: InventoryItem]
   edit: [item: InventoryItem]
+  'open-config': [item: InventoryItem]
   'pagination-change': [pagination: { page: number; pageSize: number }]
   'quick-sale': [item: InventoryItem]
   view: [item: InventoryItem]

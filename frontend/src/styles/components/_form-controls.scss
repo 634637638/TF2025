@@ -31,7 +31,7 @@ html body :is(
 }
 
 /* 普通表单控件高度统一读取公共令牌（当前为 30px），搜索区和表格排序复用同一规格。 */
-:where(
+html body :is(
   .el-input__wrapper,
   .el-select__wrapper,
   .el-date-editor .el-input__wrapper,
@@ -230,7 +230,7 @@ input[type='number']::-webkit-inner-spin-button,
     --tf-textarea-compact-height: 68px;
   }
 
-  :where(
+  html body :is(
     .el-input__wrapper,
     .el-select__wrapper,
     .el-date-editor .el-input__wrapper,

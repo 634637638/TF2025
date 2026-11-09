@@ -5,6 +5,7 @@ const { withConnection } = require('../core/db/connection')
  */
 
 const db = require('../config/database')
+const PhoneProductRepository = require('../repositories/phone-product.repository')
 const fs = require('fs').promises
 const path = require('path')
 const log = require('../utils/log')
@@ -36,6 +37,10 @@ const selectFields = (fields, alias = '') => fields
   .join(', ')
 
 class ShopService {
+  constructor({ phoneProducts = new PhoneProductRepository() } = {}) {
+    this.phoneProducts = phoneProducts
+  }
+
   async ensurePrimaryPhoneImage(phoneId, connection = db.getDatabase()) {
     const [primaryImages] = await connection.query(
       `SELECT id
@@ -801,21 +806,19 @@ class ShopService {
   // ============================================================================
 
   /**
-   * 获取商品的H5上架信息
+   * 获取设备商城配置及新机模板只读预览
    * @param {number} phoneId - 商品ID
-   * @returns {Object|null} H5_product记录或null
+   * @returns {Object|null} 含默认上下架状态的配置；设备不存在返回null
    */
   async getPhoneH5Product(phoneId) {
-    const [products] = await db.getDatabase().query(
-      'SELECT * FROM H5_product WHERE phone_id = ?',
-      [phoneId]
-    )
+    const phone = await this.phoneProducts.getConfiguration(phoneId)
+    if (!phone) return null
 
-    if (products.length === 0) {
-      return null
+    return {
+      ...phone,
+      is_published: phone.is_published ?? 1,
+      template: Number(phone.is_new) === 1 ? await this.phoneProducts.getTemplatePreview(phone) : null
     }
-
-    return products[0]
   }
 
   /**
@@ -896,10 +899,10 @@ class ShopService {
             warranty_date = ?,
             is_warranty_expired = ?,
             sale_price = ?,
-            is_published = ?,
+            is_published = COALESCE(?, is_published),
             updated_at = NOW()
         WHERE phone_id = ?
-      `, [condition_grade, battery_status, screen_condition, system_version, model_version, warranty_date, is_warranty_expired, sale_price, is_published ?? 1, phoneId])
+      `, [condition_grade, battery_status, screen_condition, system_version, model_version, warranty_date, is_warranty_expired, sale_price, is_published ?? null, phoneId])
     } else {
       // 插入
       await db.getDatabase().query(`

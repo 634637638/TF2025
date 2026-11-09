@@ -353,6 +353,8 @@ npm run test:db
 
 ### 权限管理页面（`PermissionsView.vue`，2026-08-27）
 
+- 权限日志全量清空复用已登记的响应字段 `deleted_count`，路由为 `DELETE /api/permission-logs/logs`，补齐日志 service/repository 审计源；不新增物理列或兼容字段，不需要数据库迁移。权限与清空规则见[权限操作日志规范](../permissions/permission-operation-log.md)。已使用模拟仓储验证删除数量和空表响应，未执行真实数据库清空。
+
 - 角色列表、用户角色列表请求统一使用 `page_size`，响应统一提供 `page_size`、`total_pages`、`has_next`、`has_prev`；权限四个子页分页控件也已统一绑定 `page_size`。
 - 权限日志查询、导出和手动记录统一使用 `page_size`、`start_date`、`end_date`、`target_type`、`target_id`、`target_name`；日志路由已停止接受旧 `size`、日期及目标对象驼峰字段。
 - 权限页面统计、角色筛选、门店筛选和角色分配统一使用 `total_roles`、`role_id`、`store_id`、`role_ids`、`store_ids`；字段权限和菜单权限请求统一使用 `module_key`、`field_config`、`menu_permissions`。模块统计及权限矩阵元数据响应统一使用 `total_modules`、`total_permissions`、`total_roles`、`active_users`、`from_database` 等 snake_case 字段。

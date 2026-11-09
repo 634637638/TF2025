@@ -42,17 +42,3 @@
   color: var(--color-info);
   line-height: 1.4;
 }
-
-// 移动端适配
-@media (max-width: 767px) {
-  .quick-sale-form {
-  }
-
-}
-
-// 小屏幕适配（iPhone SE）
-@media (max-width: 390px) {
-  .profit-hint {
-    font-size: var(--tf-type-scale-11);
-  }
-}
