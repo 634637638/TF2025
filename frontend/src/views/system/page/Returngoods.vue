@@ -85,29 +85,12 @@
       </div>
     </UnifiedSearchPanel>
 
-    <div class="returngoods-table-panel admin-panel admin-table-panel">
+    <div class="table-section admin-panel admin-table-panel">
       <div class="panel-header">
         <div class="panel-title">
           <i class="fas fa-clipboard-list" />
           <span>退库记录</span>
         </div>
-        <el-button
-          type="info"
-          plain
-          :disabled="loading"
-          @click="loadRecords"
-        >
-          <InlineLoading
-            v-if="loading"
-            text="刷新中..."
-            size="small"
-            variant="inherit"
-          />
-          <template v-else>
-            <i class="fas fa-sync-alt" />
-            <span>刷新</span>
-          </template>
-        </el-button>
       </div>
 
       <div
@@ -144,7 +127,7 @@
             align="center"
           />
           <el-table-column
-            v-if="canViewField('record.customer')"
+            v-if="canViewField('record.product_info')"
             label="商品信息"
             min-width="250"
           >
@@ -160,13 +143,13 @@
             </template>
           </el-table-column>
           <el-table-column
-            v-if="canViewField('record.operator')"
+            v-if="canViewField('record.customer')"
             prop="customer_name"
             label="客户"
             min-width="120"
           />
           <el-table-column
-            v-if="canViewField('record.sale_info')"
+            v-if="canViewField('record.operator')"
             prop="operator_name"
             label="操作员"
             min-width="100"
@@ -188,18 +171,59 @@
             </template>
           </el-table-column>
           <el-table-column
-            v-if="canViewField('record.reversal_date')"
+            v-if="canViewField('record.sale_info')"
             prop="original_sale_operator_name"
             label="销售员"
             min-width="110"
           />
           <el-table-column
-            v-if="canViewField('record.remarks')"
+            v-if="canViewField('record.reversal_date')"
             label="退库时间"
             min-width="168"
           >
             <template #default="{ row }">
               {{ formatDateTime(row.reversal_date) }}
+            </template>
+          </el-table-column>
+          <el-table-column
+            v-for="item in visibleReturnSelectFields"
+            :key="item.field"
+            :prop="item.field"
+            :label="item.label"
+            min-width="120"
+          >
+            <template #default="{ row }">
+              {{ row[item.field] || '-' }}
+            </template>
+          </el-table-column>
+          <el-table-column
+            v-if="canViewField('record.refund_amount')"
+            label="退款金额"
+            min-width="110"
+          >
+            <template #default="{ row }">
+              {{ row.refund_amount === null || row.refund_amount === undefined ? '-' : formatAmount(row.refund_amount) }}
+            </template>
+          </el-table-column>
+          <el-table-column
+            v-if="canViewField('record.refund_method')"
+            label="退款方式"
+            min-width="110"
+          >
+            <template #default="{ row }">
+              <PaymentMethodText
+                :value="row.refund_method"
+                :channel="row.refund_channel"
+              />
+            </template>
+          </el-table-column>
+          <el-table-column
+            v-if="canViewField('record.created_at')"
+            label="操作时间"
+            min-width="168"
+          >
+            <template #default="{ row }">
+              {{ formatDateTime(row.created_at) }}
             </template>
           </el-table-column>
           <el-table-column
@@ -242,10 +266,11 @@
 
       <div
         v-else
+        v-tf-loading="loading"
         class="mobile-records"
       >
         <SectionLoading
-          v-if="loading"
+          v-if="loading && records.length === 0"
           text="加载中..."
         />
 
@@ -332,6 +357,38 @@
                 <span class="record-label">手机号</span>
                 <span class="record-value">{{ record.customer_phone || '-' }}</span>
               </div>
+              <div
+                v-for="item in visibleReturnSelectFields"
+                :key="item.field"
+                class="record-item"
+              >
+                <span class="record-label">{{ item.label }}</span>
+                <span class="record-value">{{ record[item.field] || '-' }}</span>
+              </div>
+              <div
+                v-if="canViewField('record.refund_amount')"
+                class="record-item"
+              >
+                <span class="record-label">退款金额</span>
+                <span class="record-value">{{ record.refund_amount === null || record.refund_amount === undefined ? '-' : formatAmount(record.refund_amount) }}</span>
+              </div>
+              <div
+                v-if="canViewField('record.refund_method')"
+                class="record-item"
+              >
+                <span class="record-label">退款方式</span>
+                <PaymentMethodText
+                  :value="record.refund_method"
+                  :channel="record.refund_channel"
+                />
+              </div>
+              <div
+                v-if="canViewField('record.created_at')"
+                class="record-item"
+              >
+                <span class="record-label">操作时间</span>
+                <span class="record-value">{{ formatDateTime(record.created_at) }}</span>
+              </div>
             </div>
 
             <div
@@ -389,23 +446,31 @@
       dialog-class="returngoods-edit-dialog"
       :show-default-footer="false"
     >
-      <div class="edit-dialog-body">
+      <el-form
+        ref="editFormRef"
+        :model="editForm"
+        :rules="editFormRules"
+        label-position="top"
+        class="edit-dialog-body"
+      >
         <div class="edit-grid">
-          <div
+          <el-form-item
             v-if="canViewField('record.sale_info')"
+            label="原销售ID"
+            prop="original_sale_id_display"
             class="edit-item"
           >
-            <label>原销售ID</label>
             <el-input
               v-model="editForm.original_sale_id_display"
               disabled
             />
-          </div>
-          <div
+          </el-form-item>
+          <el-form-item
             v-if="canViewField('record.sale_info')"
+            label="销售类型"
+            prop="original_sale_type"
             class="edit-item"
           >
-            <label>销售类型</label>
             <el-select
               v-model="editForm.original_sale_type"
               placeholder="请选择销售类型"
@@ -418,12 +483,13 @@
                 :value="option.value"
               />
             </el-select>
-          </div>
-          <div
+          </el-form-item>
+          <el-form-item
             v-if="canViewField('record.sale_info')"
+            label="销售员"
+            prop="original_sale_operator_id"
             class="edit-item"
           >
-            <label>销售员</label>
             <el-select
               v-model="editForm.original_sale_operator_id"
               placeholder="请选择销售员"
@@ -442,12 +508,13 @@
                 :value="operator.id"
               />
             </el-select>
-          </div>
-          <div
+          </el-form-item>
+          <el-form-item
             v-if="canViewField('record.reversal_date')"
+            label="退库时间"
+            prop="reversal_date"
             class="edit-item"
           >
-            <label>退库时间</label>
             <el-date-picker
               v-model="editForm.reversal_date"
               type="datetime"
@@ -457,23 +524,83 @@
               clearable
               style="width: 100%;"
             />
-          </div>
-          <div
+          </el-form-item>
+          <el-form-item
+            v-for="item in visibleReturnSelectFields"
+            :key="item.field"
+            :label="item.label"
+            :prop="item.field"
+            class="edit-item"
+          >
+            <el-select
+              v-model="editForm[item.field]"
+              :placeholder="`请选择${item.label}`"
+            >
+              <el-option
+                v-for="option in RETURN_STOCK_OPTIONS[item.field]"
+                :key="option"
+                :label="option"
+                :value="option"
+              />
+            </el-select>
+          </el-form-item>
+          <el-form-item
+            v-if="canViewField('record.refund_amount')"
+            label="退款金额"
+            prop="refund_amount"
+            class="edit-item"
+          >
+            <el-input-number
+              v-model="editForm.refund_amount"
+              :min="0"
+              :max="99999999.99"
+              :precision="2"
+              :controls="false"
+            />
+          </el-form-item>
+          <el-form-item
+            v-if="canViewField('record.refund_method')"
+            label="退款方式"
+            prop="refund_method"
+            class="edit-item"
+          >
+            <PaymentMethodSelect
+              v-model="editForm.refund_method"
+              variant="refund"
+              placeholder="请选择退款方式"
+              @update:model-value="editForm.refund_channel = null"
+            />
+          </el-form-item>
+          <el-form-item
+            v-if="canViewField('record.refund_method') && hasPaymentChannelOptions(editForm.refund_method)"
+            label="退款渠道"
+            prop="refund_channel"
+            class="edit-item"
+          >
+            <PaymentChannelSelect
+              v-model="editForm.refund_channel"
+              :payment-method="editForm.refund_method"
+              placeholder="请选择退款渠道"
+            />
+          </el-form-item>
+          <el-form-item
             v-if="canViewField('record.remarks')"
+            label="备注"
+            prop="remarks"
             class="edit-item edit-item-full"
           >
-            <label>备注</label>
             <el-input
               v-model="editForm.remarks"
               class="tf-textarea"
               type="textarea"
               :rows="2"
               placeholder="请输入退库备注"
+              maxlength="200"
               clearable
             />
-          </div>
+          </el-form-item>
         </div>
-      </div>
+      </el-form>
       <template #footer>
         <div class="tf-dialog-actions edit-dialog-footer">
           <el-button @click="editDialogVisible = false">
@@ -493,9 +620,15 @@
 </template>
 
 <script setup lang="ts">
-import { TIME_FORMATS } from '@/utils/time'
+import { TIME_FORMATS, TimeUtil } from '@/utils/time'
+import type { ReturnGoodsRecord } from '@/types/return-stock'
+import { RETURN_STOCK_OPTIONS, RETURN_STOCK_SELECT_FIELDS } from '@/constants/returnStock'
+import { PaymentMethodSelect, PaymentChannelSelect, PaymentMethodText } from '@/components/payment'
+import { hasPaymentChannelOptions } from '@/constants/paymentMethods'
+import { formatAmount } from '@/utils/format'
 import { confirmAction } from '@/utils/message-box'
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, nextTick, onMounted, reactive, ref } from 'vue'
+import type { FormInstance, FormRules } from 'element-plus'
 import { unifiedApi } from '@/utils/unified-api'
 import { searchOperators } from '@/services/reference-options'
 import { useNotification } from '@/composables/useNotification'
@@ -505,7 +638,6 @@ import { fieldPermissions, shouldShowActionColumn } from '@/composables/useField
 import { useLoadingState } from '@/composables'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import MobileDialog from '@/components/MobileDialog.vue'
-import InlineLoading from '@/components/InlineLoading.vue'
 import SectionLoading from '@/components/SectionLoading.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import Pagination from '@/components/Pagination.vue'
@@ -514,25 +646,6 @@ import { PHONE_STATUS_OPTIONS, getPhoneStatusLabel, normalizePhoneStatus } from 
 import { formatDateTime as formatGlobalDateTime } from '@/utils/format'
 import { getRequestErrorMessage } from '@/utils/api-response'
 
-interface ReturnGoodsRecord {
-  id: number
-  phone_id: number
-  original_sale_id: number | null
-  original_sale_type: string | null
-  original_sale_operator_id: number | null
-  original_sale_operator_name: string | null
-  imei: string | null
-  serial_number: string | null
-  brand: string | null
-  model: string | null
-  color: string | null
-  memory: string | null
-  customer_name: string | null
-  customer_phone: string | null
-  operator_name: string | null
-  reversal_date: string
-  remarks: string | null
-}
 
 interface OperatorOption {
   id: number
@@ -544,8 +657,9 @@ interface OperatorSearchRecord { id?: number | string; name?: string; username?:
 const { success, error } = useNotification()
 const { isMobile } = useMobile()
 const { canView, canEdit, canDelete, handleNoPermission } = usePagePermissions('returngoods')
-const RETURNGOODS_MODULE_KEY = 'returngoods'
+const RETURNGOODS_MODULE_KEY = 'system_returngoods'
 const canViewField = (fieldKey: string) => fieldPermissions.isFieldVisible(RETURNGOODS_MODULE_KEY, fieldKey)
+const visibleReturnSelectFields = computed(() => RETURN_STOCK_SELECT_FIELDS.filter(item => canViewField(item.permission)))
 const showActionColumn = computed(() => shouldShowActionColumn(
   canViewField('system_info.operations'),
   [canEdit.value, canDelete.value]
@@ -556,6 +670,7 @@ loading.value = true
 const submitting = ref(false)
 const searchExpanded = ref(false)
 const editDialogVisible = ref(false)
+const editFormRef = ref<FormInstance>()
 const records = ref<ReturnGoodsRecord[]>([])
 const operatorOptions = ref<OperatorOption[]>([])
 const stats = reactive({
@@ -593,14 +708,30 @@ const editForm = reactive({
   original_sale_operator_id: null as number | null,
   original_sale_operator_name: '',
   reversal_date: '',
+  return_reason: '',
+  return_type: '',
+  handle_method: '',
+  refund_amount: null as number | null,
+  refund_method: '',
+  refund_channel: null as string | null,
   remarks: ''
 })
+
+const editFormRules: FormRules = {
+  return_reason: [{ required: true, message: '请选择退库原因', trigger: 'change' }],
+  return_type: [{ required: true, message: '请选择退库类型', trigger: 'change' }],
+  handle_method: [{ required: true, message: '请选择处理方式', trigger: 'change' }],
+  reversal_date: [{ required: true, message: '请选择退库时间', trigger: 'change' }],
+  refund_method: [{ required: true, message: '请选择退款方式', trigger: 'change' }],
+  refund_channel: [{ required: true, message: '请选择退款渠道', trigger: 'change' }],
+  refund_amount: [{ required: true, message: '请填写退款金额，未退款时填写0', trigger: 'change' }]
+}
 
 const formatDateTime = (value?: string | null) => formatGlobalDateTime(value, TIME_FORMATS.DATETIME_MINUTE)
 
 const getSaleTypeText = (value?: string | null) => getPhoneStatusLabel(value)
 
-const loadRecords = async () => {
+const loadRecords = async (isRefresh = false) => {
   if (!canView.value) {
     records.value = []
     pagination.total = 0
@@ -615,6 +746,7 @@ const loadRecords = async () => {
 
   try {
     const response = await unifiedApi.get('/query/returngoods', {
+      showError: false,
       params: {
         page: pagination.page,
         page_size: pagination.page_size,
@@ -636,6 +768,7 @@ const loadRecords = async () => {
     stats.total_phones = Number(meta.stats?.total_phones || 0)
     stats.total_days = Number(meta.stats?.total_days || 0)
   } catch (err: unknown) {
+    if (isRefresh) throw err
     records.value = []
     pagination.total = 0
     stats.total_records = 0
@@ -691,9 +824,16 @@ const openEditDialog = (record: ReturnGoodsRecord) => {
       name: record.original_sale_operator_name || `用户${record.original_sale_operator_id}`
     })
   }
-  editForm.reversal_date = record.reversal_date || ''
+  editForm.reversal_date = TimeUtil.format(record.reversal_date, TIME_FORMATS.DATETIME)
+  editForm.return_reason = record.return_reason || ''
+  editForm.return_type = record.return_type || ''
+  editForm.handle_method = record.handle_method || ''
+  editForm.refund_amount = record.refund_amount === null || record.refund_amount === undefined ? null : Number(record.refund_amount)
+  editForm.refund_method = record.refund_method || ''
+  editForm.refund_channel = record.refund_channel || null
   editForm.remarks = record.remarks || ''
   editDialogVisible.value = true
+  void nextTick(() => editFormRef.value?.clearValidate())
 }
 
 const handleOperatorChange = (operatorId: number | null) => {
@@ -710,16 +850,28 @@ const handleSave = async () => {
   }
   if (submitting.value) return
   if (!editForm.id) return
+  if (!await editFormRef.value?.validate().catch(() => false)) return
 
   submitting.value = true
   try {
-    const response = await unifiedApi.put(`/query/returngoods/${editForm.id}`, {
-      original_sale_type: editForm.original_sale_type || null,
-      original_sale_operator_id: editForm.original_sale_operator_id || null,
-      original_sale_operator_name: editForm.original_sale_operator_name || null,
-      reversal_date: editForm.reversal_date || null,
-      remarks: editForm.remarks || null
-    })
+    const payload: Record<string, string | number | null> = {}
+    const fieldMap = {
+      original_sale_type: 'record.sale_info',
+      original_sale_operator_id: 'record.sale_info',
+      original_sale_operator_name: 'record.sale_info',
+      reversal_date: 'record.reversal_date',
+      return_reason: 'record.return_reason',
+      return_type: 'record.return_type',
+      handle_method: 'record.handle_method',
+      refund_amount: 'record.refund_amount',
+      refund_method: 'record.refund_method',
+      refund_channel: 'record.refund_method',
+      remarks: 'record.remarks'
+    } as const
+    for (const key of Object.keys(fieldMap) as Array<keyof typeof fieldMap>) {
+      if (canViewField(fieldMap[key])) payload[key] = editForm[key]
+    }
+    const response = await unifiedApi.put(`/query/returngoods/${editForm.id}`, payload)
 
     if (!response?.success) {
       throw new Error(response?.message || '退库记录更新失败')
@@ -785,7 +937,10 @@ const handlePageChange = async (page: number) => {
 }
 
 defineExpose({
-  reload: loadRecords
+  reload: async () => {
+    unifiedApi.clearCache('/query/returngoods')
+    await loadRecords(true)
+  }
 })
 
 onMounted(() => {
@@ -862,10 +1017,6 @@ onMounted(() => {
   margin-top: 6px;
   font-size: var(--tf-type-scale-13);
   color: var(--tf-color-slate-500);
-}
-
-.returngoods-table-panel {
-  padding: 18px;
 }
 
 .panel-header {
@@ -1056,10 +1207,6 @@ onMounted(() => {
   .overview-label {
     font-size: var(--tf-type-scale-11);
     margin-top: 4px;
-  }
-
-  .returngoods-table-panel {
-    padding: 12px;
   }
 
   .edit-grid {

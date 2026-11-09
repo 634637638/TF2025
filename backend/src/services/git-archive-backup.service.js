@@ -74,12 +74,13 @@ class GitArchiveBackupService {
       const hasChanges = statusResult.stdout.trim().length > 0
       this.logger.debug('🗜️  创建核心项目压缩包...')
 
-      const archiveItems = ['frontend', 'package.json']
+      const archiveItems = ['frontend', 'package.json', 'docs']
       const backendItems = [
         'backend/src',
         'backend/package.json',
         'backend/package-lock.json',
         ...PRODUCTION_RUNTIME_FILES.map(file => `backend/${file}`),
+        'backend/scripts',
         'backend/database',
         'backend/migrations',
         'backend/.env.example'
@@ -99,23 +100,21 @@ class GitArchiveBackupService {
         'backend/migrations/*.pid', 'backend/*.traineddata', 'backend/.env',
         'backend/.env.production', 'backend/.env.production-fixed',
         'backend/.env.production-separated', 'backend/database/*.db',
-        'backend/scripts/*.json', 'backend/.DS_Store'
+        'backend/.DS_Store'
       ]
       const tarOptions = { cwd: this.projectRoot, maxBuffer: 10 * 1024 * 1024, timeout: 120000 }
+      const archiveArguments = [
+        ...excludePatterns.map(pattern => `--exclude=${pattern}`),
+        '-czf', backupFilePath, ...archiveItems
+      ]
       try {
-        await this.executeArchive('tar', [
-          ...excludePatterns.map(pattern => `--exclude=${pattern}`),
-          '-czf', backupFilePath, ...archiveItems
-        ], tarOptions)
+        await this.executeArchive('tar', archiveArguments, tarOptions)
         this.logger.debug('✅ 压缩包创建成功')
       } catch (error) {
         this.logger.debug('⚠️  tar 命令出现问题:', error.message)
         this.logger.debug('📦 使用简化方案：只备份核心文件...')
         try {
-          await this.executeArchive('tar', [
-            '--exclude=node_modules', '--exclude=.git', '--exclude=uploads',
-            '-czf', backupFilePath, ...archiveItems
-          ], { ...tarOptions, timeout: 60000 })
+          await this.executeArchive('tar', archiveArguments, { ...tarOptions, timeout: 60000 })
           this.logger.debug('✅ 核心文件压缩包创建成功')
         } catch (fallbackError) {
           throw new Error(`无法创建压缩包: ${fallbackError.message}`)

@@ -2,12 +2,32 @@ const QueryService = require('../services/query.service')
 const ApiResponse = require('../utils/response')
 const { clearCache } = require('../middleware/cache')
 const dataMaskingService = require('../services/data-masking.service')
+const FieldAccessService = require('../services/field-access.service')
+const createFieldAccessMiddleware = require('../middleware/field-access')
 const { PAGINATION } = require('../config/constants')
 const {
   isStoreScopeError,
   resolveStoreScope
 } = require('../utils/store-scope')
 const log = require('../utils/log')
+
+const RETURN_GOODS_RESPONSE_KEYS = {
+  'record.product_info': ['phone_id', 'imei', 'serial_number', 'brand', 'model', 'color', 'memory'],
+  'record.customer': ['original_customer_id', 'customer_name', 'customer_phone'],
+  'record.operator': ['operator_id', 'operator_name'],
+  'record.sale_info': ['original_sale_id', 'original_sale_type', 'original_sale_operator_id', 'original_sale_operator_name'],
+  'record.reversal_date': ['reversal_date'],
+  'record.return_reason': ['return_reason'],
+  'record.return_type': ['return_type'],
+  'record.handle_method': ['handle_method'],
+  'record.refund_amount': ['refund_amount'],
+  'record.refund_method': ['refund_method', 'refund_channel'],
+  'record.created_at': ['created_at'],
+  'record.remarks': ['remarks']
+}
+const RETURN_GOODS_WRITE_FIELDS = Object.fromEntries(
+  Object.entries(RETURN_GOODS_RESPONSE_KEYS).flatMap(([fieldId, keys]) => keys.map(key => [key, fieldId]))
+)
 
 const validateRequestedStoreScope = (req, res) => {
   try {
@@ -22,8 +42,16 @@ const validateRequestedStoreScope = (req, res) => {
 }
 
 class QueryController {
-  constructor() {
-    this.queryService = new QueryService()
+  constructor({ service = new QueryService(), masking = dataMaskingService } = {}) {
+    this.queryService = service
+    this.returnGoodsAccess = new FieldAccessService({
+      moduleKey: 'system_returngoods', responseKeys: RETURN_GOODS_RESPONSE_KEYS, masking
+    })
+    this.returnGoodsFieldMiddleware = createFieldAccessMiddleware(this.returnGoodsAccess)
+  }
+
+  rejectHiddenReturnGoodsWrites() {
+    return this.returnGoodsFieldMiddleware.rejectHiddenWrites(RETURN_GOODS_WRITE_FIELDS)
   }
 
   /**
@@ -101,16 +129,13 @@ class QueryController {
     try {
       const storeScope = resolveStoreScope(req.user, req.query.store_id)
       const result = await this.queryService.getReturnGoodsRecords(req.query, storeScope)
+      const permissions = await this.returnGoodsAccess.getPermissions(req.user.id)
+      const data = this.returnGoodsAccess.maskPayload(result.data, permissions)
+      const stats = (permissions.hiddenFields || []).includes('stats.summary') ? {} : result.stats
 
-      return ApiResponse.paginated(
-        res,
-        result.message,
-        result.data,
-        {
-          ...result.pagination,
-          stats: result.stats
-        }
-      )
+      return ApiResponse.success(res, result.message, data, 200, {
+        pagination: { ...result.pagination, stats }
+      })
     } catch (error) {
       if (isStoreScopeError(error)) {
         return ApiResponse.error(res, error.message, error.statusCode)
@@ -131,6 +156,7 @@ class QueryController {
         return ApiResponse.error(res, error.message, error.statusCode)
       }
       log.error('QueryController: 退库记录更新失败:', error)
+      if (error.statusCode === 400) return ApiResponse.error(res, error.message, 400, error.code)
       return ApiResponse.serverError(res, '退库记录更新失败', error)
     }
   }
@@ -167,12 +193,16 @@ class QueryController {
 
       const result = await this.queryService.returnToStock(id, operatorId, returnInfo, storeScope)
 
+      clearCache('/api/query/comprehensive')
+      clearCache('/api/query/statistics')
+
       return ApiResponse.success(res, result.message, result.data)
     } catch (error) {
       if (isStoreScopeError(error)) {
         return ApiResponse.error(res, error.message, error.statusCode)
       }
       log.error('QueryController: 退库操作失败:', error)
+      if (error.statusCode === 400) return ApiResponse.error(res, error.message, 400, error.code)
       return ApiResponse.serverError(res, '退库操作失败', error)
     }
   }

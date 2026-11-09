@@ -1,5 +1,13 @@
 # 安全与运行时审计规范
 
+## 开发环境模块加载
+
+Vite 通过 `optimizeDeps.include` 在启动时预构建 Element Plus 的 `element-plus/es` 和 `element-plus/es/components/**/style/css`，覆盖自动导入插件生成的组件样式路径，减少懒加载页面首次进入时的依赖重新优化。测试或临时组件服务器必须使用独立 `cacheDir`，不得覆盖正在运行的开发服务器缓存。
+
+出现 `Failed to fetch dynamically imported module` 时，应检查失败模块及其依赖请求。`504 Outdated Optimize Dep` 表示开发预构建依赖版本失效，不能直接判断为业务 API 故障或组件语法错误；修复缓存冲突或依赖预构建配置后重新加载页面。不要通过删除业务缓存、忽略错误或无限自动刷新掩盖问题。
+
+## 审计要求
+
 后端不得使用 `eval`、`new Function`、硬编码密钥，SQL 和文件路径不得直接插入请求字段。没有认证中间件的完整路由文件必须登记在 `config/backend-security-audit.json`，公开白名单只允许真实公开且经过数据最小化审查的接口。
 
 前端使用 `v-html` 时，表达式必须来自登记并经过审查的净化函数。组件和组合式函数创建的周期定时器必须在生命周期结束时清理；确实与应用同生命周期的单例定时器需要登记在 `config/runtime-pattern-audit.json`。

@@ -22,15 +22,6 @@
             <span>新增</span>
           </el-button>
           <el-button
-            v-if="canView"
-            type="info"
-            plain
-            @click="router.push('/standards')"
-          >
-            <i class="fas fa-clipboard-check" />
-            <span>规范与审计</span>
-          </el-button>
-          <el-button
             v-if="showOperations"
             type="info"
             :loading="refreshing"
@@ -112,7 +103,6 @@
                     <el-button
                       v-if="showOperations"
                       type="primary"
-                      size="small"
                       :loading="isLoading"
                       :disabled="!canUpdateSettings"
                       @click="saveSiteSettings"
@@ -232,7 +222,6 @@
                     <el-button
                       v-if="showOperations"
                       type="primary"
-                      size="small"
                       :loading="isLoading"
                       :disabled="!canUpdateSettings"
                       @click="saveSiteSettings"
@@ -497,7 +486,6 @@
                     <el-button
                       v-if="showOperations"
                       type="primary"
-                      size="small"
                       :loading="isLoading"
                       :disabled="!canUpdateSettings"
                       @click="saveSiteSettings"
@@ -687,7 +675,6 @@
                     </div>
                     <el-button
                       type="primary"
-                      size="small"
                       :loading="isLoading"
                       :disabled="!canUpdateSettings"
                       @click="saveScreenLockSettings"
@@ -982,7 +969,7 @@
 <script setup lang="ts">
 import { confirmAction } from '@/utils/message-box'
 import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import { Setting, Lock, Plus, Edit, Delete } from '@element-plus/icons-vue'
 import { unifiedApi } from '@/utils/unified-api'
 import { extractResponseData, getRequestErrorMessage } from '@/utils/api-response'
@@ -1043,7 +1030,6 @@ const isValidSiteLogoMimeType = (extension: string, mimeType: string) => {
 
 // 路由和权限
 const route = useRoute()
-const router = useRouter()
 const siteSettingsStore = useSiteSettingsStore()
 const { success, error, warning, loading } = useNotification()
 
@@ -1072,7 +1058,7 @@ const warningConfigRef = ref<{
   loadConfigs: () => void
     } | null>(null)
 const returngoodsRef = ref<{
-  reload: () => void
+  reload: () => Promise<void>
     } | null>(null)
 
 // TAB管理 - 支持从 URL 参数读取

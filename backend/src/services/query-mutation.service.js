@@ -5,6 +5,7 @@ const QueryRepository = require('../repositories/query.repository')
 const { StoreScopeError } = require('../utils/store-scope')
 const { reverseCustomerPointsForSale: defaultReversePoints } = require('./customer-points.service')
 const log = require('../utils/log')
+const { normalizeReturnStockInfo } = require('./return-stock-validation')
 
 class QueryMutationService extends BaseService {
   constructor({ repository = new QueryRepository(), reversePoints = defaultReversePoints } = {}) {
@@ -14,6 +15,7 @@ class QueryMutationService extends BaseService {
   }
 
   async returnToStock(phoneId, operatorId, returnInfo = {}, storeScope = {}) {
+    const details = normalizeReturnStockInfo(returnInfo)
     return this.repository.withConnection(async connection => {
       try {
         // 开始事务
@@ -66,8 +68,7 @@ class QueryMutationService extends BaseService {
         }
 
         // 5. 记录退库日志
-        const remarks = returnInfo.remarks || `客户退库操作 - ${returnInfo.return_reason || '未指定原因'} (${returnInfo.handle_method || '未指定处理方式'})`
-        await this.repository.insertReversalLog(connection, phoneId, originalSaleId, saleType, originalCustomerId, originalSaleOperatorId, originalSaleOperatorName, operatorId, remarks)
+        await this.repository.insertReversalLog(connection, phoneId, originalSaleId, saleType, originalCustomerId, originalSaleOperatorId, originalSaleOperatorName, operatorId, details)
 
         await connection.commit()
 

@@ -25,8 +25,7 @@ const buttonInlineLoadingExceptions = new Map(Object.entries({
   'views/salary/page/SalaryTemplateFormDialog.vue': 1,
   'views/subsidy/SubsidyView.vue': 1,
   'views/subsidy/components/SubsidyApplyDialog.vue': 3,
-  'views/subsidy/components/SubsidyEditDialog.vue': 1,
-  'views/system/page/Returngoods.vue': 1
+  'views/subsidy/components/SubsidyEditDialog.vue': 1
 }))
 const globalLoadingTriggerExceptions = new Map([
   ['views/standards/StandardsAuditView.vue', { count: 1, reason: '规范页演示必须调用统一全局 Loading Store' }],
@@ -72,7 +71,6 @@ const violations = []
 let tableLoadingRowCount = 0
 let sectionLoadingCount = 0
 let inlineLoadingCount = 0
-let buttonInlineLoadingCount = 0
 let loadingDirectiveCount = 0
 let tableDirectiveCount = 0
 let pageFileCount = 0
@@ -189,7 +187,6 @@ for (const file of files) {
 
   for (const match of template.matchAll(elementButtonPattern)) {
     if (!spinnerPattern.test(match[0])) continue
-    buttonInlineLoadingCount += 1
     if (/:loading\s*=/.test(match[0])) {
       violations.push(`${filePath}:${getLineNumber(template, match.index) + templateStartLine - 1} el-button 同时启用了内置 loading 和第二个 spinner`)
     }
@@ -319,4 +316,4 @@ const localLoadingFileCount = pageAuditRecords.filter(record => (
 )).length
 const asyncRequestFileCount = pageAuditRecords.filter(record => record.hasAsyncRequest).length
 console.log(`Loading 页面台账审计通过：逐项扫描页面/功能单元 ${pageFileCount} 个、公共组件 ${componentFileCount} 个、应用入口 ${appFileCount} 个；异步请求文件 ${asyncRequestFileCount} 个，表格/列表文件 ${tableMarkupFileCount} 个，使用局部 Loading 的文件 ${localLoadingFileCount} 个；统一 API 默认覆盖未显式关闭的首次请求；GlobalLoading=1；v-tf-loading=${tableDirectiveCount}；TableLoadingRow=${tableLoadingRowCount}；SectionLoading=${sectionLoadingCount}；InlineLoading=${inlineLoadingCount}；v-loading 例外=${loadingDirectiveCount}；全局长操作例外=${globalLoadingTriggerExceptions.size} 个。`)
-console.log(`Loading 使用分层：首次 API 请求/页面切换使用 GlobalLoading；表格刷新使用 v-tf-loading；空表兜底使用 TableLoadingRow；区块使用 SectionLoading；按钮和短区域使用 InlineLoading；同一次操作不得叠加可见 Loading。`)
+console.log('Loading 使用分层：首次 API 请求/页面切换使用 GlobalLoading；表格刷新使用 v-tf-loading；空表兜底使用 TableLoadingRow；区块使用 SectionLoading；Element Plus 按钮使用内置 :loading；短区域和无内置 Loading 的控件使用 InlineLoading；同一次操作不得叠加可见 Loading。')

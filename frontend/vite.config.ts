@@ -135,7 +135,10 @@ export default defineConfig({
       'vue-router',
       'pinia',
       'axios',
-      'dompurify'
+      'dompurify',
+      // 自动导入插件生成深层路径；启动时预构建，避免切换页面才发现样式依赖。
+      'element-plus/es',
+      'element-plus/es/components/**/style/css'
     ]
   },
   server: {

@@ -742,7 +742,7 @@
                     type="primary"
                     :loading="mediaUploading"
                   >
-                    <i class="fas fa-cloud-arrow-up" /> 上传照片/视频
+                    <i class="fas fa-cloud-arrow-up" /> 上传图片
                   </el-button>
                 </el-upload>
                 <div

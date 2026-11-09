@@ -56,7 +56,7 @@
     },
     {
       "file": "src/styles/components/_dialog.scss",
-      "max": 159,
+      "max": 157,
       "category": "shared-contract",
       "reason": "Element Plus dialog structure, viewport boundary and shared MobileDialog close-control overrides."
     },
@@ -134,7 +134,7 @@
     },
     {
       "file": "src/components/PublishToH5Modal.vue",
-      "max": 17,
+      "max": 11,
       "category": "teleport-layer",
       "reason": "Teleported MobileDialog safe-area, compact controls and footer dimensions."
     },
@@ -146,7 +146,7 @@
     },
     {
       "file": "src/views/inventory/InventoryView.vue",
-      "max": 32,
+      "max": 26,
       "category": "teleport-layer",
       "reason": "Inventory teleported dialogs and mobile full-screen stock-in layout override global dialog dimensions."
     },
@@ -218,7 +218,7 @@
     },
     {
       "file": "src/components/styles/mobile-dialog/base.scss",
-      "max": 27,
+      "max": 22,
       "category": "shared-contract",
       "reason": "Core dialog component must control Element Plus teleported dimensions, safe areas, transition state and the shared sheet close control."
     },

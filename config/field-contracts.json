@@ -29,6 +29,30 @@
         "sales_sale_price_total": "72968094.00",
         "sales_purchase_cost_total": "71972076.00"
       }
+    },
+    "return-stock-details": {
+      "script": "backend/scripts/migrate-return-stock-details.js",
+      "table": "sale_reversal_logs",
+      "columns": [
+        "return_reason",
+        "return_type",
+        "handle_method",
+        "refund_amount",
+        "refund_method"
+      ],
+      "status": "completed",
+      "database_verification": "migrated_and_verified",
+      "note": "已获授权并备份后新增五列，类型及可空性回读一致；历史15条记录及全部旧字段内容未变，新列均为空，重复预览already_ready，仓储列表及关键词只读查询通过；reversal_date记录用户所选北京时间，created_at记录实际操作时间",
+      "verified_at": "2026-11-09"
+    },
+    "return-stock-refund-channel": {
+      "script": "backend/scripts/migrate-return-stock-details.js",
+      "table": "sale_reversal_logs",
+      "columns": ["refund_channel"],
+      "status": "completed",
+      "database_verification": "migrated_and_verified",
+      "verified_at": "2026-11-09",
+      "note": "用户授权并完成目标表备份后新增refund_channel，可空及类型回读正确；15条旧记录及全部既有字段内容一致，渠道均为空；重复预览already_ready，真实仓储列表和渠道搜索只读查询通过"
     }
   },
   "physicalFieldAudit": {
@@ -444,7 +468,12 @@
       "frontend/src/components/query/QueryEditModal.vue",
       "frontend/src/components/query/quick-sale/helpers.ts",
       "frontend/src/components/query/QueryDetailContent.vue",
-      "frontend/src/views/system/page/Returngoods.vue"
+      "frontend/src/views/system/page/Returngoods.vue",
+      "backend/src/services/query-mutation.service.js",
+      "backend/src/services/return-stock-validation.js",
+      "backend/src/config/return-stock-options.json",
+      "frontend/src/components/query/ReturnStockModal.vue",
+      "frontend/src/types/return-stock.ts"
     ],
     "sales": [
       "backend/src/routes/sales.js",
@@ -2783,7 +2812,15 @@
         "start_date",
         "end_date",
         "sort_field",
-        "sort_order"
+        "sort_order",
+        "return_reason",
+        "return_type",
+        "handle_method",
+        "refund_amount",
+        "refund_method",
+        "refund_channel",
+        "reversal_date",
+        "remarks"
       ],
       "responseSections": [
         "basic_info",
@@ -2799,7 +2836,15 @@
         "purchase_cost",
         "sale_price",
         "inventory_time",
-        "sale_time"
+        "sale_time",
+        "return_reason",
+        "return_type",
+        "handle_method",
+        "refund_amount",
+        "refund_method",
+        "refund_channel",
+        "reversal_date",
+        "remarks"
       ],
       "legacy": [],
       "retired": [

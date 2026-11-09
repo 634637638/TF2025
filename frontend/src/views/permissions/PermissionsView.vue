@@ -2279,10 +2279,10 @@ const saveFieldPermissions = async () => {
 const getFieldDefinitionsForModule = async (moduleKey: string) => {
   try {
     // 处理模块key映射 - 移除可能的前端视图后缀
-    let normalizedModuleKey = moduleKey
-    if (moduleKey.includes('_')) {
+    let normalizedModuleKey = moduleKey === 'system_returngoods' ? 'returngoods' : moduleKey
+    if (normalizedModuleKey.includes('_')) {
       // 如果包含下划线，可能是后端模块格式，提取基础模块名
-      const parts = moduleKey.split('_')
+      const parts = normalizedModuleKey.split('_')
       if (parts.length >= 2) {
         normalizedModuleKey = parts.slice(0, -1).join('_')
       }

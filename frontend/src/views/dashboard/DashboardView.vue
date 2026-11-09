@@ -18,7 +18,7 @@
               @click="refreshData"
             >
               <i class="fas fa-sync-alt" />
-              刷新数据
+              刷新
             </el-button>
           </template>
         </PageHeader>
@@ -133,7 +133,7 @@
                 </el-tag>
                 <el-tag
                   v-else
-                  type="info"
+                  type="success"
                   size="small"
                 >
                   最新公告

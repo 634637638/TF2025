@@ -74,7 +74,6 @@
     width: auto;
     flex: 0 0 auto;
     justify-content: center;
-    padding: 8px 10px;
   }
 
   .screen-lock-settings-wrapper :deep(.el-alert) {
@@ -268,10 +267,6 @@
 
   .card-header-custom {
     align-items: flex-start;
-  }
-
-  .card-header-custom .el-button span {
-    display: none;
   }
 
   .image-preview,

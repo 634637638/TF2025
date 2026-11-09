@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { readFileSync, readdirSync, statSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import { extname, join, relative, resolve } from 'node:path'
 
 const root = resolve(import.meta.dirname, '..')
@@ -29,11 +29,11 @@ const sharedDefaultWidthFiles = [
 ]
 const mobileDialogPath = join(sourceRoot, 'components/MobileDialog.vue')
 
-function walk(directory, files = []) {
+function walk(directory, files = [], extensions = new Set(['.vue'])) {
   for (const entry of readdirSync(directory, { withFileTypes: true })) {
     const filePath = join(directory, entry.name)
-    if (entry.isDirectory()) walk(filePath, files)
-    else if (extname(filePath) === '.vue') files.push(filePath)
+    if (entry.isDirectory()) walk(filePath, files, extensions)
+    else if (extensions.has(extname(filePath))) files.push(filePath)
   }
   return files
 }
@@ -67,8 +67,8 @@ for (const relativeFile of requiredMobileDialogFiles) {
 }
 
 const mobileDialogSource = readFileSync(mobileDialogPath, 'utf8')
-if (!/width:\s*['"]var\(--tf-dialog-width\)['"]/.test(mobileDialogSource)) {
-  findings.push('MobileDialog 的默认宽度必须读取 --tf-dialog-width，不得在组件中重复维护默认像素值')
+if (/\bwidth:\s*['"](?:var\(--tf-dialog-width\)|\d+(?:px|%|vw))['"]/.test(mobileDialogSource)) {
+  findings.push('MobileDialog 不得把默认宽度注入 props；未传 width 时必须由全局 CSS 选择档位或默认值')
 }
 for (const relativeFile of sharedDefaultWidthFiles) {
   const source = readFileSync(join(root, relativeFile), 'utf8')
@@ -82,6 +82,31 @@ if (/subsidy-dialog-wide|\.mobile-dialog-sheet-(?:panel|overlay)\s*\.subsidy-/.t
   findings.push('国补页面不得恢复私有加宽弹窗或按业务 class 覆盖手机弹窗外壳尺寸')
 }
 const dialogStyleSource = readFileSync(join(sourceRoot, 'styles/components/_dialog.scss'), 'utf8')
+const headerRule = dialogStyleSource.match(/\.el-dialog__header\s*,\s*\.el-message-box__header\s*\{([^}]+)\}/)?.[1] || ''
+if (!/--tf-dialog-header-height:\s*50px\s*;/.test(dialogStyleSource)
+  || !/\bheight:\s*var\(--tf-dialog-header-height\)/.test(headerRule)
+  || !/\bmin-height:\s*var\(--tf-dialog-header-height\)/.test(headerRule)
+  || !/\bpadding:\s*0\s+var\(--tf-dialog-header-padding-x\)/.test(headerRule)) {
+  findings.push('弹窗标题栏必须由 _dialog.scss 唯一定义为 50px，所有设备共用高度和零上下内边距')
+}
+for (const file of walk(sourceRoot, [], new Set(['.vue', '.scss', '.css']))) {
+  const relativeFile = relative(root, file).split('\\').join('/')
+  if (relativeFile === 'src/styles/components/_dialog.scss') continue
+  const source = readFileSync(file, 'utf8')
+  for (const match of source.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    if (/\.(?:el-dialog__header|el-message-box__header|mobile-dialog-sheet-header)\b/.test(match[1])
+      && /(?:^|;)\s*(?:height|min-height|max-height|padding(?:-top|-bottom|-block(?:-start|-end)?)?)\s*:/.test(match[2])) {
+      findings.push(`${relativeFile}:${lineNumber(source, match.index)} 标题栏高度和上下间距必须复用 _dialog.scss，不得在组件或页面重复覆盖`)
+    }
+    if (/\.mobile-dialog-sheet-close\b/.test(match[1])
+      && /(?:^|;)\s*top\s*:/.test(match[2])) {
+      findings.push(`${relativeFile}:${lineNumber(source, match.index)} 关闭按钮顶部偏移必须复用全局标题栏居中规则`)
+    }
+  }
+  if (/--tf-dialog-(?:header-height|header-padding-y|sheet-header-min-height|close-top)\s*:/.test(source)) {
+    findings.push(`${relativeFile} 不得重复定义公共标题栏高度、上下间距或关闭按钮顶部令牌`)
+  }
+}
 const variableSource = readFileSync(join(sourceRoot, 'styles/_variables.scss'), 'utf8')
 if (!/--tf-z-message-box:\s*calc\(var\(--tf-z-viewer\)\s*\+\s*1\)/.test(variableSource)
   || !/\.el-overlay\.is-message-box\s*,\s*\.el-overlay-message-box\s*\{\s*z-index:\s*var\(--tf-z-message-box\)/.test(dialogStyleSource)) {
@@ -104,12 +129,12 @@ const dialogWidthTiers = [
   ['crud-dialog-sm', '500'],
   ['crud-dialog-md', '600'],
   ['crud-dialog-md-lg', '700'],
-  ['crud-dialog-lg', '800'],
+  ['crud-dialog-lg', '800']
 ]
 for (const [cls, px] of dialogWidthTiers) {
-  const tierRule = new RegExp(`\\.${cls}\\s*\\{[^}]*--el-dialog-width:\\s*${px}px[^}]*--dialog-max-width:\\s*${px}px`, 's')
+  const tierRule = new RegExp(`\\.${cls}\\s*\\{[^}]*--tf-dialog-tier-width:\\s*${px}px[^}]*--el-dialog-width:\\s*var\\(--tf-dialog-tier-width\\)[^}]*--dialog-max-width:\\s*var\\(--tf-dialog-tier-width\\)`, 's')
   if (!tierRule.test(dialogStyleSource)) {
-    findings.push(`styles/components/_dialog.scss 必须定义 .${cls} 同时设置 --el-dialog-width 与 --dialog-max-width 为 ${px}px，弹窗档位宽度只能在公共样式维护`)
+    findings.push(`styles/components/_dialog.scss 必须定义 .${cls} 的唯一档位值 ${px}px，并让 Element Plus 宽度及上限引用该令牌`)
   }
 }
 
@@ -118,7 +143,7 @@ const tierNormalizedDialogFiles = [
   'src/views/attendance/AttendanceView.vue',
   'src/views/customers/CustomersView.vue',
   'src/views/employees/EmployeesView.vue',
-  'src/components/PublishToH5Modal.vue',
+  'src/components/PublishToH5Modal.vue'
 ]
 for (const relativeFile of tierNormalizedDialogFiles) {
   const source = readFileSync(join(root, relativeFile), 'utf8')
@@ -136,7 +161,7 @@ const salaryNormalizedDialogs = {
   'src/views/salary/page/SalarySettleDialog.vue': 'crud-dialog-sm',
   'src/views/salary/page/SalaryAttendanceFormDialog.vue': 'crud-dialog-md-lg',
   'src/views/salary/page/SalaryDetailDialog.vue': 'crud-dialog-md-lg',
-  'src/views/salary/page/SalaryTemplateFormDialog.vue': 'crud-dialog-lg',
+  'src/views/salary/page/SalaryTemplateFormDialog.vue': 'crud-dialog-lg'
 }
 for (const [relativeFile, tier] of Object.entries(salaryNormalizedDialogs)) {
   const source = readFileSync(join(root, relativeFile), 'utf8')

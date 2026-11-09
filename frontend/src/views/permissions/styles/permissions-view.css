@@ -3419,7 +3419,6 @@
 .user-role-modal.el-dialog > .el-dialog__header,
 .user-role-modal.mobile-dialog-sheet-panel > .mobile-dialog-sheet-header {
   flex: 0 0 auto;
-  padding: 18px 22px;
   border-bottom: 1px solid var(--role-assignment-border);
 }
 

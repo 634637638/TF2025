@@ -5,8 +5,10 @@
  * 与结算场景的 payment_method 语义不同，因此通过场景筛选选项，
  * 但所有显示名称和历史值解析都从这里统一维护。
  * 销售类顶层支付方式固定为现金支付、移动支付、银行卡、国补刷卡；
- * 银行卡下的刷卡消费和银行转账属于 payment_channel，不是 payment_method。
+ * 银行卡下的刷卡付款和银行转账属于 payment_channel，不是 payment_method。
  */
+import paymentOptions from '../../../backend/src/config/payment-methods.json'
+
 export type PaymentMethodValue =
   | 'cash'
   | 'mobile'
@@ -24,12 +26,7 @@ export interface PaymentMethodOption {
   value: PaymentMethodValue | string
 }
 
-export const SALE_PAYMENT_METHODS: readonly PaymentMethodOption[] = [
-  { label: '现金支付', value: 'cash' },
-  { label: '移动支付', value: 'mobile' },
-  { label: '银行卡', value: 'bank_card' },
-  { label: '国补刷卡', value: 'subsidy_card' }
-]
+export const SALE_PAYMENT_METHODS: readonly PaymentMethodOption[] = paymentOptions.sale
 
 export const BATCH_SALE_PAYMENT_METHODS: readonly PaymentMethodOption[] = [
   ...SALE_PAYMENT_METHODS
@@ -37,7 +34,7 @@ export const BATCH_SALE_PAYMENT_METHODS: readonly PaymentMethodOption[] = [
 
 /** 销售表单中需要展示支付渠道的顶层支付方式。 */
 export const hasPaymentChannelOptions = (paymentMethod?: string): boolean => {
-  return ['mobile', 'bank_card', 'subsidy_card'].includes(String(paymentMethod || ''))
+  return getPaymentChannelOptions(paymentMethod).length > 0
 }
 
 /** 销售表单中允许填写交易流水号的顶层支付方式。 */
@@ -47,61 +44,37 @@ export const requiresTransactionNumber = (paymentMethod?: string): boolean => {
 
 export const RENTAL_PAYMENT_METHODS: readonly PaymentMethodOption[] = [
   ...BATCH_SALE_PAYMENT_METHODS,
-  { label: '其他', value: 'other' }
+  ...paymentOptions.settlement.filter(option => option.value === 'other')
 ]
 
+/** 退款复用全局支付方式的名称和编码，并保留原路退回。 */
 export const REFUND_PAYMENT_METHODS: readonly PaymentMethodOption[] = [
-  { label: '现金退款', value: '现金退款' },
-  { label: '原路退回', value: '原路退回' },
-  { label: '银行转账', value: '银行转账' },
-  { label: '支付宝', value: '支付宝' },
-  { label: '微信支付', value: '微信支付' }
+  ...SALE_PAYMENT_METHODS.filter(option => !paymentOptions.refund.excludedSaleMethods.includes(option.value)),
+  ...paymentOptions.refund.extraMethods
 ]
 
-export const SETTLEMENT_PAYMENT_METHODS: readonly PaymentMethodOption[] = [
-  { label: '现金支付', value: 'cash' },
-  { label: '银行转账', value: 'bank_transfer' },
-  { label: '微信', value: 'wechat' },
-  { label: '支付宝', value: 'alipay' },
-  { label: '其他', value: 'other' }
-]
+export const SETTLEMENT_PAYMENT_METHODS: readonly PaymentMethodOption[] = paymentOptions.settlement
 
-export const MOBILE_PAYMENT_CHANNELS: readonly PaymentMethodOption[] = [
-  { label: '微信', value: 'wechat' },
-  { label: '支付宝', value: 'alipay' }
-]
+export const MOBILE_PAYMENT_CHANNELS: readonly PaymentMethodOption[] = paymentOptions.channels.mobile
 
-export const BANK_CARD_PAYMENT_CHANNELS: readonly PaymentMethodOption[] = [
-  { label: '刷卡消费', value: 'card_consumption' },
-  { label: '银行转账', value: 'bank_transfer' }
-]
+export const BANK_CARD_PAYMENT_CHANNELS: readonly PaymentMethodOption[] = paymentOptions.channels.bank_card
 
-export const SUBSIDY_PAYMENT_CHANNELS: readonly PaymentMethodOption[] = [
-  { label: '国补刷卡', value: 'subsidy_card' }
-]
+export const SUBSIDY_PAYMENT_CHANNELS: readonly PaymentMethodOption[] = paymentOptions.channels.subsidy_card
 
-export const TRANSFER_PAYMENT_CHANNELS: readonly PaymentMethodOption[] = [
-  { label: '微信', value: 'wechat' },
-  { label: '支付宝', value: 'alipay' }
-]
+export const TRANSFER_PAYMENT_CHANNELS = MOBILE_PAYMENT_CHANNELS
 
 const PAYMENT_METHOD_LABELS: Record<string, string> = {
-  cash: '现金支付',
-  mobile: '移动支付',
-  bank_card: '银行卡',
-  subsidy_card: '国补刷卡',
   transfer: '银行转账',
-  bank_transfer: '银行转账',
-  wechat: '微信',
-  alipay: '支付宝',
-  card_consumption: '刷卡消费',
-  other: '其他',
   现金: '现金支付',
   现金支付: '现金支付',
   微信支付: '微信',
   银行卡: '银行卡',
   银行转账: '银行转账',
-  其他: '其他'
+  其他: '其他',
+  ...Object.fromEntries([
+    ...SALE_PAYMENT_METHODS, ...SETTLEMENT_PAYMENT_METHODS,
+    ...REFUND_PAYMENT_METHODS, ...Object.values(paymentOptions.channels).flat()
+  ].map(option => [option.value, option.label]))
 }
 
 export const getPaymentMethodLabel = (value: unknown, fallback = '-') => {
@@ -109,17 +82,7 @@ export const getPaymentMethodLabel = (value: unknown, fallback = '-') => {
   return PAYMENT_METHOD_LABELS[normalizedValue] || normalizedValue || fallback
 }
 
-export const getPaymentChannelOptions = (paymentMethod?: string): readonly PaymentMethodOption[] => {
-  switch (paymentMethod) {
-  case 'mobile':
-    return MOBILE_PAYMENT_CHANNELS
-  case 'bank_card':
-    return BANK_CARD_PAYMENT_CHANNELS
-  case 'subsidy_card':
-    return SUBSIDY_PAYMENT_CHANNELS
-  case 'transfer':
-    return TRANSFER_PAYMENT_CHANNELS
-  default:
-    return []
-  }
-}
+const PAYMENT_CHANNELS: Readonly<Record<string, readonly PaymentMethodOption[]>> = paymentOptions.channels
+
+export const getPaymentChannelOptions = (paymentMethod?: string): readonly PaymentMethodOption[] =>
+  PAYMENT_CHANNELS[paymentMethod === 'transfer' ? 'mobile' : paymentMethod || ''] || []

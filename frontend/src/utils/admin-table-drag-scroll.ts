@@ -168,8 +168,13 @@ export const initAdminTableDragScroll = () => {
 
   let dragState: DragState | null = null
   let suppressClickScroller: HTMLElement | null = null
+  const lastScrollLeft = new WeakMap<HTMLElement, number>()
+  const hasFinePointer = () => window.matchMedia?.('(hover: hover) and (pointer: fine)').matches ?? true
+  const hasHoverPointer = (event: PointerEvent) =>
+    (event.pointerType === 'mouse' || event.pointerType === 'pen') && hasFinePointer()
 
   document.addEventListener('pointermove', (event) => {
+    if (!hasHoverPointer(event)) return
     lastPointerPosition = { x: event.clientX, y: event.clientY }
     if (!(event.target instanceof Element)) return
 
@@ -186,12 +191,22 @@ export const initAdminTableDragScroll = () => {
     if (!(scroller instanceof HTMLElement) || !scroller.matches(SCROLLER_SELECTOR)) return
     const table = scroller.closest<HTMLElement>(TABLE_SELECTOR)
     if (!table) return
-    clearStaleTableHoverRows(table)
+    const scrollLeft = scroller.scrollLeft
+    const previousScrollLeft = lastScrollLeft.get(scroller)
+    if (scrollLeft === 0 && previousScrollLeft === undefined) {
+      lastScrollLeft.set(scroller, 0)
+      return
+    }
+    if (previousScrollLeft === scrollLeft) return
+    lastScrollLeft.set(scroller, scrollLeft)
     syncTableHorizontalPosition(scroller)
+    if (!hasFinePointer() || !lastPointerPosition) return
+    clearStaleTableHoverRows(table)
     window.requestAnimationFrame(() => syncManagedTableHoverFromPointer(table))
   }, true)
 
   document.addEventListener('pointerover', (event) => {
+    if (!hasHoverPointer(event)) return
     lastPointerPosition = { x: event.clientX, y: event.clientY }
     if (!(event.target instanceof Element)) return
 
@@ -201,6 +216,7 @@ export const initAdminTableDragScroll = () => {
   })
 
   document.addEventListener('pointerout', (event) => {
+    if (!hasHoverPointer(event)) return
     if (!(event.target instanceof Element)) return
 
     const wrapper = event.target.closest<HTMLElement>(TABLE_BODY_WRAPPER_SELECTOR)

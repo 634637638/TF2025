@@ -252,7 +252,7 @@
               :disabled="uploading"
             >
               <i class="fas fa-upload" />
-              <span class="ml-2">上传图片/视频</span>
+              <span class="ml-2">上传图片</span>
             </el-button>
           </el-upload>
 
@@ -1278,17 +1278,11 @@ defineExpose({
   --tf-dialog-footer-padding-block-end: var(--tf-space-6);
 }
 
-:global(.mobile-dialog-sheet-panel.publish-to-h5-dialog .mobile-dialog-sheet-header) {
-  min-height: calc(66px + env(safe-area-inset-top)) !important;
-  padding: calc(10px + env(safe-area-inset-top)) 52px 10px 16px !important;
-}
-
 :global(.mobile-dialog-sheet-panel.publish-to-h5-dialog .mobile-dialog-sheet-title) {
   font-size: var(--tf-type-scale-16) !important;
 }
 
 :global(.mobile-dialog-sheet-panel.publish-to-h5-dialog .mobile-dialog-sheet-close) {
-  top: calc(10px + env(safe-area-inset-top)) !important;
   right: 14px !important;
   transform: none !important;
 }
@@ -1538,13 +1532,7 @@ defineExpose({
 }
 
 @media (max-width: 479px) {
-  :global(.mobile-dialog-sheet-panel.publish-to-h5-dialog .mobile-dialog-sheet-header) {
-    min-height: calc(62px + env(safe-area-inset-top)) !important;
-    padding: calc(8px + env(safe-area-inset-top)) 50px 8px 14px !important;
-  }
-
   :global(.mobile-dialog-sheet-panel.publish-to-h5-dialog .mobile-dialog-sheet-close) {
-    top: calc(8px + env(safe-area-inset-top)) !important;
     right: 14px !important;
   }
 }

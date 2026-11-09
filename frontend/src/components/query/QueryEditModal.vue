@@ -312,12 +312,6 @@
                 ¥
               </template>
             </el-input>
-            <div
-              v-if="showProfit"
-              class="profit-hint"
-            >
-              利润: <span class="profit-value">¥{{ profit }}</span>
-            </div>
           </el-form-item>
         </div>
       </div>
@@ -441,9 +435,6 @@
               </template>
             </el-input>
           </el-form-item>
-        </div>
-
-        <div class="tf-query-modal-row tf-query-modal-row--3">
           <el-form-item label="销售员">
             <el-select
               v-model="formData.sale_operator_id"
@@ -1297,15 +1288,6 @@ const loadModelsForBrand = async (keyword = '', includeCurrent = true) => {
     if (sequence === modelSearchSequence) modelOptionsLoading.value = false
   }
 }
-
-const profit = computed(() => {
-  if (!formData.purchase_cost || !formData.sale_price) return 0
-  return formData.sale_price - formData.purchase_cost
-})
-
-const showProfit = computed(() => {
-  return (formData.purchase_cost || 0) > 0 && (formData.sale_price || 0) > 0
-})
 
 const showPaymentChannel = computed(() => {
   return ['mobile', 'bank_card', 'subsidy_card'].includes(formData.payment_method)

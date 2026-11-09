@@ -120,7 +120,7 @@
               class="btn-sm"
               @click="viewImages(product)"
             >
-              <i class="fas fa-eye mr-1" />查看素材
+              <i class="fas fa-eye mr-1" />查看图片
             </el-button>
             <el-button
               v-if="canDelete"
@@ -163,7 +163,7 @@
       <!-- 媒体管理模态框 -->
       <el-dialog
         v-model="showImageModal"
-        title="素材管理"
+        title="图片管理"
         width="90%"
         :close-on-click-modal="true"
         class="image-manage-dialog"

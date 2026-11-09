@@ -21,6 +21,14 @@ mysql -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" -p "$DB_NAME" < database_YYYYMMD
 
 完整 ZIP 包含数据库导出、代码和上传文件快照；后端代码部分会保留 `server.js`、唯一生产入口 `start-production.js` 及 `ecosystem.production.config.js`。它不会自动部署或覆盖运行中的服务。请先在隔离环境检查压缩包内容，再按部署流程恢复。
 
+## Git 管理页项目压缩包
+
+`/git-management` 的“创建压缩包备份”生成 `.tar.gz` 源码快照，与 `/backup` 的完整 ZIP 是不同用途。快照包括 `frontend/`、`docs/`、根目录 `package.json` 和可用的 lockfile、`shared/`（存在时），以及后端 `src/`、`scripts/`、`package.json`、`package-lock.json`、`database/`、`migrations/`、`.env.example` 和 `src/config/runtime-files.js` 登记的生产启动文件。
+
+快照排除 `node_modules/`、构建产物、日志、上传文件、本地备份、`.git/`、SQLite 文件和真实环境文件（包括 `.env.production`）。它带上部署说明和规范正文，但不携带生产凭据、运行数据或上传资产；恢复时仍需安全配置 `.env.production`、运行 `npm ci`，并按业务备份流程恢复数据库与上传文件。
+
+后端生产启动文件的唯一清单位于 `backend/src/config/runtime-files.js`，同时供完整备份与 Git 管理页压缩包复用。若新增或移除部署必需目录/文件，应同步更新 `backend/src/services/git-archive-backup.service.js`、`backend/test/git-archive-backup-controller.check.js` 与本节，并检查环境文件、日志、上传和生成数据的排除规则。
+
 ## 权限与验证
 
 - 创建需要 `backup:create`；查看和下载需要 `backup:view`；删除与清理需要 `backup:delete`。

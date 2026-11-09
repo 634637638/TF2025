@@ -20,6 +20,7 @@
     "migrate:price-sources": "node scripts/migrate-price-sources.js",
     "migrate:sale-invoice-constraints": "node scripts/migrate-sale-invoice-constraints.js",
     "migrate:customer-sale-points": "node scripts/migrate-customer-sale-points.js",
+    "migrate:return-stock-details": "node scripts/migrate-return-stock-details.js",
     "migrate:customer-phone-uniqueness": "node scripts/migrate-customer-phone-uniqueness.js",
     "migrate:h5-order-history-index": "node scripts/migrate-h5-order-history-index.js",
     "setup:security-keys": "node scripts/setup-security-keys.js",

@@ -867,10 +867,13 @@
           </el-form-item>
           <el-row :gutter="16">
             <el-col
-              :xs="24"
+              :xs="8"
               :sm="8"
             >
-              <el-form-item label="采集状态">
+              <el-form-item
+                label="采集状态"
+                :label-position="isMobile ? 'top' : 'right'"
+              >
                 <el-switch
                   v-model="editForm.is_collect"
                   :active-value="1"
@@ -882,10 +885,13 @@
               </el-form-item>
             </el-col>
             <el-col
-              :xs="24"
+              :xs="8"
               :sm="8"
             >
-              <el-form-item label="启用状态">
+              <el-form-item
+                label="启用状态"
+                :label-position="isMobile ? 'top' : 'right'"
+              >
                 <el-switch
                   v-model="editForm.status"
                   :active-value="1"
@@ -897,10 +903,13 @@
               </el-form-item>
             </el-col>
             <el-col
-              :xs="24"
+              :xs="8"
               :sm="8"
             >
-              <el-form-item label="报价显示">
+              <el-form-item
+                label="报价显示"
+                :label-position="isMobile ? 'top' : 'right'"
+              >
                 <el-switch
                   v-model="editForm.show_price"
                   :active-value="1"

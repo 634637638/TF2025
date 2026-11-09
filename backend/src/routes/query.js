@@ -50,7 +50,7 @@ router.get('/statistics', requirePermission('query:view', 'business'), cacheMidd
  * @access Private
  */
 router.get('/returngoods', requirePermission('return-goods:view'), cacheMiddleware({ ttl: CACHE_TTL.DISABLED }), queryController.getReturnGoodsRecords.bind(queryController))
-router.put('/returngoods/:id', requirePermission('return-goods:edit'), queryController.updateReturnGoodsRecord.bind(queryController))
+router.put('/returngoods/:id', requirePermission('return-goods:edit'), queryController.rejectHiddenReturnGoodsWrites(), queryController.updateReturnGoodsRecord.bind(queryController))
 router.delete('/returngoods/:id', requirePermission('return-goods:delete'), queryController.deleteReturnGoodsRecord.bind(queryController))
 
 /**

@@ -47,7 +47,7 @@ PC 端数据行使用 `48px`，手机端数据行使用 `40px`；手机端表头
 
 `admin-layout.css` 已由 `frontend/src/main.ts` 全局加载，页面不需要再次导入。
 
-薪资明细这类在表格外层滚动的宽表，给真实横向滚动容器添加 `data-table-drag-scroll`，复用 `admin-table-drag-scroll.ts` 的全局鼠标拖动与 Shift + 滚轮；禁止页面复制 pointer/滚轮状态机。该入口保留交互控件点击、触摸原生滑动和鼠标拖动阈值，并在结束、取消或窗口失焦时清理拖动状态。普通 Element Plus 表格继续自动定位内部滚动层、同步表头，无需添加此属性。行为回归见 `frontend/tests/admin-table-drag-scroll.spec.ts`；实际触摸与视觉效果仍需浏览器/真机检查。
+薪资明细这类在表格外层滚动的宽表，给真实横向滚动容器添加 `data-table-drag-scroll`，复用 `admin-table-drag-scroll.ts` 的全局鼠标拖动与 Shift + 滚轮；禁止页面复制 pointer/滚轮状态机。该入口保留交互控件点击、触摸原生滑动和鼠标拖动阈值，并在结束、取消或窗口失焦时清理拖动状态。普通 Element Plus 表格继续自动定位内部滚动层，仅在横向位置变化时同步表头；纵向滚动不触发表格行 hover 重算或布局测量，触摸设备不运行鼠标 hover 管理，无需添加此属性。行为回归见 `frontend/tests/admin-table-drag-scroll.spec.ts`；实际触摸与视觉效果仍需浏览器/真机检查。
 
 `RentalsView.vue` 中由 `printContract()` 生成的原生 `<table>` 仅属于打印合同 HTML 模板，不是页面主数据表，不适用本规范的 `el-table` 要求。新增页面列表不得复制这种打印模板；页面可见的主数据表仍必须使用统一 `data-table` / `admin-data-table`。
 

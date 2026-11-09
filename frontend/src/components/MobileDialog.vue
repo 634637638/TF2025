@@ -16,7 +16,7 @@
       >
         <div
           :class="sheetDialogClasses"
-          :style="sheetDialogStyle"
+          :style="dialogSizeStyle"
           role="dialog"
           aria-modal="true"
         >
@@ -106,7 +106,6 @@
     v-if="!activeUseMobileSheet"
     v-model="dialogVisible"
     :title="title"
-    :width="dialogWidth"
     align-center
     center
     :fullscreen="isFullscreen || forceFullscreen"
@@ -117,7 +116,7 @@
     :destroy-on-close="destroyOnClose"
     :modal-class="computedModalClass"
     :class="[computedDialogClass, { 'is-mobile': isMobile, 'is-tablet': isTablet, 'is-auto-height': props.autoHeight }]"
-    :style="desktopDialogStyle"
+    :style="dialogSizeStyle"
     v-bind="$attrs"
     @open="handleOpen"
     @opened="handleOpened"
@@ -204,8 +203,8 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
   title: '',
-  width: 'var(--tf-dialog-width)',
-  maxWidth: '',
+  width: undefined,
+  maxWidth: undefined,
   fullscreen: false,
   forceFullscreen: false,
   closeOnClickModal: true,
@@ -248,40 +247,6 @@ const dialogVisible = computed({
   set: (value) => emit('update:modelValue', value)
 })
 
-// 计算对话框宽度
-const dialogWidth = computed(() => {
-  // 移动端
-  if (isMobile.value) {
-    return '95vw'
-  }
-
-  // 平板端
-  if (isTablet.value) {
-    return '70vw'
-  }
-
-  // 桌面端 - 限制最大宽度
-  if (typeof props.width === 'number') {
-    return props.width
-  }
-
-  // 如果是字符串百分比，在桌面端限制为合理宽度
-  if (typeof props.width === 'string') {
-    // 如果传入的是百分比且值太大，使用默认值
-    if (props.width.includes('%')) {
-      const percentValue = parseInt(props.width)
-      if (percentValue > 70) {
-        return '70vw'
-      }
-      return props.width
-    }
-    return props.width
-  }
-
-  // 桌面端默认宽度
-  return 'var(--tf-dialog-width)'
-})
-
 // 是否全屏显示
 const isFullscreen = computed(() => {
   if (props.fullscreen) return true
@@ -292,28 +257,25 @@ const isFullscreen = computed(() => {
 
 const destroyOnClose = computed(() => props.destroyOnClose)
 
+// 页面尺寸可选；全局 CSS 自动选择页面宽度、档位或默认值，并按视口限制上限。
 const normalizeCssSize = (value?: string | number) => {
-  if (value === undefined || value === null || value === '') return undefined
-  return typeof value === 'number' ? `${value}px` : String(value)
+  if (value === undefined) return undefined
+  return typeof value === 'number' ? `${value}px` : value.trim() || undefined
 }
 
-const normalizedMaxWidth = computed(() => normalizeCssSize(props.maxWidth))
-const normalizedWidth = computed(() => normalizeCssSize(props.width))
-const effectiveDialogMaxWidth = computed(() => normalizedMaxWidth.value || normalizedWidth.value)
-
-const desktopDialogStyle = computed(() => {
-  if (!effectiveDialogMaxWidth.value && !normalizedWidth.value) return undefined
+const dialogSizeStyle = computed(() => {
+  const width = normalizeCssSize(props.width)
+  const maxWidth = normalizeCssSize(props.maxWidth)
+  // 只有明确的长度可自动扩展公共上限；百分比、视口单位、表达式和
+  // 内容自适应宽度继续受全局上限约束，工作台可用 maxWidth 显式声明上限。
+  const widthLimit = width && /^(?:\d+(?:\.\d+)?|\.\d+)(?:px|rem|em|ch|ex|cm|mm|q|in|pt|pc)$/i.test(width)
+    ? width
+    : undefined
+  const limit = maxWidth || widthLimit
 
   return {
-    ...(normalizedWidth.value ? { '--el-dialog-width': normalizedWidth.value } : {}),
-    ...(effectiveDialogMaxWidth.value ? { '--dialog-base-max-width': effectiveDialogMaxWidth.value, maxWidth: effectiveDialogMaxWidth.value } : {})
-  }
-})
-
-const sheetDialogStyle = computed(() => {
-  if (!effectiveDialogMaxWidth.value) return undefined
-  return {
-    '--dialog-base-max-width': effectiveDialogMaxWidth.value
+    ...(width ? { '--tf-dialog-explicit-width': width } : {}),
+    ...(limit ? { '--tf-dialog-explicit-max-width': limit } : {})
   }
 })
 

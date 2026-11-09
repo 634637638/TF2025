@@ -7,11 +7,6 @@
     --mobile-dialog-footer-padding: 8px 10px calc(10px + env(safe-area-inset-bottom));
   }
 
-  :global(.template-dialog .mobile-dialog-sheet-panel) {
-    width: calc(100vw - 16px);
-    max-width: calc(100vw - 16px);
-  }
-
   :global(.template-dialog .mobile-dialog-sheet-body) {
     min-width: 0;
   }

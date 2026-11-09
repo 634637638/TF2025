@@ -33,8 +33,6 @@
 }
 
 :global(.query-edit-dialog .mobile-dialog-sheet-header) {
-  min-height: calc(72px + env(safe-area-inset-top));
-  padding: calc(12px + env(safe-area-inset-top)) 56px 12px 16px;
   background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%) !important;
 }
 
@@ -45,7 +43,6 @@
 }
 
 :global(.query-edit-dialog .mobile-dialog-sheet-close) {
-  top: calc(12px + env(safe-area-inset-top));
   right: 16px;
   transform: none;
 }
@@ -55,17 +52,6 @@
   font-size: var(--tf-type-scale-12);
   line-height: 1.4;
   color: var(--tf-color-neutral-500);
-}
-
-.profit-hint {
-  margin-top: 8px;
-  font-size: var(--tf-type-scale-12);
-  color: var(--tf-color-slate-500);
-}
-
-.profit-value {
-  font-weight: 700;
-  color: var(--tf-color-emerald-600);
 }
 
 .imei-input-wrapper {

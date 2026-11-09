@@ -3023,6 +3023,12 @@ export const MODULE_FIELDS = {
       { id: 'record.operator', name: '操作员', group: '退库记录', type: FIELD_TYPES.TEXT, sensitivity: SENSITIVITY_LEVELS.INTERNAL, description: '退库操作员信息' },
       { id: 'record.sale_info', name: '原销售信息', group: '退库记录', type: FIELD_TYPES.TEXT, sensitivity: SENSITIVITY_LEVELS.INTERNAL, description: '原销售 ID、类型和销售员' },
       { id: 'record.reversal_date', name: '退库时间', group: '退库记录', type: FIELD_TYPES.DATETIME, sensitivity: SENSITIVITY_LEVELS.INTERNAL, description: '退库时间' },
+      { id: 'record.return_reason', name: '退库原因', group: '退库记录', type: FIELD_TYPES.TEXT, sensitivity: SENSITIVITY_LEVELS.INTERNAL, description: '撤销交易的原因' },
+      { id: 'record.return_type', name: '退库类型', group: '退库记录', type: FIELD_TYPES.TEXT, sensitivity: SENSITIVITY_LEVELS.INTERNAL, description: '退货处理或申请换货，均撤销当前单台交易' },
+      { id: 'record.handle_method', name: '处理方式', group: '退库记录', type: FIELD_TYPES.TEXT, sensitivity: SENSITIVITY_LEVELS.INTERNAL, description: '退库后续处理意向' },
+      { id: 'record.refund_amount', name: '退款金额', group: '退库记录', type: FIELD_TYPES.CURRENCY, sensitivity: SENSITIVITY_LEVELS.SENSITIVE, description: '本次撤销交易记录的退款金额，0表示未退款' },
+      { id: 'record.refund_method', name: '退款方式', group: '退库记录', type: FIELD_TYPES.TEXT, sensitivity: SENSITIVITY_LEVELS.SENSITIVE, description: '本次退款记录方式与渠道，统一控制查看和修改，不执行线上退款' },
+      { id: 'record.created_at', name: '操作时间', group: '退库记录', type: FIELD_TYPES.DATETIME, sensitivity: SENSITIVITY_LEVELS.INTERNAL, description: '实际创建退库日志的北京时间' },
       { id: 'record.remarks', name: '备注', group: '退库记录', type: FIELD_TYPES.TEXT, sensitivity: SENSITIVITY_LEVELS.INTERNAL, description: '退库备注' },
       { id: 'system_info.operations', name: '操作', group: '系统信息', type: FIELD_TYPES.TEXT, sensitivity: SENSITIVITY_LEVELS.INTERNAL, description: '退库记录编辑、删除和刷新操作' }
     ]
@@ -4838,6 +4844,8 @@ function resolveModuleConfig(moduleId) {
   if (!moduleId) {
     return null
   }
+
+  if (moduleId === 'system_returngoods') return MODULE_FIELDS.returngoods
 
   if (MODULE_FIELDS[moduleId]) {
     return MODULE_FIELDS[moduleId]

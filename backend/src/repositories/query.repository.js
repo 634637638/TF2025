@@ -8,6 +8,7 @@ const {
   normalizePhoneStatus
 } = require('../utils/phone-status')
 const { normalizedModelSql } = require('../utils/search')
+const { getBeijingTimeString } = require('../utils/time')
 const QUERY_STATS_DEFAULT_STATUSES = Object.freeze([
   ...COMPLETED_TRANSACTION_STATUSES,
   'in_stock'
@@ -48,10 +49,17 @@ class QueryRepository extends BaseRepository {
         WHERE id = ? AND status IN ('sold', 'peer_transfer', 'supplier_proxy')`, [phoneId])
   }
 
-  insertReversalLog(connection, phoneId, originalSaleId, saleType, originalCustomerId, originalSaleOperatorId, originalSaleOperatorName, operatorId, remarks) {
+  insertReversalLog(connection, phoneId, originalSaleId, saleType, originalCustomerId, originalSaleOperatorId, originalSaleOperatorName, operatorId, details) {
     return connection.execute(`INSERT INTO sale_reversal_logs
-          (phone_id, original_sale_id, original_sale_type, original_customer_id, original_sale_operator_id, original_sale_operator_name, operator_id, reversal_date, remarks)
-        VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?)`, [phoneId, originalSaleId, saleType, originalCustomerId, originalSaleOperatorId, originalSaleOperatorName, operatorId, remarks])
+          (phone_id, original_sale_id, original_sale_type, original_customer_id, original_sale_operator_id,
+           original_sale_operator_name, operator_id, reversal_date, remarks, return_reason, return_type,
+           handle_method, refund_amount, refund_method, refund_channel, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [
+      phoneId, originalSaleId, saleType, originalCustomerId, originalSaleOperatorId,
+      originalSaleOperatorName, operatorId, details.reversal_date, details.remarks, details.return_reason,
+      details.return_type, details.handle_method, details.refund_amount, details.refund_method, details.refund_channel,
+      getBeijingTimeString()
+    ])
   }
 
   lockPhoneForDelete(connection, phoneId) {
@@ -727,21 +735,14 @@ class QueryRepository extends BaseRepository {
         OR u.name LIKE ?
         OR srl.original_sale_operator_name LIKE ?
         OR srl.remarks LIKE ?
+        OR srl.return_reason LIKE ?
+        OR srl.return_type LIKE ?
+        OR srl.handle_method LIKE ?
+        OR srl.refund_method LIKE ?
+        OR srl.refund_channel LIKE ?
       )`)
       const keywordPattern = `%${keyword}%`
-      params.push(
-        keywordPattern,
-        keywordPattern,
-        keywordPattern,
-        keywordPattern,
-        keywordPattern,
-        keywordPattern,
-        keywordPattern,
-        keywordPattern,
-        keywordPattern,
-        keywordPattern,
-        keywordPattern
-      )
+      params.push(...Array(16).fill(keywordPattern))
     }
 
     if (startDate) {
@@ -781,6 +782,12 @@ class QueryRepository extends BaseRepository {
         srl.original_sale_operator_name,
         srl.operator_id,
         srl.reversal_date,
+        srl.return_reason,
+        srl.return_type,
+        srl.handle_method,
+        srl.refund_amount,
+        srl.refund_method,
+        srl.refund_channel,
         srl.remarks,
         srl.created_at,
         p.imei,
@@ -857,6 +864,13 @@ class QueryRepository extends BaseRepository {
     const db = this.getConnection()
     const updateFields = []
     const params = []
+
+    for (const field of ['return_reason', 'return_type', 'handle_method', 'refund_amount', 'refund_method', 'refund_channel']) {
+      if (Object.prototype.hasOwnProperty.call(payload, field)) {
+        updateFields.push(`${field} = ?`)
+        params.push(payload[field])
+      }
+    }
 
     if (Object.prototype.hasOwnProperty.call(payload, 'original_sale_type')) {
       updateFields.push('original_sale_type = ?')

@@ -1,0 +1,32 @@
+{
+  "sale": [
+    { "label": "现金支付", "value": "cash" },
+    { "label": "移动支付", "value": "mobile" },
+    { "label": "银行卡", "value": "bank_card" },
+    { "label": "国补刷卡", "value": "subsidy_card" }
+  ],
+  "settlement": [
+    { "label": "现金支付", "value": "cash" },
+    { "label": "银行转账", "value": "bank_transfer" },
+    { "label": "微信", "value": "wechat" },
+    { "label": "支付宝", "value": "alipay" },
+    { "label": "其他", "value": "other" }
+  ],
+  "channels": {
+    "mobile": [
+      { "label": "微信", "value": "wechat" },
+      { "label": "支付宝", "value": "alipay" }
+    ],
+    "bank_card": [
+      { "label": "刷卡付款", "value": "card_consumption" },
+      { "label": "银行转账", "value": "bank_transfer" }
+    ],
+    "subsidy_card": [
+      { "label": "国补刷卡", "value": "subsidy_card" }
+    ]
+  },
+  "refund": {
+    "excludedSaleMethods": ["subsidy_card"],
+    "extraMethods": [{ "label": "原路退回", "value": "原路退回" }]
+  }
+}

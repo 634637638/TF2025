@@ -47,7 +47,21 @@ test('archive route keeps create permission and delegates to the Git controller'
 
 test('archive service preserves safe name, Beijing timestamp, file selection, exclusions, and response data', async () => {
   const { service, archiveCalls, commands, root } = createService({
-    exists: ['/project/backend/src', '/project/backend/server.js', '/project/backend/start-production.js', '/project/backend/database', '/project/package-lock.json', '/project/shared']
+    exists: [
+      '/project/docs',
+      '/project/backend/src',
+      '/project/backend/package.json',
+      '/project/backend/package-lock.json',
+      '/project/backend/server.js',
+      '/project/backend/start-production.js',
+      '/project/backend/ecosystem.production.config.js',
+      '/project/backend/scripts',
+      '/project/backend/database',
+      '/project/backend/migrations',
+      '/project/backend/.env.example',
+      '/project/package-lock.json',
+      '/project/shared'
+    ]
   })
   const result = await service.createArchiveBackup(' My/Backup! ')
   assert.equal(result.message, '本地压缩包备份创建成功 (2.00 MB)')
@@ -60,21 +74,23 @@ test('archive service preserves safe name, Beijing timestamp, file selection, ex
     gitInfo: { hash: '12345678', message: 'subject', date: 'date', author: 'author' },
     hasChanges: true,
     includedItems: [
-      'frontend', 'package.json', 'backend/src', 'backend/server.js', 'backend/start-production.js',
-      'backend/database', 'package-lock.json', 'shared'
+      'frontend', 'package.json', 'docs', 'backend/src', 'backend/package.json', 'backend/package-lock.json',
+      'backend/server.js', 'backend/start-production.js', 'backend/ecosystem.production.config.js',
+      'backend/scripts', 'backend/database', 'backend/migrations', 'backend/.env.example', 'package-lock.json', 'shared'
     ],
     type: 'archive'
   })
   assert.equal(archiveCalls.length, 1)
   assert.equal(archiveCalls[0][0], 'tar')
   assert.equal(archiveCalls[0][1][archiveCalls[0][1].indexOf('-czf') + 1], path.join(root, '本地备份', 'My_Backup_.tar.gz'))
-  assert.deepEqual(archiveCalls[0][1].slice(-8), result.backup.includedItems)
+  assert.deepEqual(archiveCalls[0][1].slice(-result.backup.includedItems.length), result.backup.includedItems)
   assert.ok(archiveCalls[0][1].includes('--exclude=backend/.env.production'))
+  assert.ok(!archiveCalls[0][1].includes('--exclude=backend/scripts/*.json'))
   assert.deepEqual(archiveCalls[0][2], { cwd: root, maxBuffer: 10 * 1024 * 1024, timeout: 120000 })
   assert.ok(commands.some(call => call[1] === 'git status --porcelain'))
 })
 
-test('archive service retries with the reduced exclusion list and preserves empty Git metadata fallback', async () => {
+test('archive service retries with the same protected file exclusions and preserves empty Git metadata fallback', async () => {
   const { service, archiveCalls } = createService({
     status: '',
     gitLog: '',
@@ -86,7 +102,10 @@ test('archive service retries with the reduced exclusion list and preserves empt
   const result = await service.createArchiveBackup('')
   assert.equal(archiveCalls.length, 2)
   assert.equal(archiveCalls[1][2].timeout, 60000)
-  assert.deepEqual(archiveCalls[1][1].slice(0, 3), ['--exclude=node_modules', '--exclude=.git', '--exclude=uploads'])
+  assert.ok(archiveCalls[1][1].includes('--exclude=backend/.env.production'))
+  assert.ok(archiveCalls[1][1].includes('--exclude=backend/logs'))
+  assert.ok(archiveCalls[1][1].includes('--exclude=本地备份'))
+  assert.deepEqual(archiveCalls[1][1], archiveCalls[0][1])
   assert.equal(result.backup.hasChanges, false)
   assert.equal(result.backup.gitInfo.hash, '')
   assert.equal(result.backup.gitInfo.message, undefined)

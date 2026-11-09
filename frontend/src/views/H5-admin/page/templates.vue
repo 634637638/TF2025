@@ -337,17 +337,19 @@
       </el-card>
 
       <MobileDialog
-        v-model="showDialog"
+        :model-value="showDialog"
         :title="dialogTitle"
-        width="1240px"
+        width="90%"
         :close-on-click-modal="false"
         :close-on-press-escape="false"
-        :show-close="false"
+        :show-close="!saving && !imageUploading"
+        :before-close="handleCancelDialog"
         dialog-class="template-dialog"
         :show-default-footer="false"
         :mobile-breakpoint="768"
         :tablet-breakpoint="1024"
         destroy-on-close
+        @update:model-value="!$event && handleCancelDialog()"
         @close="resetDialogState"
       >
         <div class="dialog-shell">
@@ -607,7 +609,7 @@
                   <div class="image-block-header">
                     <div>
                       <div class="block-title">
-                        图片 / 视频管理
+                        图片管理
                       </div>
                       <p>支持多选上传图片和视频，按颜色子模板 ID 独立保存</p>
                     </div>
@@ -624,7 +626,7 @@
                         :loading="imageUploading"
                         :disabled="!currentChild.id || !canEdit"
                       >
-                        上传图片 / 视频
+                        上传图片
                       </el-button>
                     </el-upload>
                   </div>

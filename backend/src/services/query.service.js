@@ -5,6 +5,7 @@ const _ApiResponse = require('../utils/response')
 const XLSX = require('xlsx')
 const { normalizePhoneStatus } = require('../utils/phone-status')
 const { isStoreScopeError } = require('../utils/store-scope')
+const { normalizeReturnStockInfo } = require('./return-stock-validation')
 
 class QueryService {
   constructor() {
@@ -289,20 +290,25 @@ class QueryService {
         throw new Error('退库记录ID不能为空')
       }
 
-      await this.queryRepository.updateReturnGoodsRecord(recordId, {
-        original_sale_type: this.normalizeReturnGoodsType(payload.original_sale_type),
-        original_sale_operator_id: payload.original_sale_operator_id ? parseInt(payload.original_sale_operator_id, 10) : null,
-        original_sale_operator_name: payload.original_sale_operator_name ? String(payload.original_sale_operator_name).trim() : null,
-        reversal_date: payload.reversal_date ? String(payload.reversal_date).trim() : null,
-        remarks: payload.remarks ? String(payload.remarks).trim() : null
-      }, storeScope)
+      const details = normalizeReturnStockInfo(payload, { partial: true })
+      const fields = { ...details }
+      if (Object.prototype.hasOwnProperty.call(payload, 'original_sale_type')) {
+        fields.original_sale_type = this.normalizeReturnGoodsType(payload.original_sale_type)
+      }
+      if (Object.prototype.hasOwnProperty.call(payload, 'original_sale_operator_id')) {
+        fields.original_sale_operator_id = payload.original_sale_operator_id ? parseInt(payload.original_sale_operator_id, 10) : null
+      }
+      if (Object.prototype.hasOwnProperty.call(payload, 'original_sale_operator_name')) {
+        fields.original_sale_operator_name = payload.original_sale_operator_name ? String(payload.original_sale_operator_name).trim() : null
+      }
+      await this.queryRepository.updateReturnGoodsRecord(recordId, fields, storeScope)
 
       return {
         success: true,
         message: '退库记录更新成功'
       }
     } catch (error) {
-      if (isStoreScopeError(error)) throw error
+      if (isStoreScopeError(error) || error.statusCode === 400) throw error
       throw new Error('退库记录更新失败: ' + error.message)
     }
   }
@@ -343,7 +349,7 @@ class QueryService {
         data: result
       }
     } catch (error) {
-      if (isStoreScopeError(error)) throw error
+      if (isStoreScopeError(error) || error.statusCode === 400) throw error
       throw new Error('退库操作失败: ' + error.message)
     }
   }

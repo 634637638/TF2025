@@ -555,7 +555,7 @@
     <!-- 媒体管理模态框 -->
     <MobileDialog
       v-model="showImageModal"
-      title="素材管理"
+      title="商品详图"
       width="90%"
       :close-on-click-modal="true"
       dialog-class="image-manage-dialog"
@@ -668,9 +668,6 @@
             style="display: none"
             @change="handleUploadImage"
           >
-          <el-button @click="handleCloseImageModal">
-            关闭
-          </el-button>
           <el-button
             v-if="productImages.length > 0"
             type="danger"
@@ -688,7 +685,7 @@
             @click="($refs.imageUploadInput as HTMLInputElement).click()"
           >
             <i class="fas fa-upload" />
-            上传图片/视频
+            上传图片
           </el-button>
         </div>
       </template>
@@ -1884,13 +1881,6 @@ const getImageUrl = (url: string) => {
   return formatImageUrl(url)
 }
 
-// 上传图片或视频
-
-// 关闭图片管理模态框；手机媒体上传成功后已立即保存。
-const handleCloseImageModal = async () => {
-  showImageModal.value = false
-}
-
 const handleUploadImage = async (event: Event) => {
   const input = event.target as HTMLInputElement
   const files = input.files
@@ -1926,7 +1916,7 @@ const handleUploadImage = async (event: Event) => {
       // 上传接口已立即写入图片记录，不作为未保存的临时文件清理。
     }
 
-    globalNotifications.success('图片/视频上传成功，已保存')
+    globalNotifications.success('上传成功，已保存')
 
     // 重新加载图片列表
     const response = await unifiedApi.get(`/phones/${selectedPhoneId.value}/images`)
@@ -1935,8 +1925,8 @@ const handleUploadImage = async (event: Event) => {
     // 刷新查询数据以更新图标显示
     await triggerLoadQueryData()
   } catch (error) {
-    logger.error('上传图片失败:', error)
-    globalNotifications.error('上传图片失败')
+    logger.error('上传失败:', error)
+    globalNotifications.error('上传失败')
   } finally {
     uploadingImage.value = false
     // 清空input，允许重复上传同一文件

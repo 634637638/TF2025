@@ -9,6 +9,8 @@
 - [迁移报告](MIGRATION_REPORT.md) - 迁移执行记录
 - [菜单 API 规范](menu-api-specification.md) - 菜单接口说明
 - [设备状态统一规范](phone-status-standard.md) - 状态归一化、预订、销售和租赁边界
+- [退库与交易撤销](../business/inventory/transaction-reversal.md) - 积分冲回、退库明细、退款记录及数据库升级
+- [全局支付方式与渠道](../frontend/payment-method-standard.md) - 前后端唯一配置 `backend/src/config/payment-methods.json`，退库复用方式、渠道及组合校验
 - [上传文件存储与迁移规范](upload-storage-standard.md) - 国补、手机媒体、H5 商城目录及部署要求
 - [手机媒体接口统一说明](phone-media-api-unification.md) - canonical 路由、兼容迁移和权限边界
 - [维修设备关联规范](repairs-device-link.md) - IMEI/序列号检索、手动录入和维修设备字段迁移

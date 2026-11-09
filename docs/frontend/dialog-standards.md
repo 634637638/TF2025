@@ -14,7 +14,7 @@
 
 关闭按钮统一使用 `MobileDialog` 的 `tf-button--dialog-close` 语义。该语义同时覆盖 Element Plus 的 `--el-button-*` 变量和 SVG 图标尺寸；公共弹窗样式还按 `.mobile-dialog-sheet-close` 结构类提供兜底，禁止浏览器默认按钮外观在手机端泄漏。PC 与手机端都必须保持半透明标题栏背景、白色关闭图标和圆形触控区域；业务页面不得重新设置关闭按钮背景、颜色、宽高或 SVG 尺寸。
 
-`MobileDialog` 在手机和平板使用 sheet 布局，在桌面使用 Element Plus Dialog。宽度按断点收敛：手机（`<=767px`）使用接近满宽的弹窗；平板（`768-1024px`）宽度上限为视口的 `80%`，并继续受页面 `width`/`maxWidth` 参数约束；桌面（`>=1025px`）按页面声明宽度并受全局最大宽度约束。最终规则统一采用 `min(页面声明宽度, 可用视口宽度)`，与库存管理弹窗的自适应行为一致。不要在业务页面用 `!important` 再覆盖这些断点规则。
+`MobileDialog` 在手机和平板使用 sheet 布局，在桌面使用 Element Plus Dialog。宽度按断点收敛：手机（`<=767px`）使用接近满宽的弹窗；平板（`768-1024px`）宽度上限为视口的 `80%`，并继续受页面 `width`/`maxWidth` 参数约束；桌面（`>=1025px`）优先按页面声明宽度，未声明时采用档位或默认宽度，并统一受视口边界约束。最终规则统一采用 `min(页面声明宽度, 可用视口宽度)`，与库存管理弹窗的自适应行为一致。不要在业务页面用 `!important` 再覆盖这些断点规则。
 
 手机和平板遮罩关闭必须确认同一次主指针在遮罩上按下并抬起；正文、标题栏、footer 内开始的操作，以及移动超过 `10px`、指针取消或弹窗出现后的兼容穿透点击，均不得触发遮罩关闭。每次弹窗打开/关闭都清空记录。该规则由 `MobileDialog` 统一维护，`check:dialogs` 检查接入；不能靠业务页复制延时器或缩小正文点击区域处理。
 
@@ -22,7 +22,13 @@
 
 `width` 只声明业务弹窗的期望宽度，`maxWidth` 用于声明更严格的上限；两者都不是固定像素锁定。全局实现会根据当前视口自动取较小值：
 
-普通新增/编辑弹窗优先省略 `width`，由 `MobileDialog` 直接读取公共令牌 `--tf-dialog-width`（当前 `680px`）。国补新增申请和编辑信息已统一采用此默认值；原新增 `900px`、编辑 `760px` 及父页面手机端强制加宽的覆盖已移除。默认宽度只在 `_dialog.scss` 定义，不能在组件中再保存一份像素默认值。
+普通新增/编辑弹窗优先省略 `width`，由全局 CSS 依次选择页面使用的 `crud-dialog-*` 档位和公共默认令牌 `--tf-dialog-width`（当前 `700px`）。国补新增申请和编辑信息已统一采用此默认值；原新增 `900px`、编辑 `760px` 及父页面手机端强制加宽的覆盖已移除。默认宽度只在 `_dialog.scss` 定义，不能在组件中再保存一份像素默认值。
+
+宽度优先级为：**显式 `width` → 全局档位 → 默认宽度**。页面无需强制传入尺寸：不配置时自动使用默认 `700px`，页面明确指定尺寸或引用档位时优先采用页面声明，最终按屏幕可用空间收缩。`MobileDialog` 不为 `width` 注入默认参数；没有传值或移除值时，不留下覆盖档位的内联尺寸。档位数值只在 `_dialog.scss` 的 `--tf-dialog-tier-width` 定义，组件内不复制尺寸表。客户新增、编辑及详情使用 `crud-dialog-lg`，桌面宽度为 `800px`；库存入库弹窗显式声明桌面 `1240px`，不会被默认宽度或默认上限截断。
+
+`maxWidth` 仅限制上限，不替代期望宽度；例如 `width="900px" max-width="700px"` 最多为 `700px`，`width="500px" max-width="900px"` 仍为 `500px`。明确指定数值或固定长度（如 `1240px`）的宽工作台可以超过公共默认上限，但始终受视口边界限制。百分比、视口单位、CSS 表达式和 `auto` / `fit-content` 等自适应宽度默认受档位或公共 `--tf-dialog-max-width`（桌面 `880px`）限制，不能自动把自身当成最大宽度；工作台确需放宽时显式传入 `maxWidth`。例如综合查询双击全新/二手打开的素材管理使用 `width="90%"`，桌面最大为 `880px`，不会随大屏无限加宽。百分比保留原本语义，不再被改为 `70vw`；内容自适应关键字不能作为数值传入 CSS `min()`。当前不强制统一最小宽度，以保留小弹窗和窄屏适配。
+
+手机端未指定 `width` 时，各档位均采用接近满宽布局；明确指定较小宽度或 `maxWidth` 时继续尊重该限制。平板上限为视口 `80%`，PC、平板和手机共享同一套尺寸来源和上限规则。
 
 统一的是宽度计算、上限和响应式规则，并非要求所有业务弹窗完全同宽。表格、照片管理等确需更大空间的工作台仍可通过 `width`/`maxWidth` 声明业务宽度，不能用私有 CSS 覆盖外壳、标题栏或手机端边界。
 
@@ -73,11 +79,13 @@
 
 令牌集中在 `_dialog.scss` 的 `:root` 中。常用令牌包括：
 
+PC、平板和手机的彩色标题栏统一为 `50px`（CSS 像素），唯一高度定义为 `--tf-dialog-header-height`。Element Plus Dialog、MessageBox 和 `MobileDialog` 的 sheet 均读取公共标题栏规则；上下内边距为零，标题与关闭按钮垂直居中。业务页面不得重复设置标题栏高度、最小高度、上下内边距或关闭按钮顶部偏移；旧的 sheet 高度和窄屏覆盖已移除。标题栏不叠加顶部安全区高度；footer 继续使用底部安全区规则。
+
 ```scss
 --tf-dialog-radius
 --tf-dialog-shadow
 --tf-dialog-header-bg
---tf-dialog-header-padding-y
+--tf-dialog-header-height
 --tf-dialog-title-size
 --tf-dialog-close-size
 --tf-dialog-body-padding-inline
@@ -86,7 +94,7 @@
 --tf-dialog-footer-gap
 ```
 
-默认值适用于 PC；`768px` 以下切换到移动端宽度、间距和安全区；`480px` 以下进一步收紧标题、正文和 footer。修改全局弹窗视觉时只改 `_dialog.scss`，不要在页面中复制具体像素值。
+默认值适用于 PC；`768px` 以下切换到移动端宽度、间距和安全区；`480px` 以下进一步收紧标题栏左右间距、正文和 footer，标题栏高度保持一致。修改全局弹窗视觉时只改 `_dialog.scss`，不要在页面中复制具体像素值。
 
 ### 弹窗文字字号
 
@@ -204,3 +212,9 @@ MessageBox 的默认宽度由 `--tf-dialog-message-width` 统一控制，当前�
 - [ ] 运行 `npm run check:dialog-actions`，确认没有 footer 的 grid、纵向排列或固定按钮尺寸覆盖
 - [ ] 运行 `npm run check:dialogs`，确认 `MobileDialog` 没有重复 footer 包装层
 - [ ] 检查没有页面级 `width: calc(100vw - ...)` 或 `width: min(..., 100vw)` 覆盖全局宽度
+
+### 宽度回归验证
+
+- `npm --prefix frontend run test:unit -- tests/mobile-dialog.spec.ts`：验证尺寸参数缺省、更新和移除后的行为。
+- `npm --prefix frontend run test:dialog-widths`：启动隔离的本地组件页，用 Chrome/Chromium 测量 8 种视口（含 1920px 大屏）、明暗主题、4 个档位、显式宽度、最大宽度、百分比和内容自适应。需要本机 Chrome/Chromium，可通过 `CHROME_BIN` 指定可执行文件；未安装时明确失败，不跳过。Vite `cacheDir` 位于本次临时目录内，不共用开发服务的 `node_modules/.vite`。验证不访问云端 API，结束后自动关闭服务、浏览器并删除临时用户目录及测试预构建缓存。
+- `check:dialogs` 同时运行审计器正反例，防止恢复组件默认宽度或破坏全局档位定义。静态审计和参数单测不能替代浏览器实际尺寸测量；以上检查不代表业务页面逐页或 iOS/Android 真机验收。

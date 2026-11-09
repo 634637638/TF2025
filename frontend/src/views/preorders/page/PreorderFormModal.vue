@@ -1220,7 +1220,6 @@ onBeforeUnmount(() => {
 // 手机端优化
 @media (max-width: 767px) {
   :deep(.preorder-form-dialog) {
-    --tf-dialog-header-padding-y: var(--tf-space-3);
     --tf-dialog-header-padding-x: var(--tf-space-4);
     --tf-dialog-header-padding-right: var(--tf-space-8);
     --tf-dialog-body-padding-inline: var(--tf-space-4);

@@ -64,11 +64,11 @@
           <span class="label">内存</span>
           <span class="value">{{ deviceInfo.memory || '-' }}</span>
         </div>
-        <div class="info-item full-width">
+        <div class="info-item">
           <span class="label">序列号</span>
           <span class="value mono">{{ deviceInfo.serial_number || '-' }}</span>
         </div>
-        <div class="info-item full-width">
+        <div class="info-item">
           <span class="label">IMEI</span>
           <span class="value mono imei">{{ deviceInfo.imei || '-' }}</span>
         </div>
@@ -100,49 +100,27 @@
               popper-class="tf2025-form-popper"
             >
               <el-option
-                label="客户退货"
-                value="客户退货"
-              />
-              <el-option
-                label="质量问题"
-                value="质量问题"
-              />
-              <el-option
-                label="性能不达标"
-                value="性能不达标"
-              />
-              <el-option
-                label="外观瑕疵"
-                value="外观瑕疵"
-              />
-              <el-option
-                label="功能故障"
-                value="功能故障"
-              />
-              <el-option
-                label="配件缺失"
-                value="配件缺失"
-              />
-              <el-option
-                label="其他原因"
-                value="其他原因"
+                v-for="option in RETURN_STOCK_OPTIONS.return_reason"
+                :key="option"
+                :label="option"
+                :value="option"
               />
             </el-select>
           </el-form-item>
 
           <el-form-item
             label="退库时间"
-            prop="return_date"
+            prop="reversal_date"
           >
             <el-date-picker
-              v-model="formData.return_date"
+              v-model="formData.reversal_date"
               type="datetime"
               placeholder="请选择退库时间"
               :format="TIME_FORMATS.DATETIME_MINUTE"
               :value-format="TIME_FORMATS.DATETIME_LOCAL"
               teleported
               popper-class="tf2025-form-popper"
-              style="width: 180px"
+              style="width: 100%"
             />
           </el-form-item>
 
@@ -157,16 +135,10 @@
               popper-class="tf2025-form-popper"
             >
               <el-option
-                label="整单退库"
-                value="整单退库"
-              />
-              <el-option
-                label="部分退库"
-                value="部分退库"
-              />
-              <el-option
-                label="换货"
-                value="换货"
+                v-for="option in RETURN_STOCK_OPTIONS.return_type"
+                :key="option"
+                :label="option"
+                :value="option"
               />
             </el-select>
           </el-form-item>
@@ -182,28 +154,22 @@
               popper-class="tf2025-form-popper"
             >
               <el-option
-                label="重新入库"
-                value="重新入库"
-              />
-              <el-option
-                label="返厂维修"
-                value="返厂维修"
-              />
-              <el-option
-                label="供应商退换"
-                value="供应商退换"
-              />
-              <el-option
-                label="报废处理"
-                value="报废处理"
+                v-for="option in RETURN_STOCK_OPTIONS.handle_method"
+                :key="option"
+                :label="option"
+                :value="option"
               />
             </el-select>
           </el-form-item>
 
-          <el-form-item label="退款金额">
+          <el-form-item
+            label="退款金额"
+            prop="refund_amount"
+          >
             <el-input-number
               v-model="formData.refund_amount"
               :min="0"
+              :max="99999999.99"
               :precision="2"
               :step="100"
               :controls="false"
@@ -211,12 +177,30 @@
             />
           </el-form-item>
 
-          <el-form-item label="退款方式">
+          <el-form-item
+            label="退款方式"
+            prop="refund_method"
+          >
             <PaymentMethodSelect
               v-model="formData.refund_method"
               variant="refund"
               placeholder="请选择退款方式"
               clearable
+              teleported
+              popper-class="tf2025-form-popper"
+              @update:model-value="formData.refund_channel = null"
+            />
+          </el-form-item>
+
+          <el-form-item
+            v-if="hasPaymentChannelOptions(formData.refund_method)"
+            label="退款渠道"
+            prop="refund_channel"
+          >
+            <PaymentChannelSelect
+              v-model="formData.refund_channel"
+              :payment-method="formData.refund_method"
+              placeholder="请选择退款渠道"
               teleported
               popper-class="tf2025-form-popper"
             />
@@ -244,7 +228,7 @@
       <i class="fas fa-exclamation-triangle" />
       <div class="warning-content">
         <strong>操作提示：</strong>
-        退库后将删除对应销售记录，设备状态恢复为“在库”。
+        退库商品原来有计算积分退库后会倒扣。
       </div>
     </div>
   </MobileDialog>
@@ -254,12 +238,14 @@
 import { TIME_FORMATS } from '@/utils/time'
 import { computed, reactive, ref, watch } from 'vue'
 
-import type { FormInstance } from 'element-plus'
-import { ValidationRules } from '@/composables'
+import type { FormInstance, FormRules } from 'element-plus'
 import { unifiedApi } from '@/utils/unified-api'
 import { TimeUtil } from '@/utils/time'
 import MobileDialog from '@/components/MobileDialog.vue'
-import { PaymentMethodSelect } from '@/components/payment'
+import { RETURN_STOCK_OPTIONS } from '@/constants/returnStock'
+import type { ReturnStockDetails } from '@/types/return-stock'
+import { PaymentMethodSelect, PaymentChannelSelect } from '@/components/payment'
+import { hasPaymentChannelOptions } from '@/constants/paymentMethods'
 import { useMobile } from '@/composables/mobile'
 import { logger } from '@/utils/logger'
 import { getRequestErrorMessage } from '@/utils/api-response'
@@ -287,23 +273,27 @@ const dialogVisible = computed({
 const formRef = ref<FormInstance>()
 const submitting = ref(false)
 
-const createDefaultFormData = () => ({
+const createDefaultFormData = (): ReturnStockDetails => ({
   return_reason: '',
   return_type: '',
   handle_method: '',
   refund_amount: 0,
   refund_method: '',
+  refund_channel: null,
   remarks: '',
-  return_date: TimeUtil.nowFormatted('DATETIME_LOCAL')
+  reversal_date: TimeUtil.nowFormatted('DATETIME_LOCAL')
 })
 
 const formData = reactive(createDefaultFormData())
 
-const formRules = {
-  return_reason: [ValidationRules.required('请选择退库原因')],
-  return_type: [ValidationRules.required('请选择退库类型')],
-  handle_method: [ValidationRules.required('请选择处理方式')],
-  return_date: [ValidationRules.required('请选择退库时间')]
+const formRules: FormRules = {
+  return_reason: [{ required: true, message: '请选择退库原因', trigger: 'change' }],
+  return_type: [{ required: true, message: '请选择退库类型', trigger: 'change' }],
+  handle_method: [{ required: true, message: '请选择处理方式', trigger: 'change' }],
+  reversal_date: [{ required: true, message: '请选择退库时间', trigger: 'change' }],
+  refund_method: [{ required: true, message: '请选择退款方式', trigger: 'change' }],
+  refund_channel: [{ required: true, message: '请选择退款渠道', trigger: 'change' }],
+  refund_amount: [{ required: true, message: '请填写退款金额，未退款时填写0', trigger: 'change' }]
 }
 
 const normalizedIsNew = computed(() => {
@@ -325,7 +315,7 @@ const handleSubmit = async () => {
   if (!formRef.value || !props.deviceInfo?.id) return
 
   try {
-    const valid = await formRef.value.validate()
+    const valid = await formRef.value.validate().catch(() => false)
     if (!valid) return
 
     submitting.value = true
@@ -334,9 +324,10 @@ const handleSubmit = async () => {
       return_reason: formData.return_reason,
       return_type: formData.return_type,
       handle_method: formData.handle_method,
-      refund_amount: formData.refund_amount || null,
-      refund_method: formData.refund_method || null,
-      return_date: formData.return_date,
+      refund_amount: formData.refund_amount,
+      refund_method: formData.refund_method,
+      refund_channel: hasPaymentChannelOptions(formData.refund_method) ? formData.refund_channel : null,
+      reversal_date: formData.reversal_date,
       remarks: formData.remarks || ''
     })
 
@@ -388,8 +379,6 @@ watch(
 }
 
 :global(.query-return-stock-dialog .mobile-dialog-sheet-header) {
-  min-height: calc(72px + env(safe-area-inset-top));
-  padding: calc(12px + env(safe-area-inset-top)) 56px 12px 16px;
   background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%) !important;
 }
 
@@ -400,7 +389,6 @@ watch(
 }
 
 :global(.query-return-stock-dialog .mobile-dialog-sheet-close) {
-  top: calc(12px + env(safe-area-inset-top));
   right: 16px;
   transform: none;
 }
@@ -464,7 +452,8 @@ watch(
   }
 
   &.imei {
-    color: var(--tf-color-blue-600);
+    color: var(--tf-color-red-600);
+    font-weight: 700;
   }
 }
 
@@ -578,13 +567,7 @@ watch(
 }
 
 @media (max-width: 479px) {
-  :global(.query-return-stock-dialog .mobile-dialog-sheet-header) {
-    min-height: calc(62px + env(safe-area-inset-top));
-    padding: calc(8px + env(safe-area-inset-top)) 50px 8px 14px;
-  }
-
   :global(.query-return-stock-dialog .mobile-dialog-sheet-close) {
-    top: calc(8px + env(safe-area-inset-top));
     right: 14px;
   }
 

@@ -224,6 +224,10 @@
 - `views/subsidy/components/SubsidyListSection.vue`
 - `views/subsidy/components/SubsidyPhotoManageDialog.vue`
 - `views/system/page/Returngoods.vue`
+
+系统管理的站点 Logo、编辑站点信息、报价设置和屏幕保护卡片保存按钮使用全局普通按钮尺寸，手机端保留文字，不通过局部内边距或隐藏文字压缩操作。
+
+退库记录的电脑表格与手机记录列表共用 `table-section admin-panel admin-table-panel` 公共列表卡片，背景、边框、圆角、阴影及响应式内边距由 `admin-layout.css` 统一提供。退库记录卡片不另设刷新按钮，统一使用系统页面顶部刷新；当前退库 Tab 通过子组件暴露的 `reload` 失效 `/query/returngoods` 缓存并加载记录，失败保留原记录并向顶部传播错误，由顶部统一提示结果。电脑表格、手机卡片和编辑弹窗覆盖退库原因、类型、处理方式、退款金额及方式/渠道、业务退库时间和操作时间，复用公共支付方式、渠道及文本组件，渠道随方式统一受字段权限控制。创建入口为 `components/query/ReturnStockModal.vue`，退库时间选择器随表单列宽自适应；字段和迁移边界见[退库与交易撤销](../business/inventory/transaction-reversal.md)。
 - `views/system/page/AnnouncementManagementCard.vue`
 - `views/system/phone-warning-config/PhoneWarningConfigView.vue`
 
@@ -313,6 +317,11 @@
 
 ## 7. 当前审计结果与边界
 
+- H5 模板新增/编辑弹窗采用 `90%` 自适应宽度，复用公共桌面最大 `880px` 和响应式规则，已移除旧 `1240px` 声明和平板宽度覆盖；使用公共顶部关闭按钮，与“取消”共用未保存媒体清理流程，保存/上传期间禁止关闭。综合查询“商品详图”保留顶部关闭入口，底部仅保留上传和删除操作。
+
+- `MobileDialog` 宽度统一按显式参数、全局档位、默认 700px 选择，库存入库显式 1240px 优先于默认值，`maxWidth` 独立限制上限，自适应百分比/视口宽度默认受公共 880px 上限约束（含综合查询素材管理）；客户详情及编辑按 `crud-dialog-lg` 使用 800px 档位。公共组件已移除默认内联宽度和重复断点计算，适用所有档位调用方；回归命令及浏览器/真机验证边界见 [对话框规范](dialog-standards.md)。
+
+- 弹窗标题栏统一由 `_dialog.scss` 的 `--tf-dialog-header-height` 定义为 `50px`，PC、平板、手机共用；查询、库存、H5 发布及预定弹窗的旧高度/上下间距覆盖已删除。静态检查、浏览器测量和真机验收分别报告，不把规则接入视为逐页视觉验收完成。
 - 页面清单统计：懒加载路由入口 65、叶子路由 62、视图源文件 131（含新增公告管理卡片）、公共组件 72。
 - 表格逐页审计已完成：台账范围为 56 个页面承载单元、6 个公共表格组件；当前 56 个页面模板直接渲染表格，库存 `InventoryView.vue` 与 `InventoryTable.vue` 按承载关系共同纳入范围。当前模板实际包含 92 个 Element 表格和 56 个操作列，`npm run check:tables` 已逐文件通过。
 - “审计通过”仅表示静态规则通过；文字溢出、触摸滚动、按钮位置、真实权限和云端 API 行为仍需按本台账进行浏览器/云端回归。

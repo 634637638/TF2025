@@ -19,18 +19,18 @@
   --tf-dialog-close-bg: rgba(255, 255, 255, 0.16);
   --tf-dialog-close-bg-hover: rgba(255, 255, 255, 0.24);
   --tf-dialog-side-gap: 32px;
-  --tf-dialog-width: 680px;
+  --tf-dialog-width: 700px;
   --tf-dialog-max-width: 880px;
   /* Confirmation messages need room for product names and identifiers. */
   --tf-dialog-message-width: 560px;
-  --tf-dialog-header-padding-y: 18px;
+  --tf-dialog-header-height: 50px;
   --tf-dialog-header-padding-x: 22px;
   --tf-dialog-header-padding-right: 64px;
   --tf-dialog-title-size: var(--tf-font-dialog-title, var(--tf-font-section));
   --tf-dialog-title-weight: 600;
   --tf-dialog-title-line-height: 1.5;
   --tf-dialog-close-size: 32px;
-  --tf-dialog-close-top: 18px;
+  --tf-dialog-close-top: calc((var(--tf-dialog-header-height) - var(--tf-dialog-close-size)) / 2);
   --tf-dialog-close-right: 16px;
   --tf-dialog-close-icon-size: 18px;
   --tf-image-viewer-z-index: var(--tf-z-viewer);
@@ -49,7 +49,6 @@
   --tf-dialog-mobile-footer-padding-inline: 12px;
   --tf-dialog-mobile-footer-padding-block-end: calc(12px + env(safe-area-inset-bottom, 0px));
   --tf-dialog-mobile-radius: var(--tf-dialog-radius);
-  --tf-dialog-sheet-header-min-height: 72px;
   --tf-dialog-sheet-title-size: var(--tf-font-dialog-title);
 
   /* Backwards-compatible aliases for existing page-level variants. */
@@ -71,26 +70,36 @@
   --dialog-message-width: var(--tf-dialog-message-width);
 }
 
+/* Explicit props override tiers; omitted props leave the global default intact. */
+.mobile-dialog {
+  --mobile-dialog-effective-width: var(--tf-dialog-explicit-width, var(--tf-dialog-tier-width, var(--tf-dialog-width)));
+  --mobile-dialog-effective-max-width: var(--tf-dialog-explicit-max-width, var(--dialog-max-width, var(--tf-dialog-max-width)));
+}
+
 /* Width variants only change the workspace width; dialog chrome stays shared. */
 .crud-dialog-sm {
-  --el-dialog-width: 500px;
-  --dialog-max-width: 500px;
+  --tf-dialog-tier-width: 500px;
+  --el-dialog-width: var(--tf-dialog-tier-width);
+  --dialog-max-width: var(--tf-dialog-tier-width);
 }
 
 .crud-dialog-md {
-  --el-dialog-width: 600px;
-  --dialog-max-width: 600px;
+  --tf-dialog-tier-width: 600px;
+  --el-dialog-width: var(--tf-dialog-tier-width);
+  --dialog-max-width: var(--tf-dialog-tier-width);
 }
 
 /* Intermediate tier between md and lg for dialogs that need slightly more room. */
 .crud-dialog-md-lg {
-  --el-dialog-width: 700px;
-  --dialog-max-width: 700px;
+  --tf-dialog-tier-width: 700px;
+  --el-dialog-width: var(--tf-dialog-tier-width);
+  --dialog-max-width: var(--tf-dialog-tier-width);
 }
 
 .crud-dialog-lg {
-  --el-dialog-width: 800px;
-  --dialog-max-width: 800px;
+  --tf-dialog-tier-width: 800px;
+  --el-dialog-width: var(--tf-dialog-tier-width);
+  --dialog-max-width: var(--tf-dialog-tier-width);
 }
 
 /* Image preview must sit above dialogs and their overlays. */
@@ -153,7 +162,7 @@
 
 .el-dialog:not(.is-fullscreen) {
   --el-dialog-margin-top: 0px !important;
-  width: min(var(--mobile-dialog-effective-width, var(--el-dialog-width, var(--tf-dialog-width))), calc(100vw - var(--dialog-side-gap, var(--tf-dialog-side-gap)))) !important;
+  width: var(--mobile-dialog-effective-width, var(--el-dialog-width, var(--tf-dialog-width))) !important;
   max-width: min(var(--mobile-dialog-effective-max-width, var(--dialog-max-width, var(--tf-dialog-max-width))), calc(100vw - var(--dialog-side-gap, var(--tf-dialog-side-gap)))) !important;
   max-height: calc(100vh - 32px) !important;
   margin: auto !important;
@@ -176,7 +185,11 @@
   display: flex !important;
   align-items: center !important;
   margin: 0 !important;
-  padding: var(--tf-dialog-header-padding-y) var(--tf-dialog-header-padding-x) !important;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  height: var(--tf-dialog-header-height);
+  min-height: var(--tf-dialog-header-height);
+  padding: 0 var(--tf-dialog-header-padding-x) !important;
   padding-right: var(--tf-dialog-header-padding-right) !important;
   border-bottom: none !important;
   background: var(--tf-dialog-header-bg) !important;
@@ -419,26 +432,15 @@ body .mobile-dialog-sheet-close svg {
 }
 
 @media (min-width: 768px) and (max-width: 1024px) {
-  .mobile-dialog-sheet-overlay .mobile-dialog-sheet-panel:not(.is-fullscreen) {
-    width: min(80vw, var(--dialog-base-max-width, 880px), var(--dialog-max-width, 880px));
-    max-width: min(80vw, var(--dialog-base-max-width, 880px), var(--dialog-max-width, 880px));
-  }
-
   .el-overlay-dialog .el-dialog:not(.is-fullscreen) {
     width: min(80vw, var(--el-dialog-width, var(--tf-dialog-max-width)));
     max-width: min(80vw, var(--el-dialog-width, var(--tf-dialog-max-width)));
   }
 
-  .mobile-dialog-sheet-overlay .mobile-dialog-sheet-panel.mobile-dialog:not(.is-fullscreen) {
-    --mobile-dialog-effective-width: min(
-      80vw,
-      var(--dialog-max-width, var(--dialog-base-max-width, 880px)),
-      calc(100vw - (var(--mobile-dialog-effective-side-gap, var(--tf-dialog-mobile-side-gap, 4px)) * 2))
-    );
+  .mobile-dialog {
     --mobile-dialog-effective-max-width: min(
       80vw,
-      var(--dialog-max-width, var(--dialog-base-max-width, 880px)),
-      calc(100vw - (var(--mobile-dialog-effective-side-gap, var(--tf-dialog-mobile-side-gap, 4px)) * 2))
+      var(--tf-dialog-explicit-max-width, var(--dialog-max-width, var(--tf-dialog-max-width)))
     );
   }
 }
@@ -461,19 +463,16 @@ body .mobile-dialog-sheet-close svg {
     padding: var(--tf-dialog-mobile-side-gap) !important;
   }
 
-  .el-dialog:not(.is-fullscreen) {
+  .el-dialog:not(.mobile-dialog):not(.is-fullscreen) {
     width: calc(100vw - 8px) !important;
     max-width: calc(100vw - 8px) !important;
   }
 
-  .mobile-dialog-sheet-panel.mobile-dialog:not(.is-fullscreen) {
-    --mobile-dialog-effective-width: min(
-      calc(100vw - (var(--mobile-dialog-effective-side-gap, var(--tf-dialog-mobile-side-gap, 4px)) * 2)),
-      var(--dialog-max-width, var(--dialog-base-max-width, 880px))
-    );
+  .mobile-dialog {
+    --mobile-dialog-effective-width: var(--tf-dialog-explicit-width, calc(100vw - (var(--mobile-dialog-effective-side-gap, var(--tf-dialog-mobile-side-gap)) * 2)));
     --mobile-dialog-effective-max-width: min(
-      calc(100vw - (var(--mobile-dialog-effective-side-gap, var(--tf-dialog-mobile-side-gap, 4px)) * 2)),
-      var(--dialog-max-width, var(--dialog-base-max-width, 880px))
+      calc(100vw - (var(--mobile-dialog-effective-side-gap, var(--tf-dialog-mobile-side-gap)) * 2)),
+      var(--tf-dialog-explicit-max-width, var(--dialog-max-width, var(--tf-dialog-max-width)))
     );
   }
 
@@ -522,8 +521,6 @@ body .mobile-dialog-sheet-close svg {
   .mobile-dialog-sheet-panel.crud-dialog-md,
   .mobile-dialog-sheet-panel.crud-dialog-md-lg,
   .mobile-dialog-sheet-panel.crud-dialog-lg {
-    width: calc(100vw - 8px) !important;
-    max-width: calc(100vw - 8px) !important;
     max-height: calc(100dvh - 24px) !important;
     border-radius: var(--tf-dialog-mobile-radius) !important;
   }
@@ -541,11 +538,9 @@ body .mobile-dialog-sheet-close svg {
 
 @media (max-width: 479px) {
   :root {
-    --tf-dialog-header-padding-y: 14px;
     --tf-dialog-header-padding-x: 16px;
     --tf-dialog-header-padding-right: 56px;
     --tf-dialog-title-size: var(--tf-font-dialog-title);
-    --tf-dialog-close-top: 14px;
     --tf-dialog-close-right: 12px;
     --tf-dialog-close-size: 30px;
     --tf-dialog-body-padding-inline-mobile: 12px;

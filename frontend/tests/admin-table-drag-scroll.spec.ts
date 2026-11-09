@@ -1,4 +1,4 @@
-import { beforeAll, beforeEach, describe, expect, it } from 'vitest'
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { initAdminTableDragScroll } from '@/utils/admin-table-drag-scroll'
 
 const pointer = (target: Element | Document, type: string, x: number, pointerType = 'mouse') => {
@@ -15,9 +15,18 @@ const scrollable = (element: HTMLElement, width = 500) => {
   return element
 }
 
+let finePointer = true
+
 describe('统一表格横向拖动', () => {
-  beforeAll(() => initAdminTableDragScroll())
+  beforeAll(() => {
+    Object.defineProperty(window, 'matchMedia', {
+      configurable: true,
+      value: () => ({ matches: finePointer })
+    })
+    initAdminTableDragScroll()
+  })
   beforeEach(() => {
+    finePointer = true
     pointer(document, 'pointerup', 0)
     document.body.innerHTML = ''
   })
@@ -80,5 +89,42 @@ describe('统一表格横向拖动', () => {
     expect(header.scrollLeft).toBe(40)
     pointer(cell, 'pointerup', 60)
     expect(scroller.classList.contains('is-admin-table-dragging')).toBe(false)
+  })
+
+  it('纵向滚动不触发表格横向同步或 hover 布局扫描', () => {
+    document.body.innerHTML = '<div class="data-table"><div class="el-table__header-wrapper"></div><div class="el-scrollbar__wrap"><div class="el-table__body-wrapper"><table class="el-table__body"><tbody><tr class="el-table__row"><td>报价</td></tr></tbody></table></div></div></div>'
+    const scroller = document.querySelector<HTMLElement>('.el-scrollbar__wrap')!
+    const header = document.querySelector<HTMLElement>('.el-table__header-wrapper')!
+    const row = document.querySelector<HTMLElement>('.el-table__row')!
+    const getBoundingClientRect = vi.spyOn(row, 'getBoundingClientRect')
+
+    finePointer = false
+    Object.defineProperty(scroller, 'scrollTop', { value: 120, configurable: true })
+    scroller.dispatchEvent(new Event('scroll', { bubbles: true }))
+
+    expect(header.scrollLeft).toBe(0)
+    expect(getBoundingClientRect).not.toHaveBeenCalled()
+    getBoundingClientRect.mockRestore()
+  })
+
+  it('触摸设备上的兼容 pointer 事件不更新整行 hover 状态', () => {
+    document.body.innerHTML = '<div class="data-table"><div class="el-table__body-wrapper"><table class="el-table__body"><tbody><tr class="el-table__row"><td>报价</td></tr></tbody></table></div></div>'
+    const row = document.querySelector<HTMLElement>('.el-table__row')!
+    finePointer = false
+    pointer(row, 'pointermove', 10, 'touch')
+    expect(row.classList.contains('is-admin-table-row-hover')).toBe(false)
+  })
+
+  it('首次纵向滚动不会重设分离渲染的表头横向位置', () => {
+    document.body.innerHTML = '<div class="data-table"><div class="el-table__header-wrapper"></div><div class="el-scrollbar__wrap"></div></div>'
+    const table = document.querySelector<HTMLElement>('.data-table')!
+    const scroller = document.querySelector<HTMLElement>('.el-scrollbar__wrap')!
+    const querySelectorAll = vi.spyOn(table, 'querySelectorAll')
+
+    Object.defineProperty(scroller, 'scrollTop', { value: 120, configurable: true })
+    scroller.dispatchEvent(new Event('scroll', { bubbles: true }))
+
+    expect(querySelectorAll).not.toHaveBeenCalled()
+    querySelectorAll.mockRestore()
   })
 })

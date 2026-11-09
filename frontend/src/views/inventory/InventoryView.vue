@@ -1637,17 +1637,11 @@ const _handleSelect = (item: InventoryItem) => {
     border-radius: 18px !important;
   }
 
-  .mobile-dialog-sheet-panel.inventory-edit-dialog .mobile-dialog-sheet-header {
-    min-height: calc(66px + env(safe-area-inset-top)) !important;
-    padding: calc(10px + env(safe-area-inset-top)) 52px 10px 16px !important;
-  }
-
   .mobile-dialog-sheet-panel.inventory-edit-dialog .mobile-dialog-sheet-title {
     font-size: var(--tf-type-scale-16) !important;
   }
 
   .mobile-dialog-sheet-panel.inventory-edit-dialog .mobile-dialog-sheet-close {
-    top: calc(10px + env(safe-area-inset-top)) !important;
     right: 14px !important;
     transform: none !important;
   }
@@ -1744,13 +1738,7 @@ const _handleSelect = (item: InventoryItem) => {
     --dialog-vertical-gap: 24px;
   }
 
-  .mobile-dialog-sheet-panel.inventory-edit-dialog .mobile-dialog-sheet-header {
-    min-height: calc(62px + env(safe-area-inset-top)) !important;
-    padding: calc(8px + env(safe-area-inset-top)) 50px 8px 14px !important;
-  }
-
   .mobile-dialog-sheet-panel.inventory-edit-dialog .mobile-dialog-sheet-close {
-    top: calc(8px + env(safe-area-inset-top)) !important;
     right: 14px !important;
   }
 
