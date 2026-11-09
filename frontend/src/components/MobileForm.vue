@@ -231,9 +231,9 @@
           :disabled="field.disabled"
           :list-type="field.listType || 'text'"
           :auto-upload="field.autoUpload !== false"
-          @success="(response, uploadFile, uploadFiles) => handleUploadSuccess(field, response, uploadFile, uploadFiles)"
-          @error="(error, uploadFile, uploadFiles) => handleUploadError(field, error, uploadFile, uploadFiles)"
-          @change="(uploadFile, uploadFiles) => handleUploadChange(field, uploadFile, uploadFiles)"
+          @success="(response: FormFieldUploadResponse, uploadFile: UploadFile, uploadFiles: UploadFiles) => handleUploadSuccess(field, response, uploadFile, uploadFiles)"
+          @error="(error: Error, uploadFile: UploadFile, uploadFiles: UploadFiles) => handleUploadError(field, error, uploadFile, uploadFiles)"
+          @change="(uploadFile: UploadFile, uploadFiles: UploadFiles) => handleUploadChange(field, uploadFile, uploadFiles)"
         >
           <el-button
             v-if="field.listType !== 'picture-card'"

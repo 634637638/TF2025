@@ -511,23 +511,28 @@ body .tf-actions--fit-row .el-button > span {
   white-space: nowrap;
 }
 
+// 各操作语义只赋值已有颜色变量，公共表面合并输出，避免每次 include 重复生成声明。
+%tf-action-surface {
+  background: var(--el-button-bg-color) !important;
+  border-color: var(--el-button-border-color) !important;
+  color: var(--el-button-text-color) !important;
+
+  &:hover,
+  &:focus {
+    background: var(--el-button-hover-bg-color) !important;
+    border-color: var(--el-button-hover-border-color) !important;
+    color: var(--el-button-hover-text-color) !important;
+  }
+}
+
 @mixin tf-action-colors($bg, $border, $color, $hover-bg, $hover-border, $hover-color) {
+  @extend %tf-action-surface;
   --el-button-bg-color: #{$bg} !important;
   --el-button-border-color: #{$border} !important;
   --el-button-text-color: #{$color} !important;
   --el-button-hover-bg-color: #{$hover-bg} !important;
   --el-button-hover-border-color: #{$hover-border} !important;
   --el-button-hover-text-color: #{$hover-color} !important;
-  background: #{$bg} !important;
-  border-color: #{$border} !important;
-  color: #{$color} !important;
-
-  &:hover,
-  &:focus {
-    background: #{$hover-bg} !important;
-    border-color: #{$hover-border} !important;
-    color: #{$hover-color} !important;
-  }
 }
 
 body :where(.action-buttons, .mobile-row-actions, .mobile-inline-actions, .table-actions, .tf-table-actions, .card-actions, .batch-actions-buttons) .el-button.el-button--primary,
