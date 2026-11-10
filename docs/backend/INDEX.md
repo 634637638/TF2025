@@ -19,7 +19,7 @@
 - [安全文件访问](secure-file-access-standard.md) - 私有文件受控访问、短时签名、静态目录边界和生命周期
 - [商城地图与支付服务配置](shop-provider-config-standard.md) - provider 配置、密钥加密、公开字段白名单与支付接入边界
 - [站内公告](site-announcements.md) - 管理/员工 API、权限及数据库迁移
-- [备份管理](backup-management.md) - 数据库单独备份、完整备份、下载与恢复边界
+- [备份管理](backup-management.md) - 数据库/完整备份、定时生成与本地保留数量、多账户阿里云盘自动上传、文件管理与下载恢复边界
 
 ## 架构审计入口
 

@@ -21,7 +21,7 @@
 ## 前端处理边界
 
 - 站内请求统一使用 `unifiedApi` 或现有 API/业务服务，不在页面创建私有 Axios 拦截器。
-- 请求层已经展示通用错误时，业务层不得重复弹出相同提示；业务层只补充当前操作所需的上下文或恢复动作。
+- 请求层已经展示通用错误时，业务层不得重复弹出相同提示；业务层只补充当前操作所需的上下文或恢复动作。`showError: false` 同时约束状态码处理和通用提示，仍保留认证清理；已由状态码处理展示的错误不再弹第二条通用消息。错误上报请求另用 `reportError: false` 阻止上报故障递归进入上报队列，普通业务请求继续记录错误。
 - 页面、组件、store 和 service 的诊断信息使用 `logger.error/warn/debug`，不得直接调用 `console.*`。
 - `logger.ts` 不负责网络上报；未捕获错误和 API 错误分别由 Error Boundary、`unifiedApi` 转交 `globalErrorLogger`，业务层不得自行调用日志接口。
 - 捕获值使用 `unknown`，通过现有请求错误辅助函数、类型守卫或 `useErrorHandler` 提取信息，不使用 `any` 或宽泛断言绕过类型检查。

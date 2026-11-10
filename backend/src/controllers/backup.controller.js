@@ -83,7 +83,7 @@ class BackupController {
       })
     } catch (error) {
       this.logger.error('[Backup] 创建备份失败:', error)
-      return res.status(500).json({ success: false, message: '备份创建失败: ' + error.message })
+      return res.status(error.statusCode || 500).json({ success: false, message: '备份创建失败: ' + error.message })
     }
   }
 

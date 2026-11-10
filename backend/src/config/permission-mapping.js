@@ -317,6 +317,7 @@ module.exports = Object.freeze({
   // 备份管理权限映射
   'backup:view': ['backup_backupview:view', 'backup_backupview:menu_view'],
   'backup:create': ['backup_backupview:create'],
+  'backup:edit': ['backup_backupview:edit'],
   'backup:delete': ['backup_backupview:delete'],
 
   // 仪表盘权限映射

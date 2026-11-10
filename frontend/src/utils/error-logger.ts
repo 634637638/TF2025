@@ -410,6 +410,13 @@ export class ErrorLogger {
     }, this.config.reportInterval)
   }
 
+  private async sendReport(reportData: Record<string, unknown>): Promise<void> {
+    const response = await unifiedApi.post(this.config.endpoint, reportData, {
+      showLoading: false, showError: false, reportError: false, cacheInvalidationScope: false
+    })
+    if (!response.success) throw new Error('错误日志尚未被服务器接收')
+  }
+
   /**
    * 上报单个错误
    */
@@ -446,11 +453,11 @@ export class ErrorLogger {
         }
       }
 
-      await unifiedApi.post(this.config.endpoint, reportData)
+      await this.sendReport(reportData)
       entry.reported = true
 
-    } catch (error) {
-      logger.warn('错误上报失败:', error)
+    } catch {
+      logger.warn('错误上报失败，日志保留待下次上报')
     }
   }
 
@@ -549,15 +556,15 @@ export class ErrorLogger {
         statistics: this.getStatistics()
       }
 
-      await unifiedApi.post(this.config.endpoint, reportData)
+      await this.sendReport(reportData)
 
       // 标记为已上报
       unreportedLogs.forEach(log => {
         log.reported = true
       })
 
-    } catch (error) {
-      logger.warn('批量错误上报失败:', error)
+    } catch {
+      logger.warn('批量错误上报失败，日志保留待下次上报')
     }
   }
 

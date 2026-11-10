@@ -15,6 +15,8 @@
 
 导航站管理模块使用 `guide_guidemanagementview`；能力清单和后端权限映射分别以 `backend/src/config/module-permission-capabilities.json`、`permission-mapping.js` 为唯一来源。
 
+备份模块 `backup_backupview` 使用 `view/create/edit/delete`；定时生成规则沿用 `backup:create`，设置本地自动清理规则额外要求 `backup:delete`；云盘浏览、新建、重命名、回收站恢复（edit）及删除/彻底删除（delete）的逐接口边界和模块同步说明见[备份管理](../backend/backup-management.md#阿里云盘自动上传)。
+
 ## 安全边界
 
 - 浏览器可见的权限、角色、菜单和路由信息只用于界面渲染，不能当作秘密。

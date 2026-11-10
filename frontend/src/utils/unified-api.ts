@@ -40,6 +40,8 @@ const enableApiLogs = import.meta.env.DEV && import.meta.env.VITE_API_LOGGING ==
 export interface RequestConfig extends AxiosRequestConfig {
   showLoading?: boolean
   showError?: boolean
+  /** 仅错误上报请求关闭，防止上报失败再次进入上报队列。 */
+  reportError?: boolean
   showSuccess?: boolean
   successMessage?: string
   useCache?: boolean
@@ -139,7 +141,13 @@ class UnifiedApiManager {
     this.addAuthHeaders(config)
 
     // 添加CSRF防护
-    await this.addCSRFHeaders(config)
+    try {
+      await this.addCSRFHeaders(config)
+    } catch (caught) {
+      // 预取 CSRF 失败仍属于原请求，保留其提示/上报策略，避免后台日志请求递归。
+      if (axios.isAxiosError(caught)) caught.config = config
+      throw caught
+    }
 
     // 添加请求ID和时间戳
     config.metadata = {
@@ -290,7 +298,7 @@ class UnifiedApiManager {
     }
 
     // 记录到错误日志系统
-    this.logApiError(error, metadata)
+    if (requestConfig?.reportError !== false) this.logApiError(error, metadata)
 
     // 记录性能数据
     if (metadata) {
@@ -309,10 +317,10 @@ class UnifiedApiManager {
     }
 
     // 处理特定状态码错误
-    this.handleHttpError(error)
+    const feedbackHandled = this.handleHttpError(error)
 
     // 显示错误消息
-    if (requestConfig?.showError !== false) {
+    if (requestConfig?.showError !== false && !feedbackHandled) {
       this.showErrorMessage(error)
     }
 
@@ -754,7 +762,7 @@ class UnifiedApiManager {
   /**
    * 处理权限错误
    */
-  private handlePermissionError(error: AxiosError): void {
+  private handlePermissionError(error: AxiosError): boolean {
     const urlPath = error.config?.url || ''
     const method = error.config?.method?.toUpperCase() || 'GET'
 
@@ -773,7 +781,9 @@ class UnifiedApiManager {
         duration: 3000,
         showClose: true
       })
+      return true
     }
+    return false
   }
 
   private inferActionFromRequest(method: string, urlPath: string): string {
@@ -1039,8 +1049,9 @@ class UnifiedApiManager {
   /**
    * 处理HTTP状态码错误
    */
-  private handleHttpError(error: AxiosError): void {
+  private handleHttpError(error: AxiosError): boolean {
     const status = error.response?.status
+    const showFeedback = (error.config as RequestConfig | undefined)?.showError !== false
 
     // 检查是否已经在登录页面或H5页面，避免死循环
     const isLoginPage = window.location.pathname === '/login' ||
@@ -1055,8 +1066,11 @@ class UnifiedApiManager {
       if (!isLoginPage && !isH5Page && !isPublicRoute) {
         setBackendDisconnectedState(true)
       }
-      return
+      return false
     }
+
+    // 静默请求仍执行认证清理；普通状态码不得绕过 showError 再弹提示。
+    if (status !== 401 && !showFeedback) return false
 
     switch (status) {
     case 401:
@@ -1064,7 +1078,7 @@ class UnifiedApiManager {
 
       // TOKEN_EXPIRED 已经在 tryRecoverAuthError 中处理，这里跳过
       if (errorCode === 'TOKEN_EXPIRED') {
-        return
+        return true
       }
 
       // 确定友好的错误提示
@@ -1095,7 +1109,7 @@ class UnifiedApiManager {
         this.markRedirected()
 
         // 显示友好的通知
-        showElementNotification({
+        if (showFeedback) showElementNotification({
           title: notificationTitle,
           message: notificationMessage,
           type: 'warning',
@@ -1114,34 +1128,36 @@ class UnifiedApiManager {
           window.location.href = '/login'
         }, 1000)
       }
-      break
+      return true
     case 403:
-      this.handlePermissionError(error)
-      break
+      return this.handlePermissionError(error)
     case 404:
       if (!isLoginPage) {
         showElementError('请求的资源不存在')
+        return true
       }
-      break
+      return false
     case 422:
       // 表单验证错误，不显示通用错误消息
-      break
+      return false
     case 429:
       showElementError('请求过于频繁，请稍后再试')
-      break
+      return true
     case 500:
       showElementError('服务器内部错误，请稍后再试')
-      break
+      return true
     case 502:
       showElementError('服务器网关错误，请稍后再试')
-      break
+      return true
     case 503:
       showElementError('服务暂时不可用，请稍后再试')
-      break
+      return true
     default:
       if (status && status >= 500) {
         showElementError('服务器错误，请稍后再试')
+        return true
       }
+      return false
     }
   }
 

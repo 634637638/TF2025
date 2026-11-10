@@ -82,7 +82,7 @@
     "standards_standardsauditview": ["view"],
     "system_returngoods": ["view", "edit", "delete"],
     "system_gitmanagement": ["view", "create", "edit", "delete"],
-    "backup_backupview": ["view", "create", "delete"],
+    "backup_backupview": ["view", "create", "edit", "delete"],
     "data_optimization_dataoptimizationview": ["view", "create", "edit", "delete"],
     "menu_menumanagementview": ["view", "create", "edit", "delete", "export", "import"],
     "sales_salesview": ["view", "create", "sell", "wholesale", "proxy-transfer", "edit", "delete", "export"],

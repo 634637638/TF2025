@@ -6,9 +6,11 @@ const { withConnection } = require('../core/db/connection')
 const fs = require('fs')
 const path = require('path')
 const { spawn } = require('child_process')
+const { pipeline } = require('node:stream/promises')
 const dbConfig = require('../config/database')
 const { PRODUCTION_RUNTIME_FILES } = require('../config/runtime-files')
 const log = require('../utils/log')
+const { normalizeDateTime } = require('../utils/time')
 
 // 后端根目录
 const BACKEND_ROOT = path.resolve(__dirname, '..', '..')
@@ -22,7 +24,7 @@ if (!fs.existsSync(BACKUP_DIR)) {
 }
 
 const BACKUP_FILENAME_PATTERN = /^backup_\d{8}_\d{6}\.zip$/
-const DATABASE_BACKUP_FILENAME_PATTERN = /^database_\d{8}_\d{6}\.sql$/
+const DATABASE_BACKUP_FILENAME_PATTERN = /^(?:sql-|database_)\d{8}_\d{6}\.sql$/
 
 const ensureBackupConfig = () => {
   const { DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME } = process.env
@@ -88,20 +90,20 @@ class BackupService {
    * 获取备份时间戳
    */
   getTimestamp() {
-    const now = new Date()
-    const year = now.getFullYear()
-    const month = String(now.getMonth() + 1).padStart(2, '0')
-    const day = String(now.getDate()).padStart(2, '0')
-    const hour = String(now.getHours()).padStart(2, '0')
-    const minute = String(now.getMinutes()).padStart(2, '0')
-    const second = String(now.getSeconds()).padStart(2, '0')
-    return `${year}${month}${day}_${hour}${minute}${second}`
+    return normalizeDateTime(Date.now()).replace(/[-:]/g, '').replace(' ', '_')
   }
 
   /**
    * 创建完整备份或单独的数据库备份
    */
   async createBackup(type = 'full') {
+    if (this.creatingBackup) throw Object.assign(new Error('已有备份正在创建，请稍后重试'), { statusCode: 409 })
+    this.creatingBackup = true
+    try { return await this.createBackupContents(type) }
+    finally { this.creatingBackup = false }
+  }
+
+  async createBackupContents(type) {
     if (!['full', 'database'].includes(type)) {
       throw new Error('备份类型无效')
     }
@@ -110,11 +112,15 @@ class BackupService {
 
     const timestamp = this.getTimestamp()
     if (type === 'database') {
-      const filename = `database_${timestamp}.sql`
+      const filename = `sql-${timestamp}.sql`
       const filePath = path.join(BACKUP_DIR, filename)
+      const temporaryPath = `${filePath}.tmp`
+      if (fs.existsSync(filePath)) throw Object.assign(new Error('同一秒已有备份，请稍后重试'), { statusCode: 409 })
 
       try {
-        await this.backupDatabase(filePath)
+        await this.backupDatabase(temporaryPath)
+        fs.appendFileSync(temporaryPath, '\n-- TF2025 database backup complete\n')
+        fs.renameSync(temporaryPath, filePath)
         const stats = fs.statSync(filePath)
         return {
           filename,
@@ -125,6 +131,7 @@ class BackupService {
           created_at: new Date().toISOString()
         }
       } catch (error) {
+        fs.rmSync(temporaryPath, { force: true })
         if (fs.existsSync(filePath)) {
           fs.rmSync(filePath, { force: true })
         }
@@ -135,6 +142,8 @@ class BackupService {
     const backupName = `backup_${timestamp}`
     const backupPath = path.join(BACKUP_DIR, backupName)
     const zipPath = path.join(BACKUP_DIR, `${backupName}.zip`)
+    const temporaryZipPath = `${zipPath}.tmp`
+    if (fs.existsSync(zipPath)) throw Object.assign(new Error('同一秒已有备份，请稍后重试'), { statusCode: 409 })
 
     log.debug(`[Backup] 开始创建备份: ${backupName}`)
 
@@ -161,7 +170,8 @@ class BackupService {
 
       // 6. 压缩成 ZIP（使用更快速度）
       log.debug('[Backup] 正在压缩...')
-      const compressionStats = await this.compressBackup(backupPath, zipPath)
+      const compressionStats = await this.compressBackup(backupPath, temporaryZipPath)
+      fs.renameSync(temporaryZipPath, zipPath)
 
       // 7. 计算备份大小
       const stats = fs.statSync(zipPath)
@@ -193,6 +203,7 @@ class BackupService {
       if (fs.existsSync(zipPath)) {
         fs.rmSync(zipPath, { force: true })
       }
+      fs.rmSync(temporaryZipPath, { force: true })
       throw error
     }
   }
@@ -205,25 +216,25 @@ class BackupService {
 
     // 尝试使用 mysqldump
     try {
-      await new Promise((resolve, reject) => {
-        const writeStream = fs.createWriteStream(outputPath)
-        const mysqldump = spawn('mysqldump', [
-          `-h${dbConfig.host}`,
-          `-P${dbConfig.port}`,
-          `-u${dbConfig.user}`,
-          dbConfig.database,
-          '--single-transaction',
-          '--quick',
-          '--lock-tables=false'
-        ], {
-          stdio: ['ignore', 'pipe', 'pipe'],
-          env: {
-            ...process.env,
-            MYSQL_PWD: dbConfig.password
-          }
-        })
+      const writeStream = fs.createWriteStream(outputPath)
+      const mysqldump = spawn('mysqldump', [
+        `-h${dbConfig.host}`,
+        `-P${dbConfig.port}`,
+        `-u${dbConfig.user}`,
+        dbConfig.database,
+        '--single-transaction',
+        '--quick',
+        '--lock-tables=false'
+      ], {
+        stdio: ['ignore', 'pipe', 'pipe'],
+        env: {
+          ...process.env,
+          MYSQL_PWD: dbConfig.password
+        }
+      })
 
-        mysqldump.stdout.pipe(writeStream)
+      const copyFinished = pipeline(mysqldump.stdout, writeStream)
+      const dumpFinished = new Promise((resolve, reject) => {
         mysqldump.stderr.on('data', (data) => {
           const message = String(data)
           if (!message.includes('Using a password')) {
@@ -232,7 +243,6 @@ class BackupService {
         })
 
         mysqldump.on('error', reject)
-        writeStream.on('error', reject)
 
         mysqldump.on('close', (code) => {
           if (code === 0) {
@@ -244,6 +254,16 @@ class BackupService {
           reject(new Error(`mysqldump 退出码: ${code}`))
         })
       })
+      try {
+        // 进程结束不等于目标文件写完；两者均结束后才能发布 SQL 或打包 ZIP。
+        await Promise.all([dumpFinished, copyFinished])
+      } catch (error) {
+        mysqldump.kill()
+        mysqldump.stdout.destroy()
+        writeStream.destroy()
+        await Promise.allSettled([dumpFinished, copyFinished])
+        throw error
+      }
 
       return
     } catch (error) {
@@ -521,7 +541,7 @@ class BackupService {
    */
   getBackupList() {
     const files = fs.readdirSync(BACKUP_DIR)
-      .filter(file => BACKUP_FILENAME_PATTERN.test(file) || DATABASE_BACKUP_FILENAME_PATTERN.test(file))
+      .filter(file => this.isValidBackupFilename(file))
       .map(file => {
         const filePath = path.join(BACKUP_DIR, file)
         const stats = fs.statSync(filePath)
@@ -553,6 +573,9 @@ class BackupService {
    * 删除备份
    */
   deleteBackup(filename) {
+    if (this.canDeleteBackup && !this.canDeleteBackup(filename)) {
+      throw Object.assign(new Error('该备份正在等待上传或上传中，请完成上传后再删除'), { statusCode: 409 })
+    }
     const filePath = this.resolveBackupPath(filename)
     if (!fs.existsSync(filePath)) {
       throw new Error('备份文件不存在')

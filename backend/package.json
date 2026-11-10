@@ -43,6 +43,7 @@
     ]
   },
   "dependencies": {
+    "@noble/curves": "^1.9.7",
     "archiver": "^8.0.0",
     "axios": "^1.13.2",
     "bcryptjs": "^3.0.3",

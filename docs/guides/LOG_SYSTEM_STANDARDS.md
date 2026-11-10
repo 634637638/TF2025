@@ -158,7 +158,7 @@ frontend/src/utils/
 职责边界：
 
 - `logger.ts` 只负责按环境输出诊断日志，不得维护上报地址、`fetch` 或私有 Axios 请求。
-- `error-logger.ts` 是唯一服务端错误上报实现，固定通过 `unifiedApi` 调用 `/api/logs/errors`。
+- `error-logger.ts` 是唯一服务端错误上报实现，通过 `unifiedApi` 调用 `/api/logs/errors`；单条与批量上报关闭全局 Loading、用户错误提示及重复错误上报（`reportError: false`），不失效业务缓存。上报失败只记录诊断警告，原日志保留等待后续上报；必须收到 `success: true` 才标为已接收。
 - 全局未捕获错误由 `ErrorBoundaryPlugin` 的 `onError` 转交 `globalErrorLogger`；API 错误由 `unified-api.ts` 转交。
 - Error Boundary 自带的 `enableReporting` 必须保持关闭，避免它与 `globalErrorLogger` 重复发送同一错误。
 - `logger.error()` 不等同于服务端上报。业务代码通常只记录诊断信息；确需纳入监控的错误必须通过已有错误边界或统一请求层进入，不得另建上报器。

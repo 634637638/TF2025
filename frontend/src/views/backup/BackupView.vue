@@ -14,6 +14,20 @@
       >
         <template #actions>
           <el-button
+            v-permission="'backup:view'"
+            class="tf-button--manage"
+            @click="cloudManagementVisible = true"
+          >
+            云盘管理
+          </el-button>
+          <el-button
+            v-permission="'backup:create'"
+            class="tf-button--manage"
+            @click="cloudSettingsVisible = true"
+          >
+            云盘设置
+          </el-button>
+          <el-button
             v-if="canCreate"
             type="primary"
             :loading="isCreating"
@@ -81,6 +95,14 @@
             </el-button>
           </div>
         </div>
+
+        <el-alert
+          v-if="cloudError"
+          :title="cloudError"
+          type="warning"
+          :closable="false"
+          show-icon
+        />
 
         <!-- 备份列表 -->
         <div class="backup-list-card">
@@ -175,14 +197,42 @@
               </template>
             </el-table-column>
             <el-table-column
+              label="云盘备份"
+              min-width="180"
+              class-name="complete-text-column"
+            >
+              <template #default="{ row }">
+                <el-tag :type="cloudStatusType(cloudTask(row.filename)?.status)">
+                  {{ cloudStatusText(cloudTask(row.filename)) }}
+                </el-tag>
+                <div
+                  v-if="cloudTask(row.filename)?.error"
+                  class="cloud-error"
+                  :class="{ 'cloud-error--invalid': cloudTask(row.filename)?.status === 'invalid' }"
+                >
+                  {{ cloudTask(row.filename)?.error }}
+                </div>
+              </template>
+            </el-table-column>
+            <el-table-column
               v-if="showActionColumn"
               label="操作"
-              :width="$getActionColumnWidth(['下载中', ...(canDelete ? ['删除'] : [])])"
+              :width="$getActionColumnWidth(['下载中', ...(canCreate ? ['上传云盘'] : []), ...(canDelete ? ['删除'] : [])])"
               align="center"
               class-name="actions-column"
             >
               <template #default="{ row }">
                 <div class="action-buttons">
+                  <el-button
+                    v-if="canCreate"
+                    v-permission="'backup:create'"
+                    class="table-action table-action--manage"
+                    :disabled="cloudActive(row.filename) || cloudTask(row.filename)?.status === 'success'"
+                    :loading="cloudEnqueueing === row.filename"
+                    @click.stop="uploadToCloud(row.filename)"
+                  >
+                    上传云盘
+                  </el-button>
                   <el-button
                     type="primary"
                     size="small"
@@ -202,6 +252,7 @@
                     type="danger"
                     size="small"
                     link
+                    :disabled="cloudActive(row.filename)"
                     @click.stop="confirmDelete(row.filename)"
                   >
                     <i class="fas fa-trash" />
@@ -216,6 +267,16 @@
         </div>
       </div>
     </PermissionGate>
+
+    <CloudBackupSettingsDialog
+      v-model="cloudSettingsVisible"
+      @saved="loadCloudTasks"
+    />
+    <CloudBackupSettingsDialog
+      v-model="cloudManagementVisible"
+      manage-only
+      @saved="loadCloudTasks"
+    />
 
     <el-dialog
       v-model="createDialogVisible"
@@ -306,16 +367,20 @@
 
 <script setup lang="ts">
 import { confirmAction } from '@/utils/message-box'
-import { computed, ref, onMounted, watch } from 'vue'
+import { computed, ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import { unifiedApi } from '@/utils/unified-api'
 import { useNotification } from '@/composables/useNotification'
 import { usePagePermissions } from '@/composables/usePagePermissions'
+import { useLatestRequest } from '@/composables/useLatestRequest'
 import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { PermissionGate, PageHeader } from '@/components/base'
 import { formatDateTime as formatGlobalDateTime } from '@/utils/format'
 import { TIME_FORMATS } from '@/utils/time'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import { getRequestErrorMessage } from '@/utils/api-response'
+import { backupCloudApi } from '@/api/backup'
+import type { CloudBackupStatus, CloudBackupTask } from '@/types/backup'
+import CloudBackupSettingsDialog from './CloudBackupSettingsDialog.vue'
 
 const { success, error, loading } = useNotification()
 
@@ -332,6 +397,58 @@ const isLoading = ref(false)
 const isCreating = ref(false)
 const isCleaningUp = ref(false)
 const downloadingFilename = ref<string | null>(null)
+const cloudSettingsVisible = ref(false)
+const cloudManagementVisible = ref(false)
+const cloudTasks = ref<CloudBackupTask[]>([])
+const cloudError = ref('')
+const cloudEnqueueing = ref<string | null>(null)
+let cloudTimer: ReturnType<typeof setTimeout> | undefined
+const cloudRequest = useLatestRequest()
+let pageDisposed = false
+const cloudTask = (filename: string) => cloudTasks.value.find(task => task.filename === filename)
+const cloudActive = (filename: string) => ['queued', 'uploading', 'retrying'].includes(cloudTask(filename)?.status || '')
+const cloudStatusText = (task?: CloudBackupTask) => {
+  if (!task) return '未上传'
+  const labels: Record<CloudBackupStatus, string> = {
+    queued: '等待上传', uploading: `上传中 ${task.progress}%`, retrying: '等待重试', success: '已上传', failed: '上传失败', invalid: '文件失效'
+  }
+  return labels[task.status]
+}
+const cloudStatusType = (status?: CloudBackupStatus): 'success' | 'danger' | 'warning' | 'info' =>
+  status === 'success' ? 'success' : status === 'failed' ? 'danger' : status === 'retrying' || status === 'invalid' ? 'warning' : 'info'
+
+const loadCloudTasks = async () => {
+  clearTimeout(cloudTimer)
+  if (!canView.value || pageDisposed) return
+  const request = cloudRequest.nextRequest()
+  try {
+    const response = await backupCloudApi.tasks(request.signal)
+    if (!request.isLatest() || pageDisposed) return
+    if (!response.success || !response.data) throw new Error(response.message || '读取上传状态失败')
+    cloudTasks.value = response.data
+    cloudError.value = response.message || ''
+  } catch (cause) {
+    if (request.isLatest() && !pageDisposed && !cloudRequest.isCanceledError(cause)) {
+      cloudError.value = getRequestErrorMessage(cause, '读取云盘任务失败，请刷新重试')
+    }
+  } finally {
+    if (!pageDisposed && request.isLatest() && canView.value) {
+      cloudTimer = setTimeout(() => { void loadCloudTasks() }, 5000)
+    }
+  }
+}
+
+const uploadToCloud = async (filename: string) => {
+  if (!requirePermission('create')) return
+  cloudEnqueueing.value = filename
+  try {
+    const response = await backupCloudApi.upload(filename)
+    if (!response.success) throw new Error(response.message || '创建云盘任务失败')
+    success('已加入后台上传队列，关闭页面后仍会继续上传')
+    await loadCloudTasks()
+  } catch (cause) { error(getRequestErrorMessage(cause, '提交上传任务失败')) }
+  finally { cloudEnqueueing.value = null }
+}
 interface BackupRecord {
   filename: string
   type?: 'database' | 'full'
@@ -406,6 +523,7 @@ const initializePageData = async () => {
 
   hasInitializedPageData.value = true
   await loadBackupList()
+  await loadCloudTasks()
 }
 
 // 创建备份
@@ -556,10 +674,19 @@ onMounted(async () => {
   await initializePageData()
 })
 
+onBeforeUnmount(() => {
+  pageDisposed = true
+  clearTimeout(cloudTimer)
+  cloudRequest.cancelLatest()
+})
+
 watch(canView, async (value) => {
   if (value) {
     await initializePageData()
   } else {
+    clearTimeout(cloudTimer)
+    cloudRequest.cancelLatest()
+    cloudTasks.value = []
     hasInitializedPageData.value = false
     backupList.value = []
     storageInfo.value = {
@@ -574,6 +701,15 @@ watch(canView, async (value) => {
 </script>
 
 <style scoped>
+.cloud-error {
+  overflow-wrap: anywhere;
+  color: var(--tf-color-danger);
+  margin-top: var(--tf-space-1);
+}
+.cloud-error--invalid {
+  color: var(--el-color-warning);
+}
+
 .backup-management {
   padding: 24px;
   background: var(--bg-primary, var(--tf-color-surface));
