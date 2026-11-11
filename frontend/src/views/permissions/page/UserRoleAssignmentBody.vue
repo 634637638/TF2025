@@ -19,7 +19,7 @@
           <el-button
             v-if="search"
             native-type="button"
-            class="search-clear-btn"
+            class="search-clear-btn tf-button--dismiss"
             text
             aria-label="清空搜索"
             :disabled="isSaving"

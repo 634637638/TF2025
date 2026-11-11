@@ -807,7 +807,8 @@ body.is-admin-table-dragging * {
 }
 
 // 操作按钮必须完整落在统一表格行高内，避免普通单元格内边距与按钮高度叠加撑高行。
-:is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table) td.actions-column {
+:is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table) .el-table__body td.actions-column,
+:is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table) .el-table__body td:has(.table-inline-action) {
   padding-block: var(--admin-data-table-action-cell-padding-y) !important;
 }
 
@@ -852,10 +853,6 @@ body.is-admin-table-dragging * {
 }
 
 @media (max-width: 767px) {
-  :is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table) td.actions-column {
-    padding-block: var(--admin-data-table-action-cell-padding-y) !important;
-  }
-
   .tf-action-row--compact {
     gap: 4px !important;
   }

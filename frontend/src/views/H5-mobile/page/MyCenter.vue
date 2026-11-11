@@ -150,20 +150,22 @@
       v-if="!user"
       class="auth-buttons-row"
     >
-      <div
-        class="auth-btn login-btn"
+      <el-button
+        native-type="button"
+        class="auth-btn login-btn tf-button--h5-action tf-button--h5-action-primary"
         @click="goToLogin"
       >
         <i class="fas fa-sign-in-alt" />
         <span>登录</span>
-      </div>
-      <div
-        class="auth-btn register-btn"
+      </el-button>
+      <el-button
+        native-type="button"
+        class="auth-btn register-btn tf-button--h5-action tf-button--h5-action-primary"
         @click="goToRegister"
       >
         <i class="fas fa-user-plus" />
         <span>注册</span>
-      </div>
+      </el-button>
     </div>
 
     <!-- 悬浮客服按钮 -->
@@ -813,7 +815,7 @@ onMounted(() => {
 <style scoped lang="scss" src="./styles/my-center/records.scss"></style>
 
 <style lang="scss">
-// 客服弹窗全局样式
+/* 客服弹窗全局样式 */
 .service-dialog-custom {
   --tf-dialog-body-padding-inline: var(--tf-space-5);
   --tf-dialog-body-padding-block: var(--tf-space-4);

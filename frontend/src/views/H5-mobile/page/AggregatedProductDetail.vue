@@ -222,7 +222,7 @@
       <template v-if="config.direct_buy_enabled">
         <el-button
           v-if="config.cart_enabled && canAddToCart"
-          class="cart-btn"
+          class="cart-btn tf-button--h5-action tf-button--h5-action-neutral"
           :disabled="!canPurchase"
           @click="addToCart"
         >
@@ -231,7 +231,7 @@
         </el-button>
         <el-button
           type="primary"
-          class="buy-btn"
+          class="buy-btn tf-button--h5-action tf-button--h5-action-primary"
           :class="{ 'full-width': !config.cart_enabled || !canAddToCart }"
           :disabled="!canPurchase"
           @click="buyNow"

@@ -19,7 +19,7 @@
       <div class="detail-summary-cards">
         <div
           v-if="canViewField('supplier_name')"
-          class="summary-card highlight"
+          class="summary-card summary-card--supplier"
         >
           <div class="card-label">
             供应商
@@ -30,7 +30,7 @@
         </div>
         <div
           v-if="canViewField('store_name')"
-          class="summary-card highlight"
+          class="summary-card summary-card--store"
         >
           <div class="card-label">
             店铺
@@ -41,7 +41,7 @@
         </div>
         <div
           v-if="canViewField('brand')"
-          class="summary-card highlight"
+          class="summary-card summary-card--brand"
         >
           <div class="card-label">
             品牌
@@ -52,18 +52,18 @@
         </div>
         <div
           v-if="canViewField('condition')"
-          class="summary-card highlight"
+          class="summary-card summary-card--condition"
         >
           <div class="card-label">
             成色
           </div>
           <div class="card-value">
-            <span :class="['badge', firstItem?.is_new ? 'badge-new' : 'badge-used']">
+            <span :class="['condition-badge', firstItem?.is_new ? 'condition-new' : 'condition-used']">
               {{ firstItem?.is_new ? '全新' : '二手' }}
             </span>
           </div>
         </div>
-        <div class="summary-card highlight">
+        <div class="summary-card summary-card--quantity">
           <div class="card-label">
             库存数量
           </div>
@@ -71,10 +71,7 @@
             {{ items.length }} 台
           </div>
         </div>
-        <div
-          class="summary-card"
-          :class="getLongestInventoryClass(longestItem?.inventory_days || 0)"
-        >
+        <div class="summary-card summary-card--warning">
           <div class="card-label">
             最长在库
           </div>
@@ -102,7 +99,7 @@
           >
             <el-table-column
               label="优先"
-              min-width="64"
+              :width="$getNumberColumnWidth((items || []).map((phone) => items.indexOf(phone) + 1), 64)"
               align="center"
               class-name="priority-column"
             >
@@ -117,7 +114,7 @@
                 </span>
                 <span
                   v-else
-                  class="priority-rank"
+                  class="table-number-badge"
                 >
                   {{ items.indexOf(phone) + 1 }}
                 </span>
@@ -223,8 +220,7 @@ import {
   formatInventoryDate,
   formatInventoryPrice,
   getInventoryDaysClass,
-  getInventoryDaysText,
-  getLongestInventoryClass
+  getInventoryDaysText
 } from '../inventory-formatters'
 import type { InventoryDetailItem } from '../types'
 

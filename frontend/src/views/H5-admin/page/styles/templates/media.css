@@ -93,17 +93,13 @@
 }
 
 .image-action-btn {
-  width: 32px;
-  height: 32px;
-  border: 0;
-  border-radius: 50%;
+
   display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   transition: all 0.2s ease;
-  background: var(--tf-button-primary-soft-bg);
-  color: var(--tf-button-primary-soft-color);
+
 }
 
 .image-action-btn:hover {
@@ -112,15 +108,9 @@
 
 .image-action-btn.primary.active,
 .image-action-btn.primary:disabled {
-  background: var(--tf-button-success-soft-hover-bg);
-  color: var(--tf-button-success-soft-hover-color);
+
   cursor: default;
   transform: none;
-}
-
-.image-action-btn.danger {
-  background: var(--tf-button-danger-soft-bg);
-  color: var(--tf-button-danger-soft-color);
 }
 
 :deep(.memory-select .el-select__wrapper) {

@@ -19,12 +19,12 @@
       >
         <el-table-column
           v-if="ctx.canViewPermissionsField('users.id')"
-          label="ID"
-          width="64"
+          label="序号"
+          :width="$getNumberColumnWidth((ctx.paginatedUsers || []).map((_row, $index) => Number(ctx.usersPagination.total) - (Number(ctx.usersPagination.page) - 1) * Number(ctx.usersPagination.page_size) - Number($index)), 64)"
           align="center"
         >
           <template #default="{ $index }">
-            <span class="id-badge">{{ Number(ctx.usersPagination.total) - (Number(ctx.usersPagination.page) - 1) * Number(ctx.usersPagination.page_size) - Number($index) }}</span>
+            <span class="table-number-badge">{{ Number(ctx.usersPagination.total) - (Number(ctx.usersPagination.page) - 1) * Number(ctx.usersPagination.page_size) - Number($index) }}</span>
           </template>
         </el-table-column>
         <el-table-column

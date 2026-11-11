@@ -118,9 +118,9 @@
 }
 
 .dashboard-announcement-featured > .el-button {
-  min-height: var(--tf-space-7);
+
   margin-top: var(--tf-space-1);
-  padding-inline: 0;
+
 }
 
 .stat-change {

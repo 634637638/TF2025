@@ -87,9 +87,9 @@
           width: 100%;
           min-width: 0;
           margin: 0;
-          padding: 8px 6px;
+
           justify-content: center;
-          font-size: var(--tf-type-scale-12);
+
         }
       }
     }
@@ -179,11 +179,7 @@
       }
 
       .banner-actions {
-        gap: 6px;
-
-        .el-button {
-          padding-inline: 4px;
-        }
+        gap: 6px
       }
     }
   }

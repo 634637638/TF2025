@@ -4,14 +4,14 @@
   padding-bottom: 80px;
 }
 
-// 未登录状态
+/* 未登录状态 */
 .not-logged-in {
   .auth-buttons {
     padding: 0 16px;
   }
 }
 
-// 用户卡片
+/* 用户卡片 */
 .user-card {
   background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
   color: var(--color-bg-white);
@@ -91,7 +91,6 @@
     position: absolute;
     top: 12px;
     right: 12px;
-    color: var(--tf-button-on-color);
 
     i {
       font-size: var(--tf-type-scale-18);
@@ -99,7 +98,7 @@
   }
 }
 
-// 区块
+/* 区块 */
 .section {
   background: var(--color-bg-white);
   margin: 12px;
@@ -155,7 +154,7 @@
   }
 }
 
-// 登录/注册按钮行
+/* 登录/注册按钮行 */
 .auth-buttons-row {
   display: flex;
   gap: 12px;
@@ -164,17 +163,15 @@
 
   .auth-btn {
     flex: 1;
-    height: 56px;
-    border-radius: 12px;
+
     display: flex;
     flex-direction: row;
     align-items: center;
     justify-content: center;
     gap: 8px;
-    color: var(--tf-button-on-color);
+
     cursor: pointer;
     transition: all 0.3s;
-    box-shadow: var(--tf-button-shadow);
 
     i {
       font-size: var(--tf-type-scale-20);
@@ -187,15 +184,7 @@
 
     &:active {
       transform: scale(0.98);
-      box-shadow: var(--tf-button-shadow-hover);
-    }
 
-    &.login-btn {
-      background: var(--tf-button-primary-bg);
-    }
-
-    &.register-btn {
-      background: var(--tf-button-primary-bg);
     }
   }
 }

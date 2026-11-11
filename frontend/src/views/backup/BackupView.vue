@@ -83,11 +83,14 @@
           </div>
           <div class="info-actions">
             <el-button
-              v-if="showActionColumn"
+              v-if="showActionColumn && canDelete"
+              v-permission="'backup:delete'"
+              native-type="button"
               type="warning"
               size="small"
               plain
-              :disabled="!canDelete || backupList.length < 5"
+              :disabled="isLoading || isCleaningUp || backupList.length === 0"
+              :title="backupList.length === 0 ? '暂无本地备份可清理' : '按保留数量清理服务器本地旧备份'"
               @click="showCleanupDialog"
             >
               <i class="fas fa-broom" />
@@ -178,7 +181,7 @@
             >
               <template #default="{ row }">
                 <el-tag
-                  type="info"
+                  :type="backupSizeType(row.size_bytes)"
                   size="small"
                 >
                   {{ row.size }}
@@ -334,6 +337,12 @@
       :close-on-click-modal="false"
     >
       <el-form label-width="100px">
+        <el-alert
+          title="仅清理服务器本地备份，云盘文件不受影响。保留数量不少于现有份数时，不会删除文件。"
+          type="info"
+          :closable="false"
+          show-icon
+        />
         <el-form-item
           v-if="canViewField('backup.keep_count')"
           label="保留数量"
@@ -379,7 +388,7 @@ import { TIME_FORMATS } from '@/utils/time'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import { getRequestErrorMessage } from '@/utils/api-response'
 import { backupCloudApi } from '@/api/backup'
-import type { CloudBackupStatus, CloudBackupTask } from '@/types/backup'
+import type { BackupFile, CloudBackupStatus, CloudBackupTask } from '@/types/backup'
 import CloudBackupSettingsDialog from './CloudBackupSettingsDialog.vue'
 
 const { success, error, loading } = useNotification()
@@ -449,11 +458,10 @@ const uploadToCloud = async (filename: string) => {
   } catch (cause) { error(getRequestErrorMessage(cause, '提交上传任务失败')) }
   finally { cloudEnqueueing.value = null }
 }
-interface BackupRecord {
-  filename: string
-  type?: 'database' | 'full'
-  size?: string
-  created_at?: string
+const backupSizeType = (bytes?: number): 'success' | 'primary' | 'warning' | 'info' => {
+  if (typeof bytes !== 'number' || !Number.isFinite(bytes) || bytes < 0) return 'info'
+  if (bytes >= 1024 ** 3) return 'warning'
+  return bytes >= 1024 ** 2 ? 'primary' : 'success'
 }
 
 interface BackupStorageInfo {
@@ -464,7 +472,7 @@ interface BackupStorageInfo {
   total_size_bytes: number
 }
 
-const backupList = ref<BackupRecord[]>([])
+const backupList = ref<BackupFile[]>([])
 const hasInitializedPageData = ref(false)
 const createDialogVisible = ref(false)
 const backupType = ref<'database' | 'full'>('database')
@@ -497,12 +505,12 @@ const loadBackupList = async () => {
   isLoading.value = true
   try {
     const [listRes, storageRes] = await Promise.all([
-      unifiedApi.get('/backup/list'),
+      unifiedApi.get<BackupFile[]>('/backup/list'),
       unifiedApi.get('/backup/storage')
     ])
 
     if (listRes.success) {
-      backupList.value = Array.isArray(listRes.data) ? listRes.data as BackupRecord[] : []
+      backupList.value = Array.isArray(listRes.data) ? listRes.data : []
     }
     if (storageRes.success) {
       if (storageRes.data && typeof storageRes.data === 'object') {
@@ -640,18 +648,21 @@ const showCleanupDialog = () => {
     return
   }
 
+  if (isLoading.value || isCleaningUp.value || backupList.value.length === 0) return
+  keepCount.value = Math.max(1, Math.min(keepCount.value, backupList.value.length - 1))
   cleanupDialogVisible.value = true
 }
 
 // 清理旧备份
 const cleanupBackups = async () => {
+  if (isCleaningUp.value) return
   if (!requirePermission('delete')) {
     return
   }
 
   isCleaningUp.value = true
   try {
-    const response = await unifiedApi.post('/backup/cleanup', { keep_count: keepCount.value })
+    const response = await unifiedApi.post('/backup/cleanup', { keep_count: keepCount.value }, { showError: false })
     if (response.success) {
       success(response.message || '清理完成')
       cleanupDialogVisible.value = false

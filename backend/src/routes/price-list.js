@@ -61,6 +61,8 @@ router.post('/', unifiedAuth, requirePermission('price-list:edit'), priceListCon
  */
 router.put('/batch-source', unifiedAuth, requirePermission('price-list:edit'), priceListController.batchUpdatePriceSource)
 
+router.put('/batch-settings', unifiedAuth, requirePermission('price-list:edit'), priceListController.batchUpdatePriceItems)
+
 /**
  * @route   DELETE /api/price-list/:id
  * @desc    删除价格记录

@@ -197,12 +197,12 @@
               </template>
               <el-table-column
                 v-if="showIdColumn"
-                label="ID"
-                width="70"
+                label="序号"
+                :width="$getNumberColumnWidth((paginatedEmployees || []).map((row) => getEmployeeIndex(row.id)), 70)"
                 align="center"
               >
                 <template #default="{ row }">
-                  <span class="id-badge">{{ getEmployeeIndex(row.id) }}</span>
+                  <span class="table-number-badge">{{ getEmployeeIndex(row.id) }}</span>
                 </template>
               </el-table-column>
               <el-table-column
@@ -2023,16 +2023,6 @@ onMounted(async () => {
 
 <style scoped>
 /* 表格内容样式 */
-.id-badge {
-  background: linear-gradient(135deg, var(--tf-color-indigo-brand), var(--tf-color-purple-brand));
-  color: white;
-  padding: 4px 8px;
-  border-radius: 6px;
-  font-size: var(--tf-type-scale-12);
-  font-weight: 600;
-  display: inline-block;
-}
-
 .employee-info {
   max-width: 200px;
   text-align: center;

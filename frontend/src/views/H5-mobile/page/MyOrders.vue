@@ -332,7 +332,7 @@ const goHome = () => {
   padding-bottom: 20px;
 }
 
-// 订单列表
+/* 订单列表 */
 .orders-list {
   .order-card {
     background: var(--color-bg-white);
@@ -478,18 +478,18 @@ const goHome = () => {
   }
 }
 
-// 加载更多
+/* 加载更多 */
 .load-more {
   padding: 16px;
   text-align: center;
 
   .el-button {
     width: 100%;
-    max-width: 200px;
+
   }
 }
 
-// 默认提示
+/* 默认提示 */
 .default-state {
   display: flex;
   align-items: center;

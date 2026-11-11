@@ -33,25 +33,34 @@
         </div>
       </div>
       <div class="merchant-actions">
-        <div
-          class="action-btn"
+        <el-button
+          native-type="button"
+          class="action-btn tf-button--overlay-tool"
+          title="商家地址"
+          aria-label="商家地址"
           @click="showMerchantDetail"
         >
           <i class="fas fa-map-marker-alt" />
-        </div>
-        <div
+        </el-button>
+        <el-button
           v-if="config.shop_phone"
-          class="action-btn"
+          native-type="button"
+          class="action-btn tf-button--overlay-tool"
+          title="拨打电话"
+          aria-label="拨打电话"
           @click="handlePhoneCall"
         >
           <i class="fas fa-phone" />
-        </div>
-        <div
-          class="action-btn"
+        </el-button>
+        <el-button
+          native-type="button"
+          class="action-btn tf-button--overlay-tool"
+          title="分享"
+          aria-label="分享"
           @click="handleShare"
         >
           <i class="fas fa-share-alt" />
-        </div>
+        </el-button>
       </div>
     </div>
 
@@ -123,15 +132,16 @@
       </div>
       <div class="brands-scroll">
         <div class="brands-list">
-          <div
+          <el-button
             v-for="brand in brands"
             :key="brand.id"
-            class="brand-item"
-            :class="{ active: selectedBrandId === brand.id }"
+            native-type="button"
+            class="brand-item tf-button--pill-filter"
+            :class="{ 'is-active': selectedBrandId === brand.id }"
             @click="openBrandSearch(brand.id)"
           >
             <span>{{ brand.name }}</span>
-          </div>
+          </el-button>
         </div>
       </div>
       <div
@@ -145,7 +155,7 @@
           </div>
           <el-button
             native-type="button"
-            class="brand-reset-btn"
+            class="brand-reset-btn tf-button--neutral"
             @click="resetBrandSearch"
           >
             重置
@@ -166,7 +176,7 @@
               />
               <el-button
                 native-type="button"
-                class="brand-field-toggle"
+                class="brand-field-toggle tf-button--dismiss"
                 @click.stop="toggleSearchField('model')"
               >
                 <i
@@ -182,8 +192,8 @@
               <div class="brand-option-list tf-dropdown-scroll">
                 <el-button
                   native-type="button"
-                  class="brand-option"
-                  :class="{ active: selectedModelId === '' }"
+                  class="brand-option tf-button--pill-filter"
+                  :class="{ 'is-active': selectedModelId === '' }"
                   @click="selectModelOption(null)"
                 >
                   全部型号
@@ -192,8 +202,8 @@
                   v-for="model in filteredBrandModels"
                   :key="model.id"
                   native-type="button"
-                  class="brand-option"
-                  :class="{ active: selectedModelId === String(model.id) }"
+                  class="brand-option tf-button--pill-filter"
+                  :class="{ 'is-active': selectedModelId === String(model.id) }"
                   @click="selectModelOption(model)"
                 >
                   {{ model.name }}
@@ -215,7 +225,7 @@
               />
               <el-button
                 native-type="button"
-                class="brand-field-toggle"
+                class="brand-field-toggle tf-button--dismiss"
                 @click.stop="toggleSearchField('color')"
               >
                 <i
@@ -231,8 +241,8 @@
               <div class="brand-option-list tf-dropdown-scroll">
                 <el-button
                   native-type="button"
-                  class="brand-option"
-                  :class="{ active: selectedColorId === '' }"
+                  class="brand-option tf-button--pill-filter"
+                  :class="{ 'is-active': selectedColorId === '' }"
                   @click="selectColorOption(null)"
                 >
                   全部颜色
@@ -241,8 +251,8 @@
                   v-for="color in filteredColors"
                   :key="color.id"
                   native-type="button"
-                  class="brand-option"
-                  :class="{ active: selectedColorId === String(color.id) }"
+                  class="brand-option tf-button--pill-filter"
+                  :class="{ 'is-active': selectedColorId === String(color.id) }"
                   @click="selectColorOption(color)"
                 >
                   {{ color.name }}
@@ -264,7 +274,7 @@
               />
               <el-button
                 native-type="button"
-                class="brand-field-toggle"
+                class="brand-field-toggle tf-button--dismiss"
                 @click.stop="toggleSearchField('memory')"
               >
                 <i
@@ -280,8 +290,8 @@
               <div class="brand-option-list tf-dropdown-scroll">
                 <el-button
                   native-type="button"
-                  class="brand-option"
-                  :class="{ active: selectedMemoryId === '' }"
+                  class="brand-option tf-button--pill-filter"
+                  :class="{ 'is-active': selectedMemoryId === '' }"
                   @click="selectMemoryOption(null)"
                 >
                   全部内存
@@ -290,8 +300,8 @@
                   v-for="memory in filteredMemories"
                   :key="memory.id"
                   native-type="button"
-                  class="brand-option"
-                  :class="{ active: selectedMemoryId === String(memory.id) }"
+                  class="brand-option tf-button--pill-filter"
+                  :class="{ 'is-active': selectedMemoryId === String(memory.id) }"
                   @click="selectMemoryOption(memory)"
                 >
                   {{ memory.size || memory.name }}
@@ -306,7 +316,7 @@
         <div class="brand-search-actions">
           <el-button
             native-type="button"
-            class="ghost-btn"
+            class="ghost-btn tf-button--neutral"
             @click="collapseBrandSearch"
           >
             收起
@@ -314,6 +324,7 @@
           <el-button
             native-type="button"
             class="search-btn"
+            type="primary"
             @click="searchBrandProducts"
           >
             检索商品

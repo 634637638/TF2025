@@ -17,6 +17,7 @@
     "migrate:phone-available-status": "node scripts/migrate-phone-available-status.js",
     "migrate:shop-media": "node scripts/migrate-shop-media.js",
     "migrate:shop-template-media": "node scripts/migrate-shop-template-media.js",
+    "migrate:price-rules": "node scripts/migrate-price-rules.js",
     "migrate:price-sources": "node scripts/migrate-price-sources.js",
     "migrate:sale-invoice-constraints": "node scripts/migrate-sale-invoice-constraints.js",
     "migrate:customer-sale-points": "node scripts/migrate-customer-sale-points.js",

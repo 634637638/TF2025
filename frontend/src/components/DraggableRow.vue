@@ -37,7 +37,11 @@
         />
         <span
           v-else
-          class="sort-order-display"
+          class="table-number-badge cursor-pointer"
+          role="button"
+          tabindex="0"
+          @keydown.enter="startEdit"
+          @keydown.space.prevent="startEdit"
           @click="startEdit"
         >
           {{ item.sort_order !== undefined ? item.sort_order : index }}
@@ -204,25 +208,6 @@ const handleSortOrderChange = () => {
   min-height: 32px;
 }
 
-.sort-order-display {
-  display: inline-block;
-  min-width: 32px;
-  height: 28px;
-  padding: 0 8px;
-  background: var(--tf-color-neutral-100);
-  color: var(--tf-color-neutral-500);
-  border-radius: 6px;
-  font-size: var(--tf-type-scale-13);
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-  line-height: 28px;
-
-  &:hover {
-    background: var(--tf-color-neutral-200);
-    color: var(--tf-color-neutral-700);
-  }
-}
 
 .sort-order-control {
   width: 50px;

@@ -824,8 +824,7 @@ defineExpose({
 
     .el-button {
       flex: 1;
-      min-height: 44px;
-      font-size: var(--tf-type-scale-16);
+
     }
   }
 }

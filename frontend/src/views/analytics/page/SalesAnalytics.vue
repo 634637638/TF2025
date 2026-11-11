@@ -281,9 +281,13 @@
             <el-table-column
               type="index"
               label="排名"
-              width="60"
+              :width="$getNumberColumnWidth((filteredTopProducts || []).map((_row, $index) => $index + 1), 60)"
               align="center"
-            />
+            >
+              <template #default="{ $index }">
+                <span class="table-number-badge">{{ $index + 1 }}</span>
+              </template>
+            </el-table-column>
             <el-table-column
               prop="name"
               label="产品名称"

@@ -155,11 +155,11 @@
           <el-table-column
             v-if="!isMobile"
             label="序号"
-            min-width="60"
+            :width="$getNumberColumnWidth((employees || []).map((_row, $index) => getIndex($index)), 60)"
             align="center"
           >
             <template #default="{ $index }">
-              {{ getIndex($index) }}
+              <span class="table-number-badge">{{ getIndex($index) }}</span>
             </template>
           </el-table-column>
           <el-table-column

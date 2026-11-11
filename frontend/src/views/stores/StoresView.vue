@@ -237,12 +237,12 @@
               </el-table-column>
               <el-table-column
                 v-if="canViewField('id')"
-                label="ID"
-                :width="isMobile ? 54 : 70"
+                label="序号"
+                :width="$getNumberColumnWidth((stores || []).map((_row, $index) => (pagination.page - 1) * pagination.page_size + (stores.length - $index)), isMobile ? 54 : 70)"
                 align="center"
               >
                 <template #default="{ $index }">
-                  <span class="id-badge">{{ (pagination.page - 1) * pagination.page_size + (stores.length - $index) }}</span>
+                  <span class="table-number-badge">{{ (pagination.page - 1) * pagination.page_size + (stores.length - $index) }}</span>
                 </template>
               </el-table-column>
               <el-table-column

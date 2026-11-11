@@ -199,16 +199,6 @@
 }
 
 /* 表格区域 */
-.role-id .id-badge,
-.user-id .id-badge {
-  background: var(--tf-color-purple-50);
-  color: var(--tf-color-purple-flat);
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: var(--tf-type-scale-12);
-  font-weight: 600;
-}
-
 .role-info .role-name,
 .user-info .user-username {
   font-weight: 600;
@@ -280,73 +270,6 @@
 }
 
 /* 操作按钮样式 */
-.status-button {
-  appearance: none;
-  min-width: 0;
-  cursor: pointer;
-  border-color: var(--tf-status-neutral-border);
-  background: var(--tf-status-neutral-bg);
-  color: var(--tf-status-neutral-color);
-  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.status-button:focus-visible {
-  outline: none;
-  box-shadow: var(--tf-button-focus-ring);
-}
-
-.status-button.active {
-  background: var(--tf-status-warning-bg);
-  color: var(--tf-status-warning-color);
-  border-color: var(--tf-status-warning-border);
-}
-
-.status-button.active i {
-  color: var(--tf-status-warning-color);
-}
-
-.status-button.active:hover:not(:disabled) {
-  background: var(--tf-status-warning-hover-bg);
-  color: var(--tf-status-warning-hover-color);
-  border-color: var(--tf-status-warning-hover-border);
-}
-
-.status-button.inactive {
-  background: var(--tf-status-success-bg);
-  color: var(--tf-status-success-color);
-  border-color: var(--tf-status-success-border);
-}
-
-.status-button.inactive i {
-  color: var(--tf-status-success-color);
-}
-
-.status-button.inactive:hover:not(:disabled) {
-  background: var(--tf-status-success-hover-bg);
-  color: var(--tf-status-success-hover-color);
-  border-color: var(--tf-status-success-hover-border);
-}
-
-.status-button:hover:not(:disabled) {
-  box-shadow: var(--tf-button-shadow);
-}
-
-.status-button:active:not(:disabled) {
-  box-shadow: none;
-}
-
-.status-button:disabled {
-  cursor: not-allowed;
-  opacity: 1;
-  background: var(--tf-button-disabled-bg) !important;
-  color: var(--tf-button-disabled-color) !important;
-  border-color: var(--tf-button-disabled-border) !important;
-  box-shadow: none !important;
-}
-
-.status-button:disabled i {
-  color: var(--tf-button-disabled-color) !important;
-}
 
 /* 保持旧页面中状态徽标的语义颜色，但不再叠加装饰色条。 */
 .status-display.active {
@@ -678,11 +601,6 @@
 }
 
 /* 日志相关样式 */
-.log-id .id-badge {
-  background: var(--tf-color-blue-100);
-  color: var(--tf-color-blue-material-700);
-}
-
 .action-tag {
   padding: 4px 8px;
   border-radius: 4px;
@@ -816,19 +734,11 @@
   right: 8px;
   top: 50%;
   transform: translateY(-50%);
-  background: none;
-  border: none;
-  color: var(--tf-button-tool-color);
+
   cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
+
   transition: all 0.2s ease;
   z-index: 10;
-}
-
-.search-clear-btn:hover {
-  background-color: var(--tf-button-neutral-hover-bg);
-  color: var(--tf-button-neutral-hover-color);
 }
 
 .search-results-info {
@@ -1801,10 +1711,9 @@
 .field-actions :deep(.el-button) {
   width: 100%;
   min-width: 0;
-  height: 36px;
+
   margin-left: 0 !important;
-  border-radius: 10px;
-  font-weight: 600;
+
 }
 
 .section-title--compact {
@@ -1991,7 +1900,6 @@
   background: var(--tf-color-red-100);
   border-color: var(--tf-color-red-300);
 }
-
 
 /* 角色字段权限响应式设计 */
 @media (max-width: 1024px) {
@@ -2703,7 +2611,6 @@
   font-weight: 700;
   color: inherit;
 }
-
 
 .permissions-view .assignment-empty-selection {
   display: flex;
@@ -3588,7 +3495,6 @@
 .user-role-modal .assignment-selected-tag i {
   flex-shrink: 0;
 }
-
 
 .user-role-modal .assignment-empty-selection {
   display: flex;

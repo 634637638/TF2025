@@ -3,7 +3,7 @@
  */
 import { unifiedApi } from '@/utils/unified-api'
 import type { RequestConfig } from '@/utils/unified-api'
-import type { PriceMarkupConfig } from '@/types/price-list'
+import type { PriceMarkupConfig, PriceBatchSettingsPayload } from '@/types/price-list'
 export type { PriceMarkupConfig } from '@/types/price-list'
 
 /**
@@ -26,8 +26,8 @@ export function getInventoryUsedModels(queryToken: string, keyword = '') {
 /**
  * 获取价格列表（管理端）
  */
-export function getPriceList(params?: unknown) {
-  return unifiedApi.get('/price-list', { params })
+export function getPriceList(params?: unknown, config?: RequestConfig) {
+  return unifiedApi.get('/price-list', { params, ...config })
 }
 
 /**
@@ -83,14 +83,10 @@ export function upsertPriceItem(data: unknown) {
 }
 
 /**
- * 批量设置价格记录的采集来源。
- * sourceConfigId 为空时恢复跟随默认采集源。
+ * 批量修改所选规格的采集源、状态与独立批发规则。
  */
-export function batchUpdatePriceSource(priceListIds: number[], sourceConfigId: number | null) {
-  return unifiedApi.put('/price-list/batch-source', {
-    price_list_ids: priceListIds,
-    source_config_id: sourceConfigId
-  })
+export function batchUpdatePriceSettings(payload: PriceBatchSettingsPayload) {
+  return unifiedApi.put<{ requested: number; updated: number }>('/price-list/batch-settings', payload, { showError: false })
 }
 
 /**

@@ -28,6 +28,16 @@ PC 端数据行使用 `48px`，手机端数据行使用 `40px`；手机端表头
 
 ## 徽章接入审计结果
 
+### 序号、排名、排序值与 ID 统一展示
+
+普通“序号”、分析页“排名”、只读“排序”值、表格外记录编号和真实“ID”列统一使用 `<span class="table-number-badge">`，包括公共 `PaginatedTable`、弹窗表格及 Element Plus 的 `type="index"` 列。统一浅绿色背景、绿色数字、1px 浅绿细边框、常规字重、圆角矩形、等宽数字和居中布局；PC、手机共用 `20px` 高度，宽度随数字自然扩展，禁止固定圆形裁切。所有数字编号列（含排名、只读排序和优先列中的编号）宽度使用全局 `$getNumberColumnWidth(values, minWidth)`，由 `table-layout.ts` 的 `getNumberColumnMinWidth` 复用公共文本测量，保留原列最小宽度，按当前页实际值及标签留白自动扩展；不得再用固定窄列截断长数字。深色主题使用公共深绿底、绿色细边框与浅绿文字。
+
+唯一视觉入口是 `frontend/src/styles/admin-layout.css` 的 `.table-number-badge`：背景、文字、常驻边框颜色、圆角和最小宽度由 `--admin-data-table-number-*` 控制，高度及水平留白复用 `--admin-data-table-badge-height`、`--admin-data-table-badge-padding-x`。后续修改效果只调整这些公共定义，页面不得设置私有颜色、尺寸或响应式覆盖；特殊展示先在公共入口登记语义，再由页面引用。旧 `id-badge`、`index-badge`、`ranking-index`、`priority-rank`、`sort-badge` 等页面样式已移除，不保留第二套兼容样式；同一 class 在表格外直接生效，不依赖 `.el-table` 祖先。页面只可用独立的布局 class 保留图片角标定位、相邻内容间距，不能改徽章视觉。
+
+“序号”表达页面位置，保留已有分页正序、倒序及品牌组内编号规则；真实数据库标识继续以“ID”为标题并展示真实值。原先标题为“ID”、内容实际为位置序号的员工、门店及权限列表已改为“序号”，字段权限契约不变。分析页“排名”和系统设置“排序”保留各自标题及取值，展示统一接入公共徽章。排序编辑继续使用公共输入控件，不把输入框换成只读标签；设备序列号、业务单号、图片替代文字及连续说明文字不属于独立编号。
+
+原生 index 列需要显式提供默认插槽并使用公共徽章；存在自定义 `:index` 时，插槽沿用同一个计算函数，避免破坏跨页序号。`/standards` 的表格预览提供实际效果入口。`npm run check:badges` 包含序号契约正反例测试，并扫描全部页面/组件，拒绝未接入的编号列（含排名和只读排序）、表格外独立编号、旧徽章名称、固定窄列和私有样式覆盖。检测基于 Vue 模板 AST，不能因改列标题或使用卡片布局绕过检查。
+
 2026-10-10 已按《前端页面与功能单元台账》扫描全部页面源文件和公共组件：共发现 71 个实际使用徽章语义的文件、863 个徽章引用。旧 `global.css` 状态徽章入口已删除，综合查询、销售汇总、权限、国补、员工和系统管理等页面的私有徽章 hover/过渡已移除，统一由 `_badges.scss` 提供细外包围线和公共动效令牌。`npm run check:badges` 及完整 `npm run check:standards` 均通过。
 
 表格审计同时校验公共实现本身和所有业务页面：公共颜色、字体、表头高度、行高、间距、圆角、悬停/选中状态、完整文本规则、Element 内部单一横向滚动层、表头同步逻辑以及 PC 鼠标拖动入口均不得缺失；页面不得重定义 `--admin-data-table-*`、`--el-table-*`，不得覆盖通用表头、单元格、选中行或滚动层视觉。审计会扫描 Vue 内联样式及其引用的 `.css`、`.scss` 页面样式文件，避免外置样式绕过检查。业务字段徽章、金额、状态和明确的展开内容可以保留专用 class，但不能借专用 class 改写整张表格。
@@ -222,7 +232,7 @@ const actionWidth = computed(() => getAdaptiveActionColumnWidth(
 - PC 端主列表的查看、编辑、删除、审核等常规操作必须使用“图标 + 中文文字”，不得只显示图标让用户猜测功能。
 - 主列表操作按钮统一使用 `.action-buttons` 和 `el-button size="small"`，事件必须使用 `@click.stop`；按钮文字必须完整显示。
 - `.action-buttons` 的排列、间距和不换行由公共样式控制。PC 和手机端的操作列按钮间距统一读取公共变量，`.actions-column .cell` 通过 `--admin-data-table-action-edge-space` 设置左右各 `8px` 安全空间，操作列宽度函数同步预留总计 `16px`，保持按钮组紧凑且左右对称。按钮内部图标与文字只使用公共 `4px` 间距，公共规则会清除历史 `mr-*` 以及页面图标 `margin`，避免重复间距改变按钮实际宽度。业务页面不得设置 `gap`、`flex-wrap: wrap`、按钮或图标外边距、操作单元格内边距或固定偏移，该覆盖会被统一审计直接拦截。
-- 审批、到账等位于普通业务字段列中的单个按钮使用 `.table-inline-action`。宽度固定为 `auto`，最小宽度为 `0`，使用全局紧凑变量 `--admin-data-table-inline-action-padding-x`、`--admin-data-table-inline-action-icon-size` 和 `--admin-data-table-inline-action-icon-gap`，不得设置 `width: 100%` 或业务固定宽度。
+- 审批、到账、待办事项标题等位于普通业务字段列中的单个文字按钮使用 `.table-inline-action`。宽度固定为 `auto`，最小宽度为 `0`，使用全局紧凑变量 `--admin-data-table-inline-action-padding-x`、`--admin-data-table-inline-action-icon-size` 和 `--admin-data-table-inline-action-icon-gap`，不得设置 `width: 100%` 或业务固定宽度。
 - 操作列宽度根据当前权限下实际显示的按钮和按钮文字调用 `getActionColumnMinWidth` 计算。紧凑表格按钮按公共 `66px` 基准测量；两字标准按钮仍可传数量；出现“页面权限”“取消打款”“设为默认”等三字以上按钮时必须传文字数组，由公共函数分别测量文字、图标、间距、内边距和边框后求和，并统一预留左右各 `8px` 安全空间。按钮增减后列宽需要同步变化，禁止依赖固定窄列遮挡文字。
 - 同一列的按钮会随记录状态变化时，按钮数量取当前页所有行可能出现的最大值。例如考勤待审批记录比普通记录多一个“审批”按钮，当前页出现待审批记录后操作列必须自动扩展，最后一条待审批记录处理完成后自动缩回。需要防止 Element Plus `fit` 把剩余空间持续分给操作列时，应使用计算值绑定动态 `:width`；不得写死一个始终按最大按钮数显示的固定宽度。
 - 状态型操作列统一在 Vue `computed` 中调用 `getAdaptiveActionColumnWidth(rows, actions)`。`actions` 使用 `{ label, visible }` 描述按钮，`label` 可以是文字或按行返回文字的函数，`visible` 可以是权限布尔值或 `(row) => boolean` 行状态条件。公共函数会扫描当前页，按单行实际可见按钮组合计算最大宽度；页面不得重复维护“是否存在待审批”等私有计数逻辑。旧的布尔值数组继续兼容，但只适合全部为两字标准按钮的页面。
@@ -275,7 +285,7 @@ const actionColumnWidth = computed(() => getAdaptiveActionColumnWidth(rows.value
 
 ### 操作按钮尺寸与语义颜色
 
-表格、列表卡片和手机展开区共用同一套操作按钮。尺寸与颜色变量全部定义在 `frontend/src/styles/admin-layout.css`，结构和状态规则定义在 `frontend/src/styles/components/_table.scss`。PC 端当前高度为 `28px`、水平内边距为 `10px`、按钮间距为 `8px`、字体为 `13px`、圆角为 `4px`；手机端高度为 `32px`、水平内边距为 `12px`、按钮间距为 `6px`，字体读取公共手机表格字号。普通业务字段中的 `.table-inline-action` 使用更紧凑的 PC `7px`、手机 `8px` 水平内边距。操作列单元格的上下内边距由公共样式同步设置为 PC `9px`、手机 `4px`，确保 PC 按钮高度与 `48px` 内容行高、手机按钮高度与 `40px` 内容行高对齐；无按钮时也保留同一行高，不得由业务页面单独覆盖。页面不得写死这些值。
+表格、列表卡片和手机展开区共用同一套操作按钮。尺寸与颜色变量全部定义在 `frontend/src/styles/admin-layout.css`，结构和状态规则定义在 `frontend/src/styles/components/_table.scss`。PC 端当前高度为 `28px`、水平内边距为 `10px`、按钮间距为 `8px`、字体为 `13px`、圆角为 `4px`；手机端高度为 `32px`、水平内边距为 `12px`、按钮间距为 `6px`，字体读取公共手机表格字号。普通业务字段中的 `.table-inline-action` 使用更紧凑的 PC `7px`、手机 `8px` 水平内边距。操作列和包含 `.table-inline-action` 的普通业务单元格共用 `--admin-data-table-action-cell-padding-y`：按 `(行高 - 按钮高度 - 1px 底边框) / 2` 计算并限制为非负值，当前 PC 为 `9.5px`、手机为 `3.5px`，确保按钮与边框完整落在 PC `48px`、手机 `40px` 行高内；无按钮时也保留同一行高，不得由业务页面单独覆盖。页面不得写死这些值。
 
 | 操作语义 | 推荐 class | 颜色含义 |
 | --- | --- | --- |
@@ -497,6 +507,7 @@ Element Plus 弹窗默认可能通过 Teleport 挂载到 `body`，不再位于�
 品牌 `/brands`、型号 `/models`、颜色 `/colors`、内存 `/memories`、门店 `/stores`、供应商 `/suppliers`、员工 `/employees`、客户 `/customers`、配件 `/accessories` 的根节点必须同时使用 `.admin-page.admin-unified-base-data-page`，主列表统一使用 `el-table.data-table.devices-table.base-data-table`。
 
 - PC 端排序统一使用 `useElementTableSortable` 和 `.drag-handle`，页面只实现排序后的业务保存；不得再实现原生 `dragstart/drop` 排序。
+- 品牌、型号、颜色和内存的排序写入共用 `useReferenceOrdering`，单条编辑、筛选后保存和拖拽范围遵循[检索规范的基础资料排序编辑](search-standards.md#基础资料排序编辑)；序号使用分页连续编号，不从排序值推导。
 - 手机端不显示排序、创建时间和常驻操作列；连续两次点击同一行后展开编辑、删除操作，展开列箭头及其占位由公共样式隐藏。
 - 品牌名称、型号、颜色预览、内存规格和存储大小均保持单行。可见字段总宽度超过卡片时，使用 Element Plus 内部滚动容器同步移动表头和内容，并隐藏可见滚动条。
 - 字段较少时保留 `fit`，由 Element Plus 分配剩余宽度填满表格；不得通过页面私有字号缩放填空。

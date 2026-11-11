@@ -14,7 +14,7 @@
       <template #actions>
         <el-button
           native-type="button"
-          class="price-header-action price-header-action--download"
+          class="price-header-action price-header-action--download tf-button--export"
           :loading="isGenerating"
           :disabled="isGenerating || searchResults.length === 0"
           @click="downloadAsImage"
@@ -684,7 +684,7 @@ onBeforeUnmount(() => {
 <style lang="scss">
 @use "../../../styles/components/price-contact";
 
-// 图片水印样式 - 表格内斜向随机位置
+/* 图片水印样式 - 表格内斜向随机位置 */
 .image-watermark {
   pointer-events: none;
   position: absolute;
@@ -716,9 +716,9 @@ onBeforeUnmount(() => {
   }
 }
 
-// 生成图片时使用手机响应式样式
+/* 生成图片时使用手机响应式样式 */
 .results-list.generating-image {
-  // 生成图使用固定安全宽度，避免 375px 等小屏设备裁掉最右侧价格。
+  /* 生成图使用固定安全宽度，避免 375px 等小屏设备裁掉最右侧价格。 */
   width: 430px !important;
   min-width: 430px !important;
   max-width: 430px !important;
@@ -759,7 +759,7 @@ onBeforeUnmount(() => {
     }
   }
 
-  // 显示水印
+  /* 显示水印 */
   .image-watermark {
     .watermark-item {
       opacity: 1 !important;
@@ -810,7 +810,7 @@ onBeforeUnmount(() => {
         padding: 8px 4px !important;
       }
 
-      // header/body 都是独立 table，Safari 下不能把 body 当作 table-header-group。
+      /* header/body 都是独立 table，Safari 下不能把 body 当作 table-header-group。 */
       .el-table__header,
       .el-table__body {
         width: 100% !important;
@@ -836,37 +836,37 @@ onBeforeUnmount(() => {
         display: table-column !important;
       }
 
-      // 品牌列
+      /* 品牌列 */
       col:nth-child(1) {
         width: 14% !important;
       }
 
-      // 型号列
+      /* 型号列 */
       col:nth-child(2) {
         width: 27% !important;
       }
 
-      // 颜色列
+      /* 颜色列 */
       col:nth-child(3) {
         width: 14% !important;
       }
 
-      // 内存列
+      /* 内存列 */
       col:nth-child(4) {
         width: 16% !important;
       }
 
-      // 价格列
+      /* 价格列 */
       col:nth-child(5) {
         width: 29% !important;
       }
 
-      // 确保表格内容不换行但完整显示
+      /* 确保表格内容不换行但完整显示 */
       .el-table__body-wrapper {
         overflow: visible !important;
       }
 
-      // 确保所有单元格内容可见
+      /* 确保所有单元格内容可见 */
       .cell {
         box-sizing: border-box !important;
         overflow: visible !important;

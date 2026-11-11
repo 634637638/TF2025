@@ -252,7 +252,7 @@
       </div>
       <el-button
         type="primary"
-        class="submit-btn"
+        class="submit-btn tf-button--h5-action tf-button--h5-action-primary"
         :loading="submitting"
         @click="handleSubmit"
       >

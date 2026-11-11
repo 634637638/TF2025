@@ -55,56 +55,11 @@
 
       .selected-action-btn {
         flex-shrink: 0;
-        min-width: 92px;
-        height: 36px;
-        padding: 0 14px;
-        white-space: nowrap;
-        border-radius: 10px;
-        font-size: var(--tf-type-scale-13);
-        font-weight: 600;
-
-        :deep(span) {
-          display: inline-flex;
-          align-items: center;
-          gap: 4px;
-        }
-
-        i {
-          font-size: var(--tf-type-scale-12);
-        }
-      }
-
-      .selected-action-btn-danger {
-        background: var(--tf-button-danger-soft-bg);
-        border-color: var(--tf-button-danger-soft-border);
-        color: var(--tf-button-danger-soft-color);
-        box-shadow: none;
-
-        &:hover,
-        &:focus {
-          background: var(--tf-button-danger-soft-hover-bg);
-          border-color: var(--tf-button-danger-soft-hover-border);
-          color: var(--tf-button-danger-soft-hover-color);
-        }
-      }
-
-      .selected-action-btn-primary {
-        background: var(--tf-button-primary-soft-bg);
-        border-color: var(--tf-button-primary-soft-border);
-        color: var(--tf-button-primary-soft-color);
-        box-shadow: none;
-
-        &:hover,
-        &:focus {
-          background: var(--tf-button-primary-soft-hover-bg);
-          border-color: var(--tf-button-primary-soft-hover-border);
-          color: var(--tf-button-primary-soft-hover-color);
-        }
       }
     }
   }
 
-  // 状态徽章样式
+  /* 状态徽章样式 */
   .status-badge {
     display: inline-block;
     padding: 4px 12px;
@@ -137,7 +92,7 @@
     }
   }
 
-  // 时间徽章样式 - 小巧精致版
+  /* 时间徽章样式 - 小巧精致版 */
   .time-badge {
     display: inline-flex;
     align-items: center;
@@ -183,7 +138,7 @@
     }
   }
 
-  // 文本辅助类
+  /* 文本辅助类 */
   .text-muted {
     color: var(--color-info);
   }
@@ -192,7 +147,7 @@
     text-align: center;
   }
 
-  // 分页样式
+  /* 分页样式 */
   .pagination-wrapper {
     padding: 16px;
     background: var(--color-bg-white);
@@ -200,7 +155,7 @@
     margin-top: 16px;
   }
 
-  // 批次详情对话框样式
+  /* 批次详情对话框样式 */
   .payment-details {
     .details-info {
       background: linear-gradient(135deg, var(--tf-color-surface) 0%, var(--tf-color-border-cool-alt) 100%);
@@ -275,7 +230,7 @@
           }
         }
 
-        // 表单控件样式
+        /* 表单控件样式 */
         :deep(.el-select),
         :deep(.el-date-picker),
         :deep(.el-input) {

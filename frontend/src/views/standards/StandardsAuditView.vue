@@ -114,8 +114,7 @@
               规范分类
             </div>
             <el-button
-              text
-              class="standards-category"
+              class="standards-category tf-button--pill-filter"
               :class="{ 'is-active': activeCategory === '全部' }"
               @click="activeCategory = '全部'"
             >
@@ -125,8 +124,7 @@
             <el-button
               v-for="category in standardCategories"
               :key="category"
-              text
-              class="standards-category"
+              class="standards-category tf-button--pill-filter"
               :class="{ 'is-active': activeCategory === category }"
               @click="activeCategory = category"
             >
@@ -251,6 +249,25 @@
               </div>
               <div
                 v-if="selectedStandard.previewKind === 'button'"
+                class="admin-table-panel"
+              >
+                <div class="section-title">
+                  <span>表格批量操作</span>
+                  <div class="section-actions batch-actions-buttons">
+                    <el-button @click="previewButtonAction('清空选择')">
+                      清空选择
+                    </el-button>
+                    <el-button
+                      type="primary"
+                      @click="previewButtonAction('批量设置')"
+                    >
+                      批量设置
+                    </el-button>
+                  </div>
+                </div>
+              </div>
+              <div
+                v-if="selectedStandard.previewKind === 'button'"
                 class="preview-button-row"
               >
                 <el-button
@@ -327,6 +344,23 @@
                 >
                   <i class="fas fa-xmark" />
                 </el-button>
+                <el-button
+                  native-type="button"
+                  class="tf-button--content tf-button--media-tile"
+                  title="媒体缩略图预览"
+                  aria-label="媒体缩略图预览"
+                  @click="previewButtonAction('媒体缩略图')"
+                >
+                  <i class="fas fa-image" />
+                </el-button>
+                <el-button
+                  native-type="button"
+                  class="tf-button--scanner-control"
+                  :aria-pressed="previewPillActive"
+                  @click="previewPillActive = !previewPillActive"
+                >
+                  扫码控制
+                </el-button>
               </div>
               <div
                 v-else-if="selectedStandard.previewKind === 'dialog'"
@@ -371,6 +405,11 @@
                 </el-tag>
               </div>
               <template v-else-if="selectedStandard.previewKind === 'table'">
+                <div class="preview-button-row">
+                  <span>卡片与列表编号</span>
+                  <span class="table-number-badge">1</span>
+                  <span class="table-number-badge">99999</span>
+                </div>
                 <el-table
                   :data="previewRows"
                   class="data-table admin-data-table standards-preview-table"
@@ -380,11 +419,31 @@
                   :fit="true"
                 >
                   <el-table-column
+                    type="index"
+                    label="序号"
+                    :width="$getNumberColumnWidth((previewRows || []).map((_row, $index) => $index + 1), 70)"
+                    align="center"
+                  >
+                    <template #default="{ $index }">
+                      <span class="table-number-badge">{{ $index + 1 }}</span>
+                    </template>
+                  </el-table-column>
+                  <el-table-column
                     prop="field"
                     label="字段"
                     min-width="150"
                     class-name="complete-text-column"
-                  />
+                  >
+                    <template #default="{ row }">
+                      <el-button
+                        class="table-inline-action table-action--view"
+                        native-type="button"
+                        @click="togglePreviewDetail"
+                      >
+                        {{ row.field }}
+                      </el-button>
+                    </template>
+                  </el-table-column>
                   <el-table-column
                     label="状态"
                     width="90"
@@ -1108,11 +1167,10 @@ const previewIcon = (kind: StandardPreviewKind) => {
 .standards-layout { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: var(--admin-panel-gap); align-items: start; }
 .standards-categories { padding: var(--tf-space-3); }
 .standards-categories__title { margin-bottom: var(--tf-space-2); color: var(--admin-section-title-color); font-size: var(--tf-font-label); font-weight: 700; }
-.standards-category { display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 38px; padding: 0 var(--tf-space-2); border: 1px solid transparent; border-radius: var(--tf-radius-control); background: transparent; color: var(--tf-color-slate-500); cursor: pointer; font-size: var(--tf-font-body); text-align: left; }
+.standards-category { display: flex; align-items: center; justify-content: space-between; width: 100%; cursor: pointer; text-align: left; }
 .standards-category span { display: inline-flex; align-items: center; gap: var(--tf-space-2); }
 .standards-category i { width: 16px; text-align: center; }
 .standards-category strong { color: inherit; font-size: var(--tf-font-caption); }
-.standards-category:hover, .standards-category.is-active { border-color: var(--tf-button-primary-soft-border); background: var(--tf-button-primary-soft-bg); color: var(--tf-button-primary-soft-color); }
 .standards-list { min-width: 0; padding: var(--admin-table-panel-padding-y) var(--admin-table-panel-padding-x); }
 .standards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: var(--tf-space-3); }
 .standard-card { display: flex; min-width: 0; flex-direction: column; gap: var(--tf-space-3); padding: var(--tf-space-4); border: 1px solid var(--admin-table-panel-border); border-radius: var(--tf-radius-card); background: var(--color-bg-white); }
@@ -1202,7 +1260,7 @@ const previewIcon = (kind: StandardPreviewKind) => {
   .standards-layout { grid-template-columns: 1fr; }
   .standards-categories { display: flex; gap: var(--tf-space-2); overflow-x: auto; padding: var(--tf-space-2); }
   .standards-categories__title { display: none; }
-  .standards-category { flex: 0 0 auto; width: auto; min-height: 34px; padding-inline: var(--tf-space-3); white-space: nowrap; }
+  .standards-category { flex: 0 0 auto; width: auto; white-space: nowrap; }
   .standards-category strong { margin-left: var(--tf-space-2); }
   .standards-grid { grid-template-columns: 1fr; }
   .standard-detail__columns, .preview-form { grid-template-columns: 1fr; }

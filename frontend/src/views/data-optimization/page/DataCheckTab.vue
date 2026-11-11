@@ -144,14 +144,22 @@
 
             <el-table-column
               type="index"
-              label="#"
-              width="60"
-            />
+              label="序号"
+              :width="$getNumberColumnWidth((paginatedAllData || []).map((_row, $index) => $index + 1), 60)"
+            >
+              <template #default="{ $index }">
+                <span class="table-number-badge">{{ $index + 1 }}</span>
+              </template>
+            </el-table-column>
             <el-table-column
               prop="id"
               label="ID"
-              width="80"
-            />
+              :width="$getNumberColumnWidth((paginatedAllData || []).map((row) => row.id), 80)"
+            >
+              <template #default="{ row }">
+                <span class="table-number-badge">{{ row.id }}</span>
+              </template>
+            </el-table-column>
             <el-table-column
               prop="name"
               label="名称"

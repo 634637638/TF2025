@@ -41,6 +41,17 @@ export const getIdentifierColumnMinWidth = (
   options: TextColumnWidthOptions = {}
 ) => getTextColumnMinWidth(values, options)
 
+/** 序号/ID 徽章宽度：保留原列最小宽度，并预留标签边框、内边距及单元格留白。 */
+export const getNumberColumnMinWidth = (
+  values: Array<string | number | null | undefined>,
+  minWidth = 54
+) => getTextColumnMinWidth(values, {
+  minWidth,
+  horizontalPadding: 40,
+  asciiCharacterWidth: 9,
+  wideCharacterWidth: 16
+})
+
 export interface ActionColumnWidthOptions {
   minWidth?: number
   buttonWidth?: number

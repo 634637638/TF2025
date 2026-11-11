@@ -645,13 +645,16 @@
                   <i class="fas fa-trash" />
                 </el-button>
                 <!-- 设置主图按钮 -->
-                <div
+                <el-button
                   v-if="!image.is_primary && !isVideoMedia(image)"
-                  class="set-primary-btn"
+                  native-type="button"
+                  class="set-primary-btn tf-button--overlay-tool"
+                  title="设为主图"
+                  aria-label="设为主图"
                   @click="setPrimaryImage(image)"
                 >
                   <i class="fas fa-star" />
-                </div>
+                </el-button>
               </div>
             </template>
           </draggable>

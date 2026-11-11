@@ -5,7 +5,7 @@
   padding-bottom: 60px;
 }
 
-// 订单状态卡片
+/* 订单状态卡片 */
 .status-card {
   background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
   color: var(--color-bg-white);
@@ -46,7 +46,7 @@
   }
 }
 
-// 通用区块
+/* 通用区块 */
 .section {
   background: var(--color-bg-white);
   margin: 12px;
@@ -61,7 +61,7 @@
   }
 }
 
-// 信息列表
+/* 信息列表 */
 .info-list {
   .info-item {
     display: flex;
@@ -81,7 +81,7 @@
   }
 }
 
-// 商品列表
+/* 商品列表 */
 .order-items {
   .order-item {
     display: flex;
@@ -147,7 +147,7 @@
   }
 }
 
-// 价格明细
+/* 价格明细 */
 .price-section {
   .price-row {
     display: flex;
@@ -170,7 +170,7 @@
   }
 }
 
-// 备注
+/* 备注 */
 .remarks {
   font-size: var(--tf-type-scale-14);
   color: var(--text-secondary);
@@ -179,7 +179,7 @@
   white-space: pre-line;
 }
 
-// 底部操作栏
+/* 底部操作栏 */
 .bottom-bar {
   position: fixed;
   bottom: 0;
@@ -195,53 +195,39 @@
   z-index: 200;
 
   .action-btn {
-    height: 48px;
-    border-radius: 24px;
-    font-size: var(--tf-type-scale-15);
-    font-weight: 500;
+
     transition: all 0.3s ease;
-    border: none;
 
     &.back-btn {
       flex: 0 0 auto;
-      width: 80px;
-      background: var(--tf-button-neutral-bg);
-      color: var(--tf-button-tool-color);
 
       &:active {
         transform: scale(0.95);
-        background: var(--tf-button-neutral-hover-bg);
+
       }
     }
 
     &.cancel-btn {
       flex: 1;
-      background: var(--tf-button-danger-soft-bg);
-      color: var(--tf-button-danger-soft-color);
-      border: 1px solid var(--tf-button-neutral-border);
 
       &:active {
         transform: scale(0.98);
-        background: var(--tf-button-danger-soft-hover-bg);
+
       }
     }
 
     &.pay-btn {
       flex: 1.5;
-      background: var(--tf-button-danger-bg);
-      color: var(--tf-button-on-color);
-      font-weight: 600;
-      box-shadow: var(--tf-button-danger-shadow);
 
       &:active {
         transform: scale(0.98);
-        box-shadow: var(--tf-button-danger-shadow);
+
       }
     }
   }
 }
 
-// 支付弹窗样式
+/* 支付弹窗样式 */
 :deep(.pay-dialog) {
   .el-message-box__message {
     line-height: 1.8;
@@ -253,7 +239,7 @@
   }
 }
 
-// 支付方式选择弹窗样式
+/* 支付方式选择弹窗样式 */
 :deep(.payment-dialog) {
   border-radius: 16px;
   overflow: hidden;

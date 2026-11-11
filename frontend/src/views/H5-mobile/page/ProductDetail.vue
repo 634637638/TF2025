@@ -213,7 +213,7 @@
       <template v-if="config.direct_buy_enabled">
         <el-button
           v-if="config.cart_enabled"
-          class="cart-btn"
+          class="cart-btn tf-button--h5-action tf-button--h5-action-neutral"
           @click="handleAddToCart"
         >
           <i class="fas fa-cart-plus" />
@@ -221,7 +221,7 @@
         </el-button>
         <el-button
           type="primary"
-          class="buy-btn"
+          class="buy-btn tf-button--h5-action tf-button--h5-action-primary"
           :class="{ 'full-width': !config.cart_enabled }"
           @click="handleBuyNow"
         >

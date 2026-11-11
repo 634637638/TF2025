@@ -364,11 +364,11 @@
                       v-if="showAttendanceIdColumn"
                       prop="id"
                       label="ID"
-                      min-width="90"
+                      :width="$getNumberColumnWidth((displayAttendanceRows || []).map((row) => getAttendanceRowIds(row)), 90)"
                       align="center"
                     >
                       <template #default="{ row }">
-                        {{ getAttendanceRowIds(row) }}
+                        <span class="table-number-badge">{{ getAttendanceRowIds(row) }}</span>
                       </template>
                     </el-table-column>
                     <el-table-column
@@ -748,11 +748,11 @@
                       v-if="showMyAttendanceIdColumn"
                       prop="id"
                       label="ID"
-                      min-width="90"
+                      :width="$getNumberColumnWidth((myLoading ? [] : displayMyAttendanceRows || []).map((row) => getAttendanceRowIds(row)), 90)"
                       align="center"
                     >
                       <template #default="{ row }">
-                        {{ getAttendanceRowIds(row) }}
+                        <span class="table-number-badge">{{ getAttendanceRowIds(row) }}</span>
                       </template>
                     </el-table-column>
                     <el-table-column
@@ -1447,9 +1447,13 @@
             <el-table-column
               label="ID"
               prop="id"
-              :min-width="attendanceGroupDetailIdColumnWidth"
+              :width="$getNumberColumnWidth((currentRecord.source_records || []).map((row) => row.id), 64)"
               align="center"
-            />
+            >
+              <template #default="{ row }">
+                <span class="table-number-badge">{{ row.id }}</span>
+              </template>
+            </el-table-column>
             <el-table-column
               label="日期"
               :min-width="attendanceGroupDetailDateColumnWidth"
@@ -1944,14 +1948,6 @@ const myAttendanceActionColumnWidth = computed(() => getAdaptiveActionColumnWidt
   ]
 ))
 const attendanceGroupDetailRows = computed(() => currentRecord.value?.source_records || [])
-const attendanceGroupDetailIdColumnWidth = computed(() => getTextColumnMinWidth(
-  ['ID', ...attendanceGroupDetailRows.value.map(row => row.id)],
-  {
-    minWidth: 64,
-    maxWidth: 96,
-    horizontalPadding: 24
-  }
-))
 const attendanceGroupDetailDateColumnWidth = computed(() => getAttendanceColumnWidth(
   '日期',
   attendanceGroupDetailRows.value.map(getAttendanceRecordDateText),

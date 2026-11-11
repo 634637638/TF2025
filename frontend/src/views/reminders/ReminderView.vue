@@ -196,22 +196,22 @@
               <el-table-column
                 v-if="canViewReminderField('sequence')"
                 label="序号"
-                width="64"
+                :width="$getNumberColumnWidth((reminders || []).map((_row, $index) => (pagination.page - 1) * pagination.page_size + $index + 1), 64)"
                 align="center"
               >
                 <template #default="{ $index }">
-                  <span class="index-badge">{{ (pagination.page - 1) * pagination.page_size + $index + 1 }}</span>
+                  <span class="table-number-badge">{{ (pagination.page - 1) * pagination.page_size + $index + 1 }}</span>
                 </template>
               </el-table-column>
               <el-table-column
                 v-if="canViewReminderField('title')"
                 label="事项"
-                min-width="210"
+                :min-width="reminderTitleColumnWidth"
                 class-name="complete-text-column"
               >
                 <template #default="{ row }">
                   <el-button
-                    class="reminder-title"
+                    class="table-inline-action table-action--view"
                     native-type="button"
                     @click="openDetail(row)"
                   >
@@ -788,10 +788,14 @@
             v-if="canViewReminderField('type_sort_order')"
             prop="sort_order"
             label="排序"
-            :min-width="typeSortColumnWidth"
+            :width="$getNumberColumnWidth((types || []).map((row) => row.sort_order), 72)"
             align="center"
             class-name="complete-text-column"
-          />
+          >
+            <template #default="{ row }">
+              <span class="table-number-badge">{{ row.sort_order }}</span>
+            </template>
+          </el-table-column>
           <el-table-column
             v-if="canViewReminderField('type_is_active')"
             label="状态"
@@ -1109,6 +1113,10 @@ const reminderActionColumnWidth = computed(() => {
   const buttonCount = 1 + (canEdit.value ? 1 : 0) + (canDelete.value ? 1 : 0)
   return getActionColumnMinWidth(buttonCount)
 })
+const reminderTitleColumnWidth = computed(() => getTextColumnMinWidth(
+  ['事项', ...(canViewReminderField('title') ? reminders.value.map(item => item.title) : [])],
+  { minWidth: 210, horizontalPadding: 40 }
+))
 const typeNameColumnWidth = computed(() => getTextColumnMinWidth(
   ['类型', ...(canViewReminderField('type_name') ? types.value.map(item => item.name || '') : [])],
   { minWidth: 150, horizontalPadding: 58 }
@@ -1121,10 +1129,6 @@ const typeRemindDaysColumnWidth = computed(() => getTextColumnMinWidth(
       : [])
   ],
   { minWidth: 100, horizontalPadding: 28 }
-))
-const typeSortColumnWidth = computed(() => getTextColumnMinWidth(
-  ['排序', ...(canViewReminderField('type_sort_order') ? types.value.map(item => item.sort_order || 0) : [])],
-  { minWidth: 72, horizontalPadding: 28 }
 ))
 
 const localDate = (date: ReturnType<typeof TimeUtil.now>) => TimeUtil.format(date, TIME_FORMATS.DATE)
@@ -1477,7 +1481,6 @@ onMounted(async () => {
 
 <style scoped lang="scss">
 .reminder-view { min-height:100%; }
-.reminder-title { border:0;background:none;color:var(--tf-color-neutral-800);font:inherit;font-weight:700;cursor:pointer;white-space:nowrap; }.reminder-title:hover{color:var(--tf-color-blue-600);}
 .type-badge { display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border:1px solid;border-radius:999px;font-weight:700;white-space:nowrap; }
 .execution-summary{font-variant-numeric:tabular-nums;color:var(--tf-color-slate-600);}.user-option-meta{float:right;margin-left:16px;color:var(--tf-color-slate-400);}.input-suffix{margin-left:8px;color:var(--tf-color-slate-500);}
 .reminder-form-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0 18px}.reminder-form-grid .span-2{grid-column:1/-1}.reminder-form-grid :deep(.el-select),.reminder-form-grid :deep(.el-date-editor){width:100%}.weekday-options{display:flex;flex-wrap:wrap}

@@ -521,9 +521,13 @@
 
             <el-table-column
               type="index"
-              label="#"
-              width="50"
-            />
+              label="序号"
+              :width="$getNumberColumnWidth((filteredLowStockItems || []).map((_row, $index) => $index + 1), 50)"
+            >
+              <template #default="{ $index }">
+                <span class="table-number-badge">{{ $index + 1 }}</span>
+              </template>
+            </el-table-column>
             <el-table-column
               prop="name"
               label="产品名称"

@@ -293,16 +293,19 @@
               >总计: ¥{{ Number(selectedTotalAmount || 0) }}</span>
             </div>
             <el-button
-              type="danger"
-              class="selected-action-btn selected-action-btn-danger"
+              native-type="button"
+              size="small"
+              class="selected-action-btn"
               @click.stop="clearSelection"
             >
               <i class="fas fa-times" /> 清空选择
             </el-button>
             <el-button
               v-if="canCreatePayment"
+              native-type="button"
+              size="small"
               type="primary"
-              class="selected-action-btn selected-action-btn-primary"
+              class="selected-action-btn tf-button--finance"
               @click="handleOpenBatchPaymentDialog"
             >
               <i class="fas fa-money-bill-wave" />
@@ -353,11 +356,11 @@
               </el-table-column>
               <el-table-column
                 label="序号"
-                :width="isMobile ? 50 : 70"
+                :width="$getNumberColumnWidth((phones || []).map((_row, $index) => (pagination.page - 1) * pagination.page_size + $index + 1), isMobile ? 50 : 70)"
                 align="center"
               >
                 <template #default="{ $index }">
-                  <span class="index-badge">{{ (pagination.page - 1) * pagination.page_size + $index + 1 }}</span>
+                  <span class="table-number-badge">{{ (pagination.page - 1) * pagination.page_size + $index + 1 }}</span>
                 </template>
               </el-table-column>
               <el-table-column
@@ -674,7 +677,7 @@
                 <span class="amount">¥{{ formatAmount(selectedTotalAmount) }}</span>
               </div>
               <div
-                v-if="canViewPaymentField('profit') && !isPaymentImageCaptureMode"
+                v-if="canViewPaymentField('profit')"
                 class="info-row hide-in-capture"
               >
                 <label>利润:</label>
@@ -700,11 +703,11 @@
                 >
                   <el-table-column
                     label="序号"
-                    width="60"
+                    :width="$getNumberColumnWidth((selectedPhoneObjects || []).map((_row, $index) => $index + 1), 60)"
                     align="center"
                   >
                     <template #default="{ $index }">
-                      <span class="index-badge">{{ $index + 1 }}</span>
+                      <span class="table-number-badge">{{ $index + 1 }}</span>
                     </template>
                   </el-table-column>
                   <el-table-column
@@ -817,7 +820,7 @@
                     </template>
                   </el-table-column>
                   <el-table-column
-                    v-if="canViewPaymentField('profit') && !isPaymentImageCaptureMode"
+                    v-if="canViewPaymentField('profit')"
                     label="利润"
                     :min-width="getPaymentDialogColumnWidth(selectedPhoneObjects, 'profit')"
                     align="center"
@@ -851,7 +854,7 @@
             </div>
 
             <!-- 打款信息卡片 -->
-            <div class="details-info payment-form-cards mt-5">
+            <div class="details-info payment-form-cards mt-5 hide-in-capture">
               <div class="payment-form-heading">
                 <span class="payment-form-heading-icon"><i class="fas fa-pen-to-square" /></span>
                 <span>
@@ -985,7 +988,7 @@
                 <span class="amount">¥{{ formatAmount(currentPhone?.purchase_cost) }}</span>
               </div>
               <div
-                v-if="canViewPaymentField('profit') && !isPaymentImageCaptureMode"
+                v-if="canViewPaymentField('profit')"
                 class="info-row hide-in-capture"
               >
                 <label>利润:</label>
@@ -1011,11 +1014,11 @@
                 >
                   <el-table-column
                     label="序号"
-                    width="60"
+                    :width="$getNumberColumnWidth([1], 60)"
                     align="center"
                   >
                     <template #default>
-                      <span class="index-badge">1</span>
+                      <span class="table-number-badge">1</span>
                     </template>
                   </el-table-column>
                   <el-table-column
@@ -1128,7 +1131,7 @@
                     </template>
                   </el-table-column>
                   <el-table-column
-                    v-if="canViewPaymentField('profit') && !isPaymentImageCaptureMode"
+                    v-if="canViewPaymentField('profit')"
                     label="利润"
                     :min-width="getPaymentDialogColumnWidth(currentPhone ? [currentPhone] : [], 'profit')"
                     align="center"
@@ -1162,7 +1165,7 @@
             </div>
 
             <!-- 打款信息卡片 -->
-            <div class="details-info payment-form-cards mt-5">
+            <div class="details-info payment-form-cards mt-5 hide-in-capture">
               <div class="payment-form-heading">
                 <span class="payment-form-heading-icon"><i class="fas fa-pen-to-square" /></span>
                 <span>
@@ -1267,7 +1270,10 @@
           :show-default-footer="false"
           :style="{ maxWidth: '1600px' }"
         >
-          <div class="payment-details">
+          <div
+            ref="paymentDetailsForCapture"
+            class="payment-details"
+          >
             <!-- 批次信息 -->
             <div
               class="details-info payment-summary-cards payment-batch-summary-cards"
@@ -1328,13 +1334,13 @@
               </div>
               <div
                 v-if="canViewPaymentField('sale_price')"
-                class="info-row batch-summary-sales"
+                class="info-row batch-summary-sales hide-in-capture"
               >
                 <label><i class="fas fa-tags" />总销售</label>
                 <span class="amount">¥{{ formatAmount(paymentDetails.total_sale) }}</span>
               </div>
               <div
-                v-if="canViewPaymentField('profit') && !isPaymentImageCaptureMode"
+                v-if="canViewPaymentField('profit')"
                 :class="[
                   'info-row batch-summary-profit hide-in-capture',
                   paymentDetails.total_profit >= 0 ? 'is-positive' : 'is-negative'
@@ -1348,10 +1354,7 @@
             </div>
 
             <!-- 手机明细表格 -->
-            <div
-              ref="paymentDetailsForCapture"
-              class="batch-details-table"
-            >
+            <div class="batch-details-table">
               <div class="table-responsive payment-dialog-table-container">
                 <el-table
                   :data="paymentDetails.phones || []"
@@ -1366,11 +1369,11 @@
                 >
                   <el-table-column
                     label="序号"
-                    width="60"
+                    :width="$getNumberColumnWidth((paymentDetails.phones || []).map((_row, $index) => $index + 1), 60)"
                     align="center"
                   >
                     <template #default="{ $index }">
-                      <span class="index-badge">{{ $index + 1 }}</span>
+                      <span class="table-number-badge">{{ $index + 1 }}</span>
                     </template>
                   </el-table-column>
                   <el-table-column
@@ -1483,7 +1486,7 @@
                     </template>
                   </el-table-column>
                   <el-table-column
-                    v-if="canViewPaymentField('profit') && !isPaymentImageCaptureMode"
+                    v-if="canViewPaymentField('profit')"
                     label="利润"
                     :min-width="getPaymentDialogColumnWidth(paymentDetails.phones || [], 'profit')"
                     align="center"
@@ -1683,7 +1686,7 @@ import { PaymentMethodSelect } from '@/components/payment'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import { PageHeader, PermissionGate } from '@/components/base'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
-import { loadHtml2Canvas } from '@/utils/html2canvas'
+import { createSettlementImage } from './settlement-image'
 import { sortOptionsByOrder } from '@/utils/option-sort'
 import { getAdaptiveActionColumnWidth, getIdentifierColumnMinWidth, getTextColumnMinWidth } from '@/utils/table-layout'
 import { formatAmount } from '@/utils/format'
@@ -1693,7 +1696,7 @@ const { success, error, warning, info } = useNotification()
 const refreshing = ref(false)
 const authStore = useAuthStore()
 const { isMobile } = useMobile()
-const { exportFile, buildDateFilename } = useImportExport()
+const { exportFile, saveBlobFile, buildDateFilename } = useImportExport()
 const { init: initFieldPermissions } = fieldPermissions
 
 // 权限检查 - 使用 usePagePermissions
@@ -2029,124 +2032,9 @@ const savingImage = ref(false)
 const paymentDetailsForCapture = ref<HTMLElement | null>(null)
 const batchPaymentTableForCapture = ref<HTMLElement | null>(null)
 const singlePaymentForCapture = ref<HTMLElement | null>(null)
-const isPaymentImageCaptureMode = ref(false)
-
-const waitForCaptureLayout = async () => {
-  await nextTick()
-  await new Promise<void>((resolve) => {
-    requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
-  })
-}
-
-const getCaptureContentWidth = (element: HTMLElement) => {
-  const tableElements = Array.from(element.querySelectorAll<HTMLElement>(
-    '.el-table__header-wrapper table, .el-table__body-wrapper table'
-  ))
-  const tableWidth = tableElements.reduce((maxWidth, table) => {
-    return Math.max(maxWidth, table.scrollWidth, table.getBoundingClientRect().width)
-  }, 0)
-
-  if (tableWidth > 0) {
-    return Math.ceil(tableWidth)
-  }
-
-  return Math.ceil(Math.max(element.scrollWidth, element.getBoundingClientRect().width))
-}
-
-const withCaptureLayout = async (
-  element: HTMLElement,
-  action: () => Promise<void>
-) => {
-  const previousCaptureMode = isPaymentImageCaptureMode.value
-  isPaymentImageCaptureMode.value = true
-  await waitForCaptureLayout()
-
-  const hideElements = Array.from(element.querySelectorAll('.hide-in-capture')) as HTMLElement[]
-  const responsiveContainers = [
-    element,
-    ...Array.from(element.querySelectorAll('.table-responsive')) as HTMLElement[]
-  ]
-  const styleSnapshots = responsiveContainers.map((node) => ({
-    node,
-    overflowX: node.style.overflowX,
-    overflowY: node.style.overflowY,
-    maxWidth: node.style.maxWidth,
-    width: node.style.width
-  }))
-
-  try {
-    hideElements.forEach((node) => {
-      node.style.display = 'none'
-    })
-
-    const captureWidth = getCaptureContentWidth(element)
-
-    styleSnapshots.forEach(({ node }) => {
-      node.style.overflowX = 'visible'
-      node.style.overflowY = 'visible'
-      node.style.maxWidth = 'none'
-      if (captureWidth > 0) {
-        node.style.width = `${captureWidth}px`
-      }
-    })
-
-    window.dispatchEvent(new Event('resize'))
-    await waitForCaptureLayout()
-    await action()
-  } finally {
-    styleSnapshots.forEach(({ node, overflowX, overflowY, maxWidth, width }) => {
-      node.style.overflowX = overflowX
-      node.style.overflowY = overflowY
-      node.style.maxWidth = maxWidth
-      node.style.width = width
-    })
-
-    hideElements.forEach((node) => {
-      node.style.display = ''
-    })
-
-    isPaymentImageCaptureMode.value = previousCaptureMode
-    window.dispatchEvent(new Event('resize'))
-    await waitForCaptureLayout()
-  }
-}
-
-const downloadCaptureImage = async (
-  element: HTMLElement,
-  fileName: string
-) => {
-  const captureWidth = getCaptureContentWidth(element)
-  const captureHeight = Math.ceil(Math.max(element.scrollHeight, element.getBoundingClientRect().height))
-  const html2canvas = await loadHtml2Canvas()
-
-  const canvas = await html2canvas(element, {
-    backgroundColor: '#ffffff',
-    scale: 2,
-    logging: false,
-    useCORS: true,
-    allowTaint: true,
-    width: captureWidth,
-    height: captureHeight,
-    windowWidth: captureWidth,
-    windowHeight: captureHeight
-  })
-
-  return new Promise<void>((resolve, reject) => {
-    canvas.toBlob((blob) => {
-      if (!blob) {
-        reject(new Error('生成图片失败'))
-        return
-      }
-
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.download = fileName
-      link.href = url
-      link.click()
-      URL.revokeObjectURL(url)
-      resolve()
-    }, 'image/png')
-  })
+const downloadCaptureImage = async (element: HTMLElement, fileName: string) => {
+  const image = await createSettlementImage(element)
+  saveBlobFile(image.blob, { filename: fileName, mimeType: 'image/png' })
 }
 
 // 移动端搜索展开状态
@@ -2999,14 +2887,12 @@ const savePaymentDetailsAsImage = async () => {
       ? TimeUtil.format(paymentDetails.value.payment_time, TIME_FORMATS.DATE)
       : TimeUtil.nowFormatted(TIME_FORMATS.DATE)
 
-    await withCaptureLayout(element, async () => {
-      await downloadCaptureImage(element, `打款明细_${supplierName}_${paymentTime}.png`)
-    })
+    await downloadCaptureImage(element, `打款明细_${supplierName}_${paymentTime}.png`)
 
     success('图片已保存')
   } catch (err) {
     logger.error('保存图片失败:', err)
-    error('保存图片失败')
+    error(getErrorMessage(err, '保存图片失败'))
   } finally {
     savingImage.value = false
   }
@@ -3031,14 +2917,12 @@ const saveBatchPaymentAsImage = async () => {
       ? TimeUtil.format(paymentForm.payment_time, TIME_FORMATS.DATE)
       : TimeUtil.nowFormatted(TIME_FORMATS.DATE)
 
-    await withCaptureLayout(element, async () => {
-      await downloadCaptureImage(element, `批量打款明细_${supplierName}_${paymentTime}.png`)
-    })
+    await downloadCaptureImage(element, `批量打款明细_${supplierName}_${paymentTime}.png`)
 
     success('图片已保存')
   } catch (err) {
     logger.error('保存图片失败:', err)
-    error('保存图片失败')
+    error(getErrorMessage(err, '保存图片失败'))
   } finally {
     savingImage.value = false
   }
@@ -3063,14 +2947,12 @@ const saveSinglePaymentAsImage = async () => {
       ? TimeUtil.format(paymentForm.payment_time, TIME_FORMATS.DATE)
       : TimeUtil.nowFormatted(TIME_FORMATS.DATE)
 
-    await withCaptureLayout(element, async () => {
-      await downloadCaptureImage(element, `单个打款明细_${supplierName}_${paymentTime}.png`)
-    })
+    await downloadCaptureImage(element, `单个打款明细_${supplierName}_${paymentTime}.png`)
 
     success('图片已保存')
   } catch (err) {
     logger.error('保存图片失败:', err)
-    error('保存图片失败')
+    error(getErrorMessage(err, '保存图片失败'))
   } finally {
     savingImage.value = false
   }

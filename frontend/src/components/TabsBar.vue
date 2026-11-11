@@ -163,10 +163,6 @@ const handleCommand = (command: string) => {
   background: transparent;
 }
 
-.tab-item {
-  max-width: 180px;
-}
-
 .tab-icon,
 .tab-title,
 .tab-close {

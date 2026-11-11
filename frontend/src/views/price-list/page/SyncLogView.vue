@@ -135,7 +135,7 @@
             >
               <el-button
                 native-type="button"
-                class="sync-log-mobile-summary"
+                class="sync-log-mobile-summary tf-button--content"
                 @click="handleMobileRowTap(row.id)"
               >
                 <span class="sync-log-mobile-time">{{ formatDateTime(row.start_time) }}</span>
@@ -227,9 +227,13 @@
           <el-table-column
             type="index"
             label="序号"
-            width="80"
+            :width="$getNumberColumnWidth((logList || []).map((_row, $index) => $index + 1), 80)"
             align="center"
-          />
+          >
+            <template #default="{ $index }">
+              <span class="table-number-badge">{{ $index + 1 }}</span>
+            </template>
+          </el-table-column>
           <el-table-column
             prop="start_time"
             label="开始时间"
@@ -1081,7 +1085,7 @@ onUnmounted(() => {
   color: var(--color-danger);
 }
 
-// 日志详情
+/* 日志详情 */
 .log-detail {
   .detail-banner {
     display: flex;
@@ -1200,10 +1204,7 @@ onUnmounted(() => {
   align-items: center;
   width: 100%;
   gap: 8px;
-  padding: 10px 12px;
-  border: 0;
-  background: transparent;
-  color: var(--el-text-color-primary);
+
   text-align: left;
   cursor: pointer;
 }

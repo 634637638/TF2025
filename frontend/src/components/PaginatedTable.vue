@@ -69,9 +69,13 @@
           v-if="showIndex"
           type="index"
           label="序号"
-          width="80"
+          :width="$getNumberColumnWidth((tableData || []).map((_row, $index) => getIndex($index)), 80)"
           :index="getIndex"
-        />
+        >
+          <template #default="{ $index }">
+            <span class="table-number-badge">{{ getIndex($index) }}</span>
+          </template>
+        </el-table-column>
 
         <!-- 列定义 -->
         <template

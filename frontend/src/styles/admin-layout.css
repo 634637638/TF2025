@@ -106,7 +106,7 @@
   --admin-data-table-action-height: 28px;
   --admin-data-table-action-padding-y: 5px;
   --admin-data-table-action-padding-x: 10px;
-  --admin-data-table-action-cell-padding-y: 9px;
+  --admin-data-table-action-cell-padding-y: max(0px, calc((var(--admin-data-table-row-height) - var(--admin-data-table-action-height) - 1px) / 2));
   --admin-data-table-action-font-size: var(--tf-type-scale-13);
   --admin-data-table-action-radius: 4px;
   --admin-data-table-action-icon-size: 14px;
@@ -185,6 +185,11 @@
   --admin-data-table-badge-padding-y: 3px;
   --admin-data-table-badge-padding-x: 8px;
   --admin-data-table-badge-radius: 999px;
+  --admin-data-table-number-bg: var(--el-color-success-light-9);
+  --admin-data-table-number-border: var(--el-color-success-light-8);
+  --admin-data-table-number-color: var(--el-color-success);
+  --admin-data-table-number-radius: 6px;
+  --admin-data-table-number-min-width: 24px;
   --admin-data-table-badge-height: 20px;
   --admin-data-table-color-swatch-size: 18px;
   --admin-data-table-spec-font-size: var(--admin-data-table-cell-font-size);
@@ -224,7 +229,6 @@
     --admin-data-table-action-height: 32px;
     --admin-data-table-action-padding-y: 6px;
     --admin-data-table-action-padding-x: 12px;
-    --admin-data-table-action-cell-padding-y: 4px;
     --admin-data-table-action-font-size: var(--mobile-text-table);
     --admin-data-table-inline-action-padding-x: 8px;
     --admin-data-table-badge-height: 20px;
@@ -1172,21 +1176,31 @@
   white-space: nowrap !important;
 }
 
-:is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table) .id-badge {
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  width: auto !important;
-  min-width: 0 !important;
-  height: var(--admin-data-table-badge-height) !important;
-  min-height: var(--admin-data-table-badge-height) !important;
-  box-sizing: border-box !important;
-  padding: 0 var(--admin-data-table-badge-padding-x) !important;
-  border-radius: 6px !important;
-  font-size: inherit !important;
-  line-height: 1 !important;
-  box-shadow: none !important;
-  white-space: nowrap !important;
+/* 表格和卡片的序号、排名、排序值及真实 ID 共用展示。 */
+.table-number-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  min-width: var(--admin-data-table-number-min-width);
+  height: var(--admin-data-table-badge-height);
+  box-sizing: border-box;
+  padding: 0 var(--admin-data-table-badge-padding-x);
+  border: 1px solid var(--admin-data-table-number-border);
+  border-radius: var(--admin-data-table-number-radius);
+  background: var(--admin-data-table-number-bg);
+  color: var(--admin-data-table-number-color);
+  font-size: var(--admin-data-table-cell-font-size);
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+[data-theme='dark'] {
+  --admin-data-table-number-bg: color-mix(in srgb, var(--el-color-success) 18%, var(--color-bg-white));
+  --admin-data-table-number-border: color-mix(in srgb, var(--el-color-success) 40%, var(--color-bg-white));
+  --admin-data-table-number-color: var(--tf-color-green-element-light);
 }
 
 :is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table) .role-badge {

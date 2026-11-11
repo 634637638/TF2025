@@ -398,7 +398,7 @@ import { PermissionGate } from '@/components/base'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import { logger } from '@/utils/logger'
 import { storage } from '@/services/storage'
-import { loadHtml2Canvas } from '@/utils/html2canvas'
+import { createTableImage } from '@/utils/table-image'
 import { toCanonicalPhoneUpdatePayload } from '@/utils/phone-update-payload'
 import { resolvePhoneReferenceIds } from '@/utils/phone-reference-ids'
 import { PHONE_EDIT_STATUS_OPTIONS } from '@/constants/phoneStatuses'
@@ -1215,12 +1215,8 @@ const saveInventorySummaryAsImage = async () => {
     return
   }
 
-  let restoreCaptureStyles: (() => void) | null = null
-
   try {
     savingInventorySummary.value = true
-
-    // 等待DOM更新完成
     await nextTick()
 
     const element = inventorySummaryTableRef.value?.getCaptureElement()
@@ -1229,164 +1225,14 @@ const saveInventorySummaryAsImage = async () => {
       return
     }
 
-    const tables = Array.from(element.querySelectorAll<HTMLTableElement>('table'))
-    const elementTable = element.querySelector<HTMLElement>('.el-table')
-    if (tables.length === 0 || !elementTable) {
-      showError('无法找到库存统计表内容')
-      return
-    }
-
-    // Element Plus 使用独立的表头和内容表格，截图时需要同步调整并恢复。
-    const originalWidth = element.style.width
-    const originalElementTableWidth = elementTable.style.width
-    const originalTables = tables.map(table => ({
-      element: table,
-      width: table.style.width,
-      tableLayout: table.style.tableLayout,
-      borderSpacing: table.style.borderSpacing
-    }))
-
-    // 保存所有单元格的原始样式
-    const cells = element.querySelectorAll('td, th')
-    const originalCells: Array<{
-      element: HTMLElement
-      padding: string
-      fontSize: string
-      height: string
-      lineHeight: string
-    }> = []
-
-    cells.forEach(cell => {
-      const htmlCell = cell as HTMLElement
-      originalCells.push({
-        element: htmlCell,
-        padding: htmlCell.style.padding,
-        fontSize: htmlCell.style.fontSize,
-        height: htmlCell.style.height,
-        lineHeight: htmlCell.style.lineHeight
-      })
-    })
-
-    // 保存行样式
-    const rows = element.querySelectorAll('tr')
-    const originalRows: Array<{
-      element: HTMLElement
-      height: string
-      display: string
-    }> = []
-
-    rows.forEach(row => {
-      const htmlRow = row as HTMLElement
-      originalRows.push({
-        element: htmlRow,
-        height: htmlRow.style.height,
-        display: htmlRow.style.display
-      })
-    })
-
-    restoreCaptureStyles = () => {
-      element.style.width = originalWidth
-      elementTable.style.width = originalElementTableWidth
-
-      originalTables.forEach(item => {
-        item.element.style.width = item.width
-        item.element.style.tableLayout = item.tableLayout
-        item.element.style.borderSpacing = item.borderSpacing
-      })
-
-      originalCells.forEach(item => {
-        item.element.style.padding = item.padding
-        item.element.style.fontSize = item.fontSize
-        item.element.style.height = item.height
-        item.element.style.lineHeight = item.lineHeight
-      })
-
-      originalRows.forEach(item => {
-        item.element.style.height = item.height
-        item.element.style.display = item.display
-      })
-    }
-
-    // 临时设置截图容器宽度，表头和内容表格保持相同布局。
-    element.style.width = '2000px'
-    elementTable.style.width = '100%'
-    tables.forEach(table => {
-      table.style.width = '100%'
-      table.style.tableLayout = 'fixed'
-      table.style.borderSpacing = '0'
-    })
-
-    // 设置紧凑的单元格样式
-    cells.forEach(cell => {
-      const htmlCell = cell as HTMLElement
-      htmlCell.style.padding = '8px 12px'
-      htmlCell.style.fontSize = '18px'
-      htmlCell.style.height = '40px'
-      htmlCell.style.lineHeight = '1.4'
-    })
-
-    // 设置行样式
-    rows.forEach(row => {
-      const htmlRow = row as HTMLElement
-      htmlRow.style.height = '40px'
-      htmlRow.style.display = 'table-row'
-    })
-
-    // 等待布局更新
-    await nextTick()
-
-    const html2canvas = await loadHtml2Canvas()
-
-    // 生成高清图片（使用scale: 2提高清晰度）
-    const canvas = await html2canvas(element, {
-      backgroundColor: '#ffffff',
-      scale: 2,
-      logging: false,
-      useCORS: true,
-      allowTaint: true
-    })
-
-    // 缩放到目标尺寸（2000px宽度）
-    const targetWidth = 2000
-    const scaleRatio = targetWidth / canvas.width
-    const newHeight = Math.round(canvas.height * scaleRatio)
-
-    const resizedCanvas = document.createElement('canvas')
-    resizedCanvas.width = targetWidth
-    resizedCanvas.height = newHeight
-    const ctx = resizedCanvas.getContext('2d')
-
-    if (ctx) {
-      ctx.fillStyle = '#ffffff'
-      ctx.fillRect(0, 0, targetWidth, newHeight)
-      ctx.imageSmoothingEnabled = true
-      ctx.imageSmoothingQuality = 'high'
-      ctx.drawImage(canvas, 0, 0, targetWidth, newHeight)
-    }
-
-    restoreCaptureStyles()
-    restoreCaptureStyles = null
-
-    // 转换为图片并下载
-    const finalCanvas = resizedCanvas || canvas
-    finalCanvas.toBlob((blob) => {
-      if (!blob) {
-        showError('生成图片失败')
-        return
-      }
-
-      // 生成文件名（包含时间戳）
-      const filename = buildDateFilename('库存对库', 'png', 'YYYYMMDD')
-      saveBlobFile(blob, { filename, mimeType: 'image/png' })
-
-      showSuccess(`库存统计表已保存为图片 (${finalCanvas.width}x${finalCanvas.height})`)
-    }, 'image/png')
-
+    const image = await createTableImage(element)
+    const filename = buildDateFilename('库存对库', 'png', 'YYYYMMDD')
+    saveBlobFile(image.blob, { filename, mimeType: 'image/png' })
+    showSuccess(`库存统计表已保存为图片 (${image.width}x${image.height})`)
   } catch (err) {
     logger.error('保存库存统计表失败:', err)
-    showError('保存库存统计表失败')
+    showError(err instanceof Error ? err.message : '保存库存统计表失败')
   } finally {
-    restoreCaptureStyles?.()
     savingInventorySummary.value = false
   }
 }

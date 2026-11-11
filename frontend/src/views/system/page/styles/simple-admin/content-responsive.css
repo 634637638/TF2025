@@ -252,13 +252,6 @@
     flex: 0 0 auto;
   }
 
-  .btn-lock,
-  .logout-btn {
-    width: 36px;
-    min-width: 36px;
-    padding-inline: 0;
-  }
-
   .btn-lock i {
     font-size: var(--tf-type-scale-14); /* 锁定按钮图标大小 */
   }
@@ -268,10 +261,6 @@
   }
 
   /* 退出登录按钮在小屏幕上只显示图标 */
-  .logout-btn {
-    font-size: 0; /* 隐藏文字 */
-    border-radius: 4px;
-  }
 
   .logout-btn i {
     font-size: var(--tf-type-scale-14); /* 退出按钮图标大小 */

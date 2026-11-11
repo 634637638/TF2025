@@ -74,11 +74,11 @@
           >
             <el-table-column
               label="序号"
-              width="60"
+              :width="$getNumberColumnWidth((details || []).map((_row, $index) => $index + 1), 60)"
               align="center"
             >
               <template #default="{ $index }">
-                <span class="id-badge">{{ $index + 1 }}</span>
+                <span class="table-number-badge">{{ $index + 1 }}</span>
               </template>
             </el-table-column>
             <el-table-column

@@ -220,15 +220,6 @@
   align-items: center;
 }
 
-.sort-badge {
-  background: var(--tf-color-border-muted);
-  color: var(--tf-color-gray-bootstrap-700);
-  padding: 4px 8px;
-  border-radius: 6px;
-  font-size: var(--tf-type-scale-12);
-  font-weight: 600;
-  display: inline-block;
-}
 
 .time-info {
   font-size: var(--tf-type-scale-13);

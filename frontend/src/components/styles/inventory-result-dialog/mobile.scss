@@ -69,24 +69,13 @@
 
     .inventory-item {
       display: grid;
-      grid-template-columns: 34px minmax(0, 1fr);
+      grid-template-columns: max-content minmax(0, 1fr);
       gap: 10px;
       align-items: start;
       padding: 12px;
       margin-bottom: 10px;
       border-radius: 16px;
       box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
-
-      .item-rank {
-        width: 34px;
-        height: 34px;
-        font-size: var(--tf-type-scale-12);
-        margin-top: 2px;
-
-        i {
-          font-size: var(--tf-type-scale-14);
-        }
-      }
 
       .item-content {
         --inventory-columns: minmax(52px, 0.8fr) minmax(max-content, 1.8fr) minmax(48px, 0.8fr);

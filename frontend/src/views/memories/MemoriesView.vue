@@ -209,26 +209,27 @@
                 width="70"
                 align="center"
               >
-                <template #default="{ row, $index }">
+                <template #default="{ row }">
                   <el-input-number
-                    v-model="row.sort_order"
+                    :key="`${row.id}:${savingOrder}`"
+                    :model-value="row.sort_order"
                     class="sort-order-control"
-                    :disabled="!canEdit"
+                    :disabled="!canEdit || savingOrder || tableLoading"
                     :min="0"
                     :max="9999"
                     :controls="false"
-                    @change="handleSortOrderChange($index, row.sort_order)"
+                    @change="handleSortOrderChange(row.id, $event)"
                   />
                 </template>
               </el-table-column>
               <el-table-column
                 v-if="canViewField('id')"
                 label="序号"
-                :width="isMobile ? 54 : 70"
+                :width="$getNumberColumnWidth((memories || []).map((_row, $index) => (pagination.page - 1) * pagination.page_size + $index + 1), isMobile ? 54 : 70)"
                 align="center"
               >
                 <template #default="{ $index }">
-                  <span class="id-badge">{{ $index + 1 }}</span>
+                  <span class="table-number-badge">{{ (pagination.page - 1) * pagination.page_size + $index + 1 }}</span>
                 </template>
               </el-table-column>
               <el-table-column
@@ -364,7 +365,6 @@
           dialog-class="memories-form-dialog crud-dialog-sm"
           :close-on-click-modal="false"
           :show-default-footer="false"
-          @close="attemptCloseModal"
         >
           <el-form
             :model="formData"
@@ -459,12 +459,13 @@ import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import { PageHeader, PermissionGate } from '@/components/base'
 import { usePermissionToast } from '@/utils/permissionToastSimple'
-import { handleApiErrorWithPermission } from '@/utils/apiPermissionError'
 import { useMobile } from '@/composables/mobile'
 import { useMobileRowDoubleTap } from '@/composables/useMobileRowDoubleTap'
 import { useLatestRequest } from '@/composables/useLatestRequest'
 import { logger } from '@/utils/logger'
 import { useElementTableSortable } from '@/composables/useElementTableSortable'
+import { useReferenceOrdering } from '@/composables/useReferenceOrdering'
+import { sortOptionsByOrder } from '@/utils/option-sort'
 import { getTextColumnMinWidth } from '@/utils/table-layout'
 import { formatDateTime } from '@/utils/format'
 import { getRequestErrorMessage, getRequestErrorStatus } from '@/utils/api-response'
@@ -558,7 +559,6 @@ const handleMobileRowTap = (id: number) => {
 const searchExpanded = ref(false)
 const tableLoading = ref(true)
 const submitting = ref(false)
-const savingOrder = ref(false)
 const memories = ref<Memory[]>([])
 const stats = ref({ total: 0, active: 0, inactive: 0, related_phones: 0 })
 const getMemoryRowKey = (memory: Memory) => String(memory.id)
@@ -685,6 +685,7 @@ const loadMemories = async (bustCache: boolean = false, silentError: boolean = f
     const request = memoryListRequest.nextRequest()
     const response = await unifiedApi.get('/memories', {
       params,
+      useCache: !bustCache,
       signal: request.signal
     })
 
@@ -693,7 +694,7 @@ const loadMemories = async (bustCache: boolean = false, silentError: boolean = f
     }
 
     if (response.success) {
-      memories.value = response.data.memories || []
+      memories.value = sortOptionsByOrder(response.data.memories || [])
       // 确保 total 是数字类型
       const apiPagination = response.data.pagination || {}
       pagination.value = {
@@ -705,8 +706,6 @@ const loadMemories = async (bustCache: boolean = false, silentError: boolean = f
         has_prev: apiPagination.has_prev === true
       }
 
-      // 按 sort_order 排序，确保序号和排序值一致
-      memories.value.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
     } else {
       memories.value = []
       pagination.value = { page: 1, page_size: 100, total: 0, total_pages: 0, has_next: false, has_prev: false }
@@ -880,39 +879,19 @@ const submitForm = async () => {
   }
 }
 
-// 检查是否有未保存的更改
+// 新增取消直接重置；仅编辑已有记录时检查未保存的更改。
 const hasUnsavedChanges = (): boolean => {
-  if (!showCreateModal.value && !showEditModal.value) return false
-
-  // 检查是否有任何非空字段的更改
-  const currentForm = formData.value
-  const _initialForm = {
-    size: '',
-    status: 1,
-    sort_order: 0
-  }
-
-  // 对于编辑模式，需要比较原始数据
-  if (showEditModal.value && currentEditingId.value) {
-    const originalMemory = memories.value.find(m => m.id === currentEditingId.value)
-    if (originalMemory) {
-      return (
-        currentForm.size !== originalMemory.size ||
-        currentForm.status !== originalMemory.status ||
-        currentForm.sort_order !== originalMemory.sort_order
-      )
-    }
-  }
-
-  // 对于创建模式，检查是否有任何输入
+  if (!showEditModal.value || currentEditingId.value === null) return false
+  const originalMemory = memories.value.find(item => item.id === currentEditingId.value)
+  if (!originalMemory) return false
   return (
-    currentForm.size !== '' ||
-    currentForm.status !== 1 ||
-    currentForm.sort_order !== 0
+    formData.value.size !== originalMemory.size ||
+    formData.value.status !== originalMemory.status ||
+    formData.value.sort_order !== originalMemory.sort_order
   )
 }
 
-// 关闭模态框（带确认）
+// 新增直接关闭，编辑有更改时保留确认。
 const attemptCloseModal = async () => {
   if (hasUnsavedChanges()) {
     if (await confirm('您有未保存的更改，确定要关闭吗？')) {
@@ -967,57 +946,18 @@ const handleCreateMemory = () => {
   showCreateModal.value = true
 }
 
-// 保存排序到服务器
-const saveSortOrder = async () => {
-  if (savingOrder.value) return
-  if (!canEdit.value) {
-    showEditDenied('内存管理', 'memories:edit')
-    return
-  }
-
-  savingOrder.value = true
-  try {
-    const items = memories.value.map((item, index) => ({
-      id: item.id,
-      sort_order: index
-    }))
-
-    const response = await unifiedApi.put('/memories/batch/reorder', { items })
-    if (response.success) {
-      success('排序已保存')
-    }
-  } catch (error) {
-    logger.error('保存排序失败:', error)
-    // 使用统一的权限错误处理
-    handleApiErrorWithPermission(error, '保存排序失败', '内存管理', 'edit')
-  } finally {
-    savingOrder.value = false
-  }
-}
-
-// 手动修改排序值
-const handleSortOrderChange = async (index: number, value: number) => {
-  memories.value[index].sort_order = value
-  // 按新的 sort_order 重新排序
-  memories.value.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
-  await saveSortOrder()
-}
-
-const handleMemoryRowMove = async (oldIndex: number, newIndex: number) => {
-  if (!canEdit.value || oldIndex === newIndex) return false
-  const reordered = [...memories.value]
-  const [movedItem] = reordered.splice(oldIndex, 1)
-  reordered.splice(newIndex, 0, movedItem)
-  reordered.forEach((item, index) => { item.sort_order = index })
-  memories.value = reordered
-  await saveSortOrder()
-  await loadMemories(true, false, false)
-  return true
-}
+// 共用排序写入：单条编辑不改变其他记录，拖拽保留已有排序值范围。
+const { savingOrder, handleSortOrderChange, handleRowMove: handleMemoryRowMove } = useReferenceOrdering({
+  rows: memories,
+  endpoint: '/memories',
+  moduleName: '内存管理',
+  canEdit,
+  reload: () => loadMemories(true, false, false)
+})
 
 useElementTableSortable({
   tableRef: memoriesTableRef,
-  enabled: computed(() => canEdit.value && !isMobile.value && showSortField.value),
+  enabled: computed(() => canEdit.value && !savingOrder.value && !tableLoading.value && !isMobile.value && showSortField.value),
   orderKey: () => memories.value.map(memory => memory.id).join('|'),
   onMove: handleMemoryRowMove
 })
@@ -1229,15 +1169,6 @@ onMounted(() => {
   align-items: center;
 }
 
-.sort-badge {
-  background: var(--tf-color-border-muted);
-  color: var(--tf-color-gray-bootstrap-700);
-  padding: 4px 8px;
-  border-radius: 6px;
-  font-size: var(--tf-type-scale-12);
-  font-weight: 600;
-  display: inline-block;
-}
 
 .status-active {
   background: var(--tf-status-success-bg);

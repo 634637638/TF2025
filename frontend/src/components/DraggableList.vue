@@ -26,7 +26,7 @@
         v-if="showSortOrder"
         class="drag-sort-order"
       >
-        <span class="sort-badge">{{ item.sort_order || index + 1 }}</span>
+        <span class="table-number-badge">{{ item.sort_order || index + 1 }}</span>
       </div>
     </div>
   </div>
@@ -164,19 +164,4 @@ const handleDrop = (dropIndex: number, event: DragEvent) => {
   min-width: 0;
 }
 
-.drag-sort-order {
-  .sort-badge {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 32px;
-    height: 32px;
-    padding: 0 8px;
-    background: var(--tf-color-neutral-100);
-    color: var(--tf-color-neutral-500);
-    border-radius: 6px;
-    font-size: var(--tf-type-scale-13);
-    font-weight: 500;
-  }
-}
 </style>

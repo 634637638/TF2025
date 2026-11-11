@@ -166,7 +166,7 @@
     >
       <el-button
         v-if="orderData.status === 'pending' && !isOrderExpired"
-        class="action-btn cancel-btn"
+        class="action-btn cancel-btn tf-button--h5-action tf-button--h5-action-neutral"
         :loading="cancelling"
         @click="handleCancelOrder"
       >
@@ -175,13 +175,13 @@
       <el-button
         v-if="orderData.status === 'pending' && !isOrderExpired"
         type="primary"
-        class="action-btn pay-btn"
+        class="action-btn pay-btn tf-button--finance"
         @click="handlePay"
       >
         立即支付
       </el-button>
       <el-button
-        class="action-btn back-btn"
+        class="action-btn back-btn tf-button--h5-action tf-button--h5-action-neutral"
         @click="goBack"
       >
         {{ orderData.status === 'pending' && !isOrderExpired ? '返回' : '关闭' }}

@@ -152,27 +152,6 @@
 }
 
 /* 表格内容样式 */
-.sort-badge {
-  background: var(--tf-color-neutral-100);
-  color: var(--tf-color-neutral-500);
-  padding: 4px 8px;
-  border-radius: 6px;
-  font-size: var(--tf-type-scale-12);
-  font-weight: 600;
-  display: inline-block;
-  min-width: 32px;
-  text-align: center;
-}
-
-.id-badge {
-  background: linear-gradient(135deg, var(--tf-color-indigo-brand), var(--tf-color-purple-brand));
-  color: white;
-  padding: 4px 8px;
-  border-radius: 6px;
-  font-size: var(--tf-type-scale-12);
-  font-weight: 600;
-  display: inline-block;
-}
 
 .supplier-info {
   max-width: 200px;

@@ -1,4 +1,4 @@
-// 品牌分类
+/* 品牌分类 */
 .brands-section {
   background: var(--color-bg-white);
   padding: 16px;
@@ -24,36 +24,22 @@
   }
 
   .brand-item {
-    min-width: 72px;
-    padding: 10px 14px;
+
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    border-radius: 999px;
-    background: var(--tf-color-zinc-100);
-    border: 1px solid transparent;
+
     transition: all 0.2s ease;
 
     span {
       max-width: 84px;
       font-size: var(--tf-type-scale-12);
       line-height: 1;
-      color: var(--tf-color-gray-500-solid);
       text-align: center;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-    }
-
-    &.active {
-      background: var(--tf-color-orange-pale);
-      border-color: var(--tf-color-orange-tailwind-200);
-
-      span {
-        color: var(--tf-color-orange-deep);
-        font-weight: 600;
-      }
     }
 
     &:active {
@@ -99,18 +85,10 @@
   .ghost-btn,
   .search-btn {
     appearance: none;
-    border: none;
+
     outline: none;
     cursor: pointer;
-    font-size: var(--tf-type-scale-12);
-  }
 
-  .brand-reset-btn {
-    padding: 6px 10px;
-    border-radius: 999px;
-    background: var(--tf-button-neutral-bg);
-    color: var(--tf-button-tool-color);
-    border: 1px solid var(--tf-button-neutral-border);
   }
 
   .brand-search-grid {
@@ -165,11 +143,7 @@
     top: 50%;
     right: 10px;
     transform: translateY(-50%);
-    border: none;
-    background: transparent;
-    color: var(--text-muted);
-    font-size: var(--tf-type-scale-12);
-    padding: 0;
+
     cursor: pointer;
   }
 
@@ -196,21 +170,8 @@
   }
 
   .brand-option {
-    padding: 7px 10px;
-    border-radius: 999px;
-    border: 1px solid var(--tf-color-gray-material-300);
-    background: var(--color-bg-white);
-    color: var(--text-secondary);
-    font-size: var(--tf-type-scale-11);
-    line-height: 1;
-    cursor: pointer;
 
-    &.active {
-      background: var(--tf-color-orange-pale);
-      border-color: var(--tf-color-amber-light);
-      color: var(--tf-color-orange-deep);
-      font-weight: 600;
-    }
+    cursor: pointer
   }
 
   .brand-search-hint {
@@ -225,21 +186,5 @@
     display: flex;
     justify-content: flex-end;
     gap: 10px;
-  }
-
-  .ghost-btn {
-    padding: 9px 14px;
-    border-radius: 999px;
-    background: var(--tf-button-neutral-bg);
-    color: var(--tf-button-tool-color);
-    border: 1px solid var(--tf-button-neutral-border);
-  }
-
-  .search-btn {
-    padding: 9px 16px;
-    border-radius: 999px;
-    background: var(--tf-button-warning-bg);
-    color: var(--tf-button-on-color);
-    box-shadow: var(--tf-button-warning-shadow);
   }
 }

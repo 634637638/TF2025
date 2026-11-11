@@ -128,6 +128,17 @@ class PriceListController {
     }
   }
 
+  async batchUpdatePriceItems(req, res) {
+    try {
+      const result = await managementService.batchUpdatePriceItems(req.body)
+      return ApiResponse.success(res, result.data, result.message)
+    } catch (error) {
+      if (error.statusCode) return ApiResponse.error(res, error.message, error.statusCode)
+      log.error('批量设置价格记录失败:', error)
+      return ApiResponse.error(res, '批量设置失败，请稍后重试', 500)
+    }
+  }
+
   async deletePriceItem(req, res) {
     try {
       const result = await managementService.deletePriceItem(req.params)

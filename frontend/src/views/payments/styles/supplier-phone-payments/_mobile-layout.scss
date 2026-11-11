@@ -56,55 +56,6 @@
           font-size: var(--tf-type-scale-12);
         }
 
-        .selected-action-btn {
-          min-width: 54px;
-          width: auto;
-          height: 28px !important;
-          min-height: 28px !important;
-          max-height: 28px;
-          padding: 0 6px;
-          font-size: var(--tf-type-scale-10);
-          line-height: 1;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          align-self: center;
-          border-radius: 8px;
-          box-sizing: border-box;
-        }
-
-        .selected-action-btn i,
-        .selected-action-btn :deep(span) {
-          font-size: var(--tf-type-scale-10);
-          line-height: 1;
-        }
-      }
-    }
-  }
-
-  @media (min-width: 481px) and (max-width: 767px) {
-    .supplier-phone-payments-view {
-      .table-section {
-        .selected-info {
-          .selected-action-btn {
-            min-width: 60px;
-            width: auto;
-            height: 30px !important;
-            min-height: 30px !important;
-            max-height: 30px;
-            padding: 0 7px;
-            font-size: var(--tf-type-scale-11);
-            line-height: 1;
-            border-radius: 8px;
-            box-sizing: border-box;
-          }
-
-          .selected-action-btn i,
-          .selected-action-btn :deep(span) {
-            font-size: var(--tf-type-scale-11);
-            line-height: 1;
-          }
-        }
       }
     }
   }

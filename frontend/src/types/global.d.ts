@@ -3,7 +3,7 @@
  * 扩展 Vue、Window 和其他全局类型
  */
 
-import type { ActionColumnInput, ActionColumnWidthOptions } from '@/utils/table-layout'
+import type { ActionColumnInput, ActionColumnWidthOptions, getNumberColumnMinWidth } from '@/utils/table-layout'
 import type { Component } from 'vue'
 import type { ComponentConfig } from '@/components'
 import type { CSRFToken } from '@/utils/csrf'
@@ -21,12 +21,6 @@ import type {
 
 type GlobalData = Record<string, unknown>
 type GlobalComponent = Component
-
-declare module 'vue' {
-  interface ComponentCustomProperties {
-    $getActionColumnWidth: (actions: ActionColumnInput, options?: ActionColumnWidthOptions) => number
-  }
-}
 
 // ===== 扩展 Window 接口 =====
 
@@ -543,6 +537,7 @@ declare global {
 declare module '@vue/runtime-core' {
   interface ComponentCustomProperties {
     $getActionColumnWidth: (actions: ActionColumnInput, options?: ActionColumnWidthOptions) => number
+    $getNumberColumnWidth: typeof getNumberColumnMinWidth
 
     // 应用配置
     $config: AppConfig

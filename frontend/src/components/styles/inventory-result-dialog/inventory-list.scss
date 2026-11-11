@@ -47,44 +47,6 @@
       background: linear-gradient(135deg, var(--tf-color-orange-ant-surface) 0%, var(--tf-color-warning-legacy) 100%);
       border-color: var(--tf-color-orange);
 
-      .item-rank {
-        background: linear-gradient(135deg, var(--tf-color-orange) 0%, var(--tf-color-coral) 100%);
-        color: white;
-        box-shadow: 0 2px 8px rgba(255, 107, 107, 0.4);
-      }
-    }
-
-    .item-rank {
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 600;
-      font-size: var(--tf-type-scale-14);
-      background: var(--tf-color-gray-200);
-      color: var(--text-muted);
-      flex-shrink: 0;
-
-      &.rank-1 {
-        background: linear-gradient(135deg, var(--tf-color-gold) 0%, var(--tf-color-yellow-bright) 100%);
-        color: var(--tf-color-dark-goldenrod);
-      }
-
-      &.rank-2 {
-        background: linear-gradient(135deg, var(--tf-color-silver) 0%, var(--tf-color-gray-ant-300) 100%);
-        color: var(--text-secondary);
-      }
-
-      &.rank-3 {
-        background: linear-gradient(135deg, var(--tf-color-bronze) 0%, var(--tf-color-amber-muted) 100%);
-        color: var(--tf-color-brown);
-      }
-
-      i {
-        font-size: var(--tf-type-scale-16);
-      }
     }
 
     .item-content {

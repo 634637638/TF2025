@@ -749,30 +749,39 @@
                   v-if="formData.photos?.length"
                   class="repair-media-list"
                 >
-                  <el-button
+                  <div
                     v-for="(media, index) in formData.photos"
                     :key="`${media.url}-${index}`"
-                    native-type="button"
                     class="repair-media-item"
-                    @click="openMediaPreview(formData.photos || [], index)"
                   >
-                    <video
-                      v-if="isVideoMedia(media)"
-                      :src="formatMediaUrl(media.url)"
-                      muted
-                      preload="metadata"
-                    />
-                    <img
-                      v-else
-                      :src="formatMediaUrl(media.url)"
-                      :alt="media.name || '维修媒体'"
+                    <el-button
+                      native-type="button"
+                      class="repair-media-preview tf-button--content tf-button--media-tile"
+                      @click="openMediaPreview(formData.photos || [], index)"
                     >
-                    <span>{{ media.type === 'video' ? '视频' : '图片' }}</span>
-                    <i
-                      class="fas fa-trash"
+                      <video
+                        v-if="isVideoMedia(media)"
+                        :src="formatMediaUrl(media.url)"
+                        muted
+                        preload="metadata"
+                      />
+                      <img
+                        v-else
+                        :src="formatMediaUrl(media.url)"
+                        :alt="media.name || '维修媒体'"
+                      >
+                      <span class="repair-media-label">{{ media.type === 'video' ? '视频' : '图片' }}</span>
+                    </el-button>
+                    <el-button
+                      native-type="button"
+                      class="repair-media-delete tf-button--overlay-tool tf-button--overlay-danger"
+                      title="删除媒体"
+                      aria-label="删除媒体"
                       @click.stop="removeFormMedia(index)"
-                    />
-                  </el-button>
+                    >
+                      <i class="fas fa-trash" />
+                    </el-button>
+                  </div>
                 </div>
               </el-form-item>
             </el-col>
@@ -885,31 +894,40 @@
             v-if="managerMedia.length"
             class="repair-media-list repair-media-list--manager"
           >
-            <el-button
+            <div
               v-for="(media, index) in managerMedia"
               :key="`${media.url}-${index}`"
-              native-type="button"
               class="repair-media-item"
-              @click="openMediaPreview(managerMedia, index)"
             >
-              <video
-                v-if="isVideoMedia(media)"
-                :src="formatMediaUrl(media.url)"
-                muted
-                preload="metadata"
-              />
-              <img
-                v-else
-                :src="formatMediaUrl(media.url)"
-                :alt="media.name || '维修媒体'"
+              <el-button
+                native-type="button"
+                class="repair-media-preview tf-button--content tf-button--media-tile"
+                @click="openMediaPreview(managerMedia, index)"
               >
-              <span>{{ media.type === 'video' ? '视频' : '图片' }}</span>
-              <i
+                <video
+                  v-if="isVideoMedia(media)"
+                  :src="formatMediaUrl(media.url)"
+                  muted
+                  preload="metadata"
+                />
+                <img
+                  v-else
+                  :src="formatMediaUrl(media.url)"
+                  :alt="media.name || '维修媒体'"
+                >
+                <span class="repair-media-label">{{ media.type === 'video' ? '视频' : '图片' }}</span>
+              </el-button>
+              <el-button
                 v-if="canEdit"
-                class="fas fa-trash"
+                native-type="button"
+                class="repair-media-delete tf-button--overlay-tool tf-button--overlay-danger"
+                title="删除媒体"
+                aria-label="删除媒体"
                 @click.stop="removeManagerMedia(index)"
-              />
-            </el-button>
+              >
+                <i class="fas fa-trash" />
+              </el-button>
+            </div>
           </div>
           <DataEmptyState
             v-else
@@ -1754,7 +1772,6 @@ onMounted(async () => {
   display: inline-flex;
 }
 
-
 .repair-media-list {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
@@ -1765,12 +1782,9 @@ onMounted(async () => {
 .repair-media-item {
   position: relative;
   min-width: 0;
-  aspect-ratio: 1;
-  padding: 0;
+
   overflow: hidden;
-  border: 1px solid var(--el-border-color);
-  border-radius: 6px;
-  background: var(--el-fill-color-light);
+
   cursor: pointer;
 }
 
@@ -1782,7 +1796,7 @@ onMounted(async () => {
   object-fit: cover;
 }
 
-.repair-media-item span {
+.repair-media-label {
   position: absolute;
   right: 4px;
   bottom: 4px;
@@ -1793,19 +1807,14 @@ onMounted(async () => {
   font-size: var(--tf-type-scale-11);
 }
 
-.repair-media-item > i {
+.repair-media-preview {
+  width: 100%;
+}
+
+.repair-media-delete {
   position: absolute;
-  top: 4px;
-  right: 4px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--tf-color-black) 60%, transparent);
-  color: var(--color-bg-white);
-  font-size: var(--tf-type-scale-11);
+  top: var(--tf-space-1);
+  right: var(--tf-space-1);
 }
 
 .repair-media-manager {

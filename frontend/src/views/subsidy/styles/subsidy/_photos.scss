@@ -1,4 +1,4 @@
-// 国补照片上传相关样式
+/* 国补照片上传相关样式 */
 .subsidy-photo-row {
   flex-wrap: wrap;
 
@@ -14,14 +14,12 @@
   display: inline-flex;
 
   .photo-upload-btn {
-    background: var(--tf-button-primary-bg);
-    border: none;
-    color: var(--tf-button-on-color);
+
     transition: all 0.3s;
 
     &:hover {
       transform: translateY(-2px);
-      box-shadow: var(--tf-button-primary-shadow);
+
     }
 
     i {
@@ -87,7 +85,7 @@
   }
 }
 
-// 表格中的国补照片列样式
+/* 表格中的国补照片列样式 */
 .subsidy-photo-cell {
   .photo-icon-wrapper {
     display: inline-flex;

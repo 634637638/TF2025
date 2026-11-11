@@ -47,6 +47,7 @@ async function restartPriceSyncScheduler(reason) {
 }
 const BaseService = require('../core/base/base.service')
 const PriceListMaintenanceRepository = require('../repositories/price-list-maintenance.repository')
+const { withConnection } = require('../core/db/connection')
 
 class PriceListManagementService extends BaseService {
   constructor({ repository = new PriceListMaintenanceRepository(), database = getDatabase, priceService = getPriceListService, restartScheduler = restartPriceSyncScheduler } = {}) {
@@ -239,13 +240,63 @@ class PriceListManagementService extends BaseService {
   }
 
   async batchUpdatePriceSource(body) {
-    this.initializeDatabase()
-    const priceListService = this.priceService()
-    const result = await priceListService.batchUpdatePriceSource(body)
-    if (result.success) {
-      return { data: result.data, message: result.message }
+    if (!body || !Object.prototype.hasOwnProperty.call(body, 'source_config_id')) {
+      throw this.createError('请选择采集来源', 400)
     }
-    throw this.createError(result.message, result.statusCode || 400)
+    return this.batchUpdatePriceItems({ price_list_ids: body.price_list_ids, changes: { source_config_id: body.source_config_id } })
+  }
+
+  async batchUpdatePriceItems(body) {
+    const isPositiveId = value => (typeof value === 'number' || (typeof value === 'string' && /^[1-9]\d*$/.test(value))) && Number.isSafeInteger(Number(value)) && Number(value) > 0
+    const rawIds = body?.price_list_ids
+    if (!Array.isArray(rawIds) || !rawIds.length || rawIds.length > 500 || rawIds.some(id => !isPositiveId(id))) {
+      throw this.createError('请选择 1 至 500 条有效价格记录', 400)
+    }
+    const ids = [...new Set(rawIds.map(Number))].sort((a, b) => a - b)
+    const input = body?.changes
+    const allowed = new Set(['source_config_id', 'is_collect', 'status', 'show_price', 'wholesale_rule'])
+    if (!input || typeof input !== 'object' || Array.isArray(input) || !Object.keys(input).length || Object.keys(input).some(key => !allowed.has(key))) {
+      throw this.createError('请选择有效的批量修改项目', 400)
+    }
+    const changes = {}
+    if (Object.prototype.hasOwnProperty.call(input, 'source_config_id')) {
+      if (input.source_config_id !== null && !isPositiveId(input.source_config_id)) throw this.createError('采集来源无效', 400)
+      changes.source_config_id = input.source_config_id === null ? null : Number(input.source_config_id)
+    }
+    for (const field of ['is_collect', 'status', 'show_price']) {
+      if (!Object.prototype.hasOwnProperty.call(input, field)) continue
+      if (input[field] !== 0 && input[field] !== 1) throw this.createError('状态必须为 0 或 1', 400)
+      changes[field] = input[field]
+    }
+    if (Object.prototype.hasOwnProperty.call(input, 'wholesale_rule')) {
+      const rule = input.wholesale_rule
+      if (!rule || typeof rule !== 'object' || Array.isArray(rule) || !['inherit', 'original', 'adjustment', 'extra'].includes(rule.mode) || Object.keys(rule).some(key => !['mode', 'adjustment'].includes(key))) {
+        throw this.createError('批发价格规则无效', 400)
+      }
+      const hasAdjustment = ['adjustment', 'extra'].includes(rule.mode)
+      if (hasAdjustment && (typeof rule.adjustment !== 'number' || !Number.isFinite(rule.adjustment) || Math.abs(rule.adjustment) > 999999 || Math.abs(rule.adjustment * 100 - Math.round(rule.adjustment * 100)) > 0.000001)) {
+        throw this.createError('加减金额须为 -999999 至 999999，最多两位小数', 400)
+      }
+      changes.wholesale_rule_mode = rule.mode
+      changes.wholesale_rule_adjustment = hasAdjustment ? rule.adjustment : 0
+    }
+    return withConnection(this.database, async connection => {
+      await connection.beginTransaction()
+      try {
+        if (changes.source_config_id !== null && changes.source_config_id !== undefined) {
+          const [sources] = await this.repository.lockSyncConfig(connection, changes.source_config_id)
+          if (!sources.length) throw this.createError('采集来源不存在，请刷新后重试', 400)
+        }
+        const [rows] = await this.repository.lockPriceItems(connection, ids)
+        if (rows.length !== ids.length) throw this.createError('部分价格记录不存在，请刷新后重试', 409)
+        await this.repository.updatePriceItems(connection, ids, changes)
+        await connection.commit()
+        return { data: { requested: ids.length, updated: ids.length }, message: `已更新 ${ids.length} 条价格记录` }
+      } catch (error) {
+        await connection.rollback()
+        throw error
+      }
+    })
   }
 
   async deletePriceItem(params) {

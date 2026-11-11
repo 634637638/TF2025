@@ -195,13 +195,17 @@ backend/restart.sh        # 已退役，禁止绕过 PM2 直接启动 server.js
 
 迁移现有站点时，数据库、`.env.production` 和 `uploads/` 必须作为同一业务版本迁移。不能重新生成正在使用的 JWT、文件签名或配置加密密钥，否则现有登录、私有文件链接和加密配置可能失效。`.env.production` 只能通过服务器间安全通道迁移，不得放进普通代码压缩包。
 
-上传完成后，在后端目录安装锁定依赖并检查运行时资源：
+上传完成后，先在宝塔或 PM2 中停止该后端项目，再在后端目录安装锁定依赖并检查运行时资源。`npm ci` 会清理旧的 `node_modules`；安装期间若项目持续自动重启，可能暂时出现连 `express` 都找不到的启动日志。等待当前安装命令成功结束后再验证并启动项目；安装失败时应查看 npm 安装终端输出，不能只根据项目启动日志判断原因。
 
 ```bash
 cd /www/wwwroot/api2025.com/backend
 npm ci --omit=dev
 NODE_ENV=production ENV_FILE=.env.production npm run check:runtime-assets
 ```
+
+增量更新涉及依赖时，也必须将同一版本的 `package.json` 和 `package-lock.json` 与源码一起同步，然后重新执行 `npm ci --omit=dev` 并重启后端项目。仅覆盖 `src/` 不会安装新增依赖。阿里云盘客户端依赖生产包 `@noble/curves`；启动日志出现 `Cannot find module '@noble/curves/secp256k1'` 时，先核对这两个文件及当前后端目录的安装结果，不要单独安装未锁定的最新版。安装后可在后端目录执行 `node -e "require('@noble/curves/secp256k1'); console.log('云盘签名依赖正常')"` 验证模块可加载，再重启宝塔或 PM2 中的后端项目。
+
+若安装报错指向 `npmmirror.com/mirrors/npm/` 或 `cdn.npmmirror.com/binaries/npm/` 的旧下载地址，先同步仓库中使用官方 npm 地址的锁文件，再执行 `npm ci --omit=dev --registry=https://registry.npmjs.org --replace-registry-host=never`。该命令明确指定下载源并禁止 npm 重写锁文件中的来源；保留锁定版本与 integrity 校验，不通过删除锁文件或安装未锁定版本绕过失败。
 
 准备运行目录并允许宝塔的 `www` 用户写入上传、日志和备份数据：
 
@@ -699,6 +703,9 @@ NODE_ENV=production ENV_FILE=.env.production npm run migrate:csrf-tokens
 # 预览销售出库单号序列表迁移
 NODE_ENV=production ENV_FILE=.env.production npm run migrate:invoice-sequences
 
+# 预览批发报价规格规则字段迁移
+NODE_ENV=production ENV_FILE=.env.production npm run migrate:price-rules
+
 # 核对目标库、备份和预览后显式执行
 NODE_ENV=production ENV_FILE=.env.production npm run migrate:schema -- --apply
 
@@ -707,9 +714,12 @@ NODE_ENV=production ENV_FILE=.env.production npm run migrate:csrf-tokens -- --ap
 
 # 应用销售出库单号序列表迁移
 NODE_ENV=production ENV_FILE=.env.production npm run migrate:invoice-sequences -- --apply
+
+# 应用批发报价规格规则字段迁移，再发布依赖新字段的后端
+NODE_ENV=production ENV_FILE=.env.production npm run migrate:price-rules -- --apply
 ```
 
-统一结构迁移会登记 `schema_migrations(id, name, checksum, applied_at, execution_time)`，并使用数据库命名锁阻止并发执行。出库单号序列表和 CSRF Token 表均提供独立、可重复预览的迁移，不依赖旧的已登记基线。历史独立迁移脚本不会被自动重跑；checksum 不一致时必须停止部署并人工核对，禁止删除台账或修改 checksum 绕过。推荐发布顺序：数据库及上传目录备份 → 结构迁移预览 → 核对目标库后 `--apply` → 启动新版 → 验证健康检查。
+统一结构迁移会登记 `schema_migrations(id, name, checksum, applied_at, execution_time)`，并使用数据库命名锁阻止并发执行。出库单号序列表、CSRF Token 表和批发报价规格规则均提供独立、可重复预览的迁移，不依赖旧的已登记基线。[批发规格规则](../sync/price-channel-pricing.md)迁移只增加两个兼容字段；回滚应用时保留字段与规则数据。历史独立迁移脚本不会被自动重跑；checksum 不一致时必须停止部署并人工核对，禁止删除台账或修改 checksum 绕过。推荐发布顺序：数据库及上传目录备份 → 结构迁移预览 → 核对目标库后 `--apply` → 启动新版 → 验证健康检查。
 
 ### 上传目录与数据库 URL 同步
 

@@ -201,12 +201,6 @@
     flex-wrap: wrap;
     justify-content: center;
   }
-
-  .pagination .el-button,
-  .pagination select {
-    font-size: var(--tf-type-scale-12);
-    padding: 6px 10px;
-  }
 }
 
 /* 分页样式 */

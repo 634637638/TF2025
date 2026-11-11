@@ -12,7 +12,7 @@
         >
           <div class="phone-main">
             <div class="phone-left">
-              <span class="phone-index">{{ index + 1 }}</span>
+              <span class="table-number-badge">{{ index + 1 }}</span>
               <span class="phone-detail">{{ phone.brand }} {{ phone.model }} - {{ phone.color }} {{ phone.memory }}</span>
             </div>
             <div
@@ -178,19 +178,6 @@ defineProps<Props>()
   flex: 1;
 }
 
-.phone-index {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  background: var(--tf-color-indigo-brand);
-  color: white;
-  border-radius: var(--tf-radius-full);
-  font-size: var(--tf-font-caption);
-  font-weight: 600;
-  flex-shrink: 0;
-}
 
 .phone-detail {
   font-size: var(--tf-type-scale-13);

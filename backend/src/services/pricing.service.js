@@ -99,10 +99,16 @@ class PricingService {
     return this.calculateSalesPriceByConfig(wholesalePrice, config)
   }
 
-  calculateWholesalePriceByConfig(wholesalePrice, config, sourceConfigId = null) {
+  calculateWholesalePriceByConfig(wholesalePrice, config, sourceConfigId = null, itemRule = {}) {
     const base = Number(wholesalePrice)
     if (!Number.isFinite(base) || base <= 0) return null
-    if (!config.wholesale.enabled) return roundPrice(base)
+
+    const mode = itemRule.wholesale_rule_mode || 'inherit'
+    const itemAdjustment = Number(itemRule.wholesale_rule_adjustment ?? 0)
+    if (mode === 'original') return roundPrice(base)
+    if (mode === 'adjustment' && Number.isFinite(itemAdjustment)) {
+      return roundPrice(Math.max(0, base + itemAdjustment))
+    }
 
     const sourceKey = sourceConfigId === null || sourceConfigId === undefined || sourceConfigId === ''
       ? null
@@ -114,7 +120,9 @@ class PricingService {
       ? Number(sourceAdjustments[sourceKey])
       : Number(config.wholesale.adjustment)
 
-    return roundPrice(base + (Number.isFinite(adjustment) ? adjustment : 0))
+    const sourceAdjustment = config.wholesale.enabled && Number.isFinite(adjustment) ? adjustment : 0
+    const extraAdjustment = mode === 'extra' && Number.isFinite(itemAdjustment) ? itemAdjustment : 0
+    return roundPrice(Math.max(0, base + sourceAdjustment + extraAdjustment))
   }
 
   async calculateWholesalePrice(wholesalePrice) {

@@ -12,6 +12,7 @@
 - 内存管理：`frontend/src/views/memories/MemoriesView.vue`
 - 门店管理：`frontend/src/views/stores/StoresView.vue`
 - 供应商管理：`frontend/src/views/suppliers/SuppliersView.vue`
+- 报价管理：`frontend/src/views/price-list/PriceListView.vue`（跨页勾选独立于列表请求，撤销查看权限时取消在途请求）
 
 ## 标准写法
 

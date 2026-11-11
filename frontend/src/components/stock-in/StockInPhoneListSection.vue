@@ -53,10 +53,14 @@
         >
           <el-table-column
             type="index"
-            label="#"
-            width="54"
+            label="序号"
+            :width="$getNumberColumnWidth((formData.phones || []).map((_row, $index) => $index + 1), 54)"
             align="center"
-          />
+          >
+            <template #default="{ $index }">
+              <span class="table-number-badge">{{ $index + 1 }}</span>
+            </template>
+          </el-table-column>
 
           <el-table-column
             label="品牌"
@@ -266,7 +270,7 @@
           class="modern-phone-item"
         >
           <div class="phone-header">
-            <span class="phone-number">商品 #{{ index + 1 }}</span>
+            <span class="phone-number">商品 #<span class="table-number-badge">{{ index + 1 }}</span></span>
             <el-button
               v-if="formData.phones.length > 1"
               type="danger"

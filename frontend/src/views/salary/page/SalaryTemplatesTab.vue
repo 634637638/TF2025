@@ -161,11 +161,15 @@
           <el-table-column
             type="index"
             label="序号"
-            :width="isMobile ? 54 : 60"
+            :width="$getNumberColumnWidth((templates || []).map((_row, $index) => getTemplateIndex($index)), isMobile ? 54 : 60)"
             :index="getTemplateIndex"
             align="center"
             class-name="index-col"
-          />
+          >
+            <template #default="{ $index }">
+              <span class="table-number-badge">{{ getTemplateIndex($index) }}</span>
+            </template>
+          </el-table-column>
           <el-table-column
             v-if="showNameColumn"
             prop="name"

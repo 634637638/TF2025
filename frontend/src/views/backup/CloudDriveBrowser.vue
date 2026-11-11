@@ -440,6 +440,6 @@ onMounted(() => { void load(false, path.value, true) })
 .cloud-path .el-button {
   white-space: normal;
   overflow-wrap: anywhere;
-  height: auto;
+
 }
 </style>

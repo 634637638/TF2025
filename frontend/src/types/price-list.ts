@@ -2,6 +2,27 @@ import type { Brand, Color, MemoryOption, Model } from './index'
 
 export type PriceValue = number | string | null
 
+export type WholesaleRuleMode = 'inherit' | 'original' | 'adjustment' | 'extra'
+
+export interface WholesalePriceRule {
+  mode: WholesaleRuleMode
+  adjustment?: number
+}
+
+/** 批量修改仅提交选中的字段，缺省字段保持原值。 */
+export interface PriceBatchChanges {
+  source_config_id?: number | null
+  is_collect?: 0 | 1
+  status?: 0 | 1
+  show_price?: 0 | 1
+  wholesale_rule?: WholesalePriceRule
+}
+
+export interface PriceBatchSettingsPayload {
+  price_list_ids: number[]
+  changes: PriceBatchChanges
+}
+
 export interface PriceListRow {
   id: number | null
   price_list_id?: number | null
@@ -18,6 +39,8 @@ export interface PriceListRow {
   retail_price?: PriceValue
   sales_display_price?: PriceValue
   wholesale_display_price?: PriceValue
+  wholesale_rule_mode?: WholesaleRuleMode
+  wholesale_rule_adjustment?: PriceValue
   stock_quantity: number
   last_sync_time?: string | null
   is_collect: number

@@ -109,11 +109,11 @@
               <el-table-column
                 v-if="canViewAccessoryField('sequence')"
                 label="序号"
-                width="64"
+                :width="$getNumberColumnWidth((paginatedAccessories || []).map((_row, $index) => (currentPage - 1) * itemsPerPage + $index + 1), 64)"
                 align="center"
               >
                 <template #default="{ $index }">
-                  <span class="id-badge">{{ (currentPage - 1) * itemsPerPage + $index + 1 }}</span>
+                  <span class="table-number-badge">{{ (currentPage - 1) * itemsPerPage + $index + 1 }}</span>
                 </template>
               </el-table-column>
 

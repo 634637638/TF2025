@@ -52,12 +52,16 @@
           class="inventory-item"
           :class="{ 'priority-item': index === 0 }"
         >
-          <div
-            class="item-rank"
-            :class="`rank-${Math.min(index + 1, 3)}`"
-          >
-            <span v-if="index === 0"><i class="fas fa-star" /></span>
-            <span v-else>{{ index + 1 }}</span>
+          <div>
+            <span
+              v-if="index === 0"
+              class="table-number-badge"
+              title="优先出库"
+            ><i class="fas fa-star" /></span>
+            <span
+              v-else
+              class="table-number-badge"
+            >{{ index + 1 }}</span>
           </div>
 
           <div class="item-content">
@@ -140,12 +144,16 @@
         class="inventory-item"
         :class="{ 'priority-item': index === 0 }"
       >
-        <div
-          class="item-rank"
-          :class="`rank-${Math.min(index + 1, 3)}`"
-        >
-          <span v-if="index === 0"><i class="fas fa-star" /></span>
-          <span v-else>{{ index + 1 }}</span>
+        <div>
+          <span
+            v-if="index === 0"
+            class="table-number-badge"
+            title="优先出库"
+          ><i class="fas fa-star" /></span>
+          <span
+            v-else
+            class="table-number-badge"
+          >{{ index + 1 }}</span>
         </div>
 
         <div class="item-content">

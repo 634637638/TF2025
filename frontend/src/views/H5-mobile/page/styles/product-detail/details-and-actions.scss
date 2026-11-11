@@ -1,5 +1,5 @@
 
-// 商品详情
+/* 商品详情 */
 .detail-section {
   background: var(--color-bg-white);
   padding: 16px;
@@ -21,7 +21,7 @@
   }
 }
 
-// 通用标题
+/* 通用标题 */
 .section-title {
   font-size: var(--tf-type-scale-16);
   font-weight: 500;
@@ -29,7 +29,7 @@
   margin: 0 0 12px;
 }
 
-// 底部操作栏
+/* 底部操作栏 */
 .bottom-bar {
   position: fixed;
   bottom: 0;
@@ -47,15 +47,10 @@
   .cart-btn,
   .buy-btn {
     flex: 1;
-    height: 44px;
-    border-radius: 22px;
-    font-size: var(--tf-type-scale-15);
+
   }
 
   .cart-btn {
-    background: var(--tf-button-warning-soft-bg);
-    color: var(--tf-button-warning-soft-color);
-    border: 1px solid var(--tf-button-neutral-border);
 
     i {
       margin-right: 4px;
@@ -63,8 +58,6 @@
   }
 
   .buy-btn {
-    background: var(--tf-button-warning-bg);
-    border: none;
 
     &.full-width {
       flex: 2;

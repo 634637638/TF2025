@@ -314,11 +314,11 @@
             </el-table-column>
             <el-table-column
               label="排序"
-              min-width="80"
+              :width="$getNumberColumnWidth((visibleMenuRows || []).map((row) => row.sort_order), 80)"
               align="center"
             >
               <template #default="{ row }">
-                <span class="sort-badge">{{ row.sort_order }}</span>
+                <span class="table-number-badge">{{ row.sort_order }}</span>
               </template>
             </el-table-column>
             <el-table-column

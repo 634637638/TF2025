@@ -176,7 +176,7 @@
                   class="group-stat center"
                   data-label="排序"
                 >
-                  {{ row.sort_order }}
+                  <span class="table-number-badge">{{ row.sort_order }}</span>
                 </div>
                 <div
                   v-if="showActionColumn"
@@ -293,7 +293,7 @@
                 class="group-stat center"
                 data-label="排序"
               >
-                {{ row.sort_order }}
+                <span class="table-number-badge">{{ row.sort_order }}</span>
               </div>
               <div
                 v-if="showActionColumn"

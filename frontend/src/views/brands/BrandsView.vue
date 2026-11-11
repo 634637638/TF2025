@@ -211,26 +211,27 @@
                 width="70"
                 align="center"
               >
-                <template #default="{ row, $index }">
+                <template #default="{ row }">
                   <el-input-number
-                    v-model="row.sort_order"
+                    :key="`${row.id}:${savingOrder}`"
+                    :model-value="row.sort_order"
                     class="sort-order-control"
-                    :disabled="!canEdit"
+                    :disabled="!canEdit || savingOrder || tableLoading"
                     :min="0"
                     :max="9999"
                     :controls="false"
-                    @change="handleSortOrderChange($index, row.sort_order)"
+                    @change="handleSortOrderChange(row.id, $event)"
                   />
                 </template>
               </el-table-column>
               <el-table-column
                 v-if="canViewField('id')"
                 label="序号"
-                width="70"
+                :width="$getNumberColumnWidth((brands || []).map((_row, $index) => (pagination.page - 1) * pagination.page_size + $index + 1), 70)"
                 align="center"
               >
                 <template #default="{ $index }">
-                  <span class="id-badge">{{ $index + 1 }}</span>
+                  <span class="table-number-badge">{{ (pagination.page - 1) * pagination.page_size + $index + 1 }}</span>
                 </template>
               </el-table-column>
               <el-table-column
@@ -358,7 +359,6 @@
           dialog-class="brands-form-dialog crud-dialog-sm"
           :close-on-click-modal="false"
           :show-default-footer="false"
-          @close="attemptCloseModal"
         >
           <el-form
             :model="formData"
@@ -452,12 +452,13 @@ import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import { PermissionGate, PageHeader } from '@/components/base'
 import { usePermissionToast } from '@/utils/permissionToastSimple'
-import { handleApiErrorWithPermission } from '@/utils/apiPermissionError'
 import { useMobile } from '@/composables/mobile'
 import { useMobileRowDoubleTap } from '@/composables/useMobileRowDoubleTap'
 import { useLatestRequest } from '@/composables/useLatestRequest'
 import { formatDateTime as formatDate } from '@/utils/format'
 import { useElementTableSortable } from '@/composables/useElementTableSortable'
+import { useReferenceOrdering } from '@/composables/useReferenceOrdering'
+import { sortOptionsByOrder } from '@/utils/option-sort'
 import { logger } from '@/utils/logger'
 import type { Brand } from '@/types'
 import type { QueryParams } from '@/types/shared'
@@ -554,7 +555,6 @@ const isEditMode = computed(() => showEditModal.value && currentEditingId.value 
 const searchExpanded = ref(false)
 const tableLoading = ref(true)
 const submitting = ref(false)
-const savingOrder = ref(false)
 const brands = ref<Brand[]>([])
 const stats = ref({ total: 0, active: 0, inactive: 0, relatedPhones: 0 })
 const getBrandRowKey = (brand: Brand) => String(brand.id)
@@ -620,6 +620,7 @@ const loadBrands = async (bustCache = false, silentError = false, _showLoadingSt
     const request = brandListRequest.nextRequest()
     const response = await unifiedApi.get('/brands', {
       params,
+      useCache: !bustCache,
       signal: request.signal
     })
 
@@ -631,9 +632,7 @@ const loadBrands = async (bustCache = false, silentError = false, _showLoadingSt
       // 使用 extractResponseData 统一提取数据
       const responseData = extractResponseData<Brand[]>(response)
       const brandData = Array.isArray(responseData) ? responseData : []
-      // 按 sort_order 排序，确保序号和排序值一致
-      const sortedData = brandData.sort((a: Brand, b: Brand) => (a.sort_order || 0) - (b.sort_order || 0))
-      brands.value = sortedData
+      brands.value = sortOptionsByOrder(brandData)
       // 确保 total 是数字类型
       // 统一 API 返回的是后端响应体，分页信息位于 data.pagination。
       // 读取真实总数，不能用当前页品牌数量代替。
@@ -899,39 +898,19 @@ const submitForm = async () => {
   }
 }
 
-// 检查是否有未保存的更改
+// 新增取消直接重置；仅编辑已有记录时检查未保存的更改。
 const hasUnsavedChanges = (): boolean => {
-  if (!showCreateModal.value && !showEditModal.value) return false
-
-  // 检查是否有任何非空字段的更改
-  const currentForm = formData.value
-  const _initialForm = {
-    name: '',
-    status: 1,
-    sort_order: 0
-  }
-
-  // 对于编辑模式，需要比较原始数据
-  if (showEditModal.value && currentEditingId.value) {
-    const originalBrand = brands.value.find(b => b.id === currentEditingId.value)
-    if (originalBrand) {
-      return (
-        currentForm.name !== originalBrand.name ||
-        currentForm.status !== originalBrand.status ||
-        currentForm.sort_order !== originalBrand.sort_order
-      )
-    }
-  }
-
-  // 对于创建模式，检查是否有任何输入
+  if (!showEditModal.value || currentEditingId.value === null) return false
+  const originalBrand = brands.value.find(item => item.id === currentEditingId.value)
+  if (!originalBrand) return false
   return (
-    currentForm.name !== '' ||
-    currentForm.status !== 1 ||
-    currentForm.sort_order !== 0
+    formData.value.name !== originalBrand.name ||
+    formData.value.status !== originalBrand.status ||
+    formData.value.sort_order !== originalBrand.sort_order
   )
 }
 
-// 关闭模态框（带确认）
+// 新增直接关闭，编辑有更改时保留确认。
 const attemptCloseModal = async () => {
   if (hasUnsavedChanges()) {
     const confirmed = await confirm(
@@ -984,53 +963,18 @@ const loadStats = async () => {
   }
 }
 
-// 保存排序到服务器
-const saveSortOrder = async () => {
-  if (savingOrder.value) return
-
-  savingOrder.value = true
-  try {
-    const items = brands.value.map((item, index) => ({
-      id: item.id,
-      sort_order: index
-    }))
-
-    const response = await unifiedApi.put('/brands/batch/reorder', { items })
-    if (response.success) {
-      success('排序已保存', {
-        duration: 2000
-      })
-    }
-  } catch (error) {
-    handleApiErrorWithPermission(error, '保存排序失败', '品牌管理', 'edit')
-  } finally {
-    savingOrder.value = false
-  }
-}
-
-// 手动修改排序值
-const handleSortOrderChange = async (index: number, value: number) => {
-  brands.value[index].sort_order = value
-  // 按新的 sort_order 重新排序
-  brands.value.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
-  await saveSortOrder()
-}
-
-const handleBrandRowMove = async (oldIndex: number, newIndex: number) => {
-  if (!canEdit.value || oldIndex === newIndex) return false
-  const reordered = [...brands.value]
-  const [movedItem] = reordered.splice(oldIndex, 1)
-  reordered.splice(newIndex, 0, movedItem)
-  reordered.forEach((item, index) => { item.sort_order = index })
-  brands.value = reordered
-  await saveSortOrder()
-  await loadBrands(true, false, false)
-  return true
-}
+// 共用排序写入：单条编辑不改变其他记录，拖拽保留已有排序值范围。
+const { savingOrder, handleSortOrderChange, handleRowMove: handleBrandRowMove } = useReferenceOrdering({
+  rows: brands,
+  endpoint: '/brands',
+  moduleName: '品牌管理',
+  canEdit,
+  reload: () => loadBrands(true, false, false)
+})
 
 useElementTableSortable({
   tableRef: brandsTableRef,
-  enabled: computed(() => canEdit.value && !isMobile.value && showSortField.value),
+  enabled: computed(() => canEdit.value && !savingOrder.value && !tableLoading.value && !isMobile.value && showSortField.value),
   orderKey: () => brands.value.map(brand => brand.id).join('|'),
   onMove: handleBrandRowMove
 })

@@ -1,5 +1,7 @@
-import { readFileSync, readdirSync, statSync } from 'node:fs'
-import { extname, join, relative, resolve } from 'node:path'
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
+import { basename, dirname, extname, join, relative, resolve } from 'node:path'
+import { parse } from '@vue/compiler-sfc'
+import { auditButtonContract, auditButtonInlineStyles, auditTableButtonUsage, collectButtonClasses } from './lib/button-contract.mjs'
 
 const root = resolve(import.meta.dirname, '..')
 const sourceRoot = join(root, 'src')
@@ -17,6 +19,33 @@ const publicLayoutFiles = new Set([
   'src/styles/components/_tabs.scss'
 ])
 const colorSourceFile = 'src/styles/components/_buttons.scss'
+const manifest = JSON.parse(readFileSync(resolve(root, '../docs/frontend/standards-manifest.json'), 'utf8'))
+
+// 已登记的公共控件按对应专项规范维护；业务及未登记组件只能引用公共按钮规格。
+const publicControlSources = new Set()
+function registerPublicControl(file) {
+  if (!existsSync(file) || publicControlSources.has(file)) return
+  publicControlSources.add(file)
+  const source = readFileSync(file, 'utf8')
+  if (file.endsWith('.vue')) {
+    for (const style of parse(source).descriptor.styles) {
+      if (style.src?.startsWith('.')) registerPublicControl(resolve(dirname(file), style.src))
+    }
+  } else {
+    for (const match of source.matchAll(/@(?:use|forward|import)\s+['"]([^'"]+)['"]/g)) {
+      if (!match[1].startsWith('.')) continue
+      const target = resolve(dirname(file), match[1])
+      const candidates = [target, `${target}.scss`, `${target}.css`, join(dirname(target), `_${basename(target)}.scss`)]
+      const dependency = candidates.find(candidate => existsSync(candidate) && statSync(candidate).isFile())
+      if (dependency) registerPublicControl(dependency)
+    }
+  }
+}
+for (const standard of manifest.standards) {
+  for (const source of standard.publicSources) {
+    if (source.startsWith('frontend/src/components/')) registerPublicControl(resolve(root, '..', source))
+  }
+}
 
 const semanticSelector = /\.(?:el-button--(?:primary|success|warning|danger|info)|btn-(?:primary|secondary|success|warning|danger|info|default|light|dark|edit|delete|view|permission|field-permission|role|manage|pin|outline-(?:primary|secondary|success|warning|danger|info)))\b/
 const unifiedContext = /\.(?:action-buttons|mobile-row-actions|mobile-inline-actions|table-actions|tf-table-actions|card-actions|batch-actions-buttons|tf-dialog-actions|tf-dialog-toolbar|mobile-dialog-footer|default-footer|dialog-footer|modal-footer|image-modal-footer|confirm-footer|icon-picker-footer|photo-preview-footer|photo-viewer-footer|quick-sale-footer|publish-to-h5-footer|receipt-footer|record-footer|scanner-footer|mobile-footer|inventory-mobile-footer|payment-dialog-footer|sale-dialog-footer|apply-dialog-footer|detail-modal-footer|return-dialog-footer|edit-dialog-footer|scanner-dialog-footer|wholesale-modal-footer|footer-actions|user-role-footer-actions)\b/
@@ -160,6 +189,25 @@ function auditFile(file) {
   const rawSource = readFileSync(file, 'utf8')
   const relativeFile = relative(root, file)
   const findings = styleSections(file, rawSource).flatMap(section => auditSection(relativeFile, section.source, section.lineOffset))
+  if (file.endsWith('.vue')) {
+    for (const finding of auditTableButtonUsage(rawSource)) {
+      findings.push(`${relativeFile}:${finding.line} ${finding.message}`)
+    }
+  }
+
+  // 业务页面的实际按钮无论叫什么 class，PC / 手机端都不得重写公共外观。
+  if ((relativeFile.startsWith('src/views/') || relativeFile.startsWith('src/components/')) && !publicControlSources.has(file)) {
+    for (const section of styleSections(file, rawSource)) {
+      for (const finding of auditButtonContract(section.source, buttonClasses)) {
+        findings.push(`${relativeFile}:${section.lineOffset + finding.line} 业务按钮外观必须由公共入口控制 (${finding.property}; ${finding.selectors.join(', ')})`)
+      }
+    }
+    if (file.endsWith('.vue')) {
+      for (const finding of auditButtonInlineStyles(rawSource)) {
+        findings.push(`${relativeFile}:${finding.line} 按钮行内样式只能声明布局，外观必须引用公共规格 (${finding.property})`)
+      }
+    }
+  }
 
   for (const match of rawSource.matchAll(/<(?:el-button|button)\b[^>]*(?:\bstyle|:style|v-bind:style)\s*=[^>]*(?:color|background|border|box-shadow)\s*:[^>]*(?:#[0-9a-f]{3,8}\b|rgba?\(|hsla?\(|\bwhite\b|\bblack\b)[^>]*>/gi)) {
     findings.push(`${relativeFile}:${lineNumber(rawSource, match.index)} 按钮行内样式不得定义颜色，必须使用公共语义类型`)
@@ -168,7 +216,9 @@ function auditFile(file) {
   return findings
 }
 
-const findings = walk(sourceRoot).flatMap(auditFile)
+const sourceFiles = walk(sourceRoot)
+const buttonClasses = collectButtonClasses(sourceFiles.filter(file => file.endsWith('.vue')).map(file => readFileSync(file, 'utf8')))
+const findings = sourceFiles.flatMap(auditFile)
 
 // :not() 会累加选择器优先级，基线筛选条件必须放入 :where()，避免盖住语义按钮。
 const baseButtonSelectors = [
@@ -199,6 +249,12 @@ if (!/\.el-button\.tf-button--h5-action\s*\{[^}]*height:\s*var\(--tf-h5-action-h
 if (!/\.el-button\.tf-button--pill-filter\.is-active/.test(buttonStyleSource)) {
   findings.push('src/styles/components/_buttons.scss 筛选胶囊必须先定义选中状态再开放给页面使用')
 }
+if (!/\.el-button\.tf-button--content\.tf-button--media-tile\s*\{[^}]*aspect-ratio:\s*1\s*;[^}]*padding:\s*0\s*;/.test(buttonStyleSource)) {
+  findings.push('src/styles/components/_buttons.scss 媒体缩略图的方形比例和内边距必须在公共入口维护')
+}
+if (!buttonStyleSource.includes("tf-button--scanner-control[aria-pressed='true']")) {
+  findings.push('src/styles/components/_buttons.scss 扫码器选中反馈必须由公共入口维护')
+}
 if (!/\.el-button\.tf-button--icon-badge\s*\{[^}]*width:\s*var\(--tf-button-badge-size\)/.test(buttonStyleSource)) {
   findings.push('src/styles/components/_buttons.scss 图标删除角标必须使用公共 --tf-button-badge-size 规格')
 }
@@ -213,6 +269,8 @@ if (!/\.el-button\.tf-button--service-card\s*\+\s*\.el-button\.tf-button--servic
 }
 
 const standardsButtonRequirements = [
+  [/class="section-actions batch-actions-buttons"/, '规范与审计标杆页必须预览复用公共批量操作按钮规格'],
+  [/class=["'][^"']*table-inline-action/, '规范与审计标杆页必须提供表格内紧凑文字按钮预览'],
   [/card-actions\s+tf-actions--fit-row/, '规范与审计标杆页卡片操作必须使用 .card-actions.tf-actions--fit-row'],
   [/class=["'][^"']*tf-button--view/, '规范与审计标杆页查看按钮必须声明 tf-button--view 语义'],
   [/class=["'][^"']*tf-button--save/, '规范与审计标杆页主操作预览必须声明 tf-button--save 语义'],
@@ -220,7 +278,9 @@ const standardsButtonRequirements = [
   [/class=["'][^"']*tf-button--delete/, '规范与审计标杆页删除预览必须声明 tf-button--delete 语义'],
   [/tf-button--h5-action/, '规范与审计标杆页手机端操作按钮预览必须声明 tf-button--h5-action 语义'],
   [/tf-button--pill-filter/, '规范与审计标杆页筛选胶囊预览必须声明 tf-button--pill-filter 语义'],
-  [/tf-button--icon-badge/, '规范与审计标杆页图标角标预览必须声明 tf-button--icon-badge 语义']
+  [/tf-button--icon-badge/, '规范与审计标杆页图标角标预览必须声明 tf-button--icon-badge 语义'],
+  [/tf-button--media-tile/, '规范与审计标杆页媒体缩略图必须声明公共 tf-button--media-tile 规格'],
+  [/tf-button--scanner-control/, '规范与审计标杆页扫码器必须预览公共控制按钮']
 ]
 for (const [pattern, message] of standardsButtonRequirements) {
   if (!pattern.test(standardsViewSource)) findings.push(`src/views/standards/StandardsAuditView.vue ${message}`)
@@ -253,10 +313,10 @@ if (!/buttonGap\s*=\s*8[\s\S]*?horizontalPadding\s*=\s*16/i.test(tableLayoutSour
 if (!/--tf-button-primary-soft-bg:\s*#eff6ff/i.test(buttonStyleSource)) {
   findings.push('src/styles/components/_buttons.scss 必须集中定义实心、浅色和工具按钮语义颜色')
 }
-if (!/\.el-button\.is-circle:not\(\.is-text\):not\(\.is-link\)\s*\{[\s\S]*?width:\s*var\(--tf-button-height\)\s*!important[\s\S]*?height:\s*var\(--tf-button-height\)\s*!important[\s\S]*?border-radius:\s*(?:50%|var\(--tf-radius-full\))\s*!important/i.test(buttonStyleSource)) {
+if (!/\.el-button\.is-circle:not\(\.is-text\):not\(\.is-link\)\s*(?:,[^{]+)?\{[\s\S]*?width:\s*var\(--tf-button-height\)\s*!important[\s\S]*?height:\s*var\(--tf-button-height\)\s*!important[\s\S]*?border-radius:\s*(?:50%|var\(--tf-radius-full\))\s*!important/i.test(buttonStyleSource)) {
   findings.push('src/styles/components/_buttons.scss 圆形图标按钮必须使用全局按钮高度作为等宽直径')
 }
-if (!/\.el-button\.el-button--small\.is-circle:not\(\.is-text\):not\(\.is-link\)\s*\{[\s\S]*?width:\s*var\(--tf-button-height-small\)\s*!important[\s\S]*?height:\s*var\(--tf-button-height-small\)\s*!important/i.test(buttonStyleSource)) {
+if (!/\.el-button\.el-button--small\.is-circle:not\(\.is-text\):not\(\.is-link\)\s*(?:,[^{]+)?\{[\s\S]*?width:\s*var\(--tf-button-height-small\)\s*!important[\s\S]*?height:\s*var\(--tf-button-height-small\)\s*!important/i.test(buttonStyleSource)) {
   findings.push('src/styles/components/_buttons.scss 小号圆形图标按钮必须跟随全局小按钮尺寸')
 }
 if (!/tf-button--dialog-close\s*\{[\s\S]*?--el-button-bg-color:\s*var\(--tf-dialog-close-bg\)\s*!important[\s\S]*?--el-button-text-color:\s*var\(--tf-dialog-header-text\)\s*!important/i.test(buttonStyleSource)) {

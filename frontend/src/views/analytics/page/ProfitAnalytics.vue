@@ -386,8 +386,7 @@
               class="ranking-item"
             >
               <div
-                class="ranking-index"
-                :class="getRankingClass(index)"
+                class="table-number-badge"
               >
                 {{ index + 1 }}
               </div>
@@ -448,8 +447,7 @@
               class="ranking-item"
             >
               <div
-                class="ranking-index"
-                :class="getRankingClass(index)"
+                class="table-number-badge"
               >
                 {{ index + 1 }}
               </div>
@@ -544,10 +542,14 @@
             <el-table-column
               type="index"
               label="排名"
-              width="60"
+              :width="$getNumberColumnWidth((employeePerformanceData || []).map((_row, $index) => $index + 1), 60)"
               align="center"
               fixed
-            />
+            >
+              <template #default="{ $index }">
+                <span class="table-number-badge">{{ $index + 1 }}</span>
+              </template>
+            </el-table-column>
             <el-table-column
               prop="name"
               label="员工姓名"
@@ -740,7 +742,7 @@
                 :key="store.id"
                 class="store-profit-item"
               >
-                <div class="store-profit-rank">
+                <div class="table-number-badge">
                   {{ index + 1 }}
                 </div>
                 <div class="store-profit-info">
@@ -1165,9 +1167,13 @@
             <el-table-column
               type="index"
               label="序号"
-              width="60"
+              :width="$getNumberColumnWidth((costAnalysisData || []).map((_row, $index) => $index + 1), 60)"
               align="center"
-            />
+            >
+              <template #default="{ $index }">
+                <span class="table-number-badge">{{ $index + 1 }}</span>
+              </template>
+            </el-table-column>
             <el-table-column
               prop="category"
               label="成本类别"
@@ -3026,14 +3032,6 @@ const loadEmployeePerformance = async () => {
   }
 }
 
-// 获取排行榜样式类
-const getRankingClass = (index: number) => {
-  if (index === 0) return 'rank-first'
-  if (index === 1) return 'rank-second'
-  if (index === 2) return 'rank-third'
-  return 'rank-normal'
-}
-
 // 导出员工业绩
 const exportPerformance = () => {
   if (!employeePerformanceData.value.length) {
@@ -3443,38 +3441,6 @@ onBeforeUnmount(() => {
           border-bottom: none;
         }
 
-        .ranking-index {
-          width: 36px;
-          height: 36px;
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-weight: 600;
-          font-size: var(--tf-type-scale-15);
-          flex-shrink: 0;
-
-          &.rank-first {
-            background: linear-gradient(135deg, var(--tf-color-gold), var(--tf-color-yellow-bright));
-            color: var(--tf-color-brown);
-          }
-
-          &.rank-second {
-            background: linear-gradient(135deg, var(--tf-color-silver), var(--tf-color-gray-ant-300));
-            color: var(--text-secondary);
-          }
-
-          &.rank-third {
-            background: linear-gradient(135deg, var(--tf-color-bronze), var(--tf-color-goldenrod));
-            color: var(--color-bg-white);
-          }
-
-          &.rank-normal {
-            background: var(--el-fill-color);
-            color: var(--el-text-color-regular);
-          }
-        }
-
         .ranking-info {
           flex: 1;
           min-width: 0;
@@ -3850,25 +3816,6 @@ onBeforeUnmount(() => {
           &:hover {
             background: rgba(255, 255, 255, 0.92);
             transform: translateY(-1px);
-          }
-
-          .store-profit-rank {
-            width: 28px;
-            height: 28px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: var(--tf-type-scale-13);
-            font-weight: 600;
-            background: var(--el-color-primary);
-            color: white;
-            flex-shrink: 0;
-
-            &:nth-child(1) {
-              background: linear-gradient(135deg, var(--tf-color-gold), var(--tf-color-yellow-bright));
-              color: var(--tf-color-brown);
-            }
           }
 
           .store-profit-info {

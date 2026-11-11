@@ -297,20 +297,6 @@
   background-color: var(--tf-color-surface-muted);
 }
 
-.device-number {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  margin-right: 12px;
-  flex-shrink: 0;
-  border-radius: 50%;
-  background: var(--tf-color-blue-bootstrap);
-  color: white;
-  font-size: var(--tf-type-scale-14);
-  font-weight: 600;
-}
 
 .batch-summary {
   display: flex;
@@ -440,11 +426,6 @@
     padding: 10px;
   }
 
-  .device-number {
-    width: 20px;
-    height: 20px;
-    font-size: var(--tf-type-scale-11);
-  }
 
   .device-item .device-image {
     width: 40px;
@@ -495,4 +476,8 @@
   .meta-value {
     font-size: var(--tf-type-scale-11);
   }
+}
+
+.device-number-position {
+  margin-right: var(--tf-space-3);
 }

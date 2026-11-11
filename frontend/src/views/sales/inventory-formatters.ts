@@ -37,17 +37,13 @@ export const getInventoryDaysClass = (days: number): string => {
 
 export const getInventoryDaysText = (days: number): string => `${days}天`
 
-export const getLongestInventoryClass = (days: number): string => {
-  if (days <= 15) return 'days-green'
-  if (days <= 30) return 'days-yellow'
-  return 'days-red'
-}
-
 export const getMemoryBadgeClass = (memory?: string): string => {
-  if (!memory) return ''
+  // 组合规格按存储容量分级，例如 8+256GB；TB 先换算为 GB。
+  const match = memory?.match(/^\s*(?:\d+(?:\.\d+)?\s*(?:GB|G)?\s*\+\s*)?(\d+(?:\.\d+)?)\s*(TB|T|GB|G)?\s*$/i)
+  if (!match) return 'memory-other'
 
-  const capacity = Number.parseInt(memory, 10)
-  if (Number.isNaN(capacity)) return 'memory-other'
+  const capacity = Number(match[1]) * (/^T/i.test(match[2] ?? '') ? 1024 : 1)
+  if (!Number.isFinite(capacity) || capacity <= 0) return 'memory-other'
   if (capacity >= 1000) return 'memory-1tb'
   if (capacity >= 512) return 'memory-512gb'
   if (capacity >= 256) return 'memory-256gb'

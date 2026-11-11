@@ -208,26 +208,17 @@
       }
     }
 
-    // 右上角删除按钮
+    /* 右上角删除按钮 */
     .image-delete-btn {
       position: absolute;
       top: 8px;
       right: 8px;
-      width: 32px !important;
-      height: 32px !important;
-      min-width: 32px !important;
-      padding: 0 !important;
-      background: var(--tf-button-danger-bg) !important;
-      border: none !important;
+
       opacity: 0;
       transition: opacity 0.3s;
 
       i {
         font-size: var(--tf-type-scale-12);
-      }
-
-      &:hover {
-        background: var(--tf-button-danger-hover-bg) !important;
       }
     }
 

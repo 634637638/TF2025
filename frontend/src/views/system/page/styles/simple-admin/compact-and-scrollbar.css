@@ -70,13 +70,6 @@
   display: none;
 }
 
-.admin-container.compact-device .btn-lock,
-.admin-container.compact-device .logout-btn {
-  width: 36px;
-  min-width: 36px;
-  padding-inline: 0;
-}
-
 @media (min-width: 768px) and (max-width: 1024px) {
   .admin-container.compact-device .topbar {
     padding-left: 64px;

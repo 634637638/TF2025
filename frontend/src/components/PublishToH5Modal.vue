@@ -397,12 +397,15 @@
                 </div>
 
                 <!-- 移除按钮 -->
-                <div
-                  class="image-delete-btn"
+                <el-button
+                  native-type="button"
+                  class="image-delete-btn tf-button--overlay-tool tf-button--overlay-danger"
+                  title="删除图片"
+                  aria-label="删除图片"
                   @click.stop="removePendingFile(index)"
                 >
                   <i class="fas fa-times text-white text-xs" />
-                </div>
+                </el-button>
               </div>
             </div>
           </div>
@@ -480,22 +483,28 @@
                 </div>
 
                 <!-- 删除按钮 - 始终显示在右上角 -->
-                <div
-                  class="image-delete-btn"
+                <el-button
+                  native-type="button"
+                  class="image-delete-btn tf-button--overlay-tool tf-button--overlay-danger"
+                  title="删除图片"
+                  aria-label="删除图片"
                   @click.stop="deleteImage(image)"
                 >
                   <i class="fas fa-times text-white text-xs" />
-                </div>
+                </el-button>
 
                 <!-- 设置主图按钮 - 悬停时显示 -->
                 <div class="image-actions">
-                  <div
+                  <el-button
                     v-if="!image.is_primary && !isVideoMedia(image)"
-                    class="image-set-primary-btn"
+                    native-type="button"
+                    class="image-set-primary-btn tf-button--overlay-tool"
+                    title="设为主图"
+                    aria-label="设为主图"
                     @click.stop="setPrimaryImage(image)"
                   >
-                    <i class="fas fa-star text-danger text-sm" />
-                  </div>
+                    <i class="fas fa-star" />
+                  </el-button>
                 </div>
 
                 <!-- 视频标记 -->
@@ -1459,11 +1468,6 @@ defineExpose({
   .publish-to-h5-media .image-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
-  }
-
-  :deep(.publish-to-h5-form .publish-to-h5-input-control),
-  :deep(.publish-to-h5-form .publish-to-h5-picker-control),
-  :deep(.publish-to-h5-form .publish-to-h5-select-control) {
   }
 
   :deep(.publish-to-h5-form .publish-to-h5-input-control .el-input__wrapper),

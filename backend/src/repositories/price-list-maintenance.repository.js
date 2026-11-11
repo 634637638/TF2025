@@ -1,6 +1,21 @@
 'use strict'
 
 class PriceListMaintenanceRepository {
+  lockPriceItems(connection, ids) {
+    return connection.query(`SELECT id FROM price_list WHERE id IN (${ids.map(() => '?').join(',')}) ORDER BY id FOR UPDATE`, ids)
+  }
+
+  lockSyncConfig(connection, id) {
+    return connection.query('SELECT id FROM price_sync_config WHERE id = ? FOR UPDATE', [id])
+  }
+
+  updatePriceItems(connection, ids, changes) {
+    const allowed = new Set(['source_config_id', 'is_collect', 'status', 'show_price', 'wholesale_rule_mode', 'wholesale_rule_adjustment'])
+    const fields = Object.keys(changes)
+    if (!fields.length || fields.some(field => !allowed.has(field))) throw new TypeError('无效的批量修改字段')
+    return connection.query(`UPDATE price_list SET ${fields.map(field => `${field} = ?`).join(', ')}, updated_at = NOW() WHERE id IN (${ids.map(() => '?').join(',')})`, [...fields.map(field => changes[field]), ...ids])
+  }
+
   deletePriceItem(database, id) {
     return database.query('DELETE FROM price_list WHERE id = ?', [id])
   }

@@ -19,12 +19,12 @@
       >
         <el-table-column
           v-if="ctx.canViewPermissionsField('roles.id')"
-          label="ID"
-          width="64"
+          label="序号"
+          :width="$getNumberColumnWidth((ctx.paginatedRoles || []).map((_row, $index) => Number(ctx.rolesPagination.total) - (Number(ctx.rolesPagination.page) - 1) * Number(ctx.rolesPagination.page_size) - Number($index)), 64)"
           align="center"
         >
           <template #default="{ $index }">
-            <span class="id-badge">{{ Number(ctx.rolesPagination.total) - (Number(ctx.rolesPagination.page) - 1) * Number(ctx.rolesPagination.page_size) - Number($index) }}</span>
+            <span class="table-number-badge">{{ Number(ctx.rolesPagination.total) - (Number(ctx.rolesPagination.page) - 1) * Number(ctx.rolesPagination.page_size) - Number($index) }}</span>
           </template>
         </el-table-column>
         <el-table-column
@@ -86,7 +86,7 @@
             <el-button
               v-if="ctx.canEdit"
               native-type="button"
-              :class="['status-badge', 'status-button', row.is_active == '1' || row.is_active === true ? 'active' : 'inactive']"
+              :class="row.is_active == '1' || row.is_active === true ? 'tf-button--warning' : 'tf-button--success'"
               :disabled="row.id === 1 || row.id === 9"
               :title="row.id === 1 || row.id === 9 ? '系统角色不能停用' : (row.is_active == '1' || row.is_active === true ? '点击停用角色' : '点击启用角色')"
               @click.stop="ctx.toggleRoleStatus(row)"

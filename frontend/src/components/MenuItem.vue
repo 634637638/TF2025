@@ -41,7 +41,7 @@
               v-if="menu.url"
               class="menu-url"
             >{{ menu.url }}</span>
-            <span class="menu-order">排序: {{ menu.sort_order }}</span>
+            <span class="menu-order">排序: <span class="table-number-badge">{{ menu.sort_order }}</span></span>
             <span
               v-if="menu.target && menu.target !== '_self'"
               class="menu-target"

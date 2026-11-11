@@ -1,5 +1,5 @@
 
-// 响应式设计
+/* 响应式设计 */
 @media (max-width: 767px) {
   .shop-config-page {
     padding: 0;
@@ -91,11 +91,6 @@
     font-size: var(--tf-type-scale-22);
   }
 
-  .config-section .delete-image-btn {
-    min-height: 32px;
-    padding: 6px 10px;
-  }
-
   .map-location-row {
     flex-direction: column;
     gap: 10px;
@@ -147,8 +142,7 @@
     .el-button {
       width: 100%;
       max-width: none;
-      min-height: 40px;
-      border-radius: 999px;
+
     }
   }
 }

@@ -7,7 +7,7 @@
       <el-button
         v-if="canWholesalePermission"
         :type="operationMode === 'wholesale' ? 'success' : 'default'"
-        :class="['sales-mode-tab', { active: operationMode === 'wholesale' }]"
+        class="sales-mode-tab"
         size="small"
         @click="emit('wholesale')"
       >
@@ -21,7 +21,7 @@
       <el-button
         v-if="canProxyTransferPermission"
         :type="operationMode === 'proxy' ? 'warning' : 'default'"
-        :class="['sales-mode-tab', { active: operationMode === 'proxy' }]"
+        class="sales-mode-tab"
         size="small"
         @click="emit('proxy')"
       >
@@ -39,6 +39,7 @@
         :type="viewMode === 'summary' ? 'primary' : 'default'"
         class="sales-mode-tab"
         title="对库"
+        size="small"
         @click="emit('set-view-mode', 'summary')"
       >
         <i class="fas fa-table" />
@@ -48,6 +49,7 @@
         :type="viewMode === 'grid' ? 'primary' : 'default'"
         class="sales-mode-tab"
         title="图文模式"
+        size="small"
         @click="emit('set-view-mode', 'grid')"
       >
         <i class="fas fa-th" />
@@ -57,6 +59,7 @@
         :type="viewMode === 'table' ? 'primary' : 'default'"
         class="sales-mode-tab"
         title="表格模式"
+        size="small"
         @click="emit('set-view-mode', 'table')"
       >
         <i class="fas fa-list" />
@@ -67,6 +70,7 @@
         class="sales-mode-tab"
         type="primary"
         title="保存为图片"
+        size="small"
         :loading="savingInventorySummary"
         :disabled="inventorySummaryLoading || summaryCount === 0"
         @click="emit('save-summary')"
@@ -85,6 +89,7 @@
         type="primary"
         class="sales-mode-tab"
         :disabled="!canSell"
+        size="small"
         @click="emit('batch-sale')"
       >
         <i class="fas fa-edit" />
@@ -94,6 +99,7 @@
         type="info"
         plain
         class="sales-mode-tab"
+        size="small"
         @click="emit('clear-selection')"
       >
         <i class="fas fa-times" />
@@ -167,10 +173,11 @@ const canOperationAvailable = (mode: Exclude<OperationMode, null>) => {
 .sales-mode-tabs {
   display: flex;
   align-items: center;
-  gap: 8px;
-  min-height: 40px;
-  margin-bottom: 12px;
-  padding: 5px 8px;
+  gap: var(--tf-space-2);
+  min-width: 0;
+  max-width: 100%;
+  margin-bottom: var(--tf-space-3);
+  padding: var(--tf-space-1) var(--tf-space-2);
   overflow-x: auto;
   background: var(--tf-button-neutral-hover-bg);
   border: 1px solid var(--tf-button-neutral-border);
@@ -181,13 +188,13 @@ const canOperationAvailable = (mode: Exclude<OperationMode, null>) => {
 .sales-mode-tab-group {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--tf-space-1);
   flex: 0 0 auto;
 }
 
 .operation-tabs,
 .view-tabs {
-  padding-right: 8px;
+  padding-right: var(--tf-space-2);
   border-right: 1px solid var(--tf-button-neutral-border);
 }
 
@@ -196,44 +203,20 @@ const canOperationAvailable = (mode: Exclude<OperationMode, null>) => {
 }
 
 .sales-mode-tab {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  height: 32px;
-  min-height: 32px;
   margin: 0;
-  padding: 0 11px;
-  white-space: nowrap;
-  font-weight: 500;
-}
-
-.sales-mode-tab.active {
-  transform: translateY(-1px);
-  box-shadow: var(--tf-button-shadow-hover);
-}
-
-.sales-mode-tab i {
-  font-size: var(--tf-type-scale-14);
 }
 
 .sales-mode-tab .badge {
-  margin-left: 2px;
-  font-size: var(--tf-type-scale-11);
   opacity: 0.85;
-}
-
-.summary-action-button {
-  min-width: 74px;
-  justify-content: center;
 }
 
 .selection-count,
 .operation-info {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: var(--tf-space-1);
   white-space: nowrap;
-  font-size: var(--tf-type-scale-13);
+  font-size: var(--tf-button-font-size-small);
 }
 
 .selection-count {
@@ -243,12 +226,12 @@ const canOperationAvailable = (mode: Exclude<OperationMode, null>) => {
 .operation-inline {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--tf-space-1);
   flex: 0 0 auto;
 }
 
 .operation-info {
-  padding: 0 4px;
+  padding: 0 var(--tf-space-1);
   font-weight: 500;
 }
 
@@ -262,20 +245,9 @@ const canOperationAvailable = (mode: Exclude<OperationMode, null>) => {
 
 @media (max-width: 767px) {
   .sales-mode-tabs {
-    gap: 5px;
-    margin-bottom: 8px;
-    padding: 4px 6px;
-  }
-
-  .sales-mode-tab {
-    height: 30px;
-    min-height: 30px;
-    padding: 0 7px;
-    font-size: var(--tf-type-scale-11);
-  }
-
-  .sales-mode-tab i {
-    font-size: var(--tf-type-scale-11);
+    gap: var(--tf-space-1);
+    margin-bottom: var(--tf-space-2);
+    padding: var(--tf-space-1);
   }
 
   .sales-mode-tab .badge {
@@ -287,26 +259,4 @@ const canOperationAvailable = (mode: Exclude<OperationMode, null>) => {
   }
 }
 
-@media (max-width: 479px) {
-  .sales-mode-tabs {
-    gap: 4px;
-    padding: 4px;
-  }
-
-  .sales-mode-tab {
-    height: 28px;
-    min-height: 28px;
-    padding: 0 5px;
-    font-size: var(--tf-type-scale-10);
-  }
-
-  .sales-mode-tab i {
-    font-size: var(--tf-type-scale-10);
-  }
-
-  .selection-count,
-  .operation-info {
-    font-size: var(--tf-type-scale-11);
-  }
-}
 </style>

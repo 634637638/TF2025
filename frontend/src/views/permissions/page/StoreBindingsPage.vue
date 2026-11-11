@@ -20,11 +20,11 @@
         <el-table-column
           v-if="ctx.canViewPermissionsField('store_bindings.id')"
           label="序号"
-          width="64"
+          :width="$getNumberColumnWidth((ctx.paginatedStoreBindings || []).map((_row, $index) => (Number(ctx.storeBindingsPagination.page) - 1) * Number(ctx.storeBindingsPagination.page_size) + Number($index) + 1), 64)"
           align="center"
         >
           <template #default="{ $index }">
-            {{ (Number(ctx.storeBindingsPagination.page) - 1) * Number(ctx.storeBindingsPagination.page_size) + Number($index) + 1 }}
+            <span class="table-number-badge">{{ (Number(ctx.storeBindingsPagination.page) - 1) * Number(ctx.storeBindingsPagination.page_size) + Number($index) + 1 }}</span>
           </template>
         </el-table-column>
         <el-table-column

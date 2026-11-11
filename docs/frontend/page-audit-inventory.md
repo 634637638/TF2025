@@ -1,7 +1,7 @@
 # 前端页面与功能单元台账
 
 > 状态：强制登记，持续维护
-> 统计日期：2026-11-08
+> 统计日期：2026-11-11
 > 统计来源：`frontend/src/router/index.ts`、`frontend/src/views/**/*.vue`、`frontend/src/components/**/*.vue`
 
 > 导航审计记录：后台 PC 与手机入口均由 `views/system/page/SimpleAdminView.vue` 统一承载；菜单数据来自 `stores/menu.ts`，菜单点击统一派发 `menu-click`，权限预检统一由主布局执行。手机端不再将菜单分流到未渲染的底部导航；`DynamicSidebar` 已退役，`ResponsiveLayout` 仅作为通用内容布局保留。
@@ -16,6 +16,8 @@
 
 > 2026-11-09 公共默认宽度：桌面 `--tf-dialog-width` 统一为 `880px`，未声明宽度且未使用尺寸档位的弹窗自动使用该默认值；显式尺寸和档位优先，手机和平板继续按公共视口规则收缩。
 
+> 2026-11-11 首轮全局序号：页面、弹窗及公共表格的 37 个序号/ID 列统一使用 `table-number-badge` 浅紫色圆角标签，样式和深色主题由 `admin-layout.css` 控制，长数字通过公共 `$getNumberColumnWidth` 自动扩列；员工、门店及权限列表的位置编号标题改为“序号”，真实 ID 保留原值。序号/ID 接入、公共列宽及私有样式覆盖纳入 `check:badges` 门禁，`/standards` 提供预览；分页、倒序和组内编号沿用业务规则。使用真实列模板和公共分页组件完成 375/430/768/1024/1440px × 明暗主题共 10 组本地 Chromium 检查，验证长序号、聚合 ID、行高和无页面横向溢出；未连接真实业务 API，不代表安卓/iOS 真机或所有页面的整页验收。
+
 ## 1. 目的与统计口径
 
 本台账是所有前端页面、页面内功能单元和公共组件的统一入口。后续新增页面、路由、Tab、弹窗、列表、表单或公共交互时，必须先登记，再实现；修改公共规范或跨页面功能时，必须按本台账确认受影响范围，不能只修改当前打开的页面。
@@ -26,18 +28,18 @@
 | --- | --- | ---: |
 | 懒加载路由入口 | `router/index.ts` 中的 `component: () => import(...)` | 65 |
 | 实际叶子路由 | 可直接访问的页面路由，排除 3 个布局容器 | 62 |
-| 页面源文件 | `frontend/src/views/**/*.vue`，包括 Tab、弹窗和页面内部单元 | 128 |
+| 页面源文件 | `frontend/src/views/**/*.vue`，包括 Tab、弹窗和页面内部单元 | 130 |
 | 叶子路由唯一视图文件 | 62 个叶子 URL 对应的唯一 `views` 文件；两个文件各被两个 URL 复用，另有 1 个 URL 使用公共组件 | 59 |
 | 布局容器视图文件 | 后台、H5 管理和 H5 手机端布局 | 3 |
-| 非路由功能单元 | 未被路由直接加载的 Tab、弹窗、页面内部单元或复用单元 | 66 |
+| 非路由功能单元 | 未被路由直接加载的 Tab、弹窗、页面内部单元或复用单元 | 68 |
 | 公共组件源文件 | `frontend/src/components/**/*.vue` | 73 |
-| 涉及表格的页面源文件 | 页面中出现 Element/原生表格或公共表格入口 | 55 |
+| 涉及表格的页面源文件 | 页面中出现 Element/原生表格或公共表格入口 | 56 |
 | 涉及表格的公共组件 | 公共组件中出现表格或表格封装 | 6 |
 | 含按钮的页面/功能单元源文件 | `frontend/src/views/**/*.vue` 中出现 `el-button` | 110 |
 | 含按钮的公共组件源文件 | `frontend/src/components/**/*.vue` 中出现 `el-button` | 46 |
 | 原生按钮 | 所有 Vue 页面和公共组件中的 `<button>` | 0 |
 
-“实际叶子路由”与“页面源文件”不能相加作为页面总数：62 个叶子 URL 实际映射到 59 个唯一 `views` 文件和 1 个公共组件；`AggregatedProductDetail.vue` 与 `OrderDetail.vue` 分别被两个 URL 复用。128 个 `views` 文件由 59 个叶子页面文件、3 个布局容器和 66 个非路由功能单元组成。没有独立 URL 的 Tab、弹窗和组件仍然属于后续统一审计范围。
+“实际叶子路由”与“页面源文件”不能相加作为页面总数：62 个叶子 URL 实际映射到 59 个唯一 `views` 文件和 1 个公共组件；`AggregatedProductDetail.vue` 与 `OrderDetail.vue` 分别被两个 URL 复用。130 个 `views` 文件由 59 个叶子页面文件、3 个布局容器和 68 个非路由功能单元组成。没有独立 URL 的 Tab、弹窗和组件仍然属于后续统一审计范围。
 
 ### 下载安全专项登记
 
@@ -53,9 +55,39 @@
 | `/subsidy` 国补材料 | 图片、附件 | 统一媒体/下载入口 | `/api/subsidy/files/*` | 私有 | 登录、国补记录权限 | 国补记录删除同步清理 |
 | `/query`、`/inventory`、`/sales` | 设备图片 | 统一媒体预览 | 设备媒体受控或公开展示接口 | 按业务配置 | 记录权限/设备关联 | 设备删除同步清理 |
 | `/price-query`、`/sales-price-display` | 报价截图 | 页面统一导出/Blob 入口 | 前端生成文件 | 不上传服务器 | 当前页面访问权限 | 浏览器临时对象及时释放 |
+| `/sales` 对库 | 库存对库 PNG | `createTableImage()`、`saveBlobFile()` | 前端生成文件 | 不上传服务器 | 仅导出当前字段权限允许展示的数据 | 离屏副本、临时下载对象及时释放 |
+| `/payments` 货款结算 | 单个、批量打款及批次明细 PNG | `createSettlementImage()` → `createTableImage()`、`saveBlobFile()` | 前端生成文件 | 不上传服务器 | 当前字段权限；图片排除利润、总销售及未打款填写区 | 离屏副本、临时下载对象及时释放 |
 | 各后台导出功能 | CSV、JSON、XLSX | `unifiedApi.download()` 或统一导出服务 | 对应导出接口 | 私有 | 模块权限、字段权限和审计 | 响应完成后不落盘 |
 
+### 全量编号接入复核（2026-11-11）
+
+当前编号外观按用户参考图更新为浅绿底、绿字、浅绿细边框和常规字重，全部已接入页面共用 `admin-layout.css`；PC/手机保持公共 20px 标签高度，深色主题使用同入口的深绿配色。首轮浅紫样式记录保留为当时验证快照。
+
+本轮按台账逐项核对，并扫描全部实际源码：130 个页面/功能单元、73 个公共组件及 1 个 App 入口，共 204 个 Vue 模板。补齐前轮漏掉的排名、只读排序、卡片和图片角标编号；同时将已在备份专项登记的两个云盘单元补入第 3 节，修正过期数量。源码静态扫描覆盖全部文件，不代表每个页面均已完成浏览器或真机验收。
+
+| 本轮发现的遗漏位置 | 统一处理 |
+| --- | --- |
+| `/analytics`：销售产品排名、员工业绩排名、利润页员工业绩排名，以及品牌/型号/门店排行榜卡片 | 排名保留原取值，全部接入公共编号标签 |
+| `/system` 报价联系人；`/menu` 菜单列表；`/reminders` 类型管理 | 只读排序接入公共徽章及列宽，排序输入控件保留编辑能力 |
+| `/price-list` 在库明细；`/sales` 库存明细与批量设备信息 | 优先列的数字、设备编号接入公共样式，优先星标与业务高亮保留 |
+| H5 管理的轮播图和模板分组卡片 | 图片编号和只读排序值统一；角标只保留独立定位 |
+| `InventoryResultDialog`、`WholesalePhoneSummarySection`、`StockInPhoneListSection` | PC/手机列表、批量设备和商品编号统一 |
+| `DraggableList`、`DraggableRow`、`MenuItem` | 只读排序数字统一，原有拖拽和点击编辑保留，点击编辑补充键盘触发 |
+| 品牌、颜色、内存、供应商以及销售旧样式 | 移除无引用的排序徽章和重复编号覆盖，避免后续复用时恢复旧视觉 |
+
+`check:badges` 不再排除“排名/排序”，同时检查表格外的独立编号和旧样式；`check:tables` 持续验证公共列宽注册及公共视觉入口。设备序列号、业务单号、可编辑输入框、图片替代文字及连续说明文字按原语义处理。
+
+本轮验证：220 项前端单测及 10 项编号审计契约测试通过。使用实际源码中的 8 个新增表格列模板、利润页 3 类排行榜列表及真实拖拽组件，完成 375/430/768/1024/1440px × 明暗主题共 10 组本地 Chromium 检查；确认公共颜色、字号、20px 标签高度、6px 圆角、长序号完整显示、公共表格行高及无页面横向溢出，并验证排序标签通过键盘进入编辑、保存后返回标签。未连接真实业务 API，不代表全站整页或安卓/iOS 真机验收。
+
+### 待办事项按钮紧凑规范（2026-11-11）
+
+`/reminders` 的事项标题接入已有 `.table-inline-action.table-action--view`，背景与文字复用公共查看语义的浅青蓝配色，PC/手机按钮高度分别为 28px/32px，标题列复用公共文本测量并完整展示。操作列及含此按钮的普通单元格统一计算上下留白并扣除底边框，避免按钮撑高公共 48px/40px 数据行；移除重复手机端留白声明。`/standards` 字段列提供同一规格的真实点击预览，`check:buttons` 拒绝在表格文字操作中使用多行内容按钮，媒体缩略图保留专用语义。
+
+本次使用真实事项、序号、状态及操作列模板，完成 375/430/768/1024/1440px × 明暗主题 × 普通/长标题共 20 组本地 Chromium 检查，验证数据行 48px/40px、按钮 28px/32px、徽章 20px、长标题完整展示及无页面横向溢出；点击和键盘事件绑定通过。未连接真实业务 API，不代表完整详情接口或安卓/iOS 真机验收。
+
 ## 2. 路由页面清单
+
+品牌 `/brands`、型号 `/models`、颜色 `/colors` 和内存 `/memories` 的排序编辑共用 `useReferenceOrdering`：手动修改只提交目标 ID 和实际排序值，拖拽保留已有排序值范围，失败不覆盖切换后的新列表；序号与排序值解耦并按分页连续显示。型号新增/编辑表单统一使用“型号”字段标签。四页新增弹窗的取消、顶部关闭和 Esc 均直接关闭并清空草稿，编辑保留未保存确认；移除页面重复的 `close` 监听，PC/手机共用 `MobileDialog` 关闭请求。契约与回归入口见[检索规范](search-standards.md#基础资料排序编辑)和[弹窗规范](dialog-standards.md)。
 
 状态字段含义：`已登记` 表示已纳入统一审计范围，不代表所有专项规范均已完成逐项人工回归；专项完成情况以对应审计命令和后续人工记录为准。
 
@@ -98,7 +130,7 @@
 | `/subsidy` | `views/subsidy/SubsidyView.vue` | 国补管理 | 是 | 已登记 |
 | `/rentals` | `views/rentals/RentalsView.vue` | 租赁管理 | 是 | 已登记 |
 | `/repairs` | `views/repairs/RepairsView.vue` | 维修管理 | 是 | 已登记 |
-| `/price-list` | `views/price-list/PriceListView.vue` | 价目表管理（支持批量绑定采集来源） | 是 | 已登记 |
+| `/price-list` | `views/price-list/PriceListView.vue` | 价目表管理（跨页选择、批量采集源／状态／报价显示及规格独立批发规则） | 是 | 已登记 |
 | `/price-list/sync-logs` | `views/price-list/page/SyncLogView.vue` | 同步日志 | 是 | 已登记 |
 
 ### 2.2 H5 商城管理页面
@@ -153,9 +185,9 @@
 | `/H5-admin` | `views/H5-admin/H5-adminView.vue` | H5 商城管理布局 |
 | `/m` | `views/H5-mobile/H5-mobileView.vue` | H5 手机端布局 |
 
-## 3. 非路由页面功能单元（69 个）
+## 3. 非路由页面功能单元（68 个）
 
-以下 69 个文件没有独立 URL，但会在功能修改时影响对应父页面，必须纳入同一轮检查。路由清单中已经登记的 59 个唯一叶子 `views` 文件和第 2.5 节的 3 个布局容器不在本节重复列出；一个源文件被多个路由复用时，以路由清单中的多个 URL 为准。
+以下 68 个文件没有独立 URL，但会在功能修改时影响对应父页面，必须纳入同一轮检查。路由清单中已经登记的 59 个唯一叶子 `views` 文件和第 2.5 节的 3 个布局容器不在本节重复列出；一个源文件被多个路由复用时，以路由清单中的多个 URL 为准。
 
 ### 3.1 数据分析、数据优化与库存
 
@@ -208,6 +240,18 @@
 
 ### 3.3 预定、销售与工资
 
+销售对库模式的内存、数量标签复用全局 `status-badge` 尺寸与交互：内存 64GB 为青色、128GB 为绿色、256GB 为蓝色、512GB 为橙色、1TB 及以上为紫色，小容量与未知规格使用中性色；数量使用浅紫底与紫色文字。颜色统一引用公共语义令牌；TB 和运行内存加存储容量组合规格按存储容量分级。
+
+销售视图工具栏的调货、划拨、对库、图文、表格、保存图片及批量操作统一使用 `el-button size="small"`；按钮高度、字号、内边距和图标随公共小号规格变化，页面仅负责分组布局与横向滚动。
+
+对库图片通过离屏副本按可见文字及徽章自然宽度收紧各列，表头、表体共用列宽，保留全局表格与字段权限。PNG 默认以三倍分辨率生成（高分屏最多四倍，超大数据按画布尺寸和像素预算自适应），直接保存原始画布，不固定拉伸到 2000px 或二次缩图；编码完成前持续保持保存状态，成功、失败均清理副本且不改变页面布局和滚动位置。
+
+货款结算的已选设备操作区使用公共 `el-button size="small"`：“清空选择”使用默认中性样式，“批量打款”使用 `tf-button--finance` 财务语义；页面只保留防挤压布局，移除桌面和手机端私有按钮宽高、内边距、字体、圆角和颜色覆盖，尺寸随公共令牌响应式调整。
+
+货款结算的单个打款、批量打款及批次详情图片与对库共用 `utils/table-image.ts`。单个和批量图片保留供应商、数量、价格摘要及设备明细，整块打款填写区（方式、时间、打款人、备注）及内部利润不进入图片；已打款批次详情保留顶部卡片，只排除总销售、总利润和利润列，其余摘要保留。隐藏列移除后重新计算列宽，摘要按剩余项目排列。图片采用紧凑高清 PNG，成功、失败均不改变页面表单值、权限、尺寸和滚动位置。
+
+库存明细顶部信息卡片的标题与内容居中，供应商、店铺、品牌、成色、库存数量、最长在库分别采用公共蓝、青、青绿、绿、紫、橙色浅底令牌；最长在库固定采用橙色警示文字，成色标签复用公共 `condition-badge`。卡片不再使用整块深色背景或悬浮位移，长名称自然换行，窄屏按三列或两列排列。
+
 - `views/preorders/page/MatchPreorderModal.vue`
 - `views/preorders/page/PreorderFormModal.vue`
 - `views/sales/page/SalesBatchForm.vue`
@@ -242,6 +286,11 @@
 
 ### 3.4 价格、国补与系统
 
+报价管理列表标题区的“批量设置”和“清空选择”通过 `.batch-actions-buttons` 自动使用公共批量操作按钮规格；PC、手机高度、字号、间距和颜色统一由公共按钮与表格入口控制，页面只保留操作区换行和对齐布局。
+
+- `views/backup/CloudBackupSettingsDialog.vue`
+- `views/backup/CloudDriveBrowser.vue`
+
 - `views/subsidy/components/SubsidyApplyDialog.vue`
 - `views/subsidy/components/SubsidyDetailDialog.vue`
 - `views/subsidy/components/SubsidyEditDialog.vue`
@@ -271,6 +320,10 @@
 - H5 管理：`views/H5-admin/page/orders.vue`
 - 基础资料与业务：`accessories/AccessoriesView.vue`、`brands/BrandsView.vue`、`colors/ColorsView.vue`、`customers/CustomersView.vue`、`employees/EmployeesView.vue`、`memories/MemoriesView.vue`、`models/ModelsView.vue`、`stores/StoresView.vue`、`suppliers/SuppliersView.vue`
 - 分析、考勤与系统：`analytics/page/CustomerAnalytics.vue`、`analytics/page/EmployeeAnalytics.vue`、`analytics/page/InventoryAnalytics.vue`、`analytics/page/ProfitAnalytics.vue`、`analytics/page/SalesAnalytics.vue`、`analytics/page/TransferAnalytics.vue`、`attendance/AttendanceView.vue`、`backup/BackupView.vue`、`system/SystemView.vue`、`system/page/Returngoods.vue`、`system/phone-warning-config/PhoneWarningConfigView.vue`
+
+`/backup` 的文件大小标签按接口 `size_bytes` 分级：小于 1 MB 为绿色、1 MB 至不足 1 GB 为蓝色、1 GB 及以上为橙色（1024 进制）；缺失或无效大小回退中性色。复用 Element Plus 标签语义类型及公共徽章样式，明暗主题与手机/桌面沿用全局规则；本地备份文件列表契约统一维护为 `types/backup.ts` 的 `BackupFile`。
+
+`/backup` 手动“清理旧备份”入口使用 `backup:delete` 公共指令与页面能力检查，移除少于 5 份就禁用的固定门槛；仅空列表、列表加载或清理中禁用。弹窗可设置保留数量，明确只清理服务器本地文件，成功刷新列表，失败通过公共通知提示并保留输入，提交中避免重复请求。自动清理的 SQL / ZIP 分类保留规则独立，详见[备份管理](../backend/backup-management.md#定时生成与本地保留规则)。
 
 `/backup` 增加云盘设置弹窗 `backup/CloudBackupSettingsDialog.vue`、文件浏览单元 `backup/CloudDriveBrowser.vue`、ZIP/SQL 云盘状态及手动上传入口。云端删除独立显示警告色“文件失效”和“该文件云端已删除，可重新上传！”，实际上传错误仍显示“上传失败”；云端外部恢复经后端按原 ID 和大小核验后，页面轮询自动更新为“已上传”，不重复上传。任务轮询复用 `useLatestRequest`，读取失败保留已有状态，权限撤销和页面卸载取消请求及定时器。支持以名称和 Token 新增或编辑多个云盘账户，储存账户下拉框驱动对应账户的目录预览，保存设置才切换上传目标；管理入口可独立选择浏览账户，凭据不回显。设置弹窗按账户、自动备份和目标目录分组，桌面账户下拉与操作同排，手机纵向；表单/账户编辑采用公共中号/小号档位，浏览保留宽工作区。新增独立的定时生成备份分组（间隔 1–720 小时、SQL/完整 ZIP、北京时间执行状态）和本地自动清理分组（SQL/ZIP 分别保留 1–1000 份，默认各 10 份、默认关闭），清理区域沿用 `backup:delete` 并只提交获权配置，云盘文件保留；新字段手机纵向、桌面双列，复用全局数字输入和下拉，运行状态保留服务端唯一契约。自动备份单独设置标题，当前目录按“当前备份目录：实际盘名/文件夹名称”单行展示，每次打开设置及切换账户按已保存 ID 自动读取云端最新名称，迟到响应不覆盖其他账户或未保存的目录选择；读取失败保留原名称并提示，可继续浏览重选；设置弹窗和回收站移除说明提示，移除底部关闭按钮，保留标题栏关闭，新增账户和文件编辑期间锁定必要操作。选择已保存账户后自动识别云盘，支持目录选择、文件及回收站分页浏览；首次浏览空根目录时检查其他云盘并提示切换，手动选择及刷新不自动换盘，空状态标明当前云盘和目录。独立“云盘管理”入口及目录/回收站浏览复用 `backup:view`；设置、新建文件夹和上传复用 `backup:create`；文件及文件夹重命名、回收站恢复复用 `backup:edit`；删除及回收站彻底删除复用 `backup:delete` 和统一确认框；文件列表按“打开、编辑、删除”显示，编辑用于修改名称；回收站按“删除、恢复”显示，删除确认框明确彻底删除且不可恢复；两处删除复用公共 `table-action--delete` 样式，成功后刷新列表，失败保留列表和提示，目录删除明确包含子项并保护当前备份目录及其父目录。新建/重命名使用公共 `MobileDialog` 小号表单，成功关闭输入框并通过全局通知提示，失败只提示一次并保留输入；操作中禁用导航和弹窗关闭，错误保留输入，同名拒绝覆盖。统一 API 为 `api/backup.ts`，共享契约为 `types/backup.ts`。设置弹窗使用公共 `MobileDialog`、表单、按钮及 Loading，浏览请求采用 `useLatestRequest`，手机和桌面沿用全局响应式规则。开启后由后端递归扫描 backups 内完成的普通文件并自动上传（含新增规则文件，排除内部状态、临时项及符号链接，普通文件确认稳定后入队，云端保留子目录层级），不新增自动压缩或业务上传目录同步；上传不创建公开下载链接，本地删除与云盘保留独立。接口及持久化边界见[备份管理](../backend/backup-management.md#阿里云盘自动上传)。
 - 数据、权限与预定：`data-optimization/page/DataCheckTab.vue`、`data-optimization/page/DataImportTab.vue`、`menu/MenuManagementView.vue`、`permissions/page/LogsPage.vue`、`permissions/page/ModuleManagementView.vue`、`permissions/page/RolesPage.vue`、`permissions/page/StoreBindingsPage.vue`、`permissions/page/UserRolesPage.vue`、`preorders/PreordersView.vue`、`preorders/page/MatchPreorderModal.vue`
@@ -348,11 +401,12 @@
 - `MobileDialog` 宽度统一按显式参数、全局档位、默认 880px 选择，库存入库显式 1240px 优先于默认值，`maxWidth` 独立限制上限，自适应百分比/视口宽度默认受公共 880px 上限约束（含综合查询素材管理）；客户详情及编辑按 `crud-dialog-lg` 使用 800px 档位。公共组件已移除默认内联宽度和重复断点计算，适用所有档位调用方；回归命令及浏览器/真机验证边界见 [对话框规范](dialog-standards.md)。
 
 - 弹窗标题栏统一由 `_dialog.scss` 的 `--tf-dialog-header-height` 定义为 `50px`，PC、平板、手机共用；查询、库存、H5 发布及预定弹窗的旧高度/上下间距覆盖已删除。静态检查、浏览器测量和真机验收分别报告，不把规则接入视为逐页视觉验收完成。
-- 页面清单统计：懒加载路由入口 65、叶子路由 62、视图源文件 131（含新增公告管理卡片）、公共组件 72。
-- 表格逐页审计已完成：台账范围为 56 个页面承载单元、6 个公共表格组件；当前 56 个页面模板直接渲染表格，库存 `InventoryView.vue` 与 `InventoryTable.vue` 按承载关系共同纳入范围。当前模板实际包含 92 个 Element 表格和 56 个操作列，`npm run check:tables` 已逐文件通过。
+- 页面清单统计：懒加载路由入口 65、叶子路由 62、视图源文件 130、公共组件 73。
+- 表格逐页审计已完成：台账范围为 56 个页面承载单元、6 个公共表格组件；当前 56 个页面模板直接渲染表格，库存 `InventoryView.vue` 与 `InventoryTable.vue` 按承载关系共同纳入范围。当前模板实际包含 88 个 Element 表格和 54 个操作列，`npm run check:tables` 已逐文件通过。
 - “审计通过”仅表示静态规则通过；文字溢出、触摸滚动、按钮位置、真实权限和云端 API 行为仍需按本台账进行浏览器/云端回归。
 - 当前台账不把 `views` 目录下的每个文件都当作独立 URL；新增路由、Tab、弹窗和公共组件必须分别登记，防止重复计数或漏查。
-- 按钮专项已完成零容忍迁移：Vue 源码共扫描 `el-button=1006`（159 个文件）、原生 `<button>=0`；以后新增按钮必须使用 `el-button`，不得新增原生按钮例外。
+- 按钮专项已完成零容忍迁移：2026-11-10 Vue 源码共扫描 `el-button=1047`（158 个文件）、原生 `<button>=0`；以后新增按钮必须使用 `el-button`，不得新增原生按钮例外。
+- 页面按钮默认由公共入口控制 PC 与手机外观；H5 操作、筛选、权限选项、公开报价页头、扫码器和媒体缩略图已移除重复规格，特殊需求先定义公共语义再引用。图片删除/设主图、商家图标操作、登录注册及品牌筛选的模拟按钮迁移为 `el-button`；维修媒体预览和删除拆为独立公共按钮，保留原交互与权限。`check:buttons` 增加任意命名 class、断点、嵌套及行内覆盖检查，相关回归测试由同一命令执行；公共控件继续按已登记的专项规范维护，不新增页面豁免。
 - Loading 已按本台账逐文件审计：131 个页面/功能单元、74 个公共组件和 1 个应用入口全部通过 `npm run check:loading`；扫描结果为 `GlobalLoading=1`、`v-tf-loading=48`、`TableLoadingRow=59`、`SectionLoading=41`、`InlineLoading=41`、登记 `v-loading` 例外 0 处。
 - Loading 触发边界已收口：页面切换和明确的全局长操作由 `App.vue` 唯一挂载的 `GlobalLoading` 承载；表格刷新由 `v-tf-loading` 锁定表格边界并显示“加载数据中...”；局部状态通过 `useLoadingStore.hasLocalLoading/isGlobalVisible` 互斥仲裁，同一次操作不得同时显示全屏与局部 Loading。
 - 徽章专项已按台账扫描全部页面和公共组件：徽章 hover 外包围线与过渡唯一由 `styles/components/_badges.scss` 控制；页面仅保留业务颜色、图标和文字，禁止私有 hover、阴影、位移和重复 `global.css` 状态入口。结果由 `npm run check:badges` 强制校验。

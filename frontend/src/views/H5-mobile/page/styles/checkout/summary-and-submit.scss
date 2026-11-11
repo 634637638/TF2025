@@ -9,7 +9,7 @@
   }
 }
 
-// 支付方式（旧版，保留）
+/* 支付方式（旧版，保留） */
 .payment-methods {
   .payment-item {
     display: flex;
@@ -62,7 +62,7 @@
   }
 }
 
-// 价格明细
+/* 价格明细 */
 .price-section {
   .price-row {
     display: flex;
@@ -86,7 +86,7 @@
   }
 }
 
-// 底部提交栏
+/* 底部提交栏 */
 .bottom-bar {
   position: fixed;
   bottom: 0;
@@ -112,12 +112,5 @@
       font-weight: 500;
       color: var(--tf-color-accent-pink);
     }
-  }
-
-  .submit-btn {
-    height: 44px;
-    padding: 0 32px;
-    border-radius: 22px;
-    font-size: var(--tf-type-scale-16);
   }
 }

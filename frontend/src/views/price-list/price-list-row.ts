@@ -15,6 +15,8 @@ export const normalizePriceListRow = (item: PriceListRow): PriceListRow => ({
   retail_price: item.retail_price !== null && item.retail_price !== undefined ? Number(item.retail_price) : null,
   sales_display_price: item.sales_display_price !== null && item.sales_display_price !== undefined ? Number(item.sales_display_price) : null,
   wholesale_display_price: item.wholesale_display_price !== null && item.wholesale_display_price !== undefined ? Number(item.wholesale_display_price) : null,
+  wholesale_rule_mode: item.wholesale_rule_mode || 'inherit',
+  wholesale_rule_adjustment: Number(item.wholesale_rule_adjustment ?? 0),
   stock_quantity: Number(item.stock_quantity) || 0,
   last_sync_time: item.last_sync_time || null,
   is_collect: item.is_collect !== undefined ? Number(item.is_collect) : 1,

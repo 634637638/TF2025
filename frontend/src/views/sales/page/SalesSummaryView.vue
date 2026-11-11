@@ -88,7 +88,7 @@
             align="center"
           >
             <template #default="{ row }">
-              <span :class="['memory-badge', getMemoryBadgeClass(row.memory)]">
+              <span :class="['status-badge', 'memory-badge', getMemoryBadgeClass(row.memory)]">
                 {{ row.memory || '-' }}
               </span>
             </template>
@@ -111,7 +111,7 @@
             align="center"
           >
             <template #default="{ row }">
-              <span class="quantity-badge">{{ row.quantity ?? 0 }}</span>
+              <span class="status-badge quantity-badge">{{ row.quantity ?? 0 }}</span>
             </template>
           </el-table-column>
           <el-table-column

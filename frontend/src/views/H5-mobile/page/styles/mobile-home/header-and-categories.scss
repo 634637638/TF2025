@@ -3,7 +3,7 @@
   background: var(--tf-color-surface-soft);
 }
 
-// 商家信息栏
+/* 商家信息栏 */
 .merchant-header {
   display: flex;
   align-items: center;
@@ -70,10 +70,7 @@
     gap: 8px;
 
     .action-btn {
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      background: var(--tf-button-overlay-bg);
+
       backdrop-filter: blur(10px);
       display: flex;
       align-items: center;
@@ -83,7 +80,7 @@
 
       &:active {
         transform: scale(0.95);
-        background: var(--tf-button-overlay-hover-bg);
+
       }
 
       i {
@@ -94,7 +91,7 @@
   }
 }
 
-// 轮播图
+/* 轮播图 */
 .banner-section {
   background: var(--color-bg-white);
   margin-bottom: 8px;
@@ -147,7 +144,7 @@
   }
 }
 
-// 快速分类
+/* 快速分类 */
 .category-section {
   background: var(--color-bg-white);
   padding: 16px;

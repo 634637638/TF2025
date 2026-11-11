@@ -135,30 +135,17 @@
 
   .mobile-action-mark {
     position: relative;
-    width: 30px;
-    height: 30px;
+
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    border: none;
-    border-radius: 10px;
-    color: var(--color-bg-white);
+
     cursor: pointer;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
   }
 
   .mobile-action-mark:active {
     transform: scale(0.94);
-  }
-
-  .mobile-photo-action {
-    background: linear-gradient(135deg, var(--tf-color-blue-600), var(--tf-color-sky-400));
-    box-shadow: 0 8px 16px rgba(37, 99, 235, 0.22);
-  }
-
-  .mobile-photo-action.has-photos {
-    background: linear-gradient(135deg, var(--tf-color-emerald-600), var(--tf-color-emerald-400));
-    box-shadow: 0 8px 16px rgba(5, 150, 105, 0.2);
   }
 
   .mobile-photo-count {

@@ -3,20 +3,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
-  border: none;
-  background: transparent;
-  color: var(--tf-button-tool-color);
-  cursor: pointer;
-  border-radius: 4px;
-  transition: all 0.2s ease;
-  padding: 0;
-}
 
-.expand-btn:hover {
-  background-color: var(--tf-button-primary-hover-bg);
-  color: var(--tf-button-primary-soft-hover-color);
+  cursor: pointer;
+
+  transition: all 0.2s ease;
+
 }
 
 .expand-btn i {
@@ -153,14 +144,6 @@
   text-align: center;
 }
 
-.sort-badge {
-  background: linear-gradient(135deg, var(--tf-color-blue-100), var(--tf-color-blue-material-100));
-  color: var(--tf-color-blue-material-700);
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: var(--tf-type-scale-12);
-  font-weight: 600;
-}
 
 .menu-status-cell {
   width: 92px;

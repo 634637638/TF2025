@@ -51,7 +51,7 @@ import { enhanceGlobalMessageBox } from '@/utils/message-box'
 import logger from '@/utils/logger'
 import { initAdminTableDragScroll } from '@/utils/admin-table-drag-scroll'
 import { initPageTabScroll } from '@/utils/page-tab-scroll'
-import { getActionColumnMinWidth } from '@/utils/table-layout'
+import { getActionColumnMinWidth, getNumberColumnMinWidth } from '@/utils/table-layout'
 import {
   applyDeviceRootClass,
   normalizeSafariPhoneViewportMeta
@@ -88,6 +88,7 @@ app.use(router)
 // 注册全局API服务
 app.config.globalProperties.$api = unifiedApi
 app.config.globalProperties.$getActionColumnWidth = getActionColumnMinWidth
+app.config.globalProperties.$getNumberColumnWidth = getNumberColumnMinWidth
 app.provide('api', unifiedApi)
 
 // 安装全局指令系统

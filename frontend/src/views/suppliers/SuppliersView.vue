@@ -239,11 +239,11 @@
               <el-table-column
                 v-if="canViewField('id')"
                 label="序号"
-                :width="isMobile ? 54 : 70"
+                :width="$getNumberColumnWidth((suppliers || []).map((_row, $index) => $index + 1), isMobile ? 54 : 70)"
                 align="center"
               >
                 <template #default="{ $index }">
-                  <span class="id-badge">{{ $index + 1 }}</span>
+                  <span class="table-number-badge">{{ $index + 1 }}</span>
                 </template>
               </el-table-column>
               <el-table-column

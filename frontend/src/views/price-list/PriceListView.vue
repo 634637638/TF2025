@@ -288,19 +288,26 @@
             <i class="fas fa-tags" />
             <span>报价列表</span>
             <span class="record-count">共 {{ pagination.total }} 条记录</span>
-            <div class="section-actions">
+            <div class="section-actions batch-actions-buttons">
               <span
-                v-if="selectedPriceRows.length > 0"
+                v-if="selectedPriceIds.length > 0"
                 class="selection-count"
               >
-                已选择 {{ selectedPriceRows.length }} 条
+                已选择 {{ selectedPriceIds.length }} 条（可跨页）
               </span>
               <el-button
+                v-if="selectedPriceIds.length > 0"
+                :disabled="batchSettingsSaving"
+                @click="clearPriceSelection"
+              >
+                清空选择
+              </el-button>
+              <el-button
                 v-if="canEdit"
+                v-permission="'price-list:edit'"
                 type="primary"
-                size="small"
-                :disabled="selectedPriceRows.length === 0"
-                @click="openBatchSourceDialog"
+                :disabled="selectedPriceIds.length === 0 || loading"
+                @click="openBatchSettingsDialog"
               >
                 <i class="fas fa-link" />
                 批量设置
@@ -318,8 +325,8 @@
               table-layout="fixed"
               :fit="true"
               :row-key="getPriceListRowKey"
+              :row-class-name="({ row }) => selectedPriceIdSet.has(getPriceItemId(row) ?? 0) ? 'row-selected' : ''"
               :expand-row-keys="isMobile && mobileActionRowId ? [mobileActionRowId] : []"
-              @selection-change="handlePriceSelectionChange"
               @expand-change="handleMobileExpandChange"
               @row-click="(row) => handleMobileRowTap(row.price_list_id || row.id)"
             >
@@ -336,17 +343,40 @@
               </template>
 
               <el-table-column
-                type="selection"
                 width="48"
                 align="center"
-              />
+              >
+                <template #header>
+                  <el-checkbox
+                    :model-value="isCurrentPricePageSelected"
+                    :indeterminate="isCurrentPricePageIndeterminate"
+                    :disabled="loading || currentSelectablePriceIds.length === 0"
+                    aria-label="选择本页"
+                    @change="handlePricePageSelection($event === true)"
+                    @click.stop
+                  />
+                </template>
+                <template #default="{ row }">
+                  <el-checkbox
+                    :model-value="selectedPriceIdSet.has(getPriceItemId(row) ?? 0)"
+                    :disabled="loading || !canEdit || getPriceItemId(row) === null"
+                    :aria-label="`选择 ${row.model_number} ${row.color_name} ${row.memory}`"
+                    @change="handlePriceRowSelection(row, $event === true)"
+                    @click.stop
+                  />
+                </template>
+              </el-table-column>
               <el-table-column
                 v-if="!isMobile"
                 type="index"
                 label="序号"
-                width="60"
+                :width="$getNumberColumnWidth((priceList || []).map((_row, $index) => $index + 1), 60)"
                 align="center"
-              />
+              >
+                <template #default="{ $index }">
+                  <span class="table-number-badge">{{ $index + 1 }}</span>
+                </template>
+              </el-table-column>
               <el-table-column
                 v-if="!isMobile"
                 prop="brand_name"
@@ -442,6 +472,17 @@
                     v-else
                     class="text-gray"
                   >-</span>
+                </template>
+              </el-table-column>
+              <el-table-column
+                label="加价规则"
+                :min-width="getTextColumnMinWidth(['加价规则', ...priceList.map(formatWholesaleRule)], { minWidth: 100 })"
+                align="center"
+              >
+                <template #default="{ row }">
+                  <el-tag :type="row.wholesale_rule_mode === 'original' ? 'success' : row.wholesale_rule_mode === 'inherit' ? 'info' : 'warning'">
+                    {{ formatWholesaleRule(row) }}
+                  </el-tag>
                 </template>
               </el-table-column>
               <el-table-column
@@ -950,25 +991,54 @@
         </template>
       </MobileDialog>
 
-      <!-- 批量设置采集来源对话框 -->
+      <!-- 批量修改只提交选中的项目，保留其他原值 -->
       <MobileDialog
-        v-model="showBatchSourceDialog"
+        v-model="showBatchSettingsDialog"
         title="批量设置"
-        width="520px"
-        dialog-class="price-list-batch-source-dialog"
+        width="620px"
+        dialog-class="price-list-batch-settings-dialog"
         :show-default-footer="false"
-        @open="fetchSyncConfigsList"
+        :close-on-click-modal="false"
+        :close-on-press-escape="!batchSettingsSaving"
+        :show-close="!batchSettingsSaving"
       >
-        <el-form label-width="110px">
-          <el-form-item label="已选择">
-            <span>{{ selectedPriceRows.length }} 条价格记录</span>
+        <el-alert
+          :title="`已选择 ${batchPriceIds.length} 条规格，仅修改勾选的项目`"
+          type="info"
+          :closable="false"
+          show-icon
+        />
+        <el-form
+          label-width="100px"
+          :disabled="batchSettingsSaving"
+        >
+          <el-form-item label="修改项目">
+            <el-checkbox-group v-model="batchForm.fields">
+              <el-checkbox value="source_config_id">
+                采集源
+              </el-checkbox>
+              <el-checkbox value="is_collect">
+                采集状态
+              </el-checkbox>
+              <el-checkbox value="status">
+                启用状态
+              </el-checkbox>
+              <el-checkbox value="show_price">
+                报价显示
+              </el-checkbox>
+              <el-checkbox value="wholesale_rule">
+                加价规则
+              </el-checkbox>
+            </el-checkbox-group>
           </el-form-item>
-          <el-form-item label="采集来源">
+          <el-form-item
+            v-if="batchForm.fields.includes('source_config_id')"
+            label="采集源"
+          >
             <el-select
               v-model="batchSourceConfigId"
               class="w-full"
-              clearable
-              placeholder="跟随默认采集源"
+              placeholder="请选择采集源"
             >
               <el-option
                 :value="DEFAULT_SOURCE_CONFIG_VALUE"
@@ -981,17 +1051,123 @@
                 :value="source.id"
               />
             </el-select>
+            <span class="text-gray">更换采集源后，下次采集使用新来源；当前采集原价保持不变。</span>
+          </el-form-item>
+          <el-form-item
+            v-if="batchForm.fields.includes('is_collect')"
+            label="采集状态"
+          >
+            <el-select
+              v-model="batchForm.is_collect"
+              class="w-full"
+            >
+              <el-option
+                label="采集"
+                :value="1"
+              />
+              <el-option
+                label="不采集"
+                :value="0"
+              />
+            </el-select>
+          </el-form-item>
+          <el-form-item
+            v-if="batchForm.fields.includes('status')"
+            label="启用状态"
+          >
+            <el-select
+              v-model="batchForm.status"
+              class="w-full"
+            >
+              <el-option
+                label="启用"
+                :value="1"
+              />
+              <el-option
+                label="停用"
+                :value="0"
+              />
+            </el-select>
+          </el-form-item>
+          <el-form-item
+            v-if="batchForm.fields.includes('show_price')"
+            label="报价显示"
+          >
+            <el-select
+              v-model="batchForm.show_price"
+              class="w-full"
+            >
+              <el-option
+                label="显示"
+                :value="1"
+              />
+              <el-option
+                label="隐藏"
+                :value="0"
+              />
+            </el-select>
+          </el-form-item>
+          <el-form-item
+            v-if="batchForm.fields.includes('wholesale_rule')"
+            label="加价规则"
+          >
+            <el-select
+              v-model="batchForm.rule_mode"
+              class="w-full"
+            >
+              <el-option
+                label="默认规则（跟随所选采集加价规则）"
+                value="inherit"
+              />
+              <el-option
+                label="不加价（直接使用采集原价）"
+                value="original"
+              />
+              <el-option
+                label="单独加减（采集原价+加价/-减价）"
+                value="adjustment"
+              />
+              <el-option
+                label="额外减价（原规则+加价/-减价）"
+                value="extra"
+              />
+            </el-select>
+          </el-form-item>
+          <el-form-item
+            v-if="batchForm.fields.includes('wholesale_rule') && ['adjustment', 'extra'].includes(batchForm.rule_mode)"
+            label="加减金额"
+          >
+            <el-input-number
+              v-model="batchForm.adjustment"
+              :controls="false"
+              :min="-999999"
+              :max="999999"
+              :precision="2"
+              :step="10"
+              class="w-full"
+            />
+          </el-form-item>
+          <el-form-item
+            v-if="batchForm.fields.includes('wholesale_rule')"
+            label="生效范围"
+          >
+            <span class="text-gray">仅修改当前所选数据进行批量修改</span>
           </el-form-item>
         </el-form>
         <template #footer>
           <div class="tf-dialog-actions">
-            <el-button @click="showBatchSourceDialog = false">
+            <el-button
+              :disabled="batchSettingsSaving"
+              @click="showBatchSettingsDialog = false"
+            >
               取消
             </el-button>
             <el-button
+              v-permission="'price-list:edit'"
               type="primary"
-              :loading="batchSourceSaving"
-              @click="handleBatchSourceSave"
+              :loading="batchSettingsSaving"
+              :disabled="!canEdit || !batchForm.fields.length"
+              @click="handleBatchSettingsSave"
             >
               保存
             </el-button>
@@ -1296,8 +1472,12 @@
           <el-table-column
             type="index"
             label="序号"
-            width="60"
-          />
+            :width="$getNumberColumnWidth((priceHistory || []).map((_row, $index) => $index + 1), 60)"
+          >
+            <template #default="{ $index }">
+              <span class="table-number-badge">{{ $index + 1 }}</span>
+            </template>
+          </el-table-column>
           <el-table-column
             prop="recorded_at"
             label="记录时间"
@@ -1456,7 +1636,7 @@
             >
               <el-table-column
                 label="优先"
-                width="60"
+                :width="$getNumberColumnWidth((inventoryData || []).map((_row, $index) => (inventoryPagination.page - 1) * inventoryPagination.page_size + $index + 1), 60)"
                 align="center"
               >
                 <template #default="{ $index }">
@@ -1468,7 +1648,7 @@
                   </span>
                   <span
                     v-else
-                    class="priority-rank"
+                    class="table-number-badge"
                   >{{ (inventoryPagination.page - 1) * inventoryPagination.page_size + $index + 1 }}</span>
                 </template>
               </el-table-column>
@@ -1560,7 +1740,7 @@ import {
   getStockPhones,
   getPriceList,
   upsertPriceItem,
-  batchUpdatePriceSource,
+  batchUpdatePriceSettings,
   deletePriceItem,
   getSyncConfigById,
   getAllSyncConfigs,
@@ -1580,10 +1760,12 @@ import {
 } from '@/api/price-list'
 import { useAuthStore } from '@/stores/auth'
 import api from '@/utils/unified-api'
-import { extractResponseData } from '@/utils/api-response'
+import { extractResponseData, getRequestErrorMessage } from '@/utils/api-response'
 import { normalizePriceListRow } from './price-list-row'
+import { createPriceBatchForm, buildPriceBatchChanges, formatWholesaleRule } from './price-batch-settings'
 import { useImportExport } from '@/composables/useImportExport'
 import { usePagePermissions } from '@/composables/usePagePermissions'
+import { useLatestRequest } from '@/composables/useLatestRequest'
 import { useMobileRowDoubleTap } from '@/composables/useMobileRowDoubleTap'
 import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { PageHeader, PermissionGate } from '@/components/base'
@@ -1650,7 +1832,21 @@ const priceListImportInputRef = ref<HTMLInputElement | null>(null)
 const loadingOptions = ref(false)
 const loadingModels = ref(false)
 const priceList = ref<PriceListRow[]>([])
-const selectedPriceRows = ref<PriceListRow[]>([])
+const selectedPriceIds = ref<number[]>([])
+const selectedPriceIdSet = computed(() => new Set(selectedPriceIds.value))
+const priceListRequest = useLatestRequest()
+const getPriceItemId = (row: PriceListRow): number | null => {
+  const id = Number(row.price_list_id ?? row.id)
+  return Number.isSafeInteger(id) && id > 0 ? id : null
+}
+const currentSelectablePriceIds = computed(() => canEdit.value
+  ? priceList.value.flatMap(row => {
+    const id = getPriceItemId(row)
+    return id === null ? [] : [id]
+  }) : [])
+const currentSelectedPriceCount = computed(() => currentSelectablePriceIds.value.filter(id => selectedPriceIdSet.value.has(id)).length)
+const isCurrentPricePageSelected = computed(() => currentSelectablePriceIds.value.length > 0 && currentSelectedPriceCount.value === currentSelectablePriceIds.value.length)
+const isCurrentPricePageIndeterminate = computed(() => currentSelectedPriceCount.value > 0 && !isCurrentPricePageSelected.value)
 const priceHistoryMap = ref<Map<number, PriceHistoryRecord[]>>(new Map())
 let trendLoadSeq = 0
 const hasInitializedPageData = ref(false)
@@ -1770,8 +1966,10 @@ const savingConfig = ref(false)
 const syncing = ref(false)
 const clearingPrices = ref(false)
 const syncConfigsList = ref<PriceSyncConfig[]>([])
-const showBatchSourceDialog = ref(false)
-const batchSourceSaving = ref(false)
+const showBatchSettingsDialog = ref(false)
+const { loading: batchSettingsSaving } = useLoadingState()
+const batchForm = reactive(createPriceBatchForm())
+const batchPriceIds = ref<number[]>([])
 const DEFAULT_SOURCE_CONFIG_VALUE = '__default_source__'
 const batchSourceConfigId = ref<number | string | null | undefined>(DEFAULT_SOURCE_CONFIG_VALUE)
 const syncConfigActionColumnWidth = computed(() => getAdaptiveActionColumnWidth(
@@ -1888,72 +2086,77 @@ const getPriceListRowKey = (row: PriceListRow) => {
   return String(row.price_list_id || row.id || `${row.model_number}-${row.color_name}-${row.memory}`)
 }
 
-const handlePriceSelectionChange = (rows: PriceListRow[]) => {
-  selectedPriceRows.value = rows
+const clearPriceSelection = () => {
+  selectedPriceIds.value = []
 }
 
-const openBatchSourceDialog = async () => {
+const handlePriceRowSelection = (row: PriceListRow, checked: boolean) => {
+  if (loading.value || !canEdit.value) return
+  const id = getPriceItemId(row)
+  if (id === null) return
+  selectedPriceIds.value = checked
+    ? [...new Set([...selectedPriceIds.value, id])]
+    : selectedPriceIds.value.filter(selectedId => selectedId !== id)
+}
+
+const handlePricePageSelection = (checked: boolean) => {
+  if (loading.value || !canEdit.value) return
+  const currentIds = new Set(currentSelectablePriceIds.value)
+  selectedPriceIds.value = checked
+    ? [...new Set([...selectedPriceIds.value, ...currentIds])]
+    : selectedPriceIds.value.filter(id => !currentIds.has(id))
+}
+
+const openBatchSettingsDialog = async () => {
   if (!canEdit.value) {
     handleNoPermission('edit')
     return
   }
-  if (selectedPriceRows.value.length === 0) {
-    globalNotifications.warning('请先选择价格记录')
+  const ids = [...selectedPriceIds.value]
+  if (!ids.length || ids.some(id => !Number.isSafeInteger(id) || id <= 0) || ids.length > 500) {
+    globalNotifications.warning('请选择 1 至 500 条有效价格记录')
     return
   }
-
+  batchPriceIds.value = ids
+  Object.assign(batchForm, createPriceBatchForm())
   batchSourceConfigId.value = DEFAULT_SOURCE_CONFIG_VALUE
+  showBatchSettingsDialog.value = true
   await fetchSyncConfigsList()
-  showBatchSourceDialog.value = true
 }
 
-const handleBatchSourceSave = async () => {
-  if (batchSourceSaving.value) return
+const handleBatchSettingsSave = async () => {
+  if (batchSettingsSaving.value) return
   if (!canEdit.value) {
     handleNoPermission('edit')
     return
   }
-
-  const ids = selectedPriceRows.value
-    .map(row => Number(row.price_list_id || row.id))
-    .filter(id => Number.isInteger(id) && id > 0)
-
-  if (ids.length === 0) {
-    globalNotifications.warning('选中的记录无有效 ID，请刷新后重试')
-    return
-  }
-
+  batchSettingsSaving.value = true
   try {
-    await confirmAction(
-      `确定将选中的 ${ids.length} 条价格记录绑定到所选采集来源吗？绑定关系将在后续同步时生效。`,
-      '批量设置',
-      { type: 'warning' }
-    )
-
-    batchSourceSaving.value = true
-    const sourceConfigId = batchSourceConfigId.value === DEFAULT_SOURCE_CONFIG_VALUE ||
-      batchSourceConfigId.value === '' ||
-      batchSourceConfigId.value === null ||
-      batchSourceConfigId.value === undefined
-      ? null
-      : Number(batchSourceConfigId.value)
-    const res = await batchUpdatePriceSource(ids, sourceConfigId)
-    if (!res.success) {
-      globalNotifications.error(res.message || '批量设置采集来源失败')
+    batchForm.source_config_id = batchSourceConfigId.value === DEFAULT_SOURCE_CONFIG_VALUE
+      ? null : Number(batchSourceConfigId.value)
+    const changes = buildPriceBatchChanges(batchForm)
+    const ids = [...batchPriceIds.value]
+    await confirmAction(`确定更新选中的 ${ids.length} 条规格吗？未勾选的项目保持原值，加价规则保存后重新读取报价即生效。`, '批量设置', { type: 'warning' })
+    if (!canEdit.value) {
+      handleNoPermission('edit')
       return
     }
-
-    globalNotifications.success(res.message || '采集来源设置成功')
-    showBatchSourceDialog.value = false
-    selectedPriceRows.value = []
+    const res = await batchUpdatePriceSettings({ price_list_ids: ids, changes })
+    if (!res.success) {
+      globalNotifications.error(res.message || '批量设置失败')
+      return
+    }
+    globalNotifications.success(res.message || '批量设置成功')
+    clearPriceSelection()
+    showBatchSettingsDialog.value = false
     await fetchPriceList()
   } catch (error) {
-    if (error !== 'cancel') {
-      logger.error('批量设置采集来源失败', error)
-      globalNotifications.error('批量设置采集来源失败')
+    if (error !== 'cancel' && error !== 'close') {
+      logger.error('批量设置失败', error)
+      globalNotifications.error(getRequestErrorMessage(error, '批量设置失败，请重试'))
     }
   } finally {
-    batchSourceSaving.value = false
+    batchSettingsSaving.value = false
   }
 }
 
@@ -2007,26 +2210,28 @@ const handleMobileRowTap = (id: number | string | null) => {
   if (isDoubleTap(rowKey)) toggleMobileActions(rowKey)
 }
 
-// 获取价格列表（从在库商品中获取，只要全新机器）
+// 列表请求独立于跨页选择，仅最新响应可更新展示。
 const fetchPriceList = async () => {
   if (!canView.value) {
+    priceListRequest.cancelLatest()
+    clearPriceSelection()
     priceList.value = []
     pagination.total = 0
+    loading.value = false
     return
   }
 
-  selectedPriceRows.value = []
+  const request = priceListRequest.nextRequest()
   loading.value = true
   try {
-    const res = await getPriceList(buildPriceListParams(true))
+    const res = await getPriceList(buildPriceListParams(true), { signal: request.signal, useCache: false, showError: false })
+    if (!request.isLatest()) return
 
     if (res.success && res.data) {
       const data = res.data
       const list = Array.isArray(data.list) ? data.list : []
 
       const formattedList = list.map(normalizePriceListRow)
-
-
       priceList.value = formattedList
       // 确保 total 是数字类型
       pagination.total = Number(data.total) || formattedList.length || 0
@@ -2039,10 +2244,11 @@ const fetchPriceList = async () => {
       pagination.total = 0
     }
   } catch (error) {
+    if (!request.isLatest() || priceListRequest.isCanceledError(error)) return
     logger.error('获取价格列表失败:', error)
     globalNotifications.error('获取价格列表失败')
   } finally {
-    loading.value = false
+    if (request.isLatest()) loading.value = false
   }
 }
 
@@ -2113,8 +2319,8 @@ const { debouncedFn: debounceSearch } = useDebounce(() => {
 
 // 搜索
 const handleSearch = () => {
-  pagination.page = 1
-  fetchPriceList()
+  if (pagination.page === 1) fetchPriceList()
+  else pagination.page = 1
 }
 
 // 重置
@@ -2459,6 +2665,7 @@ const handleDelete = async (row: PriceListRow) => {
     const res = await deletePriceItem(priceItemId)
     if (res.success) {
       globalNotifications.success('删除成功')
+      selectedPriceIds.value = selectedPriceIds.value.filter(id => id !== priceItemId)
       fetchPriceList()
     }
   } catch (error) {
@@ -3243,7 +3450,11 @@ const formatSourceUrl = (url: string) => {
 }
 
 // 监听分页变化
-watch(() => [pagination.page, pagination.limit], () => {
+watch(() => [pagination.page, pagination.limit], ([, limit], [, previousLimit]) => {
+  if (limit !== previousLimit && pagination.page !== 1) {
+    pagination.page = 1
+    return
+  }
   fetchPriceList()
 })
 
@@ -3352,12 +3563,22 @@ watch(canView, (value) => {
   if (value) {
     initializePageData()
   } else {
+    priceListRequest.cancelLatest()
+    clearPriceSelection()
+    showBatchSettingsDialog.value = false
     hasInitializedPageData.value = false
     priceList.value = []
     pagination.total = 0
     loading.value = false
   }
 }, { immediate: true })
+
+watch(canEdit, (value) => {
+  if (!value) {
+    clearPriceSelection()
+    showBatchSettingsDialog.value = false
+  }
+})
 
 onUnmounted(() => {
   if (typeof window !== 'undefined') {
@@ -3369,9 +3590,13 @@ onUnmounted(() => {
 <style scoped lang="scss">
 
 .section-title {
+  flex-wrap: wrap;
+
   .section-actions {
     display: inline-flex;
+    flex-wrap: wrap;
     align-items: center;
+    max-width: 100%;
     gap: var(--tf-space-2);
     margin-left: auto;
   }
@@ -3732,18 +3957,6 @@ onUnmounted(() => {
       }
     }
 
-    .priority-rank {
-      display: inline-block;
-      width: 24px;
-      height: 24px;
-      line-height: 24px;
-      text-align: center;
-      background: var(--tf-color-surface-soft);
-      border-radius: 50%;
-      font-size: var(--tf-type-scale-12);
-      font-weight: 500;
-      color: var(--text-muted);
-    }
   }
 
   .days-badge {

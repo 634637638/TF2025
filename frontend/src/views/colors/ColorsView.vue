@@ -212,26 +212,27 @@
                 width="70"
                 align="center"
               >
-                <template #default="{ row, $index }">
+                <template #default="{ row }">
                   <el-input-number
-                    v-model="row.sort_order"
+                    :key="`${row.id}:${savingOrder}`"
+                    :model-value="row.sort_order"
                     class="sort-order-control"
-                    :disabled="!canEdit"
+                    :disabled="!canEdit || savingOrder || tableLoading"
                     :min="0"
                     :max="9999"
                     :controls="false"
-                    @change="handleSortOrderChange($index, row.sort_order)"
+                    @change="handleSortOrderChange(row.id, $event)"
                   />
                 </template>
               </el-table-column>
               <el-table-column
                 v-if="canViewField('id')"
                 label="序号"
-                width="70"
+                :width="$getNumberColumnWidth((colors || []).map((_row, $index) => (pagination.page - 1) * pagination.page_size + $index + 1), 70)"
                 align="center"
               >
                 <template #default="{ $index }">
-                  <span class="id-badge">{{ $index + 1 }}</span>
+                  <span class="table-number-badge">{{ (pagination.page - 1) * pagination.page_size + $index + 1 }}</span>
                 </template>
               </el-table-column>
               <el-table-column
@@ -387,7 +388,6 @@
           dialog-class="colors-form-dialog crud-dialog-sm"
           :close-on-click-modal="false"
           :show-default-footer="false"
-          @close="attemptCloseModal"
         >
           <el-form
             :model="formData"
@@ -502,11 +502,12 @@ import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import { PermissionGate, PageHeader } from '@/components/base'
 import { usePermissionToast } from '@/utils/permissionToastSimple'
-import { handleApiErrorWithPermission } from '@/utils/apiPermissionError'
 import { useMobile } from '@/composables/mobile'
 import { useMobileRowDoubleTap } from '@/composables/useMobileRowDoubleTap'
 import { useLatestRequest } from '@/composables/useLatestRequest'
 import { useElementTableSortable } from '@/composables/useElementTableSortable'
+import { useReferenceOrdering } from '@/composables/useReferenceOrdering'
+import { sortOptionsByOrder } from '@/utils/option-sort'
 import { logger } from '@/utils/logger'
 import { formatDateTime as formatDate } from '@/utils/format'
 import { getRequestErrorMessage, getRequestErrorPayload, getRequestErrorStatus } from '@/utils/api-response'
@@ -574,7 +575,6 @@ const showStatsCards = computed(() => (
 ))
 // 响应式数据
 const submitting = ref(false)
-const savingOrder = ref(false)
 const tableLoading = ref(true)
 const colorsTableRef = ref<HTMLElement | { $el?: HTMLElement } | null>(null)
 const mobileActionRowId = ref<string | null>(null)
@@ -705,6 +705,7 @@ const loadColors = async (_bustCache = false, silentError = false, _showLoadingS
     const request = colorListRequest.nextRequest()
     const response = await unifiedApi.get('/colors', {
       params,
+      useCache: !_bustCache,
       signal: request.signal
     })
 
@@ -713,7 +714,7 @@ const loadColors = async (_bustCache = false, silentError = false, _showLoadingS
     }
 
     if (response.success) {
-      colors.value = response.data.colors || []
+      colors.value = sortOptionsByOrder(response.data.colors || [])
       // 确保 total 是数字类型
       const apiPagination = response.data.pagination || {}
       pagination.value = {
@@ -725,8 +726,6 @@ const loadColors = async (_bustCache = false, silentError = false, _showLoadingS
         has_prev: apiPagination.has_prev === true
       }
 
-      // 按 sort_order 排序，确保序号和排序值一致
-      colors.value.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
     } else {
       colors.value = []
       pagination.value = { page: 1, page_size: 100, total: 0, total_pages: 0, has_next: false, has_prev: false }
@@ -981,39 +980,19 @@ const submitForm = async () => {
   }
 }
 
-// 检查是否有未保存的更改
+// 新增取消直接重置；仅编辑已有记录时检查未保存的更改。
 const hasUnsavedChanges = (): boolean => {
-  if (!showCreateModal.value && !showEditModal.value) return false
-
-  // 检查是否有任何非空字段的更改
-  const currentForm = formData.value
-  const _initialForm = {
-    name: '',
-    status: 1,
-    sort_order: 0
-  }
-
-  // 对于编辑模式，需要比较原始数据
-  if (showEditModal.value && currentEditingId.value) {
-    const originalColor = colors.value.find(c => c.id === currentEditingId.value)
-    if (originalColor) {
-      return (
-        currentForm.name !== originalColor.name ||
-        currentForm.status !== originalColor.status ||
-        currentForm.sort_order !== originalColor.sort_order
-      )
-    }
-  }
-
-  // 对于创建模式，检查是否有任何输入
+  if (!showEditModal.value || currentEditingId.value === null) return false
+  const originalColor = colors.value.find(item => item.id === currentEditingId.value)
+  if (!originalColor) return false
   return (
-    currentForm.name !== '' ||
-    currentForm.status !== 1 ||
-    currentForm.sort_order !== 0
+    formData.value.name !== originalColor.name ||
+    formData.value.status !== originalColor.status ||
+    formData.value.sort_order !== originalColor.sort_order
   )
 }
 
-// 关闭模态框（带确认）
+// 新增直接关闭，编辑有更改时保留确认。
 const attemptCloseModal = async () => {
   if (hasUnsavedChanges()) {
     const confirmed = await confirm(
@@ -1077,61 +1056,18 @@ const handleCreateColor = () => {
   showCreateModal.value = true
 }
 
-// 保存排序到服务器
-const saveSortOrder = async () => {
-  if (savingOrder.value) return
-  if (!canEdit.value) {
-    showEditDenied('颜色管理', 'colors:edit')
-    return
-  }
-
-  savingOrder.value = true
-  try {
-    const items = colors.value.map((item, index) => ({
-      id: item.id,
-      sort_order: index
-    }))
-
-    const response = await unifiedApi.put('/colors/batch/reorder', { items }, { showError: false })
-    if (response.success) {
-      success('排序已保存')
-    }
-  } catch (err) {
-    logger.error('保存排序失败:', err)
-    // 使用统一的权限错误处理
-    handleApiErrorWithPermission(err, '保存排序失败', '颜色管理', 'edit')
-  } finally {
-    savingOrder.value = false
-  }
-}
-
-// 手动修改排序值
-const handleSortOrderChange = async (index: number, value: number) => {
-  colors.value[index].sort_order = value
-  // 按新的 sort_order 重新排序
-  colors.value.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
-  await saveSortOrder()
-}
-
-const handleColorRowMove = async (oldIndex: number, newIndex: number) => {
-  if (!canEdit.value || oldIndex === newIndex) return false
-
-  const reordered = [...colors.value]
-  const [movedItem] = reordered.splice(oldIndex, 1)
-  reordered.splice(newIndex, 0, movedItem)
-  reordered.forEach((item, index) => {
-    item.sort_order = index
-  })
-  colors.value = reordered
-
-  await saveSortOrder()
-  await loadColors(true, false, false)
-  return true
-}
+// 共用排序写入：单条编辑不改变其他记录，拖拽保留已有排序值范围。
+const { savingOrder, handleSortOrderChange, handleRowMove: handleColorRowMove } = useReferenceOrdering({
+  rows: colors,
+  endpoint: '/colors',
+  moduleName: '颜色管理',
+  canEdit,
+  reload: () => loadColors(true, false, false)
+})
 
 useElementTableSortable({
   tableRef: colorsTableRef,
-  enabled: computed(() => canEdit.value && !isMobile.value && showSortField.value),
+  enabled: computed(() => canEdit.value && !savingOrder.value && !tableLoading.value && !isMobile.value && showSortField.value),
   orderKey: () => colors.value.map(color => color.id).join('|'),
   onMove: handleColorRowMove
 })

@@ -83,8 +83,7 @@
 }
 
 .breadcrumb-item.current {
-  color: var(--tf-nav-topbar-text);
-  font-weight: 600;
+
   cursor: default;
 }
 
@@ -170,7 +169,6 @@
   height: 100%;
   padding: 0 6px;
 }
-
 
 .user-name {
   display: inline-flex;

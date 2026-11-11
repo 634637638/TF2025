@@ -84,6 +84,7 @@ for (const file of ['src/views/query/QueryView.vue', 'src/views/inventory/Invent
 const standardsTableRequirements = [
   [/class=["'][^"']*data-table[^"']*admin-data-table/, '规范与审计标杆页预览表格必须同时接入 data-table 和 admin-data-table'],
   [/standards-preview-table/, '规范与审计标杆页必须登记预览表格 class'],
+  [/table-number-badge/, '规范与审计标杆页必须展示公共序号徽章'],
   [/class-name=["'][^"']*complete-text-column/, '规范与审计标杆页普通字段必须使用 complete-text-column'],
   [/class-name=["'][^"']*actions-column/, '规范与审计标杆页操作列必须使用 actions-column'],
   [/getAdaptiveActionColumnWidth/, '规范与审计标杆页操作列必须使用公共自适应宽度函数'],
@@ -135,14 +136,21 @@ const publicStyleRequirements = [
   [/background:\s*var\(--admin-data-table-row-selected-bg\)\s*!important/i, '公共选中颜色必须读取 --admin-data-table-row-selected-bg'],
   [/:is\(\.data-table\.el-table, \.devices-table\.el-table, \.admin-data-table\.el-table\) \.condition-badge[\s\S]{0,500}?height:\s*var\(--admin-data-table-badge-height\)\s*!important/i, '公共表格成色徽章必须使用统一高度'],
   [/:is\(\.data-table\.el-table, \.devices-table\.el-table, \.admin-data-table\.el-table\) \.status-badge[\s\S]{0,800}?padding:\s*0 var\(--admin-data-table-badge-padding-x\)\s*!important/i, '公共表格状态徽章必须使用统一内边距'],
-  [/:is\(\.data-table\.el-table, \.devices-table\.el-table, \.admin-data-table\.el-table\) \.id-badge[\s\S]*?height:\s*var\(--admin-data-table-badge-height\)\s*!important/i, '公共表格序号徽章必须使用统一高度']
+  [/^\.table-number-badge\s*\{[^}]*height:\s*var\(--admin-data-table-badge-height\)/im, '公共序号徽章必须覆盖表格外卡片并使用统一高度'],
+  [/^\.table-number-badge\s*\{[^}]*background:\s*var\(--admin-data-table-number-bg\)/im, '公共序号/ID 徽章颜色必须使用公共令牌'],
+  [/^\.table-number-badge\s*\{[^}]*border-radius:\s*var\(--admin-data-table-number-radius\)/im, '公共序号/ID 徽章圆角必须使用公共令牌']
 ]
 
 for (const [pattern, message] of publicStyleRequirements) {
   if (!pattern.test(adminLayoutSource)) findings.push(`src/styles/admin-layout.css ${message}`)
 }
 
+if (!/app\.config\.globalProperties\.\$getNumberColumnWidth\s*=\s*getNumberColumnMinWidth\b/.test(mainSource)) {
+  findings.push('src/main.ts 必须注册公共 $getNumberColumnWidth，避免序号/ID 列宽入口在运行时缺失')
+}
+
 const tableStructureRequirements = [
+  [/td:has\(\.table-inline-action\)/, '普通业务列的紧凑按钮必须接入公共单元格留白，避免按钮与内边距撑高表格行'],
   [/\.data-table\s+\.el-table__body-wrapper[\s\S]*?white-space:\s*normal\s*!important/i, '统一表格必须提供普通字段完整换行兜底'],
   [/\.complete-text-column[\s\S]*?white-space:\s*nowrap\s*!important/i, '完整文本列必须保持单行并由内容宽度工具计算'],
   [/\.ellipsis-text-column[\s\S]*?text-overflow:\s*ellipsis\s*!important/i, '长文本省略例外必须使用明确的 ellipsis-text-column'],

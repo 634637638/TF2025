@@ -457,6 +457,19 @@
   --tf-button-neutral-hover-color: var(--tf-button-content-selected-color);
 }
 
+/* 媒体缩略图复用内容按钮，方形比例和无内边距统一在公共入口维护。 */
+.el-button.tf-button--content.tf-button--media-tile {
+  aspect-ratio: 1;
+  padding: 0;
+  overflow: hidden;
+}
+
+.el-button.tf-button--content.tf-button--media-tile > span {
+  display: block;
+  height: 100%;
+  line-height: 0;
+}
+
 /* Contact cards grow with their content instead of inheriting toolbar button height. */
 .el-button.tf-button--service-card {
   --el-button-bg-color: var(--tf-color-surface-muted);
@@ -791,12 +804,16 @@ body .el-button.el-button.tf-button--overlay-reset {
   border-radius: var(--tf-radius-full) !important;
 }
 
-body .el-button.el-button.tf-button--overlay-danger {
+body .el-button.el-button.tf-button--overlay-danger,
+body .el-button.el-button.tf-button--overlay-danger:hover,
+body .el-button.el-button.tf-button--overlay-danger:focus-visible {
   background: var(--tf-button-overlay-danger-bg) !important;
   border-color: var(--tf-button-danger-soft-border) !important;
 }
 
-body .el-button.el-button.tf-button--overlay-warning {
+body .el-button.el-button.tf-button--overlay-warning,
+body .el-button.el-button.tf-button--overlay-warning:hover,
+body .el-button.el-button.tf-button--overlay-warning:focus-visible {
   background: var(--tf-button-warning-bg) !important;
   border-color: var(--tf-button-warning-border) !important;
 }
@@ -809,10 +826,25 @@ body .el-button.el-button.tf-button--scanner-control {
   min-height: var(--tf-button-height) !important;
   max-height: var(--tf-button-height) !important;
   padding-inline: var(--tf-button-padding-x) !important;
-  border: 1px solid var(--tf-button-neutral-border) !important;
+  border: 1px solid var(--tf-scanner-control-border, var(--tf-button-neutral-border)) !important;
   border-radius: var(--tf-radius-control) !important;
-  background: var(--tf-button-overlay-bg) !important;
+  background: var(--tf-scanner-control-bg, var(--tf-button-overlay-bg)) !important;
   color: var(--tf-button-on-color) !important;
+}
+
+body .el-button.el-button.tf-button--scanner-control:hover,
+body .el-button.el-button.tf-button--scanner-control:focus-visible {
+  --tf-scanner-control-bg: var(--tf-button-overlay-hover-bg);
+}
+
+body .el-button.el-button.tf-button--scanner-control[aria-pressed='true'] {
+  --tf-scanner-control-bg: var(--tf-button-primary-hover-bg);
+  --tf-scanner-control-border: var(--tf-button-primary-soft-hover-border);
+}
+
+body .el-button.el-button.tf-button--scanner-control.tf-button--overlay-warning {
+  --tf-scanner-control-bg: var(--tf-button-warning-bg);
+  --tf-scanner-control-border: var(--tf-button-warning-border);
 }
 
 body .el-button.el-button.tf-button--dismiss,

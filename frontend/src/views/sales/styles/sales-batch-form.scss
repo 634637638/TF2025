@@ -395,10 +395,10 @@ select.form-control:focus {
   }
 
   .form-actions :deep(.el-button) {
-    height: 44px;
+
     flex: 1;
     margin: 0;
-    font-size: var(--tf-type-scale-15);
+
   }
 }
 
@@ -410,10 +410,5 @@ select.form-control:focus {
   .form-control {
     padding: 9px 11px;
     font-size: var(--tf-type-scale-13);
-  }
-
-  .form-actions :deep(.el-button) {
-    height: 42px;
-    font-size: var(--tf-type-scale-14);
   }
 }

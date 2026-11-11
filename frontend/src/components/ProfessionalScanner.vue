@@ -20,7 +20,8 @@
           <el-button
             v-if="hasFlash"
             class="icon-btn flash-btn tf-button--overlay-tool"
-            :class="{ active: flashOn }"
+            :class="{ 'tf-button--overlay-warning': flashOn }"
+            :aria-pressed="flashOn"
             title="闪光灯"
             @click="toggleFlash"
           >
@@ -107,7 +108,7 @@
           <div class="control-group">
             <el-button
               class="control-btn tf-button--scanner-control"
-              :class="{ active: showRegion }"
+              :aria-pressed="showRegion"
               @click="toggleRegion"
             >
               <i class="fas fa-crop-alt" />
@@ -115,7 +116,7 @@
             </el-button>
             <el-button
               class="control-btn tf-button--scanner-control"
-              :class="{ active: autoFocus }"
+              :aria-pressed="autoFocus"
               @click="toggleAutoFocus"
             >
               <i class="fas fa-crosshairs" />

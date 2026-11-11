@@ -68,11 +68,10 @@
   }
 
   .mobile-workflow-field :deep(.el-button) {
-    height: 26px;
+
     min-width: 0;
     margin: 0;
-    padding: 0 7px;
-    font-size: var(--tf-type-scale-11);
+
   }
 
   .mobile-card-actions {
@@ -88,14 +87,8 @@
   .mobile-card-actions :deep(.el-button) {
     width: 100%;
     min-width: 0;
-    height: 34px;
-    margin: 0;
-  }
 
-  .mobile-card-actions .mobile-action-mark {
-    width: 34px;
-    height: 34px;
-    border-radius: 8px;
+    margin: 0;
   }
 
   .mobile-action-status {

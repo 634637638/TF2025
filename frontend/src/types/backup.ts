@@ -1,5 +1,13 @@
 import type { BackupType } from './system'
 
+export interface BackupFile {
+  filename: string
+  type: Extract<BackupType, 'full' | 'database'>
+  size: string
+  size_bytes: number
+  created_at: string
+}
+
 export type CloudBackupStatus = 'queued' | 'uploading' | 'retrying' | 'success' | 'failed' | 'invalid'
 
 export interface BackupScheduleInput {

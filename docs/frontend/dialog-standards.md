@@ -167,6 +167,7 @@ MessageBox 的默认宽度由 `--tf-dialog-message-width` 统一控制，当前�
 
 ## 表单和正文
 
+- 品牌 `/brands`、型号 `/models`、颜色 `/colors` 和内存 `/memories` 的新增弹窗点击取消、顶部关闭或按 Esc 时直接关闭并重置草稿，不弹出未保存确认；编辑已有记录时继续保留未保存确认。各页通过 `MobileDialog` 的 `v-model` 处理关闭请求，不再同时监听 `close` 重复执行关闭逻辑。页面回归见 `frontend/tests/reference-management-pages.spec.ts`，公共关闭行为见 `frontend/tests/mobile-dialog.spec.ts`。
 - 普通横向表单使用 `.tf-dialog-form`。
 - 标签置顶的编辑器使用 `.tf-dialog-form--stacked`。
 - 弹窗中的输入框、下拉框、日期框和数字框与全局普通表单统一为 `30px` 高；各设备共用 `_form-controls.scss` 和公共表单高度令牌。

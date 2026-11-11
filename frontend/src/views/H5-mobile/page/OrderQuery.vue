@@ -511,7 +511,7 @@ const goHome = () => {
   background: var(--tf-color-surface-soft);
 }
 
-// 验证区域
+/* 验证区域 */
 .verify-section {
   display: flex;
   align-items: center;
@@ -576,7 +576,7 @@ const goHome = () => {
   }
 }
 
-// 订单区域
+/* 订单区域 */
 .orders-section {
   padding-bottom: 20px;
 
@@ -608,7 +608,7 @@ const goHome = () => {
   }
 }
 
-// 订单列表
+/* 订单列表 */
 .orders-list {
   .order-card {
     background: var(--color-bg-white);
@@ -754,14 +754,14 @@ const goHome = () => {
   }
 }
 
-// 加载更多
+/* 加载更多 */
 .load-more {
   padding: 16px;
   text-align: center;
 
   .el-button {
     width: 100%;
-    max-width: 200px;
+
   }
 }
 

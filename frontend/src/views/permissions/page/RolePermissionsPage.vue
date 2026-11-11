@@ -158,8 +158,9 @@
 
                 <div class="permission-switch-grid">
                   <el-button
+                    :aria-pressed="ctx.isDialogMenuPermissionSelected(group.parent.module_key)"
                     native-type="button"
-                    class="permission-switch"
+                    class="permission-switch tf-button--content"
                     :class="{ checked: ctx.isDialogMenuPermissionSelected(group.parent.module_key), disabled: ctx.savingDialogPermissions }"
                     :disabled="ctx.savingDialogPermissions"
                     @click="toggleMenuPermission(group.parent.module_key)"
@@ -182,8 +183,9 @@
                   <el-button
                     v-for="permission in group.parent.permissions"
                     :key="`${group.parent.module_key}-${getPermissionType(permission)}`"
+                    :aria-pressed="ctx.isDialogPermissionSelected(group.parent.module_key, getPermissionType(permission))"
                     native-type="button"
-                    class="permission-switch"
+                    class="permission-switch tf-button--content"
                     :class="{ checked: ctx.isDialogPermissionSelected(group.parent.module_key, getPermissionType(permission)), disabled: ctx.savingDialogPermissions }"
                     :disabled="ctx.savingDialogPermissions"
                     @click="toggleActionPermission(group.parent.module_key, getPermissionType(permission))"
@@ -240,8 +242,9 @@
 
                   <div class="permission-switch-grid">
                     <el-button
+                      :aria-pressed="ctx.isDialogMenuPermissionSelected(child.module_key)"
                       native-type="button"
-                      class="permission-switch"
+                      class="permission-switch tf-button--content"
                       :class="{ checked: ctx.isDialogMenuPermissionSelected(child.module_key), disabled: ctx.savingDialogPermissions }"
                       :disabled="ctx.savingDialogPermissions"
                       @click="toggleMenuPermission(child.module_key)"
@@ -264,8 +267,9 @@
                     <el-button
                       v-for="permission in child.permissions"
                       :key="`${child.module_key}-${getPermissionType(permission)}`"
+                      :aria-pressed="ctx.isDialogPermissionSelected(child.module_key, getPermissionType(permission))"
                       native-type="button"
-                      class="permission-switch"
+                      class="permission-switch tf-button--content"
                       :class="{ checked: ctx.isDialogPermissionSelected(child.module_key, getPermissionType(permission)), disabled: ctx.savingDialogPermissions }"
                       :disabled="ctx.savingDialogPermissions"
                       @click="toggleActionPermission(child.module_key, getPermissionType(permission))"

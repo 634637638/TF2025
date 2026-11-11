@@ -381,9 +381,13 @@
                         v-if="canViewField('settings.price_watermark')"
                         type="index"
                         label="排序"
-                        width="72"
+                        :width="$getNumberColumnWidth((isSiteSettingsLoading ? [] : priceContactsEditor || []).map((_row, $index) => $index + 1), 72)"
                         align="center"
-                      />
+                      >
+                        <template #default="{ $index }">
+                          <span class="table-number-badge">{{ $index + 1 }}</span>
+                        </template>
+                      </el-table-column>
                       <el-table-column
                         v-if="canViewField('settings.price_watermark')"
                         prop="name"

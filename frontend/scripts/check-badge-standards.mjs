@@ -1,5 +1,6 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs'
-import { extname, join, relative, resolve } from 'node:path'
+import { join, relative, resolve } from 'node:path'
+import { auditNumberColumns, auditNumberStyles } from './lib/table-number-contract.mjs'
 
 const frontendRoot = resolve(import.meta.dirname, '..')
 const sourceRoot = join(frontendRoot, 'src')
@@ -45,13 +46,23 @@ if (/\.status-badge\s*\{/.test(legacyGlobalSource)) {
 
 let auditedFiles = 0
 let auditedBadgeReferences = 0
+let auditedTemplates = 0
 for (const filePath of walk(sourceRoot)) {
   const relativeFile = relative(frontendRoot, filePath).split('\\').join('/')
   if (relativeFile === 'src/styles/components/_badges.scss') continue
   const source = readFileSync(filePath, 'utf8')
+  if (filePath.endsWith('.vue')) {
+    auditedTemplates += 1
+    for (const finding of auditNumberColumns(source)) {
+      findings.push(`${relativeFile}:${finding.line} ${finding.message}`)
+    }
+  }
   let hasBadgeReference = false
 
   for (const { source: styleSource, offset } of styleSources(filePath, source)) {
+    if (relativeFile !== 'src/styles/admin-layout.css') {
+      for (const message of auditNumberStyles(styleSource)) findings.push(`${relativeFile} ${message}`)
+    }
     for (const rule of styleSource.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
       const selector = rule[1].trim()
       const declarations = rule[2]
@@ -81,4 +92,4 @@ if (findings.length) {
   process.exit(1)
 }
 
-console.log(`徽章统一审计通过：已检查 ${auditedFiles} 个页面/公共样式文件、${auditedBadgeReferences} 个徽章语义引用；公共 hover、过渡和旧全局入口已收口。`)
+console.log(`徽章统一审计通过：已扫描 ${auditedTemplates} 个页面/组件模板，以及 ${auditedFiles} 个含徽章样式文件、${auditedBadgeReferences} 个徽章语义引用；序号/排名/只读排序/ID、表格外编号、公共列宽与交互均已收口。`)

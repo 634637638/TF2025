@@ -13,7 +13,7 @@
         :key="phone.id"
         class="device-item compact"
       >
-        <div class="device-number">
+        <div class="table-number-badge device-number-position">
           {{ index + 1 }}
         </div>
         <div class="device-image">

@@ -1,16 +1,12 @@
-.inventory-detail-modal .el-dialog__body {
-  padding: 20px;
-}
-
 .inventory-detail-modal .inventory-detail-content {
-  padding: 8px 0;
+  padding: var(--tf-space-2) 0;
 }
 
 .inventory-detail-modal .detail-summary-cards {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 12px;
-  margin-bottom: 16px;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: var(--tf-space-3);
+  margin-bottom: var(--tf-space-4);
 }
 
 .inventory-detail-modal .summary-card {
@@ -18,78 +14,65 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 12px 8px;
-  border: 1px solid var(--admin-table-panel-border);
-  border-radius: var(--admin-panel-radius);
-  background: var(--admin-data-table-bg);
-  box-shadow: var(--tf-button-shadow);
-  transition: box-shadow 0.3s ease, transform 0.3s ease;
+  min-width: 0;
+  gap: var(--tf-space-2);
+  padding: var(--tf-space-4) var(--tf-space-3);
+  border: 1px solid var(--tf-color-border-subtle);
+  border-radius: var(--tf-radius-card);
+  background: var(--tf-color-surface-soft);
+  text-align: center;
 }
 
-.inventory-detail-modal .summary-card:hover {
-  box-shadow: var(--tf-button-shadow-hover);
-  transform: translateY(-2px);
+.inventory-detail-modal .summary-card--supplier {
+  border-color: var(--tf-button-primary-soft-border);
+  background: var(--tf-button-primary-soft-bg);
 }
 
-.inventory-detail-modal .summary-card.highlight {
-  border-color: var(--tf-button-primary-border);
-  background: var(--tf-button-primary-bg);
+.inventory-detail-modal .summary-card--store {
+  border-color: var(--tf-button-view-soft-border);
+  background: var(--tf-button-view-soft-bg);
 }
 
-.inventory-detail-modal .summary-card.days-green {
-  border-color: var(--tf-button-success-border);
-  background: var(--tf-button-success-bg);
+.inventory-detail-modal .summary-card--brand {
+  border-color: var(--tf-button-finance-soft-border);
+  background: var(--tf-button-finance-soft-bg);
 }
 
-.inventory-detail-modal .summary-card.days-yellow {
-  border-color: var(--tf-button-warning-border);
-  background: var(--tf-button-warning-bg);
+.inventory-detail-modal .summary-card--condition {
+  border-color: var(--tf-button-success-soft-border);
+  background: var(--tf-button-success-soft-bg);
 }
 
-.inventory-detail-modal .summary-card.days-red {
-  border-color: var(--tf-button-danger-border);
-  background: var(--tf-button-danger-bg);
+.inventory-detail-modal .summary-card--quantity {
+  border-color: var(--tf-button-transfer-soft-border);
+  background: var(--tf-button-transfer-soft-bg);
+}
+
+.inventory-detail-modal .summary-card.summary-card--quantity .card-value {
+  color: var(--tf-button-transfer-soft-color);
+}
+
+.inventory-detail-modal .summary-card--warning {
+  border-color: var(--tf-button-warning-soft-border);
+  background: var(--tf-button-warning-soft-bg);
+}
+
+.inventory-detail-modal .summary-card.summary-card--warning .card-value {
+  color: var(--tf-button-warning-soft-color);
 }
 
 .inventory-detail-modal .summary-card .card-label {
-  margin-bottom: 4px;
-  color: var(--admin-record-count-color);
-  font-size: var(--tf-type-scale-12);
+  color: var(--tf-color-muted);
+  font-size: var(--tf-font-label);
   font-weight: 500;
-  text-align: center;
 }
 
 .inventory-detail-modal .summary-card .card-value {
-  color: var(--admin-data-table-cell-color);
-  font-size: var(--tf-type-scale-16);
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  color: var(--tf-color-heading);
+  font-size: var(--tf-font-body-lg);
   font-weight: 700;
-  text-align: center;
-}
-
-.inventory-detail-modal .summary-card.highlight :is(.card-label, .card-value),
-.inventory-detail-modal .summary-card.days-green :is(.card-label, .card-value),
-.inventory-detail-modal .summary-card.days-yellow :is(.card-label, .card-value),
-.inventory-detail-modal .summary-card.days-red :is(.card-label, .card-value) {
-  color: var(--tf-button-on-color);
-}
-
-.inventory-detail-modal .badge {
-  display: inline-flex;
-  padding: 4px 8px;
-  border-radius: 12px;
-  font-size: var(--tf-type-scale-12);
-  font-weight: 600;
-}
-
-.inventory-detail-modal .badge-new {
-  background: var(--tf-button-success-soft-bg);
-  color: var(--tf-button-success-soft-color);
-}
-
-.inventory-detail-modal .badge-used {
-  background: var(--tf-button-warning-soft-bg);
-  color: var(--tf-button-warning-soft-color);
 }
 
 .inventory-detail-modal .detail-table-wrapper {
@@ -138,16 +121,6 @@
   font-size: var(--tf-type-scale-10);
 }
 
-.inventory-detail-modal .priority-rank {
-  display: inline-block;
-  min-width: 24px;
-  padding: 4px 8px;
-  border-radius: 8px;
-  background: var(--tf-button-neutral-hover-bg);
-  color: var(--tf-button-tool-color);
-  font-size: var(--tf-type-scale-12);
-  font-weight: 600;
-}
 
 .inventory-detail-modal .priority-row > td {
   background: var(--tf-button-danger-soft-bg);
@@ -184,28 +157,18 @@
 
 @media (max-width: 1024px) and (min-width: 768px) {
   .inventory-detail-modal .detail-summary-cards {
-    grid-template-columns: repeat(4, 1fr);
-    gap: 10px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 767px) {
   .inventory-detail-modal .detail-summary-cards {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 8px;
-    padding: 12px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--tf-space-2);
   }
 
   .inventory-detail-modal .summary-card {
-    padding: 8px 4px;
-  }
-
-  .inventory-detail-modal .summary-card .card-label {
-    font-size: var(--tf-type-scale-10);
-  }
-
-  .inventory-detail-modal .summary-card .card-value {
-    font-size: var(--tf-type-scale-13);
+    padding: var(--tf-space-3);
   }
 
   .inventory-detail-modal .detail-table-wrapper {
@@ -221,6 +184,6 @@
 
 @media (max-width: 479px) {
   .inventory-detail-modal .detail-summary-cards {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

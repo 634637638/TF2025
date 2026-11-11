@@ -193,18 +193,18 @@
                   :alt="`轮播图${index + 1}`"
                 >
                 <div class="image-actions">
-                  <span class="image-index">{{ index + 1 }}</span>
-                  <div
-                    class="image-delete-btn"
+                  <span class="table-number-badge banner-number-position">{{ index + 1 }}</span>
+                  <el-button
+                    native-type="button"
+                    class="image-delete-btn tf-button--overlay-tool tf-button--overlay-danger"
+                    title="删除图片"
+                    aria-label="删除图片"
                     @click="removeImage(index)"
-                    @mouseenter="($event.currentTarget as HTMLElement).style.background = 'rgb(245, 108, 108)'"
-                    @mouseleave="($event.currentTarget as HTMLElement).style.background = 'rgba(245, 108, 108, 0.9)'"
                   >
                     <i
                       class="fas fa-times"
-                      style="font-size: var(--tf-type-scale-12); color: white;"
                     />
-                  </div>
+                  </el-button>
                 </div>
               </div>
               <el-upload

@@ -1546,11 +1546,11 @@
                 >
                   <el-table-column
                     label="序号"
-                    width="60"
+                    :width="$getNumberColumnWidth((customerPurchases || []).map((_row, $index) => $index + 1), 60)"
                     align="center"
                   >
                     <template #default="{ $index }">
-                      <span class="index-badge">{{ $index + 1 }}</span>
+                      <span class="table-number-badge">{{ $index + 1 }}</span>
                     </template>
                   </el-table-column>
                   <el-table-column
@@ -4188,19 +4188,6 @@ onUnmounted(() => {
 
 <style lang="scss">
 .customer-purchases-table {
-  .index-badge {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 24px;
-    height: 24px;
-    padding: 0 5px;
-    border-radius: 6px;
-    background: var(--el-color-primary);
-    color: var(--color-bg-white);
-    font-weight: 600;
-  }
-
   .imei,
   .serial-number,
   .price,

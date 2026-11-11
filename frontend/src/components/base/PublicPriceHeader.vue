@@ -27,7 +27,7 @@
       class="notice-section"
     >
       <div class="container">
-        <div class="action-buttons">
+        <div class="price-header-actions">
           <slot name="actions" />
         </div>
       </div>
@@ -88,11 +88,12 @@ defineProps<Props>()
     text-align: center;
   }
 
-  .action-buttons {
+  .price-header-actions {
     display: inline-grid;
     grid-auto-flow: column;
     grid-auto-columns: 1fr;
     align-items: center;
+    gap: var(--tf-space-2);
     padding: 0 20px;
     min-width: 0;
   }
@@ -106,15 +107,9 @@ defineProps<Props>()
     width: 100%;
     min-width: max-content;
     max-width: none;
-    height: var(--tf-button-height, 36px);
-    min-height: var(--tf-button-height, 36px);
-    padding: 0 var(--tf-button-padding-x, 16px);
-    border: 1px solid transparent;
-    border-radius: var(--tf-button-radius, 6px);
+
     box-sizing: border-box;
-    font-size: var(--tf-button-font-size, var(--tf-type-scale-14));
-    font-weight: var(--tf-button-font-weight, 600);
-    line-height: 1;
+
     cursor: pointer;
     transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
 
@@ -140,52 +135,9 @@ defineProps<Props>()
       min-width: 0;
     }
 
-    &:focus-visible {
-      outline: none;
-      box-shadow: var(--tf-button-focus-ring);
-    }
-
     &:disabled {
-      background: var(--tf-button-disabled-bg);
-      border-color: var(--tf-button-disabled-border);
-      color: var(--tf-button-disabled-color);
-      box-shadow: none;
+
       cursor: not-allowed;
-    }
-  }
-
-  :deep(.price-header-action--notice) {
-    background: var(--tf-button-neutral-bg);
-    border-color: var(--tf-button-neutral-border);
-    color: var(--tf-button-neutral-color);
-
-    &:hover:not(:disabled) {
-      background: var(--tf-button-neutral-hover-bg);
-      border-color: var(--tf-button-neutral-hover-border);
-      color: var(--tf-button-neutral-hover-color);
-    }
-  }
-
-  :deep(.price-header-action--inventory) {
-    background: var(--tf-button-primary-bg);
-    border-color: var(--tf-button-primary-border);
-    color: var(--tf-button-primary-color);
-
-    &:hover:not(:disabled),
-    &.active {
-      background: var(--tf-button-primary-hover-bg);
-      border-color: var(--tf-button-primary-hover-border);
-    }
-  }
-
-  :deep(.price-header-action--download) {
-    background: var(--tf-button-success-bg);
-    border-color: var(--tf-button-success-border);
-    color: var(--tf-button-success-color);
-
-    &:hover:not(:disabled) {
-      background: var(--tf-button-success-hover-bg);
-      border-color: var(--tf-button-success-hover-border);
     }
   }
 
@@ -211,19 +163,12 @@ defineProps<Props>()
     }
   }
 
-  .notice-section .action-buttons {
+  .notice-section .price-header-actions {
     padding: 0 12px;
   }
 
   .public-price-header.has-actions .header-section {
     padding-bottom: 16px;
-  }
-
-  .notice-section :deep(.price-header-action) {
-    height: var(--touch-min, 44px);
-    min-height: var(--touch-min, 44px);
-    padding: 0 16px;
-    font-size: var(--tf-type-scale-13);
   }
 }
 
@@ -237,7 +182,7 @@ defineProps<Props>()
     }
   }
 
-  .notice-section .action-buttons {
+  .notice-section .price-header-actions {
     padding: 0 10px;
   }
 
@@ -247,8 +192,6 @@ defineProps<Props>()
 
   .notice-section :deep(.price-header-action) {
     gap: 4px;
-    padding: 0 12px;
-    font-size: var(--tf-type-scale-12);
 
     .btn-content {
       gap: 4px;
@@ -257,7 +200,7 @@ defineProps<Props>()
 }
 
 @media (max-width: 360px) {
-  .notice-section .action-buttons {
+  .notice-section .price-header-actions {
     padding: 0 6px;
   }
 }

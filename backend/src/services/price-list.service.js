@@ -696,6 +696,9 @@ class PriceListService {
           COALESCE(pl.show_price, 0) as show_price,
           pl.external_model,
           pl.source_config_id,
+          COALESCE(selected_source.id, default_source.id) AS pricing_source_config_id,
+          pl.wholesale_rule_mode,
+          pl.wholesale_rule_adjustment,
           COALESCE(selected_source.config_name, default_source.config_name, '默认来源') as source_name,
           COALESCE(selected_source.source_type, default_source.source_type, 'account') as source_type,
           COALESCE(selected_source.login_username, default_source.login_username) as source_login_username,
@@ -751,7 +754,8 @@ class PriceListService {
         row.wholesale_display_price = pricingService.calculateWholesalePriceByConfig(
           row.wholesale_price,
           markupConfig,
-          row.source_config_id
+          row.pricing_source_config_id ?? row.source_config_id,
+          row
         )
       })
 
@@ -774,79 +778,6 @@ class PriceListService {
   }
 
   /**
-   * 批量绑定价格记录的采集来源。
-   * 绑定关系用于后续同步和批发加价匹配，当前已采集原价保持不变。
-   */
-  async batchUpdatePriceSource(data = {}) {
-    try {
-      if (!this.db) {
-        return { success: false, message: '数据库未初始化', statusCode: 503 }
-      }
-
-      const rawIds = Array.isArray(data.price_list_ids) ? data.price_list_ids : []
-      const ids = [...new Set(rawIds.map(value => Number(value)))]
-
-      if (ids.length === 0) {
-        return { success: false, message: '请选择至少一条价格记录' }
-      }
-      if (ids.some(id => !Number.isInteger(id) || id <= 0)) {
-        return { success: false, message: '价格记录 ID 无效' }
-      }
-      if (ids.length > 500) {
-        return { success: false, message: '单次最多选择500条价格记录' }
-      }
-
-      const hasSourceConfigId = Object.prototype.hasOwnProperty.call(data, 'source_config_id')
-      const sourceConfigId = data.source_config_id === null || data.source_config_id === '' || data.source_config_id === undefined
-        ? null
-        : Number(data.source_config_id)
-
-      if (!hasSourceConfigId) {
-        return { success: false, message: '请选择采集来源' }
-      }
-      if (sourceConfigId !== null && (!Number.isInteger(sourceConfigId) || sourceConfigId <= 0)) {
-        return { success: false, message: '采集来源无效' }
-      }
-
-      if (sourceConfigId !== null) {
-        const [sourceRows] = await this.db.query(
-          'SELECT id FROM price_sync_config WHERE id = ? LIMIT 1',
-          [sourceConfigId]
-        )
-        if (sourceRows.length === 0) {
-          return { success: false, message: '采集来源不存在' }
-        }
-      }
-
-      const placeholders = ids.map(() => '?').join(', ')
-      const [existingRows] = await this.db.query(
-        `SELECT id FROM price_list WHERE id IN (${placeholders})`,
-        ids
-      )
-      if (existingRows.length !== ids.length) {
-        return { success: false, message: '部分价格记录不存在，请刷新后重试' }
-      }
-
-      const updatedAt = this.getBeijingTime()
-      const [result] = await this.db.query(
-        `UPDATE price_list
-         SET source_config_id = ?, updated_at = ?
-         WHERE id IN (${placeholders})`,
-        [sourceConfigId, updatedAt, ...ids]
-      )
-
-      return this.createSuccessResponse('采集来源设置成功', {
-        requested: ids.length,
-        updated: Number(result.affectedRows) || 0,
-        source_config_id: sourceConfigId
-      })
-    } catch (error) {
-      log.error('批量设置采集来源失败:', error)
-      return this.createErrorResponse('批量设置采集来源失败')
-    }
-  }
-
-  /**
    * 根据品牌获取价格（公开接口）
    */
   async getPricesByBrand(brandName) {
@@ -858,6 +789,9 @@ class PriceListService {
           c.name as color_name,
           mem.size as memory,
           p.source_config_id,
+          COALESCE(p.source_config_id, (SELECT id FROM price_sync_config WHERE is_default = 1 LIMIT 1)) AS pricing_source_config_id,
+          p.wholesale_rule_mode,
+          p.wholesale_rule_adjustment,
           p.retail_price,
           p.wholesale_price,
           p.stock_quantity,
@@ -904,6 +838,9 @@ class PriceListService {
           p.color_id,
           p.memory_id,
           p.source_config_id,
+          COALESCE(p.source_config_id, (SELECT id FROM price_sync_config WHERE is_default = 1 LIMIT 1)) AS pricing_source_config_id,
+          p.wholesale_rule_mode,
+          p.wholesale_rule_adjustment,
           b.name as brand_name,
           mo.name as model_number,
           c.name as color_name,
@@ -1140,6 +1077,9 @@ class PriceListService {
           p.color_id,
           p.memory_id,
           p.source_config_id,
+          COALESCE(p.source_config_id, (SELECT id FROM price_sync_config WHERE is_default = 1 LIMIT 1)) AS pricing_source_config_id,
+          p.wholesale_rule_mode,
+          p.wholesale_rule_adjustment,
           b.name as brand_name,
           mo.name as model_number,
           c.name as color_name,
@@ -4487,7 +4427,8 @@ class PriceListService {
       const displayWholesalePrice = pricingService.calculateWholesalePriceByConfig(
         wholesalePrice,
         config,
-        item.source_config_id
+        item.pricing_source_config_id ?? item.source_config_id,
+        item
       )
 
       return {
