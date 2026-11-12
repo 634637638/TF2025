@@ -23,7 +23,7 @@
                 总销售额
               </div>
               <div class="card-value">
-                ¥{{ formatNumber(profitData.totalRevenue || 0) }}
+                ¥{{ formatAmount(profitData.totalRevenue || 0) }}
               </div>
             </div>
           </div>
@@ -47,7 +47,7 @@
                 总成本
               </div>
               <div class="card-value">
-                ¥{{ formatNumber(profitData.totalCost || 0) }}
+                ¥{{ formatAmount(profitData.totalCost || 0) }}
               </div>
             </div>
           </div>
@@ -71,7 +71,7 @@
                 销售利润
               </div>
               <div class="card-value">
-                ¥{{ formatNumber(profitData.grossProfit || 0) }}
+                ¥{{ formatAmount(profitData.grossProfit || 0) }}
               </div>
             </div>
           </div>
@@ -153,7 +153,7 @@
                   利润
                 </div>
                 <div class="stat-value">
-                  ¥{{ formatNumber(newData.profit) }}
+                  ¥{{ formatAmount(newData.profit) }}
                 </div>
               </div>
             </el-col>
@@ -167,7 +167,7 @@
                   销售金额
                 </div>
                 <div class="stat-value">
-                  ¥{{ formatNumber(newData.salesAmount) }}
+                  ¥{{ formatAmount(newData.salesAmount) }}
                 </div>
               </div>
             </el-col>
@@ -233,7 +233,7 @@
                   利润
                 </div>
                 <div class="stat-value">
-                  ¥{{ formatNumber(usedData.profit) }}
+                  ¥{{ formatAmount(usedData.profit) }}
                 </div>
               </div>
             </el-col>
@@ -247,7 +247,7 @@
                   销售金额
                 </div>
                 <div class="stat-value">
-                  ¥{{ formatNumber(usedData.salesAmount) }}
+                  ¥{{ formatAmount(usedData.salesAmount) }}
                 </div>
               </div>
             </el-col>
@@ -326,7 +326,7 @@
                   调货利润
                 </div>
                 <div class="stat-value">
-                  ¥{{ formatNumber(transferData.wholesaleProfit) }}
+                  ¥{{ formatAmount(transferData.wholesaleProfit) }}
                 </div>
               </div>
             </el-col>
@@ -340,7 +340,7 @@
                   划拨利润
                 </div>
                 <div class="stat-value">
-                  ¥{{ formatNumber(transferData.allocationProfit) }}
+                  ¥{{ formatAmount(transferData.allocationProfit) }}
                 </div>
               </div>
             </el-col>
@@ -408,7 +408,7 @@
                 </div>
                 <div class="value-item">
                   <span class="label">金额:</span>
-                  <span class="num">¥{{ formatNumber(brand.amount) }}</span>
+                  <span class="num">¥{{ formatAmount(brand.amount) }}</span>
                 </div>
               </div>
             </div>
@@ -469,7 +469,7 @@
                 </div>
                 <div class="value-item">
                   <span class="label">金额:</span>
-                  <span class="num">¥{{ formatNumber(model.amount) }}</span>
+                  <span class="num">¥{{ formatAmount(model.amount) }}</span>
                 </div>
               </div>
             </div>
@@ -579,7 +579,7 @@
                 align="right"
               >
                 <template #default="{ row }">
-                  ¥{{ formatNumber(row.newAmount) }}
+                  ¥{{ formatAmount(row.newAmount) }}
                 </template>
               </el-table-column>
               <el-table-column
@@ -589,7 +589,7 @@
                 align="right"
               >
                 <template #default="{ row }">
-                  ¥{{ formatNumber(row.newProfit) }}
+                  ¥{{ formatAmount(row.newProfit) }}
                 </template>
               </el-table-column>
             </el-table-column>
@@ -610,7 +610,7 @@
                 align="right"
               >
                 <template #default="{ row }">
-                  ¥{{ formatNumber(row.usedAmount) }}
+                  ¥{{ formatAmount(row.usedAmount) }}
                 </template>
               </el-table-column>
               <el-table-column
@@ -620,7 +620,7 @@
                 align="right"
               >
                 <template #default="{ row }">
-                  ¥{{ formatNumber(row.usedProfit) }}
+                  ¥{{ formatAmount(row.usedProfit) }}
                 </template>
               </el-table-column>
             </el-table-column>
@@ -638,12 +638,12 @@
                   <span class="summary-divider">|</span>
                   <span class="summary-item-inline">
                     <span class="summary-label">销售额:</span>
-                    <span class="summary-value">¥{{ formatNumber(row.totalAmount) }}</span>
+                    <span class="summary-value">¥{{ formatAmount(row.totalAmount) }}</span>
                   </span>
                   <span class="summary-divider">|</span>
                   <span class="summary-item-inline">
                     <span class="summary-label">利润:</span>
-                    <span class="summary-value">¥{{ formatNumber(row.totalProfit) }}</span>
+                    <span class="summary-value">¥{{ formatAmount(row.totalProfit) }}</span>
                   </span>
                 </div>
               </template>
@@ -683,7 +683,7 @@
                   本月
                 </div>
                 <div class="metric-compare-value">
-                  ¥{{ formatNumber(profitData.netProfit || 0) }}
+                  ¥{{ formatAmount(profitData.netProfit || 0) }}
                 </div>
                 <div class="metric-compare-rate">
                   {{ profitData.netMarginRate || 0 }}%
@@ -697,7 +697,7 @@
                   上月
                 </div>
                 <div class="metric-compare-value">
-                  ¥{{ formatNumber(profitData.lastMonth?.netProfit || 0) }}
+                  ¥{{ formatAmount(profitData.lastMonth?.netProfit || 0) }}
                 </div>
                 <div class="metric-compare-rate">
                   {{ profitData.lastMonth?.netMarginRate || 0 }}%
@@ -750,7 +750,7 @@
                     {{ store.name }}
                   </div>
                   <div class="store-profit-value">
-                    ¥{{ formatNumber(store.profit) }}
+                    ¥{{ formatAmount(store.profit) }}
                   </div>
                 </div>
                 <div
@@ -774,7 +774,7 @@
             >
               <span>盈利门店 {{ profitableStoreCount }}/{{ rankedStoreProfits.length }}</span>
               <span :class="averageStoreProfit >= 0 ? 'text-success' : 'text-danger'">
-                店均 ¥{{ formatNumber(averageStoreProfit) }}
+                店均 ¥{{ formatAmount(averageStoreProfit) }}
               </span>
             </div>
           </div>
@@ -795,12 +795,12 @@
               type="success"
               size="large"
             >
-              ¥{{ formatNumber(profitData.perCapitaOutput || 0) }}
+              ¥{{ formatAmount(profitData.perCapitaOutput || 0) }}
             </el-tag>
           </div>
           <div class="metric-body">
             <div class="metric-value">
-              ¥{{ formatNumber(profitData.perCapitaOutput || 0) }}
+              ¥{{ formatAmount(profitData.perCapitaOutput || 0) }}
             </div>
             <div class="metric-desc">
               人均月度产值
@@ -822,7 +822,7 @@
                   人均净利润
                 </div>
                 <div class="metric-compare-value">
-                  ¥{{ formatNumber(perCapitaNetProfit) }}
+                  ¥{{ formatAmount(perCapitaNetProfit) }}
                 </div>
               </div>
             </div>
@@ -884,7 +884,7 @@
                 {{ profitTrendSummaryLabel }}收入
               </div>
               <div class="trend-summary-value">
-                ¥{{ formatNumber(profitTrendCurrentSummary.revenue) }}
+                ¥{{ formatAmount(profitTrendCurrentSummary.revenue) }}
               </div>
             </div>
             <div class="trend-summary-card cost">
@@ -892,7 +892,7 @@
                 {{ profitTrendSummaryLabel }}成本
               </div>
               <div class="trend-summary-value">
-                ¥{{ formatNumber(profitTrendCurrentSummary.cost) }}
+                ¥{{ formatAmount(profitTrendCurrentSummary.cost) }}
               </div>
             </div>
             <div class="trend-summary-card profit">
@@ -900,7 +900,7 @@
                 {{ profitTrendSummaryLabel }}利润
               </div>
               <div class="trend-summary-value">
-                ¥{{ formatNumber(profitTrendCurrentSummary.profit) }}
+                ¥{{ formatAmount(profitTrendCurrentSummary.profit) }}
               </div>
             </div>
           </div>
@@ -1020,7 +1020,7 @@
                 {{ topProductProfit?.name || '-' }}
               </div>
               <div class="summary-value">
-                ¥{{ formatNumber(topProductProfit?.profit || 0) }}
+                ¥{{ formatAmount(topProductProfit?.profit || 0) }}
               </div>
             </div>
             <div class="product-profit-summary-item">
@@ -1042,7 +1042,7 @@
                 TOP10 型号均值
               </div>
               <div class="summary-value">
-                ¥{{ formatNumber(averageProductUnitProfit) }}
+                ¥{{ formatAmount(averageProductUnitProfit) }}
               </div>
             </div>
           </div>
@@ -1087,7 +1087,7 @@
                 {{ topProfitStore?.name || '-' }}
               </div>
               <div class="summary-value">
-                ¥{{ formatNumber(topProfitStore?.profit || 0) }}
+                ¥{{ formatAmount(topProfitStore?.profit || 0) }}
               </div>
             </div>
             <div class="store-comparison-summary-item">
@@ -1098,7 +1098,7 @@
                 {{ topRevenueStore?.name || '-' }}
               </div>
               <div class="summary-value">
-                ¥{{ formatNumber(topRevenueStore?.revenue || 0) }}
+                ¥{{ formatAmount(topRevenueStore?.revenue || 0) }}
               </div>
             </div>
             <div class="store-comparison-summary-item">
@@ -1195,7 +1195,7 @@
               align="right"
             >
               <template #default="{ row }">
-                ¥{{ formatNumber(row.amount) }}
+                ¥{{ formatAmount(row.amount) }}
               </template>
             </el-table-column>
             <el-table-column
@@ -1261,6 +1261,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatAmount } from '@/utils/format'
 import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import { useNotification } from '@/composables/useNotification'
 import { useLoadingState } from '@/composables'
@@ -1528,16 +1529,16 @@ const profitTrendCurrentSummary = computed(() => {
   const currentPeriod = profitTrendSeries.value[profitTrendSeries.value.length - 1]
   if (currentPeriod) {
     return {
-      revenue: Math.round(currentPeriod.totalRevenue || 0),
-      cost: Math.round(currentPeriod.totalCost || 0),
-      profit: Math.round(currentPeriod.totalProfit || 0)
+      revenue: Number(formatAmount(currentPeriod.totalRevenue || 0)),
+      cost: Number(formatAmount(currentPeriod.totalCost || 0)),
+      profit: Number(formatAmount(currentPeriod.totalProfit || 0))
     }
   }
 
   return {
-    revenue: Math.round(profitData.value.totalRevenue || 0),
-    cost: Math.round(profitData.value.totalCost || 0),
-    profit: Math.round(profitData.value.netProfit || 0)
+    revenue: Number(formatAmount(profitData.value.totalRevenue || 0)),
+    cost: Number(formatAmount(profitData.value.totalCost || 0)),
+    profit: Number(formatAmount(profitData.value.netProfit || 0))
   }
 })
 
@@ -1851,13 +1852,13 @@ const calculateProfitData = () => {
   // 更新 profitData
   profitData.value = {
     ...profitData.value,
-    totalRevenue: Math.round(totalRevenue),
-    totalCost: Math.round(totalCost),
-    grossProfit: Math.round(grossProfit),
+    totalRevenue: Number(formatAmount(totalRevenue)),
+    totalCost: Number(formatAmount(totalCost)),
+    grossProfit: Number(formatAmount(grossProfit)),
     totalSalesCount: Math.round(totalSalesCount),
     marginRate: parseFloat(marginRate.toFixed(1)),
     // 净利润 = 销售价 - 入库价，即毛利润
-    netProfit: Math.round(grossProfit),
+    netProfit: Number(formatAmount(grossProfit)),
     netMarginRate: parseFloat((grossProfit / totalRevenue * 100).toFixed(1)) || 0
   }
 
@@ -2131,7 +2132,7 @@ const loadProfitData = async (showLoadingState = true) => {
         costAnalysisData.value = [
           {
             category: 'purchase',
-            amount: Math.round(purchaseCost),
+            amount: Number(formatAmount(purchaseCost)),
             percentage: parseFloat(((purchaseCost / totalRevenue) * 100).toFixed(1)),
             yoy: 0,
             mom: 0,
@@ -2306,7 +2307,7 @@ const updateProfitTrendChart = () => {
         const items = normalizeTooltipParams(params)
         let result = `${items[0]?.name ?? ''}<br/>`
         items.forEach(item => {
-          result += `${item.marker ?? ''}${item.seriesName ?? ''}: ¥${formatNumber(Number(item.value ?? 0))}<br/>`
+          result += `${item.marker ?? ''}${item.seriesName ?? ''}: ¥${formatAmount(Number(item.value ?? 0))}<br/>`
         })
         return result
       }
@@ -2395,11 +2396,11 @@ const updateProductProfitChart = () => {
           <div class="p-2">
             <div class="font-bold mb-2">${item.name}</div>
             <div>销售数量: ${item.count} 台</div>
-            <div>销售收入: ¥${formatNumber(item.revenue)}</div>
-            <div>销售成本: ¥${formatNumber(item.cost)}</div>
-            <div>销售利润: ¥${formatNumber(item.profit)}</div>
+            <div>销售收入: ¥${formatAmount(item.revenue)}</div>
+            <div>销售成本: ¥${formatAmount(item.cost)}</div>
+            <div>销售利润: ¥${formatAmount(item.profit)}</div>
             <div>利润率: ${item.marginRate}%</div>
-            <div>单台利润: ¥${formatNumber(item.unitProfit)}</div>
+            <div>单台利润: ¥${formatAmount(item.unitProfit)}</div>
           </div>
         `
       }
@@ -2510,9 +2511,9 @@ const updateStoreComparison = () => {
           return `
             <div class="p-2">
               <div class="font-bold mb-2">${item.name}</div>
-              <div>销售收入: ¥${formatNumber(item.revenue)}</div>
-              <div>销售成本: ¥${formatNumber(item.cost)}</div>
-              <div>销售利润: ¥${formatNumber(item.profit)}</div>
+              <div>销售收入: ¥${formatAmount(item.revenue)}</div>
+              <div>销售成本: ¥${formatAmount(item.cost)}</div>
+              <div>销售利润: ¥${formatAmount(item.profit)}</div>
               <div>利润率: ${item.margin}%</div>
               <div>销售数量: ${item.count} 台</div>
             </div>
@@ -2522,8 +2523,8 @@ const updateStoreComparison = () => {
           return `
             <div class="p-2">
               <div class="font-bold mb-2">${item.name}</div>
-              <div>销售收入: ¥${formatNumber(item.revenue)}</div>
-              <div>销售利润: ¥${formatNumber(item.profit)}</div>
+              <div>销售收入: ¥${formatAmount(item.revenue)}</div>
+              <div>销售利润: ¥${formatAmount(item.profit)}</div>
               <div>利润率: ${item.margin}%</div>
             </div>
           `
@@ -2668,7 +2669,7 @@ const updateForecastChart = () => {
   const monthsCount = periodMap[forecastPeriod.value as keyof typeof periodMap] || 3
   const clampRate = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max)
   const historyLabels = historySeries.map(item => item.label)
-  const historyProfitData = historySeries.map(item => Math.round(item.totalProfit || 0))
+  const historyProfitData = historySeries.map(item => Number(formatAmount(item.totalProfit || 0)))
   const anchorValue = historySeries[historySeries.length - 1]?.endDate || endDate.value || TimeUtil.nowFormatted(TIME_FORMATS.DATE)
   const anchorDate = TimeUtil.parse(anchorValue) || TimeUtil.now()
 
@@ -2718,12 +2719,12 @@ const updateForecastChart = () => {
     let revenue = historySeries[historySeries.length - 1]?.totalRevenue || 0
     let cost = historySeries[historySeries.length - 1]?.totalCost || 0
 
-    data.push(Math.round(historySeries[historySeries.length - 1]?.totalProfit || 0))
+    data.push(Number(formatAmount(historySeries[historySeries.length - 1]?.totalProfit || 0)))
 
     for (let index = 0; index < monthsCount; index += 1) {
       revenue = Math.max(0, revenue * (1 + scenarioRates[scenario].revenue))
       cost = Math.max(0, cost * (1 + scenarioRates[scenario].cost))
-      data.push(Math.round(revenue - cost))
+      data.push(Number(formatAmount(revenue - cost)))
     }
 
     return data
@@ -2740,7 +2741,7 @@ const updateForecastChart = () => {
         const items = normalizeTooltipParams(params)
         let result = `${items[0]?.name ?? ''}<br/>`
         items.forEach(item => {
-          result += `${item.marker ?? ''}${item.seriesName ?? ''}: ¥${formatNumber(Number(item.value ?? 0))}<br/>`
+          result += `${item.marker ?? ''}${item.seriesName ?? ''}: ¥${formatAmount(Number(item.value ?? 0))}<br/>`
         })
         return result
       }

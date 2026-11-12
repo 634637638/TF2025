@@ -71,7 +71,6 @@
           :columns="tableColumns"
           :enable-row-double-tap="windowWidth <= 1024"
           :format-date="formatDate"
-          :format-number="formatNumber"
           :get-column-class="getInventoryColumnClass"
           :get-column-min-width="getInventoryColumnMinWidth"
           :get-column-width="getInventoryColumnWidth"
@@ -151,6 +150,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatAmount } from '@/utils/format'
 import { ref, reactive, onMounted, computed, watch, onUnmounted, onActivated, defineAsyncComponent } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 
@@ -363,7 +363,7 @@ const getInventoryColumnValue = (columnKey: string, item: InventoryItem) => {
   case 'memory': return item.memory_name || item.memory || '-'
   case 'serial_number': return item.serial_number || '-'
   case 'imei': return item.imei || '-'
-  case 'purchase_cost': return `¥${formatNumber(item.purchase_cost || 0)}`
+  case 'purchase_cost': return `¥${formatAmount(item.purchase_cost || 0)}`
   case 'inventory_operator_name': return item.inventory_operator_name || item.operator_name || '-'
   case 'is_new': return getConditionText(item.is_new ?? 0)
   case 'is_preordered': return getSaleStatusLabel(item)
@@ -469,7 +469,6 @@ const getInventoryColumnClass = (column: { key: string }) => {
   if (column.key === 'actions' || column.key === 'mall') return 'actions-column'
   return ''
 }
-
 
 
 const selectedItem = ref<InventoryItem | null>(null)
@@ -628,7 +627,7 @@ const statCards = computed(() => ([
     accentClass: 'stat-card--money',
     permission: 'stats_inventory_value',
     label: '库存总值',
-    value: statsAvailable.value ? `¥${formatNumber(stats.totalValue)}` : '暂无数据',
+    value: statsAvailable.value ? `¥${formatAmount(stats.totalValue)}` : '暂无数据',
     icon: 'fas fa-dollar-sign'
   }
 ]).filter(stat => canViewField(stat.permission)))
@@ -950,7 +949,7 @@ watch([showEditModal, selectedPhoneForEdit], async ([newVal, selectedPhone]) => 
       imei: phone.imei || '',
       purchase_cost: phone.purchase_cost === null || phone.purchase_cost === undefined
         ? null
-        : Math.round(Number(phone.purchase_cost)),
+        : Number(phone.purchase_cost),
       supplier_id: phone.supplier_id || null,
       store_id: phone.store_id || null,
       condition: isNewInventoryValue(phone.is_new) ? '全新' : '二手',
@@ -1314,9 +1313,6 @@ const formatDate = (dateString?: string) => {
   return TimeUtil.toDateInputValue(dateString) || '-'
 }
 
-const formatNumber = (num?: number) => {
-  return num?.toLocaleString('zh-CN') || '0'
-}
 
 const getInventoryDisplayName = (item: InventoryItem) => {
   const parts = [
@@ -1342,7 +1338,6 @@ const getConditionText = (isNew: boolean | number | string) => {
   const isNewValue = Number(isNew)
   return isNewValue === 1 ? '全新' : '二手'
 }
-
 
 
 // 删除商品

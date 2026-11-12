@@ -550,12 +550,10 @@
             prop="refund_amount"
             class="edit-item"
           >
-            <el-input-number
+            <AmountInput
               v-model="editForm.refund_amount"
               :min="0"
               :max="99999999.99"
-              :precision="2"
-              :controls="false"
             />
           </el-form-item>
           <el-form-item

@@ -764,7 +764,7 @@
               border
             >
               <el-descriptions-item label="基本工资">
-                <span class="amount">¥{{ employeeSalary.base_salary || 0 }}</span>
+                <span class="amount">¥{{ formatAmount(employeeSalary.base_salary || 0) }}</span>
               </el-descriptions-item>
               <el-descriptions-item label="提成比例">
                 {{ employeeSalary.commission_new || 0 }}% / {{ employeeSalary.commission_used || 0 }}%
@@ -783,13 +783,13 @@
               border
             >
               <el-descriptions-item label="加班费率">
-                ¥{{ employeeSalary.overtime_rate || 0 }}/小时
+                ¥{{ formatAmount(employeeSalary.overtime_rate || 0) }}/小时
               </el-descriptions-item>
               <el-descriptions-item label="缺勤扣除">
-                ¥{{ employeeSalary.deduction_absent || 0 }}/天
+                ¥{{ formatAmount(employeeSalary.deduction_absent || 0) }}/天
               </el-descriptions-item>
               <el-descriptions-item label="全勤奖金">
-                ¥{{ employeeSalary.bonus_attendance || 0 }}
+                ¥{{ formatAmount(employeeSalary.bonus_attendance || 0) }}
               </el-descriptions-item>
               <el-descriptions-item
                 v-if="canViewField('salary_template_name')"
@@ -971,6 +971,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatAmount } from '@/utils/format'
 import { confirmAction } from '@/utils/message-box'
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'

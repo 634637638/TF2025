@@ -27,7 +27,14 @@ test('弹窗审计接受公共尺寸规则并拒绝默认参数覆盖和档位�
       ['正文间距覆盖', '<template><div /></template><style>.private-dialog .el-dialog__body { padding:4px; }</style>', /padding 必须由公共弹窗入口/],
       ['原生输入框', '<script setup>window.prompt("姓名")</script>', /window.prompt 必须复用公共通知/],
       ['直接业务 Dialog', '<template><el-dialog /></template>', /必须迁移到 MobileDialog/],
-      ['直接图片查看', '<template><el-image-viewer /></template>', /图片查看必须使用 MediaPreviewViewer/]
+      ['查看弹窗禁用遮罩关闭', '<template><MobileDialog title="查看详情" :close-on-click-modal="false" /></template>', /查看类弹窗必须允许遮罩关闭/],
+      ['表单沿用遮罩关闭默认值', '<template><MobileDialog><el-form><el-input /></el-form></MobileDialog></template>', /待提交表单必须禁用遮罩关闭/],
+      ['无 form 的编辑器允许遮罩关闭', '<template><MobileDialog><el-input /><el-button>保存</el-button></MobileDialog></template>', /待提交表单必须禁用遮罩关闭/],
+      ['百分比弹窗宽度', '<template><MobileDialog width="90%" /></template>', /不得使用 90% 宽度/],
+      ['绑定百分比弹窗宽度', '<template><MobileDialog :width="\'90%\'" /></template>', /不得使用 90% 宽度/],
+      ['长写绑定百分比弹窗宽度', '<template><MobileDialog v-bind:width="\'90%\'" /></template>', /不得使用 90% 宽度/],
+      ['直接图片查看', '<template><el-image-viewer /></template>', /图片查看必须使用 MediaPreviewViewer/],
+      ['图片内置预览', '<template><el-image :preview-src-list="images" /></template>', /图片查看必须使用 MediaPreviewViewer/]
     ]) {
       await t.test(`拒绝${label}`, async () => {
         const probe = join(fixture, 'src/components/AuditProbe.vue')

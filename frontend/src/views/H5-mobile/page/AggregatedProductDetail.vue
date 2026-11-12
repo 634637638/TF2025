@@ -99,7 +99,7 @@
         >
           <div class="memory-info">
             <span class="memory-name">{{ memory.name }}</span>
-            <span class="memory-price">¥{{ memory.price }}</span>
+            <span class="memory-price">¥{{ formatAmount(memory.price) }}</span>
           </div>
           <div class="memory-check">
             <i

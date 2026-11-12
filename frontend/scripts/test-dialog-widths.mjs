@@ -15,7 +15,8 @@ const root = resolve(import.meta.dirname, '..')
 const interactionsOnly = process.argv.includes('--interactions-only')
 const safeAreaOnly = process.argv.includes('--safe-area-only')
 const priceHeaderOnly = process.argv.includes('--price-header-only')
-const focusedRun = interactionsOnly || safeAreaOnly || priceHeaderOnly
+const mediaOnly = process.argv.includes('--media-only')
+const focusedRun = interactionsOnly || safeAreaOnly || priceHeaderOnly || mediaOnly
 const chrome = process.env.CHROME_BIN || [
   '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
   '/usr/bin/chromium', '/usr/bin/chromium-browser', '/usr/bin/google-chrome'
@@ -127,7 +128,60 @@ import '/src/styles.scss';
 import '/src/styles/components/_dialog.scss';
 import '/src/styles/components/_dialog-actions.scss';
 import '/__dialog-business-styles.js';
-let app, state, stackState;
+let app, state, stackState, mediaState, videoUrl;
+const mediaItems = [[160,320],[320,160]].map(([width,height],index) => ({
+  url:'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="'+width+'" height="'+height+'"><rect width="100%" height="100%" fill="'+(index?'purple':'orange')+'"/></svg>'),
+  label:'测试长文件名'.repeat(20) + index
+}));
+window.renderMedia = async (options = {}) => {
+  ElMessageBox.close(); app?.unmount(); await nextTick();
+  mediaState = reactive({ modelValue:true, items:mediaItems, deletable:true, downloadable:true, ...options });
+  app = createApp({render:() => h(MediaPreviewViewer, {...mediaState, 'onUpdate:modelValue':value => {mediaState.modelValue=value;}})});
+  app.component('ElButton',ElButton); app.mount('#app'); await nextTick();
+  await Promise.all([...document.querySelectorAll('.media-preview-content')].filter(item=>item.tagName==='IMG').map(image=>image.decode()));
+};
+window.renderVideoMedia = async () => {
+  if (!videoUrl) {
+    const canvas=document.createElement('canvas'); canvas.width=320; canvas.height=180;
+    const context=canvas.getContext('2d'); context.fillStyle='orange'; context.fillRect(0,0,320,180);
+    const stream=canvas.captureStream(0), recorder=new MediaRecorder(stream), chunks=[];
+    const recorded=new Promise((resolve,reject)=>{
+      recorder.ondataavailable=event=>chunks.push(event.data);
+      recorder.onstop=()=>resolve(new Blob(chunks,{type:recorder.mimeType}));
+      recorder.onerror=reject;
+    });
+    recorder.start();
+    for(let frame=0;frame<10;frame++) {
+      context.fillStyle=frame%2?'orange':'purple'; context.fillRect(0,0,320,180);
+      stream.getVideoTracks()[0].requestFrame();
+      await new Promise(resolve=>setTimeout(resolve,70));
+    }
+    recorder.stop();
+    try { videoUrl=URL.createObjectURL(await recorded); } finally { stream.getTracks().forEach(track=>track.stop()); }
+  }
+  await window.renderMedia({items:[{url:videoUrl,type:'video',label:'本地生成的测试视频'},mediaItems[1]],autoPlayVideos:false});
+  const video=document.querySelector('video');
+  await new Promise((resolve,reject)=>{
+    const timer=setTimeout(()=>reject(new Error('合成视频未加载')),5000);
+    const ready=()=>{clearTimeout(timer);resolve();};
+    video.addEventListener('loadedmetadata',ready,{once:true});
+    video.addEventListener('error',()=>{clearTimeout(timer);reject(new Error('合成视频解码失败：'+video.error?.message));},{once:true});
+    if(video.readyState>=1) ready();
+  });
+  await video.play(); video.pause();
+};
+window.mediaMetrics = () => {
+  const box = element => { const r=element.getBoundingClientRect(); return {left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:r.width,height:r.height}; };
+  const close=document.querySelector('.media-preview-close'), stage=document.querySelector('.media-preview-stage'), content=document.querySelector('.media-preview-content');
+  const closeBox=box(close);
+  return {open:mediaState.modelValue, stage:box(stage), content:box(content), close:closeBox,
+    closeOnTop:close.contains(document.elementFromPoint(closeBox.left+closeBox.width/2,closeBox.top+closeBox.height/2)),
+    controls:[...document.querySelectorAll('.media-preview-toolbar button')].filter(button=>button.getClientRects().length>0).map(box),
+    zoomButtons:[...document.querySelectorAll('.media-preview-zoom-actions button')].filter(button=>button.getClientRects().length>0).length,
+    arrows:[...document.querySelectorAll('.media-preview-nav')].filter(element=>element.getClientRects().length>0).length,
+    pageWidth:document.documentElement.scrollWidth, source:content.getAttribute('src'),
+    fit:getComputedStyle(content).objectFit};
+};
 window.renderPriceHeader = async kind => {
   app?.unmount();
   app = createApp(kind === 'sales' ? SalesHeader : WholesaleHeader);
@@ -245,7 +299,7 @@ window.shellMetrics = () => {
   const header = panel.querySelector('.el-dialog__header'), close = panel.querySelector('.el-dialog__headerbtn');
   const body = panel.querySelector('.el-dialog__body'), footer = panel.querySelector('.el-dialog__footer');
   const box = element => { const css = getComputedStyle(element), rect = element.getBoundingClientRect();
-    return { height: rect.height, top: rect.top, bottom: rect.bottom, right: rect.right,
+    return { width: rect.width, height: rect.height, top: rect.top, bottom: rect.bottom, left: rect.left, right: rect.right,
       padding: css.padding, radius: css.borderRadius, background: css.backgroundImage,
       font: css.fontSize, overflow: css.overflowY, scrollHeight: element.scrollHeight, clientHeight: element.clientHeight }; };
   return { panel: box(panel), header: box(header), close: box(close), body: box(body), footer: box(footer) };
@@ -345,6 +399,85 @@ try {
   for (let i = 0; i < 300; i++) { if (runtimeErrors.length) break; if (await evaluate('typeof window.renderDialog === "function"')) { ready = true; break } await delay(100) }
   assert.ok(ready, `组件未加载：${runtimeErrors.join('; ')}`)
 
+  if (mediaOnly || !focusedRun) {
+    let mediaChecks=0
+    for (const [width,height,mobile] of [[320,740,true],[375,812,true],[430,932,true],[667,375,true],[844,390,true],[768,1024,false],[1440,900,false]]) {
+      await send('Emulation.setDeviceMetricsOverride',{ width,height,screenWidth:width,screenHeight:height,deviceScaleFactor:1,mobile })
+      await send('Emulation.setTouchEmulationEnabled',{ enabled:mobile })
+      const fullscreen=width<=767 || mobile
+      for (const theme of ['light','dark']) {
+        await evaluate(`document.documentElement.dataset.theme='${theme}'`)
+        for (const insets of [{ top:0,bottom:0,left:0,right:0 },width>height?{ top:0,bottom:21,left:44,right:44 }:{ top:47,bottom:34,left:0,right:0 }]) {
+          await send('Emulation.setSafeAreaInsetsOverride',{ insets })
+          for (const initialIndex of [0,1]) {
+            await evaluate(`window.renderMedia({initialIndex:${initialIndex}})`); await delay(220)
+            const metrics=await evaluate('window.mediaMetrics()')
+            const label=`${width}x${height}/${theme}/${JSON.stringify(insets)}/${initialIndex}`
+            assert.equal(metrics.arrows,fullscreen?0:2,`${label}/手机无左右按钮，桌面保留切换`)
+            assert.equal(metrics.zoomButtons,fullscreen?0:3,`${label}/手机使用手势缩放，顶部不保留缩放按钮`)
+            if (fullscreen) {
+              assert.deepEqual(metrics.stage,{ left:0,right:width,top:0,bottom:height,width,height },`${label}/舞台铺满可视区域`)
+              assert.equal(metrics.content.width,width,`${label}/图片铺满可用宽度`)
+              assert.equal(metrics.content.height,height,`${label}/图片铺满可用高度`)
+              assert.equal(metrics.fit,'contain',`${label}/保持比例完整展示`)
+            }
+            assert.ok(metrics.closeOnTop,`${label}/关闭按钮可点击`)
+            assert.ok(metrics.pageWidth<=width,`${label}/无页面横溢`)
+            for (const control of metrics.controls) {
+              assert.ok(control.left>=insets.left && control.right<=width-insets.right,`${label}/工具横向避开安全区`)
+              assert.ok(control.top>=insets.top && control.bottom<=height-insets.bottom,`${label}/工具纵向避开安全区`)
+            }
+            // 放大后的图片仍在工具栏下方；使用真实点击验证关闭及滚动解锁。
+            if (mobile) {
+              const y=Math.round(height*0.65), center=Math.round(width/2)
+              await send('Input.dispatchTouchEvent',{ type:'touchStart',touchPoints:[{ x:center-30,y },{ x:center+30,y }] })
+              await send('Input.dispatchTouchEvent',{ type:'touchMove',touchPoints:[{ x:center-70,y },{ x:center+70,y }] })
+              await send('Input.dispatchTouchEvent',{ type:'touchEnd',touchPoints:[] })
+              assert.ok(await evaluate("!document.querySelector('img').style.transform.includes('scale(1)')"),`${label}/双指缩放有效`)
+            } else {
+              await evaluate("document.querySelector('.media-preview-stage').dispatchEvent(new MouseEvent('dblclick',{bubbles:true}))")
+            }
+            assert.ok((await evaluate('window.mediaMetrics()')).closeOnTop,`${label}/放大不遮挡关闭`)
+            const { close }=await evaluate('window.mediaMetrics()')
+            await send('Input.dispatchMouseEvent',{ type:'mousePressed',x:close.left+close.width/2,y:close.top+close.height/2,button:'left',clickCount:1 })
+            await send('Input.dispatchMouseEvent',{ type:'mouseReleased',x:close.left+close.width/2,y:close.top+close.height/2,button:'left',clickCount:1 })
+            await delay(220)
+            assert.equal(await evaluate("document.querySelector('.media-preview-overlay')"),null,`${label}/实际点击关闭`)
+            assert.equal(await evaluate('document.body.style.overflow'),'',`${label}/关闭解锁`)
+            mediaChecks++
+          }
+        }
+      }
+      await evaluate('window.renderMedia({deletable:false,downloadable:false})'); await delay(220)
+      const standard=await evaluate('window.mediaMetrics()')
+      assert.equal(standard.controls.length,fullscreen?1:4,`${width}/普通预览手机只保留关闭，PC保留缩放`)
+      assert.ok(standard.closeOnTop,`${width}/普通预览关闭可点击`)
+      if (mobile) {
+        await evaluate('window.renderMedia()'); await delay(220)
+        const source=await evaluate('window.mediaMetrics().source')
+        const y=Math.round(height*0.65)
+        for (const [type,x] of [['touchStart',width*0.8],['touchMove',width*0.5],['touchMove',width*0.2],['touchEnd',0]]) {
+          await send('Input.dispatchTouchEvent',{ type,touchPoints:type==='touchEnd'?[]:[{ x:Math.round(x),y }],modifiers:0 })
+        }
+        assert.notEqual(await evaluate('window.mediaMetrics().source'),source,`${width}/真实触摸滑动切换`)
+        await evaluate('window.renderVideoMedia()'); await delay(220)
+        const video=await evaluate('window.mediaMetrics()')
+        assert.ok(video.content.bottom<=height-(width>height?21:34),`${width}/视频原生控件避开底部安全区`)
+        for (const [type,x] of [['touchStart',width*0.7],['touchMove',width*0.5],['touchMove',width*0.3],['touchEnd',0]]) {
+          await send('Input.dispatchTouchEvent',{ type,touchPoints:type==='touchEnd'?[]:[{ x:Math.round(x),y:Math.round(video.content.bottom-20) }],modifiers:0 })
+        }
+        assert.equal(await evaluate('window.mediaMetrics().source'),video.source,`${width}/拖动原生视频控件不翻页`)
+        for (const [type,x] of [['touchStart',width*0.8],['touchMove',width*0.5],['touchMove',width*0.2],['touchEnd',0]]) {
+          await send('Input.dispatchTouchEvent',{ type,touchPoints:type==='touchEnd'?[]:[{ x:Math.round(x),y }],modifiers:0 })
+        }
+        assert.notEqual(await evaluate('window.mediaMetrics().source'),video.source,`${width}/真实视频主体滑动可切换到图片`)
+      }
+    }
+    await send('Emulation.setSafeAreaInsetsOverride',{ insets:{ top:0,bottom:0,left:0,right:0 } })
+    await send('Emulation.setTouchEmulationEnabled',{ enabled:false })
+    console.log(`媒体预览浏览器回归通过：${mediaChecks} 组，手机满屏/无侧栏、横竖图、长文件名、明暗主题、四边安全区、缩放后真实点击关闭及触摸滑动；桌面保留左右切换。`)
+  }
+
   if (priceHeaderOnly || !focusedRun) {
     let headerChecks = 0
     for (const viewport of [320,360,375,390,430,667,768,1024,1440]) {
@@ -383,7 +516,7 @@ try {
     await send('Emulation.setDeviceMetricsOverride', { width: viewport, height: 900, screenWidth: viewport, screenHeight: 900, deviceScaleFactor: 1, mobile: viewport < 768 })
     const cap = viewport < 768 ? viewport - 8 : viewport <= 1024 ? viewport * 0.8 : viewport - 32
     const cases = [
-      ['默认880', {}, viewport < 768 ? cap : Math.min(880, cap)],
+      ['默认800', {}, viewport < 768 ? cap : Math.min(800, cap)],
       ['页面尺寸优先于默认', { width: 760 }, Math.min(760, cap)],
       ...[['sm', 500], ['md', 600], ['md-lg', 700], ['lg', 800]].map(([tier, size]) => [`档位${tier}`, { dialogClass: `crud-dialog-${tier}` }, viewport < 768 ? cap : Math.min(size, cap)]),
       ['显式优先于档位', { dialogClass: 'crud-dialog-lg', width: 900 }, Math.min(900, cap)],
@@ -412,15 +545,15 @@ try {
     const percent = await measure()
     assert.ok(percent.width > 0 && percent.width <= cap + 1, '百分比宽度应有效且不越界'); checks++
     if (viewport >= 1440) {
-      checkWidth(percent, 880, '综合查询90%素材管理受公共880上限约束', viewport)
+      checkWidth(percent, 800, '综合查询90%素材管理受公共800上限约束', viewport)
       for (const width of ['90vw', '90dvw', 'calc(100vw - 32px)']) {
         await evaluate(`window.renderDialog(${JSON.stringify({ width })})`)
-        checkWidth(await measure(), 880, `${width}自适应宽度受公共上限约束`, viewport); checks++
+        checkWidth(await measure(), 800, `${width}自适应宽度受公共上限约束`, viewport); checks++
       }
       await evaluate('window.renderDialog({width:"90%",maxWidth:1240})')
       checkWidth(await measure(), 1240, '工作台明确声明上限允许加宽', viewport); checks++
       await evaluate('window.updateDialog({maxWidth:undefined})')
-      checkWidth(await measure(), 880, '移除上限恢复公共边界', viewport); checks++
+      checkWidth(await measure(), 800, '移除上限恢复公共边界', viewport); checks++
     }
   }
   if (!focusedRun && !process.argv.includes('--actions-only')) {
@@ -446,6 +579,10 @@ try {
         await evaluate(`window.renderDialog(${JSON.stringify(props)})`); await measure()
         const actual = await evaluate('window.shellMetrics()')
         const label = `${viewport}/${theme}/${props.dialogClass}`
+        if (viewport < 768 && !props.width && !props.maxWidth) {
+          assert.ok(Math.abs(actual.panel.width - (viewport - 8)) < 1, `${label}/手机必须使用公共左右边距，不得留下百分比宽度空白`)
+          assert.ok(actual.panel.left >= -1 && actual.panel.right <= viewport + 1, `${label}/手机外壳不越出视口`)
+        }
         for (const element of ['header', 'close', 'footer']) {
           for (const property of ['height', 'padding', 'radius', 'background', 'font']) assert.equal(actual[element][property], baseline[element][property], `${label}/${element}/${property}`)
         }
@@ -505,7 +642,7 @@ try {
     }
   }
   if (actionChecks) console.log(`弹窗按钮浏览器回归通过：${actionChecks} 组，真实综合查询组件、默认/自定义/原生 footer、确认框和正文工具栏，1～4 个按钮、等宽/150px上限/居中、尺寸别名和明暗主题。`)
-  if (!interactionsOnly && !priceHeaderOnly) {
+  if (!interactionsOnly && !priceHeaderOnly && !mediaOnly) {
     let safeAreaChecks = 0
     for (const [width, height] of [[375, 812], [430, 932], [667, 375], [812, 375], [768, 1024]]) {
       await send('Emulation.setDeviceMetricsOverride', { width, height, screenWidth: width, screenHeight: height, deviceScaleFactor: 1, mobile: width < 768 })
@@ -552,7 +689,7 @@ try {
     await evaluate("document.documentElement.classList.remove('device-standalone')")
     console.log(`报价保存安全区浏览器回归通过：${safeAreaChecks} 组，销售/批发真实模板、普通浏览器/主屏幕安全区、明暗主题、竖屏/横屏；不替代 iOS 真机验收。`)
   }
-  if (!safeAreaOnly && !priceHeaderOnly) {
+  if (!safeAreaOnly && !priceHeaderOnly && !mediaOnly) {
     for (const viewport of [1440, 1024, 768, 375]) {
       await send('Emulation.setDeviceMetricsOverride', { width: viewport, height: 900, screenWidth: viewport, screenHeight: 900, deviceScaleFactor: 1, mobile: false })
       for (const modal of [true, false]) {
@@ -580,7 +717,7 @@ try {
     }
     assert.fail(`${label}：${JSON.stringify(await evaluate('window.stackMetrics()'))}`)
   }
-  for (const viewport of safeAreaOnly || priceHeaderOnly ? [] : [768, 375, 1440]) {
+  for (const viewport of safeAreaOnly || priceHeaderOnly || mediaOnly ? [] : [768, 375, 1440]) {
     await send('Emulation.setDeviceMetricsOverride', { width: viewport, height: 900, screenWidth: viewport, screenHeight: 900, deviceScaleFactor: 1, mobile: viewport < 768 })
     await evaluate('window.renderStack()'); await delay(400)
     await evaluate('document.querySelector(\'.stack-first input\').focus()')
@@ -608,7 +745,7 @@ try {
     await evaluate('window.updateStack({first:false})'); await delay(400)
     assert.equal((await evaluate('window.stackMetrics()')).locked, false, `${viewport}/最终关闭恢复滚动`)
   }
-  if (!safeAreaOnly && !priceHeaderOnly) {
+  if (!safeAreaOnly && !priceHeaderOnly && !mediaOnly) {
     console.log('弹窗关闭浏览器回归通过：375/768/1024/1440px，有/无遮罩，标题关闭、主动重开、业务关闭后均无可见残留。')
     console.log('嵌套弹窗浏览器回归通过：375/768/1440px，Tab/Shift+Tab、媒体和确认框 Escape、焦点恢复及最终滚动解锁。')
   }

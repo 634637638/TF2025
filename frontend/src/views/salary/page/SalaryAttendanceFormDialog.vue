@@ -4,6 +4,7 @@
     :title="title"
     dialog-class="salary-dialog crud-dialog-md-lg"
     :show-default-footer="false"
+    :close-on-click-modal="false"
     @update:model-value="emit('update:modelValue', $event)"
   >
     <form

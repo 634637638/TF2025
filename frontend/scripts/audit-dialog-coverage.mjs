@@ -78,13 +78,19 @@ export function readTemplate(source, filename = 'component.vue') {
       tags.add(tag)
       const attribute = name => node.props.find(prop => prop.type === 6 && prop.name === name)?.value?.content
       const line = node.loc.start.line
-      if (kinds[tag]) dialogs.push({ kind: kinds[tag], line, title: attribute('title') || '动态标题/无静态标题' })
+      // el-image 的内置预览也会创建原生查看器，不能因模板没有 el-image-viewer 而漏算。
+      const imagePreview = tag === 'elimage' && node.props.some(prop => {
+        const name = prop.type === 6 ? prop.name : prop.name === 'bind' ? prop.arg?.content : ''
+        return normalizeTag(name || '') === 'previewsrclist'
+      })
+      const kind = kinds[tag] || (imagePreview ? 'el-image-viewer' : undefined)
+      if (kind) dialogs.push({ kind, line, title: attribute('title') || '动态标题/无静态标题' })
       const classes = attribute('class') || ''
-      if (!inDialog && !kinds[tag] && (attribute('role') === 'dialog'
+      if (!inDialog && !kind && (attribute('role') === 'dialog'
         || /(?:^|\s)[\w-]*(?:overlay|modal-mask|modal-backdrop|popup-mask)(?:\s|$)/.test(classes))) {
         overlays.push({ line, tag: node.tag, classes, role: attribute('role') })
       }
-      inDialog ||= Boolean(kinds[tag])
+      inDialog ||= Boolean(kind)
     }
     for (const child of node.children || []) read(child, inDialog)
   }

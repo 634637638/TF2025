@@ -166,7 +166,6 @@
         v-model="showImageModal"
         :show-default-footer="false"
         title="图片管理"
-        width="90%"
         :close-on-click-modal="true"
         dialog-class="image-manage-dialog"
         @closed="showImageViewer = false"

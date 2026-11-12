@@ -848,6 +848,7 @@
         :title="priceContactEditIndex === null ? '新增报价联系人' : '编辑报价联系人'"
         width="460px"
         :show-default-footer="false"
+        :close-on-click-modal="false"
       >
         <el-form label-position="top">
           <el-form-item label="联系人姓名">

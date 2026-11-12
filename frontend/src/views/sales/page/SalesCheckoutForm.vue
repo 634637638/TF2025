@@ -97,12 +97,12 @@
           class="form-group"
         >
           <label class="form-label">入库价格</label>
-          <el-input
-            v-model="saleForm.purchase_cost"
+          <AmountInput
+            :model-value="numberPrice(saleForm.purchase_cost)"
             class="price-input"
-            inputmode="decimal"
+            :min="0"
             placeholder="请输入入库价格"
-            @input="emit('calculate-profit')"
+            @update:model-value="updatePrice('purchase_cost', $event)"
           />
         </div>
         <div
@@ -110,13 +110,13 @@
           class="form-group"
         >
           <label class="form-label required">{{ batchMode ? '销售单价' : '销售价格' }}</label>
-          <el-input
-            v-model="saleForm.sale_price"
+          <AmountInput
+            :model-value="numberPrice(saleForm.sale_price)"
             class="price-input"
-            inputmode="decimal"
+            :min="0"
             placeholder="请输入销售价格"
             required
-            @input="emit('calculate-profit')"
+            @update:model-value="updatePrice('sale_price', $event)"
           />
         </div>
       </div>
@@ -241,18 +241,18 @@
         <div class="profit-rows">
           <div class="profit-row">
             <span class="profit-label">进价:</span>
-            <span class="profit-value">¥{{ formatNumber(saleForm.purchase_cost || selectedPhone?.purchase_cost || 0) }}</span>
+            <span class="profit-value">¥{{ formatAmount(saleForm.purchase_cost || selectedPhone?.purchase_cost || 0) }}</span>
           </div>
           <div class="profit-row">
             <span class="profit-label">销售价:</span>
-            <span class="profit-value">¥{{ saleForm.sale_price }}</span>
+            <span class="profit-value">¥{{ formatAmount(saleForm.sale_price) }}</span>
           </div>
           <div
             class="profit-row total"
             :class="profitClass"
           >
             <span class="profit-label">销售利润:</span>
-            <span class="profit-value">¥{{ profit }}</span>
+            <span class="profit-value">¥{{ formatAmount(profit) }}</span>
           </div>
           <div
             class="profit-row margin"
@@ -274,7 +274,7 @@ import CustomerNameLockInput from '@/components/common/CustomerNameLockInput.vue
 import CustomerSearchDropdown from '@/components/common/CustomerSearchDropdown.vue'
 import { PaymentChannelSelect, PaymentMethodSelect } from '@/components/payment'
 import { hasPaymentChannelOptions, requiresTransactionNumber } from '@/constants/paymentMethods'
-import { formatNumber } from '@/utils/format'
+import { formatAmount } from '@/utils/format'
 import type { Operator, Phone, Store } from '@/types'
 import type { SalesCheckoutFormData, SalesCustomer } from '../types'
 
@@ -324,6 +324,11 @@ const emit = defineEmits<{
 }>()
 
 const saleForm = props.form
+const numberPrice = (value: string) => value === '' ? undefined : Number(value)
+const updatePrice = (field: 'purchase_cost' | 'sale_price', value: number | null | undefined) => {
+  saleForm[field] = String(value ?? '')
+  emit('calculate-profit')
+}
 const customerNameInputRef = ref<CustomerNameInputInstance | null>(null)
 const customerNameInput = computed(() => customerNameInputRef.value?.input || null)
 const showCustomerSearch = computed({

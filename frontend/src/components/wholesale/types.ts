@@ -1,3 +1,5 @@
+import type { PriceValue } from '@/types/price-list'
+
 export interface WholesaleCustomerSearchItem {
   id: number
   name: string
@@ -31,8 +33,8 @@ export interface CollectedPriceItem {
   model_number?: string
   color_name?: string
   memory?: string
-  wholesale_price?: number | string | null
-  retail_price?: number | string | null
+  wholesale_price?: PriceValue
+  display_wholesale_price?: PriceValue
 }
 
 export interface TransferPhonePayload {

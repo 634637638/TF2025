@@ -8,6 +8,7 @@
     width="680px"
     max-width="680px"
     dialog-class="query-return-stock-dialog"
+    :close-on-click-modal="false"
     @confirm="handleSubmit"
     @cancel="handleCancel"
   >
@@ -166,13 +167,11 @@
             label="退款金额"
             prop="refund_amount"
           >
-            <el-input-number
+            <AmountInput
               v-model="formData.refund_amount"
               :min="0"
               :max="99999999.99"
-              :precision="2"
               :step="100"
-              :controls="false"
               style="width: 100%"
             />
           </el-form-item>

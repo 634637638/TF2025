@@ -60,7 +60,7 @@ PC 默认值：
 
 纯图标圆形 `el-button` 使用同一组全局高度变量作为直径：默认 `36px`、小号 `28px`、大号 `44px`；手机端随对应高度变量一起自适应。公共规则统一保证等宽、等高、无额外内边距和 `50%` 圆角，业务页面不得再修正圆形按钮的宽高或背景形状。破坏性图标操作仍使用删除语义 class，并必须提供 `title`、tooltip 或 `aria-label`。
 
-表格标题区的批量操作统一使用 `.batch-actions-buttons` 公共入口，自动读取公共表格操作的高度、内边距、字号、颜色和响应式令牌；页面只维护分组与换行布局。圆形按钮仍保持等宽等高。PC、手机的尺寸变更只修改公共按钮和表格入口，不允许页面覆盖。
+表格标题区的批量操作统一使用 `.batch-actions-buttons` 公共入口，默认读取公共表格操作的高度、内边距、字号、颜色和响应式令牌；页面可通过下述 `data-size` 参数声明尺寸，其他只维护分组与换行布局。圆形按钮仍保持等宽等高。PC、手机的尺寸变更只修改公共按钮和表格入口，不允许页面覆盖。
 
 手机端 `768px` 及以下（以下自适应值全部由 `_buttons.scss` 的 `767px` 断点内公共令牌切换，页面不得感知或复制具体像素值）：
 
@@ -73,6 +73,19 @@ PC 默认值：
 - 页面不得通过私有样式另设按钮高度、字体或固定宽度；需要规格差异时使用下述公共参数。
 
 ### 显式尺寸声明
+
+批量操作组使用 `.batch-actions-buttons` 的 `data-size` 参数：不声明或声明 `default` 时使用公共表格操作默认规格；声明 `small` 时仅当前组读取 `_buttons.scss` 的 `--tf-button-batch-small-*` 令牌。小号高度 PC 为 24px、手机（≤767px）为 28px，左右内边距各 8px、上下各 4px，文字及图标 12px；颜色、圆角、按钮间距和宽度自适应继续复用公共规则。撤销声明立即恢复默认，不影响其他组。`el-button` 自身的 `size` 在批量操作容器内仍由组规格统一管理。
+
+付款页仅手机声明小号，PC 使用默认（`isMobile` 复用公共 `useMobile`）：
+
+```vue
+<div class="batch-actions-buttons" :data-size="isMobile ? 'small' : undefined">
+  <el-button class="tf-button--neutral">清空选择</el-button>
+  <el-button class="table-action--finance">批量打款</el-button>
+</div>
+```
+
+页面通过参数选择公共尺寸，不得在页面 CSS 或行内样式中填写高度、内边距或覆盖令牌。`/standards` 同时提供默认和显式小号可交互预览；`check:buttons` 校验小号入口映射公共令牌并拒绝私有尺寸。
 
 普通 `el-button` 使用已有 `size="small|default|large"` 和公共语义 class。`PublicPriceHeader` 另提供仅作用于 `actions` 插槽中 `.price-header-action` 的参数，搜索区不受影响：
 

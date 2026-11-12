@@ -8,6 +8,16 @@ const appearance = new Set([
   'color', 'border', 'border-color', 'border-width', 'border-style', 'box-shadow'
 ])
 
+/** 批量操作显式小号必须映射公共令牌，不能把页面规格变成第二套尺寸源。 */
+export function auditBatchButtonSizes(source) {
+  const body = source.match(/\.batch-actions-buttons\[data-size=['"]small['"]\]\s*\{([^}]*)\}/)?.[1]
+  if (!body) return ['缺少批量操作 data-size="small" 公共入口']
+  return ['height', 'padding-x', 'padding-y', 'font-size', 'icon-size'].flatMap(property => {
+    const mapping = new RegExp(`--admin-data-table-action-${property}:\\s*var\\(--tf-button-batch-small-${property}\\)\\s*;`)
+    return mapping.test(body) ? [] : [`批量操作小号 ${property} 必须映射公共按钮令牌`]
+  })
+}
+
 function classNames(node) {
   return (node.props ?? []).flatMap(prop => prop.type === 6 && prop.name === 'class' && prop.value
     ? [prop.value.content]

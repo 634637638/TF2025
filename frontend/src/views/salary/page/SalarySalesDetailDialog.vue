@@ -37,7 +37,7 @@
             class="info-row"
           >
             <label>提成金额:</label>
-            <span class="amount">¥{{ record.commission_amount }}</span>
+            <span class="amount">¥{{ formatAmount(record.commission_amount) }}</span>
           </div>
           <div
             v-if="canViewField('salary_mysalaryview', 'commission_amount')"

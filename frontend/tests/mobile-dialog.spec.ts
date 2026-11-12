@@ -16,7 +16,7 @@ vi.mock('@/composables/mobile', async () => {
 })
 
 const wrappers: ReturnType<typeof mount>[] = []
-const render = async (props: { width?: string | number, maxWidth?: string | number, dialogClass?: string, beforeClose?: (done: (cancel?: boolean) => void) => void } = {}) => {
+const render = async (props: { width?: string | number, maxWidth?: string | number, dialogClass?: string, closeOnClickModal?: boolean, beforeClose?: (done: (cancel?: boolean) => void) => void } = {}) => {
   const wrapper = mount(MobileDialog, {
     attachTo: document.body,
     props: { modelValue: true, title: '客户详情', ...props },
@@ -32,6 +32,73 @@ const render = async (props: { width?: string | number, maxWidth?: string | numb
 afterEach(() => {
   wrappers.splice(0).forEach(wrapper => wrapper.unmount())
   viewport.width = 1440
+})
+
+const pointer = (target: Element, type: string, x = 1, y = 1) => {
+  const event = new MouseEvent(type, { bubbles: true, button: 0, clientX: x, clientY: y })
+  Object.defineProperties(event, { pointerId: { value: 1 }, isPrimary: { value: true } })
+  target.dispatchEvent(event)
+}
+
+const clickBackdrop = (width: number, startOn?: Element) => {
+  const overlay = document.querySelector(width <= 1024 ? '.mobile-dialog-sheet-overlay' : '.el-overlay-dialog')!
+  if (width <= 1024) {
+    pointer(startOn || overlay, 'pointerdown')
+    pointer(overlay, 'pointerup')
+  } else {
+    const downTarget = startOn || overlay
+    downTarget.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }))
+    overlay.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }))
+  }
+  overlay.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+}
+
+describe.each([390, 768, 1440])('MobileDialog %ipx 的遮罩关闭', width => {
+  it('查看弹窗默认允许点击外部关闭，正文点击与从正文拖到外部不关闭', async () => {
+    viewport.width = width
+    const { wrapper, panel } = await render()
+    panel.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    clickBackdrop(width, panel)
+    await flushPromises()
+    expect(wrapper.emitted('update:modelValue')).toBeUndefined()
+    clickBackdrop(width)
+    await vi.waitFor(() => expect(wrapper.emitted('update:modelValue')).toEqual([[false]]))
+  })
+
+  it('创建/编辑表单禁用遮罩关闭，内部草稿保持不变', async () => {
+    viewport.width = width
+    const { wrapper } = await render({ closeOnClickModal: false })
+    clickBackdrop(width)
+    await flushPromises()
+    expect(wrapper.emitted('update:modelValue')).toBeUndefined()
+  })
+
+  it('查看弹窗的遮罩关闭仍尊重 beforeClose 拦截', async () => {
+    viewport.width = width
+    const beforeClose = vi.fn((done: (cancel?: boolean) => void) => done(true))
+    const { wrapper } = await render({ beforeClose })
+    clickBackdrop(width)
+    await flushPromises()
+    expect(beforeClose).toHaveBeenCalledTimes(1)
+    expect(wrapper.emitted('update:modelValue')).toBeUndefined()
+  })
+})
+
+it('手机滑动、指针取消及没有完整指针过程的兼容点击均不关闭查看弹窗', async () => {
+  viewport.width = 390
+  const { wrapper } = await render()
+  const overlay = document.querySelector('.mobile-dialog-sheet-overlay')!
+  pointer(overlay, 'pointerdown', 1, 1)
+  pointer(overlay, 'pointermove', 1, 30)
+  pointer(overlay, 'pointerup', 1, 30)
+  overlay.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+  pointer(overlay, 'pointerdown')
+  pointer(overlay, 'pointercancel')
+  pointer(overlay, 'pointerup')
+  overlay.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+  overlay.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+  await flushPromises()
+  expect(wrapper.emitted('update:modelValue')).toBeUndefined()
 })
 
 describe.each([1440, 768, 390])('MobileDialog %ipx 视口的尺寸参数', width => {

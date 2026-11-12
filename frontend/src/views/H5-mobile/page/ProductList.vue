@@ -84,7 +84,7 @@
                     :class="{ 'price-inquire': !getDisplayPrice(product) }"
                   >
                     <template v-if="getDisplayPrice(product)">
-                      ¥{{ getDisplayPrice(product) }}
+                      ¥{{ formatAmount(getDisplayPrice(product)) }}
                     </template>
                     <template v-else>
                       电询
@@ -254,7 +254,7 @@ import SectionLoading from '@/components/SectionLoading.vue'
 import type { AggregatedProduct, Product, ShopConfig } from '@/api/shop-public'
 import type { Brand, MemoryOption } from '@/types'
 import { storage } from '@/services/storage'
-import { formatImageUrl, generateProductPlaceholder } from '@/utils/format'
+import { formatImageUrl, generateProductPlaceholder, formatAmount } from '@/utils/format'
 import { logger } from '@/utils/logger'
 import { useNotification } from '@/composables/useNotification'
 const globalNotifications = useNotification()

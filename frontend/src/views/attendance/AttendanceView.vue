@@ -145,7 +145,7 @@
                   <span
                     v-if="stats.pending_overtime_pay > 0"
                     class="text-success"
-                  >+¥{{ stats.pending_overtime_pay.toFixed(0) }}</span>
+                  >+¥{{ formatAmount(stats.pending_overtime_pay) }}</span>
                   <span
                     v-if="stats.pending_overtime_pay > 0 && stats.pending_leave_deduction > 0"
                     class="mx-1"
@@ -153,7 +153,7 @@
                   <span
                     v-if="stats.pending_leave_deduction > 0"
                     class="text-danger"
-                  >-¥{{ stats.pending_leave_deduction.toFixed(0) }}</span>
+                  >-¥{{ formatAmount(stats.pending_leave_deduction) }}</span>
                   <span v-if="stats.pending_overtime_pay === 0 && stats.pending_leave_deduction === 0">¥0</span>
                 </div>
                 <div class="stat-label">
@@ -1319,7 +1319,6 @@
           v-model="detailDialogVisible"
           title="考勤详情"
           dialog-class="attendance-detail-dialog crud-dialog-md-lg"
-          :close-on-click-modal="false"
           :show-default-footer="false"
           @close="detailDialogVisible = false"
         >
@@ -1611,6 +1610,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatAmount } from '@/utils/format'
 import { confirmAction } from '@/utils/message-box'
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { ElConfigProvider, type FormInstance, type FormRules, type TabPaneName } from 'element-plus'

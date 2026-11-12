@@ -578,7 +578,7 @@
                 width="80"
               >
                 <template #default="{ row }">
-                  ¥{{ row.price }}
+                  ¥{{ formatAmount(row.price) }}
                 </template>
               </el-table-column>
             </el-table>
@@ -653,7 +653,7 @@ import SectionLoading from '@/components/SectionLoading.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import { logger } from '@/utils/logger'
 import { isCurrentMobileViewport } from '@/utils/device-detection'
-import { formatDateTime } from '@/utils/format'
+import { formatDateTime, formatAmount } from '@/utils/format'
 import { useNotification } from '@/composables/useNotification'
 const globalNotifications = useNotification()
 

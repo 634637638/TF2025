@@ -235,6 +235,7 @@
       title="访问受限分类"
       width="420px"
       :show-default-footer="false"
+      :close-on-click-modal="false"
     >
       <form
         class="guide-dialog-form"

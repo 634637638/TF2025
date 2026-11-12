@@ -1,5 +1,6 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { extname, join, relative, resolve } from 'node:path'
+import { auditAmountInputs } from './lib/amount-input-contract.mjs'
 
 const root = resolve(import.meta.dirname, '..')
 const sourceRoot = join(root, 'src')
@@ -38,8 +39,6 @@ const publicControlFocusFiles = new Set([
   sharedFormControlsRelativePath,
   'src/components/search/PublicSearchBox.vue'
 ])
-let inputNumberCount = 0
-let inputNumberControlsCount = 0
 const sortOrderControlFiles = [
   'src/components/DraggableRow.vue',
   'src/views/brands/BrandsView.vue',
@@ -265,8 +264,9 @@ let nativeTextCount = 0
 for (const file of walk(sourceRoot)) {
   const relativeFile = relative(root, file)
   const source = readFileSync(file, 'utf8')
-  inputNumberCount += (source.match(/<el-input-number\b/g) || []).length
-  inputNumberControlsCount += (source.match(/:controls=["']false["']/g) || []).length
+  if (file.endsWith('.vue')) {
+    findings.push(...auditAmountInputs(source).map(message => `${relativeFile} ${message}`))
+  }
   const counts = countControls(source)
   const nativeTextareas = countNativeTextareas(source)
   const textareaTags = textareaComponentTags(source)
@@ -359,10 +359,6 @@ for (const file of walkStyleFiles(sourceRoot)) {
       }
     }
   }
-}
-
-if (inputNumberControlsCount !== inputNumberCount) {
-  findings.push(`所有 el-input-number 必须显式设置 :controls="false"（当前 ${inputNumberControlsCount}/${inputNumberCount}）`)
 }
 
 for (const file of sortOrderControlFiles) {

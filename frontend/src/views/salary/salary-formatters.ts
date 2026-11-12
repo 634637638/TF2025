@@ -1,3 +1,4 @@
+import { formatAmount } from '@/utils/format'
 import { getPaymentMethodLabel } from '@/constants/paymentMethods'
 import { TIME_FORMATS, TimeUtil } from '@/utils/time'
 
@@ -34,9 +35,7 @@ export const formatSalaryOvertimeHours = (hours: unknown) => {
 }
 
 export const formatSalaryAmount = (amount: unknown) => {
-  const numericAmount = Number(amount)
-  if (Number.isNaN(numericAmount)) return '0'
-  return numericAmount.toFixed(2).replace(/\.?(?:0)+$/, '') || '0'
+  return formatAmount(Number(amount))
 }
 
 export const formatSalaryMonth = (periodStart: string) => {

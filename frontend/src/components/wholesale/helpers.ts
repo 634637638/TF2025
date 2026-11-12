@@ -1,5 +1,6 @@
+import { formatAmount } from '@/utils/format'
 import { normalizePersonName, normalizePhoneDigits } from '@/utils/security'
-import { unifiedApi } from '@/utils/unified-api'
+import { getAllPrices } from '@/api/price-list'
 import { TIME_FORMATS, TimeUtil } from '@/utils/time'
 import { sortOptionsByOrder } from '@/utils/option-sort'
 import { searchOperators, getCachedStores, getCachedSuppliers } from '@/services/reference-options'
@@ -43,37 +44,19 @@ export const matchCollectedPrice = (
   phone: WholesalePhone,
   collectedPrices: CollectedPriceItem[]
 ): number | null => {
-  if (!collectedPrices.length) {
-    return null
-  }
-
-  const exactMatch = collectedPrices.find((price) => {
-    const brandMatch = !price.brand_name || price.brand_name === phone.brand
-    const modelMatch = !price.model_number || price.model_number === phone.model
-    const colorMatch = !price.color_name || price.color_name === phone.color
-    const memoryMatch = !price.memory || price.memory === phone.memory
-    return brandMatch && modelMatch && colorMatch && memoryMatch
-  })
-
-  if (exactMatch) {
-    const value = exactMatch.wholesale_price ?? exactMatch.retail_price
-    const normalizedValue = value === null || value === undefined || value === '' ? null : Number(value)
-    return normalizedValue !== null && Number.isFinite(normalizedValue) ? normalizedValue : null
-  }
-
-  const fuzzyMatch = collectedPrices.find((price) => {
-    const brandMatch = !price.brand_name || price.brand_name === phone.brand
-    const modelMatch = !price.model_number || price.model_number === phone.model
-    return brandMatch && modelMatch
-  })
-
-  if (fuzzyMatch) {
-    const value = fuzzyMatch.wholesale_price ?? fuzzyMatch.retail_price
-    const normalizedValue = value === null || value === undefined || value === '' ? null : Number(value)
-    return normalizedValue !== null && Number.isFinite(normalizedValue) ? normalizedValue : null
-  }
-
-  return null
+  // 与批发报价页使用同一展示价；规格不完整或不一致时不跨颜色、容量借价。
+  const sameField = (left?: string, right?: string) => Boolean(
+    left?.trim() && right?.trim() && left.trim() === right.trim()
+  )
+  const matched = collectedPrices.find(price => (
+    sameField(price.brand_name, phone.brand) &&
+    sameField(price.model_number, phone.model) &&
+    sameField(price.color_name, phone.color) &&
+    sameField(price.memory, phone.memory)
+  ))
+  const value = matched?.display_wholesale_price ?? matched?.wholesale_price
+  const price = value === null || value === undefined || value === '' ? NaN : Number(value)
+  return Number.isFinite(price) && price > 0 ? Number(formatAmount(price)) : null
 }
 
 export const buildEditableWholesalePhones = (
@@ -97,15 +80,17 @@ export const buildEditableWholesalePhones = (
       purchase_cost: isProxyMode ? 0 : (baseCost !== null && Number.isFinite(baseCost) ? baseCost : null),
       wholesale_price: isProxyMode
         ? 0
-        : (collectedPrice ?? (Number.isFinite(existingWholesalePrice) ? existingWholesalePrice : null) ?? baseCost)
+        : (collectedPrice ?? (existingWholesalePrice !== null && Number.isFinite(existingWholesalePrice) && existingWholesalePrice > 0
+          ? existingWholesalePrice
+          : null))
     }
   })
 }
 
-export const loadWholesaleCollectedPrices = async (): Promise<CollectedPriceItem[]> => {
-  const response = await unifiedApi.get('/public/price/all')
+export const loadWholesaleCollectedPrices = async (signal?: AbortSignal): Promise<CollectedPriceItem[]> => {
+  const response = await getAllPrices({ signal, showLoading: false, showError: false })
   if (!response.success) {
-    return []
+    throw new Error(response.message || '获取批发报价失败')
   }
 
   return Array.isArray(response.data)
@@ -116,6 +101,7 @@ export const loadWholesaleCollectedPrices = async (): Promise<CollectedPriceItem
 export const initializeWholesalePhoneState = async (options: {
   phones: WholesalePhone[]
   mode: 'wholesale' | 'proxy'
+  signal?: AbortSignal
 }): Promise<{
   editablePhones: EditableWholesalePhone[]
   collectedPrices: CollectedPriceItem[]
@@ -128,7 +114,7 @@ export const initializeWholesalePhoneState = async (options: {
   }
 
   const nextCollectedPrices = options.mode === 'wholesale'
-    ? await loadWholesaleCollectedPrices()
+    ? await loadWholesaleCollectedPrices(options.signal)
     : []
 
   return {
@@ -182,7 +168,7 @@ export const normalizeWholesalePhoneValue = (phone: unknown): string =>
   normalizePhoneDigits(phone)
 
 export const formatWholesalePrice = (price: number): string => {
-  return price.toFixed(2).replace(/\.?(?:0)+$/, '') || '0'
+  return formatAmount(price)
 }
 
 export const formatWholesaleDate = (date: string | null | undefined): string => {

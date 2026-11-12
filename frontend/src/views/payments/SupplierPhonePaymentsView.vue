@@ -290,27 +290,29 @@
               <span class="selected-count">已选择 {{ selectedPhones.length }} 台手机</span><span
                 v-if="canViewPaymentField('purchase_cost')"
                 class="selected-amount"
-              >总计: ¥{{ Number(selectedTotalAmount || 0) }}</span>
+              >总计: ¥{{ formatAmount(selectedTotalAmount) }}</span>
             </div>
-            <el-button
-              native-type="button"
-              size="small"
-              class="selected-action-btn"
-              @click.stop="clearSelection"
+            <div
+              class="batch-actions-buttons"
+              :data-size="isMobile ? 'small' : undefined"
             >
-              <i class="fas fa-times" /> 清空选择
-            </el-button>
-            <el-button
-              v-if="canCreatePayment"
-              native-type="button"
-              size="small"
-              type="primary"
-              class="selected-action-btn tf-button--finance"
-              @click="handleOpenBatchPaymentDialog"
-            >
-              <i class="fas fa-money-bill-wave" />
-              批量打款
-            </el-button>
+              <el-button
+                native-type="button"
+                class="tf-button--neutral"
+                @click.stop="clearSelection"
+              >
+                <i class="fas fa-times" /> 清空选择
+              </el-button>
+              <el-button
+                v-if="canCreatePayment"
+                native-type="button"
+                class="table-action--finance"
+                @click="handleOpenBatchPaymentDialog"
+              >
+                <i class="fas fa-money-bill-wave" />
+                批量打款
+              </el-button>
+            </div>
           </div>
 
           <div class="table-responsive payment-list-table-wrapper">

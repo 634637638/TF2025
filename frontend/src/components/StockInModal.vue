@@ -66,7 +66,6 @@
           :handle-brand-change="handleBrandChange"
           :format-serial-number="formatSerialNumber"
           :format-imei="formatIMEI"
-          :format-price-value="formatPriceValue"
           :update-purchase-price="updatePurchasePrice"
           :remove-phone="removePhone"
           :validate-serial-on-blur="validateSerialOnBlur"
@@ -191,15 +190,12 @@ import {
   createStockInPhoneBatch,
   findStockInBrand,
   filterByQuery,
-  formatStockInPriceValue,
   getStockInModelsForPhone,
   initializeStockInFormData,
   loadBrandModels as loadStockInBrandModels,
   loadStockInDropdownData,
   normalizeIMEIInput,
-  normalizePriceInput,
   normalizeSerialNumberInput,
-  parsePriceValue,
   resolveStockInBrandId,
   toggleNoIMEIModeState,
   validateStockInPhone,
@@ -612,14 +608,8 @@ const handleScanCancel = () => {
   optimizedScannerVisible.value = false
 }
 
-// 格式化价格显示 - 整数时不显示小数位
-const formatPriceValue = (value: number | string | undefined): string => {
-  return formatStockInPriceValue(value)
-}
-
-const updatePurchasePrice = (phone: PhoneItem, value: string) => {
-  const normalized = normalizePriceInput(value)
-  phone.purchase_cost = normalized ? parsePriceValue(normalized) : undefined
+const updatePurchasePrice = (phone: PhoneItem, value: number | null | undefined) => {
+  phone.purchase_cost = value ?? undefined
 }
 
 // 关闭对话框

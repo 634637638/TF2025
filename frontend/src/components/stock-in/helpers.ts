@@ -328,26 +328,6 @@ export const buildStockInScanPromptConfig = (
     : '请输入设备序列号'
 })
 
-export const parsePriceValue = (value: string | undefined): number => {
-  if (!value) return 0
-  const parsed = parseFloat(value)
-  return isNaN(parsed) ? 0 : parsed
-}
-
-export const normalizePriceInput = (value: string): string =>
-  value.replace(/[^\d.]/g, '')
-
-export const formatStockInPriceValue = (value: number | string | undefined): string => {
-  if (value === undefined || value === null || value === '') return ''
-
-  const numericValue = typeof value === 'string' ? parseFloat(value) : value
-  if (isNaN(numericValue)) return ''
-
-  return Number.isInteger(numericValue)
-    ? numericValue.toString()
-    : numericValue.toFixed(2).replace(/\.?0+$/, '')
-}
-
 export const buildStockInSubmitPayload = (
   mode: 'create' | 'edit',
   formData: StockInFormModel

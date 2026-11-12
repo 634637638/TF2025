@@ -30,7 +30,10 @@
                 {{ currentIndex + 1 }} / {{ items.length }}
               </span>
             </div>
-            <div class="media-preview-actions">
+            <div
+              class="media-preview-actions"
+              :class="{ 'has-media-actions': downloadable || deletable }"
+            >
               <div
                 v-if="!currentIsVideo"
                 class="media-preview-zoom-actions"
@@ -87,16 +90,16 @@
               >
                 <i class="fas fa-trash" />
               </el-button>
-              <el-button
-                native-type="button"
-                class="media-preview-tool tf-button--overlay-tool"
-                title="关闭预览"
-                aria-label="关闭预览"
-                @click="close"
-              >
-                <i class="fas fa-times" />
-              </el-button>
             </div>
+            <el-button
+              native-type="button"
+              class="media-preview-tool media-preview-close tf-button--overlay-tool"
+              title="关闭预览"
+              aria-label="关闭预览"
+              @click="close"
+            >
+              <i class="fas fa-times" />
+            </el-button>
           </div>
 
           <el-button
@@ -113,6 +116,7 @@
           <div
             ref="stageElement"
             class="media-preview-stage"
+            :class="{ 'is-video': currentIsVideo }"
             @touchstart="handleTouchStart"
             @touchmove="handleTouchMove"
             @touchend="handleTouchEnd"
@@ -214,7 +218,7 @@ const videoElement = ref<HTMLVideoElement | null>(null)
 const stageElement = ref<HTMLElement | null>(null)
 const viewerPanel = ref<HTMLElement | null>(null)
 const loadFailed = ref(false)
-const touchStart = ref<{ x: number; y: number } | null>(null)
+const touchStart = ref<{ x: number; y: number; panX: number; panY: number } | null>(null)
 const pinchStart = ref<{ distance: number; scale: number } | null>(null)
 const mouseDragStart = ref<{ x: number; y: number; panX: number; panY: number } | null>(null)
 const zoomScale = ref(1)
@@ -226,6 +230,8 @@ const SWIPE_DIRECTION_RATIO = 1.2
 const MIN_ZOOM = 1
 const MAX_ZOOM = 4
 const ZOOM_STEP = 0.5
+// 原生视频控件在底部，拖动进度/音量时不触发素材切换。
+const VIDEO_CONTROLS_GUARD_HEIGHT = 64
 
 const clampZoom = (value: number) => Math.min(Math.max(value, MIN_ZOOM), MAX_ZOOM)
 
@@ -307,6 +313,7 @@ const handleVideoReady = () => {
 
 const selectIndex = async (index: number) => {
   pauseVideo()
+  handleTouchCancel()
   resetZoom()
   currentIndex.value = clampIndex(index)
   loadFailed.value = false
@@ -329,9 +336,9 @@ const showNext = () => {
 }
 
 const handleTouchStart = (event: TouchEvent) => {
-  if (currentIsVideo.value) return
+  handleTouchCancel()
 
-  if (event.touches.length >= 2) {
+  if (event.touches.length >= 2 && !currentIsVideo.value) {
     const firstTouch = event.touches[0]
     const secondTouch = event.touches[1]
     pinchStart.value = {
@@ -348,7 +355,12 @@ const handleTouchStart = (event: TouchEvent) => {
   }
 
   const touch = event.touches[0]
-  touchStart.value = { x: touch.clientX, y: touch.clientY }
+  const video = videoElement.value
+  if (currentIsVideo.value && video && event.composedPath().includes(video)) {
+    const bounds = video.getBoundingClientRect()
+    if (touch.clientY >= bounds.bottom - Math.min(VIDEO_CONTROLS_GUARD_HEIGHT, bounds.height / 2)) return
+  }
+  touchStart.value = { x: touch.clientX, y: touch.clientY, panX: panX.value, panY: panY.value }
 }
 
 const handleTouchMove = (event: TouchEvent) => {
@@ -367,7 +379,10 @@ const handleTouchMove = (event: TouchEvent) => {
 
   if (event.touches.length === 1 && touchStart.value && zoomScale.value > MIN_ZOOM) {
     const touch = event.touches[0]
-    const nextPan = clampPan(touch.clientX - touchStart.value.x, touch.clientY - touchStart.value.y)
+    const nextPan = clampPan(
+      touchStart.value.panX + touch.clientX - touchStart.value.x,
+      touchStart.value.panY + touch.clientY - touchStart.value.y
+    )
     panX.value = nextPan.x
     panY.value = nextPan.y
     event.preventDefault()
@@ -383,7 +398,7 @@ const handleTouchEnd = (event: TouchEvent) => {
 
   const start = touchStart.value
   touchStart.value = null
-  if (!start || props.items.length <= 1 || currentIsVideo.value || zoomScale.value > MIN_ZOOM) return
+  if (!start || event.touches.length || props.items.length <= 1 || zoomScale.value > MIN_ZOOM) return
 
   const touch = event.changedTouches[0]
   if (!touch) return
@@ -445,6 +460,7 @@ const handleMouseUp = () => {
 
 const close = () => {
   pauseVideo()
+  handleTouchCancel()
   emit('update:modelValue', false)
 }
 
@@ -488,6 +504,7 @@ watch(
     }
 
     pauseVideo()
+    handleTouchCancel()
     resetZoom()
     document.removeEventListener('keydown', handleKeydown)
   },
@@ -523,22 +540,25 @@ onUnmounted(() => {
   position: fixed;
   inset: 0;
   z-index: var(--tf-z-viewer);
+  isolation: isolate;
   display: grid;
-  grid-template-columns: 64px minmax(0, 1fr) 64px;
-  grid-template-rows: 64px minmax(0, 1fr) 32px;
+  grid-template-columns: calc(var(--tf-space-7) * 2) minmax(0, 1fr) calc(var(--tf-space-7) * 2);
+  grid-template-rows: auto minmax(0, 1fr) var(--tf-space-7);
   align-items: center;
   background: rgba(8, 12, 18, 0.94);
 }
 
 .media-preview-toolbar {
+  position: relative;
+  z-index: var(--tf-z-viewer-tools);
   grid-column: 1 / -1;
   grid-row: 1;
   align-self: stretch;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  padding: 10px 16px;
+  gap: var(--tf-space-3);
+  padding: max(var(--tf-space-2), env(safe-area-inset-top, 0)) max(var(--tf-space-4), env(safe-area-inset-right, 0)) var(--tf-space-2) max(var(--tf-space-4), env(safe-area-inset-left, 0));
   color: var(--color-bg-white);
 }
 
@@ -546,8 +566,17 @@ onUnmounted(() => {
 .media-preview-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--tf-space-2);
   min-width: 0;
+}
+
+.media-preview-meta {
+  flex: 1;
+}
+
+.media-preview-actions,
+.media-preview-close {
+  flex: none;
 }
 
 .media-preview-zoom-actions {
@@ -591,7 +620,7 @@ onUnmounted(() => {
   font-variant-numeric: tabular-nums;
 }
 
-  .media-preview-stage {
+.media-preview-stage {
   grid-column: 2;
   grid-row: 2;
   display: flex;
@@ -602,8 +631,8 @@ onUnmounted(() => {
   min-width: 0;
   min-height: 0;
   overflow: hidden;
-    touch-action: pan-y;
-    overscroll-behavior: contain;
+  touch-action: pan-y;
+  overscroll-behavior: contain;
   user-select: none;
 }
 
@@ -625,7 +654,7 @@ video.media-preview-content {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: var(--tf-space-3);
   color: rgba(255, 255, 255, 0.82);
 }
 
@@ -634,6 +663,7 @@ video.media-preview-content {
 }
 
 .media-preview-nav {
+  z-index: var(--tf-z-viewer-tools);
   grid-row: 2;
   justify-self: center;
 }
@@ -656,22 +686,68 @@ video.media-preview-content {
   opacity: 0;
 }
 
-@media (max-width: 767px) {
+/* 横屏手机也保持手势预览，不因宽度进入平板布局而恢复两侧留白。 */
+@media (max-width: 767px), (hover: none) and (pointer: coarse) and (orientation: landscape) {
   .media-preview-overlay {
-    grid-template-columns: 48px minmax(0, 1fr) 48px;
-    grid-template-rows: calc(58px + env(safe-area-inset-top)) minmax(0, 1fr) calc(20px + env(safe-area-inset-bottom));
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
   }
 
   .media-preview-toolbar {
-    padding: calc(8px + env(safe-area-inset-top)) 8px 8px;
+    grid-column: 1;
+    grid-row: 1;
+    align-self: start;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: var(--tf-space-2);
+    padding: max(var(--tf-space-2), env(safe-area-inset-top, 0)) max(var(--tf-space-2), env(safe-area-inset-right, 0)) var(--tf-space-3) max(var(--tf-space-2), env(safe-area-inset-left, 0));
+    background: linear-gradient(rgba(8, 12, 18, 0.85), transparent);
+    pointer-events: none;
   }
 
+  .media-preview-actions {
+    grid-column: 2;
+    grid-row: 1;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    pointer-events: auto;
+    justify-self: end;
+  }
+
+  .media-preview-actions:not(.has-media-actions),
   .media-preview-zoom-actions {
-    gap: var(--tf-space-1);
+    display: none;
+  }
+
+  .media-preview-close {
+    grid-column: 3;
+    grid-row: 1;
+    pointer-events: auto;
+  }
+
+  .media-preview-stage {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .media-preview-content {
+    width: 100%;
+    height: 100%;
+  }
+
+  .media-preview-stage.is-video {
+    box-sizing: border-box;
+    padding: 0 env(safe-area-inset-right, 0) env(safe-area-inset-bottom, 0) env(safe-area-inset-left, 0);
+  }
+
+  .media-preview-nav {
+    display: none;
   }
 
   .media-preview-meta {
-    gap: 7px;
+    grid-column: 1;
+    grid-row: 1;
+    gap: var(--tf-space-2);
     font-size: var(--tf-type-scale-13);
   }
 }

@@ -367,7 +367,7 @@
               align="right"
             >
               <template #default="{ row }">
-                {{ row.amount ? `¥${row.amount.toLocaleString('zh-CN')}` : '-' }}
+                {{ row.amount ? `¥${formatAmount(row.amount)}` : '-' }}
               </template>
             </el-table-column>
             <el-table-column
@@ -378,7 +378,7 @@
             >
               <template #default="{ row }">
                 <span :class="getProfitClass(row.profit)">
-                  {{ row.profit !== null && row.profit !== undefined ? `¥${row.profit.toLocaleString('zh-CN')}` : '-' }}
+                  {{ row.profit !== null && row.profit !== undefined ? `¥${formatAmount(row.profit)}` : '-' }}
                 </span>
               </template>
             </el-table-column>
@@ -415,6 +415,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatAmount } from '@/utils/format'
 import { ref, computed, onBeforeUnmount, watch, nextTick } from 'vue'
 import { useNotification } from '@/composables/useNotification'
 import { useLoadingState } from '@/composables'
@@ -654,12 +655,6 @@ const displayRecords = computed(() => {
 })
 
 // 格式化金额
-const formatAmount = (amount: number) => {
-  if (amount >= 10000) {
-    return (amount / 10000).toFixed(1) + '万'
-  }
-  return amount.toLocaleString('zh-CN')
-}
 
 // 加载数据
 const loadData = async (showLoadingState = true) => {
@@ -928,7 +923,7 @@ const updateWholesaleProductRank = () => {
           <div class="p-2">
             <div class="font-bold mb-2">${p.name}</div>
             <div>数量: ${p.count} 台</div>
-            <div>金额: ¥${p.amount.toLocaleString('zh-CN')}</div>
+            <div>金额: ¥${formatAmount(p.amount)}</div>
           </div>
         `
       }
@@ -993,7 +988,7 @@ const updateAllocationProductRank = () => {
           <div class="p-2">
             <div class="font-bold mb-2">${p.name}</div>
             <div>数量: ${p.count} 台</div>
-            <div>金额: ¥${p.amount.toLocaleString('zh-CN')}</div>
+            <div>金额: ¥${formatAmount(p.amount)}</div>
           </div>
         `
       }
@@ -1060,7 +1055,7 @@ const updateStoreDistribution = () => {
             <div class="font-bold mb-2">${s.store_name}</div>
             <div>批发: ${s.wholesale_count} 台</div>
             <div>划拨: ${s.allocation_count} 台</div>
-            <div>金额: ¥${s.amount.toLocaleString('zh-CN')}</div>
+            <div>金额: ¥${formatAmount(s.amount)}</div>
           </div>
         `
       }

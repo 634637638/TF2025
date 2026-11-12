@@ -485,6 +485,7 @@
         dialog-class="subsidy-dialog subsidy-batch-dialog"
         :show-default-footer="false"
         destroy-on-close
+        :close-on-click-modal="false"
       >
         <div
           v-if="showBatchDialog"

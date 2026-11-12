@@ -6,9 +6,7 @@
   <MobileDialog
     v-model="visible"
     title="选择内存规格"
-    width="90%"
-    :style="{ '--dialog-max-width': '500px' }"
-    dialog-class="memory-selector-dialog"
+    dialog-class="memory-selector-dialog crud-dialog-sm"
     :show-default-footer="false"
     @close="handleClose"
   >
@@ -27,7 +25,7 @@
         <div class="product-info">
           <h4>{{ template.template_name || template.brand_name + ' ' + template.model_name + ' ' + template.color_name }}</h4>
           <p class="price-range">
-            ¥{{ minPrice }} - ¥{{ maxPrice }}
+            ¥{{ formatAmount(minPrice) }} - ¥{{ formatAmount(maxPrice) }}
           </p>
         </div>
       </div>
@@ -49,7 +47,7 @@
             >{{ option.store_name }}</span>
           </div>
           <div class="option-price">
-            <span class="price">¥{{ option.sale_price }}</span>
+            <span class="price">¥{{ formatAmount(option.sale_price) }}</span>
             <span
               v-if="option.stock_count > 1"
               class="stock-count"
@@ -85,6 +83,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatAmount } from '@/utils/format'
 import { ref, computed, watch } from 'vue'
 
 import Image from './Image.vue'

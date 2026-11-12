@@ -9,7 +9,7 @@
       </div>
       <div class="stat-content">
         <div class="stat-value">
-          ¥{{ canViewTeamRecords ? stats.pendingSalary || 0 : stats.myPendingSalary || 0 }}
+          ¥{{ formatAmount(canViewTeamRecords ? stats.pendingSalary || 0 : stats.myPendingSalary || 0) }}
         </div>
         <div class="stat-label">
           待发工资
@@ -64,7 +64,7 @@
             {{ stats.pendingCount || 0 }} 人 / {{ stats.totalLeaveDays || 0 }} 天
           </template>
           <template v-else>
-            {{ stats.myLeaveDays || 0 }} 天 / ¥{{ stats.myLeaveDeduction || 0 }}
+            {{ stats.myLeaveDays || 0 }} 天 / ¥{{ formatAmount(stats.myLeaveDeduction || 0) }}
           </template>
         </div>
         <div class="stat-label">
@@ -92,7 +92,7 @@
             {{ stats.pendingCount || 0 }} 人 / {{ stats.totalOvertimeHours || 0 }} 小时
           </template>
           <template v-else>
-            {{ stats.myOvertimeHours || 0 }} 小时 / ¥{{ stats.myOvertimePay || 0 }}
+            {{ stats.myOvertimeHours || 0 }} 小时 / ¥{{ formatAmount(stats.myOvertimePay || 0) }}
           </template>
         </div>
         <div class="stat-label">
@@ -110,6 +110,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatAmount } from '@/utils/format'
 interface SalaryStats {
   pendingSalary: number
   myPendingSalary: number

@@ -125,7 +125,7 @@
         >
           <template #default="{ row: phone }">
             <div class="price">
-              ¥{{ formatNumber(phone.purchase_cost || 0) }}
+              ¥{{ formatAmount(phone.purchase_cost || 0) }}
             </div>
           </template>
         </el-table-column>
@@ -247,7 +247,7 @@
 import { computed } from 'vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import type { Phone } from '@/types'
-import { formatNumber } from '@/utils/format'
+import { formatAmount } from '@/utils/format'
 import { getAdaptiveActionColumnWidth, getIdentifierColumnMinWidth, getTextColumnMinWidth } from '@/utils/table-layout'
 import { shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import {
@@ -309,7 +309,7 @@ const getColumnWidth = (field: SalesTableField, label: string, minWidth: number)
   [label, ...props.phones.map(phone => {
     if (field === 'condition') return getNewConditionLabel(Boolean(phone.is_new))
     if (field === 'status_label') return getSaleStatusLabel(phone)
-    if (field === 'purchase_cost') return `¥${formatNumber(phone.purchase_cost || 0)}`
+    if (field === 'purchase_cost') return `¥${formatAmount(phone.purchase_cost || 0)}`
     if (field === 'inventory_time') return formatDate(phone.inventory_time)
     return String(phone[field] ?? '-')
   })],

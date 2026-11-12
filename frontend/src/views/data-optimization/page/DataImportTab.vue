@@ -457,7 +457,6 @@
       v-model="showHistoryDialog"
       title="导入历史"
       width="900px"
-      :close-on-click-modal="false"
       dialog-class="data-import-history-dialog"
       :show-default-footer="false"
     >

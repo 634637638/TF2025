@@ -77,7 +77,7 @@
                 v-if="canViewField('memory')"
                 class="title-memory"
               >{{ phone.memory || '-' }}</span>
-              <span class="title-price">{{ canViewPrice ? `¥${formatNumber(phone.purchase_cost || 0)}` : '***' }}</span>
+              <span class="title-price">{{ canViewPrice ? `¥${formatAmount(phone.purchase_cost || 0)}` : '***' }}</span>
             </div>
           </div>
           <div class="device-specs">
@@ -187,6 +187,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatAmount } from '@/utils/format'
 import { ref } from 'vue'
 import Image from '@/components/Image.vue'
 import MediaPreviewViewer from '@/components/MediaPreviewViewer.vue'
@@ -209,7 +210,6 @@ const props = defineProps<{
   canEdit: boolean
   canDelete: boolean
   getPhoneImageSrc: (_phone: Phone) => string
-  formatNumber: (_value: number) => string
   formatDate: (_value?: string) => string
 }>()
 

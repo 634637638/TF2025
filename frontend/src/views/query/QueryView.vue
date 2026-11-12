@@ -556,7 +556,6 @@
     <MobileDialog
       v-model="showImageModal"
       title="商品详图"
-      width="90%"
       :close-on-click-modal="true"
       dialog-class="image-manage-dialog"
       @closed="showImageViewer = false"
@@ -716,7 +715,7 @@ import { useRefreshData } from '@/composables/useRefreshData'
 import { useLoadingState } from '@/composables'
 import unifiedApi from '@/utils/unified-api'
 import { extractResponseData, getRequestErrorCode, getRequestErrorName } from '@/utils/api-response'
-import { formatDate, formatImageUrl } from '@/utils/format'
+import { formatDate, formatImageUrl, formatAmount } from '@/utils/format'
 import { getOptionLabel, sortOptionsByOrder } from '@/utils/option-sort'
 import { searchEmployees, getModels, getCachedQueryOptions, type ReferenceRecord } from '@/services/reference-options'
 import {
@@ -1870,7 +1869,7 @@ const handleRefresh = async () => {
 // 格式化价格 - 始终显示价格，包括 0
 const formatPrice = (price?: number | null) => {
   if (price === null || price === undefined) return '-'
-  return `¥${Math.floor(price)}`
+  return `¥${formatAmount(price)}`
 }
 
 // 图片预览相关函数

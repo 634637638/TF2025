@@ -1,3 +1,4 @@
+import { formatAmount } from '@/utils/format'
 import { TIME_FORMATS, TimeUtil } from '@/utils/time'
 
 export const getInventoryDays = (dateValue?: string): number => {
@@ -19,13 +20,7 @@ export const formatInventoryDate = (dateValue?: string): string => {
 }
 
 export const formatInventoryPrice = (price?: number | string): string => {
-  if (!price && price !== 0) return '-'
-
-  const numericPrice = typeof price === 'string' ? Number.parseFloat(price) : price
-  if (Number.isInteger(numericPrice) || numericPrice % 1 === 0) {
-    return Math.floor(numericPrice).toString()
-  }
-  return numericPrice.toFixed(2).replace(/\.?(?:0)+$/, '') || '0'
+  return price === undefined || price === '' ? '-' : formatAmount(price)
 }
 
 export const getInventoryDaysClass = (days: number): string => {

@@ -4,7 +4,7 @@
     :title="isRematch ? '更换匹配设备' : '匹配库存设备'"
     width="880px"
     :show-default-footer="false"
-    :close-on-click-modal="!submitting"
+    :close-on-click-modal="false"
     destroy-on-close
   >
     <div class="match-preorder-modal">
@@ -168,6 +168,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatAmount } from '@/utils/format'
 import { computed, ref, watch } from 'vue'
 
 import MobileDialog from '@/components/MobileDialog.vue'
@@ -213,8 +214,7 @@ const showPreorderSummary = computed(() => (
 ))
 
 const formatPrice = (value: number | string) => {
-  const number = Number(value)
-  return Number.isFinite(number) ? number.toFixed(2).replace(/\.?(?:0)+$/, '') || '0' : '0'
+  return formatAmount(value)
 }
 
 const selectPhone = (phone: MatchablePhone) => {

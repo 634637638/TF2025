@@ -75,7 +75,7 @@
             入库价格
           </div>
           <div class="text-base font-semibold">
-            {{ editForm.purchase_cost ? `¥${Math.round(editForm.purchase_cost)}` : '未定价' }}
+            {{ editForm.purchase_cost ? `¥${formatAmount(editForm.purchase_cost)}` : '未定价' }}
           </div>
         </div>
       </div>
@@ -368,13 +368,11 @@
             class="inventory-edit-price-field"
           >
             <label class="form-label">入库价格</label>
-            <el-input-number
+            <AmountInput
               v-model="editForm.purchase_cost"
               placeholder="请输入入库价格"
               :min="0"
               :step="1"
-              :precision="0"
-              :controls="false"
               class="price-input-number w-full"
               :value-on-clear="null"
               :disabled="!canEditField('purchase_cost')"
@@ -429,6 +427,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatAmount } from '@/utils/format'
 import { TIME_FORMATS } from '@/utils/time'
 import MobileDialog from '@/components/MobileDialog.vue'
 import { useTouchDoubleTap } from '@/composables/useTouchDoubleTap'

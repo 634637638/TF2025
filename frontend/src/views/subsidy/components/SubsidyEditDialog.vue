@@ -5,6 +5,7 @@
     dialog-class="subsidy-dialog"
     :show-default-footer="false"
     destroy-on-close
+    :close-on-click-modal="false"
     @update:model-value="emit('update:modelValue', $event)"
   >
     <div
@@ -15,6 +16,8 @@
         v-if="editForm"
         label-width="100px"
         class="edit-form"
+        :label-position="isMobile ? 'top' : 'right'"
+        :class="{ 'tf-dialog-form': isMobile, 'tf-dialog-form--stacked': isMobile }"
       >
         <section class="edit-section">
           <div class="edit-section-title">
@@ -207,20 +210,20 @@
               v-if="canViewField('sale_price')"
               label="销售价格"
             >
-              <el-input
-                v-model="editForm.sale_price"
+              <AmountInput
+                :model-value="editForm.sale_price"
                 class="price-input"
-                inputmode="decimal"
-                min="0"
-                step="0.01"
+                :min="0"
+                :step="0.01"
                 placeholder="请输入销售价格"
                 :disabled="!canEditField('sale_price')"
+                @update:model-value="editForm.sale_price = $event ?? null"
                 @blur="normalizeSalePrice"
               >
                 <template #prefix>
                   ¥
                 </template>
-              </el-input>
+              </AmountInput>
             </el-form-item>
 
             <el-form-item
@@ -258,10 +261,6 @@
                 :value="store.id ?? ''"
               />
             </el-select>
-            <div class="form-tip">
-              <i class="fas fa-info-circle" />
-              修改销售店铺
-            </div>
           </el-form-item>
         </section>
 
@@ -498,7 +497,8 @@ import MobileDialog from '@/components/MobileDialog.vue'
 import InlineLoading from '@/components/InlineLoading.vue'
 import { unifiedApi } from '@/utils/unified-api'
 import { normalizeIdCard, normalizePersonName, normalizePhoneDigits } from '@/utils/security'
-import { TimeUtil, TIME_FORMATS } from '@/utils/time'
+import { TIME_FORMATS } from '@/utils/time'
+import { buildSubsidyRemarks } from '../subsidy-calculations'
 import { logger } from '@/utils/logger'
 import { useBrandModels } from '@/composables/useBrandModels'
 import { formatAmount, formatDateTime as formatGlobalDateTime } from '@/utils/format'
@@ -506,7 +506,9 @@ import { isAxiosError } from 'axios'
 import type { ReferenceRecord } from '@/services/reference-options'
 import type { MemoryOption, NationalSubsidyEditForm, NationalSubsidyRecord } from '@/types'
 import { useNotification } from '@/composables/useNotification'
+import { useMobile } from '@/composables/mobile'
 const globalNotifications = useNotification()
+const { isMobile } = useMobile()
 
 
 const props = defineProps<{
@@ -563,24 +565,6 @@ const hasReadOnlyFields = computed(() => {
 
 const formatDateTime = (date?: string | null) => formatGlobalDateTime(date, TIME_FORMATS.DATETIME_SHORT)
 
-const calculateRemarks = (item: NationalSubsidyRecord) => {
-  if (item.remarks && item.remarks.trim() !== '') return item.remarks
-
-  const salePrice = Number(item.sale_price || 0)
-  if (!salePrice) return ''
-
-  if (salePrice > 6000) {
-    return `商品售价${salePrice}元（超过6000元，无法享受国补优惠）`
-  }
-
-  const subsidyAmount = Number(item.subsidy_amount || Math.min(salePrice * 0.15, 500))
-  const cardPayment = (salePrice - subsidyAmount).toFixed(2)
-  const sn = item.serial_number || ''
-  const st = item.sale_time ? TimeUtil.format(item.sale_time, TIME_FORMATS.DATE) : ''
-
-  return `序列号：${sn}\n购买时间：${st}\n商品售价：${salePrice}元 国补优惠${subsidyAmount}元 实际刷卡支付${cardPayment}元`
-}
-
 const memoryLabel = (memory: MemoryOption) => String(memory.size || memory.capacity || memory.name || '')
 
 const loadBaseData = async (item: NationalSubsidyRecord | null = null) => {
@@ -626,7 +610,7 @@ const fillEditForm = (item: NationalSubsidyRecord | null) => {
     imei2: item.imei2 || '',
     apply_time: item.apply_time || '',
     arrival_time: item.arrival_time || '',
-    remarks: calculateRemarks(item),
+    remarks: buildSubsidyRemarks(item),
     has_different_handler: Boolean(item.has_different_handler),
     handler_name: normalizePersonName(item.handler_info?.handler_name || '', 20),
     handler_phone: normalizePhoneDigits(item.handler_info?.handler_phone || ''),
@@ -742,19 +726,19 @@ const submitEdit = async () => {
 }
 
 .edit-section {
-  padding: 0 0 4px;
+  padding: 0 0 var(--tf-space-1);
 }
 
 .edit-section + .edit-section {
-  margin-top: 16px;
+  margin-top: var(--tf-space-4);
 }
 
 .edit-section-title {
   display: flex;
   align-items: center;
-  gap: 7px;
-  margin: 0 0 12px;
-  padding-bottom: 8px;
+  gap: var(--tf-space-2);
+  margin: 0 0 var(--tf-space-3);
+  padding-bottom: var(--tf-space-2);
   border-bottom: 1px solid var(--tf-border-color, var(--tf-color-neutral-200));
   color: var(--tf-text-primary, var(--tf-color-neutral-800));
   font-size: var(--tf-type-scale-14);
@@ -767,51 +751,49 @@ const submitEdit = async () => {
 }
 
 .edit-form :deep(.el-form-item) {
-  margin-bottom: 12px;
+  min-width: 0;
+  margin-bottom: var(--tf-space-3);
 }
 
 .edit-form :deep(.el-input),
+.edit-form :deep(.el-input-number),
 .edit-form :deep(.el-select),
 .edit-form :deep(.el-date-editor) {
   width: 100%;
+  min-width: 0;
 }
 
 .form-row {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.form-tip {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: var(--tf-type-scale-12);
-  color: var(--tf-color-muted);
+  gap: var(--tf-space-3);
 }
 
 .readonly-fields {
-  margin-top: 16px;
+  margin-top: var(--tf-space-4);
 }
 
 .readonly-title {
-  margin-bottom: 12px;
+  margin-bottom: var(--tf-space-3);
   font-size: var(--tf-type-scale-13);
   color: var(--tf-color-muted);
 }
 
 @media (max-width: 767px) {
   .edit-section + .edit-section {
-    margin-top: 12px;
+    margin-top: var(--tf-space-3);
   }
 
   .edit-section-title {
-    margin-bottom: 10px;
+    margin-bottom: var(--tf-space-2);
   }
 
   .form-row {
-    grid-template-columns: 1fr;
+    gap: var(--tf-space-2);
   }
 
+  .form-row > :deep(.el-form-item:only-child) {
+    grid-column: 1 / -1;
+  }
 }
 </style>

@@ -434,8 +434,6 @@
     <MobileDialog
       v-model="showIOSImageModal"
       title="长按图片保存到相册"
-      width="90%"
-      :close-on-click-modal="false"
       dialog-class="ios-image-dialog"
       :show-default-footer="false"
     >
@@ -477,6 +475,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatAmount } from '@/utils/format'
 import { ref, computed, onMounted, onBeforeUnmount, defineAsyncComponent } from 'vue'
 import { WarningFilled, Box, Grid, Download } from '@element-plus/icons-vue'
 import { getAllPrices, getInventoryUsedModels, searchPrices } from '@/api/price-list'
@@ -905,8 +904,7 @@ const hasWholesalePrice = (row: PublicPriceRow) => {
 }
 
 const formatWholesalePrice = (row: PublicPriceRow) => {
-  const price = Number(row?.display_wholesale_price ?? row?.wholesale_price ?? 0)
-  return Math.round(price)
+  return formatAmount(row?.display_wholesale_price ?? row?.wholesale_price ?? 0)
 }
 
 const hasInventoryPrice = (row: UsedPhoneModel) => (
@@ -916,7 +914,7 @@ const hasInventoryPrice = (row: UsedPhoneModel) => (
   && Number.isFinite(Number(row.display_inventory_price))
 )
 
-const formatInventoryPrice = (row: UsedPhoneModel) => Math.round(Number(row.display_inventory_price) || 0)
+const formatInventoryPrice = (row: UsedPhoneModel) => formatAmount(row.display_inventory_price)
 
 // 固定安全区域并轻微倾斜，避免随机位置靠近边缘导致水印被裁剪。
 interface WatermarkPosition {

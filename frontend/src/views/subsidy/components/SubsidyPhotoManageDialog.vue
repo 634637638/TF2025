@@ -7,7 +7,7 @@
       width="900px"
       dialog-class="photo-preview-dialog"
       append-to-body
-      :close-on-click-modal="true"
+      :close-on-click-modal="!canUpload"
       destroy-on-close
       @update:model-value="handleDialogChange"
       @close="closeDialog"

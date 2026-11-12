@@ -101,7 +101,7 @@
             </div>
             <div class="stat-content">
               <div class="stat-value">
-                ¥{{ stats.monthly_revenue }}
+                ¥{{ formatAmount(stats.monthly_revenue) }}
               </div>
               <div class="stat-label">
                 本月收入
@@ -820,12 +820,10 @@
               :xs="24"
             >
               <el-form-item label="维修费">
-                <el-input-number
+                <AmountInput
                   v-model="formData.actual_cost"
                   :min="0"
-                  :precision="2"
                   :step="10"
-                  :controls="false"
                 />
               </el-form-item>
             </el-col>
@@ -872,7 +870,7 @@
         width="720px"
         dialog-class="repairs-media-dialog"
         :show-default-footer="false"
-        :close-on-click-modal="false"
+        :close-on-click-modal="!canEdit"
       >
         <div class="repair-media-manager">
           <el-upload
@@ -984,7 +982,7 @@ import { repairsApi } from '@/api/repairs'
 import { unifiedApi } from '@/utils/unified-api'
 import { searchCustomerOptions } from '@/services/customer-options'
 import type { RepairDeviceSearchResult, RepairMedia, RepairOrder, RepairOrderForm, RepairStatus } from '@/types/repair'
-import { formatDate as formatGlobalDate } from '@/utils/format'
+import { formatDate as formatGlobalDate, formatAmount } from '@/utils/format'
 import { TIME_FORMATS, TimeUtil } from '@/utils/time'
 import { formatImageUrl } from '@/utils/format'
 import { isVideoMedia, type MediaPreviewItem } from '@/utils/media'
@@ -1739,7 +1737,7 @@ const handleRepairRowClick = (repair: RepairOrder, _column: unknown, event: Even
   if (isDoubleTap(rowId)) toggleMobileActions(rowId)
 }
 
-const formatAmount = (amount?: number) => Number(amount || 0).toLocaleString('zh-CN', { maximumFractionDigits: 2 })
+
 const getCustomerOptionLabel = (customer: CustomerOption) => (
   customer.name
 )

@@ -4,6 +4,7 @@
     :title="form.id ? '编辑工资模板' : '新增工资模板'"
     dialog-class="salary-dialog crud-dialog-lg"
     :show-default-footer="false"
+    :close-on-click-modal="false"
     @update:model-value="emit('update:modelValue', $event)"
   >
     <form
@@ -45,13 +46,12 @@
           class="form-group"
         >
           <label>底薪{{ baseSalary || '' }}（元） <span class="required">*</span></label>
-          <el-input-number
+          <AmountInput
             v-model.number="baseSalary"
             class="form-control"
             placeholder="请输入底薪"
             :min="0"
             :step="100"
-            :controls="false"
             :disabled="!canEditField(moduleKey, 'template_base_salary')"
             required
           />
@@ -62,13 +62,12 @@
           class="form-group"
         >
           <label>加班费{{ overtimeHourlyRate || '' }}元（小时） <span class="required">*</span></label>
-          <el-input-number
+          <AmountInput
             v-model.number="overtimeHourlyRate"
             class="form-control"
             placeholder="请输入加班费率"
             :min="0"
             :step="10"
-            :controls="false"
             :disabled="!canEditField(moduleKey, 'template_overtime_hourly_rate')"
             required
           />
@@ -126,13 +125,12 @@
           class="form-group"
         >
           <label>全新机提成（元/台） <span class="required">*</span></label>
-          <el-input-number
+          <AmountInput
             v-model.number="commissionNewFixed"
             class="form-control"
             placeholder="请输入全新机提成金额"
             :min="0"
             :step="1"
-            :controls="false"
             :disabled="!canEditField(moduleKey, 'template_commission_new_fixed')"
             required
           />
@@ -143,13 +141,12 @@
           class="form-group"
         >
           <label>二手机提成（元/台）</label>
-          <el-input-number
+          <AmountInput
             v-model.number="commissionUsedFixed"
             class="form-control"
             placeholder="请输入二手机提成金额"
             :min="0"
             :step="1"
-            :controls="false"
             :disabled="!canEditField(moduleKey, 'template_commission_used_fixed')"
           />
         </div>
@@ -227,13 +224,12 @@
             class="form-group"
           >
             <label>涨薪金额（元） <span class="required">*</span></label>
-            <el-input-number
+            <AmountInput
               v-model.number="autoRaiseAmount"
               class="form-control"
               placeholder="请输入涨薪金额"
               :min="0"
               :step="50"
-              :controls="false"
               :disabled="!canEditField(moduleKey, 'template_auto_raise_amount')"
               required
             />
@@ -245,13 +241,12 @@
             class="form-group"
           >
             <label>最高底薪（元） <span class="required">*</span></label>
-            <el-input-number
+            <AmountInput
               v-model.number="autoRaiseMaxSalary"
               class="form-control"
               placeholder="请输入最高底薪"
               :min="0"
               :step="100"
-              :controls="false"
               :disabled="!canEditField(moduleKey, 'template_auto_raise_max_salary')"
               required
             />

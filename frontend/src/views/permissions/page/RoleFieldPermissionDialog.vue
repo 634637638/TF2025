@@ -4,6 +4,7 @@
     :title="`${roleName || ''} - 字段权限配置`"
     dialog-class="permissions-dialog role-field-permission-dialog tf-dialog-workspace tf-dialog-body-flush"
     :show-default-footer="false"
+    :close-on-click-modal="false"
     @update:model-value="emit('update:modelValue', $event)"
   >
     <div class="dialog-body">

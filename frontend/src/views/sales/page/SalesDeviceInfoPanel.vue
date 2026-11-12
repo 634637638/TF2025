@@ -64,7 +64,7 @@
         >
           <div class="cost-info">
             <span class="cost-label">入库价格</span>
-            <span class="cost-value">{{ canViewPrice ? `¥${formatNumber(phone.purchase_cost || 0)}` : '***' }}</span>
+            <span class="cost-value">{{ canViewPrice ? `¥${formatAmount(phone.purchase_cost || 0)}` : '***' }}</span>
           </div>
         </div>
       </div>
@@ -80,7 +80,7 @@
           class="summary-item"
         >
           <span class="label">总成本:</span>
-          <span class="value">¥{{ getTotalCost() }}</span>
+          <span class="value">¥{{ formatAmount(getTotalCost()) }}</span>
         </div>
         <div
           v-if="canViewPrice && getTotalProfit !== 0"
@@ -91,7 +91,7 @@
             class="value"
             :class="Number(getTotalProfit) >= 0 ? 'positive' : 'negative'"
           >
-            ¥{{ getTotalProfit }}
+            ¥{{ formatAmount(getTotalProfit) }}
           </span>
         </div>
       </div>
@@ -192,7 +192,7 @@
                 >
                   <span class="sale-mobile-spec-label">入库价格</span>
                   <span class="sale-mobile-spec-value sale-mobile-spec-price">
-                    ¥{{ formatNumber(selectedPhone?.purchase_cost || 0) }}
+                    ¥{{ formatAmount(selectedPhone?.purchase_cost || 0) }}
                   </span>
                 </div>
               </div>
@@ -286,7 +286,7 @@
             class="meta-item"
           >
             <span class="meta-label">入库价格:</span>
-            <span class="meta-value price">¥{{ formatNumber(selectedPhone?.purchase_cost || 0) }}</span>
+            <span class="meta-value price">¥{{ formatAmount(selectedPhone?.purchase_cost || 0) }}</span>
           </div>
           <div
             v-if="canViewSaleField('imei')"
@@ -338,7 +338,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import Image from '@/components/Image.vue'
-import { formatNumber } from '@/utils/format'
+import { formatAmount } from '@/utils/format'
 import type { Phone } from '@/types'
 import {
   formatSalesDate as formatDate,

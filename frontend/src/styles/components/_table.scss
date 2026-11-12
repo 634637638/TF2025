@@ -429,6 +429,15 @@ body .el-button.el-button.el-button.table-inline-action.table-action {
 }
 
 // Operation buttons use semantic colors instead of the global filled button theme.
+// 显式规格仅作用于当前批量操作组；撤销声明即恢复公共表格操作默认值。
+.batch-actions-buttons[data-size='small'] {
+  --admin-data-table-action-height: var(--tf-button-batch-small-height);
+  --admin-data-table-action-padding-x: var(--tf-button-batch-small-padding-x);
+  --admin-data-table-action-padding-y: var(--tf-button-batch-small-padding-y);
+  --admin-data-table-action-font-size: var(--tf-button-batch-small-font-size);
+  --admin-data-table-action-icon-size: var(--tf-button-batch-small-icon-size);
+}
+
 // New code should prefer table-action--* classes; Element types remain as a
 // compatibility fallback for existing pages.
 // Repeating the Element class is intentional: the global button baseline uses

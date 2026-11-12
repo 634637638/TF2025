@@ -44,6 +44,21 @@ test('模板位置保留 SFC 中的真实行号', () => {
   assert.equal(result.dialogs[0].line, 4)
 })
 
+test('图片内置预览计入原生查看器，普通缩略图和注释不误报', () => {
+  const result = readTemplate(`<template>
+    <!-- <el-image :preview-src-list="images" /> -->
+    <el-image :src="url" />
+    <el-image :preview-src-list="images" />
+    <ElImage :previewSrcList="images" />
+    <el-image v-bind:preview-src-list="images" />
+    <MediaPreviewViewer />
+  </template>`)
+  assert.deepEqual(result.dialogs.map(({ kind, line }) => ({ kind, line })), [
+    { kind: 'el-image-viewer', line: 4 }, { kind: 'el-image-viewer', line: 5 },
+    { kind: 'el-image-viewer', line: 6 }, { kind: 'MediaPreviewViewer', line: 7 }
+  ])
+})
+
 test('原生弹框定位使用 AST，避免把注释或公共 prompt 函数误报为浏览器弹框', () => {
   const calls = readNativeCalls(`// window.prompt('示例')
     import { prompt } from './public';

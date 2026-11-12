@@ -100,6 +100,7 @@
     <MobileDialog
       v-model="dialogVisible"
       :title="editingId ? '编辑公告' : '新增公告'"
+      :close-on-click-modal="false"
     >
       <el-form
         ref="formRef"

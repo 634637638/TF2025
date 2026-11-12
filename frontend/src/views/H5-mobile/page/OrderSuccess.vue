@@ -21,7 +21,7 @@
       </div>
       <div class="info-row">
         <span class="label">应付金额</span>
-        <span class="value amount">¥{{ totalAmount }}</span>
+        <span class="value amount">¥{{ formatAmount(totalAmount) }}</span>
       </div>
     </div>
 
@@ -172,7 +172,7 @@ import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { getPublicConfig, getOrderByNumber, type ShopConfig } from '@/api/shop-public'
 
-import { formatImageUrl } from '@/utils/format'
+import { formatImageUrl, formatAmount } from '@/utils/format'
 import { storage } from '@/services/storage'
 import { H5_STORAGE_KEYS } from '@/constants/storage'
 import { logger } from '@/utils/logger'
@@ -217,7 +217,7 @@ const loadOrder = async () => {
     }
 
     orderNumber.value = sessionOrder.orderNumber
-    totalAmount.value = sessionOrder.totalAmount || '0.00'
+    totalAmount.value = sessionOrder.totalAmount || '0'
     selectedPaymentMethod.value = sessionOrder.paymentMethod || 'pickup'
 
     // 从后端获取真实订单信息验证
@@ -244,12 +244,12 @@ const loadOrder = async () => {
       const order = await getOrderByNumber(orderNum, accessToken)
       if (order) {
         orderNumber.value = orderNum
-        totalAmount.value = String(order.total_amount || '0.00')
+        totalAmount.value = String(order.total_amount || '0')
         selectedPaymentMethod.value = String(order.payment_method || 'pickup')
         // 保存到 sessionStorage 方便后续使用
         storage.set(H5_STORAGE_KEYS.ORDER_SUCCESS, {
           orderNumber: orderNum,
-          totalAmount: String(order.total_amount || '0.00'),
+          totalAmount: String(order.total_amount || '0'),
           accessToken,
           timestamp: Date.now()
         }, 'session')

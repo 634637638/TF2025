@@ -346,6 +346,7 @@
         :title="editingId ? '编辑租赁合同' : '新增租赁合同'"
         width="780px"
         :show-default-footer="false"
+        :close-on-click-modal="false"
       >
         <el-form
           class="tf-dialog-form rental-form"
@@ -501,11 +502,9 @@
               <div class="daily-device-price-toolbar">
                 <span>设备销售价格</span>
                 <div class="daily-device-bulk-price">
-                  <el-input-number
+                  <AmountInput
                     v-model="bulkDailySalePrice"
                     :min="0"
-                    :precision="0"
-                    :controls="false"
                     placeholder="统一价格"
                   />
                   <el-button
@@ -527,11 +526,9 @@
                 <div class="daily-device-price-info">
                   <strong>{{ deviceName(device) }}</strong><small v-if="showDeviceIdentifier">{{ deviceIdentifier(device) }}</small>
                 </div>
-                <el-input-number
+                <AmountInput
                   v-model="dailySalePrices[device.id]"
                   :min="0"
-                  :precision="0"
-                  :controls="false"
                   placeholder="销售价格"
                 />
               </div>
@@ -552,56 +549,46 @@
                 v-if="form.billing_mode !== 'daily' && canViewRentalField('sale_price')"
                 label="销售价格"
               >
-                <el-input-number
+                <AmountInput
                   v-model="form.sale_price"
                   :min="0"
-                  :precision="0"
-                  :controls="false"
                 />
               </el-form-item>
               <el-form-item
                 v-if="form.billing_mode !== 'daily' && canViewRentalField('purchase_cost')"
                 label="入库价格"
               >
-                <el-input-number
+                <AmountInput
                   v-model="form.purchase_cost"
                   :min="0"
-                  :precision="0"
-                  :controls="false"
                 />
               </el-form-item>
               <el-form-item
                 v-if="form.billing_mode === 'daily' && canViewRentalField('unit_price')"
                 label="每日租金"
               >
-                <el-input-number
+                <AmountInput
                   v-model="form.unit_price"
                   :min="0"
-                  :precision="0"
-                  :controls="false"
                 />
               </el-form-item>
               <el-form-item
                 v-if="form.billing_mode !== 'daily' && canViewRentalField('down_payment')"
                 label="首付"
               >
-                <el-input-number
+                <AmountInput
                   v-model="form.down_payment"
                   :min="0"
                   :max="form.sale_price ?? undefined"
-                  :precision="0"
-                  :controls="false"
                 />
               </el-form-item>
               <el-form-item
                 v-if="form.billing_mode !== 'daily' && canViewRentalField('monthly_rent')"
                 label="每月租金"
               >
-                <el-input-number
+                <AmountInput
                   v-model="form.monthly_rent"
                   :min="0"
-                  :precision="0"
-                  :controls="false"
                 />
               </el-form-item>
               <el-form-item
@@ -632,11 +619,9 @@
                 v-if="form.billing_mode === 'daily' && canViewRentalField('deposit')"
                 label="押金"
               >
-                <el-input-number
+                <AmountInput
                   v-model="form.deposit"
                   :min="0"
-                  :precision="0"
-                  :controls="false"
                 />
               </el-form-item>
               <el-form-item
@@ -1036,6 +1021,7 @@
         title="租金还款"
         width="720px"
         :show-default-footer="false"
+        :close-on-click-modal="false"
       >
         <div v-if="paymentRental">
           <template v-if="paymentRental.billing_mode !== 'daily'">
@@ -1064,11 +1050,9 @@
             v-else
             label="本次收款"
           >
-            <el-input-number
+            <AmountInput
               v-model="dailyPaymentAmount"
               :min="0"
-              :precision="0"
-              :controls="false"
             />
           </el-form-item>
           <el-form-item
@@ -1097,6 +1081,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatAmount } from '@/utils/format'
 import { confirmAction } from '@/utils/message-box'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { type UploadRequestOptions } from 'element-plus'
@@ -1243,7 +1228,7 @@ const summary = computed(() => ({
 }))
 const paidScheduleCount = computed(() => paymentSchedule.value.filter(item => item.paid).length)
 const selectedPaymentTotal = computed(() => paymentSchedule.value.filter(item => selectedPeriods.value.includes(item.period_number)).reduce((sum, item) => sum + Number(item.amount || 0), 0))
-const formatMoney = (value:unknown) => Number(value||0).toFixed(2).replace(/\.?(?:0)+$/,'') || '0'
+const formatMoney = (value: unknown) => formatAmount(Number(value))
 const deviceName = (row:Partial<Device>) => deviceFieldNames.filter(field => canViewRentalField(field)).map(field => row[field]).filter(Boolean).join(' ') || '-'
 const deviceIdentifier = (row:Partial<Device>) => canViewRentalField('imei')
   ? row.imei || (canViewRentalField('serial_number') ? row.serial_number : '') || '-'

@@ -139,7 +139,6 @@
       width="860px"
       dialog-class="permissions-log-detail-dialog"
       :show-default-footer="false"
-      :close-on-click-modal="false"
       destroy-on-close
     >
       <div

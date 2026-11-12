@@ -4,6 +4,7 @@
     title="结算工资"
     dialog-class="salary-dialog crud-dialog-sm"
     :show-default-footer="false"
+    :close-on-click-modal="false"
     @close="emit('close')"
     @update:model-value="emit('update:modelValue', $event)"
   >
@@ -20,7 +21,7 @@
         class="settle-row"
       >
         <span class="label">结算金额：</span>
-        <span class="value amount">¥{{ form.netSalary }}</span>
+        <span class="value amount">¥{{ formatAmount(form.netSalary) }}</span>
       </div>
     </div>
 
@@ -75,6 +76,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatAmount } from '@/utils/format'
 import { computed } from 'vue'
 import InlineLoading from '@/components/InlineLoading.vue'
 import MobileDialog from '@/components/MobileDialog.vue'

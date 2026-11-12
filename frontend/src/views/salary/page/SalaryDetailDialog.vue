@@ -60,21 +60,21 @@
           class="detail-row"
         >
           <span class="label">底薪：</span>
-          <span class="value">¥{{ record.base_salary }}</span>
+          <span class="value">¥{{ formatAmount(record.base_salary) }}</span>
         </div>
         <div
           v-if="canViewField('salary_mysalaryview', 'commission_amount')"
           class="detail-row"
         >
           <span class="label">销售提成：</span>
-          <span class="value">数量：{{ record.sales_count }} 台，金额：¥{{ record.commission_amount }}</span>
+          <span class="value">数量：{{ record.sales_count }} 台，金额：¥{{ formatAmount(record.commission_amount) }}</span>
         </div>
         <div
           v-if="canViewField('salary_mysalaryview', 'overtime_pay')"
           class="detail-row"
         >
           <span class="label">加班费：</span>
-          <span class="value">时长：{{ record.overtime_hours }} 小时，金额：¥{{ record.overtime_pay }}</span>
+          <span class="value">时长：{{ record.overtime_hours }} 小时，金额：¥{{ formatAmount(record.overtime_pay) }}</span>
         </div>
         <div
           v-if="canViewField('salary_mysalaryview', 'leave_deduction')"
@@ -88,7 +88,7 @@
           class="detail-row highlight"
         >
           <span class="label">应发工资：</span>
-          <span class="value net-salary-large">¥{{ record.net_salary }}</span>
+          <span class="value net-salary-large">¥{{ formatAmount(record.net_salary) }}</span>
         </div>
       </div>
 
@@ -117,6 +117,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatAmount } from '@/utils/format'
 import MobileDialog from '@/components/MobileDialog.vue'
 
 type SalaryValue = number | string | null | undefined

@@ -5,6 +5,7 @@
     width="960px"
     dialog-class="salary-dialog salary-dialog-large salary-edit-payout-dialog"
     :show-default-footer="false"
+    :close-on-click-modal="false"
     @update:model-value="emit('update:modelValue', $event)"
   >
     <form
@@ -30,12 +31,11 @@
             class="form-group"
           >
             <label>底薪</label>
-            <el-input-number
+            <AmountInput
               v-model.number="baseSalary"
               class="form-control"
               :min="0"
               :step="0.01"
-              :controls="false"
               :disabled="!canEditField('salary_salaryrecordsview', 'base_salary')"
             />
           </div>
@@ -44,12 +44,11 @@
             class="form-group"
           >
             <label>销售提成</label>
-            <el-input-number
+            <AmountInput
               v-model.number="commissionAmount"
               class="form-control"
               :min="0"
               :step="0.01"
-              :controls="false"
               :disabled="!canEditField('salary_salaryrecordsview', 'commission_amount')"
             />
           </div>
@@ -64,12 +63,11 @@
             class="form-group"
           >
             <label>加班费</label>
-            <el-input-number
+            <AmountInput
               v-model.number="overtimePay"
               class="form-control"
               :min="0"
               :step="0.01"
-              :controls="false"
               :disabled="!canEditField('salary_salaryrecordsview', 'overtime_pay')"
             />
           </div>
@@ -78,12 +76,11 @@
             class="form-group"
           >
             <label>请假扣除</label>
-            <el-input-number
+            <AmountInput
               v-model.number="leaveDeduction"
               class="form-control"
               :min="0"
               :step="0.01"
-              :controls="false"
               :disabled="!canEditField('salary_salaryrecordsview', 'leave_deduction')"
             />
           </div>
@@ -93,7 +90,7 @@
           >
             <label>应发工资</label>
             <el-input
-              :model-value="`¥${netSalary}`"
+              :model-value="`¥${formatAmount(netSalary)}`"
               class="readonly-display-input net-salary-input"
               readonly
             />
@@ -186,6 +183,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatAmount } from '@/utils/format'
 import { TIME_FORMATS } from '@/utils/time'
 import { computed } from 'vue'
 import InlineLoading from '@/components/InlineLoading.vue'

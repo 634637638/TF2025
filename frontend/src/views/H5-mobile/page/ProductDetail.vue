@@ -67,7 +67,7 @@
           <span
             v-if="displaySalePrice !== null"
             class="price"
-          >¥{{ displaySalePrice }}</span>
+          >¥{{ formatAmount(displaySalePrice) }}</span>
           <span
             v-else
             class="price inquire"
@@ -243,7 +243,6 @@
     <MobileDialog
       v-model="showMemoryDialog"
       title="选择内存规格"
-      width="90%"
       :close-on-click-modal="false"
       dialog-class="memory-dialog"
       :show-default-footer="false"
@@ -265,7 +264,7 @@
         >
           <div class="memory-info">
             <span class="memory-name">{{ option.memory_name }}</span>
-            <span class="memory-price">¥{{ option.sale_price }}</span>
+            <span class="memory-price">¥{{ formatAmount(option.sale_price) }}</span>
           </div>
           <div class="memory-store">
             <span class="store-name">{{ option.store_name }}</span>
@@ -313,7 +312,7 @@ import 'swiper/css'
 import 'swiper/css/pagination'
 import { getProductDetail, getPublicConfig, getProducts, type Product } from '@/api/shop-public'
 import { useCart } from '@/composables'
-import { formatDate, formatImageUrl } from '@/utils/format'
+import { formatDate, formatImageUrl, formatAmount } from '@/utils/format'
 import Image from '@/components/Image.vue'
 import type { ProductDetail, ShopConfig } from '@/api/shop-public'
 import { storage } from '@/services/storage'

@@ -3,7 +3,6 @@
     v-model="visible"
     title="库存明细"
     width="50%"
-    :close-on-click-modal="false"
     dialog-class="inventory-detail-modal"
     :show-default-footer="false"
     @close="emit('close')"

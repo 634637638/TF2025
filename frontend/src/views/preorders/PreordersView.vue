@@ -417,7 +417,7 @@
                   align="center"
                 >
                   <template #default="{ row }">
-                    ¥{{ formatNumber(row.deposit_amount) }}
+                    ¥{{ formatAmount(row.deposit_amount) }}
                   </template>
                 </el-table-column>
                 <el-table-column
@@ -427,7 +427,7 @@
                   align="center"
                 >
                   <template #default="{ row }">
-                    {{ row.total_price ? '¥' + formatNumber(row.total_price) : '-' }}
+                    {{ row.total_price ? '¥' + formatAmount(row.total_price) : '-' }}
                   </template>
                 </el-table-column>
                 <el-table-column
@@ -788,7 +788,7 @@
                   align="center"
                 >
                   <template #default="{ row }">
-                    ¥{{ formatNumber(row.deposit_amount) }}
+                    ¥{{ formatAmount(row.deposit_amount) }}
                   </template>
                 </el-table-column>
                 <el-table-column
@@ -798,7 +798,7 @@
                   align="center"
                 >
                   <template #default="{ row }">
-                    {{ row.total_price ? '¥' + formatNumber(row.total_price) : '-' }}
+                    {{ row.total_price ? '¥' + formatAmount(row.total_price) : '-' }}
                   </template>
                 </el-table-column>
                 <el-table-column
@@ -1131,7 +1131,7 @@
                   align="center"
                 >
                   <template #default="{ row }">
-                    ¥{{ formatNumber(row.deposit_amount) }}
+                    ¥{{ formatAmount(row.deposit_amount) }}
                   </template>
                 </el-table-column>
                 <el-table-column
@@ -1142,7 +1142,7 @@
                   align="center"
                 >
                   <template #default="{ row }">
-                    ¥{{ formatNumber(row.actual_price) }}
+                    ¥{{ formatAmount(row.actual_price) }}
                   </template>
                 </el-table-column>
                 <el-table-column
@@ -1153,7 +1153,7 @@
                   align="center"
                 >
                   <template #default="{ row }">
-                    ¥{{ formatNumber(row.remaining_amount || 0) }}
+                    ¥{{ formatAmount(row.remaining_amount || 0) }}
                   </template>
                 </el-table-column>
                 <el-table-column
@@ -1268,7 +1268,7 @@ import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import { logger } from '@/utils/logger'
 import { getAdaptiveActionColumnWidth, getIdentifierColumnMinWidth } from '@/utils/table-layout'
 import { isCurrentMobileViewport } from '@/utils/device-detection'
-import { formatDate as formatDateTime } from '@/utils/format'
+import { formatDate as formatDateTime, formatAmount } from '@/utils/format'
 
 const PreorderFormModal = defineAsyncComponent(() => import('./page/PreorderFormModal.vue'))
 const MatchPreorderModal = defineAsyncComponent(() => import('./page/MatchPreorderModal.vue'))
@@ -1916,14 +1916,6 @@ const handlePreorderFormSuccess = () => {
     }
     loadStats()
   }
-}
-
-// 格式化数字
-const formatNumber = (num: number | string | null | undefined) => {
-  if (num === null || num === undefined) return '0'
-  const number = typeof num === 'string' ? parseFloat(num) : num
-  if (isNaN(number)) return '0'
-  return number.toFixed(2).replace(/\.?(?:0)+$/, '') || '0'
 }
 
 // 获取状态标签类型

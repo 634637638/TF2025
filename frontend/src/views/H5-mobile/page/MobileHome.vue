@@ -390,7 +390,7 @@
                   :class="{ 'price-inquire': !getDisplayPrice(product) }"
                 >
                   <template v-if="getDisplayPrice(product)">
-                    ¥{{ getDisplayPrice(product) }}
+                    ¥{{ formatAmount(getDisplayPrice(product)) }}
                   </template>
                   <template v-else>
                     电询
@@ -432,10 +432,8 @@
     <MobileDialog
       v-model="showMapDialog"
       title="店铺位置"
-      width="90%"
-      :style="{ '--dialog-max-width': '600px' }"
       :close-on-click-modal="true"
-      dialog-class="mobile-map-dialog"
+      dialog-class="mobile-map-dialog crud-dialog-md"
       :show-default-footer="false"
       @opened="initMap"
     >
@@ -502,7 +500,7 @@ import type { PublicShopBanner as Banner, PublicTemplatePhone, ShopConfig } from
 import type { HomeSection } from '@/api/home-sections'
 import type { HomeSectionProduct } from '@/api/home-sections'
 import type { Brand, Color, MemoryOption, Model } from '@/types'
-import { formatSafeImageUrl, generateProductPlaceholder } from '@/utils/format'
+import { formatSafeImageUrl, generateProductPlaceholder, formatAmount } from '@/utils/format'
 import { storage } from '@/services/storage'
 import { logger } from '@/utils/logger'
 import { sortOptionsByOrder } from '@/utils/option-sort'

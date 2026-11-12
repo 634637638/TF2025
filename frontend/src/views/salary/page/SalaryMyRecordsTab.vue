@@ -184,7 +184,7 @@
             align="center"
           >
             <template #default="{ row }">
-              <span class="amount-text">¥{{ row.base_salary }}</span>
+              <span class="amount-text">¥{{ formatAmount(row.base_salary) }}</span>
             </template>
           </el-table-column>
           <el-table-column
@@ -324,6 +324,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatAmount } from '@/utils/format'
 import { TIME_FORMATS } from '@/utils/time'
 import { computed, ref } from 'vue'
 import { shouldShowActionColumn } from '@/composables/useFieldPermissions'

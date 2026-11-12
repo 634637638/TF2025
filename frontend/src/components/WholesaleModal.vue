@@ -6,7 +6,7 @@
     dialog-class="wholesale-form-dialog tf-dialog-body-flush"
     :show-close="true"
     :show-default-footer="false"
-    :close-on-click-modal="props.closeOnClickModal !== false"
+    :close-on-click-modal="false"
     @update:model-value="emit('update:visible', $event)"
     @closed="resetForm"
   >
@@ -23,6 +23,7 @@
           :stores="stores"
           :users="users"
           :selected-supplier-name="selectedSupplierName"
+          :can-view-supplier="canViewSupplier"
           :show-customer-search="showCustomerSearch"
           :customer-search-results="customerSearchResults"
           :customer-searching="customerSearching"
@@ -45,26 +46,31 @@
           :handle-payment-channel-change="handlePaymentChannelChange"
         />
 
-        <WholesalePhoneSummarySection
-          :mode="mode"
-          :phone-count="phoneCount"
-          :phones="displayPhones"
-          :total-cost="totalCost"
-          :total-wholesale-price="totalWholesalePrice"
-          :format-price="formatPrice"
-          :format-date="formatDate"
-          :handle-cost-change="handleCostChange"
-        />
+        <LoadingOverlay
+          :loading="pricesLoading"
+          text="正在获取批发报价..."
+        >
+          <WholesalePhoneSummarySection
+            :mode="mode"
+            :phone-count="phoneCount"
+            :phones="displayPhones"
+            :can-view-supplier="canViewSupplier"
+            :total-cost="totalCost"
+            :total-wholesale-price="totalWholesalePrice"
+            :format-price="formatPrice"
+            :format-date="formatDate"
+          />
+        </LoadingOverlay>
 
         <!-- 通用：备注 -->
-        <div class="form-section">
+        <div class="form-section wholesale-remarks-section">
           <h4 class="section-title">
             <i class="fas fa-comment" />
             备注信息
           </h4>
           <el-form-item
-            label="备注"
             prop="remarks"
+            :label-width="0"
           >
             <el-input
               v-model="formData.remarks"
@@ -72,6 +78,7 @@
               type="textarea"
               :rows="2"
               placeholder="请输入备注信息"
+              aria-label="备注信息"
               maxlength="200"
               show-word-limit
             />
@@ -91,6 +98,7 @@
         <el-button
           type="primary"
           :loading="submitting"
+          :disabled="pricesLoading"
           @click="handleSubmit"
         >
           {{ submitting ? '处理中...' : '确认' }}
@@ -107,6 +115,7 @@ import type { FormInstance, FormRules } from 'element-plus'
 import { ValidationRules } from '@/composables'
 import { useNotification } from '@/composables/useNotification'
 import { useMobile } from '@/composables/mobile'
+import { useLatestRequest } from '@/composables/useLatestRequest'
 import { unifiedApi } from '@/utils/unified-api'
 import { isValidMobilePhone, normalizePersonName } from '@/utils/security'
 import { logger } from '@/utils/logger'
@@ -118,6 +127,7 @@ import WholesalePartySection from './wholesale/WholesalePartySection.vue'
 import WholesalePhoneSummarySection from './wholesale/WholesalePhoneSummarySection.vue'
 import {
   buildAutoCreateCustomerPayload,
+  buildEditableWholesalePhones,
   buildWholesaleCreatedCustomerState,
   buildWholesaleOpenFormPatch,
   buildTransferSubmitPayload,
@@ -129,13 +139,13 @@ import {
   loadWholesaleDialogOptions,
   normalizeWholesaleCustomerInput,
   normalizeWholesalePhoneValue,
+  resolveProxySupplierId,
   resolveWholesaleErrorMessage,
   searchWholesaleCustomers,
   shouldShowWholesaleCustomerSearch,
   validateWholesaleSubmit
 } from './wholesale/helpers'
 import type {
-  CollectedPriceItem,
   EditableWholesalePhone,
   WholesaleCustomerSearchItem as CustomerSearchItem,
   WholesaleFormData,
@@ -147,7 +157,7 @@ interface Props extends VisibleProps {
   mode: 'wholesale' | 'proxy'
   phoneIds: number[]
   phones: WholesalePhone[]
-  closeOnClickModal?: boolean
+  canViewSupplier: boolean
 }
 
 interface Emits {
@@ -215,54 +225,47 @@ const users = ref<User[]>([])
 
 // 显示的手机列表（使用原始数据）
 const editablePhones = ref<EditableWholesalePhone[]>([])
-// 采集价格数据缓存
-const collectedPrices = ref<CollectedPriceItem[]>([])
+const pricesLoading = ref(false)
+const priceRequest = useLatestRequest()
 
-// 获取采集价格数据
+// 初始明细立即保留；只允许当前选择、当前模式的最新报价回填。
 const syncEditablePhones = async (phones: WholesalePhone[], mode: 'wholesale' | 'proxy') => {
-  if (!phones.length) {
-    editablePhones.value = []
-    if (!props.visible) {
-      collectedPrices.value = []
-    }
-    return
-  }
+  const request = priceRequest.nextRequest()
+  editablePhones.value = buildEditableWholesalePhones(phones, mode, [])
+  pricesLoading.value = mode === 'wholesale' && phones.length > 0
+  if (!pricesLoading.value) return
 
   try {
-    const nextState = await initializeWholesalePhoneState({
-      phones,
-      mode
-    })
-    collectedPrices.value = nextState.collectedPrices
-    editablePhones.value = nextState.editablePhones
+    const nextState = await initializeWholesalePhoneState({ phones, mode, signal: request.signal })
+    if (request.isLatest()) editablePhones.value = nextState.editablePhones
   } catch (error) {
-    collectedPrices.value = []
-    editablePhones.value = []
-    logger.error('初始化调货手机数据失败:', error)
+    if (!request.isLatest() || priceRequest.isCanceledError(error)) return
+    logger.error('获取调货批发报价失败:', error)
+    showWarning('获取批发报价失败，请手动填写批发价')
+  } finally {
+    if (request.isLatest()) pricesLoading.value = false
   }
 }
 
 // 计算选中的供应商名称
 const selectedSupplierName = computed(() => {
-  if (!formData.value.supplier_id) return ''
-  const supplier = suppliers.value.find(s => s.id === formData.value.supplier_id)
-  return supplier ? supplier.name : ''
+  // 调货仅展示第一台的来源供应商；划拨仍使用已校验的同一供应商。
+  const phone = props.mode === 'wholesale'
+    ? props.phones[0]
+    : props.phones.find(item => item.supplier_id === formData.value.supplier_id)
+  const supplierId = props.mode === 'wholesale' ? phone?.supplier_id : formData.value.supplier_id
+  return phone?.supplier_name || suppliers.value.find(item => item.id === supplierId)?.name || ''
 })
 
-// 监听 props.phones 变化，初始化可编辑数据
-watch(() => props.phones, async (newPhones) => {
-  await syncEditablePhones(newPhones || [], props.mode)
-}, { immediate: true, deep: true })
-
-watch(() => props.mode, async (newMode) => {
-  const sourcePhones = props.phones && props.phones.length > 0
-    ? props.phones
-    : editablePhones.value
-
-  if (sourcePhones.length > 0) {
-    await syncEditablePhones(sourcePhones, newMode)
+watch([() => props.phones, () => props.mode, () => props.visible], async ([phones, mode, visible]) => {
+  if (visible) {
+    formData.value.supplier_id = mode === 'proxy' ? resolveProxySupplierId(phones) : null
+    await syncEditablePhones(phones, mode)
+  } else {
+    priceRequest.cancelLatest()
+    pricesLoading.value = false
   }
-})
+}, { immediate: true, deep: true })
 
 const displayPhones = computed(() => editablePhones.value)
 
@@ -287,13 +290,7 @@ const totalWholesalePrice = computed(() => {
 // 格式化价格（移除整数的.00后缀）
 const formatPrice = (price: number) => formatWholesalePrice(price)
 
-// 格式化日期（修复时区问题）
 const formatDate = (date: string | null | undefined) => formatWholesaleDate(date)
-
-// 处理入库价变化
-const handleCostChange = () => {
-  // 触发计算属性重新计算
-}
 
 // 支付方式变化处理
 const handlePaymentMethodChange = () => {
@@ -611,7 +608,8 @@ const resetForm = () => {
   customerSearchCache.value.clear()
   customerSearchRequestId.value += 1
   editablePhones.value = []
-  collectedPrices.value = []
+  priceRequest.cancelLatest()
+  pricesLoading.value = false
   formRef.value?.resetFields()
 }
 
@@ -623,7 +621,7 @@ const handleClose = () => {
 
 // 提交表单
 const handleSubmit = async () => {
-  if (submitting.value) return
+  if (submitting.value || pricesLoading.value) return
   if (!formRef.value) return
 
   try {
@@ -696,12 +694,12 @@ const handleSubmit = async () => {
 // 监听 visible 变化
 watch(() => props.visible, async (newVal) => {
   if (newVal) {
-    await loadDialogOptions()
     Object.assign(formData.value, buildWholesaleOpenFormPatch({
       mode: props.mode,
       phones: props.phones || [],
       operatorName: authStore.user?.name || authStore.user?.username || ''
     }))
+    await loadDialogOptions()
   }
 }, { immediate: true })
 </script>
@@ -737,6 +735,10 @@ watch(() => props.visible, async (newVal) => {
 
 .section-title i {
   font-size: var(--tf-type-scale-16);
+}
+
+.wholesale-remarks-section {
+  margin-top: var(--tf-space-6);
 }
 
 /* 移动端适配 */

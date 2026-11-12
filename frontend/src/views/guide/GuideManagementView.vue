@@ -267,6 +267,7 @@
       title="导航设置"
       width="560px"
       :show-default-footer="false"
+      :close-on-click-modal="false"
     >
       <form
         class="guide-form"
@@ -323,6 +324,7 @@
       :title="editingAnnouncement ? '编辑公告' : '新增公告'"
       width="880px"
       :show-default-footer="false"
+      :close-on-click-modal="false"
     >
       <form
         class="guide-form"
@@ -386,6 +388,7 @@
       :title="editingCategory ? '编辑分类' : '新增分类'"
       width="620px"
       :show-default-footer="false"
+      :close-on-click-modal="false"
     >
       <form
         class="guide-form"
@@ -502,6 +505,7 @@
       :title="editingLink ? '编辑连接' : '新增连接'"
       width="620px"
       :show-default-footer="false"
+      :close-on-click-modal="false"
       @closed="discardPendingGuideUploads"
     >
       <form

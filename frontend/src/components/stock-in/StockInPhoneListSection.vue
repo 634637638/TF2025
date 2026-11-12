@@ -227,13 +227,13 @@
               入库价格 <span class="required">*</span>
             </template>
             <template #default="{ row: phone }">
-              <el-input
-                :model-value="formatPriceValue(phone.purchase_cost)"
+              <AmountInput
+                :model-value="purchasePrice(phone.purchase_cost)"
                 placeholder="价格"
-                clearable
-                inputmode="decimal"
+                :min="0"
+                class="w-full"
                 size="small"
-                @input="updatePurchasePrice(phone, $event)"
+                @update:model-value="updatePurchasePrice(phone, $event)"
               />
             </template>
           </el-table-column>
@@ -469,12 +469,12 @@
                 label="入库价格"
                 :prop="`phones.${index}.purchase_cost`"
               >
-                <el-input
-                  :model-value="formatPriceValue(phone.purchase_cost)"
+                <AmountInput
+                  :model-value="purchasePrice(phone.purchase_cost)"
                   placeholder="请输入入库价格"
-                  clearable
-                  inputmode="decimal"
-                  @input="updatePurchasePrice(phone, $event)"
+                  :min="0"
+                  class="w-full"
+                  @update:model-value="updatePurchasePrice(phone, $event)"
                 />
               </el-form-item>
             </div>
@@ -522,6 +522,8 @@ import type { Brand, Color, MemoryOption as Memory, Model } from '@/types'
 import type { StockInFormModel, StockInPhoneItem } from './types'
 import { useTouchDoubleTap } from '@/composables/useTouchDoubleTap'
 
+const purchasePrice = (value: number | string | undefined) => value === undefined || value === '' ? undefined : Number(value)
+
 interface Props {
   isMobile: boolean
   cacheVersion: number
@@ -538,8 +540,7 @@ interface Props {
   handleBrandChange: (_phone: StockInPhoneItem) => void | Promise<void>
   formatSerialNumber: (_phone: StockInPhoneItem) => void
   formatImei: (_phone: StockInPhoneItem) => void
-  formatPriceValue: (_value: number | string | undefined) => string
-  updatePurchasePrice: (_phone: StockInPhoneItem, _value: string) => void
+  updatePurchasePrice: (_phone: StockInPhoneItem, _value: number | null | undefined) => void
   removePhone: (_index: number) => void
   validateSerialOnBlur: (_phone: StockInPhoneItem) => void
   validateImeiOnBlur: (_phone: StockInPhoneItem) => void

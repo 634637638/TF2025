@@ -217,6 +217,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatAmount } from '@/utils/format'
 import { computed } from 'vue'
 import { fieldPermissions } from '@/composables/useFieldPermissions'
 import MobileDialog from '@/components/MobileDialog.vue'
@@ -306,7 +307,7 @@ const productMeta = computed(() => {
 
 const purchasePriceText = computed(() => {
   const amount = Number(props.item?.purchase_cost || 0)
-  return amount > 0 ? `¥${amount.toLocaleString('zh-CN')}` : '未定价'
+  return amount > 0 ? `¥${formatAmount(amount)}` : '未定价'
 })
 
 const inventoryTimeText = computed(() => {

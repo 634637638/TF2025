@@ -77,9 +77,6 @@ export const formatQuickSaleIMEI = (imei: string, isNoIMEIMode: boolean) => {
 export const formatQuickSaleSerialNumber = (serialNumber: string) =>
   serialNumber.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 18)
 
-export const sanitizeQuickSalePriceInput = (value: string) =>
-  String(value || '').replace(/[^\d]/g, '')
-
 interface QuickSaleCustomerPayload {
   name: string
   phone: string

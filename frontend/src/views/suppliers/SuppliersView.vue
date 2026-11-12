@@ -593,7 +593,6 @@
           title="供应商详情"
           width="800px"
           dialog-class="suppliers-detail-dialog crud-dialog-lg"
-          :close-on-click-modal="false"
           :show-default-footer="false"
         >
           <SectionLoading

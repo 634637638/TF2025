@@ -284,34 +284,34 @@
             label="入库价格"
             prop="purchase_cost"
           >
-            <el-input
-              :model-value="formatPriceInputValue(formData.purchase_cost)"
+            <AmountInput
+              :model-value="formData.purchase_cost"
               placeholder="请输入入库价格"
-              inputmode="numeric"
-              clearable
-              @input="handlePriceInput('purchase_cost', $event)"
+              class="w-full"
+              :min="0"
+              @update:model-value="handlePriceInput('purchase_cost', $event)"
             >
               <template #prefix>
                 ¥
               </template>
-            </el-input>
+            </AmountInput>
           </el-form-item>
 
           <el-form-item
             :label="formData.status === 'peer_transfer' ? '批发价格' : formData.status === 'supplier_proxy' ? '划拨金额' : '销售价格'"
             prop="sale_price"
           >
-            <el-input
-              :model-value="formatPriceInputValue(formData.sale_price)"
+            <AmountInput
+              :model-value="formData.sale_price"
               placeholder="请输入销售价格"
-              inputmode="numeric"
-              clearable
-              @input="handlePriceInput('sale_price', $event)"
+              class="w-full"
+              :min="0"
+              @update:model-value="handlePriceInput('sale_price', $event)"
             >
               <template #prefix>
                 ¥
               </template>
-            </el-input>
+            </AmountInput>
           </el-form-item>
         </div>
       </div>
@@ -1468,14 +1468,8 @@ const formatSerialNumber = () => {
   formData.serial_number = formData.serial_number.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 18)
 }
 
-const formatPriceInputValue = (value: number | string | null | undefined) => {
-  if (value === null || value === undefined || value === '') return ''
-  return String(value)
-}
-
-const handlePriceInput = (field: PriceField, value: string) => {
-  const sanitized = String(value || '').replace(/[^\d]/g, '')
-  formData[field] = sanitized ? Number(sanitized) : 0
+const handlePriceInput = (field: PriceField, value: number | null | undefined) => {
+  formData[field] = value ?? 0
 }
 
 const formatImei = () => {

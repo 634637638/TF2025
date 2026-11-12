@@ -114,17 +114,17 @@
         <div class="publish-to-h5-column">
           <!-- 销售价格 -->
           <el-form-item label="销售价格">
-            <el-input
-              v-model="salePriceDisplayValue"
+            <AmountInput
+              :model-value="form.sale_price"
               class="publish-to-h5-control publish-to-h5-input-control w-full"
               placeholder="请输入销售价格"
-              clearable
-              inputmode="decimal"
+              :min="0"
+              @update:model-value="form.sale_price = $event ?? null"
             >
               <template #prefix>
                 ¥
               </template>
-            </el-input>
+            </AmountInput>
           </el-form-item>
 
           <!-- 二手商品验机信息 -->
@@ -582,7 +582,6 @@ import {
   getRemovedPublishFiles,
   hasPublishMediaFiles,
   isHeicFormat,
-  normalizePublishSalePrice,
   revokePendingFileUrls,
   validatePublishMediaFile
 } from './publish-to-h5/helpers'
@@ -650,15 +649,6 @@ let heicConverterLoader: Promise<HeicConverter> | null = null
 
 // 电池状况显示值
 const batteryDisplayValue = ref('')
-const salePriceDisplayValue = computed({
-  get: () => {
-    const value = form.value.sale_price
-    return value === null || value === undefined ? '' : String(value)
-  },
-  set: (value: string) => {
-    form.value.sale_price = normalizePublishSalePrice(value)
-  }
-})
 
 const isBatteryNumeric = computed(() => {
   const val = batteryDisplayValue.value

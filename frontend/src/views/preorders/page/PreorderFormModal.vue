@@ -305,13 +305,11 @@
           :span="12"
         >
           <el-form-item label="销售价格">
-            <el-input-number
+            <AmountInput
               v-model="formData.total_price"
               :min="0"
-              :precision="2"
               placeholder="销售价格"
               class="w-full"
-              :controls="false"
             />
           </el-form-item>
         </el-col>
@@ -324,13 +322,11 @@
             label="定金金额"
             prop="deposit_amount"
           >
-            <el-input-number
+            <AmountInput
               v-model="formData.deposit_amount"
               :min="0"
-              :precision="2"
               placeholder="定金金额"
               class="w-full"
-              :controls="false"
             />
           </el-form-item>
         </el-col>

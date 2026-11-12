@@ -483,7 +483,7 @@
                         class="table-info-line"
                       >
                         <span class="amount-label">余额</span>
-                        <span class="amount-value">¥{{ formatNumber(customer.balance || 0) }}</span>
+                        <span class="amount-value">¥{{ formatAmount(customer.balance || 0) }}</span>
                       </div>
                       <div
                         v-if="canViewField('points')"
@@ -550,7 +550,7 @@
                           class="total-spent"
                         >
                           <span class="spent-label">总消费</span>
-                          <span class="spent-value">¥{{ formatNumber(customer.total_spent || 0) }}</span>
+                          <span class="spent-value">¥{{ formatAmount(customer.total_spent || 0) }}</span>
                         </span>
                       </div>
                       <div
@@ -1091,13 +1091,11 @@
                 :span="8"
               >
                 <el-form-item label="余额">
-                  <el-input-number
+                  <AmountInput
                     v-model="customerForm.balance"
-                    :precision="2"
                     :step="0.01"
                     :min="0"
                     placeholder="请输入余额"
-                    :controls="false"
                     class="w-full"
                     :disabled="!canEditField('balance')"
                   />
@@ -1241,7 +1239,6 @@
           v-model="showDetailModal"
           title="客户详情"
           dialog-class="customers-detail-dialog crud-dialog-lg"
-          :close-on-click-modal="false"
           :show-default-footer="false"
           @close="closeDetailModal"
         >
@@ -1408,7 +1405,7 @@
                         账户余额
                       </div>
                       <div class="stat-value">
-                        ¥{{ formatNumber(selectedCustomer.balance || 0) }}
+                        ¥{{ formatAmount(selectedCustomer.balance || 0) }}
                       </div>
                     </div>
                   </div>
@@ -1440,7 +1437,7 @@
                         总消费
                       </div>
                       <div class="stat-value">
-                        ¥{{ formatNumber(selectedCustomer.total_spent || 0) }}
+                        ¥{{ formatAmount(selectedCustomer.total_spent || 0) }}
                       </div>
                     </div>
                   </div>
@@ -1624,7 +1621,7 @@
                   >
                     <template #default="{ row: purchase }">
                       <span class="price">
-                        {{ purchase.sale_price == null ? '-' : `¥${formatNumber(purchase.sale_price)}` }}
+                        {{ purchase.sale_price == null ? '-' : `¥${formatAmount(purchase.sale_price)}` }}
                       </span>
                     </template>
                   </el-table-column>
@@ -1635,7 +1632,7 @@
                   >
                     <template #default="{ row: purchase }">
                       <span :class="['price-cell', purchase.profit != null && Number(purchase.profit) > 0 ? 'profit-positive' : 'profit-negative']">
-                        {{ purchase.profit == null ? '-' : `¥${formatNumber(purchase.profit)}` }}
+                        {{ purchase.profit == null ? '-' : `¥${formatAmount(purchase.profit)}` }}
                       </span>
                     </template>
                   </el-table-column>
@@ -1724,7 +1721,7 @@ import ImportExportActions from '@/components/business/ImportExportActions.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import { PermissionGate, PageHeader } from '@/components/base'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
-import { formatDate } from '@/utils/format'
+import { formatDate, formatAmount } from '@/utils/format'
 import { getActionColumnMinWidth, getIdentifierColumnMinWidth, getTextColumnMinWidth } from '@/utils/table-layout'
 import { isValidAppleAccount, isValidIdCard, isValidMobilePhone, normalizeAppleId, normalizeIdCard, normalizePersonName, normalizePhoneDigits } from '@/utils/security'
 import { logger } from '@/utils/logger'
@@ -3132,11 +3129,6 @@ const formatCustomerRegion = (
 }
 
 // 格式化数字
-const formatNumber = (num: number | string) => {
-  const n = typeof num === 'string' ? parseFloat(num) : num
-  if (isNaN(n)) return '0'
-  return n.toFixed(2).replace(/\.?(?:0)+$/, '') || '0'
-}
 
 
 // 生命周期

@@ -1,11 +1,55 @@
 <template>
   <section class="form-section wholesale-party-section">
-    <template v-if="mode === 'wholesale'">
-      <h4 class="section-title">
-        <i class="fas fa-user" />
-        客户信息
-      </h4>
+    <h4 class="section-title">
+      <i class="fas fa-user" />
+      客户信息
+    </h4>
 
+    <el-row :gutter="12">
+      <el-col
+        v-if="canViewSupplier"
+        :span="12"
+      >
+        <el-form-item
+          label="供应商"
+          :prop="mode === 'proxy' ? 'supplier_id' : undefined"
+          :required="mode === 'proxy'"
+        >
+          <el-input
+            :model-value="selectedSupplierName"
+            placeholder="暂无供应商"
+            readonly
+            class="w-full"
+          >
+            <template #prefix>
+              <i class="fas fa-truck" />
+            </template>
+          </el-input>
+        </el-form-item>
+      </el-col>
+      <el-col :span="12">
+        <el-form-item
+          label="销售门店"
+          prop="store_id"
+        >
+          <el-select
+            v-model="formData.store_id"
+            placeholder="选择销售门店"
+            clearable
+            class="w-full"
+          >
+            <el-option
+              v-for="store in stores"
+              :key="store.id"
+              :label="store.name"
+              :value="store.id"
+            />
+          </el-select>
+        </el-form-item>
+      </el-col>
+    </el-row>
+
+    <template v-if="mode === 'wholesale'">
       <el-row :gutter="12">
         <el-col :span="12">
           <el-form-item
@@ -114,29 +158,6 @@
       <el-row :gutter="12">
         <el-col :span="12">
           <el-form-item
-            label="销售门店"
-            prop="store_id"
-          >
-            <el-select
-              v-model="formData.store_id"
-              placeholder="请选择销售门店"
-              clearable
-              class="w-full"
-            >
-              <el-option
-                v-for="store in stores"
-                :key="store.id"
-                :label="store.name"
-                :value="store.id"
-              />
-            </el-select>
-          </el-form-item>
-        </el-col>
-      </el-row>
-
-      <el-row :gutter="12">
-        <el-col :span="12">
-          <el-form-item
             label="支付方式"
             prop="payment_method"
           >
@@ -170,52 +191,6 @@
     </template>
 
     <template v-else>
-      <h4 class="section-title">
-        <i class="fas fa-truck" />
-        供应商信息
-      </h4>
-
-      <el-row :gutter="12">
-        <el-col :span="12">
-          <el-form-item
-            label="供应商"
-            prop="supplier_id"
-            required
-          >
-            <el-input
-              :value="selectedSupplierName"
-              placeholder="供应商"
-              readonly
-              class="w-full"
-            >
-              <template #prefix>
-                <i class="fas fa-truck" />
-              </template>
-            </el-input>
-          </el-form-item>
-        </el-col>
-        <el-col :span="12">
-          <el-form-item
-            label="销售门店"
-            prop="store_id"
-          >
-            <el-select
-              v-model="formData.store_id"
-              placeholder="选择销售门店"
-              clearable
-              class="w-full"
-            >
-              <el-option
-                v-for="store in stores"
-                :key="store.id"
-                :label="store.name"
-                :value="store.id"
-              />
-            </el-select>
-          </el-form-item>
-        </el-col>
-      </el-row>
-
       <el-row :gutter="12">
         <el-col :span="12">
           <el-form-item
@@ -339,6 +314,7 @@ interface Props {
   stores: Store[]
   users: User[]
   selectedSupplierName: string
+  canViewSupplier: boolean
   showCustomerSearch: boolean
   customerSearchResults: WholesaleCustomerSearchItem[]
   customerSearching: boolean

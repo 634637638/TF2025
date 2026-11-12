@@ -582,7 +582,6 @@
         title="门店详情"
         width="500px"
         dialog-class="stores-detail-dialog crud-dialog-sm"
-        :close-on-click-modal="false"
         :show-default-footer="false"
       >
         <div
@@ -664,17 +663,6 @@
             </div>
           </div>
         </div>
-
-        <template #footer>
-          <div class="tf-dialog-actions">
-            <el-button
-              type="default"
-              @click="attemptCloseModal"
-            >
-              关闭
-            </el-button>
-          </div>
-        </template>
       </MobileDialog>
     </PermissionGate>
   </div>

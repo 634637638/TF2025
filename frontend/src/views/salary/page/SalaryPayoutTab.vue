@@ -195,7 +195,7 @@
             align="center"
           >
             <template #default="{ row }">
-              <span class="amount-text">¥{{ getBaseSalary(row.id) }}</span>
+              <span class="amount-text">¥{{ formatAmount(getBaseSalary(row.id)) }}</span>
             </template>
           </el-table-column>
           <el-table-column
@@ -219,7 +219,7 @@
                 v-if="getSalesStats(row.id).sales_count > 0"
                 class="text-danger font-semibold salary-mobile-commission"
               >
-                {{ isMobile ? calculateCommission(row.id) : `¥${calculateCommission(row.id)}` }}
+                {{ isMobile ? formatAmount(calculateCommission(row.id)) : `¥${formatAmount(calculateCommission(row.id))}` }}
               </span>
               <span
                 v-else
@@ -279,7 +279,7 @@
                 v-if="getAttendanceStats(row.id).leave_days > 0"
                 class="text-danger font-semibold"
               >
-                -¥{{ calculateLeave(row.id, getAttendanceStats(row.id).leave_days) }}
+                -¥{{ formatAmount(calculateLeave(row.id, getAttendanceStats(row.id).leave_days)) }}
               </span>
               <span
                 v-else
@@ -317,7 +317,7 @@
                 v-if="getAttendanceStats(row.id).overtime_hours > 0"
                 class="text-blue font-semibold salary-mobile-overtime"
               >
-                {{ isMobile ? calculateOvertime(row.id, getAttendanceStats(row.id).overtime_hours) : `¥${calculateOvertime(row.id, getAttendanceStats(row.id).overtime_hours)}` }}
+                {{ isMobile ? formatAmount(calculateOvertime(row.id, getAttendanceStats(row.id).overtime_hours)) : `¥${formatAmount(calculateOvertime(row.id, getAttendanceStats(row.id).overtime_hours))}` }}
               </span>
               <span
                 v-else
@@ -333,7 +333,7 @@
           >
             <template #default="{ row }">
               <span class="payout-salary-amount text-blue salary-mobile-net">
-                {{ isMobile ? calculateEstimated(row.id) : `¥${calculateEstimated(row.id)}` }}
+                {{ isMobile ? formatAmount(calculateEstimated(row.id)) : `¥${formatAmount(calculateEstimated(row.id))}` }}
               </span>
             </template>
           </el-table-column>

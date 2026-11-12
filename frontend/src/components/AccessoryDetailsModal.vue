@@ -94,21 +94,21 @@
               class="detail-item"
             >
               <label>采购价格：</label>
-              <span class="price">¥{{ accessory.purchase_cost || '0.00' }}</span>
+              <span class="price">¥{{ formatAmount(accessory.purchase_cost) }}</span>
             </div>
             <div
               v-if="canViewAccessoryField('sale_price')"
               class="detail-item"
             >
               <label>销售价格：</label>
-              <span class="price">¥{{ accessory.sale_price || '0.00' }}</span>
+              <span class="price">¥{{ formatAmount(accessory.sale_price) }}</span>
             </div>
             <div
               v-if="canViewAccessoryField('profit')"
               class="detail-item"
             >
               <label>毛利：</label>
-              <span class="profit-rate">¥{{ accessory.profit ?? '-' }}</span>
+              <span class="profit-rate">¥{{ accessory.profit === null || accessory.profit === undefined ? '-' : formatAmount(accessory.profit) }}</span>
             </div>
           </div>
         </div>
@@ -228,7 +228,7 @@
 import { computed, type PropType } from 'vue'
 import MobileDialog from '@/components/MobileDialog.vue'
 import { canViewAccessoryField, type AccessoryFieldName } from './accessory-field-permissions'
-import { formatDateTime as formatGlobalDateTime } from '@/utils/format'
+import { formatDateTime as formatGlobalDateTime, formatAmount } from '@/utils/format'
 import { TIME_FORMATS } from '@/utils/time'
 
 interface AccessoryDetailItem {

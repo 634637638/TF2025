@@ -339,7 +339,6 @@
       <MobileDialog
         :model-value="showDialog"
         :title="dialogTitle"
-        width="90%"
         :close-on-click-modal="false"
         :close-on-press-escape="false"
         :show-close="!saving && !imageUploading"
@@ -540,19 +539,17 @@
                               v-if="currentChild.price_markup_type === 'fixed'"
                               class="markup-input-frame"
                             >
-                              <el-input-number
+                              <AmountInput
                                 :model-value="currentChild.price_markup"
                                 :min="0"
-                                :precision="2"
                                 :step="100"
-                                :controls="false"
                                 class="markup-input"
                                 @update:model-value="handleFixedMarkupChange(currentChild, $event)"
                               >
                                 <template #prefix>
                                   ¥
                                 </template>
-                              </el-input-number>
+                              </AmountInput>
                             </div>
                             <div
                               v-else
@@ -1089,7 +1086,7 @@ const buildTemplateName = (child: EditableChildTemplate) => {
   return `${brandName} ${modelName} ${colorName}`.trim()
 }
 
-const handleFixedMarkupChange = (child: EditableChildTemplate, value: number | string | undefined) => {
+const handleFixedMarkupChange = (child: EditableChildTemplate, value: number | string | null | undefined) => {
   if (child.price_markup_type !== 'fixed') {
     return
   }

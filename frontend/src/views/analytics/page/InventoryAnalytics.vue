@@ -60,20 +60,20 @@
               round
               type="success"
             >
-              单台均值 ¥{{ formatNumber(averageUnitCost) }}
+              单台均值 ¥{{ formatAmount(averageUnitCost) }}
             </el-tag>
           </div>
           <div class="insight-card__label">
             在库价值
           </div>
           <div class="insight-card__value insight-card__value--currency">
-            ¥{{ formatNumber(inventoryData.total_value) }}
+            ¥{{ formatAmount(inventoryData.total_value) }}
           </div>
           <div class="insight-card__meta">
             按在库成本实时汇总
           </div>
           <div class="insight-card__footer">
-            <span>近10台成交 ¥{{ formatNumber(recentSalesSummary.totalSales) }}</span>
+            <span>近10台成交 ¥{{ formatAmount(recentSalesSummary.totalSales) }}</span>
             <span>最近门店 {{ recentSalesSummary.latestStore }}</span>
           </div>
         </el-card>
@@ -149,7 +149,7 @@
           </div>
           <div class="insight-card__footer">
             <span>TOP {{ topSupplierName }}</span>
-            <span>覆盖价值 ¥{{ formatNumber(topSupplierValue) }}</span>
+            <span>覆盖价值 ¥{{ formatAmount(topSupplierValue) }}</span>
           </div>
         </el-card>
       </el-col>
@@ -160,7 +160,6 @@
       v-model="showLowStockDialog"
       title="库存不足详情（按预警配置）"
       width="80%"
-      :close-on-click-modal="false"
       dialog-class="inventory-low-stock-dialog"
       :show-default-footer="false"
     >
@@ -226,7 +225,7 @@
           align="right"
         >
           <template #default="scope">
-            ¥{{ formatNumber(scope.row.unit_cost) }}
+            ¥{{ formatAmount(scope.row.unit_cost) }}
           </template>
         </el-table-column>
         <el-table-column
@@ -236,7 +235,7 @@
           align="right"
         >
           <template #default="scope">
-            ¥{{ formatNumber(scope.row.total_value) }}
+            ¥{{ formatAmount(scope.row.total_value) }}
           </template>
         </el-table-column>
         <el-table-column
@@ -278,7 +277,7 @@
               </div>
               <div class="panel-metrics">
                 <span class="metric-chip">实时更新</span>
-                <span class="metric-chip">成交 ¥{{ formatNumber(recentSalesSummary.totalSales) }}</span>
+                <span class="metric-chip">成交 ¥{{ formatAmount(recentSalesSummary.totalSales) }}</span>
                 <span class="metric-chip">{{ recentSalesSummary.latestSaleDate }}</span>
               </div>
             </div>
@@ -324,7 +323,7 @@
               align="right"
             >
               <template #default="scope">
-                ¥{{ formatNumber(scope.row.sale_price) }}
+                ¥{{ formatAmount(scope.row.sale_price) }}
               </template>
             </el-table-column>
             <el-table-column
@@ -495,7 +494,7 @@
             </div>
             <div class="warning-stat">
               <span class="warning-stat__label">建议补货值</span>
-              <strong class="warning-stat__value">¥{{ formatNumber(warningSummary.replenishmentValue) }}</strong>
+              <strong class="warning-stat__value">¥{{ formatAmount(warningSummary.replenishmentValue) }}</strong>
             </div>
           </div>
 
@@ -569,7 +568,7 @@
               align="right"
             >
               <template #default="{ row }">
-                ¥{{ formatNumber(row.unit_cost) }}
+                ¥{{ formatAmount(row.unit_cost) }}
               </template>
             </el-table-column>
             <el-table-column
@@ -579,7 +578,7 @@
               align="right"
             >
               <template #default="{ row }">
-                ¥{{ formatNumber(row.total_value) }}
+                ¥{{ formatAmount(row.total_value) }}
               </template>
             </el-table-column>
             <el-table-column
@@ -677,7 +676,7 @@
                 </div>
               </div>
               <div class="supplier-highlight__value">
-                ¥{{ formatNumber(supplier.total_value) }}
+                ¥{{ formatAmount(supplier.total_value) }}
               </div>
             </div>
             <div
@@ -718,7 +717,7 @@ import { useAnalyticsFieldVisibility } from './useAnalyticsFieldVisibility'
 import echarts, { ECharts, type EChartsOption, type TopLevelFormatterParams } from '@/utils/echarts'
 import { buildCsvContent } from '@/utils/csv-export'
 import { logger } from '@/utils/logger'
-import { formatDate } from '@/utils/format'
+import { formatDate, formatAmount } from '@/utils/format'
 
 const props = withDefaults(defineProps<InventoryAnalyticsProps>(), {
   loading: false,
@@ -1131,7 +1130,7 @@ const updateCategoryChart = () => {
       formatter: (params: TopLevelFormatterParams) => {
         const item = Array.isArray(params) ? params[0] : params
         const data = item.data && typeof item.data === 'object' ? item.data as { turnover_rate?: number } : {}
-        return `${item.name}<br/>库存价值: ¥${formatNumber(Number(item.value) || 0)}<br/>周转率: ${formatDecimal(Number(data.turnover_rate) || 0)}`
+        return `${item.name}<br/>库存价值: ¥${formatAmount(Number(item.value) || 0)}<br/>周转率: ${formatDecimal(Number(data.turnover_rate) || 0)}`
       }
     },
     grid: {

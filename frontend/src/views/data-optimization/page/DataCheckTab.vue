@@ -441,6 +441,7 @@
       width="500px"
       dialog-class="data-check-edit-dialog"
       :show-default-footer="false"
+      :close-on-click-modal="false"
     >
       <el-form
         :model="editForm"

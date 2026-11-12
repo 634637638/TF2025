@@ -144,7 +144,7 @@
                       v-if="canViewField('products.product_info')"
                       class="product-price"
                     >
-                      ¥{{ product.min_price || product.sale_price }}
+                      ¥{{ formatAmount(product.min_price || product.sale_price) }}
                     </p>
                   </div>
                 </div>
@@ -166,6 +166,7 @@
         width="550px"
         dialog-class="home-section-dialog"
         :show-default-footer="false"
+        :close-on-click-modal="false"
         @close="handleDialogClose"
       >
         <el-form
@@ -371,6 +372,7 @@
         width="900px"
         dialog-class="home-section-products-dialog"
         :show-default-footer="false"
+        :close-on-click-modal="!canEdit"
         @close="handleProductsDialogClose"
       >
         <div
@@ -408,7 +410,7 @@
                         v-if="item.price"
                         class="product-price"
                       >
-                        ¥{{ item.price }}
+                        ¥{{ formatAmount(item.price) }}
                       </div>
                     </div>
                   </div>
@@ -485,7 +487,7 @@
                     v-if="product.price"
                     class="product-price"
                   >
-                    ¥{{ product.price }}
+                    ¥{{ formatAmount(product.price) }}
                   </div>
                 </div>
                 <div
@@ -552,7 +554,7 @@
                       {{ product.model_name }} {{ product.color_name }}
                     </p>
                     <p class="product-price">
-                      ¥{{ product.min_price || product.sale_price }}
+                      ¥{{ formatAmount(product.min_price || product.sale_price) }}
                     </p>
                   </div>
                   <div class="drag-handle">
@@ -608,7 +610,7 @@ import {
   searchProducts as apiSearchProducts
 } from '@/api/home-sections'
 import type { HomeSection, HomeSectionProduct, SearchProduct } from '@/api/home-sections'
-import { formatImageUrl } from '@/utils/format'
+import { formatImageUrl, formatAmount } from '@/utils/format'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { useLoadingState } from '@/composables'

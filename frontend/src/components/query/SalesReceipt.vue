@@ -285,7 +285,7 @@ import type { CloseEmits, VisibleProps } from '@/types/component'
 import { logger } from '@/utils/logger'
 import { loadHtml2Canvas } from '@/utils/html2canvas'
 import { useSiteSettingsStore } from '@/stores/siteSettings'
-import { formatRmbUppercase } from '@/utils/format'
+import { formatRmbUppercase, formatAmount } from '@/utils/format'
 
 export interface ReceiptItem {
   phone_id: number
@@ -416,11 +416,7 @@ const totalAmount = computed(() => props.items.reduce((sum, item) => sum + (Numb
 const totalAmountInWords = computed(() => formatRmbUppercase(totalAmount.value))
 const formatPrice = (price: number) => {
   const numValue = Number(price || 0)
-  return numValue.toLocaleString('zh-CN', {
-    useGrouping: false,
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2
-  })
+  return formatAmount(numValue)
 }
 
 const formatTotalAmount = (amount: number) => formatPrice(amount)

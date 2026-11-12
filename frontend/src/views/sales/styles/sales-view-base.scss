@@ -1092,13 +1092,6 @@ input.form-control:focus {
 
 .batch-summary .value.negative {
   color: var(--danger-color);
-}/* 批量销售表单样式 */
-.batch-sale-form {
-  background: white;
-  border: 1px solid var(--tf-color-gray-material-300);
-  border-radius: 12px;
-  margin-bottom: 24px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .form-header {
@@ -1206,12 +1199,6 @@ input.form-control:focus {
   .sale-form .form-actions {
     flex-direction: row;
     justify-content: space-between;
-    gap: 10px;
-  }
-
-  /* 批量销售表单的按钮也保持水平排列 */
-  .batch-sale-form .form-actions {
-    flex-direction: row;
     gap: 10px;
   }
 

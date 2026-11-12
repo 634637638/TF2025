@@ -1,3 +1,4 @@
+import { formatCurrency } from '@/utils/format'
 import { BEIJING_TIMEZONE, TimeUtil } from '@/utils/time'
 
 export type MarketingMode = 'opening' | 'sales'
@@ -466,7 +467,7 @@ const safeParseNumber = (value?: string) => {
 const _formatMoney = (value?: string) => {
   const parsed = safeParseNumber(value)
   if (!parsed) return ''
-  return parsed % 1 === 0 ? `¥${parsed.toFixed(0)}` : `¥${parsed.toFixed(2)}`
+  return formatCurrency(parsed)
 }
 
 const getProductName = (product: MarketingProductInput) => {
@@ -884,5 +885,5 @@ export const getWeatherTextByCode = (code?: number | null) => {
 export const formatMarketingPrice = (value?: string) => {
   const parsed = safeParseNumber(value)
   if (!parsed) return ''
-  return parsed % 1 === 0 ? `¥${parsed.toFixed(0)}` : `¥${parsed.toFixed(2)}`
+  return formatCurrency(parsed)
 }

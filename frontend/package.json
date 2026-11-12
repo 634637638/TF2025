@@ -30,7 +30,7 @@
     "check:telemetry": "node scripts/check-telemetry-standards.mjs",
     "check:theme": "node scripts/check-theme-standards.mjs",
     "check:interactions": "node scripts/check-interaction-standards.mjs",
-    "check:form-controls": "node scripts/check-form-controls.mjs",
+    "check:form-controls": "node --test scripts/check-amount-input-contract.test.mjs && node scripts/check-form-controls.mjs",
     "check:permissions": "node scripts/check-permission-capabilities.mjs",
     "check:ui": "node scripts/check-ui-shells.mjs",
     "check:navigation": "node scripts/check-navigation-styles.mjs",

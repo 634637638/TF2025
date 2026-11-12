@@ -18,20 +18,6 @@ export const createDefaultPublishForm = (): PublishFormState => ({
   is_warranty_expired: false
 })
 
-export const normalizePublishSalePrice = (value: string): number | null => {
-  const sanitized = String(value || '')
-    .replace(/[^\d.]/g, '')
-    .replace(/(\..*)\./g, '$1')
-    .replace(/^(\d+)\.(\d{0,2}).*$/, '$1.$2')
-
-  if (!sanitized) {
-    return null
-  }
-
-  const parsed = Number(sanitized)
-  return Number.isFinite(parsed) ? parsed : null
-}
-
 export const revokePendingFileUrls = (files: PendingUploadFile[]) => {
   files.forEach((file) => {
     if (file.url && file.url.startsWith('blob:')) {

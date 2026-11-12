@@ -35,7 +35,9 @@ export const formatAmount = (amount: number | string | null | undefined, decimal
   }
 
   const fractionDigits = decimals ?? 2
-  return num.toFixed(fractionDigits).replace(/\.?(?:0)+$/, '') || '0'
+  const fixed = num.toFixed(fractionDigits)
+  const formatted = fixed.includes('.') ? fixed.replace(/\.?0+$/, '') : fixed
+  return Number(formatted) === 0 ? '0' : formatted
 }
 
 const RMB_DIGITS = ['零', '壹', '贰', '叁', '肆', '伍', '陆', '柒', '捌', '玖']

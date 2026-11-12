@@ -5,6 +5,7 @@
     width="600px"
     dialog-class="permissions-dialog"
     :show-default-footer="false"
+    :close-on-click-modal="false"
     @update:model-value="emit('update:modelValue', $event)"
   >
     <div class="modal-body">

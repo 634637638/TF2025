@@ -2,10 +2,8 @@
   <MobileDialog
     :model-value="modelValue"
     title="国补申请详情"
-    width="90%"
-    dialog-class="subsidy-detail-dialog"
+    dialog-class="subsidy-detail-dialog crud-dialog-md-lg"
     :show-default-footer="false"
-    :style="{ '--dialog-max-width': '700px' }"
     destroy-on-close
     @update:model-value="emit('update:modelValue', $event)"
   >
@@ -35,36 +33,38 @@
             {{ showHandlerInfo ? '点击切换到购买者信息' : '点击切换到办理人信息' }}
           </span>
         </h4>
-        <div
-          v-if="showHandlerInfo ? fieldVisibility.handler_name : fieldVisibility.customer_name"
-          class="detail-row"
-        >
-          <span class="detail-label">姓名:</span>
-          <span class="detail-value">
-            {{ showHandlerInfo && currentDetail.has_different_handler && currentDetail.handler_info ? currentDetail.handler_info.handler_name : currentDetail.customer_name }}
-          </span>
-        </div>
-        <div
-          v-if="showHandlerInfo ? fieldVisibility.handler_phone : fieldVisibility.customer_phone"
-          class="detail-row"
-        >
-          <span class="detail-label">电话:</span>
-          <span class="detail-value">
-            {{ showHandlerInfo && currentDetail.has_different_handler && currentDetail.handler_info ? currentDetail.handler_info.handler_phone : currentDetail.customer_phone }}
-          </span>
-        </div>
-        <div
-          v-if="showHandlerInfo ? fieldVisibility.handler_idcard : fieldVisibility.customer_idcard"
-          class="detail-row"
-        >
-          <span class="detail-label">身份证:</span>
-          <span class="detail-value">
-            {{
-              showHandlerInfo && currentDetail.has_different_handler && currentDetail.handler_info
-                ? (currentDetail.handler_info.handler_idcard || '未填写')
-                : (currentDetail.customer_idcard || '未填写')
-            }}
-          </span>
+        <div class="detail-grid">
+          <div
+            v-if="showHandlerInfo ? fieldVisibility.handler_name : fieldVisibility.customer_name"
+            class="detail-row"
+          >
+            <span class="detail-label">姓名:</span>
+            <span class="detail-value">
+              {{ showHandlerInfo && currentDetail.has_different_handler && currentDetail.handler_info ? currentDetail.handler_info.handler_name : currentDetail.customer_name }}
+            </span>
+          </div>
+          <div
+            v-if="showHandlerInfo ? fieldVisibility.handler_phone : fieldVisibility.customer_phone"
+            class="detail-row"
+          >
+            <span class="detail-label">电话:</span>
+            <span class="detail-value">
+              {{ showHandlerInfo && currentDetail.has_different_handler && currentDetail.handler_info ? currentDetail.handler_info.handler_phone : currentDetail.customer_phone }}
+            </span>
+          </div>
+          <div
+            v-if="showHandlerInfo ? fieldVisibility.handler_idcard : fieldVisibility.customer_idcard"
+            class="detail-row"
+          >
+            <span class="detail-label">身份证:</span>
+            <span class="detail-value">
+              {{
+                showHandlerInfo && currentDetail.has_different_handler && currentDetail.handler_info
+                  ? (currentDetail.handler_info.handler_idcard || '未填写')
+                  : (currentDetail.customer_idcard || '未填写')
+              }}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -73,54 +73,56 @@
         class="detail-section"
       >
         <h4>设备信息</h4>
-        <div
-          v-if="fieldVisibility.brand"
-          class="detail-row"
-        >
-          <span class="detail-label">品牌:</span>
-          <span class="detail-value">{{ currentDetail.phone_brand || '-' }}</span>
-        </div>
-        <div
-          v-if="fieldVisibility.model"
-          class="detail-row"
-        >
-          <span class="detail-label">型号:</span>
-          <span class="detail-value">{{ currentDetail.phone_model || '-' }}</span>
-        </div>
-        <div
-          v-if="fieldVisibility.color"
-          class="detail-row"
-        >
-          <span class="detail-label">颜色:</span>
-          <span class="detail-value">{{ currentDetail.phone_color || '-' }}</span>
-        </div>
-        <div
-          v-if="fieldVisibility.memory"
-          class="detail-row"
-        >
-          <span class="detail-label">内存:</span>
-          <span class="detail-value">{{ currentDetail.phone_memory || '-' }}</span>
-        </div>
-        <div
-          v-if="fieldVisibility.imei1"
-          class="detail-row"
-        >
-          <span class="detail-label">IMEI1:</span>
-          <span class="detail-value">{{ currentDetail.imei1 }}</span>
-        </div>
-        <div
-          v-if="fieldVisibility.imei2 && currentDetail.imei2"
-          class="detail-row"
-        >
-          <span class="detail-label">IMEI2:</span>
-          <span class="detail-value">{{ currentDetail.imei2 }}</span>
-        </div>
-        <div
-          v-if="fieldVisibility.serial_number"
-          class="detail-row"
-        >
-          <span class="detail-label">序列号:</span>
-          <span class="detail-value">{{ currentDetail.serial_number }}</span>
+        <div class="detail-grid">
+          <div
+            v-if="fieldVisibility.brand"
+            class="detail-row"
+          >
+            <span class="detail-label">品牌:</span>
+            <span class="detail-value">{{ currentDetail.phone_brand || '-' }}</span>
+          </div>
+          <div
+            v-if="fieldVisibility.model"
+            class="detail-row"
+          >
+            <span class="detail-label">型号:</span>
+            <span class="detail-value">{{ currentDetail.phone_model || '-' }}</span>
+          </div>
+          <div
+            v-if="fieldVisibility.color"
+            class="detail-row"
+          >
+            <span class="detail-label">颜色:</span>
+            <span class="detail-value">{{ currentDetail.phone_color || '-' }}</span>
+          </div>
+          <div
+            v-if="fieldVisibility.memory"
+            class="detail-row"
+          >
+            <span class="detail-label">内存:</span>
+            <span class="detail-value">{{ currentDetail.phone_memory || '-' }}</span>
+          </div>
+          <div
+            v-if="fieldVisibility.imei1"
+            class="detail-row"
+          >
+            <span class="detail-label">IMEI1:</span>
+            <span class="detail-value">{{ currentDetail.imei1 }}</span>
+          </div>
+          <div
+            v-if="fieldVisibility.imei2 && currentDetail.imei2"
+            class="detail-row"
+          >
+            <span class="detail-label">IMEI2:</span>
+            <span class="detail-value">{{ currentDetail.imei2 }}</span>
+          </div>
+          <div
+            v-if="fieldVisibility.serial_number"
+            class="detail-row"
+          >
+            <span class="detail-label">序列号:</span>
+            <span class="detail-value">{{ currentDetail.serial_number }}</span>
+          </div>
         </div>
       </div>
 
@@ -392,20 +394,20 @@ watch(
 .detail-content {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--tf-space-4);
 }
 
 .detail-section {
   background: var(--tf-color-surface-muted);
   border: 1px solid var(--tf-color-border-muted);
-  border-radius: 12px;
-  padding: 16px;
+  border-radius: var(--tf-radius-panel);
+  padding: var(--tf-space-4);
 
   h4 {
     display: flex;
     justify-content: space-between;
-    gap: 12px;
-    margin: 0 0 12px;
+    gap: var(--tf-space-3);
+    margin: 0 0 var(--tf-space-3);
     font-size: var(--tf-type-scale-15);
     color: var(--tf-color-heading);
   }
@@ -416,7 +418,7 @@ watch(
 }
 
 .compact-summary-section {
-  padding: 18px;
+  padding: var(--tf-space-4);
 }
 
 .customer-info-section {
@@ -429,27 +431,31 @@ watch(
   font-weight: 400;
 }
 
+.detail-grid,
+.summary-grid,
+.status-overview {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--tf-space-3);
+}
+
 .detail-row {
   display: flex;
-  gap: 12px;
-  padding: 8px 0;
+  flex-direction: column;
+  min-width: 0;
+  gap: var(--tf-space-1);
+  padding: var(--tf-space-2) 0;
   border-bottom: 1px solid var(--tf-color-border-muted);
-
-  &:last-child {
-    border-bottom: none;
-  }
 }
 
 .detail-label {
-  width: 88px;
-  flex-shrink: 0;
   color: var(--tf-color-muted);
+  font-size: var(--tf-font-label);
 }
 
 .detail-value {
-  flex: 1;
   min-width: 0;
-  word-break: break-word;
+  overflow-wrap: anywhere;
   color: var(--tf-color-heading);
   font-weight: 500;
 }
@@ -487,17 +493,12 @@ watch(
   color: var(--tf-color-green-600);
 }
 
-.summary-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px 12px;
-}
-
 .summary-item {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 12px 14px;
+  min-width: 0;
+  gap: var(--tf-space-1);
+  padding: var(--tf-space-3);
   background: rgba(255, 255, 255, 0.72);
   border: 1px solid rgba(255, 255, 255, 0.95);
   border-radius: 10px;
@@ -516,18 +517,15 @@ watch(
 }
 
 .status-overview {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-  margin-top: 14px;
+  margin-top: var(--tf-space-3);
 }
 
 .status-chip {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 12px 14px;
+  flex-direction: column;
+  min-width: 0;
+  gap: var(--tf-space-1);
+  padding: var(--tf-space-3);
   border-radius: 10px;
   border: 1px solid transparent;
 
@@ -548,59 +546,21 @@ watch(
 }
 
 .chip-value {
+  overflow-wrap: anywhere;
   font-size: var(--tf-type-scale-14);
   font-weight: 700;
   color: var(--tf-color-neutral-900);
 }
 
-.status-badge {
-  display: inline-flex;
-  align-items: center;
-  width: fit-content;
-  padding: 4px 10px;
-  border-radius: 999px;
-  font-size: var(--tf-type-scale-12);
-
-  &.status-pending {
-    background: var(--tf-status-warning-bg);
-    color: var(--tf-status-warning-color);
-    border: 1px solid var(--tf-status-warning-border);
-  }
-
-  &.status-completed {
-    background: var(--tf-status-success-bg);
-    color: var(--tf-status-success-color);
-    border: 1px solid var(--tf-status-success-border);
-  }
-
-  &.status-approved {
-    background: var(--tf-status-success-bg);
-    color: var(--tf-status-success-color);
-    border: 1px solid var(--tf-status-success-border);
-  }
-}
-
 @media (max-width: 767px) {
   .detail-section {
-    padding: 14px;
+    padding: var(--tf-space-3);
   }
 
-  .compact-summary-section {
-    padding: 14px;
-  }
-
-  .detail-row {
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  .detail-label {
-    width: auto;
-  }
-
+  .detail-grid,
   .summary-grid,
   .status-overview {
-    grid-template-columns: 1fr;
+    gap: var(--tf-space-2);
   }
 }
 </style>

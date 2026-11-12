@@ -366,6 +366,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatAmount } from '@/utils/format'
 import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue'
 
 import { useLoadingState } from '@/composables'
@@ -491,10 +492,7 @@ const isAccessoryEnabled = (accessory: AccessoryItem) => (
 )
 
 const formatPrice = (price?: number | string) => {
-  const value = Number.parseFloat(String(price ?? 0)) || 0
-  return Number.isInteger(value)
-    ? value.toLocaleString('zh-CN')
-    : Number.parseFloat(value.toFixed(2)).toLocaleString('zh-CN')
+  return formatAmount(price)
 }
 
 const loadAccessories = async (showLoadingState = true) => {

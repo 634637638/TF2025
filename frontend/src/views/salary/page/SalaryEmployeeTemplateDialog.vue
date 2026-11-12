@@ -4,6 +4,7 @@
     title="设置工资模板"
     dialog-class="salary-dialog crud-dialog-sm"
     :show-default-footer="false"
+    :close-on-click-modal="false"
     @update:model-value="emit('update:modelValue', $event)"
   >
     <div
@@ -36,7 +37,7 @@
           <el-option
             v-for="template in templates"
             :key="template.id"
-            :label="`${template.name} (底薪: ¥${template.base_salary})`"
+            :label="`${template.name} (底薪: ¥${formatAmount(template.base_salary)})`"
             :value="template.id"
           />
         </el-select>
@@ -51,7 +52,7 @@
           class="preview-row"
         >
           <span class="preview-label">底薪：</span>
-          <span class="preview-value">¥{{ getTemplateById(selectedTemplateId)?.base_salary }}</span>
+          <span class="preview-value">¥{{ formatAmount(getTemplateById(selectedTemplateId)?.base_salary) }}</span>
         </div>
         <div
           v-if="canViewField('salary_salarytemplatesview', 'template_commission_type')"
@@ -60,7 +61,7 @@
           <span class="preview-label">提成：</span>
           <span class="preview-value">
             <template v-if="getCommissionType(selectedTemplateId) === 'fixed'">
-              ¥{{ getCommissionFixed(selectedTemplateId) }}/台
+              ¥{{ formatAmount(getCommissionFixed(selectedTemplateId)) }}/台
             </template>
             <template v-else>
               利润的{{ getCommissionPercentage(selectedTemplateId) }}%
@@ -72,7 +73,7 @@
           class="preview-row"
         >
           <span class="preview-label">加班费率：</span>
-          <span class="preview-value">¥{{ getOvertimeRate(selectedTemplateId) }}/小时</span>
+          <span class="preview-value">¥{{ formatAmount(getOvertimeRate(selectedTemplateId)) }}/小时</span>
         </div>
         <div
           v-if="canViewField('salary_salarytemplatesview', 'template_rest_days')"
@@ -107,6 +108,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatAmount } from '@/utils/format'
 import MobileDialog from '@/components/MobileDialog.vue'
 import type { SalaryEmployeeOption, SalaryTemplateOption } from '@/types/salary'
 

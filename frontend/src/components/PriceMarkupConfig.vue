@@ -77,12 +77,11 @@
               class="compact-form-item"
             >
               <div class="price-input-group">
-                <el-input-number
+                <AmountInput
                   v-model="form.threshold"
                   :min="1000"
                   :max="20000"
                   :step="1000"
-                  :controls="false"
                   class="price-input"
                 />
                 <span class="price-unit">元</span>
@@ -100,12 +99,11 @@
               <div class="tier-card">
                 <span class="price-label">低于{{ form.threshold }}元</span>
                 <div class="tier-input-wrap">
-                  <el-input-number
+                  <AmountInput
                     v-model="form.lowFixed"
                     :min="0"
                     :max="1000"
                     :step="50"
-                    :controls="false"
                     class="price-input"
                   />
                   <span class="price-unit">元</span>
@@ -122,12 +120,11 @@
               <div class="tier-card">
                 <span class="price-label">高于{{ form.threshold }}元</span>
                 <div class="tier-input-wrap">
-                  <el-input-number
+                  <AmountInput
                     v-model="form.highFixed"
                     :min="0"
                     :max="1000"
                     :step="50"
-                    :controls="false"
                     class="price-input"
                   />
                   <span class="price-unit">元</span>
@@ -206,12 +203,11 @@
               class="compact-form-item"
             >
               <div class="price-input-group">
-                <el-input-number
+                <AmountInput
                   v-model="form.wholesale.adjustment"
                   :min="-1000"
                   :max="1000"
                   :step="50"
-                  :controls="false"
                   class="price-input"
                 />
                 <span class="price-unit">元</span>
@@ -245,12 +241,11 @@
                   </span>
                 </div>
                 <div class="price-input-group source-adjustment-input">
-                  <el-input-number
+                  <AmountInput
                     :model-value="getSourceAdjustment(source.id)"
                     :min="-1000"
                     :max="1000"
                     :step="50"
-                    :controls="false"
                     placeholder="跟随默认"
                     @update:model-value="(value) => setSourceAdjustment(source.id, value)"
                   />
@@ -285,12 +280,11 @@
               class="compact-form-item"
             >
               <div class="price-input-group">
-                <el-input-number
+                <AmountInput
                   v-model="form.used.adjustment"
                   :min="0"
                   :max="10000"
                   :step="50"
-                  :controls="false"
                   class="price-input"
                 />
                 <span class="price-unit">元</span>
@@ -371,6 +365,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatAmount } from '@/utils/format'
 import { ref, computed, watch } from 'vue'
 import { FormInstance } from 'element-plus'
 import { ValidationRules } from '@/composables'
@@ -572,29 +567,29 @@ const rules = {
  */
 const calculatePreview = (wholesalePrice: number): string => {
   if (!form.value.enabled) {
-    return wholesalePrice.toString()
+    return formatAmount(wholesalePrice)
   }
 
   if (form.value.mode === 'fixed') {
     const markup = wholesalePrice < form.value.threshold ? form.value.lowFixed : form.value.highFixed
-    return (wholesalePrice + markup).toString()
+    return formatAmount(wholesalePrice + markup)
   } else {
     const markupPercent = wholesalePrice < form.value.threshold ? form.value.lowPercent : form.value.highPercent
     const markup = wholesalePrice * (markupPercent / 100)
-    return (wholesalePrice + markup).toFixed(0)
+    return formatAmount(wholesalePrice + markup)
   }
 }
 
 const calculateWholesalePreview = (wholesalePrice: number): string => {
   if (!form.value.wholesale.enabled) {
-    return wholesalePrice.toString()
+    return formatAmount(wholesalePrice)
   }
 
-  return (wholesalePrice + Number(form.value.wholesale.adjustment || 0)).toFixed(0)
+  return formatAmount(wholesalePrice + Number(form.value.wholesale.adjustment || 0))
 }
 
 const calculateUsedPreview = (inventoryPrice: number): string => (
-  (inventoryPrice + Number(form.value.used.adjustment || 0)).toFixed(0)
+  formatAmount(inventoryPrice + Number(form.value.used.adjustment || 0))
 )
 
 const getSourceLabel = (source: SyncSource): string => {
@@ -620,12 +615,12 @@ const setSourceAdjustment = (sourceId: number, value: number | null | undefined)
 }
 
 const calculateSourceWholesalePreview = (wholesalePrice: number, sourceId: number): string => {
-  if (!form.value.wholesale.enabled) return wholesalePrice.toString()
+  if (!form.value.wholesale.enabled) return formatAmount(wholesalePrice)
   const adjustment = getSourceAdjustment(sourceId)
   const amount = adjustment === null
     ? Number(form.value.wholesale.adjustment || 0)
     : adjustment
-  return (wholesalePrice + amount).toFixed(0)
+  return formatAmount(wholesalePrice + amount)
 }
 
 const getLowTierPreviewPrice = (): number => {

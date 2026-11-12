@@ -18,11 +18,11 @@
 - [前端规范豁免登记](standards-exemptions.md)
 - [报价页联系方式](price-contact-standard.md)
 - [数据实时刷新](data-freshness-standard.md)
-- [对话框](dialog-standards.md)
+- [对话框与手机媒体预览](dialog-standards.md)
 - [空状态](empty-state-standard.md)
 - [全局加载](global-loading-standard.md)
 - [字段一致性](field-consistency-standards.md)
-- [表单控件](form-control-standards.md)
+- [表单控件](form-control-standards.md) — 公共金额输入 `AmountInput` 与金额格式（整数不补零、保留真实小数）
 - [最新请求处理](latest-request-standard.md)
 - [菜单图标管理](menu-icon-management-standard.md)
 - [后台导航与面包屑视觉](navigation-standards.md)

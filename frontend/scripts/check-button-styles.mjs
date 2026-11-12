@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { basename, dirname, extname, join, relative, resolve } from 'node:path'
 import { parse } from '@vue/compiler-sfc'
-import { auditButtonContract, auditButtonInlineStyles, auditTableButtonUsage, collectButtonClasses } from './lib/button-contract.mjs'
+import { auditBatchButtonSizes, auditButtonContract, auditButtonInlineStyles, auditTableButtonUsage, collectButtonClasses } from './lib/button-contract.mjs'
 
 const root = resolve(import.meta.dirname, '..')
 const sourceRoot = join(root, 'src')
@@ -269,6 +269,7 @@ if (!/\.el-button\.tf-button--service-card\s*\+\s*\.el-button\.tf-button--servic
 }
 
 const standardsButtonRequirements = [
+  [/class="section-actions batch-actions-buttons"\s+data-size="small"/, '规范与审计标杆页必须提供显式小号批量操作预览'],
   [/class="section-actions batch-actions-buttons"/, '规范与审计标杆页必须预览复用公共批量操作按钮规格'],
   [/class=["'][^"']*table-inline-action/, '规范与审计标杆页必须提供表格内紧凑文字按钮预览'],
   [/card-actions\s+tf-actions--fit-row/, '规范与审计标杆页卡片操作必须使用 .card-actions.tf-actions--fit-row'],
@@ -294,6 +295,9 @@ if (!/--admin-data-table-action-gap:\s*8px/i.test(adminLayoutSource)) {
 }
 if (!/--admin-data-table-action-edge-space:\s*8px/i.test(adminLayoutSource)) {
   findings.push('src/styles/admin-layout.css PC 操作列左右安全间距必须统一为 8px')
+}
+for (const message of auditBatchButtonSizes(tableStyleSource)) {
+  findings.push(`src/styles/components/_table.scss ${message}`)
 }
 if (!/gap:\s*var\(--admin-data-table-action-gap,\s*8px\)\s*!important/i.test(tableStyleSource)) {
   findings.push('src/styles/components/_table.scss 公共操作按钮容器必须强制读取全局按钮间距')

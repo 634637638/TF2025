@@ -178,8 +178,9 @@ export function clearSyncLogs() {
 /**
  * 获取所有价格（公开，批发报价用，只显示采集的商品）
  */
-export function getAllPrices() {
+export function getAllPrices(config?: RequestConfig) {
   return unifiedApi.get('/public/price/all', {
+    ...config,
     params: { _t: Date.now() },
     useCache: false
   })

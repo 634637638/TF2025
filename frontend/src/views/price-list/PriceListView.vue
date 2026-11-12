@@ -415,7 +415,7 @@
                     v-if="row.sales_display_price !== null && row.sales_display_price !== undefined && row.sales_display_price > 0"
                     class="retail-price-tag"
                   >
-                    ¥{{ Number(row.sales_display_price).toFixed(0) }}
+                    ¥{{ formatAmount(row.sales_display_price) }}
                   </span>
                   <span
                     v-else
@@ -436,7 +436,7 @@
                     @click.stop="handleViewHistory(row)"
                   >
                     <i class="fas fa-arrow-up" />
-                    <span v-if="row.price_change_amount && row.price_change_amount !== '='">¥{{ Math.round(Number(row.price_change_amount)) }}</span>
+                    <span v-if="row.price_change_amount && row.price_change_amount !== '='">¥{{ formatAmount(row.price_change_amount) }}</span>
                   </span>
                   <span
                     v-else-if="row.price_trend === 'down'"
@@ -444,7 +444,7 @@
                     @click.stop="handleViewHistory(row)"
                   >
                     <i class="fas fa-arrow-down" />
-                    <span v-if="row.price_change_amount && row.price_change_amount !== '='">¥{{ Math.round(Number(row.price_change_amount)) }}</span>
+                    <span v-if="row.price_change_amount && row.price_change_amount !== '='">¥{{ formatAmount(row.price_change_amount) }}</span>
                   </span>
                   <span
                     v-else
@@ -466,7 +466,7 @@
                     v-if="row.wholesale_display_price !== null && row.wholesale_display_price !== undefined && row.wholesale_display_price > 0"
                     class="wholesale-price-tag"
                   >
-                    ¥{{ Number(row.wholesale_display_price).toFixed(0) }}
+                    ¥{{ formatAmount(row.wholesale_display_price) }}
                   </span>
                   <span
                     v-else
@@ -705,6 +705,7 @@
         width="650px"
         dialog-class="price-list-edit-dialog"
         :show-default-footer="false"
+        :close-on-click-modal="false"
       >
         <el-form
           :model="editForm"
@@ -861,17 +862,17 @@
           <el-row :gutter="16">
             <el-col :span="12">
               <el-form-item label="采集价">
-                <el-input
-                  v-model="editForm.wholesale_price"
+                <AmountInput
+                  :model-value="editForm.wholesale_price"
                   class="price-input"
-                  inputmode="decimal"
+                  :min="0"
                   placeholder="输入价格或留空删除"
-                  clearable
+                  @update:model-value="editForm.wholesale_price = $event ?? null"
                 >
                   <template #prefix>
                     ¥
                   </template>
-                </el-input>
+                </AmountInput>
               </el-form-item>
             </el-col>
             <el-col :span="12">
@@ -1137,12 +1138,10 @@
             v-if="batchForm.fields.includes('wholesale_rule') && ['adjustment', 'extra'].includes(batchForm.rule_mode)"
             label="加减金额"
           >
-            <el-input-number
+            <AmountInput
               v-model="batchForm.adjustment"
-              :controls="false"
               :min="-999999"
               :max="999999"
-              :precision="2"
               :step="10"
               class="w-full"
             />
@@ -1182,6 +1181,7 @@
         width="900px"
         dialog-class="price-list-config-dialog"
         :show-default-footer="false"
+        :close-on-click-modal="false"
         @open="fetchSyncConfigsList"
       >
         <div class="sync-settings-container">
@@ -1498,7 +1498,7 @@
                 v-if="hasPriceValue(row.retail_price)"
                 :class="getPriceChangeClass('retail', $index)"
               >
-                ¥{{ row.retail_price }}
+                ¥{{ formatAmount(row.retail_price) }}
               </span>
               <span
                 v-else
@@ -1517,7 +1517,7 @@
                 v-if="hasPriceValue(row.wholesale_price)"
                 :class="getPriceChangeClass('wholesale', $index)"
               >
-                ¥{{ row.wholesale_price }}
+                ¥{{ formatAmount(row.wholesale_price) }}
               </span>
               <span
                 v-else
@@ -2060,11 +2060,11 @@ const getPriceListColumnWidth = (field: PriceListAdaptiveField) => {
   }
   const values = priceList.value.map((row) => {
     if (field === 'retail_price' || field === 'wholesale_price') {
-      return row[field] ? `¥${Number(row[field]).toFixed(0)}` : '-'
+      return row[field] ? `¥${formatAmount(row[field])}` : '-'
     }
     if (field === 'price_trend') {
       return row.price_change_amount && row.price_change_amount !== '='
-        ? `¥${Math.round(Number(row.price_change_amount))}`
+        ? `¥${formatAmount(row.price_change_amount)}`
         : '='
     }
     if (field === 'stock_quantity') return `${row.stock_quantity || 0}台`

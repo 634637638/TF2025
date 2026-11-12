@@ -195,7 +195,6 @@
       :show-close="true"
       :close-on-click-modal="true"
       :close-on-press-escape="true"
-      width="90%"
       dialog-class="payment-dialog"
       :show-default-footer="false"
       @close="handlePaymentDialogClose"

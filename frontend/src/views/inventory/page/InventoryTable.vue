@@ -43,7 +43,7 @@
             <span
               v-else-if="column.key === 'purchase_cost'"
               class="price"
-            >¥{{ formatNumber(item.purchase_cost || 0) }}</span>
+            >¥{{ formatAmount(item.purchase_cost || 0) }}</span>
             <span v-else-if="column.key === 'inventory_operator_name'">{{ item.inventory_operator_name || item.operator_name || '-' }}</span>
             <span v-else-if="column.key === 'is_new'">
               <span
@@ -148,6 +148,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatAmount } from '@/utils/format'
 import { toRefs } from 'vue'
 import Pagination from '@/components/Pagination.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
@@ -172,7 +173,6 @@ const props = defineProps<{
   columns: InventoryColumn[]
   enableRowDoubleTap: boolean
   formatDate: (_value?: string) => string
-  formatNumber: (_value: number) => string
   getColumnClass: (_column: InventoryColumn) => string
   getColumnMinWidth: (_column: InventoryColumn) => number
   getColumnWidth: (_column: InventoryColumn) => number | undefined
@@ -212,7 +212,6 @@ const {
   columns,
   enableRowDoubleTap,
   formatDate,
-  formatNumber,
   getColumnClass,
   getColumnMinWidth,
   getColumnWidth,

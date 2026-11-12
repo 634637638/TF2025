@@ -58,7 +58,7 @@
               本月应发工资
             </div>
             <div class="card-value">
-              ¥{{ formatNumber(employeeData.totalSalary || 0) }}
+              ¥{{ formatAmount(employeeData.totalSalary || 0) }}
             </div>
             <div
               class="card-change"
@@ -336,7 +336,7 @@
             </div>
             <div class="performance-summary-item">
               <span class="summary-label">总销售额</span>
-              <span class="summary-value">¥{{ formatNumber(performanceSummary.totalSales) }}</span>
+              <span class="summary-value">¥{{ formatAmount(performanceSummary.totalSales) }}</span>
             </div>
             <div class="performance-summary-item">
               <span class="summary-label">批发 / 划拨</span>
@@ -415,7 +415,7 @@
               align="right"
             >
               <template #default="{ row }">
-                ¥{{ formatNumber(row.total_sales || 0) }}
+                ¥{{ formatAmount(row.total_sales || 0) }}
               </template>
             </el-table-column>
             <el-table-column
@@ -457,7 +457,7 @@
               align="right"
             >
               <template #default="{ row }">
-                ¥{{ formatNumber(row.salary || 0) }}
+                ¥{{ formatAmount(row.salary || 0) }}
               </template>
             </el-table-column>
             <el-table-column
@@ -624,6 +624,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatAmount } from '@/utils/format'
 import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import { ArrowUp, ArrowDown, Minus } from '@element-plus/icons-vue'
 import { useNotification } from '@/composables/useNotification'
@@ -747,12 +748,9 @@ const _formatAmount = (amount: number) => {
   if (amount >= 10000) {
     return (amount / 10000).toFixed(1) + '万'
   }
-  return amount.toLocaleString('zh-CN')
+  return formatAmount(amount)
 }
 
-const formatNumber = (num: number) => {
-  return num.toLocaleString('zh-CN')
-}
 
 const formatPercent = (percent: number) => {
   return `${percent > 0 ? '+' : ''}${percent.toFixed(1)}%`

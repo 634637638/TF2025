@@ -22,7 +22,7 @@
                 总销售额
               </div>
               <div class="card-value">
-                ¥{{ formatNumber(totalSalesAmount) }}
+                ¥{{ formatAmount(totalSalesAmount) }}
               </div>
             </div>
           </div>
@@ -73,7 +73,7 @@
                 {{ newUsedSales.new?.count || 0 }}台
               </div>
               <div class="card-subtitle">
-                ¥{{ formatNumber(newUsedSales.new?.amount || 0) }}
+                ¥{{ formatAmount(newUsedSales.new?.amount || 0) }}
               </div>
             </div>
           </div>
@@ -100,7 +100,7 @@
                 {{ newUsedSales.used?.count || 0 }}台
               </div>
               <div class="card-subtitle">
-                ¥{{ formatNumber(newUsedSales.used?.amount || 0) }}
+                ¥{{ formatAmount(newUsedSales.used?.amount || 0) }}
               </div>
             </div>
           </div>
@@ -126,7 +126,7 @@
                 {{ transferAllocationData.transfer?.count || 0 }}台
               </div>
               <div class="card-subtitle">
-                ¥{{ formatNumber(transferAllocationData.transfer?.profit || 0) }}
+                ¥{{ formatAmount(transferAllocationData.transfer?.profit || 0) }}
               </div>
             </div>
           </div>
@@ -312,7 +312,7 @@
               align="right"
             >
               <template #default="{ row }">
-                ¥{{ formatNumber(row.revenue) }}
+                ¥{{ formatAmount(row.revenue) }}
               </template>
             </el-table-column>
             <el-table-column
@@ -323,7 +323,7 @@
             >
               <template #default="{ row }">
                 <span :class="getProfitClass(row.profit)">
-                  ¥{{ formatNumber(row.profit) }}
+                  ¥{{ formatAmount(row.profit) }}
                 </span>
               </template>
             </el-table-column>
@@ -556,6 +556,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatAmount } from '@/utils/format'
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import {
   Money,
@@ -924,10 +925,6 @@ const loadStoreComparisonData = async () => {
   }
 }
 
-const formatNumber = (num?: number | null) => {
-  if (num === undefined || num === null) return '0'
-  return num.toLocaleString('zh-CN')
-}
 
 const _formatPercent = (percent?: number) => {
   if (!percent) return '0%'

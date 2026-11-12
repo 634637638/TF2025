@@ -219,7 +219,7 @@
             align="center"
           >
             <template #default="{ row }">
-              <span class="amount-text">¥{{ getBaseSalary(row.id) }}</span>
+              <span class="amount-text">¥{{ formatAmount(getBaseSalary(row.id)) }}</span>
             </template>
           </el-table-column>
           <el-table-column
@@ -236,11 +236,11 @@
                 <div v-if="getCommissionType(row.salary_template_id) === 'fixed'">
                   <div class="commission-row">
                     <span class="commission-label">新机:</span>
-                    <span class="commission-value">¥{{ getNewCommission(row.salary_template_id) }}/台</span>
+                    <span class="commission-value">¥{{ formatAmount(getNewCommission(row.salary_template_id)) }}/台</span>
                   </div>
                   <div class="commission-row">
                     <span class="commission-label">二手:</span>
-                    <span class="commission-value">¥{{ getUsedCommission(row.salary_template_id) }}/台</span>
+                    <span class="commission-value">¥{{ formatAmount(getUsedCommission(row.salary_template_id)) }}/台</span>
                   </div>
                 </div>
                 <div v-else>
@@ -282,7 +282,7 @@
               <span
                 v-if="getSalesStats(row.id).sales_count > 0"
                 class="text-danger font-semibold salary-mobile-commission"
-              >{{ isMobile ? calculateCommission(row.id) : `¥${calculateCommission(row.id)}` }}</span>
+              >{{ isMobile ? formatAmount(calculateCommission(row.id)) : `¥${formatAmount(calculateCommission(row.id))}` }}</span>
               <span
                 v-else
                 class="text-secondary salary-mobile-commission"
@@ -300,7 +300,7 @@
                 v-if="row.salary_template_id"
                 class="rate-info"
               >
-                <div><span class="rate-label">加班:</span> ¥{{ getOvertimeRate(row.salary_template_id) }}/h</div>
+                <div><span class="rate-label">加班:</span> ¥{{ formatAmount(getOvertimeRate(row.salary_template_id)) }}/h</div>
                 <div><span class="rate-label">请假:</span> 扣平均工资/天</div>
               </div>
               <span
@@ -382,7 +382,7 @@
               <span
                 v-if="getAttendanceStats(row.id).overtime_hours > 0"
                 class="text-danger font-semibold salary-mobile-overtime"
-              >{{ isMobile ? calculateOvertime(row.id, getAttendanceStats(row.id).overtime_hours) : `¥${calculateOvertime(row.id, getAttendanceStats(row.id).overtime_hours)}` }}</span>
+              >{{ isMobile ? formatAmount(calculateOvertime(row.id, getAttendanceStats(row.id).overtime_hours)) : `¥${formatAmount(calculateOvertime(row.id, getAttendanceStats(row.id).overtime_hours))}` }}</span>
               <span
                 v-else
                 class="text-secondary salary-mobile-overtime"
@@ -399,7 +399,7 @@
               <span
                 v-if="getAttendanceStats(row.id).leave_days > 0"
                 class="text-danger font-semibold salary-mobile-deduction"
-              >{{ isMobile ? calculateLeave(row.id, getAttendanceStats(row.id).leave_days) : `-¥${calculateLeave(row.id, getAttendanceStats(row.id).leave_days)}` }}</span>
+              >{{ isMobile ? formatAmount(calculateLeave(row.id, getAttendanceStats(row.id).leave_days)) : `-¥${formatAmount(calculateLeave(row.id, getAttendanceStats(row.id).leave_days))}` }}</span>
               <span
                 v-else
                 class="text-secondary salary-mobile-deduction"
@@ -413,7 +413,7 @@
             align="center"
           >
             <template #default="{ row }">
-              <span class="estimated-salary">¥{{ calculateEstimated(row.id) }}</span>
+              <span class="estimated-salary">¥{{ formatAmount(calculateEstimated(row.id)) }}</span>
             </template>
           </el-table-column>
           <el-table-column
@@ -482,6 +482,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatAmount } from '@/utils/format'
 import { TIME_FORMATS } from '@/utils/time'
 import { computed, ref } from 'vue'
 import { shouldShowActionColumn } from '@/composables/useFieldPermissions'

@@ -603,7 +603,6 @@
         v-model="showDetailDialog"
         :title="`订单详情 - ${currentOrder?.order_number || ''}`"
         width="800px"
-        :close-on-click-modal="false"
         dialog-class="h5-order-dialog h5-order-detail-dialog"
         :show-default-footer="false"
       >
@@ -801,14 +800,18 @@
                 class="info-item"
               >
                 <label>支付凭证</label>
-                <el-image
-                  v-if="currentOrder.payment_proof"
-                  :src="currentOrder.payment_proof"
-                  :preview-src-list="[currentOrder.payment_proof]"
-                  fit="cover"
-                  class="product-thumb"
-                  preview-teleported
-                />
+                <el-button
+                  native-type="button"
+                  class="tf-button--content tf-button--media-tile"
+                  aria-label="预览支付凭证"
+                  @click="showPaymentProof = true"
+                >
+                  <el-image
+                    :src="currentOrder.payment_proof"
+                    fit="cover"
+                    class="product-thumb"
+                  />
+                </el-button>
               </div>
             </div>
           </div>
@@ -922,6 +925,12 @@
         </template>
       </MobileDialog>
 
+      <MediaPreviewViewer
+        v-if="showDetailDialog && canView"
+        v-model="showPaymentProof"
+        :items="paymentProofItems"
+      />
+
       <!-- 发货弹窗 -->
       <MobileDialog
         v-model="showShipDialog"
@@ -929,6 +938,7 @@
         width="500px"
         dialog-class="h5-order-dialog"
         :show-default-footer="false"
+        :close-on-click-modal="false"
       >
         <el-form
           :model="shipForm"
@@ -984,6 +994,7 @@
         width="500px"
         dialog-class="h5-order-dialog"
         :show-default-footer="false"
+        :close-on-click-modal="false"
       >
         <el-form
           :model="completeForm"
@@ -1027,6 +1038,7 @@
         width="500px"
         dialog-class="h5-order-dialog"
         :show-default-footer="false"
+        :close-on-click-modal="false"
       >
         <el-form
           :model="cancelForm"
@@ -1088,6 +1100,7 @@ import logger from '@/utils/logger'
 import { getAdaptiveActionColumnWidth } from '@/utils/table-layout'
 import type { HeaderAction } from '@/types'
 import { formatAmount, formatDateTime as formatGlobalDateTime } from '@/utils/format'
+import type { MediaPreviewItem } from '@/utils/media'
 import { useNotification } from '@/composables/useNotification'
 const globalNotifications = useNotification()
 
@@ -1157,6 +1170,13 @@ const orderActionColumnWidth = computed(() => getAdaptiveActionColumnWidth(
 const statistics = ref<OrderStatistics>({})
 const currentOrder = ref<OrderRecord | null>(null)
 const showDetailDialog = ref(false)
+const showPaymentProof = ref(false)
+const paymentProofItems = computed<MediaPreviewItem[]>(() => currentOrder.value?.payment_proof
+  ? [{ url: currentOrder.value.payment_proof, label: '支付凭证' }]
+  : [])
+watch([showDetailDialog, canView, () => currentOrder.value?.payment_proof], () => {
+  showPaymentProof.value = false
+})
 const showShipDialog = ref(false)
 const showCompleteDialog = ref(false)
 const showCancelDialog = ref(false)

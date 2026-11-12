@@ -2,6 +2,7 @@
 
 import { readFileSync, readdirSync } from 'node:fs'
 import { extname, join, relative, resolve } from 'node:path'
+import { parse } from '@vue/compiler-sfc'
 import { collectCoverage, isPrivateDialogChrome } from './audit-dialog-coverage.mjs'
 
 const root = resolve(import.meta.dirname, '..')
@@ -35,10 +36,46 @@ function lineNumber(source, index) {
   return source.slice(0, index).split('\n').length
 }
 
+function checkClosePolicy(template, file) {
+  const normalizeTag = tag => tag.replace(/-/g, '').toLowerCase()
+  const descendants = node => (node.children || []).flatMap(child =>
+    child.type === 1 && normalizeTag(child.tag) === 'mobiledialog' ? [] : [child, ...descendants(child)])
+  const plainText = node => node.type === 2 ? node.content : (node.children || []).map(plainText).join('').trim()
+  const visit = node => {
+    if (node.type === 1 && normalizeTag(node.tag) === 'mobiledialog') {
+      const content = descendants(node)
+      const hasDraft = content.some(child => child.type === 1 && (
+        ['form', 'elform'].includes(normalizeTag(child.tag))
+        || ['button', 'elbutton'].includes(normalizeTag(child.tag)) && plainText(child) === '保存'
+      ))
+      const close = node.props.find(prop => prop.type === 7 && prop.name === 'bind' && prop.arg?.content === 'close-on-click-modal')
+      const title = node.props.find(prop => prop.type === 6 && prop.name === 'title')?.value?.content
+        || node.props.find(prop => prop.type === 7 && prop.arg?.content === 'title')?.exp?.content || ''
+      if (hasDraft && (!close?.exp?.content.trim() || close.exp.content.trim() === 'true')) {
+        findings.push(`${file}:${node.loc.start.line} 创建/编辑及待提交表单必须禁用遮罩关闭，复用 :close-on-click-modal="false"`)
+      } else if (!hasDraft && /详情|明细|历史|记录|预览/.test(title) && close?.exp?.content.trim() === 'false') {
+        findings.push(`${file}:${node.loc.start.line} 查看类弹窗必须允许遮罩关闭，复用公共默认关闭规则`)
+      }
+    }
+    for (const child of node.children || []) visit(child)
+  }
+  if (template) visit(template)
+}
+
 for (const file of walk(sourceRoot)) {
   const source = readFileSync(file, 'utf8')
   const relativeFile = relative(root, file).split('\\').join('/')
   const matches = [...source.matchAll(/<el-dialog\b/gi)]
+  if (relativeFile !== 'src/components/MobileDialog.vue') {
+    const { descriptor } = parse(source, { filename: file })
+    checkClosePolicy(descriptor.template?.ast, relativeFile)
+  }
+
+  for (const tag of source.matchAll(/<MobileDialog\b[^>]*>/g)) {
+    if (/\s(?::width|v-bind:width|width)\s*=\s*(?:"\s*(?:'\s*)?90%\s*'?\s*"|'\s*(?:"\s*)?90%\s*"?\s*')/.test(tag[0])) {
+      findings.push(`${relativeFile}:${lineNumber(source, tag.index)} 弹窗不得使用 90% 宽度，手机边距必须复用公共规则；桌面尺寸使用公共档位或明确业务宽度`)
+    }
+  }
 
   if (!matches.length || relativeFile === 'src/components/MobileDialog.vue') continue
 
@@ -53,6 +90,9 @@ for (const relativeFile of requiredMobileDialogFiles) {
 }
 
 const mobileDialogSource = readFileSync(mobileDialogPath, 'utf8')
+if (!/closeOnClickModal:\s*true/.test(mobileDialogSource)) {
+  findings.push('MobileDialog 默认必须允许查看类弹窗点击遮罩关闭，编辑类由业务显式关闭此行为')
+}
 if (/\bwidth:\s*['"](?:var\(--tf-dialog-width\)|\d+(?:px|%|vw))['"]/.test(mobileDialogSource)) {
   findings.push('MobileDialog 不得把默认宽度注入 props；未传 width 时必须由全局 CSS 选择档位或默认值')
 }

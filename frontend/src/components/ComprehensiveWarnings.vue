@@ -315,11 +315,11 @@
           </div>
           <div class="summary-item">
             <span class="label">今日金额</span>
-            <span class="value">¥{{ formatNumber(warningsData.sales?.today?.total_amount || 0) }}</span>
+            <span class="value">¥{{ formatAmount(warningsData.sales?.today?.total_amount || 0) }}</span>
           </div>
           <div class="summary-item">
             <span class="label">今日利润</span>
-            <span class="value profit">¥{{ formatNumber(warningsData.sales?.today?.total_profit || 0) }}</span>
+            <span class="value profit">¥{{ formatAmount(warningsData.sales?.today?.total_profit || 0) }}</span>
           </div>
           <div class="summary-item">
             <span class="label">销售人数</span>
@@ -358,7 +358,7 @@
                 />
               </div>
               <span class="trend-count">{{ item.sales_count }} 台</span>
-              <span class="trend-amount">¥{{ formatNumber(item.total_amount) }}</span>
+              <span class="trend-amount">¥{{ formatAmount(item.total_amount) }}</span>
             </div>
           </div>
         </div>
@@ -518,7 +518,7 @@ import { useRouter } from 'vue-router'
 import { unifiedApi } from '@/utils/unified-api'
 import { useAuthStore } from '@/stores/auth'
 import { canAccessRoutePath } from '@/constants/routePermissions'
-import { formatDate as formatGlobalDate } from '@/utils/format'
+import { formatDate as formatGlobalDate, formatAmount } from '@/utils/format'
 import type { ComprehensiveWarningsData, PhoneStockWarning } from '@/types'
 import { useNotification } from '@/composables/useNotification'
 const globalNotifications = useNotification()
@@ -633,9 +633,6 @@ const getTrendWidth = (count: number) => {
 }
 
 // 格式化数字
-const formatNumber = (num: number) => {
-  return num.toLocaleString('zh-CN')
-}
 
 // 格式化日期
 const formatDate = (dateStr: string) => {

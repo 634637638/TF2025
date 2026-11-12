@@ -292,12 +292,10 @@
                   label="进价"
                   prop="purchase_cost"
                 >
-                  <el-input-number
+                  <AmountInput
                     v-model="formData.purchase_cost"
                     :min="0"
-                    :precision="0"
                     :step="1"
-                    :controls="false"
                     class="full-width"
                   />
                 </el-form-item>
@@ -310,12 +308,10 @@
                 :md="8"
               >
                 <el-form-item label="售价">
-                  <el-input-number
+                  <AmountInput
                     v-model="formData.sale_price"
                     :min="0"
-                    :precision="0"
                     :step="1"
-                    :controls="false"
                     class="full-width"
                   />
                 </el-form-item>
@@ -515,7 +511,7 @@
                   <span
                     v-if="canViewAccessoryField('purchase_cost')"
                     class="item-amount"
-                  >¥{{ ((store.quantity || 0) * formData.purchase_cost).toLocaleString('zh-CN') }}</span>
+                  >¥{{ formatAmount((store.quantity || 0) * formData.purchase_cost) }}</span>
                 </div>
               </div>
 
@@ -596,7 +592,7 @@ import { unifiedApi } from '@/utils/unified-api'
 import { getCachedPhoneOptions, getCachedSuppliers } from '@/services/reference-options'
 import type { ReferenceRecord } from '@/services/reference-options'
 import { deleteTempFiles } from '@/utils/temp-file-cleaner'
-import { formatImageUrl } from '@/utils/format'
+import { formatImageUrl, formatAmount } from '@/utils/format'
 import { sortOptionsByOrder } from '@/utils/option-sort'
 import { useAuthStore } from '@/stores/auth'
 import { logger } from '@/utils/logger'

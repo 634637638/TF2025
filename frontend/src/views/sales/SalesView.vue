@@ -92,7 +92,6 @@
             :can-edit="canEdit"
             :can-delete="canDelete"
             :get-phone-image-src="getPhoneImageSrc"
-            :format-number="formatNumber"
             :format-date="formatDate"
             @sale="handleSaleAction"
             @edit="editPhone"
@@ -242,7 +241,7 @@
     <MobileDialog
       v-model="showBatchSaleModal"
       :title="`批量销售出库 (${selectedPhones.length}台)`"
-      width="880px"
+      width="800px"
       dialog-class="sales-batch-sale-dialog tf-dialog-body-flush"
       :show-default-footer="false"
       :close-on-click-modal="false"
@@ -359,7 +358,7 @@
       :mode="wholesaleMode"
       :phone-ids="selectedPhones.map(p => p.id)"
       :phones="selectedPhones"
-      :close-on-click-modal="false"
+      :can-view-supplier="canViewSaleField('supplier_name')"
       @success="handleTransferSuccess"
     />
   </div>
@@ -418,7 +417,7 @@ import {
 } from './sales-phone-helpers'
 
 // 导入格式化工具函数
-import { formatNumber } from '@/utils/format'
+import { formatAmount } from '@/utils/format'
 
 const WholesaleModal = defineAsyncComponent(() => import('@/components/WholesaleModal.vue'))
 
@@ -727,7 +726,7 @@ const syncBatchSaleItems = () => {
     const purchaseCost = phone.purchase_cost ?? ''
     return {
       phone_id: phone.id,
-      imei: phone.imei || phone.serial_number || '',
+      imei: phone.imei?.trim() || phone.serial_number?.trim() || '',
       brand: phone.brand || phone.phoneBrand?.name || '',
       model: phone.model || phone.phoneModel?.name || '',
       color: phone.color || phone.phoneColor?.name || '',
@@ -1290,8 +1289,8 @@ const loadAvailablePhones = async (_bustCache = false, silentError = false, show
       const newValue = parseFloat(String(stats.new_value || 0))
       const usedValue = parseFloat(String(stats.used_value || 0))
 
-      newInventoryValue.value = String(Math.round(newValue))
-      usedInventoryValue.value = String(Math.round(usedValue))
+      newInventoryValue.value = formatAmount(newValue)
+      usedInventoryValue.value = formatAmount(usedValue)
 
       // 统计数据不阻塞主列表渲染
       void loadSalesStats()
@@ -1684,7 +1683,7 @@ watch(showEditModal, async (newVal) => {
       memory: phone.memory || '',
       serial_number: phone.serial_number || '',
       imei: phone.imei || '',
-      purchase_cost: phone.purchase_cost === null || phone.purchase_cost === undefined ? null : Math.round(Number(phone.purchase_cost)),
+      purchase_cost: phone.purchase_cost === null || phone.purchase_cost === undefined ? null : Number(phone.purchase_cost),
       sale_price: phone.sale_price === null || phone.sale_price === undefined ? null : Number(phone.sale_price),
       supplier_id: phone.supplier_id || null,
       store_id: phone.store_id || null,

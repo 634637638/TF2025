@@ -295,17 +295,17 @@
             label="入库价格"
             prop="purchase_cost"
           >
-            <el-input
-              :model-value="formatPriceInputValue(formData.purchase_cost)"
+            <AmountInput
+              :model-value="formData.purchase_cost"
               placeholder="请输入入库价格"
-              inputmode="numeric"
-              clearable
-              @input="handlePriceInput('purchase_cost', $event)"
+              class="w-full"
+              :min="0"
+              @update:model-value="handlePriceInput('purchase_cost', $event)"
             >
               <template #prefix>
                 ¥
               </template>
-            </el-input>
+            </AmountInput>
           </el-form-item>
 
           <el-form-item
@@ -313,17 +313,17 @@
             :label="formData.status === 'peer_transfer' ? '批发价格' : '销售价格'"
             prop="sale_price"
           >
-            <el-input
-              :model-value="formatPriceInputValue(formData.sale_price)"
+            <AmountInput
+              :model-value="formData.sale_price"
               :placeholder="formData.status === 'peer_transfer' ? '请输入批发价格' : '请输入销售价格'"
-              inputmode="numeric"
-              clearable
-              @input="handlePriceInput('sale_price', $event)"
+              class="w-full"
+              :min="0"
+              @update:model-value="handlePriceInput('sale_price', $event)"
             >
               <template #prefix>
                 ¥
               </template>
-            </el-input>
+            </AmountInput>
           </el-form-item>
         </div>
       </div>
@@ -582,7 +582,6 @@ import {
   normalizeQuickSaleCustomerOption,
   normalizeQuickSaleCustomerPhone,
   sanitizeQuickSaleRemarks,
-  sanitizeQuickSalePriceInput,
   shouldSearchQuickSaleCustomer,
   toggleQuickSaleNoIMEIMode
 } from './quick-sale/helpers'
@@ -885,14 +884,8 @@ const formatIMEI = () => {
   formData.imei = formatQuickSaleIMEI(formData.imei, formData.isNoIMEIMode)
 }
 
-const formatPriceInputValue = (value: number | null | undefined) => {
-  if (value === null || value === undefined) return ''
-  return String(value)
-}
-
-const handlePriceInput = (field: PriceField, value: string) => {
-  const sanitized = sanitizeQuickSalePriceInput(value)
-  formData[field] = sanitized ? Number(sanitized) : null
+const handlePriceInput = (field: PriceField, value: number | null | undefined) => {
+  formData[field] = value ?? null
 }
 
 // 启用无IMEI模式（双击IMEI输入框触发）

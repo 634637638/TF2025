@@ -265,6 +265,26 @@
                     </el-button>
                   </div>
                 </div>
+                <div class="section-title">
+                  <span>批量操作：页面声明小号</span>
+                  <div
+                    class="section-actions batch-actions-buttons"
+                    data-size="small"
+                  >
+                    <el-button
+                      class="tf-button--neutral"
+                      @click="previewButtonAction('小号清空选择')"
+                    >
+                      清空选择
+                    </el-button>
+                    <el-button
+                      class="table-action--finance"
+                      @click="previewButtonAction('小号批量打款')"
+                    >
+                      批量打款
+                    </el-button>
+                  </div>
+                </div>
               </div>
               <div
                 v-if="selectedStandard.previewKind === 'button'"
@@ -555,6 +575,10 @@
                 class="preview-form"
               >
                 <label>字段名称<el-input v-model="previewFormName" /></label>
+                <label>金额（整数不补零）<AmountInput
+                  v-model="previewFormAmount"
+                  :min="0"
+                /></label>
                 <label>选项<el-select v-model="previewFormOption"><el-option
                   label="统一选项"
                   value="统一选项"
@@ -980,6 +1004,7 @@ const previewDialogResult = ref('')
 const previewSearchKeyword = ref('')
 const previewSearchResult = ref('')
 const previewFormName = ref('示例内容')
+const previewFormAmount = ref<number | null | undefined>(225)
 const previewFormOption = ref('统一选项')
 const previewFormSubmitted = ref(false)
 const previewFormSegment = ref('public')
@@ -1077,6 +1102,7 @@ const resetPreviewState = () => {
   previewSearchKeyword.value = ''
   previewSearchResult.value = ''
   previewFormName.value = '示例内容'
+  previewFormAmount.value = 225
   previewFormOption.value = '统一选项'
   previewFormSubmitted.value = false
   previewFormSegment.value = 'public'

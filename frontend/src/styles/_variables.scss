@@ -210,6 +210,8 @@
   --tf-z-message: 10000;
   --tf-z-lock: 999999;
   --tf-z-viewer: 12000;
+  // 预览器隔离上下文内部的工具层，确保缩放图片不遮住关闭及切换按钮。
+  --tf-z-viewer-tools: 1;
   --tf-z-message-box: calc(var(--tf-z-viewer) + 1);
   --tf-z-popper: 4005;
   --tf-z-permission-tooltip: 9999;

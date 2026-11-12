@@ -252,6 +252,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatAmount } from '@/utils/format'
 import { computed, ref, onMounted, onUnmounted } from 'vue'
 
 import { useNotification } from '@/composables/useNotification'
@@ -518,10 +519,7 @@ const loadDashboardData = async (showLoadingState = true) => {
 // 格式化金额（不添加货币符号，因为模板中已有）
 const formatCurrency = (amount: number): string => {
   const numericAmount = Number(amount) || 0
-  return numericAmount.toLocaleString('zh-CN', {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2
-  })
+  return formatAmount(numericAmount)
 }
 
 // 格式化数字

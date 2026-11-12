@@ -10,6 +10,11 @@
   --tf-button-radius: var(--tf-radius-control);
   --tf-button-font-size: var(--tf-font-body);
   --tf-button-font-size-small: var(--tf-button-small-base-font-size);
+  --tf-button-batch-small-height: 24px;
+  --tf-button-batch-small-padding-x: var(--tf-space-2);
+  --tf-button-batch-small-padding-y: var(--tf-space-1);
+  --tf-button-batch-small-font-size: var(--tf-type-scale-12);
+  --tf-button-batch-small-icon-size: var(--tf-type-scale-12);
   --tf-button-font-weight: 600;
   --tf-toolbar-button-height: 34px;
   --tf-toolbar-button-padding-x: var(--tf-space-3);
@@ -1027,6 +1032,7 @@ body .el-button.el-button.tf-button--menu-action:focus {
 
 @media (max-width: 767px) {
   :root {
+    --tf-button-batch-small-height: 28px;
     --tf-button-height: clamp(34px, 9.6vw, 36px);
     --tf-button-small-base-height: clamp(30px, 8.54vw, 32px);
     --tf-button-padding-x: clamp(10px, 3.2vw, 12px);

@@ -326,7 +326,6 @@
     <MobileDialog
       v-model="purchaseVisible"
       title="购买记录"
-      width="90%"
       dialog-class="my-center-purchase-dialog"
       :show-default-footer="false"
     >
@@ -389,10 +388,9 @@
     <MobileDialog
       v-model="profileVisible"
       title="个人资料"
-      width="90%"
-      :style="{ '--dialog-max-width': '500px' }"
-      dialog-class="my-center-profile-dialog"
+      dialog-class="my-center-profile-dialog crud-dialog-sm"
       :show-default-footer="false"
+      :close-on-click-modal="false"
     >
       <el-form
         ref="profileFormRef"

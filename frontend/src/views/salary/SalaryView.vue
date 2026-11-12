@@ -679,7 +679,7 @@ const calculateEditNetSalary = () => {
   const commission = Number(editPayoutForm.value.commission_amount) || 0
   const overtime = Number(editPayoutForm.value.overtime_pay) || 0
   const leave = Number(editPayoutForm.value.leave_deduction) || 0
-  return (base + commission + overtime - leave).toFixed(2)
+  return formatAmount(base + commission + overtime - leave)
 }
 
 
@@ -1803,7 +1803,7 @@ const handlePayoutByEmployee = async (employee: SalaryEmployeeRow) => {
       recordId: null, // 还没有保存，所以没有 recordId
       employeeId: employee.id,
       employeeName: employee.name || employee.username || '未命名员工',
-      netSalary: Number(calculatedData.net_salary || 0).toFixed(2),
+      netSalary: formatAmount(calculatedData.net_salary),
       payment_method: record?.payment_method || '' // 预填充之前的支付方式
     }
     settleDialogVisible.value = true

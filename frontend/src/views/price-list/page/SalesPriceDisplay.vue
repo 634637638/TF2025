@@ -191,8 +191,6 @@
     <MobileDialog
       v-model="showIOSImageModal"
       title="长按图片保存到相册"
-      width="90%"
-      :close-on-click-modal="false"
       dialog-class="ios-image-dialog"
       :show-default-footer="false"
     >
@@ -234,6 +232,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatAmount } from '@/utils/format'
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { Download } from '@element-plus/icons-vue'
 import { getAllSalesPrices, searchSalesPrices } from '@/api/price-list'
@@ -343,7 +342,7 @@ const hasDisplayRetailPrice = (row: SalesPriceDisplayRow) => {
 }
 
 const formatDisplayRetailPrice = (row: SalesPriceDisplayRow) => {
-  return Math.round(Number(getDisplayRetailPrice(row) || 0))
+  return formatAmount(getDisplayRetailPrice(row))
 }
 
 // 获取当前时间字符串（用于水印）

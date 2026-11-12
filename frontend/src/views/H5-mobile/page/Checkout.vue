@@ -267,10 +267,9 @@
     <MobileDialog
       v-model="showAddressModal"
       title="收货地址"
-      width="90%"
-      :style="{ '--dialog-max-width': '500px' }"
-      dialog-class="checkout-address-dialog"
+      dialog-class="checkout-address-dialog crud-dialog-sm"
       :show-default-footer="false"
+      :close-on-click-modal="false"
       @close="handleAddressModalClose"
     >
       <el-form
@@ -653,7 +652,7 @@ const getImageUrl = (imageUrl?: string): string => {
 
 // 商品总额
 const totalAmount = computed(() => {
-  if (!orderItems.value || orderItems.value.length === 0) return '0.00'
+  if (!orderItems.value || orderItems.value.length === 0) return '0'
 
   const total = orderItems.value.reduce((sum, item) => {
     const price = typeof item.salePrice === 'string' ? parseFloat(item.salePrice) : (item.salePrice || 0)

@@ -5,6 +5,7 @@
     width="900px"
     dialog-class="permissions-dialog field-permission-dialog tf-dialog-workspace"
     :show-default-footer="false"
+    :close-on-click-modal="false"
     @update:model-value="emit('update:modelValue', $event)"
   >
     <div class="modal-body">

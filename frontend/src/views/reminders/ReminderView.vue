@@ -850,6 +850,7 @@
       width="460px"
       append-to-body
       dialog-class="reminder-type-form-dialog"
+      :close-on-click-modal="false"
     >
       <el-form
         :model="typeForm"

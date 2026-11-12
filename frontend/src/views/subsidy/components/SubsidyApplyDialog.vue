@@ -329,21 +329,21 @@
                   class="inline-item"
                 >
                   <span class="info-label">销售价格:</span>
-                  <span class="info-value">¥{{ Math.round(phoneDetail.sale_price) }}</span>
+                  <span class="info-value">¥{{ formatAmount(phoneDetail.sale_price) }}</span>
                 </div>
                 <div
                   v-if="canViewField('subsidy_amount')"
                   class="inline-item"
                 >
                   <span class="info-label">补贴金额:</span>
-                  <span class="info-value discount-amount">-¥{{ Math.round(calculatedSubsidyAmount) }}</span>
+                  <span class="info-value discount-amount">-¥{{ formatAmount(calculatedSubsidyAmount) }}</span>
                 </div>
                 <div
                   v-if="canViewField('sale_price') && canViewField('subsidy_amount')"
                   class="inline-item"
                 >
                   <span class="info-label">到手价格:</span>
-                  <span class="info-value final-price">¥{{ Math.round(phoneDetail.sale_price - calculatedSubsidyAmount) }}</span>
+                  <span class="info-value final-price">¥{{ formatAmount(phoneDetail.sale_price - calculatedSubsidyAmount) }}</span>
                 </div>
               </div>
               <div
@@ -359,13 +359,11 @@
                       v-if="canViewField('subsidy_calc_price')"
                       class="subsidy-calc-input-wrap"
                     >
-                      <el-input-number
+                      <AmountInput
                         v-model="applyForm.subsidy_calc_price"
-                        :precision="2"
                         :step="100"
                         :min="0"
                         :max="phoneDetail.sale_price"
-                        :controls="false"
                         placeholder="国补计算价格"
                         style="width: 150px"
                       />
@@ -565,7 +563,7 @@ import { unifiedApi } from '@/utils/unified-api'
 import { storage } from '@/composables/core/useLocalStorage'
 import { deleteTempFiles } from '@/utils/temp-file-cleaner'
 import { normalizeIdCard, normalizePersonName, normalizePhoneDigits } from '@/utils/security'
-import { TimeUtil, TIME_FORMATS } from '@/utils/time'
+import { buildSubsidyRemarks, calculateSubsidyAmount } from '../subsidy-calculations'
 import { logger } from '@/utils/logger'
 import { formatAmount, formatDate } from '@/utils/format'
 import type { MediaPreviewItem } from '@/utils/media'
@@ -676,13 +674,10 @@ const toUploadError = (error: unknown, fallback: string): UploadError => {
   }) as UploadError
 }
 
-const calculatedSubsidyAmount = computed(() => {
-  if (!phoneDetail.value || !applyForm.subsidy_calc_price) return 0
-  const calcPrice = applyForm.subsidy_calc_price
-  const subsidyRate = phoneDetail.value.subsidy_rate || 15
-  if (calcPrice > 6000) return 0
-  return Math.min(calcPrice * (subsidyRate / 100), 500)
-})
+const calculatedSubsidyAmount = computed(() => calculateSubsidyAmount(
+  applyForm.subsidy_calc_price ?? 0,
+  phoneDetail.value?.subsidy_rate ?? 15
+))
 
 const isEligibleForSubsidy = computed(() => {
   if (!applyForm.subsidy_calc_price) return false
@@ -831,18 +826,9 @@ const loadPhoneDetail = async () => {
       applyForm.customer_idcard = normalizedPhoneDetail.customer_idcard || ''
       applyForm.subsidy_calc_price = normalizedPhoneDetail.sale_price
 
-      const salePrice = normalizedPhoneDetail.sale_price || 0
-      nextTick(() => {
-        if (salePrice > 6000) {
-          applyForm.remarks = `商品销售价${salePrice}元（超过6000元，无法享受国补优惠）`
-          return
-        }
-
-        const subsidyAmount = Math.min(salePrice * 0.15, 500)
-        const cardPayment = (salePrice - subsidyAmount).toFixed(2)
-        const sn = normalizedPhoneDetail.serial_number || ''
-        const st = normalizedPhoneDetail.sale_time ? TimeUtil.format(normalizedPhoneDetail.sale_time, TIME_FORMATS.DATE) : ''
-        applyForm.remarks = `序列号：${sn}\n购买时间：${st}\n商品售价：${salePrice}元 国补优惠${subsidyAmount}元 实际刷卡支付${cardPayment}元`
+      applyForm.remarks = buildSubsidyRemarks({
+        ...normalizedPhoneDetail,
+        subsidy_amount: calculatedSubsidyAmount.value
       })
 
       applyStep.value = 2

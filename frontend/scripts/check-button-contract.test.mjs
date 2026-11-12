@@ -1,10 +1,21 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { auditButtonContract, auditButtonInlineStyles, auditTableButtonUsage, collectButtonClasses } from './lib/button-contract.mjs'
+import { auditBatchButtonSizes, auditButtonContract, auditButtonInlineStyles, auditTableButtonUsage, collectButtonClasses } from './lib/button-contract.mjs'
+import { readFileSync } from 'node:fs'
 
 const classes = collectButtonClasses([
   '<template><div class="button-group"><el-button class="selected-action-btn"><i class="button-icon"/></el-button><el-button class="custom-command shared"/><div class="shared"/></div></template>'
 ])
+
+test('批量操作小号声明复用公共令牌，缺失或私有尺寸映射会被拒绝', () => {
+  const source = readFileSync(new URL('../src/styles/components/_table.scss', import.meta.url), 'utf8')
+  assert.deepEqual(auditBatchButtonSizes(source), [])
+  assert.equal(auditBatchButtonSizes('').length, 1)
+  assert.equal(auditBatchButtonSizes(source.replace('var(--tf-button-batch-small-height)', '28px')).length, 1)
+  const template = '<template><div class="batch-actions-buttons" :data-size="isMobile ? \'small\' : undefined"><el-button>清空选择</el-button></div></template>'
+  assert.deepEqual(auditButtonInlineStyles(template), [])
+  assert.equal(auditButtonInlineStyles(template.replace('<el-button>', '<el-button style="height: 28px">')).length, 1)
+})
 
 test('公共报价页头显式参数允许使用，私有按钮尺寸仍被拒绝', () => {
   const source = '<template><PublicPriceHeader :action-width="80" action-size="small"><template #actions><el-button class="quote-action tf-button--export">保存图片</el-button></template></PublicPriceHeader></template>'

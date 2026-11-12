@@ -458,7 +458,7 @@ import type { CustomerAnalyticsProps } from '@/types/component'
 import { useAnalyticsFieldVisibility } from './useAnalyticsFieldVisibility'
 import { logger } from '@/utils/logger'
 import { getRequestErrorMessage } from '@/utils/api-response'
-import { formatDate } from '@/utils/format'
+import { formatDate, formatAmount } from '@/utils/format'
 import { TimeUtil } from '@/utils/time'
 
 const props = withDefaults(defineProps<CustomerAnalyticsProps>(), {
@@ -614,10 +614,7 @@ const showCustomerTableSection = computed(() => canViewAnyCustomerField(['custom
 
 // 方法
 const formatMoney = (amount: number): string => {
-  return (amount / 100).toLocaleString('zh-CN', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  })
+  return formatAmount(amount / 100)
 }
 
 const getSegmentTagType = (segment: string): 'success' | 'warning' | 'info' | 'primary' | 'danger' => {

@@ -157,6 +157,7 @@
         width="600px"
         dialog-class="banner-dialog"
         :show-default-footer="false"
+        :close-on-click-modal="false"
         @close="handleDialogClose"
       >
         <el-form
