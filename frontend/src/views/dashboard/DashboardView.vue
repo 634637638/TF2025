@@ -25,12 +25,14 @@
 
         <SectionLoading
           v-if="isLoading"
-          text="加载中..."
+          text="正在读取仪表盘数据..."
           size="large"
         />
 
-        <div
+        <LoadingOverlay
           v-else
+          :loading="isRefreshing"
+          text="正在刷新仪表盘数据..."
           class="dashboard-grid"
         >
           <!-- 统计卡片 -->
@@ -115,9 +117,30 @@
           </div>
 
           <section
-            v-if="announcements.length > 0"
+            v-if="announcements.length > 0 || personalReminders.length > 0"
             class="dashboard-announcements"
           >
+            <article
+              v-for="item in personalReminders"
+              :key="`reminder-${item.occurrence_id}`"
+              class="dashboard-announcement-featured"
+            >
+              <div class="dashboard-announcement__meta">
+                <el-tag
+                  type="warning"
+                  size="small"
+                >
+                  待办提醒
+                </el-tag>
+                <time v-if="canViewReminderField('scheduled_at')">执行时间：{{ TimeUtil.format(item.scheduled_at, TIME_FORMATS.DATETIME_MINUTE) }}</time>
+              </div>
+              <h3 v-if="canViewReminderField('title')">
+                {{ item.title }}
+              </h3>
+              <p class="dashboard-announcement__content is-expanded">
+                {{ employeeName }}，您的待办没有完成哦！本次需要完成的内容：{{ canViewReminderField('content') && item.content ? item.content : (canViewReminderField('title') ? item.title : '待办事项') }}。请及时安排好时间完成任务！感谢支持！
+              </p>
+            </article>
             <article
               v-if="currentAnnouncement"
               :key="currentAnnouncement.id"
@@ -209,7 +232,7 @@
                   class="activity-icon"
                   :class="activity.type"
                 >
-                  <i :class="activity.icon" />
+                  <IconRenderer :icon="activity.icon" />
                 </div>
                 <div class="activity-content">
                   <p>{{ activity.description }}</p>
@@ -222,7 +245,7 @@
               />
             </div>
           </div>
-        </div>
+        </LoadingOverlay>
       </div>
     </div>
   </PermissionGate>
@@ -236,10 +259,14 @@ import { usePagePermissions } from '@/composables/usePagePermissions'
 import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { useLoadingState } from '@/composables'
 import { useCachedRequest, DEFAULT_CACHE_TTL } from '@/composables/usePageCache'
+import { useAuthStore } from '@/stores/auth'
+import { useRemindersStore } from '@/stores/reminders'
+import { canViewReminderField } from '@/views/reminders/reminder-field-permissions'
 import { useSiteSettingsStore } from '@/stores/siteSettings'
 import { unifiedApi } from '@/utils/unified-api'
 import { PageHeader, PermissionGate } from '@/components/base'
 import SectionLoading from '@/components/SectionLoading.vue'
+import LoadingOverlay from '@/components/LoadingOverlay.vue'
 import ComprehensiveWarnings from '@/components/ComprehensiveWarnings.vue'
 import PendingApprovals from '@/components/PendingApprovals.vue'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
@@ -258,6 +285,11 @@ const {
 } = useNotification()
 
 const { canView } = usePagePermissions('dashboard')
+const authStore = useAuthStore()
+const remindersStore = useRemindersStore()
+const employeeName = computed(() => authStore.user?.name || authStore.user?.username || '员工')
+const personalReminders = computed(() => canViewReminderField('recipient_status') &&
+  (canViewReminderField('title') || canViewReminderField('content')) ? remindersStore.active : [])
 const DASHBOARD_MODULE_KEY = 'dashboard'
 const canViewField = (fieldKey: string) => fieldPermissions.isFieldVisible(DASHBOARD_MODULE_KEY, fieldKey)
 

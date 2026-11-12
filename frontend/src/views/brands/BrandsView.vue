@@ -160,7 +160,7 @@
           <div class="table-responsive">
             <el-table
               ref="brandsTableRef"
-              v-tf-loading="tableLoading"
+              v-tf-loading="{ active: tableLoading || refreshing, text: '正在刷新品牌列表...' }"
               :data="brands"
               border
               stripe

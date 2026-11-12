@@ -13,7 +13,7 @@
     <div class="home-sections-config-page">
       <!-- 加载状态 -->
       <SectionLoading
-        v-if="loading"
+        v-if="loading && sections.length === 0"
         text="加载首页推荐中..."
         size="large"
       />
@@ -21,6 +21,7 @@
       <!-- 推荐区域列表 -->
       <div
         v-else
+        v-tf-loading="{ active: loading, text: '正在刷新首页推荐...' }"
         class="sections-content"
       >
         <DataEmptyState
@@ -47,9 +48,9 @@
           >
             <div class="section-header">
               <div class="section-info">
-                <i
+                <IconRenderer
                   v-if="canViewField('section.icon')"
-                  :class="section.icon || 'fas fa-list'"
+                  :icon="section.icon || 'fas fa-list'"
                 />
                 <div v-if="canViewField('section.section_name') || canViewField('section.section_key')">
                   <h4 v-if="canViewField('section.section_name')">
@@ -301,7 +302,7 @@
               placeholder="如：fas fa-fire"
             >
               <template #prepend>
-                <i :class="sectionForm.icon || 'fas fa-list'" />
+                <IconRenderer :icon="sectionForm.icon || 'fas fa-list'" />
               </template>
             </el-input>
           </el-form-item>

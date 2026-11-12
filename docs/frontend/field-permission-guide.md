@@ -54,7 +54,7 @@ await init()
 - 字段登记：`frontend/src/config/moduleFields.js`
 - 字段权限归一化：`backend/src/utils/field-permission-normalizer.js`
 - 字段配置接口：`backend/src/routes/permission-management.js`
-- 字段契约：`config/field-contracts.json`
+- 字段契约：`backend/scripts/config/field-contracts.json`
 - 覆盖检查：`cd frontend && npm run check:field-permissions`
 
 不要使用旧文档中提到的 `v-field-permission`、`FieldPermissionWrapper` 或 `useFieldPermission`；当前项目没有这些统一入口。

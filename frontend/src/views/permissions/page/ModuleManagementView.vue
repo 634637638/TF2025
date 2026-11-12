@@ -2411,14 +2411,6 @@ export default {
 
 <!-- 模态框样式 - 非 scoped，确保样式能正确应用到渲染到 body 的模态框 -->
 <style lang="scss">
-.module-management-dialog .el-dialog {
-  max-width: min(var(--dialog-max-width, 760px), calc(100vw - 32px)) !important;
-}
-
-.module-management-dialog-wide .el-dialog {
-  max-width: min(760px, calc(100vw - 32px)) !important;
-}
-
 /* 表单输入框样式 */
 .module-management-dialog .modal-body {
   background: var(--color-bg-white) !important;

@@ -1,168 +1,179 @@
 <template>
   <Teleport to="body">
-    <Transition name="media-preview-fade">
-      <div
-        v-if="modelValue && currentItem"
-        class="media-preview-overlay"
-        role="dialog"
-        aria-modal="true"
-        :aria-label="currentItem.label || mediaTypeLabel"
-        @click.self="close"
-      >
-        <div class="media-preview-toolbar">
-          <div class="media-preview-meta">
-            <i :class="currentIsVideo ? 'fas fa-video' : 'fas fa-image'" />
-            <span>{{ currentItem.label || mediaTypeLabel }}</span>
-            <span
-              v-if="items.length > 1"
-              class="media-preview-count"
-            >
-              {{ currentIndex + 1 }} / {{ items.length }}
-            </span>
-          </div>
-          <div class="media-preview-actions">
-            <div
-              v-if="!currentIsVideo"
-              class="media-preview-zoom-actions"
-              aria-label="图片缩放"
-            >
+    <ElFocusTrap
+      v-slot="{ handleKeydown: trapKeydown }"
+      :trapped="modelValue && Boolean(currentItem)"
+      :focus-trap-el="viewerPanel || undefined"
+      focus-start-el="container"
+      loop
+    >
+      <Transition name="media-preview-fade">
+        <div
+          v-if="modelValue && currentItem"
+          ref="viewerPanel"
+          tabindex="-1"
+          class="media-preview-overlay"
+          role="dialog"
+          aria-modal="true"
+          :aria-label="currentItem.label || mediaTypeLabel"
+          @keydown="trapKeydown"
+          @click.self="close"
+        >
+          <div class="media-preview-toolbar">
+            <div class="media-preview-meta">
+              <i :class="currentIsVideo ? 'fas fa-video' : 'fas fa-image'" />
+              <span>{{ currentItem.label || mediaTypeLabel }}</span>
+              <span
+                v-if="items.length > 1"
+                class="media-preview-count"
+              >
+                {{ currentIndex + 1 }} / {{ items.length }}
+              </span>
+            </div>
+            <div class="media-preview-actions">
+              <div
+                v-if="!currentIsVideo"
+                class="media-preview-zoom-actions"
+                aria-label="图片缩放"
+              >
+                <el-button
+                  native-type="button"
+                  class="media-preview-tool tf-button--overlay-tool"
+                  title="缩小图片"
+                  aria-label="缩小图片"
+                  :disabled="zoomScale <= MIN_ZOOM"
+                  @click.stop="changeZoom(-ZOOM_STEP)"
+                >
+                  <i class="fas fa-search-minus" />
+                </el-button>
+                <el-button
+                  native-type="button"
+                  class="media-preview-tool media-preview-zoom-reset tf-button--overlay-tool tf-button--overlay-reset"
+                  title="恢复原始大小"
+                  aria-label="恢复原始大小"
+                  @click.stop="resetZoom"
+                >
+                  {{ Math.round(zoomScale * 100) }}%
+                </el-button>
+                <el-button
+                  native-type="button"
+                  class="media-preview-tool tf-button--overlay-tool"
+                  title="放大图片"
+                  aria-label="放大图片"
+                  :disabled="zoomScale >= MAX_ZOOM"
+                  @click.stop="changeZoom(ZOOM_STEP)"
+                >
+                  <i class="fas fa-search-plus" />
+                </el-button>
+              </div>
               <el-button
+                v-if="downloadable"
                 native-type="button"
                 class="media-preview-tool tf-button--overlay-tool"
-                title="缩小图片"
-                aria-label="缩小图片"
-                :disabled="zoomScale <= MIN_ZOOM"
-                @click.stop="changeZoom(-ZOOM_STEP)"
+                title="下载当前素材"
+                aria-label="下载当前素材"
+                @click.stop="emitDownload"
               >
-                <i class="fas fa-search-minus" />
+                <i class="fas fa-download" />
+              </el-button>
+              <el-button
+                v-if="deletable"
+                native-type="button"
+                type="danger"
+                class="media-preview-tool media-preview-delete tf-button--overlay-tool tf-button--overlay-danger"
+                title="删除当前素材"
+                aria-label="删除当前素材"
+                @click.stop="emitDelete"
+              >
+                <i class="fas fa-trash" />
               </el-button>
               <el-button
                 native-type="button"
-                class="media-preview-tool media-preview-zoom-reset tf-button--overlay-tool tf-button--overlay-reset"
-                title="恢复原始大小"
-                aria-label="恢复原始大小"
-                @click.stop="resetZoom"
-              >
-                {{ Math.round(zoomScale * 100) }}%
-              </el-button>
-              <el-button
-                native-type="button"
                 class="media-preview-tool tf-button--overlay-tool"
-                title="放大图片"
-                aria-label="放大图片"
-                :disabled="zoomScale >= MAX_ZOOM"
-                @click.stop="changeZoom(ZOOM_STEP)"
+                title="关闭预览"
+                aria-label="关闭预览"
+                @click="close"
               >
-                <i class="fas fa-search-plus" />
+                <i class="fas fa-times" />
               </el-button>
             </div>
-            <el-button
-              v-if="downloadable"
-              native-type="button"
-              class="media-preview-tool tf-button--overlay-tool"
-              title="下载当前素材"
-              aria-label="下载当前素材"
-              @click.stop="emitDownload"
-            >
-              <i class="fas fa-download" />
-            </el-button>
-            <el-button
-              v-if="deletable"
-              native-type="button"
-              type="danger"
-              class="media-preview-tool media-preview-delete tf-button--overlay-tool tf-button--overlay-danger"
-              title="删除当前素材"
-              aria-label="删除当前素材"
-              @click.stop="emitDelete"
-            >
-              <i class="fas fa-trash" />
-            </el-button>
-            <el-button
-              native-type="button"
-              class="media-preview-tool tf-button--overlay-tool"
-              title="关闭预览"
-              aria-label="关闭预览"
-              @click="close"
-            >
-              <i class="fas fa-times" />
-            </el-button>
           </div>
-        </div>
 
-        <el-button
-          v-if="items.length > 1"
-          native-type="button"
-          class="media-preview-nav media-preview-prev tf-button--overlay-tool"
-          title="上一个"
-          aria-label="上一个"
-          @click.stop="showPrevious"
-        >
-          <i class="fas fa-chevron-left" />
-        </el-button>
+          <el-button
+            v-if="items.length > 1"
+            native-type="button"
+            class="media-preview-nav media-preview-prev tf-button--overlay-tool"
+            title="上一个"
+            aria-label="上一个"
+            @click.stop="showPrevious"
+          >
+            <i class="fas fa-chevron-left" />
+          </el-button>
 
-        <div
-          ref="stageElement"
-          class="media-preview-stage"
-          @touchstart="handleTouchStart"
-          @touchmove="handleTouchMove"
-          @touchend="handleTouchEnd"
-          @touchcancel="handleTouchCancel"
-          @wheel="handleWheel"
-          @mousedown="handleMouseDown"
-          @mousemove="handleMouseMove"
-          @mouseup="handleMouseUp"
-          @mouseleave="handleMouseUp"
-          @dblclick="toggleZoom"
-          @click.stop
-        >
-          <video
-            v-if="currentIsVideo && !loadFailed"
-            ref="videoElement"
-            :key="`video-${currentItem.url}`"
-            :src="currentUrl"
-            class="media-preview-content"
-            controls
-            controlslist="nodownload"
-            :autoplay="autoPlayVideos"
-            muted
-            playsinline
-            preload="metadata"
-            @error="loadFailed = true"
-            @loadeddata="handleVideoReady"
-          >
-            当前浏览器无法播放此视频。
-          </video>
-          <img
-            v-else-if="!currentIsVideo && !loadFailed"
-            :key="`image-${currentItem.url}`"
-            :src="currentUrl"
-            :alt="currentItem.label || '图片预览'"
-            class="media-preview-content"
-            :style="contentTransformStyle"
-            @error="loadFailed = true"
-          >
           <div
-            v-else
-            :key="`error-${currentItem.url}`"
-            class="media-preview-error"
+            ref="stageElement"
+            class="media-preview-stage"
+            @touchstart="handleTouchStart"
+            @touchmove="handleTouchMove"
+            @touchend="handleTouchEnd"
+            @touchcancel="handleTouchCancel"
+            @wheel="handleWheel"
+            @mousedown="handleMouseDown"
+            @mousemove="handleMouseMove"
+            @mouseup="handleMouseUp"
+            @mouseleave="handleMouseUp"
+            @dblclick="toggleZoom"
+            @click.stop
           >
-            <i class="fas fa-exclamation-circle" />
-            <span>{{ currentIsVideo ? '视频加载失败或格式不受支持' : '图片加载失败' }}</span>
+            <video
+              v-if="currentIsVideo && !loadFailed"
+              ref="videoElement"
+              :key="`video-${currentItem.url}`"
+              :src="currentUrl"
+              class="media-preview-content"
+              controls
+              controlslist="nodownload"
+              :autoplay="autoPlayVideos"
+              muted
+              playsinline
+              preload="metadata"
+              @error="loadFailed = true"
+              @loadeddata="handleVideoReady"
+            >
+              当前浏览器无法播放此视频。
+            </video>
+            <img
+              v-else-if="!currentIsVideo && !loadFailed"
+              :key="`image-${currentItem.url}`"
+              :src="currentUrl"
+              :alt="currentItem.label || '图片预览'"
+              class="media-preview-content"
+              :style="contentTransformStyle"
+              @error="loadFailed = true"
+            >
+            <div
+              v-else
+              :key="`error-${currentItem.url}`"
+              class="media-preview-error"
+            >
+              <i class="fas fa-exclamation-circle" />
+              <span>{{ currentIsVideo ? '视频加载失败或格式不受支持' : '图片加载失败' }}</span>
+            </div>
           </div>
-        </div>
 
-        <el-button
-          v-if="items.length > 1"
-          native-type="button"
-          class="media-preview-nav media-preview-next tf-button--overlay-tool"
-          title="下一个"
-          aria-label="下一个"
-          @click.stop="showNext"
-        >
-          <i class="fas fa-chevron-right" />
-        </el-button>
-      </div>
-    </Transition>
+          <el-button
+            v-if="items.length > 1"
+            native-type="button"
+            class="media-preview-nav media-preview-next tf-button--overlay-tool"
+            title="下一个"
+            aria-label="下一个"
+            @click.stop="showNext"
+          >
+            <i class="fas fa-chevron-right" />
+          </el-button>
+        </div>
+      </Transition>
+    </ElFocusTrap>
   </Teleport>
 </template>
 
@@ -171,6 +182,8 @@ import { computed, nextTick, onUnmounted, ref, watch } from 'vue'
 import type { CSSProperties } from 'vue'
 import { formatImageUrl } from '@/utils/format'
 import { isVideoMedia, type MediaPreviewItem } from '@/utils/media'
+import { useOverlayStack } from '@/composables/useOverlayStack'
+import { ElFocusTrap } from 'element-plus/es/components/focus-trap/index'
 
 interface Props {
   modelValue: boolean
@@ -199,6 +212,7 @@ const emit = defineEmits<Emits>()
 const currentIndex = ref(0)
 const videoElement = ref<HTMLVideoElement | null>(null)
 const stageElement = ref<HTMLElement | null>(null)
+const viewerPanel = ref<HTMLElement | null>(null)
 const loadFailed = ref(false)
 const touchStart = ref<{ x: number; y: number } | null>(null)
 const pinchStart = ref<{ distance: number; scale: number } | null>(null)
@@ -206,7 +220,6 @@ const mouseDragStart = ref<{ x: number; y: number; panX: number; panY: number } 
 const zoomScale = ref(1)
 const panX = ref(0)
 const panY = ref(0)
-let previousBodyOverflow = ''
 
 const SWIPE_THRESHOLD = 40
 const SWIPE_DIRECTION_RATIO = 1.2
@@ -267,6 +280,7 @@ const clampIndex = (index: number) => {
 }
 
 const currentItem = computed(() => props.items[currentIndex.value] || null)
+const { isTop } = useOverlayStack(computed(() => props.modelValue && Boolean(currentItem.value)), computed(() => 2))
 const currentIsVideo = computed(() => isVideoMedia(currentItem.value))
 const currentUrl = computed(() => currentItem.value ? formatImageUrl(currentItem.value.url) : '')
 const mediaTypeLabel = computed(() => currentIsVideo.value ? '视频预览' : '图片预览')
@@ -447,8 +461,9 @@ const emitDownload = () => {
 }
 
 const handleKeydown = (event: KeyboardEvent) => {
-  if (!props.modelValue || event.defaultPrevented) return
+  if (!props.modelValue || !isTop.value || event.defaultPrevented) return
   if (event.target instanceof Element && event.target.closest('.el-message-box')) return
+  if ([...document.querySelectorAll('.el-message-box')].some(element => element.getClientRects().length > 0)) return
 
   if (event.key === 'Escape') {
     event.preventDefault()
@@ -466,8 +481,6 @@ watch(
   () => props.modelValue,
   (visible) => {
     if (visible) {
-      previousBodyOverflow = document.body.style.overflow
-      document.body.style.overflow = 'hidden'
       resetZoom()
       void selectIndex(props.initialIndex)
       document.addEventListener('keydown', handleKeydown)
@@ -476,7 +489,6 @@ watch(
 
     pauseVideo()
     resetZoom()
-    document.body.style.overflow = previousBodyOverflow
     document.removeEventListener('keydown', handleKeydown)
   },
   { immediate: true }
@@ -503,7 +515,6 @@ onUnmounted(() => {
   resetZoom()
   handleMouseUp()
   document.removeEventListener('keydown', handleKeydown)
-  if (props.modelValue) document.body.style.overflow = previousBodyOverflow
 })
 </script>
 

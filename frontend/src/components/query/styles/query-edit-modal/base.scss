@@ -11,42 +11,6 @@
   width: 100%;
 }
 
-:global(.query-edit-dialog) {
-  --dialog-side-gap: 2px;
-  --dialog-vertical-gap: 4px;
-  --dialog-max-width: calc(100vw - 4px);
-  --mobile-dialog-body-padding: 6px 6px 8px;
-  --mobile-dialog-footer-padding: 0 6px 6px;
-  --tf-dialog-surface: var(--color-bg-white);
-  --tf-dialog-footer-bg: var(--color-bg-white);
-}
-
-:global(.query-edit-dialog.mobile-dialog-sheet-overlay) {
-  background: rgba(15, 23, 42, 0.42) !important;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-}
-
-:global(.query-edit-dialog.mobile-dialog-sheet-panel) {
-  border-radius: 28px !important;
-  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.24) !important;
-}
-
-:global(.query-edit-dialog .mobile-dialog-sheet-header) {
-  background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%) !important;
-}
-
-:global(.query-edit-dialog .mobile-dialog-sheet-title) {
-  font-size: var(--tf-type-scale-16);
-  font-weight: 700;
-  line-height: 1.3;
-}
-
-:global(.query-edit-dialog .mobile-dialog-sheet-close) {
-  right: 16px;
-  transform: none;
-}
-
 .input-hint {
   margin-top: 6px;
   font-size: var(--tf-type-scale-12);
@@ -251,10 +215,6 @@
 :deep(.el-input-number .el-input__inner),
 :deep(.el-textarea__inner) {
   font-size: var(--tf-type-scale-14);
-}
-
-:deep(.el-input-number .el-input__wrapper) {
-  width: 100%;
 }
 
 :deep(.el-input-number .el-input__wrapper) {

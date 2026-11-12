@@ -31,7 +31,6 @@ module.exports = [
       'ssl/**',
       'docs/**',
       '*.md',
-      '.eslintrc.js',
       'vite.config.ts',
       '.DS_Store',
       'Thumbs.db',
@@ -41,8 +40,7 @@ module.exports = [
       // unplugin 自动生成的声明文件，含 @ts-nocheck 属预期行为，不参与 lint
       'frontend/src/auto-imports.d.ts',
       'frontend/src/components.d.ts',
-      'ecosystem.config.js',
-      'nginx-*.conf'
+      'ecosystem.config.js'
     ]
   },
 
@@ -221,7 +219,7 @@ module.exports = [
 
   // v-html 已审计豁免：以下文件的 v-html 均只消费经 escapeHtml + DOMPurify 净化的
   // 白名单生产者（safeSvg/highlightText/getMatchSnippet/renderRichText），
-  // 与 config/runtime-pattern-audit.json 的 allowedVHtmlProducers 一致，故关闭报警。
+  // 与 frontend/scripts/runtime-pattern-audit.json 的 allowedVHtmlProducers 一致，故关闭报警。
   {
     files: [
       'frontend/src/components/IconRenderer.vue',

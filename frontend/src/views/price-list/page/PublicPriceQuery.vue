@@ -1,6 +1,10 @@
 <template>
   <div class="public-price-query">
-    <PublicPriceHeader title="最新同城报价">
+    <PublicPriceHeader
+      title="最新同城报价"
+      :action-width="isMobile ? 80 : 112"
+      action-size="small"
+    >
       <template #search>
         <PublicSearchBox
           v-model="searchKeyword"
@@ -49,7 +53,10 @@
           :aria-pressed="showUsedPhonesOnly"
           @click="toggleUsedPhonesFilter"
         >
-          <el-icon class="btn-icon">
+          <el-icon
+            v-if="!usedModelsLoading"
+            class="btn-icon"
+          >
             <Box />
           </el-icon>
           <span class="btn-text">二手机</span>

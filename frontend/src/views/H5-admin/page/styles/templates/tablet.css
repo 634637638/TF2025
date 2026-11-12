@@ -1,16 +1,4 @@
 @media (max-width: 1024px) {
-  :global(.template-dialog.mobile-dialog-sheet-overlay) {
-    --dialog-side-gap: 8px;
-    --dialog-vertical-gap: 16px;
-    --tf-dialog-mobile-radius: 16px;
-    --mobile-dialog-body-padding: 10px 10px 12px;
-    --mobile-dialog-footer-padding: 8px 10px calc(10px + env(safe-area-inset-bottom));
-  }
-
-  :global(.template-dialog .mobile-dialog-sheet-body) {
-    min-width: 0;
-  }
-
   .dialog-shell,
   .dialog-header-form,
   .editor-layout,

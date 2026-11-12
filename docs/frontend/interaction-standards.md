@@ -47,7 +47,7 @@ if (confirmed) {
 - `BaseButton.vue` 和自定义 `ConfirmDialog.vue` 已移除；普通按钮使用 Element Plus `el-button`，确认流程使用统一确认服务，不新增同名旧组件。
 - 页面加载使用 `SectionLoading` 或 `GlobalLoading`，表格加载使用 `TableLoadingRow`，按钮和提交状态使用 `el-button :loading`，局部异步内容使用 `InlineLoading`。
 - 同一按钮不得同时使用 Element Plus 内置 loading 和第二套 spinner。
-- 原生按钮只保留在公共组件内部、H5/公开页专用交互、权限开关和其他需要专用键盘/触控语义的控件；新增普通后台命令按钮使用 `el-button`。例外登记见[公共组件采用与例外规范](component-adoption-standard.md)。
+- 所有页面及公共组件禁止原生 `<button>`，H5/公开页、权限开关及专用交互均使用 `el-button`，通过 `native-type` 保留表单语义。零例外要求见[按钮规范](button-standards.md)及[公共组件采用与例外规范](component-adoption-standard.md)。
 
 ## 空状态
 
@@ -62,4 +62,6 @@ npm run check:interactions
 
 该审计阻止浏览器原生 `alert()` 和 `confirm()` 回归，并阻止业务页直接调用 `ElMessageBox.confirm/alert/prompt`；裸调用必须绑定到同一文件的 `useNotification()`。按钮、加载和空状态分别由 `check:buttons`、`check:loading` 和 `check:empty-states` 继续检查。
 
-截至 2026 年 10 月 1 日，业务代码中的 `ElMessageBox.confirm/alert/prompt` 均迁移到统一入口；prompt 取消统一返回 `null`。原生按钮的当前数量与逐文件专用原因由 `check:component-adoption` 守护。
+该门禁本身不覆盖浏览器原生 `window.prompt()`；这部分由 `check:dialogs` 的 AST 审计和拒绝用例守护。2026-11-11 盘点发现的 4 处 iOS 姓名输入回退中，1 处无调用函数已删除，其余入口复用 `useCustomerNamePrompt` 与公共 prompt，原生输入调用归零。双击、取消、防重和失效目标有正式行为测试；iOS Safari 真机键盘验收仍登记在[全局任务 T21.4](../development/TECHNICAL_DEBT_PROGRESS.md#t21-全局模态框双端统一2026-11-11)。静态通过不能替代真机验证。
+
+截至 2026 年 10 月 1 日，业务代码中的 `ElMessageBox.confirm/alert/prompt` 均迁移到统一入口；prompt 取消统一返回 `null`。`check:component-adoption` 持续要求原生按钮数量为零，不接受专用场景例外。

@@ -5,7 +5,7 @@
 <template>
   <SectionLoading
     v-if="loading"
-    text="加载中..."
+    text="正在读取商品详情..."
     size="page"
   />
   <ProductDetail

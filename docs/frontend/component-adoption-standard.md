@@ -8,7 +8,7 @@
 | --- | --- |
 | 列表搜索与筛选 | `UnifiedSearchPanel` |
 | 分页 | `Pagination` |
-| 弹窗 | `MobileDialog`，或复用全局样式的 `el-dialog` |
+| 弹窗 | `MobileDialog`（业务唯一入口） |
 | 图片/视频查看 | `MediaPreviewViewer`；下载和删除通过事件调用业务权限及文件服务 |
 | 空数据、错误和无搜索结果 | `DataEmptyState` |
 | 表格 | `el-table.data-table` 或 `PaginatedTable` |
@@ -34,7 +34,7 @@
 
 ## 弹窗边界
 
-新增业务弹窗优先使用 `MobileDialog`。由于 Element Plus 插槽、Teleport 或已有服务逻辑必须使用 `el-dialog` 时，只能复用全局 Dialog 样式；不得新增第二套遮罩、标题栏、圆角、阴影或 footer 按钮布局。
+业务弹窗使用 `MobileDialog`，原生 `el-dialog` 只用于公共组件内部。插槽、Teleport、关闭及生命周期复用公共能力，不新增业务例外或私有外壳覆盖。确认、提示和输入使用公共通知服务。
 
 ## 审计
 
@@ -53,10 +53,10 @@ npm run check:component-adoption
 
 该审计扫描所有 Vue 页面和公共组件，禁止任何原生 `<button>`，并检查公共组件入口存在。它还会拦截已移除的 `<BaseButton>` 和 `<ConfirmDialog>` 标签及同名组件文件，避免自动组件注册悄然恢复旧入口。
 
-`check:dialogs` 单独登记必须继续使用 Element Plus `el-dialog` 的工作台场景。当前例外包括提醒宿主、H5 管理素材工作台、备份清理、待办、经验分享和国补照片管理主工作台；这些文件必须保留业务 class，并继续复用全局 Dialog 样式。国补申请及照片管理的图片查看已迁移 `MediaPreviewViewer`，审计禁止恢复私有查看器。除此之外的新直接 `el-dialog` 会被审计拦截，优先改用 `MobileDialog`。
+`check:dialogs` 已移除全部 6 个历史例外；原 12 处提醒、备份、分享及媒体工作台均迁入 `MobileDialog`。审计拦截业务直接 `el-dialog`、`el-image-viewer`、原生弹框与私有外壳视觉/间距令牌。SCSS 检查包含嵌套父级声明，内容网格、正文提示换行和滚动继续由业务维护。
 
 `MediaPreviewViewer` 的素材类型统一引用 `utils/media.ts` 的 `MediaPreviewItem`；页面不得再声明同名类型。`deletable` 必须来自业务权限，删除回调使用查看器传入的实际素材/索引；有下载需求时启用 `downloadable` 并处理 `download` 事件，继续遵守[下载安全规范](download-security-standard.md)。自动组件发现已注册该入口，不重复手动注册。
 
 它与 `check:ui`、`check:buttons`、`check:tables`、`check:empty-states`、`check:loading` 配合使用；采用率审计通过不代表详情弹窗或业务专用控件必须强行改成同一种实现。
 
-最后核实日期：2026-11-08
+最后核实日期：2026-11-11

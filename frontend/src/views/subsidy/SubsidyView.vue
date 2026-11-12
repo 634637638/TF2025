@@ -441,7 +441,7 @@
         </UnifiedSearchPanel>
 
         <SubsidyListSection
-          :loading="loading"
+          :loading="loading || refreshing"
           :subsidy-list="subsidyList"
           :display-list="displayList"
           :table-columns="tableColumns"

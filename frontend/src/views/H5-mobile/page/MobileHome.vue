@@ -341,9 +341,9 @@
     >
       <div class="section-title">
         <h3>
-          <i
+          <IconRenderer
             v-if="section.icon"
-            :class="section.icon"
+            :icon="section.icon"
             style="margin-right: 8px; color: #ff6b00;"
           />
           {{ section.section_name }}

@@ -1,17 +1,10 @@
 <template>
-  <span
+  <i
     v-if="safeSvg"
     v-bind="$attrs"
     class="icon-renderer icon-renderer--svg"
     :class="className"
     v-html="safeSvg"
-  />
-  <span
-    v-else-if="iconifyName"
-    v-bind="$attrs"
-    class="icon-renderer icon-renderer--iconify-mask"
-    :class="className"
-    :style="iconifyMaskStyle"
   />
   <i
     v-else
@@ -22,9 +15,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import DOMPurify from 'dompurify'
+import { computed, ref, watch } from 'vue'
 import { extractIconifyName } from '@/utils/iconify'
+import { iconService } from '@/services/icons'
+import { sanitizeIconSvg } from '@/utils/icon-svg'
+import fallbackSvg from '@/assets/icons/fallback.svg?raw'
 
 defineOptions({
   inheritAttrs: false
@@ -35,50 +30,36 @@ const props = withDefaults(defineProps<{
   svg?: string | null
   className?: string
   fallback?: string
+  /** 选择器候选由批量预览接口提供 SVG，禁止逐个查询本地库。 */
+  onlinePreview?: boolean
 }>(), {
   icon: '',
   svg: '',
   className: '',
-  fallback: 'fas fa-circle'
+  fallback: 'fas fa-circle',
+  onlinePreview: false
 })
 
-const safeSvg = computed(() => {
-  const svg = String(props.svg || '').trim()
-  if (!svg || !/^<svg[\s>]/i.test(svg)) {
-    return ''
-  }
-
-  return DOMPurify.sanitize(svg, {
-    USE_PROFILES: { svg: true, svgFilters: true },
-    FORBID_TAGS: ['foreignObject', 'script', 'style', 'iframe', 'object', 'embed'],
-    FORBID_ATTR: ['onload', 'onerror', 'onclick', 'style']
-  })
-})
+const localSvg = ref('')
+const suppliedSvg = computed(() => sanitizeIconSvg(props.svg))
+const safeSvg = computed(() => suppliedSvg.value || localSvg.value
+  || (iconifyName.value ? sanitizeIconSvg(fallbackSvg) : ''))
 
 const iconifyName = computed(() => extractIconifyName(String(props.icon || '').trim()) || '')
 
-const iconifyMaskStyle = computed(() => {
-  if (!iconifyName.value) {
-    return {}
+watch([() => props.icon, suppliedSvg, () => props.onlinePreview], async ([icon, svg, online], _previous, onCleanup) => {
+  let active = true
+  onCleanup(() => { active = false })
+  localSvg.value = ''
+  if (svg || online || !extractIconifyName(String(icon || '').trim())) return
+  try {
+    const record = await iconService.byClass(String(icon))
+    if (active) localSvg.value = sanitizeIconSvg(record?.svg)
+  } catch {
+    // 本地图标不存在或接口暂不可用时保留本地占位，不回退外站请求。
   }
+}, { immediate: true })
 
-  const separatorIndex = iconifyName.value.indexOf(':')
-  if (separatorIndex <= 0 || separatorIndex === iconifyName.value.length - 1) {
-    return {}
-  }
-
-  const prefix = encodeURIComponent(iconifyName.value.slice(0, separatorIndex))
-  const name = iconifyName.value
-    .slice(separatorIndex + 1)
-    .split('/')
-    .map(encodeURIComponent)
-    .join('/')
-  const url = `https://api.iconify.design/${prefix}/${name}.svg`
-
-  return {
-    '--iconify-mask-url': `url("${url}")`
-  }
-})
 </script>
 
 <style scoped>
@@ -95,12 +76,9 @@ const iconifyMaskStyle = computed(() => {
   width: 1em;
   height: 1em;
   display: block;
-  fill: currentColor;
 }
 
-.icon-renderer--iconify-mask {
-  background-color: currentColor;
-  mask: var(--iconify-mask-url) center / contain no-repeat;
-  -webkit-mask: var(--iconify-mask-url) center / contain no-repeat;
+.icon-renderer--svg {
+  fill: currentColor;
 }
 </style>

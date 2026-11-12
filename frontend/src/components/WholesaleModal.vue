@@ -3,7 +3,7 @@
     :model-value="visible"
     :title="`${mode === 'wholesale' ? '调货' : '划拨'}（已选 ${phoneCount} 台）`"
     width="720px"
-    dialog-class="wholesale-form-dialog"
+    dialog-class="wholesale-form-dialog tf-dialog-body-flush"
     :show-close="true"
     :show-default-footer="false"
     :close-on-click-modal="props.closeOnClickModal !== false"
@@ -705,43 +705,6 @@ watch(() => props.visible, async (newVal) => {
   }
 }, { immediate: true })
 </script>
-
-<style lang="scss">
-.wholesale-form-dialog {
-  --dialog-side-gap: 4px;
-  --dialog-vertical-gap: 8px;
-  --dialog-max-width: calc(100vw - 8px);
-  --mobile-dialog-body-padding: 6px 6px 8px;
-  --mobile-dialog-footer-padding: var(--tf-dialog-mobile-footer-padding);
-  --tf-dialog-body-padding-inline: 0px;
-  --tf-dialog-body-padding-block: 0px;
-}
-
-.wholesale-form-dialog .el-dialog {
-  margin: auto !important;
-  width: min(720px, calc(100vw - 32px)) !important;
-  max-width: calc(100vw - 32px) !important;
-  border-radius: 22px !important;
-  overflow: hidden;
-  border: 1px solid rgba(124, 58, 237, 0.12);
-  box-shadow: 0 28px 72px rgba(15, 23, 42, 0.24);
-  background: var(--color-bg-white) !important;
-}
-
-.wholesale-form-dialog.mobile-dialog-sheet-panel {
-  border-radius: 24px !important;
-  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.24) !important;
-}
-
-@media (max-width: 767px) {
-  .wholesale-form-dialog .el-dialog {
-    width: calc(100vw - 8px) !important;
-    max-width: calc(100vw - 8px) !important;
-    border-radius: 18px !important;
-  }
-
-}
-</style>
 
 <style lang="scss" scoped>
 .wholesale-modal-body {

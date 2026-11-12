@@ -81,7 +81,7 @@
         >
           <div class="guide-category__header">
             <div class="guide-category__icon">
-              <i :class="category.icon || 'fas fa-layer-group'" />
+              <IconRenderer :icon="category.icon || 'fas fa-layer-group'" />
             </div>
             <div class="guide-category__heading">
               <h2>{{ category.name }}</h2>

@@ -9,7 +9,7 @@
     :title="importTitle"
     @click="emit('import')"
   >
-    <i :class="importIconClass" />
+    <IconRenderer :icon="importIconClass" />
     <span>{{ importLoading ? importLoadingLabel : importLabel }}</span>
   </el-button>
 
@@ -23,7 +23,7 @@
     :title="exportTitle"
     @click="emit('export')"
   >
-    <i :class="exportIconClass" />
+    <IconRenderer :icon="exportIconClass" />
     <span>{{ exportLoading ? exportLoadingLabel : exportLabel }}</span>
   </el-button>
 </template>

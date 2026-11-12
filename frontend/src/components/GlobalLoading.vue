@@ -10,7 +10,7 @@
         class="global-loading"
         role="status"
         aria-live="polite"
-        aria-label="正在加载"
+        :aria-label="loadingStore.loadingText || '正在处理，请稍候...'"
       >
         <div class="loading-backdrop">
           <div class="loading-content">
@@ -23,10 +23,10 @@
             </div>
             <div class="loading-copy">
               <div class="loading-title">
-                {{ loadingStore.loadingText || '正在加载' }}
+                {{ loadingStore.loadingText || '正在处理，请稍候...' }}
               </div>
               <div class="loading-subtitle">
-                正在为你准备页面内容
+                请稍候，正在处理当前操作
               </div>
             </div>
           </div>
@@ -82,7 +82,7 @@ export default defineComponent({
     )
 
     // 局部表格遮罩出现时，立即取消全屏 Loading 的等待和离场动画，
-    // 避免刷新瞬间同时看到“加载中”和“加载数据中”。
+    // 避免刷新瞬间同时看到全局和区域提示。
     watch(
       () => loadingStore.hasLocalLoading,
       (hasLocalLoading) => {

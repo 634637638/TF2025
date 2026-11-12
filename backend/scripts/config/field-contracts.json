@@ -102,6 +102,8 @@
       "frontend/src/views/reminders/ReminderView.vue",
       "frontend/src/views/reminders/reminder-field-permissions.ts",
       "frontend/src/components/ReminderHost.vue",
+      "frontend/src/stores/reminders.ts",
+      "frontend/src/types/reminder.ts",
       "frontend/src/config/moduleFields.js"
     ],
     "shared": [
@@ -1021,6 +1023,8 @@
     },
     "reminders": {
       "canonical": [
+        "queued_occurrence_ids",
+        "is_mandatory",
         "id",
         "type_id",
         "type_name",
@@ -1067,6 +1071,7 @@
         "totalPages"
       ],
       "responseFields": [
+        "is_mandatory",
         "id",
         "type_id",
         "type_name",

@@ -234,18 +234,6 @@
     white-space: pre-line;
   }
 
-  .el-message-box__content {
-    padding: 20px;
-  }
 }
 
 /* 支付方式选择弹窗样式 */
-:deep(.payment-dialog) {
-  border-radius: 16px;
-  overflow: hidden;
-  --tf-dialog-body-padding-inline: var(--tf-space-5);
-  --tf-dialog-body-padding-block: var(--tf-space-3) var(--tf-space-5);
-  --tf-dialog-footer-padding-inline: var(--tf-space-5);
-  --tf-dialog-footer-padding-block-start: 0px;
-  --tf-dialog-footer-padding-block-end: var(--tf-space-5);
-}

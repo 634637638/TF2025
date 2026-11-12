@@ -851,9 +851,7 @@ html {
 
   /* 确保模态框在 app 之外，不受 fixed 定位影响 */
   body > .el-overlay,
-  body > .el-dialog__wrapper,
-  #app ~ .el-overlay,
-  #app ~ .el-dialog__wrapper {
+  #app ~ .el-overlay {
     position: fixed !important;
     top: 0 !important;
     left: 0 !important;

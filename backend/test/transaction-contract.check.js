@@ -406,7 +406,7 @@ test('historical sale invoice backfill is preview-first, transactional and idemp
 })
 
 test('field contract registry has an auditable source mapping for every module', () => {
-  const contractPath = path.resolve(root, '../config/field-contracts.json')
+  const contractPath = path.resolve(root, 'scripts/config/field-contracts.json')
   const registry = JSON.parse(fs.readFileSync(contractPath, 'utf8'))
   const contracts = registry.contracts || {}
   const requiredModules = [
@@ -623,7 +623,7 @@ test('wholesale page uses canonical inventory cost and time fields', () => {
 test('query contract matches the implemented pagination and filter names', () => {
   const service = read('src/services/query.service.js')
   const view = fs.readFileSync(path.join(root, '../frontend/src/views/query/QueryView.vue'), 'utf8')
-  const contract = JSON.parse(fs.readFileSync(path.join(root, '../config/field-contracts.json'), 'utf8')).contracts.query
+  const contract = JSON.parse(fs.readFileSync(path.join(root, 'scripts/config/field-contracts.json'), 'utf8')).contracts.query
 
   for (const field of ['page', 'page_size', 'search_term', 'brand', 'model', 'color', 'memory', 'start_date', 'end_date']) {
     assert.ok(contract.canonical.includes(field), `查询契约缺少 ${field}`)
@@ -727,7 +727,7 @@ test('sales page and extracted modules use canonical fields without runtime comp
   const phoneHelpers = fs.readFileSync(path.join(root, '../frontend/src/views/sales/sales-phone-helpers.ts'), 'utf8')
   const checkout = fs.readFileSync(path.join(root, '../frontend/src/views/sales/useSalesCheckout.ts'), 'utf8')
   const types = fs.readFileSync(path.join(root, '../frontend/src/views/sales/types.ts'), 'utf8')
-  const contract = JSON.parse(fs.readFileSync(path.join(root, '../config/field-contracts.json'), 'utf8')).contracts.sales
+  const contract = JSON.parse(fs.readFileSync(path.join(root, 'scripts/config/field-contracts.json'), 'utf8')).contracts.sales
   const route = read('src/routes/sales.js')
   const salesService = read('src/services/sales-phone.service.js')
 
@@ -1017,7 +1017,7 @@ test('transfer analytics delegates to controller and repository binds all date a
 
 test('salary responses use an explicit field allowlist', () => {
   const repository = read('src/repositories/salary-record.repository.js')
-  const contracts = JSON.parse(fs.readFileSync(path.join(root, '../config/field-contracts.json'), 'utf8'))
+  const contracts = JSON.parse(fs.readFileSync(path.join(root, 'scripts/config/field-contracts.json'), 'utf8'))
   const responseFields = contracts.contracts['salary-records'].recordResponseFields
 
   assert.ok(Array.isArray(responseFields) && responseFields.length > 0)
@@ -1032,7 +1032,7 @@ test('salary employee sales details expose canonical sale_time', () => {
   const service = read('src/services/salary-record.service.js')
   const view = fs.readFileSync(path.join(root, '../frontend/src/views/salary/SalaryView.vue'), 'utf8')
   const employeeSalesDialog = fs.readFileSync(path.join(root, '../frontend/src/views/salary/page/SalaryEmployeeSalesDetailDialog.vue'), 'utf8')
-  const contract = JSON.parse(fs.readFileSync(path.join(root, '../config/field-contracts.json'), 'utf8')).contracts['salary-records']
+  const contract = JSON.parse(fs.readFileSync(path.join(root, 'scripts/config/field-contracts.json'), 'utf8')).contracts['salary-records']
 
   assert.ok(contract.canonical.includes('sale_time'))
   assert.match(service, /p\.sale_time as sale_time/)
@@ -1047,7 +1047,7 @@ test('customer purchase history exposes canonical cost and sale time fields', ()
   const controller = read('src/services/customer-management.service.js')
   const repository = read('src/repositories/customer.repository.js')
   const view = fs.readFileSync(path.join(root, '../frontend/src/views/customers/CustomersView.vue'), 'utf8')
-  const contract = JSON.parse(fs.readFileSync(path.join(root, '../config/field-contracts.json'), 'utf8')).contracts.customers
+  const contract = JSON.parse(fs.readFileSync(path.join(root, 'scripts/config/field-contracts.json'), 'utf8')).contracts.customers
 
   for (const field of ['purchase_cost', 'sale_price', 'sale_time', 'profit']) {
     assert.ok(contract.canonical.includes(field))
@@ -1069,7 +1069,7 @@ test('H5 sold products uses canonical fields without runtime aliases or fake val
   const view = fs.readFileSync(path.join(root, '../frontend/src/views/H5-admin/page/SoldProductsView.vue'), 'utf8')
   const queryView = fs.readFileSync(path.join(root, '../frontend/src/views/query/QueryView.vue'), 'utf8')
   const types = fs.readFileSync(path.join(root, '../frontend/src/types/h5.ts'), 'utf8')
-  const contract = JSON.parse(fs.readFileSync(path.join(root, '../config/field-contracts.json'), 'utf8')).contracts['h5-sold-products']
+  const contract = JSON.parse(fs.readFileSync(path.join(root, 'scripts/config/field-contracts.json'), 'utf8')).contracts['h5-sold-products']
 
   assert.ok(contract.canonical.includes('sale_time'))
   assert.deepEqual(contract.legacy, [])
@@ -1107,7 +1107,7 @@ test('H5 customer sales exposes canonical sale_time', () => {
   const service = read('src/services/shop-public.service.js')
   const api = fs.readFileSync(path.join(root, '../frontend/src/api/auth.ts'), 'utf8')
   const view = fs.readFileSync(path.join(root, '../frontend/src/views/H5-mobile/page/MyCenter.vue'), 'utf8')
-  const contract = JSON.parse(fs.readFileSync(path.join(root, '../config/field-contracts.json'), 'utf8')).contracts['h5-customer-sales']
+  const contract = JSON.parse(fs.readFileSync(path.join(root, 'scripts/config/field-contracts.json'), 'utf8')).contracts['h5-customer-sales']
   const salesStart = service.indexOf('async getSalesByCustomerId')
   const salesEnd = service.indexOf('async updateOrderStatus', salesStart)
   const salesMethod = service.slice(salesStart, salesEnd)
@@ -1140,7 +1140,7 @@ test('comprehensive dashboard warnings use canonical sale and inventory times', 
   const repository = read('src/repositories/dashboard.repository.js')
   const view = fs.readFileSync(path.join(root, '../frontend/src/components/ComprehensiveWarnings.vue'), 'utf8')
   const inventoryWarnings = fs.readFileSync(path.join(root, '../frontend/src/components/InventoryWarnings.vue'), 'utf8')
-  const contract = JSON.parse(fs.readFileSync(path.join(root, '../config/field-contracts.json'), 'utf8')).contracts['dashboard-warnings']
+  const contract = JSON.parse(fs.readFileSync(path.join(root, 'scripts/config/field-contracts.json'), 'utf8')).contracts['dashboard-warnings']
 
   for (const field of ['sale_time', 'inventory_time', 'last_inventory_time', 'avg_daily_sales', 'is_below_average', 'no_recent', 'total_warnings', 'has_warnings']) {
     assert.ok(contract.canonical.includes(field))
@@ -1426,7 +1426,7 @@ test('store list exposes canonical snake_case pagination metadata', () => {
   const route = ['src/controllers/store.controller.js', 'src/services/store-management.service.js', 'src/repositories/store.repository.js'].map(read).join('\n')
   const storeRoutes = read('src/routes/stores.js')
   const view = read('../frontend/src/views/stores/StoresView.vue')
-  const registry = JSON.parse(read('../config/field-contracts.json'))
+  const registry = JSON.parse(read('scripts/config/field-contracts.json'))
   assert.match(route, /PAGINATION\.DEFAULT_LIMIT/)
   assert.doesNotMatch(route, /req\.query\.limit/)
   assert.match(route, /page_size: pageSize/)
@@ -1455,7 +1455,7 @@ test('employee list exposes canonical snake_case pagination metadata', () => {
   const directoryRepository = read('src/repositories/employee-directory.repository.js')
   const page = read('../frontend/src/views/employees/EmployeesView.vue')
   const types = read('../frontend/src/types/employee.ts')
-  const registry = JSON.parse(read('../config/field-contracts.json'))
+  const registry = JSON.parse(read('scripts/config/field-contracts.json'))
   const contract = registry.contracts.employees
 
   assert.deepEqual(contract.legacy, [])
@@ -2390,7 +2390,7 @@ test('user-store routes preserve per-operation permissions and delegate to contr
 })
 
 test('permissions contract retires removed API aliases without runtime compatibility', () => {
-  const registry = JSON.parse(read('../config/field-contracts.json'))
+  const registry = JSON.parse(read('scripts/config/field-contracts.json'))
   const contract = registry.contracts.permissions
 
   assert.deepEqual(contract.legacy, [])
@@ -2410,7 +2410,7 @@ test('users contract uses canonical pagination and explicit public columns', () 
   const repository = read('src/repositories/user.repository.js')
   const api = read('../frontend/src/api/user.ts')
   const queryModal = read('../frontend/src/components/query/QueryEditModal.vue')
-  const registry = JSON.parse(read('../config/field-contracts.json'))
+  const registry = JSON.parse(read('scripts/config/field-contracts.json'))
   const contract = registry.contracts.users
 
   assert.deepEqual(contract.legacy, [])
@@ -2457,7 +2457,7 @@ test('reminders contract uses canonical options and explicit response columns', 
   const controller = read('src/controllers/reminder.controller.js')
   const service = read('src/services/reminder.service.js')
   const page = read('../frontend/src/views/reminders/ReminderView.vue')
-  const registry = JSON.parse(read('../config/field-contracts.json'))
+  const registry = JSON.parse(read('scripts/config/field-contracts.json'))
   const contract = registry.contracts.reminders
 
   assert.deepEqual(contract.legacy, [])
@@ -2508,7 +2508,7 @@ test('shared experience contract controls fields and uses canonical pagination',
   const service = read('src/services/shared.service.js')
   const page = read('../frontend/src/views/shared/SharedView.vue')
   const helper = read('../frontend/src/views/shared/shared-field-permissions.ts')
-  const registry = JSON.parse(read('../config/field-contracts.json'))
+  const registry = JSON.parse(read('scripts/config/field-contracts.json'))
   const contract = registry.contracts.shared
 
   assert.deepEqual(contract.legacy, [])

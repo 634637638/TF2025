@@ -110,7 +110,7 @@
         class="loading-more"
       >
         <InlineLoading
-          text="加载中..."
+          text="正在读取更多商品..."
           size="small"
         />
       </div>

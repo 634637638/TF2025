@@ -102,10 +102,12 @@ for (const [source, token, message] of [
   [globalLoadingSource, 'GLOBAL_LOADING_SHOW_DELAY_MS', 'GlobalLoading 必须使用公共延迟常量'],
   [loadingConstantsSource, 'GLOBAL_LOADING_SHOW_DELAY_MS = 5000', '全屏 GlobalLoading 延迟必须统一为 5 秒'],
   [await readFile(join(sourceRoot, 'directives/index.ts'), 'utf8'), '_tfLoadingInitialPending', '表格指令必须区分首次加载和后续刷新'],
-  [await readFile(join(sourceRoot, 'components/TableLoadingRow.vue'), 'utf8'), "'加载中...' ? '加载数据中...'", '表格兜底文案必须统一为“加载数据中...”'],
-  [loadingOverlaySource, 'loadingStore.startLocalLoading()', '区块覆盖 Loading 必须登记为局部加载并抑制全屏层'],
+  [await readFile(join(sourceRoot, 'directives/index.ts'), 'utf8'), 'textContent = text', '区域 Loading 必须显示调用方的业务文案并按纯文本渲染'],
+  [await readFile(join(sourceRoot, 'components/SectionLoading.vue'), 'utf8'), 'loadingStore.startLocalLoading()', '区块公共 Loading 必须登记局部状态并抑制全屏层'],
+  [await readFile(join(sourceRoot, 'components/SectionLoading.vue'), 'utf8'), 'loadingStore.stopLocalLoading()', '区块公共 Loading 必须释放局部登记'],
   [loadingOverlaySource, '<SectionLoading', '区块覆盖 Loading 必须复用 SectionLoading 视觉入口'],
   [unifiedApiSource, 'requestConfig.showLoading === undefined', '统一 API 必须默认启用首次请求的全局 Loading，showLoading: false 才允许静默'],
+  [unifiedApiSource, 'resolveRequestLoadingText(requestConfig)', '统一 API 必须通过公共入口选择业务操作文案'],
   [refreshDataSource, 'loadingStore.startLocalLoading()', '公共刷新入口必须登记局部 Loading']
 ]) {
   if (!source.includes(token)) violations.push(message)
@@ -126,6 +128,11 @@ for (const file of files) {
   const templateStartLine = descriptor.template?.loc.start.line || 1
   const styleBlocks = descriptor.styles.map(style => style.content)
   const visibleLoadingCopy = removeNonLoadingCopy(template)
+  if (filePath.startsWith('views/')) {
+    for (const match of template.matchAll(/<(?:SectionLoading|TableLoadingRow|LoadingOverlay|InlineLoading)\b[^>]*\s(?<!:)text\s*=\s*["'](?:加载中|数据加载中|加载数据中)[.。…]*["'][^>]*>/g)) {
+      violations.push(`${filePath}:${getLineNumber(template, match.index)} Loading 文案必须说明当前业务对象或操作，不得使用泛化的“加载中”`)
+    }
+  }
   if (filePath !== 'components/GlobalLoading.vue') {
     for (const match of visibleLoadingCopy.matchAll(/>([^<>]*(?:加载中|正在加载)[^<>]*)</g)) {
       violations.push(`${filePath}:${getLineNumber(template, match.index)} 存在未使用公共加载组件的纯文本 Loading 反馈`)
@@ -135,12 +142,13 @@ for (const file of files) {
   const hasTableDirective = /\bv-tf-loading(?:\s*=|(?=[\s/>]))/.test(template)
   const hasTableFallback = /<TableLoadingRow\b/.test(template)
   const hasSectionLoading = /<SectionLoading\b/.test(template)
+  const hasLoadingOverlay = /<LoadingOverlay\b/.test(template)
   const hasInlineLoading = /<InlineLoading\b/.test(template)
   const hasElementLoading = /\bv-loading(?:\s*=|(?=[\s/>]))/.test(template)
   const hasButtonLoading = /<el-button\b[\s\S]*?:loading\s*=/.test(template)
   const hasAsyncRequest = /\b(?:unifiedApi|publicApi|axios|api)\.(?:get|post|put|patch|delete)\s*\(|\bfetch\s*\(/.test(source)
   const globalLoadingTriggerCount = countMatches(source, /\b(?:globalLoading|loadingStore|useLoadingStore\(\))\.startLoading\s*\(/g)
-  const hasLocalLoading = hasTableDirective || hasTableFallback || hasSectionLoading || hasInlineLoading || hasElementLoading || hasButtonLoading
+  const hasLocalLoading = hasTableDirective || hasTableFallback || hasSectionLoading || hasLoadingOverlay || hasInlineLoading || hasElementLoading || hasButtonLoading
 
   pageAuditRecords.push({
     filePath,
@@ -149,6 +157,7 @@ for (const file of files) {
     hasTableDirective,
     hasTableFallback,
     hasSectionLoading,
+    hasLoadingOverlay,
     hasInlineLoading,
     hasElementLoading,
     hasButtonLoading,
@@ -312,8 +321,16 @@ if (violations.length > 0) {
 
 const tableMarkupFileCount = pageAuditRecords.filter(record => record.hasTableMarkup).length
 const localLoadingFileCount = pageAuditRecords.filter(record => (
-  record.hasTableDirective || record.hasTableFallback || record.hasSectionLoading || record.hasInlineLoading || record.hasElementLoading
+  record.hasTableDirective || record.hasTableFallback || record.hasSectionLoading || record.hasLoadingOverlay || record.hasInlineLoading || record.hasElementLoading
 )).length
 const asyncRequestFileCount = pageAuditRecords.filter(record => record.hasAsyncRequest).length
-console.log(`Loading 页面台账审计通过：逐项扫描页面/功能单元 ${pageFileCount} 个、公共组件 ${componentFileCount} 个、应用入口 ${appFileCount} 个；异步请求文件 ${asyncRequestFileCount} 个，表格/列表文件 ${tableMarkupFileCount} 个，使用局部 Loading 的文件 ${localLoadingFileCount} 个；统一 API 默认覆盖未显式关闭的首次请求；GlobalLoading=1；v-tf-loading=${tableDirectiveCount}；TableLoadingRow=${tableLoadingRowCount}；SectionLoading=${sectionLoadingCount}；InlineLoading=${inlineLoadingCount}；v-loading 例外=${loadingDirectiveCount}；全局长操作例外=${globalLoadingTriggerExceptions.size} 个。`)
-console.log('Loading 使用分层：首次 API 请求/页面切换使用 GlobalLoading；表格刷新使用 v-tf-loading；空表兜底使用 TableLoadingRow；区块使用 SectionLoading；Element Plus 按钮使用内置 :loading；短区域和无内置 Loading 的控件使用 InlineLoading；同一次操作不得叠加可见 Loading。')
+if (process.argv.includes('--json')) {
+  console.log(JSON.stringify({
+    summary: { pageFileCount, componentFileCount, appFileCount, asyncRequestFileCount, tableMarkupFileCount, localLoadingFileCount,
+      tableDirectiveCount, tableLoadingRowCount, sectionLoadingCount, inlineLoadingCount },
+    files: pageAuditRecords
+  }, null, 2))
+} else {
+  console.log(`Loading 页面台账审计通过：逐项扫描页面/功能单元 ${pageFileCount} 个、公共组件 ${componentFileCount} 个、应用入口 ${appFileCount} 个；异步请求文件 ${asyncRequestFileCount} 个，表格/列表文件 ${tableMarkupFileCount} 个，使用局部 Loading 的文件 ${localLoadingFileCount} 个；统一 API 默认覆盖未显式关闭的首次请求；GlobalLoading=1；v-tf-loading=${tableDirectiveCount}；TableLoadingRow=${tableLoadingRowCount}；SectionLoading=${sectionLoadingCount}；InlineLoading=${inlineLoadingCount}；v-loading 例外=${loadingDirectiveCount}；全局长操作例外=${globalLoadingTriggerExceptions.size} 个。`)
+  console.log('Loading 使用分层：首次 API 请求使用 GlobalLoading（切页仅显式启用的路由）；表格刷新使用 v-tf-loading；空表兜底使用 TableLoadingRow；区块使用 SectionLoading；Element Plus 按钮使用内置 :loading；短区域和无内置 Loading 的控件使用 InlineLoading；同一次操作不得叠加可见 Loading。')
+}

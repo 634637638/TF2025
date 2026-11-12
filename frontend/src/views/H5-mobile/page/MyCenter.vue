@@ -333,7 +333,7 @@
       <div class="purchase-records">
         <SectionLoading
           v-if="loadingPurchase"
-          text="加载中..."
+          text="正在读取购买记录..."
         />
 
         <div
@@ -813,11 +813,3 @@ onMounted(() => {
 <style scoped lang="scss" src="./styles/my-center/functions.scss"></style>
 <style scoped lang="scss" src="./styles/my-center/service.scss"></style>
 <style scoped lang="scss" src="./styles/my-center/records.scss"></style>
-
-<style lang="scss">
-/* 客服弹窗全局样式 */
-.service-dialog-custom {
-  --tf-dialog-body-padding-inline: var(--tf-space-5);
-  --tf-dialog-body-padding-block: var(--tf-space-4);
-}
-</style>

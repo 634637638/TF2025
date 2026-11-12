@@ -57,7 +57,7 @@ export class GlobalLoadingManager {
     }
 
     this.tasks.set(id, task)
-    useLoadingStore().startLoading(config.text || '加载中...', id)
+    useLoadingStore().startLoading(config.text || '正在处理，请稍候...', id)
     return id
   }
 
@@ -80,7 +80,7 @@ export class GlobalLoadingManager {
     useLoadingStore().updateProgress(task.progress, taskId)
     if (text) {
       task.config.text = text
-      useLoadingStore().setLoadingText(text)
+      useLoadingStore().setLoadingText(text, taskId)
     }
   }
 

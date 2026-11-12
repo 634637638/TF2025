@@ -1,3 +1,4 @@
+const { mandatory_hours: MANDATORY_HOURS } = require('../config/reminder-policy.json')
 const { withConnection } = require('../core/db/connection')
 const { getDatabase } = require('../config/database')
 const { ensureReminderSchema } = require('../utils/reminder-schema')
@@ -180,7 +181,7 @@ class ReminderService {
   }
 
   async materialize(connection, reminderId) {
-    const [rows] = await connection.query(`SELECT ${REMINDER_SELECT_COLUMNS} FROM reminders WHERE id=? AND status='active'`, [reminderId])
+    const [rows] = await connection.query(`SELECT ${REMINDER_SELECT_COLUMNS} FROM reminders WHERE id=? AND status='active' FOR UPDATE`, [reminderId])
     const reminder = rows[0]
     if (!reminder) return
     const users = normalizeIds(parseJson(reminder.target_user_ids, []))
@@ -190,6 +191,65 @@ class ReminderService {
       for (const userId of users) {
         await connection.query('INSERT IGNORE INTO reminder_records (reminder_id,user_id,scheduled_at,remind_at) VALUES (?,?,?,?)', [reminder.id, userId, sqlDate(scheduledAt), sqlDate(remindAt)])
       }
+    }
+  }
+
+  planRecordChanges(reminder, records) {
+    const repeatType = reminder.repeat_rule.type
+    const cycleKey = scheduled => {
+      if (repeatType === 'once' && reminder.previous_repeat_type === 'once') return 'once'
+      if (repeatType === 'monthly') return scheduled.slice(0, 7)
+      if (repeatType === 'yearly') return scheduled.slice(0, 4)
+      return scheduled.slice(0, 10)
+    }
+    // 按执行周期沿用记录；编辑一次性任务或同一周期的时间不能清空完成状态。
+    const byCycle = new Map()
+    for (const record of records) {
+      const key = `${record.user_id}:${cycleKey(sqlDate(asDate(record.scheduled_at)))}`
+      if (!byCycle.has(key)) byCycle.set(key, [])
+      byCycle.get(key).push(record)
+    }
+    const retained = new Set()
+    const updates = []
+    for (const scheduledAt of this.occurrenceDates(reminder)) {
+      const scheduled = sqlDate(scheduledAt)
+      const remind = sqlDate(addDays(scheduledAt, -reminder.remind_before_days))
+      for (const userId of reminder.target_user_ids) {
+        const candidates = byCycle.get(`${userId}:${cycleKey(scheduled)}`) || []
+        const exact = candidates.find(record => sqlDate(asDate(record.scheduled_at)) === scheduled)
+        const record = (exact && ['completed', 'ignored'].includes(exact.status) ? exact : null)
+          || candidates.find(record => record.status === 'completed')
+          || candidates.find(record => record.status === 'ignored')
+          || exact || candidates[0]
+        if (!record) continue
+        retained.add(record.id)
+        if (sqlDate(asDate(record.scheduled_at)) !== scheduled || sqlDate(asDate(record.remind_at)) !== remind) {
+          updates.push({ id: record.id, scheduled, remind })
+        }
+      }
+    }
+    const obsolete = records.filter(record => !retained.has(record.id) && !['completed', 'ignored'].includes(record.status))
+    return { obsolete, updates }
+  }
+
+  async rescheduleRecords(connection, reminder) {
+    const [records] = await connection.query(
+      'SELECT id,user_id,scheduled_at,remind_at,status,snoozed_until FROM reminder_records WHERE reminder_id=? FOR UPDATE',
+      [reminder.id]
+    )
+    const { obsolete, updates } = this.planRecordChanges(reminder, records)
+    // 先移除旧的未完成记录，避免移动时分时撞上此前错误重建的同日期记录。
+    for (const record of obsolete) {
+      await connection.query("DELETE FROM reminder_records WHERE id=? AND status NOT IN ('completed','ignored')", [record.id])
+    }
+    for (const record of updates) {
+      await connection.query(
+        `UPDATE reminder_records SET scheduled_at=?,remind_at=?,
+          snoozed_until=CASE WHEN status='snoozed' AND snoozed_until>DATE_SUB(?, INTERVAL ${MANDATORY_HOURS} HOUR)
+            THEN DATE_SUB(?, INTERVAL ${MANDATORY_HOURS} HOUR) ELSE snoozed_until END,
+          updated_at=NOW() WHERE id=?`,
+        [record.scheduled, record.remind, record.scheduled, record.scheduled, record.id]
+      )
     }
   }
 
@@ -263,7 +323,8 @@ class ReminderService {
           if (!typeRows[0]) throw new Error('事项类型不存在或已停用')
         }
         const targetMode = payload.target_mode || existing.target_mode
-        const targetIds = payload.target_mode === undefined && payload.target_user_ids === undefined
+        const targetIds = (targetMode === 'all' && existing.target_mode === 'all')
+          || (payload.target_mode === undefined && payload.target_user_ids === undefined)
           ? existingTargets
           : await this.validateTargets(connection, targetMode, normalized.target_user_ids)
         await connection.query(
@@ -283,7 +344,7 @@ class ReminderService {
             id
           ]
         )
-        await connection.query('DELETE FROM reminder_records WHERE reminder_id=? AND scheduled_at>=NOW()', [id])
+        await this.rescheduleRecords(connection, { ...normalized, id, target_user_ids: targetIds, previous_repeat_type: existingRule.type })
         await this.materialize(connection, id)
         await connection.commit()
 
@@ -563,8 +624,15 @@ class ReminderService {
         rr.status recipient_status,rr.action_at,rr.snoozed_until,u.name user_name,u.username
        FROM reminder_records rr
        LEFT JOIN users u ON u.id=rr.user_id
-       WHERE rr.reminder_id=? ${record_condition} AND rr.remind_at<=NOW()
-       ORDER BY rr.scheduled_at DESC,rr.user_id LIMIT 500`,
+       WHERE rr.reminder_id=? ${record_condition} AND (
+         rr.remind_at<=NOW() OR rr.status='completed' OR rr.id=(
+           SELECT next_rr.id FROM reminder_records next_rr
+           WHERE next_rr.reminder_id=rr.reminder_id AND next_rr.user_id=rr.user_id
+             AND next_rr.remind_at>NOW() AND next_rr.status!='completed'
+           ORDER BY next_rr.scheduled_at,next_rr.id LIMIT 1
+         )
+       )
+       ORDER BY (rr.status!='completed') DESC,rr.scheduled_at DESC,rr.user_id LIMIT 500`,
       record_params
     )
     return {
@@ -582,9 +650,40 @@ class ReminderService {
     }
   }
 
-  async pending(userId) {
+  // 首页与强制提醒共用的本人未完成清单，不受稍后提醒或普通弹窗节流影响。
+  async active(userId) {
     await this.ensure()
     const db = getDatabase()
+    return withConnection(db, async connection => {
+      try {
+        await connection.beginTransaction()
+        await this.refreshPendingOccurrences(connection)
+        const [rows] = await connection.query(
+          `SELECT rr.id occurrence_id,rr.scheduled_at,rr.remind_at,r.id reminder_id,
+            r.title,r.content,r.priority,rt.name type_name,rt.color type_color,
+            rr.status recipient_status,rr.action_at,rr.snoozed_until,
+            (rr.scheduled_at<=DATE_ADD(NOW(), INTERVAL ${MANDATORY_HOURS} HOUR)) is_mandatory
+           FROM reminder_records rr
+           JOIN reminders r ON r.id=rr.reminder_id
+           LEFT JOIN reminder_types rt ON rt.id=r.type_id
+           WHERE rr.user_id=? AND r.status='active' AND rr.remind_at<=NOW()
+             AND rr.status!='completed'
+           ORDER BY rr.scheduled_at,rr.id`, [userId]
+        )
+        await connection.commit()
+        return rows
+      } catch (error) {
+        await connection.rollback()
+        throw error
+      }
+    })
+  }
+
+  async pending(userId, queuedOccurrenceIds = []) {
+    await this.ensure()
+    const db = getDatabase()
+    const queuedIds = normalizeIds(queuedOccurrenceIds).slice(0, MAX_PENDING_REMINDERS)
+    const queuedCondition = queuedIds.length ? `OR rr.id IN (${queuedIds.map(() => '?').join(',')})` : ''
     return await withConnection(db, async connection => {
       try {
         await connection.beginTransaction()
@@ -606,7 +705,7 @@ class ReminderService {
                  AND newer.scheduled_at>rr.scheduled_at
              )
              AND (
-               rr.last_prompted_at IS NULL
+               rr.last_prompted_at IS NULL ${queuedCondition}
                OR (
                  rr.scheduled_at<=DATE_ADD(NOW(), INTERVAL 1 DAY)
                  AND rr.last_prompted_at<=DATE_SUB(NOW(), INTERVAL ${FINAL_DAY_PROMPT_INTERVAL_MINUTES} MINUTE)
@@ -619,14 +718,15 @@ class ReminderService {
            ORDER BY r.priority='urgent' DESC,r.priority='high' DESC,rr.remind_at DESC
            LIMIT ${MAX_PENDING_REMINDERS}
            FOR UPDATE`,
-          [userId]
+          [userId, ...queuedIds]
         )
-        if (rows.length) {
-          const placeholders = rows.map(() => '?').join(',')
+        const newlyPrompted = rows.filter(row => !queuedIds.includes(Number(row.occurrence_id)))
+        if (newlyPrompted.length) {
+          const placeholders = newlyPrompted.map(() => '?').join(',')
           await connection.query(
             `UPDATE reminder_records SET last_prompted_at=NOW()
              WHERE id IN (${placeholders})`,
-            rows.map(row => row.occurrence_id)
+            newlyPrompted.map(row => row.occurrence_id)
           )
         }
         await connection.commit()
@@ -685,27 +785,33 @@ class ReminderService {
       if (action === 'complete') return
       throw new Error('该周期已完成，不能再修改状态')
     }
+    const mandatoryAt = asDate(rows[0].scheduled_at)
+    if (action !== 'complete' && mandatoryAt && mandatoryAt.getTime() <= Date.now() + MANDATORY_HOURS * 60 * 60 * 1000) {
+      throw new Error('已进入执行前最后3小时，请完成任务')
+    }
     if (action === 'snooze') {
       const now = new Date()
       const scheduledAt = asDate(rows[0].scheduled_at)
       const until = asDate(snoozedUntil) || addDays(now, 1)
       if (until <= now) throw new Error('稍后提醒时间必须晚于当前时间')
-      const snoozeDeadline = scheduledAt ? addDays(scheduledAt, -1) : null
+      const snoozeDeadline = scheduledAt ? new Date(scheduledAt.getTime() - MANDATORY_HOURS * 60 * 60 * 1000) : null
       if (!snoozeDeadline || now >= snoozeDeadline || until > snoozeDeadline) {
-        throw new Error('稍后提醒时间必须早于本轮执行时间至少1天')
+        throw new Error('稍后提醒时间必须早于本轮执行时间至少3小时')
       }
-      await db.query(
-        "UPDATE reminder_records SET status='snoozed',snoozed_until=?,last_prompted_at=NULL,action_at=NOW(),updated_at=NOW() WHERE id=? AND user_id=?",
-        [sqlDate(until), recordId, userId]
+      const [result] = await db.query(
+        `UPDATE reminder_records SET status='snoozed',snoozed_until=?,last_prompted_at=NULL,action_at=NOW(),updated_at=NOW() WHERE id=? AND user_id=? AND status!='completed' AND scheduled_at>DATE_ADD(NOW(), INTERVAL ${MANDATORY_HOURS} HOUR) AND ?<=DATE_SUB(scheduled_at, INTERVAL ${MANDATORY_HOURS} HOUR)`,
+        [sqlDate(until), recordId, userId, sqlDate(until)]
       )
+      if (!result.affectedRows) throw new Error('该周期已完成或已改期，请刷新待办')
       return
     }
     const statusByAction = { read: 'read', ignore: 'ignored', complete: 'completed' }
     if (!statusByAction[action]) throw new Error('状态操作无效')
-    await db.query(
-      'UPDATE reminder_records SET status=?,action_at=NOW(),snoozed_until=NULL,last_prompted_at=NULL,updated_at=NOW() WHERE id=? AND user_id=?',
+    const [result] = await db.query(
+      `UPDATE reminder_records SET status=?,action_at=NOW(),snoozed_until=NULL,last_prompted_at=NULL,updated_at=NOW() WHERE id=? AND user_id=? AND status!='completed' ${action === 'complete' ? '' : `AND scheduled_at>DATE_ADD(NOW(), INTERVAL ${MANDATORY_HOURS} HOUR)`}`,
       [statusByAction[action], recordId, userId]
     )
+    if (!result.affectedRows && action !== 'complete') throw new Error('该周期已完成或已改期，请刷新待办')
   }
 }
 

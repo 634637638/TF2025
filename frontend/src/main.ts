@@ -49,8 +49,6 @@ import { initializeSiteSettings } from '@/stores/siteSettings'
 import { ensureIconAssets } from '@/utils/iconify'
 import { enhanceGlobalMessageBox } from '@/utils/message-box'
 import logger from '@/utils/logger'
-import { initAdminTableDragScroll } from '@/utils/admin-table-drag-scroll'
-import { initPageTabScroll } from '@/utils/page-tab-scroll'
 import { getActionColumnMinWidth, getNumberColumnMinWidth } from '@/utils/table-layout'
 import {
   applyDeviceRootClass,
@@ -146,8 +144,6 @@ const initializeApp = async () => {
     // 先挂载应用，避免跨服务器部署时 API/CORS 暂时不可用导致首屏空白。
     // 站点名称和 Logo 使用 store 的稳定默认值，接口返回后会自动更新。
     app.mount('#app')
-    initAdminTableDragScroll()
-    initPageTabScroll()
 
     // 站点设置在后台加载，不阻塞登录页和路由渲染。
     initializeSiteSettings().catch((error) => {
@@ -190,6 +186,17 @@ const initializeApp = async () => {
         return
       }
       businessRuntimeInitialized = true
+
+      // 登录页没有业务表格和 TAB；进入业务路由后统一加载，仍只注册一次全局行为。
+      void Promise.all([
+        import('@/utils/admin-table-drag-scroll'),
+        import('@/utils/page-tab-scroll')
+      ]).then(([{ initAdminTableDragScroll }, { initPageTabScroll }]) => {
+        initAdminTableDragScroll()
+        initPageTabScroll()
+      }).catch((error) => {
+        logger.error('公共表格与 TAB 滚动行为初始化失败', error)
+      })
 
       void ensureIconAssets()
 

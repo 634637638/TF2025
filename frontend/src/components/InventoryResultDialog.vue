@@ -38,7 +38,7 @@
 
       <SectionLoading
         v-if="loading"
-        text="加载中..."
+        text="正在读取库存查询结果..."
         size="compact"
       />
 
@@ -130,7 +130,7 @@
 
     <SectionLoading
       v-if="loading"
-      text="加载中..."
+      text="正在读取库存查询结果..."
       size="compact"
     />
 

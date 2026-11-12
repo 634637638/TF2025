@@ -202,7 +202,7 @@
           </template>
 
           <el-table
-            v-tf-loading="customerLoading"
+            v-tf-loading="{ active: customerLoading, text: '正在刷新客户分析...' }"
             class="data-table"
             :data="filteredCustomers"
             stripe
@@ -212,7 +212,7 @@
               <TableLoadingRow
                 v-if="customerLoading"
                 mode="block"
-                text="加载中..."
+                text="正在读取客户分析..."
               />
               <DataEmptyState
                 v-else

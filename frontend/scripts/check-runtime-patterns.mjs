@@ -4,7 +4,7 @@ import { relative, resolve } from 'node:path'
 const frontendRoot = resolve(import.meta.dirname, '..')
 const projectRoot = resolve(frontendRoot, '..')
 const sourceRoot = resolve(frontendRoot, 'src')
-const configPath = resolve(projectRoot, 'config/runtime-pattern-audit.json')
+const configPath = resolve(projectRoot, 'frontend/scripts/runtime-pattern-audit.json')
 const findings = []
 
 const walk = (directory) => readdirSync(directory).flatMap((name) => {
@@ -13,7 +13,7 @@ const walk = (directory) => readdirSync(directory).flatMap((name) => {
 })
 
 if (!existsSync(configPath)) {
-  console.error('运行时模式审计失败：缺少 config/runtime-pattern-audit.json')
+  console.error('运行时模式审计失败：缺少 frontend/scripts/runtime-pattern-audit.json')
   process.exit(1)
 }
 
@@ -78,7 +78,7 @@ if (!/AbortController/.test(marketingContextService) || !/response\.ok/.test(mar
 
 for (const page of [
   'views/reminders/ReminderView.vue',
-  'views/reminders/types.ts',
+  'types/reminder.ts',
   'views/shared/SharedView.vue',
   'types/shared.ts'
 ]) {

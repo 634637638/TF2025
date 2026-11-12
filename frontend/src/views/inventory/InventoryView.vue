@@ -80,7 +80,7 @@
           :get-sale-status-class="getSaleStatusClass"
           :get-sale-status-label="getSaleStatusLabel"
           :inventory="inventory"
-          :loading="tableLoading"
+          :loading="tableLoading || refreshing"
           :pagination="pagination"
           @delete="deleteItem"
           @edit="editItem"
@@ -1555,67 +1555,7 @@ const _handleSelect = (item: InventoryItem) => {
   display: none !important;
 }
 
-.inventory-edit-dialog {
-  --dialog-side-gap: 4px;
-  --dialog-vertical-gap: 24px;
-  --dialog-max-width: calc(100vw - 8px);
-  --mobile-dialog-body-padding: 8px 4px 8px;
-  --mobile-dialog-footer-padding: 0 4px 4px;
-  --tf-dialog-body-padding-inline: 28px;
-  --tf-dialog-body-padding-block: 28px;
-  --tf-dialog-footer-padding-inline: 28px;
-  --tf-dialog-footer-padding-block-start: 18px;
-  --tf-dialog-footer-padding-block-end: 28px;
-}
-
-.inventory-edit-dialog .el-dialog,
-.inventory-detail-dialog .el-dialog {
-  margin: auto !important;
-  max-width: calc(100vw - 32px) !important;
-  overflow: hidden;
-}
-
-.inventory-edit-dialog .el-dialog {
-  width: min(900px, calc(100vw - 32px)) !important;
-  border-radius: 24px !important;
-}
-
-.inventory-detail-dialog .el-dialog {
-  width: min(800px, calc(100vw - 32px)) !important;
-  border-radius: 20px !important;
-}
-
 @media (max-width: 767px) {
-  .inventory-edit-dialog {
-    --mobile-dialog-overlay-padding: 8px 4px;
-  }
-
-  .inventory-edit-dialog .el-dialog,
-  .inventory-detail-dialog .el-dialog {
-    width: calc(100vw - 8px) !important;
-    max-width: calc(100vw - 8px) !important;
-    border-radius: 18px !important;
-  }
-
-  .mobile-dialog-sheet-panel.inventory-edit-dialog .mobile-dialog-sheet-title {
-    font-size: var(--tf-type-scale-16) !important;
-  }
-
-  .mobile-dialog-sheet-panel.inventory-edit-dialog .mobile-dialog-sheet-close {
-    right: 14px !important;
-    transform: none !important;
-  }
-
-  .inventory-edit-dialog {
-    --tf-dialog-body-padding-inline: 4px;
-    --tf-dialog-body-padding-block: 8px;
-    --tf-dialog-footer-padding-inline: 4px;
-    --tf-dialog-footer-padding-block-start: 0px;
-    --tf-dialog-footer-padding-block-end: 4px;
-    --mobile-dialog-body-padding: 8px 4px 8px;
-    --mobile-dialog-footer-padding: 0 4px 4px;
-  }
-
   .inventory-edit-summary-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--tf-space-2);
@@ -1672,14 +1612,6 @@ const _handleSelect = (item: InventoryItem) => {
 }
 
 @media (max-width: 479px) {
-  .inventory-edit-dialog {
-    --dialog-vertical-gap: 24px;
-  }
-
-  .mobile-dialog-sheet-panel.inventory-edit-dialog .mobile-dialog-sheet-close {
-    right: 14px !important;
-  }
-
   /* 超窄手机也保持两列，字段内容通过最小宽度和换行保持完整。 */
   .inventory-edit-form-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1703,17 +1635,6 @@ const _handleSelect = (item: InventoryItem) => {
   }
 }
 
-@media (max-width: 390px) and (min-height: 800px) {
-  .inventory-detail-dialog .el-dialog {
-    width: 100vw !important;
-    max-width: 100vw !important;
-    height: 100vh !important;
-    max-height: 100vh !important;
-    height: 100dvh !important;
-    max-height: 100dvh !important;
-    border-radius: 0 !important;
-  }
-}
 </style>
 
 <style scoped src="./styles/inventory-view/detail-shell.css"></style>

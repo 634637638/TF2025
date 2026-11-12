@@ -3,11 +3,11 @@ import { resolve } from 'node:path'
 
 const frontendRoot = resolve(import.meta.dirname, '..')
 const projectRoot = resolve(frontendRoot, '..')
-const contractPath = resolve(projectRoot, 'config/field-contracts.json')
+const contractPath = resolve(projectRoot, 'backend/scripts/config/field-contracts.json')
 const findings = []
 
 if (!existsSync(contractPath)) {
-  console.error('字段一致性审计失败：缺少 config/field-contracts.json')
+  console.error('字段一致性审计失败：缺少 backend/scripts/config/field-contracts.json')
   process.exit(1)
 }
 

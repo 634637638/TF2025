@@ -315,7 +315,7 @@
 
           <div class="table-responsive payment-list-table-wrapper">
             <el-table
-              v-tf-loading="loading"
+              v-tf-loading="{ active: loading || refreshing, text: '正在刷新供应商付款记录...' }"
               :data="phones"
               border
               stripe
@@ -611,7 +611,7 @@
                 <TableLoadingRow
                   v-if="loading"
                   mode="block"
-                  text="加载中..."
+                  text="正在读取供应商付款记录..."
                 />
                 <DataEmptyState
                   v-else
@@ -3195,16 +3195,6 @@ onMounted(async () => {
 <style lang="scss" scoped src="./styles/supplier-phone-payments.scss"></style>
 
 <style lang="scss">
-.supplier-phone-payments-dialog {
-  --tf-dialog-header-bg: var(--dialog-header-bg);
-  --tf-dialog-footer-bg: linear-gradient(180deg, var(--color-bg-white) 0%, var(--tf-color-surface-blue) 100%);
-  --tf-dialog-body-padding-inline: var(--tf-space-6);
-  --tf-dialog-body-padding-block: var(--tf-space-6);
-  --tf-dialog-footer-padding-inline: var(--tf-space-6);
-  --tf-dialog-footer-padding-block-start: var(--tf-space-3);
-  --tf-dialog-footer-padding-block-end: var(--tf-space-5);
-}
-
 .payment-dialog-footer {
   .el-button span {
     display: inline-flex;
@@ -3241,19 +3231,6 @@ onMounted(async () => {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .supplier-phone-payments-dialog {
-    --tf-dialog-header-padding-x: 16px;
-    --tf-dialog-header-padding-right: 52px;
-    --tf-dialog-body-padding-inline: var(--tf-space-4);
-    --tf-dialog-body-padding-block: 16px;
-    --tf-dialog-footer-padding-inline: var(--tf-space-4);
-    --tf-dialog-footer-padding-block-start: var(--tf-space-3);
-    --tf-dialog-footer-padding-block-end: var(--tf-space-4);
-  }
-
-  .payment-dialog-footer {
-    --tf-dialog-action-gap: var(--tf-space-2);
-  }
 }
 
 @media (min-width: 481px) and (max-width: 767px) {
@@ -3262,13 +3239,4 @@ onMounted(async () => {
   }
 }
 
-@media (max-width: 479px) {
-  .supplier-phone-payments-dialog {
-    .el-dialog__title,
-    .mobile-dialog-sheet-title {
-      font-size: var(--tf-type-scale-15);
-    }
-  }
-
-}
 </style>

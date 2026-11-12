@@ -6,7 +6,7 @@ const fs = require('node:fs')
 const path = require('node:path')
 
 const root = path.resolve(__dirname, '../..')
-const registry = JSON.parse(fs.readFileSync(path.join(root, 'config/field-contracts.json'), 'utf8'))
+const registry = JSON.parse(fs.readFileSync(path.join(root, 'backend/scripts/config/field-contracts.json'), 'utf8'))
 const contracts = registry.contracts
 
 test('field contracts declare canonical and legacy names separately', () => {
@@ -430,7 +430,7 @@ test('sales contract retires request and response aliases after read-only verifi
 test('preorder CRUD no longer references removed database columns', () => {
   const source = fs.readFileSync(path.join(root, 'backend/src/routes/preorders.js'), 'utf8')
   const form = fs.readFileSync(path.join(root, 'frontend/src/views/preorders/page/PreorderFormModal.vue'), 'utf8')
-  const registry = JSON.parse(fs.readFileSync(path.join(root, 'config/field-contracts.json'), 'utf8'))
+  const registry = JSON.parse(fs.readFileSync(path.join(root, 'backend/scripts/config/field-contracts.json'), 'utf8'))
   for (const field of ['expected_price', 'advance_payment', 'deposit', 'customer_name', 'customer_phone']) {
     assert.doesNotMatch(source, new RegExp(`\\bp\\.${field}\\b`), `预定 CRUD 仍读取 ${field}`)
   }
@@ -574,7 +574,7 @@ test('accessory physical migration is rename-only and rejects partial schemas', 
 
 test('phone and sales physical migration is registered and rename-only', () => {
   const migration = fs.readFileSync(path.join(root, 'backend/scripts/migrate-phone-sales-columns.js'), 'utf8')
-  const physicalMigrations = JSON.parse(fs.readFileSync(path.join(root, 'config/field-contracts.json'), 'utf8')).physicalMigrations
+  const physicalMigrations = JSON.parse(fs.readFileSync(path.join(root, 'backend/scripts/config/field-contracts.json'), 'utf8')).physicalMigrations
 
   assert.equal(physicalMigrations['phones-sales-columns'].status, 'completed')
   assert.equal(physicalMigrations['phones-sales-columns'].database_verification, 'completed')
@@ -594,7 +594,7 @@ test('phone and sales physical migration is registered and rename-only', () => {
 })
 
 test('database-wide physical field audit is registered and keeps price history semantics', () => {
-  const contractFile = JSON.parse(fs.readFileSync(path.join(root, 'config/field-contracts.json'), 'utf8'))
+  const contractFile = JSON.parse(fs.readFileSync(path.join(root, 'backend/scripts/config/field-contracts.json'), 'utf8'))
   const audit = contractFile.physicalFieldAudit['database-wide-snake-case']
   const auditScript = fs.readFileSync(path.join(root, 'backend/scripts/check-physical-field-contract.js'), 'utf8')
   const priceListService = fs.readFileSync(path.join(root, 'backend/src/services/price-list.service.js'), 'utf8')

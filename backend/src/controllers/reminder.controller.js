@@ -34,7 +34,7 @@ const REMINDER_RESPONSE_KEYS = {
   'execution_info.completed_count': ['completed_count', 'completed_at'],
   'execution_info.ignored_count': ['ignored_count', 'ignored_at'], 'execution_info.scheduled_at': ['scheduled_at'],
   'execution_info.recipient_user': ['user_id', 'user_name', 'username'],
-  'execution_info.recipient_status': ['recipient_status', 'read_at', 'snoozed_until'],
+  'execution_info.recipient_status': ['recipient_status', 'read_at', 'snoozed_until', 'is_mandatory'],
   'execution_info.action_at': ['action_at', 'completed_at'], 'status_info.status': ['status'],
   'operator_info.creator_name': ['created_by', 'creator_name'], 'time_info.created_at': ['created_at'],
   'time_info.updated_at': ['updated_at']
@@ -77,8 +77,8 @@ class ReminderController {
 
   handleError(res, error, fallback = '操作失败') {
     const message = error?.message || fallback
-    if (/无权/.test(message)) return ApiResponse.error(res, message, 403)
-    const status = /不存在|无效|请输入|请选择|必须|不能超过|至少选择|包含无效|已被.*使用|请停用|已完成/.test(message) ? 400 : 500
+    if (/无权|未分配/.test(message)) return ApiResponse.error(res, message, 403)
+    const status = /不存在|无效|请输入|请选择|必须|不能超过|至少选择|包含无效|已被.*使用|请停用|已完成|最后3小时|已改期/.test(message) ? 400 : 500
     return ApiResponse.error(res, message, status)
   }
 
@@ -87,8 +87,16 @@ class ReminderController {
     return permissions.includes('reminders:manage') || permissions.includes('reminders_reminderview:manage')
   }
 
+  async active(req, res) {
+    try { return ApiResponse.success(res, await this.maskPayload(await this.service.active(req.user.id), req), '获取本人未完成待办成功') }
+    catch (error) { return this.handleError(res, error, '获取本人未完成待办失败') }
+  }
+
   async pending(req, res) {
-    try { return ApiResponse.success(res, await this.maskPayload(await this.service.pending(req.user.id), req), '获取待办提醒成功') }
+    try {
+      const queuedIds = typeof req.query?.queued_occurrence_ids === 'string' ? req.query.queued_occurrence_ids.split(',') : []
+      return ApiResponse.success(res, await this.maskPayload(await this.service.pending(req.user.id, queuedIds), req), '获取待办提醒成功')
+    }
     catch (error) { this.logger.error('获取待办提醒失败:', error); return this.handleError(res, error, '获取待办提醒失败') }
   }
 

@@ -713,10 +713,6 @@ watch(
 </style>
 
 <style lang="scss">
-.stock-in-dialog {
-  --dialog-max-width: 1240px;
-}
-
 .stock-in-dialog .stock-in-section {
   overflow: hidden;
   border: 1px solid var(--el-border-color-lighter);

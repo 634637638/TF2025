@@ -23,6 +23,7 @@ const fetchIconifyJson = async url => {
   timer.unref?.()
   const promise = fetch(url, {
     method: 'GET',
+    credentials: 'omit',
     headers: { Accept: 'application/json' },
     signal: controller.signal
   }).then(async response => {
@@ -266,6 +267,8 @@ function translateKeywords(query) {
  * GET /api/icons/search/online?query=home&limit=50
  */
 router.get('/search/online', unifiedAuth, requirePermission('menus:view'), iconifyRateLimit, iconController.searchOnline.bind(iconController))
+
+router.get('/preview', unifiedAuth, requirePermission('menus:view'), iconifyRateLimit, iconController.preview.bind(iconController))
 
 /**
  * 获取 Iconify 图标集合列表

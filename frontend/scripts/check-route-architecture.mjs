@@ -2,6 +2,7 @@ import { execFileSync } from 'node:child_process'
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
+import { ARCHITECTURE_CONFIG_PATH, loadArchitectureBaselineConfig } from './lib/architecture-baseline-config.mjs'
 import {
   checkControllerDatabaseArchitecture,
   checkLayerDependencyArchitecture,
@@ -17,32 +18,23 @@ import {
 
 const projectRoot = resolve(import.meta.dirname, '../..')
 const backendRoot = resolve(projectRoot, 'backend/src')
-const configPath = resolve(projectRoot, 'config/backend-route-architecture.json')
+const configPath = resolve(projectRoot, ARCHITECTURE_CONFIG_PATH)
 const config = JSON.parse(readFileSync(configPath, 'utf8'))
 const targetBranch = process.env.GITHUB_BASE_REF
 const baselineRef = process.env.ARCHITECTURE_BASELINE_REF || (targetBranch ? `origin/${targetBranch}` : 'HEAD')
 let previousConfig = null
 try {
-  previousConfig = JSON.parse(execFileSync('git', ['show', `${baselineRef}:config/backend-route-architecture.json`], {
-    cwd: projectRoot,
-    encoding: 'utf8',
-    stdio: ['ignore', 'pipe', 'ignore']
-  }))
-} catch (error) {
+  previousConfig = loadArchitectureBaselineConfig(projectRoot, baselineRef)
+} catch {
+  console.error(`无法从目标基线 ${baselineRef} 读取架构台账，拒绝跳过 max* 锚点比较`)
+  process.exit(1)
+}
+if (!previousConfig) {
   if (process.env.ARCHITECTURE_BASELINE_REF) {
     console.error(`无法从目标基线 ${baselineRef} 读取架构台账，拒绝跳过 max* 锚点比较`)
     process.exit(1)
   }
   if (targetBranch) {
-    try {
-      execFileSync('git', ['rev-parse', '--verify', baselineRef], {
-        cwd: projectRoot,
-        stdio: ['ignore', 'ignore', 'ignore']
-      })
-    } catch {
-      console.error(`无法解析目标分支引用 ${baselineRef}，拒绝跳过 max* 锚点比较`)
-      process.exit(1)
-    }
     console.warn(`目标分支 ${targetBranch} 尚无架构台账：按首次登记检查 baselineHistory；合入后将启用目标分支比较。`)
   } else {
     console.warn('架构台账尚未存在于 HEAD：按首次登记检查 baselineHistory；合入后将启用目标分支锚点比较。')

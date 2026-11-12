@@ -90,7 +90,7 @@
       <div class="table-responsive">
         <el-table
           ref="tableRef"
-          v-tf-loading="loading"
+          v-tf-loading="{ active: loading, text: '正在刷新员工工资...' }"
           :data="employees"
           border
           stripe
@@ -104,7 +104,7 @@
             <TableLoadingRow
               v-if="loading"
               mode="block"
-              text="加载中..."
+              text="正在读取员工工资..."
             />
             <DataEmptyState
               v-else

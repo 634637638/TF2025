@@ -8,7 +8,7 @@
 
     <div class="table-responsive">
       <el-table
-        v-tf-loading="loading"
+        v-tf-loading="{ active: loading, text: '正在刷新库存列表...' }"
         v-table-double-tap="{ enabled: enableRowDoubleTap, getRowKey: getTapRowKey, onDoubleTap: handleRowDoubleTap }"
         :data="inventory"
         border

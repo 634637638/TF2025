@@ -6,6 +6,13 @@ const classes = collectButtonClasses([
   '<template><div class="button-group"><el-button class="selected-action-btn"><i class="button-icon"/></el-button><el-button class="custom-command shared"/><div class="shared"/></div></template>'
 ])
 
+test('公共报价页头显式参数允许使用，私有按钮尺寸仍被拒绝', () => {
+  const source = '<template><PublicPriceHeader :action-width="80" action-size="small"><template #actions><el-button class="quote-action tf-button--export">保存图片</el-button></template></PublicPriceHeader></template>'
+  assert.deepEqual(auditButtonInlineStyles(source), [])
+  const buttons = collectButtonClasses([source])
+  assert.equal(auditButtonContract('.quote-action { width: 80px; }', buttons).length, 1)
+})
+
 test('表格文字按钮不能使用多行内容规格，静态和动态 class 均纳入检查', () => {
   for (const attribute of ['class="tf-button--content"', ':class="[\'tf-button--content\', active && \'selected\']"']) {
     const findings = auditTableButtonUsage(`<template><el-table><el-table-column><template #default><div><el-button ${attribute}>事项</el-button></div></template></el-table-column></el-table></template>`)

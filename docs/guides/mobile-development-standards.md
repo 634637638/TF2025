@@ -75,7 +75,7 @@ const fabActions = [
 - Android Chrome 和 iOS Safari 的软键盘会改变 `visualViewport` 高度；页面不得只读取一次 `window.innerHeight` 判断键盘状态。
 - 统一使用 `useVirtualKeyboard` 或 `useMobileViewport`，由公共 Composable 维护初始视口基线、键盘高度和方向变化。
 - 全屏遮罩、弹窗和移动端工作区使用 `100vh` 作为旧浏览器回退，并在支持时使用 `100dvh`；禁止在业务页面重新实现一套视口计算。
-- 固定底部操作必须叠加 `env(safe-area-inset-bottom, 0px)`，避免 iPhone Home Indicator 遮挡按钮。
+- 贴屏幕底边的固定操作必须预留 `env(safe-area-inset-bottom, 0px)`，避免 iPhone Home Indicator 遮挡按钮；悬浮弹窗由公共遮罩在外层统一预留安全区，footer 内不重复叠加，详见[对话框规范](../frontend/dialog-standards.md#主屏幕书签与安全区)。
 
 ### 2.2 字体和最小屏
 

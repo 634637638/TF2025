@@ -4,7 +4,7 @@
  */
 
 import { defineStore } from 'pinia'
-import { ref, computed, watch, nextTick } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { unifiedApi as api } from '@/utils/unified-api'
 import { extractResponseData, getRequestErrorCode, getRequestErrorStatus } from '@/utils/api-response'
 import { clearPersistedAuthData, setBackendDisconnectedState } from '@/utils/auth-session'
@@ -66,6 +66,7 @@ export const useAuthStore = defineStore('auth', () => {
   const permissionVisibility = ref<Record<string, boolean>>({}) // 新增：权限可见性映射
   const roles = ref<string[]>([])
   const isLoading = ref(false)
+  const exitLock = ref(false)
   const lastActivity = ref<number>(Date.now())
   const sessionTimeout = ref<number>(30 * 60 * 1000) // 30分钟
   const loginAttempts = ref(0)
@@ -464,6 +465,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   const logout = async (reason: string = '用户主动退出'): Promise<void> => {
+    if (reason === '用户主动退出' && exitLock.value) return
     // 直接清除本地认证信息，不调用服务器logout API
     // 避免TOKEN_REVOKED等错误提示
     clearAuth()
@@ -474,7 +476,6 @@ export const useAuthStore = defineStore('auth', () => {
     }))
 
     // 跳转到登录页（使用 window.location 避免在 store 中使用 useRouter）
-    await nextTick()
     window.location.href = '/login'
   }
 
@@ -1257,6 +1258,7 @@ export const useAuthStore = defineStore('auth', () => {
     permissionVisibility,
     roles,
     isLoading,
+    exitLock,
     isAuthenticating,
     lastActivity,
     sessionTimeout,

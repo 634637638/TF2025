@@ -158,7 +158,7 @@
           <div class="table-responsive">
             <el-table
               ref="memoriesTableRef"
-              v-tf-loading="tableLoading"
+              v-tf-loading="{ active: tableLoading || refreshing, text: '正在刷新内存规格...' }"
               :data="memories"
               border
               stripe

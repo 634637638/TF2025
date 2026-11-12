@@ -734,9 +734,7 @@
   right: 8px;
   top: 50%;
   transform: translateY(-50%);
-
   cursor: pointer;
-
   transition: all 0.2s ease;
   z-index: 10;
 }
@@ -846,12 +844,6 @@
 /* 字段权限配置样式 */
 .el-dialog.field-permission-dialog,
 .mobile-dialog-sheet-panel.field-permission-dialog {
-  max-width: 900px;
-  width: 90vw;
-  height: min(760px, calc(100vh - 48px));
-  height: min(760px, calc(100dvh - 48px));
-  max-height: calc(100vh - 48px);
-  max-height: calc(100dvh - 48px);
   display: flex;
   flex-direction: column;
 }
@@ -859,14 +851,12 @@
 .field-permission-dialog .el-dialog__body {
   display: flex;
   flex: 1 1 auto;
-  min-height: 0;
   overflow: hidden;
   overscroll-behavior: none;
 }
 
 .field-permission-dialog .mobile-dialog-sheet-body {
   display: flex;
-  min-height: 0;
   overflow: hidden;
   overscroll-behavior: none;
 }
@@ -1209,15 +1199,6 @@
 
 /* 字段权限对话框响应式设计 */
 @media (max-width: 767px) {
-  .el-dialog.field-permission-dialog,
-  .mobile-dialog-sheet-panel.field-permission-dialog {
-    width: 95vw;
-    height: calc(100vh - 24px);
-    height: calc(100dvh - 24px);
-    max-height: calc(100vh - 24px);
-    max-height: calc(100dvh - 24px);
-  }
-
   .field-groups-container {
     max-height: none;
   }
@@ -1460,10 +1441,6 @@
 /* 角色字段权限弹窗样式 */
 .el-dialog.role-field-permission-dialog,
 .mobile-dialog-sheet-panel.role-field-permission-dialog {
-  height: min(760px, calc(100vh - 48px));
-  height: min(760px, calc(100dvh - 48px));
-  max-height: calc(100vh - 48px);
-  max-height: calc(100dvh - 48px);
   display: flex;
   flex-direction: column;
 }
@@ -1484,7 +1461,6 @@
 .role-field-permission-dialog .el-dialog__body,
 .role-field-permission-dialog .mobile-dialog-sheet-body {
   display: flex;
-  min-height: 0;
   overflow: hidden;
   overscroll-behavior: none;
 }
@@ -1711,9 +1687,7 @@
 .field-actions :deep(.el-button) {
   width: 100%;
   min-width: 0;
-
   margin-left: 0 !important;
-
 }
 
 .section-title--compact {
@@ -1903,14 +1877,6 @@
 
 /* 角色字段权限响应式设计 */
 @media (max-width: 1024px) {
-  .el-dialog.role-field-permission-dialog,
-  .mobile-dialog-sheet-panel.role-field-permission-dialog {
-    height: calc(100vh - 32px);
-    height: calc(100dvh - 32px);
-    max-height: calc(100vh - 32px);
-    max-height: calc(100dvh - 32px);
-  }
-
   .role-field-permission-dialog .dialog-body {
     flex-direction: column;
   }
@@ -1960,22 +1926,6 @@
 }
 
 @media (max-width: 767px) {
-  .el-dialog.field-permission-dialog,
-  .mobile-dialog-sheet-panel.field-permission-dialog {
-    height: calc(100vh - 24px);
-    height: calc(100dvh - 24px);
-    max-height: calc(100vh - 24px);
-    max-height: calc(100dvh - 24px);
-  }
-
-  .el-dialog.role-field-permission-dialog,
-  .mobile-dialog-sheet-panel.role-field-permission-dialog {
-    height: calc(100vh - 16px);
-    height: calc(100dvh - 16px);
-    max-height: calc(100vh - 16px);
-    max-height: calc(100dvh - 16px);
-  }
-
   .field-config-area,
   .field-group-nav,
   .module-selection-area {
@@ -2350,7 +2300,6 @@
 }
 
 .user-role-modal.el-dialog {
-  max-height: min(900px, calc(100vh - 48px));
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -2359,8 +2308,6 @@
 .user-role-modal .el-dialog__body {
   display: flex;
   flex: 1 1 auto;
-  min-height: 0;
-  padding: 0;
   overflow: hidden;
 }
 
@@ -2692,16 +2639,6 @@
 }
 
 @media (max-width: 767px) {
-  .permissions-view .user-role-modal .el-dialog {
-    height: 100vh;
-    margin: 0;
-    border-radius: 0;
-  }
-
-  .permissions-view .user-role-modal .el-dialog__header {
-    border-radius: 0;
-  }
-
   .permissions-view .user-role-modal .modal-body {
     padding: 16px;
     max-height: calc(100vh - 132px);
@@ -2745,7 +2682,6 @@
 /* Role assignment dialog workspace. MobileDialog teleports the dialog to body,
  * so these selectors intentionally anchor to the dialog class itself. */
 .user-role-modal.el-dialog {
-  max-height: min(900px, calc(100dvh - 48px));
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -2759,8 +2695,6 @@
 .user-role-modal .mobile-dialog-sheet-body {
   display: flex;
   flex: 1 1 auto;
-  min-height: 0;
-  padding: 0;
   overflow: hidden;
 }
 
@@ -2960,11 +2894,6 @@
 }
 
 @media (max-width: 767px) {
-  .user-role-modal.el-dialog {
-    max-height: 100dvh;
-    border-radius: 0;
-  }
-
   .user-role-modal .modal-body {
     padding: 16px;
   }
@@ -3022,25 +2951,19 @@
   --role-assignment-soft-border: rgba(148, 163, 184, 0.12);
   --role-assignment-blue-soft: rgba(239, 246, 255, 0.94);
   --role-assignment-green-soft: rgba(240, 253, 250, 0.92);
-  height: min(820px, calc(100dvh - 48px));
-  max-height: calc(100dvh - 48px);
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  border-radius: 14px;
 }
 
 .user-role-modal.el-dialog > .el-dialog__header,
 .user-role-modal.mobile-dialog-sheet-panel > .mobile-dialog-sheet-header {
   flex: 0 0 auto;
-  border-bottom: 1px solid var(--role-assignment-border);
 }
 
 .user-role-modal.el-dialog > .el-dialog__body,
 .user-role-modal .mobile-dialog-sheet-body {
   flex: 1 1 auto;
-  min-height: 0;
-  padding: 0;
   overflow: hidden;
 }
 
@@ -3561,13 +3484,6 @@
 }
 
 @media (max-width: 767px) {
-  .user-role-modal.el-dialog,
-  .user-role-modal.mobile-dialog-sheet-panel {
-    height: 100dvh;
-    max-height: 100dvh;
-    border-radius: 0;
-  }
-
   .user-role-modal .modal-body {
     padding: 12px;
   }

@@ -39,7 +39,7 @@
 
 读取响应保留已有 H5 配置字段，补充 `is_new`、有效默认值 `is_published` 和 `template`（二手机或未匹配模板为 `null`）。预览仅返回模板 ID、名称、介绍、上架状态和媒体，不返回关联设备列表。验机写入新增可选数值 `is_published: 0 | 1`；非法状态返回 400。
 
-前端使用 `PublishToH5Modal.vue`、`unifiedApi`、`usePagePermissions`、`SectionLoading` 和公共通知。后端由 `PhoneProductController → ShopService → PhoneProductRepository` 读取配置和模板；现有上下架、验机持久化仍由 `ShopService` 执行。字段契约登记在 `config/field-contracts.json` 的 `phone-h5-product`。本次不修改数据库结构。
+前端使用 `PublishToH5Modal.vue`、`unifiedApi`、`usePagePermissions`、`SectionLoading` 和公共通知。后端由 `PhoneProductController → ShopService → PhoneProductRepository` 读取配置和模板；现有上下架、验机持久化仍由 `ShopService` 执行。字段契约登记在 `backend/scripts/config/field-contracts.json` 的 `phone-h5-product`。本次不修改数据库结构。
 
 ## 验证
 

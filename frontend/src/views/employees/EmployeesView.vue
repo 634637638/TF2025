@@ -164,7 +164,7 @@
           <div class="table-responsive">
             <el-table
               ref="employeesTableRef"
-              v-tf-loading="loading"
+              v-tf-loading="{ active: loading || refreshing, text: '正在刷新员工列表...' }"
               :data="paginatedEmployees"
               border
               stripe
@@ -833,7 +833,7 @@
               <TableLoadingRow
                 v-if="loadingRoles"
                 mode="block"
-                text="加载中..."
+                text="正在读取角色列表..."
               />
               <DataEmptyState
                 v-else-if="roles.length === 0"

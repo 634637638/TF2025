@@ -2,7 +2,7 @@
   <div class="sales-view-panel">
     <div class="table-responsive">
       <el-table
-        v-tf-loading="loading"
+        v-tf-loading="{ active: loading, text: '正在刷新可售设备...' }"
         :data="phones"
         border
         stripe

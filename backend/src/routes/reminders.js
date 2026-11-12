@@ -10,6 +10,7 @@ const reminderController = new ReminderController()
 
 router.use(unifiedAuth)
 
+router.get('/my/active', reminderController.requireVisibleField('execution_info.recipient_status'), reminderController.active.bind(reminderController))
 router.get('/my/pending', reminderController.requireVisibleField('execution_info.recipient_status'), reminderController.pending.bind(reminderController))
 router.get('/completed/pending', requirePermission('reminders:manage'), reminderController.pendingCompletions.bind(reminderController))
 router.post('/completed/:occurrenceId/acknowledge', requirePermission('reminders:manage'), reminderController.acknowledgeCompletion.bind(reminderController))

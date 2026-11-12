@@ -235,8 +235,9 @@
                   </div>
                   <div class="table-responsive">
                     <el-table
+                      v-tf-loading="{ active: isSiteSettingsLoading, text: '正在读取站点设置...' }"
                       class="data-table devices-table compact-fit-table base-data-table"
-                      :data="isSiteSettingsLoading ? [] : visibleSiteSettingsList"
+                      :data="visibleSiteSettingsList"
                       border
                       stripe
                       table-layout="fixed"
@@ -277,7 +278,7 @@
                         label-class-name="flat-edit-label-column"
                       >
                         <template #default="{ row }">
-                          <i :class="row.icon" />
+                          <IconRenderer :icon="row.icon" />
                           {{ row.label }}
                         </template>
                       </el-table-column>
@@ -359,7 +360,8 @@
                   </div>
                   <div class="table-responsive">
                     <el-table
-                      :data="isSiteSettingsLoading ? [] : priceContactsEditor"
+                      v-tf-loading="{ active: isSiteSettingsLoading, text: '正在读取报价联系人...' }"
+                      :data="priceContactsEditor"
                       border
                       stripe
                       class="data-table devices-table compact-fit-table base-data-table"
@@ -557,7 +559,7 @@
                     </div>
                     <div class="table-responsive">
                       <el-table
-                        v-tf-loading="loadingPasswords"
+                        v-tf-loading="{ active: loadingPasswords, text: '正在刷新查询密码列表...' }"
                         :data="inventoryPasswords"
                         border
                         stripe
@@ -569,7 +571,7 @@
                           <TableLoadingRow
                             v-if="loadingPasswords"
                             mode="block"
-                            text="加载中..."
+                            text="正在读取查询密码列表..."
                           />
                           <DataEmptyState
                             v-else

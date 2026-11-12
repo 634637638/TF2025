@@ -6,7 +6,7 @@ const sourceRoots = [
   path.join(projectRoot, 'backend', 'src'),
   path.join(projectRoot, 'frontend', 'src')
 ]
-const allowlistPath = path.join(projectRoot, 'config', 'reference-options-audit-allowlist.json')
+const allowlistPath = path.join(projectRoot, 'frontend/scripts/reference-options-audit-allowlist.json')
 const referenceNames = /(brand|model|color|memory|supplier|store|reference-options|query[\/_-]?options)/i
 const suspiciousPatterns = [
   { label: '固定 SQL LIMIT', regex: /\bLIMIT\s+(50|100|200|500)\b/gi },

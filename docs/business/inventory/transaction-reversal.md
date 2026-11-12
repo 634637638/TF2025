@@ -61,7 +61,7 @@ NODE_ENV=production ENV_FILE=.env.production npm --prefix backend run migrate:re
 NODE_ENV=production ENV_FILE=.env.production npm --prefix backend run migrate:return-stock-details -- --apply
 ```
 
-脚本检查既有字段类型，重复执行不会重复加列，不回填或修改旧记录。升级后部署后端 `src`、迁移脚本、`package.json`，重新构建并发布前端，重启后端。同步 `config/field-contracts.json` 的迁移状态时必须有目标数据库实测依据；未执行不能登记完成。
+脚本检查既有字段类型，重复执行不会重复加列，不回填或修改旧记录。升级后部署后端 `src`、迁移脚本、`package.json`，重新构建并发布前端，重启后端。同步 `backend/scripts/config/field-contracts.json` 的迁移状态时必须有目标数据库实测依据；未执行不能登记完成。
 
 回滚应用时可保留新增可空列；如确需删列，脚本提供 `--rollback`，只允许所有新增字段都未保存数据时执行，已有明细必须拒绝删除。回滚前同样需要备份和目标库授权。
 

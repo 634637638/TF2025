@@ -3,7 +3,6 @@
     v-model="dialogVisible"
     title="商品详情"
     width="860px"
-    :tablet-breakpoint="1400"
     dialog-class="inventory-product-detail-dialog"
     :show-default-footer="false"
     :close-on-click-modal="true"
@@ -547,41 +546,4 @@ const inventoryTimeText = computed(() => {
   }
 
 }
-</style>
-
-<style lang="scss">
-.inventory-product-detail-dialog {
-  --dialog-max-width: 920px;
-  --dialog-vertical-gap: 24px;
-  --mobile-dialog-body-padding: 4px;
-  --mobile-dialog-footer-padding: 0 6px 6px;
-  --tf-dialog-surface: linear-gradient(180deg, var(--color-bg-white) 0%, var(--tf-color-violet-surface) 100%);
-  --tf-dialog-footer-bg: var(--tf-dialog-surface);
-}
-
-@media (max-width: 1400px) {
-  .inventory-product-detail-dialog {
-    --dialog-max-width: calc(100vw - 4px);
-    --dialog-side-gap: 2px;
-    --mobile-dialog-overlay-padding: 12px;
-  }
-
-  .mobile-dialog-sheet-panel.inventory-product-detail-dialog {
-    width: min(calc(100vw - 24px), 920px) !important;
-    max-width: min(calc(100vw - 24px), 920px) !important;
-    max-height: calc(100dvh - 24px) !important;
-  }
-
-}
-
-@media (max-width: 767px) {
-  .inventory-product-detail-dialog {
-    --dialog-side-gap: 4px;
-    --mobile-dialog-overlay-padding: 8px 4px;
-    --mobile-dialog-body-padding: 2px;
-    --mobile-dialog-footer-padding: 0 4px 4px;
-  }
-
-}
-
 </style>

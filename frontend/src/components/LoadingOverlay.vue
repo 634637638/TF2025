@@ -19,8 +19,6 @@
 </template>
 
 <script setup lang="ts">
-import { watch, onBeforeUnmount } from 'vue'
-import { useLoadingStore } from '@/stores/loading'
 import SectionLoading from '@/components/SectionLoading.vue'
 
 interface Props {
@@ -29,23 +27,10 @@ interface Props {
   size?: 'compact' | 'normal' | 'large'
 }
 
-const props = withDefaults(defineProps<Props>(), {
-  text: '加载中...',
+withDefaults(defineProps<Props>(), {
+  text: '正在读取内容...',
   size: 'normal'
 })
-
-const loadingStore = useLoadingStore()
-let registered = false
-
-const syncLocalLoading = (loading: boolean) => {
-  if (loading === registered) return
-  registered = loading
-  if (loading) loadingStore.startLocalLoading()
-  else loadingStore.stopLocalLoading()
-}
-
-watch(() => props.loading, syncLocalLoading, { immediate: true })
-onBeforeUnmount(() => syncLocalLoading(false))
 </script>
 
 <style scoped>

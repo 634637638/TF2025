@@ -55,7 +55,7 @@
         </h4>
         <SectionLoading
           v-if="loading"
-          text="加载中..."
+          text="正在读取员工销售明细..."
         />
 
         <div

@@ -307,7 +307,7 @@
       </template>
 
       <el-table
-        v-tf-loading="loading"
+        v-tf-loading="{ active: loading, text: '正在刷新错误日志...' }"
         :data="paginatedLogs"
         class="data-table compact-fit-table"
         border
@@ -319,7 +319,7 @@
           <TableLoadingRow
             v-if="loading"
             mode="block"
-            text="加载中..."
+            text="正在读取错误日志..."
           />
           <DataEmptyState
             v-else

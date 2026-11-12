@@ -3,10 +3,10 @@
 ## 公共入口
 
 - `GlobalLoading.vue` 只在 `App.vue` 全局挂载一次，读取 `useLoadingStore` 的可见状态。
-- `useLoadingStore` 和路由守卫管理全局请求；显示延迟使用 `constants/loading.ts` 的 `GLOBAL_LOADING_SHOW_DELAY_MS`，当前为 5 秒，短请求不闪现遮罩。
+- `useLoadingStore` 管理全局请求；路由守卫仅在路由显式设置 `enableRouteLoading: true` 时提供切页反馈，默认关闭；显示延迟使用 `constants/loading.ts` 的 `GLOBAL_LOADING_SHOW_DELAY_MS`，当前为 5 秒，短请求不闪现遮罩。
 - `useLoadingState` 管理局部异步状态，`useRefreshData` 管理刷新、缓存失效和提示。
 - `v-tf-loading` 用于表格/列表区域刷新；`SectionLoading` 用于弹窗和非表格区块，`size="page"` 用于整页局部路由占位；`LoadingOverlay` 用于需要保留底层内容的区块遮罩；`InlineLoading` 用于短文本、图片占位和不支持内置 Loading 的按钮。
-- `TableLoadingRow` 是原生表格行或空容器的公共兜底，不是已有数据刷新时的主视觉。
+- `TableLoadingRow` 是原生表格行或空容器的公共兜底，不是已有数据刷新时的主视觉。`SectionLoading` 统一在挂载/卸载时登记和释放局部 Loading，`TableLoadingRow`、`LoadingOverlay` 通过内部的 `SectionLoading` 共用这一生命周期，不重复登记。
 
 具体实现和审计入口由 [规范清单](standards-manifest.json) 登记，页面结构见 [页面结构规范](page-structure-standards.md)。
 
@@ -37,7 +37,7 @@
 
 统一 Axios 默认纳入全局 Loading。关闭全局反馈时必须有合理的静默用途或局部承载，不得让用户主动操作无反馈。
 
-`v-tf-loading` 首次绑定为 true 只登记首屏状态；首次完成后再次从 false 进入 true 才显示刷新遮罩。不得为了立刻展示局部 Loading 伪造一次已完成状态。表格首载需要专属文案时，在空状态槽用 `TableLoadingRow` 承载；该组件显示期间会登记局部 Loading，避免全局层和表格提示同时出现。
+`v-tf-loading` 首次绑定为 true 只登记首屏状态；首次完成后再次从 false 进入 true 才显示刷新遮罩。首次绑定为 false 表示当前列表已就绪（包括缓存命中和条件挂载），下一次变为 true 立即显示区域反馈。不得为了立刻展示局部 Loading 伪造一次已完成状态。表格首载需要专属文案时，在空状态槽用 `TableLoadingRow` 承载；该组件显示期间会登记局部 Loading，避免全局层和表格提示同时出现。
 
 遮罩仅覆盖表头、数据和列表范围，不挂在整个页面、搜索区或统计区。禁止通过 `loading ? [] : rows` 清空旧数据制造闪烁。已有数据刷新时，不能再叠加 `TableLoadingRow` 或其他 spinner。
 
@@ -46,10 +46,20 @@
 ## 顶部刷新
 
 - 页面 `loading` 与按钮 `refreshing` 分开维护。
-- `useRefreshData` 在刷新期间登记局部 Loading，调用真实加载函数；列表函数仍应维护表格区域状态，不得为“无全屏刷新”取消所有区域反馈。
+- `useRefreshData` 在刷新期间登记局部 Loading，调用真实加载函数；列表函数仍应维护表格区域状态；兼容静默加载函数时，区域指令或子列表的 `loading` 合并页面 `refreshing`，不得为“无全屏刷新”取消所有区域反馈。
 - 使用成功文案“数据刷新成功”和失败文案“刷新失败，请重试”，调用时显式配置。
 - 被调用函数失败必须抛出。提示由公共刷新或请求拦截器其中一层负责，避免重复；不能吞掉失败后弹成功。
 - 刷新保留表格、卡片和图表，失效本模块必要缓存，父子页面暴露清晰刷新入口。
+
+## 业务操作文案
+
+等待提示必须说明正在做什么、处理什么对象。备份用“正在创建数据库备份…”或“正在创建完整备份…”，列表用“正在刷新备份列表…”，清理用“正在清理旧备份…”，工资计算用“正在计算工资…”。不得把提交、备份、上传、导入等操作写成“加载数据中”。同一页面的角色列表、库存明细、字段分组等区块分别指定对应对象，不得复用整页的泛化名称。
+
+- 统一请求配置沿用唯一 `RequestConfig.loadingText`；不传时由 `utils/loading-text.ts` 按已登记业务资源和动作选择文案。特殊业务可显式覆盖，不在页面新建请求或 Loading 封装。
+- 全局仲裁按任务独立保存文案：业务显式提示优先于自动写请求，自动写请求优先于自动读请求；同优先级显示最近登记任务。结束或取消只释放本任务，并切回仍在等待的任务文案。进度更新必须针对自己的任务标识，不能覆盖其他任务。
+- 表格/列表指令使用 `{ active, text }`，例如 `v-tf-loading="{ active: loading || refreshing, text: '正在刷新员工列表...' }"`；布尔绑定仅保留公共兼容能力。文字用纯文本渲染，支持运行中更新。
+- `TableLoadingRow`、`SectionLoading`、`LoadingOverlay` 在业务页显式传 `text`；公共表格透传 `loadingText`。仅展示动画、已有相邻说明的 `InlineLoading` 可以不带文字。
+- 自动文案仅使用固定业务名称，不回显 URL、文件名、查询参数、请求体或凭据。无法识别的动作使用中性兜底，公共全局组件副标题不得暗示所有操作都是加载页面。
 
 ## 按钮和空容器
 
@@ -70,7 +80,7 @@ Element Plus 按钮只使用自身 `:loading`，按业务叠加禁用条件；�
 原生表格行可用 `TableLoadingRow` 默认行模式，Element Plus 空容器可用 `mode="block"`。它们用于尚无旧数据的首载或确实没有区域遮罩的局部加载；已有数据刷新必须保留数据并使用 `v-tf-loading`，不能额外叠加 `TableLoadingRow`。
 
 ```vue
-<el-table v-tf-loading="loading" :data="rows">
+<el-table v-tf-loading="{ active: loading, text: '正在刷新员工列表...' }" :data="rows">
   <template #empty>
     <DataEmptyState v-if="!loading" description="暂无数据" />
   </template>
@@ -89,6 +99,6 @@ Element Plus 按钮只使用自身 `:loading`，按业务叠加禁用条件；�
 
 ## 审计与验收边界
 
-执行 `npm --prefix frontend run check:loading` 及相关类型、UI 和行为测试。审计解析完整 Vue SFC 模板，检查全局唯一挂载、公共入口、重复动画、空容器、按钮与已登记例外，解析失败必须失败。
+执行 `npm --prefix frontend run check:loading` 及相关类型、UI 和行为测试。逐文件接入证据使用 `npm --silent --prefix frontend run check:loading -- --json`；统计包括 `LoadingOverlay`，按钮反馈与区域反馈分别列出。逐路由复核见[页面台账](page-audit-inventory.md#全量-loading-接入复核2026-11-11)。公共行为回归位于 `frontend/tests/global-loading.spec.ts`、`table-loading-directive.spec.ts`、`loading-store.spec.ts`、`loading-overlay.spec.ts`、`section-loading.spec.ts`、`table-loading-row.spec.ts`、`loading-text.spec.ts` 和 `api-loading.spec.ts`。后两者验证业务文案，以及真实 Axios 拦截器在模拟适配器下的并发、失败、取消、静默和重试生命周期；不访问业务 API。审计解析完整 Vue SFC 模板，检查全局唯一挂载、公共入口、重复动画、空容器、业务页泛化文案、按钮与已登记例外，解析失败必须失败。
 
 静态检查不能证明每个页面的加载粒度或视觉正确。浏览器分别验证首屏短/长请求、保留数据刷新、失败、取消、连续点击、卸载清理及全局/局部互斥，不以历史使用数量或审计通过代替实际验收。

@@ -84,7 +84,7 @@
           <SalesGridView
             v-if="viewMode === 'grid'"
             :phones="sortedForGridView"
-            :loading="loading"
+            :loading="loading || refreshing"
             :has-active-filters="hasActiveFilters"
             :can-view-field="canViewSaleField"
             :can-view-price="canViewPrice"
@@ -105,7 +105,7 @@
           v-if="viewMode === 'summary'"
           ref="inventorySummaryTableRef"
           :items="sortedInventorySummary"
-          :loading="inventorySummaryLoading"
+          :loading="inventorySummaryLoading || refreshing"
           :can-view-field="canViewSaleField"
           @show-detail="showInventoryDetail"
         />
@@ -114,7 +114,7 @@
           v-if="viewMode === 'table'"
           :phones="sortedAvailablePhones"
           :selected-phones="selectedPhones"
-          :loading="loading"
+          :loading="loading || refreshing"
           :has-active-filters="hasActiveFilters"
           :batch-mode="batchMode"
           :operation-mode="operationMode"
@@ -155,7 +155,7 @@
       v-model="showSaleModal"
       :title="batchMode ? `批量销售出库 (${selectedPhones.length}台)` : '销售出库'"
       width="880px"
-      dialog-class="sales-sale-dialog"
+      dialog-class="sales-sale-dialog tf-dialog-body-flush"
       :show-default-footer="false"
       :close-on-click-modal="false"
     >
@@ -889,11 +889,12 @@ const {
 } = useSalesCustomers({
   saleForm,
   batchSaleForm,
+  saleVisible: showSaleModal,
+  batchSaleVisible: showBatchSaleModal,
   saleCustomerNameInputRef,
   batchCustomerNameInputRef,
   isIOS: () => isIOS.value,
   showError,
-  showWarning,
   showSuccess
 })
 
@@ -1888,6 +1889,3 @@ onUnmounted(() => {
 </script>
 
 <style scoped lang="scss" src="./styles/sales-view-base.scss"></style>
-
-<!-- 非 scoped 样式：销售弹窗布局覆盖 -->
-<style lang="scss" src="./styles/sales-view-dialogs.scss"></style>

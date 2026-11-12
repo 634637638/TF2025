@@ -17,11 +17,42 @@ test('本地图标读取路由按原路径委托 controller 并保留特殊路�
   assert.match(route, /router\.get\('\/by-class', iconController\.byClass\.bind\(iconController\)\)/)
   assert.match(route, /router\.get\('\/categories', iconController\.categories\.bind\(iconController\)\)/)
   assert.match(route, /router\.get\('\/search\/online', unifiedAuth, requirePermission\('menus:view'\), iconifyRateLimit, iconController\.searchOnline\.bind\(iconController\)\)/)
+  assert.match(route, /router\.get\('\/preview', unifiedAuth, requirePermission\('menus:view'\), iconifyRateLimit, iconController\.preview\.bind\(iconController\)\)/)
   assert.match(route, /router\.get\('\/collections', unifiedAuth, requirePermission\('menus:view'\), iconifyRateLimit, iconController\.collections\.bind\(iconController\)\)/)
   assert.match(route, /router\.get\('\/collection\/:prefix', unifiedAuth, requirePermission\('menus:view'\), iconifyRateLimit, iconController\.collection\.bind\(iconController\)\)/)
   assert.match(route, /router\.get\('\/:id', iconController\.getById\.bind\(iconController\)\)/)
   assert.ok(route.indexOf("router.get('/by-class'") < route.indexOf("router.get('/:id'"))
   assert.ok(route.indexOf("router.get('/categories'") < route.indexOf("router.get('/:id'"))
+})
+
+test('批量预览按集合读取 JSON，正确转换尺寸和别名，不写数据库且部分失败可恢复', async () => {
+  const urls = []
+  const controller = new IconController({
+    getDatabase: () => { throw new Error('预览禁止连接数据库') },
+    fetchIconifyJson: async url => {
+      urls.push(url)
+      if (url.includes('/mdi.json')) throw new Error('rate limited')
+      return { prefix: 'lucide', width: 24, height: 24, icons: { phone: { body: '<path d="M1 2L3 4"/>' } }, aliases: { 'phone-flipped': { parent: 'phone', hFlip: true } } }
+    },
+    logger: { warn() {}, error() {} }
+  })
+  const response = createResponse()
+  await controller.preview({ query: { names: 'lucide:phone,lucide:phone-flipped,mdi:phone,lucide:phone' } }, response)
+  assert.deepEqual(urls.sort(), ['https://api.iconify.design/lucide.json?icons=phone,phone-flipped', 'https://api.iconify.design/mdi.json?icons=phone'])
+  assert.equal(response.body.data.length, 3)
+  assert.match(response.body.data[0].svg, /viewBox="0 0 24 24"/)
+  assert.match(response.body.data[0].svg, /<path/)
+  assert.match(response.body.data[1].svg, /transform=/)
+  assert.equal(response.body.data[2].svg, null)
+})
+
+test('批量预览拒绝空值、超量和任意外部地址，不向上游发请求', async () => {
+  const controller = new IconController({ fetchIconifyJson: async () => { throw new Error('不应请求上游') }, logger: { error() {} } })
+  for (const names of ['', 'https://evil.test/a', 'lucide:../phone', Array(25).fill('lucide:phone').join(',')]) {
+    const response = createResponse()
+    await controller.preview({ query: { names } }, response)
+    assert.equal(response.statusCode, 400)
+  }
 })
 
 test('写入路由委托 controller 并保留权限边界', () => {
@@ -54,10 +85,46 @@ test('缓存图标校验字段、清理 SVG 并参数化写入', async () => {
   const response = createResponse()
   await controller.cache({ body: { class: 'iconify lucide:home', name: 'Home', category: 'menu', svg: '<script>x</script>' } }, response)
   assert.equal(response.body.data.id, 7)
-  assert.equal(queries.length, 2)
-  assert.match(queries[0].sql, /ON DUPLICATE KEY UPDATE/)
-  assert.ok(!queries[0].sql.includes('lucide:home'))
-  assert.deepEqual(queries[0].values, ['iconify lucide:home', 'Home', 'menu', null, null, '<svg>safe</svg>', 'lucide:home', 'iconify', 1])
+  assert.equal(queries.length, 3)
+  const write = queries.find(query => query.sql.includes('INSERT INTO icons'))
+  assert.match(write.sql, /ON DUPLICATE KEY UPDATE/)
+  assert.ok(!write.sql.includes('lucide:home'))
+  assert.deepEqual(write.values, ['iconify lucide:home', 'Home', 'menu', null, null, '<svg>safe</svg>', 'lucide:home', 'iconify', 1])
+})
+
+test('在线图标下载失败或返回非 SVG 时拒绝保存，不写无效记录或覆盖原记录', async () => {
+  for (const mode of ['error', 'invalid']) {
+    let writes = 0
+    const controller = new IconController({
+      getDatabase: () => ({}), ensureIconSchema: async () => {},
+      repository: { findByClass: async () => null, upsert: async () => { writes++ } },
+      fetchIconifySvg: async () => { if (mode === 'error') throw new Error('timeout'); return '<html>error</html>' },
+      logger: { warn() {}, error() {} }
+    })
+    const result = createResponse()
+    await controller.cache({ body: { class: 'iconify lucide:home', name: '首页', category: 'menu' } }, result)
+    assert.equal(result.statusCode, 502)
+    assert.equal(result.body.success, false)
+    assert.equal(writes, 0)
+  }
+})
+
+test('已保存的有效图标可直接复用本地 SVG，离线时无需重新下载', async () => {
+  const saved = { class: 'iconify lucide:home', svg: '<svg><path d="M0 0"/></svg>', is_valid: 1 }
+  let downloaded = false
+  let written
+  const controller = new IconController({
+    getDatabase: () => ({}), ensureIconSchema: async () => {},
+    repository: { findByClass: async () => saved, upsert: async (_pool, icon) => { written = icon } },
+    fetchIconifySvg: async () => { downloaded = true; throw new Error('offline') },
+    logger: { warn() {}, error() {} }
+  })
+  const result = createResponse()
+  await controller.cache({ body: { class: saved.class, name: '首页', category: 'menu' } }, result)
+  assert.equal(result.body.success, true)
+  assert.equal(written.svg, saved.svg)
+  assert.equal(written.isValid, 1)
+  assert.equal(downloaded, false)
 })
 
 test('清理图标仅删除未被菜单引用的无效项', async () => {
@@ -193,6 +260,12 @@ test('图标按 class 校验空值并保留不存在和读取失败响应', asyn
   await controller.byClass({ query: { class: 'fa-missing' } }, notFound)
   assert.equal(notFound.statusCode, 404)
   assert.equal(notFound.body.message, '图标不存在')
+
+  const optional = createResponse()
+  await controller.byClass({ query: { class: 'iconify lucide:missing', optional: '1' } }, optional)
+  assert.equal(optional.statusCode, undefined)
+  assert.equal(optional.body.success, true)
+  assert.equal(optional.body.data, null)
 
   const failingController = new IconController({
     getDatabase: () => ({ async execute() { throw new Error('query failed') } }),

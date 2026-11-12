@@ -27,7 +27,7 @@
     </div>
 
     <el-table
-      v-tf-loading="loading"
+      v-tf-loading="{ active: loading, text: '正在刷新员工考勤记录...' }"
       :data="records"
       border
       stripe
@@ -37,7 +37,7 @@
         <TableLoadingRow
           v-if="loading"
           mode="block"
-          text="加载中..."
+          text="正在读取员工考勤记录..."
         />
         <DataEmptyState
           v-else

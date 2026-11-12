@@ -509,6 +509,7 @@ import { useNotification } from '@/composables/useNotification'
 import MobileDialog from '@/components/MobileDialog.vue'
 import CustomerNameLockInput from '@/components/common/CustomerNameLockInput.vue'
 import { resolveNativeTextInput, type NativeInputInstance } from '@/utils/native-input'
+import { useCustomerNamePrompt } from '@/composables/useCustomerNamePrompt'
 import CustomerSearchDropdown from '@/components/common/CustomerSearchDropdown.vue'
 import { PaymentChannelSelect, PaymentMethodSelect } from '@/components/payment'
 import SectionLoading from '@/components/SectionLoading.vue'
@@ -574,7 +575,7 @@ interface CustomerOption extends Pick<Customer, 'id' | 'name' | 'phone'> {
   vip_level?: string
 }
 
-const { success: showSuccess, error: showError, warning: showWarning, info: showInfo } = useNotification()
+const { success: showSuccess, error: showError, info: showInfo } = useNotification()
 
 const normalizeCustomerOption = (customer?: CustomerOption | Record<string, unknown> | null): CustomerOption => ({
   id: Number(customer?.id || 0),
@@ -1535,18 +1536,8 @@ const focusCustomerNameInput = (input: HTMLInputElement | null) => {
   }
 }
 
-const promptCustomerNameForIOS = async (currentName: string) => {
-  const promptedName = window.prompt('请输入客户姓名', currentName)
-  if (promptedName === null) return null
-
-  const normalizedName = normalizePersonName(promptedName, 20)
-  if (!normalizedName) {
-    showWarning('客户姓名不能为空')
-    return null
-  }
-
-  return normalizedName
-}
+const { promptCustomerName, promptingCustomerName } = useCustomerNamePrompt()
+const customerNameSaving = ref(false)
 
 const enableCustomerNameEdit = (event?: MouseEvent) => {
   if (!editFoundCustomer.value) return
@@ -1578,14 +1569,17 @@ const handleCustomerNameTouchEnd = async (event: TouchEvent) => {
     return
   }
 
-  const normalizedName = await promptCustomerNameForIOS(formData.customer_name)
-  if (!normalizedName) return
-
-  formData.customer_name = normalizedName
-  void saveCustomerNameEdit()
+  const customerId = editFoundCustomer.value.id
+  await promptCustomerName(formData.customer_name, async name => {
+    if (!props.modelValue || editFoundCustomer.value?.id !== customerId) return
+    customerNameEditing.value = true
+    formData.customer_name = name
+    await saveCustomerNameEdit()
+  })
 }
 
 const handleCustomerNameBlur = () => {
+  if (promptingCustomerName.value) return
   if (customerCreating.value && !editFoundCustomer.value) {
     void createNewCustomer()
     return
@@ -1599,6 +1593,7 @@ const handleCustomerNameBlur = () => {
 }
 
 const saveCustomerNameEdit = async () => {
+  if (customerNameSaving.value) return
   if (!editFoundCustomer.value) {
     customerNameEditing.value = false
     return
@@ -1616,21 +1611,26 @@ const saveCustomerNameEdit = async () => {
     return
   }
 
+  const customer = editFoundCustomer.value
+  const nextName = formData.customer_name
+  customerNameSaving.value = true
   try {
-    const response = await unifiedApi.put(`/customers/${editFoundCustomer.value.id}`, {
-      name: formData.customer_name
+    const response = await unifiedApi.put(`/customers/${customer.id}`, {
+      name: nextName
     })
 
     if (!response.success) {
       throw new Error(response.message || '更新客户失败')
     }
 
-    editFoundCustomer.value.name = formData.customer_name
+    customer.name = nextName
+    if (editFoundCustomer.value?.id !== customer.id || formData.customer_name !== nextName) return
+    customerNameEditing.value = false
     showSuccess('客户姓名更新成功')
   } catch (error: unknown) {
     showError(error instanceof Error ? error.message : '更新客户失败')
   } finally {
-    customerNameEditing.value = false
+    customerNameSaving.value = false
   }
 }
 

@@ -98,9 +98,13 @@ mysql -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" -p "$DB_NAME" < sql-YYYYMMDD_HHM
 
 ## Git 管理页项目压缩包
 
-`/git-management` 的“创建压缩包备份”生成 `.tar.gz` 源码快照，与 `/backup` 的完整 ZIP 是不同用途。快照包括 `frontend/`、`docs/`、根目录 `package.json` 和可用的 lockfile、`shared/`（存在时），以及后端 `src/`、`scripts/`、`package.json`、`package-lock.json`、`database/`、`migrations/`、`.env.example` 和 `src/config/runtime-files.js` 登记的生产启动文件。
+`/git-management` 的“创建压缩包备份”生成 `.tar.gz` 源码快照，与 `/backup` 的完整 ZIP 是不同用途。**按用户明确要求，源码压缩备份是根目录特例，继续保存在 `本地备份/`**；不随前后端文件归位迁移，也不进入 Git。现有压缩包保留，默认按北京时间命名。
 
-快照排除 `node_modules/`、构建产物、日志、上传文件、本地备份、`.git/`、SQLite 文件和真实环境文件（包括 `.env.production`）。它带上部署说明和规范正文，但不携带生产凭据、运行数据或上传资产；恢复时仍需安全配置 `.env.production`、运行 `npm ci`，并按业务备份流程恢复数据库与上传文件。
+快照包括 `frontend/`、`docs/`、根目录 `package.json` 和可用的锁文件、`scripts/`、`eslint.config.js`、`AGENTS.md`、`CLAUDE.md`、`.gitignore`，以及后端 `src/`、`scripts/`、`deploy/`、`package.json`、`package-lock.json`、`database/`、`migrations/`、`.env.example` 和 `src/config/runtime-files.js` 登记的生产启动文件。两端部署模板随各端目录进入快照，根级工具一并保留，避免恢复后构建和审计缺少入口。
+
+快照排除 `node_modules/`、构建产物、日志、上传文件、根级 `本地备份/`、`backend/backups/`、`.git/`、SQLite 文件和真实环境文件（包括 `.env.production`）。它带上部署说明和规范正文，但不携带生产凭据、运行数据或上传资产；恢复时仍需安全配置 `.env.production`、运行 `npm ci`，并按业务备份流程恢复数据库与上传文件。
+
+行为回归：`node --test backend/test/git-archive-backup-controller.check.js`，包含真实临时目录打包，检查必要工具和部署模板入包、备份与生成数据不入包；不会读取真实环境文件或改动现有备份。
 
 后端生产启动文件的唯一清单位于 `backend/src/config/runtime-files.js`，同时供完整备份与 Git 管理页压缩包复用。若新增或移除部署必需目录/文件，应同步更新 `backend/src/services/git-archive-backup.service.js`、`backend/test/git-archive-backup-controller.check.js` 与本节，并检查环境文件、日志、上传和生成数据的排除规则。
 

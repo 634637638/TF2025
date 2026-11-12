@@ -55,7 +55,7 @@
       </div>
 
       <div
-        v-tf-loading="loading"
+        v-tf-loading="{ active: loading, text: '正在刷新国补记录...' }"
         class="table-container table-responsive"
       >
         <el-table
@@ -74,7 +74,7 @@
             <TableLoadingRow
               v-if="loading && subsidyList.length === 0"
               mode="block"
-              text="加载中..."
+              text="正在读取国补记录..."
             />
             <DataEmptyState
               v-else-if="displayList.length === 0"
@@ -315,7 +315,7 @@
         <TableLoadingRow
           v-else-if="loading && subsidyList.length === 0"
           mode="block"
-          text="加载中..."
+          text="正在读取国补记录..."
         />
         <DataEmptyState
           v-else-if="subsidyList.length === 0"

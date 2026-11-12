@@ -131,7 +131,10 @@
                   : `你当前已经在备份分支上。点击“恢复到 main”后，系统会以当前分支代码为准带回 main，不会直接用旧 main 覆盖当前代码。`"
               />
 
-              <div class="card changes-card">
+              <div
+                v-tf-loading="{ active: loading, text: '正在刷新仓库更改...' }"
+                class="card changes-card"
+              >
                 <div class="card-header">
                   <h3>
                     <i class="fas fa-file-alt" />
@@ -183,7 +186,10 @@
                 </div>
               </div>
 
-              <div class="card history-card">
+              <div
+                v-tf-loading="{ active: loadingHistory, text: '正在刷新提交历史...' }"
+                class="card history-card"
+              >
                 <div class="card-header">
                   <h3>
                     <i class="fas fa-history" />
@@ -996,7 +1002,7 @@ const handleCreateArchiveBackup = async () => {
 
   try {
     await confirmAction(
-      '系统会把当前项目的核心文件打成一个本地压缩包，保存在项目根目录下的“本地备份”文件夹内。默认包含前端、后端和必要根文件，不会把非必要文件一起打包。是否继续？',
+      '系统会把当前项目的核心文件打成一个本地压缩包，保存在项目根目录下的“本地备份”文件夹内。默认包含前端、后端和必要的工程配置，不包含上传文件和运行数据。是否继续？',
       '创建本地压缩包备份',
       {
         confirmButtonText: '继续',

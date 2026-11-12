@@ -1109,10 +1109,6 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped lang="scss">
-:deep(.preorder-form-dialog) {
-  --tf-dialog-body-padding-block: var(--tf-space-5);
-}
-
 .preorder-form {
   :deep(.el-row) {
     margin-bottom: 0;
@@ -1219,16 +1215,6 @@ onBeforeUnmount(() => {
 
 // 手机端优化
 @media (max-width: 767px) {
-  :deep(.preorder-form-dialog) {
-    --tf-dialog-header-padding-x: var(--tf-space-4);
-    --tf-dialog-header-padding-right: var(--tf-space-8);
-    --tf-dialog-body-padding-inline: var(--tf-space-4);
-    --tf-dialog-body-padding-block: var(--tf-space-3);
-    --tf-dialog-footer-padding-inline: var(--tf-space-4);
-    --tf-dialog-footer-padding-block-start: var(--tf-space-3);
-    --tf-dialog-footer-padding-block-end: var(--tf-space-3);
-  }
-
   .preorder-form {
     :deep(.el-form-item) {
       margin-bottom: 16px;

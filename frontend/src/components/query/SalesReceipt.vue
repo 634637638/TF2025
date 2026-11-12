@@ -4,7 +4,7 @@
     :title="modalTitle"
     width="fit-content"
     max-width="960px"
-    dialog-class="sales-receipt-dialog"
+    dialog-class="sales-receipt-dialog tf-dialog-body-flush"
     :show-default-footer="false"
     @update:model-value="handleDialogVisibility"
     @close="handleClose"
@@ -582,21 +582,3 @@ const handleSearchClear = () => {
 
 <style scoped lang="scss" src="./styles/sales-receipt/content.scss"></style>
 <style scoped lang="scss" src="./styles/sales-receipt/responsive.scss"></style>
-<style lang="scss">
-.sales-receipt-dialog {
-  --dialog-max-width: 960px;
-  --tf-dialog-surface: var(--color-bg-white);
-  --tf-dialog-footer-bg: var(--color-bg-white);
-  --tf-dialog-body-padding-inline: 0px;
-  --tf-dialog-body-padding-block: 0px;
-  --tf-dialog-footer-padding-inline: var(--tf-space-5);
-  --tf-dialog-footer-padding-block-start: var(--tf-space-4);
-  --tf-dialog-footer-padding-block-end: var(--tf-space-5);
-}
-
-@media (max-width: 767px) {
-  .sales-receipt-dialog {
-    --dialog-side-gap: var(--tf-space-3);
-  }
-}
-</style>

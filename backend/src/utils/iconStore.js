@@ -144,16 +144,16 @@ async function fetchIconifySvg(iconifyName, timeout = 10000) {
   }
 
   const encodedPrefix = encodeURIComponent(parsed.prefix)
-  const encodedName = parsed.name.split('/').map(encodeURIComponent).join('/')
-  const apiUrl = `https://api.iconify.design/${encodedPrefix}/${encodedName}.svg`
+  const apiUrl = `https://api.iconify.design/${encodedPrefix}.json?icons=${encodeURIComponent(parsed.name)}`
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeout)
 
   try {
     const response = await fetch(apiUrl, {
       method: 'GET',
+      credentials: 'omit',
       headers: {
-        Accept: 'image/svg+xml,text/plain,*/*'
+        Accept: 'application/json'
       },
       signal: controller.signal
     })
@@ -162,10 +162,20 @@ async function fetchIconifySvg(iconifyName, timeout = 10000) {
       throw new Error(`Iconify SVG 请求失败: ${response.status}`)
     }
 
-    return sanitizeSvg(await response.text())
+    return iconSetToSvg(await response.json(), parsed.name)
   } finally {
     clearTimeout(timer)
   }
+}
+
+/** 官方转换处理集合默认尺寸、别名和旋转/翻转，避免手工拼接丢失图标形状。 */
+async function iconSetToSvg(iconSet, name) {
+  const { getIconData, iconToSVG } = await import('@iconify/utils')
+  const icon = getIconData(iconSet, name)
+  if (!icon) return null
+  const { attributes, body } = iconToSVG(icon)
+  const attrs = Object.entries(attributes).map(([key, value]) => `${key}="${String(value).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;')}"`).join(' ')
+  return sanitizeSvg(`<svg xmlns="http://www.w3.org/2000/svg" ${attrs}>${body}</svg>`)
 }
 
 function iconJoinSelect(menuAlias = 'm', iconAlias = 'i') {
@@ -189,6 +199,7 @@ module.exports = {
   ensureMenuIconSchema,
   extractIconifyName,
   fetchIconifySvg,
+  iconSetToSvg,
   iconJoinSelect,
   iconLeftJoin,
   sanitizeSvg

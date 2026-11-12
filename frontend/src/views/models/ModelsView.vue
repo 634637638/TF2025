@@ -181,7 +181,7 @@
           <div class="table-responsive">
             <el-table
               ref="modelsTableRef"
-              v-tf-loading="tableLoading"
+              v-tf-loading="{ active: tableLoading || refreshing, text: '正在刷新型号列表...' }"
               class="data-table devices-table base-data-table models-data-table"
               :data="models"
               border

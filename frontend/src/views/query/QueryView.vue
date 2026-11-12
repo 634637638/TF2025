@@ -88,7 +88,7 @@
               <div
                 class="stat-icon"
               >
-                <i :class="stat.icon" />
+                <IconRenderer :icon="stat.icon" />
               </div>
               <div class="stat-content">
                 <div class="stat-value">
@@ -345,7 +345,7 @@
 
             <div class="table-responsive">
               <el-table
-                v-tf-loading="loading"
+                v-tf-loading="{ active: loading || refreshing, text: '正在刷新设备查询结果...' }"
                 v-table-double-tap="{ enabled: windowWidth <= 1024, getRowKey: getQueryTapRowKey, onDoubleTap: handleQueryRowDoubleTap }"
                 :data="queryData"
                 border
@@ -471,7 +471,7 @@
                   <TableLoadingRow
                     v-if="loading"
                     mode="block"
-                    text="加载中..."
+                    text="正在读取设备查询结果..."
                   />
                   <DataEmptyState
                     v-else

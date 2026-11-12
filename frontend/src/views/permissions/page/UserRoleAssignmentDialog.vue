@@ -2,7 +2,7 @@
   <MobileDialog
     :model-value="modelValue"
     title="分配用户角色"
-    dialog-class="permissions-dialog user-role-modal"
+    dialog-class="permissions-dialog user-role-modal tf-dialog-workspace tf-dialog-body-flush"
     :show-default-footer="false"
     :close-on-click-modal="false"
     :close-on-press-escape="!saving"

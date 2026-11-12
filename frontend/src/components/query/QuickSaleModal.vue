@@ -558,6 +558,7 @@ import { useAuthStore } from '@/stores/auth'
 import MobileDialog from '@/components/MobileDialog.vue'
 import CustomerNameLockInput from '@/components/common/CustomerNameLockInput.vue'
 import { resolveNativeTextInput, type NativeInputInstance } from '@/utils/native-input'
+import { useCustomerNamePrompt } from '@/composables/useCustomerNamePrompt'
 import CustomerSearchDropdown from '@/components/common/CustomerSearchDropdown.vue'
 import { PaymentChannelSelect, PaymentMethodSelect } from '@/components/payment'
 import { useMobile } from '@/composables/mobile'
@@ -1064,44 +1065,8 @@ const focusCustomerNameInput = (input: HTMLInputElement | null) => {
   }
 }
 
-const _promptCustomerNameForIOS = async (currentName: string) => {
-  const promptedName = window.prompt('请输入客户姓名', currentName)
-  if (promptedName === null) return null
-
-  const normalizedName = normalizePersonName(promptedName, 20)
-  if (!normalizedName) {
-    showWarning('客户姓名不能为空')
-    return null
-  }
-
-  return normalizedName
-}
-
-const _unlockCustomerNameFromTouch = (source: EventTarget | null | undefined) => {
-  const touchedInput = resolveNativeCustomerInput(source)
-  const fallbackInput = resolveNativeCustomerInput(
-    document.querySelector('input[name="quick-sale-customer-name"]')
-  )
-
-  customerNameEditing.value = true
-
-  const targetInput = touchedInput || fallbackInput
-  if (!targetInput) return
-
-  targetInput.readOnly = false
-  targetInput.removeAttribute('readonly')
-  targetInput.disabled = false
-  targetInput.removeAttribute('disabled')
-  targetInput.focus()
-  targetInput.click()
-
-  try {
-    const length = targetInput.value?.length || 0
-    targetInput.setSelectionRange(length, length)
-  } catch {
-    // ignore
-  }
-}
+const { promptCustomerName, promptingCustomerName } = useCustomerNamePrompt()
+const customerNameSaving = ref(false)
 
 const enableCustomerNameEdit = (event?: MouseEvent) => {
   if (!foundCustomer.value) return
@@ -1117,7 +1082,7 @@ const enableCustomerNameEdit = (event?: MouseEvent) => {
   })
 }
 
-const handleCustomerNameTouchEnd = (_event: TouchEvent) => {
+const handleCustomerNameTouchEnd = async (_event: TouchEvent) => {
   if (!isIOS.value) return
 
   const now = Date.now()
@@ -1126,19 +1091,18 @@ const handleCustomerNameTouchEnd = (_event: TouchEvent) => {
 
   if (interval > 0 && interval < 320) {
     if (!foundCustomer.value) return
-    const promptedName = window.prompt('请输入客户姓名', formData.customer_name)
-    if (promptedName === null) return
-    const normalizedName = normalizePersonName(promptedName, 20)
-    if (!normalizedName) {
-      showWarning('客户姓名不能为空')
-      return
-    }
-    formData.customer_name = normalizedName
-    void saveCustomerNameEdit()
+    const customerId = foundCustomer.value.id
+    await promptCustomerName(formData.customer_name, async name => {
+      if (!props.modelValue || foundCustomer.value?.id !== customerId) return
+      customerNameEditing.value = true
+      formData.customer_name = name
+      await saveCustomerNameEdit()
+    })
   }
 }
 
 const handleCustomerNameBlur = () => {
+  if (promptingCustomerName.value) return
   if (customerCreating.value && !foundCustomer.value) {
     void createNewCustomer()
     return
@@ -1152,6 +1116,7 @@ const handleCustomerNameBlur = () => {
 }
 
 const saveCustomerNameEdit = async () => {
+  if (customerNameSaving.value) return
   if (!foundCustomer.value) {
     customerNameEditing.value = false
     return
@@ -1169,22 +1134,27 @@ const saveCustomerNameEdit = async () => {
     return
   }
 
+  const customer = foundCustomer.value
+  const nextName = formData.customer_name
+  customerNameSaving.value = true
   try {
-    const response = await unifiedApi.put(`/customers/${foundCustomer.value.id}`, {
-      name: formData.customer_name
+    const response = await unifiedApi.put(`/customers/${customer.id}`, {
+      name: nextName
     })
 
     if (!response.success) {
       throw new Error(response.message || '更新客户失败')
     }
 
-    foundCustomer.value.name = formData.customer_name
+    customer.name = nextName
+    if (foundCustomer.value?.id !== customer.id || formData.customer_name !== nextName) return
+    customerNameEditing.value = false
     showSuccess('客户姓名更新成功')
   } catch (err) {
     logger.error('更新客户失败:', err)
     showError(err instanceof Error ? err.message : '更新客户失败')
   } finally {
-    customerNameEditing.value = false
+    customerNameSaving.value = false
   }
 }
 

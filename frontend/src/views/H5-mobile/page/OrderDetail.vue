@@ -222,7 +222,7 @@
                 class="payment-icon"
                 :class="option.iconClass"
               >
-                <i :class="option.icon" />
+                <IconRenderer :icon="option.icon" />
               </div>
               <div class="payment-info">
                 <span class="payment-name">{{ option.label }}</span>

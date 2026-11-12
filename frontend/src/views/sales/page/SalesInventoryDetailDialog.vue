@@ -10,7 +10,7 @@
   >
     <SectionLoading
       v-if="loading"
-      text="加载中..."
+      text="正在读取库存设备明细..."
     />
     <div
       v-else

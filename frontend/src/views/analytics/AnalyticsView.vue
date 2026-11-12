@@ -196,7 +196,7 @@
               :type="activeTab === tab.key ? 'primary' : 'default'"
               @click="activeTab = tab.key"
             >
-              <i :class="tab.icon" />
+              <IconRenderer :icon="tab.icon" />
               {{ tab.label }}
             </el-button>
           </div>
@@ -204,6 +204,7 @@
           <!-- TAB内容 -->
           <div
             v-if="visibleAnalyticsTabs.length"
+            v-tf-loading="{ active: refreshing, text: '正在刷新分析数据...' }"
             class="tab-content tf-tab-content"
           >
             <template

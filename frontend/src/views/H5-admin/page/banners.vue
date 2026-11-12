@@ -13,7 +13,7 @@
     <div class="banner-management-page">
       <!-- 加载状态 -->
       <SectionLoading
-        v-if="loading"
+        v-if="loading && banners.length === 0"
         text="加载轮播图中..."
         size="large"
       />
@@ -21,6 +21,7 @@
       <!-- 轮播图列表 -->
       <div
         v-else
+        v-tf-loading="{ active: loading, text: '正在刷新轮播图...' }"
         class="banner-list"
       >
         <draggable

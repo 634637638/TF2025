@@ -1196,9 +1196,9 @@ const refreshCurrentPage = async () => {
   const promises = []
 
   if (activeTab.value === 'roles') {
-    promises.push(loadRoles(false, false))
+    promises.push(loadRoles(true, false))
   } else if (activeTab.value === 'userRoles') {
-    promises.push(loadUsers(false, false))
+    promises.push(loadUsers(true, false))
   } else if (activeTab.value === 'storeBindings') {
     promises.push(loadStoreList())
     promises.push(loadStoreBindings())
@@ -1222,7 +1222,7 @@ const refreshCurrentPage = async () => {
 
 // 统一的刷新处理函数
 const handleRefresh = async () => {
-  // 不使用 loading 状态，实现完全静默刷新
+  // 子页面维护列表 Loading，刷新保留已有数据。
   try {
     await refresh(async () => {
       await refreshCurrentPage()

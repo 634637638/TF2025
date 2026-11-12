@@ -16,11 +16,11 @@ vi.mock('@/composables/mobile', async () => {
 })
 
 const wrappers: ReturnType<typeof mount>[] = []
-const render = async (props: { width?: string | number, maxWidth?: string | number, dialogClass?: string } = {}) => {
+const render = async (props: { width?: string | number, maxWidth?: string | number, dialogClass?: string, beforeClose?: (done: (cancel?: boolean) => void) => void } = {}) => {
   const wrapper = mount(MobileDialog, {
     attachTo: document.body,
     props: { modelValue: true, title: '客户详情', ...props },
-    global: { components: { ElButton, ElDialog } }
+    global: { components: { ElButton, ElDialog }, stubs: { transition: false } }
   })
   wrappers.push(wrapper)
   await flushPromises()
@@ -80,4 +80,69 @@ it('空字符串按未指定处理，仅设置 maxWidth 不会变成期望宽度
   const { panel } = await render({ width: '  ', maxWidth: 500 })
   expect(panel.style.getPropertyValue('--tf-dialog-explicit-width')).toBe('')
   expect(panel.style.getPropertyValue('--tf-dialog-explicit-max-width')).toBe('500px')
+})
+
+it('手机初始打开也发出生命周期事件；关闭与卸载不解除另一个弹窗的滚动锁', async () => {
+  viewport.width = 390
+  const first = await render(), second = await render()
+  expect(first.wrapper.emitted('open')).toHaveLength(1)
+  await new Promise(resolve => setTimeout(resolve, 100))
+  expect(first.wrapper.emitted('opened')).toHaveLength(1)
+  expect(document.body.style.overflow).toBe('hidden')
+  await second.wrapper.setProps({ modelValue: false })
+  expect(second.wrapper.emitted('close')).toHaveLength(1)
+  second.wrapper.unmount()
+  wrappers.splice(wrappers.indexOf(second.wrapper), 1)
+  expect(document.body.style.overflow).toBe('hidden')
+  await first.wrapper.setProps({ modelValue: false })
+  expect(document.body.style.overflow).toBe('')
+})
+
+it('嵌套手机弹窗只允许最上层响应 Escape；禁止关闭的提醒保留原契约', async () => {
+  viewport.width = 390
+  const first = await render(), second = await render()
+  window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', cancelable: true }))
+  await flushPromises()
+  expect(first.wrapper.emitted('update:modelValue')).toBeUndefined()
+  expect(second.wrapper.emitted('update:modelValue')).toEqual([[false]])
+  await second.wrapper.setProps({ closeOnPressEscape: false })
+  window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', cancelable: true }))
+  expect(second.wrapper.emitted('update:modelValue')).toHaveLength(1)
+})
+
+it('自定义 footer 和 destroyOnClose 在手机端保留内容及关闭回调', async () => {
+  viewport.width = 390
+  const wrapper = mount(MobileDialog, {
+    attachTo: document.body,
+    props: { modelValue: false, destroyOnClose: true, showDefaultFooter: false },
+    slots: { default: '<input value="编辑草稿" />', footer: '<button>自定义保存</button>' },
+    global: { components: { ElButton, ElDialog }, stubs: { transition: false } }
+  })
+  wrappers.push(wrapper)
+  await wrapper.setProps({ modelValue: true })
+  expect(document.querySelector('.mobile-dialog-sheet-body input')).not.toBeNull()
+  expect(document.querySelector('.mobile-dialog-sheet-footer')?.textContent).toBe('自定义保存')
+  await wrapper.setProps({ modelValue: false })
+  await new Promise(resolve => setTimeout(resolve, 100))
+  expect(wrapper.emitted('closed')).toHaveLength(1)
+  await flushPromises()
+  expect(document.querySelector('.mobile-dialog-sheet-body input')).toBeNull()
+})
+
+it('手机标题关闭与 Escape 均等待 beforeClose，取消回调不关闭', async () => {
+  viewport.width = 390
+  let finish!: (cancel?: boolean) => void
+  const beforeClose = vi.fn((done: (cancel?: boolean) => void) => { finish = done })
+  const { wrapper } = await render({ beforeClose })
+  const close = document.querySelector<HTMLButtonElement>('.mobile-dialog-sheet-close')!
+  close.click()
+  expect(beforeClose).toHaveBeenCalledTimes(1)
+  expect(wrapper.emitted('update:modelValue')).toBeUndefined()
+  finish(true)
+  expect(wrapper.emitted('update:modelValue')).toBeUndefined()
+  window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', cancelable: true }))
+  expect(beforeClose).toHaveBeenCalledTimes(2)
+  expect(wrapper.emitted('update:modelValue')).toBeUndefined()
+  finish()
+  expect(wrapper.emitted('update:modelValue')).toEqual([[false]])
 })

@@ -298,7 +298,7 @@
             </div>
           </template>
           <el-table
-            v-tf-loading="loading"
+            v-tf-loading="{ active: loading, text: '正在刷新调拨分析...' }"
             :data="displayRecords"
             stripe
             class="data-table w-full"
@@ -308,7 +308,7 @@
               <TableLoadingRow
                 v-if="loading"
                 mode="block"
-                text="加载中..."
+                text="正在读取调拨分析..."
               />
               <DataEmptyState
                 v-else

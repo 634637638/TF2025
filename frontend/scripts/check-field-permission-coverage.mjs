@@ -3,7 +3,7 @@ import { resolve } from 'node:path'
 
 const frontendRoot = resolve(import.meta.dirname, '..')
 const projectRoot = resolve(frontendRoot, '..')
-const registryPath = resolve(projectRoot, 'config/field-contracts.json')
+const registryPath = resolve(projectRoot, 'backend/scripts/config/field-contracts.json')
 const moduleFieldsPath = resolve(frontendRoot, 'src/config/moduleFields.js')
 
 const sourcesByModule = {

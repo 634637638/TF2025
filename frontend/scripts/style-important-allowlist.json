@@ -56,7 +56,7 @@
     },
     {
       "file": "src/styles/components/_dialog.scss",
-      "max": 149,
+      "max": 140,
       "category": "shared-contract",
       "reason": "Element Plus dialog structure, viewport boundary and shared MobileDialog close-control overrides."
     },
@@ -92,15 +92,9 @@
     },
     {
       "file": "src/views/price-list/page/public-price-query/_ios-save-dialog.scss",
-      "max": 12,
+      "max": 10,
       "category": "render-export",
       "reason": "The teleported iOS save dialog must preserve touch behavior and its mobile dialog dimensions."
-    },
-    {
-      "file": "src/views/price-list/page/public-price-query/_notice-dialog.scss",
-      "max": 1,
-      "category": "teleport-layer",
-      "reason": "The globally rendered notice dialog root must override MobileDialog's inline width on mobile; this also covers its teleported mobile sheet."
     },
     {
       "file": "src/views/price-list/page/public-price-query/_mobile-safari.scss",
@@ -110,7 +104,7 @@
     },
     {
       "file": "src/views/price-list/page/SalesPriceDisplay.vue",
-      "max": 81,
+      "max": 79,
       "category": "render-export",
       "reason": "Shareable price canvas, Safari table rendering, and public mobile layout intentionally override global admin shells. Contact cards use the shared public contact styles."
     },
@@ -121,12 +115,6 @@
       "reason": "The mobile query table keeps momentum scrolling over the shared table overflow contract."
     },
     {
-      "file": "src/views/query/styles/query-view/image-preview.css",
-      "max": 1,
-      "category": "teleport-layer",
-      "reason": "Teleported image-preview controls retain fixed delete-button dimensions and dialog width over Element Plus defaults."
-    },
-    {
       "file": "src/views/H5-admin/page/styles/sold-products-view/desktop.scss",
       "max": 0,
       "category": "teleport-layer",
@@ -134,7 +122,7 @@
     },
     {
       "file": "src/components/PublishToH5Modal.vue",
-      "max": 11,
+      "max": 7,
       "category": "teleport-layer",
       "reason": "Teleported MobileDialog safe-area, compact controls and footer dimensions."
     },
@@ -146,7 +134,7 @@
     },
     {
       "file": "src/views/inventory/InventoryView.vue",
-      "max": 23,
+      "max": 3,
       "category": "teleport-layer",
       "reason": "Inventory teleported dialogs and mobile full-screen stock-in layout override global dialog dimensions."
     },
@@ -155,12 +143,6 @@
       "max": 5,
       "category": "responsive-safety",
       "reason": "Sales table states, compact input actions and mobile checkout override shared table and button contracts."
-    },
-    {
-      "file": "src/views/sales/styles/sales-view-dialogs.scss",
-      "max": 26,
-      "category": "teleport-layer",
-      "reason": "Sales teleported dialogs override global dialog dimensions, safe-area spacing and surfaces."
     },
     {
       "file": "src/views/subsidy/styles/subsidy/_dashboard.scss",
@@ -205,20 +187,8 @@
       "reason": "Employee status row backgrounds override the shared striped and hover table states."
     },
     {
-      "file": "src/components/query/styles/query-edit-modal/base.scss",
-      "max": 4,
-      "category": "teleport-layer",
-      "reason": "Query editor teleported dialog surface and compact input actions override shared contracts."
-    },
-    {
-      "file": "src/components/query/styles/query-edit-modal/responsive.scss",
-      "max": 1,
-      "category": "teleport-layer",
-      "reason": "Query editor teleported dialog surface and compact input actions override shared contracts."
-    },
-    {
       "file": "src/components/styles/mobile-dialog/base.scss",
-      "max": 22,
+      "max": 17,
       "category": "shared-contract",
       "reason": "Core dialog component must control Element Plus teleported dimensions, safe areas, transition state and the shared sheet close control."
     },
@@ -233,18 +203,6 @@
       "max": 4,
       "category": "teleport-layer",
       "reason": "Customer search dropdown keeps compact mobile labels and selected-state affordances readable across teleported form surfaces."
-    },
-    {
-      "file": "src/components/WholesaleModal.vue",
-      "max": 10,
-      "category": "teleport-layer",
-      "reason": "Wholesale teleported dialog uses explicit desktop and mobile viewport dimensions."
-    },
-    {
-      "file": "src/components/InventoryDetailModal.vue",
-      "max": 3,
-      "category": "teleport-layer",
-      "reason": "Inventory detail teleported dialog overrides global body, footer and mobile viewport spacing."
     },
     {
       "file": "src/components/wholesale/WholesalePartySection.vue",
@@ -278,19 +236,19 @@
     },
     {
       "file": "src/views/shared/SharedView.vue",
-      "max": 2,
+      "max": 1,
       "category": "teleport-layer",
       "reason": "Rich-content tables and mobile teleported editor dialogs override embedded content and vendor dimensions."
     },
     {
       "file": "src/views/H5-admin/page/styles/orders/responsive.scss",
-      "max": 4,
+      "max": 3,
       "category": "teleport-layer",
       "reason": "H5 order editor mobile form and safe-area footer override desktop dialog layout."
     },
     {
       "file": "src/views/H5-admin/page/styles/banners/responsive.scss",
-      "max": 6,
+      "max": 5,
       "category": "teleport-layer",
       "reason": "H5 banner editor mobile form and safe-area footer override desktop dialog layout."
     },
@@ -319,18 +277,6 @@
       "reason": "Element Plus form content applies an inline label offset that the compact tier form must reset."
     },
     {
-      "file": "src/components/ReminderHost.vue",
-      "max": 1,
-      "category": "teleport-layer",
-      "reason": "The teleported reminder dialog must stay within the mobile viewport."
-    },
-    {
-      "file": "src/components/query/ReturnStockModal.vue",
-      "max": 5,
-      "category": "teleport-layer",
-      "reason": "Return-stock MobileDialog surface and nested teleported confirmation dialog override vendor surfaces."
-    },
-    {
       "file": "src/components/stock-in/StockInPhoneListSection.vue",
       "max": 1,
       "category": "state-precedence",
@@ -338,13 +284,13 @@
     },
     {
       "file": "src/views/H5-admin/page/styles/config/responsive.scss",
-      "max": 4,
+      "max": 3,
       "category": "teleport-layer",
       "reason": "H5 configuration editor mobile form and safe-area footer override desktop dialog layout."
     },
     {
       "file": "src/views/H5-admin/page/styles/home-sections/responsive.scss",
-      "max": 5,
+      "max": 4,
       "category": "teleport-layer",
       "reason": "H5 section editor mobile form, controls and safe-area footer override desktop dialog layout."
     },
@@ -374,7 +320,7 @@
     },
     {
       "file": "src/views/permissions/page/ModuleManagementView.vue",
-      "max": 3,
+      "max": 1,
       "category": "accessibility-security",
       "reason": "Teleported module editor and confirmation dialogs override global dialog dimensions and surfaces."
     },
@@ -386,7 +332,7 @@
     },
     {
       "file": "src/views/reminders/ReminderView.vue",
-      "max": 7,
+      "max": 6,
       "category": "teleport-layer",
       "reason": "Reminder poppers and teleported dialogs must remain above overlays and within mobile viewport bounds."
     },
@@ -398,7 +344,7 @@
     },
     {
       "file": "src/views/system/phone-warning-config/PhoneWarningConfigView.vue",
-      "max": 2,
+      "max": 1,
       "category": "teleport-layer",
       "reason": "Element Plus dialog and form label inline widths require mobile viewport overrides."
     },

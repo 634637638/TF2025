@@ -40,6 +40,16 @@ class IconController {
     }
   }
 
+  async preview(req, res) {
+    try {
+      return res.json(await this.service.preview(req.query))
+    } catch (error) {
+      if (error.statusCode) return res.status(error.statusCode).json({ success: false, message: error.message })
+      this.logger.error('在线图标预览失败', error)
+      return res.status(502).json({ success: false, message: '图标预览暂不可用，请重试' })
+    }
+  }
+
   async collection(req, res) {
     try {
       return res.json(await this.service.collection(req.params, req.query))

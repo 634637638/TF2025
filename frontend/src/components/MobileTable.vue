@@ -1,7 +1,7 @@
 <template>
   <div
     ref="containerRef"
-    v-tf-loading="loading"
+    v-tf-loading="{ active: loading, text: loadingText }"
     class="mobile-table"
   >
     <!-- 桌面端表格 -->
@@ -23,7 +23,7 @@
           <TableLoadingRow
             v-if="loading && data.length === 0"
             mode="block"
-            text="加载数据中..."
+            :text="loadingText"
           />
           <DataEmptyState
             v-else
@@ -200,6 +200,7 @@ interface Props {
   data: TableRow[]
   columns: MobileTableColumn[]
   loading?: boolean
+  loadingText?: string
   stripe?: boolean
   border?: boolean
   size?: 'large' | 'default' | 'small'
@@ -217,6 +218,7 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
   loading: false,
+  loadingText: '正在读取列表...',
   stripe: true,
   border: false,
   size: 'default',

@@ -1,10 +1,11 @@
 <template>
   <div>
-    <el-dialog
+    <MobileDialog
+      :show-default-footer="false"
       :model-value="modelValue"
       title="国补照片管理"
       width="900px"
-      class="photo-preview-dialog"
+      dialog-class="photo-preview-dialog"
       append-to-body
       :close-on-click-modal="true"
       destroy-on-close
@@ -160,7 +161,7 @@
           </el-button>
         </div>
       </template>
-    </el-dialog>
+    </MobileDialog>
 
     <MediaPreviewViewer
       v-model="showPhotoViewer"

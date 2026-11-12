@@ -1,6 +1,6 @@
 <template>
   <div
-    v-tf-loading="loading"
+    v-tf-loading="{ active: loading, text: '正在刷新综合预警...' }"
     class="comprehensive-warnings"
   >
     <!-- 预警概览卡片 -->

@@ -8,13 +8,8 @@
 .mobile-dialog-sheet-overlay {
   --mobile-dialog-effective-side-gap: var(--dialog-side-gap, var(--tf-dialog-mobile-side-gap, 4px));
   --mobile-dialog-effective-vertical-gap: var(--dialog-vertical-gap, 24px);
-  position: fixed;
-  inset: 0;
+  --tf-dialog-overlay-inset: var(--mobile-dialog-effective-side-gap);
   z-index: var(--tf-z-dialog-sheet);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--mobile-dialog-overlay-padding, var(--mobile-dialog-effective-side-gap)) !important;
 }
 
 .mobile-dialog-sheet-panel {
@@ -52,60 +47,13 @@
   text-align: center;
 }
 
-.mobile-dialog-sheet-close {
-  position: absolute;
-  right: 14px;
-  width: var(--tf-dialog-close-size, 38px);
-  height: var(--tf-dialog-close-size, 38px);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 0;
-  border-radius: 50%;
-  -webkit-appearance: none;
-  appearance: none;
-  --el-button-bg-color: var(--tf-dialog-close-bg, rgba(255, 255, 255, 0.16));
-  --el-button-border-color: transparent;
-  --el-button-text-color: var(--tf-dialog-header-text, var(--color-bg-white));
-  --el-button-hover-bg-color: var(--tf-dialog-close-bg-hover, rgba(255, 255, 255, 0.24));
-  --el-button-hover-border-color: transparent;
-  --el-button-hover-text-color: var(--tf-dialog-header-text, var(--color-bg-white));
-  background: var(--tf-dialog-close-bg, rgba(255, 255, 255, 0.16)) !important;
-  color: var(--tf-dialog-header-text, var(--color-bg-white)) !important;
-  box-shadow: none;
-}
-
-.mobile-dialog-sheet-close > span {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: var(--tf-dialog-close-icon-size, 18px);
-  height: var(--tf-dialog-close-icon-size, 18px);
-  padding: 0;
-  margin: 0;
-  background: transparent;
-  color: inherit;
-}
-
-.mobile-dialog-sheet-close .el-icon,
-.mobile-dialog-sheet-close .el-dialog__close {
-  width: var(--tf-dialog-close-icon-size, 18px);
-  height: var(--tf-dialog-close-icon-size, 18px);
-}
-
+// 关闭按钮的结构和视觉由 _dialog.scss 与 _buttons.scss 唯一维护。
 .mobile-dialog-sheet-body {
   flex: 1;
   min-height: 0;
-  padding: var(--mobile-dialog-body-padding, 8px 4px 8px);
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
-  background: var(--tf-dialog-surface, var(--color-bg-white));
-}
-
-.mobile-dialog-sheet-footer {
-  padding: var(--mobile-dialog-footer-padding, 0 4px 4px);
-  background: var(--color-bg-white);
 }
 
 .mobile-dialog-sheet-panel :deep(.el-form-item) {
@@ -178,30 +126,8 @@
 
 // 响应式对话框宽度调整
 @media (max-width: 479px) {
-  .mobile-dialog-sheet-overlay {
-    --mobile-dialog-effective-side-gap: var(--dialog-side-gap, var(--tf-dialog-mobile-side-gap, 4px));
-    --mobile-dialog-effective-vertical-gap: var(--dialog-vertical-gap, 24px);
-    padding: var(--mobile-dialog-overlay-padding, var(--mobile-dialog-effective-side-gap)) !important;
-  }
-
-  .mobile-dialog-sheet-panel {
-    max-height: calc(100dvh - var(--mobile-dialog-effective-vertical-gap));
-    border-radius: var(--tf-dialog-mobile-radius, var(--dialog-radius, 24px));
-  }
-
-  .mobile-dialog-sheet-title {
-    font-size: var(--tf-dialog-sheet-title-size, var(--tf-font-dialog-title));
-  }
-
   .mobile-dialog-sheet-panel :deep(.el-form-item__label) {
     padding-bottom: 5px !important;
     font-size: var(--tf-font-label) !important;
-  }
-}
-
-@media (max-width: 767px) {
-  .mobile-dialog-sheet-overlay {
-    --mobile-dialog-effective-side-gap: var(--dialog-side-gap, var(--tf-dialog-mobile-side-gap, 4px));
-    padding: var(--mobile-dialog-overlay-padding, var(--mobile-dialog-effective-side-gap)) !important;
   }
 }

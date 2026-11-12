@@ -747,8 +747,7 @@ table th .vue-component {
   margin: 0 !important;
 }
 
-/* 对话框和抽屉按钮点击区域修复 */
-.el-dialog__footer .el-button,
+/* 抽屉按钮点击区域修复；弹窗按钮由 _dialog-actions.scss 管理。 */
 .el-drawer__footer .el-button {
   min-height: 36px;
   min-width: 80px;

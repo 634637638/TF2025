@@ -8,7 +8,7 @@
       class="table-loading-row__cell"
     >
       <SectionLoading
-        :text="displayText"
+        :text="text"
         :size="sectionSize"
       />
     </td>
@@ -18,16 +18,15 @@
     class="table-loading-row__block"
   >
     <SectionLoading
-      :text="displayText"
+      :text="text"
       :size="sectionSize"
     />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted } from 'vue'
+import { computed } from 'vue'
 import SectionLoading from '@/components/SectionLoading.vue'
-import { useLoadingStore } from '@/stores/loading'
 
 interface Props {
   colspan?: number
@@ -38,26 +37,12 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
   colspan: 1,
-  text: '加载中...',
+  text: '正在读取列表...',
   size: 'medium',
   mode: 'row'
 })
 
 const sectionSize = computed(() => props.size === 'small' ? 'compact' : props.size === 'large' ? 'large' : 'normal')
-const displayText = computed(() => props.text === '加载中...' ? '加载数据中...' : props.text)
-const loadingStore = useLoadingStore()
-let localLoadingRegistered = false
-
-onMounted(() => {
-  loadingStore.startLocalLoading()
-  localLoadingRegistered = true
-})
-
-onBeforeUnmount(() => {
-  if (!localLoadingRegistered) return
-  loadingStore.stopLocalLoading()
-  localLoadingRegistered = false
-})
 </script>
 
 <style scoped>

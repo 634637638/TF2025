@@ -22,22 +22,3 @@
   }
 
 }
-
-@media (max-width: 479px) {
-  :global(.query-edit-dialog) {
-    --dialog-side-gap: 4px;
-    --dialog-vertical-gap: 12px;
-    --dialog-max-width: calc(100vw - 8px);
-    --mobile-dialog-body-padding: 6px 4px 6px;
-    --mobile-dialog-footer-padding: 0 4px 4px;
-  }
-
-  :global(.query-edit-dialog.mobile-dialog-sheet-panel) {
-    border-radius: 24px !important;
-  }
-
-  :global(.query-edit-dialog .mobile-dialog-sheet-close) {
-    right: 14px;
-  }
-
-}

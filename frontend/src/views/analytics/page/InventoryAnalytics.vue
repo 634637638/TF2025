@@ -165,7 +165,7 @@
       :show-default-footer="false"
     >
       <el-table
-        v-tf-loading="loading"
+        v-tf-loading="{ active: loading, text: '正在刷新库存分析...' }"
         class="data-table"
         :data="filteredLowStockItems"
         stripe
@@ -175,7 +175,7 @@
           <TableLoadingRow
             v-if="loading"
             mode="block"
-            text="加载中..."
+            text="正在读取库存分析..."
           />
           <DataEmptyState
             v-else
@@ -284,7 +284,7 @@
             </div>
           </template>
           <el-table
-            v-tf-loading="loading"
+            v-tf-loading="{ active: loading, text: '正在刷新库存分析...' }"
             class="data-table"
             :data="recentSoldModels"
             stripe
@@ -294,7 +294,7 @@
               <TableLoadingRow
                 v-if="loading"
                 mode="block"
-                text="加载中..."
+                text="正在读取库存分析..."
               />
               <DataEmptyState
                 v-else
@@ -500,7 +500,7 @@
           </div>
 
           <el-table
-            v-tf-loading="loading"
+            v-tf-loading="{ active: loading, text: '正在刷新库存分析...' }"
             class="data-table"
             :data="filteredLowStockItems"
             stripe
@@ -511,7 +511,7 @@
               <TableLoadingRow
                 v-if="loading"
                 mode="block"
-                text="加载中..."
+                text="正在读取库存分析..."
               />
               <DataEmptyState
                 v-else

@@ -2,7 +2,7 @@
   <MobileDialog
     :model-value="modelValue"
     :title="`${roleName || ''} - 字段权限配置`"
-    dialog-class="permissions-dialog role-field-permission-dialog tf-dialog-body-flush"
+    dialog-class="permissions-dialog role-field-permission-dialog tf-dialog-workspace tf-dialog-body-flush"
     :show-default-footer="false"
     @update:model-value="emit('update:modelValue', $event)"
   >
@@ -16,7 +16,7 @@
         <div class="module-grid">
           <SectionLoading
             v-if="loadingModules"
-            text="加载中..."
+            text="正在读取页面模块..."
             size="compact"
           />
 
@@ -31,7 +31,7 @@
               @click="emit('selectModule', module)"
             >
               <div class="module-icon">
-                <i :class="module.icon" />
+                <IconRenderer :icon="module.icon" />
               </div>
               <div class="module-name">
                 {{ module.name }}
@@ -52,7 +52,7 @@
           </div>
           <SectionLoading
             v-if="loadingGroups"
-            text="加载中..."
+            text="正在读取字段分组..."
             size="compact"
           />
           <div
@@ -129,7 +129,7 @@
             v-if="loadingGroups"
             class="field-config-panel role-field-loading-panel"
           >
-            <SectionLoading text="加载中..." />
+            <SectionLoading text="正在读取角色字段权限..." />
           </div>
           <div
             v-else-if="currentGroup"

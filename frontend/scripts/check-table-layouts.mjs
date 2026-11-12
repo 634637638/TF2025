@@ -1,5 +1,6 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { extname, join, relative, resolve } from 'node:path'
+import { hasRuntimeModuleImport } from './lib/runtime-module-import.mjs'
 
 const root = resolve(import.meta.dirname, '..')
 const viewsRoot = join(root, 'src/views')
@@ -163,7 +164,7 @@ for (const [pattern, message] of tableStructureRequirements) {
   if (!pattern.test(tableStyleSource)) findings.push(`src/styles/components/_table.scss ${message}`)
 }
 
-if (!/import\s*\{\s*initAdminTableDragScroll\s*\}\s*from\s*['"]@\/utils\/admin-table-drag-scroll['"]/.test(mainSource)) {
+if (!hasRuntimeModuleImport(mainSource, '@/utils/admin-table-drag-scroll')) {
   findings.push('src/main.ts 必须导入全局 initAdminTableDragScroll，保证 PC 超宽表格可用鼠标拖动')
 }
 if (!/\binitAdminTableDragScroll\s*\(\s*\)/.test(mainSource)) {

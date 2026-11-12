@@ -2,6 +2,8 @@
   <div
     class="public-price-header"
     :class="{ 'has-actions': $slots.actions }"
+    :data-action-size="actionSize"
+    :style="actionStyle"
   >
     <div class="header-section">
       <div class="container">
@@ -36,11 +38,19 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
+
 interface Props {
   title: string
+  actionWidth?: string | number
+  actionSize?: 'small' | 'default' | 'large'
 }
 
-defineProps<Props>()
+const props = defineProps<Props>()
+const actionStyle = computed(() => {
+  const width = typeof props.actionWidth === 'number' ? `${props.actionWidth}px` : props.actionWidth?.trim()
+  return width ? { '--tf-price-header-action-width': width } : undefined
+})
 </script>
 
 <style scoped lang="scss">
@@ -89,26 +99,33 @@ defineProps<Props>()
   }
 
   .price-header-actions {
-    display: inline-grid;
-    grid-auto-flow: column;
-    grid-auto-columns: 1fr;
+    display: inline-flex;
+    flex-wrap: wrap;
     align-items: center;
+    justify-content: center;
     gap: var(--tf-space-2);
-    padding: 0 20px;
+    padding: 0 var(--tf-space-5);
     min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
   }
 
   :deep(.price-header-action) {
     display: inline-flex;
-    flex: 0 0 auto;
+    flex: 0 1 auto;
     align-items: center;
     justify-content: center;
     gap: 6px;
-    width: 100%;
-    min-width: max-content;
-    max-width: none;
+    width: var(--tf-price-header-action-width, auto);
+    min-width: 0;
+    max-width: 100%;
+    margin: 0;
 
     box-sizing: border-box;
+
+    > span {
+      margin-left: 0;
+    }
 
     cursor: pointer;
     transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
@@ -122,8 +139,7 @@ defineProps<Props>()
 
     .btn-text {
       min-width: 0;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      margin-left: 0;
       white-space: nowrap;
     }
 
@@ -141,6 +157,16 @@ defineProps<Props>()
     }
   }
 
+}
+
+.public-price-header[data-action-size='small'] .price-header-actions {
+  --tf-button-height: var(--tf-button-small-base-height);
+  --tf-button-padding-x: var(--tf-button-small-base-padding-x);
+  --tf-button-font-size: var(--tf-button-small-base-font-size);
+}
+
+.public-price-header[data-action-size='large'] .price-header-actions {
+  --tf-button-height: var(--tf-button-height-large);
 }
 
 .public-price-header.has-actions {
@@ -164,7 +190,23 @@ defineProps<Props>()
   }
 
   .notice-section .price-header-actions {
-    padding: 0 12px;
+    padding: 0 var(--tf-space-3);
+  }
+
+  .public-price-header[data-action-size='small'] .price-header-actions {
+    --tf-button-padding-x: var(--tf-space-1);
+  }
+
+  .notice-section :deep(.price-header-action),
+  .notice-section :deep(.price-header-action > span),
+  .notice-section :deep(.btn-content) {
+    gap: var(--tf-space-1);
+  }
+
+  .notice-section :deep(.btn-icon) {
+    width: var(--tf-type-scale-14);
+    height: var(--tf-type-scale-14);
+    font-size: var(--tf-type-scale-14);
   }
 
   .public-price-header.has-actions .header-section {
@@ -183,7 +225,7 @@ defineProps<Props>()
   }
 
   .notice-section .price-header-actions {
-    padding: 0 10px;
+    padding: 0 var(--tf-space-2);
   }
 
   .notice-section {
@@ -201,7 +243,13 @@ defineProps<Props>()
 
 @media (max-width: 360px) {
   .notice-section .price-header-actions {
-    padding: 0 6px;
+    padding: 0 var(--tf-space-1);
+  }
+
+  .notice-section .price-header-actions:has(> :nth-child(4)) {
+    display: inline-grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    justify-items: center;
   }
 }
 </style>

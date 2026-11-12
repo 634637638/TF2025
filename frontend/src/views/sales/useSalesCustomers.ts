@@ -10,6 +10,7 @@ import { unifiedApi as api } from '@/utils/unified-api'
 import { logger } from '@/utils/logger'
 import { searchCustomerOptions } from '@/services/customer-options'
 import { resolveNativeTextInput, type NativeInputInstance } from '@/utils/native-input'
+import { useCustomerNamePrompt } from '@/composables/useCustomerNamePrompt'
 import type {
   BatchCustomer,
   BatchSaleFormData,
@@ -20,11 +21,12 @@ import type {
 interface UseSalesCustomersOptions {
   saleForm: SalesCheckoutFormData
   batchSaleForm: BatchSaleFormData
+  saleVisible: Ref<boolean>
+  batchSaleVisible: Ref<boolean>
   saleCustomerNameInputRef: Ref<NativeInputInstance | null>
   batchCustomerNameInputRef: Ref<NativeInputInstance | null>
   isIOS: () => boolean
   showError: (_message: string) => unknown
-  showWarning: (_message: string) => unknown
   showSuccess: (_message: string) => unknown
 }
 
@@ -93,11 +95,12 @@ const buildCustomerPayload = (name: string, phone: string, appleId: string): Sal
 export const useSalesCustomers = ({
   saleForm,
   batchSaleForm,
+  saleVisible,
+  batchSaleVisible,
   saleCustomerNameInputRef,
   batchCustomerNameInputRef,
   isIOS,
   showError,
-  showWarning,
   showSuccess
 }: UseSalesCustomersOptions) => {
   const customerEditSubmitting = ref(false)
@@ -203,23 +206,7 @@ export const useSalesCustomers = ({
     }
   }
 
-  const promptCustomerNameForIOS = async (
-    currentName: string,
-    onConfirm: (_nextName: string) => Promise<void> | void
-  ) => {
-    const promptedName = window.prompt('请输入客户姓名', currentName)
-    if (promptedName === null) {
-      return
-    }
-
-    const normalizedName = normalizePersonName(promptedName, 20)
-    if (!normalizedName) {
-      showWarning('客户姓名不能为空')
-      return
-    }
-
-    await onConfirm(normalizedName)
-  }
+  const { promptCustomerName, promptingCustomerName } = useCustomerNamePrompt()
 
   const unlockCustomerNameFromTouch = (
     source: EventTarget | null | undefined,
@@ -291,6 +278,7 @@ export const useSalesCustomers = ({
   }
 
   const saveCustomerNameEdit = async () => {
+    if (customerEditSubmitting.value) return
     if (!selectedCustomer.value || !saleForm.customer_name.trim()) {
       showError('客户姓名不能为空')
       return
@@ -308,15 +296,18 @@ export const useSalesCustomers = ({
       return
     }
 
+    const customer = selectedCustomer.value
     customerEditSubmitting.value = true
     try {
-      const response = await api.put(`/customers/${selectedCustomer.value.id}`, {
+      const response = await api.put(`/customers/${customer.id}`, {
         name: normalizedCustomerName
       })
 
       if (response.success) {
-        selectedCustomer.value.name = normalizedCustomerName
+        customer.name = normalizedCustomerName
+        if (selectedCustomer.value?.id !== customer.id || saleForm.customer_name !== normalizedCustomerName) return
         saleForm.customer_name = normalizedCustomerName
+        customerNameEditing.value = false
         showSuccess('客户姓名更新成功')
       } else {
         showError(response.message || '更新失败')
@@ -326,7 +317,6 @@ export const useSalesCustomers = ({
       showError(getApiErrorMessage(error, '更新客户失败'))
     } finally {
       customerEditSubmitting.value = false
-      customerNameEditing.value = false
     }
   }
 
@@ -338,7 +328,10 @@ export const useSalesCustomers = ({
       'sale-customer-name',
       () => {
         if (!selectedCustomer.value) return
-        return promptCustomerNameForIOS(saleForm.customer_name, async nextName => {
+        const customerId = selectedCustomer.value.id
+        return promptCustomerName(saleForm.customer_name, async nextName => {
+          if (!saleVisible.value || selectedCustomer.value?.id !== customerId) return
+          customerNameEditing.value = true
           saleForm.customer_name = nextName
           await saveCustomerNameEdit()
         })
@@ -407,6 +400,7 @@ export const useSalesCustomers = ({
   }
 
   const handleCustomerNameBlur = () => {
+    if (promptingCustomerName.value) return
     if (customerCreating.value && !selectedCustomer.value) {
       void createNewCustomer()
       return
@@ -532,6 +526,7 @@ export const useSalesCustomers = ({
   }
 
   const saveBatchCustomerNameEdit = async () => {
+    if (customerEditSubmitting.value) return
     if (!selectedBatchCustomer.value || !batchSaleForm.customer_name.trim()) {
       showError('客户姓名不能为空')
       return
@@ -549,15 +544,18 @@ export const useSalesCustomers = ({
       return
     }
 
+    const customer = selectedBatchCustomer.value
     customerEditSubmitting.value = true
     try {
-      const response = await api.put(`/customers/${selectedBatchCustomer.value.id}`, {
+      const response = await api.put(`/customers/${customer.id}`, {
         name: normalizedCustomerName
       })
 
       if (response.success) {
-        selectedBatchCustomer.value.name = normalizedCustomerName
+        customer.name = normalizedCustomerName
+        if (selectedBatchCustomer.value?.id !== customer.id || batchSaleForm.customer_name !== normalizedCustomerName) return
         batchSaleForm.customer_name = normalizedCustomerName
+        batchCustomerNameEditing.value = false
         showSuccess('客户姓名更新成功')
       } else {
         showError(response.message || '更新失败')
@@ -567,7 +565,6 @@ export const useSalesCustomers = ({
       showError(getApiErrorMessage(error, '更新客户失败'))
     } finally {
       customerEditSubmitting.value = false
-      batchCustomerNameEditing.value = false
     }
   }
 
@@ -579,7 +576,10 @@ export const useSalesCustomers = ({
       'batch-customer-name',
       () => {
         if (!selectedBatchCustomer.value) return
-        return promptCustomerNameForIOS(batchSaleForm.customer_name, async nextName => {
+        const customerId = selectedBatchCustomer.value.id
+        return promptCustomerName(batchSaleForm.customer_name, async nextName => {
+          if (!batchSaleVisible.value || selectedBatchCustomer.value?.id !== customerId) return
+          batchCustomerNameEditing.value = true
           batchSaleForm.customer_name = nextName
           await saveBatchCustomerNameEdit()
         })
@@ -648,6 +648,7 @@ export const useSalesCustomers = ({
   }
 
   const disableBatchCustomerNameEdit = () => {
+    if (promptingCustomerName.value) return
     if (batchCustomerCreating.value && !selectedBatchCustomer.value) {
       void createNewBatchCustomer()
       return

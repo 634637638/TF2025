@@ -2,15 +2,20 @@
 // 使用真实组件和浏览器测量 CSS 尺寸；不加载业务页面或访问云端接口。
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
-import { existsSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { setTimeout as delay } from 'node:timers/promises'
 import { createServer } from 'vite'
 import vue from '@vitejs/plugin-vue'
+import { compileStyleAsync, compileTemplate, parse } from '@vue/compiler-sfc'
 
 const root = resolve(import.meta.dirname, '..')
+const interactionsOnly = process.argv.includes('--interactions-only')
+const safeAreaOnly = process.argv.includes('--safe-area-only')
+const priceHeaderOnly = process.argv.includes('--price-header-only')
+const focusedRun = interactionsOnly || safeAreaOnly || priceHeaderOnly
 const chrome = process.env.CHROME_BIN || [
   '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
   '/usr/bin/chromium', '/usr/bin/chromium-browser', '/usr/bin/google-chrome'
@@ -21,17 +26,170 @@ let browser, socket, server
 const pending = new Map()
 const runtimeErrors = []
 let requestId = 0
+function vueFiles(directory) {
+  return readdirSync(directory, { withFileTypes: true }).flatMap(item => {
+    const path = join(directory, item.name)
+    return item.isDirectory() ? vueFiles(path) : path.endsWith('.vue') ? [path] : []
+  })
+}
+const shellSources = vueFiles(join(root, 'src')).map(file => file.slice(join(root, 'src').length + 1))
+const shellCases = []
+function scanDialogs(directory) {
+  for (const item of readdirSync(directory, { withFileTypes: true })) {
+    const path = join(directory, item.name)
+    if (item.isDirectory()) { scanDialogs(path); continue }
+    if (!path.endsWith('.vue') || path.endsWith('/MobileDialog.vue')) continue
+    const { descriptor } = parse(readFileSync(path, 'utf8'), { filename: path })
+    function visit(node) {
+      if (node.type === 1 && node.tag === 'MobileDialog') {
+        const attr = name => node.props.find(prop => prop.type === 6 && prop.name === name)?.value?.content
+        const dialogClass = attr('dialog-class') || ''
+        if (dialogClass) shellCases.push({ dialogClass, ...(attr('width') ? { width: attr('width') } : {}), ...(attr('max-width') ? { maxWidth: attr('max-width') } : {}) })
+      }
+      for (const child of node.children || []) visit(child)
+    }
+    if (descriptor.template) visit(descriptor.template.ast)
+  }
+}
+scanDialogs(join(root, 'src'))
+// 使用销售/批发页实际的保存弹窗模板，隔离业务请求和真实个人资料。
+const quoteSaveModules = new Map()
+const quoteHeaderModules = new Map()
+for (const [kind, file] of [['wholesale', 'PublicPriceQuery.vue'], ['sales', 'SalesPriceDisplay.vue']]) {
+  const filename = join(root, 'src/views/price-list/page', file)
+  const { descriptor } = parse(readFileSync(filename, 'utf8'), { filename })
+  const header = descriptor.template.ast.children.find(node => node.type === 1)?.children.find(node => node.type === 1 && node.tag === 'PublicPriceHeader')
+  assert.ok(header, `${file} 缺少公共报价页头`)
+  const headerTemplate = compileTemplate({ source: header.loc.source, filename, id: `quote-header-${kind}` })
+  assert.deepEqual(headerTemplate.errors, [], `${file} 页头编译失败`)
+  quoteHeaderModules.set(`\0quote-header-${kind}`, `${headerTemplate.code}
+import { reactive, computed } from 'vue';
+import { useMobile } from '/src/composables/mobile.ts';
+export default { render, setup() {
+  const { isMobile } = useMobile();
+  const fixture = reactive({ passwordVerified:false, verifiedUserName:'测试用户', searchKeyword:'',
+    siteSettingsStore:{settings:{siteName:'测试报价'}}, loading:false, searchSubmitting:false,
+    isGenerating:false, usedModelsLoading:false, showInStockOnly:false, showUsedPhonesOnly:false,
+    allResults:[{}], displayedRows:[{}], searchResults:[{}], showNoticeDialog:false,
+    handleSearchInput(){}, handleSearch(){}, handleClear(){}, downloadAsImage(){},
+    toggleInStockFilter(){ fixture.showInStockOnly = !fixture.showInStockOnly; },
+    toggleUsedPhonesFilter(){ fixture.showUsedPhonesOnly = !fixture.showUsedPhonesOnly; }
+  });
+  window.updatePriceHeader = values => Object.assign(fixture, values);
+  return { ...Object.fromEntries(Object.keys(fixture).map(key => [key, computed({get:()=>fixture[key],set:value=>fixture[key]=value})])), isMobile };
+} };`)
+  const dialog = descriptor.template.ast.children.find(node => node.type === 1)?.children.find(node =>
+    node.type === 1 && node.tag === 'MobileDialog' && node.props.some(prop => prop.type === 6 && prop.name === 'dialog-class' && prop.value?.content === 'ios-image-dialog'))
+  assert.ok(dialog, `${file} 缺少公共图片保存弹窗`)
+  const template = compileTemplate({ source: dialog.loc.source, filename, id: `quote-save-${kind}` })
+  assert.deepEqual(template.errors, [], `${file} 保存弹窗编译失败`)
+  quoteSaveModules.set(`\0quote-save-${kind}`, `${template.code}
+import { ref } from 'vue';
+export default { render, setup() {
+  const showIOSImageModal = ref(true);
+  return { showIOSImageModal, iosImageUrl: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="300" height="1200"><rect width="300" height="1200" fill="white"/></svg>'),
+    siteSettingsStore: { settings: { siteName: '测试报价' } }, isSharingImage: false,
+    toggleIOSImageMode() {}, shareIOSImage() {}, closeIOSImageModal() { showIOSImageModal.value = false; } };
+} };`)
+}
+const styleImports = []
+for (const [fileIndex, file] of (priceHeaderOnly ? [] : shellSources).entries()) {
+  const path = join(root, 'src', file)
+  const { descriptor } = parse(readFileSync(path, 'utf8'), { filename: path })
+  for (const [index, style] of descriptor.styles.entries()) {
+    // Compile actual inline/external SFC styles, including :global/:deep and SCSS.
+    const filename = style.src ? resolve(path, '..', style.src) : path
+    const result = await compileStyleAsync({
+      source: style.src ? readFileSync(filename, 'utf8') : style.content,
+      filename, id: `data-v-shell-${fileIndex}-${index}`, scoped: style.scoped,
+      preprocessLang: style.lang
+    })
+    assert.deepEqual(result.errors, [], `业务样式编译失败：${filename}`)
+    styleImports.push(result.code)
+  }
+}
 const entry = `
 import { createApp, h, reactive, nextTick } from 'vue';
 import { createPinia } from 'pinia';
-import { ElDialog, ElButton, ElMessageBox } from 'element-plus';
+import { ElDialog, ElButton, ElMessageBox, ElIcon, ElInput } from 'element-plus';
+import { WarningFilled, Grid, Box, Download } from '@element-plus/icons-vue';
+import PublicPriceHeader from '/src/components/base/PublicPriceHeader.vue';
+import PublicSearchBox from '/src/components/search/PublicSearchBox.vue';
+import WholesaleHeader from '/__quote-header-wholesale.js';
+import SalesHeader from '/__quote-header-sales.js';
 import MobileDialog from '/src/components/MobileDialog.vue';
+import MediaPreviewViewer from '/src/components/MediaPreviewViewer.vue';
 import QueryDetailContent from '/src/components/query/QueryDetailContent.vue';
+import WholesaleSaveDialog from '/__quote-save-wholesale.js';
+import SalesSaveDialog from '/__quote-save-sales.js';
 import 'element-plus/dist/index.css';
 import '/src/styles.scss';
 import '/src/styles/components/_dialog.scss';
 import '/src/styles/components/_dialog-actions.scss';
-let app, state;
+import '/__dialog-business-styles.js';
+let app, state, stackState;
+window.renderPriceHeader = async kind => {
+  app?.unmount();
+  app = createApp(kind === 'sales' ? SalesHeader : WholesaleHeader);
+  app.use(createPinia());
+  for (const [name, component] of Object.entries({PublicPriceHeader,PublicSearchBox,ElButton,ElIcon,ElInput,WarningFilled,Grid,Box,Download})) app.component(name,component);
+  app.mount('#app'); await nextTick();
+};
+window.priceHeaderMetrics = () => {
+  const group = document.querySelector('.price-header-actions'), background = document.querySelector('.notice-section');
+  const box = element => { const r = element.getBoundingClientRect(); return {left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:r.width,height:r.height}; };
+  return { group:box(group), background:box(background), pageWidth:document.documentElement.scrollWidth,
+    buttons:[...group.querySelectorAll('.el-button')].map(button => {
+      const text = button.querySelector('.btn-text') || button.querySelector('.btn-content'), icon = button.querySelector('.btn-icon') || button.querySelector('.is-loading');
+      const range = document.createRange(); range.selectNodeContents(text);
+      const textBox = box(range), iconBox = icon ? box(icon) : null, css = getComputedStyle(button);
+      return {box:box(button),text:textBox,label:text.textContent.trim(),icon:iconBox,padding:parseFloat(css.paddingLeft),
+        clipped:[text, ...button.querySelectorAll('span')].some(element => element.scrollWidth > element.clientWidth + 1),
+        iconVisible:iconBox && iconBox.width > 0 && iconBox.height > 0};
+    }) };
+};
+window.renderQuoteSave = async kind => {
+  app?.unmount();
+  app = createApp(kind === 'sales' ? SalesSaveDialog : WholesaleSaveDialog);
+  app.use(createPinia()); app.component('MobileDialog', MobileDialog); app.component('ElDialog', ElDialog); app.component('ElButton', ElButton);
+  app.mount('#app'); await nextTick();
+  await Promise.all([...document.querySelectorAll('.ios-save-image')].map(image => image.decode()));
+};
+window.safeAreaMetrics = () => {
+  const panel = document.querySelector('.el-dialog');
+  const footer = panel.querySelector('.el-dialog__footer'), actions = footer.querySelector('.tf-dialog-actions');
+  const css = getComputedStyle(footer), box = element => { const r = element.getBoundingClientRect(); return { top:r.top, bottom:r.bottom, left:r.left, right:r.right, height:r.height }; };
+  return { panel: box(panel), footer: box(footer), actions: box(actions),
+    paddingTop: parseFloat(css.paddingTop), paddingBottom: parseFloat(css.paddingBottom),
+    buttons: [...footer.querySelectorAll('.el-button')].map(box),
+    bodyScrollHeight: panel.querySelector('.el-dialog__body').scrollHeight, bodyClientHeight: panel.querySelector('.el-dialog__body').clientHeight };
+};
+window.renderStack = async () => {
+  ElMessageBox.close(); app?.unmount();
+  await nextTick();
+  for (let frame = 0; frame < 3; frame++) await new Promise(requestAnimationFrame);
+  await Promise.all(document.getAnimations().filter(animation => animation.effect?.getComputedTiming().iterations !== Infinity).map(animation => animation.finished.catch(() => {})));
+  stackState = reactive({ first: true, second: false, media: false });
+  const dialog = key => h(MobileDialog, {
+    modelValue: stackState[key], title: key, dialogClass: 'stack-' + key,
+    'onUpdate:modelValue': value => { stackState[key] = value; }
+  }, { default: () => h('input', { 'aria-label': key + ' input' }) });
+  app = createApp({ render: () => h('div', [dialog('first'), dialog('second'), h(MediaPreviewViewer, {
+    modelValue: stackState.media, items: [{ url: 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==' }],
+    'onUpdate:modelValue': value => { stackState.media = value; }
+  })]) });
+  app.use(createPinia()); app.component('ElDialog', ElDialog); app.component('ElButton', ElButton);
+  app.mount('#app'); await nextTick();
+};
+window.updateStack = async values => { Object.assign(stackState, values); await nextTick(); };
+window.stackMetrics = () => ({ ...stackState,
+  locked: document.body.style.overflow === 'hidden',
+  focus: document.activeElement?.closest('[role="dialog"]')?.getAttribute('aria-label'),
+  restored: document.activeElement?.getAttribute('aria-label') === 'first input',
+  visibleMessages: [...document.querySelectorAll('.el-message-box')].filter(element => element.getClientRects().length > 0).length,
+  messageHasFocus: Boolean(document.activeElement?.closest('.el-message-box'))
+});
+window.openStackConfirm = () => { ElMessageBox.confirm('确认删除', '嵌套确认').catch(() => {}); };
 const actionButtons = count => Array.from({ length: count }, (_, index) => h(ElButton, { size: ['small', 'default', 'large'][index % 3], type: ['primary', 'danger', 'warning'][index % 3] }, () => ['取消', '保存更改', '退库', '关闭'][index]));
 window.renderActions = async (kind, count = 3) => {
   ElMessageBox.close();
@@ -67,23 +225,38 @@ window.actionMetrics = () => {
 window.renderDialog = async (props) => {
   app?.unmount();
   state = reactive({ modelValue: false, title: '客户详情', ...props });
-  app = createApp({ render: () => h(MobileDialog, state, { default: () => h('div', { style: { width: '100%', minHeight: '180px' } }, '弹窗宽度回归') }) });
+  app = createApp({ render: () => h(MobileDialog, { ...state, 'onUpdate:modelValue': value => { state.modelValue = value; } }, { default: () => h('div', { style: { width: '100%', minHeight: '180px' } }, '弹窗宽度回归') }) });
   app.use(createPinia()); app.component('ElDialog', ElDialog); app.component('ElButton', ElButton);
   app.mount('#app'); await nextTick(); state.modelValue = true; await nextTick();
 };
 window.updateDialog = async props => { Object.assign(state, props); await nextTick(); };
+window.dialogVisibility = () => ({
+  open: state.modelValue,
+  panels: [...document.querySelectorAll('.el-dialog')].filter(panel => panel.getClientRects().length > 0).length,
+  overlays: [...document.querySelectorAll('.mobile-dialog-overlay')].filter(overlay => overlay.getClientRects().length > 0).length
+});
 window.dialogMetrics = () => {
   const panel = document.querySelector('.el-dialog, .el-message-box');
   const rect = panel.getBoundingClientRect();
   return { width: rect.width, left: rect.left, right: rect.right, sheet: panel.classList.contains('mobile-dialog-sheet-panel') };
 };
+window.shellMetrics = () => {
+  const panel = document.querySelector('.el-dialog');
+  const header = panel.querySelector('.el-dialog__header'), close = panel.querySelector('.el-dialog__headerbtn');
+  const body = panel.querySelector('.el-dialog__body'), footer = panel.querySelector('.el-dialog__footer');
+  const box = element => { const css = getComputedStyle(element), rect = element.getBoundingClientRect();
+    return { height: rect.height, top: rect.top, bottom: rect.bottom, right: rect.right,
+      padding: css.padding, radius: css.borderRadius, background: css.backgroundImage,
+      font: css.fontSize, overflow: css.overflowY, scrollHeight: element.scrollHeight, clientHeight: element.clientHeight }; };
+  return { panel: box(panel), header: box(header), close: box(close), body: box(body), footer: box(footer) };
+};
 `
-const html = '<html><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body><div id="app"></div><script type="module" src="/__dialog-width.js"></script></body></html>'
+const html = '<html><head><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"></head><body><div id="app"></div><script type="module" src="/__dialog-width.js"></script></body></html>'
 
 function send(method, params = {}) {
   return new Promise((resolve, reject) => {
     const id = ++requestId
-    const timeout = setTimeout(() => { pending.delete(id); reject(new Error(`CDP 超时：${method}`)) }, 30000)
+    const timeout = setTimeout(() => { pending.delete(id); reject(new Error(`CDP 超时：${method} ${params.expression?.slice(0, 120) || ''}`)) }, 30000)
     pending.set(id, { resolve, reject, timeout })
     socket.send(JSON.stringify({ id, method, params }))
   })
@@ -97,7 +270,7 @@ async function measure() {
   // 等待实际组件过渡完成，避免把 scale 动画中的边界当成最终尺寸。
   await evaluate(`(async () => {
     for (let frame = 0; frame < 3; frame++) await new Promise(requestAnimationFrame);
-    await Promise.all(document.getAnimations().map(animation => animation.finished.catch(() => {})));
+    await Promise.all(document.getAnimations().filter(animation => animation.effect?.getComputedTiming().iterations !== Infinity).map(animation => animation.finished.catch(() => {})));
   })()`)
   return evaluate('window.dialogMetrics()')
 }
@@ -112,14 +285,22 @@ try {
     configFile: false, envFile: false, root, logLevel: 'error',
     // 隔离测试预构建，避免覆盖正在运行的开发服务器依赖缓存。
     cacheDir: join(profile, 'vite-cache'),
+    // 与实际入口及公共 FocusTrap 一起预构建，保证嵌套弹层共享同一焦点栈。
+    optimizeDeps: { include: ['element-plus', 'element-plus/es/components/focus-trap/index'] },
     plugins: [vue(), {
       name: 'dialog-width-regression',
       resolveId(id) {
+        if (/^\/__quote-header-(wholesale|sales)\.js$/.test(id)) return `\0quote-header-${id.includes('wholesale') ? 'wholesale' : 'sales'}`
+        if (/^\/__quote-save-(wholesale|sales)\.js$/.test(id)) return `\0quote-save-${id.includes('wholesale') ? 'wholesale' : 'sales'}`
         if (id === '\0dialog-field-permissions') return id
         if (id === '/__dialog-width.js') return '\0dialog-width-entry'
+        if (id === '/__dialog-business-styles.js') return '\0dialog-business-styles'
       },
       load(id) {
+        if (quoteHeaderModules.has(id)) return quoteHeaderModules.get(id)
+        if (quoteSaveModules.has(id)) return quoteSaveModules.get(id)
         if (id === '\0dialog-width-entry') return entry
+        if (id === '\0dialog-business-styles') return `const style = document.createElement('style'); style.textContent = ${JSON.stringify(styleImports.join('\n'))}; document.head.append(style);`
         if (id === '\0dialog-field-permissions') return 'export const fieldPermissions = { isFieldVisible: () => false };'
       },
       configureServer(vite) {
@@ -133,11 +314,11 @@ try {
       { find: '@/composables/useFieldPermissions', replacement: '\0dialog-field-permissions' },
       { find: '@', replacement: join(root, 'src') }
     ] },
-    server: { host: '127.0.0.1', port: 0 }
+    server: { host: '127.0.0.1', port: 0, hmr: false }
   })
   await server.listen()
   const port = server.httpServer.address().port
-  browser = spawn(chrome, ['--headless=new', '--no-first-run', '--no-default-browser-check', '--remote-debugging-port=0', `--user-data-dir=${profile}`, 'about:blank'], { stdio: 'ignore' })
+  browser = spawn(chrome, ['--headless=new', '--no-first-run', '--no-default-browser-check', '--disable-background-timer-throttling', '--disable-renderer-backgrounding', '--remote-debugging-port=0', `--user-data-dir=${profile}`, 'about:blank'], { stdio: 'ignore' })
   browser.on('error', error => runtimeErrors.push(error.message))
   let debugPort
   for (let i = 0; i < 100; i++) {
@@ -158,13 +339,47 @@ try {
     }
   })
   await send('Page.enable'); await send('Runtime.enable')
+  await send('Page.bringToFront')
   await send('Page.navigate', { url: `http://127.0.0.1:${port}/__dialog-width` })
   let ready = false
   for (let i = 0; i < 300; i++) { if (runtimeErrors.length) break; if (await evaluate('typeof window.renderDialog === "function"')) { ready = true; break } await delay(100) }
   assert.ok(ready, `组件未加载：${runtimeErrors.join('; ')}`)
 
+  if (priceHeaderOnly || !focusedRun) {
+    let headerChecks = 0
+    for (const viewport of [320,360,375,390,430,667,768,1024,1440]) {
+      await send('Emulation.setDeviceMetricsOverride', { width:viewport,height:900,screenWidth:viewport,screenHeight:900,deviceScaleFactor:1,mobile:viewport < 768 })
+      for (const theme of ['light','dark']) {
+        await evaluate(`document.documentElement.dataset.theme = '${theme}'`)
+        for (const kind of ['wholesale','sales']) {
+          await evaluate(`window.renderPriceHeader('${kind}')`)
+          for (const values of [{ passwordVerified:false },{ passwordVerified:true },{ showInStockOnly:true },{ usedModelsLoading:true },{ usedModelsLoading:false,isGenerating:true }]) {
+            await evaluate(`window.updatePriceHeader(${JSON.stringify(values)})`); await delay(50)
+            const metrics = await evaluate('window.priceHeaderMetrics()')
+            const label = `${viewport}/${theme}/${kind}/${JSON.stringify(values)}`
+            assert.equal(metrics.buttons.length, kind === 'sales' ? 1 : values.passwordVerified === false ? 2 : 4, `${label}/按钮数`)
+            assert.ok(metrics.pageWidth <= viewport, `${label}/页面不能溢出`)
+            const rows = new Map()
+            for (const button of metrics.buttons) {
+              assert.ok(button.box.left >= metrics.background.left && button.box.right <= metrics.background.right, `${label}/按钮完整展示`)
+              assert.ok(!button.clipped && button.text.left >= button.box.left + button.padding - 1 && button.text.right <= button.box.right - button.padding + 1, `${label}/文字完整展示：${JSON.stringify(button)}`)
+              assert.ok(button.iconVisible, `${label}/必须保留图标或 Loading 图标`)
+              assert.ok(button.text.left >= button.icon.right - 1 && button.text.left - button.icon.right <= 7, `${label}/图文间距`)
+              const contentCenter = (button.icon.left + button.text.right) / 2
+              assert.ok(Math.abs(contentCenter - (button.box.left + button.box.right) / 2) < 2, `${label}/图文居中`)
+              const row = rows.get(button.box.top) || []; row.push(button.box); rows.set(button.box.top,row)
+            }
+            for (const row of rows.values()) assert.ok(Math.abs((row[0].left + row.at(-1).right) / 2 - (metrics.background.left + metrics.background.right) / 2) < 2, `${label}/按钮组居中`)
+            headerChecks++
+          }
+        }
+      }
+    }
+    console.log(`报价页头浏览器回归通过：${headerChecks} 组，销售/批发真实模板、验证前后、筛选/Loading、图标与文字完整、图文间距和整组居中。`)
+  }
+
   let checks = 0
-  for (const viewport of process.argv.includes('--actions-only') ? [] : [360, 375, 390, 430, 768, 1024, 1440, 1920]) {
+  for (const viewport of focusedRun || process.argv.includes('--actions-only') ? [] : [360, 375, 390, 430, 768, 1024, 1440, 1920]) {
     await send('Emulation.setDeviceMetricsOverride', { width: viewport, height: 900, screenWidth: viewport, screenHeight: 900, deviceScaleFactor: 1, mobile: viewport < 768 })
     const cap = viewport < 768 ? viewport - 8 : viewport <= 1024 ? viewport * 0.8 : viewport - 32
     const cases = [
@@ -208,7 +423,7 @@ try {
       checkWidth(await measure(), 880, '移除上限恢复公共边界', viewport); checks++
     }
   }
-  if (!process.argv.includes('--actions-only')) {
+  if (!focusedRun && !process.argv.includes('--actions-only')) {
     await evaluate('window.renderDialog({width:1240})')
     for (const [viewport, expected] of [[390, 382], [768, 614.4], [1440, 1240]]) {
       await send('Emulation.setDeviceMetricsOverride', { width: viewport, height: 900, screenWidth: viewport, screenHeight: 900, deviceScaleFactor: 1, mobile: viewport < 768 })
@@ -219,9 +434,38 @@ try {
       checks++
     }
   }
+  let shellChecks = 0
+  for (const viewport of focusedRun ? [] : [375, 430, 768, 1024, 1440]) {
+    await send('Emulation.setDeviceMetricsOverride', { width: viewport, height: 900, screenWidth: viewport, screenHeight: 900, deviceScaleFactor: 1, mobile: viewport < 768 })
+    for (const theme of ['light', 'dark']) {
+      await send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: theme }, { name: 'prefers-reduced-motion', value: 'reduce' }] })
+      await evaluate(`document.documentElement.dataset.theme = ${JSON.stringify(theme)}`)
+      await evaluate('window.renderDialog({})'); await measure()
+      const baseline = await evaluate('window.shellMetrics()')
+      for (const props of shellCases) {
+        await evaluate(`window.renderDialog(${JSON.stringify(props)})`); await measure()
+        const actual = await evaluate('window.shellMetrics()')
+        const label = `${viewport}/${theme}/${props.dialogClass}`
+        for (const element of ['header', 'close', 'footer']) {
+          for (const property of ['height', 'padding', 'radius', 'background', 'font']) assert.equal(actual[element][property], baseline[element][property], `${label}/${element}/${property}`)
+        }
+        assert.equal(actual.panel.radius, baseline.panel.radius, `${label}/公共圆角`)
+        assert.ok(Math.abs((actual.header.right - actual.close.right) - (baseline.header.right - baseline.close.right)) < 1, `${label}/关闭右距`)
+        assert.ok(Math.abs(actual.close.top - actual.header.top - (50 - actual.close.height) / 2) < 1, `${label}/关闭按钮上下居中`)
+        assert.equal(actual.body.padding, props.dialogClass.includes('tf-dialog-body-flush') ? '0px' : baseline.body.padding, `${label}/公共正文间距`)
+        assert.ok(actual.panel.top >= -1 && actual.panel.bottom <= 901, `${label}/纵向安全边界`)
+        await evaluate('document.querySelector(\'.el-dialog__body\').firstElementChild.style.minHeight = \'1800px\''); await measure()
+        const long = await evaluate('window.shellMetrics()')
+        assert.ok(long.body.scrollHeight > long.body.clientHeight && ['auto', 'scroll'].includes(long.body.overflow), `${label}/长内容可滚动`)
+        assert.ok(long.panel.top >= -1 && long.panel.bottom <= 901, `${label}/长内容不越界`)
+        shellChecks++
+      }
+    }
+  }
+  if (shellChecks) console.log(`业务弹窗外壳浏览器回归通过：${shellChecks} 组；加载 ${shellSources.length} 个真实 SFC 的样式，按源码中的业务 class/width 检查标题、关闭、正文/footer、边界及长内容滚动。此检查不替代业务整页或真机验收。`)
   let actionChecks = 0
-  for (const viewport of [360, 375, 390, 430, 767, 768, 1024, 1440]) {
-    await send('Emulation.setDeviceMetricsOverride', { width: viewport, height: 900, deviceScaleFactor: 1, mobile: viewport < 768 })
+  for (const viewport of focusedRun ? [] : [360, 375, 390, 430, 767, 768, 1024, 1440]) {
+    await send('Emulation.setDeviceMetricsOverride', { width: viewport, height: 900, screenWidth: viewport, screenHeight: 900, deviceScaleFactor: 1, mobile: viewport < 768 })
     for (const theme of ['light', 'dark']) {
       await send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: theme }, { name: 'prefers-reduced-motion', value: 'reduce' }] })
       await evaluate(`document.documentElement.dataset.theme = ${JSON.stringify(theme)}`)
@@ -260,7 +504,114 @@ try {
       }
     }
   }
-  console.log(`弹窗按钮浏览器回归通过：${actionChecks} 组，真实综合查询组件、默认/自定义/原生 footer、确认框和正文工具栏，1～4 个按钮、等宽/150px上限/居中、尺寸别名和明暗主题。`)
+  if (actionChecks) console.log(`弹窗按钮浏览器回归通过：${actionChecks} 组，真实综合查询组件、默认/自定义/原生 footer、确认框和正文工具栏，1～4 个按钮、等宽/150px上限/居中、尺寸别名和明暗主题。`)
+  if (!interactionsOnly && !priceHeaderOnly) {
+    let safeAreaChecks = 0
+    for (const [width, height] of [[375, 812], [430, 932], [667, 375], [812, 375], [768, 1024]]) {
+      await send('Emulation.setDeviceMetricsOverride', { width, height, screenWidth: width, screenHeight: height, deviceScaleFactor: 1, mobile: width < 768 })
+      for (const theme of ['light', 'dark']) {
+        await send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] })
+        await evaluate(`document.documentElement.dataset.theme = ${JSON.stringify(theme)}`)
+        const baseline = new Map()
+        for (const [mode, insets] of [
+          ['browser', { top: 0, bottom: 0, left: 0, right: 0 }],
+          ['standalone', width > height ? { top: 0, bottom: 21, left: 44, right: 44 } : { top: 47, bottom: 34, left: 0, right: 0 }]
+        ]) {
+          await send('Emulation.setSafeAreaInsetsOverride', { insets })
+          await evaluate(`document.documentElement.classList.toggle('device-standalone', ${mode === 'standalone'})`)
+          let previous
+          for (const kind of ['wholesale', 'sales']) {
+            await evaluate(`window.renderQuoteSave(${JSON.stringify(kind)})`); await measure()
+            const actual = await evaluate('window.safeAreaMetrics()')
+            const label = `${width}x${height}/${theme}/${mode}/${kind}`
+            assert.equal(actual.paddingTop, width <= 479 ? 10 : width <= 767 ? 12 : 16, `${label}/公共上间距`)
+            assert.equal(actual.paddingBottom, width <= 479 ? 10 : width <= 767 ? 12 : 20, `${label}/安全区不得叠加到悬浮 footer 内`)
+            assert.equal(actual.buttons.length, 3, `${label}/三个保存操作`)
+            for (const button of actual.buttons) {
+              assert.ok(button.top >= insets.top && button.bottom <= height - insets.bottom, `${label}/按钮避开安全区`)
+              assert.ok(button.left >= insets.left && button.right <= width - insets.right, `${label}/横屏左右安全区`)
+            }
+            assert.ok(actual.panel.top >= insets.top - 1 && actual.panel.bottom <= height - insets.bottom + 1, `${label}/外壳避开上下安全区`)
+            assert.ok(actual.panel.left >= insets.left - 1 && actual.panel.right <= width - insets.right + 1, `${label}/外壳避开左右安全区`)
+            assert.ok(actual.bodyScrollHeight > actual.bodyClientHeight, `${label}/长图正文可滚动`)
+            const layout = { top: actual.paddingTop, bottom: actual.paddingBottom, height: actual.footer.height, buttons: actual.buttons.map(button => button.height) }
+            if (mode === 'browser') baseline.set(kind, layout)
+            else assert.deepEqual(layout, baseline.get(kind), `${label}/书签与浏览器 footer 一致`)
+            if (previous) assert.deepEqual(layout, previous, `${label}/销售与批发一致`)
+            previous = layout
+            safeAreaChecks++
+          }
+          await evaluate("window.renderDialog({dialogClass:'tf-dialog-workspace crud-dialog-lg tf-dialog-body-flush'})"); await measure()
+          const workspace = await evaluate('window.shellMetrics()')
+          assert.ok(workspace.panel.top >= insets.top - 1 && workspace.panel.bottom <= height - insets.bottom + 1, `${width}/${mode}/工作台按安全区收缩`)
+          assert.ok(workspace.footer.bottom <= height - insets.bottom + 1, `${width}/${mode}/工作台操作区可见`)
+        }
+      }
+    }
+    await send('Emulation.setSafeAreaInsetsOverride', { insets: { top: 0, bottom: 0, left: 0, right: 0 } })
+    await evaluate("document.documentElement.classList.remove('device-standalone')")
+    console.log(`报价保存安全区浏览器回归通过：${safeAreaChecks} 组，销售/批发真实模板、普通浏览器/主屏幕安全区、明暗主题、竖屏/横屏；不替代 iOS 真机验收。`)
+  }
+  if (!safeAreaOnly && !priceHeaderOnly) {
+    for (const viewport of [1440, 1024, 768, 375]) {
+      await send('Emulation.setDeviceMetricsOverride', { width: viewport, height: 900, screenWidth: viewport, screenHeight: 900, deviceScaleFactor: 1, mobile: false })
+      for (const modal of [true, false]) {
+        await evaluate(`window.renderDialog({modal:${modal},showDefaultFooter:false})`); await delay(400)
+        assert.equal((await evaluate('window.dialogVisibility()')).panels, 1, `${viewport}/${modal}/打开只显示一个弹窗`)
+        await evaluate("document.querySelector('.el-dialog__headerbtn').click()")
+        await delay(400)
+        assert.deepEqual(await evaluate('window.dialogVisibility()'), { open: false, panels: 0, overlays: 0 }, `${viewport}/${modal}/关闭后不得残留或重现`)
+        await evaluate('window.updateDialog({modelValue:true})'); await delay(400)
+        assert.equal((await evaluate('window.dialogVisibility()')).panels, 1, `${viewport}/${modal}/仍可主动重新打开`)
+        await evaluate('window.updateDialog({modelValue:false})'); await delay(400)
+        assert.deepEqual(await evaluate('window.dialogVisibility()'), { open: false, panels: 0, overlays: 0 }, `${viewport}/${modal}/业务关闭后不得残留`)
+      }
+    }
+  }
+  const press = async (key, code, virtualKey, shift = false) => {
+    await send('Input.dispatchKeyEvent', { type: 'keyDown', key, code, windowsVirtualKeyCode: virtualKey, nativeVirtualKeyCode: virtualKey, modifiers: shift ? 8 : 0 })
+    await send('Input.dispatchKeyEvent', { type: 'keyUp', key, code, windowsVirtualKeyCode: virtualKey, nativeVirtualKeyCode: virtualKey, modifiers: shift ? 8 : 0 })
+    await evaluate('(async () => { for (let frame = 0; frame < 3; frame++) await new Promise(requestAnimationFrame); await Promise.all(document.getAnimations().filter(animation => animation.effect?.getComputedTiming().iterations !== Infinity).map(animation => animation.finished.catch(() => {}))); })()')
+  }
+  const waitFor = async (expression, label) => {
+    for (let attempt = 0; attempt < 100; attempt++) {
+      if (await evaluate(expression)) return
+      await delay(100)
+    }
+    assert.fail(`${label}：${JSON.stringify(await evaluate('window.stackMetrics()'))}`)
+  }
+  for (const viewport of safeAreaOnly || priceHeaderOnly ? [] : [768, 375, 1440]) {
+    await send('Emulation.setDeviceMetricsOverride', { width: viewport, height: 900, screenWidth: viewport, screenHeight: 900, deviceScaleFactor: 1, mobile: viewport < 768 })
+    await evaluate('window.renderStack()'); await delay(400)
+    await evaluate('document.querySelector(\'.stack-first input\').focus()')
+    await evaluate('window.updateStack({second:true})'); await delay(400)
+    await evaluate('[...document.querySelectorAll(\'.stack-second button\')].at(-1).focus()')
+    await press('Tab', 'Tab', 9)
+    assert.equal((await evaluate('window.stackMetrics()')).focus, 'second', `${viewport}/Tab 焦点环绕`)
+    await press('Tab', 'Tab', 9, true)
+    assert.equal((await evaluate('window.stackMetrics()')).focus, 'second', `${viewport}/Shift+Tab 焦点环绕`)
+    await evaluate('window.updateStack({media:true})'); await delay(400)
+    await press('Escape', 'Escape', 27)
+    let metrics = await evaluate('window.stackMetrics()')
+    assert.ok(!metrics.media && metrics.second && metrics.first && metrics.locked, `${viewport}/Escape 只关闭媒体层`)
+    await evaluate('window.openStackConfirm()'); await delay(400)
+    await waitFor('window.stackMetrics().visibleMessages === 1', `${viewport}/确认框打开`)
+    await waitFor('window.stackMetrics().messageHasFocus', `${viewport}/确认框获得焦点`)
+    await press('Escape', 'Escape', 27)
+    await waitFor('window.stackMetrics().visibleMessages === 0', `${viewport}/确认框关闭`)
+    metrics = await evaluate('window.stackMetrics()')
+    assert.ok(metrics.second && metrics.first && metrics.locked, `${viewport}/确认框不穿透关闭底层`)
+    await press('Escape', 'Escape', 27)
+    await waitFor('!window.stackMetrics().second', `${viewport}/次层 Escape 关闭`)
+    metrics = await evaluate('window.stackMetrics()')
+    assert.ok(!metrics.second && metrics.first && metrics.locked && metrics.restored, `${viewport}/关闭次层后保留滚动锁并恢复焦点：${JSON.stringify(metrics)}`)
+    await evaluate('window.updateStack({first:false})'); await delay(400)
+    assert.equal((await evaluate('window.stackMetrics()')).locked, false, `${viewport}/最终关闭恢复滚动`)
+  }
+  if (!safeAreaOnly && !priceHeaderOnly) {
+    console.log('弹窗关闭浏览器回归通过：375/768/1024/1440px，有/无遮罩，标题关闭、主动重开、业务关闭后均无可见残留。')
+    console.log('嵌套弹窗浏览器回归通过：375/768/1440px，Tab/Shift+Tab、媒体和确认框 Escape、焦点恢复及最终滚动解锁。')
+  }
   assert.deepEqual(runtimeErrors, [])
   if (checks) console.log(`弹窗宽度浏览器回归通过：${checks} 项，8 种视口、明暗主题、4 个档位、显式宽度/上限、动态回退和自适应内容。`)
 } finally {

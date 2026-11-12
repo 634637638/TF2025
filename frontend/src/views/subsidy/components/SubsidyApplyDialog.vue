@@ -499,7 +499,7 @@
           >
             <InlineLoading
               v-if="loadingDetail"
-              text="加载中..."
+              text="正在读取申请设备详情..."
               size="small"
               variant="inherit"
             />

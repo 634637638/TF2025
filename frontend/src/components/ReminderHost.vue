@@ -1,12 +1,14 @@
 <template>
-  <el-dialog
+  <MobileDialog
     v-model="visible"
+    :show-default-footer="false"
     title="待办提醒"
     width="520px"
-    class="reminder-host-dialog"
-    :show-close="false"
+    dialog-class="reminder-host-dialog"
+    :show-close="!isMandatory"
+    :before-close="beforeClose"
     :close-on-click-modal="false"
-    :close-on-press-escape="false"
+    :close-on-press-escape="!isMandatory"
   >
     <div
       v-if="currentItem"
@@ -65,10 +67,10 @@
           <span v-if="canViewReminderField('remind_at')"><i class="fas fa-calendar-days" />提醒：{{ formatDateTime(currentItem.remind_at) }}</span>
         </div>
         <p
-          v-if="isFinalReminderDay"
+          v-if="isMandatory"
           class="reminder-alert__deadline"
         >
-          <i class="fas fa-hourglass-half" />已进入执行前最后一天，请尽快完成
+          <i class="fas fa-hourglass-half" />已进入执行前最后3小时，请尽快完成
         </p>
         <div
           v-if="snoozeCustomVisible"
@@ -139,7 +141,7 @@
         <el-button
           v-else
           disabled
-          title="已进入执行前最后一天，不能再延后"
+          title="已进入执行前最后3小时，不能再延后"
         >
           <i class="fas fa-clock" />稍后提醒
         </el-button>
@@ -152,7 +154,7 @@
         </el-button>
       </div>
     </template>
-  </el-dialog>
+  </MobileDialog>
 </template>
 
 <script setup lang="ts">
@@ -167,42 +169,19 @@ import { fieldPermissions } from '@/composables/useFieldPermissions'
 import { canViewReminderField } from '@/views/reminders/reminder-field-permissions'
 import { TIME_FORMATS, TimeUtil } from '@/utils/time'
 import { useNotification } from '@/composables/useNotification'
+import type { ReminderAlert, CompletionAlert, ReminderQueueItem } from '@/types/reminder'
+import { useRemindersStore, REMINDER_MANDATORY_MS } from '@/stores/reminders'
+import { useRouter } from 'vue-router'
+
 const globalNotifications = useNotification()
 
-
-interface ReminderAlert {
-  kind: 'reminder'
-  occurrence_id: number
-  reminder_id: number
-  title: string
-  content?: string
-  priority: string
-  type_name?: string
-  type_color?: string
-  scheduled_at: string
-  remind_at: string
-}
-
-interface CompletionAlert {
-  kind: 'completion'
-  occurrence_id: number
-  reminder_id: number
-  title: string
-  content?: string
-  priority: string
-  scheduled_at: string
-  remind_at: string
-  action_at?: string
-  user_name?: string
-  username?: string
-}
-
-type ReminderQueueItem = ReminderAlert | CompletionAlert
 type SnoozeCommand = '1h' | '4h' | '1d' | 'custom'
 
 const REFRESH_GAP_MS = 5000
-const SNOOZE_RESERVE_MS = 24 * 60 * 60 * 1000
+const SNOOZE_RESERVE_MS = REMINDER_MANDATORY_MS
 const SNOOZE_MIN_LEAD_MS = 60 * 1000
+const remindersStore = useRemindersStore()
+const router = useRouter()
 const authStore = useAuthStore()
 const appStore = useAppStore()
 const { isAuthenticated } = storeToRefs(authStore)
@@ -214,8 +193,13 @@ const snoozeCustomVisible = ref(false)
 const customSnoozeUntil = ref('')
 const seen = new Set<number>()
 let timer: ReturnType<typeof setInterval> | null = null
+let clockTimer: ReturnType<typeof setInterval> | null = null
+let removeRouteGuard: (() => void) | undefined
 let lastLoadedAt = 0
 let loadPendingPromise: Promise<void> | null = null
+let queueRevision = 0
+let disposed = false
+let mandatoryIds = new Set<number>()
 
 const currentItem = computed(() => queue.value[0])
 const queueIndex = computed(() => 0)
@@ -266,19 +250,19 @@ const snoozeMaxDate = computed(() => {
     ? TimeUtil.toDatePickerValue(TimeUtil.format(deadline, TIME_FORMATS.DATETIME_LOCAL)) || undefined
     : undefined
 })
-const isFinalReminderDay = computed(() => {
+const isMandatory = computed(() => {
   if (currentItem.value?.kind !== 'reminder') return false
   const scheduledAt = parseDate(currentItem.value.scheduled_at)
-  return Boolean(scheduledAt && scheduledAt.valueOf() <= TimeUtil.now().valueOf() + SNOOZE_RESERVE_MS)
+  return Boolean(currentItem.value.is_mandatory || (scheduledAt && scheduledAt.valueOf() <= remindersStore.now + SNOOZE_RESERVE_MS))
 })
 const canChooseSnooze = computed(() => {
   const deadline = snoozeDeadline.value
-  return Boolean(deadline && deadline.valueOf() > TimeUtil.now().valueOf() + SNOOZE_MIN_LEAD_MS)
+  return !isMandatory.value && Boolean(deadline && deadline.valueOf() > remindersStore.now + SNOOZE_MIN_LEAD_MS)
 })
 const snoozeOptions = computed(() => {
   const deadline = snoozeDeadline.value
   if (!canChooseSnooze.value || !deadline) return []
-  const now = TimeUtil.now().valueOf()
+  const now = remindersStore.now
   return snoozePresets.filter(option => now + option.milliseconds <= deadline.valueOf())
 })
 const snoozeMinDate = computed(() => TimeUtil.toDatePickerValue(
@@ -306,26 +290,52 @@ const appendQueue = (items: ReminderQueueItem[]) => {
 const loadPending = (force = false): Promise<void> => {
   if (
     !isAuthenticated.value ||
-    !notificationsEnabled.value ||
     (!canUsePendingReminder.value && !canUseCompletionNotice.value)
   ) return Promise.resolve()
   if (!force && Date.now() - lastLoadedAt < REFRESH_GAP_MS) return Promise.resolve()
   if (loadPendingPromise) return loadPendingPromise
 
   lastLoadedAt = Date.now()
+  const requestRevision = queueRevision
+  const queuedIds = queue.value.filter(item => item.kind === 'reminder').map(item => item.occurrence_id)
   loadPendingPromise = (async () => {
-    const [pendingResponse, completionResponse] = await Promise.all([
-      canUsePendingReminder.value
-        ? api.get('/reminders/my/pending', { showLoading: false })
+    const [pendingResult, completionResult, activeResult] = await Promise.allSettled([
+      // 此请求在后台持续同步首页公告与强制提醒，关闭普通通知不影响它。
+      canUsePendingReminder.value && notificationsEnabled.value
+        ? api.get('/reminders/my/pending', {
+          showLoading: false,
+          useCache: false,
+          params: { queued_occurrence_ids: queuedIds.length ? queuedIds.join(',') : undefined }
+        })
         : Promise.resolve(null),
-      canUseCompletionNotice.value
-        ? api.get('/reminders/completed/pending', { showLoading: false })
-        : Promise.resolve(null)
+      canUseCompletionNotice.value && notificationsEnabled.value
+        ? api.get('/reminders/completed/pending', { showLoading: false, useCache: false })
+        : Promise.resolve(null),
+      canUsePendingReminder.value ? remindersStore.refresh() : Promise.resolve()
     ])
 
+    for (const result of [pendingResult, completionResult, activeResult]) {
+      if (result.status === 'rejected') logger.debug('加载待办提醒失败', result.reason)
+    }
+    const pendingResponse = pendingResult.status === 'fulfilled' ? pendingResult.value : null
+    const completionResponse = completionResult.status === 'fulfilled' ? completionResult.value : null
+    if (disposed || !isAuthenticated.value || requestRevision !== queueRevision) return
     if (pendingResponse?.success) {
       const reminders = (Array.isArray(pendingResponse.data) ? pendingResponse.data : [])
         .map((item: Omit<ReminderAlert, 'kind'>): ReminderAlert => ({ ...item, kind: 'reminder' }))
+      const previous = currentItem.value
+      const latest = new Map(reminders.map(item => [item.occurrence_id, item]))
+      // 用服务端重新校验队列，撤下改期后尚未到提醒期、已完成或已删除的旧弹窗。
+      queue.value = queue.value.flatMap<ReminderQueueItem>(item => {
+        if (item.kind === 'completion') return [item]
+        const updated = latest.get(item.occurrence_id)
+        return updated ? [updated] : []
+      })
+      if (previous?.occurrence_id !== currentItem.value?.occurrence_id || previous?.scheduled_at !== currentItem.value?.scheduled_at) {
+        snoozeCustomVisible.value = false
+        customSnoozeUntil.value = ''
+      }
+      visible.value = queue.value.length > 0
       appendQueue(reminders)
     }
     if (completionResponse?.success) {
@@ -333,6 +343,7 @@ const loadPending = (force = false): Promise<void> => {
         .map((item: Omit<CompletionAlert, 'kind'>): CompletionAlert => ({ ...item, kind: 'completion' }))
       appendQueue(completions)
     }
+    syncMandatory()
   })()
     .catch(error => {
       logger.debug('加载待办提醒失败', error)
@@ -344,14 +355,16 @@ const loadPending = (force = false): Promise<void> => {
   return loadPendingPromise
 }
 
-const removeCurrent = (markSeen: boolean) => {
-  const item = currentItem.value
-  if (!item) return
-  if (markSeen) seen.add(item.occurrence_id)
-  else seen.delete(item.occurrence_id)
-  queue.value.shift()
-  snoozeCustomVisible.value = false
-  customSnoozeUntil.value = ''
+const removeOccurrence = (occurrenceId: number, markSeen: boolean) => {
+  const wasCurrent = currentItem.value?.occurrence_id === occurrenceId
+  queueRevision += 1
+  if (markSeen) seen.add(occurrenceId)
+  else seen.delete(occurrenceId)
+  queue.value = queue.value.filter(item => item.occurrence_id !== occurrenceId)
+  if (wasCurrent) {
+    snoozeCustomVisible.value = false
+    customSnoozeUntil.value = ''
+  }
   visible.value = queue.value.length > 0
 }
 
@@ -361,9 +374,15 @@ const finishCurrent = async (action: 'complete' | 'snooze', body: Record<string,
 
   processingOccurrence.value = item.occurrence_id
   try {
-    await api.post(`/reminders/occurrences/${item.occurrence_id}/${action}`, body)
+    const response = await api.post(`/reminders/occurrences/${item.occurrence_id}/${action}`, body)
+    if (!response.success) throw new Error('更新待办未成功')
+    if (action === 'complete') remindersStore.complete(item.occurrence_id)
     // 完成后只结束当前 occurrence；稍后提醒到点后仍需再次进入队列。
-    removeCurrent(action === 'complete')
+    removeOccurrence(item.occurrence_id, action === 'complete')
+    if (action === 'snooze') {
+      remindersStore.snooze(item.occurrence_id)
+    }
+    syncMandatory()
   } catch (error) {
     globalNotifications.error('更新待办状态失败')
     logger.error('更新待办状态失败', error)
@@ -379,7 +398,7 @@ const handleAcknowledgeCompletion = async () => {
   processingOccurrence.value = item.occurrence_id
   try {
     await api.post(`/reminders/completed/${item.occurrence_id}/acknowledge`)
-    removeCurrent(true)
+    removeOccurrence(item.occurrence_id, true)
   } catch (error) {
     globalNotifications.error('确认完成提醒失败')
     logger.error('确认完成提醒失败', error)
@@ -414,30 +433,74 @@ const confirmCustomSnooze = () => {
     return
   }
   if (customDate.valueOf() > deadline.valueOf()) {
-    globalNotifications.warning('再次提醒时间必须至少早于执行时间1天')
+    globalNotifications.warning('再次提醒时间必须至少早于执行时间3小时')
     return
   }
   void finishCurrent('snooze', { snoozed_until: toLocalDateTime(customDate) })
 }
 
-watch(isAuthenticated, value => {
-  if (value) {
-    void loadPending(true)
-    return
-  }
+const resetSession = () => {
+  authStore.exitLock = false
+  remindersStore.reset()
   queue.value = []
+  queueRevision += 1
   visible.value = false
   seen.clear()
+  mandatoryIds.clear()
   snoozeCustomVisible.value = false
+  customSnoozeUntil.value = ''
+}
+watch([isAuthenticated, () => authStore.user?.id], ([authenticated], previous) => {
+  // 切换身份及退出时同步清除个人清单，并让旧响应失效。
+  if (!authenticated || previous) resetSession()
+  if (authenticated) void loadPending(true)
+})
+watch([canUsePendingReminder, canUseCompletionNotice], ([pendingAllowed, completionAllowed]) => {
+  queueRevision += 1
+  if (!pendingAllowed) {
+    authStore.exitLock = false
+    remindersStore.reset()
+  }
+  queue.value = queue.value.filter(item => item.kind === 'reminder' ? pendingAllowed : completionAllowed)
+  visible.value = queue.value.length > 0
+  if (pendingAllowed || completionAllowed) void loadPending(true)
 })
 
+// 强制队列始终优先；普通通知开关、已读/忽略和稍后时间不能撤下强制任务。
+const syncMandatory = () => {
+  if (!isAuthenticated.value || !canUsePendingReminder.value) return
+  const required = remindersStore.mandatory
+  authStore.exitLock = required.length > 0
+  const activeIds = new Set(remindersStore.active.map(item => item.occurrence_id))
+  queue.value = queue.value.filter(item => item.kind === 'completion' || (
+    (!mandatoryIds.has(item.occurrence_id) || activeIds.has(item.occurrence_id)) && notificationsEnabled.value
+  ))
+  const ids = new Set(required.map(item => item.occurrence_id))
+  mandatoryIds = ids
+  queue.value = [...required, ...queue.value.filter(item => !ids.has(item.occurrence_id))]
+  visible.value = queue.value.length > 0
+}
+const beforeClose = (done: () => void) => {
+  if (isMandatory.value || processingOccurrence.value !== null) return
+  const item = currentItem.value
+  if (item) removeOccurrence(item.occurrence_id, false)
+  // 由队列控制下一个弹窗，避免关闭动画隐藏下一条。
+  if (!queue.value.length) done()
+}
+const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+  if (!isAuthenticated.value || !canUsePendingReminder.value || !remindersStore.mandatory.length) return
+  event.preventDefault()
+  event.returnValue = ''
+}
+watch(() => remindersStore.mandatory, syncMandatory)
 watch(notificationsEnabled, enabled => {
-  if (enabled) {
-    void loadPending(true)
-    return
+  if (!enabled) {
+    queue.value = []
+    queueRevision += 1
+    visible.value = false
+    syncMandatory()
   }
-  queue.value = []
-  visible.value = false
+  void loadPending(true)
 })
 
 const handleWindowFocus = () => { void loadPending() }
@@ -447,14 +510,28 @@ const handleVisibilityChange = () => {
 
 onMounted(async () => {
   await fieldPermissions.init()
-  await loadPending(true)
+  if (disposed) return
   timer = setInterval(() => { void loadPending() }, 60000)
+  clockTimer = setInterval(() => { remindersStore.tick() }, 1000)
+  removeRouteGuard = router.beforeEach(() => {
+    if (!isAuthenticated.value || !canUsePendingReminder.value || !remindersStore.mandatory.length) return true
+    syncMandatory()
+    return false
+  })
+  window.addEventListener('beforeunload', handleBeforeUnload)
   window.addEventListener('focus', handleWindowFocus)
   document.addEventListener('visibilitychange', handleVisibilityChange)
+  await loadPending(true)
 })
 
 onUnmounted(() => {
+  authStore.exitLock = false
+  disposed = true
+  queueRevision += 1
   if (timer) clearInterval(timer)
+  if (clockTimer) clearInterval(clockTimer)
+  removeRouteGuard?.()
+  window.removeEventListener('beforeunload', handleBeforeUnload)
   window.removeEventListener('focus', handleWindowFocus)
   document.removeEventListener('visibilitychange', handleVisibilityChange)
 })
@@ -584,17 +661,7 @@ onUnmounted(() => {
   font-size: var(--tf-type-scale-11);
 }
 
-.reminder-host-dialog {
-  --tf-dialog-border: var(--tf-color-neutral-200);
-  --tf-dialog-footer-padding-block-start: 12px;
-}
-
 @media (max-width: 560px) {
-  .reminder-host-dialog :deep(.el-dialog) {
-    width: calc(100vw - 20px) !important;
-    margin: 10px auto;
-  }
-
   .reminder-snooze-custom {
     align-items: stretch;
     flex-direction: column;

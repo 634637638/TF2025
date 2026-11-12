@@ -165,9 +165,3 @@
     height: 240px;
   }
 }
-
-@media (max-width: 767px) {
-  :global(.shop-config-map-dialog .mobile-dialog-sheet-body) {
-    padding: 12px !important;
-  }
-}

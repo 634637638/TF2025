@@ -2,8 +2,11 @@
 
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
+const { execFile } = require('node:child_process')
+const os = require('node:os')
 const path = require('node:path')
 const test = require('node:test')
+const { promisify } = require('node:util')
 const Controller = require('../src/controllers/git.controller')
 const GitArchiveBackupService = require('../src/services/git-archive-backup.service')
 
@@ -56,11 +59,16 @@ test('archive service preserves safe name, Beijing timestamp, file selection, ex
       '/project/backend/start-production.js',
       '/project/backend/ecosystem.production.config.js',
       '/project/backend/scripts',
+      '/project/backend/deploy',
       '/project/backend/database',
       '/project/backend/migrations',
       '/project/backend/.env.example',
       '/project/package-lock.json',
-      '/project/shared'
+      '/project/scripts',
+      '/project/eslint.config.js',
+      '/project/AGENTS.md',
+      '/project/CLAUDE.md',
+      '/project/.gitignore'
     ]
   })
   const result = await service.createArchiveBackup(' My/Backup! ')
@@ -76,7 +84,8 @@ test('archive service preserves safe name, Beijing timestamp, file selection, ex
     includedItems: [
       'frontend', 'package.json', 'docs', 'backend/src', 'backend/package.json', 'backend/package-lock.json',
       'backend/server.js', 'backend/start-production.js', 'backend/ecosystem.production.config.js',
-      'backend/scripts', 'backend/database', 'backend/migrations', 'backend/.env.example', 'package-lock.json', 'shared'
+      'backend/scripts', 'backend/deploy', 'backend/database', 'backend/migrations', 'backend/.env.example',
+      'package-lock.json', 'scripts', 'eslint.config.js', 'AGENTS.md', 'CLAUDE.md', '.gitignore'
     ],
     type: 'archive'
   })
@@ -160,4 +169,40 @@ test('archive controller maps successful results and operational failures to the
     error: 'disk full',
     hint: '请检查磁盘空间和 tar 命令是否可用'
   })
+})
+
+test('真实压缩包保留两端部署模板和根工具，排除备份、依赖、日志及证书', async t => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'tf-git-archive-'))
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }))
+  const included = [
+    'frontend/src/main.ts', 'frontend/deploy/nginx.conf', 'docs/00-INDEX.md',
+    'package.json', 'package-lock.json', 'eslint.config.js', 'scripts/check-docs.mjs',
+    'AGENTS.md', 'CLAUDE.md', '.gitignore', 'backend/deploy/nginx.conf',
+    'backend/src/config/reminder-policy.json'
+  ]
+  const excluded = [
+    'frontend/node_modules/package/index.js', 'frontend/logs/development.log',
+    'frontend/ssl/local-dev-key.pem', 'backend/backups/previous.tar.gz',
+    '本地备份/previous.tar.gz', '.claude/settings.json', 'project.private.config.json'
+  ]
+  for (const file of [...included, ...excluded]) {
+    fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true })
+    fs.writeFileSync(path.join(root, file), 'fixture\n')
+  }
+  const execute = promisify(execFile)
+  const service = new GitArchiveBackupService({
+    projectRoot: root,
+    fileSystem: fs.promises,
+    existsSync: fs.existsSync,
+    executeCommand: async () => ({ stdout: '' }),
+    executeArchive: execute,
+    logger: { debug() {} }
+  })
+  const result = await service.createArchiveBackup('source-snapshot')
+  assert.equal(path.dirname(result.backup.filePath), path.join(root, '本地备份'))
+  const { stdout } = await execute('tar', ['-tzf', result.backup.filePath], { timeout: 10000 })
+  const entries = new Set(stdout.trim().split('\n'))
+  for (const file of included) assert.ok(entries.has(file), `源码快照缺少 ${file}`)
+  for (const file of excluded) assert.ok(!entries.has(file), `源码快照错误包含 ${file}`)
+  assert.ok(result.backup.fileSizeBytes > 0)
 })

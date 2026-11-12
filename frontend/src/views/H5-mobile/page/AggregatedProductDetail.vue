@@ -254,7 +254,7 @@
   <!-- 加载状态 -->
   <SectionLoading
     v-else
-    text="加载中..."
+    text="正在读取商品配置..."
   />
 </template>
 

@@ -54,7 +54,7 @@
 
 - 已连接备份对应的云端 `TF2025` 数据库执行只读 `SHOW TABLES`/`SHOW COLUMNS` 核验。
 - 已知候选旧物理列 `purchase_price`、`selling_price`、`stock_in_date`、`sale_date`、`salestime`、`Inventorytime`、`price`、`cost`、`purchase_date`、`inbound_date` 均为 0 个；全库大写/驼峰物理列为 0 个。
-- `phones`、`sales` 和配件表的物理列改名已完成；已有行数、空值和金额汇总核对记录见 `config/field-contracts.json`。
+- `phones`、`sales` 和配件表的物理列改名已完成；已有行数、空值和金额汇总核对记录见 `backend/scripts/config/field-contracts.json`。
 - `price_history.cost_price` 明确保留：它是 `price_list` 的独立价格历史字段，不等同于 `phones.purchase_cost`，不属于待迁移旧列。
 - 本次没有发现可安全继续执行的数据库改名项；剩余工作是 API 兼容边界的调用方迁移、真实业务回归和后续按条件移除兼容字段。
 
@@ -115,7 +115,7 @@
 
 ## 已登记的字段契约
 
-契约文件：`config/field-contracts.json`（同时登记每个模块的 `auditSources` 审计源文件）
+契约文件：`backend/scripts/config/field-contracts.json`（同时登记每个模块的 `auditSources` 审计源文件）
 
 目前已登记：
 
@@ -497,9 +497,9 @@ npm run test:db
 
 ## 维护规则
 
-退库明细字段已登记到 `config/field-contracts.json` 的 query 契约和真实审计源；`reversal_date` 统一用于创建、编辑、查询及筛选，`created_at` 保留实际操作时间。2026-11-09 获得用户授权、完成目标表备份后，使用 `backend/scripts/migrate-return-stock-details.js` 在当前配置的云端数据库新增五个可空字段，登记为 `completed / migrated_and_verified`。结构回读符合预期，历史记录迁移前后均为15条，全部旧字段内容校验一致，五个新列均为空；重复预览为 `already_ready`，真实仓储列表及关键词只读查询通过。未创建真实退库交易，未代替线上代码部署或手机验收。备份位置、升级及回滚边界见[退库与交易撤销](../business/inventory/transaction-reversal.md)。
+退库明细字段已登记到 `backend/scripts/config/field-contracts.json` 的 query 契约和真实审计源；`reversal_date` 统一用于创建、编辑、查询及筛选，`created_at` 保留实际操作时间。2026-11-09 获得用户授权、完成目标表备份后，使用 `backend/scripts/migrate-return-stock-details.js` 在当前配置的云端数据库新增五个可空字段，登记为 `completed / migrated_and_verified`。结构回读符合预期，历史记录迁移前后均为15条，全部旧字段内容校验一致，五个新列均为空；重复预览为 `already_ready`，真实仓储列表及关键词只读查询通过。未创建真实退库交易，未代替线上代码部署或手机验收。备份位置、升级及回滚边界见[退库与交易撤销](../business/inventory/transaction-reversal.md)。
 
-- 新增 CRUD 字段必须先登记 `config/field-contracts.json`。
+- 新增 CRUD 字段必须先登记 `backend/scripts/config/field-contracts.json`。
 - 2026-11-09 获得用户新增渠道列授权、完成目标表备份后，复用退库迁移脚本新增 `refund_channel VARCHAR(30) NULL`，单独登记为 `return-stock-refund-channel / completed / migrated_and_verified`。15条历史记录及全部既有字段内容一致，渠道均为空，重复预览为 `already_ready`，真实仓储列表与渠道搜索通过。支付方式/渠道统一读取 `backend/src/config/payment-methods.json`，新增全局渠道无需另改退库白名单；备份及测试边界见退库业务规范。
 - 前端表单、分页、筛选和权限状态内部必须使用规范字段，不能只在提交 API 时临时转换。
 - 旧字段兼容只能存在于后端迁移边界，不能扩散到新的业务逻辑。

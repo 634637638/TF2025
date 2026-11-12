@@ -1268,20 +1268,6 @@ defineExpose({
 </script>
 
 <style scoped>
-:global(.publish-to-h5-dialog) {
-  --tf-dialog-body-padding-inline: var(--tf-space-6);
-  --tf-dialog-body-padding-block: var(--tf-space-5);
-}
-
-:global(.mobile-dialog-sheet-panel.publish-to-h5-dialog .mobile-dialog-sheet-title) {
-  font-size: var(--tf-type-scale-16) !important;
-}
-
-:global(.mobile-dialog-sheet-panel.publish-to-h5-dialog .mobile-dialog-sheet-close) {
-  right: 14px !important;
-  transform: none !important;
-}
-
 .publish-to-h5-form {
   display: flex;
   flex-direction: column;
@@ -1440,11 +1426,6 @@ defineExpose({
 }
 
 @media (max-width: 767px) {
-  :global(.publish-to-h5-dialog) {
-    --tf-dialog-body-padding-inline: var(--tf-space-1);
-    --tf-dialog-body-padding-block: var(--tf-space-2);
-  }
-
   .publish-to-h5-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
@@ -1504,12 +1485,6 @@ defineExpose({
 
   :deep(.publish-to-h5-form .el-upload .el-button) {
     width: 100%;
-  }
-}
-
-@media (max-width: 479px) {
-  :global(.mobile-dialog-sheet-panel.publish-to-h5-dialog .mobile-dialog-sheet-close) {
-    right: 14px !important;
   }
 }
 

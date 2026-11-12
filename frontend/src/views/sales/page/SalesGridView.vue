@@ -1,12 +1,12 @@
 <template>
   <div
-    v-tf-loading="loading"
+    v-tf-loading="{ active: loading, text: '正在刷新可售设备...' }"
     class="sales-grid-view"
   >
     <TableLoadingRow
-      v-if="loading"
+      v-if="loading && phones.length === 0"
       mode="block"
-      text="加载中..."
+      text="正在读取可售设备..."
     />
     <DataEmptyState
       v-else-if="phones.length === 0"

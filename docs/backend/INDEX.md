@@ -8,6 +8,7 @@
 - [迁移计划](MIGRATION_PLAN.md) - 系统迁移方案
 - [迁移报告](MIGRATION_REPORT.md) - 迁移执行记录
 - [菜单 API 规范](menu-api-specification.md) - 菜单接口说明
+- [菜单图标管理](../frontend/menu-icon-management-standard.md) - 站内批量 JSON 预览、官方 SVG 转换、在线选择保存有效 SVG、失败拒绝写入及菜单本地显示
 - [设备状态统一规范](phone-status-standard.md) - 状态归一化、预订、销售和租赁边界
 - [退库与交易撤销](../business/inventory/transaction-reversal.md) - 积分冲回、退库明细、退款记录及数据库升级
 - [全局支付方式与渠道](../frontend/payment-method-standard.md) - 前后端唯一配置 `backend/src/config/payment-methods.json`，退库复用方式、渠道及组合校验
@@ -23,7 +24,7 @@
 
 ## 架构审计入口
 
-基础实现位于 `backend/src/types/actor.js`、`backend/src/core/base/base.service.js`、`backend/src/core/db/connection.js`。分层配置与锚点在 `config/backend-route-architecture.json`；运行 `node frontend/scripts/check-route-architecture.mjs` 单独核验，或运行 `npm --prefix frontend run check:backend-security` 联合安全审计。规则以开发指南正文为准，迁移后同步 T17、逐文件台账和历史锚点。
+基础实现位于 `backend/src/types/actor.js`、`backend/src/core/base/base.service.js`、`backend/src/core/db/connection.js`。分层配置与锚点在 `backend/scripts/config/backend-route-architecture.json`；运行 `node frontend/scripts/check-route-architecture.mjs` 单独核验，或运行 `npm --prefix frontend run check:backend-security` 联合安全审计。规则以开发指南正文为准，迁移后同步 T17、逐文件台账和历史锚点。
 
 公共实现复用：颜色/内存管理共享 `backend/src/services/reference-management.service.js` 与固定业务域白名单仓储；分页、排序纯函数的唯一实现位于 `backend/src/utils/reference-options.js`，既有 `reference-options.service.js` 保留重导出；仓储不得反向依赖 service。同步动态表名统一复用 `backend/src/utils/database-identifier.js`。综合查询的选项组合由 `QueryService` 编排，退库/删除的事务与积分冲回由 `QueryMutationService` 编排，SQL 留在 `QueryRepository`。各批实测与验收结果只登记在 T17。
 

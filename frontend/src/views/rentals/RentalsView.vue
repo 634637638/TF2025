@@ -144,7 +144,7 @@
 
           <div class="table-responsive">
             <el-table
-              v-tf-loading="loading"
+              v-tf-loading="{ active: loading, text: '正在刷新租赁记录...' }"
               :data="rentals"
               border
               stripe
@@ -156,7 +156,7 @@
                 <TableLoadingRow
                   v-if="loading"
                   mode="block"
-                  text="加载中..."
+                  text="正在读取租赁记录..."
                 />
                 <DataEmptyState
                   v-else

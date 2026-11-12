@@ -30,9 +30,9 @@
 
       <!-- 加载状态 -->
       <TableLoadingRow
-        v-if="loading"
+        v-if="loading && products.length === 0"
         mode="block"
-        text="加载中..."
+        text="正在读取已售商品..."
       />
 
       <!-- 空状态 -->
@@ -44,6 +44,7 @@
       <!-- 商品列表 -->
       <div
         v-else
+        v-tf-loading="{ active: loading, text: '正在刷新已售商品...' }"
         class="products-list"
       >
         <div
@@ -161,12 +162,13 @@
       </div>
 
       <!-- 媒体管理模态框 -->
-      <el-dialog
+      <MobileDialog
         v-model="showImageModal"
+        :show-default-footer="false"
         title="图片管理"
         width="90%"
         :close-on-click-modal="true"
-        class="image-manage-dialog"
+        dialog-class="image-manage-dialog"
         @closed="showImageViewer = false"
       >
         <div class="image-preview-modal">
@@ -285,7 +287,7 @@
             </el-button>
           </div>
         </template>
-      </el-dialog>
+      </MobileDialog>
 
       <MediaPreviewViewer
         v-model="showImageViewer"

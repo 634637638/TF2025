@@ -227,7 +227,7 @@ const summaryByDocument: Record<string, string> = {
   'field-consistency-standards.md': '前后端、数据库、表单、列表和权限审计共用一致的字段命名契约。',
   'form-control-standards.md': '输入框、选择框、日期控件和数字控件统一公共高度与交互方式。',
   'latest-request-standard.md': '搜索、筛选、分页和刷新使用最新请求控制，防止旧响应覆盖新结果。',
-  'menu-icon-management-standard.md': '菜单图标由统一选择与安全渲染入口维护，写入操作仍由服务端授权。',
+  'menu-icon-management-standard.md': '在线候选通过站内批量预览，保存有效 SVG 后才确认选择；全局动态图标统一渲染本地数据，缺失时显示本地占位。',
   'navigation-standards.md': '桌面侧栏、移动菜单和导航按钮使用统一令牌及响应式规则。',
   'model-search-standard.md': '型号选项按品牌加载完整数据，再本地筛选，不使用固定数量截断。',
   'notification-standards.md': '成功、错误、警告和一般提醒通过全局通知服务统一展示。',

@@ -52,7 +52,6 @@ const sortOrderControlFiles = [
 const standardTextInputFiles = new Map([
   ['src/views/permissions/page/RoleFormDialog.vue', 2],
   ['src/views/permissions/page/ModuleManagementView.vue', 5],
-  ['src/components/IconSelector.vue', 1],
   ['src/views/permissions/page/UserRoleAssignmentBody.vue', 1],
   ['src/views/salary/page/SalaryTemplateFormDialog.vue', 1],
   ['src/views/salary/page/SalaryEditPayoutDialog.vue', 2],

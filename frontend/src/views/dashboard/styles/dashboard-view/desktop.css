@@ -59,6 +59,8 @@
 }
 
 .dashboard-announcements {
+  display: grid;
+  gap: var(--tf-space-3);
   min-width: 0;
 }
 

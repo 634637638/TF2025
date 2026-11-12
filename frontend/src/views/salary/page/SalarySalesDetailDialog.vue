@@ -13,7 +13,7 @@
     >
       <SectionLoading
         v-if="loading"
-        text="加载中..."
+        text="正在读取销售提成明细..."
       />
 
       <template v-else>

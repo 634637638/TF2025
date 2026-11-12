@@ -292,6 +292,13 @@
                   删除
                 </el-button>
                 <el-button
+                  size="small"
+                  class="tf-button--export"
+                  @click="previewButtonAction('页面显式小号规格')"
+                >
+                  显式小号
+                </el-button>
+                <el-button
                   v-if="isMobile || isTablet"
                   native-type="button"
                   class="tf-button--menu"
@@ -309,6 +316,25 @@
                 >
                   {{ previewButtonResult }}
                 </el-tag>
+                <PublicPriceHeader
+                  class="preview-price-header"
+                  title="报价页头按钮声明预览"
+                  :action-width="isMobile ? 80 : 112"
+                  action-size="small"
+                >
+                  <template #actions>
+                    <el-button
+                      v-for="label in ['使用须知', '在库型号', '二手机', '保存图片']"
+                      :key="label"
+                      native-type="button"
+                      class="price-header-action tf-button--export"
+                      @click="previewButtonAction(label)"
+                    >
+                      <i class="fas fa-download btn-icon" />
+                      <span class="btn-text">{{ label }}</span>
+                    </el-button>
+                  </template>
+                </PublicPriceHeader>
               </div>
               <div
                 v-if="selectedStandard.previewKind === 'button'"
@@ -920,7 +946,7 @@ import { GLOBAL_LOADING_SHOW_DELAY_MS } from '@/constants/loading'
 import { useMobile } from '@/composables/mobile'
 import IconRenderer from '@/components/IconRenderer.vue'
 import menuBarsIcon from '@/assets/icons/menu-bars.svg?raw'
-import { PermissionGate, PageHeader } from '@/components/base'
+import { PermissionGate, PageHeader, PublicPriceHeader } from '@/components/base'
 import MobileDialog from '@/components/MobileDialog.vue'
 import DataEmptyState from '@/components/DataEmptyState.vue'
 import InlineLoading from '@/components/InlineLoading.vue'
@@ -1198,6 +1224,7 @@ const previewIcon = (kind: StandardPreviewKind) => {
 .preview-context strong { color: var(--admin-section-title-color); font-size: var(--tf-font-body); }
 .preview-context p { margin: 0; color: var(--tf-color-slate-500); font-size: var(--tf-font-caption); line-height: var(--tf-line-height-body); }
 .preview-button-row, .preview-search, .preview-feedback, .preview-security, .preview-runtime { display: flex; align-items: center; flex-wrap: wrap; gap: var(--tf-space-2); }
+.preview-price-header { flex-basis: 100%; min-width: 0; }
 .preview-feedback { flex-direction: column; align-items: stretch; }
 .preview-feedback__states, .preview-loading-demo, .preview-feedback__actions, .preview-form__actions { display: flex; align-items: center; flex-wrap: wrap; gap: var(--tf-space-2); }
 .preview-loading-demo { padding-top: var(--tf-space-2); border-top: 1px solid var(--tf-color-slate-200); }

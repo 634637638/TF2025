@@ -18,6 +18,8 @@
 
 手机和平板遮罩关闭必须确认同一次主指针在遮罩上按下并抬起；正文、标题栏、footer 内开始的操作，以及移动超过 `10px`、指针取消或弹窗出现后的兼容穿透点击，均不得触发遮罩关闭。每次弹窗打开/关闭都清空记录。该规则由 `MobileDialog` 统一维护，`check:dialogs` 检查接入；不能靠业务页复制延时器或缩小正文点击区域处理。
 
+公共遮罩的 flex 居中样式不得强制覆盖组件的隐藏状态。电脑窄窗口同样可能使用 sheet；关闭后须同时确认 `v-model` 为 false、外壳和遮罩实际不可见，不能只检查关闭事件。浏览器回归 `test:dialog-widths -- --interactions-only` 覆盖有/无遮罩、标题关闭、主动重开和业务关闭；库存明细的父子状态与查询次数另由 `tests/inventory-result-dialog.spec.ts` 验证。
+
 ### 宽度行为
 
 `width` 只声明业务弹窗的期望宽度，`maxWidth` 用于声明更严格的上限；两者都不是固定像素锁定。全局实现会根据当前视口自动取较小值：
@@ -66,16 +68,24 @@
 
 以上样式由 `frontend/src/main.ts` 全局加载。页面不得再维护第二套弹窗外壳样式。
 
+`tf-dialog-body-flush` 是唯一正文贴边变体，PC 和手机共用，不在业务样式中写零 padding。销售出库、批量销售、调货/划拨、销售单据及多栏权限工作台按内容语义使用该变体。
+
+`tf-dialog-workspace` 用于权限矩阵、角色分配等需要独立滚动的多栏工作台：桌面高度取 `min(820px, 100dvh - 48px)`，手机/平板取 `100dvh - 24px`，最终仍受公共外壳最大高度约束；标题与 footer 不收缩，正文填充剩余空间。提供 `100vh` 回退，高度参数由公共工作台令牌定义。高度与滚动由 `_dialog.scss` 唯一维护，业务只控制内部栏位，不设置私有全屏、圆角、正文 padding 或外壳高度。
+
+`MobileDialog` 和 `MediaPreviewViewer` 共享 `useOverlayStack` 管理打开顺序、最上层键盘响应及滚动锁。关闭或卸载任何非最后一层不得解除页面锁；最终关闭恢复原有 overflow，空媒体列表不持有不可见的锁。手机分支复用 Element Plus FocusTrap 保留 Tab 环绕和焦点恢复；确认框或媒体查看在上层时 Escape 不关闭下层表单。初始可见、重复开关、销毁及嵌套弹窗继续保持 `open/opened/close/closed` 事件契约；`opened` 在进入过渡完成后发出，`opened/closed` 每轮各发一次。标题关闭、遮罩和 Escape 在 PC/手机均遵守 `beforeClose(done)`；调用 `done(true)` 或不调用 `done` 时保留弹窗，普通取消按钮和业务修改 `v-model` 仍由业务决定是否关闭。
+
+客户姓名的 iOS 双击入口使用 `useCustomerNamePrompt` 调用公共 `useNotification().prompt`：规范化、空值、取消及提示由公共入口处理，输入/保存期间拒绝重复打开，业务校验目标客户是否仍一致。原生 `window.prompt` 与无调用兼容函数已移除；真机键盘行为仍须独立验收。
+
 ## 组件选择
 
 - 新增业务弹窗优先使用 `MobileDialog`。
-- 需要 Element Plus 原生插槽或已有服务逻辑时可以使用 `el-dialog`，但必须复用全局样式。
+- 业务模板只使用 `MobileDialog`，自定义 header/footer、生命周期事件及手机 sheet 均由公共组件提供；`el-dialog` 只保留在公共组件内部。确认、提示和输入使用公共通知服务。
 - 不新增自定义 `modal-overlay`、`modal-content`、`BaseModal` 或新的弹窗主题。
 - 图片预览、富文本、表格工作台等复杂内容可以使用业务 class，但只允许调整内容布局或宽度变体。
 
-当前直接 `el-dialog` 例外由 `frontend/scripts/check-dialog-adoption.mjs` 登记并审计。例外只覆盖全局提醒宿主、媒体/照片预览工作台、备份清理、待办、经验分享和国补照片管理；普通新增业务弹窗不得直接复制这些例外。
+2026-11-11 已将原 6 文件 / 12 处直接 `el-dialog` 迁入 `MobileDialog`，既有例外已全部删除。`check:dialogs` 对业务直接 Dialog、直接图片查看器、浏览器原生输入与私有外壳覆盖执行零容忍检查；不得新增白名单恢复旧入口。
 
-国补申请和照片管理中的图片查看统一使用 `MediaPreviewViewer`，不得恢复独立的照片查看 Dialog、翻页按钮或预览工具尺寸。照片管理主工作台保留已登记的 `el-dialog`；其缩略图查看/删除使用公共小号圆形按钮，删除入口继续受原上传权限控制。全屏预览工具使用 `tf-button--overlay-tool`，删除附加 `tf-button--overlay-danger`；下载通过 `downloadable` 和 `download` 事件交回业务下载入口处理，公共查看器不直接发起下载请求。
+国补申请和照片管理中的图片查看统一使用 `MediaPreviewViewer`，不得恢复独立的照片查看 Dialog、翻页按钮或预览工具尺寸。照片管理主工作台使用 `MobileDialog`；其缩略图查看/删除使用公共小号圆形按钮，删除入口继续受原上传权限控制。全屏预览工具使用 `tf-button--overlay-tool`，删除附加 `tf-button--overlay-danger`；下载通过 `downloadable` 和 `download` 事件交回业务下载入口处理，公共查看器不直接发起下载请求。
 
 预览中触发的删除确认必须显示在查看器上方。`_variables.scss` 将 `--tf-z-message-box` 定义为查看器层级加一，`_dialog.scss` 同时控制 MessageBox 根遮罩和内容层；禁止业务页单独提高层级。确认框处理键盘事件时，查看器不同时响应关闭或翻页。
 
@@ -83,7 +93,9 @@
 
 弹窗外观令牌集中在 `_dialog.scss` 的 `:root` 中；按钮布局与尺寸令牌由 `_dialog-actions.scss` 唯一维护。常用外观令牌包括：
 
-PC、平板和手机的彩色标题栏统一为 `50px`（CSS 像素），唯一高度定义为 `--tf-dialog-header-height`。Element Plus Dialog、MessageBox 和 `MobileDialog` 的 sheet 均读取公共标题栏规则；上下内边距为零，标题与关闭按钮垂直居中。业务页面不得重复设置标题栏高度、最小高度、上下内边距或关闭按钮顶部偏移；旧的 sheet 高度和窄屏覆盖已移除。标题栏不叠加顶部安全区高度；footer 继续使用底部安全区规则。
+PC、平板和手机的彩色标题栏统一为 `50px`（CSS 像素），唯一高度定义为 `--tf-dialog-header-height`。Element Plus Dialog、MessageBox 和 `MobileDialog` 的 sheet 均读取公共标题栏规则；上下内边距为零，标题与关闭按钮垂直居中。业务页面不得重复设置标题栏高度、最小高度、上下内边距或关闭按钮顶部偏移；旧的 sheet 高度和窄屏覆盖已移除。安全区在公共遮罩外层预留，不叠加到标题栏或悬浮 footer 内。
+
+顶部关闭按钮的图标统一为 `18px`。视口至少 `480px` 时，触控区域为 `32 × 32px`、距右侧 `16px`，在 `50px` 标题栏内上下各留 `9px`；小于 `480px` 时为 `30 × 30px`、距右侧 `12px`、上下各留 `10px`。顶部偏移由 `(标题栏高度 - 按钮尺寸) / 2` 计算，所有页面读取公共令牌，不重复定义。
 
 ```scss
 --tf-dialog-radius
@@ -108,7 +120,7 @@ PC、平板和手机的彩色标题栏统一为 `50px`（CSS 像素），唯一�
 | 标题 | 16px | 16px | 15px |
 | 正文和提示 | 14px | 15px | 14px |
 | 表单标签 | 14px | 14px | 13px |
-| 操作按钮 | 14px | 14px | 13px |
+| 普通按钮（footer 与正文工具栏见下文） | 14px | 14px | 13px |
 
 标题使用 `--tf-font-dialog-title`，正文使用 `--tf-font-body`，标签使用 `--tf-font-label`，按钮使用 `--tf-button-font-size`。`MobileDialog`、Element Plus Dialog 和 MessageBox 必须遵循同一组令牌；业务页面不得单独设置弹窗标题、提示正文或表单标签字号。业务提示可以调整换行、最大高度和行高，但不得复制字号值。
 
@@ -131,7 +143,7 @@ MessageBox 的默认宽度由 `--tf-dialog-message-width` 统一控制，当前�
 
 每档同时在手机端复用 `_dialog.scss` 的 `<=767px`、`<=479px` 边界，不得在页面重复声明 `--dialog-max-width` 或手机端弹窗变量。选择就近档位：期望宽度四舍五入到最近档位，偏差控制在 20~40px 内。
 
-超过 `800px` 的宽数据视图（如库存 900/800 编辑/详情、销售 1000/900/1200 交易与明细、工资 960/1100 及列数自适应的销售明细）属于宽表/自适应例外：它们可保留自身 `width`/`:width` 声明或不依赖档位的 `.el-dialog` 宽度，不强制压入 `lg`；但只能声明宽度，不得用私有 CSS 覆盖弹窗外壳、标题栏或手机端边界。`InventoryView.vue` 的非 scoped 全局块已完成治理：清除了位于所有 `</style>` 之后、不被 SFC 产出的孤儿私色/私有卡片样式（旧 `device-card`/`grid-container`/`table-cell` 等，其现由 `sales-grid-view.scss`、`sales-device-info-panel.scss` 等各自 scoped 样式承载），并将编辑弹窗私有卡片外壳 `inventory-edit-form-shell` 的圆角、内边距与栅格间距回归 `--tf-radius-panel`、`--tf-space-*` 公共令牌；弹窗宽度仍按本条例外保留。`npm run check:dialogs` 校验档位定义、已归一页面引用档位且不再声明页面级 `--dialog-max-width`；`npm run check:design-tokens` 以棘轮约束非 scoped 全局块不得新增硬编码设计值。
+超过 `800px` 的宽数据视图（如库存 900/800 编辑/详情、销售 1000/900/1200 交易与明细、工资 960/1100 及列数自适应的销售明细）属于宽表/自适应例外：它们可保留自身 `width`/`:width` 声明，通过 `MobileDialog` 属性声明尺寸，不强制压入 `lg`；但只能声明宽度，不得用私有 CSS 覆盖弹窗外壳、标题栏或手机端边界。`InventoryView.vue` 的非 scoped 全局块已完成治理：清除了位于所有 `</style>` 之后、不被 SFC 产出的孤儿私色/私有卡片样式（旧 `device-card`/`grid-container`/`table-cell` 等，其现由 `sales-grid-view.scss`、`sales-device-info-panel.scss` 等各自 scoped 样式承载），并将编辑弹窗私有卡片外壳 `inventory-edit-form-shell` 的圆角、内边距与栅格间距回归 `--tf-radius-panel`、`--tf-space-*` 公共令牌；弹窗宽度仍按本条例外保留。`npm run check:dialogs` 校验档位定义、已归一页面引用档位且不再声明页面级 `--dialog-max-width`；`npm run check:design-tokens` 以棘轮约束非 scoped 全局块不得新增硬编码设计值。
 
 ## 标准结构
 
@@ -176,6 +188,14 @@ MessageBox 的默认宽度由 `--tf-dialog-message-width` 统一控制，当前�
 - 内容超高时正文滚动，不能隐藏滚动导致按钮不可操作。
 - 内容超宽时只在内容内部横向滚动，不能撑宽弹窗。
 
+### 主屏幕书签与安全区
+
+Safari 标签页和主屏幕书签可能返回不同的 `safe-area-inset-*`。悬浮 Dialog、手机/平板 sheet 与 MessageBox 由 `_dialog.scss` 在遮罩四边按 `max(公共间距, env(对应安全区))` 统一避让；sheet 的布局间距仍由公共组件和档位提供。外壳最大高度同时受遮罩可用内容高度限制，长图和工作台正文内部滚动。页面不得按 `standalone` 或机型复制第二套 padding。
+
+悬浮 footer 不再额外叠加整屏底部安全区。`<=479px` 按钮上下内边距各 `10px`，`480–767px` 各 `12px`；PC/平板保留上 `16px`、下 `20px`。销售报价 `/sales-price-display` 与批发报价 `/price-query` 保存图片弹窗使用相同公共外壳及三个操作的按钮语义，普通浏览器与书签打开时 footer 间距保持一致。贴屏幕底边的页面固定操作仍遵循移动端指南的安全区规则。
+
+`npm --prefix frontend run test:dialog-widths -- --safe-area-only` 使用两个页面的真实保存弹窗模板，模拟零安全区和主屏幕上下/左右安全区，检查长图滚动、按钮及外壳边界、销售/批发一致性和工作台高度。此项也包含在完整 `test:dialog-widths` 中；Chromium 的安全区仿真不替代 iOS 主屏幕真机验收。
+
 ## Footer 按钮
 
 - 按钮公共尺寸：PC 高度为 `32px`、最小宽度 `64px`、水平内边距 `8px`、按钮间距 `4px`；平板（`768–1024px`）高度为 `40px`、间距 `8px`、水平内边距 `10px`；手机（`<=767px`）高度为 `clamp(30px, 8.54vw, 32px)`、字号 `12px`、间距 `6px`、水平内边距 `clamp(6px, 2.14vw, 8px)`，圆角复用公共控件令牌（`6px`）。手机和平板按钮在可用宽度内按实际数量等分，每个最大 `150px`（`--tf-dialog-action-max-width`），空间充足时每个为 `150px`，空间不足时等分收缩，整组居中；页面不设置固定宽度或最小宽度。
@@ -207,6 +227,20 @@ MessageBox 的默认宽度由 `--tf-dialog-message-width` 统一控制，当前�
 
 禁止：页面重新定义 `.el-dialog__header`、`.el-dialog__body`、`.el-dialog__footer` 的公共视觉；直接写弹窗主题颜色、统一圆角和通用阴影；新增旧式 `.modal-overlay` 或重复的 `modal-styles.scss`；通过提高页面 z-index 解决弹窗层级问题。
 
+## 全量盘点与接入判定
+
+全站盘点使用 `npm --prefix frontend run audit:dialogs`。脚本读取实际路由树、全部 Vue 模板及 TS/JS 中的显式原生弹框，核对[页面台账](page-audit-inventory.md)的页面/组件数量。`-- --json` 输出模板实例、源码位置、路由依赖、服务调用点、原生弹框和样式覆盖候选；`-- --markdown` 输出逐路由组件矩阵。统计工具位于 `frontend/scripts/audit-dialog-coverage.mjs`；`check:dialogs` 同时运行其正式正反例和台账数量一致性测试。
+
+必须区分以下证据：
+
+- **组件接入**：`MobileDialog` 的模板引用数、直接 `el-dialog` 的业务引用数及媒体查看入口分别统计；公共组件自身的内部 `el-dialog` 不重复算成业务弹窗。确认/输入/提示服务按调用点另计，不能与模板数相加当作运行时弹窗总数。
+- **全局外观**：使用公共组件仍可能被业务 CSS 覆盖；必须核对圆角、宽度边界、标题、关闭按钮、正文、footer、按钮与安全区。扫描候选只表示需要检查源码、引入关系与最终计算样式，不表示该规则已生效或必然违规；不能将候选清零作为允许删除业务布局的理由。
+- **双端验收**：源码接入、静态审计与公共组件浏览器回归均不证明每个业务页面的 PC/手机体验已通过。逐页回归及 Android/iOS 真机按[视觉回归清单](visual-regression-checklist.md)记录。
+
+路由依赖图包含静态和异步 `.vue` 导入、可唯一发现的公共组件标签；路由页面、所属布局、全局宿主分开统计，共享组件不能按 URL 重复累加。动态组件字符串、别名/运行时注册、服务调用链、SCSS 嵌套、内联及条件样式仍需人工核对。没有路由关联的组件只列为调用证据待确认，不能自动删除。`audit:dialogs` 是只读诊断，成功退出表示统计完成与台账数量一致，**不表示存量问题已解决**；原有 `check:dialogs` 和 `check:dialog-actions` 继续作为门禁。
+
+2026-11-11 全量基准及逐路由矩阵见[页面台账的模态框复核](page-audit-inventory.md#全量模态框接入复核2026-11-11)，整改与验收任务统一登记在[全局技术债务 T21](../development/TECHNICAL_DEBT_PROGRESS.md#t21-全局模态框双端统一2026-11-11)。
+
 ## 检查清单
 
 - [ ] 使用 `MobileDialog` 或复用全局 `el-dialog` 样式
@@ -218,7 +252,7 @@ MessageBox 的默认宽度由 `--tf-dialog-message-width` 统一控制，当前�
 - [ ] 正文可滚动，footer 始终可操作
 - [ ] 页面没有重复的弹窗外壳样式
 - [ ] 运行 `npm run type-check`、`npm run check:ui` 和 `npm run build`
-- [ ] 运行 `npm run check:dialogs`，确认直接 `el-dialog` 属于已登记的工作台例外
+- [ ] 运行 `npm run check:dialogs`，确认业务直接 `el-dialog`、原生弹框和私有外壳覆盖均为零
 - [ ] 运行 `npm run check:dialog-actions`，确认没有 footer 的 grid、纵向排列或固定按钮尺寸覆盖
 - [ ] 运行 `npm run check:dialogs`，确认 `MobileDialog` 没有重复 footer 包装层
 - [ ] 检查没有页面级 `width: calc(100vw - ...)` 或 `width: min(..., 100vw)` 覆盖全局宽度

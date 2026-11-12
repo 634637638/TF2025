@@ -66,7 +66,7 @@
 
           <div class="table-responsive">
             <el-table
-              v-tf-loading="loading"
+              v-tf-loading="{ active: loading || refreshing, text: '正在刷新配件列表...' }"
               :data="paginatedAccessories"
               border
               stripe

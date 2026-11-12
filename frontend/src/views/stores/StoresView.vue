@@ -171,7 +171,7 @@
           <div class="table-responsive">
             <el-table
               ref="storesTableRef"
-              v-tf-loading="isLoading"
+              v-tf-loading="{ active: isLoading || refreshing, text: '正在刷新门店列表...' }"
               :data="stores"
               border
               stripe

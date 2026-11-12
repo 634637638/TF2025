@@ -27,15 +27,26 @@ interface DirectiveElement extends HTMLElement {
 }
 
 // 加载指令
+export type TFLoadingValue = boolean | { active: boolean; text: string }
+
+const tableLoadingOptions = (value: TFLoadingValue) => typeof value === 'boolean'
+  ? { active: value, text: '正在读取列表...' }
+  : value
+
 export const vTFLoading: Directive = {
-  mounted(el: HTMLElement, binding: DirectiveBinding<boolean>) {
-    if (binding.value) {
-      startTableLoading(el)
+  mounted(el: HTMLElement, binding: DirectiveBinding<TFLoadingValue>) {
+    const options = tableLoadingOptions(binding.value)
+    if (options.active) {
+      startTableLoading(el, options.text)
+    } else {
+      // 已就绪的列表（含缓存命中、条件挂载）下一次加载即为刷新。
+      ;(el as DirectiveElement)._tfLoadingInitialised = true
     }
   },
-  updated(el: HTMLElement, binding: DirectiveBinding<boolean>) {
-    if (binding.value) {
-      startTableLoading(el)
+  updated(el: HTMLElement, binding: DirectiveBinding<TFLoadingValue>) {
+    const options = tableLoadingOptions(binding.value)
+    if (options.active) {
+      startTableLoading(el, options.text)
     } else {
       markInitialTableLoadComplete(el)
       hideLoading(el)
@@ -50,7 +61,7 @@ export const vTFLoading: Directive = {
  * 表格首次加载由全局 Loading 负责，首次完成后的再次加载才视为刷新。
  * 这样页面进入/F5 与点击刷新不会同时出现两套可见 Loading。
  */
-function startTableLoading(el: HTMLElement) {
+function startTableLoading(el: HTMLElement, text: string) {
   const loadingElement = el as DirectiveElement
 
   if (!loadingElement._tfLoadingInitialised) {
@@ -58,7 +69,7 @@ function startTableLoading(el: HTMLElement) {
     return
   }
 
-  showLoading(el)
+  showLoading(el, text)
 }
 
 function markInitialTableLoadComplete(el: HTMLElement) {
@@ -287,7 +298,7 @@ export const vLazy: Directive = {
     placeholder.style.justifyContent = 'center'
     placeholder.setAttribute('role', 'status')
     placeholder.setAttribute('aria-live', 'polite')
-    render(h(InlineLoading, { text: '加载中...', size: 'small' }), placeholder)
+    render(h(InlineLoading, { text: '正在加载图片...', size: 'small' }), placeholder)
 
     el.parentNode?.insertBefore(placeholder, el)
     el.style.display = 'none'
@@ -418,8 +429,10 @@ export const vMobileOptimize: Directive = {
 }
 
 // 工具函数
-function showLoading(el: HTMLElement) {
-  if (el.querySelector('.tf2025-loading-spinner')) {
+function showLoading(el: HTMLElement, text: string) {
+  const existingText = el.querySelector('.tf2025-loading-spinner span')
+  if (existingText) {
+    existingText.textContent = text
     return
   }
 
@@ -439,10 +452,11 @@ function showLoading(el: HTMLElement) {
 
   const loading = document.createElement('div')
   loading.className = 'tf2025-loading-spinner'
-  loading.innerHTML = `
-    <div class="tf2025-loading-spinner__icon"></div>
-    <span>加载数据中...</span>
-  `
+  const icon = document.createElement('div')
+  icon.className = 'tf2025-loading-spinner__icon'
+  const message = document.createElement('span')
+  message.textContent = text
+  loading.append(icon, message)
 
   el.appendChild(overlay)
   el.appendChild(loading)

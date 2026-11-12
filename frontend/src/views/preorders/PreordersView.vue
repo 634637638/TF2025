@@ -264,7 +264,7 @@
             <div class="table-responsive">
               <el-table
                 ref="pendingTableRef"
-                v-tf-loading="loading"
+                v-tf-loading="{ active: loading || refreshing, text: '正在刷新预定记录...' }"
                 :data="pendingPreorders"
                 border
                 stripe
@@ -277,7 +277,7 @@
                   <TableLoadingRow
                     v-if="loading"
                     mode="block"
-                    text="加载中..."
+                    text="正在读取预定记录..."
                   />
                   <DataEmptyState
                     v-else
@@ -562,7 +562,7 @@
             <div class="table-responsive">
               <el-table
                 ref="matchedTableRef"
-                v-tf-loading="loading"
+                v-tf-loading="{ active: loading || refreshing, text: '正在刷新预定记录...' }"
                 :data="matchedPreorders"
                 border
                 stripe
@@ -575,7 +575,7 @@
                   <TableLoadingRow
                     v-if="loading"
                     mode="block"
-                    text="加载中..."
+                    text="正在读取预定记录..."
                   />
                   <DataEmptyState
                     v-else
@@ -989,7 +989,7 @@
             <div class="table-responsive">
               <el-table
                 ref="deliveredTableRef"
-                v-tf-loading="loading"
+                v-tf-loading="{ active: loading || refreshing, text: '正在刷新预定记录...' }"
                 :data="deliveredPreorders"
                 border
                 stripe
@@ -1002,7 +1002,7 @@
                   <TableLoadingRow
                     v-if="loading"
                     mode="block"
-                    text="加载中..."
+                    text="正在读取预定记录..."
                   />
                   <DataEmptyState
                     v-else

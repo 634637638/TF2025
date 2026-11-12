@@ -1,5 +1,8 @@
 <template>
-  <div class="icon-picker">
+  <div
+    class="icon-picker"
+    :aria-busy="saving"
+  >
     <!-- 可折叠的头部 -->
     <div
       class="icon-picker-header"
@@ -52,6 +55,7 @@
         </el-input>
 
         <el-select
+          v-if="!useOnlineSearch"
           v-model="selectedCategory"
           placeholder="所有分类"
           clearable
@@ -83,13 +87,34 @@
 
       <!-- 加载状态 -->
       <SectionLoading
+        v-if="saving"
+        text="正在保存图标..."
+      />
+      <SectionLoading
         v-if="loading"
         text="正在加载图标..."
       />
 
+      <el-alert
+        v-if="searchError || previewError"
+        :title="searchError || previewError"
+        type="warning"
+        :closable="false"
+        show-icon
+      />
+      <el-button
+        v-if="previewError"
+        native-type="button"
+        :disabled="previewLoading"
+        @click="loadOnlinePreviews"
+      >
+        重试图标预览
+      </el-button>
+
       <!-- 图标网格 -->
       <div
-        v-else-if="filteredIcons.length > 0"
+        v-if="!loading && filteredIcons.length > 0"
+        v-tf-loading="{ active: searching, text: '正在检索图标...' }"
         class="icon-grid"
       >
         <div
@@ -98,6 +123,7 @@
           class="icon-item"
           :class="{ active: selectedIcon === icon.class }"
           role="button"
+          :aria-disabled="saving"
           tabindex="0"
           :title="`${icon.name} (${icon.class})`"
           @pointerdown.prevent.stop="selectIcon(icon)"
@@ -105,9 +131,16 @@
           @keydown.enter.prevent.stop="selectIcon(icon)"
           @keydown.space.prevent.stop="selectIcon(icon)"
         >
+          <InlineLoading
+            v-if="icon.source === 'online' && !icon.svg && previewLoading"
+            size="small"
+          />
+          <span v-else-if="icon.source === 'online' && !icon.svg">预览失败</span>
           <IconRenderer
+            v-else
             :icon="icon.class"
             :svg="icon.svg"
+            :online-preview="icon.source === 'online'"
           />
           <el-button
             v-if="canDeleteIcon(icon)"
@@ -125,11 +158,15 @@
 
       <!-- 无结果状态 -->
       <DataEmptyState
-        v-else
+        v-else-if="!loading && !searching"
         state="filtered"
         size="compact"
         :title="emptyStateText"
         :description="emptyStateHint || emptyStateText"
+      />
+      <SectionLoading
+        v-else-if="searching && !filteredIcons.length"
+        text="正在检索图标..."
       />
 
       <div
@@ -162,8 +199,10 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
-import { unifiedApi } from '@/utils/unified-api'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
+import { iconService } from '@/services/icons'
+import { getRequestErrorMessage } from '@/utils/api-response'
+import { useLatestRequest } from '@/composables/useLatestRequest'
 
 import SectionLoading from '@/components/SectionLoading.vue'
 import IconRenderer from '@/components/IconRenderer.vue'
@@ -198,110 +237,6 @@ const DEFAULT_ICONS = [
 ]
 const DEFAULT_ICON_CATEGORIES = ['navigation', 'user', 'interface', 'data', 'commerce', 'tools', 'charts', 'files', 'communication', 'notification']
 
-
-const iconKeywordMap = {
-  '首页': 'home',
-  '主页': 'home',
-  '用户': 'user',
-  '客户': 'user',
-  '员工': 'employee',
-  '供应商': 'supplier',
-  '设置': 'settings',
-  '系统': 'system',
-  '权限': 'permission',
-  '角色': 'role',
-  '菜单': 'menu',
-  '列表': 'list',
-  '表格': 'table',
-  '图表': 'chart',
-  '统计': 'chart',
-  '分析': 'analytics',
-  '报表': 'report',
-  '数据': 'data',
-  '数据库': 'database',
-  '服务器': 'server',
-  '购物车': 'cart',
-  '商店': 'store',
-  '订单': 'order',
-  '商品': 'product',
-  '产品': 'product',
-  '销售': 'sales',
-  '收银': 'cashier',
-  '付款': 'payment',
-  '支付': 'payment',
-  '账单': 'bill',
-  '利润': 'profit',
-  '价格': 'price',
-  '价目表': 'price',
-  '库存': 'inventory',
-  '入库': 'stock-in',
-  '出库': 'stock-out',
-  '调拨': 'transfer',
-  '仓库': 'warehouse',
-  '维修': 'repair',
-  '补贴': 'subsidy',
-  '工资': 'salary',
-  '考勤': 'attendance',
-  '商城': 'store',
-  '横幅': 'banner',
-  '轮播': 'banner',
-  '盒子': 'box',
-  '包裹': 'package',
-  '卡车': 'truck',
-  '工具': 'tool',
-  '编辑': 'edit',
-  '删除': 'delete',
-  '垃圾桶': 'trash',
-  '保存': 'save',
-  '下载': 'download',
-  '上传': 'upload',
-  '打印': 'print',
-  '导出': 'export',
-  '导入': 'import',
-  '文件': 'file',
-  '文档': 'document',
-  '图片': 'image',
-  '铃铛': 'bell',
-  '通知': 'notification',
-  '消息': 'message',
-  '邮件': 'email',
-  '电话': 'phone',
-  '手机': 'mobile',
-  '搜索': 'search',
-  '查找': 'search',
-  '筛选': 'filter',
-  '排序': 'sort',
-  '新增': 'plus',
-  '增加': 'plus',
-  '减号': 'minus',
-  '关闭': 'close',
-  '返回': 'back',
-  '箭头': 'arrow',
-  '刷新': 'refresh'
-}
-
-const translateSearchKeyword = (query) => {
-  if (!query) return ''
-
-  if (iconKeywordMap[query]) {
-    return iconKeywordMap[query]
-  }
-
-  let translated = query
-  Object.entries(iconKeywordMap).forEach(([chinese, english]) => {
-    if (translated.includes(chinese)) {
-      translated = translated.replaceAll(chinese, english)
-    }
-  })
-
-  return translated
-}
-
-const buildSearchKeywords = (query) => {
-  const rawQuery = String(query || '').trim()
-  const translatedQuery = translateSearchKeyword(rawQuery)
-  return Array.from(new Set([rawQuery, translatedQuery].filter(Boolean).map(item => item.toLowerCase())))
-}
 
 const isChineseText = (value) => /[\u4e00-\u9fa5]/.test(String(value || ''))
 
@@ -371,8 +306,10 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['update:modelValue', 'select'])
+const emit = defineEmits(['update:modelValue', 'select', 'saving-change'])
 const { confirm } = useNotification()
+const listRequest = useLatestRequest()
+const previewRequest = useLatestRequest()
 
 // 折叠状态
 const isCollapsed = ref(props.defaultCollapsed)
@@ -396,20 +333,7 @@ const handleSearchModeChange = (mode) => {
   selectedCategory.value = ''
   currentPage.value = 1
 
-  if (useOnlineSearch.value) {
-    if (searchQuery.value.trim()) {
-      searchIcons()
-    } else {
-      icons.value = []
-      totalIconCount.value = 0
-      searching.value = false
-    }
-  } else {
-    loadLocalIcons()
-    if (searchQuery.value.trim()) {
-      searchIcons()
-    }
-  }
+  searchIcons()
 }
 
 // 当前显示的图标类名
@@ -438,15 +362,21 @@ const icons = ref([])
 const allIcons = ref([]) // 仅保存当前页和当前选中的图标
 const categories = ref([])
 const currentPage = ref(1)
-const iconsPerPage = 96 // 8x12 grid
+const iconsPerPage = computed(() => useOnlineSearch.value ? 24 : 96)
 const totalIconCount = ref(0)
 const loading = ref(true)
 const searching = ref(false)
+const searchError = ref('')
+const previewError = ref('')
+const previewLoading = ref(false)
+const saving = ref(false)
+let disposed = false
 let searchTimer = null
 
 // 计算属性
 const filteredIcons = computed(() => {
   let filtered = icons.value
+  if (useOnlineSearch.value) return filtered
 
   // 如果有搜索词，不过滤（因为已经从 API 获取了搜索结果）
   // 如果没有搜索词，按分类筛选
@@ -458,11 +388,13 @@ const filteredIcons = computed(() => {
 })
 
 const totalPages = computed(() => {
-  return Math.max(1, Math.ceil(totalIconCount.value / iconsPerPage))
+  return Math.max(1, Math.ceil(totalIconCount.value / iconsPerPage.value))
 })
 
 const paginatedIcons = computed(() => {
-  return filteredIcons.value
+  if (!useOnlineSearch.value) return filteredIcons.value
+  const offset = (currentPage.value - 1) * iconsPerPage.value
+  return filteredIcons.value.slice(offset, offset + iconsPerPage.value)
 })
 
 const emptyStateText = computed(() => {
@@ -516,10 +448,10 @@ const updateLocalIconCache = (icon) => {
     }
   } else {
     allIcons.value = allIcons.value.map(item => item.class === icon.class ? { ...item, ...normalizedIcon } : item)
-    if (shouldSyncVisibleIcons) {
-      icons.value = icons.value.map(item => item.class === icon.class ? { ...item, ...normalizedIcon } : item)
-    }
   }
+
+  // 在线候选一旦成功入库，也立即换成返回的本地 SVG，不继续请求在线预览。
+  icons.value = icons.value.map(item => item.class === icon.class ? { ...item, ...normalizedIcon } : item)
 
   if (normalizedIcon.category && !categories.value.includes(normalizedIcon.category)) {
     categories.value = [...categories.value, normalizedIcon.category].sort()
@@ -528,42 +460,18 @@ const updateLocalIconCache = (icon) => {
 }
 
 const persistOnlineIcon = async (icon) => {
-  if (!icon || !isIconifyIconClass(icon.class)) {
-    return
-  }
-
-  try {
-    const localCategory = resolveIconCategory(icon, searchQuery.value)
-    const iconifyName = icon.iconifyName || getIconifyName(icon.class)
-    const tags = buildOnlineIconTags(icon, localCategory)
-
-    const response = await unifiedApi.post('/icons/cache', {
-      class: icon.class,
-      name: icon.name || iconifyName,
-      category: localCategory,
-      description: icon.description || `${localCategory}图标`,
-      tags,
-      iconifyName,
-      svg: icon.svg || null
-    })
-
-    if (response?.success && response.data) {
-      updateLocalIconCache(response.data)
-      return
-    }
-  } catch (error) {
-    // 静默处理
-  }
-
   const localCategory = resolveIconCategory(icon, searchQuery.value)
   const iconifyName = icon.iconifyName || getIconifyName(icon.class)
-  updateLocalIconCache({
+  const tags = buildOnlineIconTags(icon, localCategory)
+
+  return iconService.cache({
     class: icon.class,
     name: icon.name || iconifyName,
     category: localCategory,
     description: icon.description || `${localCategory}图标`,
-    tags: buildOnlineIconTags(icon, localCategory),
-    iconifyName
+    tags,
+    iconifyName,
+    svg: icon.svg || null
   })
 }
 
@@ -593,7 +501,7 @@ const deleteLocalIcon = async (icon) => {
       }
     )) return
 
-    const response = await unifiedApi.delete(`/icons/${icon.id}`)
+    const response = await iconService.remove(icon.id)
     if (response?.success) {
       removeIconFromCache(icon.id)
       globalNotifications.success(response.message || '图标已删除')
@@ -611,31 +519,41 @@ const filterIcons = () => {
   searchIcons()
 }
 
-const selectIcon = (icon) => {
+const selectIcon = async (icon) => {
   const iconClass = icon?.class || ''
-  if (!iconClass) {
+  if (!iconClass || saving.value) {
     return
   }
 
-  selectedIcon.value = iconClass
-  emit('select', iconClass, icon)
-
-  if (icon?.source === 'online' || isIconifyIconClass(iconClass)) {
-    persistOnlineIcon(icon)
+  saving.value = true
+  emit('saving-change', true)
+  try {
+    const selected = icon.source === 'online' || isIconifyIconClass(iconClass)
+      ? await persistOnlineIcon(icon)
+      : icon
+    if (disposed) return
+    updateLocalIconCache(selected)
+    selectedIcon.value = selected.class
+    emit('select', selected.class, selected)
+  } catch (error) {
+    if (!disposed) globalNotifications.warning(getRequestErrorMessage(error, '图标保存失败，请重试'))
+  } finally {
+    saving.value = false
+    if (!disposed) emit('saving-change', false)
   }
 }
 
 const prevPage = () => {
   if (currentPage.value > 1) {
     currentPage.value--
-    loadLocalIcons()
+    if (!useOnlineSearch.value) loadLocalIcons()
   }
 }
 
 const nextPage = () => {
   if (currentPage.value < totalPages.value) {
     currentPage.value++
-    loadLocalIcons()
+    if (!useOnlineSearch.value) loadLocalIcons()
   }
 }
 
@@ -671,128 +589,112 @@ const getCategoryLabel = (category) => {
   return labels[category] || category
 }
 
-const loadLocalIcons = async () => {
-  let fallbackTimer = null
+const loadLocalIcons = async (request = listRequest.nextRequest()) => {
   loading.value = true
-  fallbackTimer = window.setTimeout(() => {
-    if (loading.value && icons.value.length === 0) {
+  const fallbackTimer = window.setTimeout(() => {
+    if (request.isLatest() && loading.value && icons.value.length === 0) {
       applyFallbackIcons()
       loading.value = false
     }
   }, ICON_PICKER_FALLBACK_DELAY)
-
-  const query = new URLSearchParams({
-    limit: String(iconsPerPage),
-    page: String(currentPage.value)
-  })
-  if (selectedCategory.value) {
-    query.set('category', selectedCategory.value)
-  }
-  if (searchQuery.value.trim()) {
-    query.set('search', searchQuery.value.trim())
-  }
-
   try {
-    const response = await unifiedApi.get(`/icons?${query.toString()}`, {
-      showError: false
-    })
-    if (!response || !response.success || !Array.isArray(response.data)) {
-      throw new Error('图标接口响应无效')
-    }
+    const response = await iconService.list({
+      limit: iconsPerPage.value,
+      page: currentPage.value,
+      category: selectedCategory.value || undefined,
+      search: searchQuery.value.trim() || undefined
+    }, request.signal)
+    if (!request.isLatest()) return
+    if (!response?.success || !Array.isArray(response.data)) throw new Error('图标接口响应无效')
     allIcons.value = response.data
     icons.value = response.data
     totalIconCount.value = Number(response.total || response.data.length)
-  } catch (apiError) {
+  } catch (error) {
+    if (!request.isLatest() || listRequest.isCanceledError(error)) return
     applyFallbackIcons()
   } finally {
-    if (fallbackTimer) {
-      clearTimeout(fallbackTimer)
-    }
-    loading.value = false
+    clearTimeout(fallbackTimer)
+    if (request.isLatest()) loading.value = false
   }
 }
 
-// 实时搜索图标
+// 防抖开始时即取消旧请求，避免旧搜索/本地分页覆盖新的在线结果。
 const searchIcons = async () => {
   const query = searchQuery.value.trim()
-
-  // 清除之前的定时器
-  if (searchTimer) {
-    clearTimeout(searchTimer)
-  }
-
-  // 如果搜索为空，显示所有图标
+  const request = listRequest.nextRequest()
+  previewRequest.cancelLatest()
+  previewLoading.value = false
+  previewError.value = ''
+  searchError.value = ''
+  if (searchTimer) clearTimeout(searchTimer)
+  currentPage.value = 1
+  loading.value = false
   if (!query) {
+    searching.value = false
     if (useOnlineSearch.value) {
       icons.value = []
       totalIconCount.value = 0
-      searching.value = false
-      return
+    } else {
+      await loadLocalIcons(request)
     }
-    currentPage.value = 1
-    await loadLocalIcons()
-    searching.value = false
     return
   }
-
-  // 设置搜索状态
   searching.value = true
-
-  // 防抖：500ms 后执行搜索
   searchTimer = setTimeout(async () => {
     try {
       if (useOnlineSearch.value) {
-        // ========== 在线搜索模式 ==========
-        await searchOnlineIcons(query)
+        const response = await iconService.searchOnline(query, request.signal)
+        if (!request.isLatest()) return
+        if (!response?.success || !Array.isArray(response.data)) throw new Error('在线图标检索失败，请重试')
+        // 结果来源由在线接口边界确定，未入库候选不能误查本地库。
+        icons.value = response.data.map(icon => ({ ...icon, source: 'online' }))
+        totalIconCount.value = icons.value.length
+        loadOnlinePreviews()
       } else {
-        // ========== 离线搜索模式 ==========
-        await searchOfflineIcons(query)
+        await loadLocalIcons(request)
       }
-
     } catch (error) {
-      // 搜索失败，使用前端过滤
-      const searchKeywords = buildSearchKeywords(query)
-      icons.value = allIcons.value.filter(icon =>
-        searchKeywords.some(keyword =>
-          (icon.name && icon.name.toLowerCase().includes(keyword)) ||
-          (icon.class && icon.class.toLowerCase().includes(keyword)) ||
-          (icon.category && icon.category.toLowerCase().includes(keyword)) ||
-          (icon.tags && icon.tags.toLowerCase().includes(keyword)) ||
-          (icon.description && icon.description.toLowerCase().includes(keyword))
-        )
-      )
+      if (!request.isLatest() || listRequest.isCanceledError(error)) return
+      icons.value = []
+      totalIconCount.value = 0
+      searchError.value = getRequestErrorMessage(error, '在线图标检索失败，请重试')
     } finally {
-      searching.value = false
+      if (request.isLatest()) searching.value = false
     }
   }, 500)
 }
 
-// 在线搜索图标（使用 Iconify API）
-const searchOnlineIcons = async (query) => {
+const loadOnlinePreviews = async () => {
+  const request = previewRequest.nextRequest()
+  previewError.value = ''
+  const candidates = paginatedIcons.value.filter(icon => icon.source === 'online' && !icon.svg)
+  if (!useOnlineSearch.value || !candidates.length) {
+    previewLoading.value = false
+    return
+  }
+  previewLoading.value = true
   try {
-    const response = await unifiedApi.get(`/icons/search/online?query=${encodeURIComponent(query)}&limit=100`)
-
-    if (response && response.success && response.data && response.data.length > 0) {
-      icons.value = response.data
-      totalIconCount.value = response.data.length
-    } else {
-      icons.value = []
-      totalIconCount.value = 0
-    }
+    const names = candidates.map(icon => getIconifyName(icon.class))
+    const response = await iconService.preview(names, request.signal)
+    if (!request.isLatest()) return
+    if (!response?.success || !Array.isArray(response.data)) throw new Error('图标预览读取失败')
+    const previews = new Map(response.data.map(icon => [icon.class, icon.svg]))
+    icons.value = icons.value.map(icon => previews.get(icon.class) ? { ...icon, svg: previews.get(icon.class) } : icon)
+    if (candidates.some(icon => !previews.get(icon.class))) previewError.value = '部分图标预览暂不可用，请重试'
   } catch (error) {
-    throw error
+    if (!request.isLatest() || previewRequest.isCanceledError(error)) return
+    previewError.value = getRequestErrorMessage(error, '图标预览暂不可用，请重试')
+  } finally {
+    if (request.isLatest()) previewLoading.value = false
   }
 }
 
-// 离线搜索图标（使用本地数据库）
-const searchOfflineIcons = async (_query) => {
-  currentPage.value = 1
-  await loadLocalIcons()
-}
+// 搜索完成时主动预览；翻页只跟踪页码，回写 SVG 不触发重复请求。
+watch([useOnlineSearch, currentPage], loadOnlinePreviews)
 
 const loadCategories = async () => {
   try {
-    const response = await unifiedApi.get('/icons/categories', { showError: false })
+    const response = await iconService.categories()
     if (response?.success && Array.isArray(response.data)) {
       categories.value = response.data
       return
@@ -805,8 +707,8 @@ const loadCategories = async () => {
 
 // 生命周期
 onMounted(async () => {
-  await loadCategories()
-  await loadLocalIcons()
+  await Promise.all([loadCategories(), loadLocalIcons()])
+  if (disposed) return
   const currentClass = String(props.modelValue || '').trim()
   // Iconify 图标由 IconRenderer 直接从图标库渲染，不需要查询本地图标表。
   if (
@@ -815,16 +717,20 @@ onMounted(async () => {
     !allIcons.value.some(icon => icon.class === currentClass)
   ) {
     try {
-      const response = await unifiedApi.get(`/icons/by-class?class=${encodeURIComponent(currentClass)}`, {
-        showError: false
-      })
-      if (response?.success && response.data) {
-        updateLocalIconCache(response.data)
+      const icon = await iconService.byClass(currentClass)
+      if (icon) {
+        updateLocalIconCache(icon)
       }
     } catch (error) {
       // 本地图标可能已被删除，当前值仍由 IconRenderer 保留展示。
     }
   }
+})
+
+onBeforeUnmount(() => {
+  disposed = true
+  if (searchTimer) clearTimeout(searchTimer)
+  emit('saving-change', false)
 })
 
 // 监听搜索和分类变化，重置分页
@@ -840,22 +746,6 @@ watch([searchQuery, selectedCategory], () => {
   background: white;
   overflow: hidden;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-/* Iconify 图标样式 */
-.iconify {
-  display: inline-block;
-  vertical-align: middle;
-  font-size: var(--tf-type-scale-18);
-  width: 1em;
-  height: 1em;
-}
-
-/* 确保图标网格中的图标大小一致 */
-.icon-item .iconify {
-  font-size: var(--tf-type-scale-24);
-  width: 24px;
-  height: 24px;
 }
 
 .icon-item .icon-renderer {

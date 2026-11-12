@@ -11,8 +11,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted, onBeforeUnmount } from 'vue'
 import InlineLoading from '@/components/InlineLoading.vue'
+import { useLoadingStore } from '@/stores/loading'
 
 interface Props {
   text?: string
@@ -20,7 +21,7 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  text: '加载中...',
+  text: '正在读取内容...',
   size: 'normal'
 })
 
@@ -29,6 +30,11 @@ const loadingSize = computed(() => {
   if (props.size === 'large') return 'large'
   return 'medium'
 })
+
+// 区块占位自身管理展示生命周期，所有调用方共用同一套全局/局部互斥。
+const loadingStore = useLoadingStore()
+onMounted(() => loadingStore.startLocalLoading())
+onBeforeUnmount(() => loadingStore.stopLocalLoading())
 </script>
 
 <style scoped>

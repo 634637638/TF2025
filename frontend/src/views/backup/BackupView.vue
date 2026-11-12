@@ -117,7 +117,7 @@
           </div>
 
           <el-table
-            v-tf-loading="isLoading"
+            v-tf-loading="{ active: isLoading, text: '正在刷新备份列表...' }"
             class="data-table"
             :data="backupList"
             border
@@ -128,7 +128,7 @@
               <TableLoadingRow
                 v-if="isLoading"
                 mode="block"
-                text="加载中..."
+                text="正在读取备份列表..."
               />
               <DataEmptyState
                 v-else
@@ -281,11 +281,12 @@
       @saved="loadCloudTasks"
     />
 
-    <el-dialog
+    <MobileDialog
       v-model="createDialogVisible"
+      :show-default-footer="false"
       title="创建备份"
-      width="min(520px, calc(100vw - 32px))"
-      class="backup-create-dialog"
+      width="520px"
+      dialog-class="backup-create-dialog"
       :close-on-click-modal="false"
     >
       <el-radio-group
@@ -326,14 +327,15 @@
           </el-button>
         </div>
       </template>
-    </el-dialog>
+    </MobileDialog>
 
     <!-- 清理对话框 -->
-    <el-dialog
+    <MobileDialog
       v-model="cleanupDialogVisible"
+      :show-default-footer="false"
       title="清理旧备份"
       width="400px"
-      class="backup-cleanup-dialog"
+      dialog-class="backup-cleanup-dialog"
       :close-on-click-modal="false"
     >
       <el-form label-width="100px">
@@ -370,7 +372,7 @@
           </el-button>
         </div>
       </template>
-    </el-dialog>
+    </MobileDialog>
   </div>
 </template>
 
@@ -557,7 +559,7 @@ const createBackup = async () => {
   }
 
   isCreating.value = true
-  const closeLoading = loading('正在创建备份，请稍候...（可能需要几分钟）')
+  const closeLoading = loading(`正在创建${backupType.value === 'database' ? '数据库备份' : '完整备份'}，请稍候...（可能需要几分钟）`)
 
   try {
     // 备份可能需要较长时间（特别是上传文件较大时），设置10分钟超时

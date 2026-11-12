@@ -100,7 +100,7 @@
       class="table-responsive"
     >
       <el-table
-        v-tf-loading="loading"
+        v-tf-loading="{ active: loading, text: '正在刷新云盘文件列表...' }"
         :data="rows"
         border
         stripe

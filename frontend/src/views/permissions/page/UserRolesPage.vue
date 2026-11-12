@@ -8,7 +8,7 @@
 
     <div class="table-responsive">
       <el-table
-        v-tf-loading="ctx.usersLoading"
+        v-tf-loading="{ active: ctx.usersLoading, text: '正在刷新用户角色列表...' }"
         :data="ctx.paginatedUsers"
         border
         stripe

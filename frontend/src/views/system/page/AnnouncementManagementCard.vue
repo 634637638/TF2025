@@ -35,6 +35,7 @@
     />
     <div
       v-else-if="announcements.length"
+      v-tf-loading="{ active: loading, text: '正在刷新站内公告...' }"
       class="announcement-management-list"
     >
       <article

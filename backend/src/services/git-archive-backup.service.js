@@ -81,6 +81,7 @@ class GitArchiveBackupService {
         'backend/package-lock.json',
         ...PRODUCTION_RUNTIME_FILES.map(file => `backend/${file}`),
         'backend/scripts',
+        'backend/deploy',
         'backend/database',
         'backend/migrations',
         'backend/.env.example'
@@ -88,15 +89,15 @@ class GitArchiveBackupService {
       for (const item of backendItems) {
         if (this.existsSync(path.join(this.projectRoot, item))) archiveItems.push(item)
       }
-      for (const item of ['package-lock.json', 'shared']) {
+      for (const item of ['package-lock.json', 'scripts', 'eslint.config.js', 'AGENTS.md', 'CLAUDE.md', '.gitignore']) {
         if (this.existsSync(path.join(this.projectRoot, item))) archiveItems.push(item)
       }
 
       const excludePatterns = [
         'node_modules', '.git', 'dist', 'build', '.DS_Store', '*.log', 'uploads', '.vite',
-        '.frontend.pid', '.eslintrc.js', '本地备份', 'ssl', '.claude', 'restart-backend.sh',
+        '.frontend.pid', '本地备份', 'ssl', '.claude', 'restart-backend.sh',
         'force-sync-permissions.js', 'fix_time_literals.py', 'router-guards-fix.patch',
-        'public/quick-fix.js', 'backend/logs', 'backend/uploads', 'backend/*.pid',
+        'public/quick-fix.js', 'backend/logs', 'backend/uploads', 'backend/backups', 'backend/*.pid',
         'backend/migrations/*.pid', 'backend/*.traineddata', 'backend/.env',
         'backend/.env.production', 'backend/.env.production-fixed',
         'backend/.env.production-separated', 'backend/database/*.db',

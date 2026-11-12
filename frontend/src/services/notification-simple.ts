@@ -389,7 +389,7 @@ class SimpleNotificationService {
   /**
    * 加载状态通知
    */
-  public loading(message: string = '加载中...'): () => void {
+  public loading(message: string = '正在处理，请稍候...'): () => void {
     if (getActivePinia()) {
       const operationId = `notification-loading-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
       const loadingStore = useLoadingStore()

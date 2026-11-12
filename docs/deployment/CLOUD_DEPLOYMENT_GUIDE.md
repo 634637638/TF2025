@@ -166,6 +166,7 @@ mysql -u tf2025_user -p tf2025_prod < database_backup.sql
 backend/
 ├── src/                              # 全部部署，包含配置、路由、服务和权限能力清单
 ├── scripts/                          # 全部部署，包含资源检查、迁移和密钥维护脚本
+├── deploy/                           # 可选后端 Nginx 模板，不由 Node 进程自动加载
 ├── uploads/                          # 迁移旧服务时完整同步；全新空站至少创建可写目录
 ├── package.json                      # 脚本和直接依赖声明
 ├── package-lock.json                 # 精确依赖树，供 npm ci 使用
@@ -176,7 +177,9 @@ backend/
 └── .env.production                   # 只在服务器本机创建或从旧生产机安全迁移
 ```
 
-`src/` 内的 `src/config/module-permission-capabilities.json` 属于强制运行时资源，不能只上传 JS 文件而漏掉 JSON。`src/lock/screen-lock-settings.json` 也随 `src/` 部署；运行用户需要能够更新屏幕锁配置。
+`src/` 内的 `src/config/module-permission-capabilities.json` 和 `src/config/reminder-policy.json` 属于强制运行时资源，不能只上传 JS 文件而漏掉 JSON。`src/lock/screen-lock-settings.json` 也随 `src/` 部署；运行用户需要能够更新屏幕锁配置。提醒策略由前后端从 `backend/src/config/reminder-policy.json` 唯一读取，随 `src/` 发布；后端运行不依赖项目根目录的 `config/`。`npm run check:runtime-assets` 同时检查权限能力清单与提醒策略，缺文件、JSON 无法解析或提醒窗口不是正数时失败。
+
+字段契约、后端安全审计和架构台账放在 `backend/scripts/config/`，随完整 `scripts/` 发布；前端审计配置放在 `frontend/scripts/`。仓库根目录的 `config/` 已撤除，生产服务无需另建同名目录或从后端目录外读取这些运行配置。
 
 以下内容不进入生产发布包：
 
@@ -326,6 +329,8 @@ npm install
 npm run build
 ```
 
+构建结果直接位于 `frontend/dist/`，标准脚本不自动生成 ZIP/TAR 部署包，由用户自行压缩上传目录内容。发布后站点目录应直接包含 `index.html`、`js/`、`css/` 等文件，不要额外套一层 `dist/`。脚本与产物约定见[生产构建规范](../frontend/security-runtime-standards.md#生产构建与产物)。
+
 ### 2. 部署静态文件
 
 ```bash
@@ -348,15 +353,12 @@ sudo chmod -R 755 /www/wwwroot/v6.cn9527.cn
 
 ```bash
 # 复制后端配置
-sudo cp /var/www/tf2025/nginx-backend.conf /etc/nginx/sites-available/tf2025-backend
+sudo cp /var/www/tf2025/backend/deploy/nginx.conf /etc/nginx/sites-available/tf2025-backend
 
 # 创建软链接启用站点
 sudo ln -s /etc/nginx/sites-available/tf2025-backend /etc/nginx/sites-enabled/
 
-# 添加限流配置到 nginx.conf
-sudo nano /etc/nginx/nginx.conf
-# 在 http 块中添加：
-# limit_req_zone $binary_remote_addr zone=api:10m rate=10r/s;
+# 模板已经包含 limit_req_zone，须从 http 块 include；不要重复声明同名限流区
 
 # 测试配置
 sudo nginx -t
@@ -369,7 +371,7 @@ sudo systemctl reload nginx
 
 ```bash
 # 复制前端配置
-sudo cp /var/www/tf2025/nginx-frontend.conf /etc/nginx/sites-available/tf2025-frontend
+sudo cp /var/www/tf2025/frontend/deploy/nginx.conf /etc/nginx/sites-available/tf2025-frontend
 
 # 创建软链接
 sudo ln -s /etc/nginx/sites-available/tf2025-frontend /etc/nginx/sites-enabled/
@@ -382,6 +384,8 @@ sudo systemctl reload nginx
 ```
 
 ### 3. 完整的 Nginx 配置示例
+
+上方 `backend/deploy/nginx.conf` 和 `frontend/deploy/nginx.conf` 是各端唯一维护的模板；下方展示独立 TLS 终止时的配置结构，按实际拓扑选择并合并，不同时启用多个相同站点。前端模板已合并原路由模板的隐藏文件与敏感扩展名拦截，并保留 `/uploads/` 代理；不得重新创建根级 Nginx 副本。宝塔站点按[宝塔部署说明](BAOTA_DEPLOYMENT_GUIDE.md)保留已有证书配置。
 
 **后端配置文件** (`/etc/nginx/sites-available/tf2025-backend`):
 

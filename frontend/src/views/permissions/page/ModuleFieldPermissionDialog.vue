@@ -3,7 +3,7 @@
     :model-value="modelValue"
     :title="`${module?.name || ''} - 字段权限配置`"
     width="900px"
-    dialog-class="permissions-dialog field-permission-dialog"
+    dialog-class="permissions-dialog field-permission-dialog tf-dialog-workspace"
     :show-default-footer="false"
     @update:model-value="emit('update:modelValue', $event)"
   >

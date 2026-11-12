@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict'
+import { execFileSync } from 'node:child_process'
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
+import { ARCHITECTURE_CONFIG_PATH, loadArchitectureBaselineConfig } from './lib/architecture-baseline-config.mjs'
 import {
   analyzeControllerDatabaseCalls,
   analyzeControllerRepositoryDependencies,
@@ -34,6 +36,45 @@ const createFixture = (t) => {
   t.after(() => rmSync(root, { recursive: true, force: true }))
   return { routesRoot, controllersRoot, servicesRoot, repositoriesRoot }
 }
+
+const createGitFixture = t => {
+  const root = mkdtempSync(join(tmpdir(), 'tf-architecture-config-'))
+  t.after(() => rmSync(root, { recursive: true, force: true }))
+  const git = (...args) => execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })
+  git('init')
+  git('-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid', 'commit', '--allow-empty', '-m', 'fixture')
+  const save = (file, text) => {
+    mkdirSync(join(root, file, '..'), { recursive: true })
+    writeFileSync(join(root, file), text)
+    git('add', file)
+    git('-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid', 'commit', '-m', 'fixture configuration')
+  }
+  return { root, save }
+}
+
+test('架构基线迁移前后的 Git 版本均读取真实登记，不重建历史', t => {
+  const { root, save } = createGitFixture(t)
+  const original = { maxControllerSqlCalls: 3, baselineHistory: { maxControllerSqlCalls: [{ value: 3 }] } }
+  save('config/backend-route-architecture.json', JSON.stringify(original))
+  assert.deepEqual(loadArchitectureBaselineConfig(root, 'HEAD'), original)
+  const current = { ...original, maxControllerSqlCalls: 2 }
+  save(ARCHITECTURE_CONFIG_PATH, JSON.stringify(current))
+  assert.deepEqual(loadArchitectureBaselineConfig(root, 'HEAD'), current)
+  assert.deepEqual(loadArchitectureBaselineConfig(root, 'HEAD~1'), original)
+})
+
+test('新位置的架构基线损坏时拒绝读取旧位置绕过', t => {
+  const { root, save } = createGitFixture(t)
+  save('config/backend-route-architecture.json', '{}')
+  save(ARCHITECTURE_CONFIG_PATH, '{')
+  assert.throws(() => loadArchitectureBaselineConfig(root, 'HEAD'), SyntaxError)
+})
+
+test('只有有效且确实无台账的历史提交才返回首次登记，无效引用必须失败', t => {
+  const { root } = createGitFixture(t)
+  assert.equal(loadArchitectureBaselineConfig(root, 'HEAD'), null)
+  assert.throws(() => loadArchitectureBaselineConfig(root, 'missing-synthetic-ref'))
+})
 
 test('architecture snapshot reads all per-file ratchets from target source trees', (t) => {
   const roots = createFixture(t)

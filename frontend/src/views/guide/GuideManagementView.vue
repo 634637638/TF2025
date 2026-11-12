@@ -42,7 +42,10 @@
       </PageHeader>
 
       <div class="admin-page-content">
-        <section class="guide-panel">
+        <section
+          v-tf-loading="{ active: loading, text: '正在刷新导航内容...' }"
+          class="guide-panel"
+        >
           <div class="guide-panel__heading">
             <div><h2>顶部公告</h2><p>前台会按排序展示当前有效公告。</p></div><span class="guide-count">{{ announcements.length }} 条</span>
           </div>
@@ -95,7 +98,10 @@
           </div>
         </section>
 
-        <section class="guide-panel">
+        <section
+          v-tf-loading="{ active: loading, text: '正在刷新导航内容...' }"
+          class="guide-panel"
+        >
           <div class="guide-panel__heading">
             <div><h2>导航分类</h2><p>公开分类直接展示，密码分类只展示锁定状态。</p></div><span class="guide-count">{{ categories.length }} 个</span>
           </div>
@@ -115,7 +121,7 @@
             >
               <div class="category-admin-card__header">
                 <div class="category-admin-card__icon">
-                  <i :class="category.icon || 'fas fa-layer-group'" />
+                  <IconRenderer :icon="category.icon || 'fas fa-layer-group'" />
                 </div>
                 <div class="category-admin-card__title">
                   <h3>{{ category.name }}</h3><p>{{ category.description || '未填写分类说明' }}</p>

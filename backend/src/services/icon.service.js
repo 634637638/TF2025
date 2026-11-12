@@ -5,6 +5,7 @@ const {
   ensureIconSchema: defaultEnsureIconSchema,
   extractIconifyName: defaultExtractIconifyName,
   fetchIconifySvg: defaultFetchIconifySvg,
+  iconSetToSvg,
   sanitizeSvg: defaultSanitizeSvg
 } = require('../utils/iconStore')
 const log = require('../utils/log')
@@ -137,6 +138,39 @@ class IconService extends BaseService {
     }
   }
 
+  async preview(queryOptions) {
+    const names = String(queryOptions.names || '').split(',')
+    if (names.length > 24 || names.some(name => !/^[a-z0-9-]{1,64}:[a-z0-9-]{1,128}$/.test(name))) {
+      throw this.createError('每次最多预览24个有效图标', 400)
+    }
+    const unique = [...new Set(names)]
+    const groups = new Map()
+    for (const name of unique) {
+      const [prefix, simpleName] = name.split(':')
+      if (!groups.has(prefix)) groups.set(prefix, [])
+      groups.get(prefix).push(simpleName)
+    }
+    const results = new Map()
+    const queue = [...groups]
+    // 批量读取集合 JSON，限制外部并发；单个集合失败不影响其他候选。
+    await Promise.all(Array.from({ length: Math.min(4, queue.length) }, async () => {
+      while (queue.length) {
+        const [prefix, icons] = queue.shift()
+        try {
+          const data = await this.fetchIconifyJson(`https://api.iconify.design/${prefix}.json?icons=${icons.map(encodeURIComponent).join(',')}`)
+          for (const name of icons) results.set(`${prefix}:${name}`, await iconSetToSvg(data, name))
+        } catch (error) {
+          this.logger.warn('在线图标集合预览失败', { prefix, message: error.message })
+        }
+      }
+    }))
+    return {
+      success: true,
+      data: unique.map(name => ({ class: `iconify ${name}`, svg: results.get(name) || null })),
+      message: '图标预览读取完成'
+    }
+  }
+
   async collection(params, queryOptions) {
     const { prefix } = params
     const { limit = 500 } = queryOptions
@@ -212,7 +246,10 @@ class IconService extends BaseService {
     await this.ensureIconSchema(pool)
     const [icons] = await this.repository.readbyClass(pool, iconClass)
 
-    if (icons.length === 0) throw this.createError('图标不存在', 404)
+    if (icons.length === 0) {
+      if (queryOptions.optional === '1') return { success: true, message: '图标尚未入库', data: null }
+      throw this.createError('图标不存在', 404)
+    }
     return { success: true, message: '图标获取成功', data: icons[0] }
   }
 
@@ -280,11 +317,20 @@ class IconService extends BaseService {
     }
 
     if (normalizedIconifyName && !normalizedSvg) {
+      const stored = await this.repository.findByClass(pool, normalizedClass)
+      normalizedSvg = stored?.is_valid !== 0 ? this.sanitizeSvg(stored?.svg) : null
+    }
+
+    if (normalizedIconifyName && !normalizedSvg) {
       try {
-        normalizedSvg = await this.fetchIconifySvg(normalizedIconifyName)
+        normalizedSvg = this.sanitizeSvg(await this.fetchIconifySvg(normalizedIconifyName))
       } catch (svgError) {
         this.logger.warn(`获取 Iconify SVG 失败: ${normalizedIconifyName}`, svgError)
       }
+    }
+
+    if (normalizedIconifyName && !normalizedSvg) {
+      throw this.createError('图标资源获取失败，未保存，请重试', 502)
     }
 
     const isValid = normalizedIconifyName ? (normalizedSvg ? 1 : 0) : 1

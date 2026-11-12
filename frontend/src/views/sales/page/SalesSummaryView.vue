@@ -1,12 +1,12 @@
 <template>
   <div
-    v-tf-loading="loading"
+    v-tf-loading="{ active: loading, text: '正在刷新库存汇总...' }"
     class="sales-view-panel"
   >
     <TableLoadingRow
-      v-if="loading"
+      v-if="loading && items.length === 0"
       mode="block"
-      text="加载中..."
+      text="正在读取库存汇总..."
     />
     <DataEmptyState
       v-else-if="items.length === 0"

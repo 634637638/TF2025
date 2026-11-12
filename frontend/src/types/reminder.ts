@@ -107,3 +107,34 @@ export interface ReminderTypeFormState {
   color: string
   sort_order: number
 }
+
+export interface ReminderAlert {
+  recipient_status?: ReminderRecipientStatus | null
+  is_mandatory?: boolean | number
+  kind: 'reminder'
+  occurrence_id: number
+  reminder_id: number
+  title: string
+  content?: string
+  priority: string
+  type_name?: string
+  type_color?: string
+  scheduled_at: string
+  remind_at: string
+}
+
+export interface CompletionAlert {
+  kind: 'completion'
+  occurrence_id: number
+  reminder_id: number
+  title: string
+  content?: string
+  priority: string
+  scheduled_at: string
+  remind_at: string
+  action_at?: string
+  user_name?: string
+  username?: string
+}
+
+export type ReminderQueueItem = ReminderAlert | CompletionAlert

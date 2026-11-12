@@ -43,7 +43,7 @@
         </template>
 
         <el-table
-          v-tf-loading="loading"
+          v-tf-loading="{ active: loading, text: '正在刷新库存预警配置...' }"
           :data="filteredGroupedConfigs"
           stripe
           border
@@ -57,7 +57,7 @@
             <TableLoadingRow
               v-if="loading"
               mode="block"
-              text="加载中..."
+              text="正在读取库存预警配置..."
             />
             <DataEmptyState
               v-else
@@ -1635,14 +1635,6 @@ defineExpose({
     color: var(--color-text-regular);
   }
 
-  :deep(.warning-dialog) {
-    --tf-dialog-body-padding-inline: var(--tf-space-6);
-    --tf-dialog-body-padding-block: var(--tf-space-6) var(--tf-space-4);
-    --tf-dialog-footer-padding-inline: var(--tf-space-6);
-    --tf-dialog-footer-padding-block-start: var(--tf-space-3);
-    --tf-dialog-footer-padding-block-end: var(--tf-space-6);
-  }
-
   :deep(.el-table .el-table__expanded-cell) {
     padding: 16px;
     background: var(--tf-color-surface-gray);
@@ -1675,10 +1667,6 @@ defineExpose({
     .variant-editor__header {
       flex-direction: column;
       align-items: flex-start;
-    }
-
-    :deep(.warning-dialog .el-dialog) {
-      width: 96% !important;
     }
 
     :deep(.el-form-item__label) {

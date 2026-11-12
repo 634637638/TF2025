@@ -10,7 +10,7 @@ TAB 的尺寸、颜色、圆角、间距、选中态、悬停态和手机布局�
 
 - `frontend/src/styles/components/_tabs.scss`
 
-横向滚动行为统一由 `frontend/src/utils/page-tab-scroll.ts` 实现，`main.ts` 在挂载后初始化一次。页面不得重复注册滚轮事件或另建 TAB 位移逻辑。
+横向滚动行为统一由 `frontend/src/utils/page-tab-scroll.ts` 实现，`main.ts` 在挂载后通过已有业务路由初始化入口按需加载，首次进入非登录页面时统一初始化一次。页面不得重复注册滚轮事件或另建 TAB 位移逻辑。
 
 该文件由 `frontend/src/styles.scss` 全局加载。业务页面不得定义 `.tab-navigation`、`.tf-page-tabs`、`.tf-tab-content`、`.tf-tab-panel`、`.el-tabs__header`、`.el-tabs__content`、`.el-tabs__item`、`.el-tabs__nav*` 或 `.el-tabs__active-bar` 的视觉样式。
 
@@ -91,3 +91,5 @@ npm run check:tabs
 ```
 
 审计会检查所有 Vue 文件，阻止未接入公共导航/内容类、缺少统一内容容器，以及页面级 TAB 视觉和宽度间距覆盖；同时校验公共宽度约束、隐藏箭头、单一原生滚动位移和统一行为初始化。视觉验收须从 `360px` 开始，滑动到末尾并切换标签后再滑回首项，确认卡片宽度不变、首尾标签均可访问。
+
+公共入口导入检查使用 TypeScript AST，允许真实静态或动态导入，不把注释、字符串或纯类型引用计作运行时接入。正反例回归为 `frontend/scripts/runtime-module-import.test.mjs`，随 `check:tables` 执行。

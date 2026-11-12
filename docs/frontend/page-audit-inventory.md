@@ -18,6 +18,12 @@
 
 > 2026-11-11 首轮全局序号：页面、弹窗及公共表格的 37 个序号/ID 列统一使用 `table-number-badge` 浅紫色圆角标签，样式和深色主题由 `admin-layout.css` 控制，长数字通过公共 `$getNumberColumnWidth` 自动扩列；员工、门店及权限列表的位置编号标题改为“序号”，真实 ID 保留原值。序号/ID 接入、公共列宽及私有样式覆盖纳入 `check:badges` 门禁，`/standards` 提供预览；分页、倒序和组内编号沿用业务规则。使用真实列模板和公共分页组件完成 375/430/768/1024/1440px × 明暗主题共 10 组本地 Chromium 检查，验证长序号、聚合 ID、行高和无页面横向溢出；未连接真实业务 API，不代表安卓/iOS 真机或所有页面的整页验收。
 
+> 2026-11-11 主屏幕书签保存图片：销售报价 `/sales-price-display` 与批发报价 `/price-query` 共用公共安全区避让，悬浮 footer 移除整屏底部安全区叠加；销售保存按钮语义与批发一致。复现、测试及真机验收边界统一登记在[任务 T21](../development/TECHNICAL_DEBT_PROGRESS.md#t21-全局模态框双端统一2026-11-11)，公共规则见[对话框规范](dialog-standards.md#主屏幕书签与安全区)。
+
+> 2026-11-11 关闭残留修复：`/price-query` 在库明细相关排查发现公共 sheet 遮罩强制 flex 覆盖隐藏状态，电脑窄窗口也受影响；修复公共样式并增加实际可见性回归，组件接入数量保持不变。验证范围及结果登记在任务 T21.8。
+
+> 2026-11-11 报价页头按钮：`/price-query`、`/sales-price-display` 通过公共 `PublicPriceHeader` 的 `actionWidth` / `actionSize` 声明紧凑规格，保留图标及完整文字，按钮内容和每排操作居中；清理两页失效的旧页头样式。营销页未提供操作插槽时不生成按钮区。`/standards` 同步真实参数预览，未新增路由或组件；浏览器及构建证据见任务 T21.9，规则见[按钮规范](button-standards.md#显式尺寸声明)。
+
 ## 1. 目的与统计口径
 
 本台账是所有前端页面、页面内功能单元和公共组件的统一入口。后续新增页面、路由、Tab、弹窗、列表、表单或公共交互时，必须先登记，再实现；修改公共规范或跨页面功能时，必须按本台账确认受影响范围，不能只修改当前打开的页面。
@@ -40,6 +46,188 @@
 | 原生按钮 | 所有 Vue 页面和公共组件中的 `<button>` | 0 |
 
 “实际叶子路由”与“页面源文件”不能相加作为页面总数：62 个叶子 URL 实际映射到 59 个唯一 `views` 文件和 1 个公共组件；`AggregatedProductDetail.vue` 与 `OrderDetail.vue` 分别被两个 URL 复用。130 个 `views` 文件由 59 个叶子页面文件、3 个布局容器和 68 个非路由功能单元组成。没有独立 URL 的 Tab、弹窗和组件仍然属于后续统一审计范围。
+
+### 全量 Loading 接入复核（2026-11-11）
+
+按实际 62 个叶子路由及 130 个页面/功能单元、73 个公共组件、1 个 App 入口核对。结论：**统一 API 的默认全局反馈已覆盖；原有部分手动刷新漏掉区域状态，本轮已补齐。静态接入不代表全部页面已通过整页或真机验收。**
+
+| 对象 | 实测 | 说明 |
+| --- | ---: | --- |
+| 全局宿主 | 1 | App 唯一挂载；首载默认请求延迟 5 秒显示，局部反馈优先 |
+| 含区域指令文件 | 58 | 按文件去重，不是指令实例数 |
+| TableLoadingRow / SectionLoading / InlineLoading | 59 / 44 / 39 | 模板实例数，共享组件不能按 URL 重复累加 |
+| 含局部反馈文件 | 108 | 含 LoadingOverlay，排除仅按钮 Loading 的文件 |
+| 直接请求文件 / 含表格文件 | 50 / 62 | 直接请求采用现有静态模式，API 服务和 Composable 调用链须人工复核 |
+| Element v-loading | 0 | 业务区域统一使用公共入口 |
+
+本轮修复范围：公共指令初始 false 时的首次刷新漏显，SectionLoading 自动登记局部状态并移除 TableLoadingRow/LoadingOverlay 重复登记；员工、供应商、门店、付款、预定、考勤、基础资料及国补等页面合并 refreshing；库存、销售和工资父子状态传递；菜单、销售网格/汇总及 H5 列表保留旧内容；个人考勤及站点设置移除加载时清空表格；导航管理、经验分享、公告、Git 列表和分析刷新补区域反馈，仪表盘手动刷新使用 LoadingOverlay。保留用户既有修改，不涉及云端数据库写入。
+
+文案同步复核：全部业务区域指令补充对象名称，泛化占位替换为对应列表、详情或权限区块；备份区分数据库备份和完整备份。统一请求按资源及动作提供读取、保存、清理、导入导出、上传下载、工资计算、订单、Git 等提示，并支持 `RequestConfig.loadingText`。修复原 Axios 提示覆盖业务长操作文案的问题；每项请求独立登记和清理，业务提示优先于自动写入/读取提示，结束后切回剩余任务。完整契约见 [Loading 业务操作文案](global-loading-standard.md#业务操作文案)，行为证据由 `loading-text.spec.ts` 和 `api-loading.spec.ts` 维护。
+
+复现逐文件证据：`npm --silent --prefix frontend run check:loading -- --json`。下表使用真实路由和静态/异步 Vue 子组件依赖，区域列按“含 v-tf-loading 或 LoadingOverlay 的业务文件”去重；占位列按“含 TableLoadingRow 或 SectionLoading 的业务文件”去重，排除公共 Loading 组件自身。同一文件可属于两列，各 URL 的共享文件不能累加。按钮包含子单元提交按钮，不能单独证明列表刷新正确；0 不表示未接统一 API。无区域入口的公开展示、登录或静态页面按实际请求使用默认全局反馈/按钮，404 无业务数据请求；分析页等运行时组件和 API 包装仍需业务验收。
+
+| 路由 | 区域反馈文件 | 占位反馈文件 | 按钮反馈文件 |
+| --- | ---: | ---: | ---: |
+| `/login` | 0 | 0 | 0 |
+| `/404` | 0 | 0 | 0 |
+| `/dashboard` | 3 | 1 | 2 |
+| `/suppliers` | 1 | 1 | 5 |
+| `/payments` | 1 | 1 | 5 |
+| `/system` | 4 | 4 | 7 |
+| `/standards` | 0 | 0 | 2 |
+| `/git-management` | 1 | 0 | 2 |
+| `/backup` | 2 | 2 | 5 |
+| `/data-optimization` | 1 | 1 | 2 |
+| `/menu` | 1 | 2 | 5 |
+| `/sales` | 3 | 4 | 10 |
+| `/models` | 1 | 1 | 4 |
+| `/colors` | 1 | 1 | 4 |
+| `/memories` | 1 | 1 | 4 |
+| `/brands` | 1 | 1 | 4 |
+| `/stores` | 1 | 1 | 5 |
+| `/employees` | 1 | 1 | 5 |
+| `/customers` | 1 | 1 | 5 |
+| `/accessories` | 1 | 1 | 5 |
+| `/inventory` | 1 | 2 | 8 |
+| `/preorders` | 2 | 2 | 6 |
+| `/reminders` | 1 | 1 | 4 |
+| `/shared` | 1 | 1 | 4 |
+| `/guide` | 1 | 0 | 3 |
+| `/marketing` | 0 | 0 | 2 |
+| `/error-management` | 1 | 1 | 2 |
+| `/query` | 1 | 2 | 9 |
+| `/permissions` | 4 | 7 | 4 |
+| `/analytics` | 4 | 3 | 5 |
+| `/attendance` | 1 | 1 | 4 |
+| `/salary` | 5 | 7 | 7 |
+| `/subsidy` | 1 | 2 | 6 |
+| `/rentals` | 1 | 1 | 4 |
+| `/repairs` | 1 | 1 | 4 |
+| `/price-list` | 2 | 1 | 6 |
+| `/price-list/sync-logs` | 1 | 1 | 3 |
+| `/H5-admin/page/templates` | 1 | 1 | 4 |
+| `/H5-admin/page/config` | 1 | 1 | 2 |
+| `/H5-admin/page/home-sections` | 1 | 1 | 4 |
+| `/H5-admin/page/banners` | 1 | 1 | 3 |
+| `/H5-admin/page/orders` | 1 | 1 | 4 |
+| `/H5-admin/page/sold-products` | 1 | 1 | 3 |
+| `/price-query` | 0 | 2 | 4 |
+| `/sales-price-display` | 0 | 1 | 4 |
+| `/DH` | 0 | 0 | 2 |
+| `/Marketing_Copy` | 0 | 0 | 2 |
+| `/m/` | 0 | 0 | 2 |
+| `/m/products` | 0 | 1 | 1 |
+| `/m/product/new/:id` | 0 | 1 | 0 |
+| `/m/product/:id` | 0 | 3 | 2 |
+| `/m/product` | 0 | 1 | 0 |
+| `/m/cart` | 0 | 1 | 1 |
+| `/m/checkout` | 0 | 1 | 2 |
+| `/m/order/success` | 0 | 0 | 0 |
+| `/m/order/detail` | 0 | 1 | 2 |
+| `/m/my-orders` | 0 | 1 | 3 |
+| `/m/order-detail/:orderNumber` | 0 | 1 | 2 |
+| `/m/order-query` | 0 | 1 | 2 |
+| `/m/login` | 0 | 0 | 1 |
+| `/m/register` | 0 | 0 | 1 |
+| `/m/my` | 0 | 1 | 3 |
+
+验证结果（2026-11-11）：`npm --prefix frontend run test:unit` 通过 50 个文件、408 项测试；`type-check`、相关 TS/Vue 定向 ESLint（零警告）、`check:loading`、`check:coverage`、`check:tables`、`check:empty-states`、`check:ui`、`check:responsive`、`check:design-tokens`、`check:typescript-debt`、`check:data-freshness`、`check:runtime-patterns`、`check:error-management`、`check:component-adoption`、`check:interactions`、根目录 `check:docs` 和 `git diff --check` 通过。Chromium 公共组件夹具在 375/768/1440px × 明暗主题 6 组检查中验证区域边界、无横向溢出、保留旧数据、5 秒首载延迟、全局/局部互斥、结束清理、区域文案动态更新及备份提示不被并发请求覆盖。
+
+验证边界：浏览器检查使用真实公共组件与模拟状态，Axios 行为测试使用模拟适配器；未访问业务 API。逐路由表仅为静态入口证据，不表示每个页面的全部操作、失败重试或 Android/iOS 真机已验收。
+
+### 全量模态框接入复核（2026-11-11）
+
+本轮核对实际路由与全部 204 个 Vue 文件（130 个页面/内部单元、73 个公共组件及 App 入口），数量与本台账一致。结论为：**模板入口及公共外壳已整改，业务整页与真机仍待验收**。整改与逐页验收统一进入[全局技术债务 T21](../development/TECHNICAL_DEBT_PROGRESS.md#t21-全局模态框双端统一2026-11-11)，本节只维护盘点证据，不另建任务清单。
+
+| 统计对象 | 本轮实测 | 口径 |
+| --- | ---: | --- |
+| 含弹窗/查看器引用的 Vue 文件 | 93 | 按源码文件去重，含非路由单元 |
+| MobileDialog | 140 | 业务模板引用数，PC 与手机共享组件 |
+| 直接业务 el-dialog | 0 | 原 6 文件 / 12 处全部迁入 MobileDialog，例外清零；不含公共组件内部实现 |
+| 公共 MediaPreviewViewer | 8 | 模板引用数，不与业务 Dialog 混算 |
+| 直接 el-image-viewer | 0 | 经验分享已迁公共媒体查看器 |
+| 公共确认/输入/提示服务调用点 | 129 | 全部 src 脚本 AST 识别公共绑定：confirmAction 96、alertAction 2、confirm 25、prompt 6（含公共姓名输入）；不是运行时弹窗次数 |
+| 浏览器原生输入框 | 0 | 原 4 处中 1 处无调用函数删除，其他入口复用 useCustomerNamePrompt |
+| 公共弹窗样式覆盖候选 | 57 | 3 文件的业务内容候选，私有外壳命中 0；同一嵌套扫描器复核改前为 352 项（首轮旧扫描为 293），口径变化及决定见 T21 |
+
+复现：`npm --prefix frontend run audit:dialogs`；逐实例及源码行号使用 `npm --prefix frontend run audit:dialogs -- --json`；路由矩阵使用 `npm --prefix frontend run audit:dialogs -- --markdown`。统计器的正式正反例已接入 `check:dialogs`，包括路由/台账数量一致性、异步子弹窗、模板注释、真实行号、原生与公共服务调用区分。
+
+#### 逐路由模板入口矩阵
+
+以下 62 个叶子 URL 分别核对静态/异步 Vue 子组件及可唯一发现的公共组件；各行共享引用不能相加作为全站总数。布局宿主单列：后台主布局包含 1 个 ReminderHost MobileDialog，H5 手机布局包含 1 个 MobileDialog 登录提示；H5 管理布局没有业务模板弹窗。矩阵中的 0 只表示该页面及已解析子单元没有相应模板引用，**不表示没有服务确认框或继承布局弹窗**。所有行的整页 PC/手机视觉状态均为“未逐页验收”；公共组件浏览器结果只在 T21 验证记录中报告。
+
+| 路由 | MobileDialog（含子单元） | 直接 el-dialog | 公共媒体预览 | 原生图片查看 | PC 整页 | 手机整页 / 真机 |
+| --- | ---: | ---: | ---: | ---: | --- | --- |
+| `/login` | 0 | 0 | 0 | 0 | 待验收 | 待验收 |
+| `/404` | 0 | 0 | 0 | 0 | 待验收 | 待验收 |
+| `/dashboard` | 0 | 0 | 0 | 0 | 待验收 | 待验收 |
+| `/suppliers` | 2 | 0 | 0 | 0 | 待验收 | 待验收 |
+| `/payments` | 4 | 0 | 0 | 0 | 待验收 | 待验收 |
+| `/system` | 5 | 0 | 0 | 0 | 待验收 | 待验收 |
+| `/standards` | 1 | 0 | 0 | 0 | 待验收 | 待验收 |
+| `/git-management` | 0 | 0 | 0 | 0 | 待验收 | 待验收 |
+| `/backup` | 4 | 0 | 0 | 0 | 待验收 | 待验收 |
+| `/data-optimization` | 2 | 0 | 0 | 0 | 待验收 | 待验收 |
+| `/menu` | 2 | 0 | 0 | 0 | 待验收 | 待验收 |
+| `/sales` | 5 | 0 | 1 | 0 | 待验收 | 待验收 |
+| `/models` | 1 | 0 | 0 | 0 | 待验收 | 待验收 |
+| `/colors` | 1 | 0 | 0 | 0 | 待验收 | 待验收 |
+| `/memories` | 1 | 0 | 0 | 0 | 待验收 | 待验收 |
+| `/brands` | 1 | 0 | 0 | 0 | 待验收 | 待验收 |
+| `/stores` | 2 | 0 | 0 | 0 | 待验收 | 待验收 |
+| `/employees` | 4 | 0 | 0 | 0 | 待验收 | 待验收 |
+| `/customers` | 3 | 0 | 0 | 0 | 待验收 | 待验收 |
+| `/accessories` | 2 | 0 | 0 | 0 | 待验收 | 待验收 |
+| `/inventory` | 6 | 0 | 1 | 0 | 待验收 | 待验收 |
+| `/preorders` | 2 | 0 | 0 | 0 | 待验收 | 待验收 |
+| `/reminders` | 4 | 0 | 0 | 0 | 待验收 | 待验收 |
+| `/shared` | 3 | 0 | 1 | 0 | 待验收 | 待验收 |
+| `/guide` | 4 | 0 | 0 | 0 | 待验收 | 待验收 |
+| `/marketing` | 0 | 0 | 0 | 0 | 待验收 | 待验收 |
+| `/error-management` | 1 | 0 | 0 | 0 | 待验收 | 待验收 |
+| `/query` | 7 | 0 | 1 | 0 | 待验收 | 待验收 |
+| `/permissions` | 10 | 0 | 0 | 0 | 待验收 | 待验收 |
+| `/analytics` | 2 | 0 | 0 | 0 | 待验收 | 待验收 |
+| `/attendance` | 3 | 0 | 0 | 0 | 待验收 | 待验收 |
+| `/salary` | 9 | 0 | 0 | 0 | 待验收 | 待验收 |
+| `/subsidy` | 5 | 0 | 2 | 0 | 待验收 | 待验收 |
+| `/rentals` | 3 | 0 | 0 | 0 | 待验收 | 待验收 |
+| `/repairs` | 2 | 0 | 1 | 0 | 待验收 | 待验收 |
+| `/price-list` | 6 | 0 | 0 | 0 | 待验收 | 待验收 |
+| `/price-list/sync-logs` | 1 | 0 | 0 | 0 | 待验收 | 待验收 |
+| `/H5-admin/page/templates` | 1 | 0 | 0 | 0 | 待验收 | 待验收 |
+| `/H5-admin/page/config` | 3 | 0 | 0 | 0 | 待验收 | 待验收 |
+| `/H5-admin/page/home-sections` | 2 | 0 | 0 | 0 | 待验收 | 待验收 |
+| `/H5-admin/page/banners` | 1 | 0 | 0 | 0 | 待验收 | 待验收 |
+| `/H5-admin/page/orders` | 4 | 0 | 0 | 0 | 待验收 | 待验收 |
+| `/H5-admin/page/sold-products` | 1 | 0 | 1 | 0 | 待验收 | 待验收 |
+| `/price-query` | 4 | 0 | 0 | 0 | 待验收 | 待验收 |
+| `/sales-price-display` | 1 | 0 | 0 | 0 | 待验收 | 待验收 |
+| `/DH` | 3 | 0 | 0 | 0 | 待验收 | 待验收 |
+| `/Marketing_Copy` | 0 | 0 | 0 | 0 | 待验收 | 待验收 |
+| `/m/` | 1 | 0 | 0 | 0 | 待验收 | 待验收 |
+| `/m/products` | 0 | 0 | 0 | 0 | 待验收 | 待验收 |
+| `/m/product/new/:id` | 0 | 0 | 0 | 0 | 待验收 | 待验收 |
+| `/m/product/:id` | 1 | 0 | 0 | 0 | 待验收 | 待验收 |
+| `/m/product` | 0 | 0 | 0 | 0 | 待验收 | 待验收 |
+| `/m/cart` | 0 | 0 | 0 | 0 | 待验收 | 待验收 |
+| `/m/checkout` | 1 | 0 | 0 | 0 | 待验收 | 待验收 |
+| `/m/order/success` | 0 | 0 | 0 | 0 | 待验收 | 待验收 |
+| `/m/order/detail` | 1 | 0 | 0 | 0 | 待验收 | 待验收 |
+| `/m/my-orders` | 0 | 0 | 0 | 0 | 待验收 | 待验收 |
+| `/m/order-detail/:orderNumber` | 1 | 0 | 0 | 0 | 待验收 | 待验收 |
+| `/m/order-query` | 0 | 0 | 0 | 0 | 待验收 | 待验收 |
+| `/m/login` | 0 | 0 | 0 | 0 | 待验收 | 待验收 |
+| `/m/register` | 0 | 0 | 0 | 0 | 待验收 | 待验收 |
+| `/m/my` | 4 | 0 | 0 | 0 | 待验收 | 待验收 |
+
+依赖图未关联到路由/App/布局的 3 个弹窗组件为 `src/components/IconSelector.vue`、`src/components/MemorySelector.vue`、`src/components/StockInDetailModal.vue`。本轮保留，后续按动态注册、构建声明及真实调用证据复核，不能仅凭此统计删除。扫码器、锁屏、菜单遮罩及缩略图覆盖层为专用交互，列入诊断输出并按对应规范核对，不计作普通业务 Dialog 的迁移缺口。
+
+### 全局动态图标接入（2026-11-12）
+
+菜单管理、桌面/手机菜单、公共标题继续复用 `IconRenderer`；页签、权限分组与字段权限弹窗、导航分类、提醒类型、首页推荐区域及数据统计配置中原先直接绑定数据图标 class 的调用也已统一接入。`check:icons` 遍历全部 Vue 模板，后续页面不得绕开公共渲染器。固定操作图标及代码固定的状态切换按[全局图标规范](icon-standards.md)保留。
+
+`IconSelector.vue` 保留组件及弹窗入口，但移除独立图标目录、分类、搜索和渲染状态，统一委托 `IconPicker`；组件及路由数量不变。菜单在线图标保存期间保留旧值并阻止表单提交，成功后再接收数据库 SVG；普通页面不回退在线图标资源。交互、并发及安全回归见 `icon-picker.spec.ts`、`icon-renderer.spec.ts`、`icon-service.spec.ts`。在线候选预览已改为站内批量接口，由后端读取集合 JSON 并通过官方工具转换；在线每页 24 项，修正翻页误加载本地目录，增加失败重试和最新请求保护。可选本地查询用 `optional=1` 返回空值表示未入库。云端历史缺失 SVG 的记录未自动回填，桌面和真机全页面验收仍须单独执行。
 
 ### 下载安全专项登记
 
@@ -97,7 +285,7 @@
 | --- | --- | --- | --- | --- |
 | `/login` | `views/auth/LoginViewSimple.vue` | 登录页 | 否 | 已登记 |
 | `/404` | `views/system/page/404.vue` | 错误页 | 否 | 已登记 |
-| `/dashboard` | `views/dashboard/DashboardView.vue` | 后台首页 | 否 | 已登记 |
+| `/dashboard` | `views/dashboard/DashboardView.vue` | 后台首页（公告区含本人未完成待办） | 否 | 已登记 |
 | `/suppliers` | `views/suppliers/SuppliersView.vue` | 业务列表 | 是 | 已登记 |
 | `/payments` | `views/payments/SupplierPhonePaymentsView.vue` | 业务列表 | 是 | 已登记 |
 | `/system` | `views/system/SystemView.vue` | 设置页/多 Tab | 是 | 已登记 |
@@ -117,7 +305,7 @@
 | `/accessories` | `views/accessories/AccessoriesView.vue` | 配件列表 | 是 | 已登记 |
 | `/inventory` | `views/inventory/InventoryView.vue` | 库存管理 | 是 | 已登记 |
 | `/preorders` | `views/preorders/PreordersView.vue` | 预定管理 | 是 | 已登记 |
-| `/reminders` | `views/reminders/ReminderView.vue` | 提醒列表 | 是 | 已登记 |
+| `/reminders` | `views/reminders/ReminderView.vue` | 提醒列表（每人下一轮、原记录状态流转、最后 3 小时强制提醒） | 是 | 已登记 |
 | `/shared` | `views/shared/SharedView.vue` | 经验分享 | 是 | 已登记 |
 | `/guide` | `views/guide/GuideManagementView.vue` | 导航站后台管理 | 是 | 已接入 |
 | `/marketing` | `views/marketing/MarketingManagementView.vue` | 营销管理 | 否 | 已登记 |
@@ -407,12 +595,12 @@
 - 当前台账不把 `views` 目录下的每个文件都当作独立 URL；新增路由、Tab、弹窗和公共组件必须分别登记，防止重复计数或漏查。
 - 按钮专项已完成零容忍迁移：2026-11-10 Vue 源码共扫描 `el-button=1047`（158 个文件）、原生 `<button>=0`；以后新增按钮必须使用 `el-button`，不得新增原生按钮例外。
 - 页面按钮默认由公共入口控制 PC 与手机外观；H5 操作、筛选、权限选项、公开报价页头、扫码器和媒体缩略图已移除重复规格，特殊需求先定义公共语义再引用。图片删除/设主图、商家图标操作、登录注册及品牌筛选的模拟按钮迁移为 `el-button`；维修媒体预览和删除拆为独立公共按钮，保留原交互与权限。`check:buttons` 增加任意命名 class、断点、嵌套及行内覆盖检查，相关回归测试由同一命令执行；公共控件继续按已登记的专项规范维护，不新增页面豁免。
-- Loading 已按本台账逐文件审计：131 个页面/功能单元、74 个公共组件和 1 个应用入口全部通过 `npm run check:loading`；扫描结果为 `GlobalLoading=1`、`v-tf-loading=48`、`TableLoadingRow=59`、`SectionLoading=41`、`InlineLoading=41`、登记 `v-loading` 例外 0 处。
+- Loading 已按本台账逐文件审计：130 个页面/功能单元、73 个公共组件和 1 个应用入口全部通过 `npm run check:loading`；扫描结果为 `GlobalLoading=1`、`v-tf-loading=58`、`TableLoadingRow=59`、`SectionLoading=44`、`InlineLoading=39`、登记 `v-loading` 例外 0 处。
 - Loading 触发边界已收口：页面切换和明确的全局长操作由 `App.vue` 唯一挂载的 `GlobalLoading` 承载；表格刷新由 `v-tf-loading` 锁定表格边界并显示“加载数据中...”；局部状态通过 `useLoadingStore.hasLocalLoading/isGlobalVisible` 互斥仲裁，同一次操作不得同时显示全屏与局部 Loading。
 - 徽章专项已按台账扫描全部页面和公共组件：徽章 hover 外包围线与过渡唯一由 `styles/components/_badges.scss` 控制；页面仅保留业务颜色、图标和文字，禁止私有 hover、阴影、位移和重复 `global.css` 状态入口。结果由 `npm run check:badges` 强制校验。
-- 统一 API 已补齐默认 Loading：131 个页面及其公共功能单元不再依赖逐页传入 `showLoading: true`；首次数据请求默认进入全局 Loading，只有明确的 `showLoading: false` 请求保持静默。
+- 统一 API 已补齐默认 Loading：130 个页面及其公共功能单元不再依赖逐页传入 `showLoading: true`；首次数据请求默认进入全局 Loading，只有明确的 `showLoading: false` 请求保持静默。
 - 全屏 Loading 例外仅保留 2 个已登记场景：规范页的真实演示，以及数据优化页的清理、批量合并和删除等明确长操作；数据优化页的表格查询仍使用局部 Loading，两类操作不能共用同一次反馈。
-- 逐页核对结论已同步至 `global-loading-standard.md`：无专属 Loading 标记的布局、父级和公共功能单元均已注明统一 API 或父子组件承载关系；详情弹窗使用 `SectionLoading`，首屏和表格刷新不再叠加两层反馈。
+- 逐页核对结论已同步至 `global-loading-standard.md`：逐路由及全部源文件的静态证据见上方 Loading 复核；统一 API 和父子承载不等于所有业务操作已完成浏览器验收，公共生命周期由正式行为测试覆盖。
 - 仪表盘预警和待审批组件已接入根区域 `v-tf-loading`；提醒弹窗的后台轮询明确关闭 Loading，避免定时探测覆盖用户当前页面。
 - 统计变化时，以路由文件和源文件实际扫描结果为准；文档中的数量和分组必须随代码变更同步更新。
 

@@ -143,7 +143,7 @@
               :key="item.label"
               class="inspection-item"
             >
-              <i :class="item.icon" />
+              <IconRenderer :icon="item.icon" />
               <div class="item-content">
                 <span class="item-label">{{ item.label }}</span>
                 <span
@@ -250,7 +250,7 @@
     >
       <SectionLoading
         v-if="loadingMemories"
-        text="加载中..."
+        text="正在读取商品规格..."
       />
       <div
         v-else-if="memoryOptions.length > 0"

@@ -18,6 +18,7 @@ import { clearCache as clearPageCache } from '@/composables/usePageCache'
 import type { CacheScope } from '@/composables/page-cache-store'
 import { useLoadingStore } from '@/stores/loading'
 import { extractBlobResponse } from './download-response'
+import { resolveRequestLoadingText } from './loading-text'
 
 // API基础配置
 const DEFAULT_READ_TIMEOUT = 30000
@@ -39,6 +40,8 @@ const enableApiLogs = import.meta.env.DEV && import.meta.env.VITE_API_LOGGING ==
 // 请求配置接口
 export interface RequestConfig extends AxiosRequestConfig {
   showLoading?: boolean
+  /** 当前业务操作文案；未提供时由公共规则按请求资源和动作选择。 */
+  loadingText?: string
   showError?: boolean
   /** 仅错误上报请求关闭，防止上报失败再次进入上报队列。 */
   reportError?: boolean
@@ -76,8 +79,6 @@ export { extractBlobResponse } from './download-response'
  */
 class UnifiedApiManager {
   private instance: AxiosInstance
-  private requestCount = 0
-  private readonly apiLoadingOperationId = 'unified-api-global'
   private cache = new Map<string, { data: unknown, timestamp: number, ttl: number }>()
   private cacheGeneration = 0
   private refreshPromise: Promise<boolean> | null = null
@@ -169,7 +170,8 @@ class UnifiedApiManager {
 
     // 显示加载状态
     if (requestConfig.showLoading) {
-      this.showLoading()
+      const priority = ['get', 'head', 'options'].includes(config.method || 'get') ? -2 : -1
+      useLoadingStore().startLoading(resolveRequestLoadingText(requestConfig), config.metadata.requestId, priority)
     }
 
     return config
@@ -180,7 +182,6 @@ class UnifiedApiManager {
    */
   private handleRequestError(error: unknown): Promise<never> {
     logger.error('请求配置错误', error)
-    this.hideLoading()
     return Promise.reject(error)
   }
 
@@ -200,7 +201,7 @@ class UnifiedApiManager {
     // 如果是缓存响应，直接返回
     if (requestConfig.cachedResponse) {
       if (requestConfig.showLoading) {
-        this.hideLoading()
+        this.hideLoading(requestConfig)
       }
       return requestConfig.cachedResponse as AxiosResponse
     }
@@ -241,7 +242,7 @@ class UnifiedApiManager {
 
     // 隐藏加载状态
     if (requestConfig.showLoading) {
-      this.hideLoading()
+      this.hideLoading(requestConfig)
     }
 
     // 显示成功消息
@@ -262,7 +263,7 @@ class UnifiedApiManager {
 
     // 隐藏加载状态
     if (requestConfig?.showLoading) {
-      this.hideLoading()
+      this.hideLoading(requestConfig)
     }
 
     // 对于被取消的请求，不记录错误日志
@@ -1193,23 +1194,10 @@ class UnifiedApiManager {
   }
 
   /**
-   * 显示加载状态
-   */
-  private showLoading(): void {
-    this.requestCount++
-    if (this.requestCount === 1) {
-      useLoadingStore().startLoading('加载中...', this.apiLoadingOperationId)
-    }
-  }
-
-  /**
    * 隐藏加载状态
    */
-  private hideLoading(): void {
-    this.requestCount = Math.max(0, this.requestCount - 1)
-    if (this.requestCount === 0) {
-      useLoadingStore().stopLoading(this.apiLoadingOperationId)
-    }
+  private hideLoading(config: RequestConfig): void {
+    if (config.metadata?.requestId) useLoadingStore().stopLoading(config.metadata.requestId)
   }
 
   /**

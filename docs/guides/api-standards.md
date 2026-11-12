@@ -41,6 +41,7 @@ export async function loadStores(page = 1): Promise<ApiResponse<Store[]>> {
 | `params` / 请求体 | GET 查询和写入载荷，字段必须与后端契约一致 |
 | `timeout` / `signal` | 超时和取消；长任务按业务设置，卸载或新请求替代时取消旧请求 |
 | `showLoading` | 交由公共 Loading 仲裁；后台静默请求可显式关闭 |
+| `loadingText` | 当前业务操作的等待文案；不传时由公共规则选择，优先级及区域反馈见全局 Loading 规范 |
 | `showError` | 决定状态码处理及通用错误是否提示，业务自行提示时避免重复；不跳过认证清理 |
 | `reportError` | 仅错误上报基础设施设为 false，防止上报失败递归进入队列；业务请求保持默认 |
 | `useCache` / `cacheTTL` | 已有请求缓存开关及有效期，不使用不存在的 `cache: { ttl, key }` 配置 |

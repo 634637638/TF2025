@@ -9,9 +9,9 @@
         native-type="button"
         @click="switchTab(tab.path)"
       >
-        <i
+        <IconRenderer
           v-if="tab.icon"
-          :class="tab.icon"
+          :icon="tab.icon"
           class="tab-icon"
         />
         <span class="tab-title">{{ tab.title }}</span>

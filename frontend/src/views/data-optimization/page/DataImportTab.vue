@@ -105,7 +105,7 @@
           >
             <InlineLoading
               v-if="uploading || analyzing"
-              text="处理中..."
+              :text="uploading ? '正在上传导入文件...' : '正在分析导入文件...'"
               size="small"
               variant="inherit"
             />
@@ -327,7 +327,7 @@
             @click="selectedStrategy = strategy.key"
           >
             <div class="strategy-icon">
-              <i :class="strategy.icon" />
+              <IconRenderer :icon="strategy.icon" />
             </div>
             <div class="strategy-content">
               <h3>{{ strategy.label }}</h3>

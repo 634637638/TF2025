@@ -4,7 +4,7 @@
 
 ## 可核实的维护入口
 
-- 字段/API 契约：`config/field-contracts.json`
+- 字段/API 契约：`backend/scripts/config/field-contracts.json`
 - 字段迁移与模块状态：[字段统一迁移进度](field-consistency-progress.md)
 - 客户表结构专题：[客户表结构文档](customers-table-schema.md)
 - 数据库连接配置：`backend/src/config/database.js`

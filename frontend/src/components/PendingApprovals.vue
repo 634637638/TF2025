@@ -1,7 +1,7 @@
 <template>
   <div
     v-if="canViewPendingApprovals"
-    v-tf-loading="loading"
+    v-tf-loading="{ active: loading, text: '正在刷新待审批事项...' }"
     class="pending-approvals"
   >
     <!-- 预警概览卡片 -->

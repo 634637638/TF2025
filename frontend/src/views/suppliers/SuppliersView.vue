@@ -173,7 +173,7 @@
           <div class="table-responsive">
             <el-table
               ref="suppliersTableRef"
-              v-tf-loading="loading"
+              v-tf-loading="{ active: loading || refreshing, text: '正在刷新供应商列表...' }"
               :data="suppliers"
               border
               stripe
@@ -596,7 +596,10 @@
           :close-on-click-modal="false"
           :show-default-footer="false"
         >
-          <SectionLoading v-if="detailLoading" />
+          <SectionLoading
+            v-if="detailLoading"
+            text="正在读取供应商明细..."
+          />
           <div
             v-else-if="supplierDetail"
             class="supplier-detail-view"

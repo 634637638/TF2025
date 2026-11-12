@@ -98,7 +98,7 @@
         class="table-wrapper table-responsive"
       >
         <el-table
-          v-tf-loading="loading"
+          v-tf-loading="{ active: loading, text: '正在刷新退库记录...' }"
           class="data-table devices-table compact-fit-table base-data-table returngoods-data-table"
           :data="records"
           border
@@ -111,7 +111,7 @@
             <TableLoadingRow
               v-if="loading"
               mode="block"
-              text="加载中..."
+              text="正在读取退库记录..."
             />
             <DataEmptyState
               v-else
@@ -266,12 +266,12 @@
 
       <div
         v-else
-        v-tf-loading="loading"
+        v-tf-loading="{ active: loading, text: '正在刷新退库记录...' }"
         class="mobile-records"
       >
         <SectionLoading
           v-if="loading && records.length === 0"
-          text="加载中..."
+          text="正在读取退库记录..."
         />
 
         <DataEmptyState

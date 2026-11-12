@@ -45,14 +45,14 @@
 - [全局时间工具与日期格式](time-standards.md)
 - [全局动效](motion-standards.md)
 - [全局打印样式](print-standards.md)
-- [全局图标](icon-standards.md)
+- [全局图标](icon-standards.md) — 动态图标公共渲染、入库确认、本地显示与全量模板审计
 - [基础控件与 Drawer](basic-component-standards.md)
 - [快捷键](keyboard-shortcut-standards.md)
 - [前端埋点](telemetry-standards.md)
 - [主题切换](theme-standards.md)
 - [全局交互反馈](interaction-standards.md)
 - [统一页面结构旧入口](unified-page-structure.md) — 迁移导航，正文及模板统一到“页面结构”
-- [前端页面与功能单元台账](page-audit-inventory.md)
+- [前端页面与功能单元台账](page-audit-inventory.md) - 含 2026-11-11 全量模态框统计及逐路由接入矩阵。
 
 ## 专项指南与记录
 

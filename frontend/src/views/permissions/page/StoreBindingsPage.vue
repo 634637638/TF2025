@@ -8,7 +8,7 @@
 
     <div class="table-responsive">
       <el-table
-        v-tf-loading="ctx.storeBindingsLoading"
+        v-tf-loading="{ active: ctx.storeBindingsLoading, text: '正在刷新门店绑定列表...' }"
         :data="ctx.paginatedStoreBindings"
         border
         stripe

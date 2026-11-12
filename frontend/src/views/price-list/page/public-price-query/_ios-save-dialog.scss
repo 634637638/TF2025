@@ -8,10 +8,6 @@
 }
 
 .ios-image-dialog {
-  .el-dialog__body {
-    padding: 10px 20px 20px;
-  }
-
   .ios-save-container {
     .success-message {
       text-align: center;
@@ -76,11 +72,6 @@
 
 @media (max-width: 767px) {
   .ios-image-dialog {
-    .el-dialog {
-      width: 95% !important;
-      margin: 20px auto !important;
-    }
-
     .ios-save-container {
       .instructions {
         padding: 15px;

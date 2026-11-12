@@ -60,7 +60,10 @@
             :class="{ active: form.paymentMethod === option.code }"
             @click="selectPaymentMethod(option.code)"
           >
-            <i :class="[option.icon, option.iconClass]" />
+            <IconRenderer
+              :icon="option.icon"
+              :class="option.iconClass"
+            />
             <span>{{ option.label }}</span>
           </div>
         </div>

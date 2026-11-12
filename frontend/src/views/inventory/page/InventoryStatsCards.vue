@@ -12,7 +12,7 @@
       :style="{ 'animation-delay': `${index * 100}ms` }"
     >
       <div class="stat-icon">
-        <i :class="stat.icon" />
+        <IconRenderer :icon="stat.icon" />
       </div>
       <div class="stat-content">
         <div class="stat-value">

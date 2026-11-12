@@ -122,4 +122,4 @@ if (findings.length > 0) {
   process.exit(1)
 }
 
-console.log(`交互统一审计通过：原生弹窗调用=0，Element Plus 通知直调=${directNotificationCalls}，业务 ElMessageBox.confirm/alert/prompt 调用=${legacyMessageBoxCalls}（基线 ${legacyMessageBoxBaseline}）。`)
+console.log(`交互统一审计通过：原生 alert/confirm 调用=0，Element Plus 通知直调=${directNotificationCalls}，业务 ElMessageBox.confirm/alert/prompt 调用=${legacyMessageBoxCalls}（基线 ${legacyMessageBoxBaseline}）；浏览器原生 prompt 不在本审计覆盖内，使用 audit:dialogs 另行盘点。`)

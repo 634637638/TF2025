@@ -160,7 +160,7 @@
           <div class="table-responsive">
             <el-table
               ref="colorsTableRef"
-              v-tf-loading="tableLoading"
+              v-tf-loading="{ active: tableLoading || refreshing, text: '正在刷新颜色列表...' }"
               :data="colors"
               border
               stripe

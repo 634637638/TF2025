@@ -26,7 +26,7 @@ Node 服务监听 `3000`。不要把 Nginx 可选的 `3001` 入口当作后端�
 ## 配置步骤
 
 1. 在宝塔面板打开前端网站配置，确认静态站点目录指向本次构建的 `frontend/dist` 内容。
-2. 在站点配置的 `server` 块中合并仓库的 `nginx-frontend.conf`，不要直接覆盖宝塔生成的 TLS、证书和站点基础配置。
+2. 在站点配置的 `server` 块中合并仓库的 `frontend/deploy/nginx.conf`，不要直接覆盖宝塔生成的 TLS、证书和站点基础配置。
 3. 确认 `/api/` 与 `/uploads/` 的 upstream 是从前端服务器实际可达的后端地址，且端口为 `3000`。
 4. 确认 `/` 保留 Vue Router history fallback：`try_files $uri $uri/ /index.html;`。
 5. 从 HTTPS 前端站点响应中检查 CSP 与 HSTS；如果 TLS 在宝塔之外终止，必须确认前置 HTTPS 入口没有移除这些响应头。HSTS 仅对 HTTPS 响应生效。
@@ -36,6 +36,8 @@ Node 服务监听 `3000`。不要把 Nginx 可选的 `3001` 入口当作后端�
 sudo nginx -t
 sudo systemctl reload nginx
 ```
+
+`frontend/deploy/nginx.conf` 是前端唯一模板，包含 history fallback、API 与上传代理、缓存及敏感文件拦截。根目录不再保留前端 Nginx 副本。合并时保留宝塔已有的 `/.well-known/` 证书验证规则；模板对隐藏文件的拦截已为该目录留出例外。
 
 ## 后端来源配置
 

@@ -204,7 +204,7 @@
 
         <el-table
           v-else
-          v-tf-loading="loading"
+          v-tf-loading="{ active: loading, text: '正在刷新报价同步日志...' }"
           class="data-table"
           :data="logList"
           stripe
@@ -216,7 +216,7 @@
             <TableLoadingRow
               v-if="loading"
               mode="block"
-              text="加载中..."
+              text="正在读取报价同步日志..."
             />
             <DataEmptyState
               v-else

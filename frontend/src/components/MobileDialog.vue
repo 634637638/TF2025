@@ -2,102 +2,118 @@
   <Teleport to="body">
     <transition
       name="mobile-dialog-sheet-fade"
+      appear
+      @after-enter="handleMobileAfterEnter"
       @after-leave="handleMobileAfterLeave"
     >
       <div
         v-if="activeUseMobileSheet && mobileSheetMounted"
         v-show="dialogVisible"
         :class="overlayClasses"
+        :style="{ zIndex: `calc(var(--tf-z-dialog-sheet) + ${overlayOrder})` }"
         @pointerdown="handleOverlayPointerDown"
         @pointermove="handleOverlayPointerMove"
         @pointerup="handleOverlayPointerUp"
         @pointercancel="resetOverlayPointer"
         @click.self="handleOverlayClick"
       >
-        <div
-          :class="sheetDialogClasses"
-          :style="dialogSizeStyle"
-          role="dialog"
-          aria-modal="true"
+        <ElFocusTrap
+          v-slot="{ handleKeydown: trapKeydown }"
+          :trapped="dialogVisible"
+          :focus-trap-el="sheetPanel || undefined"
+          focus-start-el="container"
+          loop
+          @release-requested="handleKeydown"
         >
           <div
-            v-if="showSheetHeader"
-            class="el-dialog__header mobile-dialog-sheet-header"
+            ref="sheetPanel"
+            :class="sheetDialogClasses"
+            :style="dialogSizeStyle"
+            role="dialog"
+            aria-modal="true"
+            :aria-label="title || '对话框'"
+            tabindex="-1"
+            @keydown="trapKeydown"
           >
             <div
-              v-if="$slots.header"
-              class="mobile-dialog-header mobile-dialog-sheet-header-content"
+              v-if="showSheetHeader"
+              class="el-dialog__header mobile-dialog-sheet-header"
             >
-              <slot name="header" />
-            </div>
-            <div
-              v-else
-              class="mobile-dialog-sheet-title-wrap"
-            >
-              <span class="el-dialog__title mobile-dialog-sheet-title">{{ title }}</span>
-            </div>
-
-            <el-button
-              v-if="showClose"
-              native-type="button"
-              text
-              circle
-              class="el-dialog__headerbtn mobile-dialog-sheet-close tf-button--dialog-close"
-              aria-label="关闭"
-              @click="handleSheetClose"
-            >
-              <i class="el-dialog__close el-icon">
-                <svg
-                  viewBox="0 0 1024 1024"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    fill="currentColor"
-                    d="M764.288 214.656a42.624 42.624 0 0 1 60.224 60.288L572.16 527.104l252.352 252.224a42.624 42.624 0 1 1-60.224 60.288L512 587.392 259.648 839.616a42.624 42.624 0 1 1-60.224-60.288l252.352-252.224L199.424 274.944a42.624 42.624 0 0 1 60.224-60.288L512 466.88z"
-                  />
-                </svg>
-              </i>
-            </el-button>
-          </div>
-
-          <div class="el-dialog__body mobile-dialog-sheet-body">
-            <slot>
-              <div class="dialog-content">
-                <slot name="content" />
+              <div
+                v-if="$slots.header"
+                class="mobile-dialog-header mobile-dialog-sheet-header-content"
+              >
+                <slot name="header" />
               </div>
-            </slot>
-          </div>
+              <div
+                v-else
+                class="mobile-dialog-sheet-title-wrap"
+              >
+                <span class="el-dialog__title mobile-dialog-sheet-title">{{ title }}</span>
+              </div>
 
-          <div
-            v-if="$slots.footer || showDefaultFooter"
-            class="el-dialog__footer mobile-dialog-sheet-footer"
-          >
-            <template v-if="$slots.footer">
-              <slot name="footer" />
-            </template>
-            <div
-              v-else-if="showDefaultFooter"
-              class="default-footer"
-            >
               <el-button
-                v-if="showCancelButton"
-                size="large"
-                :disabled="loading"
-                @click="handleCancel"
+                v-if="showClose"
+                native-type="button"
+                text
+                circle
+                class="el-dialog__headerbtn mobile-dialog-sheet-close tf-button--dialog-close"
+                aria-label="关闭"
+                @click="handleSheetClose"
               >
-                {{ cancelText }}
-              </el-button>
-              <el-button
-                type="primary"
-                size="large"
-                :loading="loading"
-                @click="handleConfirm"
-              >
-                {{ confirmText }}
+                <i class="el-dialog__close el-icon">
+                  <svg
+                    viewBox="0 0 1024 1024"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      fill="currentColor"
+                      d="M764.288 214.656a42.624 42.624 0 0 1 60.224 60.288L572.16 527.104l252.352 252.224a42.624 42.624 0 1 1-60.224 60.288L512 587.392 259.648 839.616a42.624 42.624 0 1 1-60.224-60.288l252.352-252.224L199.424 274.944a42.624 42.624 0 0 1 60.224-60.288L512 466.88z"
+                    />
+                  </svg>
+                </i>
               </el-button>
             </div>
+
+            <div class="el-dialog__body mobile-dialog-sheet-body">
+              <slot>
+                <div class="dialog-content">
+                  <slot name="content" />
+                </div>
+              </slot>
+            </div>
+
+            <div
+              v-if="$slots.footer || showDefaultFooter"
+              class="el-dialog__footer mobile-dialog-sheet-footer"
+            >
+              <template v-if="$slots.footer">
+                <slot name="footer" />
+              </template>
+              <div
+                v-else-if="showDefaultFooter"
+                class="default-footer"
+              >
+                <el-button
+                  v-if="showCancelButton"
+                  size="large"
+                  :disabled="loading"
+                  @click="handleCancel"
+                >
+                  {{ cancelText }}
+                </el-button>
+                <el-button
+                  type="primary"
+                  size="large"
+                  :loading="loading"
+                  @click="handleConfirm"
+                >
+                  {{ confirmText }}
+                </el-button>
+              </div>
+            </div>
           </div>
-        </div>
+        </ElFocusTrap>
       </div>
     </transition>
   </Teleport>
@@ -114,6 +130,7 @@
     :show-close="showClose"
     :draggable="draggable"
     :destroy-on-close="destroyOnClose"
+    :before-close="beforeClose"
     :modal-class="computedModalClass"
     :class="[computedDialogClass, { 'is-mobile': isMobile, 'is-tablet': isTablet, 'is-auto-height': props.autoHeight }]"
     :style="dialogSizeStyle"
@@ -169,9 +186,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, watch, onUnmounted, useAttrs, useSlots, ref, nextTick, onMounted } from 'vue'
+import { computed, watch, onUnmounted, useSlots, ref, onMounted } from 'vue'
 import type { CancelEmits, CloseEmits, ConfirmEmits, UpdateModelValueEmits } from '@/types/component'
 import { useMobile } from '@/composables/mobile'
+import { useOverlayStack } from '@/composables/useOverlayStack'
+import { ElFocusTrap } from 'element-plus/es/components/focus-trap/index'
 
 defineOptions({
   inheritAttrs: false
@@ -196,6 +215,7 @@ interface Props {
   dialogClass?: string | string[]
   autoHeight?: boolean
   destroyOnClose?: boolean
+  beforeClose?: (done: (cancel?: boolean) => void) => void
   // 响应式断点配置
   mobileBreakpoint?: number
   tabletBreakpoint?: number
@@ -219,11 +239,11 @@ const props = withDefaults(defineProps<Props>(), {
   dialogClass: '',
   autoHeight: false,
   destroyOnClose: false,
+  beforeClose: undefined,
   mobileBreakpoint: 768,
   tabletBreakpoint: 1024
 })
 
-const _attrs = useAttrs()
 const slots = useSlots()
 
 interface Emits extends UpdateModelValueEmits, ConfirmEmits, CancelEmits, CloseEmits {
@@ -237,6 +257,9 @@ const emit = defineEmits<Emits>()
 // 响应式检测
 const { isMobile, isTablet, screenSize } = useMobile()
 const mobileSheetMounted = ref(props.modelValue)
+const sheetPanel = ref<HTMLElement | null>(null)
+let sheetClosing = false
+let sheetOpened = false
 
 // screenWidth 兼容
 const screenWidth = computed(() => screenSize.value.width)
@@ -281,9 +304,8 @@ const dialogSizeStyle = computed(() => {
 
 const useMobileSheet = computed(() => screenWidth.value <= props.tabletBreakpoint)
 const lockedMobileSheet = ref(useMobileSheet.value)
-const activeUseMobileSheet = computed(() => {
-  return dialogVisible.value ? lockedMobileSheet.value : useMobileSheet.value
-})
+const activeUseMobileSheet = computed(() => lockedMobileSheet.value)
+const { isTop, order: overlayOrder } = useOverlayStack(dialogVisible, computed(() => activeUseMobileSheet.value ? 0 : 1))
 
 // 计算 dialog class
 const normalizeClassList = (value?: string | string[]) => {
@@ -332,10 +354,6 @@ const handleOpen = () => {
 
 const handleOpened = () => {
   emit('opened')
-  // 移动端禁止背景滚动
-  if (isMobile.value) {
-    document.body.style.overflow = 'hidden'
-  }
 }
 
 const handleClose = () => {
@@ -344,8 +362,6 @@ const handleClose = () => {
 
 const handleClosed = () => {
   emit('closed')
-  // 恢复背景滚动
-  document.body.style.overflow = ''
 }
 
 const handleConfirm = () => {
@@ -358,7 +374,9 @@ const handleCancel = () => {
 }
 
 const handleSheetClose = () => {
-  dialogVisible.value = false
+  const done = (cancel?: boolean) => { if (!cancel) dialogVisible.value = false }
+  if (props.beforeClose) props.beforeClose(done)
+  else done()
 }
 
 let overlayPointer: { id: number; x: number; y: number } | null = null
@@ -394,77 +412,77 @@ const handleOverlayClick = () => {
   const shouldClose = overlayClickReady && props.closeOnClickModal
   resetOverlayPointer()
   if (!shouldClose) return
-  dialogVisible.value = false
+  handleSheetClose()
 }
 
 const handleMobileAfterLeave = () => {
+  if (!sheetClosing || dialogVisible.value) return
+  sheetClosing = false
   if (destroyOnClose.value) {
     mobileSheetMounted.value = false
   }
+  lockedMobileSheet.value = useMobileSheet.value
   emit('closed')
 }
 
-const syncBodyScroll = (locked: boolean) => {
-  document.body.style.overflow = locked ? 'hidden' : ''
+const handleMobileAfterEnter = () => {
+  if (sheetOpened || !dialogVisible.value || !activeUseMobileSheet.value) return
+  sheetOpened = true
+  emit('opened')
 }
 
 const handleKeydown = (event: KeyboardEvent) => {
-  if (!activeUseMobileSheet.value || !dialogVisible.value || !props.closeOnPressEscape) return
+  if (event.defaultPrevented || !isTop.value || !activeUseMobileSheet.value || !dialogVisible.value || !props.closeOnPressEscape) return
+  // Element Plus 的确认/输入框在 document 阶段先处理 Escape，底层 sheet 不得同时关闭。
+  if ([...document.querySelectorAll('.el-message-box')].some(element => element.getClientRects().length > 0)) return
   if (event.key === 'Escape') {
-    dialogVisible.value = false
+    event.preventDefault()
+    handleSheetClose()
   }
 }
 
 // 监听屏幕变化，动态更新对话框
-watch(dialogVisible, async (visible) => {
+watch(dialogVisible, (visible) => {
   resetOverlayPointer()
-  if (visible) {
-    lockedMobileSheet.value = useMobileSheet.value
-  } else {
-    lockedMobileSheet.value = useMobileSheet.value
-  }
+  if (visible) lockedMobileSheet.value = useMobileSheet.value
 
   if (!activeUseMobileSheet.value) return
 
   if (visible) {
+    sheetClosing = false
+    sheetOpened = false
     mobileSheetMounted.value = true
     emit('open')
-    syncBodyScroll(true)
-    await nextTick()
-    emit('opened')
     return
   }
 
+  sheetClosing = true
+  sheetOpened = false
   emit('close')
-  syncBodyScroll(false)
 })
 
 watch(useMobileSheet, (mobileMode) => {
-  if (!dialogVisible.value) {
+  if (!dialogVisible.value && !sheetClosing) {
     lockedMobileSheet.value = mobileMode
-    if (!mobileMode) {
-      syncBodyScroll(false)
-    }
     return
   }
 
   if (lockedMobileSheet.value) {
     mobileSheetMounted.value = true
-    syncBodyScroll(true)
     return
   }
-
-  syncBodyScroll(false)
 })
 
 onMounted(() => {
   window.addEventListener('keydown', handleKeydown)
+  if (dialogVisible.value && activeUseMobileSheet.value) {
+    emit('open')
+  }
 })
 
 // 清理函数
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeydown)
-  document.body.style.overflow = ''
 })
 </script>
 

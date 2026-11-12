@@ -46,7 +46,7 @@
 
       <div class="table-responsive matchable-table-wrap">
         <el-table
-          v-tf-loading="loading"
+          v-tf-loading="{ active: loading, text: '正在刷新匹配库存...' }"
           class="data-table base-data-table matchable-table"
           :data="phones"
           border

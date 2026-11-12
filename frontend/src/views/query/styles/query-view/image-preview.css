@@ -203,10 +203,6 @@
   cursor: pointer;
 }
 
-.query-remark-message-box {
-  width: min(520px, calc(100vw - 32px)) !important;
-}
-
 .query-remark-message-box .el-message-box__message {
   max-height: 60vh;
   overflow-y: auto;

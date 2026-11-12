@@ -17,7 +17,7 @@
 
 相关入口：
 
-- 字段/API 契约：`config/field-contracts.json`
+- 字段/API 契约：`backend/scripts/config/field-contracts.json`
 - 后端数据库连接：`backend/src/config/database.js`
 - [后端数据库回归测试](../backend/database-testing.md) - 独立测试库、明确授权的业务库模式、14 项用例及回滚/只读复核方法
 - 部署环境变量与密钥：[环境配置与密钥管理](../security/ENVIRONMENT_SECRETS.md)

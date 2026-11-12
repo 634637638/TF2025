@@ -1,5 +1,6 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { extname, join, relative, resolve } from 'node:path'
+import { hasRuntimeModuleImport } from './lib/runtime-module-import.mjs'
 
 const root = resolve(import.meta.dirname, '..')
 const sourceRoot = join(root, 'src')
@@ -61,7 +62,7 @@ if (!/\.el-tabs__nav\s*\{[^}]*transform:\s*none\s*!important/.test(globalTabStyl
 for (const fragment of ['initPageTabScroll', 'scrollLeft', 'MutationObserver', "addEventListener('wheel'"]) {
   if (!tabScrollSource.includes(fragment)) findings.push(`src/utils/page-tab-scroll.ts 缺少统一滚动行为：${fragment}`)
 }
-if (!/initPageTabScroll\(\)/.test(mainSource)) {
+if (!hasRuntimeModuleImport(mainSource, '@/utils/page-tab-scroll') || !/initPageTabScroll\(\)/.test(mainSource)) {
   findings.push('src/main.ts 必须初始化全局 TAB 原生滚动')
 }
 

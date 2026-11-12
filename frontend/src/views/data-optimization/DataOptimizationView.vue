@@ -30,7 +30,7 @@
           >
             <template #label>
               <span class="tab-label">
-                <i :class="tab.icon" />
+                <IconRenderer :icon="tab.icon" />
                 <span>{{ tab.label }}</span>
               </span>
             </template>

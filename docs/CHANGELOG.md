@@ -265,7 +265,7 @@
 ### 固定数量审计
 
 - 移除预订单匹配设备、商城客户销售历史、国补设备检索和商城聚合商品的真实结果截断。
-- 新增 `config/reference-options-audit-allowlist.json`，31项正常业务分页、字段长度或本地历史保护候选已登记原因。
+- 新增 `frontend/scripts/reference-options-audit-allowlist.json`，31项正常业务分页、字段长度或本地历史保护候选已登记原因。
 - `node scripts/check-reference-options.mjs --strict` 已通过，并会检测白名单漂移。
 
 ### 验证边界

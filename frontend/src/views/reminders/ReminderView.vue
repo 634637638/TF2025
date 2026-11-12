@@ -173,7 +173,7 @@
           </div>
           <div class="table-responsive">
             <el-table
-              v-tf-loading="loading"
+              v-tf-loading="{ active: loading, text: '正在刷新待办列表...' }"
               :data="reminders"
               border
               stripe
@@ -373,11 +373,12 @@
       </div>
     </PermissionGate>
 
-    <el-dialog
+    <MobileDialog
       v-model="formVisible"
+      :show-default-footer="false"
       :title="editingId ? '编辑待办' : '新建待办'"
       width="760px"
-      class="reminder-form-dialog"
+      dialog-class="reminder-form-dialog"
       :close-on-click-modal="false"
     >
       <el-form
@@ -628,13 +629,14 @@
           </el-button>
         </div>
       </template>
-    </el-dialog>
+    </MobileDialog>
 
-    <el-dialog
+    <MobileDialog
       v-model="detailVisible"
+      :show-default-footer="false"
       title="待办执行记录"
       width="900px"
-      class="reminder-detail-dialog"
+      dialog-class="reminder-detail-dialog"
     >
       <div
         v-if="detail"
@@ -678,19 +680,19 @@
               class-name="complete-text-column"
             >
               <template #default="{ row }">
-                {{ formatDate(row.scheduled_at) }}
+                {{ formatDateTime(row.scheduled_at) }}
               </template>
             </el-table-column>
             <el-table-column
               v-if="canViewReminderField('remind_at')"
               prop="remind_at"
               label="提醒时间"
-              min-width="110"
+              :min-width="detailRemindAtColumnWidth"
               align="center"
               class-name="complete-text-column"
             >
               <template #default="{ row }">
-                {{ formatDate(row.remind_at) }}
+                {{ formatDateTime(row.remind_at) }}
               </template>
             </el-table-column>
             <el-table-column
@@ -730,13 +732,14 @@
           </el-table>
         </div>
       </div>
-    </el-dialog>
+    </MobileDialog>
 
-    <el-dialog
+    <MobileDialog
       v-model="typeManagerVisible"
+      :show-default-footer="false"
       title="事项类型管理"
       width="720px"
-      class="reminder-type-dialog"
+      dialog-class="reminder-type-dialog"
     >
       <div class="type-toolbar">
         <span>类型名称可随时修改；已使用类型建议停用而不是删除。</span><el-button
@@ -767,9 +770,9 @@
               <span
                 class="type-badge"
                 :style="typeBadgeStyle(row)"
-              ><i
+              ><IconRenderer
                 v-if="canViewReminderField('type_icon')"
-                :class="row.icon"
+                :icon="row.icon"
               />{{ row.name }}</span>
             </template>
           </el-table-column>
@@ -838,14 +841,15 @@
           </el-table-column>
         </el-table>
       </div>
-    </el-dialog>
+    </MobileDialog>
 
-    <el-dialog
+    <MobileDialog
       v-model="typeFormVisible"
+      :show-default-footer="false"
       :title="typeForm.id ? '编辑事项类型' : '新增事项类型'"
       width="460px"
       append-to-body
-      class="reminder-type-form-dialog"
+      dialog-class="reminder-type-form-dialog"
     >
       <el-form
         :model="typeForm"
@@ -915,7 +919,7 @@
           </el-button>
         </div>
       </template>
-    </el-dialog>
+    </MobileDialog>
   </div>
 </template>
 
@@ -949,7 +953,7 @@ import type {
   ReminderType,
   ReminderTypeFormState,
   ReminderUser
-} from './types'
+} from '@/types/reminder'
 import { useNotification } from '@/composables/useNotification'
 const globalNotifications = useNotification()
 
@@ -1185,7 +1189,10 @@ const recipientStatusLabel = (status?: string | null) => ({
   ignored: '已忽略',
   completed: '已完成'
 })[status || ''] || status || '-'
-const recipientActionDate = (row: ReminderOccurrence) => formatDate(row.action_at)
+const recipientActionDate = (row: ReminderOccurrence) => {
+  if (row.action_at) return formatDateTime(row.action_at)
+  return row.scheduled_at && TimeUtil.parse(row.scheduled_at)?.isAfter(TimeUtil.now()) ? '未到执行时间' : '尚未操作'
+}
 const formatReminderTargets = (row: ReminderDetail) => {
   if (canViewReminderField('target_mode') && row.target_mode === 'all') return '全体员工'
   if (!canViewReminderField('target_users')) return '指定员工'
@@ -1193,7 +1200,11 @@ const formatReminderTargets = (row: ReminderDetail) => {
 }
 const detailOccurrences = computed<ReminderOccurrence[]>(() => detail.value?.occurrences || [])
 const detailScheduledAtColumnWidth = computed(() => getTextColumnMinWidth(
-  ['执行日期', ...detailOccurrences.value.map(item => formatDate(item.scheduled_at))],
+  ['执行日期', ...detailOccurrences.value.map(item => formatDateTime(item.scheduled_at))],
+  { minWidth: 92, horizontalPadding: 16 }
+))
+const detailRemindAtColumnWidth = computed(() => getTextColumnMinWidth(
+  ['提醒时间', ...detailOccurrences.value.map(item => formatDateTime(item.remind_at))],
   { minWidth: 92, horizontalPadding: 16 }
 ))
 const detailUserColumnWidth = computed(() => getTextColumnMinWidth(
@@ -1253,7 +1264,7 @@ const loadReminders = async () => {
     if (canViewReminderField('type_name') && filters.type_id) params.type_id = filters.type_id
     if (canViewReminderField('status') && filters.status) params.status = filters.status
 
-    const response = await api.get<ReminderRow[], ReminderSummary>('/reminders', { params })
+    const response = await api.get<ReminderRow[], ReminderSummary>('/reminders', { params, useCache: false })
     if (response.success) {
       reminders.value = Array.isArray(response.data) ? response.data : []
       pagination.total = Number(response.pagination?.total || 0)
@@ -1294,7 +1305,7 @@ const openCreateDialog = () => {
   formVisible.value = true
 }
 const openEditDialog = async (row: ReminderRow) => {
-  const response = await api.get<ReminderDetail>(`/reminders/${row.id}`)
+  const response = await api.get<ReminderDetail>(`/reminders/${row.id}`, { useCache: false })
   if (!response.success || !response.data) return
 
   const data = response.data
@@ -1389,7 +1400,7 @@ const deleteReminder = async (row: ReminderRow) => {
   }
 }
 const openDetail = async (row: ReminderRow) => {
-  const response = await api.get<ReminderDetail>(`/reminders/${row.id}`)
+  const response = await api.get<ReminderDetail>(`/reminders/${row.id}`, { useCache: false })
   if (response.success && response.data) {
     detail.value = response.data
     detailVisible.value = true
@@ -1504,5 +1515,5 @@ onMounted(async () => {
 }
 
 .reminder-type-table-wrap,.reminder-type-table{width:100%}
-@media(max-width: 767px){.reminder-form-grid{grid-template-columns:1fr}.reminder-form-grid .span-2{grid-column:auto}.detail-summary{grid-template-columns:1fr}.type-toolbar{align-items:flex-start;flex-direction:column}.reminder-form-dialog :deep(.el-dialog),.reminder-detail-dialog :deep(.el-dialog),.reminder-type-dialog :deep(.el-dialog){width:calc(100vw - 16px)!important;margin:8px auto}.weekday-options :deep(.el-checkbox-button__inner){padding:8px 10px}}
+@media(max-width: 767px){.reminder-form-grid{grid-template-columns:1fr}.reminder-form-grid .span-2{grid-column:auto}.detail-summary{grid-template-columns:1fr}.type-toolbar{align-items:flex-start;flex-direction:column}.weekday-options :deep(.el-checkbox-button__inner){padding:8px 10px}}
 </style>

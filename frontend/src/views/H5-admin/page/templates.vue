@@ -29,14 +29,14 @@
       </UnifiedSearchPanel>
 
       <el-card
-        v-tf-loading="loading"
+        v-tf-loading="{ active: loading, text: '正在刷新商品模板...' }"
         class="table-card"
         shadow="never"
       >
         <TableLoadingRow
-          v-if="loading"
+          v-if="loading && groupedTemplates.length === 0"
           mode="block"
-          text="加载中..."
+          text="正在读取商品模板..."
         />
 
         <template v-else>

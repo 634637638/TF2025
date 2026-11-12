@@ -2,19 +2,12 @@
 
 import { readFileSync, readdirSync } from 'node:fs'
 import { extname, join, relative, resolve } from 'node:path'
+import { collectCoverage, isPrivateDialogChrome } from './audit-dialog-coverage.mjs'
 
 const root = resolve(import.meta.dirname, '..')
 const sourceRoot = join(root, 'src')
 const findings = []
 
-const directDialogExceptions = {
-  'src/components/ReminderHost.vue': '全局提醒宿主，需要锁定交互并由提醒服务控制生命周期',
-  'src/views/H5-admin/page/SoldProductsView.vue': 'H5 管理素材预览工作台',
-  'src/views/backup/BackupView.vue': '备份清理表单，保留 Element Plus 表单校验行为',
-  'src/views/reminders/ReminderView.vue': '待办编辑与执行记录双弹窗',
-  'src/views/shared/SharedView.vue': '经验分享编辑器与分类管理工作台',
-  'src/views/subsidy/components/SubsidyPhotoManageDialog.vue': '国补照片管理主工作台；图片查看使用公共 MediaPreviewViewer'
-}
 const requiredMobileDialogFiles = [
   'src/views/query/QueryView.vue',
   'src/components/query/QueryDetailDialog.vue'
@@ -49,14 +42,7 @@ for (const file of walk(sourceRoot)) {
 
   if (!matches.length || relativeFile === 'src/components/MobileDialog.vue') continue
 
-  if (!directDialogExceptions[relativeFile]) {
-    findings.push(`${relativeFile}:${lineNumber(source, matches[0].index)} 直接使用 el-dialog，必须迁移到 MobileDialog 或登记专用例外`)
-    continue
-  }
-
-  if (!/<el-dialog\b[^>]*(?:\bclass=|:class=)/i.test(source)) {
-    findings.push(`${relativeFile}:${lineNumber(source, matches[0].index)} 直接 el-dialog 必须声明业务 class，确保可追踪公共样式边界`)
-  }
+  findings.push(`${relativeFile}:${lineNumber(source, matches[0].index)} 直接使用 el-dialog，必须迁移到 MobileDialog`)
 }
 
 for (const relativeFile of requiredMobileDialogFiles) {
@@ -180,10 +166,19 @@ if (!/@pointerdown="handleOverlayPointerDown"/.test(mobileDialogSource)
   findings.push('src/components/MobileDialog.vue 手机遮罩关闭必须校验完整按下/抬起，防止双击穿透或正文拖动导致误关闭')
 }
 
+const coverage = collectCoverage()
+for (const candidate of coverage.styles.filter(isPrivateDialogChrome)) {
+  findings.push(`${candidate.file}:${candidate.line} ${candidate.property} 必须由公共弹窗入口维护，不得覆盖外壳或令牌`)
+}
+for (const call of coverage.nativeCalls) findings.push(`${call.file}:${call.line} ${call.kind} 必须复用公共通知服务`)
+for (const dialog of coverage.dialogs.filter(dialog => dialog.kind === 'el-image-viewer')) {
+  findings.push(`${dialog.file}:${dialog.line} 图片查看必须使用 MediaPreviewViewer`)
+}
+
 if (findings.length) {
   console.error(`弹窗采用率审计失败，共 ${findings.length} 处：`)
   for (const finding of findings) console.error(`- ${finding}`)
   process.exit(1)
 }
 
-console.log(`弹窗采用率审计通过：直接 el-dialog 专用边界 ${Object.keys(directDialogExceptions).length} 个文件；查询页使用 MobileDialog，国补图片查看使用 MediaPreviewViewer，预览删除确认层级已校验。`)
+console.log('弹窗采用率审计通过：业务直接 el-dialog、原生弹框及私有外壳覆盖均为 0；媒体查看统一使用 MediaPreviewViewer，预览删除确认层级已校验。')

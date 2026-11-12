@@ -203,9 +203,9 @@
 
         <!-- 菜单数据加载状态 -->
         <TableLoadingRow
-          v-if="loading"
+          v-if="loading && menuTree.length === 0"
           mode="block"
-          text="加载中..."
+          text="正在读取菜单列表..."
         />
 
         <!-- 错误信息 -->
@@ -232,10 +232,11 @@
 
         <!-- 菜单列表 -->
         <div
-          v-if="!loading && !errorMessage"
+          v-if="!errorMessage && (!loading || menuTree.length > 0)"
           class="menu-table-section admin-panel admin-table-panel"
         >
           <el-table
+            v-tf-loading="{ active: loading || refreshing, text: '正在刷新菜单列表...' }"
             :data="visibleMenuRows"
             row-key="id"
             class="data-table compact-fit-table menu-data-table"
@@ -607,6 +608,7 @@
                       v-model="formData.icon"
                       :default-collapsed="false"
                       @select="handleIconSelect"
+                      @saving-change="iconSaving = $event"
                     />
                   </el-form-item>
                 </aside>
@@ -627,7 +629,7 @@
               <el-button
                 type="primary"
                 native-type="button"
-                :disabled="submitting"
+                :disabled="submitting || iconSaving"
                 @click="handleSubmit"
               >
                 <InlineLoading
@@ -745,6 +747,7 @@ import { confirmAction } from '@/utils/message-box'
 import { ref, onMounted, computed, watch, defineAsyncComponent } from 'vue'
 import { unifiedApi } from '@/utils/unified-api'
 import { useNotification } from '@/composables/useNotification'
+import type { IconRecord } from '@/types/icon'
 import { useRefreshData } from '@/composables/useRefreshData'
 import { useImportExport } from '@/composables/useImportExport'
 import { useLoadingState } from '@/composables'
@@ -803,7 +806,7 @@ const showMenuActionField = computed(() => shouldShowActionColumn(
 
 // 权限和通知
 const menuStore = useMenuStore()
-const { success, error, warning: _warning, info: _info, handleApiError, confirm: _confirm } = useNotification()
+const { success, error, warning, info: _info, handleApiError, confirm: _confirm } = useNotification()
 const { refreshing, refresh } = useRefreshData()
 const { exportFile, importFile, buildDateFilename } = useImportExport()
 const { isMobile } = useMobile()
@@ -820,6 +823,7 @@ const importingMenus = ref(false)
 const showModal = ref(false)
 const showMenuWidthModal = ref(false)
 const submitting = ref(false)
+const iconSaving = ref(false)
 const isEdit = ref(false)
 const currentEditId = ref<string | number | null>(null)
 const errorMessage = ref('')  // 重命名以避免与通知服务的 error 冲突
@@ -1243,7 +1247,7 @@ watch(() => formData.value.module_key, (newModuleKey) => {
   }
 })
 
-const handleIconSelect = (iconName: string, icon?: { svg?: string }) => {
+const handleIconSelect = (iconName: string, icon?: IconRecord) => {
   formData.value.icon = iconName || ''
   formData.value.icon_svg = icon?.svg || ''
 }
@@ -1407,6 +1411,7 @@ const showEditModal = (menu: MenuItem): void => {
 
 const closeModal = () => {
   submitting.value = false
+  iconSaving.value = false
   showModal.value = false
 }
 
@@ -1467,6 +1472,10 @@ const validateForm = () => {
 }
 
 const handleSubmit = async () => {
+  if (iconSaving.value) {
+    warning('图标正在保存，请稍候')
+    return
+  }
   if (submitting.value) return
 
   if (isEdit.value && !canEdit.value) {

@@ -165,7 +165,7 @@
                   :value="type.value"
                 >
                   <span class="float-left">
-                    <i :class="type.icon" />
+                    <IconRenderer :icon="type.icon" />
                     {{ type.label }}
                   </span>
                 </el-option>
@@ -289,7 +289,7 @@
               <el-table
                 v-else
                 ref="customersTableRef"
-                v-tf-loading="isLoading"
+                v-tf-loading="{ active: isLoading || refreshing, text: '正在刷新客户列表...' }"
                 :data="customers"
                 border
                 stripe
@@ -913,7 +913,7 @@
                       :value="type.value"
                     >
                       <span class="float-left">
-                        <i :class="type.icon" />
+                        <IconRenderer :icon="type.icon" />
                         {{ type.label }}
                       </span>
                     </el-option>
@@ -938,8 +938,8 @@
                       :value="vip.value"
                     >
                       <span class="float-left">
-                        <i
-                          :class="vip.icon"
+                        <IconRenderer
+                          :icon="vip.icon"
                           :style="{ color: getVipColor(vip.value) }"
                         />
                         {{ vip.label }}
@@ -1535,7 +1535,7 @@
             >
               <div class="table-responsive">
                 <el-table
-                  v-tf-loading="purchasesLoading"
+                  v-tf-loading="{ active: purchasesLoading, text: '正在刷新客户购买记录...' }"
                   :data="customerPurchases"
                   border
                   stripe

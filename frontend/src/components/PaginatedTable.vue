@@ -39,7 +39,7 @@
 
     <!-- 表格 -->
     <div
-      v-tf-loading="loading"
+      v-tf-loading="{ active: loading, text: loadingText }"
       class="tf-paginated-table__table-wrapper"
     >
       <el-table
@@ -127,7 +127,7 @@
           <TableLoadingRow
             v-if="loading && tableData.length === 0"
             mode="block"
-            text="加载数据中..."
+            :text="loadingText"
           />
           <DataEmptyState
             v-else
@@ -179,6 +179,7 @@ interface Props {
   data: TableRow[]
   columns: PaginatedTableColumn[]
   loading?: boolean
+  loadingText?: string
 
   // 分页相关
   paginated?: boolean
@@ -219,6 +220,7 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
   loading: false,
+  loadingText: '正在读取列表...',
   paginated: true,
   currentPage: 1,
   pageSize: 20,

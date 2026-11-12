@@ -317,7 +317,7 @@
 
           <div class="table-responsive price-list-table-wrapper">
             <el-table
-              v-tf-loading="loading"
+              v-tf-loading="{ active: loading, text: '正在刷新报价列表...' }"
               :data="priceList"
               stripe
               border
@@ -1620,7 +1620,7 @@
         <div class="inventory-dialog-content">
           <SectionLoading
             v-if="inventoryLoading"
-            text="加载中..."
+            text="正在读取对应库存明细..."
           />
 
           <template v-else>

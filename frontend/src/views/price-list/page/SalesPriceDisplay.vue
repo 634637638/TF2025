@@ -1,6 +1,10 @@
 <template>
   <div class="public-price-query sales-price-display">
-    <PublicPriceHeader title="最新销售价">
+    <PublicPriceHeader
+      title="最新销售价"
+      :action-width="112"
+      action-size="small"
+    >
       <template #search>
         <PublicSearchBox
           v-model="searchKeyword"
@@ -204,18 +208,21 @@
       </div>
       <template #footer>
         <div class="tf-dialog-actions">
-          <el-button @click="toggleIOSImageMode">
+          <el-button
+            class="tf-button--neutral"
+            @click="toggleIOSImageMode"
+          >
             长按保存
           </el-button>
           <el-button
             :loading="isSharingImage"
-            type="primary"
+            class="tf-button--manage"
             @click="shareIOSImage"
           >
             我要分享
           </el-button>
           <el-button
-            type="primary"
+            class="tf-button--neutral"
             @click="closeIOSImageModal"
           >
             关闭
@@ -894,9 +901,6 @@ onBeforeUnmount(() => {
 }
 
 .ios-image-dialog {
-  --tf-dialog-body-padding-inline: var(--tf-space-5);
-  --tf-dialog-body-padding-block: var(--tf-space-3) var(--tf-space-5);
-
   .ios-save-container {
     .image-wrapper {
       text-align: center;
@@ -922,12 +926,4 @@ onBeforeUnmount(() => {
   }
 }
 
-@media (max-width: 767px) {
-  .ios-image-dialog {
-    .el-dialog {
-      width: 95% !important;
-      margin: 20px auto !important;
-    }
-  }
-}
 </style>

@@ -296,7 +296,7 @@
                 <div class="table-responsive">
                   <el-table
                     ref="attendanceTableRef"
-                    v-tf-loading="loading"
+                    v-tf-loading="{ active: loading || refreshing, text: '正在刷新考勤记录...' }"
                     :data="displayAttendanceRows"
                     border
                     stripe
@@ -310,7 +310,7 @@
                       <TableLoadingRow
                         v-if="loading"
                         mode="block"
-                        text="加载中..."
+                        text="正在读取考勤记录..."
                       />
                       <DataEmptyState
                         v-else
@@ -692,7 +692,8 @@
                 <div class="table-responsive">
                   <el-table
                     ref="myAttendanceTableRef"
-                    :data="myLoading ? [] : displayMyAttendanceRows"
+                    v-tf-loading="{ active: myLoading || refreshing, text: '正在刷新我的考勤记录...' }"
+                    :data="displayMyAttendanceRows"
                     border
                     stripe
                     class="data-table devices-table compact-fit-table"
@@ -705,7 +706,7 @@
                       <TableLoadingRow
                         v-if="myLoading"
                         mode="block"
-                        text="加载中..."
+                        text="正在读取我的考勤记录..."
                       />
                       <DataEmptyState
                         v-else

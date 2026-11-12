@@ -229,7 +229,7 @@
         shadow="never"
       >
         <el-table
-          v-tf-loading="loading"
+          v-tf-loading="{ active: loading, text: '正在刷新商城订单...' }"
           :data="orders"
           class="data-table w-full"
           :border="true"
@@ -238,7 +238,7 @@
             <TableLoadingRow
               v-if="loading"
               mode="block"
-              text="加载中..."
+              text="正在读取商城订单..."
             />
             <DataEmptyState
               v-else
@@ -422,11 +422,14 @@
           </el-table-column>
         </el-table>
 
-        <div class="mobile-orders-list">
+        <div
+          v-tf-loading="{ active: loading, text: '正在刷新商城订单...' }"
+          class="mobile-orders-list"
+        >
           <TableLoadingRow
-            v-if="loading"
+            v-if="loading && orders.length === 0"
             mode="block"
-            text="加载中..."
+            text="正在读取商城订单..."
           />
           <DataEmptyState
             v-else-if="orders.length === 0"

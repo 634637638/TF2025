@@ -43,7 +43,7 @@
         @click="handleViewItem(item.key)"
       >
         <div class="card-icon">
-          <i :class="item.icon" />
+          <IconRenderer :icon="item.icon" />
         </div>
         <div class="card-content">
           <h3>{{ item.label }}</h3>
@@ -123,7 +123,7 @@
 
         <div class="data-table-container">
           <el-table
-            v-tf-loading="loading"
+            v-tf-loading="{ active: loading, text: '正在刷新数据检查结果...' }"
             class="data-table"
             :data="paginatedAllData"
             stripe
@@ -134,7 +134,7 @@
               <TableLoadingRow
                 v-if="loading"
                 mode="block"
-                text="加载中..."
+                text="正在读取数据检查结果..."
               />
               <DataEmptyState
                 v-else

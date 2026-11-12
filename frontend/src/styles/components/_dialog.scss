@@ -2,7 +2,7 @@
  * Unified dialog contract.
  *
  * Keep dialog chrome here so pages only own their business layout. The
- * legacy --dialog-* aliases are intentionally retained for existing dialog
+ * consumed --dialog-* aliases are retained for existing dialog
  * classes while new code should use the --tf-dialog-* tokens.
  */
 :root {
@@ -21,6 +21,9 @@
   --tf-dialog-side-gap: 32px;
   --tf-dialog-width: 880px;
   --tf-dialog-max-width: 880px;
+  --tf-dialog-workspace-height: 820px;
+  --tf-dialog-workspace-block-gap: 48px;
+  --tf-dialog-workspace-block-gap-mobile: 24px;
   /* Confirmation messages need room for product names and identifiers. */
   --tf-dialog-message-width: 560px;
   --tf-dialog-header-height: 50px;
@@ -44,27 +47,14 @@
   --tf-dialog-footer-padding-inline: 20px;
   --tf-dialog-footer-padding-block-end: 20px;
   --tf-dialog-mobile-side-gap: 4px;
-  --tf-dialog-mobile-footer-padding-block-start: 12px;
-  --tf-dialog-mobile-footer-padding-inline: 12px;
-  --tf-dialog-mobile-footer-padding-block-end: calc(12px + env(safe-area-inset-bottom, 0px));
+  --tf-dialog-overlay-inset: clamp(12px, 2vw, 24px);
   --tf-dialog-mobile-radius: var(--tf-dialog-radius);
   --tf-dialog-sheet-title-size: var(--tf-font-dialog-title);
 
   /* Backwards-compatible aliases for existing page-level variants. */
-  --dialog-overlay-bg: var(--tf-dialog-overlay-bg);
-  --dialog-surface: var(--tf-dialog-surface);
-  --dialog-surface-soft: var(--tf-dialog-surface-soft);
-  --dialog-border: var(--tf-dialog-border);
-  --dialog-shadow: var(--tf-dialog-shadow);
   --dialog-radius: var(--tf-dialog-radius);
   --dialog-header-bg: var(--tf-dialog-header-bg);
-  --dialog-header-text: var(--tf-dialog-header-text);
-  --dialog-body-text: var(--tf-dialog-body-text);
-  --dialog-footer-bg: var(--tf-dialog-footer-bg);
-  --dialog-muted-bg: var(--tf-dialog-close-bg);
-  --dialog-muted-bg-hover: var(--tf-dialog-close-bg-hover);
   --dialog-side-gap: var(--tf-dialog-side-gap);
-  --dialog-default-width: var(--tf-dialog-width);
   --dialog-max-width: var(--tf-dialog-max-width);
   --dialog-message-width: var(--tf-dialog-message-width);
 }
@@ -109,27 +99,22 @@
 /* Element Plus and message-box share the same dialog chrome. */
 .el-overlay.el-overlay-dialog,
 .el-overlay-dialog,
-.el-overlay-message-box {
+.el-overlay-message-box,
+.mobile-dialog-sheet-overlay {
   position: fixed !important;
   inset: 0 !important;
-  display: flex !important;
+  /* Keep v-show's inline display:none authoritative after closing. */
+  display: flex;
   align-items: center !important;
   justify-content: center !important;
   overflow: auto !important;
-  padding: clamp(12px, 2vw, 24px) !important;
+  /* Floating dialogs reserve screen insets outside their footer, once. */
+  padding:
+    max(var(--tf-dialog-overlay-block-inset, var(--tf-dialog-overlay-inset)), env(safe-area-inset-top))
+    max(var(--tf-dialog-overlay-inset), env(safe-area-inset-right))
+    max(var(--tf-dialog-overlay-block-inset, var(--tf-dialog-overlay-inset)), env(safe-area-inset-bottom))
+    max(var(--tf-dialog-overlay-inset), env(safe-area-inset-left)) !important;
   background: var(--tf-dialog-overlay-bg) !important;
-}
-
-.el-dialog__wrapper,
-.el-message-box__wrapper {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  width: 100%;
-  height: 100%;
-  min-height: 100%;
-  padding: 0 !important;
-  overflow: auto !important;
 }
 
 .el-overlay.is-message-box,
@@ -163,7 +148,7 @@
   --el-dialog-margin-top: 0px !important;
   width: var(--mobile-dialog-effective-width, var(--el-dialog-width, var(--tf-dialog-width))) !important;
   max-width: min(var(--mobile-dialog-effective-max-width, var(--dialog-max-width, var(--tf-dialog-max-width))), calc(100vw - var(--dialog-side-gap, var(--tf-dialog-side-gap)))) !important;
-  max-height: calc(100vh - 32px) !important;
+  max-height: min(calc(100vh - 32px), 100%) !important;
   margin: auto !important;
   padding: 0 !important;
   top: auto !important;
@@ -292,26 +277,20 @@ body .mobile-dialog-sheet-close svg {
   box-shadow: none !important;
 }
 
-.mobile-dialog-sheet-body {
-  color: var(--tf-dialog-body-text);
-  font-size: var(--tf-font-body);
-  line-height: var(--tf-line-height-body);
-}
-
 .el-dialog__body {
   overflow-y: auto !important;
   min-height: 0 !important;
-  max-height: calc(100vh - 220px) !important;
+  max-height: var(--tf-dialog-body-max-height, calc(100vh - 220px)) !important;
 }
 
 /* Dynamic viewport support for Android Chrome and iOS Safari address bars. */
 @supports (height: 100dvh) {
   .el-dialog:not(.is-fullscreen) {
-    max-height: calc(100dvh - 32px) !important;
+    max-height: min(calc(100dvh - 32px), 100%) !important;
   }
 
   .el-dialog__body {
-    max-height: calc(100dvh - 220px) !important;
+    max-height: var(--tf-dialog-body-max-height, calc(100dvh - 220px)) !important;
   }
 }
 
@@ -378,9 +357,35 @@ body .mobile-dialog-sheet-close svg {
 }
 
 /* Explicit workspace variant for complex full-bleed dialog tools. */
-.tf-dialog-body-flush .el-dialog__body,
-.el-dialog.tf-dialog-body-flush .el-dialog__body {
+.tf-dialog-body-flush .el-dialog__body {
   padding: 0 !important;
+}
+
+/* Multi-pane permission/workspace tools share the same bounded shell. */
+.el-dialog.tf-dialog-workspace {
+  display: flex;
+  flex-direction: column;
+  height: min(var(--tf-dialog-workspace-height), calc(100vh - var(--tf-dialog-workspace-block-gap)));
+  height: min(var(--tf-dialog-workspace-height), calc(100dvh - var(--tf-dialog-workspace-block-gap)));
+}
+
+.tf-dialog-workspace > .el-dialog__header,
+.tf-dialog-workspace > .el-dialog__footer {
+  flex: 0 0 auto;
+}
+
+.tf-dialog-workspace > .el-dialog__body {
+  --tf-dialog-body-max-height: none;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+}
+
+@media (max-width: 1024px) {
+  .el-dialog.tf-dialog-workspace {
+    height: calc(100vh - var(--tf-dialog-workspace-block-gap-mobile));
+    height: calc(100dvh - var(--tf-dialog-workspace-block-gap-mobile));
+  }
 }
 
 .tf-dialog-form {
@@ -442,18 +447,13 @@ body .mobile-dialog-sheet-close svg {
 @media (max-width: 767px) {
   :root {
     --tf-dialog-side-gap: 4px;
+    --tf-dialog-overlay-inset: var(--tf-dialog-mobile-side-gap);
     --tf-dialog-max-width: calc(100vw - 8px);
     --tf-dialog-body-padding-inline: 16px;
     --tf-dialog-body-padding-block: 16px;
     --tf-dialog-footer-padding-block-start: 12px;
     --tf-dialog-footer-padding-inline: 12px;
-    --tf-dialog-footer-padding-block-end: calc(12px + env(safe-area-inset-bottom, 0px));
-  }
-
-  .el-overlay.el-overlay-dialog,
-  .el-overlay-dialog,
-  .el-overlay-message-box {
-    padding: var(--tf-dialog-mobile-side-gap) !important;
+    --tf-dialog-footer-padding-block-end: 12px;
   }
 
   .el-dialog:not(.mobile-dialog):not(.is-fullscreen) {
@@ -467,10 +467,6 @@ body .mobile-dialog-sheet-close svg {
       calc(100vw - (var(--mobile-dialog-effective-side-gap, var(--tf-dialog-mobile-side-gap)) * 2)),
       var(--tf-dialog-explicit-max-width, var(--dialog-max-width, var(--tf-dialog-max-width)))
     );
-  }
-
-  .el-dialog__footer {
-    padding: var(--tf-dialog-footer-padding-block-start) var(--tf-dialog-footer-padding-inline) var(--tf-dialog-footer-padding-block-end) !important;
   }
 
   .el-dialog__body {
@@ -494,27 +490,15 @@ body .mobile-dialog-sheet-close svg {
     --dialog-side-gap: 4px;
     --dialog-vertical-gap: 12px;
     --dialog-max-width: calc(100vw - 8px);
-    --mobile-dialog-overlay-padding: 12px 4px;
-    --mobile-dialog-body-padding: 10px 6px 8px;
-    --mobile-dialog-footer-padding: 0 6px 8px;
+    --tf-dialog-overlay-block-inset: 12px;
   }
 
   .mobile-dialog-sheet-panel.crud-dialog-sm,
   .mobile-dialog-sheet-panel.crud-dialog-md,
   .mobile-dialog-sheet-panel.crud-dialog-md-lg,
   .mobile-dialog-sheet-panel.crud-dialog-lg {
-    max-height: calc(100dvh - 24px) !important;
+    max-height: min(calc(100dvh - 24px), 100%) !important;
     border-radius: var(--tf-dialog-mobile-radius) !important;
-  }
-}
-
-@media (max-width: 479px) {
-  .crud-dialog-sm,
-  .crud-dialog-md,
-  .crud-dialog-md-lg,
-  .crud-dialog-lg {
-    --mobile-dialog-body-padding: 8px 6px 6px;
-    --mobile-dialog-footer-padding: 0 6px 6px;
   }
 }
 
@@ -530,10 +514,6 @@ body .mobile-dialog-sheet-close svg {
     --tf-dialog-form-label-width-mobile: 58px;
     --tf-dialog-footer-padding-block-start: 10px;
     --tf-dialog-footer-padding-inline: 10px;
-    --tf-dialog-footer-padding-block-end: calc(10px + env(safe-area-inset-bottom, 0px));
-  }
-
-  .el-dialog__footer {
-    padding: var(--tf-dialog-footer-padding-block-start) var(--tf-dialog-footer-padding-inline) var(--tf-dialog-footer-padding-block-end) !important;
+    --tf-dialog-footer-padding-block-end: 10px;
   }
 }

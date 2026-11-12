@@ -6,7 +6,7 @@ const frontendRoot = resolve(import.meta.dirname, '..')
 const projectRoot = resolve(frontendRoot, '..')
 const backendRoot = resolve(projectRoot, 'backend/src')
 const routesRoot = resolve(backendRoot, 'routes')
-const configPath = resolve(projectRoot, 'config/backend-security-audit.json')
+const configPath = resolve(projectRoot, 'backend/scripts/config/backend-security-audit.json')
 const findings = []
 
 const walk = (directory, extension) => readdirSync(directory).flatMap((name) => {
@@ -15,7 +15,7 @@ const walk = (directory, extension) => readdirSync(directory).flatMap((name) => 
 })
 
 if (!existsSync(configPath)) {
-  console.error('后端安全审计失败：缺少 config/backend-security-audit.json')
+  console.error('后端安全审计失败：缺少 backend/scripts/config/backend-security-audit.json')
   process.exit(1)
 }
 

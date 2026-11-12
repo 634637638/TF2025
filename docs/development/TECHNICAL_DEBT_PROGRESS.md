@@ -31,6 +31,115 @@
 | T18 闲置 API、组件与依赖治理 | P1 / 已提交 `ee05c43`；组件保留边界见 T19 | forecast 真实调用、analytics 63 方法、16 个组件候选和依赖四维矩阵见 T18 专节；保留 dts 证据不一致的公共组件 | 按删/修/留依据执行，删除双零局部组件与确认无用途依赖，保留 OCR、权限与有效契约 | 预测路径回归、重生成 dts diff、动态引用检索、依赖用途矩阵及代码/config/锁文件/脚本/文档一起验收；不替代数据库或浏览器验收 |
 | T19 闲置导出与重复实现续项 | P1 / 本批已闭环，未提交；后续候选见 T19.4 | 起点 `ee05c43`，工作区干净；API、Composable、字段权限、图片保存与薪资表格交互复用见下文 | 清理确证闲置导出，统一权限与图片/表格公共行为；补齐剩余 14 项决定表及销售客户链路复核 | 类型、严格 lint、前端规范、后端全测、文档与 diff 检查；不降低基线，不把静态/模拟测试等同浏览器或云库验收 |
 | T20 首屏 CSS 构建体积 | P1 / 本批已完成，未提交 | 删除公共 styles.scss 中 21 条无消费者的旧装饰/过渡规则；生产首屏 CSS 281157→279580 bytes，减少 1577 bytes，低于原 280000 bytes 上限 420 bytes | 保留在用 fade、组件动效和原体积阈值；动效登记仅收紧 styles.scss 至实测 9 | 原 build 与体积门禁 rc=0，97 项前端测试通过；生产 CSS 保留规则 AST 一致；18 组浏览器样式/布局一致，截图差异和验收边界见下文 |
+| T21 全局模态框双端统一 | P1 / 整改与验证中（逐页及真机未完成） | 2026-11-11：62 个叶子路由、204 个 Vue 文件；MobileDialog 140 处、公共媒体查看 8 处；业务直接 Dialog/图片查看、原生输入与私有外壳覆盖均为 0。剩余 57 项为 3 文件的业务内容候选；改前嵌套扫描复核为 352 项。详见本节与页面台账 | 按 T21.2–T21.6 分批核对并整改；PC、平板、手机共用公共入口，保留必要业务变体；不因原有审计通过宣称全站已统一 | 每批更新实例/覆盖证据，执行相关行为测试、审计及浏览器检查；全量逐页和真机分别验收。不得扩大例外或重建基线隐藏风险；回滚按该批组件/样式与对应测试一起恢复 |
+
+### T21 全局模态框双端统一（2026-11-11）
+
+用户要求根据页面台账全局排查并持续完善，同类问题一并处理。本任务已从盘点推进到**全局公共入口迁移、外壳覆盖清理、嵌套行为修复及验证**；没有改动云端业务数据。权威要求见[对话框规范](../frontend/dialog-standards.md)，逐路由矩阵和统计口径见[页面台账](../frontend/page-audit-inventory.md#全量模态框接入复核2026-11-11)。本节是这一批问题的唯一任务入口。
+
+#### 任务与验收
+
+| 子任务 | 当前状态 | 执行范围与要求 | 完成证据 |
+| --- | --- | --- | --- |
+| T21.1 全量盘点与防漏算 | 已关闭 | 按真实路由 AST 区分 65 个懒加载入口、3 个布局和 62 个叶子 URL；扫描 130 个页面/内部单元、73 个公共组件和 App；为每个模板实例保留位置，按 Vue 依赖关联路由；单列服务弹框、原生输入、专用覆盖层和局部样式候选 | `audit:dialogs` 可重复生成统计/JSON/Markdown；9 项正式正反例接入 `check:dialogs`；台账数量漂移会失败。此项关闭仅表示盘点工具和任务建立完成 |
+| T21.2 公共外壳与间距覆盖治理 | 代码及公共浏览器检查完成，整页验收见 T21.5 | 核对下方 7 批首轮候选，并用新版嵌套扫描器复核改前 352 项和当前 57 项业务内容。先确认文件实际引入及选择器命中，再删除重复宽度/圆角/标题/关闭按钮/正文/footer 覆盖；宽度改用属性/档位，贴边工作台使用公共变体，业务内容网格保留 | 每项候选有“删除冗余 / 迁公共入口 / 允许的业务变体 / 未生效待核实”的证据。不得仅依据源码命中机械删除；相关页面在 375/430/768/1024/1440px 明暗主题下核对最终计算样式、滚动和边界 |
+| T21.3 原生 Dialog 例外复核 | 12 处已迁移，业务验收待完成 | 下表 6 个文件、12 处业务 el-dialog 逐实例证明是否仍需保留原生能力。普通表单优先迁 MobileDialog；保留例外必须证明其 PC/手机读取公共视觉、关闭行为、footer 和安全区，不扩大例外数量 | 逐实例保留/迁移理由与行为测试；迁移后同步删除例外登记。表单校验、打开/关闭事件、编辑草稿、嵌套确认和媒体层级不得回退；双端浏览器实测 |
+| T21.4 原生姓名输入与媒体入口统一 | 代码整改完成，iOS 真机待验收 | QueryEditModal 1、QuickSaleModal 2、useSalesCustomers 1，共 4 处 window.prompt；确认原有 iOS 双击解锁/键盘问题后复用公共 prompt，防止多重打开、重复保存和取消误提交。经验分享 1 处 el-image-viewer 核对迁往 MediaPreviewViewer；保留当前图片索引、关闭与字段权限 | 输入确认、取消、空值、失败后保留状态及并发测试；iOS Safari 实际键盘/双击验收单列。媒体长列表切换、关闭、嵌套确认层级测试；未经测试不移除现有兼容行为 |
+| T21.5 全部页面与共享宿主双端验收 | P1 / 后续债务 | 按页面台账的 62 个 URL 分别记录；3 个布局和全局 ReminderHost 单列。无模板弹窗的页面继续检查公共确认服务；共享实例避免重复计数，模板组件数不能作为页面完成率。覆盖打开、关闭、取消、校验、长内容、滚动、Loading、错误及权限拒绝 | 每页填写 PC、手机模拟、Android Chrome、iOS Safari 的实际结果及未验证项；375/430/768/1024/1440px、明暗主题及移动安全区。公共组件测试不替代业务整页，模拟浏览器不替代真机 |
+| T21.6 动态引用、专用覆盖层及防回退收口 | 引用及门禁已复核，专用设备验收待完成 | 核对 IconSelector、MemorySelector、StockInDetailModal 的动态/全局注册与构建声明，保留证据不一致的组件；ProfessionalScanner、ScreenLock、菜单及媒体遮罩按各自语义检查。核实候选后为明确禁止的覆盖扩充既有审计正反例，不另建重复标准 | 动态调用/声明证据齐全后才可删除；保留专用交互、摄像头权限与键盘行为。新门禁必须在真实反例下失败，不降低现有门禁、不增加未经证实的白名单 |
+| T21.7 主屏幕书签保存图片安全区 | 代码、浏览器仿真及构建完成，iOS 主屏幕真机待验收 | 修复普通浏览器正常、主屏幕书签 footer 下方偏大的问题；销售与批发保存图片复用公共外层安全区，清理重复 footer 间距并保持按钮语义一致 | 真实两页模板在修复前复现 44px≠10px；修复后 40 组安全区仿真、完整浏览器回归、规范门禁及生产构建均通过，具体命令和边界见下方补充记录 |
+| T21.8 双击库存明细关闭后残留 | 本地修复与专项回归完成，线上待复测 | 用户反馈电脑浏览器关闭后再次出现且无法关闭。公共遮罩强制 flex 覆盖 sheet 的隐藏状态；修复公共入口，覆盖电脑窄窗口、平板和手机，保留 PC 有/无遮罩行为 | 改前 Chromium 1024px 复现：状态 false，但可见外壳、遮罩各 1；改后 375/768/1024/1440px × 有/无遮罩的标题关闭、主动重开、业务关闭均无可见残留。完整检查的结果与限制见下方补充 |
+| T21.9 报价页头按钮紧凑与显式声明 | 本地修复、浏览器专项与构建完成，线上待复测 | 复用公共页头参数，显式声明优先于公共默认；销售/批发保留图标和完整文字，图文靠近、按钮及整组居中，清理失效私有页头样式 | 180 组真实模板浏览器回归、完整规范门禁及构建通过；807 文件前端包 CRC 校验通过，真机/线上待复测 |
+
+执行顺序：T21.2 的库存/销售/综合查询批次 → 权限及其余业务 → T21.3 原生例外 → T21.4 输入/媒体 → T21.5 逐页与真机 → T21.6 剩余引用及门禁收口。页面任务按业务域分批，每批独立回滚；无需重做 T21.1 才能开始修复，但每批结束须重跑统计，更新本节证据。
+
+#### T21.2 样式候选分批定位
+
+下列保留首轮只读扫描定位，共 34 个文件 / 293 项声明（旧扫描器口径）；**不是 293 个已证实的视觉缺陷**。完整选择器、声明和值由 `npm --prefix frontend run audit:dialogs -- --json` 输出，不能把日期数字固定成允许上限。SCSS 嵌套、内联/条件样式、已失效选择器及允许的贴边变体需另外核对。
+
+| 批次 | 文件与候选数（均位于 frontend/src） | 合计 |
+| --- | --- | ---: |
+| 综合查询、库存公共弹窗及出库 | `components/InventoryDetailModal.vue` 16；`components/PublishToH5Modal.vue` 8；`components/StockInModal.vue` 1；`components/WholesaleModal.vue` 19；`components/query/QueryDetailDialog.vue` 3；`components/query/ReturnStockModal.vue` 20；`components/query/SalesReceipt.vue` 9；`components/query/styles/query-edit-modal/base.scss` 13；同目录 `responsive.scss` 7；`views/query/styles/query-view/image-preview.css` 2 | 98 |
+| 库存与销售页面 | `views/inventory/InventoryView.vue` 39；`views/sales/styles/sales-view-dialogs.scss` 33 | 72 |
+| 权限管理 | `views/permissions/styles/permissions-view.css` 51；`views/permissions/page/ModuleManagementView.vue` 2 | 53 |
+| 结算、预定与库存预警 | `views/payments/SupplierPhonePaymentsView.vue` 16；`views/preorders/page/PreorderFormModal.vue` 8；`views/system/phone-warning-config/PhoneWarningConfigView.vue` 6 | 30 |
+| H5 管理与手机端 | `views/H5-admin/page/styles/` 下 `banners/responsive.scss`、`config/responsive.scss`、`home-sections/responsive.scss`、`orders/responsive.scss`、`templates/mobile.css` 各 1，`templates/tablet.css` 6；`views/H5-mobile/page/MyCenter.vue` 2；`views/H5-mobile/page/styles/order-detail/order-summary.scss` 6 | 19 |
+| 公开报价 | `views/price-list/page/SalesPriceDisplay.vue` 2；`views/price-list/page/public-price-query/_ios-save-dialog.scss` 3；同目录 `_notice-dialog.scss` 4 | 9 |
+| 公共层、提醒及分享 | `components/ReminderHost.vue` 4；`styles/global.css` 3；`styles/permission-toast.scss` 1；`styles/responsive.scss` 1；`views/reminders/ReminderView.vue` 1；`views/shared/SharedView.vue` 2 | 12 |
+
+已确认需要进入整改核对的例子：库存编辑弹窗重设 28px 正文与 footer 间距、手机端关闭按钮右偏移；销售独立 SCSS 重设弹窗圆角/宽度/正文间距；公开查询通知弹窗重设手机端 95% 宽度。这些覆盖现已清理，公共组件与业务 class 的最终计算样式由浏览器回归检查；业务整页和真机仍按 T21.5 验收。
+
+#### T21.3 直接 el-dialog 实例
+
+| 文件（frontend/src） | 数量 | 业务入口 |
+| --- | ---: | --- |
+| `components/ReminderHost.vue` | 1 | 全局待办提醒，锁定关闭与处理生命周期 |
+| `views/H5-admin/page/SoldProductsView.vue` | 1 | 图片管理 |
+| `views/backup/BackupView.vue` | 2 | 创建备份、清理旧备份 |
+| `views/reminders/ReminderView.vue` | 4 | 新建/编辑待办、执行记录、事项类型管理、新建/编辑类型 |
+| `views/shared/SharedView.vue` | 3 | 新建/编辑分享、分类管理、详情 |
+| `views/subsidy/components/SubsidyPhotoManageDialog.vue` | 1 | 国补照片管理 |
+
+上表记录迁移前的 12 处实例。现已全部接入 `MobileDialog`，删除 6 个例外；原有自定义 footer、禁止关闭选项及业务事件保留。迁移后共享公共组件行为测试，业务整页仍须按 T21.5 验收，不能因源码计数归零标记全部完成。
+
+#### T21 当前整改记录
+
+- 库存、销售、综合查询及共享出入库弹窗移除正文/footer、手机边界、关闭按钮偏移、圆角/主题重复覆盖；库存商品详情恢复公共 1024px sheet 分支。销售出库、批量销售、调货/划拨、销售单据使用公共贴边变体。删除全部为外壳覆盖的 `sales-view-dialogs.scss` 及其引用。
+- 权限、付款、预定、库存预警、H5 管理/手机端及公开报价同类覆盖一起清理；权限三种多栏弹窗使用公共 `tf-dialog-workspace`，标题/footer 与独立内容滚动保留。删除公开报价 `_notice-dialog.scss` 和导入，保留通知正文自身的内容布局。
+- 提醒宿主 1、备份 2、待办 4、分享 3、H5 已售商品图片管理 1、国补照片管理 1，共 12 处直接 Dialog 迁移；分享图片入口改用 `MediaPreviewViewer` 并保留图片列表、初始索引和关闭绑定。
+- 姓名输入复用 `useCustomerNamePrompt`，沿用 iOS 双击与原生输入解锁；无调用旧函数删除。公共输入/保存防重、取消和空值不提交、客户切换校验，以及保存失败保留草稿一并处理。真实 iOS 键盘仍未验证。
+- `useOverlayStack` 统一 Dialog/媒体查看的顺序和滚动锁，修复关闭/卸载非最后一层提前解锁及多层 Escape 同时关闭；手机 FocusTrap 复用 Element Plus，`closed` 去重，初始打开也维护生命周期；`opened` 等待进入动画完成。手机标题、遮罩和 Escape 补齐 `beforeClose(done)`，保留模板管理清理/阻止关闭契约。行为测试及浏览器结果以本节后续记录为准。
+- 扫描器改为按括号栈解析嵌套 SCSS，补获公开报价父级令牌和被嵌套吞掉的声明。使用同一新版扫描器复核改前源码为 **352 项**，当前 **57 项 / 3 文件**：`inventory-result-dialog/compact.scss` 17、`mobile.scss` 38 均为内部商品卡片、列表及明细内容；`query-view/image-preview.css` 2 为备注正文最大高度和段落 margin。全部属于业务内容，私有外壳命中为 0。首轮 293 仅作历史定位，不能与新版 57 直接计算整改率，也不建立允许上限。
+- `check:dialogs` 现拦截直接业务 Dialog、直接图片查看器、浏览器原生弹框以及外壳/令牌覆盖；新增真实拒绝用例，保留内容网格及备注滚动正例。服务调用点扫描扩展到 Composable，避免公共姓名输入被漏算。
+- 公共 sheet 删除被全局覆盖的关闭按钮、正文/footer 以及重复断点样式；公共外壳删除无消费者的旧视觉别名和 Element UI wrapper 规则。`!important` 从 1897 减至 1681，既有逐文件登记只收紧 22 处、删除 9 个归零项，未新增或扩大白名单，也未重建基线。
+- 重新生成 `components.d.ts` 并通过原 Vite 配置构建：IconSelector、MemorySelector、StockInDetailModal 均仍有自动发现声明，构建模块图均为 0；静态/动态引用检索也未发现调用。声明与调用证据不一致，三者全部保留，不按路由未关联机械删除。
+- 独立 Vite 构建及原 `check:bundle-size` 已通过：首屏 CSS 278900 bytes、JS+CSS 899731 bytes；原上限 280000/900000 bytes 保持不变。初次新增公共规则触发体积门禁后通过去重解决，没有扩大阈值或把公共样式移到懒加载文件。
+- 收尾核对修正交互规范中已过时的原生按钮例外说明；与按钮规范、公共组件采用规范及零原生按钮门禁保持一致，专用交互继续使用 `el-button` 和公共语义。
+
+#### T21 本轮验证记录
+
+2026-11-11 整改后验证，以下只记录实际执行的范围；失败修复后按最终重跑结果更新，不降低门禁或增加例外：
+
+| 命令 / 范围 | 结果 |
+| --- | --- |
+| `npm --prefix frontend run audit:dialogs` | 全量扫描 62 个叶子路由、204 个 Vue 文件；140 个 MobileDialog、8 个公共媒体查看引用；直接业务 Dialog/图片查看器、原生弹框、私有外壳覆盖均为 0；57 项为业务内容候选 |
+| `npm --prefix frontend run check:dialogs` | 19 项审计正反例通过（含 9 项盘点测试，不重复累加）；业务直接入口及私有外壳零违规 |
+| 弹窗相关正式行为测试（包含在全量前端测试内） | MobileDialog 19、备份双端 13、媒体查看 4、销售姓名 12、姓名输入 5、覆盖层栈 3，共 6 文件 / 56 项通过；覆盖关闭保护、生命周期、取消/失败/并发、客户切换、嵌套键盘和锁，不与全量结果重复累加 |
+| `npm --prefix frontend run test:dialog-widths` | 已通过 1250 组业务 class 外壳、272 组按钮和 245 项宽度检查；加载全部 204 个 Vue 文件编译后的样式，覆盖 375/430/768/1024/1440px 与明暗主题的外壳、间距、边界及长内容滚动。最终外壳样式与关闭保护接入后的完整回归通过，并包含 375/768/1440px 嵌套焦点与滚动检查；这仍是公共组件与业务 class 验证，不是业务整页或真机验收 |
+| `npm --prefix frontend run check:standards` | 最终工作区完整复跑退出码 0：41 文件 / 330 项行为测试全部通过，TypeScript、全局严格 ESLint、规范覆盖及全部串行专项门禁通过；新增 beforeClose 默认值已按严格 lint 补齐，未降低规则或扩大例外 |
+| 独立 Vite 构建与动态引用复核 | 使用原 Vite 配置、`envFile:false`，重新生成声明并核对三个候选的模块图，构建和原体积门禁均通过；候选保留理由见上文 |
+| `npm --prefix frontend run test:dialog-widths -- --interactions-only` | 375/768/1440px Chromium 键盘检查通过：Tab/Shift+Tab、媒体和 MessageBox Escape 不穿透、焦点恢复、最后一层关闭后解锁。测试等待实际动画完成，避免把过渡中的 DOM 记作关闭失败；曾出现 CDP 读取状态超时，独立重跑退出码 0，未将超时记录为通过 |
+| `npm run check:docs`、`git diff --check` | 文档链接/导航、8 个标记示例编译及规范冲突检查通过；最终差异无格式错误。同步对话框、组件采用、交互与媒体专项、规范清单、页面台账及所属索引 |
+
+没有连接云端数据库，也没有执行 62 页完整账号流程或 Android/iOS 真机验收；备份页双端组件挂载测试使用 API 替身，不能记作整页浏览器验收。未改后端业务，未执行后端全量行为/数据库测试。公共组件浏览器检查与逐页业务验收分别记录，不把未执行项标记为已完成。正式新增审计、行为测试和浏览器脚本保留在规范目录，本任务未提交或部署。
+
+交互审计输出已明确仅覆盖原生 alert/confirm；原生 prompt 由 `check:dialogs` 的 AST 拒绝检查守护。原 4 处姓名 prompt 已归零，专项正文和页面台账同步；真机输入能力仍按 T21.4 记录。
+
+#### T21.7 主屏幕书签修复补充（2026-11-11）
+
+- 使用销售、批发两个页面的真实保存弹窗模板和公共样式复现：底部安全区为 0 时 footer 上下各 10px；模拟 34px 底部安全区时，修复前下间距为 44px，正式回归按预期失败。修复将四边安全区统一放在公共遮罩，外壳最大高度受遮罩可用高度限制；悬浮 footer 保留公共间距，页面贴屏幕底边的固定操作继续按移动端规范预留安全区。
+- 销售保存弹窗的三个按钮语义与批发统一；删除销售空媒体查询、公共重复 footer padding 和 sheet 重复定位/布局声明。`!important` 实测 1681→1677，仅收紧公共样式和组件对应的两项登记；没有增加白名单或修改体积阈值。
+- `npm --prefix frontend run test:dialog-widths -- --safe-area-only` 在最终样式下退出码 0：40 组销售/批发保存弹窗检查，覆盖 375×812、430×932、667×375、812×375、768×1024，明暗主题、零安全区与主屏幕上下/左右安全区；同时检查长图滚动、三个按钮的高度与留白一致性及工作台安全边界。
+- `npm --prefix frontend run test:dialog-widths` 完整退出码 0：1250 组业务 class 外壳、272 组按钮、40 组报价保存安全区及 245 项宽度检查，并通过嵌套焦点、Escape 和滚动锁回归。安全区专项已包含在完整浏览器回归中，不重复累加。
+- `npm --prefix frontend run build` 退出码 0，包含完整 `check:standards`、41 文件 / 330 项前端单测、类型与全局严格 ESLint、生产 Vite 构建及原体积门禁；脚本和销售页面的定向 ESLint、视觉令牌、响应式、样式债务及 `git diff --check` 通过。同步对话框规范、移动端指南、视觉回归清单和页面台账；沿用 `frontend/dist` 与 `frontend/dist.zip` 作为本地交付产物，不新建重复部署入口。
+
+以上为 Chromium 安全区仿真及本地构建证据，未执行 iOS Safari 主屏幕真机或远程部署验收，也未连接或修改云端数据库。T21.5 的业务整页及真机边界保持单独登记。
+
+#### T21.8 关闭残留修复补充（2026-11-11）
+
+- `_dialog.scss` 公共遮罩的 `display: flex !important` 覆盖 Vue `v-show` 写入的内联 `display: none`。关闭动画结束后状态虽为 false，sheet 仍可见；再次关闭不会产生状态变化。电脑窄窗口也使用 sheet，因此不只影响手机。改为普通 flex 声明，保留组件隐藏状态优先；对应文件的 important 上限 141→140，只收紧、不扩大例外。
+- `test:dialog-widths -- --interactions-only` 曾完整退出码 0：8 组视口/遮罩组合关闭回归，以及 375/768/1440px 嵌套 Tab、Escape、焦点恢复、滚动锁通过。库存明细组件的父子关闭状态和再次打开时的查询次数由新增正式测试覆盖，3 项通过；单元测试不模拟 CSS 可见性。
+- `npm --prefix frontend run build` 退出码 0，包含完整 `check:standards`、类型检查、严格 lint 和 42 文件/333 项单元测试，无失败或跳过；生产体积门禁通过，首屏 CSS 272.28 KiB、总计 878.79 KiB，保留原阈值。定向 ESLint 与 `git diff --check` 通过；前端压缩包已更新并完成 CRC 校验。
+- 后续完整 `test:dialog-widths` 的 1250 组外壳、272 组按钮、40 组销售/批发安全区和关闭残留检查通过，但末段嵌套交互出现 `CDP 超时：Runtime.evaluate window.stackMetrics()`，本次完整命令退出码 1。单独重跑也间歇出现同类超时，不能把此前一次专项成功写成全量稳定通过；保留全部断言，原因未定，后续排查归 T21.5。样式修复前的嵌套检查也曾出现 CDP 超时，现有证据不能将其归因于本次 flex 声明调整。
+- 未验证用户当前电脑浏览器的完整密码/双击整页流程、线上版本和真实手机；本地回归使用隔离组件与模拟响应，未连接或修改云端数据库。Android/iOS 真机及全站逐页验收继续按 T21.5 单列。
+
+#### T21.9 报价页头按钮补充（2026-11-11）
+
+- `PublicPriceHeader` 通过可选 `actionWidth` / `actionSize` 提供公共声明入口；默认按内容自适应，撤销参数后回到公共默认，不影响搜索区。批发报价手机 80px、其他视口 112px，销售报价 112px，均声明公共小号。颜色继续使用现有语义，不开放页面私有 CSS 覆盖。
+- 公共操作区改为可换行并居中，清除 Element Plus 相邻按钮及图文附加边距；保留普通图标和完整文字，窄屏四按钮使用两列。二手机加载时只显示公共加载图标，避免静态图标叠加造成溢出。两页父级 scoped 旧页头块无对应模板消费者，已移除；营销无操作插槽的调用不生成操作区。规范、manifest、标杆预览及审计正负例同步。
+- `npm --prefix frontend run test:dialog-widths -- --price-header-only` 退出码 0：320/360/375/390/430/667/768/1024/1440px × 明暗主题 × 销售/批发验证前后、筛选/加载状态共 180 组通过，使用真实页头模板及样式，检查图标/加载图标、全文、图文间距、按钮内容及每排居中、无横向溢出。初次运行抓到二手机加载时双图标溢出，修复后通过。
+- `npm --prefix frontend run test:unit -- tests/public-price-header.spec.ts`：2 项通过，覆盖显式参数、撤销回退、空值及无操作插槽；未请求业务 API，未写入云端数据库。真实 Safari、桌面书签、Android/iOS 及线上完整流程未验证，继续按 T21.5 验收。
+- `npm --prefix frontend run build` 退出码 0：完整 `check:standards`、类型、严格 lint、43 文件/335 项单元测试及生产体积门禁通过，未放宽阈值；首屏 CSS 272.28 KiB、总计 878.79 KiB。定向 ESLint 及 `git diff --check` 通过。已更新 `frontend/dist.zip`：807 文件、约 9.34 MiB、根目录含 `index.html`、CRC 检查通过。构建与静态检查不代表线上或真机验收；后端未修改，未执行后端行为/数据库测试和依赖发布审计，本轮为本地前端构建。
 
 ### T20 首屏 CSS 闲置样式清理（2026-11-08）
 
@@ -350,7 +459,7 @@ package.json 的实际 diff 为 backend 删除 canvas/json5/pdf-lib/pdfjs-dist/p
 - 本批将角色创建、编辑、删除迁入 `PermissionRoleManagementController → PermissionRoleManagementService → PermissionRoleManagementRepository`，保留管理员权限、字段校验、角色编码生成与不可变约束、schema 兼容、删除占用检查、审计日志和响应语义；新增契约覆盖路由授权委托、校验分支及错误映射。AST 实测 `permission-management.js` 从 25 降至 22，摘要更新，遗留 handler 总数从 56 降至 53；7 个台账键与 7 个内联文件一致。未连接云端数据库或生产接口。
 - 随后将角色启停接口并入同一分层，保留 schema 不支持时拒绝、系统角色不可停用、停用后 refresh token 清理、缺表时告警继续及状态变化审计。定向测试覆盖状态/审计规则、token 清理参数和旧表缺失兼容。AST 实测 `permission-management.js` 从 22 降至 21，遗留 handler 总数从 53 降至 52；7 个台账键与 7 个内联文件一致。未连接云端数据库或生产接口。
 - 2026-11-08 全局复核实测：基础设施三件套齐全；route 内联 handler 61 个 / 7 个文件；controller SQL 154 次、事务 59 次、直连 repository 15 条 / 15 个 controller；反向分层依赖 4 条 / 2 个文件，所有棘轮最大值与逐项台账吻合。共享连接审计确认 4 个仓储自定义 `withConnection` 均委托公共 helper；这不代表仓储和服务中的其他直接连接生命周期已统一。字段一致性审计暴露 rentals 列表分层迁移后审计源未登记新 controller/service/repository，补齐三个权威源文件后通过；字段审计、公共选项严格审计通过。架构审计单测 9 项、后端安全/分层审计单测 13 项通过；后端全量测试 1118 通过、14 跳过、0 失败，项目级 ESLint、文档检查与 `git diff --check` 通过；未运行云端数据库测试。
-- 影响范围：`backend/src/routes/` 遗留业务 handler、对应 controller/service/repository、权限中间件与契约测试。已处理图标模块缓存、清理、删除，数据导入上传、清理、分析、启动，屏幕锁设置与查询用户/密码/上传文件处理，配件上传、读写、库存、入库、销售和统计，认证登录、单设备/全设备退出、当前用户资料、刷新令牌轮换及开发管理员初始化，系统数据库连接探测、状态、统计、磁盘/内存运行信息、重连和公告查询/增改删，以及商城配置、轮播图、模板、订单、数据库迁移、商城图片上传/删除、商品图片删除和已售商品查询；手机模块迁移图片/视频上传、H5 上架/验机、库存汇总、已售时间线、IMEI/序列号搜索及手机详情查询；客户模块迁移搜索、列表、详情、消费记录、创建、更新、删除、消费流水限制、积分设置、VIP 等级和统计；预定模块迁移列表、详情、删除、统计、基础选项、匹配列表和候选库存；其余模块按 `config/backend-route-architecture.json` 的非零项逐批推进。
+- 影响范围：`backend/src/routes/` 遗留业务 handler、对应 controller/service/repository、权限中间件与契约测试。已处理图标模块缓存、清理、删除，数据导入上传、清理、分析、启动，屏幕锁设置与查询用户/密码/上传文件处理，配件上传、读写、库存、入库、销售和统计，认证登录、单设备/全设备退出、当前用户资料、刷新令牌轮换及开发管理员初始化，系统数据库连接探测、状态、统计、磁盘/内存运行信息、重连和公告查询/增改删，以及商城配置、轮播图、模板、订单、数据库迁移、商城图片上传/删除、商品图片删除和已售商品查询；手机模块迁移图片/视频上传、H5 上架/验机、库存汇总、已售时间线、IMEI/序列号搜索及手机详情查询；客户模块迁移搜索、列表、详情、消费记录、创建、更新、删除、消费流水限制、积分设置、VIP 等级和统计；预定模块迁移列表、详情、删除、统计、基础选项、匹配列表和候选库存；其余模块按 `backend/scripts/config/backend-route-architecture.json` 的非零项逐批推进。
 - 建议方案：沿用 `docs/CLAUDE.md` 的 route → controller → service → repository 边界；迁移后用 AST 更新精确非零条目，归零后删除键，并分别更新 SQL/事务最大值；保留审计正反例。
 - 禁止动作：controller 不新增 SQL 或事务；不放宽或抬高棘轮基线、不保留零值空壳、不删除断言、不复制权限或 SQL 实现、不将跳过的数据库测试算作通过，也不动云端真实数据。
 - 测试要求：每批运行定向行为测试、`npm --prefix backend test`、`npm --prefix frontend run check:backend-security`、相关 ESLint 和 `git diff --check`；有数据库边界时另用独立测试库验证。
@@ -376,7 +485,7 @@ package.json 的实际 diff 为 backend 删除 canvas/json5/pdf-lib/pdfjs-dist/p
 - N1–N6 安全修复、Token 最终清理、价格密钥轮换和回滚边界已记录在[安全修复记录](../security/security-remediation-2026-11-04.md)。
 - 密钥配置、用途隔离、迁移与轮换步骤以[环境配置与密钥管理](../security/ENVIRONMENT_SECRETS.md)为唯一操作说明，不再新建重复 runbook。
 - 备份压缩文件计数已修复并有专项测试；CORS 无 Origin 策略已经文档化。
-- `config/field-contracts.json` 同时受前端审计和后端契约测试约束；权限矩阵已经存在于权限管理页面。
+- `backend/scripts/config/field-contracts.json` 同时受前端审计和后端契约测试约束；权限矩阵已经存在于权限管理页面。
 - `docs/standards/` 只保留旧路径导航，正文权威入口为 `docs/frontend/`；`npm run check:docs` 持续检查导航和已登记冲突。
 - Analytics、综合查询、入库和退库已统一使用公共门店范围校验；多门店分析子请求和缓存键携带所选 `store_id`，分析页门店下拉只显示授权范围。
 - 国补与维修媒体已改为短时 HMAC URL，数据库只保存稳定上传路径，不再把登录 Token 或过期签名查询串写入业务字段；通用临时清理只处理本人导航草稿。
@@ -494,13 +603,13 @@ package.json 的实际 diff 为 backend 删除 canvas/json5/pdf-lib/pdfjs-dist/p
 - 当前门禁实测 route 内联 handler 31 个 / 6 个文件，controller SQL 执行入口 233/233、事务调用 59/59、controller repository 直连 15/15、反向分层依赖 4/4、直接连接租借 179/179；基础设施三件套存在，4 个 repository 自定义 `withConnection` 均委托共享 helper，`repairs.js` 无内联 handler且无零值键。上述非零数据仍是逐批偿还的存量，不代表 ARCH-001 或连接生命周期债务已清零。
 - 本轮最终验证：权限冲突定向测试 8 项、权限事务契约 102 项通过；后端全量测试 1,218 通过、14 跳过、0 失败；`npm --prefix frontend run check:backend-security`、`npm --prefix frontend run check:fields`、根目录 `npm run lint:strict`、`npm run check:docs` 与 `git diff --check` 均通过。字段审计源同步登记 `role-permissions.service.js`；未连接云端数据库。
 
-- 全局复核确认基础设施三件套均存在；共享连接包装、controller SQL/事务、controller 直连 repository 及跨层反向依赖均由架构门禁检查。ARCH-001 当前仍有 15 个 controller→repository 存量依赖，逐文件登记在 `config/backend-route-architecture.json`，最大值与基线总和精确相等，只允许逐项减少；它们是存量豁免，后续触及时应优先迁入 service。共享 `withConnection` 覆盖仓储 wrapper，但不表示所有服务和仓储已统一连接生命周期。
+- 全局复核确认基础设施三件套均存在；共享连接包装、controller SQL/事务、controller 直连 repository 及跨层反向依赖均由架构门禁检查。ARCH-001 当前仍有 15 个 controller→repository 存量依赖，逐文件登记在 `backend/scripts/config/backend-route-architecture.json`，最大值与基线总和精确相等，只允许逐项减少；它们是存量豁免，后续触及时应优先迁入 service。共享 `withConnection` 覆盖仓储 wrapper，但不表示所有服务和仓储已统一连接生命周期。
 - analytics `/transfers-and-allocations` 已迁入 `AnalyticsTransfersController → AnalyticsTransfersService → AnalyticsTransfersRepository`，保留认证、业务用户及全局 analytics 门店权限链路、日期校验、默认月份、响应字段和七组参数化查询；AST 实测该 route 从 2 降至 1。
 - analytics `/sales-forecast` 已迁入 `AnalyticsSalesForecastController → AnalyticsSalesForecastService → AnalyticsSalesForecastRepository`，将预测算法及日期处理放入 service，SQL 留在 repository，保留认证、业务用户、加权排行、参数绑定和响应结构。`formatDateString` 现由 analytics-query 公共导出复用。新增 mock 测试覆盖空结果、预测字段、离线响应及两条查询参数；analytics 内联数从 1 降至 0，删除整个 `analytics.js` 台账键，遗留总数从 51 降至 50，遗留键数与仍有内联文件数均为 6。
 - 验证结果：`npm --prefix backend test` 通过（1155 通过、14 跳过、0 失败）；`npm --prefix frontend run check:backend-security` 通过（安全审计 504 个源文件，ARCH 分层门禁通过）；`npm --prefix frontend run check:fields` 通过；本批运行代码、测试和共享日期工具的 ESLint `--max-warnings 0` 通过；`npm run check:docs` 与 `git diff --check` 通过。未连接云端数据库。
 - Git `GET /log`、`GET /branches` 和 `POST /delete-commit` 已复用 `GitController → GitService`，保留对应权限；日志接口保留 limit 默认值及 1–100 上限、revert/手动隐藏/本地备份记录过滤，分支接口保留当前分支标记与远端 HEAD 过滤，隐藏提交保留哈希校验、幂等提示和“不影响工作区”响应。Git log、config 写入均通过既有安全参数执行器传递。正式测试覆盖限量、过滤、分支归类、哈希验证和响应错误。AST 实测 `git.js` 从 13 降为 10，摘要已更新；遗留 handler 总数从 50 降为 47，key 数与非零内联文件数仍为 6。
 - 本批最终验证：后端全量测试、后端安全及架构门禁、字段审计、严格 ESLint、文档检查和 `git diff --check` 均通过；未执行真实数据库测试，也未对 Git 仓库执行写操作。
-- 全局 ARCH 补查发现既有门禁只验证 repository 的 `withConnection` wrapper 是否委托共享 helper，没有覆盖 routes/controllers/services/repositories 中直接调用 `.getConnection()` 的存量。文本扫描得到 182 个匹配，其中 repository 基类 1 个匹配位于注释；TypeScript AST 实测为 181 处 / 51 个文件（route 17、controller 28、service 82、repository 54），逐文件登记于 `config/backend-route-architecture.json`；禁止新增，只允许逐项减少，归零后必须删除台账键。该计数不代表连接释放、事务行为或云端数据库运行状态已验证，相关业务连接迁移仍须按模块覆盖成功/异常释放和事务语义。
+- 全局 ARCH 补查发现既有门禁只验证 repository 的 `withConnection` wrapper 是否委托共享 helper，没有覆盖 routes/controllers/services/repositories 中直接调用 `.getConnection()` 的存量。文本扫描得到 182 个匹配，其中 repository 基类 1 个匹配位于注释；TypeScript AST 实测为 181 处 / 51 个文件（route 17、controller 28、service 82、repository 54），逐文件登记于 `backend/scripts/config/backend-route-architecture.json`；禁止新增，只允许逐项减少，归零后必须删除台账键。该计数不代表连接释放、事务行为或云端数据库运行状态已验证，相关业务连接迁移仍须按模块覆盖成功/异常释放和事务语义。
 - 本批随后将国补详情 `GET /:id` 接入 `SubsidyDetailController → SubsidyDetailService → SubsidyDetailRepository`，原认证、`subsidy:view` 权限和短缓存顺序不变；日期格式、数值转换、照片签名 URL、代办字段及字段掩码保持原响应语义。详情字段处理与国补照片读取共用 `subsidy-protected-photo-url` 工具，删除了重复签名/路径归一化实现；新增测试覆盖成功、缺失、数据库异常、畸形照片 JSON、用户签名映射、字段掩码及参数绑定。route 内联 handler 从 47 降至 46，`subsidy.js` 从 12 降至 11；详情查询通过 pool `execute()`，直接 `.getConnection()` AST 存量为 181，未因本接口迁移减少。
 - 全局架构复核（当前工作树）：规范 v3 的基础设施三件套均存在；仓储中 4 个自定义 `withConnection` 均委托 `core/db/connection.js`；ARCH 门禁实际执行基础文件、连接 wrapper、routes/controllers/services/repositories 的直接连接租借、controller SQL/事务、controller→repository 依赖、反向分层依赖、内联 route handler 和孤立 controller 检查。门禁实测通过：遗留 route handler 37 个 / 6 个文件，controller SQL/事务 154/59，controller→repository 15 条，反向依赖 4 条，直接连接租借 181 次；各基线精确相等，仍属待迁移存量。`repairs.js` 已无内联 handler且不在零值台账中。架构审计测试 15 项通过；补齐动态 `import()` 形式的共享连接 helper 检测及回归后，架构审计测试 15 项通过，安全与分层审计均通过。字段审计发现 `permissions` 的 `orphaned_modules`、`has_conflicts` 由 `permission-conflicts.service.js` 输出但未登记该审计源；已补登记，字段审计通过。后端全量测试 1190 通过、14 跳过、0 失败；全局严格 ESLint、文档检查和 `git diff --check` 通过。未连接云端数据库。
 - 本批将 `POST /permissions/revoke-batch` 迁入 `PermissionBatchController → PermissionBatchService → PermissionBatchRepository`，保留管理员权限、原空值校验、按传入顺序逐项删除、单事务提交/回滚和成功/错误响应；事务由 service 编排，绑定 SQL 由 repository 执行，controller 不含 SQL、事务或 repository 依赖。6 项替身测试覆盖权限委托、校验与响应、成功提交、写入/事务启动失败回滚、连接释放和 SQL 参数绑定。AST 实测 `permission-management.js` 从 19 降至 18，摘要同步更新，遗留总数从 37 降至 36；`maxLegacyNonControllerRoutes` 精确等于总和，遗留 key 数仍为 6。该 route 原有直接连接租借迁入共享 helper 后，直接租借基线从 181 降至 180。未连接云端数据库。

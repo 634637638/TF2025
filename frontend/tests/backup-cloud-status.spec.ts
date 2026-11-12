@@ -3,12 +3,22 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { ref } from 'vue'
 import ElementPlus from 'element-plus'
 import BackupView from '@/views/backup/BackupView.vue'
+import MobileDialog from '@/components/MobileDialog.vue'
 import type { CloudBackupTask } from '@/types/backup'
 
 const api = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn() }))
 const cloud = vi.hoisted(() => ({ tasks: vi.fn(), upload: vi.fn() }))
 const notifications = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn(), loading: vi.fn() }))
 const permissions = vi.hoisted(() => ({ canDelete: true }))
+const viewport = vi.hoisted(() => ({ width: 1440 }))
+vi.mock('@/composables/mobile', async () => {
+  const { computed } = await import('vue')
+  return { useMobile: () => ({
+    isMobile: computed(() => viewport.width < 768),
+    isTablet: computed(() => viewport.width >= 768 && viewport.width <= 1024),
+    screenSize: computed(() => ({ width: viewport.width, height: 900 }))
+  }) }
+})
 vi.mock('@/utils/unified-api', () => ({ unifiedApi: api }))
 vi.mock('@/api/backup', () => ({ backupCloudApi: cloud }))
 vi.mock('@/composables/useNotification', () => ({ useNotification: () => notifications }))
@@ -24,7 +34,8 @@ const task = (status: CloudBackupTask['status'], error = ''): CloudBackupTask =>
 })
 const openPage = async () => {
   const wrapper = mount(BackupView, { global: {
-    plugins: [ElementPlus], stubs: {
+    plugins: [ElementPlus], components: { MobileDialog }, stubs: {
+      teleport: true,
       ElDialog: { props: ['modelValue'], template: '<section v-if="modelValue" class="dialog-test"><slot /><slot name="footer" /></section>' },
       TableLoadingRow: true, DataEmptyState: true
     },
@@ -47,52 +58,56 @@ beforeEach(() => {
 })
 afterEach(() => { vi.useRealTimers() })
 
-describe('手动清理本地旧备份', () => {
-  const backups = (count: number) => Array.from({ length: count }, (_, index) => ({
-    filename: `sql-20261110_12000${index}.sql`, type: 'database', size: '20 Bytes', created_at: '2026-11-10T04:00:00Z'
-  }))
-  const buttonByText = (wrapper: Awaited<ReturnType<typeof openPage>>, text: string) =>
+describe.each([1440, 390])('备份页 %ipx 视口', width => {
+  beforeEach(() => { viewport.width = width })
+
+  describe('手动清理本地旧备份', () => {
+    const backups = (count: number) => Array.from({ length: count }, (_, index) => ({
+      filename: `sql-20261110_12000${index}.sql`, type: 'database', size: '20 Bytes', created_at: '2026-11-10T04:00:00Z'
+    }))
+    const buttonByText = (wrapper: Awaited<ReturnType<typeof openPage>>, text: string) =>
     wrapper.findAll('button').find(button => button.text().includes(text))!
 
-  it.each([2, 4, 5])('%i 份备份时可打开清理弹窗，自选保留数量并提交', async count => {
-    api.get.mockImplementation(async (url: string) => ({ success: true, data: url === '/backup/list' ? backups(count) : {} }))
-    api.post.mockResolvedValue({ success: true, message: '已删除旧备份' })
-    const wrapper = await openPage()
-    const entry = buttonByText(wrapper, '清理旧备份')
-    expect(entry.attributes('disabled')).toBeUndefined()
-    await entry.trigger('click')
-    expect(wrapper.text()).toContain('仅清理服务器本地备份，云盘文件不受影响')
-    wrapper.findComponent({ name: 'ElInputNumber' }).vm.$emit('update:modelValue', 1)
-    await buttonByText(wrapper, '确认清理').trigger('click')
-    await flushPromises()
-    expect(api.post).toHaveBeenCalledWith('/backup/cleanup', { keep_count: 1 }, { showError: false })
-    expect(notifications.success).toHaveBeenCalledWith('已删除旧备份')
-    expect(wrapper.find('.dialog-test').exists()).toBe(false)
-    wrapper.unmount()
-  })
+    it.each([2, 4, 5])('%i 份备份时可打开清理弹窗，自选保留数量并提交', async count => {
+      api.get.mockImplementation(async (url: string) => ({ success: true, data: url === '/backup/list' ? backups(count) : {} }))
+      api.post.mockResolvedValue({ success: true, message: '已删除旧备份' })
+      const wrapper = await openPage()
+      const entry = buttonByText(wrapper, '清理旧备份')
+      expect(entry.attributes('disabled')).toBeUndefined()
+      await entry.trigger('click')
+      expect(wrapper.text()).toContain('仅清理服务器本地备份，云盘文件不受影响')
+      wrapper.findComponent({ name: 'ElInputNumber' }).vm.$emit('update:modelValue', 1)
+      await buttonByText(wrapper, '确认清理').trigger('click')
+      await flushPromises()
+      expect(api.post).toHaveBeenCalledWith('/backup/cleanup', { keep_count: 1 }, { showError: false })
+      expect(notifications.success).toHaveBeenCalledWith('已删除旧备份')
+      expect(wrapper.findAllComponents(MobileDialog).some(dialog => dialog.props('modelValue'))).toBe(false)
+      wrapper.unmount()
+    })
 
-  it('空列表禁用清理，缺少删除权限时不显示清理入口', async () => {
-    api.get.mockResolvedValue({ success: true, data: [] })
-    const empty = await openPage()
-    expect(buttonByText(empty, '清理旧备份').attributes('disabled')).toBeDefined()
-    empty.unmount()
-    permissions.canDelete = false
-    const denied = await openPage()
-    expect(denied.findAll('button').some(button => button.text().includes('清理旧备份'))).toBe(false)
-    expect(api.post).not.toHaveBeenCalled()
-    denied.unmount()
-  })
+    it('空列表禁用清理，缺少删除权限时不显示清理入口', async () => {
+      api.get.mockResolvedValue({ success: true, data: [] })
+      const empty = await openPage()
+      expect(buttonByText(empty, '清理旧备份').attributes('disabled')).toBeDefined()
+      empty.unmount()
+      permissions.canDelete = false
+      const denied = await openPage()
+      expect(denied.findAll('button').some(button => button.text().includes('清理旧备份'))).toBe(false)
+      expect(api.post).not.toHaveBeenCalled()
+      denied.unmount()
+    })
 
-  it('清理失败提示并保留弹窗，可再次提交', async () => {
-    api.post.mockRejectedValueOnce(new Error('清理服务暂不可用'))
-    const wrapper = await openPage()
-    await buttonByText(wrapper, '清理旧备份').trigger('click')
-    await buttonByText(wrapper, '确认清理').trigger('click')
-    await flushPromises()
-    expect(notifications.error).toHaveBeenCalledWith('清理失败: 清理服务暂不可用')
-    expect(wrapper.find('.dialog-test').exists()).toBe(true)
-    expect(buttonByText(wrapper, '确认清理').attributes('disabled')).toBeUndefined()
-    wrapper.unmount()
+    it('清理失败提示并保留弹窗，可再次提交', async () => {
+      api.post.mockRejectedValueOnce(new Error('清理服务暂不可用'))
+      const wrapper = await openPage()
+      await buttonByText(wrapper, '清理旧备份').trigger('click')
+      await buttonByText(wrapper, '确认清理').trigger('click')
+      await flushPromises()
+      expect(notifications.error).toHaveBeenCalledWith('清理失败: 清理服务暂不可用')
+      expect(wrapper.findAllComponents(MobileDialog).some(dialog => dialog.props('modelValue'))).toBe(true)
+      expect(buttonByText(wrapper, '确认清理').attributes('disabled')).toBeUndefined()
+      wrapper.unmount()
+    })
   })
 })
 

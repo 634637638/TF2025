@@ -37,3 +37,5 @@ npm run migrate:site-announcements -- --apply
 ```
 
 迁移后部署/重启后端与前端。不要在普通应用进程中自动创建表。真实数据库迁移需按仓库数据库变更授权要求单独确认。2026-11-06 已在当前后端环境配置的数据库执行迁移并复核：`content` 为 `MEDIUMTEXT`、`is_pinned` 为 `TINYINT UNSIGNED NOT NULL`，再次运行迁移检查返回 `already_ready`。迁移前备份位于 `backend/backups/database_20261106_155822.sql`。
+
+首页公告区域同时可展示本人待办提示，来源为 `GET /reminders/my/active` 和共享提醒 Pinia，规则见[待办提醒规范](../frontend/reminder-standards.md#最后-3-小时与首页公告)。此内容不写入公告表，不改变公共公告接口、发布范围或权限。

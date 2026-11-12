@@ -8,7 +8,7 @@
 
     <div class="table-responsive">
       <el-table
-        v-tf-loading="ctx.logsLoading"
+        v-tf-loading="{ active: ctx.logsLoading, text: '正在刷新权限日志...' }"
         :data="ctx.paginatedLogs"
         border
         stripe

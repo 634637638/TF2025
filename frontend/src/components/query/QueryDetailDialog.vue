@@ -51,11 +51,3 @@ const dialogVisible = computed({
 })
 
 </script>
-
-<style scoped lang="scss">
-:global(.query-detail-dialog) {
-  --mobile-dialog-body-padding: var(--tf-space-4);
-  --tf-dialog-body-padding-inline: var(--tf-space-4);
-  --tf-dialog-body-padding-block: var(--tf-space-4);
-}
-</style>

@@ -9,7 +9,7 @@
 - 浏览器通过外部前端服务器提供的 HTTPS 页面访问本站。
 - 前端 Nginx 将 `/api/` 和 `/uploads/` 代理到后端 Node 服务的 `3000` 端口。
 - 后端可达地址按实际网络拓扑和服务器私有运维配置选择；真实 DDNS、P2P 和内网地址不写入仓库文档。前后端同机时可使用 `127.0.0.1:3000`。
-- 后端 Node 服务使用 `3000`。仓库中的 `nginx-backend.conf` 是可选入口，不属于当前主链路。
+- 后端 Node 服务使用 `3000`。仓库中的 `backend/deploy/nginx.conf` 是可选入口，不属于当前主链路。
 - TLS 可在外部前端 Nginx 或其前置 HTTPS 入口终止。CSP/HSTS 是否生效，以浏览器实际收到的 HTTPS 响应头为准；HTTP 后端链路不代表后端自身启用了 HTTPS。
 
 ## 操作入口
@@ -19,6 +19,7 @@
 - [跨域与反向代理说明](cross-domain-deployment.md) - 直连跨域和同源代理的区别；当前优先采用同源代理。
 - [上传文件存储与迁移规范](../backend/upload-storage-standard.md) - 上传目录、数据库 URL 与文件同步发布要求。
 - [环境配置与密钥管理](../security/ENVIRONMENT_SECRETS.md) - `.env*` 文件不得进入 Git 或前端构建产物。
+- [本地 HTTPS 开发](../frontend/security-runtime-standards.md#本地-https-开发) - 前端证书生成、唯一启动入口及检查；与生产 Nginx TLS 配置分开维护。
 
 全新后端服务器的文件目录、`npm ci`、运行目录权限、宝塔 PM2 参数和验收命令统一维护在[全云端部署参考的后端部署章节](CLOUD_DEPLOYMENT_GUIDE.md#后端部署)，不另建重复教程。
 
@@ -40,6 +41,8 @@ sudo nginx -t && sudo systemctl reload nginx
 curl http://127.0.0.1:3000/live
 curl http://127.0.0.1:3000/health
 ```
+
+运行时资源检查包含 `backend/src/config/module-permission-capabilities.json` 和 `backend/src/config/reminder-policy.json`。生产发布完整同步 `backend/src/config/`，提醒服务不依赖后端目录之外的根目录 `config/`；详细文件清单见上方部署指南。
 
 销售出库依赖 `invoice_sequences`；生产环境不会在请求中自动建表。该表可通过 `npm run migrate:invoice-sequences` 预览并用 `npm run migrate:invoice-sequences -- --apply` 独立补齐，不依赖统一迁移台账。发布包含其他数据库结构变更时，先备份数据库和上传目录，再在后端目录使用服务器本机 `.env.production` 运行 `npm run migrate:schema` 预览；确认目标库后才运行 `npm run migrate:schema -- --apply`。CSRF token 表使用独立的 `npm run migrate:csrf-tokens` 预览和 `npm run migrate:csrf-tokens -- --apply` 迁移。`/live` 只用于进程存活检查，`/health` 用于数据库就绪和发布验证，生产监控必须主动请求 `/health`。
 

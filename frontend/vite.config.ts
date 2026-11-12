@@ -50,6 +50,7 @@ export default defineConfig({
     }
   },
   build: {
+    // 标准打包仅输出 frontend/dist/，由用户自行压缩上传，不自动生成部署 ZIP/TAR 包。
     outDir: 'dist',
     minify: 'terser', // 使用 terser 压缩，确保移除 console
     target: 'es2020',

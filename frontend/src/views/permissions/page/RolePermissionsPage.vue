@@ -27,7 +27,7 @@
 
       <SectionLoading
         v-if="ctx.loadingPermissionDialog"
-        text="加载中..."
+        text="正在读取角色页面权限..."
       />
 
       <template v-else>
@@ -121,7 +121,7 @@
               <div class="permission-group__title">
                 <span class="group-tag">{{ group.standalone ? '独立页面' : '母子页面' }}</span>
                 <h3>
-                  <i :class="group.parent.icon" />
+                  <IconRenderer :icon="group.parent.icon" />
                   {{ group.title }}
                 </h3>
               </div>
