@@ -1,8 +1,9 @@
 'use strict'
+const { isMoneyInput } = require('./input-values')
 
 const isBuyoutMode = value => ['buyout', 'monthly'].includes(String(value || ''))
 const roundMoney = value => Math.round((Number(value) + Number.EPSILON) * 100) / 100
-const positiveMoney = value => Number.isFinite(Number(value)) && Number(value) >= 0
+const positiveMoney = value => isMoneyInput(value) && Number(value) >= 0
 const getPrincipalAmount = (salePrice, downPayment) => roundMoney(Math.max(Number(salePrice || 0) - Number(downPayment || 0), 0))
 
 const getInstallmentAmount = (principal, monthlyRent, termMonths, periodNumber) => {

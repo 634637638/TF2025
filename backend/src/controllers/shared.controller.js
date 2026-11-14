@@ -84,7 +84,7 @@ class SharedController {
 
   handleError(res, error, fallback = '操作失败') {
     const message = error?.message || fallback
-    const status = /请输入|不能为空|不能超过|只能|不存在|仅支持|已存在|不能修改|不能删除/.test(message) ? 400 : 500
+    const status = error?.statusCode || (/请输入|不能为空|不能超过|只能|不存在|仅支持|已存在|不能修改|不能删除/.test(message) ? 400 : 500)
     return ApiResponse.error(res, message, status)
   }
 
@@ -303,7 +303,7 @@ class SharedController {
 
   async pin(req, res) {
     try {
-      await this.service.pin(Number(req.params.id), Boolean(req.body?.pinned), req.user.id)
+      await this.service.pin(req.params.id, req.body?.pinned, req.user.id)
       return ApiResponse.success(res, null, '置顶状态已更新')
     } catch (error) { return this.handleError(res, error, '置顶操作失败') }
   }

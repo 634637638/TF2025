@@ -5,262 +5,269 @@
     dialog-class="salary-dialog crud-dialog-lg"
     :show-default-footer="false"
     :close-on-click-modal="false"
+    :before-close="beforeClose"
     @update:model-value="emit('update:modelValue', $event)"
   >
-    <form
+    <el-form
       id="template-form"
-      @submit.prevent="emit('submit')"
+      ref="formRef"
+      :model="form"
+      :rules="rules"
+      :disabled="saving"
+      class="tf-form-layout tf-dialog-form tf-dialog-form--stacked"
+      label-position="top"
+      @submit.prevent="submit"
     >
-      <div
-        v-if="canViewField(moduleKey, 'template_name')"
-        class="form-group"
+      <el-form-item
+        v-if="view('template_name')"
+        label="模板名称"
+        prop="name"
       >
-        <label>模板名称 <span class="required">*</span></label>
         <el-input
           v-model="name"
-          class="salary-template-name-input"
           placeholder="请输入模板名称"
-          :disabled="!canEditField(moduleKey, 'template_name')"
-          required
+          :disabled="!edit('template_name')"
         />
-      </div>
-
-      <div
-        v-if="canViewField(moduleKey, 'template_description')"
-        class="form-group"
+      </el-form-item>
+      <el-form-item
+        v-if="view('template_description')"
+        class="tf-form-field--wide"
+        label="说明"
+        prop="description"
       >
-        <label>说明</label>
         <el-input
           v-model="description"
           class="tf-textarea"
           type="textarea"
           :rows="2"
-          placeholder="请输入模板说明"
-          :disabled="!canEditField(moduleKey, 'template_description')"
+          :disabled="!edit('template_description')"
         />
-      </div>
-
-      <div class="form-grid form-grid--basic">
-        <div
-          v-if="canViewField(moduleKey, 'template_base_salary')"
-          class="form-group"
+      </el-form-item>
+      <div class="tf-form-row tf-form-row--three">
+        <el-form-item
+          v-if="view('template_base_salary')"
+          label="底薪（元）"
+          prop="base_salary"
         >
-          <label>底薪{{ baseSalary || '' }}（元） <span class="required">*</span></label>
           <AmountInput
-            v-model.number="baseSalary"
-            class="form-control"
-            placeholder="请输入底薪"
+            v-model="baseSalary"
             :min="0"
-            :step="100"
-            :disabled="!canEditField(moduleKey, 'template_base_salary')"
-            required
+            :disabled="!edit('template_base_salary')"
           />
-        </div>
-
-        <div
-          v-if="canViewField(moduleKey, 'template_overtime_hourly_rate')"
-          class="form-group"
+        </el-form-item>
+        <el-form-item
+          v-if="view('template_overtime_hourly_rate')"
+          label="加班费（元/小时）"
+          prop="overtime_hourly_rate"
         >
-          <label>加班费{{ overtimeHourlyRate || '' }}元（小时） <span class="required">*</span></label>
           <AmountInput
-            v-model.number="overtimeHourlyRate"
-            class="form-control"
-            placeholder="请输入加班费率"
+            v-model="overtimeHourlyRate"
             :min="0"
-            :step="10"
-            :disabled="!canEditField(moduleKey, 'template_overtime_hourly_rate')"
-            required
+            :disabled="!edit('template_overtime_hourly_rate')"
           />
-        </div>
-
-        <div
-          v-if="canViewField(moduleKey, 'template_rest_days')"
-          class="form-group"
+        </el-form-item>
+        <el-form-item
+          v-if="view('template_rest_days')"
+          label="月休天数"
+          prop="rest_days"
         >
-          <label>月休息{{ restDays || '' }}天 <span class="required">*</span></label>
           <el-input-number
-            v-model.number="restDays"
-            class="form-control"
-            placeholder="请输入每月休息天数"
+            v-model="restDays"
             :min="0"
             :max="31"
-            :step="1"
+            :precision="0"
             :controls="false"
-            :disabled="!canEditField(moduleKey, 'template_rest_days')"
-            required
+            :disabled="!edit('template_rest_days')"
           />
-        </div>
+        </el-form-item>
       </div>
-
-      <div class="form-grid form-grid--commission">
-        <div
-          v-if="canViewField(moduleKey, 'template_commission_type')"
-          class="form-group"
+      <el-divider
+        v-if="showPhoneSection"
+        content-position="left"
+      >
+        手机提成
+      </el-divider>
+      <div class="tf-form-row tf-form-row--mobile-single">
+        <el-form-item
+          v-if="view('template_commission_type')"
+          label="手机提成方式"
+          prop="commission_type"
         >
-          <label>提成方式 <span class="required">*</span></label>
-          <div class="radio-group">
-            <label class="radio-label">
-              <input
-                v-model="commissionType"
-                type="radio"
-                value="fixed"
-                :disabled="!canEditField(moduleKey, 'template_commission_type')"
-              >
-              <span>固定金额</span>
-            </label>
-            <label class="radio-label">
-              <input
-                v-model="commissionType"
-                type="radio"
-                value="percentage"
-                :disabled="!canEditField(moduleKey, 'template_commission_type')"
-              >
-              <span>利润百分比</span>
-            </label>
-          </div>
-        </div>
-
-        <div
-          v-if="form.commission_type === 'fixed' && canViewField(moduleKey, 'template_commission_new_fixed')"
-          class="form-group"
+          <el-radio-group
+            v-model="commissionType"
+            :disabled="!edit('template_commission_type')"
+          >
+            <el-radio value="fixed">
+              固定金额
+            </el-radio>
+            <el-radio value="percentage">
+              利润百分比
+            </el-radio>
+          </el-radio-group>
+        </el-form-item>
+      </div>
+      <div class="tf-form-row">
+        <template v-if="form.commission_type === 'fixed'">
+          <el-form-item
+            v-if="view('template_commission_new_fixed')"
+            label="全新机提成（元/台）"
+            prop="commission_new_fixed"
+          >
+            <AmountInput
+              v-model="commissionNewFixed"
+              :min="0"
+              :disabled="!edit('template_commission_new_fixed')"
+            />
+          </el-form-item>
+          <el-form-item
+            v-if="view('template_commission_used_fixed')"
+            label="二手机提成（元/台）"
+            prop="commission_used_fixed"
+          >
+            <AmountInput
+              v-model="commissionUsedFixed"
+              :min="0"
+              :disabled="!edit('template_commission_used_fixed')"
+            />
+          </el-form-item>
+        </template>
+        <el-form-item
+          v-else-if="view('template_commission_percentage')"
+          label="手机利润提成（%）"
+          prop="commission_percentage"
         >
-          <label>全新机提成（元/台） <span class="required">*</span></label>
-          <AmountInput
-            v-model.number="commissionNewFixed"
-            class="form-control"
-            placeholder="请输入全新机提成金额"
-            :min="0"
-            :step="1"
-            :disabled="!canEditField(moduleKey, 'template_commission_new_fixed')"
-            required
-          />
-        </div>
-
-        <div
-          v-if="form.commission_type === 'fixed' && canViewField(moduleKey, 'template_commission_used_fixed')"
-          class="form-group"
-        >
-          <label>二手机提成（元/台）</label>
-          <AmountInput
-            v-model.number="commissionUsedFixed"
-            class="form-control"
-            placeholder="请输入二手机提成金额"
-            :min="0"
-            :step="1"
-            :disabled="!canEditField(moduleKey, 'template_commission_used_fixed')"
-          />
-        </div>
-
-        <div
-          v-if="form.commission_type === 'percentage' && canViewField(moduleKey, 'template_commission_percentage')"
-          class="form-group"
-        >
-          <label>利润提成（%） <span class="required">*</span></label>
           <el-input-number
-            v-model.number="commissionPercentage"
-            class="form-control"
-            placeholder="请输入利润提成比例"
+            v-model="commissionPercentage"
+            :step="0.01"
             :min="0"
             :max="100"
-            :step="1"
+            :precision="2"
             :controls="false"
-            :disabled="!canEditField(moduleKey, 'template_commission_percentage')"
-            required
+            :disabled="!edit('template_commission_percentage')"
           />
-        </div>
+        </el-form-item>
       </div>
-
-      <div
-        v-if="showAutoRaiseSection"
-        class="divider"
-      >
-        <span><i class="fas fa-chart-line" /> 自动涨薪规则</span>
-      </div>
-
-      <div class="form-grid form-grid--raise">
-        <div
-          v-if="canViewField(moduleKey, 'template_auto_raise_enabled')"
-          class="form-group"
+      <template v-if="view('template_goods_commission_rule')">
+        <el-divider content-position="left">
+          商品提成
+        </el-divider>
+        <el-form-item
+          label="启用商品提成"
+          prop="goods_commission_rule"
         >
-          <div class="auto-raise-toggle">
-            <span class="auto-raise-title">自动涨薪</span>
-            <div class="auto-raise-control">
-              <span :class="['auto-raise-state', { 'is-enabled': autoRaiseEnabled }]">
-                {{ autoRaiseEnabled ? '已开启' : '已关闭' }}
-              </span>
-              <el-switch
-                v-model="autoRaiseEnabled"
-                inline-prompt
-                active-text="开"
-                inactive-text="关"
-                :disabled="!canEditField(moduleKey, 'template_auto_raise_enabled')"
+          <el-switch
+            v-model="goodsEnabled"
+            aria-label="启用商品提成"
+            :disabled="!edit('template_goods_commission_rule')"
+          />
+        </el-form-item>
+        <template v-if="form.goods_commission_rule.enabled">
+          <div class="tf-form-row tf-form-row--mobile-single">
+            <el-form-item label="商品提成方式">
+              <el-radio-group
+                v-model="goodsType"
+                :disabled="!edit('template_goods_commission_rule')"
+              >
+                <el-radio value="fixed">
+                  按件固定金额
+                </el-radio>
+                <el-radio value="percentage">
+                  按利润比例
+                </el-radio>
+              </el-radio-group>
+            </el-form-item>
+          </div>
+          <div class="tf-form-row">
+            <el-form-item
+              v-if="form.goods_commission_rule.type === 'fixed'"
+              label="商品提成（元/件）"
+            >
+              <AmountInput
+                v-model="goodsFixed"
+                :min="0"
+                :disabled="!edit('template_goods_commission_rule')"
               />
-            </div>
-          </div>
-        </div>
-
-        <template v-if="form.auto_raise_enabled && canViewField(moduleKey, 'template_auto_raise_enabled')">
-          <div
-            v-if="canViewField(moduleKey, 'template_auto_raise_months')"
-            class="form-group"
-          >
-            <label>涨薪周期（月） <span class="required">*</span></label>
-            <el-input-number
-              v-model.number="autoRaiseMonths"
-              class="form-control"
-              placeholder="请输入涨薪周期"
-              :min="1"
-              :max="60"
-              :step="1"
-              :controls="false"
-              :disabled="!canEditField(moduleKey, 'template_auto_raise_months')"
-              required
-            />
-            <span class="form-tip">员工入职每满此月数自动涨薪</span>
-          </div>
-
-          <div
-            v-if="canViewField(moduleKey, 'template_auto_raise_amount')"
-            class="form-group"
-          >
-            <label>涨薪金额（元） <span class="required">*</span></label>
-            <AmountInput
-              v-model.number="autoRaiseAmount"
-              class="form-control"
-              placeholder="请输入涨薪金额"
-              :min="0"
-              :step="50"
-              :disabled="!canEditField(moduleKey, 'template_auto_raise_amount')"
-              required
-            />
-            <span class="form-tip">每次涨薪增加的金额</span>
-          </div>
-
-          <div
-            v-if="canViewField(moduleKey, 'template_auto_raise_max_salary')"
-            class="form-group"
-          >
-            <label>最高底薪（元） <span class="required">*</span></label>
-            <AmountInput
-              v-model.number="autoRaiseMaxSalary"
-              class="form-control"
-              placeholder="请输入最高底薪"
-              :min="0"
-              :step="100"
-              :disabled="!canEditField(moduleKey, 'template_auto_raise_max_salary')"
-              required
-            />
-            <span class="form-tip">达到此金额后不再自动涨薪</span>
+            </el-form-item>
+            <el-form-item
+              v-else
+              label="商品利润提成（%）"
+            >
+              <el-input-number
+                v-model="goodsPercentage"
+                :step="0.01"
+                :min="0"
+                :max="100"
+                :precision="2"
+                :controls="false"
+                :disabled="!edit('template_goods_commission_rule')"
+              />
+            </el-form-item>
           </div>
         </template>
+        <el-text type="info">
+          仅正毛利商品计提；赠品、积分抵扣商品及成本未知商品不计提。调整规则不追改历史成交。
+        </el-text>
+      </template>
+      <el-divider
+        v-if="showAutoRaiseSection"
+        content-position="left"
+      >
+        自动涨薪规则
+      </el-divider>
+      <div class="tf-form-row">
+        <el-form-item
+          v-if="view('template_auto_raise_enabled')"
+          label="自动涨薪"
+        >
+          <el-switch
+            v-model="autoRaiseEnabled"
+            aria-label="自动涨薪"
+            :disabled="!edit('template_auto_raise_enabled')"
+          />
+        </el-form-item>
+        <template v-if="form.auto_raise_enabled && view('template_auto_raise_enabled')">
+          <el-form-item
+            v-if="view('template_auto_raise_months')"
+            label="涨薪周期（月）"
+          >
+            <el-input-number
+              v-model="autoRaiseMonths"
+              :min="1"
+              :max="60"
+              :precision="0"
+              :controls="false"
+              :disabled="!edit('template_auto_raise_months')"
+            />
+          </el-form-item>
+          <el-form-item
+            v-if="view('template_auto_raise_amount')"
+            label="涨薪金额（元）"
+          >
+            <AmountInput
+              v-model="autoRaiseAmount"
+              :min="0"
+              :disabled="!edit('template_auto_raise_amount')"
+            />
+          </el-form-item>
+          <el-form-item
+            v-if="view('template_auto_raise_max_salary')"
+            label="最高底薪（元）"
+          >
+            <AmountInput
+              v-model="autoRaiseMaxSalary"
+              :min="0"
+              :disabled="!edit('template_auto_raise_max_salary')"
+            />
+          </el-form-item>
+        </template>
       </div>
-    </form>
-
+    </el-form>
     <template #footer>
       <div class="tf-dialog-actions">
         <el-button
           type="info"
-          @click="emit('update:modelValue', false)"
+          :disabled="saving"
+          @click="close"
         >
           取消
         </el-button>
@@ -269,17 +276,9 @@
           native-type="submit"
           form="template-form"
           :disabled="saving"
+          :loading="saving"
         >
-          <InlineLoading
-            v-if="saving"
-            text="保存中..."
-            size="small"
-            variant="inherit"
-          />
-          <template v-else>
-            <i class="fas fa-save" />
-            保存
-          </template>
+          {{ saving ? '保存中...' : '保存' }}
         </el-button>
       </div>
     </template>
@@ -287,14 +286,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import InlineLoading from '@/components/InlineLoading.vue'
-import MobileDialog from '@/components/MobileDialog.vue'
-import type { SalaryTemplateForm } from '@/types/salary'
+import { computed, ref } from 'vue'
+import type { FormInstance, FormRules } from 'element-plus'
+import type { SalaryGoodsCommissionRule, SalaryTemplateForm } from '@/types/salary'
+import { isSalaryGoodsCommissionRule } from '../salary-template-form'
 
 export type { SalaryTemplateForm } from '@/types/salary'
-
-const moduleKey = 'salary_salarytemplatesview'
 const props = defineProps<{
   canEditField: (_moduleKey: string, _fieldName: string) => boolean
   canViewField: (_moduleKey: string, _fieldName: string) => boolean
@@ -302,207 +299,46 @@ const props = defineProps<{
   modelValue: boolean
   saving: boolean
 }>()
-
 const emit = defineEmits<{
   submit: []
   'update:form': [value: SalaryTemplateForm]
   'update:modelValue': [value: boolean]
 }>()
-
+const formRef = ref<FormInstance>()
+const view = (field: string) => props.canViewField('salary_salarytemplatesview', field)
+const edit = (field: string) => !props.saving && view(field) && props.canEditField('salary_salarytemplatesview', field)
 const createFieldModel = <K extends keyof SalaryTemplateForm>(key: K) => computed({
   get: () => props.form[key],
   set: (value: SalaryTemplateForm[K]) => emit('update:form', { ...props.form, [key]: value })
 })
-
-const name = createFieldModel('name')
-const description = createFieldModel('description')
-const baseSalary = createFieldModel('base_salary')
-const commissionType = createFieldModel('commission_type')
-const commissionNewFixed = createFieldModel('commission_new_fixed')
-const commissionUsedFixed = createFieldModel('commission_used_fixed')
-const commissionPercentage = createFieldModel('commission_percentage')
-const overtimeHourlyRate = createFieldModel('overtime_hourly_rate')
-const restDays = createFieldModel('rest_days')
-const autoRaiseEnabled = createFieldModel('auto_raise_enabled')
-const autoRaiseMonths = createFieldModel('auto_raise_months')
-const autoRaiseAmount = createFieldModel('auto_raise_amount')
-const autoRaiseMaxSalary = createFieldModel('auto_raise_max_salary')
-
-const showAutoRaiseSection = computed(() => [
-  'template_auto_raise_enabled',
-  'template_auto_raise_months',
-  'template_auto_raise_amount',
-  'template_auto_raise_max_salary'
-].some(field => props.canViewField(moduleKey, field)))
+const createGoodsModel = <K extends keyof SalaryGoodsCommissionRule>(key: K) => computed({
+  get: () => props.form.goods_commission_rule[key],
+  set: (value: SalaryGoodsCommissionRule[K]) => emit('update:form', {
+    ...props.form, goods_commission_rule: { ...props.form.goods_commission_rule, [key]: value }
+  })
+})
+const name = createFieldModel('name'), description = createFieldModel('description'), baseSalary = createFieldModel('base_salary')
+const commissionType = createFieldModel('commission_type'), commissionNewFixed = createFieldModel('commission_new_fixed')
+const commissionUsedFixed = createFieldModel('commission_used_fixed'), commissionPercentage = createFieldModel('commission_percentage')
+const overtimeHourlyRate = createFieldModel('overtime_hourly_rate'), restDays = createFieldModel('rest_days')
+const autoRaiseEnabled = createFieldModel('auto_raise_enabled'), autoRaiseMonths = createFieldModel('auto_raise_months')
+const autoRaiseAmount = createFieldModel('auto_raise_amount'), autoRaiseMaxSalary = createFieldModel('auto_raise_max_salary')
+const goodsEnabled = createGoodsModel('enabled'), goodsType = createGoodsModel('type')
+const goodsFixed = createGoodsModel('fixed_amount'), goodsPercentage = createGoodsModel('percentage')
+const showPhoneSection = computed(() => ['template_commission_type', 'template_commission_new_fixed',
+  'template_commission_used_fixed', 'template_commission_percentage'].some(view))
+const showAutoRaiseSection = computed(() => ['template_auto_raise_enabled', 'template_auto_raise_months',
+  'template_auto_raise_amount', 'template_auto_raise_max_salary'].some(view))
+const rules: FormRules<SalaryTemplateForm> = {
+  name: [{ required: true, whitespace: true, message: '请输入模板名称', trigger: 'blur' }],
+  goods_commission_rule: [{ validator: (_rule, value: unknown, callback) => callback(isSalaryGoodsCommissionRule(value)
+    ? undefined : new Error('商品提成规则须为非负金额及0至100的比例，最多两位小数')) }]
+}
+const submit = async () => {
+  if (props.saving || !formRef.value) return
+  try { await formRef.value.validate() } catch { return }
+  emit('submit')
+}
+const close = () => { if (!props.saving) emit('update:modelValue', false) }
+const beforeClose = (done: () => void) => { if (!props.saving) done() }
 </script>
-
-<style lang="scss" scoped>
-.form-group {
-  margin-bottom: 20px;
-
-  &:last-child {
-    margin-bottom: 0;
-  }
-
-  > label:not(.switch-label) {
-    display: block;
-    margin-bottom: 8px;
-    color: var(--tf-color-gray-ant-600);
-    font-size: var(--tf-type-scale-14);
-    font-weight: 500;
-  }
-}
-
-.required {
-  color: var(--tf-color-red-ant);
-}
-
-.form-grid {
-  display: grid;
-  gap: var(--tf-space-4);
-  margin-bottom: var(--tf-space-5);
-
-  .form-group {
-    min-width: 0;
-    margin-bottom: 0;
-  }
-}
-
-.form-grid--commission {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.form-grid--basic {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.form-grid--raise {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
-.form-control {
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid var(--tf-color-gray-ant-400);
-  border-radius: 6px;
-  background: var(--tf-color-white);
-  font-size: var(--tf-type-scale-14);
-  transition: border-color 0.2s, box-shadow 0.2s;
-
-  &:focus {
-    outline: none;
-    border-color: var(--tf-color-blue-ant-light);
-    box-shadow: 0 0 0 2px rgb(24 144 255 / 20%);
-  }
-}
-
-.form-tip {
-  display: block;
-  margin-top: 6px;
-  color: var(--tf-color-gray-ant-500);
-  font-size: var(--tf-type-scale-12);
-  line-height: 1.5;
-}
-
-.radio-group {
-  display: flex;
-  gap: 24px;
-}
-
-.radio-label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--tf-color-gray-ant-600);
-  font-size: var(--tf-type-scale-14);
-  cursor: pointer;
-
-  input {
-    width: 16px;
-    height: 16px;
-    cursor: pointer;
-    accent-color: var(--tf-color-blue-ant);
-  }
-}
-
-.auto-raise-toggle {
-  display: flex;
-  flex-direction: column;
-  gap: var(--tf-space-2);
-}
-
-.auto-raise-title {
-  color: var(--tf-color-gray-ant-600);
-  font-size: var(--tf-type-scale-14);
-  font-weight: 500;
-}
-
-.auto-raise-control {
-  display: flex;
-  align-items: center;
-  gap: var(--tf-space-2);
-}
-
-.auto-raise-state {
-  color: var(--tf-color-gray-ant-500);
-  font-size: var(--tf-type-scale-12);
-  font-weight: 500;
-}
-
-.auto-raise-state.is-enabled {
-  color: var(--tf-color-green-700);
-}
-
-.divider {
-  margin: 24px 0;
-  padding: 12px 0;
-  border-top: 1px solid var(--tf-color-gray-200);
-
-  span {
-    color: var(--tf-color-gray-ant-500);
-    font-size: var(--tf-type-scale-13);
-    font-weight: 500;
-  }
-
-  i {
-    margin-right: 6px;
-  }
-}
-
-@media (max-width: 767px) {
-  .form-group {
-    margin-bottom: 16px;
-
-    > label {
-      font-size: var(--tf-type-scale-13);
-    }
-  }
-
-  .form-control {
-    padding: 8px 10px;
-    font-size: var(--tf-type-scale-13);
-  }
-
-  .radio-group {
-    gap: 16px;
-  }
-
-  .radio-label {
-    font-size: var(--tf-type-scale-13);
-  }
-
-  .form-grid--commission,
-  .form-grid--basic,
-  .form-grid--raise {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
-@media (min-width: 768px) and (max-width: 1024px) {
-  .form-grid--commission,
-  .form-grid--basic,
-  .form-grid--raise {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-</style>

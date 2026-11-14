@@ -24,8 +24,8 @@
           基本信息
         </h3>
 
-        <el-descriptions
-          :column="isMobile ? 1 : 2"
+        <RecordDescriptions
+          :column="2"
           border
         >
           <el-descriptions-item label="入库单号">
@@ -49,7 +49,7 @@
           <el-descriptions-item label="入库时间">
             {{ formatDateTime(record.inventory_time) }}
           </el-descriptions-item>
-        </el-descriptions>
+        </RecordDescriptions>
       </div>
 
       <!-- 商品信息 -->
@@ -59,8 +59,8 @@
           商品信息
         </h3>
 
-        <el-descriptions
-          :column="isMobile ? 1 : 2"
+        <RecordDescriptions
+          :column="2"
           border
         >
           <el-descriptions-item label="商品名称">
@@ -92,17 +92,19 @@
           </el-descriptions-item>
           <el-descriptions-item
             v-if="record.imei"
+            :span="2"
             label="IMEI号"
           >
             <span class="imei-text">{{ record.imei }}</span>
           </el-descriptions-item>
           <el-descriptions-item
             v-if="record.serial_number"
+            :span="2"
             label="序列号"
           >
             {{ record.serial_number }}
           </el-descriptions-item>
-        </el-descriptions>
+        </RecordDescriptions>
       </div>
 
       <!-- 数量与价格 -->
@@ -147,8 +149,8 @@
           门店与供应商
         </h3>
 
-        <el-descriptions
-          :column="isMobile ? 1 : 2"
+        <RecordDescriptions
+          :column="2"
           border
         >
           <el-descriptions-item label="入库门店">
@@ -169,7 +171,7 @@
           >
             {{ record.reference_id }}
           </el-descriptions-item>
-        </el-descriptions>
+        </RecordDescriptions>
       </div>
 
       <!-- 备注信息 -->
@@ -182,7 +184,7 @@
           备注信息
         </h3>
 
-        <el-descriptions
+        <RecordDescriptions
           :column="1"
           border
         >
@@ -194,13 +196,14 @@
           </el-descriptions-item>
           <el-descriptions-item
             v-if="record.remarks"
+            :span="2"
             label="备注"
           >
             <div class="note-content">
               {{ record.remarks }}
             </div>
           </el-descriptions-item>
-        </el-descriptions>
+        </RecordDescriptions>
       </div>
 
       <!-- 操作历史 -->

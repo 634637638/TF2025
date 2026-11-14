@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
+import { defineComponent, h, ref } from 'vue'
 import { ElButton, ElDialog } from 'element-plus'
 import MobileDialog from '@/components/MobileDialog.vue'
 
@@ -16,6 +17,10 @@ vi.mock('@/composables/mobile', async () => {
 })
 
 const wrappers: ReturnType<typeof mount>[] = []
+const DraftField = defineComponent({
+  setup: () => ({ draft: ref('编辑草稿') }),
+  template: '<input v-model="draft" />'
+})
 const render = async (props: { width?: string | number, maxWidth?: string | number, dialogClass?: string, closeOnClickModal?: boolean, beforeClose?: (done: (cancel?: boolean) => void) => void } = {}) => {
   const wrapper = mount(MobileDialog, {
     attachTo: document.body,
@@ -177,23 +182,64 @@ it('嵌套手机弹窗只允许最上层响应 Escape；禁止关闭的提醒保
   expect(second.wrapper.emitted('update:modelValue')).toHaveLength(1)
 })
 
-it('自定义 footer 和 destroyOnClose 在手机端保留内容及关闭回调', async () => {
-  viewport.width = 390
+it.each([390, 768])('%ipx 自定义 footer 和 destroyOnClose 在离场结束后销毁，重开重新挂载', async width => {
+  viewport.width = width
   const wrapper = mount(MobileDialog, {
     attachTo: document.body,
     props: { modelValue: false, destroyOnClose: true, showDefaultFooter: false },
-    slots: { default: '<input value="编辑草稿" />', footer: '<button>自定义保存</button>' },
+    slots: { default: () => h(DraftField), footer: '<button>自定义保存</button>' },
     global: { components: { ElButton, ElDialog }, stubs: { transition: false } }
   })
   wrappers.push(wrapper)
   await wrapper.setProps({ modelValue: true })
-  expect(document.querySelector('.mobile-dialog-sheet-body input')).not.toBeNull()
+  const input = document.querySelector<HTMLInputElement>('.mobile-dialog-sheet-body input')!
+  expect(input).not.toBeNull()
+  input.value = '修改后的草稿'
+  input.dispatchEvent(new Event('input', { bubbles: true }))
+  await flushPromises()
   expect(document.querySelector('.mobile-dialog-sheet-footer')?.textContent).toBe('自定义保存')
   await wrapper.setProps({ modelValue: false })
-  await new Promise(resolve => setTimeout(resolve, 100))
-  expect(wrapper.emitted('closed')).toHaveLength(1)
+  expect(input.isConnected).toBe(true)
+  expect(wrapper.emitted('closed')).toBeUndefined()
+  await vi.waitFor(() => {
+    expect(wrapper.emitted('closed')).toHaveLength(1)
+    expect(document.querySelector('.mobile-dialog-sheet-panel')).toBeNull()
+    expect(document.querySelector('.mobile-dialog-sheet-body input')).toBeNull()
+    expect(document.querySelector('.mobile-dialog-sheet-footer')).toBeNull()
+  })
+  await wrapper.setProps({ modelValue: true })
+  const reopenedInput = document.querySelector<HTMLInputElement>('.mobile-dialog-sheet-body input')!
+  expect(reopenedInput).not.toBe(input)
+  expect(reopenedInput.value).toBe('编辑草稿')
+  expect(document.querySelector('.mobile-dialog-sheet-footer')?.textContent).toBe('自定义保存')
+  await wrapper.setProps({ modelValue: false })
+  await vi.waitFor(() => {
+    expect(wrapper.emitted('closed')).toHaveLength(2)
+    expect(document.querySelector('.mobile-dialog-sheet-panel')).toBeNull()
+  })
+})
+
+it.each([390, 768])('%ipx 未开启 destroyOnClose 时关闭再打开保留内容实例与草稿', async width => {
+  viewport.width = width
+  const wrapper = mount(MobileDialog, {
+    attachTo: document.body,
+    props: { modelValue: true, destroyOnClose: false, showDefaultFooter: false },
+    slots: { default: () => h(DraftField) },
+    global: { components: { ElButton, ElDialog }, stubs: { transition: false } }
+  })
+  wrappers.push(wrapper)
   await flushPromises()
-  expect(document.querySelector('.mobile-dialog-sheet-body input')).toBeNull()
+  const input = document.querySelector<HTMLInputElement>('.mobile-dialog-sheet-body input')!
+  input.value = '未保存的草稿'
+  input.dispatchEvent(new Event('input', { bubbles: true }))
+  await flushPromises()
+  await wrapper.setProps({ modelValue: false })
+  await vi.waitFor(() => expect(wrapper.emitted('closed')).toHaveLength(1))
+  expect(input.isConnected).toBe(true)
+  expect(document.querySelector<HTMLElement>('.mobile-dialog-sheet-overlay')!.style.display).toBe('none')
+  await wrapper.setProps({ modelValue: true })
+  expect(document.querySelector('.mobile-dialog-sheet-body input')).toBe(input)
+  expect(input.value).toBe('未保存的草稿')
 })
 
 it('手机标题关闭与 Escape 均等待 beforeClose，取消回调不关闭', async () => {

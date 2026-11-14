@@ -1,5 +1,7 @@
 'use strict'
 
+const { getLatestActiveSaleIdSql } = require('../utils/sale-status')
+
 const { getDatabase } = require('../config/database')
 const { withConnection } = require('../core/db/connection')
 
@@ -43,6 +45,7 @@ class SalesPhoneRepository {
        LEFT JOIN preorders pr ON p.id = pr.matched_phone_id AND pr.status IN ('pending', 'arrived')
        LEFT JOIN customers c ON c.id = pr.customer_id
        WHERE p.id IN (${placeholders})
+       ORDER BY p.id
        FOR UPDATE`,
       phoneIds
     )
@@ -64,7 +67,7 @@ class SalesPhoneRepository {
       `SELECT s.id, p.imei, s.sale_time
        FROM sales s
        JOIN phones p ON s.phone_id = p.id
-       WHERE s.phone_id IN (${placeholders}) AND s.customer_id = ?
+       WHERE s.phone_id IN (${placeholders}) AND s.customer_id = ? AND s.id = (${getLatestActiveSaleIdSql()})
        ORDER BY s.sale_time DESC LIMIT 10`,
       [...phoneIds, customerId]
     )

@@ -1,7 +1,11 @@
 'use strict'
 
+const { getLatestActiveSaleIdSql } = require('../utils/sale-status')
+
 const { getDatabase } = require('../config/database')
 const { withConnection } = require('../core/db/connection')
+const SalesCheckoutRepository = require('./sales-checkout.repository')
+const checkoutRepository = new SalesCheckoutRepository()
 
 class PhoneUpdateRepository {
   constructor({ database = getDatabase } = {}) {
@@ -27,7 +31,7 @@ class PhoneUpdateRepository {
     const [rows] = await connection.execute(`
       SELECT p.id, s.customer_id
       FROM phones p
-      LEFT JOIN sales s ON p.id = s.phone_id
+      LEFT JOIN sales s ON s.id = (${getLatestActiveSaleIdSql()})
       WHERE p.imei = ? AND p.id != ?
     `, [imei, phoneId])
     return rows
@@ -46,7 +50,8 @@ class PhoneUpdateRepository {
       'SELECT status FROM phones WHERE id = ? FOR UPDATE',
       [phoneId]
     )
-    return rows[0]?.status || null
+    if (!rows[0]) return null
+    return { status: rows[0].status, checkout_order_id: await checkoutRepository.currentPhoneOrder(connection, phoneId) }
   }
 
   async updatePhone(connection, fields, values, phoneId) {
@@ -105,10 +110,11 @@ class PhoneUpdateRepository {
 
   async findLatestSaleByPhone(connection, phoneId) {
     const [rows] = await connection.execute(
-      `SELECT id, customer_id, operator_id, sale_time, store_id, remarks,
-              invoice_number, sale_price, purchase_cost, sale_type,
-              payment_method, payment_channel
-       FROM sales WHERE phone_id = ? ORDER BY created_at DESC LIMIT 1`,
+      `SELECT s.id, s.customer_id, s.operator_id, s.sale_time, s.store_id, s.remarks,
+              s.invoice_number, s.sale_price, s.purchase_cost, s.sale_type,
+              s.payment_method, s.payment_channel
+       FROM phones p JOIN sales s ON s.id = (${getLatestActiveSaleIdSql('p', 'current_sale')})
+       WHERE p.id = ?`,
       [phoneId]
     )
     return rows[0] || null

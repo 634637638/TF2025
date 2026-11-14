@@ -30,6 +30,7 @@
 
       <el-card
         v-tf-loading="{ active: loading, text: '正在刷新商品模板...' }"
+        v-table-double-tap="recordTapOptions"
         class="table-card"
         shadow="never"
       >
@@ -79,7 +80,7 @@
               排序参考
             </div>
             <div
-              v-if="showActionColumn"
+              v-if="!isMobile && showActionColumn"
               class="center"
             >
               操作
@@ -96,7 +97,11 @@
             @end="handleGroupDragEnd"
           >
             <template #item="{ element: row }">
-              <div class="group-row">
+              <div
+                class="group-row"
+                data-mobile-record
+                @dblclick="openRecordDetail(row, null, $event)"
+              >
                 <div class="group-main">
                   <div
                     class="group-drag-handle"
@@ -179,7 +184,7 @@
                   <span class="table-number-badge">{{ row.sort_order }}</span>
                 </div>
                 <div
-                  v-if="showActionColumn"
+                  v-if="!isMobile && showActionColumn"
                   class="group-actions center"
                 >
                   <div class="action-buttons">
@@ -213,6 +218,8 @@
               v-for="row in filteredGroups"
               :key="row.groupKey"
               class="group-row"
+              data-mobile-record
+              @dblclick="openRecordDetail(row, null, $event)"
             >
               <div class="group-main">
                 <div
@@ -296,7 +303,7 @@
                 <span class="table-number-badge">{{ row.sort_order }}</span>
               </div>
               <div
-                v-if="showActionColumn"
+                v-if="!isMobile && showActionColumn"
                 class="group-actions center"
               >
                 <div class="action-buttons">
@@ -351,11 +358,11 @@
         @update:model-value="!$event && handleCancelDialog()"
         @close="resetDialogState"
       >
-        <div class="dialog-shell">
-          <div class="dialog-header-form">
+        <div class="dialog-shell tf-form-layout">
+          <div class="dialog-header-form tf-form-row">
             <div
               v-if="canViewField('template.brand_model')"
-              class="header-form-item"
+              class="header-form-item form-group"
             >
               <span class="form-label">品牌</span>
               <el-select
@@ -376,7 +383,7 @@
 
             <div
               v-if="canViewField('template.brand_model')"
-              class="header-form-item"
+              class="header-form-item form-group"
             >
               <span class="form-label">型号</span>
               <el-select
@@ -396,7 +403,7 @@
 
             <div
               v-if="groupForm.brand_id && groupForm.model_id"
-              class="header-form-summary"
+              class="header-form-summary tf-form-field--wide"
             >
               <span class="summary-title">{{ currentBrandName }} {{ currentModelName }}</span>
             </div>
@@ -465,6 +472,7 @@
                       基础信息
                     </div>
                     <el-form
+                      class="tf-form-layout tf-form-grid"
                       label-position="top"
                       :disabled="!canWriteDialog"
                     >
@@ -498,6 +506,7 @@
                       </el-form-item>
                       <el-form-item
                         v-if="canViewField('template.description')"
+                        class="tf-form-field--wide"
                         label="商品描述"
                       >
                         <el-input
@@ -515,9 +524,13 @@
                     <div class="block-title">
                       价格与状态
                     </div>
-                    <el-form label-position="top">
+                    <el-form
+                      class="tf-form-layout tf-form-grid"
+                      label-position="top"
+                    >
                       <el-form-item
                         v-if="canViewField('template.price_markup')"
+                        class="tf-form-field--wide"
                         label="加价设置"
                       >
                         <div class="markup-settings">
@@ -751,11 +764,41 @@
           </div>
         </template>
       </MobileDialog>
+      <RecordDetailDialog
+        v-model="recordVisible"
+        title="商品模板详情"
+        :fields="recordFields"
+        :record="recordRow"
+        :has-actions="canEdit || canDelete"
+      >
+        <template #actions>
+          <el-button
+            v-if="canEdit"
+            v-permission="'h5-admin-templates:edit'"
+            type="primary"
+            @click.stop="runRecordAction(openEditDialog)"
+          >
+            编辑
+          </el-button>
+          <el-button
+            v-if="canDelete"
+            v-permission="'h5-admin-templates:delete'"
+            type="danger"
+            @click.stop="runRecordAction(handleDeleteGroup)"
+          >
+            删除整组
+          </el-button>
+        </template>
+      </RecordDetailDialog>
     </div>
   </PermissionGate>
 </template>
 
 <script setup lang="ts">
+import { useMobile } from '@/composables/mobile'
+import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
+import type { RecordDetailField } from '@/types/component'
+
 import { confirmAction } from '@/utils/message-box'
 import { computed, onMounted, onUnmounted, onActivated, ref, inject, watch } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
@@ -1794,6 +1837,25 @@ onUnmounted(() => {
     clearHeaderActions()
   }
 })
+
+const { isMobile } = useMobile()
+const { detailRow: recordRow, detailVisible: recordVisible, doubleTapOptions: recordTapOptions,
+  handleRowDoubleClick: openRecordDetail, runDetailAction: runRecordAction } = useMobileTableDetail({
+  enabled: () => isMobile.value && canView.value, rows: filteredGroups, getKey: row => row.groupKey,
+  rowSelector: '[data-mobile-record]'
+})
+const recordFields = computed<RecordDetailField[]>(() => {
+  const row = recordRow.value
+  return row ? [
+    { key: 'product', label: '商品', value: row.display_name, visible: canViewField('template.product_info'), wide: true },
+    { key: 'colors', label: '颜色数', value: row.templates.length, visible: canViewField('template.color_count') },
+    { key: 'enabled', label: '启用数', value: row.active_count, visible: canViewField('template.active_count') },
+    { key: 'stock', label: '在库', value: row.total_stock, visible: canViewField('template.stock_count') },
+    { key: 'sort', label: '排序', value: row.sort_order, visible: canViewField('template.sort_order') },
+    { key: 'variants', label: '颜色', value: row.templates.map(child => child.color_name || `颜色#${child.color_id}`).join('、'), visible: canViewField('template.product_info'), wide: true }
+  ] : []
+})
+
 </script>
 
 <style scoped src="./styles/templates/overview.css"></style>

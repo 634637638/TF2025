@@ -4,6 +4,10 @@
   display: flex;
   flex-direction: column;
   gap: var(--tf-space-1);
+  min-width: 0;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
 
   span {
     color: var(--tf-color-gray-bootstrap-600);
@@ -24,13 +28,13 @@
 
 .totals-bar {
   display: grid;
-  grid-template-columns: minmax(140px, 0.75fr) minmax(0, 2.75fr) minmax(220px, 1.5fr);
+  grid-template-columns: max-content minmax(0, 1fr) max-content;
   align-items: stretch;
   box-sizing: border-box;
-  flex: 0 0 var(--tf-space-7);
-  height: var(--tf-space-7);
+  flex: 0 0 auto;
+  height: auto;
   min-height: var(--tf-space-7);
-  max-height: var(--tf-space-7);
+  max-height: none;
   margin: var(--tf-space-4) var(--receipt-section-inset) 0;
   padding: 0;
   background: var(--tf-color-neutral-25);
@@ -57,6 +61,10 @@
 .total-count > span {
   color: var(--tf-color-red-700);
   font-weight: 600;
+}
+
+.total-count strong {
+  white-space: nowrap;
 }
 
 .total-amount-words,
@@ -99,7 +107,7 @@
   padding: var(--tf-space-4) var(--tf-space-5);
   font-size: var(--tf-type-scale-12);
   color: var(--tf-color-gray-bootstrap-500);
-  background: var(--color-bg-white);
+  background: var(--tf-color-document-paper);
   border: 1px solid var(--tf-color-border-muted);
 
   > strong {

@@ -22,6 +22,21 @@
 `getEffectivePhoneStatus(status, isPreordered)`；前端展示使用同名函数或对应的
 `getEffectivePhoneStatusLabel`、`getEffectivePhoneStatusClass`。
 
+## 销售记录有效性与当前归属
+
+`phones.status` 表示设备现状，`sales.status` 表示一笔销售是否仍有效，不能互相替代。共同售后需要保留原销售用于追溯；当前销售查询统一复用 `backend/src/utils/sale-status.js`：
+
+- `getActiveSaleSql(alias)` 只接受历史 `NULL`、`pending` 和 `completed`，排除 `cancelled` 及未知值。保留 `pending` 是兼容现有未取消销售口径，不表示它已经完成收款，也不能直接作为免费贴膜等已完成购买资格。
+- `getLatestActiveSaleIdSql(phoneAlias, saleAlias)` 先按销售主键ID倒序取最新一笔，再检查上述状态；若最新一笔已取消，不回退到更早完成的记录；不使用可编辑销售时间或可能相同、倒置的创建时间决定当前归属。表别名经公共标识符校验，不接受外部SQL片段。
+- 综合查询列表、分页、统计和销售员筛选使用同一笔当前销售；全部取消时客户和销售门店为空，门店回到设备当前入库/接收门店。库存详情、维修和补贴设备检索、手机编辑及再次销售校验沿用该口径。
+- 退货来源与共同明细必须通过真实 `sale_id` 关联；不能仅因同一 `phone_id` 曾有共同订单，就把后来的独立销售关联到旧单；按真实销售ID找到的共同明细即使手机ID或类型错位，也必须继续保护并拒绝核对，不能降级独立销售。`currentPhoneOrder` 用于当前交易编辑/退库保护；永久删除继续通过 `phoneOrder` 检查全部历史共同明细，不能删除已取消的原单依据。
+
+客户管理列表的手机购买次数、消费金额和最后购买时间由同一份未取消销售聚合，最后购买时间排序也读取此聚合；客户活跃、价值、留存及消费偏好统计排除已取消销售。历史购买列表仍保留原单；H5历史金额、业务时间读取原 `sales.sale_price/sale_time`，时间缺失保留NULL，不读取已被返库清空或再次销售覆盖的设备售价/时间。不得把原单列表合计当作当前净消费，或把这些手机统计当成商品/资金的全站净额报表。
+
+工资待计算销售和明细复用当前销售，避免相同创建时间产生重复行；这不实现已发工资的跨月冲回。当前共同手机售后仍未开放，此处只统一读取与保护边界，不自动取消销售、返库、改积分或调整客户存量统计字段。单号占用、积分来源、原商品/供应商/收款追溯必须保留历史，不使用有效销售条件过滤。
+
+正式回归：`ENV_FILE=test/missing-unit-env RUN_DB_TESTS=false node --test backend/test/sale-status.check.js`。用例通过Node.js 22内置SQLite执行仓储SQL的查询、聚合及窗口行为，仅移除行锁后缀并提供测试日期函数，不验证MySQL行锁、多连接事务或真实业务退货。
+
 ## 规范存储与兼容输入
 
 - `phones.status` 的可售状态只存 `in_stock`；`available` 是历史/外部来源别名，不是新的业务状态。

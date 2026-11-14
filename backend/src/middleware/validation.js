@@ -1,5 +1,7 @@
 // 输入验证中间件
 const validator = require('validator')
+const inputPatterns = require('../config/input-validation.json')
+const { isEmptyInput, isDecimalInput, isIntegerInput, isMoneyInput, isPersonName, normalizePhone, isMobilePhone } = require('../utils/input-values')
 
 // 自定义验证规则
 const validationRules = {
@@ -10,7 +12,8 @@ const validationRules = {
       minLength = 0,
       maxLength = 1000,
       pattern = null,
-      sanitize = true
+      sanitize = false,
+      multiline = false
     } = options
 
     if (value === undefined || value === null) {
@@ -20,7 +23,11 @@ const validationRules = {
       return { valid: true, value: '' }
     }
 
-    let stringValue = String(value)
+    if (typeof value !== 'string') return { valid: false, message: '必须是字符串' }
+    if (required && !value.trim()) return { valid: false, message: '该字段为必填项' }
+    const controls = new RegExp(multiline ? inputPatterns.multilineControls : inputPatterns.singleLineControls)
+    if (controls.test(value)) return { valid: false, message: '包含不允许的控制字符' }
+    let stringValue = value
 
     // 清理输入
     if (sanitize) {
@@ -53,21 +60,20 @@ const validationRules = {
       integer = false
     } = options
 
-    if (value === undefined || value === null || value === '') {
+    if (isEmptyInput(value)) {
       if (required) {
         return { valid: false, message: '该字段为必填项' }
       }
       return { valid: true, value: null }
     }
 
-    const numValue = Number(value)
-
-    if (isNaN(numValue)) {
+    if (!isDecimalInput(value)) {
       return { valid: false, message: '必须是有效数字' }
     }
+    const numValue = Number(value)
 
-    if (integer && !Number.isInteger(numValue)) {
-      return { valid: false, message: '必须是整数' }
+    if (integer && !isIntegerInput(value)) {
+      return { valid: false, message: '必须是安全整数' }
     }
 
     if (numValue < min) {
@@ -81,6 +87,24 @@ const validationRules = {
     return { valid: true, value: numValue }
   },
 
+  money: (value, options = {}) => {
+    const result = validationRules.number(value, options)
+    if (!result.valid || result.value === null) return result
+    return isMoneyInput(value) ? result : { valid: false, message: '金额最多两位小数' }
+  },
+
+  boolean: (value, { required = false } = {}) => {
+    if (isEmptyInput(value)) return required ? { valid: false, message: '该字段为必填项' } : { valid: true, value: null }
+    if (![true, false, 0, 1, '0', '1'].includes(value)) return { valid: false, message: '必须是有效布尔值' }
+    return { valid: true, value: value === true || value === 1 || value === '1' }
+  },
+
+  personName: (value, options = {}) => {
+    const result = validationRules.string(value, options)
+    if (!result.valid || (isEmptyInput(value) && !options.required)) return result
+    return isPersonName(value, options.maxLength ?? 50) ? result : { valid: false, message: '姓名格式不正确' }
+  },
+
   // 邮箱验证
   email: (value, options = {}) => {
     const { required = false } = options
@@ -92,7 +116,8 @@ const validationRules = {
       return { valid: true, value: null }
     }
 
-    const emailValue = String(value).toLowerCase().trim()
+    if (typeof value !== 'string' || new RegExp(inputPatterns.singleLineControls).test(value)) return { valid: false, message: '邮箱须为单行文本' }
+    const emailValue = value.toLowerCase().trim()
 
     if (!validator.isEmail(emailValue)) {
       return { valid: false, message: '邮箱格式不正确' }
@@ -112,10 +137,10 @@ const validationRules = {
       return { valid: true, value: null }
     }
 
-    const phoneValue = String(value).replace(/\D/g, '') // 只保留数字
+    const phoneValue = normalizePhone(value)
 
     // 中国手机号验证
-    if (!/^1[3-9]\d{9}$/.test(phoneValue)) {
+    if (!isMobilePhone(value)) {
       return { valid: false, message: '手机号格式不正确' }
     }
 
@@ -126,7 +151,7 @@ const validationRules = {
   id: (value, options = {}) => {
     const result = validationRules.number(value, {
       ...options,
-      required: options.required || true,
+      required: options.required ?? true,
       min: 1,
       integer: true
     })
@@ -153,7 +178,8 @@ const validationRules = {
       throw new Error('allowedValues必须是数组')
     }
 
-    const stringValue = String(value)
+    if (typeof value !== 'string') return { valid: false, message: '枚举值必须是字符串' }
+    const stringValue = value
 
     if (!allowedValues.includes(stringValue)) {
       return {
@@ -264,6 +290,23 @@ function validateField(value, rules) {
   }
 
   throw new Error(`不支持的验证类型: ${type}`)
+}
+
+// Service 直接调用时仍走同一规则；只转换已声明且实际提交的字段，不制造默认值或移除权限检查需要的字段。
+function parseInput(value, schema, { partial = false } = {}) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw Object.assign(new Error('输入必须为对象'), { statusCode: 400, code: 'VALIDATION_ERROR' })
+  }
+  const result = { ...value }
+  for (const [field, rules] of Object.entries(schema)) {
+    if (value[field] === undefined && (partial || !rules.required)) continue
+    const fieldResult = validateField(value[field], { ...rules, required: rules.required ?? false })
+    if (!fieldResult.valid) {
+      throw Object.assign(new Error(rules.message || `${rules.label || field}：${fieldResult.message}`), { statusCode: 400, code: 'VALIDATION_ERROR' })
+    }
+    result[field] = fieldResult.value
+  }
+  return result
 }
 
 // 验证中间件生成器
@@ -382,41 +425,11 @@ function validate(schema, _options = {}) {
   }
 }
 
-// 安全清理函数
-function sanitizeInput(input) {
-  if (typeof input !== 'string') {
-    return input
-  }
-
-  // 移除潜在的恶意字符
-  return input
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '') // 移除script标签
-    .replace(/javascript:/gi, '') // 移除javascript协议
-    .replace(/on\w+\s*=/gi, '') // 移除事件处理器
-    .trim()
-}
-
-// SQL注入防护函数
-function escapeSqlInput(input) {
-  if (typeof input !== 'string') {
-    return input
-  }
-
-  return input
-    .replace(/'/g, "''")  // SQL标准转义单引号
-    .replace(/"/g, '""')  // 转义双引号
-    .replace(/\n/g, '\\n') // 转义换行符
-    .replace(/\r/g, '\\r') // 转义回车符
-    .replace(/\t/g, '\\t') // 转义制表符
-    .trim()
-}
-
 module.exports = {
+  parseInput,
   validate,
   validateBody,
   validateQuery,
   validateParams,
-  validationRules,
-  sanitizeInput,
-  escapeSqlInput
+  validationRules
 }

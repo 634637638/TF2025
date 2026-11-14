@@ -177,7 +177,7 @@ backend/
 └── .env.production                   # 只在服务器本机创建或从旧生产机安全迁移
 ```
 
-`src/` 内的 `src/config/module-permission-capabilities.json` 和 `src/config/reminder-policy.json` 属于强制运行时资源，不能只上传 JS 文件而漏掉 JSON。`src/lock/screen-lock-settings.json` 也随 `src/` 部署；运行用户需要能够更新屏幕锁配置。提醒策略由前后端从 `backend/src/config/reminder-policy.json` 唯一读取，随 `src/` 发布；后端运行不依赖项目根目录的 `config/`。`npm run check:runtime-assets` 同时检查权限能力清单与提醒策略，缺文件、JSON 无法解析或提醒窗口不是正数时失败。
+`src/` 内的 `src/config/module-permission-capabilities.json` 和 `src/config/reminder-policy.json` 属于强制运行时资源，不能只上传 JS 文件而漏掉 JSON。`src/lock/screen-lock-settings.json` 也随 `src/` 部署；运行用户需要能够更新屏幕锁配置。提醒策略由前后端从 `backend/src/config/reminder-policy.json` 唯一读取，随 `src/` 发布；后端运行不依赖项目根目录的 `config/`。`npm run check:runtime-assets` 同时检查权限能力清单、提醒策略、`src/contracts/` 中地区/性能契约，以及 `data/regions/2023-06-30/` 的31省资源哈希与原始许可；缺文件、资源损坏、JSON 无法解析或提醒窗口不是正数时失败。部署必须上传 data 地区资源，不能只上传 src。
 
 字段契约、后端安全审计和架构台账放在 `backend/scripts/config/`，随完整 `scripts/` 发布；前端审计配置放在 `frontend/scripts/`。仓库根目录的 `config/` 已撤除，生产服务无需另建同名目录或从后端目录外读取这些运行配置。
 
@@ -842,3 +842,25 @@ sudo systemctl status mysql
 - [开发指南](../guides/)
 - [数据库同步指南](../sync/DATABASE_SYNC_GUIDE.md)
 - [API 标准](../guides/api-standards.md)
+
+## 单实例边界与扩容前置
+
+本版本只支持一个后端进程，使用仓库 `backend/ecosystem.production.config.js` 的 `instances: 1`、`exec_mode: fork`。不得直接使用 PM2 cluster、多容器、多副本或负载均衡扩容。
+
+`instance-boundary.js` 在加载生产配置后检查 Node cluster、PM2 实例序号和常见并发声明，识别到扩容即拒绝启动；它不能发现没有声明的多个独立主机/进程，部署人员仍须保证实际只有一个实例。不能通过删除环境声明规避边界，也不能因配置了 Redis 就假定所有状态已共享。
+
+扩容前须逐项迁移并进行多实例并发及故障测试：
+
+| 状态 | 当前边界 | 扩容要求 |
+| --- | --- | --- |
+| 通用业务缓存与失效通知 | 包含进程内缓存 | 共享缓存及跨实例失效；明确哪些读取缓存可以降级 |
+| 登录失败/锁定、安全计数 | 包含进程内状态 | 原子共享计数，Redis故障时不能降级为各自放行 |
+| 认证资料与权限缓存 | 包含进程内缓存 | 统一撤销、失效与有效期，验证禁用角色即时性 |
+| 基础/错误日志/性能专用限流 | 当前含内存存储 | 共享限流存储，验证同用户跨实例额度与故障策略 |
+| 地区资源只读缓存 | 每进程最多3省 | 可以独立缓存不可变同版本资源；不代表安全计数可以独立 |
+
+T9 按用户允许保留单实例边界，真正的共享状态迁移仍是扩容前置任务，不能标为已支持多实例。启动保护不需要数据库变更。回退应用时继续保持单实例。
+
+```bash
+ENV_FILE=test/missing-unit-env RUN_DB_TESTS=false node --test backend/test/instance-boundary.check.js
+```

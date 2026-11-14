@@ -147,6 +147,28 @@
               />
             </el-select>
           </div>
+          <div
+            v-if="canViewField('business_scope')"
+            class="form-group filter-item"
+            data-field="business_scope"
+          >
+            <el-select
+              v-model="searchForm.business_scope"
+              placeholder="业务范围"
+              @change="searchBrands"
+            >
+              <el-option
+                label="全部业务"
+                value="all"
+              />
+              <el-option
+                v-for="option in businessScopeOptions"
+                :key="option.value"
+                :label="option.label"
+                :value="option.value"
+              />
+            </el-select>
+          </div>
         </UnifiedSearchPanel>
 
         <!-- 数据表格区域 -->
@@ -161,6 +183,7 @@
             <el-table
               ref="brandsTableRef"
               v-tf-loading="{ active: tableLoading || refreshing, text: '正在刷新品牌列表...' }"
+              v-table-double-tap="mobileDetailTapOptions"
               :data="brands"
               border
               stripe
@@ -168,8 +191,7 @@
               table-layout="fixed"
               :fit="true"
               :row-key="getBrandRowKey"
-              :expand-row-keys="isMobile && mobileActionRowId ? [mobileActionRowId] : []"
-              @row-click="(row) => handleMobileRowTap(row.id)"
+              @row-dblclick="handleMobileDetailDoubleClick"
             >
               <template #empty>
                 <TableLoadingRow
@@ -242,6 +264,16 @@
                 align="center"
               />
               <el-table-column
+                v-if="canViewField('business_scope')"
+                label="业务范围"
+                min-width="112"
+                align="center"
+              >
+                <template #default="{ row }">
+                  {{ businessScopeLabel(row.business_scope) }}
+                </template>
+              </el-table-column>
+              <el-table-column
                 v-if="canViewField('status')"
                 label="状态"
                 min-width="84"
@@ -304,36 +336,32 @@
                   </div>
                 </template>
               </el-table-column>
-              <el-table-column
-                v-if="isMobile && (canEdit || canDelete)"
-                type="expand"
-                width="1"
-                class-name="mobile-expand-column"
-                label-class-name="mobile-expand-header"
-              >
-                <template #default="{ row }">
-                  <div class="mobile-row-actions">
-                    <el-button
-                      v-if="canEdit"
-                      v-permission="'brands:edit'"
-                      type="primary"
-                      size="small"
-                      @click.stop="editBrand(row)"
-                    >
-                      <i class="fas fa-edit" /><span>编辑</span>
-                    </el-button><el-button
-                      v-if="canDelete"
-                      v-permission="'brands:delete'"
-                      type="danger"
-                      size="small"
-                      @click.stop="deleteBrand(row)"
-                    >
-                      <i class="fas fa-trash" /><span>删除</span>
-                    </el-button>
-                  </div>
-                </template>
-              </el-table-column>
             </el-table>
+            <RecordDetailDialog
+              v-model="mobileDetailVisible"
+              title="品牌详情"
+              :fields="mobileDetailFields"
+              :record="mobileDetailRow"
+              :has-actions="canEdit || canDelete"
+            >
+              <template #actions="{ row }">
+                <el-button
+                  v-if="canEdit"
+                  v-permission="'brands:edit'"
+                  type="primary"
+                  @click.stop="runMobileDetailAction(() => editBrand(row))"
+                >
+                  <i class="fas fa-edit" /><span>编辑</span>
+                </el-button><el-button
+                  v-if="canDelete"
+                  v-permission="'brands:delete'"
+                  type="danger"
+                  @click.stop="runMobileDetailAction(() => deleteBrand(row))"
+                >
+                  <i class="fas fa-trash" /><span>删除</span>
+                </el-button>
+              </template>
+            </RecordDetailDialog>
           </div>
 
           <!-- 分页组件 -->
@@ -363,7 +391,7 @@
           <el-form
             :model="formData"
             label-width="80px"
-            class="brands-dialog-form"
+            class="brands-dialog-form tf-form-layout tf-form-grid"
           >
             <el-form-item
               v-if="canViewField('name')"
@@ -378,6 +406,23 @@
                 show-word-limit
                 :disabled="!canEditField('name')"
               />
+            </el-form-item>
+            <el-form-item
+              v-if="canViewField('business_scope')"
+              label="业务范围"
+            >
+              <el-select
+                v-model="formData.business_scope"
+                placeholder="选择业务范围"
+                :disabled="!canEditField('business_scope')"
+              >
+                <el-option
+                  v-for="option in businessScopeOptions"
+                  :key="option.value"
+                  :label="option.label"
+                  :value="option.value"
+                />
+              </el-select>
             </el-form-item>
             <el-form-item
               v-if="canViewField('sort_order')"
@@ -414,7 +459,7 @@
             <div class="tf-dialog-actions">
               <el-button
                 type="default"
-                @click="attemptCloseModal"
+                @click="closeModal"
               >
                 取消
               </el-button>
@@ -453,15 +498,17 @@ import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import { PermissionGate, PageHeader } from '@/components/base'
 import { usePermissionToast } from '@/utils/permissionToastSimple'
 import { useMobile } from '@/composables/mobile'
-import { useMobileRowDoubleTap } from '@/composables/useMobileRowDoubleTap'
+import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
+import type { RecordDetailField } from '@/types/component'
 import { useLatestRequest } from '@/composables/useLatestRequest'
 import { formatDateTime as formatDate } from '@/utils/format'
 import { useElementTableSortable } from '@/composables/useElementTableSortable'
 import { useReferenceOrdering } from '@/composables/useReferenceOrdering'
 import { sortOptionsByOrder } from '@/utils/option-sort'
 import { logger } from '@/utils/logger'
+import { businessScopeLabel, businessScopeOptions } from '@/constants/business-scope'
 import type { Brand } from '@/types'
-import type { QueryParams } from '@/types/shared'
+import type { BusinessScope, QueryParams } from '@/types/shared'
 
 // 使用统一的 composable
 const { success, error, warning, info: _info, handleApiError, confirm, loading: showLoading } = useNotification()
@@ -485,6 +532,7 @@ const brandFieldMap: Record<string, string> = {
   stats_related_phones: 'stats.related_phones',
   id: 'brand.id',
   name: 'brand.name',
+  business_scope: 'brand.business_scope',
   status: 'brand.status',
   sort_order: 'brand.sort_order',
   created_at: 'brand.created_at',
@@ -527,25 +575,14 @@ const dialogVisible = computed({
   get: () => showCreateModal.value || showEditModal.value,
   set: (value) => {
     if (!value) {
-      attemptCloseModal()
+      closeModal()
     }
   }
 })
 
 const brandsTableRef = ref<HTMLElement | { $el?: HTMLElement } | null>(null)
-const mobileActionRowId = ref<string | null>(null)
-const { isDoubleTap } = useMobileRowDoubleTap()
 
-const toggleMobileActions = (id: number) => {
-  if (!isMobile.value) return
-  const rowKey = String(id)
-  mobileActionRowId.value = mobileActionRowId.value === rowKey ? null : rowKey
-}
 
-const handleMobileRowTap = (id: number) => {
-  if (!isMobile.value) return
-  if (isDoubleTap(String(id))) toggleMobileActions(id)
-}
 
 // 是否为编辑模式
 const isEditMode = computed(() => showEditModal.value && currentEditingId.value !== null)
@@ -565,12 +602,14 @@ const currentEditingId = ref<number | null>(null)
 // 搜索表单
 const searchForm = ref({
   name: '',
+  business_scope: 'all',
   status: ''
 })
 
 // 表单数据
 const formData = ref({
   name: '',
+  business_scope: 'both' as BusinessScope,
   status: 1,
   sort_order: 0
 })
@@ -605,7 +644,8 @@ const loadBrands = async (bustCache = false, silentError = false, _showLoadingSt
   try {
     const params: QueryParams = {
       page: pagination.value.page,
-      page_size: pagination.value.page_size
+      page_size: pagination.value.page_size,
+      business_scope: canViewField('business_scope') ? searchForm.value.business_scope : 'all'
     }
 
     // 添加搜索参数
@@ -688,6 +728,7 @@ const searchBrands = () => {
 const resetSearch = () => {
   searchForm.value = {
     name: '',
+    business_scope: 'all',
     status: ''
   }
   pagination.value.page = 1
@@ -726,6 +767,7 @@ const editBrand = (brand: Brand) => {
 
   formData.value = {
     name: brand.name,
+    business_scope: brand.business_scope || 'both',
     status: brand.status ?? 1,
     sort_order: brand.sort_order || 0
   }
@@ -845,6 +887,7 @@ const submitForm = async () => {
       // 准备提交数据，去除空格
       const submitData = {
         name: formData.value.name.trim(),
+        ...(canViewField('business_scope') ? { business_scope: formData.value.business_scope } : {}),
         status: formData.value.status,
         sort_order: parseInt(String(formData.value.sort_order)) || 0
       }
@@ -871,6 +914,7 @@ const submitForm = async () => {
       // 准备提交数据，去除空格
       const submitData = {
         name: formData.value.name.trim(),
+        ...(canViewField('business_scope') ? { business_scope: formData.value.business_scope } : {}),
         status: formData.value.status,
         sort_order: parseInt(String(formData.value.sort_order)) || 0
       }
@@ -898,38 +942,6 @@ const submitForm = async () => {
   }
 }
 
-// 新增取消直接重置；仅编辑已有记录时检查未保存的更改。
-const hasUnsavedChanges = (): boolean => {
-  if (!showEditModal.value || currentEditingId.value === null) return false
-  const originalBrand = brands.value.find(item => item.id === currentEditingId.value)
-  if (!originalBrand) return false
-  return (
-    formData.value.name !== originalBrand.name ||
-    formData.value.status !== originalBrand.status ||
-    formData.value.sort_order !== originalBrand.sort_order
-  )
-}
-
-// 新增直接关闭，编辑有更改时保留确认。
-const attemptCloseModal = async () => {
-  if (hasUnsavedChanges()) {
-    const confirmed = await confirm(
-      '您有未保存的更改，确定要关闭吗？',
-      '确认关闭',
-      {
-        confirmButtonText: '确定关闭',
-        cancelButtonText: '继续编辑',
-        type: 'warning'
-      }
-    )
-    if (confirmed) {
-      closeModal()
-    }
-  } else {
-    closeModal()
-  }
-}
-
 // 关闭模态框
 const closeModal = () => {
   showCreateModal.value = false
@@ -937,6 +949,7 @@ const closeModal = () => {
   currentEditingId.value = null
   formData.value = {
     name: '',
+    business_scope: 'both',
     status: 1,
     sort_order: 0
   }
@@ -944,7 +957,7 @@ const closeModal = () => {
 
 const loadStats = async () => {
   try {
-    const params: Record<string, string> = {}
+    const params: Record<string, string> = { business_scope: canViewField('business_scope') ? searchForm.value.business_scope : 'all' }
     if (searchForm.value.name) params.name = searchForm.value.name.trim()
     if (searchForm.value.status !== '') params.status = searchForm.value.status
     const response = await unifiedApi.get('/brands/stats/overview', { params })
@@ -991,6 +1004,23 @@ const handleCreateBrand = () => {
 }
 
 // 生命周期
+const { detailRow: mobileDetailRow, detailVisible: mobileDetailVisible, doubleTapOptions: mobileDetailTapOptions,
+  handleRowDoubleClick: handleMobileDetailDoubleClick, runDetailAction: runMobileDetailAction } = useMobileTableDetail<Brand>({
+    enabled: computed(() => isMobile.value && canView.value), rows: brands, getKey: row => row.id
+  })
+const mobileDetailFields = computed<RecordDetailField[]>(() => {
+  const row = mobileDetailRow.value
+  if (!row) return []
+  return [
+    { key: 'name', label: '品牌名称', value: row.name, visible: canViewField('name') },
+    { key: 'business_scope', label: '业务范围', value: businessScopeLabel(row.business_scope), visible: canViewField('business_scope') },
+    { key: 'status', label: '状态', value: row.status === 1 ? '启用' : '禁用', visible: canViewField('status') },
+    { key: 'sort_order', label: '排序', value: row.sort_order, visible: canViewField('sort_order') },
+    { key: 'created_at', label: '创建时间', value: formatDate(row.created_at || ''), visible: canViewField('created_at'), wide: true }
+  ]
+})
+
+
 onMounted(async () => {
   if (!canView.value) {
     return

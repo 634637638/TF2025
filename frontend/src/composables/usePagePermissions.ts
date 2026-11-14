@@ -78,6 +78,8 @@ export const usePagePermissions = (module: string) => {
     const actionNames: Record<string, string> = {
       create: '创建',
       'return-to-stock': '退库',
+      exchange: '换货',
+      film: '贴膜服务',
       wholesale: '调货',
       'proxy-transfer': '划拨',
       edit: '编辑',

@@ -476,14 +476,12 @@
           <el-button
             type="primary"
             :disabled="!searchIdentifier || searching"
+            :loading="searching"
             @click="searchPhones"
           >
-            <InlineLoading
-              v-if="searching"
-              text="搜索中..."
-              size="small"
-              variant="inherit"
-            />
+            <template v-if="searching">
+              搜索中...
+            </template>
             <template v-else>
               <i class="fas fa-search" />
               <span>搜索</span>
@@ -493,14 +491,12 @@
             v-if="selectedDevice"
             type="success"
             :disabled="loadingDetail || selectedDevice.has_subsidy"
+            :loading="loadingDetail"
             @click="loadPhoneDetail"
           >
-            <InlineLoading
-              v-if="loadingDetail"
-              text="正在读取申请设备详情..."
-              size="small"
-              variant="inherit"
-            />
+            <template v-if="loadingDetail">
+              正在读取申请设备详情...
+            </template>
             <template v-else>
               <i class="fas fa-arrow-right" />
               <span>{{ selectedDevice.has_subsidy ? '该设备已记录国补' : '下一步' }}</span>
@@ -525,14 +521,12 @@
             v-if="!phoneDetail.existing_subsidy"
             type="success"
             :disabled="submitting"
+            :loading="submitting"
             @click="submitApply"
           >
-            <InlineLoading
-              v-if="submitting"
-              text="提交中..."
-              size="small"
-              variant="inherit"
-            />
+            <template v-if="submitting">
+              提交中...
+            </template>
             <template v-else>
               <i class="fas fa-check" />
               <span>提交资料</span>
@@ -558,12 +552,12 @@ import { computed, defineAsyncComponent, nextTick, reactive, ref, watch } from '
 import type { UploadRequestOptions } from 'element-plus'
 import { isAxiosError } from 'axios'
 import MobileDialog from '@/components/MobileDialog.vue'
-import InlineLoading from '@/components/InlineLoading.vue'
 import { unifiedApi } from '@/utils/unified-api'
 import { storage } from '@/composables/core/useLocalStorage'
 import { deleteTempFiles } from '@/utils/temp-file-cleaner'
 import { normalizeIdCard, normalizePersonName, normalizePhoneDigits } from '@/utils/security'
 import { buildSubsidyRemarks, calculateSubsidyAmount } from '../subsidy-calculations'
+import { getSubsidyInputError } from '../subsidy-input'
 import { logger } from '@/utils/logger'
 import { formatAmount, formatDate } from '@/utils/format'
 import type { MediaPreviewItem } from '@/utils/media'
@@ -989,6 +983,11 @@ const submitApply = async () => {
       }) : null
     }
 
+    const inputError = getSubsidyInputError({ ...data })
+    if (inputError) {
+      globalNotifications.warning(inputError)
+      return
+    }
     const response = await unifiedApi.post('/subsidy/apply', data)
     if (response.success) {
       globalNotifications.success('国补资料记录成功')

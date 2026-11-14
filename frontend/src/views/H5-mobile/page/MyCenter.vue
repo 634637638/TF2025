@@ -394,6 +394,7 @@
     >
       <el-form
         ref="profileFormRef"
+        class="tf-form-layout tf-form-grid"
         :model="profileForm"
         :rules="profileFormRules"
         label-position="top"
@@ -424,6 +425,7 @@
           </div>
         </el-form-item>
         <el-form-item
+          class="tf-form-field--wide"
           label="身份证号"
           prop="idCard"
         >
@@ -438,6 +440,7 @@
           </div>
         </el-form-item>
         <el-form-item
+          class="tf-form-field--wide"
           label="Apple ID"
           prop="appleId"
         >
@@ -451,6 +454,7 @@
           </div>
         </el-form-item>
         <el-form-item
+          class="tf-form-field--wide"
           label="收货地址"
           prop="address"
         >
@@ -532,7 +536,7 @@ const profileForm = ref({
 
 // 个人资料表单验证规则
 const profileFormRules = {
-  name: [ValidationRules.required('请输入姓名')],
+  name: [ValidationRules.required('请输入姓名'), ValidationRules.personName(50)],
   phone: [
     ValidationRules.required('请输入联系电话'),
     ValidationRules.phone()

@@ -8,6 +8,7 @@
 
     <div class="table-responsive">
       <el-table
+        v-table-double-tap="mobileDetailTapOptions"
         v-tf-loading="{ active: ctx.logsLoading, text: '正在刷新权限日志...' }"
         :data="ctx.paginatedLogs"
         border
@@ -16,6 +17,7 @@
         table-layout="fixed"
         :fit="true"
         row-key="id"
+        @row-dblclick="mobileDetailDoubleClick"
       >
         <el-table-column
           v-if="ctx.canViewPermissionsField('logs.id')"
@@ -61,6 +63,7 @@
             <div class="log-description-cell">
               <span class="log-description">{{ row.description }}</span>
               <el-button
+                v-if="!isMobile"
                 class="table-action table-action--view"
                 @click.stop="openLogDetails(row)"
               >
@@ -297,22 +300,13 @@
           </dl>
         </section>
       </div>
-
-      <template #footer>
-        <div class="tf-dialog-actions">
-          <el-button
-            type="primary"
-            @click="detailVisible = false"
-          >
-            关闭
-          </el-button>
-        </div>
-      </template>
     </MobileDialog>
   </div>
 </template>
 
 <script setup lang="ts">
+import { useMobile } from '@/composables/mobile'
+import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
 import { computed, ref } from 'vue'
 import MobileDialog from '@/components/MobileDialog.vue'
 import Pagination from '@/components/Pagination.vue'
@@ -499,6 +493,10 @@ const moduleActionLabel = (action: string) => ({
   deleted: '清理',
   failed: '同步失败'
 }[action] || action || '处理')
+const { isMobile } = useMobile()
+const { doubleTapOptions: mobileDetailTapOptions, handleRowDoubleClick: mobileDetailDoubleClick } = useMobileTableDetail<PermissionLog>({
+  enabled: () => isMobile.value, rows: () => ctx.paginatedLogs, getKey: row => row.id, onOpen: openLogDetails
+})
 </script>
 
 <style>

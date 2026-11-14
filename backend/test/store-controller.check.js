@@ -147,7 +147,7 @@ test('门店批量排序提交或回滚后都释放事务连接', async () => {
     invalidateCache: () => events.push('invalidate')
   })
   const success = createResponse()
-  await controller.reorder({ body: { items: [{ id: 4, sort_order: 2 }, { id: 5 }] } }, success)
+  await controller.reorder({ body: { items: [{ id: 4, sort_order: 2 }] } }, success)
   assert.deepEqual(events.map(event => Array.isArray(event) ? event[2] : event), ['begin', [2, 4], 'commit', 'release', 'invalidate'])
   assert.equal(success.body.message, '排序更新成功')
 

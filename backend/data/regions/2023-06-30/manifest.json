@@ -1,0 +1,274 @@
+{
+  "version": "2023-06-30",
+  "repository": "https://github.com/modood/Administrative-divisions-of-China",
+  "commit": "c49d495b40ac73eb1a66f6eeae5f8fd10696f035",
+  "license": "WTFPL-2.0",
+  "coverage": "中国内地31个省级单位的2023年统计区划，不包含港澳台乡村级数据，不代表现行行政区划",
+  "files": {
+    "11.json.gz": {
+      "sha256": "39d8b45721d82363849c9ad8beff3837fca89511444bd26b9b1498437922e4c2",
+      "bytes": 66078
+    },
+    "12.json.gz": {
+      "sha256": "fd7646e066dfb907ad6269530e35e9e295d1697c2f7533a76ae16760f97cc03c",
+      "bytes": 48758
+    },
+    "13.json.gz": {
+      "sha256": "6a696af8c034ee0f925702d5d97fd5c4dbc8a6e8b6c14faf1443fa6b4aafd551",
+      "bytes": 422924
+    },
+    "14.json.gz": {
+      "sha256": "92796099a63d5a22eda601df5867065348a4977df25d7f77757658153f10a7ea",
+      "bytes": 180209
+    },
+    "15.json.gz": {
+      "sha256": "fefb408a15de18d108dbeb7b2a23c1a12d7dd2ea7db73766c005354f031d83bf",
+      "bytes": 135526
+    },
+    "21.json.gz": {
+      "sha256": "e341c447450da2872d27aa3e6fab2189bd62844df0964e53eaa013b8f004ce5b",
+      "bytes": 146003
+    },
+    "22.json.gz": {
+      "sha256": "3f5cd67a7d70e74fb6f0d815d84e545fad59cc751dfc1c6d2f6f781d947e91c6",
+      "bytes": 99135
+    },
+    "23.json.gz": {
+      "sha256": "d3e8008d406e255af02ef8435ba09b826b8e7b1ccebcf27229a6511679c57cb4",
+      "bytes": 121522
+    },
+    "31.json.gz": {
+      "sha256": "90087e085d58baff26a647beec30419486b483dfc740bd18a4c47abd8a03be99",
+      "bytes": 53350
+    },
+    "32.json.gz": {
+      "sha256": "5b8500159ced4e87c1244bc535d95328e1c373e5dffb040f7d499904190e353e",
+      "bytes": 183209
+    },
+    "33.json.gz": {
+      "sha256": "545e1ddf00b5be93351cdf207f3b3145301ac15e74b23800d007655a22decd27",
+      "bytes": 210496
+    },
+    "34.json.gz": {
+      "sha256": "f7703853fec20fea8d0bc932f26aa3cfc4aa92bb7991aca3743917543505044a",
+      "bytes": 157247
+    },
+    "35.json.gz": {
+      "sha256": "25e2bedb0db5501e8e2a61920ff50f80967f84309b23d81ec1336c1a3e9514de",
+      "bytes": 140350
+    },
+    "36.json.gz": {
+      "sha256": "d5246613955f26ae0be720ce7c4669bf96cbe99eb424d3293a328afa8c03920e",
+      "bytes": 185671
+    },
+    "37.json.gz": {
+      "sha256": "3285c0cbaf9b80c501ff856f7bbcba6ff86a93173369190d2a1ba32486be2dac",
+      "bytes": 472508
+    },
+    "41.json.gz": {
+      "sha256": "24ed61e1e53c966d52a5ae72cc8ee3ff0107c1d862562fa737365cb02ccf7877",
+      "bytes": 405942
+    },
+    "42.json.gz": {
+      "sha256": "749ce61dbe15052cdee524c3620041560aff238ffa3522115fda1fff23b573f5",
+      "bytes": 227810
+    },
+    "43.json.gz": {
+      "sha256": "2efc574cbb0c31f815eab94e5e1b60fab772449dcb31f98510c1d484e2be6bcd",
+      "bytes": 252052
+    },
+    "44.json.gz": {
+      "sha256": "05b49f3750d8e43ac6e8e6f3f9e17340d4266c387ec4f7ed41433746bc99f4a7",
+      "bytes": 222260
+    },
+    "45.json.gz": {
+      "sha256": "5de4f8bca3377af02b167cdba98407bc1d9f1091c72cb3a202678196b10060d9",
+      "bytes": 137678
+    },
+    "46.json.gz": {
+      "sha256": "27ea3fb8bcb6779d12e06043042b0d0c0fbff6616578887cf5e7e4e8b90b1712",
+      "bytes": 28294
+    },
+    "50.json.gz": {
+      "sha256": "68cb0e1c7b006b7e9e5f5c273c3667e7e8357e961c2d1988dc864d303505f27e",
+      "bytes": 96734
+    },
+    "51.json.gz": {
+      "sha256": "566d5be0b30b0603bd8efe5c9270ebbcb614a6fd73fecb1fe87fc0ed39b5d9cf",
+      "bytes": 304107
+    },
+    "52.json.gz": {
+      "sha256": "bc9ab8a347a8d5c7badf66beeb54b8c30e2a58ab4fa7fe53c7449c59319850e1",
+      "bytes": 152502
+    },
+    "53.json.gz": {
+      "sha256": "10da16ce811e1c84926d6890fcfa4efa9f11d10caaf3019a1ab4acf3a3db35a7",
+      "bytes": 134390
+    },
+    "54.json.gz": {
+      "sha256": "59fcdb2d32ccb6d71cc60dfc1e5e21a7f29a0e9676a8fc8d568bb47fdf598740",
+      "bytes": 50051
+    },
+    "61.json.gz": {
+      "sha256": "48c52dbd067b2431ba5590b0cdf7e0afe5992b9146b672f4ea4bb86927f1fdd6",
+      "bytes": 171316
+    },
+    "62.json.gz": {
+      "sha256": "c0ad5ad859037d0ec389ea46038b96884cdfa5c2f594ee37e375b8fd6cd0a286",
+      "bytes": 147540
+    },
+    "63.json.gz": {
+      "sha256": "8b35034fb67e4cbf1c3e1a39ef60837b6daad2a24429e0fdaf5c945833db6b66",
+      "bytes": 42289
+    },
+    "64.json.gz": {
+      "sha256": "330dbde098ee994f88c6a97b0d333150cc762e64fad02926016c5c7a609352b5",
+      "bytes": 25433
+    },
+    "65.json.gz": {
+      "sha256": "f98739c6b8c0233201deae97abab29409d512025783f12272af220ed1c1d21ae",
+      "bytes": 133340
+    }
+  },
+  "sourceFiles": {
+    "provinces.json": "a7e6a230102fee054daa7f63d91ca8da4320c11a2ddd4e5f093999b579fd7d4f",
+    "cities.json": "3f569aaa0bfbeba72f1597657511c64f54107baae71710fef7146f390a41af32",
+    "areas.json": "fbe1575eecba4ffd4d50c3d2d6887bd873ceca6a203fb2d66698b5007826b6b6",
+    "streets.json": "7f5e073a7e543de44a0cb7f05cd9e4bf8ecf7a887be0e36870c0dc1ed4ef066b",
+    "villages.csv": "31a824829aeef7b472fced6a3f9f8321cbd9fb26661052be98904f9763ec88ce",
+    "LICENSE.source": "ee820ff0db4ce628569e0975ac27dc926052a9f85d102b101edb104311ef4d90"
+  },
+  "counts": {
+    "province": 31,
+    "city": 342,
+    "district": 2978,
+    "town": 41352,
+    "village": 620573
+  },
+  "provinces": [
+    [
+      "11",
+      "北京市"
+    ],
+    [
+      "12",
+      "天津市"
+    ],
+    [
+      "13",
+      "河北省"
+    ],
+    [
+      "14",
+      "山西省"
+    ],
+    [
+      "15",
+      "内蒙古自治区"
+    ],
+    [
+      "21",
+      "辽宁省"
+    ],
+    [
+      "22",
+      "吉林省"
+    ],
+    [
+      "23",
+      "黑龙江省"
+    ],
+    [
+      "31",
+      "上海市"
+    ],
+    [
+      "32",
+      "江苏省"
+    ],
+    [
+      "33",
+      "浙江省"
+    ],
+    [
+      "34",
+      "安徽省"
+    ],
+    [
+      "35",
+      "福建省"
+    ],
+    [
+      "36",
+      "江西省"
+    ],
+    [
+      "37",
+      "山东省"
+    ],
+    [
+      "41",
+      "河南省"
+    ],
+    [
+      "42",
+      "湖北省"
+    ],
+    [
+      "43",
+      "湖南省"
+    ],
+    [
+      "44",
+      "广东省"
+    ],
+    [
+      "45",
+      "广西壮族自治区"
+    ],
+    [
+      "46",
+      "海南省"
+    ],
+    [
+      "50",
+      "重庆市"
+    ],
+    [
+      "51",
+      "四川省"
+    ],
+    [
+      "52",
+      "贵州省"
+    ],
+    [
+      "53",
+      "云南省"
+    ],
+    [
+      "54",
+      "西藏自治区"
+    ],
+    [
+      "61",
+      "陕西省"
+    ],
+    [
+      "62",
+      "甘肃省"
+    ],
+    [
+      "63",
+      "青海省"
+    ],
+    [
+      "64",
+      "宁夏回族自治区"
+    ],
+    [
+      "65",
+      "新疆维吾尔自治区"
+    ]
+  ]
+}

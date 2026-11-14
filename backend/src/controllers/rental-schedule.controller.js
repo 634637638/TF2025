@@ -3,6 +3,7 @@
 const ApiResponse = require('../utils/response')
 const log = require('../utils/log')
 const RentalScheduleService = require('../services/rental-schedule.service')
+const { parseRentalId } = require('../utils/rental-input')
 
 class RentalScheduleController {
   constructor({ service = new RentalScheduleService(), response = ApiResponse, logger = log } = {}) {
@@ -23,11 +24,11 @@ class RentalScheduleController {
 
   async recordPayment(req, res) {
     try {
-      const result = await this.service.recordPayment(Number(req.params.id), req.body, req.user.id)
+      const result = await this.service.recordPayment(parseRentalId(req.params.id), req.body, req.user.id)
       return this.response.created(res, result.message, result.inserted)
     } catch (error) {
       this.logger.error('租金还款登记失败:', error)
-      const status = /不存在|请选择|已经还款|正确|已经结束/.test(error.message || '') ? 400 : 500
+      const status = error.statusCode === 400 || /不存在|请选择|已经还款|正确|已经结束/.test(error.message || '') ? 400 : 500
       return this.response.error(res, error.message || '租金还款登记失败', status)
     }
   }

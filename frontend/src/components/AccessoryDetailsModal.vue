@@ -18,7 +18,7 @@
           class="detail-section"
         >
           <h3>基本信息</h3>
-          <div class="detail-grid">
+          <div class="detail-grid tf-detail-grid">
             <div
               v-if="canViewAccessoryField('name')"
               class="detail-item"
@@ -30,7 +30,7 @@
               v-if="canViewAccessoryField('category')"
               class="detail-item"
             >
-              <label>配件分类：</label>
+              <label>商品类型：</label>
               <span>{{ accessory.category || '-' }}</span>
             </div>
             <!-- 品牌型号一行显示 -->
@@ -45,8 +45,14 @@
               v-if="canViewAccessoryField('model_name')"
               class="detail-item"
             >
-              <label>规格型号：</label>
-              <span>{{ accessory.model_name || '-' }}</span>
+              <label>适配型号：</label>
+              <span>{{ accessory.compatible_model_names || [accessory.model_brand_name, accessory.model_name].filter(Boolean).join(' ') || '通用' }}</span>
+            </div>
+            <div
+              v-if="canViewAccessoryField('product_model')"
+              class="detail-item"
+            >
+              <label>配件型号：</label><span>{{ accessory.product_model || '-' }}</span>
             </div>
             <!-- 颜色内存一行显示（配件用单位和颜色） -->
             <div
@@ -88,7 +94,7 @@
           class="detail-section"
         >
           <h3>价格信息</h3>
-          <div class="detail-grid">
+          <div class="detail-grid tf-detail-grid">
             <div
               v-if="canViewAccessoryField('purchase_cost')"
               class="detail-item"
@@ -100,7 +106,7 @@
               v-if="canViewAccessoryField('sale_price')"
               class="detail-item"
             >
-              <label>销售价格：</label>
+              <label>零售价：</label>
               <span class="price">¥{{ formatAmount(accessory.sale_price) }}</span>
             </div>
             <div
@@ -119,13 +125,13 @@
           class="detail-section"
         >
           <h3>库存信息</h3>
-          <div class="detail-grid">
+          <div class="detail-grid tf-detail-grid">
             <div
               v-if="canViewAccessoryField('total_stock')"
               class="detail-item"
             >
               <label>当前库存：</label>
-              <span :class="['stock-status', canViewAccessoryField('min_stock') ? getStockStatusClass() : '']">
+              <span :class="['stock-status', canViewAccessoryField('min_stock') && canViewAccessoryField('stock_status') ? getStockStatusClass() : '']">
                 {{ accessory.total_stock || 0 }}<template v-if="canViewAccessoryField('unit')"> {{ accessory.unit || '' }}</template>
               </span>
             </div>
@@ -146,16 +152,27 @@
           </div>
         </div>
 
+        <AccessoryTransferHistory :accessory-id="accessory.id" />
+        <AccessoryBatchStock :accessory-id="accessory.id" />
+        <AccessoryStockLocations
+          v-if="canViewAccessoryField('distribution')"
+          :accessory-id="accessory.id"
+        />
+        <AccessorySerialPanel
+          v-if="canViewAccessoryField('serial_number')"
+          :accessory-id="accessory.id"
+        />
+
         <!-- 描述和备注 -->
         <div
           v-if="showOtherSection"
           class="detail-section"
         >
           <h3>其他信息</h3>
-          <div class="detail-grid full-width">
+          <div class="detail-grid full-width tf-detail-grid">
             <div
               v-if="canViewAccessoryField('description') && accessory.description"
-              class="detail-item"
+              class="detail-item tf-detail-field--wide"
             >
               <label>描述：</label>
               <p class="description">
@@ -164,7 +181,7 @@
             </div>
             <div
               v-if="canViewAccessoryField('remarks') && accessory.remarks"
-              class="detail-item"
+              class="detail-item tf-detail-field--wide"
             >
               <label>备注：</label>
               <p class="remarks">
@@ -201,24 +218,12 @@
       />
     </div>
 
-    <template #footer>
+    <template
+      v-if="hasActions && accessory && $slots.actions"
+      #footer
+    >
       <div class="tf-dialog-actions modal-footer">
-        <el-button
-          class="btn btn-secondary"
-          @click="closeModal"
-        >
-          关闭
-        </el-button>
-        <el-button
-          v-if="accessory && hasEditPermission"
-          native-type="button"
-          type="primary"
-          size="small"
-          class="btn btn-primary"
-          @click="editAccessory"
-        >
-          编辑配件
-        </el-button>
+        <slot name="actions" />
       </div>
     </template>
   </MobileDialog>
@@ -227,32 +232,15 @@
 <script setup lang="ts">
 import { computed, type PropType } from 'vue'
 import MobileDialog from '@/components/MobileDialog.vue'
+import AccessorySerialPanel from '@/components/AccessorySerialPanel.vue'
+import AccessoryStockLocations from '@/components/AccessoryStockLocations.vue'
+import AccessoryTransferHistory from '@/components/AccessoryTransferHistory.vue'
+import AccessoryBatchStock from '@/components/AccessoryBatchStock.vue'
 import { canViewAccessoryField, type AccessoryFieldName } from './accessory-field-permissions'
 import { formatDateTime as formatGlobalDateTime, formatAmount } from '@/utils/format'
 import { TIME_FORMATS } from '@/utils/time'
 
-interface AccessoryDetailItem {
-  id?: number
-  name?: string
-  category?: string
-  brand_id?: number | string
-  brand_name?: string
-  model_name?: string
-  color_name?: string
-  unit?: string
-  supplier_name?: string
-  status?: string | number | boolean
-  purchase_cost?: string | number
-  sale_price?: string | number
-  total_stock?: string | number
-  min_stock?: string | number
-  description?: string
-  remarks?: string
-  created_at?: string | null
-  updated_at?: string | null
-  profit?: string | number
-  remaining_stock?: string | number
-}
+import type { AccessoryRecord } from '@/types/accessory'
 
 interface AccessoryOptionItem {
   id: number | string
@@ -262,7 +250,7 @@ interface AccessoryOptionItem {
 // Props
 const props = defineProps({
   accessory: {
-    type: Object as PropType<AccessoryDetailItem | null>,
+    type: Object as PropType<AccessoryRecord | null>,
     default: null
   },
   categories: {
@@ -273,16 +261,16 @@ const props = defineProps({
     type: Array as PropType<AccessoryOptionItem[]>,
     default: (): AccessoryOptionItem[] => []
   },
-  hasEditPermission: {
+  hasActions: {
     type: Boolean,
     default: false
   }
 })
 
 // Emits
-const emit = defineEmits(['close', 'edit'])
+const emit = defineEmits(['close'])
 const hasAnyField = (fields: AccessoryFieldName[]) => fields.some(canViewAccessoryField)
-const showBasicSection = computed(() => hasAnyField(['name','category','brand_name','model_name','color_name','unit','supplier_name','status']))
+const showBasicSection = computed(() => hasAnyField(['name','category','brand_name','model_name','color_name','unit','supplier_name','status','product_model']))
 const showPriceSection = computed(() => hasAnyField(['purchase_cost','sale_price','profit']))
 const showStockSection = computed(() => hasAnyField(['total_stock','min_stock','remaining_stock']))
 const showOtherSection = computed(() => hasAnyField(['description','remarks','created_at','updated_at']))
@@ -327,13 +315,7 @@ const handleDialogVisibility = (visible: boolean) => {
   }
 }
 
-// 编辑配件
-const editAccessory = () => {
-  if (props.accessory) {
-    emit('edit', props.accessory)
-    closeModal()
-  }
-}
+
 </script>
 
 <style scoped>

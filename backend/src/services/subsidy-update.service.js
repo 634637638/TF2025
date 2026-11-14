@@ -3,6 +3,7 @@
 const fs = require('node:fs')
 const path = require('node:path')
 const log = require('../utils/log')
+const { validateSubsidyInput } = require('../utils/subsidy-input')
 const { clearCache } = require('../middleware/cache')
 const { getUploadsRoot, getUploadSubdir } = require('../utils/upload-paths')
 const { getSubsidyPhotoNaming, encodeSubsidyPhotoUrl } = require('../utils/subsidy-photo-storage')
@@ -35,8 +36,42 @@ class SubsidyUpdateService {
   }
 
   async update(id, input) {
+    const checked = validateSubsidyInput(input)
+    if (checked.error) return { status: 400, body: { success: false, message: checked.error } }
+    input = checked.input
     const existing = await this.repository.findExisting(id)
     if (!existing) return { status: 404, body: { success: false, message: '国补记录不存在' } }
+
+    const updateFields = []
+    const updateValues = []
+    this.appendDirectFields(input, updateFields, updateValues)
+
+    if (input.sale_price !== undefined) {
+      const normalizedSalePrice = Number(input.sale_price)
+      updateFields.push('sale_price = ?')
+      updateValues.push(normalizedSalePrice.toFixed(2))
+    }
+
+    if (input.store_id !== undefined) {
+      if (input.store_id === null || input.store_id === '') {
+        updateFields.push('store_id = NULL', 'store_name = NULL')
+      } else {
+        const storeName = await this.repository.getStoreName(input.store_id)
+        if (!storeName) {
+          return { status: 400, body: { success: false, message: '选择的店铺不存在' } }
+        }
+        updateFields.push('store_id = ?', 'store_name = ?')
+        updateValues.push(input.store_id, storeName)
+      }
+    }
+
+    this.appendAuditAndArrivalFields(input, updateFields, updateValues)
+
+    if (input.remarks !== undefined) {
+      updateFields.push('remarks = ?')
+      updateValues.push(input.remarks || '')
+    }
+    this.appendHandlerFields(input, updateFields, updateValues)
 
     if (input.customer_idcard !== undefined) {
       await this.repository.updateCustomerIdCard(
@@ -60,48 +95,6 @@ class SubsidyUpdateService {
         await this.repository.updateCustomer(existing.customer_id, customerFields, customerValues)
       }
     }
-
-    const updateFields = []
-    const updateValues = []
-    this.appendDirectFields(input, updateFields, updateValues)
-
-    if (input.sale_price !== undefined) {
-      if (input.sale_price === '' || input.sale_price === null) {
-        return { status: 400, body: { success: false, message: '销售价格不能为空' } }
-      }
-      const normalizedSalePrice = Number(input.sale_price)
-      if (!Number.isFinite(normalizedSalePrice) || normalizedSalePrice < 0) {
-        return { status: 400, body: { success: false, message: '销售价格必须是大于等于0的数字' } }
-      }
-      updateFields.push('sale_price = ?')
-      updateValues.push(normalizedSalePrice.toFixed(2))
-    }
-
-    if (input.store_id !== undefined) {
-      if (input.store_id === null || input.store_id === '') {
-        updateFields.push('store_id = NULL', 'store_name = NULL')
-      } else {
-        const storeName = await this.repository.getStoreName(input.store_id)
-        if (!storeName) {
-          return { status: 400, body: { success: false, message: '选择的店铺不存在' } }
-        }
-        updateFields.push('store_id = ?', 'store_name = ?')
-        updateValues.push(input.store_id, storeName)
-      }
-    }
-
-    if (input.remarks !== undefined) {
-      updateFields.push('remarks = COALESCE(?, remarks)')
-      updateValues.push(input.remarks || null)
-    }
-    this.appendAuditAndArrivalFields(input, updateFields, updateValues)
-
-    if (input.remarks !== undefined) {
-      updateFields.push('remarks = ?')
-      updateValues.push(input.remarks || '')
-    }
-    this.appendHandlerFields(input, updateFields, updateValues)
-
     await this.repository.updateSubsidy(id, updateFields, updateValues)
 
     const namingInput = await this.repository.getPhotoDirectoryNamingInput(id)

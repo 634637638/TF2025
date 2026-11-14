@@ -1,0 +1,153 @@
+{
+  "src/views/sales/page/SalesBatchForm.vue": [
+    {
+      "data": "batchItems",
+      "purpose": "data-entry",
+      "reason": "批量销售草稿输入表；选择和填写是显式编辑操作，不是记录操作展开。"
+    }
+  ],
+  "src/views/system/SystemView.vue": [
+    {
+      "data": "visibleSiteSettingsList",
+      "purpose": "data-entry",
+      "reason": "站点键值设置，输入框与保存属于设置表单。"
+    }
+  ],
+  "src/views/system/phone-warning-config/PhoneWarningConfigView.vue": [
+    {
+      "data": "row.children",
+      "purpose": "related-details",
+      "reason": "仅PC保留的真实子规则展开；手机主模板详情及子规则另接公共双击详情。"
+    },
+    {
+      "data": "variantDrafts",
+      "purpose": "data-entry",
+      "reason": "新增库存预警组合的阈值与启停输入草稿，提交前编辑，不是持久记录行操作。"
+    }
+  ],
+  "src/views/query/page/GoodsAftersaleHistory.vue": [
+    {
+      "data": "rows",
+      "purpose": "related-details",
+      "reason": "商品详情内的只读售后流水子单元，无行写操作，不重复嵌套同一份详情。"
+    }
+  ],
+  "src/components/query/ReturnStockModal.vue": [
+    {
+      "data": "checkoutChecklist.accessories",
+      "purpose": "related-details",
+      "reason": "退货办理中的关联配件核对清单，无单条业务动作；查看详情已由外层原单承载。"
+    }
+  ],
+  "src/components/query/SalesReceipt.vue": [
+    {
+      "data": "items",
+      "purpose": "related-details",
+      "reason": "销售凭证打印及保存图片的只读手机明细，属于凭证内容，无行操作。"
+    },
+    {
+      "data": "accessoryRows",
+      "purpose": "related-details",
+      "reason": "销售凭证内随单配件只读明细，属于凭证内容，无行操作。"
+    }
+  ],
+  "src/components/stock-in/StockInPhoneListSection.vue": [
+    {
+      "data": "formData.phones",
+      "purpose": "data-entry",
+      "reason": "入库提交前的设备草稿及移除草稿操作，不是持久业务记录的操作入口。"
+    }
+  ],
+  "src/views/customers/CustomersView.vue": [
+    {
+      "data": "customerPurchases",
+      "purpose": "related-details",
+      "reason": "客户详情内购买历史只读子表，无单条操作；客户查看由外层详情承载。"
+    }
+  ],
+  "src/views/payments/SupplierPhonePaymentsView.vue": [
+    {
+      "data": "selectedPhoneObjects",
+      "purpose": "selection",
+      "reason": "批量付款表单内待提交设备选择，移除属于取消当前草稿选择。"
+    },
+    {
+      "data": "currentPhone ? [currentPhone] : []",
+      "purpose": "related-details",
+      "reason": "单台付款表单内当前设备的只读核对摘要，无行操作。"
+    },
+    {
+      "data": "paymentDetails.phones || []",
+      "purpose": "related-details",
+      "reason": "付款批次详情及凭证图片内关联设备清单，无行操作。"
+    }
+  ],
+  "src/views/payments/page/AccessoryPurchasePayments.vue": [
+    {
+      "data": "history",
+      "purpose": "related-details",
+      "reason": "采购详情内只读打款及撤销流水，无逐条写动作。"
+    }
+  ],
+  "src/views/preorders/page/MatchPreorderModal.vue": [
+    {
+      "data": "phones",
+      "purpose": "selection",
+      "reason": "预定匹配的库存选择表，勾选或选择是当前表单输入，不是记录业务操作展开。"
+    }
+  ],
+  "src/views/price-list/PriceListView.vue": [
+    {
+      "data": "inventoryData",
+      "purpose": "related-details",
+      "reason": "报价详情内关联现货只读清单，无行操作。"
+    }
+  ],
+  "src/views/price-list/page/SyncLogView.vue": [
+    {
+      "data": "parsedSyncDetails.items.success",
+      "purpose": "related-details",
+      "reason": "同步日志详情内成功项只读清单，无行操作。"
+    },
+    {
+      "data": "parsedSyncDetails.items.failed",
+      "purpose": "related-details",
+      "reason": "同步日志详情内失败项只读清单，无行操作。"
+    }
+  ],
+  "src/views/query/page/QueryGoodsPanel.vue": [
+    {
+      "data": "detail.batches",
+      "purpose": "related-details",
+      "reason": "商品原单详情的出库来源批次只读清单，无逐批业务动作。"
+    }
+  ],
+  "src/views/reminders/ReminderView.vue": [
+    {
+      "data": "detailOccurrences",
+      "purpose": "related-details",
+      "reason": "提醒详情内执行历史只读流水，无行操作。"
+    }
+  ],
+  "src/views/salary/page/SalaryEmployeeSalesDetailDialog.vue": [
+    {
+      "data": "details",
+      "purpose": "related-details",
+      "reason": "员工工资销售明细只读凭据，保留现有字段权限，无行操作。"
+    }
+  ],
+  "src/views/salary/page/SalarySalesDetailDialog.vue": [
+    {
+      "data": "details",
+      "purpose": "related-details",
+      "reason": "工资销售明细只读凭据，保留现有字段权限，无行操作。"
+    }
+  ],
+  "src/views/sales/page/SalesInventoryDetailDialog.vue": [
+    {
+      "data": "items",
+      "purpose": "related-details",
+      "reason": "库存统计详情的关联设备只读清单，无行操作。"
+    }
+  ]
+}

@@ -39,7 +39,7 @@
         :model="stockInForm"
         :rules="formRules"
         label-position="top"
-        class="modern-form tf-dialog-form tf-dialog-form--stacked"
+        class="modern-form tf-dialog-form tf-dialog-form--stacked tf-form-layout tf-form-grid"
       >
         <StockInBasicInfoSection
           :is-mobile="isMobile"
@@ -86,6 +86,7 @@
           </header>
           <div class="stock-in-section__body">
             <el-form-item
+              class="tf-form-field--wide"
               label="备注"
               prop="remarks"
             >
@@ -141,7 +142,10 @@
     dialog-class="stock-in-batch-dialog"
     :show-default-footer="false"
   >
-    <el-form @submit.prevent="confirmBatchAdd">
+    <el-form
+      class="tf-form-layout tf-form-grid"
+      @submit.prevent="confirmBatchAdd"
+    >
       <el-form-item label="添加数量">
         <el-input-number
           v-model="batchCount"

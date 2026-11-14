@@ -1,160 +1,80 @@
-const log = require('../utils/log')
-const SalaryTemplateService = require('../services/salary-template.service')
+'use strict'
+
+const service = require('../services/salary-template.service')
 const ApiResponse = require('../utils/response')
 const { parseBooleanFilter } = require('../utils/status')
+const FieldAccessService = require('../services/field-access.service')
+const log = require('../utils/log')
 
-/**
- * 工资模板控制器
- */
+const ruleField = 'template.goods_commission_rule'
+const writeFields = { goods_commission_rule: ruleField }
+
 class SalaryTemplateController {
-  /**
-   * 获取工资模板列表
-   */
-  async getTemplates(req, res) {
+  constructor({ service: implementation = service, masking } = {}) {
+    this.service = implementation
+    this.fields = new FieldAccessService({ moduleKey: 'salary_salarytemplatesview',
+      responseKeys: { [ruleField]: ['goods_commission_rule'] }, strict: true, ...(masking ? { masking } : {}) })
+  }
+
+  async respond(req, res, operation, message, { write = false, status = 200 } = {}) {
     try {
-      const { page, page_size, is_active, is_default } = req.query
-
-      log.debug('[获取模板列表] 查询参数:', { page, page_size, is_active, is_default })
-
-      const filters = {}
-      // 处理 is_active 参数（支持字符串和布尔值）
-      if (is_active !== undefined && is_active !== null && is_active !== '') {
-        filters.is_active = parseBooleanFilter(is_active)
+      if (write) {
+        const denied = await this.fields.getDeniedWrite(req.user.id, req.body, writeFields)
+        if (denied) return ApiResponse.error(res, '不能修改已隐藏的商品提成规则', 403, 'FIELD_PERMISSION_DENIED')
       }
-      // 处理 is_default 参数（支持字符串和布尔值）
-      if (is_default !== undefined && is_default !== null && is_default !== '') {
-        filters.is_default = parseBooleanFilter(is_default)
+      const permissions = await this.fields.getPermissions(req.user.id)
+      const result = await operation()
+      return ApiResponse.success(res, message, this.fields.maskPayload(result, permissions), status)
+    } catch (error) {
+      const status = [400, 403, 404, 409].includes(error.statusCode) ? error.statusCode :
+        error.message?.startsWith('无法删除') ? 400 : 500
+      if (status === 500) log.error('工资模板操作失败:', error)
+      return ApiResponse.error(res, error.message, status, error.code)
+    }
+  }
+
+  getTemplates(req, res) {
+    const filters = {}
+    for (const field of ['is_active', 'is_default']) {
+      if (req.query[field] !== undefined && req.query[field] !== null && req.query[field] !== '') {
+        filters[field] = parseBooleanFilter(req.query[field])
       }
-
-      log.debug('[获取模板列表] 筛选条件:', filters)
-
-      const options = {
-        page: Math.max(1, parseInt(page, 10) || 1),
-        page_size: Math.min(100, Math.max(1, parseInt(page_size, 10) || 20))
-      }
-
-      const result = await SalaryTemplateService.getTemplates(filters, options)
-      log.debug('[获取模板列表] 返回记录数:', result.records?.length || 0)
-      if (result.records && result.records.length > 0) {
-        log.debug('[获取模板列表] 模板ID列表:', result.records.map(r => r.id))
-      }
-      ApiResponse.success(res, '获取工资模板列表成功', result, 200)
-    } catch (error) {
-      log.error('获取工资模板列表失败:', error)
-      ApiResponse.error(res, error.message, 500)
     }
+    const options = { page: Math.max(1, parseInt(req.query.page, 10) || 1),
+      page_size: Math.min(100, Math.max(1, parseInt(req.query.page_size, 10) || 20)) }
+    return this.respond(req, res, () => this.service.getTemplates(filters, options), '获取工资模板列表成功')
   }
 
-  /**
-   * 获取工资模板详情
-   */
-  async getTemplateById(req, res) {
-    try {
-      const { id } = req.params
-      const result = await SalaryTemplateService.getTemplateById(id)
-
-      if (!result) {
-        return ApiResponse.error(res, '工资模板不存在', 404)
-      }
-
-      ApiResponse.success(res, '获取工资模板详情成功', result, 200)
-    } catch (error) {
-      log.error('获取工资模板详情失败:', error)
-      ApiResponse.error(res, error.message, 500)
-    }
+  getTemplateById(req, res) {
+    return this.respond(req, res, async () => {
+      const row = await this.service.getTemplateById(req.params.id)
+      if (!row) throw Object.assign(new Error('工资模板不存在'), { statusCode: 404, code: 'NOT_FOUND' })
+      return row
+    }, '获取工资模板详情成功')
   }
 
-  /**
-   * 创建工资模板
-   */
-  async createTemplate(req, res) {
-    try {
-      log.debug('[创建模板] 请求数据:', JSON.stringify(req.body, null, 2))
-      log.debug('[创建模板] 用户信息:', req.user)
-      const userId = req.user.sub || req.user.id
-      log.debug('[创建模板] 用户ID:', userId)
-      const result = await SalaryTemplateService.createTemplate(req.body, userId)
-      log.debug('[创建模板] 创建结果:', result)
-      ApiResponse.success(res, '创建工资模板成功', result, 201)
-    } catch (error) {
-      log.error('[创建模板] 失败:', error.message)
-      log.debug('[创建模板] 错误堆栈:', error.stack)
-      ApiResponse.error(res, error.message, 500)
-    }
+  createTemplate(req, res) {
+    return this.respond(req, res, () => this.service.createTemplate(req.body, req.user.id), '创建工资模板成功', { write: true, status: 201 })
   }
 
-  /**
-   * 更新工资模板
-   */
-  async updateTemplate(req, res) {
-    try {
-      const { id } = req.params
-      const result = await SalaryTemplateService.updateTemplate(id, req.body)
-      ApiResponse.success(res, '更新工资模板成功', result, 200)
-    } catch (error) {
-      log.error('更新工资模板失败:', error)
-      ApiResponse.error(res, error.message, 500)
-    }
+  updateTemplate(req, res) {
+    return this.respond(req, res, () => this.service.updateTemplate(req.params.id, req.body), '更新工资模板成功', { write: true })
   }
 
-  /**
-   * 删除工资模板
-   */
-  async deleteTemplate(req, res) {
-    try {
-      const { id } = req.params
-      await SalaryTemplateService.deleteTemplate(id)
-      ApiResponse.success(res, '删除工资模板成功', null, 200)
-    } catch (error) {
-      log.error('删除工资模板失败:', error)
-      // 业务逻辑错误返回400，系统错误返回500
-      const statusCode = error.message.includes('无法删除') ? 400 : 500
-      ApiResponse.error(res, error.message, statusCode)
-    }
+  deleteTemplate(req, res) {
+    return this.respond(req, res, () => this.service.deleteTemplate(req.params.id), '删除工资模板成功')
   }
 
-  /**
-   * 设为默认模板
-   */
-  async setAsDefault(req, res) {
-    try {
-      const { id } = req.params
-      await SalaryTemplateService.setAsDefault(id)
-      ApiResponse.success(res, '设置默认模板成功', null, 200)
-    } catch (error) {
-      log.error('设置默认模板失败:', error)
-      ApiResponse.error(res, error.message, 500)
-    }
+  setAsDefault(req, res) {
+    return this.respond(req, res, () => this.service.setAsDefault(req.params.id), '设置默认模板成功')
   }
 
-  /**
-   * 获取激活的模板列表
-   */
-  async getActiveTemplates(req, res) {
-    try {
-      const result = await SalaryTemplateService.getActiveTemplates()
-      ApiResponse.success(res, '获取激活模板列表成功', result, 200)
-    } catch (error) {
-      log.error('获取激活模板列表失败:', error)
-      ApiResponse.error(res, error.message, 500)
-    }
+  getActiveTemplates(req, res) {
+    return this.respond(req, res, () => this.service.getActiveTemplates(), '获取激活模板列表成功')
   }
 
-  /**
-   * 设置员工工资模板
-   */
-  async setEmployeeTemplate(req, res) {
-    try {
-      const { userId } = req.params
-      const { template_id } = req.body
-      log.debug('[设置员工模板] userId:', userId, 'template_id:', template_id)
-      const result = await SalaryTemplateService.setEmployeeTemplate(userId, template_id)
-      log.debug('[设置员工模板] 结果:', result)
-      ApiResponse.success(res, '设置员工工资模板成功', result, 200)
-    } catch (error) {
-      log.error('设置员工工资模板失败:', error)
-      ApiResponse.error(res, error.message, 500)
-    }
+  setEmployeeTemplate(req, res) {
+    return this.respond(req, res, () => this.service.setEmployeeTemplate(req.params.userId, req.body.template_id), '设置员工工资模板成功')
   }
 }
 

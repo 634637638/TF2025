@@ -4,37 +4,177 @@
  */
 const BaseRepository = require('./base.repository')
 const log = require('../utils/log')
+const { appendStoreScopeCondition } = require('../utils/store-scope')
+const { hasColumn } = require('../utils/schema-inspector')
+const { purchaseSnapshotText } = require('../utils/accessory-purchase-snapshot')
+const { appendPurchaseStoreScope } = require('../utils/accessory-purchase-scope')
 
+// 品牌库存商品继承模板的共享资料；品牌、厂家型号和库存仍归实际商品。
+const templateField = field => `IF(a.template_id IS NULL, a.${field}, t.${field})`
+const ACCESSORY_STATUS = 'IF(a.template_id IS NULL, a.status, IFNULL(LEAST(a.status, t.status), 0))'
 const ACCESSORY_SELECT_FIELDS = `
-  a.id,
-  a.name,
-  a.barcode,
-  a.category,
-  a.brand_id,
-  a.model_id,
-  a.color_id,
-  a.supplier_id,
-  a.purchase_cost,
-  a.sale_price,
-  a.specifications,
-  a.unit,
-  a.status,
-  a.description,
-  a.remarks,
-  a.image_url,
-  a.created_at,
-  a.updated_at
+  a.id, a.template_id,
+  ${['name', 'barcode', 'category_id', 'model_id', 'color_id', 'sale_price', 'unit_id', 'description', 'image_url', 'serial_tracking', 'min_stock'].map(field => `${templateField(field)} AS ${field}`).join(',\n  ')},
+  COALESCE(ac.name, ${templateField('category')}) AS category,
+  COALESCE(au.name, ${templateField('unit')}) AS unit,
+  a.product_model, a.brand_id, a.supplier_id, a.purchase_cost,
+  ${ACCESSORY_STATUS} AS status,
+  a.remarks, a.created_at, a.updated_at
 `
 
 class AccessoryRepository extends BaseRepository {
-  constructor() {
+  constructor({ columnExists = hasColumn } = {}) {
     super('accessories')
+    this.columnExists = columnExists
+  }
+
+  async queryRows(sql, params = [], executor) {
+    const [rows] = await (executor || this.getConnection()).query(sql, params)
+    return rows
+  }
+
+  /** 销售候选只读取所选授权门店，不返回采购成本或其他门店库存。 */
+  async getSaleOptions({ storeId, search, searchFields, page, pageSize, filmOnly = false }) {
+    if (filmOnly && !await this.columnExists('accessory_categories', 'film_enabled')) {
+      throw Object.assign(new Error('贴膜类型字段尚未就绪，请先完成迁移'), { statusCode: 409, code: 'FILM_SERVICE_NOT_READY' })
+    }
+    const columns = { name: templateField('name'), barcode: templateField('barcode'), brand_name: 'b.name', product_model: 'a.product_model' }
+    const conditions = ['st.store_id = ?', 'st.quantity > 0', `${ACCESSORY_STATUS} = 1`]
+    const params = [storeId]
+    if (filmOnly) conditions.push(`EXISTS (SELECT 1 FROM accessory_categories fc WHERE fc.id = ${templateField('category_id')} AND fc.status = 1 AND fc.film_enabled = 1)`)
+    if (search) {
+      const matches = searchFields.filter(field => columns[field]).map(field => `${columns[field]} LIKE ?`)
+      params.push(...matches.map(() => `%${search}%`))
+      if (searchFields.includes('serial_number')) {
+        matches.push("EXISTS (SELECT 1 FROM accessory_serials sn WHERE sn.accessory_id = a.id AND sn.store_id = st.store_id AND sn.status = 'in_stock' AND sn.serial_number LIKE ?)")
+        params.push(`%${search}%`)
+      }
+      conditions.push(matches.length ? `(${matches.join(' OR ')})` : '1 = 0')
+    }
+    const from = `FROM accessory_stock st JOIN accessories a ON a.id = st.accessory_id
+      LEFT JOIN accessories t ON t.id = a.template_id LEFT JOIN brands b ON b.id = a.brand_id
+      WHERE ${conditions.join(' AND ')}`
+    const [count] = await this.queryRows(`SELECT COUNT(*) AS total ${from}`, params)
+    const data = await this.queryRows(`SELECT a.id, ${templateField('name')} AS name,
+      ${templateField('barcode')} AS barcode, b.name AS brand_name, a.product_model,
+      ${templateField('sale_price')} AS sale_price, st.quantity,
+      (SELECT COUNT(*) FROM accessory_serials sn WHERE sn.accessory_id = a.id AND sn.store_id = st.store_id AND sn.status = 'in_stock') AS serial_quantity
+      ${from} ORDER BY ${templateField('name')}, b.name, a.id LIMIT ${pageSize} OFFSET ${(page - 1) * pageSize}`, params)
+    return { data, pagination: { page, page_size: pageSize, total: Number(count.total) } }
+  }
+
+  async getProductCatalog() {
+    const filmReady = await this.columnExists('accessory_categories', 'film_enabled')
+    const [categories, units] = await Promise.all([
+      this.getProductCategories(filmReady),
+      this.queryRows('SELECT id, name, status, sort_order, created_at, updated_at FROM accessory_units ORDER BY sort_order, name, id')
+    ])
+    return { categories, units, film_ready: filmReady }
+  }
+
+  async getProductCategories(filmReady = false) {
+    return this.queryRows(`SELECT id, name, status, sort_order, description, ${filmReady ? 'film_enabled' : 'NULL AS film_enabled'},
+      created_at, updated_at FROM accessory_categories ORDER BY sort_order, name, id`)
+  }
+
+  async saveCatalogItem(kind, id, data) {
+    const tables = { category: 'accessory_categories', unit: 'accessory_units' }
+    const table = tables[kind]
+    if (!table) throw new Error('不支持的商品资料类型')
+    const filmWrite = kind === 'category' && data.film_enabled !== undefined
+    if (filmWrite && !await this.columnExists('accessory_categories', 'film_enabled')) {
+      throw Object.assign(new Error('贴膜类型字段尚未就绪，请先完成迁移'), { statusCode: 409, code: 'FILM_SERVICE_NOT_READY' })
+    }
+    if (id) {
+      const [result] = await this.executePrepared(
+        `UPDATE ${table} SET name = ?, status = ?, sort_order = ?, ${kind === 'category' ? 'description = ?,' : ''}${filmWrite ? 'film_enabled = ?,' : ''} updated_at = NOW() WHERE id = ?`,
+        kind === 'category'
+          ? [data.name, data.status, data.sort_order, data.description, ...(filmWrite ? [data.film_enabled ? 1 : 0] : []), id]
+          : [data.name, data.status, data.sort_order, id]
+      )
+      return result.affectedRows > 0
+    }
+    const columns = (kind === 'category' ? 'name, status, sort_order, description' : 'name, status, sort_order') + (filmWrite ? ', film_enabled' : '')
+    const values = kind === 'category' ? [data.name, data.status, data.sort_order, data.description] : [data.name, data.status, data.sort_order]
+    if (filmWrite) values.push(data.film_enabled ? 1 : 0)
+    const [result] = await this.executePrepared(`INSERT INTO ${table} (${columns}) VALUES (${values.map(() => '?').join(', ')})`, values)
+    return result.insertId
+  }
+
+  /** 只查询已有公共资料，不在入库时创建或修改公共主档。 */
+  async getReference(id, resource, executor) {
+    const tables = { brand_id: 'brands', model_id: 'models', color_id: 'colors', supplier_id: 'suppliers', store_id: 'stores', category_id: 'accessory_categories', unit_id: 'accessory_units' }
+    const table = tables[resource]
+    if (!table) throw new Error('不支持的配件参考资料')
+    const extra = resource === 'model_id' ? ', brand_id, (SELECT business_scope FROM brands WHERE id = models.brand_id) AS brand_business_scope' : ''
+    const scopeColumn = ['supplier_id', 'brand_id'].includes(resource) ? ', business_scope' : ''
+    // 事务内采购引用持有供应商共享锁，与删除的排他锁串行，避免历史单据成为孤儿。
+    const lock = resource === 'supplier_id' && executor ? ' LOCK IN SHARE MODE' : ''
+    const rows = await this.queryRows(`SELECT id, name, status${extra}${scopeColumn} FROM ${table} WHERE id = ?${lock}`, [id], executor)
+    return rows[0] || null
+  }
+
+  async getEntryOptions({ storeScope, brandId, modelIds = [], current = {} }) {
+    const options = {}
+    const resources = [
+      ['brands', 'brand_id'], ['colors', 'color_id'], ['suppliers', 'supplier_id'], ['stores', 'store_id']
+    ]
+    for (const [table, field] of resources) {
+      const params = [current[field] || null]
+      let where = '(status = 1 OR id = ?)'
+      if (table === 'brands') {
+        where = '(status = 1 OR id IN (?, ?))'
+        params.push(current.model_brand_id || null)
+      }
+      if (table === 'stores' && !storeScope.allStores) {
+        if (!storeScope.storeIds.length) {
+          options[table] = []
+          continue
+        }
+        where += ` AND id IN (${storeScope.storeIds.map(() => '?').join(',')})`
+        params.push(...storeScope.storeIds)
+      }
+      if (table === 'suppliers') {
+        where = "((business_scope IN ('accessory', 'both') AND status = 1) OR id = ?)"
+      }
+      options[table] = await this.queryRows(
+        `SELECT id, name, status, sort_order${table === 'brands' ? ', business_scope' : ''} FROM ${table} WHERE ${where} ORDER BY sort_order, name, id`, params
+      )
+    }
+    const brandOption = row => ({ id: row.id, name: row.name, status: row.status, sort_order: row.sort_order })
+    options.model_brands = options.brands.filter(row => (Number(row.status) === 1 && row.business_scope !== 'accessory') || Number(row.id) === Number(current.model_brand_id)).map(brandOption)
+    options.brands = options.brands.filter(row => (Number(row.status) === 1 && row.business_scope !== 'phone') || Number(row.id) === Number(current.brand_id)).map(brandOption)
+    options.categories = await this.queryRows(
+      'SELECT id, name, status, sort_order FROM accessory_categories WHERE status = 1 OR id = ? ORDER BY sort_order, name, id',
+      [current.category_id || null]
+    )
+    options.units = await this.queryRows(
+      'SELECT id, name, status, sort_order FROM accessory_units WHERE status = 1 OR id = ? ORDER BY sort_order, name, id',
+      [current.unit_id || null]
+    )
+    const currentModelIds = Array.isArray(current.model_ids)
+      ? current.model_ids
+      : String(current.model_ids || current.model_id || '').split(',').filter(Boolean)
+    const selectedModelIds = [...new Set([...modelIds, ...currentModelIds].map(Number).filter(Number.isSafeInteger))]
+    const modelParams = []
+    const selectedCondition = selectedModelIds.length ? `m.id IN (${selectedModelIds.map(() => '?').join(',')})` : '1 = 0'
+    const activeBrandCondition = brandId ? "(m.brand_id = ? AND m.status = 1 AND b.status = 1 AND b.business_scope IN ('phone', 'both'))" : '1 = 0'
+    const modelConditions = [`(${activeBrandCondition} OR ${selectedCondition})`]
+    if (brandId) modelParams.push(brandId)
+    modelParams.push(...selectedModelIds)
+    options.models = brandId || selectedModelIds.length ? await this.queryRows(
+      `SELECT m.id, m.name, m.brand_id, m.status, m.sort_order FROM models m
+       INNER JOIN brands b ON b.id = m.brand_id
+       WHERE ${modelConditions.join(' AND ')}
+       ORDER BY m.sort_order, m.name, m.id`, modelParams
+    ) : []
+    return options
   }
 
   /**
    * 获取配件列表（带分页和筛选）
    */
-  async getAccessories(options = {}) {
+  async getAccessories(options = {}, executor) {
     try {
       const {
         page = 1,
@@ -45,22 +185,35 @@ class AccessoryRepository extends BaseRepository {
         supplier_id,
         status = 1,
         search,
+        mode,
         search_fields = ['name', 'barcode']
       } = options
 
-      const normalized_page_size = Number(page_size) || 50
-      const offset = (page - 1) * normalized_page_size
+      const normalized_page_size = Math.min(100, Math.max(1, Number.parseInt(page_size, 10) || 50))
+      const normalizedPage = Math.max(1, Number.parseInt(page, 10) || 1)
+      const offset = (normalizedPage - 1) * normalized_page_size
       const conditions = []
       const params = []
 
+      const stockConditions = ['current_stock.accessory_id = a.id'], stockParams = []
+      appendStoreScopeCondition(options.store_scope, 'current_stock.store_id', stockConditions, stockParams)
+      const stockExists = `EXISTS (SELECT 1 FROM accessory_stock current_stock WHERE ${stockConditions.join(' AND ')})`
+      if (mode === 'templates') conditions.push('a.template_id IS NULL')
+      else {
+        conditions.push(mode === 'inventory' ? stockExists : `(a.template_id IS NULL OR ${stockExists})`)
+        params.push(...stockParams)
+      }
+      const stockJoinConditions = ['a.id = ast.accessory_id'], stockJoinParams = []
+      appendStoreScopeCondition(options.store_scope, 'ast.store_id', stockJoinConditions, stockJoinParams)
+
       // 构建查询条件
       if (status !== null && status !== undefined) {
-        conditions.push('a.status = ?')
+        conditions.push(`${ACCESSORY_STATUS} = ?`)
         params.push(status)
       }
 
       if (category) {
-        conditions.push('a.category = ?')
+        conditions.push(`COALESCE(ac.name, ${templateField('category')}) = ?`)
         params.push(category)
       }
 
@@ -70,7 +223,7 @@ class AccessoryRepository extends BaseRepository {
       }
 
       if (model_id) {
-        conditions.push('a.model_id = ?')
+        conditions.push('EXISTS (SELECT 1 FROM accessory_compatible_models am WHERE am.accessory_id = COALESCE(a.template_id, a.id) AND am.model_id = ?)')
         params.push(model_id)
       }
 
@@ -80,10 +233,20 @@ class AccessoryRepository extends BaseRepository {
       }
 
       if (search) {
-        const allowedSearchColumns = { name: 'a.name', barcode: 'a.barcode' }
+        const allowedSearchColumns = {
+          name: templateField('name'), barcode: templateField('barcode'), category: `COALESCE(ac.name, ${templateField('category')})`,
+          brand_name: 'b.name', product_model: 'a.product_model',
+          model_name: `CONCAT_WS(' ', mb.name, m.name, (
+            SELECT GROUP_CONCAT(CONCAT_WS(' ', search_brand.name, search_model.name))
+            FROM accessory_compatible_models search_am
+            INNER JOIN models search_model ON search_model.id = search_am.model_id
+            INNER JOIN brands search_brand ON search_brand.id = search_model.brand_id
+            WHERE search_am.accessory_id = COALESCE(a.template_id, a.id)
+          ))`
+        }
         const searchColumns = search_fields.map(field => allowedSearchColumns[field]).filter(Boolean)
         if (searchColumns.length) {
-          conditions.push(`(${searchColumns.map(column => `${column} LIKE ?`).join(' OR ')})`)
+          conditions.push(`(${searchColumns.map(column => `CONVERT(${column} USING utf8mb4) COLLATE utf8mb4_unicode_ci LIKE CONVERT(? USING utf8mb4) COLLATE utf8mb4_unicode_ci`).join(' OR ')})`)
           params.push(...searchColumns.map(() => `%${search}%`))
         }
       }
@@ -94,9 +257,14 @@ class AccessoryRepository extends BaseRepository {
       const countQuery = `
         SELECT COUNT(DISTINCT a.id) as total
         FROM accessories a
+        LEFT JOIN accessories t ON t.id = a.template_id
+        LEFT JOIN accessory_categories ac ON ac.id = ${templateField('category_id')}
+        LEFT JOIN brands b ON b.id = a.brand_id
+        LEFT JOIN models m ON m.id = ${templateField('model_id')}
+        LEFT JOIN brands mb ON mb.id = m.brand_id
         ${whereClause}
       `
-      const countResult = await this.executeQuery(countQuery, params)
+      const countResult = await this.queryRows(countQuery, params, executor)
       const total = countResult && countResult.length > 0 ? countResult[0].total : 0
 
       // 查询列表
@@ -105,34 +273,51 @@ class AccessoryRepository extends BaseRepository {
           ${ACCESSORY_SELECT_FIELDS},
           b.name as brand_name,
           m.name as model_name,
+          m.brand_id as model_brand_id,
+          mb.name as model_brand_name,
+          cm.model_ids,
+          cm.compatible_model_names,
           c.name as color_name,
           s.name as supplier_name,
           COALESCE(SUM(ast.quantity), 0) as total_stock,
           COALESCE(SUM(ast.total_in), 0) as total_in,
           COALESCE(SUM(ast.total_out), 0) as total_out
         FROM accessories a
+        LEFT JOIN accessories t ON t.id = a.template_id
+        LEFT JOIN accessory_categories ac ON ac.id = ${templateField('category_id')}
+        LEFT JOIN accessory_units au ON au.id = ${templateField('unit_id')}
         LEFT JOIN brands b ON a.brand_id = b.id
-        LEFT JOIN models m ON a.model_id = m.id
-        LEFT JOIN colors c ON a.color_id = c.id
+        LEFT JOIN models m ON ${templateField('model_id')} = m.id
+        LEFT JOIN brands mb ON m.brand_id = mb.id
+        LEFT JOIN (
+          SELECT am.accessory_id,
+                 GROUP_CONCAT(DISTINCT am.model_id ORDER BY am.model_id) AS model_ids,
+                 GROUP_CONCAT(DISTINCT CONCAT(model_brand.name, ' ', compatible_model.name) ORDER BY model_brand.name, compatible_model.name SEPARATOR ', ') AS compatible_model_names
+          FROM accessory_compatible_models am
+          INNER JOIN models compatible_model ON compatible_model.id = am.model_id
+          INNER JOIN brands model_brand ON model_brand.id = compatible_model.brand_id
+          GROUP BY am.accessory_id
+        ) cm ON cm.accessory_id = COALESCE(a.template_id, a.id)
+        LEFT JOIN colors c ON ${templateField('color_id')} = c.id
         LEFT JOIN suppliers s ON a.supplier_id = s.id
-        LEFT JOIN accessory_stock ast ON a.id = ast.accessory_id
+        LEFT JOIN accessory_stock ast ON ${stockJoinConditions.join(' AND ')}
         ${whereClause}
         GROUP BY a.id
         ORDER BY a.id DESC
         LIMIT ? OFFSET ?
       `
 
-      const accessories = await this.executeQuery(query, [...params, normalized_page_size, offset])
+      const accessories = await this.queryRows(query, [...stockJoinParams, ...params, normalized_page_size, offset], executor)
 
       return {
         data: accessories,
         pagination: {
-          page: parseInt(page),
+          page: normalizedPage,
           page_size: normalized_page_size,
           total,
           total_pages: Math.ceil(total / normalized_page_size),
-          has_next: page * normalized_page_size < total,
-          has_prev: page > 1
+          has_next: normalizedPage * normalized_page_size < total,
+          has_prev: normalizedPage > 1
         }
       }
     } catch (error) {
@@ -144,24 +329,42 @@ class AccessoryRepository extends BaseRepository {
   /**
    * 根据ID获取配件详情
    */
-  async getAccessoryById(id) {
+  async getAccessoryById(id, executor, { forUpdate = false } = {}) {
     try {
       const query = `
         SELECT
           ${ACCESSORY_SELECT_FIELDS},
           b.name as brand_name,
           m.name as model_name,
+          m.brand_id as model_brand_id,
+          mb.name as model_brand_name,
+          cm.model_ids,
+          cm.compatible_model_names,
           c.name as color_name,
           s.name as supplier_name
         FROM accessories a
+        LEFT JOIN accessories t ON t.id = a.template_id
+        LEFT JOIN accessory_categories ac ON ac.id = ${templateField('category_id')}
+        LEFT JOIN accessory_units au ON au.id = ${templateField('unit_id')}
         LEFT JOIN brands b ON a.brand_id = b.id
-        LEFT JOIN models m ON a.model_id = m.id
-        LEFT JOIN colors c ON a.color_id = c.id
+        LEFT JOIN models m ON ${templateField('model_id')} = m.id
+        LEFT JOIN brands mb ON m.brand_id = mb.id
+        LEFT JOIN (
+          SELECT am.accessory_id,
+                 GROUP_CONCAT(DISTINCT am.model_id ORDER BY am.model_id) AS model_ids,
+                 GROUP_CONCAT(DISTINCT CONCAT(model_brand.name, ' ', compatible_model.name) ORDER BY model_brand.name, compatible_model.name SEPARATOR ', ') AS compatible_model_names
+          FROM accessory_compatible_models am
+          INNER JOIN models compatible_model ON compatible_model.id = am.model_id
+          INNER JOIN brands model_brand ON model_brand.id = compatible_model.brand_id
+          GROUP BY am.accessory_id
+        ) cm ON cm.accessory_id = COALESCE(a.template_id, a.id)
+        LEFT JOIN colors c ON ${templateField('color_id')} = c.id
         LEFT JOIN suppliers s ON a.supplier_id = s.id
         WHERE a.id = ?
+        ${forUpdate ? 'FOR UPDATE' : ''}
       `
 
-      const accessories = await this.executeQuery(query, [id])
+      const accessories = await this.queryRows(query, [id], executor)
       return accessories && accessories.length > 0 ? accessories[0] : null
     } catch (error) {
       log.error('获取配件详情失败:', error)
@@ -172,25 +375,41 @@ class AccessoryRepository extends BaseRepository {
   /**
    * 根据条形码获取配件
    */
-  async getAccessoryByBarcode(barcode) {
+  async getAccessoryByBarcode(barcode, executor, { includeInactive = false } = {}) {
     try {
       const query = `
         SELECT
           ${ACCESSORY_SELECT_FIELDS},
           b.name as brand_name,
           m.name as model_name,
+          m.brand_id as model_brand_id,
+          mb.name as model_brand_name,
+          cm.model_ids,
+          cm.compatible_model_names,
           c.name as color_name,
           s.name as supplier_name
         FROM accessories a
+        LEFT JOIN accessories t ON t.id = a.template_id
+        LEFT JOIN accessory_categories ac ON ac.id = ${templateField('category_id')}
+        LEFT JOIN accessory_units au ON au.id = ${templateField('unit_id')}
         LEFT JOIN brands b ON a.brand_id = b.id
-        LEFT JOIN models m ON a.model_id = m.id
-        LEFT JOIN colors c ON a.color_id = c.id
+        LEFT JOIN models m ON ${templateField('model_id')} = m.id
+        LEFT JOIN brands mb ON m.brand_id = mb.id
+        LEFT JOIN (
+          SELECT am.accessory_id,
+                 GROUP_CONCAT(DISTINCT am.model_id ORDER BY am.model_id) AS model_ids,
+                 GROUP_CONCAT(DISTINCT CONCAT(model_brand.name, ' ', compatible_model.name) ORDER BY model_brand.name, compatible_model.name SEPARATOR ', ') AS compatible_model_names
+          FROM accessory_compatible_models am
+          INNER JOIN models compatible_model ON compatible_model.id = am.model_id
+          INNER JOIN brands model_brand ON model_brand.id = compatible_model.brand_id
+          GROUP BY am.accessory_id
+        ) cm ON cm.accessory_id = COALESCE(a.template_id, a.id)
+        LEFT JOIN colors c ON ${templateField('color_id')} = c.id
         LEFT JOIN suppliers s ON a.supplier_id = s.id
-        WHERE a.barcode = ? AND a.status = 1
+        WHERE a.barcode = ? ${includeInactive ? '' : 'AND a.status = 1'}
       `
 
-      // executeQuery 已经返回解构后的 rows 数组，不需要再解构
-      const accessories = await this.executeQuery(query, [barcode])
+      const accessories = await this.queryRows(query, [barcode], executor)
       return accessories && accessories.length > 0 ? accessories[0] : null
     } catch (error) {
       log.error('根据条形码获取配件失败:', error)
@@ -201,45 +420,40 @@ class AccessoryRepository extends BaseRepository {
   /**
    * 创建配件
    */
-  async createAccessory(data) {
+  async createAccessory(data, executor) {
     try {
       const query = `
         INSERT INTO accessories (
-          name, barcode, category, brand_id, model_id, color_id, supplier_id,
-          purchase_cost, sale_price, specifications, unit, status,
-          description, remarks, image_url
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          name, barcode, category, category_id, product_model, brand_id, model_id, color_id, supplier_id,
+          purchase_cost, sale_price, unit, unit_id, status,
+          description, remarks, image_url, template_id, serial_tracking, min_stock
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `
 
       const params = [
         data.name,
         data.barcode || null,
         data.category || null,
+        data.category_id || null,
+        data.product_model || null,
         data.brand_id || null,
         data.model_id || null,
         data.color_id || null,
         data.supplier_id || null,
         data.purchase_cost || 0,
         data.sale_price || 0,
-        data.specifications || null,
         data.unit || '个',
+        data.unit_id || null,
         data.status !== undefined ? data.status : 1,
         data.description || null,
         data.remarks || null,
-        data.image_url || null
+        data.image_url || null,
+        data.template_id || null,
+        data.serial_tracking ? 1 : 0,
+        data.min_stock ?? 5
       ]
 
-      // INSERT 语句需要直接使用 db.query 来获取 insertId
-      const db = this.getConnection()
-      const queryResult = await db.query(query, params)
-
-      // mysql2 pool.query 返回 [ResultSetHeader, fields]
-      // ResultSetHeader 包含 insertId, affectedRows 等属性
-      let result = queryResult
-      if (Array.isArray(queryResult) && queryResult.length > 0) {
-        result = queryResult[0]
-      }
-
+      const [result] = await (executor || this.getConnection()).query(query, params)
       return result.insertId
     } catch (error) {
       log.error('创建配件失败:', error)
@@ -247,18 +461,202 @@ class AccessoryRepository extends BaseRepository {
     }
   }
 
+  /** 根模板行锁串行化同一模板的品牌建档，唯一索引提供最终约束。 */
+  async lockAccessory(id, executor) {
+    const rows = await this.queryRows('SELECT * FROM accessories WHERE id = ? FOR UPDATE', [id], executor)
+    return rows[0] || null
+  }
+
+  async createSerial(data, executor) {
+    const [result] = await executor.query(`INSERT INTO accessory_serials
+      (accessory_id, serial_number, store_id, stock_in_id, purchase_cost, status, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, 'in_stock', ?, ?)`,
+    [data.accessory_id, data.serial_number, data.store_id, data.stock_in_id, data.purchase_cost, data.time, data.time])
+    return result.insertId
+  }
+
+  async createSerialEvent(data, executor) {
+    await executor.query(`INSERT INTO accessory_serial_events
+      (serial_id, event_type, stock_in_id, sale_id, store_id, operator_id, operator_name, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, [data.serial_id, data.event_type, data.stock_in_id || null,
+      data.sale_id || null, data.store_id, data.operator_id, data.operator_name || null, data.time])
+  }
+
+  async lockSerials(serialNumbers, executor) {
+    if (!serialNumbers.length) return []
+    return this.queryRows(`SELECT * FROM accessory_serials WHERE serial_number IN
+      (${serialNumbers.map(() => '?').join(',')}) ORDER BY serial_number FOR UPDATE`, serialNumbers, executor)
+  }
+
+  async markSerialOut(id, saleId, type, time, executor) {
+    const [result] = await executor.query(`UPDATE accessory_serials SET status = ?, sale_id = ?, updated_at = ?
+      WHERE id = ? AND status = 'in_stock'`, [type === 'gift' ? 'gifted' : 'sold', saleId, time, id])
+    return result.affectedRows === 1
+  }
+
+  async saleForReturn(id, executor, forUpdate = false) {
+    const rows = await this.queryRows(`SELECT * FROM accessory_sales WHERE id = ?${forUpdate ? ' FOR UPDATE' : ''}`, [id], executor)
+    return rows[0] || null
+  }
+
+  async returnSerial(id, saleId, storeId, time, executor) {
+    const [result] = await executor.query(`UPDATE accessory_serials SET status = 'in_stock', sale_id = NULL, store_id = ?, updated_at = ?
+      WHERE id = ? AND sale_id = ? AND status IN ('sold', 'gifted')`, [storeId, time, id, saleId])
+    return result.affectedRows === 1
+  }
+
+  async restoreSaleStock(accessoryId, storeId, quantity, minStock, executor) {
+    // 退货增加可用量，不伪造采购入库或抹掉累计出库；退回数量从独立流水核对。
+    const [result] = await executor.query(`INSERT INTO accessory_stock (accessory_id, store_id, quantity, total_in, total_out, min_stock)
+      VALUES (?, ?, ?, 0, 0, ?) ON DUPLICATE KEY UPDATE quantity = quantity + ?, updated_at = NOW()`,
+    [accessoryId, storeId, quantity, minStock, quantity])
+    return result.affectedRows > 0
+  }
+
+  async lockStoreStock(accessoryId, storeId, executor) {
+    const rows = await this.queryRows('SELECT * FROM accessory_stock WHERE accessory_id = ? AND store_id = ? FOR UPDATE', [accessoryId, storeId], executor)
+    return rows[0] || null
+  }
+
+  /** 调用方先持有根模板锁及门店库存锁，避免SN数量被并发入库/出库改变。 */
+  async countStockSerials(accessoryId, storeId, executor) {
+    const rows = await this.queryRows("SELECT id FROM accessory_serials WHERE accessory_id = ? AND store_id = ? AND status = 'in_stock' ORDER BY id FOR UPDATE", [accessoryId, storeId], executor)
+    return rows.length
+  }
+
+  async deductStock(accessoryId, storeId, quantity, executor) {
+    const [result] = await executor.query(`UPDATE accessory_stock SET quantity = quantity - ?, total_out = total_out + ?, updated_at = NOW()
+      WHERE accessory_id = ? AND store_id = ? AND quantity >= ?`, [quantity, quantity, accessoryId, storeId, quantity])
+    return result.affectedRows === 1
+  }
+
+  async getSerials({ accessoryId, scope, search, page, pageSize, stockOnly = false }) {
+    const conditions = ['(sn.accessory_id = ? OR a.template_id = ?)']
+    const params = [accessoryId, accessoryId]
+    appendStoreScopeCondition(scope, 'sn.store_id', conditions, params)
+    if (stockOnly) conditions.push("sn.status = 'in_stock'")
+    if (search) { conditions.push('sn.serial_number LIKE ?'); params.push(`%${search}%`) }
+    const joins = `FROM accessory_serials sn JOIN accessories a ON a.id = sn.accessory_id
+      LEFT JOIN accessory_stock_in si ON si.id = sn.stock_in_id
+      LEFT JOIN suppliers supplier ON supplier.id = si.supplier_id
+      LEFT JOIN stores store ON store.id = sn.store_id
+      LEFT JOIN accessory_sales sale ON sale.id = sn.sale_id`
+    const where = `WHERE ${conditions.join(' AND ')}`
+    const [[count]] = await this.getConnection().query(`SELECT COUNT(*) AS total ${joins} ${where}`, params)
+    const rows = await this.queryRows(`SELECT sn.id, sn.accessory_id, sn.serial_number, sn.status, sn.store_id,
+      store.name AS store_name, sn.purchase_cost, si.batch_no, si.supplier_id, ${purchaseSnapshotText('supplier_name', 'supplier.name')} AS supplier_name,
+      si.operator_name AS inventory_operator_name, sn.created_at AS inventory_time,
+      sale.sale_no, sale.sale_type, sale.customer_name, sale.customer_phone, sale.operator_name,
+      sale.sale_time, sale.unit_price, sale.remarks ${joins} ${where}
+      ORDER BY sn.id DESC LIMIT ? OFFSET ?`, [...params, pageSize, (page - 1) * pageSize])
+    return { data: rows, pagination: { page, page_size: pageSize, total: Number(count.total) } }
+  }
+
+  async getTransferByKey(key, executor) {
+    const rows = await this.queryRows('SELECT * FROM accessory_transfers WHERE request_key = ? FOR UPDATE', [key], executor)
+    return rows[0] || null
+  }
+
+  async createTransfer(data, executor) {
+    const [result] = await executor.query(`INSERT INTO accessory_transfers
+      (request_key, request_hash, accessory_id, from_store_id, to_store_id, quantity, serial_numbers, operator_id, operator_name, remarks, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [data.request_key, data.request_hash, data.accessory_id, data.from_store_id,
+      data.to_store_id, data.quantity, JSON.stringify(data.serial_numbers), data.operator_id, data.operator_name, data.remarks || null, data.time])
+    return result.insertId
+  }
+
+  /** 店间移动仅改变位置和现存量，不增加采购入库或销售计数。 */
+  async moveInventory(data, executor) {
+    const [source] = await executor.query(`UPDATE accessory_stock SET quantity = quantity - ?, updated_at = NOW()
+      WHERE accessory_id = ? AND store_id = ? AND quantity >= ?`, [data.quantity, data.accessory_id, data.from_store_id, data.quantity])
+    if (source.affectedRows !== 1) return false
+    await executor.query(`INSERT INTO accessory_stock (accessory_id, store_id, quantity, total_in, total_out, min_stock)
+      VALUES (?, ?, ?, 0, 0, ?) ON DUPLICATE KEY UPDATE quantity = quantity + VALUES(quantity), updated_at = NOW()`,
+    [data.accessory_id, data.to_store_id, data.quantity, data.min_stock])
+    return true
+  }
+
+  async moveSerial(id, fromStore, toStore, time, executor) {
+    const [result] = await executor.query(`UPDATE accessory_serials SET store_id = ?, updated_at = ?
+      WHERE id = ? AND store_id = ? AND status = 'in_stock'`, [toStore, time, id, fromStore])
+    return result.affectedRows === 1
+  }
+
+  async getTransfers(accessoryId, scope, page, pageSize) {
+    const conditions = ['(a.id = ? OR a.template_id = ?)']
+    const params = [accessoryId, accessoryId]
+    appendStoreScopeCondition(scope, 'tr.from_store_id', conditions, params)
+    appendStoreScopeCondition(scope, 'tr.to_store_id', conditions, params)
+    const from = `FROM accessory_transfers tr JOIN accessories a ON a.id = tr.accessory_id
+      LEFT JOIN stores src ON src.id = tr.from_store_id LEFT JOIN stores dest ON dest.id = tr.to_store_id
+      WHERE ${conditions.join(' AND ')}`
+    const [[count]] = await this.getConnection().query(`SELECT COUNT(*) AS total ${from}`, params)
+    const rows = await this.queryRows(`SELECT tr.id, tr.accessory_id, tr.from_store_id, tr.to_store_id,
+      src.name AS from_store_name, dest.name AS to_store_name, tr.quantity, tr.serial_numbers,
+      tr.operator_name, tr.created_at, tr.remarks ${from} ORDER BY tr.id DESC LIMIT ? OFFSET ?`, [...params, pageSize, (page - 1) * pageSize])
+    return { data: rows, pagination: { page, page_size: pageSize, total: Number(count.total) } }
+  }
+
+  async getInventoryLocations(accessoryId, scope, includeVariants = true) {
+    const conditions = [includeVariants ? '(a.id = ? OR a.template_id = ?)' : 'a.id = ?']
+    const params = includeVariants ? [accessoryId, accessoryId] : [accessoryId]
+    appendStoreScopeCondition(scope, 'st.store_id', conditions, params)
+    return this.queryRows(`SELECT st.store_id, store.name AS store_name, SUM(st.quantity) AS quantity,
+      SUM(COALESCE(sn.quantity, 0)) AS serial_quantity,
+      SUM(st.quantity - COALESCE(sn.quantity, 0)) AS plain_quantity
+      FROM accessory_stock st JOIN accessories a ON a.id = st.accessory_id
+      LEFT JOIN (SELECT accessory_id, store_id, COUNT(*) AS quantity FROM accessory_serials
+        WHERE status = 'in_stock' GROUP BY accessory_id, store_id) sn ON sn.accessory_id = st.accessory_id AND sn.store_id = st.store_id
+      LEFT JOIN stores store ON store.id = st.store_id
+      WHERE ${conditions.join(' AND ')} GROUP BY st.store_id, store.name ORDER BY st.store_id`, params)
+  }
+
+  async getSerialTrace(serialNumber, scope) {
+    const conditions = ['sn.serial_number = ?']
+    const params = [serialNumber]
+    appendStoreScopeCondition(scope, 'sn.store_id', conditions, params)
+    const rows = await this.queryRows(`SELECT sn.id, sn.serial_number, sn.accessory_id, sn.status
+      FROM accessory_serials sn WHERE ${conditions.join(' AND ')}`, params)
+    if (!rows.length) return null
+    const events = await this.queryRows(`SELECT e.event_type, e.store_id, s.name AS store_name,
+      e.operator_id, e.operator_name, e.created_at, si.batch_no, si.supplier_id,
+      ${purchaseSnapshotText('supplier_name', 'supplier.name')} AS supplier_name, sale.sale_no, sale.sale_type, sale.customer_name,
+      sale.customer_phone, sale.unit_price, sale.sale_time, sale.remarks
+      FROM accessory_serial_events e LEFT JOIN stores s ON s.id = e.store_id
+      LEFT JOIN accessory_stock_in si ON si.id = e.stock_in_id
+      LEFT JOIN suppliers supplier ON supplier.id = si.supplier_id
+      LEFT JOIN accessory_sales sale ON sale.id = e.sale_id
+      WHERE e.serial_id = ? ORDER BY e.id`, [rows[0].id])
+    const transferConditions = ['tr.accessory_id = ?', 'JSON_CONTAINS(tr.serial_numbers, JSON_QUOTE(?))']
+    const transferParams = [rows[0].accessory_id, serialNumber]
+    appendStoreScopeCondition(scope, 'tr.from_store_id', transferConditions, transferParams)
+    appendStoreScopeCondition(scope, 'tr.to_store_id', transferConditions, transferParams)
+    const transfers = await this.queryRows(`SELECT 'transfer' AS event_type, tr.id AS transfer_id,
+      tr.from_store_id, tr.to_store_id, src.name AS from_store_name, dest.name AS to_store_name,
+      tr.operator_id, tr.operator_name, tr.created_at, tr.remarks
+      FROM accessory_transfers tr LEFT JOIN stores src ON src.id = tr.from_store_id
+      LEFT JOIN stores dest ON dest.id = tr.to_store_id WHERE ${transferConditions.join(' AND ')} ORDER BY tr.id`, transferParams)
+    return { ...rows[0], events, transfers }
+  }
+
+  async getBrandVariant(templateId, brandId, executor) {
+    const rows = await this.queryRows('SELECT id, brand_id, status FROM accessories WHERE template_id = ? AND brand_id <=> ? FOR UPDATE',
+      [templateId, brandId], executor)
+    return rows[0] || null
+  }
+
   /**
    * 更新配件
    */
-  async updateAccessory(id, data) {
+  async updateAccessory(id, data, executor) {
     try {
       const fields = []
       const params = []
 
       const allowedFields = [
-        'name', 'barcode', 'category', 'brand_id', 'model_id', 'color_id',
-        'supplier_id', 'purchase_cost', 'sale_price', 'specifications',
-        'unit', 'status', 'description', 'remarks', 'image_url'
+        'name', 'barcode', 'category', 'category_id', 'product_model', 'brand_id', 'model_id', 'color_id',
+        'supplier_id', 'purchase_cost', 'sale_price',
+        'unit', 'unit_id', 'status', 'description', 'remarks', 'image_url', 'serial_tracking', 'min_stock'
       ]
       allowedFields.forEach(field => {
         if (data[field] !== undefined) {
@@ -267,9 +665,11 @@ class AccessoryRepository extends BaseRepository {
         }
       })
 
-      if (fields.length === 0) {
+      if (fields.length === 0 && data.model_ids === undefined) {
         return false
       }
+
+      if (fields.length === 0) return true
 
       params.push(id)
 
@@ -279,12 +679,29 @@ class AccessoryRepository extends BaseRepository {
         WHERE id = ?
       `
 
-      const result = await this.executeQuery(query, params)
+      const [result] = await (executor || this.getConnection()).query(query, params)
       return result.affectedRows > 0
     } catch (error) {
       log.error('更新配件失败:', error)
       throw error
     }
+  }
+
+  async replaceCompatibleModels(accessoryId, modelIds, executor) {
+    const connection = executor || this.getConnection()
+    await connection.query('DELETE FROM accessory_compatible_models WHERE accessory_id = ?', [accessoryId])
+    if (!modelIds.length) return
+    const values = modelIds.map(() => '(?, ?)').join(', ')
+    const params = modelIds.flatMap(modelId => [accessoryId, modelId])
+    await connection.query(`INSERT INTO accessory_compatible_models (accessory_id, model_id) VALUES ${values}`, params)
+  }
+
+  async getCompatibleModelIds(accessoryId, executor) {
+    const rows = await this.queryRows(
+      'SELECT model_id FROM accessory_compatible_models WHERE accessory_id = ? ORDER BY model_id',
+      [accessoryId], executor
+    )
+    return rows.map(row => Number(row.model_id))
   }
 
   /**
@@ -293,7 +710,7 @@ class AccessoryRepository extends BaseRepository {
   async deleteAccessory(id) {
     try {
       const query = 'UPDATE accessories SET status = 0, updated_at = NOW() WHERE id = ?'
-      const result = await this.executeQuery(query, [id])
+      const [result] = await this.executePrepared(query, [id])
       return result.affectedRows > 0
     } catch (error) {
       log.error('删除配件失败:', error)
@@ -304,8 +721,10 @@ class AccessoryRepository extends BaseRepository {
   /**
    * 获取配件库存（按门店）
    */
-  async getAccessoryStock(accessoryId) {
+  async getAccessoryStock(accessoryId, executor, scope) {
     try {
+      const conditions = ['ast.accessory_id = ?'], params = [accessoryId]
+      appendStoreScopeCondition(scope, 'ast.store_id', conditions, params)
       const query = `
         SELECT
           ast.id,
@@ -313,25 +732,27 @@ class AccessoryRepository extends BaseRepository {
           ast.store_id,
           s.name as store_name,
           ast.quantity,
-          ast.min_stock,
+          COALESCE(t.min_stock, a.min_stock, ast.min_stock) AS min_stock,
           ast.max_stock,
           ast.total_in,
           ast.total_out,
           CASE
             WHEN ast.quantity = 0 THEN 'out_of_stock'
-            WHEN ast.quantity <= ast.min_stock THEN 'low_stock'
+            WHEN ast.quantity <= COALESCE(t.min_stock, a.min_stock, ast.min_stock) THEN 'low_stock'
             ELSE 'in_stock'
           END as stock_status
         FROM accessory_stock ast
+        JOIN accessories a ON a.id = ast.accessory_id
+        LEFT JOIN accessories t ON t.id = a.template_id
         LEFT JOIN stores s ON ast.store_id = s.id
-        WHERE ast.accessory_id = ?
+        WHERE ${conditions.join(' AND ')}
         ORDER BY ast.store_id
       `
 
-      const stock = await this.executeQuery(query, [accessoryId])
+      const stock = await this.queryRows(query, params, executor)
 
       // 计算总库存
-      const totalStock = stock.reduce((sum, s) => sum + (s.quantity || 0), 0)
+      const totalStock = stock.reduce((sum, s) => sum + Number(s.quantity || 0), 0)
 
       return {
         accessory_id: accessoryId,
@@ -347,10 +768,9 @@ class AccessoryRepository extends BaseRepository {
   /**
    * 获取所有配件库存列表
    */
-  async getAllAccessoryStock(options = {}) {
+  async getAllAccessoryStock(options = {}, executor) {
     try {
       const {
-        store_id,
         low_stock_only = false,
         page = 1,
         page_size = 50
@@ -361,13 +781,10 @@ class AccessoryRepository extends BaseRepository {
       const conditions = []
       const params = []
 
-      if (store_id) {
-        conditions.push('ast.store_id = ?')
-        params.push(store_id)
-      }
+      appendStoreScopeCondition(options.store_scope, 'ast.store_id', conditions, params)
 
       if (low_stock_only) {
-        conditions.push('ast.quantity <= ast.min_stock')
+        conditions.push('ast.quantity <= COALESCE(t.min_stock, a.min_stock, ast.min_stock)')
       }
 
       const whereClause = conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : ''
@@ -376,9 +793,11 @@ class AccessoryRepository extends BaseRepository {
       const countQuery = `
         SELECT COUNT(*) as total
         FROM accessory_stock ast
+        JOIN accessories a ON a.id = ast.accessory_id
+        LEFT JOIN accessories t ON t.id = a.template_id
         ${whereClause}
       `
-      const countResult = await this.executeQuery(countQuery, params)
+      const countResult = await this.queryRows(countQuery, params, executor)
       const total = countResult && countResult.length > 0 ? countResult[0].total : 0
 
       // 查询列表
@@ -388,30 +807,34 @@ class AccessoryRepository extends BaseRepository {
           ast.accessory_id,
           ast.store_id,
           ast.quantity,
-          ast.min_stock,
+          COALESCE(t.min_stock, a.min_stock, ast.min_stock) AS min_stock,
           ast.max_stock,
           ast.total_in,
           ast.total_out,
           ast.created_at,
           ast.updated_at,
-          a.name as accessory_name,
-          a.barcode,
-          a.category,
+          ${templateField('name')} AS accessory_name,
+          ${templateField('barcode')} AS barcode,
+          COALESCE(ac.name, ${templateField('category')}) AS category,
+          a.template_id, a.brand_id, b.name AS brand_name,
           s.name as store_name,
           CASE
             WHEN ast.quantity = 0 THEN 'out_of_stock'
-            WHEN ast.quantity <= ast.min_stock THEN 'low_stock'
+            WHEN ast.quantity <= COALESCE(t.min_stock, a.min_stock, ast.min_stock) THEN 'low_stock'
             ELSE 'in_stock'
           END as stock_status
         FROM accessory_stock ast
-        LEFT JOIN accessories a ON ast.accessory_id = a.id
+        JOIN accessories a ON ast.accessory_id = a.id
+        LEFT JOIN accessories t ON t.id = a.template_id
+        LEFT JOIN accessory_categories ac ON ac.id = ${templateField('category_id')}
+        LEFT JOIN brands b ON b.id = a.brand_id
         LEFT JOIN stores s ON ast.store_id = s.id
         ${whereClause}
         ORDER BY ast.store_id, a.id
         LIMIT ? OFFSET ?
       `
 
-      const stock = await this.executeQuery(query, [...params, normalized_page_size, offset])
+      const stock = await this.queryRows(query, [...params, normalized_page_size, offset], executor)
 
       return {
         data: stock,
@@ -434,7 +857,7 @@ class AccessoryRepository extends BaseRepository {
    * 更新配件库存（用于入库/销售/调拨）
    * 支持设置最小库存值
    */
-  async updateAccessoryStock(accessoryId, storeId, quantity, operation = 'add', minStock = 5) {
+  async updateAccessoryStock(accessoryId, storeId, quantity, operation = 'add', minStock = 5, executor) {
     try {
       const operator = operation === 'add' ? '+' : '-'
       const totalInValue = operation === 'add' ? quantity : 0
@@ -447,12 +870,11 @@ class AccessoryRepository extends BaseRepository {
           quantity = quantity ${operator} ?,
           total_in = total_in + ?,
           total_out = total_out + ?,
-          min_stock = VALUES(min_stock),
           updated_at = NOW()
       `
 
       // INSERT ... ON DUPLICATE KEY UPDATE 需要使用 db.query 来获取 affectedRows
-      const db = this.getConnection()
+      const db = executor || this.getConnection()
       const queryResult = await db.query(query, [
         accessoryId,
         storeId,
@@ -478,18 +900,64 @@ class AccessoryRepository extends BaseRepository {
     }
   }
 
-  /**
-   * 创建入库记录
-   */
-  async createStockInRecord(data) {
+  /** 防重字段与唯一键必须一同就绪；运行时不执行DDL或降级为非幂等入库。 */
+  async stockInRequestsReady(executor) {
+    const state = await this.getStockInRequestSchema(executor)
+    return state.engine === 'InnoDB' && ['request_key', 'request_hash'].every((name, index) => {
+      const field = state.fields.find(row => row.COLUMN_NAME === name)
+      return field?.COLUMN_TYPE.toLowerCase() === `char(${index ? 64 : 32})` &&
+        field.IS_NULLABLE === 'YES' && field.COLLATION_NAME === 'ascii_bin'
+    }) && state.indexes.filter(row => row.INDEX_NAME === 'uq_accessory_stock_in_request').length === 1 &&
+      state.indexes.some(row => row.INDEX_NAME === 'uq_accessory_stock_in_request' && row.COLUMN_NAME === 'request_key' &&
+        Number(row.NON_UNIQUE) === 0 && Number(row.SEQ_IN_INDEX) === 1 && row.SUB_PART === null)
+  }
+
+  async stockInReady(executor) {
+    if (!await this.stockInRequestsReady(executor)) return false
+    const [rows] = await executor.query("SELECT COLUMN_TYPE, IS_NULLABLE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'accessory_stock_in' AND COLUMN_NAME = 'product_snapshot'")
+    return rows.length === 1 && rows[0].COLUMN_TYPE.toLowerCase() === 'json' && rows[0].IS_NULLABLE === 'YES'
+  }
+
+  /** 模板锁内当前锁定读最终资料，避免等待模板锁前建立的RR旧快照；供应商取本次采购。 */
+  async purchaseSnapshotSource(accessoryId, supplierId, storeId, executor) {
+    const [rows] = await executor.query(`SELECT a.id AS accessory_id, s.id AS supplier_id, st.id AS store_id,
+      COALESCE(t.name, a.name) AS name, b.name AS brand_name, a.product_model,
+      c.name AS color_name, COALESCE(category.name, t.category, a.category) AS category,
+      COALESCE(unit.name, t.unit, a.unit) AS unit, s.name AS supplier_name, st.name AS store_name
+      FROM accessories a LEFT JOIN accessories t ON t.id = a.template_id
+      LEFT JOIN brands b ON b.id = a.brand_id
+      LEFT JOIN colors c ON c.id = IF(a.template_id IS NULL, a.color_id, t.color_id)
+      LEFT JOIN accessory_categories category ON category.id = IF(a.template_id IS NULL, a.category_id, t.category_id)
+      LEFT JOIN accessory_units unit ON unit.id = IF(a.template_id IS NULL, a.unit_id, t.unit_id)
+      JOIN suppliers s ON s.id = ? JOIN stores st ON st.id = ? WHERE a.id = ?
+      LOCK IN SHARE MODE`, [supplierId, storeId, accessoryId])
+    return rows[0] || null
+  }
+
+  async getStockInRequestSchema(executor) {
+    const [tables] = await executor.query("SELECT ENGINE FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'accessory_stock_in'")
+    const [fields] = await executor.query("SELECT COLUMN_NAME, COLUMN_TYPE, IS_NULLABLE, COLLATION_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'accessory_stock_in'")
+    const [indexes] = await executor.query("SELECT INDEX_NAME, COLUMN_NAME, NON_UNIQUE, SEQ_IN_INDEX, SUB_PART FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'accessory_stock_in' ORDER BY INDEX_NAME, SEQ_IN_INDEX")
+    return { engine: tables[0]?.ENGINE, fields, indexes }
+  }
+
+  async getStockInByKey(key, executor) {
+    const [rows] = await executor.query(`SELECT id, batch_no, accessory_id, supplier_id, store_id, quantity, purchase_cost, total_amount,
+      DATE_FORMAT(inventory_time, '%Y-%m-%d %H:%i:%s') AS inventory_time,
+      distribution, operator_id, status, request_hash FROM accessory_stock_in WHERE request_key = ?`, [key])
+    return rows[0] || null
+  }
+
+  /** 创建原采购与请求凭据，跟随外层库存事务一起提交。 */
+  async createStockInRecord(data, executor) {
     try {
       const query = `
         INSERT INTO accessory_stock_in (
           batch_no, accessory_id, supplier_id, store_id,
           quantity, purchase_cost, total_amount,
           barcode_scanned, distribution, remarks,
-          operator_id, operator_name, inventory_time, status
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          operator_id, operator_name, inventory_time, status, request_key, request_hash, product_snapshot
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `
 
       const params = [
@@ -506,19 +974,13 @@ class AccessoryRepository extends BaseRepository {
         data.operator_id,
         data.operator_name,
         data.inventory_time,
-        data.status || 'completed'
+        data.status || 'completed',
+        data.request_key,
+        data.request_hash,
+        JSON.stringify(data.product_snapshot)
       ]
 
-      // INSERT 语句需要直接使用 db.query 来获取 insertId
-      const db = this.getConnection()
-      const queryResult = await db.query(query, params)
-
-      // mysql2 pool.query 返回 [ResultSetHeader, fields]
-      let result = queryResult
-      if (Array.isArray(queryResult) && queryResult.length > 0) {
-        result = queryResult[0]
-      }
-
+      const [result] = await (executor || this.getConnection()).query(query, params)
       return result.insertId
     } catch (error) {
       log.error('创建入库记录失败:', error)
@@ -545,6 +1007,7 @@ class AccessoryRepository extends BaseRepository {
       const offset = (page - 1) * normalized_page_size
       const conditions = []
       const params = []
+      appendPurchaseStoreScope(options.store_scope, 'asi', conditions, params)
 
       if (accessory_id) {
         conditions.push('asi.accessory_id = ?')
@@ -602,12 +1065,16 @@ class AccessoryRepository extends BaseRepository {
           asi.status,
           asi.created_at,
           asi.updated_at,
-          a.name as accessory_name,
-          a.barcode,
+          asi.product_snapshot,
+          ${templateField('name')} AS name,
+          ${templateField('barcode')} AS barcode,
+          a.template_id, a.brand_id, b.name AS brand_name, a.product_model,
           s.name as supplier_name,
           st.name as store_name
         FROM accessory_stock_in asi
         LEFT JOIN accessories a ON asi.accessory_id = a.id
+        LEFT JOIN accessories t ON t.id = a.template_id
+        LEFT JOIN brands b ON b.id = a.brand_id
         LEFT JOIN suppliers s ON asi.supplier_id = s.id
         LEFT JOIN stores st ON asi.store_id = st.id
         ${whereClause}
@@ -637,7 +1104,7 @@ class AccessoryRepository extends BaseRepository {
   /**
    * 创建配件销售记录
    */
-  async createSalesRecord(data) {
+  async createSalesRecord(data, executor) {
     try {
       const query = `
         INSERT INTO accessory_sales (
@@ -645,8 +1112,8 @@ class AccessoryRepository extends BaseRepository {
           customer_id, customer_name, customer_phone,
           quantity, unit_price, total_price,
           purchase_cost, profit, remarks,
-          operator_id, operator_name, sale_time
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          operator_id, operator_name, sale_time, sale_type
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `
 
       const params = [
@@ -659,16 +1126,17 @@ class AccessoryRepository extends BaseRepository {
         data.quantity,
         data.unit_price,
         data.total_price,
-        data.purchase_cost || 0,
-        data.profit || 0,
+        data.purchase_cost ?? null,
+        data.profit ?? null,
         data.remarks || null,
         data.operator_id,
         data.operator_name,
-        data.sale_time
+        data.sale_time,
+        data.sale_type || 'sale'
       ]
 
       // INSERT 语句需要直接使用 db.query 来获取 insertId
-      const db = this.getConnection()
+      const db = executor || this.getConnection()
       const queryResult = await db.query(query, params)
 
       // mysql2 pool.query 返回 [ResultSetHeader, fields]
@@ -687,20 +1155,25 @@ class AccessoryRepository extends BaseRepository {
   /**
    * 获取配件分类统计
    */
-  async getCategoryStats() {
+  async getCategoryStats(scope) {
     try {
+      const conditions = [`${ACCESSORY_STATUS} = 1`, `COALESCE(ac.name, ${templateField('category')}) IS NOT NULL`], params = []
+      appendStoreScopeCondition(scope, 'ast.store_id', conditions, params)
       const query = `
         SELECT
-          category,
-          COUNT(*) as count,
-          SUM(sale_price) as total_value
-        FROM accessories
-        WHERE status = 1 AND category IS NOT NULL
-        GROUP BY category
-        ORDER BY count DESC
+          COALESCE(ac.name, ${templateField('category')}) AS category,
+          COALESCE(SUM(ast.quantity), 0) AS count,
+          COALESCE(SUM(ast.quantity * COALESCE(${templateField('sale_price')}, 0)), 0) AS total_value
+        FROM accessory_stock ast
+        JOIN accessories a ON a.id = ast.accessory_id
+        LEFT JOIN accessories t ON t.id = a.template_id
+        LEFT JOIN accessory_categories ac ON ac.id = ${templateField('category_id')}
+        WHERE ${conditions.join(' AND ')}
+        GROUP BY COALESCE(ac.name, ${templateField('category')})
+        ORDER BY count DESC, category ASC
       `
 
-      const stats = await this.executeQuery(query)
+      const stats = await this.executeQuery(query, params)
       return stats
     } catch (error) {
       log.error('获取分类统计失败:', error)
@@ -711,49 +1184,26 @@ class AccessoryRepository extends BaseRepository {
   /**
    * 获取库存预警列表
    */
-  async getLowStockAccessories(threshold = null) {
-    try {
-      let query = `
-        SELECT
-          a.id,
-          a.name,
-          a.barcode,
-          a.category,
-          COALESCE(SUM(ast.quantity), 0) as total_quantity,
-          MIN(ast.min_stock) as min_stock_threshold
-        FROM accessories a
-        LEFT JOIN accessory_stock ast ON a.id = ast.accessory_id
-        WHERE a.status = 1
-        GROUP BY a.id
-        HAVING total_quantity <= COALESCE(MIN(ast.min_stock), 5)
-        ORDER BY total_quantity ASC
-      `
-
-      if (threshold) {
-        query = `
-          SELECT
-            a.id,
-            a.name,
-            a.barcode,
-            a.category,
-            COALESCE(SUM(ast.quantity), 0) as total_quantity,
-            MIN(ast.min_stock) as min_stock_threshold
-          FROM accessories a
-          LEFT JOIN accessory_stock ast ON a.id = ast.accessory_id
-          WHERE a.status = 1
-          GROUP BY a.id
-          HAVING total_quantity <= ${threshold}
-          ORDER BY total_quantity ASC
-        `
-      }
-
-      const [accessories] = await this.executeQuery(query)
-      return accessories
-    } catch (error) {
-      log.error('获取库存预警失败:', error)
-      throw error
-    }
+  async getLowStockAccessories(threshold = null, scope) {
+    const conditions = [`${ACCESSORY_STATUS} = 1`], params = []
+    appendStoreScopeCondition(scope, 'ast.store_id', conditions, params)
+    if (threshold !== null) params.push(threshold)
+    const query = `SELECT a.id, a.template_id, a.brand_id, b.name AS brand_name,
+        ${templateField('name')} AS name, ${templateField('barcode')} AS barcode,
+        COALESCE(ac.name, ${templateField('category')}) AS category,
+        COALESCE(SUM(ast.quantity), 0) AS total_quantity, MIN(COALESCE(t.min_stock, a.min_stock, ast.min_stock)) AS min_stock_threshold
+      FROM accessories a
+      LEFT JOIN accessories t ON t.id = a.template_id
+      LEFT JOIN accessory_categories ac ON ac.id = ${templateField('category_id')}
+      LEFT JOIN brands b ON b.id = a.brand_id
+      INNER JOIN accessory_stock ast ON ast.accessory_id = a.id
+      WHERE ${conditions.join(' AND ')}
+      GROUP BY a.id
+      HAVING total_quantity <= ${threshold === null ? 'COALESCE(MIN(COALESCE(t.min_stock, a.min_stock, ast.min_stock)), 5)' : '?'}
+      ORDER BY total_quantity ASC, a.id ASC`
+    return this.executeQuery(query, params)
   }
+
 }
 
 module.exports = AccessoryRepository

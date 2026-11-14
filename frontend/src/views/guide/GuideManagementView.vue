@@ -3,7 +3,10 @@
     :can-view="permissions.canView.value"
     module-name="导航管理"
   >
-    <div class="admin-page guide-management">
+    <div
+      v-table-double-tap="recordTapOptions"
+      class="admin-page guide-management"
+    >
       <PageHeader
         title="导航管理"
         icon="fas fa-compass"
@@ -62,6 +65,8 @@
               v-for="item in announcements"
               :key="item.id"
               class="announcement-row"
+              data-mobile-record
+              @dblclick="openRecordDetail({ kind: 'announcement', item }, null, $event)"
             >
               <span class="drag-handle"><i class="fas fa-grip-vertical" /></span>
               <div class="announcement-row__content">
@@ -78,7 +83,10 @@
               >
                 {{ item.is_enabled ? '启用' : '停用' }}
               </el-tag>
-              <div class="row-actions">
+              <div
+                v-if="!isMobile"
+                class="row-actions"
+              >
                 <el-button
                   v-if="permissions.canEdit.value"
                   class="table-action table-action--edit"
@@ -119,7 +127,11 @@
               :key="category.id"
               class="category-admin-card"
             >
-              <div class="category-admin-card__header">
+              <div
+                class="category-admin-card__header"
+                data-mobile-record
+                @dblclick="openRecordDetail({ kind: 'category', item: category }, null, $event)"
+              >
                 <div class="category-admin-card__icon">
                   <IconRenderer :icon="category.icon || 'fas fa-layer-group'" />
                 </div>
@@ -132,7 +144,10 @@
                 >
                   {{ category.access_mode === 'password' ? '密码访问' : '公开访问' }}
                 </el-tag>
-                <div class="row-actions">
+                <div
+                  v-if="!isMobile"
+                  class="row-actions"
+                >
                   <el-button
                     v-if="permissions.canCreate.value"
                     type="primary"
@@ -191,9 +206,14 @@
                 <div
                   v-if="activeSubcategory(category)"
                   class="subcategory-tab-actions"
+                  data-mobile-record
+                  @dblclick="openRecordDetail({ kind: 'category', item: activeCategoryTarget(category) }, null, $event)"
                 >
                   <strong>{{ activeSubcategory(category)?.name }}</strong>
-                  <div class="row-actions">
+                  <div
+                    v-if="!isMobile"
+                    class="row-actions"
+                  >
                     <el-button
                       v-if="permissions.canEdit.value"
                       class="table-action table-action--edit"
@@ -216,6 +236,8 @@
                   v-for="link in activeCategoryLinks(category)"
                   :key="link.id"
                   class="link-admin-row"
+                  data-mobile-record
+                  @dblclick="openRecordDetail({ kind: 'link', item: link, category: activeCategoryTarget(category) }, null, $event)"
                 >
                   <span class="link-admin-row__icon"><i :class="link.link_type === 'file' ? 'fas fa-file' : 'fas fa-link'" /></span>
                   <span class="link-admin-row__body"><strong>{{ link.title }}</strong><small>{{ link.description || (link.link_type === 'file' ? link.file_name || '文件' : link.url) }}</small></span>
@@ -225,7 +247,10 @@
                   >
                     {{ link.is_enabled ? '启用' : '停用' }}
                   </el-tag>
-                  <div class="row-actions">
+                  <div
+                    v-if="!isMobile"
+                    class="row-actions"
+                  >
                     <el-button
                       v-if="permissions.canEdit.value"
                       class="table-action table-action--edit"
@@ -262,6 +287,52 @@
       </div>
     </div>
 
+    <RecordDetailDialog
+      v-model="recordVisible"
+      title="导航记录详情"
+      :fields="recordFields"
+      :record="recordRow"
+      :has-actions="recordHasActions"
+    >
+      <RichContent
+        v-if="recordRow?.kind === 'announcement'"
+        :content="recordRow.item.content"
+      />
+      <template #actions="{ row }">
+        <el-button
+          v-if="row.kind === 'category' && permissions.canCreate.value"
+          v-permission="'guide:create'"
+          type="primary"
+          @click.stop="runRecordAction(record => { if (record.kind === 'category') openLinkForm(record.item) })"
+        >
+          新增连接
+        </el-button>
+        <el-button
+          v-if="row.kind === 'category' && !row.item.parent_id && permissions.canCreate.value"
+          v-permission="'guide:create'"
+          @click.stop="runRecordAction(record => { if (record.kind === 'category') openSubcategoryForm(record.item) })"
+        >
+          新增分类
+        </el-button>
+        <el-button
+          v-if="permissions.canEdit.value"
+          v-permission="'guide:edit'"
+          type="primary"
+          @click.stop="runRecordAction(editRecord)"
+        >
+          编辑
+        </el-button>
+        <el-button
+          v-if="permissions.canDelete.value"
+          v-permission="'guide:delete'"
+          type="danger"
+          @click.stop="runRecordAction(removeRecord)"
+        >
+          删除
+        </el-button>
+      </template>
+    </RecordDetailDialog>
+
     <MobileDialog
       v-model="settingsVisible"
       title="导航设置"
@@ -270,28 +341,38 @@
       :close-on-click-modal="false"
     >
       <form
-        class="guide-form"
+        id="guide-form-1"
+        class="guide-form tf-form-layout tf-form-grid"
         @submit.prevent="saveSettings"
       >
-        <el-form-item label="顶部副标题">
+        <el-form-item
+          class="tf-form-field--wide"
+          label="顶部副标题"
+        >
           <el-input
             v-model="settingsForm.site_eyebrow"
             maxlength="120"
           />
         </el-form-item>
-        <el-form-item label="导航标题">
+        <el-form-item
+          class="tf-form-field--wide"
+          label="导航标题"
+        >
           <el-input
             v-model="settingsForm.site_title"
             maxlength="120"
           />
         </el-form-item>
-        <el-form-item label="底部信息">
+        <el-form-item
+          class="tf-form-field--wide"
+          label="底部信息"
+        >
           <el-input
             v-model="settingsForm.footer_text"
             maxlength="120"
           />
         </el-form-item>
-        <div class="guide-form-grid">
+        <div class="tf-form-row">
           <el-form-item label="客服微信">
             <el-input
               v-model="settingsForm.contact_wechat"
@@ -305,18 +386,21 @@
             />
           </el-form-item>
         </div>
-        <div class="guide-dialog-actions">
+      </form>
+      <template #footer>
+        <div class="tf-dialog-actions">
           <el-button @click="settingsVisible = false">
             取消
           </el-button><el-button
             type="primary"
             native-type="submit"
+            form="guide-form-1"
             :loading="saving"
           >
             保存
           </el-button>
         </div>
-      </form>
+      </template>
     </MobileDialog>
 
     <MobileDialog
@@ -327,30 +411,40 @@
       :close-on-click-modal="false"
     >
       <form
-        class="guide-form"
+        id="guide-form-2"
+        class="guide-form tf-form-layout tf-form-grid"
         @submit.prevent="saveAnnouncement"
       >
-        <el-form-item label="标题">
+        <el-form-item
+          class="tf-form-field--wide"
+          label="标题"
+        >
           <el-input
             v-model="announcementForm.title"
             maxlength="120"
             show-word-limit
           />
         </el-form-item>
-        <el-form-item label="内容">
+        <el-form-item
+          class="tf-form-field--wide"
+          label="内容"
+        >
           <RichTextEditor
             v-model="announcementForm.content"
             :upload-media="uploadAnnouncementMedia"
             placeholder="编辑公告内容，可插入图片和视频"
           />
         </el-form-item>
-        <el-form-item label="跳转链接">
+        <el-form-item
+          class="tf-form-field--wide"
+          label="跳转链接"
+        >
           <el-input
             v-model="announcementForm.link_url"
             placeholder="可选，支持 https://"
           />
         </el-form-item>
-        <div class="guide-form-grid">
+        <div class="tf-form-row">
           <el-form-item label="排序">
             <el-input-number
               v-model="announcementForm.sort_order"
@@ -369,18 +463,21 @@
             inactive-text="普通公告"
           />
         </el-form-item>
-        <div class="guide-dialog-actions">
+      </form>
+      <template #footer>
+        <div class="tf-dialog-actions">
           <el-button @click="announcementVisible = false">
             取消
           </el-button><el-button
             type="primary"
             native-type="submit"
+            form="guide-form-2"
             :loading="saving"
           >
             保存
           </el-button>
         </div>
-      </form>
+      </template>
     </MobileDialog>
 
     <MobileDialog
@@ -391,7 +488,8 @@
       :close-on-click-modal="false"
     >
       <form
-        class="guide-form"
+        id="guide-form-3"
+        class="guide-form tf-form-layout tf-form-grid"
         @submit.prevent="saveCategory"
       >
         <el-form-item label="所属一级分类">
@@ -416,7 +514,10 @@
             maxlength="80"
           />
         </el-form-item>
-        <el-form-item label="说明">
+        <el-form-item
+          class="tf-form-field--wide"
+          label="说明"
+        >
           <el-input
             v-model="categoryForm.description"
             class="tf-textarea"
@@ -437,7 +538,7 @@
           </el-select>
         </el-form-item>
         <template v-if="categoryForm.access_mode === 'password'">
-          <div class="guide-form-grid">
+          <div class="tf-form-row">
             <el-form-item label="访问密码">
               <el-input
                 v-model="categoryForm.password"
@@ -469,7 +570,7 @@
             />
           </el-form-item>
         </template>
-        <div class="guide-form-grid guide-form-grid--triple">
+        <div class="guide-form-grid guide-form-grid--triple tf-form-row tf-form-row--three">
           <el-form-item label="图标">
             <el-input
               v-model="categoryForm.icon"
@@ -486,18 +587,21 @@
             />
           </el-form-item>
         </div>
-        <div class="guide-dialog-actions">
+      </form>
+      <template #footer>
+        <div class="tf-dialog-actions">
           <el-button @click="categoryVisible = false">
             取消
           </el-button><el-button
             type="primary"
             native-type="submit"
+            form="guide-form-3"
             :loading="saving"
           >
             保存
           </el-button>
         </div>
-      </form>
+      </template>
     </MobileDialog>
 
     <MobileDialog
@@ -509,10 +613,11 @@
       @closed="discardPendingGuideUploads"
     >
       <form
-        class="guide-form"
+        id="guide-form-4"
+        class="guide-form tf-form-layout tf-form-grid"
         @submit.prevent="saveLink"
       >
-        <div class="guide-form-grid">
+        <div class="tf-form-row">
           <el-form-item label="名称">
             <el-input
               v-model="linkForm.title"
@@ -542,7 +647,10 @@
             :props="categoryTreeProps"
           />
         </el-form-item>
-        <el-form-item label="说明">
+        <el-form-item
+          class="tf-form-field--wide"
+          label="说明"
+        >
           <el-input
             v-model="linkForm.description"
             class="tf-textarea"
@@ -553,6 +661,7 @@
         </el-form-item>
         <el-form-item
           v-if="linkForm.link_type === 'url'"
+          class="tf-form-field--wide"
           label="网址"
         >
           <el-input
@@ -562,6 +671,7 @@
         </el-form-item>
         <el-form-item
           v-else
+          class="tf-form-field--wide"
           label="文件"
         >
           <div class="qr-upload">
@@ -580,7 +690,7 @@
             ><span>选择文件</span>
           </div>
         </el-form-item>
-        <div class="guide-form-grid guide-form-grid--triple">
+        <div class="guide-form-grid guide-form-grid--triple tf-form-row tf-form-row--three">
           <el-form-item label="图标">
             <el-input
               v-model="linkForm.icon"
@@ -597,24 +707,30 @@
             />
           </el-form-item>
         </div>
-        <div class="guide-dialog-actions">
+      </form>
+      <template #footer>
+        <div class="tf-dialog-actions">
           <el-button @click="linkVisible = false">
             取消
           </el-button><el-button
             type="primary"
             native-type="submit"
+            form="guide-form-4"
             :loading="saving"
           >
             保存
           </el-button>
         </div>
-      </form>
+      </template>
     </MobileDialog>
   </PermissionGate>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
+import { useMobile } from '@/composables/mobile'
+import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
+import type { RecordDetailField } from '@/types/component'
 
 import { PageHeader, PermissionGate } from '@/components/base'
 import DataEmptyState from '@/components/DataEmptyState.vue'
@@ -722,6 +838,64 @@ const categoryTabName = (category: GuideCategory) => `category-${category.id}`
 const activeSubcategory = (category: GuideCategory) => category.children?.find(item => categoryTabName(item) === activeCategoryTabs[category.id]) || null
 const activeCategoryTarget = (category: GuideCategory) => activeSubcategory(category) || category
 const activeCategoryLinks = (category: GuideCategory) => activeCategoryTarget(category).links || []
+
+type GuideRecord = { kind: 'announcement'; item: GuideAnnouncement }
+  | { kind: 'category'; item: GuideCategory }
+  | { kind: 'link'; item: GuideLink; category: GuideCategory }
+const { isMobile } = useMobile()
+const recordRows = computed<GuideRecord[]>(() => [
+  ...announcements.value.map(item => ({ kind: 'announcement' as const, item })),
+  ...categories.value.flatMap(category => {
+    const target = activeCategoryTarget(category)
+    return [
+      { kind: 'category' as const, item: category },
+      ...(target.id === category.id ? [] : [{ kind: 'category' as const, item: target }]),
+      ...activeCategoryLinks(category).map(item => ({ kind: 'link' as const, item, category: target }))
+    ]
+  })
+])
+const { detailRow: recordRow, detailVisible: recordVisible, doubleTapOptions: recordTapOptions,
+  handleRowDoubleClick: openRecordDetail, runDetailAction: runRecordAction } = useMobileTableDetail({
+  enabled: () => isMobile.value && permissions.canView.value, rows: recordRows,
+  getKey: row => `${row.kind}:${row.item.id}`, rowSelector: '[data-mobile-record]'
+})
+const recordHasActions = computed(() => permissions.canEdit.value || permissions.canDelete.value
+  || (recordRow.value?.kind === 'category' && permissions.canCreate.value))
+const recordFields = computed<RecordDetailField[]>(() => {
+  const row = recordRow.value
+  if (!row) return []
+  const common: RecordDetailField[] = [
+    { key: 'enabled', label: '状态', value: row.item.is_enabled ? '启用' : '停用', visible: true },
+    { key: 'sort', label: '排序', value: row.item.sort_order, visible: true }
+  ]
+  if (row.kind === 'announcement') return [
+    { key: 'title', label: '标题', value: row.item.title, visible: true, wide: true }, ...common,
+    { key: 'pinned', label: '置顶', value: row.item.is_pinned ? '是' : '否', visible: true },
+    { key: 'url', label: '跳转链接', value: row.item.link_url, visible: true, wide: true }
+  ]
+  if (row.kind === 'category') return [
+    { key: 'name', label: '分类', value: row.item.name, visible: true },
+    { key: 'access', label: '访问方式', value: row.item.access_mode === 'password' ? '密码访问' : '公开访问', visible: true },
+    ...common, { key: 'description', label: '说明', value: row.item.description, visible: true, wide: true }
+  ]
+  return [
+    { key: 'title', label: '标题', value: row.item.title, visible: true, wide: true },
+    { key: 'category', label: '分类', value: row.category.name, visible: true },
+    { key: 'type', label: '类型', value: row.item.link_type === 'file' ? '文件' : '网址', visible: true }, ...common,
+    { key: 'description', label: '说明', value: row.item.description, visible: true, wide: true },
+    { key: 'url', label: row.item.link_type === 'file' ? '文件名' : '网址', value: row.item.link_type === 'file' ? row.item.file_name : row.item.url, visible: true, wide: true }
+  ]
+})
+const editRecord = (row: GuideRecord) => {
+  if (row.kind === 'announcement') openAnnouncementForm(row.item)
+  else if (row.kind === 'category') openCategoryForm(row.item)
+  else openLinkForm(row.category, row.item)
+}
+const removeRecord = (row: GuideRecord) => {
+  if (row.kind === 'announcement') return removeAnnouncement(row.item)
+  if (row.kind === 'category') return removeCategory(row.item)
+  return removeLink(row.item)
+}
 
 const loadData = async () => {
   if (!permissions.canView.value) return
@@ -967,18 +1141,14 @@ onMounted(() => { loadData() })
 .guide-route-tip { margin: 0; color: var(--tf-color-slate-500); font-size: var(--tf-type-scale-13); }
 .guide-route-tip a { color: var(--tf-color-indigo-600); }
 .guide-form { display: grid; gap: var(--tf-space-1); }
-.guide-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--tf-space-3); }
-.guide-form-grid--triple { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .guide-form :deep(.el-form-item) { margin-bottom: var(--tf-space-2); }
 .guide-form :deep(.el-input-number), .guide-form :deep(.el-select) { width: 100%; }
-.guide-dialog-actions { display: flex; justify-content: flex-end; gap: var(--tf-space-2); margin-top: var(--tf-space-2); }
 .qr-upload { display: flex; align-items: center; gap: var(--tf-space-3); }
 .qr-upload img { width: 64px; height: 64px; object-fit: contain; border: 1px solid var(--tf-color-slate-200); border-radius: var(--tf-radius-control); }
 .qr-upload input { max-width: 220px; }
 @media (max-width: 767px) {
   .guide-management { padding: var(--tf-space-3); }
   .guide-panel { padding: var(--tf-space-3); }
-  .guide-form-grid { grid-template-columns: 1fr; gap: 0; }
   .announcement-row, .link-admin-row { align-items: flex-start; }
   .announcement-row .el-tag, .link-admin-row .el-tag { margin-left: auto; }
   .category-admin-card__header { gap: var(--tf-space-2); }

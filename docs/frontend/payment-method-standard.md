@@ -54,7 +54,15 @@
 
 销售、批量销售、快速销售和批发/调货分别将 `payment_method` 与 `payment_channel` 保存到对应的 `sales` 销售记录。综合查询编辑也必须提交并更新这两个字段；`mobile` 顶层方式下，微信或支付宝保存为 `wechat` 或 `alipay` 渠道。支付渠道不应替代顶层支付方式。
 
+综合查询编辑须将查询响应的 `-` 展示占位符还原为空选择；现金保存 `payment_channel: null`，不能回写占位符。零售与批发/调货均在提交前按全局配置校验方式及渠道组合，缺失或错配时留在表单内提示选择，不猜测历史渠道。后端手机编辑同样读取上述 JSON 配置校验，不维护独立渠道白名单。行为回归见 `frontend/tests/query-edit-payment.spec.ts` 与 `backend/test/phone-update-payment.check.js`。
+
+后端销售、快速出库及手机编辑共用 `backend/src/utils/sale-payment.js` 校验上述JSON配置；普通销售和批量销售的方式/渠道同时写入逐台销售及对应收款记录。`payment_records.payment_method` 的旧枚举需显式迁移为 `VARCHAR(20)`，原收款值及关联不改写，迁移/回退入口见[销售落账与收款](../guides/sales-transfer-transaction-standards.md#收款方式字段迁移)。公共配置新增销售方式的编码需适配现有20字符字段，不可只放宽前端选项。
+
 退库分别保存 `refund_method` 和 `refund_channel`；退款记录的渠道随方式统一受 `record.refund_method` 字段权限控制。编辑提交渠道时必须同时提交方式，后端拒绝错配和漏选，不读取或修改原销售的支付渠道。新增渠道的数据库迁移与授权状态见退库业务规范及字段台账。
+
+共同商品退货的退款复用refund场景及 `validateRefundPayment`，补款复用sale场景及 `validateSalePayment`，均由 `backend/src/utils/sale-payment.js` 读取唯一JSON配置校验。无资金往来不显示方式/渠道，两者保存NULL；非零资金须员工确认实际退款或收到补款。凭据追加在售后头的 `settlement_method/settlement_channel`，不改原收款、不写负收款，也不调用第三方退款。接口、金额重新核验及迁移边界见[商品原单退货](../guides/sales-transfer-transaction-standards.md#商品原单退货)。
+
+综合查询商品详情的售后历史使用 `PaymentMethodText` 展示原凭据的方式与渠道，0元或字段脱敏显示 `-`；数量、单价或总额被隐藏时，后端同时遮蔽方式/渠道，前端移除相应列，不建立另一份支付选项或权限。查询不执行退款，契约见[商品售后历史查询](../guides/sales-transfer-transaction-standards.md#商品售后历史查询)。
 
 ## 兼容规则
 

@@ -2,6 +2,7 @@
 
 const crypto = require('crypto')
 const BaseService = require('../core/base/base.service')
+const { parseRepairInput } = require('../utils/repair-input')
 
 const requestError = message => Object.assign(new Error(message), { statusCode: 400, code: 'BAD_REQUEST' })
 const REPAIR_TIME_PATTERN = /^\d{4}-\d{2}-\d{2}(?:[ T]\d{2}:\d{2}(?::\d{2})?)?$/
@@ -29,6 +30,7 @@ class RepairCreateService extends BaseService {
   }
 
   normalizeInput(body = {}) {
+    body = parseRepairInput(body, { create: true })
     const customerId = this.parseId(body.customer_id)
     const brandId = body.brand_id ? this.parseId(body.brand_id) : null
     const colorId = body.color_id ? this.parseId(body.color_id) : null

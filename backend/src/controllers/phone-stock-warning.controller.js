@@ -3,6 +3,8 @@
 const ApiResponse = require('../utils/response')
 const PhoneStockWarningService = require('../services/phone-stock-warning.service')
 const log = require('../utils/log')
+const { isIntegerInput } = require('../utils/input-values')
+const parseConfigId = value => isIntegerInput(value) && Number(value) > 0 ? Number(value) : Number.NaN
 
 class PhoneStockWarningController {
   constructor({ service = new PhoneStockWarningService(), logger = log } = {}) {
@@ -34,19 +36,19 @@ class PhoneStockWarningController {
   }
 
   async updateConfig(req, res) {
-    const configId = parseInt(req.params.id, 10)
+    const configId = parseConfigId(req.params.id)
     if (Number.isNaN(configId)) return ApiResponse.error(res, '配置ID无效', 400)
     return this.sendResult(res, await this.service.updateConfig(req.user.id, configId, req.body))
   }
 
   async removeConfig(req, res) {
-    const configId = parseInt(req.params.id, 10)
+    const configId = parseConfigId(req.params.id)
     if (Number.isNaN(configId)) return ApiResponse.error(res, '配置ID无效', 400)
     return this.sendResult(res, await this.service.deleteConfig(req.user.id, configId))
   }
 
   async toggle(req, res) {
-    const configId = parseInt(req.params.id, 10)
+    const configId = parseConfigId(req.params.id)
     const { enabled } = req.body
     if (Number.isNaN(configId)) return ApiResponse.error(res, '配置ID无效', 400)
     if (typeof enabled !== 'boolean') return ApiResponse.error(res, 'enabled 必须是布尔值', 400)

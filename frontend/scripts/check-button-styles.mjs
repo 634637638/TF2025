@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { basename, dirname, extname, join, relative, resolve } from 'node:path'
 import { parse } from '@vue/compiler-sfc'
-import { auditBatchButtonSizes, auditButtonContract, auditButtonInlineStyles, auditTableButtonUsage, collectButtonClasses } from './lib/button-contract.mjs'
+import { auditBatchButtonSizes, auditButtonContract, auditButtonInlineStyles, auditCommandButtonSizes, auditTableButtonUsage, collectButtonClasses } from './lib/button-contract.mjs'
 
 const root = resolve(import.meta.dirname, '..')
 const sourceRoot = join(root, 'src')
@@ -219,6 +219,7 @@ function auditFile(file) {
 const sourceFiles = walk(sourceRoot)
 const buttonClasses = collectButtonClasses(sourceFiles.filter(file => file.endsWith('.vue')).map(file => readFileSync(file, 'utf8')))
 const findings = sourceFiles.flatMap(auditFile)
+findings.push(...auditCommandButtonSizes(buttonStyleSource).map(message => `src/styles/components/_buttons.scss ${message}`))
 
 // :not() 会累加选择器优先级，基线筛选条件必须放入 :where()，避免盖住语义按钮。
 const baseButtonSelectors = [

@@ -43,7 +43,7 @@ test('phone update repository reads, updates and creates canonical sale payment 
   const connection = {
     async execute(sql, values) {
       calls.push({ sql, values })
-      if (sql.includes('SELECT id, customer_id')) {
+      if (/SELECT\s+s\.id,\s+s\.customer_id/.test(sql)) {
         return [[{ id: 71, payment_method: 'mobile', payment_channel: 'wechat' }]]
       }
       if (sql.includes('INSERT INTO sales')) return [{ insertId: 72 }]
@@ -77,7 +77,7 @@ test('phone update repository reads, updates and creates canonical sale payment 
     [existingSale.payment_method, existingSale.payment_channel],
     ['mobile', 'wechat']
   )
-  assert.match(calls[0].sql, /payment_method, payment_channel/)
+  assert.match(calls[0].sql, /s\.payment_method, s\.payment_channel/)
   assert.match(calls[1].sql, /UPDATE sales SET payment_method = \?, payment_channel = \? WHERE id = \?/)
   assert.deepEqual(calls[1].values, ['mobile', 'alipay', 71])
   assert.match(calls[2].sql, /payment_method, payment_channel/)

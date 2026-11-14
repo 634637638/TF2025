@@ -13,7 +13,7 @@
       :model="formData"
       :rules="formRules"
       label-width="100px"
-      class="preorder-form"
+      class="preorder-form tf-form-layout tf-form-grid"
     >
       <!-- 客户、销售店铺、预定人 -->
       <el-row :gutter="20">
@@ -33,7 +33,6 @@
                 v-model="formData.customer_phone"
                 type="tel"
                 placeholder="请输入手机号"
-                maxlength="11"
                 :readonly="selectedCustomer !== null"
                 @input="handleCustomerInput"
                 @keyup.enter="handleCustomerEnter"
@@ -149,6 +148,7 @@
       <el-row :gutter="20">
         <el-col
           v-if="canViewPreorderField('brand_name')"
+          :xs="12"
           :span="12"
         >
           <el-form-item
@@ -175,6 +175,7 @@
 
         <el-col
           v-if="canViewPreorderField('model_name')"
+          :xs="12"
           :span="12"
         >
           <el-form-item
@@ -206,6 +207,7 @@
       <el-row :gutter="20">
         <el-col
           v-if="canViewPreorderField('color_name')"
+          :xs="12"
           :span="12"
         >
           <el-form-item
@@ -231,6 +233,7 @@
 
         <el-col
           v-if="canViewPreorderField('memory_size')"
+          :xs="12"
           :span="12"
         >
           <el-form-item
@@ -259,6 +262,7 @@
       <el-row :gutter="20">
         <el-col
           v-if="canViewPreorderField('is_new')"
+          :xs="12"
           :span="12"
         >
           <el-form-item
@@ -284,6 +288,7 @@
 
         <el-col
           v-if="canViewPreorderField('expected_arrival')"
+          :xs="12"
           :span="12"
         >
           <el-form-item label="预计到货">
@@ -302,9 +307,13 @@
       <el-row :gutter="20">
         <el-col
           v-if="canViewPreorderField('total_price')"
+          :xs="12"
           :span="12"
         >
-          <el-form-item label="销售价格">
+          <el-form-item
+            label="销售价格"
+            prop="total_price"
+          >
             <AmountInput
               v-model="formData.total_price"
               :min="0"
@@ -316,6 +325,7 @@
 
         <el-col
           v-if="canViewPreorderField('deposit_amount')"
+          :xs="12"
           :span="12"
         >
           <el-form-item
@@ -336,6 +346,7 @@
       <el-row :gutter="20">
         <el-col
           v-if="canShowRemainingAmount"
+          :xs="12"
           :span="12"
         >
           <el-form-item label="尾款">
@@ -347,9 +358,13 @@
 
         <el-col
           v-if="canViewPreorderField('remarks')"
+          :xs="24"
           :span="12"
         >
-          <el-form-item label="备注">
+          <el-form-item
+            class="tf-form-field--wide"
+            label="备注"
+          >
             <el-input
               v-model="formData.remarks"
               class="tf-textarea"
@@ -388,7 +403,7 @@ import { ref, reactive, computed, watch, nextTick, onMounted, onBeforeUnmount } 
 
 import type { FormInstance, FormItemRule } from 'element-plus'
 import { ValidationRules } from '@/composables'
-import { isValidMobilePhone, normalizePersonName, normalizePhoneDigits } from '@/utils/security'
+import { isMoneyInput, isEmptyInput, isValidPersonName, isValidMobilePhone, normalizePersonName, normalizePhoneDigits } from '@/utils/security'
 import { preorderApi, Preorder } from '@/api/preorder'
 import type { CreatePreorderParams } from '@/api/preorder'
 import {
@@ -550,17 +565,16 @@ const validateCustomerName: FormValidator = (_rule, value, callback) => {
   }
   if (!name || !name.trim()) {
     callback(new Error('请输入客户姓名'))
-  } else if (!/^[\u4e00-\u9fa5a-zA-Z\s]{2,20}$/.test(name.trim())) {
-    callback(new Error('姓名只能包含中文、英文，长度2-20个字符'))
+  } else if (!isValidPersonName(name, 20) || name.trim().length < 2) {
+    callback(new Error('请输入2至20字的单行客户姓名'))
   } else {
     callback()
   }
 }
 
 const validateDepositAmount: FormValidator = (_rule, value, callback) => {
-  const num = Number(value)
-  if (value && (isNaN(num) || num <= 0)) {
-    callback(new Error('定金金额必须大于0'))
+  if (!isMoneyInput(value) || Number(value) <= 0) {
+    callback(new Error('定金须为大于0、最多两位小数的金额'))
   } else {
     callback()
   }
@@ -592,7 +606,14 @@ const formRules: Record<string, FormItemRule[]> = {
       validator: validateDepositAmount,
       trigger: 'blur'
     }
-  ]
+  ],
+  total_price: [{
+    validator: (_rule, value, callback) => {
+      callback(isEmptyInput(value) || (isMoneyInput(value) && Number(value) >= 0)
+        ? undefined : new Error('销售价格须为大于等于0、最多两位小数的金额'))
+    },
+    trigger: 'blur'
+  }]
 }
 
 // 过滤后的型号列表
@@ -758,6 +779,11 @@ const saveCustomerNameEdit = async () => {
   const normalizedName = normalizePersonName(formData.customer_name, 20)
   if (!normalizedName) {
     globalNotifications.warning('客户姓名不能为空')
+    return
+  }
+
+  if (!isValidPersonName(normalizedName, 20)) {
+    globalNotifications.warning('请输入1至20字的单行客户姓名')
     return
   }
 

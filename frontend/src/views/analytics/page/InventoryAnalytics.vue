@@ -165,10 +165,12 @@
     >
       <el-table
         v-tf-loading="{ active: loading, text: '正在刷新库存分析...' }"
+        v-table-double-tap="warningDetailTapOptions"
         class="data-table"
         :data="filteredLowStockItems"
         stripe
         :table-layout="'auto'"
+        @row-dblclick="warningDetailDoubleClick"
       >
         <template #empty>
           <TableLoadingRow
@@ -248,15 +250,15 @@
           </template>
         </el-table-column>
       </el-table>
-
-      <template #footer>
-        <div class="tf-dialog-actions dialog-footer">
-          <el-button @click="showLowStockDialog = false">
-            关闭
-          </el-button>
-        </div>
-      </template>
     </MobileDialog>
+
+    <RecordDetailDialog
+      v-model="warningDetailVisible"
+      title="库存预警详情"
+      :record="warningDetailRow"
+      :fields="warningDetailFields"
+      :has-actions="false"
+    />
 
     <el-row
       v-if="canViewInventoryField('recent_sales_table')"
@@ -283,11 +285,13 @@
             </div>
           </template>
           <el-table
+            v-table-double-tap="soldDetailTapOptions"
             v-tf-loading="{ active: loading, text: '正在刷新库存分析...' }"
             class="data-table"
             :data="recentSoldModels"
             stripe
             :table-layout="'auto'"
+            @row-dblclick="soldDetailDoubleClick"
           >
             <template #empty>
               <TableLoadingRow
@@ -337,6 +341,13 @@
               min-width="120"
             />
           </el-table>
+          <RecordDetailDialog
+            v-model="soldDetailVisible"
+            title="近期销售详情"
+            :record="soldDetailRow"
+            :fields="soldDetailFields"
+            :has-actions="false"
+          />
         </el-card>
       </el-col>
     </el-row>
@@ -499,12 +510,14 @@
           </div>
 
           <el-table
+            v-table-double-tap="stockDetailTapOptions"
             v-tf-loading="{ active: loading, text: '正在刷新库存分析...' }"
             class="data-table"
             :data="filteredLowStockItems"
             stripe
             style="width: 100%"
             :table-layout="'auto'"
+            @row-dblclick="stockDetailDoubleClick"
           >
             <template #empty>
               <TableLoadingRow
@@ -596,6 +609,7 @@
               </template>
             </el-table-column>
             <el-table-column
+              v-if="!isMobile"
               label="操作"
               :width="$getActionColumnWidth(1)"
               align="center"
@@ -614,6 +628,22 @@
               </template>
             </el-table-column>
           </el-table>
+          <RecordDetailDialog
+            v-model="stockDetailVisible"
+            title="库存预警详情"
+            :record="stockDetailRow"
+            :fields="stockDetailFields"
+            :has-actions="true"
+          >
+            <template #actions="{ row }">
+              <el-button
+                type="primary"
+                @click.stop="stockDetailRunAction(() => handleReplenish(row))"
+              >
+                补货
+              </el-button>
+            </template>
+          </RecordDetailDialog>
         </el-card>
       </el-col>
 
@@ -693,6 +723,9 @@
 </template>
 
 <script setup lang="ts">
+import { useMobile } from '@/composables/mobile'
+import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
+import type { RecordDetailField } from '@/types/component'
 import { ref, computed, onBeforeUnmount, watch, nextTick } from 'vue'
 import {
   Box,
@@ -1443,6 +1476,59 @@ onBeforeUnmount(() => {
     supplierChart = null
   }
 })
+
+const { isMobile } = useMobile()
+const { detailRow: soldDetailRow, detailVisible: soldDetailVisible, doubleTapOptions: soldDetailTapOptions, handleRowDoubleClick: soldDetailDoubleClick } = useMobileTableDetail<(typeof recentSoldModels.value)[number]>({
+  enabled: () => isMobile.value, rows: () => recentSoldModels.value, getKey: row => JSON.stringify([row.brand, row.model, row.color, row.sale_time, row.store])
+})
+const soldDetailFields = computed<RecordDetailField[]>(() => {
+  const row = soldDetailRow.value
+  if (!row) return []
+  return [
+    { key: 'brand', label: '品牌', value: row.brand, visible: canViewInventoryField('recent_sales_table') },
+    { key: 'model', label: '型号', value: row.model, visible: canViewInventoryField('recent_sales_table'), wide: true },
+    { key: 'color', label: '颜色', value: row.color, visible: canViewInventoryField('recent_sales_table') },
+    { key: 'sale_price', label: '销售价', value: formatAmount(row.sale_price), visible: canViewInventoryField('recent_sales_table') },
+    { key: 'sale_time', label: '销售时间', value: row.sale_time, visible: canViewInventoryField('recent_sales_table'), wide: true },
+    { key: 'store', label: '销售门店', value: row.store, visible: canViewInventoryField('recent_sales_table') }
+  ]
+})
+
+
+const { detailRow: stockDetailRow, detailVisible: stockDetailVisible, doubleTapOptions: stockDetailTapOptions, handleRowDoubleClick: stockDetailDoubleClick, runDetailAction: stockDetailRunAction } = useMobileTableDetail<(typeof filteredLowStockItems.value)[number]>({
+  enabled: () => isMobile.value && canViewInventoryField('low_stock_table'), rows: () => filteredLowStockItems.value, getKey: row => JSON.stringify([row.brand, row.model, row.color])
+})
+const stockDetailFields = computed<RecordDetailField[]>(() => {
+  const row = stockDetailRow.value
+  if (!row) return []
+  return [
+    { key: 'name', label: '产品名称', value: [row.brand, row.model, row.color].join(' / '), visible: canViewInventoryField('low_stock_table'), wide: true },
+    { key: 'current_stock', label: '当前库存', value: row.current_stock, visible: canViewInventoryField('low_stock_table') },
+    { key: 'reorder_point', label: '预警库存', value: row.reorder_point, visible: canViewInventoryField('low_stock_table') },
+    { key: 'unit_cost', label: '单价', value: formatAmount(row.unit_cost), visible: canViewInventoryField('low_stock_table') },
+    { key: 'total_value', label: '总值', value: formatAmount(row.total_value), visible: canViewInventoryField('low_stock_table') },
+    { key: 'field5', label: '状态', value: getStockStatusText(row.stock_status), visible: canViewInventoryField('low_stock_table') }
+  ]
+})
+const { detailRow: warningDetailRow, detailVisible: warningDetailVisible, doubleTapOptions: warningDetailTapOptions, handleRowDoubleClick: warningDetailDoubleClick } = useMobileTableDetail({
+  enabled: () => isMobile.value && showLowStockDialog.value && canViewInventoryField('low_stock_dialog'),
+  rows: filteredLowStockItems, getKey: row => JSON.stringify([row.brand, row.model, row.color])
+})
+const warningDetailFields = computed<RecordDetailField[]>(() => {
+  const row = warningDetailRow.value
+  const visible = canViewInventoryField('low_stock_dialog')
+  return row ? [
+    { key: 'brand', label: '品牌', value: row.brand, visible },
+    { key: 'model', label: '型号', value: row.model, visible, wide: true },
+    { key: 'color', label: '颜色', value: row.color, visible },
+    { key: 'current_stock', label: '当前库存', value: row.current_stock, visible },
+    { key: 'reorder_point', label: '预警库存', value: row.reorder_point, visible },
+    { key: 'unit_cost', label: '成本价', value: formatAmount(row.unit_cost), visible },
+    { key: 'total_value', label: '库存价值', value: formatAmount(row.total_value), visible },
+    { key: 'last_sale_time', label: '最近销售', value: formatDate(row.last_sale_time), visible }
+  ] : []
+})
+
 </script>
 
 <style lang="scss" scoped src="./styles/inventory-analytics/overview.scss"></style>

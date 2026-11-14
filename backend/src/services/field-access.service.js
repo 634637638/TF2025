@@ -4,15 +4,16 @@ const dataMaskingService = require('./data-masking.service')
 
 /** 字段权限的读取、递归脱敏及写入判定；业务域保留各自的字段映射。 */
 class FieldAccessService {
-  constructor({ moduleKey, responseKeys = {}, transform, masking = dataMaskingService }) {
+  constructor({ moduleKey, responseKeys = {}, transform, masking = dataMaskingService, strict = false }) {
     this.moduleKey = moduleKey
     this.responseKeys = responseKeys
     this.transform = transform
     this.masking = masking
+    this.strict = strict
   }
 
   getPermissions(userId) {
-    return this.masking.getUserFieldPermissions(userId, this.moduleKey)
+    return this.masking.getUserFieldPermissions(userId, this.moduleKey, { strict: this.strict })
   }
 
   maskPayload(value, permissions) {

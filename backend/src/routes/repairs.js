@@ -1,6 +1,7 @@
 'use strict'
 
 const crypto = require('crypto')
+const { isIntegerInput, isMoneyInput } = require('../utils/input-values')
 const fs = require('fs')
 const path = require('path')
 const express = require('express')
@@ -293,13 +294,11 @@ const repairLookupController = new RepairLookupController({
 })
 
 const parsePositiveId = value => {
-  const id = Number.parseInt(String(value), 10)
-  return Number.isSafeInteger(id) && id > 0 ? id : null
+  return isIntegerInput(value) && Number(value) > 0 ? Number(value) : null
 }
 
 const parseMoney = value => {
-  const amount = Number(value)
-  return Number.isFinite(amount) && amount >= 0 ? Number(amount.toFixed(2)) : null
+  return isMoneyInput(value) && Number(value) >= 0 ? Number(value) : null
 }
 
 const listQuery = `

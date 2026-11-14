@@ -144,6 +144,7 @@
 
           <div class="table-responsive">
             <el-table
+              v-table-double-tap="mobileDetailTapOptions"
               v-tf-loading="{ active: loading, text: '正在刷新租赁记录...' }"
               :data="rentals"
               border
@@ -151,6 +152,7 @@
               class="data-table compact-fit-table"
               :fit="true"
               row-key="id"
+              @row-dblclick="mobileDetailDoubleClick"
             >
               <template #empty>
                 <TableLoadingRow
@@ -254,7 +256,7 @@
                     class="amount-due"
                   >¥{{ formatMoney(row.payable_rent) }}</strong>
                   <el-button
-                    v-if="canEdit && row.status === 'active'"
+                    v-if="!isMobile && canEdit && row.status === 'active'"
                     size="small"
                     plain
                     type="success"
@@ -288,7 +290,7 @@
                     {{ statusLabel(row.status) }}
                   </el-tag>
                   <el-button
-                    v-if="canEdit && row.billing_mode === 'daily' && ['active','overdue'].includes(row.status)"
+                    v-if="!isMobile && canEdit && row.billing_mode === 'daily' && ['active','overdue'].includes(row.status)"
                     size="small"
                     type="warning"
                     class="table-action table-action--warning"
@@ -299,7 +301,7 @@
                 </template>
               </el-table-column>
               <el-table-column
-                v-if="showActionColumn"
+                v-if="!isMobile && (showActionColumn)"
                 label="操作"
                 :width="$getActionColumnWidth(4)"
                 align="center"
@@ -349,7 +351,7 @@
         :close-on-click-modal="false"
       >
         <el-form
-          class="tf-dialog-form rental-form"
+          class="tf-dialog-form rental-form tf-form-layout tf-form-grid"
           label-position="top"
         >
           <section class="form-section form-section--customer">
@@ -407,7 +409,7 @@
                   新增
                 </el-button>
               </div>
-              <div class="form-grid three">
+              <div class="tf-form-row tf-form-row--three">
                 <el-form-item
                   v-if="canViewRentalField('customer_name')"
                   label="客户姓名"
@@ -423,11 +425,11 @@
                 >
                   <el-input
                     v-model="customerDraft.phone"
-                    maxlength="11"
                   />
                 </el-form-item>
                 <el-form-item
                   v-if="canViewRentalField('customer_id_card')"
+                  class="tf-form-field--wide"
                   label="身份证号"
                 >
                   <el-input
@@ -533,7 +535,7 @@
                 />
               </div>
             </div>
-            <div class="form-grid three">
+            <div class="tf-form-row tf-form-row--three">
               <div
                 v-if="canViewRentalField('billing_mode')"
                 class="contract-mode-row"
@@ -639,6 +641,7 @@
             </div>
             <el-form-item
               v-if="canViewRentalField('remarks')"
+              class="tf-form-field--wide"
               label="合同备注"
             >
               <el-input
@@ -683,7 +686,7 @@
                 <strong>¥{{ formatMoney(installmentAmount) }}</strong>
               </div>
             </div>
-            <div class="form-grid three sale-fields">
+            <div class="tf-form-row tf-form-row--three sale-fields">
               <el-form-item
                 v-if="canViewRentalField('start_date')"
                 label="销售时间"
@@ -758,6 +761,7 @@
               </el-form-item>
               <el-form-item
                 v-if="canViewRentalField('sale_remarks')"
+                class="tf-form-field--wide"
                 label="销售备注"
               >
                 <el-input
@@ -794,7 +798,10 @@
           v-if="selected"
           class="contract-detail"
         >
-          <div class="detail-toolbar">
+          <div
+            v-if="!isMobile"
+            class="detail-toolbar"
+          >
             <el-button
               type="primary"
               @click="printContract(selected)"
@@ -813,8 +820,8 @@
               </el-button>
             </el-upload>
           </div>
-          <el-descriptions
-            :column="isMobile ? 1 : 2"
+          <RecordDescriptions
+            :column="2"
             border
           >
             <el-descriptions-item
@@ -838,6 +845,7 @@
             </el-descriptions-item>
             <el-descriptions-item
               v-if="canViewRentalField('customer_id_card')"
+              :span="2"
               label="身份证"
             >
               {{ maskIdCard(selected.customer_id_card) }}
@@ -850,6 +858,7 @@
             </el-descriptions-item>
             <el-descriptions-item
               v-if="showDeviceIdentifier"
+              :span="2"
               label="设备识别码"
             >
               {{ deviceIdentifier(selected) }}
@@ -925,6 +934,7 @@
             </el-descriptions-item>
             <el-descriptions-item
               v-if="canViewRentalField('start_date') || canViewRentalField('end_date')"
+              :span="2"
               label="租赁时间"
             >
               <span v-if="canViewRentalField('start_date')">{{ selected.start_date }}</span>
@@ -962,17 +972,19 @@
             </el-descriptions-item>
             <el-descriptions-item
               v-if="canViewRentalField('remarks')"
+              :span="2"
               label="合同备注"
             >
               {{ selected.remarks || '-' }}
             </el-descriptions-item>
             <el-descriptions-item
               v-if="canViewRentalField('sale_remarks')"
+              :span="2"
               label="销售备注"
             >
               {{ selected.sale_remarks || '-' }}
             </el-descriptions-item>
-          </el-descriptions>
+          </RecordDescriptions>
           <section
             v-if="showContractFiles"
             class="files-section"
@@ -1007,10 +1019,56 @@
             />
           </section>
         </div>
-        <template #footer>
+        <template
+          v-if="isMobile && selected"
+          #footer
+        >
           <div class="tf-dialog-actions">
-            <el-button @click="detailVisible=false">
-              关闭
+            <el-button
+              type="primary"
+              @click="printContract(selected)"
+            >
+              打印
+            </el-button>
+            <el-upload
+              v-if="canEdit && showContractFiles"
+              v-permission="'rentals:edit'"
+              class="tf-dialog-action-upload"
+              :show-file-list="false"
+              multiple
+              accept="image/*,.pdf,application/pdf"
+              :http-request="uploadContractFile"
+            >
+              <el-button
+                type="success"
+                aria-label="上传签字合同"
+              >
+                上传
+              </el-button>
+            </el-upload>
+            <el-button
+              v-if="canEdit && showPaymentColumn && ['active','overdue'].includes(selected.status)"
+              v-permission="'rentals:edit'"
+              type="success"
+              @click.stop="runMobileDetailAction((row) => openPayment(row))"
+            >
+              <i class="fas fa-money-bill-wave" />还款
+            </el-button><el-button
+              v-if="canEdit && selected.billing_mode === 'daily' && ['active','overdue'].includes(selected.status)"
+              v-permission="'rentals:edit'"
+              type="warning"
+              @click.stop="runMobileDetailAction((row) => finishRental(row))"
+            >
+              <i class="fas fa-check" />归还
+            </el-button>
+
+            <el-button
+              v-if="canEdit"
+              v-permission="'rentals:edit'"
+              type="primary"
+              @click.stop="runMobileDetailAction((row) => openEdit(row))"
+            >
+              编辑
             </el-button>
           </div>
         </template>
@@ -1081,6 +1139,7 @@
 </template>
 
 <script setup lang="ts">
+import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
 import { formatAmount } from '@/utils/format'
 import { confirmAction } from '@/utils/message-box'
 import { computed, onMounted, reactive, ref } from 'vue'
@@ -1326,20 +1385,23 @@ async function saveRental(){
   }
   saving.value=true
   try{
-    if(!editingId.value)await persistCustomer()
     const formState = form as RentalFormState
+    const pendingPayloads = phoneIds.map(phoneId => buildRentalPayload(
+      formState,
+      phoneId,
+      !editingId.value && form.billing_mode === 'daily' ? dailySalePrices[phoneId] : form.sale_price
+    ))
+    if(!editingId.value)await persistCustomer()
     if(editingId.value){
-      const salePrice=Number(form.sale_price)
-      const rawPayload=buildRentalPayload(formState,phoneIds[0],salePrice)
+      const rawPayload=pendingPayloads[0]
       const payload=pickVisibleRentalFields(rawPayload,rentalPayloadFieldMap)
       delete payload.customer_id
       delete payload.phone_id
       delete payload.start_date
       await unifiedApi.put(`/rentals/${editingId.value}`,payload)
     }else{
-      for(const phoneId of phoneIds){
-        const salePrice=form.billing_mode==='daily'?Number(dailySalePrices[phoneId]) : Number(form.sale_price)
-        const rawPayload=buildRentalPayload(formState,phoneId,salePrice)
+      for(const rawPayload of pendingPayloads){
+        const phoneId=rawPayload.phone_id
         const payload={ ...pickVisibleRentalFields(rawPayload,rentalPayloadFieldMap),customer_id:Number(form.customer_id),phone_id:phoneId }
         await unifiedApi.post('/rentals',payload)
       }
@@ -1424,6 +1486,16 @@ td{border:1px solid var(--tf-color-gray-500-solid);padding:8px}
   win.document.close()
 }
 onMounted(async()=>{await fieldPermissions.init();await loadRentals()})
+
+const { doubleTapOptions: mobileDetailTapOptions, handleRowDoubleClick: mobileDetailDoubleClick } = useMobileTableDetail<Rental>({
+  enabled: () => isMobile.value && (canView.value), rows: rentals, getKey: row => row.id, onOpen: openDetail
+})
+const runMobileDetailAction = (action: (row: Rental) => unknown) => {
+  const row = selected.value
+  if (!row) return
+  detailVisible.value = false
+  return action(row)
+}
 </script>
 
 <style scoped>

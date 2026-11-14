@@ -6,13 +6,13 @@
     :label-width="isMobile ? '80px' : labelWidth"
     :label-position="isMobile ? 'top' : labelPosition"
     :size="isMobile ? 'large' : size"
-    class="mobile-form"
+    class="mobile-form tf-form-layout tf-form-grid"
     :class="{ 'mobile-layout': isMobile }"
   >
     <div
       v-for="(field, index) in fields"
       :key="field.prop || index"
-      class="form-field-wrapper"
+      class="form-field-wrapper form-group"
       :class="getFieldWrapperClass(field)"
     >
       <!-- 字段标题 -->
@@ -593,9 +593,8 @@ const getFieldWrapperClass = (field: FormField) => {
     classes.push('responsive-field')
   }
 
-  // 移动端全宽
-  if (isMobile.value) {
-    classes.push('mobile-full-width')
+  if (field.span === 24 || field.xs === 24 || ['textarea', 'upload', 'password', 'slot'].includes(field.type)) {
+    classes.push('tf-form-field--wide')
   }
 
   return classes
@@ -741,11 +740,6 @@ defineExpose({
           width: 100%;
         }
 
-        .el-input__inner {
-          min-height: 44px;
-          font-size: var(--tf-type-scale-16); /* 防止iOS自动缩放 */
-        }
-
         .el-input-number {
           width: 100%;
 
@@ -755,12 +749,6 @@ defineExpose({
         }
       }
     }
-  }
-}
-
-.form-field-wrapper {
-  &.mobile-full-width {
-    width: 100%;
   }
 }
 

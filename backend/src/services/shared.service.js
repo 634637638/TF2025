@@ -6,6 +6,7 @@ const { ensureSharedSchema } = require('../utils/shared-schema')
 const { getRelativeUploadPathFromUrl, getUploadPathFromUrl } = require('../utils/upload-paths')
 const { storageUrlFromSharedFileUrl } = require('../utils/shared-file-access')
 const { sanitizeRichContent } = require('../utils/sanitize-rich-content')
+const { parseInput } = require('../middleware/validation')
 
 const parseAttachments = value => {
   if (Array.isArray(value)) return value
@@ -262,6 +263,10 @@ class SharedService {
   }
 
   async pin(id, pinned, _userId) {
+    ;({ id, pinned } = parseInput({ id, pinned }, {
+      id: { type: 'id', required: true, label: '分享ID' },
+      pinned: { type: 'boolean', required: true, label: '置顶状态' }
+    }))
     await this.ensure()
     const [result] = await getDatabase().query("UPDATE shared_posts SET is_pinned=? WHERE id=? AND visibility='public'", [pinned ? 1 : 0, id])
     if (!result.affectedRows) throw new Error('分享不存在')

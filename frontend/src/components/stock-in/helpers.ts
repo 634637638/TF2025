@@ -13,6 +13,7 @@ import {
 import type { Brand, Color, MemoryOption, Model } from '@/types'
 import type { Store, Supplier } from '@/types/system'
 import type { StockInFormModel, StockInPhoneItem } from './types'
+import { deviceSerialPattern, deviceIMEIPattern, isDeviceSerial, isDeviceIMEI, normalizeDeviceSerial, normalizeDeviceIMEI } from '@/utils/device-identifier'
 
 export type StockInScanType = 'imei' | 'serial'
 
@@ -210,21 +211,7 @@ export const detectNoIMEIMode = (
   return imei.length !== 15
 }
 
-export const normalizeIMEIInput = (
-  imei: string | undefined,
-  isNoIMEIMode: boolean | undefined
-): string => {
-  if (!imei) return ''
-
-  if (isNoIMEIMode) {
-    return imei
-      .replace(/[^a-zA-Z0-9]/g, '')
-      .toUpperCase()
-      .slice(0, 30)
-  }
-
-  return imei.replace(/\D/g, '').slice(0, 15)
-}
+export const normalizeIMEIInput = normalizeDeviceIMEI
 
 export const validateIMEI = (
   imei: string | undefined,
@@ -236,20 +223,13 @@ export const validateIMEI = (
   }
 
   if (isNoIMEIMode) {
-    return imei === serialNumber && imei.length >= 4
+    return imei === serialNumber && validateSerialNumber(serialNumber) === true
   }
 
-  return imei.length === 15 && /^\d{15}$/.test(imei)
+  return isDeviceIMEI(imei)
 }
 
-export const normalizeSerialNumberInput = (serialNumber: string | undefined): string => {
-  if (!serialNumber) return ''
-
-  return serialNumber
-    .replace(/[^a-zA-Z0-9/-]/g, '')
-    .toUpperCase()
-    .slice(0, 30)
-}
+export const normalizeSerialNumberInput = normalizeDeviceSerial
 
 export const validateSerialNumber = (
   serialNumber: string | undefined
@@ -258,7 +238,7 @@ export const validateSerialNumber = (
     return undefined
   }
 
-  return /^[A-Za-z0-9](?:[A-Za-z0-9]|[/-](?=[A-Za-z0-9])){3,29}$/.test(serialNumber)
+  return isDeviceSerial(serialNumber)
 }
 
 export const toggleNoIMEIModeState = (
@@ -318,11 +298,11 @@ export const buildStockInScanPromptConfig = (
     : '请输入序列号',
   title: scanType === 'imei' ? 'IMEI手动输入' : '序列号手动输入',
   inputPattern: scanType === 'imei'
-    ? (isNoIMEIMode ? /^[A-Za-z0-9](?:[A-Za-z0-9]|[/-](?=[A-Za-z0-9])){3,29}$/ : /^\d{15}$/)
-    : /^[A-Za-z0-9](?:[A-Za-z0-9]|[/-](?=[A-Za-z0-9])){3,29}$/,
+    ? (isNoIMEIMode ? deviceSerialPattern : deviceIMEIPattern)
+    : deviceSerialPattern,
   inputErrorMessage: scanType === 'imei'
-    ? (isNoIMEIMode ? '请输入4-30位字母或数字' : '请输入15位数字的IMEI号')
-    : '请输入4-30位字母、数字、斜杠或连字符组成的序列号',
+    ? (isNoIMEIMode ? '请输入4-50位字母、数字、斜杠或连字符' : '请输入15位数字的IMEI号')
+    : '请输入4-50位字母、数字、斜杠或连字符组成的序列号',
   inputPlaceholder: scanType === 'imei'
     ? (isNoIMEIMode ? '请输入字母或数字IMEI' : '例如：356738110412345')
     : '请输入设备序列号'

@@ -1,3 +1,4 @@
+const { normalizePhone, isMobilePhone } = require('../utils/input-values')
 const { rateLimit, ipKeyGenerator } = require('express-rate-limit')
 const { getDatabase, isConnected } = require('../config/database')
 const config = require('../config')
@@ -149,7 +150,7 @@ const publicOrderPhoneLookupRateLimit = rateLimit({
   },
   keyGenerator: (req) => {
     const ip = ipKeyGenerator(req.ip || req.socket.remoteAddress || 'unknown')
-    const phone = String(req.params?.customer_phone || '').replace(/\D/g, '')
+    const phone = isMobilePhone(req.params?.customer_phone) ? normalizePhone(req.params.customer_phone) : ''
     return `${ip}:order-phone:${phone || 'invalid'}`
   }
 })
@@ -190,6 +191,15 @@ const frontendErrorLogRateLimit = rateLimit({
     const ip = ipKeyGenerator(req.ip || req.socket.remoteAddress || 'unknown')
     return `${Number(req.user?.id) || 'anonymous'}:${ip}`
   }
+})
+
+const performanceReportRateLimit = rateLimit({
+  windowMs: 5 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: '性能上报过于频繁', code: 'PERFORMANCE_REPORT_RATE_LIMIT_EXCEEDED' },
+  keyGenerator: req => `${Number(req.user?.id) || 'anonymous'}:${ipKeyGenerator(req.ip || req.socket.remoteAddress || 'unknown')}`
 })
 
 // 搜索API限流（较宽松）
@@ -369,6 +379,7 @@ module.exports = {
   publicMarketingRateLimit,
   iconifyRateLimit,
   frontendErrorLogRateLimit,
+  performanceReportRateLimit,
   searchRateLimit,
   uploadRateLimit,
   dbRateLimit,

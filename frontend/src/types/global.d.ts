@@ -85,14 +85,6 @@ declare global {
       }
     }
 
-    // 性能监控
-    __TF2025_PERFORMANCE__?: {
-      recordMetric: (name: string, value: unknown) => void
-      startMonitoring: () => void
-      stopMonitoring: () => void
-      generateReport: () => PerformanceReport
-    }
-
     // 组件统计
     __TF2025_COMPONENT_STATS__?: Record<string, number>
 

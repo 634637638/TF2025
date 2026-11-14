@@ -6,7 +6,7 @@ function normalizeFieldList(value) {
   return Array.from(new Set(value.filter(Boolean)))
 }
 
-function normalizeFieldConfig(value) {
+function normalizeFieldConfig(value, { strict = false } = {}) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     return null
   }
@@ -17,6 +17,10 @@ function normalizeFieldConfig(value) {
       return null
     }
     if (key === 'hidden_fields' || key === 'editable_fields') {
+      if (strict && (!Array.isArray(rawValue) || rawValue.some(field =>
+        typeof field !== 'string' || !field.trim() || field !== field.trim()))) {
+        return null
+      }
       normalized[key] = normalizeFieldList(rawValue)
     } else {
       normalized[key] = rawValue

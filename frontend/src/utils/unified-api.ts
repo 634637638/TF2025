@@ -514,13 +514,11 @@ class UnifiedApiManager {
 
     // 确定错误级别
     let level = ErrorLevel.MEDIUM
-    if (status === 500 || status === 502 || status === 503 || status === 504) {
-      level = ErrorLevel.HIGH
-    } else if (status === 401 || status === 403) {
+    if (typeof status === 'number' && status >= 500) {
       level = ErrorLevel.HIGH
     } else if (!error.response) {
-      // 网络错误
-      level = ErrorLevel.CRITICAL
+      // 单次断网或超时不等同于系统严重故障，保留批量诊断上报。
+      level = ErrorLevel.HIGH
     }
 
     // 确定错误类型
@@ -529,7 +527,7 @@ class UnifiedApiManager {
       type = ErrorType.NETWORK
     } else if (status === 401 || status === 403) {
       type = ErrorType.PERMISSION
-    } else if (status === 422) {
+    } else if (status === 400 || status === 422) {
       type = ErrorType.VALIDATION
     } else if (typeof status === 'number' && status >= 500) {
       type = ErrorType.JAVASCRIPT
@@ -1255,6 +1253,7 @@ class UnifiedApiManager {
 
     const scopeDependencies: Record<string, string[]> = {
       attendance: ['/attendance', '/dashboard', '/analytics'],
+      brands: ['/brands', '/accessories/options', '/options/phone-options', '/query/options', '/preorders/options', '/repairs/options', '/public/brands', '/public/price/brands'],
       customers: ['/customers', '/dashboard', '/analytics'],
       'data-check': ['/data-check', '/phones', '/dashboard', '/analytics', '/query'],
       employees: ['/employees', '/users', '/dashboard', '/analytics'],
@@ -1265,7 +1264,7 @@ class UnifiedApiManager {
       'price-list': ['/price-list', '/phones', '/inventory', '/sales', '/query'],
       preorders: ['/preorders', '/phones', '/dashboard', '/analytics'],
       repairs: ['/repairs', '/dashboard', '/analytics'],
-      sales: ['/sales', '/phones', '/customers', '/dashboard', '/analytics', '/salary', '/query'],
+      sales: ['/sales', '/phones', '/inventory', '/accessories', '/customers', '/dashboard', '/analytics', '/salary', '/query'],
       'salary-records': ['/salary-records', '/employees', '/dashboard', '/analytics'],
       'system-settings': ['/system-settings', '/shop', '/dashboard'],
       users: ['/users', '/employees', '/permissions'],
@@ -1401,17 +1400,8 @@ class UnifiedApiManager {
   /**
    * 记录性能数据
    */
-  private recordPerformance(metadata: NonNullable<RequestConfig['metadata']>, duration: number, status: number): void {
-    if (window.__TF2025_PERFORMANCE__) {
-      window.__TF2025_PERFORMANCE__.recordMetric('apiRequest', {
-        requestId: metadata.requestId,
-        url: metadata.url,
-        method: metadata.method,
-        duration,
-        status,
-        timestamp: Date.now()
-      })
-    }
+  private recordPerformance(metadata: NonNullable<RequestConfig['metadata']>, duration: number, _status: number): void {
+    if (!String(metadata.url || '').includes('/performance/report')) window.__TF2025__?.performance?.recordApiLatency(duration)
   }
 
   /**

@@ -3,6 +3,7 @@
 const PreorderMutationRepository = require('../repositories/preorder-mutation.repository')
 const PreorderReadRepository = require('../repositories/preorder-read.repository')
 const log = require('../utils/log')
+const { isMoneyInput } = require('../utils/input-values')
 const { PREORDER_STATUS } = require('../config/preorder-response.constants')
 
 const DATE_ONLY_PATTERN = /^\d{4}-\d{2}-\d{2}$/
@@ -61,16 +62,12 @@ class PreorderMutationService {
     const normalizedExpectedArrival = expected_arrival || new Date().toISOString().slice(0, 10)
 
     if (![0, 1].includes(normalizedCondition)) return { error: 'invalid_condition' }
+    if (!isMoneyInput(deposit_amount) || normalizedDepositAmount <= 0) return { error: 'invalid_deposit' }
+    if (normalizedTotalPrice !== null && (!isMoneyInput(total_price) || normalizedTotalPrice < 0)) return { error: 'invalid_total_price' }
 
     return this.repository.withConnection(async connection => {
       if (!customer_id) return { error: 'customer_required' }
       if (!brand_id || !model_id || !color_id || !memory_id) return { error: 'reference_required' }
-      if (!Number.isFinite(normalizedDepositAmount) || normalizedDepositAmount <= 0) {
-        return { error: 'invalid_deposit' }
-      }
-      if (normalizedTotalPrice !== null && (!Number.isFinite(normalizedTotalPrice) || normalizedTotalPrice < 0)) {
-        return { error: 'invalid_total_price' }
-      }
       if (expected_arrival && !isValidDateOnly(expected_arrival)) return { error: 'invalid_expected_arrival' }
 
       if (!await this.repository.hasCustomer(connection, customer_id)) return { error: 'customer_not_found' }
@@ -201,12 +198,12 @@ class PreorderMutationService {
 
         if (updateData.deposit_amount !== undefined) {
           const depositAmount = Number(updateData.deposit_amount)
-          if (!Number.isFinite(depositAmount) || depositAmount <= 0) return reject('invalid_deposit')
+          if (!isMoneyInput(updateData.deposit_amount) || depositAmount <= 0) return reject('invalid_deposit')
           updateData.deposit_amount = depositAmount
         }
         if (updateData.total_price !== undefined && updateData.total_price !== null && updateData.total_price !== '') {
           const totalPrice = Number(updateData.total_price)
-          if (!Number.isFinite(totalPrice) || totalPrice < 0) return reject('invalid_total_price')
+          if (!isMoneyInput(updateData.total_price) || totalPrice < 0) return reject('invalid_total_price')
           updateData.total_price = totalPrice
         }
         if (updateData.customer_id !== undefined) {
@@ -363,6 +360,7 @@ class PreorderMutationService {
   async match(id, input = {}) {
     const { phone_id, imei, actual_model, arrival_date, actual_price } = input
     if (!phone_id && !imei) return { error: 'phone_required' }
+    if (actual_price !== undefined && actual_price !== null && actual_price !== '' && (!isMoneyInput(actual_price) || Number(actual_price) < 0)) return { error: 'invalid_price' }
     if (arrival_date && !isValidDateOnly(arrival_date)) return { error: 'invalid_date' }
 
     return this.repository.withConnection(async connection => {
@@ -433,11 +431,6 @@ class PreorderMutationService {
         const requestedPrice = actual_price === undefined || actual_price === null || actual_price === ''
           ? null
           : Number(actual_price)
-        if (requestedPrice !== null && (!Number.isFinite(requestedPrice) || requestedPrice < 0)) {
-          await rollback()
-          return { error: 'invalid_price' }
-        }
-
         const fallbackPrice = Number(preorder.total_price || phone.sale_price || 0)
         const finalPrice = requestedPrice !== null ? requestedPrice : fallbackPrice
         const depositAmount = Number(preorder.deposit_amount || preorder.deposit_paid || 0)

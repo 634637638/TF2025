@@ -98,4 +98,4 @@ cd frontend
 npm run check:empty-states
 ```
 
-该审计已接入 `check:standards`、开发启动和生产构建。审计扫描 Vue 模板、Vue 内嵌样式块，以及独立 CSS/SCSS 文件；直接使用 `el-empty`、新增页面私有空状态结构/选择器、公共表格组件脱离 `DataEmptyState`，或在表格空插槽中手写“暂无数据”，都会阻止启动和构建。`.no-data` 字段占位不属于禁用空状态选择器。
+该审计已接入 `check:standards`、生产构建和发布检查，日常启动不自动运行。审计扫描 Vue 模板、Vue 内嵌样式块，以及独立 CSS/SCSS 文件；直接使用 `el-empty`、新增页面私有空状态结构/选择器、公共表格组件脱离 `DataEmptyState`，或在表格空插槽中手写“暂无数据”，都会阻断构建和发布检查。`.no-data` 字段占位不属于禁用空状态选择器。

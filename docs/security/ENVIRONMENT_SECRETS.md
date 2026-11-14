@@ -29,6 +29,12 @@ chmod 600 .env.production
 
 之后只在服务器本机编辑 `.env.production` 并填入实际值。命令行 PM2 使用 `backend/ecosystem.production.config.js`，宝塔 PM2 项目使用 `backend/start-production.js`；两个入口都固定加载 `.env.production`。云端不得改用 `backend/.env`，也不要把真实配置复制进仓库中的 PM2 文件。
 
+## 故障邮件 SMTP 凭据
+
+T5 邮件告警的 `ERROR_ALERT_SMTP_PASSWORD` 使用邮箱服务商提供的专用授权码或规定的认证密码，只在生产后端服务器本机 `.env.production` 配置。SMTP 用户、发件/收件邮箱同样不进入前端配置或公共响应；不要在聊天、工单、源码、日志和命令参数中提供真实值。默认 `ERROR_ALERT_ENABLED=false`，开发/测试环境即使开启也不发信。
+
+按 `backend/.env.example` 逐项补配置并重启后端，不整份覆盖真实环境文件。仅本机配置检查不会连接 SMTP，带 `--send-test` 的命令会真实发信，需用户明确安排收件验收。变量、操作与回退步骤统一见[生产故障邮件告警](../backend/error-alerting.md)。授权码泄露时在邮箱服务商撤销并重新生成，再更新本机配置和重启。
+
 ## 前端环境文件
 
 `frontend/.env.production` 用于构建前端。`VITE_` 前缀变量会被编译进浏览器可下载的静态资源，因此只能放公开配置，例如 API 地址、页面标题或公开地图 Key；不能放数据库密码、JWT 密钥、私有令牌或其他后端凭据。商城配置页也支持维护 `tencent_map_key`，它同样是浏览器公开 Key；必须在腾讯地图控制台配置域名白名单，不能填写服务端私钥。

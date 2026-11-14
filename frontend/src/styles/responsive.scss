@@ -405,7 +405,7 @@ body {
     font-size: var(--mobile-text-label) !important;
     line-height: 20px !important;
     font-weight: 600 !important;
-    color: var(--text-primary) !important;
+    color: var(--text-primary);
   }
 
   .el-input__wrapper {

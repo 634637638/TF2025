@@ -290,6 +290,7 @@
                 v-else
                 ref="customersTableRef"
                 v-tf-loading="{ active: isLoading || refreshing, text: '正在刷新客户列表...' }"
+                v-table-double-tap="mobileDetailTapOptions"
                 :data="customers"
                 border
                 stripe
@@ -297,9 +298,8 @@
                 table-layout="fixed"
                 :fit="true"
                 :row-key="getCustomerRowKey"
-                :expand-row-keys="isMobile && mobileActionRowId ? [mobileActionRowId] : []"
                 @selection-change="handleSelectionChange"
-                @row-click="handleCustomerRowClick"
+                @row-dblclick="handleMobileDetailDoubleClick"
               >
                 <template #empty>
                   <TableLoadingRow
@@ -512,17 +512,17 @@
                         <span v-html="highlightText(formatCustomerRegion(customer, { province: canViewField('province'), city: canViewField('city') }), searchKeyword)" />
                       </div>
                       <div
-                        v-if="canViewField('address') && customer.address"
+                        v-if="canViewField('address') && formatCustomerAddress(customer)"
                         class="table-info-line address small text-muted"
                       >
                         <i class="fas fa-home" />
                         <!-- 如果有搜索关键词，显示匹配的片段 -->
-                        <span v-if="searchKeyword && isMatch(customer.address, searchKeyword)">
-                          <span v-html="getMatchSnippet(customer.address, searchKeyword, 50, 20)" />
+                        <span v-if="searchKeyword && isMatch(formatCustomerAddress(customer), searchKeyword)">
+                          <span v-html="getMatchSnippet(formatCustomerAddress(customer), searchKeyword, 50, 20)" />
                         </span>
                         <!-- 否则显示截断的地址 -->
                         <span v-else>
-                          {{ customer.address.length > 25 ? customer.address.substring(0, 25) + '...' : customer.address }}
+                          {{ formatCustomerAddress(customer).length > 25 ? formatCustomerAddress(customer).substring(0, 25) + '...' : formatCustomerAddress(customer) }}
                         </span>
                       </div>
                     </div>
@@ -621,48 +621,6 @@
                     </div>
                   </template>
                 </el-table-column>
-
-                <el-table-column
-                  v-if="isMobile && showMobileActionField"
-                  type="expand"
-                  width="1"
-                  class-name="mobile-expand-column"
-                  label-class-name="mobile-expand-header"
-                >
-                  <template #default="{ row: customer }">
-                    <div class="mobile-row-actions">
-                      <el-button
-                        type="info"
-                        size="small"
-                        class="mobile-action-btn mobile-action-btn-view"
-                        @click.stop="viewCustomerDetail(customer)"
-                      >
-                        <i class="fas fa-eye" />
-                        <span>详情</span>
-                      </el-button>
-                      <el-button
-                        v-if="canEdit"
-                        type="primary"
-                        size="small"
-                        class="mobile-action-btn mobile-action-btn-edit"
-                        @click.stop="requirePermission('edit', () => editCustomer(customer))"
-                      >
-                        <i class="fas fa-edit" />
-                        <span>编辑</span>
-                      </el-button>
-                      <el-button
-                        v-if="canDelete"
-                        type="danger"
-                        size="small"
-                        class="mobile-action-btn mobile-action-btn-delete"
-                        @click.stop="requirePermission('delete', () => deleteCustomer(customer))"
-                      >
-                        <i class="fas fa-trash" />
-                        <span>删除</span>
-                      </el-button>
-                    </div>
-                  </template>
-                </el-table-column>
               </el-table>
             </div>
 
@@ -685,118 +643,7 @@
           </div>
         </div>
 
-        <!-- 积分设置对话框 -->
-        <MobileDialog
-          v-model="showPointsSettingsModal"
-          title="积分设置"
-          width="560px"
-          dialog-class="customers-points-dialog"
-          :close-on-click-modal="false"
-          :show-default-footer="false"
-        >
-          <el-form
-            :model="pointsConfigForm"
-            label-width="120px"
-            class="points-settings-form"
-            :disabled="pointsConfigLoading || pointsConfigSaving"
-          >
-            <el-form-item label="自动累计">
-              <el-switch
-                v-model="pointsConfigForm.enabled"
-                active-text="启用"
-                inactive-text="停用"
-              />
-            </el-form-item>
-
-            <el-form-item
-              label="参与类型"
-              :required="pointsConfigForm.enabled"
-            >
-              <el-checkbox-group
-                v-model="pointsIncludedConditions"
-                class="points-type-buttons"
-                :disabled="!pointsConfigForm.enabled"
-              >
-                <el-checkbox-button value="new">
-                  全新
-                </el-checkbox-button>
-                <el-checkbox-button value="used">
-                  二手
-                </el-checkbox-button>
-              </el-checkbox-group>
-            </el-form-item>
-
-            <el-form-item
-              v-if="pointsConfigForm.enabled && pointsIncludedConditions.length > 0"
-              label="积分设置"
-            >
-              <div class="points-type-rates">
-                <div
-                  v-if="pointsConfigForm.include_new"
-                  class="points-type-rate-row"
-                >
-                  <span class="points-type-rate-label">全新</span>
-                  <span>每消费 100 元累计</span>
-                  <el-input-number
-                    v-model="pointsConfigForm.new_points_per_100"
-                    :min="1"
-                    :max="100"
-                    :precision="0"
-                    :step="1"
-                    :controls="false"
-                  />
-                  <span>积分</span>
-                </div>
-                <div
-                  v-if="pointsConfigForm.include_used"
-                  class="points-type-rate-row"
-                >
-                  <span class="points-type-rate-label">二手</span>
-                  <span>每消费 100 元累计</span>
-                  <el-input-number
-                    v-model="pointsConfigForm.used_points_per_100"
-                    :min="1"
-                    :max="100"
-                    :precision="0"
-                    :step="1"
-                    :controls="false"
-                  />
-                  <span>积分</span>
-                </div>
-              </div>
-            </el-form-item>
-
-            <div class="points-settings-preview">
-              <div class="preview-title">
-                <i class="fas fa-calculator" />
-                积分规则
-              </div>
-              <div class="preview-content">
-                {{ pointsConfigPreview }}
-              </div>
-            </div>
-          </el-form>
-
-          <template #footer>
-            <div class="tf-dialog-actions">
-              <el-button
-                type="default"
-                :disabled="pointsConfigSaving"
-                @click="closePointsSettings"
-              >
-                取消
-              </el-button>
-              <el-button
-                type="primary"
-                :disabled="pointsConfigSaving || !pointsConfigValid"
-                :loading="pointsConfigSaving"
-                @click="savePointsSettings"
-              >
-                保存设置
-              </el-button>
-            </div>
-          </template>
-        </MobileDialog>
+        <CustomerPointsSettings v-model="showPointsSettingsModal" />
 
         <!-- 新增/编辑客户对话框 -->
         <MobileDialog
@@ -811,251 +658,214 @@
             :model="customerForm"
             label-width="100px"
             :disabled="isSubmitting"
-            class="customers-dialog-form"
+            class="customers-dialog-form tf-form-layout"
+            :label-position="isMobile ? 'top' : 'right'"
+            :class="{ 'tf-dialog-form': isMobile, 'tf-dialog-form--stacked': isMobile }"
           >
             <!-- 基本信息 -->
             <el-divider content-position="left">
               <i class="fas fa-user" /> 基本信息
             </el-divider>
 
-            <el-row :gutter="20">
-              <el-col
+            <div class="tf-form-row">
+              <el-form-item
                 v-if="canViewField('name')"
-                :span="12"
+                label="客户姓名"
+                required
               >
-                <el-form-item
-                  label="客户姓名"
-                  required
-                >
-                  <el-input
-                    v-model="customerForm.name"
-                    placeholder="请输入客户姓名"
-                    clearable
-                    maxlength="50"
-                    show-word-limit
-                    :disabled="!canEditField('name')"
-                    @input="handleCustomerNameInput"
-                  />
-                </el-form-item>
-              </el-col>
-              <el-col
-                v-if="canViewField('phone')"
-                :span="12"
-              >
-                <el-form-item
-                  label="联系电话"
-                  required
-                >
-                  <el-input
-                    v-model="customerForm.phone"
-                    placeholder="请输入联系电话"
-                    clearable
-                    maxlength="11"
-                    :disabled="!canEditField('phone')"
-                    @input="handleCustomerPhoneInput"
-                  />
-                </el-form-item>
-              </el-col>
-            </el-row>
+                <el-input
+                  v-model="customerForm.name"
+                  placeholder="请输入客户姓名"
+                  clearable
+                  maxlength="50"
+                  show-word-limit
+                  :disabled="!canEditField('name')"
+                  @input="handleCustomerNameInput"
+                />
+              </el-form-item>
 
-            <el-row :gutter="20">
-              <el-col
+              <el-form-item
+                v-if="canViewField('phone')"
+                label="联系电话"
+                required
+              >
+                <el-input
+                  v-model="customerForm.phone"
+                  placeholder="请输入联系电话"
+                  clearable
+                  :disabled="!canEditField('phone')"
+                  @input="handleCustomerPhoneInput"
+                />
+              </el-form-item>
+            </div>
+
+            <div class="tf-form-row tf-form-row--mobile-single">
+              <el-form-item
                 v-if="canViewField('email')"
-                :span="12"
+                class="tf-form-field--wide"
+                label="邮箱地址"
               >
-                <el-form-item label="邮箱地址">
-                  <el-input
-                    v-model="customerForm.email"
-                    placeholder="请输入邮箱地址"
-                    clearable
-                    :disabled="!canEditField('email')"
-                  />
-                </el-form-item>
-              </el-col>
-              <el-col
+                <el-input
+                  v-model="customerForm.email"
+                  placeholder="请输入邮箱地址"
+                  clearable
+                  :disabled="!canEditField('email')"
+                />
+              </el-form-item>
+
+              <el-form-item
                 v-if="canViewField('id_card')"
-                :span="12"
+                class="tf-form-field--wide"
+                label="身份证号"
               >
-                <el-form-item label="身份证号">
-                  <el-input
-                    v-model="customerForm.id_card"
-                    placeholder="请输入身份证号"
-                    clearable
-                    maxlength="18"
-                    :disabled="!canEditField('id_card')"
-                    @input="handleIdCardInput"
-                  />
-                </el-form-item>
-              </el-col>
-            </el-row>
+                <el-input
+                  v-model="customerForm.id_card"
+                  placeholder="请输入身份证号"
+                  clearable
+                  maxlength="18"
+                  :disabled="!canEditField('id_card')"
+                  @input="handleIdCardInput"
+                />
+              </el-form-item>
+            </div>
 
             <!-- 客户属性 -->
             <el-divider content-position="left">
               <i class="fas fa-tag" /> 客户属性
             </el-divider>
 
-            <el-row :gutter="20">
-              <el-col
+            <div class="tf-form-row">
+              <el-form-item
                 v-if="canViewField('customer_type')"
-                :span="12"
+                label="客户类型"
               >
-                <el-form-item label="客户类型">
-                  <el-select
-                    v-model="customerForm.customer_type"
-                    placeholder="请选择客户类型"
-                    class="w-full"
-                    :disabled="!canEditField('customer_type')"
+                <el-select
+                  v-model="customerForm.customer_type"
+                  placeholder="请选择客户类型"
+                  class="w-full"
+                  :disabled="!canEditField('customer_type')"
+                >
+                  <el-option
+                    v-for="type in CUSTOMER_TYPES"
+                    :key="type.value"
+                    :label="type.label"
+                    :value="type.value"
                   >
-                    <el-option
-                      v-for="type in CUSTOMER_TYPES"
-                      :key="type.value"
-                      :label="type.label"
-                      :value="type.value"
-                    >
-                      <span class="float-left">
-                        <IconRenderer :icon="type.icon" />
-                        {{ type.label }}
-                      </span>
-                    </el-option>
-                  </el-select>
-                </el-form-item>
-              </el-col>
-              <el-col
+                    <span class="float-left">
+                      <IconRenderer :icon="type.icon" />
+                      {{ type.label }}
+                    </span>
+                  </el-option>
+                </el-select>
+              </el-form-item>
+
+              <el-form-item
                 v-if="canViewField('vip_level')"
-                :span="12"
+                label="VIP等级"
               >
-                <el-form-item label="VIP等级">
-                  <el-select
-                    v-model="customerForm.vip_level"
-                    placeholder="请选择VIP等级"
-                    class="w-full"
-                    :disabled="!canEditField('vip_level')"
+                <el-select
+                  v-model="customerForm.vip_level"
+                  placeholder="请选择VIP等级"
+                  class="w-full"
+                  :disabled="!canEditField('vip_level')"
+                >
+                  <el-option
+                    v-for="vip in VIP_LEVELS"
+                    :key="vip.value"
+                    :label="vip.label"
+                    :value="vip.value"
                   >
-                    <el-option
-                      v-for="vip in VIP_LEVELS"
-                      :key="vip.value"
-                      :label="vip.label"
-                      :value="vip.value"
-                    >
-                      <span class="float-left">
-                        <IconRenderer
-                          :icon="vip.icon"
-                          :style="{ color: getVipColor(vip.value) }"
-                        />
-                        {{ vip.label }}
-                      </span>
-                    </el-option>
-                  </el-select>
-                </el-form-item>
-              </el-col>
-            </el-row>
+                    <span class="float-left">
+                      <IconRenderer
+                        :icon="vip.icon"
+                        :style="{ color: getVipColor(vip.value) }"
+                      />
+                      {{ vip.label }}
+                    </span>
+                  </el-option>
+                </el-select>
+              </el-form-item>
+            </div>
 
-            <el-row :gutter="20">
-              <el-col
+            <div class="tf-form-row">
+              <el-form-item
                 v-if="canViewField('gender')"
-                :span="12"
+                label="性别"
               >
-                <el-form-item label="性别">
-                  <el-radio-group
-                    v-model="customerForm.gender"
-                    :disabled="!canEditField('gender')"
-                  >
-                    <el-radio value="male">
-                      男
-                    </el-radio>
-                    <el-radio value="female">
-                      女
-                    </el-radio>
-                  </el-radio-group>
-                </el-form-item>
-              </el-col>
-              <el-col
+                <el-radio-group
+                  v-model="customerForm.gender"
+                  :disabled="!canEditField('gender')"
+                >
+                  <el-radio value="male">
+                    男
+                  </el-radio>
+                  <el-radio value="female">
+                    女
+                  </el-radio>
+                </el-radio-group>
+              </el-form-item>
+
+              <el-form-item
                 v-if="canViewField('birthday')"
-                :span="12"
+                label="生日"
               >
-                <el-form-item label="生日">
-                  <el-date-picker
-                    v-model="customerForm.birthday"
-                    type="date"
-                    placeholder="请选择生日"
-                    class="w-full"
-                    :format="TIME_FORMATS.DATE"
-                    :value-format="TIME_FORMATS.DATE"
-                    :disabled="!canEditField('birthday')"
-                  />
-                </el-form-item>
-              </el-col>
-            </el-row>
+                <el-date-picker
+                  v-model="customerForm.birthday"
+                  type="date"
+                  placeholder="请选择生日"
+                  class="w-full"
+                  :format="TIME_FORMATS.DATE"
+                  :value-format="TIME_FORMATS.DATE"
+                  :disabled="!canEditField('birthday')"
+                />
+              </el-form-item>
+            </div>
 
-            <el-form-item
-              v-if="canViewField('city') || canViewField('province')"
-              label="所在地区"
-            >
-              <CitySelector
-                :model-value="cityLocation"
-                :show-district="canViewField('address')"
-                :hide-province="!canViewField('province')"
-                :hide-city="!canViewField('city')"
-                :province-disabled="!canEditField('province')"
-                :city-disabled="!canEditField('city')"
-                :district-disabled="!canEditField('address')"
-                @change="handleLocationChange"
-              />
-            </el-form-item>
-
-            <el-form-item
-              v-if="canViewField('address')"
-              label="详细地址"
-            >
-              <el-input
-                v-model="addressDetail"
-                type="textarea"
-                class="tf-textarea"
-                :rows="2"
-                placeholder="请输入乡镇/街道、村/社区及门牌号"
-                :maxlength="addressDetailLimit"
-                show-word-limit
-                :disabled="!canEditField('address')"
-              />
-            </el-form-item>
+            <CustomerAddressFields
+              v-model:detail="addressDetail"
+              :location="cityLocation"
+              :limit="addressDetailLimit"
+              :ready="addressCapabilities.ready"
+              :can-view="canViewField"
+              :can-edit="canEditField"
+              @change="handleLocationChange"
+            />
 
             <!-- 联系方式 -->
             <el-divider content-position="left">
               <i class="fas fa-address-book" /> 联系方式
             </el-divider>
 
-            <el-row :gutter="20">
-              <el-col
+            <div class="tf-form-row">
+              <el-form-item
                 v-if="canViewField('wechat')"
-                :span="12"
+                label="微信号"
               >
-                <el-form-item label="微信号">
-                  <el-input
-                    v-model="customerForm.wechat"
-                    placeholder="请输入微信号"
-                    clearable
-                    :disabled="!canEditField('wechat')"
-                  />
-                </el-form-item>
-              </el-col>
-              <el-col
+                <el-input
+                  v-model="customerForm.wechat"
+                  placeholder="请输入微信号"
+                  clearable
+                  :disabled="!canEditField('wechat')"
+                />
+              </el-form-item>
+
+              <el-form-item
                 v-if="canViewField('qq')"
-                :span="12"
+                label="QQ号"
               >
-                <el-form-item label="QQ号">
-                  <el-input
-                    v-model="customerForm.qq"
-                    placeholder="请输入QQ号"
-                    clearable
-                    maxlength="15"
-                    :disabled="!canEditField('qq')"
-                  />
-                </el-form-item>
-              </el-col>
-            </el-row>
+                <el-input
+                  v-model="customerForm.qq"
+                  placeholder="请输入QQ号"
+                  clearable
+                  maxlength="15"
+                  :disabled="!canEditField('qq')"
+                />
+              </el-form-item>
+            </div>
 
             <el-form-item
               v-if="canViewField('apple_id')"
+              class="tf-form-field--wide"
               label="Apple ID"
             >
               <el-input
@@ -1085,51 +895,47 @@
               <i class="fas fa-wallet" /> 账户信息
             </el-divider>
 
-            <el-row :gutter="20">
-              <el-col
+            <div class="tf-form-row tf-form-row--three">
+              <el-form-item
                 v-if="canViewField('balance')"
-                :span="8"
+                label="余额"
               >
-                <el-form-item label="余额">
-                  <AmountInput
-                    v-model="customerForm.balance"
-                    :step="0.01"
-                    :min="0"
-                    placeholder="请输入余额"
-                    class="w-full"
-                    :disabled="!canEditField('balance')"
-                  />
-                </el-form-item>
-              </el-col>
-              <el-col
+                <AmountInput
+                  v-model="customerForm.balance"
+                  :step="0.01"
+                  :min="0"
+                  placeholder="请输入余额"
+                  class="w-full"
+                  :disabled="!canEditField('balance')"
+                />
+              </el-form-item>
+
+              <el-form-item
                 v-if="canViewField('points')"
-                :span="8"
+                label="积分"
               >
-                <el-form-item label="积分">
-                  <el-input-number
-                    v-model="customerForm.points"
-                    :min="0"
-                    placeholder="请输入积分"
-                    :controls="false"
-                    class="w-full"
-                    :disabled="!canEditField('points')"
-                  />
-                </el-form-item>
-              </el-col>
-              <el-col
+                <el-input-number
+                  v-model="customerForm.points"
+                  :min="0"
+                  placeholder="请输入积分"
+                  :controls="false"
+                  class="w-full"
+                  :disabled="!canEditField('points')"
+                />
+              </el-form-item>
+
+              <el-form-item
                 v-if="canViewField('blacklist')"
-                :span="8"
+                label="黑名单状态"
               >
-                <el-form-item label="黑名单状态">
-                  <el-switch
-                    v-model="customerForm.blacklist"
-                    active-text="黑名单"
-                    inactive-text="正常"
-                    :disabled="!canEditField('blacklist')"
-                  />
-                </el-form-item>
-              </el-col>
-            </el-row>
+                <el-switch
+                  v-model="customerForm.blacklist"
+                  active-text="黑名单"
+                  inactive-text="正常"
+                  :disabled="!canEditField('blacklist')"
+                />
+              </el-form-item>
+            </div>
 
             <!-- 密码设置（仅编辑模式显示） -->
             <el-divider
@@ -1139,54 +945,50 @@
               <i class="fas fa-key" /> H5密码设置
             </el-divider>
 
-            <el-row
+            <el-form-item
               v-if="modalMode === 'edit'"
-              :gutter="20"
+              class="tf-form-field--wide"
+              label="修改密码"
             >
-              <el-col :span="24">
-                <el-form-item label="修改密码">
-                  <el-checkbox v-model="customerForm.changePassword">
-                    启用密码修改
-                  </el-checkbox>
-                </el-form-item>
-              </el-col>
-            </el-row>
+              <el-checkbox v-model="customerForm.changePassword">
+                启用密码修改
+              </el-checkbox>
+            </el-form-item>
 
-            <el-row
+            <div
               v-if="modalMode === 'edit' && customerForm.changePassword"
-              :gutter="20"
+              class="tf-form-row tf-form-row--mobile-single"
             >
-              <el-col :span="12">
-                <el-form-item
-                  label="新密码"
-                  required
-                >
-                  <el-input
-                    v-model="customerForm.password"
-                    type="password"
-                    placeholder="请输入新密码（至少6位）"
-                    clearable
-                    show-password
-                    maxlength="20"
-                  />
-                </el-form-item>
-              </el-col>
-              <el-col :span="12">
-                <el-form-item
-                  label="确认密码"
-                  required
-                >
-                  <el-input
-                    v-model="customerForm.confirmPassword"
-                    type="password"
-                    placeholder="请再次输入新密码"
-                    clearable
-                    show-password
-                    maxlength="20"
-                  />
-                </el-form-item>
-              </el-col>
-            </el-row>
+              <el-form-item
+                class="tf-form-field--wide"
+                label="新密码"
+                required
+              >
+                <el-input
+                  v-model="customerForm.password"
+                  type="password"
+                  placeholder="请输入新密码（至少6位）"
+                  clearable
+                  show-password
+                  maxlength="20"
+                />
+              </el-form-item>
+
+              <el-form-item
+                class="tf-form-field--wide"
+                label="确认密码"
+                required
+              >
+                <el-input
+                  v-model="customerForm.confirmPassword"
+                  type="password"
+                  placeholder="请再次输入新密码"
+                  clearable
+                  show-password
+                  maxlength="20"
+                />
+              </el-form-item>
+            </div>
 
             <!-- 备注 -->
             <el-divider content-position="left">
@@ -1195,6 +997,7 @@
 
             <el-form-item
               v-if="canViewField('remarks')"
+              class="tf-form-field--wide"
               label="备注"
             >
               <el-input
@@ -1290,7 +1093,7 @@
                   </div>
                 </div>
 
-                <div class="info-grid">
+                <div class="info-grid tf-detail-grid">
                   <div
                     v-if="canViewField('phone')"
                     class="info-row info-row-phone"
@@ -1368,8 +1171,8 @@
                     </span>
                     <span
                       class="value"
-                      :title="selectedCustomer.address || '-'"
-                    >{{ selectedCustomer.address || '-' }}</span>
+                      :title="formatCustomerAddress(selectedCustomer) || '-'"
+                    >{{ formatCustomerAddress(selectedCustomer) || '-' }}</span>
                   </div>
                   <div
                     v-if="canViewField('city') || canViewField('province')"
@@ -1464,7 +1267,7 @@
             <!-- 其他信息 -->
             <div
               v-if="(canViewField('wechat') && selectedCustomer.wechat) || (canViewField('qq') && selectedCustomer.qq) || (canViewField('apple_id') && selectedCustomer.apple_id) || (canViewField('remarks') && selectedCustomer.remarks) || (canViewField('created_at') && selectedCustomer.created_at) || (canViewField('last_purchase_date') && selectedCustomer.last_purchase_date)"
-              class="extra-info"
+              class="extra-info tf-detail-grid"
             >
               <div
                 v-if="canViewField('wechat') && selectedCustomer.wechat"
@@ -1482,7 +1285,7 @@
               </div>
               <div
                 v-if="canViewField('apple_id') && selectedCustomer.apple_id"
-                class="extra-info-item"
+                class="extra-info-item extra-info-item--wide"
               >
                 <i class="fab fa-apple" />
                 <span>Apple ID: {{ selectedCustomer.apple_id }}</span>
@@ -1512,7 +1315,7 @@
 
             <!-- 购买记录表格 -->
             <el-divider content-position="left">
-              <i class="fas fa-shopping-cart" /> 购买记录
+              <i class="fas fa-shopping-cart" /> 手机购买记录
               <el-tag
                 size="small"
                 class="ml-3"
@@ -1671,24 +1474,45 @@
             </div>
             <DataEmptyState
               v-else-if="!purchasesLoading"
-              description="暂无购买记录"
+              description="暂无手机购买记录"
               :image-size="200"
             >
               <template #description>
                 <p class="text-muted">
-                  该客户还没有购买记录
+                  该客户还没有手机购买记录
                 </p>
               </template>
             </DataEmptyState>
+            <CustomerGoodsHistory
+              :customer-id="selectedCustomer.id"
+              :active="showDetailModal"
+            />
+            <CustomerFilmHistory
+              :active="showDetailModal"
+              :customer="{ id: selectedCustomer.id, name: selectedCustomer.name ?? '', phone: selectedCustomer.phone ?? '' }"
+            />
           </div>
 
-          <template #footer>
+          <template
+            v-if="isMobile && selectedCustomer && (canEdit || canDelete)"
+            #footer
+          >
             <div class="tf-dialog-actions">
               <el-button
-                type="default"
-                @click="closeDetailModal"
+                v-if="canEdit"
+                v-permission="'customers:edit'"
+                type="primary"
+                @click.stop="runMobileDetailAction('edit')"
               >
-                关闭
+                <i class="fas fa-edit" />编辑
+              </el-button>
+              <el-button
+                v-if="canDelete"
+                v-permission="'customers:delete'"
+                type="danger"
+                @click.stop="runMobileDetailAction('delete')"
+              >
+                <i class="fas fa-trash" />删除
               </el-button>
             </div>
           </template>
@@ -1710,12 +1534,16 @@ import { useSearchHighlight } from '@/composables/useSearchHighlight'
 import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { unifiedApi } from '@/utils/unified-api'
 import { useMobile } from '@/composables/mobile'
-import { useMobileRowDoubleTap } from '@/composables/useMobileRowDoubleTap'
+import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
 import { ElButton, ElTable } from 'element-plus'
 import Pagination from '../../components/Pagination.vue'
-import CitySelector from '../../components/CitySelector.vue'
+import CustomerAddressFields from './page/CustomerAddressFields.vue'
+import { useCustomerAddress } from './useCustomerAddress'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import DateRangePicker from '@/components/DateRangePicker.vue'
+import CustomerPointsSettings from './page/CustomerPointsSettings.vue'
+import CustomerGoodsHistory from './page/CustomerGoodsHistory.vue'
+import CustomerFilmHistory from './page/CustomerFilmHistory.vue'
 import type { DateRangeValue } from '@/types/date-range'
 import ImportExportActions from '@/components/business/ImportExportActions.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
@@ -1723,12 +1551,12 @@ import { PermissionGate, PageHeader } from '@/components/base'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import { formatDate, formatAmount } from '@/utils/format'
 import { getActionColumnMinWidth, getIdentifierColumnMinWidth, getTextColumnMinWidth } from '@/utils/table-layout'
-import { isValidAppleAccount, isValidIdCard, isValidMobilePhone, normalizeAppleId, normalizeIdCard, normalizePersonName, normalizePhoneDigits } from '@/utils/security'
+import { isValidPersonName, isValidAppleAccount, isValidIdCard, isValidMobilePhone, normalizeAppleId, normalizeIdCard, normalizePersonName, normalizePhoneDigits } from '@/utils/security'
 import { logger } from '@/utils/logger'
 import { getRequestErrorMessage } from '@/utils/api-response'
-import { getProvinceName, joinCustomerAddress, normalizeRegion, splitCustomerAddress, type RegionSelection } from '@/services/region-options'
+import { getProvinceName, formatCustomerAddress, type RegionSelection } from '@/services/region-options'
 
-interface CustomerListItem {
+interface CustomerListItem extends Partial<RegionSelection> {
   id: number
   name?: string
   phone?: string
@@ -1743,8 +1571,7 @@ interface CustomerListItem {
   qq?: string
   apple_id?: string
   address?: string
-  city?: string
-  province?: string
+  region_version?: string
   balance?: number | string
   points?: number | string
   blacklist?: boolean
@@ -1756,7 +1583,7 @@ interface CustomerListItem {
   status?: string | number
 }
 
-interface CustomerFormState {
+interface CustomerFormState extends RegionSelection {
   id: number | null
   name: string
   phone: string
@@ -1770,8 +1597,7 @@ interface CustomerFormState {
   qq: string
   apple_id: string
   address: string
-  city: string
-  province: string
+  region_version?: string
   balance: number
   points: number
   blacklist: boolean
@@ -1817,6 +1643,7 @@ interface CustomerStatsState {
 }
 
 interface CustomersQueryParams {
+  include_address_levels: '1'
   page: number
   page_size: number
   search?: string
@@ -1842,15 +1669,6 @@ interface CustomerPurchasesResponseData {
   pagination?: Partial<CustomerPurchasesPagination>
 }
 
-interface CustomerPointsConfig {
-  enabled: boolean
-  amount_per_point: number
-  include_new: boolean
-  include_used: boolean
-  new_points_per_100: number
-  used_points_per_100: number
-}
-
 // 权限管理
 const {
   hasPermission,
@@ -1868,7 +1686,7 @@ const canManagePoints = computed(() => hasPermission('manage'))
 
 // 路由和状态管理
 const _router = useRouter()
-const { success, error, warning, info, handleApiError, confirm } = useNotification({ debounce: true })
+const { success, error, info, handleApiError, confirm } = useNotification({ debounce: true })
 const { refreshing, refresh } = useRefreshData()
 const { init: initFieldPermissions } = fieldPermissions
 const { isMobile } = useMobile()
@@ -1892,8 +1710,6 @@ const customersTableRef = ref<InstanceType<typeof ElTable> | null>(null)
 const searchKeyword = ref('')
 const hasSelection = computed(() => selectedRows.value.length > 0)
 const selectedCount = computed(() => selectedRows.value.length)
-const mobileActionRowId = ref<string | null>(null)
-const { isDoubleTap } = useMobileRowDoubleTap()
 
 const customerFieldMap: Record<string, string> = {
   stats_total_customers: 'stats.total_customers',
@@ -1915,6 +1731,9 @@ const customerFieldMap: Record<string, string> = {
   address: 'customer.address',
   city: 'customer.city',
   province: 'customer.province',
+  district: 'customer.district',
+  town: 'customer.town',
+  village: 'customer.village',
   balance: 'customer.balance',
   points: 'customer.points',
   blacklist: 'customer.blacklist',
@@ -1981,10 +1800,6 @@ const showStatusColumn = computed(() => canViewField('status'))
 const showActionField = computed(() => (
   shouldShowActionColumn(canViewField('actions'), [canEdit.value, canDelete.value]) && !isMobile.value
 ))
-const showMobileActionField = computed(() => shouldShowActionColumn(
-  canViewField('actions'),
-  [canEdit.value, canDelete.value]
-))
 const customerActionColumnWidth = computed(() => getActionColumnMinWidth([
   ...(canEdit.value ? ['编辑'] : []),
   '详情',
@@ -2013,25 +1828,8 @@ const customerMobileColumnWidths = computed(() => ({
 
 const getCustomerRowKey = (row: CustomerListItem) => String(row.id)
 
-const toggleMobileActions = (id: number) => {
-  if (!isMobile.value) return
-  const rowId = String(id)
-  mobileActionRowId.value = mobileActionRowId.value === rowId ? null : rowId
-}
 
-const handleMobileRowTap = (id: number) => {
-  if (!isMobile.value) return
 
-  if (isDoubleTap(String(id))) toggleMobileActions(id)
-}
-
-const handleCustomerRowClick = (row: CustomerListItem, _column: unknown, event: Event) => {
-  if (!isMobile.value) return
-
-  const target = event.target as HTMLElement | null
-  if (target?.closest('button, a, input, textarea, select, .el-button, .el-input, .el-select')) return
-  handleMobileRowTap(row.id)
-}
 
 // 表格操作方法
 const clearSelection = () => {
@@ -2242,6 +2040,10 @@ const customerForm = ref<CustomerFormState>({
   address: '',
   city: '',
   province: '',
+  district: '',
+  town: '',
+  village: '',
+  region_version: '',
   balance: 0,
   points: 0,
   blacklist: false,
@@ -2251,64 +2053,6 @@ const customerForm = ref<CustomerFormState>({
   confirmPassword: ''
 })
 const selectedCustomer = ref<CustomerListItem | null>(null)
-const pointsConfigLoading = ref(false)
-const pointsConfigSaving = ref(false)
-const CUSTOMER_POINTS_AMOUNT_PER_POINT = 100
-const pointsConfigForm = ref<CustomerPointsConfig>({
-  enabled: true,
-  amount_per_point: CUSTOMER_POINTS_AMOUNT_PER_POINT,
-  include_new: true,
-  include_used: true,
-  new_points_per_100: 1,
-  used_points_per_100: 1
-})
-
-const pointsIncludedConditions = computed<string[]>({
-  get: () => {
-    const conditions: string[] = []
-    if (pointsConfigForm.value.include_new) conditions.push('new')
-    if (pointsConfigForm.value.include_used) conditions.push('used')
-    return conditions
-  },
-  set: (conditions) => {
-    pointsConfigForm.value.include_new = conditions.includes('new')
-    pointsConfigForm.value.include_used = conditions.includes('used')
-  }
-})
-
-const pointsConfigValid = computed(() => (
-  !pointsConfigForm.value.enabled || (
-    (pointsConfigForm.value.include_new || pointsConfigForm.value.include_used) &&
-    (!pointsConfigForm.value.include_new || (
-      Number.isInteger(Number(pointsConfigForm.value.new_points_per_100)) &&
-      Number(pointsConfigForm.value.new_points_per_100) >= 1 &&
-      Number(pointsConfigForm.value.new_points_per_100) <= 100
-    )) &&
-    (!pointsConfigForm.value.include_used || (
-      Number.isInteger(Number(pointsConfigForm.value.used_points_per_100)) &&
-      Number(pointsConfigForm.value.used_points_per_100) >= 1 &&
-      Number(pointsConfigForm.value.used_points_per_100) <= 100
-    ))
-  )
-))
-
-const pointsConfigPreview = computed(() => {
-  if (!pointsConfigForm.value.enabled) {
-    return '自动积分已停用；销售出库暂不累计积分。'
-  }
-
-  const typeRules = [
-    pointsConfigForm.value.include_new
-      ? `全新每消费 ${CUSTOMER_POINTS_AMOUNT_PER_POINT} 元累计 ${pointsConfigForm.value.new_points_per_100} 积分`
-      : '',
-    pointsConfigForm.value.include_used
-      ? `二手每消费 ${CUSTOMER_POINTS_AMOUNT_PER_POINT} 元累计 ${pointsConfigForm.value.used_points_per_100} 积分`
-      : ''
-  ].filter(Boolean)
-
-  return `${typeRules.join('；') || '未选择参与类型'}；批发、划拨无积分。`
-})
-
 // 表单验证错误
 const errors = ref<Record<string, string>>({})
 
@@ -2332,36 +2076,10 @@ const purchasesPagination = ref<CustomerPurchasesPagination>({
 })
 const { loading: purchasesLoading } = useLoadingState()
 
-// 县区与详细地址共用现有 address 存储字段，不依赖生产库新增列。
-const cityLocation = ref<RegionSelection>({
-  province: '',
-  city: '',
-  district: ''
-})
-
-const addressDetail = computed({
-  get: () => splitCustomerAddress(cityLocation.value, customerForm.value.address).detail,
-  set: (detail: string) => {
-    customerForm.value.address = joinCustomerAddress(cityLocation.value.district, detail)
-  }
-})
-const addressDetailLimit = computed(() => Math.max(0, 200 - (
-  cityLocation.value.district ? cityLocation.value.district.length + 1 : 0
-)))
-
-const handleLocationChange = (location: RegionSelection) => {
-  const detail = addressDetail.value
-  if (canEditField('province') && location.province !== cityLocation.value.province) {
-    customerForm.value.province = location.province
-  }
-  if (canEditField('city') && location.city !== cityLocation.value.city) {
-    customerForm.value.city = location.city
-  }
-  if (canEditField('address')) {
-    customerForm.value.address = joinCustomerAddress(location.district, detail)
-  }
-  cityLocation.value = location
-}
+const {
+  capabilities: addressCapabilities, cityLocation, addressDetail, addressDetailLimit,
+  handleLocationChange, resetAddressLocation
+} = useCustomerAddress(customerForm, canEditField)
 
 const handleCustomerNameInput = (value: string) => {
   customerForm.value.name = normalizePersonName(value, 50)
@@ -2396,75 +2114,7 @@ const handleAppleIdInput = (value: string) => {
   }
 }
 
-const applyPointsConfig = (config?: Partial<CustomerPointsConfig>) => {
-  pointsConfigForm.value = {
-    enabled: config?.enabled ?? true,
-    amount_per_point: CUSTOMER_POINTS_AMOUNT_PER_POINT,
-    include_new: config?.include_new ?? true,
-    include_used: config?.include_used ?? true,
-    new_points_per_100: Number.isInteger(Number(config?.new_points_per_100)) &&
-      Number(config?.new_points_per_100) >= 1 && Number(config?.new_points_per_100) <= 100
-      ? Number(config?.new_points_per_100)
-      : 1,
-    used_points_per_100: Number.isInteger(Number(config?.used_points_per_100)) &&
-      Number(config?.used_points_per_100) >= 1 && Number(config?.used_points_per_100) <= 100
-      ? Number(config?.used_points_per_100)
-      : 1
-  }
-}
-
-const loadPointsSettings = async () => {
-  pointsConfigLoading.value = true
-  try {
-    const response = await unifiedApi.get('/customers/points-config')
-    if (response.success) {
-      applyPointsConfig(response.data)
-    }
-  } catch (err) {
-    handleApiError(err, '获取积分设置失败')
-  } finally {
-    pointsConfigLoading.value = false
-  }
-}
-
-const openPointsSettings = async () => {
-  showPointsSettingsModal.value = true
-  await loadPointsSettings()
-}
-
-const closePointsSettings = () => {
-  showPointsSettingsModal.value = false
-}
-
-const savePointsSettings = async () => {
-  if (!pointsConfigValid.value) {
-    warning('启用积分时，请至少选择一种参与类型并设置有效积分')
-    return
-  }
-
-  pointsConfigSaving.value = true
-  try {
-    const response = await unifiedApi.put('/customers/points-config', {
-      enabled: pointsConfigForm.value.enabled,
-      include_new: pointsConfigForm.value.include_new,
-      include_used: pointsConfigForm.value.include_used,
-      new_points_per_100: Number(pointsConfigForm.value.new_points_per_100),
-      used_points_per_100: Number(pointsConfigForm.value.used_points_per_100)
-    })
-
-    if (response.success) {
-      applyPointsConfig(response.data)
-      success('积分设置保存成功')
-      closePointsSettings()
-    } else {
-      error(response.message || '积分设置保存失败')
-    }
-  } catch (err) {
-    handleApiError(err, '积分设置保存失败')
-  } finally {
-    pointsConfigSaving.value = false
-  }
-}
+const openPointsSettings = () => { showPointsSettingsModal.value = true }
 
 // 方法
 const _performSearch = (_keyword: string) => {
@@ -2533,6 +2183,7 @@ const loadCustomers = async (showLoadingState = true) => {
 
     // 构建搜索参数
     const params: CustomersQueryParams = {
+      include_address_levels: '1',
       page: pagination.page,
       page_size: pagination.page_size,
       sort_by: 'created_at',
@@ -2693,6 +2344,10 @@ const openEditModal = (customer: CustomerListItem) => {
     address: customer.address || '',
     city: customer.city || '',
     province: customer.province || '',
+    district: customer.district || '',
+    town: customer.town || '',
+    village: customer.village || '',
+    region_version: customer.region_version || '',
     // 确保数值字段是数字类型，避免 ElInputNumber 类型错误
     balance: Number(customer.balance) || 0,
     points: Number(customer.points) || 0,
@@ -2701,13 +2356,7 @@ const openEditModal = (customer: CustomerListItem) => {
   })
 
   // 设置城市省份选择器的值
-  const region = normalizeRegion({
-    province: customer.province || '',
-    city: customer.city || '',
-    district: ''
-  })
-  const address = splitCustomerAddress(region, customer.address || '')
-  cityLocation.value = { ...region, district: address.district || region.district }
+  resetAddressLocation()
   errors.value = {} // 重置错误信息
   showCustomerModal.value = true
 }
@@ -2735,6 +2384,10 @@ const resetCustomerForm = () => {
     address: '',
     city: '',
     province: '',
+    district: '',
+    town: '',
+    village: '',
+    region_version: '',
     balance: 0,
     points: 0,
     blacklist: false,
@@ -2745,11 +2398,7 @@ const resetCustomerForm = () => {
   }
 
   // 重置城市省份选择器
-  cityLocation.value = {
-    province: '',
-    city: '',
-    district: ''
-  }
+  resetAddressLocation()
 }
 
 const saveCustomer = async () => {
@@ -2771,8 +2420,8 @@ const saveCustomer = async () => {
     customerForm.value.apple_id = normalizeAppleId(customerForm.value.apple_id)
 
     // 表单验证
-    if (!customerForm.value.name?.trim()) {
-      error('请输入客户姓名')
+    if (!isValidPersonName(customerForm.value.name, 50)) {
+      error('请输入1至50字的单行客户姓名')
       return
     }
     if (!customerForm.value.phone?.trim()) {
@@ -2845,6 +2494,10 @@ const saveCustomer = async () => {
       delete submitData.changePassword
     }
 
+    for (const field of Object.keys(submitData)) {
+      if ((customerFieldMap[field] && !canViewField(field)) ||
+        (!addressCapabilities.value.ready && ['district', 'town', 'village', 'region_version'].includes(field))) Reflect.deleteProperty(submitData, field)
+    }
     let response: { success?: boolean; message?: string } | null = null
     if (modalMode.value === 'edit') {
       response = await unifiedApi.put(`/customers/${customerForm.value.id}`, submitData)
@@ -3149,6 +2802,18 @@ onUnmounted(() => {
     clearTimeout(refreshTimeoutId)
   }
 })
+
+const { doubleTapOptions: mobileDetailTapOptions, handleRowDoubleClick: handleMobileDetailDoubleClick } = useMobileTableDetail<CustomerListItem>({
+  enabled: computed(() => isMobile.value && canView.value), rows: customers, getKey: row => row.id, onOpen: viewCustomerDetail
+})
+
+const runMobileDetailAction = (action: 'edit' | 'delete') => {
+  const row = selectedCustomer.value
+  if (!row) return
+  showDetailModal.value = false
+  if (action === 'edit') editCustomer(row)
+  else void deleteCustomer(row)
+}
 </script>
 
 <style lang="scss" scoped>
@@ -3420,63 +3085,6 @@ onUnmounted(() => {
   }
 }
 
-.points-settings-form {
-  .points-type-buttons {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    width: 100%;
-
-    :deep(.el-checkbox-button) {
-      min-width: 0;
-    }
-
-    :deep(.el-checkbox-button__inner) {
-      width: 100%;
-      text-align: center;
-    }
-  }
-
-  .points-type-rates {
-    display: grid;
-    width: 100%;
-    gap: var(--tf-space-2);
-  }
-
-  .points-type-rate-row {
-    display: grid;
-    grid-template-columns: 48px minmax(132px, 1fr) 110px 32px;
-    align-items: center;
-    gap: 8px;
-    color: var(--el-text-color-regular);
-    font-size: var(--tf-type-scale-14);
-  }
-
-  .points-type-rate-label {
-    color: var(--el-text-color-primary);
-    font-weight: 600;
-  }
-}
-
-.points-settings-preview {
-  margin: 8px 0 0 120px;
-  padding: 12px;
-  border: 1px solid var(--el-border-color-lighter);
-  border-radius: 6px;
-  background: var(--el-fill-color-light);
-  color: var(--el-text-color-regular);
-  font-size: var(--tf-type-scale-13);
-  line-height: 1.6;
-
-  .preview-title {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin-bottom: 4px;
-    color: var(--el-text-color-primary);
-    font-weight: 600;
-  }
-}
-
 // 响应式设计
 @media (max-width: 767px) {
   .page-body {
@@ -3493,16 +3101,6 @@ onUnmounted(() => {
   .page-subtitle {
     font-size: var(--tf-type-scale-14);
   }
-
-  .points-settings-preview {
-    margin-left: 0;
-  }
-
-  .points-settings-form .points-type-rate-row {
-    grid-template-columns: 42px minmax(0, 1fr) 96px 28px;
-    gap: var(--tf-space-1);
-  }
-
 }
 
 // 小屏幕手机适配（小于480px）
@@ -3951,65 +3549,8 @@ onUnmounted(() => {
 </style>
 
 <style lang="scss" scoped>
-// 移动端响应式样式
-@media (max-width: 767px) {
-  .customers-dialog-form {
-    :deep(.el-row) {
-      margin-left: 0 !important;
-      margin-right: 0 !important;
-    }
-
-    :deep(.el-col) {
-      max-width: 100%;
-      flex: 0 0 100%;
-      padding-left: 0 !important;
-      padding-right: 0 !important;
-    }
-
-    :deep(.el-form-item) {
-      margin-bottom: 12px;
-    }
-
-    :deep(.el-form-item__label) {
-      font-size: var(--tf-type-scale-13);
-      line-height: 1.4;
-      padding-bottom: 4px;
-    }
-
-    :deep(.el-input),
-    :deep(.el-input-number),
-    :deep(.el-select),
-    :deep(.el-date-editor),
-    :deep(.el-radio-group),
-    :deep(.el-checkbox),
-    :deep(.el-switch) {
-      width: 100%;
-    }
-
-    :deep(.el-input__wrapper),
-    :deep(.el-input-number .el-input__wrapper),
-    :deep(.el-date-editor .el-input__wrapper) {
-      padding: 1px 12px;
-    }
-
-    :deep(.el-radio-group) {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 8px;
-    }
-
-    :deep(.el-radio) {
-      margin-right: 0;
-      min-height: 40px;
-      padding: 0 12px;
-      border: 1px solid var(--tf-color-border-blue);
-      border-radius: 12px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-    }
-  }
-
+// 客户详情响应式布局
+@media (max-width: 1024px) {
   .customer-detail-view {
     .customer-info-panel {
       grid-template-columns: 1fr;
@@ -4039,27 +3580,64 @@ onUnmounted(() => {
       }
 
       .info-grid {
-        grid-template-columns: 1fr;
-        gap: 8px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: var(--tf-space-2);
+        padding: 0;
+
+        .info-row {
+          grid-template-columns: var(--tf-space-4) minmax(0, 1fr);
+          padding: var(--tf-space-2) var(--tf-space-3);
+          column-gap: var(--tf-space-2);
+
+          &:only-child {
+            grid-column: 1 / -1;
+          }
+
+          .label {
+            font-size: var(--tf-type-scale-12);
+
+            i {
+              font-size: var(--tf-type-scale-13);
+            }
+          }
+
+          .value {
+            font-size: var(--tf-type-scale-12);
+            text-align: right;
+          }
+        }
       }
     }
 
     .panel-right {
       .stats-card {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: var(--tf-space-2);
         padding: 12px;
 
         .stat-item {
+          min-width: 0;
+          gap: var(--tf-space-2);
           padding: 10px;
 
+          &:only-child {
+            grid-column: 1 / -1;
+          }
+
           .stat-icon {
+            flex-shrink: 0;
             width: 36px;
             height: 36px;
             font-size: var(--tf-type-scale-16);
           }
 
           .stat-content {
+            min-width: 0;
+
             .stat-value {
               font-size: var(--tf-type-scale-16);
+              overflow-wrap: anywhere;
             }
           }
         }
@@ -4067,40 +3645,38 @@ onUnmounted(() => {
     }
 
     .extra-info {
-      flex-direction: column;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: var(--tf-space-2);
       padding: 12px;
 
       .extra-info-item {
-        padding: 6px 12px;
+        min-width: 0;
+        align-items: flex-start;
+        padding: var(--tf-space-2);
         font-size: var(--tf-type-scale-12);
-      }
-    }
 
-    .panel-left {
-      .info-grid {
-        padding: 0;
-      }
-
-      .info-grid .info-row {
-        padding: 10px 12px;
-        column-gap: 8px;
-
-        .label {
-          font-size: var(--tf-type-scale-12);
-
-          i {
-            font-size: var(--tf-type-scale-13);
-          }
+        i {
+          flex-shrink: 0;
         }
 
-        .value {
-          font-size: var(--tf-type-scale-12);
-          text-align: right;
+        span {
+          min-width: 0;
+          overflow-wrap: anywhere;
+        }
+
+        &--wide,
+        &.remarks,
+        &:only-child {
+          grid-column: 1 / -1;
         }
       }
     }
   }
 
+}
+
+@media (max-width: 767px) {
   .section-header {
     flex-direction: column;
     align-items: flex-start;
@@ -4152,14 +3728,6 @@ onUnmounted(() => {
 
 <style>
 @media (max-width: 479px) {
-  .customers-dialog-form :deep(.el-form-item) {
-    margin-bottom: 10px;
-  }
-
-  .customers-dialog-form :deep(.el-divider) {
-    margin: 14px 0 12px;
-  }
-
   .customer-detail-view .panel-left .info-header {
     padding: 14px 12px;
   }

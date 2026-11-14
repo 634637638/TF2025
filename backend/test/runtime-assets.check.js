@@ -37,12 +37,20 @@ function deployment(t) {
     'src/config/capability-registry.js',
     'src/config/module-permission-capabilities.json',
     'src/config/reminder-policy.json',
+    'src/config/input-validation.json',
+    'src/middleware/validation.js',
+    'src/utils/input-values.js',
     'src/services/reminder.service.js'
   ]) {
     const destination = path.join(backendRoot, relativePath)
     fs.mkdirSync(path.dirname(destination), { recursive: true })
     fs.copyFileSync(path.join(__dirname, '..', relativePath), destination)
   }
+  fs.cpSync(path.resolve(__dirname, '../data/regions/2023-06-30'), path.join(backendRoot, 'data/regions/2023-06-30'), { recursive: true })
+  fs.mkdirSync(path.join(backendRoot, 'src/contracts'), { recursive: true })
+  for (const file of ['regions.openapi.json', 'performance-report.schema.json']) fs.copyFileSync(path.resolve(__dirname, '../src/contracts', file), path.join(backendRoot, 'src/contracts', file))
+  // 发布目录需要已安装的运行时依赖；链接真实包，仍不读取仓库根配置。
+  fs.symlinkSync(path.resolve(__dirname, '../node_modules'), path.join(backendRoot, 'node_modules'), 'dir')
   const env = { ...process.env }
   delete env.TF2025_CONFIG_DIR
   return {
@@ -69,6 +77,23 @@ test('缺少提醒策略时检查失败，提示同步后端配置目录', t => 
   assert.equal(result.status, 1)
   assert.match(result.stderr, /CONFIG_MISSING/)
   assert.match(result.stderr, /backend\/src\/config/)
+})
+
+test('发布漏传五级地区文件时拒绝通过，不等到用户保存才发现资源缺失', t => {
+  const fixture = deployment(t)
+  fs.unlinkSync(path.join(fixture.root, 'data/regions/2023-06-30/11.json.gz'))
+  assert.equal(fixture.run().status, 1)
+})
+
+test('地区压缩文件损坏或契约漏传时拒绝通过，全部离线', t => {
+  const fixture = deployment(t)
+  const file = path.join(fixture.root, 'data/regions/2023-06-30/11.json.gz')
+  const original = fs.readFileSync(file)
+  fs.writeFileSync(file, '损坏资源')
+  assert.match(fixture.run().stderr, /REGION_INVALID/)
+  fs.writeFileSync(file, original)
+  fs.unlinkSync(path.join(fixture.root, 'src/contracts/regions.openapi.json'))
+  assert.equal(fixture.run().status, 1)
 })
 
 for (const value of ['{', 'null', '{}', '{"mandatory_hours":0}', '{"mandatory_hours":-1}', '{"mandatory_hours":"3"}']) {

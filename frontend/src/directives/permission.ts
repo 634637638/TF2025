@@ -40,12 +40,12 @@ const hasPermission = (binding: DirectiveBinding<PermissionDirectiveValue>): boo
   }
 
   const permissionList = Array.isArray(permissions) ? permissions : [permissions]
-  const hasModuleWildcard = permissionList.some((permission) => {
+  const canUse = (permission: string) => {
     const [module] = permission.split(':')
-    return Boolean(module && userPermissions.includes(`${module}:*`))
-  })
-
-  return hasModuleWildcard || PermissionUtils.hasPermission(userPermissions, permissions as string)
+    return Boolean(module && userPermissions.includes(`${module}:*`)) || PermissionUtils.hasPermission(userPermissions, permission)
+  }
+  const mode = typeof binding.value === 'string' ? 'any' : binding.value?.mode || 'any'
+  return mode === 'all' ? permissionList.every(canUse) : permissionList.some(canUse)
 }
 
 const applyPermissionVisibility = (

@@ -98,7 +98,7 @@ class SupplierController {
 
   async detail(req, res) {
     try {
-      const result = await this.service.detail(req.params.id)
+      const result = await this.service.detail(req.params.id, req.user)
       return ApiResponse.success(res, result)
     } catch (error) {
       if (error.statusCode) return ApiResponse.error(res, error.message, error.statusCode)

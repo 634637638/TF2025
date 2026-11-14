@@ -7,6 +7,8 @@ const SalesStatsController = require('../controllers/sales-stats.controller')
 const SalesAvailablePhonesController = require('../controllers/sales-available-phones.controller')
 const SalesInventoryReportController = require('../controllers/sales-inventory-report.controller')
 const SalesPhoneController = require('../controllers/sales-phone.controller')
+const SalesCheckoutController = require('../controllers/sales-checkout.controller')
+const SalesAftersaleController = require('../controllers/sales-aftersale.controller')
 const SalesAvailablePhonesService = require('../services/sales-available-phones.service')
 const salesCustomerSearchController = new SalesCustomerSearchController()
 const salesCustomerPhoneController = new SalesCustomerPhoneController()
@@ -15,6 +17,8 @@ const salesAvailablePhonesService = new SalesAvailablePhonesService()
 const salesAvailablePhonesController = new SalesAvailablePhonesController({ service: salesAvailablePhonesService })
 const salesInventoryReportController = new SalesInventoryReportController()
 const salesPhoneController = new SalesPhoneController()
+const salesCheckoutController = new SalesCheckoutController()
+const salesAftersaleController = new SalesAftersaleController()
 
 // 获取可销售手机列表
 router.get('/phones/available', unifiedAuth, requirePermission('sales:view'), salesAvailablePhonesController.getAvailablePhones.bind(salesAvailablePhonesController))
@@ -25,6 +29,20 @@ router.get('/phones/available/export', unifiedAuth, requirePermission('sales:exp
 // 预定设备从销售、库存或预定页面均可出库；统一使用 sales:create 权限。
 // 预定客户、匹配设备和预定状态仍在事务内严格校验，不能通过权限放宽绕过绑定关系。
 router.post('/phone', unifiedAuth, requireAnyPermission(['sales:sell', 'inventory:sell']), salesPhoneController.sell.bind(salesPhoneController))
+
+// 服务内按实际明细再次核验手机、收费商品和赠品权限；同一请求事务提交。
+router.post('/checkout/quote', unifiedAuth, requireAnyPermission(['sales:sell', 'inventory:sell', 'accessories:create', 'accessories:gift']), salesCheckoutController.quote.bind(salesCheckoutController))
+router.post('/checkout', unifiedAuth, requireAnyPermission(['sales:sell', 'inventory:sell', 'accessories:create', 'accessories:gift']), salesCheckoutController.checkout.bind(salesCheckoutController))
+router.get('/checkout/phones/:phoneId/return-checklist', unifiedAuth, requirePermission('query:view'), requirePermission('query:return-to-stock'), salesAftersaleController.returnChecklist.bind(salesAftersaleController))
+router.get('/checkout/:orderId/phones/:saleId/return-checklist', unifiedAuth, requirePermission('query:view'), requirePermission('query:return-to-stock'), salesAftersaleController.returnChecklist.bind(salesAftersaleController))
+router.post('/checkout/:orderId/phones/:saleId/return/quote', unifiedAuth, requirePermission('query:view'), requirePermission('query:return-to-stock'), salesAftersaleController.quotePhoneReturn.bind(salesAftersaleController))
+router.post('/checkout/:orderId/phones/:saleId/return', unifiedAuth, requirePermission('query:view'), requirePermission('query:return-to-stock'), salesAftersaleController.submitPhoneReturn.bind(salesAftersaleController))
+router.get('/checkout/:orderId/items/:itemId/return', unifiedAuth, requirePermission('query:view'), requirePermission('query:return-to-stock'), requirePermission('accessories:view'), salesAftersaleController.goodsReturnContext.bind(salesAftersaleController))
+router.post('/checkout/:orderId/items/:itemId/return/quote', unifiedAuth, requirePermission('query:view'), requirePermission('query:return-to-stock'), requirePermission('accessories:view'), salesAftersaleController.quoteGoodsReturn.bind(salesAftersaleController))
+router.post('/checkout/:orderId/items/:itemId/return', unifiedAuth, requirePermission('query:view'), requirePermission('query:return-to-stock'), requirePermission('accessories:view'), salesAftersaleController.submitGoodsReturn.bind(salesAftersaleController))
+router.get('/checkout/:orderId/items/:itemId/exchange', unifiedAuth, requirePermission('query:view'), requirePermission('query:exchange'), requirePermission('accessories:view'), salesAftersaleController.goodsExchangeContext.bind(salesAftersaleController))
+router.post('/checkout/:orderId/items/:itemId/exchange/quote', unifiedAuth, requirePermission('query:view'), requirePermission('query:exchange'), requirePermission('accessories:view'), salesAftersaleController.quoteGoodsExchange.bind(salesAftersaleController))
+router.post('/checkout/:orderId/items/:itemId/exchange', unifiedAuth, requirePermission('query:view'), requirePermission('query:exchange'), requirePermission('accessories:view'), salesAftersaleController.submitGoodsExchange.bind(salesAftersaleController))
 
 // 获取销售统计
 router.get('/stats', unifiedAuth, requirePermission('sales:view'), salesStatsController.getStats.bind(salesStatsController))

@@ -20,6 +20,41 @@ test('弹窗审计接受公共尺寸规则并拒绝默认参数覆盖和档位�
       const result = run()
       assert.equal(result.status, 0, result.stdout + result.stderr)
     })
+    await t.test('业务确认、错误提示和注释不受表单关闭规则影响', async () => {
+      const probe = join(fixture, 'src/components/ConfirmProbe.vue')
+      await writeFile(probe, `<script setup>
+        import { useNotification } from '@/composables/useNotification';
+        const notices = useNotification();
+        notices.confirm('确定删除这条销售记录吗？');
+        notices.confirm('此操作将丢弃所有未提交的更改，是否继续？');
+        notices.error('未保存内容，关闭后重试');
+        // notices.confirm('尚有未提交的销售内容，确定关闭吗？');
+      </script>`)
+      const result = run()
+      assert.equal(result.status, 0, result.stdout + result.stderr)
+      await rm(probe)
+    })
+    for (const [extension, content] of [
+      ['vue', `<script setup>
+        import { useNotification } from '@/composables/useNotification';
+        const { confirm: ask } = useNotification();
+        ask('您有未保存的更改，确定要关闭吗？');
+      </script>`],
+      ['ts', `import { useNotification as feedback } from '@/composables/useNotification';
+        const notices = feedback();
+        notices.confirm(uncertain ? '仍要关闭当前草稿吗？' : '尚有未提交的销售内容，确定关闭吗？');`],
+      ['js', `import { confirmAction as ask } from '@/utils/message-box';
+        ask('Unsaved changes. Close editor?');`]
+    ]) {
+      await t.test(`拒绝${extension}表单关闭二次确认`, async () => {
+        const probe = join(fixture, `src/components/CloseConfirmProbe.${extension}`)
+        await writeFile(probe, content)
+        const result = run()
+        assert.equal(result.status, 1, result.stdout + result.stderr)
+        assert.match(result.stdout + result.stderr, /不得弹出未保存\/未提交二次确认/)
+        await rm(probe)
+      })
+    }
     const component = join(fixture, 'src/components/MobileDialog.vue')
     const source = await readFile(component, 'utf8')
     for (const [label, content, expected] of [

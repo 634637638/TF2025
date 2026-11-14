@@ -1,6 +1,8 @@
 import { ref } from 'vue'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { flushPromises, shallowMount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
+import { ElTable, ElTableColumn } from 'element-plus'
+import RecordDetailDialog from '@/components/RecordDetailDialog.vue'
 import Returngoods from '@/views/system/page/Returngoods.vue'
 
 const mocks = vi.hoisted(() => ({
@@ -25,13 +27,17 @@ const response = (model: string) => ({
   data: [{ id: 1, phone_id: 2, model }],
   pagination: { total: 1 }
 })
-const wrappers: ReturnType<typeof shallowMount>[] = []
+const wrappers: ReturnType<typeof mount>[] = []
 const render = async () => {
   mocks.get.mockResolvedValueOnce(response('原有设备'))
-  const wrapper = shallowMount(Returngoods, {
+  const wrapper = mount(Returngoods, {
     global: {
-      stubs: { DataEmptyState: true },
-      directives: { 'tf-loading': {} }
+      components: { ElTable, ElTableColumn, RecordDetailDialog },
+      mocks: { $getNumberColumnWidth: () => 70, $getActionColumnWidth: () => 130 },
+      stubs: { DataEmptyState: true, MobileDialog: true, RecordDetailDialog: true,
+        ElInput: true, ElButton: true, ElForm: true, ElFormItem: true, ElSelect: true,
+        ElOption: true, ElDatePicker: true, Pagination: true, UnifiedSearchPanel: true },
+      directives: { 'tf-loading': {}, 'table-double-tap': {} }
     }
   })
   wrappers.push(wrapper)

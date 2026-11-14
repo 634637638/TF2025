@@ -36,3 +36,13 @@
 2. 新增手机型号时，先确认外部型号代码，再加入产品名称映射和报价采集代码表。
 3. 修改颜色管理后重新执行一次报价同步，采集会在同步开始时刷新启用颜色配置。
 4. 同步日志中的型号、颜色、内存和价格应能组成唯一的可核对组合；无法匹配的组合保留在同步失败明细中，不使用其他型号或容量的价格替代。
+
+## 匹配逻辑职责与回归
+
+颜色、容量、型号归一和同城候选排序的唯一实现为 `backend/src/services/price-product-matcher.service.js`。`price-list.service.js` 保留原公共方法委托，仍独占数据库、启用颜色配置、外部抓取与会话；匹配器按需读取主服务配置，不复制缓存或权限状态，不访问数据库/网络，不改变输入候选数组。拆分不改变上述业务匹配规则，也不代表整个价目/商城大文件债务已关闭。
+
+外部来源的搜索候选词、目标型号识别、有效报价行判断和检索URL构造统一由 `backend/src/services/price-source-parser.service.js` 实现。主服务保留原四个公共方法委托，注入现有HTML解析器及统一来源地址；解析单元不读取环境、Cookie或数据库，也不发起请求。代码优先/名称补搜、Duo别名、人民币商品行识别及空品牌筛选均保留原行为；此处判断只决定是否继续解析，不能代替写回前的严格品牌、型号、容量和颜色匹配。
+
+```bash
+ENV_FILE=test/missing-unit-env RUN_DB_TESTS=false node --test backend/test/price-source-parser.check.js backend/test/price-product-matcher.check.js backend/test/price-list-iphone18.check.js backend/test/price-channel-pricing.check.js backend/test/price-list-management.check.js backend/test/price-list-public-search-contract.check.js
+```

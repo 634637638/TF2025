@@ -276,7 +276,8 @@ class StockInRepository {
     if (!Object.hasOwn(allowed, table) || allowed[table] !== valueColumn) throw new Error('无效的入库参考字段')
     const uniqueIds = [...new Set(ids.map(Number).filter(Number.isInteger))]
     const placeholders = uniqueIds.map(() => '?').join(', ')
-    const [rows] = await connection.query(`SELECT id, ${valueColumn} AS value FROM ${table} WHERE id IN (${placeholders})`, uniqueIds)
+    const scopeCondition = table === 'brands' ? " AND business_scope IN ('phone', 'both')" : ''
+    const [rows] = await connection.query(`SELECT id, ${valueColumn} AS value FROM ${table} WHERE id IN (${placeholders})${scopeCondition}`, uniqueIds)
     return new Map(rows.map(row => [Number(row.id), row.value]))
   }
 }

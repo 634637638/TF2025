@@ -244,6 +244,22 @@ test('入库创建生成采购单号失败时回滚一次并释放连接', async
   assert.deepEqual(events, ['prepare', 'begin', 'rollback', 'release'])
 })
 
+test('入库价格和选填售价拒绝类型强转及部分数字，不启动写事务', async () => {
+  for (const field of ['purchase_cost', 'sale_price']) {
+    for (const value of ['12元', '12abc', '1e3', true, {}, [], -1, Infinity, '1.234']) {
+      const events = []
+      const controller = new StockInController({
+        database: () => ({ async getConnection() { return createConnection({ events }) } }),
+        logger: { error() {} }
+      })
+      const response = createResponse()
+      await controller.create(createRequest({ products: [{ ...validProduct(), [field]: value }] }), response)
+      assert.equal(response.statusCode, 400, `${field}: ${String(value)}`)
+      assert.deepEqual(events, ['release'])
+    }
+  }
+})
+
 test('入库更新锁定授权门店记录、规范状态字段并提交事务', async () => {
   const events = []
   const calls = []

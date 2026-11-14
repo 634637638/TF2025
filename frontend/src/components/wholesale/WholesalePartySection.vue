@@ -62,7 +62,6 @@
               v-model="formData.customer_phone"
               placeholder="请输入用户手机号"
               clearable
-              maxlength="11"
               :readonly="selectedCustomer !== null"
               @input="handlePhoneInput"
               @focus="handlePhoneFocus"
@@ -244,7 +243,6 @@
               v-model="formData.customer_phone"
               placeholder="请输入用户手机号"
               clearable
-              maxlength="11"
               :readonly="selectedCustomer !== null"
               @input="handlePhoneInput"
               @focus="handlePhoneFocus"

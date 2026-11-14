@@ -1,15 +1,30 @@
 const express = require('express')
 const router = express.Router()
 const QueryController = require('../controllers/query.controller')
+const QueryGoodsController = require('../controllers/query-goods.controller')
+const FilmServiceController = require('../controllers/film-service.controller')
 const { unifiedAuth, requirePermission, _requireAnyPermission } = require('../middleware/unified-auth')
 const { cacheMiddleware } = require('../middleware/cache')
 const { CACHE_TTL } = require('../config/constants')
 
 // 实例化控制器
 const queryController = new QueryController()
+const queryGoodsController = new QueryGoodsController()
+const filmServiceController = new FilmServiceController()
 
 // 所有路由都需要身份验证
 router.use(unifiedAuth)
+
+router.get('/customers/:customerId/film-services', requirePermission('query:view'), requirePermission('query:film'),
+  requirePermission('accessories:view'), filmServiceController.context.bind(filmServiceController))
+
+router.get('/goods', requirePermission('query:view'), requirePermission('accessories:view'), queryGoodsController.list.bind(queryGoodsController))
+router.get('/customers/:customerId/goods', requirePermission('customers:view'), requirePermission('query:view'), requirePermission('accessories:view'), queryGoodsController.customerHistory.bind(queryGoodsController))
+router.get('/goods/:id', requirePermission('query:view'), requirePermission('accessories:view'), queryGoodsController.detail.bind(queryGoodsController))
+router.get('/goods/:id/order', requirePermission('query:view'), requirePermission('accessories:view'), queryGoodsController.goodsOrder.bind(queryGoodsController))
+router.get('/sales/:saleId/order', requirePermission('query:view'), requirePermission('accessories:view'), queryGoodsController.phoneOrder.bind(queryGoodsController))
+router.get('/goods/:id/aftersales', requirePermission('query:view'), requirePermission('accessories:view'), queryGoodsController.aftersales.bind(queryGoodsController))
+router.get('/sales/:saleId/accessories', requirePermission('query:view'), requirePermission('accessories:view'), queryGoodsController.phoneReceipt.bind(queryGoodsController))
 
 /**
  * @route GET /api/query/comprehensive

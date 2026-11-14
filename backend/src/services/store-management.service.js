@@ -7,6 +7,17 @@ const { isSuperAdmin } = require('../middleware/unified-auth')
 const { PAGINATION } = require('../config/constants')
 const ReferenceOrderingService = require('./reference-ordering.service')
 const XLSX = require('xlsx')
+const { parseReferenceInput, parseReferenceId } = require('../utils/reference-options')
+const { parseInput } = require('../middleware/validation')
+
+const parseStoreInput = body => {
+  const reference = parseReferenceInput(body, { required: true, message: '店铺名称不能为空或格式不正确' })
+  return parseInput(reference, {
+    address: { type: 'string', maxLength: 255, multiline: true, label: '地址' },
+    phone: { type: 'string', maxLength: 50, label: '电话' },
+    manager_id: { type: 'id', required: false, label: '负责人' }
+  })
+}
 
 class StoreManagementService extends BaseService {
   constructor({ repository = new StoreRepository(), databaseConnected = isConnected, superAdminCheck = isSuperAdmin } = {}) {
@@ -19,7 +30,7 @@ class StoreManagementService extends BaseService {
 
   ensureConnected() { if (!this.connected()) throw this.createError('数据库未连接', 500, 'DATABASE_UNAVAILABLE') }
 
-  validateId(id) { if (!id || isNaN(parseInt(id))) throw this.createError('无效的店铺ID', 400, 'INVALID_ID') }
+  validateId(id) { parseReferenceId(id) }
 
   format(row) {
     return { id: Number(row.id), name: String(row.name || ''), address: String(row.location || ''), phone: String(row.phone || ''),
@@ -37,8 +48,7 @@ class StoreManagementService extends BaseService {
   async resolveManagerAssignment(rawManagerId, fallbackPhone = '') {
     const phone = String(fallbackPhone || '').trim()
     if (rawManagerId === undefined || rawManagerId === null || rawManagerId === '') return { manager_id: null, phone }
-    const managerId = Number.parseInt(rawManagerId, 10)
-    if (!Number.isInteger(managerId) || managerId <= 0) throw this.createError('请选择有效的门店负责人', 400, 'INVALID_MANAGER')
+    const managerId = parseReferenceId(rawManagerId)
     const employee = await this.repository.selectActiveManager(managerId)
     if (!employee) throw this.createError('所选负责人不存在或已停用，请重新选择', 400, 'INVALID_MANAGER')
     return { manager_id: managerId, phone: String(employee.phone || '').trim() }
@@ -82,17 +92,19 @@ class StoreManagementService extends BaseService {
   }
 
   async create(body) {
+    body = parseStoreInput(body)
     const { name, address, phone, manager_id, status = 1, sort_order = 0 } = body
     if (!name || !name.trim()) throw this.createError('店铺名称不能为空', 400, 'INVALID_NAME')
     this.ensureConnected()
     const manager = await this.resolveManagerAssignment(manager_id, phone)
     if (await this.repository.hasManagementDuplicate(name.trim())) throw this.createError(`店铺名称"${name}"已存在，请使用其他名称`, 409, 'DUPLICATE')
-    const id = await this.repository.createManagementStore([name.trim(), address || '', manager.phone, manager.manager_id, parseInt(status), parseInt(sort_order)])
+    const id = await this.repository.createManagementStore([name.trim(), address || '', manager.phone, manager.manager_id, status, sort_order])
     if (!id) throw this.createError('店铺创建失败', 500, 'CREATE_FAILED')
     return this.selectStoreById(id)
   }
 
   async update(id, body) {
+    body = parseStoreInput(body)
     const { name, address, phone, manager_id, status, sort_order } = body
     this.validateId(id)
     if (!name || !name.trim()) throw this.createError('店铺名称不能为空', 400, 'INVALID_NAME')
@@ -103,7 +115,7 @@ class StoreManagementService extends BaseService {
     if (name && name !== currentName && await this.repository.hasManagementDuplicate(name.trim(), parsedId)) {
       throw this.createError(`店铺名称"${name}"已存在，请使用其他名称`, 409, 'DUPLICATE')
     }
-    const affected = await this.repository.updateManagementStore([name.trim(), address || '', manager.phone, manager.manager_id, parseInt(status), parseInt(sort_order) || 0, parsedId])
+    const affected = await this.repository.updateManagementStore([name.trim(), address || '', manager.phone, manager.manager_id, status ?? 1, sort_order ?? 0, parsedId])
     if (!affected) throw this.createError('店铺不存在', 404, 'NOT_FOUND')
     return this.selectStoreById(parsedId)
   }

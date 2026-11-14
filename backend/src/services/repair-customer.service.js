@@ -1,4 +1,5 @@
 'use strict'
+const { parseInput } = require('../middleware/validation')
 
 const DUPLICATE_PHONE_MESSAGE = '该手机号已存在，请检索并选择已有客户'
 
@@ -17,10 +18,12 @@ class RepairCustomerService {
   }
 
   async createCustomer(req) {
-    const name = String(req.body?.name || '').trim()
-    const phone = String(req.body?.phone || '').trim()
-    if (!name) throw requestError('请输入客户姓名', 400, 'BAD_REQUEST')
-    if (!/^1[3-9]\d{9}$/.test(phone)) throw requestError('请输入有效的11位手机号码', 400, 'BAD_REQUEST')
+    const input = parseInput(req.body, {
+      name: { type: 'personName', required: true, maxLength: 50, message: '请输入客户姓名' },
+      phone: { type: 'phone', required: true, message: '请输入有效的11位手机号码' }
+    })
+    const name = input.name.trim()
+    const phone = input.phone
 
     const hiddenFields = await this.getHiddenFields(req)
     if (hiddenFields.has('customer_info.customer_name') || hiddenFields.has('customer_info.customer_phone')) {

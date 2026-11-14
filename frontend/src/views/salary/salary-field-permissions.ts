@@ -11,6 +11,7 @@ const salaryFieldMap: Record<string, string> = {
   template_commission_new_fixed: 'template.commission_new_fixed',
   template_commission_used_fixed: 'template.commission_used_fixed',
   template_commission_percentage: 'template.commission_percentage',
+  template_goods_commission_rule: 'template.goods_commission_rule',
   template_overtime_hourly_rate: 'template.overtime_hourly_rate',
   template_rest_days: 'template.rest_days',
   template_auto_raise_enabled: 'template.auto_raise_enabled',

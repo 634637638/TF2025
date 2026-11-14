@@ -201,7 +201,7 @@ const summaryByCategory: Record<StandardCategory, string> = {
 }
 
 const summaryByDocument: Record<string, string> = {
-  'admin-table-standards.md': '后台卡片、表格表头、行高、列宽、悬停和操作区统一使用公共样式。',
+  'admin-table-standards.md': '后台表格复用公共样式；手机双击打开查看详情，业务操作只在详情底部展示。',
   'admin-stat-card-color-standard.md': '统计卡片按指标语义使用统一颜色，避免同类数据在不同页面颜色不一致。',
   'button-standards.md': '页面工具栏、表格操作、弹窗和手机端按钮统一使用公共尺寸与语义颜色。',
   'color-token-standard.md': '全局颜色按基础令牌、组件语义色和业务状态色分层维护。',
@@ -220,12 +220,12 @@ const summaryByDocument: Record<string, string> = {
   'standards-exemptions.md': '规范例外必须记录具体页面、豁免规则、原因和复核范围。',
   'price-contact-standard.md': '销售报价和批发报价共用联系方式布局、字号和对齐样式。',
   'data-freshness-standard.md': '新增、编辑、删除和状态操作成功后立即显示服务端最新数据。',
-  'dialog-standards.md': 'PC、平板和手机弹窗共用结构、尺寸、关闭按钮及底部操作规范。',
+  'dialog-standards.md': 'PC、平板和手机弹窗复用公共外壳；记录详情短字段两列、长字段整行，无动作无底部。',
   'empty-state-standard.md': '表格、列表、卡片和弹窗统一通过 DataEmptyState 展示空数据与异常状态。',
   'global-loading-standard.md': '页面首次加载、手动刷新和局部数据加载按场景使用唯一对应的 Loading。',
   'interaction-standards.md': '确认、成功、警告、错误和加载反馈统一使用项目公共交互入口。',
   'field-consistency-standards.md': '前后端、数据库、表单、列表和权限审计共用一致的字段命名契约。',
-  'form-control-standards.md': '输入框、选择框、日期控件和数字控件统一公共高度与交互方式。',
+  'form-control-standards.md': '表单控件统一公共高度与交互；手机短字段两列，长字段整行，复用公共表单布局。',
   'latest-request-standard.md': '搜索、筛选、分页和刷新使用最新请求控制，防止旧响应覆盖新结果。',
   'menu-icon-management-standard.md': '在线候选通过站内批量预览，保存有效 SVG 后才确认选择；全局动态图标统一渲染本地数据，缺失时显示本地占位。',
   'navigation-standards.md': '桌面侧栏、移动菜单和导航按钮使用统一令牌及响应式规则。',
@@ -246,7 +246,7 @@ const summaryByDocument: Record<string, string> = {
   'tab-standards.md': '页面标签导航统一使用公共 Tab 结构，超出宽度时在标签区域内横向滑动。',
   'time-standards.md': '业务时间统一按北京时间处理，使用 TimeUtil、TIME_FORMATS 和公共格式化入口。',
   'unified-page-structure.md': '旧路径仅保留导航，正文及可编译模板统一见 page-structure-standards.md。',
-  'standards-audit-guide.md': '规范正文、公共实现和自动审计必须同时登记并纳入启动与构建检查。'
+  'standards-audit-guide.md': '规范正文、公共实现和自动审计必须同时登记并纳入构建与发布检查。'
 }
 
 const requirementsByDocument: Partial<Record<string, string[]>> = {
@@ -298,7 +298,7 @@ const requirementsByCategory: Record<StandardCategory, string[]> = {
   '运行时与性能': [
     '请求、错误边界、时间处理、缓存和性能埋点使用公共服务。',
     '规范必须登记可执行审计命令和公共实现入口，并纳入 check:standards。',
-    '审计失败时禁止启动或生产构建通过，历史债务只能登记并防止新增。'
+    '日常启动不运行全量审计；审计失败时禁止生产构建通过，历史债务只能登记并防止新增。'
   ]
 }
 

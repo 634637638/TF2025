@@ -5,6 +5,11 @@ const { withConnection } = require('../core/db/connection')
  */
 const BaseRepository = require('./base.repository')
 const log = require('../utils/log')
+const { hasColumn } = require('../utils/schema-inspector')
+
+const ruleNotReady = () => { throw Object.assign(new Error('商品提成配置结构尚未就绪，请先完成工资模板字段升级'), {
+  statusCode: 409, code: 'SALARY_GOODS_RULE_NOT_READY'
+}) }
 
 const TEMPLATE_FIELDS = [
   'id',
@@ -26,8 +31,20 @@ const TEMPLATE_FIELDS = [
 ].map(field => `st.${field}`).join(',\n          ')
 
 class SalaryTemplateRepository extends BaseRepository {
-  constructor() {
+  constructor({ columnExists = hasColumn } = {}) {
     super('salary_templates')
+    this.columnExists = columnExists
+  }
+
+  async ruleProjection() {
+    return await this.columnExists('salary_templates', 'goods_commission_rule', this.getConnection())
+      ? ', st.goods_commission_rule' : ', NULL AS goods_commission_rule'
+  }
+
+  async storageInput(data) {
+    if (!Object.hasOwn(data, 'goods_commission_rule')) return data
+    if (!await this.columnExists('salary_templates', 'goods_commission_rule', this.getConnection())) ruleNotReady()
+    return { ...data, goods_commission_rule: data.goods_commission_rule === null ? null : JSON.stringify(data.goods_commission_rule) }
   }
 
   /**
@@ -62,7 +79,7 @@ class SalaryTemplateRepository extends BaseRepository {
       // 查询数据 - LIMIT 和 OFFSET 直接内联（安全整数值）
       const dataQuery = `
         SELECT
-          ${TEMPLATE_FIELDS},
+          ${TEMPLATE_FIELDS}${await this.ruleProjection()},
           (SELECT COUNT(*) FROM users WHERE salary_template_id = st.id) as employee_count
         FROM ${this.tableName} st
         ${whereClause}
@@ -100,7 +117,7 @@ class SalaryTemplateRepository extends BaseRepository {
    */
   async getTemplateById(id) {
     try {
-      const query = `SELECT ${TEMPLATE_FIELDS} FROM ${this.tableName} st WHERE st.id = ?`
+      const query = `SELECT ${TEMPLATE_FIELDS}${await this.ruleProjection()} FROM ${this.tableName} st WHERE st.id = ?`
       const records = await this.executeQuery(query, [id])
       return records[0] || null
     } catch (error) {
@@ -115,7 +132,7 @@ class SalaryTemplateRepository extends BaseRepository {
   async getDefaultTemplate() {
     try {
       // 返回第一个模板作为默认模板
-      const query = `SELECT ${TEMPLATE_FIELDS} FROM ${this.tableName} st ORDER BY st.id LIMIT 1`
+      const query = `SELECT ${TEMPLATE_FIELDS}${await this.ruleProjection()} FROM ${this.tableName} st ORDER BY st.id LIMIT 1`
       const records = await this.executeQuery(query)
       return records[0] || null
     } catch (error) {
@@ -129,7 +146,7 @@ class SalaryTemplateRepository extends BaseRepository {
    */
   async createTemplate(data) {
     try {
-      return await this.create(data)
+      return await this.create(await this.storageInput(data))
     } catch (error) {
       log.error('创建工资模板失败:', error)
       throw error
@@ -141,7 +158,7 @@ class SalaryTemplateRepository extends BaseRepository {
    */
   async updateTemplate(id, data) {
     try {
-      return await this.update(id, data)
+      return await this.update(id, await this.storageInput(data))
     } catch (error) {
       log.error('更新工资模板失败:', error)
       throw error
@@ -218,6 +235,11 @@ class SalaryTemplateRepository extends BaseRepository {
       log.error('获取激活模板列表失败:', error)
       throw error
     }
+  }
+
+  async setEmployeeTemplate(userId, templateId) {
+    await this.getConnection().execute('UPDATE users SET salary_template_id = ? WHERE id = ?', [templateId, userId])
+    return { userId, templateId }
   }
 }
 

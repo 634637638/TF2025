@@ -1,5 +1,7 @@
 'use strict'
 
+const { getActiveSaleSql } = require('../utils/sale-status')
+
 const { getDatabase } = require('../config/database')
 
 class AnalyticsCustomerSegmentsRepository {
@@ -25,7 +27,7 @@ class AnalyticsCustomerSegmentsRepository {
           c.id,
           COALESCE(SUM(s.sale_price), 0) as totalSpent
         FROM customers c
-        LEFT JOIN sales s ON c.id = s.customer_id
+        LEFT JOIN sales s ON c.id = s.customer_id AND ${getActiveSaleSql()}
         WHERE c.status = 1
           ${storeFilter}
         GROUP BY c.id

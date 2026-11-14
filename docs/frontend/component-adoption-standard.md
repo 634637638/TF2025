@@ -12,9 +12,14 @@
 | 图片/视频查看 | `MediaPreviewViewer`；下载和删除通过事件调用业务权限及文件服务 |
 | 空数据、错误和无搜索结果 | `DataEmptyState` |
 | 表格 | `el-table.data-table` 或 `PaginatedTable` |
+| 字段描述列表 | `RecordDescriptions`，内部复用 Element Plus，手机两列、标签置顶，桌面保留原列数 |
 | 页面、区块和表格加载 | `GlobalLoading`、`SectionLoading`、`TableLoadingRow`、`InlineLoading` |
 
 页面只提供字段、数据和业务事件，不得复制公共组件的外壳、颜色、间距、按钮尺寸或空状态结构。
+
+## H5 认证布局
+
+H5 登录与注册复用 `frontend/src/views/H5-mobile/components/H5AuthLayout.vue`，统一背景、卡片、标题、底部导航及协议文本换行；宽度读取 `--tf-h5-auth-card-max-width`，颜色、间距、字体和圆角读取公共令牌。表单字段和提交留在各自视图，使用 `useForm` 及 `el-form-item :error`，首次提交也必须主动校验。订单查询的登录身份/匿名验证和订单列表不同，保留自己的业务布局，不强行套认证卡片。行为与浏览器入口见[表单控件规范](form-control-standards.md#公共入口与验收)。
 
 ## 原生 button 禁止规则
 
@@ -35,6 +40,10 @@
 ## 弹窗边界
 
 业务弹窗使用 `MobileDialog`，原生 `el-dialog` 只用于公共组件内部。插槽、Teleport、关闭及生命周期复用公共能力，不新增业务例外或私有外壳覆盖。确认、提示和输入使用公共通知服务。
+
+## 扫码器上下文
+
+手机扫码复用 `OptimizedScanner.vue` 并传入 `:phone` 品牌上下文；配件SN显式使用 `serial-profile="accessory"` 与 `scan-type="serial"`。解析及控件边界见[基础控件规范](basic-component-standards.md#扫码器解析上下文)。采用审计检查实际调用及正反例，不能通过虚构手机品牌绕过上下文。
 
 ## 审计
 
@@ -60,3 +69,7 @@ npm run check:component-adoption
 它与 `check:ui`、`check:buttons`、`check:tables`、`check:empty-states`、`check:loading` 配合使用；采用率审计通过不代表详情弹窗或业务专用控件必须强行改成同一种实现。
 
 最后核实日期：2026-11-11
+
+## 手机记录详情
+
+记录主表使用全局 `v-table-double-tap` 与 `useMobileTableDetail`；无专用详情时使用自动发现的 `RecordDetailDialog`，已有详情通过 `onOpen` 复用。字段类型统一为 `types/component.ts` 的 `RecordDetailField`，不在页面重复声明。描述列表使用 `RecordDescriptions`，保留字段显隐、插槽和属性，不再直接使用 `el-descriptions`。底部业务动作沿用原权限和处理函数，无动作无footer。输入/选择和关联明细用途见[表格规范](admin-table-standards.md#手机记录详情与底部操作)及 `check:mobile-details`，禁止恢复行内按钮展开。

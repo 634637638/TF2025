@@ -36,12 +36,12 @@
       v-else
       :model="form"
       :disabled="busy || !canEdit"
-      class="publish-to-h5-form"
+      class="publish-to-h5-form tf-form-layout tf-form-grid"
       :label-width="isCompactLayout ? 'auto' : '90px'"
       :label-position="isCompactLayout ? 'top' : 'right'"
     >
       <template v-if="isNewPhone">
-        <el-descriptions
+        <RecordDescriptions
           :column="1"
           border
         >
@@ -72,7 +72,7 @@
           >
             {{ templatePreview.description || '暂无介绍' }}
           </el-descriptions-item>
-        </el-descriptions>
+        </RecordDescriptions>
         <el-alert
           v-if="!templatePreview"
           title="尚未匹配启用的商城模板，请到 H5 商城模板管理中维护。"
@@ -314,7 +314,7 @@
       <el-form-item
         v-if="!isNewPhone"
         label="商品素材"
-        class="publish-to-h5-media-field"
+        class="publish-to-h5-media-field tf-form-field--wide"
       >
         <div class="publish-to-h5-media">
           <div class="tf-dialog-toolbar">

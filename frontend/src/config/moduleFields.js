@@ -533,6 +533,14 @@ export const MODULE_FIELDS = {
         description: '客户联系电话'
       },
       {
+        id: 'sale.customer_apple_id',
+        name: '客户 Apple ID',
+        group: '基本信息',
+        type: FIELD_TYPES.TEXT,
+        sensitivity: SENSITIVITY_LEVELS.SENSITIVE,
+        description: '销售客户的 Apple ID'
+      },
+      {
         id: 'sale.brand',
         name: '品牌',
         group: '商品信息',
@@ -745,6 +753,15 @@ export const MODULE_FIELDS = {
         type: FIELD_TYPES.BOOLEAN,
         sensitivity: SENSITIVITY_LEVELS.INTERNAL,
         description: '品牌状态（启用/禁用）',
+        filterable: true
+      },
+      {
+        id: 'brand.business_scope',
+        name: '业务范围',
+        group: '基本信息',
+        type: FIELD_TYPES.TEXT,
+        sensitivity: SENSITIVITY_LEVELS.INTERNAL,
+        description: '品牌适用于手机、配件或两者',
         filterable: true
       },
       {
@@ -1367,6 +1384,14 @@ export const MODULE_FIELDS = {
         filterable: true
       },
       {
+        id: 'supplier.business_scope',
+        name: '业务范围',
+        group: '基本信息',
+        type: FIELD_TYPES.SELECT,
+        sensitivity: SENSITIVITY_LEVELS.INTERNAL,
+        description: '供应商可提供手机、配件或两者'
+      },
+      {
         id: 'supplier.sort_order',
         name: '排序',
         group: '基本信息',
@@ -1658,6 +1683,18 @@ export const MODULE_FIELDS = {
         description: '客户地址'
       },
       {
+        id: 'customer.district', name: '县/区', group: '联系信息',
+        type: FIELD_TYPES.TEXT, sensitivity: SENSITIVITY_LEVELS.SENSITIVE, description: '五级地址的县级地区'
+      },
+      {
+        id: 'customer.town', name: '乡镇/街道', group: '联系信息',
+        type: FIELD_TYPES.TEXT, sensitivity: SENSITIVITY_LEVELS.SENSITIVE, description: '五级地址的乡级地区'
+      },
+      {
+        id: 'customer.village', name: '村委会/社区', group: '联系信息',
+        type: FIELD_TYPES.TEXT, sensitivity: SENSITIVITY_LEVELS.SENSITIVE, description: '五级地址的村级地区'
+      },
+      {
         id: 'customer.customer_type',
         name: '客户类型',
         group: '基本信息',
@@ -1806,6 +1843,13 @@ export const MODULE_FIELDS = {
     icon: 'fas fa-money-bill-wave',
     category: '财务管理',
     fields: [
+      { id: 'purchase.batch_no', name: '采购批次', group: '商品采购', type: FIELD_TYPES.TEXT, sensitivity: SENSITIVITY_LEVELS.INTERNAL, description: '商品采购入库单号', searchable: true },
+      { id: 'purchase.name', name: '商品名称', group: '商品采购', type: FIELD_TYPES.TEXT, sensitivity: SENSITIVITY_LEVELS.INTERNAL, description: '采购商品模板名称', searchable: true },
+      { id: 'purchase.category', name: '商品类型', group: '商品采购', type: FIELD_TYPES.TEXT, sensitivity: SENSITIVITY_LEVELS.INTERNAL, description: '采购商品类型' },
+      { id: 'purchase.quantity', name: '采购数量', group: '商品采购', type: FIELD_TYPES.NUMBER, sensitivity: SENSITIVITY_LEVELS.INTERNAL, description: '原采购批次数量及汇总' },
+      { id: 'purchase.unit', name: '商品单位', group: '商品采购', type: FIELD_TYPES.TEXT, sensitivity: SENSITIVITY_LEVELS.INTERNAL, description: '商品计量单位' },
+      { id: 'purchase.inventory_time', name: '采购入库时间', group: '商品采购', type: FIELD_TYPES.DATETIME, sensitivity: SENSITIVITY_LEVELS.INTERNAL, description: '商品采购原始入库时间', filterable: true },
+      { id: 'purchase.inventory_operator', name: '采购入库员', group: '商品采购', type: FIELD_TYPES.TEXT, sensitivity: SENSITIVITY_LEVELS.INTERNAL, description: '原采购入库员' },
       {
         id: 'stats.unpaid_count',
         name: '待打款手机概览',
@@ -2583,13 +2627,16 @@ export const MODULE_FIELDS = {
       { id: 'basic_info.name', name: '配件名称', group: '基本信息', type: FIELD_TYPES.TEXT, sensitivity: SENSITIVITY_LEVELS.INTERNAL, description: '配件名称', searchable: true },
       { id: 'basic_info.barcode', name: '条形码', group: '基本信息', type: FIELD_TYPES.TEXT, sensitivity: SENSITIVITY_LEVELS.INTERNAL, description: '配件条形码', searchable: true },
       { id: 'basic_info.batch_no', name: '入库批次号', group: '基本信息', type: FIELD_TYPES.TEXT, sensitivity: SENSITIVITY_LEVELS.INTERNAL, description: '配件入库批次号' },
-      { id: 'basic_info.category', name: '分类', group: '基本信息', type: FIELD_TYPES.TEXT, sensitivity: SENSITIVITY_LEVELS.INTERNAL, description: '配件分类', filterable: true },
-      { id: 'basic_info.brand_name', name: '品牌', group: '基本信息', type: FIELD_TYPES.TEXT, sensitivity: SENSITIVITY_LEVELS.PUBLIC, description: '适用品牌' },
-      { id: 'basic_info.model_name', name: '型号', group: '基本信息', type: FIELD_TYPES.TEXT, sensitivity: SENSITIVITY_LEVELS.PUBLIC, description: '适用型号' },
+      { id: 'basic_info.category', name: '商品类型', group: '基本信息', type: FIELD_TYPES.TEXT, sensitivity: SENSITIVITY_LEVELS.INTERNAL, description: '配件商品类型', filterable: true },
+      { id: 'basic_info.brand_name', name: '配件品牌', group: '基本信息', type: FIELD_TYPES.TEXT, sensitivity: SENSITIVITY_LEVELS.PUBLIC, description: '配件自身品牌，复用公共品牌资料' },
+      { id: 'basic_info.model_name', name: '适配型号', group: '基本信息', type: FIELD_TYPES.TEXT, sensitivity: SENSITIVITY_LEVELS.PUBLIC, description: '可多选已有手机型号，未选择时显示通用，独立于配件自身品牌' },
       { id: 'basic_info.color_name', name: '颜色', group: '基本信息', type: FIELD_TYPES.TEXT, sensitivity: SENSITIVITY_LEVELS.PUBLIC, description: '配件颜色' },
       { id: 'basic_info.supplier_name', name: '供应商', group: '基本信息', type: FIELD_TYPES.TEXT, sensitivity: SENSITIVITY_LEVELS.INTERNAL, description: '配件供应商' },
       { id: 'basic_info.unit', name: '单位', group: '基本信息', type: FIELD_TYPES.TEXT, sensitivity: SENSITIVITY_LEVELS.PUBLIC, description: '库存计量单位' },
-      { id: 'basic_info.specifications', name: '规格', group: '基本信息', type: FIELD_TYPES.TEXT, sensitivity: SENSITIVITY_LEVELS.PUBLIC, description: '配件规格' },
+      { id: 'basic_info.usage_type', name: '入库用途', group: '基本信息', type: FIELD_TYPES.SELECT, sensitivity: SENSITIVITY_LEVELS.INTERNAL, description: '采购批次收费或赠送用途，移库保留原用途' },
+      { id: 'basic_info.serial_tracking', name: 'SN管理', group: '基本信息', type: FIELD_TYPES.SELECT, sensitivity: SENSITIVITY_LEVELS.INTERNAL, description: '模板的默认SN模式；每批入库可切换，同一模板支持数量和SN库存并存' },
+      { id: 'basic_info.serial_number', name: 'SN序列号', group: '基本信息', type: FIELD_TYPES.TEXT, sensitivity: SENSITIVITY_LEVELS.INTERNAL, description: '逐件序列号及入库、销售、赠送追踪', searchable: true },
+      { id: 'basic_info.specifications', name: '配件型号', group: '基本信息', type: FIELD_TYPES.TEXT, sensitivity: SENSITIVITY_LEVELS.PUBLIC, description: '配件自身型号，例如 MWVW3CH；保留原权限标识以延续角色配置' },
       { id: 'basic_info.image_url', name: '配件图片', group: '基本信息', type: FIELD_TYPES.URL, sensitivity: SENSITIVITY_LEVELS.INTERNAL, description: '配件图片' },
       { id: 'price_info.purchase_cost', name: '进价', group: '价格信息', type: FIELD_TYPES.CURRENCY, sensitivity: SENSITIVITY_LEVELS.CONFIDENTIAL, description: '采购成本' },
       { id: 'price_info.sale_price', name: '售价', group: '价格信息', type: FIELD_TYPES.CURRENCY, sensitivity: SENSITIVITY_LEVELS.SENSITIVE, description: '销售价格' },
@@ -2600,7 +2647,7 @@ export const MODULE_FIELDS = {
       { id: 'stock_info.total_stock', name: '总库存', group: '库存信息', type: FIELD_TYPES.NUMBER, sensitivity: SENSITIVITY_LEVELS.INTERNAL, description: '各门店库存合计' },
       { id: 'stock_info.total_in', name: '累计入库', group: '库存信息', type: FIELD_TYPES.NUMBER, sensitivity: SENSITIVITY_LEVELS.INTERNAL, description: '累计入库数量' },
       { id: 'stock_info.total_out', name: '累计已售', group: '库存信息', type: FIELD_TYPES.NUMBER, sensitivity: SENSITIVITY_LEVELS.INTERNAL, description: '累计出库数量' },
-      { id: 'stock_info.remaining_stock', name: '剩余库存', group: '库存信息', type: FIELD_TYPES.NUMBER, sensitivity: SENSITIVITY_LEVELS.INTERNAL, description: '累计入库减累计出库的剩余数量' },
+      { id: 'stock_info.remaining_stock', name: '剩余库存', group: '库存信息', type: FIELD_TYPES.NUMBER, sensitivity: SENSITIVITY_LEVELS.INTERNAL, description: '当前授权门店的实际剩余数量，包含划拨及返库影响' },
       { id: 'stock_info.min_stock', name: '预警值', group: '库存信息', type: FIELD_TYPES.NUMBER, sensitivity: SENSITIVITY_LEVELS.INTERNAL, description: '低库存预警阈值' },
       { id: 'stock_info.total_quantity', name: '入库总数', group: '库存信息', type: FIELD_TYPES.NUMBER, sensitivity: SENSITIVITY_LEVELS.INTERNAL, description: '本次入库总数量' },
       { id: 'stock_info.distribution', name: '门店分配', group: '库存信息', type: FIELD_TYPES.JSON, sensitivity: SENSITIVITY_LEVELS.INTERNAL, description: '本次入库门店分配' },
@@ -4130,6 +4177,14 @@ export const MODULE_FIELDS = {
         type: FIELD_TYPES.NUMBER,
         sensitivity: SENSITIVITY_LEVELS.CONFIDENTIAL,
         description: '利润提成百分比'
+      },
+      {
+        id: 'template.goods_commission_rule',
+        name: '商品提成规则',
+        group: '模板信息',
+        type: FIELD_TYPES.JSON,
+        sensitivity: SENSITIVITY_LEVELS.CONFIDENTIAL,
+        description: '商品提成开关、按件金额及利润比例，整组查看和编辑'
       },
       {
         id: 'template.overtime_hourly_rate',

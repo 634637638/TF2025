@@ -166,13 +166,14 @@
             </h4>
             <el-form
               ref="deliveryFormRef"
+              class="tf-form-layout tf-form-grid"
               :model="deliveryForm"
               :rules="deliveryFormRules"
               label-position="top"
               size="small"
             >
               <div class="delivery-form">
-                <div class="form-row">
+                <div class="tf-form-row">
                   <el-form-item
                     label="收货人"
                     prop="name"
@@ -191,12 +192,12 @@
                     <el-input
                       v-model="deliveryForm.phone"
                       placeholder="手机号码"
-                      maxlength="11"
                       @input="deliveryForm.phone = normalizeCustomerPhone(deliveryForm.phone)"
                     />
                   </el-form-item>
                 </div>
                 <el-form-item
+                  class="tf-form-field--wide"
                   label="收货地址"
                   prop="address"
                 >
@@ -274,12 +275,13 @@
     >
       <el-form
         ref="addressFormRef"
+        class="tf-form-layout tf-form-grid"
         :model="addressForm"
         :rules="addressFormRules"
         label-position="top"
         size="default"
       >
-        <div class="form-row">
+        <div class="tf-form-row">
           <el-form-item
             label="收货人"
             prop="name"
@@ -298,12 +300,12 @@
             <el-input
               v-model="addressForm.phone"
               placeholder="请输入手机号码"
-              maxlength="11"
               @input="addressForm.phone = normalizeCustomerPhone(addressForm.phone)"
             />
           </el-form-item>
         </div>
         <el-form-item
+          class="tf-form-field--wide"
           label="收货地址"
           prop="address"
         >

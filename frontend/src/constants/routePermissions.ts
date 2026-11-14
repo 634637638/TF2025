@@ -19,6 +19,7 @@ export const ROUTE_PERMISSION_MAP: Record<string, string[]> = {
   '/employees': ['employee:view'],
   '/customers': ['customers:view'],
   '/accessories': ['accessories:view'],
+  '/accessories/catalog': ['accessories-catalog:view'],
   '/inventory': ['inventory:view'],
   '/preorders': ['preorders:view'],
   '/reminders': ['reminders:view'],

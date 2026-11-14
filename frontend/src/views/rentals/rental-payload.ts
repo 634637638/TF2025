@@ -1,3 +1,5 @@
+import { isEmptyInput, isIntegerInput, isMoneyInput } from '@/utils/security'
+
 export type RentalBillingMode = 'daily' | 'buyout'
 
 export interface RentalFormState {
@@ -43,23 +45,26 @@ export interface RentalPayload {
 }
 
 const numberOrZero = (value: unknown): number => {
-  const parsed = Number(value)
-  return Number.isFinite(parsed) ? parsed : 0
+  if (isEmptyInput(value)) return 0
+  if (!isMoneyInput(value) || Number(value) < 0) throw new Error('金额须为非负数，最多两位小数')
+  return Number(value)
 }
 
 const nullableNumber = (value: unknown): number | null => {
-  const parsed = Number(value)
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : null
+  if (isEmptyInput(value)) return null
+  if (!isIntegerInput(value) || Number(value) <= 0) throw new Error('请选择有效的客户、设备、门店和销售员')
+  return Number(value)
 }
 
 export const buildRentalPayload = (
   form: RentalFormState,
   phoneId: number,
-  salePrice: number
+  salePrice: number | null
 ): RentalPayload => {
   const isBuyout = form.billing_mode === 'buyout'
+  if (isBuyout && (!isIntegerInput(form.term_months) || form.term_months < 1 || form.term_months > 12)) throw new Error('到期买断请选择1至12期')
   const payload: RentalPayload = {
-    customer_id: Number(form.customer_id),
+    customer_id: nullableNumber(form.customer_id) ?? 0,
     phone_id: phoneId,
     billing_mode: form.billing_mode,
     unit_price: isBuyout ? 0 : numberOrZero(form.unit_price),
@@ -78,8 +83,8 @@ export const buildRentalPayload = (
     remarks: form.remarks?.trim() || null
   }
 
-  if (form.purchase_cost !== undefined) {
-    payload.purchase_cost = nullableNumber(form.purchase_cost)
+  if (!isEmptyInput(form.purchase_cost)) {
+    payload.purchase_cost = numberOrZero(form.purchase_cost)
   }
 
   return payload

@@ -1,12 +1,17 @@
 'use strict'
 
+const { isPersonName, isMobilePhone, normalizePhone, isMoneyInput, isIntegerInput } = require('../utils/input-values')
 const CustomerRepository = require('../repositories/customer.repository')
+const CustomerAddressService = require('./customer-address.service')
+const AccessoryRepository = require('../repositories/accessory.repository')
+const CustomerPointsLedgerService = require('./customer-points-ledger.service')
 const { searchCustomers: searchCustomerOptions } = require('./customer-search.service')
 const bcrypt = require('bcryptjs')
 const { generateMemberNumber } = require('../utils/member-number')
 const {
   getCustomerPointsConfig,
-  saveCustomerPointsConfig
+  saveCustomerPointsConfig,
+  validatePointsConfig
 } = require('./customer-points.service')
 const { PAGINATION } = require('../config/constants')
 
@@ -22,19 +27,25 @@ const BaseService = require('../core/base/base.service')
 class CustomerManagementService extends BaseService {
   constructor({
     repository = new CustomerRepository(),
+    accessoryRepository = new AccessoryRepository(),
     searchCustomers = searchCustomerOptions,
     loadPointsConfig = getCustomerPointsConfig,
     persistPointsConfig = saveCustomerPointsConfig,
+    pointsLedger = new CustomerPointsLedgerService(),
     passwordHasher = bcrypt.hash.bind(bcrypt),
-    createMemberNumber = generateMemberNumber
+    createMemberNumber = generateMemberNumber,
+    addresses
   } = {}) {
     super()
     this.repository = repository
+    this.accessoryRepository = accessoryRepository
     this.searchCustomers = searchCustomers
     this.loadPointsConfig = loadPointsConfig
     this.persistPointsConfig = persistPointsConfig
+    this.pointsLedger = pointsLedger
     this.passwordHasher = passwordHasher
     this.createMemberNumber = createMemberNumber
+    this.addresses = addresses || new CustomerAddressService({ repository })
   }
 
   async search(query) {
@@ -59,7 +70,7 @@ class CustomerManagementService extends BaseService {
     return { data: result.records, message: '搜索客户成功', extra: { pagination: result.pagination } }
   }
 
-  async list(query) {
+  async list(query, { hiddenFields = [] } = {}) {
     
     const {
       page = PAGINATION.DEFAULT_PAGE,
@@ -79,6 +90,15 @@ class CustomerManagementService extends BaseService {
     } = query
     const pageNumber = Math.max(1, Number.parseInt(String(page), 10) || PAGINATION.DEFAULT_PAGE)
     const pageSize = Math.min(100, Math.max(1, Number.parseInt(String(page_size), 10) || PAGINATION.DEFAULT_LIMIT))
+    const hidden = new Set(hiddenFields.map(field => field.split('.').at(-1)))
+    const addressHidden = ['province', 'city', 'district', 'town', 'village', 'address'].some(field => hidden.has(field))
+    for (const field of ['province', 'city']) {
+      if (query[field] && hidden.has(field)) throw this.createError('无权按已隐藏的地区筛选', 403)
+    }
+    const addressLevelsReady = query.include_address_levels === '1' && (await this.addresses.capabilities()).ready
+    const requestedSearch = String(search_fields || 'name,phone,email,id_card,member_number,address,remarks').split(',').map(field => field.trim())
+    const visibleSearch = requestedSearch.filter(field => !hidden.has(field) && !(field === 'address' && addressHidden))
+    if (visibleSearch.includes('address') && addressLevelsReady) visibleSearch.push('district', 'town', 'village')
     const result = await this.repository.listCustomers({
       page: pageNumber,
       page_size: pageSize,
@@ -91,7 +111,8 @@ class CustomerManagementService extends BaseService {
         city,
         province,
         search,
-        search_fields,
+        search_fields: visibleSearch.join(',') || '__none__',
+        addressLevelsReady,
         register_date_start,
         register_date_end,
         status
@@ -99,7 +120,8 @@ class CustomerManagementService extends BaseService {
     })
 
     return { data: {
-      customers: result.customers || [],
+      customers: query.include_address_levels === '1'
+        ? await this.addresses.enrich(result.customers || []) : result.customers || [],
       pagination: {
         page: pageNumber,
         page_size: pageSize,
@@ -111,43 +133,26 @@ class CustomerManagementService extends BaseService {
     } }
   }
 
-  async getPointsConfig() {
-    
+  async getPointsConfig(query = {}) {
+    if (query.include_options !== undefined && query.include_options !== '1' && query.include_options !== 1) throw this.createError('积分设置选项参数无效', 400)
     const config = await this.loadPointsConfig()
+    if (query.include_options !== undefined) {
+      const categories = await this.accessoryRepository.getProductCategories()
+      return { data: { config, categories: categories.map(row => ({ id: Number(row.id), name: row.name, status: Number(row.status) })) }, message: '获取积分设置成功' }
+    }
     return { data: config, message: '获取积分设置成功' }
   }
 
   async savePointsConfig(body) {
-    
-    const {
-      enabled,
-      include_new,
-      include_used,
-      new_points_per_100,
-      used_points_per_100
-    } = body || {}
-
-    if (enabled && !include_new && !include_used) {
-      throw this.createError('全新和二手至少需要选择一种参与积分统计', 400)
+    const previous = await this.loadPointsConfig()
+    const config = validatePointsConfig(body, previous)
+    if (config.redemption.category_ids.length) {
+      const categories = await this.accessoryRepository.getProductCategories()
+      const previousIds = previous.redemption?.category_ids || []
+      if (config.redemption.category_ids.some(id => !categories.some(row => Number(row.id) === id && (Number(row.status) === 1 || previousIds.includes(id))))) throw this.createError('商品类型不存在或已停用，请重新选择', 400)
     }
-
-    const newPointsPer100 = Number(new_points_per_100 ?? 1)
-    const usedPointsPer100 = Number(used_points_per_100 ?? 1)
-    if (include_new && (!Number.isInteger(newPointsPer100) || newPointsPer100 < 1 || newPointsPer100 > 100)) {
-      throw this.createError('全新积分必须是1到100之间的整数', 400)
-    }
-    if (include_used && (!Number.isInteger(usedPointsPer100) || usedPointsPer100 < 1 || usedPointsPer100 > 100)) {
-      throw this.createError('二手积分必须是1到100之间的整数', 400)
-    }
-
-    const config = await this.persistPointsConfig({
-      enabled,
-      include_new,
-      include_used,
-      new_points_per_100: newPointsPer100,
-      used_points_per_100: usedPointsPer100
-    })
-    return { data: config, message: '积分设置保存成功' }
+    const saved = await this.persistPointsConfig(config)
+    return { data: saved, message: '积分设置保存成功' }
   }
 
   async getById(params) {
@@ -155,7 +160,11 @@ class CustomerManagementService extends BaseService {
     const customer = await this.repository.findCustomerById(parseInt(params.id))
     if (!customer) throw this.createError('客户不存在', 404)
 
-    return { data: customer }
+    return { data: (await this.addresses.enrich([customer]))[0] }
+  }
+
+  async getAddressCapabilities() {
+    return { data: await this.addresses.capabilities() }
   }
 
   async create(body) {
@@ -163,7 +172,7 @@ class CustomerManagementService extends BaseService {
     const {
       name,
       gender,
-      phone,
+      phone: rawPhone,
       email,
       birthday,
       id_card,
@@ -177,8 +186,10 @@ class CustomerManagementService extends BaseService {
       apple_id
     } = body
 
-    if (!name || !phone) throw this.createError('缺少必需字段：姓名、手机号', 400)
-    if (!/^1[3-9]\d{9}$/.test(phone)) throw this.createError('手机号格式不正确', 400)
+    if (!name || !rawPhone) throw this.createError('缺少必需字段：姓名、手机号', 400)
+    if (!isPersonName(name, 50)) throw this.createError('姓名须为1至50字的单行文本', 400)
+    if (!isMobilePhone(rawPhone)) throw this.createError('手机号格式不正确', 400)
+    const phone = normalizePhone(rawPhone)
 
     const existingCustomer = await this.repository.findByPhone(phone)
     if (existingCustomer) throw this.createError('手机号已存在', 400)
@@ -190,6 +201,7 @@ class CustomerManagementService extends BaseService {
       throw this.createError('Apple ID 格式不正确，请输入有效的手机号或邮箱（仅支持英文和数字）', 400)
     }
 
+    const addressFields = await this.addresses.prepare(body)
     const memberNumber = await this.createMemberNumber()
     const newCustomer = await this.repository.createCustomerProfile({
       name,
@@ -205,21 +217,23 @@ class CustomerManagementService extends BaseService {
       remarks: remarks || '',
       wechat: wechat || null,
       qq: qq || null,
-      apple_id: apple_id || null
+      apple_id: apple_id || null,
+      ...addressFields
     }, memberNumber)
     return { data: newCustomer, message: '客户创建成功' }
   }
 
   async update(params, body) {
     
-    const customerId = parseInt(params.id, 10)
+    if (!isIntegerInput(params.id) || Number(params.id) <= 0) throw this.createError('客户ID必须是正整数', 400)
+    const customerId = Number(params.id)
     const existingCustomer = await this.repository.findCustomerById(customerId)
     if (!existingCustomer) throw this.createError('客户不存在', 404)
 
     const {
       name,
       gender,
-      phone,
+      phone: rawPhone,
       email,
       birthday,
       id_card,
@@ -240,8 +254,10 @@ class CustomerManagementService extends BaseService {
       password
     } = body
 
-    if (phone && phone !== existingCustomer.phone) {
-      if (!/^1[3-9]\d{9}$/.test(phone)) throw this.createError('手机号格式不正确', 400)
+    if (name !== undefined && !isPersonName(name, 50)) throw this.createError('姓名须为1至50字的单行文本', 400)
+    if (rawPhone !== undefined && !isMobilePhone(rawPhone)) throw this.createError('手机号格式不正确', 400)
+    const phone = rawPhone === undefined ? undefined : normalizePhone(rawPhone)
+    if (phone !== undefined && phone !== existingCustomer.phone) {
       const existingPhoneCustomer = await this.repository.findByPhone(phone)
       if (existingPhoneCustomer && existingPhoneCustomer.id !== customerId) {
         throw this.createError('手机号已存在', 400)
@@ -254,7 +270,9 @@ class CustomerManagementService extends BaseService {
       throw this.createError('Apple ID 格式不正确，请输入有效的手机号或邮箱（仅支持英文和数字）', 400)
     }
 
-    const updateData = {}
+    const previousAddress = ['province', 'city', 'district', 'town', 'village'].some(field => body[field] !== undefined)
+      ? (await this.addresses.enrich([existingCustomer], { includeLegacy: true }))[0] : existingCustomer
+    const updateData = await this.addresses.prepare(body, previousAddress)
     if (name !== undefined) updateData.name = name
     if (gender !== undefined) updateData.gender = gender
     if (phone !== undefined) updateData.phone = phone
@@ -273,11 +291,24 @@ class CustomerManagementService extends BaseService {
     if (qq !== undefined) updateData.qq = qq
     if (apple_id !== undefined) updateData.apple_id = apple_id
     if (member_number !== undefined) updateData.member_number = member_number
-    if (balance !== undefined) updateData.balance = parseFloat(balance)
-    if (points !== undefined) updateData.points = parseInt(points)
+    if (balance !== undefined) {
+      if (!isMoneyInput(balance)) throw this.createError('余额必须是最多两位小数的有效金额', 400)
+      updateData.balance = Number(balance)
+    }
+    if (points !== undefined) {
+      if (!['number', 'string'].includes(typeof points) || !/^\d+$/.test(String(points)) ||
+        !Number.isSafeInteger(Number(points)) || Number(points) > 2147483647) throw this.createError('积分必须是有效的非负整数', 400)
+      // 原值只用于回显，不随资料保存再次写回，避免覆盖同期销售发放的积分。
+      if (Number(points) !== Number(existingCustomer.points)) {
+        if (await this.repository.withConnection(executor => this.pointsLedger.ready(executor))) {
+          throw this.createError('积分已启用来源追踪，请通过积分核对调整流程处理', 409, 'POINTS_ADJUSTMENT_REQUIRED')
+        }
+        updateData.points = Number(points)
+      }
+    }
 
     if (password !== undefined && password !== null && password !== '') {
-      if (password.length < 6) throw this.createError('密码至少需要6位', 400)
+      if (typeof password !== 'string' || password.length < 6 || password.length > 128) throw this.createError('密码至少需要6位', 400)
       updateData.password = await this.passwordHasher(password, 10)
     }
 
@@ -296,7 +327,7 @@ class CustomerManagementService extends BaseService {
     }
 
     const updatedCustomer = await this.repository.findCustomerById(customerId)
-    return { data: updatedCustomer, message: '客户信息更新成功' }
+    return { data: (await this.addresses.enrich([updatedCustomer]))[0], message: '客户信息更新成功' }
   }
 
   async getPurchases(params, query) {

@@ -9,12 +9,9 @@ import { useLoadingStore } from '@/stores/loading'
 import {
   closeAllElementMessages,
   loadElementPlus,
-  showElementError,
   showElementLoading,
   showElementMessage,
-  showElementNotification,
-  showElementSuccess,
-  showElementWarning
+  showElementNotification
 } from '@/utils/element-feedback'
 
 // 通知方式枚举
@@ -131,65 +128,34 @@ class SimpleNotificationService {
     return { ...this.defaultConfig }
   }
 
-  /**
-   * 显示成功消息
-   */
-  public success(message: string, options: NotificationOptions = {}): void {
-    showElementSuccess({
-      message,
-      duration: options.duration || this.defaultConfig.duration,
-      showClose: options.showClose ?? this.defaultConfig.showClose,
-      offset: options.offset || 20,
-      customClass: options.customClass || DEFAULT_MESSAGE_CLASS,
-      zIndex: options.zIndex || DEFAULT_MESSAGE_Z_INDEX,
-      appendTo: document.body
-    })
-  }
-
-  /**
-   * 显示错误消息
-   */
-  public error(message: string, options: NotificationOptions = {}): void {
-    showElementError({
-      message,
-      duration: options.duration || 6000,  // 错误消息默认显示更久
-      showClose: options.showClose ?? this.defaultConfig.showClose,
-      offset: options.offset || 20,
-      customClass: options.customClass || DEFAULT_MESSAGE_CLASS,
-      zIndex: options.zIndex || DEFAULT_MESSAGE_Z_INDEX,
-      appendTo: document.body
-    })
-  }
-
-  /**
-   * 显示警告消息
-   */
-  public warning(message: string, options: NotificationOptions = {}): void {
-    showElementWarning({
-      message,
-      duration: options.duration || this.defaultConfig.duration,
-      showClose: options.showClose ?? this.defaultConfig.showClose,
-      offset: options.offset || 20,
-      customClass: options.customClass || DEFAULT_MESSAGE_CLASS,
-      zIndex: options.zIndex || DEFAULT_MESSAGE_Z_INDEX,
-      appendTo: document.body
-    })
-  }
-
-  /**
-   * 显示信息消息
-   */
-  public info(message: string, options: NotificationOptions = {}): void {
+  /** 四类顶部消息共用同一组展示选项；错误保留较长默认时长。 */
+  private showMessage(type: NonNullable<NotificationOptions['type']>, message: string, options: NotificationOptions): void {
     showElementMessage({
       message,
-      type: 'info',
-      duration: options.duration || this.defaultConfig.duration,
+      type,
+      duration: options.duration || (type === 'error' ? 6000 : this.defaultConfig.duration),
       showClose: options.showClose ?? this.defaultConfig.showClose,
       offset: options.offset || 20,
       customClass: options.customClass || DEFAULT_MESSAGE_CLASS,
       zIndex: options.zIndex || DEFAULT_MESSAGE_Z_INDEX,
       appendTo: document.body
     })
+  }
+
+  public success(message: string, options: NotificationOptions = {}): void {
+    this.showMessage('success', message, options)
+  }
+
+  public error(message: string, options: NotificationOptions = {}): void {
+    this.showMessage('error', message, options)
+  }
+
+  public warning(message: string, options: NotificationOptions = {}): void {
+    this.showMessage('warning', message, options)
+  }
+
+  public info(message: string, options: NotificationOptions = {}): void {
+    this.showMessage('info', message, options)
   }
 
   /**
@@ -206,6 +172,11 @@ class SimpleNotificationService {
       customClass: options.customClass || DEFAULT_MESSAGE_CLASS,
       zIndex: options.zIndex || DEFAULT_MESSAGE_Z_INDEX
     })
+  }
+
+  private finishMessageBox(): void {
+    document.body.classList.remove('el-message-box-open')
+    this.removeHideTablesStyle()
   }
 
   /**
@@ -229,15 +200,12 @@ class SimpleNotificationService {
       appendTo: document.body  // 确保渲染到 body 下
     })
       .then(() => {
-        document.body.classList.remove('el-message-box-open')
-        this.removeHideTablesStyle()
         return true
       })
       .catch((): boolean => {
-        document.body.classList.remove('el-message-box-open')
-        this.removeHideTablesStyle()
         return false
       })
+      .finally(() => this.finishMessageBox())
   }
 
   /**
@@ -259,13 +227,10 @@ class SimpleNotificationService {
       appendTo: document.body  // 确保渲染到 body 下
     })
       .then(() => {
-        document.body.classList.remove('el-message-box-open')
-        this.removeHideTablesStyle()
       })
       .catch((): void => {
-        document.body.classList.remove('el-message-box-open')
-        this.removeHideTablesStyle()
       })
+      .finally(() => this.finishMessageBox())
   }
 
   /**
@@ -280,6 +245,7 @@ class SimpleNotificationService {
       inputType?: string
       inputPlaceholder?: string
       inputValue?: string
+      inputValidator?: (value: string) => boolean | string
       inputPattern?: RegExp
       inputErrorMessage?: string
     } = {}
@@ -296,20 +262,18 @@ class SimpleNotificationService {
       inputType: options.inputType || 'text',
       inputPlaceholder: options.inputPlaceholder,
       inputValue: options.inputValue,
+      inputValidator: options.inputValidator,
       inputPattern: options.inputPattern,
       inputErrorMessage: options.inputErrorMessage,
       appendTo: document.body  // 确保渲染到 body 下
     })
       .then(({ value }) => {
-        document.body.classList.remove('el-message-box-open')
-        this.removeHideTablesStyle()
         return { value }
       })
       .catch((): null => {
-        document.body.classList.remove('el-message-box-open')
-        this.removeHideTablesStyle()
         return null
       })
+      .finally(() => this.finishMessageBox())
   }
 
   /**

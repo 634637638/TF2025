@@ -34,3 +34,7 @@ npm run check:drawers
 ```
 
 最后更新：2026-10-01
+
+## 扫码器解析上下文
+
+统一复用 `OptimizedScanner.vue`。手机调用方必须绑定 `:phone`，供苹果包装SN前缀规则使用；默认 `serialProfile` 为 `phone`。配件逐件SN调用方显式指定 `serial-profile="accessory"` 与 `scan-type="serial"`，保留前导零、厂商前缀及最长100位编码，不应用手机专属规则。配件档位不能用于IMEI扫描。手动和扫码输入共用配件SN规范，不能复制第二套解析器。`check:component-adoption` 同时执行正反例回归与实际入口审计，不按文件名豁免。

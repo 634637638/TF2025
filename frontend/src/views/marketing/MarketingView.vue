@@ -53,11 +53,11 @@
         <el-form
           :model="form"
           label-position="top"
-          class="marketing-form"
+          class="marketing-form tf-form-layout"
         >
           <div
             v-if="form.mode === 'sales' && (canViewField('filters.condition') || canViewField('context.subsidy') || canViewField('context.color') || canViewField('context.weather') || canViewField('context.solar_term') || canViewField('filters.brand') || canViewField('filters.model') || canViewField('filters.color') || canViewField('filters.memory'))"
-            class="form-grid"
+            class="form-grid tf-form-grid"
           >
             <div
               v-if="canViewField('filters.condition') || canViewField('context.subsidy') || canViewField('context.color') || canViewField('context.weather') || canViewField('context.solar_term')"

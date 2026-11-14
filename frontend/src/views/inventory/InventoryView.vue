@@ -1551,85 +1551,11 @@ const _handleSelect = (item: InventoryItem) => {
 }
 
 @media (max-width: 767px) {
-  .inventory-edit-summary-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--tf-space-2);
-    margin-bottom: var(--tf-space-3);
-  }
-
   .inventory-edit-form-shell {
     padding: var(--tf-space-3) var(--tf-space-2);
     border-radius: var(--tf-radius-panel);
   }
-
-  .inventory-edit-form-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--tf-space-2);
-  }
-
-  .inventory-edit-serial-imei-row {
-    grid-column: span 2;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: var(--tf-space-2);
-  }
-
-  .inventory-edit-price-field {
-    grid-column: span 1;
-    order: 1;
-  }
-
-  .inventory-edit-status-field {
-    order: 1;
-  }
-
-  .inventory-edit-remarks-field {
-    grid-column: span 2;
-    order: 2;
-  }
-
 }
-
-@media (max-width: 479px) {
-  .inventory-edit-summary-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--tf-space-2);
-  }
-
-  .inventory-edit-form-shell {
-    padding: var(--tf-space-2);
-  }
-
-  .inventory-edit-form-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-}
-
-@media (max-width: 479px) {
-  /* 超窄手机也保持两列，字段内容通过最小宽度和换行保持完整。 */
-  .inventory-edit-form-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--tf-space-2);
-  }
-
-  /* 序列号和IMEI各占一列。 */
-  .inventory-edit-serial-imei-row {
-    grid-column: span 2;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: var(--tf-space-2);
-  }
-
-  .inventory-edit-price-field {
-    grid-column: span 1;
-  }
-
-  .inventory-edit-remarks-field {
-    grid-column: span 2;
-  }
-}
-
 </style>
 
 <style scoped src="./styles/inventory-view/detail-shell.css"></style>

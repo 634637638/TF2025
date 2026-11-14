@@ -227,6 +227,7 @@ class QueryController {
         return ApiResponse.error(res, error.message, error.statusCode)
       }
       log.error('QueryController: 删除手机记录失败:', error)
+      if (error.statusCode === 400) return ApiResponse.error(res, error.message, 400, error.code)
       return ApiResponse.serverError(res, '删除手机记录失败', error)
     }
   }

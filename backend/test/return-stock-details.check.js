@@ -70,7 +70,7 @@ test('退款渠道从全局配置校验，移动及银行卡必选，方式与�
 })
 
 test('金额拒绝负值、非数、超范围和三位小数，日期拒绝不存在日期及空值', () => {
-  for (const value of [-1, NaN, Infinity, true, [], {}, 100000000, '12.345']) {
+  for (const value of [-1, NaN, Infinity, true, [], {}, 100000000, '12.345', '1e3', '0x10', '12元', '12\n', ' ']) {
     assert.throws(() => normalizeReturnStockInfo({ ...details, refund_amount: value }), /退款金额/)
   }
   for (const value of ['2026-02-30T12:00', '2026-11-08T25:00', '错误日期']) {
@@ -78,6 +78,22 @@ test('金额拒绝负值、非数、超范围和三位小数，日期拒绝不�
   }
   assert.equal(normalizeReturnStockInfo({ ...details, reversal_date: '2026-11-08T01:30:00Z' }).reversal_date, '2026-11-08 09:30:00')
   assert.equal(normalizeReturnStockInfo({ ...details, refund_amount: 0.29 }).refund_amount, 0.29)
+})
+
+test('退库编辑拒绝部分解析的销售员ID及非法姓名、备注，空关联与合法标点保留', async () => {
+  const service = new QueryService()
+  let saved
+  service.queryRepository = { async updateReturnGoodsRecord(id, fields) { saved = { id, fields } } }
+  for (const payload of [{ original_sale_operator_id: '2abc' }, { original_sale_operator_id: '1e3' },
+    { original_sale_operator_id: false }, { original_sale_operator_name: {} }, { original_sale_operator_name: '张\n三' },
+    { remarks: 'a\u0000b' }]) {
+    await assert.rejects(service.updateReturnGoodsRecord(1, payload), { statusCode: 400 })
+    assert.equal(saved, undefined)
+  }
+  await service.updateReturnGoodsRecord(1, { original_sale_operator_id: null, original_sale_operator_name: null })
+  assert.deepEqual(saved.fields, { original_sale_operator_id: null, original_sale_operator_name: null })
+  await service.updateReturnGoodsRecord(1, { original_sale_operator_id: '2', original_sale_operator_name: "Anne·张 O'Neil" })
+  assert.deepEqual(saved.fields, { original_sale_operator_id: 2, original_sale_operator_name: "Anne·张 O'Neil" })
 })
 
 test('缺失字段在租借连接与积分冲回之前即返回400', async () => {

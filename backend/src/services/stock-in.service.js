@@ -8,6 +8,7 @@ const { validateImei: validateImeiUtil } = require('../utils/imei')
 const { prepareInvoiceNumberTransaction: prepareInvoiceNumbersUtil, generatePurchaseNumber: generatePurchaseNumberUtil } = require('../utils/invoice-number')
 const { assertStoreInScope, resolveStoreScope } = require('../utils/store-scope')
 const log = require('../utils/log')
+const { isMoneyInput, isEmptyInput } = require('../utils/input-values')
 const MAX_STOCK_IN_PRODUCTS = 200
 
 class StockInService extends BaseService {
@@ -172,8 +173,11 @@ class StockInService extends BaseService {
             throw this.createError(`第${i + 1}行商品序列号最长50位`, 400)
           }
 
-          if (!product.purchase_cost || product.purchase_cost <= 0) {
+          if (!isMoneyInput(product.purchase_cost) || Number(product.purchase_cost) <= 0) {
             throw this.createError(`第${i + 1}行商品请输入有效的入库价格`, 400)
+          }
+          if (!isEmptyInput(product.sale_price) && (!isMoneyInput(product.sale_price) || Number(product.sale_price) < 0)) {
+            throw this.createError(`第${i + 1}行商品请输入有效的销售价格`, 400)
           }
         }
 
@@ -204,7 +208,7 @@ class StockInService extends BaseService {
           const colorName = colorMap.get(Number(product.color_id)) || ''
           const memoryName = memoryMap.get(Number(product.memory_id)) || ''
           if (!brandName || !modelName || !colorName || !memoryName) {
-            throw new Error(`第${i + 1}行商品的品牌、型号、颜色或内存不存在`)
+            throw this.createError(`第${i + 1}行商品的品牌、型号、颜色或内存不存在，或品牌未开通手机业务`, 400)
           }
 
           // 只有在库状态才报错，已售出的商品可以回收后重新入库

@@ -1,12 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
-import { defineComponent, h } from 'vue'
+import { computed, defineComponent, h } from 'vue'
 import ElementPlus from 'element-plus'
 import QuickSaleModal from '@/components/query/QuickSaleModal.vue'
 import QueryEditModal from '@/components/query/QueryEditModal.vue'
 import type { QueryOperationOptions } from '@/types'
 
 vi.mock('@/stores/auth', () => ({ useAuthStore: () => ({ user: { id: 1, name: '测试销售员' } }) }))
+vi.mock('@/composables/usePagePermissions', () => ({ usePagePermissions: () => ({ canView: computed(() => false), canSell: computed(() => false), canCreate: computed(() => false), hasPermission: () => false }) }))
 vi.mock('@/utils/unified-api', () => { const api = {
   get: vi.fn().mockResolvedValue({ success: true, data: {
     基本信息: { phone_id: 11, status_code: 'in_stock' },
@@ -32,6 +33,7 @@ const options: QueryOperationOptions = {
 const wrappers: ReturnType<typeof mount>[] = []
 const global = {
   plugins: [ElementPlus],
+  directives: { permission: {} },
   stubs: {
     MobileDialog: defineComponent({ inheritAttrs: false, setup: (_, { slots }) => () => h('section', slots.default?.()) }),
     OptimizedScanner: true

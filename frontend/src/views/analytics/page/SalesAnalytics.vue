@@ -273,10 +273,12 @@
             </div>
           </template>
           <el-table
+            v-table-double-tap="productDetailTapOptions"
             class="data-table"
             :data="filteredTopProducts"
             stripe
             style="width: 100%"
+            @row-dblclick="productDetailDoubleClick"
           >
             <el-table-column
               type="index"
@@ -343,6 +345,13 @@
               </template>
             </el-table-column>
           </el-table>
+          <RecordDetailDialog
+            v-model="productDetailVisible"
+            title="畅销商品详情"
+            :record="productDetailRow"
+            :fields="productDetailFields"
+            :has-actions="false"
+          />
         </el-card>
       </el-col>
 
@@ -556,6 +565,9 @@
 </template>
 
 <script setup lang="ts">
+import { useMobile } from '@/composables/mobile'
+import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
+import type { RecordDetailField } from '@/types/component'
 import { formatAmount } from '@/utils/format'
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import {
@@ -1692,6 +1704,23 @@ onBeforeUnmount(() => {
     forecastChart = null
   }
 })
+
+const { isMobile } = useMobile()
+const { detailRow: productDetailRow, detailVisible: productDetailVisible, doubleTapOptions: productDetailTapOptions, handleRowDoubleClick: productDetailDoubleClick } = useMobileTableDetail<(typeof filteredTopProducts.value)[number]>({
+  enabled: () => isMobile.value, rows: () => filteredTopProducts.value, getKey: row => JSON.stringify([row.brand_name, row.model_name])
+})
+const productDetailFields = computed<RecordDetailField[]>(() => {
+  const row = productDetailRow.value
+  if (!row) return []
+  return [
+    { key: 'name', label: '产品名称', value: [row.brand_name, row.model_name].join(' / '), visible: canViewSalesField('top_products_table'), wide: true },
+    { key: 'quantity', label: '销量', value: row.quantity, visible: canViewSalesField('top_products_table') },
+    { key: 'revenue', label: '销售额', value: formatAmount(row.revenue), visible: canViewSalesField('top_products_table') },
+    { key: 'profit', label: '利润', value: formatAmount(row.profit), visible: canViewSalesField('top_products_table') },
+    { key: 'growth', label: '增长率', value: [(row.growth || 0) > 0 ? '+' : '', (row.growth || 0).toFixed(1)].join(' / '), visible: canViewSalesField('top_products_table') }
+  ]
+})
+
 </script>
 
 <style scoped lang="scss" src="./styles/sales-analytics/overview.scss"></style>

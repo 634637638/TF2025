@@ -9,7 +9,10 @@
     @update:model-value="emit('update:modelValue', $event)"
   >
     <div class="modal-body">
-      <form @submit.prevent="emit('submit')">
+      <form
+        class="tf-form-layout tf-form-grid"
+        @submit.prevent="emit('submit')"
+      >
         <div class="form-group">
           <label>角色名称 <span class="required">*</span></label>
           <el-input
@@ -32,7 +35,7 @@
             {{ isEdit ? '角色编码是系统稳定标识，创建后不可修改。' : '建议使用字母、数字、下划线、中划线或冒号，留空则系统自动生成。' }}
           </small>
         </div>
-        <div class="form-group">
+        <div class="form-group tf-form-field--wide">
           <label>角色描述 <span class="required">*</span></label>
           <el-input
             v-model="description"
@@ -56,14 +59,12 @@
         <el-button
           type="primary"
           :disabled="saving"
+          :loading="saving"
           @click="emit('submit')"
         >
-          <InlineLoading
-            v-if="saving"
-            :text="isEdit ? '更新中...' : '创建中...'"
-            size="small"
-            variant="inherit"
-          />
+          <template v-if="saving">
+            {{ isEdit ? '更新中...' : '创建中...' }}
+          </template>
           <template v-else>
             {{ isEdit ? '更新' : '创建' }}
           </template>
@@ -75,7 +76,6 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import InlineLoading from '@/components/InlineLoading.vue'
 import MobileDialog from '@/components/MobileDialog.vue'
 
 const props = defineProps<{

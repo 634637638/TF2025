@@ -43,14 +43,12 @@
         <el-button
           type="primary"
           :disabled="saving"
+          :loading="saving"
           @click="emit('save')"
         >
-          <InlineLoading
-            v-if="saving"
-            text="保存中..."
-            size="small"
-            variant="inherit"
-          />
+          <template v-if="saving">
+            保存中...
+          </template>
           <template v-else>
             确认分配
           </template>
@@ -62,7 +60,6 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import InlineLoading from '@/components/InlineLoading.vue'
 import MobileDialog from '@/components/MobileDialog.vue'
 import type { PermissionRole as Role, PermissionUser as User } from '../types'
 import UserRoleAssignmentBody from './UserRoleAssignmentBody.vue'

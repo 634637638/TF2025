@@ -1,6 +1,6 @@
 # 全局图标规范
 
-本规范是全局图标的唯一强制正文；菜单的在线检索与入库流程见[菜单图标管理规范](menu-icon-management-standard.md)。两者已登记在 `standards-manifest.json`，由 `check:icons` 接入启动与构建门禁。
+本规范是全局图标的唯一强制正文；菜单的在线检索与入库流程见[菜单图标管理规范](menu-icon-management-standard.md)。两者已登记在 `standards-manifest.json`，由 `check:icons` 接入构建与发布门禁，日常启动不自动运行全量审计。
 
 ## 唯一公共入口
 

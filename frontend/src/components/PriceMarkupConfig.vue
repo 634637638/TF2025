@@ -33,7 +33,7 @@
         :model="form"
         :rules="rules"
         label-width="92px"
-        class="markup-form"
+        class="markup-form tf-form-layout tf-form-grid"
       >
         <section class="config-card">
           <div class="section-heading">
@@ -52,7 +52,7 @@
             />
           </div>
 
-          <div class="inline-grid inline-grid--top">
+          <div class="inline-grid inline-grid--top tf-form-row">
             <el-form-item
               label="加价模式"
               prop="mode"
@@ -89,7 +89,7 @@
             </el-form-item>
           </div>
 
-          <div class="tier-grid">
+          <div class="tier-grid tf-form-row tf-form-row--three">
             <el-form-item
               v-if="form.mode === 'fixed'"
               label=""
@@ -197,7 +197,7 @@
             />
           </div>
 
-          <div class="inline-grid inline-grid--single">
+          <div class="inline-grid inline-grid--single tf-form-row">
             <el-form-item
               label="默认加价"
               class="compact-form-item"
@@ -274,7 +274,7 @@
             </div>
           </div>
 
-          <div class="inline-grid inline-grid--single">
+          <div class="inline-grid inline-grid--single tf-form-row">
             <el-form-item
               label="默认加价"
               class="compact-form-item"

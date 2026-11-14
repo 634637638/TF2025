@@ -202,11 +202,13 @@
           </template>
 
           <el-table
+            v-table-double-tap="mobileDetailTapOptions"
             v-tf-loading="{ active: customerLoading, text: '正在刷新客户分析...' }"
             class="data-table"
             :data="filteredCustomers"
             stripe
             :max-height="400"
+            @row-dblclick="mobileDetailDoubleClick"
           >
             <template #empty>
               <TableLoadingRow
@@ -270,7 +272,7 @@
               </template>
             </el-table-column>
             <el-table-column
-              v-if="canViewCustomerField('customer_detail')"
+              v-if="!isMobile && canViewCustomerField('customer_detail')"
               label="操作"
               :width="$getActionColumnWidth(['查看详情'])"
               class-name="actions-column"
@@ -372,7 +374,7 @@
         class="customer-detail"
       >
         <!-- 基本信息 -->
-        <el-descriptions
+        <RecordDescriptions
           :column="2"
           border
           class="customer-info"
@@ -403,7 +405,7 @@
           <el-descriptions-item label="最后消费">
             {{ formatDate(selectedCustomer.last_order_date) }}
           </el-descriptions-item>
-        </el-descriptions>
+        </RecordDescriptions>
 
         <!-- 消费趋势图 -->
         <el-card class="detail-card">
@@ -432,6 +434,8 @@
 </template>
 
 <script setup lang="ts">
+import { useMobile } from '@/composables/mobile'
+import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
 import { ref, shallowRef, computed, onUnmounted, nextTick, markRaw, watch } from 'vue'
 import { useNotification } from '@/composables/useNotification'
 import { useLoadingState } from '@/composables'
@@ -1379,6 +1383,10 @@ defineExpose({
     loadCustomers()
     refreshCharts()
   }
+})
+const { isMobile } = useMobile()
+const { doubleTapOptions: mobileDetailTapOptions, handleRowDoubleClick: mobileDetailDoubleClick } = useMobileTableDetail<CustomerDetail>({
+  enabled: () => isMobile.value && canViewCustomerField('customer_detail'), rows: filteredCustomers, getKey: row => row.id, onOpen: viewCustomerDetail
 })
 </script>
 

@@ -1,6 +1,7 @@
 'use strict'
 
 const log = require('../utils/log')
+const { validateSubsidyInput } = require('../utils/subsidy-input')
 const { clearCache } = require('../middleware/cache')
 const SubsidyApplyRepository = require('../repositories/subsidy-apply.repository')
 const {
@@ -22,6 +23,9 @@ class SubsidyApplyService {
   }
 
   async create(input, userId) {
+    const checked = validateSubsidyInput(input)
+    if (checked.error) return { status: 400, body: { success: false, message: checked.error } }
+    input = checked.input
     if (!input.phone_id || !input.customer_id || !input.imei1 || !input.imei2 || !input.sale_price) {
       return { status: 400, body: { success: false, message: 'IMEI2为必填项，请完整填写' } }
     }

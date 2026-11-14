@@ -1,5 +1,7 @@
 'use strict'
 
+const { getActiveSaleSql } = require('../utils/sale-status')
+
 const { getDatabase } = require('../config/database')
 
 class AnalyticsCustomerDetailRepository {
@@ -13,8 +15,8 @@ class AnalyticsCustomerDetailRepository {
     const [rows] = await this.database().execute(`
       SELECT DATE_FORMAT(sale_time, '%Y-%m') AS period,
              COALESCE(SUM(sale_price), 0) AS amount
-      FROM sales
-      WHERE customer_id = ?
+      FROM sales s
+      WHERE customer_id = ? AND ${getActiveSaleSql()}
         ${storeFilter}
       GROUP BY DATE_FORMAT(sale_time, '%Y-%m')
       ORDER BY period DESC
@@ -33,7 +35,7 @@ class AnalyticsCustomerDetailRepository {
       LEFT JOIN phones p ON p.id = s.phone_id
       LEFT JOIN models m ON m.id = p.model_id
       LEFT JOIN brands b ON b.id = p.brand_id
-      WHERE s.customer_id = ?
+      WHERE s.customer_id = ? AND ${getActiveSaleSql()}
         ${storeFilter}
       GROUP BY COALESCE(NULLIF(m.name, ''), NULLIF(b.name, ''), '其他')
       ORDER BY value DESC, name ASC

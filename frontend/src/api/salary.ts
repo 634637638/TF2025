@@ -3,7 +3,8 @@
  */
 import { unifiedApi } from '@/utils/unified-api'
 import { salaryTemplateApi } from './salary-template'
-import type { SalaryFilters, SalaryRecordInput } from '@/types/salary'
+import type { SalaryFilters, SalaryRecord, SalaryRecordInput, SalaryRecalculationResult, SalaryCalculation,
+  SalaryCalculatedSaveInput, SalaryListResponse, SalaryCalculationResult } from '@/types/salary'
 
 export type { SalaryFilters, SalaryRecord, SalaryRecordInput } from '@/types/salary'
 
@@ -11,36 +12,36 @@ export const salaryRecordApi = {
   /**
    * 获取工资记录列表
    */
-  getSalaryRecords: (filters: SalaryFilters = {}) => {
-    return unifiedApi.get('/salary-records', { params: filters })
+  getSalaryRecords: (filters: SalaryFilters = {}, signal?: AbortSignal) => {
+    return unifiedApi.get<SalaryListResponse>('/salary-records', { params: filters, signal, useCache: false })
   },
 
   /**
    * 获取个人工资记录
    */
   getMySalaryRecords: (filters: SalaryFilters = {}) => {
-    return unifiedApi.get('/salary-records', { params: filters })
+    return unifiedApi.get<SalaryListResponse>('/salary-records', { params: filters, useCache: false })
   },
 
   /**
    * 获取工资记录详情
    */
   getSalaryRecordById: (id: number) => {
-    return unifiedApi.get(`/salary-records/${id}`)
+    return unifiedApi.get<SalaryRecord>(`/salary-records/${id}`, { useCache: false })
   },
 
   /**
    * 创建工资记录
    */
-  createSalaryRecord: (data: SalaryRecordInput) => {
-    return unifiedApi.post('/salary-records', data)
+  createSalaryRecord: (data: Partial<SalaryRecordInput> & Pick<SalaryRecordInput, 'employee_id' | 'period_start' | 'period_end'>) => {
+    return unifiedApi.post<{ data: SalaryRecord }>('/salary-records', data)
   },
 
   /**
    * 更新工资记录
    */
   updateSalaryRecord: (id: number, data: Partial<SalaryRecordInput>) => {
-    return unifiedApi.put(`/salary-records/${id}`, data)
+    return unifiedApi.put<{ data: SalaryRecord }>(`/salary-records/${id}`, data)
   },
 
   /**
@@ -54,7 +55,7 @@ export const salaryRecordApi = {
    * 计算工资
    */
   calculateSalary: (employeeId: number, periodStart: string, periodEnd: string) => {
-    return unifiedApi.post('/salary-records/calculate', {
+    return unifiedApi.post<SalaryCalculation>('/salary-records/calculate', {
       employee_id: employeeId,
       period_start: periodStart,
       period_end: periodEnd
@@ -64,15 +65,15 @@ export const salaryRecordApi = {
   /**
    * 保存计算的工资
    */
-  saveCalculatedSalary: (data: Partial<SalaryRecordInput>) => {
-    return unifiedApi.post('/salary-records/save', data)
+  saveCalculatedSalary: (data: SalaryCalculatedSaveInput) => {
+    return unifiedApi.post<{ data: SalaryRecord }>('/salary-records/save', data)
   },
 
   /**
    * 批量计算工资
    */
   batchCalculateSalaries: (employeeIds: number[], periodStart: string, periodEnd: string) => {
-    return unifiedApi.post('/salary-records/batch-calculate', {
+    return unifiedApi.post<SalaryCalculationResult[]>('/salary-records/batch-calculate', {
       employee_ids: employeeIds,
       period_start: periodStart,
       period_end: periodEnd
@@ -83,7 +84,7 @@ export const salaryRecordApi = {
    * 批量重算某月工资
    */
   recalculateMonth: (periodStart: string, periodEnd: string) => {
-    return unifiedApi.post('/salary-records/recalculate-month', {
+    return unifiedApi.post<SalaryRecalculationResult>('/salary-records/recalculate-month', {
       period_start: periodStart,
       period_end: periodEnd
     })
@@ -101,8 +102,8 @@ export const salaryRecordApi = {
    * @param id - 工资记录ID
    * @param payment_method - 支付方式 (cash/bank_transfer/wechat/alipay/other)
    */
-  markAsPaid: (id: number, payment_method?: string) => {
-    return unifiedApi.post(`/salary-records/${id}/pay`, { payment_method })
+  markAsPaid: (id: number, payment_method?: string, expected_calculation_version?: string) => {
+    return unifiedApi.post<SalaryRecord>(`/salary-records/${id}/pay`, { payment_method, expected_calculation_version })
   },
 
   /**

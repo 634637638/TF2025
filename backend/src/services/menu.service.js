@@ -1,4 +1,6 @@
 const { withConnection } = require('../core/db/connection')
+const { parseInput } = require('../middleware/validation')
+const { parseReferenceOrder } = require('../utils/reference-options')
 /**
  * 菜单服务类
  * 处理所有菜单相关的业务逻辑
@@ -174,13 +176,13 @@ class MenuService {
    */
   async createMenu(menuData, _user) {
     try {
-      await ensureMenuIconSchema(this.db)
-
       // 验证数据
       const validation = this.validateMenuData(menuData, false)
       if (!validation.valid) {
         return { success: false, message: validation.message, code: 'VALIDATION_ERROR' }
       }
+      menuData = validation.data
+      await ensureMenuIconSchema(this.db)
 
       // 检查菜单名称是否重复
       const [existingMenu] = await this.db.execute(
@@ -270,13 +272,14 @@ class MenuService {
    */
   async updateMenu(id, menuData, _user) {
     try {
-      await ensureMenuIconSchema(this.db)
-
+      id = parseInput({ id }, { id: { type: 'id', required: true } }).id
       // 验证数据
       const validation = this.validateMenuData(menuData, true)
       if (!validation.valid) {
         return { success: false, message: validation.message, code: 'VALIDATION_ERROR' }
       }
+      menuData = validation.data
+      await ensureMenuIconSchema(this.db)
 
       // 检查菜单是否存在
       const [existingMenu] = await this.db.execute(
@@ -376,6 +379,7 @@ class MenuService {
         data: { id: parseInt(id), ...menuData }
       }
     } catch (error) {
+      if (error.statusCode === 400) return { success: false, message: error.message, code: 'VALIDATION_ERROR' }
       log.error('更新菜单失败:', error)
       return { success: false, message: '更新菜单失败', code: 'DATABASE_ERROR' }
     }
@@ -460,6 +464,9 @@ class MenuService {
    */
   async updateMenuStatus(id, status, _user) {
     try {
+      const input = parseInput({ id, status }, { id: { type: 'id', required: true }, status: { type: 'boolean', required: true } })
+      id = input.id
+      status = input.status
       const [existingMenu] = await this.db.execute(
         'SELECT * FROM menus WHERE id = ?',
         [id]
@@ -480,6 +487,7 @@ class MenuService {
         data: { id: parseInt(id), is_active: status ? 1 : 0, status: status ? 1 : 0 }
       }
     } catch (error) {
+      if (error.statusCode === 400) return { success: false, message: error.message, code: 'VALIDATION_ERROR' }
       log.error('更新菜单状态失败:', error)
       return { success: false, message: '更新菜单状态失败', code: 'DATABASE_ERROR' }
     }
@@ -490,6 +498,7 @@ class MenuService {
    */
   async updateMenuSort(menuSorts, _user) {
     try {
+      menuSorts = parseReferenceOrder(menuSorts)
       return await withConnection(this.db, async connection => {
         try {
           await connection.beginTransaction()
@@ -514,6 +523,7 @@ class MenuService {
         }
       })
     } catch (error) {
+      if (error.statusCode === 400) return { success: false, message: error.message, code: 'VALIDATION_ERROR' }
       log.error('更新菜单排序失败:', error)
       return { success: false, message: '更新菜单排序失败', code: 'DATABASE_ERROR' }
     }
@@ -782,6 +792,25 @@ class MenuService {
    * 验证菜单数据
    */
   validateMenuData(data, isUpdate = false) {
+    try {
+      data = parseInput(data, {
+        name: { type: 'string', required: !isUpdate || data?.name !== undefined, maxLength: 100, label: '菜单名称' },
+        title: { type: 'string', required: data?.title !== undefined, maxLength: 100, label: '菜单标题' },
+        ...Object.fromEntries(['path', 'component', 'redirect', 'icon', 'module_key', 'url', 'target', 'permission'].map(field => [field, { type: 'string', maxLength: 255, label: field }])),
+        remark: { type: 'string', maxLength: 1000, multiline: true, label: '备注' },
+        remarks: { type: 'string', maxLength: 1000, multiline: true, label: '备注' },
+        parent_id: { type: 'number', integer: true, min: 0, label: '父菜单' },
+        module_id: { type: 'id', label: '模块' },
+        sort_order: { type: 'number', integer: true, min: 0, max: 2147483647, required: data?.sort_order !== undefined, label: '排序' },
+        ...Object.fromEntries(['is_active', 'is_hidden', 'is_cache', 'is_affix', 'is_external'].map(field => [field, { type: 'boolean', required: data?.[field] !== undefined, label: field }]))
+      })
+      for (const field of ['is_active', 'is_hidden', 'is_cache', 'is_affix', 'is_external']) {
+        if (data[field] !== undefined) data[field] = Number(data[field])
+      }
+    } catch (error) {
+      if (error.statusCode === 400) return { valid: false, message: error.message }
+      throw error
+    }
     if (!isUpdate) {
       if (!data.name || !data.name.trim()) {
         return { valid: false, message: '菜单名称不能为空' }
@@ -815,7 +844,7 @@ class MenuService {
       return { valid: false, message: '排序顺序必须是非负整数' }
     }
 
-    return { valid: true }
+    return { valid: true, data }
   }
 
   async exportMenus(filters = {}) {
@@ -907,11 +936,19 @@ class MenuService {
       const [existingMenus] = await this.db.execute('SELECT id, name FROM menus')
       const menuNameMap = new Map(existingMenus.map(item => [String(item.name), item.id]))
       const normalizedRows = rows.map((row) => {
-        const name = String(row['菜单名称'] || row['name'] || '').trim()
-        const explicitId = row['ID'] !== '' && row['ID'] !== undefined ? Number(row['ID']) : null
-        const parentIdCell = row['父级ID'] !== '' && row['父级ID'] !== undefined ? Number(row['父级ID']) : null
+        const nameValue = row['菜单名称'] ?? row['name'] ?? ''
+        const name = parseInput({ name: nameValue }, { name: { type: 'string', required: true, maxLength: 100 } }).name.trim()
+        const explicitId = parseInput({ id: row['ID'] }, { id: { type: 'id' } }).id ?? null
+        const parentIdCell = parseInput({ id: row['父级ID'] }, { id: { type: 'number', integer: true, min: 0 } }).id ?? null
         const hasExplicitParentId = Number.isInteger(parentIdCell)
-        const parentName = String(row['父级菜单'] || '').trim()
+        const parentName = parseInput({ name: row['父级菜单'] }, { name: { type: 'string', maxLength: 100 } }).name?.trim() || ''
+        const activeValue = typeof row['状态'] === 'string'
+          ? parseInput({ status: row['状态'] }, { status: { type: 'string', maxLength: 20 } }).status
+          : row['状态']
+        const activeLabels = new Map([['启用', 1], ['1', 1], ['true', 1], ['TRUE', 1], ['禁用', 0], ['停用', 0], ['0', 0], ['false', 0], ['FALSE', 0]])
+        const isActive = activeValue === '' || activeValue === undefined || activeValue === null
+          ? 0
+          : activeLabels.get(typeof activeValue === 'string' ? activeValue.trim() : activeValue) ?? activeValue
 
         return {
           name,
@@ -924,18 +961,23 @@ class MenuService {
               ? parentIdCell
               : (parentName ? (menuNameMap.get(parentName) || 0) : 0),
             name,
-            url: String(row['路径'] || row['url'] || '').trim() || null,
-            icon: String(row['图标'] || row['icon'] || '').trim() || null,
-            sort_order: Number(row['排序'] || 0) || 0,
-            menu_type: String(row['类型'] || 'menu').trim() || 'menu',
-            target: String(row['打开方式'] || '_self').trim() || '_self',
-            remarks: String(row['备注'] || '').trim() || null,
-            is_active: ['启用', '1', 'true', 'TRUE'].includes(String(row['状态']).trim()) ? 1 : 0,
-            module_key: String(row['模块KEY'] || '').trim() || null,
-            module_id: row['模块ID'] !== '' && row['模块ID'] !== undefined ? Number(row['模块ID']) || null : null
+            url: row['路径'] ?? row['url'] ?? null,
+            icon: row['图标'] ?? row['icon'] ?? null,
+            sort_order: row['排序'] === '' || row['排序'] === undefined ? 0 : row['排序'],
+            menu_type: row['类型'] || 'menu',
+            target: row['打开方式'] || '_self',
+            remarks: row['备注'] ?? null,
+            is_active: isActive,
+            module_key: row['模块KEY'] ?? null,
+            module_id: row['模块ID'] === '' || row['模块ID'] === undefined ? null : row['模块ID']
           }
         }
-      }).filter((row) => row.name)
+      })
+      for (const row of normalizedRows) {
+        const validation = this.validateMenuData(row.payload)
+        if (!validation.valid) return { success: false, message: validation.message, code: 'INVALID_FILE' }
+        row.payload = validation.data
+      }
       let importedCount = 0
       let updatedCount = 0
       const importedTargets = []

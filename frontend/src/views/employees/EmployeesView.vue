@@ -165,6 +165,7 @@
             <el-table
               ref="employeesTableRef"
               v-tf-loading="{ active: loading || refreshing, text: '正在刷新员工列表...' }"
+              v-table-double-tap="mobileDetailTapOptions"
               :data="paginatedEmployees"
               border
               stripe
@@ -173,8 +174,7 @@
               :fit="true"
               :row-key="getEmployeeRowKey"
               :row-class-name="getEmployeeRowClass"
-              :expand-row-keys="isMobile && mobileActionRowId ? [mobileActionRowId] : []"
-              @row-click="(row) => handleMobileRowTap(row.id)"
+              @row-dblclick="handleMobileDetailDoubleClick"
             >
               <template #empty>
                 <TableLoadingRow
@@ -367,52 +367,46 @@
                   </div>
                 </template>
               </el-table-column>
-              <el-table-column
-                v-if="isMobile && (canEdit || canDelete)"
-                type="expand"
-                width="1"
-                class-name="mobile-expand-column"
-                label-class-name="mobile-expand-header"
-              >
-                <template #default="{ row }">
-                  <div class="mobile-row-actions">
-                    <el-button
-                      v-if="canEdit"
-                      v-permission="'employee:edit'"
-                      type="primary"
-                      size="small"
-                      @click.stop="editEmployee(row)"
-                    >
-                      <i class="fas fa-edit" /><span>编辑</span>
-                    </el-button><el-button
-                      v-if="canEdit && isEmployeeActive(row.status)"
-                      v-permission="'employee:edit'"
-                      type="warning"
-                      size="small"
-                      @click.stop="toggleStatus(row)"
-                    >
-                      <i class="fas fa-user-slash" /><span>离职</span>
-                    </el-button><el-button
-                      v-else-if="canEdit"
-                      v-permission="'employee:edit'"
-                      type="info"
-                      size="small"
-                      @click.stop="toggleStatus(row)"
-                    >
-                      <i class="fas fa-rotate-left" /><span>恢复</span>
-                    </el-button><el-button
-                      v-if="canDelete"
-                      v-permission="'employee:delete'"
-                      type="danger"
-                      size="small"
-                      @click.stop="deleteEmployee(row)"
-                    >
-                      <i class="fas fa-trash" /><span>删除</span>
-                    </el-button>
-                  </div>
-                </template>
-              </el-table-column>
             </el-table>
+            <RecordDetailDialog
+              v-model="mobileDetailVisible"
+              title="员工详情"
+              :fields="mobileDetailFields"
+              :record="mobileDetailRow"
+              :has-actions="canEdit || canDelete"
+            >
+              <template #actions="{ row }">
+                <el-button
+                  v-if="canEdit"
+                  v-permission="'employee:edit'"
+                  type="primary"
+                  @click.stop="runMobileDetailAction(() => editEmployee(row))"
+                >
+                  <i class="fas fa-edit" /><span>编辑</span>
+                </el-button><el-button
+                  v-if="canEdit && isEmployeeActive(row.status)"
+                  v-permission="'employee:edit'"
+                  type="warning"
+                  @click.stop="runMobileDetailAction(() => toggleStatus(row))"
+                >
+                  <i class="fas fa-user-slash" /><span>离职</span>
+                </el-button><el-button
+                  v-else-if="canEdit"
+                  v-permission="'employee:edit'"
+                  type="info"
+                  @click.stop="runMobileDetailAction(() => toggleStatus(row))"
+                >
+                  <i class="fas fa-rotate-left" /><span>恢复</span>
+                </el-button><el-button
+                  v-if="canDelete"
+                  v-permission="'employee:delete'"
+                  type="danger"
+                  @click.stop="runMobileDetailAction(() => deleteEmployee(row))"
+                >
+                  <i class="fas fa-trash" /><span>删除</span>
+                </el-button>
+              </template>
+            </RecordDetailDialog>
           </div>
 
           <!-- 分页组件 -->
@@ -442,12 +436,14 @@
           @close="attemptCloseModal"
         >
           <el-form
+            class="tf-form-layout tf-form-grid"
             :model="employeeForm"
             label-width="100px"
           >
             <el-row :gutter="isMobile ? 0 : 20">
               <el-col
                 v-if="canViewField('name')"
+                :xs="12"
                 :span="isMobile ? 24 : 12"
               >
                 <el-form-item
@@ -466,6 +462,7 @@
               </el-col>
               <el-col
                 v-if="canViewField('username')"
+                :xs="12"
                 :span="isMobile ? 24 : 12"
               >
                 <el-form-item
@@ -487,6 +484,7 @@
             <el-row :gutter="isMobile ? 0 : 20">
               <el-col
                 v-if="canViewField('phone')"
+                :xs="12"
                 :span="isMobile ? 24 : 12"
               >
                 <el-form-item label="手机号">
@@ -494,17 +492,19 @@
                     v-model="employeeForm.phone"
                     placeholder="请输入手机号"
                     clearable
-                    maxlength="11"
-                    show-word-limit
                     :disabled="!canEditField('phone')"
                   />
                 </el-form-item>
               </el-col>
               <el-col
                 v-if="canViewField('email')"
+                :xs="24"
                 :span="isMobile ? 24 : 12"
               >
-                <el-form-item label="邮箱">
+                <el-form-item
+                  class="tf-form-field--wide"
+                  label="邮箱"
+                >
                   <el-input
                     v-model="employeeForm.email"
                     placeholder="请输入邮箱地址"
@@ -587,8 +587,12 @@
             <!-- 新增员工时的密码设置 -->
             <template v-if="showAddModal">
               <el-row :gutter="isMobile ? 0 : 20">
-                <el-col :span="isMobile ? 24 : 12">
+                <el-col
+                  :xs="24"
+                  :span="isMobile ? 24 : 12"
+                >
                   <el-form-item
+                    class="tf-form-field--wide"
                     label="初始密码"
                     required
                   >
@@ -602,8 +606,12 @@
                     />
                   </el-form-item>
                 </el-col>
-                <el-col :span="isMobile ? 24 : 12">
+                <el-col
+                  :xs="24"
+                  :span="isMobile ? 24 : 12"
+                >
                   <el-form-item
+                    class="tf-form-field--wide"
                     label="确认密码"
                     required
                   >
@@ -638,8 +646,14 @@
 
               <div v-if="showPasswordFields">
                 <el-row :gutter="isMobile ? 0 : 20">
-                  <el-col :span="isMobile ? 24 : 12">
-                    <el-form-item label="新密码">
+                  <el-col
+                    :xs="24"
+                    :span="isMobile ? 24 : 12"
+                  >
+                    <el-form-item
+                      class="tf-form-field--wide"
+                      label="新密码"
+                    >
                       <el-input
                         v-model="employeeForm.password"
                         type="password"
@@ -653,8 +667,14 @@
                       </div>
                     </el-form-item>
                   </el-col>
-                  <el-col :span="isMobile ? 24 : 12">
-                    <el-form-item label="确认新密码">
+                  <el-col
+                    :xs="24"
+                    :span="isMobile ? 24 : 12"
+                  >
+                    <el-form-item
+                      class="tf-form-field--wide"
+                      label="确认新密码"
+                    >
                       <el-input
                         v-model="employeeForm.confirm_password"
                         type="password"
@@ -685,14 +705,12 @@
                     type="warning"
                     size="small"
                     :disabled="passwordResetting"
+                    :loading="passwordResetting"
                     @click="resetToDefaultPassword"
                   >
-                    <InlineLoading
-                      v-if="passwordResetting"
-                      text="重置中..."
-                      size="small"
-                      variant="inherit"
-                    />
+                    <template v-if="passwordResetting">
+                      重置中...
+                    </template>
                     <template v-else>
                       <el-icon><RefreshLeft /></el-icon>
                       重置为随机密码
@@ -730,14 +748,12 @@
               <el-button
                 type="primary"
                 :disabled="submitting"
+                :loading="submitting"
                 @click="saveEmployee"
               >
-                <InlineLoading
-                  v-if="submitting"
-                  :text="isEditMode ? '保存中...' : '添加中...'"
-                  size="small"
-                  variant="inherit"
-                />
+                <template v-if="submitting">
+                  {{ isEditMode ? '保存中...' : '添加中...' }}
+                </template>
                 <template v-else>
                   <el-icon><component :is="isEditMode ? Check : Plus" /></el-icon>
                   {{ isEditMode ? '保存' : '添加' }}
@@ -759,7 +775,7 @@
             v-if="employeeSalary"
             class="salary-info"
           >
-            <el-descriptions
+            <RecordDescriptions
               :column="3"
               border
             >
@@ -772,13 +788,13 @@
               <el-descriptions-item label="利润提成">
                 {{ employeeSalary.commission_profit_percentage || 0 }}%
               </el-descriptions-item>
-            </el-descriptions>
+            </RecordDescriptions>
 
             <el-divider content-position="left">
               详细配置
             </el-divider>
 
-            <el-descriptions
+            <RecordDescriptions
               :column="2"
               border
             >
@@ -797,7 +813,7 @@
               >
                 {{ employeeSalary.salary_template_name || '未设置' }}
               </el-descriptions-item>
-            </el-descriptions>
+            </RecordDescriptions>
           </div>
           <DataEmptyState
             v-else
@@ -820,6 +836,7 @@
                 角色列表
               </h4>
               <el-button
+                v-if="canCreate"
                 type="primary"
                 size="small"
                 :icon="Plus"
@@ -842,6 +859,7 @@
               />
               <div
                 v-else
+                v-table-double-tap="roleDetailTapOptions"
                 class="roles-grid"
               >
                 <el-card
@@ -849,18 +867,25 @@
                   :key="role.id"
                   class="role-card"
                   shadow="hover"
+                  data-mobile-record
+                  @dblclick="roleDetailDoubleClick(role, null, $event)"
                 >
                   <template #header>
                     <div class="role-header">
                       <h5>{{ role.name }}</h5>
-                      <div class="role-actions">
+                      <div
+                        v-if="!isMobile"
+                        class="role-actions"
+                      >
                         <el-button
+                          v-if="canEdit"
                           size="small"
                           type="primary"
                           :icon="Edit"
                           @click="editRole(role)"
                         />
                         <el-button
+                          v-if="canDelete"
                           size="small"
                           type="danger"
                           :disabled="role.user_count > 0"
@@ -886,6 +911,35 @@
           </div>
         </MobileDialog>
 
+        <RecordDetailDialog
+          v-model="roleDetailVisible"
+          title="角色详情"
+          :record="roleDetailRow"
+          :fields="roleDetailFields"
+          :has-actions="canEdit || canDelete"
+        >
+          <template #actions="{ row }">
+            <el-button
+              v-if="canEdit"
+              v-permission="'employees:edit'"
+              type="primary"
+              @click.stop="runRoleDetailAction(editRole)"
+            >
+              编辑
+            </el-button>
+            <el-button
+              v-if="canDelete"
+              v-permission="'employees:delete'"
+              type="danger"
+              :disabled="row.user_count > 0"
+              :title="row.user_count > 0 ? '该角色仍有用户使用，无法删除' : '删除角色'"
+              @click.stop="runRoleDetailAction(deleteRole)"
+            >
+              删除
+            </el-button>
+          </template>
+        </RecordDetailDialog>
+
   
         <!-- 添加/编辑角色模态框 -->
         <MobileDialog
@@ -898,6 +952,7 @@
           @close="closeRoleModal"
         >
           <el-form
+            class="tf-form-layout tf-form-grid"
             :model="roleForm"
             label-width="100px"
           >
@@ -923,7 +978,10 @@
               />
             </el-form-item>
 
-            <el-form-item label="角色描述">
+            <el-form-item
+              class="tf-form-field--wide"
+              label="角色描述"
+            >
               <el-input
                 v-model="roleForm.description"
                 class="tf-textarea"
@@ -949,14 +1007,12 @@
               <el-button
                 type="primary"
                 :disabled="savingRole"
+                :loading="savingRole"
                 @click="saveRole"
               >
-                <InlineLoading
-                  v-if="savingRole"
-                  :text="showAddRoleModal ? '添加中...' : '保存中...'"
-                  size="small"
-                  variant="inherit"
-                />
+                <template v-if="savingRole">
+                  {{ showAddRoleModal ? '添加中...' : '保存中...' }}
+                </template>
                 <template v-else>
                   <el-icon><Check /></el-icon>
                   {{ showAddRoleModal ? '添加' : '保存' }}
@@ -996,7 +1052,8 @@ import ImportExportActions from '@/components/business/ImportExportActions.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import { PageHeader, PermissionGate } from '@/components/base'
 import { useMobile } from '@/composables/mobile'
-import { useMobileRowDoubleTap } from '@/composables/useMobileRowDoubleTap'
+import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
+import type { RecordDetailField } from '@/types/component'
 import {
   Plus,
   Refresh,
@@ -1034,8 +1091,6 @@ const { loading: submitting } = useLoadingState()
 const { loading: exporting } = useLoadingState()
 const { exportFile, buildDateFilename, sanitizeParams } = useImportExport()
 const employeesTableRef = ref<unknown>(null)
-const mobileActionRowId = ref<string | null>(null)
-const { isDoubleTap } = useMobileRowDoubleTap()
 const getEmployeeRowKey = (employee: Employee) => String(employee.id)
 const isEmployeeActive = (status: Employee['status'] | string) => status === 1 || status === 'active'
 const getEmployeeRowClass = ({ row }: { row: Employee }) => isEmployeeActive(row.status) ? 'status-active-row' : 'status-inactive-row'
@@ -1107,16 +1162,7 @@ const showStatsCards = computed(() => (
   canViewField('stats_inactive_employees') ||
   canViewField('stats_phone_completion')
 ))
-const toggleMobileActions = (id: number) => {
-  if (!isMobile.value) return
-  const rowKey = String(id)
-  mobileActionRowId.value = mobileActionRowId.value === rowKey ? null : rowKey
-}
 
-const handleMobileRowTap = (id: number) => {
-  if (!isMobile.value) return
-  if (isDoubleTap(String(id))) toggleMobileActions(id)
-}
 
 // 模态框状态
 const showAddModal = ref(false)
@@ -1138,6 +1184,18 @@ const employeeSalary = ref<EmployeeSalaryDetail | null>(null)
 
 // 角色管理状态
 const showRoleManagement = ref(false)
+const roles = ref<Role[]>([])
+const { detailRow: roleDetailRow, detailVisible: roleDetailVisible, doubleTapOptions: roleDetailTapOptions,
+  handleRowDoubleClick: roleDetailDoubleClick, runDetailAction: runRoleDetailAction } = useMobileTableDetail<Role>({
+    enabled: () => isMobile.value && canView.value && showRoleManagement.value,
+    rows: () => roles.value, rowSelector: '[data-mobile-record]', getKey: role => role.id
+  })
+const roleDetailFields = computed<RecordDetailField[]>(() => roleDetailRow.value ? [
+  { key: 'name', label: '角色名称', value: roleDetailRow.value.name, visible: true },
+  { key: 'users', label: '使用人数', value: roleDetailRow.value.user_count, visible: true },
+  { key: 'description', label: '描述', value: roleDetailRow.value.description, visible: true, wide: true },
+  { key: 'created', label: '创建日期', value: formatDate(roleDetailRow.value.created_at || ''), visible: true }
+] : [])
 const showAddRoleModal = ref(false)
 const showEditRoleModal = ref(false)
 const { loading: loadingRoles } = useLoadingState()
@@ -1160,7 +1218,6 @@ const employeeForm = ref<EmployeeForm>({
 })
 
 // 角色相关数据
-const roles = ref<Role[]>([])
 const roleForm = ref({
   name: '',
   description: ''
@@ -1446,32 +1503,6 @@ const saveEmployee = async () => {
   } finally {
     submitting.value = false
   }
-}
-
-const _hasUnsavedChanges = (): boolean => {
-  if (!showAddModal.value && !showEditModal.value) return false
-
-  const currentForm = employeeForm.value
-
-  if (showEditModal.value && selectedEmployee.value) {
-    return (
-      currentForm.name !== selectedEmployee.value.name ||
-      currentForm.phone !== selectedEmployee.value.phone ||
-      currentForm.email !== selectedEmployee.value.email ||
-      JSON.stringify(currentForm.role_ids) !== JSON.stringify(selectedEmployee.value.role_ids) ||
-      currentForm.status !== selectedEmployee.value.status
-    )
-  }
-
-  // For add modal, check if any field has been filled
-  return (
-    currentForm.username !== '' ||
-    currentForm.name !== '' ||
-    currentForm.phone !== '' ||
-    currentForm.email !== '' ||
-    currentForm.password !== '' ||
-    currentForm.confirm_password !== ''
-  )
 }
 
 const attemptCloseModal = () => {
@@ -1882,6 +1913,26 @@ const handleExport = async () => {
 }
 
 // 生命周期
+const { detailRow: mobileDetailRow, detailVisible: mobileDetailVisible, doubleTapOptions: mobileDetailTapOptions,
+  handleRowDoubleClick: handleMobileDetailDoubleClick, runDetailAction: runMobileDetailAction } = useMobileTableDetail<Employee>({
+    enabled: computed(() => isMobile.value && canView.value), rows: paginatedEmployees, getKey: row => row.id
+  })
+const mobileDetailFields = computed<RecordDetailField[]>(() => {
+  const row = mobileDetailRow.value
+  if (!row) return []
+  return [
+    { key: 'name', label: '员工姓名', value: row.name, visible: canViewField('name') },
+    { key: 'username', label: '登录账号', value: row.username, visible: canViewField('username') },
+    { key: 'phone', label: '手机号', value: row.phone, visible: canViewField('phone') },
+    { key: 'role', label: '角色', value: row.role_names, visible: canViewField('role') },
+    { key: 'email', label: '邮箱', value: row.email, visible: canViewField('email'), wide: true },
+    { key: 'status', label: '状态', value: row.status === 1 ? '在职' : '停用', visible: canViewField('status') },
+    { key: 'hire_date', label: '入职日期', value: formatDate(row.hire_date || ''), visible: canViewField('hire_date') },
+    { key: 'created_at', label: '创建时间', value: formatDate(row.created_at || ''), visible: canViewField('created_at'), wide: true }
+  ]
+})
+
+
 onMounted(async () => {
   // 权限预检查，避免不必要的API调用
   if (!canView.value) {

@@ -14,7 +14,7 @@ const returnDetails = {
   refund_amount: 0, refund_method: '原路退回', reversal_date: '2026-11-08T10:20', remarks: '退货'
 }
 
-const createRepository = (execute, events) => {
+const createRepository = (execute, events, checkoutOrderId = null) => {
   const repository = new QueryRepository()
   repository.getConnection = () => ({
     async getConnection() {
@@ -22,6 +22,8 @@ const createRepository = (execute, events) => {
       return {
         async execute(sql, params) {
           events.push(['execute', sql, params])
+          // 默认夹具是旧独立手机单；共同单先由真实仓储核对订单关联。
+          if (sql.includes('FROM sales_order_items')) return [checkoutOrderId ? [{ order_id: checkoutOrderId }] : []]
           return execute(sql, params)
         },
         async beginTransaction() { events.push('begin') },
@@ -122,4 +124,19 @@ test('删除手机逐条冲回积分，积分异常时不删除并回滚释放',
   await assert.rejects(service.deletePhoneRecord(12, { storeIds: [3] }), /积分冲回失败/)
   assert.deepEqual(reversed, [21, 22])
   assert.deepEqual(events.filter(value => typeof value === 'string'), ['acquire', 'begin', 'rollback', 'release'])
+})
+
+test('共同单从旧退库或删除入口进入时先拒绝拆单，仍回滚并释放一次连接', async () => {
+  for (const operation of ['return', 'delete']) {
+    const events = []
+    const repository = createRepository(sql => {
+      if (sql.includes('FROM phones')) return [[{ status: 'sold', store_id: 3 }]]
+      assert.fail('共同单不得冲回积分、删除销售或改写库存')
+    }, events, 91)
+    const service = new QueryMutationService({ repository, reversePoints: async () => assert.fail('不得冲回积分') })
+    await assert.rejects(operation === 'return'
+      ? service.returnToStock(12, 7, returnDetails, { storeIds: [3] })
+      : service.deletePhoneRecord(12, { storeIds: [3] }), { code: 'CHECKOUT_AFTERSALE_NOT_READY' })
+    assert.deepEqual(events.filter(value => typeof value === 'string'), ['acquire', 'begin', 'rollback', 'release'])
+  }
 })

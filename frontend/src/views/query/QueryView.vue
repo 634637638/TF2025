@@ -21,7 +21,7 @@
           >
             <template #actions>
               <el-button
-                v-if="canCreate"
+                v-if="queryMode === 'phone' && canCreate"
                 type="warning"
                 title="快速出库"
                 @click="openQuickSaleModal"
@@ -31,6 +31,7 @@
                 <span class="btn-text-mobile">出库</span>
               </el-button>
               <ImportExportActions
+                v-if="queryMode === 'phone'"
                 :can-export="canExport"
                 :export-loading="exporting"
                 :export-disabled="loading || exporting"
@@ -40,6 +41,7 @@
                 @export="exportToExcel"
               />
               <el-button
+                v-if="queryMode === 'phone'"
                 type="primary"
                 title="快捷入库"
                 @click="goToStockIn"
@@ -49,6 +51,7 @@
                 <span class="btn-text-mobile">入库</span>
               </el-button>
               <el-button
+                v-if="queryMode === 'phone'"
                 type="success"
                 title="快捷销售"
                 @click="goToSales"
@@ -70,432 +73,458 @@
           </PageHeader>
         </div>
 
-        <div class="content admin-page-content">
-          <!-- 统计卡片 + 滚动动画 -->
-          <div
-            v-show="showStatsCards"
-            class="stats-cards"
+        <div class="tab-navigation tf-page-tabs">
+          <el-button
+            :type="queryMode === 'phone' ? 'primary' : 'default'"
+            @click="queryMode = 'phone'"
           >
+            手机模式
+          </el-button>
+          <el-button
+            v-if="canViewGoods"
+            v-permission="'accessories:view'"
+            :type="queryMode === 'goods' ? 'primary' : 'default'"
+            @click="queryMode = 'goods'"
+          >
+            商品模式
+          </el-button>
+        </div>
+        <div class="tf-tab-content">
+          <QueryGoodsPanel
+            v-if="queryMode === 'goods' && canViewGoods"
+            ref="goodsPanel"
+            class="tf-tab-panel"
+          />
+          <div
+            v-show="queryMode === 'phone'"
+            class="content admin-page-content tf-tab-panel"
+          >
+            <!-- 统计卡片 + 滚动动画 -->
             <div
-              v-for="(stat, index) in visibleStatsConfig"
-              :key="index"
-              :data-aos="'fade-up'"
-              :data-aos-delay="index * 100"
-              :data-stat-key="stat.key"
-              class="stat-card"
-              :class="stat.accentClass"
+              v-show="showStatsCards"
+              class="stats-cards"
             >
               <div
-                class="stat-icon"
+                v-for="(stat, index) in visibleStatsConfig"
+                :key="index"
+                :data-aos="'fade-up'"
+                :data-aos-delay="index * 100"
+                :data-stat-key="stat.key"
+                class="stat-card"
+                :class="stat.accentClass"
               >
-                <IconRenderer :icon="stat.icon" />
-              </div>
-              <div class="stat-content">
-                <div class="stat-value">
-                  {{ statistics[stat.key] || 0 }}
+                <div
+                  class="stat-icon"
+                >
+                  <IconRenderer :icon="stat.icon" />
                 </div>
-                <div class="stat-label">
-                  {{ stat.label }}
+                <div class="stat-content">
+                  <div class="stat-value">
+                    {{ statistics[stat.key] || 0 }}
+                  </div>
+                  <div class="stat-label">
+                    {{ stat.label }}
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          <UnifiedSearchPanel
-            v-model:expanded="searchExpanded"
-            data-aos="fade-up"
-            data-aos-delay="400"
-            :loading="loading"
-            @search="triggerLoadQueryData"
-            @reset="resetFilters"
-          >
-            <template #primary>
-              <el-input
-                v-model="filters.search_term"
-                placeholder="搜索关键词"
-                clearable
-                @input="debounceLoadQueryData"
-                @keyup.enter="triggerLoadQueryData"
-                @click.stop
-              >
-                <template #prefix>
-                  <i class="fas fa-search" />
-                </template>
-              </el-input>
-            </template>
-
-            <!-- 供应商 -->
-            <div
-              class="form-group filter-item"
-              data-field="supplier"
+            <UnifiedSearchPanel
+              v-model:expanded="searchExpanded"
+              data-aos="fade-up"
+              data-aos-delay="400"
+              :loading="loading"
+              @search="triggerLoadQueryData"
+              @reset="resetFilters"
             >
-              <el-select
-                v-model="filters.supplier_id"
-                placeholder="供应商"
-                filterable
-                clearable
-                @change="triggerLoadQueryData"
+              <template #primary>
+                <el-input
+                  v-model="filters.search_term"
+                  placeholder="搜索关键词"
+                  clearable
+                  @input="debounceLoadQueryData"
+                  @keyup.enter="triggerLoadQueryData"
+                  @click.stop
+                >
+                  <template #prefix>
+                    <i class="fas fa-search" />
+                  </template>
+                </el-input>
+              </template>
+
+              <!-- 供应商 -->
+              <div
+                class="form-group filter-item"
+                data-field="supplier"
               >
-                <el-option
-                  v-for="supplier in options.suppliers"
-                  :key="supplier.id"
-                  :label="supplier.name"
-                  :value="supplier.id"
+                <el-select
+                  v-model="filters.supplier_id"
+                  placeholder="供应商"
+                  filterable
+                  clearable
+                  @change="triggerLoadQueryData"
+                >
+                  <el-option
+                    v-for="supplier in options.suppliers"
+                    :key="supplier.id"
+                    :label="supplier.name"
+                    :value="supplier.id"
+                  />
+                </el-select>
+              </div>
+
+              <!-- 店铺 -->
+              <div
+                class="form-group filter-item"
+                data-field="store"
+              >
+                <el-select
+                  v-model="filters.store_id"
+                  placeholder="店铺"
+                  filterable
+                  clearable
+                  @change="triggerLoadQueryData"
+                >
+                  <el-option
+                    v-for="store in options.stores"
+                    :key="store.id"
+                    :label="store.name"
+                    :value="store.id"
+                  />
+                </el-select>
+              </div>
+
+              <!-- 品牌 -->
+              <div
+                class="form-group filter-item"
+                data-field="brand"
+              >
+                <el-select
+                  v-model="filters.brand"
+                  placeholder="品牌"
+                  filterable
+                  clearable
+                  @change="handleFilterBrandChange"
+                >
+                  <el-option
+                    v-for="brand in options.brands"
+                    :key="brand"
+                    :label="brand"
+                    :value="brand"
+                  />
+                </el-select>
+              </div>
+
+              <!-- 型号 -->
+              <div
+                class="form-group filter-item"
+                data-field="model"
+              >
+                <el-select
+                  v-model="filters.model"
+                  placeholder="型号"
+                  filterable
+                  clearable
+                  :disabled="!filters.brand && options.models.length === 0"
+                  @change="triggerLoadQueryData"
+                >
+                  <el-option
+                    v-for="model in options.models"
+                    :key="model.id"
+                    :label="model.name"
+                    :value="model.name"
+                  />
+                </el-select>
+              </div>
+
+              <!-- 颜色 -->
+              <div
+                class="form-group filter-item"
+                data-field="color"
+              >
+                <el-select
+                  v-model="filters.color"
+                  placeholder="颜色"
+                  filterable
+                  clearable
+                  @change="triggerLoadQueryData"
+                >
+                  <el-option
+                    v-for="color in options.colors"
+                    :key="color"
+                    :label="color"
+                    :value="color"
+                  />
+                </el-select>
+              </div>
+
+              <!-- 内存 -->
+              <div
+                class="form-group filter-item"
+                data-field="memory"
+              >
+                <el-select
+                  v-model="filters.memory"
+                  placeholder="内存"
+                  filterable
+                  clearable
+                  @change="triggerLoadQueryData"
+                >
+                  <el-option
+                    v-for="memory in options.memories"
+                    :key="memory"
+                    :label="memory"
+                    :value="memory"
+                  />
+                </el-select>
+              </div>
+
+              <!-- 状态 -->
+              <div
+                class="form-group filter-item"
+                data-field="status"
+              >
+                <el-select
+                  v-model="filters.status"
+                  placeholder="状态"
+                  clearable
+                  @change="triggerLoadQueryData"
+                >
+                  <el-option
+                    v-for="status in options.statuses"
+                    :key="status.value"
+                    :label="status.label"
+                    :value="status.value"
+                  />
+                </el-select>
+              </div>
+
+              <!-- 成色 -->
+              <div
+                class="form-group filter-item"
+                data-field="condition"
+              >
+                <el-select
+                  v-model="filters.is_new"
+                  placeholder="成色"
+                  filterable
+                  clearable
+                  @change="triggerLoadQueryData"
+                >
+                  <el-option
+                    v-for="condition in options.conditions"
+                    :key="condition.value"
+                    :label="condition.label"
+                    :value="condition.value"
+                  />
+                </el-select>
+              </div>
+
+              <!-- 销售员 -->
+              <div
+                class="form-group filter-item"
+                data-field="operator"
+              >
+                <el-select
+                  v-model="filters.sale_operator_id"
+                  placeholder="销售员"
+                  filterable
+                  remote
+                  reserve-keyword
+                  :remote-method="searchSalesUsersRemote"
+                  clearable
+                  @focus="searchSalesUsersRemote('')"
+                  @change="triggerLoadQueryData"
+                >
+                  <el-option
+                    v-for="user in options.users"
+                    :key="user.id"
+                    :label="user.name"
+                    :value="user.id"
+                  />
+                </el-select>
+              </div>
+
+              <!-- 日期范围：开始和结束日期使用公共单面板组件 -->
+              <div
+                class="form-group filter-item filter-item--date-range"
+                data-field="date_range"
+              >
+                <DateRangePicker
+                  :model-value="queryDateRange"
+                  start-placeholder="开始日期"
+                  end-placeholder="结束日期"
+                  :format="TIME_FORMATS.DATE"
+                  :value-format="TIME_FORMATS.DATE"
+                  clearable
+                  @update:model-value="updateQueryDateRange"
+                  @change="triggerLoadQueryData"
                 />
-              </el-select>
-            </div>
+              </div>
+            </UnifiedSearchPanel>
 
-            <!-- 店铺 -->
-            <div
-              class="form-group filter-item"
-              data-field="store"
-            >
-              <el-select
-                v-model="filters.store_id"
-                placeholder="店铺"
-                filterable
-                clearable
-                @change="triggerLoadQueryData"
-              >
-                <el-option
-                  v-for="store in options.stores"
-                  :key="store.id"
-                  :label="store.name"
-                  :value="store.id"
-                />
-              </el-select>
-            </div>
+            <!-- 数据表格区域 -->
+            <div class="table-section admin-panel admin-table-panel">
+              <div class="section-title">
+                <i class="fas fa-list" />
+                综合销售列表
+                <span class="record-count">共 {{ pagination.total }} 条记录</span>
+              </div>
 
-            <!-- 品牌 -->
-            <div
-              class="form-group filter-item"
-              data-field="brand"
-            >
-              <el-select
-                v-model="filters.brand"
-                placeholder="品牌"
-                filterable
-                clearable
-                @change="handleFilterBrandChange"
-              >
-                <el-option
-                  v-for="brand in options.brands"
-                  :key="brand"
-                  :label="brand"
-                  :value="brand"
-                />
-              </el-select>
-            </div>
+              <div class="table-responsive">
+                <el-table
+                  v-tf-loading="{ active: loading || refreshing, text: '正在刷新设备查询结果...' }"
+                  v-table-double-tap="{ enabled: windowWidth <= 1024, getRowKey: getQueryTapRowKey, onDoubleTap: handleQueryRowDoubleTap }"
+                  :data="queryData"
+                  border
+                  stripe
+                  class="data-table devices-table"
+                  table-layout="fixed"
+                  :fit="true"
+                  :row-key="getQueryRowKey"
+                  :row-class-name="getQueryRowClassName"
+                  @row-dblclick="handleRowDoubleClick"
+                >
+                  <el-table-column
+                    v-for="column in tableColumns"
+                    :key="column.key"
+                    :label="column.label"
+                    :min-width="getQueryColumnMinWidth(column)"
+                    :width="getQueryActionColumnWidth(column)"
+                    align="center"
+                    :class-name="getQueryColumnClass(column)"
+                  >
+                    <template #default="{ row }">
+                      <span
+                        v-if="column.key === 'basic_info.serial_number'"
+                        class="serial-imei-cell"
+                      >
+                        {{ getCellValue(row, column) }}
+                      </span>
 
-            <!-- 型号 -->
-            <div
-              class="form-group filter-item"
-              data-field="model"
-            >
-              <el-select
-                v-model="filters.model"
-                placeholder="型号"
-                filterable
-                clearable
-                :disabled="!filters.brand && options.models.length === 0"
-                @change="triggerLoadQueryData"
-              >
-                <el-option
-                  v-for="model in options.models"
-                  :key="model.id"
-                  :label="model.name"
-                  :value="model.name"
-                />
-              </el-select>
-            </div>
+                      <span
+                        v-else-if="column.key === 'basic_info.imei'"
+                        class="serial-imei-cell"
+                      >
+                        {{ getCellValue(row, column) }}
+                      </span>
 
-            <!-- 颜色 -->
-            <div
-              class="form-group filter-item"
-              data-field="color"
-            >
-              <el-select
-                v-model="filters.color"
-                placeholder="颜色"
-                filterable
-                clearable
-                @change="triggerLoadQueryData"
-              >
-                <el-option
-                  v-for="color in options.colors"
-                  :key="color"
-                  :label="color"
-                  :value="color"
-                />
-              </el-select>
-            </div>
+                      <span
+                        v-else-if="column.key === 'basic_info.is_new'"
+                        class="clickable-cell"
+                        @dblclick.stop="handleMediaDoubleClick(row)"
+                      >
+                        <span :class="['condition-badge', Number(row.基本信息?.is_new) === 1 ? 'new' : 'used']">
+                          {{ getCellValue(row, column) }}
+                        </span>
+                        <i
+                          v-if="row.基本信息?.has_images"
+                          class="fas fa-images image-hint"
+                        />
+                      </span>
 
-            <!-- 内存 -->
-            <div
-              class="form-group filter-item"
-              data-field="memory"
-            >
-              <el-select
-                v-model="filters.memory"
-                placeholder="内存"
-                filterable
-                clearable
-                @change="triggerLoadQueryData"
-              >
-                <el-option
-                  v-for="memory in options.memories"
-                  :key="memory"
-                  :label="memory"
-                  :value="memory"
-                />
-              </el-select>
-            </div>
+                      <span
+                        v-else-if="column.key === 'basic_info.status'"
+                        class="status-cell clickable-cell"
+                        @dblclick.stop="handleCellDoubleClick(row, column)"
+                      >
+                        <span :class="['status-badge', getStatusBadgeClass(row.基本信息)]">
+                          {{ getCellValue(row, column) }}
+                        </span>
+                      </span>
 
-            <!-- 状态 -->
-            <div
-              class="form-group filter-item"
-              data-field="status"
-            >
-              <el-select
-                v-model="filters.status"
-                placeholder="状态"
-                clearable
-                @change="triggerLoadQueryData"
-              >
-                <el-option
-                  v-for="status in options.statuses"
-                  :key="status.value"
-                  :label="status.label"
-                  :value="status.value"
-                />
-              </el-select>
-            </div>
+                      <div
+                        v-else-if="column.key === 'system_info.operations'"
+                        class="actions-cell"
+                      >
+                        <div class="action-buttons">
+                          <el-button
+                            v-if="canEdit"
+                            class="table-action table-action--edit"
+                            type="primary"
+                            size="small"
+                            title="编辑"
+                            @click.stop="openEditModal(row)"
+                          >
+                            <i class="fas fa-edit" />
+                            编辑
+                          </el-button>
+                          <el-button
+                            v-if="canDelete"
+                            class="table-action table-action--delete"
+                            type="danger"
+                            size="small"
+                            title="删除"
+                            @click.stop="deleteItem(row)"
+                          >
+                            <i class="fas fa-trash" />
+                            删除
+                          </el-button>
+                          <el-button
+                            v-if="canReturnToStock"
+                            class="table-action table-action--warning"
+                            type="warning"
+                            size="small"
+                            title="退库"
+                            @click.stop="confirmReturnToStock(row)"
+                          >
+                            <i class="fas fa-undo-alt" />
+                            退库
+                          </el-button>
+                        </div>
+                      </div>
 
-            <!-- 成色 -->
-            <div
-              class="form-group filter-item"
-              data-field="condition"
-            >
-              <el-select
-                v-model="filters.is_new"
-                placeholder="成色"
-                filterable
-                clearable
-                @change="triggerLoadQueryData"
-              >
-                <el-option
-                  v-for="condition in options.conditions"
-                  :key="condition.value"
-                  :label="condition.label"
-                  :value="condition.value"
-                />
-              </el-select>
-            </div>
+                      <span
+                        v-else-if="column.key === 'other_info.remarks'"
+                        class="remark-cell"
+                        @dblclick="handleRemarkDoubleClick($event, row)"
+                      >
+                        {{ getCellValue(row, column) }}
+                      </span>
 
-            <!-- 销售员 -->
-            <div
-              class="form-group filter-item"
-              data-field="operator"
-            >
-              <el-select
-                v-model="filters.sale_operator_id"
-                placeholder="销售员"
-                filterable
-                remote
-                reserve-keyword
-                :remote-method="searchSalesUsersRemote"
-                clearable
-                @focus="searchSalesUsersRemote('')"
-                @change="triggerLoadQueryData"
-              >
-                <el-option
-                  v-for="user in options.users"
-                  :key="user.id"
-                  :label="user.name"
-                  :value="user.id"
-                />
-              </el-select>
-            </div>
+                      <span
+                        v-else-if="column.key === 'basic_info.purchase_cost' || column.key === 'basic_info.sale_price'"
+                        class="price-cell"
+                      >
+                        {{ getCellValue(row, column) }}
+                      </span>
 
-            <!-- 日期范围：开始和结束日期使用公共单面板组件 -->
-            <div
-              class="form-group filter-item filter-item--date-range"
-              data-field="date_range"
-            >
-              <DateRangePicker
-                :model-value="queryDateRange"
-                start-placeholder="开始日期"
-                end-placeholder="结束日期"
-                :format="TIME_FORMATS.DATE"
-                :value-format="TIME_FORMATS.DATE"
-                clearable
-                @update:model-value="updateQueryDateRange"
-                @change="triggerLoadQueryData"
+                      <span v-else>
+                        {{ getCellValue(row, column) }}
+                      </span>
+                    </template>
+                  </el-table-column>
+
+                  <template #empty>
+                    <TableLoadingRow
+                      v-if="loading"
+                      mode="block"
+                      text="正在读取设备查询结果..."
+                    />
+                    <DataEmptyState
+                      v-else
+                      size="compact"
+                      description="暂无数据"
+                    />
+                  </template>
+                </el-table>
+              </div>
+
+              <!-- 分页组件 -->
+              <Pagination
+                v-if="pagination.total > 0"
+                v-model:current="pagination.page"
+                :page-size="pagination.page_size"
+                :total="pagination.total"
+                :page-sizes="[20, 50, 100, 200]"
+                :show-total="true"
+                :show-range="true"
+                :show-page-sizes="true"
+                :show-quick-jumper="true"
+                :disabled="loading"
+                @change="handlePaginationChange"
               />
             </div>
-          </UnifiedSearchPanel>
-
-          <!-- 数据表格区域 -->
-          <div class="table-section admin-panel admin-table-panel">
-            <div class="section-title">
-              <i class="fas fa-list" />
-              综合销售列表
-              <span class="record-count">共 {{ pagination.total }} 条记录</span>
-            </div>
-
-            <div class="table-responsive">
-              <el-table
-                v-tf-loading="{ active: loading || refreshing, text: '正在刷新设备查询结果...' }"
-                v-table-double-tap="{ enabled: windowWidth <= 1024, getRowKey: getQueryTapRowKey, onDoubleTap: handleQueryRowDoubleTap }"
-                :data="queryData"
-                border
-                stripe
-                class="data-table devices-table"
-                table-layout="fixed"
-                :fit="true"
-                :row-key="getQueryRowKey"
-                :row-class-name="getQueryRowClassName"
-                @row-dblclick="handleRowDoubleClick"
-              >
-                <el-table-column
-                  v-for="column in tableColumns"
-                  :key="column.key"
-                  :label="column.label"
-                  :min-width="getQueryColumnMinWidth(column)"
-                  :width="getQueryActionColumnWidth(column)"
-                  align="center"
-                  :class-name="getQueryColumnClass(column)"
-                >
-                  <template #default="{ row }">
-                    <span
-                      v-if="column.key === 'basic_info.serial_number'"
-                      class="serial-imei-cell"
-                    >
-                      {{ getCellValue(row, column) }}
-                    </span>
-
-                    <span
-                      v-else-if="column.key === 'basic_info.imei'"
-                      class="serial-imei-cell"
-                    >
-                      {{ getCellValue(row, column) }}
-                    </span>
-
-                    <span
-                      v-else-if="column.key === 'basic_info.is_new'"
-                      class="clickable-cell"
-                      @dblclick.stop="handleMediaDoubleClick(row)"
-                    >
-                      <span :class="['condition-badge', Number(row.基本信息?.is_new) === 1 ? 'new' : 'used']">
-                        {{ getCellValue(row, column) }}
-                      </span>
-                      <i
-                        v-if="row.基本信息?.has_images"
-                        class="fas fa-images image-hint"
-                      />
-                    </span>
-
-                    <span
-                      v-else-if="column.key === 'basic_info.status'"
-                      class="status-cell clickable-cell"
-                      @dblclick.stop="handleCellDoubleClick(row, column)"
-                    >
-                      <span :class="['status-badge', getStatusBadgeClass(row.基本信息)]">
-                        {{ getCellValue(row, column) }}
-                      </span>
-                    </span>
-
-                    <div
-                      v-else-if="column.key === 'system_info.operations'"
-                      class="actions-cell"
-                    >
-                      <div class="action-buttons">
-                        <el-button
-                          v-if="canEdit"
-                          class="table-action table-action--edit"
-                          type="primary"
-                          size="small"
-                          title="编辑"
-                          @click.stop="openEditModal(row)"
-                        >
-                          <i class="fas fa-edit" />
-                          编辑
-                        </el-button>
-                        <el-button
-                          v-if="canDelete"
-                          class="table-action table-action--delete"
-                          type="danger"
-                          size="small"
-                          title="删除"
-                          @click.stop="deleteItem(row)"
-                        >
-                          <i class="fas fa-trash" />
-                          删除
-                        </el-button>
-                        <el-button
-                          v-if="canReturnToStock"
-                          class="table-action table-action--warning"
-                          type="warning"
-                          size="small"
-                          title="退库"
-                          @click.stop="confirmReturnToStock(row)"
-                        >
-                          <i class="fas fa-undo-alt" />
-                          退库
-                        </el-button>
-                      </div>
-                    </div>
-
-                    <span
-                      v-else-if="column.key === 'other_info.remarks'"
-                      class="remark-cell"
-                      @dblclick="handleRemarkDoubleClick($event, row)"
-                    >
-                      {{ getCellValue(row, column) }}
-                    </span>
-
-                    <span
-                      v-else-if="column.key === 'basic_info.purchase_cost' || column.key === 'basic_info.sale_price'"
-                      class="price-cell"
-                    >
-                      {{ getCellValue(row, column) }}
-                    </span>
-
-                    <span v-else>
-                      {{ getCellValue(row, column) }}
-                    </span>
-                  </template>
-                </el-table-column>
-
-                <template #empty>
-                  <TableLoadingRow
-                    v-if="loading"
-                    mode="block"
-                    text="正在读取设备查询结果..."
-                  />
-                  <DataEmptyState
-                    v-else
-                    size="compact"
-                    description="暂无数据"
-                  />
-                </template>
-              </el-table>
-            </div>
-
-            <!-- 分页组件 -->
-            <Pagination
-              v-if="pagination.total > 0"
-              v-model:current="pagination.page"
-              :page-size="pagination.page_size"
-              :total="pagination.total"
-              :page-sizes="[20, 50, 100, 200]"
-              :show-total="true"
-              :show-range="true"
-              :show-page-sizes="true"
-              :show-quick-jumper="true"
-              :disabled="loading"
-              @change="handlePaginationChange"
-            />
           </div>
         </div>
       </div>
@@ -748,7 +777,8 @@ const QuickSaleModal = defineAsyncComponent(() => import('@/components/query/Qui
 const QueryEditModal = defineAsyncComponent(() => import('@/components/query/QueryEditModal.vue'))
 const QueryDetailDialog = defineAsyncComponent(() => import('@/components/query/QueryDetailDialog.vue'))
 const ReturnStockModal = defineAsyncComponent(() => import('@/components/query/ReturnStockModal.vue'))
-import type { ReceiptItem, SearchPhoneResult } from '@/components/query/SalesReceipt.vue'
+const QueryGoodsPanel = defineAsyncComponent(() => import('./page/QueryGoodsPanel.vue'))
+import type { ReceiptItem, SearchPhoneResult } from '@/types/sales-receipt'
 
 // 字段权限相关
 import { fieldPermissions, shouldShowActionColumn } from '../../composables/useFieldPermissions'
@@ -763,7 +793,11 @@ const router = useRouter()
 const authStore = useAuthStore()
 const { success, handleApiError } = useNotification()
 const { canView, canCreate, canEdit, canDelete, canExport, hasPermission: hasQueryPagePermission, handleNoPermission } = usePagePermissions('query')
-const { refreshing, refresh } = useRefreshData()
+const { canView: canViewGoods } = usePagePermissions('accessories')
+const queryMode = ref<'phone' | 'goods'>('phone')
+const goodsPanel = ref<InstanceType<typeof QueryGoodsPanel> | null>(null)
+watch(canViewGoods, allowed => { if (!allowed) queryMode.value = 'phone' })
+const { refreshing, refresh, refreshData } = useRefreshData()
 const canReturnToStock = computed(() => hasQueryPagePermission('return-to-stock'))
 const { exportFile, buildDateFilename, sanitizeParams } = useImportExport()
 
@@ -1856,6 +1890,13 @@ const resetFilters = () => {
 // 刷新数据
 // 刷新数据 - 使用统一的 composable
 const handleRefresh = async () => {
+  if (queryMode.value === 'goods') {
+    if (!canViewGoods.value || !goodsPanel.value) return
+    await refreshData(() => goodsPanel.value!.load(), {
+      successMessage: '数据刷新成功', errorMessage: '刷新失败，请重试', cacheScope: false
+    })
+    return
+  }
   await refresh(async () => {
     invalidateQueryCaches()
     await Promise.all([
@@ -2286,6 +2327,7 @@ const openReceiptForItem = (item: QueryItem) => {
 
   receiptStatus.value = status
   receiptItems.value = [{
+    sale_id: saleInfo.sale_id,
     phone_id: basicInfo.phone_id || 0,
     brand: basicInfo.brand || '',
     model: basicInfo.model || '',
@@ -2366,6 +2408,7 @@ const _openSelectedReceipt = () => {
     const basic = item.基本信息 || {} as QueryItem['基本信息']
     const price = item.价格信息 || {} as QueryItem['价格信息']
     return {
+      sale_id: item.销售信息?.sale_id,
       phone_id: basic.phone_id || 0,
       brand: basic.brand || '',
       model: basic.model || '',
@@ -2432,6 +2475,7 @@ const performDelete = async (item: QueryItem) => {
 const handleAddItemToReceipt = (item: SearchPhoneResult) => {
   // 转换 API 返回的数据为 ReceiptItem 格式
   const receiptItem = {
+    sale_id: item.sale_id,
     phone_id: item.id || item.phone_id || 0,
     brand: item.brand || item.brand_name || '',
     model: item.model || item.model_name || '',

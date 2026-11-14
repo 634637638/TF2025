@@ -19,9 +19,6 @@ class TransferController {
     try {
       log.start('批发请求开始')
       log.debug('TransferController: 收到批发请求')
-      log.debug('req.body:', JSON.stringify(req.body, null, 2))
-      log.debug('phone_ids:', req.body.phone_ids)
-      log.debug('phones:', JSON.stringify(req.body.phones))
 
       const {
         phone_id,          // 单台批发
@@ -42,8 +39,6 @@ class TransferController {
 
       // 处理单台或多台批发
       const ids = phone_ids || (phone_id ? [phone_id] : [])
-      log.debug('处理 ids:', ids)
-      log.debug('phones 数组:', phones)
 
       if (ids.length === 0) {
         return ApiResponse.error(res, '请选择要批发的手机', 400)
@@ -67,7 +62,7 @@ class TransferController {
       return ApiResponse.success(res, `成功批发 ${result.success_count} 台`, result)
     } catch (error) {
       log.error('TransferController: 批发失败:', error)
-      return ApiResponse.error(res, error.message || '批发失败', 500)
+      return ApiResponse.error(res, error.message || '批发失败', error.statusCode || 500, error.code)
     }
   }
 
@@ -78,7 +73,6 @@ class TransferController {
    */
   async proxyTransferForSupplier(req, res) {
     try {
-      log.debug('TransferController: 收到代划拨请求，body:', req.body)
 
       const {
         phone_id,          // 单台划拨
@@ -124,7 +118,7 @@ class TransferController {
       return ApiResponse.success(res, `成功划拨 ${result.success_count} 台`, result)
     } catch (error) {
       log.error('TransferController: 代划拨失败:', error)
-      return ApiResponse.error(res, error.message || '代划拨失败', 500)
+      return ApiResponse.error(res, error.message || '代划拨失败', error.statusCode || 500, error.code)
     }
   }
 

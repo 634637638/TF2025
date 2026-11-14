@@ -13,6 +13,7 @@ const ShopPublicOrderRepository = require('../repositories/shop-public-order.rep
 const log = require('../utils/log')
 const pricingService = require('./pricing.service')
 const SystemSettingsService = require('./system-settings.service')
+const { parseCartItemInput } = require('../utils/shop-cart')
 
 const PUBLIC_SHOP_CONFIG_KEYS = [
   'shop_name', 'shop_logo', 'shop_subtitle', 'shop_phone', 'wechat_id',
@@ -1395,6 +1396,7 @@ class ShopPublicService {
              COUNT(DISTINCT p.id) as product_count
       FROM brands b
       LEFT JOIN phones p ON b.id = p.brand_id AND p.status = 'in_stock'
+      WHERE b.business_scope IN ('phone', 'both')
       GROUP BY b.id, b.name, b.sort_order
     `
 
@@ -1548,6 +1550,7 @@ class ShopPublicService {
    * 添加到购物车
    */
   async addToCart(cartId, phoneId, quantity) {
+    ;({ cartId, id: phoneId, quantity } = parseCartItemInput(cartId, phoneId, quantity))
     // 检查商品是否存在且在库
     const [products] = await db.getDatabase().query('SELECT id FROM phones WHERE id = ? AND status = "in_stock"', [phoneId])
     if (products.length === 0) {
@@ -1579,6 +1582,7 @@ class ShopPublicService {
    * 更新购物车商品数量
    */
   async updateCartItem(cartId, cartItemId, quantity) {
+    ;({ cartId, id: cartItemId, quantity } = parseCartItemInput(cartId, cartItemId, quantity))
     const [result] = await db.getDatabase().query(
       'UPDATE H5_cart SET quantity = ?, updated_at = NOW() WHERE id = ? AND cart_id = ?',
       [quantity, cartItemId, cartId]
@@ -1590,6 +1594,7 @@ class ShopPublicService {
    * 从购物车删除
    */
   async removeFromCart(cartId, cartItemId) {
+    ;({ cartId, id: cartItemId } = parseCartItemInput(cartId, cartItemId, 1))
     const [result] = await db.getDatabase().query(
       'DELETE FROM H5_cart WHERE id = ? AND cart_id = ?',
       [cartItemId, cartId]
@@ -1917,19 +1922,20 @@ class ShopPublicService {
    */
   async getSalesByCustomerId(customerId, { page, page_size }) {
     const offset = (page - 1) * page_size
-    const [countResult] = await db.getDatabase().query(
+    const database = this.database.getDatabase()
+    const [countResult] = await database.query(
       'SELECT COUNT(*) as total FROM sales WHERE customer_id = ?',
       [customerId]
     )
     const total = Number(countResult[0].total || 0)
     const total_pages = Math.ceil(total / page_size)
 
-    const [sales] = await db.getDatabase().query(
+    const [sales] = await database.query(
       `SELECT
         s.id,
         s.invoice_number,
-        COALESCE(s.sale_time, p.sale_time) as sale_time,
-        p.sale_price,
+        s.sale_time as sale_time,
+        s.sale_price,
         s.payment_method,
         st.name as store_name,
         u.name as operator_name,
@@ -1948,7 +1954,7 @@ class ShopPublicService {
        LEFT JOIN models m ON p.model_id = m.id
        LEFT JOIN colors c ON p.color_id = c.id
        WHERE s.customer_id = ?
-       ORDER BY COALESCE(s.sale_time, p.sale_time) DESC
+       ORDER BY s.sale_time DESC, s.id DESC
        LIMIT ? OFFSET ?`,
       [customerId, page_size, offset]
     )

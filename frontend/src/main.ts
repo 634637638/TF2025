@@ -106,7 +106,6 @@ app.use(ErrorBoundaryPlugin, {
   enabled: true,
   maxErrors: 100,
   enableConsoleLog: true,
-  enableReporting: false, // 网络上报统一由下方 globalErrorLogger 处理，避免重复发送
   autoRetry: true,
   maxRetries: 3,
   onError: (error) => {

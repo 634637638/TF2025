@@ -3,91 +3,76 @@
  */
 const SalaryTemplateRepository = require('../repositories/salary-template.repository')
 const log = require('../utils/log')
+const { normalizeGoodsCommissionRule } = require('../utils/goods-commission')
+const { validId } = require('../utils/sale-input')
+
+const writable = new Set(['name', 'description', 'base_salary', 'commission_type', 'commission_fixed',
+  'commission_new_fixed', 'commission_used_fixed', 'commission_percentage', 'overtime_hourly_rate',
+  'rest_days', 'auto_raise_rule', 'is_active', 'is_default', 'goods_commission_rule'])
+const inputError = message => { throw Object.assign(new Error(message), { statusCode: 400, code: 'SALARY_TEMPLATE_INVALID' }) }
+const parseId = id => { if (!validId(id)) inputError('工资模板或员工标识无效'); return Number(id) }
+
+function normalizeInput(data) {
+  if (!data || typeof data !== 'object' || Array.isArray(data) || !Object.keys(data).length ||
+    Object.keys(data).some(key => !writable.has(key))) inputError('工资模板包含无效或不支持的字段')
+  const result = { ...data }
+  if (Object.hasOwn(data, 'goods_commission_rule')) {
+    const rule = data.goods_commission_rule
+    if (rule !== null && (typeof rule !== 'object' || Array.isArray(rule) ||
+      typeof rule?.fixed_amount !== 'number' || typeof rule?.percentage !== 'number')) {
+      inputError('商品提成规则须为完整对象或空值，金额及比例须为数值')
+    }
+    result.goods_commission_rule = normalizeGoodsCommissionRule(data.goods_commission_rule)
+  }
+  return result
+}
+
+const readTemplate = row => row && ({ ...row,
+  goods_commission_rule: normalizeGoodsCommissionRule(row.goods_commission_rule) })
 
 class SalaryTemplateService {
-  constructor() {
-    this.repository = new SalaryTemplateRepository()
+  constructor({ repository = new SalaryTemplateRepository() } = {}) {
+    this.repository = repository
   }
 
   async getTemplates(filters, options) {
-    try {
-      return await this.repository.getTemplatesWithPagination(filters, options)
-    } catch (error) {
-      throw error
-    }
+    const result = await this.repository.getTemplatesWithPagination(filters, options)
+    return { ...result, records: result.records.map(readTemplate) }
   }
 
   async getTemplateById(id) {
-    try {
-      return await this.repository.getTemplateById(id)
-    } catch (error) {
-      throw error
-    }
+    return readTemplate(await this.repository.getTemplateById(parseId(id)))
   }
 
   async createTemplate(data, _userId) {
-    try {
-      // created_by 字段不存在于表中，移除此设置
-      // data.created_by = userId;
-      return await this.repository.createTemplate(data)
-    } catch (error) {
-      throw error
-    }
+    const result = await this.repository.createTemplate(normalizeInput(data))
+    return { ...result, data: readTemplate(result.data) }
   }
 
   async updateTemplate(id, data) {
-    try {
-      return await this.repository.updateTemplate(id, data)
-    } catch (error) {
-      throw error
-    }
+    const result = await this.repository.updateTemplate(parseId(id), normalizeInput(data))
+    return { ...result, data: readTemplate(result.data) }
   }
 
   async deleteTemplate(id) {
-    try {
-      return await this.repository.deleteTemplate(id)
-    } catch (error) {
-      throw error
-    }
+    return await this.repository.deleteTemplate(parseId(id))
   }
 
   async setAsDefault(id) {
-    try {
-      return await this.repository.setAsDefault(id)
-    } catch (error) {
-      throw error
-    }
+    return await this.repository.setAsDefault(parseId(id))
   }
 
   async getActiveTemplates() {
-    try {
-      return await this.repository.getActiveTemplates()
-    } catch (error) {
-      throw error
-    }
+    return await this.repository.getActiveTemplates()
   }
 
   async getDefaultTemplate() {
-    try {
-      return await this.repository.getDefaultTemplate()
-    } catch (error) {
-      throw error
-    }
+    return readTemplate(await this.repository.getDefaultTemplate())
   }
 
   async setEmployeeTemplate(userId, templateId) {
     try {
-      log.debug('[服务层] 设置员工模板 - userId:', userId, 'templateId:', templateId)
-      // 直接更新用户的工资模板ID
-      const { getDatabase } = require('../config/database')
-      const db = getDatabase()
-
-      const sql = 'UPDATE users SET salary_template_id = ? WHERE id = ?'
-      const values = [templateId, userId]
-      log.debug('[服务层] SQL:', sql, '参数:', values)
-      const [result] = await db.execute(sql, values)
-      log.debug('[服务层] 更新结果:', result)
-      return { userId, templateId }
+      return await this.repository.setEmployeeTemplate(parseId(userId), templateId === null ? null : parseId(templateId))
     } catch (error) {
       log.error('[服务层] 设置员工模板失败:', error)
       throw error

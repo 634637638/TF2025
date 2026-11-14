@@ -5,6 +5,7 @@ const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
 const SupplierController = require('../src/controllers/supplier.controller')
+const SupplierManagementService = require('../src/services/supplier-management.service')
 
 const createResponse = () => ({
   headers: {},
@@ -39,7 +40,7 @@ test('供应商列表使用规范分页、状态校验、安全排序和格式�
   const calls = []
   const rows = [{
     id: '4', name: ' 供应商A ', contact: null, phone: '123', address: null,
-    bank_info: null, tax_number: null, status: '1', sort_order: '2', remarks: null,
+    bank_info: null, tax_number: null, business_scope: 'accessory', status: '1', sort_order: '2', remarks: null,
     created_at: '2026-11-07T00:00:00.000Z', updated_at: null
   }]
   const controller = new SupplierController({
@@ -61,7 +62,7 @@ test('供应商列表使用规范分页、状态校验、安全排序和格式�
   assert.match(calls[0].sql, /ORDER BY name DESC, sort_order ASC, id ASC LIMIT 10 OFFSET 10/)
   assert.deepEqual(response.body.data[0], {
     id: 4, name: '供应商A', contact: null, phone: '123', address: null, bank_info: null,
-    tax_number: null, status: 1, sort_order: 2, remarks: null,
+    tax_number: null, business_scope: 'accessory', status: 1, sort_order: 2, remarks: null,
     created_at: '2026-11-07T00:00:00.000Z', updated_at: null
   })
   assert.deepEqual(response.body.pagination, {
@@ -72,6 +73,21 @@ test('供应商列表使用规范分页、状态校验、安全排序和格式�
   await controller.stats({ query: { status: '2' } }, invalidResponse)
   assert.equal(invalidResponse.statusCode, 400)
   assert.equal(invalidResponse.body.message, '供应商状态只能是0或1')
+})
+
+test('供应商业务范围校验枚举并持久化到公共供应商仓储', async () => {
+  const writes = []
+  const service = new SupplierManagementService({
+    connected: () => true,
+    repository: {
+      findDuplicate: async () => [[]],
+      create: async values => { writes.push(values); return [{ insertId: 1 }] },
+      update: async values => { writes.push(values); return [{ affectedRows: 1 }] }
+    }
+  })
+  await service.create({ name: '测试供应商', business_scope: 'accessory' })
+  assert.equal(writes[0][6], 'accessory')
+  await assert.rejects(service.create({ name: '非法供应商', business_scope: 'repair' }), { statusCode: 400 })
 })
 
 test('供应商排序事务失败时回滚并释放连接', async () => {
@@ -101,15 +117,20 @@ test('供应商排序事务失败时回滚并释放连接', async () => {
 
 test('供应商删除先检查关联商品，CSV 导出安全转义并输出 BOM', async () => {
   const calls = []
-  const controller = new SupplierController({
-    connected: () => true,
-    database: () => ({ async execute(sql, params) {
+  const database = {
+    async getConnection() { return this },
+    async beginTransaction() {}, async rollback() {}, release() {},
+    async execute(sql, params) {
       calls.push({ sql, params })
       if (sql.includes('FROM accessories WHERE supplier_id')) return [[{ count: '2' }]]
       if (sql.includes('FROM phones WHERE supplier_id')) return [[{ count: '0' }]]
       if (sql.includes('SELECT id, name')) return [[{ id: 1, name: '甲,"乙', contact: null, phone: null, address: null, bank_info: null, tax_number: null, status: 1, sort_order: 0, remarks: null, created_at: null, updated_at: null }]]
       return [{ affectedRows: 1 }]
-    } }),
+    }
+  }
+  const controller = new SupplierController({
+    connected: () => true,
+    database: () => database,
     logger: { error() {} }
   })
   const deleteResponse = createResponse()

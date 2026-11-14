@@ -4,6 +4,20 @@
 const PhoneStockWarningRepository = require('../repositories/phone-stock-warning.repository')
 const { listActiveReferenceOptions, listModelsByBrand } = require('./reference-options.service')
 const log = require('../utils/log')
+const { parseInput } = require('../middleware/validation')
+
+const parseWarningInput = (data, create = false) => parseInput(data, {
+  ...Object.fromEntries(['brand_id', 'model_id'].map(field => [field, { type: 'id', required: create || data?.[field] !== undefined, label: field }])),
+  ...Object.fromEntries(['color_id', 'memory_id'].map(field => [field, { type: 'id', label: field }])),
+  ...Object.fromEntries(['color_ids', 'memory_ids'].map(field => [field, { type: 'array', itemType: 'id', maxItems: 100, label: field }])),
+  condition_values: { type: 'array', itemType: 'number', maxItems: 2, label: '库存类型' },
+  is_new: { type: 'number', integer: true, min: 0, max: 1, label: '库存类型' },
+  min_stock: { type: 'number', integer: true, min: 0, max: 100, required: data?.min_stock !== undefined, message: '预警阈值必须在0-100之间' },
+  warning_enabled: { type: 'boolean', required: data?.warning_enabled !== undefined, label: '启用预警' },
+  status: { type: 'number', integer: true, min: 0, max: 1, required: data?.status !== undefined, label: '状态' },
+  config_name: { type: 'string', maxLength: 100, label: '配置名称' },
+  remarks: { type: 'string', maxLength: 500, multiline: true, label: '备注' }
+})
 
 class PhoneStockWarningService {
   constructor() {
@@ -128,6 +142,7 @@ class PhoneStockWarningService {
    */
   async createConfig(userId, configData) {
     try {
+      configData = parseWarningInput(configData, true)
       const conditionValues = this.normalizeConditionArray(configData.condition_values)
       if (conditionValues === null) {
         return this.createErrorResponse('库存类型只能是全新或二手', 400)
@@ -146,7 +161,7 @@ class PhoneStockWarningService {
 
       // 验证阈值范围
       if (configData.min_stock !== undefined) {
-        const minStock = parseInt(configData.min_stock)
+        const minStock = configData.min_stock
         if (isNaN(minStock) || minStock < 0 || minStock > 100) {
           return this.createErrorResponse('预警阈值必须在0-100之间', 400)
         }
@@ -207,6 +222,7 @@ class PhoneStockWarningService {
         ...configData
       })
     } catch (error) {
+      if (error.statusCode === 400) return this.createErrorResponse(error.message, 400)
       log.error('创建预警配置失败:', error)
       if (error?.code === 'ER_DUP_ENTRY') {
         return this.createErrorResponse('该品牌、型号、颜色、内存和库存类型的预警配置已存在', 400)
@@ -220,7 +236,8 @@ class PhoneStockWarningService {
    */
   async updateConfig(userId, configId, configData) {
     try {
-      log.debug('📝 更新预警配置 - 开始', { configId, configData })
+      configId = parseInput({ id: configId }, { id: { type: 'id', required: true } }).id
+      configData = parseWarningInput(configData)
 
       const conditionValues = this.normalizeConditionArray(configData.condition_values)
       if (conditionValues === null) {
@@ -290,7 +307,7 @@ class PhoneStockWarningService {
 
       // 验证阈值范围
       if (configData.min_stock !== undefined) {
-        const minStock = parseInt(configData.min_stock)
+        const minStock = configData.min_stock
         if (isNaN(minStock) || minStock < 0 || minStock > 100) {
           log.debug('❌ 阈值范围错误:', minStock)
           return this.createErrorResponse('预警阈值必须在0-100之间', 400)
@@ -378,6 +395,7 @@ class PhoneStockWarningService {
         ...sharedData
       })
     } catch (error) {
+      if (error.statusCode === 400) return this.createErrorResponse(error.message, 400)
       log.error('❌ 更新预警配置失败:', error)
       if (error?.code === 'ER_DUP_ENTRY') {
         return this.createErrorResponse('该品牌、型号、颜色、内存和库存类型的预警配置已存在', 400)
@@ -391,12 +409,14 @@ class PhoneStockWarningService {
    */
   async deleteConfig(userId, configId) {
     try {
+      configId = parseInput({ id: configId }, { id: { type: 'id', required: true } }).id
       await this.repository.deleteConfig(configId)
       return this.createSuccessResponse('删除预警配置成功', { id: configId })
     } catch (error) {
       if (error.message === '不允许删除默认全局配置') {
         return this.createErrorResponse(error.message, 400)
       }
+      if (error.statusCode === 400) return this.createErrorResponse(error.message, 400)
       log.error('删除预警配置失败:', error)
       return this.createErrorResponse('删除预警配置失败', 500)
     }
@@ -407,12 +427,15 @@ class PhoneStockWarningService {
    */
   async toggleWarning(userId, configId, enabled) {
     try {
+      configId = parseInput({ id: configId }, { id: { type: 'id', required: true } }).id
+      enabled = parseInput({ enabled }, { enabled: { type: 'boolean', required: true } }).enabled
       await this.repository.toggleWarningEnabled(configId, enabled)
       return this.createSuccessResponse(
         enabled ? '启用预警成功' : '禁用预警成功',
         { id: configId, enabled }
       )
     } catch (error) {
+      if (error.statusCode === 400) return this.createErrorResponse(error.message, 400)
       log.error('切换预警状态失败:', error)
       return this.createErrorResponse('切换预警状态失败', 500)
     }

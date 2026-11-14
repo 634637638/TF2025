@@ -6,6 +6,10 @@
  * 3. 价格管理
  */
 const axios = require('axios')
+const PriceProductMatcher = require('./price-product-matcher.service')
+const PriceSourceParser = require('./price-source-parser.service')
+const { parsePriceInput } = require('../utils/price-input')
+const log = require('../utils/log')
 let cheerio = null
 try {
   cheerio = require('cheerio')
@@ -16,7 +20,6 @@ const CaptchaRecognizer = require('./captcha-recognizer.service')
 const PuppeteerLoginService = require('./puppeteer-login.service')
 const HttpLoginService = require('./http-login.service')
 const { matchProductName } = require('../config/product-name-mapping')
-const log = require('../utils/log')
 const { DEFAULT_BROWSER_USER_AGENT, EXTERNAL_PRICE, TIMEOUTS } = require('../config/constants')
 const { ensurePriceSourceSchema } = require('../utils/price-source-schema')
 const { normalizedModelSql } = require('../utils/search')
@@ -29,6 +32,8 @@ const {
 class PriceListService {
   constructor() {
     this.db = null
+    this.sourceParser = new PriceSourceParser({ htmlParser: cheerio, baseUrl: EXTERNAL_PRICE.BASE_URL })
+    this.productMatcher = new PriceProductMatcher(() => ({ standardColors: this.standardColors, colorMapping: this.colorMapping }))
     // Cookie存储，用于保持登录状态
     this.cookies = new Map()
     // 验证码识别器
@@ -188,275 +193,18 @@ class PriceListService {
     return this.standardColors
   }
 
-  /**
-   * 在颜色管理标准中查找目标颜色。
-   * 例如颜色管理只有“绿色”时，草绿、深绿、浅绿都会归一为“绿色”。
-   */
-  findStandardColor(target) {
-    if (!target) return null
-    const normalizedTarget = String(target).trim().toLowerCase()
-    return this.standardColors.find(color => color.toLowerCase() === normalizedTarget) || null
-  }
-
-  /**
-   * 将外部颜色名称映射到数据库颜色名称
-   * 支持智能模糊匹配：包含关键字就映射到目标颜色
-   */
-  normalizeColor(colorName) {
-    if (!colorName) return colorName
-
-    const normalized = colorName.trim()
-
-    // 颜色管理中的标准名称优先，避免把“深青色”等已配置颜色错误归并。
-    const exactStandardColor = this.findStandardColor(normalized)
-    if (exactStandardColor) return exactStandardColor
-
-    // 优先使用显式颜色映射，处理星光色/深空灰色等命名差异
-    if (this.colorMapping[normalized]) {
-      return this.findStandardColor(this.colorMapping[normalized]) || this.colorMapping[normalized]
-    }
-
-    // 🔥 智能映射规则：按优先级从高到低匹配
-    // 包含特定关键字 → 映射到标准颜色
-    // 注意：匹配顺序很重要，先匹配更具体的组合词
-
-    // 黑色系：本站颜色管理将灰色、天空灰、深空灰等作为黑色系统一维护。
-    if (/黑|乌|墨|灰|碳|石墨|午夜|深空|天空灰|子夜|星岩|深黑/.test(normalized)) return this.findStandardColor('黑色') || '黑色'
-
-    // 白色系（包含 银、白、霜、雪、云、雾 等）- 必须先匹配"银色"
-    if (/银色/.test(normalized)) return this.findStandardColor('白色') || '白色'
-    if (/银|霜|雪|云|雾|流金白|星辉白|星光色|月光|冰霜/.test(normalized)) return this.findStandardColor('白色') || '白色'
-    if (/白/.test(normalized)) return this.findStandardColor('白色') || '白色'
-
-    // 蓝色系（排除"银色"中的"青"字，避免误匹配）
-    if (/蓝|冰川|深蓝|水蓝|丹宁|靛|天蓝/.test(normalized)) return this.findStandardColor('蓝色') || '蓝色'
-
-    // 紫色系（包含 紫、罗兰、薰衣草 等）
-    if (/紫|罗兰|薰衣草|葡萄|丁香|浅紫|曙光|烟霞/.test(normalized)) return this.findStandardColor('紫色') || '紫色'
-
-    // 绿色系
-    if (/绿|翠|碧|青绿|橄榄|薄荷|草|鼠尾草|青柠/.test(normalized)) return this.findStandardColor('绿色') || '绿色'
-
-    // 橙色系
-    if (/橙|橘|星宇/.test(normalized)) return this.findStandardColor('橙色') || '橙色'
-    // 特别处理"星宇橙色" -> "橙色"
-    if (/星宇橙色/.test(normalized)) return this.findStandardColor('橙色') || '橙色'
-
-    // 粉色系
-    if (/粉|桃|樱|蔷薇|玫瑰|牡丹|玫瑰金/.test(normalized)) return this.findStandardColor('粉色') || '粉色'
-
-    // 金色系
-    if (/金|铜|钛金|茶|沙漠/.test(normalized)) return this.findStandardColor('金色') || '金色'
-
-    // 原色系
-    if (/原色|钛金属/.test(normalized)) return this.findStandardColor('原色') || '原色'
-
-    // 黄色系
-    if (/黄/.test(normalized)) return this.findStandardColor('黄色') || '黄色'
-
-    // 红色系
-    if (/红/.test(normalized)) return this.findStandardColor('红色') || '红色'
-
-    // 青色系
-    if (/深青/.test(normalized)) return this.findStandardColor('深青色') || this.findStandardColor('青色') || '青色'
-    if (/青色/.test(normalized)) return this.findStandardColor('青色') || this.findStandardColor('深青色') || '青色'
-
-    // 如果没有匹配，返回原始颜色。未知颜色不强行映射，等待颜色管理新增标准后再归类。
-    return normalized
-  }
-
-  /** 从外部描述提取颜色原名，最终统一由 normalizeColor 映射到颜色管理。 */
-  extractColorFromText(text) {
-    if (!text) return ''
-    const colorPatterns = [
-      '勃艮第酒红色', '原色钛金属', '沙漠色钛金属', '白色钛金属', '黑色钛金属',
-      '鼠尾草绿色', '冰川蓝色', '薰衣草紫色', '星宇橙色', '青雾蓝色', '深空灰色',
-      '深空黑色', '午夜色', '银灰色', '天空灰色', '天空灰', '星辉白', '星光色', '流金白', '云白色',
-      '云雾白', '雪松白', '丹宁色', '星岩黑', '子夜黑', '天青蓝', '深蓝色',
-      '水蓝色', '浅紫色', '曙光紫', '钛金色', '深黑色', '烟霞紫', '深青色',
-      '群青色', '玫瑰金', '酒红色', '酒红', '大红色', '大红', '草绿色', '草绿', '深绿色', '深绿', '浅绿色', '浅绿',
-      '墨绿色', '墨绿', '翠绿色', '翠绿', '薄荷绿色', '薄荷绿', '橄榄绿色',
-      '橄榄绿', '青绿色', '青绿', '青柠绿', '深空灰', '浅金色', '黑色', '白色',
-      '蓝色', '红色', '绿色', '黄色', '紫色', '粉色', '金色', '银色', '灰色',
-      '青色', '橙色', '原色', '茶色'
-    ]
-    return colorPatterns.find(pattern => String(text).includes(pattern)) || ''
-  }
-
-  /**
-   * 从外部产品文本中提取存储规格。
-   * 优先识别显式 GB/TB，并取最大的容量，避免把 12GB+256GB 中的 12GB 识别成存储，
-   * 也避免把尾部型号码如 4G4 误识别成 4GB。
-   */
-  extractMemoryFromText(text) {
-    if (!text) return ''
-
-    const normalizedText = String(text)
-    const capacities = []
-
-    const tbMatches = normalizedText.matchAll(/(\d+(?:\.\d+)?)\s*TB/ig)
-    for (const match of tbMatches) {
-      const value = parseFloat(match[1])
-      if (!Number.isNaN(value) && value > 0) {
-        capacities.push(value * 1024)
-      }
-    }
-
-    const gbMatches = normalizedText.matchAll(/(\d+(?:\.\d+)?)\s*GB/ig)
-    for (const match of gbMatches) {
-      const value = parseFloat(match[1])
-      if (!Number.isNaN(value) && value > 0) {
-        capacities.push(value)
-      }
-    }
-
-    // 兼容 256G / 1T 这种缩写，但要求前后是分隔符，避免误匹配 4G4。
-    const shortMatches = normalizedText.matchAll(/(?:^|[-+\s(（])(\d{2,4})([GT])(?:$|[-+\s)）])/ig)
-    for (const match of shortMatches) {
-      const value = parseFloat(match[1])
-      const unit = match[2].toUpperCase()
-      if (Number.isNaN(value) || value <= 0) continue
-      capacities.push(unit === 'T' ? value * 1024 : value)
-    }
-
-    if (capacities.length === 0) {
-      return ''
-    }
-
-    const maxGb = Math.max(...capacities)
-    if (maxGb >= 2048) return '2TB'
-    if (maxGb >= 1024) return '1TB'
-    return `${Math.round(maxGb)}GB`
-  }
-
-  normalizeModelForMatch(modelText) {
-    if (!modelText) return ''
-
-    const normalized = String(modelText)
-      .toLowerCase()
-      .replace(/\s+/g, '')
-      .replace(/[()（）]/g, '')
-      .replace(/英寸/g, '寸')
-
-    if (normalized.includes('ipadair7') && !normalized.includes('11寸') && !normalized.includes('13寸')) {
-      return 'ipadair711寸'
-    }
-    if (normalized.includes('ipadair8') && !normalized.includes('11寸') && !normalized.includes('13寸')) {
-      return 'ipadair811寸'
-    }
-
-    // 外部数据可能写成“iPhone Duo”“iPhone 18 Duo”或“18duo”，
-    // 这些都是本地的同一型号，必须使用同一个匹配键。
-    if (normalized === 'iphoneduo' || normalized === 'iphone18duo' || normalized === '18duo') {
-      return 'iphoneduo'
-    }
-
-    return normalized
-  }
-
-  normalizeMemoryForMatch(memoryText) {
-    if (!memoryText) return ''
-
-    const normalized = String(memoryText).replace(/\s+/g, '').toLowerCase()
-    if (normalized.includes('tb')) {
-      const tb = parseFloat(normalized)
-      return Number.isNaN(tb) ? normalized : String(tb * 1024)
-    }
-    if (normalized.includes('gb')) {
-      return normalized.replace('gb', '')
-    }
-    return normalized
-  }
-
-  /**
-   * 判断外部商品文本是否标记为“同城”
-   */
-  isSameCityProduct(text) {
-    if (!text) return false
-    return String(text).includes('同城')
-  }
-
-  /**
-   * 对候选价格按优先级排序：
-   * 1. 同城优先
-   * 2. 颜色信息完整优先
-   * 3. 内存信息完整优先
-   *
-   * 业务规则说明：
-   * - 苹果 iPhone 15 及以下：同城优先，但允许回退到全国价
-   * - 苹果 iPhone 16 及以上：由 getEligiblePriceCandidates 进一步限制为“只能同城”
-   */
-  prioritizePriceCandidates(priceList = []) {
-    return [...priceList].sort((a, b) => {
-      const sameCityDiff = Number(Boolean(b?.isLocal)) - Number(Boolean(a?.isLocal))
-      if (sameCityDiff !== 0) return sameCityDiff
-
-      const colorDiff = Number(Boolean(b?.color)) - Number(Boolean(a?.color))
-      if (colorDiff !== 0) return colorDiff
-
-      return Number(Boolean(b?.memory)) - Number(Boolean(a?.memory))
-    })
-  }
-
-  /**
-   * 提取 iPhone 代数，如 iphone16 / 16promax / iPhone 16 Pro => 16
-   */
-  extractIPhoneGeneration(modelText) {
-    if (!modelText) return null
-
-    const normalized = String(modelText)
-      .toLowerCase()
-      .replace(/\s+/g, '')
-      .replace(/[()]/g, '')
-
-    const match = normalized.match(/(?:iphone)?(\d{2})/)
-    if (!match) return null
-
-    const generation = Number(match[1])
-    return Number.isNaN(generation) ? null : generation
-  }
-
-  /**
-   * 苹果 iPhone 16 及以上只能使用同城价格
-   *
-   * 业务口径：
-   * - iPhone 15 及以下：返回 false，允许全国价作为回退候选
-   * - iPhone 16 及以上：返回 true，后续匹配时必须过滤掉全国价
-   */
-  requiresSameCityOnly(productLike = {}) {
-    const brand = String(productLike.brand || productLike.brand_name || '').toLowerCase()
-    const model = productLike.model || productLike.model_number || ''
-
-    const modelText = String(model).toLowerCase()
-    // 库存型号可能使用 18promax 这类简写，不能因为没有 iphone 前缀而跳过同城规则。
-    const isIPhoneLike = modelText.includes('iphone') || /^\d{2}(?:[a-z]|$)/.test(modelText.replace(/\s+/g, ''))
-    if (!isIPhoneLike) return false
-
-    const isAppleLike = brand.includes('苹果') || brand.includes('apple') || modelText.includes('iphone')
-    if (!isAppleLike) return false
-
-    const generation = this.extractIPhoneGeneration(modelText)
-    return generation !== null && generation >= 16
-  }
-
-  /**
-   * 获取最终可参与匹配的候选价格：
-   * - 统一先按优先级排序
-   * - iPhone 16 及以上只保留同城价
-   *
-   * 最终效果：
-   * - iPhone 15 及以下：候选顺序为“同城在前，全国在后”
-   * - iPhone 16 及以上：候选列表里只保留同城记录，没有同城则视为无法匹配
-   */
-  getEligiblePriceCandidates(priceList = [], productLike = {}) {
-    const prioritized = this.prioritizePriceCandidates(priceList)
-
-    if (!this.requiresSameCityOnly(productLike)) {
-      return prioritized
-    }
-
-    return prioritized.filter(item => item?.isLocal === true)
-  }
+  // 保留既有公共调用签名；纯匹配逻辑由同一个职责单元实现。
+  findStandardColor(target) { return this.productMatcher.findStandardColor(target) }
+  normalizeColor(colorName) { return this.productMatcher.normalizeColor(colorName) }
+  extractColorFromText(text) { return this.productMatcher.extractColorFromText(text) }
+  extractMemoryFromText(text) { return this.productMatcher.extractMemoryFromText(text) }
+  normalizeModelForMatch(modelText) { return this.productMatcher.normalizeModelForMatch(modelText) }
+  normalizeMemoryForMatch(memoryText) { return this.productMatcher.normalizeMemoryForMatch(memoryText) }
+  isSameCityProduct(text) { return this.productMatcher.isSameCityProduct(text) }
+  prioritizePriceCandidates(priceList = []) { return this.productMatcher.prioritizePriceCandidates(priceList) }
+  extractIPhoneGeneration(modelText) { return this.productMatcher.extractIPhoneGeneration(modelText) }
+  requiresSameCityOnly(productLike = {}) { return this.productMatcher.requiresSameCityOnly(productLike) }
+  getEligiblePriceCandidates(priceList = [], productLike = {}) { return this.productMatcher.getEligiblePriceCandidates(priceList, productLike) }
 
   /**
    * 设置数据库连接
@@ -1140,6 +888,7 @@ class PriceListService {
    */
   async upsertPriceItem(data, syncTime = null, options = {}) {
     try {
+      data = parsePriceInput(data)
       const {
         allowCreate = true,  // 默认允许创建新记录
         changeReason = null,
@@ -2247,113 +1996,21 @@ class PriceListService {
     }
   }
 
-  /**
-   * 返回外部报价站点的型号搜索候选词。
-   *
-   * 外部站点对型号代码和展示名称的检索并不始终等价：代码检索可能返回
-   * 通用表格或空表，名称检索才会返回完整的系列数据。因此代码优先，名称
-   * 作为有条件的补搜；真正写回前仍由型号代码、颜色和内存严格匹配。
-   */
+  // 外部搜索与结果解析使用唯一实现，保留现有调用入口。
   getExternalModelSearchTerms(modelKey, modelNumber, externalModel, modelCode) {
-    const normalizedKey = String(modelKey || '').toLowerCase().replace(/\s+/g, '')
-    const formatModelSearchTerm = () => {
-      if (modelNumber && /iphone/i.test(modelNumber)) return modelNumber
-
-      const suffix = normalizedKey.replace(/^iphone/, '')
-        .replace(/promax$/, ' Pro Max')
-        .replace(/pro$/, ' Pro')
-        .replace(/plus$/, ' Plus')
-        .replace(/duo$/, ' Duo')
-        .replace(/air$/, ' Air')
-
-      return normalizedKey.startsWith('iphone')
-        ? `iPhone ${suffix}`
-        : (modelNumber || modelKey)
-    }
-
-    const isDuoModel = ['iphone18duo', 'iphoneduo', '18duo'].includes(normalizedKey)
-    const nameTerm = isDuoModel
-      ? 'iPhone Duo'
-      : normalizedKey === 'iphone16'
-        ? 'iPhone 16'
-        : (/^iphone\d/.test(normalizedKey)
-          ? `iPhone ${normalizedKey.slice(6).replace(/promax$/, ' Pro Max').replace(/pro$/, ' Pro').replace(/plus$/, ' Plus').replace(/duo$/, ' Duo').replace(/air$/, ' Air')}`
-          : formatModelSearchTerm())
-    const duoAliases = isDuoModel
-      ? ['iPhone Duo', 'iPhone 18 Duo', '18 Duo', '18duo']
-      : []
-    const candidates = [modelCode, externalModel, nameTerm, ...duoAliases]
-      .map(value => String(value || '').trim())
-      .filter(Boolean)
-
-    return [...new Set(candidates)]
+    return this.sourceParser.getExternalModelSearchTerms(modelKey, modelNumber, externalModel, modelCode)
   }
 
-  /**
-   * 判断一次外部搜索结果是否确实包含目标型号。
-   * 不满足时允许调用方使用名称搜索补齐，避免把登录页/通用页当成有效结果。
-   */
   hasExternalModelInTable(tableHtml, modelCode, modelKey) {
-    const html = String(tableHtml || '')
-    if (!html) return false
-    if (modelCode && html.toLowerCase().includes(String(modelCode).toLowerCase())) return true
-
-    const normalized = String(modelKey || '').toLowerCase().replace(/\s+/g, '')
-    if (!normalized) return false
-
-    const text = html
-      .replace(/<[^>]*>/g, ' ')
-      .toLowerCase()
-      .replace(/\s+/g, '')
-    const aliases = [
-      normalized,
-      normalized.replace(/^iphone/, 'iphone '),
-      normalized.replace(/^iphone/, '苹果iphone'),
-      ...(['iphone18duo', 'iphoneduo', '18duo'].includes(normalized)
-        ? ['iphoneduo', 'iphone duo', 'iphone18duo', 'iphone 18 duo', '18duo', '18 duo']
-        : [])
-    ]
-    return aliases.some(alias => text.includes(alias.replace(/\s+/g, '')))
+    return this.sourceParser.hasExternalModelInTable(tableHtml, modelCode, modelKey)
   }
 
-  /**
-   * 判断外部表格是否包含可解析的商品行。
-   * 外部站点无结果时仍会返回搜索表格和表头，不能只用 table 是否存在判断成功。
-   */
   hasExternalPriceRows(tableHtml) {
-    if (!cheerio || !tableHtml) return false
-
-    const $ = cheerio.load(`<table>${tableHtml}</table>`)
-    return $('tr').toArray().some(row => {
-      const cells = $(row).find('td')
-      if (cells.length < 2) return false
-
-      const rowText = $(row).text().replace(/\s+/g, ' ')
-      return /[￥¥]\s*\d+(?:\.\d+)?/.test(rowText)
-    })
+    return this.sourceParser.hasExternalPriceRows(tableHtml)
   }
 
-  /**
-   * 构造外部型号检索地址。
-   *
-   * 型号代码是跨品牌的数据源标识，外部站点在同时传入 pp=苹果 时会把
-   * A3521 等代码过滤成空表。因此型号检索必须保留空品牌筛选，品牌只在
-   * 返回行的严格匹配阶段校验。
-   */
   buildExternalModelSearchUrl(searchTerm) {
-    const params = new URLSearchParams({
-      km: '',
-      pp: '',
-      network: '',
-      arg_name: String(searchTerm || ''),
-      s_jg: '',
-      e_jg: '',
-      policyid: '',
-      tykhgsdm: '',
-      isqh: '0'
-    })
-
-    return `${EXTERNAL_PRICE.BASE_URL}/quoteList.action?${params.toString()}`
+    return this.sourceParser.buildExternalModelSearchUrl(searchTerm)
   }
 
   /**

@@ -33,7 +33,10 @@
           >未绑定</span>
         </p>
       </div>
-      <form @submit.prevent="emit('save')">
+      <form
+        class="tf-form-layout"
+        @submit.prevent="emit('save')"
+      >
         <div class="form-group">
           <label>选择门店（可多选）<span class="required">*</span></label>
           <div class="store-selection">
@@ -78,14 +81,12 @@
         <el-button
           type="primary"
           :disabled="saving || selected.length === 0"
+          :loading="saving"
           @click="emit('save')"
         >
-          <InlineLoading
-            v-if="saving"
-            text="保存中..."
-            size="small"
-            variant="inherit"
-          />
+          <template v-if="saving">
+            保存中...
+          </template>
           <template v-else>
             保存绑定
           </template>
@@ -97,7 +98,6 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import InlineLoading from '@/components/InlineLoading.vue'
 import MobileDialog from '@/components/MobileDialog.vue'
 import type { StoreBindingUser, StoreOption } from '../types'
 

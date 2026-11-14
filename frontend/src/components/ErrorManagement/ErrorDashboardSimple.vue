@@ -161,11 +161,13 @@
         <span>最常见错误</span>
       </template>
       <el-table
-        :data="statistics.mostCommonErrors.slice(0, 5)"
+        v-table-double-tap="commonDetailTapOptions"
+        :data="commonErrors"
         class="data-table compact-fit-table"
         stripe
         border
         :fit="true"
+        @row-dblclick="commonDetailDoubleClick"
       >
         <el-table-column
           prop="message"
@@ -308,12 +310,14 @@
 
       <el-table
         v-tf-loading="{ active: loading, text: '正在刷新错误日志...' }"
+        v-table-double-tap="logDetailTapOptions"
         :data="paginatedLogs"
         class="data-table compact-fit-table"
         border
         :fit="true"
         row-key="id"
         :row-class-name="getRowClassName"
+        @row-dblclick="logDetailDoubleClick"
       >
         <template #empty>
           <TableLoadingRow
@@ -434,6 +438,7 @@
         </el-table-column>
 
         <el-table-column
+          v-if="!isMobile"
           label="操作"
           :width="$getActionColumnWidth(['详情', '标记解决', '删除'])"
           align="center"
@@ -479,6 +484,14 @@
       />
     </el-card>
 
+    <RecordDetailDialog
+      v-model="commonDetailVisible"
+      title="常见错误详情"
+      :fields="commonDetailFields"
+      :record="commonDetailRow"
+      :has-actions="false"
+    />
+
     <!-- 错误详情对话框 -->
     <MobileDialog
       v-model="detailVisible"
@@ -491,7 +504,7 @@
         v-if="selectedError"
         class="error-detail"
       >
-        <el-descriptions
+        <RecordDescriptions
           :column="2"
           border
         >
@@ -549,7 +562,7 @@
           >
             {{ selectedError.userAgent }}
           </el-descriptions-item>
-        </el-descriptions>
+        </RecordDescriptions>
 
         <div
           v-if="selectedError.message"
@@ -592,20 +605,23 @@
         </div>
       </div>
 
-      <template #footer>
+      <template
+        v-if="selectedError"
+        #footer
+      >
         <div class="tf-dialog-actions">
           <el-button
-            type="default"
-            @click="detailVisible = false"
-          >
-            关闭
-          </el-button>
-          <el-button
-            v-if="selectedError && !selectedError.resolved"
+            v-if="!selectedError.resolved"
             type="success"
-            @click="resolveError(selectedError.id); detailVisible = false"
+            @click.stop="runErrorAction(resolveError)"
           >
             标记为已解决
+          </el-button>
+          <el-button
+            type="danger"
+            @click.stop="runErrorAction(deleteError)"
+          >
+            删除
           </el-button>
         </div>
       </template>
@@ -614,7 +630,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, computed, nextTick } from 'vue'
 
 import type { TagProps } from 'element-plus'
 import {
@@ -635,6 +651,9 @@ import Pagination from '@/components/Pagination.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import { useImportExport } from '@/composables/useImportExport'
 import { useNotification } from '@/composables/useNotification'
+import { useMobile } from '@/composables/mobile'
+import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
+import type { RecordDetailField } from '@/types/component'
 const globalNotifications = useNotification()
 
 
@@ -655,6 +674,7 @@ const { exportTextFile, buildDateFilename } = useImportExport()
 const loading = ref(false)
 const detailVisible = ref(false)
 const selectedError = ref<ErrorLogEntry | null>(null)
+const { isMobile } = useMobile()
 
 // 过滤器
 const filters = ref({
@@ -797,6 +817,29 @@ const showErrorDetail = (error: ErrorLogEntry) => {
   detailVisible.value = true
 }
 
+const { doubleTapOptions: logDetailTapOptions, handleRowDoubleClick: logDetailDoubleClick } = useMobileTableDetail({
+  enabled: isMobile, rows: paginatedLogs, getKey: row => row.id, onOpen: showErrorDetail
+})
+const commonErrors = computed(() => statistics.value.mostCommonErrors.slice(0, 5))
+const { detailRow: commonDetailRow, detailVisible: commonDetailVisible,
+  doubleTapOptions: commonDetailTapOptions, handleRowDoubleClick: commonDetailDoubleClick } = useMobileTableDetail({
+  enabled: isMobile, rows: commonErrors, getKey: row => row.message
+})
+const commonDetailFields = computed<RecordDetailField[]>(() => {
+  const row = commonDetailRow.value
+  return row ? [
+    { key: 'message', label: '错误信息', value: row.message, visible: true, wide: true },
+    { key: 'count', label: '次数', value: row.count, visible: true },
+    { key: 'time', label: '最后发生', value: formatTime(row.lastOccurred), visible: true }
+  ] : []
+})
+const runErrorAction = (action: (id: string) => unknown) => {
+  const row = selectedError.value
+  if (!row || !detailVisible.value) return
+  detailVisible.value = false
+  return action(row.id)
+}
+
 const resolveError = async (errorId: string) => {
   try {
     resolveErrorLog(errorId)
@@ -854,9 +897,6 @@ const clearLogs = async () => {
   }
 }
 
-// 生命周期
-onMounted(() => {
-})
 </script>
 
 <style lang="scss" scoped>

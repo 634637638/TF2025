@@ -148,6 +148,7 @@ class PhoneInventoryQueryController {
       return this.response.success(res, result.data, '手机删除成功')
     } catch (error) {
       this.logger.error('删除手机失败:', error)
+      if (error.statusCode === 400) return this.response.error(res, error.message, 400, error.code)
       return this.response.serverError(res, '删除手机失败', error)
     }
   }

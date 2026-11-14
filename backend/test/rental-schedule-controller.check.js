@@ -171,7 +171,7 @@ test('rental payment service commits buyout installments atomically and releases
   assert.deepEqual(calls, ['schema', 'begin', 'commit', 'release'])
 })
 
-test('rental payment service rolls back invalid daily payment and releases the connection', async () => {
+test('rental payment service rejects invalid daily payment before acquiring a connection', async () => {
   const calls = []
   const connection = {
     async beginTransaction() { calls.push('begin') },
@@ -185,7 +185,7 @@ test('rental payment service rolls back invalid daily payment and releases the c
     repository: { async getPaymentRental() { return { billing_mode: 'daily', status: 'active' } } }
   })
   await assert.rejects(() => service.recordPayment(7, { amount: 0 }, 4), /请输入正确的收款金额/)
-  assert.deepEqual(calls, ['begin', 'rollback', 'release'])
+  assert.deepEqual(calls, [])
 })
 
 test('rental payment repository binds IDs and keeps payment writes on the transaction connection', async () => {

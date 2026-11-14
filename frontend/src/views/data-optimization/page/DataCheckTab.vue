@@ -6,14 +6,12 @@
         v-if="canViewField('check.action_check_all')"
         type="primary"
         :disabled="loading"
+        :loading="loading"
         @click="handleCheckAll"
       >
-        <InlineLoading
-          v-if="loading"
-          text="检查中..."
-          size="small"
-          variant="inherit"
-        />
+        <template v-if="loading">
+          检查中...
+        </template>
         <template v-else>
           <i class="fas fa-search" />
           <span>综合检查</span>
@@ -123,12 +121,14 @@
 
         <div class="data-table-container">
           <el-table
+            v-table-double-tap="mobileDetailTapOptions"
             v-tf-loading="{ active: loading, text: '正在刷新数据检查结果...' }"
             class="data-table"
             :data="paginatedAllData"
             stripe
             border
             :row-class-name="getRowClassName"
+            @row-dblclick="mobileDetailDoubleClick"
           >
             <template #empty>
               <TableLoadingRow
@@ -236,6 +236,14 @@
               </template>
             </el-table-column>
           </el-table>
+          <RecordDetailDialog
+            v-model="mobileDetailVisible"
+            title="数据记录详情"
+            :record="mobileDetailRow"
+            :fields="mobileDetailFields"
+            :has-actions="false"
+          />
+
 
           <!-- 分页 -->
           <div class="pagination-wrapper">
@@ -312,6 +320,7 @@
 
       <div
         v-else
+        v-table-double-tap="duplicateDetailTapOptions"
         class="duplicates-list"
       >
         <div
@@ -324,7 +333,10 @@
               <span class="group-key">{{ group.key }}</span>
               <span class="group-count">{{ group.count }} 条记录</span>
             </div>
-            <div class="group-actions">
+            <div
+              v-if="!isMobile"
+              class="group-actions"
+            >
               <el-button
                 v-if="canEdit"
                 type="primary"
@@ -353,11 +365,13 @@
               v-for="(item, itemIndex) in [group.primary, ...group.duplicates]"
               :key="`${group.key}-${itemIndex}`"
               class="duplicate-item"
+              data-mobile-record
               :class="{
                 'primary': itemIndex === 0,
                 'duplicate': itemIndex > 0,
                 'selected': isItemSelected(item, itemIndex, group)
               }"
+              @dblclick="openDuplicateDetail(group, itemIndex, $event)"
             >
               <div class="item-select">
                 <input
@@ -393,7 +407,10 @@
                   </div>
                 </div>
               </div>
-              <div class="item-actions">
+              <div
+                v-if="!isMobile"
+                class="item-actions"
+              >
                 <el-button
                   v-if="canEdit"
                   type="info"
@@ -434,6 +451,48 @@
       </div>
     </div>
 
+    <RecordDetailDialog
+      v-model="duplicateDetailVisible"
+      title="重复记录详情"
+      :record="duplicateDetailRow"
+      :fields="duplicateDetailFields"
+      :has-actions="canEdit || canDelete"
+    >
+      <template #actions="{ row }">
+        <el-button
+          v-if="canEdit"
+          v-permission="'data-optimization:edit'"
+          type="primary"
+          @click.stop="runDuplicateAction(entry => handleEditItem(entry.item))"
+        >
+          编辑
+        </el-button>
+        <el-button
+          v-if="canDelete && row.itemIndex > 0"
+          v-permission="'data-optimization:delete'"
+          type="danger"
+          @click.stop="runDuplicateAction(entry => handleDeleteItem(entry.item, entry.itemIndex, entry.group))"
+        >
+          删除记录
+        </el-button>
+        <el-button
+          v-if="canEdit"
+          v-permission="'data-optimization:edit'"
+          @click.stop="runDuplicateAction(entry => handleMergeGroup(entry.group))"
+        >
+          合并本组
+        </el-button>
+        <el-button
+          v-if="canDelete"
+          v-permission="'data-optimization:delete'"
+          type="danger"
+          @click.stop="runDuplicateAction(entry => handleDeleteGroup(entry.group))"
+        >
+          删除本组重复项
+        </el-button>
+      </template>
+    </RecordDetailDialog>
+
     <!-- 编辑对话框 -->
     <MobileDialog
       v-model="showEditDialog"
@@ -444,6 +503,7 @@
       :close-on-click-modal="false"
     >
       <el-form
+        class="tf-form-layout tf-form-grid"
         :model="editForm"
         label-width="100px"
       >
@@ -476,6 +536,9 @@
 </template>
 
 <script setup lang="ts">
+import { useMobile } from '@/composables/mobile'
+import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
+import type { RecordDetailField } from '@/types/component'
 import { confirmAction } from '@/utils/message-box'
 import { ref, reactive, computed, onMounted } from 'vue'
 
@@ -486,7 +549,6 @@ import { fieldPermissions } from '@/composables/useFieldPermissions'
 import { useLoadingState } from '@/composables'
 import { useLoadingStore } from '@/stores/loading'
 import Pagination from '@/components/Pagination.vue'
-import InlineLoading from '@/components/InlineLoading.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import { logger } from '@/utils/logger'
 import type {
@@ -1363,25 +1425,19 @@ const handleCleanupAllDuplicates = async () => {
     )
 
     loading.value = true
-    const loadingTaskId = 'data-check-cleanup-all-duplicates'
-    globalLoading.startLoading('正在清理重复数据，请稍候...', loadingTaskId)
 
-    try {
-      const response = await dataCheckApi.cleanupData('customers')
+    const response = await dataCheckApi.cleanupData('customers')
 
-      if (response.data && response.data.success !== false) {
-        const result = response.data
-        globalNotifications.success(
-          `清理完成！已清理 ${result.cleaned || 0} 条重复记录，剩余 ${result.remainingGroups || 0} 个重复组`
-        )
+    if (response.data && response.data.success !== false) {
+      const result = response.data
+      globalNotifications.success(
+        `清理完成！已清理 ${result.cleaned || 0} 条重复记录，剩余 ${result.remainingGroups || 0} 个重复组`
+      )
 
-        // 重新加载数据
-        await handleCheckItem(currentCheckItem.key)
-      } else {
-        throw new Error(response.data?.message || '清理失败')
-      }
-    } finally {
-      globalLoading.stopLoading(loadingTaskId)
+      // 重新加载数据
+      await handleCheckItem(currentCheckItem.key)
+    } else {
+      throw new Error(response.data?.message || '清理失败')
     }
   } catch (error: unknown) {
     if (error !== 'cancel') {
@@ -1495,6 +1551,50 @@ onMounted(() => {
   if (canView.value) {
     getStatistics()
   }
+})
+
+const { isMobile } = useMobile()
+const duplicateDetailRows = computed(() => currentPageDuplicates.value.flatMap(group =>
+  [group.primary, ...group.duplicates].map((item, itemIndex) => ({ group, item, itemIndex }))
+))
+const { detailRow: duplicateDetailRow, detailVisible: duplicateDetailVisible, doubleTapOptions: duplicateDetailTapOptions,
+  handleRowDoubleClick: duplicateDetailDoubleClick, runDetailAction: runDuplicateAction } = useMobileTableDetail({
+  enabled: () => isMobile.value && canView.value && viewMode.value === 'duplicates' && canViewField('check.duplicates_list'),
+  rows: duplicateDetailRows, rowSelector: '[data-mobile-record]',
+  getKey: row => `${currentCheck.value?.key}:${row.group.key}:${row.itemIndex}:${row.item.id}`
+})
+const openDuplicateDetail = (group: DataDuplicateGroup, itemIndex: number, event: MouseEvent) => {
+  const row = duplicateDetailRows.value.find(entry => entry.group === group && entry.itemIndex === itemIndex)
+  if (row) duplicateDetailDoubleClick(row, null, event)
+}
+const duplicateDetailFields = computed<RecordDetailField[]>(() => {
+  const row = duplicateDetailRow.value
+  if (!row) return []
+  return [
+    { key: 'id', label: 'ID', value: row.item.id, visible: true },
+    { key: 'role', label: '记录类型', value: row.itemIndex === 0 ? '主记录' : '重复记录', visible: true },
+    { key: 'group', label: '重复组', value: row.group.key, visible: true, wide: true },
+    ...Object.entries(getItemFields(row.item)).map(([key, value]) => ({
+      key: `field:${key}`, label: key, value, visible: true, wide: /email|address|remarks|description|content/i.test(key)
+    }))
+  ]
+})
+const { detailRow: mobileDetailRow, detailVisible: mobileDetailVisible, doubleTapOptions: mobileDetailTapOptions, handleRowDoubleClick: mobileDetailDoubleClick } = useMobileTableDetail<DataCheckRecord>({
+  enabled: () => isMobile.value && canView.value && viewMode.value === 'all' && canViewField('check.all_data_table'), rows: () => paginatedAllData.value, getKey: row => `${currentCheck.value?.key}:${row.id}`
+})
+const mobileDetailFields = computed<RecordDetailField[]>(() => {
+  const row = mobileDetailRow.value
+  if (!row) return []
+  return [
+    { key: 'id', label: 'ID', value: row.id, visible: true },
+    { key: 'name', label: '名称', value: getRowName(row), visible: true },
+    { key: 'phone', label: '电话', value: row.phone, visible: ['customers','suppliers'].includes(currentCheck.value?.key || '') },
+    { key: 'brand', label: '品牌', value: row.brand_name, visible: currentCheck.value?.key === 'models' },
+    { key: 'type', label: '客户类型', value: row.customer_type, visible: currentCheck.value?.key === 'customers' },
+    { key: 'vip', label: 'VIP等级', value: row.vip_level, visible: currentCheck.value?.key === 'customers' },
+    { key: 'status', label: '状态', value: row.status === 1 ? '启用' : '禁用', visible: true },
+    { key: 'duplicate', label: '重复信息', value: row.is_duplicate ? `重复 (${row.duplicate_count})` : '唯一', visible: true }
+  ]
 })
 </script>
 

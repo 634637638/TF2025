@@ -375,10 +375,10 @@ html {
   animation: tf-spinner-rotate var(--tf-loading-speed, 0.72s) linear infinite;
 }
 
-/* v-tf-loading 已提供表格遮罩时，隐藏表格里的兜底行，避免出现两套提示。 */
+/* 刷新遮罩接管反馈，保留空表占位高度；避免与懒加载组件的 display 规则冲突。 */
 .tf2025-loading .table-loading-row,
 .tf2025-loading .table-loading-row__block {
-  display: none;
+  visibility: hidden;
 }
 
 .el-button .el-icon.is-loading,
@@ -834,7 +834,6 @@ html {
   /* 移除 body/html 的 fixed 定位，改用 overflow 控制 */
   body, html {
     overflow-x: hidden !important;
-    overflow-y: auto !important;
     width: 100% !important;
     max-width: 100vw !important;
   }
@@ -847,17 +846,6 @@ html {
     /* 移除固定高度限制，让内容可以撑开页面 */
     min-height: 100vh !important;
     position: relative !important;
-  }
-
-  /* 确保模态框在 app 之外，不受 fixed 定位影响 */
-  body > .el-overlay,
-  #app ~ .el-overlay {
-    position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
-    right: 0 !important;
-    bottom: 0 !important;
-    z-index: 9999 !important;
   }
 
   .d-sm-none {

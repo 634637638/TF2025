@@ -25,6 +25,7 @@
           >
             <el-form
               ref="screenLockFormRef"
+              class="tf-form-layout tf-form-grid"
               :model="screenLockForm"
               :rules="screenLockRules"
               label-width="120px"
@@ -42,7 +43,10 @@
               </el-alert>
 
               <!-- 背景类型 -->
-              <el-form-item label="背景类型">
+              <el-form-item
+                class="tf-form-field--wide"
+                label="背景类型"
+              >
                 <el-radio-group v-model="screenLockForm.backgroundType">
                   <el-radio value="default">
                     默认背景
@@ -59,6 +63,7 @@
               <!-- 图片背景 -->
               <el-form-item
                 v-if="screenLockForm.backgroundType === 'image'"
+                class="tf-form-field--wide"
                 label="背景图片"
               >
                 <div class="image-upload-container">
@@ -111,6 +116,7 @@
               <!-- 视频背景 -->
               <el-form-item
                 v-if="screenLockForm.backgroundType === 'video'"
+                class="tf-form-field--wide"
                 label="背景视频"
               >
                 <div class="video-upload-container">

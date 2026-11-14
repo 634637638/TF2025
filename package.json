@@ -8,11 +8,11 @@
     "test:lint-config": "node --test scripts/test/eslint-config.check.mjs",
     "check:reference-options": "node scripts/check-reference-options.mjs --strict",
     "dev": "node scripts/fix-ports.js",
-    "dev:raw": "npm run check:standards && concurrently --names \"BACKEND,FRONTEND\" --prefix name \"npm run backend\" \"npm run frontend:raw\"",
+    "dev:raw": "concurrently --names \"BACKEND,FRONTEND\" --prefix name \"npm run backend\" \"npm run frontend:raw\"",
     "dev:all": "node scripts/fix-ports.js",
     "dev:fixed": "node scripts/fix-ports.js",
     "backend": "cd backend && npm run dev",
-    "frontend": "npm run check:standards && npm run frontend:raw",
+    "frontend": "npm run frontend:raw",
     "frontend:raw": "cd frontend && npm run dev:server",
     "check:standards": "npm --prefix frontend run check:standards",
     "start": "node scripts/fix-ports.js",
@@ -25,7 +25,8 @@
     "lint:frontend": "eslint frontend/src",
     "lint:backend": "eslint backend/src",
     "lint:summary": "node scripts/lint-summary.mjs",
-    "lint:strict": "eslint frontend/src backend/src --max-warnings 0"
+    "lint:strict": "eslint frontend/src backend/src --max-warnings 0",
+    "test:business-isolated": "node --test scripts/test/isolated-business-runner.check.mjs && node scripts/test-isolated-business.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",

@@ -23,6 +23,24 @@ const baseForm = (): RentalFormState => ({
 })
 
 describe('租赁提交数据归一化', () => {
+  it.each([NaN, Infinity, -1, 1.001])('非法金额不转为零或舍入后提交：%s', value => {
+    const form = baseForm()
+    form.down_payment = value
+    expect(() => buildRentalPayload(form, 20, 5200)).toThrow()
+    expect(() => buildRentalPayload(baseForm(), 20, value)).toThrow()
+  })
+  it('空成本不覆盖原值，零成本完整保留，非法期数和ID不能被强转', () => {
+    const form = baseForm()
+    form.purchase_cost = null
+    expect(buildRentalPayload(form, 20, 5200)).not.toHaveProperty('purchase_cost')
+    form.purchase_cost = 0
+    expect(buildRentalPayload(form, 20, 5200).purchase_cost).toBe(0)
+    form.term_months = 1.1
+    expect(() => buildRentalPayload(form, 20, 5200)).toThrow()
+    form.term_months = 1
+    form.sale_store_id = NaN
+    expect(() => buildRentalPayload(form, 20, 5200)).toThrow()
+  })
   it('买断模式保留销售字段并清零租赁专属金额', () => {
     const payload = buildRentalPayload(baseForm(), 20, 5200)
 

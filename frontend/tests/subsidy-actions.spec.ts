@@ -23,6 +23,36 @@ const ColumnStub = {
 }
 
 describe.each([false, true])('国补操作权限，移动端=%s', isMobile => {
+  it.each([false, true])('照片上传权限=%s，手机照片只读并由双击详情承接操作', async canUpload => {
+    const row: NationalSubsidyRecord = { id: 28, subsidy_photos: [] }
+    const wrapper = shallowMount(SubsidyListSection, {
+      props: {
+        loading: false, subsidyList: [row], displayList: [row],
+        tableColumns: [{ key: 'subsidy_photos', label: '国补照片' }],
+        fieldVisibility: { subsidy_photos: true }, isMobile, selectedItems: [], pinnedItems: [],
+        subsidyPagination: { page: 1, page_size: 20, total: 1 },
+        canApprove: false, canArrival: false, canUpload, canEdit: false, canDelete: false,
+        canShowActions: false, canViewCustomerIdcard: false, selectAll: false, isIndeterminate: false
+      },
+      global: {
+        directives: { 'tf-loading': {}, 'table-double-tap': {} },
+        stubs: { ElTable: TableStub, ElTableColumn: ColumnStub, ElCheckbox: true }
+      }
+    })
+    const photoAction = wrapper.find('.photo-icon-wrapper')
+    expect(photoAction.exists()).toBe(!isMobile)
+    if (isMobile) {
+      expect(wrapper.text()).toContain('0 张')
+      wrapper.findComponent(TableStub).vm.$emit('row-dblclick', row, null, new MouseEvent('dblclick'))
+      expect(wrapper.emitted('row-double-click')).toEqual([[row]])
+      expect(wrapper.emitted('open-photo-manage')).toBeUndefined()
+    } else {
+      await photoAction.trigger('click')
+      expect(wrapper.emitted('open-photo-manage')).toEqual([[row]])
+    }
+    wrapper.unmount()
+  })
+
   it.each([
     [false, false], [true, false], [false, true], [true, true]
   ])('字段隐藏时审批=%s、到账=%s，只显示已授权操作并发出正确记录', async (canApprove, canArrival) => {
@@ -40,7 +70,7 @@ describe.each([false, true])('国补操作权限，移动端=%s', isMobile => {
         canShowActions: false, canViewCustomerIdcard: false, selectAll: false, isIndeterminate: false
       },
       global: {
-        directives: { 'tf-loading': {} },
+        directives: { 'tf-loading': {}, 'table-double-tap': {} },
         stubs: {
           DataEmptyState: true,
           ElTable: TableStub, ElTableColumn: ColumnStub, ElCheckbox: true,
@@ -50,15 +80,20 @@ describe.each([false, true])('国补操作权限，移动端=%s', isMobile => {
     })
     const audit = wrapper.find('[title="审批"]')
     const arrival = wrapper.find('[title="到账"]')
-    expect(audit.exists()).toBe(canApprove)
-    expect(arrival.exists()).toBe(canArrival)
-    if (canApprove) {
+    expect(audit.exists()).toBe(!isMobile && canApprove)
+    expect(arrival.exists()).toBe(!isMobile && canArrival)
+    if (!isMobile && canApprove) {
       await audit.trigger('click')
       expect(wrapper.emitted('audit')).toEqual([[row]])
     }
-    if (canArrival) {
+    if (!isMobile && canArrival) {
       await arrival.trigger('click')
       expect(wrapper.emitted('confirm-arrival')).toEqual([[row]])
+    }
+    if (isMobile) {
+      const table = wrapper.findComponent(TableStub)
+      table.vm.$emit('row-dblclick', row, null, new MouseEvent('dblclick'))
+      expect(wrapper.emitted('row-double-click')).toEqual([[row]])
     }
     wrapper.unmount()
   })

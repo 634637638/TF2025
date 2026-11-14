@@ -161,6 +161,7 @@
             <el-table
               ref="colorsTableRef"
               v-tf-loading="{ active: tableLoading || refreshing, text: '正在刷新颜色列表...' }"
+              v-table-double-tap="mobileDetailTapOptions"
               :data="colors"
               border
               stripe
@@ -168,8 +169,7 @@
               table-layout="fixed"
               :fit="true"
               :row-key="getColorRowKey"
-              :expand-row-keys="isMobile && mobileActionRowId ? [mobileActionRowId] : []"
-              @row-click="(row) => handleMobileRowTap(row.id)"
+              @row-dblclick="handleMobileDetailDoubleClick"
             >
               <template #empty>
                 <TableLoadingRow
@@ -332,37 +332,33 @@
                   </div>
                 </template>
               </el-table-column>
-              <el-table-column
-                v-if="isMobile && (canEdit || canDelete)"
-                type="expand"
-                width="1"
-                class-name="mobile-expand-column"
-                label-class-name="mobile-expand-header"
-              >
-                <template #default="{ row }">
-                  <div class="mobile-row-actions">
-                    <el-button
-                      v-if="canEdit"
-                      v-permission="'colors:edit'"
-                      type="primary"
-                      size="small"
-                      @click.stop="editColor(row)"
-                    >
-                      <i class="fas fa-edit" /><span>编辑</span>
-                    </el-button>
-                    <el-button
-                      v-if="canDelete"
-                      v-permission="'colors:delete'"
-                      type="danger"
-                      size="small"
-                      @click.stop="deleteColor(row)"
-                    >
-                      <i class="fas fa-trash" /><span>删除</span>
-                    </el-button>
-                  </div>
-                </template>
-              </el-table-column>
             </el-table>
+            <RecordDetailDialog
+              v-model="mobileDetailVisible"
+              title="颜色详情"
+              :fields="mobileDetailFields"
+              :record="mobileDetailRow"
+              :has-actions="canEdit || canDelete"
+            >
+              <template #actions="{ row }">
+                <el-button
+                  v-if="canEdit"
+                  v-permission="'colors:edit'"
+                  type="primary"
+                  @click.stop="runMobileDetailAction(() => editColor(row))"
+                >
+                  <i class="fas fa-edit" /><span>编辑</span>
+                </el-button>
+                <el-button
+                  v-if="canDelete"
+                  v-permission="'colors:delete'"
+                  type="danger"
+                  @click.stop="runMobileDetailAction(() => deleteColor(row))"
+                >
+                  <i class="fas fa-trash" /><span>删除</span>
+                </el-button>
+              </template>
+            </RecordDetailDialog>
           </div>
 
           <!-- 分页组件 -->
@@ -392,7 +388,7 @@
           <el-form
             :model="formData"
             label-width="80px"
-            class="colors-dialog-form"
+            class="colors-dialog-form tf-form-layout tf-form-grid"
           >
             <el-form-item
               v-if="canViewField('name')"
@@ -465,7 +461,7 @@
             <div class="tf-dialog-actions">
               <el-button
                 type="default"
-                @click="attemptCloseModal"
+                @click="closeModal"
               >
                 取消
               </el-button>
@@ -503,7 +499,8 @@ import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import { PermissionGate, PageHeader } from '@/components/base'
 import { usePermissionToast } from '@/utils/permissionToastSimple'
 import { useMobile } from '@/composables/mobile'
-import { useMobileRowDoubleTap } from '@/composables/useMobileRowDoubleTap'
+import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
+import type { RecordDetailField } from '@/types/component'
 import { useLatestRequest } from '@/composables/useLatestRequest'
 import { useElementTableSortable } from '@/composables/useElementTableSortable'
 import { useReferenceOrdering } from '@/composables/useReferenceOrdering'
@@ -577,23 +574,12 @@ const showStatsCards = computed(() => (
 const submitting = ref(false)
 const tableLoading = ref(true)
 const colorsTableRef = ref<HTMLElement | { $el?: HTMLElement } | null>(null)
-const mobileActionRowId = ref<string | null>(null)
-const { isDoubleTap } = useMobileRowDoubleTap()
 const colors = ref<Color[]>([])
 const stats = ref({ total: 0, active: 0, inactive: 0, related_phones: 0 })
 
 const getColorRowKey = (color: Color) => String(color.id)
 
-const toggleMobileActions = (id: number) => {
-  if (!isMobile.value) return
-  const rowKey = String(id)
-  mobileActionRowId.value = mobileActionRowId.value === rowKey ? null : rowKey
-}
 
-const handleMobileRowTap = (id: number) => {
-  if (!isMobile.value) return
-  if (isDoubleTap(String(id))) toggleMobileActions(id)
-}
 const showCreateModal = ref(false)
 const showEditModal = ref(false)
 
@@ -629,7 +615,7 @@ const dialogVisible = computed({
   get: () => showCreateModal.value || showEditModal.value,
   set: (value) => {
     if (!value) {
-      attemptCloseModal()
+      closeModal()
     }
   }
 })
@@ -980,38 +966,6 @@ const submitForm = async () => {
   }
 }
 
-// 新增取消直接重置；仅编辑已有记录时检查未保存的更改。
-const hasUnsavedChanges = (): boolean => {
-  if (!showEditModal.value || currentEditingId.value === null) return false
-  const originalColor = colors.value.find(item => item.id === currentEditingId.value)
-  if (!originalColor) return false
-  return (
-    formData.value.name !== originalColor.name ||
-    formData.value.status !== originalColor.status ||
-    formData.value.sort_order !== originalColor.sort_order
-  )
-}
-
-// 新增直接关闭，编辑有更改时保留确认。
-const attemptCloseModal = async () => {
-  if (hasUnsavedChanges()) {
-    const confirmed = await confirm(
-      '您有未保存的更改，确定要关闭吗？',
-      '确认关闭',
-      {
-        confirmButtonText: '确定关闭',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }
-    )
-    if (confirmed) {
-      closeModal()
-    }
-  } else {
-    closeModal()
-  }
-}
-
 // 关闭模态框
 const closeModal = () => {
   showCreateModal.value = false
@@ -1090,7 +1044,7 @@ const handleKeyboardShortcuts = (event: KeyboardEvent) => {
 
   // Escape: 关闭模态框
   if (event.key === 'Escape' && (showCreateModal.value || showEditModal.value)) {
-    attemptCloseModal()
+    closeModal()
   }
 
   // Enter: 在模态框中提交表单
@@ -1108,6 +1062,23 @@ const handleKeyboardShortcuts = (event: KeyboardEvent) => {
 }
 
 // 生命周期
+const { detailRow: mobileDetailRow, detailVisible: mobileDetailVisible, doubleTapOptions: mobileDetailTapOptions,
+  handleRowDoubleClick: handleMobileDetailDoubleClick, runDetailAction: runMobileDetailAction } = useMobileTableDetail<Color>({
+    enabled: computed(() => isMobile.value && canView.value), rows: colors, getKey: row => row.id
+  })
+const mobileDetailFields = computed<RecordDetailField[]>(() => {
+  const row = mobileDetailRow.value
+  if (!row) return []
+  return [
+    { key: 'name', label: '颜色名称', value: row.name, visible: canViewField('name') },
+    { key: 'code', label: '颜色代码', value: getColorCode(row.name), visible: canViewField('code') },
+    { key: 'status', label: '状态', value: row.status === 1 ? '启用' : '禁用', visible: canViewField('status') },
+    { key: 'sort_order', label: '排序', value: row.sort_order, visible: canViewField('sort_order') },
+    { key: 'created_at', label: '创建时间', value: formatDate(row.created_at || ''), visible: canViewField('created_at'), wide: true }
+  ]
+})
+
+
 onMounted(async () => {
   // 检查是否有页面访问权限
   if (!canView.value) {

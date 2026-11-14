@@ -124,6 +124,12 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
     name: '配件管理',
     permissions: getCapabilityPermissions('accessories_accessoriesview')
   },
+  ACCESSORY_CATALOG: {
+    id: 'accessories-catalog',
+    key: 'accessories_accessorycatalogview',
+    name: '配件设置',
+    permissions: getCapabilityPermissions('accessories_accessorycatalogview')
+  },
 
   // 权限管理模块
   PERMISSIONS: {

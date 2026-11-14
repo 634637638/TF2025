@@ -9,12 +9,14 @@
         :batch-mode="batchMode"
         :selected-count="selectedPhones.length"
         :can-sell="canSell"
+        :can-sell-goods="canSellGoods"
         :can-export="canExport"
         :export-loading="exportingAvailablePhones"
         :refreshing="refreshing"
         @toggle-batch-mode="toggleBatchMode"
         @export="exportAvailablePhones"
         @refresh="handleRefresh"
+        @sell-goods="openGoodsCheckout()"
       />
 
       <div class="content admin-page-content">
@@ -218,6 +220,14 @@
       <template #footer>
         <div class="tf-dialog-actions sale-dialog-footer">
           <el-button
+            v-if="canSellGoods && !isPreorderDelivery"
+            v-permission="{ permission: ['accessories:create', 'accessories:gift'] }"
+            :disabled="submitting"
+            @click="openGoodsCheckout('single')"
+          >
+            配件
+          </el-button>
+          <el-button
             type="info"
             plain
             @click="closeSaleModal"
@@ -289,6 +299,14 @@
       <template #footer>
         <div class="tf-dialog-actions batch-sale-dialog-footer">
           <el-button
+            v-if="canSellGoods"
+            v-permission="{ permission: ['accessories:create', 'accessories:gift'] }"
+            :disabled="submitting"
+            @click="openGoodsCheckout('batch')"
+          >
+            配件
+          </el-button>
+          <el-button
             type="success"
             :loading="submitting"
             :disabled="submitting"
@@ -318,6 +336,18 @@
         </div>
       </template>
     </MobileDialog>
+
+    <SalesGoodsCheckoutDialog
+      v-if="showGoodsCheckout"
+      v-model="showGoodsCheckout"
+      :phones="goodsCheckoutPhones"
+      :defaults="goodsCheckoutDefaults"
+      :initial-customer="goodsCheckoutCustomer"
+      :phone-fields-allowed="goodsCheckoutPhoneFieldsAllowed"
+      :phone-field-visible="canViewSaleField"
+      @success="completeGoodsCheckout"
+      @customer-updated="syncGoodsCheckoutCustomer"
+    />
 
     <SalesInventoryDetailDialog
       v-model="inventoryDetailModal"
@@ -408,6 +438,8 @@ import { useSalesCheckout } from './useSalesCheckout'
 import { useSalesCustomers } from './useSalesCustomers'
 import { useSalesInventorySummary } from './useSalesInventorySummary'
 import { getSalesFieldKey } from './sales-field-permissions'
+import type { CheckoutCustomerForm, CheckoutPhone } from '@/types/sales-checkout'
+import type { CustomerOption } from '@/services/customer-options'
 import {
   detectEditNoImeiMode as detectEditNoIMEIMode,
   findPhoneByRouteId,
@@ -418,8 +450,10 @@ import {
 
 // 导入格式化工具函数
 import { formatAmount } from '@/utils/format'
+import { isDeviceIMEI, isDeviceSerial, normalizeDeviceIMEI, normalizeDeviceSerial } from '@/utils/device-identifier'
 
 const WholesaleModal = defineAsyncComponent(() => import('@/components/WholesaleModal.vue'))
+const SalesGoodsCheckoutDialog = defineAsyncComponent(() => import('./page/SalesGoodsCheckoutDialog.vue'))
 
 // 导入类型定义
 import type { Phone } from '@/types'
@@ -443,6 +477,8 @@ const {
   canExport,
   handleNoPermission
 } = usePagePermissions('sales')
+const goodsPermissions = usePagePermissions('accessories')
+const canSellGoods = computed(() => goodsPermissions.canView.value && (goodsPermissions.canCreate.value || goodsPermissions.hasPermission('gift')))
 const { refreshing, refresh } = useRefreshData()
 const { exportFile, saveBlobFile, buildDateFilename } = useImportExport()
 const authStore = useAuthStore()
@@ -716,6 +752,60 @@ const batchSaleForm = reactive<BatchSaleFormData>({
 
 // 批量销售的客户、支付信息是公共字段，价格按设备独立维护。
 const batchSaleItems = ref<BatchSaleItem[]>([])
+const showGoodsCheckout = ref(false)
+const goodsCheckoutPhones = ref<CheckoutPhone[]>([])
+const goodsCheckoutDefaults = ref<Partial<CheckoutCustomerForm>>({})
+const goodsCheckoutCustomer = ref<Pick<CustomerOption, 'id' | 'name' | 'phone'> | null>(null)
+const goodsCheckoutPhoneFieldsAllowed = computed(() => !goodsCheckoutPhones.value.length ||
+  ['customer_name', 'customer_phone', 'store_id', 'operator_id', 'sale_price', 'sale_time', 'payment_method'].every(canViewSaleField))
+
+const openGoodsCheckout = (mode?: 'single' | 'batch') => {
+  if (!canSellGoods.value) return
+  const batch = mode === 'batch'
+  const source = batch ? batchSaleForm : saleForm
+  const phones = mode ? batch ? selectedPhones.value : selectedPhone.value ? [selectedPhone.value] : [] : []
+  if (mode && (!canSell.value || !phones.length || isPreorderDelivery.value)) return
+  if (mode && (batch ? batchCustomerNameEditing.value : customerNameEditing.value)) { showError('请先保存客户姓名，再添加搭售或赠送商品'); return }
+  const entries = phones.map(phone => ({ phone_id: Number(phone.id),
+    sale_price: Number(batch ? batchSaleItems.value.find(item => item.phone_id === phone.id)?.sale_price : source.sale_price),
+    label: [canViewSaleField('brand') ? phone.brand : '', canViewSaleField('model') ? phone.model : '',
+      canViewSaleField('imei') ? phone.imei : ''].filter(Boolean).join(' · ') || `设备 #${phone.id}` }))
+  if (entries.some(phone => !Number.isFinite(phone.sale_price) || phone.sale_price <= 0)) { showError('请先填写每台手机的销售价格'); return }
+  if (mode && !source.store_id) { showError('请先选择销售门店'); return }
+  if (mode && phones.some(phone => phone.store_id && Number(phone.store_id) !== Number(source.store_id))) { showError('合单的手机与商品须属于同一销售门店'); return }
+  if (mode && phones.some(phone => {
+    const edited = batch ? batchSaleItems.value.find(item => item.phone_id === phone.id)?.purchase_cost : saleForm.purchase_cost
+    return edited !== '' && Number(edited) !== Number(phone.purchase_cost)
+  })) { showError('合单使用原入库成本，请先恢复手机入库价格'); return }
+  goodsCheckoutPhones.value = entries
+  const customer = mode ? batch ? selectedBatchCustomer.value : selectedCustomer.value : null
+  goodsCheckoutCustomer.value = customer ? { id: Number(customer.id), name: customer.name, phone: customer.phone } : null
+  goodsCheckoutDefaults.value = mode ? { customer_name: source.customer_name, customer_phone: source.customer_phone,
+    store_id: source.store_id, operator_id: source.operator_id, sale_time: source.sale_time,
+    payment_method: source.payment_method, payment_channel: source.payment_channel,
+    transaction_no: canViewSaleField('transaction_no') ? source.transaction_no : '',
+    apple_id: canViewSaleField('customer_apple_id') ? batch ? batchSaleForm.apple_id : saleForm.customer_apple_id : undefined,
+    remarks: canViewSaleField('remarks') ? source.remarks : '' } : {}
+  showGoodsCheckout.value = true
+}
+const completeGoodsCheckout = async () => {
+  const count = goodsCheckoutPhones.value.length
+  if (count) {
+    if (showBatchSaleModal.value) { showBatchSaleModal.value = false; clearBatchSelection() }
+    if (showSaleModal.value) closeSaleModal()
+  }
+  await loadAvailablePhones(true, false, true)
+  todaySold.value += count
+}
+const syncGoodsCheckoutCustomer = (customer: Pick<CustomerOption, 'id' | 'name' | 'phone'>) => {
+  if (Number(selectedCustomer.value?.id) === customer.id && selectedCustomer.value) {
+    selectedCustomer.value.name = saleForm.customer_name = customer.name
+  }
+  if (Number(selectedBatchCustomer.value?.id) === customer.id && selectedBatchCustomer.value) {
+    selectedBatchCustomer.value.name = batchSaleForm.customer_name = customer.name
+  }
+  if (goodsCheckoutCustomer.value?.id === customer.id) goodsCheckoutCustomer.value = { ...customer }
+}
 
 const syncBatchSaleItems = () => {
   const existingItems = new Map(batchSaleItems.value.map(item => [item.phone_id, item]))
@@ -1430,12 +1520,12 @@ const submitEdit = async () => {
   }
   submitting.value = true
   try {
-    // 验证必填字段
-    // 对于手机设备（品牌包含iPhone、华为、小米等），IMEI必须是15位
-    // 对于非手机设备（AirPods、iPad等），IMEI可以不是15位
-    const isPhoneDevice = /^(iPhone|华为|小米|红米|OPPO|vivo|三星|荣耀|realme|一加|魅族|诺基亚|索尼|LG|摩托罗拉)/i.test(editForm.brand || '')
-    if (isPhoneDevice && editForm.imei !== editForm.serial_number && (!editForm.imei || editForm.imei.length < 15)) {
-      showError('请输入完整的15位IMEI号')
+    if (canEditSaleField('serial_number') && editForm.serial_number && !isDeviceSerial(editForm.serial_number)) {
+      showError('序列号须为4-50位字母、数字、斜杠或连字符')
+      return
+    }
+    if (canEditSaleField('imei') && !(isDeviceIMEI(editForm.imei) || (editForm.imei === editForm.serial_number && isDeviceSerial(editForm.imei)))) {
+      showError('IMEI须为15位数字，或与合法序列号相同')
       return
     }
 
@@ -1539,13 +1629,7 @@ const closeEditModal = () => {
 
 // IMEI输入验证 - 根据模式决定格式化规则
 const handleImeiInput = (value: string) => {
-  if (editIsNoIMEIMode.value) {
-    // 无IMEI模式：允许数字和字母，字母转大写
-    editForm.imei = value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 30)
-  } else {
-    // 标准模式：只允许数字
-    editForm.imei = value.replace(/[^\d]/g, '').slice(0, 15)
-  }
+  editForm.imei = normalizeDeviceIMEI(value, editIsNoIMEIMode.value)
 }
 
 // 切换编辑模式的无IMEI状态
@@ -1565,9 +1649,9 @@ const toggleEditNoIMEIMode = () => {
   }
 }
 
-// 序列号输入验证 - 只允许字母和数字
+// 仅转换约定大小写；保留非法原文供提交校验。
 const handleSerialNumberInput = (value: string) => {
-  editForm.serial_number = value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 18)
+  editForm.serial_number = normalizeDeviceSerial(value)
 }
 
 // 支付方式变化处理

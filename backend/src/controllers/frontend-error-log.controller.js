@@ -15,7 +15,7 @@ class FrontendErrorLogController {
         return res.status(401).json({ success: false, message: '登录状态无效' })
       }
 
-      const report = await this.service.submitReport(req.body, userId)
+      const report = await this.service.submitReport(req.body, userId, req.requestId)
       if (report.error) {
         return res.status(report.error.status).json({
           success: false,

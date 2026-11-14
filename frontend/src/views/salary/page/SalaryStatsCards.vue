@@ -12,7 +12,7 @@
           ¥{{ formatAmount(canViewTeamRecords ? stats.pendingSalary || 0 : stats.myPendingSalary || 0) }}
         </div>
         <div class="stat-label">
-          待发工资
+          预估工资（不含商品）
         </div>
         <div
           v-if="canViewTeamRecords"

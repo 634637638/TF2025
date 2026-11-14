@@ -1,4 +1,5 @@
 import { computed, reactive, ref, watch, type Ref } from 'vue'
+import { isPaidSalaryRecord } from './salary-record-state'
 import type {
   SalaryPayoutEmployee,
   SalaryPayoutRecord,
@@ -43,8 +44,8 @@ export const useSalaryPayoutTable = ({
         item.username?.toLowerCase().includes(search)
       )
       .filter(item => {
-        if (payoutFilters.status === 'paid') return item.payoutRecord?.status === 'paid'
-        if (payoutFilters.status === 'unpaid') return item.payoutRecord?.status !== 'paid'
+        if (payoutFilters.status === 'paid') return isPaidSalaryRecord(item.payoutRecord)
+        if (payoutFilters.status === 'unpaid') return !isPaidSalaryRecord(item.payoutRecord)
         return true
       })
   })

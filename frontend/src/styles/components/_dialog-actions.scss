@@ -32,6 +32,18 @@
   margin: 0;
 }
 
+/* 上传入口与普通底部动作共用可分配空间，内部按钮保持公共尺寸。 */
+.tf-dialog-actions > .tf-dialog-action-upload {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: var(--tf-dialog-action-max-width);
+}
+
+.tf-dialog-action-upload .el-upload,
+.tf-dialog-action-upload .el-button {
+  width: 100%;
+}
+
 /*
  * Unified dialog action layout.
  * Desktop: content-sized actions aligned right.

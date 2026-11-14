@@ -6,6 +6,8 @@ const dataMaskingService = require('../services/data-masking.service')
 const FieldAccessService = require('../services/field-access.service')
 const createFieldAccessMiddleware = require('../middleware/field-access')
 const log = require('../utils/log')
+const { parseInput } = require('../middleware/validation')
+const parseId = id => parseInput({ id }, { id: { type: 'id', required: true } }).id
 
 const REMINDER_FIELD_MODULE_KEY = 'reminders_reminderview'
 const REMINDER_WRITE_FIELD_IDS = {
@@ -78,7 +80,7 @@ class ReminderController {
   handleError(res, error, fallback = '操作失败') {
     const message = error?.message || fallback
     if (/无权|未分配/.test(message)) return ApiResponse.error(res, message, 403)
-    const status = /不存在|无效|请输入|请选择|必须|不能超过|至少选择|包含无效|已被.*使用|请停用|已完成|最后3小时|已改期/.test(message) ? 400 : 500
+    const status = error.statusCode === 400 || /不存在|无效|请输入|请选择|必须|不能超过|至少选择|包含无效|已被.*使用|请停用|已完成|最后3小时|已改期/.test(message) ? 400 : 500
     return ApiResponse.error(res, message, status)
   }
 
@@ -107,14 +109,14 @@ class ReminderController {
 
   async acknowledgeCompletion(req, res) {
     try {
-      await this.service.acknowledgeCompletion(req.user.id, Number(req.params.occurrenceId))
+      await this.service.acknowledgeCompletion(req.user.id, parseId(req.params.occurrenceId))
       return ApiResponse.success(res, null, '完成提醒已确认')
     } catch (error) { this.logger.error('确认完成提醒失败:', error); return this.handleError(res, error, '确认完成提醒失败') }
   }
 
   async updateRecipient(req, res) {
     try {
-      await this.service.updateRecipient(req.user.id, Number(req.params.occurrenceId), req.params.action, req.body?.snoozed_until)
+      await this.service.updateRecipient(req.user.id, parseId(req.params.occurrenceId), req.params.action, req.body?.snoozed_until)
       return ApiResponse.success(res, null, '待办状态更新成功')
     } catch (error) { this.logger.error('更新待办状态失败:', error); return this.handleError(res, error, '更新待办状态失败') }
   }
@@ -130,19 +132,19 @@ class ReminderController {
   }
 
   async updateType(req, res) {
-    try { return ApiResponse.success(res, '事项类型更新成功', await this.maskPayload(await this.service.updateType(Number(req.params.id), req.body), req)) }
+    try { return ApiResponse.success(res, '事项类型更新成功', await this.maskPayload(await this.service.updateType(parseId(req.params.id), req.body), req)) }
     catch (error) { return this.handleError(res, error, '事项类型更新失败') }
   }
 
   async toggleType(req, res) {
     try {
-      await this.service.toggleType(Number(req.params.id), Boolean(req.body?.is_active))
+      await this.service.toggleType(parseId(req.params.id), parseInput({ active: req.body?.is_active }, { active: { type: 'boolean', required: true } }).active)
       return ApiResponse.success(res, null, '事项类型状态已更新')
     } catch (error) { return this.handleError(res, error, '事项类型状态更新失败') }
   }
 
   async deleteType(req, res) {
-    try { await this.service.deleteType(Number(req.params.id)); return ApiResponse.success(res, null, '事项类型已删除') }
+    try { await this.service.deleteType(parseId(req.params.id)); return ApiResponse.success(res, null, '事项类型已删除') }
     catch (error) { return this.handleError(res, error, '事项类型删除失败') }
   }
 
@@ -181,7 +183,7 @@ class ReminderController {
 
   async getById(req, res) {
     try {
-      const result = await this.service.getById(Number(req.params.id), { user_id: req.user.id, can_manage: this.canManage(req) })
+      const result = await this.service.getById(parseId(req.params.id), { user_id: req.user.id, can_manage: this.canManage(req) })
       if (!result) return ApiResponse.error(res, '待办不存在', 404)
       return ApiResponse.success(res, await this.maskPayload(result, req), '获取待办详情成功')
     } catch (error) { return this.handleError(res, error, '获取待办详情失败') }
@@ -194,14 +196,14 @@ class ReminderController {
 
   async update(req, res) {
     try {
-      const result = await this.service.update(Number(req.params.id), req.user.id, req.body, this.canManage(req))
+      const result = await this.service.update(parseId(req.params.id), req.user.id, req.body, this.canManage(req))
       return ApiResponse.success(res, '待办更新成功', await this.maskPayload(result, req))
     } catch (error) { this.logger.error('更新待办失败:', error); return this.handleError(res, error, '待办更新失败') }
   }
 
   async archive(req, res) {
     try {
-      await this.service.archive(Number(req.params.id), req.user.id, this.canManage(req))
+      await this.service.archive(parseId(req.params.id), req.user.id, this.canManage(req))
       return ApiResponse.success(res, null, '待办已删除')
     } catch (error) { return this.handleError(res, error, '待办删除失败') }
   }

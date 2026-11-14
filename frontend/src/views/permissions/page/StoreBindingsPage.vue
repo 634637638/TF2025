@@ -8,6 +8,7 @@
 
     <div class="table-responsive">
       <el-table
+        v-table-double-tap="mobileDetailTapOptions"
         v-tf-loading="{ active: ctx.storeBindingsLoading, text: '正在刷新门店绑定列表...' }"
         :data="ctx.paginatedStoreBindings"
         border
@@ -16,6 +17,7 @@
         table-layout="fixed"
         :fit="true"
         row-key="id"
+        @row-dblclick="mobileDetailDoubleClick"
       >
         <el-table-column
           v-if="ctx.canViewPermissionsField('store_bindings.id')"
@@ -106,7 +108,7 @@
           </template>
         </el-table-column>
         <el-table-column
-          v-if="ctx.showPermissionsActionField"
+          v-if="!isMobile && (ctx.showPermissionsActionField)"
           label="操作"
           :width="storeBindingActionColumnWidth"
           align="center"
@@ -146,6 +148,31 @@
           />
         </template>
       </el-table>
+      <RecordDetailDialog
+        v-model="mobileDetailVisible"
+        title="门店绑定详情"
+        :record="mobileDetailRow"
+        :fields="mobileDetailFields"
+        :has-actions="ctx.canEdit || (ctx.canDelete && Boolean(mobileDetailRow?.stores?.length))"
+      >
+        <template #actions="{ row }">
+          <el-button
+            v-if="ctx.canEdit"
+            type="primary"
+            :title="row.stores?.length ? '管理' : '绑定'"
+            @click.stop="mobileDetailRunAction(() => ctx.openStoreBindingDialog(row))"
+          >
+            <i class="fas fa-link" /><span>{{ row.stores && row.stores.length > 0 ? '管理' : '绑定' }}</span>
+          </el-button><el-button
+            v-if="ctx.canDelete && row.stores && row.stores.length > 0"
+            type="danger"
+            title="解绑所有门店"
+            @click.stop="mobileDetailRunAction(() => ctx.unbindStore(row))"
+          >
+            <i class="fas fa-unlink" /><span>解绑</span>
+          </el-button>
+        </template>
+      </RecordDetailDialog>
     </div>
 
     <Pagination
@@ -165,6 +192,9 @@
 </template>
 
 <script setup lang="ts">
+import { useMobile } from '@/composables/mobile'
+import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
+import type { RecordDetailField } from '@/types/component'
 import Pagination from '@/components/Pagination.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import { usePermissionsPageContext } from './context'
@@ -197,4 +227,21 @@ const storeBindingActionColumnWidth = computed(() => (
     }
   ])
 ))
+
+const { isMobile } = useMobile()
+const { detailRow: mobileDetailRow, detailVisible: mobileDetailVisible, doubleTapOptions: mobileDetailTapOptions, handleRowDoubleClick: mobileDetailDoubleClick, runDetailAction: mobileDetailRunAction } = useMobileTableDetail<StoreBindingUser>({
+  enabled: () => isMobile.value, rows: () => ctx.paginatedStoreBindings, getKey: row => row.id
+})
+const mobileDetailFields = computed<RecordDetailField[]>(() => {
+  const row = mobileDetailRow.value
+  if (!row) return []
+  return [
+    { key: 'username', label: '用户名', value: row.username, visible: ctx.canViewPermissionsField('store_bindings.username') },
+    { key: 'name', label: '真实姓名', value: row.name, visible: ctx.canViewPermissionsField('store_bindings.name') },
+    { key: 'roles', label: '角色', value: ctx.getUserRoleNames(row.roles).join('、'), visible: ctx.canViewPermissionsField('store_bindings.roles'), wide: true },
+    { key: 'stores', label: '当前门店', value: getStoreNames(row), visible: ctx.canViewPermissionsField('store_bindings.stores'), wide: true },
+    { key: 'status', label: '绑定状态', value: row.stores?.length ? `已绑定 ${row.stores.length} 个门店` : '未绑定', visible: ctx.canViewPermissionsField('store_bindings.status') }
+  ]
+})
+
 </script>

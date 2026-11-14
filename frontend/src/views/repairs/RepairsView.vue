@@ -162,6 +162,7 @@
 
           <div class="table-responsive">
             <el-table
+              v-table-double-tap="mobileDetailTapOptions"
               v-tf-loading="{ active: loading || refreshing, text: '正在刷新维修记录...' }"
               :data="repairs"
               border
@@ -170,8 +171,7 @@
               table-layout="fixed"
               :fit="true"
               :row-key="getRepairRowKey"
-              :expand-row-keys="isMobile && mobileActionRowId ? [mobileActionRowId] : []"
-              @row-click="handleRepairRowClick"
+              @row-dblclick="mobileDetailDoubleClick"
             >
               <template #empty>
                 <TableLoadingRow
@@ -255,7 +255,7 @@
                 class-name="complete-text-column wrapped-text-column"
               />
               <el-table-column
-                v-if="canViewRepairField('photos')"
+                v-if="!isMobile && canViewRepairField('photos')"
                 label="媒体"
                 min-width="112"
                 align="center"
@@ -294,7 +294,7 @@
                       :class="['status-badge', `status-${row.status}`]"
                     >{{ getStatusText(row.status) }}</span>
                     <el-button
-                      v-if="canEdit && row.status !== 'completed' && row.status !== 'cancelled'"
+                      v-if="!isMobile && canEdit && row.status !== 'completed' && row.status !== 'cancelled'"
                       type="success"
                       size="small"
                       title="更新状态"
@@ -373,43 +373,49 @@
                   </div>
                 </template>
               </el-table-column>
-              <el-table-column
-                v-if="isMobile && showMobileActionField"
-                type="expand"
-                width="1"
-                class-name="mobile-expand-column"
-                label-class-name="mobile-expand-header"
-              >
-                <template #default="{ row }">
-                  <div class="mobile-row-actions">
-                    <el-button
-                      type="primary"
-                      size="small"
-                      @click.stop="viewRepair(row)"
-                    >
-                      <i class="fas fa-eye" /><span>详情</span>
-                    </el-button>
-                    <el-button
-                      v-if="canEdit"
-                      type="warning"
-                      size="small"
-                      @click.stop="editRepair(row)"
-                    >
-                      <i class="fas fa-edit" /><span>编辑</span>
-                    </el-button>
-                    <el-button
-                      v-if="canDelete"
-                      :disabled="row.status === 'completed'"
-                      type="danger"
-                      size="small"
-                      @click.stop="deleteRepair(row)"
-                    >
-                      <i class="fas fa-trash" /><span>删除</span>
-                    </el-button>
-                  </div>
-                </template>
-              </el-table-column>
             </el-table>
+            <RecordDetailDialog
+              v-model="mobileDetailVisible"
+              title="维修单详情"
+              :fields="mobileDetailFields"
+              :record="mobileDetailRow"
+              :has-actions="canViewRepairField('photos') || canEdit || canDelete"
+            >
+              <template #actions="{ row }">
+                <el-button
+                  v-if="canViewRepairField('photos')"
+                  v-permission="'repairs:view'"
+                  @click.stop="mobileDetailRunAction(openMediaManager)"
+                >
+                  媒体
+                </el-button>
+                <el-button
+                  v-if="canEdit && row.status !== 'completed' && row.status !== 'cancelled'"
+                  v-permission="'repairs:edit'"
+                  type="success"
+                  @click.stop="mobileDetailRunAction(updateStatus)"
+                >
+                  更新状态
+                </el-button>
+                <el-button
+                  v-if="canEdit"
+                  v-permission="'repairs:edit'"
+                  type="warning"
+                  @click.stop="mobileDetailRunAction(() => editRepair(row))"
+                >
+                  <i class="fas fa-edit" /><span>编辑</span>
+                </el-button>
+                <el-button
+                  v-if="canDelete"
+                  v-permission="'repairs:delete'"
+                  :disabled="row.status === 'completed'"
+                  type="danger"
+                  @click.stop="mobileDetailRunAction(() => deleteRepair(row))"
+                >
+                  <i class="fas fa-trash" /><span>删除</span>
+                </el-button>
+              </template>
+            </RecordDetailDialog>
           </div>
 
           <Pagination
@@ -437,6 +443,7 @@
         :close-on-click-modal="false"
       >
         <el-form
+          class="tf-form-layout tf-form-grid"
           :model="formData"
           label-width="88px"
           :disabled="submitting"
@@ -444,6 +451,7 @@
           <el-row :gutter="16">
             <el-col
               v-if="canViewRepairField('phone_id')"
+              :xs="12"
               :span="24"
             >
               <el-form-item label="设备检索">
@@ -482,7 +490,7 @@
             <el-col
               v-if="canViewRepairField('customer_name')"
               :span="12"
-              :xs="24"
+              :xs="12"
             >
               <el-form-item
                 label="姓名"
@@ -540,7 +548,7 @@
             <el-col
               v-if="canViewRepairField('customer_phone')"
               :span="12"
-              :xs="24"
+              :xs="12"
             >
               <el-form-item label="手机号码">
                 <el-input
@@ -553,7 +561,6 @@
                   v-else
                   v-model="customerDraft.phone"
                   placeholder="请输入手机号码"
-                  maxlength="11"
                 />
               </el-form-item>
             </el-col>
@@ -562,7 +569,7 @@
             <el-col
               v-if="canViewRepairField('repair_time')"
               :span="12"
-              :xs="24"
+              :xs="12"
             >
               <el-form-item label="维修时间">
                 <el-date-picker
@@ -578,7 +585,7 @@
             <el-col
               v-if="canViewRepairField('technician_name')"
               :span="12"
-              :xs="24"
+              :xs="12"
             >
               <el-form-item label="维修员">
                 <el-select
@@ -600,7 +607,7 @@
             <el-col
               v-if="canViewRepairField('brand_name')"
               :span="12"
-              :xs="24"
+              :xs="12"
             >
               <el-form-item
                 label="品牌"
@@ -625,7 +632,7 @@
             <el-col
               v-if="canViewRepairField('phone_model')"
               :span="12"
-              :xs="24"
+              :xs="12"
             >
               <el-form-item
                 label="型号"
@@ -654,7 +661,7 @@
             <el-col
               v-if="canViewRepairField('color_name')"
               :span="12"
-              :xs="24"
+              :xs="12"
             >
               <el-form-item label="颜色">
                 <el-select
@@ -676,7 +683,7 @@
             <el-col
               v-if="canViewRepairField('memory_size')"
               :span="12"
-              :xs="24"
+              :xs="12"
             >
               <el-form-item label="内存">
                 <el-select
@@ -702,7 +709,10 @@
               :span="12"
               :xs="24"
             >
-              <el-form-item label="IMEI">
+              <el-form-item
+                class="tf-form-field--wide"
+                label="IMEI"
+              >
                 <el-input
                   v-model="formData.imei"
                   placeholder="请输入 IMEI"
@@ -715,7 +725,10 @@
               :span="12"
               :xs="24"
             >
-              <el-form-item label="序列号">
+              <el-form-item
+                class="tf-form-field--wide"
+                label="序列号"
+              >
                 <el-input
                   v-model="formData.serial_number"
                   placeholder="请输入序列号"
@@ -725,9 +738,13 @@
             </el-col>
           </el-row>
           <el-row :gutter="16">
-            <el-col :span="24">
+            <el-col
+              :xs="24"
+              :span="24"
+            >
               <el-form-item
                 v-if="canViewRepairField('photos')"
+                class="tf-form-field--wide"
                 label="维修照片"
               >
                 <el-upload
@@ -787,9 +804,13 @@
             </el-col>
           </el-row>
           <el-row :gutter="16">
-            <el-col :span="24">
+            <el-col
+              :xs="24"
+              :span="24"
+            >
               <el-form-item
                 v-if="canViewRepairField('problem_description')"
+                class="tf-form-field--wide"
                 label="故障"
                 required
               >
@@ -817,7 +838,7 @@
             <el-col
               v-if="editingRepairId && canViewRepairField('actual_cost')"
               :span="12"
-              :xs="24"
+              :xs="12"
             >
               <el-form-item label="维修费">
                 <AmountInput
@@ -829,9 +850,13 @@
             </el-col>
           </el-row>
           <el-row :gutter="16">
-            <el-col :span="24">
+            <el-col
+              :xs="24"
+              :span="24"
+            >
               <el-form-item
                 v-if="canViewRepairField('remarks')"
+                class="tf-form-field--wide"
                 label="备注"
               >
                 <el-input
@@ -965,7 +990,8 @@ import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { useLoadingState } from '@/composables'
 import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { useMobile } from '@/composables/mobile'
-import { useMobileRowDoubleTap } from '@/composables/useMobileRowDoubleTap'
+import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
+import type { RecordDetailField } from '@/types/component'
 import { useNotification } from '@/composables/useNotification'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { PageHeader, PermissionGate } from '@/components/base'
@@ -1034,8 +1060,6 @@ const pagination = reactive({
   has_next: false,
   has_prev: false
 })
-const mobileActionRowId = ref<string | null>(null)
-const { isDoubleTap } = useMobileRowDoubleTap()
 const deviceSearchKeyword = ref('')
 const deviceSearching = ref(false)
 const selectedDevice = ref<RepairDeviceSearchResult | null>(null)
@@ -1095,10 +1119,6 @@ const canSubmitVisibleFields = computed(() => (
 
 const showActionField = computed(() => (
   !isMobile.value && shouldShowActionColumn(canViewRepairField('actions'), [canEdit.value, canDelete.value])
-))
-const showMobileActionField = computed(() => shouldShowActionColumn(
-  canViewRepairField('actions'),
-  [canEdit.value, canDelete.value]
 ))
 
 const repairWriteFieldMap: Record<keyof RepairOrderForm, string> = {
@@ -1705,7 +1725,6 @@ const refreshData = async () => {
 
 const handleSearch = async () => {
   pagination.page = 1
-  mobileActionRowId.value = null
   try {
     await loadRepairs()
   } catch (err) {
@@ -1717,25 +1736,13 @@ const handleReset = () => { filters.search = ''; filters.status = 'all'; void ha
 const handlePaginationChange = (page: number, page_size: number) => {
   pagination.page = page
   pagination.page_size = page_size
-  mobileActionRowId.value = null
   void loadRepairs().catch(err => {
     logger.error('切换维修分页失败:', err)
     notifyError('加载维修分页失败')
   })
 }
 
-const toggleMobileActions = (rowId: string) => {
-  if (!isMobile.value) return
-  mobileActionRowId.value = mobileActionRowId.value === rowId ? null : rowId
-}
 
-const handleRepairRowClick = (repair: RepairOrder, _column: unknown, event: Event) => {
-  if (!isMobile.value) return
-  const target = event.target as HTMLElement | null
-  if (target?.closest('button, a, input, textarea, select, .el-button, .el-input, .el-select')) return
-  const rowId = getRepairRowKey(repair)
-  if (isDoubleTap(rowId)) toggleMobileActions(rowId)
-}
 
 
 const getCustomerOptionLabel = (customer: CustomerOption) => (
@@ -1746,6 +1753,29 @@ onMounted(async () => {
   if (!canView.value) return
   await fieldPermissions.init()
   await Promise.all([loadRepairs(), loadOptions()])
+})
+const { detailRow: mobileDetailRow, detailVisible: mobileDetailVisible, doubleTapOptions: mobileDetailTapOptions,
+  handleRowDoubleClick: mobileDetailDoubleClick, runDetailAction: mobileDetailRunAction } = useMobileTableDetail<RepairOrder>({
+    enabled: () => isMobile.value && canView.value, rows: () => repairs.value, getKey: row => row.id
+  })
+const mobileDetailFields = computed<RecordDetailField[]>(() => {
+  const row = mobileDetailRow.value
+  if (!row) return []
+  return [
+    { key: 'order_no', label: '维修单号', value: row.order_no, visible: canViewRepairField('order_no') },
+    { key: 'customer_name', label: '客户', value: row.customer_name, visible: canViewRepairField('customer_name') },
+    { key: 'customer_phone', label: '客户电话', value: row.customer_phone, visible: canViewRepairField('customer_phone') },
+    { key: 'brand_name', label: '品牌', value: row.brand_name, visible: canViewRepairField('brand_name') },
+    { key: 'phone_model', label: '型号', value: row.phone_model, visible: canViewRepairField('phone_model') },
+    { key: 'imei', label: 'IMEI', value: row.imei, visible: canViewRepairField('imei'), wide: true },
+    { key: 'serial_number', label: '序列号', value: row.serial_number, visible: canViewRepairField('serial_number'), wide: true },
+    { key: 'problem_description', label: '故障', value: row.problem_description, visible: canViewRepairField('problem_description'), wide: true },
+    { key: 'actual_cost', label: '维修费', value: row.actual_cost === null || row.actual_cost === undefined ? undefined : formatAmount(row.actual_cost), visible: canViewRepairField('actual_cost') },
+    { key: 'status', label: '维修状态', value: getStatusText(row.status), visible: canViewRepairField('status') },
+    { key: 'technician_name', label: '维修员', value: row.technician_name, visible: canViewRepairField('technician_name') },
+    { key: 'remarks', label: '备注', value: row.remarks, visible: canViewRepairField('remarks'), wide: true },
+    { key: 'repair_time', label: '维修时间', value: formatGlobalDate(row.repair_time), visible: canViewRepairField('repair_time'), wide: true }
+  ]
 })
 </script>
 

@@ -64,12 +64,6 @@ export interface DetailedErrorInfo {
   tags?: string[]
   source?: string
   version?: string
-  browserInfo?: {
-    userAgent: string
-    url: string
-    referrer?: string
-    timestamp: number
-  }
 }
 
 /**
@@ -78,15 +72,10 @@ export interface DetailedErrorInfo {
 export interface ErrorBoundaryConfig {
   enabled: boolean
   maxErrors: number
-  reportInterval: number
-  includeUserInfo: boolean
-  includeEnvironmentInfo: boolean
   autoRetry: boolean
   maxRetries: number
   retryDelay: number
   enableConsoleLog: boolean
-  enableReporting: boolean
-  reportingEndpoint?: string
   onError?: (error: DetailedErrorInfo) => void
   onRecover?: (error: DetailedErrorInfo) => void
 }
@@ -98,21 +87,16 @@ export class ErrorBoundary {
   private config: ErrorBoundaryConfig
   private errors: Map<string, DetailedErrorInfo> = new Map()
   private errorCount = 0
-  private reportTimer?: number
   private sessionId: string
 
   constructor(config: Partial<ErrorBoundaryConfig> = {}) {
     this.config = {
       enabled: true,
       maxErrors: 100,
-      reportInterval: 30000, // 30秒
-      includeUserInfo: true,
-      includeEnvironmentInfo: true,
       autoRetry: true,
       maxRetries: 3,
       retryDelay: 1000,
       enableConsoleLog: true,
-      enableReporting: false,
       ...config
     }
 
@@ -136,13 +120,6 @@ export class ErrorBoundary {
     // 设置全局错误处理器
     this.setupGlobalHandlers()
 
-    // 启动定时报告
-    this.startPeriodicReporting()
-
-    // 页面卸载时清理
-    window.addEventListener('beforeunload', () => {
-      this.cleanup()
-    })
   }
 
   /**
@@ -229,13 +206,7 @@ export class ErrorBoundary {
       userId: error.userId,
       tags: error.tags,
       source: error.source,
-      version: import.meta.env?.VITE_APP_VERSION,
-      browserInfo: {
-        userAgent: navigator.userAgent,
-        url: window.location.href,
-        referrer: document.referrer,
-        timestamp: Date.now()
-      }
+      version: import.meta.env?.VITE_APP_VERSION
     }
 
     // 存储错误
@@ -280,11 +251,7 @@ export class ErrorBoundary {
   private determineErrorLevel(error: Partial<DetailedErrorInfo>): ErrorLevel {
     // 关键错误模式
     const criticalPatterns = [
-      /chunk.*failed/i,
-      /network.*error/i,
-      /permission.*denied/i,
-      /unauthorized/i,
-      /token.*expired/i
+      /chunk.*failed/i
     ]
 
     const message = error.message || ''
@@ -295,6 +262,7 @@ export class ErrorBoundary {
 
     // 高级错误模式
     const highPatterns = [
+      /network.*error/i,
       /cannot.*property/i,
       /undefined.*not.*function/i,
       /null.*reference/i,
@@ -310,7 +278,7 @@ export class ErrorBoundary {
     case ErrorType.NETWORK:
       return ErrorLevel.HIGH
     case ErrorType.PERMISSION:
-      return ErrorLevel.HIGH
+      return ErrorLevel.MEDIUM
     case ErrorType.PERFORMANCE:
       return ErrorLevel.MEDIUM
     case ErrorType.VALIDATION:
@@ -441,72 +409,11 @@ export class ErrorBoundary {
   }
 
   /**
-   * 启动定时报告
-   */
-  private startPeriodicReporting(): void {
-    if (!this.config.enableReporting || !this.config.reportingEndpoint) return
-
-    this.reportTimer = window.setInterval(() => {
-      this.reportErrors()
-    }, this.config.reportInterval)
-  }
-
-  /**
-   * 报告错误到服务器
-   */
-  private async reportErrors(): Promise<void> {
-    if (!this.config.reportingEndpoint) return
-
-    const unresolvedErrors = this.getUnresolvedErrors()
-    if (unresolvedErrors.length === 0) return
-
-    try {
-      await fetch(this.config.reportingEndpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          sessionId: this.sessionId,
-          errors: unresolvedErrors,
-          timestamp: Date.now(),
-          userAgent: navigator.userAgent,
-          url: window.location.href
-        })
-      })
-    } catch (reportError) {
-      logger.error('ErrorBoundary 上报失败', reportError)
-    }
-  }
-
-  /**
-   * 清理资源
-   */
-  public cleanup(): void {
-    if (this.reportTimer) {
-      clearInterval(this.reportTimer)
-      this.reportTimer = undefined
-    }
-
-    // 最后报告一次错误
-    if (this.config.enableReporting) {
-      this.reportErrors()
-    }
-  }
-
-  /**
    * 重置错误状态
    */
   public reset(): void {
     this.errors.clear()
     this.errorCount = 0
-  }
-
-  /**
-   * 更新配置
-   */
-  public updateConfig(newConfig: Partial<ErrorBoundaryConfig>): void {
-    this.config = { ...this.config, ...newConfig }
   }
 }
 

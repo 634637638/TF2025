@@ -150,6 +150,13 @@ const MODULE_PERMISSION_METADATA = {
     category: 'business',
     icon: 'fas fa-headphones'
   },
+  accessories_accessorycatalogview: {
+    name: '配件设置',
+    route_path: '/accessories/catalog',
+    description: '维护配件商品类型、计量单位和总仓设置',
+    category: 'business',
+    icon: 'fas fa-sliders-h'
+  },
   inventory_inventoryview: {
     name: '库存管理',
     description: '维护库存状态并支持导出列表',

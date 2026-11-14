@@ -121,7 +121,7 @@ class DataImportController {
       this.logger.error('分析数据失败:', error)
       return res.status(error.statusCode || 500).json({
         success: false,
-        message: '分析数据失败，请检查文件后重试'
+        message: error.code === 'IMPORT_INPUT_INVALID' ? error.message : '分析数据失败，请检查文件后重试'
       })
     }
   }

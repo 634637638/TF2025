@@ -6,6 +6,7 @@ const XLSX = require('xlsx')
 const { PAGINATION } = require('../config/constants')
 const log = require('../utils/log')
 const { readSpreadsheetBufferSafe, sheetToJsonSafe } = require('../utils/spreadsheet-security')
+const { parsePriceInput } = require('../utils/price-input')
 
 function getPriceListService() {
   return require('./price-list.service')
@@ -15,25 +16,16 @@ function getScheduler() {
   return require('../scripts/price-sync-scheduler')
 }
 
-const parseNullableNumber = (value) => {
-  if (value === '' || value === null || value === undefined) {
-    return null
-  }
-
-  const normalized = typeof value === 'string'
-    ? value.replace(/[,%\s]/g, '')
-    : value
-  const parsed = Number(normalized)
-  return Number.isNaN(parsed) ? null : parsed
-}
-
 const parseFlag = (value, defaultValue = 1, truthyLabels = ['1', 'true', '是', '启用', '显示', '采集']) => {
   if (value === '' || value === null || value === undefined) {
     return defaultValue
   }
 
-  const normalized = String(value).trim()
-  return truthyLabels.includes(normalized) ? 1 : 0
+  const normalized = String(value).replace(/^ +| +$/g, '')
+  if (!['string', 'number', 'boolean'].includes(typeof value)) return value
+  if (truthyLabels.includes(normalized)) return 1
+  if (['0', 'false', '否', '停用', '禁用', '隐藏', '不采集', '不显示'].includes(normalized)) return 0
+  return value
 }
 
 async function restartPriceSyncScheduler(reason) {
@@ -144,8 +136,8 @@ class PriceListManagementService extends BaseService {
     const errors = []
 
     for (const [index, row] of rows.entries()) {
-      const brand_name = String(row['品牌'] || row['brand_name'] || '').trim()
-      const model_number = String(row['型号'] || row['model_number'] || '').trim()
+      const brand_name = row['品牌'] || row['brand_name'] || ''
+      const model_number = row['型号'] || row['model_number'] || ''
 
       if (!brand_name || !model_number) {
         failed += 1
@@ -153,20 +145,32 @@ class PriceListManagementService extends BaseService {
         continue
       }
 
-      const payload = {
+      let payload = {
         brand_name,
         model_number,
-        color_name: String(row['颜色'] || row['color_name'] || '').trim() || null,
-        memory: String(row['内存'] || row['memory'] || '').trim() || null,
-        external_model: String(row['外部型号'] || row['external_model'] || '').trim() || null,
-        retail_price: parseNullableNumber(row['零售价'] ?? row['retail_price']),
-        wholesale_price: parseNullableNumber(row['批发价'] ?? row['wholesale_price']),
-        stock_quantity: parseNullableNumber(row['库存数量'] ?? row['stock_quantity']) ?? 0,
+        color_name: row['颜色'] || row['color_name'] || null,
+        memory: row['内存'] || row['memory'] || null,
+        external_model: row['外部型号'] || row['external_model'] || null,
+        retail_price: row['零售价'] ?? row['retail_price'] ?? null,
+        wholesale_price: row['批发价'] ?? row['wholesale_price'] ?? null,
+        stock_quantity: row['库存数量'] ?? row['stock_quantity'] ?? 0,
         is_collect: parseFlag(row['采集状态'] ?? row['is_collect'], 1),
         show_price: parseFlag(row['显示状态'] ?? row['show_price'], 0, ['1', 'true', '是', '启用', '显示']),
         status: parseFlag(row['状态'] ?? row['status'], 1, ['1', 'true', '是', '启用']),
         last_sync_time: String(row['最后同步时间'] || row['last_sync_time'] || '').trim() || null,
         is_manual_edit: true
+      }
+
+      try {
+        if (payload.stock_quantity === '' || payload.stock_quantity === null) payload.stock_quantity = 0
+        payload = parsePriceInput(payload, { spreadsheet: true })
+        payload.brand_name = payload.brand_name.trim()
+        payload.model_number = payload.model_number.trim()
+      } catch (error) {
+        if (error.statusCode !== 400) throw error
+        failed += 1
+        errors.push(`第 ${index + 2} 行输入格式不正确：${error.message}`)
+        continue
       }
 
       const result = await priceListService.upsertPriceItem(payload, null, {
@@ -230,6 +234,7 @@ class PriceListManagementService extends BaseService {
   }
 
   async upsertPriceItem(body) {
+    body = parsePriceInput(body)
     this.initializeDatabase()
     const priceListService = this.priceService()
     const result = await priceListService.upsertPriceItem(body)

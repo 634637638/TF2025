@@ -8,6 +8,30 @@ const appearance = new Set([
   'color', 'border', 'border-color', 'border-width', 'border-style', 'box-shadow'
 ])
 
+/** 普通按钮的三档尺寸只能读取公共令牌，避免颜色语义各自维护尺寸。 */
+export function auditCommandButtonSizes(source) {
+  const rules = [...maskComments(source).matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+  const specifications = [
+    ['.el-button:where(:not(.is-circle):not(.is-text):not(.is-link))', '', ['height', 'min-height', 'padding-inline', 'font-size']],
+    ['.el-button.el-button--small:not(.is-circle)', '-small', ['height', 'min-height', 'padding-inline', 'font-size']],
+    ['.el-button.el-button--large:not(.is-circle)', '-large', ['height', 'min-height']]
+  ]
+  return specifications.flatMap(([selector, suffix, properties]) => {
+    const body = rules.find(rule => rule[1].includes(selector))?.[2]
+    if (!body) return [`缺少普通按钮 ${suffix || 'default'} 公共尺寸入口`]
+    const declarations = new Map(body.split(';').map(declaration => {
+      const separator = declaration.indexOf(':')
+      return [declaration.slice(0, separator).trim(), declaration.slice(separator + 1).trim()]
+    }))
+    return properties.flatMap(property => {
+      const token = property === 'min-height' ? 'height' : property === 'padding-inline' ? 'padding-x' : property
+      const expected = `var(--tf-button-${token}${suffix}) !important`
+      return declarations.get(property)?.replace(/\s+/g, ' ') === expected
+        ? [] : [`普通按钮 ${suffix || 'default'} 的 ${property} 必须复用公共尺寸令牌`]
+    })
+  })
+}
+
 /** 批量操作显式小号必须映射公共令牌，不能把页面规格变成第二套尺寸源。 */
 export function auditBatchButtonSizes(source) {
   const body = source.match(/\.batch-actions-buttons\[data-size=['"]small['"]\]\s*\{([^}]*)\}/)?.[1]

@@ -132,7 +132,7 @@ test('颜色更新、删除与状态切换保留校验、字段绑定和缓存�
 
   const updated = createResponse()
   await controller.update({ params: { id: '5' }, body: { name: 'Blue', sort_order: '3' } }, updated)
-  assert.deepEqual(queries.find(query => query.sql.startsWith('UPDATE colors SET name')).values, ['Blue', 3, '5'])
+  assert.deepEqual(queries.find(query => query.sql.startsWith('UPDATE colors SET name')).values, ['Blue', 3, 5])
   assert.equal(updated.body.message, '颜色更新成功')
 
   const toggled = createResponse()
@@ -171,7 +171,7 @@ test('颜色统计与详情保留筛选条件和不存在响应', async () => {
   assert.equal(missing.body.message, '颜色不存在')
 })
 
-test('颜色批量排序事务成功时仅更新有效项并提交、失效缓存、释放连接', async () => {
+test('颜色批量排序事务成功时逐项更新并提交、失效缓存、释放连接', async () => {
   const ColorController = require('../src/controllers/color.controller')
   const events = []
   const connection = {
@@ -189,7 +189,7 @@ test('颜色批量排序事务成功时仅更新有效项并提交、失效缓�
   const response = createResponse()
 
   await controller.reorder({
-    body: { items: [{ id: 2, sort_order: 1 }, { id: 3 }, { sort_order: 4 }] }
+    body: { items: [{ id: 2, sort_order: 1 }] }
   }, response)
 
   assert.deepEqual(events, [

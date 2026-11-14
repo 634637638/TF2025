@@ -64,6 +64,10 @@ const DEFAULT_ACTION_META: ActionMeta = {
 }
 
 const ACTION_META_MAP: Record<string, ActionMeta> = {
+  transfer: { className: 'action-edit', icon: 'fas fa-exchange-alt', name: '库存划拨' },
+  exchange: { className: 'action-edit', icon: 'fas fa-exchange-alt', name: '换货' },
+  film: { className: 'action-create', icon: 'fas fa-mobile-alt', name: '贴膜服务' },
+  gift: { className: 'action-create', icon: 'fas fa-gift', name: '赠送' },
   create: {
     className: 'action-create',
     icon: 'fas fa-plus',
@@ -143,6 +147,11 @@ const PERMISSION_META_MAP: Record<string, PermissionMeta> = {
     name: '退库',
     description: '执行退库并恢复库存状态'
   },
+  exchange: {
+    icon: 'fas fa-exchange-alt',
+    name: '换货',
+    description: '按原单退回旧商品并换出新商品'
+  },
   wholesale: {
     icon: 'fas fa-boxes',
     name: '调货',
@@ -207,6 +216,10 @@ const PERMISSION_META_MAP: Record<string, PermissionMeta> = {
     icon: 'fas fa-edit',
     name: '管理编辑',
     description: '编辑管理数据'
+  },
+  transfer: { icon: 'fas fa-exchange-alt', name: '库存划拨', description: '一次确认完成店铺间库存划拨' },
+  gift: {
+    icon: 'fas fa-gift', name: '赠送', description: '执行商品赠送并扣除库存'
   },
   sell: {
     icon: 'fas fa-cash-register',

@@ -142,7 +142,7 @@
 
             <el-form
               label-position="top"
-              class="marketing-admin-form"
+              class="marketing-admin-form tf-form-layout"
             >
               <el-tabs
                 v-if="canViewField('lexicon.type')"

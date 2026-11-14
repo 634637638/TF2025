@@ -6,7 +6,7 @@
 
 以下文件由 [`standards-manifest.json`](standards-manifest.json) 登记；该清单同时列出对应审计命令和公共实现来源。新增或修改强制规范时，按[规范审计接入指南](standards-audit-guide.md)执行。
 
-- [后台卡片与表格](admin-table-standards.md)
+- [后台卡片与表格](admin-table-standards.md) — 手机双击记录查看，业务操作统一在详情底部，禁止行内按钮展开
 - [后台统计卡片颜色](admin-stat-card-color-standard.md)
 - [按钮](button-standards.md)
 - [全局颜色令牌与语义色](color-token-standard.md)
@@ -18,11 +18,11 @@
 - [前端规范豁免登记](standards-exemptions.md)
 - [报价页联系方式](price-contact-standard.md)
 - [数据实时刷新](data-freshness-standard.md)
-- [对话框与手机媒体预览](dialog-standards.md)
+- [对话框与手机媒体预览](dialog-standards.md) — 复用专用详情或公共 RecordDetailDialog，短字段两列、长字段整行
 - [空状态](empty-state-standard.md)
 - [全局加载](global-loading-standard.md)
 - [字段一致性](field-consistency-standards.md)
-- [表单控件](form-control-standards.md) — 公共金额输入 `AmountInput` 与金额格式（整数不补零、保留真实小数）
+- [表单控件](form-control-standards.md) — 手机短字段两列、长字段整行及公共地区布局；公共金额输入、按字段语义防脏数据、中文输入法/粘贴及前后端校验验收；实现缺口见 T23
 - [最新请求处理](latest-request-standard.md)
 - [菜单图标管理](menu-icon-management-standard.md)
 - [后台导航与面包屑视觉](navigation-standards.md)
@@ -52,10 +52,11 @@
 - [主题切换](theme-standards.md)
 - [全局交互反馈](interaction-standards.md)
 - [统一页面结构旧入口](unified-page-structure.md) — 迁移导航，正文及模板统一到“页面结构”
-- [前端页面与功能单元台账](page-audit-inventory.md) - 含 2026-11-11 全量模态框统计及逐路由接入矩阵。
+- [前端页面与功能单元台账](page-audit-inventory.md) - 含 2026-11-14 全台账手机详情、字段布局补查及逐路由接入矩阵；保留历史验收记录。
 
 ## 专项指南与记录
 
+- [日志收集、生产错误上报与告警边界](../guides/LOG_SYSTEM_STANDARDS.md#四环境行为) - 开发仅本地诊断、生产技术故障上报；普通输入、业务和权限提示沿用通知入口，T5 邮件实现默认关闭，待用户生产配置及收件验收。
 - [响应式与主题视觉回归清单](visual-regression-checklist.md)
 - [字段权限使用指南](field-permission-guide.md)
 - [模态框开发旧入口](modal-development-guide.md) — 迁移导航，唯一正文为“对话框”

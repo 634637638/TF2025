@@ -33,7 +33,7 @@ test('subsidy update service returns 404 and rejects invalid price before updati
     status: 400,
     body: { success: false, message: '销售价格不能为空' }
   })
-  assert.deepEqual(updates, [['idcard', 8, '123']])
+  assert.deepEqual(updates, [])
 })
 
 test('subsidy update service persists canonical fields, mirrors sale date and invalidates cache', async () => {
@@ -72,6 +72,32 @@ test('subsidy update service persists canonical fields, mirrors sale date and in
   assert.ok(values.includes('2026-11-01 00:00:00'))
   assert.deepEqual(events.find(event => event[0] === 'phone-sale-time'), ['phone-sale-time', 12, '2026-11-07 00:00:00'])
   assert.deepEqual(events.at(-1), ['cache', '/subsidy'])
+})
+
+test('国补编辑非法资料或店铺不产生客户、国补、文件和缓存副作用', async () => {
+  for (const patch of [
+    { customer_name: '\n张三' }, { customer_name: {} }, { customer_name: '123' },
+    { customer_phone: '138中00000000' }, { handler_phone: true },
+    { handler_name: '张'.repeat(51) }, { customer_idcard: ['card'] },
+    { sale_price: '0x10' }, { sale_price: '1e3' }, { sale_price: '1.234' },
+    { sale_price: '12元' }, { subsidy_amount: false }, { store_id: 999 }
+  ]) {
+    const events = []
+    const mutation = async () => { events.push('write') }
+    const service = new Service({
+      repository: {
+        async findExisting() { return { customer_id: 8, subsidy_photos: '["subsidy/old/a.jpg"]' } },
+        async getStoreName() { return null },
+        updateCustomer: mutation, updateCustomerIdCard: mutation, updateSubsidy: mutation,
+        async getPhotoDirectoryNamingInput() { events.push('files'); return null }
+      },
+      invalidateCache() { events.push('cache') },
+      fileSystem: { renameSync() { events.push('move') } }
+    })
+    const result = await service.update('9', { customer_idcard: 'ID-CARD', customer_name: '张三', ...patch })
+    assert.equal(result.status, 400, JSON.stringify(patch))
+    assert.deepEqual(events, [])
+  }
 })
 
 test('subsidy update controller maps service results and keeps the existing error response', async () => {

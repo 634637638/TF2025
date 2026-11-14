@@ -4,6 +4,8 @@
 
 ## 当前参考
 
+- [性能指标集中上报](../backend/performance-reporting.md) - 数值契约、生产采样、限流、聚合及保留边界；前端规则见[埋点规范](../frontend/telemetry-standards.md)。
+
 - [前端响应速度优化记录（2026-06-01）](frontend-response-optimization-2026-06-01.md) - 当时完成的请求竞态、首屏入口和构建分包调整；属于历史记录，不是当前性能基准。
 - [前端性能优化指南](../frontend/PERFORMANCE_OPTIMIZATION.md) - 前端性能实现说明。
 

@@ -50,7 +50,7 @@ class PriceListMaintenanceRepository {
         SELECT DISTINCT b.name as brand_name
         FROM price_list p
         INNER JOIN brands b ON p.brand_id = b.id
-        WHERE p.status = 1
+        WHERE p.status = 1 AND b.business_scope IN ('phone', 'both')
         ORDER BY b.name
       `)
   }

@@ -25,12 +25,15 @@
     </DataEmptyState>
     <div
       v-else
+      v-table-double-tap="detailTapOptions"
       class="grid-container"
     >
       <div
         v-for="phone in phones"
         :key="phone.id"
         class="device-card"
+        data-mobile-record
+        @dblclick="detailDoubleClick(phone, null, $event)"
       >
         <div
           :class="['card-image', { 'media-preview-trigger': isUsedPhone(phone) }]"
@@ -139,7 +142,7 @@
             </div>
           </div>
           <div
-            v-if="shouldShowActionColumn(canViewField('actions'), [canSell, canEdit, canDelete])"
+            v-if="!isMobile && shouldShowActionColumn(canViewField('actions'), [canSell, canEdit, canDelete])"
             class="card-actions"
           >
             <el-button
@@ -179,6 +182,42 @@
     </div>
   </div>
 
+  <RecordDetailDialog
+    v-model="detailVisible"
+    title="设备详情"
+    :record="detailRow"
+    :fields="detailFields"
+    :has-actions="canSell || canEdit || canDelete"
+  >
+    <template #actions="{ row }">
+      <el-button
+        v-if="canSell"
+        v-permission="'sales:sell'"
+        type="success"
+        :disabled="!isPhoneSaleActionAvailable(row)"
+        @click.stop="runDetailAction(phone => isPhoneSaleActionAvailable(phone) && emit('sale', phone))"
+      >
+        <i class="fas fa-shopping-cart" />出库
+      </el-button>
+      <el-button
+        v-if="canEdit"
+        v-permission="'sales:edit'"
+        type="primary"
+        @click.stop="runDetailAction(phone => emit('edit', phone))"
+      >
+        <i class="fas fa-edit" />编辑
+      </el-button>
+      <el-button
+        v-if="canDelete"
+        v-permission="'sales:delete'"
+        type="danger"
+        @click.stop="runDetailAction(phone => emit('delete', phone))"
+      >
+        <i class="fas fa-trash" />删除
+      </el-button>
+    </template>
+  </RecordDetailDialog>
+
   <MediaPreviewViewer
     v-model="showMediaPreview"
     :items="previewMediaItems"
@@ -188,7 +227,9 @@
 
 <script setup lang="ts">
 import { formatAmount } from '@/utils/format'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
+import { useMobile } from '@/composables/mobile'
+import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
 import Image from '@/components/Image.vue'
 import MediaPreviewViewer from '@/components/MediaPreviewViewer.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
@@ -198,7 +239,7 @@ import { extractResponseData } from '@/utils/api-response'
 import { logger } from '@/utils/logger'
 import type { MediaPreviewItem } from '@/utils/media'
 import type { Phone } from '@/types'
-import { isPhoneSaleActionAvailable } from '../sales-phone-helpers'
+import { getSalesPhoneDetailFields, isPhoneSaleActionAvailable } from '../sales-phone-helpers'
 
 const props = defineProps<{
   phones: Phone[]
@@ -275,6 +316,11 @@ const emit = defineEmits<{
   delete: [phone: Phone]
   'reset-filters': []
 }>()
+const { isMobile } = useMobile()
+const { detailRow, detailVisible, doubleTapOptions: detailTapOptions, handleRowDoubleClick: detailDoubleClick, runDetailAction } = useMobileTableDetail({
+  enabled: isMobile, rows: () => props.phones, rowSelector: '[data-mobile-record]', getKey: phone => phone.id
+})
+const detailFields = computed(() => getSalesPhoneDetailFields(detailRow.value, props.canViewField, props.canViewPrice, props.formatDate))
 </script>
 
 <style scoped lang="scss" src="../styles/sales-grid-view.scss"></style>

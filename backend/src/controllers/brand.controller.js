@@ -3,11 +3,19 @@
 const BrandManagementService = require('../services/brand-management.service')
 const ApiResponse = require('../utils/response')
 const log = require('../utils/log')
+const FieldAccessService = require('../services/field-access.service')
+const createFieldAccessMiddleware = require('../middleware/field-access')
 
 class BrandController {
-  constructor({ service = new BrandManagementService(), clearCache = () => {} } = {}) {
+  constructor({ service = new BrandManagementService(), clearCache = () => {}, fields = new FieldAccessService({ moduleKey: 'brands_brandsview', responseKeys: { 'brand.business_scope': ['business_scope'] } }) } = {}) {
     this.service = service
     this.clearCache = clearCache
+    this.fields = fields
+    this.rejectHiddenWrites = createFieldAccessMiddleware(fields).rejectHiddenWrites
+  }
+
+  async maskScope(req, data) {
+    return this.fields.maskPayload(data, await this.fields.getPermissions(req.user.id))
   }
 
   clearBrandCache() {
@@ -29,6 +37,7 @@ class BrandController {
       return ApiResponse.success(res, result.data)
     } catch (error) {
       log.error('获取品牌统计失败:', error)
+      if (error.statusCode === 400) return ApiResponse.error(res, error.message, 400)
       return ApiResponse.serverError(res, '获取品牌统计失败', error)
     }
   }
@@ -37,9 +46,10 @@ class BrandController {
     try {
       const result = await this.service.list(req.query)
       if (result.type === 'unavailable') return this.unavailable(res)
-      return ApiResponse.success(res, result.data)
+      return ApiResponse.success(res, await this.maskScope(req, result.data))
     } catch (error) {
       log.error('获取品牌列表失败:', error)
+      if (error.statusCode === 400) return ApiResponse.error(res, error.message, 400)
       return ApiResponse.error(res, '获取品牌列表失败', 500)
     }
   }
@@ -49,10 +59,12 @@ class BrandController {
       const result = await this.service.create(req.body)
       if (result.type === 'unavailable') return this.unavailable(res)
       if (result.type === 'duplicate') return ApiResponse.error(res, '品牌名称已存在', 400)
-      ApiResponse.success(res, result.data, '品牌创建成功')
+      if (result.type === 'invalid-scope') return ApiResponse.error(res, '请选择有效的业务范围', 400)
+      ApiResponse.success(res, await this.maskScope(req, result.data), '品牌创建成功')
       this.clearBrandCache()
     } catch (error) {
       log.error('创建品牌失败:', error)
+      if (error.statusCode === 400) return ApiResponse.error(res, error.message, 400)
       ApiResponse.error(res, '创建品牌失败', 500)
     }
   }
@@ -64,11 +76,13 @@ class BrandController {
       if (result.type === 'empty-name') return ApiResponse.error(res, '品牌名称不能为空', 400)
       if (result.type === 'duplicate') return ApiResponse.error(res, '品牌名称已存在', 400)
       if (result.type === 'missing') return ApiResponse.error(res, '品牌不存在', 404)
-      ApiResponse.success(res, result.data, '品牌更新成功')
+      if (result.type === 'invalid-scope') return ApiResponse.error(res, '请选择有效的业务范围', 400)
+      ApiResponse.success(res, await this.maskScope(req, result.data), '品牌更新成功')
       this.clearBrandCache()
     } catch (error) {
       log.error('更新品牌失败:', error)
-      ApiResponse.error(res, `更新品牌失败: ${error.message}`, 500)
+      if (error.statusCode === 400) return ApiResponse.error(res, error.message, 400)
+      ApiResponse.serverError(res, '更新品牌失败', error)
     }
   }
 
@@ -81,6 +95,7 @@ class BrandController {
       return ApiResponse.success(res, null, '排序更新成功')
     } catch (error) {
       log.error('批量更新排序失败:', error)
+      if (error.statusCode === 400) return ApiResponse.error(res, error.message, 400)
       return ApiResponse.error(res, '批量更新排序失败', 500)
     }
   }
@@ -95,6 +110,7 @@ class BrandController {
       return ApiResponse.success(res, null, '品牌删除成功')
     } catch (error) {
       log.error('删除品牌失败:', error)
+      if (error.statusCode === 400) return ApiResponse.error(res, error.message, 400)
       return ApiResponse.error(res, '删除品牌失败', 500)
     }
   }
@@ -106,6 +122,7 @@ class BrandController {
       return ApiResponse.success(res, result.data)
     } catch (error) {
       log.error('获取品牌搜索建议失败:', error)
+      if (error.statusCode === 400) return ApiResponse.error(res, error.message, 400)
       return ApiResponse.error(res, '获取品牌搜索建议失败', 500)
     }
   }

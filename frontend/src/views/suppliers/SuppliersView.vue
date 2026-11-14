@@ -174,6 +174,7 @@
             <el-table
               ref="suppliersTableRef"
               v-tf-loading="{ active: loading || refreshing, text: '正在刷新供应商列表...' }"
+              v-table-double-tap="mobileDetailTapOptions"
               :data="suppliers"
               border
               stripe
@@ -181,8 +182,7 @@
               table-layout="fixed"
               :fit="true"
               :row-key="getSupplierRowKey"
-              :expand-row-keys="isMobile && mobileActionRowId ? [mobileActionRowId] : []"
-              @row-click="(row) => handleMobileRowTap(row.id)"
+              @row-dblclick="handleMobileDetailDoubleClick"
             >
               <template #empty>
                 <TableLoadingRow
@@ -363,41 +363,6 @@
                   </div>
                 </template>
               </el-table-column>
-              <el-table-column
-                v-if="isMobile"
-                type="expand"
-                width="1"
-                class-name="mobile-expand-column"
-                label-class-name="mobile-expand-header"
-              >
-                <template #default="{ row }">
-                  <div class="mobile-row-actions">
-                    <el-button
-                      type="success"
-                      size="small"
-                      @click.stop="viewSupplier(row)"
-                    >
-                      <i class="fas fa-eye" /><span>查看</span>
-                    </el-button><el-button
-                      v-if="canEdit"
-                      v-permission="'suppliers:edit'"
-                      type="primary"
-                      size="small"
-                      @click.stop="editSupplier(row)"
-                    >
-                      <i class="fas fa-edit" /><span>编辑</span>
-                    </el-button><el-button
-                      v-if="canDelete"
-                      v-permission="'suppliers:delete'"
-                      type="danger"
-                      size="small"
-                      @click.stop="deleteSupplier(row)"
-                    >
-                      <i class="fas fa-trash" /><span>删除</span>
-                    </el-button>
-                  </div>
-                </template>
-              </el-table-column>
             </el-table>
           </div>
 
@@ -427,6 +392,7 @@
           :show-default-footer="false"
         >
           <el-form
+            class="tf-form-layout tf-form-grid"
             :model="formData"
             label-width="100px"
           >
@@ -475,6 +441,7 @@
 
             <el-form-item
               v-if="canViewField('address')"
+              class="tf-form-field--wide"
               label="地址"
             >
               <el-input
@@ -491,6 +458,7 @@
 
             <el-form-item
               v-if="canViewField('bank_info')"
+              class="tf-form-field--wide"
               label="银行信息"
             >
               <el-input
@@ -552,7 +520,28 @@
             </el-form-item>
 
             <el-form-item
+              v-if="canViewField('business_scope')"
+              label="业务范围"
+            >
+              <el-radio-group
+                v-model="formData.business_scope"
+                :disabled="!canEditField('business_scope')"
+              >
+                <el-radio value="phone">
+                  手机
+                </el-radio>
+                <el-radio value="accessory">
+                  配件
+                </el-radio>
+                <el-radio value="both">
+                  手机+配件
+                </el-radio>
+              </el-radio-group>
+            </el-form-item>
+
+            <el-form-item
               v-if="canViewField('remarks')"
+              class="tf-form-field--wide"
               label="备注"
             >
               <el-input
@@ -594,6 +583,7 @@
           width="800px"
           dialog-class="suppliers-detail-dialog crud-dialog-lg"
           :show-default-footer="false"
+          @close="closeDetailModal"
         >
           <SectionLoading
             v-if="detailLoading"
@@ -604,7 +594,7 @@
             class="supplier-detail-view"
           >
             <!-- 基本信息 -->
-            <div class="detail-section">
+            <div class="detail-section tf-detail-grid">
               <h4>基本信息</h4>
               <div
                 v-if="canViewField('name')"
@@ -643,29 +633,36 @@
                 </span>
               </div>
               <div
-                v-if="canViewField('address')"
+                v-if="canViewField('business_scope')"
                 class="detail-row"
+              >
+                <span class="label">业务范围：</span>
+                <span class="value">{{ supplierScopeLabel(supplierDetail.business_scope) }}</span>
+              </div>
+              <div
+                v-if="canViewField('address')"
+                class="detail-row tf-detail-field--wide"
               >
                 <span class="label">地址：</span>
                 <span class="value">{{ supplierDetail.address || '-' }}</span>
               </div>
               <div
                 v-if="canViewField('bank_info')"
-                class="detail-row"
+                class="detail-row tf-detail-field--wide"
               >
                 <span class="label">银行信息：</span>
                 <span class="value">{{ supplierDetail.bank_info || '-' }}</span>
               </div>
               <div
                 v-if="canViewField('tax_number')"
-                class="detail-row"
+                class="detail-row tf-detail-field--wide"
               >
                 <span class="label">税号：</span>
                 <span class="value">{{ supplierDetail.tax_number || '-' }}</span>
               </div>
               <div
                 v-if="canViewField('remarks')"
-                class="detail-row"
+                class="detail-row tf-detail-field--wide"
               >
                 <span class="label">备注：</span>
                 <span class="value">{{ supplierDetail.remarks || '-' }}</span>
@@ -673,40 +670,70 @@
             </div>
 
             <!-- 统计信息 -->
-            <div class="detail-section">
+            <div
+              v-if="hasDetailStats"
+              class="detail-section"
+            >
               <h4>商品统计</h4>
               <div class="stats-grid">
-                <div class="stat-item">
-                  <div class="stat-number">
+                <div
+                  v-if="supplierDetail.stats.accessories_count !== null || supplierDetail.stats.accessories_total_cost !== null"
+                  class="stat-item"
+                >
+                  <div
+                    v-if="supplierDetail.stats.accessories_count !== null"
+                    class="stat-number"
+                  >
                     {{ supplierDetail.stats.accessories_count }}
                   </div>
                   <div class="stat-label">
-                    配件数量
+                    配件采购数量
                   </div>
-                  <div class="stat-amount">
-                    ¥{{ formatAmount(supplierDetail.stats.accessories_total_cost) }}
+                  <div
+                    v-if="supplierDetail.stats.accessories_total_cost !== null"
+                    class="stat-amount"
+                  >
+                    采购总额 ¥{{ formatAmount(supplierDetail.stats.accessories_total_cost) }}
                   </div>
                 </div>
-                <div class="stat-item">
-                  <div class="stat-number">
+                <div
+                  v-if="supplierDetail.stats.phones_count !== null || supplierDetail.stats.phones_total_cost !== null"
+                  class="stat-item"
+                >
+                  <div
+                    v-if="supplierDetail.stats.phones_count !== null"
+                    class="stat-number"
+                  >
                     {{ supplierDetail.stats.phones_count }}
                   </div>
                   <div class="stat-label">
                     手机数量
                   </div>
-                  <div class="stat-amount">
+                  <div
+                    v-if="supplierDetail.stats.phones_total_cost !== null"
+                    class="stat-amount"
+                  >
                     ¥{{ formatAmount(supplierDetail.stats.phones_total_cost) }}
                   </div>
                 </div>
-                <div class="stat-item">
-                  <div class="stat-number">
-                    {{ supplierDetail.stats.accessories_count + supplierDetail.stats.phones_count }}
+                <div
+                  v-if="detailTotals.quantity !== null || detailTotals.amount !== null"
+                  class="stat-item"
+                >
+                  <div
+                    v-if="detailTotals.quantity !== null"
+                    class="stat-number"
+                  >
+                    {{ detailTotals.quantity }}
                   </div>
                   <div class="stat-label">
-                    商品总数
+                    数量合计
                   </div>
-                  <div class="stat-amount">
-                    ¥{{ formatAmount(supplierDetail.stats.accessories_total_cost + supplierDetail.stats.phones_total_cost) }}
+                  <div
+                    v-if="detailTotals.amount !== null"
+                    class="stat-amount"
+                  >
+                    ¥{{ formatAmount(detailTotals.amount) }}
                   </div>
                 </div>
               </div>
@@ -715,7 +742,7 @@
             <!-- 时间信息 -->
             <div
               v-if="canViewField('created_at')"
-              class="detail-section"
+              class="detail-section tf-detail-grid"
             >
               <h4>时间信息</h4>
               <div class="detail-row">
@@ -732,24 +759,26 @@
             </div>
           </div>
 
-          <template #footer>
+          <template
+            v-if="supplierDetail && !detailLoading && (canEdit || canDelete)"
+            #footer
+          >
             <div class="tf-dialog-actions">
               <el-button
-                v-if="canEdit && supplierDetail"
+                v-if="canEdit"
                 v-permission="'suppliers:edit'"
                 type="primary"
-                @click="editSupplier(supplierDetail!)"
+                @click.stop="runMobileDetailAction('edit')"
               >
-                <template #icon>
-                  <i class="fas fa-edit" />
-                </template>
-                编辑
+                <i class="fas fa-edit" />编辑
               </el-button>
               <el-button
-                type="default"
-                @click="closeDetailModal"
+                v-if="canDelete"
+                v-permission="'suppliers:delete'"
+                type="danger"
+                @click.stop="runMobileDetailAction('delete')"
               >
-                关闭
+                <i class="fas fa-trash" />删除
               </el-button>
             </div>
           </template>
@@ -782,28 +811,19 @@ import ImportExportActions from '@/components/business/ImportExportActions.vue'
 import { usePermissionToast } from '@/utils/permissionToastSimple'
 import { handleApiErrorWithPermission } from '@/utils/apiPermissionError'
 import { useMobile } from '@/composables/mobile'
-import { useMobileRowDoubleTap } from '@/composables/useMobileRowDoubleTap'
+import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
 import { useLatestRequest } from '@/composables/useLatestRequest'
-import type { Supplier } from '@/types/system'
+import type { Supplier, SupplierDetail } from '@/types/system'
 import type { QueryParams } from '@/types'
 import { logger } from '@/utils/logger'
+import { businessScopeLabel as supplierScopeLabel } from '@/constants/business-scope'
 import { useElementTableSortable } from '@/composables/useElementTableSortable'
 import { formatAmount, formatDateTime as formatDate } from '@/utils/format'
-
-// 供应商详情扩展类型
-interface SupplierDetail extends Supplier {
-  stats: {
-    accessories_count: number
-    accessories_total_cost: number
-    phones_count: number
-    phones_total_cost: number
-  }
-}
 
 // 获取路由实例
 const _router = useRouter()
 // 使用统一的 composable
-const { success, error, warning: _warning, info: _info, handleApiError, confirm } = useNotification()
+const { success, error, warning: _warning, info: _info, handleApiError } = useNotification()
 const { canView, canCreate, canEdit, canDelete, canExport, handleNoPermission } = usePagePermissions('suppliers')
 const { showViewDenied, showEditDenied, showDeleteDenied, showCreateDenied } = usePermissionToast()
 const { refreshing, refresh } = useRefreshData()
@@ -811,6 +831,7 @@ const { exportFile, buildDateFilename } = useImportExport()
 const { init: initFieldPermissions } = fieldPermissions
 const { isMobile } = useMobile()
 const supplierListRequest = useLatestRequest()
+const supplierDetailRequest = useLatestRequest()
 
 const supplierFieldMap: Record<string, string> = {
   stats_total_suppliers: 'stats.total_suppliers',
@@ -823,6 +844,7 @@ const supplierFieldMap: Record<string, string> = {
   phone: 'supplier.phone',
   address: 'supplier.address',
   status: 'supplier.status',
+  business_scope: 'supplier.business_scope',
   sort_order: 'supplier.sort_order',
   created_at: 'supplier.created_at',
   bank_info: 'supplier.bank_info',
@@ -937,13 +959,20 @@ const savingOrder = ref(false)
 const exportingSuppliers = ref(false)
 const suppliers = ref<Supplier[]>([])
 const supplierDetail = ref<SupplierDetail | null>(null)
+const hasDetailStats = computed(() => supplierDetail.value && Object.values(supplierDetail.value.stats).some(value => value !== null))
+const detailTotals = computed(() => {
+  const stats = supplierDetail.value?.stats
+  if (!stats) return { quantity: null, amount: null }
+  const quantity = stats.accessories_count === null || stats.phones_count === null ? null : stats.accessories_count + stats.phones_count
+  const cents = stats.accessories_total_cost === null || stats.phones_total_cost === null ? null
+    : Math.round(stats.accessories_total_cost * 100) + Math.round(stats.phones_total_cost * 100)
+  return { quantity: Number.isSafeInteger(quantity) ? quantity : null, amount: cents !== null && Number.isSafeInteger(cents) ? cents / 100 : null }
+})
 const showCreateModal = ref(false)
 const showEditModal = ref(false)
 const showDetailModal = ref(false)
 const currentEditingId = ref<number | null>(null)
 const suppliersTableRef = ref<HTMLElement | { $el?: HTMLElement } | null>(null)
-const mobileActionRowId = ref<string | null>(null)
-const { isDoubleTap } = useMobileRowDoubleTap()
 const getSupplierRowKey = (supplier: Supplier) => String(supplier.id)
 
 // 搜索表单
@@ -953,7 +982,18 @@ const searchForm = ref({
 })
 
 // 表单数据
-const formData = ref({
+const formData = ref<{
+  name: string
+  contact: string
+  phone: string
+  address: string
+  bank_info: string
+  tax_number: string
+  status: number
+  business_scope: NonNullable<Supplier['business_scope']>
+  sort_order: number
+  remarks: string
+}>({
   name: '',
   contact: '',
   phone: '',
@@ -961,6 +1001,7 @@ const formData = ref({
   bank_info: '',
   tax_number: '',
   status: 1,
+  business_scope: 'both' as const,
   sort_order: 0,
   remarks: ''
 })
@@ -1145,6 +1186,7 @@ const handleCreateSupplier = () => {
     bank_info: '',
     tax_number: '',
     status: 1,
+    business_scope: 'both',
     sort_order: 0,
     remarks: ''
   }
@@ -1163,36 +1205,31 @@ const viewSupplier = async (supplier: Supplier) => {
   }
 
   detailLoading.value = true
+  supplierDetail.value = null
   showDetailModal.value = true
+  const request = supplierDetailRequest.nextRequest()
   
   try {
-    const response = await unifiedApi.get(`/suppliers/${supplier.id}`)
+    const response = await unifiedApi.get<SupplierDetail>(`/suppliers/${supplier.id}`, { signal: request.signal, useCache: false, showLoading: false, showError: false })
+    if (!request.isLatest()) return
     
-    if (response.success) {
+    if (response.success && response.data) {
       supplierDetail.value = response.data
     } else {
       error(response.message || '获取供应商详情失败')
       closeDetailModal()
     }
   } catch (err) {
+    if (!request.isLatest() || supplierDetailRequest.isCanceledError(err)) return
     logger.error('获取供应商详情失败:', err)
     handleApiError(err, '获取供应商详情失败')
     closeDetailModal()
   } finally {
-    detailLoading.value = false
+    if (request.isLatest()) detailLoading.value = false
   }
 }
 
-const toggleMobileActions = (id: number) => {
-  if (!isMobile.value) return
-  const rowKey = String(id)
-  mobileActionRowId.value = mobileActionRowId.value === rowKey ? null : rowKey
-}
 
-const handleMobileRowTap = (id: number) => {
-  if (!isMobile.value) return
-  if (isDoubleTap(String(id))) toggleMobileActions(id)
-}
 
 const editSupplier = (supplier: Supplier | SupplierDetail) => {
   // 先检查编辑权限
@@ -1212,6 +1249,7 @@ const editSupplier = (supplier: Supplier | SupplierDetail) => {
     bank_info: supplier.bank_info || '',
     tax_number: supplier.tax_number || '',
     status: typeof supplier.status === 'number' ? supplier.status : (supplier.status === 'active' ? 1 : 0),
+    business_scope: supplier.business_scope || 'both',
     sort_order: supplier.sort_order || 0,
     remarks: supplier.remarks || ''
   }
@@ -1311,54 +1349,7 @@ const submitForm = async () => {
   }
 }
 
-const hasUnsavedChanges = (): boolean => {
-  if (!showCreateModal.value && !showEditModal.value) return false
-
-  const currentForm = formData.value
-
-  if (showEditModal.value && currentEditingId.value) {
-    const originalSupplier = suppliers.value.find(s => s.id === currentEditingId.value)
-    if (originalSupplier) {
-      return (
-        currentForm.name !== originalSupplier.name ||
-        currentForm.contact !== originalSupplier.contact ||
-        currentForm.phone !== originalSupplier.phone ||
-        currentForm.address !== originalSupplier.address ||
-        currentForm.bank_info !== originalSupplier.bank_info ||
-        currentForm.tax_number !== originalSupplier.tax_number ||
-        currentForm.status !== originalSupplier.status ||
-        currentForm.remarks !== originalSupplier.remarks
-      )
-    }
-  }
-
-  // For create modal, check if any field has been filled
-  return (
-    currentForm.name !== '' ||
-    currentForm.contact !== '' ||
-    currentForm.phone !== '' ||
-    currentForm.address !== '' ||
-    currentForm.bank_info !== '' ||
-    currentForm.tax_number !== '' ||
-    currentForm.status !== 1 ||
-    currentForm.remarks !== ''
-  )
-}
-
-const attemptCloseModal = async () => {
-  if (hasUnsavedChanges()) {
-    const confirmed = await confirm('您有未保存的更改，确定要关闭吗？', '确认关闭', {
-      confirmButtonText: '确定关闭',
-      cancelButtonText: '取消',
-      type: 'warning'
-    })
-    if (confirmed) {
-      closeModal()
-    }
-  } else {
-    closeModal()
-  }
-}
+const attemptCloseModal = () => closeModal()
 
 const closeModal = () => {
   showCreateModal.value = false
@@ -1372,12 +1363,15 @@ const closeModal = () => {
     bank_info: '',
     tax_number: '',
     status: 1,
+    business_scope: 'both',
     sort_order: 0,
     remarks: ''
   }
 }
 
 const closeDetailModal = () => {
+  supplierDetailRequest.cancelLatest()
+  detailLoading.value = false
   showDetailModal.value = false
   supplierDetail.value = null
 }
@@ -1539,6 +1533,7 @@ const _submitFormWithPermission = async () => {
 }
 
 const handlePermissionsUpdated = async () => {
+  closeDetailModal()
   try {
     await ensureSupplierPermissionsLoaded()
   } catch (refreshError) {
@@ -1579,6 +1574,18 @@ onUnmounted(() => {
 })
 
 
+
+const { doubleTapOptions: mobileDetailTapOptions, handleRowDoubleClick: handleMobileDetailDoubleClick } = useMobileTableDetail<Supplier>({
+  enabled: computed(() => isMobile.value && canView.value), rows: suppliers, getKey: row => row.id, onOpen: viewSupplier
+})
+
+const runMobileDetailAction = (action: 'edit' | 'delete') => {
+  const row = supplierDetail.value
+  if (!row) return
+  closeDetailModal()
+  if (action === 'edit') editSupplier(row)
+  else void deleteSupplier(row)
+}
 </script>
 
 <style scoped src="./styles/suppliers-view/table.css"></style>

@@ -94,10 +94,10 @@
       </div>
 
       <div
-        v-if="!isMobile"
         class="table-wrapper table-responsive"
       >
         <el-table
+          v-table-double-tap="mobileDetailTapOptions"
           v-tf-loading="{ active: loading, text: '正在刷新退库记录...' }"
           class="data-table devices-table compact-fit-table base-data-table returngoods-data-table"
           :data="records"
@@ -106,6 +106,7 @@
           table-layout="fixed"
           :fit="true"
           style="width: 100%"
+          @row-dblclick="mobileDetailDoubleClick"
         >
           <template #empty>
             <TableLoadingRow
@@ -234,7 +235,7 @@
             class-name="complete-text-column wrapped-text-column"
           />
           <el-table-column
-            v-if="showActionColumn"
+            v-if="!isMobile && (showActionColumn)"
             label="操作"
             :width="$getActionColumnWidth(Number(canEdit) + Number(canDelete))"
             align="center"
@@ -262,171 +263,35 @@
             </template>
           </el-table-column>
         </el-table>
+        <RecordDetailDialog
+          v-model="mobileDetailVisible"
+          title="退库记录详情"
+          :record="mobileDetailRow"
+          :fields="mobileDetailFields"
+          :has-actions="canEdit || canDelete"
+        >
+          <template #actions="{ row }">
+            <el-button
+              v-if="canEdit"
+              type="primary"
+              link
+              @click.stop="mobileDetailRunAction(() => openEditDialog(row))"
+            >
+              编辑
+            </el-button>
+            <el-button
+              v-if="canDelete"
+              type="danger"
+              link
+              @click.stop="mobileDetailRunAction(() => handleDelete(row))"
+            >
+              删除
+            </el-button>
+          </template>
+        </RecordDetailDialog>
       </div>
 
-      <div
-        v-else
-        v-tf-loading="{ active: loading, text: '正在刷新退库记录...' }"
-        class="mobile-records"
-      >
-        <SectionLoading
-          v-if="loading && records.length === 0"
-          text="正在读取退库记录..."
-        />
 
-        <DataEmptyState
-          v-else-if="records.length === 0"
-          size="compact"
-          description="暂无退库记录"
-        />
-        <template v-else>
-          <div
-            v-for="record in records"
-            :key="record.id"
-            class="record-card"
-          >
-            <div class="record-card-header">
-              <div
-                v-if="canViewField('record.product_info')"
-                class="record-title"
-              >
-                {{ [record.brand, record.model, record.color, record.memory].filter(Boolean).join(' ') || '未识别设备' }}
-              </div>
-              <div
-                v-if="canViewField('record.reversal_date')"
-                class="record-time"
-              >
-                {{ formatDateTime(record.reversal_date) }}
-              </div>
-            </div>
-
-            <div class="record-grid">
-              <div
-                v-if="canViewField('record.product_info')"
-                class="record-item"
-              >
-                <span class="record-label">设备ID</span>
-                <span class="record-value">{{ record.phone_id || '-' }}</span>
-              </div>
-              <div
-                v-if="canViewField('record.sale_info')"
-                class="record-item"
-              >
-                <span class="record-label">原销售ID</span>
-                <span class="record-value">{{ record.original_sale_id || '-' }}</span>
-              </div>
-              <div
-                v-if="canViewField('record.sale_info')"
-                class="record-item"
-              >
-                <span class="record-label">销售类型</span>
-                <span class="record-value">{{ getSaleTypeText(record.original_sale_type) }}</span>
-              </div>
-              <div
-                v-if="canViewField('record.product_info')"
-                class="record-item"
-              >
-                <span class="record-label">IMEI</span>
-                <span class="record-value">{{ record.imei || '-' }}</span>
-              </div>
-              <div
-                v-if="canViewField('record.sale_info')"
-                class="record-item"
-              >
-                <span class="record-label">销售员</span>
-                <span class="record-value">{{ record.original_sale_operator_name || '-' }}</span>
-              </div>
-              <div
-                v-if="canViewField('record.customer')"
-                class="record-item"
-              >
-                <span class="record-label">客户</span>
-                <span class="record-value">{{ record.customer_name || '-' }}</span>
-              </div>
-              <div
-                v-if="canViewField('record.operator')"
-                class="record-item"
-              >
-                <span class="record-label">操作员</span>
-                <span class="record-value">{{ record.operator_name || '-' }}</span>
-              </div>
-              <div
-                v-if="canViewField('record.customer')"
-                class="record-item"
-              >
-                <span class="record-label">手机号</span>
-                <span class="record-value">{{ record.customer_phone || '-' }}</span>
-              </div>
-              <div
-                v-for="item in visibleReturnSelectFields"
-                :key="item.field"
-                class="record-item"
-              >
-                <span class="record-label">{{ item.label }}</span>
-                <span class="record-value">{{ record[item.field] || '-' }}</span>
-              </div>
-              <div
-                v-if="canViewField('record.refund_amount')"
-                class="record-item"
-              >
-                <span class="record-label">退款金额</span>
-                <span class="record-value">{{ record.refund_amount === null || record.refund_amount === undefined ? '-' : formatAmount(record.refund_amount) }}</span>
-              </div>
-              <div
-                v-if="canViewField('record.refund_method')"
-                class="record-item"
-              >
-                <span class="record-label">退款方式</span>
-                <PaymentMethodText
-                  :value="record.refund_method"
-                  :channel="record.refund_channel"
-                />
-              </div>
-              <div
-                v-if="canViewField('record.created_at')"
-                class="record-item"
-              >
-                <span class="record-label">操作时间</span>
-                <span class="record-value">{{ formatDateTime(record.created_at) }}</span>
-              </div>
-            </div>
-
-            <div
-              v-if="canViewField('record.remarks') && record.remarks"
-              class="record-remark"
-            >
-              <span class="record-label">备注</span>
-              <span class="record-remark-text">{{ record.remarks }}</span>
-            </div>
-
-            <div
-              v-if="showActionColumn"
-              class="mobile-actions"
-            >
-              <el-button
-                v-if="canEdit"
-                type="primary"
-                plain
-                size="small"
-                @click="openEditDialog(record)"
-              >
-                <i class="fas fa-edit" />
-                <span>编辑</span>
-              </el-button>
-              <el-button
-                v-if="canDelete"
-                type="danger"
-                plain
-                size="small"
-                @click="handleDelete(record)"
-              >
-                <i class="fas fa-trash" />
-                <span>删除</span>
-              </el-button>
-            </div>
-          </div>
-        </template>
-      </div>
 
       <Pagination
         v-model:current="pagination.page"
@@ -451,9 +316,9 @@
         :model="editForm"
         :rules="editFormRules"
         label-position="top"
-        class="edit-dialog-body"
+        class="edit-dialog-body tf-form-layout tf-form-grid"
       >
-        <div class="edit-grid">
+        <div class="edit-grid tf-form-row tf-form-row--three">
           <el-form-item
             v-if="canViewField('record.sale_info')"
             label="原销售ID"
@@ -585,7 +450,7 @@
             v-if="canViewField('record.remarks')"
             label="备注"
             prop="remarks"
-            class="edit-item edit-item-full"
+            class="edit-item edit-item-full tf-form-field--wide"
           >
             <el-input
               v-model="editForm.remarks"
@@ -618,6 +483,9 @@
 </template>
 
 <script setup lang="ts">
+import { getPaymentMethodLabel } from '@/constants/paymentMethods'
+import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
+import type { RecordDetailField } from '@/types/component'
 import { TIME_FORMATS, TimeUtil } from '@/utils/time'
 import type { ReturnGoodsRecord } from '@/types/return-stock'
 import { RETURN_STOCK_OPTIONS, RETURN_STOCK_SELECT_FIELDS } from '@/constants/returnStock'
@@ -636,7 +504,6 @@ import { fieldPermissions, shouldShowActionColumn } from '@/composables/useField
 import { useLoadingState } from '@/composables'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import MobileDialog from '@/components/MobileDialog.vue'
-import SectionLoading from '@/components/SectionLoading.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import Pagination from '@/components/Pagination.vue'
 import DateRangePicker from '@/components/DateRangePicker.vue'
@@ -951,6 +818,30 @@ onMounted(() => {
   loadRecords()
   loadOperators()
 })
+
+const { detailRow: mobileDetailRow, detailVisible: mobileDetailVisible, doubleTapOptions: mobileDetailTapOptions, handleRowDoubleClick: mobileDetailDoubleClick, runDetailAction: mobileDetailRunAction } = useMobileTableDetail<ReturnGoodsRecord>({
+  enabled: () => isMobile.value && canView.value, rows: () => records.value, getKey: row => row.id
+})
+const mobileDetailFields = computed<RecordDetailField[]>(() => {
+  const row = mobileDetailRow.value
+  if (!row) return []
+  return [
+    { key: 'phone_id', label: '设备ID', value: row.phone_id, visible: canViewField('record.product_info') },
+    { key: 'product', label: '商品信息', value: [row.brand, row.model, row.color, row.memory].filter(Boolean).join(' '), visible: canViewField('record.product_info') },
+    { key: 'imei', label: 'IMEI', value: row.imei, visible: canViewField('record.product_info'), wide: true },
+    { key: 'customer_name', label: '客户', value: row.customer_name, visible: canViewField('record.customer') },
+    { key: 'operator_name', label: '操作员', value: row.operator_name, visible: canViewField('record.operator') },
+    { key: 'original_sale_id', label: '原销售ID', value: row.original_sale_id, visible: canViewField('record.sale_info') },
+    { key: 'sale_type', label: '销售类型', value: getSaleTypeText(row.original_sale_type), visible: canViewField('record.sale_info') },
+    { key: 'sale_operator', label: '销售员', value: row.original_sale_operator_name, visible: canViewField('record.sale_info') },
+    { key: 'reversal_date', label: '退库时间', value: formatDateTime(row.reversal_date), visible: canViewField('record.reversal_date'), wide: true },
+    { key: 'refund_amount', label: '退款金额', value: row.refund_amount === null || row.refund_amount === undefined ? undefined : formatAmount(row.refund_amount), visible: canViewField('record.refund_amount') },
+    ...visibleReturnSelectFields.value.map(field => ({ key: field.field, label: field.label, value: row[field.field], visible: true })),
+    { key: 'refund_method', label: '退款方式', value: [getPaymentMethodLabel(row.refund_method), row.refund_channel ? getPaymentMethodLabel(row.refund_channel) : ''].filter(Boolean).join(' / '), visible: canViewField('record.refund_method') },
+    { key: 'created_at', label: '操作时间', value: formatDateTime(row.created_at), visible: canViewField('record.created_at'), wide: true },
+    { key: 'remarks', label: '备注', value: row.remarks, visible: canViewField('record.remarks'), wide: true }
+  ]
+})
 </script>
 
 <style scoped>
@@ -1064,93 +955,6 @@ onMounted(() => {
   flex-wrap: nowrap;
   min-width: 0;
   white-space: nowrap;
-}
-
-.mobile-records {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.record-card {
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  border-radius: 16px;
-  background: linear-gradient(180deg, var(--color-bg-white) 0%, var(--tf-color-surface-blue-alt) 100%);
-  padding: 14px;
-  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.05);
-}
-
-.record-card-header {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-bottom: 12px;
-}
-
-.record-title {
-  font-size: var(--tf-type-scale-15);
-  font-weight: 700;
-  color: var(--tf-color-slate-900);
-  line-height: 1.45;
-}
-
-.record-time {
-  font-size: var(--tf-type-scale-12);
-  color: var(--tf-color-blue-600);
-  font-weight: 600;
-}
-
-.record-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px 12px;
-}
-
-.record-item {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.record-label {
-  font-size: var(--tf-type-scale-11);
-  color: var(--tf-color-slate-500);
-}
-
-.record-value {
-  font-size: var(--tf-type-scale-13);
-  color: var(--tf-color-slate-900);
-  font-weight: 600;
-  word-break: break-word;
-}
-
-.record-remark {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px dashed var(--tf-color-slate-200);
-}
-
-.record-remark-text {
-  font-size: var(--tf-type-scale-13);
-  line-height: 1.5;
-  color: var(--tf-color-slate-700);
-  word-break: break-word;
-}
-
-.mobile-actions {
-  display: flex;
-  gap: 8px;
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px dashed var(--tf-color-slate-200);
-}
-
-.mobile-actions :deep(.el-button) {
-  flex: 1 1 0;
 }
 
 .edit-dialog-body {

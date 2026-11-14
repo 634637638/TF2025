@@ -216,6 +216,7 @@
   --tf-z-popper: 4005;
   --tf-z-permission-tooltip: 9999;
   --tf-drawer-max-width: 480px;
+  --tf-h5-auth-card-max-width: 400px;
 }
 
 // ==================== 尺寸变量 ====================
@@ -341,6 +342,10 @@
   --color-bg-white: #ffffff;
   --color-bg-page: #f2f3f5;
   --color-bg-overlay: #ffffff;
+
+  // 纸质凭证和深色强调背景的前景色不随应用明暗主题反转。
+  --tf-color-document-paper: #ffffff;
+  --tf-color-text-on-accent: #ffffff;
 
   // 边框色
   --color-border-light: #ebeef5;

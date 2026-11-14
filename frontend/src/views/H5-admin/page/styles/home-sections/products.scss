@@ -59,23 +59,8 @@
 
         .product-remove {
           position: absolute;
-          top: 4px;
-          right: 4px;
-          width: 24px;
-          height: 24px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          background: rgba(255, 255, 255, 0.9);
-          border-radius: 4px;
-          cursor: pointer;
-          color: var(--text-muted);
-          z-index: 1;
-
-          &:hover {
-            background: var(--tf-color-red-surface-light);
-            color: var(--tf-color-red-chakra);
-          }
+          top: var(--tf-space-1);
+          right: var(--tf-space-1);
         }
 
         img {

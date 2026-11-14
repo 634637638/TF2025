@@ -117,12 +117,14 @@
           </div>
 
           <el-table
+            v-table-double-tap="mobileDetailTapOptions"
             v-tf-loading="{ active: isLoading, text: '正在刷新备份列表...' }"
             class="data-table"
             :data="backupList"
             border
             stripe
             style="width: 100%"
+            @row-dblclick="mobileDetailDoubleClick"
           >
             <template #empty>
               <TableLoadingRow
@@ -218,7 +220,7 @@
               </template>
             </el-table-column>
             <el-table-column
-              v-if="showActionColumn"
+              v-if="!isMobile && (showActionColumn)"
               label="操作"
               :width="$getActionColumnWidth(['下载中', ...(canCreate ? ['上传云盘'] : []), ...(canDelete ? ['删除'] : [])])"
               align="center"
@@ -265,6 +267,51 @@
               </template>
             </el-table-column>
           </el-table>
+          <RecordDetailDialog
+            v-model="mobileDetailVisible"
+            title="备份详情"
+            :record="mobileDetailRow"
+            :fields="mobileDetailFields"
+            :has-actions="canView || canCreate || canDelete"
+          >
+            <template #actions="{ row }">
+              <el-button
+                v-if="canCreate"
+                v-permission="'backup:create'"
+                class="table-action table-action--manage"
+                :disabled="cloudActive(row.filename) || cloudTask(row.filename)?.status === 'success'"
+                :loading="cloudEnqueueing === row.filename"
+                @click.stop="mobileDetailRunAction(() => uploadToCloud(row.filename))"
+              >
+                上传云盘
+              </el-button>
+              <el-button
+                type="primary"
+                link
+                :loading="downloadingFilename === row.filename"
+                :disabled="downloadingFilename !== null && downloadingFilename !== row.filename"
+                @click.stop="mobileDetailRunAction(() => downloadBackup(row.filename))"
+              >
+                <span v-if="downloadingFilename === row.filename">下载中</span>
+                <template v-else>
+                  <i class="fas fa-download" />
+                  下载
+                </template>
+              </el-button>
+              <el-button
+                v-if="canDelete"
+                v-permission="'backup:delete'"
+                type="danger"
+                link
+                :disabled="cloudActive(row.filename)"
+                @click.stop="mobileDetailRunAction(() => confirmDelete(row.filename))"
+              >
+                <i class="fas fa-trash" />
+                删除
+              </el-button>
+            </template>
+          </RecordDetailDialog>
+
 
           <!-- 空状态由表格 empty 插槽统一处理 -->
         </div>
@@ -338,7 +385,10 @@
       dialog-class="backup-cleanup-dialog"
       :close-on-click-modal="false"
     >
-      <el-form label-width="100px">
+      <el-form
+        class="tf-form-layout tf-form-grid"
+        label-width="100px"
+      >
         <el-alert
           title="仅清理服务器本地备份，云盘文件不受影响。保留数量不少于现有份数时，不会删除文件。"
           type="info"
@@ -377,6 +427,9 @@
 </template>
 
 <script setup lang="ts">
+import { useMobile } from '@/composables/mobile'
+import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
+import type { RecordDetailField } from '@/types/component'
 import { confirmAction } from '@/utils/message-box'
 import { computed, ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import { unifiedApi } from '@/utils/unified-api'
@@ -711,6 +764,23 @@ watch(canView, async (value) => {
     }
   }
 }, { immediate: true })
+
+const { isMobile } = useMobile()
+const { detailRow: mobileDetailRow, detailVisible: mobileDetailVisible, doubleTapOptions: mobileDetailTapOptions, handleRowDoubleClick: mobileDetailDoubleClick, runDetailAction: mobileDetailRunAction } = useMobileTableDetail<BackupFile>({
+  enabled: () => isMobile.value && canView.value, rows: () => backupList.value, getKey: row => row.filename
+})
+const mobileDetailFields = computed<RecordDetailField[]>(() => {
+  const row = mobileDetailRow.value
+  if (!row) return []
+  return [
+    { key: 'filename', label: '文件名', value: row.filename, visible: canViewField('backup.name'), wide: true },
+    { key: 'type', label: '备份类型', value: row.type === 'database' ? '仅数据库' : '完整备份', visible: canView.value },
+    { key: 'size', label: '大小', value: row.size, visible: canViewField('backup.size') },
+    { key: 'created_at', label: '创建时间', value: formatDateTime(row.created_at), visible: canViewField('backup.created_at'), wide: true },
+    { key: 'cloud', label: '云盘备份', value: cloudStatusText(cloudTask(row.filename)), visible: canView.value }
+  ]
+})
+
 </script>
 
 <style scoped>

@@ -52,6 +52,7 @@ const listModelsByBrand = async ({ brand_id, name = '', include_id = null, activ
   const keyword = String(name || '').trim()
   const includeId = Number.parseInt(String(include_id || ''), 10)
   const conditions = ['m.brand_id = ?']
+  conditions.push("b.business_scope IN ('phone', 'both')")
   const params = [brandId]
 
   if (activeOnly) conditions.push('(m.status = 1 OR m.status IS NULL)')
@@ -87,7 +88,7 @@ const listActiveReferenceOptions = async (resource, { includeNullStatus = false 
 
   const statusCondition = includeNullStatus ? '(status = 1 OR status IS NULL)' : 'status = 1'
   const [rows] = await getDatabase().execute(
-    `SELECT ${config.columns} FROM ${config.table} WHERE ${statusCondition} ORDER BY sort_order ASC, ${config.labelColumn} ASC, id ASC`
+    `SELECT ${config.columns} FROM ${config.table} WHERE ${statusCondition}${resource === 'brands' ? " AND business_scope IN ('phone', 'both')" : ''} ORDER BY sort_order ASC, ${config.labelColumn} ASC, id ASC`
   )
   return rows.map(config.format)
 }
@@ -102,6 +103,7 @@ const listTemplateReferenceOptions = async (resource, { brand_id: brandId } = {}
 
   const conditions = []
   const params = []
+  if (resource === 'brands') conditions.push("business_scope IN ('phone', 'both')")
   if (resource === 'models' && brandId !== undefined && brandId !== null && String(brandId).trim() !== '') {
     const parsedBrandId = Number.parseInt(String(brandId), 10)
     if (!Number.isInteger(parsedBrandId) || parsedBrandId <= 0) {

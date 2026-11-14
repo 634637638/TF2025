@@ -15,7 +15,7 @@
       <el-form
         v-if="editForm"
         label-width="100px"
-        class="edit-form"
+        class="edit-form tf-form-layout"
         :label-position="isMobile ? 'top' : 'right'"
         :class="{ 'tf-dialog-form': isMobile, 'tf-dialog-form--stacked': isMobile }"
       >
@@ -23,7 +23,7 @@
           <div class="edit-section-title">
             <i class="fas fa-user" /><span>客户信息</span>
           </div>
-          <div class="form-row">
+          <div class="tf-form-row">
             <el-form-item
               v-if="canViewField('customer_name')"
               label="客户姓名"
@@ -45,7 +45,6 @@
                 v-model="editForm.customer_phone"
                 placeholder="请输入客户手机号"
                 clearable
-                maxlength="11"
                 :disabled="!canEditField('customer_phone')"
                 @input="editForm.customer_phone = normalizePhoneDigits(editForm.customer_phone)"
               />
@@ -53,6 +52,7 @@
           </div>
           <el-form-item
             v-if="canViewField('customer_idcard') && canEditField('customer_idcard')"
+            class="tf-form-field--wide"
             label="身份证号"
           >
             <el-input
@@ -69,7 +69,7 @@
           </div>
           <div
             v-if="canViewField('brand') || canViewField('model')"
-            class="form-row"
+            class="tf-form-row"
           >
             <el-form-item
               v-if="canViewField('brand')"
@@ -115,7 +115,7 @@
 
           <div
             v-if="canViewField('color') || canViewField('memory')"
-            class="form-row"
+            class="tf-form-row"
           >
             <el-form-item
               v-if="canViewField('color')"
@@ -160,6 +160,7 @@
 
           <el-form-item
             v-if="canViewField('serial_number')"
+            class="tf-form-field--wide"
             label="序列号"
           >
             <el-input
@@ -171,31 +172,29 @@
             />
           </el-form-item>
 
-          <div class="form-row">
+          <div class="tf-form-row">
             <el-form-item
               v-if="canViewField('imei1')"
+              class="tf-form-field--wide"
               label="IMEI1"
             >
               <el-input
                 v-model="editForm.imei1"
                 placeholder="请输入IMEI1"
                 clearable
-                maxlength="15"
                 :disabled="!canEditField('imei1')"
-                @input="formatIMEI1"
               />
             </el-form-item>
 
             <el-form-item
               v-if="canViewField('imei2') && canEditField('imei2')"
+              class="tf-form-field--wide"
               label="IMEI2"
             >
               <el-input
                 v-model="editForm.imei2"
                 placeholder="请输入IMEI2"
                 clearable
-                maxlength="15"
-                @input="formatIMEI2"
               />
             </el-form-item>
           </div>
@@ -205,7 +204,7 @@
           <div class="edit-section-title">
             <i class="fas fa-receipt" /><span>销售信息</span>
           </div>
-          <div class="form-row">
+          <div class="tf-form-row">
             <el-form-item
               v-if="canViewField('sale_price')"
               label="销售价格"
@@ -218,7 +217,6 @@
                 placeholder="请输入销售价格"
                 :disabled="!canEditField('sale_price')"
                 @update:model-value="editForm.sale_price = $event ?? null"
-                @blur="normalizeSalePrice"
               >
                 <template #prefix>
                   ¥
@@ -270,7 +268,7 @@
           </div>
           <div
             v-if="canViewField('apply_time') || canApprove || canViewField('arrival_time') || canArrival"
-            class="form-row"
+            class="tf-form-row"
           >
             <el-form-item
               v-if="canApprove"
@@ -305,6 +303,7 @@
 
           <el-form-item
             v-if="canViewField('remarks') && canEditField('remarks')"
+            class="tf-form-field--wide"
             label="备注"
           >
             <el-input
@@ -334,7 +333,7 @@
           </el-form-item>
 
           <template v-if="canViewField('has_different_handler') && editForm.has_different_handler">
-            <div class="form-row">
+            <div class="tf-form-row">
               <el-form-item
                 v-if="canViewField('handler_name')"
                 label="客户姓名"
@@ -356,7 +355,6 @@
                   v-model="editForm.handler_phone"
                   placeholder="请输入手机号码"
                   clearable
-                  maxlength="11"
                   :disabled="!canEditField('handler_phone')"
                   @input="editForm.handler_phone = normalizePhoneDigits(editForm.handler_phone)"
                 />
@@ -365,6 +363,7 @@
 
             <el-form-item
               v-if="canViewField('handler_idcard')"
+              class="tf-form-field--wide"
               label="身份证"
             >
               <el-input
@@ -387,18 +386,20 @@
           <div class="readonly-title">
             以下信息为只读：
           </div>
-          <el-descriptions
+          <RecordDescriptions
             :column="1"
             border
           >
             <el-descriptions-item
               v-if="canViewField('customer_idcard') && !canEditField('customer_idcard') && editForm.customer_idcard"
+              :span="2"
               label="客户身份证号"
             >
               {{ editForm.customer_idcard || '-' }}
             </el-descriptions-item>
             <el-descriptions-item
               v-if="canViewField('imei2') && !canEditField('imei2') && editForm.imei2"
+              :span="2"
               label="IMEI2"
             >
               {{ editForm.imei2 || '-' }}
@@ -417,6 +418,7 @@
             </el-descriptions-item>
             <el-descriptions-item
               v-if="canViewField('remarks') && !canEditField('remarks') && editForm.remarks"
+              :span="2"
               label="备注"
             >
               {{ editForm.remarks || '-' }}
@@ -451,7 +453,7 @@
             >
               ¥{{ formatAmount(editForm.sale_price) }}
             </el-descriptions-item>
-          </el-descriptions>
+          </RecordDescriptions>
         </div>
       </el-form>
     </div>
@@ -472,14 +474,12 @@
         <el-button
           type="primary"
           :disabled="editing"
+          :loading="editing"
           @click="submitEdit"
         >
-          <InlineLoading
-            v-if="editing"
-            text="保存中..."
-            size="small"
-            variant="inherit"
-          />
+          <template v-if="editing">
+            保存中...
+          </template>
           <template v-else>
             <i class="fas fa-save" />
             <span>保存</span>
@@ -494,14 +494,15 @@
 import { computed, ref, watch } from 'vue'
 
 import MobileDialog from '@/components/MobileDialog.vue'
-import InlineLoading from '@/components/InlineLoading.vue'
 import { unifiedApi } from '@/utils/unified-api'
 import { normalizeIdCard, normalizePersonName, normalizePhoneDigits } from '@/utils/security'
+import { getSubsidyInputError } from '../subsidy-input'
 import { TIME_FORMATS } from '@/utils/time'
 import { buildSubsidyRemarks } from '../subsidy-calculations'
 import { logger } from '@/utils/logger'
 import { useBrandModels } from '@/composables/useBrandModels'
 import { formatAmount, formatDateTime as formatGlobalDateTime } from '@/utils/format'
+import { normalizeDeviceSerial } from '@/utils/device-identifier'
 import { isAxiosError } from 'axios'
 import type { ReferenceRecord } from '@/services/reference-options'
 import type { MemoryOption, NationalSubsidyEditForm, NationalSubsidyRecord } from '@/types'
@@ -582,12 +583,6 @@ const handleBrandChange = async () => {
   if (brand) await loadModelsForBrand(brand.id)
 }
 
-const normalizeSalePrice = () => {
-  if (!editForm.value) return
-  const value = Number(editForm.value.sale_price)
-  editForm.value.sale_price = Number.isFinite(value) && value >= 0 ? Number(value.toFixed(2)) : null
-}
-
 const fillEditForm = (item: NationalSubsidyRecord | null) => {
   if (!item) {
     editForm.value = null
@@ -633,22 +628,7 @@ watch(
 
 const formatSerialNumber = () => {
   if (editForm.value?.serial_number) {
-    editForm.value.serial_number = editForm.value.serial_number
-      .replace(/[^a-zA-Z0-9]/g, '')
-      .toUpperCase()
-      .slice(0, 30)
-  }
-}
-
-const formatIMEI1 = () => {
-  if (editForm.value?.imei1) {
-    editForm.value.imei1 = editForm.value.imei1.replace(/\D/g, '').slice(0, 15)
-  }
-}
-
-const formatIMEI2 = () => {
-  if (editForm.value?.imei2) {
-    editForm.value.imei2 = editForm.value.imei2.replace(/\D/g, '').slice(0, 15)
+    editForm.value.serial_number = normalizeDeviceSerial(editForm.value.serial_number)
   }
 }
 
@@ -664,7 +644,6 @@ const submitEdit = async () => {
     editForm.value.handler_name = normalizePersonName(editForm.value.handler_name || '', 20)
     editForm.value.handler_phone = normalizePhoneDigits(editForm.value.handler_phone || '')
     editForm.value.handler_idcard = normalizeIdCard(editForm.value.handler_idcard || '')
-    normalizeSalePrice()
 
     const payload: Record<string, unknown> = {}
     const assignField = (permissionField: string, payloadField: string, value: unknown) => {
@@ -699,6 +678,11 @@ const submitEdit = async () => {
       payload.arrival_time = editForm.value.arrival_time
     }
 
+    const inputError = getSubsidyInputError(payload)
+    if (inputError) {
+      globalNotifications.warning(inputError)
+      return
+    }
     const response = await unifiedApi.put(`/subsidy/${props.item.id}`, payload)
 
     if (response.success) {
@@ -750,25 +734,6 @@ const submitEdit = async () => {
   font-size: var(--tf-type-scale-13);
 }
 
-.edit-form :deep(.el-form-item) {
-  min-width: 0;
-  margin-bottom: var(--tf-space-3);
-}
-
-.edit-form :deep(.el-input),
-.edit-form :deep(.el-input-number),
-.edit-form :deep(.el-select),
-.edit-form :deep(.el-date-editor) {
-  width: 100%;
-  min-width: 0;
-}
-
-.form-row {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--tf-space-3);
-}
-
 .readonly-fields {
   margin-top: var(--tf-space-4);
 }
@@ -786,14 +751,6 @@ const submitEdit = async () => {
 
   .edit-section-title {
     margin-bottom: var(--tf-space-2);
-  }
-
-  .form-row {
-    gap: var(--tf-space-2);
-  }
-
-  .form-row > :deep(.el-form-item:only-child) {
-    grid-column: 1 / -1;
   }
 }
 </style>

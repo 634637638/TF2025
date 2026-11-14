@@ -7,7 +7,7 @@
       @after-leave="handleMobileAfterLeave"
     >
       <div
-        v-if="activeUseMobileSheet && mobileSheetMounted"
+        v-if="activeUseMobileSheet"
         v-show="dialogVisible"
         :class="overlayClasses"
         :style="{ zIndex: `calc(var(--tf-z-dialog-sheet) + ${overlayOrder})` }"
@@ -18,6 +18,7 @@
         @click.self="handleOverlayClick"
       >
         <ElFocusTrap
+          v-if="mobileSheetMounted"
           v-slot="{ handleKeydown: trapKeydown }"
           :trapped="dialogVisible"
           :focus-trap-el="sheetPanel || undefined"
@@ -256,6 +257,7 @@ const emit = defineEmits<Emits>()
 
 // 响应式检测
 const { isMobile, isTablet, screenSize } = useMobile()
+// 过渡外壳保留 v-show；内容单独挂载，避免 after-leave 卸载过渡根节点时残留 DOM。
 const mobileSheetMounted = ref(props.modelValue)
 const sheetPanel = ref<HTMLElement | null>(null)
 let sheetClosing = false

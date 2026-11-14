@@ -1,4 +1,4 @@
-<!-- 公共省、市、县/区选择器；地区数据统一来自 region-options。 -->
+<!-- 公共五级地区选择器；存量三级兼容，乡村数据按父级从站内接口加载。 -->
 <template>
   <div class="city-selector">
     <div
@@ -15,11 +15,11 @@
         class="form-control"
         placeholder="搜索或选择省份"
         filterable
-        :disabled="disabled || provinceDisabled || cityDisabled"
+        :disabled="disabled || provinceDisabled || cityDisabled || (showDistrict && districtDisabled) || (showTown && townDisabled) || (showVillage && villageDisabled)"
         @change="handleProvinceChange"
       >
         <el-option
-          v-for="province in provinces"
+          v-for="province in availableProvinces"
           :key="province.code"
           :label="province.name"
           :value="province.code"
@@ -47,7 +47,7 @@
         class="form-control"
         placeholder="搜索或选择城市"
         filterable
-        :disabled="disabled || cityDisabled || !selection.province"
+        :disabled="disabled || cityDisabled || (showDistrict && districtDisabled) || (showTown && townDisabled) || (showVillage && villageDisabled) || !selection.province"
         @change="handleCityChange"
       >
         <el-option
@@ -80,8 +80,8 @@
         placeholder="搜索或选择县/区"
         filterable
         clearable
-        :disabled="disabled || districtDisabled || !selection.city"
-        @change="emitChange"
+        :disabled="disabled || districtDisabled || (showTown && townDisabled) || (showVillage && villageDisabled) || !selection.city"
+        @change="handleDistrictChange"
       >
         <el-option
           v-for="district in districts"
@@ -97,18 +97,79 @@
         请选择县/区
       </div>
     </div>
+    <div
+      v-if="showTown"
+      class="form-group"
+    >
+      <label :for="`${controlId}-town`">乡镇/街道</label>
+      <el-select
+        :id="`${controlId}-town`"
+        v-model="selection.town"
+        class="form-control"
+        placeholder="搜索或选择乡镇/街道"
+        filterable
+        clearable
+        :disabled="disabled || townDisabled || (showVillage && villageDisabled) || !selection.district || loading"
+        @change="handleTownChange"
+      >
+        <el-option
+          v-for="option in remote.town"
+          :key="option.code"
+          :label="option.name"
+          :value="option.name"
+        />
+      </el-select>
+    </div>
+    <div
+      v-if="showVillage"
+      class="form-group form-group--wide"
+    >
+      <label :for="`${controlId}-village`">村委会/社区</label>
+      <el-select
+        :id="`${controlId}-village`"
+        v-model="selection.village"
+        class="form-control"
+        placeholder="搜索或选择村委会/社区"
+        filterable
+        clearable
+        :disabled="disabled || villageDisabled || !selection.town || loading"
+        @change="emitChange"
+      >
+        <el-option
+          v-for="option in remote.village"
+          :key="option.code"
+          :label="option.name"
+          :value="option.name"
+        />
+      </el-select>
+    </div>
+    <div
+      v-if="showTown"
+      class="region-notice"
+      role="status"
+    >
+      <InlineLoading
+        v-if="loading"
+        text="正在加载地区选项..."
+      />
+      <span v-else>{{ regionNotice }}</span>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, useId, watch } from 'vue'
+import { computed, reactive, ref, useId, watch } from 'vue'
+import { useLatestRequest } from '@/composables/useLatestRequest'
+import InlineLoading from '@/components/InlineLoading.vue'
 import {
   getCities,
   getDistricts,
   getProvinceName,
   normalizeRegion,
   provinces,
-  type RegionSelection
+  loadRegionChildren,
+  type RegionSelection,
+  type RegionOption
 } from '@/services/region-options'
 
 interface Props {
@@ -118,9 +179,13 @@ interface Props {
   provinceDisabled?: boolean
   cityDisabled?: boolean
   districtDisabled?: boolean
+  townDisabled?: boolean
+  villageDisabled?: boolean
   hideProvince?: boolean
   hideCity?: boolean
   showDistrict?: boolean
+  showTown?: boolean
+  showVillage?: boolean
   error?: boolean
 }
 
@@ -131,9 +196,13 @@ const props = withDefaults(defineProps<Props>(), {
   provinceDisabled: false,
   cityDisabled: false,
   districtDisabled: false,
+  townDisabled: false,
+  villageDisabled: false,
   hideProvince: false,
   hideCity: false,
   showDistrict: false,
+  showTown: false,
+  showVillage: false,
   error: false
 })
 
@@ -144,8 +213,45 @@ const emit = defineEmits<{
 
 const controlId = useId()
 const selection = ref<RegionSelection>({ province: '', city: '', district: '' })
-const cities = computed(() => getCities(selection.value.province))
-const districts = computed(() => getDistricts(selection.value.province, selection.value.city))
+const remote = reactive<Record<keyof RegionSelection, RegionOption[]>>({ province: [], city: [], district: [], town: [], village: [] })
+const loading = ref(false)
+const regionNotice = ref('')
+const { nextRequest, cancelLatest, isCanceledError } = useLatestRequest()
+const availableProvinces = computed(() => remote.province.length
+  ? [...remote.province, ...provinces.filter(option => !remote.province.some(item => item.code === option.code))]
+  : provinces)
+const cities = computed(() => remote.city.length ? remote.city : getCities(selection.value.province))
+const districts = computed(() => remote.district.length ? remote.district : getDistricts(selection.value.province, selection.value.city))
+
+watch(() => [props.showTown, selection.value.province, selection.value.city, selection.value.district, selection.value.town], async () => {
+  cancelLatest()
+  for (const field of ['province', 'city', 'district', 'town', 'village'] as const) remote[field] = []
+  if (!props.showTown) { loading.value = false; return }
+  const request = nextRequest()
+  loading.value = true
+  let parent = ''
+  try {
+    for (const field of ['province', 'city', 'district', 'town', 'village'] as const) {
+      const data = await loadRegionChildren(parent, request.signal)
+      if (!request.isLatest()) return
+      // 存量直辖市 city 可能保存“北京市”，新目录称“市辖区”；保留旧值而继续下钻。
+      const municipalityAlias = field === 'city' && ['11', '12', '31', '50'].includes(selection.value.province) &&
+        selection.value.city === getProvinceName(selection.value.province)
+      const options = municipalityAlias
+        ? data.options.map(option => option.name === '市辖区' ? { ...option, name: selection.value.city } : option)
+        : data.options
+      remote[field] = options
+      regionNotice.value = `地区数据版本：${data.version}；港澳台暂无乡镇、村级数据。`
+      const chosen = options.find(option => option.code === selection.value[field] || option.name === selection.value[field])
+      if (!chosen || field === 'village') break
+      parent = chosen.code
+    }
+  } catch (error) {
+    if (request.isLatest() && !isCanceledError(error)) regionNotice.value = '当前版本暂无该地区下级数据，或地区服务暂不可用；历史地址已保留，可重新选择上级重试。'
+  } finally {
+    if (request.isLatest()) loading.value = false
+  }
+}, { immediate: true })
 
 const emitChange = () => {
   const value = { ...selection.value }
@@ -153,16 +259,18 @@ const emitChange = () => {
   emit('change', value)
 }
 
-const handleProvinceChange = () => {
-  selection.value.city = ''
-  selection.value.district = ''
+const clearChildren = (fields: Array<keyof RegionSelection>) => {
+  for (const field of fields) {
+    // 旧三级调用不增加乡村属性，五级及已有乡村值必须随上级清空。
+    if (['city', 'district'].includes(field) || selection.value[field] !== undefined ||
+      (field === 'town' && props.showTown) || (field === 'village' && props.showVillage)) selection.value[field] = ''
+  }
   emitChange()
 }
-
-const handleCityChange = () => {
-  selection.value.district = ''
-  emitChange()
-}
+const handleProvinceChange = () => clearChildren(['city', 'district', 'town', 'village'])
+const handleCityChange = () => clearChildren(['district', 'town', 'village'])
+const handleDistrictChange = () => clearChildren(['town', 'village'])
+const handleTownChange = () => clearChildren(['village'])
 
 // 回显兼容编码和名称，只更新控件，不在打开编辑时改写历史记录。
 watch(() => props.modelValue, value => {
@@ -178,10 +286,17 @@ defineExpose({
 <style lang="scss" scoped>
 .city-selector {
   display: flex;
+  flex-wrap: wrap;
   width: 100%;
   min-width: 0;
   gap: var(--tf-space-4);
   align-items: stretch;
+
+  .region-notice {
+    flex-basis: 100%;
+    color: var(--text-secondary);
+    font-size: var(--tf-type-scale-12);
+  }
 
   .form-group {
     flex: 1;
@@ -192,7 +307,7 @@ defineExpose({
       display: block;
       margin-bottom: var(--tf-space-2);
       font-weight: 500;
-      color: var(--tf-color-neutral-700);
+      color: var(--text-primary);
       font-size: var(--tf-type-scale-14);
 
       .required {
@@ -214,8 +329,21 @@ defineExpose({
 
 @media (max-width: 767px) {
   .city-selector {
-    flex-direction: column;
-    gap: var(--tf-space-3);
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--tf-space-3) var(--tf-space-2);
+
+    .form-group--wide,
+    .region-notice,
+    .form-group:last-child:nth-child(odd),
+    .form-group:nth-child(odd):has(+ .region-notice),
+    .form-group:nth-child(odd):has(+ .form-group--wide) {
+      grid-column: 1 / -1;
+    }
+
+    .invalid-feedback {
+      overflow-wrap: anywhere;
+    }
   }
 }
 </style>

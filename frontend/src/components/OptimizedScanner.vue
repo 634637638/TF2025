@@ -189,6 +189,7 @@ const getTorchCapabilities = (track: MediaStreamTrack): TorchMediaTrackCapabilit
 
 interface Props extends VisibleProps {
   scanType: 'imei' | 'serial'
+  serialProfile?: 'phone' | 'accessory'
   phone?: ScannerPhone
   showROIDisplay?: boolean
   enableAndroidOptimization?: boolean
@@ -201,6 +202,7 @@ interface Emits extends UpdateVisibleEmits, CancelEmits {
 
 const props = withDefaults(defineProps<Props>(), {
   phone: undefined,
+  serialProfile: 'phone',
   showROIDisplay: true,
   enableAndroidOptimization: true
 })
@@ -493,7 +495,8 @@ const processDecodedText = (rawText: string) => {
     .trim()
     .slice(0, 48)
   const parsed = parseDeviceScanResult(props.scanType, rawText, {
-    appleSerialBarcode: props.scanType === 'serial' && isAppleDevice.value
+    appleSerialBarcode: props.scanType === 'serial' && isAppleDevice.value,
+    serialProfile: props.serialProfile
   })
   if (!parsed.value) {
     if (candidateText.value && now - lastScanTime.value > 4000) {

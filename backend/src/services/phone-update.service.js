@@ -11,6 +11,8 @@ const { hasUnifiedPermission } = require('../middleware/unified-auth')
 const { normalizePhoneStatus } = require('../utils/phone-status')
 const PhoneUpdateRepository = require('../repositories/phone-update.repository')
 const syncPhoneMediaDirectory = require('./phone-media-directory.service')
+const { validateSalePayment } = require('../utils/sale-payment')
+const { assertStandaloneSale } = require('../utils/sale-input')
 
 class PhoneUpdateService {
   constructor({ repository = new PhoneUpdateRepository(), permissionCheck = hasUnifiedPermission, logger = log } = {}) {
@@ -89,20 +91,7 @@ class PhoneUpdateService {
           const finalNotes = valueOrCurrent(remarks, currentPhone.remarks) ?? ''
 
           if (payment_method !== undefined && ['sold', 'peer_transfer'].includes(effectiveStatus)) {
-            const allowedChannels = {
-              cash: [null],
-              mobile: ['wechat', 'alipay'],
-              bank_card: ['card_consumption', 'bank_transfer'],
-              subsidy_card: ['subsidy_card']
-            }
-            const normalizedMethod = payment_method || null
-            const normalizedChannel = payment_channel || null
-            if (!normalizedMethod || !allowedChannels[normalizedMethod]) {
-              throw new Error('请选择有效的支付方式')
-            }
-            if (!allowedChannels[normalizedMethod].includes(normalizedChannel)) {
-              throw new Error('请选择有效的支付渠道')
-            }
+            validateSalePayment(payment_method, payment_channel)
           }
   
           if (status && effectiveStatus !== normalizePhoneStatus(currentPhone.status)) {
@@ -322,9 +311,10 @@ class PhoneUpdateService {
           await connection.beginTransaction()
           transactionStarted = true
           const lockedStatus = await this.repository.lockPhoneStatus(connection, id)
-          if (!lockedStatus || normalizePhoneStatus(lockedStatus) !== normalizePhoneStatus(currentPhone.status)) {
+          if (!lockedStatus || normalizePhoneStatus(lockedStatus.status) !== normalizePhoneStatus(currentPhone.status)) {
             throw new Error('设备状态已被其他操作修改，请刷新后重试')
           }
+          assertStandaloneSale(lockedStatus.checkout_order_id)
   
           // 执行更新phones表
           await this.repository.updatePhone(connection, updateFields, updateValues.slice(0, -1), id)

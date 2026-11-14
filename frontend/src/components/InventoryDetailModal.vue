@@ -39,7 +39,7 @@
           <h3>商品规格</h3>
         </div>
 
-        <div class="detail-grid">
+        <div class="detail-grid tf-detail-grid">
           <div
             v-if="canViewField('brand')"
             class="detail-field"
@@ -126,7 +126,7 @@
           <h3>关联信息</h3>
         </div>
 
-        <div class="detail-grid">
+        <div class="detail-grid tf-detail-grid">
           <div
             v-if="canViewField('supplier_name')"
             class="detail-field"

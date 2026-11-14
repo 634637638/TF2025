@@ -15,7 +15,7 @@ class BrandRepository extends BaseRepository {
     return withConnection(() => this.getConnection(), operation)
   }
 
-  async getManagementStats({ name, status } = {}) {
+  async getManagementStats({ name, status, businessScope = 'all' } = {}) {
     const conditions = []
     const params = []
     if (name) {
@@ -25,6 +25,10 @@ class BrandRepository extends BaseRepository {
     if (status !== undefined && status !== '') {
       conditions.push('b.status = ?')
       params.push(Number(status) === 1 ? 1 : 0)
+    }
+    if (businessScope !== 'all') {
+      conditions.push("b.business_scope IN (?, 'both')")
+      params.push(businessScope)
     }
     const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''
     const [rows] = await this.executePrepared(`
@@ -39,7 +43,7 @@ class BrandRepository extends BaseRepository {
     return rows[0]
   }
 
-  async listManagement({ name, status, pageSize, offset, returnAll, suggest }) {
+  async listManagement({ name, status, pageSize, offset, returnAll, suggest, businessScope = 'all' }) {
     const conditions = []
     const params = []
     if (name) {
@@ -56,8 +60,12 @@ class BrandRepository extends BaseRepository {
       conditions.push('status = ?')
       params.push(parseInt(status))
     }
+    if (businessScope !== 'all') {
+      conditions.push("business_scope IN (?, 'both')")
+      params.push(businessScope)
+    }
     const whereClause = conditions.length ? ` WHERE ${conditions.join(' AND ')}` : ''
-    let query = `SELECT id, name, status, sort_order, created_at, updated_at FROM brands${whereClause}`
+    let query = `SELECT id, name, business_scope, status, sort_order, created_at, updated_at FROM brands${whereClause}`
     query += ' ORDER BY sort_order ASC, name ASC, id ASC'
     if (!returnAll) query += ' LIMIT ? OFFSET ?'
     const listParams = returnAll ? params : [...params, pageSize, offset]
@@ -71,34 +79,34 @@ class BrandRepository extends BaseRepository {
       const [rows] = await this.executePrepared(`
         SELECT name
         FROM brands
-        WHERE (name LIKE ? OR LOWER(name) LIKE LOWER(?))
+        ${whereClause}
         GROUP BY name
         ORDER BY MIN(sort_order) ASC, name ASC, MIN(id) ASC
         LIMIT 5
-      `, [`%${name}%`, `%${name}%`])
+      `, params)
       suggestions = rows.map(item => item.name)
     }
     return { brands, total: countRows[0].total, suggestions }
   }
 
-  async createManagementBrand({ name, status, sortOrder }) {
+  async createManagementBrand({ name, status, sortOrder, businessScope = 'both' }) {
     const [existing] = await this.executePrepared('SELECT id FROM brands WHERE name = ?', [name])
     if (existing.length) return { type: 'duplicate' }
     const [result] = await this.executePrepared(
-      'INSERT INTO brands (name, status, sort_order, created_at) VALUES (?, ?, ?, NOW())',
-      [name, status, sortOrder]
+      'INSERT INTO brands (name, status, sort_order, business_scope, created_at) VALUES (?, ?, ?, ?, NOW())',
+      [name, status, sortOrder, businessScope]
     )
     return { type: 'created', id: result.insertId }
   }
 
-  async updateManagementBrand({ id, name, status, sortOrder }) {
+  async updateManagementBrand({ id, name, status, sortOrder, businessScope }) {
     const [existing] = await this.executePrepared(
       'SELECT id FROM brands WHERE name = ? AND id != ?', [name, id]
     )
     if (existing.length) return { type: 'duplicate' }
     const [result] = await this.executePrepared(
-      'UPDATE brands SET name = ?, status = ?, sort_order = ?, updated_at = NOW() WHERE id = ?',
-      [name, status, sortOrder, id]
+      `UPDATE brands SET name = ?, status = ?, sort_order = ?${businessScope === undefined ? '' : ', business_scope = ?'}, updated_at = NOW() WHERE id = ?`,
+      [name, status, sortOrder, ...(businessScope === undefined ? [] : [businessScope]), id]
     )
     return { type: result.affectedRows === 0 ? 'missing' : 'updated' }
   }
@@ -129,15 +137,16 @@ class BrandRepository extends BaseRepository {
     return { type: result.affectedRows === 0 ? 'missing' : 'deleted' }
   }
 
-  async getManagementSuggestions(name) {
+  async getManagementSuggestions(name, businessScope = 'phone') {
     const [rows] = await this.executePrepared(`
       SELECT DISTINCT name,
         CASE WHEN name LIKE ? THEN 1 WHEN LOWER(name) LIKE LOWER(?) THEN 2 ELSE 3 END as relevance_score
       FROM brands
       WHERE (name LIKE ? OR LOWER(name) LIKE LOWER(?))
+      ${businessScope === 'all' ? '' : "AND business_scope IN (?, 'both')"}
       ORDER BY relevance_score, sort_order ASC
       LIMIT 10
-    `, [`${name}%`, `%${name}%`, `%${name}%`, `%${name}%`])
+    `, [`${name}%`, `%${name}%`, `%${name}%`, `%${name}%`, ...(businessScope === 'all' ? [] : [businessScope])])
     return rows.map(item => item.name)
   }
 

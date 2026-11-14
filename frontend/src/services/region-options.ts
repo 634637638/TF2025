@@ -1,14 +1,22 @@
 import { areaList } from '@vant/area-data'
+import type { components } from '@/types/generated/regions'
 
-export interface RegionSelection {
-  province: string
-  city: string
-  district: string
-}
+export type RegionSelection = components['schemas']['RegionSelection']
+export type RegionOption = components['schemas']['RegionOption']
+export type RegionChildren = components['schemas']['RegionChildren']
 
-interface RegionOption {
-  code: string
-  name: string
+export async function loadRegionChildren(parent = '', signal?: AbortSignal): Promise<RegionChildren> {
+  const { unifiedApi } = await import('@/utils/unified-api')
+  const response = await unifiedApi.get<RegionChildren>('/regions', {
+    params: { parent }, signal, useCache: true, cacheTTL: 3600000,
+    showLoading: false, showError: false
+  })
+  if (!response.success || !response.data || !Array.isArray(response.data.options) ||
+    typeof response.data.version !== 'string' || typeof response.data.coverage !== 'string' ||
+    !response.data.options.every(option => typeof option.code === 'string' && typeof option.name === 'string')) {
+    throw new Error('地区选项响应格式无效')
+  }
+  return response.data
 }
 
 const cityOptions: RegionOption[] = Object.entries(areaList.city_list).map(([code, name]) => ({ code, name }))
@@ -60,9 +68,14 @@ export function normalizeRegion(value?: RegionSelection): RegionSelection {
   ))
   const legacyCity = legacyDistrict && getCities(province)
     .find(option => option.code.startsWith(legacyDistrict.code.slice(0, 4)))
-  return legacyCity && legacyDistrict
+  const normalized = legacyCity && legacyDistrict
     ? { province, city: legacyCity.name, district: legacyDistrict.name }
     : { province, city, district }
+  return {
+    ...normalized,
+    ...(value?.town !== undefined ? { town: value.town } : {}),
+    ...(value?.village !== undefined ? { village: value.village } : {})
+  }
 }
 
 /** customers 沿用 province/city/address 契约；县区保存在 address 的名称前缀中。 */
@@ -75,4 +88,10 @@ export function splitCustomerAddress(region: RegionSelection, address: string): 
 
 export function joinCustomerAddress(district: string, detail: string): string {
   return district ? `${district}${detail ? ` ${detail}` : ''}` : detail
+}
+
+export function formatCustomerAddress(value: Partial<RegionSelection> & { address?: string; region_version?: string }): string {
+  return value.region_version
+    ? [value.district, value.town, value.village, value.address].filter(Boolean).join(' ')
+    : value.address || ''
 }

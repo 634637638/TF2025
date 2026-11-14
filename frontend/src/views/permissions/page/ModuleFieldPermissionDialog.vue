@@ -106,14 +106,12 @@
         <el-button
           type="primary"
           :disabled="saving"
+          :loading="saving"
           @click="emit('save')"
         >
-          <InlineLoading
-            v-if="saving"
-            text="保存中..."
-            size="small"
-            variant="inherit"
-          />
+          <template v-if="saving">
+            保存中...
+          </template>
           <template v-else>
             保存配置
           </template>
@@ -125,7 +123,6 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import InlineLoading from '@/components/InlineLoading.vue'
 import MobileDialog from '@/components/MobileDialog.vue'
 import type { FieldDefinition, FieldGroup } from '../types'
 

@@ -185,7 +185,6 @@
               <el-input
                 v-model="phone.serial_number"
                 placeholder="序列号"
-                maxlength="30"
                 size="small"
                 @input="formatSerialNumber(phone)"
               />
@@ -210,7 +209,6 @@
                   v-model="phone.imei"
                   :class="{ 'tf-imei-input--no-imei': phone.isNoIMEIMode }"
                   :placeholder="phone.isNoIMEIMode ? '' : 'IMEI'"
-                  :maxlength="phone.isNoIMEIMode ? 30 : 15"
                   size="small"
                   @input="formatImei(phone)"
                 />
@@ -412,7 +410,7 @@
                   v-if="phone.serialValid === false"
                   class="error-message"
                 >
-                  序列号为4-30位字母、数字、斜杠或连字符
+                  序列号为4-50位字母、数字、斜杠或连字符
                 </div>
               </el-form-item>
             </div>
@@ -431,7 +429,6 @@
                     v-model="phone.imei"
                     :class="{ 'tf-imei-input--no-imei': phone.isNoIMEIMode }"
                     :placeholder="phone.isNoIMEIMode ? '' : '请输入15位IMEI号（双击启用无IMEI模式）'"
-                    :maxlength="phone.isNoIMEIMode ? 30 : 15"
                     clearable
                     @input="formatImei(phone)"
                     @blur="validateImeiOnBlur(phone)"

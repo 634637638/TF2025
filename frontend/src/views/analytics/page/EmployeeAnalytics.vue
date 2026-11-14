@@ -344,12 +344,14 @@
             </div>
           </div>
           <el-table
+            v-table-double-tap="employeeDetailTapOptions"
             class="data-table"
             :data="employeePerformance"
             stripe
             style="width: 100%"
             max-height="450"
             :table-layout="'auto'"
+            @row-dblclick="employeeDetailDoubleClick"
           >
             <el-table-column
               type="index"
@@ -475,6 +477,13 @@
               </template>
             </el-table-column>
           </el-table>
+          <RecordDetailDialog
+            v-model="employeeDetailVisible"
+            title="员工经营详情"
+            :record="employeeDetailRow"
+            :fields="employeeDetailFields"
+            :has-actions="false"
+          />
         </el-card>
       </el-col>
 
@@ -543,6 +552,7 @@
             </div>
           </div>
           <el-table
+            v-table-double-tap="attendanceDetailTapOptions"
             class="data-table"
             :data="attendanceRecords"
             stripe
@@ -550,6 +560,7 @@
             max-height="450"
             empty-text="暂无考勤记录"
             :table-layout="'auto'"
+            @row-dblclick="attendanceDetailDoubleClick"
           >
             <el-table-column
               prop="date"
@@ -617,6 +628,13 @@
               </template>
             </el-table-column>
           </el-table>
+          <RecordDetailDialog
+            v-model="attendanceDetailVisible"
+            title="考勤明细"
+            :record="attendanceDetailRow"
+            :fields="attendanceDetailFields"
+            :has-actions="false"
+          />
         </el-card>
       </el-col>
     </el-row>
@@ -624,6 +642,9 @@
 </template>
 
 <script setup lang="ts">
+import { useMobile } from '@/composables/mobile'
+import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
+import type { RecordDetailField } from '@/types/component'
 import { formatAmount } from '@/utils/format'
 import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import { ArrowUp, ArrowDown, Minus } from '@element-plus/icons-vue'
@@ -1368,6 +1389,45 @@ onBeforeUnmount(() => {
     attendanceChart.dispose()
     attendanceChart = null
   }
+})
+
+const { isMobile } = useMobile()
+const { detailRow: employeeDetailRow, detailVisible: employeeDetailVisible, doubleTapOptions: employeeDetailTapOptions, handleRowDoubleClick: employeeDetailDoubleClick } = useMobileTableDetail<(typeof employeePerformance.value)[number]>({
+  enabled: () => isMobile.value, rows: () => employeePerformance.value, getKey: row => row.id
+})
+const employeeDetailFields = computed<RecordDetailField[]>(() => {
+  const row = employeeDetailRow.value
+  if (!row) return []
+  return [
+    { key: 'name', label: '姓名', value: row.name, visible: canViewEmployeeField('performance_table') },
+    { key: 'store_name', label: '绑定店铺', value: row.store_name, visible: canViewEmployeeField('performance_table') },
+    { key: 'new_sales', label: '全新销量', value: row.new_sales || 0, visible: canViewEmployeeField('performance_table') },
+    { key: 'used_sales', label: '二手销量', value: row.used_sales || 0, visible: canViewEmployeeField('performance_table') },
+    { key: 'total_sales', label: '总销售额', value: formatAmount(row.total_sales || 0), visible: canViewEmployeeField('performance_table') },
+    { key: 'wholesale_count', label: '批发', value: row.wholesale_count || 0, visible: canViewEmployeeField('performance_table') },
+    { key: 'allocation_count', label: '划拨', value: row.allocation_count || 0, visible: canViewEmployeeField('performance_table') },
+    { key: 'attendance_rate', label: '出勤率', value: (row.attendance_rate || 0).toFixed(1), visible: canViewEmployeeField('performance_table') },
+    { key: 'salary', label: '在途工资', value: formatAmount(row.salary || 0), visible: canViewEmployeeField('performance_table') },
+    { key: 'field9', label: '趋势', value: row.trend === 'up' ? '↑' : row.trend === 'down' ? '↓' : '→', visible: canViewEmployeeField('performance_table') }
+  ]
+})
+
+
+const { detailRow: attendanceDetailRow, detailVisible: attendanceDetailVisible, doubleTapOptions: attendanceDetailTapOptions, handleRowDoubleClick: attendanceDetailDoubleClick } = useMobileTableDetail<(typeof attendanceRecords.value)[number]>({
+  enabled: () => isMobile.value, rows: () => attendanceRecords.value, getKey: row => JSON.stringify([row.date, row.employee_name, row.store_name, row.type, row.detail])
+})
+const attendanceDetailFields = computed<RecordDetailField[]>(() => {
+  const row = attendanceDetailRow.value
+  if (!row) return []
+  return [
+    { key: 'date', label: '日期', value: row.date, visible: canViewEmployeeField('attendance_records_table') },
+    { key: 'employee_name', label: '员工', value: row.employee_name, visible: canViewEmployeeField('attendance_records_table') },
+    { key: 'store_name', label: '店铺', value: row.store_name || '-', visible: canViewEmployeeField('attendance_records_table') },
+    { key: 'type', label: '类型', value: row.type, visible: canViewEmployeeField('attendance_records_table') },
+    { key: 'detail', label: '明细', value: row.detail || '-', visible: canViewEmployeeField('attendance_records_table'), wide: true },
+    { key: 'status', label: '状态', value: row.status === 'pending' ? '待处理' : row.status === 'approved' ? '已通过' : '已处理', visible: canViewEmployeeField('attendance_records_table') },
+    { key: 'approved_at', label: '处理时间', value: row.approved_at || '-', visible: canViewEmployeeField('attendance_records_table'), wide: true }
+  ]
 })
 </script>
 

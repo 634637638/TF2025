@@ -64,7 +64,7 @@ test('employee mutation service validates create data, hashes password and assig
     ['hash', 'secret', 12],
     ['insert', {
       username: 'lin', name: 'Lin', password: 'hashed-password', phone: '13800138000',
-      email: 'lin@example.com', salaryTemplateId: '3', hireDate: '2026-01-01'
+      email: 'lin@example.com', salaryTemplateId: 3, hireDate: '2026-01-01'
     }],
     ['read', 'lin'],
     ['assign', 12, 2],

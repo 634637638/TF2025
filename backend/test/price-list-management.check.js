@@ -62,7 +62,7 @@ test('价目导入在 service 校验行并规范化金额与状态，保持逐�
   } })
   const workbook = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet([
-    { 品牌: ' 苹果 ', 型号: ' iPhone 16 ', 零售价: '1,234', 批发价: '20%', 显示状态: '显示' },
+    { 品牌: ' 苹果 ', 型号: ' iPhone 16 ', 零售价: '1,234', 批发价: '20', 显示状态: '显示' },
     { 品牌: '', 型号: '缺品牌' }
   ]), '报价')
   const result = await service.importPriceList({ buffer: XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' }) })

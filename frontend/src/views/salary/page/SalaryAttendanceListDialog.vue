@@ -27,11 +27,13 @@
     </div>
 
     <el-table
+      v-table-double-tap="attendanceDetailTapOptions"
       v-tf-loading="{ active: loading, text: '正在刷新员工考勤记录...' }"
       :data="records"
       border
       stripe
       class="data-table"
+      @row-dblclick="attendanceDetailDoubleClick"
     >
       <template #empty>
         <TableLoadingRow
@@ -128,7 +130,7 @@
         </template>
       </el-table-column>
       <el-table-column
-        v-if="shouldShowActionColumn(canViewField(moduleKey, 'actions'), [canEdit, canDelete])"
+        v-if="!isMobile && (shouldShowActionColumn(canViewField(moduleKey, 'actions'), [canEdit, canDelete]))"
         label="操作"
         :min-width="attendanceRecordActionColumnWidth"
         align="center"
@@ -160,6 +162,35 @@
         </template>
       </el-table-column>
     </el-table>
+    <RecordDetailDialog
+      v-model="attendanceDetailVisible"
+      title="考勤记录详情"
+      :record="attendanceDetailRow"
+      :fields="attendanceDetailFields"
+      :has-actions="canEdit || canDelete"
+    >
+      <template #actions="{ row }">
+        <el-button
+          v-if="canEdit"
+          v-permission="'salary-records:edit'"
+          type="primary"
+          @click.stop="attendanceDetailRunAction(() => emit('edit', row))"
+        >
+          <i class="fas fa-edit" />
+          编辑
+        </el-button>
+        <el-button
+          v-if="canDelete"
+          v-permission="'salary-records:delete'"
+          type="danger"
+          @click.stop="attendanceDetailRunAction(() => row.id && emit('delete', row.id))"
+        >
+          <i class="fas fa-trash" />
+          删除
+        </el-button>
+      </template>
+    </RecordDetailDialog>
+
 
     <template #footer>
       <div class="tf-dialog-actions">
@@ -176,6 +207,9 @@
 </template>
 
 <script setup lang="ts">
+import { useMobile } from '@/composables/mobile'
+import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
+import type { RecordDetailField } from '@/types/component'
 import { computed } from 'vue'
 import { shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import type { AttendanceRecord } from '@/api/attendance'
@@ -277,6 +311,26 @@ const showDetailColumn = computed(() => [
   'leave_days',
   'overtime_hours'
 ].some(field => props.canViewField(moduleKey, field)))
+
+const { isMobile } = useMobile()
+const { detailRow: attendanceDetailRow, detailVisible: attendanceDetailVisible, doubleTapOptions: attendanceDetailTapOptions, handleRowDoubleClick: attendanceDetailDoubleClick, runDetailAction: attendanceDetailRunAction } = useMobileTableDetail<(typeof props.records)[number]>({
+  enabled: () => isMobile.value, rows: () => props.records, getKey: row => row.id
+})
+const attendanceDetailFields = computed<RecordDetailField[]>(() => {
+  const row = attendanceDetailRow.value
+  if (!row) return []
+  return [
+    { key: 'field0', label: '日期', value: formatAttendanceTableDateRange(
+      row.record_date,
+      row.record_type,
+      row.record_type === 'monthly_leave' ? row.monthly_leave_days : row.leave_days
+    ), visible: props.canViewField(moduleKey, 'attendance_record_date') },
+    { key: 'field1', label: '类型', value: props.getAttendanceTypeText(row.record_type), visible: props.canViewField(moduleKey, 'attendance_record_type') },
+    { key: 'field2', label: '详情', value: [formatDays(row.monthly_leave_days), formatDays(row.leave_days), formatDays(row.overtime_hours)].join(' / '), visible: showDetailColumn.value, wide: true },
+    { key: 'field3', label: '原因', value: getReasonText(row), visible: props.canViewField(moduleKey, 'attendance_reason') },
+    { key: 'status', label: '状态', value: row.status, visible: props.canViewField(moduleKey, 'attendance_status') }
+  ]
+})
 </script>
 
 <style lang="scss" scoped>

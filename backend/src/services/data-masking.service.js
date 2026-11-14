@@ -8,15 +8,19 @@ const { normalizeFieldConfig } = require('../utils/field-permission-normalizer')
 const log = require('../utils/log')
 
 class DataMaskingService {
+  constructor({ database = getDatabase, logger = log } = {}) {
+    this.database = database
+    this.logger = logger
+  }
+
   /**
    * 根据用户角色获取字段权限配置
    * @param {number} userId - 用户ID
    * @param {string} moduleKey - 模块标识
    * @returns {Object} - 字段权限配置
    */
-  async getUserFieldPermissions(userId, moduleKey) {
-    const pool = getDatabase()
-
+  async getUserFieldPermissions(userId, moduleKey, { strict = false } = {}) {
+    const pool = this.database()
     try {
       // 获取用户的所有角色
       const [userRoles] = await pool.execute(`
@@ -52,8 +56,12 @@ class DataMaskingService {
         try {
           const rawConfig = typeof perm.field_config === 'object'
             ? perm.field_config
-            : JSON.parse(perm.field_config || '{}')
-          const config = normalizeFieldConfig(rawConfig) || { hidden_fields: [], editable_fields: [] }
+            : JSON.parse(strict ? perm.field_config : perm.field_config || '{}')
+          const normalized = normalizeFieldConfig(rawConfig, { strict })
+          if (strict && !normalized) {
+            throw new Error('字段权限配置无效')
+          }
+          const config = normalized || { hidden_fields: [], editable_fields: [] }
 
           if (config.hidden_fields) {
             config.hidden_fields.forEach(field => {
@@ -61,8 +69,9 @@ class DataMaskingService {
             })
           }
 
-        } catch (error) {
-          log.warn('解析字段权限配置失败:', perm.field_config)
+        } catch {
+          if (strict) throw new Error('字段权限配置无效')
+          this.logger.warn('解析字段权限配置失败:', { moduleKey, roleId: perm.role_id })
         }
       })
 
@@ -71,7 +80,8 @@ class DataMaskingService {
         readonlyFields: Array.from(mergedConfig.readonlyFields)
       }
     } catch (error) {
-      log.error('获取用户字段权限失败:', error)
+      this.logger.error('获取用户字段权限失败:', error)
+      if (strict) throw error
       return { hiddenFields: [], readonlyFields: [] }
     }
   }

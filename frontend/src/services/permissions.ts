@@ -288,6 +288,8 @@ export class DynamicPermissionService {
         'approve',
         'manage',
         'sell',
+        'gift',
+        'transfer',
         'match',
         'deliver',
         'cancel',

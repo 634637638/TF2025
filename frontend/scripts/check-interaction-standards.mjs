@@ -23,14 +23,13 @@ function inspect(filePath) {
   const relativePath = path.relative(path.resolve(frontendRoot, '..'), filePath)
   const source = fs.readFileSync(filePath, 'utf8')
 
-  // 移动端表格行双击防护必须复用 useMobileRowDoubleTap，禁止页面重新手写时间戳 + 时间窗判定。
-  const isRowDoubleTapImplementation = filePath.endsWith(path.join('composables', 'useMobileRowDoubleTap.ts'))
-  if (!isRowDoubleTapImplementation) {
+  // 移动端表格行双击防护必须复用 v-table-double-tap / useMobileTableDetail，禁止页面重新手写时间戳 + 时间窗判定。
+  {
     for (const match of source.matchAll(/\b\w*[Tt]ap\w*Timestamp\b/g)) {
-      findings.push(`${relativePath}:${lineNumber(source, match.index)} 禁止手写移动端行双击时间戳 ${match[0]}，必须复用 useMobileRowDoubleTap()`)
+      findings.push(`${relativePath}:${lineNumber(source, match.index)} 禁止手写移动端行双击时间戳 ${match[0]}，必须复用 v-table-double-tap / useMobileTableDetail`)
     }
     for (const match of source.matchAll(/now\s*-\s*\w*[Tt]imestamp\w*\.value\s*<=\s*\d+/g)) {
-      findings.push(`${relativePath}:${lineNumber(source, match.index)} 禁止手写移动端行双击时间窗判定，必须复用 useMobileRowDoubleTap()`)
+      findings.push(`${relativePath}:${lineNumber(source, match.index)} 禁止手写移动端行双击时间窗判定，必须复用 v-table-double-tap / useMobileTableDetail`)
     }
   }
 

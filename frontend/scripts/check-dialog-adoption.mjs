@@ -3,7 +3,7 @@
 import { readFileSync, readdirSync } from 'node:fs'
 import { extname, join, relative, resolve } from 'node:path'
 import { parse } from '@vue/compiler-sfc'
-import { collectCoverage, isPrivateDialogChrome } from './audit-dialog-coverage.mjs'
+import { collectCoverage, isPrivateDialogChrome, readDraftCloseConfirmations } from './audit-dialog-coverage.mjs'
 
 const root = resolve(import.meta.dirname, '..')
 const sourceRoot = join(root, 'src')
@@ -60,6 +60,24 @@ function checkClosePolicy(template, file) {
     for (const child of node.children || []) visit(child)
   }
   if (template) visit(template)
+}
+
+for (const file of walk(sourceRoot, [], new Set(['.vue', '.ts', '.js']))) {
+  const source = readFileSync(file, 'utf8')
+  const relativeFile = relative(root, file).split('\\').join('/')
+  const blocks = extname(file) === '.vue'
+    ? (() => {
+      const { descriptor } = parse(source, { filename: file })
+      return [descriptor.script, descriptor.scriptSetup].filter(Boolean).map(block => ({
+        content: block.content, offset: lineNumber(source, block.loc.start.offset) - 1
+      }))
+    })()
+    : [{ content: source, offset: 0 }]
+  for (const block of blocks) {
+    for (const call of readDraftCloseConfirmations(block.content, file)) {
+      findings.push(`${relativeFile}:${block.offset + call.line} 取消或关闭新增/编辑表单不得弹出未保存/未提交二次确认，应直接关闭并沿用草稿清理`)
+    }
+  }
 }
 
 for (const file of walk(sourceRoot)) {

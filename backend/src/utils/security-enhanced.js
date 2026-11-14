@@ -5,6 +5,7 @@
  */
 
 const log = require('./log')
+const { isMoneyInput, isMobilePhone, isSingleLineText } = require('./input-values')
 const { randomInt, randomBytes } = require('node:crypto')
 
 // ============================================================================
@@ -324,9 +325,8 @@ function isValidPhone(phone) {
     return false
   }
   // 支持手机号和固定电话
-  const mobileRegex = /^1[3-9]\d{9}$/
   const landlineRegex = /^0\d{2,3}-?\d{7,8}$/
-  return mobileRegex.test(phone) || landlineRegex.test(phone)
+  return isSingleLineText(phone) && (isMobilePhone(phone) || landlineRegex.test(phone))
 }
 
 /**
@@ -368,11 +368,8 @@ function isValidIdCard(idCard) {
  * @returns {boolean} 是否有效
  */
 function isValidAmount(amount) {
-  const num = typeof amount === 'string' ? parseFloat(amount) : amount
-  if (isNaN(num)) {
-    return false
-  }
-  return num >= 0 && num <= 999999999.99 && /^\d+(\.\d{1,2})?$/.test(String(num))
+  if (!isMoneyInput(amount)) return false
+  return Number(amount) >= 0 && Number(amount) <= 999999999.99
 }
 
 // ============================================================================

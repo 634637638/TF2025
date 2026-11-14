@@ -14,7 +14,7 @@
     />
     <el-form
       v-else-if="editingAccount"
-      class="tf-dialog-form tf-dialog-form--stacked"
+      class="tf-dialog-form tf-dialog-form--stacked tf-form-layout tf-form-grid"
       label-position="top"
       @submit.prevent="saveAccount"
     >
@@ -48,7 +48,7 @@
     </el-form>
     <template v-else>
       <el-form
-        class="tf-dialog-form tf-dialog-form--stacked cloud-settings-form"
+        class="tf-dialog-form tf-dialog-form--stacked cloud-settings-form tf-form-layout tf-form-grid"
         label-position="top"
         @submit.prevent="save"
       >
@@ -112,7 +112,7 @@
             </el-form-item>
             <div
               v-if="schedule.enabled"
-              class="cloud-policy-fields"
+              class="cloud-policy-fields tf-form-row"
             >
               <el-form-item
                 label="备份间隔（小时）"
@@ -196,7 +196,7 @@
             </el-form-item>
             <div
               v-if="retention.enabled"
-              class="cloud-policy-fields"
+              class="cloud-policy-fields tf-form-row"
             >
               <el-form-item
                 label="SQL 保留份数"
@@ -644,9 +644,6 @@ const test = async () => {
   flex-shrink: 0;
 }
 @media (max-width: 767px) {
-  .cloud-policy-fields {
-    grid-template-columns: minmax(0, 1fr);
-  }
   .cloud-account-row {
     grid-template-columns: minmax(0, 1fr);
   }

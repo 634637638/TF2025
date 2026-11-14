@@ -2,6 +2,13 @@ export type SalaryRecordStatus = 'draft' | 'pending' | 'approved' | 'paid' | 'ca
 export type SalaryCommissionType = 'fixed' | 'percentage'
 export type SalaryNumericValue = number | string | null
 
+export interface SalaryGoodsCommissionRule {
+  enabled: boolean
+  type: SalaryCommissionType
+  fixed_amount: number
+  percentage: number
+}
+
 export interface SalaryTemplateAutoRaiseRule {
   enabled?: boolean
   years?: number
@@ -21,6 +28,7 @@ export interface SalaryTemplate {
   commission_new_fixed?: number
   commission_used_fixed?: number
   commission_percentage?: number
+  goods_commission_rule?: SalaryGoodsCommissionRule | null
   overtime_hourly_rate: number
   rest_days: number
   is_active?: boolean | number | null
@@ -55,6 +63,8 @@ export interface SalaryRecord {
   base_salary_adjustment: number
   base_salary_note?: string
   commission_amount: number
+  goods_commission?: SalaryGoodsCommission | null
+  calculation_version?: string
   commission_detail?: string
   sales_count?: number
   overtime_hours: number
@@ -80,7 +90,32 @@ export interface SalaryRecord {
   updated_at?: string
 }
 
-export type SalaryRecordInput = Omit<SalaryRecord, 'id' | 'employee_name' | 'username' | 'store_id' | 'store_name' | 'created_at' | 'updated_at'>
+export interface SalaryGoodsCommission {
+  earned_amount: number
+  reversal_amount: number
+  net_amount: number
+  entries: Array<{
+    kind: 'sale' | 'return'
+    order_id: number
+    order_item_id: number
+    aftersale_id: number | null
+    aftersale_item_id: number | null
+    original_salary_record_id: number | null
+    quantity: number
+    business_time: string
+    recorded_at: string
+    amount: number
+  }>
+}
+
+export type SalaryCalculation = Omit<SalaryRecord, 'id'> & { id?: number }
+export type SalaryCalculationResult = { success: true; data: SalaryCalculation } | { success: false; employee_id: number; error: string }
+
+export type SalaryRecordInput = Omit<SalaryRecord, 'id' | 'employee_name' | 'username' | 'store_id' | 'store_name' | 'created_at' | 'updated_at' | 'goods_commission' | 'calculation_version'> & {
+  expected_calculation_version?: string
+}
+export type SalaryCalculatedSaveInput = Pick<SalaryRecordInput, 'employee_id' | 'period_start' | 'period_end'> &
+  Pick<Partial<SalaryRecordInput>, 'status' | 'payment_method' | 'expected_calculation_version'>
 
 export interface SalaryFilters {
   page?: number
@@ -128,6 +163,7 @@ export interface SalaryTemplateForm {
   commission_new_fixed: number
   commission_used_fixed: number
   commission_percentage: number
+  goods_commission_rule: SalaryGoodsCommissionRule
   overtime_hourly_rate: number
   rest_days: number
   auto_raise_enabled: boolean
@@ -145,28 +181,21 @@ export interface SalaryEmployeeOption {
 
 export type SalaryPayoutStatus = 'paid' | 'unpaid'
 
-export interface SalaryPayoutRecord {
-  id?: number
-  employee_id: number
-  salary_template_id?: number | null
-  period_start?: string
-  period_end?: string
-  base_salary?: number | string | null
-  base_salary_adjustment?: number | string | null
-  commission_amount?: number | string | null
-  overtime_hours?: number | string | null
-  overtime_pay?: number | string | null
-  performance_bonus?: number | string | null
-  other_bonus?: number | string | null
-  leave_days?: number | string | null
-  leave_deduction?: number | string | null
-  other_deduction?: number | string | null
-  net_salary?: number | string | null
-  status?: string | null
-  paid_at?: string | null
-  payment_method?: string | null
-  created_at?: string
-  updated_at?: string
+/** 列表中的数据库小数可能为文本；字段名称与工资记录保持同一来源。 */
+type SalaryPayoutNumericField = 'actual_work_days' | 'base_salary' | 'base_salary_adjustment' |
+  'commission_amount' | 'sales_count' | 'overtime_hours' | 'overtime_pay' | 'performance_bonus' |
+  'other_bonus' | 'leave_days' | 'leave_deduction' | 'other_deduction' | 'net_salary'
+
+export type SalaryPayoutRecord = Pick<SalaryRecord, 'employee_id'> &
+  Partial<Omit<SalaryRecord, 'employee_id' | SalaryPayoutNumericField>> & {
+    [Field in SalaryPayoutNumericField]?: SalaryNumericValue
+  }
+
+export interface SalaryRecalculationResult {
+  total: number
+  recalculated: number
+  skipped_paid: number
+  errors: Array<{ employee_id: number; message: string }>
 }
 
 export interface SalaryPayoutEmployee extends SalaryEmployeeOption {

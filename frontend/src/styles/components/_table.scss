@@ -414,8 +414,6 @@ body .el-button.el-button.el-button.table-inline-action.table-action {
 
 // 操作列按钮统一样式 - 全局生效
 .action-buttons,
-.mobile-row-actions,
-.mobile-inline-actions,
 .table-actions,
 .tf-table-actions,
 .card-actions,
@@ -443,10 +441,10 @@ body .el-button.el-button.el-button.table-inline-action.table-action {
 // Repeating the Element class is intentional: the global button baseline uses
 // three :not() clauses. This public table selector must win so rendered button
 // padding stays synchronized with getActionColumnMinWidth().
-body :is(.action-buttons, .mobile-row-actions, .mobile-inline-actions, .table-actions, .tf-table-actions, .card-actions, .batch-actions-buttons) .el-button.el-button.el-button,
+body :is(.action-buttons, .table-actions, .tf-table-actions, .card-actions, .batch-actions-buttons) .el-button.el-button.el-button,
 .action-buttons .el-button.btn,
-.mobile-row-actions .el-button.btn,
-.mobile-inline-actions .el-button.btn,
+
+
 .table-actions .el-button.btn,
 .tf-table-actions .el-button.btn,
 .card-actions .el-button.btn,
@@ -472,10 +470,10 @@ body .el-button.el-button.el-button.table-action {
   white-space: nowrap !important;
 }
 
-body :where(.action-buttons, .mobile-row-actions, .mobile-inline-actions, .table-actions, .tf-table-actions, .card-actions, .batch-actions-buttons) .el-button i,
+body :where(.action-buttons, .table-actions, .tf-table-actions, .card-actions, .batch-actions-buttons) .el-button i,
 .action-buttons .el-button.btn i,
-.mobile-row-actions .el-button.btn i,
-.mobile-inline-actions .el-button.btn i,
+
+
 .table-actions .el-button.btn i,
 .tf-table-actions .el-button.btn i,
 .card-actions .el-button.btn i,
@@ -488,7 +486,7 @@ body :where(.action-buttons, .mobile-row-actions, .mobile-inline-actions, .table
   font-size: var(--admin-data-table-action-icon-size, var(--tf-type-scale-14)) !important;
 }
 
-body :where(.action-buttons, .mobile-row-actions, .mobile-inline-actions, .table-actions, .tf-table-actions, .card-actions, .batch-actions-buttons) .el-button > span,
+body :where(.action-buttons, .table-actions, .tf-table-actions, .card-actions, .batch-actions-buttons) .el-button > span,
 .el-button.table-action > span {
   display: inline-flex;
   align-items: center;
@@ -544,7 +542,7 @@ body .tf-actions--fit-row .el-button > span {
   --el-button-hover-text-color: #{$hover-color} !important;
 }
 
-body :where(.action-buttons, .mobile-row-actions, .mobile-inline-actions, .table-actions, .tf-table-actions, .card-actions, .batch-actions-buttons) .el-button.el-button--primary,
+body :where(.action-buttons, .table-actions, .tf-table-actions, .card-actions, .batch-actions-buttons) .el-button.el-button--primary,
 body .el-button.table-action--edit,
 body .el-button.mobile-action-btn-edit {
   @include tf-action-colors(
@@ -563,7 +561,7 @@ body .btn-action.btn-view {
   );
 }
 
-body :where(.action-buttons, .mobile-row-actions, .mobile-inline-actions, .table-actions, .tf-table-actions, .card-actions, .batch-actions-buttons) .el-button.el-button--danger,
+body :where(.action-buttons, .table-actions, .tf-table-actions, .card-actions, .batch-actions-buttons) .el-button.el-button--danger,
 body .el-button.table-action--delete,
 body .el-button.mobile-action-btn-delete,
 body .btn-action.btn-delete {
@@ -573,7 +571,7 @@ body .btn-action.btn-delete {
   );
 }
 
-body :where(.action-buttons, .mobile-row-actions, .mobile-inline-actions, .table-actions, .tf-table-actions, .card-actions, .batch-actions-buttons) .el-button.el-button--warning,
+body :where(.action-buttons, .table-actions, .tf-table-actions, .card-actions, .batch-actions-buttons) .el-button.el-button--warning,
 body .el-button.table-action--pin {
   @include tf-action-colors(
     var(--admin-action-pin-bg), var(--admin-action-pin-border), var(--admin-action-pin-color),
@@ -581,7 +579,7 @@ body .el-button.table-action--pin {
   );
 }
 
-body :where(.action-buttons, .mobile-row-actions, .mobile-inline-actions, .table-actions, .tf-table-actions, .card-actions, .batch-actions-buttons) .el-button.el-button--success,
+body :where(.action-buttons, .table-actions, .tf-table-actions, .card-actions, .batch-actions-buttons) .el-button.el-button--success,
 body .el-button.table-action--success,
 body .el-button.mobile-action-btn-status,
 body .el-button.mobile-action-btn-approve {
@@ -592,7 +590,7 @@ body .el-button.mobile-action-btn-approve {
 }
 
 body .btn-action.btn-edit,
-body :where(.action-buttons, .mobile-row-actions, .mobile-inline-actions, .table-actions, .tf-table-actions, .card-actions, .batch-actions-buttons) .el-button.btn-outline-primary {
+body :where(.action-buttons, .table-actions, .tf-table-actions, .card-actions, .batch-actions-buttons) .el-button.btn-outline-primary {
   @include tf-action-colors(
     var(--admin-action-edit-bg), var(--admin-action-edit-border), var(--admin-action-edit-color),
     var(--admin-action-edit-hover-bg), var(--admin-action-edit-hover-border), var(--admin-action-edit-hover-color)
@@ -609,7 +607,7 @@ body .btn-action.btn-manage {
   );
 }
 
-body :where(.action-buttons, .mobile-row-actions, .mobile-inline-actions, .table-actions, .tf-table-actions, .card-actions, .batch-actions-buttons) .el-button.el-button--info,
+body :where(.action-buttons, .table-actions, .tf-table-actions, .card-actions, .batch-actions-buttons) .el-button.el-button--info,
 body .el-button.table-action--neutral {
   @include tf-action-colors(
     var(--admin-action-neutral-bg), var(--admin-action-neutral-border), var(--admin-action-neutral-color),
@@ -654,7 +652,7 @@ body .el-button.table-action--warning {
 
 // Compatibility inference makes existing pages semantic without relying on
 // their historical Element type. Explicit table-action--* remains preferred.
-body :where(.action-buttons, .mobile-row-actions, .mobile-inline-actions, .table-actions, .tf-table-actions, .card-actions, .batch-actions-buttons)
+body :where(.action-buttons, .table-actions, .tf-table-actions, .card-actions, .batch-actions-buttons)
   .el-button:is([title*='查看'], [title*='详情'], [title*='预览'], :has(.fa-eye), :has(.fa-info-circle)) {
   @include tf-action-colors(
     var(--admin-action-view-bg), var(--admin-action-view-border), var(--admin-action-view-color),
@@ -662,7 +660,7 @@ body :where(.action-buttons, .mobile-row-actions, .mobile-inline-actions, .table
   );
 }
 
-body :where(.action-buttons, .mobile-row-actions, .mobile-inline-actions, .table-actions, .tf-table-actions, .card-actions, .batch-actions-buttons)
+body :where(.action-buttons, .table-actions, .tf-table-actions, .card-actions, .batch-actions-buttons)
   .el-button:is([title*='编辑'], [title*='修改'], :has(.fa-edit), :has(.fa-pen)) {
   @include tf-action-colors(
     var(--admin-action-edit-bg), var(--admin-action-edit-border), var(--admin-action-edit-color),
@@ -670,7 +668,7 @@ body :where(.action-buttons, .mobile-row-actions, .mobile-inline-actions, .table
   );
 }
 
-body :where(.action-buttons, .mobile-row-actions, .mobile-inline-actions, .table-actions, .tf-table-actions, .card-actions, .batch-actions-buttons)
+body :where(.action-buttons, .table-actions, .tf-table-actions, .card-actions, .batch-actions-buttons)
   .el-button:is([title*='删除'], [title*='移除'], :has(.fa-trash)) {
   @include tf-action-colors(
     var(--admin-action-delete-bg), var(--admin-action-delete-border), var(--admin-action-delete-color),
@@ -678,7 +676,7 @@ body :where(.action-buttons, .mobile-row-actions, .mobile-inline-actions, .table
   );
 }
 
-body :where(.action-buttons, .mobile-row-actions, .mobile-inline-actions, .table-actions, .tf-table-actions, .card-actions, .batch-actions-buttons)
+body :where(.action-buttons, .table-actions, .tf-table-actions, .card-actions, .batch-actions-buttons)
   .el-button:is([title*='置顶'], :has(.fa-thumbtack)) {
   @include tf-action-colors(
     var(--admin-action-pin-bg), var(--admin-action-pin-border), var(--admin-action-pin-color),
@@ -686,7 +684,7 @@ body :where(.action-buttons, .mobile-row-actions, .mobile-inline-actions, .table
   );
 }
 
-body :where(.action-buttons, .mobile-row-actions, .mobile-inline-actions, .table-actions, .tf-table-actions, .card-actions, .batch-actions-buttons)
+body :where(.action-buttons, .table-actions, .tf-table-actions, .card-actions, .batch-actions-buttons)
   .el-button:is([title*='权限'], [title*='配置'], [title*='设置'], [title*='管理'], [title*='绑定'], :has(.fa-lock), :has(.fa-cog), :has(.fa-link), :has(.fa-columns), :has(.fa-user-tag)) {
   @include tf-action-colors(
     var(--admin-action-manage-bg), var(--admin-action-manage-border), var(--admin-action-manage-color),
@@ -694,7 +692,7 @@ body :where(.action-buttons, .mobile-row-actions, .mobile-inline-actions, .table
   );
 }
 
-body :where(.action-buttons, .mobile-row-actions, .mobile-inline-actions, .table-actions, .tf-table-actions, .card-actions, .batch-actions-buttons)
+body :where(.action-buttons, .table-actions, .tf-table-actions, .card-actions, .batch-actions-buttons)
   .el-button:is([title*='打款'], [title*='付款'], [title*='到账'], [title*='结算'], :has(.fa-wallet), :has(.fa-credit-card), :has(.fa-money-bill)) {
   @include tf-action-colors(
     var(--admin-action-finance-bg), var(--admin-action-finance-border), var(--admin-action-finance-color),
@@ -702,7 +700,7 @@ body :where(.action-buttons, .mobile-row-actions, .mobile-inline-actions, .table
   );
 }
 
-body :where(.action-buttons, .mobile-row-actions, .mobile-inline-actions, .table-actions, .tf-table-actions, .card-actions, .batch-actions-buttons)
+body :where(.action-buttons, .table-actions, .tf-table-actions, .card-actions, .batch-actions-buttons)
   .el-button:is([title*='入库'], [title*='出库'], [title*='退库'], [title*='调货'], [title*='交付'], [title*='发货'], [title*='销售']) {
   @include tf-action-colors(
     var(--admin-action-transfer-bg), var(--admin-action-transfer-border), var(--admin-action-transfer-color),
@@ -710,7 +708,7 @@ body :where(.action-buttons, .mobile-row-actions, .mobile-inline-actions, .table
   );
 }
 
-body :where(.action-buttons, .mobile-row-actions, .mobile-inline-actions, .table-actions, .tf-table-actions, .card-actions, .batch-actions-buttons)
+body :where(.action-buttons, .table-actions, .tf-table-actions, .card-actions, .batch-actions-buttons)
   .el-button:is([title*='导出'], [title*='下载'], [title*='上传'], [title*='同步'], [title*='刷新'], :has(.fa-download), :has(.fa-upload), :has(.fa-sync), :has(.fa-refresh)) {
   @include tf-action-colors(
     var(--admin-action-export-bg), var(--admin-action-export-border), var(--admin-action-export-color),
@@ -718,7 +716,7 @@ body :where(.action-buttons, .mobile-row-actions, .mobile-inline-actions, .table
   );
 }
 
-body :where(.action-buttons, .mobile-row-actions, .mobile-inline-actions, .table-actions, .tf-table-actions, .card-actions, .batch-actions-buttons)
+body :where(.action-buttons, .table-actions, .tf-table-actions, .card-actions, .batch-actions-buttons)
   .el-button:is([title*='禁用'], [title*='停用'], [title*='离职'], [title*='拒绝'], [title*='撤销'], [title*='重置']) {
   @include tf-action-colors(
     var(--admin-action-warning-bg), var(--admin-action-warning-border), var(--admin-action-warning-color),
@@ -726,7 +724,7 @@ body :where(.action-buttons, .mobile-row-actions, .mobile-inline-actions, .table
   );
 }
 
-body :where(.action-buttons, .mobile-row-actions, .mobile-inline-actions, .table-actions, .tf-table-actions, .card-actions, .batch-actions-buttons)
+body :where(.action-buttons, .table-actions, .tf-table-actions, .card-actions, .batch-actions-buttons)
   .el-button:is([title*='完成'], [title*='通过'], [title*='审批'], [title*='审核'], [title*='启用'], :has(.fa-check), :has(.fa-check-circle)) {
   @include tf-action-colors(
     var(--admin-action-success-bg), var(--admin-action-success-border), var(--admin-action-success-color),
@@ -736,7 +734,7 @@ body :where(.action-buttons, .mobile-row-actions, .mobile-inline-actions, .table
 
 // Destructive intent has final precedence over compatibility inference. For
 // example, "取消打款" contains a finance keyword but must remain danger red.
-body :where(.action-buttons, .mobile-row-actions, .mobile-inline-actions, .table-actions, .tf-table-actions, .card-actions, .batch-actions-buttons)
+body :where(.action-buttons, .table-actions, .tf-table-actions, .card-actions, .batch-actions-buttons)
   .el-button:is(.el-button--danger, .tf-button--danger, .tf-button--delete, .table-action--delete, [title*='取消打款'], [title*='取消付款']) {
   @include tf-action-colors(
     var(--admin-action-delete-bg), var(--admin-action-delete-border), var(--admin-action-delete-color),
@@ -744,7 +742,7 @@ body :where(.action-buttons, .mobile-row-actions, .mobile-inline-actions, .table
   );
 }
 
-body :where(.action-buttons, .mobile-row-actions, .mobile-inline-actions, .table-actions, .tf-table-actions, .card-actions, .batch-actions-buttons) .el-button.is-disabled,
+body :where(.action-buttons, .table-actions, .tf-table-actions, .card-actions, .batch-actions-buttons) .el-button.is-disabled,
 .el-button.table-action.is-disabled {
   --el-button-disabled-bg-color: var(--admin-action-disabled-bg) !important;
   --el-button-disabled-border-color: var(--admin-action-disabled-border) !important;
@@ -873,36 +871,6 @@ body.is-admin-table-dragging * {
     font-size: var(--tf-toolbar-button-font-size, var(--tf-type-scale-12)) !important;
   }
 
-  .mobile-row-actions,
-  .mobile-inline-actions {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    gap: var(--admin-data-table-action-gap, 8px);
-    width: 100% !important;
-    flex-wrap: nowrap !important;
-  }
-
-  .mobile-row-actions {
-    padding: 2px !important;
-    background: rgba(255, 255, 255, 0.96) !important;
-    border: 1px solid var(--tf-color-border-blue-muted) !important;
-    border-radius: 8px !important;
-  }
-
-  :where(.mobile-row-actions, .mobile-inline-actions) :where(.el-button, .mobile-action-btn) {
-    flex: 1 1 0 !important;
-    min-width: 0 !important;
-  }
-
-  :where(.mobile-row-actions, .mobile-inline-actions) :where(.el-button, .mobile-action-btn) i {
-    margin-right: 2px !important;
-  }
-
-  :where(.mobile-row-actions, .mobile-inline-actions) :where(.el-button, .mobile-action-btn):hover {
-    transform: none !important;
-    box-shadow: none !important;
-  }
 
   .admin-page {
     .el-table {

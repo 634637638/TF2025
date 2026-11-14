@@ -2,19 +2,19 @@
   "files": [
     {
       "file": "src/styles/admin-layout.css",
-      "max": 380,
+      "max": 369,
       "category": "shared-contract",
       "reason": "Unified admin layout must override legacy page-scoped spacing, table shells, statistic card colors, and base-table content dimensions."
     },
     {
       "file": "src/styles.scss",
-      "max": 116,
+      "max": 109,
       "category": "shared-contract",
       "reason": "Global Element Plus poppers, teleported dialogs, loading states and mobile safe-area contracts."
     },
     {
       "file": "src/styles/components/_table.scss",
-      "max": 200,
+      "max": 186,
       "category": "shared-contract",
       "reason": "Unified Element Plus table contract overrides vendor and legacy page table declarations, including the action-column cell padding contract."
     },
@@ -26,7 +26,7 @@
     },
     {
       "file": "src/styles/responsive.scss",
-      "max": 59,
+      "max": 58,
       "category": "responsive-safety",
       "reason": "Global mobile breakpoints, safe-area rules and Safari phone fallbacks must win over desktop legacy declarations."
     },
@@ -218,7 +218,7 @@
     },
     {
       "file": "src/views/attendance/styles/attendance-view/responsive.css",
-      "max": 11,
+      "max": 2,
       "category": "responsive-safety",
       "reason": "Mobile attendance table intentionally collapses desktop-only columns and overrides shared table padding."
     },
@@ -305,12 +305,6 @@
       "max": 3,
       "category": "accessibility-security",
       "reason": "Drag row states and reduced-motion accessibility rules override shared table and animation contracts."
-    },
-    {
-      "file": "src/views/customers/CustomersView.vue",
-      "max": 4,
-      "category": "responsive-safety",
-      "reason": "Element Plus grid inline gutters require mobile overrides."
     },
     {
       "file": "src/views/data-optimization/page/styles/data-check-tab/data-table.scss",

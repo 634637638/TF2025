@@ -1,6 +1,7 @@
 const log = require('../utils/log')
 const AttendanceService = require('../services/attendance.service')
 const ApiResponse = require('../utils/response')
+const { parseInput } = require('../middleware/validation')
 const {
   getAttendanceAccessScope,
   canAccessScopedTarget
@@ -127,7 +128,9 @@ class AttendanceController {
 
       // 对于非管理员，强制使用当前用户ID
       const targetEmployeeId = scopeInfo.isAdmin
-        ? (req.body.employee_id ? parseInt(req.body.employee_id, 10) : userId)
+        ? (req.body.employee_id === undefined || req.body.employee_id === null || req.body.employee_id === ''
+          ? userId
+          : parseInput({ id: req.body.employee_id }, { id: { type: 'id', required: true, label: '员工ID' } }).id)
         : userId
 
       const payload = {

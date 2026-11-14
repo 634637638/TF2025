@@ -1,5 +1,7 @@
+const { getActiveSaleSql } = require('../utils/sale-status')
 const BaseRepository = require('./base.repository')
 const log = require('../utils/log')
+const { COLUMNS: ADDRESS_COLUMNS } = require('../config/customer-address')
 
 const CUSTOMER_SELECT_FIELDS = `
   id, name, phone, email, customer_type, vip_level, gender, birthday,
@@ -14,12 +16,15 @@ class CustomerRepository extends BaseRepository {
   }
 
   async createCustomerProfile(customerData, memberNumber) {
+    const addressFields = Object.keys(ADDRESS_COLUMNS).filter(field => Object.hasOwn(customerData, field))
+    const addressColumnSql = addressFields.length ? `, ${addressFields.join(', ')}` : ''
+    const addressValuesSql = addressFields.map(() => ', ?').join('')
     const [result] = await this.executePrepared(`
       INSERT INTO customers (
         name, gender, phone, email, birthday, id_card,
         address, city, province, customer_type,
-        remarks, wechat, qq, apple_id, status, member_number, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, NOW(), NOW())
+        remarks, wechat, qq, apple_id, status, member_number, created_at, updated_at${addressColumnSql}
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, NOW(), NOW()${addressValuesSql})
     `, [
       customerData.name,
       customerData.gender,
@@ -35,18 +40,24 @@ class CustomerRepository extends BaseRepository {
       customerData.wechat,
       customerData.qq,
       customerData.apple_id,
-      memberNumber
+      memberNumber,
+      ...addressFields.map(field => customerData[field])
     ])
     const [rows] = await this.executePrepared(
       'SELECT id, name, gender, phone, email, birthday, id_card, address, city, province, customer_type, remarks, wechat, qq, apple_id, member_number FROM customers WHERE id = ?',
       [result.insertId]
     )
-    return rows[0]
+    return rows[0] ? { ...rows[0], ...Object.fromEntries(addressFields.map(field => [field, customerData[field]])) } : rows[0]
   }
 
   async getCustomerColumns() {
     const columns = await this.executeQuery('SHOW COLUMNS FROM customers')
     return new Set(columns.map(column => column.Field).filter(Boolean))
+  }
+
+  async getCustomerAddressFields(ids) {
+    if (!ids.length || ids.some(id => !Number.isSafeInteger(Number(id)) || Number(id) <= 0)) return []
+    return this.executeQuery(`SELECT id, ${Object.keys(ADDRESS_COLUMNS).join(', ')} FROM customers WHERE id IN (${ids.map(() => '?').join(', ')})`, ids.map(Number))
   }
 
   /**
@@ -345,38 +356,38 @@ class CustomerRepository extends BaseRepository {
         remark: 'c.remarks',
         remarks: 'c.remarks'
       }
+      if (filters.addressLevelsReady) {
+        for (const field of ['district', 'town', 'village']) fieldMap[field] = `c.${field}`
+      }
       const selectedFields = requestedFields.filter(field => Object.prototype.hasOwnProperty.call(fieldMap, field))
       if (selectedFields.length > 0) {
         conditions.push(`(${selectedFields.map(field => `${fieldMap[field]} LIKE ?`).join(' OR ')})`)
         params.push(...selectedFields.map(() => `%${filters.search}%`))
-      }
+      } else conditions.push('1 = 0')
     }
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
     const sortableFields = new Set(['id', 'name', 'created_at', 'register_date', 'last_purchase_date'])
     const orderField = sortableFields.has(String(sort_by)) ? String(sort_by) : 'id'
     const orderDirection = String(sort_order).toLowerCase() === 'asc' ? 'ASC' : 'DESC'
+    const orderExpression = orderField === 'last_purchase_date' ? 'sales_total.last_purchase_date' : `c.${orderField}`
     const offset = (page - 1) * page_size
     const customers = await this.executeQuery(`
       SELECT c.id, c.name, c.phone, c.email, c.customer_type, c.vip_level, c.gender,
              c.city, c.province, c.balance, c.points, c.status, c.remarks, c.created_at, c.updated_at,
              c.member_number, c.wechat, c.qq, c.apple_id, c.id_card, c.address,
              COALESCE(sales_total.total_amount, 0) as total_spent,
-             COALESCE(sales_count.purchase_count, 0) as purchase_count,
-             c.last_purchase_date
+             COALESCE(sales_total.purchase_count, 0) as purchase_count,
+             sales_total.last_purchase_date
       FROM customers c
       LEFT JOIN (
-        SELECT customer_id, COUNT(*) as purchase_count
-        FROM sales
-        GROUP BY customer_id
-      ) sales_count ON c.id = sales_count.customer_id
-      LEFT JOIN (
-        SELECT s.customer_id, SUM(s.sale_price) as total_amount
-        FROM sales s
+        SELECT s.customer_id, SUM(s.sale_price) as total_amount, COUNT(*) as purchase_count,
+          MAX(s.sale_time) as last_purchase_date
+        FROM sales s WHERE ${getActiveSaleSql()}
         GROUP BY s.customer_id
       ) sales_total ON c.id = sales_total.customer_id
       ${whereClause}
-      ORDER BY c.${orderField} ${orderDirection}
+      ORDER BY ${orderExpression} ${orderDirection}
       LIMIT ? OFFSET ?
     `, [...params, page_size, offset])
     const [countResult] = await this.executeQuery(`
@@ -593,7 +604,7 @@ class CustomerRepository extends BaseRepository {
       this.executeQuery(`SELECT COUNT(*) AS total FROM customers c ${whereClause}`, params),
       this.executeQuery(`
         SELECT COUNT(DISTINCT CASE WHEN s.id IS NOT NULL THEN c.id END) AS active
-        FROM customers c LEFT JOIN sales s ON c.id = s.customer_id ${whereClause}
+        FROM customers c LEFT JOIN sales s ON c.id = s.customer_id AND ${getActiveSaleSql()} ${whereClause}
       `, params),
       this.executeQuery(`
         SELECT COUNT(*) AS new_customers FROM customers c

@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PerformanceReport",
+  "type": "object",
+  "additionalProperties": false,
+  "minProperties": 15,
+  "properties": {
+    "fcp": { "type": "number", "minimum": 0, "maximum": 86400000 },
+    "lcp": { "type": "number", "minimum": 0, "maximum": 86400000 },
+    "inp": { "type": "number", "minimum": 0, "maximum": 86400000 },
+    "cls": { "type": "number", "minimum": 0, "maximum": 1000 },
+    "ttfb": { "type": "number", "minimum": 0, "maximum": 86400000 },
+    "domReady": { "type": "number", "minimum": 0, "maximum": 86400000 },
+    "loadComplete": { "type": "number", "minimum": 0, "maximum": 86400000 },
+    "tti": { "type": "number", "minimum": 0, "maximum": 86400000 },
+    "resourceCount": { "type": "integer", "minimum": 0, "maximum": 10000000 },
+    "resourceSize": { "type": "number", "minimum": 0, "maximum": 1000000000000 },
+    "apiCount": { "type": "integer", "minimum": 0, "maximum": 10000000 },
+    "apiTotal": { "type": "number", "minimum": 0, "maximum": 1000000000000 },
+    "apiMax": { "type": "number", "minimum": 0, "maximum": 86400000 },
+    "longTaskCount": { "type": "integer", "minimum": 0, "maximum": 10000000 },
+    "pageViews": { "type": "integer", "minimum": 0, "maximum": 10000000 }
+  }
+}

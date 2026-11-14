@@ -41,6 +41,8 @@
 
 遮罩仅覆盖表头、数据和列表范围，不挂在整个页面、搜索区或统计区。禁止通过 `loading ? [] : rows` 清空旧数据制造闪烁。已有数据刷新时，不能再叠加 `TableLoadingRow` 或其他 spinner。
 
+当空表刷新同时挂载 `TableLoadingRow` 和区域遮罩时，由 `styles.scss` 的公共规则隐藏占位内容并保留高度，只显示区域反馈。该规则使用 `visibility`，避免路由懒加载后组件的 `display: flex` 覆盖隐藏状态；不得在页面逐个补私有样式或新增 `!important`。
+
 局部 Loading 激活时立即取消全局层的等待和离场过渡；局部结束不自动恢复已被抑制的全局层。一个操作的区域反馈不能叠加另一套全屏遮罩；按钮内置动画可以同时承担防重复反馈。
 
 ## 顶部刷新
@@ -97,8 +99,12 @@ Element Plus 按钮只使用自身 `:loading`，按业务叠加禁用条件；�
 
 仅确有业务语义的全局长操作和异步父级承载例外登记在 `frontend/scripts/check-loading-patterns.mjs`；不得以页面私有 Loader 或视觉样式作为例外。例外是只能减少的存量债务，不是可新增额度；最后一处移除时同步删除登记，不重建基线扩大上限。
 
+2026-11-13 按钮存量已清零：17个文件的25处 Element Plus 按钮全部改用内置 `:loading`，保留原禁用条件、操作文案和失败重试，审计不再提供内联 spinner 迁移额度。数据检查的全量清理使用已有表格局部状态，删除重复全局触发；其余4处无局部状态的单组清理、合并及选中删除，以及规范页1处真实演示，仍保留精确登记，不能机械删除后让操作无反馈。按钮交互回归见 `permission-dialog-loading.spec.ts`，完整浏览器及验收边界见台账T14/T21。
+
 ## 审计与验收边界
 
 执行 `npm --prefix frontend run check:loading` 及相关类型、UI 和行为测试。逐文件接入证据使用 `npm --silent --prefix frontend run check:loading -- --json`；统计包括 `LoadingOverlay`，按钮反馈与区域反馈分别列出。逐路由复核见[页面台账](page-audit-inventory.md#全量-loading-接入复核2026-11-11)。公共行为回归位于 `frontend/tests/global-loading.spec.ts`、`table-loading-directive.spec.ts`、`loading-store.spec.ts`、`loading-overlay.spec.ts`、`section-loading.spec.ts`、`table-loading-row.spec.ts`、`loading-text.spec.ts` 和 `api-loading.spec.ts`。后两者验证业务文案，以及真实 Axios 拦截器在模拟适配器下的并发、失败、取消、静默和重试生命周期；不访问业务 API。审计解析完整 Vue SFC 模板，检查全局唯一挂载、公共入口、重复动画、空容器、业务页泛化文案、按钮与已登记例外，解析失败必须失败。
+
+`npm --prefix frontend run test:input-flows -- --loading-only` 使用真实表格、占位和区域指令，在全局样式之后懒加载占位组件，验证首载、空结果、空表刷新、保留数据刷新和失败结束；断言每次仅一个可见等待，隐藏占位仍保留高度。默认覆盖 Chromium 五视口明暗主题；追加 `--ios` 覆盖 Xcode iPhone 模拟器 Safari，不能替代物理设备。完整 `--overlays` 回归也包含此用例。
 
 静态检查不能证明每个页面的加载粒度或视觉正确。浏览器分别验证首屏短/长请求、保留数据刷新、失败、取消、连续点击、卸载清理及全局/局部互斥，不以历史使用数量或审计通过代替实际验收。

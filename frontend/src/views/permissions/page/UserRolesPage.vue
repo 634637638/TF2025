@@ -8,6 +8,7 @@
 
     <div class="table-responsive">
       <el-table
+        v-table-double-tap="mobileDetailTapOptions"
         v-tf-loading="{ active: ctx.usersLoading, text: '正在刷新用户角色列表...' }"
         :data="ctx.paginatedUsers"
         border
@@ -16,6 +17,7 @@
         table-layout="fixed"
         :fit="true"
         row-key="id"
+        @row-dblclick="mobileDetailDoubleClick"
       >
         <el-table-column
           v-if="ctx.canViewPermissionsField('users.id')"
@@ -103,7 +105,7 @@
           </template>
         </el-table-column>
         <el-table-column
-          v-if="ctx.showPermissionsActionField"
+          v-if="!isMobile && (ctx.showPermissionsActionField)"
           label="操作"
           :width="$getActionColumnWidth(['分配角色', '删除'])"
           align="center"
@@ -143,6 +145,31 @@
           />
         </template>
       </el-table>
+      <RecordDetailDialog
+        v-model="mobileDetailVisible"
+        title="用户角色详情"
+        :record="mobileDetailRow"
+        :fields="mobileDetailFields"
+        :has-actions="ctx.canEdit || ctx.canDelete"
+      >
+        <template #actions="{ row }">
+          <el-button
+            v-if="ctx.canEdit"
+            type="primary"
+            title="分配角色"
+            @click.stop="mobileDetailRunAction(() => ctx.handleEditUserRoles(row))"
+          >
+            <i class="fas fa-user-tag" /><span>分配角色</span>
+          </el-button><el-button
+            v-if="ctx.canDelete"
+            type="danger"
+            title="删除用户"
+            @click.stop="mobileDetailRunAction(() => ctx.handleDeleteUser(row))"
+          >
+            <i class="fas fa-trash" /><span>删除</span>
+          </el-button>
+        </template>
+      </RecordDetailDialog>
     </div>
 
     <Pagination
@@ -162,8 +189,13 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
+import { useMobile } from '@/composables/mobile'
+import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
+import type { RecordDetailField } from '@/types/component'
 import Pagination from '@/components/Pagination.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
+import type { PermissionUser } from '../types'
 import { usePermissionsPageContext } from './context'
 import { getTextColumnMinWidth } from '@/utils/table-layout'
 
@@ -175,4 +207,21 @@ const getUserColumnWidth = (
   maxWidth: number,
   horizontalPadding = 24
 ) => getTextColumnMinWidth([label, ...values], { minWidth, maxWidth, horizontalPadding })
+
+const { isMobile } = useMobile()
+const { detailRow: mobileDetailRow, detailVisible: mobileDetailVisible, doubleTapOptions: mobileDetailTapOptions, handleRowDoubleClick: mobileDetailDoubleClick, runDetailAction: mobileDetailRunAction } = useMobileTableDetail<PermissionUser>({
+  enabled: () => isMobile.value, rows: () => ctx.paginatedUsers, getKey: row => row.id
+})
+const mobileDetailFields = computed<RecordDetailField[]>(() => {
+  const row = mobileDetailRow.value
+  if (!row) return []
+  return [
+    { key: 'username', label: '用户名', value: row.username, visible: ctx.canViewPermissionsField('users.username') },
+    { key: 'full_name', label: '姓名', value: row.full_name || row.username, visible: ctx.canViewPermissionsField('users.full_name') },
+    { key: 'roles', label: '角色', value: ctx.getUserRoleNames(row.roles).join('、'), visible: ctx.canViewPermissionsField('users.roles'), wide: true },
+    { key: 'status', label: '状态', value: row.status === 1 ? '启用' : '禁用', visible: ctx.canViewPermissionsField('users.status') },
+    { key: 'last_login', label: '最后登录', value: ctx.formatDate(row.last_login), visible: ctx.canViewPermissionsField('users.last_login'), wide: true }
+  ]
+})
+
 </script>

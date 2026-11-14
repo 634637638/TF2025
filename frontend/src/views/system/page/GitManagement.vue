@@ -209,12 +209,15 @@
                 <div class="card-body">
                   <div
                     v-if="commitHistory.length > 0"
+                    v-table-double-tap="commitDetailTapOptions"
                     class="commit-list"
                   >
                     <div
-                      v-for="(commit, index) in commitHistory"
-                      :key="index"
+                      v-for="commit in commitHistory"
+                      :key="commit.hash"
                       class="commit-item"
+                      data-mobile-record
+                      @dblclick="commitDetailDoubleClick(commit, null, $event)"
                     >
                       <div class="commit-icon">
                         <i class="fas fa-code-commit" />
@@ -256,7 +259,10 @@
                             {{ commit.date }}
                           </span>
                         </div>
-                        <div class="commit-actions">
+                        <div
+                          v-if="!isMobile"
+                          class="commit-actions"
+                        >
                           <el-button
                             v-if="canEdit"
                             type="primary"
@@ -307,7 +313,7 @@
                 </div>
                 <div class="card-body">
                   <form
-                    class="commit-form"
+                    class="commit-form tf-form-layout"
                     @submit.prevent="handleCommit"
                   >
                     <div class="form-group">
@@ -459,6 +465,42 @@
           </div>
         </div>
       </div>
+      <RecordDetailDialog
+        v-model="commitDetailVisible"
+        title="提交记录详情"
+        :fields="commitDetailFields"
+        :record="commitDetailRow"
+        :has-actions="canEdit || (commitDetailRow && canDeleteCommit(commitDetailRow))"
+      >
+        <template #actions="{ row }">
+          <el-button
+            v-if="canEdit"
+            v-permission="'git-management:edit'"
+            type="primary"
+            :disabled="checkingOut"
+            @click.stop="commitRunAction(record => handleCheckoutCommit(record.hash, 'view'))"
+          >
+            查看版本
+          </el-button>
+          <el-button
+            v-if="canEdit"
+            v-permission="'git-management:edit'"
+            type="warning"
+            :disabled="checkingOut"
+            @click.stop="commitRunAction(record => handleCheckoutCommit(record.hash, 'reset'))"
+          >
+            重置
+          </el-button>
+          <el-button
+            v-if="canDeleteCommit(row)"
+            v-permission="'git-management:delete'"
+            type="danger"
+            @click.stop="commitRunAction(record => handleDeleteCommit(record.hash, record.message))"
+          >
+            隐藏
+          </el-button>
+        </template>
+      </RecordDetailDialog>
     </PermissionGate>
   </div>
 </template>
@@ -466,6 +508,8 @@
 <script setup>
 import { confirmAction, alertAction } from '@/utils/message-box'
 import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { useMobile } from '@/composables/mobile'
+import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
 
 import { unifiedApi } from '@/utils/unified-api'
 import { PageHeader, PermissionGate } from '@/components/base'
@@ -1110,6 +1154,22 @@ watch(canView, async (value) => {
     commitHistory.value = []
   }
 }, { immediate: true })
+
+const { isMobile } = useMobile()
+const { detailRow: commitDetailRow, detailVisible: commitDetailVisible, doubleTapOptions: commitDetailTapOptions,
+  handleRowDoubleClick: commitDetailDoubleClick, runDetailAction: commitRunAction } = useMobileTableDetail({
+  enabled: () => isMobile.value && canView.value, rows: commitHistory, getKey: row => row.hash,
+  rowSelector: '[data-mobile-record]'
+})
+const commitDetailFields = computed(() => {
+  const row = commitDetailRow.value
+  return row ? [
+    { key: 'hash', label: '提交标识', value: row.hash, visible: canView.value, wide: true },
+    { key: 'author', label: '作者', value: row.author, visible: canView.value },
+    { key: 'date', label: '提交时间', value: row.date, visible: canView.value },
+    { key: 'message', label: '提交说明', value: row.message, visible: canView.value, wide: true }
+  ] : []
+})
 </script>
 
 <style lang="scss" scoped>

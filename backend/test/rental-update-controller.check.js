@@ -92,7 +92,7 @@ test('rental update service rolls back missing, closed, invalid and overpaid-per
   const cases = [
     { current: null, expectedCode: 'RENTAL_NOT_FOUND', body: {} },
     { current: { status: 'completed', billing_mode: 'daily' }, expectedStatus: 400, body: {} },
-    { current: { status: 'active', billing_mode: 'daily', unit_price: 10, deposit: 0 }, expectedStatus: 400, body: { deposit: -1 } },
+    { current: { status: 'active', billing_mode: 'daily', unit_price: 10, deposit: 0 }, expectedStatus: 400, body: { deposit: -1 }, beforeConnection: true },
     { current: { status: 'active', billing_mode: 'buyout', term_months: 2 }, paidCount: 3, expectedStatus: 400, body: { term_months: 2 } }
   ]
   for (const item of cases) {
@@ -100,8 +100,11 @@ test('rental update service rolls back missing, closed, invalid and overpaid-per
     await assert.rejects(service.update({ id: '8', body: item.body, isAdministrator: false }), error => (
       item.expectedCode ? error.code === item.expectedCode : error.statusCode === item.expectedStatus
     ))
-    assert.ok(events.includes('rollback'))
-    assert.equal(events.at(-1), 'release')
+    if (item.beforeConnection) assert.deepEqual(events, [])
+    else {
+      assert.ok(events.includes('rollback'))
+      assert.equal(events.at(-1), 'release')
+    }
     assert.ok(!events.includes('commit'))
   }
 })

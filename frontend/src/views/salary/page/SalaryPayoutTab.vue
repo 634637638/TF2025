@@ -91,7 +91,7 @@
       </div>
       <div class="table-responsive">
         <el-table
-          ref="tableRef"
+          v-table-double-tap="mobileDetailTapOptions"
           v-tf-loading="{ active: loading, text: '正在刷新工资发放记录...' }"
           :data="rows"
           border
@@ -100,7 +100,7 @@
           :fit="true"
           row-key="id"
           class="data-table devices-table base-data-table salary-payout-table"
-          @row-click="handleRowTap"
+          @row-dblclick="mobileDetailDoubleClick"
         >
           <template #empty>
             <TableLoadingRow
@@ -114,49 +114,7 @@
             />
           </template>
 
-          <el-table-column
-            v-if="isMobile && showActionColumn"
-            type="expand"
-            width="1"
-            class-name="mobile-expand-column"
-            label-class-name="mobile-expand-header"
-          >
-            <template #default="{ row }">
-              <div class="mobile-row-actions">
-                <el-button
-                  v-if="canCreate"
-                  v-permission="'salary-records:create'"
-                  size="small"
-                  :type="row.payoutRecord ? 'warning' : 'primary'"
-                  class="mobile-action-btn mobile-action-btn-status"
-                  @click.stop="row.payoutRecord ? emit('recalculate', row) : emit('settle', row)"
-                >
-                  <i :class="row.payoutRecord ? 'fas fa-rotate' : 'fas fa-check'" />
-                  <span>{{ row.payoutRecord ? '重算' : '结算' }}</span>
-                </el-button>
-                <el-button
-                  v-if="row.payoutRecord && canEdit"
-                  v-permission="'salary-records:edit'"
-                  size="small"
-                  type="success"
-                  class="mobile-action-btn mobile-action-btn-status"
-                  @click.stop="emit('edit', row)"
-                >
-                  <span>编辑</span>
-                </el-button>
-                <el-button
-                  v-if="row.payoutRecord && canDelete"
-                  v-permission="'salary-records:delete'"
-                  size="small"
-                  type="danger"
-                  class="mobile-action-btn mobile-action-btn-delete"
-                  @click.stop="emit('delete', row)"
-                >
-                  <span>删除</span>
-                </el-button>
-              </div>
-            </template>
-          </el-table-column>
+
 
           <el-table-column
             v-if="!isMobile"
@@ -195,7 +153,7 @@
             align="center"
           >
             <template #default="{ row }">
-              <span class="amount-text">¥{{ formatAmount(getBaseSalary(row.id)) }}</span>
+              <span class="amount-text">¥{{ formatAmount(getValue(row, 'base_salary')) }}</span>
             </template>
           </el-table-column>
           <el-table-column
@@ -205,7 +163,7 @@
             align="center"
           >
             <template #default="{ row }">
-              <span class="text-regular font-semibold">{{ getSalesStats(row.id).sales_count }}台</span>
+              <span class="text-regular font-semibold">{{ getValue(row, 'sales_count') }}台</span>
             </template>
           </el-table-column>
           <el-table-column
@@ -216,10 +174,13 @@
           >
             <template #default="{ row }">
               <span
-                v-if="getSalesStats(row.id).sales_count > 0"
+                v-if="!row.payoutRecord"
+              >待核对</span>
+              <span
+                v-else-if="Number(getValue(row, 'commission_amount')) !== 0"
                 class="text-danger font-semibold salary-mobile-commission"
               >
-                {{ isMobile ? formatAmount(calculateCommission(row.id)) : `¥${formatAmount(calculateCommission(row.id))}` }}
+                {{ isMobile ? formatAmount(getValue(row, 'commission_amount')) : `¥${formatAmount(getValue(row, 'commission_amount'))}` }}
               </span>
               <span
                 v-else
@@ -234,7 +195,7 @@
             align="center"
           >
             <template #default="{ row }">
-              <span class="text-success font-semibold">{{ calculateWorkDays(row.id) }}天</span>
+              <span class="text-success font-semibold">{{ getValue(row, 'actual_work_days') }}天</span>
             </template>
           </el-table-column>
           <el-table-column
@@ -244,7 +205,14 @@
             align="center"
           >
             <template #default="{ row }">
-              <span class="text-success">
+              <span
+                v-if="isPaidSalaryRecord(row.payoutRecord)"
+                class="text-secondary"
+              >-</span>
+              <span
+                v-else
+                class="text-success"
+              >
                 {{ getAttendanceStats(row.id).monthly_leave_days_used || 0 }}/{{ getAttendanceStats(row.id).monthly_leave_days_available || 0 }}
               </span>
             </template>
@@ -257,10 +225,10 @@
           >
             <template #default="{ row }">
               <span
-                v-if="getAttendanceStats(row.id).leave_days > 0"
+                v-if="Number(getValue(row, 'leave_days')) > 0"
                 class="text-danger font-semibold"
               >
-                {{ getAttendanceStats(row.id).leave_days }}天
+                {{ getValue(row, 'leave_days') }}天
               </span>
               <span
                 v-else
@@ -276,10 +244,10 @@
           >
             <template #default="{ row }">
               <span
-                v-if="getAttendanceStats(row.id).leave_days > 0"
+                v-if="Number(getValue(row, 'leave_deduction')) !== 0"
                 class="text-danger font-semibold"
               >
-                -¥{{ formatAmount(calculateLeave(row.id, getAttendanceStats(row.id).leave_days)) }}
+                -¥{{ formatAmount(getValue(row, 'leave_deduction')) }}
               </span>
               <span
                 v-else
@@ -295,10 +263,10 @@
           >
             <template #default="{ row }">
               <span
-                v-if="getAttendanceStats(row.id).overtime_hours > 0"
+                v-if="Number(getValue(row, 'overtime_hours')) > 0"
                 class="text-blue font-semibold"
               >
-                {{ Math.round(getAttendanceStats(row.id).overtime_hours) }}小时
+                {{ Math.round(Number(getValue(row, 'overtime_hours'))) }}小时
               </span>
               <span
                 v-else
@@ -314,10 +282,10 @@
           >
             <template #default="{ row }">
               <span
-                v-if="getAttendanceStats(row.id).overtime_hours > 0"
+                v-if="Number(getValue(row, 'overtime_pay')) !== 0"
                 class="text-blue font-semibold salary-mobile-overtime"
               >
-                {{ isMobile ? formatAmount(calculateOvertime(row.id, getAttendanceStats(row.id).overtime_hours)) : `¥${formatAmount(calculateOvertime(row.id, getAttendanceStats(row.id).overtime_hours))}` }}
+                {{ isMobile ? formatAmount(getValue(row, 'overtime_pay')) : `¥${formatAmount(getValue(row, 'overtime_pay'))}` }}
               </span>
               <span
                 v-else
@@ -333,7 +301,7 @@
           >
             <template #default="{ row }">
               <span class="payout-salary-amount text-blue salary-mobile-net">
-                {{ isMobile ? formatAmount(calculateEstimated(row.id)) : `¥${formatAmount(calculateEstimated(row.id))}` }}
+                {{ !row.payoutRecord ? '待核对' : isMobile ? formatAmount(getValue(row, 'net_salary')) : `¥${formatAmount(getValue(row, 'net_salary'))}` }}
               </span>
             </template>
           </el-table-column>
@@ -345,10 +313,10 @@
           >
             <template #default="{ row }">
               <span
-                v-if="row.payoutRecord"
+                v-if="isPaidSalaryRecord(row.payoutRecord)"
                 class="payout-salary-amount text-success"
               >
-                ¥{{ formatAmount(row.payoutRecord.net_salary) }}
+                ¥{{ formatAmount(row.payoutRecord?.net_salary) }}
               </span>
               <span
                 v-else
@@ -368,13 +336,13 @@
                 class="salary-status-cell"
               >
                 <el-tag
-                  type="success"
+                  :type="isPaidSalaryRecord(row.payoutRecord) ? 'success' : 'info'"
                   size="small"
                 >
-                  已结算
+                  {{ isPaidSalaryRecord(row.payoutRecord) ? '已发放' : '待发放' }}
                 </el-tag>
                 <el-tooltip
-                  v-if="getRecalculationNotice(row.id)"
+                  v-if="!isPaidSalaryRecord(row.payoutRecord) && getRecalculationNotice(row.id)"
                   :content="getRecalculationNotice(row.id)?.message"
                   placement="top"
                 >
@@ -404,7 +372,7 @@
           >
             <template #default="{ row }">
               <span
-                v-if="row.payoutRecord?.status === 'paid' && row.payoutRecord?.paid_at"
+                v-if="isPaidSalaryRecord(row.payoutRecord) && row.payoutRecord?.paid_at"
                 class="text-regular"
               >
                 {{ formatPayoutTime(row.payoutRecord.paid_at) }}
@@ -444,7 +412,7 @@
             <template #default="{ row }">
               <div class="payout-action-buttons action-buttons">
                 <el-button
-                  v-if="canCreate"
+                  v-if="canCreate && !isPaidSalaryRecord(row.payoutRecord)"
                   v-permission="'salary-records:create'"
                   class="payout-action-button"
                   size="small"
@@ -456,7 +424,7 @@
                   {{ row.payoutRecord ? '重算' : '结算' }}
                 </el-button>
                 <el-button
-                  v-if="row.payoutRecord && canEdit"
+                  v-if="row.payoutRecord && canEdit && !isPaidSalaryRecord(row.payoutRecord)"
                   v-permission="'salary-records:edit'"
                   class="payout-action-button"
                   size="small"
@@ -467,7 +435,7 @@
                   编辑
                 </el-button>
                 <el-button
-                  v-if="row.payoutRecord && canDelete"
+                  v-if="row.payoutRecord && canDelete && !isPaidSalaryRecord(row.payoutRecord)"
                   v-permission="'salary-records:delete'"
                   class="payout-action-button"
                   size="small"
@@ -481,6 +449,41 @@
             </template>
           </el-table-column>
         </el-table>
+        <RecordDetailDialog
+          v-model="mobileDetailVisible"
+          title="工资结算详情"
+          :fields="mobileDetailFields"
+          :record="mobileDetailRow"
+          :has-actions="mobileDetailRow !== null && !isPaidSalaryRecord(mobileDetailRow.payoutRecord) && (canCreate || (Boolean(mobileDetailRow.payoutRecord) && (canEdit || canDelete)))"
+        >
+          <template #actions="{ row }">
+            <el-button
+              v-if="canCreate && !isPaidSalaryRecord(row.payoutRecord)"
+              v-permission="'salary-records:create'"
+              :type="row.payoutRecord ? 'warning' : 'primary'"
+              @click.stop="mobileDetailRunAction(() => row.payoutRecord ? emit('recalculate', row) : emit('settle', row))"
+            >
+              <i :class="row.payoutRecord ? 'fas fa-rotate' : 'fas fa-check'" />
+              <span>{{ row.payoutRecord ? '重算' : '结算' }}</span>
+            </el-button>
+            <el-button
+              v-if="row.payoutRecord && canEdit && !isPaidSalaryRecord(row.payoutRecord)"
+              v-permission="'salary-records:edit'"
+              type="success"
+              @click.stop="mobileDetailRunAction(() => emit('edit', row))"
+            >
+              <span>编辑</span>
+            </el-button>
+            <el-button
+              v-if="row.payoutRecord && canDelete && !isPaidSalaryRecord(row.payoutRecord)"
+              v-permission="'salary-records:delete'"
+              type="danger"
+              @click.stop="mobileDetailRunAction(() => emit('delete', row))"
+            >
+              <span>删除</span>
+            </el-button>
+          </template>
+        </RecordDetailDialog>
       </div>
       <Pagination
         v-if="total > 0"
@@ -503,9 +506,10 @@
 
 <script setup lang="ts">
 import { TIME_FORMATS } from '@/utils/time'
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import { shouldShowActionColumn } from '@/composables/useFieldPermissions'
-import { useMobileRowDoubleTap } from '@/composables/useMobileRowDoubleTap'
+import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
+import type { RecordDetailField } from '@/types/component'
 import Pagination from '@/components/Pagination.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
@@ -515,6 +519,7 @@ import type {
 } from '../salary-employee-data'
 import type { SalaryPayoutRow } from '@/types/salary'
 import { formatAmount } from '@/utils/format'
+import { isPaidSalaryRecord } from '../salary-record-state'
 
 type PayoutStatus = 'paid' | 'unpaid'
 
@@ -522,14 +527,9 @@ interface RecalculationNotice {
   message: string
 }
 
-interface PayoutTableInstance {
-  toggleRowExpansion: (_row: SalaryPayoutRow, _expanded: boolean) => void
-}
 
 const props = defineProps<{
   actionColumnWidth: number
-  calculateCommission: (_employeeId: number) => string | number
-  calculateEstimated: (_employeeId: number) => string | number
   calculateLeave: (_employeeId: number, _days: number) => string | number
   calculateOvertime: (_employeeId: number, _hours: number) => string | number
   calculateWorkDays: (_employeeId: number) => string | number
@@ -555,6 +555,22 @@ const props = defineProps<{
   statusFilter?: PayoutStatus
   total: number
 }>()
+
+/** 已保存记录一律使用服务器金额，避免浏览器按手机销量覆盖商品提成。 */
+const currentValues = (employeeId: number) => ({
+  base_salary: () => props.getBaseSalary(employeeId),
+  sales_count: () => props.getSalesStats(employeeId).sales_count,
+  actual_work_days: () => props.calculateWorkDays(employeeId),
+  leave_days: () => props.getAttendanceStats(employeeId).leave_days,
+  leave_deduction: () => props.calculateLeave(employeeId, props.getAttendanceStats(employeeId).leave_days),
+  overtime_hours: () => props.getAttendanceStats(employeeId).overtime_hours,
+  overtime_pay: () => props.calculateOvertime(employeeId, props.getAttendanceStats(employeeId).overtime_hours)
+})
+const getValue = (row: SalaryPayoutRow, field: keyof ReturnType<typeof currentValues> | 'commission_amount' | 'net_salary') => {
+  if (row.payoutRecord) return row.payoutRecord[field] ?? 0
+  if (field === 'commission_amount' || field === 'net_salary') return '待核对'
+  return currentValues(row.id)[field]()
+}
 
 const showActionColumn = computed(() => shouldShowActionColumn(
   props.canViewField('salary_salaryrecordsview', 'actions'),
@@ -583,32 +599,10 @@ const emit = defineEmits<{
   'update:statusFilter': [value: PayoutStatus | undefined]
 }>()
 
-const tableRef = ref<PayoutTableInstance>()
-const expandedRowId = ref<number | null>(null)
-const { isDoubleTap, resetDoubleTap } = useMobileRowDoubleTap()
 
-const resetInteraction = () => {
-  if (expandedRowId.value) {
-    const previous = props.rows.find(row => row.id === expandedRowId.value)
-    if (previous) tableRef.value?.toggleRowExpansion(previous, false)
-  }
-  expandedRowId.value = null
-  resetDoubleTap()
-}
 
-const handleRowTap = (row: SalaryPayoutRow) => {
-  if (!props.isMobile) return
 
-  if (isDoubleTap(row.id)) {
-    const shouldExpand = expandedRowId.value !== row.id
-    if (expandedRowId.value && expandedRowId.value !== row.id) {
-      const previous = props.rows.find(item => item.id === expandedRowId.value)
-      if (previous) tableRef.value?.toggleRowExpansion(previous, false)
-    }
-    tableRef.value?.toggleRowExpansion(row, shouldExpand)
-    expandedRowId.value = shouldExpand ? row.id : null
-  }
-}
+const resetInteraction = () => mobileDetailClose()
 
 const handlePaginationChange = (page: number, pageSize: number) => {
   resetInteraction()
@@ -616,6 +610,32 @@ const handlePaginationChange = (page: number, pageSize: number) => {
 }
 
 defineExpose({ resetInteraction })
+const { detailRow: mobileDetailRow, detailVisible: mobileDetailVisible, doubleTapOptions: mobileDetailTapOptions,
+  handleRowDoubleClick: mobileDetailDoubleClick, runDetailAction: mobileDetailRunAction, closeDetail: mobileDetailClose } = useMobileTableDetail<SalaryPayoutRow>({
+    enabled: () => props.isMobile, rows: () => props.rows, getKey: row => row.id
+  })
+const mobileDetailFields = computed<RecordDetailField[]>(() => {
+  const row = mobileDetailRow.value
+  if (!row) return []
+  return [
+    { key: 'employee_username', label: '员工工号', value: row.username, visible: props.canViewField('salary_salaryrecordsview', 'employee_username') },
+    { key: 'employee_name', label: '员工姓名', value: row.name, visible: props.canViewField('salary_salaryrecordsview', 'employee_name') },
+    { key: 'base_salary', label: '底薪', value: getValue(row, 'base_salary'), visible: props.canViewField('salary_salaryrecordsview', 'base_salary') },
+    { key: 'sales_count', label: '销售数量', value: getValue(row, 'sales_count'), visible: props.canViewField('salary_salaryrecordsview', 'sales_count') },
+    { key: 'commission_amount', label: '提成', value: getValue(row, 'commission_amount'), visible: props.canViewField('salary_salaryrecordsview', 'commission_amount') },
+    { key: 'goods_earned', label: '商品提成', value: row.payoutRecord?.goods_commission?.earned_amount, visible: props.canViewField('salary_salaryrecordsview', 'commission_amount') },
+    { key: 'goods_reversal', label: '商品退货扣回', value: row.payoutRecord?.goods_commission?.reversal_amount, visible: props.canViewField('salary_salaryrecordsview', 'commission_amount') },
+    { key: 'actual_work_days', label: '工作天数', value: getValue(row, 'actual_work_days'), visible: props.canViewField('salary_salaryrecordsview', 'actual_work_days') },
+    { key: 'leave_days', label: '请假天数', value: getValue(row, 'leave_days'), visible: props.canViewField('salary_salaryrecordsview', 'leave_days') },
+    { key: 'leave_deduction', label: '请假扣款', value: getValue(row, 'leave_deduction'), visible: props.canViewField('salary_salaryrecordsview', 'leave_deduction') },
+    { key: 'overtime_hours', label: '加班小时', value: getValue(row, 'overtime_hours'), visible: props.canViewField('salary_salaryrecordsview', 'overtime_hours') },
+    { key: 'overtime_pay', label: '加班费', value: getValue(row, 'overtime_pay'), visible: props.canViewField('salary_salaryrecordsview', 'overtime_pay') },
+    { key: 'net_salary', label: '实发工资', value: getValue(row, 'net_salary'), visible: props.canViewField('salary_salaryrecordsview', 'net_salary') },
+    { key: 'salary_status', label: '发放状态', value: isPaidSalaryRecord(row.payoutRecord) ? '已发放' : '待发放', visible: props.canViewField('salary_salaryrecordsview', 'salary_status') },
+    { key: 'paid_at', label: '结算时间', value: row.payoutRecord?.paid_at ? props.formatPayoutTime(row.payoutRecord.paid_at) : undefined, visible: props.canViewField('salary_salaryrecordsview', 'paid_at'), wide: true },
+    { key: 'payment_method', label: '支付方式', value: row.payoutRecord?.payment_method ? props.getPaymentMethodName(row.payoutRecord.payment_method) : undefined, visible: props.canViewField('salary_salaryrecordsview', 'payment_method') }
+  ]
+})
 </script>
 
 <style scoped>

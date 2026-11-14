@@ -3,8 +3,8 @@
  * 提供统一的表单状态管理和验证功能
  */
 
-import { reactive, watch } from 'vue'
-import { isValidAppleAccount, isValidEmail, isValidIdCard, isValidMobilePhone } from '@/utils/security'
+import { getCurrentScope, onScopeDispose, reactive, watch } from 'vue'
+import { isDecimalInput, isEmptyInput, isIntegerInput, isValidAppleAccount, isValidEmail, isValidIdCard, isValidMobilePhone, isValidSingleLineText, isValidPersonName, isValidUrl } from '@/utils/security'
 import { logger } from '@/utils/logger'
 import { TimeUtil } from '@/utils/time'
 
@@ -280,7 +280,7 @@ export function useForm<T extends Record<string, unknown>>(
 
     try {
       for (const rule of rules) {
-        const result = rule.validator(value)
+        const result = rule.validator(value, values)
         if (result === false || typeof result === 'string') {
           errors[field] = typeof result === 'string' ? result : rule.message || '验证失败'
           return false
@@ -339,6 +339,10 @@ export function useForm<T extends Record<string, unknown>>(
       }
     }
   }
+
+  if (getCurrentScope()) onScopeDispose(() => {
+    Object.values(debounceTimers).forEach(timer => clearTimeout(timer))
+  })
 
   // 设置多个字段值
   const setFieldsValue = (values: Partial<T>) => {
@@ -495,18 +499,28 @@ export const ValidationRules = {
    * @param message 错误提示信息
    */
   required: (message = '此字段为必填项'): FormValidationRule => createValidationRule((value) => {
-    if (value === null || value === undefined || value === '') return false
+    if (isEmptyInput(value) || (typeof value === 'string' && !value.trim())) return false
     if (Array.isArray(value) && value.length === 0) return false
     return true
   }, message),
+
+  /** 姓名允许中英文、间隔符和标点，至少包含一个文字字符。 */
+  personName: (maxLength = 50, message = `请输入最多${maxLength}字的有效姓名`): FormValidationRule => createValidationRule((value) => (
+    isEmptyInput(value) || isValidPersonName(value, maxLength)
+  ), message),
+
+  /** 普通单行文本校验；不替代字段必填规则。 */
+  singleLine: (maxLength = 1000, message = `请输入不含控制字符、最多${maxLength}字的单行文本`): FormValidationRule => createValidationRule((value) => (
+    isEmptyInput(value) || isValidSingleLineText(value, maxLength)
+  ), message),
 
   /**
    * 邮箱验证
    * @param message 错误提示信息
    */
   email: (message = '请输入有效的邮箱地址'): FormValidationRule => createValidationRule((value) => {
-    if (!value) return true
-    return isValidEmail(String(value).trim())
+    if (isEmptyInput(value)) return true
+    return typeof value === 'string' && isValidEmail(value)
   }, message),
 
   /**
@@ -514,8 +528,8 @@ export const ValidationRules = {
    * @param message 错误提示信息
    */
   phone: (message = '请输入正确的手机号'): FormValidationRule => createValidationRule((value) => {
-    if (!value) return true
-    return isValidMobilePhone(String(value).trim())
+    if (isEmptyInput(value)) return true
+    return typeof value === 'string' && isValidMobilePhone(value)
   }, message),
 
   /**
@@ -523,8 +537,8 @@ export const ValidationRules = {
    * @param message 错误提示信息
    */
   appleAccount: (message = '请输入有效的 Apple ID 手机号或邮箱'): FormValidationRule => createValidationRule((value) => {
-    if (!value) return true
-    return isValidAppleAccount(String(value).trim())
+    if (isEmptyInput(value)) return true
+    return typeof value === 'string' && isValidAppleAccount(value)
   }, message),
 
   /**
@@ -532,8 +546,8 @@ export const ValidationRules = {
    * @param message 错误提示信息
    */
   idCard: (message = '请输入正确的身份证号'): FormValidationRule => createValidationRule((value) => {
-    if (!value) return true
-    return isValidIdCard(String(value).trim())
+    if (isEmptyInput(value)) return true
+    return typeof value === 'string' && isValidIdCard(value)
   }, message),
 
   /**
@@ -542,8 +556,8 @@ export const ValidationRules = {
    * @param message 错误提示信息
    */
   minLength: (min: number, message?: string): FormValidationRule => createValidationRule((value) => {
-    if (!value) return true
-    return String(value).length >= min
+    if (isEmptyInput(value)) return true
+    return typeof value === 'string' && value.length >= min
   }, message || `最少${min}个字符`),
 
   /**
@@ -552,8 +566,8 @@ export const ValidationRules = {
    * @param message 错误提示信息
    */
   maxLength: (max: number, message?: string): FormValidationRule => createValidationRule((value) => {
-    if (!value) return true
-    return String(value).length <= max
+    if (isEmptyInput(value)) return true
+    return typeof value === 'string' && value.length <= max
   }, message || `最多${max}个字符`),
 
   /**
@@ -561,8 +575,7 @@ export const ValidationRules = {
    * @param message 错误提示信息
    */
   number: (message = '请输入有效的数字'): FormValidationRule => createValidationRule((value) => {
-    if (!value && value !== 0) return true
-    return !isNaN(Number(value))
+    return isEmptyInput(value) || isDecimalInput(value)
   }, message),
 
   /**
@@ -570,9 +583,7 @@ export const ValidationRules = {
    * @param message 错误提示信息
    */
   positiveInteger: (message = '请输入有效的正整数'): FormValidationRule => createValidationRule((value) => {
-    if (!value && value !== 0) return true
-    const num = Number(value)
-    return Number.isInteger(num) && num > 0
+    return isEmptyInput(value) || (isIntegerInput(value) && Number(value) > 0)
   }, message),
 
   /**
@@ -580,9 +591,7 @@ export const ValidationRules = {
    * @param message 错误提示信息
    */
   positiveNumber: (message = '请输入大于0的数字'): FormValidationRule => createValidationRule((value) => {
-    if (!value && value !== 0) return true
-    const num = Number(value)
-    return !isNaN(num) && num > 0
+    return isEmptyInput(value) || (isDecimalInput(value) && Number(value) > 0)
   }, message),
 
   /**
@@ -592,9 +601,9 @@ export const ValidationRules = {
    * @param message 错误提示信息
    */
   range: (min: number, max: number, message?: string): FormValidationRule => createValidationRule((value) => {
-    if (!value && value !== 0) return true
+    if (isEmptyInput(value)) return true
+    if (!isDecimalInput(value)) return false
     const num = Number(value)
-    if (isNaN(num)) return false
     return num >= min && num <= max
   }, message || `数值应在${min}到${max}之间`),
 
@@ -603,13 +612,8 @@ export const ValidationRules = {
    * @param message 错误提示信息
    */
   url: (message = '请输入有效的URL地址'): FormValidationRule => createValidationRule((value) => {
-    if (!value) return true
-    try {
-      new URL(String(value))
-      return true
-    } catch {
-      return false
-    }
+    if (isEmptyInput(value)) return true
+    return typeof value === 'string' && isValidUrl(value)
   }, message),
 
   /**
@@ -618,8 +622,9 @@ export const ValidationRules = {
    * @param message 错误提示信息
    */
   pattern: (regex: RegExp, message = '格式不正确'): FormValidationRule => createValidationRule((value) => {
-    if (!value) return true
-    return regex.test(String(value))
+    if (isEmptyInput(value)) return true
+    regex.lastIndex = 0
+    return typeof value === 'string' && regex.test(value)
   }, message),
 
   /**
@@ -628,7 +633,7 @@ export const ValidationRules = {
    * @param message 错误提示信息
    */
   enum: (values: unknown[], message?: string): FormValidationRule => createValidationRule((value) => {
-    if (!value && value !== 0) return true
+    if (isEmptyInput(value)) return true
     return values.includes(value)
   }, message || `值必须是以下之一: ${values.join(', ')}`),
 
@@ -638,7 +643,7 @@ export const ValidationRules = {
    * @param message 错误提示信息
    */
   confirmPassword: (passwordField: string, message = '两次输入的密码不一致'): FormValidationRule => createValidationRule((value, formValues) => {
-    if (!value) return true
+    if (isEmptyInput(value)) return true
     const password = formValues?.[passwordField]
     return value === password
   }, message),
@@ -648,7 +653,7 @@ export const ValidationRules = {
    * @param message 错误提示信息
    */
   chineseName: (message = '请输入正确的中文姓名'): FormValidationRule => createValidationRule((value) => {
-    if (!value) return true
+    if (isEmptyInput(value)) return true
     // 2-20个中文字符
     const nameRegex = /^[\u4e00-\u9fa5]{2,20}$/
     return nameRegex.test(String(value).trim())
@@ -659,7 +664,7 @@ export const ValidationRules = {
    * @param message 错误提示信息
    */
   bankCard: (message = '请输入正确的银行卡号'): FormValidationRule => createValidationRule((value) => {
-    if (!value) return true
+    if (isEmptyInput(value)) return true
     // 16-19位数字
     const cardRegex = /^\d{16,19}$/
     return cardRegex.test(String(value).trim())
@@ -670,7 +675,7 @@ export const ValidationRules = {
    * @param message 错误提示信息
    */
   wechat: (message = '请输入正确的微信号'): FormValidationRule => createValidationRule((value) => {
-    if (!value) return true
+    if (isEmptyInput(value)) return true
     // 6-20位，字母开头，可包含字母、数字、下划线、减号
     const wechatRegex = /^[a-zA-Z][a-zA-Z0-9_-]{5,19}$/
     return wechatRegex.test(String(value).trim())
@@ -681,7 +686,7 @@ export const ValidationRules = {
    * @param message 错误提示信息
    */
   qq: (message = '请输入正确的QQ号'): FormValidationRule => createValidationRule((value) => {
-    if (!value) return true
+    if (isEmptyInput(value)) return true
     // 5-11位数字
     const qqRegex = /^\d{5,11}$/
     return qqRegex.test(String(value).trim())
@@ -700,7 +705,7 @@ export const ValidationRules = {
    * @param message 错误提示信息
    */
   date: (message = '请选择有效的日期'): FormValidationRule => createValidationRule((value) => {
-    if (!value) return true
+    if (isEmptyInput(value)) return true
     const date = value instanceof Date || typeof value === 'number'
       ? TimeUtil.toBeijing(value)
       : TimeUtil.parse(String(value))
@@ -713,7 +718,7 @@ export const ValidationRules = {
    * @param message 错误提示信息
    */
   dateRange: (startDateField: string, message = '结束日期不能早于开始日期'): FormValidationRule => createValidationRule((value, formValues) => {
-    if (!value) return true
+    if (isEmptyInput(value)) return true
     const startDate = formValues?.[startDateField]
     if (!startDate) return true
     const end = value instanceof Date || typeof value === 'number'

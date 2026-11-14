@@ -115,8 +115,6 @@
               v-model:status-filter="payoutFilters.status"
               data-view-permission="salary-records:view"
               :action-column-width="payoutActionColumnWidth"
-              :calculate-commission="calculateSalesCommission"
-              :calculate-estimated="calculateEstimatedSalary"
               :calculate-leave="calculateLeaveDeduction"
               :calculate-overtime="calculateOvertimePay"
               :calculate-work-days="calculateWorkDays"
@@ -184,7 +182,19 @@
           :format-work-days="formatWorkDays"
           :get-employee-name="getEmployeeName"
           :record="currentRecord"
-        />
+        >
+          <template
+            v-if="currentRecord && canViewPayoutRecords && canViewSalaryField('salary_mysalaryview', 'sales_count') && getSalesCount(currentRecord) > 0"
+            #actions
+          >
+            <el-button
+              type="primary"
+              @click.stop="openCurrentSalarySales"
+            >
+              <i class="fas fa-list" />销售明细
+            </el-button>
+          </template>
+        </SalaryDetailDialog>
 
         <SalarySalesDetailDialog
           v-model="salesDetailDialogVisible"
@@ -227,6 +237,7 @@
           :can-edit-field="canEditSalaryField"
           :can-view-field="canViewSalaryField"
           :employee-name="getEmployeeName(editPayoutForm.employee_id)"
+          :goods-commission="editPayoutSource?.goods_commission"
           :net-salary="calculateEditNetSalary()"
           :saving="editPayoutSaving"
           @submit="handleSaveEditPayout"
@@ -238,6 +249,7 @@
           :can-edit-field="canEditSalaryField"
           :can-view-field="canViewSalaryField"
           :saving="settleSaving"
+          :goods-commission="pendingSalaryData?.calculatedData.goods_commission"
           @close="closeSettleDialog"
           @submit="confirmSettle"
         />
@@ -325,6 +337,7 @@ import SalaryEmployeeTemplateDialog from './page/SalaryEmployeeTemplateDialog.vu
 import SalarySalesDetailDialog from './page/SalarySalesDetailDialog.vue'
 import SalarySettleDialog, { type SalarySettleForm } from './page/SalarySettleDialog.vue'
 import SalaryTemplateFormDialog, { type SalaryTemplateForm } from './page/SalaryTemplateFormDialog.vue'
+import { createSalaryTemplateForm, salaryGoodsRulePayload } from './salary-template-form'
 import SalaryMyRecordsTab from './page/SalaryMyRecordsTab.vue'
 import SalaryEmployeesTab from './page/SalaryEmployeesTab.vue'
 import SalaryPayoutTab from './page/SalaryPayoutTab.vue'
@@ -344,12 +357,15 @@ import type {
   SalaryPayoutRecord,
   SalaryRecord,
   SalaryRecordInput,
+  SalaryCalculation,
   SalaryRecordStatus,
   SalarySalesDetail,
   SalaryTemplate
 } from '@/types/salary'
 import { getActionColumnMinWidth, getIdentifierColumnMinWidth, getTextColumnMinWidth } from '@/utils/table-layout'
 import { getSalaryFieldKey } from './salary-field-permissions'
+import { isPaidSalaryRecord, salaryCalculationInput, salaryPhoneCommission } from './salary-record-state'
+import { useLatestRequest } from '@/composables/useLatestRequest'
 import {
   buildEmployeeAttendanceStats,
   buildEmployeeSalesStats,
@@ -452,7 +468,7 @@ type SalaryEmployeeRow = SalaryEmployeeOption & {
 type PendingSalaryData = {
   employeeId: number
   employeeName: string
-  calculatedData: SalaryRecordInput
+  calculatedData: SalaryCalculation
   existingRecord: SalaryPayoutRecord | undefined
   startDate: string
   endDate: string
@@ -483,6 +499,10 @@ const canViewSalaryField = (moduleKey: string, fieldName: string) => {
 const canEditSalaryField = (moduleKey: string, fieldName: string) => {
   if (!canViewSalaryField(moduleKey, fieldName)) {
     return false
+  }
+
+  if (fieldName === 'template_goods_commission_rule') {
+    return fieldPermissions.isFieldEditable(moduleKey, getSalaryFieldKey(fieldName))
   }
 
   if (
@@ -649,6 +669,7 @@ const {
 // 编辑工资相关
 const editPayoutDialogVisible = ref(false)
 const editPayoutSaving = ref(false)
+const editPayoutSource = ref<SalaryCalculation | null>(null)
 const editPayoutForm = ref<SalaryEditPayoutForm>({
   id: 0,
   employee_id: 0,
@@ -657,9 +678,7 @@ const editPayoutForm = ref<SalaryEditPayoutForm>({
   commission_amount: 0,
   overtime_pay: 0,
   leave_deduction: 0,
-  status: 'approved',
-  paid_at: null,
-  payment_method: null
+  status: 'approved'
 })
 
 // 结算工资相关
@@ -675,11 +694,12 @@ const settleForm = ref<SalarySettleForm>({
 
 // 计算编辑后的应发工资
 const calculateEditNetSalary = () => {
-  const base = Number(editPayoutForm.value.base_salary) || 0
-  const commission = Number(editPayoutForm.value.commission_amount) || 0
-  const overtime = Number(editPayoutForm.value.overtime_pay) || 0
-  const leave = Number(editPayoutForm.value.leave_deduction) || 0
-  return formatAmount(base + commission + overtime - leave)
+  const source = editPayoutSource.value
+  if (!source) return '0'
+  const form = editPayoutForm.value
+  return formatAmount(Number(source.net_salary || 0) + form.base_salary - Number(source.base_salary || 0) +
+    form.commission_amount - salaryPhoneCommission(source) + form.overtime_pay - Number(source.overtime_pay || 0) -
+    form.leave_deduction + Number(source.leave_deduction || 0))
 }
 
 
@@ -697,7 +717,7 @@ const {
   handleEmployeePaginationChange,
   paginatedEmployees,
   resetEmployeeTableFilters
-} = useSalaryEmployeeTable({ employees, initialMonth: getCurrentMonth(), isMobile })
+} = useSalaryEmployeeTable({ employees, initialMonth: getCurrentMonth() })
 const salaryEmployeesTabRef = ref<InstanceType<typeof SalaryEmployeesTab>>()
 const employeeSalaryActionColumnWidth = computed(() => getActionColumnMinWidth(
   Number(canEditSalaryTemplate.value) + Number(canViewSalaryRecords.value) + 1
@@ -947,24 +967,7 @@ const selectedTemplateId = ref<number | undefined>(undefined)
 // 工资模板表单
 const templateFormDialogVisible = ref(false)
 const templateSaving = ref(false)
-const templateForm = ref<SalaryTemplateForm>({
-  id: undefined,
-  name: '',
-  description: '',
-  base_salary: 2500,
-  commission_type: 'fixed',
-  commission_fixed: 20,
-  commission_new_fixed: 20,  // 全新机提成（元/台）
-  commission_used_fixed: 0,  // 二手机提成（元/台）
-  commission_percentage: 10,
-  overtime_hourly_rate: 10,
-  rest_days: 2,
-  // 自动涨薪规则
-  auto_raise_enabled: false,
-  auto_raise_months: 6,
-  auto_raise_amount: 100,
-  auto_raise_max_salary: 3000
-})
+const templateForm = ref<SalaryTemplateForm>(createSalaryTemplateForm())
 
 // 加载模板列表
 const loadTemplates = async () => {
@@ -1617,6 +1620,12 @@ const getEmployeePayoutRecord = (employeeId: number) => {
   return payoutList.value.find(r => r.employee_id === employeeId)
 }
 
+const requireUnpaidPayout = (record: SalaryPayoutRecord | undefined) => {
+  if (!isPaidSalaryRecord(record)) return true
+  globalNotifications.warning('已发工资保留原记录，后续差额须另行关联调整')
+  return false
+}
+
 const parseTimestamp = (value: unknown) => {
   if (!value) return null
   const parsed = TimeUtil.parse(String(value))
@@ -1629,7 +1638,7 @@ const getPayoutSettledTimestamp = (record: SalaryPayoutRecord) => {
 
 const getSalaryRecalculationNotice = (employeeId: number) => {
   const record = getEmployeePayoutRecord(employeeId)
-  if (!record) return null
+  if (!record || isPaidSalaryRecord(record)) return null
 
   const stats = getEmployeeAttendanceStats(employeeId)
   const settledAt = getPayoutSettledTimestamp(record)
@@ -1707,7 +1716,7 @@ const handleBulkRecalculatePayout = async () => {
     const endDate = `${year}-${month}-${String(daysInMonth).padStart(2, '0')}`
 
     await confirmAction(
-      `确认批量重算 ${payoutMonth.value} 全部员工工资？将覆盖历史记录`,
+      `确认批量重算 ${payoutMonth.value} 全部员工未发工资？已发工资保留原记录并跳过`,
       '确认',
       { type: 'warning' }
     )
@@ -1715,7 +1724,10 @@ const handleBulkRecalculatePayout = async () => {
     payoutLoading.value = true
     const response = await salaryApi.records.recalculateMonth(startDate, endDate)
     const result = response.data
-    globalNotifications.success(`批量重算完成：成功 ${result.recalculated}/${result.total}`)
+    if (!result) throw new Error('批量重算接口未返回结果')
+    const message = `批量重算完成：成功 ${result.recalculated}，跳过已发 ${result.skipped_paid}，失败 ${result.errors.length}，共 ${result.total} 人`
+    if (result.errors.length) globalNotifications.warning(message)
+    else globalNotifications.success(message)
 
     await loadPayoutList()
     await loadAllEmployeesAttendance(payoutMonth.value)
@@ -1743,16 +1755,10 @@ const closeSettleDialog = () => {
   pendingSalaryData.value = null
 }
 
-const getCurrentDateTimeString = () => TimeUtil.nowFormatted(TIME_FORMATS.DATETIME)
-
-const normalizePaidAtDateTime = (value: string | null | undefined) => {
-  if (!value) return null
-  return value.length > 10 ? value : `${value} 00:00:00`
-}
-
 // 按员工结算工资
 const handlePayoutByEmployee = async (employee: SalaryEmployeeRow) => {
   const existingRecord = getEmployeePayoutRecord(employee.id)
+  if (!requireUnpaidPayout(existingRecord)) return
   if (!requireSalaryRecordPermission(existingRecord ? 'edit' : 'create')) {
     return
   }
@@ -1765,12 +1771,15 @@ const handlePayoutByEmployee = async (employee: SalaryEmployeeRow) => {
     const endDate = `${year}-${month}-${daysInMonth}`
 
     // 使用后端计算 API（支持自动涨薪）
-    let calculatedData: SalaryRecordInput
+    let calculatedData: SalaryCalculation
     try {
-      const response = await salaryApi.calculateSalary(employee.id, startDate, endDate)
+      const response = existingRecord?.id
+        ? await salaryApi.records.getSalaryRecordById(existingRecord.id)
+        : await salaryApi.calculateSalary(employee.id, startDate, endDate)
       if (!response.data) {
         throw new Error('工资计算接口未返回数据')
       }
+      if (isPaidSalaryRecord(response.data)) { globalNotifications.warning('工资已经发放，请刷新记录'); return }
       calculatedData = response.data
     } catch (err: unknown) {
       logger.error('计算工资失败:', err)
@@ -1817,6 +1826,7 @@ const handlePayoutByEmployee = async (employee: SalaryEmployeeRow) => {
 // 确认结算
 const confirmSettle = async () => {
   if (settleSaving.value) return
+  if (!requireUnpaidPayout(getEmployeePayoutRecord(settleForm.value.employeeId))) return
   const action = (pendingSalaryData.value?.existingRecord || settleForm.value.recordId) ? 'edit' : 'create'
   if (!requireSalaryRecordPermission(action)) {
     return
@@ -1836,62 +1846,28 @@ const confirmSettle = async () => {
   try {
     settleSaving.value = true
 
-    // 情况1：新结算（有 pendingSalaryData）
-    if (pendingSalaryData.value) {
-      const { calculatedData, existingRecord } = pendingSalaryData.value
-      const paymentMethod = settleForm.value.payment_method || existingRecord?.payment_method || null
-
-      // 准备保存的数据
-      const saveData: Partial<SalaryRecordInput> = {
-        ...calculatedData,
-        status: existingRecord?.status === 'paid' ? 'paid' : 'approved',
-        payment_method: paymentMethod
-      }
-
-      // 使用 UPSERT 接口保存
-      const saveResponse = await salaryApi.saveCalculatedSalary(saveData)
-      const savedRecord = saveResponse.data?.data
-
-      if (!savedRecord) {
-        globalNotifications.error('保存工资记录失败')
-        return
-      }
-
-      // 调用 markAsPaid 确保 paid_at 时间正确
-      await salaryApi.records.markAsPaid(savedRecord.id, paymentMethod || undefined)
-
-      globalNotifications.success('结算成功')
-      settleDialogVisible.value = false
-      pendingSalaryData.value = null // 清空临时数据
-      await loadPayoutList() // 等待列表刷新完成
-    } else if (settleForm.value.recordId) {
-      // 情况2：已有记录的结算（使用 recordId）
-      const [year, month] = payoutMonth.value.split('-')
-      const startDate = `${year}-${month}-01`
-      const daysInMonth = TimeUtil.daysInMonth(Number(year), Number(month))
-      const endDate = `${year}-${month}-${daysInMonth}`
-
-      // 重新计算并覆盖保存，确保以最新数据为准
-      const response = await salaryApi.calculateSalary(settleForm.value.employeeId, startDate, endDate)
-      const calculatedData = response.data
-      const existingRecord = getEmployeePayoutRecord(settleForm.value.employeeId)
-      const paymentMethod = settleForm.value.payment_method || existingRecord?.payment_method || null
-
-      const saveData = {
-        ...calculatedData,
-        status: existingRecord?.status === 'paid' ? 'paid' : 'approved',
-        payment_method: paymentMethod
-      }
-
-      await salaryApi.saveCalculatedSalary(saveData)
-      await salaryApi.records.markAsPaid(settleForm.value.recordId, paymentMethod || undefined)
-      globalNotifications.success('结算成功')
-      settleDialogVisible.value = false
-      await loadPayoutList() // 等待列表刷新完成
+    const pending = pendingSalaryData.value
+    if (!pending) throw new Error('结算数据丢失，请重新核对')
+    const paymentMethod = canUseSalaryField('salary_salaryrecordsview', 'payment_method')
+      ? settleForm.value.payment_method || undefined : undefined
+    let savedRecord = pending.calculatedData
+    if (!pending.existingRecord) {
+      const input = salaryCalculationInput(pending.calculatedData)
+      const response = await salaryApi.saveCalculatedSalary({ ...input, ...(paymentMethod ? { payment_method: paymentMethod } : {}) })
+      if (!response.data?.data) throw new Error('保存工资记录失败')
+      savedRecord = response.data.data
+      // 即使随后发放失败，重试也沿用本次已经保存的工资，不再覆盖手工调整。
+      pending.existingRecord = savedRecord
+      pending.calculatedData = savedRecord
     }
+    if (!savedRecord.id || !savedRecord.calculation_version) throw new Error('请重新计算并核对工资后发放')
+    await salaryApi.records.markAsPaid(savedRecord.id, paymentMethod, savedRecord.calculation_version)
+    globalNotifications.success('结算成功')
+    closeSettleDialog()
+    await loadPayoutList()
   } catch (error) {
     logger.error('结算失败:', error)
-    globalNotifications.error('结算失败')
+    globalNotifications.error(getRequestErrorMessage(error, '结算失败'))
   } finally {
     settleSaving.value = false
   }
@@ -1904,6 +1880,7 @@ const handleRecalculatePayout = async (employee: SalaryEmployeeRow) => {
   }
 
   const record = getEmployeePayoutRecord(employee.id)
+  if (!requireUnpaidPayout(record)) return
   if (!record) {
     globalNotifications.error('未找到工资记录')
     return
@@ -1919,18 +1896,10 @@ const handleRecalculatePayout = async (employee: SalaryEmployeeRow) => {
     const response = await salaryApi.calculateSalary(employee.id, startDate, endDate)
     const calculatedData = response.data
 
-    // 保存数据，更新结算时间为当前时间
-    const recordStatus = record.status === 'paid' ? 'paid' : 'approved'
-    const saveData = {
-      ...calculatedData,
-      status: recordStatus,
-      paid_at: recordStatus === 'paid' ? getCurrentDateTimeString() : null,
-      payment_method: recordStatus === 'paid' ? (record.payment_method || null) : null
-    }
-
-    await salaryApi.saveCalculatedSalary(saveData)
+    if (!calculatedData) throw new Error('工资计算接口未返回数据')
+    await salaryApi.saveCalculatedSalary(salaryCalculationInput(calculatedData))
     await loadPayoutList()
-    globalNotifications.success('重新结算成功，工资数据和结算时间已更新')
+    globalNotifications.success('未发工资重新计算成功')
   } catch (err: unknown) {
     logger.error('重新结算失败:', err)
     globalNotifications.error(getRequestErrorMessage(err, '重新结算失败'))
@@ -1938,57 +1907,31 @@ const handleRecalculatePayout = async (employee: SalaryEmployeeRow) => {
 }
 
 // 按员工编辑工资
-const handleEditPayoutByEmployee = (employee: SalaryEmployeeRow) => {
-  const record = getEmployeePayoutRecord(employee.id)
-  if (!requireSalaryRecordPermission(record ? 'edit' : 'create')) {
-    return
-  }
-
-  if (record) {
-    // 已有记录：编辑模式
-    // 将 datetime 格式转换为 date 格式（用于 date 输入框）
-    let paidAtDate = null
-    if (record.paid_at) {
-      paidAtDate = TimeUtil.toDateInputValue(record.paid_at)
-    }
-
+const handleEditPayoutByEmployee = async (employee: SalaryEmployeeRow) => {
+  const existing = getEmployeePayoutRecord(employee.id)
+  if (editPayoutSaving.value || !requireUnpaidPayout(existing) || !requireSalaryRecordPermission(existing ? 'edit' : 'create')) return
+  editPayoutSaving.value = true
+  try {
+    const { start_date: startDate, end_date: endDate } = getSalaryMonthRange(payoutMonth.value)
+    const response = existing?.id ? await salaryApi.records.getSalaryRecordById(existing.id)
+      : await salaryApi.calculateSalary(employee.id, startDate, endDate)
+    const record = response.data
+    if (!record || isPaidSalaryRecord(record)) throw new Error('工资已变化，请刷新后核对')
+    editPayoutSource.value = record
     editPayoutForm.value = {
-      id: record.id || 0,
-      employee_id: record.employee_id,
-      salary_template_id: record.salary_template_id || employee.salary_template_id || null,
-      base_salary: Number(record.base_salary) || 0,
-      commission_amount: Number(record.commission_amount) || 0,
-      overtime_pay: Number(record.overtime_pay) || 0,
-      leave_deduction: Number(record.leave_deduction) || 0,
-      status: record.status || 'approved',
-      paid_at: paidAtDate,
-      payment_method: record.payment_method || null
+      id: record.id || null, employee_id: record.employee_id, salary_template_id: record.salary_template_id || null,
+      base_salary: Number(record.base_salary) || 0, commission_amount: salaryPhoneCommission(record),
+      overtime_pay: Number(record.overtime_pay) || 0, leave_deduction: Number(record.leave_deduction) || 0,
+      status: record.status || 'approved'
     }
-  } else {
-    // 没有记录：新增模式，使用动态计算的数据
-    const baseSalary = getEmployeeBaseSalary(employee.id)
-    const commissionAmount = calculateSalesCommission(employee.id)
-    const overtimePay = calculateOvertimePay(employee.id, getEmployeeAttendanceStats(employee.id).overtime_hours)
-    const leaveDeduction = calculateLeaveDeduction(employee.id, getEmployeeAttendanceStats(employee.id).leave_days)
-
-    editPayoutForm.value = {
-      id: null,
-      employee_id: employee.id,
-      salary_template_id: employee.salary_template_id || null,
-      base_salary: Number(baseSalary) || 0,
-      commission_amount: Number(commissionAmount) || 0,
-      overtime_pay: parseFloat(String(overtimePay)) || 0,
-      leave_deduction: parseFloat(String(leaveDeduction)) || 0,
-      status: 'approved',
-      paid_at: null,
-      payment_method: null
-    }
-  }
-  editPayoutDialogVisible.value = true
+    editPayoutDialogVisible.value = true
+  } catch (error) { globalNotifications.error(getRequestErrorMessage(error, '加载工资失败')) }
+  finally { editPayoutSaving.value = false }
 }
 
 // 保存编辑的工资
 const handleSaveEditPayout = async () => {
+  if (editPayoutSaving.value || !requireUnpaidPayout(getEmployeePayoutRecord(editPayoutForm.value.employee_id))) return
   if (!requireSalaryRecordPermission(editPayoutForm.value.id ? 'edit' : 'create')) {
     return
   }
@@ -1996,98 +1939,30 @@ const handleSaveEditPayout = async () => {
   try {
     editPayoutSaving.value = true
 
-    // 计算应发工资
-    const netSalary = calculateEditNetSalary()
-
-    // 获取期间日期
-    const [year, month] = payoutMonth.value.split('-')
-    const startDate = `${year}-${month}-01`
-    const daysInMonth = TimeUtil.daysInMonth(Number(year), Number(month))
-    const endDate = `${year}-${month}-${daysInMonth}`
-
-    // 获取员工统计数据
-    const attendanceStats = getEmployeeAttendanceStats(editPayoutForm.value.employee_id)
-    const existingRecord = editPayoutForm.value.id
-      ? getEmployeePayoutRecord(editPayoutForm.value.employee_id)
-      : null
-
-    const saveData: Partial<SalaryRecordInput> = {
-      employee_id: editPayoutForm.value.employee_id,
-      salary_template_id: editPayoutForm.value.salary_template_id || existingRecord?.salary_template_id || null,
-      period_start: startDate,
-      period_end: endDate,
-      base_salary_adjustment: Number(existingRecord?.base_salary_adjustment) || 0,
-      performance_bonus: Number(existingRecord?.performance_bonus) || 0,
-      other_bonus: Number(existingRecord?.other_bonus) || 0,
-      other_deduction: Number(existingRecord?.other_deduction) || 0
+    const source = editPayoutSource.value
+    if (!source?.calculation_version) throw new Error('请重新打开工资编辑后核对')
+    const saveData: Partial<SalaryRecordInput> = {}
+    const fields = ['base_salary', 'commission_amount', 'overtime_pay', 'leave_deduction'] as const
+    for (const field of fields) {
+      if (canUseSalaryField('salary_salaryrecordsview', field)) saveData[field] = editPayoutForm.value[field]
     }
-
-    if (canUseSalaryField('salary_salaryrecordsview', 'base_salary')) {
-      saveData.base_salary = editPayoutForm.value.base_salary
-    } else if (existingRecord) {
-      saveData.base_salary = Number(existingRecord.base_salary) || 0
-    } else {
-      saveData.base_salary = editPayoutForm.value.base_salary
-    }
-    if (canUseSalaryField('salary_salaryrecordsview', 'commission_amount')) {
-      saveData.commission_amount = editPayoutForm.value.commission_amount
-    } else if (existingRecord) {
-      saveData.commission_amount = Number(existingRecord.commission_amount) || 0
-    } else {
-      saveData.commission_amount = editPayoutForm.value.commission_amount
-    }
-    if (canUseSalaryField('salary_salaryrecordsview', 'overtime_pay')) {
-      saveData.overtime_pay = editPayoutForm.value.overtime_pay
-    } else if (existingRecord) {
-      saveData.overtime_pay = Number(existingRecord.overtime_pay) || 0
-    } else {
-      saveData.overtime_pay = editPayoutForm.value.overtime_pay
-    }
-    saveData.overtime_hours = attendanceStats.overtime_hours ?? (Number(existingRecord?.overtime_hours) || 0)
-    if (canUseSalaryField('salary_salaryrecordsview', 'leave_deduction')) {
-      saveData.leave_deduction = editPayoutForm.value.leave_deduction
-    } else if (existingRecord) {
-      saveData.leave_deduction = Number(existingRecord.leave_deduction) || 0
-    } else {
-      saveData.leave_deduction = editPayoutForm.value.leave_deduction
-    }
-    saveData.leave_days = attendanceStats.leave_days ?? (Number(existingRecord?.leave_days) || 0)
-    saveData.net_salary = Number(netSalary)
     if (canUseSalaryField('salary_salaryrecordsview', 'salary_status')) {
       saveData.status = normalizeSalaryStatus(editPayoutForm.value.status)
-    } else {
-      saveData.status = normalizeSalaryStatus(existingRecord?.status || editPayoutForm.value.status)
     }
-
-    const isPaidStatus = saveData.status === 'paid'
-    saveData.paid_at = isPaidStatus
-      ? (
-        canUseSalaryField('salary_salaryrecordsview', 'paid_at')
-          ? (
-            editPayoutForm.value.id
-              ? normalizePaidAtDateTime(editPayoutForm.value.paid_at)
-              : getCurrentDateTimeString()
-          )
-          : normalizePaidAtDateTime(existingRecord?.paid_at || editPayoutForm.value.paid_at) || getCurrentDateTimeString()
-      )
-      : null
-    saveData.payment_method = isPaidStatus
-      ? (
-        canUseSalaryField('salary_salaryrecordsview', 'payment_method')
-          ? (editPayoutForm.value.payment_method || null)
-          : (existingRecord?.payment_method || editPayoutForm.value.payment_method || null)
-      )
-      : null
-
-    // 使用 UPSERT 接口保存
-    await salaryApi.saveCalculatedSalary(saveData)
+    // 手工金额不含商品提成；商品净额始终由服务器逐源核对后追加。
+    if (editPayoutForm.value.id) {
+      await salaryApi.updateSalaryRecord(editPayoutForm.value.id, { ...saveData, expected_calculation_version: source.calculation_version })
+    } else {
+      await salaryApi.createSalaryRecord({ ...saveData, employee_id: source.employee_id,
+        period_start: source.period_start, period_end: source.period_end, expected_calculation_version: source.calculation_version })
+    }
 
     globalNotifications.success(editPayoutForm.value.id ? '工资记录修改成功' : '工资记录创建成功')
 
     editPayoutDialogVisible.value = false
     loadPayoutList()
-  } catch {
-    globalNotifications.error('保存失败')
+  } catch (error) {
+    globalNotifications.error(getRequestErrorMessage(error, '保存失败'))
   } finally {
     editPayoutSaving.value = false
   }
@@ -2100,7 +1975,7 @@ const handleDeletePayout = async (employee: SalaryEmployeeRow) => {
   }
 
   const record = getEmployeePayoutRecord(employee.id)
-  if (!record) return
+  if (!record || !requireUnpaidPayout(record)) return
 
   try {
     await confirmAction(`确认删除 ${employee.name || employee.username} 的工资记录？此操作不可恢复！`, '警告', {
@@ -2579,24 +2454,7 @@ const handleAddTemplate = () => {
     return
   }
 
-  templateForm.value = {
-    id: undefined,
-    name: '',
-    description: '',
-    base_salary: 2500,
-    commission_type: 'fixed',
-    commission_fixed: 20,
-    commission_new_fixed: 20,
-    commission_used_fixed: 0,
-    commission_percentage: 10,
-    overtime_hourly_rate: 10,
-    rest_days: 2,
-    // 自动涨薪规则
-    auto_raise_enabled: false,
-    auto_raise_months: 6,
-    auto_raise_amount: 100,
-    auto_raise_max_salary: 3000
-  }
+  templateForm.value = createSalaryTemplateForm()
   templateFormDialogVisible.value = true
 }
 
@@ -2606,43 +2464,11 @@ const handleEditTemplate = (row: SalaryTemplate) => {
     return
   }
 
-  // 解析自动涨薪规则
-  let autoRaiseEnabled = false
-  let autoRaiseMonths = 6
-  let autoRaiseAmount = 100
-  let autoRaiseMaxSalary = 3000
-
-  if (row.auto_raise_rule) {
-    try {
-      const rule = typeof row.auto_raise_rule === 'string'
-        ? JSON.parse(row.auto_raise_rule)
-        : row.auto_raise_rule
-      autoRaiseEnabled = rule.enabled || false
-      autoRaiseMonths = rule.months || 6
-      autoRaiseAmount = rule.amount || 100
-      autoRaiseMaxSalary = rule.max_salary || 3000
-    } catch {
-      // 忽略异常，使用默认值
-    }
-  }
-
-  templateForm.value = {
-    id: row.id,
-    name: row.name || '',
-    description: row.description || '',
-    base_salary: row.base_salary || 0,
-    commission_type: row.commission_type || 'fixed',
-    commission_fixed: row.commission_fixed || 0,
-    commission_new_fixed: row.commission_new_fixed || row.commission_fixed || 20,
-    commission_used_fixed: row.commission_used_fixed || 0,
-    commission_percentage: row.commission_percentage || 0,
-    overtime_hourly_rate: row.overtime_hourly_rate || 0,
-    rest_days: row.rest_days || 2,
-    // 自动涨薪规则
-    auto_raise_enabled: autoRaiseEnabled,
-    auto_raise_months: autoRaiseMonths,
-    auto_raise_amount: autoRaiseAmount,
-    auto_raise_max_salary: autoRaiseMaxSalary
+  try {
+    templateForm.value = createSalaryTemplateForm(row)
+  } catch (error) {
+    globalNotifications.error(getRequestErrorMessage(error, '工资模板资料异常，请重新读取后核对'))
+    return
   }
   templateFormDialogVisible.value = true
 }
@@ -2657,7 +2483,8 @@ const handleSaveTemplate = async () => {
     templateSaving.value = true
 
     // 构建保存数据
-    const saveData: Partial<SalaryTemplate> = {}
+    const saveData: Partial<SalaryTemplate> = salaryGoodsRulePayload(templateForm.value,
+      canUseSalaryField('salary_salarytemplatesview', 'template_goods_commission_rule'))
 
     if (canUseSalaryField('salary_salarytemplatesview', 'template_name')) {
       saveData.name = templateForm.value.name
@@ -2685,7 +2512,7 @@ const handleSaveTemplate = async () => {
       saveData.overtime_hourly_rate = templateForm.value.overtime_hourly_rate
     }
     if (canUseSalaryField('salary_salarytemplatesview', 'template_rest_days')) {
-      saveData.rest_days = templateForm.value.rest_days || 2
+      saveData.rest_days = templateForm.value.rest_days ?? 2
     }
 
     // 构建自动涨薪规则
@@ -2802,7 +2629,9 @@ const handleViewMyRecord = (row: SalaryRecord) => {
 // 删除的函数 - handleApproveRecord (已移除工资记录tab)
 
 // 工资发放操作
+const payoutRequests = useLatestRequest()
 const loadPayoutList = async () => {
+  const request = payoutRequests.nextRequest()
   if (!canViewSalaryRecords.value) {
     payoutList.value = []
     return
@@ -2821,19 +2650,24 @@ const loadPayoutList = async () => {
     const daysInMonth = TimeUtil.daysInMonth(Number(year), Number(month))
     const endDate = `${year}-${month}-${String(daysInMonth).padStart(2, '0')}`
 
-    const response = await salaryApi.getSalaryRecords({
-      period_start: startDate,
-      period_end: endDate
-    })
-
-    if (response.data) {
-      payoutList.value = response.data.records || []
+    const records: SalaryRecord[] = []
+    let page = 1
+    for (;;) {
+      const response = await salaryApi.getSalaryRecords({ period_start: startDate, period_end: endDate, page }, request.signal)
+      if (!request.isLatest()) return
+      if (!response.data) throw new Error('工资记录列表未返回数据')
+      records.push(...response.data.records)
+      if (!response.data.pagination.has_next) break
+      page++
     }
+    payoutList.value = records
+    updateStats()
   } catch (error) {
+    if (!request.isLatest() || payoutRequests.isCanceledError(error)) return
     logger.error('加载工资发放列表失败:', error)
     globalNotifications.error('加载工资发放列表失败')
   } finally {
-    payoutLoading.value = false
+    if (request.isLatest()) payoutLoading.value = false
   }
 }
 
@@ -2947,6 +2781,12 @@ watch(activeTab, async (newTab, oldTab) => {
     }
   }
 })
+const openCurrentSalarySales = () => {
+  const row = currentRecord.value
+  if (!row) return
+  detailDialogVisible.value = false
+  return handleViewSalesDetail(row)
+}
 </script>
 
 <style lang="scss" scoped src="./styles/salary-view.scss"></style>

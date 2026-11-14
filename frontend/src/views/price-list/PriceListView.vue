@@ -317,6 +317,7 @@
 
           <div class="table-responsive price-list-table-wrapper">
             <el-table
+              v-table-double-tap="mobileDetailTapOptions"
               v-tf-loading="{ active: loading, text: '正在刷新报价列表...' }"
               :data="priceList"
               stripe
@@ -326,9 +327,7 @@
               :fit="true"
               :row-key="getPriceListRowKey"
               :row-class-name="({ row }) => selectedPriceIdSet.has(getPriceItemId(row) ?? 0) ? 'row-selected' : ''"
-              :expand-row-keys="isMobile && mobileActionRowId ? [mobileActionRowId] : []"
-              @expand-change="handleMobileExpandChange"
-              @row-click="(row) => handleMobileRowTap(row.price_list_id || row.id)"
+              @row-dblclick="mobileDetailDoubleClick"
             >
               <template #empty>
                 <TableLoadingRow
@@ -433,7 +432,7 @@
                   <span
                     v-if="row.price_trend === 'up'"
                     class="price-trend-up"
-                    @click.stop="handleViewHistory(row)"
+                    @click.stop="!isMobile && handleViewHistory(row)"
                   >
                     <i class="fas fa-arrow-up" />
                     <span v-if="row.price_change_amount && row.price_change_amount !== '='">¥{{ formatAmount(row.price_change_amount) }}</span>
@@ -441,7 +440,7 @@
                   <span
                     v-else-if="row.price_trend === 'down'"
                     class="price-trend-down"
-                    @click.stop="handleViewHistory(row)"
+                    @click.stop="!isMobile && handleViewHistory(row)"
                   >
                     <i class="fas fa-arrow-down" />
                     <span v-if="row.price_change_amount && row.price_change_amount !== '='">¥{{ formatAmount(row.price_change_amount) }}</span>
@@ -449,7 +448,7 @@
                   <span
                     v-else
                     class="price-trend-neutral"
-                    @click.stop="handleViewHistory(row)"
+                    @click.stop="!isMobile && handleViewHistory(row)"
                   >
                     =
                   </span>
@@ -524,7 +523,7 @@
                     effect="plain"
                     size="small"
                   >
-                    {{ formatDateTime(row.last_sync_time) }}
+                    {{ formatDateTime(typeof row.last_sync_time === 'string' ? row.last_sync_time : null) }}
                   </el-tag>
                   <span
                     v-else
@@ -632,58 +631,53 @@
                   </div>
                 </template>
               </el-table-column>
-
-              <el-table-column
-                v-if="isMobile && showPriceListActionColumn"
-                type="expand"
-                width="1"
-                class-name="mobile-expand-column"
-                label-class-name="mobile-expand-header"
-              >
-                <template #default="{ row }">
-                  <div class="mobile-row-actions">
-                    <el-button
-                      type="primary"
-                      size="small"
-                      title="查看库存"
-                      @click.stop="handleViewInventory(row)"
-                    >
-                      <i class="fas fa-eye" />
-                      查看
-                    </el-button>
-                    <el-button
-                      type="success"
-                      size="small"
-                      title="价格历史"
-                      @click.stop="handleViewHistory(row)"
-                    >
-                      <i class="fas fa-history" />
-                      历史
-                    </el-button>
-                    <el-button
-                      v-if="canEdit"
-                      type="warning"
-                      size="small"
-                      title="编辑报价"
-                      @click.stop="handleEdit(row)"
-                    >
-                      <i class="fas fa-edit" />
-                      编辑
-                    </el-button>
-                    <el-button
-                      v-if="canDelete"
-                      type="danger"
-                      size="small"
-                      title="删除报价"
-                      @click.stop="handleDelete(row)"
-                    >
-                      <i class="fas fa-trash" />
-                      删除
-                    </el-button>
-                  </div>
-                </template>
-              </el-table-column>
             </el-table>
+            <RecordDetailDialog
+              v-model="mobileDetailVisible"
+              title="报价详情"
+              :fields="mobileDetailFields"
+              :record="mobileDetailRow"
+              :has-actions="canView"
+            >
+              <template #actions="{ row }">
+                <el-button
+                  type="primary"
+                  title="查看库存"
+                  @click.stop="mobileDetailRunAction(() => handleViewInventory(row))"
+                >
+                  <i class="fas fa-eye" />
+                  查看
+                </el-button>
+                <el-button
+                  type="success"
+                  title="价格历史"
+                  @click.stop="mobileDetailRunAction(() => handleViewHistory(row))"
+                >
+                  <i class="fas fa-history" />
+                  历史
+                </el-button>
+                <el-button
+                  v-if="canEdit"
+                  v-permission="'price-list:edit'"
+                  type="warning"
+                  title="编辑报价"
+                  @click.stop="mobileDetailRunAction(() => handleEdit(row))"
+                >
+                  <i class="fas fa-edit" />
+                  编辑
+                </el-button>
+                <el-button
+                  v-if="canDelete"
+                  v-permission="'price-list:delete'"
+                  type="danger"
+                  title="删除报价"
+                  @click.stop="mobileDetailRunAction(() => handleDelete(row))"
+                >
+                  <i class="fas fa-trash" />
+                  删除
+                </el-button>
+              </template>
+            </RecordDetailDialog>
           </div>
 
           <div class="pagination-container">
@@ -708,12 +702,16 @@
         :close-on-click-modal="false"
       >
         <el-form
+          class="tf-form-layout tf-form-grid"
           :model="editForm"
           label-width="110px"
         >
           <!-- 品牌、型号、颜色、内存选择 - 确保与 phones 表数据一致 -->
           <el-row :gutter="16">
-            <el-col :span="12">
+            <el-col
+              :xs="12"
+              :span="12"
+            >
               <el-form-item
                 label="品牌"
                 required
@@ -734,7 +732,10 @@
                 </el-select>
               </el-form-item>
             </el-col>
-            <el-col :span="12">
+            <el-col
+              :xs="12"
+              :span="12"
+            >
               <el-form-item
                 label="型号"
                 required
@@ -759,7 +760,10 @@
           </el-row>
 
           <el-row :gutter="16">
-            <el-col :span="12">
+            <el-col
+              :xs="12"
+              :span="12"
+            >
               <el-form-item
                 label="颜色"
                 required
@@ -780,7 +784,10 @@
                 </el-select>
               </el-form-item>
             </el-col>
-            <el-col :span="12">
+            <el-col
+              :xs="12"
+              :span="12"
+            >
               <el-form-item
                 label="内存"
                 required
@@ -860,7 +867,10 @@
             </el-select>
           </el-form-item>
           <el-row :gutter="16">
-            <el-col :span="12">
+            <el-col
+              :xs="12"
+              :span="12"
+            >
               <el-form-item label="采集价">
                 <AmountInput
                   :model-value="editForm.wholesale_price"
@@ -875,7 +885,10 @@
                 </AmountInput>
               </el-form-item>
             </el-col>
-            <el-col :span="12">
+            <el-col
+              :xs="12"
+              :span="12"
+            >
               <el-form-item label="销售价">
                 <el-input
                   :model-value="editForm.retail_price !== null && editForm.retail_price !== undefined ? `¥${formatAmount(editForm.retail_price)}` : '未设置（保存后自动计算）'"
@@ -909,7 +922,7 @@
           </el-form-item>
           <el-row :gutter="16">
             <el-col
-              :xs="8"
+              :xs="12"
               :sm="8"
             >
               <el-form-item
@@ -927,7 +940,7 @@
               </el-form-item>
             </el-col>
             <el-col
-              :xs="8"
+              :xs="12"
               :sm="8"
             >
               <el-form-item
@@ -945,7 +958,7 @@
               </el-form-item>
             </el-col>
             <el-col
-              :xs="8"
+              :xs="12"
               :sm="8"
             >
               <el-form-item
@@ -963,7 +976,10 @@
               </el-form-item>
             </el-col>
           </el-row>
-          <el-form-item label="备注">
+          <el-form-item
+            class="tf-form-field--wide"
+            label="备注"
+          >
             <el-input
               v-model="editForm.remark"
               class="tf-textarea"
@@ -1010,6 +1026,7 @@
           show-icon
         />
         <el-form
+          class="tf-form-layout tf-form-grid"
           label-width="100px"
           :disabled="batchSettingsSaving"
         >
@@ -1201,7 +1218,7 @@
             <el-form
               :model="syncConfig"
               label-width="100px"
-              class="config-form"
+              class="config-form tf-form-layout tf-form-grid"
             >
               <el-form-item label="来源类型">
                 <el-radio-group v-model="syncConfig.source_type">
@@ -1214,7 +1231,10 @@
                 </el-radio-group>
               </el-form-item>
               <el-row :gutter="16">
-                <el-col :span="12">
+                <el-col
+                  :xs="12"
+                  :span="12"
+                >
                   <el-form-item label="配置名称">
                     <el-input
                       v-model="syncConfig.config_name"
@@ -1222,7 +1242,10 @@
                     />
                   </el-form-item>
                 </el-col>
-                <el-col :span="12">
+                <el-col
+                  :xs="12"
+                  :span="12"
+                >
                   <el-form-item label="间隔分钟">
                     <el-input-number
                       v-model="syncConfig.sync_interval"
@@ -1254,7 +1277,10 @@
               </el-form-item>
 
               <el-row :gutter="16">
-                <el-col :span="12">
+                <el-col
+                  :xs="12"
+                  :span="12"
+                >
                   <el-form-item
                     v-if="syncConfig.source_type === 'account'"
                     label="用户名"
@@ -1265,9 +1291,13 @@
                     />
                   </el-form-item>
                 </el-col>
-                <el-col :span="12">
+                <el-col
+                  :xs="24"
+                  :span="12"
+                >
                   <el-form-item
                     v-if="syncConfig.source_type === 'account'"
+                    class="tf-form-field--wide"
                     label="密码"
                   >
                     <el-input
@@ -1305,11 +1335,13 @@
             </div>
 
             <el-table
+              v-table-double-tap="configDetailTapOptions"
               class="data-table"
               :data="syncConfigsList"
               stripe
               border
               max-height="300"
+              @row-dblclick="configDetailDoubleClick"
             >
               <el-table-column
                 prop="config_name"
@@ -1366,11 +1398,11 @@
                 width="150"
               >
                 <template #default="{ row }">
-                  {{ row.last_sync_time ? formatDateTime(row.last_sync_time) : '-' }}
+                  {{ row.last_sync_time ? formatDateTime(typeof row.last_sync_time === 'string' ? row.last_sync_time : null) : '-' }}
                 </template>
               </el-table-column>
               <el-table-column
-                v-if="showPriceListWriteActionColumn"
+                v-if="!isMobile && (showPriceListWriteActionColumn)"
                 label="操作"
                 :width="syncConfigActionColumnWidth"
                 align="center"
@@ -1409,19 +1441,45 @@
                 </template>
               </el-table-column>
             </el-table>
+            <RecordDetailDialog
+              v-model="configDetailVisible"
+              title="同步源详情"
+              :record="configDetailRow"
+              :fields="configDetailFields"
+              :has-actions="canSync"
+            >
+              <template #actions="{ row }">
+                <el-button
+                  v-if="canEdit && !row.is_default"
+                  v-permission="'price-list:edit'"
+                  type="success"
+                  @click.stop="configDetailRunAction(() => handleSetDefaultConfig(row.id))"
+                >
+                  <i class="fas fa-check" />
+                  设为默认
+                </el-button>
+                <el-button
+                  v-if="canEdit"
+                  v-permission="'price-list:edit'"
+                  type="warning"
+                  @click.stop="configDetailRunAction(() => handleEditConfig(row))"
+                >
+                  <i class="fas fa-edit" />
+                  编辑
+                </el-button>
+                <el-button
+                  v-if="canDelete && !row.is_default"
+                  v-permission="'price-list:delete'"
+                  type="danger"
+                  @click.stop="configDetailRunAction(() => handleDeleteConfig(row.id))"
+                >
+                  <i class="fas fa-trash" />
+                  删除
+                </el-button>
+              </template>
+            </RecordDetailDialog>
           </div>
         </div>
-
-        <template #footer>
-          <div class="tf-dialog-actions">
-            <el-button
-              type="default"
-              @click="showConfigDialog = false"
-            >
-              关闭
-            </el-button>
-          </div>
-        </template>
       </MobileDialog>
 
       <!-- 价格历史对话框 -->
@@ -1458,11 +1516,13 @@
           </div>
         </div>
         <el-table
+          v-table-double-tap="historyDetailTapOptions"
           class="data-table"
           :data="priceHistory"
           stripe
           border
           max-height="400"
+          @row-dblclick="historyDetailDoubleClick"
           @selection-change="handleHistorySelectionChange"
         >
           <el-table-column
@@ -1484,7 +1544,7 @@
             width="170"
           >
             <template #default="{ row }">
-              {{ formatDateTime(row.recorded_at) }}
+              {{ formatDateTime(typeof row.recorded_at === 'string' ? row.recorded_at : null) }}
             </template>
           </el-table-column>
           <el-table-column
@@ -1562,12 +1622,12 @@
                 size="small"
                 effect="plain"
               >
-                {{ getChangeReasonLabel(row.change_reason) }}
+                {{ getChangeReasonLabel(row.change_reason || '') }}
               </el-tag>
             </template>
           </el-table-column>
           <el-table-column
-            v-if="showPriceListDeleteActionColumn"
+            v-if="!isMobile && (showPriceListDeleteActionColumn)"
             label="操作"
             :width="$getActionColumnWidth(1)"
             align="center"
@@ -1588,6 +1648,26 @@
             </template>
           </el-table-column>
         </el-table>
+        <RecordDetailDialog
+          v-model="historyDetailVisible"
+          title="报价历史详情"
+          :record="historyDetailRow"
+          :fields="historyDetailFields"
+          :has-actions="canDelete"
+        >
+          <template #actions="{ row }">
+            <el-button
+              v-if="canDelete"
+              v-permission="'price-list:delete'"
+              type="danger"
+              @click.stop="historyDetailRunAction(() => handleDeleteHistoryItem(row))"
+            >
+              <i class="fas fa-trash-alt" />
+              删除
+            </el-button>
+          </template>
+        </RecordDetailDialog>
+
         <DataEmptyState
           v-if="priceHistory.length === 0"
           description="暂无历史记录"
@@ -1766,7 +1846,8 @@ import { createPriceBatchForm, buildPriceBatchChanges, formatWholesaleRule } fro
 import { useImportExport } from '@/composables/useImportExport'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { useLatestRequest } from '@/composables/useLatestRequest'
-import { useMobileRowDoubleTap } from '@/composables/useMobileRowDoubleTap'
+import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
+import type { RecordDetailField } from '@/types/component'
 import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { PageHeader, PermissionGate } from '@/components/base'
 import Pagination from '@/components/Pagination.vue'
@@ -2015,8 +2096,6 @@ const inventoryPagination = reactive({
 })
 const currentInventoryItem = ref<PriceListRow | null>(null)
 const isMobile = ref(false)
-const mobileActionRowId = ref<string | null>(null)
-const { isDoubleTap, resetDoubleTap } = useMobileRowDoubleTap()
 
 type PriceListAdaptiveField =
   | 'brand_name'
@@ -2068,7 +2147,7 @@ const getPriceListColumnWidth = (field: PriceListAdaptiveField) => {
         : '='
     }
     if (field === 'stock_quantity') return `${row.stock_quantity || 0}台`
-    if (field === 'last_sync_time') return row.last_sync_time ? formatDateTime(row.last_sync_time) : '未同步'
+    if (field === 'last_sync_time') return row.last_sync_time ? formatDateTime(typeof row.last_sync_time === 'string' ? row.last_sync_time : null) : '未同步'
     if (field === 'is_collect') return row.is_collect === 0 ? '不采集' : '采集'
     if (field === 'show_price') return '报价'
     return row[field] || '-'
@@ -2183,32 +2262,11 @@ const getSourceNameClass = (row: PriceListRow) => {
 const updateMobileState = () => {
   if (typeof window === 'undefined') return
   isMobile.value = isCurrentMobileViewport()
-  if (!isMobile.value) {
-    mobileActionRowId.value = null
-    resetDoubleTap()
-  }
+
 }
 
-const toggleMobileActions = (id: number | string | null) => {
-  if (!isMobile.value || !id) return
-  const rowKey = String(id)
-  mobileActionRowId.value = mobileActionRowId.value === rowKey ? null : rowKey
-}
 
-const handleMobileExpandChange = (row: PriceListRow, expandedRows: PriceListRow[]) => {
-  if (!isMobile.value) return
-  const rowKey = getPriceListRowKey(row)
 
-  mobileActionRowId.value = expandedRows.some((item) => getPriceListRowKey(item) === rowKey)
-    ? rowKey
-    : null
-}
-
-const handleMobileRowTap = (id: number | string | null) => {
-  if (!isMobile.value || !id) return
-  const rowKey = String(id)
-  if (isDoubleTap(rowKey)) toggleMobileActions(rowKey)
-}
 
 // 列表请求独立于跨页选择，仅最新响应可更新展示。
 const fetchPriceList = async () => {
@@ -3584,6 +3642,55 @@ onUnmounted(() => {
   if (typeof window !== 'undefined') {
     window.removeEventListener('resize', updateMobileState)
   }
+})
+const { detailRow: mobileDetailRow, detailVisible: mobileDetailVisible, doubleTapOptions: mobileDetailTapOptions,
+  handleRowDoubleClick: mobileDetailDoubleClick, runDetailAction: mobileDetailRunAction } = useMobileTableDetail<PriceListRow>({
+    enabled: () => isMobile.value && canView.value, rows: () => priceList.value, getKey: getPriceListRowKey
+  })
+const mobileDetailFields = computed<RecordDetailField[]>(() => {
+  const row = mobileDetailRow.value
+  if (!row) return []
+  return [
+    { key: 'brand_name', label: '品牌', value: row.brand_name, visible: canView.value },
+    { key: 'model_number', label: '型号', value: row.model_number, visible: canView.value },
+    { key: 'color_name', label: '颜色', value: row.color_name, visible: canView.value },
+    { key: 'memory', label: '内存', value: row.memory, visible: canView.value },
+    { key: 'retail_price', label: '零售价', value: formatAmount(row.sales_display_price), visible: canView.value },
+    { key: 'wholesale_price', label: '批发价格', value: formatAmount(row.wholesale_display_price), visible: canView.value },
+    { key: 'wholesale_rule', label: '加价规则', value: formatWholesaleRule(row), visible: canView.value },
+    { key: 'stock_quantity', label: '库存数', value: row.stock_quantity, visible: canView.value },
+    { key: 'last_sync_time', label: '同步时间', value: formatDateTime(typeof row.last_sync_time === 'string' ? row.last_sync_time : null), visible: canView.value, wide: true },
+    { key: 'source_name', label: '采集来源', value: row.source_name || '默认来源', visible: canView.value }
+  ]
+})
+
+const { detailRow: configDetailRow, detailVisible: configDetailVisible, doubleTapOptions: configDetailTapOptions, handleRowDoubleClick: configDetailDoubleClick, runDetailAction: configDetailRunAction } = useMobileTableDetail<(typeof syncConfigsList.value)[number]>({
+  enabled: () => isMobile.value, rows: () => syncConfigsList.value, getKey: row => row.id
+})
+const configDetailFields = computed<RecordDetailField[]>(() => {
+  const row = configDetailRow.value
+  if (!row) return []
+  return [
+    { key: 'config_name', label: '配置名称', value: row.config_name, visible: true },
+    { key: 'field1', label: '来源', value: row.source_type === 'public' ? '公开未登录' : (row.login_username || '登录账户'), visible: true, wide: true },
+    { key: 'login_username', label: '用户名', value: row.login_username, visible: true },
+    { key: 'source_url', label: '数据源', value: formatSourceUrl(row.source_url), visible: true, wide: true },
+    { key: 'last_sync_time', label: '最后同步', value: row.last_sync_time ? formatDateTime(typeof row.last_sync_time === 'string' ? row.last_sync_time : null) : '-', visible: true }
+  ]
+})
+
+const { detailRow: historyDetailRow, detailVisible: historyDetailVisible, doubleTapOptions: historyDetailTapOptions, handleRowDoubleClick: historyDetailDoubleClick, runDetailAction: historyDetailRunAction } = useMobileTableDetail<(typeof priceHistory.value)[number]>({
+  enabled: () => isMobile.value, rows: () => priceHistory.value, getKey: row => row.id
+})
+const historyDetailFields = computed<RecordDetailField[]>(() => {
+  const row = historyDetailRow.value
+  if (!row) return []
+  return [
+    { key: 'recorded_at', label: '记录时间', value: formatDateTime(typeof row.recorded_at === 'string' ? row.recorded_at : null), visible: true, wide: true },
+    { key: 'retail_price', label: '零售价', value: formatAmount(row.retail_price), visible: true },
+    { key: 'wholesale_price', label: '批发价', value: formatAmount(row.wholesale_price), visible: true },
+    { key: 'change_reason', label: '更新方式', value: getChangeReasonLabel(row.change_reason || ''), visible: true }
+  ]
 })
 </script>
 

@@ -13,6 +13,7 @@
     <div class="wholesale-modal-body">
       <el-form
         ref="formRef"
+        class="tf-form-layout tf-form-grid"
         :model="formData"
         :rules="formRules"
         label-width="100px"
@@ -69,6 +70,7 @@
             备注信息
           </h4>
           <el-form-item
+            class="tf-form-field--wide"
             prop="remarks"
             :label-width="0"
           >

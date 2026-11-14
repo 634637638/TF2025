@@ -7,7 +7,7 @@
 
 import { DEFAULT_CACHE_TTL, useCachedRequest } from '@/composables/usePageCache'
 import { unifiedApi } from '@/utils/unified-api'
-import type { ApiResponse } from '@/types'
+import type { ApiResponse, BusinessScope } from '@/types'
 import { useAuthStore } from '@/stores/auth'
 import { sortOptionsByOrder } from '@/utils/option-sort'
 
@@ -58,6 +58,7 @@ export interface ReferenceSearchParams {
   page?: number
   page_size?: number
   status?: string | number
+  business_scope?: BusinessScope
   store_id?: number | string
   strict_scope?: boolean
 }
@@ -81,6 +82,25 @@ export interface PhoneOptionsPayload {
   stores?: ReferenceRecord[]
   [key: string]: unknown
 }
+
+export interface AccessoryEntryOptions {
+  default_store_id?: number | null
+  categories: ReferenceRecord[]
+  units: ReferenceRecord[]
+  brands: ReferenceRecord[]
+  model_brands: ReferenceRecord[]
+  models: ReferenceRecord[]
+  colors: ReferenceRecord[]
+  suppliers: ReferenceRecord[]
+  stores: ReferenceRecord[]
+}
+
+/** 配件入库只读取公共主档；适配型号按手机品牌加载，不创建手机资料。 */
+export const getAccessoryEntryOptions = (params: { brand_id?: number; accessory_id?: number; model_ids?: number[] } = {}) =>
+  unifiedApi.get<AccessoryEntryOptions>('/accessories/options', {
+    params: { ...params, model_ids: params.model_ids?.join(',') },
+    useCache: false
+  })
 
 const cachedGet = <T>(
   key: string,
@@ -140,7 +160,7 @@ export const searchOperators = (params: ReferenceSearchParams = {}) =>
   sortResponseRecords(unifiedApi.get<ReferenceRecord[]>('/users/operators', { params }))
 
 export const searchBrands = (params: ReferenceSearchParams = {}) =>
-  sortResponseRecords(unifiedApi.get<ReferenceRecord[]>('/brands', { params }))
+  sortResponseRecords(unifiedApi.get<ReferenceRecord[]>('/brands', { params: { business_scope: 'phone', ...params } }))
 
 /** 型号唯一公共入口。参考选项默认完整返回，避免落入管理列表分页而漏项。 */
 export const getModels = (options: ModelOptionsParams = {}) => {
@@ -191,7 +211,7 @@ export const getCachedStores = (strictScope = false) => {
 }
 
 export const getCachedBrands = () => sortResponseRecords(
-  cachedGet<ReferenceRecord[]>('/brands?status=1&all=true', '/brands?status=1&all=true')
+  cachedGet<ReferenceRecord[]>('/brands?status=1&all=true&business_scope=phone', '/brands?status=1&all=true&business_scope=phone')
 )
 
 export const getCachedColors = () => sortResponseRecords(
@@ -204,8 +224,8 @@ export const getCachedMemories = () => sortResponseRecords(
 
 // 模板页面复用统一基础数据接口，不再调用历史 shop/base-data 路由。
 export const getTemplateBrands = () => sortResponseRecords(cachedGet<ReferenceRecord[]>(
-  '/brands?all=true',
-  '/brands?all=true'
+  '/brands?all=true&business_scope=phone',
+  '/brands?all=true&business_scope=phone'
 ))
 
 export const getTemplateColors = getCachedColors

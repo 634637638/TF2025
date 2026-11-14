@@ -8,6 +8,7 @@
 
     <div class="table-responsive">
       <el-table
+        v-table-double-tap="mobileDetailTapOptions"
         v-tf-loading="{ active: ctx.rolesLoading, text: '正在刷新角色列表...' }"
         :data="ctx.paginatedRoles"
         border
@@ -16,6 +17,7 @@
         table-layout="fixed"
         :fit="true"
         row-key="id"
+        @row-dblclick="mobileDetailDoubleClick"
       >
         <el-table-column
           v-if="ctx.canViewPermissionsField('roles.id')"
@@ -77,7 +79,7 @@
           </template>
         </el-table-column>
         <el-table-column
-          v-if="ctx.canViewPermissionsField('roles.status') || ctx.canEdit"
+          v-if="!isMobile && (ctx.canViewPermissionsField('roles.status') || ctx.canEdit)"
           label="角色开关"
           min-width="96"
           align="center"
@@ -86,7 +88,8 @@
             <el-button
               v-if="ctx.canEdit"
               native-type="button"
-              :class="row.is_active == '1' || row.is_active === true ? 'tf-button--warning' : 'tf-button--success'"
+              class="table-action"
+              :class="row.is_active == '1' || row.is_active === true ? 'table-action--warning' : 'table-action--success'"
               :disabled="row.id === 1 || row.id === 9"
               :title="row.id === 1 || row.id === 9 ? '系统角色不能停用' : (row.is_active == '1' || row.is_active === true ? '点击停用角色' : '点击启用角色')"
               @click.stop="ctx.toggleRoleStatus(row)"
@@ -121,7 +124,7 @@
           </template>
         </el-table-column>
         <el-table-column
-          v-if="ctx.showPermissionsActionField"
+          v-if="!isMobile && (ctx.showPermissionsActionField)"
           label="操作"
           :width="roleActionColumnWidth"
           align="center"
@@ -158,7 +161,7 @@
                 type="danger"
                 size="small"
                 title="删除"
-                :disabled="row.user_count > 0"
+                :disabled="(row.user_count || 0) > 0"
                 @click.stop="ctx.handleDeleteRole(row)"
               >
                 <i class="fas fa-trash" /><span>删除</span>
@@ -178,6 +181,55 @@
           />
         </template>
       </el-table>
+      <RecordDetailDialog
+        v-model="mobileDetailVisible"
+        title="角色详情"
+        :record="mobileDetailRow"
+        :fields="mobileDetailFields"
+        :has-actions="ctx.canEdit || ctx.canDelete"
+      >
+        <template #actions="{ row }">
+          <el-button
+            v-if="ctx.canEdit"
+            v-permission="'permissions:edit'"
+            :disabled="row.id === 1 || row.id === 9"
+            type="warning"
+            @click.stop="mobileDetailRunAction(() => ctx.toggleRoleStatus(row))"
+          >
+            <i class="fas fa-power-off" />{{ row.is_active === '1' || row.is_active === true ? '停用' : '启用' }}
+          </el-button>
+          <el-button
+            v-if="ctx.canEdit"
+            type="primary"
+            title="编辑"
+            @click.stop="mobileDetailRunAction(() => ctx.handleEditRole(row))"
+          >
+            <i class="fas fa-edit" /><span>编辑</span>
+          </el-button><el-button
+            v-if="ctx.canEdit"
+            type="info"
+            title="页面权限"
+            @click.stop="mobileDetailRunAction(() => ctx.handleAssignPermissions(row))"
+          >
+            <i class="fas fa-lock" /><span>页面权限</span>
+          </el-button><el-button
+            v-if="ctx.canEdit"
+            type="warning"
+            title="字段权限"
+            @click.stop="mobileDetailRunAction(() => ctx.handleRoleFieldPermissions(row))"
+          >
+            <i class="fas fa-columns" /><span>字段权限</span>
+          </el-button><el-button
+            v-if="ctx.canDelete"
+            type="danger"
+            title="删除"
+            :disabled="(row.user_count || 0) > 0"
+            @click.stop="mobileDetailRunAction(() => ctx.handleDeleteRole(row))"
+          >
+            <i class="fas fa-trash" /><span>删除</span>
+          </el-button>
+        </template>
+      </RecordDetailDialog>
     </div>
 
     <Pagination
@@ -197,8 +249,12 @@
 </template>
 
 <script setup lang="ts">
+import { useMobile } from '@/composables/mobile'
+import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
+import type { RecordDetailField } from '@/types/component'
 import Pagination from '@/components/Pagination.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
+import type { PermissionRole } from '../types'
 import { usePermissionsPageContext } from './context'
 import { computed } from 'vue'
 import { getActionColumnMinWidth, getTextColumnMinWidth } from '@/utils/table-layout'
@@ -218,4 +274,22 @@ const getRoleColumnWidth = (
 const roleActionColumnWidth = computed(() => getActionColumnMinWidth(
   ['编辑', '页面权限', '字段权限', '删除']
 ))
+
+const { isMobile } = useMobile()
+const { detailRow: mobileDetailRow, detailVisible: mobileDetailVisible, doubleTapOptions: mobileDetailTapOptions, handleRowDoubleClick: mobileDetailDoubleClick, runDetailAction: mobileDetailRunAction } = useMobileTableDetail<PermissionRole>({
+  enabled: () => isMobile.value, rows: () => ctx.paginatedRoles, getKey: row => row.id
+})
+const mobileDetailFields = computed<RecordDetailField[]>(() => {
+  const row = mobileDetailRow.value
+  if (!row) return []
+  return [
+    { key: 'name', label: '角色名称', value: row.name, visible: ctx.canViewPermissionsField('roles.name') },
+    { key: 'code', label: '角色编码', value: row.code || `role_${row.id}`, visible: ctx.canViewPermissionsField('roles.code') },
+    { key: 'description', label: '角色描述', value: row.description, visible: ctx.canViewPermissionsField('roles.description'), wide: true },
+    { key: 'status', label: '当前状态', value: row.is_active === '1' || row.is_active === true ? '已启用' : '已禁用', visible: ctx.canViewPermissionsField('roles.status') },
+    { key: 'user_count', label: '用户数量', value: row.user_count, visible: ctx.canViewPermissionsField('roles.user_count') },
+    { key: 'created_at', label: '创建时间', value: ctx.formatDate(row.created_at), visible: ctx.canViewPermissionsField('roles.created_at'), wide: true }
+  ]
+})
+
 </script>

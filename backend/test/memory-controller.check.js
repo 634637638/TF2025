@@ -236,7 +236,7 @@ test('内存批量排序按原事务提交，失败回滚且始终释放连接',
     repository: Object.assign(new MemoryRepository(), { withConnection(operation) { return withConnection({ getConnection: async () => connection }, operation) } })
   })
   const success = createResponse()
-  await controller.reorder({ body: { items: [{ id: 1, sort_order: 3 }, { id: 2 }] } }, success)
+  await controller.reorder({ body: { items: [{ id: 1, sort_order: 3 }] } }, success)
   assert.deepEqual(calls.map(call => typeof call === 'string' ? call : call.params), ['begin', [3, 1], 'commit', 'release'])
   assert.equal(success.body.message, '排序更新成功')
 

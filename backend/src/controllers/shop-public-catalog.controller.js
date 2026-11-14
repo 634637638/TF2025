@@ -1,8 +1,10 @@
 'use strict'
 
+const { normalizePhone, isMobilePhone, isPersonName } = require('../utils/input-values')
+
 const ApiResponse = require('../utils/response')
 const log = require('../utils/log')
-const { normalizeCartId } = require('../utils/shop-cart')
+const { normalizeCartId, parseCartItemInput } = require('../utils/shop-cart')
 const { createOrderAccessToken, verifyOrderAccessToken } = require('../utils/order-access')
 const ShopPublicService = require('../services/shop-public.service')
 const homeSectionService = require('../services/home-section.service')
@@ -266,50 +268,36 @@ class ShopPublicCatalogController {
   }
 
   async addToCart(req, res) {
-    const cartId = normalizeCartId(req.body?.cartId)
-    const phoneId = Number(req.body?.phoneId)
-    const quantity = Number(req.body?.quantity ?? 1)
-    if (!cartId || !Number.isInteger(phoneId) || phoneId <= 0 || quantity !== 1) {
-      return this.response.badRequest(res, '购物车商品或数量不正确')
-    }
-
     try {
-      await this.service.addToCart(cartId, phoneId, quantity)
+      const { cartId, id, quantity } = parseCartItemInput(req.body?.cartId, req.body?.phoneId, req.body?.quantity === undefined ? 1 : req.body.quantity)
+      await this.service.addToCart(cartId, id, quantity)
       return this.response.success(res, null, '添加到购物车成功')
     } catch (error) {
+      if (error.statusCode === 400) return this.response.badRequest(res, '购物车商品或数量不正确')
       this.logger.error('添加到购物车失败:', error)
       return this.response.error(res, error.message || '添加到购物车失败', 500)
     }
   }
 
   async updateCartItem(req, res) {
-    const id = Number(req.params.id)
-    const quantity = Number(req.body?.quantity)
-    const cartId = normalizeCartId(req.body?.cartId)
-    if (!Number.isInteger(id) || id <= 0 || !cartId || quantity !== 1) {
-      return this.response.badRequest(res, '购物车商品或数量不正确')
-    }
-
     try {
+      const { cartId, id, quantity } = parseCartItemInput(req.body?.cartId, req.params.id, req.body?.quantity)
       await this.service.updateCartItem(cartId, id, quantity)
       return this.response.success(res, null, '更新购物车成功')
     } catch (error) {
+      if (error.statusCode === 400) return this.response.badRequest(res, '购物车商品或数量不正确')
       this.logger.error('更新购物车失败:', error)
       return this.response.error(res, error.message || '更新购物车失败', 500)
     }
   }
 
   async removeCartItem(req, res) {
-    const id = Number(req.params.id)
-    const cartId = normalizeCartId(req.query.cartId)
-    if (!Number.isInteger(id) || id <= 0 || !cartId) {
-      return this.response.badRequest(res, '购物车商品标识无效')
-    }
-
     try {
+      const { cartId, id } = parseCartItemInput(req.query.cartId, req.params.id, 1)
       await this.service.removeFromCart(cartId, id)
       return this.response.success(res, null, '删除成功')
     } catch (error) {
+      if (error.statusCode === 400) return this.response.badRequest(res, '购物车商品标识无效')
       this.logger.error('删除购物车商品失败:', error)
       return this.response.error(res, error.message || '删除失败', 500)
     }
@@ -365,10 +353,10 @@ class ShopPublicCatalogController {
 
   async getOrdersByPhone(req, res) {
     try {
-      const customerPhone = String(req.params.customer_phone || '').replace(/\D/g, '')
+      const customerPhone = normalizePhone(req.params.customer_phone)
       const { page = 1, customer_name = '' } = req.query
-      const normalizedCustomerName = String(customer_name).trim()
-      if (!/^1[3-9]\d{9}$/.test(customerPhone) || normalizedCustomerName.length < 2 || normalizedCustomerName.length > 50) {
+      const normalizedCustomerName = typeof customer_name === 'string' ? customer_name.replace(/^ +| +$/g, '') : ''
+      if (!isMobilePhone(req.params.customer_phone) || !isPersonName(normalizedCustomerName, 50) || normalizedCustomerName.length < 2) {
         return this.response.badRequest(res, '请输入正确的手机号和下单姓名')
       }
 

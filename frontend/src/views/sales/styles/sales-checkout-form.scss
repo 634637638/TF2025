@@ -40,12 +40,6 @@
   width: 140px;
 }
 
-.form-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 20px;
-}
-
 .form-group {
   display: flex;
   min-width: 0;
@@ -245,13 +239,6 @@
 }
 
 @media (max-width: 767px) {
-  .form-grid {
-    grid-template-columns: 1fr;
-    gap: 16px;
-  }
-}
-
-@media (max-width: 767px) {
   .sale-form-section h4 {
     margin-bottom: 16px;
     font-size: var(--tf-type-scale-15);
@@ -273,11 +260,6 @@
   .sale-form-section :deep(.el-date-editor .el-input__inner),
   .sale-form-section :deep(.el-textarea__inner) {
     font-size: var(--tf-type-scale-13);
-  }
-
-  .form-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
   }
 
   .form-group {

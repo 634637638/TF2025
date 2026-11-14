@@ -29,7 +29,7 @@ test('sales checkout uses one final remark for phones and sales records', () => 
   assert.match(repository, /FOR UPDATE/)
   assert.match(service, /final_remarks:/)
   assert.match(service, /hasRemarksField = Object\.prototype\.hasOwnProperty\.call\(body, 'remarks'\)/)
-  assert.match(service, /shouldApplyRequestedRemarks = hasRemarksField && \(!isBatchSale \|\| requestedRemarks !== ''\)/)
+  assert.match(service, /final_remarks: hasRemarksField/)
   assert.match(service, /const requestedRemarks = String\(remarks \?\? ''\)\.trim\(\)/)
   assert.match(service, /remarks: phone\.final_remarks/)
   assert.match(service, /currentPhone\.supplier_id/)

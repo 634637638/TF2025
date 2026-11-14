@@ -87,7 +87,6 @@ export class ErrorLogger {
 
   constructor(config: Partial<ErrorReportingConfig> = {}) {
     this.config = {
-      enabled: true,
       // unifiedApi 已统一配置 /api，业务端点不重复携带前缀。
       endpoint: '/logs/errors',
       batchSize: 10,
@@ -97,8 +96,10 @@ export class ErrorLogger {
       includeEnvironmentInfo: true,
       autoReport: true,
       levelsToReport: [ErrorLevel.HIGH, ErrorLevel.CRITICAL],
-      typesToReport: [ErrorType.JAVASCRIPT, ErrorType.NETWORK, ErrorType.VUE],
-      ...config
+      typesToReport: [ErrorType.JAVASCRIPT, ErrorType.NETWORK, ErrorType.VUE, ErrorType.ASYNC],
+      ...config,
+      // 开发环境只保留本地诊断，显式配置也不能开启远程发送。
+      enabled: import.meta.env.PROD && config.enabled !== false
     }
 
     this.sessionId = this.generateSessionId()
@@ -126,7 +127,7 @@ export class ErrorLogger {
     })
 
     // 启动定时上报
-    if (this.config.autoReport) {
+    if (this.config.enabled && this.config.autoReport) {
       this.startPeriodicReporting()
     }
 
@@ -163,6 +164,8 @@ export class ErrorLogger {
       existing.count++
       existing.lastOccurred = now
       existing.resolved = false
+      // 新发生的同类错误进入下一批；重复上报仍由服务端累计次数去重。
+      existing.reported = false
       return errorId
     }
 
@@ -244,14 +247,13 @@ export class ErrorLogger {
   /**
    * 控制台日志输出
    */
-  private logToConsole(_entry: ErrorLogEntry): void {
-    const _styles = {
-      [ErrorLevel.CRITICAL]: 'color: #ff4444; font-weight: bold; background: #ffebee; padding: 2px 4px; border-radius: 2px',
-      [ErrorLevel.HIGH]: 'color: #ff6b6b; font-weight: bold; background: #fff3e0; padding: 2px 4px; border-radius: 2px',
-      [ErrorLevel.MEDIUM]: 'color: #ffa726; font-weight: bold; background: #f3e5f5; padding: 2px 4px; border-radius: 2px',
-      [ErrorLevel.LOW]: 'color: #66bb6a; background: #e8f5e8; padding: 2px 4px; border-radius: 2px'
+  private logToConsole(entry: ErrorLogEntry): void {
+    const message = `[${entry.type}] ${entry.message}`
+    if (entry.level === ErrorLevel.HIGH || entry.level === ErrorLevel.CRITICAL) {
+      logger.error(message)
+    } else {
+      logger.warn(message)
     }
-
   }
 
   /**
@@ -426,45 +428,22 @@ export class ErrorLogger {
     // 检查是否需要上报
     if (!this.shouldReport(entry)) return
 
-    try {
-      const reportData = {
-        sessionId: this.sessionId,
-        userId: entry.userId,
-        error: {
-          id: entry.id,
-          level: entry.level,
-          type: entry.type,
-          message: entry.message,
-          stack: entry.stack,
-          context: entry.context,
-          component: entry.component,
-          action: entry.action,
-          tags: entry.tags,
-          timestamp: entry.timestamp,
-          url: entry.url,
-          userAgent: entry.userAgent
-        },
-        environment: this.getEnvironmentInfo(),
-        session: {
-          startTime: this.sessionStartTime,
-          duration: Date.now() - this.sessionStartTime,
-          userActionCount: this.userActionCount,
-          errorCount: this.logs.size
-        }
-      }
-
-      await this.sendReport(reportData)
-      entry.reported = true
-
-    } catch {
-      logger.warn('错误上报失败，日志保留待下次上报')
-    }
+    await this.reportEntries([entry])
   }
 
   /**
    * 判断是否应该上报
    */
   private shouldReport(entry: ErrorLogEntry): boolean {
+    // 普通业务拒绝保留页面提示和本地记录，不作为技术故障外发。
+    if ([ErrorType.PERMISSION, ErrorType.VALIDATION, ErrorType.BUSINESS].includes(entry.type)) {
+      return false
+    }
+    const status = entry.context?.status
+    if (entry.tags?.includes('api') && typeof status === 'number' && status >= 400 && status < 500) {
+      return false
+    }
+
     // 检查级别
     if (!this.config.levelsToReport.includes(entry.level)) {
       return false
@@ -527,11 +506,17 @@ export class ErrorLogger {
 
     if (unreportedLogs.length === 0) return
 
+    await this.reportEntries(unreportedLogs)
+  }
+
+  /** 单条立即上报与定时批量上报复用同一契约和失败处理。 */
+  private async reportEntries(entries: ErrorLogEntry[]): Promise<void> {
+    const counts = entries.map(log => log.count)
     try {
       const reportData = {
         sessionId: this.sessionId,
         userId: this.getCurrentUserId(),
-        errors: unreportedLogs.map(log => ({
+        errors: entries.map(log => ({
           id: log.id,
           level: log.level,
           type: log.type,
@@ -552,19 +537,18 @@ export class ErrorLogger {
           duration: Date.now() - this.sessionStartTime,
           userActionCount: this.userActionCount,
           errorCount: this.logs.size
-        },
-        statistics: this.getStatistics()
+        }
       }
 
       await this.sendReport(reportData)
 
       // 标记为已上报
-      unreportedLogs.forEach(log => {
-        log.reported = true
+      entries.forEach((log, index) => {
+        log.reported = log.count === counts[index]
       })
 
     } catch {
-      logger.warn('批量错误上报失败，日志保留待下次上报')
+      logger.warn('错误上报失败，日志保留待下次上报')
     }
   }
 

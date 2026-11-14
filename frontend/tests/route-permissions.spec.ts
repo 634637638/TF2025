@@ -29,4 +29,16 @@ describe('路由权限映射', () => {
       userPermissions: ['*']
     })).toBe(true)
   })
+
+  it('商品资料路由使用独立模块查看权限，不继承配件库存权限', () => {
+    expect(getRoutePermissions('/accessories/catalog')).toEqual(['accessories-catalog:view'])
+    expect(canAccessRoutePath('/accessories/catalog', {
+      hasPermission: () => false,
+      userPermissions: ['accessories:view']
+    })).toBe(false)
+    expect(canAccessRoutePath('/accessories/catalog', {
+      hasPermission: () => false,
+      userPermissions: ['accessories_accessorycatalogview:view']
+    })).toBe(true)
+  })
 })

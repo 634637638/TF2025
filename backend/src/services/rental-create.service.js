@@ -6,6 +6,7 @@ const { generateInvoiceNumber, prepareInvoiceNumberTransaction } = require('../u
 const { positiveMoney, getPrincipalAmount } = require('../utils/rental-calculations')
 const RentalCreateRepository = require('../repositories/rental-create.repository')
 const { reconcileCustomerPointsForSale } = require('./customer-points.service')
+const { parseRentalInput } = require('../utils/rental-input')
 
 const PAYMENT_METHODS = new Set(['cash', 'mobile', 'bank_card', 'subsidy_card', 'transfer', 'other'])
 const invalid = message => Object.assign(new Error(message), { statusCode: 400 })
@@ -32,6 +33,7 @@ class RentalCreateService {
   }
 
   async create({ body = {}, operatorId }) {
+    body = parseRentalInput(body)
     await this.ensureSchema()
     const billingMode = body.billing_mode
     const customerId = Number(body.customer_id)

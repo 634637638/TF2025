@@ -236,6 +236,7 @@
           class="menu-table-section admin-panel admin-table-panel"
         >
           <el-table
+            v-table-double-tap="mobileDetailTapOptions"
             v-tf-loading="{ active: loading || refreshing, text: '正在刷新菜单列表...' }"
             :data="visibleMenuRows"
             row-key="id"
@@ -243,7 +244,7 @@
             stripe
             border
             :fit="true"
-            @row-click="handleMenuRowTap"
+            @row-dblclick="mobileDetailDoubleClick"
           >
             <template #empty>
               <DataEmptyState description="暂无菜单数据" />
@@ -337,7 +338,7 @@
               </template>
             </el-table-column>
             <el-table-column
-              v-if="showMenuActionField"
+              v-if="!isMobile && (showMenuActionField)"
               label="操作"
               :width="$getActionColumnWidth(['编辑', '子菜单', '删除'])"
               align="center"
@@ -357,7 +358,7 @@
                     v-if="canCreate"
                     type="success"
                     size="small"
-                    @click.stop="showAddModal(row.id)"
+                    @click.stop="showAddModal(Number(row.id))"
                   >
                     <i class="fas fa-plus" /><span>子菜单</span>
                   </el-button>
@@ -373,6 +374,38 @@
               </template>
             </el-table-column>
           </el-table>
+          <RecordDetailDialog
+            v-model="mobileDetailVisible"
+            title="菜单详情"
+            :record="mobileDetailRow"
+            :fields="mobileDetailFields"
+            :has-actions="canCreate || canEdit || canDelete"
+          >
+            <template #actions="{ row }">
+              <el-button
+                v-if="canEdit"
+                type="primary"
+                @click.stop="mobileDetailRunAction(() => showEditModal(row))"
+              >
+                <i class="fas fa-edit" /><span>编辑</span>
+              </el-button>
+              <el-button
+                v-if="canCreate"
+                type="success"
+                @click.stop="mobileDetailRunAction(() => showAddModal(Number(row.id)))"
+              >
+                <i class="fas fa-plus" /><span>子菜单</span>
+              </el-button>
+              <el-button
+                v-if="canDelete"
+                type="danger"
+                @click.stop="mobileDetailRunAction(() => handleDelete(row))"
+              >
+                <i class="fas fa-trash" /><span>删除</span>
+              </el-button>
+            </template>
+          </RecordDetailDialog>
+
 
           <!-- 空状态 -->
           <DataEmptyState
@@ -399,7 +432,7 @@
             <el-form
               :model="formData"
               label-position="top"
-              class="menu-editor-form"
+              class="menu-editor-form tf-form-layout tf-form-grid"
               @submit.prevent="handleSubmit"
             >
               <section class="menu-editor-hero">
@@ -443,7 +476,7 @@
                     class="menu-form-row"
                   >
                     <el-col
-                      :xs="24"
+                      :xs="12"
                       :sm="12"
                     >
                       <el-form-item
@@ -464,7 +497,7 @@
                       </el-form-item>
                     </el-col>
                     <el-col
-                      :xs="24"
+                      :xs="12"
                       :sm="12"
                     >
                       <el-form-item
@@ -489,7 +522,7 @@
                     class="menu-form-row"
                   >
                     <el-col
-                      :xs="24"
+                      :xs="12"
                       :sm="12"
                     >
                       <el-form-item label="父级菜单">
@@ -513,7 +546,7 @@
                       </el-form-item>
                     </el-col>
                     <el-col
-                      :xs="24"
+                      :xs="12"
                       :sm="12"
                     >
                       <el-form-item label="打开方式">
@@ -540,7 +573,7 @@
                     class="menu-form-row menu-form-row--compact"
                   >
                     <el-col
-                      :xs="24"
+                      :xs="12"
                       :sm="9"
                     >
                       <el-form-item label="排序">
@@ -555,7 +588,7 @@
                       </el-form-item>
                     </el-col>
                     <el-col
-                      :xs="24"
+                      :xs="12"
                       :sm="15"
                     >
                       <el-form-item label="关联模块">
@@ -577,7 +610,10 @@
                     </el-col>
                   </el-row>
 
-                  <el-form-item label="备注">
+                  <el-form-item
+                    class="tf-form-field--wide"
+                    label="备注"
+                  >
                     <el-input
                       v-model="formData.remarks"
                       class="tf-textarea"
@@ -630,14 +666,12 @@
                 type="primary"
                 native-type="button"
                 :disabled="submitting || iconSaving"
+                :loading="submitting"
                 @click="handleSubmit"
               >
-                <InlineLoading
-                  v-if="submitting"
-                  text="保存中..."
-                  size="small"
-                  variant="inherit"
-                />
+                <template v-if="submitting">
+                  保存中...
+                </template>
                 <template v-else>
                   <i class="fas fa-save" />
                   保存
@@ -661,14 +695,14 @@
         >
           <el-form
             label-position="top"
-            class="tf-dialog-form menu-width-form"
+            class="tf-dialog-form menu-width-form tf-form-layout tf-form-grid"
           >
             <p class="menu-width-form__hint">
               分别设置桌面端和手机端侧边菜单的显示宽度，范围 100-500px。
             </p>
             <el-row :gutter="16">
               <el-col
-                :xs="24"
+                :xs="12"
                 :sm="12"
               >
                 <el-form-item label="PC端">
@@ -686,7 +720,7 @@
                 </el-form-item>
               </el-col>
               <el-col
-                :xs="24"
+                :xs="12"
                 :sm="12"
               >
                 <el-form-item label="手机端">
@@ -721,14 +755,12 @@
                 type="primary"
                 native-type="button"
                 :disabled="isWidthLoading"
+                :loading="isWidthLoading"
                 @click="applyBothMenuWidths"
               >
-                <InlineLoading
-                  v-if="isWidthLoading"
-                  text="保存中..."
-                  size="small"
-                  variant="inherit"
-                />
+                <template v-if="isWidthLoading">
+                  保存中...
+                </template>
                 <template v-else>
                   <i class="fas fa-save" />
                   保存
@@ -743,6 +775,8 @@
 </template>
 
 <script setup lang="ts">
+import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
+import type { RecordDetailField } from '@/types/component'
 import { confirmAction } from '@/utils/message-box'
 import { ref, onMounted, computed, watch, defineAsyncComponent } from 'vue'
 import { unifiedApi } from '@/utils/unified-api'
@@ -756,10 +790,8 @@ import { fieldPermissions, shouldShowActionColumn } from '@/composables/useField
 import { useMenuStore } from '@/stores/menu'
 import { useMenuWidth } from '@/composables/useMenuWidth'
 import { useMobile } from '@/composables/mobile'
-import { useMobileRowDoubleTap } from '@/composables/useMobileRowDoubleTap'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import ImportExportActions from '@/components/business/ImportExportActions.vue'
-import InlineLoading from '@/components/InlineLoading.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import IconRenderer from '@/components/IconRenderer.vue'
 import { useEventBus } from '@/composables/core/useEventBus'
@@ -944,8 +976,6 @@ const handleMenuImportChange = async (event: Event) => {
   }
 }
 const menuSearchExpanded = ref(false)
-const activeMobileMenuId = ref<string | number | null>(null)
-const { isDoubleTap } = useMobileRowDoubleTap()
 let sharedPublicMenuPromise: Promise<MenuItem[]> | null = null
 
 const asRecord = (value: unknown): Record<string, unknown> | null => (
@@ -1076,15 +1106,7 @@ const loadMenus = async (_bustCache: boolean = false, silentError: boolean = fal
   }
 }
 
-const toggleMobileMenuActions = (menuId: string | number) => {
-  activeMobileMenuId.value = activeMobileMenuId.value === menuId ? null : menuId
-}
 
-const handleMenuRowTap = (menu: MenuItem) => {
-  if (!isMobile.value) return
-
-  if (isDoubleTap(menu.id)) toggleMobileMenuActions(menu.id)
-}
 
 const searchMenus = async () => {
   if (!canView.value) {
@@ -1755,6 +1777,23 @@ onMounted(async () => {
 
   // 加载PC和手机端菜单宽度
   initializeMenuWidths()
+})
+
+const { detailRow: mobileDetailRow, detailVisible: mobileDetailVisible, doubleTapOptions: mobileDetailTapOptions, handleRowDoubleClick: mobileDetailDoubleClick, runDetailAction: mobileDetailRunAction } = useMobileTableDetail<VisibleMenuRow>({
+  enabled: () => isMobile.value && canView.value, rows: () => visibleMenuRows.value, getKey: row => row.id
+})
+const mobileDetailFields = computed<RecordDetailField[]>(() => {
+  const row = mobileDetailRow.value
+  if (!row) return []
+  return [
+    { key: 'title', label: '菜单名称', value: row.title || row.name, visible: canViewMenuField('name') },
+    { key: 'menu_type', label: '菜单类型', value: getMenuTypeLabel(row.menu_type), visible: canViewMenuField('menu_type') },
+    { key: 'remarks', label: '备注', value: row.remarks, visible: canViewMenuField('remarks'), wide: true },
+    { key: 'path', label: '路径', value: row.path || row.url, visible: canViewMenuField('path'), wide: true },
+    { key: 'icon', label: '图标', value: row.icon, visible: canViewMenuField('icon') },
+    { key: 'sort_order', label: '排序', value: row.sort_order, visible: canViewMenuField('sort_order') },
+    { key: 'status', label: '状态', value: row.status ? '启用' : '禁用', visible: canViewMenuField('status') }
+  ]
 })
 </script>
 

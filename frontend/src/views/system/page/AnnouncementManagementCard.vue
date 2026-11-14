@@ -36,12 +36,15 @@
     <div
       v-else-if="announcements.length"
       v-tf-loading="{ active: loading, text: '正在刷新站内公告...' }"
+      v-table-double-tap="recordTapOptions"
       class="announcement-management-list"
     >
       <article
         v-for="announcement in announcements"
         :key="announcement.id"
         class="announcement-management-item"
+        data-mobile-record
+        @dblclick="openRecordDetail(announcement, null, $event)"
       >
         <div class="announcement-management-item__heading">
           <h4>{{ announcement.title }}</h4>
@@ -65,7 +68,10 @@
         />
         <div class="announcement-management-item__footer">
           <span>{{ formatDate(announcement.updatedAt) }}</span>
-          <div class="announcement-management-item__actions">
+          <div
+            v-if="!isMobile"
+            class="announcement-management-item__actions"
+          >
             <el-button
               v-if="canEdit"
               text
@@ -97,6 +103,38 @@
       description="暂无公告"
     />
 
+    <RecordDetailDialog
+      v-model="recordVisible"
+      title="公告详情"
+      :fields="recordFields"
+      :record="recordRow"
+      :has-actions="canEdit || canDelete"
+    >
+      <RichContent
+        v-if="recordRow"
+        :content="recordRow.content"
+      />
+      <template #actions>
+        <el-button
+          v-if="canEdit"
+          v-permission="'system:edit'"
+          type="primary"
+          @click.stop="runRecordAction(openEditDialog)"
+        >
+          编辑
+        </el-button>
+        <el-button
+          v-if="canDelete"
+          v-permission="'system:delete'"
+          type="danger"
+          :disabled="deletingId !== null"
+          @click.stop="runRecordAction(deleteAnnouncement)"
+        >
+          删除
+        </el-button>
+      </template>
+    </RecordDetailDialog>
+
     <MobileDialog
       v-model="dialogVisible"
       :title="editingId ? '编辑公告' : '新增公告'"
@@ -104,7 +142,7 @@
     >
       <el-form
         ref="formRef"
-        class="tf-dialog-form tf-dialog-form--stacked"
+        class="tf-dialog-form tf-dialog-form--stacked tf-form-layout tf-form-grid"
         :model="form"
         :rules="rules"
         label-position="top"
@@ -120,6 +158,7 @@
           />
         </el-form-item>
         <el-form-item
+          class="tf-form-field--wide"
           label="公告内容"
           prop="content"
         >
@@ -177,6 +216,9 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
+import { useMobile } from '@/composables/mobile'
+import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
+import type { RecordDetailField } from '@/types/component'
 import type { FormInstance, FormRules } from 'element-plus'
 import type { SiteAnnouncement } from '@/types'
 import { announcementsApi, type SiteAnnouncementInput } from '@/api/announcements'
@@ -197,6 +239,21 @@ const props = defineProps<{
 
 const { success, error } = useNotification()
 const announcements = ref<SiteAnnouncement[]>([])
+const { isMobile } = useMobile()
+const { detailRow: recordRow, detailVisible: recordVisible, doubleTapOptions: recordTapOptions,
+  handleRowDoubleClick: openRecordDetail, runDetailAction: runRecordAction } = useMobileTableDetail({
+  enabled: isMobile, rows: announcements, getKey: row => row.id, rowSelector: '[data-mobile-record]'
+})
+const recordFields = computed<RecordDetailField[]>(() => {
+  const row = recordRow.value
+  return row ? [
+    { key: 'title', label: '标题', value: row.title, visible: true, wide: true },
+    { key: 'published', label: '发布状态', value: row.isPublished ? '已发布' : '草稿', visible: true },
+    { key: 'pinned', label: '置顶', value: row.isPinned ? '是' : '否', visible: true },
+    { key: 'updated', label: '更新时间', value: formatDate(row.updatedAt), visible: true },
+    { key: 'expires', label: '有效期至', value: row.expiresAt ? formatDate(row.expiresAt) : '长期', visible: true }
+  ] : []
+})
 const loading = ref(false)
 const saving = ref(false)
 const deletingId = ref<number | null>(null)

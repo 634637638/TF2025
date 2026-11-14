@@ -105,112 +105,15 @@
 
       <!-- 日志列表 -->
       <el-card class="table-card admin-panel admin-table-panel">
-        <div
-          v-if="isMobile"
-          class="table-responsive"
-        >
-          <div
-            v-if="loading"
-            class="table-loading"
-          >
-            <SectionLoading
-              text="加载同步日志中..."
-              size="large"
-            />
-          </div>
-
-          <div
-            v-else
-            class="sync-log-mobile-list"
-          >
-            <DataEmptyState
-              v-if="!logList.length"
-              size="compact"
-              description="暂无同步日志"
-            />
-            <article
-              v-for="row in logList"
-              :key="row.id"
-              class="sync-log-mobile-item"
-            >
-              <el-button
-                native-type="button"
-                class="sync-log-mobile-summary tf-button--content"
-                @click="handleMobileRowTap(row.id)"
-              >
-                <span class="sync-log-mobile-time">{{ formatDateTime(row.start_time) }}</span>
-                <el-tag
-                  v-if="row.status === 'success'"
-                  type="success"
-                  size="small"
-                >
-                  成功
-                </el-tag>
-                <el-tag
-                  v-else-if="row.status === 'failed'"
-                  type="danger"
-                  size="small"
-                >
-                  失败
-                </el-tag>
-                <el-tag
-                  v-else-if="row.status === 'running'"
-                  type="warning"
-                  size="small"
-                >
-                  进行中
-                </el-tag>
-                <el-tag
-                  v-else
-                  type="info"
-                  size="small"
-                >
-                  {{ row.status }}
-                </el-tag>
-                <span class="sync-log-mobile-config">{{ row.config_name || '-' }}</span>
-                <i
-                  class="fas"
-                  :class="mobileActionRowId === row.id ? 'fa-chevron-up' : 'fa-chevron-down'"
-                />
-              </el-button>
-              <div class="sync-log-mobile-meta">
-                <span>成功 {{ row.success_count ?? '-' }}</span>
-                <span>失败 {{ row.failed_count ?? '-' }}</span>
-                <span>耗时 {{ row.duration ? `${row.duration}秒` : '-' }}</span>
-              </div>
-              <div
-                v-if="mobileActionRowId === row.id"
-                class="mobile-row-actions"
-              >
-                <el-button
-                  type="primary"
-                  size="small"
-                  @click.stop="handleViewDetail(row)"
-                >
-                  详情
-                </el-button>
-                <el-button
-                  v-if="canDelete"
-                  type="danger"
-                  size="small"
-                  @click.stop="handleDeleteLog(row)"
-                >
-                  删除
-                </el-button>
-              </div>
-            </article>
-          </div>
-        </div>
-
         <el-table
-          v-else
+          v-table-double-tap="mobileDetailTapOptions"
           v-tf-loading="{ active: loading, text: '正在刷新报价同步日志...' }"
           class="data-table"
           :data="logList"
           stripe
           border
           style="width: 100%"
-          @row-dblclick="handleViewDetail"
+          @row-dblclick="mobileDetailDoubleClick"
         >
           <template #empty>
             <TableLoadingRow
@@ -381,7 +284,7 @@
             </template>
           </el-table-column>
           <el-table-column
-            v-if="showSyncLogActionField"
+            v-if="!isMobile && (showSyncLogActionField)"
             label="操作"
             :width="$getActionColumnWidth(1 + Number(canDelete))"
             align="center"
@@ -458,7 +361,7 @@
             </span>
           </div>
 
-          <el-descriptions
+          <RecordDescriptions
             :column="2"
             border
             class="detail-descriptions"
@@ -521,7 +424,7 @@
                 <span v-else>同步正在执行中，请稍候...</span>
               </div>
             </el-descriptions-item>
-          </el-descriptions>
+          </RecordDescriptions>
 
           <!-- 详情数据 -->
           <div
@@ -630,6 +533,20 @@
             </el-table>
           </div>
         </div>
+        <template
+          v-if="currentLog && canDelete"
+          #footer
+        >
+          <div class="tf-dialog-actions">
+            <el-button
+              v-permission="'price-list:delete'"
+              type="danger"
+              @click.stop="deleteCurrentLog"
+            >
+              <i class="fas fa-trash" />删除
+            </el-button>
+          </div>
+        </template>
       </MobileDialog>
     </div>
   </PermissionGate>
@@ -643,13 +560,12 @@ import { useRouter } from 'vue-router'
 import { getSyncLogs, getSyncLogStatistics, deleteSyncLog, clearSyncLogs } from '@/api/price-list'
 import { usePagination } from '@/composables'
 import { usePagePermissions } from '@/composables/usePagePermissions'
-import { useMobileRowDoubleTap } from '@/composables/useMobileRowDoubleTap'
+import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
 import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { useLoadingState } from '@/composables'
 import { PageHeader, PermissionGate } from '@/components/base'
 import Pagination from '@/components/Pagination.vue'
 import InlineLoading from '@/components/InlineLoading.vue'
-import SectionLoading from '@/components/SectionLoading.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import { logger } from '@/utils/logger'
 import { isCurrentMobileViewport } from '@/utils/device-detection'
@@ -749,8 +665,6 @@ const stats = ref({
   avgDuration: 0
 })
 const isMobile = ref(false)
-const mobileActionRowId = ref<number | null>(null)
-const { isDoubleTap, resetDoubleTap } = useMobileRowDoubleTap()
 
 // 详情对话框
 const showDetailDialog = ref(false)
@@ -991,22 +905,10 @@ const getSuccessRateClass = (log: SyncLogRecord) => {
 const updateMobileState = () => {
   if (typeof window === 'undefined') return
   isMobile.value = isCurrentMobileViewport()
-  if (!isMobile.value) {
-    mobileActionRowId.value = null
-    resetDoubleTap()
-  }
+
 }
 
-const toggleMobileActions = (id: number | null) => {
-  if (!isMobile.value || !id) return
-  mobileActionRowId.value = mobileActionRowId.value === id ? null : id
-}
 
-const handleMobileRowTap = (id: number | null) => {
-  if (!isMobile.value || !id) return
-
-  if (isDoubleTap(id)) toggleMobileActions(id)
-}
 
 onMounted(async () => {
   updateMobileState()
@@ -1027,6 +929,16 @@ onUnmounted(() => {
     window.removeEventListener('resize', updateMobileState)
   }
 })
+
+const { doubleTapOptions: mobileDetailTapOptions, handleRowDoubleClick: mobileDetailDoubleClick } = useMobileTableDetail<SyncLogRecord>({
+  enabled: () => canView.value, rows: logList, getKey: row => row.id ?? undefined, onOpen: handleViewDetail
+})
+const deleteCurrentLog = () => {
+  const row = currentLog.value
+  if (!row) return
+  showDetailDialog.value = false
+  return handleDeleteLog(row)
+}
 </script>
 
 <style scoped lang="scss">
@@ -1042,36 +954,6 @@ onUnmounted(() => {
   }
 }
 
-.sync-log-mobile-table {
-  table-layout: fixed;
-  border-collapse: collapse;
-  border: 1px solid var(--tf-color-border-slate);
-  border-radius: 0;
-  background: var(--color-bg-white);
-
-  th,
-  td {
-    padding: 12px 6px;
-    text-align: center;
-    vertical-align: middle;
-    word-break: break-word;
-    border: 1px solid var(--tf-color-border-slate);
-  }
-
-  th {
-    font-size: var(--tf-type-scale-11);
-    font-weight: 700;
-    color: var(--tf-color-slate-600);
-    background: var(--tf-color-surface);
-  }
-
-  td {
-    font-size: var(--tf-type-scale-13);
-    font-weight: 600;
-    color: var(--tf-color-slate-700);
-    background: var(--color-bg-white);
-  }
-}
 
 .text-gray {
   color: var(--color-info);
@@ -1186,56 +1068,6 @@ onUnmounted(() => {
   font-weight: 600;
 }
 
-.sync-log-mobile-list {
-  display: grid;
-  gap: 8px;
-}
-
-.sync-log-mobile-item {
-  overflow: hidden;
-  border: 1px solid var(--el-border-color-lighter);
-  border-radius: 8px;
-  background: var(--el-bg-color);
-}
-
-.sync-log-mobile-summary {
-  display: grid;
-  grid-template-columns: minmax(0, 1.4fr) auto minmax(0, 1fr) auto;
-  align-items: center;
-  width: 100%;
-  gap: 8px;
-
-  text-align: left;
-  cursor: pointer;
-}
-
-.sync-log-mobile-time,
-.sync-log-mobile-config {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.sync-log-mobile-config {
-  color: var(--el-text-color-secondary);
-  font-size: var(--tf-type-scale-12);
-}
-
-.sync-log-mobile-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px 14px;
-  padding: 0 12px 10px;
-  color: var(--el-text-color-secondary);
-  font-size: var(--tf-type-scale-12);
-}
-
-.sync-log-mobile-item .mobile-row-actions {
-  display: flex;
-  padding: 8px 12px 10px;
-  border-top: 1px solid var(--el-border-color-lighter);
-}
 
 @media (max-width: 767px) {
   .sync-log-view {
@@ -1278,15 +1110,5 @@ onUnmounted(() => {
   }
 }
 
-@media (max-width: 479px) {
-  .sync-log-mobile-summary {
-    grid-template-columns: minmax(0, 1fr) auto auto;
-  }
 
-  .sync-log-mobile-config {
-    grid-column: 1 / -1;
-    grid-row: 2;
-  }
-
-}
 </style>

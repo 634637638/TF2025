@@ -2,7 +2,7 @@ const BaseRepository = require('./base.repository')
 
 const SUPPLIER_SELECT_COLUMNS = `
   s.id, s.name, s.contact, s.phone, s.address, s.bank_info,
-  s.tax_number, s.status, s.remarks, s.created_at, s.updated_at, s.sort_order
+  s.tax_number, s.business_scope, s.status, s.remarks, s.created_at, s.updated_at, s.sort_order
 `
 const SUPPLIER_SORT_COLUMNS = new Set(['id', 'name', 'status', 'sort_order', 'created_at', 'updated_at'])
 
@@ -19,6 +19,7 @@ const formatSupplier = row => ({
   address: formatNullableString(row.address),
   bank_info: formatNullableString(row.bank_info),
   tax_number: formatNullableString(row.tax_number),
+  business_scope: row.business_scope || 'both',
   status: Number(row.status) === 1 ? 1 : 0,
   remarks: formatNullableString(row.remarks),
   sort_order: Number(row.sort_order) || 0,
@@ -143,14 +144,14 @@ class SupplierRepository extends BaseRepository {
 
   async createSupplier(supplierData) {
     const {
-      name, contact, phone, address, bank_info, tax_number,
+      name, contact, phone, address, bank_info, tax_number, business_scope = 'both',
       status = 1, sort_order = 0, remarks
     } = supplierData
     const [result] = await this.executeQuery(`
       INSERT INTO suppliers (
-        name, contact, phone, address, bank_info, tax_number,
+        name, contact, phone, address, bank_info, tax_number, business_scope,
         status, sort_order, remarks, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
     `, [
       name,
       contact || null,
@@ -158,6 +159,7 @@ class SupplierRepository extends BaseRepository {
       address || null,
       bank_info || null,
       tax_number || null,
+      business_scope || 'both',
       Number(status),
       Number(sort_order),
       remarks || null
@@ -167,13 +169,13 @@ class SupplierRepository extends BaseRepository {
 
   async updateSupplier(id, supplierData) {
     const {
-      name, contact, phone, address, bank_info, tax_number,
+      name, contact, phone, address, bank_info, tax_number, business_scope,
       status, sort_order, remarks
     } = supplierData
     const [result] = await this.executeQuery(`
       UPDATE suppliers
       SET name = ?, contact = ?, phone = ?, address = ?, bank_info = ?,
-          tax_number = ?, status = ?, sort_order = ?, remarks = ?, updated_at = CURRENT_TIMESTAMP
+          tax_number = ?, business_scope = ?, status = ?, sort_order = ?, remarks = ?, updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
     `, [
       name,
@@ -182,6 +184,7 @@ class SupplierRepository extends BaseRepository {
       address || null,
       bank_info || null,
       tax_number || null,
+      business_scope || 'both',
       Number(status),
       Number(sort_order),
       remarks || null,

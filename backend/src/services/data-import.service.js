@@ -12,8 +12,62 @@ const { normalizeDateTime, formatLocalDate } = require('../utils/time')
 const { getUploadSubdir } = require('../utils/upload-paths')
 const { validateSpreadsheetFile, readSpreadsheetFileSafe, sheetToJsonSafe } = require('../utils/spreadsheet-security')
 const { reconcileCustomerPointsForSale } = require('./customer-points.service')
+const { isMoneyInput, isEmptyInput, isSingleLineText, isPersonName, isMobilePhone, normalizePhone } = require('../utils/input-values')
+const { validateImei } = require('../utils/imei')
 
 const IMPORT_UPLOAD_DIR = getUploadSubdir('import')
+const importInputError = message => Object.assign(new Error(message), { statusCode: 400, code: 'IMPORT_INPUT_INVALID' })
+
+// Excel 可使用数字单元格或完整十进制文本；禁止部分解析和强制类型转换。
+const parseImportAmount = (row, field) => {
+  const raw = row[field]
+  const value = typeof raw === 'string' ? raw.replace(/^ +| +$/g, '') : raw
+  if (isEmptyInput(value)) return null
+  if (!isMoneyInput(value) || Number(value) < 0) {
+    throw importInputError(`${field}必须为非负金额，最多两位小数`)
+  }
+  return Number(value)
+}
+
+const parseImportAmounts = row => ({
+  purchasePrice: parseImportAmount(row, '入库价'),
+  salePrice: parseImportAmount(row, '销售价')
+})
+
+const validateImportRow = row => {
+  const amounts = parseImportAmounts(row)
+  const normalized = { ...row }
+  for (const field of ['品牌', '型号', '颜色', '内存', '供应商', '店铺']) {
+    const value = row[field]
+    if (isEmptyInput(value)) continue
+    const text = typeof value === 'number' && Number.isFinite(value) ? String(value) : value
+    if (!isSingleLineText(text, 100)) throw importInputError(`${field}必须为100字以内的单行文本`)
+  }
+  for (const field of ['客户姓名', '客户', '入库员', '销售员']) {
+    const value = row[field]
+    if (isEmptyInput(value)) continue
+    if (!isSingleLineText(value, 50) || (value.trim() && !isPersonName(value, 50))) {
+      throw importInputError(`${field}必须为50字以内的有效姓名`)
+    }
+  }
+  const rawPhone = row['手机号']
+  if (!isEmptyInput(rawPhone)) {
+    const phone = typeof rawPhone === 'number' && Number.isSafeInteger(rawPhone) ? String(rawPhone) : rawPhone
+    if (!isMobilePhone(phone)) throw importInputError('手机号格式不正确')
+    normalized['手机号'] = normalizePhone(phone)
+  }
+  let imei = row['IMEI']
+  if (typeof imei === 'number' && Number.isSafeInteger(imei)) imei = String(imei)
+  const serial = row['序列号']
+  if (!isEmptyInput(imei) || !isEmptyInput(serial)) {
+    const identifier = validateImei(isEmptyInput(imei) ? serial : imei, serial)
+    if (!identifier.valid) throw importInputError(identifier.reason)
+    // 保留缺少 IMEI 的来源事实，写手机时才按既有规则回退至 SN。
+    normalized['IMEI'] = isEmptyInput(imei) ? '' : identifier.normalizedImei
+    normalized['序列号'] = identifier.normalizedSerialNumber
+  }
+  return { row: normalized, amounts }
+}
 
 class DataImportService {
   constructor() {
@@ -119,7 +173,10 @@ class DataImportService {
       const uniqueCustomers = new Set()
 
       for (let i = 0; i < data.length; i++) {
-        const row = data[i]
+        let row
+        try { row = validateImportRow(data[i]).row } catch (error) {
+          throw importInputError(`第 ${i + 2} 行：${error.message}`)
+        }
         const imei = String(row['IMEI'] || '').trim()
         const serialNumber = String(row['序列号'] || '').trim()
         const customerName = String(row['客户姓名'] || '').trim()
@@ -508,6 +565,12 @@ class DataImportService {
         // 如果是完全替换策略，先清空所有数据并重置ID
         if (strategy === 'replace_all') {
           try {
+            // 在清空旧数据和创建单号结构之前完成整份输入预检。
+            data.forEach((row, index) => {
+              try { validateImportRow(row) } catch (error) {
+                throw new Error(`第 ${index + 2} 行：${error.message}`)
+              }
+            })
             // 完全替换必须把“清空 + 全量导入”放在同一事务中。
             // 任意一行失败都回滚旧数据，禁止留下清空后只导入一部分的状态。
             await prepareInvoiceNumberTransaction(connection)
@@ -554,6 +617,7 @@ class DataImportService {
           let transactionStarted = false
 
           try {
+            validateImportRow(row)
             // 普通策略每行独立提交；完全替换策略复用覆盖整个导入过程的事务。
             if (strategy !== 'replace_all') {
               await prepareInvoiceNumberTransaction(connection)
@@ -806,6 +870,9 @@ class DataImportService {
    * 导入单行数据
    */
   async importRow(connection, row, maps, strategy, _user = null) {
+    const validated = validateImportRow(row)
+    row = validated.row
+    const { amounts } = validated
     const imei = String(row['IMEI'] || '').trim()
     const serialNumber = String(row['序列号'] || '').trim()
     const _customerName = String(row['客户姓名'] || '').trim()
@@ -873,7 +940,6 @@ class DataImportService {
       const customerName = String(row['客户姓名'] || row['客户'] || '').trim()
       const phone = String(row['手机号'] || '').trim()
       const saleOperator = String(row['销售员'] || '').trim()
-      const _salePrice = parseFloat(row['销售价']) || null
 
       // 判断Excel中的销售状态
       const hasSaleDate = !!saleDate
@@ -934,8 +1000,7 @@ class DataImportService {
         const updateValues = []
 
         // 解析数据 - 本地Excel是最新的真实数据
-        const excelPurchasePrice = !isNaN(parseFloat(row['入库价'])) ? parseFloat(row['入库价']) : null
-        const excelSalePrice = !isNaN(parseFloat(row['销售价'])) ? parseFloat(row['销售价']) : null
+        const { purchasePrice: excelPurchasePrice, salePrice: excelSalePrice } = amounts
         const remarks = String(row['备注'] || '').trim()
         const isNewStr = String(row['全新/二手'] || '').trim()
         const saleDate = row['销售日期'] || null
@@ -1058,8 +1123,7 @@ class DataImportService {
         const updateValues = []
 
         // 解析数据
-        const purchasePrice = !isNaN(parseFloat(row['入库价'])) ? parseFloat(row['入库价']) : null
-        const salePrice = !isNaN(parseFloat(row['销售价'])) ? parseFloat(row['销售价']) : null
+        const { purchasePrice, salePrice } = amounts
         const remarks = String(row['备注'] || '').trim()
         const isNewStr = String(row['全新/二手'] || '').trim()
         const saleDate = row['销售日期'] || null
@@ -1170,11 +1234,11 @@ class DataImportService {
           updateFields.push('inventory_time = ?')
           updateValues.push(purchaseDate)
         }
-        if (!isNaN(purchasePrice)) {
+        if (purchasePrice !== null) {
           updateFields.push('purchase_cost = ?')
           updateValues.push(purchasePrice)
         }
-        if (!isNaN(salePrice)) {
+        if (salePrice !== null) {
           updateFields.push('sale_price = ?')
           updateValues.push(salePrice)
         }
@@ -1246,8 +1310,7 @@ class DataImportService {
     }
 
     // 解析数据
-    const purchasePrice = !isNaN(parseFloat(row['入库价'])) ? parseFloat(row['入库价']) : 0
-    const salePrice = !isNaN(parseFloat(row['销售价'])) ? parseFloat(row['销售价']) : 0
+    const { purchasePrice, salePrice } = amounts
     const remarks = String(row['备注'] || '').trim()
     const isNewStr = String(row['全新/二手'] || '').trim()
     const saleDate = row['销售日期'] || null
@@ -1319,8 +1382,8 @@ class DataImportService {
         status,
         saleDate,
         purchaseDate,
-        purchasePrice || null,
-        salePrice || null,
+        purchasePrice,
+        salePrice,
         remarks || null,
         isNew,
         inventoryOperatorId,

@@ -2,7 +2,10 @@
 
 const options = require('../config/return-stock-options.json')
 const paymentOptions = require('../config/payment-methods.json')
+const { validateRefundPayment } = require('../utils/sale-payment')
 const { normalizeDateTime } = require('../utils/time')
+const { isMoneyInput } = require('../utils/input-values')
+const { parseInput } = require('../middleware/validation')
 
 function invalid(message) {
   const error = new Error(message)
@@ -32,22 +35,17 @@ function normalizeReturnStockInfo(payload = {}, { partial = false } = {}) {
 
   if (!partial || ['refund_method', 'refund_channel'].some(field => Object.prototype.hasOwnProperty.call(payload, field))) {
     if (!result.refund_method) invalid('修改退款渠道时请同时提交退款方式')
-    const channels = paymentOptions.channels[result.refund_method] || []
-    const value = typeof payload.refund_channel === 'string' ? payload.refund_channel.trim() : ''
-    if (channels.length && !channels.some(channel => channel.value === value)) invalid('请选择有效的退款渠道')
-    if (!channels.length && value) invalid('当前退款方式不支持退款渠道')
-    if (payload.refund_channel !== null && payload.refund_channel !== undefined && typeof payload.refund_channel !== 'string') invalid('退款渠道无效')
-    result.refund_channel = value || null
+    try { Object.assign(result, validateRefundPayment(result.refund_method, payload.refund_channel)) }
+    catch (error) { invalid(error.message) }
   }
 
   if (!partial || Object.prototype.hasOwnProperty.call(payload, 'refund_amount')) {
     const value = payload.refund_amount
-    if ((typeof value !== 'number' && typeof value !== 'string') || String(value).trim() === '') {
+    if (value === null || value === undefined || value === '') {
       invalid('请填写退款金额，未退款时填写0')
     }
     const amount = Number(value)
-    if (!Number.isFinite(amount) || amount < 0 || amount > 99999999.99 ||
-        Math.abs(amount * 100 - Math.round(amount * 100)) > 0.00001) {
+    if (!isMoneyInput(value) || amount < 0 || amount > 99999999.99) {
       invalid('退款金额须为0至99999999.99之间、最多两位小数的金额')
     }
     result.refund_amount = amount
@@ -64,8 +62,9 @@ function normalizeReturnStockInfo(payload = {}, { partial = false } = {}) {
 
   if (!partial || Object.prototype.hasOwnProperty.call(payload, 'remarks')) {
     if (payload.remarks !== null && payload.remarks !== undefined && typeof payload.remarks !== 'string') invalid('备注必须是文本')
-    const remarks = (payload.remarks || '').trim()
-    if (remarks.length > 200) invalid('备注不能超过200字')
+    const remarks = parseInput({ remarks: payload.remarks ?? '' }, {
+      remarks: { type: 'string', maxLength: 200, multiline: true, label: '备注' }
+    }).remarks.trim()
     result.remarks = remarks
   }
   return result

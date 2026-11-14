@@ -7,6 +7,8 @@
 | 文件 | 职责 |
 | --- | --- |
 | `frontend/src/components/MobileDialog.vue` | 弹窗结构、关闭行为、响应式模式、默认 footer |
+| `frontend/src/components/RecordDetailDialog.vue` | 公共字段记录详情，字段权限与底部动作插槽 |
+| `frontend/src/components/RecordDescriptions.vue` | 描述列表手机标签置顶、两列及长字段换行，桌面保留列数 |
 | `frontend/src/components/MediaPreviewViewer.vue` | 图片/视频全屏预览、缩放、切换及可选删除/下载事件 |
 | `frontend/src/styles/components/_dialog.scss` | 遮罩、宽度、圆角、标题栏、关闭按钮、正文间距、确认框内容宽度、移动端边界 |
 | `frontend/src/styles/components/_dialog-actions.scss` | 取消/确认按钮的排列、尺寸、间距和移动端居中等分布局 |
@@ -20,9 +22,21 @@
 
 门店 `/stores` 详情不保留仅用于关闭的 footer，使用顶部公共关闭按钮和遮罩关闭；新增/编辑仍禁止遮罩关闭。其他页面包含编辑、下载、打印等业务操作的 footer 按自身业务保留。`check:dialogs` 检查表单与已标明的查看弹窗关闭契约，`tests/mobile-dialog.spec.ts` 验证 PC/平板/手机遮罩、正文、拖动和 `beforeClose` 行为。
 
+### 取消和关闭不二次确认
+
+全站新增、编辑、配置及销售录入表单，点击取消、顶部关闭或按允许的 Escape 时直接关闭，不因存在未保存、未提交内容或草稿再次要求确认。禁止“您有未保存的更改，确定要关闭吗？”、“尚有未提交的销售内容，确定关闭吗？”及同义确认；不新增仅用于退出确认的脏值比对、快照或路由离开拦截。PC、平板和手机遵守同一规则。
+
+关闭沿用原有重置、临时媒体清理及异步请求取消，不触发保存、销售提交或其他业务写入。保存/上传进行中的关闭限制和强制待办提醒继续按原契约处理；请求结果不确定时可保留表单内核对提示，但不能在关闭时再弹确认。删除、退款、撤销已生效交易、Git丢弃等实际业务操作的确认按对应业务规则保留。
+
+`MobileDialog` 是公共关闭入口，业务只在必要时用 `beforeClose(done)` 执行清理或阻止进行中的操作，不借此增加草稿确认。`check:dialogs` 扫描 Vue/TS/JS 中公共确认调用的静态文案，阻止已识别的退出确认回退；动态文案及实际关闭/重开行为仍须由页面测试验证。回归见 `frontend/tests/reference-management-pages.spec.ts`、`frontend/tests/sales-goods-checkout.spec.ts` 和 `frontend/scripts/check-dialog-adoption.test.mjs`。
+
 手机和平板遮罩关闭必须确认同一次主指针在遮罩上按下并抬起；正文、标题栏、footer 内开始的操作，以及移动超过 `10px`、指针取消或弹窗出现后的兼容穿透点击，均不得触发遮罩关闭。每次弹窗打开/关闭都清空记录。该规则由 `MobileDialog` 统一维护，`check:dialogs` 检查接入；不能靠业务页复制延时器或缩小正文点击区域处理。
 
 公共遮罩的 flex 居中样式不得强制覆盖组件的隐藏状态。电脑窄窗口同样可能使用 sheet；关闭后须同时确认 `v-model` 为 false、外壳和遮罩实际不可见，不能只检查关闭事件。浏览器回归 `test:dialog-widths -- --interactions-only` 覆盖有/无遮罩、标题关闭、主动重开和业务关闭；库存明细的父子状态与查询次数另由 `tests/inventory-result-dialog.spec.ts` 验证。
+
+窄屏通用样式不能覆盖公共弹层层级或滚动锁。媒体上的确认框根遮罩和内容层统一读取 `--tf-z-message-box`；移除旧的 `body > .el-overlay`／`#app ~ .el-overlay` 强制层级覆盖，以及 `body/html` 强制纵向滚动覆盖。验证确认按钮实际命中，并检查嵌套时 `body` 的最终计算滚动样式和关闭后的恢复，不能只看内联属性。
+
+跨浏览器公共交互入口为 `npm --prefix frontend run test:input-flows -- --overlays`；追加 `--ios` 使用已开启的 Xcode iPhone Safari。它复用真实 `MobileDialog`、姓名锁定输入及公共 prompt、`MediaPreviewViewer` 和销售/批发页面的真实页头与保存图片模板。明暗主题通过正式 `data-theme` 属性切换，测试宿主不读取环境文件、不访问业务 API。姓名双击与媒体触摸为合成事件，不能替代物理键盘、实际手指、视频原生控件、系统分享或主屏幕书签验收。结果按 [T21 台账](../development/TECHNICAL_DEBT_PROGRESS.md#t21-全局模态框双端统一2026-11-11) 分别记录。
 
 ### 宽度行为
 
@@ -79,6 +93,8 @@
 `tf-dialog-workspace` 用于权限矩阵、角色分配等需要独立滚动的多栏工作台：桌面高度取 `min(820px, 100dvh - 48px)`，手机/平板取 `100dvh - 24px`，最终仍受公共外壳最大高度约束；标题与 footer 不收缩，正文填充剩余空间。提供 `100vh` 回退，高度参数由公共工作台令牌定义。高度与滚动由 `_dialog.scss` 唯一维护，业务只控制内部栏位，不设置私有全屏、圆角、正文 padding 或外壳高度。
 
 `MobileDialog` 和 `MediaPreviewViewer` 共享 `useOverlayStack` 管理打开顺序、最上层键盘响应及滚动锁。关闭或卸载任何非最后一层不得解除页面锁；最终关闭恢复原有 overflow，空媒体列表不持有不可见的锁。手机分支复用 Element Plus FocusTrap 保留 Tab 环绕和焦点恢复；确认框或媒体查看在上层时 Escape 不关闭下层表单。初始可见、重复开关、销毁及嵌套弹窗继续保持 `open/opened/close/closed` 事件契约；`opened` 在进入过渡完成后发出，`opened/closed` 每轮各发一次。标题关闭、遮罩和 Escape 在 PC/手机均遵守 `beforeClose(done)`；调用 `done(true)` 或不调用 `done` 时保留弹窗，普通取消按钮和业务修改 `v-model` 仍由业务决定是否关闭。
+
+手机和平板 sheet 的过渡外壳与内容挂载分别控制。开启 `destroyOnClose` 时，内容在离场动画期间保留，动画结束后销毁标题、正文和 footer，重开时重新挂载；未开启时关闭只隐藏外壳，保留内容实例和草稿。不得在 `after-leave` 中通过卸载过渡根节点代替内容销毁，以免 Teleport 中残留节点。行为回归见 `frontend/tests/mobile-dialog.spec.ts`。
 
 客户姓名的 iOS 双击入口使用 `useCustomerNamePrompt` 调用公共 `useNotification().prompt`：规范化、空值、取消及提示由公共入口处理，输入/保存期间拒绝重复打开，业务校验目标客户是否仍一致。原生 `window.prompt` 与无调用兼容函数已移除；真机键盘行为仍须独立验收。
 
@@ -195,11 +211,16 @@ MessageBox 的默认宽度由 `--tf-dialog-message-width` 统一控制，当前�
 
 ## 表单和正文
 
-- 品牌 `/brands`、型号 `/models`、颜色 `/colors` 和内存 `/memories` 的新增弹窗点击取消、顶部关闭或按 Esc 时直接关闭并重置草稿，不弹出未保存确认；编辑已有记录时继续保留未保存确认。各页通过 `MobileDialog` 的 `v-model` 处理关闭请求，不再同时监听 `close` 重复执行关闭逻辑。页面回归见 `frontend/tests/reference-management-pages.spec.ts`，公共关闭行为见 `frontend/tests/mobile-dialog.spec.ts`。
+- 品牌 `/brands`、型号 `/models`、颜色 `/colors` 和内存 `/memories` 的新增、编辑弹窗均直接关闭并重置草稿；重开编辑时读取原记录。各页通过 `MobileDialog` 的 `v-model` 处理关闭请求，不同时监听 `close` 重复执行关闭逻辑。页面回归见 `frontend/tests/reference-management-pages.spec.ts`，公共关闭行为见 `frontend/tests/mobile-dialog.spec.ts`。
 - 普通横向表单使用 `.tf-dialog-form`。
 - 标签置顶的编辑器使用 `.tf-dialog-form--stacked`。
+- 手机表单遵循[表单控件规范的字段布局](form-control-standards.md#手机表单字段布局)，复用 `_dialog.scss` 的 `.tf-form-layout` 和 `.tf-form-row`：短字段两列、长字段整行，权限隐藏后单字段铺满；页面不得再复制行网格或用私有样式强制全部单列。
+- `.tf-dialog-form` 的 Element 标签颜色复用 `--tf-dialog-body-text`，与公共弹窗表面配对；手机响应式标签不得因系统暗色文字覆盖而在浅色弹窗上消失，业务页面不另加标签颜色覆盖。
+- 公共表单标签通过选择器优先级读取上述令牌；通用手机标签颜色不使用 `!important` 与弹窗互相覆盖。浏览器回归同时核对页面明暗主题与系统暗色，不能通过增加样式白名单额度解决级联冲突。
 - 国补编辑弹窗手机端通过公共 `useMobile` 启用 `label-position="top"` 与 `.tf-dialog-form.tf-dialog-form--stacked`，常规字段两列，身份证、序列号、门店、备注等长字段整行；权限隐藏后单字段行自动铺满。PC 保留横向标签及两列，不能通过私有输入框尺寸或压缩标签替代响应式布局。
 - 国补申请详情的客户、设备、销补与状态信息在手机和 PC 均采用两列网格；标签和值纵向排列，身份证、IMEI、序列号等长值完整换行，不截断。照片和备注仍按内容整行展示。
+- 客户详情在手机和平板（`<=1024px`）按内容紧凑展示：电话与会员号、账户统计、微信与QQ等短字段每行两项；身份证、邮箱、地址、地区、Apple ID和备注保留整行，长值完整换行。权限隐藏后其余字段自然补位，单个字段铺满当前分组；桌面保留原有分区。复用 `MobileDialog`，不在页面修改弹窗外壳或按钮尺寸。
+- 客户新增/编辑手机标签置顶，短字段两列；邮箱、证件、详细地址、Apple ID、密码和备注整行。地区组合内由公共 `CitySelector` 将省/市、县区/乡镇按两列排列，村委会/社区整行。编辑保留取消与保存、遮罩不关闭；客户查看详情移除底部纯“关闭”及空 footer，沿用顶部关闭和外部遮罩关闭，点击正文不关闭。
 - 弹窗中的输入框、下拉框、日期框和数字框与全局普通表单统一为 `30px` 高；各设备共用 `_form-controls.scss` 和公共表单高度令牌。
 - 默认正文间距由 `_dialog.scss` 控制，页面不重复设置 `.el-dialog__body` 的 padding。
 - 图片、表格或富文本确实需要贴边时使用 `.tf-dialog-body-flush`，只用于该业务变体。
@@ -235,7 +256,7 @@ Safari 标签页和主屏幕书签可能返回不同的 `safe-area-inset-*`。�
 
 业务 footer 只允许维护摘要、提示和弹窗宽度等业务布局。禁止在页面样式中重新声明 footer 的 `grid`、
 手机端 `flex-direction: column`、按钮 `width/min-width/max-width/height/min-height/padding`。这些规则由
-`_dialog-actions.scss` 唯一维护，`npm run check:dialog-actions` 会在启动和构建前拦截重复实现。
+`_dialog-actions.scss` 唯一维护，`npm run check:dialog-actions` 会在构建和发布检查时拦截重复实现，日常启动不自动运行。
 
 仅复测按钮可运行 `npm --prefix frontend run test:dialog-widths -- --actions-only`。完整浏览器回归：`npm --prefix frontend run test:dialog-widths` 同时检查弹窗宽度和公共按钮在 360/375/390/430/767/768/1024/1440px 下的实际尺寸、单行等宽、宽屏宽度上限与整组居中、尺寸别名及明暗主题。测试隔离权限依赖和 Vite 缓存，不访问云端数据；浏览器模拟不能替代 iOS/Android 真机验收。
 
@@ -280,3 +301,15 @@ Safari 标签页和主屏幕书签可能返回不同的 `safe-area-inset-*`。�
 - `npm --prefix frontend run test:unit -- tests/mobile-dialog.spec.ts`：验证尺寸参数缺省、更新和移除后的行为。
 - `npm --prefix frontend run test:dialog-widths`：启动隔离的本地组件页，用 Chrome/Chromium 测量 8 种视口（含 1920px 大屏）、明暗主题、4 个档位、显式宽度、最大宽度、百分比和内容自适应。需要本机 Chrome/Chromium，可通过 `CHROME_BIN` 指定可执行文件；未安装时明确失败，不跳过。Vite `cacheDir` 位于本次临时目录内，不共用开发服务的 `node_modules/.vite`。验证不访问云端 API，结束后自动关闭服务、浏览器并删除临时用户目录及测试预构建缓存。
 - `check:dialogs` 同时运行审计器正反例，防止恢复组件默认宽度或破坏全局档位定义。静态审计和参数单测不能替代浏览器实际尺寸测量；以上检查不代表业务页面逐页或 iOS/Android 真机验收。
+
+## 记录查看详情的公共接入
+
+后台手机记录双击与操作入口遵循[表格规范](admin-table-standards.md#手机记录详情与底部操作)。已有客户、供应商、门店、考勤、分期、配件、国补、订单等专用详情复用原弹窗；其余使用 `RecordDetailDialog`，不能复制第二套外壳、字段类型或 footer。只读字段使用 `RecordDetailField` 明确权限，短字段两列、长字段 `wide` 整行，零值和布尔值保留。
+
+公共详情使用 `MobileDialog` 的顶部关闭、遮罩与滚动管理，底部只有实际可执行的业务动作；无动作不给纯“关闭”按钮或空 footer。编辑型内容仍禁遮罩关闭且不增加未保存二次确认。动作先捕获记录并关闭查看，再进入原编辑/审批/删除流程，不能因 `@close` 清空选中记录而丢参数。已发工资快照、已完成记录、核心模块等保护继续保留。
+
+客户商品历史在手机/平板使用公共双击记录详情，整单动作放在详情底部；关闭、切页或撤权卸载记录详情，避免公共弹窗隐藏后仍保留上页记录。贴膜历史窗口仅保留有权限的办理业务动作，无办理权限时不渲染footer。对应隔离浏览器回归为 `node frontend/scripts/test-checkout-order.mjs --customer-pages-only`，商品查询长名称和客户手机号整行由 `--goods-page-only` 检查；服务为内存替身，物理设备及真实业务另验。
+
+`RecordDetailDialog` 过滤不可见字段后，按可见顺序配对短字段；长字段前的落单项及末尾落单项由公共组件补为整行，长字段后的两个短字段仍同排，不按整份列表的奇偶位置推断。复杂格式复用 `#field="{ field, row }"`，不能为格式化另建详情。泛型表格转接已有 actions 插槽时监听 `beforeAction` 先关闭，禁用按钮不触发交接；业务页面已有 `runDetailAction` 时继续使用原入口。`RecordDescriptions` 统一手机两列/标签置顶与长字段跨列，桌面保留原列数和插槽。
+
+直排表单与详情网格的公共 class、长字段标记和隐藏补位见[手机字段布局](form-control-standards.md#手机表单字段布局)。静态采用、组件行为、浏览器布局及真机验收必须分别记录。

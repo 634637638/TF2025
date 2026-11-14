@@ -12,7 +12,7 @@
     >
       <div class="detail-section detail-section-grid">
         <h4>基本信息</h4>
-        <div class="detail-grid">
+        <div class="detail-grid tf-detail-grid">
           <div
             v-if="canViewField('salary_mysalaryview', 'employee_name')"
             class="detail-row"
@@ -53,7 +53,12 @@
         </div>
       </div>
 
-      <div class="detail-section">
+      <SalaryGoodsSummary
+        v-if="canViewField('salary_mysalaryview', 'commission_amount')"
+        :summary="record.goods_commission"
+      />
+
+      <div class="detail-section tf-detail-grid">
         <h4>工资明细</h4>
         <div
           v-if="canViewField('salary_mysalaryview', 'base_salary')"
@@ -94,7 +99,7 @@
 
       <div
         v-if="record.calculation_note"
-        class="detail-section"
+        class="detail-section tf-detail-grid"
       >
         <h4>计算说明</h4>
         <div class="detail-row full">
@@ -103,14 +108,12 @@
       </div>
     </div>
 
-    <template #footer>
+    <template
+      v-if="$slots.actions"
+      #footer
+    >
       <div class="tf-dialog-actions">
-        <el-button
-          type="info"
-          @click="emit('update:modelValue', false)"
-        >
-          <i class="fas fa-times" />关闭
-        </el-button>
+        <slot name="actions" />
       </div>
     </template>
   </MobileDialog>
@@ -119,6 +122,8 @@
 <script setup lang="ts">
 import { formatAmount } from '@/utils/format'
 import MobileDialog from '@/components/MobileDialog.vue'
+import SalaryGoodsSummary from './SalaryGoodsSummary.vue'
+import type { SalaryGoodsCommission } from '@/types/salary'
 
 type SalaryValue = number | string | null | undefined
 
@@ -127,6 +132,7 @@ export interface SalaryDetailRecord {
   base_salary?: SalaryValue
   calculation_note?: string | null
   commission_amount?: SalaryValue
+  goods_commission?: SalaryGoodsCommission | null
   employee_id: number
   employee_name?: string | null
   leave_days?: SalaryValue

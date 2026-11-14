@@ -1,7 +1,34 @@
 const SystemSettingsRepository = require('../repositories/system-settings.repository')
 const log = require('../utils/log')
+const { parseInput } = require('../middleware/validation')
 
 const SettingsRepository = new SystemSettingsRepository()
+
+function parseSettingInput(key, value, type = 'string') {
+  const input = parseInput({ key, type }, {
+    key: { type: 'string', required: true, maxLength: 100, label: '配置键' },
+    type: { type: ['string', 'number', 'boolean', 'json'], required: true, label: '配置类型' }
+  })
+  if (type === 'number') {
+    value = parseInput({ value }, { value: { type: 'number', required: true, label: '配置数值' } }).value
+  } else if (type === 'boolean') {
+    // 配置存储沿用 true/false 文本；不把任意非空字符串视为 true。
+    if (value === 'true') value = true
+    if (value === 'false') value = false
+    value = String(parseInput({ value }, { value: { type: 'boolean', required: true, label: '配置开关' } }).value)
+  } else if (type === 'json') {
+    try {
+      if (typeof value === 'string') JSON.parse(value)
+      else if (value === undefined || JSON.stringify(value) === undefined) throw new Error('invalid')
+    } catch (_) {
+      throw Object.assign(new Error('配置内容必须为有效 JSON'), { statusCode: 400, code: 'VALIDATION_ERROR' })
+    }
+  } else {
+    if (typeof value !== 'string') throw Object.assign(new Error('配置内容必须为文本'), { statusCode: 400, code: 'VALIDATION_ERROR' })
+    value = parseInput({ value }, { value: { type: 'string', maxLength: 1000000, multiline: true } }).value
+  }
+  return { ...input, value }
+}
 
 class SystemSettingsService {
   /**
@@ -56,8 +83,9 @@ class SystemSettingsService {
    * 更新配置
    */
   async updateSetting(settingKey, settingValue, settingType) {
+    const input = parseSettingInput(settingKey, settingValue, settingType)
     try {
-      return await SettingsRepository.upsertSetting(settingKey, settingValue, settingType)
+      return await SettingsRepository.upsertSetting(input.key, input.value, input.type)
     } catch (error) {
       log.error('更新配置失败:', error)
       throw error
@@ -68,9 +96,14 @@ class SystemSettingsService {
    * 批量更新配置
    */
   async batchUpdateSettings(settings) {
+    if (!Array.isArray(settings)) throw Object.assign(new Error('settings 必须是数组'), { statusCode: 400 })
+    const inputs = settings.map(setting => {
+      const input = parseInput(setting, {})
+      return parseSettingInput(input.key, input.value, input.type)
+    })
     try {
       const results = []
-      for (const setting of settings) {
+      for (const setting of inputs) {
         const result = await SettingsRepository.upsertSetting(
           setting.key,
           setting.value,

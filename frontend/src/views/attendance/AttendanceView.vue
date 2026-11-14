@@ -295,8 +295,8 @@
               <div class="table-section admin-panel admin-table-panel">
                 <div class="table-responsive">
                   <el-table
-                    ref="attendanceTableRef"
                     v-tf-loading="{ active: loading || refreshing, text: '正在刷新考勤记录...' }"
+                    v-table-double-tap="allDetailTapOptions"
                     :data="displayAttendanceRows"
                     border
                     stripe
@@ -304,7 +304,7 @@
                     table-layout="fixed"
                     :fit="true"
                     row-key="id"
-                    @row-click="handleMobileRowTap($event, 'all')"
+                    @row-dblclick="allDetailDoubleClick"
                   >
                     <template #empty>
                       <TableLoadingRow
@@ -318,48 +318,7 @@
                       />
                     </template>
 
-                    <el-table-column
-                      v-if="isMobile"
-                      type="expand"
-                      width="1"
-                      class-name="mobile-expand-column"
-                    >
-                      <template #default="{ row }">
-                        <div class="mobile-inline-actions">
-                          <el-button
-                            size="small"
-                            plain
-                            type="primary"
-                            class="table-action table-action--view"
-                            title="查看"
-                            @click.stop="handleView(row)"
-                          >
-                            <i class="fas fa-eye mr-1" /><span>查看</span>
-                          </el-button>
-                          <el-button
-                            v-if="canEdit && !isAggregatedAttendanceRow(row)"
-                            size="small"
-                            plain
-                            type="primary"
-                            class="table-action table-action--edit"
-                            title="编辑"
-                            @click.stop="handleEdit(row)"
-                          >
-                            <i class="fas fa-edit mr-1" /><span>{{ row.status === 'pending' ? '编辑' : '修改' }}</span>
-                          </el-button>
-                          <el-button
-                            v-if="canDelete && !isAggregatedAttendanceRow(row)"
-                            size="small"
-                            type="danger"
-                            class="table-action table-action--delete"
-                            title="删除"
-                            @click.stop="handleDelete(row)"
-                          >
-                            <i class="fas fa-trash mr-1" /><span>删除</span>
-                          </el-button>
-                        </div>
-                      </template>
-                    </el-table-column>
+
                     <el-table-column
                       v-if="showAttendanceIdColumn"
                       prop="id"
@@ -501,7 +460,7 @@
                             已拒绝
                           </el-tag>
                           <el-button
-                            v-if="canApprove && row.status === 'pending' && !isAggregatedAttendanceRow(row)"
+                            v-if="!isMobile && canApprove && row.status === 'pending' && !isAggregatedAttendanceRow(row)"
                             size="small"
                             plain
                             type="success"
@@ -691,8 +650,8 @@
               <div class="table-section admin-panel admin-table-panel">
                 <div class="table-responsive">
                   <el-table
-                    ref="myAttendanceTableRef"
                     v-tf-loading="{ active: myLoading || refreshing, text: '正在刷新我的考勤记录...' }"
+                    v-table-double-tap="myDetailTapOptions"
                     :data="displayMyAttendanceRows"
                     border
                     stripe
@@ -700,7 +659,7 @@
                     table-layout="fixed"
                     :fit="true"
                     row-key="id"
-                    @row-click="handleMobileRowTap($event, 'my')"
+                    @row-dblclick="myDetailDoubleClick"
                   >
                     <template #empty>
                       <TableLoadingRow
@@ -714,37 +673,7 @@
                       />
                     </template>
 
-                    <el-table-column
-                      v-if="isMobile"
-                      type="expand"
-                      width="1"
-                      class-name="mobile-expand-column"
-                    >
-                      <template #default="{ row }">
-                        <div class="mobile-inline-actions">
-                          <el-button
-                            size="small"
-                            plain
-                            type="primary"
-                            class="table-action table-action--view"
-                            title="查看"
-                            @click.stop="handleView(row)"
-                          >
-                            <i class="fas fa-eye mr-1" /><span>查看</span>
-                          </el-button>
-                          <el-button
-                            v-if="row.status === 'pending' && !isAggregatedAttendanceRow(row)"
-                            size="small"
-                            type="danger"
-                            class="table-action table-action--warning"
-                            title="撤销"
-                            @click.stop="handleCancel(row)"
-                          >
-                            <i class="fas fa-times mr-1" /><span>撤销</span>
-                          </el-button>
-                        </div>
-                      </template>
-                    </el-table-column>
+
                     <el-table-column
                       v-if="showMyAttendanceIdColumn"
                       prop="id"
@@ -969,7 +898,7 @@
             :model="formData"
             :rules="formRules"
             label-width="100px"
-            class="attendance-dialog-form"
+            class="attendance-dialog-form tf-form-layout tf-form-grid"
           >
             <!-- 可管理记录时允许为指定员工建单 -->
             <el-form-item
@@ -1049,7 +978,10 @@
 
             <!-- 休假表单 -->
             <template v-if="formData.record_type === 'monthly_leave'">
-              <el-form-item label="休假说明">
+              <el-form-item
+                class="tf-form-field--wide"
+                label="休假说明"
+              >
                 <el-alert
                   :title="`该员工月休假额度为${leaveBalance?.monthly_limit ?? 0}天${canViewAllAttendance ? '（所有额度）' : ''}`"
                   :type="leaveBalance?.last_month_remaining && leaveBalance.last_month_remaining > 0 ? 'success' : 'info'"
@@ -1065,7 +997,7 @@
               </el-form-item>
               <div
                 v-if="canViewAttendanceField('attendance_attendanceview', 'record_date')"
-                class="attendance-date-range-grid"
+                class="attendance-date-range-grid tf-form-row"
               >
                 <el-form-item
                   label="开始日期"
@@ -1120,7 +1052,10 @@
 
             <!-- 请假表单 -->
             <template v-if="formData.record_type === 'leave'">
-              <el-form-item label="请假说明">
+              <el-form-item
+                class="tf-form-field--wide"
+                label="请假说明"
+              >
                 <el-alert
                   title="扣除当天平均日薪 × 请假天数，请假期间无提成"
                   type="warning"
@@ -1158,7 +1093,7 @@
               </el-form-item>
               <div
                 v-if="canViewAttendanceField('attendance_attendanceview', 'record_date')"
-                class="attendance-date-range-grid"
+                class="attendance-date-range-grid tf-form-row"
               >
                 <el-form-item
                   label="开始日期"
@@ -1210,6 +1145,7 @@
               </el-form-item>
               <el-form-item
                 v-if="canViewAttendanceField('attendance_attendanceview', 'reason')"
+                class="tf-form-field--wide"
                 label="请假原因"
                 prop="leave_reason"
               >
@@ -1226,7 +1162,10 @@
 
             <!-- 加班表单 -->
             <template v-if="formData.record_type === 'overtime'">
-              <el-form-item label="加班说明">
+              <el-form-item
+                class="tf-form-field--wide"
+                label="加班说明"
+              >
                 <el-alert
                   title="加班按（模版设置的加班费）× 加班时间，计入当月工资"
                   type="success"
@@ -1274,6 +1213,7 @@
               </el-form-item>
               <el-form-item
                 v-if="canViewAttendanceField('attendance_attendanceview', 'reason')"
+                class="tf-form-field--wide"
                 label="加班原因"
                 prop="overtime_reason"
               >
@@ -1322,9 +1262,9 @@
           :show-default-footer="false"
           @close="detailDialogVisible = false"
         >
-          <el-descriptions
+          <RecordDescriptions
             v-if="currentRecord"
-            :column="isMobile ? 1 : 2"
+            :column="2"
             border
             class="attendance-detail-descriptions"
           >
@@ -1434,15 +1374,17 @@
             >
               {{ currentRecord.approval_note }}
             </el-descriptions-item>
-          </el-descriptions>
+          </RecordDescriptions>
 
           <el-table
             v-if="currentRecord && isAggregatedAttendanceRow(currentRecord)"
+            v-table-double-tap="sourceDetailTapOptions"
             :data="currentRecord.source_records"
             row-key="id"
             border
             stripe
             class="data-table attendance-group-details"
+            @row-dblclick="sourceDetailDoubleClick"
           >
             <el-table-column
               label="ID"
@@ -1473,6 +1415,7 @@
               </template>
             </el-table-column>
             <el-table-column
+              v-if="!isMobile"
               label="操作"
               :min-width="attendanceGroupDetailActionColumnWidth"
               align="center"
@@ -1483,6 +1426,7 @@
                   <template v-if="activeTab === 'all'">
                     <el-button
                       v-if="canEdit"
+                      v-permission="'attendance:edit'"
                       size="small"
                       type="primary"
                       @click.stop="handleEdit(row)"
@@ -1492,6 +1436,7 @@
                     </el-button>
                     <el-button
                       v-if="canDelete"
+                      v-permission="'attendance:delete'"
                       size="small"
                       type="danger"
                       @click.stop="handleDelete(row)"
@@ -1501,6 +1446,7 @@
                     </el-button>
                     <el-button
                       v-if="canApprove && row.status === 'pending'"
+                      v-permission="'attendance:approve'"
                       size="small"
                       type="success"
                       @click.stop="handleApprove(row)"
@@ -1523,14 +1469,43 @@
             </el-table-column>
           </el-table>
 
-          <template #footer>
+          <template
+            v-if="isMobile && currentRecord && !isAggregatedAttendanceRow(currentRecord) && (activeTab === 'all' ? (canEdit || canDelete || (canApprove && currentRecord.status === 'pending')) : currentRecord.status === 'pending')"
+            #footer
+          >
             <div class="tf-dialog-actions">
+              <template v-if="activeTab === 'all'">
+                <el-button
+                  v-if="canApprove && currentRecord.status === 'pending'"
+                  v-permission="'attendance:approve'"
+                  type="success"
+                  @click.stop="runAttendanceDetailAction(handleApprove)"
+                >
+                  <i class="fas fa-check" />审批
+                </el-button>
+                <el-button
+                  v-if="canEdit"
+                  v-permission="'attendance:edit'"
+                  type="primary"
+                  @click.stop="runAttendanceDetailAction(handleEdit)"
+                >
+                  <i class="fas fa-edit" />{{ currentRecord.status === 'pending' ? '编辑' : '修改' }}
+                </el-button>
+                <el-button
+                  v-if="canDelete"
+                  v-permission="'attendance:delete'"
+                  type="danger"
+                  @click.stop="runAttendanceDetailAction(handleDelete)"
+                >
+                  <i class="fas fa-trash" />删除
+                </el-button>
+              </template>
               <el-button
-                plain
-                type="default"
-                @click="detailDialogVisible = false"
+                v-else-if="currentRecord.status === 'pending'"
+                type="danger"
+                @click.stop="runAttendanceDetailAction(handleCancel)"
               >
-                <i class="fas fa-times mr-1" />关闭
+                <i class="fas fa-times" />撤销
               </el-button>
             </div>
           </template>
@@ -1546,6 +1521,7 @@
           @close="approveDialogVisible = false"
         >
           <el-form
+            class="tf-form-layout tf-form-grid"
             :model="approveForm"
             label-width="100px"
           >
@@ -1567,6 +1543,7 @@
             </el-form-item>
             <el-form-item
               v-if="canViewAttendanceField('attendance_attendanceview', 'approval_note')"
+              class="tf-form-field--wide"
               label="审批备注"
             >
               <el-input
@@ -1622,7 +1599,7 @@ import { useNotification } from '@/composables/useNotification'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { useMobile } from '@/composables/mobile'
-import { useMobileRowDoubleTap } from '@/composables/useMobileRowDoubleTap'
+import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
 import { useLoadingState } from '@/composables'
 import { unifiedApi } from '@/utils/unified-api'
 import { searchEmployees } from '@/services/reference-options'
@@ -1666,9 +1643,6 @@ interface EmployeeOption {
   has_salary_template?: boolean
 }
 
-interface ExpandableAttendanceTableRef {
-  toggleRowExpansion: (_row: AttendanceTableRow, _expanded?: boolean) => void
-}
 
 type AttendanceTab = 'all' | 'my'
 
@@ -1729,11 +1703,6 @@ const dialogVisible = ref(false)
 const detailDialogVisible = ref(false)
 const approveDialogVisible = ref(false)
 const dialogTitle = ref('')
-const attendanceTableRef = ref<ExpandableAttendanceTableRef | null>(null)
-const myAttendanceTableRef = ref<ExpandableAttendanceTableRef | null>(null)
-const mobileExpandedAttendanceId = ref<number | null>(null)
-const mobileExpandedMyAttendanceId = ref<number | null>(null)
-const { isDoubleTap, resetDoubleTap } = useMobileRowDoubleTap()
 const formRef = ref<FormInstance>()
 const activeTab = ref<AttendanceTab>('my')
 
@@ -1844,7 +1813,7 @@ const showAttendanceDetailColumn = computed(() => (
 const showAttendanceReasonColumn = computed(() => canViewAttendanceField('attendance_attendanceview', 'reason') && !isMobile.value)
 const showAttendanceStatusColumn = computed(() => shouldShowActionColumn(
   canViewAttendanceField('attendance_attendanceview', 'status'),
-  [canApprove.value]
+  [!isMobile.value && canApprove.value]
 ))
 const showAttendanceApprovalColumn = computed(() => canViewAttendanceField('attendance_attendanceview', 'approval_note') && !isMobile.value)
 const showAttendanceActionField = computed(() => (
@@ -2916,63 +2885,11 @@ const handleView = (row: AttendanceTableRow) => {
   detailDialogVisible.value = true
 }
 
-const handleMobileRowDblClick = (row: AttendanceTableRow, scope: 'all' | 'my') => {
-  if (!isMobile.value) return
-  const rowId = row.id
-  if (!rowId) return
 
-  if (scope === 'all') {
-    const shouldExpand = mobileExpandedAttendanceId.value !== rowId
-    if (mobileExpandedAttendanceId.value && mobileExpandedAttendanceId.value !== rowId) {
-      const previous = displayAttendanceRows.value.find(item => item.id === mobileExpandedAttendanceId.value)
-      if (previous) {
-        attendanceTableRef.value?.toggleRowExpansion(previous, false)
-      }
-    }
-    attendanceTableRef.value?.toggleRowExpansion(row, shouldExpand)
-    mobileExpandedAttendanceId.value = shouldExpand ? rowId : null
-    return
-  }
 
-  const shouldExpand = mobileExpandedMyAttendanceId.value !== rowId
-  if (mobileExpandedMyAttendanceId.value && mobileExpandedMyAttendanceId.value !== rowId) {
-    const previous = displayMyAttendanceRows.value.find(item => item.id === mobileExpandedMyAttendanceId.value)
-    if (previous) {
-      myAttendanceTableRef.value?.toggleRowExpansion(previous, false)
-    }
-  }
-  myAttendanceTableRef.value?.toggleRowExpansion(row, shouldExpand)
-  mobileExpandedMyAttendanceId.value = shouldExpand ? rowId : null
-}
-
-const handleMobileRowTap = (row: AttendanceTableRow, scope: 'all' | 'my') => {
-  if (!isMobile.value) return
-  const rowId = row.id
-  if (!rowId) return
-
-  if (isDoubleTap(`${scope}:${rowId}`)) handleMobileRowDblClick(row, scope)
-}
-
-const clearMobileActions = () => {
-  if (mobileExpandedAttendanceId.value) {
-    const current = displayAttendanceRows.value.find(item => item.id === mobileExpandedAttendanceId.value)
-    if (current) {
-      attendanceTableRef.value?.toggleRowExpansion(current, false)
-    }
-  }
-  if (mobileExpandedMyAttendanceId.value) {
-    const current = displayMyAttendanceRows.value.find(item => item.id === mobileExpandedMyAttendanceId.value)
-    if (current) {
-      myAttendanceTableRef.value?.toggleRowExpansion(current, false)
-    }
-  }
-  mobileExpandedAttendanceId.value = null
-  mobileExpandedMyAttendanceId.value = null
-  resetDoubleTap()
-}
 
 const handleTabChange = (tabName: TabPaneName) => {
-  clearMobileActions()
+  closeMobileDetail()
   const normalizedTabName = String(tabName)
   if (normalizedTabName === 'all') {
     if (!canViewAllAttendance.value) return
@@ -3140,6 +3057,25 @@ onMounted(async () => {
     await loadEmployees()
   }
 })
+
+const { doubleTapOptions: allDetailTapOptions, handleRowDoubleClick: allDetailDoubleClick } = useMobileTableDetail<AttendanceTableRow>({
+  enabled: () => isMobile.value && canViewAllAttendance.value, rows: displayAttendanceRows, getKey: row => getAttendanceRowIds(row), onOpen: handleView
+})
+const { doubleTapOptions: myDetailTapOptions, handleRowDoubleClick: myDetailDoubleClick } = useMobileTableDetail<AttendanceTableRow>({
+  enabled: () => isMobile.value && canViewOwnAttendance.value, rows: displayMyAttendanceRows, getKey: row => getAttendanceRowIds(row), onOpen: handleView
+})
+const { doubleTapOptions: sourceDetailTapOptions, handleRowDoubleClick: sourceDetailDoubleClick } = useMobileTableDetail<AttendanceTableRow>({
+  enabled: () => isMobile.value && (activeTab.value === 'all' ? canViewAllAttendance.value : canViewOwnAttendance.value),
+  rows: () => currentRecord.value && isAggregatedAttendanceRow(currentRecord.value) ? currentRecord.value.source_records ?? [] : [],
+  getKey: row => getAttendanceRowIds(row), onOpen: handleView
+})
+const closeMobileDetail = () => { detailDialogVisible.value = false }
+const runAttendanceDetailAction = (action: (row: AttendanceTableRow) => unknown) => {
+  const row = currentRecord.value
+  if (!row) return
+  closeMobileDetail()
+  return action(row)
+}
 </script>
 
 <style scoped src="./styles/attendance-view/desktop.css"></style>

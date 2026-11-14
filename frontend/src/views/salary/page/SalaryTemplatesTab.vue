@@ -79,7 +79,7 @@
       </div>
       <div class="table-responsive">
         <el-table
-          ref="tableRef"
+          v-table-double-tap="mobileDetailTapOptions"
           v-tf-loading="{ active: loading, text: '正在刷新工资模板...' }"
           :data="templates"
           border
@@ -88,7 +88,7 @@
           :fit="true"
           row-key="id"
           class="data-table devices-table base-data-table salary-template-table"
-          @row-click="handleRowTap"
+          @row-dblclick="mobileDetailDoubleClick"
         >
           <template #empty>
             <TableLoadingRow
@@ -102,62 +102,7 @@
             />
           </template>
 
-          <el-table-column
-            v-if="isMobile && showActionColumn"
-            type="expand"
-            width="1"
-            class-name="mobile-expand-column"
-            label-class-name="mobile-expand-header"
-          >
-            <template #default="{ row }">
-              <div class="mobile-row-actions">
-                <el-button
-                  v-if="!row.is_default && canEdit"
-                  v-permission="'salary-templates:edit'"
-                  size="small"
-                  type="warning"
-                  class="mobile-action-btn mobile-action-btn-default"
-                  @click.stop="emit('setDefault', row)"
-                >
-                  <i class="fas fa-star" />
-                  <span>默认</span>
-                </el-button>
-                <el-button
-                  v-if="canEdit"
-                  v-permission="'salary-templates:edit'"
-                  size="small"
-                  :type="row.is_active ? 'warning' : 'success'"
-                  class="mobile-action-btn mobile-action-btn-status"
-                  @click.stop="emit('toggleStatus', row)"
-                >
-                  <i :class="row.is_active ? 'fas fa-pause' : 'fas fa-play'" />
-                  <span>{{ row.is_active ? '禁用' : '启用' }}</span>
-                </el-button>
-                <el-button
-                  v-if="canEdit"
-                  v-permission="'salary-templates:edit'"
-                  size="small"
-                  type="primary"
-                  class="mobile-action-btn mobile-action-btn-edit"
-                  @click.stop="emit('edit', row)"
-                >
-                  <i class="fas fa-edit" />
-                  <span>编辑</span>
-                </el-button>
-                <el-button
-                  v-if="canDelete"
-                  v-permission="'salary-templates:delete'"
-                  size="small"
-                  type="danger"
-                  class="mobile-action-btn mobile-action-btn-delete"
-                  @click.stop="emit('delete', row)"
-                >
-                  <i class="fas fa-trash" />
-                  <span>删除</span>
-                </el-button>
-              </div>
-            </template>
-          </el-table-column>
+
           <el-table-column
             type="index"
             label="序号"
@@ -316,6 +261,52 @@
             </template>
           </el-table-column>
         </el-table>
+        <RecordDetailDialog
+          v-model="mobileDetailVisible"
+          title="工资模板详情"
+          :fields="mobileDetailFields"
+          :record="mobileDetailRow"
+          :has-actions="canEdit || canDelete"
+        >
+          <template #actions="{ row }">
+            <el-button
+              v-if="!row.is_default && canEdit"
+              v-permission="'salary-templates:edit'"
+              type="warning"
+              @click.stop="mobileDetailRunAction(() => emit('setDefault', row))"
+            >
+              <i class="fas fa-star" />
+              <span>默认</span>
+            </el-button>
+            <el-button
+              v-if="canEdit"
+              v-permission="'salary-templates:edit'"
+              :type="row.is_active ? 'warning' : 'success'"
+              @click.stop="mobileDetailRunAction(() => emit('toggleStatus', row))"
+            >
+              <i :class="row.is_active ? 'fas fa-pause' : 'fas fa-play'" />
+              <span>{{ row.is_active ? '禁用' : '启用' }}</span>
+            </el-button>
+            <el-button
+              v-if="canEdit"
+              v-permission="'salary-templates:edit'"
+              type="primary"
+              @click.stop="mobileDetailRunAction(() => emit('edit', row))"
+            >
+              <i class="fas fa-edit" />
+              <span>编辑</span>
+            </el-button>
+            <el-button
+              v-if="canDelete"
+              v-permission="'salary-templates:delete'"
+              type="danger"
+              @click.stop="mobileDetailRunAction(() => emit('delete', row))"
+            >
+              <i class="fas fa-trash" />
+              <span>删除</span>
+            </el-button>
+          </template>
+        </RecordDetailDialog>
       </div>
 
       <Pagination
@@ -338,9 +329,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import { shouldShowActionColumn } from '@/composables/useFieldPermissions'
-import { useMobileRowDoubleTap } from '@/composables/useMobileRowDoubleTap'
+import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
+import type { RecordDetailField } from '@/types/component'
 import Pagination from '@/components/Pagination.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
@@ -348,9 +340,6 @@ import { getActionColumnMinWidth, getTextColumnMinWidth } from '@/utils/table-la
 import { formatSalaryNumber } from '../salary-formatters'
 import type { SalaryTemplate } from '@/types/salary'
 
-interface SalaryTemplateTableInstance {
-  toggleRowExpansion: (_row: SalaryTemplate, _expanded: boolean) => void
-}
 
 const props = defineProps<{
   canDelete: boolean
@@ -384,9 +373,6 @@ const emit = defineEmits<{
   'update:statusFilter': [value: boolean | undefined]
 }>()
 
-const tableRef = ref<SalaryTemplateTableInstance>()
-const mobileExpandedTemplateId = ref<number | null>(null)
-const { isDoubleTap, resetDoubleTap } = useMobileRowDoubleTap()
 
 const showNameColumn = computed(() => props.canViewField('salary_salarytemplatesview', 'template_name'))
 const showDescriptionColumn = computed(() => props.canViewField('salary_salarytemplatesview', 'template_description'))
@@ -451,28 +437,9 @@ const actionColumnWidth = computed(() => {
 
 const getTemplateIndex = (index: number) => (props.page - 1) * props.pageSize + index + 1
 
-const resetInteraction = () => {
-  if (mobileExpandedTemplateId.value) {
-    const previous = props.filteredTemplates.find(item => item.id === mobileExpandedTemplateId.value)
-    if (previous) tableRef.value?.toggleRowExpansion(previous, false)
-  }
-  mobileExpandedTemplateId.value = null
-  resetDoubleTap()
-}
 
-const handleRowTap = (row: SalaryTemplate) => {
-  if (!props.isMobile) return
 
-  if (isDoubleTap(row.id)) {
-    const shouldExpand = mobileExpandedTemplateId.value !== row.id
-    if (mobileExpandedTemplateId.value && mobileExpandedTemplateId.value !== row.id) {
-      const previous = props.filteredTemplates.find(item => item.id === mobileExpandedTemplateId.value)
-      if (previous) tableRef.value?.toggleRowExpansion(previous, false)
-    }
-    tableRef.value?.toggleRowExpansion(row, shouldExpand)
-    mobileExpandedTemplateId.value = shouldExpand ? row.id : null
-  }
-}
+const resetInteraction = () => mobileDetailClose()
 
 const handlePaginationChange = (page: number, pageSize: number) => {
   resetInteraction()
@@ -480,6 +447,26 @@ const handlePaginationChange = (page: number, pageSize: number) => {
 }
 
 defineExpose({ resetInteraction })
+const { detailRow: mobileDetailRow, detailVisible: mobileDetailVisible, doubleTapOptions: mobileDetailTapOptions,
+  handleRowDoubleClick: mobileDetailDoubleClick, runDetailAction: mobileDetailRunAction, closeDetail: mobileDetailClose } = useMobileTableDetail<SalaryTemplate>({
+    enabled: () => props.isMobile, rows: () => props.templates, getKey: row => row.id
+  })
+const mobileDetailFields = computed<RecordDetailField[]>(() => {
+  const row = mobileDetailRow.value
+  if (!row) return []
+  return [
+    { key: 'template_name', label: '模板名称', value: row.name, visible: props.canViewField('salary_salarytemplatesview', 'template_name') },
+    { key: 'template_description', label: '说明', value: row.description, visible: props.canViewField('salary_salarytemplatesview', 'template_description'), wide: true },
+    { key: 'template_base_salary', label: '底薪', value: formatSalaryNumber(row.base_salary ?? 0), visible: props.canViewField('salary_salarytemplatesview', 'template_base_salary') },
+    { key: 'template_commission_type', label: '提成方式', value: row.commission_type === 'fixed' ? '固定' : '利润', visible: props.canViewField('salary_salarytemplatesview', 'template_commission_type') },
+    { key: 'template_commission_new_fixed', label: '新机固定提成', value: formatSalaryNumber(row.commission_new_fixed || row.commission_fixed || 0), visible: props.canViewField('salary_salarytemplatesview', 'template_commission_new_fixed') },
+    { key: 'template_commission_used_fixed', label: '二手固定提成', value: formatSalaryNumber(row.commission_used_fixed || 0), visible: props.canViewField('salary_salarytemplatesview', 'template_commission_used_fixed') },
+    { key: 'template_commission_percentage', label: '提成比例', value: `${row.commission_percentage || 0}%`, visible: props.canViewField('salary_salarytemplatesview', 'template_commission_percentage') },
+    { key: 'template_overtime_hourly_rate', label: '加班费率', value: formatSalaryNumber(row.overtime_hourly_rate ?? 0), visible: props.canViewField('salary_salarytemplatesview', 'template_overtime_hourly_rate') },
+    { key: 'template_rest_days', label: '月休天数', value: row.rest_days, visible: props.canViewField('salary_salarytemplatesview', 'template_rest_days') },
+    { key: 'template_employee_count', label: '使用人数', value: props.getEmployeeCount(row.id), visible: props.canViewField('salary_salarytemplatesview', 'template_employee_count') }
+  ]
+})
 </script>
 
 <style scoped>

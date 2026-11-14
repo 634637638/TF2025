@@ -43,6 +43,7 @@
         </template>
 
         <el-table
+          v-table-double-tap="groupDetailTapOptions"
           v-tf-loading="{ active: loading, text: '正在刷新库存预警配置...' }"
           :data="filteredGroupedConfigs"
           stripe
@@ -52,6 +53,7 @@
           table-layout="fixed"
           :fit="true"
           style="width: 100%"
+          @row-dblclick="groupDetailDoubleClick"
         >
           <template #empty>
             <TableLoadingRow
@@ -66,7 +68,7 @@
           </template>
 
           <el-table-column
-            v-if="canViewField('config.template_info') || canViewField('config.color') || canViewField('config.memory') || canViewField('config.condition') || canViewField('config.threshold') || canViewField('config.is_enabled')"
+            v-if="!isMobile && (canViewField('config.template_info') || canViewField('config.color') || canViewField('config.memory') || canViewField('config.condition') || canViewField('config.threshold') || canViewField('config.is_enabled'))"
             type="expand"
             width="56"
           >
@@ -256,7 +258,7 @@
                     />
 
                     <el-table-column
-                      v-if="canEditWarningConfig && showOperations"
+                      v-if="!isMobile && (canEditWarningConfig && showOperations)"
                       label="操作"
                       :width="$getActionColumnWidth(2)"
                       align="center"
@@ -403,7 +405,7 @@
           />
 
           <el-table-column
-            v-if="canEditWarningConfig && showOperations"
+            v-if="!isMobile && (canEditWarningConfig && showOperations)"
             label="操作"
             :width="$getActionColumnWidth(2)"
             align="center"
@@ -437,6 +439,123 @@
       </el-card>
     </template>
 
+    <RecordDetailDialog
+      v-model="groupDetailVisible"
+      title="库存预警模板详情"
+      :record="groupDetailRow"
+      :fields="groupDetailFields"
+      :has-actions="canEditWarningConfig"
+    >
+      <div class="table-responsive">
+        <el-table
+          v-table-double-tap="childDetailTapOptions"
+          :data="detailChildren"
+          class="data-table devices-table"
+          row-key="id"
+          @row-dblclick="childDetailDoubleClick"
+        >
+          <el-table-column
+            v-if="canViewField('config.color')"
+            prop="color_name"
+            label="颜色"
+            min-width="100"
+          >
+            <template #default="{ row }">
+              {{ row.color_name || '全部颜色' }}
+            </template>
+          </el-table-column>
+          <el-table-column
+            v-if="canViewField('config.memory')"
+            prop="memory_size"
+            label="内存"
+            min-width="100"
+          >
+            <template #default="{ row }">
+              {{ row.memory_size || '全部内存' }}
+            </template>
+          </el-table-column>
+          <el-table-column
+            v-if="canViewField('config.condition')"
+            label="库存类型"
+            min-width="100"
+          >
+            <template #default="{ row }">
+              {{ getConditionLabel(row.is_new) }}
+            </template>
+          </el-table-column>
+          <el-table-column
+            v-if="canViewField('config.threshold')"
+            prop="min_stock"
+            label="预警台数"
+            min-width="90"
+          />
+          <el-table-column
+            v-if="canViewField('config.is_enabled')"
+            label="状态"
+            min-width="90"
+          >
+            <template #default="{ row }">
+              {{ row.warning_enabled === 1 ? '启用' : '禁用' }}
+            </template>
+          </el-table-column>
+          <template #empty>
+            <DataEmptyState
+              description="暂无可查看的规则"
+              size="compact"
+            />
+          </template>
+        </el-table>
+      </div>
+      <template #actions="{ row }">
+        <el-button
+          v-permission="'settings:edit'"
+          type="primary"
+          @click.stop="groupDetailRunAction(() => openEditDialog(row))"
+        >
+          <i class="fas fa-edit" />批量编辑
+        </el-button>
+        <el-button
+          v-permission="'settings:edit'"
+          type="danger"
+          @click.stop="groupDetailRunAction(() => handleDeleteGroup(row))"
+        >
+          <i class="fas fa-trash-alt" />删除模板
+        </el-button>
+      </template>
+    </RecordDetailDialog>
+    <RecordDetailDialog
+      v-model="childDetailVisible"
+      title="库存预警规则详情"
+      :record="childDetailRow"
+      :fields="childDetailFields"
+      :has-actions="canEditWarningConfig"
+    >
+      <template #actions="{ row }">
+        <el-button
+          v-if="canViewField('config.is_enabled')"
+          v-permission="'settings:edit'"
+          :loading="row.toggling"
+          @click.stop="childDetailRunAction(() => toggleDetailRule(row))"
+        >
+          {{ row.warning_enabled === 1 ? '禁用' : '启用' }}
+        </el-button>
+        <el-button
+          v-permission="'settings:edit'"
+          type="primary"
+          @click.stop="childDetailRunAction(() => openEditDialog(row))"
+        >
+          <i class="fas fa-edit" />编辑
+        </el-button>
+        <el-button
+          v-permission="'settings:edit'"
+          type="danger"
+          @click.stop="childDetailRunAction(() => handleDelete(row))"
+        >
+          <i class="fas fa-trash-alt" />删除
+        </el-button>
+      </template>
+    </RecordDetailDialog>
+
     <MobileDialog
       v-model="dialogVisible"
       :title="dialogMode === 'add' ? '新增母模板' : '编辑母模板'"
@@ -447,12 +566,13 @@
     >
       <el-form
         ref="formRef"
+        class="tf-form-layout tf-form-grid"
         :model="formData"
         :rules="formRules"
         label-width="100px"
         label-position="left"
       >
-        <div class="dialog-grid">
+        <div class="dialog-grid tf-form-row">
           <el-form-item
             v-if="canViewField('config.template_info')"
             label="选择品牌"
@@ -496,7 +616,7 @@
           </el-form-item>
         </div>
 
-        <div class="dialog-grid">
+        <div class="dialog-grid tf-form-row">
           <el-form-item
             v-if="canViewField('config.color')"
             label="选择颜色"
@@ -557,7 +677,7 @@
           </el-select>
         </el-form-item>
 
-        <div class="dialog-grid">
+        <div class="dialog-grid tf-form-row">
           <el-form-item
             v-if="canViewField('config.template_info')"
             label="模板名称"
@@ -596,6 +716,7 @@
 
         <el-form-item
           v-if="canViewField('config.template_info')"
+          class="tf-form-field--wide"
           label="模板备注"
         >
           <el-input
@@ -762,6 +883,9 @@
 </template>
 
 <script setup lang="ts">
+import { useMobile } from '@/composables/mobile'
+import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
+import type { RecordDetailField } from '@/types/component'
 import { confirmAction } from '@/utils/message-box'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { type FormInstance } from 'element-plus'
@@ -1432,6 +1556,46 @@ onMounted(() => {
 defineExpose({
   openAddDialog,
   loadConfigs
+})
+
+const { isMobile } = useMobile()
+const { detailRow: groupDetailRow, detailVisible: groupDetailVisible, doubleTapOptions: groupDetailTapOptions, handleRowDoubleClick: groupDetailDoubleClick, runDetailAction: groupDetailRunAction, closeDetail: closeGroupDetail } = useMobileTableDetail<WarningGroup>({ enabled: () => isMobile.value && canViewWarningConfig.value, rows: filteredGroupedConfigs, getKey: row => row.groupKey })
+const detailChildren = computed(() => groupDetailRow.value?.children || [])
+const { detailRow: childDetailRow, detailVisible: childDetailVisible, doubleTapOptions: childDetailTapOptions, handleRowDoubleClick: childDetailDoubleClick, runDetailAction: childDetailRunAction, closeDetail: closeChildDetail } = useMobileTableDetail<PhoneWarningConfigRow>({ enabled: () => isMobile.value && canViewWarningConfig.value, rows: detailChildren, getKey: row => row.id })
+watch(childDetailVisible, visible => { if (visible) closeGroupDetail() })
+watch(canViewWarningConfig, allowed => { if (!allowed) { closeGroupDetail(); closeChildDetail() } })
+const toggleDetailRule = (row: PhoneWarningConfigRow) => {
+  if (!canEditWarningConfig.value || row.toggling) return
+  row.warning_enabled = row.warning_enabled === 1 ? 0 : 1
+  return handleToggleWarning(row)
+}
+const groupDetailFields = computed<RecordDetailField[]>(() => {
+  const row = groupDetailRow.value
+  if (!row) return []
+  return [
+    { key: 'name', label: '模板名称', value: row.config_name, visible: canViewField('config.template_info') },
+    { key: 'brand', label: '品牌', value: row.brand_name, visible: canViewField('config.template_info') },
+    { key: 'model', label: '型号', value: row.model_name, visible: canViewField('config.template_info') },
+    { key: 'color', label: '颜色', value: row.colorSummary, visible: canViewField('config.color') },
+    { key: 'memory', label: '内存', value: row.memorySummary, visible: canViewField('config.memory') },
+    { key: 'condition', label: '库存类型', value: row.conditionSummary, visible: canViewField('config.condition') },
+    { key: 'threshold', label: '阈值范围', value: row.thresholdSummary, visible: canViewField('config.threshold') },
+    { key: 'state', label: '启用规则', value: `${row.enabledCount}/${row.children.length}`, visible: canViewField('config.is_enabled') },
+    { key: 'remarks', label: '备注', value: row.remarks, visible: canViewField('config.template_info'), wide: true }
+  ]
+})
+const childDetailFields = computed<RecordDetailField[]>(() => {
+  const row = childDetailRow.value
+  if (!row) return []
+  return [
+    { key: 'name', label: '子模板名称', value: row.config_name || getDisplayName(row), visible: canViewField('config.template_info') },
+    { key: 'color', label: '颜色', value: row.color_name || '全部颜色', visible: canViewField('config.color') },
+    { key: 'memory', label: '内存', value: row.memory_size || '全部内存', visible: canViewField('config.memory') },
+    { key: 'condition', label: '库存类型', value: getConditionLabel(row.is_new), visible: canViewField('config.condition') },
+    { key: 'threshold', label: '预警台数', value: row.min_stock, visible: canViewField('config.threshold') },
+    { key: 'state', label: '状态', value: row.warning_enabled === 1 ? '启用' : '禁用', visible: canViewField('config.is_enabled') },
+    { key: 'remarks', label: '备注', value: row.remarks, visible: canViewField('config.template_info'), wide: true }
+  ]
 })
 </script>
 

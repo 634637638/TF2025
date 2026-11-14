@@ -1,10 +1,12 @@
 /**
  * 供应商打款路由
- * 用于管理供应商手机的打款状态
+ * 管理手机货款与商品采购整单打款，两类业务分别核算
  */
 const express = require('express')
 const router = express.Router()
 const supplierPaymentController = require('../controllers/supplier-payment.controller')
+const AccessoryPurchaseController = require('../controllers/accessory-purchase.controller')
+const accessoryPurchaseController = new AccessoryPurchaseController()
 const { body, param, query, validationResult } = require('express-validator')
 const { unifiedAuth, requirePermission } = require('../middleware/unified-auth')
 const ApiResponse = require('../utils/response')
@@ -42,6 +44,14 @@ const validateRequest = (req, res, next) => {
   }
   next()
 }
+
+// 商品采购按真实入库整单结算，与手机销售状态独立；共用货款结算动作权限。
+router.get('/accessory-purchases', unifiedAuth, requirePermission('supplier-payments:view'), accessoryPurchaseController.list.bind(accessoryPurchaseController))
+router.get('/accessory-purchases/:id/payments', unifiedAuth, requirePermission('supplier-payments:view'), accessoryPurchaseController.history.bind(accessoryPurchaseController))
+router.get('/accessory-purchases/:id/return-context', unifiedAuth, requirePermission('supplier-payments:view'), requirePermission('accessories:view'), accessoryPurchaseController.returnContext.bind(accessoryPurchaseController))
+router.post('/accessory-purchases/:id/return/quote', unifiedAuth, requirePermission('supplier-payments:view'), requirePermission('accessories:view'), accessoryPurchaseController.quoteReturn.bind(accessoryPurchaseController))
+router.post('/accessory-purchases/:id/payment', unifiedAuth, requirePermission('supplier-payments:create'), accessoryPurchaseController.pay.bind(accessoryPurchaseController))
+router.post('/accessory-purchases/:id/cancel-payment', unifiedAuth, requirePermission('supplier-payments:edit'), accessoryPurchaseController.cancel.bind(accessoryPurchaseController))
 
 /**
  * @route   GET /api/supplier-payments/statistics

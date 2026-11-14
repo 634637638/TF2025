@@ -7,6 +7,7 @@ const { isConnected } = require('../config/database')
 const { PAGINATION } = require('../config/constants')
 const { normalizeReferencePagination, buildPagination } = require('./reference-options.service')
 const ReferenceOrderingService = require('./reference-ordering.service')
+const { parseReferenceInput, parseReferenceId } = require('../utils/reference-options')
 
 const MEMORY_FORMAT_ERROR = '内存规格格式不正确！\n正确格式示例：\n• 纯存储：64GB、128GB、256GB、512GB\n• 组合格式：6+128GB、8+256GB、12+512GB\n• 不能包含中文或特殊字符（除+号外）'
 
@@ -76,13 +77,15 @@ class ReferenceManagementService extends BaseService {
   }
 
   async get(id) {
+    id = parseReferenceId(id)
     this.ensureConnected()
-    const row = await this.repository.getManagementRecord(parseInt(id))
+    const row = await this.repository.getManagementRecord(id)
     if (!row) throw this.createError(`${this.label}不存在`, 404, 'NOT_FOUND')
     return this.format(row)
   }
 
   async create(body) {
+    body = parseReferenceInput(body, { field: this.field, required: true, message: this.field === 'name' ? '颜色名称不能为空' : '内存规格不能为空' })
     this.ensureConnected()
     const value = body[this.field]
     if (!value) throw this.createError(this.field === 'name' ? '颜色名称不能为空' : '内存规格不能为空', 400, 'EMPTY_NAME')
@@ -91,13 +94,14 @@ class ReferenceManagementService extends BaseService {
       throw this.createError(this.field === 'name' ? '颜色名称已存在' : '该内存规格已存在', 400, 'DUPLICATE')
     }
     const id = await this.repository.insertManagementRecord({
-      label, status: body.status !== undefined ? parseInt(body.status) : 1,
-      sortOrder: this.field === 'size' ? (body.sort_order ? parseInt(body.sort_order) : 0) : (body.sort_order !== undefined ? parseInt(body.sort_order) : 0)
+      label, status: body.status ?? 1, sortOrder: body.sort_order ?? 0
     })
     return this.format(await this.repository.getManagementRecord(id))
   }
 
   async update(id, body) {
+    id = parseReferenceId(id)
+    body = parseReferenceInput(body, { field: this.field })
     this.ensureConnected()
     const value = body[this.field]
     const label = value !== undefined ? this.validateLabel(value) : undefined
@@ -109,13 +113,13 @@ class ReferenceManagementService extends BaseService {
         if (await this.repository.hasManagementDuplicate(label, id)) throw this.createError(`已有存在${label}内存，请勿重复提交`, 409, 'DUPLICATE')
         changes.size = label
       }
-      if (body.sort_order !== undefined) changes.sort_order = parseInt(body.sort_order)
-      if (body.status !== undefined) changes.status = parseInt(body.status)
+      if (body.sort_order !== undefined) changes.sort_order = body.sort_order
+      if (body.status !== undefined) changes.status = body.status
     } else {
       if (value && await this.repository.hasManagementDuplicate(label, id)) throw this.createError('颜色名称已存在', 400, 'DUPLICATE')
       if (label !== undefined) changes.name = label
-      if (body.status !== undefined) changes.status = parseInt(body.status)
-      if (body.sort_order !== undefined) changes.sort_order = parseInt(body.sort_order)
+      if (body.status !== undefined) changes.status = body.status
+      if (body.sort_order !== undefined) changes.sort_order = body.sort_order
     }
     if (Object.keys(changes).length === 0) throw this.createError('没有提供要更新的字段', 400, 'EMPTY_UPDATE')
     await this.repository.updateManagementRecord(id, changes)
@@ -123,8 +127,9 @@ class ReferenceManagementService extends BaseService {
   }
 
   async remove(id) {
+    id = parseReferenceId(id)
     this.ensureConnected()
-    const parsedId = parseInt(id)
+    const parsedId = id
     const row = await this.repository.getManagementRecord(parsedId)
     if (!row) throw this.createError(`${this.label}不存在`, 404, 'NOT_FOUND')
     await this.repository.removeManagementRecord(parsedId)
@@ -141,8 +146,9 @@ class ReferenceManagementService extends BaseService {
   }
 
   async toggle(id) {
+    id = parseReferenceId(id)
     this.ensureConnected()
-    const parsedId = parseInt(id)
+    const parsedId = id
     const row = await this.repository.getManagementRecord(parsedId)
     if (!row) throw this.createError(`${this.label}不存在`, 404, 'NOT_FOUND')
     const status = row.status === 1 ? 0 : 1

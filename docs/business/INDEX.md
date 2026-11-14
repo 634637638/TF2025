@@ -11,6 +11,10 @@
 - [库存专题索引](inventory/INDEX.md)
 - [价格来源同步规则](price-source-sync.md)
 
+## 工资
+
+- [工资记录与已发快照](salary-record-standard.md)
+
 ## 订单与业务模块
 
 - [新品预定专题索引](preorders/INDEX.md)

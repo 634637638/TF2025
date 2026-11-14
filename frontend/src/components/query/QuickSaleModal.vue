@@ -7,10 +7,12 @@
   - 响应式设计，移动端友好
 
   权限要求：
-  - inventory:create
+  - 按交易类型校验 inventory:sell / sales:wholesale / sales:proxy-transfer
+  - 配件合单额外校验综合查询及配件动作权限
 
   API接口：
   - POST /inventory/quick-sale - 快速出库API
+  - POST /sales/checkout - 含配件的零售共同结算
 -->
 <template>
   <MobileDialog
@@ -25,6 +27,14 @@
   >
     <template #footer>
       <div class="tf-dialog-actions quick-sale-footer">
+        <el-button
+          v-if="canSellGoods && formData.status === 'sold'"
+          v-permission="{ permission: ['accessories:create', 'accessories:gift'] }"
+          :disabled="submitting"
+          @click="openGoodsCheckout"
+        >
+          配件
+        </el-button>
         <el-button
           type="default"
           :disabled="submitting"
@@ -52,7 +62,7 @@
       :model="formData"
       :rules="formRules"
       label-position="top"
-      class="quick-sale-form"
+      class="quick-sale-form tf-form-layout tf-form-grid"
     >
       <!-- 设备信息 -->
       <div class="tf-query-modal-section quick-sale-device-section">
@@ -139,6 +149,7 @@
 
         <div class="tf-query-modal-row tf-query-modal-row--4 quick-sale-device-row--identifier">
           <el-form-item
+            class="tf-form-field--wide"
             label="序列号"
             prop="serial_number"
           >
@@ -147,7 +158,7 @@
                 v-model="formData.serial_number"
                 class="quick-sale-identifier-input"
                 placeholder="请输入序列号"
-                maxlength="18"
+                maxlength="50"
                 clearable
                 @input="formatSerialNumber"
               >
@@ -171,6 +182,7 @@
           </el-form-item>
 
           <el-form-item
+            class="tf-form-field--wide"
             label="IMEI"
             prop="imei"
           >
@@ -184,7 +196,7 @@
                 class="quick-sale-identifier-input"
                 :class="{ 'tf-imei-input--no-imei': formData.isNoIMEIMode }"
                 :placeholder="formData.isNoIMEIMode ? '' : '请输入15位IMEI号'"
-                :maxlength="formData.isNoIMEIMode ? 30 : 15"
+                :maxlength="formData.isNoIMEIMode ? 50 : 15"
                 clearable
                 @input="formatIMEI"
               >
@@ -348,7 +360,6 @@
                 v-model="formData.customer_phone"
                 placeholder="请输入用户手机号"
                 clearable
-                maxlength="11"
                 :readonly="foundCustomer !== null"
                 @input="handleCustomerPhoneInput"
                 @focus="handleCustomerPhoneFocus"
@@ -395,7 +406,7 @@
           <el-form-item
             label="Apple ID"
             prop="apple_id"
-            class="tf-query-modal-span-2"
+            class="tf-query-modal-span-2 tf-form-field--wide"
           >
             <el-input
               v-model="formData.apple_id"
@@ -513,6 +524,7 @@
         </div>
 
         <el-form-item
+          class="tf-form-field--wide"
           label="备注"
           prop="remarks"
         >
@@ -530,6 +542,19 @@
       </div>
     </el-form>
   </MobileDialog>
+
+  <SalesGoodsCheckoutDialog
+    v-if="showGoodsCheckout"
+    v-model="showGoodsCheckout"
+    :phones="checkoutPhones"
+    :quick-phone="checkoutPhone"
+    :defaults="checkoutDefaults"
+    :initial-customer="checkoutCustomer"
+    :phone-fields-allowed="checkoutFieldsAllowed"
+    :phone-field-visible="canViewCheckoutField"
+    @success="completeGoodsCheckout"
+    @customer-updated="syncCheckoutCustomer"
+  />
 
   <teleport to="body">
     <OptimizedScanner
@@ -550,7 +575,11 @@ import { TIME_FORMATS } from '@/utils/time'
 import { ref, reactive, computed, watch, nextTick, defineAsyncComponent } from 'vue'
 import type { FormInstance, FormRules } from 'element-plus'
 import { ValidationRules } from '@/composables'
+import { deviceSerialPattern, deviceIMEIPattern } from '@/utils/device-identifier'
 import { useNotification } from '@/composables/useNotification'
+import { usePagePermissions } from '@/composables/usePagePermissions'
+import { fieldPermissions } from '@/composables/useFieldPermissions'
+import type { CheckoutCustomerForm, CheckoutPhone, CheckoutQuickPhone } from '@/types/sales-checkout'
 import unifiedApi from '@/utils/unified-api'
 import { searchCustomerOptions } from '@/services/customer-options'
 import { getModels } from '@/services/reference-options'
@@ -574,6 +603,7 @@ import {
   buildQuickSaleCustomerSearchResetState,
   buildQuickSaleCustomerSelectionPatch,
   buildQuickSaleSubmitPayload,
+  buildQuickCheckoutPhone,
   calculateQuickSaleSubsidyRemarks,
   createDefaultQuickSaleForm,
   createQuickSaleInitialPatch,
@@ -594,6 +624,7 @@ import type {
 import { buildStockInScanPromptConfig } from '../stock-in/helpers'
 
 const OptimizedScanner = defineAsyncComponent(() => import('../OptimizedScanner.vue'))
+const SalesGoodsCheckoutDialog = defineAsyncComponent(() => import('@/views/sales/page/SalesGoodsCheckoutDialog.vue'))
 
 // ==================== 类型定义 ====================
 
@@ -604,6 +635,16 @@ const emit = defineEmits<UpdateModelValueEmits & SuccessEmits>()
 
 const { isMobile, isIOS } = useMobile()
 const authStore = useAuthStore()
+const goodsPermissions = usePagePermissions('accessories')
+const inventoryPermissions = usePagePermissions('inventory')
+const queryPermissions = usePagePermissions('query')
+const canSellGoods = computed(() => inventoryPermissions.canSell.value && queryPermissions.canView.value && queryPermissions.canCreate.value && goodsPermissions.canView.value &&
+  (goodsPermissions.canCreate.value || goodsPermissions.hasPermission('gift')))
+const canViewCheckoutField = (field: string) => fieldPermissions.isFieldVisible('sales_salesview', `sale.${field}`)
+const checkoutFieldsAllowed = computed(() => [
+  'brand', 'model', 'color', 'memory', 'supplier_id', 'imei', 'serial_number', 'condition', 'purchase_cost',
+  'sale_price', 'inventory_time', 'store_id', 'operator_id', 'customer_name', 'customer_phone', 'sale_time', 'payment_method'
+].every(canViewCheckoutField))
 const {
   success: showSuccess,
   error: showError,
@@ -621,6 +662,11 @@ const dialogVisible = computed({
 
 const formRef = ref<FormInstance>()
 const submitting = ref(false)
+const showGoodsCheckout = ref(false)
+const checkoutPhone = ref<CheckoutQuickPhone>()
+const checkoutPhones = ref<CheckoutPhone[]>([])
+const checkoutDefaults = ref<Partial<CheckoutCustomerForm>>({})
+const checkoutCustomer = ref<Pick<CustomerOption, 'id' | 'name' | 'phone'> | null>(null)
 const optimizedScannerVisible = ref(false)
 const currentScanType = ref<'imei' | 'serial'>('imei')
 
@@ -765,20 +811,11 @@ const currentUserName = computed(() => {
 // IMEI验证规则 - 根据无IMEI模式动态调整
 const imeiRules = computed(() => {
   if (formData.isNoIMEIMode) {
-    return [ValidationRules.required('请输入IMEI')]
+    return [ValidationRules.required('请输入IMEI'), ValidationRules.pattern(deviceSerialPattern, '请输入4-50位有效设备编码')]
   } else {
     return [
       ValidationRules.required('请输入IMEI'),
-      {
-        validator: (_rule: unknown, value: string, callback: (_error?: Error) => void) => {
-          if (!value || /^\d{15}$/.test(value)) {
-            callback()
-          } else {
-            callback(new Error('IMEI必须是15位数字'))
-          }
-        },
-        trigger: 'blur'
-      }
+      ValidationRules.pattern(deviceIMEIPattern, 'IMEI必须是15位数字')
     ]
   }
 })
@@ -801,7 +838,8 @@ const formRules = computed<FormRules>(() => ({
   ],
   imei: imeiRules.value,
   serial_number: [
-    ValidationRules.required('请输入序列号')
+    ValidationRules.required('请输入序列号'),
+    ValidationRules.pattern(deviceSerialPattern, '序列号须为4-50位字母、数字、斜杠或连字符')
   ],
   supplier_id: [
     ValidationRules.required('请选择供应商')
@@ -915,7 +953,7 @@ const {
   handleDoubleClick: handleImeiDoubleClick
 } = useTouchDoubleTap(enableNoIMEIMode)
 
-// 格式化序列号 - 只允许字母和数字，转大写，最多18位
+// 复用公共编码标准化；非法内容由字段校验拒绝。
 const formatSerialNumber = () => {
   formData.serial_number = formatQuickSaleSerialNumber(formData.serial_number)
 }
@@ -1331,6 +1369,10 @@ const clearSelectedCustomer = () => {
 
 // 重置表单
 const resetForm = () => {
+  showGoodsCheckout.value = false
+  checkoutPhone.value = undefined
+  checkoutPhones.value = []
+  checkoutCustomer.value = null
   clearCustomerSearchTimeout()
   customerSearchRequestId.value += 1
   Object.assign(formData, createDefaultQuickSaleForm(authStore.user?.id || null))
@@ -1353,8 +1395,38 @@ const applyInitialData = async () => {
 }
 
 // 提交表单
+const openGoodsCheckout = async () => {
+  if (submitting.value || showGoodsCheckout.value || formData.status !== 'sold' || !canSellGoods.value || !formRef.value) return
+  if (customerNameEditing.value || customerNameSaving.value) { showWarning('请先保存客户姓名，再添加搭售或赠送商品'); return }
+  if (!checkoutFieldsAllowed.value) { showWarning('缺少共同结算所需的手机字段权限，请联系管理员'); return }
+  try {
+    formatCustomerPhone(); formatCustomerName(); formatAppleId(); formatRemarks()
+    if (!await formRef.value.validate()) return
+    checkoutPhone.value = buildQuickCheckoutPhone(formData)
+    checkoutPhones.value = [{ phone_id: 1, sale_price: Number(formData.sale_price), label: [
+      props.options.brands.find(row => Number(row.id) === Number(formData.brand_id))?.name,
+      filteredModels.value.find(row => Number(row.id) === Number(formData.model_id))?.name, formData.imei
+    ].filter(Boolean).join(' · ') }]
+    checkoutCustomer.value = foundCustomer.value ? { id: foundCustomer.value.id, name: foundCustomer.value.name, phone: foundCustomer.value.phone } : null
+    checkoutDefaults.value = { customer_name: formData.customer_name, customer_phone: formData.customer_phone,
+      store_id: Number(formData.store_id), operator_id: Number(formData.sale_operator_id), sale_time: formData.sale_time,
+      payment_method: formData.payment_method, payment_channel: formData.payment_channel,
+      ...(canViewCheckoutField('customer_apple_id') ? { apple_id: formData.apple_id } : {}),
+      ...(canViewCheckoutField('remarks') ? { remarks: formData.remarks } : {}) }
+    showGoodsCheckout.value = true
+  } catch (error) {
+    if (error instanceof Error) showError(error.message)
+  }
+}
+const syncCheckoutCustomer = (customer: Pick<CustomerOption, 'id' | 'name' | 'phone'>) => {
+  if (foundCustomer.value?.id !== customer.id || formData.customer_phone !== customer.phone) return
+  foundCustomer.value.name = customer.name
+  formData.customer_name = customer.name
+}
+const completeGoodsCheckout = () => { emit('success'); handleCancel() }
+
 const handleSubmit = async () => {
-  if (submitting.value) return
+  if (submitting.value || showGoodsCheckout.value) return
   if (!formRef.value) return
 
   try {

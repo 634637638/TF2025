@@ -5,6 +5,15 @@
 
 import type { Component } from 'vue'
 
+/** 只读记录详情的显示字段；可见性必须由业务字段权限明确提供。 */
+export interface RecordDetailField {
+  key: string
+  label: string
+  value: string | number | boolean | null | undefined
+  visible: boolean
+  wide?: boolean
+}
+
 // ==================== 通用 Props ====================
 
 /**
@@ -300,6 +309,8 @@ export interface TableColumn {
   key?: string
   prop: string
   label: string
+  /** 记录详情中的长字段占满手机整行，不影响表格列宽。 */
+  detailWide?: boolean
   width?: number | string
   minWidth?: number | string
   align?: 'left' | 'center' | 'right'

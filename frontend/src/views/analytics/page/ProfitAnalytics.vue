@@ -533,11 +533,13 @@
             </div>
           </template>
           <el-table
+            v-table-double-tap="employeeDetailTapOptions"
             :data="employeePerformanceData"
             stripe
             class="data-table w-full"
             max-height="400"
             :table-layout="'auto'"
+            @row-dblclick="employeeDetailDoubleClick"
           >
             <el-table-column
               type="index"
@@ -649,6 +651,13 @@
               </template>
             </el-table-column>
           </el-table>
+          <RecordDetailDialog
+            v-model="employeeDetailVisible"
+            title="员工利润详情"
+            :record="employeeDetailRow"
+            :fields="employeeDetailFields"
+            :has-actions="false"
+          />
         </el-card>
       </el-col>
     </el-row>
@@ -1160,9 +1169,11 @@
             </div>
           </template>
           <el-table
+            v-table-double-tap="costDetailTapOptions"
             :data="costAnalysisData"
             stripe
             class="data-table w-full"
+            @row-dblclick="costDetailDoubleClick"
           >
             <el-table-column
               type="index"
@@ -1254,6 +1265,13 @@
               </template>
             </el-table-column>
           </el-table>
+          <RecordDetailDialog
+            v-model="costDetailVisible"
+            title="成本分析详情"
+            :record="costDetailRow"
+            :fields="costDetailFields"
+            :has-actions="false"
+          />
         </el-card>
       </el-col>
     </el-row>
@@ -1261,6 +1279,9 @@
 </template>
 
 <script setup lang="ts">
+import { useMobile } from '@/composables/mobile'
+import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
+import type { RecordDetailField } from '@/types/component'
 import { formatAmount } from '@/utils/format'
 import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import { useNotification } from '@/composables/useNotification'
@@ -3155,6 +3176,39 @@ onBeforeUnmount(() => {
   if (productProfitChart) productProfitChart.dispose()
   if (storeComparisonChart) storeComparisonChart.dispose()
   if (forecastChart) forecastChart.dispose()
+})
+
+const { isMobile } = useMobile()
+const { detailRow: employeeDetailRow, detailVisible: employeeDetailVisible, doubleTapOptions: employeeDetailTapOptions, handleRowDoubleClick: employeeDetailDoubleClick } = useMobileTableDetail<(typeof employeePerformanceData.value)[number]>({
+  enabled: () => isMobile.value, rows: () => employeePerformanceData.value, getKey: row => JSON.stringify([row.name, row.store])
+})
+const employeeDetailFields = computed<RecordDetailField[]>(() => {
+  const row = employeeDetailRow.value
+  if (!row) return []
+  return [
+    { key: 'name', label: '员工姓名', value: row.name, visible: canViewProfitField('employee_performance_table') },
+    { key: 'store', label: '所属店铺', value: row.store, visible: canViewProfitField('employee_performance_table') },
+    { key: 'field2', label: '全新销售', value: [formatAmount(row.newAmount), formatAmount(row.newProfit)].join(' / '), visible: canViewProfitField('employee_performance_table') },
+    { key: 'field3', label: '二手销售', value: [formatAmount(row.usedAmount), formatAmount(row.usedProfit)].join(' / '), visible: canViewProfitField('employee_performance_table') },
+    { key: 'field4', label: '合计', value: [row.totalCount, formatAmount(row.totalAmount), formatAmount(row.totalProfit)].join(' / '), visible: canViewProfitField('employee_performance_table') }
+  ]
+})
+
+
+const { detailRow: costDetailRow, detailVisible: costDetailVisible, doubleTapOptions: costDetailTapOptions, handleRowDoubleClick: costDetailDoubleClick } = useMobileTableDetail<(typeof costAnalysisData.value)[number]>({
+  enabled: () => isMobile.value, rows: () => costAnalysisData.value, getKey: row => row.category
+})
+const costDetailFields = computed<RecordDetailField[]>(() => {
+  const row = costDetailRow.value
+  if (!row) return []
+  return [
+    { key: 'category', label: '成本类别', value: getCostLabel(row.category), visible: canViewProfitField('cost_analysis_table') },
+    { key: 'amount', label: '金额', value: formatAmount(row.amount), visible: canViewProfitField('cost_analysis_table') },
+    { key: 'percentage', label: '占比', value: row.percentage, visible: canViewProfitField('cost_analysis_table') },
+    { key: 'yoy', label: '同比', value: Math.abs(row.yoy), visible: canViewProfitField('cost_analysis_table') },
+    { key: 'mom', label: '环比', value: Math.abs(row.mom), visible: canViewProfitField('cost_analysis_table') },
+    { key: 'trend', label: '趋势', value: row.trend === 'up' ? '上升' : row.trend === 'down' ? '下降' : '稳定', visible: canViewProfitField('cost_analysis_table') }
+  ]
 })
 </script>
 

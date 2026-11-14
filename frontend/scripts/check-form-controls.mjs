@@ -1,6 +1,7 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { extname, join, relative, resolve } from 'node:path'
 import { auditAmountInputs } from './lib/amount-input-contract.mjs'
+import { auditPhoneInputs } from './lib/phone-input-contract.mjs'
 
 const root = resolve(import.meta.dirname, '..')
 const sourceRoot = join(root, 'src')
@@ -266,6 +267,7 @@ for (const file of walk(sourceRoot)) {
   const source = readFileSync(file, 'utf8')
   if (file.endsWith('.vue')) {
     findings.push(...auditAmountInputs(source).map(message => `${relativeFile} ${message}`))
+    findings.push(...auditPhoneInputs(source).map(message => `${relativeFile} ${message}`))
   }
   const counts = countControls(source)
   const nativeTextareas = countNativeTextareas(source)

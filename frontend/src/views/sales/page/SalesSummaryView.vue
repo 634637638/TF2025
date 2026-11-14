@@ -22,6 +22,7 @@
         class="inventory-summary-capture"
       >
         <el-table
+          v-table-double-tap="mobileDetailTapOptions"
           :data="items"
           border
           stripe
@@ -29,7 +30,7 @@
           table-layout="fixed"
           :fit="true"
           row-class-name="inventory-row"
-          @row-dblclick="emit('show-detail', $event)"
+          @row-dblclick="mobileDetailDoubleClick"
         >
           <el-table-column
             v-if="canViewField('supplier_name')"
@@ -136,6 +137,7 @@
 </template>
 
 <script setup lang="ts">
+import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
 import { ref } from 'vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import { getTextColumnMinWidth } from '@/utils/table-layout'
@@ -182,6 +184,9 @@ const getInventoryDaysTitle = (row: InventorySummaryItem) => {
 }
 
 defineExpose({ getCaptureElement })
+const { doubleTapOptions: mobileDetailTapOptions, handleRowDoubleClick: mobileDetailDoubleClick } = useMobileTableDetail<InventorySummaryItem>({
+  enabled: () => true, rows: () => props.items, getKey: row => JSON.stringify([row.supplier_name, row.store_name, row.brand, row.model, row.color, row.memory, row.condition]), onOpen: row => emit('show-detail', row)
+})
 </script>
 
 <style scoped lang="scss" src="../styles/sales-summary-view.scss"></style>

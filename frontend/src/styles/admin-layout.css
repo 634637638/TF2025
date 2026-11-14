@@ -71,7 +71,7 @@
   --admin-data-table-container-border: #dee2e6;
   --admin-data-table-container-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   --admin-data-table-header-bg: linear-gradient(135deg, var(--tf-color-gray-bootstrap-700) 0%, var(--tf-color-gray-bootstrap-800) 100%);
-  --admin-data-table-header-color: var(--color-bg-white);
+  --admin-data-table-header-color: var(--tf-color-text-on-accent);
   --admin-data-table-header-padding-y: 6px;
   --admin-data-table-header-padding-x: 10px;
   --admin-data-table-header-height: 48px;
@@ -1104,37 +1104,7 @@
   box-shadow: inset 3px 0 0 var(--admin-data-table-wholesale-accent) !important;
 }
 
-/* 基础资料表格：PC 拖拽排序，手机双击展开操作。 */
-.admin-page .base-data-table th.mobile-expand-header,
-.admin-page .base-data-table td.mobile-expand-column {
-  width: 1px !important;
-  min-width: 1px !important;
-  padding: 0 !important;
-  border-right: 0 !important;
-}
-
-.admin-page .base-data-table th.mobile-expand-header .cell,
-.admin-page .base-data-table td.mobile-expand-column .cell {
-  display: none !important;
-  width: 0 !important;
-  min-width: 0 !important;
-  padding: 0 !important;
-  overflow: hidden !important;
-}
-
-.admin-page .base-data-table .el-table__expanded-cell {
-  padding: 0 !important;
-  background: var(--tf-color-slate-50) !important;
-}
-
-.admin-page .base-data-table .mobile-row-actions {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--admin-data-table-action-gap, 8px);
-  width: 100%;
-  padding: 8px;
-}
-
+/* 基础资料表格：PC 拖拽排序；手机详情统一进入模态框。 */
 .admin-page .base-data-table .drag-handle {
   display: inline-flex;
   align-items: center;

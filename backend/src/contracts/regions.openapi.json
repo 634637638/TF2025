@@ -1,0 +1,65 @@
+{
+  "openapi": "3.1.0",
+  "info": { "title": "TF2025 地区选项试点", "version": "1.0.0" },
+  "servers": [{ "url": "/api" }],
+  "security": [{ "bearerAuth": [] }],
+  "paths": {
+    "/regions": {
+      "get": {
+        "operationId": "getRegionChildren",
+        "summary": "按父级编码读取版本化地区选项",
+        "description": "只读公共基础资料，须通过统一登录认证，不读写客户数据。当前数据覆盖及截止日期由响应声明；港澳台乡村级不在此数据集内。GET 无 CSRF 写入副作用。",
+        "parameters": [{ "in": "query", "name": "parent", "required": false, "schema": { "type": "string", "pattern": "^(?:[0-9]{2}|[0-9]{4}|[0-9]{6}|[0-9]{9})?$", "default": "" } }],
+        "responses": {
+          "200": { "description": "地区选项", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RegionResponse" } } } },
+          "400": { "description": "父级编码格式无效或重复参数", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "401": { "description": "未登录或登录状态失效", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "404": { "description": "不在当前版本覆盖范围或没有下级记录", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "500": { "description": "资源缺失或校验失败，不能暴露服务器路径", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": { "bearerAuth": { "type": "http", "scheme": "bearer", "bearerFormat": "JWT" } },
+    "schemas": {
+      "RegionOption": {
+        "type": "object", "additionalProperties": false, "required": ["code", "name"],
+        "properties": {
+          "code": { "type": "string", "pattern": "^(?:[0-9]{2}|[0-9]{4}|[0-9]{6}|[0-9]{9}|[0-9]{12})$" },
+          "name": { "type": "string", "minLength": 1, "maxLength": 100 }
+        }
+      },
+      "RegionSelection": {
+        "description": "唯一地区选择类型。省份沿用两位编码，其他层级保存展示名称。未选择为字符串空值；乡村为可选，兼容存量三级表单。",
+        "type": "object", "additionalProperties": false, "required": ["province", "city", "district"],
+        "properties": {
+          "province": { "type": "string", "maxLength": 100 },
+          "city": { "type": "string", "maxLength": 100 },
+          "district": { "type": "string", "maxLength": 100 },
+          "town": { "type": "string", "maxLength": 100 },
+          "village": { "type": "string", "maxLength": 100 }
+        }
+      },
+      "RegionChildren": {
+        "type": "object", "additionalProperties": false, "required": ["version", "coverage", "options"],
+        "properties": {
+          "version": { "type": "string", "format": "date" },
+          "coverage": { "type": "string" },
+          "options": { "type": "array", "items": { "$ref": "#/components/schemas/RegionOption" } }
+        }
+      },
+      "RegionResponse": {
+        "type": "object", "additionalProperties": false, "required": ["success", "message", "timestamp", "data"],
+        "properties": {
+          "success": { "type": "boolean", "const": true }, "message": { "type": "string" },
+          "timestamp": { "type": "string", "format": "date-time" }, "data": { "$ref": "#/components/schemas/RegionChildren" }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object", "required": ["success", "message"],
+        "properties": { "success": { "type": "boolean", "const": false }, "message": { "type": "string" }, "code": { "type": "string" }, "timestamp": { "type": "string", "format": "date-time" } }
+      }
+    }
+  }
+}

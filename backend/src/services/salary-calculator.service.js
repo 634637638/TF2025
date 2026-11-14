@@ -1,3 +1,4 @@
+const { getLatestActiveSaleIdSql } = require('../utils/sale-status')
 const { withConnection } = require('../core/db/connection')
 /**
  * 工资计算服务（核心）
@@ -216,15 +217,7 @@ class SalaryCalculatorService {
         FROM phones p
         LEFT JOIN models m ON p.model_id = m.id
         LEFT JOIN colors co ON p.color_id = co.id
-        LEFT JOIN (
-          SELECT s.customer_id, s.phone_id, s.sale_type
-          FROM sales s
-          INNER JOIN (
-            SELECT phone_id, MAX(created_at) as max_created
-            FROM sales
-            GROUP BY phone_id
-          ) latest ON s.phone_id = latest.phone_id AND s.created_at = latest.max_created
-        ) latest_sale ON p.id = latest_sale.phone_id
+        LEFT JOIN sales latest_sale ON latest_sale.id = (${getLatestActiveSaleIdSql()})
         LEFT JOIN customers c ON latest_sale.customer_id = c.id
         WHERE p.sale_operator_id = ?
           AND p.sale_time IS NOT NULL

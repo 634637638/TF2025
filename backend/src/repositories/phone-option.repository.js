@@ -22,14 +22,14 @@ class PhoneOptionRepository {
     const [brands] = await database.execute(`
       SELECT id, name, sort_order, status
       FROM brands
-      WHERE status = 1
+      WHERE status = 1 AND business_scope IN ('phone', 'both')
       ORDER BY sort_order ASC, name ASC, id ASC
     `)
     const [models] = await database.execute(`
       SELECT m.id, m.name, m.brand_id, m.sort_order, m.status
       FROM models m
       INNER JOIN brands b ON m.brand_id = b.id
-      WHERE m.status = 1 AND b.status = 1
+      WHERE m.status = 1 AND b.status = 1 AND b.business_scope IN ('phone', 'both')
       ORDER BY m.sort_order ASC, m.name ASC, m.id ASC
     `)
     const [actualModels] = await database.execute(`
@@ -47,6 +47,7 @@ class PhoneOptionRepository {
       FROM phones p
       LEFT JOIN brands b ON p.brand_id = b.id
       WHERE b.name IS NOT NULL AND b.name != ''
+      AND b.business_scope IN ('phone', 'both')
       AND b.name NOT IN (
         SELECT name FROM brands WHERE status = 1
       )

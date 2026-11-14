@@ -3,142 +3,130 @@
   功能：新用户注册账号
 -->
 <template>
-  <div class="register-page">
-    <div class="register-container">
-      <!-- Logo和标题 -->
-      <div class="register-header">
-        <div class="logo">
-          <i class="fas fa-user-plus" />
-        </div>
-        <h1 class="title">
-          用户注册
-        </h1>
-        <p class="subtitle">
-          加入{{ shopConfig.shop_name || 'H5商城' }}
-        </p>
-      </div>
-
-      <!-- 注册表单 -->
-      <el-form
-        ref="registerFormRef"
-        :model="form.values"
-        :rules="registerRules"
-        class="register-form"
+  <H5AuthLayout
+    title="用户注册"
+    icon="fa-user-plus"
+    :subtitle="`加入${shopConfig.shop_name || 'H5商城'}`"
+    footer-text="已有账号？"
+    footer-label="立即登录"
+    footer-to="/m/login"
+  >
+    <!-- 注册表单 -->
+    <el-form
+      ref="registerFormRef"
+      :model="form.values"
+      class="auth-form"
+    >
+      <el-form-item
+        prop="name"
+        :error="form.errors.name"
       >
-        <el-form-item prop="name">
-          <el-input
-            :model-value="form.values.name"
-            placeholder="请输入您的姓名"
-            size="large"
-            clearable
-            @update:model-value="setFieldValue('name', $event)"
-            @blur="validate()"
-          >
-            <template #prefix>
-              <i class="fas fa-user" />
-            </template>
-          </el-input>
-        </el-form-item>
+        <el-input
+          :model-value="form.values.name"
+          placeholder="请输入您的姓名"
+          size="large"
+          clearable
+          @update:model-value="setFieldValue('name', $event)"
+          @blur="validate()"
+        >
+          <template #prefix>
+            <i class="fas fa-user" />
+          </template>
+        </el-input>
+      </el-form-item>
 
-        <el-form-item prop="phone">
-          <el-input
-            :model-value="form.values.phone"
-            type="tel"
-            maxlength="11"
-            placeholder="请输入手机号"
-            size="large"
-            clearable
-            @update:model-value="setPhoneFieldValue($event)"
-            @blur="validate()"
-          >
-            <template #prefix>
-              <i class="fas fa-phone" />
-            </template>
-          </el-input>
-        </el-form-item>
+      <el-form-item
+        prop="phone"
+        :error="form.errors.phone"
+      >
+        <el-input
+          :model-value="form.values.phone"
+          type="tel"
+          placeholder="请输入手机号"
+          size="large"
+          clearable
+          @update:model-value="setPhoneFieldValue($event)"
+          @blur="validate()"
+        >
+          <template #prefix>
+            <i class="fas fa-phone" />
+          </template>
+        </el-input>
+      </el-form-item>
 
-        <el-form-item prop="password">
-          <el-input
-            :model-value="form.values.password"
-            type="password"
-            placeholder="请设置密码（至少6位）"
-            size="large"
-            show-password
-            clearable
-            @update:model-value="setFieldValue('password', $event)"
-            @blur="validate()"
-          >
-            <template #prefix>
-              <i class="fas fa-lock" />
-            </template>
-          </el-input>
-        </el-form-item>
+      <el-form-item
+        prop="password"
+        :error="form.errors.password"
+      >
+        <el-input
+          :model-value="form.values.password"
+          type="password"
+          placeholder="请设置密码（至少6位）"
+          size="large"
+          show-password
+          clearable
+          @update:model-value="setFieldValue('password', $event)"
+          @blur="validate()"
+        >
+          <template #prefix>
+            <i class="fas fa-lock" />
+          </template>
+        </el-input>
+      </el-form-item>
 
-        <el-form-item prop="confirmPassword">
-          <el-input
-            :model-value="form.values.confirmPassword"
-            type="password"
-            placeholder="请再次输入密码"
-            size="large"
-            show-password
-            clearable
-            @update:model-value="setFieldValue('confirmPassword', $event)"
-            @blur="validate()"
-            @keyup.enter="handleRegister"
-          >
-            <template #prefix>
-              <i class="fas fa-lock" />
-            </template>
-          </el-input>
-        </el-form-item>
+      <el-form-item
+        prop="confirmPassword"
+        :error="form.errors.confirmPassword"
+      >
+        <el-input
+          :model-value="form.values.confirmPassword"
+          type="password"
+          placeholder="请再次输入密码"
+          size="large"
+          show-password
+          clearable
+          @update:model-value="setFieldValue('confirmPassword', $event)"
+          @blur="validate()"
+          @keyup.enter="handleRegister"
+        >
+          <template #prefix>
+            <i class="fas fa-lock" />
+          </template>
+        </el-input>
+      </el-form-item>
 
-        <!-- 用户协议 -->
-        <el-form-item prop="agreed">
-          <el-checkbox
-            :model-value="form.values.agreed"
-            label="我已阅读并同意用户协议和隐私政策"
-            @update:model-value="setAgreedField($event)"
-          />
-        </el-form-item>
+      <!-- 用户协议 -->
+      <el-form-item
+        prop="agreed"
+        :error="form.errors.agreed"
+      >
+        <el-checkbox
+          :model-value="form.values.agreed"
+          label="我已阅读并同意用户协议和隐私政策"
+          @update:model-value="setAgreedField($event)"
+        />
+      </el-form-item>
 
-        <el-form-item>
-          <el-button
-            type="primary"
-            size="large"
-            :loading="loading"
-            class="w-full"
-            @click="handleRegister"
-          >
-            立即注册
-          </el-button>
-        </el-form-item>
-
-        <!-- 底部链接 -->
-        <div class="register-footer">
-          <span class="footer-text">已有账号？</span>
-          <router-link
-            to="/m/login"
-            class="footer-link"
-          >
-            立即登录
-          </router-link>
-        </div>
-
-        <!-- 返回首页 -->
-        <div class="back-home">
-          <router-link to="/m">
-            <i class="fas fa-arrow-left" /> 返回首页
-          </router-link>
-        </div>
-      </el-form>
-    </div>
-  </div>
+      <el-form-item>
+        <el-button
+          type="primary"
+          size="large"
+          :loading="loading"
+          class="w-full"
+          @click="handleRegister"
+        >
+          立即注册
+        </el-button>
+      </el-form-item>
+    </el-form>
+  </H5AuthLayout>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import H5AuthLayout from '../components/H5AuthLayout.vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { type FormInstance, type FormItemRule } from 'element-plus'
+import { type FormInstance } from 'element-plus'
 import { useForm, ValidationRules, useLoadingState } from '@/composables'
 import { register, tokenManager, userManager } from '@/api/auth'
 import { getPublicConfig, type ShopConfig } from '@/api/shop-public'
@@ -168,7 +156,8 @@ const { form, validate, setFieldValue } = useForm({
   validationRules: {
     name: [
       ValidationRules.required('请输入您的姓名'),
-      ValidationRules.minLength(2, '姓名至少2个字符')
+      ValidationRules.minLength(2, '姓名至少2个字符'),
+      ValidationRules.personName(50)
     ],
     phone: [
       ValidationRules.required('请输入手机号'),
@@ -188,26 +177,7 @@ const { form, validate, setFieldValue } = useForm({
   }
 })
 
-// 转换为 el-form 格式的 rules
-const registerRules = computed(() => {
-  const rules: Record<string, FormItemRule[]> = {}
-  if (form.errors.name) {
-    rules.name = [{ required: true, message: form.errors.name, trigger: 'blur' }]
-  }
-  if (form.errors.phone) {
-    rules.phone = [{ required: true, message: form.errors.phone, trigger: 'blur' }]
-  }
-  if (form.errors.password) {
-    rules.password = [{ required: true, message: form.errors.password, trigger: 'blur' }]
-  }
-  if (form.errors.confirmPassword) {
-    rules.confirmPassword = [{ required: true, message: form.errors.confirmPassword, trigger: 'blur' }]
-  }
-  if (form.errors.agreed) {
-    rules.agreed = [{ required: true, message: form.errors.agreed, trigger: 'change' }]
-  }
-  return rules
-})
+
 
 // 加载商城配置
 const loadConfig = async () => {
@@ -221,12 +191,12 @@ const loadConfig = async () => {
 
 // 处理注册
 const handleRegister = async () => {
+  if (loading.value) return
   if (!registerFormRef.value) return
 
+  loading.value = true
   try {
-    await registerFormRef.value.validate()
-
-    loading.value = true
+    if (!await validate()) return
 
     const response = await register({
       name: form.values.name,
@@ -254,131 +224,3 @@ onMounted(() => {
   loadConfig()
 })
 </script>
-
-<style scoped lang="scss">
-.register-page {
-  min-height: 100vh;
-  background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-}
-
-.register-container {
-  width: 100%;
-  max-width: 400px;
-  background: var(--color-bg-white);
-  border-radius: 16px;
-  padding: 40px 24px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-}
-
-// 注册头部
-.register-header {
-  text-align: center;
-  margin-bottom: 32px;
-
-  .logo {
-    width: 64px;
-    height: 64px;
-    background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0 auto 16px;
-
-    i {
-      font-size: var(--tf-type-scale-28);
-      color: var(--color-bg-white);
-    }
-  }
-
-  .title {
-    font-size: var(--tf-type-scale-24);
-    font-weight: 600;
-    color: var(--text-primary);
-    margin: 0 0 8px;
-  }
-
-  .subtitle {
-    font-size: var(--tf-type-scale-14);
-    color: var(--text-muted);
-    margin: 0;
-  }
-}
-
-// 注册表单
-.register-form {
-  .el-form-item {
-    margin-bottom: 18px;
-
-    &:last-of-type {
-      margin-bottom: 20px;
-    }
-  }
-
-  :deep(.el-input__prefix) {
-    i {
-      color: var(--text-muted);
-    }
-  }
-
-  .el-checkbox {
-    :deep(.el-checkbox__label) {
-      font-size: var(--tf-type-scale-13);
-      color: var(--text-secondary);
-    }
-  }
-
-  .el-button {
-    margin-top: 8px;
-  }
-}
-
-// 底部链接
-.register-footer {
-  text-align: center;
-  margin-top: 16px;
-
-  .footer-text {
-    font-size: var(--tf-type-scale-14);
-    color: var(--text-secondary);
-  }
-
-  .footer-link {
-    font-size: var(--tf-type-scale-14);
-    color: var(--tf-color-indigo-brand);
-    text-decoration: none;
-    font-weight: 500;
-
-    &:active {
-      opacity: 0.8;
-    }
-  }
-}
-
-// 返回首页
-.back-home {
-  text-align: center;
-  margin-top: 24px;
-
-  a {
-    font-size: var(--tf-type-scale-13);
-    color: var(--text-muted);
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-
-    &:active {
-      opacity: 0.8;
-    }
-
-    i {
-      font-size: var(--tf-type-scale-12);
-    }
-  }
-}
-</style>

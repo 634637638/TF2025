@@ -15,16 +15,143 @@
 | 单选下拉、级联选项 | `el-select` / `el-cascader` | 统一键盘操作、空值和移动端宽度 |
 | 单日期、月份、日期时间 | `el-date-picker` | 日期格式必须与《全局时间工具与日期格式》一致 |
 | 日期范围 | `DateRangePicker` | 列表筛选不得直接复制日期范围布局 |
-| 省市县/区选择 | `CitySelector` | 组件内部必须遵守本规范；页面不得再实现一套地区下拉 |
+| 省市县乡村选择 | `CitySelector` | 组件内部必须遵守本规范；页面不得再实现一套地区下拉 |
 | 复选、单选、开关 | `el-checkbox` / `el-radio` / `el-switch` | 原生控件只允许用于专用输入场景 |
 | 表格内排序值 | `el-input-number` | 使用 `controls="false"` 保留紧凑单元格；范围和变更提交沿用字段业务规则 |
 | 文件、颜色、扫码和拖动输入 | 原生 `input` | 浏览器能力或第三方库要求时允许保留 |
 
-数字输入和文本域的公共行为由 `frontend/src/styles/components/_form-controls.scss` 统一维护，页面不得复制一套控件行为样式。
+数字输入和文本域的公共视觉与尺寸由 `frontend/src/styles/components/_form-controls.scss` 统一维护；输入内容约束按下方“输入内容与脏数据防护”执行，样式不能替代校验。
 
 Element Plus 的 `el-select`、`el-date-picker`、`el-input`、`el-input-number`、`el-cascader` 和 `el-time-picker` 自带内部输入框边框。即使历史组件需要传递 `.form-control` 以保持宽度，也只能由公共 `_form-controls.scss` 清除控件根节点的外层边框，最终保留一层内部边框；页面不得再次给这些组件添加外层边框。
 
 权限管理的模块管理页已移除五处下拉框的旧 `form-control` 及其重复外框、内边距和聚焦样式；手动添加模块的分类、图标与页面筛选共用全局选择框外观，`module-standard-select` 只维护布局宽度。
+
+## 手机表单字段布局
+
+新增或修改的后台表单默认遵循“短字段每行两个，长字段每行一个”，手机范围为 `<=767px`。按字段内容和实际可用空间选择列数，不能为凑两列缩小公共控件、裁掉标签或隐藏错误。
+
+- 姓名、电话、短分类、等级、性别、日期、积分等短字段默认两列；手机标签置顶，复用 `useMobile`、`label-position="top"` 和 `.tf-dialog-form.tf-dialog-form--stacked`。
+- 邮箱、身份证、Apple ID、密码、详细地址、备注、上传及复杂组合控件等长字段手机整行。短字段出现长标签、长选项或复杂操作时也应整行；输入值可正常编辑滚动，不能截短模型值来适配。
+- 地区作为整行组合控件使用公共 `CitySelector`，内部手机省/市、县区/乡镇分别两列，村委会/社区及版本提示整行；权限隐藏后短字段补位，落单字段铺满。详细地址仍整行，不能在页面另写地区网格。
+- 布局唯一入口为 `frontend/src/styles/components/_dialog.scss`：表单接入 `.tf-form-layout`，直排短字段表单增加 `.tf-form-grid`，已有分组继续使用 `.tf-form-row`；直排长字段标记 `.tf-form-field--wide`，或放在行外，整组也可使用 `.tf-form-row--mobile-single`。桌面确需三列时使用 `.tf-form-row--three`，手机自动回到两列，末尾单项铺满。
+- 同一入口支持原生 `form` 的 `.form-group` 及弹窗外显式接入的表单，不要求必须是 `el-form-item` 或位于 `MobileDialog`。销售结算、导航原生表单和模板头部继续沿用原提交及字段绑定；页面不得用私有手机单列规则覆盖公共行组。`MobileForm` 的短控件使用公共网格，文本域、密码、上传和复杂插槽按长字段整行。
+- `v-if` 挂在实际字段上，权限隐藏后同组剩余字段自然补位，单字段铺满；`disabled`、字段权限、绑定和校验逻辑不因布局迁移改变。不要用空字段占位。
+- 间距读取 `--tf-space-*`；控件宽度随网格收缩，错误文案换行并占据正常文档流，不能压住下一行。开关、单选和复选仍保留公共控件外观。
+- 新页面和本次触及的存量表单必须接入；其他存量页面按改动范围逐步迁移，不代表仅更新公共样式就完成全站适配。只读详情的字段密度见[弹窗规范](dialog-standards.md#表单和正文)。
+
+接入片段（位于已有表单中，`isMobile` 来自公共 `useMobile`）：
+
+```vue
+<el-form
+  :model="form"
+  class="tf-form-layout"
+  :label-position="isMobile ? 'top' : 'right'"
+  :class="{ 'tf-dialog-form': isMobile, 'tf-dialog-form--stacked': isMobile }"
+>
+  <div class="tf-form-row">
+    <el-form-item v-if="canViewField('name')" label="姓名">
+      <el-input v-model="form.name" :disabled="!canEditField('name')" />
+    </el-form-item>
+    <el-form-item v-if="canViewField('phone')" label="电话">
+      <el-input v-model="form.phone" :disabled="!canEditField('phone')" />
+    </el-form-item>
+  </div>
+  <el-form-item v-if="canViewField('remarks')" label="备注">
+    <el-input v-model="form.remarks" type="textarea" class="tf-textarea" :rows="2" />
+  </el-form-item>
+</el-form>
+```
+
+客户新增/编辑及国补编辑已使用该公共行布局。验收须覆盖 375/430px、767/768px 相邻断点及桌面，分别检查长内容、字段权限隐藏、禁用、错误换行与正文滚动，静态审计不能替代浏览器检查。
+
+查看详情的旧分区容器接入 `.tf-detail-grid`，普通字段两列，地址、备注等长字段标记 `.tf-detail-field--wide`；公共 `RecordDetailDialog` 使用等价的 `wide` 字段属性。布局仅在手机断点调整，桌面原有分区和列数保留。描述列表统一使用 `RecordDescriptions`：手机两列且标签置顶，桌面保留调用方列数与方向；长字段 `span=2`，公共组件会补齐前一行短字段，避免 Element Plus 将长字段截到半行。不靠省略内容或缩小字号凑列数。所有网格子项须 `min-width:0` 且长值可换行，不能溢出弹窗。
+
+## 输入内容与脏数据防护
+
+本节规定新建、修改字段及公共校验工具整改时的验收要求，适用于后台、H5、弹窗、表格编辑、扫码及导入入口。2026-11-13 已修复公共必填、完整数字格式、手机号及金额原文校验，并补 H5/客户资料调用链；全站业务和真机未验范围统一登记在[技术债务台账 T23](../development/TECHNICAL_DEBT_PROGRESS.md#t23-输入内容校验统一)。文档补齐不代表全站已经拦截非法输入。
+
+### 字段契约
+
+字段必须先明确语义、提交类型、是否必填、空值形式、长度或范围、精度和允许的标准化方式，再选择控件。沿用唯一共享业务类型与现有 API 契约，不为校验另建一套字段定义；新增或调整契约同步前后端、导入和测试。
+
+| 字段语义 | 内容约束 |
+| --- | --- |
+| 数量、天数、排序及积分 | 按业务确定是否允许零、负数、小数及上下限；整数须为安全整数。不可仅凭控件名称推断全部数量都必须大于零 |
+| 金额、价格、成本及利润 | 使用 `AmountInput`；提交为有限数，最多两位小数，范围与正负号由业务定义。负利润、退款等合法场景不得被全局非负规则误伤 |
+| 手机号、IMEI、SN、条码及业务编码 | 按字符串校验字符集和长度，保留前导零；IMEI 与 SN 分开处理，SN/型号可以包含英文，不能一律转成数字 |
+| 姓名、名称、地址及备注 | 明确长度、空白及换行规则；普通文本允许字段合法的中文、英文和标点，不全局套用“仅中文”或“删除所有特殊字符” |
+| 邮箱、Apple ID、URL 及密码 | 复用各自专项规则，不套用姓名或数字过滤；密码不得自动去空格、改大小写或截断。URL 协议限制按安全规范处理 |
+
+数字与金额的普通十进制输入不得接受 `12abc`、`12元`、`1e3`、`0x10`、`NaN`、`Infinity` 或多个小数点。科学计数法只有在专项业务契约明确允许并有前后端测试时才能使用。先检查完整字符串格式及类型，再做数值转换；禁止用 `parseFloat`、`parseInt` 的部分解析或只用 `Number(value)` 判定输入合法。数值型 JSON 只能校验实际数值的有限性、范围及精度，原始输入写法须在前端或字符串契约边界校验。
+
+必填文本按字段允许的空白规则判断有效内容，纯空格不能通过；数字 `0` 与布尔 `false` 是否合法由字段契约决定，不得用真假值代替必填判断。缺省、`null`、空字符串和清空后的提交语义必须一致；可选空值不得静默变成 `0`，错误输入也不得转换为默认值后提交。
+
+### 标准化与拒绝边界
+
+- 标准化只处理契约明示且不改变含义的格式，例如手机号约定的空格、短横线和国家区号；规则须与[客户检索规范](customer-search-standard.md#数据要求)一致。全角数字、大小写及首尾空格是否转换也必须明确，不能各页面自行决定。
+- 未获允许的字符应触发字段错误或明确阻止提交，不能删除字符后把另一份值当作合法输入。例如 `12abc` 不得变成金额 `12`，超长手机号不得截成另一号码，错误内容不得仅因删掉汉字就通过校验。
+- 金额合法小数输入超过两位时，公共组件沿用已登记的两位归一化行为；接口独立校验提交值的精度，不依赖页面已经舍入。金额计算按业务分币规则处理，展示格式化不替代金额合法性校验。
+- 普通文本禁止字段未允许的控制字符，单行字段不接受换行；多行备注按契约允许换行。不能把所有 Unicode 字符、姓名间隔符、英文型号或合法标点统一视为脏数据。
+- 搜索关键词与保存字段分别定义门槛；手机号部分检索、扫码输入和导入不得借用宽松规则直接创建正式记录。
+
+手机号录入不得使用11位 `maxlength` 硬截断；12位号码必须保留原文并校验失败，不能被浏览器裁成另一个合法号码。入库、编辑的IMEI/SN同样不在有效编码长度处截短。普通名称、备注及联系方式的较大文本上限仍遵守各字段契约。本约束由表单审计的手机号模板检查及真实弹窗浏览器回归共同防回退，审计并非所有输入语义的穷举证明。
+
+### 输入、提交与后端兜底
+
+设备编码共用 `backend/src/config/input-validation.json` 的 `imei` / `phoneSerial`，前端唯一工具为 `utils/device-identifier.ts`，后端复用 `utils/imei.js`。标准 IMEI 为完整15位数字；手机 SN 为4–50位字母、数字、斜杠或连字符，分隔符须位于编码片段之间，保留前导零并转大写。无 IMEI 设备使用同一个合法 SN 作为 IMEI。入库、综合查询编辑、快速出库和导入不再删除非法字符或截短后提交；配件 SN 继续按其独立业务档位校验。扫码保留明确标签提取和 Apple 前缀选项，IMEI 扫码额外校验校验位，不能从超长或混入字符的字段提取有效前缀。手输与历史接口保持原有格式校验，不因本次统一新增 IMEI 校验位门槛。
+
+1. 输入阶段复用 Element Plus、`AmountInput` 和公共标准化工具，保留小数点、负号等合法编辑中间态。`inputmode`、`type`、`min/max` 及 `maxlength` 只改善输入体验，不能充当完整验证。
+2. 中文输入法组合输入期间不清洗、不截断正在组合的文字，也不重复提示；组合完成后统一处理。键盘、粘贴、拖入、自动填充、扫码和程序回填须遵守相同字段契约，不能只拦截 `keydown`。
+3. 提交前通过 `useForm` / `ValidationRules` 和 Element Plus 表单校验，非法内容阻止请求，错误展示复用 `el-form-item` 与公共通知。不为同一错误同时堆叠字段提示、通知和二次确认；取消或关闭沿用[对话框规范](dialog-standards.md)，不新增未保存确认。
+4. 服务端在请求校验/业务服务边界再次验证类型、完整格式、有限性、范围及精度；拒绝对象、数组、布尔等伪装数值的输入，不依赖隐式类型转换。校验失败通过现有错误响应返回明确字段原因，不写入业务数据、不触发积分、库存、收款或缓存副作用。
+5. 字段合法不代表拥有写入权限。继续按“用户 → 角色 → 权限”、字段和资源范围统一鉴权，数据库 SQL 使用参数绑定。服务端职责见[API 规范](../guides/api-standards.md#上传下载与表单)。
+
+Excel 导入同样在查询及业务写入前检查设备、姓名、手机号、基础资料文本和金额；手机数值单元格仅在安全整数且符合完整字段格式时转换，SN 必须用文本单元格保存，不能恢复 Excel 已丢失的前导零。金额允许完整非负两位小数，保留显式零；合并空金额保持旧值，覆盖空金额清空，新建空金额存 `null`。完全替换必须先预检整份文件，再进入清空事务。分析失败只返回行号与受控字段原因，不回显单元格原值；详细导入契约见[智能导入](../数据优化/智能导入功能说明.md#输入校验与空值)。
+
+### 服务端业务解析入口
+
+`validation.js` 的 `parseInput` 与 HTTP 校验中间件共用规则；只解析声明且实际提交的字段，保留未知字段供既有字段权限检查使用，缺省不制造更新值。可选 ID 的 `null` 保留；实际提交的状态、排序、阈值及必填金额不接受空值。失败抛出受控 `400 / VALIDATION_ERROR`，不能将对象、数组、布尔、科学计数、十六进制或带单位的字符串转成合法数字。
+
+| 业务域 | 唯一解析入口与契约 |
+| --- | --- |
+| 品牌、型号、颜色、内存、门店、供应商 | `backend/src/utils/reference-options.js` 的 `parseReferenceInput/Id/Order`；名称单行1–100字、状态0/1、排序为0至2147483647整数；排序整份预检，缺项或重复ID不得先更新部分记录。地址、电话及备注仍按各业务字段声明 |
+| 员工与用户 | `backend/src/utils/account-input.js`；用户名/姓名最多50字，姓名复用公共文字规则，手机号/邮箱共用公共校验；密码不转义、不裁剪或去空格。用户管理保留空姓名回退用户名、空密码不更新、关联编号0表示未分配的既有契约；员工角色数组复用 `normalizeRoleIds` |
+| 维修 | `backend/src/utils/repair-input.js`；费用为非负两位金额；型号100字、故障/备注1000字。现场维修和历史设备编码只按100字单行文本约束，不套用库存15位IMEI规则 |
+| 租赁 | `backend/src/utils/rental-input.js`；金额非负且最多两位、买断期数1–12、关联ID完整正整数、监管锁使用明确布尔值；还款及归还复用同一规则。前端先校验全部待提交合同，再保存客户；空成本不提交、显式零成本保留 |
+| 国补与销售设备编辑 | 复用 `subsidy-input.js` / `device-identifier.ts`，IMEI/SN非法内容不删除或截短；只校验实际有权提交的字段，隐藏历史值不阻止其他字段修改 |
+| 价目手工与Excel | `backend/src/utils/price-input.js`；金额非负两位、库存数量非负整数、状态0/1、品牌/型号必填且最多100字。Excel显式允许完整千分组 `1,234.50`，不删除百分号、单位或混输字符；按原逐行汇总机制拒绝非法行，不调用该行upsert |
+| 菜单、角色、预警、待办、系统配置 | 写服务复用 `parseInput`；菜单导入整份预检后才写，布尔启停不得把字符串 `false` 当作开启。库存阈值0–100整数，待办星期1–7；系统配置按声明的number/boolean/json/string验证，批量配置先整份预检 |
+| 批发及代划拨 | `backend/src/utils/transfer-input.js` 复用公共ID、姓名、手机号和两位金额规则；先预检请求及逐台价格，全部无效时不创建客户或租借连接。混合结果沿用逐台成功/失败及保存点回滚；划拨仍保持零成本与零价格 |
+| 退库编辑、考勤与分享 | 退库金额复用 `isMoneyInput`，销售员关联ID/姓名与备注复用公共解析；管理员考勤员工ID禁止部分解析，普通员工仍强制自身；分享置顶由服务校验明确布尔值，不把字符串 `false` 当作开启 |
+| H5购物车 | `backend/src/utils/shop-cart.js` 的 `parseCartItemInput` 供控制器与服务共用，设备/条目ID完整正整数，单台设备数量仅允许1；对象、布尔和科学计数字符串不能经强转写入 |
+| 共同结算与售后公共数字边界 | 复用 `input-values.js` 的完整整数/金额判断，不另写允许尾随换行的数字正则；`sale-input.js` 保留原ID/金额上限及数值运算的分币浮点容差，商品数量/积分/售后资金沿用各自范围，不改原单快照、摘要、事务或积分分配规则 |
+
+正式接口回归为 `backend/test/reference-input.check.js`、`business-input.check.js`、`admin-input.check.js`、`transfer-input.check.js`、`sale-input.check.js` 及既有各业务测试；均随后端 `npm test` 执行。设备编辑浏览器入口为 `npm --prefix frontend run test:input-flows -- --device-inputs`，追加 `--ios` 运行Xcode模拟器，接口与通知使用内存替身，不能冒充云端保存或物理设备验收。
+
+### 普通文本、HTML 安全与敏感词
+
+普通文本通过文本插值或文本属性展示，不拼入 HTML；富文本只复用[富文本规范](rich-content-standards.md)的公共编辑、净化及展示入口。字符过滤、HTML 转义和敏感词检查不能互相替代，也不能用简单删除脚本关键词代替可靠的 HTML 净化或参数化 SQL。
+
+本次“脏数据防护”指字段非法内容与格式约束，不默认引入全站敏感词黑名单。若业务需要辱骂或违禁词审核，应先明确适用字段、词库来源/版本、维护责任、误判处理及拒绝/审核策略，由服务端统一执行并补行为测试；不得对密码、合法品牌型号、客户姓名等无差别替换词语。
+
+### 公共入口与验收
+
+公共入口为 `frontend/src/components/AmountInput.vue`、`frontend/src/composables/forms/useForm.ts` 与 `frontend/src/utils/security.ts`；后端通用请求校验位于 `backend/src/middleware/validation.js`，销售金额与 ID 已有业务校验位于 `backend/src/utils/sale-input.js`。普通十进制、两位金额、整数、手机号格式及单/多行控制字符的唯一规则源为 `backend/src/config/input-validation.json`，前端安全工具与后端 `input-values.js` 共用；业务范围、精度及必填要求仍由字段声明。姓名允许中英文、间隔符及合法标点，`personName` 只要求非空、单行、长度及至少含一个文字字符。标准化工具保留非法和超长原文，不能依靠工具截断代替字段拒绝。后端普通字符串默认不做 HTML 转义，密码原值保留；普通文本安全展示、富文本净化和 SQL 参数化分别处理。
+
+预订单姓名与定金/总价/匹配价、国补申请/编辑的姓名、手机号、证件文本及金额已接公共规则。国补仅校验实际提交的可写字段；只读/隐藏的历史字段不得阻止其他有权字段的编辑。服务端先完成资料和门店校验再写入，非法输入不修改客户、国补、照片及缓存。证件本批保持单行文本与现有长度契约，不擅自新增历史资料的校验码门槛。设备编码与未逐一核验的业务/导入范围见 T23。
+
+这些入口不代表全站业务接口均已采用；不得复制页面级正则绕开公共整改，也不得把销售专属金额上限推广为全局默认。
+
+| 验收层次 | 必须覆盖的行为 |
+| --- | --- |
+| 公共规则单元测试 | 合法零值、正负边界、安全整数、两位小数；缺省/空值/纯空格；中英文混输、科学计数、十六进制、非有限数、超范围、超长及对象/数组/布尔类型；合法编码前导零与英文保留 |
+| 组件行为测试 | 逐字小数编辑、清空、失焦、中文组合输入、混合内容粘贴、自动填充/扫码处理及外部回填；断言模型值和提交结果，不能只断言 DOM 属性 |
+| 接口行为测试 | 绕过页面直接提交非法内容、隐藏字段和越权请求；失败时无业务写入和事务副作用，批量及导入遵守业务原子性边界 |
+| 浏览器与真机 | PC 和手机视口下的错误可见性、焦点、键盘及布局；中文输入法与移动端实际键盘单列验证，仿真和静态审计不能替代真机结果 |
+
+正式行为入口：`npm --prefix frontend run test:unit -- tests/form-validation.spec.ts tests/h5-auth-validation.spec.ts tests/amount-input.spec.ts tests/customer-name-prompt.spec.ts tests/preorder-customer.spec.ts tests/subsidy-input.spec.ts`；后端为 `ENV_FILE=test/missing-unit-env RUN_DB_TESTS=false node --test backend/test/input-validation.check.js backend/test/preorder-mutation-controller.check.js backend/test/subsidy-apply-controller.check.js backend/test/subsidy-update-contract.check.js`。实际 H5 视图、金额与薪资弹窗的 Chromium 回归为 `npm --prefix frontend run test:input-flows`；加 `-- --ios` 使用本机 Xcode iPhone 模拟器。脚本使用真实组件及内存响应，需安装前后端依赖（浏览器驱动复用后端 Puppeteer），不访问云端 API；临时 Vite、浏览器 profile 和由脚本启动的模拟器在结束时清理/关闭。模拟器不等于真机键盘、摄像头或主屏幕书签验收。
+
+`npm --prefix frontend run check:form-controls` 目前检查控件采用、样式及金额入口契约；`check:coverage` 检查文档、命令及公共入口登记。两者均不能证明全站内容校验合规。正式行为测试按[全局测试规范](../guides/TESTING_STANDARDS.md)保留并接入现有测试入口；T23 完成前须补齐可复现的拒绝/接受断言，不能只更新本页或增加关键词扫描后宣称闭环。
 
 ## 圆角与高度唯一入口
 
@@ -122,7 +249,11 @@ Element Plus 的 `el-select`、`el-date-picker`、`el-input`、`el-input-number`
 
 截至 2026 年 10 月 3 日，登录、屏幕解锁、H5 商品筛选、H5 订单查询、国补申请、菜单宽度、工资考勤、工资模板和工资发放中的普通输入均已迁移到统一 Element Plus 控件。国补身份证、姓名、电话归一化已改用组件字符串事件，业务校验行为保持不变。
 
-下拉、日期、排序数字控件的迁移仍按各自的组件语义审计。地区选择统一使用 `frontend/src/services/region-options.ts`：省份提交两位编码，城市和县/区提交展示名称，省份/城市变化会清空下级选择；编辑回显兼容编码和名称，不会在打开表单时改写历史数据。当前提供全国 34 个省级单位、地级市和县/区数据；客户表现有契约只有 `province`、`city`、`address`，县/区名称与详细地址组合存入 `address`。业务验收目标是可选择完整的省级、地级、县级、乡级（乡镇/街道）和村级（村委会/社区）数据；乡镇、村级尚未接入前，不能将当前组件描述为完整地址，也不能以详细地址手填替代行政区划选择。地区数据必须登记权威来源、覆盖范围、数据截止日期、许可和更新责任；如缺少可验证的现行完整数据，应明确显示未完成，不得用过期数据冒充完整覆盖。
+下拉、日期、排序数字控件的迁移仍按各自的组件语义审计。地区选择统一使用 `CitySelector` 和 `services/region-options.ts`；客户地址编排复用 `views/customers/useCustomerAddress.ts` 与 `page/CustomerAddressFields.vue`。省份保存两位编码，其余层级保存名称，上级变化清空下级，编辑打开不静默改写历史值；异步加载走 `unifiedApi`、`useLatestRequest` 和公共 `InlineLoading`。
+
+五级数据按父级加载，采用用户接受的**2023-06-30固定版本**，必须展示截止日期及港澳台乡村覆盖限制，不得称为当前最新数据。数据库能力未就绪时保留原三级读写并提示待迁移；失败保留历史文本，不能静默丢弃新字段。手机竖排、较宽屏换行并使用公共表单视觉，不得把全量村级目录放入首屏包。唯一类型由地区OpenAPI生成；来源、许可、独立字段、权限及迁移见[后端地区契约](../backend/region-address.md)。
+
+专项行为入口：`npm --prefix frontend run test:unit -- tests/region-options.spec.ts tests/region-selector.spec.ts`；真实控件的隔离浏览器入口：`npm --prefix frontend run test:region-address`（不连接业务库，不替代云端与物理设备验收）。
 
 ## 迁移顺序
 
@@ -140,7 +271,7 @@ Element Plus 的 `el-select`、`el-date-picker`、`el-input`、`el-input-number`
 
 ## 审计
 
-提交、启动或打包前执行：
+提交或打包前执行：
 
 ```bash
 cd frontend
@@ -169,6 +300,8 @@ npm run check:form-controls
 ## 金额控件与展示回归
 
 金额数字输入唯一入口是 `frontend/src/components/AmountInput.vue`，通过已有组件自动注册使用，不在每个页面重复导入。它复用 Element Plus 数字控件、公共表单样式和 `formatAmount`，透传字段权限对应的禁用/只读、边界、插槽、焦点与变更事件。清空沿用组件库空值语义（默认 `null`，支持 `value-on-clear`），挂载不会改写业务模型；编辑草稿保留小数点与尾零，完成编辑后去掉无意义尾零，输入最多两位小数。调用方不得覆盖 `precision`、`controls` 或步进按钮位置。
+
+公共金额默认`step=0.01`，避免合法分币金额被原生数字输入的整数步长拒绝提交；既有业务显式步长仍按原声明透传，不改变其键盘增减约定。非金额比例字段允许两位小数时，需同步声明匹配的小数步长。不能为绕开步长问题关闭整个表单校验；`tests/amount-input.spec.ts`和工资模板真实表单回归检查原生约束及提交。
 
 - `225` / `225.00` → `225`，`225.02` → `225.02`，`225.20` → `225.2`，零显示 `0`；不使用千分位。
 - 金额不得用 `precision=2` 强制补 `.00`，也不得用 `precision=0`、`Math.round`、`toFixed(0)` 在展示或表单回填时丢失真实小数。业务计算的数值精度、非金额的比例/数量/排序/天数及图表坐标缩写继续按各自契约处理。

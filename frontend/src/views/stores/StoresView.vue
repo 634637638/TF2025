@@ -172,6 +172,7 @@
             <el-table
               ref="storesTableRef"
               v-tf-loading="{ active: isLoading || refreshing, text: '正在刷新门店列表...' }"
+              v-table-double-tap="mobileDetailTapOptions"
               :data="stores"
               border
               stripe
@@ -179,8 +180,7 @@
               table-layout="fixed"
               :fit="true"
               :row-key="getStoreRowKey"
-              :expand-row-keys="isMobile && mobileActionRowId ? [mobileActionRowId] : []"
-              @row-click="(row) => handleMobileRowTap(row.id)"
+              @row-dblclick="handleMobileDetailDoubleClick"
             >
               <template #empty>
                 <TableLoadingRow
@@ -360,39 +360,6 @@
                   </div>
                 </template>
               </el-table-column>
-              <el-table-column
-                v-if="isMobile"
-                type="expand"
-                width="1"
-                class-name="mobile-expand-column"
-                label-class-name="mobile-expand-header"
-              >
-                <template #default="{ row }">
-                  <div class="mobile-row-actions">
-                    <el-button
-                      type="success"
-                      size="small"
-                      @click.stop="viewStore(row)"
-                    >
-                      <i class="fas fa-eye" /><span>查看</span>
-                    </el-button><el-button
-                      v-if="canEdit"
-                      type="primary"
-                      size="small"
-                      @click.stop="editStore(row)"
-                    >
-                      <i class="fas fa-edit" /><span>编辑</span>
-                    </el-button><el-button
-                      v-if="canDelete"
-                      type="danger"
-                      size="small"
-                      @click.stop="deleteStore(row)"
-                    >
-                      <i class="fas fa-trash" /><span>删除</span>
-                    </el-button>
-                  </div>
-                </template>
-              </el-table-column>
             </el-table>
           </div>
 
@@ -424,6 +391,7 @@
         @close="attemptCloseModal"
       >
         <el-form
+          class="tf-form-layout tf-form-grid"
           :model="storeForm"
           label-width="100px"
         >
@@ -466,6 +434,7 @@
 
           <el-form-item
             v-if="canViewField('address')"
+            class="tf-form-field--wide"
             label="地址"
           >
             <el-input
@@ -591,7 +560,7 @@
           <!-- 基本信息 -->
           <div
             v-if="hasBasicDetailFields"
-            class="detail-section"
+            class="detail-section tf-detail-grid"
           >
             <h4>基本信息</h4>
             <div
@@ -603,7 +572,7 @@
             </div>
             <div
               v-if="canViewField('address')"
-              class="detail-row"
+              class="detail-row tf-detail-field--wide"
             >
               <span class="label">门店地址：</span>
               <span class="value">{{ selectedStore.location || selectedStore.address || '-' }}</span>
@@ -635,7 +604,7 @@
           <!-- 负责人信息 -->
           <div
             v-if="canViewField('manager')"
-            class="detail-section"
+            class="detail-section tf-detail-grid"
           >
             <h4>负责人信息</h4>
             <div class="detail-row">
@@ -647,7 +616,7 @@
           <!-- 时间信息 -->
           <div
             v-if="canViewField('created_at')"
-            class="detail-section"
+            class="detail-section tf-detail-grid"
           >
             <h4>时间信息</h4>
             <div class="detail-row">
@@ -663,6 +632,30 @@
             </div>
           </div>
         </div>
+
+        <template
+          v-if="isMobile && selectedStore && (canEdit || canDelete)"
+          #footer
+        >
+          <div class="tf-dialog-actions">
+            <el-button
+              v-if="canEdit"
+              v-permission="'stores:edit'"
+              type="primary"
+              @click.stop="runMobileDetailAction('edit')"
+            >
+              <i class="fas fa-edit" />编辑
+            </el-button>
+            <el-button
+              v-if="canDelete"
+              v-permission="'stores:delete'"
+              type="danger"
+              @click.stop="runMobileDetailAction('delete')"
+            >
+              <i class="fas fa-trash" />删除
+            </el-button>
+          </div>
+        </template>
       </MobileDialog>
     </PermissionGate>
   </div>
@@ -689,7 +682,7 @@ import { PageHeader, PermissionGate } from '@/components/base'
 import { usePermissionToast } from '@/utils/permissionToastSimple'
 import { handleApiErrorWithPermission } from '@/utils/apiPermissionError'
 import { useMobile } from '@/composables/mobile'
-import { useMobileRowDoubleTap } from '@/composables/useMobileRowDoubleTap'
+import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
 import { useLatestRequest } from '@/composables/useLatestRequest'
 import type { Store, StoreFormData } from '@/types/system'
 import type { QueryParams, User } from '@/types'
@@ -791,8 +784,6 @@ const showViewModal = ref(false)
 const currentEditingId = ref<number | null>(null)
 const selectedStore = ref<Store | null>(null)
 const storesTableRef = ref<HTMLElement | { $el?: HTMLElement } | null>(null)
-const mobileActionRowId = ref<string | null>(null)
-const { isDoubleTap } = useMobileRowDoubleTap()
 const getStoreRowKey = (store: Store) => String(store.id)
 
 // 表单验证
@@ -1345,16 +1336,7 @@ const viewStore = (store: Store) => {
   showViewModal.value = true
 }
 
-const toggleMobileActions = (id: number) => {
-  if (!isMobile.value) return
-  const rowKey = String(id)
-  mobileActionRowId.value = mobileActionRowId.value === rowKey ? null : rowKey
-}
 
-const handleMobileRowTap = (id: number) => {
-  if (!isMobile.value) return
-  if (isDoubleTap(String(id))) toggleMobileActions(id)
-}
 
 const handleExport = async () => {
   await exportFile({
@@ -1446,6 +1428,18 @@ onMounted(async () => {
 onUnmounted(() => {
   window.removeEventListener('tf2025:permissions:updated', handlePermissionsUpdated)
 })
+
+const { doubleTapOptions: mobileDetailTapOptions, handleRowDoubleClick: handleMobileDetailDoubleClick } = useMobileTableDetail<Store>({
+  enabled: computed(() => isMobile.value && canView.value), rows: stores, getKey: row => row.id, onOpen: viewStore
+})
+
+const runMobileDetailAction = (action: 'edit' | 'delete') => {
+  const row = selectedStore.value
+  if (!row) return
+  showViewModal.value = false
+  if (action === 'edit') editStore(row)
+  else void deleteStore(row)
+}
 </script>
 
 <style scoped src="./styles/stores-view/list.css"></style>

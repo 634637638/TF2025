@@ -51,6 +51,36 @@ afterEach(() => {
 })
 
 describe('预订单客户选择与更换', () => {
+  it.each(["Anne O'Neil·张", '张-三'])('合法姓名 %s 保留原文提交', async name => {
+    vi.mocked(unifiedApi.put).mockResolvedValue({ success: true, message: '', data: null })
+    const wrapper = mountForm()
+    wrapper.getComponent(CustomerSearchDropdown).vm.$emit('select', { id: 19, name: '客户甲', phone: '13800000000' })
+    await flushPromises()
+    const input = wrapper.getComponent(CustomerNameLockInput)
+    input.vm.$emit('unlock')
+    input.vm.$emit('update:modelValue', name)
+    await flushPromises()
+    input.vm.$emit('save')
+    await flushPromises()
+    expect(unifiedApi.put).toHaveBeenCalledWith('/customers/19', { name })
+  })
+
+  it.each(['张'.repeat(21), '123', '张\n三'])('非法姓名 %s 不请求、不修改选中客户', async name => {
+    const wrapper = mountForm()
+    const customer = Object.freeze({ id: 19, name: '客户甲', phone: '13800000000' })
+    wrapper.getComponent(CustomerSearchDropdown).vm.$emit('select', customer)
+    await flushPromises()
+    const input = wrapper.getComponent(CustomerNameLockInput)
+    input.vm.$emit('unlock')
+    input.vm.$emit('update:modelValue', name)
+    await flushPromises()
+    input.vm.$emit('save')
+    await flushPromises()
+    expect(unifiedApi.put).not.toHaveBeenCalled()
+    expect(customer.name).toBe('客户甲')
+    expect(feedback.warning).toHaveBeenCalled()
+  })
+
   it('选择后写入客户 ID、姓名、手机号，更换后全部清空并退出编辑', async () => {
     const wrapper = mountForm()
     wrapper.getComponent(CustomerSearchDropdown).vm.$emit('select', { id: 19, name: '客户甲', phone: '13800000000' })

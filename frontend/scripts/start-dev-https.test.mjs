@@ -44,7 +44,7 @@ for (const credentials of [{ key: false }, { cert: false }, { key: false, cert: 
   })
 }
 
-test('从其他目录启动也启用 HTTPS，沿用 dev 门禁并传递 Vite 参数与退出码', t => {
+test('从其他目录启动也启用 HTTPS，复用 dev 入口并传递 Vite 参数与退出码', t => {
   const f = fixture(t, { exitCode: 7 })
   const result = f.run('--host', '127.0.0.1')
   assert.equal(result.status, 7, result.stderr)

@@ -1,5 +1,7 @@
 'use strict'
 
+const { getLatestActiveSaleIdSql } = require('../utils/sale-status')
+
 const { getDatabase } = require('../config/database')
 const { withConnection } = require('../core/db/connection')
 const {
@@ -317,7 +319,7 @@ class InventoryRepository {
 
   async validateQuickSaleReferences(connection, { brandId, modelId, colorId, memoryId }) {
     const [[brands], [models], [colors], [memories]] = await Promise.all([
-      connection.execute('SELECT id FROM brands WHERE id = ? AND status = 1', [brandId]),
+      connection.execute("SELECT id FROM brands WHERE id = ? AND status = 1 AND business_scope IN ('phone', 'both')", [brandId]),
       connection.execute('SELECT id FROM models WHERE id = ? AND brand_id = ? AND status = 1', [modelId, brandId]),
       connection.execute('SELECT id FROM colors WHERE id = ? AND status = 1', [colorId]),
       connection.execute('SELECT id FROM memories WHERE id = ? AND status = 1', [memoryId])
@@ -348,7 +350,7 @@ class InventoryRepository {
   async hasCustomerPhoneDuplicate(connection, { imei, customerId }) {
     const [rows] = await connection.execute(
       `SELECT p.id, p.imei, s.customer_id FROM phones p
-       LEFT JOIN sales s ON p.id = s.phone_id
+       LEFT JOIN sales s ON s.id = (${getLatestActiveSaleIdSql()})
        WHERE p.imei = ? AND s.customer_id = ?`,
       [imei, customerId]
     )
@@ -369,6 +371,12 @@ class InventoryRepository {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, values)
     return result.insertId
+  }
+
+  async validateQuickCheckoutSource(connection, supplierId, imei) {
+    const [suppliers] = await connection.execute("SELECT id FROM suppliers WHERE id = ? AND status = 1 AND business_scope IN ('phone', 'both') FOR UPDATE", [supplierId])
+    const [phones] = await connection.execute("SELECT id FROM phones WHERE imei = ? AND status IN ('in_stock', 'reserved') FOR UPDATE", [imei])
+    return { validSupplier: suppliers.length === 1, inStock: phones.length > 0 }
   }
 
   async createQuickSale(connection, values) {

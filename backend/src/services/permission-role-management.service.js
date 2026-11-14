@@ -4,6 +4,7 @@ const PermissionRoleManagementRepository = require('../repositories/permission-r
 const PermissionLogsService = require('./permission-logs.service')
 const { hasColumn } = require('./schema-inspector.service')
 const log = require('../utils/log')
+const { parseInput } = require('../middleware/validation')
 
 const ROLE_TYPES = new Set(['super_admin', 'admin', 'manager', 'employee', 'system', 'business'])
 
@@ -20,12 +21,15 @@ class PermissionRoleManagementService {
   }
 
   validateNameAndDescription(name, description) {
-    if (!name || !name.trim()) throw createServiceError('角色名称不能为空', 400)
-    if (!description || !description.trim()) throw createServiceError('角色描述不能为空', 400)
+    parseInput({ name, description }, {
+      name: { type: 'string', required: true, maxLength: 100, message: '角色名称须为1至100字单行文本' },
+      description: { type: 'string', required: true, maxLength: 1000, multiline: true, message: '角色描述须为1至1000字文本' }
+    })
     return { name: name.trim(), description: description.trim() }
   }
 
   async create(input, req) {
+    input = parseInput(input, { code: { type: 'string', maxLength: 100, label: '角色编码' } })
     const { name, description } = this.validateNameAndDescription(input.name, input.description)
     const supportsRoleCode = await this.inspectColumn('roles', 'code')
     const code = typeof input.code === 'string' && input.code.trim() ? input.code.trim() : null
@@ -44,6 +48,9 @@ class PermissionRoleManagementService {
   }
 
   async update(id, input, req) {
+    parseInput({ id }, { id: { type: 'id', required: true } })
+    input = parseInput(input, { code: { type: 'string', maxLength: 100, label: '角色编码' } })
+    if (input.role_type && !ROLE_TYPES.has(input.role_type)) throw createServiceError('无效的角色类型', 400)
     const { name, description } = this.validateNameAndDescription(input.name, input.description)
     const [supportsRoleCode, supportsRoleType] = await Promise.all([
       this.inspectColumn('roles', 'code'),
@@ -58,9 +65,6 @@ class PermissionRoleManagementService {
     }
     if ((await this.repository.findByName(name, id)).length > 0) {
       throw createServiceError('角色名称已存在', 400)
-    }
-    if (input.role_type && !ROLE_TYPES.has(input.role_type)) {
-      throw createServiceError('无效的角色类型', 400)
     }
     await this.repository.update({ id, name, description, roleType: input.role_type, supportsRoleType })
     await this.audit.logRoleOperation(req, 'edit', id, name, {
@@ -81,6 +85,7 @@ class PermissionRoleManagementService {
   }
 
   async remove(id, req) {
+    parseInput({ id }, { id: { type: 'id', required: true } })
     const result = await this.repository.remove(id)
     if (!result.role) throw createServiceError('角色不存在', 404)
     if (result.usersCount > 0) throw createServiceError('无法删除该角色，仍有用户使用该角色', 400)
@@ -88,6 +93,8 @@ class PermissionRoleManagementService {
   }
 
   async updateStatus(id, input, req) {
+    parseInput({ id }, { id: { type: 'id', required: true } })
+    input = parseInput(input, {})
     const isActive = input.is_active
     if (!isActive || (isActive !== '0' && isActive !== '1')) {
       throw createServiceError('状态值必须是0或1', 400)

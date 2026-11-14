@@ -1,7 +1,27 @@
 # 前端页面与功能单元台账
 
+> 2026-11-14 T22 页面分工补齐：既有 `CustomerGoodsHistory` 在手机/平板复用 `v-table-double-tap/useMobileTableDetail`，新增一处公共 `RecordDetailDialog` 引用；整单动作仅在查看底部，桌面保留原入口，关闭/切页卸载记录详情。`FilmServiceDialog` 移除底部纯关闭，无办理权限时不渲染footer；商品查询详情的名称/客户手机号整行。没有新增路由、页面、表格、公共组件、权限或私有样式；正式隔离浏览器入口为 `node frontend/scripts/test-checkout-order.mjs --customer-pages-only` 和 `--goods-page-only`，证据统一在T22。
+
+> 2026-11-14 T22采购原资料：既有商品采购列表、登记/手机详情及退供核对按 `has_snapshot` 区分入库时资料和旧单当前档案，缺标记拒绝使用响应；无新增单元或计数变化。契约及迁移前置见[采购入库原资料留存](../backend/accessory-entry.md#采购入库原资料留存)，检查证据统一登记T22。
+
+> 2026-11-14 T22 客户贴膜历史：新增非路由单元 `views/customers/page/CustomerFilmHistory.vue`，客户详情点击后懒加载原 `FilmServiceDialog`，复用公共工具栏按钮、权限及子弹窗，不新增路由、表格或公共组件。父详情关闭、切客、身份字段或动作撤权卸载子窗，原弹窗任一配件字段变更清理旧历史后重读，失败清空。接口与边界见[贴膜入口正文](../backend/accessory-entry.md#手机详情办理与记录)，检查证据统一登记T22。
+
+> 2026-11-14 T22 采购入库异常恢复：原 `AccessoryStockInModal` 增加未确认采购提醒与“重试原入库”，复用原弹窗、footer、Loading、统一通知和字段权限；Pinia/会话存储恢复同一入库员原请求，确认前不另建采购，模板编辑独立。不新增路由、页面、表格或公共UI组件。契约见[采购入库防重](../backend/accessory-entry.md#采购入库防重与异常恢复)，验收证据统一登记T22。
+
+> 2026-11-14 T22 原采购退供核对：新增非路由单元 `views/payments/page/AccessoryPurchaseReturnContext.vue`，从商品采购PC操作列/手机详情底部进入。复用公共弹窗、描述、表格、手机记录详情、分页、Loading与最新请求；原采购及授权当前批次分开，缺历史流水不推断可退量。已增加普通数量/SN跨页选择及原价只读试算，复用字段权限与独立最新请求，响应或草稿变化废弃结果，不提供退供提交。本批实查页面142、非路由79、含表格61、含按钮118；未新增公共组件/权限模块，行为及验收见[核对契约](../backend/accessory-entry.md#原采购单退供核对)和T22。
+
+> 同单元补充原采购在库SN表、字面搜索、独立分页及公共手机SN详情；复用原核对快照与SN字段权限，不新增路由单元或公共组件。表格按SN逐件ID稳定排序，来源限定原采购及实际商品，未授权、已售/已赠及其他批次不展示。
+
+> 2026-11-14 T22 当前批次库存：新增非路由单元 `components/AccessoryBatchStock.vue`，嵌入原配件详情，一张公共只读表格及一处公共手机 `RecordDetailDialog`；复用编号、分页、Loading、错误重试、最新请求和配件字段权限。按实际品牌、当前门店及原批次显示余额，历史未知来源不补造采购；接口与边界见[批次库存正文](../backend/accessory-entry.md#当前批次库存查询)，验证证据统一在T22。
+
+> 2026-11-14 T22 贴膜入口：新增非路由单元 `components/query/FilmServiceDialog.vue`（一处公共MobileDialog），从手机/平板设备详情“贴膜”进入，使用公共描述列表/分页展示跨店最小历史；办理继续复用原 `SalesGoodsCheckoutDialog/SalesGoodsLine`，不新增业务表格、路由、Tab或权限模块。客户锁定、服务门店选择、贴膜类型库存过滤、数量/SN、积分/收款、Loading及最新请求沿用公共入口。服务撤销、云端迁移及真实交易仍未完成，契约见[贴膜正文](../backend/accessory-entry.md#手机详情办理与记录)，验收证据统一在T22。
+
+> 2026-11-13 T22：工资计算 Tab 的所有已保存记录改读服务器快照，已发行禁用重算/编辑/删除；未建记录的提成/净工资显示待核对。新增非路由摘要单元 `SalaryGoodsSummary.vue`，复用在编辑/结算/详情三个原弹窗，无新增路由、Tab 或弹窗实例。现有 SalesReceipt 增加一张随单配件明细表，显示购买/赠品、SN及净额，Loading/失败阻断打印和图片保存，原手机表格保留；字段权限及 API 见[销售凭证](../business/sales-receipt-standard.md)。验收状态统一见 T22。
+
+> 2026-11-13 T22 工资模板商品配置：沿用 `SalaryTemplateFormDialog.vue`，新增独立商品提成开关、按件金额/利润比例；复用公共响应式行布局、MobileDialog、AmountInput及字段权限，保存时禁用，隐藏/只读规则不提交。公共金额默认步长为0.01，百分比明确两位步长，保留显式业务步长；无新增页面或弹窗实例。验收及云端边界见T22。
+
 > 状态：强制登记，持续维护
-> 统计日期：2026-11-12
+> 统计日期：2026-11-14
 > 统计来源：`frontend/src/router/index.ts`、`frontend/src/views/**/*.vue`、`frontend/src/components/**/*.vue`
 
 > 导航审计记录：后台 PC 与手机入口均由 `views/system/page/SimpleAdminView.vue` 统一承载；菜单数据来自 `stores/menu.ts`，菜单点击统一派发 `menu-click`，权限预检统一由主布局执行。手机端不再将菜单分流到未渲染的底部导航；`DynamicSidebar` 已退役，`ResponsiveLayout` 仅作为通用内容布局保留。
@@ -44,24 +64,38 @@
 
 | 对象 | 统计口径 | 当前数量 |
 | --- | --- | ---: |
-| 懒加载路由入口 | `router/index.ts` 中的 `component: () => import(...)` | 65 |
-| 实际叶子路由 | 可直接访问的页面路由，排除 3 个布局容器 | 62 |
-| 页面源文件 | `frontend/src/views/**/*.vue`，包括 Tab、弹窗和页面内部单元 | 130 |
-| 叶子路由唯一视图文件 | 62 个叶子 URL 对应的唯一 `views` 文件；两个文件各被两个 URL 复用，另有 1 个 URL 使用公共组件 | 59 |
+| 懒加载路由入口 | `router/index.ts` 中的 `component: () => import(...)` | 66 |
+| 实际叶子路由 | 可直接访问的页面路由，排除 3 个布局容器 | 63 |
+| 页面源文件 | `frontend/src/views/**/*.vue`，包括 Tab、弹窗和页面内部单元 | 144 |
+| 叶子路由唯一视图文件 | 63 个叶子 URL 对应的唯一 `views` 文件；两个文件各被两个 URL 复用，另有 1 个 URL 使用公共组件 | 60 |
 | 布局容器视图文件 | 后台、H5 管理和 H5 手机端布局 | 3 |
-| 非路由功能单元 | 未被路由直接加载的 Tab、弹窗、页面内部单元或复用单元 | 68 |
-| 公共组件源文件 | `frontend/src/components/**/*.vue` | 74 |
-| 涉及表格的页面源文件 | 页面中出现 Element/原生表格或公共表格入口 | 56 |
-| 涉及表格的公共组件 | 公共组件中出现表格或表格封装 | 6 |
-| 含按钮的页面/功能单元源文件 | `frontend/src/views/**/*.vue` 中出现 `el-button` | 110 |
-| 含按钮的公共组件源文件 | `frontend/src/components/**/*.vue` 中出现 `el-button` | 46 |
+| 非路由功能单元 | 未被路由直接加载的 Tab、弹窗、页面内部单元或复用单元 | 81 |
+| 公共组件源文件 | `frontend/src/components/**/*.vue` | 84 |
+| 涉及表格的页面源文件 | 页面中出现 Element/原生表格或公共表格入口 | 61 |
+| 涉及表格的公共组件 | 公共组件中出现表格或表格封装 | 11 |
+| 含按钮的页面/功能单元源文件 | `frontend/src/views/**/*.vue` 中出现 `el-button` | 120 |
+| 含按钮的公共组件源文件 | `frontend/src/components/**/*.vue` 中出现 `el-button` | 52 |
 | 原生按钮 | 所有 Vue 页面和公共组件中的 `<button>` | 0 |
 
-“实际叶子路由”与“页面源文件”不能相加作为页面总数：62 个叶子 URL 实际映射到 59 个唯一 `views` 文件和 1 个公共组件；`AggregatedProductDetail.vue` 与 `OrderDetail.vue` 分别被两个 URL 复用。130 个 `views` 文件由 59 个叶子页面文件、3 个布局容器和 68 个非路由功能单元组成。没有独立 URL 的 Tab、弹窗和组件仍然属于后续统一审计范围。
+“实际叶子路由”与“页面源文件”不能相加作为页面总数：63 个叶子 URL 实际映射到 60 个唯一 `views` 文件和 1 个公共组件；`AggregatedProductDetail.vue` 与`OrderDetail.vue` 分别被两个 URL 复用。144 个 `views` 文件由 60 个叶子页面文件、3 个布局容器和 81 个非路由功能单元组成。没有独立 URL 的 Tab、弹窗和组件仍然属于后续统一审计范围。
+
+客户商品历史补充（2026-11-14）：新增非路由单元 `views/customers/page/CustomerGoodsHistory.vue`，嵌入客户详情，与原手机购买记录分开；只读商品原成交/赠送、已退/未退及积分，复用 `RecordDescriptions`、公共分页/Loading/错误空态、北京时间、字段权限和最新请求，不新增表格、私有CSS或权限模块。手机/平板记录双击进入公共详情后，底部进入既有`CheckoutOrderDialog`；关闭记录详情即卸载，避免隐藏旧内容留在分页中，翻页/切客户/撤权清理查看。桌面保留原整单入口。接口按客户ID和授权原销售门店读取，不改变手机消费统计。正文见[客户商品历史](../backend/accessory-entry.md#客户商品购买及赠送历史)，验证证据见T22。含按钮文件计数按本次实际扫描为120，其中本单元新增1个，其余既有变更不归入本任务。
+
+### 商品单卖与手机搭售（2026-11-13）
+
+销售管理的 `SalesPageHeader` 新增销售商品按钮，原手机销售 footer 及综合查询快速出库零售 footer 提供“配件”入口；共用非路由单元 `SalesGoodsCheckoutDialog`（MobileDialog）及 `SalesGoodsLine`，不新增路由或权限模块。桌面四列、手机两列基础信息，商品名称占两列、长关联手机及SN输入按可用宽度排列。所有金额、支付、客户、门店、Loading及扫码复用公共实现；取消和关闭不二次确认，提交期间仍禁止关闭；成功重读销售页或综合查询数据。快速出库只转入设备草稿，由后端同事务新建及销售，取消保留原表单。已有库存原单成本固定，预定交付仍保留原入口；积分抵扣、完整售后和实物扫码未因页面接入自动完成，契约见[共同结算](../guides/sales-transfer-transaction-standards.md#商品销售页面与候选检索)，验证证据见T22。
+
+### 综合查询商品模式（2026-11-13）
+
+`views/query/QueryView.vue` 保留默认手机模式，新增商品模式展示切换；商品面板 `views/query/page/QueryGoodsPanel.vue` 沿用综合查询及配件查看权限，不增加叶子路由或权限模块。复用公共Tab、检索、日期范围、分页、Loading、编号徽章及操作列宽度。登记两张表（销售/赠送主表、详情来源批次表）、一个 `MobileDialog` 只读详情，展示原单客户/资料、共同及关联手机单号、SN和批次。手机/平板使用全局 `v-table-double-tap`，桌面双击及详情按钮同样可达。交易新增、编辑、退换与贴膜不在本批查询入口中；参数和脱敏见[商品查询契约](../backend/accessory-entry.md#综合查询商品模式)，验证证据统一登记T22。
+
+商品退货接入补充（2026-11-13）：新增非路由单元 `views/query/page/GoodsReturnDialog.vue`，从共同商品明细“退货”动作进入，复用 `MobileDialog`、公共默认档位、四列桌面/两列手机表单、Loading、文本域、日期、支付、通知、权限和最新请求。原单已退/未退数量单独展示；SN按原单可退实物选择，核验可回库后试算原实付、优惠追回/补退及需补差价。内容变化清旧试算，失败同键重试，取消直接关闭，提交中禁止关闭，成功无缓存重读。本次实际截图发现手机暗色下公共标签白字/浅底冲突，已在 `_dialog.scss` 为公共 `.tf-dialog-form` 复用正文颜色令牌；页面不加私有覆盖。资金历史和手机关联赠品售后使用各自单元，换货与贴膜未在该弹窗完成；契约和迁移见[商品原单退货](../guides/sales-transfer-transaction-standards.md#商品原单退货)，静态、类型、浏览器及真机证据分别记录T22。
+
+商品售后历史补充（2026-11-13）：新增非路由单元 `views/query/page/GoodsAftersaleHistory.vue`，嵌在共同商品销售详情内，沿用原弹窗与公共表格/编号/分页/支付文本/Loading/空态/北京时间，不增加路由、弹窗或权限模块。按原销售ID实时分页，双门店范围提示和每次资金、积分、SN、办理信息分开展示，不汇总为全单净额。金额显示本商品归属退款/补款及同单抵扣调整，非零调整显示正负含义，不把整笔金额重复当作本商品资金。缺结构或读取失败显示错误可重试；关闭、切换原单、撤权取消旧请求，字段权限同时约束资金派生值及方式渠道。规则见[商品售后历史查询](../guides/sales-transfer-transaction-standards.md#商品售后历史查询)，本阶段验证及未迁移边界在T22登记。
 
 ### 全量 Loading 接入复核（2026-11-11）
 
-按实际 62 个叶子路由及 130 个页面/功能单元、73 个公共组件、1 个 App 入口核对。结论：**统一 API 的默认全局反馈已覆盖；原有部分手动刷新漏掉区域状态，本轮已补齐。静态接入不代表全部页面已通过整页或真机验收。**
+按实际 63 个叶子路由及 131 个页面/功能单元、76 个公共组件、1 个 App 入口核对。结论：**统一 API 的默认全局反馈已覆盖；原有部分手动刷新漏掉区域状态，本轮已补齐。静态接入不代表全部页面已通过整页或真机验收。**
 
 | 对象 | 实测 | 说明 |
 | --- | ---: | --- |
@@ -84,7 +118,7 @@
 | `/404` | 0 | 0 | 0 |
 | `/dashboard` | 3 | 1 | 2 |
 | `/suppliers` | 1 | 1 | 5 |
-| `/payments` | 1 | 1 | 5 |
+| `/payments` | 2 | 1 | 6 |
 | `/system` | 4 | 4 | 7 |
 | `/standards` | 0 | 0 | 2 |
 | `/git-management` | 1 | 0 | 2 |
@@ -98,8 +132,8 @@
 | `/brands` | 1 | 1 | 4 |
 | `/stores` | 1 | 1 | 5 |
 | `/employees` | 1 | 1 | 5 |
-| `/customers` | 1 | 1 | 5 |
-| `/accessories` | 1 | 1 | 5 |
+| `/customers` | 1 | 2 | 6 |
+| `/accessories` | 5 | 2 | 6 |
 | `/inventory` | 1 | 2 | 8 |
 | `/preorders` | 2 | 2 | 6 |
 | `/reminders` | 1 | 1 | 4 |
@@ -147,6 +181,12 @@
 
 验证边界：浏览器检查使用真实公共组件与模拟状态，Axios 行为测试使用模拟适配器；未访问业务 API。逐路由表仅为静态入口证据，不表示每个页面的全部操作、失败重试或 Android/iOS 真机已验收。
 
+### Loading 补充复核（2026-11-13）
+
+当前扫描139个页面/内部单元、78个公共组件及App；区域指令67处、TableLoadingRow61处、SectionLoading51处、InlineLoading14处，`v-loading` 为0。17文件25处 Element Plus 按钮改用内置状态，取消相应例外；保留2文件内有业务依据的全局长操作。
+
+综合查询空表刷新双等待已在公共入口修复：避免路由懒加载的 `display: flex` 覆盖全局隐藏，改用保留占位高度的 `visibility`。`test:input-flows -- --loading-only` 使用真实表格/指令/懒加载占位，在Chromium五视口明暗10组和iOS16.2模拟器明暗两组通过，首载、空表刷新、旧数据刷新、失败结束仅一个可见等待。此修复覆盖相同公共组合，统计与公共浏览器回归均不代表全站逐页完成；最新任务状态见[T14/T21/T23补充记录](../development/TECHNICAL_DEBT_PROGRESS.md#t14t21t23-补充收口与双等待修复2026-11-13)。
+
 ### 全量模态框接入复核（2026-11-11）
 
 本轮核对实际路由与全部 204 个 Vue 文件（130 个页面/内部单元、73 个公共组件及 App 入口），数量与本台账一致。结论为：**模板入口及公共外壳已整改，业务整页与真机仍待验收**。整改与逐页验收统一进入[全局技术债务 T21](../development/TECHNICAL_DEBT_PROGRESS.md#t21-全局模态框双端统一2026-11-11)，本节只维护盘点证据，不另建任务清单。
@@ -168,7 +208,7 @@
 
 #### 逐路由模板入口矩阵
 
-以下 62 个叶子 URL 分别核对静态/异步 Vue 子组件及可唯一发现的公共组件；各行共享引用不能相加作为全站总数。布局宿主单列：后台主布局包含 1 个 ReminderHost MobileDialog，H5 手机布局包含 1 个 MobileDialog 登录提示；H5 管理布局没有业务模板弹窗。矩阵中的 0 只表示该页面及已解析子单元没有相应模板引用，**不表示没有服务确认框或继承布局弹窗**。所有行的整页 PC/手机视觉状态均为“未逐页验收”；公共组件浏览器结果只在 T21 验证记录中报告。
+以下 63 个叶子 URL 分别核对静态/异步 Vue 子组件及可唯一发现的公共组件；各行共享引用不能相加作为全站总数。布局宿主单列：后台主布局包含 1 个 ReminderHost MobileDialog，H5 手机布局包含 1 个 MobileDialog 登录提示；H5 管理布局没有业务模板弹窗。矩阵中的 0 只表示该页面及已解析子单元没有相应模板引用，**不表示没有服务确认框或继承布局弹窗**。所有行的整页 PC/手机视觉状态均为“未逐页验收”；公共组件浏览器结果只在 T21 验证记录中报告。
 
 | 路由 | MobileDialog（含子单元） | 直接 el-dialog | 公共媒体预览 | 原生图片查看 | PC 整页 | 手机整页 / 真机 |
 | --- | ---: | ---: | ---: | ---: | --- | --- |
@@ -176,7 +216,7 @@
 | `/404` | 0 | 0 | 0 | 0 | 待验收 | 待验收 |
 | `/dashboard` | 0 | 0 | 0 | 0 | 待验收 | 待验收 |
 | `/suppliers` | 2 | 0 | 0 | 0 | 待验收 | 待验收 |
-| `/payments` | 4 | 0 | 0 | 0 | 待验收 | 待验收 |
+| `/payments` | 6 | 0 | 0 | 0 | 待验收 | 待验收 |
 | `/system` | 5 | 0 | 0 | 0 | 待验收 | 待验收 |
 | `/standards` | 1 | 0 | 0 | 0 | 待验收 | 待验收 |
 | `/git-management` | 0 | 0 | 0 | 0 | 待验收 | 待验收 |
@@ -191,7 +231,7 @@
 | `/stores` | 2 | 0 | 0 | 0 | 待验收 | 待验收 |
 | `/employees` | 4 | 0 | 0 | 0 | 待验收 | 待验收 |
 | `/customers` | 3 | 0 | 0 | 0 | 待验收 | 待验收 |
-| `/accessories` | 2 | 0 | 0 | 0 | 待验收 | 待验收 |
+| `/accessories` | 4 | 0 | 0 | 0 | 待验收 | 待验收 |
 | `/inventory` | 6 | 0 | 1 | 0 | 待验收 | 待验收 |
 | `/preorders` | 2 | 0 | 0 | 0 | 待验收 | 待验收 |
 | `/reminders` | 4 | 0 | 0 | 0 | 待验收 | 待验收 |
@@ -304,7 +344,9 @@
 
 ## 2. 路由页面清单
 
-品牌 `/brands`、型号 `/models`、颜色 `/colors` 和内存 `/memories` 的排序编辑共用 `useReferenceOrdering`：手动修改只提交目标 ID 和实际排序值，拖拽保留已有排序值范围，失败不覆盖切换后的新列表；序号与排序值解耦并按分页连续显示。型号新增/编辑表单统一使用“型号”字段标签。四页新增弹窗的取消、顶部关闭和 Esc 均直接关闭并清空草稿，编辑保留未保存确认；移除页面重复的 `close` 监听，PC/手机共用 `MobileDialog` 关闭请求。契约与回归入口见[检索规范](search-standards.md#基础资料排序编辑)和[弹窗规范](dialog-standards.md)。
+品牌 `/brands`、型号 `/models`、颜色 `/colors` 和内存 `/memories` 的排序编辑共用 `useReferenceOrdering`：手动修改只提交目标 ID 和实际排序值，拖拽保留已有排序值范围，失败不覆盖切换后的新列表；序号与排序值解耦并按分页连续显示。型号新增/编辑表单统一使用“型号”字段标签。四页新增和编辑弹窗的取消、顶部关闭和 Esc 均直接关闭并清空草稿，不二次确认，重开编辑恢复原记录；移除页面重复的 `close` 监听，PC/手机共用 `MobileDialog` 关闭请求。契约与回归入口见[检索规范](search-standards.md#基础资料排序编辑)和[弹窗规范](dialog-standards.md)。
+
+品牌 `/brands` 的列表及新增/编辑弹窗增加“业务范围”（手机、配件、两者），搜索面板支持范围筛选。管理页默认全部业务，手机公共选项和配件自身品牌分别按范围读取，适配手机品牌仍使用手机范围；旧商品回显和历史单据保留。字段权限、缓存失效及迁移契约见[配件公共资料](../backend/accessory-entry.md#品牌业务范围)。
 
 状态字段含义：`已登记` 表示已纳入统一审计范围，不代表所有专项规范均已完成逐项人工回归；专项完成情况以对应审计命令和后续人工记录为准。
 
@@ -330,8 +372,9 @@
 | `/brands` | `views/brands/BrandsView.vue` | 基础资料列表 | 是 | 已登记 |
 | `/stores` | `views/stores/StoresView.vue` | 基础资料列表 | 是 | 已登记 |
 | `/employees` | `views/employees/EmployeesView.vue` | 人员列表 | 是 | 已登记 |
-| `/customers` | `views/customers/CustomersView.vue` | 客户列表 | 是 | 已登记 |
-| `/accessories` | `views/accessories/AccessoriesView.vue` | 配件列表 | 是 | 已登记 |
+| `/customers` | `views/customers/CustomersView.vue` | 客户列表；新增/编辑复用公共表单行布局，手机短字段两列、长字段整行；详情在手机/平板按同类内容密度排列，隐藏字段自然补位，移除底部纯关闭及空 footer | 是 | 已登记 |
+| `/accessories` | `views/accessories/AccessoriesView.vue` | 库存查询/商品模板两个展示页签共用配件权限；模板支持服务端检索分页、全部状态、新增、编辑与删除（停用保留历史），补货默认零售价只读，首次建商品时可设置；剩余可点击查看店铺位置与SN明细，入库独立选择收费/赠送用途，普通入库手填数量，SN模式按逐行/批量/扫码数自动计件；支持独立权限店间划拨，提交前可直接换店，提交时归属最终店铺 | 是 | 已登记 |
+| `/accessories/catalog` | `views/accessories/AccessoryCatalogView.vue` | 配件设置独立模块；维护商品类型、计量单位及总仓店铺，按门店字段权限控制；类型新增用于贴膜开关，未迁移不显示，保存校验期间禁用重复提交及关闭；无新增页面/表格/弹窗 | 是 | 已登记 |
 | `/inventory` | `views/inventory/InventoryView.vue` | 库存管理 | 是 | 已登记 |
 | `/preorders` | `views/preorders/PreordersView.vue` | 预定管理 | 是 | 已登记 |
 | `/reminders` | `views/reminders/ReminderView.vue` | 提醒列表（每人下一轮、原记录状态流转、最后 3 小时强制提醒） | 是 | 已登记 |
@@ -349,6 +392,8 @@
 | `/repairs` | `views/repairs/RepairsView.vue` | 维修管理 | 是 | 已登记 |
 | `/price-list` | `views/price-list/PriceListView.vue` | 价目表管理（跨页选择、批量采集源／状态／报价显示及规格独立批发规则） | 是 | 已登记 |
 | `/price-list/sync-logs` | `views/price-list/page/SyncLogView.vue` | 同步日志 | 是 | 已登记 |
+
+配件管理复用 `AccessoryStockInModal` 的模板新增/编辑和采购入库模式、`AccessoryDetailsModal`，新增 `AccessoryTransferModal` 及 `AccessoryTransferHistory`。顶部入库在商品名称下拉按类型分组检索具体模板，选项仅名称，滚动加载更多，不展示底部分页；行内入库固定模板。选中后自动回填类型、厂家型号、颜色及只读销售价，供应商、实际品牌、进价独立填写。第一行为供应商、品牌、商品名称、店铺，入库隐藏适配品牌/型号、单位、状态、预警值、条码和照片；默认SN模式由模板提供、本次可切换，SN按录入数自动计件、普通模式手填数量。电脑四列，平板/手机两列，隐藏字段不留空列。模板仍维护名称、类型、适配、厂家型号、颜色、单位、售价、预警值、状态及SN默认开关，条码/照片位于下方，名称和型号不附带额外下拉文案。模板条码随保存提交，回车不发检索请求。实际库存按模板与品牌区分，SN/普通库存可混合，详情展示库存位置、SN及划拨历史。划拨使用独立权限，一次确认更新双店。公共资料、字段契约及迁移依赖见[配件入库契约](../backend/accessory-entry.md)；隔离浏览器不代替已登录整页或真机验收。
 
 ### 2.2 H5 商城管理页面
 
@@ -394,7 +439,7 @@
 | `/m/register` | `views/H5-mobile/page/RegisterView.vue` | 手机注册 | 否 | 已登记 |
 | `/m/my` | `views/H5-mobile/page/MyCenter.vue` | 个人中心 | 否 | 已登记 |
 
-### 2.5 布局容器（不计入 62 个叶子路由）
+### 2.5 布局容器（不计入 63 个叶子路由）
 
 | 挂载路径 | 容器文件 | 职责 |
 | --- | --- | --- |
@@ -402,9 +447,9 @@
 | `/H5-admin` | `views/H5-admin/H5-adminView.vue` | H5 商城管理布局 |
 | `/m` | `views/H5-mobile/H5-mobileView.vue` | H5 手机端布局 |
 
-## 3. 非路由页面功能单元（68 个）
+## 3. 非路由页面功能单元（81 个）
 
-以下 68 个文件没有独立 URL，但会在功能修改时影响对应父页面，必须纳入同一轮检查。路由清单中已经登记的 59 个唯一叶子 `views` 文件和第 2.5 节的 3 个布局容器不在本节重复列出；一个源文件被多个路由复用时，以路由清单中的多个 URL 为准。
+以下 81 个文件没有独立 URL，但会在功能修改时影响对应父页面，必须纳入同一轮检查。路由清单中已经登记的 60 个唯一叶子 `views` 文件和第 2.5 节的 3 个布局容器不在本节重复列出；一个源文件被多个路由复用时，以路由清单中的多个 URL 为准。
 
 ### 3.1 数据分析、数据优化与库存
 
@@ -420,6 +465,9 @@
 - `views/inventory/page/InventorySearchFilters.vue`
 - `views/inventory/page/InventoryStatsCards.vue`
 - `views/inventory/page/InventoryTable.vue`
+- `views/query/page/QueryGoodsPanel.vue`
+- `views/query/page/GoodsReturnDialog.vue`
+- `views/query/page/GoodsAftersaleHistory.vue`
 
 ### 3.2 权限管理
 
@@ -475,8 +523,12 @@
 
 - `views/preorders/page/MatchPreorderModal.vue`
 - `views/preorders/page/PreorderFormModal.vue`
+- `views/payments/page/AccessoryPurchasePayments.vue`
+- `views/payments/page/AccessoryPurchaseReturnContext.vue`
 - `views/sales/page/SalesBatchForm.vue`
 - `views/sales/page/SalesCheckoutForm.vue`
+- `views/sales/page/SalesGoodsCheckoutDialog.vue`
+- `views/sales/page/SalesGoodsLine.vue`
 - `views/sales/page/SalesDeviceInfoPanel.vue`
 - `views/sales/page/SalesEditPhoneDialog.vue`
 - `views/sales/page/SalesGridView.vue`
@@ -490,6 +542,7 @@
 - `views/salary/page/SalaryAttendanceFormDialog.vue`
 - `views/salary/page/SalaryAttendanceListDialog.vue`
 - `views/salary/page/SalaryDetailDialog.vue`
+- `views/salary/page/SalaryGoodsSummary.vue` — 编辑、结算及详情共用的只读商品提成/退货扣回摘要，按需展开来源，无独立弹窗
 - `views/salary/page/SalaryEditPayoutDialog.vue`
 - `views/salary/page/SalaryEmployeeSalesDetailDialog.vue`
 - `views/salary/page/SalaryEmployeeTemplateDialog.vue`
@@ -506,6 +559,8 @@
 库存页“状态”后新增“商城”操作列，手机/平板双击设备后从详情底部进入相同商品配置弹窗；动作复用库存编辑权限及公共自适应操作列宽。上下架统一在配置弹窗点击保存后生效，库存编辑移除重复入口；新机只读预览模板，二手机维护独立验机及媒体。接口、素材取消边界与测试见[库存商城商品配置](../business/inventory/shop-configuration.md)。
 
 ### 3.4 价格、国补与系统
+
+- `views/H5-mobile/components/H5AuthLayout.vue`（已有登录/注册共用布局，补充源码登记）
 
 报价管理列表标题区的“批量设置”和“清空选择”通过 `.batch-actions-buttons` 自动使用公共批量操作按钮规格；PC、手机高度、字号、间距和颜色统一由公共按钮与表格入口控制，页面只保留操作区换行和对齐布局。
 
@@ -525,25 +580,32 @@
 
 系统管理的站点 Logo、编辑站点信息、报价设置和屏幕保护卡片保存按钮使用全局普通按钮尺寸，手机端保留文字，不通过局部内边距或隐藏文字压缩操作。
 
-退库记录的电脑表格与手机记录列表共用 `table-section admin-panel admin-table-panel` 公共列表卡片，背景、边框、圆角、阴影及响应式内边距由 `admin-layout.css` 统一提供。退库记录卡片不另设刷新按钮，统一使用系统页面顶部刷新；当前退库 Tab 通过子组件暴露的 `reload` 失效 `/query/returngoods` 缓存并加载记录，失败保留原记录并向顶部传播错误，由顶部统一提示结果。电脑表格、手机卡片和编辑弹窗覆盖退库原因、类型、处理方式、退款金额及方式/渠道、业务退库时间和操作时间，复用公共支付方式、渠道及文本组件，渠道随方式统一受字段权限控制。创建入口为 `components/query/ReturnStockModal.vue`，退库时间选择器随表单列宽自适应；字段和迁移边界见[退库与交易撤销](../business/inventory/transaction-reversal.md)。
+退库记录的电脑表格与手机记录列表共用 `table-section admin-panel admin-table-panel` 公共列表卡片，背景、边框、圆角、阴影及响应式内边距由 `admin-layout.css` 统一提供。退库记录卡片不另设刷新按钮，统一使用系统页面顶部刷新；当前退库 Tab 通过子组件暴露的 `reload` 失效 `/query/returngoods` 缓存并加载记录，失败保留原记录并向顶部传播错误，由顶部统一提示结果。电脑表格、手机卡片和编辑弹窗覆盖退库原因、类型、处理方式、退款金额及方式/渠道、业务退库时间和操作时间，复用公共支付方式、渠道及文本组件，渠道随方式统一受字段权限控制。创建入口为 `components/query/ReturnStockModal.vue`，退库时间选择器随表单列宽自适应；打开先核对当前手机销售来源，共同单展示关联配件已退/剩余及未退SN并通过PhoneReturnForm办理共同售后、禁止旧删除式提交，错误可重试、切换/关闭取消旧请求；字段和迁移边界见[退库与交易撤销](../business/inventory/transaction-reversal.md)。
 - `views/system/page/AnnouncementManagementCard.vue`
 - `views/system/phone-warning-config/PhoneWarningConfigView.vue`
 
-### 3.5 H5 管理和手机端内部页面
+### 3.5 客户详情与积分
+
+- `views/customers/page/CustomerAddressFields.vue`（既有地区表单，见五级地区专题）
+- `views/customers/page/CustomerPointsSettings.vue`（既有积分设置，见积分专题）
+- `views/customers/page/CustomerGoodsHistory.vue`（既有商品历史，见客户商品历史补充）
+- `views/customers/page/CustomerFilmHistory.vue`（本批新增，复用原贴膜弹窗）
+
+### 3.6 H5 管理和手机端内部页面
 
 - `views/H5-mobile/page/ProductDetail.vue`
 - `views/auth/index.vue`
 
 ## 4. 表格专项清单
 
-以下 56 个页面文件和 6 个组件文件由 `check:tables` 纳入表格审计。`check:tables` 当前通过，表示公共表格入口、基本布局和禁止覆盖规则通过静态审计；不替代手机/PC 实机视觉回归。
+以下 59 个页面文件和 9 个组件文件由 `check:tables` 纳入表格审计。`check:tables` 当前通过，表示公共表格入口、基本布局和禁止覆盖规则通过静态审计；不替代手机/PC 实机视觉回归。
 
-### 4.1 页面文件（56）
+### 4.1 页面文件（61）
 
 表格页面按业务目录统计：
 
 - H5 管理：`views/H5-admin/page/orders.vue`
-- 基础资料与业务：`accessories/AccessoriesView.vue`、`brands/BrandsView.vue`、`colors/ColorsView.vue`、`customers/CustomersView.vue`、`employees/EmployeesView.vue`、`memories/MemoriesView.vue`、`models/ModelsView.vue`、`stores/StoresView.vue`、`suppliers/SuppliersView.vue`
+- 基础资料与业务：`accessories/AccessoriesView.vue`、`accessories/AccessoryCatalogView.vue`、`brands/BrandsView.vue`、`colors/ColorsView.vue`、`customers/CustomersView.vue`、`employees/EmployeesView.vue`、`memories/MemoriesView.vue`、`models/ModelsView.vue`、`stores/StoresView.vue`、`suppliers/SuppliersView.vue`
 - 分析、考勤与系统：`analytics/page/CustomerAnalytics.vue`、`analytics/page/EmployeeAnalytics.vue`、`analytics/page/InventoryAnalytics.vue`、`analytics/page/ProfitAnalytics.vue`、`analytics/page/SalesAnalytics.vue`、`analytics/page/TransferAnalytics.vue`、`attendance/AttendanceView.vue`、`backup/BackupView.vue`、`system/SystemView.vue`、`system/page/Returngoods.vue`、`system/phone-warning-config/PhoneWarningConfigView.vue`
 
 `/backup` 的文件大小标签按接口 `size_bytes` 分级：小于 1 MB 为绿色、1 MB 至不足 1 GB 为蓝色、1 GB 及以上为橙色（1024 进制）；缺失或无效大小回退中性色。复用 Element Plus 标签语义类型及公共徽章样式，明暗主题与手机/桌面沿用全局规则；本地备份文件列表契约统一维护为 `types/backup.ts` 的 `BackupFile`。
@@ -552,12 +614,16 @@
 
 `/backup` 增加云盘设置弹窗 `backup/CloudBackupSettingsDialog.vue`、文件浏览单元 `backup/CloudDriveBrowser.vue`、ZIP/SQL 云盘状态及手动上传入口。云端删除独立显示警告色“文件失效”和“该文件云端已删除，可重新上传！”，实际上传错误仍显示“上传失败”；云端外部恢复经后端按原 ID 和大小核验后，页面轮询自动更新为“已上传”，不重复上传。任务轮询复用 `useLatestRequest`，读取失败保留已有状态，权限撤销和页面卸载取消请求及定时器。支持以名称和 Token 新增或编辑多个云盘账户，储存账户下拉框驱动对应账户的目录预览，保存设置才切换上传目标；管理入口可独立选择浏览账户，凭据不回显。设置弹窗按账户、自动备份和目标目录分组，桌面账户下拉与操作同排，手机纵向；表单/账户编辑采用公共中号/小号档位，浏览保留宽工作区。新增独立的定时生成备份分组（间隔 1–720 小时、SQL/完整 ZIP、北京时间执行状态）和本地自动清理分组（SQL/ZIP 分别保留 1–1000 份，默认各 10 份、默认关闭），清理区域沿用 `backup:delete` 并只提交获权配置，云盘文件保留；新字段手机纵向、桌面双列，复用全局数字输入和下拉，运行状态保留服务端唯一契约。自动备份单独设置标题，当前目录按“当前备份目录：实际盘名/文件夹名称”单行展示，每次打开设置及切换账户按已保存 ID 自动读取云端最新名称，迟到响应不覆盖其他账户或未保存的目录选择；读取失败保留原名称并提示，可继续浏览重选；设置弹窗和回收站移除说明提示，移除底部关闭按钮，保留标题栏关闭，新增账户和文件编辑期间锁定必要操作。选择已保存账户后自动识别云盘，支持目录选择、文件及回收站分页浏览；首次浏览空根目录时检查其他云盘并提示切换，手动选择及刷新不自动换盘，空状态标明当前云盘和目录。独立“云盘管理”入口及目录/回收站浏览复用 `backup:view`；设置、新建文件夹和上传复用 `backup:create`；文件及文件夹重命名、回收站恢复复用 `backup:edit`；删除及回收站彻底删除复用 `backup:delete` 和统一确认框；文件列表按“打开、编辑、删除”显示，编辑用于修改名称；回收站按“删除、恢复”显示，删除确认框明确彻底删除且不可恢复；两处删除复用公共 `table-action--delete` 样式，成功后刷新列表，失败保留列表和提示，目录删除明确包含子项并保护当前备份目录及其父目录。新建/重命名使用公共 `MobileDialog` 小号表单，成功关闭输入框并通过全局通知提示，失败只提示一次并保留输入；操作中禁用导航和弹窗关闭，错误保留输入，同名拒绝覆盖。统一 API 为 `api/backup.ts`，共享契约为 `types/backup.ts`。设置弹窗使用公共 `MobileDialog`、表单、按钮及 Loading，浏览请求采用 `useLatestRequest`，手机和桌面沿用全局响应式规则。开启后由后端递归扫描 backups 内完成的普通文件并自动上传（含新增规则文件，排除内部状态、临时项及符号链接，普通文件确认稳定后入队，云端保留子目录层级），不新增自动压缩或业务上传目录同步；上传不创建公开下载链接，本地删除与云盘保留独立。接口及持久化边界见[备份管理](../backend/backup-management.md#阿里云盘自动上传)。
 - 数据、权限与预定：`data-optimization/page/DataCheckTab.vue`、`data-optimization/page/DataImportTab.vue`、`menu/MenuManagementView.vue`、`permissions/page/LogsPage.vue`、`permissions/page/ModuleManagementView.vue`、`permissions/page/RolesPage.vue`、`permissions/page/StoreBindingsPage.vue`、`permissions/page/UserRolesPage.vue`、`preorders/PreordersView.vue`、`preorders/page/MatchPreorderModal.vue`
-- 库存、报价与综合查询：`inventory/InventoryView.vue`、`inventory/page/InventoryTable.vue`、`price-list/PriceListView.vue`、`price-list/page/PublicPriceQuery.vue`、`price-list/page/SalesPriceDisplay.vue`、`price-list/page/SyncLogView.vue`、`query/QueryView.vue`、`reminders/ReminderView.vue`、`rentals/RentalsView.vue`、`repairs/RepairsView.vue`
+- 库存、报价与综合查询：`inventory/InventoryView.vue`、`inventory/page/InventoryTable.vue`、`price-list/PriceListView.vue`、`price-list/page/PublicPriceQuery.vue`、`price-list/page/SalesPriceDisplay.vue`、`price-list/page/SyncLogView.vue`、`query/QueryView.vue`、`query/page/QueryGoodsPanel.vue`、`reminders/ReminderView.vue`、`rentals/RentalsView.vue`、`repairs/RepairsView.vue`
 - 工资、销售、分享与国补：`salary/page/SalaryAttendanceListDialog.vue`、`salary/page/SalaryEmployeeSalesDetailDialog.vue`、`salary/page/SalaryEmployeesTab.vue`、`salary/page/SalaryMyRecordsTab.vue`、`salary/page/SalaryPayoutTab.vue`、`salary/page/SalarySalesDetailDialog.vue`、`salary/page/SalaryTemplatesTab.vue`、`sales/page/SalesBatchForm.vue`、`sales/page/SalesInventoryDetailDialog.vue`、`sales/page/SalesSummaryView.vue`、`sales/page/SalesTableView.vue`、`shared/SharedView.vue`、`subsidy/components/SubsidyListSection.vue`
-- 供应商付款：`payments/SupplierPhonePaymentsView.vue`
+- 供应商付款：`payments/SupplierPhonePaymentsView.vue`、`payments/page/AccessoryPurchasePayments.vue`、`payments/page/AccessoryPurchaseReturnContext.vue`
 
-### 4.2 公共组件文件（6）
+### 4.2 公共组件文件（11）
 
+- `components/AccessoryBatchStock.vue`
+- `components/AccessorySerialPanel.vue`
+- `components/AccessoryStockLocations.vue`
+- `components/AccessoryTransferHistory.vue`
 - `components/ComprehensiveWarnings.vue`
 - `components/ErrorManagement/ErrorDashboardSimple.vue`
 - `components/MobileTable.vue`
@@ -626,7 +692,7 @@
 - `MobileDialog` 宽度统一按显式参数、全局档位、默认 800px 选择，库存入库显式 1240px 优先于默认值，`maxWidth` 独立限制上限，自适应百分比/视口宽度默认受公共 800px 上限约束（含综合查询素材管理）；客户详情及编辑按 `crud-dialog-lg` 使用 800px 档位。公共组件已移除默认内联宽度和重复断点计算，适用所有档位调用方；回归命令及浏览器/真机验证边界见 [对话框规范](dialog-standards.md)。
 
 - 弹窗标题栏统一由 `_dialog.scss` 的 `--tf-dialog-header-height` 定义为 `50px`，PC、平板、手机共用；查询、库存、H5 发布及预定弹窗的旧高度/上下间距覆盖已删除。静态检查、浏览器测量和真机验收分别报告，不把规则接入视为逐页视觉验收完成。
-- 页面清单统计：懒加载路由入口 65、叶子路由 62、视图源文件 130、公共组件 74。
+- 页面清单统计：懒加载路由入口 66、叶子路由 63、视图源文件 131、公共组件 74。
 - 表格逐页审计已完成：台账范围为 56 个页面承载单元、6 个公共表格组件；当前 56 个页面模板直接渲染表格，库存 `InventoryView.vue` 与 `InventoryTable.vue` 按承载关系共同纳入范围。当前模板实际包含 88 个 Element 表格和 54 个操作列，`npm run check:tables` 已逐文件通过。
 - “审计通过”仅表示静态规则通过；文字溢出、触摸滚动、按钮位置、真实权限和云端 API 行为仍需按本台账进行浏览器/云端回归。
 - 当前台账不把 `views` 目录下的每个文件都当作独立 URL；新增路由、Tab、弹窗和公共组件必须分别登记，防止重复计数或漏查。
@@ -681,3 +747,149 @@
 | 2026-11-05 | 工资页销售明细和员工销售明细弹窗的顶部统计在手机及 iPad 调整为每行两项，保留桌面布局；数值允许在窄卡片内换行 | 定向检查响应式断点、类型与 ESLint；浏览器视口实测结果以本次任务交付说明为准 |
 | 2026-11-05 | 全局 `Pagination` 统一收紧底部间距、将每页条数提示简化为“每页”、移除页码省略号并收窄跳页输入框；所有复用公共组件的页面同步生效 | 类型检查、分页 UI 审计、规范清单/文档检查及前端构建；真实页面视口验收以任务交付说明为准 |
 | 2026-11-05 | `/customers` 客户编辑表单使用公共 `CitySelector` 提供省、市、县/区三级联动；县/区与详细地址兼容写入现有 `address` 字段，字段查看/编辑权限继续分别控制，省市县选择器不再复制 Element Plus 外观 | `city-selector.spec.ts`、`region-options.spec.ts` 共 11 项通过；类型检查、表单控件/令牌/响应式审计及定向 ESLint 通过；乡镇/村级未接入，地区源版本和云端客户数据未作线上验收 |
+
+> 2026-11-13 配件SN与设置：新增公共业务单元 `AccessorySerialPanel.vue`、`AccessoryStockLocations.vue`，使用统一API、字段权限、局部Loading及最新请求取消；`OptimizedScanner.vue` 增加配件SN解析档位，手机默认档位保留。入库第一行四字段，后续调整为名称检索、隐藏适配/单位/状态/预警值、SN自动计件，具体当前字段见下节；移除分配卡、入库条码/图片和补货价提示；SN录入后不锁店，全部按提交时选店归属。仓库设置为原路径内页签，不新增路由。
+
+
+### 配件入库与店间划拨（2026-11-13）
+
+`AccessoryStockInModal` 第一行采用供应商、品牌、商品名称检索、店铺。名称下拉只展示模板名称，按类型分组并滚动加载，自动填充只读商品类型；入库隐藏适配品牌/型号、单位、状态、预警值、条形码、图片，模板中保留。普通模式填写数量，SN模式隐藏数量并按逐条/扫码/批量录入数自动计算，同一模板允许混合库存。
+
+新增 `AccessoryTransferModal` 公共弹窗（680px）与 `AccessoryTransferHistory` 公共表格。桌面及手机库存行使用独立划拨权限，模板页不展示；来源、接收、普通数量或SN实物选择、备注和一次确认均使用公共控件、Loading、通知和API。详情显示双店划拨记录、普通/SN库存位置及实物追踪，复用公共编号、分页和时间入口。该登记不代表登录整页或真机验收通过。
+
+划拨SN候选使用20条分页和公共滚动加载，搜索、翻页保留已选项，后续页失败可重试原页；切换来源或关闭取消旧请求，避免旧门店候选混入。首屏候选不代表完整可划拨集合，实际协议见[配件入库契约](../backend/accessory-entry.md#入库一致性)。
+
+### 供应商详情采购统计（2026-11-14）
+
+2026-11-14 供应商详情补充原采购统计：沿用 `/suppliers` 原详情 `MobileDialog`，配件采购数量/采购总额与手机分组；统计空值按来源权限或未知处理，分别控制数量/金额及完整合计。请求使用公共 `unifiedApi/useLatestRequest/SectionLoading`，切换、关闭、卸载和撤权不恢复旧明细。无新增路由、页签或公共组件；行为回归及验收范围登记 T22，完整字段来源见[供应商详情采购统计](../payments/SUPPLIER_PAYMENT_BATCH_STANDARD.md#供应商详情采购统计)。
+
+### 商品采购货款页签（2026-11-13）
+
+`/payments` 保留手机货款并增加商品采购 TAB，新增内部单元 `views/payments/page/AccessoryPurchasePayments.vue`（无新增路由/公共组件）；含采购列表、登记/撤销表单和分页付款历史，两处 `MobileDialog`。列表只展示原采购整单数量/成本，独立于销售状态；复用公共 TAB、检索、日期范围、Loading、表格、操作列宽、徽章、通知和北京时间。字段模块仍为 `payments_supplierphonepaymentsview`，新增 `purchase.*`，动作沿用 `supplier-payments:view/create/edit`，后端门店范围和字段权限独立校验。商品导出、退供退款与部分付款尚未提供，手机导出只出手机资料。功能契约及云端迁移见[供应商打款批次规范](../payments/SUPPLIER_PAYMENT_BATCH_STANDARD.md#商品采购整单货款2026-11-13)，本轮测试证据统一记录 T22。
+
+本轮 `audit:dialogs -- --json` 实测 211 个 Vue 文件（132 个页面/内部单元、78 个公共组件及 App 入口），96 个文件含弹窗/查看器引用，`MobileDialog=144`、公共媒体查看器9处，业务直接 Dialog/图片查看器及原生调用均为0；样式候选仍为3文件57项。表格审计实测58个页面模板、9个公共组件，95个 Element 表格、57个操作列。上述为2026-11-13源码接入统计，不改写前文2026-11-11历史快照，也不代表全部业务页面或真机验收完成。
+
+### 客户积分设置内部单元（2026-11-13）
+
+新增 `views/customers/page/CustomerPointsSettings.vue`，从客户父页面迁入原积分弹窗，没有新增路由或公共组件。父页面继续控制打开，子单元沿用客户查看/管理权限、公共弹窗、Loading、统一API、通知和最新请求；手机/桌面双列，长标签换行，数字及类型控件受容器宽度约束。新增商品累计来源、抵扣兑换/范围/单件上限，未填数值以空值保存且不能启用抵扣；读取失败可重试，保存中防重复及关闭，失败保留草稿。配置边界和商品抵扣销售事务说明见[积分规范](../guides/customer-points-standard.md#商品积分配置与明细计算基础)，实测结果登记T22。
+
+本批复核 `audit:dialogs -- --json`：212个Vue源文件（133个页面/内部单元、78个公共组件及App），97个文件含弹窗/查看器，MobileDialog仍144处；客户页积分弹窗迁移不增加实例。Loading矩阵客户页占位文件1→2、按钮文件5→6；无新增公共UI实现。
+
+2026-11-13 T22：`SalesGoodsCheckoutDialog/SalesGoodsLine` 接商品行抵扣、服务端积分试算及净额结算，复用公共数字输入、API、最新请求和权限；商品查询增加抵扣积分/金额。内容变化废弃旧试算，实际提交重新核验；云端、浏览器与真机验收单独记录于T22台账。
+
+### T19/T21/T23 本地输入与重复布局批次（2026-11-13）
+
+新增 H5 内部单元 `H5AuthLayout.vue`，登录/注册共用背景、卡片、页头/页尾和窄屏协议布局，无新增路由。两类薪资明细共用 `salary-sales-details.scss`，保留权限、汇总及字段差异；销售/批发报价截图的克隆样式与水印分布统一到 `utils/price-table-image.ts`。公共金额输入及 H5 首次提交使用真实组件行为测试，国补申请/编辑只校验实际提交字段，预订单姓名保存接公共规则。
+
+浏览器正式入口为 `test:input-flows`，Xcode Safari 使用 `-- --ios`；公共外壳全量浏览器入口为 `test:dialog-widths`。实际执行结果统一登记 [T19/T21/T23 本轮验证记录](../development/TECHNICAL_DEBT_PROGRESS.md#t19t21t23-本轮验证记录2026-11-13)。这些隔离响应测试不代表63个叶子URL已逐页验收，也不代表云端、真实键盘、摄像头或主屏幕书签通过。
+
+2026-11-13 模拟器公共交互补验：`test:input-flows -- --overlays`（追加`--ios`使用Xcode Safari）接真实姓名输入与公共prompt、公共弹窗和媒体查看器，以及销售/批发真实页头和图片保存模板；移除全局窄屏层级及滚动锁覆盖。复核218个Vue（139页面/内部单元、78公共组件及App）、100个弹窗/查看器文件，`MobileDialog=147`、公共媒体9处、服务125处，业务直接Dialog/图片查看器及原生弹框均为0，专用覆盖层10处保持各自用途。统计与公共交互通过不代表63个URL整页或物理设备通过，证据和未验证边界见[T21模拟器补验](../development/TECHNICAL_DEBT_PROGRESS.md#模拟器公共交互补验2026-11-13)。
+
+### 手机关联商品售后单元（2026-11-13）
+
+商品换货继续复用 `views/query/page/GoodsReturnDialog.vue` 的 exchange 模式和 `views/sales/page/SalesGoodsLine.vue`，不新增路由、Tab或弹窗实例。综合查询商品操作列新增独立 `query:exchange` 按钮及自适应列宽，手机横向表格入口同样可达。原件数量/SN和新件独立录入，新件数量跟随、用途按服务端扣款核对结果锁定，已扣款赠品提示原实际抵付和新件收费，动作按新件用途重新校验，复用库存分页检索、扫码、公共金额/支付、门店及销售员选项；提交断网冻结草稿同键重试。`GoodsAftersaleHistory` 显示操作类型、新件资料/销售员、原件抵付和净补退款，沿用字段权限、加载/空态/取消请求和北京时间。契约与验证边界见[换货办理接口与页面](../guides/sales-transfer-transaction-standards.md#换货办理接口与页面)及T22，不将源码接入等同真机验收。
+
+新增非路由公共单元 `components/query/PhoneReturnForm.vue`，嵌入 `ReturnStockModal` 的共同原单分支，不新增路由、弹窗或权限模块。沿用公共表单、响应式栅格、SN选择、文本域、北京时间、门店选项、支付、Loading、权限和最新请求。收费商品默认保留，赠品默认实物退回，未退按原约定且获权确认扣款；只确认一次净退款/补款。编辑清旧报价和资金确认，取消直接关闭，提交中阻止关闭，失败保留同键重试，成功刷新并关闭。原商品历史新增未退赠品扣款件数/金额，与返库件数分列；用途隐藏同步隐藏数量和完整资金组，NULL不当作0。契约见[手机与关联商品退货](../guides/sales-transfer-transaction-standards.md#手机与关联商品退货)，实测及未云端启用边界统一登记T22。
+
+本批 `audit:dialogs -- --json` 实测219个Vue（139页面/功能单元、79公共组件及App），100个弹窗/查看器文件，MobileDialog仍147处，新增表单不新增弹窗实例；公共媒体9处、直接Dialog/图片查看及原生调用0。该统计仅为源码接入，不代表全站页面或真机验收。
+
+## T22 整单只读明细（2026-11-14）
+
+新增非路由公共单元 `components/query/CheckoutOrderDialog.vue`，手机设备销售详情和商品销售详情共用“整单明细”入口。一个公共 `MobileDialog`，以 `RecordDescriptions` 展示原客户、整批备注、手机与购买/赠送商品、原SN及原成交资金，不新增表格、Tab、路由或权限模块。手机端长单号、SN及备注整行展示；原销售全退后保留原单入口。双模块查看权限、分别字段脱敏、公共Loading、无缓存最新请求、失败重试与撤权清理沿用公共入口。代码验证及云端/真机边界登记于T22，接口见[销售凭证](../business/sales-receipt-standard.md#整单明细)。
+
+## 本轮客户地址职责单元（2026-11-13）
+
+`/customers` 的地区和详细地址表单统一为 `views/customers/page/CustomerAddressFields.vue`，状态、迁移能力和历史文本兼容由 `useCustomerAddress.ts` 编排；不新增路由、Tab或弹窗。公共 `CitySelector` 维持旧三级兼容，结构就绪后按需加载固定版本五级数据，保留字段权限，手机省/市、县区/乡镇两列，村委会/社区整行。数据及迁移契约见[五级地区](../backend/region-address.md)。
+
+正式隔离浏览器入口 `npm --prefix frontend run test:region-address` 验证375/430/768/1024/1440px与明暗主题、历史直辖市回显、下级清空及未迁移兼容；该结果不代表真实客户读写、云端迁移或物理设备验收。
+
+## 手机记录详情与字段布局全台账复核（2026-11-13）
+
+> 最近补充复核：2026-11-14。首轮 2026-11-13 的 93 文件/914 项及 16 页默认 Tab 证据保留在 T21.14；本节按当前源码重算，不把历史验证当成本轮结果。
+
+本轮覆盖 63 个叶子 URL、141 个页面/内部单元、81 个公共组件及 App，共 223 个 Vue。检查范围包含所有 Tab、弹窗依赖和公共组件；源码接入、行为测试、浏览器样本与物理设备分别登记，任务边界仍为 T21。
+
+| 当前源码统计 | 数量 | 口径 |
+| --- | ---: | --- |
+| MobileDialog | 148 | 直接模板调用，不等于运行时同时打开数量 |
+| RecordDetailDialog | 66 | 公共字段详情逻辑调用点，实际复用 MobileDialog |
+| 直接业务 el-dialog | 0 | 排除公共 MobileDialog 内部 |
+| 公共媒体预览 | 9 | 独立媒体交互 |
+| 含详情/查看器文件 | 120 | 按文件去重 |
+| 业务与关联表 | 101 | views + components，包含弹窗内表，不再只统计 views |
+| 公共双击入口表 | 77 | 主表、各 Tab、管理子列表及公共表格 |
+| 记录卡片模板 | 18 | 实际 data-mobile-record 节点，不是运行时记录数 |
+
+统一复用 RecordDetailDialog、RecordDescriptions、useMobileTableDetail 与 v-table-double-tap；字段类型唯一为 types/component.ts 的 RecordDetailField。销售图文与表格共用 sales-phone-helpers.ts 的详情字段定义。公共卡片、分页表、推荐区域候选/已加商品、导航公告/分类/链接、经验分享、Git、系统联系人/查询账号、错误日志、配件位置/SN/划拨、数据检查重复组均纳入核对。补齐国补照片管理、考勤审批、价格历史等手机底部入口，原状态及权限保护继续生效。
+
+手机表单和详情使用 tf-form-layout / tf-form-grid / tf-form-row / tf-detail-grid。原生 form、模板头部及 MobileForm 同样复用公共入口；短字段两列，长字段整行，隐藏字段按可见顺序补位。批量草稿、键值设置、选择表及详情内只读流水按逐实例用途登记在 frontend/scripts/mobile-table-purposes.json；组件目录或弹窗祖先不能作为整体豁免。登录、公开商城购物/导航、媒体操作及待提交草稿按各自用途保留，不能机械改为后台记录动作。
+
+下表按 collectCoverage 的真实 Vue 依赖图映射，数量可跨路由重叠，不应相加作为全站总数。“用途表”指逐实例关联/输入/选择或仅桌面数据展开，理由见用途登记。
+
+| 叶子 URL | 公共双击表 | 卡片模板 | 用途表 | 源码复核范围 |
+| --- | ---: | ---: | ---: | --- |
+| `/login` | 0 | 0 | 0 | 无持久记录列表；配置/导航/展示按原用途 |
+| `/404` | 0 | 0 | 0 | 无持久记录列表；配置/导航/展示按原用途 |
+| `/dashboard` | 3 | 0 | 0 | 各 Tab / 子列表及详情依赖已纳入；浏览器范围另列 |
+| `/suppliers` | 1 | 0 | 0 | 各 Tab / 子列表及详情依赖已纳入；浏览器范围另列 |
+| `/payments` | 2 | 0 | 4 | 各 Tab / 子列表及详情依赖已纳入；浏览器范围另列 |
+| `/system` | 5 | 1 | 3 | 各 Tab / 子列表及详情依赖已纳入；浏览器范围另列 |
+| `/standards` | 1 | 0 | 0 | 各 Tab / 子列表及详情依赖已纳入；浏览器范围另列 |
+| `/git-management` | 0 | 1 | 0 | 各 Tab / 子列表及详情依赖已纳入；浏览器范围另列 |
+| `/backup` | 2 | 0 | 0 | 各 Tab / 子列表及详情依赖已纳入；浏览器范围另列 |
+| `/data-optimization` | 2 | 1 | 0 | 各 Tab / 子列表及详情依赖已纳入；浏览器范围另列 |
+| `/menu` | 1 | 0 | 0 | 各 Tab / 子列表及详情依赖已纳入；浏览器范围另列 |
+| `/sales` | 2 | 1 | 2 | 各 Tab / 子列表及详情依赖已纳入；浏览器范围另列 |
+| `/models` | 1 | 0 | 0 | 各 Tab / 子列表及详情依赖已纳入；浏览器范围另列 |
+| `/colors` | 1 | 0 | 0 | 各 Tab / 子列表及详情依赖已纳入；浏览器范围另列 |
+| `/memories` | 1 | 0 | 0 | 各 Tab / 子列表及详情依赖已纳入；浏览器范围另列 |
+| `/brands` | 1 | 0 | 0 | 各 Tab / 子列表及详情依赖已纳入；浏览器范围另列 |
+| `/stores` | 1 | 0 | 0 | 各 Tab / 子列表及详情依赖已纳入；浏览器范围另列 |
+| `/employees` | 1 | 1 | 0 | 各 Tab / 子列表及详情依赖已纳入；浏览器范围另列 |
+| `/customers` | 1 | 0 | 1 | 各 Tab / 子列表及详情依赖已纳入；浏览器范围另列 |
+| `/accessories` | 4 | 0 | 0 | 各 Tab / 子列表及详情依赖已纳入；浏览器范围另列 |
+| `/accessories/catalog` | 2 | 0 | 0 | 各 Tab / 子列表及详情依赖已纳入；浏览器范围另列 |
+| `/inventory` | 1 | 0 | 1 | 各 Tab / 子列表及详情依赖已纳入；浏览器范围另列 |
+| `/preorders` | 3 | 0 | 1 | 各 Tab / 子列表及详情依赖已纳入；浏览器范围另列 |
+| `/reminders` | 2 | 0 | 1 | 各 Tab / 子列表及详情依赖已纳入；浏览器范围另列 |
+| `/shared` | 1 | 1 | 0 | 各 Tab / 子列表及详情依赖已纳入；浏览器范围另列 |
+| `/guide` | 0 | 4 | 0 | 各 Tab / 子列表及详情依赖已纳入；浏览器范围另列 |
+| `/marketing` | 0 | 0 | 0 | 公开购物/账户流程，保持原用途 |
+| `/error-management` | 2 | 0 | 0 | 各 Tab / 子列表及详情依赖已纳入；浏览器范围另列 |
+| `/query` | 2 | 0 | 5 | 各 Tab / 子列表及详情依赖已纳入；浏览器范围另列 |
+| `/permissions` | 5 | 0 | 0 | 各 Tab / 子列表及详情依赖已纳入；浏览器范围另列 |
+| `/analytics` | 10 | 0 | 0 | 各 Tab / 子列表及详情依赖已纳入；浏览器范围另列 |
+| `/attendance` | 3 | 0 | 0 | 各 Tab / 子列表及详情依赖已纳入；浏览器范围另列 |
+| `/salary` | 5 | 0 | 2 | 各 Tab / 子列表及详情依赖已纳入；浏览器范围另列 |
+| `/subsidy` | 1 | 0 | 0 | 各 Tab / 子列表及详情依赖已纳入；浏览器范围另列 |
+| `/rentals` | 1 | 0 | 0 | 各 Tab / 子列表及详情依赖已纳入；浏览器范围另列 |
+| `/repairs` | 1 | 0 | 0 | 各 Tab / 子列表及详情依赖已纳入；浏览器范围另列 |
+| `/price-list` | 3 | 0 | 1 | 各 Tab / 子列表及详情依赖已纳入；浏览器范围另列 |
+| `/price-list/sync-logs` | 1 | 0 | 2 | 各 Tab / 子列表及详情依赖已纳入；浏览器范围另列 |
+| `/H5-admin/page/templates` | 0 | 2 | 0 | 各 Tab / 子列表及详情依赖已纳入；浏览器范围另列 |
+| `/H5-admin/page/config` | 0 | 0 | 0 | 无持久记录列表；配置/导航/展示按原用途 |
+| `/H5-admin/page/home-sections` | 0 | 3 | 0 | 各 Tab / 子列表及详情依赖已纳入；浏览器范围另列 |
+| `/H5-admin/page/banners` | 0 | 1 | 0 | 各 Tab / 子列表及详情依赖已纳入；浏览器范围另列 |
+| `/H5-admin/page/orders` | 1 | 0 | 0 | 各 Tab / 子列表及详情依赖已纳入；浏览器范围另列 |
+| `/H5-admin/page/sold-products` | 0 | 1 | 0 | 各 Tab / 子列表及详情依赖已纳入；浏览器范围另列 |
+| `/price-query` | 1 | 0 | 0 | 各 Tab / 子列表及详情依赖已纳入；浏览器范围另列 |
+| `/sales-price-display` | 1 | 0 | 0 | 各 Tab / 子列表及详情依赖已纳入；浏览器范围另列 |
+| `/DH` | 0 | 0 | 0 | 无持久记录列表；配置/导航/展示按原用途 |
+| `/Marketing_Copy` | 0 | 0 | 0 | 无持久记录列表；配置/导航/展示按原用途 |
+| `/m/` | 0 | 0 | 0 | 公开购物/账户流程，保持原用途 |
+| `/m/products` | 0 | 0 | 0 | 公开购物/账户流程，保持原用途 |
+| `/m/product/new/:id` | 0 | 0 | 0 | 公开购物/账户流程，保持原用途 |
+| `/m/product/:id` | 0 | 0 | 0 | 公开购物/账户流程，保持原用途 |
+| `/m/product` | 0 | 0 | 0 | 公开购物/账户流程，保持原用途 |
+| `/m/cart` | 0 | 0 | 0 | 公开购物/账户流程，保持原用途 |
+| `/m/checkout` | 0 | 0 | 0 | 公开购物/账户流程，保持原用途 |
+| `/m/order/success` | 0 | 0 | 0 | 公开购物/账户流程，保持原用途 |
+| `/m/order/detail` | 0 | 0 | 0 | 公开购物/账户流程，保持原用途 |
+| `/m/my-orders` | 0 | 0 | 0 | 公开购物/账户流程，保持原用途 |
+| `/m/order-detail/:orderNumber` | 0 | 0 | 0 | 公开购物/账户流程，保持原用途 |
+| `/m/order-query` | 0 | 0 | 0 | 公开购物/账户流程，保持原用途 |
+| `/m/login` | 0 | 0 | 0 | 公开购物/账户流程，保持原用途 |
+| `/m/register` | 0 | 0 | 0 | 公开购物/账户流程，保持原用途 |
+| `/m/my` | 0 | 0 | 0 | 公开购物/账户流程，保持原用途 |
+
+本轮正式隔离浏览器入口：`npm --prefix frontend run test:mobile-details:browser`。25 个登记页面/子列表 × 375/430/767px × 明暗主题，共 150 组通过，包含单触不打开、不写入、双触查看、底部动作、短字段网格、选定页面编辑交接、无横向溢出与只读样本。观察了推荐商品嵌套详情、查询账号详情和商品模板编辑截图；等待过渡结束后检查。未登录、未读取云端业务数据、未写入云端、未部署；未登记的业务状态、物理 iPhone/Android、真实键盘与线上版本不记为通过。完整检查结果见 T21 后续补充复核记录。

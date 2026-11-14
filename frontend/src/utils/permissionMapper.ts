@@ -88,6 +88,7 @@ export const MODULE_KEY_MAP: Record<string, string> = {
 
   // 配件管理映射
   'accessories': 'accessories_accessoriesview',
+  'accessories-catalog': 'accessories_accessorycatalogview',
 
   // 考勤管理映射
   'attendance': 'attendance_attendanceview',
@@ -194,6 +195,7 @@ export const BACKEND_MODULE_MAP: Record<string, string> = {
   'menu_menumanagementview': 'menus',
   'query_queryview': 'query',
   'accessories_accessoriesview': 'accessories',
+  'accessories_accessorycatalogview': 'accessories-catalog',
   'attendance_attendanceview': 'attendance',
   'attendance_myattendanceview': 'my-attendance',
   'system_systemview': 'system',
@@ -252,6 +254,7 @@ const ACTION_DISPLAY_NAMES: Record<string, string> = {
   sell: '出库',
   sync: '同步',
   'return-to-stock': '退库',
+  exchange: '换货',
   wholesale: '同行调货',
   'proxy-transfer': '供应商代划拨',
   match: '匹配',
@@ -264,7 +267,7 @@ const MODULE_DISPLAY_NAMES: Record<string, string> = {
   dashboard: '仪表盘', inventory: '库存管理', sales: '销售管理', customers: '客户管理',
   brands: '品牌管理', models: '型号管理', colors: '颜色管理', memories: '内存管理',
   employee: '员工管理', stores: '门店管理', suppliers: '供应商管理',
-  'supplier-payments': '供应商打款', accessories: '配件管理', permissions: '权限管理',
+  'supplier-payments': '供应商打款', accessories: '配件管理', 'accessories-catalog': '商品资料', permissions: '权限管理',
   'module-management': '模块管理', menus: '菜单管理', query: '综合查询', system: '系统管理', standards: '规范与审计',
   analytics: '数据分析', attendance: '考勤管理', 'my-attendance': '我的考勤',
   salary: '工资管理', 'my-salary': '我的工资', 'salary-records': '工资记录',
@@ -441,6 +444,8 @@ export class PermissionMapper {
       'export': '导出',
       'import': '导入',
       'sell': '销售',
+      'gift': '赠送',
+      'transfer': '库存划拨',
       'match': '匹配',
       'deliver': '交付',
       'cancel': '取消预定',

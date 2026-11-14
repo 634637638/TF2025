@@ -17,7 +17,7 @@ test('前端错误上报路由使用统一认证并持久化到专用表', () =>
   assert.match(routeSource, /router\.post\('\/errors', unifiedAuth, frontendErrorLogRateLimit, frontendErrorLogController\.report\.bind\(frontendErrorLogController\)\)/)
   assert.match(repositorySource, /INSERT INTO frontend_error_logs/)
   assert.match(controllerSource, /const userId = Number\(req\.user\?\.id\)/)
-  assert.match(controllerSource, /this\.service\.submitReport\(req\.body, userId\)/)
+  assert.match(controllerSource, /this\.service\.submitReport\(req\.body, userId, req\.requestId\)/)
   assert.match(serviceSource, /this\.repository\.insertBatch\(\{ userId, \.\.\.report \}\)/)
   assert.doesNotMatch(controllerSource, /repositories\/frontend-error-log\.repository/)
   assert.match(repositorySource, /VALUES \$\{errors\.map\(\(\) => rowSql\)\.join\(', '\)\}/)
@@ -69,9 +69,10 @@ test('错误日志 service prepares sanitized reports and persists them through 
   assert.equal(persisted.errors[0].message, 'request failed with Bearer [REDACTED]')
 })
 
-test('前端错误上报配置已启用并指向统一接口', () => {
+test('前端错误上报受生产环境约束并指向统一接口', () => {
   const loggerSource = fs.readFileSync(path.join(frontendRoot, 'src/utils/error-logger.ts'), 'utf8')
-  assert.match(loggerSource, /enabled: true/)
+  // 结构检查只固定构建环境入口，具体开关/触发行为由前端行为测试验证。
+  assert.match(loggerSource, /import\.meta\.env\.PROD/)
   assert.match(loggerSource, /endpoint: '\/logs\/errors'/)
   assert.doesNotMatch(loggerSource, /endpoint: '\/api\/logs\/errors'/)
 })
@@ -89,7 +90,8 @@ test('全局错误边界和统一请求层共用 globalErrorLogger', () => {
   const mainSource = fs.readFileSync(path.join(frontendRoot, 'src/main.ts'), 'utf8')
   const unifiedApiSource = fs.readFileSync(path.join(frontendRoot, 'src/utils/unified-api.ts'), 'utf8')
 
-  assert.match(mainSource, /enableReporting:\s*false/)
+  const boundarySource = fs.readFileSync(path.join(frontendRoot, 'src/utils/error-boundary.ts'), 'utf8')
+  assert.doesNotMatch(boundarySource, /\bfetch\s*\(|\benableReporting\b|\breportingEndpoint\b/)
   assert.match(mainSource, /onError:\s*\(error\)\s*=>\s*\{[\s\S]*globalErrorLogger\.logError\(/)
   assert.match(unifiedApiSource, /globalErrorLogger\.logError\(/)
 })

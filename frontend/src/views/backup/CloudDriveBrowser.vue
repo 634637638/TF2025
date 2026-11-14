@@ -1,6 +1,9 @@
 <template>
   <div class="cloud-browser">
-    <el-form label-position="top">
+    <el-form
+      class="tf-form-layout tf-form-grid"
+      label-position="top"
+    >
       <el-form-item label="云盘">
         <el-select
           v-model="driveId"
@@ -100,6 +103,7 @@
       class="table-responsive"
     >
       <el-table
+        v-table-double-tap="mobileDetailTapOptions"
         v-tf-loading="{ active: loading, text: '正在刷新云盘文件列表...' }"
         :data="rows"
         border
@@ -107,6 +111,7 @@
         class="data-table"
         row-key="id"
         table-layout="fixed"
+        @row-dblclick="mobileDetailDoubleClick"
       >
         <el-table-column
           label="名称"
@@ -133,7 +138,7 @@
           </template>
         </el-table-column>
         <el-table-column
-          v-if="showActions"
+          v-if="!isMobile && (showActions)"
           label="操作"
           :width="fileActionColumnWidth"
           align="center"
@@ -196,6 +201,60 @@
           />
         </template>
       </el-table>
+      <RecordDetailDialog
+        v-model="mobileDetailVisible"
+        title="云盘文件详情"
+        :record="mobileDetailRow"
+        :fields="mobileDetailFields"
+        :has-actions="mobileDetailRow !== null && ((mode === 'files' && mobileDetailRow.type === 'folder') || canEdit || canDelete)"
+      >
+        <template #actions="{ row }">
+          <el-button
+            v-if="mode === 'files' && row.type === 'folder'"
+            class="table-action table-action--view"
+            :disabled="loading || busy"
+            @click.stop="mobileDetailRunAction(() => navigate([...path, { id: row.id, name: row.name }]))"
+          >
+            打开
+          </el-button>
+          <el-button
+            v-if="mode === 'files' && canEdit"
+            v-permission="'backup:edit'"
+            class="table-action table-action--edit"
+            :disabled="loading || busy"
+            @click.stop="mobileDetailRunAction(() => openNameDialog(row))"
+          >
+            编辑
+          </el-button>
+          <el-button
+            v-if="mode === 'files' && canDelete"
+            v-permission="'backup:delete'"
+            class="table-action table-action--delete"
+            :disabled="loading || busy"
+            @click.stop="mobileDetailRunAction(() => trashFile(row))"
+          >
+            删除
+          </el-button>
+          <el-button
+            v-if="mode === 'trash' && canDelete"
+            v-permission="'backup:delete'"
+            class="table-action table-action--delete"
+            :disabled="loading || busy"
+            @click.stop="mobileDetailRunAction(() => purgeFile(row))"
+          >
+            删除
+          </el-button>
+          <el-button
+            v-if="mode === 'trash' && canEdit"
+            v-permission="'backup:edit'"
+            class="table-action table-action--success"
+            :disabled="loading || busy"
+            @click.stop="mobileDetailRunAction(() => restoreFile(row))"
+          >
+            恢复
+          </el-button>
+        </template>
+      </RecordDetailDialog>
     </div>
     <div
       v-if="nextMarker && !listError"
@@ -220,7 +279,7 @@
       :show-close="!mutating"
     >
       <el-form
-        class="tf-dialog-form tf-dialog-form--stacked"
+        class="tf-dialog-form tf-dialog-form--stacked tf-form-layout tf-form-grid"
         label-position="top"
         @submit.prevent="saveName"
       >
@@ -263,6 +322,9 @@
 </template>
 
 <script setup lang="ts">
+import { useMobile } from '@/composables/mobile'
+import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
+import type { RecordDetailField } from '@/types/component'
 import { computed, onMounted, ref, watch } from 'vue'
 import { backupCloudApi } from '@/api/backup'
 import type { CloudDirectory, CloudDrive, CloudFile } from '@/types/backup'
@@ -423,6 +485,21 @@ const purgeFile = async (file: CloudFile) => {
   finally { mutating.value = false }
 }
 onMounted(() => { void load(false, path.value, true) })
+
+const { isMobile } = useMobile()
+const { detailRow: mobileDetailRow, detailVisible: mobileDetailVisible, doubleTapOptions: mobileDetailTapOptions, handleRowDoubleClick: mobileDetailDoubleClick, runDetailAction: mobileDetailRunAction } = useMobileTableDetail<CloudFile>({
+  enabled: () => isMobile.value, rows: () => rows.value, getKey: row => row.id
+})
+const mobileDetailFields = computed<RecordDetailField[]>(() => {
+  const row = mobileDetailRow.value
+  if (!row) return []
+  return [
+    { key: 'name', label: '名称', value: row.name, visible: true, wide: true },
+    { key: 'type', label: '类型', value: row.type === 'folder' ? '文件夹' : '文件', visible: true },
+    { key: 'size', label: '大小', value: row.type === 'file' ? formatFileSize(row.size) : '—', visible: true }
+  ]
+})
+
 </script>
 
 <style scoped>

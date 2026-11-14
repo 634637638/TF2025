@@ -2,10 +2,10 @@
   <div class="sale-form-section">
     <h4>销售信息</h4>
     <form
-      class="sale-form"
+      class="sale-form tf-form-layout"
       @submit.prevent="emit('submit')"
     >
-      <div class="form-grid">
+      <div class="tf-form-row">
         <div
           v-if="canViewField('customer_phone')"
           class="form-group"
@@ -15,7 +15,6 @@
             <el-input
               v-model="saleForm.customer_phone"
               placeholder="请输入用户手机号"
-              maxlength="11"
               :clearable="!preorderDelivery"
               :readonly="selectedCustomer !== null || preorderDelivery"
               :class="{ locked: selectedCustomer !== null || preorderDelivery }"
@@ -58,10 +57,10 @@
         </div>
       </div>
 
-      <div class="form-grid">
+      <div class="tf-form-row">
         <div
           v-if="canViewField('customer_apple_id')"
-          class="form-group"
+          class="form-group tf-form-field--wide"
         >
           <label class="form-label">Apple ID</label>
           <el-input
@@ -91,7 +90,7 @@
         </div>
       </div>
 
-      <div class="form-grid">
+      <div class="tf-form-row">
         <div
           v-if="canViewPrice"
           class="form-group"
@@ -121,7 +120,7 @@
         </div>
       </div>
 
-      <div class="form-grid">
+      <div class="tf-form-row">
         <div
           v-if="canViewField('store_id')"
           class="form-group"
@@ -171,7 +170,7 @@
         </div>
       </div>
 
-      <div class="form-grid">
+      <div class="tf-form-row">
         <div
           v-if="canViewField('payment_method')"
           class="form-group"

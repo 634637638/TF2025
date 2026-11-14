@@ -109,7 +109,7 @@ class SalesAvailablePhonesRepository {
   async findBrandsByName(value) {
     const database = await this.getDb()
     const [rows] = await database.execute(
-      'SELECT id, name FROM brands WHERE LOWER(name) LIKE LOWER(?) ORDER BY name',
+      "SELECT id, name FROM brands WHERE LOWER(name) LIKE LOWER(?) AND business_scope IN ('phone', 'both') ORDER BY name",
       [`%${String(value ?? '').trim().toLowerCase()}%`]
     )
     return rows

@@ -210,7 +210,7 @@ export interface PhoneInfo extends ProductInfo {
 // 配件信息接口
 export interface AccessoryInfo extends ProductInfo {
   compatibility?: string
-  specifications?: string
+  product_model?: string
   warranty_period?: number
 }
 

@@ -1,5 +1,7 @@
 'use strict'
 
+const { getActiveSaleSql } = require('../utils/sale-status')
+
 const { getDatabase } = require('../config/database')
 
 class SubsidyPhoneSearchRepository {
@@ -46,18 +48,13 @@ class SubsidyPhoneSearchRepository {
           c.name as customer_name,
           c.phone as customer_phone
         FROM (
-          SELECT s.phone_id, s.customer_id
+          SELECT s.phone_id, s.customer_id, s.status,
+            ROW_NUMBER() OVER (PARTITION BY s.phone_id ORDER BY s.id DESC) AS rn
           FROM sales s
-          INNER JOIN (
-            SELECT phone_id, MAX(created_at) as max_created_at
-            FROM sales
-            WHERE phone_id IN (${placeholders})
-            GROUP BY phone_id
-          ) latest_sale
-            ON latest_sale.phone_id = s.phone_id
-           AND latest_sale.max_created_at = s.created_at
+          WHERE s.phone_id IN (${placeholders})
         ) latest
         LEFT JOIN customers c ON c.id = latest.customer_id
+        WHERE latest.rn = 1 AND ${getActiveSaleSql('latest')}
       `, phoneIds).then(([rows]) => rows),
       database.execute(`
         SELECT phone_id, apply_status, subsidy_amount

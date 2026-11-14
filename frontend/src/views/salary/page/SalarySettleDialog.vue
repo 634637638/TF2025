@@ -5,8 +5,10 @@
     dialog-class="salary-dialog crud-dialog-sm"
     :show-default-footer="false"
     :close-on-click-modal="false"
+    :close-on-press-escape="!saving"
+    :before-close="done => { if (!saving) done() }"
     @close="emit('close')"
-    @update:model-value="emit('update:modelValue', $event)"
+    @update:model-value="!saving && emit('update:modelValue', $event)"
   >
     <div class="settle-info">
       <div
@@ -25,8 +27,14 @@
       </div>
     </div>
 
+    <SalaryGoodsSummary
+      v-if="canViewField('salary_salaryrecordsview', 'commission_amount')"
+      :summary="goodsCommission"
+    />
+
     <form
       id="settle-form"
+      class="tf-form-layout tf-form-grid"
       @submit.prevent="emit('submit')"
     >
       <div
@@ -38,7 +46,7 @@
           v-model="paymentMethod"
           variant="settlement"
           class="form-control"
-          :disabled="!canEditField('salary_salaryrecordsview', 'payment_method')"
+          :disabled="saving || !canEditField('salary_salaryrecordsview', 'payment_method')"
           required
           placeholder="请选择支付方式"
         />
@@ -49,6 +57,7 @@
       <div class="tf-dialog-actions">
         <el-button
           type="info"
+          :disabled="saving"
           @click="emit('close')"
         >
           取消
@@ -58,13 +67,11 @@
           native-type="submit"
           form="settle-form"
           :disabled="saving"
+          :loading="saving"
         >
-          <InlineLoading
-            v-if="saving"
-            text="结算中..."
-            size="small"
-            variant="inherit"
-          />
+          <template v-if="saving">
+            结算中...
+          </template>
           <template v-else>
             <i class="fas fa-check" />
             确认结算
@@ -78,9 +85,10 @@
 <script setup lang="ts">
 import { formatAmount } from '@/utils/format'
 import { computed } from 'vue'
-import InlineLoading from '@/components/InlineLoading.vue'
 import MobileDialog from '@/components/MobileDialog.vue'
 import { PaymentMethodSelect } from '@/components/payment'
+import SalaryGoodsSummary from './SalaryGoodsSummary.vue'
+import type { SalaryGoodsCommission } from '@/types/salary'
 
 export interface SalarySettleForm {
   recordId: number | null
@@ -94,6 +102,7 @@ const props = defineProps<{
   canEditField: (_moduleKey: string, _fieldName: string) => boolean
   canViewField: (_moduleKey: string, _fieldName: string) => boolean
   form: SalarySettleForm
+  goodsCommission?: SalaryGoodsCommission | null
   modelValue: boolean
   saving: boolean
 }>()

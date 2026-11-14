@@ -97,7 +97,7 @@ class SystemSettingsController {
       ApiResponse.success(res, '更新配置成功', result, 200)
     } catch (error) {
       log.error('更新配置失败:', error)
-      ApiResponse.error(res, error.message, 500)
+      ApiResponse.error(res, error.message, error.statusCode === 400 ? 400 : 500)
     }
   }
 
@@ -116,7 +116,7 @@ class SystemSettingsController {
       ApiResponse.success(res, '批量更新配置成功', result, 200)
     } catch (error) {
       log.error('批量更新配置失败:', error)
-      ApiResponse.error(res, error.message, 500)
+      ApiResponse.error(res, error.message, error.statusCode === 400 ? 400 : 500)
     }
   }
 
@@ -213,7 +213,7 @@ class SystemSettingsController {
       ApiResponse.success(res, '保存加价配置成功', config, 200)
     } catch (error) {
       log.error('保存加价配置失败:', error)
-      ApiResponse.error(res, error.message, 500)
+      ApiResponse.error(res, error.message, error.statusCode === 400 ? 400 : 500)
     }
   }
 }

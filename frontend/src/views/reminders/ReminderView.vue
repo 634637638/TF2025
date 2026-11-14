@@ -173,6 +173,7 @@
           </div>
           <div class="table-responsive">
             <el-table
+              v-table-double-tap="mobileDetailTapOptions"
               v-tf-loading="{ active: loading, text: '正在刷新待办列表...' }"
               :data="reminders"
               border
@@ -181,6 +182,7 @@
               table-layout="fixed"
               :fit="true"
               row-key="id"
+              @row-dblclick="mobileDetailDoubleClick"
             >
               <template #empty>
                 <TableLoadingRow
@@ -211,12 +213,14 @@
               >
                 <template #default="{ row }">
                   <el-button
+                    v-if="!isMobile"
                     class="table-inline-action table-action--view"
                     native-type="button"
                     @click="openDetail(row)"
                   >
                     {{ row.title }}
                   </el-button>
+                  <span v-else>{{ row.title }}</span>
                 </template>
               </el-table-column>
               <el-table-column
@@ -322,7 +326,7 @@
                 </template>
               </el-table-column>
               <el-table-column
-                v-if="showActionColumn"
+                v-if="!isMobile && (showActionColumn)"
                 label="操作"
                 :width="reminderActionColumnWidth"
                 align="center"
@@ -383,11 +387,12 @@
     >
       <el-form
         ref="formRef"
+        class="tf-form-layout tf-form-grid"
         :model="form"
         :rules="formRules"
         label-width="96px"
       >
-        <div class="reminder-form-grid">
+        <div class="tf-form-row">
           <el-form-item
             v-if="canViewReminderField('type_name')"
             label="事项类型"
@@ -430,7 +435,7 @@
             v-if="canViewReminderField('title')"
             label="事项标题"
             prop="title"
-            class="span-2"
+            class="span-2 tf-form-field--wide"
           >
             <el-input
               v-model="form.title"
@@ -442,7 +447,7 @@
           <el-form-item
             v-if="canViewReminderField('content')"
             label="详细内容"
-            class="span-2"
+            class="span-2 tf-form-field--wide"
           >
             <el-input
               v-model="form.content"
@@ -558,7 +563,7 @@
             v-if="canViewReminderField('repeat_type') && canViewReminderField('weekdays') && form.repeat_type === 'weekly'"
             label="每周执行"
             prop="weekdays"
-            class="span-2"
+            class="span-2 tf-form-field--wide"
           >
             <el-checkbox-group
               v-model="form.weekdays"
@@ -642,14 +647,17 @@
         v-if="detail"
         class="reminder-detail"
       >
-        <div class="detail-summary">
+        <div class="detail-summary tf-detail-grid">
           <div v-if="canViewReminderField('title')">
             <span>事项</span><strong>{{ detail.title }}</strong>
           </div>
           <div v-if="canViewReminderField('type_name')">
             <span>类型</span><strong>{{ detail.type_name || '未分类' }}</strong>
           </div>
-          <div v-if="canViewReminderField('target_mode') || canViewReminderField('target_users')">
+          <div
+            v-if="canViewReminderField('target_mode') || canViewReminderField('target_users')"
+            class="tf-detail-field--wide"
+          >
             <span>接收人</span><strong>{{ formatReminderTargets(detail) }}</strong>
           </div>
           <div v-if="canViewReminderField('repeat_type')">
@@ -732,6 +740,29 @@
           </el-table>
         </div>
       </div>
+      <template
+        v-if="isMobile && detail && (canEdit || canDelete)"
+        #footer
+      >
+        <div class="tf-dialog-actions">
+          <el-button
+            v-if="canEdit"
+            type="success"
+            title="编辑"
+            @click.stop="runMobileDetailAction((row) => openEditDialog(row))"
+          >
+            <i class="fas fa-edit" /><span>编辑</span>
+          </el-button>
+          <el-button
+            v-if="canDelete"
+            type="danger"
+            title="删除"
+            @click.stop="runMobileDetailAction((row) => deleteReminder(row))"
+          >
+            <i class="fas fa-trash" /><span>删除</span>
+          </el-button>
+        </div>
+      </template>
     </MobileDialog>
 
     <MobileDialog
@@ -751,6 +782,7 @@
       </div>
       <div class="table-responsive reminder-type-table-wrap">
         <el-table
+          v-table-double-tap="typeDetailTapOptions"
           :data="types"
           border
           stripe
@@ -758,6 +790,7 @@
           table-layout="fixed"
           :fit="true"
           row-key="id"
+          @row-dblclick="typeDetailDoubleClick"
         >
           <el-table-column
             v-if="canViewReminderField('type_name')"
@@ -806,14 +839,15 @@
             align="center"
           >
             <template #default="{ row }">
-              <el-switch
+              <span v-if="isMobile">{{ row.is_active ? '启用' : '停用' }}</span><el-switch
+                v-else
                 :model-value="Boolean(row.is_active)"
                 @change="toggleType(row, $event)"
               />
             </template>
           </el-table-column>
           <el-table-column
-            v-if="showTypeActionColumn"
+            v-if="!isMobile && (showTypeActionColumn)"
             label="操作"
             align="center"
             class-name="compact-action-column"
@@ -840,6 +874,37 @@
             </template>
           </el-table-column>
         </el-table>
+        <RecordDetailDialog
+          v-model="typeDetailVisible"
+          title="提醒类型详情"
+          :record="typeDetailRow"
+          :fields="typeDetailFields"
+          :has-actions="canManage"
+        >
+          <template #actions="{ row }">
+            <el-button
+              v-permission="'reminders:manage'"
+              @click.stop="typeDetailRunAction(() => toggleType(row, !row.is_active))"
+            >
+              {{ row.is_active ? '停用' : '启用' }}
+            </el-button>
+            <el-button
+              type="primary"
+              title="编辑"
+              @click.stop="typeDetailRunAction(() => openTypeForm(row))"
+            >
+              <i class="fas fa-edit" />编辑
+            </el-button>
+            <el-button
+              v-permission="'reminders:delete'"
+              type="danger"
+              title="删除"
+              @click.stop="typeDetailRunAction(() => deleteType(row))"
+            >
+              <i class="fas fa-trash" />删除
+            </el-button>
+          </template>
+        </RecordDetailDialog>
       </div>
     </MobileDialog>
 
@@ -853,6 +918,7 @@
       :close-on-click-modal="false"
     >
       <el-form
+        class="tf-form-layout tf-form-grid"
         :model="typeForm"
         label-width="100px"
       >
@@ -925,6 +991,9 @@
 </template>
 
 <script setup lang="ts">
+import type { RecordDetailField } from '@/types/component'
+import { useMobile } from '@/composables/mobile'
+import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
 import { computed, onMounted, reactive, ref, type CSSProperties } from 'vue'
 import { type FormInstance, type FormRules } from 'element-plus'
 import { PageHeader, PermissionGate } from '@/components/base'
@@ -1488,6 +1557,30 @@ onMounted(async () => {
   await fieldPermissions.init()
   await Promise.all([loadTypes(), loadUsers()])
   await loadReminders()
+})
+const { isMobile } = useMobile()
+
+const { doubleTapOptions: mobileDetailTapOptions, handleRowDoubleClick: mobileDetailDoubleClick } = useMobileTableDetail<ReminderRow>({
+  enabled: () => isMobile.value && (canView.value || canManage.value), rows: reminders, getKey: row => row.id, onOpen: openDetail
+})
+const runMobileDetailAction = (action: (row: ReminderRow) => unknown) => {
+  const row = detail.value
+  if (!row) return
+  detailVisible.value = false
+  return action(row)
+}
+
+const { detailRow: typeDetailRow, detailVisible: typeDetailVisible, doubleTapOptions: typeDetailTapOptions, handleRowDoubleClick: typeDetailDoubleClick, runDetailAction: typeDetailRunAction } = useMobileTableDetail<(typeof types.value)[number]>({
+  enabled: () => isMobile.value, rows: () => types.value, getKey: row => row.id
+})
+const typeDetailFields = computed<RecordDetailField[]>(() => {
+  const row = typeDetailRow.value
+  if (!row) return []
+  return [
+    { key: 'field0', label: '类型', value: row.name, visible: canViewReminderField('type_name') },
+    { key: 'field1', label: '默认提前', value: row.default_remind_days, visible: canViewReminderField('type_default_remind_days') },
+    { key: 'sort_order', label: '排序', value: row.sort_order, visible: canViewReminderField('type_sort_order') }
+  ]
 })
 </script>
 

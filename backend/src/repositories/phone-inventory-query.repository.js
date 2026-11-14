@@ -1,5 +1,7 @@
 'use strict'
 
+const { getActiveSaleSql, getLatestActiveSaleIdSql } = require('../utils/sale-status')
+
 const { withConnection } = require('../core/db/connection')
 
 const { getDatabase } = require('../config/database')
@@ -149,9 +151,10 @@ class PhoneInventoryQueryRepository {
           SELECT
             s.customer_id,
             s.phone_id,
-            ROW_NUMBER() OVER (PARTITION BY s.phone_id ORDER BY s.created_at DESC) as rn
+            s.status,
+            ROW_NUMBER() OVER (PARTITION BY s.phone_id ORDER BY s.id DESC) as rn
           FROM sales s
-        ) latest_sale ON p.id = latest_sale.phone_id AND latest_sale.rn = 1
+        ) latest_sale ON p.id = latest_sale.phone_id AND latest_sale.rn = 1 AND ${getActiveSaleSql('latest_sale')}
         LEFT JOIN customers c ON latest_sale.customer_id = c.id
         ${whereClause}
         ORDER BY p.inventory_time DESC
@@ -266,9 +269,9 @@ class PhoneInventoryQueryRepository {
         LEFT JOIN (
           SELECT
             s.*,
-            ROW_NUMBER() OVER (PARTITION BY s.phone_id ORDER BY s.created_at DESC) as rn
+            ROW_NUMBER() OVER (PARTITION BY s.phone_id ORDER BY s.id DESC) as rn
           FROM sales s
-        ) latest_sale ON p.id = latest_sale.phone_id AND latest_sale.rn = 1
+        ) latest_sale ON p.id = latest_sale.phone_id AND latest_sale.rn = 1 AND ${getActiveSaleSql('latest_sale')}
         LEFT JOIN customers c ON latest_sale.customer_id = c.id
         LEFT JOIN stores st ON p.store_id = st.id
         WHERE p.status = 'sold'
@@ -282,6 +285,7 @@ class PhoneInventoryQueryRepository {
     return withConnection(this.databaseProvider(), async connection => {
       const selectFields = `
         p.id,
+        latest_sale.id AS sale_id,
         p.imei,
         p.serial_number,
         b.name as brand_name,
@@ -299,6 +303,7 @@ class PhoneInventoryQueryRepository {
       `
       const joins = `
         FROM phones p
+        LEFT JOIN sales latest_sale ON latest_sale.id = (${getLatestActiveSaleIdSql()})
         LEFT JOIN brands b ON p.brand_id = b.id
         LEFT JOIN models m ON p.model_id = m.id
         LEFT JOIN colors co ON p.color_id = co.id
@@ -394,14 +399,15 @@ class PhoneInventoryQueryRepository {
             s.id,
             s.customer_id,
             s.phone_id,
+            s.status,
             s.operator_id,
             s.sale_type,
             s.payment_method,
             s.invoice_number,
             s.store_id,
-            ROW_NUMBER() OVER (PARTITION BY s.phone_id ORDER BY s.created_at DESC) as rn
+            ROW_NUMBER() OVER (PARTITION BY s.phone_id ORDER BY s.id DESC) as rn
           FROM sales s
-        ) latest_sale ON p.id = latest_sale.phone_id AND latest_sale.rn = 1
+        ) latest_sale ON p.id = latest_sale.phone_id AND latest_sale.rn = 1 AND ${getActiveSaleSql('latest_sale')}
         LEFT JOIN customers c ON latest_sale.customer_id = c.id
         LEFT JOIN users sales_operator ON latest_sale.operator_id = sales_operator.id
         LEFT JOIN stores sale_st ON latest_sale.store_id = sale_st.id

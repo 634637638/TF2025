@@ -39,12 +39,15 @@
 
         <div
           v-else
+          v-table-double-tap="recordTapOptions"
           class="sections-list"
         >
           <div
             v-for="section in sections"
             :key="section.id"
             class="section-card"
+            data-mobile-record
+            @dblclick="openRecordDetail(section, null, $event)"
           >
             <div class="section-header">
               <div class="section-info">
@@ -65,7 +68,7 @@
                 </div>
               </div>
               <div
-                v-if="showActionColumn"
+                v-if="!isMobile && showActionColumn"
                 class="section-actions"
               >
                 <el-switch
@@ -77,7 +80,7 @@
                   @change="() => toggleSection(section)"
                 />
                 <el-button
-                  v-if="canEdit"
+                  v-if="!isMobile && canEdit"
                   plain
                   type="primary"
                   size="small"
@@ -112,7 +115,7 @@
                   >推荐商品 ({{ section.product_count || 0 }}/{{ section.product_limit }})</span>
                 </div>
                 <el-button
-                  v-if="canEdit"
+                  v-if="!isMobile && canEdit"
                   plain
                   type="primary"
                   size="small"
@@ -173,11 +176,12 @@
           :model="sectionForm"
           label-width="100px"
           :disabled="!canEditSectionForm"
-          class="home-section-form"
+          class="home-section-form tf-form-layout tf-form-grid"
         >
           <!-- 快捷模板选择 -->
           <el-form-item
             v-if="canViewField('section.section_name') || canViewField('section.section_key')"
+            class="tf-form-field--wide"
             label="快捷模板"
           >
             <el-select
@@ -365,6 +369,44 @@
         </template>
       </MobileDialog>
 
+      <RecordDetailDialog
+        v-model="availableDetailVisible"
+        title="可选商品详情"
+        :record="availableDetailRow"
+        :fields="availableDetailFields"
+        :has-actions="canEdit"
+      >
+        <template #actions="{ row }">
+          <el-button
+            v-if="canEdit"
+            v-permission="'h5-admin-home-sections:edit'"
+            type="primary"
+            :disabled="isProductAdded(row)"
+            @click.stop="availableRunAction(addProductFromAvailable)"
+          >
+            添加商品
+          </el-button>
+        </template>
+      </RecordDetailDialog>
+      <RecordDetailDialog
+        v-model="productDetailVisible"
+        title="推荐商品详情"
+        :record="productDetailRow"
+        :fields="productDetailFields"
+        :has-actions="canEdit"
+      >
+        <template #actions>
+          <el-button
+            v-if="canEdit"
+            v-permission="'h5-admin-home-sections:edit'"
+            type="danger"
+            @click.stop="productRunAction(removeProduct)"
+          >
+            移除商品
+          </el-button>
+        </template>
+      </RecordDetailDialog>
+
       <!-- 管理商品对话框 -->
       <MobileDialog
         v-model="showProductsDialog"
@@ -465,6 +507,7 @@
             />
             <div
               v-else
+              v-table-double-tap="availableDetailTapOptions"
               class="available-products-grid"
             >
               <div
@@ -472,7 +515,10 @@
                 :key="product.template_id || product.phone_id"
                 class="available-product-card"
                 :class="{ 'is-added': isProductAdded(product) }"
-                @click="addProductFromAvailable(product)"
+                data-mobile-record
+                data-available-product
+                @click="!isMobile && addProductFromAvailable(product)"
+                @dblclick="availableDetailDoubleClick(product, null, $event)"
               >
                 <img
                   v-if="product.main_image"
@@ -526,21 +572,29 @@
             <draggable
               v-else
               v-model="sectionProducts"
+              v-table-double-tap="productDetailTapOptions"
               item-key="id"
-              :disabled="!canEdit"
+              :disabled="isMobile || !canEdit"
               class="products-grid"
               :animation="200"
               @end="handleDragEnd"
             >
               <template #item="{ element: product }">
-                <div class="product-card">
-                  <div
-                    v-if="canEdit"
-                    class="product-remove"
+                <div
+                  class="product-card"
+                  data-mobile-record
+                  data-section-product
+                  @dblclick="productDetailDoubleClick(product, null, $event)"
+                >
+                  <el-button
+                    v-if="!isMobile && canEdit"
+                    class="product-remove tf-button--overlay-tool tf-button--overlay-danger"
+                    title="移除商品"
+                    aria-label="移除商品"
                     @click="removeProduct(product)"
                   >
                     <i class="fas fa-times" />
-                  </div>
+                  </el-button>
                   <img
                     v-if="product.main_image && canViewField('products.product_info')"
                     :src="getImageUrl(product.main_image)"
@@ -557,7 +611,10 @@
                       ¥{{ formatAmount(product.min_price || product.sale_price) }}
                     </p>
                   </div>
-                  <div class="drag-handle">
+                  <div
+                    v-if="!isMobile"
+                    class="drag-handle"
+                  >
                     <i class="fas fa-grip-vertical" />
                   </div>
                 </div>
@@ -584,11 +641,48 @@
           </div>
         </template>
       </MobileDialog>
+      <RecordDetailDialog
+        v-model="recordVisible"
+        title="推荐区域详情"
+        :fields="recordFields"
+        :record="recordRow"
+        :has-actions="canEdit || canDelete"
+      >
+        <template #actions>
+          <el-button
+            v-if="canEdit"
+            v-permission="'h5-admin-home-sections:edit'"
+            type="primary"
+            @click.stop="runRecordAction(editSection)"
+          >
+            编辑
+          </el-button>
+          <el-button
+            v-if="canEdit"
+            v-permission="'h5-admin-home-sections:edit'"
+            @click.stop="runRecordAction(manageProducts)"
+          >
+            管理商品
+          </el-button>
+          <el-button
+            v-if="canDelete"
+            v-permission="'h5-admin-home-sections:delete'"
+            type="danger"
+            @click.stop="runRecordAction(deleteSection)"
+          >
+            删除
+          </el-button>
+        </template>
+      </RecordDetailDialog>
     </div>
   </PermissionGate>
 </template>
 
 <script setup lang="ts">
+import { useMobile } from '@/composables/mobile'
+import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
+import type { RecordDetailField } from '@/types/component'
+
 import { confirmAction } from '@/utils/message-box'
 import { ref, onMounted, onUnmounted, onActivated, computed, inject, watch } from 'vue'
 
@@ -1324,6 +1418,48 @@ onUnmounted(() => {
     clearHeaderActions()
   }
 })
+
+const { isMobile } = useMobile()
+const { detailRow: recordRow, detailVisible: recordVisible, doubleTapOptions: recordTapOptions,
+  handleRowDoubleClick: openRecordDetail, runDetailAction: runRecordAction } = useMobileTableDetail({
+  enabled: () => isMobile.value && canView.value, rows: sections, getKey: row => row.id,
+  rowSelector: '[data-mobile-record]'
+})
+const recordFields = computed<RecordDetailField[]>(() => {
+  const row = recordRow.value
+  return row ? [
+    { key: 'name', label: '区域名称', value: row.section_name, visible: canViewField('section.section_name') },
+    { key: 'key', label: '区域标识', value: row.section_key, visible: canViewField('section.section_key') },
+    { key: 'enabled', label: '状态', value: row.is_enabled ? '启用' : '停用', visible: canViewField('section.is_enabled') },
+    { key: 'sort', label: '排序', value: row.sort_order, visible: canViewField('section.sort_order') },
+    { key: 'limit', label: '商品上限', value: row.product_limit, visible: canViewField('section.product_limit') },
+    { key: 'products', label: '推荐商品', value: row.products?.map(item => `${item.brand_name} ${item.model_name}`).join('、'), visible: canViewField('products.product_info'), wide: true }
+  ] : []
+})
+
+const productDetailEnabled = computed(() => isMobile.value && canView.value && showProductsDialog.value)
+const { detailRow: availableDetailRow, detailVisible: availableDetailVisible, doubleTapOptions: availableDetailTapOptions,
+  handleRowDoubleClick: availableDetailDoubleClick, runDetailAction: availableRunAction } = useMobileTableDetail({
+  enabled: productDetailEnabled, rows: availableProducts, rowSelector: '[data-mobile-record]',
+  getKey: row => row.template_id ? `template:${row.template_id}` : row.phone_id ? `phone:${row.phone_id}` : undefined
+})
+const { detailRow: productDetailRow, detailVisible: productDetailVisible, doubleTapOptions: productDetailTapOptions,
+  handleRowDoubleClick: productDetailDoubleClick, runDetailAction: productRunAction } = useMobileTableDetail({
+  enabled: productDetailEnabled, rows: sectionProducts, rowSelector: '[data-mobile-record]', getKey: row => row.id
+})
+const productFields = (row: SearchProduct | HomeSectionProduct | null): RecordDetailField[] => {
+  const visible = canViewField('products.product_info')
+  return row ? [
+    { key: 'brand', label: '品牌', value: row.brand_name, visible },
+    { key: 'model', label: '型号', value: row.model_name, visible, wide: true },
+    { key: 'color', label: '颜色', value: row.color_name, visible },
+    { key: 'type', label: '类型', value: row.product_type === 'new' ? '全新机' : '二手机', visible },
+    { key: 'price', label: '价格', value: formatAmount('price' in row ? row.price : 'sale_price' in row ? row.min_price ?? row.sale_price : undefined), visible }
+  ] : []
+}
+const availableDetailFields = computed(() => productFields(availableDetailRow.value))
+const productDetailFields = computed(() => productFields(productDetailRow.value))
+
 </script>
 
 <style scoped lang="scss" src="./styles/home-sections/sections.scss"></style>

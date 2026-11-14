@@ -51,6 +51,12 @@
 
 工资管理主菜单应绑定 `salary_salaryview`，而不是同名的工资记录子模块 `salary_salaryrecordsview`。“我的工资” Tab 使用 `salary_mysalaryview` 授权；不能为了显示工资主菜单而授予全部工资记录或模板权限。营销文案后台绑定 `marketing_marketingmanagementview`，不能绑定公开营销页模块。
 
+## 管理写入的输入边界
+
+菜单管理服务复用 `parseInput`，名称/标题为最多100字单行文本，路径等字段最多255字，备注最多1000字可换行；排序为非负整数，父ID允许0，模块ID为正整数，状态使用明确布尔值。创建/编辑在结构检查前拒绝非法输入，排序先整份校验必填项和重复ID。Excel的ID、名称、状态与排序均校验原值，不能先 `String/Number` 洗白；整份输入预检完成后才开始写入，不将未知状态自动转为禁用。现有菜单层级、模块绑定与权限规则保持独立。
+
+回归入口为 `backend/test/admin-input.check.js`；覆盖无数据库写入的非法矩阵、整份预检及合法false/零排序，不替代生产菜单写入验收。
+
 ## 模块扫描与关联
 
 `backend/src/services/menu-module-linker.service.js` 是菜单自动关联的公共实现。模块扫描器的增量注册和全量修复均复用该服务，不另维护名称映射或 URL 匹配逻辑。

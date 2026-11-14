@@ -43,6 +43,7 @@
       class="tf-paginated-table__table-wrapper"
     >
       <el-table
+        v-table-double-tap="detailTapOptions"
         :data="tableData"
         :height="tableHeight"
         :max-height="maxHeight"
@@ -55,6 +56,7 @@
         :default-sort="defaultSort"
         @sort-change="handleSortChange"
         @selection-change="handleSelectionChange"
+        @row-dblclick="detailDoubleClick"
       >
         <!-- 选择列 -->
         <el-table-column
@@ -88,7 +90,7 @@
             :width="column.width"
             :min-width="column.minWidth"
             :fixed="column.fixed"
-            :sortable="column.sortable"
+            :sortable="column.sortable ? 'custom' : false"
             :align="column.align"
           >
             <template #default="scope">
@@ -106,7 +108,7 @@
 
         <!-- 操作列 -->
         <el-table-column
-          v-if="$slots.actions"
+          v-if="!isMobile && $slots.actions"
           label="操作"
           :width="actionsWidth || $getActionColumnWidth(2)"
           class-name="actions-column"
@@ -155,6 +157,32 @@
       :disabled="loading"
       @change="handlePaginationChange"
     />
+    <RecordDetailDialog
+      v-model="detailVisible"
+      title="记录详情"
+      :fields="detailFields"
+      :record="detailRow"
+      :has-actions="Boolean($slots.actions)"
+      @before-action="closeDetail"
+    >
+      <template #field="{ field, row }">
+        <slot
+          :name="`column-${field.key}`"
+          :row="row"
+          :column="columns.find(column => column.key === field.key)"
+          :index="row ? tableData.indexOf(row) : -1"
+        >
+          {{ field.value }}
+        </slot>
+      </template>
+      <template #actions="{ row }">
+        <slot
+          name="actions"
+          :row="row"
+          :index="tableData.indexOf(row)"
+        />
+      </template>
+    </RecordDetailDialog>
   </div>
 </template>
 
@@ -164,6 +192,8 @@ import { Search } from '@element-plus/icons-vue'
 import Pagination from './Pagination.vue'
 import TableLoadingRow from './TableLoadingRow.vue'
 import type { TableColumn } from '@/types'
+import { useMobile } from '@/composables/mobile'
+import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
 
 type TableRow = Record<string, unknown>
 type SortOrder = 'ascending' | 'descending' | null
@@ -265,7 +295,18 @@ const currentPage = ref(props.currentPage)
 const pageSize = ref(props.pageSize)
 const searchKeyword = ref('')
 const selected = ref<TableRow[]>([])
-const tableData = computed(() => props.data)
+const localSort = ref<{ prop: string; order: SortOrder } | undefined>(props.defaultSort)
+const tableData = computed(() => {
+  const sort = localSort.value
+  if (!sort?.order || props.columns.find(column => column.prop === sort.prop)?.sortable !== true) return props.data
+  const direction = sort.order === 'ascending' ? 1 : -1
+  return [...props.data].sort((left, right) => {
+    const a = left[sort.prop], b = right[sort.prop]
+    const aEmpty = a === null || a === undefined, bEmpty = b === null || b === undefined
+    if (aEmpty || bEmpty) return aEmpty ? (bEmpty ? 0 : -direction) : direction
+    return direction * (typeof a === 'number' && typeof b === 'number' ? a - b : String(a).localeCompare(String(b), 'zh-CN', { numeric: true }))
+  })
+})
 const tableHeight = computed(() => props.height)
 const normalizedRowKey = computed(() => {
   const rowKey = props.rowKey
@@ -316,8 +357,29 @@ const handleRefresh = () => {
 }
 
 const handleSortChange = (sort: { prop: string; order: SortOrder }) => {
+  localSort.value = sort
   emit('sort-change', sort)
 }
+
+const { isMobile } = useMobile()
+const fallbackRowKeys = new WeakMap<TableRow, number>()
+let nextRowKey = 0
+const { detailRow, detailVisible, doubleTapOptions: detailTapOptions, handleRowDoubleClick: detailDoubleClick, closeDetail } = useMobileTableDetail({
+  enabled: isMobile, rows: tableData,
+  getKey: row => {
+    const key = typeof props.rowKey === 'function' ? props.rowKey(row) : row[props.rowKey || 'id']
+    if (typeof key === 'string' || typeof key === 'number') return key
+    if (!fallbackRowKeys.has(row)) fallbackRowKeys.set(row, ++nextRowKey)
+    return fallbackRowKeys.get(row)
+  }
+})
+const detailFields = computed(() => {
+  const row = detailRow.value
+  return row ? props.columns.map(column => {
+    const value = getColumnValue(row, column)
+    return { key: column.key, label: column.label, value: value === null || value === undefined ? '-' : String(value), visible: true, wide: column.detailWide }
+  }) : []
+})
 
 const handleSelectionChange = (selection: TableRow[]) => {
   selected.value = selection

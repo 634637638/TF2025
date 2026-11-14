@@ -281,8 +281,7 @@
             <label class="sales-edit-field-label">序列号</label>
             <el-input
               v-model="editForm.serial_number"
-              placeholder="请输入序列号（仅字母数字）"
-              maxlength="18"
+              placeholder="请输入序列号（字母、数字、斜杠或连字符）"
               class="full-width"
               :disabled="!canEditField('serial_number')"
               @input="value => emit('serial-number-input', value)"
@@ -304,7 +303,6 @@
                 v-model="editForm.imei"
                 :class="{ 'tf-imei-input--no-imei': isNoImeiMode }"
                 :placeholder="isNoImeiMode ? '' : '请输入IMEI'"
-                :maxlength="isNoImeiMode ? 30 : 15"
                 class="full-width"
                 :disabled="!canEditField('imei')"
                 @input="value => emit('imei-input', value)"

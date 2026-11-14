@@ -2,7 +2,7 @@
 
 ## 目标
 
-规范文档用于说明正确做法，公共组件和全局样式用于提供正确实现，审计脚本用于阻止页面绕开规范。三者必须同时存在，才能做到“不符合规范就不能启动或构建”。
+规范文档用于说明正确做法，公共组件和全局样式用于提供正确实现，审计脚本用于阻止页面绕开规范。三者必须同时存在，才能做到“不符合规范就不能通过构建和发布检查”。日常启动不运行全量审计；已修复问题的正式回归检查仍须保留。
 
 页面生命周期也属于审计范围。新增路由、页面、Tab、弹窗或公共组件后，必须同步登记[前端页面与功能单元台账](page-audit-inventory.md)；删除、改名、迁移或合并后，必须在同一变更中移除或更新对应记录，并同步检查路由、菜单、权限和文档链接。代码与台账不一致时，页面变更不视为完成。
 
@@ -22,7 +22,7 @@
 npm run check:standards
 ```
 
-该命令首先运行规范覆盖审计，再运行 `check:docs`（根 AI 指令链接、文档导航、标记 TS/Vue 示例编译及已登记的规范冲突检查），随后执行时间工具、交互、表单控件、公共组件采用率、类型检查、后端安全、运行时模式、样式债务、字段一致性、Lint、权限、统一 UI 结构、TAB、按钮、表格、加载动画、空状态、数据实时性和支付方式审计。任意一项失败都会返回非零退出码，并停止后续启动或构建。检查器自身修改时另执行根目录 `npm run test:docs`，不在每次启动重复编译负例。
+该命令首先运行规范覆盖审计，再运行 `check:docs`（根 AI 指令链接、文档导航、标记 TS/Vue 示例编译及已登记的规范冲突检查），随后执行时间工具、交互、表单控件、公共组件采用率、类型检查、后端安全、运行时模式、样式债务、字段一致性、Lint、权限、统一 UI 结构、TAB、按钮、表格、加载动画、空状态、数据实时性和支付方式审计。任意一项失败都会返回非零退出码，并阻断依赖该门禁的构建或发布检查。检查器自身修改时另执行根目录 `npm run test:docs`，日常启动不运行这些审计和负例测试。
 
 时间工具审计可单独运行：
 
@@ -73,7 +73,7 @@ cd frontend
 npm run check:dialogs
 ```
 
-`check:dialogs` 登记必须保留直接 `el-dialog` 的工作台例外，并要求这些弹窗声明业务 class；未登记的直接 `el-dialog` 必须迁移到 `MobileDialog`。
+`check:dialogs` 禁止业务直接使用 `el-dialog`，统一采用 `MobileDialog`；同时扫描 Vue/TS/JS 中公共确认调用的静态文案，禁止取消或关闭表单时弹出未保存/未提交确认。动态文案和业务交互仍须正式行为测试，边界见[对话框规范](dialog-standards.md)。
 
 表格审计也可单独运行：
 
@@ -93,7 +93,7 @@ npm run check:buttons
 
 `check:buttons` 强制所有页面按操作后果声明 `primary`、`success`、`warning`、`danger`、`view`、`manage`、`finance`、`transfer`、`export` 或 `neutral` 语义。实际色值只能由 `styles/components/_buttons.scss` 定义；业务页面和表格、模态框、Tab 等公共布局文件只能读取 `--tf-button-*`，直接颜色、行内颜色和第二套兼容色板都会使审计失败。
 
-以下入口已自动执行审计：
+日常开发入口直接启动服务，不自动执行全量审计：
 
 ```bash
 # 根目录一键启动前后端
@@ -105,12 +105,23 @@ cd frontend
 npm run dev
 npm start
 
-# 前端构建
-npm run build
-npm run build:debug
 ```
 
-`frontend:raw` 和 `frontend/dev:server` 是一键启动内部使用的无重复审计入口，不作为日常开发命令。
+`frontend:raw` 和 `frontend/dev:server` 继续供一键启动编排复用。HTTPS 入口也复用日常 `dev`，仍须校验证书，但不运行全量审计。后端的必要配置、运行时资源及单实例安全检查不受影响。
+
+以下入口保留完整门禁：
+
+```bash
+# 根目录手动审计
+npm run check:standards
+
+# 前端构建及发布前检查
+npm --prefix frontend run build
+npm --prefix frontend run build:debug
+npm --prefix frontend run check:release
+```
+
+`check:coverage` 同时运行隔离的 npm 生命周期回归，验证日常启动不触发审计、构建及发布遇到审计失败会被阻断、服务参数和失败退出码正常传递。测试使用服务和审计替身，不占用真实端口或连接业务数据库。不能因为日常启动成功就把构建、类型或生产验收描述为通过。
 
 ## 新增一项规范审计
 

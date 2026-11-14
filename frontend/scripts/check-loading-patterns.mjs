@@ -8,35 +8,15 @@ const sourceRoot = fileURLToPath(new URL('../src/', import.meta.url))
 const standardsViewSource = await readFile(join(sourceRoot, 'views/standards/StandardsAuditView.vue'), 'utf8')
 const elementButtonPattern = /<el-button\b(?:(?!<el-button\b|<\/el-button>)[\s\S])*?<\/el-button>/gi
 const spinnerPattern = /<InlineLoading\b|fa-spinner|fa-spin|loading-spinner|\bis-loading\b/i
-const buttonInlineLoadingExceptions = new Map(Object.entries({
-  'views/data-optimization/page/DataCheckTab.vue': 1,
-  'views/data-optimization/page/DataImportTab.vue': 2,
-  'views/employees/EmployeesView.vue': 3,
-  'views/menu/MenuManagementView.vue': 2,
-  'views/permissions/page/ModuleFieldPermissionDialog.vue': 1,
-  'views/permissions/page/ModuleManagementView.vue': 3,
-  'views/permissions/page/RoleFieldPermissionDialog.vue': 1,
-  'views/permissions/page/RoleFormDialog.vue': 1,
-  'views/permissions/page/StoreBindingDialog.vue': 1,
-  'views/permissions/page/UserRoleAssignmentDialog.vue': 1,
-  'views/salary/page/SalaryAttendanceFormDialog.vue': 1,
-  'views/salary/page/SalaryEditPayoutDialog.vue': 1,
-  'views/salary/page/SalarySettleDialog.vue': 1,
-  'views/salary/page/SalaryTemplateFormDialog.vue': 1,
-  'views/subsidy/SubsidyView.vue': 1,
-  'views/subsidy/components/SubsidyApplyDialog.vue': 3,
-  'views/subsidy/components/SubsidyEditDialog.vue': 1
-}))
 const globalLoadingTriggerExceptions = new Map([
   ['views/standards/StandardsAuditView.vue', { count: 1, reason: '规范页演示必须调用统一全局 Loading Store' }],
-  ['views/data-optimization/page/DataCheckTab.vue', { count: 5, reason: '数据清理、批量合并和删除是明确的全局长操作；与表格查询属于不同操作，不能共用同一 Loading 反馈' }]
+  ['views/data-optimization/page/DataCheckTab.vue', { count: 4, reason: '无局部状态的单组清理、批量合并和选中删除保留全局长操作反馈；全量清理已使用表格局部 Loading' }]
 ])
 const asyncLoadingDelegationExceptions = new Map([
   ['components/ReminderHost.vue', '后台轮询提醒属于静默探测，弹窗只在有新提醒时出现，不应覆盖当前页面'],
   ['views/analytics/page/ProfitAnalytics.vue', '分析子页由 AnalyticsView 统一传入 loading，并由父级搜索区域承载反馈'],
   ['views/salary/SalaryView.vue', '工资页由各 Tab 和详情弹窗分别承载模板、员工、发放、考勤和销售明细 Loading']
 ])
-const buttonExceptionReason = '遗留操作按钮内部仍使用 InlineLoading；迁移为 el-button :loading 后下调此数量'
 
 const collectVueFiles = async (directory) => {
   const entries = await readdir(directory, { withFileTypes: true })
@@ -201,13 +181,8 @@ for (const file of files) {
     }
   }
 
-  const buttonExceptionCount = [...template.matchAll(elementButtonPattern)]
-    .filter(match => spinnerPattern.test(match[0])).length
-  const buttonExceptionLimit = buttonInlineLoadingExceptions.get(filePath)
-  if (buttonExceptionCount > 0 && buttonExceptionLimit === undefined) {
-    violations.push(`${filePath} 新增 el-button 内联 spinner，改用 :loading 或登记迁移例外`)
-  } else if (buttonExceptionCount > (buttonExceptionLimit || 0)) {
-    violations.push(`${filePath} el-button 内联 spinner 从 ${buttonExceptionLimit} 增加到 ${buttonExceptionCount}`)
+  if ([...template.matchAll(elementButtonPattern)].some(match => spinnerPattern.test(match[0]))) {
+    violations.push(`${filePath} el-button 内联 spinner 已清零，必须使用 :loading`)
   }
 
   const directiveCount = countMatches(template, /\bv-loading(?:\s*=|(?=[\s/>]))/g)
@@ -271,22 +246,6 @@ for (const file of scriptFiles) {
   if (/(?:innerHTML|insertAdjacentHTML)\s*(?:=|\()[^;]{0,240}(?:加载中|正在加载|Loading)/i.test(source)
     || /textContent\s*=\s*['"`][^'"`]*(?:加载中|正在加载|Loading)/i.test(source)) {
     violations.push(`${filePath} 禁止用脚本字符串生成私有加载反馈`)
-  }
-}
-
-for (const [filePath, limit] of buttonInlineLoadingExceptions) {
-  const fullPath = join(sourceRoot, filePath)
-  try {
-    const source = await readFile(fullPath, 'utf8')
-    const { descriptor, errors } = parse(source, { filename: fullPath })
-    if (errors.length > 0) throw new Error('无法解析 Vue SFC')
-    const template = descriptor.template?.content || ''
-    const count = [...template.matchAll(elementButtonPattern)].filter(match => spinnerPattern.test(match[0])).length
-    if (count > limit) violations.push(`${filePath} 按钮 loading 例外登记为 ${limit}，实际 ${count}`)
-    if (count === 0) violations.push(`${filePath} 按钮 loading 例外已无实际用量，请删除过期登记`)
-    if (!buttonExceptionReason) violations.push(`${filePath} 按钮 loading 例外必须记录迁移原因`)
-  } catch {
-    violations.push(`按钮 loading 例外登记指向不存在的文件：${filePath}`)
   }
 }
 

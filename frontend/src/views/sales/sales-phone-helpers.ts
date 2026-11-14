@@ -1,5 +1,6 @@
 import type { Phone } from '@/types'
-import { generateProductPlaceholder } from '@/utils/format'
+import type { RecordDetailField } from '@/types/component'
+import { formatAmount, generateProductPlaceholder } from '@/utils/format'
 import { logger } from '@/utils/logger'
 import { TIME_FORMATS, TimeUtil } from '@/utils/time'
 import {
@@ -19,6 +20,27 @@ type SalesStatusPhone = Omit<Partial<Phone>, 'status'> & {
 const placeholderCache = new Map<string, string>()
 
 export const getNewConditionLabel = (isNew: boolean): string => isNew ? '全新' : '二手'
+
+/** 图文和表格模式共用同一详情字段、权限及长字段声明。 */
+export const getSalesPhoneDetailFields = (
+  row: Phone | null,
+  canViewField: (field: string) => boolean,
+  canViewPrice: boolean,
+  formatDate: (value?: string) => string
+): RecordDetailField[] => row ? [
+  { key: 'supplier_name', label: '供应商', value: row.supplier_name, visible: canViewField('supplier_name') },
+  { key: 'store_name', label: '店铺', value: row.store_name, visible: canViewField('store_name') },
+  { key: 'brand', label: '品牌', value: row.brand, visible: canViewField('brand') },
+  { key: 'model', label: '型号', value: row.model, visible: canViewField('model') },
+  { key: 'color', label: '颜色', value: row.color, visible: canViewField('color') },
+  { key: 'memory', label: '内存', value: row.memory, visible: canViewField('memory') },
+  { key: 'serial_number', label: '序列号', value: row.serial_number, visible: canViewField('serial_number'), wide: true },
+  { key: 'imei', label: 'IMEI', value: row.imei, visible: canViewField('imei'), wide: true },
+  { key: 'inventory_operator_name', label: '入库员', value: row.inventory_operator_name, visible: canViewField('inventory_operator_name') },
+  { key: 'condition', label: '成色', value: getNewConditionLabel(Boolean(row.is_new)), visible: canViewField('condition') },
+  { key: 'inventory_time', label: '入库时间', value: formatDate(row.inventory_time), visible: canViewField('inventory_time'), wide: true },
+  { key: 'purchase_cost', label: '入库价格', value: formatAmount(row.purchase_cost ?? 0), visible: canViewPrice }
+] : []
 
 export const getSaleStatusClass = (phone: SalesStatusPhone): string => {
   const status = getEffectivePhoneStatus(phone)

@@ -23,17 +23,16 @@
         <el-form
           ref="verifyFormRef"
           :model="form.values"
-          :rules="verifyRules"
           label-position="top"
         >
           <el-form-item
             label="手机号"
             prop="customer_phone"
+            :error="form.errors.customer_phone"
           >
             <el-input
               :model-value="form.values.customer_phone"
               type="tel"
-              maxlength="11"
               placeholder="请输入手机号"
               size="large"
               @update:model-value="setPhoneFieldValue($event)"
@@ -48,6 +47,7 @@
           <el-form-item
             label="姓名"
             prop="customer_name"
+            :error="form.errors.customer_name"
           >
             <el-input
               :model-value="form.values.customer_name"
@@ -265,22 +265,13 @@ const { form, validate, setFieldValue, reset } = useForm({
     ],
     customer_name: [
       ValidationRules.required('请输入姓名'),
-      ValidationRules.minLength(2, '姓名至少2个字符')
+      ValidationRules.minLength(2, '姓名至少2个字符'),
+      ValidationRules.personName(50)
     ]
   }
 })
 
-// 转换为 el-form 格式的 rules
-const verifyRules = computed(() => {
-  const rules: Record<string, Array<{ required: boolean, message: string, trigger: string }>> = {}
-  if (form.errors.customer_phone) {
-    rules.customer_phone = [{ required: true, message: form.errors.customer_phone, trigger: 'blur' }]
-  }
-  if (form.errors.customer_name) {
-    rules.customer_name = [{ required: true, message: form.errors.customer_name, trigger: 'blur' }]
-  }
-  return rules
-})
+
 
 // 订单数据
 const orders = ref<PublicOrder[]>([])
@@ -350,12 +341,12 @@ const loadUserOrders = async () => {
 
 // 处理未登录用户验证
 const handleVerify = async () => {
+  if (verifying.value) return
   if (!verifyFormRef.value) return
 
+  verifying.value = true
   try {
-    await verifyFormRef.value.validate()
-
-    verifying.value = true
+    if (!await validate()) return
     const normalizedPhone = normalizePhoneDigits(form.values.customer_phone)
 
     // 查询订单

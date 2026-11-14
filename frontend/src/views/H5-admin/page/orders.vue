@@ -229,10 +229,12 @@
         shadow="never"
       >
         <el-table
+          v-table-double-tap="mobileDetailTapOptions"
           v-tf-loading="{ active: loading, text: '正在刷新商城订单...' }"
           :data="orders"
           class="data-table w-full"
           :border="true"
+          @row-dblclick="mobileDetailDoubleClick"
         >
           <template #empty>
             <TableLoadingRow
@@ -297,7 +299,7 @@
             </template>
           </el-table-column>
           <el-table-column
-            v-if="showOrderActionField"
+            v-if="!isMobile && showOrderActionField"
             label="操作"
             :width="orderActionColumnWidth"
             class-name="actions-column"
@@ -422,165 +424,7 @@
           </el-table-column>
         </el-table>
 
-        <div
-          v-tf-loading="{ active: loading, text: '正在刷新商城订单...' }"
-          class="mobile-orders-list"
-        >
-          <TableLoadingRow
-            v-if="loading && orders.length === 0"
-            mode="block"
-            text="正在读取商城订单..."
-          />
-          <DataEmptyState
-            v-else-if="orders.length === 0"
-            description="暂无订单"
-          />
-          <div
-            v-for="row in orders"
-            v-else
-            :key="row.id"
-            class="mobile-order-card"
-          >
-            <div class="mobile-order-card__head">
-              <div class="mobile-order-card__number">
-                {{ row.order_number }}
-              </div>
-              <el-tag
-                :type="getStatusType(row.status)"
-                size="small"
-              >
-                {{ getStatusText(row.status) }}
-              </el-tag>
-            </div>
-            <div class="mobile-order-card__body">
-              <div class="mobile-order-card__item">
-                <span>客户</span>
-                <strong>{{ row.customer_name || '-' }}</strong>
-              </div>
-              <div class="mobile-order-card__item">
-                <span>电话</span>
-                <strong>{{ row.customer_phone || '-' }}</strong>
-              </div>
-              <div class="mobile-order-card__item">
-                <span>金额</span>
-                <strong class="amount">¥{{ formatAmount(row.total_amount) }}</strong>
-              </div>
-              <div class="mobile-order-card__item">
-                <span>下单</span>
-                <strong>{{ formatTime(row.created_at) }}</strong>
-              </div>
-            </div>
-            <div
-              v-if="showOrderActionField"
-              class="mobile-order-card__actions"
-            >
-              <template v-if="row.status === 'pending'">
-                <el-button
-                  size="small"
-                  type="info"
-                  plain
-                  @click="viewOrder(row)"
-                >
-                  查看
-                </el-button>
-                <el-button
-                  v-if="canEdit"
-                  size="small"
-                  type="danger"
-                  plain
-                  @click="cancelOrder(row)"
-                >
-                  取消
-                </el-button>
-              </template>
-              <template v-if="row.status === 'paid'">
-                <el-button
-                  size="small"
-                  type="info"
-                  plain
-                  @click="viewOrder(row)"
-                >
-                  查看
-                </el-button>
-                <el-button
-                  v-if="canEdit"
-                  size="small"
-                  type="success"
-                  plain
-                  @click="confirmOrder(row)"
-                >
-                  通过
-                </el-button>
-                <el-button
-                  v-if="canEdit"
-                  size="small"
-                  type="warning"
-                  plain
-                  @click="rejectOrder(row)"
-                >
-                  拒绝
-                </el-button>
-                <el-button
-                  v-if="canEdit"
-                  size="small"
-                  type="danger"
-                  plain
-                  @click="cancelOrder(row)"
-                >
-                  取消
-                </el-button>
-              </template>
-              <template v-if="row.status === 'confirmed'">
-                <el-button
-                  size="small"
-                  type="info"
-                  plain
-                  @click="viewOrder(row)"
-                >
-                  查看
-                </el-button>
-                <el-button
-                  v-if="canEdit"
-                  size="small"
-                  type="primary"
-                  plain
-                  @click="shipOrder(row)"
-                >
-                  发货
-                </el-button>
-              </template>
-              <template v-if="row.status === 'shipped'">
-                <el-button
-                  size="small"
-                  type="info"
-                  plain
-                  @click="viewOrder(row)"
-                >
-                  查看
-                </el-button>
-                <el-button
-                  v-if="canEdit"
-                  size="small"
-                  type="success"
-                  plain
-                  @click="completeOrder(row)"
-                >
-                  完成
-                </el-button>
-              </template>
-              <template v-if="['completed', 'cancelled'].includes(row.status)">
-                <el-button
-                  size="small"
-                  type="info"
-                  plain
-                  @click="viewOrder(row)"
-                >
-                  查看
-                </el-button>
-              </template>
-            </div>
-          </div>
-        </div>
+
 
         <!-- 分页 -->
         <div
@@ -658,7 +502,7 @@
             <div class="section-title">
               客户信息
             </div>
-            <div class="info-grid">
+            <div class="info-grid tf-detail-grid">
               <div class="info-item">
                 <label>客户姓名</label>
                 <span>{{ currentOrder.customer_name }}</span>
@@ -669,7 +513,7 @@
               </div>
               <div
                 v-if="currentOrder.customer_address"
-                class="info-item full-width"
+                class="info-item full-width tf-detail-field--wide"
               >
                 <label>收货地址</label>
                 <span>{{ currentOrder.customer_address }}</span>
@@ -746,7 +590,7 @@
             <div class="section-title">
               物流信息
             </div>
-            <div class="shipping-info">
+            <div class="shipping-info tf-detail-grid">
               <div class="info-item">
                 <label>物流公司</label>
                 <span>{{ currentOrder.shipping_info.company || '-' }}</span>
@@ -764,7 +608,7 @@
               </div>
               <div
                 v-if="currentOrder.shipping_info.remarks"
-                class="info-item"
+                class="info-item tf-detail-field--wide"
               >
                 <label>发货备注</label>
                 <span>{{ currentOrder.shipping_info.remarks }}</span>
@@ -780,7 +624,7 @@
             <div class="section-title">
               支付信息
             </div>
-            <div class="payment-info">
+            <div class="payment-info tf-detail-grid">
               <div
                 v-if="currentOrder.paid_at"
                 class="info-item"
@@ -844,18 +688,22 @@
           </div>
         </div>
 
-        <template #footer>
+        <template
+          v-if="currentOrder && canEdit && ['pending','paid','confirmed','shipped'].includes(currentOrder.status)"
+          #footer
+        >
           <div
             v-if="currentOrder"
             class="tf-dialog-actions dialog-footer"
           >
-            <!-- 待支付状态：无操作 -->
+            <!-- 待支付订单可取消 -->
             <template v-if="currentOrder.status === 'pending'">
               <el-button
-                type="default"
-                @click="showDetailDialog = false"
+                v-permission="'h5-orders:edit'"
+                type="danger"
+                @click.stop="cancelOrder(currentOrder)"
               >
-                关闭
+                取消订单
               </el-button>
             </template>
 
@@ -881,12 +729,6 @@
             <!-- 待发货状态：发货 -->
             <template v-else-if="currentOrder.status === 'confirmed'">
               <el-button
-                type="default"
-                @click="showDetailDialog = false"
-              >
-                关闭
-              </el-button>
-              <el-button
                 v-if="canEdit"
                 type="primary"
                 @click="shipOrder(currentOrder)"
@@ -898,27 +740,11 @@
             <!-- 已发货状态：完成订单 -->
             <template v-else-if="currentOrder.status === 'shipped'">
               <el-button
-                type="default"
-                @click="showDetailDialog = false"
-              >
-                关闭
-              </el-button>
-              <el-button
                 v-if="canEdit"
                 type="success"
                 @click="completeOrder(currentOrder)"
               >
                 完成订单
-              </el-button>
-            </template>
-
-            <!-- 已完成/已取消状态：只显示关闭 -->
-            <template v-else>
-              <el-button
-                type="primary"
-                @click="showDetailDialog = false"
-              >
-                关闭
               </el-button>
             </template>
           </div>
@@ -943,7 +769,7 @@
         <el-form
           :model="shipForm"
           label-width="100px"
-          class="h5-order-action-form"
+          class="h5-order-action-form tf-form-layout tf-form-grid"
         >
           <el-form-item label="物流公司">
             <el-input
@@ -957,7 +783,10 @@
               placeholder="请输入物流单号"
             />
           </el-form-item>
-          <el-form-item label="备注">
+          <el-form-item
+            class="tf-form-field--wide"
+            label="备注"
+          >
             <el-input
               v-model="shipForm.remarks"
               class="tf-textarea"
@@ -999,9 +828,12 @@
         <el-form
           :model="completeForm"
           label-width="100px"
-          class="h5-order-action-form"
+          class="h5-order-action-form tf-form-layout tf-form-grid"
         >
-          <el-form-item label="备注">
+          <el-form-item
+            class="tf-form-field--wide"
+            label="备注"
+          >
             <el-input
               v-model="completeForm.remarks"
               class="tf-textarea"
@@ -1043,9 +875,10 @@
         <el-form
           :model="cancelForm"
           label-width="100px"
-          class="h5-order-action-form"
+          class="h5-order-action-form tf-form-layout tf-form-grid"
         >
           <el-form-item
+            class="tf-form-field--wide"
             label="取消原因"
             required
           >
@@ -1082,6 +915,8 @@
 </template>
 
 <script setup lang="ts">
+import { useMobile } from '@/composables/mobile'
+import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
 import { TIME_FORMATS } from '@/utils/time'
 import { confirmAction } from '@/utils/message-box'
 import { computed, ref, reactive, onMounted, onUnmounted, onActivated, inject, watch } from 'vue'
@@ -1756,6 +1591,10 @@ onUnmounted(() => {
   if (clearHeaderActions) {
     clearHeaderActions()
   }
+})
+const { isMobile } = useMobile()
+const { doubleTapOptions: mobileDetailTapOptions, handleRowDoubleClick: mobileDetailDoubleClick } = useMobileTableDetail<OrderRecord>({
+  enabled: () => isMobile.value && canView.value, rows: orders, getKey: row => row.id, onOpen: viewOrder
 })
 </script>
 

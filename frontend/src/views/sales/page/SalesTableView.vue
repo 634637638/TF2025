@@ -2,6 +2,7 @@
   <div class="sales-view-panel">
     <div class="table-responsive">
       <el-table
+        v-table-double-tap="mobileDetailTapOptions"
         v-tf-loading="{ active: loading, text: '正在刷新可售设备...' }"
         :data="phones"
         border
@@ -11,6 +12,7 @@
         :fit="true"
         row-key="id"
         :row-class-name="getRowClassName"
+        @row-dblclick="mobileDetailDoubleClick"
       >
         <el-table-column
           v-if="batchMode || operationMode"
@@ -173,21 +175,21 @@
           </template>
         </el-table-column>
         <el-table-column
-          v-if="showActionColumn"
+          v-if="!isMobile && (showActionColumn)"
           label="操作"
           :width="actionColumnWidth"
           align="center"
           class-name="actions-column"
         >
-          <template #default="{ row: phone }">
+          <template #default="{ row: row }">
             <div class="action-buttons">
               <el-button
                 v-if="canSell"
                 type="success"
                 size="small"
-                :disabled="!isPhoneSaleActionAvailable(phone)"
-                :title="isPhoneSaleActionAvailable(phone) ? '销售出库' : '当前状态不可销售出库'"
-                @click.stop="isPhoneSaleActionAvailable(phone) && emit('sale', phone)"
+                :disabled="!isPhoneSaleActionAvailable(row)"
+                :title="isPhoneSaleActionAvailable(row) ? '销售出库' : '当前状态不可销售出库'"
+                @click.stop="isPhoneSaleActionAvailable(row) && emit('sale', row)"
               >
                 <i class="fas fa-shopping-cart" />
                 出库
@@ -197,7 +199,7 @@
                 type="primary"
                 size="small"
                 title="编辑设备信息"
-                @click.stop="emit('edit', phone)"
+                @click.stop="emit('edit', row)"
               >
                 <i class="fas fa-edit" />
                 编辑
@@ -207,7 +209,7 @@
                 type="danger"
                 size="small"
                 title="删除设备"
-                @click.stop="emit('delete', phone)"
+                @click.stop="emit('delete', row)"
               >
                 <i class="fas fa-trash" />
                 删除
@@ -239,11 +241,51 @@
           </DataEmptyState>
         </template>
       </el-table>
+      <RecordDetailDialog
+        v-model="mobileDetailVisible"
+        title="设备详情"
+        :record="mobileDetailRow"
+        :fields="mobileDetailFields"
+        :has-actions="!batchMode && !operationMode && (canSell || canEdit || canDelete)"
+      >
+        <template #actions="{ row }">
+          <el-button
+            v-if="canSell"
+            type="success"
+            :disabled="!isPhoneSaleActionAvailable(row)"
+            :title="isPhoneSaleActionAvailable(row) ? '销售出库' : '当前状态不可销售出库'"
+            @click.stop="mobileDetailRunAction(() => isPhoneSaleActionAvailable(row) && emit('sale', row))"
+          >
+            <i class="fas fa-shopping-cart" />
+            出库
+          </el-button>
+          <el-button
+            v-if="canEdit"
+            type="primary"
+            title="编辑设备信息"
+            @click.stop="mobileDetailRunAction(() => emit('edit', row))"
+          >
+            <i class="fas fa-edit" />
+            编辑
+          </el-button>
+          <el-button
+            v-if="canDelete"
+            type="danger"
+            title="删除设备"
+            @click.stop="mobileDetailRunAction(() => emit('delete', row))"
+          >
+            <i class="fas fa-trash" />
+            删除
+          </el-button>
+        </template>
+      </RecordDetailDialog>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { useMobile } from '@/composables/mobile'
+import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
 import { computed } from 'vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import type { Phone } from '@/types'
@@ -253,6 +295,7 @@ import { shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import {
   formatSalesDate as formatDate,
   getNewConditionLabel,
+  getSalesPhoneDetailFields,
   getSaleStatusClass,
   getSaleStatusLabel,
   isPhoneSaleActionAvailable
@@ -333,6 +376,13 @@ const handleSelectAllChange = (value: boolean | string | number) => {
   emit('update:select-all', Boolean(value))
   emit('toggle-select-all')
 }
+
+const { isMobile } = useMobile()
+const { detailRow: mobileDetailRow, detailVisible: mobileDetailVisible, doubleTapOptions: mobileDetailTapOptions, handleRowDoubleClick: mobileDetailDoubleClick, runDetailAction: mobileDetailRunAction } = useMobileTableDetail<Phone>({
+  enabled: () => isMobile.value && !props.batchMode && !props.operationMode, rows: () => props.phones, getKey: row => row.id
+})
+const mobileDetailFields = computed(() => getSalesPhoneDetailFields(mobileDetailRow.value, props.canViewField, props.canViewPrice, formatDate))
+
 </script>
 
 <style scoped lang="scss" src="../styles/sales-table-view.scss"></style>

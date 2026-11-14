@@ -1,6 +1,7 @@
 'use strict'
 
 const BaseService = require('../core/base/base.service')
+const { parseRepairInput } = require('../utils/repair-input')
 
 const REPAIR_TIME_PATTERN = /^\d{4}-\d{2}-\d{2}(?:[ T]\d{2}:\d{2}(?::\d{2})?)?$/
 
@@ -33,6 +34,7 @@ class RepairUpdateService extends BaseService {
   }
 
   async buildUpdate(body = {}) {
+    body = parseRepairInput(body)
     const fields = []
     const values = []
     const add = (field, value) => {

@@ -26,7 +26,7 @@ test('商城模板基础选项调用统一资源路由', () => {
   const referenceOptions = fs.readFileSync(path.join(repoRoot, 'frontend/src/services/reference-options.ts'), 'utf8')
   const baseDataApi = fs.readFileSync(path.join(repoRoot, 'frontend/src/api/base-data.ts'), 'utf8')
 
-  assert.match(referenceOptions, /export const getTemplateBrands[\s\S]*?'\/brands\?all=true'/)
+  assert.match(referenceOptions, /export const getTemplateBrands[\s\S]*?'\/brands\?all=true&business_scope=phone'/)
   assert.match(referenceOptions, /export const getModels = \(options: ModelOptionsParams = \{\}\)/)
   assert.match(referenceOptions, /export const getTemplateColors = getCachedColors/)
   assert.match(referenceOptions, /export const getTemplateMemories = getCachedMemories/)

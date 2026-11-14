@@ -1,3 +1,4 @@
+import RecordDetailDialog from '@/components/RecordDetailDialog.vue'
 import { computed, defineComponent, h, inject, provide, type PropType, type Ref, type SetupContext } from 'vue'
 import { ElInput, ElInputNumber } from 'element-plus'
 import { flushPromises, shallowMount } from '@vue/test-utils'
@@ -10,7 +11,8 @@ import type { Brand } from '@/types'
 
 const mocks = vi.hoisted(() => ({
   get: vi.fn(), put: vi.fn(), post: vi.fn(), success: vi.fn(), warning: vi.fn(), failure: vi.fn(),
-  error: vi.fn(), handleApiError: vi.fn(), confirm: vi.fn(), mobile: false
+  error: vi.fn(), handleApiError: vi.fn(), confirm: vi.fn(), loading: vi.fn(() => vi.fn()), mobile: false,
+  hiddenFields: [] as string[]
 }))
 vi.mock('@/utils/unified-api', () => ({ default: mocks, unifiedApi: mocks }))
 vi.mock('@/composables/useNotification', () => ({ useNotification: () => mocks }))
@@ -19,7 +21,7 @@ vi.mock('@/composables/usePagePermissions', () => ({ usePagePermissions: () => (
   canView: computed(() => true), canCreate: computed(() => true), canEdit: computed(() => true), canDelete: computed(() => true)
 }) }))
 vi.mock('@/composables/useFieldPermissions', () => ({
-  fieldPermissions: { init: vi.fn().mockResolvedValue(undefined), isFieldVisible: () => true },
+  fieldPermissions: { init: vi.fn().mockResolvedValue(undefined), isFieldVisible: (_module: string, field: string) => !mocks.hiddenFields.includes(field) },
   shouldShowActionColumn: () => true
 }))
 vi.mock('@/composables/mobile', () => ({ useMobile: () => ({ isMobile: computed(() => mocks.mobile) }) }))
@@ -61,7 +63,7 @@ const Input = {
 }
 const Select = {
   props: ['modelValue'], emits: ['update:modelValue', 'change'],
-  template: '<select :value="modelValue" @change="$emit(\'update:modelValue\', Number($event.target.value)); $emit(\'change\')"><option value="" /><option value="1">品牌</option></select>'
+  template: '<select :value="modelValue" @change="$emit(\'update:modelValue\', [\'all\',\'phone\',\'accessory\',\'both\'].includes($event.target.value) ? $event.target.value : Number($event.target.value)); $emit(\'change\')"><option value="" /><option value="1">品牌</option><option value="all">全部</option><option value="phone">手机</option><option value="accessory">配件</option><option value="both">两者</option></select>'
 }
 const Search = { template: '<div><slot name="primary" /><slot /><button class="search" @click="$emit(\'search\')">搜索</button></div>' }
 const Pagination = { name: 'Pagination', emits: ['change'], template: '<div />' }
@@ -77,9 +79,9 @@ let storedRows: (Brand & { size: string; brand_id: number })[]
 const render = async (view: typeof BrandsView, realInput = false) => {
   const wrapper = shallowMount(view, {
     global: {
-      components: { ElInput },
+      components: { ElInput, RecordDetailDialog },
       mocks: { $getNumberColumnWidth: () => 70, $getActionColumnWidth: () => 130 },
-      directives: { permission: {}, 'tf-loading': {} },
+      directives: { permission: {}, 'tf-loading': {}, 'table-double-tap': {} },
       stubs: { PermissionGate: Slot, PageHeader: Slot, ElTable: Table, ElTableColumn: Column,
         ElInputNumber: realInput ? ElInputNumber : InputNumber, ElInput: realInput ? false : Input, ElSelect: Select, UnifiedSearchPanel: Search,
         Pagination, MobileDialog: Dialog, ElButton: Button, ElForm: Slot, ElFormItem: FormItem,
@@ -98,6 +100,7 @@ const render = async (view: typeof BrandsView, realInput = false) => {
 beforeEach(() => {
   vi.clearAllMocks()
   mocks.mobile = false
+  mocks.hiddenFields = []
   storedRows = [45, 60, 90].map((id, index) => ({ id, name: `记录${index}`, size: `${id}GB`, sort_order: index === 2 ? 60 : 45, brand_id: 1 }))
   mocks.get.mockImplementation(async (url: string, config?: { params?: { page?: number; page_size?: number } }) => {
     if (url.includes('stats')) return { success: true, data: {} }
@@ -175,21 +178,21 @@ describe.each([
     })
   })
 
-  it('编辑记录取消仍保留未保存确认，拒绝关闭时保留内容', async () => {
+  it.each(['取消', '关闭', 'Escape'])('编辑记录%s直接关闭，重开恢复原记录且不写入', async action => {
     const wrapper = await render(view)
-    await wrapper.findAll('button').find(item => item.text() === '编辑')!.trigger('click')
+    const edit = () => wrapper.findAll('button').find(item => item.text() === '编辑')!.trigger('click')
+    await edit()
+    const original = (wrapper.find('.dialog input:not([type="number"])').element as HTMLInputElement).value
     await wrapper.find('.dialog input:not([type="number"])').setValue(domain === 'memories' ? '8+128GB' : '编辑草稿')
-    mocks.confirm.mockResolvedValueOnce(false)
-    await wrapper.findAll('.dialog button').find(item => item.text() === '取消')!.trigger('click')
+    if (action === 'Escape') await wrapper.find('.dialog').trigger('keydown', { key: 'Escape' })
+    else await wrapper.findAll('.dialog button').find(item => item.text() === action)!.trigger('click')
     await flushPromises()
-    expect(mocks.confirm).toHaveBeenCalledOnce()
-    expect(wrapper.find('.dialog').exists()).toBe(true)
-    expect(mocks.put).not.toHaveBeenCalled()
-    mocks.confirm.mockResolvedValueOnce(true)
-    await wrapper.find('.dialog button[aria-label="关闭"]').trigger('click')
-    await flushPromises()
-    expect(mocks.confirm).toHaveBeenCalledTimes(2)
+    expect(mocks.confirm).not.toHaveBeenCalled()
     expect(wrapper.find('.dialog').exists()).toBe(false)
+    expect(mocks.put).not.toHaveBeenCalled()
+    expect(mocks.post).not.toHaveBeenCalled()
+    await edit()
+    expect((wrapper.find('.dialog input:not([type="number"])').element as HTMLInputElement).value).toBe(original)
   })
 })
 
@@ -199,6 +202,47 @@ it('新增型号弹窗使用“型号”标签和输入提示', async () => {
   expect(wrapper.find('.dialog').text()).not.toContain('型号名称')
   expect(wrapper.find('.dialog input[placeholder="请输入型号"]').exists()).toBe(true)
   expect(wrapper.findAll('.dialog label').some(item => item.text() === '型号')).toBe(true)
+})
+
+it('品牌管理查询全部业务，新增可设置配件范围，取消编辑范围直接关闭且不保存', async () => {
+  const wrapper = await render(BrandsView)
+  expect(mocks.get).toHaveBeenCalledWith('/brands', expect.objectContaining({ params: expect.objectContaining({ business_scope: 'all' }) }))
+  await wrapper.find('select[placeholder="业务范围"]').setValue('accessory')
+  await flushPromises()
+  expect(mocks.get).toHaveBeenCalledWith('/brands', expect.objectContaining({ params: expect.objectContaining({ business_scope: 'accessory' }) }))
+  await wrapper.findAll('button').find(item => item.text() === '新增')!.trigger('click')
+  await wrapper.find('.dialog input[placeholder="请输入品牌名称"]').setValue('配件品牌')
+  await wrapper.find('.dialog select[placeholder="选择业务范围"]').setValue('accessory')
+  mocks.post.mockResolvedValueOnce({ success: true })
+  await wrapper.findAll('.dialog button').find(item => item.text().includes('创建'))!.trigger('click')
+  await flushPromises()
+  expect(mocks.post).toHaveBeenCalledWith('/brands', { name: '配件品牌', status: 1, sort_order: 0, business_scope: 'accessory' }, { showError: false })
+  await wrapper.findAll('button').find(item => item.text() === '编辑')!.trigger('click')
+  await wrapper.find('.dialog select[placeholder="选择业务范围"]').setValue('phone')
+  await wrapper.findAll('.dialog button').find(item => item.text() === '取消')!.trigger('click')
+  await flushPromises()
+  expect(mocks.confirm).not.toHaveBeenCalled()
+  expect(wrapper.find('.dialog').exists()).toBe(false)
+  expect(mocks.put).not.toHaveBeenCalled()
+  await wrapper.findAll('button').find(item => item.text() === '编辑')!.trigger('click')
+  await wrapper.find('.dialog select[placeholder="选择业务范围"]').setValue('phone')
+  mocks.put.mockResolvedValueOnce({ success: true })
+  await wrapper.findAll('.dialog button').find(item => item.text().includes('更新'))!.trigger('click')
+  await flushPromises()
+  expect(mocks.put).toHaveBeenCalledWith('/brands/45', expect.objectContaining({ business_scope: 'phone' }), { showError: false })
+})
+
+it('隐藏品牌业务范围时不显示控件且新增不提交隐藏字段', async () => {
+  mocks.hiddenFields = ['brand.business_scope']
+  const wrapper = await render(BrandsView)
+  expect(wrapper.find('select[placeholder="业务范围"]').exists()).toBe(false)
+  await wrapper.findAll('button').find(item => item.text() === '新增')!.trigger('click')
+  expect(wrapper.find('.dialog select[placeholder="选择业务范围"]').exists()).toBe(false)
+  await wrapper.find('.dialog input[placeholder="请输入品牌名称"]').setValue('配件品牌')
+  mocks.post.mockResolvedValueOnce({ success: true })
+  await wrapper.findAll('.dialog button').find(item => item.text().includes('创建'))!.trigger('click')
+  await flushPromises()
+  expect(mocks.post.mock.calls.at(-1)?.[1]).not.toHaveProperty('business_scope')
 })
 
 it('真实 Element 数字控件在保存失败后恢复原值并允许再次修改', async () => {

@@ -727,6 +727,8 @@ const PERMISSION_ACTIONS = new Set([
   'export',
   'import',
   'sell',
+  'gift',
+  'transfer',
   'sync',
   'match',
   'deliver',

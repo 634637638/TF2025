@@ -129,9 +129,7 @@
   }
 
   .dialog-header-form {
-    grid-template-columns: 1fr;
-    gap: 12px;
-    margin-bottom: 12px;
+    margin-bottom: var(--tf-space-3);
   }
 
   .header-form-item {

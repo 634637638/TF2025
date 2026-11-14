@@ -6,10 +6,11 @@ const { normalizeDateTime } = require('../utils/time')
 const { hasColumn } = require('./schema-inspector.service')
 const { generateMemberNumber } = require('../utils/member-number')
 const { getCustomerPointsConfig, reconcileCustomerPointsForSale } = require('./customer-points.service')
-const log = require('../utils/log')
+const { validateSalePayment } = require('../utils/sale-payment')
 
 const rejected = (status, message) => ({ status, body: { success: false, message } })
 const abort = (status, message) => Object.assign(new Error(message), { saleResult: rejected(status, message) })
+const { validId, moneyCents } = require('../utils/sale-input')
 
 class SalesPhoneService {
   constructor({
@@ -20,8 +21,7 @@ class SalesPhoneService {
     inspectColumn = hasColumn,
     createMemberNumber = generateMemberNumber,
     getPointsConfig = getCustomerPointsConfig,
-    reconcilePoints = reconcileCustomerPointsForSale,
-    logger = log
+    reconcilePoints = reconcileCustomerPointsForSale
   } = {}) {
     this.repository = repository
     this.normalizeDate = normalizeDate
@@ -31,10 +31,30 @@ class SalesPhoneService {
     this.createMemberNumber = createMemberNumber
     this.getPointsConfig = getPointsConfig
     this.reconcilePoints = reconcilePoints
-    this.logger = logger
   }
 
-  async sell({ body = {}, userId }) {
+  /** 由调用方的销售事务管理客户资料，手机与商品结算复用同一入口。 */
+  async resolveCustomer(connection, customerInfo) {
+    const existing = await this.repository.findCustomerByPhone(connection, customerInfo.phone)
+    if (existing) {
+      await this.repository.updateCustomer(connection, {
+        name: customerInfo.name, appleId: customerInfo.apple_id || null, customerId: existing.id
+      })
+      return existing.id
+    }
+    const memberNumber = await this.createMemberNumber({ connection })
+    return this.repository.createCustomer(connection, {
+      name: customerInfo.name, phone: customerInfo.phone, appleId: customerInfo.apple_id || null, memberNumber
+    })
+  }
+
+  async accountSalePoints({ connection, saleId, customerId, salePrice, isNew, config }) {
+    return this.reconcilePoints({ executor: connection, saleId, customerId, saleType: 'retail',
+      salePrice, isNew, config, initialize: true })
+  }
+
+  async sell({ body = {}, userId, connection: transactionConnection, pointsConfig: transactionPointsConfig, deferPoints = false }) {
+    if (deferPoints && !transactionConnection) throw new Error('延迟积分必须使用共同结算事务')
     const {
       phone_id: phoneId,
       phones,
@@ -54,13 +74,24 @@ class SalesPhoneService {
     const saleTimeValue = this.normalizeDate(saleTime, false)
     if (!saleTimeValue) return { ...rejected(400, '销售时间格式无效'), apiError: true }
 
-    const isBatchSale = Array.isArray(phones) && phones.length > 0
-    const phonesToSell = isBatchSale ? phones : [{
+    if (!['retail', 'batch', 'batch_item', undefined].includes(saleType)) return rejected(400, '此接口仅支持零售，批发及划拨请使用对应入口')
+    if (phones !== undefined && (!Array.isArray(phones) || !phones.length || phones.length > 1000)) return rejected(400, '销售设备列表无效')
+    const isBatchSale = Array.isArray(phones)
+    const phoneInputs = isBatchSale ? phones : [{
       phone_id: phoneId,
       sale_price: salePrice,
-      purchase_cost: purchaseCost !== undefined ? parseFloat(purchaseCost) : null,
-      supplier_id: supplierId !== undefined && supplierId !== null && supplierId !== '' ? parseInt(supplierId) : null
+      purchase_cost: purchaseCost,
+      supplier_id: supplierId
     }]
+    if (phoneInputs.some(phone => !phone || !validId(phone.phone_id) || moneyCents(phone.sale_price) === null || moneyCents(phone.sale_price) === 0 ||
+      (phone.purchase_cost !== undefined && phone.purchase_cost !== null && phone.purchase_cost !== '' && moneyCents(phone.purchase_cost) === null) ||
+      (phone.supplier_id !== undefined && phone.supplier_id !== null && phone.supplier_id !== '' && !validId(phone.supplier_id)))) {
+      return rejected(400, '设备信息不完整或价格无效')
+    }
+    const phonesToSell = phoneInputs.map(phone => ({ ...phone, phone_id: Number(phone.phone_id) }))
+    if (new Set(phonesToSell.map(phone => phone.phone_id)).size !== phonesToSell.length) return rejected(400, '同一台设备不能重复销售')
+    const totalCents = phonesToSell.reduce((sum, phone) => sum + moneyCents(phone.sale_price), 0)
+    if (totalCents >= 10000000000) return rejected(400, '销售总金额超出范围')
     const customerInfo = { ...(customerInfoInput || {}) }
     const customerName = String(customerInfo.name || '').trim()
     const customerPhone = String(customerInfo.phone || '').replace(/\D/g, '')
@@ -70,40 +101,27 @@ class SalesPhoneService {
     customerInfo.name = customerName
     customerInfo.phone = customerPhone
 
-    if (phonesToSell.some(phone => !phone.phone_id || !phone.sale_price || phone.sale_price <= 0)) {
-      return rejected(400, '设备信息不完整或价格无效')
-    }
     if (!paymentInfo || !paymentInfo.payment_method) return rejected(400, '缺少支付方式信息')
+    let payment
+    try { payment = validateSalePayment(paymentInfo.payment_method, paymentInfo.payment_channel) }
+    catch (error) { return rejected(400, error.message) }
+    if (paymentInfo.payment_status !== undefined && paymentInfo.payment_status !== 'success') return rejected(400, '销售收款状态必须为成功')
+    if (paymentInfo.payment_amount !== undefined && moneyCents(paymentInfo.payment_amount) !== totalCents) return rejected(400, '收款金额必须与销售明细合计一致')
+    const paymentTime = this.normalizeDate(paymentInfo.payment_time || saleTimeValue, true)
+    if (!paymentTime) return rejected(400, '收款时间格式无效')
+    if (operatorId !== undefined && !validId(operatorId)) return rejected(400, '请选择有效的销售员')
 
-    return this.repository.withConnection(async connection => {
+    const run = async connection => {
       let transactionStarted = false
-      let foreignKeyChecksDisabled = false
       try {
-        await this.prepareInvoiceTransaction(connection)
-        await connection.beginTransaction()
-        transactionStarted = true
+        if (!transactionConnection) {
+          await this.prepareInvoiceTransaction(connection)
+          await connection.beginTransaction()
+          transactionStarted = true
+        }
         const supportsPaymentChannel = await this.inspectColumn('sales', 'payment_channel', connection)
 
-        let customerId = null
-        if (customerInfo.phone) {
-          const existingCustomer = await this.repository.findCustomerByPhone(connection, customerInfo.phone)
-          if (existingCustomer) {
-            customerId = existingCustomer.id
-            await this.repository.updateCustomer(connection, {
-              name: customerInfo.name,
-              appleId: customerInfo.apple_id,
-              customerId
-            })
-          } else {
-            const memberNumber = await this.createMemberNumber({ connection })
-            customerId = await this.repository.createCustomer(connection, {
-              name: customerInfo.name,
-              phone: customerInfo.phone,
-              appleId: customerInfo.apple_id || null,
-              memberNumber
-            })
-          }
-        }
+        const customerId = await this.resolveCustomer(connection, customerInfo)
 
         const phoneIds = phonesToSell.map(phone => phone.phone_id)
         const phoneChecks = await this.repository.findPhonesForSale(connection, phoneIds)
@@ -144,10 +162,9 @@ class SalesPhoneService {
           }
         }
 
-        const currentPhones = new Map(phoneChecks.map(phone => [phone.id, phone]))
+        const currentPhones = new Map(phoneChecks.map(phone => [Number(phone.id), phone]))
         const hasRemarksField = Object.prototype.hasOwnProperty.call(body, 'remarks')
         const requestedRemarks = String(remarks ?? '').trim()
-        const shouldApplyRequestedRemarks = hasRemarksField && (!isBatchSale || requestedRemarks !== '')
         const finalizedPhones = phonesToSell.map(phone => {
           const currentPhone = currentPhones.get(phone.phone_id)
           const resolvedPurchaseCost = phone.purchase_cost !== undefined && phone.purchase_cost !== null && phone.purchase_cost !== ''
@@ -155,22 +172,23 @@ class SalesPhoneService {
             : currentPhone.purchase_cost !== null && currentPhone.purchase_cost !== undefined
               ? parseFloat(currentPhone.purchase_cost)
               : null
+          if (resolvedPurchaseCost !== null && moneyCents(resolvedPurchaseCost) === null) throw abort(409, '设备成本异常，请核对后再销售')
           return {
             ...phone,
             sale_price: parseFloat(phone.sale_price),
             resolved_purchase_cost: resolvedPurchaseCost,
             is_new: currentPhone.is_new,
-            final_remarks: shouldApplyRequestedRemarks
+            final_remarks: hasRemarksField
               ? (requestedRemarks || null)
               : (currentPhone.remarks || null)
           }
         })
-        const totalAmount = finalizedPhones.reduce((sum, phone) => sum + (parseFloat(phone.sale_price) || 0), 0)
+        const totalAmount = totalCents / 100
         let saleId = null
         const createdSales = []
 
         for (const phone of finalizedPhones) {
-          const currentSaleType = isBatchSale ? 'batch_item' : (saleType || 'retail')
+          const currentSaleType = 'retail'
           const invoiceNumber = await this.generateInvoice(currentSaleType, connection, saleTimeValue)
           const createdSaleId = await this.repository.createSale(connection, {
             phoneId: phone.phone_id,
@@ -180,8 +198,8 @@ class SalesPhoneService {
             storeId: body.store_id || null,
             salePrice: phone.sale_price,
             purchaseCost: phone.resolved_purchase_cost,
-            paymentMethod: paymentInfo.payment_method || 'cash',
-            paymentChannel: paymentInfo.payment_channel || null,
+            paymentMethod: payment.payment_method,
+            paymentChannel: payment.payment_channel,
             supportsPaymentChannel: supportsPaymentChannel,
             invoiceNumber,
             remarks: phone.final_remarks,
@@ -191,32 +209,31 @@ class SalesPhoneService {
           createdSales.push({ saleId: createdSaleId, phone })
         }
 
-        await connection.execute('SET FOREIGN_KEY_CHECKS = 0')
-        foreignKeyChecksDisabled = true
         const paymentRemarks = [
           paymentInfo.transaction_no ? `交易流水号: ${paymentInfo.transaction_no}` : null,
           paymentInfo.payment_channel ? `支付渠道: ${paymentInfo.payment_channel}` : null
         ].filter(Boolean).join(', ') || (isBatchSale ? '批量销售收款' : '单个销售收款')
-        const paymentId = await this.repository.createPayment(connection, {
-          orderId: isBatchSale ? finalizedPhones[0].phone_id : saleId,
-          customerId,
-          paymentMethod: paymentInfo.payment_method,
-          paymentChannel: paymentInfo.payment_channel || null,
-          amount: parseFloat(paymentInfo.payment_amount || totalAmount),
-          status: paymentInfo.payment_status || 'success',
-          transactionNo: paymentInfo.transaction_no || null,
-          paymentTime: this.normalizeDate(paymentInfo.payment_time || saleTimeValue, true),
-          remarks: paymentRemarks
-        })
-        await connection.execute('SET FOREIGN_KEY_CHECKS = 1')
-        foreignKeyChecksDisabled = false
+        const paymentIds = []
+        for (const sale of createdSales) {
+          paymentIds.push(await this.repository.createPayment(connection, {
+            orderId: sale.saleId,
+            customerId,
+            paymentMethod: payment.payment_method,
+            paymentChannel: payment.payment_channel,
+            amount: sale.phone.sale_price,
+            status: 'success',
+            transactionNo: paymentInfo.transaction_no || null,
+            paymentTime,
+            remarks: paymentRemarks
+          }))
+        }
 
-        const updateResults = await Promise.all(finalizedPhones.map(phone => {
+        for (const phone of finalizedPhones) {
           const currentPhone = currentPhones.get(phone.phone_id)
-          const finalSupplierId = phone.supplier_id !== undefined && phone.supplier_id !== null
+          const finalSupplierId = phone.supplier_id !== undefined && phone.supplier_id !== null && phone.supplier_id !== ''
             ? parseInt(phone.supplier_id)
             : currentPhone.supplier_id
-          return this.repository.markPhoneSold(connection, {
+          const result = await this.repository.markPhoneSold(connection, {
             phoneId: phone.phone_id,
             salePrice: parseFloat(phone.sale_price),
             purchaseCost: phone.resolved_purchase_cost,
@@ -225,8 +242,8 @@ class SalesPhoneService {
             saleTime: saleTimeValue,
             operatorId: operatorId || userId
           })
-        }))
-        if (updateResults.some(result => result.affectedRows === 0)) throw abort(400, '部分设备状态更新失败')
+          if (result.affectedRows !== 1) throw abort(400, '部分设备状态更新失败')
+        }
 
         if (preorderId) {
           const deliveredPhone = finalizedPhones[0]
@@ -244,25 +261,23 @@ class SalesPhoneService {
           })
         }
 
-        const pointsConfig = await this.getPointsConfig(connection)
+        const pointsConfig = transactionPointsConfig || await this.getPointsConfig(connection)
         let pointsEarned = 0
         let pointsEligibleAmount = 0
-        for (const sale of createdSales) {
-          const points = await this.reconcilePoints({
-            executor: connection,
+        for (const sale of deferPoints ? [] : createdSales) {
+          const points = await this.accountSalePoints({
+            connection,
             saleId: sale.saleId,
             customerId,
-            saleType: isBatchSale ? 'batch_item' : (saleType || 'retail'),
             salePrice: sale.phone.sale_price,
             isNew: sale.phone.is_new,
-            config: pointsConfig,
-            initialize: true
+            config: pointsConfig
           })
           pointsEarned += points.points
           pointsEligibleAmount += points.eligibleAmount
         }
 
-        await connection.commit()
+        if (!transactionConnection) await connection.commit()
         transactionStarted = false
         return {
           status: 200,
@@ -271,15 +286,18 @@ class SalesPhoneService {
             message: isBatchSale ? `批量销售成功！共销售 ${phonesToSell.length} 台设备` : '销售成功',
             data: {
               sale_id: isBatchSale ? null : saleId,
-              payment_id: paymentId,
+              customer_id: customerId,
+              payment_id: paymentIds[0],
+              payment_ids: paymentIds,
               customer_name: customerInfo.name,
               customer_phone: customerInfo.phone,
               phones_sold: finalizedPhones.length,
               total_amount: totalAmount,
               points_earned: pointsEarned,
               points_eligible_amount: pointsEligibleAmount,
-              phone_details: finalizedPhones.map(phone => ({
+              phone_details: createdSales.map(({ phone, saleId: itemSaleId }) => ({
                 phone_id: phone.phone_id,
+                sale_id: itemSaleId,
                 sale_price: parseFloat(phone.sale_price),
                 purchase_cost: phone.resolved_purchase_cost
               }))
@@ -290,14 +308,9 @@ class SalesPhoneService {
         if (transactionStarted) await connection.rollback()
         if (error.saleResult) return error.saleResult
         throw error
-      } finally {
-        if (foreignKeyChecksDisabled) {
-          await connection.execute('SET FOREIGN_KEY_CHECKS = 1').catch(error => {
-            this.logger.error('恢复数据库外键检查失败:', error)
-          })
-        }
       }
-    })
+    }
+    return transactionConnection ? run(transactionConnection) : this.repository.withConnection(run)
   }
 }
 

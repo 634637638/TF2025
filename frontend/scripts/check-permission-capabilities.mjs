@@ -139,7 +139,7 @@ for (const publicPage of registry.publicPages || []) {
 }
 
 const modulesConfigSource = readFileSync(modulesConfigPath, 'utf8')
-if (!modulesConfigSource.includes("module-permission-capabilities.json")) {
+if (!modulesConfigSource.includes('module-permission-capabilities.json')) {
   findings.push('frontend/src/config/modules.ts 未读取共享权限能力清单')
 }
 if (/permissions\s*:\s*\[/.test(modulesConfigSource)) {
@@ -153,7 +153,7 @@ for (const match of modulesConfigSource.matchAll(/getCapabilityPermissions\(\s*[
 }
 
 const mapperSource = readFileSync(permissionMapperPath, 'utf8')
-if (!mapperSource.includes("module-permission-capabilities.json")) {
+if (!mapperSource.includes('module-permission-capabilities.json')) {
   findings.push('permissionMapper.ts 未读取共享权限能力清单')
 }
 if (/export\s+const\s+MODULE_PERMISSIONS[^=]*=\s*\{/.test(mapperSource)) {
@@ -274,6 +274,10 @@ for (const sourcePath of walkSourceFiles(resolve(frontendRoot, 'src'))) {
   }
 
   const distinctPermissionCalls = unique(permissionCalls)
+  // 多业务模块页面也可以通过完整权限名使用公共鉴权，不依赖唯一 usePagePermissions 模块推断。
+  for (const match of source.matchAll(/(?:hasPermission|handleNoPermission)\(\s*['"]([^:'"]+):([^'"]+)['"]\s*\)/g)) {
+    if (actionDefinitions[match[2]]) validateActionUse(match[1], match[2], sourcePath)
+  }
   if (distinctPermissionCalls.length === 1) {
     for (const match of source.matchAll(/(?:hasPermission|handleNoPermission)\(\s*['"]([^'"]+)['"]\s*\)/g)) {
       if (actionDefinitions[match[1]]) validateActionUse(distinctPermissionCalls[0], match[1], sourcePath)

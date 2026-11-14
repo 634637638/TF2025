@@ -2,9 +2,11 @@
 
 const { getDatabase } = require('../config/database')
 const { buildReferenceOrder } = require('../utils/reference-options')
+const { withConnection } = require('../core/db/connection')
+const { appendStoreScopeCondition } = require('../utils/store-scope')
 
 const COLUMNS = [
-  'id', 'name', 'contact', 'phone', 'address', 'bank_info', 'tax_number',
+  'id', 'name', 'contact', 'phone', 'address', 'bank_info', 'tax_number', 'business_scope',
   'status', 'remarks', 'created_at', 'updated_at', 'sort_order'
 ].join(', ')
 const SORT_COLUMNS = ['id', 'name', 'status', 'sort_order', 'created_at', 'updated_at']
@@ -19,6 +21,7 @@ function buildFilters({ name, status }) {
 
 class SupplierManagementRepository {
   constructor({ database = getDatabase } = {}) { this.database = database }
+  withConnection(operation) { return withConnection(this.database, operation) }
 
   list(filters, { all = false, page_size, offset, sort_by, sort_order } = {}) {
     const { where, params } = buildFilters(filters)
@@ -54,23 +57,33 @@ class SupplierManagementRepository {
 
   create(values) {
     return this.database().execute(`INSERT INTO suppliers (
-      name, contact, phone, address, bank_info, tax_number, status, sort_order, remarks, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`, values)
+      name, contact, phone, address, bank_info, tax_number, business_scope, status, sort_order, remarks, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`, values)
   }
 
   update(values) {
     return this.database().execute(`UPDATE suppliers
       SET name = ?, contact = ?, phone = ?, address = ?, bank_info = ?,
-          tax_number = ?, status = ?, sort_order = ?, remarks = ?, updated_at = CURRENT_TIMESTAMP
+          tax_number = ?, business_scope = ?, status = ?, sort_order = ?, remarks = ?, updated_at = CURRENT_TIMESTAMP
       WHERE id = ?`, values)
   }
 
-  countAccessories(id) { return this.database().execute('SELECT COUNT(*) AS count FROM accessories WHERE supplier_id = ?', [id]) }
-  countPhones(id) { return this.database().execute('SELECT COUNT(*) AS count FROM phones WHERE supplier_id = ?', [id]) }
-  remove(id) { return this.database().execute('DELETE FROM suppliers WHERE id = ?', [id]) }
-  findById(id) { return this.database().execute(`SELECT ${COLUMNS} FROM suppliers WHERE id = ?`, [id]) }
-  accessoryStats(id) { return this.database().execute('SELECT COUNT(*) AS count, COALESCE(SUM(purchase_cost), 0) AS total_cost FROM accessories WHERE supplier_id = ?', [id]) }
-  phoneStats(id) { return this.database().execute('SELECT COUNT(*) AS count, COALESCE(SUM(purchase_cost), 0) AS total_cost FROM phones WHERE supplier_id = ?', [id]) }
+  countAccessories(id, executor = this.database()) { return executor.execute('SELECT COUNT(*) AS count FROM accessories WHERE supplier_id = ?', [id]) }
+  async hasAccessoryHistory(id, executor = this.database()) {
+    const [[row]] = await executor.execute(`SELECT
+      EXISTS(SELECT 1 FROM accessory_stock_in WHERE supplier_id = ?) OR
+      EXISTS(SELECT 1 FROM accessory_purchase_payments WHERE supplier_id = ?) AS has_history`, [id, id])
+    return Number(row.has_history) === 1
+  }
+  countPhones(id, executor = this.database()) { return executor.execute('SELECT COUNT(*) AS count FROM phones WHERE supplier_id = ?', [id]) }
+  remove(id, executor = this.database()) { return executor.execute('DELETE FROM suppliers WHERE id = ?', [id]) }
+  findById(id, executor = this.database(), lock = false) { return executor.execute(`SELECT ${COLUMNS} FROM suppliers WHERE id = ?${lock ? ' FOR UPDATE' : ''}`, [id]) }
+  phoneStats(id, scope, executor) {
+    const conditions = ['supplier_id = ?'], params = [id]
+    appendStoreScopeCondition(scope, 'store_id', conditions, params)
+    return executor.execute(`SELECT COUNT(*) AS count, CASE WHEN COUNT(*) = COUNT(purchase_cost)
+      THEN CAST(COALESCE(SUM(purchase_cost * 100), 0) AS DECIMAL(65, 0)) ELSE NULL END AS total_cents FROM phones WHERE ${conditions.join(' AND ')}`, params)
+  }
 }
 
 module.exports = SupplierManagementRepository

@@ -491,7 +491,8 @@ test('accessory writes use an explicit canonical payload', () => {
   const controller = read('src/controllers/accessory.controller.js')
   const payload = fs.readFileSync(path.join(root, '../frontend/src/components/accessory-payload.ts'), 'utf8')
   assert.match(controller, /async stockIn\(req, res\)[\s\S]*?normalizeAccessoryPayload\(req\.body\)/)
-  assert.match(controller, /async sell\(req, res\)[\s\S]*?accessory_id: req\.body\.accessory_id/)
+  assert.doesNotMatch(controller, /async (?:sell|gift|saveOutbound)\(/)
+  assert.match(read('src/routes/sales.js'), /router\.post\('\/checkout', unifiedAuth/)
   assert.doesNotMatch(controller, /\.\.\.req\.body/)
   for (const field of ['purchase_cost', 'sale_price', 'total_quantity', 'distribution', 'remarks']) {
     assert.match(payload, new RegExp(`${field}:`), `配件 payload 缺少 ${field}`)
@@ -514,7 +515,8 @@ test('accessory field controls cover reads, filters and writes', () => {
 
   assert.match(route, /ACCESSORY_FIELD_MODULE_KEY = 'accessories_accessoriesview'/)
   assert.match(route, /rejectHiddenAccessoryWrites/)
-  assert.match(route, /rejectHiddenAccessorySellWrites/)
+  assert.doesNotMatch(route, /rejectHiddenAccessorySellWrites/)
+  assert.doesNotMatch(route, /router\.post\(['"]\/(?:sell|gift)['"]/)
   assert.match(route, /rejectHiddenAccessoryQueries/)
   assert.match(route, /code: 'FIELD_PERMISSION_DENIED'/)
   assert.match(controller, /maskPayload\(/)
@@ -1114,7 +1116,8 @@ test('H5 customer sales exposes canonical sale_time', () => {
 
   assert.ok(contract.canonical.includes('sale_time'))
   assert.ok(salesStart >= 0 && salesEnd > salesStart, 'H5 客户销售历史服务方法不存在')
-  assert.match(salesMethod, /COALESCE\(s\.sale_time, p\.sale_time\) as sale_time/)
+  assert.match(salesMethod, /s\.sale_time as sale_time/)
+  assert.doesNotMatch(salesMethod, /COALESCE\(s\.sale_time, p\.sale_time\)/)
   assert.doesNotMatch(salesMethod, /as profit|profit: sale\.profit|purchase_cost/)
   assert.match(salesMethod, /sale_time: sale\.sale_time/)
   assert.match(salesMethod, /sale_price: sale\.sale_price (?:== null \? null : Number\(sale\.sale_price\)|=== null \|\| sale\.sale_price === undefined \? null : Number\(sale\.sale_price\))/)
@@ -1843,7 +1846,9 @@ test('supplier module uses canonical fields and explicit live-schema queries', (
   assert.doesNotMatch(repository, /SELECT\s+(?:[a-z]+\.)?\*/i)
   assert.match(service, /page_size = DEFAULT_PAGE_SIZE/)
   assert.match(service, /buildPagination\(pageNum, pageSizeNum, total\)/)
-  assert.match(repository, /COALESCE\(SUM\(purchase_cost\), 0\)/)
+  // 未知成本不能补零；金额按整数分累计，原采购统计另由采购仓储提供。
+  assert.match(repository, /COUNT\(\*\) = COUNT\(purchase_cost\)/)
+  assert.match(repository, /SUM\(purchase_cost \* 100\)/)
   assert.match(route, /router\.get\('\/', requirePermission\('suppliers:view'\), supplierController\.list\.bind\(supplierController\)\)/)
   assert.match(repository, /LIMIT \$\{page_size\} OFFSET \$\{offset\}/)
   assert.match(page, /has_next: Boolean\(apiPagination\.has_next\)/)
@@ -2019,15 +2024,20 @@ test('subsidy uses canonical pagination and handler fields without runtime schem
   )
   const operationColumnStart = list.indexOf('column.key === \'actions\'')
   const operationColumn = list.slice(operationColumnStart, list.indexOf('</el-table>', operationColumnStart))
-  assert.match(applyTimeColumn, /v-else-if="canApprove"[\s\S]*emit\('audit', row\)/)
-  assert.match(arrivalTimeColumn, /v-else-if="canArrival"[\s\S]*emit\('confirm-arrival', row\)/)
+  assert.match(applyTimeColumn, /v-else-if="!isMobile && canApprove"[\s\S]*emit\('audit', row\)/)
+  assert.match(arrivalTimeColumn, /v-else-if="!isMobile && canArrival"[\s\S]*emit\('confirm-arrival', row\)/)
   assert.doesNotMatch(operationColumn, /canApprove|canArrival|emit\('audit'|emit\('confirm-arrival'/)
   assert.match(operationColumn, /v-if="canEdit"/)
   assert.match(operationColumn, /v-if="canDelete"/)
-  const mobileWorkflowStart = list.indexOf('class="mobile-workflow-fields"')
-  const mobileWorkflow = list.slice(mobileWorkflowStart, list.indexOf('class="mobile-card-actions"', mobileWorkflowStart))
-  assert.match(mobileWorkflow, /fieldVisibility\.apply_time \|\| canApprove[\s\S]*emit\('audit', item\)/)
-  assert.match(mobileWorkflow, /fieldVisibility\.arrival_time \|\| canArrival[\s\S]*emit\('confirm-arrival', item\)/)
+  // 手机操作已迁入公共详情底部；实际权限组合及事件由subsidy-actions组件测试覆盖。
+  const detailStart = page.indexOf('<SubsidyDetailDialog')
+  assert.ok(detailStart >= 0, '国补必须保留专用详情入口')
+  const detailActions = page.slice(detailStart, page.indexOf('</SubsidyDetailDialog>', detailStart))
+  assert.match(list, /v-table-double-tap=/)
+  assert.doesNotMatch(list, /mobile-workflow-fields|mobile-card-actions/)
+  assert.match(detailActions, /#actions/)
+  assert.match(detailActions, /v-permission="'subsidy:approve'"[\s\S]*runDetailAction\(handleAudit\)/)
+  assert.match(detailActions, /v-permission="'subsidy:arrival'"[\s\S]*runDetailAction\(handleConfirmArrival\)/)
   assert.doesNotMatch(list, /v-memo=/)
   assert.doesNotMatch(sources, /fieldVisibility\.(?:storeName|salesmanName|saleTime|customerName|customerPhone|customerIdcard|serialNumber|salePrice|subsidyAmount|subsidyRate|subsidyCalcPrice|applyTime|arrivalTime|subsidyPhotos)/)
   assert.match(photoDialog, /@click="downloadToolbarPhotos"/)
@@ -2094,13 +2104,19 @@ test('field-aware action columns use field-or-action visibility without hiding a
   const payment = read('../frontend/src/views/payments/SupplierPhonePaymentsView.vue')
   assert.doesNotMatch(payment, /can(?:Create|View|Edit|Delete)Payment && canViewPaymentField\('actions'\)/)
   assert.match(payment, /const showPaymentTimeColumn = computed\(\(\) => \{[\s\S]{0,260}shouldShowActionColumn\([\s\S]{0,120}canViewPaymentField\('payment_time'\),\s*\[canCreatePayment\.value\]/)
-  assert.match(payment, /v-(?:else-)?if="canCreatePayment && row\.payment_status === 'unpaid'"[\s\S]{0,260}handleSinglePayment\(row\)/)
-  const paymentOperationStart = payment.indexOf('v-if="showPaymentActionField"')
+  assert.match(payment, /v-(?:else-)?if="!isMobile && canCreatePayment && row\.payment_status === 'unpaid'"[\s\S]{0,260}handleSinglePayment\(row\)/)
+  const paymentOperationStart = payment.indexOf('v-if="!isMobile && (showPaymentActionField)"')
+  assert.ok(paymentOperationStart >= 0, '桌面付款操作列必须保留并排除手机')
   const paymentOperation = payment.slice(paymentOperationStart, payment.indexOf('<template #empty>', paymentOperationStart))
   assert.doesNotMatch(paymentOperation, /handleSinglePayment|canCreatePayment/)
+  const paymentDetailStart = payment.indexOf('<RecordDetailDialog')
+  assert.ok(paymentDetailStart >= 0, '手机付款必须接入公共详情')
+  const paymentDetail = payment.slice(paymentDetailStart, payment.indexOf('</RecordDetailDialog>', paymentDetailStart))
+  assert.match(paymentDetail, /#actions/)
+  assert.match(paymentDetail, /v-permission="'supplier-payments:create'"[\s\S]*handleSinglePayment\(row\)/)
 
   const attendance = read('../frontend/src/views/attendance/AttendanceView.vue')
-  assert.match(attendance, /const showAttendanceStatusColumn = computed\(\(\) => shouldShowActionColumn\([\s\S]{0,180}\[canApprove\.value\]/)
+  assert.match(attendance, /const showAttendanceStatusColumn = computed\(\(\) => shouldShowActionColumn\([\s\S]{0,180}\[!isMobile\.value && canApprove\.value\]/)
   const attendanceStatusStart = attendance.indexOf('v-if="showAttendanceStatusColumn"')
   const attendanceStatus = attendance.slice(attendanceStatusStart, attendance.indexOf('v-if="showAttendanceApprovalColumn"', attendanceStatusStart))
   assert.match(attendanceStatus, /canApprove && row\.status === 'pending'[\s\S]{0,500}handleApprove\(row\)/)
@@ -2116,7 +2132,7 @@ test('field-aware action columns use field-or-action visibility without hiding a
   assert.doesNotMatch(salaryStatus, /emit\('(recalculate|settle)'/)
   const salaryOperationStart = salaryPayout.indexOf('v-if="!isMobile && showActionColumn"')
   const salaryOperation = salaryPayout.slice(salaryOperationStart, salaryPayout.indexOf('</el-table>', salaryOperationStart))
-  assert.match(salaryOperation, /v-if="canCreate"[\s\S]{0,320}emit\('recalculate', row\) : emit\('settle', row\)/)
+  assert.match(salaryOperation, /v-if="canCreate && !isPaidSalaryRecord\(row\.payoutRecord\)"[\s\S]{0,380}emit\('recalculate', row\) : emit\('settle', row\)/)
 
   const salesGrid = read('../frontend/src/views/sales/page/SalesGridView.vue')
   assert.doesNotMatch(salesGrid, /can(?:Create|Edit|Delete) && canViewField\('actions'\)/)
@@ -2125,7 +2141,8 @@ test('field-aware action columns use field-or-action visibility without hiding a
   const userRoles = read('../frontend/src/views/permissions/page/UserRolesPage.vue')
   const storeBindings = read('../frontend/src/views/permissions/page/StoreBindingsPage.vue')
   for (const page of [roles, userRoles, storeBindings]) {
-    assert.match(page, /v-if="ctx\.showPermissionsActionField"/)
+    assert.match(page, /v-if="!isMobile\s*&&\s*\(?ctx\.showPermissionsActionField\)?"/)
+    assert.match(page, /<RecordDetailDialog[\s\S]*#actions/)
   }
   assert.doesNotMatch(roles, /您没有(?:编辑|删除)角色的权限/)
 })
@@ -2247,13 +2264,21 @@ test('H5 public product lists use canonical page_size at API and page boundaries
   assert.doesNotMatch(api, /pagination\.limit|record\.limit|pagination\.totalPages|pagination\.hasNextPage|pagination\.hasPrevPage/)
 })
 
-test('salary template pagination reads options.page_size and binds template_id', () => {
+test('salary template pagination reads options.page_size and binds template_id', async () => {
   const controller = read('src/controllers/salary-template.controller.js')
   const recordController = read('src/controllers/salary-record.controller.js')
   const repository = read('src/repositories/salary-template.repository.js')
   const api = read('../frontend/src/api/salary-template.ts')
   assert.match(controller, /page_size/)
-  assert.match(controller, /const \{ template_id \} = req\.body/)
+  const calls = []
+  const TemplateController = require('../src/controllers/salary-template.controller').constructor
+  const instance = new TemplateController({ service: {
+    async setEmployeeTemplate(userId, templateId) { calls.push({ userId, templateId }); return { userId, templateId } }
+  }, masking: { async getUserFieldPermissions() { return { hiddenFields: [] } }, filterSensitiveFields(rows) { return rows } } })
+  const res = { status() { return this }, json(body) { this.body = body; return this } }
+  await instance.setEmployeeTemplate({ user: { id: 7 }, params: { userId: '8' }, body: { template_id: 4 } }, res)
+  assert.deepEqual(calls, [{ userId: '8', templateId: 4 }])
+  assert.equal(res.body.success, true)
   assert.match(repository, /page_size/)
   assert.match(repository, /page_size: limitNum/)
   assert.match(repository, /total_pages:/)

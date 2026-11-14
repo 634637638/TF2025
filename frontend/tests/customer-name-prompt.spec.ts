@@ -11,10 +11,10 @@ describe('公共姓名输入', () => {
     const { promptCustomerName, promptingCustomerName } = useCustomerNamePrompt()
     await promptCustomerName('原姓名', save)
     expect(notification.prompt).toHaveBeenCalledWith('请输入客户姓名', '编辑客户姓名', expect.objectContaining({ inputValue: '原姓名' }))
-    expect(save).toHaveBeenCalledExactlyOnceWith('张三 Test')
+    expect(save).toHaveBeenCalledExactlyOnceWith('张三 Test123')
     expect(promptingCustomerName.value).toBe(false)
   })
-  it.each([null, { value: '123! ' }])('取消或规范化后为空时不提交：%j', async result => {
+  it.each([null, { value: '123! ' }, { value: '   ' }, { value: '张'.repeat(21) }, { value: '张\n三' }])('取消或规范化后为空时不提交：%j', async result => {
     const save = vi.fn()
     notification.prompt.mockResolvedValue(result)
     await useCustomerNamePrompt().promptCustomerName('原姓名', save)

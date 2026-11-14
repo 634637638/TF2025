@@ -16,7 +16,7 @@ PC 端数据行使用 `48px`，手机端数据行使用 `40px`；手机端表头
 
 所有公共徽章（包括成色、状态、角色、内存、Element 标签及带有 `badge` 语义 class 的徽章）在支持鼠标悬停的设备上统一通过自身圆角边框显示单层 `1px` 细外包围线，颜色跟随徽章文字颜色，过渡由 `frontend/src/styles/components/_badges.scss` 的公共令牌控制。该效果与表格操作按钮一致，不叠加外扩阴影，不使用方形 `outline`，也不改变徽章尺寸。表格为保留整格双击事件而设置 `pointer-events: none` 时，公共入口会从 `.clickable-cell:hover` 代理同一条徽章外包围线；页面不得单独添加 `:hover` 阴影、位移或边框。触摸设备不模拟 hover，避免移动端出现残留悬停状态。
 
-徽章专项审计覆盖台账内全部页面源文件和公共组件。`npm run check:badges` 会检查公共入口、旧的 `global.css` 状态徽章定义，以及页面私有的徽章 `:hover` 和 `transition`；任一页面重新添加私有徽章动效或重复全局入口，启动、开发和构建门禁均不通过。公共 hover 选择器使用足够的语义优先级，确保 `.new`、`.used`、`.in-stock` 等业务状态颜色以及权限页的禁用阴影规则不会覆盖悬停外包围线。业务颜色、图标和文字可以由页面维护，但不能复制公共 hover、过渡或状态徽章基础入口。
+徽章专项审计覆盖台账内全部页面源文件和公共组件。`npm run check:badges` 会检查公共入口、旧的 `global.css` 状态徽章定义，以及页面私有的徽章 `:hover` 和 `transition`；任一页面重新添加私有徽章动效或重复全局入口，构建和发布检查均不通过，日常启动不自动运行全量审计。公共 hover 选择器使用足够的语义优先级，确保 `.new`、`.used`、`.in-stock` 等业务状态颜色以及权限页的禁用阴影规则不会覆盖悬停外包围线。业务颜色、图标和文字可以由页面维护，但不能复制公共 hover、过渡或状态徽章基础入口。
 
 表格行状态统一使用三级识别：鼠标悬停为柔和的薰衣草紫 `--admin-data-table-row-hover-bg`，并使用 `--admin-interactive-hover-border` 与 `--admin-interactive-hover-shadow` 在整行显示和经验分享卡片一致的灰蓝外包围；Element 表格必须同时支持 `:hover` 与 `.hover-row`，确保鼠标位于任意字段、操作按钮或固定列时外包围持续显示，且不得通过移动整行制造悬停闪烁。勾选行为蓝色 `--admin-data-table-row-selected-bg` 并在首列显示 `--admin-data-table-row-selected-accent` 左侧强调线；勾选行再次悬停使用更深的 `--admin-data-table-row-selected-hover-bg`。悬停与勾选使用不同层次，业务页面只添加 `row-selected`，不得自行覆盖这套状态颜色或逐个单元格添加悬停阴影。
 
@@ -53,7 +53,8 @@ PC 端数据行使用 `48px`，手机端数据行使用 `40px`；手机端表头
 | `frontend/src/utils/table-layout.ts` | 普通文本、标识字段，以及按权限和行状态自动伸缩的操作列宽度计算 | 否 |
 | `frontend/src/utils/admin-table-drag-scroll.ts` | 统一表格 PC 鼠标拖动横向浏览，手机端保留原生触摸滑动 | 否 |
 | `frontend/src/directives/table-double-tap.ts` | 普通平面表格同一行的手机端双击识别，由全局指令入口注册 | 否 |
-| `frontend/src/composables/useMobileRowDoubleTap.ts` | `el-table` 通过 `@row-click` 记录同一行两次轻触的时间窗检测原语，供行操作菜单、展开行、打开详情复用 | 否 |
+| `frontend/src/composables/useMobileTableDetail.ts` | 当前显示行与稳定业务主键的详情映射、关闭与动作分发 | 否 |
+| `frontend/src/components/RecordDetailDialog.vue` | 无专用详情时的公共只读字段网格和权限操作 footer | 否 |
 | `frontend/src/utils/format.ts` | 统一金额与货币格式 | 否 |
 | 业务页面 `<style scoped>` | 业务字段、状态徽章、金额、IMEI、特殊交互 | 是，但不得覆盖通用视觉 |
 
@@ -72,7 +73,7 @@ PC 端数据行使用 `48px`，手机端数据行使用 `40px`；手机端表头
 - 根节点同时使用 `.data-table` / `.admin-data-table`，并保持 `table-layout="fixed"`、`:fit="true"`；
 - 表头、数据行、字体、单元格内边距和手机端行高全部读取 `--admin-data-table-*`，当前基准为 PC 表头/数据行 `48px`、手机表头/数据行 `40px`；
 - 普通字段使用 `complete-text-column`，操作列使用 `actions-column`、`.table-actions` 和 `getAdaptiveActionColumnWidth`，不得写死操作列宽度；
-- 点击“查看”必须产生真实展开/收起反馈，不能只放置无行为的装饰按钮。
+- 查看预览必须打开真实公共详情，手机双击也能进入；不得用按钮型展开示范已退役交互。
 
 规范页自身不得新增第二套表格或按钮尺寸。任何公共高度、宽度、间距或字体调整，都必须先修改公共变量和本文，再同步检查 `/standards` 预览及 `check:tables`。
 
@@ -242,7 +243,7 @@ const actionWidth = computed(() => getAdaptiveActionColumnWidth(
 - 所有统一 Element 表格的根节点都由公共样式限制为容器 `100%`，原生表格专用的 `--admin-data-table-min-width` 不得作用到 Element 根节点。字段较少且桌面端剩余空间明显时仍使用 `compact-fit-table` 表达紧凑铺满意图，并设置 `:fit="true"`。普通业务列绑定内容驱动的 `:min-width`，让 Element Plus 将容器余量按所有普通列的最小宽度比例共同分配；不得把余量集中到单个描述字段，也不得使用 `fit=false` 在操作列后留下整块空白。说明、原因和备注通过有限 `maxWidth` 配合 `wrapped-text-column` 完整换行。操作列继续绑定公共函数计算的精确 `:width`，不参与剩余空间拉伸。只有字段最小宽度总和超过容器时才使用 Element 内部唯一的同步横向移动，表头与内容必须共用该滚动位置。
 - 当前用户没有任何可见操作时，页面应直接隐藏“操作”列；不得保留只有表头或最小宽度的空列。
 - 只有模态框中的紧凑工具列、单元格空间明确受限且含义熟悉的操作，才允许使用 `class-name="compact-action-column"` 和纯图标按钮；纯图标必须提供 `title` 或 tooltip。该 class 是审计边界，不得用于主列表逃避动态宽度规则。
-- 手机端优先按页面规则隐藏常驻操作列，通过连续两次点击行展开操作；展开后的命令按钮仍应显示文字。
+- 手机端优先按页面规则隐藏常驻操作列，通过双击打开查看模态框；底部命令按钮显示图标和文字。
 
 字段较少的桌面表格标准写法：
 
@@ -287,7 +288,7 @@ const actionColumnWidth = computed(() => getAdaptiveActionColumnWidth(rows.value
 
 ### 操作按钮尺寸与语义颜色
 
-表格、列表卡片和手机展开区共用同一套操作按钮。尺寸与颜色变量全部定义在 `frontend/src/styles/admin-layout.css`，结构和状态规则定义在 `frontend/src/styles/components/_table.scss`。PC 端当前高度为 `28px`、水平内边距为 `10px`、按钮间距为 `8px`、字体为 `13px`、圆角为 `4px`；手机端高度为 `32px`、水平内边距为 `12px`、按钮间距为 `6px`，字体读取公共手机表格字号。普通业务字段中的 `.table-inline-action` 使用更紧凑的 PC `7px`、手机 `8px` 水平内边距。操作列和包含 `.table-inline-action` 的普通业务单元格共用 `--admin-data-table-action-cell-padding-y`：按 `(行高 - 按钮高度 - 1px 底边框) / 2` 计算并限制为非负值，当前 PC 为 `9.5px`、手机为 `3.5px`，确保按钮与边框完整落在 PC `48px`、手机 `40px` 行高内；无按钮时也保留同一行高，不得由业务页面单独覆盖。页面不得写死这些值。
+表格与桌面列表卡片共用紧凑操作按钮；手机记录动作进入详情底部并遵循弹窗按钮规范。尺寸与颜色变量全部定义在 `frontend/src/styles/admin-layout.css`，结构和状态规则定义在 `frontend/src/styles/components/_table.scss`。PC 端当前高度为 `28px`、水平内边距为 `10px`、按钮间距为 `8px`、字体为 `13px`、圆角为 `4px`；手机端高度为 `32px`、水平内边距为 `12px`、按钮间距为 `6px`，字体读取公共手机表格字号。普通业务字段中的 `.table-inline-action` 使用更紧凑的 PC `7px`、手机 `8px` 水平内边距。操作列和包含 `.table-inline-action` 的普通业务单元格共用 `--admin-data-table-action-cell-padding-y`：按 `(行高 - 按钮高度 - 1px 底边框) / 2` 计算并限制为非负值，当前 PC 为 `9.5px`、手机为 `3.5px`，确保按钮与边框完整落在 PC `48px`、手机 `40px` 行高内；无按钮时也保留同一行高，不得由业务页面单独覆盖。页面不得写死这些值。
 
 | 操作语义 | 推荐 class | 颜色含义 |
 | --- | --- | --- |
@@ -321,7 +322,7 @@ const actionColumnWidth = computed(() => getAdaptiveActionColumnWidth(rows.value
 - 点击表头全选时，将当前展示且允许选择的 ID 合并进 `selectedIds`；取消表头全选时，只移除当前展示范围的 ID。批量操作页面默认保留其他页面已经选择的记录。
 - “清空选择/取消选择”按钮表示清除全部已选记录；存在跨页对象缓存时，必须在同一次操作中同时重置 ID 数组和 `Map` 缓存。
 - 已完成、无权限等不可选记录必须从 `currentSelectableIds` 排除，并禁用对应行复选框。表头全选状态不得把禁用行计算在内。
-- 行复选框、表头复选框、操作按钮、链接和表单控件都必须使用 `@click.stop`，不得触发行点击、双击详情或手机端连续点击展开。
+- 行复选框、表头复选框、操作按钮、链接和表单控件都必须使用 `@click.stop`，不得触发行点击、双击详情或手机端双击详情。
 - PC 端行双击和手机端连续两次点击属于详情/操作交互，不得隐式改变选择状态。只有明确设计为“点击整行选择”的页面才允许行点击切换选择，并必须避免与详情打开冲突。
 - 已选数量显示全部 `selectedIds.length`；筛选或翻页后不得因当前页没有选中项而丢失跨页选择。业务明确不支持跨页选择时，必须在翻页或筛选入口主动清空并向用户保持一致行为。
 
@@ -427,38 +428,34 @@ const clearSelection = () => {
 4. 普通页面按业务优先级减少手机端列数，表格宽度保持在页面卡片内。
 5. 手机端正文统一读取 `--mobile-text-table`，表头读取 `--mobile-text-table-header`，两个令牌只在 `frontend/src/styles.scss` 定义。当前普通手机均为 `13px`，`375px` 及以下均为 `11px`。`responsive.scss` 不得再次覆盖这两个令牌。表格内的 `span` 必须继承单元格字号，不能被通用正文样式放大；禁止 `clamp(...vw...)`、小于公共字号的像素值或按机型连续缩放字体。
 6. 手机端双击打开详情时，使用全局 `v-table-double-tap` 直接识别两次完整触摸，不依赖浏览器生成两次 `row-click`；必须忽略按钮、链接和表单控件，防止误触。
-7. 操作按钮统一使用 `.action-buttons` 和 `el-button size="small"`，按钮点击必须添加 `.stop`。
+7. PC 表格操作使用 `.action-buttons` 和 `el-button size="small"`；手机操作放在查看详情的 `.tf-dialog-actions`，读取公共弹窗按钮规格，按钮点击添加 `.stop`。
 
 ### 手机端双击详情
 
-综合查询和库存管理在视口宽度不超过 `1024px` 时启用公共 `v-table-double-tap`。同一记录的两次轻触间隔不超过 `400ms` 时打开详情；单次长按超过 `400ms`、移动超过 `10px`、滚动、多指、触摸取消或触摸期间记录被替换时清空手势。按钮、链接、表单控件和操作区不参与行双击识别；单击不打开详情，也不改变选择状态。
+后台手机业务表格启用公共；综合查询和库存管理保留视口宽度不超过 `1024px` 的范围，使用 `v-table-double-tap`。同一记录的两次轻触间隔不超过 `400ms` 时打开详情；单次长按超过 `400ms`、移动超过 `10px`、滚动、多指、触摸取消或触摸期间记录被替换时清空手势。按钮、链接、表单控件和操作区不参与行双击识别；单击不打开详情，也不改变选择状态。
 
-确认第二次轻触时，公共指令对可取消的 `touchend` 执行 `preventDefault()`，并在 `400ms` 内捕获同一表格非交互区域随后生成的原生 `dblclick`，抑制同一次手势重复触发，防止弹窗刚打开即被遮罩误关闭或额外触发单元格双击。仅此结束监听使用 `passive: false`；未确认的轻触、移动和原生滚动继续保持默认行为。公共 `MobileDialog` 另行核对完整遮罩按下/抬起过程，不得用单独的 `click.self` 作为关闭依据。
+每次有效轻触结束后的 `400ms` 内，公共指令捕获同一宿主非交互区域的兼容原生 `dblclick`，避免浏览器把跨行或切页前的点击合成为当前记录双击。确认第二次同行轻触时才对可取消的 `touchend` 执行 `preventDefault()`，防止新弹窗遮罩收到穿透点击。仅此结束监听使用 `passive: false`；未确认的轻触、移动和原生滚动继续保持默认行为。公共 `MobileDialog` 另行核对完整遮罩按下/抬起过程，不得用单独的 `click.self` 作为关闭依据。
 
 指令由 `src/directives/index.ts` 全局注册，页面提供 `enabled`、`getRowKey(rowIndex)` 和 `onDoubleTap(rowIndex)`。`getRowKey` 必须使用稳定的业务主键，回调读取与表格当前显示顺序完全一致的数据列表；卸载时由指令统一移除监听器。页面不得复制点击计时器或按行维护双击计时 Map。`check:tables` 校验公共注册及两个参考页面的接入，并阻止旧私有计时逻辑回退。
 
-该指令适用于普通平面 Element Plus 表格。树表、虚拟表或由 Element 在前端另行排序/过滤的表格，必须先建立可靠的可见行与业务记录映射，不能直接以原始数组索引接入。电脑端继续使用原生 `row-dblclick` 和已有单元格双击行为；不得将手机端双击扩展为隐式选择或修改操作。
+普通平面 Element Plus 表格省略 `rowSelector`；卡片、原生列表及弹窗里的商品子列表显式传入 `rowSelector: '[data-mobile-record]'`，并在每条实际记录标记 `data-mobile-record`。嵌套列表由最近的公共宿主处理，父集合过滤子宿主内记录，原生双击也不得同时打开父子详情。树表、虚拟表或前端另行排序/过滤的表格，必须先建立可靠的可见行与业务记录映射，不能直接以原始数组索引接入。电脑端继续使用原生 `row-dblclick` 和已有单元格双击行为；不得将手机端双击扩展为隐式选择或修改操作。
 
-### 手机端行轻触时间窗（`@row-click` 形态）
+### 手机记录详情与底部操作
 
-基础资料、销售、工资等页面依赖 `el-table` 的 `@row-click` 回调，在移动端用“同一行两次轻触”切换行操作菜单、展开行或打开详情。这类形态必须复用公共原语 `useMobileRowDoubleTap()`（`frontend/src/composables/useMobileRowDoubleTap.ts`），由它统一维护“时间窗 + 同一行”检测并在命中后自动重置，默认间隔 `320ms`：
+手机后台业务主列表统一使用 `v-table-double-tap`，通常由 `useMobileTableDetail` 提供绑定选项。双击打开查看模态框，编辑、删除、审批、匹配、到账等单条动作只在该详情底部展示；不允许展开行内按钮、独立底部菜单或再次单击记录直接展开操作。桌面原操作列和双击详情保持原业务规则。
 
-```ts
-import { useMobileRowDoubleTap } from '@/composables/useMobileRowDoubleTap'
+- 已有专用详情的页面复用原 `MobileDialog`，通过 `onOpen` 调用既有查看方法，footer 沿用原动作及状态保护；禁止为同一记录新增第二份详情。
+- 没有专用详情的页面复用全局自动发现的 `RecordDetailDialog`，字段使用唯一的 `RecordDetailField` 类型，每个字段明确传入 `visible`，长内容使用 `wide`。`0` 和 `false` 不显示为缺失值。
+- `rows` 必须与实际 `:data` 的分页、筛选、排序顺序一致；菜单使用实际扁平可见行，工资发放使用原已发快照。不得按总列表索引打开当前页详情。
+- 只读用户仍可双击查看获准字段；动作区按实际权限与当前状态计算 `hasActions`。无动作不创建 footer、不加入纯“关闭”按钮。字段权限隐藏不能吞掉已授权的业务操作。
+- 底部按钮使用 `.tf-dialog-actions` 和原 `v-permission`/页面能力。动作先捕获当前记录、关闭查看，再调用原业务函数；提交中、防重复、已完成或已发放保护及必要危险确认继续沿用。
+- `useMobileRowDoubleTap` 及按钮型 `expand` 已退役，禁止通过 `row-click` 计时器、展开列或点击箭头恢复旧交互。
+- 库存预警母子规则等真实数据明细可以保留桌面展开；手机通过母模板详情查看规则，再双击子规则进入详情底部操作。批量草稿、键值设置、选择表及详情内只读流水保持其输入/关联用途，不强制造第二层同内容详情。明确用途登记在 `frontend/scripts/mobile-table-purposes.json`，登记必须给出业务理由，不能用于豁免持久记录列表；系统报价联系人、查询账号、推荐区域商品与错误日志均按记录处理。
+- 审计同时遍历 `views` 与 `components`，弹窗祖先及组件目录不能整体豁免。`MobileTable`、`PaginatedTable` 保留原字段插槽及全部已授权动作；本地排序用真实排序后的显示数组，自定义服务端排序不再次重排。公开商城购物、导航链接、媒体控件和待提交表单输入继续按自身用途处理。
 
-const { isDoubleTap, resetDoubleTap } = useMobileRowDoubleTap()
+正式回归包括 `mobile-table-detail.spec.ts`、`paginated-mobile-detail.spec.ts`、`mobile-card-workflows.spec.ts` 及 `check:mobile-details` 的正反例。`npm --prefix frontend run test:mobile-details:browser` 单独启动不读取环境文件的隔离 Vite，加载真实组件、公共 CSS 和内存响应，拒绝业务写请求；不随日常启动运行。默认使用本机 Chrome，可通过 `CHROME_BIN` 指定浏览器，通过 `MOBILE_DETAIL_SCREENSHOT_DIR` 将无敏感数据截图输出到指定临时目录，人工检查后清理。此回归覆盖脚本登记的页面或子列表样本，不能等同全部业务状态或物理设备验收。
 
-const handleMobileRowTap = (id: number) => {
-  if (!isMobile.value) return
-  // 双击后的具体行为仍由页面决定：切换操作菜单 / 展开行 / 打开详情
-  if (isDoubleTap(String(id))) toggleMobileActions(id)
-}
-```
-
-- 检测键必须使用稳定业务主键；同一表格内存在多个视图（如考勤“全部/我的”两个 scope）时，用 `${scope}:${id}` 之类的组合键区分，避免跨视图误判双击。
-- 该 composable 只做检测，不固化某一类交互；切换视图、离开移动端或关闭行操作时调用 `resetDoubleTap()` 清空记录。
-- 页面不得再手写 `lastTapTimestamp` 之类的时间戳 `ref`、`Date.now() - ... <= 320` 时间窗或私有计时 Map。`check:interactions` 校验此约束并阻止回退。
-- 与 `v-table-double-tap` 指令的分工：指令直接监听 `touchend`/`dblclick` 用于“双击打开详情”的平面表格；本 composable 用于已经以 `@row-click` 驱动、需要按行为族（菜单/展开/详情）自定义的页面。两者都不得扩展为隐式选择。
+公共行为由 `frontend/tests/mobile-table-detail.spec.ts` 验证，接入门禁为 `npm --prefix frontend run check:mobile-details`；该命令解析真实模板并检查遗漏主表、按钮型展开及失效用途，不能替代逐页浏览器或真机验收。
 
 ### 弹窗表格自适应规则
 
@@ -510,7 +507,7 @@ Element Plus 弹窗默认可能通过 Teleport 挂载到 `body`，不再位于�
 
 - PC 端排序统一使用 `useElementTableSortable` 和 `.drag-handle`，页面只实现排序后的业务保存；不得再实现原生 `dragstart/drop` 排序。
 - 品牌、型号、颜色和内存的排序写入共用 `useReferenceOrdering`，单条编辑、筛选后保存和拖拽范围遵循[检索规范的基础资料排序编辑](search-standards.md#基础资料排序编辑)；序号使用分页连续编号，不从排序值推导。
-- 手机端不显示排序、创建时间和常驻操作列；连续两次点击同一行后展开编辑、删除操作，展开列箭头及其占位由公共样式隐藏。
+- 手机端不显示排序、创建时间和常驻操作列；双击同一记录打开查看模态框，编辑、删除位于详情底部，不创建操作展开列。
 - 品牌名称、型号、颜色预览、内存规格和存储大小均保持单行。可见字段总宽度超过卡片时，使用 Element Plus 内部滚动容器同步移动表头和内容，并隐藏可见滚动条。
 - 字段较少时保留 `fit`，由 Element Plus 分配剩余宽度填满表格；不得通过页面私有字号缩放填空。
 - 基础资料页手机列宽采用与综合查询相同的紧凑基准；内容长度不固定的字段使用 `getTextColumnMinWidth` 计算，确保完整显示后再决定是否产生横向滑动。
@@ -519,15 +516,15 @@ Element Plus 弹窗默认可能通过 Teleport 挂载到 `body`，不再位于�
 
 门店页负责人字段使用 `/stores/managers` 提供的在职员工选项，不依赖 `employee:view`。选择负责人后，联系电话取员工资料中的联系方式；前端负责即时联动展示，后端保存时必须再次校验员工状态并以员工联系方式为准。未选择负责人时才允许单独填写门店联系电话。
 
-客户页手机主列表优先显示会员号、姓名和手机号，列宽按当前页内容通过 `getIdentifierColumnMinWidth` / `getTextColumnMinWidth` 计算；常规内容尽量一屏铺满，遇到长会员号时允许表格内部同步横向滑动，禁止用省略号或私有小字号替代完整内容。编辑、详情、删除操作通过连续两次点击同一行展开。客户详情的购买记录也必须使用 Element Plus 表格，IMEI 和序列号按当前记录计算紧凑最小宽度。
+客户页手机主列表优先显示会员号、姓名和手机号，列宽按当前页内容通过 `getIdentifierColumnMinWidth` / `getTextColumnMinWidth` 计算；常规内容尽量一屏铺满，遇到长会员号时允许表格内部同步横向滑动，禁止用省略号或私有小字号替代完整内容。双击同一行打开详情，编辑、删除位于详情底部。客户详情的购买记录也必须使用 Element Plus 表格，IMEI 和序列号按当前记录计算紧凑最小宽度。
 
-配件页手机主列表优先显示配件名称、分类、剩余库存和状态，不再维护独立卡片视图。名称和分类按当前页内容计算最小宽度，连续两次点击同一行展开详情、编辑、删除操作；PC 端保留价格、毛利和完整库存字段。
+配件页手机主列表优先显示配件名称、分类、剩余库存和状态，不再维护独立卡片视图。名称和分类按当前页内容计算最小宽度，双击同一行打开详情，入库、划拨、编辑和删除按权限放在详情底部；PC 端保留价格、毛利和完整库存字段。
 
 系统设置页 `/system` 的站点信息、报价联系人、报价查询密码、库存预警和退库管理表格统一使用 `el-table.data-table.devices-table.base-data-table`，并使用 `table-layout="fixed"` 与 `:fit="true"` 让普通列共同分配剩余宽度。表格加载和空数据统一使用 `TableLoadingRow`、`DataEmptyState`，不得在 TAB 内维护独立的移动端表格字号、滚动容器或空状态；预警配置的母表、子表和组合编辑表也遵循同一规则。
 
-维修页 `/repairs` 的统计卡片、搜索区、主列表和分页全部接入公共结构。手机主列表保留完整维修单号、客户、手机型号和维修状态，连续两次点击同一行展开现有操作；新增维修单弹窗使用 Element Plus 表单控件，不得重新引入原生输入框和私有表格样式。
+维修页 `/repairs` 的统计卡片、搜索区、主列表和分页全部接入公共结构。手机主列表保留完整维修单号、客户、手机型号和维修状态，双击同一行打开维修详情，现有操作放在底部；新增维修单弹窗使用 Element Plus 表单控件，不得重新引入原生输入框和私有表格样式。
 
-薪资页 `/salary` 的工资模板、员工工资、工资计算和工资发放四个 Tab 使用同一套 Element Plus 公共表格结构。手机端保留完整业务字段并通过表格内部横向滚动查看，操作通过连续两次点击同一行展开，不得维护独立手机表格或固定右侧操作列。四个 Tab 均使用标准列表标题、记录数和统一分页。
+薪资页 `/salary` 的工资模板、员工工资、工资计算和工资发放四个 Tab 使用同一套 Element Plus 公共表格结构。手机端保留完整业务字段并通过表格内部横向滚动查看，双击打开记录详情，操作在详情底部展示，不得维护独立手机表格或固定右侧操作列。四个 Tab 均使用标准列表标题、记录数和统一分页。
 
 薪资销售明细弹窗使用内容驱动的紧凑列宽：型号、IMEI 和客户按当前两张明细表的数据计算宽度，颜色、金额、利润和时间使用固定语义宽度；弹窗宽度随列宽总和自适应。IMEI 仅使用等宽文本，不得添加背景、边框、圆角或悬停缩放。
 
@@ -541,13 +538,13 @@ Element Plus 弹窗默认可能通过 Teleport 挂载到 `body`，不再位于�
 
 ### 考勤管理页规则
 
-考勤管理 `/attendance` 的“所有考勤”和“我的考勤”统一使用 `el-table.data-table.devices-table`。员工、类型、详情、日期、原因、状态和审批备注按当前页内容计算紧凑宽度，长原因与备注在有限宽度内完整换行。页面不得覆盖公共表头、行高、字号、斑马纹、悬停背景、单元格内边距或横向滚动；考勤类型和审批状态可以保留业务语义标签。操作列不得固定在独立右侧层，必须和普通字段处于同一滚动表格内，确保全局整行悬停外包围连续覆盖操作区域。桌面和手机展开区的查看、编辑、审批、删除、撤销按钮均使用公共语义 class，操作列宽使用带 `{ label, visible }` 描述的 `getAdaptiveActionColumnWidth`。
+考勤管理 `/attendance` 的“所有考勤”和“我的考勤”统一使用 `el-table.data-table.devices-table`。员工、类型、详情、日期、原因、状态和审批备注按当前页内容计算紧凑宽度，长原因与备注在有限宽度内完整换行。页面不得覆盖公共表头、行高、字号、斑马纹、悬停背景、单元格内边距或横向滚动；考勤类型和审批状态可以保留业务语义标签。操作列不得固定在独立右侧层，必须和普通字段处于同一滚动表格内，确保全局整行悬停外包围连续覆盖操作区域。桌面行操作使用表格语义 class，手机的编辑、审批、删除、撤销进入查看详情底部并使用公共弹窗按钮，操作列宽使用带 `{ label, visible }` 描述的 `getAdaptiveActionColumnWidth`。
 
 ### 预订管理页规则
 
 预订管理 `/preorders` 的新增预订、已预订、已交付三个 Tab 均使用 `el-table.data-table.devices-table.base-data-table`，并放入各自的 `.table-responsive`。预订业务字段较多，手机端保留横向滑动，不得隐藏业务列或缩小公共字号；表头和内容必须同步移动。
 
-预定单号和 IMEI 使用 `getIdentifierColumnMinWidth` 按三个 Tab 当前数据共同计算，保证完整显示。手机端连续两次点击同一行展开当前状态可执行的操作，不显示展开箭头；页面不得保留第二个横向滚动区域或页面私有表格字号。
+预定单号和 IMEI 使用 `getIdentifierColumnMinWidth` 按三个 Tab 当前数据共同计算，保证完整显示。手机端双击同一行打开详情，当前状态可执行的操作进入底部，不生成按钮型展开列；页面不得保留第二个横向滚动区域或页面私有表格字号。
 
 ## 7. 允许与禁止
 
@@ -580,7 +577,7 @@ Element Plus 弹窗默认可能通过 Teleport 挂载到 `body`，不再位于�
 - PC 鼠标拖动后表头、表体和汇总行保持同一 `scrollLeft`，不存在表头与内容错位。
 - PC 主列表操作按钮显示“图标 + 文字”，列宽随可见按钮数量自适应；模态框纯图标按钮具备 `title` 或 tooltip。
 - 操作按钮组在列内居中，左右安全留白一致；备注双击能查看完整内容，Apple ID 示例长度无需双击即可完整显示。
-- `npm run check:tables` 同时验证公共变量、公共样式引用、完整内容、内部横向滚动、表头/汇总同步、全局拖动初始化和页面私有覆盖；任一项失败都会阻止开发启动和生产构建。
+- `npm run check:tables` 同时验证公共变量、公共样式引用、完整内容、内部横向滚动、表头/汇总同步、全局拖动初始化和页面私有覆盖；任一项失败都会阻断生产构建和发布检查。
 - 分别使用管理员全字段账号和普通权限账号验收；隐藏列、隐藏操作后宽度会重新计算，剩余字段自动铺满且不保留无效空白。
 - 表头全选/半选按当前可选 ID 计算；单项取消、全选后取消一项、跨页保留和清空全部均已验证。
 - 动态勾选列（批量、调货、划拨）不得改变表头高度；公共样式固定表头行和 `.cell` 高度，移动端与 PC 端均读取 `--admin-data-table-header-height`。
@@ -615,3 +612,5 @@ Element Plus 弹窗默认可能通过 Teleport 挂载到 `body`，不再位于�
 - 薪资管理：`frontend/src/views/salary/SalaryView.vue`
 
 发生冲突时，以本文、`admin-layout.css` 公共变量和综合查询页面结构为准。
+
+薪资个人与员工销售明细的公共内容样式位于 `frontend/src/views/salary/styles/salary-sales-details.scss`，两者复用宽表滚动及移动摘要布局；模块权限、汇总含义、型号字段、利润及新旧机列仍由原弹窗分别声明，不通过展示适配改变权限。

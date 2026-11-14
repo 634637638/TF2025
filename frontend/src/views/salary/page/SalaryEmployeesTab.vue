@@ -89,7 +89,7 @@
       </div>
       <div class="table-responsive">
         <el-table
-          ref="tableRef"
+          v-table-double-tap="mobileDetailTapOptions"
           v-tf-loading="{ active: loading, text: '正在刷新员工工资...' }"
           :data="employees"
           border
@@ -98,7 +98,7 @@
           :fit="true"
           row-key="id"
           class="data-table devices-table base-data-table salary-employee-table"
-          @row-click="handleRowTap"
+          @row-dblclick="mobileDetailDoubleClick"
         >
           <template #empty>
             <TableLoadingRow
@@ -112,46 +112,7 @@
             />
           </template>
 
-          <el-table-column
-            v-if="isMobile && showActionColumn"
-            type="expand"
-            width="1"
-            class-name="mobile-expand-column"
-            label-class-name="mobile-expand-header"
-          >
-            <template #default="{ row }">
-              <div class="mobile-row-actions">
-                <el-button
-                  v-if="canEditTemplate"
-                  v-permission="'salary-templates:edit'"
-                  size="small"
-                  type="primary"
-                  class="mobile-action-btn mobile-action-btn-edit"
-                  @click.stop="emit('editTemplate', row)"
-                >
-                  <i class="fas fa-file-invoice-dollar" /><span>模板</span>
-                </el-button>
-                <el-button
-                  v-if="canViewRecords"
-                  v-permission="'salary-records:view'"
-                  size="small"
-                  type="success"
-                  class="mobile-action-btn mobile-action-btn-status"
-                  @click.stop="emit('viewAttendance', row)"
-                >
-                  <i class="fas fa-calendar-check" /><span>考勤</span>
-                </el-button>
-                <el-button
-                  size="small"
-                  type="warning"
-                  class="mobile-action-btn mobile-action-btn-default"
-                  @click.stop="emit('viewSales', row)"
-                >
-                  <i class="fas fa-chart-line" /><span>销售</span>
-                </el-button>
-              </div>
-            </template>
-          </el-table-column>
+
           <el-table-column
             v-if="!isMobile"
             label="序号"
@@ -274,7 +235,7 @@
           </el-table-column>
           <el-table-column
             v-if="canViewField('salary_salaryrecordsview', 'commission_amount')"
-            :label="isMobile ? '提成' : '销售提成'"
+            label="手机提成"
             :min-width="isMobile ? 82 : 100"
             align="center"
           >
@@ -408,7 +369,7 @@
           </el-table-column>
           <el-table-column
             v-if="!isMobile && canViewField('salary_salaryrecordsview', 'net_salary')"
-            label="预计工资"
+            label="预计工资（不含商品）"
             min-width="110"
             align="center"
           >
@@ -461,6 +422,40 @@
             </template>
           </el-table-column>
         </el-table>
+        <RecordDetailDialog
+          v-model="mobileDetailVisible"
+          title="员工工资详情"
+          :fields="mobileDetailFields"
+          :record="mobileDetailRow"
+          :has-actions="canEditTemplate || canViewRecords"
+        >
+          <template #actions="{ row }">
+            <el-button
+              v-if="canEditTemplate"
+              v-permission="'salary-templates:edit'"
+              type="primary"
+              @click.stop="mobileDetailRunAction(() => emit('editTemplate', row))"
+            >
+              <i class="fas fa-file-invoice-dollar" /><span>模板</span>
+            </el-button>
+            <el-button
+              v-if="canViewRecords"
+              v-permission="'salary-records:view'"
+              type="success"
+              @click.stop="mobileDetailRunAction(() => emit('viewAttendance', row))"
+            >
+              <i class="fas fa-calendar-check" /><span>考勤</span>
+            </el-button>
+            <el-button
+              v-if="canViewRecords"
+              v-permission="'salary-records:view'"
+              type="warning"
+              @click.stop="mobileDetailRunAction(() => emit('viewSales', row))"
+            >
+              <i class="fas fa-chart-line" /><span>销售</span>
+            </el-button>
+          </template>
+        </RecordDetailDialog>
       </div>
       <Pagination
         v-if="total > 0"
@@ -484,9 +479,10 @@
 <script setup lang="ts">
 import { formatAmount } from '@/utils/format'
 import { TIME_FORMATS } from '@/utils/time'
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import { shouldShowActionColumn } from '@/composables/useFieldPermissions'
-import { useMobileRowDoubleTap } from '@/composables/useMobileRowDoubleTap'
+import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
+import type { RecordDetailField } from '@/types/component'
 import Pagination from '@/components/Pagination.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
@@ -506,9 +502,6 @@ interface SalesStats {
   sales_count: number
 }
 
-interface EmployeeTableInstance {
-  toggleRowExpansion: (_row: EmployeeRow, _expanded: boolean) => void
-}
 
 const props = defineProps<{
   actionColumnWidth: number
@@ -565,31 +558,10 @@ const emit = defineEmits<{
   viewSales: [row: EmployeeRow]
 }>()
 
-const tableRef = ref<EmployeeTableInstance>()
-const expandedEmployeeId = ref<number | null>(null)
-const { isDoubleTap, resetDoubleTap } = useMobileRowDoubleTap()
 
-const resetInteraction = () => {
-  if (expandedEmployeeId.value) {
-    const previous = props.filteredEmployees.find(item => item.id === expandedEmployeeId.value)
-    if (previous) tableRef.value?.toggleRowExpansion(previous, false)
-  }
-  expandedEmployeeId.value = null
-  resetDoubleTap()
-}
 
-const handleRowTap = (row: EmployeeRow) => {
-  if (!props.isMobile) return
-  if (isDoubleTap(row.id)) {
-    const shouldExpand = expandedEmployeeId.value !== row.id
-    if (expandedEmployeeId.value && expandedEmployeeId.value !== row.id) {
-      const previous = props.filteredEmployees.find(item => item.id === expandedEmployeeId.value)
-      if (previous) tableRef.value?.toggleRowExpansion(previous, false)
-    }
-    tableRef.value?.toggleRowExpansion(row, shouldExpand)
-    expandedEmployeeId.value = shouldExpand ? row.id : null
-  }
-}
+
+const resetInteraction = () => mobileDetailClose()
 
 const handlePaginationChange = (page: number, pageSize: number) => {
   resetInteraction()
@@ -597,6 +569,29 @@ const handlePaginationChange = (page: number, pageSize: number) => {
 }
 
 defineExpose({ resetInteraction })
+const { detailRow: mobileDetailRow, detailVisible: mobileDetailVisible, doubleTapOptions: mobileDetailTapOptions,
+  handleRowDoubleClick: mobileDetailDoubleClick, runDetailAction: mobileDetailRunAction, closeDetail: mobileDetailClose } = useMobileTableDetail<EmployeeRow>({
+    enabled: () => props.isMobile, rows: () => props.employees, getKey: row => row.id
+  })
+const mobileDetailFields = computed<RecordDetailField[]>(() => {
+  const row = mobileDetailRow.value
+  if (!row) return []
+  return [
+    { key: 'employee_username', label: '员工工号', value: row.username, visible: props.canViewField('salary_salaryrecordsview', 'employee_username') },
+    { key: 'employee_name', label: '员工姓名', value: row.name, visible: props.canViewField('salary_salaryrecordsview', 'employee_name') },
+    { key: 'employee_phone', label: '联系电话', value: row.phone, visible: props.canViewField('salary_salaryrecordsview', 'employee_phone') },
+    { key: 'salary_template_name', label: '工资模板', value: row.salary_template_id ? props.getTemplateName(row.salary_template_id) : undefined, visible: props.canViewField('salary_salaryrecordsview', 'salary_template_name') },
+    { key: 'base_salary', label: '底薪', value: formatAmount(props.getBaseSalary(row.id)), visible: props.canViewField('salary_salaryrecordsview', 'base_salary') },
+    { key: 'sales_count', label: '销售数量', value: props.getCommissionCount(row.id), visible: props.canViewField('salary_salaryrecordsview', 'sales_count') },
+    { key: 'commission_amount', label: '手机提成', value: formatAmount(props.calculateCommission(row.id)), visible: props.canViewField('salary_salaryrecordsview', 'commission_amount') },
+    { key: 'monthly_leave_days', label: '休假使用/可用', value: `${props.getAttendanceStats(row.id).monthly_leave_days_used || 0}/${props.getAttendanceStats(row.id).monthly_leave_days_available}`, visible: props.canViewField('salary_salaryrecordsview', 'monthly_leave_days') },
+    { key: 'leave_days', label: '请假天数', value: props.getAttendanceStats(row.id).leave_days, visible: props.canViewField('salary_salaryrecordsview', 'leave_days') },
+    { key: 'overtime_hours', label: '加班小时', value: props.getAttendanceStats(row.id).overtime_hours, visible: props.canViewField('salary_salaryrecordsview', 'overtime_hours') },
+    { key: 'overtime_pay', label: '加班费', value: formatAmount(props.calculateOvertime(row.id, props.getAttendanceStats(row.id).overtime_hours)), visible: props.canViewField('salary_salaryrecordsview', 'overtime_pay') },
+    { key: 'leave_deduction', label: '请假扣款', value: formatAmount(props.calculateLeave(row.id, props.getAttendanceStats(row.id).leave_days)), visible: props.canViewField('salary_salaryrecordsview', 'leave_deduction') },
+    { key: 'net_salary', label: '预计工资（不含商品）', value: formatAmount(props.calculateEstimated(row.id)), visible: props.canViewField('salary_salaryrecordsview', 'net_salary') }
+  ]
+})
 </script>
 
 <style scoped>

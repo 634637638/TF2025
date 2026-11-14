@@ -39,29 +39,6 @@
     margin-left: 0;
   }
 
-  .data-table :deep(.mobile-expand-column) {
-    width: 0 !important;
-    min-width: 0 !important;
-    padding: 0 !important;
-  }
-
-  .data-table :deep(.mobile-expand-column .cell) {
-    display: none !important;
-  }
-
-  .data-table :deep(.el-table__expand-column) {
-    width: 0 !important;
-    min-width: 0 !important;
-  }
-
-  .data-table :deep(.el-table__expand-icon) {
-    display: none !important;
-  }
-
-  .data-table :deep(.el-table__expanded-cell) {
-    padding: 6px 4px 10px !important;
-    background: linear-gradient(180deg, var(--tf-color-surface-blue) 0%, var(--tf-color-indigo-surface-alt) 100%) !important;
-  }
 
   .attendance-dialog-form :deep(.el-form-item) {
     margin-bottom: 12px;

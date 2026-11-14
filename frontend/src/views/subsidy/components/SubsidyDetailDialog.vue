@@ -33,7 +33,7 @@
             {{ showHandlerInfo ? '点击切换到购买者信息' : '点击切换到办理人信息' }}
           </span>
         </h4>
-        <div class="detail-grid">
+        <div class="detail-grid tf-detail-grid">
           <div
             v-if="showHandlerInfo ? fieldVisibility.handler_name : fieldVisibility.customer_name"
             class="detail-row"
@@ -73,7 +73,7 @@
         class="detail-section"
       >
         <h4>设备信息</h4>
-        <div class="detail-grid">
+        <div class="detail-grid tf-detail-grid">
           <div
             v-if="fieldVisibility.brand"
             class="detail-row"
@@ -227,6 +227,14 @@
         </p>
       </div>
     </div>
+    <template
+      v-if="$slots.actions"
+      #footer
+    >
+      <div class="tf-dialog-actions">
+        <slot name="actions" />
+      </div>
+    </template>
   </MobileDialog>
 </template>
 

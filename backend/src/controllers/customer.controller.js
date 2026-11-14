@@ -3,6 +3,7 @@
 const CustomerManagementService = require('../services/customer-management.service')
 const ApiResponse = require('../utils/response')
 const log = require('../utils/log')
+const CustomerExportService = require('../services/customer-export.service')
 
 class CustomerController {
   constructor({ service, response = ApiResponse, logger = log, ...options } = {}) {
@@ -26,20 +27,35 @@ class CustomerController {
 
   async list(req, res) {
     try {
-      const result = await this.service.list(req.query)
+      const result = await this.service.list(req.query, req.fieldPermissions)
       return this.response.success(res, result.data, result.message, 200, result.extra)
     } catch (error) {
       if (error.statusCode === 400) return this.response.badRequest(res, error.message)
       if (error.statusCode === 404) return this.response.notFound(res, error.message)
 
+      if (error.statusCode === 403) return this.response.error(res, error.message, 403)
       this.logger.error('获取客户列表失败:', error)
       return this.response.serverError(res, '获取客户列表失败', error)
     }
   }
 
+  async export(req, res) {
+    try {
+      const result = await new CustomerExportService({ customers: this.service }).export(req.query, req.fieldPermissions)
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+      res.setHeader('Content-Disposition', 'attachment; filename="customers.xlsx"')
+      res.setHeader('Cache-Control', 'no-store')
+      return res.send(result)
+    } catch (error) {
+      if ([400, 403].includes(error.statusCode)) return this.response.error(res, error.message, error.statusCode)
+      this.logger.error('导出客户失败:', error)
+      return this.response.serverError(res, '导出客户失败')
+    }
+  }
+
   async getPointsConfig(req, res) {
     try {
-      const result = await this.service.getPointsConfig()
+      const result = await this.service.getPointsConfig(req.query || {})
       return this.response.success(res, result.data, result.message, 200, result.extra)
     } catch (error) {
       if (error.statusCode === 400) return this.response.badRequest(res, error.message)
@@ -76,6 +92,16 @@ class CustomerController {
     }
   }
 
+  async getAddressCapabilities(req, res) {
+    try {
+      const result = await this.service.getAddressCapabilities()
+      return this.response.success(res, result.data)
+    } catch (error) {
+      this.logger.error('读取客户地址能力失败:', error)
+      return this.response.serverError(res, '地区服务暂时不可用')
+    }
+  }
+
   async create(req, res) {
     try {
       const result = await this.service.create(req.body)
@@ -83,6 +109,7 @@ class CustomerController {
     } catch (error) {
       if (error.statusCode === 400) return this.response.badRequest(res, error.message)
       if (error.statusCode === 404) return this.response.notFound(res, error.message)
+      if (error.statusCode === 409) return this.response.error(res, error.message, 409)
 
       this.logger.error('创建客户失败:', error)
       return this.response.serverError(res, '创建客户失败', error)
@@ -96,6 +123,7 @@ class CustomerController {
     } catch (error) {
       if (error.statusCode === 400) return this.response.badRequest(res, error.message)
       if (error.statusCode === 404) return this.response.notFound(res, error.message)
+      if (error.statusCode === 409) return this.response.error(res, error.message, 409)
 
       if (error && (error.code === 'ER_DUP_ENTRY' || error.errno === 1062)) {
         return this.response.badRequest(res, '手机号已存在')

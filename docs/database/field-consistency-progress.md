@@ -2,6 +2,10 @@
 
 更新时间：2026-08-28
 
+### 2026-11-14 贴膜服务字段代码契约
+
+类型标记唯一字段为 `accessory_categories.film_enabled`，目录以 `film_ready` 标识列是否就绪，未迁移环境只读兼容，显式写标记须409拒绝。服务事实独立保存在 `customer_film_services`，复用原共同订单/客户/有效手机销售ID；数量为耗膜量，一单唯一一条服务，业务/录入时间独立保存。公开历史为 `eligible_for_free/service_count/film_quantity` 和最小明细，后端不透传资格来源、成本或创建人；共同结算额外输入 `film_service.customer_id`、成功返回 `film_service_id`，旧请求摘要不变。共享类型为 `frontend/src/types/sales-checkout.ts`，机器契约已登记；[迁移及权限正文](../backend/accessory-entry.md#贴膜服务后端与类型标记)含受控执行/回退。2026-11-14已授权执行云端DDL并回读，未写真实服务；检查证据统一登记T22，不覆盖下述历史日期结论。
+
 ### 2026-08-28 供应商打款备注与时间展示
 
 - 付款备注统一为 `payment_remarks`，前端表单、后端请求校验、控制器、服务和 `phones.payment_remarks` 物理字段保持一致，不再使用通用 `remarks` 入口。
@@ -385,6 +389,12 @@ npm run test:db
 - 页面分页状态、请求、响应、负责人表单和统计已统一为 snake_case；路由使用明确公开列，不再通过 `SELECT *` 透传物理字段。`stores.location` 暂不重命名，只在后端数据库边界映射为 API `address`。
 - 兼容边界文件：无。4 个历史分页字段已登记为 retired；旧字段移除条件已满足：仓内调用方完成迁移，字段审计和契约测试覆盖页面与路由。
 - 是否完成真实数据库验证：是。已使用只读查询完成门店显式列、状态筛选和 `page_size` 分页验证，写操作为 0；登录态增删改、负责人校验、导出和批量排序仍待服务启动后回归。
+
+### 商品工资内部核销字段（2026-11-13）
+
+工资核销的内部字段契约及迁移见[工资核销契约](../business/salary-record-standard.md#商品提成核销规划与内部追加账)。`salary_records.goods_commission_snapshot`独立保存商品来源，不改变原手机`commission_detail`；`salary_goods_settlements`追加唯一来源、金额、原始快照及本次/原工资关联，来源键/摘要使用ASCII二进制排序，金额为有符号整数分，工资外键类型从真实父列元数据核对。字段名称登记在`field-contracts.json`的`salary-records.canonical`，内部字段未加入公开响应或手工写入白名单；公开工资合成只读`goods_commission`和`calculation_version`，前端回传`expected_calculation_version`核对变化。内部`salary_basis`绑定真实工资基数；摘要不透传规则、成本或来源hash，仍受工资提成字段权限控制。合成字段不加入仓储SQL物理列白名单。
+
+迁移只提供`migrate:salary-goods-settlement`预览、独占备份后apply及有历史拒绝回退入口；隔离测试通过不能视为云端已应用。正式工资保存/首次发放及页面已接入代码，首次paid与唯一来源追加同事务；云端结构已迁移回读，真实工资未验收，实施状态及验证统一见T22。
 
 ### 工资模板列表（`salary-template`，2026-08-27）
 

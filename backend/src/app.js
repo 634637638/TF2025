@@ -1,6 +1,8 @@
+const { assertSingleInstance } = require('./config/instance-boundary')
 const express = require('express')
 const path = require('path')
 const config = require('./config')
+assertSingleInstance({ ...process.env, NODE_ENV: config.server.env || process.env.NODE_ENV })
 const { connectToDatabase, getDatabase, isConnected } = require('./config/database')
 const errorHandler = require('./middleware/error-handler')
 const log = require('./utils/log')
@@ -22,6 +24,8 @@ const { uploadStaticAccess } = require('./middleware/upload-static-access')
 const requestContext = require('./middleware/request-context')
 const { redactUrl } = require('./utils/sensitive-data')
 const { assertCustomerTokenSchema } = require('./utils/customer-token')
+const { createErrorAlertMiddleware } = require('./middleware/error-alerts')
+const { getErrorAlertService } = require('./services/error-alert.service')
 
 // 导入路由
 const routes = require('./routes')
@@ -165,6 +169,8 @@ async function initializeApp() {
     // 先设置代理信任，安全中间件和限流才能读取真实客户端 IP。
     app.set('trust proxy', 1)
     app.use(requestContext)
+    app.use(createErrorAlertMiddleware())
+    if (!databaseConnected) getErrorAlertService().recordSystemFailure('database_unavailable')
 
     // 安全头、CORS 与全局限流必须在请求体解析前执行。
     setupSecurityMiddleware(app)
@@ -219,6 +225,7 @@ async function initializeApp() {
     return app
   } catch (error) {
     log.error('应用程序初始化失败:', error)
+    getErrorAlertService().recordSystemFailure('startup_failed')
     process.exit(1)
   }
 }
@@ -287,6 +294,7 @@ async function startServer() {
 
   } catch (error) {
     log.error('服务器启动失败:', error)
+    getErrorAlertService().recordSystemFailure('startup_failed')
     log.error('错误堆栈:', error.stack)
     // 延迟退出，给 PM2 时间记录日志
     setTimeout(() => {
@@ -336,6 +344,7 @@ function setupGracefulShutdown(server, priceScheduler, orderExpireChecker) {
       }
 
       log.success('服务器已优雅关闭')
+      getErrorAlertService().close()
       process.exit(0)
     })
 
@@ -353,6 +362,7 @@ function setupGracefulShutdown(server, priceScheduler, orderExpireChecker) {
 // 未捕获的异常处理
 process.on('uncaughtException', (error) => {
   log.error('未捕获的异常:', error)
+  getErrorAlertService().recordSystemFailure('uncaught_exception')
   log.error('异常堆栈:', error.stack)
   // 记录错误但不立即退出，给 PM2 时间来处理
   // 如果是生产环境，让 PM2 决定是否重启
@@ -363,6 +373,7 @@ process.on('uncaughtException', (error) => {
 
 process.on('unhandledRejection', (reason, promise) => {
   log.error('未处理的Promise拒绝:', reason)
+  getErrorAlertService().recordSystemFailure('unhandled_rejection')
   log.error('Promise:', promise)
   // 记录错误但不立即退出，避免频繁重启
   // 只在严重错误时退出

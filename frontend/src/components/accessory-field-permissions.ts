@@ -6,7 +6,8 @@ export const ACCESSORY_FIELD_IDS = {
   sequence: 'basic_info.sequence', name: 'basic_info.name', barcode: 'basic_info.barcode', batch_no: 'basic_info.batch_no',
   category: 'basic_info.category', brand_name: 'basic_info.brand_name', model_name: 'basic_info.model_name',
   color_name: 'basic_info.color_name', supplier_name: 'basic_info.supplier_name', unit: 'basic_info.unit',
-  specifications: 'basic_info.specifications', image_url: 'basic_info.image_url',
+  usage_type: 'basic_info.usage_type', serial_tracking: 'basic_info.serial_tracking', serial_number: 'basic_info.serial_number',
+  product_model: 'basic_info.specifications', image_url: 'basic_info.image_url',
   purchase_cost: 'price_info.purchase_cost', sale_price: 'price_info.sale_price', profit: 'price_info.profit',
   unit_price: 'price_info.unit_price', total_amount: 'price_info.total_amount', total_price: 'price_info.total_price',
   total_stock: 'stock_info.total_stock', total_in: 'stock_info.total_in', total_out: 'stock_info.total_out',
@@ -20,10 +21,13 @@ export const ACCESSORY_FIELD_IDS = {
 
 export type AccessoryFieldName = keyof typeof ACCESSORY_FIELD_IDS
 
-export const canViewAccessoryField = (field: AccessoryFieldName) => fieldPermissions.isFieldVisible(
-  ACCESSORY_FIELD_MODULE_KEY,
-  ACCESSORY_FIELD_IDS[field]
-)
+export const canViewAccessoryField = (field: AccessoryFieldName) => {
+  const visible = (key: AccessoryFieldName) => fieldPermissions.isFieldVisible(ACCESSORY_FIELD_MODULE_KEY, ACCESSORY_FIELD_IDS[key])
+  if (!visible(field)) return false
+  if (field === 'profit') return visible('purchase_cost') && visible('sale_price')
+  if (field === 'remaining_stock') return visible('total_stock')
+  return true
+}
 
 export const pickVisibleAccessoryFields = <T extends object>(
   source: T,

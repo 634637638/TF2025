@@ -6,15 +6,18 @@
     dialog-class="salary-dialog salary-dialog-large salary-edit-payout-dialog"
     :show-default-footer="false"
     :close-on-click-modal="false"
-    @update:model-value="emit('update:modelValue', $event)"
+    :close-on-press-escape="!saving"
+    :before-close="done => { if (!saving) done() }"
+    @update:model-value="!saving && emit('update:modelValue', $event)"
   >
     <form
       id="edit-payout-form"
+      class="tf-form-layout"
       @submit.prevent="emit('submit')"
     >
       <div class="form-section">
         <h4>员工信息</h4>
-        <div class="form-row">
+        <div class="form-row tf-form-row tf-form-row--three">
           <div
             v-if="canViewField('salary_salaryrecordsview', 'employee_name')"
             class="form-group"
@@ -36,28 +39,33 @@
               class="form-control"
               :min="0"
               :step="0.01"
-              :disabled="!canEditField('salary_salaryrecordsview', 'base_salary')"
+              :disabled="saving || !canEditField('salary_salaryrecordsview', 'base_salary')"
             />
           </div>
           <div
             v-if="canViewField('salary_salaryrecordsview', 'commission_amount')"
             class="form-group"
           >
-            <label>销售提成</label>
+            <label>手机 / 手工提成</label>
             <AmountInput
               v-model.number="commissionAmount"
               class="form-control"
               :min="0"
               :step="0.01"
-              :disabled="!canEditField('salary_salaryrecordsview', 'commission_amount')"
+              :disabled="saving || !canEditField('salary_salaryrecordsview', 'commission_amount')"
             />
           </div>
         </div>
       </div>
 
+      <SalaryGoodsSummary
+        v-if="canViewField('salary_salaryrecordsview', 'commission_amount')"
+        :summary="goodsCommission"
+      />
+
       <div class="form-section">
         <h4>调整项</h4>
-        <div class="form-row">
+        <div class="form-row tf-form-row tf-form-row--three">
           <div
             v-if="canViewField('salary_salaryrecordsview', 'overtime_pay')"
             class="form-group"
@@ -68,7 +76,7 @@
               class="form-control"
               :min="0"
               :step="0.01"
-              :disabled="!canEditField('salary_salaryrecordsview', 'overtime_pay')"
+              :disabled="saving || !canEditField('salary_salaryrecordsview', 'overtime_pay')"
             />
           </div>
           <div
@@ -81,7 +89,7 @@
               class="form-control"
               :min="0"
               :step="0.01"
-              :disabled="!canEditField('salary_salaryrecordsview', 'leave_deduction')"
+              :disabled="saving || !canEditField('salary_salaryrecordsview', 'leave_deduction')"
             />
           </div>
           <div
@@ -109,45 +117,13 @@
             v-model="status"
             class="form-control"
             placeholder="请选择结算状态"
-            :disabled="!canEditField('salary_salaryrecordsview', 'salary_status')"
+            :disabled="saving || !canEditField('salary_salaryrecordsview', 'salary_status')"
           >
             <el-option
               label="未结算"
               value="approved"
             />
-            <el-option
-              label="已结算"
-              value="paid"
-            />
           </el-select>
-        </div>
-        <div
-          v-if="canViewField('salary_salaryrecordsview', 'paid_at') && form.status === 'paid'"
-          class="form-group"
-        >
-          <label>结算时间</label>
-          <el-date-picker
-            v-model="paidAt"
-            type="date"
-            class="form-control"
-            :format="TIME_FORMATS.DATE"
-            :value-format="TIME_FORMATS.DATE"
-            clearable
-            :disabled="!canEditField('salary_salaryrecordsview', 'paid_at')"
-          />
-        </div>
-        <div
-          v-if="canViewField('salary_salaryrecordsview', 'payment_method') && form.status === 'paid'"
-          class="form-group"
-        >
-          <label>支付方式</label>
-          <PaymentMethodSelect
-            v-model="paymentMethod"
-            variant="settlement"
-            class="form-control"
-            :disabled="!canEditField('salary_salaryrecordsview', 'payment_method')"
-            placeholder="请选择支付方式"
-          />
         </div>
       </div>
     </form>
@@ -156,6 +132,7 @@
       <div class="tf-dialog-actions">
         <el-button
           type="info"
+          :disabled="saving"
           @click="emit('update:modelValue', false)"
         >
           取消
@@ -165,13 +142,11 @@
           native-type="submit"
           form="edit-payout-form"
           :disabled="saving"
+          :loading="saving"
         >
-          <InlineLoading
-            v-if="saving"
-            text="保存中..."
-            size="small"
-            variant="inherit"
-          />
+          <template v-if="saving">
+            保存中...
+          </template>
           <template v-else>
             <i class="fas fa-save" />
             保存
@@ -184,11 +159,10 @@
 
 <script setup lang="ts">
 import { formatAmount } from '@/utils/format'
-import { TIME_FORMATS } from '@/utils/time'
 import { computed } from 'vue'
-import InlineLoading from '@/components/InlineLoading.vue'
 import MobileDialog from '@/components/MobileDialog.vue'
-import { PaymentMethodSelect } from '@/components/payment'
+import SalaryGoodsSummary from './SalaryGoodsSummary.vue'
+import type { SalaryGoodsCommission } from '@/types/salary'
 
 export interface SalaryEditPayoutForm {
   id: number | null
@@ -199,8 +173,6 @@ export interface SalaryEditPayoutForm {
   overtime_pay: number
   leave_deduction: number
   status: string
-  paid_at: string | null
-  payment_method: string | null
 }
 
 const props = defineProps<{
@@ -208,6 +180,7 @@ const props = defineProps<{
   canViewField: (_moduleKey: string, _fieldName: string) => boolean
   employeeName: string
   form: SalaryEditPayoutForm
+  goodsCommission?: SalaryGoodsCommission | null
   modelValue: boolean
   netSalary: string
   saving: boolean
@@ -231,8 +204,6 @@ const commissionAmount = createFieldModel('commission_amount')
 const overtimePay = createFieldModel('overtime_pay')
 const leaveDeduction = createFieldModel('leave_deduction')
 const status = createFieldModel('status')
-const paidAt = createFieldModel('paid_at')
-const paymentMethod = createFieldModel('payment_method')
 </script>
 
 <style lang="scss" scoped>

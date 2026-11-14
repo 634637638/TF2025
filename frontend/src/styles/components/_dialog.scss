@@ -388,16 +388,46 @@ body .mobile-dialog-sheet-close svg {
   }
 }
 
+.tf-record-details {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--tf-space-4);
+  margin: 0;
+}
+
+.tf-record-details__field {
+  min-width: 0;
+  overflow-wrap: anywhere;
+
+  dt {
+    color: var(--tf-color-muted);
+    font-size: var(--tf-font-label);
+    margin-bottom: var(--tf-space-1);
+  }
+
+  dd {
+    margin: 0;
+    color: var(--tf-dialog-body-text);
+    font-size: var(--tf-font-body);
+  }
+
+  &:only-child,
+  &--wide {
+    grid-column: 1 / -1;
+  }
+}
+
 .tf-dialog-form {
   --tf-dialog-form-current-label-width: var(--tf-dialog-form-label-width);
 }
 
 .tf-dialog-form .el-form-item__label,
-.tf-dialog-form .el-form-item__content {
+:is(.tf-dialog-form, .tf-form-grid) .el-form-item__content {
   box-sizing: border-box;
 }
 
-.tf-dialog-form .el-form-item__label {
+:is(.tf-dialog-form, .tf-form-grid) .el-form-item__label {
+  color: var(--tf-dialog-body-text);
   font-size: var(--tf-font-label) !important;
   line-height: var(--tf-line-height-body) !important;
 }
@@ -408,8 +438,8 @@ body .mobile-dialog-sheet-close svg {
 }
 
 .tf-dialog-form .el-form-item__label {
-  width: var(--tf-dialog-form-current-label-width) !important;
-  padding-right: 8px !important;
+  width: var(--tf-form-grid-label-width, var(--tf-dialog-form-current-label-width)) !important;
+  padding: var(--tf-form-grid-label-padding, 0 var(--tf-space-2) 0 0) !important;
   text-align: left !important;
 }
 
@@ -428,6 +458,155 @@ body .mobile-dialog-sheet-close svg {
 
 .tf-dialog-form--stacked .el-form-item__content {
   width: 100%;
+}
+
+/* 按需接入的公共字段布局：短字段共享一行，长字段整行。 */
+.tf-form-layout .el-form-item {
+  min-width: 0;
+  margin-bottom: var(--tf-space-3);
+}
+
+.tf-form-layout :is(.el-input, .el-input-number, .el-select, .el-date-editor, .el-cascader) {
+  width: 100%;
+  min-width: 0;
+}
+
+.tf-form-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: var(--tf-space-3);
+}
+
+.tf-form-row--three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.tf-form-row > :is(.el-form-item, .form-group):only-child {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 767px) {
+  .tf-record-descriptions .el-descriptions__table {
+    table-layout: fixed;
+  }
+
+  .tf-record-descriptions .el-descriptions__cell {
+    overflow-wrap: anywhere;
+  }
+
+  // 存量直排表单与显式行组共用同一手机字段密度。
+  .tf-form-grid,
+  .tf-detail-grid,
+  .mobile-dialog .el-dialog__body .tf-form-grid,
+  .mobile-dialog .el-dialog__body .tf-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--tf-space-3) var(--tf-space-2);
+    min-width: 0;
+  }
+
+  .tf-form-grid {
+    --tf-form-grid-label-width: auto;
+    --tf-form-grid-label-padding: 0 0 var(--tf-space-1);
+  }
+
+  .tf-form-grid > :not(.el-form-item, .form-group),
+  .tf-form-field--wide,
+  .tf-detail-field--wide,
+  .tf-detail-grid > :is(h3, h4) {
+    grid-column: 1 / -1;
+  }
+
+  .tf-form-grid > :is(.el-form-item, .form-group):only-child {
+    grid-column: 1 / -1;
+  }
+
+  .tf-form-layout .form-group,
+  .tf-form-row > .form-group {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .tf-form-layout .el-row > .el-col:only-child {
+    flex-basis: 100%;
+    max-width: 100%;
+  }
+
+  .tf-form-grid .el-form-item {
+    min-width: 0;
+    flex-direction: column;
+    align-items: stretch;
+    margin-bottom: var(--tf-space-2);
+  }
+
+  .tf-form-grid .el-form-item > .el-form-item__label {
+    height: auto;
+    justify-content: flex-start;
+  }
+
+  .tf-form-grid .el-form-item > .el-form-item__content {
+    min-width: 0;
+  }
+
+  .tf-detail-grid > * {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .mobile-dialog .el-dialog__body .tf-detail-grid > :is(.detail-row, .detail-item, .info-item) {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--tf-space-1);
+    padding-block: 0;
+  }
+
+  .mobile-dialog .el-dialog__body .tf-detail-grid > :is(.detail-row, .detail-item, .info-item) > :is(label, .label) {
+    min-width: 0;
+    max-width: 100%;
+    margin: 0;
+  }
+
+  .tf-form-row {
+    column-gap: var(--tf-space-2);
+  }
+
+  .mobile-dialog .el-dialog__body .tf-form-row {
+    display: grid;
+  }
+
+  .mobile-dialog .el-dialog__body .tf-form-row:not(.tf-form-row--mobile-single) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .tf-form-row--mobile-single {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .tf-form-row > :is(.el-form-item, .form-group):last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+
+  .tf-form-layout .el-form-item__label {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+
+  .tf-form-layout .el-form-item__error {
+    position: static;
+    width: 100%;
+    overflow-wrap: anywhere;
+  }
+
+  .tf-form-layout .el-radio-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--tf-space-2);
+  }
+
+  .tf-form-layout .el-radio {
+    margin-right: 0;
+  }
 }
 
 @media (min-width: 768px) and (max-width: 1024px) {

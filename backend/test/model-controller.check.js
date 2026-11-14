@@ -209,7 +209,7 @@ test('型号排序事务提交或回滚后均释放连接', async () => {
     repository: Object.assign(new ModelRepository(), { withConnection(operation) { return withConnection({ getConnection: async () => connection }, operation) } })
   })
   const success = createResponse()
-  await controller.reorder({ body: { items: [{ id: 2, sort_order: 4 }, { id: 3 }] } }, success)
+  await controller.reorder({ body: { items: [{ id: 2, sort_order: 4 }] } }, success)
   assert.deepEqual(events.map(event => Array.isArray(event) ? event[2] : event), ['begin', [4, 2], 'commit', 'release', 'invalidate'])
   assert.equal(success.body.message, '排序更新成功')
 

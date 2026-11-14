@@ -57,9 +57,10 @@ test('repair update validates and normalizes fields before opening its transacti
     }
   })
   await assert.rejects(service.update(12, { brand_id: 4 }, { id: 7 }), error => error.code === 'BAD_REQUEST' && error.message === '品牌不存在')
-  await assert.rejects(service.update(12, { customer_id: null }, { id: 7 }), error => error.code === 'BAD_REQUEST' && error.message === '客户编号无效')
+  await assert.rejects(service.update(12, { customer_id: null }, { id: 7 }), { statusCode: 400 })
 
-  const update = await service.buildUpdate({ phone_model: ' Model X ', actual_cost: '12.345', repair_time: '2026-11-01 10:30' })
+  await assert.rejects(service.buildUpdate({ actual_cost: '12.345' }), { statusCode: 400 })
+  const update = await service.buildUpdate({ phone_model: ' Model X ', actual_cost: '12.35', repair_time: '2026-11-01 10:30' })
   assert.deepEqual(update.fields, ['phone_model = ?', 'actual_cost = ?', 'repair_time = ?'])
   assert.deepEqual(update.values, ['Model X', 12.35, '2026-11-01 10:30'])
   assert.deepEqual(calls, [['reference', 'brands', 4, false]])

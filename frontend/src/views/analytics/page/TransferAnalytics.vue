@@ -298,11 +298,13 @@
             </div>
           </template>
           <el-table
+            v-table-double-tap="transferDetailTapOptions"
             v-tf-loading="{ active: loading, text: '正在刷新调拨分析...' }"
             :data="displayRecords"
             stripe
             class="data-table w-full"
             max-height="400"
+            @row-dblclick="transferDetailDoubleClick"
           >
             <template #empty>
               <TableLoadingRow
@@ -408,6 +410,13 @@
               width="100"
             />
           </el-table>
+          <RecordDetailDialog
+            v-model="transferDetailVisible"
+            title="划拨调拨详情"
+            :record="transferDetailRow"
+            :fields="transferDetailFields"
+            :has-actions="false"
+          />
         </el-card>
       </el-col>
     </el-row>
@@ -415,6 +424,9 @@
 </template>
 
 <script setup lang="ts">
+import { useMobile } from '@/composables/mobile'
+import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
+import type { RecordDetailField } from '@/types/component'
 import { formatAmount } from '@/utils/format'
 import { ref, computed, onBeforeUnmount, watch, nextTick } from 'vue'
 import { useNotification } from '@/composables/useNotification'
@@ -1227,6 +1239,30 @@ watch(() => props.searchTrigger, () => {
 onBeforeUnmount(() => {
   disposeCharts()
 })
+
+const { isMobile } = useMobile()
+const { detailRow: transferDetailRow, detailVisible: transferDetailVisible, doubleTapOptions: transferDetailTapOptions, handleRowDoubleClick: transferDetailDoubleClick } = useMobileTableDetail<(typeof displayRecords.value)[number]>({
+  enabled: () => isMobile.value, rows: () => displayRecords.value, getKey: row => `${row.type}:${row.order_no}`
+})
+const transferDetailFields = computed<RecordDetailField[]>(() => {
+  const row = transferDetailRow.value
+  if (!row) return []
+  return [
+    { key: 'order_no', label: '单号', value: row.order_no, visible: canViewTransferField('operation_records_table') },
+    { key: 'type', label: '类型', value: getTypeLabel(row.type), visible: canViewTransferField('operation_records_table') },
+    { key: 'supplier_name', label: '供应商', value: row.supplier_name, visible: canViewTransferField('operation_records_table') },
+    { key: 'from_store_name', label: '店铺', value: row.from_store_name, visible: canViewTransferField('operation_records_table') },
+    { key: 'brand_name', label: '品牌', value: row.brand_name, visible: canViewTransferField('operation_records_table') },
+    { key: 'model_name', label: '型号', value: row.model_name, visible: canViewTransferField('operation_records_table'), wide: true },
+    { key: 'to_store_name', label: '客户', value: row.to_store_name, visible: canViewTransferField('operation_records_table') },
+    { key: 'amount', label: '金额', value: row.amount ? `¥${formatAmount(row.amount)}` : '-', visible: canViewTransferField('operation_records_table') },
+    { key: 'profit', label: '利润', value: row.profit !== null && row.profit !== undefined ? `¥${formatAmount(row.profit)}` : '-', visible: canViewTransferField('operation_records_table') },
+    { key: 'status', label: '状态', value: getStatusLabel(row.status), visible: canViewTransferField('operation_records_table') },
+    { key: 'created_at', label: '时间', value: row.created_at, visible: canViewTransferField('operation_records_table'), wide: true },
+    { key: 'operator_name', label: '操作人', value: row.operator_name, visible: canViewTransferField('operation_records_table') }
+  ]
+})
+
 </script>
 
 <style lang="scss" scoped>

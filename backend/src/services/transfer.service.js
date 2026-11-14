@@ -4,6 +4,7 @@ const { normalizeDateTime } = require('../utils/time')
 const { prepareInvoiceNumberTransaction, generateInvoiceNumber } = require('../utils/invoice-number')
 const { reconcileCustomerPointsForSale } = require('./customer-points.service')
 const log = require('../utils/log')
+const { parseTransferInput, prepareWholesalePrices } = require('../utils/transfer-input')
 
 /**
  * 批发/划拨服务类
@@ -76,14 +77,11 @@ class TransferService {
     payment_channel,
     sale_time
   }) {
-    log.debug('=== TransferService.wholesaleToPeer 开始 ===')
-    log.debug('phone_ids:', JSON.stringify(phone_ids))
-    log.debug('phones 参数类型:', typeof phones)
-    log.debug('phones 参数值:', JSON.stringify(phones))
-    log.debug('phones 是数组吗:', Array.isArray(phones))
-    log.debug('customer_id:', customer_id)
-    log.debug('store_id:', store_id)
-    log.debug('salesperson_name:', salesperson_name)
+    ;({ phone_ids, customer_id, customer_name, customer_phone, operator_id, store_id, salesperson_name, remarks } = parseTransferInput({
+      phone_ids, customer_id, customer_name, customer_phone, operator_id, store_id, salesperson_name, remarks
+    }))
+    const { prices, failed_phones } = prepareWholesalePrices(phone_ids, phones)
+    if (prices.size === 0) return { success_count: 0, total_count: phone_ids.length, results: [], failed_phones }
 
     const pool = getDatabase()
     return await withConnection(pool, async connection => {
@@ -98,7 +96,6 @@ class TransferService {
         const saleTimeStr = normalizeDateTime(sale_time, true)
 
         let success_count = 0
-        const failed_phones = []
         const results = []
 
         // 如果没有客户ID，先检查或创建客户
@@ -179,25 +176,10 @@ class TransferService {
 
         // 处理每台手机
         for (const phone_id of phone_ids) {
+          if (!prices.has(phone_id)) continue
           await connection.query('SAVEPOINT wholesale_phone')
           try {
-            log.debug(`处理手机 ID: ${phone_id}, phones 数组:`, JSON.stringify(phones))
-
-            // 从phones数组中找到对应手机的价格信息
-            const phoneData = phones?.find(p => p.phone_id === phone_id)
-            log.debug('找到的 phoneData:', JSON.stringify(phoneData))
-
-            const wholesale_price = Number(phoneData?.wholesale_price)
-            const hasPurchaseCost = phoneData?.purchase_cost !== null &&
-              phoneData?.purchase_cost !== undefined &&
-              phoneData?.purchase_cost !== ''
-            const purchase_cost = hasPurchaseCost ? Number(phoneData.purchase_cost) : null
-
-            if (!Number.isFinite(wholesale_price) || wholesale_price <= 0) {
-              log.error(`批发价格无效: phone_id=${phone_id}, wholesale_price=${wholesale_price}`)
-              failed_phones.push({ phone_id, error: `批发价格无效: ${wholesale_price}` })
-              continue
-            }
+            const { wholesale_price, purchase_cost } = prices.get(phone_id)
 
             // 检查手机状态和信息
             const [phoneRecords] = await connection.query(
@@ -357,6 +339,9 @@ class TransferService {
     salesperson_name,
     sale_time
   }) {
+    ;({ phone_ids, supplier_id, customer_id, customer_name, customer_phone, operator_id, store_id, salesperson_name, remarks } = parseTransferInput({
+      phone_ids, supplier_id, customer_id, customer_name, customer_phone, operator_id, store_id, salesperson_name, remarks
+    }, { proxy: true }))
     const pool = getDatabase()
     return await withConnection(pool, async connection => {
       try {

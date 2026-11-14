@@ -5,6 +5,7 @@ const dataMaskingService = require('./data-masking.service')
 const { searchCustomers } = require('./customer-search.service')
 const { searchOperators } = require('./operator-search.service')
 const { isValidIdCard } = require('../utils/security-enhanced')
+const { parseInput } = require('../middleware/validation')
 
 const MODULE_KEY = 'rentals_rentalsview'
 const CUSTOMER_NAME = 'customer_info.customer_name'
@@ -12,8 +13,6 @@ const CUSTOMER_PHONE = 'customer_info.customer_phone'
 const CUSTOMER_ID_CARD = 'customer_info.customer_id_card'
 const SALES_OPERATOR = 'sales_info.sale_operator_name'
 const SALES_STORE = 'sales_info.sale_store_name'
-
-const validPhone = value => /^1[3-9]\d{9}$/.test(String(value || '').trim())
 
 class RentalCustomerService {
   constructor({
@@ -97,10 +96,15 @@ class RentalCustomerService {
   }
 
   normalizeCustomerInput(body = {}) {
-    const name = String(body.name || '').trim()
-    const phone = String(body.phone || '').trim()
-    const idCard = String(body.id_card || '').trim().toUpperCase()
-    if (!name || !validPhone(phone) || !this.validateIdCard(idCard)) {
+    body = parseInput(body, {
+      name: { type: 'personName', required: true, maxLength: 50, label: '姓名' },
+      phone: { type: 'phone', required: true, label: '手机号' },
+      id_card: { type: 'string', required: true, maxLength: 30, label: '身份证号' }
+    })
+    const name = body.name.trim()
+    const phone = body.phone
+    const idCard = body.id_card.trim().toUpperCase()
+    if (!this.validateIdCard(idCard)) {
       throw Object.assign(new Error('请输入客户姓名、正确的手机号码和身份证号'), { statusCode: 400 })
     }
     return { name, phone, idCard }
@@ -118,7 +122,7 @@ class RentalCustomerService {
   }
 
   async update(idValue, body) {
-    const id = Number(idValue)
+    const id = parseInput({ id: idValue }, { id: { type: 'id', required: true } }).id
     const customer = this.normalizeCustomerInput(body)
     if (!id) throw Object.assign(new Error('请输入客户姓名、正确的手机号码和身份证号'), { statusCode: 400 })
 

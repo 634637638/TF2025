@@ -11,7 +11,7 @@
   >
     <div class="inventory-edit-content">
       <!-- 基本信息 -->
-      <div class="inventory-edit-summary-grid">
+      <div class="inventory-edit-summary-grid tf-detail-grid">
         <div
           v-if="canViewField('brand')"
           class="bg-gradient-brand"
@@ -58,7 +58,7 @@
         </div>
         <div
           v-if="canViewField('serial_number')"
-          class="bg-gradient-serial"
+          class="bg-gradient-serial tf-detail-field--wide"
         >
           <div class="text-xs opacity-80 mb-1">
             序列号
@@ -82,9 +82,12 @@
 
       <!-- 编辑表单 -->
       <div class="inventory-edit-form-shell">
-        <div class="inventory-edit-form-grid">
+        <div class="inventory-edit-form-grid tf-form-layout tf-form-grid">
           <!-- 供应商 -->
-          <div v-if="canViewField('supplier_name')">
+          <div
+            v-if="canViewField('supplier_name')"
+            class="form-group"
+          >
             <label class="form-label">供应商</label>
             <el-select
               v-model="editForm.supplier_id"
@@ -109,7 +112,10 @@
           </div>
 
           <!-- 入库店铺 -->
-          <div v-if="canViewField('store_name')">
+          <div
+            v-if="canViewField('store_name')"
+            class="form-group"
+          >
             <label class="form-label">入库店铺</label>
             <el-select
               v-model="editForm.store_id"
@@ -134,7 +140,10 @@
           </div>
 
           <!-- 入库时间 -->
-          <div v-if="canViewField('inventory_time')">
+          <div
+            v-if="canViewField('inventory_time')"
+            class="form-group"
+          >
             <label class="form-label">入库时间</label>
             <el-date-picker
               v-model="editForm.inventory_time"
@@ -152,7 +161,10 @@
           </div>
 
           <!-- 成色 -->
-          <div v-if="canViewField('is_new')">
+          <div
+            v-if="canViewField('is_new')"
+            class="form-group"
+          >
             <label class="form-label">成色</label>
             <el-select
               v-model="editForm.condition"
@@ -177,7 +189,7 @@
             </el-select>
           </div>
 
-          <div class="inventory-edit-status-field">
+          <div class="inventory-edit-status-field form-group">
             <label class="form-label">状态</label>
             <el-select
               v-model="editForm.status"
@@ -198,7 +210,10 @@
           </div>
 
           <!-- 品牌 -->
-          <div v-if="canViewField('brand')">
+          <div
+            v-if="canViewField('brand')"
+            class="form-group"
+          >
             <label class="form-label">品牌</label>
             <el-select
               v-model="editForm.brand"
@@ -224,7 +239,10 @@
           </div>
 
           <!-- 型号 -->
-          <div v-if="canViewField('model')">
+          <div
+            v-if="canViewField('model')"
+            class="form-group"
+          >
             <label class="form-label">型号</label>
             <el-select
               v-if="editForm.brand && brandModels.length > 0"
@@ -264,7 +282,10 @@
           </div>
 
           <!-- 颜色 -->
-          <div v-if="canViewField('color')">
+          <div
+            v-if="canViewField('color')"
+            class="form-group"
+          >
             <label class="form-label">颜色</label>
             <el-select
               v-model="editForm.color"
@@ -289,7 +310,10 @@
           </div>
 
           <!-- 内存 -->
-          <div v-if="canViewField('memory')">
+          <div
+            v-if="canViewField('memory')"
+            class="form-group"
+          >
             <label class="form-label">内存</label>
             <el-select
               v-model="editForm.memory"
@@ -316,7 +340,7 @@
           <!-- 序列号和IMEI（手机端一行展示） -->
           <div
             v-if="canViewField('serial_number') || canViewField('imei')"
-            class="inventory-edit-serial-imei-row"
+            class="inventory-edit-serial-imei-row tf-form-row tf-form-row--mobile-single"
           >
             <!-- 序列号 -->
             <div
@@ -365,7 +389,7 @@
           <!-- 入库价格 -->
           <div
             v-if="canViewField('purchase_cost')"
-            class="inventory-edit-price-field"
+            class="inventory-edit-price-field form-group"
           >
             <label class="form-label">入库价格</label>
             <AmountInput
@@ -382,7 +406,7 @@
           <!-- 备注 -->
           <div
             v-if="canViewField('remarks')"
-            class="inventory-edit-remarks-field"
+            class="inventory-edit-remarks-field form-group tf-form-field--wide"
           >
             <label class="form-label">备注</label>
             <el-input

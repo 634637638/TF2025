@@ -496,7 +496,7 @@
             <span>将对 <strong>{{ selectedItems.length }}</strong> 条选中记录进行修改</span>
           </div>
 
-          <el-form class="batch-form">
+          <el-form class="batch-form tf-form-layout tf-form-grid">
             <div class="batch-form-grid">
               <div
                 v-if="canApprove"
@@ -584,14 +584,12 @@
             <el-button
               type="primary"
               :disabled="batchUpdating || (!batchForm.apply_time && !batchForm.arrival_time)"
+              :loading="batchUpdating"
               @click="submitBatchUpdate"
             >
-              <InlineLoading
-                v-if="batchUpdating"
-                text="修改中..."
-                size="small"
-                variant="inherit"
-              />
+              <template v-if="batchUpdating">
+                修改中...
+              </template>
               <template v-else>
                 <i class="fas fa-save" />
                 <span>确认修改 ({{ selectedItems.length }}条)</span>
@@ -627,7 +625,51 @@
         v-model="showDetailDialog"
         :item="currentDetailItem"
         :field-visibility="fieldVisibility"
-      />
+      >
+        <template
+          v-if="isMobile && (canEdit || canDelete || (canApprove && !currentDetailItem.apply_time) || (canArrival && !currentDetailItem.arrival_time) || fieldVisibility.subsidy_photos || canUpload)"
+          #actions
+        >
+          <el-button
+            v-if="canApprove && !currentDetailItem.apply_time"
+            v-permission="'subsidy:approve'"
+            type="primary"
+            @click.stop="runDetailAction(handleAudit)"
+          >
+            <i class="fas fa-clipboard-check" />审批
+          </el-button>
+          <el-button
+            v-if="canArrival && !currentDetailItem.arrival_time"
+            v-permission="'subsidy:arrival'"
+            type="success"
+            @click.stop="runDetailAction(handleConfirmArrival)"
+          >
+            <i class="fas fa-hand-holding-usd" />到账
+          </el-button>
+          <el-button
+            v-if="fieldVisibility.subsidy_photos || canUpload"
+            @click.stop="runDetailAction(openPhotoManageDialog)"
+          >
+            <i class="fas fa-images" />{{ canUpload ? '管理照片' : '查看照片' }}
+          </el-button>
+          <el-button
+            v-if="canEdit"
+            v-permission="'subsidy:edit'"
+            type="primary"
+            @click.stop="runDetailAction(handleEdit)"
+          >
+            <i class="fas fa-edit" />编辑
+          </el-button>
+          <el-button
+            v-if="canDelete"
+            v-permission="'subsidy:delete'"
+            type="danger"
+            @click.stop="runDetailAction(handleDelete)"
+          >
+            <i class="fas fa-trash-alt" />删除
+          </el-button>
+        </template>
+      </SubsidyDetailDialog>
 
       <SubsidyPhotoManageDialog
         v-if="showPhotoPreviewDialog && currentManagingItem"
@@ -659,7 +701,6 @@ import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import DateRangePicker from '@/components/DateRangePicker.vue'
 import type { DateRangeValue } from '@/types/date-range'
 import ImportExportActions from '@/components/business/ImportExportActions.vue'
-import InlineLoading from '@/components/InlineLoading.vue'
 import { PageHeader, PermissionGate } from '@/components/base'
 import { normalizeIdCard, normalizePersonName, normalizePhoneDigits } from '@/utils/security'
 import { logger } from '@/utils/logger'
@@ -1819,6 +1860,12 @@ onUnmounted(() => {
   abortStatsRequest()
   clearStatsRefreshTimer()
 })
+const runDetailAction = (action: (row: NationalSubsidyRecord) => unknown) => {
+  const row = currentDetailItem.value
+  if (!row) return
+  showDetailDialog.value = false
+  return action(row)
+}
 </script>
 
 <style lang="scss" scoped src="./styles/SubsidyView.scss"></style>

@@ -41,10 +41,6 @@
 
   .totals-bar {
     grid-template-columns: minmax(0, 1fr);
-    flex: 0 0 auto;
-    height: auto;
-    min-height: 0;
-    max-height: none;
   }
 
   .total-amount-words,

@@ -1,3 +1,6 @@
+import { normalizeAccessorySerial, isValidAccessorySerial } from './accessory-serial'
+import { isDeviceIMEI, isDeviceSerial } from './device-identifier'
+
 export type DeviceScanType = 'imei' | 'serial'
 
 export interface DeviceScanParseResult {
@@ -7,6 +10,7 @@ export interface DeviceScanParseResult {
 
 export interface DeviceScanParseOptions {
   appleSerialBarcode?: boolean
+  serialProfile?: 'phone' | 'accessory'
 }
 
 const normalizeRawScanText = (rawText: string): string => rawText
@@ -19,7 +23,7 @@ const normalizeRawScanText = (rawText: string): string => rawText
   .trim()
 
 export const isValidIMEIChecksum = (imei: string): boolean => {
-  if (!/^\d{15}$/.test(imei)) return false
+  if (!isDeviceIMEI(imei)) return false
 
   let sum = 0
   for (let index = 0; index < imei.length; index += 1) {
@@ -37,10 +41,12 @@ export const isValidIMEIChecksum = (imei: string): boolean => {
 const toIMEICandidate = (value: string): string => value.replace(/\D/g, '')
 
 const unique = (values: string[]): string[] => [...new Set(values.filter(Boolean))]
+const imeiCandidatePattern = '(?:\\d[ -]*){14}\\d'
+const imeiCandidateEnd = '(?![ -]*\\d)(?=$|[\\s,;|])'
 
 const extractIMEIsByLabel = (rawText: string, labelPattern: string): string[] => {
   const candidates: string[] = []
-  const pattern = new RegExp(`${labelPattern}\\s*[:：#=]?\\s*((?:\\d[\\s-]*){15})(?!\\d)`, 'gi')
+  const pattern = new RegExp(`${labelPattern}\\s*[:：#=]?\\s*(${imeiCandidatePattern})${imeiCandidateEnd}`, 'gi')
 
   for (const match of rawText.matchAll(pattern)) {
     const candidate = toIMEICandidate(match[1] || '')
@@ -50,9 +56,9 @@ const extractIMEIsByLabel = (rawText: string, labelPattern: string): string[] =>
   return unique(candidates)
 }
 
-const extractLabeledIMEI1 = (rawText: string): string[] => extractIMEIsByLabel(rawText, 'IMEI\\s*1')
+const extractLabeledIMEI1 = (rawText: string): string[] => extractIMEIsByLabel(rawText, 'IMEI\\s*1\\b')
 
-const extractLabeledIMEI2 = (rawText: string): string[] => extractIMEIsByLabel(rawText, 'IMEI\\s*2')
+const extractLabeledIMEI2 = (rawText: string): string[] => extractIMEIsByLabel(rawText, 'IMEI\\s*2\\b')
 
 const extractLabeledIMEIMeid = (rawText: string): string[] => extractIMEIsByLabel(
   rawText,
@@ -62,11 +68,9 @@ const extractLabeledIMEIMeid = (rawText: string): string[] => extractIMEIsByLabe
 const extractUnlabeledIMEIs = (rawText: string): string[] => {
   const candidates: string[] = []
 
-  for (const match of rawText.matchAll(/(?:^|\D)(\d{15})(?!\d)/g)) {
-    candidates.push(match[1])
-  }
-
-  for (const match of rawText.matchAll(/(?:^|[^\d])((?:\d[\s-]*){15})(?!\d)/g)) {
+  const pattern = new RegExp(`(?:^|[\\s:：#=,;|])(${imeiCandidatePattern})${imeiCandidateEnd}`, 'g')
+  for (const match of rawText.matchAll(pattern)) {
+    if (/^[ -]/.test(match[0]) && /\d[ -]*$/.test(rawText.slice(0, match.index))) continue
     const candidate = toIMEICandidate(match[1] || '')
     if (candidate.length === 15) candidates.push(candidate)
   }
@@ -145,16 +149,14 @@ export const parseIMEIScanResult = (rawText: string): DeviceScanParseResult => {
 }
 
 const normalizeSerialCandidate = (value: string): string => value
-  .replace(/[^A-Za-z0-9/-]/g, '')
   .toUpperCase()
-  .slice(0, 30)
 
-const isValidSerialCandidate = (value: string): boolean => /^[A-Z0-9](?:[A-Z0-9]|[/-](?=[A-Z0-9])){3,29}$/.test(value)
+const isValidSerialCandidate = isDeviceSerial
 
 const extractLabeledSerial = (rawText: string): string | null => {
   const patterns = [
-    /\(S\)\s*SERIAL\s*(?:NO\.?|NUMBER)?\s*[:：#]?\s*([A-Z0-9/-]{4,30})/i,
-    /(?:SERIAL\s*(?:NO\.?|NUMBER)?|S\s*\/\s*N|SN|序列号)\s*[:：#]?\s*([A-Z0-9/-]{4,30})/i
+    /\(S\)\s*SERIAL\s*(?:NO\.?|NUMBER)?\s*[:：#]?\s*([^\s,;|]+)/i,
+    /(?:^|[\s,(])(?:SERIAL\s*(?:NO\.?|NUMBER)?|S\s*\/\s*N|SN|序列号)\s*[:：#]?\s*([^\s,;|]+)/i
   ]
 
   for (const pattern of patterns) {
@@ -180,12 +182,16 @@ export const parseSerialScanResult = (
   options: DeviceScanParseOptions = {}
 ): DeviceScanParseResult => {
   const normalized = normalizeRawScanText(rawText)
+  if (options.serialProfile === 'accessory') {
+    const value = normalizeAccessorySerial(normalized)
+    return isValidAccessorySerial(value) ? { value, error: null } : { value: null, error: '请对准单独的配件SN条码，最多100位' }
+  }
   if (!normalized) return { value: null, error: '未识别到序列号内容' }
 
   const labeledSerial = extractLabeledSerial(normalized)
   if (labeledSerial) return { value: labeledSerial, error: null }
 
-  if (!/^[A-Za-z0-9/-]{4,30}$/.test(normalized)) {
+  if (!isDeviceSerial(normalized)) {
     return { value: null, error: '二维码包含多个字段，请对准单独的SN条码' }
   }
 

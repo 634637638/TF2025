@@ -50,7 +50,7 @@
       :model="formData"
       :rules="formRules"
       label-position="top"
-      class="edit-form-content"
+      class="edit-form-content tf-form-layout tf-form-grid"
     >
       <div class="tf-query-modal-section">
         <div class="tf-query-modal-section-title">
@@ -152,13 +152,14 @@
         <!-- 序列号、IMEI、成色、状态一行展示 -->
         <div class="tf-query-modal-row tf-query-modal-row--4">
           <el-form-item
+            class="tf-form-field--wide"
             label="序列号"
             prop="serial_number"
           >
             <el-input
               v-model="formData.serial_number"
               placeholder="请输入序列号"
-              maxlength="18"
+              maxlength="50"
               clearable
               @input="formatSerialNumber"
             >
@@ -169,6 +170,7 @@
           </el-form-item>
 
           <el-form-item
+            class="tf-form-field--wide"
             label="IMEI"
             prop="imei"
           >
@@ -181,7 +183,7 @@
                 v-model="formData.imei"
                 :class="{ 'tf-imei-input--no-imei': formData.isNoIMEIMode }"
                 :placeholder="formData.isNoIMEIMode ? '' : '请输入15位IMEI号'"
-                :maxlength="formData.isNoIMEIMode ? 30 : 15"
+                :maxlength="formData.isNoIMEIMode ? 50 : 15"
                 clearable
                 @input="formatImei"
               >
@@ -330,7 +332,6 @@
               <el-input
                 v-model="formData.customer_phone"
                 placeholder="请输入用户手机号"
-                maxlength="11"
                 clearable
                 :readonly="editFoundCustomer !== null"
                 @input="handleCustomerPhoneInput"
@@ -372,7 +373,7 @@
 
           <el-form-item
             label="Apple ID"
-            class="tf-query-modal-span-2"
+            class="tf-query-modal-span-2 tf-form-field--wide"
           >
             <el-input
               v-model="formData.apple_id"
@@ -484,7 +485,10 @@
           </el-form-item>
         </div>
 
-        <el-form-item label="备注">
+        <el-form-item
+          class="tf-form-field--wide"
+          label="备注"
+        >
           <el-input
             v-model="formData.remarks"
             class="tf-textarea"
@@ -520,6 +524,7 @@ import { toCanonicalPhoneUpdatePayload } from '@/utils/phone-update-payload'
 import { searchCustomerOptions } from '@/services/customer-options'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import { isValidMobilePhone, normalizeAppleId, normalizePersonName, normalizePhoneDigits, resolveAppleAccountEmail } from '@/utils/security'
+import { deviceSerialPattern, deviceIMEIPattern, normalizeDeviceSerial, normalizeDeviceIMEI } from '@/utils/device-identifier'
 import { sortOptionsByOrder } from '@/utils/option-sort'
 import {
   getCachedBrands,
@@ -531,6 +536,7 @@ import {
   searchEmployees
 } from '@/services/reference-options'
 import { PHONE_STATUS_OPTIONS } from '@/constants/phoneStatuses'
+import { SALE_PAYMENT_METHODS, getPaymentChannelOptions, hasPaymentChannelOptions } from '@/constants/paymentMethods'
 import type { OrderCustomer as Customer } from '@/types/order'
 import type { IdNameOption, ModelOption, ModelValueProps, QueryOperationOptions, SuccessEmits, UpdateModelValueEmits, UserOption } from '@/types'
 
@@ -1135,13 +1141,17 @@ let lastLoadToken = 0
 let salePriceDebounceTimer: ReturnType<typeof setTimeout> | null = null
 let modelSearchSequence = 0
 
-const formRules = {
+const formRules = computed(() => ({
   brand: [ValidationRules.required('请选择品牌')],
   model: [ValidationRules.required('请选择型号')],
   color: [ValidationRules.required('请选择颜色')],
   memory: [ValidationRules.required('请选择内存')],
-  serial_number: [ValidationRules.required('请输入序列号')]
-}
+  serial_number: [ValidationRules.required('请输入序列号'), ValidationRules.pattern(deviceSerialPattern, '序列号须为4-50位字母、数字、斜杠或连字符')],
+  imei: [
+    ...formData.isNoIMEIMode ? [] : [ValidationRules.required('请输入IMEI')],
+    ValidationRules.pattern(formData.isNoIMEIMode ? deviceSerialPattern : deviceIMEIPattern, '请输入有效的设备编码')
+  ]
+}))
 
 const normalizeBrand = (brand?: string) => {
   return (brand || '').trim().toLowerCase()
@@ -1291,7 +1301,7 @@ const loadModelsForBrand = async (keyword = '', includeCurrent = true) => {
 }
 
 const showPaymentChannel = computed(() => {
-  return ['mobile', 'bank_card', 'subsidy_card'].includes(formData.payment_method)
+  return hasPaymentChannelOptions(formData.payment_method)
 })
 
 const resetFormState = () => {
@@ -1386,8 +1396,9 @@ const loadDialogData = async () => {
       supplier_id: supplierInfo.supplier_id ?? null,
       inventory_time: normalizeDate(timeInfo.inventory_time ? String(timeInfo.inventory_time) : ''),
       sale_time: normalizeDate(timeInfo.sale_time ? String(timeInfo.sale_time) : ''),
-      payment_method: saleInfo.payment_method || '',
-      payment_channel: saleInfo.payment_channel || '',
+      // 查询响应中的展示占位符不能作为支付编码回写。
+      payment_method: saleInfo.payment_method === '-' ? '' : saleInfo.payment_method || '',
+      payment_channel: saleInfo.payment_channel === '-' ? '' : saleInfo.payment_channel || '',
       isNoIMEIMode: isNoImeiPhone || rawImei === rawSerialNumber,
       remarks: basicInfo.remarks || ''
     })
@@ -1465,7 +1476,7 @@ const handleMemoryChange = (memoryName: string) => {
 }
 
 const formatSerialNumber = () => {
-  formData.serial_number = formData.serial_number.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 18)
+  formData.serial_number = normalizeDeviceSerial(formData.serial_number)
 }
 
 const handlePriceInput = (field: PriceField, value: number | null | undefined) => {
@@ -1473,11 +1484,7 @@ const handlePriceInput = (field: PriceField, value: number | null | undefined) =
 }
 
 const formatImei = () => {
-  if (formData.isNoIMEIMode) {
-    formData.imei = formData.imei.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 30)
-    return
-  }
-  formData.imei = formData.imei.replace(/[^\d]/g, '').slice(0, 15)
+  formData.imei = normalizeDeviceIMEI(formData.imei, formData.isNoIMEIMode)
 }
 
 const toggleNoIMEIMode = () => {
@@ -1872,13 +1879,17 @@ const handleSubmit = async () => {
   const valid = await formRef.value.validate().catch(() => false)
   if (!valid) return
 
-  if (formData.status === 'sold' && !formData.payment_method) {
-    showError('请选择支付方式')
-    return
-  }
-  if (formData.status === 'sold' && ['mobile', 'bank_card', 'subsidy_card'].includes(formData.payment_method) && !formData.payment_channel) {
-    showError('请选择支付渠道')
-    return
+  if (['sold', 'peer_transfer'].includes(formData.status)) {
+    if (!SALE_PAYMENT_METHODS.some(method => method.value === formData.payment_method)) {
+      showError('请选择有效的支付方式')
+      return
+    }
+    const channels = getPaymentChannelOptions(formData.payment_method)
+    if (channels.length && !channels.some(channel => channel.value === formData.payment_channel)) {
+      showError('请选择有效的支付渠道')
+      return
+    }
+    if (!channels.length) formData.payment_channel = ''
   }
 
   const resolvedImei = formData.isNoIMEIMode

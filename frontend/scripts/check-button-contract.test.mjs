@@ -1,11 +1,26 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { auditBatchButtonSizes, auditButtonContract, auditButtonInlineStyles, auditTableButtonUsage, collectButtonClasses } from './lib/button-contract.mjs'
+import { auditBatchButtonSizes, auditButtonContract, auditButtonInlineStyles, auditCommandButtonSizes, auditTableButtonUsage, collectButtonClasses } from './lib/button-contract.mjs'
 import { readFileSync } from 'node:fs'
 
 const classes = collectButtonClasses([
   '<template><div class="button-group"><el-button class="selected-action-btn"><i class="button-icon"/></el-button><el-button class="custom-command shared"/><div class="shared"/></div></template>'
 ])
+
+test('普通按钮默认、小号和大号均复用全局尺寸，缺失入口或硬编码会被拒绝', () => {
+  const source = readFileSync(new URL('../src/styles/components/_buttons.scss', import.meta.url), 'utf8')
+  assert.deepEqual(auditCommandButtonSizes(source), [])
+  assert.equal(auditCommandButtonSizes('').length, 3)
+  for (const declaration of [
+    'height: var(--tf-button-height) !important',
+    'height: var(--tf-button-height-small) !important',
+    'height: var(--tf-button-height-large) !important',
+    'padding-inline: var(--tf-button-padding-x) !important',
+    'font-size: var(--tf-button-font-size-small) !important'
+  ]) {
+    assert.equal(auditCommandButtonSizes(source.replace(declaration, `${declaration.split(':')[0]}: 99px !important`)).length, 1)
+  }
+})
 
 test('批量操作小号声明复用公共令牌，缺失或私有尺寸映射会被拒绝', () => {
   const source = readFileSync(new URL('../src/styles/components/_table.scss', import.meta.url), 'utf8')

@@ -39,6 +39,7 @@ const stockInRoutes = require('./stock-in')
 const queryRoutes = require('./query')
 const rentalRoutes = require('./rentals')
 const frontendErrorLogRoutes = require('./frontend-error-logs')
+const regionRoutes = require('./regions')
 
 // 新的权限管理路由
 const moduleManagementRoutes = require('./module-management')
@@ -140,6 +141,8 @@ router.use('/stock-in', stockInRoutes)
 router.use('/query', queryRoutes)
 router.use('/rentals', rentalRoutes)
 router.use('/logs', frontendErrorLogRoutes)
+router.use('/regions', regionRoutes)
+router.use('/performance', require('./performance'))
 // router.use('/sales-orders', salesOrdersRoutes);
 // router.use('/operator-assignments', operatorAssignmentsRoutes);
 

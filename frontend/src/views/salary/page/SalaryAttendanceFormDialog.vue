@@ -9,11 +9,12 @@
   >
     <form
       id="attendance-form"
+      class="tf-form-layout tf-form-grid"
       @submit.prevent="emit('submit')"
     >
       <div
         v-if="canViewField(moduleKey, 'attendance_record_type')"
-        class="form-group"
+        class="form-group tf-form-field--wide"
       >
         <el-alert
           v-if="!hasSalaryTemplate"
@@ -58,7 +59,7 @@
 
       <div
         v-if="canViewField(moduleKey, 'attendance_record_date')"
-        class="form-group"
+        class="form-group tf-form-field--wide"
       >
         <label>{{ recordType === 'overtime' ? '加班日期' : `${recordType === 'monthly_leave' ? '休假' : '请假'}日期` }} <span class="required">*</span></label>
         <DateRangePicker
@@ -171,7 +172,7 @@
 
       <div
         v-if="canViewField(moduleKey, 'attendance_reason')"
-        class="form-group"
+        class="form-group tf-form-field--wide"
       >
         <label>备注</label>
         <el-input
@@ -226,13 +227,11 @@
           native-type="submit"
           form="attendance-form"
           :disabled="saving || !hasSalaryTemplate"
+          :loading="saving"
         >
-          <InlineLoading
-            v-if="saving"
-            text="保存中..."
-            size="small"
-            variant="inherit"
-          />
+          <template v-if="saving">
+            保存中...
+          </template>
           <template v-else>
             <i class="fas fa-save" />
             保存
@@ -248,7 +247,6 @@ import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import { computed } from 'vue'
 import type { AttendanceRecord } from '@/api/attendance'
 import DateRangePicker from '@/components/DateRangePicker.vue'
-import InlineLoading from '@/components/InlineLoading.vue'
 import MobileDialog from '@/components/MobileDialog.vue'
 
 export type AttendanceForm = AttendanceRecord & { reason: string, record_end_date?: string }

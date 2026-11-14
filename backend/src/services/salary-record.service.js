@@ -1,3 +1,4 @@
+const { getLatestActiveSaleIdSql } = require('../utils/sale-status')
 const { withConnection } = require('../core/db/connection')
 /**
  * 工资记录服务
@@ -6,21 +7,106 @@ const SalaryRecordRepository = require('../repositories/salary-record.repository
 const SalaryCalculatorService = require('./salary-calculator.service')
 const { getDatabase } = require('../config/database')
 const log = require('../utils/log')
-const { getMonthDateRange } = require('../utils/time')
+const { getMonthDateRange, getBeijingTimeString, formatLocalDate, parseLocalDate } = require('../utils/time')
+const { validId } = require('../utils/sale-input')
+const paymentOptions = require('../config/payment-methods.json')
+const SalaryGoodsSettlementService = require('./salary-goods-settlement.service')
+const { cents, applyGoods, removeGoods, manualSalary, calculatedSalary, publicSalary, assertCalculationVersion } = require('../utils/salary-goods-amounts')
 const {
   buildLeaveExclusionRules,
   shouldExcludeSaleByLeave
 } = require('../utils/leave-sales-filter')
 
+const reject = (message, code, statusCode = 409) => { throw Object.assign(new Error(message), { code, statusCode }) }
+const isPaid = row => Boolean(row && (row.status === 'paid' || row.paid_at !== null && row.paid_at !== undefined && row.paid_at !== ''))
+const assertUnpaid = row => {
+  if (isPaid(row)) reject('已发工资保留原始记录，不能覆盖、编辑或删除；后续差额须另行关联调整', 'SALARY_RECORD_PAID')
+}
+const identity = data => {
+  if (!data || typeof data !== 'object' || Array.isArray(data) || !validId(data.employee_id) ||
+    ![data.period_start, data.period_end].every(value => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) && formatLocalDate(parseLocalDate(value)) === value) ||
+    data.period_start > data.period_end) reject('请提供有效员工和工资周期', 'SALARY_RECORD_INVALID', 400)
+}
+
 class SalaryRecordService {
-  constructor() {
-    this.repository = new SalaryRecordRepository()
-    this.calculator = SalaryCalculatorService
+  constructor({ repository = new SalaryRecordRepository(), calculator = SalaryCalculatorService, now = getBeijingTimeString,
+    goods = new SalaryGoodsSettlementService() } = {}) {
+    Object.assign(this, { repository, calculator, now, goods })
+  }
+
+  /** 写入只使用同一连接；发放与编辑/重算竞争时，以原记录行锁决定先后。 */
+  async mutate(operation) {
+    return this.repository.withConnection(async connection => {
+      await connection.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ')
+      await connection.beginTransaction()
+      try {
+        const result = await operation(connection)
+        await connection.commit()
+        return result
+      } catch (error) {
+        await connection.rollback()
+        throw error
+      }
+    })
+  }
+
+  async lockRecord(connection, id) {
+    if (!validId(id)) reject('工资记录编号无效', 'SALARY_RECORD_INVALID', 400)
+    const employee = await this.repository.lockRecordEmployee(connection, Number(id))
+    if (!employee) reject('工资记录或员工不存在', 'NOT_FOUND', 404)
+    const record = await this.repository.lockRecord(connection, Number(id))
+    if (!record) reject('工资记录不存在', 'NOT_FOUND', 404)
+    if (Number(record.employee_id) !== Number(employee.id)) reject('工资员工归属发生变化，请刷新重试', 'SALARY_PERIOD_CONFLICT')
+    return record
+  }
+
+  assertExternalInput(data) {
+    if (!data || typeof data !== 'object' || Array.isArray(data)) reject('工资记录内容无效', 'SALARY_RECORD_INVALID', 400)
+    if (data.status === 'paid' || data.paid_at !== undefined && data.paid_at !== null && data.paid_at !== '') {
+      reject('请保存为待发放后，通过确认结算首次发放工资', 'SALARY_PAYMENT_REQUIRED')
+    }
+    if (['goods_commission_snapshot', 'goods_commission', 'calculation_version'].some(key => Object.hasOwn(data, key))) {
+      reject('商品工资凭据及计算结果由服务器生成', 'SALARY_RECORD_INVALID', 400)
+    }
+    if (data.status !== undefined && !['draft', 'pending', 'approved', 'cancelled'].includes(data.status)) reject('工资状态无效', 'SALARY_RECORD_INVALID', 400)
+    for (const field of ['base_salary', 'base_salary_adjustment', 'commission_amount', 'overtime_pay', 'performance_bonus',
+      'other_bonus', 'leave_deduction', 'other_deduction', 'net_salary']) {
+      if (data[field] !== undefined) {
+        try { cents(data[field]) } catch { reject('工资金额必须为有效两位金额且不超出范围', 'SALARY_RECORD_INVALID', 400) }
+      }
+    }
+  }
+
+  async withGoods(connection, salary) {
+    const plan = await this.goods.prepare(connection, { employee_id: Number(salary.employee_id),
+      period_start: formatLocalDate(salary.period_start), period_end: formatLocalDate(salary.period_end), through: this.now() })
+    return applyGoods(salary, plan)
+  }
+
+  async persist(connection, salary, existing = null) {
+    const result = existing ? await this.repository.updateSalaryRecord(existing.id, salary, connection)
+      : await this.repository.createSalaryRecord(salary, connection)
+    if (result.affectedRows !== 1) reject('工资记录已变化，请刷新核对', 'SALARY_STATUS_CONFLICT')
+    const id = existing?.id || result.id
+    if (await this.repository.saveGoodsSnapshot(connection, id, salary.goods_commission_snapshot) !== 1) reject('商品工资快照保存失败', 'SALARY_STATUS_CONFLICT')
+    return { ...result, data: publicSalary({ ...result.data, ...salary, id }) }
+  }
+
+  async mutatePeriod(data, operation) {
+    identity(data)
+    return this.mutate(async connection => {
+      // 员工行串行化首次创建；即使尚无周期记录，也不能并发插入两笔工资。
+      if (!await this.repository.lockEmployee(connection, Number(data.employee_id))) reject('员工不存在', 'NOT_FOUND', 404)
+      const records = await this.repository.lockPeriodRecords(connection, Number(data.employee_id), data.period_start, data.period_end)
+      if (records.length > 1) reject('该员工周期存在重复工资，请先核对历史记录', 'SALARY_PERIOD_CONFLICT')
+      return operation(connection, records[0] || null)
+    })
   }
 
   async getSalaryRecords(filters, options) {
     try {
-      return await this.repository.getSalaryRecordsWithPagination(filters, options)
+      const result = await this.repository.getSalaryRecordsWithPagination(filters, options)
+      return { ...result, records: result.records.map(publicSalary) }
     } catch (error) {
       throw error
     }
@@ -28,79 +114,93 @@ class SalaryRecordService {
 
   async getSalaryRecordById(id) {
     try {
-      return await this.repository.getSalaryRecordById(id)
+      return publicSalary(await this.repository.getSalaryRecordById(id))
     } catch (error) {
       throw error
     }
   }
 
   async createSalaryRecord(data, userId) {
-    try {
-      data.created_by = userId
-      return await this.repository.createSalaryRecord(data)
-    } catch (error) {
-      throw error
-    }
+    this.assertExternalInput(data)
+    identity(data)
+    assertUnpaid(await this.repository.getRecordByEmployeePeriod(data.employee_id, data.period_start, data.period_end))
+    const calculated = calculatedSalary(await this.calculator.calculateSalary(data.employee_id, data.period_start, data.period_end))
+    return this.mutatePeriod(data, async (connection, existing) => {
+      assertUnpaid(existing)
+      if (existing) reject('该员工周期已有工资，请编辑原记录', 'SALARY_PERIOD_CONFLICT')
+      const preview = await this.withGoods(connection, calculated)
+      assertCalculationVersion(preview, data.expected_calculation_version)
+      const salary = manualSalary(removeGoods(preview), { ...this.repository.sanitizeWriteData(data), created_by: userId })
+      return this.persist(connection, applyGoods(salary, preview.goods_commission_snapshot))
+    })
   }
 
   async updateSalaryRecord(id, data) {
-    try {
-      return await this.repository.updateSalaryRecord(id, data)
-    } catch (error) {
-      throw error
-    }
+    return this.mutate(async connection => {
+      const existing = await this.lockRecord(connection, id)
+      assertUnpaid(existing)
+      this.assertExternalInput(data)
+      if (data.employee_id !== undefined && (!validId(data.employee_id) || Number(data.employee_id) !== Number(existing.employee_id)) ||
+        ['period_start', 'period_end'].some(field => data[field] !== undefined && data[field] !== formatLocalDate(existing[field]))) {
+        reject('工资记录的员工和周期不能改写，请核对原记录', 'SALARY_PERIOD_CONFLICT')
+      }
+      const write = this.repository.sanitizeWriteData({ ...data, created_by: existing.created_by })
+      if (!Object.keys(write).some(field => field !== 'created_by')) reject('没有要更新的工资字段', 'SALARY_RECORD_INVALID', 400)
+      assertCalculationVersion(existing, data.expected_calculation_version)
+      return this.persist(connection, await this.withGoods(connection, manualSalary(removeGoods(existing), write)), existing)
+    })
   }
 
   async deleteSalaryRecord(id) {
-    try {
-      return await this.repository.deleteSalaryRecord(id)
-    } catch (error) {
-      throw error
-    }
+    return this.mutate(async connection => {
+      assertUnpaid(await this.lockRecord(connection, id))
+      const result = await this.repository.deleteSalaryRecord(Number(id), connection)
+      if (result.affectedRows !== 1) reject('工资记录已变化，请刷新核对', 'SALARY_STATUS_CONFLICT')
+      return result
+    })
   }
 
   async calculateSalary(employeeId, periodStart, periodEnd) {
-    try {
-      return await this.calculator.calculateSalary(employeeId, periodStart, periodEnd)
-    } catch (error) {
-      throw error
-    }
+    const input = { employee_id: employeeId, period_start: periodStart, period_end: periodEnd }
+    identity(input)
+    const calculated = calculatedSalary(await this.calculator.calculateSalary(employeeId, periodStart, periodEnd))
+    return this.mutatePeriod(input, async (connection, existing) => {
+      if (isPaid(existing)) return publicSalary(existing)
+      return publicSalary(await this.withGoods(connection, calculated))
+    })
   }
 
   /**
    * 保存计算的工资（UPSERT）
    * 如果员工在该周期已有记录，则更新；否则创建新记录
    */
-  async saveCalculatedSalary(salaryData, userId) {
-    try {
-      const { employee_id, period_start, period_end } = salaryData
-      if (!employee_id || !period_start || !period_end) {
-        throw new Error('请提供员工ID和工资周期')
-      }
-
-      const calculated = await this.calculator.calculateSalary(employee_id, period_start, period_end)
-      const existing = await this.repository.getRecordByEmployeePeriod(employee_id, period_start, period_end)
+  async saveCalculatedSalary(salaryData, userId, authorize = null) {
+    this.assertExternalInput(salaryData)
+    identity(salaryData)
+    const { employee_id, period_start, period_end } = salaryData
+    assertUnpaid(await this.repository.getRecordByEmployeePeriod(employee_id, period_start, period_end))
+    const calculated = calculatedSalary(await this.calculator.calculateSalary(employee_id, period_start, period_end))
+    return this.mutatePeriod(salaryData, async (connection, existing) => {
+      if (authorize) await authorize(Boolean(existing), connection)
       const merged = this.mergeCalculatedSalaryState(calculated, existing, userId, {
         status: salaryData.status,
         payment_method: salaryData.payment_method,
         paid_at: salaryData.paid_at
       })
-
-      return await this.repository.upsertSalaryRecord(merged)
-    } catch (error) {
-      throw error
-    }
+      const salary = await this.withGoods(connection, merged)
+      assertCalculationVersion(salary, salaryData.expected_calculation_version)
+      return this.persist(connection, salary, existing)
+    })
   }
 
   mergeCalculatedSalaryState(calculated, existing, operatorId, overrides = {}) {
-    const allowedStatuses = new Set(['draft', 'pending', 'approved', 'paid'])
+    assertUnpaid(existing)
+    const allowedStatuses = new Set(['draft', 'pending', 'approved'])
     const nextStatus = allowedStatuses.has(overrides.status) ? overrides.status : null
     const merged = { ...calculated }
 
     if (existing) {
-      merged.status = existing.status === 'paid'
-        ? 'paid'
-        : (nextStatus || existing.status || calculated.status)
+      merged.status = nextStatus || existing.status || calculated.status
       merged.payment_method = overrides.payment_method !== undefined
         ? overrides.payment_method
         : (existing.payment_method || null)
@@ -120,13 +220,17 @@ class SalaryRecordService {
 
   async recalculateExistingSalaryForPeriod(employeeId, periodStart, periodEnd, operatorId) {
     const existing = await this.repository.getRecordByEmployeePeriod(employeeId, periodStart, periodEnd)
-    if (!existing) {
+    if (!existing || isPaid(existing)) {
       return null
     }
 
-    const calculated = await this.calculator.calculateSalary(employeeId, periodStart, periodEnd)
-    const merged = this.mergeCalculatedSalaryState(calculated, existing, operatorId)
-    return await this.repository.upsertSalaryRecord(merged)
+    const calculated = calculatedSalary(await this.calculator.calculateSalary(employeeId, periodStart, periodEnd))
+    return this.mutatePeriod({ employee_id: employeeId, period_start: periodStart, period_end: periodEnd }, async (connection, current) => {
+      // 考勤审批不得因工资已发而失败；计算期间恰好发放也只跳过，不回写旧月。
+      if (!current || isPaid(current)) return null
+      const merged = this.mergeCalculatedSalaryState(calculated, current, operatorId)
+      return this.persist(connection, await this.withGoods(connection, merged), current)
+    })
   }
 
   async recalculateExistingSalaryForAttendanceRecord(attendanceRecord, operatorId) {
@@ -153,19 +257,24 @@ class SalaryRecordService {
   }
 
   async batchCalculateSalaries(employeeIds, periodStart, periodEnd) {
-    try {
-      return await this.calculator.batchCalculateSalary(employeeIds, periodStart, periodEnd)
-    } catch (error) {
-      throw error
+    if (!Array.isArray(employeeIds) || employeeIds.some(id => !validId(id))) reject('员工编号无效', 'SALARY_RECORD_INVALID', 400)
+    const results = []
+    for (const employeeId of employeeIds) {
+      try { results.push({ success: true, data: await this.calculateSalary(employeeId, periodStart, periodEnd) }) }
+      catch (error) { results.push({ success: false, employee_id: employeeId, error: error.message }) }
     }
+    return results
   }
 
   async approveSalaryRecord(id, approverId) {
-    try {
-      return await this.repository.approveSalaryRecord(id, approverId)
-    } catch (error) {
-      throw error
-    }
+    return this.mutate(async connection => {
+      const existing = await this.lockRecord(connection, id)
+      assertUnpaid(existing)
+      if (existing.status === 'approved') return true
+      if (!['draft', 'pending'].includes(existing.status)) reject('只能审批待审批的工资记录', 'SALARY_STATUS_CONFLICT')
+      if (!await this.repository.approveSalaryRecord(Number(id), approverId, connection)) reject('工资记录已变化，请刷新核对', 'SALARY_STATUS_CONFLICT')
+      return true
+    })
   }
 
   /**
@@ -174,11 +283,24 @@ class SalaryRecordService {
    * @param {object} options - 选项 { payment_method: string }
    */
   async markAsPaid(id, options = {}) {
-    try {
-      return await this.repository.markAsPaid(id, options)
-    } catch (error) {
-      throw error
-    }
+    return this.mutate(async connection => {
+      const existing = await this.lockRecord(connection, id)
+      if (existing.status === 'paid') return publicSalary(existing) // 重试保留第一次发放事实且不再次核销。
+      assertUnpaid(existing)
+      if (existing.status !== 'approved') reject('只能发放已审批的工资记录', 'SALARY_STATUS_CONFLICT')
+      assertCalculationVersion(existing, options.expected_calculation_version)
+      const method = options.payment_method ?? existing.payment_method ?? null
+      if (method !== null && !paymentOptions.settlement.some(item => item.value === method)) reject('请选择有效的工资支付方式', 'SALARY_RECORD_INVALID', 400)
+      const paidAt = this.now()
+      if (!existing.goods_commission_snapshot) reject('工资尚未核对商品提成，请先重新计算后发放', 'SALARY_GOODS_RECALCULATION_REQUIRED')
+      const confirmed = await this.goods.confirm(connection, existing, paidAt)
+      if (await this.repository.markAsPaid(Number(id), { payment_method: method, paid_at: paidAt }, connection) !== 1) {
+        reject('工资记录已变化，请刷新核对', 'SALARY_STATUS_CONFLICT')
+      }
+      const paid = await this.repository.lockRecord(connection, Number(id))
+      await this.goods.append(connection, paid, confirmed)
+      return publicSalary(paid)
+    })
   }
 
   async getSalaryStats(filters) {
@@ -206,44 +328,29 @@ class SalaryRecordService {
   }
 
   /**
-   * 批量重算某月工资（覆盖旧记录）
+   * 批量重算未发工资；已发记录单独计入跳过数，不修改其原始快照。
    */
   async bulkRecalculateByPeriod(periodStart, periodEnd, operatorId) {
-    const db = getDatabase()
-    return await withConnection(db, async conn => {
-      const [employees] = await conn.execute(
-        'SELECT id FROM users WHERE status = 1 AND salary_template_id IS NOT NULL'
-      )
+    identity({ employee_id: 1, period_start: periodStart, period_end: periodEnd })
+    const employees = await this.repository.activeEmployeeIds()
+    const results = {
+      total: employees.length,
+      recalculated: 0,
+      skipped_paid: 0,
+      errors: []
+    }
 
-      const results = {
-        total: employees.length,
-        recalculated: 0,
-        errors: []
+    for (const emp of employees) {
+      try {
+        await this.saveCalculatedSalary({ employee_id: emp.id, period_start: periodStart, period_end: periodEnd }, operatorId)
+        results.recalculated += 1
+      } catch (error) {
+        if (error.code === 'SALARY_RECORD_PAID') results.skipped_paid += 1
+        else results.errors.push({ employee_id: emp.id, message: error.message })
       }
+    }
 
-      for (const emp of employees) {
-        try {
-          const calculated = await this.calculator.calculateSalary(emp.id, periodStart, periodEnd)
-          const existing = await this.repository.getRecordByEmployeePeriod(emp.id, periodStart, periodEnd)
-
-          if (existing) {
-            calculated.status = existing.status || calculated.status
-            calculated.payment_method = existing.payment_method || calculated.payment_method || null
-            calculated.paid_at = existing.paid_at || calculated.paid_at || null
-            calculated.created_by = existing.created_by || operatorId
-          } else {
-            calculated.created_by = operatorId
-          }
-
-          await this.repository.upsertSalaryRecord(calculated)
-          results.recalculated += 1
-        } catch (error) {
-          results.errors.push({ employee_id: emp.id, message: error.message })
-        }
-      }
-
-      return results
-    })
+    return results
   }
 
   /**
@@ -294,15 +401,7 @@ class SalaryRecordService {
           AND p.sale_time IS NOT NULL
           AND DATE(p.sale_time) BETWEEN ? AND ?
           AND p.status = 'sold'
-        LEFT JOIN (
-          SELECT s.phone_id, s.sale_type
-          FROM sales s
-          INNER JOIN (
-            SELECT phone_id, MAX(created_at) as max_created
-            FROM sales
-            GROUP BY phone_id
-          ) latest ON s.phone_id = latest.phone_id AND s.created_at = latest.max_created
-        ) latest_sale ON p.id = latest_sale.phone_id
+        LEFT JOIN sales latest_sale ON latest_sale.id = (${getLatestActiveSaleIdSql()})
         WHERE u.status = 1
           AND (latest_sale.sale_type IS NULL OR latest_sale.sale_type NOT IN ('wholesale', 'supplier_proxy', 'peer_transfer'))
         ORDER BY u.id, p.is_new DESC, p.sale_time DESC
@@ -479,15 +578,7 @@ class SalaryRecordService {
         LEFT JOIN models m ON p.model_id = m.id
         LEFT JOIN colors c ON p.color_id = c.id
         LEFT JOIN memories mem ON p.memory_id = mem.id
-        LEFT JOIN (
-          SELECT s.*
-          FROM sales s
-          INNER JOIN (
-            SELECT phone_id, MAX(created_at) as max_created
-            FROM sales
-            GROUP BY phone_id
-          ) latest ON s.phone_id = latest.phone_id AND s.created_at = latest.max_created
-        ) latest_sale ON p.id = latest_sale.phone_id
+        LEFT JOIN sales latest_sale ON latest_sale.id = (${getLatestActiveSaleIdSql()})
         LEFT JOIN customers cust ON latest_sale.customer_id = cust.id
         WHERE p.sale_operator_id = ?
           AND p.sale_time IS NOT NULL
@@ -549,7 +640,6 @@ class SalaryRecordService {
         purchase_cost: parseFloat(row.purchase_cost) || 0,
         sale_price: parseFloat(row.sale_price) || 0,
         profit: (parseFloat(row.sale_price) || 0) - (parseFloat(row.purchase_cost) || 0),
-        sale_time: row.sale_time,
         sale_time: row.sale_time,
         customer_name: row.customer_name || '-',
         customer_phone: row.customer_phone || '-'

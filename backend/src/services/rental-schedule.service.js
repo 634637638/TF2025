@@ -6,6 +6,8 @@ const { ensureRentalSchema } = require('../utils/rental-schema')
 const { isBuyoutMode, getInstallmentAmount, addMonthsClamped } = require('../utils/rental-calculations')
 const { getDatabase } = require('../config/database')
 const { withConnection } = require('../core/db/connection')
+const { parseInput } = require('../middleware/validation')
+const { parseRentalId } = require('../utils/rental-input')
 
 const MODULE_KEY = 'rentals_rentalsview'
 
@@ -61,6 +63,12 @@ class RentalScheduleService {
   }
 
   async recordPayment(rentalId, body, userId) {
+    rentalId = parseRentalId(rentalId)
+    body = parseInput(body, {
+      amount: { type: 'money', required: body?.amount !== undefined, min: 0.01, message: '请输入正确的收款金额' },
+      period_numbers: { type: 'array', minItems: 1, maxItems: 12, itemType: 'id', label: '期次' },
+      remarks: { type: 'string', multiline: true, maxLength: 500, label: '备注' }
+    })
     await this.ensureSchema()
     return withConnection(this.databaseProvider, async connection => {
       let transactionStarted = false

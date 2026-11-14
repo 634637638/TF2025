@@ -45,12 +45,15 @@
       <div
         v-else
         v-tf-loading="{ active: loading, text: '正在刷新已售商品...' }"
+        v-table-double-tap="recordTapOptions"
         class="products-list"
       >
         <div
           v-for="product in paginatedProducts"
           :key="product.id"
           class="product-card"
+          data-mobile-record
+          @dblclick="openRecordDetail(product, null, $event)"
         >
           <!-- 商品信息 -->
           <div class="product-info">
@@ -110,7 +113,7 @@
 
           <!-- 操作按钮 -->
           <div
-            v-if="showActionColumn"
+            v-if="!isMobile && showActionColumn"
             class="product-actions"
           >
             <el-button
@@ -269,11 +272,11 @@
           </div>
         </div>
 
-        <template #footer>
+        <template
+          v-if="canDelete"
+          #footer
+        >
           <div class="tf-dialog-actions image-modal-footer">
-            <el-button @click="showImageModal = false">
-              关闭
-            </el-button>
             <el-button
               v-if="canDelete"
               plain
@@ -295,11 +298,40 @@
         :deletable="canDelete"
         @delete="deleteCurrentMedia"
       />
+      <RecordDetailDialog
+        v-model="recordVisible"
+        title="已售商品详情"
+        :fields="recordFields"
+        :record="recordRow"
+        :has-actions="canViewImages || canDelete"
+      >
+        <template #actions>
+          <el-button
+            v-if="canViewImages"
+            type="primary"
+            @click.stop="runRecordAction(viewImages)"
+          >
+            查看图片
+          </el-button>
+          <el-button
+            v-if="canDelete"
+            v-permission="'h5-sold-products:delete'"
+            type="danger"
+            @click.stop="runRecordAction(deleteProductImages)"
+          >
+            删除素材
+          </el-button>
+        </template>
+      </RecordDetailDialog>
     </div>
   </PermissionGate>
 </template>
 
 <script setup lang="ts">
+import { useMobile } from '@/composables/mobile'
+import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
+import type { RecordDetailField } from '@/types/component'
+
 import { confirmAction } from '@/utils/message-box'
 import { ref, reactive, computed, onMounted, onUnmounted, onActivated, inject, watch } from 'vue'
 
@@ -637,6 +669,26 @@ onUnmounted(() => {
     clearHeaderActions()
   }
 })
+
+const { isMobile } = useMobile()
+const canViewImages = computed(() => canViewField('images.image_url') || canDelete.value)
+const { detailRow: recordRow, detailVisible: recordVisible, doubleTapOptions: recordTapOptions,
+  handleRowDoubleClick: openRecordDetail, runDetailAction: runRecordAction } = useMobileTableDetail({
+  enabled: () => isMobile.value && canView.value, rows: paginatedProducts, getKey: row => row.id,
+  rowSelector: '[data-mobile-record]'
+})
+const recordFields = computed<RecordDetailField[]>(() => {
+  const row = recordRow.value
+  return row ? [
+    { key: 'product', label: '商品', value: `${row.brand || ''} ${row.model || ''}`, visible: canViewField('product.brand_model'), wide: true },
+    { key: 'color', label: '颜色', value: row.color, visible: canViewField('product.color') },
+    { key: 'memory', label: '内存', value: row.memory, visible: canViewField('product.memory') },
+    { key: 'imei', label: 'IMEI', value: row.imei, visible: canViewField('product.imei'), wide: true },
+    { key: 'time', label: '销售时间', value: formatDate(row.sale_time), visible: canViewField('product.sale_time') },
+    { key: 'count', label: '图片数量', value: row.image_count, visible: canViewField('product.image_count') }
+  ] : []
+})
+
 </script>
 
 <style scoped lang="scss" src="./styles/sold-products-view/desktop.scss"></style>

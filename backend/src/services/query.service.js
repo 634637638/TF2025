@@ -6,6 +6,7 @@ const XLSX = require('xlsx')
 const { normalizePhoneStatus } = require('../utils/phone-status')
 const { isStoreScopeError } = require('../utils/store-scope')
 const { normalizeReturnStockInfo } = require('./return-stock-validation')
+const { parseInput } = require('../middleware/validation')
 
 class QueryService {
   constructor() {
@@ -296,10 +297,14 @@ class QueryService {
         fields.original_sale_type = this.normalizeReturnGoodsType(payload.original_sale_type)
       }
       if (Object.prototype.hasOwnProperty.call(payload, 'original_sale_operator_id')) {
-        fields.original_sale_operator_id = payload.original_sale_operator_id ? parseInt(payload.original_sale_operator_id, 10) : null
+        fields.original_sale_operator_id = parseInput({ id: payload.original_sale_operator_id }, {
+          id: { type: 'id', label: '原销售员ID' }
+        }).id
       }
       if (Object.prototype.hasOwnProperty.call(payload, 'original_sale_operator_name')) {
-        fields.original_sale_operator_name = payload.original_sale_operator_name ? String(payload.original_sale_operator_name).trim() : null
+        fields.original_sale_operator_name = parseInput({ name: payload.original_sale_operator_name }, {
+          name: { type: 'personName', maxLength: 50, label: '原销售员姓名' }
+        }).name?.trim() || null
       }
       await this.queryRepository.updateReturnGoodsRecord(recordId, fields, storeScope)
 

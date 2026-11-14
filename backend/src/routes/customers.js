@@ -4,6 +4,9 @@ const { unifiedAuth, requirePermission, getUserPermissions } = require('../middl
 const log = require('../utils/log')
 const CustomerController = require('../controllers/customer.controller')
 const customerController = new CustomerController()
+const createFieldAccessMiddleware = require('../middleware/field-access')
+const { service: customerFields, fieldMap: addressFieldMap } = require('../services/customer-field-access.service')
+const protectCustomerAddress = createFieldAccessMiddleware(customerFields).protectFields(addressFieldMap)
 
 const LEGACY_PERMISSION_CANONICAL_MAP = {
   'customers_customersview:create': 'customers:create',
@@ -78,7 +81,7 @@ const requireCustomerCreatePermissionForBusinessFlow = async (req, res, next) =>
 router.get('/search', unifiedAuth, requirePermission('customers:view'), customerController.search.bind(customerController))
 
 // 获取客户列表
-router.get('/', unifiedAuth, requirePermission('customers:view'), customerController.list.bind(customerController))
+router.get('/', unifiedAuth, requirePermission('customers:view'), protectCustomerAddress, customerController.list.bind(customerController))
 
 // 获取客户统计信息
 router.get('/stats', unifiedAuth, requirePermission('customers:view'), customerController.getStatistics.bind(customerController))
@@ -92,14 +95,18 @@ router.get('/points-config', unifiedAuth, requirePermission('customers:view'), c
 // 保存客户积分自动累计设置
 router.put('/points-config', unifiedAuth, requirePermission('customers:manage'), customerController.savePointsConfig.bind(customerController))
 
+router.get('/address-capabilities', unifiedAuth, requirePermission('customers:view'), customerController.getAddressCapabilities.bind(customerController))
+
+router.get('/export', unifiedAuth, requirePermission('customers:export'), protectCustomerAddress, customerController.export.bind(customerController))
+
 // 获取单个客户详情
-router.get('/:id', unifiedAuth, requirePermission('customers:view'), customerController.getById.bind(customerController))
+router.get('/:id', unifiedAuth, requirePermission('customers:view'), protectCustomerAddress, customerController.getById.bind(customerController))
 
 // 创建客户
-router.post('/', unifiedAuth, requireCustomerCreatePermissionForBusinessFlow, customerController.create.bind(customerController))
+router.post('/', unifiedAuth, requireCustomerCreatePermissionForBusinessFlow, protectCustomerAddress, customerController.create.bind(customerController))
 
 // 更新客户信息
-router.put('/:id', unifiedAuth, requirePermission('customers:edit'), customerController.update.bind(customerController))
+router.put('/:id', unifiedAuth, requirePermission('customers:edit'), protectCustomerAddress, customerController.update.bind(customerController))
 
 // 删除客户
 router.delete('/:id', unifiedAuth, requirePermission('customers:delete'), customerController.remove.bind(customerController))

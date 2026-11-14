@@ -1,5 +1,7 @@
 'use strict'
 
+const { getActiveSaleSql } = require('../utils/sale-status')
+
 const { getDatabase } = require('../config/database')
 
 class AnalyticsHighValueCustomersRepository {
@@ -10,7 +12,7 @@ class AnalyticsHighValueCustomersRepository {
   async list({ pageSize, offset, search, startDate, endDate, storeId }) {
     const searchCondition = search ? ' AND (c.name LIKE ? OR c.phone LIKE ?)' : ''
     const searchParams = search ? [`%${search}%`, `%${search}%`] : []
-    const saleConditions = []
+    const saleConditions = [getActiveSaleSql()]
     const saleParams = []
     if (startDate) {
       saleConditions.push('DATE(s.sale_time) >= ?')

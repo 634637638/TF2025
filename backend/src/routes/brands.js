@@ -5,7 +5,9 @@ const { cacheMiddleware, clearCache } = require('../middleware/cache')
 const { validateBody, validateQuery } = require('../middleware/validation')
 const { unifiedAuth, requirePermission, requireAnyPermission } = require('../middleware/unified-auth')
 const { CACHE_TTL, PAGINATION } = require('../config/constants')
-const brandController = new BrandController({ clearCache: () => clearCache('/api/brands') })
+const brandController = new BrandController({ clearCache: () => {
+  for (const path of ['/api/brands', '/api/accessories/options', '/api/options/phone-options', '/api/query/options', '/api/preorders/options', '/api/repairs/options', '/api/public/brands', '/api/public/price/brands']) clearCache(path)
+} })
 
 // 返回全量基础统计，不能使用当前分页结果推算。
 router.get('/stats/overview', unifiedAuth, requirePermission('brands:view'), brandController.getStats.bind(brandController))
@@ -17,18 +19,20 @@ router.get('/', unifiedAuth, requireAnyPermission(['brands:view', 'inventory:vie
   page: { type: 'number', required: false, min: 1, integer: true },
   page_size: { type: 'number', required: false, min: 1, max: PAGINATION.MAX_LIMIT, integer: true },
   suggest: { type: ['true', 'false'], required: false },
-  all: { type: ['true', 'false'], required: false }
+  all: { type: ['true', 'false'], required: false },
+  business_scope: { type: ['phone', 'accessory', 'both', 'all'], required: false }
 }), cacheMiddleware({ ttl: CACHE_TTL.SHORT }), brandController.list.bind(brandController))
 
 // 创建品牌
 router.post('/', unifiedAuth, requirePermission('brands:create'), validateBody({
   name: { type: 'string', required: true, minLength: 1, maxLength: 100 },
   status: { type: 'number', required: false, integer: true, min: 0, max: 1 },
-  sort_order: { type: 'number', required: false, integer: true, min: 0 }
-}), brandController.create.bind(brandController))
+  sort_order: { type: 'number', required: false, integer: true, min: 0 },
+  business_scope: { type: ['phone', 'accessory', 'both'], required: false }
+}), brandController.rejectHiddenWrites({ business_scope: 'brand.business_scope' }), brandController.create.bind(brandController))
 
 // 更新品牌
-router.put('/:id', unifiedAuth, requirePermission('brands:edit'), brandController.update.bind(brandController))
+router.put('/:id', unifiedAuth, requirePermission('brands:edit'), brandController.rejectHiddenWrites({ business_scope: 'brand.business_scope' }), brandController.update.bind(brandController))
 
 // 批量更新排序
 router.put('/batch/reorder', unifiedAuth, requirePermission('brands:edit'), brandController.reorder.bind(brandController))

@@ -22,6 +22,7 @@ AI 协作从根目录 [AGENTS.md](../AGENTS.md) 开始；[CLAUDE.md](../CLAUDE.m
 | 性能 | [性能文档索引](performance/INDEX.md) | 仍有效的实现说明；历史评估不作为当前基准 |
 | 安全 | [安全文档索引](security/INDEX.md) | 密钥管理、公开接口风险与审计记录 |
 | 开发进展 | [开发记录索引](development/INDEX.md) | 有日期的实施、审计与进度快照 |
+| 配件商品需求方案 | [配件商品、库存、销售与贴膜需求档案](development/accessory-business-plan.md) | 用户确认的目标规则与设计建议；本批配件档案/入库代码及云端厂家型号字段迁移完成，进度统一登记 T22 |
 | 全站逐页审计 | [前后端逐页与路由模块审计](development/full-stack-page-audit-2026-11-02.md) | 2026-11-02 的逐页审计快照；不代表此后代码或线上状态 |
 | 历史兼容接口退役 | [历史兼容接口退役台账](guides/compatibility-route-retirement-ledger.md) | 当前运行时兼容/弃用路由均为 0；记录 28 条本轮删除历史、恢复标签和部署观察，资料存放在 `archive/compatibility-routes/` |
 | 组件专题 | [组件专题索引](components/INDEX.md) | 组件指南和旧资料迁移入口 |

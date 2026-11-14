@@ -3,6 +3,9 @@
  * 避免在 index/system/api 中重复定义
  */
 
+/** 公共品牌、供应商可服务的商品业务。 */
+export type BusinessScope = 'phone' | 'accessory' | 'both'
+
 export interface User {
   id: number
   username: string

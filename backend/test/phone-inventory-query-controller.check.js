@@ -355,7 +355,7 @@ test('phone query repository retains sold timeline fields and releases its conne
 
   assert.deepEqual(await repository.getSoldTimeline(), [{ id: 5, sale_time: '2026-11-01' }])
   assert.deepEqual(executed.params, [])
-  assert.match(executed.sql, /ROW_NUMBER\(\) OVER \(PARTITION BY s\.phone_id ORDER BY s\.created_at DESC\)/)
+  assert.match(executed.sql, /ROW_NUMBER\(\) OVER \(PARTITION BY s\.phone_id ORDER BY s\.id DESC\)/)
   assert.match(executed.sql, /WHERE p\.status = 'sold'/)
   assert.match(executed.sql, /ORDER BY latest_sale\.sale_time DESC/)
   assert.equal(released, true)

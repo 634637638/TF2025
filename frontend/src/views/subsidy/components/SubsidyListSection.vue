@@ -59,7 +59,7 @@
         class="table-container table-responsive"
       >
         <el-table
-          v-if="!isMobile"
+          v-table-double-tap="detailTapOptions"
           :data="displayList"
           border
           stripe
@@ -68,7 +68,7 @@
           :fit="true"
           row-key="id"
           :row-class-name="getTableRowClassName"
-          @row-dblclick="(row) => emit('row-double-click', row)"
+          @row-dblclick="detailDoubleClick"
         >
           <template #empty>
             <TableLoadingRow
@@ -105,7 +105,7 @@
           </el-table-column>
 
           <el-table-column
-            v-for="column in tableColumns"
+            v-for="column in visibleTableColumns"
             :key="column.key"
             :label="column.label"
             :min-width="getColumnMinWidth(column)"
@@ -220,6 +220,7 @@
                 >-</span>
               </template>
 
+              <span v-else-if="column.key === 'subsidy_photos' && isMobile">{{ photoCount(row) }} 张</span>
               <div
                 v-else-if="column.key === 'subsidy_photos'"
                 class="photo-icon-wrapper clickable"
@@ -245,7 +246,7 @@
                   {{ formatDate(row.apply_time) }}
                 </div>
                 <el-button
-                  v-else-if="canApprove"
+                  v-else-if="!isMobile && canApprove"
                   type="primary"
                   size="small"
                   class="table-action table-action--manage table-inline-action"
@@ -268,7 +269,7 @@
                   {{ formatDate(row.arrival_time) }}
                 </div>
                 <el-button
-                  v-else-if="canArrival"
+                  v-else-if="!isMobile && canArrival"
                   type="success"
                   size="small"
                   class="table-action table-action--finance table-inline-action"
@@ -311,209 +312,6 @@
             </template>
           </el-table-column>
         </el-table>
-
-        <TableLoadingRow
-          v-else-if="loading && subsidyList.length === 0"
-          mode="block"
-          text="正在读取国补记录..."
-        />
-        <DataEmptyState
-          v-else-if="subsidyList.length === 0"
-          description="暂无国补申请记录"
-        />
-        <div
-          v-else
-          class="mobile-card-list"
-        >
-          <div
-            v-for="item in displayList"
-            :key="item.id"
-            class="mobile-subsidy-card"
-            :class="{ 'selected-row': isSelectedItem(item.id), 'pinned-row': isPinnedItem(item.id) }"
-            @click="emit('row-double-click', item)"
-          >
-            <div class="mobile-card-accent" />
-            <div class="mobile-card-shell">
-              <div
-                class="mobile-select-cell"
-                @click.stop
-              >
-                <el-checkbox
-                  :model-value="isSelectedItem(item.id)"
-                  @click.stop
-                  @change="(value) => emit('select-item', { id: item.id, checked: !!value })"
-                />
-              </div>
-
-              <div class="mobile-card-content">
-                <div class="mobile-card-head">
-                  <div class="mobile-meta-line">
-                    <span
-                      v-if="fieldVisibility.sale_time"
-                      class="mobile-date"
-                    >{{ formatDate(item.sale_time) }}</span>
-                    <span
-                      v-if="fieldVisibility.store_name"
-                      class="mobile-store"
-                    >{{ item.store_name || '-' }}</span>
-                  </div>
-                  <span
-                    v-if="fieldVisibility.has_different_handler && isHandlerSubsidy(item)"
-                    class="mobile-handler-badge"
-                  >代办</span>
-                </div>
-
-                <div class="mobile-device-line">
-                  <span
-                    v-if="fieldVisibility.brand"
-                    class="mobile-brand-text"
-                  >
-                    {{ item.phone_brand || '-' }}
-                  </span>
-                  <span
-                    v-if="fieldVisibility.model"
-                    class="mobile-model-title"
-                  >
-                    {{ item.phone_model || '-' }}
-                  </span>
-                  <span
-                    v-if="fieldVisibility.color"
-                    class="mobile-spec-text"
-                  >
-                    {{ item.phone_color || '颜色-' }}
-                  </span>
-                  <span
-                    v-if="fieldVisibility.memory"
-                    class="mobile-spec-text"
-                  >
-                    {{ item.phone_memory || '内存-' }}
-                  </span>
-                </div>
-
-                <div class="mobile-person-line">
-                  <span
-                    v-if="fieldVisibility.customer_name"
-                    class="mobile-name"
-                  >
-                    <i class="fas fa-user" />
-                    {{ getDisplayInfo(item, 'name') || '-' }}
-                  </span>
-                  <span
-                    v-if="fieldVisibility.customer_phone"
-                    class="mobile-phone"
-                  >
-                    <i class="fas fa-phone-alt" />
-                    {{ getDisplayInfo(item, 'phone') || '-' }}
-                  </span>
-                  <span
-                    v-if="fieldVisibility.sale_price"
-                    class="mobile-price"
-                  >
-                    ¥{{ formatMoney(item.sale_price) }}
-                  </span>
-                </div>
-
-                <div
-                  v-if="fieldVisibility.apply_time || canApprove || fieldVisibility.arrival_time || canArrival"
-                  class="mobile-workflow-fields"
-                  @click.stop
-                >
-                  <div
-                    v-if="fieldVisibility.apply_time || canApprove"
-                    class="mobile-workflow-field"
-                  >
-                    <span class="mobile-workflow-label">提交</span>
-                    <span
-                      v-if="hasApplyTime(item)"
-                      class="mobile-action-status is-approved"
-                    >{{ formatDate(item.apply_time) }}</span>
-                    <el-button
-                      v-else-if="canApprove"
-                      type="primary"
-                      size="small"
-                      class="table-action table-action--manage table-inline-action"
-                      title="审批"
-                      @click.stop="emit('audit', item)"
-                    >
-                      审批
-                    </el-button>
-                    <span
-                      v-else
-                      class="text-muted"
-                    >-</span>
-                  </div>
-
-                  <div
-                    v-if="fieldVisibility.arrival_time || canArrival"
-                    class="mobile-workflow-field"
-                  >
-                    <span class="mobile-workflow-label">到账</span>
-                    <span
-                      v-if="hasArrivalTime(item)"
-                      class="mobile-action-status is-arrived"
-                    >{{ formatDate(item.arrival_time) }}</span>
-                    <el-button
-                      v-else-if="canArrival"
-                      type="success"
-                      size="small"
-                      class="table-action table-action--finance table-inline-action"
-                      title="到账"
-                      @click.stop="emit('confirm-arrival', item)"
-                    >
-                      到账
-                    </el-button>
-                    <span
-                      v-else
-                      class="text-muted"
-                    >-</span>
-                  </div>
-                </div>
-
-                <div
-                  v-if="fieldVisibility.subsidy_photos || canUpload || canEdit || canDelete"
-                  class="mobile-card-actions"
-                  @click.stop
-                >
-                  <el-button
-                    v-if="fieldVisibility.subsidy_photos || canUpload"
-                    native-type="button"
-                    class="mobile-action-mark mobile-photo-action"
-                    :class="{ 'has-photos': photoCount(item) > 0 }"
-                    :title="canUpload ? (photoCount(item) > 0 ? '查看/管理国补照片' : '上传国补照片') : '查看国补照片'"
-                    @pointerenter="emit('preload-photo-manage', item)"
-                    @focus="emit('preload-photo-manage', item)"
-                    @click.stop="emit('open-photo-manage', item)"
-                  >
-                    <i :class="photoCount(item) > 0 ? 'fas fa-images' : 'far fa-image'" />
-                    <span
-                      v-if="photoCount(item) > 0"
-                      class="mobile-photo-count"
-                    >{{ photoCount(item) }}</span>
-                  </el-button>
-                  <el-button
-                    v-if="canEdit"
-                    type="primary"
-                    size="small"
-                    class="table-action table-action--edit"
-                    @click.stop="emit('edit', item)"
-                  >
-                    编辑
-                  </el-button>
-                  <el-button
-                    v-if="canDelete"
-                    type="danger"
-                    size="small"
-                    class="table-action table-action--delete"
-                    @click.stop="emit('delete', item)"
-                  >
-                    删除
-                  </el-button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
         <div
           v-if="qrCodeVisible"
           class="qrcode-tooltip"
@@ -550,6 +348,7 @@
 </template>
 
 <script setup lang="ts">
+import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
 import { computed, onUnmounted, ref, watch } from 'vue'
 
 import PaginationComponent from '@/components/Pagination.vue'
@@ -750,7 +549,6 @@ const getSubsidyFinalPrice = (item: NationalSubsidyRecord) => {
 const hasApplyTime = (item: NationalSubsidyRecord) => Boolean(item.apply_time && item.apply_time !== '')
 const hasArrivalTime = (item: NationalSubsidyRecord) => Boolean(item.arrival_time && item.arrival_time !== '')
 const photoCount = (item: NationalSubsidyRecord) => item.subsidy_photos?.length || 0
-const isHandlerSubsidy = (item: NationalSubsidyRecord) => Boolean(item.has_different_handler)
 
 const toggleListItemCustomerInfo = (itemId: number) => {
   const currentState = handlerInfoVisibility.value.get(itemId) || false
@@ -968,8 +766,10 @@ watch(
 onUnmounted(() => {
   clearQrTimers()
 })
+const visibleTableColumns = computed(() => props.tableColumns.filter(column => !props.isMobile || column.key !== 'actions'))
+const { doubleTapOptions: detailTapOptions, handleRowDoubleClick: detailDoubleClick } = useMobileTableDetail<NationalSubsidyRecord>({
+  enabled: true, rows: () => props.displayList, getKey: row => row.id, onOpen: row => emit('row-double-click', row)
+})
 </script>
 
 <style scoped lang="scss" src="./styles/subsidy-list/table-and-photos.scss"></style>
-<style scoped lang="scss" src="./styles/subsidy-list/mobile-card.scss"></style>
-<style scoped lang="scss" src="./styles/subsidy-list/mobile-actions.scss"></style>

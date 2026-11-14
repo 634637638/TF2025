@@ -2,6 +2,10 @@
 
 更新时间：2026-08-28
 
+### 2026-11-14 贴膜增量结构边界
+
+新增规范字段为类型 `film_enabled`、目录 `film_ready`、共同结算 `film_service/film_service_id` 和客户服务历史字段，不引入新旧名称别名。仅结构未迁移时读目录使用 `NULL AS film_enabled` 并隐藏开关；旧请求省略标记保留现值，显式写入缺列409拒绝。该结构就绪判断不是业务值兼容或静默降级，贴膜办理本身必须结构就绪。受控迁移、默认全0、备份和有历史禁止回退见[贴膜结构](../backend/accessory-entry.md#类型设置与受控迁移)；尚未在云端执行。
+
 ## 模拟数据与硬编码清理（2026-08-28）
 
 营销天气、库存统计、H5 首页推荐和系统站点资料已完成伪数据清理：天气或统计不可用时保持空值/不可用状态，H5 只读取后台明确配置的商品，站点设置不再提供真实公司样例。此次未删除数据库数据，也未修改数据库物理字段。
@@ -44,8 +48,8 @@
 | `data-import` | 上传、分析、导入、进度和历史分页统一为 snake_case，历史列表使用 `page_size`、`total_pages`、`has_next`、`has_prev` | 无运行时 API 兼容字段；旧路径、分页和驼峰请求/响应字段已退役 | 无兼容边界；导入文件的历史列名映射属于文件解析规则，不进入 API 契约 | 仓内客户端和路由均已迁移；真实登录态导入历史与写入流程仍待回归，不影响旧 API 字段退役 |
 | `query` | 查询筛选和分页统一使用 `page_size`、`start_date`、`end_date`、`sort_field`、`sort_order`；响应统一使用 `purchase_cost`、`inventory_time`、`sale_time` 等规范字段；编辑提交 `payment_method/payment_channel` 并同步到关联 `sales.id` | 无运行时兼容字段；`limit`, `purchase_price`, `Inventorytime`, `salestime`, `sale_date` 已退役 | 无兼容边界；查询路由、服务、仓储、页面和编辑弹窗只使用规范字段，仓储只读取已迁移的规范物理列 | 2026-08-28 已完成真实库 16232 条手机、15471 条销售关联的只读核验；孤立销售 0、门店范围规范排序和分页通过、旧响应键 0、写操作 0；历史空金额保持 `NULL`；本次补齐支付方式/渠道编辑保存闭环，真实登录态查询、导出、编辑和权限回归仍待执行 |
 | `sales` | 涉及页面：`SalesView.vue` 及拆分的子组件/composable；涉及接口：可售库存列表、导出、统计、库存汇总/明细和销售提交；规范字段：`purchase_cost/sale_price/inventory_time/sale_time/page_size/start_date/end_date/total_pages/has_next/has_prev` 等 | 无运行时兼容字段；`purchase_price/Inventorytime/purchase_date/inbound_date/salestime/sale_date/cost/limit/date_start/date_end` 及旧端点参数 `price/date` 已退役 | 无兼容边界；页面、路由、控制器、服务和仓储均只使用规范字段；仓储只读取真实 `phones/sales` 列 | 2026-08-27 已完成 86 台可售库存及 15471 条销售记录的真实库字段、关联、分页和排序只读验证，写操作 0；旧字段已移除，无后续删除项；登录态销售事务、支付、积分、预定交付、导出和权限待回归 |
-| `salary-records` | 工资列表请求和响应分页统一使用 `page_size`、`total_pages`、`has_next`、`has_prev`；员工销售明细统一使用 `sale_time` | 无运行时兼容字段；`salestime`, `limit`, `totalPages`, `hasNext`, `hasPrev` 已退役 | 无兼容边界；手机销售时间物理列已迁移为 `sale_time` | 已完成应用层、物理列和契约收敛；真实工资计算与发放业务回归继续独立跟踪 |
-| `salary-templates` | 工资模板使用云端真实字段 `commission_new_fixed`、`commission_used_fixed`、`rest_days`、`auto_raise_rule` 及时间字段；列表分页统一为 `page_size`、`total_pages`、`has_next`、`has_prev`；员工模板绑定使用 `template_id`；默认模板更新使用事务，激活模板按 `is_active = 1` 筛选 | 无运行时兼容字段；`limit`, `totalPages`, `hasNext`, `hasPrev`, `templateId` 已退役；历史 API 中曾声明但当前表不存在的扣款、税率、工资周期和创建人字段不再输出或写入 | 无兼容边界 | 已完成应用层、真实物理列、分页、员工绑定和默认模板字段收敛；真实权限操作继续独立回归 |
+| `salary-records` | 工资列表请求和响应分页统一使用 `page_size`、`total_pages`、`has_next`、`has_prev`；员工销售明细统一使用 `sale_time`；批量重算响应包含 `total/recalculated/skipped_paid/errors` | 无运行时兼容字段；`salestime`, `limit`, `totalPages`, `hasNext`, `hasPrev` 已退役 | 无兼容边界；手机销售时间物理列已迁移为 `sale_time` | 已完成应用层、物理列和契约收敛；真实工资计算与发放业务回归继续独立跟踪 |
+| `salary-templates` | 工资模板既有字段包括 `commission_new_fixed`、`commission_used_fixed`、`rest_days`、`auto_raise_rule` 及时间字段；新增可空 JSON `goods_commission_rule` 契约与受控迁移已提供，本批未执行云端迁移；列表分页统一为 `page_size`、`total_pages`、`has_next`、`has_prev`；员工模板绑定使用 `template_id`；默认模板更新使用事务，激活模板按 `is_active = 1` 筛选 | 无运行时兼容字段；`limit`, `totalPages`, `hasNext`, `hasPrev`, `templateId` 已退役；历史 API 中曾声明但当前表不存在的扣款、税率、工资周期和创建人字段不再输出或写入 | 商品规则未迁移时查询返回 NULL，显式保存返回409；省略不修改，null清除，数值须为number，保留false/0；普通API不执行DDL | 既有分页、员工绑定和默认模板字段已收敛；商品规则配置/字段权限及迁移回滚见[工资记录契约](../business/salary-record-standard.md#工资模板商品提成配置)，云端及真实操作另验 |
 | `permissions` | 角色、用户角色、门店绑定、字段权限、菜单权限、权限日志和模块管理请求/响应统一使用 snake_case；分页控件内部统一使用 `page_size` | 无运行时兼容字段；旧模块键、JSON 键和字段 ID 仅保留在离线迁移脚本 | 无运行时兼容边界；`backend/scripts/migrate-role-field-module-keys.js`、`backend/scripts/migrate-role-field-config-json.js` 仅用于迁移审计/灾备重放 | 已完成：26 类历史模块键的 72 条记录迁移后 `unmatched_after = 0`；15 条现存配置中的 2 条旧 JSON 已事务更新，行数保持 15，旧配置为 0 |
 | `users` | 用户请求、响应及仓储分页统一使用 `page_size`、`total_pages`、`has_next`、`has_prev`；角色关联使用 `role_id/role_ids`，员工权限标记使用 `is_admin`；用户详情只返回明确公开列 | 无运行时兼容字段；`limit`, `totalPages`, `hasNextPage`, `hasPrevPage` 已退役；错误归属于用户表的 `group_name` 已退役 | 无兼容边界 | 已完成真实库只读验证：确认角色来自 `user_roles/roles`、`users` 无 `role/group_name` 物理列，角色+状态筛选返回 3 条且不含密码；登录态权限回归仍需在服务启动后执行 |
 | `customers` | 客户购买历史响应和页面展示统一使用 `purchase_cost`、`sale_price`、`sale_time`，历史成交数据以 `sales` 为准 | 无运行时兼容字段；`purchase_price`, `sale_date`, `salestime` 已退役 | 无兼容边界；销售和手机物理列均已迁移 | 真实数据库分页、筛选、排序、关联和空值验证已完成；旧字段已移除，无后续删除项 |

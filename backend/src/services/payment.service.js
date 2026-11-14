@@ -3,8 +3,10 @@
  * 处理付款业务逻辑
  */
 const paymentRepository = require('../repositories/payment.repository')
-const supplierRepository = require('../repositories/supplier.repository')
+const SupplierRepository = require('../repositories/supplier.repository')
 const { getDatabase } = require('../config/database')
+const { parseInput } = require('../middleware/validation')
+const supplierRepository = new SupplierRepository()
 
 // 辅助函数：执行查询
 async function executeQuery(sql, params) {
@@ -18,6 +20,12 @@ class PaymentService {
    * 创建付款记录
    */
   async createPayment(paymentData) {
+    paymentData = parseInput(paymentData, {
+      supplier_id: { type: 'id', required: true, label: '供应商' },
+      settlement_id: { type: 'id', label: '对账单' },
+      payment_amount: { type: 'money', required: true, min: 0.01, label: '付款金额' },
+      notes: { type: 'string', multiline: true, maxLength: 1000, label: '备注' }
+    })
     const {
       supplier_id,
       settlement_id,
@@ -47,7 +55,7 @@ class PaymentService {
       const settlement = settlements[0]
 
       // 检查付款金额是否超出来结算金额
-      if (parseFloat(payment_amount) > parseFloat(settlement.remaining_amount)) {
+      if (payment_amount > Number(settlement.remaining_amount)) {
         throw new Error(`付款金额不能超过未结算金额 ¥${settlement.remaining_amount}`)
       }
     }

@@ -69,7 +69,7 @@ for (const entry of entries) {
       continue
     }
     if (check !== 'check:coverage' && !standardsCommand.includes(`npm run ${check}`)) {
-      findings.push(`${check} 未接入 check:standards，无法在启动和构建前强制执行`)
+      findings.push(`${check} 未接入 check:standards，无法在构建和发布检查中强制执行`)
     }
   }
 

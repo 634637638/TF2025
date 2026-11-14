@@ -71,7 +71,7 @@ export function readTemplate(source, filename = 'component.vue') {
   const { descriptor, errors } = parse(source, { filename })
   if (errors.length) throw new Error(`${filename}: ${errors.map(error => error.message || error).join('; ')}`)
   const dialogs = [], tags = new Set(), overlays = []
-  const kinds = { mobiledialog: 'MobileDialog', eldialog: 'el-dialog', mediapreviewviewer: 'MediaPreviewViewer', elimageviewer: 'el-image-viewer' }
+  const kinds = { mobiledialog: 'MobileDialog', recorddetaildialog: 'RecordDetailDialog', eldialog: 'el-dialog', mediapreviewviewer: 'MediaPreviewViewer', elimageviewer: 'el-image-viewer' }
   function read(node, inDialog = false) {
     if (node.type === 1) {
       const tag = normalizeTag(node.tag)
@@ -117,7 +117,7 @@ export function readNativeCalls(source, filename) {
 }
 
 /** 服务弹窗按调用点单独统计，不与模板实例相加；支持导入及 Composable 解构别名。 */
-export function readServiceCalls(source, filename) {
+export function readServiceCalls(source, filename, includeMessages = false) {
   const ast = ts.createSourceFile(filename, source, ts.ScriptTarget.Latest, true)
   const bindings = new Map(), factories = new Set(), receivers = new Set(), calls = []
   visit(ast, node => {
@@ -146,9 +146,30 @@ export function readServiceCalls(source, filename) {
     const kind = ts.isIdentifier(expression) ? bindings.get(expression.text)
       : ts.isPropertyAccessExpression(expression) && ts.isIdentifier(expression.expression)
         && receivers.has(expression.expression.text) && ['confirm', 'alert', 'prompt'].includes(expression.name.text) ? expression.name.text : undefined
-    if (kind) calls.push({ line: lineAt(source, node.getStart(ast)), kind })
+    if (kind) {
+      const call = { line: lineAt(source, node.getStart(ast)), kind }
+      if (includeMessages && node.arguments[0]) {
+        const fragments = []
+        visit(node.arguments[0], child => {
+          if (ts.isStringLiteralLike(child) || child.kind === ts.SyntaxKind.TemplateHead
+            || child.kind === ts.SyntaxKind.TemplateMiddle || child.kind === ts.SyntaxKind.TemplateTail) fragments.push(child.text)
+        })
+        call.message = fragments.join('')
+      }
+      calls.push(call)
+    }
   })
   return calls
+}
+
+/** 只检查确认调用中的静态文案，排除注释、普通提示及删除/退款等业务确认。 */
+export function readDraftCloseConfirmations(source, filename) {
+  return readServiceCalls(source, filename, true).filter(call => {
+    if (!['confirm', 'confirmAction'].includes(call.kind)) return false
+    const message = call.message || ''
+    return /(?:未保存|未提交|unsaved|unsubmitted)/i.test(message) && /(?:关闭|退出|离开|取消|放弃|close|leave|discard)/i.test(message)
+      || /(?:关闭.{0,16}草稿|草稿.{0,16}关闭|放弃.{0,16}(?:修改|更改|编辑|草稿))/.test(message)
+  })
 }
 
 function imports(source, filename) {
@@ -273,7 +294,7 @@ export function collectCoverage(projectRoot = root) {
   }
   const businessDialogs = [...units.values()].flatMap(unit => unit.file === 'src/components/MobileDialog.vue'
     ? [] : unit.dialogs.map(dialog => ({ file: unit.file, ...dialog })))
-  const summarize = dialogs => Object.fromEntries(['MobileDialog', 'el-dialog', 'MediaPreviewViewer', 'el-image-viewer'].map(kind => [kind, dialogs.filter(dialog => dialog.kind === kind).length]))
+  const summarize = dialogs => Object.fromEntries(['MobileDialog', 'RecordDetailDialog', 'el-dialog', 'MediaPreviewViewer', 'el-image-viewer'].map(kind => [kind, dialogs.filter(dialog => dialog.kind === kind).length]))
   const pages = routes.leaves.map(route => {
     const dependencies = reachable(route.file)
     return { ...route, dependencies, counts: summarize(businessDialogs.filter(dialog => dependencies.includes(dialog.file))) }
@@ -313,8 +334,8 @@ function main() {
   verifyInventory(report.summary, readFileSync(join(root, '../docs/frontend/page-audit-inventory.md'), 'utf8'))
   if (process.argv.includes('--json')) console.log(JSON.stringify(report, null, 2))
   else if (process.argv.includes('--markdown')) {
-    console.log('| 路由 | MobileDialog（含子单元） | 直接 el-dialog | 公共媒体预览 | 原生图片查看 |')
-    console.log('| --- | ---: | ---: | ---: | ---: |')
+    console.log('| 路由 | MobileDialog（含子单元） | RecordDetailDialog | 直接 el-dialog | 公共媒体预览 | 原生图片查看 |')
+    console.log('| --- | ---: | ---: | ---: | ---: | ---: |')
     for (const page of report.pages) console.log(`| \`${page.path}\` | ${Object.values(page.counts).join(' | ')} |`)
   } else {
     console.log('全量模态框只读统计：', JSON.stringify(report.summary))

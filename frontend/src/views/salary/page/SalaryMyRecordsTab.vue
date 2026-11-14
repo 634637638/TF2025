@@ -73,8 +73,8 @@
       </div>
       <div class="table-responsive my-salary-table">
         <el-table
-          ref="tableRef"
           v-tf-loading="{ active: loading, text: '正在刷新我的工资记录...' }"
+          v-table-double-tap="mobileDetailTapOptions"
           :data="records"
           border
           stripe
@@ -82,7 +82,7 @@
           :fit="true"
           row-key="id"
           class="data-table devices-table base-data-table salary-records-table"
-          @row-click="handleRowTap"
+          @row-dblclick="mobileDetailDoubleClick"
         >
           <template #empty>
             <TableLoadingRow
@@ -96,25 +96,7 @@
             />
           </template>
 
-          <el-table-column
-            v-if="isMobile && showActionColumn"
-            type="expand"
-            width="1"
-            class-name="mobile-expand-column"
-            label-class-name="mobile-expand-header"
-          >
-            <template #default="{ row }">
-              <div class="mobile-row-actions">
-                <el-button
-                  type="primary"
-                  size="small"
-                  @click.stop="emit('viewRecord', row)"
-                >
-                  <i class="fas fa-eye" /><span>详情</span>
-                </el-button>
-              </div>
-            </template>
-          </el-table-column>
+
 
           <el-table-column
             v-if="canViewField('salary_mysalaryview', 'paid_at')"
@@ -198,7 +180,7 @@
             </template>
           </el-table-column>
           <el-table-column
-            v-if="canViewField('salary_mysalaryview', 'sales_count')"
+            v-if="!isMobile && canViewField('salary_mysalaryview', 'sales_count')"
             label="销售明细"
             min-width="90"
             align="center"
@@ -326,9 +308,9 @@
 <script setup lang="ts">
 import { formatAmount } from '@/utils/format'
 import { TIME_FORMATS } from '@/utils/time'
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import { shouldShowActionColumn } from '@/composables/useFieldPermissions'
-import { useMobileRowDoubleTap } from '@/composables/useMobileRowDoubleTap'
+import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
 import { getPaymentMethodLabel } from '@/constants/paymentMethods'
 import Pagination from '@/components/Pagination.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
@@ -347,9 +329,6 @@ import type { SalaryEmployeeOption, SalaryRecord } from '@/types/salary'
 
 type SalaryRecordRow = SalaryRecord & { id: number }
 
-interface SalaryRecordsTableInstance {
-  toggleRowExpansion: (_row: SalaryRecordRow, _expanded: boolean) => void
-}
 
 const props = defineProps<{
   canViewField: (_moduleKey: string, _fieldName: string) => boolean
@@ -390,9 +369,6 @@ const emit = defineEmits<{
   viewSalesDetail: [row: SalaryRecordRow]
 }>()
 
-const tableRef = ref<SalaryRecordsTableInstance>()
-const mobileExpandedRecordId = ref<number | null>(null)
-const { isDoubleTap } = useMobileRowDoubleTap()
 
 const handlePaginationChange = (page: number, pageSize: number) => {
   emit('paginationChange', page, pageSize)
@@ -402,20 +378,9 @@ const handlePeriodRangeUpdate = (value: DateRangeValue) => {
   emit('update:periodRange', value ?? null)
 }
 
-const handleRowTap = (row: SalaryRecordRow) => {
-  if (!props.isMobile) return
-
-  if (isDoubleTap(row.id)) {
-    const shouldExpand = mobileExpandedRecordId.value !== row.id
-    if (mobileExpandedRecordId.value && mobileExpandedRecordId.value !== row.id) {
-      const previous = props.records.find(record => record.id === mobileExpandedRecordId.value)
-      if (previous) tableRef.value?.toggleRowExpansion(previous, false)
-    }
-
-    tableRef.value?.toggleRowExpansion(row, shouldExpand)
-    mobileExpandedRecordId.value = shouldExpand ? row.id : null
-  }
-}
+const { doubleTapOptions: mobileDetailTapOptions, handleRowDoubleClick: mobileDetailDoubleClick } = useMobileTableDetail<SalaryRecordRow>({
+  enabled: () => props.isMobile && props.canViewRecords, rows: () => props.records, getKey: row => row.id, onOpen: row => emit('viewRecord', row)
+})
 </script>
 
 <style scoped>

@@ -361,12 +361,14 @@
                   <div class="table-responsive">
                     <el-table
                       v-tf-loading="{ active: isSiteSettingsLoading, text: '正在读取报价联系人...' }"
+                      v-table-double-tap="contactDetailTapOptions"
                       :data="priceContactsEditor"
                       border
                       stripe
                       class="data-table devices-table compact-fit-table base-data-table"
                       table-layout="fixed"
                       :fit="true"
+                      @row-dblclick="contactDetailDoubleClick"
                     >
                       <template #empty>
                         <TableLoadingRow
@@ -407,7 +409,7 @@
                         class-name="complete-text-column"
                       />
                       <el-table-column
-                        v-if="showOperations"
+                        v-if="!isMobile && showOperations"
                         label="默认"
                         :width="priceContactDefaultWidth"
                         align="center"
@@ -430,7 +432,7 @@
                         </template>
                       </el-table-column>
                       <el-table-column
-                        v-if="showOperations"
+                        v-if="!isMobile && showOperations"
                         label="操作"
                         :width="$getActionColumnWidth(['编辑', '删除', '上移', '下移'])"
                         align="center"
@@ -501,7 +503,7 @@
                   </div>
                   <el-form
                     label-position="top"
-                    class="price-watermark-form"
+                    class="price-watermark-form tf-form-layout tf-form-grid"
                   >
                     <el-form-item label="水印文字">
                       <el-input
@@ -560,12 +562,14 @@
                     <div class="table-responsive">
                       <el-table
                         v-tf-loading="{ active: loadingPasswords, text: '正在刷新查询密码列表...' }"
+                        v-table-double-tap="passwordDetailTapOptions"
                         :data="inventoryPasswords"
                         border
                         stripe
                         class="data-table devices-table compact-fit-table base-data-table"
                         table-layout="fixed"
                         :fit="true"
+                        @row-dblclick="passwordDetailDoubleClick"
                       >
                         <template #empty>
                           <TableLoadingRow
@@ -620,7 +624,7 @@
                           </template>
                         </el-table-column>
                         <el-table-column
-                          v-if="showOperations"
+                          v-if="!isMobile && showOperations"
                           label="操作"
                           :width="$getActionColumnWidth(1 + Number(canDeleteInventoryPasswords))"
                           align="center"
@@ -699,7 +703,7 @@
                     :disabled="!canUpdateSettings"
                     label-width="100px"
                     label-position="left"
-                    class="screen-lock-form"
+                    class="screen-lock-form tf-form-layout tf-form-grid"
                   >
                     <!-- 背景类型 -->
                     <el-form-item label="背景类型">
@@ -719,6 +723,7 @@
                     <!-- 图片背景 -->
                     <el-form-item
                       v-if="screenLockSettings.backgroundType === 'image'"
+                      class="tf-form-field--wide"
                       label="背景图片"
                     >
                       <div class="image-upload-container">
@@ -850,7 +855,10 @@
         :show-default-footer="false"
         :close-on-click-modal="false"
       >
-        <el-form label-position="top">
+        <el-form
+          class="tf-form-layout tf-form-grid"
+          label-position="top"
+        >
           <el-form-item label="联系人姓名">
             <el-input
               v-model="priceContactForm.name"
@@ -896,6 +904,7 @@
       >
         <el-form
           ref="passwordFormRef"
+          class="tf-form-layout tf-form-grid"
           :model="passwordForm"
           :rules="passwordFormRules"
           label-width="80px"
@@ -913,6 +922,7 @@
           </el-form-item>
           <el-form-item
             v-if="canViewField('settings.passwords')"
+            class="tf-form-field--wide"
             label="密码"
             prop="password"
           >
@@ -926,6 +936,7 @@
           </el-form-item>
           <el-form-item
             v-if="canViewField('settings.passwords')"
+            class="tf-form-field--wide"
             label="备注"
             prop="remarks"
           >
@@ -971,9 +982,83 @@
       </MobileDialog>
     </PermissionGate>
   </div>
+  <RecordDetailDialog
+    v-model="contactDetailVisible"
+    title="报价联系人详情"
+    :fields="contactDetailFields"
+    :record="contactDetailRow"
+    :has-actions="canUpdateSettings"
+  >
+    <template #actions>
+      <el-button
+        v-permission="'system:edit'"
+        type="primary"
+        @click.stop="contactRunAction(row => openPriceContactDialog(row, priceContactsEditor.indexOf(row)))"
+      >
+        编辑
+      </el-button>
+      <el-button
+        v-permission="'system:edit'"
+        :disabled="contactDetailIndex < 0 || isDefaultPriceContact(contactDetailIndex)"
+        @click.stop="contactRunAction(row => setDefaultPriceContact(priceContactsEditor.indexOf(row)))"
+      >
+        设为默认
+      </el-button>
+      <el-button
+        v-permission="'system:edit'"
+        :disabled="contactDetailIndex <= 0"
+        @click.stop="contactRunAction(row => movePriceContact(priceContactsEditor.indexOf(row), -1))"
+      >
+        上移
+      </el-button>
+      <el-button
+        v-permission="'system:edit'"
+        :disabled="contactDetailIndex < 0 || contactDetailIndex >= priceContactsEditor.length - 1"
+        @click.stop="contactRunAction(row => movePriceContact(priceContactsEditor.indexOf(row), 1))"
+      >
+        下移
+      </el-button>
+      <el-button
+        v-permission="'system:edit'"
+        type="danger"
+        @click.stop="contactRunAction(row => removePriceContact(priceContactsEditor.indexOf(row)))"
+      >
+        删除
+      </el-button>
+    </template>
+  </RecordDetailDialog>
+  <RecordDetailDialog
+    v-model="passwordDetailVisible"
+    title="查询账号详情"
+    :fields="passwordDetailFields"
+    :record="passwordDetailRow"
+    :has-actions="canManageInventoryPasswords || canDeleteInventoryPasswords"
+  >
+    <template #actions>
+      <el-button
+        v-if="canManageInventoryPasswords"
+        v-permission="'system:edit'"
+        type="primary"
+        @click.stop="passwordRunAction(editPassword)"
+      >
+        编辑
+      </el-button>
+      <el-button
+        v-if="canDeleteInventoryPasswords"
+        v-permission="'system:delete'"
+        type="danger"
+        @click.stop="passwordRunAction(row => deletePassword(row.id))"
+      >
+        删除
+      </el-button>
+    </template>
+  </RecordDetailDialog>
 </template>
 
 <script setup lang="ts">
+import { useMobile } from '@/composables/mobile'
+import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
+import type { RecordDetailField } from '@/types/component'
 import { confirmAction } from '@/utils/message-box'
 import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
@@ -1763,6 +1848,33 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   clearLocalSiteLogoPreview()
   window.removeEventListener('keydown', handleKeyDown)
+})
+
+const { isMobile } = useMobile()
+const { detailRow: contactDetailRow, detailVisible: contactDetailVisible, doubleTapOptions: contactDetailTapOptions,
+  handleRowDoubleClick: contactDetailDoubleClick, runDetailAction: contactRunAction } = useMobileTableDetail({
+  enabled: () => isMobile.value && canView.value, rows: priceContactsEditor, getKey: getPublicPriceContactKey
+})
+const contactDetailIndex = computed(() => contactDetailRow.value ? priceContactsEditor.value.indexOf(contactDetailRow.value) : -1)
+const contactDetailFields = computed<RecordDetailField[]>(() => {
+  const row = contactDetailRow.value
+  return row ? [
+    { key: 'name', label: '姓名', value: row.name, visible: canViewField('settings.price_watermark') },
+    { key: 'phone', label: '手机号码', value: row.phone, visible: canViewField('settings.price_watermark') },
+    { key: 'default', label: '默认联系人', value: isDefaultPriceContact(contactDetailIndex.value) ? '是' : '否', visible: canViewField('settings.price_watermark') }
+  ] : []
+})
+const { detailRow: passwordDetailRow, detailVisible: passwordDetailVisible, doubleTapOptions: passwordDetailTapOptions,
+  handleRowDoubleClick: passwordDetailDoubleClick, runDetailAction: passwordRunAction } = useMobileTableDetail({
+  enabled: () => isMobile.value && canView.value && canManageInventoryPasswords.value, rows: inventoryPasswords, getKey: row => row.id
+})
+const passwordDetailFields = computed<RecordDetailField[]>(() => {
+  const row = passwordDetailRow.value
+  return row ? [
+    { key: 'name', label: '用户名', value: row.name, visible: canViewField('settings.passwords') },
+    { key: 'status', label: '状态', value: row.is_active ? '启用' : '禁用', visible: canViewField('settings.passwords') },
+    { key: 'remarks', label: '备注', value: row.remarks, visible: canViewField('settings.passwords'), wide: true }
+  ] : []
 })
 </script>
 

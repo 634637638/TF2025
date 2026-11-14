@@ -50,12 +50,12 @@ router.delete('/:id', requirePermission('salary-records:delete'),
 )
 
 // 计算工资
-router.post('/calculate', requirePermission('salary-records:edit'),
+router.post('/calculate', requireAnyPermission(['salary-records:create', 'salary-records:edit']),
   SalaryRecordController.calculateSalary.bind(SalaryRecordController)
 )
 
 // 保存计算的工资
-router.post('/save', requirePermission('salary-records:create'),
+router.post('/save', requireAnyPermission(['salary-records:create', 'salary-records:edit']),
   SalaryRecordController.saveCalculatedSalary.bind(SalaryRecordController)
 )
 

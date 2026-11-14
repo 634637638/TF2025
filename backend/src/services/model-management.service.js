@@ -6,6 +6,7 @@ const { isConnected } = require('../config/database')
 const { PAGINATION } = require('../config/constants')
 const { normalizeReferencePagination, buildPagination, listModelsByBrand } = require('./reference-options.service')
 const ReferenceOrderingService = require('./reference-ordering.service')
+const { parseReferenceInput, parseReferenceId } = require('../utils/reference-options')
 
 class ModelManagementService extends BaseService {
   constructor({ repository = new ModelRepository(), databaseConnected = isConnected, modelsByBrand = listModelsByBrand } = {}) {
@@ -68,34 +69,40 @@ class ModelManagementService extends BaseService {
   }
 
   async get(id) {
+    id = parseReferenceId(id)
     this.ensureConnected()
-    const row = await this.repository.getManagementRecord(parseInt(id))
+    const row = await this.repository.getManagementRecord(id)
     if (!row) throw this.createError('型号不存在', 404, 'NOT_FOUND')
     return this.format(row)
   }
 
   async create(body) {
+    body = parseReferenceInput(body, { required: true, message: '品牌ID和型号名称不能为空或格式不正确' })
+    body.brand_id = parseReferenceId(body.brand_id)
     this.ensureConnected()
     const { brand_id, name, status, sort_order } = body
     if (!brand_id || !name) throw this.createError('品牌ID和型号名称不能为空', 400, 'INVALID_INPUT')
-    if (await this.repository.hasManagementDuplicate(name, parseInt(brand_id))) throw this.createError('该品牌下已存在相同型号名称', 400, 'DUPLICATE')
-    const id = await this.repository.insertManagementModel([parseInt(brand_id), name, status !== undefined ? parseInt(status) : 1, sort_order !== undefined ? parseInt(sort_order) : 0])
+    if (await this.repository.hasManagementDuplicate(name, brand_id)) throw this.createError('该品牌下已存在相同型号名称', 400, 'DUPLICATE')
+    const id = await this.repository.insertManagementModel([brand_id, name.trim(), status ?? 1, sort_order ?? 0])
     return this.format(await this.repository.getManagementRecord(id))
   }
 
   async update(id, body) {
+    id = parseReferenceId(id)
+    body = parseReferenceInput(body)
+    if (body.brand_id !== undefined) body.brand_id = parseReferenceId(body.brand_id)
     this.ensureConnected()
-    const parsedId = parseInt(id)
+    const parsedId = id
     const row = await this.repository.getManagementRecord(parsedId, { withBrand: false })
     if (!row) throw this.createError('型号不存在', 404, 'NOT_FOUND')
     if (body.name !== undefined || body.brand_id !== undefined) {
       const name = body.name !== undefined ? body.name : row.name
-      const brandId = body.brand_id !== undefined ? parseInt(body.brand_id) : Number(row.brand_id)
+      const brandId = body.brand_id !== undefined ? body.brand_id : Number(row.brand_id)
       if (await this.repository.hasManagementDuplicate(name, brandId, parsedId)) throw this.createError('该品牌下已存在相同型号名称', 400, 'DUPLICATE')
     }
     const changes = {}
     for (const field of ['brand_id', 'name', 'status', 'sort_order']) {
-      if (body[field] !== undefined) changes[field] = field === 'name' ? body[field] : parseInt(body[field])
+      if (body[field] !== undefined) changes[field] = field === 'name' ? body[field].trim() : body[field]
     }
     if (Object.keys(changes).length === 0) throw this.createError('没有要更新的字段', 400, 'EMPTY_UPDATE')
     await this.repository.updateManagementModel(parsedId, changes)
@@ -103,8 +110,9 @@ class ModelManagementService extends BaseService {
   }
 
   async remove(id) {
+    id = parseReferenceId(id)
     this.ensureConnected()
-    const parsedId = parseInt(id)
+    const parsedId = id
     const row = await this.repository.getManagementRecord(parsedId, { withBrand: false })
     if (!row) throw this.createError('型号不存在', 404, 'NOT_FOUND')
     await this.repository.removeManagementModel(parsedId)
@@ -112,8 +120,9 @@ class ModelManagementService extends BaseService {
   }
 
   async toggle(id) {
+    id = parseReferenceId(id)
     this.ensureConnected()
-    const parsedId = parseInt(id)
+    const parsedId = id
     const row = await this.repository.getManagementRecord(parsedId, { withBrand: false })
     if (!row) throw this.createError('型号不存在', 404, 'NOT_FOUND')
     const status = row.status === 1 ? 0 : 1

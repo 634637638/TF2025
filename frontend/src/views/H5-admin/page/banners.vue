@@ -22,6 +22,7 @@
       <div
         v-else
         v-tf-loading="{ active: loading, text: '正在刷新轮播图...' }"
+        v-table-double-tap="recordTapOptions"
         class="banner-list"
       >
         <draggable
@@ -35,7 +36,9 @@
           <template #item="{ element: banner }">
             <div
               class="banner-item"
+              data-mobile-record
               :class="{ inactive: banner.status === 'inactive' }"
+              @dblclick="openRecordDetail(banner, null, $event)"
             >
               <div class="drag-handle">
                 <i class="fas fa-grip-vertical" />
@@ -95,7 +98,7 @@
                 </p>
               </div>
               <div
-                v-if="canViewField('banner.status')"
+                v-if="!isMobile && canViewField('banner.status')"
                 class="banner-status"
               >
                 <el-switch
@@ -107,7 +110,7 @@
                 />
               </div>
               <div
-                v-if="showActionColumn"
+                v-if="!isMobile && showActionColumn"
                 class="banner-actions"
               >
                 <el-button
@@ -166,10 +169,11 @@
           :rules="formRules"
           label-width="100px"
           :disabled="!canSaveCurrentBanner"
-          class="banner-form"
+          class="banner-form tf-form-layout tf-form-grid"
         >
           <el-form-item
             v-if="canViewField('banner.title')"
+            class="tf-form-field--wide"
             label="标题"
             prop="title"
           >
@@ -180,6 +184,7 @@
           </el-form-item>
           <el-form-item
             v-if="canViewField('banner.image')"
+            class="tf-form-field--wide"
             label="轮播图片"
             prop="image_url"
             required
@@ -254,6 +259,7 @@
           </el-form-item>
           <el-form-item
             v-if="canViewField('banner.link_url') && form.link_type !== 'none'"
+            class="tf-form-field--wide"
             label="跳转链接"
           >
             <el-input
@@ -306,6 +312,7 @@
           </el-form-item>
           <el-form-item
             v-if="canViewField('banner.display_time')"
+            class="tf-form-field--wide"
             label="展示时间"
           >
             <DateRangePicker
@@ -340,11 +347,41 @@
           </div>
         </template>
       </MobileDialog>
+      <RecordDetailDialog
+        v-model="recordVisible"
+        title="轮播图详情"
+        :fields="recordFields"
+        :record="recordRow"
+        :has-actions="canEdit || canDelete"
+      >
+        <template #actions>
+          <el-button
+            v-if="canEdit"
+            v-permission="'h5-banners:edit'"
+            type="primary"
+            @click.stop="runRecordAction(handleEdit)"
+          >
+            编辑
+          </el-button>
+          <el-button
+            v-if="canDelete"
+            v-permission="'h5-banners:delete'"
+            type="danger"
+            @click.stop="runRecordAction(handleDelete)"
+          >
+            删除
+          </el-button>
+        </template>
+      </RecordDetailDialog>
     </div>
   </PermissionGate>
 </template>
 
 <script setup lang="ts">
+import { useMobile } from '@/composables/mobile'
+import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
+import type { RecordDetailField } from '@/types/component'
+
 import { TIME_FORMATS } from '@/utils/time'
 import { confirmAction } from '@/utils/message-box'
 import { ref, computed, onMounted, onUnmounted, onActivated, inject, watch } from 'vue'
@@ -974,6 +1011,26 @@ onUnmounted(() => {
     clearHeaderActions()
   }
 })
+
+const { isMobile } = useMobile()
+const { detailRow: recordRow, detailVisible: recordVisible, doubleTapOptions: recordTapOptions,
+  handleRowDoubleClick: openRecordDetail, runDetailAction: runRecordAction } = useMobileTableDetail({
+  enabled: () => isMobile.value && canView.value, rows: banners, getKey: row => row.id,
+  rowSelector: '[data-mobile-record]'
+})
+const recordFields = computed<RecordDetailField[]>(() => {
+  const row = recordRow.value
+  return row ? [
+    { key: 'title', label: '标题', value: row.title, visible: canViewField('banner.title'), wide: true },
+    { key: 'type', label: '跳转类型', value: getLinkTypeText(row.link_type || 'none'), visible: canViewField('banner.link_type') },
+    { key: 'status', label: '状态', value: row.status === 'active' ? '启用' : '停用', visible: canViewField('banner.status') },
+    { key: 'sort', label: '排序', value: row.sort_order, visible: canViewField('banner.sort_order') },
+    { key: 'interval', label: '轮播间隔（毫秒）', value: row.interval, visible: canViewField('banner.interval') },
+    { key: 'url', label: '跳转链接', value: row.link_url, visible: canViewField('banner.link_url'), wide: true },
+    { key: 'time', label: '展示时间', value: formatTimeRange(row), visible: canViewField('banner.display_time'), wide: true }
+  ] : []
+})
+
 </script>
 
 <style scoped lang="scss" src="./styles/banners/desktop.scss"></style>

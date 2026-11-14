@@ -40,6 +40,51 @@ describe('全局金额格式', () => {
 })
 
 describe('公共金额输入', () => {
+  it.each([0, 0.01, 3.25, 225.02, -3.25])('默认金额步长允许合法分币%s通过浏览器原生约束', async value => {
+    const { wrapper } = render(value)
+    await flushPromises()
+    expect(wrapper.get('input').element.validity.stepMismatch).toBe(false)
+    expect(wrapper.get('input').element.checkValidity()).toBe(true)
+  })
+
+  it.each(['1e3', '1E3'])('拒绝组件库可转换的非法原文 %s，保留原金额', async value => {
+    const { wrapper, model } = render(225)
+    const input = wrapper.get('input')
+    input.element.value = value
+    await input.trigger('input')
+    await input.trigger('change')
+    await input.trigger('blur')
+    expect(model.value).toBe(225)
+    expect(input.element.value).toBe('225')
+  })
+
+  it.each(['12abc', '12元', '1e3', '0x10', 'NaN', 'Infinity', '12\n', '1.2.3'])('拒绝非法粘贴 %s', async text => {
+    const { wrapper, model } = render(225)
+    const event = new Event('paste', { bubbles: true, cancelable: true })
+    Object.defineProperty(event, 'clipboardData', { value: { getData: () => text } })
+    wrapper.get('input').element.dispatchEvent(event)
+    await flushPromises()
+    expect(event.defaultPrevented).toBe(true)
+    expect(model.value).toBe(225)
+  })
+
+  it('组合输入期间不改写模型，组合完成拒绝非法内容；beforeinput 阻止中英文混输', async () => {
+    const { wrapper, model } = render(225)
+    const input = wrapper.get('input')
+    await input.trigger('compositionstart')
+    input.element.value = '1e3'
+    await input.trigger('input', { isComposing: true })
+    expect(model.value).toBe(225)
+    await input.trigger('compositionend')
+    expect(model.value).toBe(225)
+    expect(input.element.value).toBe('225')
+    for (const data of ['元', 'a', 'e', '\n']) {
+      const event = new InputEvent('beforeinput', { bubbles: true, cancelable: true, data })
+      input.element.dispatchEvent(event)
+      expect(event.defaultPrevented).toBe(true)
+    }
+  })
+
   it.each([225, 225.02, 225.2, 0, -225.02])('初始值 %s 不补零且不在挂载时改写数据', async value => {
     const { wrapper, model } = render(value)
     await flushPromises()

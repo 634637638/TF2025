@@ -3,6 +3,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { ref } from 'vue'
 import ElementPlus from 'element-plus'
 import BackupView from '@/views/backup/BackupView.vue'
+import RecordDetailDialog from '@/components/RecordDetailDialog.vue'
 import MobileDialog from '@/components/MobileDialog.vue'
 import type { CloudBackupTask } from '@/types/backup'
 
@@ -34,12 +35,12 @@ const task = (status: CloudBackupTask['status'], error = ''): CloudBackupTask =>
 })
 const openPage = async () => {
   const wrapper = mount(BackupView, { global: {
-    plugins: [ElementPlus], components: { MobileDialog }, stubs: {
+    plugins: [ElementPlus], components: { MobileDialog, RecordDetailDialog }, stubs: {
       teleport: true,
       ElDialog: { props: ['modelValue'], template: '<section v-if="modelValue" class="dialog-test"><slot /><slot name="footer" /></section>' },
       TableLoadingRow: true, DataEmptyState: true
     },
-    directives: { permission: {}, 'tf-loading': {} },
+    directives: { permission: {}, 'tf-loading': {}, 'table-double-tap': {} },
     config: { globalProperties: { $getActionColumnWidth: () => 260 } }
   } })
   await flushPromises()
@@ -50,6 +51,7 @@ beforeEach(() => {
   vi.useFakeTimers()
   vi.clearAllMocks()
   permissions.canDelete = true
+  viewport.width = 1440
   api.get.mockImplementation(async (url: string) => ({ success: true, data: url === '/backup/list'
     ? [{ filename, type: 'database', size: '20 Bytes', created_at: '2026-11-10T04:00:00Z' }]
     : { total_count: 1, total_size: '20 Bytes', backup_dir: '/synthetic/backups', backend_root: '/synthetic', total_size_bytes: 20 } }))

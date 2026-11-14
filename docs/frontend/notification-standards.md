@@ -42,6 +42,12 @@ export const simpleNotification = SimpleNotificationService.getInstance()
 
 ## 📚 使用规范
 
+四类顶部消息共用 `SimpleNotificationService` 的展示选项入口，继续经 `element-feedback.ts` 调用组件库；错误默认6000ms，其他消息读取公共默认时长，显式选项优先。`confirm/alert/prompt` 接受或取消后统一清理页面临时表格隐藏样式，正式行为回归见 `frontend/tests/notification-service.spec.ts`。
+
+### 页面提示与故障告警的边界
+
+权限不足、必填遗漏、输入格式不合法、支付渠道无效及库存不足等，通过本规范公共入口提示当前操作人员。它们不会因为关闭开发环境错误上报而消失，也不向负责人发送故障告警。日志收集、生产技术故障上报及 T5 主动告警的环境和筛选规则统一见[日志系统规范](../guides/LOG_SYSTEM_STANDARDS.md#43-页面提示日志与主动告警)，不要在页面另建上报或告警实现。
+
 ### 页面刷新提示
 
 右上角页面刷新按钮属于统一交互，通知文案需要固定，不要每个页面各写一套：

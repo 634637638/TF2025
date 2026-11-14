@@ -6,6 +6,8 @@ const {
   serializeRedactedJson
 } = require('../utils/sensitive-data')
 const FrontendErrorLogRepository = require('../repositories/frontend-error-log.repository')
+const { getErrorAlertService } = require('./error-alert.service')
+const log = require('../utils/log')
 
 const MAX_BATCH_SIZE = 50
 const MAX_JSON_LENGTH = 32_000
@@ -46,8 +48,9 @@ const normalizeError = (entry, index) => {
 }
 
 class FrontendErrorLogService {
-  constructor({ repository = new FrontendErrorLogRepository() } = {}) {
+  constructor({ repository = new FrontendErrorLogRepository(), alerts = getErrorAlertService() } = {}) {
     this.repository = repository
+    this.alerts = alerts
   }
 
   prepareReport(body = {}) {
@@ -75,10 +78,15 @@ class FrontendErrorLogService {
     }
   }
 
-  async submitReport(body, userId) {
+  async submitReport(body, userId, requestId) {
     const report = this.prepareReport(body)
     if (report.error) return report
     await this.repository.insertBatch({ userId, ...report })
+    try {
+      this.alerts.recordFrontendReport(report, userId, requestId)
+    } catch {
+      log.warn('前端错误已保存，故障告警收集失败')
+    }
     return { accepted: report.errors.length }
   }
 }

@@ -1,0 +1,15 @@
+{
+  "version": "2023-06-30",
+  "repository": "https://github.com/modood/Administrative-divisions-of-China",
+  "commit": "c49d495b40ac73eb1a66f6eeae5f8fd10696f035",
+  "license": "WTFPL-2.0",
+  "coverage": "中国内地31个省级单位的2023年统计区划，不包含港澳台乡村级数据，不代表现行行政区划",
+  "files": {
+    "provinces.json": "a7e6a230102fee054daa7f63d91ca8da4320c11a2ddd4e5f093999b579fd7d4f",
+    "cities.json": "3f569aaa0bfbeba72f1597657511c64f54107baae71710fef7146f390a41af32",
+    "areas.json": "fbe1575eecba4ffd4d50c3d2d6887bd873ceca6a203fb2d66698b5007826b6b6",
+    "streets.json": "7f5e073a7e543de44a0cb7f05cd9e4bf8ecf7a887be0e36870c0dc1ed4ef066b",
+    "villages.csv": "31a824829aeef7b472fced6a3f9f8321cbd9fb26661052be98904f9763ec88ce",
+    "LICENSE.source": "ee820ff0db4ce628569e0975ac27dc926052a9f85d102b101edb104311ef4d90"
+  }
+}

@@ -2,6 +2,28 @@ const { mandatory_hours: MANDATORY_HOURS } = require('../config/reminder-policy.
 const { withConnection } = require('../core/db/connection')
 const { getDatabase } = require('../config/database')
 const { ensureReminderSchema } = require('../utils/reminder-schema')
+const { parseInput } = require('../middleware/validation')
+
+const parseReminderInput = (payload, type = false) => {
+  const input = parseInput(payload, type ? {
+    name: { type: 'string', required: payload?.name !== undefined, maxLength: 100, label: '类型名称' },
+    default_remind_days: { type: 'number', integer: true, min: 0, max: 365, required: payload?.default_remind_days !== undefined, label: '提前天数' },
+    sort_order: { type: 'number', integer: true, min: 0, max: 2147483647, required: payload?.sort_order !== undefined, label: '排序' },
+    color: { type: 'string', pattern: '^#[0-9a-fA-F]{6}$', label: '颜色' }
+  } : {
+    title: { type: 'string', required: payload?.title !== undefined, maxLength: 200, label: '标题' },
+    content: { type: 'string', maxLength: 10000, multiline: true, label: '内容' },
+    type_id: { type: 'id', label: '事项类型' },
+    target_user_ids: { type: 'array', itemType: 'id', maxItems: 10000, label: '接收人' },
+    weekdays: { type: 'array', itemType: 'id', maxItems: 7, label: '星期' },
+    ...Object.fromEntries([['interval_value', 1, 365], ['year_month', 1, 12], ['month_day', 1, 31], ['remind_before_days', 0, 365], ['occurrence_limit', 1, 10000]].map(([field, min, max]) => [field, {
+      type: 'number', integer: true, min, max, label: field,
+      required: payload?.[field] !== undefined && !(field === 'occurrence_limit' && payload?.end_type !== 'count')
+    }]))
+  })
+  if (input.weekdays?.some(day => Number(day) > 7)) throw Object.assign(new Error('星期必须在1到7之间'), { statusCode: 400 })
+  return input
+}
 
 const MAX_GENERATION_DAYS = 120
 const COMPLETION_NOTICE_DAYS = 30
@@ -80,6 +102,7 @@ class ReminderService {
   }
 
   normalizePayload(payload = {}, existing = null) {
+    payload = parseReminderInput(payload)
     const repeatRule = {
       type: payload.repeat_type || existing?.repeat_rule?.type || 'once',
       interval: Math.max(1, Math.min(365, asInt(payload.interval_value ?? existing?.repeat_rule?.interval, 1))),
@@ -266,6 +289,7 @@ class ReminderService {
   }
 
   async create(userId, payload) {
+    payload = parseReminderInput(payload)
     await this.ensure()
     const db = getDatabase()
     const reminderId = await withConnection(db, async connection => {
@@ -306,6 +330,8 @@ class ReminderService {
   }
 
   async update(id, userId, payload, canManage = false) {
+    payload = parseReminderInput(payload)
+    id = parseInput({ id }, { id: { type: 'id', required: true } }).id
     await this.ensure()
     const db = getDatabase()
     await withConnection(db, async connection => {
@@ -372,6 +398,7 @@ class ReminderService {
   }
 
   async createType(payload) {
+    payload = parseReminderInput(payload, true)
     await this.ensure()
     const name = String(payload.name || '').trim()
     if (!name) throw new Error('请输入类型名称')
@@ -385,6 +412,8 @@ class ReminderService {
   }
 
   async updateType(id, payload) {
+    payload = parseReminderInput(payload, true)
+    id = parseInput({ id }, { id: { type: 'id', required: true } }).id
     await this.ensure()
     const db = getDatabase()
     const [existingRows] = await db.query(`SELECT ${REMINDER_TYPE_COLUMNS} FROM reminder_types WHERE id=?`, [id])

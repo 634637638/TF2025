@@ -1,5 +1,7 @@
 'use strict'
 
+const { getActiveSaleSql } = require('../utils/sale-status')
+
 const { getDatabase } = require('../config/database')
 
 class AnalyticsCustomerActivityRepository {
@@ -28,7 +30,7 @@ class AnalyticsCustomerActivityRepository {
             c.id,
             DATEDIFF(NOW(), MAX(s.sale_time)) as days_since_last_purchase
           FROM customers c
-          INNER JOIN sales s ON c.id = s.customer_id
+          INNER JOIN sales s ON c.id = s.customer_id AND ${getActiveSaleSql()}
           WHERE c.status = 1
             ${customerStoreFilter}
           GROUP BY c.id
@@ -41,7 +43,7 @@ class AnalyticsCustomerActivityRepository {
         COUNT(DISTINCT c.id) as total_customers,
         COUNT(DISTINCT CASE WHEN s.sale_time >= DATE_SUB(NOW(), INTERVAL 90 DAY) THEN c.id END) as active_customers
       FROM customers c
-      LEFT JOIN sales s ON c.id = s.customer_id
+      LEFT JOIN sales s ON c.id = s.customer_id AND ${getActiveSaleSql()}
       WHERE c.status = 1
         ${customerStoreFilter}
     `
@@ -53,7 +55,7 @@ class AnalyticsCustomerActivityRepository {
         SELECT 0 as n UNION SELECT 1 UNION SELECT 2 UNION SELECT 3
         UNION SELECT 4 UNION SELECT 5 UNION SELECT 6
       ) days
-      LEFT JOIN sales s ON DATE(s.sale_time) = DATE(DATE_SUB(NOW(), INTERVAL n DAY))
+      LEFT JOIN sales s ON DATE(s.sale_time) = DATE(DATE_SUB(NOW(), INTERVAL n DAY)) AND ${getActiveSaleSql()}
         ${weeklyStoreFilter}
       GROUP BY DATE(DATE_SUB(NOW(), INTERVAL n DAY))
       ORDER BY date ASC

@@ -6,6 +6,8 @@ import {
   resolveAppleAccountEmail
 } from '@/utils/security'
 import { sortOptionsByOrder } from '@/utils/option-sort'
+import { normalizeDeviceSerial, normalizeDeviceIMEI } from '@/utils/device-identifier'
+import type { CheckoutQuickPhone } from '@/types/sales-checkout'
 import type {
   BrandModelOption,
   QuickSaleCustomerOption as CustomerOption,
@@ -66,16 +68,8 @@ export const toggleQuickSaleNoIMEIMode = (options: {
   messageType: !options.currentMode ? 'success' as const : 'info' as const
 })
 
-export const formatQuickSaleIMEI = (imei: string, isNoIMEIMode: boolean) => {
-  if (isNoIMEIMode) {
-    return imei.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 30)
-  }
-
-  return imei.replace(/[^\d]/g, '').slice(0, 15)
-}
-
-export const formatQuickSaleSerialNumber = (serialNumber: string) =>
-  serialNumber.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 18)
+export const formatQuickSaleIMEI = normalizeDeviceIMEI
+export const formatQuickSaleSerialNumber = normalizeDeviceSerial
 
 interface QuickSaleCustomerPayload {
   name: string
@@ -149,6 +143,14 @@ export const buildQuickSaleSubmitPayload = (formData: QuickSaleFormState) => {
     payment_channel: formData.payment_channel || null,
     remarks: formData.remarks || ''
   }
+}
+
+export const buildQuickCheckoutPhone = (formData: QuickSaleFormState): CheckoutQuickPhone => {
+  const payload = buildQuickSaleSubmitPayload(formData)
+  return { brand_id: payload.brand_id, model_id: payload.model_id, color_id: payload.color_id,
+    memory_id: payload.memory_id, supplier_id: Number(payload.supplier_id), is_new: payload.is_new,
+    imei: payload.imei, serial_number: payload.serial_number, purchase_cost: payload.purchase_cost,
+    sale_price: Number(payload.sale_price), inventory_time: payload.inventory_time }
 }
 
 export const createQuickSaleInitialPatch = (

@@ -16,6 +16,7 @@
             v-model="searchKeyword"
             placeholder="输入IMEI或序列号搜索添加..."
             class="search-input"
+            :disabled="isDownloading"
             clearable
             @keyup.enter="handleSearchAndAdd"
             @clear="handleSearchClear"
@@ -23,6 +24,7 @@
           <el-button
             class="search-add-button"
             :loading="isSearching"
+            :disabled="isDownloading"
             @click="handleSearchAndAdd"
           >
             <i class="fas fa-search" />
@@ -57,7 +59,10 @@
         </div>
       </div>
 
-      <div class="receipt-scroll-area">
+      <div
+        v-tf-loading="{ active: accessoryLoading, text: '正在核对随单配件...' }"
+        class="receipt-scroll-area"
+      >
         <div
           ref="receiptRef"
           class="sales-receipt"
@@ -146,6 +151,19 @@
             </div>
           </section>
 
+          <el-alert
+            v-if="accessoryError"
+            :title="accessoryError"
+            type="error"
+            :closable="false"
+          />
+          <el-alert
+            v-else-if="!canViewAccessories && status === 'sold'"
+            title="未获配件查看权限，本凭证仅含手机。"
+            type="warning"
+            :closable="false"
+          />
+
           <div class="items-list">
             <el-table
               :data="items"
@@ -218,18 +236,103 @@
             </el-table>
           </div>
 
+          <div
+            v-if="accessoryRows.length"
+            class="items-list"
+          >
+            <el-table
+              :data="accessoryRows"
+              class="data-table compact-fit-table receipt-table"
+              border
+              :fit="true"
+              table-layout="fixed"
+            >
+              <el-table-column
+                label="序号"
+                :width="$getNumberColumnWidth(accessoryRows.map((_row, index) => index + 1), 68)"
+                align="center"
+              >
+                <template #default="{ $index }">
+                  <span class="table-number-badge">{{ $index + 1 }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column
+                label="配件 / 赠品"
+                min-width="190"
+                class-name="complete-text-column"
+              >
+                <template #default="{ row }">
+                  <div class="cell-stack">
+                    <strong
+                      v-if="canViewAccessoryField('name')"
+                      class="receipt-product-name"
+                    >{{ row.goods.name || '-' }}</strong>
+                    <span v-if="canViewAccessoryField('usage_type')">{{ row.goods.sale_type === 'gift' ? '赠品' : row.goods.sale_type === 'sale' ? '购买' : '-' }}</span>
+                    <span>{{ [canViewAccessoryField('brand_name') ? row.goods.brand_name : '', canViewAccessoryField('product_model') ? row.goods.product_model : '', canViewAccessoryField('color_name') ? row.goods.color_name : ''].filter(Boolean).join(' / ') }}</span>
+                  </div>
+                </template>
+              </el-table-column>
+              <el-table-column
+                label="关联手机 / SN"
+                min-width="220"
+                class-name="wrapped-text-column"
+              >
+                <template #default="{ row }">
+                  <div class="cell-stack">
+                    <span>{{ row.phone.brand }} {{ row.phone.model }}</span>
+                    <span>{{ row.phone.imei || row.phone.serialNumber || '-' }}</span>
+                    <span v-if="canViewAccessoryField('serial_number') && row.goods.serial_numbers?.length">配件SN：{{ row.goods.serial_numbers.join('、') }}</span>
+                  </div>
+                </template>
+              </el-table-column>
+              <el-table-column
+                v-if="canViewAccessoryField('total_quantity')"
+                label="数量"
+                width="90"
+                align="center"
+              >
+                <template #default="{ row }">
+                  {{ row.goods.quantity ?? '-' }}{{ canViewAccessoryField('unit') ? row.goods.unit : '' }}
+                </template>
+              </el-table-column>
+              <el-table-column
+                v-if="canViewAccessoryField('unit_price')"
+                label="单价"
+                width="100"
+                align="center"
+              >
+                <template #default="{ row }">
+                  {{ receiptMoney(row.goods.unit_price) }}
+                </template>
+              </el-table-column>
+              <el-table-column
+                v-if="canViewAccessoryField('total_price')"
+                label="积分抵扣 / 金额"
+                min-width="150"
+                align="center"
+              >
+                <template #default="{ row }">
+                  <div class="cell-stack">
+                    <span v-if="row.goods.points_used != null">{{ row.goods.points_used }}积分 / {{ receiptMoney(row.goods.deduction_amount) }}</span>
+                    <strong class="receipt-product-amount">实收 {{ receiptMoney(row.goods.total_price) }}</strong>
+                  </div>
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
+
           <div class="totals-bar">
             <div class="total-count">
               <span>总数量</span>
-              <strong>{{ items.length }} 台</strong>
+              <strong>{{ items.length }}台<span v-if="accessoryRows.length"> / {{ accessoryQuantity }}件配件</span></strong>
             </div>
             <div class="total-amount-words">
               <span>人民币（大写）：</span>
-              <strong>{{ totalAmountInWords }}</strong>
+              <strong>{{ canTotal ? totalAmountInWords : '金额未完整展示' }}</strong>
             </div>
             <div class="total-amount">
               <span>（小写）</span>
-              <strong>¥ {{ formatTotalAmount(totalAmount) }}</strong>
+              <strong>{{ canTotal ? `¥ ${formatTotalAmount(totalAmount)}` : '-' }}</strong>
             </div>
           </div>
 
@@ -258,8 +361,17 @@
     <template #footer>
       <div class="tf-dialog-actions">
         <el-button
+          v-if="accessoryError"
+          type="warning"
+          :loading="accessoryLoading"
+          @click="loadAccessories"
+        >
+          重新核对
+        </el-button>
+        <el-button
           type="primary"
           :loading="isDownloading"
+          :disabled="!canExport"
           @click="downloadImage"
         >
           <i class="fas fa-download" />
@@ -267,6 +379,7 @@
         </el-button>
         <el-button
           type="default"
+          :disabled="!canExport || isDownloading"
           @click="handlePrint"
         >
           <i class="fas fa-print" />
@@ -278,44 +391,20 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref, type CSSProperties } from 'vue'
+import { computed, nextTick, ref, watch, type CSSProperties } from 'vue'
 import MobileDialog from '@/components/MobileDialog.vue'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import type { CloseEmits, VisibleProps } from '@/types/component'
 import { logger } from '@/utils/logger'
-import { loadHtml2Canvas } from '@/utils/html2canvas'
+import { loadHtml2Canvas, normalizeCanvasColors } from '@/utils/html2canvas'
 import { useSiteSettingsStore } from '@/stores/siteSettings'
 import { formatRmbUppercase, formatAmount } from '@/utils/format'
+import { getPhoneReceiptAccessories } from '@/api/sales-receipt'
+import type { ReceiptItem, SearchPhoneResult, PhoneReceiptAccessory } from '@/types/sales-receipt'
+import { useLatestRequest } from '@/composables/useLatestRequest'
+import { usePagePermissions } from '@/composables/usePagePermissions'
+import { canViewAccessoryField } from '@/components/accessory-field-permissions'
 
-export interface ReceiptItem {
-  phone_id: number
-  brand: string
-  model: string
-  color: string
-  memory: string
-  imei: string
-  serialNumber: string
-  salePrice: number
-  isNew: number
-}
-
-export interface SearchPhoneResult {
-  id: number
-  phone_id?: number
-  brand?: string
-  brand_name?: string
-  model?: string
-  model_name?: string
-  color?: string
-  color_name?: string
-  memory?: string
-  memory_size?: string
-  imei?: string
-  serial_number?: string
-  sale_price?: number | string
-  price?: number | string
-  is_new?: number
-}
 
 interface Props extends VisibleProps {
   items?: ReceiptItem[]
@@ -394,8 +483,8 @@ const receiptNotes = computed(() => {
   }
   return [
     '本单据为销售凭证，请妥善保管，作为售后保修依据。',
-    '全新商品非人为保修一年，进水，摔坏，变形等人为不予保修（售后检测为准）。',
-    '二手商品非质量问题售出不退不换；保修1月凭此单据享受店内保修服务。',
+    '全新手机非人为保修一年，进水，摔坏，变形等人为不予保修（售后检测为准）。',
+    '二手手机非质量问题售出不退不换；保修1月凭此单据享受店内保修服务。',
     '请当面核对商品外观、IMEI码及序列号，离柜后外观问题概不负责。'
   ]
 })
@@ -412,7 +501,51 @@ const customerRoleLabel = '客户姓名'
 const showSupplierInfo = computed(() => Boolean(props.status === 'supplier_proxy' && props.supplierName))
 const showSupplierReceiverInfo = computed(() => Boolean(props.status === 'supplier_proxy' && props.customerName))
 
-const totalAmount = computed(() => props.items.reduce((sum, item) => sum + (Number(item.salePrice) || 0), 0))
+const { canView: canViewAccessories } = usePagePermissions('accessories')
+const { nextRequest, cancelLatest, isCanceledError } = useLatestRequest()
+const accessoryLoading = ref(false)
+const accessoryError = ref('')
+const accessoryRows = ref<Array<{ phone: ReceiptItem; goods: PhoneReceiptAccessory }>>([])
+const loadAccessories = async () => {
+  cancelLatest()
+  accessoryRows.value = []
+  accessoryError.value = ''
+  accessoryLoading.value = false
+  if (!props.visible || props.status !== 'sold' || !canViewAccessories.value) return
+  if (props.items.some(item => !Number.isSafeInteger(item.sale_id) || Number(item.sale_id) <= 0)) {
+    accessoryError.value = '缺少原手机销售记录，无法核对随单配件，请从综合查询销售记录重新打开凭证。'
+    return
+  }
+  const request = nextRequest()
+  accessoryLoading.value = true
+  try {
+    const phones = [...new Map(props.items.map(phone => [phone.sale_id, phone])).values()]
+    const results = await Promise.all(phones.map(async phone => {
+      const response = await getPhoneReceiptAccessories(Number(phone.sale_id), request.signal)
+      if (!response.success || !Array.isArray(response.data)) throw new Error('配件明细响应不完整')
+      return response.data.map(goods => ({ phone, goods }))
+    }))
+    if (request.isLatest()) accessoryRows.value = results.flat()
+  } catch (error) {
+    if (request.isLatest() && !isCanceledError(error)) {
+      accessoryError.value = '随单配件核对失败，请重试后再打印或保存。'
+      logger.error('核对销售凭证配件失败:', error)
+    }
+  } finally {
+    if (request.isLatest()) accessoryLoading.value = false
+  }
+}
+watch(() => [props.visible, props.status, props.items.map(item => `${item.phone_id}:${item.sale_id}`).join(','), canViewAccessories.value], () => { void loadAccessories() }, { immediate: true })
+
+const accessoryQuantity = computed(() => canViewAccessoryField('total_quantity') && accessoryRows.value.every(row => row.goods.quantity !== null)
+  ? accessoryRows.value.reduce((sum, row) => sum + Number(row.goods.quantity), 0) : '-')
+const canExport = computed(() => !accessoryLoading.value && !accessoryError.value)
+const canTotal = computed(() => canExport.value && accessoryRows.value.every(row => row.goods.total_price !== null) &&
+  (!accessoryRows.value.length || canViewAccessoryField('total_price') && canViewAccessoryField('unit_price') && canViewAccessoryField('total_quantity') && canViewAccessoryField('usage_type')))
+const receiptMoney = (amount: string | number | null | undefined) => amount === null || amount === undefined ? '-' : `¥${formatAmount(amount)}`
+// 金额按分相加；配件使用成交净额，赠品为零，不按参考价或积分抵扣前金额计入。
+const totalAmount = computed(() => (props.items.reduce((sum, item) => sum + Math.round(Number(item.salePrice || 0) * 100), 0) +
+  accessoryRows.value.reduce((sum, row) => sum + Math.round(Number(row.goods.total_price || 0) * 100), 0)) / 100)
 const totalAmountInWords = computed(() => formatRmbUppercase(totalAmount.value))
 const formatPrice = (price: number) => {
   const numValue = Number(price || 0)
@@ -440,9 +573,9 @@ const handleDialogVisibility = (nextVisible: boolean) => {
 }
 
 const handlePrint = () => {
-  if (!receiptRef.value) return
+  if (!receiptRef.value || !canExport.value || isDownloading.value) return
 
-  const printContent = receiptRef.value.innerHTML
+  const printContent = receiptRef.value.outerHTML
   const stylesheetText = Array.from(document.styleSheets).map((styleSheet) => {
     try {
       return Array.from(styleSheet.cssRules).map(rule => rule.cssText).join('\n')
@@ -459,8 +592,16 @@ const handlePrint = () => {
     .sales-receipt { width: 100%; }
     .sales-receipt .items-list { overflow: visible; }
     .sales-receipt .receipt-table { width: 100%; min-width: 0; }
+    .sales-receipt .el-table__header, .sales-receipt .el-table__body { width: 100% !important; table-layout: fixed; }
+    .sales-receipt col { width: auto; }
+    .sales-receipt .el-scrollbar__wrap, .sales-receipt .el-scrollbar__view,
+    .sales-receipt .el-table__body-wrapper, .sales-receipt .el-table__inner-wrapper {
+      overflow: visible !important; height: auto !important; max-height: none !important;
+    }
+    .sales-receipt .receipt-table .cell { white-space: normal; overflow-wrap: anywhere; }
+    .sales-receipt .el-scrollbar__bar { display: none; }
     .sales-receipt, .sales-receipt * { box-shadow: none; }
-    .sales-receipt, .sales-receipt .receipt-table .el-table__row { break-inside: avoid; }
+    .sales-receipt .receipt-table .el-table__row { break-inside: avoid; }
     body { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
   `
   const printDocument = printWindow.document
@@ -474,6 +615,7 @@ const handlePrint = () => {
 }
 
 const downloadImage = async () => {
+  if (!canExport.value) return
   if (!receiptRef.value || isDownloading.value) return
 
   try {
@@ -484,12 +626,30 @@ const downloadImage = async () => {
     if (!receiptElement) return
 
     const html2canvas = await loadHtml2Canvas()
+    if (!canExport.value) return
+    const exportWidth = Math.ceil(Math.max(receiptElement.getBoundingClientRect().width,
+      ...Array.from(receiptElement.querySelectorAll<HTMLElement>('.items-list')).map(list => {
+        const style = window.getComputedStyle(list)
+        return Math.max(0, ...Array.from(list.querySelectorAll<HTMLElement>('table')).map(table => table.scrollWidth)) +
+          (parseFloat(style.marginLeft) || 0) + (parseFloat(style.marginRight) || 0)
+      })))
     const canvas = await html2canvas(receiptElement, {
       scale: 2,
+      width: exportWidth,
       backgroundColor: '#ffffff',
       logging: false,
       onclone: clonedDocument => {
-        clonedDocument.querySelector('[data-receipt-export="true"]')?.classList.add('receipt-export-mode')
+        const receipt = clonedDocument.querySelector<HTMLElement>('[data-receipt-export="true"]')
+        if (!receipt) return
+        receipt.classList.add('receipt-export-mode')
+        receipt.style.width = `${exportWidth}px`
+        // 导出时展开 Element 表格的横向滚动容器，手机上未滚到的列也必须完整保存。
+        receipt.querySelectorAll<HTMLElement>('.el-scrollbar__wrap, .el-scrollbar__view, .el-table__body-wrapper, .el-table__inner-wrapper').forEach(element => {
+          element.style.overflow = 'visible'
+          element.style.height = 'auto'
+          element.style.maxHeight = 'none'
+        })
+        normalizeCanvasColors(receipt)
       }
     })
     const imageBlob = await new Promise<Blob>((resolve, reject) => {
@@ -521,6 +681,7 @@ const downloadImage = async () => {
 }
 
 const handleSearchAndAdd = async () => {
+  if (isDownloading.value || isSearching.value) return
   if (!searchKeyword.value.trim()) {
     searchError.value = '请输入IMEI或序列号'
     return
@@ -559,7 +720,7 @@ const handleSearchAndAdd = async () => {
 }
 
 const addSearchResult = (result: SearchPhoneResult) => {
-  if (!result) return
+  if (!result || isDownloading.value) return
 
   emit('addItem', result)
   searchKeyword.value = ''

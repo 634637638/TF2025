@@ -457,12 +457,14 @@
                   <span class="table-number-badge">99999</span>
                 </div>
                 <el-table
+                  v-table-double-tap="previewTapOptions"
                   :data="previewRows"
                   class="data-table admin-data-table standards-preview-table"
                   border
                   stripe
                   table-layout="fixed"
                   :fit="true"
+                  @row-dblclick="previewDoubleClick"
                 >
                   <el-table-column
                     type="index"
@@ -505,6 +507,7 @@
                     </template>
                   </el-table-column>
                   <el-table-column
+                    v-if="!isMobile"
                     label="操作"
                     :width="previewActionColumnWidth"
                     class-name="actions-column"
@@ -518,33 +521,20 @@
                           size="small"
                           @click.stop="togglePreviewDetail"
                         >
-                          <i :class="previewDetailVisible ? 'fas fa-chevron-up' : 'fas fa-eye'" />
-                          {{ previewDetailVisible ? '收起' : '查看' }}
+                          <i class="fas fa-eye" />
+                          查看
                         </el-button>
                       </div>
                     </template>
                   </el-table-column>
                 </el-table>
-                <div
-                  v-if="previewDetailVisible"
-                  class="preview-table-detail"
-                >
-                  <div class="preview-table-detail__head">
-                    <strong>设备详情（预览）</strong>
-                    <el-tag
-                      type="success"
-                      size="small"
-                    >
-                      在库
-                    </el-tag>
-                  </div>
-                  <div class="preview-table-detail__grid">
-                    <span>型号：iPhone 15 Pro</span>
-                    <span>颜色：原色钛金属</span>
-                    <span>内存：256G</span>
-                    <span>序列号：NEW-DEMO-001</span>
-                  </div>
-                </div>
+                <RecordDetailDialog
+                  v-model="previewDetailVisible"
+                  title="设备详情（预览）"
+                  :record="previewDetailRow"
+                  :fields="previewDetailFields"
+                  :has-actions="false"
+                />
               </template>
               <div
                 v-else-if="selectedStandard.previewKind === 'search'"
@@ -960,6 +950,8 @@
 </template>
 
 <script setup lang="ts">
+import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
+import type { RecordDetailField } from '@/types/component'
 import { computed, onBeforeUnmount, ref } from 'vue'
 import { useNotification } from '@/composables/useNotification'
 import { usePagePermissions } from '@/composables/usePagePermissions'
@@ -994,7 +986,6 @@ const selectedStandard = ref<StandardCatalogItem | null>(null)
 const selectedDocumentSummary = ref('')
 const selectedDocumentRequirements = ref<string[]>([])
 const documentLoading = ref(false)
-const previewDetailVisible = ref(false)
 const previewLoadingActive = ref(false)
 const previewLoadingOperationId = 'standards-preview-loading'
 let previewLoadingTimer: ReturnType<typeof setTimeout> | undefined
@@ -1019,6 +1010,8 @@ const previewTimeDate = computed(() => TimeUtil.format(previewTimeValue.value, T
 const previewTimeDateTime = computed(() => TimeUtil.format(previewTimeValue.value, TIME_FORMATS.DATETIME))
 const previewPolicyExpanded = ref(false)
 const previewRows = [{ field: '完整展示文本', status: '正常' }]
+const { detailRow: previewDetailRow, detailVisible: previewDetailVisible, doubleTapOptions: previewTapOptions, handleRowDoubleClick: previewDoubleClick } = useMobileTableDetail({ enabled: true, rows: () => previewRows, getKey: row => row.field })
+const previewDetailFields: RecordDetailField[] = [{ key: 'model', label: '型号', value: 'iPhone 15 Pro', visible: true }, { key: 'color', label: '颜色', value: '原色钛金属', visible: true }, { key: 'memory', label: '内存', value: '256G', visible: true }, { key: 'serial', label: '序列号', value: 'NEW-DEMO-001', visible: true, wide: true }]
 const previewActionColumnWidth = computed(() => getAdaptiveActionColumnWidth(previewRows, [
   { label: '查看', visible: true }
 ]))
@@ -1069,7 +1062,7 @@ const openDetail = async (standard: StandardCatalogItem) => {
 }
 
 const togglePreviewDetail = () => {
-  previewDetailVisible.value = !previewDetailVisible.value
+  previewTapOptions.value.onDoubleTap(0)
 }
 
 const stopPreviewLoading = () => {

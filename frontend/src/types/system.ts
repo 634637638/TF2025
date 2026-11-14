@@ -3,7 +3,7 @@
  * 集中管理站点设置、配置、日志等相关类型
  */
 
-import type { Store } from './shared'
+import type { BusinessScope, Store } from './shared'
 
 export type { Store } from './shared'
 
@@ -481,6 +481,7 @@ export interface Supplier {
   bank_account?: string
   bank_info?: string // 银行信息汇总
   tax_number?: string
+  business_scope?: BusinessScope
   payment_terms?: string
   credit_rating?: string
   status: SupplierStatus
@@ -494,9 +495,17 @@ export interface Supplier {
   updated_at?: string
 }
 
-/**
- * 供应商表单数据
- */
+/** 供应商详情统计按授权来源读取；NULL表示无权查看或原成本未知。 */
+export interface SupplierDetail extends Supplier {
+  stats: {
+    accessories_count: number | null
+    accessories_total_cost: number | null
+    phones_count: number | null
+    phones_total_cost: number | null
+  }
+}
+
+/** 供应商表单数据 */
 export interface SupplierForm {
   name: string
   code?: string
@@ -510,6 +519,7 @@ export interface SupplierForm {
   bank_name?: string
   bank_account?: string
   tax_number?: string
+  business_scope?: BusinessScope
   payment_terms?: string
   credit_rating?: string
   status?: SupplierStatus

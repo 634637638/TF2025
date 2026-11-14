@@ -1,5 +1,6 @@
 'use strict'
 
+const { normalizePhone, isMobilePhone, isPersonName } = require('../utils/input-values')
 const ApiResponse = require('../utils/response')
 const log = require('../utils/log')
 const { extractBearerToken, hashCustomerToken } = require('../utils/customer-token')
@@ -30,13 +31,13 @@ class ShopPublicAuthController {
   }
 
   async register(req, res) {
-    const name = String(req.body?.name || '').trim()
-    const phone = String(req.body?.phone || '').trim()
-    const password = String(req.body?.password || '')
-    if (name.length < 2 || name.length > 50 || !phone || !password) {
+    const name = typeof req.body?.name === 'string' ? req.body.name.replace(/^ +| +$/g, '') : ''
+    const phone = normalizePhone(req.body?.phone)
+    const password = req.body?.password
+    if (!isPersonName(name, 50) || name.length < 2 || !phone || typeof password !== 'string' || !password) {
       return this.response.badRequest(res, '请填写完整信息')
     }
-    if (!/^1[3-9]\d{9}$/.test(phone)) {
+    if (!isMobilePhone(req.body?.phone)) {
       return this.response.badRequest(res, '请输入正确的手机号')
     }
     if (password.length < 6 || password.length > 128) {
@@ -57,10 +58,10 @@ class ShopPublicAuthController {
   }
 
   async login(req, res) {
-    const phone = String(req.body?.phone || '').trim()
-    const password = String(req.body?.password || '')
-    if (!phone || !password) return this.response.badRequest(res, '请输入手机号和密码')
-    if (!/^1[3-9]\d{9}$/.test(phone) || password.length > 128) {
+    const phone = normalizePhone(req.body?.phone)
+    const password = req.body?.password
+    if (!phone || typeof password !== 'string' || !password) return this.response.badRequest(res, '请输入手机号和密码')
+    if (!isMobilePhone(req.body?.phone) || password.length > 128) {
       return this.response.badRequest(res, '手机号或密码格式不正确')
     }
 
@@ -156,8 +157,8 @@ class ShopPublicAuthController {
       const { name, gender, idCard, appleId, address } = req.body || {}
       const profile = {}
       if (name !== undefined) {
-        const normalizedName = String(name).trim()
-        if (normalizedName.length < 2 || normalizedName.length > 50) {
+        const normalizedName = typeof name === 'string' ? name.replace(/^ +| +$/g, '') : ''
+        if (!isPersonName(normalizedName, 50) || normalizedName.length < 2) {
           return this.response.badRequest(res, '姓名长度应为2至50个字符')
         }
         profile.name = normalizedName

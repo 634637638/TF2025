@@ -6,6 +6,12 @@ Vite 通过 `optimizeDeps.include` 在启动时预构建 Element Plus 的 `eleme
 
 出现 `Failed to fetch dynamically imported module` 时，应检查失败模块及其依赖请求。`504 Outdated Optimize Dep` 表示开发预构建依赖版本失效，不能直接判断为业务 API 故障或组件语法错误；修复缓存冲突或依赖预构建配置后重新加载页面。不要通过删除业务缓存、忽略错误或无限自动刷新掩盖问题。
 
+## 日常启动与审计时机
+
+根目录 `npm run dev`、`npm start`、`npm run frontend`，以及前端目录 `npm run dev`、`npm start` 和 HTTPS 开发入口直接启动服务，不自动运行全量审计或业务测试。一次性修复、地区资源准备和数据库迁移也不能挂到这些入口自动重跑；真实数据库写入仍须获得本次明确授权。
+
+已修复问题的正式回归测试和审计保留，通过根目录 `npm run check:standards` 手动执行。前端 `prebuild`、`prebuild:debug` 和 `check:release` 继续强制全量审计，失败不得发布。`check:coverage` 的隔离 npm 生命周期回归验证这两个边界；后端必要的环境、运行时资源和单实例安全检查继续执行。
+
 ## 本地 HTTPS 开发
 
 普通开发默认 HTTP。需要真机摄像头等 HTTPS 能力时，先在前端目录执行 `npm run cert:local -- <本机局域网IP>` 生成本地证书，再从仓库根目录执行：
@@ -14,7 +20,7 @@ Vite 通过 `optimizeDeps.include` 在启动时预构建 Element Plus 的 `eleme
 npm --prefix frontend run dev:https
 ```
 
-唯一入口为 `frontend/scripts/start-dev-https.sh`，按脚本位置定位前端目录，校验证书文件后设置 `TF_USE_HTTPS=true` 并调用 `npm run dev`，继续执行现有启动前规范门禁。缺少证书必须失败，不能显示 HTTPS 成功提示后回退 HTTP；访问地址以 Vite 实际输出为准，不硬编码手机 IP。证书与私钥位于忽略提交的 `frontend/ssl/`，本地 CA 需要在测试设备上信任，不上传生产服务器。
+唯一入口为 `frontend/scripts/start-dev-https.sh`，按脚本位置定位前端目录，校验证书文件后设置 `TF_USE_HTTPS=true` 并调用日常 `npm run dev` 入口，不自动执行全量审计。缺少证书必须失败，不能显示 HTTPS 成功提示后回退 HTTP；访问地址以 Vite 实际输出为准，不硬编码手机 IP。证书与私钥位于忽略提交的 `frontend/ssl/`，本地 CA 需要在测试设备上信任，不上传生产服务器。
 
 `npm --prefix frontend run check:dev-https` 验证缺证书拒绝启动、目录定位、HTTPS 开关、参数和退出码传递，已接入 `check:standards`；该测试使用临时替身，不启动真实服务或替代真机 TLS 验收。
 
@@ -27,6 +33,8 @@ npm --prefix frontend run dev:https
 按用户要求，标准打包只更新 `frontend/dist/`，不自动生成 `dist.zip`、TAR 或其他部署归档，也不增加自动压缩钩子或第二个构建脚本。用户自行压缩、上传该目录内容。Vite 的代码压缩和静态资源 `.gz` 预压缩继续沿用现有配置，它们属于站点资源优化；根目录 `本地备份/` 的项目源码压缩备份按独立特例保留，见[备份管理](../backend/backup-management.md#git-管理页项目压缩包)。
 
 ## 审计要求
+
+错误上报遵循[日志系统规范](../guides/LOG_SYSTEM_STANDARDS.md#42-前端日志行为)：非生产构建只保留本地诊断，生产通过唯一 `globalErrorLogger` 和 `unifiedApi` 上报符合条件的技术故障；普通业务、输入和权限提示不外发。T5 已提供默认关闭的[生产故障邮件告警](../backend/error-alerting.md)，待用户手动部署、配置及实际收件验收；不得将站内上报成功或 SMTP 接受视为负责人已收到通知。
 
 后端不得使用 `eval`、`new Function`、硬编码密钥，SQL 和文件路径不得直接插入请求字段。没有认证中间件的完整路由文件必须登记在 `backend/scripts/config/backend-security-audit.json`，公开白名单只允许真实公开且经过数据最小化审查的接口。
 
@@ -47,6 +55,10 @@ npm run type-check
 cd frontend
 npm run check:release
 ```
+
+仓库依赖 CI 入口为 `.github/workflows/dependency-audit.yml`：每个 PR、每周一北京时间 10:00 和手动触发时，分别审计根目录、前端和后端的完整锁文件（含开发依赖），high/critical 或公告服务错误使对应任务失败，三端互不提前中断。CI 不安装依赖、不执行仓库脚本、不读取部署环境文件；Actions 固定提交且只有代码只读权限，审计 JSON 保留 7 天。该工作流不上传或部署前后端，也不替代发布前的 `check:release`。
+
+工作流进入 GitHub 后，仓库管理员需将三个 `Dependency audit (root/frontend/backend)` 状态分别设为目标分支必需检查，或用等价 ruleset 阻止失败时合并；仅有工作流文件不能证明合并已被阻断。首次远程执行和保护规则验证的进度统一登记[技术债务台账 T8](../development/TECHNICAL_DEBT_PROGRESS.md)，不能以本地 YAML 检查冒充 CI 验收。依赖豁免必须记录包、CVE、到期日及替代控制，不关闭检查、不用 `npm audit fix --force` 绕过问题。
 
 禁止为了通过检查而扩大白名单。新增公开路由、`v-html` 来源或永久定时器时，必须先完成代码审查并说明无法使用更安全模式的原因。
 

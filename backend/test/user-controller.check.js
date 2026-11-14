@@ -192,7 +192,7 @@ test('用户更新拒绝空更新和无效状态，并在数据库失败时回�
   await invalid.controller.update({ params: { id: '12' }, body: { status: 9 } }, invalidResponse)
   assert.equal(invalidResponse.statusCode, 400)
   assert.equal(invalidResponse.body.message, '用户状态必须为 0、1、active 或 inactive')
-  assert.deepEqual(invalid.events.filter(event => typeof event === 'string'), ['begin', 'rollback', 'release'])
+  assert.deepEqual(invalid.events, [])
 
   const failing = createTransactionalController({
     execute: async query => {

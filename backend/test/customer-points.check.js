@@ -11,13 +11,32 @@ const {
   reconcileCustomerPointsForSale,
   reverseCustomerPointsForSale
 } = require('../src/services/customer-points.service')
+const { creditCheckoutPoints } = require('../src/services/customer-points.service')
+const { normalizePointsConfig, validatePointsConfig, quoteCustomerPoints } = require('../src/utils/customer-points-rules')
 const { clearSchemaInspectorCache } = require('../src/services/schema-inspector.service')
 
 const backendRoot = path.resolve(__dirname, '..')
 
+test('共同结算商品积分入账复用公共服务及原事务，条件更新限制余额，异常不提交', async () => {
+  clearSchemaInspectorCache()
+  const calls = [], executor = { async execute(sql, params) {
+    if (sql.includes('information_schema.TABLES')) return [[]]
+    calls.push({ sql, params }); return [{ affectedRows: 1 }]
+  } }
+  await creditCheckoutPoints(executor, 9, 3)
+  assert.equal(calls.length, 1)
+  assert.match(calls[0].sql, /points <= \?/)
+  assert.deepEqual(calls[0].params, [3, 9, 2147483644])
+  await creditCheckoutPoints(executor, 9, 0)
+  assert.equal(calls.length, 1)
+  await assert.rejects(creditCheckoutPoints({ async execute() { return [{ affectedRows: 0 }] } }, 9, 1), { statusCode: 409 })
+  for (const points of [-1, 1.5, true, 2147483648]) await assert.rejects(creditCheckoutPoints(executor, 9, points), { statusCode: 400 })
+})
+
 const createPointsExecutor = ({ sales, customers }) => ({
   async execute(sql, params = []) {
     if (sql.includes('information_schema.COLUMNS')) return [[{ present: 1 }]]
+    if (sql.includes('information_schema.TABLES')) return [[]]
 
     if (sql.includes('SELECT s.customer_id, s.sale_type')) {
       const sale = sales.get(Number(params[0]))
@@ -78,6 +97,33 @@ test('客户积分固定以消费100元为累计基数', () => {
     eligibleAmount: 299.99,
     amountPerPoint: 100
   })
+})
+
+test('配件积分来源、抵扣范围和单件上限按明细计算，赠品及抵扣明细不累计', () => {
+  const config = validatePointsConfig({
+    enabled: true, include_new: true, include_used: true, include_accessories: true,
+    new_points_per_100: 1, used_points_per_100: 2, accessory_points_per_100: 3,
+    redemption: { enabled: true, points_per_yuan: 10, max_percent: 50, sources: ['accessory'], all_accessory_categories: false, category_ids: [4] }
+  })
+  const quote = quoteCustomerPoints({ available_points: 100, config, items: [
+    { key: 'phone', source: 'new', amount_cents: 10000, category_id: null, is_gift: false, redeem_points: 0 },
+    { key: 'charger', source: 'accessory', amount_cents: 5000, category_id: 4, is_gift: false, redeem_points: 100 },
+    { key: 'gift', source: 'accessory', amount_cents: 0, category_id: 4, is_gift: true, redeem_points: 0 }
+  ] })
+  assert.equal(quote.points_used, 100)
+  assert.equal(quote.points_awarded, 1)
+  assert.equal(quote.deduction_cents, 1000)
+  assert.equal(quote.lines[1].payable_cents, 4000)
+  assert.equal(quote.lines[1].points_awarded, 0)
+  assert.equal(quote.lines[2].points_awarded, 0)
+})
+
+test('配件抵扣拒绝未配置商品类型、超过上限及使用本单新积分', () => {
+  const base = { enabled: true, include_new: true, include_used: true, include_accessories: true, new_points_per_100: 1, used_points_per_100: 1, accessory_points_per_100: 1,
+    redemption: { enabled: true, points_per_yuan: 10, max_percent: 50, sources: ['accessory'], all_accessory_categories: false, category_ids: [4] } }
+  assert.throws(() => quoteCustomerPoints({ available_points: 100, config: base, items: [{ key: 'x', source: 'accessory', amount_cents: 1000, category_id: 9, is_gift: false, redeem_points: 10 }] }), /抵扣范围/)
+  assert.throws(() => quoteCustomerPoints({ available_points: 100, config: base, items: [{ key: 'x', source: 'accessory', amount_cents: 1000, category_id: 4, is_gift: false, redeem_points: 60 }] }), /最高抵扣比例/)
+  assert.throws(() => quoteCustomerPoints({ available_points: 10, config: base, items: [{ key: 'x', source: 'accessory', amount_cents: 1000, category_id: 4, is_gift: false, redeem_points: 11 }] }), /已有积分/)
 })
 
 test('客户积分只累计已选择的全新或二手类型', () => {
@@ -406,4 +452,40 @@ test('客户销售积分迁移默认预览并保留历史积分边界', () => {
   assert.match(migration, /拒绝删除积分字段/)
   assert.match(migration, /请重启后端服务，清除运行进程中的数据库结构检查缓存/)
   assert.equal(packageJson.scripts['migrate:customer-sale-points'], 'node scripts/migrate-customer-sale-points.js')
+})
+
+test('抵扣配置严格校验，旧客户端保存不会清空新规则', () => {
+  const previous = validatePointsConfig({ ...DEFAULT_POINTS_CONFIG, include_accessories: true,
+    redemption: { enabled: true, points_per_yuan: 10, max_percent: 50, sources: ['accessory'], all_accessory_categories: false, category_ids: [4] } })
+  assert.deepEqual(validatePointsConfig({ new_points_per_100: 3 }, previous).redemption, previous.redemption)
+  for (const input of [{ enabled: 'true' }, { accessory_points_per_100: NaN }, { redemption: { ...previous.redemption, category_ids: [4, '4'] } },
+    { redemption: { ...previous.redemption, sources: ['other'] } }, { redemption: { ...previous.redemption, points_per_yuan: null } }]) {
+    assert.throws(() => validatePointsConfig(input, previous), { code: 'POINTS_RULE_INVALID', statusCode: 400 })
+  }
+  assert.equal(validatePointsConfig({ ...DEFAULT_POINTS_CONFIG }).redemption.points_per_yuan, null)
+})
+
+test('按每件金额取整、不使用本单新积分，快照独立且兑换精确到分', () => {
+  const config = validatePointsConfig({ ...DEFAULT_POINTS_CONFIG, include_accessories: true,
+    redemption: { enabled: true, points_per_yuan: 3, max_percent: 100, sources: ['accessory'], all_accessory_categories: true, category_ids: [] } })
+  const line = (key, amount, points = 0) => ({ key, source: 'accessory', amount_cents: amount, is_gift: false, redeem_points: points })
+  const result = quoteCustomerPoints({ available_points: 3, config, items: [line('a', 9900), line('b', 9900)] })
+  assert.equal(result.points_awarded, 0)
+  config.redemption.sources.push('new')
+  assert.deepEqual(result.config_snapshot.redemption.sources, ['accessory'])
+  assert.throws(() => quoteCustomerPoints({ available_points: 0, config, items: [line('earn', 100000), line('spend', 1000, 3)] }), /已有积分/)
+  assert.throws(() => quoteCustomerPoints({ available_points: 3, config, items: [line('fraction', 1000, 1)] }), /精确兑换/)
+  assert.throws(() => quoteCustomerPoints({ available_points: 2147483647, config, items: [line('overflow', 10000)] }), /余额超出/)
+  assert.throws(() => quoteCustomerPoints({ available_points: 0, config, items: [line('same', 1), line('same', 1)] }), /商品明细/)
+})
+
+
+test('历史积分开关继续兼容大小写、空白及数字字符串，新商品和抵扣默认关闭', () => {
+  const config = normalizePointsConfig({ enabled: ' TRUE ', include_new: ' OFF ', include_used: '1', used_points_per_100: '2' })
+  assert.equal(config.enabled, true)
+  assert.equal(config.include_new, false)
+  assert.equal(config.include_used, true)
+  assert.equal(config.used_points_per_100, 2)
+  assert.equal(config.include_accessories, false)
+  assert.equal(config.redemption.enabled, false)
 })

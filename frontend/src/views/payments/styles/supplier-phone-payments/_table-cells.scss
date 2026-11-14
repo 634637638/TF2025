@@ -1,7 +1,3 @@
-.data-table tbody tr.mobile-action-expanded {
-  border-bottom-color: transparent;
-}
-
 /* IMEI 单元格样式 - 两种类名都支持 */
 .data-table .imei,
 .data-table .imei-cell {
@@ -63,17 +59,6 @@
   &.profit-negative {
     color: var(--color-danger);
   }
-}
-
-.data-table .mobile-action-row td {
-  padding: 10px 12px;
-  background: var(--tf-color-surface-blue);
-  border-top: none;
-}
-
-.data-table .mobile-row-actions {
-  display: flex;
-  justify-content: flex-start;
 }
 
 /* 复选框样式 */

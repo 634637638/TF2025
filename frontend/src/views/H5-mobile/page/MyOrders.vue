@@ -14,7 +14,6 @@
           <el-input
             v-model="customer_phone"
             type="tel"
-            maxlength="11"
             placeholder="请输入手机号查询订单"
             @update:model-value="onPhoneInput"
           />
@@ -176,6 +175,7 @@ import { getPaymentMethodLabel } from '@/utils/shop-payment'
 import { storage } from '@/services/storage'
 import { H5_STORAGE_KEYS } from '@/constants/storage'
 import { formatAmount, formatDateTime as formatGlobalDateTime } from '@/utils/format'
+import { isValidMobilePhone, isValidPersonName, normalizePhoneDigits } from '@/utils/security'
 import { TIME_FORMATS } from '@/utils/time'
 import { getRequestErrorMessage } from '@/utils/api-response'
 import type { PublicOrder } from '@/api/shop-public'
@@ -197,9 +197,9 @@ const total = ref(0)
 
 // 验证手机号
 const isValidPhone = computed(() => {
-  return /^1[3-9]\d{9}$/.test(customer_phone.value)
+  return isValidMobilePhone(customer_phone.value)
 })
-const isValidIdentity = computed(() => isValidPhone.value && customer_name.value.length >= 2)
+const isValidIdentity = computed(() => isValidPhone.value && customer_name.value.length >= 2 && isValidPersonName(customer_name.value, 50))
 
 // 是否有更多
 const hasMore = computed(() => {
@@ -208,8 +208,7 @@ const hasMore = computed(() => {
 
 // 手机号输入
 const onPhoneInput = (value: string) => {
-  // 只允许输入数字
-  customer_phone.value = value.replace(/\D/g, '')
+  customer_phone.value = normalizePhoneDigits(value)
 }
 
 // 清空手机号
@@ -219,6 +218,7 @@ const clearPhone = () => {
 
 // 查询订单
 const searchOrders = async () => {
+  if (searching.value) return
   if (!isValidIdentity.value) {
     globalNotifications.warning('请输入正确的手机号和下单姓名')
     return

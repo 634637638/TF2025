@@ -34,7 +34,7 @@ test('available phone filters preserve status prefix, reference lookup, and para
     async findModelsByName(value, exact) {
       calls.push(['model', value, exact])
       return [{ id: 8, name: '型号' }, { id: 9, name: '型号' }]
-    },
+    }
   })
   const service = new SalesAvailablePhonesService({ repository })
   const filters = await service.buildFilters({
@@ -56,6 +56,19 @@ test('available phone filters preserve status prefix, reference lookup, and para
   assert.ok(filters.whereConditions.some(condition => condition.includes('p.model_id IN (?,?)')))
   assert.ok(filters.whereConditions.some(condition => condition.includes("p.status = 'reserved'")))
   assert.deepEqual(calls, [['brand', ' 品牌 '], ['model', '型号', false], ['color', '蓝'], ['memory', '128G']])
+})
+
+test('客户及销售员筛选查询真实逐台销售，不再把共同订单头当作带手机字段的表', async () => {
+  const service = new SalesAvailablePhonesService({ repository: createRepositoryStub() })
+  for (const sale_status of ['available', 'completed']) {
+    const filters = await service.buildFilters({ customer_id: '9', salesman_id: '7', sale_status })
+    const sql = filters.whereConditions.join(' AND ')
+    assert.match(sql, /FROM sales so WHERE so.customer_id = \?/)
+    assert.match(sql, /so.operator_id = \?/)
+    assert.doesNotMatch(sql, /sales_orders|so.salesman_id/)
+    assert.deepEqual(filters.queryParams.slice(-2), ['9', '7'])
+  }
+  await assert.rejects(service.buildFilters({ sale_status: 'shipped' }), { statusCode: 400 })
 })
 
 test('available phone service validates preorder delivery and normalizes list results', async () => {
@@ -152,7 +165,7 @@ test('available phone list repository binds filters and keeps pagination bounded
     })
   })
   const result = await repository.getAvailablePhones({
-    whereConditions: ["p.store_id = ?", "p.imei LIKE ?"],
+    whereConditions: ['p.store_id = ?', 'p.imei LIKE ?'],
     queryParams: [7, '%123%'],
     page: 2,
     pageSize: 25

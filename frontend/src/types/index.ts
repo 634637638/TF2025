@@ -4,9 +4,9 @@
  */
 
 import type { Ref } from 'vue'
-import type { Store, User } from './shared'
+import type { BusinessScope, Store, User } from './shared'
 import type { Supplier } from './system'
-export type { QueryParamValue, QueryParams } from './shared'
+export type { BusinessScope, QueryParamValue, QueryParams } from './shared'
 export type {
   DataCheckAllResponse,
   DataCheckItem,
@@ -237,6 +237,7 @@ export interface PhoneMemory {
 export interface Brand {
   id: number
   name: string
+  business_scope?: BusinessScope | null
   status?: number
   is_active?: boolean
   sort_order?: number
@@ -687,19 +688,7 @@ export interface Customer {
 /**
  * 配件信息接口
  */
-export interface Accessory {
-  id: number
-  name: string
-  stock: number
-  min_stock: number
-  price: number
-  supplier: string
-  description?: string
-  category?: string
-  status: number
-  created_at?: string
-  updated_at?: string
-}
+export type { AccessoryRecord as Accessory } from './accessory'
 
 // ===== 系统相关类型 =====
 
@@ -807,19 +796,7 @@ export interface ThemeConfig {
 }
 
 // ===== 性能监控类型 =====
-
-/**
- * 性能指标接口
- */
-export interface PerformanceMetrics {
-  FCP: number // First Contentful Paint
-  TTI: number // Time to Interactive
-  LCP: number // Largest Contentful Paint
-  FID: number // First Input Delay
-  CLS: number // Cumulative Layout Shift
-  API_LATENCY: Record<string, number>
-  MEMORY_USAGE?: number
-}
+export type { PerformanceMetrics, PerformanceReport, UsePerformanceReturn } from './performance'
 
 // ===== 通知和消息类型 =====
 
@@ -1089,19 +1066,6 @@ export interface UseDeviceReturn {
   screenWidth: Ref<number>
   screenHeight: Ref<number>
   orientation: Ref<'portrait' | 'landscape'>
-}
-
-/**
- * 性能监控 Composable 返回类型
- */
-export interface UsePerformanceReturn {
-  metrics: Ref<PerformanceMetrics>
-  isMonitoring: Ref<boolean>
-  startMonitoring: () => void
-  stopMonitoring: () => void
-  recordMetric: (name: string, value: number | string | Record<string, unknown>) => void
-  generateReport: () => PerformanceReport
-  clearMetrics: () => void
 }
 
 /**
@@ -1526,20 +1490,6 @@ export interface MessageItem {
   timestamp?: number
   persistent?: boolean
   metadata?: Record<string, unknown>
-}
-
-/**
- * 性能报告接口
- */
-export interface PerformanceReport {
-  timestamp: number
-  metrics: PerformanceMetrics
-  userAgent: string
-  url: string
-  sessionId: string
-  userId?: number
-  deviceInfo: DeviceInfo
-  recommendations: string[]
 }
 
 /**

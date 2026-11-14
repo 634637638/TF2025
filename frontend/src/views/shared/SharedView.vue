@@ -101,6 +101,7 @@
 
         <div
           v-tf-loading="{ active: loading && posts.length > 0, text: '正在刷新经验分享...' }"
+          v-table-double-tap="postDetailTapOptions"
           class="shared-feed"
         >
           <div
@@ -126,7 +127,9 @@
             v-else
             :key="post.id"
             class="shared-post"
-            @click="openDetail(post.id)"
+            data-mobile-record
+            @click="!isMobile && openDetail(post.id)"
+            @dblclick="postDetailDoubleClick(post, null, $event)"
           >
             <div class="post-accent" />
             <div class="post-main">
@@ -149,7 +152,7 @@
                   </span>
                 </div>
                 <div
-                  v-if="showPostActionColumn"
+                  v-if="!isMobile && showPostActionColumn"
                   class="post-actions action-buttons tf-action-row--compact"
                   @click.stop
                 >
@@ -239,7 +242,7 @@
       >
         <el-form
           ref="formRef"
-          class="tf-dialog-form tf-dialog-form--stacked"
+          class="tf-dialog-form tf-dialog-form--stacked tf-form-layout tf-form-grid"
           :model="form"
           :rules="rules"
           label-position="top"
@@ -257,7 +260,7 @@
             />
           </el-form-item>
           <div
-            class="shared-meta-fields"
+            class="shared-meta-fields tf-form-row"
             :class="{ 'shared-meta-fields--single': !canChooseVisibility }"
           >
             <el-form-item
@@ -298,7 +301,7 @@
           </div>
           <el-form-item
             v-if="canViewSharedField('content')"
-            class="content-form-item"
+            class="content-form-item tf-form-field--wide"
             label="内容"
             prop="content"
           >
@@ -400,6 +403,7 @@
           </el-button>
         </div>
         <el-table
+          v-table-double-tap="categoryDetailTapOptions"
           :data="categories"
           border
           stripe
@@ -407,6 +411,7 @@
           table-layout="auto"
           :fit="true"
           empty-text="暂无分类"
+          @row-dblclick="categoryDetailDoubleClick"
         >
           <el-table-column
             v-if="canViewSharedField('category_name')"
@@ -434,7 +439,7 @@
             width="72"
           />
           <el-table-column
-            v-if="canManage"
+            v-if="!isMobile && (canManage)"
             label="操作"
             align="center"
             :width="$getActionColumnWidth(2)"
@@ -478,13 +483,64 @@
             </template>
           </el-table-column>
         </el-table>
-        <template #footer>
-          <div class="tf-dialog-actions">
-            <el-button @click="categoryManagerVisible=false">
-              关闭
-            </el-button>
-          </div>
-        </template>
+        <RecordDetailDialog
+          v-model="categoryDetailVisible"
+          :editing="editingCategoryId === categoryDetailRow?.id"
+          title="分享分类详情"
+          :record="categoryDetailRow"
+          :fields="categoryDetailFields"
+          :has-actions="canManage"
+        >
+          <el-form
+            v-if="editingCategoryId === categoryDetailRow?.id"
+            class="tf-form-layout tf-form-grid"
+          >
+            <el-form-item label="分类名称">
+              <el-input
+                v-model="editingCategoryName"
+                maxlength="60"
+                @keyup.enter="categoryDetailRow && saveCategory(categoryDetailRow)"
+              />
+            </el-form-item>
+          </el-form><template #actions="{ row }">
+            <template v-if="editingCategoryId === row.id">
+              <el-button
+                v-permission="'shared:manage'"
+                type="primary"
+                text
+                :loading="categorySaving"
+                @click.stop="saveCategory(row)"
+              >
+                保存
+              </el-button>
+              <el-button
+                v-permission="'shared:manage'"
+                text
+                @click.stop="cancelCategoryEdit"
+              >
+                取消
+              </el-button>
+            </template>
+            <template v-else>
+              <el-button
+                v-permission="'shared:manage'"
+                class="table-action table-action--edit"
+                :disabled="row.name === '未分类'"
+                @click.stop="startCategoryEdit(row)"
+              >
+                编辑
+              </el-button>
+              <el-button
+                v-permission="'shared:manage'"
+                class="table-action table-action--delete"
+                :disabled="row.name === '未分类'"
+                @click.stop="categoryDetailRunAction(() => deleteCategory(row))"
+              >
+                删除
+              </el-button>
+            </template>
+          </template>
+        </RecordDetailDialog>
       </MobileDialog>
 
       <MobileDialog
@@ -582,18 +638,29 @@
           </div>
         </div>
         <template
-          v-if="detail"
+          v-if="detail && (canEditPost(detail) || canDeletePost(detail) || canPinPost(detail))"
           #footer
         >
           <div class="tf-dialog-actions">
-            <el-button @click="detailVisible=false">
-              关闭
-            </el-button><el-button
+            <el-button
               v-if="canEditPost(detail)"
               type="primary"
-              @click="openEdit(detail.id)"
+              @click.stop="runPostDetailAction(row => openEdit(row.id))"
             >
               编辑
+            </el-button>
+            <el-button
+              v-if="canDeletePost(detail)"
+              type="danger"
+              @click.stop="runPostDetailAction(removePost)"
+            >
+              删除
+            </el-button>
+            <el-button
+              v-if="canPinPost(detail)"
+              @click.stop="runPostDetailAction(togglePin)"
+            >
+              {{ detail.is_pinned ? '取消置顶' : '置顶' }}
             </el-button>
           </div>
         </template>
@@ -608,6 +675,10 @@
 </template>
 
 <script setup lang="ts">
+import { watch } from 'vue'
+import { useMobile } from '@/composables/mobile'
+import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
+import type { RecordDetailField } from '@/types/component'
 import { getRequestErrorMessage } from '@/utils/api-response'
 import { confirmAction, isMessageBoxCanceled } from '@/utils/message-box'
 import { reactive, ref, computed, shallowRef, nextTick, onMounted, onBeforeUnmount } from 'vue'
@@ -1020,6 +1091,30 @@ onBeforeUnmount(() => {
   void cleanupUnsavedInlineUploads()
   editorInstance.value?.destroy()
 })
+
+const { isMobile } = useMobile()
+const { doubleTapOptions: postDetailTapOptions, handleRowDoubleClick: postDetailDoubleClick } = useMobileTableDetail({
+  enabled: () => isMobile.value && canView.value, rows: posts, getKey: row => row.id,
+  rowSelector: '[data-mobile-record]', onOpen: row => { void openDetail(row.id) }
+})
+const runPostDetailAction = (action: (row: SharedPost) => unknown) => {
+  const row = detail.value
+  if (!row || !detailVisible.value) return
+  detailVisible.value = false
+  return action(row)
+}
+const { detailRow: categoryDetailRow, detailVisible: categoryDetailVisible, doubleTapOptions: categoryDetailTapOptions, handleRowDoubleClick: categoryDetailDoubleClick, runDetailAction: categoryDetailRunAction } = useMobileTableDetail<(typeof categories.value)[number]>({
+  enabled: () => isMobile.value, rows: () => categories.value, getKey: row => row.id
+})
+const categoryDetailFields = computed<RecordDetailField[]>(() => {
+  const row = categoryDetailRow.value
+  if (!row) return []
+  return [
+    { key: 'field0', label: '分类名称', value: row.name, visible: canViewSharedField('category_name') },
+    { key: 'total', label: '内容', value: row.total, visible: canViewSharedField('category_total') }
+  ]
+})
+watch(categoryDetailVisible, visible => { if (!visible) cancelCategoryEdit() })
 </script>
 
 <style scoped lang="scss">
@@ -1030,7 +1125,7 @@ onBeforeUnmount(() => {
 .rich-editor-sizebar,.rich-editor-filebar{display:flex;align-items:center;justify-content:flex-start;padding:5px 8px;background:var(--tf-color-slate-50)}.rich-editor-sizebar{gap:6px;border-bottom:1px solid var(--tf-color-neutral-200);color:var(--tf-color-slate-500);font-size:var(--tf-type-scale-13)}.rich-editor-sizebar .font-size-input{width:68px}.rich-editor-sizebar :deep(.el-input__wrapper){padding-inline:6px}.rich-editor-sizebar :deep(.el-input__inner){text-align:center}.rich-editor-filebar{border-top:1px solid var(--tf-color-neutral-200)}.rich-editor-filebar i{margin-right:6px}
 .detail-content :deep(img){display:block;max-width:100%;height:auto;margin:12px auto;border-radius:6px;cursor:zoom-in}.detail-content :deep(video){display:block;width:100%;max-height:560px;margin:12px 0;border-radius:6px;background:var(--tf-color-neutral-900)}.detail-content :deep(audio),.media-audio{display:block;width:min(100%,560px);margin:10px 0}.detail-content :deep(.inline-audio-player){display:flex;flex-direction:column;gap:8px;margin:12px 0;padding:12px;border:1px solid var(--tf-color-slate-200);border-radius:6px;background:var(--tf-color-slate-50)}.detail-content :deep(.inline-audio-player strong){color:var(--tf-color-slate-700);font-size:var(--tf-type-scale-13)}.detail-content :deep(.inline-audio-player audio){width:100%;margin:0}
 .shared-detail{display:flex;width:100%;max-width:100%;min-width:0;flex-direction:column;gap:12px;overflow:hidden}.detail-heading{box-sizing:border-box;width:100%;max-width:100%;padding:16px 18px;border:1px solid var(--tf-color-blue-tailwind-200);border-radius:6px;background:var(--tf-color-blue-tailwind-50)}.detail-heading h2{text-align:center}.detail-author{flex-wrap:wrap}.detail-author div{display:flex;min-width:0;flex-direction:row;align-items:center;flex-wrap:wrap;gap:8px}.detail-author small{margin-top:0}.detail-content{box-sizing:border-box;width:100%;max-width:100%;min-width:0;padding:18px;border:1px solid var(--tf-color-border-blue-alt);border-radius:6px;background:var(--tf-color-slate-50);overflow-x:auto;-webkit-overflow-scrolling:touch}.detail-content :deep(table){width:100%!important;max-width:100%;margin:14px 0;border:1px solid var(--tf-color-slate-300);border-collapse:collapse;border-spacing:0;table-layout:auto;background:var(--color-bg-white);color:var(--tf-color-slate-700)}.detail-content :deep(th),.detail-content :deep(td){min-width:0;padding:9px 12px;border:1px solid var(--tf-color-slate-300);text-align:left;vertical-align:top;white-space:normal;word-break:break-word;overflow-wrap:anywhere}.detail-content :deep(th){background:var(--color-border-light);color:var(--tf-color-neutral-800);font-weight:700}.detail-content :deep(tbody tr:nth-child(even) td){background:var(--tf-color-slate-50)}.detail-content :deep(td p),.detail-content :deep(th p){margin:0}.detail-content :deep(caption){padding:8px;color:var(--tf-color-slate-600);font-weight:600;text-align:left}.detail-content :deep(img),.detail-content :deep(video),.detail-content :deep(audio),.detail-content :deep(pre),.detail-content :deep(iframe){box-sizing:border-box;max-width:100%}
-@media(max-width: 767px){.shared-search{grid-template-columns:minmax(0,1fr) auto}.shared-meta-fields{grid-template-columns:minmax(0,1fr)}.shared-post{grid-template-columns:3px minmax(0,1fr);gap:10px;padding:12px}.post-open-icon{display:none}.post-heading{align-items:center;gap:4px;flex-wrap:nowrap}.post-labels{align-items:center;flex:0 1 auto;flex-direction:row;flex-wrap:nowrap;gap:4px}.post-labels .pin-badge{display:none}.post-actions{flex:0 0 auto;flex-wrap:nowrap;justify-content:flex-end}.post-title{font-size:var(--tf-type-scale-15)}.post-excerpt{font-size:var(--tf-type-scale-13)}.category-create-row{grid-template-columns:minmax(0,1fr) auto}.detail-heading h2{font-size:var(--tf-type-scale-19)}.detail-attachments{grid-template-columns:1fr}.media-video{grid-column:auto}}
+@media(max-width: 767px){.shared-search{grid-template-columns:minmax(0,1fr) auto}.shared-post{grid-template-columns:3px minmax(0,1fr);gap:10px;padding:12px}.post-open-icon{display:none}.post-heading{align-items:center;gap:4px;flex-wrap:nowrap}.post-labels{align-items:center;flex:0 1 auto;flex-direction:row;flex-wrap:nowrap;gap:4px}.post-labels .pin-badge{display:none}.post-actions{flex:0 0 auto;flex-wrap:nowrap;justify-content:flex-end}.post-title{font-size:var(--tf-type-scale-15)}.post-excerpt{font-size:var(--tf-type-scale-13)}.category-create-row{grid-template-columns:minmax(0,1fr) auto}.detail-heading h2{font-size:var(--tf-type-scale-19)}.detail-attachments{grid-template-columns:1fr}.media-video{grid-column:auto}}
 @media(max-width: 767px){.shared-feed{grid-template-columns:1fr}.shared-post{min-height:168px}.shared-detail{gap:8px}.detail-heading,.detail-content{padding:12px}.detail-content :deep(th),.detail-content :deep(td){min-width:88px;padding:8px 10px}}
 @media(max-width: 767px){.post-title{display:block;width:100%;overflow:visible;text-overflow:clip;white-space:normal;word-break:break-word;overflow-wrap:anywhere;-webkit-box-orient:initial;-webkit-line-clamp:unset;line-clamp:unset}}
 </style>

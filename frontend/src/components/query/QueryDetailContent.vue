@@ -95,6 +95,21 @@
 
     <div class="tf-dialog-actions">
       <el-button
+        v-if="detailItem.销售信息?.sale_id"
+        v-permission="{ permission: ['query:view', 'accessories:view'], mode: 'all' }"
+        type="primary"
+        @click="$emit('order')"
+      >
+        整单明细
+      </el-button>
+      <el-button
+        v-permission="{ permission: ['query:view', 'query:film', 'accessories:view'], mode: 'all' }"
+        type="primary"
+        @click="$emit('film')"
+      >
+        贴膜
+      </el-button>
+      <el-button
         v-if="canEdit"
         type="primary"
         @click="$emit('edit')"
@@ -137,6 +152,8 @@ interface Props {
 }
 
 interface Emits {
+  order: []
+  film: []
   edit: []
   delete: []
   return: []

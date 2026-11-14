@@ -88,6 +88,7 @@
       class="mobile-table__mobile"
     >
       <div
+        v-table-double-tap="detailTapOptions"
         class="mobile-table__card-list"
       >
         <div
@@ -96,7 +97,8 @@
           class="mobile-table__card"
           :class="{ 'is-selected': selectedRows.includes(row) }"
           :data-row-key="String(getRowKey(row, index))"
-          @click="handleCardClick(row)"
+          data-mobile-record
+          @dblclick="detailDoubleClick(row, null, $event)"
         >
           <!-- 卡片头部 -->
           <div
@@ -137,24 +139,6 @@
               </div>
             </div>
           </div>
-
-          <!-- 卡片底部操作 -->
-          <div
-            v-if="actions && actions.length > 0"
-            class="mobile-table__card-actions card-actions tf-actions--fit-row"
-          >
-            <el-button
-              v-for="action in getMobileActions()"
-              :key="action.key"
-              :type="action.type || 'primary'"
-              :size="action.size || 'small'"
-              :icon="action.icon"
-              :disabled="action.disabled ? action.disabled(row) : false"
-              @click.stop="handleAction(action, row, index)"
-            >
-              {{ action.label }}
-            </el-button>
-          </div>
         </div>
       </div>
 
@@ -172,11 +156,40 @@
         </slot>
       </div>
     </div>
+    <RecordDetailDialog
+      v-model="detailVisible"
+      title="记录详情"
+      :fields="detailFields"
+      :record="detailRow"
+      :has-actions="actions.length > 0"
+    >
+      <template #field="{ field, row }">
+        <slot
+          v-if="row && columns.find(column => column.prop === field.key)?.slot"
+          :name="columns.find(column => column.prop === field.key)?.slot"
+          :row="row"
+        />
+        <span v-else>{{ field.value }}</span>
+      </template>
+      <template #actions>
+        <el-button
+          v-for="action in actions"
+          :key="action.key"
+          :type="action.type || 'primary'"
+          :icon="action.icon"
+          :disabled="detailRow ? action.disabled?.(detailRow) : true"
+          @click.stop="runDetailAction(row => handleAction(action, row, data.indexOf(row)))"
+        >
+          {{ action.label }}
+        </el-button>
+      </template>
+    </RecordDetailDialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, type Component } from 'vue'
+import { ref, computed, type Component } from 'vue'
+import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import type { TableAction, TableColumn } from '@/types/component'
 import { useMobile } from '@/composables/mobile'
@@ -304,14 +317,6 @@ const getMobileColumns = () => {
     .slice(0, 5)
 }
 
-// 获取移动端显示的操作
-const getMobileActions = () => {
-  // 在移动端只显示最多3个主要操作
-  return props.actions
-    .filter(action => !action.mobileOnly)
-    .slice(0, 3)
-}
-
 // 格式化字段值
 const formatFieldValue = (value: unknown, row: TableRow, column: MobileTableColumn) => {
   if (column.mobileFormatter) {
@@ -343,11 +348,6 @@ const handleSelectionChange = (selection: TableRow[]) => {
   emit('selectionChange', selection)
 }
 
-// 处理卡片点击
-const handleCardClick = (row: TableRow) => {
-  emit('rowClick', row)
-}
-
 // 处理操作按钮点击
 const handleAction = (action: MobileTableAction, row: TableRow, index: number) => {
   emit('action', action, row, index)
@@ -377,6 +377,24 @@ defineExpose({
   selectedRows,
   clearSelection,
   scrollToRow
+})
+
+const fallbackRowKeys = new WeakMap<TableRow, number>()
+let nextRowKey = 0
+const { detailRow, detailVisible, doubleTapOptions: detailTapOptions, handleRowDoubleClick: detailDoubleClick, runDetailAction } = useMobileTableDetail({
+  enabled: isMobile, rows: () => props.data, rowSelector: '[data-mobile-record]',
+  getKey: row => {
+    if (props.rowKey) return getRowKey(row, props.data.indexOf(row))
+    if (!fallbackRowKeys.has(row)) fallbackRowKeys.set(row, ++nextRowKey)
+    return fallbackRowKeys.get(row)
+  }
+})
+const detailFields = computed(() => {
+  const row = detailRow.value
+  return row ? props.columns.map(column => ({
+    key: column.prop, label: column.label, value: formatFieldValue(row[column.prop], row, column),
+    visible: true, wide: column.detailWide
+  })) : []
 })
 </script>
 
@@ -472,11 +490,7 @@ defineExpose({
   word-break: break-all;
 }
 
-.mobile-table__card-actions {
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid var(--el-border-color-lighter);
-}
+
 
 .mobile-table__empty {
   padding: 40px 20px;

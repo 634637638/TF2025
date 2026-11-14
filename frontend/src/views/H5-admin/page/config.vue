@@ -29,7 +29,7 @@
             基本信息
           </h3>
           <el-form
-            class="config-form"
+            class="config-form tf-form-layout tf-form-grid"
             label-width="120px"
             :disabled="!canEdit"
           >
@@ -53,6 +53,7 @@
             </el-form-item>
             <el-form-item
               v-if="canViewField('shop.shop_logo')"
+              class="tf-form-field--wide"
               label="店铺Logo"
             >
               <div class="image-upload-wrapper">
@@ -99,7 +100,7 @@
             联系方式
           </h3>
           <el-form
-            class="config-form"
+            class="config-form tf-form-layout tf-form-grid"
             label-width="120px"
             :disabled="!canEdit"
           >
@@ -126,6 +127,7 @@
             </el-form-item>
             <el-form-item
               v-if="canViewField('contact.shop_address')"
+              class="tf-form-field--wide"
               label="店铺地址"
             >
               <el-input
@@ -154,7 +156,7 @@
             支付方式
           </h3>
           <el-form
-            class="config-form"
+            class="config-form tf-form-layout tf-form-grid"
             label-width="120px"
             :disabled="!canEdit"
           >
@@ -273,7 +275,7 @@
             功能设置
           </h3>
           <el-form
-            class="config-form"
+            class="config-form tf-form-layout tf-form-grid"
             label-width="120px"
             :disabled="!canEdit"
           >
@@ -333,7 +335,7 @@
         :show-default-footer="false"
       >
         <el-form
-          class="config-form service-dialog-form"
+          class="config-form service-dialog-form tf-form-layout tf-form-grid"
           label-width="120px"
           :disabled="!canEdit"
         >
@@ -461,7 +463,7 @@
             class="tf-tab-panel"
           >
             <el-form
-              class="config-form service-dialog-form"
+              class="config-form service-dialog-form tf-form-layout tf-form-grid"
               label-width="140px"
               :disabled="!canEdit"
             >
@@ -474,6 +476,7 @@
               </el-form-item>
               <el-form-item
                 v-if="canViewField('payment.wechat_qrcode')"
+                class="tf-form-field--wide"
                 label="微信收款码"
               >
                 <div class="image-upload-wrapper payment-image-upload-wrapper">
@@ -518,6 +521,7 @@
               </el-form-item>
               <el-form-item
                 v-if="canViewField('payment.alipay_qrcode')"
+                class="tf-form-field--wide"
                 label="支付宝收款码"
               >
                 <div class="image-upload-wrapper payment-image-upload-wrapper">
@@ -570,6 +574,7 @@
               </el-form-item>
               <el-form-item
                 v-if="canViewField('payment.other_qrcode')"
+                class="tf-form-field--wide"
                 label="自定义二维码"
               >
                 <div class="image-upload-wrapper payment-image-upload-wrapper">
@@ -613,6 +618,7 @@
               </el-form-item>
               <el-form-item
                 v-if="canViewField('payment.bank_info')"
+                class="tf-form-field--wide"
                 label="银行转账信息"
               >
                 <el-input
@@ -631,7 +637,7 @@
             class="tf-tab-panel"
           >
             <el-form
-              class="config-form service-dialog-form"
+              class="config-form service-dialog-form tf-form-layout tf-form-grid"
               label-width="140px"
               :disabled="!canEdit"
             >
@@ -671,6 +677,7 @@
                 </el-form-item>
                 <el-form-item
                   v-if="canViewField('integration.wechat_pay_private_key')"
+                  class="tf-form-field--wide"
                   label="微信商户私钥"
                 >
                   <el-input
@@ -684,6 +691,7 @@
                 </el-form-item>
                 <el-form-item
                   v-if="canViewField('integration.wechat_pay_serial_no')"
+                  class="tf-form-field--wide"
                   label="微信证书序列号"
                 >
                   <el-input
@@ -709,7 +717,7 @@
             class="tf-tab-panel"
           >
             <el-form
-              class="config-form service-dialog-form"
+              class="config-form service-dialog-form tf-form-layout tf-form-grid"
               label-width="140px"
               :disabled="!canEdit"
             >
@@ -731,6 +739,7 @@
               </el-form-item>
               <el-form-item
                 v-if="canViewField('integration.alipay_private_key')"
+                class="tf-form-field--wide"
                 label="支付宝应用私钥"
               >
                 <el-input
@@ -744,6 +753,7 @@
               </el-form-item>
               <el-form-item
                 v-if="canViewField('integration.alipay_public_key')"
+                class="tf-form-field--wide"
                 label="支付宝公钥"
               >
                 <el-input
@@ -772,7 +782,7 @@
             class="tf-tab-panel"
           >
             <el-form
-              class="config-form service-dialog-form"
+              class="config-form service-dialog-form tf-form-layout tf-form-grid"
               label-width="140px"
               :disabled="!canEdit"
             >

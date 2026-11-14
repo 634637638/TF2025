@@ -46,7 +46,7 @@ class PaymentController {
       })
     } catch (error) {
       log.error('创建付款申请失败:', error)
-      res.status(500).json({
+      res.status(error.statusCode === 400 ? 400 : 500).json({
         success: false,
         error: {
           code: 'CREATE_PAYMENT_ERROR',

@@ -6,6 +6,42 @@
 import DOMPurify from 'dompurify'
 import { storage } from '@/services/storage'
 import { logger } from '@/utils/logger'
+import {
+  decimal as decimalSource,
+  money as moneySource,
+  integer as integerSource,
+  mobile as mobileSource,
+  phoneSeparators as phoneSeparatorsSource,
+  mobileCountryPrefix as mobileCountryPrefixSource,
+  singleLineControls as singleLineControlsSource
+} from '../../../backend/src/config/input-validation.json'
+
+const decimalPattern = new RegExp(decimalSource)
+const moneyPattern = new RegExp(moneySource)
+const integerPattern = new RegExp(integerSource)
+const mobilePattern = new RegExp(mobileSource)
+const phoneSeparators = new RegExp(phoneSeparatorsSource, 'g')
+const mobileCountryPrefix = new RegExp(mobileCountryPrefixSource)
+const singleLineControls = new RegExp(singleLineControlsSource)
+
+/** 单行文本允许合法标点；长度与是否必填由字段声明。 */
+export const isValidSingleLineText = (value: unknown, maxLength = 1000): value is string => (
+  typeof value === 'string' && value.length <= maxLength && !singleLineControls.test(value)
+)
+
+export const isValidPersonName = (value: unknown, maxLength = 50): value is string => (
+  isValidSingleLineText(value, maxLength) && Boolean(value.trim()) && /\p{L}/u.test(value)
+)
+
+export const isEmptyInput = (value: unknown): value is null | undefined | '' => value === null || value === undefined || value === ''
+export const isDecimalInput = (value: unknown): value is string | number => (
+  (typeof value === 'number' || (typeof value === 'string' && decimalPattern.test(value))) && Number.isFinite(Number(value))
+)
+export const isIntegerInput = (value: unknown): value is string | number => (
+  (typeof value === 'number' || (typeof value === 'string' && integerPattern.test(value))) && Number.isSafeInteger(Number(value))
+)
+
+export const isMoneyInput = (value: unknown): value is string | number => isDecimalInput(value) && moneyPattern.test(String(value))
 
 // ============================================================================
 // XSS 防护
@@ -85,7 +121,7 @@ export function escapeHtml(str: string): string {
  * @returns 是否有效
  */
 export function isValidEmail(email: string): boolean {
-  if (!email || typeof email !== 'string') {
+  if (!email || !isValidSingleLineText(email, 254)) {
     return false
   }
 
@@ -100,38 +136,33 @@ const APPLE_ACCOUNT_PHONE_REGEX = /^(?:\+?86)?1[3-9]\d{9}$/
  * @param phone - 电话号码
  * @returns 是否有效
  */
-export function normalizePhoneDigits(phone: unknown, maxLength = 11): string {
-  return String(phone ?? '').replace(/\D/g, '').slice(0, maxLength)
+export function normalizePhoneDigits(phone: unknown): string {
+  return typeof phone === 'string' ? phone.replace(/^ +| +$/g, '').replace(phoneSeparators, '').replace(mobileCountryPrefix, '') : ''
 }
 
 /**
  * 规范化姓名
- * 只保留中文、英文和空格，并压缩多余空格
+ * 只整理首尾和重复的普通空格，保留合法姓名中的间隔符、标点及完整内容
  * @param value - 原始姓名
  * @param maxLength - 最大长度
  * @returns 规范化后的姓名
  */
 export function normalizePersonName(value: unknown, maxLength = 50): string {
-  return String(value ?? '')
-    .replace(/[^\u4e00-\u9fa5a-zA-Z\s]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .slice(0, maxLength)
+  if (typeof value !== 'string') return ''
+  // 超长内容原样交给字段校验，不能截成另一姓名。
+  return value.length > maxLength ? value : value.replace(/ +/g, ' ').replace(/^ +| +$/g, '')
 }
 
 /**
  * 规范化 Apple ID
- * 支持手机号或邮箱形式，保留常见账号字符并统一转为小写
+ * 只去除首尾普通空格并转为小写，非法或超长内容由校验拒绝
  * @param value - 原始 Apple ID
  * @param maxLength - 最大长度
  * @returns 规范化后的 Apple ID
  */
 export function normalizeAppleId(value: unknown, maxLength = 100): string {
-  return String(value ?? '')
-    .replace(/\s+/g, '')
-    .replace(/[^a-zA-Z0-9.!#$%&'*+/=?^_`{|}~@-]/g, '')
-    .toLowerCase()
-    .slice(0, maxLength)
+  if (typeof value !== 'string') return ''
+  return value.length > maxLength ? value : value.replace(/^ +| +$/g, '').toLowerCase()
 }
 
 /**
@@ -146,7 +177,7 @@ export function isValidAppleAccount(account: string): boolean {
   }
 
   const normalizedAccount = normalizeAppleId(account)
-  return isValidEmail(normalizedAccount) || APPLE_ACCOUNT_PHONE_REGEX.test(normalizedAccount)
+  return normalizedAccount.length <= 100 && (isValidEmail(normalizedAccount) || APPLE_ACCOUNT_PHONE_REGEX.test(normalizedAccount))
 }
 
 /**
@@ -162,17 +193,14 @@ export function resolveAppleAccountEmail(account: unknown): string | null {
 
 /**
  * 规范化身份证号
- * 去除空格并统一将校验位转换为大写 X
+ * 只去除首尾普通空格并转为大写，非法或超长内容由校验拒绝
  * @param value - 原始身份证号
  * @param maxLength - 最大长度
  * @returns 规范化后的身份证号
  */
 export function normalizeIdCard(value: unknown, maxLength = 18): string {
-  return String(value ?? '')
-    .replace(/\s+/g, '')
-    .toUpperCase()
-    .replace(/[^0-9X]/g, '')
-    .slice(0, maxLength)
+  if (typeof value !== 'string') return ''
+  return value.length > maxLength ? value : value.replace(/^ +| +$/g, '').toUpperCase()
 }
 
 /**
@@ -185,8 +213,7 @@ export function isValidMobilePhone(phone: string): boolean {
     return false
   }
 
-  const mobileRegex = /^1[3-9]\d{9}$/
-  return mobileRegex.test(normalizePhoneDigits(phone))
+  return mobilePattern.test(normalizePhoneDigits(phone))
 }
 
 /**
@@ -210,7 +237,7 @@ export function isValidPhone(phone: string): boolean {
  * @returns 是否有效
  */
 export function isValidIdCard(idCard: string): boolean {
-  if (!idCard || typeof idCard !== 'string') {
+  if (!idCard || !isValidSingleLineText(idCard, 18)) {
     return false
   }
 
@@ -245,11 +272,8 @@ export function isValidIdCard(idCard: string): boolean {
  * @returns 是否有效
  */
 export function isValidAmount(amount: string | number): boolean {
-  const num = typeof amount === 'string' ? parseFloat(amount) : amount
-  if (isNaN(num)) {
-    return false
-  }
-  return num >= 0 && num <= 999999999.99 && /^\d+(\.\d{1,2})?$/.test(String(num))
+  if (!isMoneyInput(amount)) return false
+  return Number(amount) >= 0 && Number(amount) <= 999999999.99
 }
 
 /**
@@ -258,7 +282,7 @@ export function isValidAmount(amount: string | number): boolean {
  * @returns 是否有效
  */
 export function isValidUrl(url: string): boolean {
-  if (!url || typeof url !== 'string') {
+  if (!url || !isValidSingleLineText(url)) {
     return false
   }
 

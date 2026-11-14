@@ -1,6 +1,6 @@
 import { readonly, ref } from 'vue'
 import { useNotification } from '@/composables/useNotification'
-import { normalizePersonName } from '@/utils/security'
+import { isValidPersonName, normalizePersonName } from '@/utils/security'
 
 const promptingCustomerName = ref(false)
 
@@ -13,13 +13,13 @@ export function useCustomerNamePrompt() {
     try {
       const result = await prompt('请输入客户姓名', '编辑客户姓名', {
         inputValue: currentName,
-        inputPattern: /[\u4e00-\u9fa5a-zA-Z]/,
-        inputErrorMessage: '客户姓名不能为空'
+        inputValidator: value => (Boolean(value?.trim()) && isValidPersonName(value, 20)) || '请输入1至20字的单行客户姓名',
+        inputErrorMessage: '请输入1至20字的单行客户姓名'
       })
       if (!result) return
       const name = normalizePersonName(result.value, 20)
-      if (!name) {
-        warning('客户姓名不能为空')
+      if (!name || !isValidPersonName(name, 20)) {
+        warning('请输入1至20字的单行客户姓名')
         return
       }
       await onConfirm(name)

@@ -159,6 +159,7 @@
             <el-table
               ref="memoriesTableRef"
               v-tf-loading="{ active: tableLoading || refreshing, text: '正在刷新内存规格...' }"
+              v-table-double-tap="mobileDetailTapOptions"
               :data="memories"
               border
               stripe
@@ -166,8 +167,7 @@
               table-layout="fixed"
               :fit="true"
               :row-key="getMemoryRowKey"
-              :expand-row-keys="isMobile && mobileActionRowId ? [mobileActionRowId] : []"
-              @row-click="(row) => handleMobileRowTap(row.id)"
+              @row-dblclick="handleMobileDetailDoubleClick"
             >
               <template #empty>
                 <TableLoadingRow
@@ -310,36 +310,32 @@
                   </div>
                 </template>
               </el-table-column>
-              <el-table-column
-                v-if="isMobile && (canEdit || canDelete)"
-                type="expand"
-                width="1"
-                class-name="mobile-expand-column"
-                label-class-name="mobile-expand-header"
-              >
-                <template #default="{ row }">
-                  <div class="mobile-row-actions">
-                    <el-button
-                      v-if="canEdit"
-                      v-permission="'memories:edit'"
-                      type="primary"
-                      size="small"
-                      @click.stop="editMemory(row)"
-                    >
-                      <i class="fas fa-edit" /><span>编辑</span>
-                    </el-button><el-button
-                      v-if="canDelete"
-                      v-permission="'memories:delete'"
-                      type="danger"
-                      size="small"
-                      @click.stop="deleteMemory(row)"
-                    >
-                      <i class="fas fa-trash" /><span>删除</span>
-                    </el-button>
-                  </div>
-                </template>
-              </el-table-column>
             </el-table>
+            <RecordDetailDialog
+              v-model="mobileDetailVisible"
+              title="内存详情"
+              :fields="mobileDetailFields"
+              :record="mobileDetailRow"
+              :has-actions="canEdit || canDelete"
+            >
+              <template #actions="{ row }">
+                <el-button
+                  v-if="canEdit"
+                  v-permission="'memories:edit'"
+                  type="primary"
+                  @click.stop="runMobileDetailAction(() => editMemory(row))"
+                >
+                  <i class="fas fa-edit" /><span>编辑</span>
+                </el-button><el-button
+                  v-if="canDelete"
+                  v-permission="'memories:delete'"
+                  type="danger"
+                  @click.stop="runMobileDetailAction(() => deleteMemory(row))"
+                >
+                  <i class="fas fa-trash" /><span>删除</span>
+                </el-button>
+              </template>
+            </RecordDetailDialog>
           </div>
 
           <!-- 分页组件 -->
@@ -369,7 +365,7 @@
           <el-form
             :model="formData"
             label-width="90px"
-            class="memories-dialog-form"
+            class="memories-dialog-form tf-form-layout tf-form-grid"
           >
             <el-form-item
               v-if="canViewField('capacity')"
@@ -423,7 +419,7 @@
             <div class="tf-dialog-actions">
               <el-button
                 type="default"
-                @click="attemptCloseModal"
+                @click="closeModal"
               >
                 取消
               </el-button>
@@ -460,7 +456,8 @@ import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import { PageHeader, PermissionGate } from '@/components/base'
 import { usePermissionToast } from '@/utils/permissionToastSimple'
 import { useMobile } from '@/composables/mobile'
-import { useMobileRowDoubleTap } from '@/composables/useMobileRowDoubleTap'
+import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
+import type { RecordDetailField } from '@/types/component'
 import { useLatestRequest } from '@/composables/useLatestRequest'
 import { logger } from '@/utils/logger'
 import { useElementTableSortable } from '@/composables/useElementTableSortable'
@@ -540,19 +537,8 @@ interface Memory {
 }
 
 const memoriesTableRef = ref<HTMLElement | { $el?: HTMLElement } | null>(null)
-const mobileActionRowId = ref<string | null>(null)
-const { isDoubleTap } = useMobileRowDoubleTap()
 
-const toggleMobileActions = (id: number) => {
-  if (!isMobile.value) return
-  const rowKey = String(id)
-  mobileActionRowId.value = mobileActionRowId.value === rowKey ? null : rowKey
-}
 
-const handleMobileRowTap = (id: number) => {
-  if (!isMobile.value) return
-  if (isDoubleTap(String(id))) toggleMobileActions(id)
-}
 
 // 响应式数据
 // 搜索相关状态
@@ -612,7 +598,7 @@ const dialogVisible = computed({
   get: () => showCreateModal.value || showEditModal.value,
   set: (value) => {
     if (!value) {
-      attemptCloseModal()
+      closeModal()
     }
   }
 })
@@ -879,29 +865,6 @@ const submitForm = async () => {
   }
 }
 
-// 新增取消直接重置；仅编辑已有记录时检查未保存的更改。
-const hasUnsavedChanges = (): boolean => {
-  if (!showEditModal.value || currentEditingId.value === null) return false
-  const originalMemory = memories.value.find(item => item.id === currentEditingId.value)
-  if (!originalMemory) return false
-  return (
-    formData.value.size !== originalMemory.size ||
-    formData.value.status !== originalMemory.status ||
-    formData.value.sort_order !== originalMemory.sort_order
-  )
-}
-
-// 新增直接关闭，编辑有更改时保留确认。
-const attemptCloseModal = async () => {
-  if (hasUnsavedChanges()) {
-    if (await confirm('您有未保存的更改，确定要关闭吗？')) {
-      closeModal()
-    }
-  } else {
-    closeModal()
-  }
-}
-
 // 关闭模态框
 const closeModal = () => {
   showCreateModal.value = false
@@ -963,6 +926,23 @@ useElementTableSortable({
 })
 
 // 生命周期
+const { detailRow: mobileDetailRow, detailVisible: mobileDetailVisible, doubleTapOptions: mobileDetailTapOptions,
+  handleRowDoubleClick: handleMobileDetailDoubleClick, runDetailAction: runMobileDetailAction } = useMobileTableDetail<Memory>({
+    enabled: computed(() => isMobile.value && canView.value), rows: memories, getKey: row => row.id
+  })
+const mobileDetailFields = computed<RecordDetailField[]>(() => {
+  const row = mobileDetailRow.value
+  if (!row) return []
+  return [
+    { key: 'capacity', label: '内存规格', value: row.size, visible: canViewField('capacity') },
+    { key: 'type', label: '存储大小', value: row.storage_size === null || row.storage_size === undefined ? '-' : `${row.storage_size}${row.storage_unit || ''}`, visible: canViewField('type') },
+    { key: 'status', label: '状态', value: row.status === 1 ? '启用' : '禁用', visible: canViewField('status') },
+    { key: 'sort_order', label: '排序', value: row.sort_order, visible: canViewField('sort_order') },
+    { key: 'created_at', label: '创建时间', value: formatDateTime(row.created_at || ''), visible: canViewField('created_at'), wide: true }
+  ]
+})
+
+
 onMounted(() => {
   if (!canView.value) {
     return

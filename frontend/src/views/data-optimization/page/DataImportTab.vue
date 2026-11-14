@@ -101,14 +101,12 @@
           <el-button
             type="primary"
             :disabled="!uploadedFile || uploading || analyzing"
+            :loading="uploading || analyzing"
             @click="analyzeFile"
           >
-            <InlineLoading
-              v-if="uploading || analyzing"
-              :text="uploading ? '正在上传导入文件...' : '正在分析导入文件...'"
-              size="small"
-              variant="inherit"
-            />
+            <template v-if="uploading || analyzing">
+              {{ uploading ? '正在上传导入文件...' : '正在分析导入文件...' }}
+            </template>
             <template v-else>
               <i class="fas fa-search" />
               <span>分析数据</span>
@@ -359,14 +357,12 @@
           <el-button
             type="primary"
             :disabled="!selectedStrategy || importing"
+            :loading="importing"
             @click="startImport"
           >
-            <InlineLoading
-              v-if="importing"
-              text="导入中..."
-              size="small"
-              variant="inherit"
-            />
+            <template v-if="importing">
+              导入中...
+            </template>
             <template v-else>
               <i class="fas fa-play" />
               <span>开始导入</span>
@@ -468,9 +464,11 @@
         />
         <el-table
           v-else
+          v-table-double-tap="historyDetailTapOptions"
           :data="importHistory"
           stripe
           class="data-table history-table"
+          @row-dblclick="historyDetailDoubleClick"
         >
           <el-table-column
             prop="start_time"
@@ -492,7 +490,7 @@
             <template #default="{ row }">
               <div class="user-cell">
                 <i class="fas fa-user" />
-                {{ row.user_name || row.user || '未知' }}
+                {{ row.user_name || '未知' }}
               </div>
             </template>
           </el-table-column>
@@ -538,7 +536,7 @@
                 :type="getStrategyTagType(row.strategy)"
                 size="small"
               >
-                {{ getStrategyLabel(row.strategy) }}
+                {{ getStrategyLabel(row.strategy || '') }}
               </el-tag>
             </template>
           </el-table-column>
@@ -556,7 +554,7 @@
             </template>
           </el-table-column>
           <el-table-column
-            v-if="showActionColumn"
+            v-if="!isMobile && (showActionColumn)"
             label="操作"
             :width="$getActionColumnWidth(1)"
             class-name="actions-column"
@@ -577,22 +575,34 @@
             </template>
           </el-table-column>
         </el-table>
+        <RecordDetailDialog
+          v-model="historyDetailVisible"
+          title="导入历史详情"
+          :record="historyDetailRow"
+          :fields="historyDetailFields"
+          :has-actions="canDelete"
+        >
+          <template #actions="{ row }">
+            <el-button
+              v-if="canDelete"
+              type="danger"
+              :icon="Delete"
+              link
+              @click.stop="historyDetailRunAction(() => handleDeleteHistory(row))"
+            >
+              删除
+            </el-button>
+          </template>
+        </RecordDetailDialog>
       </div>
-      <template #footer>
-        <div class="tf-dialog-actions">
-          <el-button
-            type="default"
-            @click="showHistoryDialog = false"
-          >
-            关闭
-          </el-button>
-        </div>
-      </template>
     </MobileDialog>
   </div>
 </template>
 
 <script setup lang="ts">
+import { useMobile } from '@/composables/mobile'
+import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
+import type { RecordDetailField } from '@/types/component'
 import { confirmAction } from '@/utils/message-box'
 import { computed, ref, onUnmounted } from 'vue'
 
@@ -600,7 +610,6 @@ import { Delete } from '@element-plus/icons-vue'
 import { dataImportApi } from '@/api/data-optimization'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
-import InlineLoading from '@/components/InlineLoading.vue'
 import { logger } from '@/utils/logger'
 import { formatDate as formatDateTime } from '@/utils/format'
 import { getRequestErrorMessage, getRequestErrorStatus } from '@/utils/api-response'
@@ -1135,6 +1144,22 @@ const handleDeleteHistory = async (row: ImportHistoryRecord) => {
     }
   }
 }
+
+const { isMobile } = useMobile()
+const { detailRow: historyDetailRow, detailVisible: historyDetailVisible, doubleTapOptions: historyDetailTapOptions, handleRowDoubleClick: historyDetailDoubleClick, runDetailAction: historyDetailRunAction } = useMobileTableDetail<(typeof importHistory.value)[number]>({
+  enabled: () => isMobile.value, rows: () => importHistory.value, getKey: row => row.id
+})
+const historyDetailFields = computed<RecordDetailField[]>(() => {
+  const row = historyDetailRow.value
+  if (!row) return []
+  return [
+    { key: 'start_time', label: '导入时间', value: formatDateTime(row.start_time), visible: true, wide: true },
+    { key: 'user_name', label: '操作人', value: row.user_name || '未知', visible: true },
+    { key: 'field2', label: '数据统计', value: [row.total_records, row.imported, row.updated, row.skipped, row.error_count].join(' / '), visible: true },
+    { key: 'strategy', label: '策略', value: getStrategyLabel(row.strategy || ''), visible: true },
+    { key: 'field4', label: '状态', value: getStatusLabel(row.status, row.error_count), visible: true }
+  ]
+})
 </script>
 
 <style lang="scss" scoped src="./styles/data-import/upload.scss"></style>

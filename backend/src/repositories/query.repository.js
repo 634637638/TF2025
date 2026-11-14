@@ -1,3 +1,4 @@
+const { getLatestActiveSaleIdSql } = require('../utils/sale-status')
 const BaseRepository = require('./base.repository')
 const { hasColumn, hasTable } = require('../utils/schema-inspector')
 const log = require('../utils/log')
@@ -9,14 +10,18 @@ const {
 } = require('../utils/phone-status')
 const { normalizedModelSql } = require('../utils/search')
 const { getBeijingTimeString } = require('../utils/time')
+const SalesCheckoutRepository = require('./sales-checkout.repository')
+const checkoutRepository = new SalesCheckoutRepository()
 const QUERY_STATS_DEFAULT_STATUSES = Object.freeze([
   ...COMPLETED_TRANSACTION_STATUSES,
   'in_stock'
 ])
 
 class QueryRepository extends BaseRepository {
-  lockPhoneForReturn(connection, phoneId) {
-    return connection.execute('SELECT status, store_id FROM phones WHERE id = ? FOR UPDATE', [phoneId])
+  async lockPhoneForReturn(connection, phoneId) {
+    const result = await connection.execute('SELECT status, store_id FROM phones WHERE id = ? FOR UPDATE', [phoneId])
+    if (result[0][0]) result[0][0].checkout_order_id = await checkoutRepository.currentPhoneOrder(connection, phoneId)
+    return result
   }
 
   lockLatestSaleForReturn(connection, phoneId) {
@@ -30,7 +35,7 @@ class QueryRepository extends BaseRepository {
         LEFT JOIN users sale_user ON s.operator_id = sale_user.id
         LEFT JOIN phones p ON s.phone_id = p.id
         LEFT JOIN users phone_sale_user ON p.sale_operator_id = phone_sale_user.id
-        WHERE s.phone_id = ?
+        WHERE s.phone_id = ? AND s.id = (${getLatestActiveSaleIdSql()})
         ORDER BY s.id DESC
         LIMIT 1
         FOR UPDATE`, [phoneId])
@@ -62,8 +67,10 @@ class QueryRepository extends BaseRepository {
     ])
   }
 
-  lockPhoneForDelete(connection, phoneId) {
-    return connection.execute('SELECT store_id FROM phones WHERE id = ? FOR UPDATE', [phoneId])
+  async lockPhoneForDelete(connection, phoneId) {
+    const result = await connection.execute('SELECT store_id FROM phones WHERE id = ? FOR UPDATE', [phoneId])
+    if (result[0][0]) result[0][0].checkout_order_id = await checkoutRepository.phoneOrder(connection, phoneId)
+    return result
   }
 
   lockSalesForDelete(connection, phoneId) {
@@ -76,10 +83,6 @@ class QueryRepository extends BaseRepository {
 
   deletePhoneReversalLogs(connection, phoneId) {
     return connection.execute('DELETE FROM sale_reversal_logs WHERE phone_id = ?', [phoneId])
-  }
-
-  deletePhoneOrderItems(connection, phoneId) {
-    return connection.execute('DELETE FROM sales_order_items WHERE phone_id = ?', [phoneId])
   }
 
   deletePhoneRentals(connection, phoneId) {
@@ -162,7 +165,7 @@ class QueryRepository extends BaseRepository {
     const paymentChannelFallbackExpr = supportsPaymentRecordsChannel
       ? `(SELECT pr.payment_channel
           FROM payment_records pr
-          WHERE pr.order_id IN (latest_sale.id, p.id)
+          WHERE pr.order_id = latest_sale.id AND pr.customer_id = latest_sale.customer_id
           ORDER BY pr.id DESC
           LIMIT 1)`
       : 'NULL'
@@ -243,14 +246,14 @@ class QueryRepository extends BaseRepository {
       } else if (!normalizedStatus) {
         whereConditions.push(`(
           (p.status IN ('sold', 'peer_transfer', 'supplier_proxy')
-            AND EXISTS (SELECT 1 FROM sales s WHERE s.phone_id = p.id AND s.operator_id = ?))
+            AND latest_sale.operator_id = ?)
           OR
           (p.status NOT IN ('sold', 'peer_transfer', 'supplier_proxy')
             AND p.inventory_operator_id = ?)
         )`)
         whereParams.push(sale_operator_id, sale_operator_id)
       } else {
-        whereConditions.push('EXISTS (SELECT 1 FROM sales s WHERE s.phone_id = p.id AND s.operator_id = ?)')
+        whereConditions.push('latest_sale.operator_id = ?')
         whereParams.push(sale_operator_id)
       }
     }
@@ -307,9 +310,7 @@ class QueryRepository extends BaseRepository {
       model: 'm.name',
       model_name: 'm.name',
       price: 'p.sale_price',
-      sale_price: 'p.sale_price',
-      purchase_unit_price: 'p.purchase_cost',
-      purchase_cost: 'p.purchase_cost'
+      purchase_unit_price: 'p.purchase_cost'
     }
     const validSortField = Object.prototype.hasOwnProperty.call(orderByFieldMap, sort_field)
       ? sort_field
@@ -318,11 +319,7 @@ class QueryRepository extends BaseRepository {
     const orderByField = orderByFieldMap[validSortField]
     const latestSaleJoinClause = `
       LEFT JOIN sales latest_sale ON latest_sale.id = (
-        SELECT s.id
-        FROM sales s
-        WHERE s.phone_id = p.id
-        ORDER BY s.created_at DESC, s.id DESC
-        LIMIT 1
+        ${getLatestActiveSaleIdSql()}
       )
     `
 
@@ -462,7 +459,7 @@ class QueryRepository extends BaseRepository {
         filterJoins.push('LEFT JOIN memories mem ON p.memory_id = mem.id')
       }
       // 如果使用了店铺筛选或搜索词，需要包含 latest_sale 子查询
-      if (search_term || store_id || (store_ids && store_ids.length > 0)) {
+      if (search_term || store_id || sale_operator_id || (store_ids && store_ids.length > 0)) {
         filterJoins.push(latestSaleJoinClause)
         filterJoins.push('LEFT JOIN customers c ON latest_sale.customer_id = c.id')
       }
@@ -635,7 +632,7 @@ class QueryRepository extends BaseRepository {
     if (sale_operator_id) {
       if (normalizedStatus) {
         if (this.isSalesRelatedStatus(normalizedStatus)) {
-          whereConditions.push('EXISTS (SELECT 1 FROM sales s WHERE s.phone_id = p.id AND s.operator_id = ?)')
+          whereConditions.push('latest_sale.operator_id = ?')
           whereParams.push(sale_operator_id)
         } else {
           whereConditions.push('p.inventory_operator_id = ?')
@@ -644,7 +641,7 @@ class QueryRepository extends BaseRepository {
       } else {
         whereConditions.push(`(
           (p.status IN ('sold', 'peer_transfer', 'supplier_proxy')
-            AND EXISTS (SELECT 1 FROM sales s WHERE s.phone_id = p.id AND s.operator_id = ?))
+            AND latest_sale.operator_id = ?)
           OR
           (p.status NOT IN ('sold', 'peer_transfer', 'supplier_proxy')
             AND p.inventory_operator_id = ?)
@@ -668,11 +665,7 @@ class QueryRepository extends BaseRepository {
     // 统计必须与列表使用相同的最新销售记录，否则门店和客户关键词会统计错。
     const latestSaleJoin = `
       LEFT JOIN sales latest_sale ON latest_sale.id = (
-        SELECT s.id
-        FROM sales s
-        WHERE s.phone_id = p.id
-        ORDER BY s.created_at DESC, s.id DESC
-        LIMIT 1
+        ${getLatestActiveSaleIdSql()}
       )
     `
 

@@ -8,6 +8,12 @@ import { storage } from '@/services/storage'
 import { SECURITY_STORAGE_KEYS } from '@/constants/storage'
 import { useLoadingStore } from '@/stores/loading'
 
+// 本文件验证生产上报链路；开发环境的禁止发送由环境隔离用例覆盖。
+vi.hoisted(() => {
+  vi.stubEnv('PROD', true)
+  vi.stubEnv('DEV', false)
+})
+
 const feedback = vi.hoisted(() => ({
   error: vi.fn(), warning: vi.fn(), notification: vi.fn(), success: vi.fn()
 }))
@@ -41,7 +47,10 @@ afterEach(() => {
   globalErrorLogger.clear()
   storage.remove(SECURITY_STORAGE_KEYS.CSRF_TOKEN, 'session')
 })
-afterAll(() => globalErrorLogger.destroy())
+afterAll(() => {
+  globalErrorLogger.destroy()
+  vi.unstubAllEnvs()
+})
 
 describe('统一请求与错误上报的提示隔离', () => {
   it('首次上报获取 CSRF 失败时仍沿用上报的静默策略，不递归且不跳过 CSRF', async () => {
@@ -82,6 +91,49 @@ describe('统一请求与错误上报的提示隔离', () => {
     instance.defaults.adapter = async config => fail(config, status)
     await expect(unifiedApi.post('/backup/cloud/folders', {}, { showLoading: false })).rejects.toBeInstanceOf(AxiosError)
     expect(feedback.error.mock.calls.length + feedback.warning.mock.calls.length).toBe(1)
+  })
+
+  it.each([400, 403, 404, 409, 422, 429])('HTTP %s 普通拒绝保留页面提示和本地记录，不外发错误日志', async status => {
+    const requests: string[] = []
+    instance.defaults.adapter = async config => {
+      requests.push(config.url || '')
+      return fail(config, status)
+    }
+    await expect(unifiedApi.post('/backup/cloud/folders', {}, { showLoading: false })).rejects.toBeInstanceOf(AxiosError)
+    await globalErrorLogger.flushReports()
+    expect(feedback.error.mock.calls.length + feedback.warning.mock.calls.length).toBe(1)
+    expect(globalErrorLogger.getLogs()).toHaveLength(1)
+    expect(requests).toEqual(['/backup/cloud/folders'])
+  })
+
+  it.each([500, 501, 503])('HTTP %s 技术故障通过统一接口批量上报', async status => {
+    const requests: string[] = []
+    instance.defaults.adapter = async config => {
+      requests.push(config.url || '')
+      if (config.url !== '/logs/errors') return fail(config, status)
+      return {
+        config, status: 200, statusText: 'OK', headers: new AxiosHeaders(), data: { success: true }
+      }
+    }
+    await expect(unifiedApi.post('/backup/cloud/folders', {}, { showLoading: false })).rejects.toBeInstanceOf(AxiosError)
+    expect(requests).toEqual(['/backup/cloud/folders'])
+    await globalErrorLogger.flushReports()
+    expect(requests).toEqual(['/backup/cloud/folders', '/logs/errors'])
+    expect(globalErrorLogger.getLogs()[0].reported).toBe(true)
+  })
+
+  it('单次断网保留页面提示，按 high 批量收集，不触发 critical 立即发送', async () => {
+    const requests: string[] = []
+    instance.defaults.adapter = async config => {
+      requests.push(config.url || '')
+      throw new AxiosError('模拟网络中断', 'ERR_NETWORK', config)
+    }
+    await expect(unifiedApi.post('/backup/cloud/folders', {}, { showLoading: false })).rejects.toBeInstanceOf(AxiosError)
+    expect(requests).toEqual(['/backup/cloud/folders'])
+    expect(globalErrorLogger.getLogs()[0]).toMatchObject({ level: ErrorLevel.HIGH, type: ErrorType.NETWORK })
+    expect(feedback.error.mock.calls.length + feedback.warning.mock.calls.length).toBe(1)
+    await globalErrorLogger.flushReports()
+    expect(requests).toEqual(['/backup/cloud/folders', '/logs/errors'])
   })
 
   it('批量上报遇到空 500 时不新增递归日志、不弹提示、不触发 Loading；原日志保留重试', async () => {

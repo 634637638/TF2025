@@ -109,10 +109,14 @@ test('客户积分配置保留读取、范围校验和保存参数契约', async
   }, saved)
   assert.deepEqual(saveCalls, [{
     enabled: false,
+    amount_per_point: 100,
     include_new: true,
     include_used: true,
+    include_accessories: false,
     new_points_per_100: 3,
-    used_points_per_100: 4
+    used_points_per_100: 4,
+    accessory_points_per_100: 1,
+    redemption: { enabled: false, points_per_yuan: null, max_percent: null, sources: [], all_accessory_categories: false, category_ids: [] }
   }])
   assert.equal(saved.body.message, '积分设置保存成功')
 })
@@ -157,6 +161,7 @@ test('客户列表 controller 保留分页上限、规范筛选与查看权限',
       province: undefined,
       search: 'Test',
       search_fields: 'name,phone',
+      addressLevelsReady: false,
       register_date_start: '2026-11-01',
       register_date_end: '2026-11-07',
       status: ''
@@ -172,7 +177,7 @@ test('客户列表 controller 保留分页上限、规范筛选与查看权限',
   })
 
   const route = fs.readFileSync(path.join(__dirname, '../src/routes/customers.js'), 'utf8')
-  assert.ok(route.includes("router.get('/', unifiedAuth, requirePermission('customers:view'), customerController.list.bind(customerController))"))
+  assert.ok(route.includes("router.get('/', unifiedAuth, requirePermission('customers:view'), protectCustomerAddress, customerController.list.bind(customerController))"))
 })
 
 test('customer repository preserves list filters, status semantics, search whitelist and sortable field safety', async () => {
@@ -303,6 +308,7 @@ test('客户更新 controller 保留格式校验、动态字段过滤、密码�
   const calls = []
   const controller = new CustomerController({
     repository: {
+      async withConnection(operation) { return operation({ execute() {} }) },
       async findCustomerById(id) {
         calls.push(['find', id])
         return calls.some(call => call[0] === 'update') ? { id, phone: '13800000000', name: '更新后' } : { id, phone: '13800000000' }
@@ -314,6 +320,7 @@ test('客户更新 controller 保留格式校验、动态字段过滤、密码�
       async update(id, data) { calls.push(['update', id, data]); return { affectedRows: 1 } }
     },
     passwordHasher: async (password, rounds) => `${rounds}:${password}`,
+    pointsLedger: { async ready() { return false } },
     response,
     logger: { error() {} }
   })
@@ -352,8 +359,8 @@ test('客户更新 controller 保留格式校验、动态字段过滤、密码�
 
 test('客户创建与更新 route 保留原服务端认证和权限链', () => {
   const route = fs.readFileSync(path.join(__dirname, '../src/routes/customers.js'), 'utf8')
-  assert.ok(route.includes("router.post('/', unifiedAuth, requireCustomerCreatePermissionForBusinessFlow, customerController.create.bind(customerController))"))
-  assert.ok(route.includes("router.put('/:id', unifiedAuth, requirePermission('customers:edit'), customerController.update.bind(customerController))"))
+  assert.ok(route.includes("router.post('/', unifiedAuth, requireCustomerCreatePermissionForBusinessFlow, protectCustomerAddress, customerController.create.bind(customerController))"))
+  assert.ok(route.includes("router.put('/:id', unifiedAuth, requirePermission('customers:edit'), protectCustomerAddress, customerController.update.bind(customerController))"))
   assert.ok(route.includes("router.post('/:id/purchases', unifiedAuth, requirePermission('customers:edit'), customerController.rejectPurchaseCreation.bind(customerController))"))
   const res = makeResponse()
   const controller = new CustomerController({ response })
@@ -392,6 +399,7 @@ test('客户详情和 VIP 更新保留字段、白名单、404 与路由权限',
   const controller = new CustomerController({
     repository: {
       async findCustomerById(id) { calls.push(['findCustomerById', id]); return { id, name: '客户' } },
+      async getCustomerColumns() { return new Set() },
       async updateVipLevel(id, level) { calls.push(['updateVipLevel', id, level]); return { id, vip_level: level } }
     },
     response
@@ -420,7 +428,7 @@ test('客户详情和 VIP 更新保留字段、白名单、404 与路由权限',
   assert.equal(notFound.statusCode, 404)
 
   const route = fs.readFileSync(path.join(__dirname, '../src/routes/customers.js'), 'utf8')
-  assert.ok(route.includes("router.get('/:id', unifiedAuth, requirePermission('customers:view'), customerController.getById.bind(customerController))"))
+  assert.ok(route.includes("router.get('/:id', unifiedAuth, requirePermission('customers:view'), protectCustomerAddress, customerController.getById.bind(customerController))"))
   assert.ok(route.includes("router.patch('/:id/vip-level', unifiedAuth, requirePermission('customers:manage'), customerController.updateVipLevel.bind(customerController))"))
 })
 
@@ -623,4 +631,30 @@ test('customer statistics routes keep view permission and delegate to controller
   const route = fs.readFileSync(path.join(__dirname, '../src/routes/customers.js'), 'utf8')
   assert.ok(route.includes("router.get('/stats', unifiedAuth, requirePermission('customers:view'), customerController.getStatistics.bind(customerController))"))
   assert.ok(route.includes("router.get('/stats/overview', unifiedAuth, requirePermission('customers:view'), customerController.getStatisticsOverview.bind(customerController))"))
+})
+
+test('积分设置按需返回商品类型最小字段，校验停用和不存在类型', async () => {
+  const CustomerManagementService = require('../src/services/customer-management.service')
+  const { validatePointsConfig, DEFAULT_POINTS_CONFIG } = require('../src/utils/customer-points-rules')
+  const previous = validatePointsConfig({ ...DEFAULT_POINTS_CONFIG, redemption: {
+    enabled: true, points_per_yuan: 10, max_percent: 50, sources: ['accessory'], all_accessory_categories: false, category_ids: [4]
+  } })
+  const writes = [], reads = []
+  const service = new CustomerManagementService({
+    loadPointsConfig: async () => previous,
+    persistPointsConfig: async value => { writes.push(value); return value },
+    accessoryRepository: { async getProductCategories() { reads.push(1); return [
+      { id: '4', name: '旧类型', status: 0, confidential: '不返回' }, { id: 5, name: '新类型', status: 1 }, { id: 6, name: '停用', status: 0 }
+    ] } }
+  })
+  assert.deepEqual((await service.getPointsConfig()).data, previous)
+  assert.equal(reads.length, 0)
+  const options = await service.getPointsConfig({ include_options: '1' })
+  assert.deepEqual(options.data.categories[0], { id: 4, name: '旧类型', status: 0 })
+  await assert.rejects(service.getPointsConfig({ include_options: 'all' }), /参数无效/)
+  await service.savePointsConfig({ new_points_per_100: 3 })
+  assert.deepEqual(writes[0].redemption, previous.redemption)
+  await service.savePointsConfig({ redemption: { ...previous.redemption, category_ids: [5] } })
+  for (const id of [6, 99]) await assert.rejects(service.savePointsConfig({ redemption: { ...previous.redemption, category_ids: [id] } }), /不存在或已停用/)
+  assert.equal(writes.length, 2, '非法商品类型不得写入配置')
 })

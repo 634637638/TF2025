@@ -123,3 +123,8 @@ test('真实覆盖图包含全部叶子路由和 Vue 单元，公共 MobileDialo
   verifyInventory(report.summary, ledger)
   assert.throws(() => verifyInventory({ ...report.summary, leafRoutes: report.summary.leafRoutes + 1 }, ledger), /页面台账 实际叶子路由/)
 })
+
+test('公共记录详情单独统计逻辑引用，不伪装为直接业务 el-dialog', () => {
+  const result = readTemplate('<template><RecordDetailDialog title="记录详情" /></template>')
+  assert.deepEqual(result.dialogs.map(dialog => dialog.kind), ['RecordDetailDialog'])
+})

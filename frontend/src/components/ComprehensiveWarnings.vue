@@ -110,12 +110,14 @@
         </div>
 
         <el-table
+          v-table-double-tap="phoneDetailTapOptions"
           :data="phoneWarnings"
           class="data-table compact-fit-table"
           stripe
           border
           max-height="400"
           :fit="true"
+          @row-dblclick="phoneDetailDoubleClick"
         >
           <el-table-column
             prop="brand_name"
@@ -182,6 +184,7 @@
             align="center"
           />
           <el-table-column
+            v-if="!isMobile"
             label="操作"
             :width="$getActionColumnWidth(['查看'])"
             align="center"
@@ -221,12 +224,14 @@
         </div>
 
         <el-table
-          :data="warningsData.accessories?.warnings || []"
+          v-table-double-tap="accessoryDetailTapOptions"
+          :data="accessoryWarnings"
           class="data-table compact-fit-table"
           stripe
           border
           max-height="400"
           :fit="true"
+          @row-dblclick="accessoryDetailDoubleClick"
         >
           <el-table-column
             prop="name"
@@ -270,6 +275,7 @@
             </template>
           </el-table-column>
           <el-table-column
+            v-if="!isMobile"
             label="操作"
             :width="$getActionColumnWidth(['查看'])"
             align="center"
@@ -444,12 +450,14 @@
         </div>
 
         <el-table
-          :data="warningsData.purchases?.no_recent || []"
+          v-table-double-tap="purchaseDetailTapOptions"
+          :data="purchaseWarnings"
           class="data-table compact-fit-table"
           stripe
           border
           max-height="400"
           :fit="true"
+          @row-dblclick="purchaseDetailDoubleClick"
         >
           <el-table-column
             prop="supplier_name"
@@ -482,6 +490,7 @@
             </template>
           </el-table-column>
           <el-table-column
+            v-if="!isMobile"
             label="操作"
             :width="$getActionColumnWidth(['查看'])"
             align="center"
@@ -508,6 +517,57 @@
         />
       </div>
     </div>
+    <RecordDetailDialog
+      v-model="phoneDetailVisible"
+      title="手机库存预警"
+      :fields="phoneDetailFields"
+      :record="phoneDetailRow"
+      :has-actions="canAccessRoutePath('/inventory', authStore)"
+    >
+      <template #actions>
+        <el-button
+          v-permission="'inventory:view'"
+          type="primary"
+          @click.stop="phoneRunAction(viewPhoneDetail)"
+        >
+          查看库存
+        </el-button>
+      </template>
+    </RecordDetailDialog>
+    <RecordDetailDialog
+      v-model="accessoryDetailVisible"
+      title="配件库存预警"
+      :fields="accessoryDetailFields"
+      :record="accessoryDetailRow"
+      :has-actions="canAccessRoutePath('/accessories', authStore)"
+    >
+      <template #actions>
+        <el-button
+          v-permission="'accessories:view'"
+          type="primary"
+          @click.stop="accessoryRunAction(goToAccessories)"
+        >
+          查看配件
+        </el-button>
+      </template>
+    </RecordDetailDialog>
+    <RecordDetailDialog
+      v-model="purchaseDetailVisible"
+      title="供应商入库预警"
+      :fields="purchaseDetailFields"
+      :record="purchaseDetailRow"
+      :has-actions="canAccessRoutePath('/suppliers', authStore)"
+    >
+      <template #actions>
+        <el-button
+          v-permission="'suppliers:view'"
+          type="primary"
+          @click.stop="purchaseRunAction(goToSuppliers)"
+        >
+          查看供应商
+        </el-button>
+      </template>
+    </RecordDetailDialog>
   </div>
 </template>
 
@@ -521,11 +581,15 @@ import { canAccessRoutePath } from '@/constants/routePermissions'
 import { formatDate as formatGlobalDate, formatAmount } from '@/utils/format'
 import type { ComprehensiveWarningsData, PhoneStockWarning } from '@/types'
 import { useNotification } from '@/composables/useNotification'
+import { useMobile } from '@/composables/mobile'
+import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
+import type { RecordDetailField } from '@/types/component'
 const globalNotifications = useNotification()
 
 
 const router = useRouter()
 const authStore = useAuthStore()
+const { isMobile } = useMobile()
 
 // 响应式数据
 const loading = ref(false)
@@ -564,6 +628,53 @@ const phoneWarnings = computed(() => {
   }
 
   return []
+})
+
+const accessoryWarnings = computed(() => warningsData.value.accessories?.warnings || [])
+const purchaseWarnings = computed(() => warningsData.value.purchases?.no_recent || [])
+const detailEnabled = computed(() => isMobile.value && canAccessRoutePath('/dashboard', authStore))
+const { detailRow: phoneDetailRow, detailVisible: phoneDetailVisible, doubleTapOptions: phoneDetailTapOptions,
+  handleRowDoubleClick: phoneDetailDoubleClick, runDetailAction: phoneRunAction } = useMobileTableDetail({
+  enabled: detailEnabled, rows: phoneWarnings,
+  getKey: row => JSON.stringify([row.brand_name, row.model_name, row.color_name, row.memory_name])
+})
+const { detailRow: accessoryDetailRow, detailVisible: accessoryDetailVisible, doubleTapOptions: accessoryDetailTapOptions,
+  handleRowDoubleClick: accessoryDetailDoubleClick, runDetailAction: accessoryRunAction } = useMobileTableDetail({
+  enabled: detailEnabled, rows: accessoryWarnings, getKey: row => row.name
+})
+const { detailRow: purchaseDetailRow, detailVisible: purchaseDetailVisible, doubleTapOptions: purchaseDetailTapOptions,
+  handleRowDoubleClick: purchaseDetailDoubleClick, runDetailAction: purchaseRunAction } = useMobileTableDetail({
+  enabled: detailEnabled, rows: purchaseWarnings, getKey: row => row.supplier_name
+})
+const phoneDetailFields = computed<RecordDetailField[]>(() => {
+  const row = phoneDetailRow.value
+  return row ? [
+    { key: 'brand', label: '品牌', value: row.brand_name, visible: true },
+    { key: 'model', label: '型号', value: row.model_name, visible: true },
+    { key: 'color', label: '颜色', value: row.color_name, visible: true },
+    { key: 'memory', label: '内存', value: row.memory_name, visible: true },
+    { key: 'threshold', label: '预警阈值', value: row.warning_threshold ?? 3, visible: true },
+    { key: 'stock', label: '库存', value: row.stock_count, visible: true },
+    { key: 'new', label: '全新', value: row.new_count, visible: true },
+    { key: 'used', label: '二手', value: row.used_count, visible: true }
+  ] : []
+})
+const accessoryDetailFields = computed<RecordDetailField[]>(() => {
+  const row = accessoryDetailRow.value
+  return row ? [
+    { key: 'name', label: '配件', value: row.name, visible: true },
+    { key: 'stock', label: '库存', value: row.stock, visible: true },
+    { key: 'min', label: '最低库存', value: row.min_stock, visible: true },
+    { key: 'status', label: '库存状态', value: row.stock < row.min_stock ? '库存不足' : '正常', visible: true }
+  ] : []
+})
+const purchaseDetailFields = computed<RecordDetailField[]>(() => {
+  const row = purchaseDetailRow.value
+  return row ? [
+    { key: 'supplier', label: '供应商', value: row.supplier_name, visible: true },
+    { key: 'days', label: '未入库天数', value: row.days_since_purchase, visible: true },
+    { key: 'last', label: '最近入库', value: row.last_inventory_time ? formatGlobalDate(row.last_inventory_time) : '-', visible: true }
+  ] : []
 })
 
 const resetWarnings = () => {

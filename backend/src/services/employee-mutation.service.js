@@ -3,6 +3,11 @@
 const bcrypt = require('bcryptjs')
 const EmployeeMutationRepository = require('../repositories/employee-mutation.repository')
 const { normalizeRoleIds } = require('../utils/employee-role-format')
+const { parseInput } = require('../middleware/validation')
+
+const { parseAccountInput } = require('../utils/account-input')
+
+const validateEmployeeId = id => parseInput({ id }, { id: { type: 'id', required: true, label: '员工ID' } }).id
 
 const allowedFields = ['username', 'name', 'phone', 'email', 'salary_template_id', 'status', 'hire_date']
 
@@ -28,22 +33,16 @@ class EmployeeMutationService {
   }
 
   async createEmployee(data = {}) {
-    const { username, name, password, phone, email, salary_template_id, hire_date, role_ids } = data
-    if (!username || !name || !password) {
+    if (!data?.username || !data?.name || !data?.password) {
       throw createError('缺少必需字段：用户名、姓名、密码', 400, 'VALIDATION')
     }
+    data = parseAccountInput(data, { required: true })
+    const { username, name, password, phone, email, salary_template_id, hire_date, role_ids } = data
 
     const roleIds = normalizeRoleIds(role_ids)
     if (!roleIds || roleIds.length === 0) {
       throw createError('请至少选择一个有效角色', 400, 'VALIDATION')
     }
-    if (phone && !/^1[3-9]\d{9}$/.test(phone)) {
-      throw createError('手机号格式不正确', 400, 'VALIDATION')
-    }
-    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      throw createError('邮箱格式不正确', 400, 'VALIDATION')
-    }
-
     await assertValidRoles(this.repository, roleIds)
     if (await this.repository.findByUsername(username)) {
       throw createError('用户名已存在', 400, 'VALIDATION')
@@ -68,6 +67,8 @@ class EmployeeMutationService {
   }
 
   async updateEmployee(id, data = {}) {
+    validateEmployeeId(id)
+    data = parseAccountInput(data)
     const { role_ids: roleIdsInput } = data
     const roleIds = roleIdsInput === undefined ? undefined : normalizeRoleIds(roleIdsInput)
     if (roleIdsInput !== undefined && !roleIds) {
@@ -112,6 +113,7 @@ class EmployeeMutationService {
   }
 
   async deleteEmployee(id, currentUserId) {
+    validateEmployeeId(id)
     if (!await this.repository.findId(id)) {
       throw createError('员工不存在', 404, 'NOT_FOUND')
     }
@@ -123,9 +125,11 @@ class EmployeeMutationService {
   }
 
   async updateEmployeeStatus(id, status, currentUserId) {
+    validateEmployeeId(id)
     if (status === undefined) {
       throw createError('缺少status参数', 400, 'VALIDATION')
     }
+    status = parseInput({ status }, { status: { type: 'number', required: true, integer: true, min: 0, max: 1, label: '状态' } }).status
     if (!await this.repository.findId(id)) {
       throw createError('员工不存在', 404, 'NOT_FOUND')
     }

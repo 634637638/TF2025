@@ -194,6 +194,15 @@ const routes: RouteRecordRaw[] = [
         }
       },
       {
+        path: 'accessories/catalog',
+        name: 'AccessoryCatalog',
+        component: () => import('@/views/accessories/AccessoryCatalogView.vue'),
+        meta: {
+          title: '配件设置',
+          icon: 'fas fa-sliders-h'
+        }
+      },
+      {
         path: 'inventory',
         name: 'Inventory',
         component: () => import('@/views/inventory/InventoryView.vue'),

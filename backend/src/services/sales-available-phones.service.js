@@ -1,5 +1,7 @@
 'use strict'
 
+const { getLatestActiveSaleIdSql } = require('../utils/sale-status')
+
 const SalesAvailablePhonesRepository = require('../repositories/sales-available-phones.repository')
 const { COMPLETED_TRANSACTION_STATUSES, getEffectivePhoneStatusSql } = require('../utils/phone-status')
 const { normalizedModelSql } = require('../utils/search')
@@ -233,14 +235,14 @@ class SalesAvailablePhonesService {
     }
 
     if (customer_id) {
-      whereConditions.push('EXISTS (SELECT 1 FROM sales_orders so WHERE so.customer_id = ? AND so.phone_id = p.id AND so.status != \'cancelled\')')
+      whereConditions.push(`EXISTS (SELECT 1 FROM sales so WHERE so.customer_id = ? AND so.id = (${getLatestActiveSaleIdSql('p', 'current_sale')}))`)
       queryParams.push(customer_id)
     }
 
     if (sale_status) {
       switch (sale_status) {
       case 'available':
-        whereConditions.push(`${getEffectivePhoneStatusSql('p')} = 'in_stock' AND NOT EXISTS (SELECT 1 FROM sales_orders so WHERE so.phone_id = p.id AND so.status != 'cancelled')`)
+        whereConditions.push(`${getEffectivePhoneStatusSql('p')} = 'in_stock' AND (${getLatestActiveSaleIdSql()}) IS NULL`)
         break
       case 'reserved':
         whereConditions.push(`${getEffectivePhoneStatusSql('p')} = 'reserved'`)
@@ -249,10 +251,9 @@ class SalesAvailablePhonesService {
         whereConditions.push(`${getEffectivePhoneStatusSql('p')} = 'sold'`)
         break
       case 'shipped':
-        whereConditions.push('EXISTS (SELECT 1 FROM sales_orders so WHERE so.phone_id = p.id AND so.status = \'shipped\')')
-        break
+        throw Object.assign(new Error('手机销售没有发货状态，请选择可用的销售状态'), { statusCode: 400 })
       case 'completed':
-        whereConditions.push('EXISTS (SELECT 1 FROM sales_orders so WHERE so.phone_id = p.id AND so.status = \'completed\')')
+        whereConditions.push(`EXISTS (SELECT 1 FROM sales so WHERE so.id = (${getLatestActiveSaleIdSql('p', 'current_sale')}) AND so.status = 'completed')`)
         break
       default:
         whereConditions.push(`${getEffectivePhoneStatusSql('p')} = 'in_stock'`)
@@ -260,7 +261,7 @@ class SalesAvailablePhonesService {
     }
 
     if (salesman_id) {
-      whereConditions.push('EXISTS (SELECT 1 FROM sales_orders so WHERE so.salesman_id = ? AND so.phone_id = p.id AND so.status != \'cancelled\')')
+      whereConditions.push(`EXISTS (SELECT 1 FROM sales so WHERE so.operator_id = ? AND so.id = (${getLatestActiveSaleIdSql('p', 'current_sale')}))`)
       queryParams.push(salesman_id)
     }
 

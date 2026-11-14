@@ -14,6 +14,18 @@ const createResponse = () => ({
   }
 })
 
+test('预定创建与匹配拒绝伪数字金额，不取得业务连接或预留库存', async () => {
+  const Service = require('../src/services/preorder-mutation.service')
+  let connections = 0
+  const service = new Service({ repository: { async withConnection() { connections += 1; throw new Error('invalid input reached repository') } } })
+  for (const value of ['1e3', '0x10', '12元', '12abc', '1.001', ' 10 ', true, [], {}]) {
+    assert.deepEqual(await service.create({ is_new: 1, deposit_amount: value }), { error: 'invalid_deposit' })
+    assert.deepEqual(await service.create({ is_new: 1, deposit_amount: 10, total_price: value }), { error: 'invalid_total_price' })
+    assert.deepEqual(await service.match('9', { phone_id: 3, actual_price: value }), { error: 'invalid_price' })
+  }
+  assert.equal(connections, 0)
+})
+
 test('预定删除 route 保留认证、删除权限并委托 mutation controller', () => {
   const fs = require('node:fs')
   const path = require('node:path')
@@ -607,7 +619,7 @@ test('预定更新 service 锁定状态、释放旧匹配并在同一事务内�
         calls.push('read')
         return { id: 23, status: 'pending' }
       }
-    },
+    }
   })
 
   const result = await service.update('23', {
@@ -631,6 +643,10 @@ test('预定更新 service 对无效字段和状态拒绝时回滚并释放连�
     { preorder: { status: 'pending' }, input: { customer_name: '旧字段' }, error: 'legacy_field', field: 'customer_name' },
     { preorder: { status: 'pending' }, input: { expected_arrival: '2026-02-30' }, error: 'invalid_expected_arrival' },
     { preorder: { status: 'pending' }, input: { remarks: '备注', deposit_amount: 0 }, error: 'invalid_deposit' },
+    { preorder: { status: 'pending' }, input: { deposit_amount: '1e3' }, error: 'invalid_deposit' },
+    { preorder: { status: 'pending' }, input: { deposit_amount: false }, error: 'invalid_deposit' },
+    { preorder: { status: 'pending' }, input: { total_price: '10.001' }, error: 'invalid_total_price' },
+    { preorder: { status: 'pending' }, input: { total_price: '12元' }, error: 'invalid_total_price' },
     { preorder: { status: 'pending' }, input: { customer_id: 'bad' }, error: 'invalid_customer_id' },
     { preorder: { status: 'pending' }, input: {}, error: 'no_fields' },
     { preorder: { status: 'pending' }, input: { created_by: 7 }, error: 'creator_unavailable', creatorAvailable: false },
@@ -699,7 +715,8 @@ test('预定匹配 service 校验输入并对业务拒绝及设备占用失败�
       async reserveMatchedPhone() { return item.reserve }
     } })
     assert.deepEqual(await service.match('23', { phone_id: 81, actual_price: item.price }), { error: item.error })
-    assert.equal(calls.includes('rollback'), true, item.error)
+    if (item.error === 'invalid_price') assert.deepEqual(calls, [], '非法价格在开启事务前拒绝')
+    else assert.equal(calls.includes('rollback'), true, item.error)
     assert.equal(calls.includes('commit'), false, item.error)
   }
 })

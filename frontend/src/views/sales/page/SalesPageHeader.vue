@@ -5,6 +5,14 @@
   >
     <template #actions>
       <el-button
+        v-if="canSellGoods"
+        v-permission="{ permission: ['accessories:create', 'accessories:gift'] }"
+        type="primary"
+        @click="emit('sell-goods')"
+      >
+        销售商品
+      </el-button>
+      <el-button
         :type="batchMode ? 'success' : 'primary'"
         :plain="!batchMode"
         :disabled="!canSell"
@@ -51,6 +59,7 @@ defineProps<{
   batchMode: boolean
   selectedCount: number
   canSell: boolean
+  canSellGoods?: boolean
   canExport: boolean
   exportLoading: boolean
   refreshing: boolean
@@ -60,5 +69,6 @@ const emit = defineEmits<{
   'toggle-batch-mode': []
   export: []
   refresh: []
+  'sell-goods': []
 }>()
 </script>

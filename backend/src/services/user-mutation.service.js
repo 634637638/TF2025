@@ -3,6 +3,10 @@
 const { getDatabase } = require('../config/database')
 const { withConnection } = require('../core/db/connection')
 const UserMutationRepository = require('../repositories/user-mutation.repository')
+const { parseAccountInput } = require('../utils/account-input')
+const { parseInput } = require('../middleware/validation')
+const { isIntegerInput } = require('../utils/input-values')
+const { normalizeRoleIds } = require('../utils/employee-role-format')
 
 function invalidRoleRequest(message) {
   const error = new Error(message)
@@ -14,10 +18,24 @@ function normalizeUserStatus(status) {
   if (status === 'active') return 1
   if (status === 'inactive') return 0
   const normalizedStatus = Number(status)
-  if (normalizedStatus !== 0 && normalizedStatus !== 1) {
+  if (!isIntegerInput(status) || (normalizedStatus !== 0 && normalizedStatus !== 1)) {
     throw invalidRoleRequest('用户状态必须为 0、1、active 或 inactive')
   }
   return normalizedStatus
+}
+
+function parseUserInput(body, required = false) {
+  const source = parseInput(body, {})
+  if (source.status !== undefined) source.status = normalizeUserStatus(source.status)
+  // 用户管理沿用 0 表示未分配的契约；仅接受明确的数值/字符串零。
+  for (const field of ['store_id', 'salary_template_id']) if (source[field] === 0 || source[field] === '0') source[field] = null
+  const input = parseAccountInput(source, { required, requireName: false, allowEmptyName: true, allowEmptyPassword: !required })
+  for (const field of ['role_ids', 'role_id']) {
+    if (input[field] === undefined) continue
+    if (!normalizeRoleIds(field === 'role_ids' ? input[field] : [input[field]])) throw invalidRoleRequest('角色ID列表包含无效值')
+  }
+  if (input.role !== undefined) parseInput({ role: input.role }, { role: { type: 'string', maxLength: 100 } })
+  return input
 }
 
 class UserMutationService {
@@ -51,8 +69,8 @@ class UserMutationService {
       roleIds = [roles[0].id]
     }
 
-    const normalizedRoleIds = [...new Set(roleIds.map(roleId => Number(roleId)))]
-    if (normalizedRoleIds.some(roleId => !Number.isSafeInteger(roleId) || roleId <= 0)) {
+    const normalizedRoleIds = normalizeRoleIds(roleIds)
+    if (!normalizedRoleIds) {
       throw invalidRoleRequest('角色ID列表包含无效值')
     }
 
@@ -69,7 +87,8 @@ class UserMutationService {
   }
 
   async create(body) {
-    if (!body.username || !body.password) throw invalidRoleRequest('用户名和密码不能为空')
+    if (!body?.username || !body?.password) throw invalidRoleRequest('用户名和密码不能为空')
+    body = parseUserInput(body, true)
     const pool = this.database()
     const userId = await withConnection(pool, async connection => {
       try {
@@ -117,12 +136,13 @@ class UserMutationService {
   }
 
   async update(id, body) {
+    const userId = parseInput({ id }, { id: { type: 'id', required: true } }).id
+    body = parseUserInput(body)
     const pool = this.database()
     const result = await withConnection(pool, async connection => {
       try {
         await connection.beginTransaction()
 
-        const userId = Number.parseInt(id, 10)
         const [existingUsers] = await this.repository.findById(connection, userId)
         if (existingUsers.length === 0) {
           await connection.rollback()

@@ -1,5 +1,6 @@
 'use strict'
 
+const crypto = require('node:crypto')
 const BaseService = require('../core/base/base.service')
 const InventoryRepository = require('../repositories/inventory.repository')
 const { getDatabase, isConnected } = require('../config/database')
@@ -12,6 +13,7 @@ const {
 } = require('../utils/invoice-number')
 const { reconcileCustomerPointsForSale: defaultReconcileCustomerPointsForSale } = require('./customer-points.service')
 const { COMPLETED_TRANSACTION_STATUSES } = require('../utils/phone-status')
+const { validateSalePayment } = require('../utils/sale-payment')
 const log = require('../utils/log')
 
 class InventoryError extends Error {
@@ -251,19 +253,10 @@ class InventoryService extends BaseService {
       throw new InventoryError('批发调货必须填写有效的入库成本', 400)
     }
     if (!customer_phone) throw new InventoryError('客户手机号不能为空', 400)
-    if (status === 'sold' && !['cash', 'mobile', 'bank_card', 'subsidy_card'].includes(payment_method)) {
-      throw new InventoryError('请选择有效的支付方式', 400)
-    }
     const saleOperatorId = Number(sale_operator_id)
     if (!Number.isInteger(saleOperatorId) || saleOperatorId <= 0) throw new InventoryError('请选择有效的销售员', 400)
-    const allowedPaymentChannels = {
-      cash: [null], mobile: ['wechat', 'alipay'],
-      bank_card: ['card_consumption', 'bank_transfer'], subsidy_card: ['subsidy_card']
-    }
-    const normalizedPaymentChannel = status !== 'sold' || payment_method === 'cash' ? null : String(payment_channel || '')
-    if (status === 'sold' && !allowedPaymentChannels[payment_method].includes(normalizedPaymentChannel)) {
-      throw new InventoryError('请选择有效的支付渠道', 400)
-    }
+    const normalizedPaymentChannel = status === 'sold'
+      ? validateSalePayment(payment_method, payment_channel).payment_channel : null
     const normalizedAppleId = String(apple_id || '').trim() || null
 
     return this.repository.withConnection(async connection => {
@@ -340,6 +333,26 @@ class InventoryService extends BaseService {
         throw error
       }
     })
+  }
+
+  /** 只供共同结算内部调用；不租连接、不提交事务，不产生独立销售或收款。 */
+  async stageQuickCheckoutPhone(connection, phone, { actorId, storeId, customerId, remarks }) {
+    const references = await this.repository.validateQuickSaleReferences(connection, {
+      brandId: phone.brand_id, modelId: phone.model_id, colorId: phone.color_id, memoryId: phone.memory_id
+    })
+    if (!references) throw new InventoryError('品牌、型号、颜色或内存不存在或已停用', 400)
+    const source = await this.repository.validateQuickCheckoutSource(connection, phone.supplier_id, phone.imei)
+    if (!source.validSupplier) throw new InventoryError('供应商不存在、已停用或未开通手机业务', 400)
+    if (source.inStock) throw new InventoryError('该IMEI已有在库或预订设备，请从销售管理选择原库存', 409)
+    if (await this.repository.hasCustomerPhoneDuplicate(connection, { imei: phone.imei, customerId })) {
+      throw new InventoryError('该客户已存在相同IMEI的手机', 409)
+    }
+    return this.repository.createQuickSalePhone(connection, [
+      `QS${crypto.randomUUID().replaceAll('-', '')}`, actorId, phone.brand_id, phone.model_id, phone.color_id, phone.memory_id,
+      phone.imei, phone.serial_number, phone.purchase_cost, phone.sale_price, phone.is_new,
+      phone.supplier_id, storeId, 'in_stock', phone.is_new === 1 ? 'A' : 'B', remarks || null,
+      phone.inventory_time, null, null, null
+    ])
   }
 
   async overview(query = {}) {

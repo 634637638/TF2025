@@ -26,8 +26,8 @@ const input = {
   phone_color: '黑色',
   phone_memory: '256GB',
   serial_number: 'SERIAL',
-  imei1: '111',
-  imei2: '222',
+  imei1: '123456789012345',
+  imei2: '234567890123456',
   sale_price: 5000,
   sale_time: '2026-11-08T15:30:00.000Z',
   subsidy_photos: [],
@@ -99,6 +99,34 @@ test('subsidy apply rejects missing fields and duplicate applications without le
   assert.deepEqual(result.body.data, { existing_id: 44, apply_status: 'pending' })
   assert.deepEqual(duplicate.events.map(event => Array.isArray(event) ? event[0] : event), ['begin', 'find', 'rollback', 'release'])
   assert.deepEqual(duplicate.invalidations, [])
+})
+
+test('国补申请非法姓名、电话和金额在取连接前拒绝，不写客户或照片引用、不失效缓存', async () => {
+  for (const patch of [
+    { customer_name: '123' }, { customer_name: '张\n三' }, { customer_name: '张'.repeat(51) },
+    { customer_phone: '138中00000000' }, { customer_phone: ['13800000000'] },
+    { sale_price: '1e3' }, { sale_price: true }, { sale_price: '10.001' },
+    { subsidy_amount: '3元' }, { handler_info: { handler_name: '代\t办' } },
+    { imei1: '123456789012345中' }, { imei2: 123456789012345 }, { imei1: '1e14' },
+    { serial_number: 'ABC中1234' }, { serial_number: 'S'.repeat(51) }, { serial_number: ['SERIAL'] },
+    { handler_info: { handler_phone: '138000000001' } }, { handler_info: [] }
+  ]) {
+    const harness = createHarness()
+    const result = await harness.service.create({ ...input, ...patch }, 19)
+    assert.equal(result.status, 400, JSON.stringify(patch))
+    assert.deepEqual(harness.events, [])
+    assert.deepEqual(harness.invalidations, [])
+  }
+})
+
+test('国补申请保留合法姓名标点，按约定整理国家码手机号，不改原请求', async () => {
+  const harness = createHarness()
+  const request = { ...input, customer_name: "Anne O'Neil·张", customer_phone: '+86 138-0000-0000' }
+  assert.equal((await harness.service.create(request, 19)).status, 200)
+  const created = harness.events.find(event => Array.isArray(event) && event[0] === 'create')[1]
+  assert.equal(created.customer_phone, '13800000000')
+  assert.equal(created.customer_name, request.customer_name)
+  assert.equal(request.customer_phone, '+86 138-0000-0000')
 })
 
 test('subsidy apply rolls back failed photo validation and controller preserves status mapping', async () => {

@@ -1,3 +1,4 @@
+import RecordDetailDialog from '@/components/RecordDetailDialog.vue'
 import { computed, h, inject, provide, reactive, type PropType, type Ref, type SetupContext } from 'vue'
 import ElementPlus, { ElCheckbox } from 'element-plus'
 import { flushPromises, shallowMount, type VueWrapper } from '@vue/test-utils'
@@ -8,7 +9,7 @@ import type { PriceListRow } from '@/types/price-list'
 const mocks = vi.hoisted(() => ({
   list: vi.fn(), batch: vi.fn(), get: vi.fn(), confirm: vi.fn(),
   success: vi.fn(), warning: vi.fn(), error: vi.fn(), noPermission: vi.fn(),
-  doubleTap: vi.fn(), mobile: false
+  mobile: false
 }))
 const permissions = reactive({ view: true, edit: true })
 vi.mock('@/api/price-list', async importOriginal => ({
@@ -34,7 +35,6 @@ vi.mock('@/utils/device-detection', async importOriginal => ({
   ...await importOriginal<typeof import('@/utils/device-detection')>(),
   isCurrentMobileViewport: () => mocks.mobile
 }))
-vi.mock('@/composables/useMobileRowDoubleTap', () => ({ useMobileRowDoubleTap: () => ({ isDoubleTap: mocks.doubleTap, resetDoubleTap: vi.fn() }) }))
 vi.mock('@/composables/useFieldPermissions', () => ({
   fieldPermissions: { isFieldVisible: () => true }, shouldShowActionColumn: () => true
 }))
@@ -80,13 +80,13 @@ const response = (ids: number[]) => ({ success: true, data: { list: ids.map(row)
 async function render() {
   const wrapper = shallowMount(PriceListView, { global: {
     plugins: [ElementPlus],
-    components: { ElCheckbox },
+    components: { ElCheckbox, RecordDetailDialog },
     stubs: {
       PermissionGate: Slot, PageHeader: Slot, ElTable: Table, ElTableColumn: Column, ElCheckbox: false,
       ElButton: Button, Pagination, MobileDialog: Dialog, UnifiedSearchPanel: Search,
       ElForm: Slot, ElFormItem: Slot, DataEmptyState: true
     },
-    directives: { permission: {}, tfLoading: {} },
+    directives: { permission: {}, tfLoading: {}, tableDoubleTap: {} },
     mocks: { $getNumberColumnWidth: () => 60, $getActionColumnWidth: () => 160 }
   } })
   wrappers.push(wrapper)
@@ -112,7 +112,6 @@ beforeEach(() => {
   mocks.batch.mockReset().mockResolvedValue({ success: true, message: '设置成功' })
   mocks.confirm.mockReset().mockResolvedValue(undefined)
   mocks.get.mockResolvedValue({ success: true, data: [] })
-  mocks.doubleTap.mockReturnValue(false)
 })
 afterEach(() => {
   wrappers.splice(0).forEach(wrapper => wrapper.unmount())
@@ -135,7 +134,7 @@ describe.each([false, true])('报价跨页选择，手机端=%s', mobile => {
     expect(selection(wrapper).find('header .el-checkbox__input').classes()).toContain('is-indeterminate')
     await selection(wrapper).find('header input').setValue(true)
     expect(wrapper.text()).toContain('已选择 3 条')
-    expect(mocks.doubleTap).not.toHaveBeenCalled()
+    expect(wrapper.findComponent(RecordDetailDialog).props('modelValue')).toBe(false)
   })
 
   it('取消本页全选仅移除本页，清空选择同时清除其他页', async () => {

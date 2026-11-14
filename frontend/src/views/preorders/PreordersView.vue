@@ -265,13 +265,14 @@
               <el-table
                 ref="pendingTableRef"
                 v-tf-loading="{ active: loading || refreshing, text: '正在刷新预定记录...' }"
+                v-table-double-tap="mobileDetailTapOptions"
                 :data="pendingPreorders"
                 border
                 stripe
                 class="data-table devices-table base-data-table preorders-table"
+
                 :row-key="(row: Preorder) => String(row.id)"
-                :expand-row-keys="expandedRows"
-                @row-click="handleRowTap"
+                @row-dblclick="mobileDetailDoubleClick"
               >
                 <template #empty>
                   <TableLoadingRow
@@ -284,45 +285,7 @@
                     description="暂无预定单"
                   />
                 </template>
-                <el-table-column
-                  v-if="showMobilePendingActionField"
-                  type="expand"
-                  width="1"
-                  class-name="mobile-expand-column"
-                  label-class-name="mobile-expand-header"
-                >
-                  <template #default="{ row }">
-                    <div class="mobile-row-actions">
-                      <el-button
-                        v-if="canEdit"
-                        type="primary"
-                        size="small"
-                        @click.stop="editPreorder(row)"
-                      >
-                        <i class="fas fa-edit" />
-                        <span>编辑</span>
-                      </el-button>
-                      <el-button
-                        v-if="canMatch"
-                        type="success"
-                        size="small"
-                        @click.stop="openMatchModal(row)"
-                      >
-                        <i class="fas fa-link" />
-                        <span>匹配</span>
-                      </el-button>
-                      <el-button
-                        v-if="canCancel"
-                        type="danger"
-                        size="small"
-                        @click.stop="cancelPreorder(row)"
-                      >
-                        <i class="fas fa-times" />
-                        <span>取消</span>
-                      </el-button>
-                    </div>
-                  </template>
-                </el-table-column>
+
                 <el-table-column
                   v-if="canViewPreorderField('preorder_number')"
                   prop="preorder_number"
@@ -563,13 +526,14 @@
               <el-table
                 ref="matchedTableRef"
                 v-tf-loading="{ active: loading || refreshing, text: '正在刷新预定记录...' }"
+                v-table-double-tap="mobileDetailTapOptions"
                 :data="matchedPreorders"
                 border
                 stripe
                 class="data-table devices-table base-data-table preorders-table"
+
                 :row-key="(row: Preorder) => String(row.id)"
-                :expand-row-keys="expandedRows"
-                @row-click="handleRowTap"
+                @row-dblclick="mobileDetailDoubleClick"
               >
                 <template #empty>
                   <TableLoadingRow
@@ -582,105 +546,7 @@
                     description="暂无预定单"
                   />
                 </template>
-                <el-table-column
-                  v-if="showMobileMatchedActionField"
-                  type="expand"
-                  width="1"
-                  class-name="mobile-expand-column"
-                  label-class-name="mobile-expand-header"
-                >
-                  <template #default="{ row }">
-                    <div class="mobile-row-actions">
-                      <template v-if="row.status === 'pending'">
-                        <el-button
-                          v-if="canEdit"
-                          type="primary"
-                          size="small"
-                          @click.stop="editMatchedPreorder(row)"
-                        >
-                          <i class="fas fa-edit" />
-                          <span>编辑</span>
-                        </el-button>
-                        <el-button
-                          v-if="canMatch"
-                          type="success"
-                          size="small"
-                          @click.stop="openMatchModal(row)"
-                        >
-                          <i class="fas fa-link" />
-                          <span>匹配</span>
-                        </el-button>
-                        <el-button
-                          v-if="canCancel"
-                          type="danger"
-                          size="small"
-                          @click.stop="cancelMatchedPreorder(row)"
-                        >
-                          <i class="fas fa-times" />
-                          <span>取消</span>
-                        </el-button>
-                      </template>
-                      <template v-if="row.status === 'arrived'">
-                        <el-button
-                          v-if="canEdit"
-                          type="primary"
-                          size="small"
-                          @click.stop="editMatchedPreorder(row)"
-                        >
-                          <i class="fas fa-edit" />
-                          <span>编辑</span>
-                        </el-button>
-                        <el-button
-                          v-if="canMatch"
-                          type="warning"
-                          size="small"
-                          @click.stop="openMatchModal(row)"
-                        >
-                          <i class="fas fa-exchange-alt" />
-                          <span>更换设备</span>
-                        </el-button>
-                        <el-button
-                          v-if="canDeliver"
-                          type="success"
-                          size="small"
-                          @click.stop="deliverPreorder(row)"
-                        >
-                          <i class="fas fa-check" />
-                          <span>交付</span>
-                        </el-button>
-                        <el-button
-                          v-if="canCancel"
-                          type="danger"
-                          size="small"
-                          @click.stop="cancelMatchedPreorder(row)"
-                        >
-                          <i class="fas fa-times" />
-                          <span>取消</span>
-                        </el-button>
-                      </template>
-                      <template v-if="row.status === 'cancelled'">
-                        <el-button
-                          v-if="canEdit"
-                          type="warning"
-                          size="small"
-                          @click.stop="restorePreorder(row)"
-                        >
-                          <i class="fas fa-undo" />
-                          <span>恢复</span>
-                        </el-button>
-                        <el-button
-                          v-if="canDelete"
-                          type="danger"
-                          size="small"
-                          @click.stop="deletePreorder(row)"
-                        >
-                          <i class="fas fa-trash" />
-                          <span>删除</span>
-                        </el-button>
-                      </template>
-                    </div>
-                  </template>
-                </el-table-column>
+
                 <el-table-column
                   v-if="canViewPreorderField('preorder_number')"
                   prop="preorder_number"
@@ -990,13 +856,14 @@
               <el-table
                 ref="deliveredTableRef"
                 v-tf-loading="{ active: loading || refreshing, text: '正在刷新预定记录...' }"
+                v-table-double-tap="mobileDetailTapOptions"
                 :data="deliveredPreorders"
                 border
                 stripe
                 class="data-table devices-table base-data-table preorders-table"
+
                 :row-key="(row: Preorder) => String(row.id)"
-                :expand-row-keys="expandedRows"
-                @row-click="handleRowTap"
+                @row-dblclick="mobileDetailDoubleClick"
               >
                 <template #empty>
                   <TableLoadingRow
@@ -1009,27 +876,7 @@
                     description="暂无预定单"
                   />
                 </template>
-                <el-table-column
-                  v-if="showMobileDeliveredActionField"
-                  type="expand"
-                  width="1"
-                  class-name="mobile-expand-column"
-                  label-class-name="mobile-expand-header"
-                >
-                  <template #default="{ row }">
-                    <div class="mobile-row-actions">
-                      <el-button
-                        v-if="canDelete"
-                        type="danger"
-                        size="small"
-                        @click.stop="deletePreorder(row)"
-                      >
-                        <i class="fas fa-trash" />
-                        <span>删除</span>
-                      </el-button>
-                    </div>
-                  </template>
-                </el-table-column>
+
                 <el-table-column
                   v-if="canViewPreorderField('preorder_number')"
                   prop="preorder_number"
@@ -1227,6 +1074,146 @@
           </div>
         </el-tab-pane>
       </el-tabs>
+      <RecordDetailDialog
+        v-model="mobileDetailVisible"
+        title="预定详情"
+        :fields="mobileDetailFields"
+        :record="mobileDetailRow"
+        :has-actions="mobileDetailHasActions"
+      >
+        <template #actions="{ row }">
+          <template v-if="activeTab === 'new'">
+            <el-button
+              v-if="canEdit"
+              v-permission="'preorders:edit'"
+              type="primary"
+              @click.stop="mobileDetailRunAction(() => editPreorder(row))"
+            >
+              <i class="fas fa-edit" />
+              <span>编辑</span>
+            </el-button>
+            <el-button
+              v-if="canMatch"
+              v-permission="'preorders:match'"
+              type="success"
+              @click.stop="mobileDetailRunAction(() => openMatchModal(row))"
+            >
+              <i class="fas fa-link" />
+              <span>匹配</span>
+            </el-button>
+            <el-button
+              v-if="canCancel"
+              v-permission="'preorders:cancel'"
+              type="danger"
+              @click.stop="mobileDetailRunAction(() => cancelPreorder(row))"
+            >
+              <i class="fas fa-times" />
+              <span>取消</span>
+            </el-button>
+          </template>
+          <template v-if="activeTab === 'matched'">
+            <template v-if="row.status === 'pending'">
+              <el-button
+                v-if="canEdit"
+                v-permission="'preorders:edit'"
+                type="primary"
+                @click.stop="mobileDetailRunAction(() => editMatchedPreorder(row))"
+              >
+                <i class="fas fa-edit" />
+                <span>编辑</span>
+              </el-button>
+              <el-button
+                v-if="canMatch"
+                v-permission="'preorders:match'"
+                type="success"
+                @click.stop="mobileDetailRunAction(() => openMatchModal(row))"
+              >
+                <i class="fas fa-link" />
+                <span>匹配</span>
+              </el-button>
+              <el-button
+                v-if="canCancel"
+                v-permission="'preorders:cancel'"
+                type="danger"
+                @click.stop="mobileDetailRunAction(() => cancelMatchedPreorder(row))"
+              >
+                <i class="fas fa-times" />
+                <span>取消</span>
+              </el-button>
+            </template>
+            <template v-if="row.status === 'arrived'">
+              <el-button
+                v-if="canEdit"
+                v-permission="'preorders:edit'"
+                type="primary"
+                @click.stop="mobileDetailRunAction(() => editMatchedPreorder(row))"
+              >
+                <i class="fas fa-edit" />
+                <span>编辑</span>
+              </el-button>
+              <el-button
+                v-if="canMatch"
+                v-permission="'preorders:match'"
+                type="warning"
+                @click.stop="mobileDetailRunAction(() => openMatchModal(row))"
+              >
+                <i class="fas fa-exchange-alt" />
+                <span>更换设备</span>
+              </el-button>
+              <el-button
+                v-if="canDeliver"
+                v-permission="'preorders:deliver'"
+                type="success"
+                @click.stop="mobileDetailRunAction(() => deliverPreorder(row))"
+              >
+                <i class="fas fa-check" />
+                <span>交付</span>
+              </el-button>
+              <el-button
+                v-if="canCancel"
+                v-permission="'preorders:cancel'"
+                type="danger"
+                @click.stop="mobileDetailRunAction(() => cancelMatchedPreorder(row))"
+              >
+                <i class="fas fa-times" />
+                <span>取消</span>
+              </el-button>
+            </template>
+            <template v-if="row.status === 'cancelled'">
+              <el-button
+                v-if="canEdit"
+                v-permission="'preorders:edit'"
+                type="warning"
+                @click.stop="mobileDetailRunAction(() => restorePreorder(row))"
+              >
+                <i class="fas fa-undo" />
+                <span>恢复</span>
+              </el-button>
+              <el-button
+                v-if="canDelete"
+                v-permission="'preorders:delete'"
+                type="danger"
+                @click.stop="mobileDetailRunAction(() => deletePreorder(row))"
+              >
+                <i class="fas fa-trash" />
+                <span>删除</span>
+              </el-button>
+            </template>
+          </template>
+          <template v-if="activeTab === 'delivered'">
+            <el-button
+              v-if="canDelete"
+              v-permission="'preorders:delete'"
+              type="danger"
+              @click.stop="mobileDetailRunAction(() => deletePreorder(row))"
+            >
+              <i class="fas fa-trash" />
+              <span>删除</span>
+            </el-button>
+          </template>
+        </template>
+      </RecordDetailDialog>
+
 
       <!-- 预定单表单模态框（创建/编辑） -->
       <PreorderFormModal
@@ -1254,7 +1241,8 @@ import { useRouter } from 'vue-router'
 import type { TabPaneName } from 'element-plus'
 import { useNotification } from '@/composables/useNotification'
 import { usePagePermissions } from '@/composables/usePagePermissions'
-import { useMobileRowDoubleTap } from '@/composables/useMobileRowDoubleTap'
+import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
+import type { RecordDetailField } from '@/types/component'
 import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { canViewPreorderField } from './preorder-field-permissions'
 import { useLoadingState } from '@/composables'
@@ -1291,9 +1279,6 @@ const pendingTableRef = ref()
 const matchedTableRef = ref()
 const deliveredTableRef = ref()
 
-// 当前展开的行
-const expandedRows = ref<string[]>([])
-const { isDoubleTap } = useMobileRowDoubleTap()
 
 const showStatsCards = computed(() => (
   canViewPreorderField('stats_pending_count') ||
@@ -1369,18 +1354,6 @@ const showMatchedActionField = computed(() => (
 ))
 const showDeliveredActionField = computed(() => (
   !isMobile.value && shouldShowActionColumn(canViewPreorderField('operations'), [canDelete.value])
-))
-const showMobilePendingActionField = computed(() => isMobile.value && shouldShowActionColumn(
-  canViewPreorderField('operations'),
-  [canEdit.value, canMatch.value, canCancel.value]
-))
-const showMobileMatchedActionField = computed(() => isMobile.value && shouldShowActionColumn(
-  canViewPreorderField('operations'),
-  [canEdit.value, canDelete.value, canCancel.value, canMatch.value, canDeliver.value]
-))
-const showMobileDeliveredActionField = computed(() => isMobile.value && shouldShowActionColumn(
-  canViewPreorderField('operations'),
-  [canDelete.value]
 ))
 
 // 监听窗口大小变化
@@ -1721,13 +1694,6 @@ const handleRefresh = async () => {
   }
 }
 
-const handleRowTap = (row: Preorder) => {
-  if (!isMobile.value) return
-  const rowKey = String(row.id)
-  if (isDoubleTap(rowKey)) {
-    expandedRows.value = expandedRows.value.includes(rowKey) ? [] : [rowKey]
-  }
-}
 
 // 编辑预定单
 const editPreorder = (preorder: Preorder) => {
@@ -1971,6 +1937,48 @@ onMounted(async () => {
 
   await fieldPermissions.init()
   await Promise.all([loadStats(), loadPendingPreorders(), loadSearchOptions()])
+})
+
+const mobileDetailRows = computed(() => activeTab.value === 'new' ? pendingPreorders.value : activeTab.value === 'matched' ? matchedPreorders.value : deliveredPreorders.value)
+const { detailRow: mobileDetailRow, detailVisible: mobileDetailVisible, doubleTapOptions: mobileDetailTapOptions,
+  handleRowDoubleClick: mobileDetailDoubleClick, runDetailAction: mobileDetailRunAction } = useMobileTableDetail<Preorder>({
+    enabled: () => isMobile.value && canView.value, rows: mobileDetailRows, getKey: row => row.id
+  })
+const mobileDetailHasActions = computed(() => {
+  const row = mobileDetailRow.value
+  if (!row) return false
+  if (activeTab.value === 'new') return canEdit.value || canMatch.value || canCancel.value
+  if (activeTab.value === 'delivered') return canDelete.value
+  if (row.status === 'cancelled') return canEdit.value || canDelete.value
+  if (row.status === 'pending') return canEdit.value || canMatch.value || canCancel.value
+  return row.status === 'arrived' && (canEdit.value || canMatch.value || canDeliver.value || canCancel.value)
+})
+const mobileDetailFields = computed<RecordDetailField[]>(() => {
+  const row = mobileDetailRow.value
+  if (!row) return []
+  return [
+    { key: 'preorder_number', label: '预定单号', value: row.preorder_number, visible: canViewPreorderField('preorder_number') },
+    { key: 'supplier_name', label: '供应商', value: getStatusText(row.status, row.supplier_name), visible: canViewPreorderField('supplier_name') },
+    { key: 'store_name', label: '销售店铺', value: row.store_name, visible: canViewPreorderField('store_name') },
+    { key: 'customer_name', label: '客户姓名', value: row.customer_name, visible: canViewPreorderField('customer_name') },
+    { key: 'customer_phone', label: '客户电话', value: row.customer_phone, visible: canViewPreorderField('customer_phone') },
+    { key: 'brand_name', label: '品牌', value: row.brand_name, visible: canViewPreorderField('brand_name') },
+    { key: 'model_name', label: '型号', value: row.model_name, visible: canViewPreorderField('model_name') },
+    { key: 'color_name', label: '颜色', value: row.color_name, visible: canViewPreorderField('color_name') },
+    { key: 'memory_size', label: '内存', value: row.memory_size, visible: canViewPreorderField('memory_size') },
+    { key: 'is_new', label: '成色', value: Number(row.is_new) === 1 ? '全新' : '二手', visible: canViewPreorderField('is_new') },
+    { key: 'imei', label: 'IMEI', value: row.imei, visible: canViewPreorderField('imei'), wide: true },
+    { key: 'deposit_amount', label: '定金', value: formatAmount(row.deposit_amount), visible: canViewPreorderField('deposit_amount') },
+    { key: 'total_price', label: '销售价格', value: row.total_price === undefined ? undefined : formatAmount(row.total_price), visible: canViewPreorderField('total_price') },
+    { key: 'status', label: '状态', value: row.status_text, visible: canViewPreorderField('status') },
+    { key: 'matched_time', label: '匹配时间', value: getMatchedTimeText(row), visible: canViewPreorderField('matched_time') },
+    { key: 'created_at', label: '预定时间', value: formatDateTime(row.created_at), visible: canViewPreorderField('created_at'), wide: true },
+    { key: 'delivered_time', label: '交付时间', value: row.delivered_time ? formatDateTime(row.delivered_time) : undefined, visible: canViewPreorderField('delivered_time'), wide: true },
+    { key: 'preorder_person_name', label: '预定人', value: row.preorder_person_name, visible: canViewPreorderField('preorder_person_name') },
+    { key: 'actual_price', label: '实际销售价格', value: row.actual_price === undefined ? undefined : formatAmount(row.actual_price), visible: canViewPreorderField('actual_price') },
+    { key: 'remaining_amount', label: '尾款', value: row.remaining_amount === undefined ? undefined : formatAmount(row.remaining_amount), visible: canViewPreorderField('remaining_amount') },
+    { key: 'operator_name', label: '销售员', value: row.sales_operator_name, visible: canViewPreorderField('operator_name') }
+  ]
 })
 </script>
 

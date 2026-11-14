@@ -11,6 +11,22 @@ const createResponse = () => ({
   json(body) { this.body = body; return this }
 })
 
+test('导入分析透传受控输入提示，技术故障保持通用信息', async () => {
+  for (const invalidInput of [true, false]) {
+    const controller = new DataImportController({
+      service: { async analyzeData() { throw invalidInput
+        ? Object.assign(new Error('第 2 行：手机号格式不正确'), { statusCode: 400, code: 'IMPORT_INPUT_INVALID' })
+        : new Error('内部存储故障详情') } },
+      fileService: { resolve: () => '/memory/input.xlsx' },
+      logger: { error() {} }
+    })
+    const response = createResponse()
+    await controller.analyze({ body: { file_token: 'input.xlsx' }, user: { id: 7 } }, response)
+    assert.equal(response.statusCode, invalidInput ? 400 : 500)
+    assert.equal(response.body.message, invalidInput ? '第 2 行：手机号格式不正确' : '分析数据失败，请检查文件后重试')
+  }
+})
+
 test('导入进度和活跃任务路由保留权限并委托 controller', () => {
   const route = fs.readFileSync(path.join(__dirname, '../src/routes/data-import.js'), 'utf8')
   assert.match(route, /router\.get\('\/progress\/:import_id', requirePermission\('data-import:view'\), dataImportController\.progress\.bind\(dataImportController\)\)/)

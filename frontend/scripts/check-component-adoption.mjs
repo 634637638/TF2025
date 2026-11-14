@@ -2,6 +2,7 @@
 
 import fs from 'node:fs'
 import path from 'node:path'
+import { hasValidScannerContext } from './lib/scanner-context.mjs'
 
 const frontendRoot = path.resolve(new URL('..', import.meta.url).pathname)
 const sourceRoot = path.join(frontendRoot, 'src')
@@ -49,8 +50,8 @@ for (const file of walk(sourceRoot)) {
   }
 
   for (const scanner of source.matchAll(/<OptimizedScanner\b[^>]*>/g)) {
-    if (!/:phone\s*=/.test(scanner[0])) {
-      findings.push(`${fileName} 扫码器必须绑定 phone 品牌上下文，避免 Apple 包装序列号前缀识别失效`)
+    if (!hasValidScannerContext(scanner[0])) {
+      findings.push(`${fileName} 手机扫码器必须绑定 phone 品牌上下文；配件SN须显式指定 serial-profile="accessory" 与 scan-type="serial"`)
     }
   }
 }

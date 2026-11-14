@@ -5,6 +5,7 @@ const { withConnection } = require('../core/db/connection')
 const RentalFinishRepository = require('../repositories/rental-finish.repository')
 const { ensureRentalSchema } = require('../utils/rental-schema')
 const { isBuyoutMode } = require('../utils/rental-calculations')
+const { parseRentalId } = require('../utils/rental-input')
 
 class RentalFinishService {
   constructor({
@@ -20,6 +21,7 @@ class RentalFinishService {
   }
 
   async finish(rentalId) {
+    rentalId = parseRentalId(rentalId)
     await this.ensureSchema()
     return this.withConnection(this.databaseProvider, async connection => {
       try {

@@ -92,6 +92,7 @@ module.exports = Object.freeze({
   'query:edit': ['query_queryview:edit', 'query:edit'],
   'query:export': ['query_queryview:export', 'query:export'],
   'query:return-to-stock': ['query_queryview:return-to-stock', 'query:return-to-stock'],
+  'query:exchange': ['query_queryview:exchange', 'query:exchange'],
   'query:delete': ['query_queryview:delete', 'query:delete'],
 
   // 字段扫描权限映射
@@ -115,6 +116,11 @@ module.exports = Object.freeze({
   'accessories:create': ['accessories_accessoriesview:create'],
   'accessories:edit': ['accessories_accessoriesview:edit'],
   'accessories:delete': ['accessories_accessoriesview:delete'],
+  'accessories:transfer': ['accessories_accessoriesview:transfer'],
+  'accessories:gift': ['accessories_accessoriesview:gift'],
+  'accessories-catalog:view': ['accessories_accessorycatalogview:view'],
+  'accessories-catalog:create': ['accessories_accessorycatalogview:create'],
+  'accessories-catalog:edit': ['accessories_accessorycatalogview:edit'],
 
   // 首页推荐区域权限映射
   'home-sections:view': ['h5_admin_homesectionsview:view'],

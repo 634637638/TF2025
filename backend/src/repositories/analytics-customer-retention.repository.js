@@ -1,5 +1,7 @@
 'use strict'
 
+const { getActiveSaleSql } = require('../utils/sale-status')
+
 const { getDatabase } = require('../config/database')
 
 const COHORT_CONFIG = Object.freeze({
@@ -28,7 +30,7 @@ class AnalyticsCustomerRetentionRepository {
         ${periodExpression} AS period_offset,
         MAX(s.id IS NOT NULL) AS has_purchase
       FROM customers c
-      LEFT JOIN sales s ON s.customer_id = c.id
+      LEFT JOIN sales s ON s.customer_id = c.id AND ${getActiveSaleSql()}
         AND s.sale_time >= c.created_at
         AND s.sale_time < DATE_ADD(c.created_at, INTERVAL 6 ${config.unit})
       WHERE c.status = 1

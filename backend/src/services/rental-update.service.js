@@ -4,6 +4,7 @@ const { ensureRentalSchema } = require('../utils/rental-schema')
 const { isBuyoutMode, getPrincipalAmount, positiveMoney } = require('../utils/rental-calculations')
 const RentalUpdateRepository = require('../repositories/rental-update.repository')
 const { reconcileCustomerPointsForSale } = require('./customer-points.service')
+const { parseRentalInput, parseRentalId } = require('../utils/rental-input')
 
 const PAYMENT_METHODS = new Set(['cash', 'mobile', 'bank_card', 'subsidy_card', 'transfer', 'other'])
 
@@ -15,8 +16,9 @@ class RentalUpdateService {
   }
 
   async update({ id: idValue, body, isAdministrator }) {
+    const id = parseRentalId(idValue)
+    body = parseRentalInput(body)
     await this.ensureSchema()
-    const id = Number(idValue)
     return this.repository.withConnection(async connection => {
       await connection.beginTransaction()
       try {

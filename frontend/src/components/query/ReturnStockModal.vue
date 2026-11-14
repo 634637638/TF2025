@@ -9,11 +9,15 @@
     max-width="680px"
     dialog-class="query-return-stock-dialog"
     :close-on-click-modal="false"
+    :before-close="beforeClose"
     @confirm="handleSubmit"
     @cancel="handleCancel"
   >
     <template #footer>
-      <div class="tf-dialog-actions return-dialog-footer">
+      <div
+        v-if="!checkoutChecklist"
+        class="tf-dialog-actions return-dialog-footer"
+      >
         <el-button
           :disabled="submitting"
           @click="handleCancel"
@@ -21,8 +25,11 @@
           取消
         </el-button>
         <el-button
+          v-if="allowed"
+          v-permission="'query:return-to-stock'"
           type="primary"
           :loading="submitting"
+          :disabled="!canSubmitReturn"
           @click="handleSubmit"
         >
           确认退库
@@ -38,7 +45,7 @@
         <i class="fas fa-mobile-alt" />
         设备信息
       </div>
-      <div class="info-grid">
+      <div class="info-grid tf-detail-grid">
         <div class="info-item">
           <span class="label">供应商</span>
           <span class="value">{{ deviceInfo.supplier_name || '-' }}</span>
@@ -76,12 +83,106 @@
       </div>
     </div>
 
+    <SectionLoading
+      v-if="checklistLoading"
+      text="正在核对手机原单及关联配件..."
+      size="compact"
+    />
+    <DataEmptyState
+      v-else-if="checklistFailed"
+      state="error"
+      title="原单核对失败"
+      :description="checklistError"
+      size="compact"
+      action-text="重试"
+      @action="loadChecklist"
+    />
+    <section
+      v-else-if="allowed && checkoutChecklist && (canViewGoods || !checkoutChecklist.accessories.length)"
+      class="checkout-return-checklist"
+    >
+      <h3>共同结算原单配件核对</h3>
+      <p>订单 {{ checkoutChecklist.order_no }}；数量已扣除此前办理的商品售后。</p>
+      <div class="table-wrapper">
+        <el-table
+          :data="checkoutChecklist.accessories"
+          class="data-table"
+          row-key="item_id"
+        >
+          <el-table-column
+            v-if="canViewAccessoryField('name')"
+            prop="name"
+            label="商品"
+            min-width="140"
+          />
+          <el-table-column
+            v-if="canViewAccessoryField('usage_type')"
+            label="类型"
+            min-width="90"
+          >
+            <template #default="{ row }">
+              {{ row.sale_type === 'gift' ? '赠品' : '收费商品' }}
+            </template>
+          </el-table-column>
+          <el-table-column
+            v-if="canViewAccessoryField('total_quantity')"
+            prop="quantity"
+            label="原数量"
+            min-width="84"
+          />
+          <el-table-column
+            v-if="canViewAccessoryField('total_quantity')"
+            prop="returned_quantity"
+            label="已退"
+            min-width="76"
+          />
+          <el-table-column
+            v-if="canViewAccessoryField('total_quantity')"
+            prop="remaining_quantity"
+            label="剩余"
+            min-width="76"
+          />
+          <el-table-column
+            v-if="canViewAccessoryField('serial_number')"
+            label="未退 SN"
+            min-width="150"
+          >
+            <template #default="{ row }">
+              {{ row.available_serial_numbers?.join('、') || '-' }}
+            </template>
+          </el-table-column>
+          <el-table-column
+            v-if="showGiftAgreement"
+            label="剩余赠品约定金额"
+            min-width="150"
+          >
+            <template #default="{ row }">
+              {{ row.sale_type === 'gift' ? (row.remaining_gift_return_total === null ? '未约定' : formatCurrency(row.remaining_gift_return_total)) : '-' }}
+            </template>
+          </el-table-column>
+          <template #empty>
+            <DataEmptyState
+              description="该手机没有关联配件或赠品"
+              size="compact"
+            />
+          </template>
+        </el-table>
+      </div>
+      <PhoneReturnForm
+        :checklist="checkoutChecklist"
+        @cancel="handleCancel"
+        @busy="submitting = $event"
+        @success="checkoutReturned"
+      />
+    </section>
+
     <el-form
+      v-if="allowed && standaloneSale"
       ref="formRef"
       :model="formData"
       :rules="formRules"
       label-position="top"
-      class="return-form"
+      class="return-form tf-form-layout tf-form-grid"
     >
       <div class="form-section">
         <div class="section-title">
@@ -89,7 +190,7 @@
           退库信息
         </div>
 
-        <div class="form-grid">
+        <div class="tf-form-row">
           <el-form-item
             label="退库原因"
             prop="return_reason"
@@ -206,7 +307,7 @@
           </el-form-item>
 
           <el-form-item
-            class="full-width"
+            class="full-width tf-form-field--wide"
             label="备注"
           >
             <el-input
@@ -223,7 +324,10 @@
       </div>
     </el-form>
 
-    <div class="return-warning">
+    <div
+      v-if="standaloneSale"
+      class="return-warning"
+    >
       <i class="fas fa-exclamation-triangle" />
       <div class="warning-content">
         <strong>操作提示：</strong>
@@ -250,6 +354,14 @@ import { logger } from '@/utils/logger'
 import { getRequestErrorMessage } from '@/utils/api-response'
 import type { ModelValueProps, ReturnDeviceInfo as DeviceInfo, SuccessEmits, UpdateModelValueEmits } from '@/types'
 import { useNotification } from '@/composables/useNotification'
+import { formatCurrency } from '@/utils/format'
+import { useLatestRequest } from '@/composables/useLatestRequest'
+import { getPhoneReturnChecklist } from '@/api/sales-checkout'
+import { isPhoneReturnSource } from '@/utils/sales-checkout'
+import { canViewAccessoryField } from '@/components/accessory-field-permissions'
+import { usePagePermissions } from '@/composables/usePagePermissions'
+import type { PhoneReturnChecklist } from '@/types/sales-checkout'
+import PhoneReturnForm from './PhoneReturnForm.vue'
 const globalNotifications = useNotification()
 
 
@@ -266,11 +378,24 @@ const { isMobile } = useMobile()
 
 const dialogVisible = computed({
   get: () => props.modelValue,
-  set: (val) => emit('update:modelValue', val)
+  set: (val) => { if (!submitting.value) emit('update:modelValue', val) }
 })
 
 const formRef = ref<FormInstance>()
 const submitting = ref(false)
+const requests = useLatestRequest()
+const checklistLoading = ref(false)
+const checklistFailed = ref(false)
+const checklistError = ref('')
+const checkoutChecklist = ref<PhoneReturnChecklist | null>(null)
+const standaloneSale = ref(false)
+const { canView, hasPermission } = usePagePermissions('query')
+const allowed = computed(() => canView.value && hasPermission('return-to-stock'))
+const { canView: canViewGoods } = usePagePermissions('accessories')
+const canSubmitReturn = computed(() => allowed.value && standaloneSale.value && !checklistLoading.value && !checklistFailed.value && !submitting.value)
+const showGiftAgreement = computed(() => canViewAccessoryField('usage_type') && canViewAccessoryField('total_quantity') && canViewAccessoryField('unit_price') && canViewAccessoryField('total_price'))
+const beforeClose = (done: (cancel?: boolean) => void) => { if (!submitting.value) done() }
+const checkoutReturned = () => { submitting.value = false; emit('success'); handleCancel() }
 
 const createDefaultFormData = (): ReturnStockDetails => ({
   return_reason: '',
@@ -304,18 +429,51 @@ const resetForm = () => {
   formRef.value?.clearValidate()
 }
 
+const loadChecklist = async () => {
+  const phoneId = Number(props.deviceInfo?.id)
+  requests.cancelLatest()
+  checkoutChecklist.value = null
+  standaloneSale.value = false
+  checklistFailed.value = false
+  checklistLoading.value = false
+  if (!props.modelValue || !allowed.value || !Number.isSafeInteger(phoneId) || phoneId < 1) return
+  const request = requests.nextRequest()
+  checklistLoading.value = true
+  try {
+    const response = await getPhoneReturnChecklist(phoneId, request.signal)
+    if (!request.isLatest()) return
+    if (!response.success || !isPhoneReturnSource(response.data, phoneId)) throw new Error('原单核对响应无效，请刷新后重试')
+    if (response.data.mode === 'checkout') {
+      if (response.data.accessories.length && !canViewGoods.value) throw new Error('无权查看关联配件，无法完成原单核对')
+      checkoutChecklist.value = response.data
+    }
+    else standaloneSale.value = true
+  } catch (error: unknown) {
+    if (requests.isCanceledError(error) || !request.isLatest()) return
+    checklistFailed.value = true
+    checklistError.value = getRequestErrorMessage(error, '无法确认手机销售来源')
+  } finally {
+    if (request.isLatest()) checklistLoading.value = false
+  }
+}
+
 const handleCancel = () => {
+  requests.cancelLatest()
+  standaloneSale.value = false
+  checkoutChecklist.value = null
+  checklistLoading.value = false
   resetForm()
   dialogVisible.value = false
 }
 
 const handleSubmit = async () => {
-  if (submitting.value) return
+  if (submitting.value || !canSubmitReturn.value) return
   if (!formRef.value || !props.deviceInfo?.id) return
+  const phoneId = props.deviceInfo.id
 
   try {
     const valid = await formRef.value.validate().catch(() => false)
-    if (!valid) return
+    if (!valid || !canSubmitReturn.value || !props.modelValue || props.deviceInfo?.id !== phoneId) return
 
     submitting.value = true
 
@@ -346,12 +504,20 @@ const handleSubmit = async () => {
 }
 
 watch(
-  () => props.modelValue,
-  (visible) => {
+  () => [props.modelValue, props.deviceInfo?.id, allowed.value, canViewGoods.value] as const,
+  ([visible]) => {
     if (visible) {
       resetForm()
+      void loadChecklist()
+    } else {
+      requests.cancelLatest()
+      checklistLoading.value = false
+      checkoutChecklist.value = null
+      checklistFailed.value = false
+      standaloneSale.value = false
     }
-  }
+  },
+  { immediate: true }
 )
 </script>
 

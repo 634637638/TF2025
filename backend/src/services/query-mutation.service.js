@@ -6,6 +6,7 @@ const { StoreScopeError } = require('../utils/store-scope')
 const { reverseCustomerPointsForSale: defaultReversePoints } = require('./customer-points.service')
 const log = require('../utils/log')
 const { normalizeReturnStockInfo } = require('./return-stock-validation')
+const { assertStandaloneSale } = require('../utils/sale-input')
 
 class QueryMutationService extends BaseService {
   constructor({ repository = new QueryRepository(), reversePoints = defaultReversePoints } = {}) {
@@ -32,6 +33,7 @@ class QueryMutationService extends BaseService {
         if (!storeScope.allStores && !storeScope.storeIds?.includes(Number(phone.store_id))) {
           throw new StoreScopeError('无权操作该门店数据')
         }
+        assertStandaloneSale(phone.checkout_order_id)
 
         // 只允许退库已售出、同行批发、代供应商划拨的手机
         const allowedStatuses = ['sold', 'peer_transfer', 'supplier_proxy']
@@ -97,6 +99,7 @@ class QueryMutationService extends BaseService {
         if (!storeScope.allStores && !storeScope.storeIds?.includes(Number(phoneRows[0].store_id))) {
           throw new StoreScopeError('无权操作该门店数据')
         }
+        assertStandaloneSale(phoneRows[0].checkout_order_id)
 
         // 1. 删除关联的销售记录
         const [saleRows] = await this.repository.lockSalesForDelete(connection, phoneId)
@@ -118,16 +121,7 @@ class QueryMutationService extends BaseService {
           }
         }
 
-        // 3. 删除其他可能引用该手机的记录
-        try {
-          await this.repository.deletePhoneOrderItems(connection, phoneId)
-        } catch (orderError) {
-        // 如果表不存在或约束问题，忽略错误继续执行
-          if (!orderError.message.includes('Table') || !orderError.message.includes("doesn't exist")) {
-            log.warn(`删除销售订单项记录时出现警告: ${orderError.message}`)
-          }
-        }
-
+        // 3. 删除其他可能引用该手机的记录；共同订单明细由前置校验保护，禁止删除审计事实。
         try {
           await this.repository.deletePhoneRentals(connection, phoneId)
         } catch (rentalError) {

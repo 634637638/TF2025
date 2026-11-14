@@ -88,6 +88,11 @@ test('high-value customer repository uses bound search and filter parameters for
     ['2026-10-01', '2026-10-31', 3, '%王%', '%王%']
   ])
   assert.match(calls[0].sql, /LIMIT 20 OFFSET 0/)
-  assert.match(calls[0].sql, /LEFT JOIN sales s ON c\.id = s\.customer_id AND DATE\(s\.sale_time\) >= \? AND DATE\(s\.sale_time\) <= \? AND s\.store_id = \?\s+WHERE c\.status = 1\s+AND \(c\.name LIKE \? OR c\.phone LIKE \?\)/)
+  for (const { sql } of calls) {
+    const join = sql.slice(sql.indexOf('LEFT JOIN sales'), sql.indexOf('WHERE c.status'))
+    assert.match(join, /s\.status IS NULL OR s\.status IN \('pending', 'completed'\)/)
+    assert.match(join, /DATE\(s\.sale_time\) >= \? AND DATE\(s\.sale_time\) <= \? AND s\.store_id = \?/)
+    assert.match(sql, /WHERE c\.status = 1\s+AND \(c\.name LIKE \? OR c\.phone LIKE \?\)/)
+  }
   assert.match(calls[1].sql, /HAVING COALESCE\(SUM\(s\.sale_price\), 0\) > 0/)
 })

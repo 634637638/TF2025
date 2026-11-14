@@ -123,7 +123,10 @@
                   <i class="fas fa-plus" />
                   手动添加模块
                 </el-button>
-                <div class="view-toggles">
+                <div
+                  v-if="!isMobile"
+                  class="view-toggles"
+                >
                   <el-button
                     :type="viewMode === 'list' ? 'primary' : 'default'"
                     size="small"
@@ -174,10 +177,11 @@
 
             <!-- 模块列表 - 列表视图 -->
             <div
-              v-else-if="viewMode === 'list'"
+              v-else-if="isMobile || viewMode === 'list'"
               class="table-responsive"
             >
               <el-table
+                v-table-double-tap="mobileDetailTapOptions"
                 :data="paginatedModules"
                 border
                 stripe
@@ -185,6 +189,7 @@
                 table-layout="fixed"
                 :fit="true"
                 row-key="id"
+                @row-dblclick="mobileDetailDoubleClick"
               >
                 <el-table-column
                   label="状态"
@@ -271,7 +276,7 @@
                   </template>
                 </el-table-column>
                 <el-table-column
-                  v-if="showModuleActionField"
+                  v-if="!isMobile && showModuleActionField"
                   label="操作"
                   :width="moduleActionColumnWidth"
                   align="center"
@@ -470,7 +475,10 @@
           :close-on-click-modal="false"
         >
           <div class="modal-body">
-            <form @submit.prevent="saveModuleName">
+            <form
+              class="tf-form-layout tf-form-grid"
+              @submit.prevent="saveModuleName"
+            >
               <div class="form-group">
                 <label>模块标识</label>
                 <el-input
@@ -506,7 +514,7 @@
                 </div>
               </div>
 
-              <div class="form-group">
+              <div class="form-group tf-form-field--wide">
                 <label>名称保护</label>
                 <el-checkbox v-model="editForm.is_custom">
                   设为自定义名称（保护不被扫描覆盖）
@@ -527,14 +535,12 @@
               <el-button
                 type="primary"
                 :disabled="isSubmitting"
+                :loading="isSubmitting"
                 @click="saveModuleName"
               >
-                <InlineLoading
-                  v-if="isSubmitting"
-                  text="保存中..."
-                  size="small"
-                  variant="inherit"
-                />
+                <template v-if="isSubmitting">
+                  保存中...
+                </template>
                 <template v-else>
                   保存
                 </template>
@@ -579,14 +585,12 @@
               <el-button
                 type="warning"
                 :disabled="isSubmitting"
+                :loading="isSubmitting"
                 @click="confirmRestore"
               >
-                <InlineLoading
-                  v-if="isSubmitting"
-                  text="恢复中..."
-                  size="small"
-                  variant="inherit"
-                />
+                <template v-if="isSubmitting">
+                  恢复中...
+                </template>
                 <template v-else>
                   确认恢复
                 </template>
@@ -608,7 +612,7 @@
               v-if="selectedModule"
               class="module-detail-view"
             >
-              <div class="detail-section">
+              <div class="detail-section tf-detail-grid">
                 <h4>基本信息</h4>
                 <div class="detail-row">
                   <span class="label">模块标识：</span>
@@ -655,7 +659,7 @@
                 </div>
               </div>
 
-              <div class="detail-section">
+              <div class="detail-section tf-detail-grid">
                 <h4>时间信息</h4>
                 <div class="detail-row">
                   <span class="label">创建时间：</span>
@@ -670,13 +674,13 @@
                 </div>
               </div>
 
-              <div class="detail-section">
+              <div class="detail-section tf-detail-grid">
                 <h4>权限信息</h4>
                 <div class="detail-row">
                   <span class="label">权限数量：</span>
                   <span class="value">{{ selectedModule.permission_count || 0 }} 个</span>
                 </div>
-                <div class="detail-row">
+                <div class="detail-row tf-detail-field--wide">
                   <span class="label">描述：</span>
                   <span class="value">{{ selectedModule.description }}</span>
                 </div>
@@ -684,13 +688,33 @@
             </div>
           </div>
 
-          <template #footer>
+          <template
+            v-if="isMobile && selectedModule && canEdit"
+            #footer
+          >
             <div class="tf-dialog-actions">
               <el-button
-                type="info"
-                @click="detailsDialogVisible = false"
+                v-if="canEdit"
+                :type="isProtectedModule(selectedModule) ? 'info' : (selectedModule.is_active ? 'warning' : 'success')"
+                :disabled="isProtectedModule(selectedModule) && Number(selectedModule.is_active) === 1"
+                :title="isProtectedModule(selectedModule) ? '权限管理核心模块不能禁用' : (selectedModule.is_active ? '禁用模块' : '启用模块')"
+                @click.stop="runModuleDetailAction(toggleModuleStatus)"
               >
-                关闭
+                <i :class="isProtectedModule(selectedModule) ? 'fas fa-shield-alt' : (selectedModule.is_active ? 'fas fa-toggle-off' : 'fas fa-toggle-on')" /><span>{{ isProtectedModule(selectedModule) && Number(selectedModule.is_active) === 1 ? '核心模块' : (selectedModule.is_active ? '禁用' : '启用') }}</span>
+              </el-button><el-button
+                v-if="canEdit"
+                type="primary"
+                :title="selectedModule.is_custom_name === 1 ? '编辑自定义名称' : '设为自定义名称'"
+                @click.stop="runModuleDetailAction(editModuleName)"
+              >
+                <i class="fas fa-edit" /><span>{{ selectedModule.is_custom_name === 1 ? '编辑' : '自定义' }}</span>
+              </el-button><el-button
+                v-if="canEdit && selectedModule.is_custom_name === 1"
+                type="warning"
+                title="恢复原始名称"
+                @click.stop="runModuleDetailAction(restoreModuleName)"
+              >
+                <i class="fas fa-undo" /><span>恢复</span>
               </el-button>
             </div>
           </template>
@@ -762,7 +786,7 @@
                 />
               </div>
 
-              <div class="form-row">
+              <div class="form-row tf-form-row">
                 <div class="form-group">
                   <label class="form-label">
                     <span class="required">*</span>
@@ -865,14 +889,12 @@
               <el-button
                 type="primary"
                 :disabled="isSubmitting"
+                :loading="isSubmitting"
                 @click="handleAddModule"
               >
-                <InlineLoading
-                  v-if="isSubmitting"
-                  text="添加中..."
-                  size="small"
-                  variant="inherit"
-                />
+                <template v-if="isSubmitting">
+                  添加中...
+                </template>
                 <template v-else>
                   <i class="fas fa-check" />
                   确认添加
@@ -887,6 +909,8 @@
 </template>
 
 <script>
+import { useMobile } from '@/composables/mobile'
+import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
 import { confirmAction } from '@/utils/message-box'
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useNotification } from '@/composables/useNotification'
@@ -898,7 +922,6 @@ import { getAdaptiveActionColumnWidth, getTextColumnMinWidth } from '@/utils/tab
 import unifiedApi from '@/utils/unified-api'
 import Pagination from '@/components/Pagination.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
-import InlineLoading from '@/components/InlineLoading.vue'
 import SectionLoading from '@/components/SectionLoading.vue'
 import { PermissionGate } from '@/components/base'
 
@@ -907,7 +930,6 @@ export default {
   components: {
     Pagination,
     UnifiedSearchPanel,
-    InlineLoading,
     SectionLoading,
     PermissionGate
   },
@@ -1340,12 +1362,25 @@ export default {
       }
     }
 
+
+    const { isMobile } = useMobile()
+    const { doubleTapOptions: mobileDetailTapOptions, handleRowDoubleClick: mobileDetailDoubleClick } = useMobileTableDetail({
+      enabled: () => isMobile.value && canView.value, rows: paginatedModules, getKey: row => row.id ?? row.key, onOpen: showModuleDetails
+    })
+    const runModuleDetailAction = (action) => {
+      const record = selectedModule.value
+      if (!record) return
+      detailsDialogVisible.value = false
+      return action(record)
+    }
+
     // 生命周期
     onMounted(() => {
       loadModules()
     })
 
     return {
+      isMobile, mobileDetailTapOptions, mobileDetailDoubleClick, runModuleDetailAction,
       // 权限相关
       canView,
       canCreate,

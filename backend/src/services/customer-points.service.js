@@ -1,58 +1,19 @@
 const { getDatabase } = require('../config/database')
 const { hasColumn, hasTable } = require('./schema-inspector.service')
 const log = require('../utils/log')
+const SalesCheckoutRepository = require('../repositories/sales-checkout.repository')
+const checkoutRepository = new SalesCheckoutRepository()
+const CustomerPointsLedgerService = require('./customer-points-ledger.service')
+const pointsLedger = new CustomerPointsLedgerService()
 
 const POINTS_CONFIG_KEY = 'customer_points_config'
-const CUSTOMER_POINTS_AMOUNT_PER_POINT = 100
+const {
+  CUSTOMER_POINTS_AMOUNT_PER_POINT, DEFAULT_POINTS_CONFIG, normalizePointsConfig,
+  validatePointsConfig, sourceRate, quoteCustomerPoints
+} = require('../utils/customer-points-rules')
 const CUSTOMER_POINTS_COLUMN = 'points_awarded'
 const CUSTOMER_POINTS_ACCOUNTED_AT_COLUMN = 'points_accounted_at'
-
-const DEFAULT_POINTS_CONFIG = Object.freeze({
-  enabled: true,
-  amount_per_point: CUSTOMER_POINTS_AMOUNT_PER_POINT,
-  include_new: true,
-  include_used: true,
-  new_points_per_100: 1,
-  used_points_per_100: 1
-})
-
 const RETAIL_SALE_TYPES = new Set(['', 'retail', 'sale', 'normal', 'batch', 'batch_item'])
-
-const normalizeBoolean = (value, fallback = true) => {
-  if (typeof value === 'boolean') return value
-  if (value === 1 || value === '1') return true
-  if (value === 0 || value === '0') return false
-  if (typeof value === 'string') {
-    const lowered = value.trim().toLowerCase()
-    if (['true', 'yes', 'on'].includes(lowered)) return true
-    if (['false', 'no', 'off'].includes(lowered)) return false
-  }
-  return fallback
-}
-
-const normalizePointsRate = (value, fallback) => {
-  const numericValue = Number(value)
-  return Number.isInteger(numericValue) && numericValue >= 1 && numericValue <= 100
-    ? numericValue
-    : fallback
-}
-
-const normalizePointsConfig = (config = {}) => {
-  return {
-    enabled: normalizeBoolean(config.enabled, DEFAULT_POINTS_CONFIG.enabled),
-    amount_per_point: CUSTOMER_POINTS_AMOUNT_PER_POINT,
-    include_new: normalizeBoolean(config.include_new, DEFAULT_POINTS_CONFIG.include_new),
-    include_used: normalizeBoolean(config.include_used, DEFAULT_POINTS_CONFIG.include_used),
-    new_points_per_100: normalizePointsRate(
-      config.new_points_per_100,
-      DEFAULT_POINTS_CONFIG.new_points_per_100
-    ),
-    used_points_per_100: normalizePointsRate(
-      config.used_points_per_100,
-      DEFAULT_POINTS_CONFIG.used_points_per_100
-    )
-  }
-}
 
 const parseStoredConfig = (rawValue) => {
   if (!rawValue) return DEFAULT_POINTS_CONFIG
@@ -186,7 +147,7 @@ const isEligiblePhoneCondition = (isNew, config) => {
 }
 
 const getPhonePointsRate = (isNew, config) => (
-  Number(isNew) === 1 ? config.new_points_per_100 : config.used_points_per_100
+  sourceRate(Number(isNew) === 1 ? 'new' : 'used', config)
 )
 
 const calculateCustomerPointsForSale = ({ phones = [], saleType = '', config = DEFAULT_POINTS_CONFIG }) => {
@@ -269,9 +230,25 @@ const applyCustomerPointsDelta = async (executor, customerId, delta) => {
   }
 }
 
+/** 共同订单已锁定客户及保存逐行凭据后调用；不提交、不回滚，失败交由整单处理。 */
+const creditCheckoutPoints = async (executor, customerId, points, { sources = [] } = {}) => {
+  if (!executor || typeof executor.execute !== 'function' || !Number.isSafeInteger(customerId) || customerId <= 0 ||
+    !Number.isSafeInteger(points) || points < 0 || points > 2147483647) throw Object.assign(new Error('共同订单积分入账参数无效'), { statusCode: 400 })
+  if (points && await pointsLedger.ready(executor)) {
+    if (!Array.isArray(sources) || sources.some(row => !row || !Number.isSafeInteger(row.item_id) || row.item_id <= 0 ||
+      !Number.isSafeInteger(row.points) || row.points < 0) || new Set(sources.map(row => row.item_id)).size !== sources.length ||
+      sources.reduce((sum, row) => sum + row.points, 0) !== points) throw Object.assign(new Error('商品积分必须关联真实订单明细'), { statusCode: 400 })
+    for (const row of sources) if (row.points) await pointsLedger.applyDelta(executor, {
+      customerId, delta: row.points, sourceType: 'checkout_item', sourceId: row.item_id
+    })
+    return
+  }
+  if (points && !await checkoutRepository.awardPoints(executor, customerId, points)) throw Object.assign(new Error('客户积分余额异常，结算已取消'), { statusCode: 409 })
+}
+
 /**
  * 在调用方现有事务内，将一条销售记录的积分同步到目标业务状态。
- * 本方法只维护 customers.points 与 sales.points_awarded，不提交、不回滚事务。
+ * 同步账户余额、销售凭据及已安装的来源账，不提交、不回滚事务。
  */
 const reconcileCustomerPointsForSale = async ({
   executor,
@@ -292,7 +269,8 @@ const reconcileCustomerPointsForSale = async ({
   }
 
   const [saleRows] = await executor.execute(
-    `SELECT id, customer_id, ${CUSTOMER_POINTS_COLUMN}, ${CUSTOMER_POINTS_ACCOUNTED_AT_COLUMN}
+    `SELECT id, customer_id, ${CUSTOMER_POINTS_COLUMN}, ${CUSTOMER_POINTS_ACCOUNTED_AT_COLUMN},
+            phone_id, store_id, operator_id, sale_time
      FROM sales
      WHERE id = ?
      LIMIT 1
@@ -331,12 +309,13 @@ const reconcileCustomerPointsForSale = async ({
     }
   }
 
+  const pointsConfig = awardPoints ? normalizePointsConfig(config || await getCustomerPointsConfig(executor)) : null
   const pointsAward = awardPoints
     ? calculateCustomerPointsForSaleRecord({
       salePrice,
       saleType,
       isNew,
-      config: config || await getCustomerPointsConfig(executor)
+      config: pointsConfig
     })
     : {
       points: 0,
@@ -353,7 +332,12 @@ const reconcileCustomerPointsForSale = async ({
     customerDeltas.set(nextCustomerId, (customerDeltas.get(nextCustomerId) || 0) + nextPoints)
   }
   for (const [deltaCustomerId, delta] of [...customerDeltas.entries()].sort(([left], [right]) => left - right)) {
-    await applyCustomerPointsDelta(executor, deltaCustomerId, delta)
+    if (delta && !await pointsLedger.applyDelta(executor, { customerId: deltaCustomerId, delta, sourceType: 'phone_sale', sourceId: normalizedSaleId,
+      details: { sale_price: salePrice, sale_type: saleType, is_new: Number(isNew) === 1, config: pointsConfig,
+        phone_id: currentSale.phone_id, store_id: currentSale.store_id, operator_id: currentSale.operator_id,
+        sale_time: currentSale.sale_time, previous_points: previousPoints } })) {
+      await applyCustomerPointsDelta(executor, deltaCustomerId, delta)
+    }
   }
 
   await executor.execute(
@@ -405,10 +389,14 @@ const reverseCustomerPointsForSale = async ({ executor, saleId }) => {
 module.exports = {
   CUSTOMER_POINTS_AMOUNT_PER_POINT,
   DEFAULT_POINTS_CONFIG,
+  normalizePointsConfig,
+  validatePointsConfig,
+  quoteCustomerPoints,
   getCustomerPointsConfig,
   saveCustomerPointsConfig,
   calculateCustomerPointsForSale,
   calculateCustomerPointsForSaleRecord,
   reconcileCustomerPointsForSale,
+  creditCheckoutPoints,
   reverseCustomerPointsForSale
 }
